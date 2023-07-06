@@ -8,7 +8,9 @@ def _counter():
         yield i
         i += 1
 
+
 _uuid = _counter()
+
 
 class _Dump(NpuBaseConfig):
     def __init__(self):

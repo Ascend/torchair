@@ -46,7 +46,7 @@ std::string DeviceTypeToString(c10::DeviceType device_type) {
       return "unsupported DeviceType";
   }
 }
-}
+}  // namespace
 
 std::string DebugString(const tng::Placement &placement) {
   switch (placement) {
@@ -162,8 +162,8 @@ Status AssembleDataToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor) {
   // The input at tensor must be contiguous(), but not necessarily matched.
   // Therefore, when getting data_ptr, the calculation of the data_ptr address needs to skip storage_offset,
   // and the calculation of nbytes needs to be based on the shape after view.
-  TNG_ASSERT_GE_OK(ge_tensor.SetData(static_cast<uint8_t *>(tensor.data_ptr()),
-                                     tensor.numel() * tensor.element_size(), kDoNothing));
+  TNG_ASSERT_GE_OK(
+    ge_tensor.SetData(static_cast<uint8_t *>(tensor.data_ptr()), tensor.numel() * tensor.element_size(), kDoNothing));
   return Status::Success();
 }
 

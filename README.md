@@ -1,4 +1,4 @@
-torch_npu_graph用于将torch的FX图转换为GE计算图，并提供了GE计算图的编译与执行接口。
+torchair实现将torch的FX图转换为GE计算图，并提供了GE计算图的编译与执行接口。
 
 # 编译说明
 
@@ -39,8 +39,6 @@ cd build
 make ..
 make torchair -j8
 ```
-
-> build_and_install.sh脚本可以直接执行上述命令，将来不会对外提供，只是为了方便测试使用。
 
 # 执行测试
 

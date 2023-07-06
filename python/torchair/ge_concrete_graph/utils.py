@@ -6,6 +6,7 @@ from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import Any, Dict, List, Tuple, Union, Callable
 
+
 def convert_to_tensorboard(ge_graph: GraphDef):
     import tensorflow
     tf = tensorflow.compat.v1
@@ -36,7 +37,8 @@ def dtype_promote(*tensors: Any, target_dtype: Union[torch.dtype, DataType]) -> 
     # Promote each input to the specified dtype, and convert non tensor inputs to Const.
     assert len(tensors) != 0, "No object to dtype promotion."
 
-    target_dtype = torch_type_to_ge_type(target_dtype) if isinstance(target_dtype, torch.dtype) else target_dtype
+    target_dtype = torch_type_to_ge_type(target_dtype) if isinstance(
+        target_dtype, torch.dtype) else target_dtype
     result = []
     for arg in tensors:
         if isinstance(arg, ge.Tensor):

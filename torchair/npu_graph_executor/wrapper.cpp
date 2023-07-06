@@ -36,6 +36,5 @@
 
 namespace py = pybind11;
 namespace npu {
-PYBIND11_MODULE(_npu_graph_executor, m) {
-};
+PYBIND11_MODULE(_npu_graph_executor, m){};
 }  // namespace npu

@@ -117,8 +117,6 @@ Status DebugString(const ge::Tensor &tensor) {
   return Status::Error(ss.str().c_str());
 }
 
-ge::AscendString DebugString(const ge::DataType &dtype) {
-  return ge::TypeUtils::DataTypeToSerialString(dtype).c_str();
-}
+ge::AscendString DebugString(const ge::DataType &dtype) { return ge::TypeUtils::DataTypeToSerialString(dtype).c_str(); }
 }  // namespace compat
 }  // namespace tng

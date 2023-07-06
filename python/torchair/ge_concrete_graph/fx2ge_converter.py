@@ -118,7 +118,8 @@ class Converter:
 
             if Converter.result_checker is not None:
                 Converter.result_checker(backend_results, eager_results)
-            print(f"[PASS] {self._aten_op} testcase {i + 1}/{len(self.testcases)}", flush=True)
+            print(
+                f"[PASS] {self._aten_op} testcase {i + 1}/{len(self.testcases)}", flush=True)
 
 
 def register_testcase(testcases: List[TestInput]):
@@ -217,8 +218,8 @@ class GeConcreteGraph(ConcreteGraphBase):
 
     def parse_input(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
         if isinstance(meta_outputs, torch.SymInt):
-            data = ge.Data(name=target, index=len(self._inputs),
-                           dtype=ProtoDataType.DT_INT64, shape=[])
+            data = ge.Data(index=len(self._inputs),
+                           dtype=ProtoDataType.DT_INT64, shape=[], name=target)
             data.meta = meta_outputs
             self._inputs.append(data)
             self._input_placements.append(Placement.HOST)
@@ -226,8 +227,8 @@ class GeConcreteGraph(ConcreteGraphBase):
             assert isinstance(meta_outputs, torch.Tensor)
             dtype = torch_type_to_ge_proto_type(meta_outputs.dtype)
             shape = _get_generalized_shape(meta_outputs)
-            data = ge.Data(name=target, index=len(
-                self._inputs), dtype=dtype, shape=shape)
+            data = ge.Data(index=len(self._inputs), dtype=dtype,
+                           shape=shape, name=target)
             data.meta = meta_outputs
             self._inputs.append(data)
             self._input_placements.append(Placement.HOST if (

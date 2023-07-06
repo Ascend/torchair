@@ -4,6 +4,7 @@ from torchair.configs.option_base import NpuBaseConfig
 
 class AoeConfig(NpuBaseConfig):
     """Config for aoe function"""
+
     def __init__(self):
         self.aoe_mode = OptionValue(None, ["1", "2", "4"])
         self.work_path = OptionValue("./", None)

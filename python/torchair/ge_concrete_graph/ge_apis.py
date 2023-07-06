@@ -13,7 +13,7 @@ from torchair.ge_concrete_graph.auto_generated_ge_raw_ops import *
 from torchair.ge_concrete_graph.dynamic_output_ops import *
 
 
-def Data(name: str, index: int, dtype: int, *, shape: List[int] = None, format: str = "ND") -> Tensor:
+def Data(*, index: int, dtype: int, shape: List[int] = None, format: str = "ND", name: str = None) -> Tensor:
     op = get_default_ge_graph().op.add()
     op.type = "Data"
     op.name = next_unique_name(name, "Data")

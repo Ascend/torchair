@@ -78,6 +78,7 @@ class TestInput:
     def __str__(self) -> str:
         def _format(args, kwargs):
             all_args = [f"args[{i}] = {v}" for i, v in enumerate(args)]
-            all_args.extend([f"kwargs['{k}'] = {v}" for k, v in kwargs.items()])
+            all_args.extend(
+                [f"kwargs['{k}'] = {v}" for k, v in kwargs.items()])
             return "\n  " + "\n  ".join(all_args)
         return _format(self.args, self.kwargs)
