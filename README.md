@@ -1,39 +1,56 @@
-# torchair
+torch_npu_graph用于将torch的FX图转换为GE计算图，并提供了GE计算图的编译与执行接口。
 
-#### 介绍
-{**以下是 Gitee 平台说明，您可以替换此简介**
-Gitee 是 OSCHINA 推出的基于 Git 的代码托管平台（同时支持 SVN）。专为开发者提供稳定、高效、安全的云端软件开发协作平台
-无论是个人、团队、或是企业，都能够用 Gitee 实现代码托管、项目管理、协作开发。企业项目请看 [https://gitee.com/enterprises](https://gitee.com/enterprises)}
+# 编译说明
 
-#### 软件架构
-软件架构说明
+配置编译环境，执行配置命令
+> 配置只需要进行一次，主要为了获取pytorch的编译选项（如当前的torch是否开启ABI）
+```shell
+./configure
+```
+默认情况下，执行上述命会弹出如下的交互式会话窗口
+> 您的会话可能有所不同。
 
+```BASH
+Please specify the location of python with available torch 2.x installed. [Default is /usr/bin/python3]
+(You can make this quiet by set env [TARGET_PYTHON_PATH]):
+```
 
-#### 安装教程
+此时，要求您输入安装了 Torch 2.x 版本的python解释器路径，如果默认路径是正确的，直接回车，否则请输入正确的 python 解释器路径。
+> 您可以通过设置 TARGET_PYTHON_PATH 环境变量，来抑制交互式窗口弹出，但是要确保路径是有效的，否则，仍然会要求您输入正确的 python 解释器路径。
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+键入后，会耗费几秒钟以确保您的输入是有效的，接着，会弹出下面的交互式窗口
 
-#### 使用说明
+```BASH
+Specify the location of ascend sdk for debug on localhost or leave empty.
+(You can make this quiet by set env [ASCEND_SDK_PATH]):
+```
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+如果您不需要在本地CPU调试，可以直接回车跳过。否则，需要输入昇腾处理器开发套件的安装路径（需指定至opensdk/opensdk目录）。
 
-#### 参与贡献
+> 您可以通过设置 ASCEND_SDK_PATH 的环境变量，来抑制交互式窗口弹出。
 
-1.  Fork 本仓库
-2.  新建 Feat_xxx 分支
-3.  提交代码
-4.  新建 Pull Request
+键入后，等待配置完成。
 
+# 执行编译
 
-#### 特技
+```shell
+mkdir build
+cd build
+make ..
+make torchair -j8
+```
 
-1.  使用 Readme\_XXX.md 来支持不同的语言，例如 Readme\_en.md, Readme\_zh.md
-2.  Gitee 官方博客 [blog.gitee.com](https://blog.gitee.com)
-3.  你可以 [https://gitee.com/explore](https://gitee.com/explore) 这个地址来了解 Gitee 上的优秀开源项目
-4.  [GVP](https://gitee.com/gvp) 全称是 Gitee 最有价值开源项目，是综合评定出的优秀开源项目
-5.  Gitee 官方提供的使用手册 [https://gitee.com/help](https://gitee.com/help)
-6.  Gitee 封面人物是一档用来展示 Gitee 会员风采的栏目 [https://gitee.com/gitee-stars/](https://gitee.com/gitee-stars/)
+> build_and_install.sh脚本可以直接执行上述命令，将来不会对外提供，只是为了方便测试使用。
+
+# 执行测试
+
+> 如果您在配置时未指定Ascend sdk的安装路径，则无法执行CPU上的调试，需要在NPU环境上进行测试。
+
+CPU调试时，需要设置LD_LIBRARY_PATH到生成的fake so文件目录以及sdk目录
+
+> tools/env.sh会根据配置生成对应的LD_LIBRARY_PATH（如果您在配置时指定了Ascend sdk安装路径）
+```shell
+source tools/env.sh
+
+python3 examples/example.py
+```

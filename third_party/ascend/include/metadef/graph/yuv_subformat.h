@@ -1,0 +1,35 @@
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#ifndef INC_YUV_SUBFORMAT_H_
+#define INC_YUV_SUBFORMAT_H_
+namespace ge {
+enum YUVSubFormat {
+  YUV420_SP = 1,
+  YVU420_SP,
+  YUV422_SP,
+  YVU422_SP,
+  YUV440_SP,
+  YVU440_SP,
+  YUV444_SP,
+  YVU444_SP,
+  YUYV422_PACKED,
+  YVYU422_PACKED,
+  YUV444_PACKED,
+  YVU444_PACKED,
+  YUV400
+};
+}  // namespace ge
+#endif  // INC_YUV_SUBFORMAT_H_

@@ -1,0 +1,84 @@
+import torch
+from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
+from torchair.ge_concrete_graph.ge_graph import Tensor
+from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
+from torchair.ge_concrete_graph import ge_apis as ge
+from typing import (
+    Any,
+    Callable,
+    ContextManager,
+    Iterator,
+    List,
+    Literal,
+    NamedTuple,
+    Optional,
+    overload,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+)
+from torch.types import (
+    _bool,
+    _complex,
+    _device,
+    _dtype,
+    _float,
+    _int,
+    _layout,
+    _qscheme,
+    _size,
+    Device,
+    Number,
+    SymInt,
+)
+
+
+@register_fx_node_ge_converter(torch.ops.aten.eye.default)
+def conveter_aten_eye_default(
+        n: Union[int, Tensor],
+        *,
+        dtype: Optional[int] = None,
+        layout: Optional[int] = None,
+        device: Optional[Device] = None,
+        pin_memory: Optional[bool] = None,
+        meta_outputs: Any = None):
+    """ NB: aten::eye(SymInt n, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor """
+    raise NotImplementedError("torch.ops.aten.eye.default ge converter is not implement!")
+
+
+@register_fx_node_ge_converter(torch.ops.aten.eye.m)
+def conveter_aten_eye_m(
+        n: Union[int, Tensor],
+        m: Union[int, Tensor],
+        *,
+        dtype: Optional[int] = None,
+        layout: Optional[int] = None,
+        device: Optional[Device] = None,
+        pin_memory: Optional[bool] = None,
+        meta_outputs: Any = None):
+    """ NB: aten::eye.m(SymInt n, SymInt m, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor """
+    raise NotImplementedError("torch.ops.aten.eye.m ge converter is not implement!")
+
+
+@register_fx_node_ge_converter(torch.ops.aten.eye.out)
+def conveter_aten_eye_out(
+        n: Union[int, Tensor],
+        *,
+        out: Tensor = None,
+        meta_outputs: Any = None):
+    """ NB: aten::eye.out(SymInt n, *, Tensor(a!) out) -> Tensor(a!) """
+    raise NotImplementedError("torch.ops.aten.eye.out ge converter is not implement!")
+
+
+@register_fx_node_ge_converter(torch.ops.aten.eye.m_out)
+def conveter_aten_eye_m_out(
+        n: Union[int, Tensor],
+        m: Union[int, Tensor],
+        *,
+        out: Tensor = None,
+        meta_outputs: Any = None):
+    """ NB: aten::eye.m_out(SymInt n, SymInt m, *, Tensor(a!) out) -> Tensor(a!) """
+    raise NotImplementedError("torch.ops.aten.eye.m_out ge converter is not implement!")
+
+
