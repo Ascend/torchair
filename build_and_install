@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -e
+set -o pipefail
+
+rm -rf build
+mkdir build
+cd build
+cmake ..
+make torchair -j8
+pip3 install dist/dist/torchair-0.1-py3-none-any.whl --force-reinstall
