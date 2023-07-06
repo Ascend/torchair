@@ -21,10 +21,10 @@ class CompiledGraphSummary::SummaryData {
  private:
   bool is_static_{false};
   bool is_feature_mem_refreshable_{false};
-  size_t const_mem_size_{0UL};
-  size_t feature_mem_size_{0UL};
-  size_t stream_num_{0UL};
-  size_t event_num_{0UL};
+  size_t const_mem_size_{512UL};
+  size_t feature_mem_size_{10240UL};
+  size_t stream_num_{1UL};
+  size_t event_num_{2UL};
   std::vector<ge::Shape> netoutput_shapes_;
 };
 
@@ -41,6 +41,26 @@ class CompiledGraphSummary::Builder {
 
 CompiledGraphSummary::~CompiledGraphSummary() = default;
 bool CompiledGraphSummary::IsStatic() const { return data_->IsStatic(); }
+Status CompiledGraphSummary::GetFeatureMemoryBaseRefreshable(bool &v) const {
+  v = data_->IsFeatureMemoryBaseRefreshable();
+  return SUCCESS;
+}
+Status CompiledGraphSummary::GetConstMemorySize(size_t &size) const {
+  size = data_->GetConstMemorySize();
+  return SUCCESS;
+}
+Status CompiledGraphSummary::GetFeatureMemorySize(size_t &size) const {
+  size = data_->GetFeatureMemorySize();
+  return SUCCESS;
+}
+Status CompiledGraphSummary::GetStreamNum(size_t &num) const {
+  num = data_->GetStreamNum();
+  return SUCCESS;
+}
+Status CompiledGraphSummary::GetEventNum(size_t &num) const {
+  num = data_->GetEventNum();
+  return SUCCESS;
+}
 
 std::string GEGetErrorMsg() { return "[STUB] Something error"; }
 
@@ -51,7 +71,7 @@ Session::Session(const std::map<AscendString, AscendString> &options) {
 Session::~Session() { std::cerr << "[STUB] Session::Session destroyed" << std::endl; }
 
 namespace {
-  std::map<uint32_t, size_t> graph_id_to_num_outputs;
+std::map<uint32_t, size_t> graph_id_to_num_outputs;
 }
 
 Status Session::AddGraph(uint32_t id, const ge::Graph &graph, const std::map<AscendString, AscendString> &options) {

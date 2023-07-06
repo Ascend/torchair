@@ -85,11 +85,33 @@ std::string DebugString(const std::vector<tng::Placement> &placements) {
   return ss.str() + DebugString(placements.back()) + "]";
 }
 
+std::string DebugString(const ge::CompiledGraphSummary &summary) {
+  std::stringstream ss;
+  ss << "static compiled: " << (summary.IsStatic() ? "True" : "False");
+  if (summary.IsStatic()) {
+    ss << std::endl;
+    size_t workspace_size = 0U;
+    (void)summary.GetFeatureMemorySize(workspace_size);
+    bool is_workspace_refreshable = false;
+    (void)summary.GetFeatureMemoryBaseRefreshable(is_workspace_refreshable);
+    size_t const_size = 0U;
+    (void)summary.GetConstMemorySize(const_size);
+    ss << "workspace size: " << workspace_size << std::endl;
+    ss << "workspace refreshable: " << (is_workspace_refreshable ? "True" : "False") << std::endl;
+    ss << "const size: " << const_size;
+  }
+  return ss.str();
+}
+
 std::string DebugString(const GraphData &graph_data) {
   std::stringstream ss;
-  ss << "graph id:" << graph_data.id << ", num_ops:" << graph_data.graph_def.op_size()
-     << ", input_placements:" << DebugString(graph_data.input_placements)
-     << ", output_dtypes:" << DebugString(graph_data.output_dtypes);
+  ss << "Summary of graph id: " << graph_data.id << std::endl;
+  if (graph_data.summary != nullptr) {
+    ss << DebugString(*graph_data.summary) << std::endl;
+  }
+  ss << "num nodes: " << graph_data.graph_def.op_size() << std::endl;
+  ss << "input placements: " << DebugString(graph_data.input_placements) << std::endl;
+  ss << "output dtypes :" << DebugString(graph_data.output_dtypes);
   return ss.str();
 }
 
