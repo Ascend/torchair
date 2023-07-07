@@ -154,7 +154,7 @@ py::object TorchNpuGraphBase::Run(py::object obj) {
   TNG_RAISE_IF_ERROR(concrete_graph_->Run(input_tensors, output_optional_tensors, outputs, nullptr));
 
   const pybind11::gil_scoped_acquire acquire;
-  return py::reinterpret_borrow<py::object>(torch::autograd::utils::wrap(outputs));
+  return py::cast(outputs);
 }
 
 std::string TorchNpuGraphBase::Summary() const { return ""; }

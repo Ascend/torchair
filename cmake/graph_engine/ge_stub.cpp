@@ -111,11 +111,12 @@ Status Session::RunGraph(uint32_t id, const std::vector<ge::Tensor> &inputs, std
     ge::Tensor output;
     ge::TensorDesc desc;
     desc.SetDataType(ge::DT_FLOAT);
-    desc.SetShape(ge::Shape(std::vector<int64_t>{}));
+    desc.SetShape(ge::Shape(std::vector<int64_t>{512, 1024, 1024}));
     output.SetTensorDesc(desc);
 
-    float v = 1.0;
-    output.SetData(reinterpret_cast<uint8_t *>(&v), sizeof(float));
+    static std::vector<float> data;
+    data.resize(512 * 1024 * 1024, 1.0);
+    output.SetData(reinterpret_cast<uint8_t *>(data.data()), sizeof(float) * data.size());
     outputs.push_back(output);
   }
   return ge::SUCCESS;

@@ -32,6 +32,7 @@ class Model(torch.nn.Module):
 
 model = Model2()
 model = torch.compile(model, backend=npu_backend, dynamic=True)
-model(torch.randn(2, 2), torch.randn(2, 2))
-model(torch.randn(3, 3), torch.randn(3, 3))
-model(torch.randn(3, 3), torch.randn(3, 3))
+x = torch.randn(512, 1024, 1024)
+y = torch.randn(512, 1024, 1024)
+for i in range(1000):
+    model(x, y)
