@@ -336,11 +336,16 @@ class GeConcreteGraph(ConcreteGraphBase):
         if self.should_auto_tune:
             self.auto_tune(inputs)
 
-        outputs = self._executor.run(inputs)
+        ge_outputs = self._executor.run(inputs)
+        assert len(ge_outputs) == len(
+            self._fx_outputs_mapping), f"output size mismatch, expect {len(self._fx_outputs_mapping)}, got {len(ge_outputs)}"
 
-        for k, v in self._fx_outputs_mapping.items():
-            assert v < len(
-                outputs), f"output index {v} out of range {len(outputs)}"
-            self._fx_outputs[k] = outputs[v]
+        fx_outputs = [v for v in self._fx_outputs]
+        for fx_idx, ge_idx in self._fx_outputs_mapping.items():
+            assert ge_idx < len(
+                ge_outputs), f"output index {ge_idx} out of range {len(ge_outputs)}"
+            fx_outputs[fx_idx] = ge_outputs[ge_idx]
 
-        return tuple(self._fx_outputs)
+        del ge_outputs
+
+        return tuple(fx_outputs)
