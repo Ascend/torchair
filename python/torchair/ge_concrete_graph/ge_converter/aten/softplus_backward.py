@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -40,7 +40,7 @@ def conveter_aten_softplus_backward_default(
         self: Tensor,
         beta: Union[Number, Tensor],
         threshold: Union[Number, Tensor],
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::softplus_backward(Tensor grad_output, Tensor self, Scalar beta, Scalar threshold) -> Tensor """
     raise NotImplementedError("torch.ops.aten.softplus_backward.default ge converter is not implement!")
 
@@ -53,7 +53,7 @@ def conveter_aten_softplus_backward_grad_input(
         threshold: Union[Number, Tensor],
         *,
         grad_input: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::softplus_backward.grad_input(Tensor grad_output, Tensor self, Scalar beta, Scalar threshold, *, Tensor(a!) grad_input) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.softplus_backward.grad_input ge converter is not implement!")
 

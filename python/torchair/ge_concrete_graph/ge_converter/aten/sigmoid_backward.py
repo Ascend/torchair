@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -38,7 +38,7 @@ from torch.types import (
 def conveter_aten_sigmoid_backward_default(
         grad_output: Tensor,
         output: Tensor,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::sigmoid_backward(Tensor grad_output, Tensor output) -> Tensor """
     raise NotImplementedError("torch.ops.aten.sigmoid_backward.default ge converter is not implement!")
 
@@ -49,7 +49,7 @@ def conveter_aten_sigmoid_backward_grad_input(
         output: Tensor,
         *,
         grad_input: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::sigmoid_backward.grad_input(Tensor grad_output, Tensor output, *, Tensor(a!) grad_input) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.sigmoid_backward.grad_input ge converter is not implement!")
 

@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -40,7 +40,7 @@ def conveter_aten_scatter_add__default(
         dim: int,
         index: Tensor,
         src: Tensor,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::scatter_add_(Tensor(a!) self, int dim, Tensor index, Tensor src) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.scatter_add_.default ge converter is not implement!")
 

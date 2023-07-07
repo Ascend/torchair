@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -39,7 +39,7 @@ def conveter_aten_sort_default(
         self: Tensor,
         dim: int = -1,
         descending: bool = False,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::sort(Tensor self, int dim=-1, bool descending=False) -> (Tensor values, Tensor indices) """
     raise NotImplementedError("torch.ops.aten.sort.default ge converter is not implement!")
 
@@ -51,7 +51,7 @@ def conveter_aten_sort_stable(
         stable: Optional[bool],
         dim: int = -1,
         descending: bool = False,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::sort.stable(Tensor self, *, bool? stable, int dim=-1, bool descending=False) -> (Tensor values, Tensor indices) """
     raise NotImplementedError("torch.ops.aten.sort.stable ge converter is not implement!")
 
@@ -65,7 +65,7 @@ def conveter_aten_sort_values_stable(
         descending: bool = False,
         values: Tensor = None,
         indices: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::sort.values_stable(Tensor self, *, bool? stable, int dim=-1, bool descending=False, Tensor(a!) values, Tensor(b!) indices) -> (Tensor(a!) values, Tensor(b!) indices) """
     raise NotImplementedError("torch.ops.aten.sort.values_stable ge converter is not implement!")
 
@@ -78,7 +78,7 @@ def conveter_aten_sort_values(
         *,
         values: Tensor = None,
         indices: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::sort.values(Tensor self, int dim=-1, bool descending=False, *, Tensor(a!) values, Tensor(b!) indices) -> (Tensor(a!) values, Tensor(b!) indices) """
     raise NotImplementedError("torch.ops.aten.sort.values ge converter is not implement!")
 
@@ -88,7 +88,7 @@ def conveter_aten_sort_dimname(
         self: Tensor,
         dim: str,
         descending: bool = False,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::sort.dimname(Tensor self, str dim, bool descending=False) -> (Tensor values, Tensor indices) """
     raise NotImplementedError("torch.ops.aten.sort.dimname ge converter is not implement!")
 
@@ -101,7 +101,7 @@ def conveter_aten_sort_dimname_values(
         *,
         values: Tensor = None,
         indices: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::sort.dimname_values(Tensor self, str dim, bool descending=False, *, Tensor(a!) values, Tensor(b!) indices) -> (Tensor(a!) values, Tensor(b!) indices) """
     raise NotImplementedError("torch.ops.aten.sort.dimname_values ge converter is not implement!")
 
@@ -113,7 +113,7 @@ def conveter_aten_sort_dimname_stable(
         stable: Optional[bool],
         dim: str,
         descending: bool = False,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::sort.dimname_stable(Tensor self, *, bool? stable, str dim, bool descending=False) -> (Tensor values, Tensor indices) """
     raise NotImplementedError("torch.ops.aten.sort.dimname_stable ge converter is not implement!")
 
@@ -127,7 +127,7 @@ def conveter_aten_sort_dimname_values_stable(
         descending: bool = False,
         values: Tensor = None,
         indices: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::sort.dimname_values_stable(Tensor self, *, bool? stable, str dim, bool descending=False, Tensor(a!) values, Tensor(b!) indices) -> (Tensor(a!) values, Tensor(b!) indices) """
     raise NotImplementedError("torch.ops.aten.sort.dimname_values_stable ge converter is not implement!")
 
@@ -136,7 +136,7 @@ def conveter_aten_sort_dimname_values_stable(
 def conveter_aten_sort_int(
         self: List[int],
         reverse: bool = False,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::sort.int(int[](a!) self, bool reverse=False) -> () """
     raise NotImplementedError("torch.ops.aten.sort.int ge converter is not implement!")
 
@@ -145,7 +145,7 @@ def conveter_aten_sort_int(
 def conveter_aten_sort_float(
         self: List[float],
         reverse: bool = False,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::sort.float(float[](a!) self, bool reverse=False) -> () """
     raise NotImplementedError("torch.ops.aten.sort.float ge converter is not implement!")
 
@@ -154,7 +154,7 @@ def conveter_aten_sort_float(
 def conveter_aten_sort_Tensor(
         self: List[Tensor],
         reverse: bool = False,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::sort.Tensor(Tensor[](a!) self, bool reverse=False) -> () """
     raise NotImplementedError("torch.ops.aten.sort.Tensor ge converter is not implement!")
 
@@ -163,7 +163,7 @@ def conveter_aten_sort_Tensor(
 def conveter_aten_sort_bool(
         self: List[bool],
         reverse: bool = False,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::sort.bool(bool[](a!) self, bool reverse=False) -> () """
     raise NotImplementedError("torch.ops.aten.sort.bool ge converter is not implement!")
 
@@ -172,7 +172,7 @@ def conveter_aten_sort_bool(
 def conveter_aten_sort_str(
         self: List[str],
         reverse: bool = False,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::sort.str(str[](a!) self, bool reverse=False) -> () """
     raise NotImplementedError("torch.ops.aten.sort.str ge converter is not implement!")
 

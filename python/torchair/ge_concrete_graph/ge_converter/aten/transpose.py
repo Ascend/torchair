@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -39,7 +39,7 @@ def conveter_aten_transpose_int(
         self: Tensor,
         dim0: int,
         dim1: int,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::transpose.int(Tensor(a) self, int dim0, int dim1) -> Tensor(a) """
     perm_list = [i for i in range(self.rank)]
     perm_list[dim0], perm_list[dim1] = perm_list[dim1], perm_list[dim0]
@@ -51,7 +51,7 @@ def conveter_aten_transpose_Dimname(
         self: Tensor,
         dim0: str,
         dim1: str,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::transpose.Dimname(Tensor(a) self, str dim0, str dim1) -> Tensor(a) """
     raise NotImplementedError("torch.ops.aten.transpose.Dimname ge converter is not implement!")
 

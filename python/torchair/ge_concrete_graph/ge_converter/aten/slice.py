@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -41,7 +41,7 @@ def conveter_aten_slice_Tensor(
         start: Optional[Union[int, Tensor]] = None,
         end: Optional[Union[int, Tensor]] = None,
         step: Union[int, Tensor] = 1,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::slice.Tensor(Tensor(a) self, int dim=0, SymInt? start=None, SymInt? end=None, SymInt step=1) -> Tensor(a) """
     offsets = [0 for _ in range(self.rank)]
     size = [-1 for _ in range(self.rank)]
@@ -59,7 +59,7 @@ def conveter_aten_slice_str(
         start: Optional[int] = None,
         end: Optional[int] = None,
         step: int = 1,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::slice.str(str string, int? start=None, int? end=None, int step=1) -> str """
     raise NotImplementedError("torch.ops.aten.slice.str ge converter is not implement!")
 

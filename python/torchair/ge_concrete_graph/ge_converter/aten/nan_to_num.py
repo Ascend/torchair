@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -40,7 +40,7 @@ def conveter_aten_nan_to_num_default(
         nan: Optional[float] = None,
         posinf: Optional[float] = None,
         neginf: Optional[float] = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::nan_to_num(Tensor self, float? nan=None, float? posinf=None, float? neginf=None) -> Tensor """
     raise NotImplementedError("torch.ops.aten.nan_to_num.default ge converter is not implement!")
 
@@ -53,7 +53,7 @@ def conveter_aten_nan_to_num_out(
         neginf: Optional[float] = None,
         *,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::nan_to_num.out(Tensor self, float? nan=None, float? posinf=None, float? neginf=None, *, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.nan_to_num.out ge converter is not implement!")
 

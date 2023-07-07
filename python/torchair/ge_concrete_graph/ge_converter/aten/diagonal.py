@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -40,7 +40,7 @@ def conveter_aten_diagonal_default(
         offset: int = 0,
         dim1: int = 0,
         dim2: int = 1,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::diagonal(Tensor(a) self, int offset=0, int dim1=0, int dim2=1) -> Tensor(a) """
     raise NotImplementedError("torch.ops.aten.diagonal.default ge converter is not implement!")
 
@@ -53,7 +53,7 @@ def conveter_aten_diagonal_Dimname(
         dim1: str,
         dim2: str,
         offset: int = 0,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::diagonal.Dimname(Tensor(a) self, *, str outdim, str dim1, str dim2, int offset=0) -> Tensor(a) """
     raise NotImplementedError("torch.ops.aten.diagonal.Dimname ge converter is not implement!")
 

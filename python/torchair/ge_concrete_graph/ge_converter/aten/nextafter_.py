@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -38,7 +38,7 @@ from torch.types import (
 def conveter_aten_nextafter__default(
         self: Tensor,
         other: Tensor,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::nextafter_(Tensor(a!) self, Tensor other) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.nextafter_.default ge converter is not implement!")
 

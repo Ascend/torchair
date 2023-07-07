@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -40,7 +40,7 @@ def conveter_aten__foreach_addcmul_Scalar(
         tensor1: List[Tensor],
         tensor2: List[Tensor],
         value: Union[Number, Tensor] = 1,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::_foreach_addcmul.Scalar(Tensor[] self, Tensor[] tensor1, Tensor[] tensor2, Scalar value=1) -> Tensor[] """
     raise NotImplementedError("torch.ops.aten._foreach_addcmul.Scalar ge converter is not implement!")
 
@@ -51,7 +51,7 @@ def conveter_aten__foreach_addcmul_ScalarList(
         tensor1: List[Tensor],
         tensor2: List[Tensor],
         scalars: Union[List[Number], Tensor],
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::_foreach_addcmul.ScalarList(Tensor[] self, Tensor[] tensor1, Tensor[] tensor2, Scalar[] scalars) -> Tensor[] """
     raise NotImplementedError("torch.ops.aten._foreach_addcmul.ScalarList ge converter is not implement!")
 
@@ -62,7 +62,7 @@ def conveter_aten__foreach_addcmul_Tensor(
         tensor1: List[Tensor],
         tensor2: List[Tensor],
         scalars: Tensor,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::_foreach_addcmul.Tensor(Tensor[] self, Tensor[] tensor1, Tensor[] tensor2, Tensor scalars) -> Tensor[] """
     raise NotImplementedError("torch.ops.aten._foreach_addcmul.Tensor ge converter is not implement!")
 
@@ -75,7 +75,7 @@ def conveter_aten__foreach_addcmul_Scalar_out(
         value: Union[Number, Tensor] = 1,
         *,
         out: List[Tensor] = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::_foreach_addcmul.Scalar_out(Tensor[] self, Tensor[] tensor1, Tensor[] tensor2, Scalar value=1, *, Tensor(a!)[] out) -> () """
     raise NotImplementedError("torch.ops.aten._foreach_addcmul.Scalar_out ge converter is not implement!")
 
@@ -88,7 +88,7 @@ def conveter_aten__foreach_addcmul_ScalarList_out(
         scalars: Union[List[Number], Tensor],
         *,
         out: List[Tensor] = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::_foreach_addcmul.ScalarList_out(Tensor[] self, Tensor[] tensor1, Tensor[] tensor2, Scalar[] scalars, *, Tensor(a!)[] out) -> () """
     raise NotImplementedError("torch.ops.aten._foreach_addcmul.ScalarList_out ge converter is not implement!")
 
@@ -101,7 +101,7 @@ def conveter_aten__foreach_addcmul_Tensor_out(
         scalars: Tensor,
         *,
         out: List[Tensor] = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::_foreach_addcmul.Tensor_out(Tensor[] self, Tensor[] tensor1, Tensor[] tensor2, Tensor scalars, *, Tensor(a!)[] out) -> () """
     raise NotImplementedError("torch.ops.aten._foreach_addcmul.Tensor_out ge converter is not implement!")
 

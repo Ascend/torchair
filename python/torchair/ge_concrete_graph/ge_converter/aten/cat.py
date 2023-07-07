@@ -2,7 +2,7 @@ import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
 from torchair.ge_concrete_graph.fx2ge_converter import register_testcase
 from torchair.ge_concrete_graph.testing_utils import *
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -43,7 +43,7 @@ from torch.types import (
 def conveter_aten_cat_default(
         tensors: List[Tensor],
         dim: int = 0,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::cat(Tensor[] tensors, int dim=0) -> Tensor """
     return ge.ConcatD(tensors, concat_dim=dim, N=len(tensors))
 
@@ -52,7 +52,7 @@ def conveter_aten_cat_default(
 def conveter_aten_cat_names(
         tensors: List[Tensor],
         dim: str,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::cat.names(Tensor[] tensors, str dim) -> Tensor """
     raise NotImplementedError("torch.ops.aten.cat.names ge converter is not implement!")
 
@@ -63,7 +63,7 @@ def conveter_aten_cat_names_out(
         dim: str,
         *,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::cat.names_out(Tensor[] tensors, str dim, *, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.cat.names_out ge converter is not implement!")
 
@@ -74,7 +74,7 @@ def conveter_aten_cat_out(
         dim: int = 0,
         *,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::cat.out(Tensor[] tensors, int dim=0, *, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.cat.out ge converter is not implement!")
 

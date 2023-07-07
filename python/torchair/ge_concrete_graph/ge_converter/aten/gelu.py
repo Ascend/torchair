@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -39,7 +39,7 @@ def conveter_aten_gelu_default(
         self: Tensor,
         *,
         approximate: str = "None",
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::gelu(Tensor self, *, str approximate="none") -> Tensor """
     raise NotImplementedError("torch.ops.aten.gelu.default ge converter is not implement!")
 
@@ -50,7 +50,7 @@ def conveter_aten_gelu_out(
         *,
         approximate: str = "None",
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::gelu.out(Tensor self, *, str approximate="none", Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.gelu.out ge converter is not implement!")
 

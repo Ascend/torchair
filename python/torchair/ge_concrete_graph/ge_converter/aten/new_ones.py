@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -43,7 +43,7 @@ def conveter_aten_new_ones_default(
         layout: Optional[int] = None,
         device: Optional[Device] = None,
         pin_memory: Optional[bool] = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::new_ones(Tensor self, SymInt[] size, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor """
     raise NotImplementedError("torch.ops.aten.new_ones.default ge converter is not implement!")
 
@@ -54,7 +54,7 @@ def conveter_aten_new_ones_out(
         size: Union[List[int], Tensor],
         *,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::new_ones.out(Tensor self, SymInt[] size, *, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.new_ones.out ge converter is not implement!")
 

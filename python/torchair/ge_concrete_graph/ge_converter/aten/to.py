@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -42,7 +42,7 @@ def conveter_aten_to_device(
         non_blocking: bool = False,
         copy: bool = False,
         memory_format: Optional[int] = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::to.device(Tensor(a) self, Device device, ScalarType dtype, bool non_blocking=False, bool copy=False, MemoryFormat? memory_format=None) -> Tensor(a) """
     raise NotImplementedError("torch.ops.aten.to.device ge converter is not implement!")
 
@@ -54,7 +54,7 @@ def conveter_aten_to_dtype(
         non_blocking: bool = False,
         copy: bool = False,
         memory_format: Optional[int] = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::to.dtype(Tensor(a) self, ScalarType dtype, bool non_blocking=False, bool copy=False, MemoryFormat? memory_format=None) -> Tensor(a) """
     raise NotImplementedError("torch.ops.aten.to.dtype ge converter is not implement!")
 
@@ -66,7 +66,7 @@ def conveter_aten_to_other(
         non_blocking: bool = False,
         copy: bool = False,
         memory_format: Optional[int] = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::to.other(Tensor(a) self, Tensor other, bool non_blocking=False, bool copy=False, MemoryFormat? memory_format=None) -> Tensor(a) """
     raise NotImplementedError("torch.ops.aten.to.other ge converter is not implement!")
 
@@ -82,7 +82,7 @@ def conveter_aten_to_dtype_layout(
         non_blocking: bool = False,
         copy: bool = False,
         memory_format: Optional[int] = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::to.dtype_layout(Tensor(a) self, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None, bool non_blocking=False, bool copy=False, MemoryFormat? memory_format=None) -> Tensor(a) """
     raise NotImplementedError("torch.ops.aten.to.dtype_layout ge converter is not implement!")
 
@@ -94,7 +94,7 @@ def conveter_aten_to_prim_Device(
         dtype: Optional[int] = None,
         non_blocking: bool = False,
         copy: bool = False,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::to.prim_Device(Tensor(a) self, Device? device, int? dtype=None, bool non_blocking=False, bool copy=False) -> Tensor(b|a) """
     raise NotImplementedError("torch.ops.aten.to.prim_Device ge converter is not implement!")
 
@@ -105,7 +105,7 @@ def conveter_aten_to_prim_dtype(
         dtype: Optional[int] = None,
         non_blocking: bool = False,
         copy: bool = False,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::to.prim_dtype(Tensor(a) self, int? dtype=None, bool non_blocking=False, bool copy=False) -> Tensor(b|a) """
     raise NotImplementedError("torch.ops.aten.to.prim_dtype ge converter is not implement!")
 
@@ -115,7 +115,7 @@ def conveter_aten_to_prim_other(
         self: Tensor,
         non_blocking: bool = False,
         copy: bool = False,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::to.prim_other(Tensor(a) self, bool non_blocking=False, bool copy=False) -> Tensor(b|a) """
     raise NotImplementedError("torch.ops.aten.to.prim_other ge converter is not implement!")
 

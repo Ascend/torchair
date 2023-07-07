@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -38,7 +38,7 @@ from torch.types import (
 def conveter_aten_diag_default(
         self: Tensor,
         diagonal: int = 0,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::diag(Tensor self, int diagonal=0) -> Tensor """
     raise NotImplementedError("torch.ops.aten.diag.default ge converter is not implement!")
 
@@ -49,7 +49,7 @@ def conveter_aten_diag_out(
         diagonal: int = 0,
         *,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::diag.out(Tensor self, int diagonal=0, *, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.diag.out ge converter is not implement!")
 

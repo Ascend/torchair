@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -42,7 +42,7 @@ def conveter_aten_linalg_vector_norm_default(
         keepdim: bool = False,
         *,
         dtype: Optional[int] = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::linalg_vector_norm(Tensor self, Scalar ord=2, int[1]? dim=None, bool keepdim=False, *, ScalarType? dtype=None) -> Tensor """
     raise NotImplementedError("torch.ops.aten.linalg_vector_norm.default ge converter is not implement!")
 
@@ -56,7 +56,7 @@ def conveter_aten_linalg_vector_norm_out(
         *,
         dtype: Optional[int] = None,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::linalg_vector_norm.out(Tensor self, Scalar ord=2, int[1]? dim=None, bool keepdim=False, *, ScalarType? dtype=None, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.linalg_vector_norm.out ge converter is not implement!")
 

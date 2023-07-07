@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -39,7 +39,7 @@ def conveter_aten_replication_pad2d_backward_default(
         grad_output: Tensor,
         self: Tensor,
         padding: Union[List[int], Tensor],
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::replication_pad2d_backward(Tensor grad_output, Tensor self, SymInt[4] padding) -> Tensor """
     raise NotImplementedError("torch.ops.aten.replication_pad2d_backward.default ge converter is not implement!")
 
@@ -51,7 +51,7 @@ def conveter_aten_replication_pad2d_backward_grad_input(
         padding: Union[List[int], Tensor],
         *,
         grad_input: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::replication_pad2d_backward.grad_input(Tensor grad_output, Tensor self, SymInt[4] padding, *, Tensor(a!) grad_input) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.replication_pad2d_backward.grad_input ge converter is not implement!")
 

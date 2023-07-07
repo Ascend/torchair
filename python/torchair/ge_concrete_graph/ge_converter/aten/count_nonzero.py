@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -38,7 +38,7 @@ from torch.types import (
 def conveter_aten_count_nonzero_dim_IntList(
         self: Tensor,
         dim: List[int],
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::count_nonzero.dim_IntList(Tensor self, int[] dim) -> Tensor """
     raise NotImplementedError("torch.ops.aten.count_nonzero.dim_IntList ge converter is not implement!")
 
@@ -49,7 +49,7 @@ def conveter_aten_count_nonzero_dim_IntList_out(
         dim: List[int],
         *,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::count_nonzero.dim_IntList_out(Tensor self, int[] dim, *, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.count_nonzero.dim_IntList_out ge converter is not implement!")
 
@@ -58,7 +58,7 @@ def conveter_aten_count_nonzero_dim_IntList_out(
 def conveter_aten_count_nonzero_default(
         self: Tensor,
         dim: Optional[int] = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::count_nonzero(Tensor self, int? dim=None) -> Tensor """
     raise NotImplementedError("torch.ops.aten.count_nonzero.default ge converter is not implement!")
 
@@ -69,7 +69,7 @@ def conveter_aten_count_nonzero_out(
         dim: Optional[int] = None,
         *,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::count_nonzero.out(Tensor self, int? dim=None, *, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.count_nonzero.out ge converter is not implement!")
 

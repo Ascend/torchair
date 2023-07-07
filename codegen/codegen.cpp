@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
   file << "from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef, OpDef, TensorDescriptor, TensorDef" << kEnd;
   file << "from torchair.ge_concrete_graph.ge_graph import get_default_ge_graph, next_unique_name" << kEnd;
   file << "from torchair.ge_concrete_graph.ge_graph import auto_convert_to_tensor" << kEnd;
-  file << "from torchair.ge_concrete_graph.ge_graph import Tensor, DataType" << kEnd;
+  file << "from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType" << kEnd;
   file << "from torchair.ge_concrete_graph.ge_graph import compat_as_bytes, compat_as_bytes_list" << kEnd;
   file << "from torchair.ge_concrete_graph.ge_graph import trans_to_list_list_int, trans_to_list_list_float" << kEnd;
   file << "from torchair.ge_concrete_graph.ge_graph import get_invalid_desc" << kEnd;

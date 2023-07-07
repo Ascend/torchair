@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -44,7 +44,7 @@ def conveter_aten_max_pool2d_with_indices_backward_default(
         dilation: List[int],
         ceil_mode: bool,
         indices: Tensor,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::max_pool2d_with_indices_backward(Tensor grad_output, Tensor self, int[2] kernel_size, int[2] stride, int[2] padding, int[2] dilation, bool ceil_mode, Tensor indices) -> Tensor """
     raise NotImplementedError("torch.ops.aten.max_pool2d_with_indices_backward.default ge converter is not implement!")
 
@@ -61,7 +61,7 @@ def conveter_aten_max_pool2d_with_indices_backward_grad_input(
         indices: Tensor,
         *,
         grad_input: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::max_pool2d_with_indices_backward.grad_input(Tensor grad_output, Tensor self, int[2] kernel_size, int[2] stride, int[2] padding, int[2] dilation, bool ceil_mode, Tensor indices, *, Tensor(a!) grad_input) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.max_pool2d_with_indices_backward.grad_input ge converter is not implement!")
 

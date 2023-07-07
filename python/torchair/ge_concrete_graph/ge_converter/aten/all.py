@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -37,7 +37,7 @@ from torch.types import (
 @register_fx_node_ge_converter(torch.ops.aten.all.default)
 def conveter_aten_all_default(
         self: Tensor,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::all(Tensor self) -> Tensor """
     raise NotImplementedError("torch.ops.aten.all.default ge converter is not implement!")
 
@@ -47,7 +47,7 @@ def conveter_aten_all_dim(
         self: Tensor,
         dim: int,
         keepdim: bool = False,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::all.dim(Tensor self, int dim, bool keepdim=False) -> Tensor """
     raise NotImplementedError("torch.ops.aten.all.dim ge converter is not implement!")
 
@@ -59,7 +59,7 @@ def conveter_aten_all_out(
         keepdim: bool = False,
         *,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::all.out(Tensor self, int dim, bool keepdim=False, *, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.all.out ge converter is not implement!")
 
@@ -69,7 +69,7 @@ def conveter_aten_all_all_out(
         self: Tensor,
         *,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::all.all_out(Tensor self, *, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.all.all_out ge converter is not implement!")
 
@@ -79,7 +79,7 @@ def conveter_aten_all_dimname(
         self: Tensor,
         dim: str,
         keepdim: bool = False,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::all.dimname(Tensor self, str dim, bool keepdim=False) -> Tensor """
     raise NotImplementedError("torch.ops.aten.all.dimname ge converter is not implement!")
 
@@ -91,7 +91,7 @@ def conveter_aten_all_dimname_out(
         keepdim: bool = False,
         *,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::all.dimname_out(Tensor self, str dim, bool keepdim=False, *, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.all.dimname_out ge converter is not implement!")
 
@@ -99,7 +99,7 @@ def conveter_aten_all_dimname_out(
 @register_fx_node_ge_converter(torch.ops.aten.all.int)
 def conveter_aten_all_int(
         self: List[int],
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::all.int(int[] self) -> bool """
     raise NotImplementedError("torch.ops.aten.all.int ge converter is not implement!")
 
@@ -107,7 +107,7 @@ def conveter_aten_all_int(
 @register_fx_node_ge_converter(torch.ops.aten.all.float)
 def conveter_aten_all_float(
         self: List[float],
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::all.float(float[] self) -> bool """
     raise NotImplementedError("torch.ops.aten.all.float ge converter is not implement!")
 
@@ -115,7 +115,7 @@ def conveter_aten_all_float(
 @register_fx_node_ge_converter(torch.ops.aten.all.bool)
 def conveter_aten_all_bool(
         self: List[bool],
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::all.bool(bool[] self) -> bool """
     raise NotImplementedError("torch.ops.aten.all.bool ge converter is not implement!")
 

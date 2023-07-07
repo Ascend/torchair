@@ -227,6 +227,41 @@ def next_unique_name(name: str, op: str):
     return f'{op}_{_g_name_dict[op]}'
 
 
+class TensorSpec:
+    def __init__(self, meta_output):
+        self._meta = meta_output
+        if isinstance(meta_output, torch.Tensor):
+            self._torch_dtype = meta_output.dtype
+            self._ge_dtype = torch_type_to_ge_type(self._torch_dtype)
+            self._symsize = list(meta_output.size())
+            try:
+                self._size = [int(str(s)) for s in self._symsize]
+            except:
+                self._size = None
+        else:
+            assert isinstance(meta_output, torch.SymInt)
+            self._torch_dtype = torch.int64
+            self._ge_dtype = DataType.DT_INT64
+            self._symsize = torch.Size([])
+            self._size = []
+
+    @property
+    def dtype(self):
+        return self._ge_dtype
+
+    @property
+    def size(self):
+        assert self._size is not None, f"Trying get size() from dynamic spec {self} is not allowed"
+        return self._size
+
+    @property
+    def rank(self):
+        return len(self._symsize)
+
+    def __repr__(self) -> str:
+        return f'TensorSpec(dtype={_ge_proto_dtype_str(_ge_dtype_to_ge_proto_dtype(self._ge_dtype))}, size={self._symsize})'
+
+
 class Tensor:
     def __init__(self, node: OpDef, index: int = 0):
         self._node = node
@@ -243,65 +278,40 @@ class Tensor:
         return self._tensor
 
     @property
-    def desc(self):
-        return self._desc
+    def controller(self):
+        return f'{self._node.name}:-1'
 
     @property
-    def torch_dtype(self):
-        if self._torch_dtype is None:
-            raise ValueError(f"{self} unknown torch dtype")
-        return self._torch_dtype
-
-    @property
-    def ge_dtype(self):
-        if self._ge_dtype is None:
-            raise ValueError(f"{self} unknown ge dtype")
+    def dtype(self):
         return self._ge_dtype
 
-    @torch_dtype.setter
-    def torch_dtype(self, dtype):
-        self._torch_dtype = dtype
-        self._ge_dtype = torch_type_to_ge_type(dtype)
-        self._desc.dtype = torch_type_to_ge_proto_type(dtype)
-
     @property
-    def symsize(self):
-        if self._symsize is None:
-            raise ValueError(f"{self} unknown symsize")
-        return self._symsize
-
-    @symsize.setter
-    def symsize(self, symsize):
-        self._symsize = list(symsize)
-
-    @property
-    def meta(self):
-        if self._meta is None:
-            raise ValueError(f"{self} unknown meta")
-        return self._meta
-
-    @meta.setter
-    def meta(self, meta_outputs):
-        if isinstance(meta_outputs, torch.Tensor):
-            self.torch_dtype = meta_outputs.dtype
-            self.symsize = meta_outputs.size()
-            self._desc.attr['_meta'].s = compat_as_bytes(
-                f"Tensor(dtype={meta_outputs.dtype}, shape={meta_outputs.size()}")
-        else:
-            assert isinstance(meta_outputs, torch.SymInt)
-            self.torch_dtype = torch.int32
-            self.symsize = torch.Size([])
-            self._desc.attr['_meta'].s = compat_as_bytes(
-                f"SymInt({meta_outputs})")
+    def desc(self):
+        return self._desc
 
     @property
     def rank(self):
         assert self._symsize is not None, f"Tensor {self} unknown rank"
         return len(self._symsize)
 
-    @property
-    def controller(self):
-        return f'{self._node.name}:-1'
+    def set_torch_dtype(self, dtype):
+        self._torch_dtype = dtype
+        self._ge_dtype = torch_type_to_ge_type(dtype)
+        self._desc.dtype = torch_type_to_ge_proto_type(dtype)
+
+    def set_meta(self, meta_output):
+        self._meta = meta_output
+        if isinstance(meta_output, torch.Tensor):
+            self.set_torch_dtype(meta_output.dtype)
+            self._symsize = list(meta_output.size())
+            self._desc.attr['_meta'].s = compat_as_bytes(
+                f"Tensor(dtype={meta_output.dtype}, shape={meta_output.size()}")
+        else:
+            assert isinstance(meta_output, torch.SymInt)
+            self.set_torch_dtype(torch.int64)
+            self._symsize = []
+            self._desc.attr['_meta'].s = compat_as_bytes(
+                f"SymInt({meta_output})")
 
     def __repr__(self) -> str:
         return f'Tensor({self.tensor}, dtype={_ge_proto_dtype_str(self.desc.dtype)}, size={self._symsize})'
@@ -358,7 +368,7 @@ def _get_promoted_dtype(inputs: list) -> Tuple[List[DataType], List[DataType]]:
     for input in inputs:
         if isinstance(input, Tensor):
             try:
-                dtype = input.ge_dtype
+                dtype = input.dtype
                 dtypes.add(dtype)
             except:
                 pass

@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -42,7 +42,7 @@ def conveter_aten_index_add_default(
         source: Tensor,
         *,
         alpha: Union[Number, Tensor] = 1,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::index_add(Tensor self, int dim, Tensor index, Tensor source, *, Scalar alpha=1) -> Tensor """
     raise NotImplementedError("torch.ops.aten.index_add.default ge converter is not implement!")
 
@@ -56,7 +56,7 @@ def conveter_aten_index_add_out(
         *,
         alpha: Union[Number, Tensor] = 1,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::index_add.out(Tensor self, int dim, Tensor index, Tensor source, *, Scalar alpha=1, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.index_add.out ge converter is not implement!")
 
@@ -69,7 +69,7 @@ def conveter_aten_index_add_dimname(
         source: Tensor,
         *,
         alpha: Union[Number, Tensor] = 1,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::index_add.dimname(Tensor self, str dim, Tensor index, Tensor source, *, Scalar alpha=1) -> Tensor """
     raise NotImplementedError("torch.ops.aten.index_add.dimname ge converter is not implement!")
 

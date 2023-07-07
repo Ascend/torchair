@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -44,7 +44,7 @@ def conveter_aten_avg_pool2d_backward_default(
         ceil_mode: bool,
         count_include_pad: bool,
         divisor_override: Optional[int],
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::avg_pool2d_backward(Tensor grad_output, Tensor self, int[2] kernel_size, int[2] stride, int[2] padding, bool ceil_mode, bool count_include_pad, int? divisor_override) -> Tensor """
     raise NotImplementedError("torch.ops.aten.avg_pool2d_backward.default ge converter is not implement!")
 
@@ -61,7 +61,7 @@ def conveter_aten_avg_pool2d_backward_grad_input(
         divisor_override: Optional[int],
         *,
         grad_input: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::avg_pool2d_backward.grad_input(Tensor grad_output, Tensor self, int[2] kernel_size, int[2] stride, int[2] padding, bool ceil_mode, bool count_include_pad, int? divisor_override, *, Tensor(a!) grad_input) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.avg_pool2d_backward.grad_input ge converter is not implement!")
 

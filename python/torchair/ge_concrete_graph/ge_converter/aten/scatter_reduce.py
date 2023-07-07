@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -43,7 +43,7 @@ def conveter_aten_scatter_reduce_two(
         reduce: str,
         *,
         include_self: bool = True,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::scatter_reduce.two(Tensor self, int dim, Tensor index, Tensor src, str reduce, *, bool include_self=True) -> Tensor """
     raise NotImplementedError("torch.ops.aten.scatter_reduce.two ge converter is not implement!")
 
@@ -58,7 +58,7 @@ def conveter_aten_scatter_reduce_two_out(
         *,
         include_self: bool = True,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::scatter_reduce.two_out(Tensor self, int dim, Tensor index, Tensor src, str reduce, *, bool include_self=True, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.scatter_reduce.two_out ge converter is not implement!")
 

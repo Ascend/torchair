@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -38,7 +38,7 @@ from torch.types import (
 def conveter_aten_true_divide_Tensor(
         self: Tensor,
         other: Tensor,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::true_divide.Tensor(Tensor self, Tensor other) -> Tensor """
     raise NotImplementedError("torch.ops.aten.true_divide.Tensor ge converter is not implement!")
 
@@ -47,7 +47,7 @@ def conveter_aten_true_divide_Tensor(
 def conveter_aten_true_divide_Scalar(
         self: Tensor,
         other: Union[Number, Tensor],
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::true_divide.Scalar(Tensor self, Scalar other) -> Tensor """
     raise NotImplementedError("torch.ops.aten.true_divide.Scalar ge converter is not implement!")
 
@@ -58,7 +58,7 @@ def conveter_aten_true_divide_out(
         other: Tensor,
         *,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::true_divide.out(Tensor self, Tensor other, *, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.true_divide.out ge converter is not implement!")
 

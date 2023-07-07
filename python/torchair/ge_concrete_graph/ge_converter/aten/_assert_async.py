@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -37,7 +37,7 @@ from torch.types import (
 @register_fx_node_ge_converter(torch.ops.aten._assert_async.default)
 def conveter_aten__assert_async_default(
         self: Tensor,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::_assert_async(Tensor self) -> () """
     raise NotImplementedError("torch.ops.aten._assert_async.default ge converter is not implement!")
 
@@ -46,7 +46,7 @@ def conveter_aten__assert_async_default(
 def conveter_aten__assert_async_msg(
         self: Tensor,
         assert_msg: str,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::_assert_async.msg(Tensor self, str assert_msg) -> () """
     raise NotImplementedError("torch.ops.aten._assert_async.msg ge converter is not implement!")
 

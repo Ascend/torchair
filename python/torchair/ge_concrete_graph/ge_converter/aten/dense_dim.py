@@ -1,7 +1,7 @@
 
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 
@@ -37,7 +37,7 @@ from torch.types import (
 @register_fx_node_ge_converter(torch.ops.aten.dense_dim.default)
 def conveter_aten_dense_dim_default(
         self: Tensor,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::dense_dim(Tensor self) -> int """
     raise NotImplementedError("torch.ops.aten.dense_dim.default ge converter is not implement!")
 

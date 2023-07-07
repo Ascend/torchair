@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -41,7 +41,7 @@ def conveter_aten_bucketize_Tensor(
         *,
         out_int32: bool = False,
         right: bool = False,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::bucketize.Tensor(Tensor self, Tensor boundaries, *, bool out_int32=False, bool right=False) -> Tensor """
     raise NotImplementedError("torch.ops.aten.bucketize.Tensor ge converter is not implement!")
 
@@ -53,7 +53,7 @@ def conveter_aten_bucketize_Scalar(
         *,
         out_int32: bool = False,
         right: bool = False,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::bucketize.Scalar(Scalar self, Tensor boundaries, *, bool out_int32=False, bool right=False) -> Tensor """
     raise NotImplementedError("torch.ops.aten.bucketize.Scalar ge converter is not implement!")
 
@@ -66,7 +66,7 @@ def conveter_aten_bucketize_Tensor_out(
         out_int32: bool = False,
         right: bool = False,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::bucketize.Tensor_out(Tensor self, Tensor boundaries, *, bool out_int32=False, bool right=False, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.bucketize.Tensor_out ge converter is not implement!")
 
@@ -79,7 +79,7 @@ def conveter_aten_bucketize_Scalar_out(
         out_int32: bool = False,
         right: bool = False,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::bucketize.Scalar_out(Scalar self, Tensor boundaries, *, bool out_int32=False, bool right=False, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.bucketize.Scalar_out ge converter is not implement!")
 

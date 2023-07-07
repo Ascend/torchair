@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -41,7 +41,7 @@ def conveter_aten_multinomial_default(
         replacement: bool = False,
         *,
         generator: Optional[Generator] = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::multinomial(Tensor self, int num_samples, bool replacement=False, *, Generator? generator=None) -> Tensor """
     raise NotImplementedError("torch.ops.aten.multinomial.default ge converter is not implement!")
 
@@ -54,7 +54,7 @@ def conveter_aten_multinomial_out(
         *,
         generator: Optional[Generator] = None,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::multinomial.out(Tensor self, int num_samples, bool replacement=False, *, Generator? generator=None, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.multinomial.out ge converter is not implement!")
 

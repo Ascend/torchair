@@ -1,7 +1,7 @@
 
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 
@@ -41,7 +41,7 @@ def conveter_aten_rrelu_default(
         upper: Union[Number, Tensor] = 0.3333333333333333,
         training: bool = False,
         generator: Optional[Generator] = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::rrelu(Tensor self, Scalar lower=0.125, Scalar upper=0.33333333333333331, bool training=False, Generator? generator=None) -> Tensor """
     raise NotImplementedError("torch.ops.aten.rrelu.default ge converter is not implement!")
 

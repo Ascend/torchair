@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -37,7 +37,7 @@ from torch.types import (
 @register_fx_node_ge_converter(torch.ops.aten.squeeze.default)
 def conveter_aten_squeeze_default(
         self: Tensor,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::squeeze(Tensor(a) self) -> Tensor(a) """
     raise NotImplementedError("torch.ops.aten.squeeze.default ge converter is not implement!")
 
@@ -46,7 +46,7 @@ def conveter_aten_squeeze_default(
 def conveter_aten_squeeze_dim(
         self: Tensor,
         dim: int,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::squeeze.dim(Tensor(a) self, int dim) -> Tensor(a) """
     raise NotImplementedError("torch.ops.aten.squeeze.dim ge converter is not implement!")
 
@@ -55,7 +55,7 @@ def conveter_aten_squeeze_dim(
 def conveter_aten_squeeze_dims(
         self: Tensor,
         dim: List[int],
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::squeeze.dims(Tensor(a) self, int[] dim) -> Tensor(a) """
     raise NotImplementedError("torch.ops.aten.squeeze.dims ge converter is not implement!")
 
@@ -64,7 +64,7 @@ def conveter_aten_squeeze_dims(
 def conveter_aten_squeeze_dimname(
         self: Tensor,
         dim: str,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::squeeze.dimname(Tensor(a) self, str dim) -> Tensor(a) """
     raise NotImplementedError("torch.ops.aten.squeeze.dimname ge converter is not implement!")
 

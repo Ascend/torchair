@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -38,7 +38,7 @@ from torch.types import (
 def conveter_aten_unbind_int(
         self: Tensor,
         dim: int = 0,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::unbind.int(Tensor(a -> *) self, int dim=0) -> Tensor(a)[] """
     raise NotImplementedError("torch.ops.aten.unbind.int ge converter is not implement!")
 
@@ -47,7 +47,7 @@ def conveter_aten_unbind_int(
 def conveter_aten_unbind_Dimname(
         self: Tensor,
         dim: str,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::unbind.Dimname(Tensor(a -> *) self, str dim) -> Tensor(a)[] """
     raise NotImplementedError("torch.ops.aten.unbind.Dimname ge converter is not implement!")
 

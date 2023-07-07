@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -39,7 +39,7 @@ def conveter_aten_split_Tensor(
         self: Tensor,
         split_size: Union[int, Tensor],
         dim: int = 0,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::split.Tensor(Tensor(a -> *) self, SymInt split_size, int dim=0) -> Tensor(a)[] """
     split_sizes = split_size
     if isinstance(split_sizes, int):
@@ -53,7 +53,7 @@ def conveter_aten_split_sizes(
         self: Tensor,
         split_size: Union[List[int], Tensor],
         dim: int = 0,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::split.sizes(Tensor(a -> *) self, SymInt[] split_size, int dim=0) -> Tensor(a)[] """
     raise NotImplementedError("torch.ops.aten.split.sizes ge converter is not implement!")
 
@@ -63,7 +63,7 @@ def conveter_aten_split_str(
         self: str,
         separator: Optional[str] = None,
         max: int = -1,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::split.str(str self, str? separator=None, int max=-1) -> str[] """
     raise NotImplementedError("torch.ops.aten.split.str ge converter is not implement!")
 
@@ -73,7 +73,7 @@ def conveter_aten_split_default(
         self: Tensor,
         split_sizes: List[int],
         dim: int = 0,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::split(Tensor(a -> *) self, int[] split_sizes, int dim=0) -> Tensor(a)[] """
     raise NotImplementedError("torch.ops.aten.split.default ge converter is not implement!")
 

@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -44,7 +44,7 @@ def conveter_aten_triu_indices_default(
         layout: Optional[int] = None,
         device: Optional[Device] = None,
         pin_memory: Optional[bool] = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::triu_indices(int row, int col, int offset=0, *, ScalarType? dtype=4, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor """
     raise NotImplementedError("torch.ops.aten.triu_indices.default ge converter is not implement!")
 
@@ -56,7 +56,7 @@ def conveter_aten_triu_indices_out(
         offset: int = 0,
         *,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::triu_indices.out(int row, int col, int offset=0, *, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.triu_indices.out ge converter is not implement!")
 

@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -39,7 +39,7 @@ def conveter_aten_mean_default(
         self: Tensor,
         *,
         dtype: Optional[int] = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::mean(Tensor self, *, ScalarType? dtype=None) -> Tensor """
     raise NotImplementedError("torch.ops.aten.mean.default ge converter is not implement!")
 
@@ -51,7 +51,7 @@ def conveter_aten_mean_dim(
         keepdim: bool = False,
         *,
         dtype: Optional[int] = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::mean.dim(Tensor self, int[1]? dim, bool keepdim=False, *, ScalarType? dtype=None) -> Tensor """
     if dtype is not None:
         # TODO: fix this case
@@ -67,7 +67,7 @@ def conveter_aten_mean_names_dim(
         keepdim: bool = False,
         *,
         dtype: Optional[int] = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::mean.names_dim(Tensor self, str[1] dim, bool keepdim=False, *, ScalarType? dtype=None) -> Tensor """
     raise NotImplementedError("torch.ops.aten.mean.names_dim ge converter is not implement!")
 
@@ -80,7 +80,7 @@ def conveter_aten_mean_names_out(
         *,
         dtype: Optional[int] = None,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::mean.names_out(Tensor self, str[1] dim, bool keepdim=False, *, ScalarType? dtype=None, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.mean.names_out ge converter is not implement!")
 
@@ -93,7 +93,7 @@ def conveter_aten_mean_out(
         *,
         dtype: Optional[int] = None,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::mean.out(Tensor self, int[1]? dim, bool keepdim=False, *, ScalarType? dtype=None, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.mean.out ge converter is not implement!")
 

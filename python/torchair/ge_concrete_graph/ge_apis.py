@@ -4,7 +4,7 @@ from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef, OpDef, TensorDescript
 from torchair.ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
 from torchair.ge_concrete_graph.ge_graph import get_default_ge_graph, next_unique_name
 from torchair.ge_concrete_graph.ge_graph import auto_convert_to_tensor
-from torchair.ge_concrete_graph.ge_graph import Tensor, DataType
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType
 from torchair.ge_concrete_graph.ge_graph import compat_as_bytes, compat_as_bytes_list
 from torchair.ge_concrete_graph.ge_graph import trans_to_list_list_int, trans_to_list_list_float
 

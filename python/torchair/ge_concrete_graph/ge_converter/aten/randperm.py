@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -42,7 +42,7 @@ def conveter_aten_randperm_default(
         layout: Optional[int] = None,
         device: Optional[Device] = None,
         pin_memory: Optional[bool] = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::randperm(SymInt n, *, ScalarType? dtype=4, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor """
     raise NotImplementedError("torch.ops.aten.randperm.default ge converter is not implement!")
 
@@ -56,7 +56,7 @@ def conveter_aten_randperm_generator(
         layout: Optional[int] = None,
         device: Optional[Device] = None,
         pin_memory: Optional[bool] = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::randperm.generator(SymInt n, *, Generator? generator, ScalarType? dtype=4, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor """
     raise NotImplementedError("torch.ops.aten.randperm.generator ge converter is not implement!")
 
@@ -66,7 +66,7 @@ def conveter_aten_randperm_out(
         n: Union[int, Tensor],
         *,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::randperm.out(SymInt n, *, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.randperm.out ge converter is not implement!")
 
@@ -77,7 +77,7 @@ def conveter_aten_randperm_generator_out(
         *,
         generator: Optional[Generator],
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::randperm.generator_out(SymInt n, *, Generator? generator, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.randperm.generator_out ge converter is not implement!")
 

@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -40,7 +40,7 @@ def conveter_aten_subtract__Tensor(
         other: Tensor,
         *,
         alpha: Union[Number, Tensor] = 1,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::subtract_.Tensor(Tensor(a!) self, Tensor other, *, Scalar alpha=1) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.subtract_.Tensor ge converter is not implement!")
 
@@ -50,7 +50,7 @@ def conveter_aten_subtract__Scalar(
         self: Tensor,
         other: Union[Number, Tensor],
         alpha: Union[Number, Tensor] = 1,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::subtract_.Scalar(Tensor(a!) self, Scalar other, Scalar alpha=1) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.subtract_.Scalar ge converter is not implement!")
 

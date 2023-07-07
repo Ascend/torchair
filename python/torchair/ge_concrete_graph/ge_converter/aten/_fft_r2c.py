@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -40,7 +40,7 @@ def conveter_aten__fft_r2c_default(
         dim: List[int],
         normalization: int,
         onesided: bool,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::_fft_r2c(Tensor self, int[] dim, int normalization, bool onesided) -> Tensor """
     raise NotImplementedError("torch.ops.aten._fft_r2c.default ge converter is not implement!")
 
@@ -53,7 +53,7 @@ def conveter_aten__fft_r2c_out(
         onesided: bool,
         *,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::_fft_r2c.out(Tensor self, int[] dim, int normalization, bool onesided, *, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten._fft_r2c.out ge converter is not implement!")
 

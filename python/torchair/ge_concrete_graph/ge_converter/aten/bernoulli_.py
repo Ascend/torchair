@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -40,7 +40,7 @@ def conveter_aten_bernoulli__Tensor(
         p: Tensor,
         *,
         generator: Optional[Generator] = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::bernoulli_.Tensor(Tensor(a!) self, Tensor p, *, Generator? generator=None) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.bernoulli_.Tensor ge converter is not implement!")
 
@@ -51,7 +51,7 @@ def conveter_aten_bernoulli__float(
         p: float = 0.5,
         *,
         generator: Optional[Generator] = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::bernoulli_.float(Tensor(a!) self, float p=0.5, *, Generator? generator=None) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.bernoulli_.float ge converter is not implement!")
 

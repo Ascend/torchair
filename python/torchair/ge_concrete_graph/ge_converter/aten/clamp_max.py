@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -38,7 +38,7 @@ from torch.types import (
 def conveter_aten_clamp_max_default(
         self: Tensor,
         max: Union[Number, Tensor],
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::clamp_max(Tensor self, Scalar max) -> Tensor """
     raise NotImplementedError("torch.ops.aten.clamp_max.default ge converter is not implement!")
 
@@ -47,7 +47,7 @@ def conveter_aten_clamp_max_default(
 def conveter_aten_clamp_max_Tensor(
         self: Tensor,
         max: Tensor,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::clamp_max.Tensor(Tensor self, Tensor max) -> Tensor """
     raise NotImplementedError("torch.ops.aten.clamp_max.Tensor ge converter is not implement!")
 
@@ -58,7 +58,7 @@ def conveter_aten_clamp_max_out(
         max: Union[Number, Tensor],
         *,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::clamp_max.out(Tensor self, Scalar max, *, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.clamp_max.out ge converter is not implement!")
 
@@ -69,7 +69,7 @@ def conveter_aten_clamp_max_Tensor_out(
         max: Tensor,
         *,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::clamp_max.Tensor_out(Tensor self, Tensor max, *, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.clamp_max.Tensor_out ge converter is not implement!")
 

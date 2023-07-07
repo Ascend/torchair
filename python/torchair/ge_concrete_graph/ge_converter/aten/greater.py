@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -38,7 +38,7 @@ from torch.types import (
 def conveter_aten_greater_Tensor(
         self: Tensor,
         other: Tensor,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::greater.Tensor(Tensor self, Tensor other) -> Tensor """
     raise NotImplementedError("torch.ops.aten.greater.Tensor ge converter is not implement!")
 
@@ -47,7 +47,7 @@ def conveter_aten_greater_Tensor(
 def conveter_aten_greater_Scalar(
         self: Tensor,
         other: Union[Number, Tensor],
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::greater.Scalar(Tensor self, Scalar other) -> Tensor """
     raise NotImplementedError("torch.ops.aten.greater.Scalar ge converter is not implement!")
 
@@ -58,7 +58,7 @@ def conveter_aten_greater_Scalar_out(
         other: Union[Number, Tensor],
         *,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::greater.Scalar_out(Tensor self, Scalar other, *, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.greater.Scalar_out ge converter is not implement!")
 
@@ -69,7 +69,7 @@ def conveter_aten_greater_Tensor_out(
         other: Tensor,
         *,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::greater.Tensor_out(Tensor self, Tensor other, *, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.greater.Tensor_out ge converter is not implement!")
 

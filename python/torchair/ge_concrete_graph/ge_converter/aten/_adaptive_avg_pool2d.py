@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -38,7 +38,7 @@ from torch.types import (
 def conveter_aten__adaptive_avg_pool2d_default(
         self: Tensor,
         output_size: Union[List[int], Tensor],
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::_adaptive_avg_pool2d(Tensor self, SymInt[2] output_size) -> Tensor """
     raise NotImplementedError("torch.ops.aten._adaptive_avg_pool2d.default ge converter is not implement!")
 
@@ -49,7 +49,7 @@ def conveter_aten__adaptive_avg_pool2d_out(
         output_size: Union[List[int], Tensor],
         *,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::_adaptive_avg_pool2d.out(Tensor self, SymInt[2] output_size, *, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten._adaptive_avg_pool2d.out ge converter is not implement!")
 

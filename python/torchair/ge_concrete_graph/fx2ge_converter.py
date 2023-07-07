@@ -16,7 +16,7 @@ from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef, TensorDescriptor, Ten
 from torchair.ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
 from torchair.ge_concrete_graph.ge_graph import default_ge_graph
 from torchair.ge_concrete_graph.ge_graph import compat_as_bytes
-from torchair.ge_concrete_graph.ge_graph import DataType
+from torchair.ge_concrete_graph.ge_graph import DataType, TensorSpec
 from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type, torch_type_to_ge_proto_type
 from torchair.core.backend import TorchNpuGraph
 from torchair.configs.compiler_config import CompilerConfig
@@ -36,11 +36,19 @@ def _get_converter(name: Callable):
 def _wrap_converter(converter: Callable):
     @functools.wraps(converter)
     def wrapped_converter(*args, **kwargs):
-        ge_outputs = converter(*args, **kwargs)
+        meta_outputs = None
         if 'meta_outputs' in kwargs:
             meta_outputs = kwargs['meta_outputs']
+            if isinstance(meta_outputs, (list, tuple)):
+                kwargs['meta_outputs'] = [TensorSpec(v) for v in meta_outputs]
+            else:
+                kwargs['meta_outputs'] = TensorSpec(meta_outputs)
+
+        ge_outputs = converter(*args, **kwargs)
+
+        if meta_outputs is not None:
             if isinstance(ge_outputs, ge.Tensor):
-                ge_outputs.meta = meta_outputs
+                ge_outputs.set_meta(meta_outputs)
             elif isinstance(ge_outputs, int):
                 assert isinstance(meta_outputs, (torch.SymInt, int))
             else:
@@ -50,7 +58,7 @@ def _wrap_converter(converter: Callable):
                 for meta_output, ge_output in zip(meta_outputs, ge_outputs):
                     assert isinstance(meta_output, torch.Tensor)
                     assert isinstance(ge_output, ge.Tensor)
-                    ge_output.meta = meta_output
+                    ge_outputs.set_meta(meta_output)
 
         return ge_outputs
     return wrapped_converter
@@ -305,7 +313,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         self.graph.attr["_input_placements"].list.i.extend(
             self._input_placements)
         self.graph.attr["_output_dtypes"].list.i.extend(
-            [output.ge_dtype for output in self.outputs])
+            [output.dtype for output in self.outputs])
         _normalize_ge_graph(self.graph)
 
         initialize_graph_engine()

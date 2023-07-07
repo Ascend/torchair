@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -38,7 +38,7 @@ from torch.types import (
 def conveter_aten_cummin_default(
         self: Tensor,
         dim: int,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::cummin(Tensor self, int dim) -> (Tensor values, Tensor indices) """
     raise NotImplementedError("torch.ops.aten.cummin.default ge converter is not implement!")
 
@@ -47,7 +47,7 @@ def conveter_aten_cummin_default(
 def conveter_aten_cummin_dimname(
         self: Tensor,
         dim: str,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::cummin.dimname(Tensor self, str dim) -> (Tensor values, Tensor indices) """
     raise NotImplementedError("torch.ops.aten.cummin.dimname ge converter is not implement!")
 
@@ -59,7 +59,7 @@ def conveter_aten_cummin_dimname_out(
         *,
         values: Tensor = None,
         indices: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::cummin.dimname_out(Tensor self, str dim, *, Tensor(a!) values, Tensor(b!) indices) -> (Tensor(a!) values, Tensor(b!) indices) """
     raise NotImplementedError("torch.ops.aten.cummin.dimname_out ge converter is not implement!")
 
@@ -71,7 +71,7 @@ def conveter_aten_cummin_out(
         *,
         values: Tensor = None,
         indices: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::cummin.out(Tensor self, int dim, *, Tensor(a!) values, Tensor(b!) indices) -> (Tensor(a!) values, Tensor(b!) indices) """
     raise NotImplementedError("torch.ops.aten.cummin.out ge converter is not implement!")
 

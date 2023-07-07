@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -39,7 +39,7 @@ def conveter_nvprims_view_default(
         inp: Tensor,
         original_shape: Union[List[int], Tensor],
         shape: Union[List[int], Tensor],
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: nvprims::view(Tensor inp, SymInt[] original_shape, SymInt[] shape) -> Tensor """
     raise NotImplementedError("torch.ops.nvprims.view.default ge converter is not implement!")
 
@@ -48,7 +48,7 @@ def conveter_nvprims_view_default(
 def conveter_nvprims_view_shape(
         inp: Tensor,
         shape: Union[List[int], Tensor],
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: nvprims::view.shape(Tensor inp, SymInt[] shape) -> Tensor """
     raise NotImplementedError("torch.ops.nvprims.view.shape ge converter is not implement!")
 

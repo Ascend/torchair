@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torchair.ge_concrete_graph.utils import dtype_promote
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
@@ -46,7 +46,7 @@ def conveter_aten_full_names(
         layout: Optional[int] = None,
         device: Optional[Device] = None,
         pin_memory: Optional[bool] = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::full.names(int[] size, Scalar fill_value, *, str[]? names, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor """
     raise NotImplementedError("torch.ops.aten.full.names ge converter is not implement!")
 
@@ -60,7 +60,7 @@ def conveter_aten_full_default(
         layout: Optional[int] = None,
         device: Optional[Device] = None,
         pin_memory: Optional[bool] = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::full(SymInt[] size, Scalar fill_value, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor """
     target_dtype = dtype if dtype is not None else meta_outputs.dtype
     fill_value = dtype_promote(fill_value, target_dtype = target_dtype)
@@ -80,7 +80,7 @@ def conveter_aten_full_names_out(
         *,
         names: Optional[List[str]],
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::full.names_out(int[] size, Scalar fill_value, *, str[]? names, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.full.names_out ge converter is not implement!")
 
@@ -91,7 +91,7 @@ def conveter_aten_full_out(
         fill_value: Union[Number, Tensor],
         *,
         out: Tensor = None,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::full.out(SymInt[] size, Scalar fill_value, *, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError("torch.ops.aten.full.out ge converter is not implement!")
 

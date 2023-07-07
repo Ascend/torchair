@@ -1,6 +1,6 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torchair.ge_concrete_graph.ge_graph import DataType
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
@@ -38,7 +38,7 @@ from torch.types import (
 @register_fx_node_ge_converter(torch.ops.aten.sym_size.default)
 def conveter_aten_sym_size_default(
         self: Tensor,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::sym_size(Tensor self) -> SymInt[] """
     raise NotImplementedError(
         "torch.ops.aten.sym_size.default ge converter is not implement!")
@@ -48,13 +48,13 @@ def conveter_aten_sym_size_default(
 def conveter_aten_sym_size_int(
         self: Tensor,
         dim: int,
-        meta_outputs: Any = None):
+        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::sym_size.int(Tensor self, int dim) -> SymInt """
-    if isinstance(meta_outputs, int):
+    if isinstance(meta_outputs._meta, int):
         return meta_outputs
-    if isinstance(meta_outputs, torch.SymInt):
+    if isinstance(meta_outputs._meta, torch.SymInt):
         try:
-            return int(str(meta_outputs))
+            return int(str(meta_outputs._meta))
         except:
             pass  # Not static dim size
     shape = ge.Shape(self, dtype=DataType.DT_INT64)
