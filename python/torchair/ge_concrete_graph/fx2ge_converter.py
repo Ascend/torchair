@@ -121,13 +121,20 @@ class Converter:
                 if isinstance(v, TestTensor):
                     kwargs[k] = v.t()
 
-            backend_results = self._compiled_func(*args, **kwargs)
-            eager_results = self._eager_func(*args, **kwargs)
+            try:
+                backend_results = self._compiled_func(*args, **kwargs)
+            except Exception as e:
+                backend_results = e
+
+            try:
+                eager_results = self._eager_func(*args, **kwargs)
+            except Exception as e:
+                eager_results = e
 
             if Converter.result_checker is not None:
-                Converter.result_checker(backend_results, eager_results)
-            print(
-                f"[PASS] {self._aten_op} testcase {i + 1}/{len(self.testcases)}", flush=True)
+                testcase_title = f"{self._aten_op} testcase {i + 1}/{len(self.testcases)} with inputs: {testcase}"
+                Converter.result_checker(testcase_title, backend_results, eager_results)
+            del args, kwargs, backend_results, eager_results
 
 
 def register_testcase(testcases: List[TestInput]):
