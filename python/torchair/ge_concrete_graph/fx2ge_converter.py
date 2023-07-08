@@ -58,7 +58,7 @@ def _wrap_converter(converter: Callable):
                 for meta_output, ge_output in zip(meta_outputs, ge_outputs):
                     assert isinstance(meta_output, torch.Tensor)
                     assert isinstance(ge_output, ge.Tensor)
-                    ge_outputs.set_meta(meta_output)
+                    ge_output.set_meta(meta_output)
 
         return ge_outputs
     return wrapped_converter
@@ -235,7 +235,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         if isinstance(meta_outputs, torch.SymInt):
             data = ge.Data(index=len(self._inputs),
                            dtype=ProtoDataType.DT_INT64, shape=[], name=target)
-            data.meta = meta_outputs
+            data.set_meta(meta_outputs)
             self._inputs.append(data)
             self._input_placements.append(Placement.HOST)
         else:
@@ -244,7 +244,7 @@ class GeConcreteGraph(ConcreteGraphBase):
             shape = _get_generalized_shape(meta_outputs)
             data = ge.Data(index=len(self._inputs), dtype=dtype,
                            shape=shape, name=target)
-            data.meta = meta_outputs
+            data.set_meta(meta_outputs)
             self._inputs.append(data)
             self._input_placements.append(Placement.HOST if (
                 meta_outputs.device is None or meta_outputs.device.type == 'cpu') else Placement.DEVICE)
