@@ -27,6 +27,7 @@ import sys
 _COMPAT_TORCH_VERSION = "2."
 _PYTHON_BIN_PATH_ENV = "TARGET_PYTHON_PATH"
 _ASCEND_SDK_ENV = "ASCEND_SDK_PATH"
+_NO_ASCEND_SDK = "NO_ASCEND_SDK"
 
 
 def run_command(cmd):
@@ -151,7 +152,8 @@ def main():
     """Entry point for configuration"""
     env_snapshot = dict(os.environ)
     setup_python(env_snapshot.get(_PYTHON_BIN_PATH_ENV))
-    setup_ascend_sdk(env_snapshot.get(_ASCEND_SDK_ENV))
+    if not env_snapshot.get(_NO_ASCEND_SDK) in ["1", "true", "True"]:
+        setup_ascend_sdk(env_snapshot.get(_ASCEND_SDK_ENV))
 
 
 if __name__ == '__main__':
