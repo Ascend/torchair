@@ -63,4 +63,16 @@ add_custom_target(torchair ALL
         DEPENDS _torchair _npu_graph_executor copy_pyfiles
         VERBATIM)
 
+if (DEFINED TORCHAIR_INSTALL_DST)
+    add_custom_target(install_torchair ALL
+            COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_BINARY_DIR}/dist/torchair ${TORCHAIR_INSTALL_DST}
+            DEPENDS _torchair _npu_graph_executor copy_pyfiles
+            VERBATIM)
+else()
+    add_custom_target(install_torchair ALL
+            COMMAND ${PYTHON_BIN_PATH} -m pip install ${CMAKE_BINARY_DIR}/dist/dist/torchair-0.1-py3-none-any.whl --force-reinstall
+            DEPENDS torchair
+            VERBATIM)
+endif()
+
 install(CODE "execute_process(COMMAND ${PYTHON_BIN_PATH} -m pip install ${CMAKE_BINARY_DIR}/dist/dist/torchair-0.1-py3-none-any.whl --upgrade)")
