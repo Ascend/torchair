@@ -3,6 +3,7 @@ from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_conve
 from torchair.ge_concrete_graph.fx2ge_converter import register_testcase
 from torchair.ge_concrete_graph.testing_utils import *
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.utils import dtype_promote
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -35,11 +36,15 @@ from torch.types import (
     SymInt,
 )
 
+
 @register_testcase([
-TestInput(F32(2, 2), F32(2, 2)),
-TestInput(F32(2, 2), F32(2, 1)),
-TestInput(F32(2, 2), 2.0),
-TestInput(F32(2, 2), 2),
+    TestInput(F32(2, 2), F32(2, 2)),
+    TestInput(F32(2, 2), F32(2, 1)),
+    TestInput(F32(2, 2), F16(2, 1)),
+    TestInput(F32(2, 2), F16(2, 2), alpha=2),
+    TestInput(F32(2, 2), 2.0),
+    TestInput(F32(2, 2), 2),
+    TestInput(F32(2, 2), 2, alpha=2.0),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.add.Tensor)
 def conveter_aten_add_Tensor(
@@ -49,9 +54,13 @@ def conveter_aten_add_Tensor(
         alpha: Union[Number, Tensor] = 1,
         meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -> Tensor """
-    if alpha == 1:
+    if not isinstance(alpha, Tensor) and alpha == 1:
+        # just for better permance
+        self, other = dtype_promote(self, other, target_dtype = meta_outputs.dtype)
         return ge.Add(self, other)
-    return ge.AxpyV2(self, other, alpha)
+    else:
+        self, other, alpha = dtype_promote(self, other, alpha, target_dtype = meta_outputs.dtype)
+        return ge.AxpyV2(self, other, alpha)
 
 
 
@@ -62,9 +71,13 @@ def conveter_aten_add_Scalar(
         alpha: Union[Number, Tensor] = 1,
         meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::add.Scalar(Tensor self, Scalar other, Scalar alpha=1) -> Tensor """
-    if alpha == 1:
+    if not isinstance(alpha, Tensor) and alpha == 1:
+        # just for better permance
+        self, other = dtype_promote(self, other, target_dtype = meta_outputs.dtype)
         return ge.Add(self, other)
-    return ge.AxpyV2(self, other, alpha)
+    else:
+        self, other, alpha = dtype_promote(self, other, alpha, target_dtype = meta_outputs.dtype)
+        return ge.AxpyV2(self, other, alpha)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.add.out)
