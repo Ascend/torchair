@@ -3,6 +3,7 @@ from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_conve
 from torchair.ge_concrete_graph.fx2ge_converter import register_testcase
 from torchair.ge_concrete_graph.testing_utils import *
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.utils import dtype_promote
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -35,9 +36,11 @@ from torch.types import (
     SymInt,
 )
 
+
 @register_testcase([
     TestInput([F32(2, 2), F32(2, 1)], dim=1),
     TestInput([F32(2, 2), F32(1, 2)], dim=0),
+    TestInput([F32(2, 2), F16(1, 2)], dim=0),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.cat.default)
 def conveter_aten_cat_default(
@@ -45,6 +48,7 @@ def conveter_aten_cat_default(
         dim: int = 0,
         meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::cat(Tensor[] tensors, int dim=0) -> Tensor """
+    tensors = [dtype_promote(arg, target_dtype = meta_outputs.dtype) for arg in tensors]
     return ge.ConcatD(tensors, concat_dim=dim, N=len(tensors))
 
 

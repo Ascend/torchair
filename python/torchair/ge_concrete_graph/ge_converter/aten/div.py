@@ -1,6 +1,9 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
+from torchair.ge_concrete_graph.fx2ge_converter import register_testcase
+from torchair.ge_concrete_graph.testing_utils import *
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.utils import dtype_promote
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -34,12 +37,18 @@ from torch.types import (
 )
 
 
+@register_testcase([
+    TestInput(F32(2, 2), F32(2, 2)),
+    TestInput(F32(2, 2), F32(1, 2)),
+    TestInput(F32(2, 2), F16(2, 1)),
+])
 @register_fx_node_ge_converter(torch.ops.aten.div.Tensor)
 def conveter_aten_div_Tensor(
         self: Tensor,
         other: Tensor,
         meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::div.Tensor(Tensor self, Tensor other) -> Tensor """
+    self, other = dtype_promote(self, other, target_dtype = meta_outputs.dtype)
     return ge.RealDiv(self, other)
 
 

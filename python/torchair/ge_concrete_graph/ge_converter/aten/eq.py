@@ -1,6 +1,9 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
+from torchair.ge_concrete_graph.fx2ge_converter import register_testcase
+from torchair.ge_concrete_graph.testing_utils import *
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.utils import dtype_promote
 from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
@@ -34,13 +37,17 @@ from torch.types import (
 )
 
 
+@register_testcase([
+    TestInput(F32(2, 2), F32(2, 2)),
+])
 @register_fx_node_ge_converter(torch.ops.aten.eq.Tensor)
 def conveter_aten_eq_Tensor(
         self: Tensor,
         other: Tensor,
         meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """ NB: aten::eq.Tensor(Tensor self, Tensor other) -> Tensor """
-    raise NotImplementedError("torch.ops.aten.eq.Tensor ge converter is not implement!")
+    assert self.dtype == other.dtype, f"Inputs data type mismatch {other.dtype} vs. {other.dtype}"
+    return ge.Equal(self, other)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.eq.Scalar)
