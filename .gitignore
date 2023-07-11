@@ -1,4 +1,6 @@
 build
 tools
+output
+coverage
 .idea
 *.pbtxt

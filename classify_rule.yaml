@@ -1,0 +1,10 @@
+torchair:
+  commiter:
+    "xxx"
+  team: "torchair"
+  src:
+    release:
+      - torchair
+  llt:
+    ut_check:true
+    st_check:true

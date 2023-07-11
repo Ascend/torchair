@@ -14,7 +14,7 @@
 # limitations under the License.
 # ==============================================================================
 
-
+import torch
 from torchair.npu_fx_compiler import get_compiler
 from torchair.npu_fx_compiler import get_npu_backend
 from torchair.core.backend import stupid_repeat
