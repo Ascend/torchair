@@ -128,6 +128,17 @@ Status Session::RunGraphWithStreamAsync(uint32_t id, void *stream, const std::ve
   return ge::SUCCESS;
 }
 
+Status Session::RegisterExternalAllocator(const void *const stream, std::shared_ptr<ge::Allocator> allocator) const {
+  (void)stream;
+  (void)allocator;
+  return ge::SUCCESS;
+}
+
+Status Session::UnregisterExternalAllocator(const void *const stream) const {
+  (void)stream;
+  return ge::SUCCESS;
+}
+
 Status GEInitialize(const std::map<ge::AscendString, ge::AscendString> &options) {
   std::cerr << "[STUB] GEInitialize" << std::endl;
   return ge::SUCCESS;
