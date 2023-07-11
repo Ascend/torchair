@@ -27,7 +27,6 @@ else()
     file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/tools/ASCEND_SDK_PATH" ASCEND_SDK_HEADERS_PATH)
 endif ()
 
-include(${CMAKE_CURRENT_LIST_DIR}/cmake/nlohmann_json.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/secure_c.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/metadef/module.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/graph_engine/module.cmake)
