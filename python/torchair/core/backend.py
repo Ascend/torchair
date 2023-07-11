@@ -37,11 +37,7 @@ def _try_get_torch_npu_device():
     from . import _npu_graph_executor
 
     torch_npu_module = sys.modules['torch_npu']
-    if torch_npu_module.npu.is_initialized():
-        return torch_npu_module.npu.current_device()
-    else:
-        print(f"[WARNNING] torch_npu imported but not initialized.")
-        return None
+    return torch_npu_module.npu.current_device()
 
 
 def initialize_graph_engine():
