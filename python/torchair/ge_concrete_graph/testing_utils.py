@@ -74,6 +74,7 @@ class TestInput:
             assert not isinstance(v, torch.Tensor)
         self.args = args
         self.kwargs = kwargs
+        self.title = ""
 
     def __str__(self) -> str:
         def _format(args, kwargs):

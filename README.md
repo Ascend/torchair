@@ -73,7 +73,7 @@ python3 examples/example.py
 ```shell
 ./build.sh -c
 ```
-
+编译完成后，会在`output/`目录下生成名为torchair-{version}-py3-none-any.whl的安装包文件。
 ## 执行UT测试
 > 本地执行UT测试需要设置环境变量`ASCEND_CUSTOM_PATH`,将其指定至Ascend sdk的安装路径（指定至ai_cann_x86目录）
 ```shell

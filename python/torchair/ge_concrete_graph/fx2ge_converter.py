@@ -92,6 +92,9 @@ class Converter:
 
     @testcases.setter
     def testcases(self, testcases):
+        for i, testcase in enumerate(testcases):
+            assert isinstance(testcase, TestInput)
+            testcase.title = f"{self._aten_op} testcase {i + 1}/{len(testcases)} with inputs: {testcase}"
         self._testcases = testcases
 
     def test(self):
@@ -104,9 +107,8 @@ class Converter:
 
         print(
             f"Testing {self._aten_op} with {len(self.testcases)} cases", flush=True)
-        for i, testcase in enumerate(self.testcases):
-            print(
-                f"[RUN] {self._aten_op} testcase {i + 1}/{len(self.testcases)} with inputs: {testcase}", flush=True)
+        for testcase in self.testcases:
+            print(f"[RUN] {testcase.title}", flush=True)
             args = []
             for arg in testcase.args:
                 if isinstance(arg, (list, tuple)):
@@ -132,8 +134,7 @@ class Converter:
                 eager_results = e
 
             if Converter.result_checker is not None:
-                testcase_title = f"{self._aten_op} testcase {i + 1}/{len(self.testcases)} with inputs: {testcase}"
-                Converter.result_checker(testcase_title, backend_results, eager_results)
+                Converter.result_checker(testcase.title, backend_results, eager_results)
             del args, kwargs, backend_results, eager_results
 
 
