@@ -39,7 +39,7 @@ from torch.types import (
 
 @register_testcase([
     TestInput(F32(3, 1), size=[3, 4]),
-    TestInput(F16(3, 1, 2), size=[3, 5, 2]),
+    TestInput(F16(3, 1, 2), size=[-1, 5, -1]),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.expand.default)
 def conveter_aten_expand_default(
@@ -58,8 +58,8 @@ def conveter_aten_expand_default(
     else:
         positive_size = []
         for i in range(len(size)):
-            if size[i] > 0:
-                positive_size.append(size[i])
+            if size[i] == -1:
+                positive_size.append(meta_outputs.size[i])
             else:
-                positive_size.append(size[i] + meta_outputs.size[i])
+                positive_size.append(size[i])
         return ge.BroadcastTo(self, positive_size)
