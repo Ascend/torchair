@@ -3,7 +3,7 @@ import numpy as np
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torchair.ge_concrete_graph.utils import dtype_promote
-from torch import contiguous_format, Generator, inf, memory_format, strided, Tensor
+from torch import contiguous_format, Generator, inf, memory_format, strided
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
     Any,
