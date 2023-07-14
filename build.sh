@@ -51,8 +51,6 @@ checkopts() {
 }
 
 build_torchair() {
-  cd "${TORCHAIR_ROOT}" && bash ./configure
-
   logging "CMake Args: ${CMAKE_ARGS}"
 
   local CMAKE_PATH="${TORCHAIR_ROOT}/build"
@@ -98,6 +96,7 @@ main() {
     echo "Building torchair with ascned-sdk in ${ASCEND_CUSTOM_PATH}"
     export ASCEND_SDK_PATH=${ASCEND_CUSTOM_PATH}/opensdk/opensdk/
   fi
+  bash ${TORCHAIR_ROOT}/configure
 
   ${GCC_PREFIX}g++ -v
 
