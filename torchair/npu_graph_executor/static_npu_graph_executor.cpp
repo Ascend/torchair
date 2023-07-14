@@ -1,5 +1,5 @@
 #include "external/graph/types.h"
-#include "npu_graph_executor.h"
+#include "static_npu_graph_executor.h"
 
 #include <utility>
 #include "checker.h"
@@ -8,9 +8,7 @@
 #include "session.h"
 #include "torch/torch.h"
 #include "utils.h"
-
-#include "acl/acl_rt.h"
-#include "torch_npu/inc/core/NPUStream.h"
+#include "npu_utils.h"
 
 namespace tng {
 
@@ -117,11 +115,9 @@ Status StaticNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
   TNG_RETURN_IF_ERROR(RefreshGraphOutputs(outputs));
 
   if (stream == nullptr) {
-    int device_index = 0;
-    auto ret = aclrtGetDevice(&device_index);
-    TNG_ASSERT(ret == ACL_ERROR_NONE, "ACL get device failed, return %d", ret);
-    stream = c10_npu::getCurrentNPUStream(device_index).stream();
+    TNG_RETURN_IF_ERROR(GetCurrentStream(&stream));
   }
+
   TNG_RETURN_IF_ERROR(Session::GetInstance().RunGraph(graph_data_->id, inputs_holder_, outputs_holder_, stream));
   retain_tmp_device_inputs.clear();
   TNG_LOG(INFO) << "StaticNpuGraphExecutor::Run graph " << graph_data_->id << " on stream " << stream

@@ -23,6 +23,8 @@ std::string DebugString(const c10::optional<at::Tensor> &tensor);
 
 std::string DebugString(const c10::Device &device);
 
+Status GePlacementToAtDeviceType(const ge::Placement &ge_placement, c10::DeviceType &device_type);
+
 Status AtTensorToGeTensor(const at::Tensor &tensor, ge::Tensor &ge_tensor);
 
 Status GeTensorToAtTensor(ge::Tensor &ge_tensor, at::Tensor &tensor);
