@@ -1,36 +1,37 @@
 from torchair.configs.option_base import OptionValue
 from torchair.configs.option_base import NpuBaseConfig
+from datetime import datetime
 
 
-def _counter():
-    i = 0
-    while True:
-        yield i
-        i += 1
+def _timestamp():
+    return datetime.now().strftime("%Y%m%d%H%M%S%f")
 
 
-_uuid = _counter()
-
-
-class _Dump(NpuBaseConfig):
+class _DebugBase(NpuBaseConfig):
     def __init__(self):
-        self.type = OptionValue(None, ["txt", "pbtxt"])
         self.path = OptionValue(None, None)
-        self.prefix = OptionValue(None, None)
 
-        super(_Dump, self).__init__()
+        super(_DebugBase, self).__init__()
 
     def full_path(self, name: str):
-        if self.path.value is None and self.prefix.value is None and self.type.value is None:
+        if self.type.value is None:
             return None
 
         path = "." if self.path.value is None else self.path.value
-        prefix = "" if self.prefix.value is None else self.prefix.value + "_"
-        suffix = next(_uuid)
-        suffix = ("_" + str(suffix)) if suffix > 0 else ""
-        type = "txt" if self.type.value is None else self.type.value
 
-        return f"{path}/{prefix}{name}{suffix}.{type}"
+        return f"{path}/{name}_{_timestamp()}.{self.type.value}"
+
+
+class _Dump(_DebugBase):
+    def __init__(self):
+        self.type = OptionValue(None, ["txt", "pbtxt"])
+        super(_Dump, self).__init__()
+
+
+class _FxSummary(_DebugBase):
+    def __init__(self):
+        self.type = OptionValue(None, ["csv"])
+        super(_FxSummary, self).__init__()
 
 
 class DebugConfig(NpuBaseConfig):
@@ -38,6 +39,7 @@ class DebugConfig(NpuBaseConfig):
 
     def __init__(self):
         self.graph_dump = _Dump()
+        self.fx_summary = _FxSummary()
 
         super(DebugConfig, self).__init__()
 

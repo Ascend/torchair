@@ -15,6 +15,7 @@ from torchair.core.concrete_graph import ConcreteGraphBase, ValuePack, _is_symli
 from torchair.core.utils import logger
 from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph as ConcreteGraph
 from torchair.configs.compiler_config import CompilerConfig
+from torchair.fx_summary import summarize_fx_graph
 from torch._decomp import core_aten_decompositions, get_decompositions
 aten = torch.ops.aten
 
@@ -146,6 +147,8 @@ class _NpuFxCompiler:
         for i, inp in enumerate(example_inputs):
             logger.info(f'  input {i}: {inp}')
         logger.info(f'  graph: {gm.graph}')
+
+        summarize_fx_graph(gm, example_inputs, self.config.debug.fx_summary.full_path("summary"))
 
         concrete_graph: ConcreteGraphBase = NpuGraphConverter(
             gm, graph=ConcreteGraph(self.config)).run(*example_inputs)
