@@ -148,12 +148,16 @@ class _NpuFxCompiler:
             logger.info(f'  input {i}: {inp}')
         logger.info(f'  graph: {gm.graph}')
 
-        summarize_fx_graph(gm, example_inputs, self.config.debug.fx_summary.full_path("summary"))
+        if self.config.debug.fx_summary.enabled:
+            summarize_fx_graph(gm, example_inputs, self.config.debug.fx_summary.full_path("summary"))
+            if self.config.debug.fx_summary.skip_compile:
+                return gm
 
         concrete_graph: ConcreteGraphBase = NpuGraphConverter(
             gm, graph=ConcreteGraph(self.config)).run(*example_inputs)
 
-        concrete_graph.dump(self.config.debug.graph_dump.full_path("dynamo"))
+        if self.config.debug.graph_dump.enabled:
+            concrete_graph.dump(self.config.debug.graph_dump.full_path("dynamo"))
 
         logger.info(f'start compile graph: {concrete_graph}')
         concrete_graph.compile()

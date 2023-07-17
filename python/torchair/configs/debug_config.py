@@ -13,8 +13,12 @@ class _DebugBase(NpuBaseConfig):
 
         super(_DebugBase, self).__init__()
 
+    @property
+    def enabled(self):
+        return self.type.value is not None
+
     def full_path(self, name: str):
-        if self.type.value is None:
+        if not self.enabled:
             return None
 
         path = "." if self.path.value is None else self.path.value
@@ -31,6 +35,7 @@ class _Dump(_DebugBase):
 class _FxSummary(_DebugBase):
     def __init__(self):
         self.type = OptionValue(None, ["csv"])
+        self.skip_compile = OptionValue(False, [True, False])
         super(_FxSummary, self).__init__()
 
 

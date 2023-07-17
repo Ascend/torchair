@@ -12,6 +12,7 @@ config = CompilerConfig()
 config.aoe_config.aoe_mode = "1"
 config.debug.graph_dump.type = "pbtxt"
 config.debug.fx_summary.type = "csv"
+config.debug.fx_summary.skip_compile = True
 
 npu_backend = tng.get_npu_backend(compiler_config=config)
 
