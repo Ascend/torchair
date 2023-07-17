@@ -76,4 +76,7 @@ def test_converter(aten_ops=None, *, stop_when_error=False):
 
 
 if __name__ == "__main__":
+    # 不传入任何值表示测试全部的converter，
+    # 可以通过传入单个op或者op列表来测试指定的op,
+    # 例如：test_converter(aten.add.Tensor)只会测试aten.add.Tensor的converter
     test_converter()
