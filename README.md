@@ -36,7 +36,7 @@ Specify the location of ascend sdk for debug on localhost or leave empty.
 ```shell
 mkdir build
 cd build
-make ..
+cmake ..
 make torchair -j8
 ```
 
