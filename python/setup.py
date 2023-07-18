@@ -10,4 +10,7 @@ setup(name='torchair',
       packages=find_packages(),
       include_package_data=True,
       ext_modules=[],
+      install_requires=[
+        'protobuf >= 3.13, < 4',
+      ],
       zip_safe=False)
