@@ -139,6 +139,17 @@ std::string DebugString(const ge::Shape &shape) { return compat::DebugString(sha
 
 std::string DebugString(const ge::Tensor &tensor) { return compat::DebugString(tensor).GetErrorMessage(); }
 
+Status GePlacementToAtDeviceType(const ge::Placement &ge_placement, c10::DeviceType &device_type) {
+  if (ge_placement == ge::Placement::kPlacementHost) {
+    device_type = c10::DeviceType::CPU;
+  } else if (ge_placement == ge::Placement::kPlacementDevice) {
+    device_type = c10::DeviceType::PrivateUse1;
+  } else {
+    return Status::Error("Unsupported ge placement %d.", ge_placement);
+  }
+  return Status::Success();
+}
+
 Status AtDtypeToGeDtype(const c10::ScalarType &dtype, ge::DataType &ge_dtype) {
 #define ATEN2GE_MAP_TYPE(T1, T2) \
   case T1:                       \
@@ -229,9 +240,12 @@ void DeleteGeDataPtr(void *data) {
 
 Status GeTensorToAtTensor(ge::Tensor &ge_tensor, at::Tensor &tensor) {
   c10::ScalarType tensor_dtype = c10::ScalarType::Float;
-  TNG_RETURN_IF_ERROR(GeDtypeToAtDtype(ge_tensor.GetTensorDesc().GetDataType(), tensor_dtype));
-  at::TensorOptions options(tensor_dtype);
-  tensor = at::cpu::empty({0}, options);
+  const ge::TensorDesc &tensor_desc = ge_tensor.GetTensorDesc();
+  TNG_RETURN_IF_ERROR(GeDtypeToAtDtype(tensor_desc.GetDataType(), tensor_dtype));
+  c10::DeviceType device_type = c10::DeviceType::CPU;
+  TNG_RETURN_IF_ERROR(GePlacementToAtDeviceType(tensor_desc.GetPlacement(), device_type));
+  at::TensorOptions option = at::TensorOptions().dtype(tensor_dtype).device(device_type);
+  tensor = at::cpu::empty({0}, option);
 
   RawGeDataPtr ge_data_ptr = ge_tensor.ResetData();
   auto raw_ge_data = static_cast<void *>(ge_data_ptr.get());
