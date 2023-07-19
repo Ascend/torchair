@@ -74,5 +74,6 @@ class MemBlock {
   size_t count_;
   size_t block_size_;
 };
+using AllocatorPtr = std::shared_ptr<Allocator>;
 }  // namespace ge
 #endif  // AIR_CXX_INC_EXTERNAL_GE_ALLOCATOR_H_

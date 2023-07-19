@@ -7,6 +7,7 @@
 #include "external/graph/graph.h"
 #include "ge/ge_graph_compile_summary.h"
 #include "tng_status.h"
+#include "ge/ge_allocator.h"
 
 namespace tng {
 class Session {
@@ -30,6 +31,8 @@ class Session {
                        const std::vector<ge::Tensor> &example_inputs, void *stream = nullptr);
 
   Status RemoveGraph(uint32_t id);
+
+  Status RegisterExternalAllocator(const void *const stream, std::shared_ptr<ge::Allocator> allocator);
 
   Status RunGraph(uint32_t id, const std::vector<ge::Tensor> &inputs, std::vector<ge::Tensor> &outputs,
                   void *stream = nullptr);

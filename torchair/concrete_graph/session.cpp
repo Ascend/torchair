@@ -97,6 +97,11 @@ Status Session::RemoveGraph(uint32_t id) {
   return Status::Success();
 }
 
+Status Session::RegisterExternalAllocator(const void *const stream, std::shared_ptr<ge::Allocator> allocator) {
+  TNG_ASSERT_GE_OK(global_ge_session->RegisterExternalAllocator(stream, allocator));
+  return Status::Success();
+}
+
 Status Session::RunGraph(uint32_t id, const std::vector<ge::Tensor> &inputs, std::vector<ge::Tensor> &outputs,
                          void *stream) {
   TNG_RETURN_IF_ERROR(EnsureInitialized());
