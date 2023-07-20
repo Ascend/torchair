@@ -1,19 +1,19 @@
-#include "external/graph/types.h"
 #include "dynamic_npu_graph_executor.h"
+#include "external/graph/types.h"
 
 #include <utility>
 #include "checker.h"
 #include "graph/utils/type_utils.h"
 #include "logger.h"
+#include "npu_utils.h"
 #include "session.h"
 #include "torch/torch.h"
 #include "utils.h"
-#include "npu_utils.h"
 
 namespace tng {
 
 Status DynamicNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &inputs,
-                                              std::vector<at::Tensor> &retain_tmp_device_inputs) {
+                                               std::vector<at::Tensor> &retain_tmp_device_inputs) {
   TNG_ASSERT(graph_data_->input_placements.size() == inputs.size());
   bool is_first_run = inputs_holder_.empty();
   if (is_first_run) {
@@ -32,8 +32,8 @@ Status DynamicNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &in
       } else {
         TNG_RETURN_IF_ERROR(AssembleDataAndShapeToGe(inputs[i], inputs_holder_[i]));
       }
-      TNG_LOG(INFO) << "Assemble aten device input " << i << " " << DebugString(inputs[i])
-                    << " to " << DebugString(inputs_holder_[i]);
+      TNG_LOG(DEBUG) << "Assemble aten device input " << i << " " << DebugString(inputs[i]) << " to "
+                     << DebugString(inputs_holder_[i]);
     } else if (graph_data_->input_placements[i] == Placement::HOST) {
       if (!inputs[i].device().is_cpu()) {
         return Status::Error("Input %zu placement %s is incompatible with expected CPU.", i,
@@ -51,8 +51,8 @@ Status DynamicNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &in
       } else {
         TNG_RETURN_IF_ERROR(AssembleDataAndShapeToGe(retain_tmp_device_inputs.back(), inputs_holder_[i]));
       }
-      TNG_LOG(INFO) << "Assemble aten host input " << i << " " << DebugString(retain_tmp_device_inputs.back())
-                    << " to " << DebugString(inputs_holder_[i]);
+      TNG_LOG(DEBUG) << "Assemble aten host input " << i << " " << DebugString(retain_tmp_device_inputs.back())
+                     << " to " << DebugString(inputs_holder_[i]);
     } else {
       TNG_ASSERT(false, "Invalid Placement::UNKNOWN of input %zu.", i);
     }
@@ -70,8 +70,8 @@ Status DynamicNpuGraphExecutor::AssembleOutputs(const std::vector<c10::optional<
 }
 
 Status DynamicNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
-                                   const std::vector<c10::optional<at::Tensor>> &torch_outputs,
-                                   std::vector<at::Tensor> &outputs, void *stream) {
+                                    const std::vector<c10::optional<at::Tensor>> &torch_outputs,
+                                    std::vector<at::Tensor> &outputs, void *stream) {
   TNG_LOG(INFO) << "Dynamic npu graph executor start to run graph " << graph_data_->id;
 
   std::vector<at::Tensor> retain_tmp_device_inputs;
@@ -89,14 +89,14 @@ Status DynamicNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
   outputs.resize(ge_outputs.size());
   for (size_t i = 0; i < ge_outputs.size(); ++i) {
     TNG_RETURN_IF_ERROR(GeTensorToAtTensor(ge_outputs[i], outputs[i]));
-    TNG_LOG(INFO) << "Assemble ge output " << i << " " << DebugString(ge_outputs[i]) << " to torch output "
-                  << DebugString(outputs[i]);
+    TNG_LOG(DEBUG) << "Assemble ge output " << i << " " << DebugString(ge_outputs[i]) << " to torch output "
+                   << DebugString(outputs[i]);
   }
 
   retain_tmp_device_inputs.clear();
   ge_outputs.clear();
-  TNG_LOG(INFO) << "Dynamic npu graph executor run graph " << graph_data_->id << " on stream " << stream
-                << " successfully.";
+  TNG_LOG(DEBUG) << "Dynamic npu graph executor run graph " << graph_data_->id << " on stream " << stream
+                 << " successfully.";
   return Status::Success();
 }
 
