@@ -1,8 +1,8 @@
 #include <future>
 
-#include "session.h"
 #include "checker.h"
 #include "logger.h"
+#include "session.h"
 
 #include "ge/ge_api.h"
 
@@ -27,9 +27,13 @@ Status Session::Initialize(const std::map<std::string, std::string> &options) {
     ge_options[option.first.c_str()] = option.second.c_str();
   }
 
+  auto iter = ge_options.find(ge::AscendString("ge.exec.deviceId"));
+  TNG_ASSERT(iter != ge_options.end(), "Device id is not specified when initializing GE");
+
   if (ge::GEInitialize(ge_options) != ge::SUCCESS) {
     status_ = Status::Error("Failed to initialize GE %s", compat::GeErrorStatus().GetErrorMessage());
   } else {
+    (void)ge_options.emplace(ge::AscendString("ge.session_device_id"), iter->second);
     global_ge_session = std::make_unique<ge::Session>(ge_options);
     if (global_ge_session == nullptr) {
       status_ = Status::Error("Failed to create GE session");
