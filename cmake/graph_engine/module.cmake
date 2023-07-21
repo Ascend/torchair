@@ -1,3 +1,4 @@
+include_guard()
 add_library(ge_libs INTERFACE)
 
 include_directories(${ASCEND_CI_BUILD_DIR}/graphengine/inc)

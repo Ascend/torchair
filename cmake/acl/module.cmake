@@ -1,3 +1,4 @@
+include_guard()
 add_library(acl_libs INTERFACE)
 
 include_directories(${ASCEND_CI_BUILD_DIR}/inc/external)

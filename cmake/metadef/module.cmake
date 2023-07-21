@@ -1,3 +1,4 @@
+include_guard()
 add_library(ascend_metadef_libs INTERFACE)
 
 target_include_directories(ascend_metadef_libs INTERFACE ${ASCEND_SDK_HEADERS_PATH}/ascend_protobuf/include/)

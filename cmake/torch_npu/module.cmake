@@ -1,3 +1,4 @@
+include_guard()
 add_library(torch_npu_libs INTERFACE)
 
 add_custom_command(
