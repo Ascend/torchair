@@ -22,7 +22,6 @@ include_directories(${TORCH_INCLUDE_DIR})
 include_directories(${TORCH_INCLUDE_DIR}/torch/csrc/api/include)
 include_directories(${TORCH_INCLUDE_DIR}/torch/csrc/distributed)
 include_directories(${TORCHAIR_SRC_DIR}/third_party)
-include_directories(${TORCHAIR_SRC_DIR}/third_party/ascend/acl/inc/)
 
 file(STRINGS "${TORCHAIR_SRC_DIR}/tools/TORCH_INSTALLED_PATH" TORCH_INSTALLED_PATH)
 #todo: Add ${NPU_EXECUTOR_SOURCES} once it's stub ready
@@ -31,8 +30,8 @@ target_compile_definitions(torchair_ut_lib PRIVATE google=ascend_private)
 target_link_libraries(torchair_ut_lib PRIVATE
         _abi_compat_ge_apis
         ge_libs
-        acl_libs
         ascend_metadef_libs
+        acl_libs
         ${TORCH_INSTALLED_PATH}/lib/libc10.so
         ${TORCH_INSTALLED_PATH}/lib/libtorch.so)
 

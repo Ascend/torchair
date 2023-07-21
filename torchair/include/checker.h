@@ -6,6 +6,7 @@
 #include <cstdio>
 #include "securec.h"
 
+#include "external/graph/types.h"
 #include "tng_status.h"
 #include "external/utils/extern_math_util.h"
 #include "compat_apis.h"

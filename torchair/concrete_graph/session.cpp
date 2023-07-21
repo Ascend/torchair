@@ -5,6 +5,7 @@
 #include "session.h"
 
 #include "ge/ge_api.h"
+#include "ge/ge_api_types.h"
 
 namespace {
 std::unique_ptr<ge::Session> global_ge_session = nullptr;
@@ -27,7 +28,7 @@ Status Session::Initialize(const std::map<std::string, std::string> &options) {
     ge_options[option.first.c_str()] = option.second.c_str();
   }
 
-  auto iter = ge_options.find(ge::AscendString("ge.exec.deviceId"));
+  auto iter = ge_options.find(ge::AscendString(ge::OPTION_EXEC_DEVICE_ID));
   TNG_ASSERT(iter != ge_options.end(), "Device id is not specified when initializing GE");
 
   if (ge::GEInitialize(ge_options) != ge::SUCCESS) {
