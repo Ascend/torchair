@@ -21,11 +21,11 @@ from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type, torch_typ
 from torchair.core.backend import TorchNpuGraph
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.ge_concrete_graph.utils import convert_to_tensorboard
-from torchair.ge_concrete_graph.testing_utils import *
+from torchair.ge_concrete_graph.supported_declaration import Support
 from . import ge_apis as ge
 
 __CONVERTERS = defaultdict(None)
-__CONVERTER_TESTS = defaultdict(None)
+__DECLARED_SUPPORTED_CONVERTERS = defaultdict(None)
 
 
 def _get_converter(name: Callable):
@@ -71,11 +71,7 @@ class Converter:
     def __init__(self, aten_op) -> None:
         self._aten_op = aten_op
         self._signature = inspect.signature(aten_op)
-
-        def _(*args, aten_op, **kwargs):
-            return aten_op(*args, **kwargs)
-        self._eager_func = functools.partial(_, aten_op=self._aten_op)
-        self._testcases = None
+        self._supported_cases = None
 
     def __call__(self, converter) -> Any:
         wrapped_converter = _wrap_converter(converter)
@@ -87,83 +83,30 @@ class Converter:
         return self
 
     @property
-    def testcases(self):
-        return self._testcases
+    def supported_cases(self):
+        return self._supported_cases
 
-    @testcases.setter
-    def testcases(self, testcases):
-        for i, testcase in enumerate(testcases):
-            assert isinstance(testcase, TestInput)
-            testcase.title = f"{self._aten_op} testcase {i + 1}/{len(testcases)} with inputs: {testcase}"
-        self._testcases = testcases
-
-    def test(self):
-        if not hasattr(self, '_compiled_func'):
-            self._compiled_func = torch.compile(
-                self._eager_func, backend=Converter.compile_backend)
-        if self.testcases is None:
-            print(f"No testcases for {self._aten_op}", flush=True)
-            return
-
-        print(
-            f"Testing {self._aten_op} with {len(self.testcases)} cases", flush=True)
-        for testcase in self.testcases:
-            print(f"[RUN] {testcase.title}", flush=True)
-            args = []
-            for arg in testcase.args:
-                if isinstance(arg, (list, tuple)):
-                    args.append([(v.t() if isinstance(v, TestTensor) else v)
-                                 for v in arg])
-                elif isinstance(arg, TestTensor):
-                    args.append(arg.t())
-                else:
-                    args.append(arg)
-            kwargs = testcase.kwargs
-            for k, v in kwargs.items():
-                if isinstance(v, TestTensor):
-                    kwargs[k] = v.t()
-
-            try:
-                backend_results = self._compiled_func(*args, **kwargs)
-            except Exception as e:
-                backend_results = e
-
-            try:
-                eager_results = self._eager_func(*args, **kwargs)
-            except Exception as e:
-                eager_results = e
-
-            if Converter.result_checker is not None:
-                Converter.result_checker(testcase.title, backend_results, eager_results)
-            del args, kwargs, backend_results, eager_results
+    @supported_cases.setter
+    def supported_cases(self, supported_cases):
+        for i, testcase in enumerate(supported_cases):
+            assert isinstance(testcase, Support)
+            testcase.title = f"{self._aten_op} testcase {i + 1}/{len(supported_cases)} with inputs: {testcase}"
+        self._supported_cases = supported_cases
 
 
-def register_testcase(testcases: List[TestInput]):
+def declare_supported(supported_cases: List[Support]):
     def add_testcase(converter):
         assert isinstance(converter, Converter)
-        converter.testcases = testcases
-        global __CONVERTER_TESTS
-        __CONVERTER_TESTS.update({converter._aten_op: converter})
+        converter.supported_cases = supported_cases
+        global __DECLARED_SUPPORTED_CONVERTERS
+        __DECLARED_SUPPORTED_CONVERTERS.update({converter._aten_op: converter})
         return converter
 
     return add_testcase
 
 
-def test_converter(aten_ops: list = None):
-    global __CONVERTER_TESTS
-    if aten_ops is None:
-        for testcase in __CONVERTER_TESTS.values():
-            testcase.test()
-    elif isinstance(aten_ops, (list, tuple)):
-        for aten_op in aten_ops:
-            if aten_op not in __CONVERTER_TESTS.keys():
-                raise RuntimeError(f"Cannot find testcase for {aten_op}")
-            __CONVERTER_TESTS[aten_op].test()
-    else:
-        assert isinstance(aten_ops, Callable)
-        if aten_ops not in __CONVERTER_TESTS.keys():
-            raise RuntimeError(f"Cannot find testcase for {aten_ops}")
-        __CONVERTER_TESTS[aten_ops].test()
+def _declare_supported_converters():
+    return __DECLARED_SUPPORTED_CONVERTERS
 
 
 def register_fx_node_ge_converter(aten_op):

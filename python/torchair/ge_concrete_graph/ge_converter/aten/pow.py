@@ -1,7 +1,7 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.fx2ge_converter import register_testcase
-from torchair.ge_concrete_graph.testing_utils import *
+from torchair.ge_concrete_graph.fx2ge_converter import declare_supported
+from torchair.ge_concrete_graph.supported_declaration import *
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torchair.ge_concrete_graph.utils import dtype_promote
 from torch import contiguous_format, Generator, inf, memory_format, strided
@@ -46,10 +46,10 @@ def conveter_aten_pow_Tensor_Tensor(
     raise NotImplementedError("torch.ops.aten.pow.Tensor_Tensor ge converter is not implement!")
 
 
-@register_testcase([
-    TestInput(F32(2, 2), exponent=3.0),
-    TestInput(F32(2, 2), exponent=2),
-    TestInput(F32(2, 2), exponent=F32(1)),
+@declare_supported([
+    Support(F32(2, 2), exponent=3.0),
+    Support(F32(2, 2), exponent=2),
+    Support(F32(2, 2), exponent=F32(1)),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.pow.Tensor_Scalar)
 def conveter_aten_pow_Tensor_Scalar(

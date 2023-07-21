@@ -130,14 +130,14 @@ torch.compile(model, backend=npu_backend)
 您可以参考`ge_concrete_graph/ge_converter`目录下的实现，实现对应的converter。
 我们以torch.ops.aten.add.Tensor的converter实现为例说明converter实现时的一些细节：
 ```python
-@register_testcase([
-    TestInput(F32(2, 2), F32(2, 2)),
-    TestInput(F32(2, 2), F32(2, 1)),
-    TestInput(F32(2, 2), F16(2, 1)),
-    TestInput(F32(2, 2), F16(2, 2), alpha=2),
-    TestInput(F32(2, 2), 2.0),
-    TestInput(F32(2, 2), 2),
-    TestInput(F32(2, 2), 2, alpha=2.0),
+@declare_supported([
+    Support(F32(2, 2), F32(2, 2)),
+    Support(F32(2, 2), F32(2, 1)),
+    Support(F32(2, 2), F16(2, 1)),
+    Support(F32(2, 2), F16(2, 2), alpha=2),
+    Support(F32(2, 2), 2.0),
+    Support(F32(2, 2), 2),
+    Support(F32(2, 2), 2, alpha=2.0),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.add.Tensor)
 def conveter_aten_add_Tensor(
@@ -155,23 +155,24 @@ def conveter_aten_add_Tensor(
         self, other, alpha = dtype_promote(self, other, alpha, target_dtype = meta_outputs.dtype)
         return ge.AxpyV2(self, other, alpha)
 ```
-### 注册测试用例
-是的，我们需要您首先补齐aten.add.Tensor的测试用例，这些用例包括aten.add.Tensor所支持的传参方式，下面的代码片段展示了aten.add.Tensor的测试用例，并添加了一些注释说明其对应的场景：
+### 声明converter支持的场景
+您应该在开头声明converter需要支持的全部场景，支持场景应该穷举aten.add.Tensor所支持的全部传参方式，
+需要注意，`不应当有不支持的场景`，如果您发现有无法支持的传参方式，需要在converter实现中抛出异常。
 ```python
-@register_testcase([
-    TestInput(F32(2, 2), F32(2, 2)), # 测试基础的torch.add()
-    TestInput(F32(2, 2), F32(2, 1)), # 测试f32类型间的广播
-    TestInput(F32(2, 2), F16(2, 1)), # 测试f32与f16类型的广播
-    TestInput(F32(2, 2), F16(2, 2), alpha=2), # 测试带alpha入参场景
-    TestInput(F32(2, 2), 2.0), # 测试与浮点常量的加法
-    TestInput(F32(2, 2), 2), # 测试f32类型与整型常量的加法
-    TestInput(F32(2, 2), 2, alpha=2.0), # 测试带alpha入参场景
+@declare_supported([
+    Support(F32(2, 2), F32(2, 2)), # 支持基础的torch.add()
+    Support(F32(2, 2), F32(2, 1)), # 支持f32类型间的广播
+    Support(F32(2, 2), F16(2, 1)), # 支持f32与f16类型的广播
+    Support(F32(2, 2), F16(2, 2), alpha=2), # 支持带alpha入参场景
+    Support(F32(2, 2), 2.0), # 支持与浮点常量的加法
+    Support(F32(2, 2), 2), # 支持f32类型与整型常量的加法
+    Support(F32(2, 2), 2, alpha=2.0), # 支持带alpha入参场景
 ])
 ```
-当您实现了您的converter后，您可以通过如下方式来测试您的converter是否正确：
+当您实现了您的converter后，我们会根据您声明支持的场景，生成对应的测试用例，您可以通过如下方式来测试您的converter是否正确：
 > 需要在真实NPU环境测试，并确保已经实现了对应的converter及正确安装了torchair
 ```shell
-python3 smoke/converter_unittest.py
+python3 smoke/converter_test.py
 ```
 
 ### converter的函数签名

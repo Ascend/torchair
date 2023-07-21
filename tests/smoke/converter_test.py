@@ -1,10 +1,75 @@
 import functools
+from typing import Callable
 import torch
 import torchair as tng
 from torchair.ge_concrete_graph.fx2ge_converter import Converter
-from torchair.ge_concrete_graph.fx2ge_converter import test_converter as _test_inner
+from torchair.ge_concrete_graph.fx2ge_converter import _declare_supported_converters
 from torchair import CompilerConfig
+from torchair.ge_concrete_graph.supported_declaration import _TypedTensor
 aten = torch.ops.aten
+
+
+def _eager_aten_call(*args, aten_op, **kwargs):
+    return aten_op(*args, **kwargs)
+
+
+def _test_converter(converter: Converter, *, backend, result_checker):
+    if converter.supported_cases is None:
+        print(f"No supported_cases for {converter._aten_op}", flush=True)
+        return
+
+    eager_func = functools.partial(
+        _eager_aten_call, aten_op=converter._aten_op)
+    compiled_func = torch.compile(eager_func, backend=backend)
+
+    print(
+        f"Testing {converter._aten_op} with {len(converter.supported_cases)} cases", flush=True)
+    for testcase in converter.supported_cases:
+        print(f"[RUN] {testcase.title}", flush=True)
+        args = []
+        for arg in testcase.args:
+            if isinstance(arg, (list, tuple)):
+                args.append([(v.t() if isinstance(v, _TypedTensor) else v)
+                             for v in arg])
+            elif isinstance(arg, _TypedTensor):
+                args.append(arg.t())
+            else:
+                args.append(arg)
+        kwargs = testcase.kwargs
+        for k, v in kwargs.items():
+            if isinstance(v, _TypedTensor):
+                kwargs[k] = v.t()
+
+        try:
+            backend_results = compiled_func(*args, **kwargs)
+        except Exception as e:
+            backend_results = e
+
+        try:
+            eager_results = eager_func(*args, **kwargs)
+        except Exception as e:
+            eager_results = e
+
+        if result_checker is not None:
+            result_checker(
+                testcase.title, backend_results, eager_results)
+        del args, kwargs, backend_results, eager_results
+
+
+def _test_converters(aten_ops, *, backend, result_checker):
+    supported_converters = _declare_supported_converters()
+    if aten_ops is None:
+        aten_ops = supported_converters.keys()
+    elif isinstance(aten_ops, Callable):
+        aten_ops = (aten_ops, )
+    else:
+        assert isinstance(aten_ops, (list, tuple))
+
+    for aten_op in aten_ops:
+        if aten_op not in supported_converters.keys():
+            raise RuntimeError(f"Cannot find testcase for {aten_op}")
+        _test_converter(
+            supported_converters[aten_op], backend=backend, result_checker=result_checker)
 
 
 def check_tensor_same(a, b):
@@ -61,11 +126,12 @@ def test_converter(aten_ops=None, *, stop_when_error=False):
     global _FAILED_CASES
     _FAILED_CASES.clear()
 
-    Converter.compile_backend = tng.get_npu_backend()
-    Converter.result_checker = functools.partial(
+    compile_backend = tng.get_npu_backend()
+    result_checker = functools.partial(
         check_result, stop_when_error=stop_when_error)
 
-    _test_inner(aten_ops)
+    _test_converters(aten_ops, backend=compile_backend,
+                     result_checker=result_checker)
 
     for i, (name, error) in enumerate(_FAILED_CASES):
         print(f"--------------------", flush=True)

@@ -1,7 +1,7 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.fx2ge_converter import register_testcase
-from torchair.ge_concrete_graph.testing_utils import *
+from torchair.ge_concrete_graph.fx2ge_converter import declare_supported
+from torchair.ge_concrete_graph.supported_declaration import *
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torchair.ge_concrete_graph.utils import dtype_promote
 from torch import contiguous_format, Generator, inf, memory_format, strided
@@ -48,9 +48,9 @@ def conveter_aten_select_Dimname(
 
 
 # TODO: case2 will fail, fix view output case later
-@register_testcase([
-    TestInput(F32(3, 4), dim=0, index=0),
-    TestInput(F16(3, 4, 5), dim=1, index=2),
+@declare_supported([
+    Support(F32(3, 4), dim=0, index=0),
+    Support(F16(3, 4, 5), dim=1, index=2),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.select.int)
 def conveter_aten_select_int(

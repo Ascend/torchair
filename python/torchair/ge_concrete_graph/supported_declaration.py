@@ -1,7 +1,7 @@
 import torch
 
 
-class TestTensor:
+class _TypedTensor:
     def __init__(self, *dims, dtype):
         self.dims = dims
         self.dtype = dtype
@@ -17,52 +17,52 @@ class TestTensor:
         return torch.randn(*dims, dtype=self.dtype)
 
 
-class F32(TestTensor):
+class F32(_TypedTensor):
     def __init__(self, *dims):
         super().__init__(*dims, dtype=torch.float32)
 
 
-class F16(TestTensor):
+class F16(_TypedTensor):
     def __init__(self, *dims):
         super().__init__(*dims, dtype=torch.float16)
 
 
-class F64(TestTensor):
+class F64(_TypedTensor):
     def __init__(self, *dims):
         super().__init__(*dims, dtype=torch.float64)
 
 
-class I32(TestTensor):
+class I32(_TypedTensor):
     def __init__(self, *dims):
         super().__init__(*dims, dtype=torch.int32)
 
 
-class I16(TestTensor):
+class I16(_TypedTensor):
     def __init__(self, *dims):
         super().__init__(*dims, dtype=torch.int16)
 
 
-class I64(TestTensor):
+class I64(_TypedTensor):
     def __init__(self, *dims):
         super().__init__(*dims, dtype=torch.int64)
 
 
-class I8(TestTensor):
+class I8(_TypedTensor):
     def __init__(self, *dims):
         super().__init__(*dims, dtype=torch.int8)
 
 
-class U8(TestTensor):
+class U8(_TypedTensor):
     def __init__(self, *dims):
         super().__init__(*dims, dtype=torch.uint8)
 
 
-class BOOL(TestTensor):
+class BOOL(_TypedTensor):
     def __init__(self, *dims):
         super().__init__(*dims, dtype=torch.bool)
 
 
-class TestInput:
+class Support:
     def __init__(self, *args, **kwargs) -> None:
         for arg in args:
             if isinstance(arg, (list, tuple)):

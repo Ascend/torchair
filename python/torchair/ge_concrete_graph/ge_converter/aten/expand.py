@@ -1,7 +1,7 @@
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.fx2ge_converter import register_testcase
-from torchair.ge_concrete_graph.testing_utils import *
+from torchair.ge_concrete_graph.fx2ge_converter import declare_supported
+from torchair.ge_concrete_graph.supported_declaration import *
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torchair.ge_concrete_graph.utils import dtype_promote
 from torch import contiguous_format, Generator, inf, memory_format, strided
@@ -37,9 +37,9 @@ from torch.types import (
 )
 
 
-@register_testcase([
-    TestInput(F32(3, 1), size=[3, 4]),
-    TestInput(F16(3, 1, 2), size=[-1, 5, -1]),
+@declare_supported([
+    Support(F32(3, 1), size=[3, 4]),
+    Support(F16(3, 1, 2), size=[-1, 5, -1]),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.expand.default)
 def conveter_aten_expand_default(
