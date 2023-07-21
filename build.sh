@@ -82,7 +82,7 @@ run_test() {
 main() {
   checkopts "$@"
 
-  PYTHON_BIN_PATH=$(which python3)
+  PYTHON_BIN_PATH=$(which python3.8 || which python3)
   export TARGET_PYTHON_PATH=${PYTHON_BIN_PATH}
   if [[ "X$ASCEND_CUSTOM_PATH" = "X" ]]; then
     if [[ "X$ENABLE_CI_BUILD" = "Xon" ]]; then
@@ -96,7 +96,7 @@ main() {
     echo "Building torchair with ascned-sdk in ${ASCEND_CUSTOM_PATH}"
     export ASCEND_SDK_PATH=${ASCEND_CUSTOM_PATH}/opensdk/opensdk/
   fi
-  bash ${TORCHAIR_ROOT}/configure
+  PYTHON_BIN_PATH=${PYTHON_BIN_PATH} bash ${TORCHAIR_ROOT}/configure
 
   ${GCC_PREFIX}g++ -v
 
