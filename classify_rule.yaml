@@ -5,6 +5,7 @@ torchair:
   src:
     release:
       - torchair
+    unrelease:
   llt:
     ut_check:true
     st_check:true
