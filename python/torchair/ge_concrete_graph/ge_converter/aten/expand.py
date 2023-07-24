@@ -1,11 +1,3 @@
-import torch
-from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.fx2ge_converter import declare_supported
-from torchair.ge_concrete_graph.supported_declaration import *
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
-from torchair.ge_concrete_graph.utils import dtype_promote
-from torch import contiguous_format, Generator, inf, memory_format, strided
-from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
     Any,
     Callable,
@@ -15,43 +7,43 @@ from typing import (
     Literal,
     NamedTuple,
     Optional,
-    overload,
     Sequence,
     Tuple,
     TypeVar,
     Union,
-)
-from torch.types import (
-    _bool,
-    _complex,
-    _device,
-    _dtype,
-    _float,
-    _int,
-    _layout,
-    _qscheme,
-    _size,
-    Device,
-    Number,
-    SymInt,
+    overload,
 )
 
+import torch
+from torch import Generator, contiguous_format, inf, memory_format, strided
+from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
+from torchair.ge_concrete_graph import ge_apis as ge
+from torchair.ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
+    Support
+from torchair.ge_concrete_graph.utils import dtype_promote
 
-@declare_supported([
-    Support(F32(3, 1), size=[3, 4]),
-    Support(F16(3, 1, 2), size=[-1, 5, -1]),
-])
+
+@declare_supported(
+    [
+        Support(F32(3, 1), size=[3, 4]),
+        Support(F16(3, 1, 2), size=[-1, 5, -1]),
+    ]
+)
 @register_fx_node_ge_converter(torch.ops.aten.expand.default)
 def conveter_aten_expand_default(
-        self: Tensor,
-        size: Union[List[int], Tensor],
-        *,
-        implicit: bool = False,
-        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
-    """ NB: aten::expand(Tensor(a) self, SymInt[] size, *, bool implicit=False) -> Tensor(a) """
+    self: Tensor,
+    size: Union[List[int], Tensor],
+    *,
+    implicit: bool = False,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+):
+    """NB: aten::expand(Tensor(a) self, SymInt[] size, *, bool implicit=False) -> Tensor(a)"""
     if implicit:
-        raise NotImplementedError("torch.ops.aten.expand.default ge converter is not implement, "
-                                  "when param implicit is True.")
+        raise NotImplementedError(
+            "torch.ops.aten.expand.default ge_converter is not implemented, " "when param implicit is True."
+        )
 
     if isinstance(size, Tensor):
         return ge.BroadcastTo(self, size)

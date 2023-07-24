@@ -1,8 +1,3 @@
-import torch
-from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
-from torch import contiguous_format, Generator, inf, memory_format, strided
-from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
     Any,
     Callable,
@@ -12,36 +7,28 @@ from typing import (
     Literal,
     NamedTuple,
     Optional,
-    overload,
     Sequence,
     Tuple,
     TypeVar,
     Union,
+    overload,
 )
-from torch.types import (
-    _bool,
-    _complex,
-    _device,
-    _dtype,
-    _float,
-    _int,
-    _layout,
-    _qscheme,
-    _size,
-    Device,
-    Number,
-    SymInt,
-)
+
+import torch
+from torch import Generator, contiguous_format, inf, memory_format, strided
+from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
+from torchair.ge_concrete_graph import ge_apis as ge
+from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.prims.slice.default)
 def conveter_prims_slice_default(
-        a: Tensor,
-        start_indices: Union[List[int], Tensor],
-        limit_indices: Union[List[int], Tensor],
-        strides: Optional[Union[List[int], Tensor]] = None,
-        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
-    """ NB: prims::slice(Tensor(a) a, SymInt[] start_indices, SymInt[] limit_indices, SymInt[]? strides=None) -> Tensor(a) """
-    raise NotImplementedError("torch.ops.prims.slice.default ge converter is not implement!")
-
-
+    a: Tensor,
+    start_indices: Union[List[int], Tensor],
+    limit_indices: Union[List[int], Tensor],
+    strides: Optional[Union[List[int], Tensor]] = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+):
+    """NB: prims::slice(Tensor(a) a, SymInt[] start_indices, SymInt[] limit_indices, SymInt[]? strides=None) -> Tensor(a)"""
+    raise NotImplementedError("torch.ops.prims.slice.default ge_converter is not implemented!")

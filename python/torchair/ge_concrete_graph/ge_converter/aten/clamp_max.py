@@ -1,8 +1,3 @@
-import torch
-from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
-from torch import contiguous_format, Generator, inf, memory_format, strided
-from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
     Any,
     Callable,
@@ -12,65 +7,50 @@ from typing import (
     Literal,
     NamedTuple,
     Optional,
-    overload,
     Sequence,
     Tuple,
     TypeVar,
     Union,
+    overload,
 )
-from torch.types import (
-    _bool,
-    _complex,
-    _device,
-    _dtype,
-    _float,
-    _int,
-    _layout,
-    _qscheme,
-    _size,
-    Device,
-    Number,
-    SymInt,
-)
+
+import torch
+from torch import Generator, contiguous_format, inf, memory_format, strided
+from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
+from torchair.ge_concrete_graph import ge_apis as ge
+from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.aten.clamp_max.default)
 def conveter_aten_clamp_max_default(
-        self: Tensor,
-        max: Union[Number, Tensor],
-        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
-    """ NB: aten::clamp_max(Tensor self, Scalar max) -> Tensor """
-    raise NotImplementedError("torch.ops.aten.clamp_max.default ge converter is not implement!")
+    self: Tensor, max: Union[Number, Tensor], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+):
+    """NB: aten::clamp_max(Tensor self, Scalar max) -> Tensor"""
+    raise NotImplementedError("torch.ops.aten.clamp_max.default ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.clamp_max.Tensor)
-def conveter_aten_clamp_max_Tensor(
-        self: Tensor,
-        max: Tensor,
-        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
-    """ NB: aten::clamp_max.Tensor(Tensor self, Tensor max) -> Tensor """
-    raise NotImplementedError("torch.ops.aten.clamp_max.Tensor ge converter is not implement!")
+def conveter_aten_clamp_max_Tensor(self: Tensor, max: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+    """NB: aten::clamp_max.Tensor(Tensor self, Tensor max) -> Tensor"""
+    raise NotImplementedError("torch.ops.aten.clamp_max.Tensor ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.clamp_max.out)
 def conveter_aten_clamp_max_out(
-        self: Tensor,
-        max: Union[Number, Tensor],
-        *,
-        out: Tensor = None,
-        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
-    """ NB: aten::clamp_max.out(Tensor self, Scalar max, *, Tensor(a!) out) -> Tensor(a!) """
-    raise NotImplementedError("torch.ops.aten.clamp_max.out ge converter is not implement!")
+    self: Tensor,
+    max: Union[Number, Tensor],
+    *,
+    out: Tensor = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+):
+    """NB: aten::clamp_max.out(Tensor self, Scalar max, *, Tensor(a!) out) -> Tensor(a!)"""
+    raise NotImplementedError("torch.ops.aten.clamp_max.out ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.clamp_max.Tensor_out)
 def conveter_aten_clamp_max_Tensor_out(
-        self: Tensor,
-        max: Tensor,
-        *,
-        out: Tensor = None,
-        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
-    """ NB: aten::clamp_max.Tensor_out(Tensor self, Tensor max, *, Tensor(a!) out) -> Tensor(a!) """
-    raise NotImplementedError("torch.ops.aten.clamp_max.Tensor_out ge converter is not implement!")
-
-
+    self: Tensor, max: Tensor, *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+):
+    """NB: aten::clamp_max.Tensor_out(Tensor self, Tensor max, *, Tensor(a!) out) -> Tensor(a!)"""
+    raise NotImplementedError("torch.ops.aten.clamp_max.Tensor_out ge_converter is not implemented!")

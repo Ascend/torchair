@@ -1,8 +1,3 @@
-import torch
-from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
-from torch import contiguous_format, Generator, inf, memory_format, strided
-from torchair.ge_concrete_graph import ge_apis as ge
 from typing import (
     Any,
     Callable,
@@ -12,35 +7,24 @@ from typing import (
     Literal,
     NamedTuple,
     Optional,
-    overload,
     Sequence,
     Tuple,
     TypeVar,
     Union,
+    overload,
 )
-from torch.types import (
-    _bool,
-    _complex,
-    _device,
-    _dtype,
-    _float,
-    _int,
-    _layout,
-    _qscheme,
-    _size,
-    Device,
-    Number,
-    SymInt,
-)
+
+import torch
+from torch import Generator, contiguous_format, inf, memory_format, strided
+from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
+from torchair.ge_concrete_graph import ge_apis as ge
+from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.prims.svd.default)
 def conveter_prims_svd_default(
-        A: Tensor,
-        *,
-        full_matrices: bool,
-        meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
-    """ NB: prims::svd(Tensor A, *, bool full_matrices) -> (Tensor U, Tensor S, Tensor Vh) """
-    raise NotImplementedError("torch.ops.prims.svd.default ge converter is not implement!")
-
-
+    A: Tensor, *, full_matrices: bool, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+):
+    """NB: prims::svd(Tensor A, *, bool full_matrices) -> (Tensor U, Tensor S, Tensor Vh)"""
+    raise NotImplementedError("torch.ops.prims.svd.default ge_converter is not implemented!")
