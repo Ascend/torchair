@@ -3,19 +3,20 @@
 #include "concrete_graph.h"
 
 #include "external/graph/types.h"
+#include "framework/common/ge_types.h"
 #include "ge/ge_api.h"
 #include "ge_ir.pb.h"
+#include "graph/detail/model_serialize_imp.h"
 #include "graph/model_serialize.h"
 #include "graph/utils/graph_utils_ex.h"
-#include "graph/detail/model_serialize_imp.h"
 
 #include "checker.h"
-#include "session.h"
-#include "graph_data.h"
-#include "executor.h"
-#include "logger.h"
-#include "utils.h"
 #include "compat_apis.h"
+#include "executor.h"
+#include "graph_data.h"
+#include "logger.h"
+#include "session.h"
+#include "utils.h"
 
 char *CreateMessage(const char *format, va_list arg);
 
@@ -32,13 +33,19 @@ tng::Status NormalizeCompileOptions(const std::map<ge::AscendString, ge::AscendS
     }
   }
 
+  (void)normalized_options.insert(std::make_pair(ge::OPTION_TOPOSORTING_MODE, "2"));
+  // This static memory policy will be replaced by allocator memory pool of torchair for better memory reuse.
+  (void)normalized_options.insert(std::make_pair(ge::STATIC_MEMORY_POLICY.c_str(), "2"));
+
   return tng::Status::Success();
 }
 }  // namespace
 namespace tng {
 NpuConcreteGraph::NpuConcreteGraph(std::shared_ptr<GraphData> graph_data) : graph_data_(std::move(graph_data)){};
 
-Status NpuConcreteGraph::ReleaseResource() { return Session::GetInstance().Finalize(); }
+Status NpuConcreteGraph::ReleaseResource() {
+  return Session::GetInstance().Finalize();
+}
 
 Status NpuConcreteGraph::InitializeResource(const std::map<std::string, std::string> &options) {
   return Session::GetInstance().Initialize(options);
@@ -81,11 +88,12 @@ Status NpuConcreteGraph::Compile() {
   for (const auto &option : graph_data_->compile_options) {
     TNG_LOG(INFO) << "    " << option.first.GetString() << " = " << option.second.GetString();
   }
+
   TNG_RETURN_IF_ERROR(
-    Session::GetInstance().AddGraph(graph_data_->id, *graph_data_->graph, graph_data_->compile_options));
+      Session::GetInstance().AddGraph(graph_data_->id, *graph_data_->graph, graph_data_->compile_options));
   if (std::find(graph_data_->input_placements.begin(), graph_data_->input_placements.end(), Placement::DEVICE) !=
       graph_data_->input_placements.end()) {
-    // Only device input is not supported for compile
+    // Only device input is supported for compile
     TNG_RETURN_IF_ERROR(Session::GetInstance().CompileGraph(graph_data_->id, &graph_data_->summary));
   }
 
@@ -103,7 +111,7 @@ Status NpuConcreteGraph::AutoTune(const std::vector<at::Tensor> &example_inputs,
                   << DebugString(inputs[i]);
   }
   TNG_RETURN_IF_ERROR(
-    Session::GetInstance().AutoTuneGraph(*graph_data_->graph, graph_data_->compile_options, inputs, stream));
+      Session::GetInstance().AutoTuneGraph(*graph_data_->graph, graph_data_->compile_options, inputs, stream));
   return Status::Success();
 }
 

@@ -4,9 +4,9 @@
 #include <memory>
 #include <mutex>
 #include <unordered_map>
+#include "external/graph/types.h"
 #include "ge/ge_allocator.h"
 #include "tng_status.h"
-#include "external/graph/types.h"
 
 namespace tng {
 class AllocatorManager {

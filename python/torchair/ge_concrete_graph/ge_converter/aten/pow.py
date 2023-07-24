@@ -49,7 +49,6 @@ def conveter_aten_pow_Tensor_Tensor(
 @declare_supported([
     Support(F32(2, 2), exponent=3.0),
     Support(F32(2, 2), exponent=2),
-    Support(F32(2, 2), exponent=F32(1)),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.pow.Tensor_Scalar)
 def conveter_aten_pow_Tensor_Scalar(
