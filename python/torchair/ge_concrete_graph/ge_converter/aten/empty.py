@@ -15,7 +15,7 @@ from typing import (
 )
 
 import torch
-from torch import Generator, contiguous_format, inf, memory_format, strided
+from torch import Generator, contiguous_format, inf, strided
 from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
@@ -29,7 +29,7 @@ def conveter_aten_empty_memory_format(
     layout: Optional[int] = None,
     device: Optional[Device] = None,
     pin_memory: Optional[bool] = None,
-    mem_format: Optional[int] = None,
+    memory_format: Optional[int] = None,
     meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::empty.memory_format(SymInt[] size, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None, MemoryFormat? memory_format=None) -> Tensor"""
@@ -39,7 +39,7 @@ def conveter_aten_empty_memory_format(
 @register_fx_node_ge_converter(torch.ops.aten.empty.out)
 def conveter_aten_empty_out(
     size: Union[List[int], Tensor],
-    mem_format: Optional[int] = None,
+    memory_format: Optional[int] = None,
     out: Tensor = None,
     meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
@@ -55,7 +55,7 @@ def conveter_aten_empty_names(
     layout: Optional[int] = None,
     device: Optional[Device] = None,
     pin_memory: Optional[bool] = None,
-    mem_format: Optional[int] = None,
+    memory_format: Optional[int] = None,
     meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::empty.names(int[] size, *, str[]? names, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None, MemoryFormat? memory_format=None) -> Tensor"""
@@ -66,7 +66,7 @@ def conveter_aten_empty_names(
 def conveter_aten_empty_names_out(
     size: List[int],
     names: Optional[List[str]],
-    mem_format: Optional[int] = None,
+    memory_format: Optional[int] = None,
     out: Tensor = None,
     meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):

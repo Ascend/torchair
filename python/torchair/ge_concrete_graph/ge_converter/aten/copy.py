@@ -2,7 +2,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple, Union, Callable
 import torch
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
-from torch import contiguous_format, Generator, inf, memory_format, strided
+from torch import contiguous_format, Generator, inf, strided
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.utils import dtype_promote
 from torchair.ge_concrete_graph.fx2ge_converter import declare_supported

@@ -15,7 +15,7 @@ from typing import (
 )
 
 import torch
-from torch import Generator, contiguous_format, inf, memory_format, strided
+from torch import Generator, contiguous_format, inf, strided
 from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, torch_type_to_ge_type
@@ -31,15 +31,15 @@ def conveter_aten__to_copy_default(
     device: Optional[Device] = None,
     pin_memory: Optional[bool] = None,
     non_blocking: bool = False,
-    mem_format: Optional[int] = None,
+    memory_format: Optional[int] = None,
     meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::_to_copy(Tensor self, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None, bool non_blocking=False, MemoryFormat? memory_format=None) -> Tensor"""
     # layout, pin_memory, device and non_blocking have no effect on constructing graph.
-    if mem_format is not None and mem_format is not torch.contiguous_format:
+    if memory_format is not None and memory_format is not torch.contiguous_format:
         raise NotImplementedError(
             "torch.ops.aten._to_copy.default have some unprocessed parameters or cases, "
-            "memory_format = {}, torch.contiguous_format = {}".format(mem_format, torch.contiguous_format))
+            "memory_format = {}, torch.contiguous_format = {}".format(memory_format, torch.contiguous_format))
 
     if dtype is None:
         return ge.Identity(self)
