@@ -24,8 +24,8 @@ from torchair.ge_concrete_graph.utils import convert_to_tensorboard
 from torchair.ge_concrete_graph.supported_declaration import Support
 from . import ge_apis as ge
 
-__CONVERTERS = defaultdict(None)
-__DECLARED_SUPPORTED_CONVERTERS = defaultdict(None)
+__CONVERTERS = defaultdict(lambda: None)
+__DECLARED_SUPPORTED_CONVERTERS = defaultdict(lambda: None)
 
 
 def _get_converter(name: Callable):

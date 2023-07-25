@@ -244,7 +244,7 @@ struct AttrDef {
     }
     if (proto == "list.s") {
       ss << "op.attr[" << Brack(name) << "].list.val_type = " << GetListValueType(proto) << kEnd;
-      ss << "op.attr[" << Brack(name) << "]." << proto << " = compat_as_bytes_list(" << sig << ")";
+      ss << "op.attr[" << Brack(name) << "]." << proto << ".extend(compat_as_bytes_list(" << sig << "))";
       return;
     }
     if (proto == "list_list_int") {
