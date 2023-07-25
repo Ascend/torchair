@@ -40,9 +40,9 @@ def _wrap_converter(converter: Callable):
         if 'meta_outputs' in kwargs:
             meta_outputs = kwargs['meta_outputs']
             if isinstance(meta_outputs, (list, tuple)):
-                kwargs['meta_outputs'] = [TensorSpec(v) for v in meta_outputs]
+                kwargs['meta_outputs'] = [(TensorSpec(v) if v is not None else None) for v in meta_outputs]
             else:
-                kwargs['meta_outputs'] = TensorSpec(meta_outputs)
+                kwargs['meta_outputs'] = TensorSpec(meta_outputs) if meta_outputs is not None else None
 
         ge_outputs = converter(*args, **kwargs)
 
@@ -132,11 +132,11 @@ def _normalize_ge_graph(graph: GraphDef):
             continue
         for desc in op.input_desc:
             if not '_is_unfed_optional' in desc.attr:
-                desc.layout = "ND"
+                desc.layout = "ND" if desc.layout is "" else desc.layout
                 if desc.dtype == ProtoDataType.DT_UNDEFINED:
                     desc.dtype = ProtoDataType.DT_FLOAT
         for desc in op.output_desc:
-            desc.layout = "ND"
+            desc.layout = "ND" if desc.layout is "" else desc.layout
             if desc.dtype == ProtoDataType.DT_UNDEFINED:
                 desc.dtype = ProtoDataType.DT_FLOAT
 
