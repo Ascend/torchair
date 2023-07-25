@@ -33,6 +33,20 @@ class TorchairSt(unittest.TestCase):
         for i in range(2):
             model(x, y)
 
+    def test_sym_input(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                return torch.add(x, y)
+        model = torch.compile(Model(), backend=npu_backend, dynamic=True)
+        x = torch.randn(2, 2)
+        model(x, 2)
+        model(x, 3)
+        model(x, 2.0)
+        model(x, 3.0)
+
 
 if __name__ == '__main__':
     unittest.main()

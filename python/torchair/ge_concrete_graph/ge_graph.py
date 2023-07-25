@@ -169,6 +169,30 @@ def _np_dtype_to_ge_dtype(dtype: np.dtype) -> ProtoDataType:
     raise ValueError(f"Unsupported numpy dtype {dtype}")
 
 
+def is_sym(v):
+    return isinstance(v, (torch.SymInt, torch.SymFloat, torch.SymBool))
+
+
+def sym_to_ge_proto_dtype(v):
+    if isinstance(v, torch.SymInt):
+        return ProtoDataType.DT_INT64
+    if isinstance(v, torch.SymFloat):
+        return ProtoDataType.DT_FLOAT
+    if isinstance(v, torch.SymBool):
+        return ProtoDataType.DT_BOOL
+    raise RuntimeError(f"Unsupported sym type {type(v)}")
+
+
+def sym_to_torch_dtype(v):
+    if isinstance(v, torch.SymInt):
+        return torch.int64
+    if isinstance(v, torch.SymFloat):
+        return torch.float32
+    if isinstance(v, torch.SymBool):
+        return torch.bool
+    raise RuntimeError(f"Unsupported sym type {type(v)}")
+
+
 def torch_type_to_ge_proto_type(dtype):
     return torch_type_to_ge_type(dtype, ProtoDataType)
 
@@ -307,11 +331,11 @@ class Tensor:
             self._desc.attr['_meta'].s = compat_as_bytes(
                 f"Tensor(dtype={meta_output.dtype}, shape={meta_output.size()}")
         else:
-            assert isinstance(meta_output, torch.SymInt)
-            self.set_torch_dtype(torch.int64)
+            assert is_sym(meta_output)
+            self.set_torch_dtype(sym_to_torch_dtype(meta_output))
             self._symsize = []
             self._desc.attr['_meta'].s = compat_as_bytes(
-                f"SymInt({meta_output})")
+                f"{type(meta_output)}({meta_output})")
 
     def __repr__(self) -> str:
         return f'Tensor({self.tensor}, dtype={_ge_proto_dtype_str(self.desc.dtype)}, size={self._symsize})'

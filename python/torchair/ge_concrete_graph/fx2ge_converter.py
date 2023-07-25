@@ -18,6 +18,7 @@ from torchair.ge_concrete_graph.ge_graph import default_ge_graph
 from torchair.ge_concrete_graph.ge_graph import compat_as_bytes
 from torchair.ge_concrete_graph.ge_graph import DataType, TensorSpec
 from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type, torch_type_to_ge_proto_type
+from torchair.ge_concrete_graph.ge_graph import is_sym, sym_to_ge_proto_dtype
 from torchair.core.backend import TorchNpuGraph
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.ge_concrete_graph.utils import convert_to_tensorboard
@@ -40,9 +41,11 @@ def _wrap_converter(converter: Callable):
         if 'meta_outputs' in kwargs:
             meta_outputs = kwargs['meta_outputs']
             if isinstance(meta_outputs, (list, tuple)):
-                kwargs['meta_outputs'] = [(TensorSpec(v) if v is not None else None) for v in meta_outputs]
+                kwargs['meta_outputs'] = [
+                    (TensorSpec(v) if v is not None else None) for v in meta_outputs]
             else:
-                kwargs['meta_outputs'] = TensorSpec(meta_outputs) if meta_outputs is not None else None
+                kwargs['meta_outputs'] = TensorSpec(
+                    meta_outputs) if meta_outputs is not None else None
 
         ge_outputs = converter(*args, **kwargs)
 
@@ -132,11 +135,11 @@ def _normalize_ge_graph(graph: GraphDef):
             continue
         for desc in op.input_desc:
             if not '_is_unfed_optional' in desc.attr:
-                desc.layout = "ND" if desc.layout is "" else desc.layout
+                desc.layout = "ND" if desc.layout == "" else desc.layout
                 if desc.dtype == ProtoDataType.DT_UNDEFINED:
                     desc.dtype = ProtoDataType.DT_FLOAT
         for desc in op.output_desc:
-            desc.layout = "ND" if desc.layout is "" else desc.layout
+            desc.layout = "ND" if desc.layout == "" else desc.layout
             if desc.dtype == ProtoDataType.DT_UNDEFINED:
                 desc.dtype = ProtoDataType.DT_FLOAT
 
@@ -176,9 +179,9 @@ class GeConcreteGraph(ConcreteGraphBase):
         return False
 
     def parse_input(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
-        if isinstance(meta_outputs, torch.SymInt):
+        if is_sym(meta_outputs):
             data = ge.Data(index=len(self._inputs),
-                           dtype=ProtoDataType.DT_INT64, shape=[], name=target)
+                           dtype=sym_to_ge_proto_dtype(meta_outputs), shape=[], name=target)
             data.set_meta(meta_outputs)
             self._inputs.append(data)
             self._input_placements.append(Placement.HOST)
