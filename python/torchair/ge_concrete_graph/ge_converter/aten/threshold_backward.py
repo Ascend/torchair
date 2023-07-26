@@ -18,10 +18,19 @@ import torch
 from torch import Generator, contiguous_format, inf, strided
 from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
-from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
+from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
+    Support
+from torchair.ge_concrete_graph.utils import dtype_promote
 
 
+@declare_supported([
+    Support(F32(2, 2), F32(2, 2), 0.),
+    Support(F32(2, 2), F32(2, 2), 0.1),
+    Support(F16(2, 2), F16(2, 2), 0.),
+    Support(F16(2, 2), F16(2, 2), 0.1),
+])
 @register_fx_node_ge_converter(torch.ops.aten.threshold_backward.default)
 def conveter_aten_threshold_backward_default(
     grad_output: Tensor,
@@ -29,8 +38,18 @@ def conveter_aten_threshold_backward_default(
     threshold: Union[Number, Tensor],
     meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
-    """NB: aten::threshold_backward(Tensor grad_output, Tensor self, Scalar threshold) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.threshold_backward.default ge_converter is not implemented!")
+    """ NB: aten::threshold_backward(Tensor grad_output, Tensor self, Scalar threshold) -> Tensor """
+    self, grad_output = dtype_promote(self, grad_output, target_dtype = meta_outputs.dtype)
+
+    # This scenario will be supported in the future.
+    if isinstance(threshold, Tensor):
+        raise NotImplementedError("torch.ops.aten.threshold_backward is not implemented while threshold is Tensor!")
+
+    # Suggest a high-performance implementation when threshold is euqal to zero.
+    if threshold == 0.:
+        return ge.ReluGrad(grad_output, self)
+    
+    return ge.ThresholdGradV2D(grad_output, self, threshold=threshold)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.threshold_backward.grad_input)
