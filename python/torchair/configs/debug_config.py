@@ -35,7 +35,7 @@ class _Dump(_DebugBase):
 class _FxSummary(_DebugBase):
     def __init__(self):
         self.type = OptionValue(None, ["csv"])
-        self.skip_compile = OptionValue(False, [True, False])
+        self.skip_compile = OptionValue(True, [True, False])
         super(_FxSummary, self).__init__()
 
 

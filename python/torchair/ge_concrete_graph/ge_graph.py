@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Tuple, Union, Callable
 import functools
 import threading
 import contextlib
+import inspect
 import numpy as np
 from enum import Enum
 
@@ -183,6 +184,16 @@ def sym_to_ge_proto_dtype(v):
     raise RuntimeError(f"Unsupported sym type {type(v)}")
 
 
+def sym_to_ge_dtype(v):
+    if isinstance(v, torch.SymInt):
+        return DataType.DT_INT64
+    if isinstance(v, torch.SymFloat):
+        return DataType.DT_FLOAT
+    if isinstance(v, torch.SymBool):
+        return DataType.DT_BOOL
+    raise RuntimeError(f"Unsupported sym type {type(v)}")
+
+
 def sym_to_torch_dtype(v):
     if isinstance(v, torch.SymInt):
         return torch.int64
@@ -263,9 +274,9 @@ class TensorSpec:
             except:
                 self._size = None
         else:
-            assert isinstance(meta_output, torch.SymInt)
-            self._torch_dtype = torch.int64
-            self._ge_dtype = DataType.DT_INT64
+            assert is_sym(meta_output)
+            self._torch_dtype = sym_to_torch_dtype(meta_output)
+            self._ge_dtype = sym_to_ge_dtype(meta_output)
             self._symsize = torch.Size([])
             self._size = []
 

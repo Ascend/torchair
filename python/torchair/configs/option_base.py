@@ -9,6 +9,9 @@ class OptionValue:
         self.__optional = optional
         self.__value = default
 
+    def __bool__(self):
+        return bool(self.__value)
+
     @property
     def default(self):
         """Return property"""

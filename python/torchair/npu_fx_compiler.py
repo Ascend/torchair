@@ -1,5 +1,6 @@
 import functools
 from collections import defaultdict
+import operator
 from typing import List, Callable, Any, Dict, Tuple, Union
 
 import torch
@@ -43,6 +44,10 @@ def _safe_str(x):
         return f"{x}"
     except Exception:
         return f"{type(x)}"
+
+
+def _is_binary_operator(target: Target):
+    return target in (operator.add, operator.sub, operator.mul, operator.truediv, operator.floordiv)
 
 
 def trace_print(f):
@@ -95,7 +100,7 @@ class NpuGraphConverter(Interpreter):
     def _wrap(self, fn):
         def inner(target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any]):
             func = getattr(super(NpuGraphConverter, self), fn)
-            if is_builtin_callable(target):
+            if is_builtin_callable(target) and not _is_binary_operator(target):
                 return func(target, args, kwargs)
             meta_outputs = func(target, _unpack_meta(args), kwargs)
             npu_outputs = self._graph.parse_node(
@@ -149,15 +154,21 @@ class _NpuFxCompiler:
         logger.info(f'  graph: {gm.graph}')
 
         if self.config.debug.fx_summary.enabled:
-            summarize_fx_graph(gm, example_inputs, self.config.debug.fx_summary.full_path("summary"))
+            summarize_fx_graph(
+                gm, example_inputs, self.config.debug.fx_summary.full_path("summary"))
             if self.config.debug.fx_summary.skip_compile:
+                logger.warning(f'When summarizing FX Graph, npu compilation will be skipped, '
+                               'and FALLBACK to EAGER execution to ensure the integrity of the analysis data. '
+                               'Once the analysis is complete, please make sure to disable the summary config '
+                               'to ensure that the graph is compiled and executed.')
                 return gm
 
         concrete_graph: ConcreteGraphBase = NpuGraphConverter(
             gm, graph=ConcreteGraph(self.config)).run(*example_inputs)
 
         if self.config.debug.graph_dump.enabled:
-            concrete_graph.dump(self.config.debug.graph_dump.full_path("dynamo"))
+            concrete_graph.dump(
+                self.config.debug.graph_dump.full_path("dynamo"))
 
         logger.info(f'start compile graph: {concrete_graph}')
         concrete_graph.compile()

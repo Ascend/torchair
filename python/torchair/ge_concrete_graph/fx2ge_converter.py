@@ -25,13 +25,12 @@ from torchair.ge_concrete_graph.utils import convert_to_tensorboard
 from torchair.ge_concrete_graph.supported_declaration import Support
 from . import ge_apis as ge
 
-__CONVERTERS = defaultdict(lambda: None)
-__DECLARED_SUPPORTED_CONVERTERS = defaultdict(lambda: None)
+_CONVERTERS = defaultdict(lambda: None)
+_DECLARED_SUPPORTED_CONVERTERS = defaultdict(lambda: None)
 
 
 def _get_converter(name: Callable):
-    global __CONVERTERS
-    return __CONVERTERS[name]
+    return _CONVERTERS[name]
 
 
 def _wrap_converter(converter: Callable):
@@ -81,8 +80,8 @@ class Converter:
         try:
             self._aten_op._ge_converter = wrapped_converter
         except:
-            global __CONVERTERS
-            __CONVERTERS.update({self._aten_op: wrapped_converter})
+            global _CONVERTERS
+            _CONVERTERS.update({self._aten_op: wrapped_converter})
         return self
 
     @property
@@ -101,15 +100,14 @@ def declare_supported(supported_cases: List[Support]):
     def add_testcase(converter):
         assert isinstance(converter, Converter)
         converter.supported_cases = supported_cases
-        global __DECLARED_SUPPORTED_CONVERTERS
-        __DECLARED_SUPPORTED_CONVERTERS.update({converter._aten_op: converter})
+        _DECLARED_SUPPORTED_CONVERTERS.update({converter._aten_op: converter})
         return converter
 
     return add_testcase
 
 
 def _declare_supported_converters():
-    return __DECLARED_SUPPORTED_CONVERTERS
+    return _DECLARED_SUPPORTED_CONVERTERS
 
 
 def register_fx_node_ge_converter(aten_op):
