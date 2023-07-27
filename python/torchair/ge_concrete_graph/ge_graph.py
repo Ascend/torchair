@@ -490,7 +490,9 @@ def auto_convert_to_tensor(inputs_dynamic, inputs_optional):
     def inner(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            args = list(args)
+            bundle_inputs = inspect.signature(func).bind(*args, **kwargs)
+            args = bundle_inputs.args
+            kwargs = bundle_inputs.kwargs
             assert len(inputs_dynamic) == len(inputs_optional)
             assert len(args) >= len(inputs_dynamic)
             args = _auto_type_promotion_for_const(args, inputs_dynamic,

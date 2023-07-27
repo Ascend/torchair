@@ -6,6 +6,7 @@ import torchair
 
 import torchair
 from torchair.configs.compiler_config import CompilerConfig
+from torchair.ge_concrete_graph import ge_apis as ge
 
 import logging
 from torchair.core.utils import logger
@@ -63,6 +64,10 @@ class TorchairSt(unittest.TestCase):
         x = torch.randn(2, 2)
         model(x, 2, 3)
         model(x, 3, 4)
+
+    def test_ge_api_support_position_passin_by_kv(self):
+        # shape is position input of ge.Empty, check not raise when pass shape by k-v
+        ge.Empty(shape=ge.Const(1))
 
 
 if __name__ == '__main__':
