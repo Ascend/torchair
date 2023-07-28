@@ -1,4 +1,5 @@
 import os
+os.environ['TNG_LOG_LEVEL'] = '0'
 import time
 import unittest
 import torch

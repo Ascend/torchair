@@ -21,6 +21,7 @@ ge::AscendString DebugString(const ge::DataType &dtype);
 Status ConvertGraphDefToGraph(ge::proto::GraphDef &graph_def, ge::GraphPtr &graph);
 std::vector<tng::Placement> GetGraphInputPlacemnts(const ge::proto::GraphDef &graph_def);
 std::vector<ge::DataType> GetGraphOutputDtypes(const ge::proto::GraphDef &graph_def);
+ExecutorType GetGraphExecutorType(const ge::proto::GraphDef &graph_def);
 }  // namespace compat
 }  // namespace tng
 

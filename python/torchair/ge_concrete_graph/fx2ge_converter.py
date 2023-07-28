@@ -4,6 +4,7 @@ import functools
 import threading
 import contextlib
 import inspect
+import sys
 
 import torch
 from torch.fx.node import Argument, Target
@@ -148,6 +149,17 @@ class Placement:
     DEVICE = 1
 
 
+class ExecutorType:
+    CPU = 0
+    NPU = 1
+
+
+def _get_executor_type():
+    if 'torch_npu' in sys.modules:
+        return ExecutorType.NPU
+    return ExecutorType.CPU
+
+
 class GeConcreteGraph(ConcreteGraphBase):
     def __init__(self, config: CompilerConfig, graph=None, name=None):
         self._graph = GraphDef() if graph is None else graph
@@ -266,6 +278,8 @@ class GeConcreteGraph(ConcreteGraphBase):
             self._input_placements)
         self.graph.attr["_output_dtypes"].list.i.extend(
             [output.dtype for output in self.outputs])
+        self.graph.attr["_executor_type"].i = _get_executor_type()
+
         _normalize_ge_graph(self.graph)
 
         initialize_graph_engine()

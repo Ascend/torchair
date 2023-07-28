@@ -67,6 +67,8 @@ Status NpuConcreteGraph::Create(const void *serialized_proto, size_t proto_size,
 
   graph_data->input_placements = compat::GetGraphInputPlacemnts(graph_data->graph_def);
   graph_data->output_dtypes = compat::GetGraphOutputDtypes(graph_data->graph_def);
+  graph_data->executor_type = compat::GetGraphExecutorType(graph_data->graph_def);
+  TNG_ASSERT(graph_data->executor_type != ExecutorType::UNKNOWN, "Executor type is unknown");
 
   TNG_RETURN_IF_ERROR(NormalizeCompileOptions(options, graph_data->compile_options));
 
@@ -91,8 +93,7 @@ Status NpuConcreteGraph::Compile() {
 
   TNG_RETURN_IF_ERROR(
       Session::GetInstance().AddGraph(graph_data_->id, *graph_data_->graph, graph_data_->compile_options));
-  if (std::find(graph_data_->input_placements.begin(), graph_data_->input_placements.end(), Placement::DEVICE) !=
-      graph_data_->input_placements.end()) {
+  if (graph_data_->executor_type == ExecutorType::NPU) {
     // Only device input is supported for compile
     TNG_RETURN_IF_ERROR(Session::GetInstance().CompileGraph(graph_data_->id, &graph_data_->summary));
   }

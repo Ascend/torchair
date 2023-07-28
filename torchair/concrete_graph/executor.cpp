@@ -65,8 +65,7 @@ class CpuGraphExecutor : public Executor {
 
 Status Executor::Create(const std::shared_ptr<GraphData> &graph_data, std::unique_ptr<Executor> &executor) {
   TNG_ASSERT_NOTNULL(graph_data);
-  if (std::find(graph_data->input_placements.begin(), graph_data->input_placements.end(), Placement::DEVICE) ==
-      graph_data->input_placements.end()) {
+  if (graph_data->executor_type == ExecutorType::CPU) {
     executor = std::unique_ptr<Executor>(new CpuGraphExecutor(graph_data));
   } else {
     std::lock_guard<std::mutex> lock(mutex_);

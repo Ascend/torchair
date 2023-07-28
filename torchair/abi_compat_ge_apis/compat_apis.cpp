@@ -1,11 +1,11 @@
-#include "external/graph/types.h"
-#include "graph/tensor.h"
-#include "graph/utils/type_utils.h"
 #include "checker.h"
+#include "external/graph/types.h"
 #include "ge/ge_api.h"
-#include "graph/model_serialize.h"
-#include "graph/utils/graph_utils_ex.h"
 #include "graph/detail/model_serialize_imp.h"
+#include "graph/model_serialize.h"
+#include "graph/tensor.h"
+#include "graph/utils/graph_utils_ex.h"
+#include "graph/utils/type_utils.h"
 
 #include <unordered_map>
 
@@ -33,6 +33,19 @@ std::vector<tng::Placement> GetGraphInputPlacemnts(const ge::proto::GraphDef &gr
     }
   }
   return placements;
+}
+
+ExecutorType GetGraphExecutorType(const ge::proto::GraphDef &graph_def) {
+  auto &graph_attr = graph_def.attr();
+  auto iter = graph_attr.find("_executor_type");
+  ExecutorType executor_type = ExecutorType::UNKNOWN;
+  if (iter != graph_attr.end()) {
+    executor_type = static_cast<ExecutorType>(iter->second.i());
+  }
+  if ((executor_type == ExecutorType::CPU) || (executor_type == ExecutorType::NPU)) {
+    return executor_type;
+  }
+  return ExecutorType::UNKNOWN;
 }
 
 std::vector<ge::DataType> GetGraphOutputDtypes(const ge::proto::GraphDef &graph_def) {
@@ -66,10 +79,10 @@ Status ConvertGraphDefToGraph(ge::proto::GraphDef &graph_def, ge::GraphPtr &grap
   std::unordered_map<std::string, std::pair<Name2Index, Name2Index>> op_to_name2index;
   for (auto &op : graph_def.op()) {
     TNG_ASSERT(
-      op_to_name2index
-        .emplace(op.name(), std::make_pair(GetDescName2Index(op.input_desc()), GetDescName2Index(op.output_desc())))
-        .second,
-      "Dumplicated op name: %s", op.name().c_str());
+        op_to_name2index
+            .emplace(op.name(), std::make_pair(GetDescName2Index(op.input_desc()), GetDescName2Index(op.output_desc())))
+            .second,
+        "Dumplicated op name: %s", op.name().c_str());
   }
 
   for (auto &node : compute_graph->GetAllNodes()) {
@@ -86,7 +99,9 @@ Status ConvertGraphDefToGraph(ge::proto::GraphDef &graph_def, ge::GraphPtr &grap
   return Status::Success();
 }
 
-Status GeErrorStatus() { return Status::Error("%s", ge::GEGetErrorMsg().c_str()); }
+Status GeErrorStatus() {
+  return Status::Error("%s", ge::GEGetErrorMsg().c_str());
+}
 
 Status DebugString(const ge::Shape &shape) {
   std::stringstream ss;
@@ -113,6 +128,8 @@ Status DebugString(const ge::Tensor &tensor) {
   return Status::Error(ss.str().c_str());
 }
 
-ge::AscendString DebugString(const ge::DataType &dtype) { return ge::TypeUtils::DataTypeToSerialString(dtype).c_str(); }
+ge::AscendString DebugString(const ge::DataType &dtype) {
+  return ge::TypeUtils::DataTypeToSerialString(dtype).c_str();
+}
 }  // namespace compat
 }  // namespace tng

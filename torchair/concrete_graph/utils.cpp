@@ -1,14 +1,14 @@
 #include "utils.h"
 
-#include "external/graph/types.h"
-#include "executor.h"
-#include "graph_data.h"
-#include "graph/tensor.h"
-#include "graph/utils/type_utils.h"
-#include "torch/torch.h"
-#include "session.h"
 #include "checker.h"
 #include "compat_apis.h"
+#include "executor.h"
+#include "external/graph/types.h"
+#include "graph/tensor.h"
+#include "graph/utils/type_utils.h"
+#include "graph_data.h"
+#include "session.h"
+#include "torch/torch.h"
 
 #include "ATen/CPUFunctions.h"
 
@@ -59,7 +59,9 @@ std::string DebugString(const tng::Placement &placement) {
   }
 }
 
-std::string DebugString(const ge::DataType &dtype) { return compat::DebugString(dtype).GetString(); }
+std::string DebugString(const ge::DataType &dtype) {
+  return compat::DebugString(dtype).GetString();
+}
 
 std::string DebugString(const std::vector<ge::DataType> &dtypes) {
   if (dtypes.empty()) {
@@ -111,7 +113,8 @@ std::string DebugString(const GraphData &graph_data) {
   }
   ss << "num nodes: " << graph_data.graph_def.op_size() << std::endl;
   ss << "input placements: " << DebugString(graph_data.input_placements) << std::endl;
-  ss << "output dtypes :" << DebugString(graph_data.output_dtypes);
+  ss << "output dtypes :" << DebugString(graph_data.output_dtypes) << std::endl;
+  ss << "executor type :" << ((graph_data.executor_type == tng::ExecutorType::NPU) ? "NPU" : "DEFAULT");
   return ss.str();
 }
 
@@ -135,9 +138,13 @@ std::string DebugString(const c10::Device &device) {
   return ss.str();
 }
 
-std::string DebugString(const ge::Shape &shape) { return compat::DebugString(shape).GetErrorMessage(); }
+std::string DebugString(const ge::Shape &shape) {
+  return compat::DebugString(shape).GetErrorMessage();
+}
 
-std::string DebugString(const ge::Tensor &tensor) { return compat::DebugString(tensor).GetErrorMessage(); }
+std::string DebugString(const ge::Tensor &tensor) {
+  return compat::DebugString(tensor).GetErrorMessage();
+}
 
 Status GePlacementToAtDeviceType(const ge::Placement &ge_placement, c10::DeviceType &device_type) {
   if (ge_placement == ge::Placement::kPlacementHost) {
@@ -196,7 +203,7 @@ Status AssembleDataToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor) {
   // Therefore, when getting data_ptr, the calculation of the data_ptr address needs to skip storage_offset,
   // and the calculation of nbytes needs to be based on the shape after view.
   TNG_ASSERT_GE_OK(
-    ge_tensor.SetData(static_cast<uint8_t *>(tensor.data_ptr()), tensor.numel() * tensor.element_size(), kDoNothing));
+      ge_tensor.SetData(static_cast<uint8_t *>(tensor.data_ptr()), tensor.numel() * tensor.element_size(), kDoNothing));
   return Status::Success();
 }
 

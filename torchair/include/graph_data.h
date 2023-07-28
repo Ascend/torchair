@@ -16,6 +16,13 @@ enum class Placement {
   HOST = 0,
   DEVICE = 1,
 };
+
+enum class ExecutorType {
+  UNKNOWN = -1,
+  CPU = 0,
+  NPU = 1,
+};
+
 class GraphData {
  public:
   GraphData() {
@@ -29,6 +36,7 @@ class GraphData {
   std::map<ge::AscendString, ge::AscendString> compile_options;
   std::vector<Placement> input_placements;
   std::vector<ge::DataType> output_dtypes;
+  ExecutorType executor_type = ExecutorType::UNKNOWN;
   std::shared_ptr<ge::CompiledGraphSummary> summary = nullptr;
 };
 }  // namespace tng
