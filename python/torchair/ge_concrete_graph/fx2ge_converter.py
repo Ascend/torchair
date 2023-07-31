@@ -91,9 +91,8 @@ class Converter:
 
     @supported_cases.setter
     def supported_cases(self, supported_cases):
-        for i, testcase in enumerate(supported_cases):
+        for testcase in supported_cases:
             assert isinstance(testcase, Support)
-            testcase.title = f"{self._aten_op} testcase {i + 1}/{len(supported_cases)} with inputs: {testcase}"
         self._supported_cases = supported_cases
 
 

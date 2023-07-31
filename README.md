@@ -175,6 +175,11 @@ def conveter_aten_add_Tensor(
 python3 smoke/converter_test.py
 ```
 
+可以通过入参控制只测试满足某个prefix的converter，如下所示：
+```shell
+python3 smoke/converter_test.py aten.add.Tensor
+```
+
 ### converter的函数签名
 ```python
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec

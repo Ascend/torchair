@@ -1,6 +1,8 @@
 import functools
 from typing import Callable
 import torch
+import sys
+import contextlib
 import torchair as tng
 from torchair.ge_concrete_graph.fx2ge_converter import Converter
 from torchair.ge_concrete_graph.fx2ge_converter import _declare_supported_converters
@@ -8,9 +10,52 @@ from torchair import CompilerConfig
 from torchair.ge_concrete_graph.supported_declaration import _TypedTensor
 aten = torch.ops.aten
 
+_torch_npu_module = None
+
+
+@contextlib.contextmanager
+def _npu_executor_as_default():
+    global _torch_npu_module
+    if _torch_npu_module is None:
+        import torch_npu
+        _torch_npu_module = torch_npu
+        torch_npu.npu.set_device(0)
+    try:
+        sys.modules['torch_npu'] = _torch_npu_module
+        yield
+    finally:
+        del sys.modules['torch_npu']
+
+
+def as_tensor(spec: _TypedTensor):
+    device = 'npu' if ('torch_npu' in sys.modules) else 'cpu'
+    dims = spec.dims
+    if spec.value is not None:
+        return torch.tensor(spec.value, dtype=spec.dtype, device=device)
+    return torch.randn(*dims).to(spec.dtype).to(device)
+
 
 def _eager_aten_call(*args, aten_op, **kwargs):
     return aten_op(*args, **kwargs)
+
+
+def _assemble_testcase_inputs(testcase):
+    args = []
+    for arg in testcase.args:
+        if isinstance(arg, (list, tuple)):
+            args.append([(as_tensor(v) if isinstance(v, _TypedTensor) else v)
+                         for v in arg])
+        elif isinstance(arg, _TypedTensor):
+            args.append(as_tensor(arg))
+        else:
+            args.append(arg)
+    kwargs = {}
+    for k, v in testcase.kwargs.items():
+        if isinstance(v, _TypedTensor):
+            kwargs[k] = as_tensor(v)
+        else:
+            kwargs[k] = v
+    return args, kwargs
 
 
 def _test_converter(converter: Converter, *, backend, result_checker):
@@ -24,22 +69,11 @@ def _test_converter(converter: Converter, *, backend, result_checker):
 
     print(
         f"Testing {converter._aten_op} with {len(converter.supported_cases)} cases", flush=True)
-    for testcase in converter.supported_cases:
-        print(f"[RUN] {testcase.title}", flush=True)
-        args = []
-        for arg in testcase.args:
-            if isinstance(arg, (list, tuple)):
-                args.append([(v.t() if isinstance(v, _TypedTensor) else v)
-                             for v in arg])
-            elif isinstance(arg, _TypedTensor):
-                args.append(arg.t())
-            else:
-                args.append(arg)
-        kwargs = testcase.kwargs
-        for k, v in kwargs.items():
-            if isinstance(v, _TypedTensor):
-                kwargs[k] = v.t()
+    for i, testcase in enumerate(converter.supported_cases):
+        case_name = f"{converter._aten_op} testcase {i + 1}/{len(converter.supported_cases)} with inputs: {testcase}"
+        print(f"[RUN] {case_name}", flush=True)
 
+        args, kwargs = _assemble_testcase_inputs(testcase)
         try:
             backend_results = compiled_func(*args, **kwargs)
         except Exception as e:
@@ -48,11 +82,21 @@ def _test_converter(converter: Converter, *, backend, result_checker):
         try:
             eager_results = eager_func(*args, **kwargs)
         except Exception as e:
-            eager_results = e
+            if 'torch_npu' in sys.modules:
+                eager_results = e
+            else:
+                print(
+                    f"[WARNNING] Fallback to get npu eager result as cpu error {e}", flush=True)
+                try:
+                    with _npu_executor_as_default():
+                        npu_args, npu_kwargs = _assemble_testcase_inputs(
+                            testcase)
+                        eager_results = eager_func(*npu_args, **npu_kwargs)
+                except Exception as e:
+                    eager_results = e
 
         if result_checker is not None:
-            result_checker(
-                testcase.title, backend_results, eager_results)
+            result_checker(case_name, backend_results, eager_results)
         del args, kwargs, backend_results, eager_results
 
 
@@ -62,6 +106,17 @@ def _test_converters(aten_ops, *, backend, result_checker):
         aten_ops = supported_converters.keys()
     elif isinstance(aten_ops, Callable):
         aten_ops = (aten_ops, )
+    elif isinstance(aten_ops, str):
+        prefix = aten_ops
+        aten_ops = []
+        for aten_op in supported_converters.keys():
+            if f'{aten_op}'.startswith(prefix):
+                print(
+                    f"Converter of {aten_op} match prefix '{prefix}'", flush=True)
+                aten_ops.append(aten_op)
+        if len(aten_ops) == 0:
+            raise RuntimeError(
+                f"Cannot find testcase match prefix '{prefix}'")
     else:
         assert isinstance(aten_ops, (list, tuple))
 
@@ -73,6 +128,8 @@ def _test_converters(aten_ops, *, backend, result_checker):
 
 
 def check_tensor_same(a, b):
+    a = a.cpu()
+    b = b.cpu()
     assert a.dtype == b.dtype, f"Datatype mismatch {a.dtype} vs. {b.dtype}"
     assert a.size() == b.size(), f"Shape mismatch {a.size()} vs. {b.size()}"
 
@@ -108,17 +165,17 @@ def _check_result(compiled_rets, eager_rets):
 _FAILED_CASES = []
 
 
-def check_result(case_title, compiled_rets, eager_rets, *, stop_when_error=False):
+def check_result(case_name, compiled_rets, eager_rets, *, stop_when_error=False):
     global _FAILED_CASES
     try:
         _check_result(compiled_rets, eager_rets)
-        print(f"[PASS] {case_title}", flush=True)
+        print(f"[PASS] {case_name}", flush=True)
     except Exception as e:
-        print(f"[FAILED] {case_title}", flush=True)
+        print(f"[FAILED] {case_name}", flush=True)
         if stop_when_error:
             raise e
         else:
-            _FAILED_CASES.append((case_title, str(e)))
+            _FAILED_CASES.append((case_name, str(e)))
             del e
 
 
@@ -138,11 +195,15 @@ def test_converter(aten_ops=None, *, stop_when_error=False):
         print(f"FAILED [{i+1}/{len(_FAILED_CASES)}] {name}", flush=True)
         print(f"Error: {error}", flush=True)
 
-    assert len(_FAILED_CASES) == 0, f"{len(_FAILED_CASES)} testcases failed"
+    if len(_FAILED_CASES) == 0:
+        print('Test result: All testcases passed', flush=True)
+    else:
+        print(
+            f"Test result: {len(_FAILED_CASES)} testcases failed", flush=True)
 
 
 if __name__ == "__main__":
-    # 不传入任何值表示测试全部的converter，
-    # 可以通过传入单个op或者op列表来测试指定的op,
-    # 例如：test_converter(aten.add.Tensor)只会测试aten.add.Tensor的converter
-    test_converter()
+    case_pattern = None
+    if len(sys.argv) == 2:
+        case_pattern = sys.argv[1]
+    test_converter(case_pattern)

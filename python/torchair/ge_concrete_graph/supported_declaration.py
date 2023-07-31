@@ -2,19 +2,20 @@ import torch
 
 
 class _TypedTensor:
-    def __init__(self, *dims, dtype):
+    def __init__(self, *dims, dtype, value=None):
         self.dims = dims
         self.dtype = dtype
+        self.value = value
 
     def __str__(self) -> str:
+        if self.value is not None:
+            return f"tensor({self.value}, dtype={self.dtype})"
         return f"Tensor({self.dims}, {self.dtype})"
 
     def __repr__(self) -> str:
+        if self.value is not None:
+            return f"tensor({self.value}, dtype={self.dtype})"
         return f"Tensor({self.dims}, {self.dtype})"
-
-    def t(self):
-        dims = self.dims
-        return torch.randn(*dims, dtype=self.dtype)
 
 
 class F32(_TypedTensor):
@@ -60,6 +61,11 @@ class U8(_TypedTensor):
 class BOOL(_TypedTensor):
     def __init__(self, *dims):
         super().__init__(*dims, dtype=torch.bool)
+
+
+class T(_TypedTensor):
+    def __init__(self, value, *, dtype):
+        super().__init__(dtype=dtype, value=value)
 
 
 class Support:
