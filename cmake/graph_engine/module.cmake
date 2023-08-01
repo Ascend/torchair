@@ -1,10 +1,6 @@
 include_guard()
 add_library(ge_libs INTERFACE)
 
-include_directories(${ASCEND_CI_BUILD_DIR}/graphengine/inc)
-include_directories(${ASCEND_CI_BUILD_DIR}/graphengine/inc/external)
-include_directories(${ASCEND_CI_BUILD_DIR}/metadef/inc)
-include_directories(${ASCEND_CI_BUILD_DIR}/metadef/inc/external)
 add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/_fake.cc
         COMMAND touch ${CMAKE_CURRENT_BINARY_DIR}/_fake.cc
