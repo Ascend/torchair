@@ -18,10 +18,18 @@ import torch
 from torch import Generator, contiguous_format, inf, strided
 from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
-from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, torch_type_to_ge_type
+from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
+    Support
+from torchair.ge_concrete_graph.utils import dtype_promote
 
 
+@declare_supported(
+    [
+        Support(F32(4, 1, 5), input_sizes=(4, 3, 1, 5), dim=1, index=2),
+    ]
+)
 @register_fx_node_ge_converter(torch.ops.aten.select_backward.default)
 def conveter_aten_select_backward_default(
     grad_output: Tensor,
@@ -31,7 +39,14 @@ def conveter_aten_select_backward_default(
     meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::select_backward(Tensor grad_output, SymInt[] input_sizes, int dim, SymInt index) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.select_backward.default ge_converter is not implemented!")
+    
+    size_ = ge.Cast(input_sizes, dst_type=torch_type_to_ge_type(torch.int))
+    grad_input_ = ge.Empty(size_, dtype=grad_output.dtype)
+    
+    index_ = ge.BroadcastTo(index, input_sizes)
+    grad_output_ = ge.BroadcastTo(ge.ExpandDims(grad_output, dim), input_sizes)
+
+    return ge.ScatterElements(grad_input_, index_, grad_output_, axis=dim)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.select_backward.out)
