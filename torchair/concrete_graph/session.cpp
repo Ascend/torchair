@@ -41,6 +41,12 @@ Status Session::Initialize(const std::map<std::string, std::string> &options) {
       status_ = Status::Error("Failed to create GE session");
     }
   }
+  // the context will switch after ge Session created
+  // set device index in option in order to keep original context
+  device_index_ = static_cast<int32_t>(std::atoi(iter->second.GetString()));
+  TNG_ASSERT(device_index_ >= 0, "device_index_ = %d, assert device_index_ >= 0 failed!", device_index_);
+  auto ret = aclrtSetDevice(device_index_);
+  TNG_ASSERT(ret == ACL_ERROR_NONE, "ACL set device id failed, return %d", ret);
 
   initialized_ = true;
   return status_;
@@ -57,6 +63,12 @@ Status Session::Finalize() {
   if (!initialized_) {
     return Status::Success();
   }
+  // reset device
+  auto ret = aclrtResetDevice(device_index_);
+  if (ret != ACL_ERROR_NONE) {
+    TNG_LOG(WARNING) << "ACL reset device index " << device_index_ << " failed, returned " << ret;
+  }
+
   global_ge_session.reset(nullptr);
   TNG_ASSERT_GE_OK(ge::GEFinalize());
   return Status::Success();

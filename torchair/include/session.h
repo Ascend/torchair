@@ -42,6 +42,7 @@ class Session {
   std::mutex mu_;
   std::atomic_bool initialized_;
   Status status_;
+  int32_t device_index_ = -1;
 };
 }  // namespace tng
 
