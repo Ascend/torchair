@@ -1,6 +1,8 @@
 include_guard()
 add_library(acl_libs INTERFACE)
 
+target_include_directories(acl_libs INTERFACE ${ASCEND_SDK_HEADERS_PATH}/include/ascendcl/external/)
+
 add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/_fake.cc
         COMMAND touch ${CMAKE_CURRENT_BINARY_DIR}/_fake.cc

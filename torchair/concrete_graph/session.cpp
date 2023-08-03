@@ -6,6 +6,7 @@
 
 #include "ge/ge_api.h"
 #include "ge/ge_api_types.h"
+#include "acl/acl_rt.h"
 
 namespace {
 std::unique_ptr<ge::Session> global_ge_session = nullptr;
