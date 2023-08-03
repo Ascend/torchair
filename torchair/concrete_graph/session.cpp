@@ -26,6 +26,10 @@ Status Session::Initialize(const std::map<std::string, std::string> &options) {
   TNG_LOG(INFO) << "Initializing GE with options:";
   for (const auto &option : options) {
     TNG_LOG(INFO) << "  " << option.first << ": " << option.second;
+    if (option.first == "ge_run_with_torch_npu") {
+      run_with_torch_npu_ = option.second == "1";
+      continue;
+    }
     ge_options[option.first.c_str()] = option.second.c_str();
   }
 
@@ -70,7 +74,9 @@ Status Session::Finalize() {
   }
 
   global_ge_session.reset(nullptr);
-  TNG_ASSERT_GE_OK(ge::GEFinalize());
+  if (!run_with_torch_npu_) {
+    TNG_ASSERT_GE_OK(ge::GEFinalize());
+  }
   return Status::Success();
 }
 

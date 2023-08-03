@@ -41,6 +41,7 @@ class Session {
   Session() : initialized_(false), status_(Status::Success()){};
   std::mutex mu_;
   std::atomic_bool initialized_;
+  std::atomic_bool run_with_torch_npu_ = false;
   Status status_;
   int32_t device_index_ = -1;
 };

@@ -29,8 +29,10 @@ def initialize_graph_engine():
     torch_npu_device = _try_get_torch_npu_device()
     if torch_npu_device is not None:
         options['ge.exec.deviceId'] = str(torch_npu_device)
+        options['ge_run_with_torch_npu'] = "1"
     else:
         options['ge.exec.deviceId'] = os.getenv('ASCEND_DEVICE_ID', '0')
+        options['ge_run_with_torch_npu'] = "0"
     _torchair.InitializeGraphEngine(options)
 
 
