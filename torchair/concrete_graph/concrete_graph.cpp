@@ -34,6 +34,8 @@ tng::Status NormalizeCompileOptions(const std::map<ge::AscendString, ge::AscendS
   }
 
   (void)normalized_options.insert(std::make_pair(ge::OPTION_TOPOSORTING_MODE, "2"));
+  // Use separate memory cleaning for atomic nodes to better reuse memory.
+  // (void)normalized_options.insert(std::make_pair(ge::ATOMIC_CLEAN_POLICY.c_str(), "1"));
   // This static memory policy will be replaced by allocator memory pool of torchair for better memory reuse.
   (void)normalized_options.insert(std::make_pair(ge::STATIC_MEMORY_POLICY.c_str(), "2"));
 
@@ -55,22 +57,26 @@ Status NpuConcreteGraph::Create(const void *serialized_proto, size_t proto_size,
                                 const std::map<ge::AscendString, ge::AscendString> &options,
                                 std::unique_ptr<NpuConcreteGraph> &graph) {
   TNG_LOG(INFO) << "Creating concrete graph from proto with size " << proto_size;
-  TNG_ASSERT_NOTNULL(serialized_proto, "Given serialized proto is nullptr");
-  TNG_ASSERT(ge::IntegerChecker<int32_t>::Compat(proto_size), "Proto size %zu exceed 2G limit", proto_size);
+  TNG_ASSERT_NOTNULL(serialized_proto, "Given serialized proto is nullptr.");
+  TNG_ASSERT(ge::IntegerChecker<int32_t>::Compat(proto_size), "Proto size %zu exceed 2G limit.", proto_size);
 
   auto graph_data = std::make_unique<GraphData>();
 
   TNG_ASSERT(graph_data->graph_def.ParseFromArray(serialized_proto, proto_size));
-  TNG_LOG(INFO) << "Graph parsed successfully and " << graph_data->graph_def.op_size() << " ops parsed";
+  TNG_LOG(INFO) << "Graph parsed successfully and " << graph_data->graph_def.op_size() << " ops parsed.";
 
   TNG_RETURN_IF_ERROR(compat::ConvertGraphDefToGraph(graph_data->graph_def, graph_data->graph));
 
   graph_data->input_placements = compat::GetGraphInputPlacemnts(graph_data->graph_def);
   graph_data->output_dtypes = compat::GetGraphOutputDtypes(graph_data->graph_def);
   graph_data->executor_type = compat::GetGraphExecutorType(graph_data->graph_def);
-  TNG_ASSERT(graph_data->executor_type != ExecutorType::UNKNOWN, "Executor type is unknown");
+  TNG_ASSERT(graph_data->executor_type != ExecutorType::UNKNOWN, "Executor type is unknown.");
 
   TNG_RETURN_IF_ERROR(NormalizeCompileOptions(options, graph_data->compile_options));
+  if (graph_data->executor_type == ExecutorType::NPU) {
+    // Use zero copy on inputs and outputs to reuse user memory only for npu executor.
+    (void)graph_data->compile_options.insert(std::make_pair(ge::OPTION_EXEC_REUSE_ZERO_COPY_MEMORY, "1"));
+  }
 
   static std::atomic_uint32_t uuid = 0U;
   graph_data->id = uuid++;
@@ -80,7 +86,7 @@ Status NpuConcreteGraph::Create(const void *serialized_proto, size_t proto_size,
   graph.reset(new NpuConcreteGraph(std::move(graph_data)));
   TNG_ASSERT_NOTNULL(graph, "Failed to create graph");
 
-  TNG_LOG(INFO) << "Concrete graph from proto with size " << proto_size << " created";
+  TNG_LOG(INFO) << "Concrete graph from proto with size " << proto_size << " created.";
 
   return Status::Success();
 }
@@ -120,7 +126,7 @@ Status NpuConcreteGraph::Run(const std::vector<at::Tensor> &torch_inputs,
                              const std::vector<c10::optional<at::Tensor>> &torch_outputs,
                              std::vector<at::Tensor> &outputs, void *stream) {
   TNG_LOG(INFO) << "Run concrete graph " << graph_data_->id << " with stream " << stream;
-  TNG_ASSERT_NOTNULL(executor_, "Executor is not initialized");
+  TNG_ASSERT_NOTNULL(executor_, "Executor is not initialized.");
   TNG_RETURN_IF_ERROR(executor_->Run(torch_inputs, torch_outputs, outputs, stream));
   return Status::Success();
 }
