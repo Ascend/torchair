@@ -12,7 +12,7 @@ from torchair.ge_concrete_graph.ge_graph import Const
 from torchair.ge_concrete_graph.auto_generated_ge_raw_ops import *
 from torchair.ge_concrete_graph.dynamic_output_ops import *
 
-
+@auto_convert_to_tensor([], [])
 def Data(*, index: int, dtype: int, shape: List[int] = None, format: str = "ND", name: str = None) -> Tensor:
     op = get_default_ge_graph().op.add()
     op.type = "Data"
@@ -33,7 +33,7 @@ def Data(*, index: int, dtype: int, shape: List[int] = None, format: str = "ND",
 
     return Tensor(op)
 
-
+@auto_convert_to_tensor([], [])
 def NetOutput(inputs: List[Tensor], name=None) -> Tensor:
     op = get_default_ge_graph().op.add()
     op.type = "NetOutput"

@@ -15,7 +15,7 @@ from torchair.core.utils import logger
 from torchair.core.backend import initialize_graph_engine
 from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef, TensorDescriptor, TensorDef
 from torchair.ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
-from torchair.ge_concrete_graph.ge_graph import default_ge_graph
+from torchair.ge_concrete_graph.ge_graph import default_ge_graph, GeGraph
 from torchair.ge_concrete_graph.ge_graph import compat_as_bytes
 from torchair.ge_concrete_graph.ge_graph import DataType, TensorSpec
 from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type, torch_type_to_ge_proto_type
@@ -161,7 +161,7 @@ def _get_executor_type():
 
 class GeConcreteGraph(ConcreteGraphBase):
     def __init__(self, config: CompilerConfig, graph=None, name=None):
-        self._graph = GraphDef() if graph is None else graph
+        self._graph = GeGraph() if graph is None else graph
         self._fx_outputs = []
         self._fx_outputs_mapping = dict()
         self._outputs = []
@@ -248,6 +248,9 @@ class GeConcreteGraph(ConcreteGraphBase):
         if path.endswith(".txt"):
             with open(path, "w+") as f:
                 f.write(str(self.graph))
+        elif path.endswith('.py'):
+            with open(path, "w+") as f:
+                f.write(str(self.graph.python_code))
         else:
             try:
                 with open(path, "w+") as f:

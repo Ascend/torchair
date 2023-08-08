@@ -15,6 +15,8 @@ from torchair.core.utils import logger
 from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef, OpDef, AttrDef, TensorDescriptor
 from torchair.ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
 
+local_variable = threading.local()
+local_variable.auto_convert_nesting = 0
 
 class DataType:
     DT_FLOAT = 0            # float type
@@ -208,6 +210,36 @@ def torch_type_to_ge_proto_type(dtype):
     return torch_type_to_ge_type(dtype, ProtoDataType)
 
 
+class GeGraph(object):
+    def __init__(self):
+        self._proto = GraphDef()
+        self._python_code = self._python_code_init()
+
+    def _python_code_init(self):
+        python_code = ''
+        python_code += '# -*- coding: utf-8 -*-\n'
+        python_code += 'from torch import tensor\n'
+        python_code += 'from torchair.ge_concrete_graph import ge_apis as ge\n'
+        python_code += 'from torchair.ge_concrete_graph.ge_graph import get_default_ge_graph\n\n'
+        return python_code
+
+    def __getattr__(self, v):
+        return getattr(self._proto, v)
+
+    def add_python_code(self, args, kwargs, outputs, func):
+        args_string = ', '.join([f'{i}' for i in parse_inputs(args)])
+        kwargs_string = ', '.join([f'{i}' for i in parse_kwargs(kwargs)])
+        inputs_string = ", ".join([i for i in [args_string, kwargs_string] if i])
+        outputs_name = ', '.join(parse_inputs(outputs, mode='output'))
+        func_name = f"ge.{func.__name__}"
+        new_python_code = f'{outputs_name} = {func_name}({inputs_string})'
+
+        self._python_code += f'{new_python_code}\n'
+
+    @property
+    def python_code(self):
+        return self._python_code
+
 class _GeGraphStack(threading.local):
     """A thread-local stack of objects for providing implicit defaults."""
 
@@ -223,7 +255,7 @@ class _GeGraphStack(threading.local):
         elif self._global_default_graph:
             return self._global_default_graph
         else:
-            self._global_default_graph = GraphDef()
+            self._global_default_graph = GeGraph()
             return self._global_default_graph
 
     @contextlib.contextmanager
@@ -309,6 +341,14 @@ class Tensor:
         self._ge_dtype = DataType.DT_UNDEFINED
 
     @property
+    def index(self):
+        return self._index
+
+    @property
+    def node(self):
+        return self._node
+
+    @property
     def tensor(self):
         return self._tensor
 
@@ -357,13 +397,63 @@ def array_default_f32(v, dtype=None):
         dtype = np.float32
     return np.array(v, dtype=dtype)
 
+def list_depth_check(inputs):
+    list_depth = 1
+
+    if isinstance(inputs, (tuple, list)):
+        for output in inputs:
+            if isinstance(output, (tuple, list)):
+                list_depth = 2
+
+    if list_depth == 1:
+        inputs = [inputs]
+
+    return inputs
+
+def _parse_vars(vars, mode='input'):
+    if not isinstance(vars, Tensor):
+        return f'{vars}'
+
+    if vars.node.name.startswith('Const') and mode == 'input':
+        vars_name = vars.node.attr['_readable_value'].s.decode()
+    else:
+        vars_name = f'{vars.node.name}_{vars.index}'
+    return vars_name
+
+
+def parse_inputs(inputs, mode='input'):
+    if inputs is None:
+        return [''] if mode == 'input' else ['_']
+
+    if mode == 'output':
+        inputs = list_depth_check(inputs)
+
+    inputs_name_list = []
+    for tmp_inputs in inputs:
+        if isinstance(tmp_inputs, (tuple, list)):
+            tmp_inputs_name_list = []
+            for tmp_input in tmp_inputs:
+                tmp_inputs_name_list.append(_parse_vars(tmp_input))
+            inputs_name_list.append(f"[{', '.join([f'{i}' for i in tmp_inputs_name_list])}]")
+        else:
+            inputs_name_list.append(f'{_parse_vars(tmp_inputs)}')
+    return inputs_name_list
+
+
+def parse_kwargs(kwargs):
+    kwargs_list = []
+    for k,v in kwargs.items():
+        if k =='name':
+            v = f'"{v}"'
+        kwargs_list.append(f'{k}={v}')
+    return kwargs_list
+
 
 def Const(v: Any, dtype: int = None, name=None) -> Tensor:
     op = get_default_ge_graph().op.add()
     op.type = "Const"
     op.name = next_unique_name(name, "Const")
     value = op.attr["value"].t
-    op.attr["_readable_value"].s = compat_as_bytes(str(v))
     if isinstance(v, np.ndarray):
         if dtype is None:
             narray = v
@@ -376,6 +466,11 @@ def Const(v: Any, dtype: int = None, name=None) -> Tensor:
             dtype = _np_dtype_to_ge_dtype(narray.dtype)
         else:
             narray = np.array(v, dtype=_ge_dtype_to_np_dtype(dtype))
+
+    if isinstance(v, (np.ndarray, tuple, list)):
+        op.attr["_readable_value"].s = compat_as_bytes(f"{narray.tolist()}")
+    else:
+        op.attr["_readable_value"].s = compat_as_bytes(f"{narray.item()}")
 
     value.data = narray.tobytes()
     value.desc.dtype = _ge_dtype_to_ge_proto_dtype(dtype)
@@ -493,6 +588,7 @@ def auto_convert_to_tensor(inputs_dynamic, inputs_optional):
             bundle_inputs = inspect.signature(func).bind(*args, **kwargs)
             args = bundle_inputs.args
             kwargs = bundle_inputs.kwargs
+
             assert len(inputs_dynamic) == len(inputs_optional)
             assert len(args) >= len(inputs_dynamic)
             args = _auto_type_promotion_for_const(args, inputs_dynamic,
@@ -510,7 +606,16 @@ def auto_convert_to_tensor(inputs_dynamic, inputs_optional):
                         assert optional, f"Input {i} is cannot be None as it is not optional"
                     else:
                         assert isinstance(arg, Tensor)
-            return func(*args, **kwargs)
+
+            local_variable.auto_convert_nesting += 1
+            outputs = func(*args, **kwargs)
+            local_variable.auto_convert_nesting -= 1
+
+            if local_variable.auto_convert_nesting == 0:
+                gegraph = get_default_ge_graph()
+                gegraph.add_python_code(bundle_inputs.args, kwargs, outputs, func)
+
+            return outputs
         return wrapper
     return inner
 

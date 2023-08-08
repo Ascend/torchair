@@ -28,7 +28,7 @@ class _DebugBase(NpuBaseConfig):
 
 class _Dump(_DebugBase):
     def __init__(self):
-        self.type = OptionValue(None, ["txt", "pbtxt"])
+        self.type = OptionValue(None, ["txt", "pbtxt", "py"])
         super(_Dump, self).__init__()
 
 
