@@ -256,3 +256,21 @@ dtype_promote（类型提升）的关键，在于converter实现时，需要根�
 ### 注意事项
 需要特别注意，所实现的converter必须支持动态shape，不应该试图从输入的Tensor上获取任何shape信息，Tensor也不会提供任何shape信息。
 > 如果您的converter依赖shape才能工作，这通常意味着实现错误，或者没有选择正确的Ascend IR映射。
+
+## 导出gegreph
+
+torchair提供配置项config.debug.graph_dump开关来导出gegraph，您可以通过如下方式来配置
+
+```python
+config = torchair.CompilerConfig()
+config.debug.graph_dump.type = 'txt' # ['txt', 'pbtxt', 'py']
+npu_backend = torchair.get_npu_backend(compiler_config=config)
+
+model = torch.compile(model, backend=npu_backend)
+```
+
+执行后，会生成dynamo_{timestamp}.{graph_dump.type}文件，当前支持 ```['txt', 'pbtxt', 'py']``` 三种导出方式
+- 导出的txt文件是cann最终接收到的torchair的构图结果，为protobuf格式，您可以通过vscode等查看
+- 导出的pbtxt文件是可以被tensorboard读取的构图结果，您可以通过tensorboard等查看
+- 导出的py文件是torch代码经由converter转化后的GEIR代码，支持运行，您可以通过vscode等查看
+

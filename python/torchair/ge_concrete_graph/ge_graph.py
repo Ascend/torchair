@@ -16,7 +16,6 @@ from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef, OpDef, AttrDef, Tenso
 from torchair.ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
 
 local_variable = threading.local()
-local_variable.auto_convert_nesting = 0
 
 class DataType:
     DT_FLOAT = 0            # float type
@@ -607,7 +606,8 @@ def auto_convert_to_tensor(inputs_dynamic, inputs_optional):
                     else:
                         assert isinstance(arg, Tensor)
 
-            local_variable.auto_convert_nesting += 1
+            auto_convert_nesting = getattr(local_variable, 'auto_convert_nesting', 0)
+            setattr(local_variable, 'auto_convert_nesting', auto_convert_nesting + 1)
             outputs = func(*args, **kwargs)
             local_variable.auto_convert_nesting -= 1
 
