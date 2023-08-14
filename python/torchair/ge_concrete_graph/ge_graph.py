@@ -97,7 +97,7 @@ def _ge_dtype_to_np_dtype(dtype: DataType) -> np.dtype:
     if dtype == DataType.DT_INT64:
         return np.int64
     if dtype == DataType.DT_BOOL:
-        return np.bool
+        return np.bool_
 
     raise ValueError(f"Unsupported ge dtype {dtype}")
 
@@ -165,7 +165,7 @@ def _np_dtype_to_ge_dtype(dtype: np.dtype) -> ProtoDataType:
         return DataType.DT_UINT32
     if dtype == np.int64:
         return DataType.DT_INT64
-    if dtype == np.bool:
+    if dtype == np.bool_:
         return DataType.DT_BOOL
 
     raise ValueError(f"Unsupported numpy dtype {dtype}")
@@ -224,6 +224,9 @@ class GeGraph(object):
 
     def __getattr__(self, v):
         return getattr(self._proto, v)
+
+    def __str__(self):
+        return str(self._proto)
 
     def add_python_code(self, args, kwargs, outputs, func):
         args_string = ', '.join([f'{i}' for i in parse_inputs(args)])
@@ -541,7 +544,7 @@ def _auto_type_promotion_for_const(bundle_inputs: list, inputs_dynamic: list, in
 
     promoted_inputs = []
     for i, input in enumerate(inputs):
-        if not isinstance(input, Tensor):
+        if not isinstance(input, Tensor) and input is not None:
             if type(input) == torch.Tensor:
                 promoted_inputs.append(_torch_tensor_to_ge_const(input))
                 continue
@@ -602,7 +605,7 @@ def auto_convert_to_tensor(inputs_dynamic, inputs_optional):
                     assert all([isinstance(v, Tensor) for v in arg])
                 else:
                     if arg is None:
-                        assert optional, f"Input {i} is cannot be None as it is not optional"
+                        assert optional, f"Input {i} can not be None as it is not optional"
                     else:
                         assert isinstance(arg, Tensor)
 
