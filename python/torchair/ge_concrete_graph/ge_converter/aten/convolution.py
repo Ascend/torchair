@@ -33,7 +33,7 @@ def conveter_aten_convolution_default(
     transposed: bool,
     output_padding: Union[List[int], Tensor],
     groups: int,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::convolution(Tensor input, Tensor weight, Tensor? bias, int[] stride, SymInt[] padding, int[] dilation, bool transposed, SymInt[] output_padding, int groups) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.convolution.default ge_converter is not implemented!")
@@ -52,7 +52,7 @@ def conveter_aten_convolution_out(
     groups: int,
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::convolution.out(Tensor input, Tensor weight, Tensor? bias, int[] stride, SymInt[] padding, int[] dilation, bool transposed, SymInt[] output_padding, int groups, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.convolution.out ge_converter is not implemented!")

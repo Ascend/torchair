@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.native_dropout.default)
 def conveter_aten_native_dropout_default(
-    input: Tensor, p: float, train: Optional[bool], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    input: Tensor, p: float, train: Optional[bool], meta_outputs: TensorSpec = None
 ):
     """NB: aten::native_dropout(Tensor input, float p, bool? train) -> (Tensor, Tensor)"""
     raise NotImplementedError("torch.ops.aten.native_dropout.default ge_converter is not implemented!")
@@ -38,7 +38,7 @@ def conveter_aten_native_dropout_out(
     *,
     out0: Tensor = None,
     out1: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::native_dropout.out(Tensor input, float p, bool? train, *, Tensor(a!) out0, Tensor(b!) out1) -> (Tensor(a!), Tensor(b!))"""
     raise NotImplementedError("torch.ops.aten.native_dropout.out ge_converter is not implemented!")

@@ -23,6 +23,6 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.aten.dense_dim.default)
-def conveter_aten_dense_dim_default(self: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_aten_dense_dim_default(self: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::dense_dim(Tensor self) -> int"""
     raise NotImplementedError("torch.ops.aten.dense_dim.default ge_converter is not implemented!")

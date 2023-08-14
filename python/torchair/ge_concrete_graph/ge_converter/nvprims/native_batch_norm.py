@@ -32,7 +32,7 @@ def conveter_nvprims_native_batch_norm_default(
     training: bool,
     momentum: float,
     eps: float,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: nvprims::native_batch_norm(Tensor input, Tensor? weight, Tensor? bias, Tensor? running_mean, Tensor? running_var, bool training, float momentum, float eps) -> (Tensor, Tensor, Tensor)"""
     raise NotImplementedError("torch.ops.nvprims.native_batch_norm.default ge_converter is not implemented!")

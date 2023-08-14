@@ -29,7 +29,7 @@ def conveter_aten_nll_loss_forward_default(
     weight: Optional[Tensor],
     reduction: int,
     ignore_index: Union[int, Tensor],
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::nll_loss_forward(Tensor self, Tensor target, Tensor? weight, int reduction, SymInt ignore_index) -> (Tensor output, Tensor total_weight)"""
     raise NotImplementedError("torch.ops.aten.nll_loss_forward.default ge_converter is not implemented!")
@@ -45,7 +45,7 @@ def conveter_aten_nll_loss_forward_output(
     *,
     output: Tensor = None,
     total_weight: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::nll_loss_forward.output(Tensor self, Tensor target, Tensor? weight, int reduction, SymInt ignore_index, *, Tensor(a!) output, Tensor(b!) total_weight) -> (Tensor(a!), Tensor(b!))"""
     raise NotImplementedError("torch.ops.aten.nll_loss_forward.output ge_converter is not implemented!")

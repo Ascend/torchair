@@ -28,7 +28,7 @@ def conveter_aten_narrow_default(
     dim: int,
     start: Union[int, Tensor],
     length: Union[int, Tensor],
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::narrow(Tensor(a) self, int dim, SymInt start, SymInt length) -> Tensor(a)"""
     raise NotImplementedError("torch.ops.aten.narrow.default ge_converter is not implemented!")
@@ -40,7 +40,7 @@ def conveter_aten_narrow_Tensor(
     dim: int,
     start: Tensor,
     length: Union[int, Tensor],
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::narrow.Tensor(Tensor(a) self, int dim, Tensor start, SymInt length) -> Tensor(a)"""
     raise NotImplementedError("torch.ops.aten.narrow.Tensor ge_converter is not implemented!")

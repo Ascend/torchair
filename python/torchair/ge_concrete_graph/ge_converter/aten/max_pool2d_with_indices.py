@@ -30,7 +30,7 @@ def conveter_aten_max_pool2d_with_indices_default(
     padding: List[int] = [0, 0],
     dilation: List[int] = [1, 1],
     ceil_mode: bool = False,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: List[TensorSpec] = None,
 ):
     """NB: aten::max_pool2d_with_indices(Tensor self, int[2] kernel_size, int[2] stride=[], int[2] padding=0, int[2] dilation=1, bool ceil_mode=False) -> (Tensor, Tensor)"""
     raise NotImplementedError("torch.ops.aten.max_pool2d_with_indices.default ge_converter is not implemented!")
@@ -47,7 +47,7 @@ def conveter_aten_max_pool2d_with_indices_out(
     *,
     out: Tensor = None,
     indices: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: List[TensorSpec] = None
 ):
     """NB: aten::max_pool2d_with_indices.out(Tensor self, int[2] kernel_size, int[2] stride=[], int[2] padding=0, int[2] dilation=1, bool ceil_mode=False, *, Tensor(a!) out, Tensor(b!) indices) -> (Tensor(a!), Tensor(b!))"""
     raise NotImplementedError("torch.ops.aten.max_pool2d_with_indices.out ge_converter is not implemented!")

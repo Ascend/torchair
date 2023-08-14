@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.index_fill.int_Tensor)
 def conveter_aten_index_fill_int_Tensor(
-    self: Tensor, dim: int, index: Tensor, value: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, dim: int, index: Tensor, value: Tensor, meta_outputs: TensorSpec = None
 ):
     """NB: aten::index_fill.int_Tensor(Tensor self, int dim, Tensor index, Tensor value) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.index_fill.int_Tensor ge_converter is not implemented!")
@@ -36,7 +36,7 @@ def conveter_aten_index_fill_int_Scalar(
     dim: int,
     index: Tensor,
     value: Union[Number, Tensor],
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::index_fill.int_Scalar(Tensor self, int dim, Tensor index, Scalar value) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.index_fill.int_Scalar ge_converter is not implemented!")
@@ -48,7 +48,7 @@ def conveter_aten_index_fill_Dimname_Scalar(
     dim: str,
     index: Tensor,
     value: Union[Number, Tensor],
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::index_fill.Dimname_Scalar(Tensor self, str dim, Tensor index, Scalar value) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.index_fill.Dimname_Scalar ge_converter is not implemented!")
@@ -56,7 +56,7 @@ def conveter_aten_index_fill_Dimname_Scalar(
 
 @register_fx_node_ge_converter(torch.ops.aten.index_fill.Dimname_Tensor)
 def conveter_aten_index_fill_Dimname_Tensor(
-    self: Tensor, dim: str, index: Tensor, value: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, dim: str, index: Tensor, value: Tensor, meta_outputs: TensorSpec = None
 ):
     """NB: aten::index_fill.Dimname_Tensor(Tensor self, str dim, Tensor index, Tensor value) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.index_fill.Dimname_Tensor ge_converter is not implemented!")
@@ -70,7 +70,7 @@ def conveter_aten_index_fill_int_Scalar_out(
     value: Union[Number, Tensor],
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::index_fill.int_Scalar_out(Tensor self, int dim, Tensor index, Scalar value, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.index_fill.int_Scalar_out ge_converter is not implemented!")
@@ -84,7 +84,7 @@ def conveter_aten_index_fill_int_Tensor_out(
     value: Tensor,
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::index_fill.int_Tensor_out(Tensor self, int dim, Tensor index, Tensor value, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.index_fill.int_Tensor_out ge_converter is not implemented!")

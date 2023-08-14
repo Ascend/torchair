@@ -27,7 +27,7 @@ def conveter_aten_replication_pad2d_backward_default(
     grad_output: Tensor,
     self: Tensor,
     padding: Union[List[int], Tensor],
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::replication_pad2d_backward(Tensor grad_output, Tensor self, SymInt[4] padding) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.replication_pad2d_backward.default ge_converter is not implemented!")
@@ -40,7 +40,7 @@ def conveter_aten_replication_pad2d_backward_grad_input(
     padding: Union[List[int], Tensor],
     *,
     grad_input: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::replication_pad2d_backward.grad_input(Tensor grad_output, Tensor self, SymInt[4] padding, *, Tensor(a!) grad_input) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.replication_pad2d_backward.grad_input ge_converter is not implemented!")

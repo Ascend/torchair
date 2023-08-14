@@ -39,7 +39,7 @@ def conveter_aten_empty_like_default(
     device: Optional[Device] = None,
     pin_memory: Optional[bool] = None,
     memory_format: Optional[int] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::empty_like(Tensor self, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None, MemoryFormat? memory_format=None) -> Tensor"""
     
@@ -61,7 +61,7 @@ def conveter_aten_empty_like_out(
     *,
     memory_format: Optional[int] = None,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::empty_like.out(Tensor self, *, MemoryFormat? memory_format=None, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.empty_like.out ge_converter is not implemented!")

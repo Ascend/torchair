@@ -31,7 +31,7 @@ def conveter_nvprims_rand_like_default(
     device: Optional[Device] = None,
     pin_memory: Optional[bool] = None,
     memory_format: Optional[int] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: nvprims::rand_like(Tensor self, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None, MemoryFormat? memory_format=None) -> Tensor"""
     raise NotImplementedError("torch.ops.nvprims.rand_like.default ge_converter is not implemented!")

@@ -27,7 +27,7 @@ def conveter_aten_hardtanh_default(
     self: Tensor,
     min_val: Union[Number, Tensor] = -1,
     max_val: Union[Number, Tensor] = 1,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::hardtanh(Tensor self, Scalar min_val=-1, Scalar max_val=1) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.hardtanh.default ge_converter is not implemented!")
@@ -40,7 +40,7 @@ def conveter_aten_hardtanh_out(
     max_val: Union[Number, Tensor] = 1,
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::hardtanh.out(Tensor self, Scalar min_val=-1, Scalar max_val=1, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.hardtanh.out ge_converter is not implemented!")

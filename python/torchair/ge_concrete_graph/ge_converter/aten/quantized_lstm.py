@@ -36,7 +36,7 @@ def conveter_aten_quantized_lstm_input_legacy(
     *,
     dtype: Optional[int] = None,
     use_dynamic: bool = False,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::quantized_lstm.input_legacy(Tensor input, Tensor[] hx, Tensor[] params, bool has_biases, int num_layers, float dropout, bool train, bool bidirectional, bool batch_first, *, ScalarType? dtype=None, bool use_dynamic=False) -> (Tensor, Tensor, Tensor)"""
     raise NotImplementedError("torch.ops.aten.quantized_lstm.input_legacy ge_converter is not implemented!")
@@ -56,7 +56,7 @@ def conveter_aten_quantized_lstm_data_legacy(
     *,
     dtype: Optional[int] = None,
     use_dynamic: bool = False,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::quantized_lstm.data_legacy(Tensor data, Tensor batch_sizes, Tensor[] hx, Tensor[] params, bool has_biases, int num_layers, float dropout, bool train, bool bidirectional, *, ScalarType? dtype=None, bool use_dynamic=False) -> (Tensor, Tensor, Tensor)"""
     raise NotImplementedError("torch.ops.aten.quantized_lstm.data_legacy ge_converter is not implemented!")

@@ -23,14 +23,14 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.aten.gt.Tensor)
-def conveter_aten_gt_Tensor(self: Tensor, other: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_aten_gt_Tensor(self: Tensor, other: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::gt.Tensor(Tensor self, Tensor other) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.gt.Tensor ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.gt.Scalar)
 def conveter_aten_gt_Scalar(
-    self: Tensor, other: Union[Number, Tensor], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, other: Union[Number, Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::gt.Scalar(Tensor self, Scalar other) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.gt.Scalar ge_converter is not implemented!")
@@ -42,7 +42,7 @@ def conveter_aten_gt_Scalar_out(
     other: Union[Number, Tensor],
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::gt.Scalar_out(Tensor self, Scalar other, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.gt.Scalar_out ge_converter is not implemented!")
@@ -50,45 +50,45 @@ def conveter_aten_gt_Scalar_out(
 
 @register_fx_node_ge_converter(torch.ops.aten.gt.Tensor_out)
 def conveter_aten_gt_Tensor_out(
-    self: Tensor, other: Tensor, *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, other: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::gt.Tensor_out(Tensor self, Tensor other, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.gt.Tensor_out ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.gt.int)
-def conveter_aten_gt_int(a: int, b: int, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_aten_gt_int(a: int, b: int, meta_outputs: TensorSpec = None):
     """NB: aten::gt.int(int a, int b) -> bool"""
     raise NotImplementedError("torch.ops.aten.gt.int ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.gt.float)
-def conveter_aten_gt_float(a: float, b: float, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_aten_gt_float(a: float, b: float, meta_outputs: TensorSpec = None):
     """NB: aten::gt.float(float a, float b) -> bool"""
     raise NotImplementedError("torch.ops.aten.gt.float ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.gt.int_float)
-def conveter_aten_gt_int_float(a: int, b: float, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_aten_gt_int_float(a: int, b: float, meta_outputs: TensorSpec = None):
     """NB: aten::gt.int_float(int a, float b) -> bool"""
     raise NotImplementedError("torch.ops.aten.gt.int_float ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.gt.float_int)
-def conveter_aten_gt_float_int(a: float, b: int, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_aten_gt_float_int(a: float, b: int, meta_outputs: TensorSpec = None):
     """NB: aten::gt.float_int(float a, int b) -> bool"""
     raise NotImplementedError("torch.ops.aten.gt.float_int ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.gt.default)
 def conveter_aten_gt_default(
-    a: Union[Number, Tensor], b: Union[Number, Tensor], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    a: Union[Number, Tensor], b: Union[Number, Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::gt(Scalar a, Scalar b) -> bool"""
     raise NotImplementedError("torch.ops.aten.gt.default ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.gt.str)
-def conveter_aten_gt_str(a: str, b: str, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_aten_gt_str(a: str, b: str, meta_outputs: TensorSpec = None):
     """NB: aten::gt.str(str a, str b) -> bool"""
     raise NotImplementedError("torch.ops.aten.gt.str ge_converter is not implemented!")

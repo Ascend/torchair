@@ -23,6 +23,6 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.prims.atan2.default)
-def conveter_prims_atan2_default(self: Tensor, other: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_prims_atan2_default(self: Tensor, other: Tensor, meta_outputs: TensorSpec = None):
     """NB: prims::atan2(Tensor self, Tensor other) -> Tensor"""
     raise NotImplementedError("torch.ops.prims.atan2.default ge_converter is not implemented!")

@@ -30,7 +30,7 @@ def conveter_aten_index_add__default(
     source: Tensor,
     *,
     alpha: Union[Number, Tensor] = 1,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::index_add_(Tensor(a!) self, int dim, Tensor index, Tensor source, *, Scalar alpha=1) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.index_add_.default ge_converter is not implemented!")

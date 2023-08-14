@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.prims.fill.default)
 def conveter_prims_fill_default(
-    self: Tensor, value: Union[Number, Tensor], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, value: Union[Number, Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: prims::fill(Tensor self, Scalar value) -> Tensor"""
     raise NotImplementedError("torch.ops.prims.fill.default ge_converter is not implemented!")

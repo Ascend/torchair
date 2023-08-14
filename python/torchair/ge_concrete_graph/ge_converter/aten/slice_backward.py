@@ -30,7 +30,7 @@ def conveter_aten_slice_backward_default(
     start: Union[int, Tensor],
     end: Union[int, Tensor],
     step: Union[int, Tensor],
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::slice_backward(Tensor grad_output, SymInt[] input_sizes, int dim, SymInt start, SymInt end, SymInt step) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.slice_backward.default ge_converter is not implemented!")
@@ -46,7 +46,7 @@ def conveter_aten_slice_backward_out(
     step: Union[int, Tensor],
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::slice_backward.out(Tensor grad_output, SymInt[] input_sizes, int dim, SymInt start, SymInt end, SymInt step, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.slice_backward.out ge_converter is not implemented!")

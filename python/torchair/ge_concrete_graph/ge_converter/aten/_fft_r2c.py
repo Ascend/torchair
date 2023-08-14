@@ -28,7 +28,7 @@ def conveter_aten__fft_r2c_default(
     dim: List[int],
     normalization: int,
     onesided: bool,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::_fft_r2c(Tensor self, int[] dim, int normalization, bool onesided) -> Tensor"""
     raise NotImplementedError("torch.ops.aten._fft_r2c.default ge_converter is not implemented!")
@@ -42,7 +42,7 @@ def conveter_aten__fft_r2c_out(
     onesided: bool,
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::_fft_r2c.out(Tensor self, int[] dim, int normalization, bool onesided, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten._fft_r2c.out ge_converter is not implemented!")

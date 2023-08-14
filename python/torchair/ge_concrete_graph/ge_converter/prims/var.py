@@ -29,7 +29,7 @@ def conveter_prims_var_default(
     *,
     correction: float,
     output_dtype: Optional[int] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: prims::var(Tensor inp, int[]? dims, *, float correction, ScalarType? output_dtype=None) -> Tensor"""
     raise NotImplementedError("torch.ops.prims.var.default ge_converter is not implemented!")

@@ -23,14 +23,14 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.aten.hardsigmoid.default)
-def conveter_aten_hardsigmoid_default(self: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_aten_hardsigmoid_default(self: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::hardsigmoid(Tensor self) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.hardsigmoid.default ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.hardsigmoid.out)
 def conveter_aten_hardsigmoid_out(
-    self: Tensor, *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::hardsigmoid.out(Tensor self, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.hardsigmoid.out ge_converter is not implemented!")

@@ -29,7 +29,7 @@ def conveter_aten_uniform__default(
     to: float = 1.0,
     *,
     generator: Optional[Generator] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::uniform_(Tensor(a!) self, float from=0., float to=1., *, Generator? generator=None) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.uniform_.default ge_converter is not implemented!")

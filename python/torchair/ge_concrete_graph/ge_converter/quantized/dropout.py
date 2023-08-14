@@ -29,7 +29,7 @@ def conveter_quantized_dropout_default(
     output_zero_point: int,
     p: Union[Number, Tensor] = 0.5,
     training: bool = False,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: quantized::dropout(Tensor self, float output_scale, int output_zero_point, Scalar p=0.5, bool training=False) -> Tensor"""
     raise NotImplementedError("torch.ops.quantized.dropout.default ge_converter is not implemented!")

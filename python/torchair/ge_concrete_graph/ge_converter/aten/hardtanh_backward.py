@@ -28,7 +28,7 @@ def conveter_aten_hardtanh_backward_default(
     self: Tensor,
     min_val: Union[Number, Tensor],
     max_val: Union[Number, Tensor],
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::hardtanh_backward(Tensor grad_output, Tensor self, Scalar min_val, Scalar max_val) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.hardtanh_backward.default ge_converter is not implemented!")
@@ -42,7 +42,7 @@ def conveter_aten_hardtanh_backward_grad_input(
     max_val: Union[Number, Tensor],
     *,
     grad_input: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::hardtanh_backward.grad_input(Tensor grad_output, Tensor self, Scalar min_val, Scalar max_val, *, Tensor(a!) grad_input) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.hardtanh_backward.grad_input ge_converter is not implemented!")

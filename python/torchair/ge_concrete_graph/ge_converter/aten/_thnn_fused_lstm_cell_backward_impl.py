@@ -34,7 +34,7 @@ def conveter_aten__thnn_fused_lstm_cell_backward_impl_out(
     out0: Tensor = None,
     out1: Tensor = None,
     out2: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::_thnn_fused_lstm_cell_backward_impl.out(Tensor? grad_hy, Tensor? grad_cy, Tensor cx, Tensor cy, Tensor workspace, bool has_bias, *, Tensor(a!) out0, Tensor(b!) out1, Tensor(c!) out2) -> (Tensor(a!), Tensor(b!), Tensor(c!))"""
     raise NotImplementedError("torch.ops.aten._thnn_fused_lstm_cell_backward_impl.out ge_converter is not implemented!")
@@ -48,7 +48,7 @@ def conveter_aten__thnn_fused_lstm_cell_backward_impl_default(
     cy: Tensor,
     workspace: Tensor,
     has_bias: bool,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::_thnn_fused_lstm_cell_backward_impl(Tensor? grad_hy, Tensor? grad_cy, Tensor cx, Tensor cy, Tensor workspace, bool has_bias) -> (Tensor, Tensor, Tensor)"""
     raise NotImplementedError(

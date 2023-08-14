@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.reflection_pad2d.default)
 def conveter_aten_reflection_pad2d_default(
-    self: Tensor, padding: Union[List[int], Tensor], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, padding: Union[List[int], Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::reflection_pad2d(Tensor self, SymInt[4] padding) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.reflection_pad2d.default ge_converter is not implemented!")
@@ -36,7 +36,7 @@ def conveter_aten_reflection_pad2d_out(
     padding: Union[List[int], Tensor],
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::reflection_pad2d.out(Tensor self, SymInt[4] padding, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.reflection_pad2d.out ge_converter is not implemented!")

@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.special_spherical_bessel_j0.default)
 def conveter_aten_special_spherical_bessel_j0_default(
-    x: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    x: Tensor, meta_outputs: TensorSpec = None
 ):
     """NB: aten::special_spherical_bessel_j0(Tensor x) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.special_spherical_bessel_j0.default ge_converter is not implemented!")
@@ -32,7 +32,7 @@ def conveter_aten_special_spherical_bessel_j0_default(
 
 @register_fx_node_ge_converter(torch.ops.aten.special_spherical_bessel_j0.out)
 def conveter_aten_special_spherical_bessel_j0_out(
-    x: Tensor, *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    x: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::special_spherical_bessel_j0.out(Tensor x, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.special_spherical_bessel_j0.out ge_converter is not implemented!")

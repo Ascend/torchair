@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.glu_backward.default)
 def conveter_aten_glu_backward_default(
-    grad_output: Tensor, self: Tensor, dim: int, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    grad_output: Tensor, self: Tensor, dim: int, meta_outputs: TensorSpec = None
 ):
     """NB: aten::glu_backward(Tensor grad_output, Tensor self, int dim) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.glu_backward.default ge_converter is not implemented!")
@@ -37,7 +37,7 @@ def conveter_aten_glu_backward_grad_input(
     dim: int,
     *,
     grad_input: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::glu_backward.grad_input(Tensor grad_output, Tensor self, int dim, *, Tensor(a!) grad_input) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.glu_backward.grad_input ge_converter is not implemented!")

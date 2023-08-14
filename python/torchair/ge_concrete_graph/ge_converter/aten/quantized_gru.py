@@ -33,7 +33,7 @@ def conveter_aten_quantized_gru_input_legacy(
     train: bool,
     bidirectional: bool,
     batch_first: bool,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::quantized_gru.input_legacy(Tensor input, Tensor hx, Tensor[] params, bool has_biases, int num_layers, float dropout, bool train, bool bidirectional, bool batch_first) -> (Tensor, Tensor)"""
     raise NotImplementedError("torch.ops.aten.quantized_gru.input_legacy ge_converter is not implemented!")
@@ -50,7 +50,7 @@ def conveter_aten_quantized_gru_data_legacy(
     dropout: float,
     train: bool,
     bidirectional: bool,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::quantized_gru.data_legacy(Tensor data, Tensor batch_sizes, Tensor hx, Tensor[] params, bool has_biases, int num_layers, float dropout, bool train, bool bidirectional) -> (Tensor, Tensor)"""
     raise NotImplementedError("torch.ops.aten.quantized_gru.data_legacy ge_converter is not implemented!")

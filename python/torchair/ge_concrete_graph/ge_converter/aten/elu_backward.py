@@ -30,7 +30,7 @@ def conveter_aten_elu_backward_default(
     input_scale: Union[Number, Tensor],
     is_result: bool,
     self_or_result: Tensor,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::elu_backward(Tensor grad_output, Scalar alpha, Scalar scale, Scalar input_scale, bool is_result, Tensor self_or_result) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.elu_backward.default ge_converter is not implemented!")
@@ -46,7 +46,7 @@ def conveter_aten_elu_backward_grad_input(
     self_or_result: Tensor,
     *,
     grad_input: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::elu_backward.grad_input(Tensor grad_output, Scalar alpha, Scalar scale, Scalar input_scale, bool is_result, Tensor self_or_result, *, Tensor(a!) grad_input) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.elu_backward.grad_input ge_converter is not implemented!")

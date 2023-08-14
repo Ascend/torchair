@@ -28,7 +28,7 @@ def conveter_aten_leaky_relu_backward_default(
     self: Tensor,
     negative_slope: Union[Number, Tensor],
     self_is_result: bool,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::leaky_relu_backward(Tensor grad_output, Tensor self, Scalar negative_slope, bool self_is_result) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.leaky_relu_backward.default ge_converter is not implemented!")
@@ -42,7 +42,7 @@ def conveter_aten_leaky_relu_backward_grad_input(
     self_is_result: bool,
     *,
     grad_input: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::leaky_relu_backward.grad_input(Tensor grad_output, Tensor self, Scalar negative_slope, bool self_is_result, *, Tensor(a!) grad_input) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.leaky_relu_backward.grad_input ge_converter is not implemented!")

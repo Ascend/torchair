@@ -28,7 +28,7 @@ def conveter_prims_as_strided_default(
     size: Union[List[int], Tensor],
     stride: Union[List[int], Tensor],
     storage_offset: Union[int, Tensor],
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: prims::as_strided(Tensor(a!) a, SymInt[] size, SymInt[] stride, SymInt storage_offset) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.prims.as_strided.default ge_converter is not implemented!")

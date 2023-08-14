@@ -30,7 +30,7 @@ def conveter_aten_randperm_default(
     layout: Optional[int] = None,
     device: Optional[Device] = None,
     pin_memory: Optional[bool] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::randperm(SymInt n, *, ScalarType? dtype=4, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.randperm.default ge_converter is not implemented!")
@@ -45,7 +45,7 @@ def conveter_aten_randperm_generator(
     layout: Optional[int] = None,
     device: Optional[Device] = None,
     pin_memory: Optional[bool] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::randperm.generator(SymInt n, *, Generator? generator, ScalarType? dtype=4, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.randperm.generator ge_converter is not implemented!")
@@ -53,7 +53,7 @@ def conveter_aten_randperm_generator(
 
 @register_fx_node_ge_converter(torch.ops.aten.randperm.out)
 def conveter_aten_randperm_out(
-    n: Union[int, Tensor], *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    n: Union[int, Tensor], *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::randperm.out(SymInt n, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.randperm.out ge_converter is not implemented!")
@@ -65,7 +65,7 @@ def conveter_aten_randperm_generator_out(
     *,
     generator: Optional[Generator],
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::randperm.generator_out(SymInt n, *, Generator? generator, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.randperm.generator_out ge_converter is not implemented!")

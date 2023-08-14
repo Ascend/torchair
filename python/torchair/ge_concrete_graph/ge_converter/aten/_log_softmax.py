@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten._log_softmax.default)
 def conveter_aten__log_softmax_default(
-    self: Tensor, dim: int, half_to_float: bool, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, dim: int, half_to_float: bool, meta_outputs: TensorSpec = None
 ):
     """NB: aten::_log_softmax(Tensor self, int dim, bool half_to_float) -> Tensor"""
     raise NotImplementedError("torch.ops.aten._log_softmax.default ge_converter is not implemented!")
@@ -37,7 +37,7 @@ def conveter_aten__log_softmax_out(
     half_to_float: bool,
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::_log_softmax.out(Tensor self, int dim, bool half_to_float, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten._log_softmax.out ge_converter is not implemented!")

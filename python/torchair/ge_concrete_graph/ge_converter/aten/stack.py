@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.stack.default)
 def conveter_aten_stack_default(
-    tensors: List[Tensor], dim: int = 0, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    tensors: List[Tensor], dim: int = 0, meta_outputs: TensorSpec = None
 ):
     """NB: aten::stack(Tensor[] tensors, int dim=0) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.stack.default ge_converter is not implemented!")
@@ -32,7 +32,7 @@ def conveter_aten_stack_default(
 
 @register_fx_node_ge_converter(torch.ops.aten.stack.out)
 def conveter_aten_stack_out(
-    tensors: List[Tensor], dim: int = 0, *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    tensors: List[Tensor], dim: int = 0, *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::stack.out(Tensor[] tensors, int dim=0, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.stack.out ge_converter is not implemented!")

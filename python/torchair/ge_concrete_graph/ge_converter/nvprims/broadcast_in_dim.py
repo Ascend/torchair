@@ -27,7 +27,7 @@ def conveter_nvprims_broadcast_in_dim_default(
     a: Tensor,
     shape: Union[List[int], Tensor],
     broadcast_dimensions: List[int],
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: nvprims::broadcast_in_dim(Tensor(a) a, SymInt[] shape, int[] broadcast_dimensions) -> Tensor(a)"""
     raise NotImplementedError("torch.ops.nvprims.broadcast_in_dim.default ge_converter is not implemented!")

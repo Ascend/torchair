@@ -26,24 +26,24 @@ from torchair.ge_concrete_graph.utils import dtype_promote
 
 
 @register_fx_node_ge_converter(torch.ops.aten.squeeze.default)
-def conveter_aten_squeeze_default(self: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_aten_squeeze_default(self: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::squeeze(Tensor(a) self) -> Tensor(a)"""
     raise NotImplementedError("torch.ops.aten.squeeze.default ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.squeeze.dim)
-def conveter_aten_squeeze_dim(self: Tensor, dim: int, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_aten_squeeze_dim(self: Tensor, dim: int, meta_outputs: TensorSpec = None):
     """NB: aten::squeeze.dim(Tensor(a) self, int dim) -> Tensor(a)"""
     return ge.Squeeze(self, axis=[dim])
 
 
 @register_fx_node_ge_converter(torch.ops.aten.squeeze.dims)
-def conveter_aten_squeeze_dims(self: Tensor, dim: List[int], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_aten_squeeze_dims(self: Tensor, dim: List[int], meta_outputs: TensorSpec = None):
     """NB: aten::squeeze.dims(Tensor(a) self, int[] dim) -> Tensor(a)"""
     raise NotImplementedError("torch.ops.aten.squeeze.dims ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.squeeze.dimname)
-def conveter_aten_squeeze_dimname(self: Tensor, dim: str, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_aten_squeeze_dimname(self: Tensor, dim: str, meta_outputs: TensorSpec = None):
     """NB: aten::squeeze.dimname(Tensor(a) self, str dim) -> Tensor(a)"""
     raise NotImplementedError("torch.ops.aten.squeeze.dimname ge_converter is not implemented!")

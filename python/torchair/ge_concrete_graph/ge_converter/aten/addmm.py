@@ -30,7 +30,7 @@ def conveter_aten_addmm_default(
     *,
     beta: Union[Number, Tensor] = 1,
     alpha: Union[Number, Tensor] = 1,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::addmm(Tensor self, Tensor mat1, Tensor mat2, *, Scalar beta=1, Scalar alpha=1) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.addmm.default ge_converter is not implemented!")
@@ -45,7 +45,7 @@ def conveter_aten_addmm_out(
     beta: Union[Number, Tensor] = 1,
     alpha: Union[Number, Tensor] = 1,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::addmm.out(Tensor self, Tensor mat1, Tensor mat2, *, Scalar beta=1, Scalar alpha=1, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.addmm.out ge_converter is not implemented!")

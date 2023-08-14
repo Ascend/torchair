@@ -28,7 +28,7 @@ def conveter_aten_resize_as__default(
     the_template: Tensor,
     *,
     memory_format: Optional[int] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::resize_as_(Tensor(a!) self, Tensor the_template, *, MemoryFormat? memory_format=None) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.resize_as_.default ge_converter is not implemented!")

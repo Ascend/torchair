@@ -23,12 +23,12 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.aten.unbind.int)
-def conveter_aten_unbind_int(self: Tensor, dim: int = 0, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_aten_unbind_int(self: Tensor, dim: int = 0, meta_outputs: List[TensorSpec] = None):
     """NB: aten::unbind.int(Tensor(a -> *) self, int dim=0) -> Tensor(a)[]"""
     raise NotImplementedError("torch.ops.aten.unbind.int ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.unbind.Dimname)
-def conveter_aten_unbind_Dimname(self: Tensor, dim: str, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_aten_unbind_Dimname(self: Tensor, dim: str, meta_outputs: List[TensorSpec] = None):
     """NB: aten::unbind.Dimname(Tensor(a -> *) self, str dim) -> Tensor(a)[]"""
     raise NotImplementedError("torch.ops.aten.unbind.Dimname ge_converter is not implemented!")

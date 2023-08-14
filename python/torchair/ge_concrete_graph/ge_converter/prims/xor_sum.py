@@ -28,7 +28,7 @@ def conveter_prims_xor_sum_default(
     dims: Optional[List[int]],
     *,
     output_dtype: Optional[int] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: prims::xor_sum(Tensor inp, int[]? dims, *, ScalarType? output_dtype=None) -> Tensor"""
     raise NotImplementedError("torch.ops.prims.xor_sum.default ge_converter is not implemented!")

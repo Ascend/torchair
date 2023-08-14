@@ -40,7 +40,7 @@ def conveter_aten__fused_adam__default(
     maximize: bool,
     grad_scale: Optional[Tensor] = None,
     found_inf: Optional[Tensor] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::_fused_adam_(Tensor(a!)[] self, Tensor(b!)[] grads, Tensor(c!)[] exp_avgs, Tensor(d!)[] exp_avg_sqs, Tensor(e!)[] max_exp_avg_sqs, Tensor[] state_steps, *, float lr, float beta1, float beta2, float weight_decay, float eps, bool amsgrad, bool maximize, Tensor? grad_scale=None, Tensor? found_inf=None) -> ()"""
     raise NotImplementedError("torch.ops.aten._fused_adam_.default ge_converter is not implemented!")

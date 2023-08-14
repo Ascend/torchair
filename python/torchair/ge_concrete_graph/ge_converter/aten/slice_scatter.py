@@ -30,7 +30,7 @@ def conveter_aten_slice_scatter_default(
     start: Optional[Union[int, Tensor]] = None,
     end: Optional[Union[int, Tensor]] = None,
     step: Union[int, Tensor] = 1,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::slice_scatter(Tensor self, Tensor src, int dim=0, SymInt? start=None, SymInt? end=None, SymInt step=1) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.slice_scatter.default ge_converter is not implemented!")
@@ -46,7 +46,7 @@ def conveter_aten_slice_scatter_out(
     step: Union[int, Tensor] = 1,
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::slice_scatter.out(Tensor self, Tensor src, int dim=0, SymInt? start=None, SymInt? end=None, SymInt step=1, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.slice_scatter.out ge_converter is not implemented!")

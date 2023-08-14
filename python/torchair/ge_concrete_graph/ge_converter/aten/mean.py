@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.mean.default)
 def conveter_aten_mean_default(
-    self: Tensor, *, dtype: Optional[int] = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, *, dtype: Optional[int] = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::mean(Tensor self, *, ScalarType? dtype=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.mean.default ge_converter is not implemented!")
@@ -37,7 +37,7 @@ def conveter_aten_mean_dim(
     keepdim: bool = False,
     *,
     dtype: Optional[int] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::mean.dim(Tensor self, int[1]? dim, bool keepdim=False, *, ScalarType? dtype=None) -> Tensor"""
     if dtype is not None:
@@ -55,7 +55,7 @@ def conveter_aten_mean_names_dim(
     keepdim: bool = False,
     *,
     dtype: Optional[int] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::mean.names_dim(Tensor self, str[1] dim, bool keepdim=False, *, ScalarType? dtype=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.mean.names_dim ge_converter is not implemented!")
@@ -69,7 +69,7 @@ def conveter_aten_mean_names_out(
     *,
     dtype: Optional[int] = None,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::mean.names_out(Tensor self, str[1] dim, bool keepdim=False, *, ScalarType? dtype=None, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.mean.names_out ge_converter is not implemented!")
@@ -83,7 +83,7 @@ def conveter_aten_mean_out(
     *,
     dtype: Optional[int] = None,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::mean.out(Tensor self, int[1]? dim, bool keepdim=False, *, ScalarType? dtype=None, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.mean.out ge_converter is not implemented!")

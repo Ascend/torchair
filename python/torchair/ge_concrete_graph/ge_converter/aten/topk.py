@@ -29,7 +29,7 @@ def conveter_aten_topk_default(
     dim: int = -1,
     largest: bool = True,
     sorted: bool = True,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::topk(Tensor self, SymInt k, int dim=-1, bool largest=True, bool sorted=True) -> (Tensor values, Tensor indices)"""
     raise NotImplementedError("torch.ops.aten.topk.default ge_converter is not implemented!")
@@ -45,7 +45,7 @@ def conveter_aten_topk_values(
     *,
     values: Tensor = None,
     indices: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::topk.values(Tensor self, SymInt k, int dim=-1, bool largest=True, bool sorted=True, *, Tensor(a!) values, Tensor(b!) indices) -> (Tensor(a!) values, Tensor(b!) indices)"""
     raise NotImplementedError("torch.ops.aten.topk.values ge_converter is not implemented!")

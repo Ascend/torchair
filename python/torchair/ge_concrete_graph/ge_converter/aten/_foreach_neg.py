@@ -23,14 +23,14 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.aten._foreach_neg.default)
-def conveter_aten__foreach_neg_default(self: List[Tensor], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_aten__foreach_neg_default(self: List[Tensor], meta_outputs: List[TensorSpec] = None):
     """NB: aten::_foreach_neg(Tensor[] self) -> Tensor[]"""
     raise NotImplementedError("torch.ops.aten._foreach_neg.default ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten._foreach_neg.out)
 def conveter_aten__foreach_neg_out(
-    self: List[Tensor], *, out: List[Tensor] = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: List[Tensor], *, out: List[Tensor] = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::_foreach_neg.out(Tensor[] self, *, Tensor(a!)[] out) -> ()"""
     raise NotImplementedError("torch.ops.aten._foreach_neg.out ge_converter is not implemented!")

@@ -29,7 +29,7 @@ def conveter_aten_slice_Tensor(
     start: Optional[Union[int, Tensor]] = None,
     end: Optional[Union[int, Tensor]] = None,
     step: Union[int, Tensor] = 1,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::slice.Tensor(Tensor(a) self, int dim=0, SymInt? start=None, SymInt? end=None, SymInt step=1) -> Tensor(a)"""
     offsets = [0 for _ in range(self.rank)]
@@ -49,7 +49,7 @@ def conveter_aten_slice_str(
     start: Optional[int] = None,
     end: Optional[int] = None,
     step: int = 1,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::slice.str(str string, int? start=None, int? end=None, int step=1) -> str"""
     raise NotImplementedError("torch.ops.aten.slice.str ge_converter is not implemented!")
