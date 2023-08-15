@@ -51,8 +51,7 @@ def conveter_aten__foreach_mul_Scalar_out(
     self: List[Tensor],
     scalar: Union[Number, Tensor],
     *,
-    out: List[Tensor] = None,
-    meta_outputs: TensorSpec = None
+    out: List[Tensor] = None
 ):
     """NB: aten::_foreach_mul.Scalar_out(Tensor[] self, Scalar scalar, *, Tensor(a!)[] out) -> ()"""
     raise NotImplementedError("torch.ops.aten._foreach_mul.Scalar_out ge_converter is not implemented!")
@@ -63,8 +62,7 @@ def conveter_aten__foreach_mul_List_out(
     self: List[Tensor],
     other: List[Tensor],
     *,
-    out: List[Tensor] = None,
-    meta_outputs: TensorSpec = None
+    out: List[Tensor] = None
 ):
     """NB: aten::_foreach_mul.List_out(Tensor[] self, Tensor[] other, *, Tensor(a!)[] out) -> ()"""
     raise NotImplementedError("torch.ops.aten._foreach_mul.List_out ge_converter is not implemented!")
@@ -75,8 +73,7 @@ def conveter_aten__foreach_mul_ScalarList_out(
     self: List[Tensor],
     scalars: Union[List[Number], Tensor],
     *,
-    out: List[Tensor] = None,
-    meta_outputs: TensorSpec = None
+    out: List[Tensor] = None
 ):
     """NB: aten::_foreach_mul.ScalarList_out(Tensor[] self, Scalar[] scalars, *, Tensor(a!)[] out) -> ()"""
     raise NotImplementedError("torch.ops.aten._foreach_mul.ScalarList_out ge_converter is not implemented!")

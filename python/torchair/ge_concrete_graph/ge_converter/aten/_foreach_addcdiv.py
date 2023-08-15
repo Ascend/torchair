@@ -65,8 +65,7 @@ def conveter_aten__foreach_addcdiv_Scalar_out(
     tensor2: List[Tensor],
     value: Union[Number, Tensor] = 1,
     *,
-    out: List[Tensor] = None,
-    meta_outputs: TensorSpec = None
+    out: List[Tensor] = None
 ):
     """NB: aten::_foreach_addcdiv.Scalar_out(Tensor[] self, Tensor[] tensor1, Tensor[] tensor2, Scalar value=1, *, Tensor(a!)[] out) -> ()"""
     raise NotImplementedError("torch.ops.aten._foreach_addcdiv.Scalar_out ge_converter is not implemented!")
@@ -79,8 +78,7 @@ def conveter_aten__foreach_addcdiv_ScalarList_out(
     tensor2: List[Tensor],
     scalars: Union[List[Number], Tensor],
     *,
-    out: List[Tensor] = None,
-    meta_outputs: TensorSpec = None
+    out: List[Tensor] = None
 ):
     """NB: aten::_foreach_addcdiv.ScalarList_out(Tensor[] self, Tensor[] tensor1, Tensor[] tensor2, Scalar[] scalars, *, Tensor(a!)[] out) -> ()"""
     raise NotImplementedError("torch.ops.aten._foreach_addcdiv.ScalarList_out ge_converter is not implemented!")
@@ -93,8 +91,7 @@ def conveter_aten__foreach_addcdiv_Tensor_out(
     tensor2: List[Tensor],
     scalars: Tensor,
     *,
-    out: List[Tensor] = None,
-    meta_outputs: TensorSpec = None
+    out: List[Tensor] = None
 ):
     """NB: aten::_foreach_addcdiv.Tensor_out(Tensor[] self, Tensor[] tensor1, Tensor[] tensor2, Tensor scalars, *, Tensor(a!)[] out) -> ()"""
     raise NotImplementedError("torch.ops.aten._foreach_addcdiv.Tensor_out ge_converter is not implemented!")

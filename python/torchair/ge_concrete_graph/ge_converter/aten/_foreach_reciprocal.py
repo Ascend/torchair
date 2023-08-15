@@ -32,7 +32,7 @@ def conveter_aten__foreach_reciprocal_default(
 
 @register_fx_node_ge_converter(torch.ops.aten._foreach_reciprocal.out)
 def conveter_aten__foreach_reciprocal_out(
-    self: List[Tensor], *, out: List[Tensor] = None, meta_outputs: TensorSpec = None
+    self: List[Tensor], *, out: List[Tensor] = None
 ):
     """NB: aten::_foreach_reciprocal.out(Tensor[] self, *, Tensor(a!)[] out) -> ()"""
     raise NotImplementedError("torch.ops.aten._foreach_reciprocal.out ge_converter is not implemented!")

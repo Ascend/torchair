@@ -78,12 +78,17 @@ class Converter:
 
     def __call__(self, converter) -> Any:
         wrapped_converter = _wrap_converter(converter)
+        if 'meta_outputs' in inspect.signature(converter).parameters:
+            wrapped_converter.require_meta = True
+        else:
+            wrapped_converter.require_meta = False
         try:
             self._aten_op._ge_converter = wrapped_converter
         except:
             global _CONVERTERS
             _CONVERTERS.update({self._aten_op: wrapped_converter})
         return self
+
 
     @property
     def supported_cases(self):
@@ -239,7 +244,10 @@ class GeConcreteGraph(ConcreteGraphBase):
             converter = _get_converter(target)
         if converter is None:
             raise RuntimeError(f"Unsupported torch op {target} by ge")
-        return converter(*args, **kwargs, meta_outputs=meta_outputs)
+        if converter.require_meta:
+            return converter(*args, **kwargs, meta_outputs=meta_outputs)
+        else:
+            return converter(*args, **kwargs)
 
     def dump(self, path: str):
         if path is None:

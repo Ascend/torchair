@@ -36,8 +36,7 @@ def conveter_aten_unsafe_split_Tensor_out(
     split_size: Union[int, Tensor],
     dim: int = 0,
     *,
-    out: List[Tensor] = None,
-    meta_outputs: TensorSpec = None
+    out: List[Tensor] = None
 ):
     """NB: aten::unsafe_split.Tensor_out(Tensor self, SymInt split_size, int dim=0, *, Tensor(a!)[] out) -> ()"""
     raise NotImplementedError("torch.ops.aten.unsafe_split.Tensor_out ge_converter is not implemented!")

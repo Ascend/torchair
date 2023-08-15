@@ -124,7 +124,7 @@ def conveter_aten_sort_dimname_values_stable(
 
 @register_fx_node_ge_converter(torch.ops.aten.sort.int)
 def conveter_aten_sort_int(
-    self: List[int], reverse: bool = False, meta_outputs: TensorSpec = None
+    self: List[int], reverse: bool = False
 ):
     """NB: aten::sort.int(int[](a!) self, bool reverse=False) -> ()"""
     raise NotImplementedError("torch.ops.aten.sort.int ge_converter is not implemented!")
@@ -132,7 +132,7 @@ def conveter_aten_sort_int(
 
 @register_fx_node_ge_converter(torch.ops.aten.sort.float)
 def conveter_aten_sort_float(
-    self: List[float], reverse: bool = False, meta_outputs: TensorSpec = None
+    self: List[float], reverse: bool = False
 ):
     """NB: aten::sort.float(float[](a!) self, bool reverse=False) -> ()"""
     raise NotImplementedError("torch.ops.aten.sort.float ge_converter is not implemented!")
@@ -140,7 +140,7 @@ def conveter_aten_sort_float(
 
 @register_fx_node_ge_converter(torch.ops.aten.sort.Tensor)
 def conveter_aten_sort_Tensor(
-    self: List[Tensor], reverse: bool = False, meta_outputs: TensorSpec = None
+    self: List[Tensor], reverse: bool = False
 ):
     """NB: aten::sort.Tensor(Tensor[](a!) self, bool reverse=False) -> ()"""
     raise NotImplementedError("torch.ops.aten.sort.Tensor ge_converter is not implemented!")
@@ -148,7 +148,7 @@ def conveter_aten_sort_Tensor(
 
 @register_fx_node_ge_converter(torch.ops.aten.sort.bool)
 def conveter_aten_sort_bool(
-    self: List[bool], reverse: bool = False, meta_outputs: TensorSpec = None
+    self: List[bool], reverse: bool = False
 ):
     """NB: aten::sort.bool(bool[](a!) self, bool reverse=False) -> ()"""
     raise NotImplementedError("torch.ops.aten.sort.bool ge_converter is not implemented!")
@@ -156,7 +156,7 @@ def conveter_aten_sort_bool(
 
 @register_fx_node_ge_converter(torch.ops.aten.sort.str)
 def conveter_aten_sort_str(
-    self: List[str], reverse: bool = False, meta_outputs: TensorSpec = None
+    self: List[str], reverse: bool = False
 ):
     """NB: aten::sort.str(str[](a!) self, bool reverse=False) -> ()"""
     raise NotImplementedError("torch.ops.aten.sort.str ge_converter is not implemented!")
