@@ -47,6 +47,17 @@ class TorchairSt(unittest.TestCase):
         model(x, 2.0)
         model(x, 3.0)
 
+    def test_auto_tune(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                return torch.add(x, y)
+        model = torch.compile(Model(), backend=npu_backend, dynamic=False)
+        x = torch.randn(2, 2)
+        model(x, 2)
+
     def test_builtin_with_sym(self):
         class Model(torch.nn.Module):
             def __init__(self):
