@@ -495,7 +495,7 @@ def parse_inputs(inputs, mode='input'):
 def parse_kwargs(kwargs):
     kwargs_list = []
     for k,v in kwargs.items():
-        if k in ['name', 'placement']:
+        if isinstance(v, str):
             v = f'"{v}"'
         kwargs_list.append(f'{k}={v}')
     return kwargs_list
