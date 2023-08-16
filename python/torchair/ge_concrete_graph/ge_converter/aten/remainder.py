@@ -18,8 +18,11 @@ import torch
 from torch import Generator, contiguous_format, inf, strided
 from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
-from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
+from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
+    Support
+from torchair.ge_concrete_graph.utils import dtype_promote
 
 
 @register_fx_node_ge_converter(torch.ops.aten.remainder.Tensor)
@@ -30,12 +33,15 @@ def conveter_aten_remainder_Tensor(
     raise NotImplementedError("torch.ops.aten.remainder.Tensor ge_converter is not implemented!")
 
 
+@declare_supported([
+    Support(F32(8, 12, 4096), 4096),
+])
 @register_fx_node_ge_converter(torch.ops.aten.remainder.Scalar)
 def conveter_aten_remainder_Scalar(
     self: Tensor, other: Union[Number, Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::remainder.Scalar(Tensor self, Scalar other) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.remainder.Scalar ge_converter is not implemented!")
+    return ge.FloorMod(self, other)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.remainder.Scalar_Tensor)
