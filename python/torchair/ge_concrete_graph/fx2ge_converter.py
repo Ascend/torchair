@@ -19,7 +19,7 @@ from torchair.ge_concrete_graph.ge_graph import default_ge_graph, GeGraph
 from torchair.ge_concrete_graph.ge_graph import compat_as_bytes
 from torchair.ge_concrete_graph.ge_graph import DataType, TensorSpec
 from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type, torch_type_to_ge_proto_type
-from torchair.ge_concrete_graph.ge_graph import is_sym, sym_to_ge_proto_dtype
+from torchair.ge_concrete_graph.ge_graph import is_sym, sym_to_ge_dtype
 from torchair.core.backend import TorchNpuGraph
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.ge_concrete_graph.utils import convert_to_tensorboard
@@ -195,20 +195,21 @@ class GeConcreteGraph(ConcreteGraphBase):
     def parse_input(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
         if is_sym(meta_outputs):
             data = ge.Data(index=len(self._inputs),
-                           dtype=sym_to_ge_proto_dtype(meta_outputs), shape=[], name=target)
+                           dtype=sym_to_ge_dtype(meta_outputs), shape=[], placement='CPU', name=target)
             data.set_meta(meta_outputs)
             self._inputs.append(data)
             self._input_placements.append(Placement.HOST)
         else:
             assert isinstance(meta_outputs, torch.Tensor)
-            dtype = torch_type_to_ge_proto_type(meta_outputs.dtype)
+            dtype = torch_type_to_ge_type(meta_outputs.dtype)
             shape = _get_generalized_shape(meta_outputs)
+            placement = Placement.HOST if (
+                meta_outputs.device is None or meta_outputs.device.type == 'cpu') else Placement.DEVICE
             data = ge.Data(index=len(self._inputs), dtype=dtype,
-                           shape=shape, name=target)
+                           shape=shape, placement='CPU' if (placement == Placement.HOST) else 'NPU', name=target)
             data.set_meta(meta_outputs)
             self._inputs.append(data)
-            self._input_placements.append(Placement.HOST if (
-                meta_outputs.device is None or meta_outputs.device.type == 'cpu') else Placement.DEVICE)
+            self._input_placements.append(placement)
         return self._inputs[-1]
 
     def parse_output(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):

@@ -228,6 +228,13 @@ class GeGraph(object):
     def __str__(self):
         return str(self._proto)
 
+    def __enter__(self):
+        _graph_stack.stack.append(self)
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        _graph_stack.stack.remove(self)
+
     def add_python_code(self, args, kwargs, outputs, func):
         args_string = ', '.join([f'{i}' for i in parse_inputs(args)])
         kwargs_string = ', '.join([f'{i}' for i in parse_kwargs(kwargs)])
