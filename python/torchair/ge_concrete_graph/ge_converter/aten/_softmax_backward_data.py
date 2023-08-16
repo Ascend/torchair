@@ -18,10 +18,16 @@ import torch
 from torch import Generator, contiguous_format, inf, strided
 from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
-from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType, torch_type_to_ge_type
+from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
+    Support
 
 
+@declare_supported([
+    Support(F32(16), F32(16), -1, torch.float32),
+    Support(F32(16, 16), F32(16, 16), 0, torch.float32),
+])
 @register_fx_node_ge_converter(torch.ops.aten._softmax_backward_data.default)
 def conveter_aten__softmax_backward_data_default(
     grad_output: Tensor,
@@ -31,8 +37,14 @@ def conveter_aten__softmax_backward_data_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::_softmax_backward_data(Tensor grad_output, Tensor output, int dim, ScalarType input_dtype) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten._softmax_backward_data.default ge_converter is not implemented!")
-
+    input_ge_type = torch_type_to_ge_type(input_dtype)
+    half_to_float = grad_output.dtype != input_ge_type
+    if half_to_float:
+        if grad_output.dtype != DataType.DT_FLOAT or \
+            input_ge_type != DataType.DT_FLOAT16:
+                raise NotImplementedError("expected input and grad types to match,",
+                        " or input to be at::Half and grad to be at::Float")
+    return ge.SoftmaxGrad(output, grad_output, axes=[dim])
 
 @register_fx_node_ge_converter(torch.ops.aten._softmax_backward_data.out)
 def conveter_aten__softmax_backward_data_out(
