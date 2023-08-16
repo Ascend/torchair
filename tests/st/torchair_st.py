@@ -81,6 +81,42 @@ class TorchairSt(unittest.TestCase):
         # shape is position input of ge.Empty, check not raise when pass shape by k-v
         ge.Empty(shape=ge.Const(1))
 
+    def test_ge_graph_dump_with_py(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                return x + 1
+
+        def get_dumped_py_file_list(dir_path, file_extension='.py'):
+            return [i for i in os.listdir(dir_path) if i.startswith('dynamo_') and i.endswith(f'{file_extension}')]
+
+        for file_name in get_dumped_py_file_list('./'):
+            os.remove(os.path.join('./', file_name))
+
+        config = CompilerConfig()
+        config.debug.graph_dump.type = "py"
+        npu_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = Model()
+        model = torch.compile(model, backend=npu_backend)
+        x = torch.randn(2, 2)
+        output = model(x)
+
+        dumped_py_file_list = get_dumped_py_file_list('./')
+        dumped_py_file_list.sort(key=lambda file_name: os.path.getmtime(os.path.join('./', file_name)))
+        assert dumped_py_file_list.__len__() > 0
+        file_name = os.path.join('./', dumped_py_file_list[-1])
+
+        with open(file_name, 'r')as f:
+            src = f.read()
+
+        assert src != '# -*- coding: utf-8 -*-\nfrom torch import tensor\n' \
+                      'from torchair.ge_concrete_graph import ge_apis as ge\n' \
+                      'from torchair.ge_concrete_graph.ge_graph import get_default_ge_graph\n\n'
+
+        exec(src)
 
 if __name__ == '__main__':
     unittest.main()
