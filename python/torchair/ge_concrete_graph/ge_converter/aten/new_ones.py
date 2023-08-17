@@ -20,8 +20,18 @@ from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.fx2ge_converter import declare_supported, torch_type_to_ge_type
+from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
+    Support
+from torchair.ge_concrete_graph.utils import dtype_promote
 
 
+@declare_supported([
+    Support(F32(2, 2), (2,3)),
+    Support(F32(2, 2), (2,3), dtype=torch.int),
+    Support(F16(2, 2), (2,3)),
+    Support(I32(2, 2), (2, 3)),
+])
 @register_fx_node_ge_converter(torch.ops.aten.new_ones.default)
 def conveter_aten_new_ones_default(
     self: Tensor,
@@ -34,7 +44,15 @@ def conveter_aten_new_ones_default(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::new_ones(Tensor self, SymInt[] size, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.new_ones.default ge_converter is not implemented!")
+    if dtype is None:
+        dtype = self.dtype
+    else:
+        dtype = torch_type_to_ge_type(dtype)
+
+    if layout is not None and layout != torch.strided:
+        raise NotImplementedError("torch.ops.aten.new_ones.default ge_converter is only supported on dense  tensor!")
+
+    return ge.Fill(size, ge.Cast(1., dst_type=dtype))
 
 
 @register_fx_node_ge_converter(torch.ops.aten.new_ones.out)

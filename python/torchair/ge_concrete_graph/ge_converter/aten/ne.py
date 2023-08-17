@@ -18,17 +18,23 @@ import torch
 from torch import Generator, contiguous_format, inf, strided
 from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
-from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, torch_type_to_ge_type
+from torchair.ge_concrete_graph.fx2ge_converter import declare_supported
 from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
 from torchair.ge_concrete_graph.utils import dtype_promote
 
-
+@declare_supported([
+    Support(F32(2,2), F32(2,2)),
+])
 @register_fx_node_ge_converter(torch.ops.aten.ne.Tensor)
 def conveter_aten_ne_Tensor(self: Tensor, other: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::ne.Tensor(Tensor self, Tensor other) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.ne.Tensor ge_converter is not implemented!")
+    if self.dtype != other.dtype:
+        value = ge.Cast(ge.Const(0.), dst_type=torch_type_to_ge_type(torch.bool))
+        return ge.Fill(ge.Shape(self), value)
+    return ge.NotEqual(self, other)
 
 
 @declare_supported([
