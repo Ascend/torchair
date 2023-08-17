@@ -18,16 +18,21 @@ import torch
 from torch import Generator, contiguous_format, inf, strided
 from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
-from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
+from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.supported_declaration import F32, F16, Support
 
 
+@declare_supported([
+    Support(F32(3, 4), F32(3, 4)),
+    Support(F16(3, 4), F16(3, 4)),
+])
 @register_fx_node_ge_converter(torch.ops.aten.hardsigmoid_backward.default)
 def conveter_aten_hardsigmoid_backward_default(
     grad_output: Tensor, self: Tensor, meta_outputs: TensorSpec = None
 ):
     """NB: aten::hardsigmoid_backward(Tensor grad_output, Tensor self) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.hardsigmoid_backward.default ge_converter is not implemented!")
+    return ge.HardSigmoidGrad(grad_output, self)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.hardsigmoid_backward.grad_input)

@@ -18,10 +18,15 @@ import torch
 from torch import Generator, contiguous_format, inf, strided
 from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
-from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
+from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.supported_declaration import F32, F16, Support
 
 
+@declare_supported([
+    Support(F32(3, 4), F32(3, 4), 0.4, False),
+    Support(F16(3, 4), F16(3, 4), 0.4, False),
+])
 @register_fx_node_ge_converter(torch.ops.aten.leaky_relu_backward.default)
 def conveter_aten_leaky_relu_backward_default(
     grad_output: Tensor,
@@ -31,7 +36,9 @@ def conveter_aten_leaky_relu_backward_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::leaky_relu_backward(Tensor grad_output, Tensor self, Scalar negative_slope, bool self_is_result) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.leaky_relu_backward.default ge_converter is not implemented!")
+    if isinstance(negative_slope, Tensor):
+        raise NotImplementedError('torch.ops.aten.leaky_relu_backward.default not supports negative_slope with Tensor type!')
+    return ge.LeakyReluGrad(grad_output, self, negative_slope=negative_slope)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.leaky_relu_backward.grad_input)
