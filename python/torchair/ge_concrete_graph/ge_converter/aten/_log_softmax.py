@@ -18,16 +18,26 @@ import torch
 from torch import Generator, contiguous_format, inf, strided
 from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
-from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
+from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.supported_declaration import F32, F16, Support
+from torchair.ge_concrete_graph.utils import dtype_promote
 
 
+@declare_supported(
+    [
+        Support(F32(2, 2), dim=0, half_to_float=False),
+        Support(F32(2, 2), dim=1, half_to_float=True),
+    ]
+)
 @register_fx_node_ge_converter(torch.ops.aten._log_softmax.default)
 def conveter_aten__log_softmax_default(
     self: Tensor, dim: int, half_to_float: bool, meta_outputs: TensorSpec = None
 ):
     """NB: aten::_log_softmax(Tensor self, int dim, bool half_to_float) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten._log_softmax.default ge_converter is not implemented!")
+    self = dtype_promote(self, target_dtype=meta_outputs.dtype)
+    output = ge.LogSoftmaxV2(self, axes=[dim])
+    return output
 
 
 @register_fx_node_ge_converter(torch.ops.aten._log_softmax.out)

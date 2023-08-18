@@ -20,6 +20,7 @@ from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.utils import dtype_promote
 
 
 @register_fx_node_ge_converter(torch.ops.aten.nll_loss_backward.default)
@@ -34,7 +35,12 @@ def conveter_aten_nll_loss_backward_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::nll_loss_backward(Tensor grad_output, Tensor self, Tensor target, Tensor? weight, int reduction, SymInt ignore_index, Tensor total_weight) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.nll_loss_backward.default ge_converter is not implemented!")
+    if weight is None:
+        weight = ge.Fill(ge.GatherV2(ge.Shape(self), 1, 0), 1.0)
+    reduction_str = ['none', 'mean', 'sum']
+    self, grad_output, weight, total_weight = dtype_promote(self, grad_output, weight, total_weight, target_dtype=meta_outputs.dtype)
+    grad_input = ge.NLLLossGrad(self, grad_output, target, weight, total_weight, reduction=reduction_str[reduction], ignore_index=ignore_index)
+    return grad_input
 
 
 @register_fx_node_ge_converter(torch.ops.aten.nll_loss_backward.grad_input)

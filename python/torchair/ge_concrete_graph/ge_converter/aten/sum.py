@@ -18,10 +18,16 @@ import torch
 from torch import Generator, contiguous_format, inf, strided
 from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
-from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
+from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.utils import dtype_promote
+from torchair.ge_concrete_graph.supported_declaration import F32, F16, Support
 
 
+@declare_supported([
+    Support(F32(3, 8, 4), dim=[1], keepdim=True),
+    Support(F32(3, 8, 4), dim=[2], keepdim=False),
+])
 @register_fx_node_ge_converter(torch.ops.aten.sum.dim_IntList)
 def conveter_aten_sum_dim_IntList(
     self: Tensor,
@@ -32,7 +38,10 @@ def conveter_aten_sum_dim_IntList(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::sum.dim_IntList(Tensor self, int[1]? dim, bool keepdim=False, *, ScalarType? dtype=None) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.sum.dim_IntList ge_converter is not implemented!")
+    if len(dim) == 0:
+        dim = list(range(self.rank))
+    self = dtype_promote(self, target_dtype=meta_outputs.dtype)
+    return ge.ReduceSum(self, dim, keep_dims=keepdim)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.sum.default)

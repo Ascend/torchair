@@ -39,12 +39,20 @@ def conveter_aten_div_Tensor(self: Tensor, other: Tensor, meta_outputs: TensorSp
     return ge.RealDiv(self, other)
 
 
+@declare_supported(
+    [
+        Support(F32(2, 2), int(3)),
+        Support(F32(2, 2), float(3.2)),
+        Support(F32(2, 2), float(3.9)),
+    ]
+)
 @register_fx_node_ge_converter(torch.ops.aten.div.Scalar)
 def conveter_aten_div_Scalar(
     self: Tensor, other: Union[Number, Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::div.Scalar(Tensor self, Scalar other) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.div.Scalar ge_converter is not implemented!")
+    self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)
+    return ge.RealDiv(self, other)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.div.Tensor_mode)

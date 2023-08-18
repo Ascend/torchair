@@ -59,6 +59,8 @@ def _wrap_converter(converter: Callable):
                 assert isinstance(meta_outputs, (list, tuple))
                 assert len(ge_outputs) == len(meta_outputs)
                 for meta_output, ge_output in zip(meta_outputs, ge_outputs):
+                    if meta_output is None:
+                        continue
                     assert isinstance(meta_output, torch.Tensor)
                     assert isinstance(ge_output, ge.Tensor)
                     ge_output.set_meta(meta_output)
