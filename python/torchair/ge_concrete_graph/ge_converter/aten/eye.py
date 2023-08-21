@@ -30,7 +30,7 @@ def conveter_aten_eye_default(
     layout: Optional[int] = None,
     device: Optional[Device] = None,
     pin_memory: Optional[bool] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::eye(SymInt n, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.eye.default ge_converter is not implemented!")
@@ -45,7 +45,7 @@ def conveter_aten_eye_m(
     layout: Optional[int] = None,
     device: Optional[Device] = None,
     pin_memory: Optional[bool] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::eye.m(SymInt n, SymInt m, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.eye.m ge_converter is not implemented!")
@@ -53,7 +53,7 @@ def conveter_aten_eye_m(
 
 @register_fx_node_ge_converter(torch.ops.aten.eye.out)
 def conveter_aten_eye_out(
-    n: Union[int, Tensor], *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    n: Union[int, Tensor], *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::eye.out(SymInt n, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.eye.out ge_converter is not implemented!")
@@ -65,7 +65,7 @@ def conveter_aten_eye_m_out(
     m: Union[int, Tensor],
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::eye.m_out(SymInt n, SymInt m, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.eye.m_out ge_converter is not implemented!")

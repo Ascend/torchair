@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.gelu_.default)
 def conveter_aten_gelu__default(
-    self: Tensor, *, approximate: str = "None", meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, *, approximate: str = "None", meta_outputs: TensorSpec = None
 ):
     """NB: aten::gelu_(Tensor(a!) self, *, str approximate="none") -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.gelu_.default ge_converter is not implemented!")

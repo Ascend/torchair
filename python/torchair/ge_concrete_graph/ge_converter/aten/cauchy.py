@@ -29,7 +29,7 @@ def conveter_aten_cauchy_default(
     sigma: float = 1.0,
     *,
     generator: Optional[Generator] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::cauchy(Tensor self, float median=0., float sigma=1., *, Generator? generator=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.cauchy.default ge_converter is not implemented!")
@@ -43,7 +43,7 @@ def conveter_aten_cauchy_out(
     *,
     generator: Optional[Generator] = None,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::cauchy.out(Tensor self, float median=0., float sigma=1., *, Generator? generator=None, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.cauchy.out ge_converter is not implemented!")

@@ -31,7 +31,7 @@ def conveter_aten_index_reduce_default(
     reduce: str,
     *,
     include_self: bool = True,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::index_reduce(Tensor self, int dim, Tensor index, Tensor source, str reduce, *, bool include_self=True) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.index_reduce.default ge_converter is not implemented!")
@@ -47,7 +47,7 @@ def conveter_aten_index_reduce_out(
     *,
     include_self: bool = True,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::index_reduce.out(Tensor self, int dim, Tensor index, Tensor source, str reduce, *, bool include_self=True, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.index_reduce.out ge_converter is not implemented!")

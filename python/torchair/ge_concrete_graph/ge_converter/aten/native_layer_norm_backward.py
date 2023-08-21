@@ -32,7 +32,7 @@ def conveter_aten_native_layer_norm_backward_default(
     weight: Optional[Tensor],
     bias: Optional[Tensor],
     output_mask: List[bool],
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::native_layer_norm_backward(Tensor grad_out, Tensor input, SymInt[] normalized_shape, Tensor mean, Tensor rstd, Tensor? weight, Tensor? bias, bool[3] output_mask) -> (Tensor, Tensor, Tensor)"""
     raise NotImplementedError("torch.ops.aten.native_layer_norm_backward.default ge_converter is not implemented!")
@@ -52,7 +52,7 @@ def conveter_aten_native_layer_norm_backward_out(
     out0: Tensor = None,
     out1: Tensor = None,
     out2: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::native_layer_norm_backward.out(Tensor grad_out, Tensor input, SymInt[] normalized_shape, Tensor mean, Tensor rstd, Tensor? weight, Tensor? bias, bool[3] output_mask, *, Tensor(a!) out0, Tensor(b!) out1, Tensor(c!) out2) -> (Tensor(a!), Tensor(b!), Tensor(c!))"""
     raise NotImplementedError("torch.ops.aten.native_layer_norm_backward.out ge_converter is not implemented!")

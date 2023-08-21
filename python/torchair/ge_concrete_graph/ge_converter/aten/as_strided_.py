@@ -28,7 +28,7 @@ def conveter_aten_as_strided__default(
     size: Union[List[int], Tensor],
     stride: Union[List[int], Tensor],
     storage_offset: Optional[Union[int, Tensor]] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::as_strided_(Tensor(a!) self, SymInt[] size, SymInt[] stride, SymInt? storage_offset=None) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.as_strided_.default ge_converter is not implemented!")

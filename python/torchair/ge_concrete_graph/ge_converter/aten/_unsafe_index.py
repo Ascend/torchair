@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten._unsafe_index.Tensor)
 def conveter_aten__unsafe_index_Tensor(
-    self: Tensor, indices: List[Optional[Tensor]], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, indices: List[Optional[Tensor]], meta_outputs: TensorSpec = None
 ):
     """NB: aten::_unsafe_index.Tensor(Tensor self, Tensor?[] indices) -> Tensor"""
     raise NotImplementedError("torch.ops.aten._unsafe_index.Tensor ge_converter is not implemented!")

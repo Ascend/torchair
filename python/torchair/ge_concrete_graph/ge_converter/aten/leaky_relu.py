@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.leaky_relu.default)
 def conveter_aten_leaky_relu_default(
-    self: Tensor, negative_slope: Union[Number, Tensor] = 0.01, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, negative_slope: Union[Number, Tensor] = 0.01, meta_outputs: TensorSpec = None
 ):
     """NB: aten::leaky_relu(Tensor self, Scalar negative_slope=0.01) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.leaky_relu.default ge_converter is not implemented!")
@@ -36,7 +36,7 @@ def conveter_aten_leaky_relu_out(
     negative_slope: Union[Number, Tensor] = 0.01,
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::leaky_relu.out(Tensor self, Scalar negative_slope=0.01, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.leaky_relu.out ge_converter is not implemented!")

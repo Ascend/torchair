@@ -27,7 +27,7 @@ def conveter_aten_softshrink_backward_default(
     grad_output: Tensor,
     self: Tensor,
     lambd: Union[Number, Tensor],
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::softshrink_backward(Tensor grad_output, Tensor self, Scalar lambd) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.softshrink_backward.default ge_converter is not implemented!")
@@ -40,7 +40,7 @@ def conveter_aten_softshrink_backward_grad_input(
     lambd: Union[Number, Tensor],
     *,
     grad_input: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::softshrink_backward.grad_input(Tensor grad_output, Tensor self, Scalar lambd, *, Tensor(a!) grad_input) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.softshrink_backward.grad_input ge_converter is not implemented!")

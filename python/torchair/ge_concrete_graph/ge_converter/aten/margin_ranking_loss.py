@@ -29,7 +29,7 @@ def conveter_aten_margin_ranking_loss_default(
     target: Tensor,
     margin: float = 0.0,
     reduction: int = 1,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::margin_ranking_loss(Tensor input1, Tensor input2, Tensor target, float margin=0., int reduction=1) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.margin_ranking_loss.default ge_converter is not implemented!")

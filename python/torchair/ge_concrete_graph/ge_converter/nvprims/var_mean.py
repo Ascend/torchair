@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.nvprims.var_mean.default)
 def conveter_nvprims_var_mean_default(
-    inp: Tensor, unbiased: bool, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    inp: Tensor, unbiased: bool, meta_outputs: TensorSpec = None
 ):
     """NB: nvprims::var_mean(Tensor inp, bool unbiased) -> (Tensor, Tensor)"""
     raise NotImplementedError("torch.ops.nvprims.var_mean.default ge_converter is not implemented!")
@@ -38,7 +38,7 @@ def conveter_nvprims_var_mean_main(
     keepdim: bool = False,
     *,
     correction: Optional[float] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: nvprims::var_mean.main(Tensor inp, int[1]? dim=None, bool? unbiased=None, bool keepdim=False, *, float? correction=None) -> (Tensor, Tensor)"""
     raise NotImplementedError("torch.ops.nvprims.var_mean.main ge_converter is not implemented!")

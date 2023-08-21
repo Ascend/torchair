@@ -7,13 +7,14 @@ from torchair.ge_concrete_graph.ge_graph import auto_convert_to_tensor
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType
 from torchair.ge_concrete_graph.ge_graph import compat_as_bytes, compat_as_bytes_list
 from torchair.ge_concrete_graph.ge_graph import trans_to_list_list_int, trans_to_list_list_float
+from torchair.ge_concrete_graph.ge_graph import _ge_dtype_to_ge_proto_dtype
 
 from torchair.ge_concrete_graph.ge_graph import Const
 from torchair.ge_concrete_graph.auto_generated_ge_raw_ops import *
 from torchair.ge_concrete_graph.dynamic_output_ops import *
 
 @auto_convert_to_tensor([], [])
-def Data(*, index: int, dtype: int, shape: List[int] = None, format: str = "ND", name: str = None) -> Tensor:
+def Data(*, index: int, dtype: int, shape: List[int] = None, format: str = "ND", placement:str, name: str = None) -> Tensor:
     op = get_default_ge_graph().op.add()
     op.type = "Data"
     op.name = next_unique_name(name, "Data")
@@ -21,8 +22,10 @@ def Data(*, index: int, dtype: int, shape: List[int] = None, format: str = "ND",
 
     desc = op.output_desc.add()
     desc.name = "y"
-    desc.dtype = dtype
+    desc.dtype = _ge_dtype_to_ge_proto_dtype(dtype)
     desc.layout = format
+    assert placement in ["NPU", "CPU"], f"placement should be NPU or CPU, but got {placement}"
+    desc.device_type = placement
     if shape is not None:
         desc.shape.dim.extend(shape)
     else:

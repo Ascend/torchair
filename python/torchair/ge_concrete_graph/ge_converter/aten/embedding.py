@@ -29,7 +29,7 @@ def conveter_aten_embedding_default(
     padding_idx: Union[int, Tensor] = -1,
     scale_grad_by_freq: bool = False,
     sparse: bool = False,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::embedding(Tensor weight, Tensor indices, SymInt padding_idx=-1, bool scale_grad_by_freq=False, bool sparse=False) -> Tensor"""
     return ge.GatherV2(weight, indices, [0])
@@ -44,7 +44,7 @@ def conveter_aten_embedding_out(
     sparse: bool = False,
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::embedding.out(Tensor weight, Tensor indices, SymInt padding_idx=-1, bool scale_grad_by_freq=False, bool sparse=False, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.embedding.out ge_converter is not implemented!")

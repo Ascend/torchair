@@ -27,7 +27,7 @@ from torchair.ge_concrete_graph.utils import dtype_promote
 
 @register_fx_node_ge_converter(torch.ops.aten.select.Dimname)
 def conveter_aten_select_Dimname(
-    self: Tensor, dim: str, index: int, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, dim: str, index: int, meta_outputs: TensorSpec = None
 ):
     """NB: aten::select.Dimname(Tensor(a) self, str dim, int index) -> Tensor(a)"""
     raise NotImplementedError("torch.ops.aten.select.Dimname ge_converter is not implemented!")
@@ -42,7 +42,7 @@ def conveter_aten_select_Dimname(
 )
 @register_fx_node_ge_converter(torch.ops.aten.select.int)
 def conveter_aten_select_int(
-    self: Tensor, dim: int, index: Union[int, Tensor], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, dim: int, index: Union[int, Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::select.int(Tensor(a) self, int dim, SymInt index) -> Tensor(a)"""
     if isinstance(index, Tensor):

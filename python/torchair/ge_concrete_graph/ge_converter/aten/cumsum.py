@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.cumsum.default)
 def conveter_aten_cumsum_default(
-    self: Tensor, dim: int, *, dtype: Optional[int] = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, dim: int, *, dtype: Optional[int] = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::cumsum(Tensor self, int dim, *, ScalarType? dtype=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.cumsum.default ge_converter is not implemented!")
@@ -32,7 +32,7 @@ def conveter_aten_cumsum_default(
 
 @register_fx_node_ge_converter(torch.ops.aten.cumsum.dimname)
 def conveter_aten_cumsum_dimname(
-    self: Tensor, dim: str, *, dtype: Optional[int] = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, dim: str, *, dtype: Optional[int] = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::cumsum.dimname(Tensor self, str dim, *, ScalarType? dtype=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.cumsum.dimname ge_converter is not implemented!")
@@ -45,7 +45,7 @@ def conveter_aten_cumsum_dimname_out(
     *,
     dtype: Optional[int] = None,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::cumsum.dimname_out(Tensor self, str dim, *, ScalarType? dtype=None, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.cumsum.dimname_out ge_converter is not implemented!")
@@ -58,7 +58,7 @@ def conveter_aten_cumsum_out(
     *,
     dtype: Optional[int] = None,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::cumsum.out(Tensor self, int dim, *, ScalarType? dtype=None, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.cumsum.out ge_converter is not implemented!")

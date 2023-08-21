@@ -28,7 +28,7 @@ def conveter_prims_scalar_tensor_default(
     *,
     dtype: Optional[int] = None,
     device: Optional[Device] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: prims::scalar_tensor(Scalar s, *, ScalarType? dtype=None, Device? device=None) -> Tensor"""
     raise NotImplementedError("torch.ops.prims.scalar_tensor.default ge_converter is not implemented!")

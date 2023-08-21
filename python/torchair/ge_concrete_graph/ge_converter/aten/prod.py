@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.prod.default)
 def conveter_aten_prod_default(
-    self: Tensor, *, dtype: Optional[int] = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, *, dtype: Optional[int] = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::prod(Tensor self, *, ScalarType? dtype=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.prod.default ge_converter is not implemented!")
@@ -37,7 +37,7 @@ def conveter_aten_prod_dim_int(
     keepdim: bool = False,
     *,
     dtype: Optional[int] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::prod.dim_int(Tensor self, int dim, bool keepdim=False, *, ScalarType? dtype=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.prod.dim_int ge_converter is not implemented!")
@@ -50,7 +50,7 @@ def conveter_aten_prod_dim_Dimname(
     keepdim: bool = False,
     *,
     dtype: Optional[int] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::prod.dim_Dimname(Tensor self, str dim, bool keepdim=False, *, ScalarType? dtype=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.prod.dim_Dimname ge_converter is not implemented!")
@@ -64,7 +64,7 @@ def conveter_aten_prod_Dimname_out(
     *,
     dtype: Optional[int] = None,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::prod.Dimname_out(Tensor self, str dim, bool keepdim=False, *, ScalarType? dtype=None, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.prod.Dimname_out ge_converter is not implemented!")
@@ -78,7 +78,7 @@ def conveter_aten_prod_int_out(
     *,
     dtype: Optional[int] = None,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::prod.int_out(Tensor self, int dim, bool keepdim=False, *, ScalarType? dtype=None, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.prod.int_out ge_converter is not implemented!")
@@ -90,7 +90,7 @@ def conveter_aten_prod_out(
     *,
     dtype: Optional[int] = None,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::prod.out(Tensor self, *, ScalarType? dtype=None, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.prod.out ge_converter is not implemented!")

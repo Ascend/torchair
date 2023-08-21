@@ -28,7 +28,7 @@ def conveter_aten_select_scatter_default(
     src: Tensor,
     dim: int,
     index: Union[int, Tensor],
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::select_scatter(Tensor self, Tensor src, int dim, SymInt index) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.select_scatter.default ge_converter is not implemented!")
@@ -42,7 +42,7 @@ def conveter_aten_select_scatter_out(
     index: Union[int, Tensor],
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::select_scatter.out(Tensor self, Tensor src, int dim, SymInt index, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.select_scatter.out ge_converter is not implemented!")

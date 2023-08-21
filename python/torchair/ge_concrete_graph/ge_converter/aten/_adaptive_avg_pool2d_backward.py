@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten._adaptive_avg_pool2d_backward.default)
 def conveter_aten__adaptive_avg_pool2d_backward_default(
-    grad_output: Tensor, self: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    grad_output: Tensor, self: Tensor, meta_outputs: TensorSpec = None
 ):
     """NB: aten::_adaptive_avg_pool2d_backward(Tensor grad_output, Tensor self) -> Tensor"""
     raise NotImplementedError("torch.ops.aten._adaptive_avg_pool2d_backward.default ge_converter is not implemented!")
@@ -32,7 +32,7 @@ def conveter_aten__adaptive_avg_pool2d_backward_default(
 
 @register_fx_node_ge_converter(torch.ops.aten._adaptive_avg_pool2d_backward.out)
 def conveter_aten__adaptive_avg_pool2d_backward_out(
-    grad_output: Tensor, self: Tensor, *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    grad_output: Tensor, self: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::_adaptive_avg_pool2d_backward.out(Tensor grad_output, Tensor self, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten._adaptive_avg_pool2d_backward.out ge_converter is not implemented!")

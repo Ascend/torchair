@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.nvprims.where.default)
 def conveter_nvprims_where_default(
-    pred: Tensor, a: Tensor, b: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    pred: Tensor, a: Tensor, b: Tensor, meta_outputs: TensorSpec = None
 ):
     """NB: nvprims::where(Tensor pred, Tensor a, Tensor b) -> Tensor"""
     raise NotImplementedError("torch.ops.nvprims.where.default ge_converter is not implemented!")

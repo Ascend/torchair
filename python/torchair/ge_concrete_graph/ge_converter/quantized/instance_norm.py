@@ -30,7 +30,7 @@ def conveter_quantized_instance_norm_default(
     eps: float,
     output_scale: float,
     output_zero_point: int,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: quantized::instance_norm(Tensor input, Tensor? weight, Tensor? bias, float eps, float output_scale, int output_zero_point) -> Tensor"""
     raise NotImplementedError("torch.ops.quantized.instance_norm.default ge_converter is not implemented!")

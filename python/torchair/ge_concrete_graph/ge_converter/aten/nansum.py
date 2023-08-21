@@ -29,7 +29,7 @@ def conveter_aten_nansum_default(
     keepdim: bool = False,
     *,
     dtype: Optional[int] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::nansum(Tensor self, int[1]? dim=None, bool keepdim=False, *, ScalarType? dtype=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.nansum.default ge_converter is not implemented!")
@@ -43,7 +43,7 @@ def conveter_aten_nansum_out(
     *,
     dtype: Optional[int] = None,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::nansum.out(Tensor self, int[1]? dim=None, bool keepdim=False, *, ScalarType? dtype=None, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.nansum.out ge_converter is not implemented!")

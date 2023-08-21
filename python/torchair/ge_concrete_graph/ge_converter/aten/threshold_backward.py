@@ -36,7 +36,7 @@ def conveter_aten_threshold_backward_default(
     grad_output: Tensor,
     self: Tensor,
     threshold: Union[Number, Tensor],
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """ NB: aten::threshold_backward(Tensor grad_output, Tensor self, Scalar threshold) -> Tensor """
     self, grad_output = dtype_promote(self, grad_output, target_dtype = meta_outputs.dtype)
@@ -59,7 +59,7 @@ def conveter_aten_threshold_backward_grad_input(
     threshold: Union[Number, Tensor],
     *,
     grad_input: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::threshold_backward.grad_input(Tensor grad_output, Tensor self, Scalar threshold, *, Tensor(a!) grad_input) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.threshold_backward.grad_input ge_converter is not implemented!")

@@ -30,7 +30,7 @@ def conveter_aten_scalar_tensor_default(
     layout: Optional[int] = None,
     device: Optional[Device] = None,
     pin_memory: Optional[bool] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::scalar_tensor(Scalar s, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
     if isinstance(s, Tensor):
@@ -40,7 +40,7 @@ def conveter_aten_scalar_tensor_default(
 
 @register_fx_node_ge_converter(torch.ops.aten.scalar_tensor.out)
 def conveter_aten_scalar_tensor_out(
-    s: Union[Number, Tensor], *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    s: Union[Number, Tensor], *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::scalar_tensor.out(Scalar s, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.scalar_tensor.out ge_converter is not implemented!")

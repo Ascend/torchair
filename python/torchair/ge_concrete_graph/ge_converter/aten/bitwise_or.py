@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.bitwise_or.Tensor)
 def conveter_aten_bitwise_or_Tensor(
-    self: Tensor, other: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, other: Tensor, meta_outputs: TensorSpec = None
 ):
     """NB: aten::bitwise_or.Tensor(Tensor self, Tensor other) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.bitwise_or.Tensor ge_converter is not implemented!")
@@ -32,7 +32,7 @@ def conveter_aten_bitwise_or_Tensor(
 
 @register_fx_node_ge_converter(torch.ops.aten.bitwise_or.Scalar_Tensor)
 def conveter_aten_bitwise_or_Scalar_Tensor(
-    self: Union[Number, Tensor], other: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Union[Number, Tensor], other: Tensor, meta_outputs: TensorSpec = None
 ):
     """NB: aten::bitwise_or.Scalar_Tensor(Scalar self, Tensor other) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.bitwise_or.Scalar_Tensor ge_converter is not implemented!")
@@ -40,7 +40,7 @@ def conveter_aten_bitwise_or_Scalar_Tensor(
 
 @register_fx_node_ge_converter(torch.ops.aten.bitwise_or.Scalar)
 def conveter_aten_bitwise_or_Scalar(
-    self: Tensor, other: Union[Number, Tensor], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, other: Union[Number, Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::bitwise_or.Scalar(Tensor self, Scalar other) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.bitwise_or.Scalar ge_converter is not implemented!")
@@ -48,7 +48,7 @@ def conveter_aten_bitwise_or_Scalar(
 
 @register_fx_node_ge_converter(torch.ops.aten.bitwise_or.Tensor_out)
 def conveter_aten_bitwise_or_Tensor_out(
-    self: Tensor, other: Tensor, *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, other: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::bitwise_or.Tensor_out(Tensor self, Tensor other, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.bitwise_or.Tensor_out ge_converter is not implemented!")
@@ -60,7 +60,7 @@ def conveter_aten_bitwise_or_Scalar_out(
     other: Union[Number, Tensor],
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::bitwise_or.Scalar_out(Tensor self, Scalar other, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.bitwise_or.Scalar_out ge_converter is not implemented!")
@@ -72,7 +72,7 @@ def conveter_aten_bitwise_or_Scalar_Tensor_out(
     other: Tensor,
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::bitwise_or.Scalar_Tensor_out(Scalar self, Tensor other, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.bitwise_or.Scalar_Tensor_out ge_converter is not implemented!")

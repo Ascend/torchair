@@ -6,3 +6,4 @@ coverage
 *.pbtxt
 *.csv
 cmake-*
+.vscode

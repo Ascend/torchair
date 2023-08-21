@@ -30,7 +30,7 @@ def conveter_aten_linalg_lu_solve_default(
     *,
     left: bool = True,
     adjoint: bool = False,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::linalg_lu_solve(Tensor LU, Tensor pivots, Tensor B, *, bool left=True, bool adjoint=False) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.linalg_lu_solve.default ge_converter is not implemented!")
@@ -45,7 +45,7 @@ def conveter_aten_linalg_lu_solve_out(
     left: bool = True,
     adjoint: bool = False,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::linalg_lu_solve.out(Tensor LU, Tensor pivots, Tensor B, *, bool left=True, bool adjoint=False, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.linalg_lu_solve.out ge_converter is not implemented!")

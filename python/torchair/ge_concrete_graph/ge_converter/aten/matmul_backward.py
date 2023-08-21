@@ -28,7 +28,7 @@ def conveter_aten_matmul_backward_default(
     self: Tensor, 
     other: Tensor, 
     mask: List[bool], 
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::matmul_backward(Tensor grad, Tensor self, Tensor other, bool[2] mask) -> (Tensor, Tensor)"""
     return NotImplementedError("torch.ops.aten.matmul_backward.default ge_converter is not implemented!")

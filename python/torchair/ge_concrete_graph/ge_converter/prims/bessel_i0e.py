@@ -23,6 +23,6 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.prims.bessel_i0e.default)
-def conveter_prims_bessel_i0e_default(self: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_prims_bessel_i0e_default(self: Tensor, meta_outputs: TensorSpec = None):
     """NB: prims::bessel_i0e(Tensor self) -> Tensor"""
     raise NotImplementedError("torch.ops.prims.bessel_i0e.default ge_converter is not implemented!")

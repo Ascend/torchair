@@ -31,7 +31,7 @@ def conveter_aten__native_batch_norm_legit_no_training_default(
     running_var: Tensor,
     momentum: float,
     eps: float,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::_native_batch_norm_legit_no_training(Tensor input, Tensor? weight, Tensor? bias, Tensor running_mean, Tensor running_var, float momentum, float eps) -> (Tensor, Tensor, Tensor)"""
     raise NotImplementedError(
@@ -52,7 +52,7 @@ def conveter_aten__native_batch_norm_legit_no_training_out(
     out0: Tensor = None,
     out1: Tensor = None,
     out2: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::_native_batch_norm_legit_no_training.out(Tensor input, Tensor? weight, Tensor? bias, Tensor running_mean, Tensor running_var, float momentum, float eps, *, Tensor(a!) out0, Tensor(b!) out1, Tensor(c!) out2) -> (Tensor(a!), Tensor(b!), Tensor(c!))"""
     raise NotImplementedError(

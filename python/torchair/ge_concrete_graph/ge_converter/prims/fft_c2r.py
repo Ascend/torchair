@@ -28,7 +28,7 @@ def conveter_prims_fft_c2r_default(
     *,
     dim: List[int],
     last_dim_size: Union[int, Tensor],
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: prims::fft_c2r(Tensor self, *, int[] dim, SymInt last_dim_size) -> Tensor"""
     raise NotImplementedError("torch.ops.prims.fft_c2r.default ge_converter is not implemented!")

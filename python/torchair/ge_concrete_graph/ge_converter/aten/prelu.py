@@ -23,6 +23,6 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.aten.prelu.default)
-def conveter_aten_prelu_default(self: Tensor, weight: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_aten_prelu_default(self: Tensor, weight: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::prelu(Tensor self, Tensor weight) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.prelu.default ge_converter is not implemented!")

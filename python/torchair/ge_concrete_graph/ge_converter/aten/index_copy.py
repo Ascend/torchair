@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.index_copy.default)
 def conveter_aten_index_copy_default(
-    self: Tensor, dim: int, index: Tensor, source: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, dim: int, index: Tensor, source: Tensor, meta_outputs: TensorSpec = None
 ):
     """NB: aten::index_copy(Tensor self, int dim, Tensor index, Tensor source) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.index_copy.default ge_converter is not implemented!")
@@ -32,7 +32,7 @@ def conveter_aten_index_copy_default(
 
 @register_fx_node_ge_converter(torch.ops.aten.index_copy.dimname)
 def conveter_aten_index_copy_dimname(
-    self: Tensor, dim: str, index: Tensor, source: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, dim: str, index: Tensor, source: Tensor, meta_outputs: TensorSpec = None
 ):
     """NB: aten::index_copy.dimname(Tensor self, str dim, Tensor index, Tensor source) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.index_copy.dimname ge_converter is not implemented!")
@@ -46,7 +46,7 @@ def conveter_aten_index_copy_out(
     source: Tensor,
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::index_copy.out(Tensor self, int dim, Tensor index, Tensor source, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.index_copy.out ge_converter is not implemented!")

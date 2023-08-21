@@ -27,7 +27,7 @@ def conveter_aten__reshape_alias_default(
     self: Tensor,
     size: Union[List[int], Tensor],
     stride: Union[List[int], Tensor],
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::_reshape_alias(Tensor(a) self, SymInt[] size, SymInt[] stride) -> Tensor(a)"""
     raise NotImplementedError("torch.ops.aten._reshape_alias.default ge_converter is not implemented!")

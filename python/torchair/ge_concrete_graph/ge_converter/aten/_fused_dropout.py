@@ -27,7 +27,7 @@ def conveter_aten__fused_dropout_default(
     self: Tensor,
     p: float,
     generator: Optional[Generator] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::_fused_dropout(Tensor self, float p, Generator? generator=None) -> (Tensor, Tensor)"""
     raise NotImplementedError("torch.ops.aten._fused_dropout.default ge_converter is not implemented!")
@@ -41,7 +41,7 @@ def conveter_aten__fused_dropout_out(
     *,
     out0: Tensor = None,
     out1: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::_fused_dropout.out(Tensor self, float p, Generator? generator=None, *, Tensor(a!) out0, Tensor(b!) out1) -> (Tensor(a!), Tensor(b!))"""
     raise NotImplementedError("torch.ops.aten._fused_dropout.out ge_converter is not implemented!")

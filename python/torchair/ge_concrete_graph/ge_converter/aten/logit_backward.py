@@ -27,7 +27,7 @@ def conveter_aten_logit_backward_default(
     grad_output: Tensor,
     self: Tensor,
     eps: Optional[float] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::logit_backward(Tensor grad_output, Tensor self, float? eps=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.logit_backward.default ge_converter is not implemented!")
@@ -40,7 +40,7 @@ def conveter_aten_logit_backward_grad_input(
     eps: Optional[float] = None,
     *,
     grad_input: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::logit_backward.grad_input(Tensor grad_output, Tensor self, float? eps=None, *, Tensor(a!) grad_input) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.logit_backward.grad_input ge_converter is not implemented!")
