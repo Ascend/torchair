@@ -27,7 +27,7 @@ def conveter_aten_argmin_default(
     self: Tensor,
     dim: Optional[int] = None,
     keepdim: bool = False,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::argmin(Tensor self, int? dim=None, bool keepdim=False) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.argmin.default ge_converter is not implemented!")
@@ -40,7 +40,7 @@ def conveter_aten_argmin_out(
     keepdim: bool = False,
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::argmin.out(Tensor self, int? dim=None, bool keepdim=False, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.argmin.out ge_converter is not implemented!")

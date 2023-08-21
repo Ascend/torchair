@@ -31,7 +31,7 @@ def conveter_aten__scaled_dot_product_efficient_attention_default(
     is_causal: bool = False,
     *,
     scale: Optional[float] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::_scaled_dot_product_efficient_attention(Tensor query, Tensor key, Tensor value, bool compute_log_sumexp, bool is_causal=False, *, float? scale=None) -> (Tensor output, Tensor log_sumexp)"""
     raise NotImplementedError(

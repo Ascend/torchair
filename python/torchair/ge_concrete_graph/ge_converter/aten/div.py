@@ -33,18 +33,26 @@ from torchair.ge_concrete_graph.utils import dtype_promote
     ]
 )
 @register_fx_node_ge_converter(torch.ops.aten.div.Tensor)
-def conveter_aten_div_Tensor(self: Tensor, other: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_aten_div_Tensor(self: Tensor, other: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::div.Tensor(Tensor self, Tensor other) -> Tensor"""
     self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)
     return ge.RealDiv(self, other)
 
 
+@declare_supported(
+    [
+        Support(F32(2, 2), int(3)),
+        Support(F32(2, 2), float(3.2)),
+        Support(F32(2, 2), float(3.9)),
+    ]
+)
 @register_fx_node_ge_converter(torch.ops.aten.div.Scalar)
 def conveter_aten_div_Scalar(
-    self: Tensor, other: Union[Number, Tensor], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, other: Union[Number, Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::div.Scalar(Tensor self, Scalar other) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.div.Scalar ge_converter is not implemented!")
+    self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)
+    return ge.RealDiv(self, other)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.div.Tensor_mode)
@@ -53,7 +61,7 @@ def conveter_aten_div_Tensor_mode(
     other: Tensor,
     *,
     rounding_mode: Optional[str],
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::div.Tensor_mode(Tensor self, Tensor other, *, str? rounding_mode) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.div.Tensor_mode ge_converter is not implemented!")
@@ -65,7 +73,7 @@ def conveter_aten_div_Scalar_mode(
     other: Union[Number, Tensor],
     *,
     rounding_mode: Optional[str],
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::div.Scalar_mode(Tensor self, Scalar other, *, str? rounding_mode) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.div.Scalar_mode ge_converter is not implemented!")
@@ -73,7 +81,7 @@ def conveter_aten_div_Scalar_mode(
 
 @register_fx_node_ge_converter(torch.ops.aten.div.out)
 def conveter_aten_div_out(
-    self: Tensor, other: Tensor, *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, other: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::div.out(Tensor self, Tensor other, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.div.out ge_converter is not implemented!")
@@ -86,7 +94,7 @@ def conveter_aten_div_out_mode(
     *,
     rounding_mode: Optional[str],
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::div.out_mode(Tensor self, Tensor other, *, str? rounding_mode, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.div.out_mode ge_converter is not implemented!")
@@ -98,7 +106,7 @@ def conveter_aten_div_Scalar_out(
     other: Union[Number, Tensor],
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::div.Scalar_out(Tensor self, Scalar other, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.div.Scalar_out ge_converter is not implemented!")
@@ -111,33 +119,33 @@ def conveter_aten_div_Scalar_mode_out(
     *,
     rounding_mode: Optional[str],
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::div.Scalar_mode_out(Tensor self, Scalar other, *, str? rounding_mode, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.div.Scalar_mode_out ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.div.int)
-def conveter_aten_div_int(a: int, b: int, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_aten_div_int(a: int, b: int, meta_outputs: TensorSpec = None):
     """NB: aten::div.int(int a, int b) -> float"""
     raise NotImplementedError("torch.ops.aten.div.int ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.div.complex)
-def conveter_aten_div_complex(a: complex, b: complex, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_aten_div_complex(a: complex, b: complex, meta_outputs: TensorSpec = None):
     """NB: aten::div.complex(complex a, complex b) -> complex"""
     raise NotImplementedError("torch.ops.aten.div.complex ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.div.float)
-def conveter_aten_div_float(a: float, b: float, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_aten_div_float(a: float, b: float, meta_outputs: TensorSpec = None):
     """NB: aten::div.float(float a, float b) -> float"""
     raise NotImplementedError("torch.ops.aten.div.float ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.div.default)
 def conveter_aten_div_default(
-    a: Union[Number, Tensor], b: Union[Number, Tensor], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    a: Union[Number, Tensor], b: Union[Number, Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::div(Scalar a, Scalar b) -> float"""
     raise NotImplementedError("torch.ops.aten.div.default ge_converter is not implemented!")

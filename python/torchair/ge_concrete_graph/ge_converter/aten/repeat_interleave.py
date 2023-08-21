@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.repeat_interleave.Tensor)
 def conveter_aten_repeat_interleave_Tensor(
-    repeats: Tensor, *, output_size: Optional[int] = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    repeats: Tensor, *, output_size: Optional[int] = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::repeat_interleave.Tensor(Tensor repeats, *, int? output_size=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.repeat_interleave.Tensor ge_converter is not implemented!")
@@ -37,7 +37,7 @@ def conveter_aten_repeat_interleave_self_Tensor(
     dim: Optional[int] = None,
     *,
     output_size: Optional[int] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::repeat_interleave.self_Tensor(Tensor self, Tensor repeats, int? dim=None, *, int? output_size=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.repeat_interleave.self_Tensor ge_converter is not implemented!")
@@ -50,7 +50,7 @@ def conveter_aten_repeat_interleave_self_int(
     dim: Optional[int] = None,
     *,
     output_size: Optional[int] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::repeat_interleave.self_int(Tensor self, SymInt repeats, int? dim=None, *, int? output_size=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.repeat_interleave.self_int ge_converter is not implemented!")
@@ -62,7 +62,7 @@ def conveter_aten_repeat_interleave_Tensor_out(
     *,
     output_size: Optional[int] = None,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::repeat_interleave.Tensor_out(Tensor repeats, *, int? output_size=None, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.repeat_interleave.Tensor_out ge_converter is not implemented!")

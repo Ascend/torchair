@@ -33,7 +33,7 @@ def conveter_aten_cudnn_batch_norm_backward_default(
     save_var: Optional[Tensor],
     epsilon: float,
     reserveSpace: Tensor,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::cudnn_batch_norm_backward(Tensor input, Tensor grad_output, Tensor weight, Tensor? running_mean, Tensor? running_var, Tensor? save_mean, Tensor? save_var, float epsilon, Tensor reserveSpace) -> (Tensor, Tensor, Tensor)"""
     raise NotImplementedError("torch.ops.aten.cudnn_batch_norm_backward.default ge_converter is not implemented!")
@@ -54,7 +54,7 @@ def conveter_aten_cudnn_batch_norm_backward_out(
     out0: Tensor = None,
     out1: Tensor = None,
     out2: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::cudnn_batch_norm_backward.out(Tensor input, Tensor grad_output, Tensor weight, Tensor? running_mean, Tensor? running_var, Tensor? save_mean, Tensor? save_var, float epsilon, Tensor reserveSpace, *, Tensor(a!) out0, Tensor(b!) out1, Tensor(c!) out2) -> (Tensor(a!), Tensor(b!), Tensor(c!))"""
     raise NotImplementedError("torch.ops.aten.cudnn_batch_norm_backward.out ge_converter is not implemented!")

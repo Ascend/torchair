@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.permute.default)
 def conveter_aten_permute_default(
-    self: Tensor, dims: List[int], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, dims: List[int], meta_outputs: TensorSpec = None
 ):
     """NB: aten::permute(Tensor(a) self, int[] dims) -> Tensor(a)"""
     raise NotImplementedError("torch.ops.aten.permute.default ge_converter is not implemented!")

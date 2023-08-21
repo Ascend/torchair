@@ -24,13 +24,13 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.view.default)
 def conveter_aten_view_default(
-    self: Tensor, size: Union[List[int], Tensor], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, size: Union[List[int], Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::view(Tensor(a) self, SymInt[] size) -> Tensor(a)"""
     return ge.Reshape(self, size)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.view.dtype)
-def conveter_aten_view_dtype(self: Tensor, dtype: int, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_aten_view_dtype(self: Tensor, dtype: int, meta_outputs: TensorSpec = None):
     """NB: aten::view.dtype(Tensor(a) self, ScalarType dtype) -> Tensor(a)"""
     raise NotImplementedError("torch.ops.aten.view.dtype ge_converter is not implemented!")

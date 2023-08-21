@@ -30,7 +30,7 @@ def conveter_aten_randn_default(
     layout: Optional[int] = None,
     device: Optional[Device] = None,
     pin_memory: Optional[bool] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::randn(SymInt[] size, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.randn.default ge_converter is not implemented!")
@@ -45,7 +45,7 @@ def conveter_aten_randn_generator(
     layout: Optional[int] = None,
     device: Optional[Device] = None,
     pin_memory: Optional[bool] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::randn.generator(SymInt[] size, *, Generator? generator, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.randn.generator ge_converter is not implemented!")
@@ -60,7 +60,7 @@ def conveter_aten_randn_names(
     layout: Optional[int] = None,
     device: Optional[Device] = None,
     pin_memory: Optional[bool] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::randn.names(SymInt[] size, *, str[]? names, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.randn.names ge_converter is not implemented!")
@@ -76,7 +76,7 @@ def conveter_aten_randn_generator_with_names(
     layout: Optional[int] = None,
     device: Optional[Device] = None,
     pin_memory: Optional[bool] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::randn.generator_with_names(SymInt[] size, *, Generator? generator, str[]? names, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.randn.generator_with_names ge_converter is not implemented!")
@@ -84,7 +84,7 @@ def conveter_aten_randn_generator_with_names(
 
 @register_fx_node_ge_converter(torch.ops.aten.randn.out)
 def conveter_aten_randn_out(
-    size: Union[List[int], Tensor], *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    size: Union[List[int], Tensor], *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::randn.out(SymInt[] size, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.randn.out ge_converter is not implemented!")
@@ -96,7 +96,7 @@ def conveter_aten_randn_generator_out(
     *,
     generator: Optional[Generator],
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::randn.generator_out(SymInt[] size, *, Generator? generator, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.randn.generator_out ge_converter is not implemented!")
@@ -108,7 +108,7 @@ def conveter_aten_randn_names_out(
     *,
     names: Optional[List[str]],
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::randn.names_out(SymInt[] size, *, str[]? names, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.randn.names_out ge_converter is not implemented!")
@@ -121,7 +121,7 @@ def conveter_aten_randn_generator_with_names_out(
     generator: Optional[Generator],
     names: Optional[List[str]],
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::randn.generator_with_names_out(SymInt[] size, *, Generator? generator, str[]? names, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.randn.generator_with_names_out ge_converter is not implemented!")

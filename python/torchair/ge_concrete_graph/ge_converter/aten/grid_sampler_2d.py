@@ -29,7 +29,7 @@ def conveter_aten_grid_sampler_2d_default(
     interpolation_mode: int,
     padding_mode: int,
     align_corners: bool,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::grid_sampler_2d(Tensor input, Tensor grid, int interpolation_mode, int padding_mode, bool align_corners) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.grid_sampler_2d.default ge_converter is not implemented!")
@@ -44,7 +44,7 @@ def conveter_aten_grid_sampler_2d_out(
     align_corners: bool,
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::grid_sampler_2d.out(Tensor input, Tensor grid, int interpolation_mode, int padding_mode, bool align_corners, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.grid_sampler_2d.out ge_converter is not implemented!")

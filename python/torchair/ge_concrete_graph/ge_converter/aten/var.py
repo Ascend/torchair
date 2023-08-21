@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.var.default)
 def conveter_aten_var_default(
-    self: Tensor, unbiased: bool = True, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, unbiased: bool = True, meta_outputs: TensorSpec = None
 ):
     """NB: aten::var(Tensor self, bool unbiased=True) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.var.default ge_converter is not implemented!")
@@ -36,7 +36,7 @@ def conveter_aten_var_dim(
     dim: Optional[List[int]],
     unbiased: bool = True,
     keepdim: bool = False,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::var.dim(Tensor self, int[1]? dim, bool unbiased=True, bool keepdim=False) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.var.dim ge_converter is not implemented!")
@@ -49,7 +49,7 @@ def conveter_aten_var_correction(
     *,
     correction: Optional[Union[Number, Tensor]] = None,
     keepdim: bool = False,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::var.correction(Tensor self, int[1]? dim=None, *, Scalar? correction=None, bool keepdim=False) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.var.correction ge_converter is not implemented!")
@@ -61,7 +61,7 @@ def conveter_aten_var_names_dim(
     dim: List[str],
     unbiased: bool = True,
     keepdim: bool = False,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::var.names_dim(Tensor self, str[1] dim, bool unbiased=True, bool keepdim=False) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.var.names_dim ge_converter is not implemented!")
@@ -75,7 +75,7 @@ def conveter_aten_var_names_out(
     keepdim: bool = False,
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::var.names_out(Tensor self, str[1] dim, bool unbiased=True, bool keepdim=False, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.var.names_out ge_converter is not implemented!")
@@ -89,7 +89,7 @@ def conveter_aten_var_out(
     keepdim: bool = False,
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::var.out(Tensor self, int[1]? dim, bool unbiased=True, bool keepdim=False, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.var.out ge_converter is not implemented!")
@@ -103,7 +103,7 @@ def conveter_aten_var_correction_out(
     correction: Optional[Union[Number, Tensor]] = None,
     keepdim: bool = False,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::var.correction_out(Tensor self, int[1]? dim=None, *, Scalar? correction=None, bool keepdim=False, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.var.correction_out ge_converter is not implemented!")
@@ -116,7 +116,7 @@ def conveter_aten_var_correction_names(
     *,
     correction: Optional[Union[Number, Tensor]] = None,
     keepdim: bool = False,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::var.correction_names(Tensor self, str[1] dim, *, Scalar? correction=None, bool keepdim=False) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.var.correction_names ge_converter is not implemented!")
@@ -130,7 +130,7 @@ def conveter_aten_var_correction_names_out(
     correction: Optional[Union[Number, Tensor]] = None,
     keepdim: bool = False,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::var.correction_names_out(Tensor self, str[1] dim, *, Scalar? correction=None, bool keepdim=False, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.var.correction_names_out ge_converter is not implemented!")

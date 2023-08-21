@@ -29,7 +29,7 @@ def conveter_aten_diagonal_scatter_default(
     offset: int = 0,
     dim1: int = 0,
     dim2: int = 1,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::diagonal_scatter(Tensor self, Tensor src, int offset=0, int dim1=0, int dim2=1) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.diagonal_scatter.default ge_converter is not implemented!")
@@ -44,7 +44,7 @@ def conveter_aten_diagonal_scatter_out(
     dim2: int = 1,
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::diagonal_scatter.out(Tensor self, Tensor src, int offset=0, int dim1=0, int dim2=1, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.diagonal_scatter.out ge_converter is not implemented!")

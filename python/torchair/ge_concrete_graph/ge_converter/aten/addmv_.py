@@ -30,7 +30,7 @@ def conveter_aten_addmv__default(
     *,
     beta: Union[Number, Tensor] = 1,
     alpha: Union[Number, Tensor] = 1,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::addmv_(Tensor(a!) self, Tensor mat, Tensor vec, *, Scalar beta=1, Scalar alpha=1) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.addmv_.default ge_converter is not implemented!")

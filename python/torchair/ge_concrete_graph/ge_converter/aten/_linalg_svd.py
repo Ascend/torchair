@@ -29,7 +29,7 @@ def conveter_aten__linalg_svd_default(
     compute_uv: bool = True,
     *,
     driver: Optional[str] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::_linalg_svd(Tensor A, bool full_matrices=False, bool compute_uv=True, *, str? driver=None) -> (Tensor U, Tensor S, Tensor Vh)"""
     raise NotImplementedError("torch.ops.aten._linalg_svd.default ge_converter is not implemented!")
@@ -45,7 +45,7 @@ def conveter_aten__linalg_svd_U(
     U: Tensor = None,
     S: Tensor = None,
     Vh: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::_linalg_svd.U(Tensor A, bool full_matrices=False, bool compute_uv=True, *, str? driver=None, Tensor(a!) U, Tensor(b!) S, Tensor(c!) Vh) -> (Tensor(a!) U, Tensor(b!) S, Tensor(c!) Vh)"""
     raise NotImplementedError("torch.ops.aten._linalg_svd.U ge_converter is not implemented!")

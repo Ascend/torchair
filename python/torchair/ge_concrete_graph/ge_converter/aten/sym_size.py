@@ -23,13 +23,13 @@ from torchair.ge_concrete_graph.ge_graph import DataType, Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.aten.sym_size.default)
-def conveter_aten_sym_size_default(self: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_aten_sym_size_default(self: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::sym_size(Tensor self) -> SymInt[]"""
     raise NotImplementedError("torch.ops.aten.sym_size.default ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.sym_size)
-def conveter_aten_sym_size_int(self: Tensor, dim: int, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_aten_sym_size_int(self: Tensor, dim: int, meta_outputs: TensorSpec = None):
     """NB: aten::sym_size.int(Tensor self, int dim) -> SymInt"""
     if isinstance(meta_outputs._meta, int):
         return meta_outputs

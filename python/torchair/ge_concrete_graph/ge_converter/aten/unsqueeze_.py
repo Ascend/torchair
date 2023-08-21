@@ -23,6 +23,6 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.aten.unsqueeze_.default)
-def conveter_aten_unsqueeze__default(self: Tensor, dim: int, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_aten_unsqueeze__default(self: Tensor, dim: int, meta_outputs: TensorSpec = None):
     """NB: aten::unsqueeze_(Tensor(a!) self, int dim) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.unsqueeze_.default ge_converter is not implemented!")

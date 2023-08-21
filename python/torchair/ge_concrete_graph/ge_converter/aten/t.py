@@ -23,7 +23,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.aten.t.default)
-def conveter_aten_t_default(self: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_aten_t_default(self: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::t(Tensor(a) self) -> Tensor(a)"""
     if self.rank < 2:
         return ge.Identity(self)

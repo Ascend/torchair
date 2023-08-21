@@ -28,7 +28,7 @@ def conveter_aten_huber_loss_default(
     target: Tensor,
     reduction: int = 1,
     delta: float = 1.0,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::huber_loss(Tensor self, Tensor target, int reduction=1, float delta=1.) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.huber_loss.default ge_converter is not implemented!")
@@ -42,7 +42,7 @@ def conveter_aten_huber_loss_out(
     delta: float = 1.0,
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::huber_loss.out(Tensor self, Tensor target, int reduction=1, float delta=1., *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.huber_loss.out ge_converter is not implemented!")

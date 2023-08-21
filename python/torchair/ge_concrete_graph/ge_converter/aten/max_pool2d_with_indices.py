@@ -30,10 +30,22 @@ def conveter_aten_max_pool2d_with_indices_default(
     padding: List[int] = [0, 0],
     dilation: List[int] = [1, 1],
     ceil_mode: bool = False,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: List[TensorSpec] = None,
 ):
     """NB: aten::max_pool2d_with_indices(Tensor self, int[2] kernel_size, int[2] stride=[], int[2] padding=0, int[2] dilation=1, bool ceil_mode=False) -> (Tensor, Tensor)"""
-    raise NotImplementedError("torch.ops.aten.max_pool2d_with_indices.default ge_converter is not implemented!")
+    """ This converter is a stopgap measure designed to avoid a series issues caused by the imcompatibility between the CANN IR 'MaxPoolWithArgmaxV1' and 
+        the aten IR 'max_pool2d_with_indices_backward'. Therefore, no testcast will be set and cannot be set. """
+    ksize = [1, kernel_size[0], kernel_size[1], 1]
+    strides = [1, stride[0], stride[1], 1]
+    pads = [1, padding[0], padding[1], 1]
+    dilations = [1, dilation[0], dilation[1], 1]
+    output, argmax = ge.MaxPoolWithArgmaxV1(self, ksize=ksize, strides=strides, \
+                                       pads=pads, dilation=dilations, ceil_mode=ceil_mode)
+    output._node.input_desc[0].layout = "NCHW"
+    output._node.output_desc[0].layout = "NCHW"
+    output._node.output_desc[1].layout = "NCHW"
+    argmax = ge.Identity(output)
+    return output, argmax
 
 
 @register_fx_node_ge_converter(torch.ops.aten.max_pool2d_with_indices.out)
@@ -47,7 +59,7 @@ def conveter_aten_max_pool2d_with_indices_out(
     *,
     out: Tensor = None,
     indices: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: List[TensorSpec] = None
 ):
     """NB: aten::max_pool2d_with_indices.out(Tensor self, int[2] kernel_size, int[2] stride=[], int[2] padding=0, int[2] dilation=1, bool ceil_mode=False, *, Tensor(a!) out, Tensor(b!) indices) -> (Tensor(a!), Tensor(b!))"""
     raise NotImplementedError("torch.ops.aten.max_pool2d_with_indices.out ge_converter is not implemented!")

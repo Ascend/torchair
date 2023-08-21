@@ -34,7 +34,7 @@ def conveter_mkldnn__convolution_pointwise_default(
     attr: str,
     scalars: Optional[Union[List[Number], Tensor]],
     algorithm: Optional[str],
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: mkldnn::_convolution_pointwise(Tensor X, Tensor W, Tensor? B, int[] padding, int[] stride, int[] dilation, int groups, str attr, Scalar?[] scalars, str? algorithm) -> Tensor Y"""
     raise NotImplementedError("torch.ops.mkldnn._convolution_pointwise.default ge_converter is not implemented!")
@@ -55,7 +55,7 @@ def conveter_mkldnn__convolution_pointwise_binary(
     unary_attr: Optional[str],
     unary_scalars: Optional[Union[List[Number], Tensor]],
     unary_algorithm: Optional[str],
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: mkldnn::_convolution_pointwise.binary(Tensor X, Tensor other, Tensor W, Tensor? B, int[] padding, int[] stride, int[] dilation, int groups, str binary_attr, Scalar? alpha, str? unary_attr, Scalar?[] unary_scalars, str? unary_algorithm) -> Tensor Y"""
     raise NotImplementedError("torch.ops.mkldnn._convolution_pointwise.binary ge_converter is not implemented!")

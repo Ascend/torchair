@@ -28,7 +28,7 @@ def conveter_aten__unsafe_index_put_default(
     indices: List[Optional[Tensor]],
     values: Tensor,
     accumulate: bool = False,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::_unsafe_index_put(Tensor self, Tensor?[] indices, Tensor values, bool accumulate=False) -> Tensor"""
     raise NotImplementedError("torch.ops.aten._unsafe_index_put.default ge_converter is not implemented!")

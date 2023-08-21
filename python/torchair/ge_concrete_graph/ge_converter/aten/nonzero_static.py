@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.nonzero_static.default)
 def conveter_aten_nonzero_static_default(
-    self: Tensor, *, size: int, fill_value: int = -1, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, *, size: int, fill_value: int = -1, meta_outputs: TensorSpec = None
 ):
     """NB: aten::nonzero_static(Tensor self, *, int size, int fill_value=-1) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.nonzero_static.default ge_converter is not implemented!")
@@ -37,7 +37,7 @@ def conveter_aten_nonzero_static_out(
     size: int,
     fill_value: int = -1,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::nonzero_static.out(Tensor self, *, int size, int fill_value=-1, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.nonzero_static.out ge_converter is not implemented!")

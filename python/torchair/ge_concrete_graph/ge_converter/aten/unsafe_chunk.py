@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.unsafe_chunk.default)
 def conveter_aten_unsafe_chunk_default(
-    self: Tensor, chunks: int, dim: int = 0, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, chunks: int, dim: int = 0, meta_outputs: List[TensorSpec] = None
 ):
     """NB: aten::unsafe_chunk(Tensor self, int chunks, int dim=0) -> Tensor[]"""
     raise NotImplementedError("torch.ops.aten.unsafe_chunk.default ge_converter is not implemented!")

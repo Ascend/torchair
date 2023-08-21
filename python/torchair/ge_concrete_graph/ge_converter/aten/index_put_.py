@@ -28,7 +28,7 @@ def conveter_aten_index_put__default(
     indices: List[Optional[Tensor]],
     values: Tensor,
     accumulate: bool = False,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::index_put_(Tensor(a!) self, Tensor?[] indices, Tensor values, bool accumulate=False) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.index_put_.default ge_converter is not implemented!")
@@ -40,7 +40,7 @@ def conveter_aten_index_put__hacked_twin(
     indices: List[Tensor],
     values: Tensor,
     accumulate: bool = False,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::index_put_.hacked_twin(Tensor(a!) self, Tensor[] indices, Tensor values, bool accumulate=False) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.index_put_.hacked_twin ge_converter is not implemented!")

@@ -28,7 +28,7 @@ def conveter_aten_upsample_bicubic2d_vec(
     output_size: Optional[Union[List[int], Tensor]],
     align_corners: bool,
     scale_factors: Optional[List[float]],
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::upsample_bicubic2d.vec(Tensor input, SymInt[]? output_size, bool align_corners, float[]? scale_factors) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.upsample_bicubic2d.vec ge_converter is not implemented!")
@@ -41,7 +41,7 @@ def conveter_aten_upsample_bicubic2d_default(
     align_corners: bool,
     scales_h: Optional[float] = None,
     scales_w: Optional[float] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::upsample_bicubic2d(Tensor self, SymInt[2] output_size, bool align_corners, float? scales_h=None, float? scales_w=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.upsample_bicubic2d.default ge_converter is not implemented!")
@@ -56,7 +56,7 @@ def conveter_aten_upsample_bicubic2d_out(
     scales_w: Optional[float] = None,
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::upsample_bicubic2d.out(Tensor self, SymInt[2] output_size, bool align_corners, float? scales_h=None, float? scales_w=None, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.upsample_bicubic2d.out ge_converter is not implemented!")

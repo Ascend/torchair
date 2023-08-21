@@ -28,7 +28,7 @@ def conveter_aten_subtract__Tensor(
     other: Tensor,
     *,
     alpha: Union[Number, Tensor] = 1,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::subtract_.Tensor(Tensor(a!) self, Tensor other, *, Scalar alpha=1) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.subtract_.Tensor ge_converter is not implemented!")
@@ -39,7 +39,7 @@ def conveter_aten_subtract__Scalar(
     self: Tensor,
     other: Union[Number, Tensor],
     alpha: Union[Number, Tensor] = 1,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::subtract_.Scalar(Tensor(a!) self, Scalar other, Scalar alpha=1) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.subtract_.Scalar ge_converter is not implemented!")

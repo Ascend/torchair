@@ -23,6 +23,6 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.nvprims.div.default)
-def conveter_nvprims_div_default(self: Tensor, other: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_nvprims_div_default(self: Tensor, other: Tensor, meta_outputs: TensorSpec = None):
     """NB: nvprims::div(Tensor self, Tensor other) -> Tensor"""
     raise NotImplementedError("torch.ops.nvprims.div.default ge_converter is not implemented!")

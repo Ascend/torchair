@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.cumprod_.default)
 def conveter_aten_cumprod__default(
-    self: Tensor, dim: int, *, dtype: Optional[int] = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, dim: int, *, dtype: Optional[int] = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::cumprod_(Tensor(a!) self, int dim, *, ScalarType? dtype=None) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.cumprod_.default ge_converter is not implemented!")
@@ -32,7 +32,7 @@ def conveter_aten_cumprod__default(
 
 @register_fx_node_ge_converter(torch.ops.aten.cumprod_.dimname)
 def conveter_aten_cumprod__dimname(
-    self: Tensor, dim: str, *, dtype: Optional[int] = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, dim: str, *, dtype: Optional[int] = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::cumprod_.dimname(Tensor(a!) self, str dim, *, ScalarType? dtype=None) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.cumprod_.dimname ge_converter is not implemented!")

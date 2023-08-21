@@ -28,7 +28,7 @@ def conveter_aten_renorm_default(
     p: Union[Number, Tensor],
     dim: int,
     maxnorm: Union[Number, Tensor],
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::renorm(Tensor self, Scalar p, int dim, Scalar maxnorm) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.renorm.default ge_converter is not implemented!")
@@ -42,7 +42,7 @@ def conveter_aten_renorm_out(
     maxnorm: Union[Number, Tensor],
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::renorm.out(Tensor self, Scalar p, int dim, Scalar maxnorm, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.renorm.out ge_converter is not implemented!")

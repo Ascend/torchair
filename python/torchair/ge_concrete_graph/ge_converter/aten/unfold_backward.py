@@ -29,7 +29,7 @@ def conveter_aten_unfold_backward_default(
     dim: int,
     size: int,
     step: int,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::unfold_backward(Tensor grad_in, SymInt[] input_sizes, int dim, int size, int step) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.unfold_backward.default ge_converter is not implemented!")
@@ -44,7 +44,7 @@ def conveter_aten_unfold_backward_out(
     step: int,
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::unfold_backward.out(Tensor grad_in, SymInt[] input_sizes, int dim, int size, int step, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.unfold_backward.out ge_converter is not implemented!")

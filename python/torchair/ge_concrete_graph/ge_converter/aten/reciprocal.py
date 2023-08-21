@@ -23,14 +23,14 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.aten.reciprocal.default)
-def conveter_aten_reciprocal_default(self: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_aten_reciprocal_default(self: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::reciprocal(Tensor self) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.reciprocal.default ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.reciprocal.out)
 def conveter_aten_reciprocal_out(
-    self: Tensor, *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::reciprocal.out(Tensor self, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.reciprocal.out ge_converter is not implemented!")

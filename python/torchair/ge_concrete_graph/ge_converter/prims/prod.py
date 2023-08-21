@@ -28,7 +28,7 @@ def conveter_prims_prod_default(
     dims: Optional[List[int]],
     *,
     output_dtype: Optional[int] = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: prims::prod(Tensor inp, int[]? dims, *, ScalarType? output_dtype=None) -> Tensor"""
     raise NotImplementedError("torch.ops.prims.prod.default ge_converter is not implemented!")

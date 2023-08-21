@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.special_xlog1py.default)
 def conveter_aten_special_xlog1py_default(
-    self: Tensor, other: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, other: Tensor, meta_outputs: TensorSpec = None
 ):
     """NB: aten::special_xlog1py(Tensor self, Tensor other) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.special_xlog1py.default ge_converter is not implemented!")
@@ -32,7 +32,7 @@ def conveter_aten_special_xlog1py_default(
 
 @register_fx_node_ge_converter(torch.ops.aten.special_xlog1py.other_scalar)
 def conveter_aten_special_xlog1py_other_scalar(
-    self: Tensor, other: Union[Number, Tensor], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, other: Union[Number, Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::special_xlog1py.other_scalar(Tensor self, Scalar other) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.special_xlog1py.other_scalar ge_converter is not implemented!")
@@ -40,7 +40,7 @@ def conveter_aten_special_xlog1py_other_scalar(
 
 @register_fx_node_ge_converter(torch.ops.aten.special_xlog1py.self_scalar)
 def conveter_aten_special_xlog1py_self_scalar(
-    self: Union[Number, Tensor], other: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Union[Number, Tensor], other: Tensor, meta_outputs: TensorSpec = None
 ):
     """NB: aten::special_xlog1py.self_scalar(Scalar self, Tensor other) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.special_xlog1py.self_scalar ge_converter is not implemented!")
@@ -48,7 +48,7 @@ def conveter_aten_special_xlog1py_self_scalar(
 
 @register_fx_node_ge_converter(torch.ops.aten.special_xlog1py.out)
 def conveter_aten_special_xlog1py_out(
-    self: Tensor, other: Tensor, *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, other: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::special_xlog1py.out(Tensor self, Tensor other, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.special_xlog1py.out ge_converter is not implemented!")
@@ -60,7 +60,7 @@ def conveter_aten_special_xlog1py_self_scalar_out(
     other: Tensor,
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::special_xlog1py.self_scalar_out(Scalar self, Tensor other, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.special_xlog1py.self_scalar_out ge_converter is not implemented!")
@@ -72,7 +72,7 @@ def conveter_aten_special_xlog1py_other_scalar_out(
     other: Union[Number, Tensor],
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::special_xlog1py.other_scalar_out(Tensor self, Scalar other, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.special_xlog1py.other_scalar_out ge_converter is not implemented!")

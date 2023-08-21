@@ -23,6 +23,6 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.prim.device.default)
-def conveter_prim_device_default(a: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
+def conveter_prim_device_default(a: Tensor, meta_outputs: TensorSpec = None):
     """NB: prim::device(Tensor a) -> Device"""
     raise NotImplementedError("torch.ops.prim.device.default ge_converter is not implemented!")

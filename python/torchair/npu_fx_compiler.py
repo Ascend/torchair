@@ -76,6 +76,15 @@ class NpuGraphConverter(Interpreter):
         super().__init__(*args, **kwargs)
         self._graph = graph
 
+    def run_node(self, n):
+        if n.stack_trace is not None:
+            file_line = n.stack_trace.split(' File ')[-1].replace('\n', '')
+            if file_line not in self._graph.graph._python_code:
+                self._graph.graph._python_code += f'\n# File {file_line}\n'
+            self._graph.graph._python_code += f'## FX Code: ' \
+                f'{self._graph.graph.format_python_code(n.name, n._pretty_print_target(n.target), n.args, n.kwargs)}\n'
+        return super().run_node(n)
+
     def run(self, *args, **kwargs):
         with self._graph.context():
             super().run(*args, **kwargs)

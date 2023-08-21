@@ -29,7 +29,7 @@ def conveter_aten_addcdiv_default(
     tensor2: Tensor,
     *,
     value: Union[Number, Tensor] = 1,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::addcdiv(Tensor self, Tensor tensor1, Tensor tensor2, *, Scalar value=1) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.addcdiv.default ge_converter is not implemented!")
@@ -43,7 +43,7 @@ def conveter_aten_addcdiv_out(
     *,
     value: Union[Number, Tensor] = 1,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::addcdiv.out(Tensor self, Tensor tensor1, Tensor tensor2, *, Scalar value=1, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.addcdiv.out ge_converter is not implemented!")

@@ -29,7 +29,7 @@ def conveter_aten_embedding_dense_backward_default(
     num_weights: Union[int, Tensor],
     padding_idx: Union[int, Tensor],
     scale_grad_by_freq: bool,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::embedding_dense_backward(Tensor grad_output, Tensor indices, SymInt num_weights, SymInt padding_idx, bool scale_grad_by_freq) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.embedding_dense_backward.default ge_converter is not implemented!")
@@ -44,7 +44,7 @@ def conveter_aten_embedding_dense_backward_out(
     scale_grad_by_freq: bool,
     *,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    meta_outputs: TensorSpec = None
 ):
     """NB: aten::embedding_dense_backward.out(Tensor grad_output, Tensor indices, SymInt num_weights, SymInt padding_idx, bool scale_grad_by_freq, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.embedding_dense_backward.out ge_converter is not implemented!")

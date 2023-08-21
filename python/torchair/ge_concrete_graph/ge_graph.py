@@ -97,7 +97,7 @@ def _ge_dtype_to_np_dtype(dtype: DataType) -> np.dtype:
     if dtype == DataType.DT_INT64:
         return np.int64
     if dtype == DataType.DT_BOOL:
-        return np.bool
+        return np.bool_
 
     raise ValueError(f"Unsupported ge dtype {dtype}")
 
@@ -123,6 +123,29 @@ def _ge_dtype_to_ge_proto_dtype(dtype: DataType) -> np.dtype:
         return ProtoDataType.DT_BOOL
 
     raise ValueError(f"Unsupported ge dtype {dtype}")
+
+
+def _ge_proto_dtype_to_ge_dtype(dtype: ProtoDataType):
+    if dtype == ProtoDataType.DT_FLOAT16:
+        return DataType.DT_FLOAT16
+    if dtype == ProtoDataType.DT_FLOAT:
+        return DataType.DT_FLOAT
+    if dtype == ProtoDataType.DT_DOUBLE:
+        return DataType.DT_DOUBLE
+    if dtype == ProtoDataType.DT_INT8:
+        return DataType.DT_INT8
+    if dtype == ProtoDataType.DT_UINT8:
+        return DataType.DT_UINT8
+    if dtype == ProtoDataType.DT_INT32:
+        return DataType.DT_INT32
+    if dtype == ProtoDataType.DT_UINT32:
+        return DataType.DT_UINT32
+    if dtype == ProtoDataType.DT_INT64:
+        return DataType.DT_INT64
+    if dtype == ProtoDataType.DT_BOOL:
+        return DataType.DT_BOOL
+
+    raise ValueError(f"Unsupported ge proto dtype {dtype}")
 
 
 def _ge_proto_dtype_str(dtype: ProtoDataType) -> str:
@@ -165,7 +188,7 @@ def _np_dtype_to_ge_dtype(dtype: np.dtype) -> ProtoDataType:
         return DataType.DT_UINT32
     if dtype == np.int64:
         return DataType.DT_INT64
-    if dtype == np.bool:
+    if dtype == np.bool_:
         return DataType.DT_BOOL
 
     raise ValueError(f"Unsupported numpy dtype {dtype}")
@@ -225,15 +248,44 @@ class GeGraph(object):
     def __getattr__(self, v):
         return getattr(self._proto, v)
 
-    def add_python_code(self, args, kwargs, outputs, func):
-        args_string = ', '.join([f'{i}' for i in parse_inputs(args)])
-        kwargs_string = ', '.join([f'{i}' for i in parse_kwargs(kwargs)])
-        inputs_string = ", ".join([i for i in [args_string, kwargs_string] if i])
-        outputs_name = ', '.join(parse_inputs(outputs, mode='output'))
-        func_name = f"ge.{func.__name__}"
-        new_python_code = f'{outputs_name} = {func_name}({inputs_string})'
+    def __str__(self):
+        return str(self._proto)
 
-        self._python_code += f'{new_python_code}\n'
+    def __enter__(self):
+        _graph_stack.stack.append(self)
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        _graph_stack.stack.remove(self)
+
+    @staticmethod
+    def format_python_code(outputs, func_name, args, kwargs):
+        args_string = ', '.join([f'{i}' for i in args])
+        kwargs_string = ', '.join([f'{i}' for i in kwargs])
+        inputs_string = ", ".join([i for i in [args_string, kwargs_string] if i])
+        return f'{outputs} = {func_name}({inputs_string})'
+
+    def add_python_code(self, args, kwargs, outputs, func):
+        args = parse_inputs(args)
+        kwargs = parse_kwargs(kwargs)
+        func_name = f"ge.{func.__name__}"
+
+        outputs_name = ', '.join(parse_inputs(outputs, mode='output'))
+        if func.__name__ == 'NetOutput':
+            outputs_name = f'\n{outputs_name}'
+
+        self._python_code += f'{self.format_python_code(outputs_name, func_name, args, kwargs)}\n'
+
+    def add_python_code(self, args, kwargs, outputs, func):
+        args = parse_inputs(args)
+        kwargs = parse_kwargs(kwargs)
+        func_name = f"ge.{func.__name__}"
+
+        outputs_name = ', '.join(parse_inputs(outputs, mode='output'))
+        if func.__name__ == 'NetOutput':
+            outputs_name = f'\n{outputs_name}'
+
+        self._python_code += f'{self.format_python_code(outputs_name, func_name, args, kwargs)}\n'
 
     @property
     def python_code(self):
@@ -409,15 +461,16 @@ def list_depth_check(inputs):
 
     return inputs
 
-def _parse_vars(vars, mode='input'):
-    if not isinstance(vars, Tensor):
-        return f'{vars}'
+def _parse_variables(variables, mode='input'):
+    if not isinstance(variables, Tensor):
+        return f'{variables}'
 
-    if vars.node.name.startswith('Const') and mode == 'input':
-        vars_name = vars.node.attr['_readable_value'].s.decode()
+    if variables.node.type == 'Const' and mode == 'input':
+        variables_value = variables.node.attr['_readable_value'].s.decode()
+        variables_name = f'ge.Const({variables_value}, dtype={_ge_proto_dtype_to_ge_dtype(variables.desc.dtype)})'
     else:
-        vars_name = f'{vars.node.name}_{vars.index}'
-    return vars_name
+        variables_name = f'{variables.tensor.replace(":", "_").replace("/", "_")}'
+    return variables_name
 
 
 def parse_inputs(inputs, mode='input'):
@@ -432,17 +485,17 @@ def parse_inputs(inputs, mode='input'):
         if isinstance(tmp_inputs, (tuple, list)):
             tmp_inputs_name_list = []
             for tmp_input in tmp_inputs:
-                tmp_inputs_name_list.append(_parse_vars(tmp_input))
+                tmp_inputs_name_list.append(_parse_variables(tmp_input))
             inputs_name_list.append(f"[{', '.join([f'{i}' for i in tmp_inputs_name_list])}]")
         else:
-            inputs_name_list.append(f'{_parse_vars(tmp_inputs)}')
+            inputs_name_list.append(f'{_parse_variables(tmp_inputs)}')
     return inputs_name_list
 
 
 def parse_kwargs(kwargs):
     kwargs_list = []
     for k,v in kwargs.items():
-        if k =='name':
+        if isinstance(v, str):
             v = f'"{v}"'
         kwargs_list.append(f'{k}={v}')
     return kwargs_list
@@ -541,7 +594,7 @@ def _auto_type_promotion_for_const(bundle_inputs: list, inputs_dynamic: list, in
 
     promoted_inputs = []
     for i, input in enumerate(inputs):
-        if not isinstance(input, Tensor):
+        if not isinstance(input, Tensor) and input is not None:
             if type(input) == torch.Tensor:
                 promoted_inputs.append(_torch_tensor_to_ge_const(input))
                 continue
@@ -602,7 +655,7 @@ def auto_convert_to_tensor(inputs_dynamic, inputs_optional):
                     assert all([isinstance(v, Tensor) for v in arg])
                 else:
                     if arg is None:
-                        assert optional, f"Input {i} is cannot be None as it is not optional"
+                        assert optional, f"Input {i} can not be None as it is not optional"
                     else:
                         assert isinstance(arg, Tensor)
 

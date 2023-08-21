@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten._standard_gamma.default)
 def conveter_aten__standard_gamma_default(
-    self: Tensor, generator: Optional[Generator] = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
+    self: Tensor, generator: Optional[Generator] = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::_standard_gamma(Tensor self, Generator? generator=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten._standard_gamma.default ge_converter is not implemented!")
@@ -35,7 +35,7 @@ def conveter_aten__standard_gamma_out(
     self: Tensor,
     generator: Optional[Generator] = None,
     out: Tensor = None,
-    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
+    meta_outputs: TensorSpec = None,
 ):
     """NB: aten::_standard_gamma.out(Tensor self, Generator? generator=None, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten._standard_gamma.out ge_converter is not implemented!")
