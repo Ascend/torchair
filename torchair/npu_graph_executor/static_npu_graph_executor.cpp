@@ -32,8 +32,9 @@ Status StaticNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &inp
         // In static graph input shape remains unchanged, only data ptr need to be updated.
         TNG_RETURN_IF_ERROR(AssembleDataToGe(inputs[i], inputs_holder_[i]));
       }
-      TNG_LOG(DEBUG) << "Assemble aten device input " << i << " " << DebugString(inputs[i]) << " to "
-                     << DebugString(inputs_holder_[i]);
+      TNG_LOG(DEBUG) << "Assemble aten device input " << i << " " << DebugString(inputs[i])
+                     << " to " << DebugString(inputs_holder_[i])
+                     << " in " << DebugString(inputs[i].device()).c_str();
     } else if (graph_data_->input_placements[i] == Placement::HOST) {
       if (!inputs[i].device().is_cpu()) {
         return Status::Error("Input %zu placement %s is incompatible with expected CPU.", i,
@@ -53,7 +54,9 @@ Status StaticNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &inp
         TNG_RETURN_IF_ERROR(AssembleDataToGe(retain_tmp_device_inputs.back(), inputs_holder_[i]));
       }
       TNG_LOG(DEBUG) << "Assemble aten host input " << i << " " << DebugString(retain_tmp_device_inputs.back())
-                     << " to " << DebugString(inputs_holder_[i]);
+                     << " to " << DebugString(inputs_holder_[i])
+                     << " in " << DebugString(inputs[i].device()).c_str();
+
     } else {
       TNG_ASSERT(false, "Invalid Placement::UNKNOWN of input %zu.", i);
     }
