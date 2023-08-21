@@ -4,10 +4,9 @@
 #include "logger.h"
 #include "session.h"
 
-#include "acl/acl_rt.h"
 #include "ge/ge_api.h"
 #include "ge/ge_api_types.h"
-#include "utils.h"
+#include "acl/acl_rt.h"
 
 namespace {
 std::unique_ptr<ge::Session> global_ge_session = nullptr;
@@ -98,7 +97,6 @@ Status Session::CompileGraph(uint32_t id, std::shared_ptr<ge::CompiledGraphSumma
     if (summary != nullptr) {
       *summary = global_ge_session->GetCompiledGraphSummary(id);
       TNG_ASSERT_NOTNULL(*summary, "Failed get compiled summary of graph %d", id);
-      TNG_LOG(DEBUG) << DebugString(*summary->get());
     }
     return Status::Success();
   });

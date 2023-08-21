@@ -10,30 +10,13 @@ class CompiledGraphSummary::SummaryData {
  public:
   SummaryData() = default;
   ~SummaryData() = default;
-  bool IsStatic() const {
-    return is_static_;
-  }
-  void setStatic(bool flag) {
-    is_static_ = flag;
-  }
-  bool IsFeatureMemoryBaseRefreshable() const {
-    return is_feature_mem_refreshable_;
-  }
-  size_t GetConstMemorySize() const {
-    return const_mem_size_;
-  }
-  size_t GetFeatureMemorySize() const {
-    return feature_mem_size_;
-  }
-  size_t GetStreamNum() const {
-    return stream_num_;
-  }
-  size_t GetEventNum() const {
-    return event_num_;
-  }
-  std::vector<ge::Shape> GetOutputShapes() const {
-    return netoutput_shapes_;
-  }
+  bool IsStatic() const { return is_static_; }
+  bool IsFeatureMemoryBaseRefreshable() const { return is_feature_mem_refreshable_; }
+  size_t GetConstMemorySize() const { return const_mem_size_; }
+  size_t GetFeatureMemorySize() const { return feature_mem_size_; }
+  size_t GetStreamNum() const { return stream_num_; }
+  size_t GetEventNum() const { return event_num_; }
+  std::vector<ge::Shape> GetOutputShapes() { return netoutput_shapes_; }
 
  private:
   bool is_static_{false};
@@ -54,18 +37,10 @@ class CompiledGraphSummary::Builder {
     summary->data_ = std::make_shared<SummaryData>();
     return summary;
   }
-  static CompiledGraphSummaryPtr StaticBuild() {
-    CompiledGraphSummaryPtr summary(new CompiledGraphSummary);
-    summary->data_ = std::make_shared<SummaryData>();
-    summary->data_->setStatic(true);
-    return summary;
-  }
 };
 
 CompiledGraphSummary::~CompiledGraphSummary() = default;
-bool CompiledGraphSummary::IsStatic() const {
-  return data_->IsStatic();
-}
+bool CompiledGraphSummary::IsStatic() const { return data_->IsStatic(); }
 Status CompiledGraphSummary::GetFeatureMemoryBaseRefreshable(bool &v) const {
   v = data_->IsFeatureMemoryBaseRefreshable();
   return SUCCESS;
@@ -86,23 +61,14 @@ Status CompiledGraphSummary::GetEventNum(size_t &num) const {
   num = data_->GetEventNum();
   return SUCCESS;
 }
-Status CompiledGraphSummary::GetOutputShapes(std::vector<ge::Shape> &shapes) const {
-  ge::Shape shape;
-  shapes.push_back(shape);
-  return SUCCESS;
-}
 
-std::string GEGetErrorMsg() {
-  return "[STUB] Something error";
-}
+std::string GEGetErrorMsg() { return "[STUB] Something error"; }
 
 Session::Session(const std::map<AscendString, AscendString> &options) {
   std::cerr << "[STUB] Session::Session created" << std::endl;
 }
 
-Session::~Session() {
-  std::cerr << "[STUB] Session::Session destroyed" << std::endl;
-}
+Session::~Session() { std::cerr << "[STUB] Session::Session destroyed" << std::endl; }
 
 namespace {
 std::map<uint32_t, size_t> graph_id_to_num_outputs;
@@ -131,11 +97,7 @@ Status Session::CompileGraph(uint32_t id) {
 
 std::shared_ptr<ge::CompiledGraphSummary> Session::GetCompiledGraphSummary(uint32_t id) {
   std::cerr << "[STUB] Session::GetCompiledGraphSummary graph " << id << std::endl;
-  if (id % 2 == 1) {
-    return CompiledGraphSummary::Builder::StaticBuild();
-  } else {
-    return CompiledGraphSummary::Builder::Build();
-  }
+  return CompiledGraphSummary::Builder::Build();
 }
 
 Status Session::RemoveGraph(uint32_t id) {
