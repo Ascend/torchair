@@ -29,7 +29,7 @@ from torchair.ge_concrete_graph.utils import dtype_promote
 def conveter_operator_add(
     self: Union[Number, Tensor],
     other: Union[Number, Tensor],
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     if all(not isinstance(x, Tensor) for x in (self, other)):
         return self + other
@@ -41,7 +41,7 @@ def conveter_operator_add(
 def conveter_operator_sub(
     self: Union[Number, Tensor],
     other: Union[Number, Tensor],
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     if all(not isinstance(x, Tensor) for x in (self, other)):
         return self - other
@@ -53,7 +53,7 @@ def conveter_operator_sub(
 def conveter_operator_mul(
     self: Union[Number, Tensor],
     other: Union[Number, Tensor],
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     if all(not isinstance(x, Tensor) for x in (self, other)):
         return self * other
@@ -65,7 +65,7 @@ def conveter_operator_mul(
 def conveter_operator_floordiv(
     self: Union[Number, Tensor],
     other: Union[Number, Tensor],
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     if all(not isinstance(x, Tensor) for x in (self, other)):
         return self // other
@@ -77,7 +77,7 @@ def conveter_operator_floordiv(
 def conveter_operator_truediv(
     self: Union[Number, Tensor],
     other: Union[Number, Tensor],
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     if all(not isinstance(x, Tensor) for x in (self, other)):
         return self / other

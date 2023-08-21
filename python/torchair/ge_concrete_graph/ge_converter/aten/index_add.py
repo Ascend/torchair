@@ -30,7 +30,7 @@ def conveter_aten_index_add_default(
     source: Tensor,
     *,
     alpha: Union[Number, Tensor] = 1,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::index_add(Tensor self, int dim, Tensor index, Tensor source, *, Scalar alpha=1) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.index_add.default ge_converter is not implemented!")
@@ -45,7 +45,7 @@ def conveter_aten_index_add_out(
     *,
     alpha: Union[Number, Tensor] = 1,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::index_add.out(Tensor self, int dim, Tensor index, Tensor source, *, Scalar alpha=1, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.index_add.out ge_converter is not implemented!")
@@ -59,7 +59,7 @@ def conveter_aten_index_add_dimname(
     source: Tensor,
     *,
     alpha: Union[Number, Tensor] = 1,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::index_add.dimname(Tensor self, str dim, Tensor index, Tensor source, *, Scalar alpha=1) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.index_add.dimname ge_converter is not implemented!")

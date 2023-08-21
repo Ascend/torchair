@@ -23,14 +23,14 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.aten.lift_fresh_copy.default)
-def conveter_aten_lift_fresh_copy_default(self: Tensor, meta_outputs: TensorSpec = None):
+def conveter_aten_lift_fresh_copy_default(self: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::lift_fresh_copy(Tensor self) -> Tensor"""
     return ge.Identity(self)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.lift_fresh_copy.out)
 def conveter_aten_lift_fresh_copy_out(
-    self: Tensor, out: Tensor = None, meta_outputs: TensorSpec = None
+    self: Tensor, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::lift_fresh_copy.out(Tensor self, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.lift_fresh_copy.out ge_converter is not implemented!")

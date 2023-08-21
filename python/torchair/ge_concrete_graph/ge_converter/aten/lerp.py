@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.lerp.Scalar)
 def conveter_aten_lerp_Scalar(
-    self: Tensor, end: Tensor, weight: Union[Number, Tensor], meta_outputs: TensorSpec = None
+    self: Tensor, end: Tensor, weight: Union[Number, Tensor], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::lerp.Scalar(Tensor self, Tensor end, Scalar weight) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.lerp.Scalar ge_converter is not implemented!")
@@ -32,7 +32,7 @@ def conveter_aten_lerp_Scalar(
 
 @register_fx_node_ge_converter(torch.ops.aten.lerp.Tensor)
 def conveter_aten_lerp_Tensor(
-    self: Tensor, end: Tensor, weight: Tensor, meta_outputs: TensorSpec = None
+    self: Tensor, end: Tensor, weight: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::lerp.Tensor(Tensor self, Tensor end, Tensor weight) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.lerp.Tensor ge_converter is not implemented!")
@@ -45,7 +45,7 @@ def conveter_aten_lerp_Scalar_out(
     weight: Union[Number, Tensor],
     *,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::lerp.Scalar_out(Tensor self, Tensor end, Scalar weight, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.lerp.Scalar_out ge_converter is not implemented!")
@@ -58,7 +58,7 @@ def conveter_aten_lerp_Tensor_out(
     weight: Tensor,
     *,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::lerp.Tensor_out(Tensor self, Tensor end, Tensor weight, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.lerp.Tensor_out ge_converter is not implemented!")

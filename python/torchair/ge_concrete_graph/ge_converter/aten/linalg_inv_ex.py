@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.linalg_inv_ex.default)
 def conveter_aten_linalg_inv_ex_default(
-    A: Tensor, *, check_errors: bool = False, meta_outputs: TensorSpec = None
+    A: Tensor, *, check_errors: bool = False, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::linalg_inv_ex(Tensor A, *, bool check_errors=False) -> (Tensor inverse, Tensor info)"""
     raise NotImplementedError("torch.ops.aten.linalg_inv_ex.default ge_converter is not implemented!")
@@ -37,7 +37,7 @@ def conveter_aten_linalg_inv_ex_inverse(
     check_errors: bool = False,
     inverse: Tensor = None,
     info: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::linalg_inv_ex.inverse(Tensor A, *, bool check_errors=False, Tensor(a!) inverse, Tensor(b!) info) -> (Tensor(a!) inverse, Tensor(b!) info)"""
     raise NotImplementedError("torch.ops.aten.linalg_inv_ex.inverse ge_converter is not implemented!")

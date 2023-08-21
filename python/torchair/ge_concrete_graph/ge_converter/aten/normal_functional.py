@@ -28,7 +28,7 @@ def conveter_aten_normal_functional_default(
     mean: float = 0.0,
     std: float = 1.0,
     generator: Optional[Generator] = None,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::normal_functional(Tensor self, float mean=0., float std=1., *, Generator? generator=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.normal_functional.default ge_converter is not implemented!")

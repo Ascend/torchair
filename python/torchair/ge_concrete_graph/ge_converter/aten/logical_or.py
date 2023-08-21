@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.logical_or.default)
 def conveter_aten_logical_or_default(
-    self: Tensor, other: Tensor, meta_outputs: TensorSpec = None
+    self: Tensor, other: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::logical_or(Tensor self, Tensor other) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.logical_or.default ge_converter is not implemented!")
@@ -32,7 +32,7 @@ def conveter_aten_logical_or_default(
 
 @register_fx_node_ge_converter(torch.ops.aten.logical_or.out)
 def conveter_aten_logical_or_out(
-    self: Tensor, other: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
+    self: Tensor, other: Tensor, *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::logical_or.out(Tensor self, Tensor other, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.logical_or.out ge_converter is not implemented!")

@@ -31,7 +31,7 @@ def conveter_aten_ones_names(
     layout: Optional[int] = None,
     device: Optional[Device] = None,
     pin_memory: Optional[bool] = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::ones.names(int[] size, *, str[]? names, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.ones.names ge_converter is not implemented!")
@@ -45,7 +45,7 @@ def conveter_aten_ones_default(
     layout: Optional[int] = None,
     device: Optional[Device] = None,
     pin_memory: Optional[bool] = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::ones(SymInt[] size, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
     # ScalarType default is float, reference by c10/core/DefaultDtype.cpp
@@ -60,7 +60,7 @@ def conveter_aten_ones_names_out(
     *,
     names: Optional[List[str]],
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::ones.names_out(int[] size, *, str[]? names, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.ones.names_out ge_converter is not implemented!")
@@ -68,7 +68,7 @@ def conveter_aten_ones_names_out(
 
 @register_fx_node_ge_converter(torch.ops.aten.ones.out)
 def conveter_aten_ones_out(
-    size: Union[List[int], Tensor], *, out: Tensor = None, meta_outputs: TensorSpec = None
+    size: Union[List[int], Tensor], *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::ones.out(SymInt[] size, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.ones.out ge_converter is not implemented!")

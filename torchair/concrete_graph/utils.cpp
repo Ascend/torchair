@@ -229,8 +229,6 @@ Status AtTensorToGeTensor(const at::Tensor &tensor, ge::Tensor &ge_tensor) {
   desc.SetDataType(ge_dtype);
   desc.SetShape(ge::Shape(tensor.sizes().vec()));
   desc.SetFormat(ge::FORMAT_ND);
-  desc.SetPlacement(tensor.device().is_privateuseone() ? ge::Placement::kPlacementDevice
-                                                       : ge::Placement::kPlacementHost);
 
   ge_tensor.SetTensorDesc(desc);
   TNG_RETURN_IF_ERROR(AssembleDataToGe(tensor, ge_tensor));

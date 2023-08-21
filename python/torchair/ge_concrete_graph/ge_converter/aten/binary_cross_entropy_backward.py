@@ -29,7 +29,7 @@ def conveter_aten_binary_cross_entropy_backward_default(
     target: Tensor,
     weight: Optional[Tensor] = None,
     reduction: int = 1,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::binary_cross_entropy_backward(Tensor grad_output, Tensor self, Tensor target, Tensor? weight=None, int reduction=1) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.binary_cross_entropy_backward.default ge_converter is not implemented!")
@@ -44,7 +44,7 @@ def conveter_aten_binary_cross_entropy_backward_grad_input(
     reduction: int = 1,
     *,
     grad_input: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::binary_cross_entropy_backward.grad_input(Tensor grad_output, Tensor self, Tensor target, Tensor? weight=None, int reduction=1, *, Tensor(a!) grad_input) -> Tensor(a!)"""
     raise NotImplementedError(

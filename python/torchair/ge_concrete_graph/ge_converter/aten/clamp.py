@@ -27,7 +27,7 @@ def conveter_aten_clamp_default(
     self: Tensor,
     min: Optional[Union[Number, Tensor]] = None,
     max: Optional[Union[Number, Tensor]] = None,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::clamp(Tensor self, Scalar? min=None, Scalar? max=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.clamp.default ge_converter is not implemented!")
@@ -38,7 +38,7 @@ def conveter_aten_clamp_Tensor(
     self: Tensor,
     min: Optional[Tensor] = None,
     max: Optional[Tensor] = None,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::clamp.Tensor(Tensor self, Tensor? min=None, Tensor? max=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.clamp.Tensor ge_converter is not implemented!")
@@ -51,7 +51,7 @@ def conveter_aten_clamp_out(
     max: Optional[Union[Number, Tensor]] = None,
     *,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::clamp.out(Tensor self, Scalar? min=None, Scalar? max=None, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.clamp.out ge_converter is not implemented!")
@@ -64,7 +64,7 @@ def conveter_aten_clamp_Tensor_out(
     max: Optional[Tensor] = None,
     *,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::clamp.Tensor_out(Tensor self, Tensor? min=None, Tensor? max=None, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.clamp.Tensor_out ge_converter is not implemented!")

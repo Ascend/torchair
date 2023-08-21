@@ -33,7 +33,7 @@ def conveter_aten_lstm_input(
     train: bool,
     bidirectional: bool,
     batch_first: bool,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::lstm.input(Tensor input, Tensor[] hx, Tensor[] params, bool has_biases, int num_layers, float dropout, bool train, bool bidirectional, bool batch_first) -> (Tensor, Tensor, Tensor)"""
     raise NotImplementedError("torch.ops.aten.lstm.input ge_converter is not implemented!")
@@ -50,7 +50,7 @@ def conveter_aten_lstm_data(
     dropout: float,
     train: bool,
     bidirectional: bool,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::lstm.data(Tensor data, Tensor batch_sizes, Tensor[] hx, Tensor[] params, bool has_biases, int num_layers, float dropout, bool train, bool bidirectional) -> (Tensor, Tensor, Tensor)"""
     raise NotImplementedError("torch.ops.aten.lstm.data ge_converter is not implemented!")

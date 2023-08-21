@@ -27,7 +27,7 @@ def conveter_aten_unsafe_split_with_sizes_default(
     self: Tensor,
     split_sizes: Union[List[int], Tensor],
     dim: int = 0,
-    meta_outputs: List[TensorSpec] = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::unsafe_split_with_sizes(Tensor self, SymInt[] split_sizes, int dim=0) -> Tensor[]"""
     raise NotImplementedError("torch.ops.aten.unsafe_split_with_sizes.default ge_converter is not implemented!")
@@ -39,7 +39,8 @@ def conveter_aten_unsafe_split_with_sizes_out(
     split_sizes: Union[List[int], Tensor],
     dim: int = 0,
     *,
-    out: List[Tensor] = None
+    out: List[Tensor] = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::unsafe_split_with_sizes.out(Tensor self, SymInt[] split_sizes, int dim=0, *, Tensor(a!)[] out) -> ()"""
     raise NotImplementedError("torch.ops.aten.unsafe_split_with_sizes.out ge_converter is not implemented!")

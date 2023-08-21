@@ -23,38 +23,38 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.aten.sin.default)
-def conveter_aten_sin_default(self: Tensor, meta_outputs: TensorSpec = None):
+def conveter_aten_sin_default(self: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::sin(Tensor self) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.sin.default ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.sin.out)
 def conveter_aten_sin_out(
-    self: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
+    self: Tensor, *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::sin.out(Tensor self, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.sin.out ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.sin.int)
-def conveter_aten_sin_int(a: int, meta_outputs: TensorSpec = None):
+def conveter_aten_sin_int(a: int, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::sin.int(int a) -> float"""
     raise NotImplementedError("torch.ops.aten.sin.int ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.sin.float)
-def conveter_aten_sin_float(a: float, meta_outputs: TensorSpec = None):
+def conveter_aten_sin_float(a: float, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::sin.float(float a) -> float"""
     raise NotImplementedError("torch.ops.aten.sin.float ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.sin.complex)
-def conveter_aten_sin_complex(a: complex, meta_outputs: TensorSpec = None):
+def conveter_aten_sin_complex(a: complex, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::sin.complex(complex a) -> complex"""
     raise NotImplementedError("torch.ops.aten.sin.complex ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.sin.Scalar)
-def conveter_aten_sin_Scalar(a: Union[Number, Tensor], meta_outputs: TensorSpec = None):
+def conveter_aten_sin_Scalar(a: Union[Number, Tensor], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::sin.Scalar(Scalar a) -> Scalar"""
     raise NotImplementedError("torch.ops.aten.sin.Scalar ge_converter is not implemented!")

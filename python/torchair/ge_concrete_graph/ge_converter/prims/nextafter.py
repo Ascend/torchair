@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.prims.nextafter.default)
 def conveter_prims_nextafter_default(
-    self: Tensor, other: Tensor, meta_outputs: TensorSpec = None
+    self: Tensor, other: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: prims::nextafter(Tensor self, Tensor other) -> Tensor"""
     raise NotImplementedError("torch.ops.prims.nextafter.default ge_converter is not implemented!")

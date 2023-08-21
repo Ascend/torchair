@@ -30,7 +30,7 @@ def conveter_rngprims_philox_rand_default(
     stride: Optional[List[int]],
     device: Optional[Device] = None,
     dtype: Optional[int] = None,
-    meta_outputs: List[TensorSpec] = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: rngprims::philox_rand(SymInt[] size, Tensor seed, Tensor offset, int[]? stride, Device? device=None, ScalarType? dtype=None) -> (Tensor, Tensor)"""
     raise NotImplementedError("torch.ops.rngprims.philox_rand.default ge_converter is not implemented!")

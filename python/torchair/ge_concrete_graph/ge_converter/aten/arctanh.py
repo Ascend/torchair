@@ -23,14 +23,14 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.aten.arctanh.default)
-def conveter_aten_arctanh_default(self: Tensor, meta_outputs: TensorSpec = None):
+def conveter_aten_arctanh_default(self: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::arctanh(Tensor self) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.arctanh.default ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.arctanh.out)
 def conveter_aten_arctanh_out(
-    self: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
+    self: Tensor, *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::arctanh.out(Tensor self, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.arctanh.out ge_converter is not implemented!")

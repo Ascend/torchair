@@ -29,7 +29,7 @@ def conveter_aten_multinomial_default(
     replacement: bool = False,
     *,
     generator: Optional[Generator] = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::multinomial(Tensor self, int num_samples, bool replacement=False, *, Generator? generator=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.multinomial.default ge_converter is not implemented!")
@@ -43,7 +43,7 @@ def conveter_aten_multinomial_out(
     *,
     generator: Optional[Generator] = None,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::multinomial.out(Tensor self, int num_samples, bool replacement=False, *, Generator? generator=None, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.multinomial.out ge_converter is not implemented!")

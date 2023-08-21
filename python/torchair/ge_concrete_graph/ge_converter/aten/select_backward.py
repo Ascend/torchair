@@ -36,7 +36,7 @@ def conveter_aten_select_backward_default(
     input_sizes: Union[List[int], Tensor],
     dim: int,
     index: Union[int, Tensor],
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::select_backward(Tensor grad_output, SymInt[] input_sizes, int dim, SymInt index) -> Tensor"""
     
@@ -57,7 +57,7 @@ def conveter_aten_select_backward_out(
     index: Union[int, Tensor],
     *,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::select_backward.out(Tensor grad_output, SymInt[] input_sizes, int dim, SymInt index, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.select_backward.out ge_converter is not implemented!")

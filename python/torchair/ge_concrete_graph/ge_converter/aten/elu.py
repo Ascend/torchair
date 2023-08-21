@@ -28,7 +28,7 @@ def conveter_aten_elu_default(
     alpha: Union[Number, Tensor] = 1,
     scale: Union[Number, Tensor] = 1,
     input_scale: Union[Number, Tensor] = 1,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::elu(Tensor self, Scalar alpha=1, Scalar scale=1, Scalar input_scale=1) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.elu.default ge_converter is not implemented!")
@@ -42,7 +42,7 @@ def conveter_aten_elu_out(
     input_scale: Union[Number, Tensor] = 1,
     *,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::elu.out(Tensor self, Scalar alpha=1, Scalar scale=1, Scalar input_scale=1, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.elu.out ge_converter is not implemented!")

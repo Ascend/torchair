@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.linalg_cross.default)
 def conveter_aten_linalg_cross_default(
-    self: Tensor, other: Tensor, *, dim: int = -1, meta_outputs: TensorSpec = None
+    self: Tensor, other: Tensor, *, dim: int = -1, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::linalg_cross(Tensor self, Tensor other, *, int dim=-1) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.linalg_cross.default ge_converter is not implemented!")
@@ -37,7 +37,7 @@ def conveter_aten_linalg_cross_out(
     *,
     dim: int = -1,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::linalg_cross.out(Tensor self, Tensor other, *, int dim=-1, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.linalg_cross.out ge_converter is not implemented!")

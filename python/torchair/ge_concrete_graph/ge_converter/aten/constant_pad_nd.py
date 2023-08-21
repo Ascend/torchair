@@ -27,7 +27,7 @@ def conveter_aten_constant_pad_nd_default(
     self: Tensor,
     pad: Union[List[int], Tensor],
     value: Union[Number, Tensor] = 0,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::constant_pad_nd(Tensor self, SymInt[] pad, Scalar value=0) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.constant_pad_nd.default ge_converter is not implemented!")
@@ -40,7 +40,7 @@ def conveter_aten_constant_pad_nd_out(
     value: Union[Number, Tensor] = 0,
     *,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::constant_pad_nd.out(Tensor self, SymInt[] pad, Scalar value=0, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.constant_pad_nd.out ge_converter is not implemented!")

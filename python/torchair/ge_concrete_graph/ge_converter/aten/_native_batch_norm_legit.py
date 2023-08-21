@@ -32,7 +32,7 @@ def conveter_aten__native_batch_norm_legit_default(
     training: bool,
     momentum: float,
     eps: float,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::_native_batch_norm_legit(Tensor input, Tensor? weight, Tensor? bias, Tensor(a!) running_mean, Tensor(b!) running_var, bool training, float momentum, float eps) -> (Tensor, Tensor, Tensor)"""
     raise NotImplementedError("torch.ops.aten._native_batch_norm_legit.default ge_converter is not implemented!")
@@ -46,7 +46,7 @@ def conveter_aten__native_batch_norm_legit_no_stats(
     training: bool,
     momentum: float,
     eps: float,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::_native_batch_norm_legit.no_stats(Tensor input, Tensor? weight, Tensor? bias, bool training, float momentum, float eps) -> (Tensor, Tensor, Tensor)"""
     raise NotImplementedError("torch.ops.aten._native_batch_norm_legit.no_stats ge_converter is not implemented!")
@@ -66,7 +66,7 @@ def conveter_aten__native_batch_norm_legit_out(
     out: Tensor = None,
     save_mean: Tensor = None,
     save_invstd: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::_native_batch_norm_legit.out(Tensor input, Tensor? weight, Tensor? bias, Tensor(a!) running_mean, Tensor(b!) running_var, bool training, float momentum, float eps, *, Tensor(d!) out, Tensor(e!) save_mean, Tensor(f!) save_invstd) -> (Tensor(d!), Tensor(e!), Tensor(f!))"""
     raise NotImplementedError("torch.ops.aten._native_batch_norm_legit.out ge_converter is not implemented!")
@@ -84,7 +84,7 @@ def conveter_aten__native_batch_norm_legit_no_stats_out(
     out: Tensor = None,
     save_mean: Tensor = None,
     save_invstd: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::_native_batch_norm_legit.no_stats_out(Tensor input, Tensor? weight, Tensor? bias, bool training, float momentum, float eps, *, Tensor(a!) out, Tensor(b!) save_mean, Tensor(c!) save_invstd) -> (Tensor(a!), Tensor(b!), Tensor(c!))"""
     raise NotImplementedError("torch.ops.aten._native_batch_norm_legit.no_stats_out ge_converter is not implemented!")

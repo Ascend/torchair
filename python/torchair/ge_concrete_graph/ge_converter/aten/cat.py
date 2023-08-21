@@ -34,7 +34,7 @@ from torchair.ge_concrete_graph.utils import dtype_promote
 )
 @register_fx_node_ge_converter(torch.ops.aten.cat.default)
 def conveter_aten_cat_default(
-    tensors: List[Tensor], dim: int = 0, meta_outputs: TensorSpec = None
+    tensors: List[Tensor], dim: int = 0, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::cat(Tensor[] tensors, int dim=0) -> Tensor"""
     tensors = [dtype_promote(arg, target_dtype=meta_outputs.dtype) for arg in tensors]
@@ -42,14 +42,14 @@ def conveter_aten_cat_default(
 
 
 @register_fx_node_ge_converter(torch.ops.aten.cat.names)
-def conveter_aten_cat_names(tensors: List[Tensor], dim: str, meta_outputs: TensorSpec = None):
+def conveter_aten_cat_names(tensors: List[Tensor], dim: str, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::cat.names(Tensor[] tensors, str dim) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.cat.names ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.cat.names_out)
 def conveter_aten_cat_names_out(
-    tensors: List[Tensor], dim: str, *, out: Tensor = None, meta_outputs: TensorSpec = None
+    tensors: List[Tensor], dim: str, *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::cat.names_out(Tensor[] tensors, str dim, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.cat.names_out ge_converter is not implemented!")
@@ -57,7 +57,7 @@ def conveter_aten_cat_names_out(
 
 @register_fx_node_ge_converter(torch.ops.aten.cat.out)
 def conveter_aten_cat_out(
-    tensors: List[Tensor], dim: int = 0, *, out: Tensor = None, meta_outputs: TensorSpec = None
+    tensors: List[Tensor], dim: int = 0, *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::cat.out(Tensor[] tensors, int dim=0, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.cat.out ge_converter is not implemented!")

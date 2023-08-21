@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.prims.resize.default)
 def conveter_prims_resize_default(
-    a: Tensor, shape: Union[List[int], Tensor], meta_outputs: TensorSpec = None
+    a: Tensor, shape: Union[List[int], Tensor], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: prims::resize(Tensor(a!) a, SymInt[] shape) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.prims.resize.default ge_converter is not implemented!")

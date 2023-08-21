@@ -30,7 +30,7 @@ def conveter_prims_empty_permuted_default(
     dtype: int,
     device: Device,
     requires_grad: bool,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: prims::empty_permuted(SymInt[] shape, int[] physical_layout, *, ScalarType dtype, Device device, bool requires_grad) -> Tensor"""
     raise NotImplementedError("torch.ops.prims.empty_permuted.default ge_converter is not implemented!")

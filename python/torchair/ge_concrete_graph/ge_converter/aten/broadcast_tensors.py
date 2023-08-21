@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.broadcast_tensors.default)
 def conveter_aten_broadcast_tensors_default(
-    tensors: List[Tensor], meta_outputs: List[TensorSpec] = None
+    tensors: List[Tensor], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::broadcast_tensors(Tensor[] tensors) -> Tensor[]"""
     raise NotImplementedError("torch.ops.aten.broadcast_tensors.default ge_converter is not implemented!")

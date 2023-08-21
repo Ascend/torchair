@@ -29,7 +29,7 @@ def conveter_aten_bucketize_Tensor(
     *,
     out_int32: bool = False,
     right: bool = False,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::bucketize.Tensor(Tensor self, Tensor boundaries, *, bool out_int32=False, bool right=False) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.bucketize.Tensor ge_converter is not implemented!")
@@ -42,7 +42,7 @@ def conveter_aten_bucketize_Scalar(
     *,
     out_int32: bool = False,
     right: bool = False,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::bucketize.Scalar(Scalar self, Tensor boundaries, *, bool out_int32=False, bool right=False) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.bucketize.Scalar ge_converter is not implemented!")
@@ -56,7 +56,7 @@ def conveter_aten_bucketize_Tensor_out(
     out_int32: bool = False,
     right: bool = False,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::bucketize.Tensor_out(Tensor self, Tensor boundaries, *, bool out_int32=False, bool right=False, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.bucketize.Tensor_out ge_converter is not implemented!")
@@ -70,7 +70,7 @@ def conveter_aten_bucketize_Scalar_out(
     out_int32: bool = False,
     right: bool = False,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::bucketize.Scalar_out(Scalar self, Tensor boundaries, *, bool out_int32=False, bool right=False, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.bucketize.Scalar_out ge_converter is not implemented!")

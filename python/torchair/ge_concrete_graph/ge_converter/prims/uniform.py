@@ -30,7 +30,7 @@ def conveter_prims_uniform_default(
     high: Union[Number, Tensor],
     dtype: int,
     device: Device,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: prims::uniform(SymInt[] shape, *, Scalar low, Scalar high, ScalarType dtype, Device device) -> Tensor"""
     raise NotImplementedError("torch.ops.prims.uniform.default ge_converter is not implemented!")

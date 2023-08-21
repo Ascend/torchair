@@ -29,7 +29,7 @@ def conveter_prims_empty_default(
     dtype: int,
     device: Device,
     requires_grad: bool,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: prims::empty(SymInt[] shape, *, ScalarType dtype, Device device, bool requires_grad) -> Tensor"""
     raise NotImplementedError("torch.ops.prims.empty.default ge_converter is not implemented!")

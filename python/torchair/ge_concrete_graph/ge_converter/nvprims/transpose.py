@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.nvprims.transpose.default)
 def conveter_nvprims_transpose_default(
-    a: Tensor, permutation: List[int], meta_outputs: TensorSpec = None
+    a: Tensor, permutation: List[int], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: nvprims::transpose(Tensor(a) a, int[] permutation) -> Tensor(a)"""
     raise NotImplementedError("torch.ops.nvprims.transpose.default ge_converter is not implemented!")

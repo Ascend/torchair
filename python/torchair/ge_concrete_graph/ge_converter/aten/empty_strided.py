@@ -31,7 +31,7 @@ def conveter_aten_empty_strided_default(
     layout: Optional[int] = None,
     device: Optional[Device] = None,
     pin_memory: Optional[bool] = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::empty_strided(SymInt[] size, SymInt[] stride, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.empty_strided.default ge_converter is not implemented!")
@@ -43,7 +43,7 @@ def conveter_aten_empty_strided_out(
     stride: Union[List[int], Tensor],
     *,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::empty_strided.out(SymInt[] size, SymInt[] stride, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.empty_strided.out ge_converter is not implemented!")

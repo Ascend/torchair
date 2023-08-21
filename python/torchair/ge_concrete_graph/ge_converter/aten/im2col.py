@@ -29,7 +29,7 @@ def conveter_aten_im2col_default(
     dilation: List[int],
     padding: List[int],
     stride: List[int],
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::im2col(Tensor self, int[2] kernel_size, int[2] dilation, int[2] padding, int[2] stride) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.im2col.default ge_converter is not implemented!")
@@ -44,7 +44,7 @@ def conveter_aten_im2col_out(
     stride: List[int],
     *,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::im2col.out(Tensor self, int[2] kernel_size, int[2] dilation, int[2] padding, int[2] stride, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.im2col.out ge_converter is not implemented!")

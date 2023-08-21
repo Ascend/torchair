@@ -27,7 +27,7 @@ def conveter_nvprims_view_default(
     inp: Tensor,
     original_shape: Union[List[int], Tensor],
     shape: Union[List[int], Tensor],
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: nvprims::view(Tensor inp, SymInt[] original_shape, SymInt[] shape) -> Tensor"""
     raise NotImplementedError("torch.ops.nvprims.view.default ge_converter is not implemented!")
@@ -35,7 +35,7 @@ def conveter_nvprims_view_default(
 
 @register_fx_node_ge_converter(torch.ops.nvprims.view.shape)
 def conveter_nvprims_view_shape(
-    inp: Tensor, shape: Union[List[int], Tensor], meta_outputs: TensorSpec = None
+    inp: Tensor, shape: Union[List[int], Tensor], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: nvprims::view.shape(Tensor inp, SymInt[] shape) -> Tensor"""
     raise NotImplementedError("torch.ops.nvprims.view.shape ge_converter is not implemented!")

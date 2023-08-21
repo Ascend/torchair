@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.floor_divide.default)
 def conveter_aten_floor_divide_default(
-    self: Tensor, other: Tensor, meta_outputs: TensorSpec = None
+    self: Tensor, other: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::floor_divide(Tensor self, Tensor other) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.floor_divide.default ge_converter is not implemented!")
@@ -32,7 +32,7 @@ def conveter_aten_floor_divide_default(
 
 @register_fx_node_ge_converter(torch.ops.aten.floor_divide.Scalar)
 def conveter_aten_floor_divide_Scalar(
-    self: Tensor, other: Union[Number, Tensor], meta_outputs: TensorSpec = None
+    self: Tensor, other: Union[Number, Tensor], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::floor_divide.Scalar(Tensor self, Scalar other) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.floor_divide.Scalar ge_converter is not implemented!")
@@ -40,7 +40,7 @@ def conveter_aten_floor_divide_Scalar(
 
 @register_fx_node_ge_converter(torch.ops.aten.floor_divide.out)
 def conveter_aten_floor_divide_out(
-    self: Tensor, other: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
+    self: Tensor, other: Tensor, *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::floor_divide.out(Tensor self, Tensor other, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.floor_divide.out ge_converter is not implemented!")

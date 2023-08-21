@@ -29,7 +29,7 @@ def conveter_aten_rrelu_default(
     upper: Union[Number, Tensor] = 0.3333333333333333,
     training: bool = False,
     generator: Optional[Generator] = None,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::rrelu(Tensor self, Scalar lower=0.125, Scalar upper=0.33333333333333331, bool training=False, Generator? generator=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.rrelu.default ge_converter is not implemented!")

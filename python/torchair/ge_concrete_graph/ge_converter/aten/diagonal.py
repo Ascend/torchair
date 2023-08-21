@@ -28,7 +28,7 @@ def conveter_aten_diagonal_default(
     offset: int = 0,
     dim1: int = 0,
     dim2: int = 1,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::diagonal(Tensor(a) self, int offset=0, int dim1=0, int dim2=1) -> Tensor(a)"""
     raise NotImplementedError("torch.ops.aten.diagonal.default ge_converter is not implemented!")
@@ -42,7 +42,7 @@ def conveter_aten_diagonal_Dimname(
     dim1: str,
     dim2: str,
     offset: int = 0,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::diagonal.Dimname(Tensor(a) self, *, str outdim, str dim1, str dim2, int offset=0) -> Tensor(a)"""
     raise NotImplementedError("torch.ops.aten.diagonal.Dimname ge_converter is not implemented!")

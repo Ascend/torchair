@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.prims.fft_c2c.default)
 def conveter_prims_fft_c2c_default(
-    self: Tensor, *, dim: List[int], forward: bool, meta_outputs: TensorSpec = None
+    self: Tensor, *, dim: List[int], forward: bool, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: prims::fft_c2c(Tensor self, *, int[] dim, bool forward) -> Tensor"""
     raise NotImplementedError("torch.ops.prims.fft_c2c.default ge_converter is not implemented!")

@@ -31,7 +31,7 @@ def conveter_aten_huber_loss_backward_out(
     delta: float,
     *,
     grad_input: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::huber_loss_backward.out(Tensor grad_output, Tensor self, Tensor target, int reduction, float delta, *, Tensor(a!) grad_input) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.huber_loss_backward.out ge_converter is not implemented!")
@@ -44,7 +44,7 @@ def conveter_aten_huber_loss_backward_default(
     target: Tensor,
     reduction: int,
     delta: float,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::huber_loss_backward(Tensor grad_output, Tensor self, Tensor target, int reduction, float delta) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.huber_loss_backward.default ge_converter is not implemented!")

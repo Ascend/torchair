@@ -24,13 +24,13 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.eq_.Scalar)
 def conveter_aten_eq__Scalar(
-    self: Tensor, other: Union[Number, Tensor], meta_outputs: TensorSpec = None
+    self: Tensor, other: Union[Number, Tensor], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::eq_.Scalar(Tensor(a!) self, Scalar other) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.eq_.Scalar ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.eq_.Tensor)
-def conveter_aten_eq__Tensor(self: Tensor, other: Tensor, meta_outputs: TensorSpec = None):
+def conveter_aten_eq__Tensor(self: Tensor, other: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::eq_.Tensor(Tensor(a!) self, Tensor other) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.eq_.Tensor ge_converter is not implemented!")

@@ -32,7 +32,7 @@ def conveter_nvprims_full_default(
     device: Optional[Device] = None,
     pin_memory: Optional[bool] = None,
     requires_grad: Optional[bool] = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: nvprims::full(SymInt[] size, Scalar fill_value, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None, bool? requires_grad=None) -> Tensor"""
     raise NotImplementedError("torch.ops.nvprims.full.default ge_converter is not implemented!")

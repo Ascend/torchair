@@ -47,7 +47,7 @@ def conveter_aten_mkldnn_rnn_layer_backward_default(
     batch_sizes: List[int],
     batch_first: bool,
     workspace: Tensor,
-    meta_outputs: List[TensorSpec] = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::mkldnn_rnn_layer_backward(Tensor input, Tensor weight1, Tensor weight2, Tensor weight3, Tensor weight4, Tensor hx_, Tensor cx_tmp, Tensor output, Tensor hy_, Tensor cy_, Tensor? grad_output, Tensor? grad_hy, Tensor? grad_cy, bool reverse, int mode, int hidden_size, int num_layers, bool has_biases, bool train, bool bidirectional, int[] batch_sizes, bool batch_first, Tensor workspace) -> (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor)"""
     raise NotImplementedError("torch.ops.aten.mkldnn_rnn_layer_backward.default ge_converter is not implemented!")
@@ -86,7 +86,7 @@ def conveter_aten_mkldnn_rnn_layer_backward_out(
     out4: Tensor = None,
     out5: Tensor = None,
     out6: Tensor = None,
-    meta_outputs: List[TensorSpec] = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::mkldnn_rnn_layer_backward.out(Tensor input, Tensor weight1, Tensor weight2, Tensor weight3, Tensor weight4, Tensor hx_, Tensor cx_tmp, Tensor output, Tensor hy_, Tensor cy_, Tensor? grad_output, Tensor? grad_hy, Tensor? grad_cy, bool reverse, int mode, int hidden_size, int num_layers, bool has_biases, bool train, bool bidirectional, int[] batch_sizes, bool batch_first, Tensor workspace, *, Tensor(a!) out0, Tensor(b!) out1, Tensor(c!) out2, Tensor(d!) out3, Tensor(e!) out4, Tensor(f!) out5, Tensor(g!) out6) -> (Tensor(a!), Tensor(b!), Tensor(c!), Tensor(d!), Tensor(e!), Tensor(f!), Tensor(g!))"""
     raise NotImplementedError("torch.ops.aten.mkldnn_rnn_layer_backward.out ge_converter is not implemented!")

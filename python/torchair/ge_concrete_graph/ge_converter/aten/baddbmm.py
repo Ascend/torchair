@@ -30,7 +30,7 @@ def conveter_aten_baddbmm_default(
     *,
     beta: Union[Number, Tensor] = 1,
     alpha: Union[Number, Tensor] = 1,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::baddbmm(Tensor self, Tensor batch1, Tensor batch2, *, Scalar beta=1, Scalar alpha=1) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.baddbmm.default ge_converter is not implemented!")
@@ -45,7 +45,7 @@ def conveter_aten_baddbmm_out(
     beta: Union[Number, Tensor] = 1,
     alpha: Union[Number, Tensor] = 1,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::baddbmm.out(Tensor self, Tensor batch1, Tensor batch2, *, Scalar beta=1, Scalar alpha=1, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.baddbmm.out ge_converter is not implemented!")

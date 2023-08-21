@@ -29,7 +29,7 @@ def conveter_aten_gather_default(
     index: Tensor,
     *,
     sparse_grad: bool = False,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::gather(Tensor self, int dim, Tensor index, *, bool sparse_grad=False) -> Tensor"""
     return ge.GatherElements(self, index, dim=dim)
@@ -43,7 +43,7 @@ def conveter_aten_gather_out(
     *,
     sparse_grad: bool = False,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::gather.out(Tensor self, int dim, Tensor index, *, bool sparse_grad=False, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.gather.out ge_converter is not implemented!")
@@ -56,7 +56,7 @@ def conveter_aten_gather_dimname(
     index: Tensor,
     *,
     sparse_grad: bool = False,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::gather.dimname(Tensor self, str dim, Tensor index, *, bool sparse_grad=False) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.gather.dimname ge_converter is not implemented!")
@@ -70,7 +70,7 @@ def conveter_aten_gather_dimname_out(
     *,
     sparse_grad: bool = False,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::gather.dimname_out(Tensor self, str dim, Tensor index, *, bool sparse_grad=False, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.gather.dimname_out ge_converter is not implemented!")

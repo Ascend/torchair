@@ -42,7 +42,7 @@ def conveter_aten_add_Tensor(
     other: Tensor,
     *,
     alpha: Union[Number, Tensor] = 1,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -> Tensor"""
     if not isinstance(alpha, Tensor) and alpha == 1:
@@ -59,7 +59,7 @@ def conveter_aten_add_Scalar(
     self: Tensor,
     other: Union[Number, Tensor],
     alpha: Union[Number, Tensor] = 1,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::add.Scalar(Tensor self, Scalar other, Scalar alpha=1) -> Tensor"""
     if not isinstance(alpha, Tensor) and alpha == 1:
@@ -78,7 +78,7 @@ def conveter_aten_add_out(
     *,
     alpha: Union[Number, Tensor] = 1,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::add.out(Tensor self, Tensor other, *, Scalar alpha=1, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.add.out ge_converter is not implemented!")
@@ -91,75 +91,75 @@ def conveter_aten_add_Scalar_out(
     alpha: Union[Number, Tensor] = 1,
     *,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::add.Scalar_out(Tensor self, Scalar other, Scalar alpha=1, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.add.Scalar_out ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.add.str)
-def conveter_aten_add_str(a: str, b: str, meta_outputs: TensorSpec = None):
+def conveter_aten_add_str(a: str, b: str, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::add.str(str a, str b) -> str"""
     raise NotImplementedError("torch.ops.aten.add.str ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.add.int)
-def conveter_aten_add_int(a: int, b: int, meta_outputs: TensorSpec = None):
+def conveter_aten_add_int(a: int, b: int, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::add.int(int a, int b) -> int"""
     raise NotImplementedError("torch.ops.aten.add.int ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.add.complex)
-def conveter_aten_add_complex(a: complex, b: complex, meta_outputs: TensorSpec = None):
+def conveter_aten_add_complex(a: complex, b: complex, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::add.complex(complex a, complex b) -> complex"""
     raise NotImplementedError("torch.ops.aten.add.complex ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.add.float)
-def conveter_aten_add_float(a: float, b: float, meta_outputs: TensorSpec = None):
+def conveter_aten_add_float(a: float, b: float, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::add.float(float a, float b) -> float"""
     raise NotImplementedError("torch.ops.aten.add.float ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.add.int_complex)
-def conveter_aten_add_int_complex(a: int, b: complex, meta_outputs: TensorSpec = None):
+def conveter_aten_add_int_complex(a: int, b: complex, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::add.int_complex(int a, complex b) -> complex"""
     raise NotImplementedError("torch.ops.aten.add.int_complex ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.add.complex_int)
-def conveter_aten_add_complex_int(a: complex, b: int, meta_outputs: TensorSpec = None):
+def conveter_aten_add_complex_int(a: complex, b: int, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::add.complex_int(complex a, int b) -> complex"""
     raise NotImplementedError("torch.ops.aten.add.complex_int ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.add.float_complex)
-def conveter_aten_add_float_complex(a: float, b: complex, meta_outputs: TensorSpec = None):
+def conveter_aten_add_float_complex(a: float, b: complex, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::add.float_complex(float a, complex b) -> complex"""
     raise NotImplementedError("torch.ops.aten.add.float_complex ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.add.complex_float)
-def conveter_aten_add_complex_float(a: complex, b: float, meta_outputs: TensorSpec = None):
+def conveter_aten_add_complex_float(a: complex, b: float, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::add.complex_float(complex a, float b) -> complex"""
     raise NotImplementedError("torch.ops.aten.add.complex_float ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.add.int_float)
-def conveter_aten_add_int_float(a: int, b: float, meta_outputs: TensorSpec = None):
+def conveter_aten_add_int_float(a: int, b: float, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::add.int_float(int a, float b) -> float"""
     raise NotImplementedError("torch.ops.aten.add.int_float ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.add.float_int)
-def conveter_aten_add_float_int(a: float, b: int, meta_outputs: TensorSpec = None):
+def conveter_aten_add_float_int(a: float, b: int, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::add.float_int(float a, int b) -> float"""
     raise NotImplementedError("torch.ops.aten.add.float_int ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.add.default)
 def conveter_aten_add_default(
-    a: Union[Number, Tensor], b: Union[Number, Tensor], meta_outputs: TensorSpec = None
+    a: Union[Number, Tensor], b: Union[Number, Tensor], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::add(Scalar a, Scalar b) -> Scalar"""
     raise NotImplementedError("torch.ops.aten.add.default ge_converter is not implemented!")

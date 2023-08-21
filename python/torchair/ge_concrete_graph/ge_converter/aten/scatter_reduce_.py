@@ -31,7 +31,7 @@ def conveter_aten_scatter_reduce__two(
     reduce: str,
     *,
     include_self: bool = True,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::scatter_reduce_.two(Tensor(a!) self, int dim, Tensor index, Tensor src, str reduce, *, bool include_self=True) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.scatter_reduce_.two ge_converter is not implemented!")

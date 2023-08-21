@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.prims.bitwise_and.default)
 def conveter_prims_bitwise_and_default(
-    self: Tensor, other: Tensor, meta_outputs: TensorSpec = None
+    self: Tensor, other: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: prims::bitwise_and(Tensor self, Tensor other) -> Tensor"""
     raise NotImplementedError("torch.ops.prims.bitwise_and.default ge_converter is not implemented!")

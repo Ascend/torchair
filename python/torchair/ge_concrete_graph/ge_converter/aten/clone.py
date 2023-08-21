@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.clone.default)
 def conveter_aten_clone_default(
-    self: Tensor, *, memory_format: Optional[int] = None, meta_outputs: TensorSpec = None
+    self: Tensor, *, memory_format: Optional[int] = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::clone(Tensor self, *, MemoryFormat? memory_format=None) -> Tensor"""
     if memory_format is not None and memory_format is not torch.contiguous_format:
@@ -41,7 +41,7 @@ def conveter_aten_clone_out(
     *,
     memory_format: Optional[int] = None,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::clone.out(Tensor self, *, MemoryFormat? memory_format=None, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.clone.out ge_converter is not implemented!")

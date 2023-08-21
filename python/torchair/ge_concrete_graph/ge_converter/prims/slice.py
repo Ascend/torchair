@@ -28,7 +28,7 @@ def conveter_prims_slice_default(
     start_indices: Union[List[int], Tensor],
     limit_indices: Union[List[int], Tensor],
     strides: Optional[Union[List[int], Tensor]] = None,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: prims::slice(Tensor(a) a, SymInt[] start_indices, SymInt[] limit_indices, SymInt[]? strides=None) -> Tensor(a)"""
     raise NotImplementedError("torch.ops.prims.slice.default ge_converter is not implemented!")

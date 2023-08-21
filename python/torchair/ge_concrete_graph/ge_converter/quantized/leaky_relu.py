@@ -29,7 +29,7 @@ def conveter_quantized_leaky_relu_default(
     inplace: bool,
     output_scale: float,
     output_zero_point: int,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: quantized::leaky_relu(Tensor qx, Scalar negative_slope, bool inplace, float output_scale, int output_zero_point) -> Tensor"""
     raise NotImplementedError("torch.ops.quantized.leaky_relu.default ge_converter is not implemented!")

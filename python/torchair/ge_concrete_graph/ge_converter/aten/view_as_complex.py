@@ -23,6 +23,6 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.aten.view_as_complex.default)
-def conveter_aten_view_as_complex_default(self: Tensor, meta_outputs: TensorSpec = None):
+def conveter_aten_view_as_complex_default(self: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::view_as_complex(Tensor(a) self) -> Tensor(a)"""
     raise NotImplementedError("torch.ops.aten.view_as_complex.default ge_converter is not implemented!")

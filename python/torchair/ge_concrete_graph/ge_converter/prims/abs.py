@@ -23,6 +23,6 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.prims.abs.default)
-def conveter_prims_abs_default(self: Tensor, meta_outputs: TensorSpec = None):
+def conveter_prims_abs_default(self: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: prims::abs(Tensor self) -> Tensor"""
     raise NotImplementedError("torch.ops.prims.abs.default ge_converter is not implemented!")

@@ -23,14 +23,14 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.aten.flip.default)
-def conveter_aten_flip_default(self: Tensor, dims: List[int], meta_outputs: TensorSpec = None):
+def conveter_aten_flip_default(self: Tensor, dims: List[int], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::flip(Tensor self, int[] dims) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.flip.default ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.flip.out)
 def conveter_aten_flip_out(
-    self: Tensor, dims: List[int], *, out: Tensor = None, meta_outputs: TensorSpec = None
+    self: Tensor, dims: List[int], *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::flip.out(Tensor self, int[] dims, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.flip.out ge_converter is not implemented!")

@@ -31,7 +31,7 @@ def conveter_prims_iota_default(
     dtype: int,
     device: Device,
     requires_grad: bool,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: prims::iota(SymInt length, *, SymInt start, SymInt step, ScalarType dtype, Device device, bool requires_grad) -> Tensor"""
     raise NotImplementedError("torch.ops.prims.iota.default ge_converter is not implemented!")

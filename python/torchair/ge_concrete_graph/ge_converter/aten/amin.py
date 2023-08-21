@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.amin.default)
 def conveter_aten_amin_default(
-    self: Tensor, dim: List[int] = (), keepdim: bool = False, meta_outputs: TensorSpec = None
+    self: Tensor, dim: List[int] = (), keepdim: bool = False, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::amin(Tensor self, int[1] dim=[], bool keepdim=False) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.amin.default ge_converter is not implemented!")
@@ -37,7 +37,7 @@ def conveter_aten_amin_out(
     keepdim: bool = False,
     *,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::amin.out(Tensor self, int[1] dim=[], bool keepdim=False, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.amin.out ge_converter is not implemented!")

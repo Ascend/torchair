@@ -31,7 +31,7 @@ def conveter_aten_arange_default(
     layout: Optional[int] = None,
     device: Optional[Device] = None,
     pin_memory: Optional[bool] = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::arange(Scalar end, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
     target_dtype = dtype if dtype is not None else meta_outputs.dtype
@@ -50,7 +50,7 @@ def conveter_aten_arange_start(
     layout: Optional[int] = None,
     device: Optional[Device] = None,
     pin_memory: Optional[bool] = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::arange.start(Scalar start, Scalar end, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.arange.start ge_converter is not implemented!")
@@ -66,7 +66,7 @@ def conveter_aten_arange_start_step(
     layout: Optional[int] = None,
     device: Optional[Device] = None,
     pin_memory: Optional[bool] = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::arange.start_step(Scalar start, Scalar end, Scalar step=1, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.arange.start_step ge_converter is not implemented!")
@@ -79,7 +79,7 @@ def conveter_aten_arange_start_out(
     step: Union[Number, Tensor] = 1,
     *,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::arange.start_out(Scalar start, Scalar end, Scalar step=1, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.arange.start_out ge_converter is not implemented!")
@@ -87,7 +87,7 @@ def conveter_aten_arange_start_out(
 
 @register_fx_node_ge_converter(torch.ops.aten.arange.out)
 def conveter_aten_arange_out(
-    end: Union[Number, Tensor], *, out: Tensor = None, meta_outputs: TensorSpec = None
+    end: Union[Number, Tensor], *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::arange.out(Scalar end, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.arange.out ge_converter is not implemented!")

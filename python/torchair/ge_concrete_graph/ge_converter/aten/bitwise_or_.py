@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.bitwise_or_.Tensor)
 def conveter_aten_bitwise_or__Tensor(
-    self: Tensor, other: Tensor, meta_outputs: TensorSpec = None
+    self: Tensor, other: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::bitwise_or_.Tensor(Tensor(a!) self, Tensor other) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.bitwise_or_.Tensor ge_converter is not implemented!")
@@ -32,7 +32,7 @@ def conveter_aten_bitwise_or__Tensor(
 
 @register_fx_node_ge_converter(torch.ops.aten.bitwise_or_.Scalar)
 def conveter_aten_bitwise_or__Scalar(
-    self: Tensor, other: Union[Number, Tensor], meta_outputs: TensorSpec = None
+    self: Tensor, other: Union[Number, Tensor], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::bitwise_or_.Scalar(Tensor(a!) self, Scalar other) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.bitwise_or_.Scalar ge_converter is not implemented!")

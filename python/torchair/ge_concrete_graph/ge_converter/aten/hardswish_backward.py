@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.hardswish_backward.default)
 def conveter_aten_hardswish_backward_default(
-    grad_output: Tensor, self: Tensor, meta_outputs: TensorSpec = None
+    grad_output: Tensor, self: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::hardswish_backward(Tensor grad_output, Tensor self) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.hardswish_backward.default ge_converter is not implemented!")
@@ -32,7 +32,7 @@ def conveter_aten_hardswish_backward_default(
 
 @register_fx_node_ge_converter(torch.ops.aten.hardswish_backward.out)
 def conveter_aten_hardswish_backward_out(
-    grad_output: Tensor, self: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
+    grad_output: Tensor, self: Tensor, *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::hardswish_backward.out(Tensor grad_output, Tensor self, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.hardswish_backward.out ge_converter is not implemented!")

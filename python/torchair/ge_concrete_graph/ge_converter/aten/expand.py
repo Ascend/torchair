@@ -37,7 +37,7 @@ def conveter_aten_expand_default(
     size: Union[List[int], Tensor],
     *,
     implicit: bool = False,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::expand(Tensor(a) self, SymInt[] size, *, bool implicit=False) -> Tensor(a)"""
     if implicit:

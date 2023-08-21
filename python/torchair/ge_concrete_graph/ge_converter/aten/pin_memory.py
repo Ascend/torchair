@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.pin_memory.default)
 def conveter_aten_pin_memory_default(
-    self: Tensor, device: Optional[Device] = None, meta_outputs: TensorSpec = None
+    self: Tensor, device: Optional[Device] = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::pin_memory(Tensor(a) self, Device? device=None) -> Tensor(a)"""
     raise NotImplementedError("torch.ops.aten.pin_memory.default ge_converter is not implemented!")

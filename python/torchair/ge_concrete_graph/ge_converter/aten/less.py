@@ -23,14 +23,14 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.aten.less.Tensor)
-def conveter_aten_less_Tensor(self: Tensor, other: Tensor, meta_outputs: TensorSpec = None):
+def conveter_aten_less_Tensor(self: Tensor, other: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::less.Tensor(Tensor self, Tensor other) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.less.Tensor ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.less.Scalar)
 def conveter_aten_less_Scalar(
-    self: Tensor, other: Union[Number, Tensor], meta_outputs: TensorSpec = None
+    self: Tensor, other: Union[Number, Tensor], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::less.Scalar(Tensor self, Scalar other) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.less.Scalar ge_converter is not implemented!")
@@ -42,7 +42,7 @@ def conveter_aten_less_Scalar_out(
     other: Union[Number, Tensor],
     *,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::less.Scalar_out(Tensor self, Scalar other, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.less.Scalar_out ge_converter is not implemented!")
@@ -50,7 +50,7 @@ def conveter_aten_less_Scalar_out(
 
 @register_fx_node_ge_converter(torch.ops.aten.less.Tensor_out)
 def conveter_aten_less_Tensor_out(
-    self: Tensor, other: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
+    self: Tensor, other: Tensor, *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::less.Tensor_out(Tensor self, Tensor other, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.less.Tensor_out ge_converter is not implemented!")

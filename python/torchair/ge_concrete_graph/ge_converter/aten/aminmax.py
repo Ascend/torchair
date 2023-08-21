@@ -28,7 +28,7 @@ def conveter_aten_aminmax_default(
     *,
     dim: Optional[int] = None,
     keepdim: bool = False,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::aminmax(Tensor self, *, int? dim=None, bool keepdim=False) -> (Tensor min, Tensor max)"""
     raise NotImplementedError("torch.ops.aten.aminmax.default ge_converter is not implemented!")
@@ -42,7 +42,7 @@ def conveter_aten_aminmax_out(
     keepdim: bool = False,
     min: Tensor = None,
     max: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::aminmax.out(Tensor self, *, int? dim=None, bool keepdim=False, Tensor(a!) min, Tensor(b!) max) -> (Tensor(a!) min, Tensor(b!) max)"""
     raise NotImplementedError("torch.ops.aten.aminmax.out ge_converter is not implemented!")

@@ -31,7 +31,7 @@ def conveter_quantized_layer_norm_default(
     eps: float,
     output_scale: float,
     output_zero_point: int,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: quantized::layer_norm(Tensor input, int[] normalized_shape, Tensor? weight, Tensor? bias, float eps, float output_scale, int output_zero_point) -> Tensor"""
     raise NotImplementedError("torch.ops.quantized.layer_norm.default ge_converter is not implemented!")

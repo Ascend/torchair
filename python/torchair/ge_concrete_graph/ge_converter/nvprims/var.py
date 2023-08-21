@@ -29,7 +29,7 @@ def conveter_nvprims_var_default(
     *,
     correction: float,
     output_dtype: Optional[int] = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: nvprims::var(Tensor inp, int[]? dims, *, float correction, ScalarType? output_dtype=None) -> Tensor"""
     raise NotImplementedError("torch.ops.nvprims.var.default ge_converter is not implemented!")

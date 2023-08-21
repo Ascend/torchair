@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.nvprims.squeeze.default)
 def conveter_nvprims_squeeze_default(
-    a: Tensor, dimensions: List[int], meta_outputs: TensorSpec = None
+    a: Tensor, dimensions: List[int], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: nvprims::squeeze(Tensor(a) a, int[] dimensions) -> Tensor(a)"""
     raise NotImplementedError("torch.ops.nvprims.squeeze.default ge_converter is not implemented!")

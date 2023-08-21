@@ -23,6 +23,6 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.prims.minimum_value.default)
-def conveter_prims_minimum_value_default(dtype: int, meta_outputs: TensorSpec = None):
+def conveter_prims_minimum_value_default(dtype: int, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: prims::minimum_value(ScalarType dtype) -> Scalar"""
     raise NotImplementedError("torch.ops.prims.minimum_value.default ge_converter is not implemented!")

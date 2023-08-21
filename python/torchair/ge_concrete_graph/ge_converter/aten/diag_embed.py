@@ -28,7 +28,7 @@ def conveter_aten_diag_embed_default(
     offset: int = 0,
     dim1: int = -2,
     dim2: int = -1,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::diag_embed(Tensor self, int offset=0, int dim1=-2, int dim2=-1) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.diag_embed.default ge_converter is not implemented!")
@@ -42,7 +42,7 @@ def conveter_aten_diag_embed_out(
     dim2: int = -1,
     *,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::diag_embed.out(Tensor self, int offset=0, int dim1=-2, int dim2=-1, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.diag_embed.out ge_converter is not implemented!")

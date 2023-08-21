@@ -31,7 +31,7 @@ def conveter_aten_new_zeros_default(
     layout: Optional[int] = None,
     device: Optional[Device] = None,
     pin_memory: Optional[bool] = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::new_zeros(Tensor self, SymInt[] size, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.new_zeros.default ge_converter is not implemented!")
@@ -43,7 +43,7 @@ def conveter_aten_new_zeros_out(
     size: Union[List[int], Tensor],
     *,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::new_zeros.out(Tensor self, SymInt[] size, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.new_zeros.out ge_converter is not implemented!")

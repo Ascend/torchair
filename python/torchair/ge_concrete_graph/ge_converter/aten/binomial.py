@@ -27,7 +27,7 @@ def conveter_aten_binomial_default(
     count: Tensor,
     prob: Tensor,
     generator: Optional[Generator] = None,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::binomial(Tensor count, Tensor prob, Generator? generator=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.binomial.default ge_converter is not implemented!")
@@ -39,7 +39,7 @@ def conveter_aten_binomial_out(
     prob: Tensor,
     generator: Optional[Generator] = None,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::binomial.out(Tensor count, Tensor prob, Generator? generator=None, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.binomial.out ge_converter is not implemented!")

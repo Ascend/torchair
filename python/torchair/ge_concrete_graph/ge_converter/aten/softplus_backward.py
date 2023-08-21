@@ -28,7 +28,7 @@ def conveter_aten_softplus_backward_default(
     self: Tensor,
     beta: Union[Number, Tensor],
     threshold: Union[Number, Tensor],
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::softplus_backward(Tensor grad_output, Tensor self, Scalar beta, Scalar threshold) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.softplus_backward.default ge_converter is not implemented!")
@@ -42,7 +42,7 @@ def conveter_aten_softplus_backward_grad_input(
     threshold: Union[Number, Tensor],
     *,
     grad_input: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::softplus_backward.grad_input(Tensor grad_output, Tensor self, Scalar beta, Scalar threshold, *, Tensor(a!) grad_input) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.softplus_backward.grad_input ge_converter is not implemented!")

@@ -28,7 +28,7 @@ def conveter_aten_fft_irfftn_default(
     s: Optional[Union[List[int], Tensor]] = None,
     dim: Optional[List[int]] = None,
     norm: Optional[str] = None,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::fft_irfftn(Tensor self, SymInt[1]? s=None, int[1]? dim=None, str? norm=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.fft_irfftn.default ge_converter is not implemented!")
@@ -42,7 +42,7 @@ def conveter_aten_fft_irfftn_out(
     norm: Optional[str] = None,
     *,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::fft_irfftn.out(Tensor self, SymInt[1]? s=None, int[1]? dim=None, str? norm=None, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.fft_irfftn.out ge_converter is not implemented!")

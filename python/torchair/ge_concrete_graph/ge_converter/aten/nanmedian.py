@@ -23,14 +23,14 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.aten.nanmedian.default)
-def conveter_aten_nanmedian_default(self: Tensor, meta_outputs: TensorSpec = None):
+def conveter_aten_nanmedian_default(self: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::nanmedian(Tensor self) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.nanmedian.default ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.nanmedian.dim)
 def conveter_aten_nanmedian_dim(
-    self: Tensor, dim: int, keepdim: bool = False, meta_outputs: TensorSpec = None
+    self: Tensor, dim: int, keepdim: bool = False, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::nanmedian.dim(Tensor self, int dim, bool keepdim=False) -> (Tensor values, Tensor indices)"""
     raise NotImplementedError("torch.ops.aten.nanmedian.dim ge_converter is not implemented!")
@@ -44,7 +44,7 @@ def conveter_aten_nanmedian_dim_values(
     *,
     values: Tensor = None,
     indices: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::nanmedian.dim_values(Tensor self, int dim, bool keepdim=False, *, Tensor(a!) values, Tensor(b!) indices) -> (Tensor(a!) values, Tensor(b!) indices)"""
     raise NotImplementedError("torch.ops.aten.nanmedian.dim_values ge_converter is not implemented!")
@@ -52,7 +52,7 @@ def conveter_aten_nanmedian_dim_values(
 
 @register_fx_node_ge_converter(torch.ops.aten.nanmedian.names_dim)
 def conveter_aten_nanmedian_names_dim(
-    self: Tensor, dim: str, keepdim: bool = False, meta_outputs: TensorSpec = None
+    self: Tensor, dim: str, keepdim: bool = False, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::nanmedian.names_dim(Tensor self, str dim, bool keepdim=False) -> (Tensor values, Tensor indices)"""
     raise NotImplementedError("torch.ops.aten.nanmedian.names_dim ge_converter is not implemented!")
@@ -66,7 +66,7 @@ def conveter_aten_nanmedian_names_dim_values(
     *,
     values: Tensor = None,
     indices: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::nanmedian.names_dim_values(Tensor self, str dim, bool keepdim=False, *, Tensor(a!) values, Tensor(b!) indices) -> (Tensor(a!) values, Tensor(b!) indices)"""
     raise NotImplementedError("torch.ops.aten.nanmedian.names_dim_values ge_converter is not implemented!")
@@ -74,7 +74,7 @@ def conveter_aten_nanmedian_names_dim_values(
 
 @register_fx_node_ge_converter(torch.ops.aten.nanmedian.out)
 def conveter_aten_nanmedian_out(
-    self: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
+    self: Tensor, *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::nanmedian.out(Tensor self, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.nanmedian.out ge_converter is not implemented!")

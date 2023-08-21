@@ -29,7 +29,7 @@ def conveter_aten_as_strided_scatter_default(
     size: Union[List[int], Tensor],
     stride: Union[List[int], Tensor],
     storage_offset: Optional[Union[int, Tensor]] = None,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::as_strided_scatter(Tensor self, Tensor src, SymInt[] size, SymInt[] stride, SymInt? storage_offset=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.as_strided_scatter.default ge_converter is not implemented!")
@@ -44,7 +44,7 @@ def conveter_aten_as_strided_scatter_out(
     storage_offset: Optional[Union[int, Tensor]] = None,
     *,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::as_strided_scatter.out(Tensor self, Tensor src, SymInt[] size, SymInt[] stride, SymInt? storage_offset=None, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.as_strided_scatter.out ge_converter is not implemented!")

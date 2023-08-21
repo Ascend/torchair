@@ -28,7 +28,7 @@ def conveter_aten_fft_fft2_default(
     s: Optional[Union[List[int], Tensor]] = None,
     dim: List[int] = (),
     norm: Optional[str] = None,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::fft_fft2(Tensor self, SymInt[1]? s=None, int[1] dim=[-2, -1], str? norm=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.fft_fft2.default ge_converter is not implemented!")
@@ -42,7 +42,7 @@ def conveter_aten_fft_fft2_out(
     norm: Optional[str] = None,
     *,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::fft_fft2.out(Tensor self, SymInt[1]? s=None, int[1] dim=[-2, -1], str? norm=None, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.fft_fft2.out ge_converter is not implemented!")

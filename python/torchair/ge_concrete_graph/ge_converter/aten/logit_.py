@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.logit_.default)
 def conveter_aten_logit__default(
-    self: Tensor, eps: Optional[float] = None, meta_outputs: TensorSpec = None
+    self: Tensor, eps: Optional[float] = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::logit_(Tensor(a!) self, float? eps=None) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.logit_.default ge_converter is not implemented!")

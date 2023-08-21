@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.bernoulli.default)
 def conveter_aten_bernoulli_default(
-    self: Tensor, *, generator: Optional[Generator] = None, meta_outputs: TensorSpec = None
+    self: Tensor, *, generator: Optional[Generator] = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::bernoulli(Tensor self, *, Generator? generator=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.bernoulli.default ge_converter is not implemented!")
@@ -36,7 +36,7 @@ def conveter_aten_bernoulli_out(
     *,
     generator: Optional[Generator] = None,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::bernoulli.out(Tensor self, *, Generator? generator=None, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.bernoulli.out ge_converter is not implemented!")
@@ -48,7 +48,7 @@ def conveter_aten_bernoulli_p(
     p: float,
     *,
     generator: Optional[Generator] = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::bernoulli.p(Tensor self, float p, *, Generator? generator=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.bernoulli.p ge_converter is not implemented!")
@@ -60,7 +60,7 @@ def conveter_aten_bernoulli_Tensor(
     p: Tensor,
     *,
     generator: Optional[Generator] = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::bernoulli.Tensor(Tensor self, Tensor p, *, Generator? generator=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.bernoulli.Tensor ge_converter is not implemented!")
@@ -73,7 +73,7 @@ def conveter_aten_bernoulli_Tensor_out(
     *,
     generator: Optional[Generator] = None,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::bernoulli.Tensor_out(Tensor self, Tensor p, *, Generator? generator=None, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.bernoulli.Tensor_out ge_converter is not implemented!")
@@ -86,7 +86,7 @@ def conveter_aten_bernoulli_float_out(
     *,
     generator: Optional[Generator] = None,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::bernoulli.float_out(Tensor self, float p=0.5, *, Generator? generator=None, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.bernoulli.float_out ge_converter is not implemented!")

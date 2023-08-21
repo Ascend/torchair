@@ -19,7 +19,7 @@ from torchair.ge_concrete_graph.ge_graph import default_ge_graph, GeGraph
 from torchair.ge_concrete_graph.ge_graph import compat_as_bytes
 from torchair.ge_concrete_graph.ge_graph import DataType, TensorSpec
 from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type, torch_type_to_ge_proto_type
-from torchair.ge_concrete_graph.ge_graph import is_sym, sym_to_ge_dtype
+from torchair.ge_concrete_graph.ge_graph import is_sym, sym_to_ge_proto_dtype
 from torchair.core.backend import TorchNpuGraph
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.ge_concrete_graph.utils import convert_to_tensorboard
@@ -59,8 +59,6 @@ def _wrap_converter(converter: Callable):
                 assert isinstance(meta_outputs, (list, tuple))
                 assert len(ge_outputs) == len(meta_outputs)
                 for meta_output, ge_output in zip(meta_outputs, ge_outputs):
-                    if meta_output is None:
-                        continue
                     assert isinstance(meta_output, torch.Tensor)
                     assert isinstance(ge_output, ge.Tensor)
                     ge_output.set_meta(meta_output)
@@ -80,17 +78,12 @@ class Converter:
 
     def __call__(self, converter) -> Any:
         wrapped_converter = _wrap_converter(converter)
-        if 'meta_outputs' in inspect.signature(converter).parameters:
-            wrapped_converter.require_meta = True
-        else:
-            wrapped_converter.require_meta = False
         try:
             self._aten_op._ge_converter = wrapped_converter
         except:
             global _CONVERTERS
             _CONVERTERS.update({self._aten_op: wrapped_converter})
         return self
-
 
     @property
     def supported_cases(self):
@@ -197,21 +190,20 @@ class GeConcreteGraph(ConcreteGraphBase):
     def parse_input(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
         if is_sym(meta_outputs):
             data = ge.Data(index=len(self._inputs),
-                           dtype=sym_to_ge_dtype(meta_outputs), shape=[], placement='CPU', name=target)
+                           dtype=sym_to_ge_proto_dtype(meta_outputs), shape=[], name=target)
             data.set_meta(meta_outputs)
             self._inputs.append(data)
             self._input_placements.append(Placement.HOST)
         else:
             assert isinstance(meta_outputs, torch.Tensor)
-            dtype = torch_type_to_ge_type(meta_outputs.dtype)
+            dtype = torch_type_to_ge_proto_type(meta_outputs.dtype)
             shape = _get_generalized_shape(meta_outputs)
-            placement = Placement.HOST if (
-                meta_outputs.device is None or meta_outputs.device.type == 'cpu') else Placement.DEVICE
             data = ge.Data(index=len(self._inputs), dtype=dtype,
-                           shape=shape, placement='CPU' if (placement == Placement.HOST) else 'NPU', name=target)
+                           shape=shape, name=target)
             data.set_meta(meta_outputs)
             self._inputs.append(data)
-            self._input_placements.append(placement)
+            self._input_placements.append(Placement.HOST if (
+                meta_outputs.device is None or meta_outputs.device.type == 'cpu') else Placement.DEVICE)
         return self._inputs[-1]
 
     def parse_output(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
@@ -247,10 +239,7 @@ class GeConcreteGraph(ConcreteGraphBase):
             converter = _get_converter(target)
         if converter is None:
             raise RuntimeError(f"Unsupported torch op {target} by ge")
-        if converter.require_meta:
-            return converter(*args, **kwargs, meta_outputs=meta_outputs)
-        else:
-            return converter(*args, **kwargs)
+        return converter(*args, **kwargs, meta_outputs=meta_outputs)
 
     def dump(self, path: str):
         if path is None:

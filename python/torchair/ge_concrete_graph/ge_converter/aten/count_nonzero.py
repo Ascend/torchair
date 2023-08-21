@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.count_nonzero.dim_IntList)
 def conveter_aten_count_nonzero_dim_IntList(
-    self: Tensor, dim: List[int], meta_outputs: TensorSpec = None
+    self: Tensor, dim: List[int], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::count_nonzero.dim_IntList(Tensor self, int[] dim) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.count_nonzero.dim_IntList ge_converter is not implemented!")
@@ -32,7 +32,7 @@ def conveter_aten_count_nonzero_dim_IntList(
 
 @register_fx_node_ge_converter(torch.ops.aten.count_nonzero.dim_IntList_out)
 def conveter_aten_count_nonzero_dim_IntList_out(
-    self: Tensor, dim: List[int], *, out: Tensor = None, meta_outputs: TensorSpec = None
+    self: Tensor, dim: List[int], *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::count_nonzero.dim_IntList_out(Tensor self, int[] dim, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.count_nonzero.dim_IntList_out ge_converter is not implemented!")
@@ -40,7 +40,7 @@ def conveter_aten_count_nonzero_dim_IntList_out(
 
 @register_fx_node_ge_converter(torch.ops.aten.count_nonzero.default)
 def conveter_aten_count_nonzero_default(
-    self: Tensor, dim: Optional[int] = None, meta_outputs: TensorSpec = None
+    self: Tensor, dim: Optional[int] = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::count_nonzero(Tensor self, int? dim=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.count_nonzero.default ge_converter is not implemented!")
@@ -52,7 +52,7 @@ def conveter_aten_count_nonzero_out(
     dim: Optional[int] = None,
     *,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::count_nonzero.out(Tensor self, int? dim=None, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.count_nonzero.out ge_converter is not implemented!")

@@ -31,7 +31,7 @@ from torchair.ge_concrete_graph.utils import dtype_promote
     ]
 )
 @register_fx_node_ge_converter(torch.ops.aten.bmm.default)
-def conveter_aten_bmm_default(self: Tensor, mat2: Tensor, meta_outputs: TensorSpec = None):
+def conveter_aten_bmm_default(self: Tensor, mat2: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::bmm(Tensor self, Tensor mat2) -> Tensor"""
     self, mat2 = dtype_promote(self, mat2, target_dtype=meta_outputs.dtype)
     return ge.BatchMatMul(self, mat2)
@@ -39,7 +39,7 @@ def conveter_aten_bmm_default(self: Tensor, mat2: Tensor, meta_outputs: TensorSp
 
 @register_fx_node_ge_converter(torch.ops.aten.bmm.out)
 def conveter_aten_bmm_out(
-    self: Tensor, mat2: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
+    self: Tensor, mat2: Tensor, *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::bmm.out(Tensor self, Tensor mat2, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.bmm.out ge_converter is not implemented!")

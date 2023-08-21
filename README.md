@@ -257,7 +257,7 @@ dtype_promote（类型提升）的关键，在于converter实现时，需要根�
 需要特别注意，所实现的converter必须支持动态shape，不应该试图从输入的Tensor上获取任何shape信息，Tensor也不会提供任何shape信息。
 > 如果您的converter依赖shape才能工作，这通常意味着实现错误，或者没有选择正确的Ascend IR映射。
 
-## 导出gegraph
+## 导出gegreph
 
 torchair提供配置项config.debug.graph_dump开关来导出gegraph，您可以通过如下方式来配置
 

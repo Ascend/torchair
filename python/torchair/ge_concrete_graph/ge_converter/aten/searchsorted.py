@@ -31,7 +31,7 @@ def conveter_aten_searchsorted_Tensor(
     right: bool = False,
     side: Optional[str] = None,
     sorter: Optional[Tensor] = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::searchsorted.Tensor(Tensor sorted_sequence, Tensor self, *, bool out_int32=False, bool right=False, str? side=None, Tensor? sorter=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.searchsorted.Tensor ge_converter is not implemented!")
@@ -47,7 +47,7 @@ def conveter_aten_searchsorted_Tensor_out(
     side: Optional[str] = None,
     sorter: Optional[Tensor] = None,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::searchsorted.Tensor_out(Tensor sorted_sequence, Tensor self, *, bool out_int32=False, bool right=False, str? side=None, Tensor? sorter=None, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.searchsorted.Tensor_out ge_converter is not implemented!")
@@ -62,7 +62,7 @@ def conveter_aten_searchsorted_Scalar(
     right: bool = False,
     side: Optional[str] = None,
     sorter: Optional[Tensor] = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::searchsorted.Scalar(Tensor sorted_sequence, Scalar self, *, bool out_int32=False, bool right=False, str? side=None, Tensor? sorter=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.searchsorted.Scalar ge_converter is not implemented!")
@@ -78,7 +78,7 @@ def conveter_aten_searchsorted_Scalar_out(
     side: Optional[str] = None,
     sorter: Optional[Tensor] = None,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::searchsorted.Scalar_out(Tensor sorted_sequence, Scalar self, *, bool out_int32=False, bool right=False, str? side=None, Tensor? sorter=None, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.searchsorted.Scalar_out ge_converter is not implemented!")

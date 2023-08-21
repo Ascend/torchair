@@ -31,7 +31,7 @@ def conveter_aten_avg_pool2d_default(
     ceil_mode: bool = False,
     count_include_pad: bool = True,
     divisor_override: Optional[int] = None,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::avg_pool2d(Tensor self, int[2] kernel_size, int[2] stride=[], int[2] padding=0, bool ceil_mode=False, bool count_include_pad=True, int? divisor_override=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.avg_pool2d.default ge_converter is not implemented!")
@@ -48,7 +48,7 @@ def conveter_aten_avg_pool2d_out(
     divisor_override: Optional[int] = None,
     *,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::avg_pool2d.out(Tensor self, int[2] kernel_size, int[2] stride=[], int[2] padding=0, bool ceil_mode=False, bool count_include_pad=True, int? divisor_override=None, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.avg_pool2d.out ge_converter is not implemented!")

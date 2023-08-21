@@ -31,7 +31,7 @@ def conveter_aten_smooth_l1_loss_backward_grad_input(
     beta: float,
     *,
     grad_input: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::smooth_l1_loss_backward.grad_input(Tensor grad_output, Tensor self, Tensor target, int reduction, float beta, *, Tensor(a!) grad_input) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.smooth_l1_loss_backward.grad_input ge_converter is not implemented!")
@@ -44,7 +44,7 @@ def conveter_aten_smooth_l1_loss_backward_default(
     target: Tensor,
     reduction: int,
     beta: float,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::smooth_l1_loss_backward(Tensor grad_output, Tensor self, Tensor target, int reduction, float beta) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.smooth_l1_loss_backward.default ge_converter is not implemented!")

@@ -30,7 +30,7 @@ def conveter_prims_full_like_default(
     dtype: int,
     device: Device,
     requires_grad: bool,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: prims::full_like(Tensor a, Scalar fill_value, *, ScalarType dtype, Device device, bool requires_grad) -> Tensor"""
     raise NotImplementedError("torch.ops.prims.full_like.default ge_converter is not implemented!")

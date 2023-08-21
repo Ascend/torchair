@@ -32,7 +32,7 @@ def conveter_aten__to_copy_default(
     pin_memory: Optional[bool] = None,
     non_blocking: bool = False,
     memory_format: Optional[int] = None,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::_to_copy(Tensor self, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None, bool non_blocking=False, MemoryFormat? memory_format=None) -> Tensor"""
     # layout, pin_memory, device and non_blocking have no effect on constructing graph.
@@ -54,7 +54,7 @@ def conveter_aten__to_copy_out(
     non_blocking: bool = False,
     memory_format: Optional[int] = None,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::_to_copy.out(Tensor self, *, bool non_blocking=False, MemoryFormat? memory_format=None, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten._to_copy.out ge_converter is not implemented!")

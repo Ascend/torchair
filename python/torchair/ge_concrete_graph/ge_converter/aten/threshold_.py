@@ -27,7 +27,7 @@ def conveter_aten_threshold__default(
     self: Tensor,
     threshold: Union[Number, Tensor],
     value: Union[Number, Tensor],
-    meta_outputs: TensorSpec = None,
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None,
 ):
     """NB: aten::threshold_(Tensor(a!) self, Scalar threshold, Scalar value) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.threshold_.default ge_converter is not implemented!")

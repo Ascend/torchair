@@ -28,7 +28,7 @@ def conveter_aten_geometric_default(
     p: float,
     *,
     generator: Optional[Generator] = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::geometric(Tensor self, float p, *, Generator? generator=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.geometric.default ge_converter is not implemented!")
@@ -41,7 +41,7 @@ def conveter_aten_geometric_out(
     *,
     generator: Optional[Generator] = None,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::geometric.out(Tensor self, float p, *, Generator? generator=None, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.geometric.out ge_converter is not implemented!")

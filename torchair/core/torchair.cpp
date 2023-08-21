@@ -114,6 +114,8 @@ void TorchNpuGraphBase::Compile() {
 }
 
 void TorchNpuGraphBase::AutoTune(py::object obj) {
+  const pybind11::gil_scoped_release release;
+
   py::handle handle = obj.cast<py::handle>();
   PyObject *args = handle.ptr();
 
@@ -128,12 +130,12 @@ void TorchNpuGraphBase::AutoTune(py::object obj) {
   std::vector<at::Tensor> input_tensors;
   TNG_RAISE_IF_ERROR(ParseListTensors(example_inputs, input_tensors));
 
-  const pybind11::gil_scoped_release release;
   TNG_RAISE_IF_ERROR(concrete_graph_->AutoTune(input_tensors, stream));
   const pybind11::gil_scoped_acquire acquire;
 }
 
 py::object TorchNpuGraphBase::Run(py::object obj) {
+  const pybind11::gil_scoped_release release;
   PyObject *inputs = nullptr;
   PyObject *assigned_outputs = nullptr;
   PyObject *stream = nullptr;
@@ -148,7 +150,6 @@ py::object TorchNpuGraphBase::Run(py::object obj) {
   std::vector<c10::optional<at::Tensor>> output_optional_tensors;
   TNG_RAISE_IF_ERROR(ParseListOptionalTensors(assigned_outputs, output_optional_tensors));
 
-  const pybind11::gil_scoped_release release;
   std::vector<at::Tensor> outputs;
   TNG_RAISE_IF_ERROR(concrete_graph_->Run(input_tensors, output_optional_tensors, outputs, nullptr));
 

@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.copysign.Tensor)
 def conveter_aten_copysign_Tensor(
-    self: Tensor, other: Tensor, meta_outputs: TensorSpec = None
+    self: Tensor, other: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::copysign.Tensor(Tensor self, Tensor other) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.copysign.Tensor ge_converter is not implemented!")
@@ -32,7 +32,7 @@ def conveter_aten_copysign_Tensor(
 
 @register_fx_node_ge_converter(torch.ops.aten.copysign.Scalar)
 def conveter_aten_copysign_Scalar(
-    self: Tensor, other: Union[Number, Tensor], meta_outputs: TensorSpec = None
+    self: Tensor, other: Union[Number, Tensor], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::copysign.Scalar(Tensor self, Scalar other) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.copysign.Scalar ge_converter is not implemented!")
@@ -40,7 +40,7 @@ def conveter_aten_copysign_Scalar(
 
 @register_fx_node_ge_converter(torch.ops.aten.copysign.out)
 def conveter_aten_copysign_out(
-    self: Tensor, other: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
+    self: Tensor, other: Tensor, *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::copysign.out(Tensor self, Tensor other, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.copysign.out ge_converter is not implemented!")
@@ -52,39 +52,39 @@ def conveter_aten_copysign_Scalar_out(
     other: Union[Number, Tensor],
     *,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::copysign.Scalar_out(Tensor self, Scalar other, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.copysign.Scalar_out ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.copysign.int)
-def conveter_aten_copysign_int(a: int, b: int, meta_outputs: TensorSpec = None):
+def conveter_aten_copysign_int(a: int, b: int, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::copysign.int(int a, int b) -> float"""
     raise NotImplementedError("torch.ops.aten.copysign.int ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.copysign.float)
-def conveter_aten_copysign_float(a: float, b: float, meta_outputs: TensorSpec = None):
+def conveter_aten_copysign_float(a: float, b: float, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::copysign.float(float a, float b) -> float"""
     raise NotImplementedError("torch.ops.aten.copysign.float ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.copysign.int_float)
-def conveter_aten_copysign_int_float(a: int, b: float, meta_outputs: TensorSpec = None):
+def conveter_aten_copysign_int_float(a: int, b: float, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::copysign.int_float(int a, float b) -> float"""
     raise NotImplementedError("torch.ops.aten.copysign.int_float ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.copysign.float_int)
-def conveter_aten_copysign_float_int(a: float, b: int, meta_outputs: TensorSpec = None):
+def conveter_aten_copysign_float_int(a: float, b: int, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::copysign.float_int(float a, int b) -> float"""
     raise NotImplementedError("torch.ops.aten.copysign.float_int ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.copysign.default)
 def conveter_aten_copysign_default(
-    a: Union[Number, Tensor], b: Union[Number, Tensor], meta_outputs: TensorSpec = None
+    a: Union[Number, Tensor], b: Union[Number, Tensor], meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::copysign(Scalar a, Scalar b) -> float"""
     raise NotImplementedError("torch.ops.aten.copysign.default ge_converter is not implemented!")

@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.tril_.default)
 def conveter_aten_tril__default(
-    self: Tensor, diagonal: int = 0, meta_outputs: TensorSpec = None
+    self: Tensor, diagonal: int = 0, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::tril_(Tensor(a!) self, int diagonal=0) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.tril_.default ge_converter is not implemented!")

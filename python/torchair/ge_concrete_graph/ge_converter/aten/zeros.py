@@ -33,7 +33,7 @@ def conveter_aten_zeros_names(
     layout: Optional[int] = None,
     device: Optional[Device] = None,
     pin_memory: Optional[bool] = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::zeros.names(int[] size, *, str[]? names, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.zeros.names ge_converter is not implemented!")
@@ -52,7 +52,7 @@ def conveter_aten_zeros_default(
     layout: Optional[int] = None,
     device: Optional[Device] = None,
     pin_memory: Optional[bool] = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::zeros(SymInt[] size, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
     if dtype is None:
@@ -67,7 +67,7 @@ def conveter_aten_zeros_names_out(
     *,
     names: Optional[List[str]],
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::zeros.names_out(int[] size, *, str[]? names, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.zeros.names_out ge_converter is not implemented!")
@@ -75,7 +75,7 @@ def conveter_aten_zeros_names_out(
 
 @register_fx_node_ge_converter(torch.ops.aten.zeros.out)
 def conveter_aten_zeros_out(
-    size: Union[List[int], Tensor], *, out: Tensor = None, meta_outputs: TensorSpec = None
+    size: Union[List[int], Tensor], *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::zeros.out(SymInt[] size, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.zeros.out ge_converter is not implemented!")

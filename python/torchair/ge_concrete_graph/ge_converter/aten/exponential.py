@@ -28,7 +28,7 @@ def conveter_aten_exponential_default(
     lambd: float = 1.0,
     *,
     generator: Optional[Generator] = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::exponential(Tensor self, float lambd=1., *, Generator? generator=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.exponential.default ge_converter is not implemented!")
@@ -41,7 +41,7 @@ def conveter_aten_exponential_out(
     *,
     generator: Optional[Generator] = None,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::exponential.out(Tensor self, float lambd=1., *, Generator? generator=None, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.exponential.out ge_converter is not implemented!")

@@ -29,7 +29,7 @@ def conveter_aten_log_normal_default(
     std: float = 2.0,
     *,
     generator: Optional[Generator] = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::log_normal(Tensor self, float mean=1., float std=2., *, Generator? generator=None) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.log_normal.default ge_converter is not implemented!")
@@ -43,7 +43,7 @@ def conveter_aten_log_normal_out(
     *,
     generator: Optional[Generator] = None,
     out: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::log_normal.out(Tensor self, float mean=1., float std=2., *, Generator? generator=None, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.log_normal.out ge_converter is not implemented!")

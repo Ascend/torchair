@@ -23,13 +23,13 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
 @register_fx_node_ge_converter(torch.ops.aten.cummax.default)
-def conveter_aten_cummax_default(self: Tensor, dim: int, meta_outputs: TensorSpec = None):
+def conveter_aten_cummax_default(self: Tensor, dim: int, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::cummax(Tensor self, int dim) -> (Tensor values, Tensor indices)"""
     raise NotImplementedError("torch.ops.aten.cummax.default ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.cummax.dimname)
-def conveter_aten_cummax_dimname(self: Tensor, dim: str, meta_outputs: TensorSpec = None):
+def conveter_aten_cummax_dimname(self: Tensor, dim: str, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
     """NB: aten::cummax.dimname(Tensor self, str dim) -> (Tensor values, Tensor indices)"""
     raise NotImplementedError("torch.ops.aten.cummax.dimname ge_converter is not implemented!")
 
@@ -41,7 +41,7 @@ def conveter_aten_cummax_dimname_out(
     *,
     values: Tensor = None,
     indices: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::cummax.dimname_out(Tensor self, str dim, *, Tensor(a!) values, Tensor(b!) indices) -> (Tensor(a!) values, Tensor(b!) indices)"""
     raise NotImplementedError("torch.ops.aten.cummax.dimname_out ge_converter is not implemented!")
@@ -54,7 +54,7 @@ def conveter_aten_cummax_out(
     *,
     values: Tensor = None,
     indices: Tensor = None,
-    meta_outputs: TensorSpec = None
+    meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::cummax.out(Tensor self, int dim, *, Tensor(a!) values, Tensor(b!) indices) -> (Tensor(a!) values, Tensor(b!) indices)"""
     raise NotImplementedError("torch.ops.aten.cummax.out ge_converter is not implemented!")

@@ -24,7 +24,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.minimum.default)
 def conveter_aten_minimum_default(
-    self: Tensor, other: Tensor, meta_outputs: TensorSpec = None
+    self: Tensor, other: Tensor, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::minimum(Tensor self, Tensor other) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.minimum.default ge_converter is not implemented!")
@@ -32,7 +32,7 @@ def conveter_aten_minimum_default(
 
 @register_fx_node_ge_converter(torch.ops.aten.minimum.out)
 def conveter_aten_minimum_out(
-    self: Tensor, other: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
+    self: Tensor, other: Tensor, *, out: Tensor = None, meta_outputs: Union[TensorSpec, List[TensorSpec]] = None
 ):
     """NB: aten::minimum.out(Tensor self, Tensor other, *, Tensor(a!) out) -> Tensor(a!)"""
     raise NotImplementedError("torch.ops.aten.minimum.out ge_converter is not implemented!")
