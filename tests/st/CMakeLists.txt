@@ -1,10 +1,16 @@
 add_custom_command(OUTPUT ST_TESTCASES
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_st.py ${CMAKE_BINARY_DIR}/st
+        COMMAND cp -r ${CMAKE_CURRENT_LIST_DIR}/torch_npu_registration ${CMAKE_BINARY_DIR}/st
+        VERBATIM)
+
+add_custom_target(run_torch_npu_install ALL
+        COMMAND ${PYTHON_BIN_PATH} torch_npu_registration/npu_setup.py install
+        DEPENDS ST_TESTCASES
         VERBATIM)
 
 add_custom_target(run_torchair_py_cases ALL
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_st
-        DEPENDS install_torchair ST_TESTCASES
+        DEPENDS install_torchair run_torch_npu_install
         VERBATIM)
 
 add_custom_target(torchair_st ALL
