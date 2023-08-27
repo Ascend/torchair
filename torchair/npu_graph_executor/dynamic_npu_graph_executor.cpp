@@ -2,6 +2,7 @@
 #include "external/graph/types.h"
 
 #include <utility>
+#include "AllocatorManager.h"
 #include "checker.h"
 #include "graph/utils/type_utils.h"
 #include "logger.h"
@@ -82,9 +83,19 @@ Status DynamicNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
     TNG_RETURN_IF_ERROR(GetCurrentStream(&stream));
   }
 
-  // TODO: register allocator for GE before run.
+  // Register allocator for GE before run, according to stream.
+  AllocatorManager::GetInstance().EnsureAllocatorRegistered(stream);
 
   std::vector<ge::Tensor> ge_outputs;
+  ge_outputs.resize(graph_data_->output_dtypes.size());
+  TNG_LOG(INFO) << "Graph output size is " << ge_outputs.size();
+  for (size_t i = 0; i < ge_outputs.size(); ++i) {
+    const static ge::Tensor::DeleteFunc kDoNothing = [](uint8_t *data) {};
+    // setting the i-th tensor data to nullptr means
+    // that the i-th tensor memory will be allocated and returned by GE.
+    TNG_ASSERT_GE_OK(ge_outputs[i].SetData(nullptr, 0U, kDoNothing));
+  }
+
   TNG_RETURN_IF_ERROR(Session::GetInstance().RunGraph(graph_data_->id, inputs_holder_, ge_outputs, stream));
   outputs.resize(ge_outputs.size());
   for (size_t i = 0; i < ge_outputs.size(); ++i) {
