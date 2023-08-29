@@ -54,7 +54,11 @@ def conveter_aten_div_Scalar(
     self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)
     return ge.RealDiv(self, other)
 
-
+@declare_supported([
+    Support(F32(20), 42, rounding_mode="floor"),
+    Support(F32(20), 42, rounding_mode="trunc"),
+    Support(F32(20), 42, rounding_mode=None),
+])
 @register_fx_node_ge_converter(torch.ops.aten.div.Tensor_mode)
 def conveter_aten_div_Tensor_mode(
     self: Tensor,
@@ -64,7 +68,15 @@ def conveter_aten_div_Tensor_mode(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::div.Tensor_mode(Tensor self, Tensor other, *, str? rounding_mode) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.div.Tensor_mode ge_converter is not implemented!")
+    self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)
+    if rounding_mode == "floor":
+        output = ge.FloorDiv(self, other)
+    elif rounding_mode == "trunc":
+        output = ge.RealDiv(self, other)
+        output = ge.Trunc(output)
+    else:
+        output = ge.RealDiv(self, other)
+    return output
 
 
 @register_fx_node_ge_converter(torch.ops.aten.div.Scalar_mode)

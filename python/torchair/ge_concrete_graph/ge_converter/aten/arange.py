@@ -18,8 +18,10 @@ import torch
 from torch import Generator, contiguous_format, inf, strided
 from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
-from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, torch_type_to_ge_type
+from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, torch_type_to_ge_type, declare_supported
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
+    Support
 from torchair.ge_concrete_graph.utils import dtype_promote
 
 
@@ -40,7 +42,9 @@ def conveter_aten_arange_default(
     # layout, pin_memory and device have no effect on constructing graph.
     return ge.Range(start, limit, delta)
 
-
+@declare_supported([
+    Support(0, 100, torch.int32),
+])
 @register_fx_node_ge_converter(torch.ops.aten.arange.start)
 def conveter_aten_arange_start(
     start: Union[Number, Tensor],
@@ -53,7 +57,13 @@ def conveter_aten_arange_start(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::arange.start(Scalar start, Scalar end, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.arange.start ge_converter is not implemented!")
+    if dtype == torch.float16:
+        raise NotImplementedError("torch.ops.aten.arange.start ge_converter with dtype in float16 is not implemented!")
+    target_dtype = dtype if dtype  else meta_outputs.dtype
+    start, limit, delta = dtype_promote(start, end, 1, target_dtype=target_dtype)
+
+    # layout, pin_memory and device have no effect on constructing graph.
+    return ge.Range(start, limit, delta)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.arange.start_step)
