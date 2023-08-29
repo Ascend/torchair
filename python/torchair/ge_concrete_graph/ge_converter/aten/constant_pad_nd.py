@@ -18,10 +18,18 @@ import torch
 from torch import Generator, contiguous_format, inf, strided
 from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
-from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
+from torchair.ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
+    Support
 
 
+@declare_supported(
+    [
+        Support(F32(12, 39, 12), [0, 0, 0, 1, 0, 0], 0.0),
+        Support(F32(2, 8, 13, 13), [0, -1, 0, -1]),
+    ]
+)
 @register_fx_node_ge_converter(torch.ops.aten.constant_pad_nd.default)
 def conveter_aten_constant_pad_nd_default(
     self: Tensor,
@@ -30,7 +38,22 @@ def conveter_aten_constant_pad_nd_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::constant_pad_nd(Tensor self, SymInt[] pad, Scalar value=0) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.constant_pad_nd.default ge_converter is not implemented!")
+    if isinstance(pad, Tensor):
+        raise NotImplementedError("When pad is Tensor, torch.ops.aten.constant_pad_nd.default ge_converter is not implemented!")
+    assert len(pad) % 2 == 0, f"Length of pad must be even but instead it equals {len(pad)}"
+    assert self.rank >= (len(pad) / 2), "Length of pad should be no more than twice the number of dimensions of the input. "
+    paddings = [0] * (2 * self.rank)
+    if len(pad) <= len(paddings):
+        paddings[0: len(pad)] = pad
+    else:
+        paddings = pad[0: len(paddings)]
+    pads = []
+    paddings_len = len(paddings)
+    while paddings_len > 0:
+        pads.append(paddings[paddings_len - 2])
+        pads.append(paddings[paddings_len - 1])
+        paddings_len -= 2
+    return ge.PadV3(self, pads, value)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.constant_pad_nd.out)
