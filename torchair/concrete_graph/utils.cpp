@@ -248,26 +248,24 @@ void DeleteGeDataPtr(void *data) {
 }  // namespace
 
 Status GeTensorToAtTensor(ge::Tensor &ge_tensor, at::Tensor &tensor) {
-  c10::ScalarType tensor_dtype = c10::ScalarType::Float;
   const ge::TensorDesc &tensor_desc = ge_tensor.GetTensorDesc();
+  c10::ScalarType tensor_dtype = c10::ScalarType::Float;
   TNG_RETURN_IF_ERROR(GeDtypeToAtDtype(tensor_desc.GetDataType(), tensor_dtype));
   c10::DeviceType device_type = c10::DeviceType::CPU;
   TNG_RETURN_IF_ERROR(GePlacementToAtDeviceType(tensor_desc.GetPlacement(), device_type));
   at::TensorOptions option = at::TensorOptions().dtype(tensor_dtype).device(device_type);
-  tensor = at::cpu::empty({0}, option);
+  const auto &dims = tensor_desc.GetShape().GetDims();
+  // construct output aten tensor shape, stride, offset and option
+  tensor = at::empty(dims, option);
 
   RawGeDataPtr ge_data_ptr = ge_tensor.ResetData();
   auto raw_ge_data = static_cast<void *>(ge_data_ptr.get());
   auto ge_ctx = std::make_unique<RawGeDataPtr>(std::move(ge_data_ptr));
-
   static torch::DeleterFnPtr kGeDatatDeleter = &DeleteGeDataPtr;
   at::DataPtr c10_data_ptr(raw_ge_data, ge_ctx.release(), kGeDatatDeleter, tensor.device());
 
-  auto dims = ge_tensor.GetTensorDesc().GetShape().GetDims();
-  size_t tensor_nbytes = at::detail::computeStorageNbytesContiguous(dims, tensor.dtype().itemsize());
-  at::Storage storage = c10::make_intrusive<c10::StorageImpl>(c10::StorageImpl::use_byte_size_t(), tensor_nbytes,
-                                                              std::move(c10_data_ptr), nullptr, false);
-  tensor.set_(storage, 0, dims);
+  // construct output aten tensor real data ptr
+  tensor.storage().set_data_ptr(std::move(c10_data_ptr));
   return Status::Success();
 }
 }  // namespace tng
