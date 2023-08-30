@@ -25,13 +25,10 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 @register_fx_node_ge_converter(torch.ops.aten.native_batch_norm.default)
 def conveter_aten_native_batch_norm_default(
     input: Tensor,
-    weight: Optional[Tensor],
-    bias: Optional[Tensor],
+    weight: Optional[Tensor], bias: Optional[Tensor],
     running_mean: Optional[Tensor],
     running_var: Optional[Tensor],
-    training: bool,
-    momentum: float,
-    eps: float,
+    training: bool, momentum: float, eps: float,
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::native_batch_norm(Tensor input, Tensor? weight, Tensor? bias, Tensor? running_mean, Tensor? running_var, bool training, float momentum, float eps) -> (Tensor, Tensor, Tensor)"""
