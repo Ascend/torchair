@@ -21,6 +21,7 @@ include(${TORCHAIR_SRC_DIR}/cmake/acl/module.cmake)
 include(${TORCHAIR_SRC_DIR}/cmake/aoe/module.cmake)
 include(${TORCHAIR_SRC_DIR}/cmake/pytorch/module.cmake)
 include(${TORCHAIR_SRC_DIR}/cmake/torch_npu/module.cmake)
+include(${TORCHAIR_SRC_DIR}/cmake/ascend_protobuf.cmake)
 include_directories(${TORCHAIR_SRC_DIR}/torchair/include)
 
 add_subdirectory(${TORCHAIR_SRC_DIR} torchair)

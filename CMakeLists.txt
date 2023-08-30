@@ -52,6 +52,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/cmake/acl/module.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/aoe/module.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/pytorch/module.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/torch_npu/module.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/ascend_protobuf.cmake)
 
 
 add_subdirectory(codegen)
