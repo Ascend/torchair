@@ -283,6 +283,7 @@ class GeConcreteGraph(ConcreteGraphBase):
 
     def compile(self) -> Any:
         compile_options = self._config.as_dict()
+        compile_options["ge.exec.formatMode"] = "1"
         logger.info("compile options:")
         for k, v in compile_options.items():
             logger.info(f"  {k}: {v}")
