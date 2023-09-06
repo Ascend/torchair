@@ -120,8 +120,8 @@ std::string DebugString(const GraphData &graph_data) {
 
 std::string DebugString(const at::Tensor &tensor) {
   std::stringstream ss;
-  ss << "at::Tensor(shape=" << tensor.sizes() << ", dtype='" << tensor.dtype()
-     << "', addr=" << tensor.storage().data_ptr().get() << ")";
+  ss << "at::Tensor(shape=" << tensor.sizes() << ", dtype='" << tensor.dtype() << "', device=" << tensor.device()
+     << ", addr=" << tensor.storage().data_ptr().get() << ")";
   return ss.str();
 }
 

@@ -123,7 +123,8 @@ Status DebugString(const ge::Tensor &tensor) {
   std::stringstream ss;
   ss << "ge::Tensor(shape=" << DebugString(desc.GetShape()).GetErrorMessage() << ", dtype='"
      << ge::TypeUtils::DataTypeToSerialString(desc.GetDataType())
-     << "', addr=" << static_cast<const void *>(tensor.GetData())
+     << "', device=" << (desc.GetPlacement() == ge::Placement::kPlacementHost ? "CPU" : "NPU")
+     << ", addr=" << static_cast<const void *>(tensor.GetData())
      << ", format=" << ge::TypeUtils::FormatToSerialString(desc.GetFormat()) << ")";
   return Status::Error(ss.str().c_str());
 }

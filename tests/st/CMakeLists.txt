@@ -1,5 +1,7 @@
 add_custom_command(OUTPUT ST_TESTCASES
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_st.py ${CMAKE_BINARY_DIR}/st
+        COMMAND cp ${CMAKE_BINARY_DIR}/stubs/_privateuse1_backend.so ${CMAKE_BINARY_DIR}/st
+        DEPENDS _privateuse1_backend
         VERBATIM)
 
 add_custom_target(run_torchair_py_cases ALL

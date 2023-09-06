@@ -4,11 +4,15 @@
 
 namespace c10_npu {
 namespace {
-c10::Device device(c10::kCPU, 0);
+c10::Device device(c10::DeviceType::PrivateUse1, 0);
 c10::Stream default_stream = c10::Stream(c10::Stream::Default::DEFAULT, device);
 }  // namespace
 
 NPUStream getCurrentNPUStream(c10::DeviceIndex device_index) { return NPUStream(default_stream); }
+
+aclrtStream NPUStream::stream(const bool need_empty) const {
+    return reinterpret_cast<void *>(0x1);
+}
 
 std::ostream &operator<<(std::ostream &stream, const NPUStream &s) { return stream << s.unwrap(); }
 

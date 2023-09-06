@@ -61,6 +61,9 @@ Status CompiledGraphSummary::GetEventNum(size_t &num) const {
   num = data_->GetEventNum();
   return SUCCESS;
 }
+Status CompiledGraphSummary::GetOutputShapes(std::vector<ge::Shape> &shapes) const {
+  return SUCCESS;
+}
 
 std::string GEGetErrorMsg() { return "[STUB] Something error"; }
 

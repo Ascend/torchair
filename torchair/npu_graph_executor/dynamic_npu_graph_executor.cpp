@@ -40,20 +40,26 @@ Status DynamicNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &in
         return Status::Error("Input %zu placement %s is incompatible with expected CPU.", i,
                              DebugString(inputs[i].device()).c_str());
       }
-      // copy host input to device
-      auto device_input = at::empty(inputs[i].sizes(), inputs[i].options().device(at::kPrivateUse1));
-      device_input.copy_(inputs[i], true);
-      // device_input is a temporary variable that will be destructed after leaving the scope,
-      // and it is necessary to control its destruct timing.
-      retain_tmp_device_inputs.emplace_back(std::move(device_input));
+
+      const at::Tensor *input = &inputs[i];
+      if (inputs[i].sizes().size() > 1U) {  // GE只支持1维或者Scalar的Host输入
+        TNG_LOG(DEBUG) << "Host input " << i << " " << DebugString(inputs[i]) << " need copy to device";
+        // copy host input to device
+        auto device_input = at::empty(inputs[i].sizes(), inputs[i].options().device(at::kPrivateUse1));
+        device_input.copy_(inputs[i], true);
+        // device_input is a temporary variable that will be destructed after leaving the scope,
+        // and it is necessary to control its destruct timing.
+        retain_tmp_device_inputs.emplace_back(std::move(device_input));
+        input = &retain_tmp_device_inputs.back();
+      }
 
       if (is_first_run) {
-        TNG_RETURN_IF_ERROR(AtTensorToGeTensor(retain_tmp_device_inputs.back(), inputs_holder_[i]));
+        TNG_RETURN_IF_ERROR(AtTensorToGeTensor(*input, inputs_holder_[i]));
       } else {
-        TNG_RETURN_IF_ERROR(AssembleDataAndShapeToGe(retain_tmp_device_inputs.back(), inputs_holder_[i]));
+        TNG_RETURN_IF_ERROR(AssembleDataAndShapeToGe(*input, inputs_holder_[i]));
       }
-      TNG_LOG(DEBUG) << "Assemble aten host input " << i << " " << DebugString(retain_tmp_device_inputs.back())
-                     << " to " << DebugString(inputs_holder_[i]);
+      TNG_LOG(DEBUG) << "Assemble aten host input " << i << " " << DebugString(inputs[i]) << " to "
+                     << DebugString(inputs_holder_[i]);
     } else {
       TNG_ASSERT(false, "Invalid Placement::UNKNOWN of input %zu.", i);
     }
