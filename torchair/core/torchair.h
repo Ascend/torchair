@@ -24,6 +24,8 @@
 #include "concrete_graph.h"
 
 namespace tng {
+void Export(const std::string &serialized_proto, const std::map<std::string, std::string> &options);
+
 class TorchNpuGraphBase {
  public:
   explicit TorchNpuGraphBase(const std::string &name);

@@ -94,6 +94,17 @@ struct TngRuntimeError : public torch::PyTorchError {
   } while (false)
 
 namespace tng {
+void Export(const std::string &serialized_proto, const std::map<std::string, std::string> &options) {
+  const pybind11::gil_scoped_release release;
+  std::map<ge::AscendString, ge::AscendString> compat_options;
+  for (const auto &option : options) {
+    compat_options[ge::AscendString(option.first.c_str())] = ge::AscendString(option.second.c_str());
+  }
+  TNG_RAISE_IF_ERROR(
+    tng::ep::Export(serialized_proto.c_str(), serialized_proto.size(), compat_options));
+  const pybind11::gil_scoped_acquire acquire;
+}
+
 TorchNpuGraphBase::TorchNpuGraphBase(const std::string &name) : name_(name), concrete_graph_(nullptr){};
 
 void TorchNpuGraphBase::Load(const std::string &serialized_proto, const std::map<std::string, std::string> &options) {

@@ -18,6 +18,10 @@ target_link_options(torchair_ut_main PRIVATE -Wl,--copy-dt-needed-entries)
 
 #todo: Add ${NPU_EXECUTOR_SOURCES} once it's stub ready
 add_library(torchair_ut_lib SHARED ${LIB_SOURCES})
+file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/../../tools/COMPILE_FLAGS" CUSTOM_COMPILE_FLAGS)
+foreach (COMPILE_FLAG ${CUSTOM_COMPILE_FLAGS})
+    target_compile_options(torchair_ut_lib PRIVATE ${COMPILE_FLAG})
+endforeach (COMPILE_FLAG)
 target_compile_definitions(torchair_ut_lib PRIVATE google=ascend_private)
 target_link_libraries(torchair_ut_lib PRIVATE
         _abi_compat_ge_apis

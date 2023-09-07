@@ -1,3 +1,5 @@
+#include <unordered_map>
+
 #include "checker.h"
 #include "external/graph/types.h"
 #include "ge/ge_api.h"
@@ -6,8 +8,6 @@
 #include "graph/tensor.h"
 #include "graph/utils/graph_utils_ex.h"
 #include "graph/utils/type_utils.h"
-
-#include <unordered_map>
 
 #include "tng_status.h"
 
@@ -96,6 +96,37 @@ Status ConvertGraphDefToGraph(ge::proto::GraphDef &graph_def, ge::GraphPtr &grap
 
   graph = ge::GraphUtilsEx::CreateGraphPtrFromComputeGraph(compute_graph);
   TNG_ASSERT_NOTNULL(graph, "Failed to create graph from compute graph");
+  return Status::Success();
+}
+
+Status ConvertGraphDefToAir(ge::proto::GraphDef &graph_def, ge::GraphPtr &graph, const char *file_name) {
+  ge::ComputeGraphPtr compute_graph = nullptr;
+  ge::ModelSerializeImp serializer;
+  TNG_ASSERT(serializer.UnserializeGraph(compute_graph, graph_def));
+  TNG_ASSERT_NOTNULL(compute_graph, "Failed to get compute graph from model");
+
+  std::unordered_map<std::string, std::pair<Name2Index, Name2Index>> op_to_name2index;
+  for (auto &op : graph_def.op()) {
+    TNG_ASSERT(
+        op_to_name2index
+            .emplace(op.name(), std::make_pair(GetDescName2Index(op.input_desc()), GetDescName2Index(op.output_desc())))
+            .second,
+        "Dumplicated op name: %s", op.name().c_str());
+  }
+
+  for (auto &node : compute_graph->GetAllNodes()) {
+    TNG_ASSERT_NOTNULL(node);
+    auto op_desc = node->GetOpDesc();
+    TNG_ASSERT_NOTNULL(op_desc);
+    auto &io_desc_name2index = op_to_name2index[op_desc->GetName()];
+    TNG_ASSERT(op_desc->UpdateInputName(io_desc_name2index.first));
+    TNG_ASSERT(op_desc->UpdateOutputName(io_desc_name2index.second));
+  }
+  const std::string name = "compute_graph";
+  compute_graph->SetName(name);
+  graph = ge::GraphUtilsEx::CreateGraphPtrFromComputeGraph(compute_graph);
+  TNG_ASSERT_NOTNULL(graph, "Failed to create graph from compute graph");
+  graph->SaveToFile(file_name);
   return Status::Success();
 }
 

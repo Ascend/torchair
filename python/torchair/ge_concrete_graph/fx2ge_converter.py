@@ -5,11 +5,15 @@ import threading
 import contextlib
 import inspect
 import sys
+import os
 
 import torch
 from torch.fx.node import Argument, Target
 from torch import Tensor
+from torch._subclasses.fake_tensor import FakeTensor, is_fake
+import torch.utils._pytree as pytree
 
+from torchair.core import _torchair
 from torchair.core.concrete_graph import ConcreteGraphBase, ValuePack
 from torchair.core.utils import logger
 from torchair.core.backend import initialize_graph_engine
@@ -67,6 +71,14 @@ def _wrap_converter(converter: Callable):
 
         return ge_outputs
     return wrapped_converter
+
+
+class ExportSuccess(Exception):
+    def __init__(self, message: str) -> None:
+        self.message = message
+
+    def __str__(self) -> str:
+        return f'ExportSucces: {self.message}'
 
 
 class Converter:
@@ -166,6 +178,60 @@ def _get_executor_type():
     return ExecutorType.CPU
 
 
+def _trans_export_protobuf(inputs, export_graph, file_path, config):
+    weight_name = config.export_config.weight_name
+    inputs_name = config.export_config.inputs_name
+    num_weight_in_graph = 0
+    for i, inp in enumerate(inputs):
+        if id(inp) in weight_name:
+            logger.debug(f'  Weight {i} dtype: {inp.dtype} shape: {inp.shape}')
+            file_id = weight_name[id(inp)]
+            y = ge.FileConstant(shape=list(inp.shape),
+                                dtype=torch_type_to_ge_type(inp.dtype),
+                                file_path=file_path + "/" + file_id.replace(".", "_"),
+                                node_name=export_graph.op[i].name)
+            export_graph.op[i].Clear()
+            export_graph.op[i].MergeFrom(y._node)
+            num_weight_in_graph += 1
+        if id(inp) in inputs_name:
+            logger.debug(f'  Input {i} dtype: {inp.dtype} shape: {inp.shape}')
+            export_graph.op[i].attr["use_define_name"].s = compat_as_bytes(inputs_name[id(inp)])
+    return num_weight_in_graph
+
+
+def _save_weight2file(inputs, file_path, weight_name, num_weight_in_graph):
+    logger.info(f'save Weight tensor to file...')
+    for i, inp in enumerate(inputs):
+        if id(inp) in weight_name:
+            file_id = weight_name[id(inp)]
+            if inp.is_cpu:
+                inp.numpy().tofile(file_path + "/" + file_id.replace(".", "_"))
+            else:
+                inp.cpu().numpy().tofile(file_path + "/" + file_id.replace(".", "_"))
+            print('\r torchair dynamo export save weight {0}% {1}/{2}'.format(
+                  min(100, int((i + 1) / num_weight_in_graph * 100)), i + 1, num_weight_in_graph), end='')
+    print(" ")
+    logger.info(f'save Weight tensor to file over...')
+
+
+def dump(path: str, graph):
+    if path is None:
+        return
+
+    if path.endswith(".txt"):
+        with open(path, "w+") as f:
+            f.write(str(graph))
+    elif path.endswith('.py'):
+        with open(path, "w+") as f:
+            f.write(str(graph.python_code))
+    else:
+        try:
+            with open(path, "w+") as f:
+                f.write(str(convert_to_tensorboard(graph)))
+        except Exception as e:
+            print(f"dump pbtxt failed {e}", flush=True)
+
+
 class GeConcreteGraph(ConcreteGraphBase):
     def __init__(self, config: CompilerConfig, graph=None, name=None):
         self._graph = GeGraph() if graph is None else graph
@@ -173,6 +239,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._fx_outputs_mapping = dict()
         self._outputs = []
         self._inputs = []
+        self._fx_inputs_mapping = dict()
         self._input_placements = []
         self._executor = TorchNpuGraph(name)
         self._config = config
@@ -253,21 +320,7 @@ class GeConcreteGraph(ConcreteGraphBase):
             return converter(*args, **kwargs)
 
     def dump(self, path: str):
-        if path is None:
-            return
-
-        if path.endswith(".txt"):
-            with open(path, "w+") as f:
-                f.write(str(self.graph))
-        elif path.endswith('.py'):
-            with open(path, "w+") as f:
-                f.write(str(self.graph.python_code))
-        else:
-            try:
-                with open(path, "w+") as f:
-                    f.write(str(convert_to_tensorboard(self.graph)))
-            except Exception as e:
-                print(f"dump pbtxt failed {e}", flush=True)
+        dump(path, self.graph)
 
     @property
     def inputs(self):
@@ -280,6 +333,9 @@ class GeConcreteGraph(ConcreteGraphBase):
     @property
     def graph(self):
         return self._graph
+
+    def set_fx_inputs_mapping(self, fx_inputs_mapping):
+        self._fx_inputs_mapping = fx_inputs_mapping
 
     def compile(self) -> Any:
         compile_options = self._config.as_dict()
@@ -302,6 +358,29 @@ class GeConcreteGraph(ConcreteGraphBase):
                             compile_options)
         self._executor.compile()
 
+    def export(self, inputs) -> Any:
+        compile_options = self._config.as_dict()
+        logger.info("export options:")
+        for k, v in compile_options.items():
+            logger.info(f"  {k}: {v}")
+
+        file_path = self._config.export_config.export_path_dir
+        export_graph = GeGraph()
+        export_graph.MergeFrom(self._graph._proto)
+
+        if os.path.exists(file_path) is False:
+            os.mkdir(file_path)
+
+        num_weight_in_graph = _trans_export_protobuf(inputs, export_graph, file_path, self._config)
+
+        _save_weight2file(inputs, file_path, self._config.export_config.weight_name, num_weight_in_graph)
+        
+        _normalize_ge_graph(export_graph)
+
+        dump(self._config.debug.graph_dump.full_path(file_path + "/dynamo"), export_graph)
+
+        _torchair.export(export_graph.SerializeToString(), compile_options)
+
     @property
     def should_auto_tune(self) -> bool:
         if self._config.aoe_config.aoe_mode.value is None:
@@ -320,6 +399,15 @@ class GeConcreteGraph(ConcreteGraphBase):
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         inputs = [(arg if arg.is_contiguous() else arg.contiguous()) if isinstance(arg, torch.Tensor)
                   else torch.tensor(arg) for arg in args]
+
+        ge_inputs = [None for v in self._fx_inputs_mapping]
+        for fx_idx, ge_idx in self._fx_inputs_mapping.items():
+            ge_inputs[ge_idx] = inputs[fx_idx]
+        inputs = ge_inputs
+
+        if self._config.export_config.export_mode:
+            self.export(inputs)
+            raise ExportSuccess("export graph over")
 
         if self.should_auto_tune:
             self.auto_tune(inputs)

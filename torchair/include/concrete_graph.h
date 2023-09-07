@@ -9,6 +9,7 @@
 #include "graph/tensor.h"
 #include "torch/torch.h"
 #include "executor.h"
+#include "export.h"
 
 namespace tng {
 class GraphData;

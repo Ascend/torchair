@@ -44,8 +44,8 @@ class TorchairSt(unittest.TestCase):
             def forward(self, x, y):
                 return torch.add(x, y)
         model = torch.compile(Model(), backend=npu_backend, dynamic=True)
-        x = torch.randn(512, 1024, 1024)
-        y = torch.randn(512, 1024, 1024)
+        x = torch.randn(2, 2, 2)
+        y = torch.randn(2, 2, 2)
         for i in range(2):
             model(x, y)
 

@@ -1,23 +1,23 @@
 import functools
-from collections import defaultdict
 import operator
 from typing import List, Callable, Any, Dict, Tuple, Union
 
 import torch
-from torch.fx.experimental.symbolic_shapes import ShapeEnv
-from torch._tensor import Tensor
-from torch.utils._mode_utils import no_dispatch
+from torch._subclasses.fake_tensor import is_fake
+import torch.utils._pytree as pytree
 from torch.fx import Interpreter
 from torch.fx.node import Argument, Target
 from torch._functorch.aot_autograd import aot_module_simplified
 from torch._dynamo.allowed_functions import is_builtin_callable
+from torch._decomp import get_decompositions
 
 from torchair.core.concrete_graph import ConcreteGraphBase, ValuePack, _is_symlist
 from torchair.core.utils import logger
+from torchair.ge_concrete_graph.ge_graph import is_sym
 from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph as ConcreteGraph
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.fx_summary import summarize_fx_graph
-from torch._decomp import core_aten_decompositions, get_decompositions
+
 aten = torch.ops.aten
 
 
@@ -86,8 +86,11 @@ class NpuGraphConverter(Interpreter):
         return super().run_node(n)
 
     def run(self, *args, **kwargs):
+        flat_args, _ = pytree.tree_flatten((args, kwargs))
+        optimize_fx_input = _optimize_fx(flat_args, self.module, self._graph)
+
         with self._graph.context():
-            super().run(*args, **kwargs)
+            super().run(*optimize_fx_input)
             return self._graph
 
     def _unpack_npu(self, args):
@@ -152,6 +155,112 @@ def _summary(v):
     return f'{type(v)}({v})'
 
 
+def _dynamic_trans(gm: torch.fx.GraphModule):
+    sym_input_node_list = []
+    # False mean delete inputs index input, True mean save inputs index input
+    inputs_save_flag = []
+    for node in gm.graph.nodes:
+        if node.op == "placeholder":
+            if is_sym(node.meta['val']):
+                if node.users == {}:
+                    gm.graph.erase_node(node)
+                    inputs_save_flag.append(False)
+                else:
+                    logger.debug(
+                    f' add sym_input_node_list node: {node}, op: {node.op}, target: {node.target}'
+                    +
+                    f' users: {node.users}, meta: {node.meta}, type: {node.type},'
+                    + f' input_nodes: {node._input_nodes}')
+                    sym_input_node_list.append(node)
+                    inputs_save_flag.append(node)
+            else:
+                inputs_save_flag.append(True)
+
+    logger.info(f' sym_input_node_list: {sym_input_node_list}')
+
+    for node in gm.graph.nodes:
+        if len(sym_input_node_list) == 0:
+            break
+        if node.op == "placeholder" and is_fake(node.meta['val']):
+            drop_sym_index_list = []
+            for i, will_del_node in enumerate(sym_input_node_list):
+                for j in range(len(node.meta['val'].size())):
+                    # we cannot use == to compare symint, because Symint will from Sx change to int
+                    if str(will_del_node.meta['val']) == str(node.meta['val'].size()[j]):
+                        logger.debug(
+                            f' will replaced node: {will_del_node}, op: {will_del_node.op}, '
+                            + f'target: {will_del_node.target}, users: {will_del_node.users}, '
+                            + f'meta: {will_del_node.meta}, type: {will_del_node.type}, '
+                            + f'input_nodes: {will_del_node._input_nodes}')
+                        logger.debug(
+                            f' inserting_after node: {node}, op: {node.op}, target: {node.target}'
+                            +
+                            f' users: {node.users}, meta: {node.meta}, type: {node.type},'
+                            + f' input_nodes: {node._input_nodes}')
+                        with gm.graph.inserting_after(node):
+                            new_add_node = gm.graph.create_node(op="call_function", target=torch.ops.aten.sym_size,
+                                args=(node, j))
+                            will_del_node.replace_all_uses_with(new_add_node, propagate_meta=True)
+                            logger.debug(
+                                f' new_add_node: {new_add_node}, op: {new_add_node.op}, target: {new_add_node.target},'
+                                +
+                                f' users: {new_add_node.users}, meta: {new_add_node.meta}, type: {new_add_node.type},'
+                                + f' input_nodes: {new_add_node._input_nodes}')
+                        gm.graph.erase_node(will_del_node)
+                        drop_sym_index_list.append(i)
+
+            for index in reversed(drop_sym_index_list):
+                del sym_input_node_list[index]
+
+    for i in range(len(inputs_save_flag)):
+        if isinstance(inputs_save_flag[i], torch.fx.node.Node):
+            if inputs_save_flag[i] in sym_input_node_list:
+                inputs_save_flag[i] = True
+                logger.info(f'graph has int input, sx not come from input')
+            else:
+                inputs_save_flag[i] = False
+
+    gm.graph.lint()
+    gm.graph.eliminate_dead_code()
+    gm.recompile()
+    return gm, inputs_save_flag
+
+
+def _optimize_fx(example_inputs, gm: torch.fx.GraphModule, graph: ConcreteGraph):
+    gm, input_save_list_flag = _eliminate_sym(example_inputs, gm)
+
+    # more pass in this place
+
+    optimize_fx_input = []
+    fx_inputs_mapping = {}
+    assert len(input_save_list_flag) == len(example_inputs)
+    for i in range(len(input_save_list_flag)):
+        if input_save_list_flag[i]:
+            fx_inputs_mapping[i] = len(optimize_fx_input)
+            optimize_fx_input.append(example_inputs[i])
+
+    graph.set_fx_inputs_mapping(fx_inputs_mapping)
+    logger.debug(f'after all pass graph: {gm.graph}')
+    return optimize_fx_input
+
+
+def _eliminate_sym(example_inputs, gm: torch.fx.GraphModule):
+    dynamic = False
+    input_save_list_flag = [True for input in example_inputs]
+    for inp in example_inputs:
+        if is_sym(inp):
+            dynamic = True
+            break
+    if not dynamic:
+        return gm, input_save_list_flag
+
+    gm, input_save_list_flag = _dynamic_trans(gm)
+    assert len(input_save_list_flag) == len(example_inputs)
+
+    logger.debug(f'after eliminate_sym graph: {gm.graph}')
+    return gm, input_save_list_flag
+
+
 class _NpuFxCompiler:
     def __init__(self, compiler_config: CompilerConfig) -> None:
         self.config = compiler_config
@@ -173,15 +282,15 @@ class _NpuFxCompiler:
                 return gm
 
         concrete_graph: ConcreteGraphBase = NpuGraphConverter(
-            gm, graph=ConcreteGraph(self.config)).run(*example_inputs)
+            gm, graph=ConcreteGraph(self.config), garbage_collect_values=False).run(*example_inputs)
 
-        if self.config.debug.graph_dump.enabled:
-            concrete_graph.dump(
-                self.config.debug.graph_dump.full_path("dynamo"))
+        if not self.config.export_config.export_mode:
+            if self.config.debug.graph_dump.enabled:
+                concrete_graph.dump(self.config.debug.graph_dump.full_path("dynamo"))
 
-        logger.info(f'start compile graph: {concrete_graph}')
-        concrete_graph.compile()
-        logger.info(f'end compile graph: {concrete_graph}')
+            logger.info(f'start compile graph: {concrete_graph}')
+            concrete_graph.compile()
+            logger.info(f'end compile graph: {concrete_graph}')
 
         def inference(*args, npu_compiled_gm, original_gm, **kwargs):
             logger.debug('runtime inputs')
