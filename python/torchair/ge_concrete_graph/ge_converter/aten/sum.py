@@ -44,12 +44,19 @@ def conveter_aten_sum_dim_IntList(
     return ge.ReduceSum(self, dim, keep_dims=keepdim)
 
 
+@declare_supported(
+    [
+        Support(F32(2, 4)),
+        Support(F32(2, 6, 12, 12)),
+    ]
+)
 @register_fx_node_ge_converter(torch.ops.aten.sum.default)
 def conveter_aten_sum_default(
     self: Tensor, *, dtype: Optional[int] = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::sum(Tensor self, *, ScalarType? dtype=None) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.sum.default ge_converter is not implemented!")
+    dimlist = [i for i in range(self.rank)]
+    return ge.ReduceSum(self, dimlist)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.sum.dim_DimnameList)

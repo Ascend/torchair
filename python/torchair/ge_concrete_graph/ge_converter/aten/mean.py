@@ -20,17 +20,28 @@ from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.utils import dtype_promote
 from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
-from torchair.ge_concrete_graph.utils import dtype_promote
 
 
+@declare_supported(
+    [
+        Support(F32(2, 3, 2), dtype=torch.float16),
+        Support(F32(2, 3, 2)),
+    ]
+)
 @register_fx_node_ge_converter(torch.ops.aten.mean.default)
 def conveter_aten_mean_default(
     self: Tensor, *, dtype: Optional[int] = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::mean(Tensor self, *, ScalarType? dtype=None) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.mean.default ge_converter is not implemented!")
+    if dtype is not None:
+        self_cp = dtype_promote(self, target_dtype=dtype)
+    else:
+        self_cp = dtype_promote(self, target_dtype=meta_outputs.dtype)
+    dims = [i for i in range(self.rank)]
+    return ge.ReduceMean(self_cp, dims)
 
 
 @declare_supported([
