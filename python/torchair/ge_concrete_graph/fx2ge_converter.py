@@ -201,6 +201,7 @@ def _trans_export_protobuf(inputs, export_graph, file_path, config):
 
 def _save_weight2file(inputs, file_path, weight_name, num_weight_in_graph):
     logger.info(f'save Weight tensor to file...')
+    saved_num = 0
     for i, inp in enumerate(inputs):
         if id(inp) in weight_name:
             file_id = weight_name[id(inp)]
@@ -208,8 +209,9 @@ def _save_weight2file(inputs, file_path, weight_name, num_weight_in_graph):
                 inp.numpy().tofile(file_path + "/" + file_id.replace(".", "_"))
             else:
                 inp.cpu().numpy().tofile(file_path + "/" + file_id.replace(".", "_"))
+            saved_num += 1
             print('\r torchair dynamo export save weight {0}% {1}/{2}'.format(
-                  min(100, int((i + 1) / num_weight_in_graph * 100)), i + 1, num_weight_in_graph), end='')
+                  min(100, int(saved_num / num_weight_in_graph * 100)), saved_num, num_weight_in_graph), end='')
     print(" ")
     logger.info(f'save Weight tensor to file over...')
 
