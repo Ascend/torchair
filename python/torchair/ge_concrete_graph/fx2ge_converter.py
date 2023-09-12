@@ -152,13 +152,26 @@ def _normalize_ge_graph(graph: GraphDef):
             continue
         for desc in op.input_desc:
             if not '_is_unfed_optional' in desc.attr:
-                desc.layout = "ND" if desc.layout == "" else desc.layout
+                desc.layout = "ND"
                 if desc.dtype == ProtoDataType.DT_UNDEFINED:
                     desc.dtype = ProtoDataType.DT_FLOAT
         for desc in op.output_desc:
-            desc.layout = "ND" if desc.layout == "" else desc.layout
+            desc.layout = "ND"
             if desc.dtype == ProtoDataType.DT_UNDEFINED:
                 desc.dtype = ProtoDataType.DT_FLOAT
+        if 'input_layout_info' in op.attr:
+            indices = op.attr['input_layout_info'].list.i
+            layouts = op.attr['input_layout_info'].list.s
+            for index, layout in zip(indices, layouts):
+                desc = op.input_desc[index]
+                if not '_is_unfed_optional' in desc.attr:
+                    desc.layout = layout.decode()
+        if 'output_layout_info' in op.attr:
+            indices = op.attr['output_layout_info'].list.i
+            layouts = op.attr['output_layout_info'].list.s
+            for index, layout in zip(indices, layouts):
+                desc = op.output_desc[index]
+                desc.layout = layout.decode()
 
 
 class Placement:

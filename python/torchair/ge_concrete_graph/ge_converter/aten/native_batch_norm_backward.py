@@ -20,6 +20,8 @@ from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.utils import specific_op_input_layout, \
+    specific_op_output_layout
 from torchair.ge_concrete_graph.supported_declaration import F32, F16, Support
 
 
@@ -57,21 +59,11 @@ def conveter_aten_native_batch_norm_backward_default(
             "torch.ops.aten._native_batch_norm_legit_functional.default ge_converter is not implemented while output_mask are not all True!"
         )
     diff_scale, diff_offset = ge.BNTrainingUpdateGrad(grad_out, input, save_mean, save_invstd, epsilon=eps)
-    diff_scale._node.input_desc[0].layout = "NCHW"
-    diff_scale._node.input_desc[1].layout = "NCHW"
-    diff_scale._node.input_desc[2].layout = "NCHW"
-    diff_scale._node.input_desc[3].layout = "NCHW"
-    diff_scale._node.output_desc[0].layout = "NCHW"
-    diff_scale._node.output_desc[1].layout = "NCHW"
+    specific_op_input_layout(diff_scale, indices=list(range(4)), layout="NCHW")
+    specific_op_output_layout(diff_scale, indices=[0, 1], layout="NCHW")
     grad_in = ge.BNTrainingReduceGrad(grad_out, input, diff_scale, diff_offset, weight, save_mean, save_invstd, epsilon=eps)
-    grad_in._node.input_desc[0].layout = "NCHW"
-    grad_in._node.input_desc[1].layout = "NCHW"
-    grad_in._node.input_desc[2].layout = "NCHW"
-    grad_in._node.input_desc[3].layout = "NCHW"
-    grad_in._node.input_desc[4].layout = "NCHW"
-    grad_in._node.input_desc[5].layout = "NCHW"
-    grad_in._node.input_desc[6].layout = "NCHW"
-    grad_in._node.output_desc[0].layout = "NCHW"
+    specific_op_input_layout(grad_in, indices=list(range(7)), layout="NCHW")
+    specific_op_output_layout(grad_in, indices=0, layout="NCHW")
     return grad_in, diff_scale, diff_offset
 
 

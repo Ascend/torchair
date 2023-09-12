@@ -20,6 +20,8 @@ from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.utils import specific_op_input_layout, \
+    specific_op_output_layout
 from torchair.ge_concrete_graph.supported_declaration import F32, F16, Support
 
 
@@ -46,21 +48,10 @@ def conveter_aten__native_batch_norm_legit_functional_default(
             "torch.ops.aten._native_batch_norm_legit_functional.default ge_converter is not implemented while training is False!"
         )
     sum_output, square_sum = ge.BNTrainingReduce(input)
-    sum_output._node.input_desc[0].layout = "NCHW"
-    sum_output._node.output_desc[0].layout = "NCHW"
-    sum_output._node.output_desc[1].layout = "NCHW"
+    specific_op_input_layout(sum_output, indices=0, layout="NCHW")
+    specific_op_output_layout(sum_output, indices=[0, 1], layout="NCHW")
     output, mean, variance, batch_mean, batch_variance = ge.BNTrainingUpdate(input, sum_output, \
         square_sum, weight, bias, running_mean, running_var, factor=momentum, epsilon=eps)
-    output._node.input_desc[0].layout = "NCHW"
-    output._node.input_desc[1].layout = "NCHW"
-    output._node.input_desc[2].layout = "NCHW"
-    output._node.input_desc[3].layout = "NCHW"
-    output._node.input_desc[4].layout = "NCHW"
-    output._node.input_desc[5].layout = "NCHW"
-    output._node.input_desc[6].layout = "NCHW"
-    output._node.output_desc[0].layout = "NCHW"
-    output._node.output_desc[1].layout = "NCHW"
-    output._node.output_desc[2].layout = "NCHW"
-    output._node.output_desc[3].layout = "NCHW"
-    output._node.output_desc[4].layout = "NCHW"
+    specific_op_input_layout(output, indices=list(range(7)), layout="NCHW")
+    specific_op_output_layout(output, indices=list(range(5)), layout="NCHW")
     return output, batch_mean, batch_variance, mean, variance

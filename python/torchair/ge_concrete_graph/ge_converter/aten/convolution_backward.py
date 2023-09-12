@@ -20,7 +20,8 @@ from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
-from torchair.ge_concrete_graph.utils import dtype_promote
+from torchair.ge_concrete_graph.utils import dtype_promote, specific_op_input_layout, \
+    specific_op_output_layout
 from torchair.ge_concrete_graph.supported_declaration import F32, F16, Support
 
 
@@ -63,23 +64,22 @@ def conveter_aten_convolution_backward_default(
         if meta_outputs[0].rank != 4:
             raise NotImplementedError("torch.ops.aten.convolution_backward.default ge converter is only implement for 4D tensor input!")
         input_size = ge.Shape(input)
-        grad_output_cast0, weight_cast = dtype_promote(grad_output, weight, target_dtype=input.dtype)
+        grad_output_cast0, weight_cast = dtype_promote(grad_output, weight, target_dtype=meta_outputs[0].dtype)
         grad_input = ge.Conv2DBackpropInput(input_size, weight_cast, grad_output_cast0, strides=strides, pads=pads, \
                                             dilations=dilations, groups=groups, data_format='NCHW')
-        grad_input._node.input_desc[1].layout = "NCHW"
-        grad_input._node.input_desc[2].layout = "NCHW"
-        grad_input._node.output_desc[0].layout = "NCHW"
+        specific_op_input_layout(grad_input, indices=[1, 2], layout="NCHW")
+        specific_op_output_layout(grad_input, indices=0, layout="NCHW")
     if output_mask[1]:
         if meta_outputs[1].rank != 4:
             raise NotImplementedError("torch.ops.aten.convolution_backward.default ge converter is only implement for 4D tensor weight!")
         weight_size = ge.Shape(weight)
-        grad_output_cast1, input_cast = dtype_promote(grad_output, input, target_dtype=weight.dtype)
+        grad_output_cast1, input_cast = dtype_promote(grad_output, input, target_dtype=meta_outputs[1].dtype)
         grad_weight = ge.Conv2DBackpropFilter(input_cast, weight_size, grad_output_cast1, strides=strides, pads=pads, \
                                             dilations=dilations, groups=groups, data_format='NCHW')
-        grad_weight._node.input_desc[0].layout = "NCHW"
-        grad_weight._node.input_desc[2].layout = "NCHW"
-        grad_weight._node.output_desc[0].layout = "NCHW"
+        specific_op_input_layout(grad_weight, indices=[0, 2], layout="NCHW")
+        specific_op_output_layout(grad_weight, indices=0, layout="NCHW")
     if output_mask[2]:
+        grad_output = dtype_promote(grad_output, target_dtype=meta_outputs[2].dtype)
         grad_bias = ge.ReduceSum(grad_output, [i for i in range(meta_outputs[1].rank) if i != 1], keep_dims=False)
     return grad_input, grad_weight, grad_bias
 

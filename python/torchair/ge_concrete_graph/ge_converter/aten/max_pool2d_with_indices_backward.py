@@ -20,6 +20,7 @@ from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.utils import specific_op_input_layout, specific_op_output_layout
 
 
 @register_fx_node_ge_converter(torch.ops.aten.max_pool2d_with_indices_backward.default)
@@ -43,15 +44,12 @@ def conveter_aten_max_pool2d_with_indices_backward_default(
     dilations = [1, dilation[0], dilation[1], 1]
     output, argmax = ge.MaxPoolWithArgmaxV1(self, ksize=ksize, \
                                             strides=strides, pads=pads, dilation=dilations, ceil_mode=ceil_mode)
-    output._node.input_desc[0].layout = "NCHW"
-    output._node.output_desc[0].layout = "NCHW"
-    output._node.output_desc[1].layout = "NCHW"
+    specific_op_input_layout(output, indices=0, layout="NCHW")
+    specific_op_output_layout(output, indices=[0, 1], layout="NCHW")
     grad_input = ge.MaxPoolGradWithArgmaxV1(self, grad_output, argmax, ksize=ksize, \
                                             strides=strides, pads=pads, dilation=dilations, ceil_mode=ceil_mode)
-    grad_input._node.input_desc[0].layout = "NCHW"
-    grad_input._node.input_desc[1].layout = "NCHW"
-    grad_input._node.input_desc[2].layout = "NCHW"
-    grad_input._node.output_desc[0].layout = "NCHW"
+    specific_op_input_layout(grad_input, indices=[0, 1, 2], layout="NCHW")
+    specific_op_output_layout(grad_input, indices=0, layout="NCHW")
     return grad_input
 
 
