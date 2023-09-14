@@ -32,6 +32,20 @@ def conveter_aten_embedding_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::embedding(Tensor weight, Tensor indices, SymInt padding_idx=-1, bool scale_grad_by_freq=False, bool sparse=False) -> Tensor"""
+    if isinstance(padding_idx, Tensor) or padding_idx != -1:
+        raise NotImplementedError(
+            "torch.ops.aten.embedding.default input padding_idx only supports -1 now, "
+            "but input padding_idx = {}".format(padding_idx))
+
+    if scale_grad_by_freq:
+        raise NotImplementedError(
+            "torch.ops.aten.embedding.default input scale_grad_by_freq only supports False now, "
+            "but input scale_grad_by_freq = True")
+
+    if sparse:
+        raise NotImplementedError(
+            "torch.ops.aten.embedding.default input sparse only supports False now, "
+            "but input sparse = True")
     return ge.GatherV2(weight, indices, [0])
 
 

@@ -38,7 +38,7 @@ def conveter_aten_cat_default(
 ):
     """NB: aten::cat(Tensor[] tensors, int dim=0) -> Tensor"""
     tensors = [dtype_promote(arg, target_dtype=meta_outputs.dtype) for arg in tensors]
-    return ge.ConcatD(tensors, concat_dim=dim, N=len(tensors))
+    return ge.ConcatV2(tensors, concat_dim=dim, N=len(tensors))
 
 
 @register_fx_node_ge_converter(torch.ops.aten.cat.names)
