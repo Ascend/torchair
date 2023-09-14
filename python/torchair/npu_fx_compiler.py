@@ -16,7 +16,9 @@ from torchair.core.utils import logger
 from torchair.ge_concrete_graph.ge_graph import is_sym
 from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph as ConcreteGraph
 from torchair.configs.compiler_config import CompilerConfig
+from torchair.configs.aot_config import AotConfig
 from torchair.fx_summary import summarize_fx_graph
+from torchair.utils.custom_aot_functions import aot_module_simplified_joint
 
 aten = torch.ops.aten
 
@@ -317,12 +319,19 @@ def get_compiler(compiler_config: CompilerConfig = None):
 
 
 def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
-                 compiler_config: CompilerConfig = None, custom_decompositions: Dict = {}):
+                 compiler_config: CompilerConfig = None, aot_config: AotConfig = None,
+                 custom_decompositions: Dict = {}):
     decompositions = get_decompositions([])
     decompositions.update(custom_decompositions)
     compiler = get_compiler(compiler_config)
+    if aot_config is not None and aot_config.enable_joint_graph:
+        return aot_module_simplified_joint(gm, example_inputs, 
+            compiler=compiler, decompositions=decompositions, 
+            output_loss_index=int(aot_config.output_loss_index.value))
     return aot_module_simplified(gm, example_inputs, fw_compiler=compiler, decompositions=decompositions)
 
 
-def get_npu_backend(*, compiler_config: CompilerConfig = None, custom_decompositions: Dict = {}):
-    return functools.partial(_npu_backend, compiler_config=compiler_config, custom_decompositions=custom_decompositions)
+def get_npu_backend(*, compiler_config: CompilerConfig = None, 
+                    aot_config: AotConfig = None, custom_decompositions: Dict = {}):
+    return functools.partial(_npu_backend, compiler_config=compiler_config, aot_config=aot_config, 
+        custom_decompositions=custom_decompositions)
