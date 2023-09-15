@@ -49,6 +49,19 @@ class TorchairSt(unittest.TestCase):
         for i in range(2):
             model(x, y)
 
+    def test_bf16(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                return torch.add(x, y)
+        model = torch.compile(Model(), backend=npu_backend, dynamic=True)
+        x = torch.randn(2, 2, 2).to(torch.bfloat16)
+        y = torch.randn(2, 2, 2).to(torch.bfloat16)
+        for i in range(2):
+            model(x, y)
+
     def test_sym_input(self):
         class Model(torch.nn.Module):
             def __init__(self):

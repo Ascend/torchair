@@ -110,10 +110,14 @@ Status Session::RemoveGraph(uint32_t id) {
 
 Status Session::RunGraph(uint32_t id, const std::vector<ge::Tensor> &inputs, std::vector<ge::Tensor> &outputs) {
   std::cerr << "[STUB] Session::RunGraph graph " << id << std::endl;
+  if (inputs.size() < 1U) {
+    std::cerr << "[STUB] Input size is empty" << id << std::endl;
+    return ge::SUCCESS;
+  }
   for (size_t i = 0; i < graph_id_to_num_outputs[id]; ++i) {
     ge::Tensor output;
     ge::TensorDesc desc;
-    desc.SetDataType(ge::DT_FLOAT);
+    desc.SetDataType(inputs[0].GetTensorDesc().GetDataType());
     desc.SetShape(ge::Shape(std::vector<int64_t>{512, 1024, 1024}));
     output.SetTensorDesc(desc);
 

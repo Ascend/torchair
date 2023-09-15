@@ -17,7 +17,11 @@ def convert_to_tensorboard(ge_graph: GraphDef):
         node.name = op.name
         node.op = op.type
         for input in op.input:
-            node.input.append(input)
+            input_name_list = input.split(":")
+            if len(input_name_list) > 1 and input_name_list[1] == "-1":
+                node.input.append("^" + input_name_list[0])
+            else:
+                node.input.append(input)
         for k, v in op.attr.items():
             attr = tf.AttrValue()
             attr.s = compat_as_bytes(str(v))

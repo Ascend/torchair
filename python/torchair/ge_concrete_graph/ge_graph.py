@@ -75,6 +75,8 @@ def torch_type_to_ge_type(dtype, m=DataType):
         return m.DT_INT64
     elif dtype == torch.float64:
         return m.DT_DOUBLE
+    elif dtype == torch.bfloat16:
+        return m.DT_BF16
     else:
         raise RuntimeError(f"Unsupported torch type {dtype} by ge")
 
@@ -121,6 +123,8 @@ def _ge_dtype_to_ge_proto_dtype(dtype: DataType) -> np.dtype:
         return ProtoDataType.DT_INT64
     if dtype == DataType.DT_BOOL:
         return ProtoDataType.DT_BOOL
+    if dtype == DataType.DT_BF16:
+        return ProtoDataType.DT_BF16
 
     raise ValueError(f"Unsupported ge dtype {dtype}")
 
