@@ -38,12 +38,21 @@ def conveter_aten_slice_scatter_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::slice_scatter(Tensor self, Tensor src, int dim=0, SymInt? start=None, SymInt? end=None, SymInt step=1) -> Tensor"""
+    if start is None:
+        start = 0
+    if end is None:
+        end = 9223372036854775807
+    if (isinstance(start, int) and start == 0) and (
+            isinstance(end, int) and end == 9223372036854775807) and (
+            isinstance(step, int) and step == 1):
+        return ge.Identity(src)
+
     input_sizes = ge.Shape(self)
-    if isinstance(input_sizes, list) and isinstance(end, int) and end == sys.maxsize:
-        end = input_sizes[dim]
+    if isinstance(end, int) and end == sys.maxsize:
+        end = ge.Gather(input_sizes, dim)
 
     input_sizes, start, limit, delta = dtype_promote(input_sizes, start, end, \
-                   step, target_dtype=torch_type_to_ge_type(torch.int32))
+                                                     step, target_dtype=torch_type_to_ge_type(torch.int32))
     
     dims_to_expand = [i for i in range(src.rank)]
     dims_to_expand.remove(dim)

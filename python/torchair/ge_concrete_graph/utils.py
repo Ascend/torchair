@@ -51,8 +51,9 @@ def dtype_promote(*tensors: Any, target_dtype: Union[torch.dtype, DataType]) -> 
                 arg = ge.Cast(arg, dst_type=target_dtype)
             result.append(arg)
         else:
-            const = ge.Const(arg, dtype=target_dtype)
-            result.append(const)
+            const = ge.Const(arg)
+            const_cast = ge.Cast(const, dst_type=target_dtype)
+            result.append(const_cast)
     return tuple(result) if len(result) > 1 else result[0]
 
 

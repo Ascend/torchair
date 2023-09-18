@@ -27,4 +27,4 @@ def conveter_aten_permute_default(
     self: Tensor, dims: List[int], meta_outputs: TensorSpec = None
 ):
     """NB: aten::permute(Tensor(a) self, int[] dims) -> Tensor(a)"""
-    raise NotImplementedError("torch.ops.aten.permute.default ge_converter is not implemented!")
+    return ge.Transpose(self, dims)

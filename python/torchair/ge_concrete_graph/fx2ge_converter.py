@@ -35,6 +35,10 @@ _DECLARED_SUPPORTED_CONVERTERS = defaultdict(lambda: None)
 
 
 def _get_converter(name: Callable):
+    if not name in _CONVERTERS:
+        from torchair.ge_concrete_graph.ge_converter import custom
+        if hasattr(name, "_ge_converter"):
+            return name._ge_converter
     return _CONVERTERS[name]
 
 
