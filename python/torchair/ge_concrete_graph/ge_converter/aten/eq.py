@@ -37,12 +37,19 @@ def conveter_aten_eq_Tensor(self: Tensor, other: Tensor, meta_outputs: TensorSpe
     return ge.Equal(self, other)
 
 
+@declare_supported(
+    [
+        Support(F32(2, 2), 0),
+        Support(F32(2, 2), 1.0),
+    ]
+)
 @register_fx_node_ge_converter(torch.ops.aten.eq.Scalar)
 def conveter_aten_eq_Scalar(
     self: Tensor, other: Union[Number, Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::eq.Scalar(Tensor self, Scalar other) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.eq.Scalar ge_converter is not implemented!")
+    other = dtype_promote(other, target_dtype=self.dtype)
+    return ge.Equal(self, other)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.eq.Scalar_out)
