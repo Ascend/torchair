@@ -49,9 +49,15 @@ def conveter_aten_expand_default(
         return ge.BroadcastTo(self, size)
     else:
         positive_size = []
+        have_broadcast_dim = False
         for i in range(len(size)):
             if size[i] == -1:
                 positive_size.append(meta_outputs.size[i])
             else:
                 positive_size.append(size[i])
-        return ge.BroadcastTo(self, positive_size)
+                if positive_size[i] != meta_outputs.size[i]:
+                    have_broadcast_dim = True
+
+        if have_broadcast_dim:
+            return ge.BroadcastTo(self, positive_size)
+        return self

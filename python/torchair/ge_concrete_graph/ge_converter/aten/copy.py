@@ -29,8 +29,12 @@ def conveter_aten_copy_default(
         return ge.Identity(src)
     else:
         src = dtype_promote(src, target_dtype=self.dtype)
-        ret = ge.BroadcastTo(src, ge.Shape(self))
-        return ge.Identity(ret)
+
+        if str(self._symsize) == str(src._symsize):
+            # The input shapes and output shapes are consistent and no need to broadcast
+            return src
+
+        return ge.BroadcastTo(src, ge.Shape(self))
 
 
 @register_fx_node_ge_converter(torch.ops.aten.copy.out)
