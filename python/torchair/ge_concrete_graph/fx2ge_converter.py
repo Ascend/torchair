@@ -369,6 +369,8 @@ class GeConcreteGraph(ConcreteGraphBase):
             [output.dtype for output in self.outputs])
         self.graph.attr["_executor_type"].i = _get_executor_type()
 
+        self._complement_graph_attr()
+
         _normalize_ge_graph(self.graph)
 
         initialize_graph_engine()
@@ -424,6 +426,8 @@ class GeConcreteGraph(ConcreteGraphBase):
             ge_inputs[ge_idx] = inputs[fx_idx]
         inputs = ge_inputs
 
+        self._consume_data_into_inputs(inputs)
+
         if self._config.export_config.export_mode:
             self.export(inputs)
             raise ExportSuccess("export graph over")
@@ -444,3 +448,29 @@ class GeConcreteGraph(ConcreteGraphBase):
         del ge_outputs
 
         return tuple(fx_outputs)
+
+    def _complement_graph_attr(self):
+        num_inputs = self.graph.num_inputs()
+        diff = num_inputs - len(self._inputs)
+        self._inputs.extend([None for _ in range(diff)])
+        self._input_placements.extend([None for _ in range(diff)])
+        self.graph.attr["_input_placements"].list.i.extend(
+            [-1 for _ in range(diff)])
+
+        for gen in self.graph.generator_rng_state:
+            rng_state = self.graph.get_graph_rng_state(gen)
+            idx, offset_data = rng_state.get_idx_and_offset()
+            assert len(self._inputs) == len(self._input_placements)
+            placement = Placement.HOST
+            self._inputs[idx] = offset_data
+            self._input_placements[idx] = placement
+            self.graph.attr["_input_placements"].list.i[idx] = placement
+
+    def _consume_data_into_inputs(self, inputs):
+        num_inputs = self.graph.num_inputs()
+        diff = num_inputs - len(inputs)
+        inputs.extend([None for _ in range(diff)])
+        for gen in self.graph.generator_rng_state:
+            rng_state = self.graph.get_graph_rng_state(gen)
+            idx, offset = rng_state.consume()
+            inputs[idx] = offset

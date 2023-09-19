@@ -236,10 +236,71 @@ def torch_type_to_ge_proto_type(dtype):
     return torch_type_to_ge_type(dtype, ProtoDataType)
 
 
+class _GraphRngState:
+    def __init__(self, gen: torch.Generator = None) -> None:
+        self._gen = gen
+        self._consumed = 0
+        if self._gen is None:
+            if hasattr(torch, 'npu'):
+                idx = torch.npu.current_device()
+                self._gen = torch.npu.default_generators[idx]
+            else:
+                # for st test on cpu:
+                torch.manual_seed(10)
+                self._gen = torch.default_generator
+        self._seed = Const(self._gen.initial_seed(),
+                            dtype=DataType.DT_INT64,
+                            name='initial_seed')
+        self._feed_index = get_default_ge_graph().num_inputs()
+        self._offsets = Data(index=self._feed_index,
+                            dtype=DataType.DT_INT64,
+                            shape=[1],
+                            placement='NPU',
+                            name='offset_list')
+        self._offset_count = 0
+        self._offset_lists = []
+        self._unpack_offset = get_default_ge_graph().op.add()
+        self._unpack_offset.type = "Unpack"
+        self._unpack_offset.name = next_unique_name(
+            None, 'unpack_generator_offsets')
+        self._unpack_offset.input.append(self._offsets.tensor)
+        self._unpack_offset.input_desc.add().CopyFrom(self._offsets.desc)
+        self._unpack_offset.input_desc[-1].name = "x"
+
+
+    def get_idx_and_offset(self):
+        return self._feed_index, self._offsets
+
+    def consume(self):
+        offset = self._gen.get_offset()
+        self._gen.set_offset(offset + self._offset_count)
+        return self._feed_index, torch.tensor(self._offset_lists) + offset
+
+    def next(self, philox_num):
+        self._unpack_offset.output_desc.add().name = "y" + str(self._consumed)
+        offset = Tensor(self._unpack_offset, self._consumed)
+        self._consumed += 1
+
+        self._offsets.node.input_desc[0].shape.dim[0] = self._consumed
+        self._offsets.node.output_desc[0].shape.dim[0] = self._consumed
+
+        self._unpack_offset.attr["num"].i = self._consumed
+        self._offset_lists.append(self._offset_count)
+        self._offset_count += int((philox_num + 3) / 4) * 4
+        return self._seed, offset
+
+
+def map_graph_rng_state(gen: torch.Generator = None):
+    return _GraphRngState(gen)
+
+
 class GeGraph(object):
     def __init__(self):
         self._proto = GraphDef()
         self._python_code = self._python_code_init()
+        self._generator_rng_state = defaultdict(
+            map_graph_rng_state)
+        self._indexed_inputs = {}
 
     def _python_code_init(self):
         python_code = ''
@@ -294,6 +355,26 @@ class GeGraph(object):
     @property
     def python_code(self):
         return self._python_code
+
+    @property
+    def generator_rng_state(self):
+        return self._generator_rng_state
+
+    def rng_state(self, philox_num, gen: torch.Generator = None):
+        _graph_rng_state = self._generator_rng_state[gen]
+        return _graph_rng_state.next(philox_num)
+
+    def get_graph_rng_state(self, gen: torch.Generator = None):
+        _graph_rng_state = self._generator_rng_state[gen]
+        return _graph_rng_state
+
+    def record_input(self, index, op):
+        assert index not in self._indexed_inputs
+        self._indexed_inputs[index] = op
+
+    def num_inputs(self):
+        return len(self._indexed_inputs)
+
 
 class _GeGraphStack(threading.local):
     """A thread-local stack of objects for providing implicit defaults."""
@@ -447,6 +528,10 @@ class Tensor:
         return f'Tensor({self.tensor}, dtype={_ge_proto_dtype_str(self.desc.dtype)}, size={self._symsize})'
 
 
+def get_ge_rng_state(philox_num, gen: torch.Generator = None) -> Tuple[int, Tensor]:
+    return get_default_ge_graph().rng_state(philox_num, gen)
+
+
 def array_default_f32(v, dtype=None):
     if isinstance(v, float) and dtype is None:
         dtype = np.float32
@@ -503,38 +588,6 @@ def parse_kwargs(kwargs):
             v = f'"{v}"'
         kwargs_list.append(f'{k}={v}')
     return kwargs_list
-
-
-def Const(v: Any, dtype: int = None, name=None) -> Tensor:
-    op = get_default_ge_graph().op.add()
-    op.type = "Const"
-    op.name = next_unique_name(name, "Const")
-    value = op.attr["value"].t
-    if isinstance(v, np.ndarray):
-        if dtype is None:
-            narray = v
-            dtype = _np_dtype_to_ge_dtype(narray.dtype)
-        else:
-            narray = np.array(v, dtype=_ge_dtype_to_np_dtype(dtype))
-    else:
-        if dtype is None:
-            narray = array_default_f32(v)
-            dtype = _np_dtype_to_ge_dtype(narray.dtype)
-        else:
-            narray = np.array(v, dtype=_ge_dtype_to_np_dtype(dtype))
-
-    if isinstance(v, (np.ndarray, tuple, list)):
-        op.attr["_readable_value"].s = compat_as_bytes(f"{narray.tolist()}")
-    else:
-        op.attr["_readable_value"].s = compat_as_bytes(f"{narray.item()}")
-
-    value.data = narray.tobytes()
-    value.desc.dtype = _ge_dtype_to_ge_proto_dtype(dtype)
-    value.desc.layout = "ND"
-    value.desc.shape.dim.extend(narray.shape)
-
-    op.output_desc.extend([value.desc])
-    return Tensor(op)
 
 
 def _wrap_ge_tensor(v, dtype=None):
@@ -718,3 +771,61 @@ def get_invalid_desc():
         _invalid_desc.dtype = ProtoDataType.DT_UNDEFINED
         _invalid_desc.attr['_is_unfed_optional'].i = 1
     return _invalid_desc
+
+
+@auto_convert_to_tensor([], [])
+def Data(*, index: int, dtype: int, shape: List[int] = None, format: str = "ND", placement:str, name: str = None) -> Tensor:
+    op = get_default_ge_graph().op.add()
+    op.type = "Data"
+    op.name = next_unique_name(name, "Data")
+    op.attr["index"].i = index
+
+    desc = op.output_desc.add()
+    desc.name = "y"
+    desc.dtype = _ge_dtype_to_ge_proto_dtype(dtype)
+    desc.layout = format
+    assert placement in ["NPU", "CPU"], f"placement should be NPU or CPU, but got {placement}"
+    desc.device_type = placement
+    if shape is not None:
+        desc.shape.dim.extend(shape)
+    else:
+        desc.shape.dim.extend([-2])
+
+    op.input_desc.add().CopyFrom(desc)
+    op.input_desc[-1].name = "x"
+
+    get_default_ge_graph().record_input(index, op)
+
+    return Tensor(op)
+
+
+def Const(v: Any, dtype: int = None, name=None) -> Tensor:
+    op = get_default_ge_graph().op.add()
+    op.type = "Const"
+    op.name = next_unique_name(name, "Const")
+    value = op.attr["value"].t
+    if isinstance(v, np.ndarray):
+        if dtype is None:
+            narray = v
+            dtype = _np_dtype_to_ge_dtype(narray.dtype)
+        else:
+            narray = np.array(v, dtype=_ge_dtype_to_np_dtype(dtype))
+    else:
+        if dtype is None:
+            narray = array_default_f32(v)
+            dtype = _np_dtype_to_ge_dtype(narray.dtype)
+        else:
+            narray = np.array(v, dtype=_ge_dtype_to_np_dtype(dtype))
+
+    if isinstance(v, (np.ndarray, tuple, list)):
+        op.attr["_readable_value"].s = compat_as_bytes(f"{narray.tolist()}")
+    else:
+        op.attr["_readable_value"].s = compat_as_bytes(f"{narray.item()}")
+
+    value.data = narray.tobytes()
+    value.desc.dtype = _ge_dtype_to_ge_proto_dtype(dtype)
+    value.desc.layout = "ND"
+    value.desc.shape.dim.extend(narray.shape)
+
+    op.output_desc.extend([value.desc])
+    return Tensor(op)

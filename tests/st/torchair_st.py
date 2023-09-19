@@ -171,6 +171,56 @@ class TorchairSt(unittest.TestCase):
             y = torch.ones([], dtype=torch.int32)
             result = executor.run((x, y))
 
+    def test_rng_into_graph(self):
+        def check_graph(concrete_graph):
+            num_data, has_offset, has_seed, has_unpack = 0, False, False, False
+            for node in concrete_graph.graph.op:
+                if node.type == 'Data':
+                    num_data += 1
+                if node.type == 'Data' and node.name == 'offset_list':
+                    has_offset = True
+                if node.type == 'Unpack' and node.name == 'unpack_generator_offsets':
+                    assert 'offset_list' in node.input[0]
+                    assert node.attr['num'].i == 2
+                    has_unpack = True
+                if node.type == 'Const' and node.name == 'initial_seed':
+                    assert node.attr['_readable_value'].s == b'10'
+                    has_seed = True
+            logger.debug(f'check_graph index:')
+            logger.debug(f'    num_data: {num_data}')
+            logger.debug(f'    has_offset: {has_offset}')
+            logger.debug(f'    has_unpack: {has_unpack}')
+            logger.debug(f'    has_seed: {has_seed}')
+            assert num_data == 2 and has_offset and has_seed and has_unpack
+        
+        def call_sub(self, *args, **kwargs):
+            check_graph(self)
+            return args
+
+        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        src_call = GeConcreteGraph.__call__
+        GeConcreteGraph.__call__ = call_sub
+
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.dp = torch.nn.Dropout(0.3)
+            
+            def forward(self, x):
+                y = self.dp(x)
+                b1 = torch.ops.aten.bernoulli.p(x, 0.8)
+                y = y * b1
+                return y
+
+
+        model = Model()
+        model = torch.compile(model, backend=npu_backend)
+        x = torch.randn(4, 3, 32)
+        model(x)
+
+        GeConcreteGraph.__call__ = src_call
+
 
 if __name__ == '__main__':
     unittest.main()
