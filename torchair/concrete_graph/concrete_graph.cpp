@@ -25,13 +25,6 @@ tng::Status NormalizeCompileOptions(const std::map<ge::AscendString, ge::AscendS
                                     std::map<ge::AscendString, ge::AscendString> &normalized_options) {
   normalized_options = options;
   normalized_options[ge::JIT_COMPILE.c_str()] = "2";
-  auto iter = options.find("jit_compile");
-  if (iter != options.end()) {
-    normalized_options.erase("jit_compile");
-    if (iter->second == ge::AscendString("0")) {
-      normalized_options[ge::JIT_COMPILE.c_str()] = "0";
-    }
-  }
 
   (void)normalized_options.insert(std::make_pair(ge::OPTION_TOPOSORTING_MODE, "2"));
   // Use separate memory cleaning for atomic nodes to better reuse memory.

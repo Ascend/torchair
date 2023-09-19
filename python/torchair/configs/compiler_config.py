@@ -16,6 +16,5 @@ class CompilerConfig(NpuBaseConfig):
 
         self.aoe_config = AoeConfig()
         self.export_config = ExportConfig()
-        self.jit_compile = OptionValue(False, [True, False])
 
         super(CompilerConfig, self).__init__()
