@@ -16,7 +16,7 @@ Status GetCurrentStream(void **stream) {
   int device_index = -1;
   auto ret = aclrtGetDevice(&device_index);
   TNG_ASSERT(ret == ACL_ERROR_NONE, "ACL get device failed, return %d", ret);
-  *stream = c10_npu::getCurrentNPUStream(device_index).stream(false);
+  *stream = c10_npu::getCurrentNPUStream(device_index).stream();
   return Status::Success();
 }
 
