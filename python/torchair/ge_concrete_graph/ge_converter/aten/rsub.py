@@ -18,10 +18,21 @@ import torch
 from torch import Generator, contiguous_format, inf, strided
 from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
-from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
+from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
+    Support
+from torchair.ge_concrete_graph.utils import dtype_promote
 
 
+@declare_supported(
+    [
+        Support(F32(2, 2), F32(2, 2)),
+        Support(F32(2, 2), F32(2, 1)),
+        Support(F32(2, 2), F16(2, 1)),
+        Support(F32(2, 2), F16(2, 2), alpha=2),
+    ]
+)
 @register_fx_node_ge_converter(torch.ops.aten.rsub.Tensor)
 def conveter_aten_rsub_Tensor(
     self: Tensor,
@@ -31,12 +42,24 @@ def conveter_aten_rsub_Tensor(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::rsub.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -> Tensor"""
-    mul_self = self
-    if alpha != 1:
-        mul_self = ge.Mul(self, alpha)
-    return ge.Sub(mul_self, other)
+    if not isinstance(alpha, Tensor) and alpha == 1:
+        # just for better permance
+        self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)
+        return ge.Sub(other, self)
+    else:
+        self, other, alpha = dtype_promote(self, other, alpha, target_dtype=meta_outputs.dtype)
+        self_mul = ge.Mul(self, alpha)
+        return ge.Sub(other, self_mul)
 
 
+
+@declare_supported(
+    [
+        Support(F32(2, 2), 2.0),
+        Support(F32(2, 2), 2),
+        Support(F32(2, 2), 2, alpha=2.0),
+    ]
+)
 @register_fx_node_ge_converter(torch.ops.aten.rsub.Scalar)
 def conveter_aten_rsub_Scalar(
     self: Tensor,
@@ -45,10 +68,14 @@ def conveter_aten_rsub_Scalar(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::rsub.Scalar(Tensor self, Scalar other, Scalar alpha=1) -> Tensor"""
-    mul_self = self
-    if alpha != 1:
-        mul_self = ge.Mul(self, alpha)
-    return ge.Sub(mul_self, other)
+    if not isinstance(alpha, Tensor) and alpha == 1:
+        # just for better permance
+        self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)
+        return ge.Sub(other, self)
+    else:
+        self, other, alpha = dtype_promote(self, other, alpha, target_dtype=meta_outputs.dtype)
+        self_mul = ge.Mul(self, alpha)
+        return ge.Sub(other, self_mul)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.rsub.Tensor_out)
