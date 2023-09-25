@@ -27,16 +27,25 @@ def _unpack_meta_list(args):
     return [(arg.meta if (isinstance(arg, ValuePack)) else arg) for arg in args]
 
 
-def _unpack_meta(args):
-    unpacked = []
-    for arg in args:
+def _unpack_meta(args, kwargs):
+    unpacked_args = []
+    unpacked_kwargs = {}
+
+    def _get_meta_part(arg):
         if isinstance(arg, (list, tuple)) and any(isinstance(v, ValuePack) for v in arg):
-            arg = _unpack_meta_list(arg)
-        if isinstance(arg, ValuePack):
-            unpacked.append(arg.meta)
+            return _unpack_meta_list(arg)
+        elif isinstance(arg, ValuePack):
+            return arg.meta
         else:
-            unpacked.append(arg)
-    return list(unpacked)
+            return arg
+
+    for arg in args:
+        unpacked_args.append(_get_meta_part(arg))
+
+    for key, value in kwargs.items():
+        unpacked_kwargs[key] = _get_meta_part(value)
+
+    return list(unpacked_args), unpacked_kwargs
 
 
 def _safe_str(x):
@@ -95,30 +104,39 @@ class NpuGraphConverter(Interpreter):
             super().run(*optimize_fx_input)
             return self._graph
 
-    def _unpack_npu(self, args):
+    def _unpack_npu(self, args, kwargs):
         unpacked = []
-        for arg in args:
+        unpacked_kwargs = {}
+        def _get_npu_part(arg):
             if isinstance(arg, (list, tuple)) and len(arg):
                 if _is_symlist(arg):
                     arg = self._graph.parse_symlist(arg)
                 else:
                     arg = [(v.npu if isinstance(v, ValuePack) else v)
                            for v in arg]
-
-            if isinstance(arg, ValuePack):
-                unpacked.append(arg.npu)
+                return arg
+            elif isinstance(arg, ValuePack):
+                return arg.npu
             else:
-                unpacked.append(arg)
-        return unpacked
+                return arg
+
+        for arg in args:
+            unpacked.append(_get_npu_part(arg))
+
+        for key, value in kwargs.items():
+            unpacked_kwargs[key] = _get_npu_part(value)
+
+        return unpacked, unpacked_kwargs
 
     def _wrap(self, fn):
         def inner(target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any]):
             func = getattr(super(NpuGraphConverter, self), fn)
             if is_builtin_callable(target) and not _is_binary_operator(target):
                 return func(target, args, kwargs)
-            meta_outputs = func(target, _unpack_meta(args), kwargs)
-            npu_outputs = self._graph.parse_node(
-                target, self._unpack_npu(args), kwargs, meta_outputs)
+            args_meta, kwargs_meta = _unpack_meta(args, kwargs)
+            meta_outputs = func(target, args_meta, kwargs_meta)
+            args_npu, kwargs_npu = self._unpack_npu(args, kwargs)
+            npu_outputs = self._graph.parse_node(target, args_npu, kwargs_npu, meta_outputs)
             if isinstance(npu_outputs, (tuple, list)):
                 return [ValuePack(k, v) for k, v in zip(meta_outputs, npu_outputs)]
             return ValuePack(meta_outputs, npu_outputs)
@@ -145,7 +163,8 @@ class NpuGraphConverter(Interpreter):
 
     @trace_print
     def output(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any]) -> Any:
-        meta_output = super().placeholder(target, args=_unpack_meta(args), kwargs=kwargs)
+        args_meta, kwargs_meta = _unpack_meta(args, kwargs)
+        meta_output = super().placeholder(target, args=args_meta, kwargs=kwargs_meta)
         npu_output = self._graph.parse_output(
             target, args, kwargs, meta_output)
         return npu_output
