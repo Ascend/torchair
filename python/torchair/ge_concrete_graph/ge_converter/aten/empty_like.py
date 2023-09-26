@@ -25,11 +25,6 @@ from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, 
 from torchair.ge_concrete_graph.utils import dtype_promote
 
 
-@declare_supported([
-    Support(F32(2, 2)),
-    Support(F16(2, 2)),
-    Support(I32(2, 2)),
-])
 @register_fx_node_ge_converter(torch.ops.aten.empty_like.default)
 def conveter_aten_empty_like_default(
     self: Tensor,
@@ -48,9 +43,6 @@ def conveter_aten_empty_like_default(
 
     if layout is not None and (layout != torch.strided):
         raise NotImplementedError("torch.ops.aten.empty_like.default is only supported on dense tensor now.")
-    
-    if memory_format is not None and (memory_format != torch.contiguous_format):
-        raise NotImplementedError("torch.ops.aten.empty_like.default is only supported contiguous_format now.")
     
     return ge.Empty(ge.Shape(self), dtype=dtype)
 

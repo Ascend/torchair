@@ -63,8 +63,8 @@ def conveter_aten_convolution_default(
     dilations = [1, 1, dilation[0], dilation[1]]
     input, weight = dtype_promote(input, weight, target_dtype=meta_outputs.dtype)
     output = ge.Conv2D(input, weight, bias, None, strides=strides, pads=pads, dilations=dilations, groups=groups, data_format="NCHW")
-    specific_op_input_layout(output, indices=[0, 1], layout="NCHW")
-    specific_op_output_layout(output, indices=[0, 2] if bias is not None else [0], layout="NCHW")
+    specific_op_input_layout(output, indices=[0, 1, 2] if bias is not None else [0, 1], layout="NCHW")
+    specific_op_output_layout(output, indices=0, layout="NCHW")
     return output
 
 
