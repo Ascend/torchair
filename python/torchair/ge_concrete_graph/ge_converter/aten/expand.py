@@ -29,6 +29,8 @@ from torchair.ge_concrete_graph.utils import dtype_promote
     [
         Support(F32(3, 1), size=[3, 4]),
         Support(F16(3, 1, 2), size=[-1, 5, -1]),
+        Support(F16(2, 3), size=[2, 2, 3]),
+        Support(F16(3, 4, 2), size=[4, -1, -1, -1])
     ]
 )
 @register_fx_node_ge_converter(torch.ops.aten.expand.default)
@@ -49,15 +51,12 @@ def conveter_aten_expand_default(
         return ge.BroadcastTo(self, size)
     else:
         positive_size = []
-        have_broadcast_dim = False
         for i in range(len(size)):
             if size[i] == -1:
                 positive_size.append(meta_outputs.size[i])
             else:
                 positive_size.append(size[i])
-                if positive_size[i] != meta_outputs.size[i]:
-                    have_broadcast_dim = True
-
-        if have_broadcast_dim:
+                
+        if str(self._symsize) != str(positive_size):
             return ge.BroadcastTo(self, positive_size)
         return self
