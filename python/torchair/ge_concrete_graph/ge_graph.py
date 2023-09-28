@@ -59,26 +59,36 @@ def torch_type_to_ge_type(dtype, m=DataType):
         return None
     if dtype == torch.float32:
         return m.DT_FLOAT
-    elif dtype == torch.int32:
+    if dtype == torch.int32:
         return m.DT_INT32
-    elif dtype == torch.bool:
+    if dtype == torch.bool:
         return m.DT_BOOL
-    elif dtype == torch.float16:
+    if dtype == torch.float16:
         return m.DT_FLOAT16
-    elif dtype == torch.int8:
+    if dtype == torch.int8:
         return m.DT_INT8
-    elif dtype == torch.uint8:
+    if dtype == torch.uint8:
         return m.DT_UINT8
-    elif dtype == torch.int16:
+    if dtype == torch.int16:
         return m.DT_INT16
-    elif dtype == torch.int64:
+    if dtype == torch.int64:
         return m.DT_INT64
-    elif dtype == torch.float64:
+    if dtype == torch.float64:
         return m.DT_DOUBLE
-    elif dtype == torch.bfloat16:
+    if dtype == torch.bfloat16:
         return m.DT_BF16
-    else:
-        raise RuntimeError(f"Unsupported torch type {dtype} by ge")
+    if dtype == torch.complex64:
+        return m.DT_COMPLEX64
+    if dtype == torch.complex128:
+        return m.DT_COMPLEX128
+    if dtype == torch.qint8:
+        return m.DT_QINT8
+    if dtype == torch.quint8:
+        return m.DT_QUINT8
+    if dtype == torch.qint32:
+        return m.DT_QINT32
+
+    raise RuntimeError(f"Unsupported torch type {dtype} by ge")
 
 
 def _ge_dtype_to_np_dtype(dtype: DataType) -> np.dtype:
@@ -125,6 +135,18 @@ def _ge_dtype_to_ge_proto_dtype(dtype: DataType) -> np.dtype:
         return ProtoDataType.DT_BOOL
     if dtype == DataType.DT_BF16:
         return ProtoDataType.DT_BF16
+    if dtype == DataType.DT_INT16:
+        return ProtoDataType.DT_INT16
+    if dtype == DataType.DT_COMPLEX64:
+        return ProtoDataType.DT_COMPLEX64
+    if dtype == DataType.DT_COMPLEX128:
+        return ProtoDataType.DT_COMPLEX128
+    if dtype == DataType.DT_QINT8:
+        return ProtoDataType.DT_QINT8
+    if dtype == DataType.DT_QUINT8:
+        return ProtoDataType.DT_QUINT8
+    if dtype == DataType.DT_QINT32:
+        return ProtoDataType.DT_QINT32
 
     raise ValueError(f"Unsupported ge dtype {dtype}")
 
