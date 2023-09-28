@@ -44,6 +44,11 @@ def conveter_aten_empty_like_default(
     if layout is not None and (layout != torch.strided):
         raise NotImplementedError("torch.ops.aten.empty_like.default is only supported on dense tensor now.")
     
+    if memory_format is not None and memory_format != torch.contiguous_format \
+            and memory_format != torch.preserve_format:
+        raise NotImplementedError("torch.ops.aten.empty_like.default is only supported "
+                "contiguous_format and preserve_format now.")
+    
     return ge.Empty(ge.Shape(self), dtype=dtype)
 
 
