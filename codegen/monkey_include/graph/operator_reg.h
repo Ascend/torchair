@@ -146,6 +146,7 @@ struct InputDef {
         ss << k2Space << "op.input_desc[-1].name = " << Brack(name) << kEnd;
 
         ss << "else:" << kEnd;
+        ss << k2Space << "op.input.append('')" << kEnd;
         ss << k2Space << "op.input_desc.add().CopyFrom(get_invalid_desc())" << kEnd;
         ss << k2Space << "op.input_desc[-1].name = " << Brack(name);
       }

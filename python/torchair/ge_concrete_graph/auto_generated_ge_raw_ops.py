@@ -58,6 +58,7 @@ def Aipp(images: Tensor,
         op.input_desc.add().CopyFrom(params.desc)
         op.input_desc[-1].name = "params"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "params"
 
@@ -1368,6 +1369,7 @@ def SqueezeV3(x: Tensor,
         op.input_desc.add().CopyFrom(axes.desc)
         op.input_desc[-1].name = "axes"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "axes"
 
@@ -3770,6 +3772,7 @@ def KMeansCentroids(x: Tensor,
         op.input_desc.add().CopyFrom(sum_square_x.desc)
         op.input_desc[-1].name = "sum_square_x"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "sum_square_x"
 
@@ -4363,6 +4366,7 @@ def MapIndex(x: Tensor,
         op.input_desc.add().CopyFrom(level_index.desc)
         op.input_desc[-1].name = "level_index"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "level_index"
 
@@ -8901,6 +8905,7 @@ def SequenceErase(handle: Tensor,
         op.input_desc.add().CopyFrom(index.desc)
         op.input_desc[-1].name = "index"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "index"
 
@@ -8951,6 +8956,7 @@ def SequenceInsert(handle: Tensor,
         op.input_desc.add().CopyFrom(index.desc)
         op.input_desc[-1].name = "index"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "index"
 
@@ -9033,6 +9039,7 @@ def SplitToSequence(x: Tensor,
         op.input_desc.add().CopyFrom(split.desc)
         op.input_desc[-1].name = "split"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "split"
 
@@ -16392,6 +16399,7 @@ def ApplyAdamV2(var: Tensor,
         op.input_desc.add().CopyFrom(max_grad_norm.desc)
         op.input_desc[-1].name = "max_grad_norm"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "max_grad_norm"
     op.input.append(global_grad_norm.tensor)
@@ -16405,6 +16413,7 @@ def ApplyAdamV2(var: Tensor,
         op.input_desc.add().CopyFrom(step_size.desc)
         op.input_desc[-1].name = "step_size"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "step_size"
 
@@ -16721,6 +16730,7 @@ def ApplyAdamW(var: Tensor,
         op.input_desc.add().CopyFrom(max_grad_norm.desc)
         op.input_desc[-1].name = "max_grad_norm"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "max_grad_norm"
 
@@ -16882,6 +16892,7 @@ def TransposeBatchMatMul(x1: Tensor,
         op.input_desc.add().CopyFrom(bias.desc)
         op.input_desc[-1].name = "bias"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias"
     if offset_w is not None:
@@ -16889,6 +16900,7 @@ def TransposeBatchMatMul(x1: Tensor,
         op.input_desc.add().CopyFrom(offset_w.desc)
         op.input_desc[-1].name = "offset_w"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "offset_w"
 
@@ -17179,6 +17191,7 @@ def YUVToRGB(x: Tensor,
         op.input_desc.add().CopyFrom(matrix.desc)
         op.input_desc[-1].name = "matrix"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "matrix"
 
@@ -17783,6 +17796,7 @@ def EmbeddingApplyAdamW(var_handle: Tensor,
         op.input_desc.add().CopyFrom(max_grad_norm.desc)
         op.input_desc[-1].name = "max_grad_norm"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "max_grad_norm"
 
@@ -18275,6 +18289,7 @@ def DeformableRoiPoolGrad(grad: Tensor,
         op.input_desc.add().CopyFrom(offset.desc)
         op.input_desc[-1].name = "offset"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "offset"
 
@@ -18536,6 +18551,7 @@ def DeformableRoiPool(x: Tensor,
         op.input_desc.add().CopyFrom(offset.desc)
         op.input_desc[-1].name = "offset"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "offset"
 
@@ -19802,6 +19818,7 @@ def FlashAttentionScore(query: Tensor,
         op.input_desc.add().CopyFrom(real_shift.desc)
         op.input_desc[-1].name = "real_shift"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "real_shift"
     if drop_mask is not None:
@@ -19809,6 +19826,7 @@ def FlashAttentionScore(query: Tensor,
         op.input_desc.add().CopyFrom(drop_mask.desc)
         op.input_desc[-1].name = "drop_mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "drop_mask"
     if padding_mask is not None:
@@ -19816,6 +19834,7 @@ def FlashAttentionScore(query: Tensor,
         op.input_desc.add().CopyFrom(padding_mask.desc)
         op.input_desc[-1].name = "padding_mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "padding_mask"
     if atten_mask is not None:
@@ -19823,6 +19842,7 @@ def FlashAttentionScore(query: Tensor,
         op.input_desc.add().CopyFrom(atten_mask.desc)
         op.input_desc[-1].name = "atten_mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "atten_mask"
 
@@ -19933,6 +19953,7 @@ def FlashAttentionScoreGrad(query: Tensor,
         op.input_desc.add().CopyFrom(pse_shift.desc)
         op.input_desc[-1].name = "pse_shift"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "pse_shift"
     if drop_mask is not None:
@@ -19940,6 +19961,7 @@ def FlashAttentionScoreGrad(query: Tensor,
         op.input_desc.add().CopyFrom(drop_mask.desc)
         op.input_desc[-1].name = "drop_mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "drop_mask"
     if padding_mask is not None:
@@ -19947,6 +19969,7 @@ def FlashAttentionScoreGrad(query: Tensor,
         op.input_desc.add().CopyFrom(padding_mask.desc)
         op.input_desc[-1].name = "padding_mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "padding_mask"
     if atten_mask is not None:
@@ -19954,6 +19977,7 @@ def FlashAttentionScoreGrad(query: Tensor,
         op.input_desc.add().CopyFrom(atten_mask.desc)
         op.input_desc[-1].name = "atten_mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "atten_mask"
     if softmax_max is not None:
@@ -19961,6 +19985,7 @@ def FlashAttentionScoreGrad(query: Tensor,
         op.input_desc.add().CopyFrom(softmax_max.desc)
         op.input_desc[-1].name = "softmax_max"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "softmax_max"
     if softmax_sum is not None:
@@ -19968,6 +19993,7 @@ def FlashAttentionScoreGrad(query: Tensor,
         op.input_desc.add().CopyFrom(softmax_sum.desc)
         op.input_desc[-1].name = "softmax_sum"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "softmax_sum"
     if softmax_in is not None:
@@ -19975,6 +20001,7 @@ def FlashAttentionScoreGrad(query: Tensor,
         op.input_desc.add().CopyFrom(softmax_in.desc)
         op.input_desc[-1].name = "softmax_in"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "softmax_in"
     if attention_in is not None:
@@ -19982,6 +20009,7 @@ def FlashAttentionScoreGrad(query: Tensor,
         op.input_desc.add().CopyFrom(attention_in.desc)
         op.input_desc[-1].name = "attention_in"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "attention_in"
 
@@ -20084,6 +20112,7 @@ def MultiHeadAttentionScoreGrad(query: Tensor,
         op.input_desc.add().CopyFrom(pse_shift.desc)
         op.input_desc[-1].name = "pse_shift"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "pse_shift"
     if drop_mask is not None:
@@ -20091,6 +20120,7 @@ def MultiHeadAttentionScoreGrad(query: Tensor,
         op.input_desc.add().CopyFrom(drop_mask.desc)
         op.input_desc[-1].name = "drop_mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "drop_mask"
     if padding_mask is not None:
@@ -20098,6 +20128,7 @@ def MultiHeadAttentionScoreGrad(query: Tensor,
         op.input_desc.add().CopyFrom(padding_mask.desc)
         op.input_desc[-1].name = "padding_mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "padding_mask"
     if atten_mask is not None:
@@ -20105,6 +20136,7 @@ def MultiHeadAttentionScoreGrad(query: Tensor,
         op.input_desc.add().CopyFrom(atten_mask.desc)
         op.input_desc[-1].name = "atten_mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "atten_mask"
     if softmax_in is not None:
@@ -20112,6 +20144,7 @@ def MultiHeadAttentionScoreGrad(query: Tensor,
         op.input_desc.add().CopyFrom(softmax_in.desc)
         op.input_desc[-1].name = "softmax_in"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "softmax_in"
     if attention_in is not None:
@@ -20119,6 +20152,7 @@ def MultiHeadAttentionScoreGrad(query: Tensor,
         op.input_desc.add().CopyFrom(attention_in.desc)
         op.input_desc[-1].name = "attention_in"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "attention_in"
 
@@ -20206,6 +20240,7 @@ def IncreFlashAttention(query: Tensor,
         op.input_desc.add().CopyFrom(padding_mask.desc)
         op.input_desc[-1].name = "padding_mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "padding_mask"
     if atten_mask is not None:
@@ -20213,6 +20248,7 @@ def IncreFlashAttention(query: Tensor,
         op.input_desc.add().CopyFrom(atten_mask.desc)
         op.input_desc[-1].name = "atten_mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "atten_mask"
     if actual_seq_lengths is not None:
@@ -20220,6 +20256,7 @@ def IncreFlashAttention(query: Tensor,
         op.input_desc.add().CopyFrom(actual_seq_lengths.desc)
         op.input_desc[-1].name = "actual_seq_lengths"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "actual_seq_lengths"
 
@@ -20296,6 +20333,7 @@ def PromptFlashAttention(query: Tensor,
         op.input_desc.add().CopyFrom(padding_mask.desc)
         op.input_desc[-1].name = "padding_mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "padding_mask"
     if atten_mask is not None:
@@ -20303,6 +20341,7 @@ def PromptFlashAttention(query: Tensor,
         op.input_desc.add().CopyFrom(atten_mask.desc)
         op.input_desc[-1].name = "atten_mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "atten_mask"
     if actual_seq_lengths is not None:
@@ -20310,6 +20349,7 @@ def PromptFlashAttention(query: Tensor,
         op.input_desc.add().CopyFrom(actual_seq_lengths.desc)
         op.input_desc[-1].name = "actual_seq_lengths"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "actual_seq_lengths"
 
@@ -20494,6 +20534,7 @@ def Conv2DTransposeDCompress(x: Tensor,
         op.input_desc.add().CopyFrom(bias.desc)
         op.input_desc[-1].name = "bias"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias"
     if offset_w is not None:
@@ -20501,6 +20542,7 @@ def Conv2DTransposeDCompress(x: Tensor,
         op.input_desc.add().CopyFrom(offset_w.desc)
         op.input_desc[-1].name = "offset_w"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "offset_w"
 
@@ -20758,6 +20800,7 @@ def MoeFFN(x: Tensor,
         op.input_desc.add().CopyFrom(bias1.desc)
         op.input_desc[-1].name = "bias1"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias1"
     if weight2 is not None:
@@ -20765,6 +20808,7 @@ def MoeFFN(x: Tensor,
         op.input_desc.add().CopyFrom(weight2.desc)
         op.input_desc[-1].name = "weight2"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "weight2"
     if bias2 is not None:
@@ -20772,6 +20816,7 @@ def MoeFFN(x: Tensor,
         op.input_desc.add().CopyFrom(bias2.desc)
         op.input_desc[-1].name = "bias2"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias2"
     if scale is not None:
@@ -20779,6 +20824,7 @@ def MoeFFN(x: Tensor,
         op.input_desc.add().CopyFrom(scale.desc)
         op.input_desc[-1].name = "scale"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "scale"
     if offset is not None:
@@ -20786,6 +20832,7 @@ def MoeFFN(x: Tensor,
         op.input_desc.add().CopyFrom(offset.desc)
         op.input_desc[-1].name = "offset"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "offset"
     if deq_scale1 is not None:
@@ -20793,6 +20840,7 @@ def MoeFFN(x: Tensor,
         op.input_desc.add().CopyFrom(deq_scale1.desc)
         op.input_desc[-1].name = "deq_scale1"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "deq_scale1"
     if deq_scale2 is not None:
@@ -20800,6 +20848,7 @@ def MoeFFN(x: Tensor,
         op.input_desc.add().CopyFrom(deq_scale2.desc)
         op.input_desc[-1].name = "deq_scale2"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "deq_scale2"
 
@@ -24969,6 +25018,7 @@ def HcomRemoteScatterWrite(remote: Tensor,
         op.input_desc.add().CopyFrom(local_offset.desc)
         op.input_desc[-1].name = "local_offset"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "local_offset"
 
@@ -28386,6 +28436,7 @@ def SpatialTransformerD(x: Tensor,
         op.input_desc.add().CopyFrom(theta.desc)
         op.input_desc[-1].name = "theta"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "theta"
 
@@ -28446,6 +28497,7 @@ def SpatialTransformer(x: Tensor,
         op.input_desc.add().CopyFrom(theta.desc)
         op.input_desc[-1].name = "theta"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "theta"
 
@@ -28515,6 +28567,7 @@ def Resize(x: Tensor,
         op.input_desc.add().CopyFrom(roi.desc)
         op.input_desc[-1].name = "roi"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "roi"
     if scales is not None:
@@ -28522,6 +28575,7 @@ def Resize(x: Tensor,
         op.input_desc.add().CopyFrom(scales.desc)
         op.input_desc[-1].name = "scales"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "scales"
     if sizes is not None:
@@ -28529,6 +28583,7 @@ def Resize(x: Tensor,
         op.input_desc.add().CopyFrom(sizes.desc)
         op.input_desc[-1].name = "sizes"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "sizes"
 
@@ -28598,6 +28653,7 @@ def ResizeGrad(grads: Tensor,
         op.input_desc.add().CopyFrom(roi.desc)
         op.input_desc[-1].name = "roi"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "roi"
     if scales is not None:
@@ -28605,6 +28661,7 @@ def ResizeGrad(grads: Tensor,
         op.input_desc.add().CopyFrom(scales.desc)
         op.input_desc[-1].name = "scales"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "scales"
     op.input.append(original_size.tensor)
@@ -29805,6 +29862,7 @@ def ImageProjectiveTransformV2(images: Tensor,
         op.input_desc.add().CopyFrom(fill_value.desc)
         op.input_desc[-1].name = "fill_value"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "fill_value"
 
@@ -33957,6 +34015,7 @@ def NLLLoss(x: Tensor,
         op.input_desc.add().CopyFrom(weight.desc)
         op.input_desc[-1].name = "weight"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "weight"
 
@@ -35324,6 +35383,7 @@ def ScaledMaskedSoftmax(x: Tensor,
         op.input_desc.add().CopyFrom(mask.desc)
         op.input_desc[-1].name = "mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "mask"
 
@@ -35380,6 +35440,7 @@ def ScaledMaskedSoftmaxGrad(y_grad: Tensor,
         op.input_desc.add().CopyFrom(mask.desc)
         op.input_desc[-1].name = "mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "mask"
 
@@ -35703,6 +35764,7 @@ def AttentionQKVGradW(x: Tensor,
         op.input_desc.add().CopyFrom(key_dw.desc)
         op.input_desc[-1].name = "key_dw"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "key_dw"
     if value_dw is not None:
@@ -35710,6 +35772,7 @@ def AttentionQKVGradW(x: Tensor,
         op.input_desc.add().CopyFrom(value_dw.desc)
         op.input_desc[-1].name = "value_dw"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "value_dw"
 
@@ -35785,6 +35848,7 @@ def AttentionQKVGradX(ln_dx: Optional[Tensor],
         op.input_desc.add().CopyFrom(ln_dx.desc)
         op.input_desc[-1].name = "ln_dx"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "ln_dx"
     op.input.append(query_dx.tensor)
@@ -35892,6 +35956,7 @@ def AttentionLnQKV(x: Tensor,
         op.input_desc.add().CopyFrom(bias_query.desc)
         op.input_desc[-1].name = "bias_query"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias_query"
     if bias_key is not None:
@@ -35899,6 +35964,7 @@ def AttentionLnQKV(x: Tensor,
         op.input_desc.add().CopyFrom(bias_key.desc)
         op.input_desc[-1].name = "bias_key"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias_key"
     if bias_value is not None:
@@ -35906,6 +35972,7 @@ def AttentionLnQKV(x: Tensor,
         op.input_desc.add().CopyFrom(bias_value.desc)
         op.input_desc[-1].name = "bias_value"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias_value"
 
@@ -36059,6 +36126,7 @@ def MatMul(x1: Tensor,
         op.input_desc.add().CopyFrom(bias.desc)
         op.input_desc[-1].name = "bias"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias"
 
@@ -36120,6 +36188,7 @@ def MatMulV2(x1: Tensor,
         op.input_desc.add().CopyFrom(bias.desc)
         op.input_desc[-1].name = "bias"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias"
     if offset_w is not None:
@@ -36127,6 +36196,7 @@ def MatMulV2(x1: Tensor,
         op.input_desc.add().CopyFrom(offset_w.desc)
         op.input_desc[-1].name = "offset_w"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "offset_w"
 
@@ -36196,6 +36266,7 @@ def MatMulV2Compress(x1: Tensor,
         op.input_desc.add().CopyFrom(bias.desc)
         op.input_desc[-1].name = "bias"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias"
     if offset_w is not None:
@@ -36203,6 +36274,7 @@ def MatMulV2Compress(x1: Tensor,
         op.input_desc.add().CopyFrom(offset_w.desc)
         op.input_desc[-1].name = "offset_w"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "offset_w"
 
@@ -36376,6 +36448,7 @@ def BatchMatMulV2(x1: Tensor,
         op.input_desc.add().CopyFrom(bias.desc)
         op.input_desc[-1].name = "bias"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias"
     if offset_w is not None:
@@ -36383,6 +36456,7 @@ def BatchMatMulV2(x1: Tensor,
         op.input_desc.add().CopyFrom(offset_w.desc)
         op.input_desc[-1].name = "offset_w"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "offset_w"
 
@@ -36729,6 +36803,7 @@ def AttentionScore(query: Tensor,
         op.input_desc.add().CopyFrom(drop_mask.desc)
         op.input_desc[-1].name = "drop_mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "drop_mask"
 
@@ -36824,6 +36899,7 @@ def AttentionScoreGrad(attention_score: Tensor,
         op.input_desc.add().CopyFrom(drop_mask.desc)
         op.input_desc[-1].name = "drop_mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "drop_mask"
 
@@ -37598,6 +37674,7 @@ def FullyConnection(x: Tensor,
         op.input_desc.add().CopyFrom(b.desc)
         op.input_desc[-1].name = "b"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "b"
     if offset_w is not None:
@@ -37605,6 +37682,7 @@ def FullyConnection(x: Tensor,
         op.input_desc.add().CopyFrom(offset_w.desc)
         op.input_desc[-1].name = "offset_w"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "offset_w"
 
@@ -37675,6 +37753,7 @@ def FullyConnectionCompress(x: Tensor,
         op.input_desc.add().CopyFrom(b.desc)
         op.input_desc[-1].name = "b"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "b"
     if offset_w is not None:
@@ -37682,6 +37761,7 @@ def FullyConnectionCompress(x: Tensor,
         op.input_desc.add().CopyFrom(offset_w.desc)
         op.input_desc[-1].name = "offset_w"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "offset_w"
 
@@ -37740,6 +37820,7 @@ def ConfusionMatrix(labels: Tensor,
         op.input_desc.add().CopyFrom(weights.desc)
         op.input_desc[-1].name = "weights"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "weights"
 
@@ -38883,6 +38964,7 @@ def SwinAttentionScore(query: Tensor,
         op.input_desc.add().CopyFrom(padding_mask1.desc)
         op.input_desc[-1].name = "padding_mask1"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "padding_mask1"
     if padding_mask2 is not None:
@@ -38890,6 +38972,7 @@ def SwinAttentionScore(query: Tensor,
         op.input_desc.add().CopyFrom(padding_mask2.desc)
         op.input_desc[-1].name = "padding_mask2"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "padding_mask2"
     op.input.append(scale.tensor)
@@ -38900,6 +38983,7 @@ def SwinAttentionScore(query: Tensor,
         op.input_desc.add().CopyFrom(drop_mask.desc)
         op.input_desc[-1].name = "drop_mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "drop_mask"
 
@@ -39125,6 +39209,7 @@ def BatchNorm(x: Tensor,
         op.input_desc.add().CopyFrom(mean.desc)
         op.input_desc[-1].name = "mean"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "mean"
     if variance is not None:
@@ -39132,6 +39217,7 @@ def BatchNorm(x: Tensor,
         op.input_desc.add().CopyFrom(variance.desc)
         op.input_desc[-1].name = "variance"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "variance"
 
@@ -39532,6 +39618,7 @@ def BatchNorm3D(x: Tensor,
         op.input_desc.add().CopyFrom(mean.desc)
         op.input_desc[-1].name = "mean"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "mean"
     if variance is not None:
@@ -39539,6 +39626,7 @@ def BatchNorm3D(x: Tensor,
         op.input_desc.add().CopyFrom(variance.desc)
         op.input_desc[-1].name = "variance"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "variance"
 
@@ -39622,6 +39710,7 @@ def BatchNormExt2(input_x: Tensor,
         op.input_desc.add().CopyFrom(input_mean.desc)
         op.input_desc[-1].name = "input_mean"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "input_mean"
     if input_variance is not None:
@@ -39629,6 +39718,7 @@ def BatchNormExt2(input_x: Tensor,
         op.input_desc.add().CopyFrom(input_variance.desc)
         op.input_desc[-1].name = "input_variance"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "input_variance"
 
@@ -39720,6 +39810,7 @@ def BatchNormGrad(y_backprop: Tensor,
         op.input_desc.add().CopyFrom(reserve_space_3.desc)
         op.input_desc[-1].name = "reserve_space_3"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "reserve_space_3"
 
@@ -39968,6 +40059,7 @@ def BNInference(x: Tensor,
         op.input_desc.add().CopyFrom(scale.desc)
         op.input_desc[-1].name = "scale"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "scale"
     if offset is not None:
@@ -39975,6 +40067,7 @@ def BNInference(x: Tensor,
         op.input_desc.add().CopyFrom(offset.desc)
         op.input_desc[-1].name = "offset"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "offset"
 
@@ -40044,6 +40137,7 @@ def BNInferenceD(x: Tensor,
         op.input_desc.add().CopyFrom(scale.desc)
         op.input_desc[-1].name = "scale"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "scale"
     if b is not None:
@@ -40051,6 +40145,7 @@ def BNInferenceD(x: Tensor,
         op.input_desc.add().CopyFrom(b.desc)
         op.input_desc[-1].name = "b"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "b"
 
@@ -40360,6 +40455,7 @@ def DepthwiseConv2D(x: Tensor,
         op.input_desc.add().CopyFrom(bias.desc)
         op.input_desc[-1].name = "bias"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias"
     if offset_w is not None:
@@ -40367,6 +40463,7 @@ def DepthwiseConv2D(x: Tensor,
         op.input_desc.add().CopyFrom(offset_w.desc)
         op.input_desc[-1].name = "offset_w"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "offset_w"
 
@@ -40606,6 +40703,7 @@ def Deconvolution(x: Tensor,
         op.input_desc.add().CopyFrom(bias.desc)
         op.input_desc[-1].name = "bias"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias"
     if offset_w is not None:
@@ -40613,6 +40711,7 @@ def Deconvolution(x: Tensor,
         op.input_desc.add().CopyFrom(offset_w.desc)
         op.input_desc[-1].name = "offset_w"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "offset_w"
 
@@ -40814,6 +40913,7 @@ def Conv2D(x: Tensor,
         op.input_desc.add().CopyFrom(bias.desc)
         op.input_desc[-1].name = "bias"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias"
     if offset_w is not None:
@@ -40821,6 +40921,7 @@ def Conv2D(x: Tensor,
         op.input_desc.add().CopyFrom(offset_w.desc)
         op.input_desc[-1].name = "offset_w"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "offset_w"
 
@@ -40902,6 +41003,7 @@ def Conv2DCompress(x: Tensor,
         op.input_desc.add().CopyFrom(bias.desc)
         op.input_desc[-1].name = "bias"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias"
     if offset_w is not None:
@@ -40909,6 +41011,7 @@ def Conv2DCompress(x: Tensor,
         op.input_desc.add().CopyFrom(offset_w.desc)
         op.input_desc[-1].name = "offset_w"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "offset_w"
 
@@ -40989,6 +41092,7 @@ def DeformableConv2D(x: Tensor,
         op.input_desc.add().CopyFrom(bias.desc)
         op.input_desc[-1].name = "bias"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias"
 
@@ -41064,6 +41168,7 @@ def Conv3D(x: Tensor,
         op.input_desc.add().CopyFrom(bias.desc)
         op.input_desc[-1].name = "bias"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias"
     if offset_w is not None:
@@ -41071,6 +41176,7 @@ def Conv3D(x: Tensor,
         op.input_desc.add().CopyFrom(offset_w.desc)
         op.input_desc[-1].name = "offset_w"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "offset_w"
 
@@ -41286,6 +41392,7 @@ def LSTM(x: Tensor,
         op.input_desc.add().CopyFrom(x_static.desc)
         op.input_desc[-1].name = "x_static"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "x_static"
     if h_0 is not None:
@@ -41293,6 +41400,7 @@ def LSTM(x: Tensor,
         op.input_desc.add().CopyFrom(h_0.desc)
         op.input_desc[-1].name = "h_0"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "h_0"
     if c_0 is not None:
@@ -41300,6 +41408,7 @@ def LSTM(x: Tensor,
         op.input_desc.add().CopyFrom(c_0.desc)
         op.input_desc[-1].name = "c_0"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "c_0"
     if w_x_static is not None:
@@ -41307,6 +41416,7 @@ def LSTM(x: Tensor,
         op.input_desc.add().CopyFrom(w_x_static.desc)
         op.input_desc[-1].name = "w_x_static"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "w_x_static"
 
@@ -41514,6 +41624,7 @@ def Conv3DTranspose(input_size: Tensor,
         op.input_desc.add().CopyFrom(bias.desc)
         op.input_desc[-1].name = "bias"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias"
     if offset_w is not None:
@@ -41521,6 +41632,7 @@ def Conv3DTranspose(input_size: Tensor,
         op.input_desc.add().CopyFrom(offset_w.desc)
         op.input_desc[-1].name = "offset_w"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "offset_w"
 
@@ -41601,6 +41713,7 @@ def Conv3DTransposeD(x: Tensor,
         op.input_desc.add().CopyFrom(bias.desc)
         op.input_desc[-1].name = "bias"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias"
     if offset_w is not None:
@@ -41608,6 +41721,7 @@ def Conv3DTransposeD(x: Tensor,
         op.input_desc.add().CopyFrom(offset_w.desc)
         op.input_desc[-1].name = "offset_w"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "offset_w"
 
@@ -41693,6 +41807,7 @@ def Conv2DTranspose(input_size: Tensor,
         op.input_desc.add().CopyFrom(bias.desc)
         op.input_desc[-1].name = "bias"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias"
     if offset_w is not None:
@@ -41700,6 +41815,7 @@ def Conv2DTranspose(input_size: Tensor,
         op.input_desc.add().CopyFrom(offset_w.desc)
         op.input_desc[-1].name = "offset_w"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "offset_w"
 
@@ -41780,6 +41896,7 @@ def Conv2DTransposeD(x: Tensor,
         op.input_desc.add().CopyFrom(bias.desc)
         op.input_desc[-1].name = "bias"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias"
     if offset_w is not None:
@@ -41787,6 +41904,7 @@ def Conv2DTransposeD(x: Tensor,
         op.input_desc.add().CopyFrom(offset_w.desc)
         op.input_desc[-1].name = "offset_w"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "offset_w"
 
@@ -42057,6 +42175,7 @@ def FixPipe(x1: Tensor,
         op.input_desc.add().CopyFrom(x2.desc)
         op.input_desc[-1].name = "x2"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "x2"
     if quant_scale_0 is not None:
@@ -42064,6 +42183,7 @@ def FixPipe(x1: Tensor,
         op.input_desc.add().CopyFrom(quant_scale_0.desc)
         op.input_desc[-1].name = "quant_scale_0"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "quant_scale_0"
     if relu_weight_0 is not None:
@@ -42071,6 +42191,7 @@ def FixPipe(x1: Tensor,
         op.input_desc.add().CopyFrom(relu_weight_0.desc)
         op.input_desc[-1].name = "relu_weight_0"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "relu_weight_0"
     if clip_value_0 is not None:
@@ -42078,6 +42199,7 @@ def FixPipe(x1: Tensor,
         op.input_desc.add().CopyFrom(clip_value_0.desc)
         op.input_desc[-1].name = "clip_value_0"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "clip_value_0"
     if quant_scale_1 is not None:
@@ -42085,6 +42207,7 @@ def FixPipe(x1: Tensor,
         op.input_desc.add().CopyFrom(quant_scale_1.desc)
         op.input_desc[-1].name = "quant_scale_1"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "quant_scale_1"
     if relu_weight_1 is not None:
@@ -42092,6 +42215,7 @@ def FixPipe(x1: Tensor,
         op.input_desc.add().CopyFrom(relu_weight_1.desc)
         op.input_desc[-1].name = "relu_weight_1"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "relu_weight_1"
     if clip_value_1 is not None:
@@ -42099,6 +42223,7 @@ def FixPipe(x1: Tensor,
         op.input_desc.add().CopyFrom(clip_value_1.desc)
         op.input_desc[-1].name = "clip_value_1"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "clip_value_1"
     if anti_quant_scale is not None:
@@ -42106,6 +42231,7 @@ def FixPipe(x1: Tensor,
         op.input_desc.add().CopyFrom(anti_quant_scale.desc)
         op.input_desc[-1].name = "anti_quant_scale"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "anti_quant_scale"
     if anti_quant_offset is not None:
@@ -42113,6 +42239,7 @@ def FixPipe(x1: Tensor,
         op.input_desc.add().CopyFrom(anti_quant_offset.desc)
         op.input_desc[-1].name = "anti_quant_offset"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "anti_quant_offset"
 
@@ -42531,6 +42658,7 @@ def ROIAlignGrad(ydiff: Tensor,
         op.input_desc.add().CopyFrom(rois_n.desc)
         op.input_desc[-1].name = "rois_n"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "rois_n"
 
@@ -42598,6 +42726,7 @@ def ROIAlign(features: Tensor,
         op.input_desc.add().CopyFrom(rois_n.desc)
         op.input_desc[-1].name = "rois_n"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "rois_n"
 
@@ -42975,6 +43104,7 @@ def FSRDetectionOutput(rois: Tensor,
         op.input_desc.add().CopyFrom(actual_rois_num.desc)
         op.input_desc[-1].name = "actual_rois_num"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "actual_rois_num"
 
@@ -44124,6 +44254,7 @@ def ROIPooling(x: Tensor,
         op.input_desc.add().CopyFrom(roi_actual_num.desc)
         op.input_desc[-1].name = "roi_actual_num"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "roi_actual_num"
 
@@ -44751,6 +44882,7 @@ def BatchMultiClassNonMaxSuppression(boxes: Tensor,
         op.input_desc.add().CopyFrom(clip_window.desc)
         op.input_desc[-1].name = "clip_window"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "clip_window"
     if num_valid_boxes is not None:
@@ -44758,6 +44890,7 @@ def BatchMultiClassNonMaxSuppression(boxes: Tensor,
         op.input_desc.add().CopyFrom(num_valid_boxes.desc)
         op.input_desc[-1].name = "num_valid_boxes"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "num_valid_boxes"
 
@@ -45067,6 +45200,7 @@ def NonMaxSuppressionV6(boxes: Tensor,
         op.input_desc.add().CopyFrom(max_output_size.desc)
         op.input_desc[-1].name = "max_output_size"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "max_output_size"
     if iou_threshold is not None:
@@ -45074,6 +45208,7 @@ def NonMaxSuppressionV6(boxes: Tensor,
         op.input_desc.add().CopyFrom(iou_threshold.desc)
         op.input_desc[-1].name = "iou_threshold"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "iou_threshold"
     if score_threshold is not None:
@@ -45081,6 +45216,7 @@ def NonMaxSuppressionV6(boxes: Tensor,
         op.input_desc.add().CopyFrom(score_threshold.desc)
         op.input_desc[-1].name = "score_threshold"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "score_threshold"
 
@@ -45144,6 +45280,7 @@ def NonMaxSuppressionV7(boxes: Tensor,
         op.input_desc.add().CopyFrom(max_output_size.desc)
         op.input_desc[-1].name = "max_output_size"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "max_output_size"
     if iou_threshold is not None:
@@ -45151,6 +45288,7 @@ def NonMaxSuppressionV7(boxes: Tensor,
         op.input_desc.add().CopyFrom(iou_threshold.desc)
         op.input_desc[-1].name = "iou_threshold"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "iou_threshold"
     if score_threshold is not None:
@@ -45158,6 +45296,7 @@ def NonMaxSuppressionV7(boxes: Tensor,
         op.input_desc.add().CopyFrom(score_threshold.desc)
         op.input_desc[-1].name = "score_threshold"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "score_threshold"
     if index_id is not None:
@@ -45165,6 +45304,7 @@ def NonMaxSuppressionV7(boxes: Tensor,
         op.input_desc.add().CopyFrom(index_id.desc)
         op.input_desc[-1].name = "index_id"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "index_id"
 
@@ -45236,6 +45376,7 @@ def RoiExtractor(
         op.input_desc.add().CopyFrom(index.desc)
         op.input_desc[-1].name = "index"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "index"
 
@@ -46187,6 +46328,7 @@ def RoiPoolingWithArgMax(x: Tensor,
         op.input_desc.add().CopyFrom(roi_actual_num.desc)
         op.input_desc[-1].name = "roi_actual_num"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "roi_actual_num"
 
@@ -46263,6 +46405,7 @@ def RoiPoolingGradWithArgMax(grad: Tensor,
         op.input_desc.add().CopyFrom(roi_actual_num.desc)
         op.input_desc[-1].name = "roi_actual_num"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "roi_actual_num"
     op.input.append(argmax.tensor)
@@ -46700,6 +46843,7 @@ def SigmoidCrossEntropyWithLogitsV2(predict: Tensor,
         op.input_desc.add().CopyFrom(weight.desc)
         op.input_desc[-1].name = "weight"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "weight"
     if pos_weight is not None:
@@ -46707,6 +46851,7 @@ def SigmoidCrossEntropyWithLogitsV2(predict: Tensor,
         op.input_desc.add().CopyFrom(pos_weight.desc)
         op.input_desc[-1].name = "pos_weight"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "pos_weight"
 
@@ -46764,6 +46909,7 @@ def SigmoidFocalLoss(pred: Tensor,
         op.input_desc.add().CopyFrom(weight.desc)
         op.input_desc[-1].name = "weight"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "weight"
 
@@ -46823,6 +46969,7 @@ def SoftmaxFocalLoss(pred: Tensor,
         op.input_desc.add().CopyFrom(weight.desc)
         op.input_desc[-1].name = "weight"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "weight"
 
@@ -46971,6 +47118,7 @@ def BinaryCrossEntropy(x: Tensor,
         op.input_desc.add().CopyFrom(weight.desc)
         op.input_desc[-1].name = "weight"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "weight"
 
@@ -47030,6 +47178,7 @@ def BinaryCrossEntropyGrad(x: Tensor,
         op.input_desc.add().CopyFrom(weight.desc)
         op.input_desc[-1].name = "weight"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "weight"
 
@@ -48252,6 +48401,7 @@ def Scale(x: Tensor,
         op.input_desc.add().CopyFrom(bias.desc)
         op.input_desc[-1].name = "bias"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias"
 
@@ -48549,6 +48699,7 @@ def InstanceNormV2(x: Tensor,
         op.input_desc.add().CopyFrom(gamma.desc)
         op.input_desc[-1].name = "gamma"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "gamma"
     if beta is not None:
@@ -48556,6 +48707,7 @@ def InstanceNormV2(x: Tensor,
         op.input_desc.add().CopyFrom(beta.desc)
         op.input_desc[-1].name = "beta"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "beta"
     if mean is not None:
@@ -48563,6 +48715,7 @@ def InstanceNormV2(x: Tensor,
         op.input_desc.add().CopyFrom(mean.desc)
         op.input_desc[-1].name = "mean"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "mean"
     if variance is not None:
@@ -48570,6 +48723,7 @@ def InstanceNormV2(x: Tensor,
         op.input_desc.add().CopyFrom(variance.desc)
         op.input_desc[-1].name = "variance"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "variance"
 
@@ -48635,6 +48789,7 @@ def INInferV2D(x: Tensor,
         op.input_desc.add().CopyFrom(gamma.desc)
         op.input_desc[-1].name = "gamma"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "gamma"
     if beta is not None:
@@ -48642,6 +48797,7 @@ def INInferV2D(x: Tensor,
         op.input_desc.add().CopyFrom(beta.desc)
         op.input_desc[-1].name = "beta"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "beta"
     if mean is not None:
@@ -48649,6 +48805,7 @@ def INInferV2D(x: Tensor,
         op.input_desc.add().CopyFrom(mean.desc)
         op.input_desc[-1].name = "mean"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "mean"
     if variance is not None:
@@ -48656,6 +48813,7 @@ def INInferV2D(x: Tensor,
         op.input_desc.add().CopyFrom(variance.desc)
         op.input_desc[-1].name = "variance"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "variance"
     if variance_sqrt is not None:
@@ -48663,6 +48821,7 @@ def INInferV2D(x: Tensor,
         op.input_desc.add().CopyFrom(variance_sqrt.desc)
         op.input_desc[-1].name = "variance_sqrt"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "variance_sqrt"
 
@@ -49369,6 +49528,7 @@ def SigmoidCrossEntropyWithLogitsGradV2(predict: Tensor,
         op.input_desc.add().CopyFrom(weight.desc)
         op.input_desc[-1].name = "weight"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "weight"
     if pos_weight is not None:
@@ -49376,6 +49536,7 @@ def SigmoidCrossEntropyWithLogitsGradV2(predict: Tensor,
         op.input_desc.add().CopyFrom(pos_weight.desc)
         op.input_desc[-1].name = "pos_weight"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "pos_weight"
 
@@ -49730,6 +49891,7 @@ def SoftmaxCrossEntropyLoss(scores: Tensor,
         op.input_desc.add().CopyFrom(weights.desc)
         op.input_desc[-1].name = "weights"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "weights"
 
@@ -49857,6 +50019,7 @@ def SigmoidFocalLossGrad(pred: Tensor,
         op.input_desc.add().CopyFrom(weight.desc)
         op.input_desc[-1].name = "weight"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "weight"
 
@@ -49922,6 +50085,7 @@ def SoftmaxFocalLossGrad(pred: Tensor,
         op.input_desc.add().CopyFrom(weight.desc)
         op.input_desc[-1].name = "weight"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "weight"
 
@@ -50226,6 +50390,7 @@ def AvgPool3DD(x: Tensor,
         op.input_desc.add().CopyFrom(filter.desc)
         op.input_desc[-1].name = "filter"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "filter"
     if multiplier is not None:
@@ -50233,6 +50398,7 @@ def AvgPool3DD(x: Tensor,
         op.input_desc.add().CopyFrom(multiplier.desc)
         op.input_desc[-1].name = "multiplier"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "multiplier"
 
@@ -50371,6 +50537,7 @@ def AvgPool3DGradD(grads: Tensor,
         op.input_desc.add().CopyFrom(filter.desc)
         op.input_desc[-1].name = "filter"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "filter"
     if multiplier is not None:
@@ -50378,6 +50545,7 @@ def AvgPool3DGradD(grads: Tensor,
         op.input_desc.add().CopyFrom(multiplier.desc)
         op.input_desc[-1].name = "multiplier"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "multiplier"
 
@@ -51369,6 +51537,7 @@ def AvgPoolV2GradD(input_grad: Tensor,
         op.input_desc.add().CopyFrom(mean_matrix.desc)
         op.input_desc[-1].name = "mean_matrix"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "mean_matrix"
     if kernel_matrix is not None:
@@ -51376,6 +51545,7 @@ def AvgPoolV2GradD(input_grad: Tensor,
         op.input_desc.add().CopyFrom(kernel_matrix.desc)
         op.input_desc[-1].name = "kernel_matrix"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "kernel_matrix"
 
@@ -52875,6 +53045,7 @@ def FusedBatchNormV2(x: Tensor,
         op.input_desc.add().CopyFrom(mean.desc)
         op.input_desc[-1].name = "mean"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "mean"
     if variance is not None:
@@ -52882,6 +53053,7 @@ def FusedBatchNormV2(x: Tensor,
         op.input_desc.add().CopyFrom(variance.desc)
         op.input_desc[-1].name = "variance"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "variance"
 
@@ -53152,6 +53324,7 @@ def MultiHeadAttention(query: Tensor,
         op.input_desc.add().CopyFrom(query_bias.desc)
         op.input_desc[-1].name = "query_bias"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "query_bias"
     if key_bias is not None:
@@ -53159,6 +53332,7 @@ def MultiHeadAttention(query: Tensor,
         op.input_desc.add().CopyFrom(key_bias.desc)
         op.input_desc[-1].name = "key_bias"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "key_bias"
     if value_bias is not None:
@@ -53166,6 +53340,7 @@ def MultiHeadAttention(query: Tensor,
         op.input_desc.add().CopyFrom(value_bias.desc)
         op.input_desc[-1].name = "value_bias"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "value_bias"
     if out_proj_bias is not None:
@@ -53173,6 +53348,7 @@ def MultiHeadAttention(query: Tensor,
         op.input_desc.add().CopyFrom(out_proj_bias.desc)
         op.input_desc[-1].name = "out_proj_bias"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "out_proj_bias"
     if dropout_mask_input is not None:
@@ -53180,6 +53356,7 @@ def MultiHeadAttention(query: Tensor,
         op.input_desc.add().CopyFrom(dropout_mask_input.desc)
         op.input_desc[-1].name = "dropout_mask_input"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "dropout_mask_input"
 
@@ -53347,6 +53524,7 @@ def MultiHeadAttentionGrad(query: Tensor,
         op.input_desc.add().CopyFrom(dropout_mask.desc)
         op.input_desc[-1].name = "dropout_mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "dropout_mask"
 
@@ -59241,6 +59419,7 @@ def MishGrad(grad: Tensor,
         op.input_desc.add().CopyFrom(tanhx.desc)
         op.input_desc[-1].name = "tanhx"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "tanhx"
 
@@ -59837,6 +60016,7 @@ def ThresholdV2(x: Tensor,
         op.input_desc.add().CopyFrom(value.desc)
         op.input_desc[-1].name = "value"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "value"
 
@@ -60244,6 +60424,7 @@ def BatchEnqueue(x: Tensor,
         op.input_desc.add().CopyFrom(queue_id.desc)
         op.input_desc[-1].name = "queue_id"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "queue_id"
 
@@ -60600,6 +60781,7 @@ def Dequeue(queue_id: Optional[Tensor],
         op.input_desc.add().CopyFrom(queue_id.desc)
         op.input_desc[-1].name = "queue_id"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "queue_id"
 
@@ -61122,6 +61304,7 @@ def PadV3(x: Tensor,
         op.input_desc.add().CopyFrom(constant_values.desc)
         op.input_desc[-1].name = "constant_values"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "constant_values"
 
@@ -62375,6 +62558,7 @@ def AscendDequantS16(x0: Tensor,
         op.input_desc.add().CopyFrom(x1.desc)
         op.input_desc[-1].name = "x1"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "x1"
 
@@ -62475,6 +62659,7 @@ def AscendRequantS16(x0: Tensor,
         op.input_desc.add().CopyFrom(x1.desc)
         op.input_desc[-1].name = "x1"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "x1"
 
@@ -64047,6 +64232,7 @@ def StatelessDropOutGenMask(shape: Tensor,
         op.input_desc.add().CopyFrom(offset.desc)
         op.input_desc[-1].name = "offset"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "offset"
 
@@ -66418,6 +66604,7 @@ def INInferV2(x: Tensor,
         op.input_desc.add().CopyFrom(gamma.desc)
         op.input_desc[-1].name = "gamma"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "gamma"
     if beta is not None:
@@ -66425,6 +66612,7 @@ def INInferV2(x: Tensor,
         op.input_desc.add().CopyFrom(beta.desc)
         op.input_desc[-1].name = "beta"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "beta"
     if mean is not None:
@@ -66432,6 +66620,7 @@ def INInferV2(x: Tensor,
         op.input_desc.add().CopyFrom(mean.desc)
         op.input_desc[-1].name = "mean"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "mean"
     if variance is not None:
@@ -66439,6 +66628,7 @@ def INInferV2(x: Tensor,
         op.input_desc.add().CopyFrom(variance.desc)
         op.input_desc[-1].name = "variance"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "variance"
 
@@ -66551,6 +66741,7 @@ def INTrainingUpdateV2(x: Tensor,
         op.input_desc.add().CopyFrom(gamma.desc)
         op.input_desc[-1].name = "gamma"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "gamma"
     if beta is not None:
@@ -66558,6 +66749,7 @@ def INTrainingUpdateV2(x: Tensor,
         op.input_desc.add().CopyFrom(beta.desc)
         op.input_desc[-1].name = "beta"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "beta"
     if mean is not None:
@@ -66565,6 +66757,7 @@ def INTrainingUpdateV2(x: Tensor,
         op.input_desc.add().CopyFrom(mean.desc)
         op.input_desc[-1].name = "mean"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "mean"
     if variance is not None:
@@ -66572,6 +66765,7 @@ def INTrainingUpdateV2(x: Tensor,
         op.input_desc.add().CopyFrom(variance.desc)
         op.input_desc[-1].name = "variance"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "variance"
 
@@ -66859,6 +67053,7 @@ def GNTrainingUpdate(x: Tensor,
         op.input_desc.add().CopyFrom(scale.desc)
         op.input_desc[-1].name = "scale"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "scale"
     if offset is not None:
@@ -66866,6 +67061,7 @@ def GNTrainingUpdate(x: Tensor,
         op.input_desc.add().CopyFrom(offset.desc)
         op.input_desc[-1].name = "offset"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "offset"
     if mean is not None:
@@ -66873,6 +67069,7 @@ def GNTrainingUpdate(x: Tensor,
         op.input_desc.add().CopyFrom(mean.desc)
         op.input_desc[-1].name = "mean"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "mean"
     if variance is not None:
@@ -66880,6 +67077,7 @@ def GNTrainingUpdate(x: Tensor,
         op.input_desc.add().CopyFrom(variance.desc)
         op.input_desc[-1].name = "variance"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "variance"
 
@@ -67481,6 +67679,7 @@ def BasicLSTMCell(x: Tensor,
         op.input_desc.add().CopyFrom(mask.desc)
         op.input_desc[-1].name = "mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "mask"
 
@@ -67710,6 +67909,7 @@ def _DynamicRNNGrad(x: Tensor,
         op.input_desc.add().CopyFrom(tanhct.desc)
         op.input_desc[-1].name = "tanhct"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "tanhct"
     if seq_length is not None:
@@ -67717,6 +67917,7 @@ def _DynamicRNNGrad(x: Tensor,
         op.input_desc.add().CopyFrom(seq_length.desc)
         op.input_desc[-1].name = "seq_length"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "seq_length"
     if mask is not None:
@@ -67724,6 +67925,7 @@ def _DynamicRNNGrad(x: Tensor,
         op.input_desc.add().CopyFrom(mask.desc)
         op.input_desc[-1].name = "mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "mask"
     if wci is not None:
@@ -67731,6 +67933,7 @@ def _DynamicRNNGrad(x: Tensor,
         op.input_desc.add().CopyFrom(wci.desc)
         op.input_desc[-1].name = "wci"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "wci"
     if wcf is not None:
@@ -67738,6 +67941,7 @@ def _DynamicRNNGrad(x: Tensor,
         op.input_desc.add().CopyFrom(wcf.desc)
         op.input_desc[-1].name = "wcf"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "wcf"
     if wco is not None:
@@ -67745,6 +67949,7 @@ def _DynamicRNNGrad(x: Tensor,
         op.input_desc.add().CopyFrom(wco.desc)
         op.input_desc[-1].name = "wco"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "wco"
 
@@ -67882,6 +68087,7 @@ def DynamicRNN(x: Tensor,
         op.input_desc.add().CopyFrom(seq_length.desc)
         op.input_desc[-1].name = "seq_length"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "seq_length"
     if init_h is not None:
@@ -67889,6 +68095,7 @@ def DynamicRNN(x: Tensor,
         op.input_desc.add().CopyFrom(init_h.desc)
         op.input_desc[-1].name = "init_h"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "init_h"
     if init_c is not None:
@@ -67896,6 +68103,7 @@ def DynamicRNN(x: Tensor,
         op.input_desc.add().CopyFrom(init_c.desc)
         op.input_desc[-1].name = "init_c"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "init_c"
     if wci is not None:
@@ -67903,6 +68111,7 @@ def DynamicRNN(x: Tensor,
         op.input_desc.add().CopyFrom(wci.desc)
         op.input_desc[-1].name = "wci"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "wci"
     if wcf is not None:
@@ -67910,6 +68119,7 @@ def DynamicRNN(x: Tensor,
         op.input_desc.add().CopyFrom(wcf.desc)
         op.input_desc[-1].name = "wcf"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "wcf"
     if wco is not None:
@@ -67917,6 +68127,7 @@ def DynamicRNN(x: Tensor,
         op.input_desc.add().CopyFrom(wco.desc)
         op.input_desc[-1].name = "wco"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "wco"
     if mask is not None:
@@ -67924,6 +68135,7 @@ def DynamicRNN(x: Tensor,
         op.input_desc.add().CopyFrom(mask.desc)
         op.input_desc[-1].name = "mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "mask"
 
@@ -68065,6 +68277,7 @@ def DynamicRNNV2(x: Tensor,
         op.input_desc.add().CopyFrom(b.desc)
         op.input_desc[-1].name = "b"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "b"
     if seq_length is not None:
@@ -68072,6 +68285,7 @@ def DynamicRNNV2(x: Tensor,
         op.input_desc.add().CopyFrom(seq_length.desc)
         op.input_desc[-1].name = "seq_length"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "seq_length"
     if init_h is not None:
@@ -68079,6 +68293,7 @@ def DynamicRNNV2(x: Tensor,
         op.input_desc.add().CopyFrom(init_h.desc)
         op.input_desc[-1].name = "init_h"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "init_h"
     if init_c is not None:
@@ -68086,6 +68301,7 @@ def DynamicRNNV2(x: Tensor,
         op.input_desc.add().CopyFrom(init_c.desc)
         op.input_desc[-1].name = "init_c"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "init_c"
     if wci is not None:
@@ -68093,6 +68309,7 @@ def DynamicRNNV2(x: Tensor,
         op.input_desc.add().CopyFrom(wci.desc)
         op.input_desc[-1].name = "wci"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "wci"
     if wcf is not None:
@@ -68100,6 +68317,7 @@ def DynamicRNNV2(x: Tensor,
         op.input_desc.add().CopyFrom(wcf.desc)
         op.input_desc[-1].name = "wcf"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "wcf"
     if wco is not None:
@@ -68107,6 +68325,7 @@ def DynamicRNNV2(x: Tensor,
         op.input_desc.add().CopyFrom(wco.desc)
         op.input_desc[-1].name = "wco"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "wco"
     if mask is not None:
@@ -68114,6 +68333,7 @@ def DynamicRNNV2(x: Tensor,
         op.input_desc.add().CopyFrom(mask.desc)
         op.input_desc[-1].name = "mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "mask"
 
@@ -68321,6 +68541,7 @@ def _DynamicRNNV2Grad(x: Tensor,
         op.input_desc.add().CopyFrom(seq_length.desc)
         op.input_desc[-1].name = "seq_length"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "seq_length"
     if wci is not None:
@@ -68328,6 +68549,7 @@ def _DynamicRNNV2Grad(x: Tensor,
         op.input_desc.add().CopyFrom(wci.desc)
         op.input_desc[-1].name = "wci"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "wci"
     if wcf is not None:
@@ -68335,6 +68557,7 @@ def _DynamicRNNV2Grad(x: Tensor,
         op.input_desc.add().CopyFrom(wcf.desc)
         op.input_desc[-1].name = "wcf"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "wcf"
     if wco is not None:
@@ -68342,6 +68565,7 @@ def _DynamicRNNV2Grad(x: Tensor,
         op.input_desc.add().CopyFrom(wco.desc)
         op.input_desc[-1].name = "wco"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "wco"
     if mask is not None:
@@ -68349,6 +68573,7 @@ def _DynamicRNNV2Grad(x: Tensor,
         op.input_desc.add().CopyFrom(mask.desc)
         op.input_desc[-1].name = "mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "mask"
 
@@ -68495,6 +68720,7 @@ def DynamicRNNV3(x: Tensor,
         op.input_desc.add().CopyFrom(seq_length.desc)
         op.input_desc[-1].name = "seq_length"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "seq_length"
     if init_h is not None:
@@ -68502,6 +68728,7 @@ def DynamicRNNV3(x: Tensor,
         op.input_desc.add().CopyFrom(init_h.desc)
         op.input_desc[-1].name = "init_h"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "init_h"
     if init_c is not None:
@@ -68509,6 +68736,7 @@ def DynamicRNNV3(x: Tensor,
         op.input_desc.add().CopyFrom(init_c.desc)
         op.input_desc[-1].name = "init_c"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "init_c"
     if wci is not None:
@@ -68516,6 +68744,7 @@ def DynamicRNNV3(x: Tensor,
         op.input_desc.add().CopyFrom(wci.desc)
         op.input_desc[-1].name = "wci"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "wci"
     if wcf is not None:
@@ -68523,6 +68752,7 @@ def DynamicRNNV3(x: Tensor,
         op.input_desc.add().CopyFrom(wcf.desc)
         op.input_desc[-1].name = "wcf"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "wcf"
     if wco is not None:
@@ -68530,6 +68760,7 @@ def DynamicRNNV3(x: Tensor,
         op.input_desc.add().CopyFrom(wco.desc)
         op.input_desc[-1].name = "wco"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "wco"
     if mask is not None:
@@ -68537,6 +68768,7 @@ def DynamicRNNV3(x: Tensor,
         op.input_desc.add().CopyFrom(mask.desc)
         op.input_desc[-1].name = "mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "mask"
     if real_mask is not None:
@@ -68544,6 +68776,7 @@ def DynamicRNNV3(x: Tensor,
         op.input_desc.add().CopyFrom(real_mask.desc)
         op.input_desc[-1].name = "real_mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "real_mask"
     if project is not None:
@@ -68551,6 +68784,7 @@ def DynamicRNNV3(x: Tensor,
         op.input_desc.add().CopyFrom(project.desc)
         op.input_desc[-1].name = "project"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "project"
 
@@ -68669,6 +68903,7 @@ def DynamicLSTMV2(x: Tensor,
         op.input_desc.add().CopyFrom(w_xc_x_static.desc)
         op.input_desc[-1].name = "w_xc_x_static"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "w_xc_x_static"
     if h0 is not None:
@@ -68676,6 +68911,7 @@ def DynamicLSTMV2(x: Tensor,
         op.input_desc.add().CopyFrom(h0.desc)
         op.input_desc[-1].name = "h0"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "h0"
     if c0 is not None:
@@ -68683,6 +68919,7 @@ def DynamicLSTMV2(x: Tensor,
         op.input_desc.add().CopyFrom(c0.desc)
         op.input_desc[-1].name = "c0"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "c0"
     if wci is not None:
@@ -68690,6 +68927,7 @@ def DynamicLSTMV2(x: Tensor,
         op.input_desc.add().CopyFrom(wci.desc)
         op.input_desc[-1].name = "wci"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "wci"
     if wcf is not None:
@@ -68697,6 +68935,7 @@ def DynamicLSTMV2(x: Tensor,
         op.input_desc.add().CopyFrom(wcf.desc)
         op.input_desc[-1].name = "wcf"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "wcf"
     if wco is not None:
@@ -68704,6 +68943,7 @@ def DynamicLSTMV2(x: Tensor,
         op.input_desc.add().CopyFrom(wco.desc)
         op.input_desc[-1].name = "wco"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "wco"
     if mask is not None:
@@ -68711,6 +68951,7 @@ def DynamicLSTMV2(x: Tensor,
         op.input_desc.add().CopyFrom(mask.desc)
         op.input_desc[-1].name = "mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "mask"
 
@@ -68824,6 +69065,7 @@ def LSTMInputGrad(w: Tensor,
         op.input_desc.add().CopyFrom(tanhct.desc)
         op.input_desc[-1].name = "tanhct"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "tanhct"
 
@@ -68999,6 +69241,7 @@ def BasicLSTMCellInputGrad(dgate: Tensor,
         op.input_desc.add().CopyFrom(dropout_mask.desc)
         op.input_desc[-1].name = "dropout_mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "dropout_mask"
 
@@ -69207,6 +69450,7 @@ def RNN(x: Tensor,
         op.input_desc.add().CopyFrom(x_static.desc)
         op.input_desc[-1].name = "x_static"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "x_static"
     if h_0 is not None:
@@ -69214,6 +69458,7 @@ def RNN(x: Tensor,
         op.input_desc.add().CopyFrom(h_0.desc)
         op.input_desc[-1].name = "h_0"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "h_0"
     op.input.append(w_xh.tensor)
@@ -69227,6 +69472,7 @@ def RNN(x: Tensor,
         op.input_desc.add().CopyFrom(w_sh.desc)
         op.input_desc[-1].name = "w_sh"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "w_sh"
     op.input.append(w_hh.tensor)
@@ -69307,6 +69553,7 @@ def BasicRNNCell(x: Tensor,
         op.input_desc.add().CopyFrom(cont.desc)
         op.input_desc[-1].name = "cont"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "cont"
     if w_xh_x_static is not None:
@@ -69314,6 +69561,7 @@ def BasicRNNCell(x: Tensor,
         op.input_desc.add().CopyFrom(w_xh_x_static.desc)
         op.input_desc[-1].name = "w_xh_x_static"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "w_xh_x_static"
     if h_0 is not None:
@@ -69321,6 +69569,7 @@ def BasicRNNCell(x: Tensor,
         op.input_desc.add().CopyFrom(h_0.desc)
         op.input_desc[-1].name = "h_0"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "h_0"
     op.input.append(w_xh.tensor)
@@ -69334,6 +69583,7 @@ def BasicRNNCell(x: Tensor,
         op.input_desc.add().CopyFrom(w_hh.desc)
         op.input_desc[-1].name = "w_hh"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "w_hh"
     op.input.append(w_ho.tensor)
@@ -69433,6 +69683,7 @@ def DynamicGRU(x: Tensor,
         op.input_desc.add().CopyFrom(seq_length.desc)
         op.input_desc[-1].name = "seq_length"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "seq_length"
     if init_h is not None:
@@ -69440,6 +69691,7 @@ def DynamicGRU(x: Tensor,
         op.input_desc.add().CopyFrom(init_h.desc)
         op.input_desc[-1].name = "init_h"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "init_h"
 
@@ -69547,6 +69799,7 @@ def DynamicGRUV2(x: Tensor,
         op.input_desc.add().CopyFrom(bias_input.desc)
         op.input_desc[-1].name = "bias_input"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias_input"
     if bias_hidden is not None:
@@ -69554,6 +69807,7 @@ def DynamicGRUV2(x: Tensor,
         op.input_desc.add().CopyFrom(bias_hidden.desc)
         op.input_desc[-1].name = "bias_hidden"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias_hidden"
     if seq_length is not None:
@@ -69561,6 +69815,7 @@ def DynamicGRUV2(x: Tensor,
         op.input_desc.add().CopyFrom(seq_length.desc)
         op.input_desc[-1].name = "seq_length"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "seq_length"
     if init_h is not None:
@@ -69568,6 +69823,7 @@ def DynamicGRUV2(x: Tensor,
         op.input_desc.add().CopyFrom(init_h.desc)
         op.input_desc[-1].name = "init_h"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "init_h"
 
@@ -69673,6 +69929,7 @@ def DynamicGRUV2Hidden(x_weight_input: Tensor,
         op.input_desc.add().CopyFrom(bias_hidden.desc)
         op.input_desc[-1].name = "bias_hidden"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias_hidden"
     if seq_length is not None:
@@ -69680,6 +69937,7 @@ def DynamicGRUV2Hidden(x_weight_input: Tensor,
         op.input_desc.add().CopyFrom(seq_length.desc)
         op.input_desc[-1].name = "seq_length"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "seq_length"
     if init_h is not None:
@@ -69687,6 +69945,7 @@ def DynamicGRUV2Hidden(x_weight_input: Tensor,
         op.input_desc.add().CopyFrom(init_h.desc)
         op.input_desc[-1].name = "init_h"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "init_h"
 
@@ -69806,6 +70065,7 @@ def DynamicAUGRU(x: Tensor,
         op.input_desc.add().CopyFrom(bias_input.desc)
         op.input_desc[-1].name = "bias_input"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias_input"
     if bias_hidden is not None:
@@ -69813,6 +70073,7 @@ def DynamicAUGRU(x: Tensor,
         op.input_desc.add().CopyFrom(bias_hidden.desc)
         op.input_desc[-1].name = "bias_hidden"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "bias_hidden"
     if seq_length is not None:
@@ -69820,6 +70081,7 @@ def DynamicAUGRU(x: Tensor,
         op.input_desc.add().CopyFrom(seq_length.desc)
         op.input_desc[-1].name = "seq_length"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "seq_length"
     if init_h is not None:
@@ -69827,6 +70089,7 @@ def DynamicAUGRU(x: Tensor,
         op.input_desc.add().CopyFrom(init_h.desc)
         op.input_desc[-1].name = "init_h"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "init_h"
 
@@ -69995,6 +70258,7 @@ def DynamicAUGRUGrad(x: Tensor,
         op.input_desc.add().CopyFrom(seq_length.desc)
         op.input_desc[-1].name = "seq_length"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "seq_length"
     if mask is not None:
@@ -70002,6 +70266,7 @@ def DynamicAUGRUGrad(x: Tensor,
         op.input_desc.add().CopyFrom(mask.desc)
         op.input_desc[-1].name = "mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "mask"
 
@@ -70129,6 +70394,7 @@ def AUGRUHiddenGradCell(weight_att: Tensor,
         op.input_desc.add().CopyFrom(seq_length.desc)
         op.input_desc[-1].name = "seq_length"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "seq_length"
 
@@ -70269,6 +70535,7 @@ def DynamicGRUV2Grad(x: Tensor,
         op.input_desc.add().CopyFrom(seq_length.desc)
         op.input_desc[-1].name = "seq_length"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "seq_length"
     if mask is not None:
@@ -70276,6 +70543,7 @@ def DynamicGRUV2Grad(x: Tensor,
         op.input_desc.add().CopyFrom(mask.desc)
         op.input_desc[-1].name = "mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "mask"
 
@@ -70387,6 +70655,7 @@ def GRUV2HiddenGradCell(dh_pre_t: Tensor,
         op.input_desc.add().CopyFrom(seq_length.desc)
         op.input_desc[-1].name = "seq_length"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "seq_length"
 
@@ -70493,6 +70762,7 @@ def DynamicGRUCellGrad(dh_pre_t: Tensor,
         op.input_desc.add().CopyFrom(seq_length.desc)
         op.input_desc[-1].name = "seq_length"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "seq_length"
 
@@ -70631,6 +70901,7 @@ def CommonLSTM(x: Tensor,
         op.input_desc.add().CopyFrom(b.desc)
         op.input_desc[-1].name = "b"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "b"
     if sequence_lens is not None:
@@ -70638,6 +70909,7 @@ def CommonLSTM(x: Tensor,
         op.input_desc.add().CopyFrom(sequence_lens.desc)
         op.input_desc[-1].name = "sequence_lens"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "sequence_lens"
     if initial_h is not None:
@@ -70645,6 +70917,7 @@ def CommonLSTM(x: Tensor,
         op.input_desc.add().CopyFrom(initial_h.desc)
         op.input_desc[-1].name = "initial_h"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "initial_h"
     if initial_c is not None:
@@ -70652,6 +70925,7 @@ def CommonLSTM(x: Tensor,
         op.input_desc.add().CopyFrom(initial_c.desc)
         op.input_desc[-1].name = "initial_c"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "initial_c"
     if p is not None:
@@ -70659,6 +70933,7 @@ def CommonLSTM(x: Tensor,
         op.input_desc.add().CopyFrom(p.desc)
         op.input_desc[-1].name = "p"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "p"
 
@@ -70794,6 +71069,7 @@ def CommonGRU(x: Tensor,
         op.input_desc.add().CopyFrom(b.desc)
         op.input_desc[-1].name = "b"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "b"
     if sequence_lens is not None:
@@ -70801,6 +71077,7 @@ def CommonGRU(x: Tensor,
         op.input_desc.add().CopyFrom(sequence_lens.desc)
         op.input_desc[-1].name = "sequence_lens"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "sequence_lens"
     if initial_h is not None:
@@ -70808,6 +71085,7 @@ def CommonGRU(x: Tensor,
         op.input_desc.add().CopyFrom(initial_h.desc)
         op.input_desc[-1].name = "initial_h"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "initial_h"
 
@@ -70882,6 +71160,7 @@ def EmbeddingBag(weight: Tensor,
         op.input_desc.add().CopyFrom(offsets.desc)
         op.input_desc[-1].name = "offsets"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "offsets"
     if per_sample_weights is not None:
@@ -70889,6 +71168,7 @@ def EmbeddingBag(weight: Tensor,
         op.input_desc.add().CopyFrom(per_sample_weights.desc)
         op.input_desc[-1].name = "per_sample_weights"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "per_sample_weights"
 
@@ -70968,6 +71248,7 @@ def LSTMP(x: Tensor,
         op.input_desc.add().CopyFrom(real_mask.desc)
         op.input_desc[-1].name = "real_mask"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "real_mask"
     if init_h is not None:
@@ -70975,6 +71256,7 @@ def LSTMP(x: Tensor,
         op.input_desc.add().CopyFrom(init_h.desc)
         op.input_desc[-1].name = "init_h"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "init_h"
     if init_c is not None:
@@ -70982,6 +71264,7 @@ def LSTMP(x: Tensor,
         op.input_desc.add().CopyFrom(init_c.desc)
         op.input_desc[-1].name = "init_c"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "init_c"
 
@@ -74669,6 +74952,7 @@ def InplaceIndexAdd(var: Tensor,
         op.input_desc.add().CopyFrom(alpha.desc)
         op.input_desc[-1].name = "alpha"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "alpha"
 
@@ -74916,6 +75200,7 @@ def StridedSliceV2(x: Tensor,
         op.input_desc.add().CopyFrom(axes.desc)
         op.input_desc[-1].name = "axes"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "axes"
     if strides is not None:
@@ -74923,6 +75208,7 @@ def StridedSliceV2(x: Tensor,
         op.input_desc.add().CopyFrom(strides.desc)
         op.input_desc[-1].name = "strides"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "strides"
 
@@ -75254,6 +75540,7 @@ def StridedSliceV3(x: Tensor,
         op.input_desc.add().CopyFrom(axes.desc)
         op.input_desc[-1].name = "axes"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "axes"
     if strides is not None:
@@ -75261,6 +75548,7 @@ def StridedSliceV3(x: Tensor,
         op.input_desc.add().CopyFrom(strides.desc)
         op.input_desc[-1].name = "strides"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "strides"
 
@@ -75513,6 +75801,7 @@ def SearchSorted(sorted_sequence: Tensor,
         op.input_desc.add().CopyFrom(sorter.desc)
         op.input_desc[-1].name = "sorter"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "sorter"
 
@@ -77836,6 +78125,7 @@ def STFT(x: Tensor,
         op.input_desc.add().CopyFrom(window.desc)
         op.input_desc[-1].name = "window"
     else:
+        op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "window"
 
