@@ -79,3 +79,9 @@ def specific_op_output_layout(
     for index in indices:
         op.node.attr['output_layout_info'].list.i.append(index)
         op.node.attr['output_layout_info'].list.s.append(compat_as_bytes(layout))
+
+
+def force_op_unknown_shape(op: Tensor):
+    op.node.attr['_force_unknown_shape'].b = True
+    return op
+

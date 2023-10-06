@@ -26,7 +26,7 @@ from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type, torch_typ
 from torchair.ge_concrete_graph.ge_graph import is_sym, sym_to_ge_dtype
 from torchair.core.backend import TorchNpuGraph
 from torchair.configs.compiler_config import CompilerConfig
-from torchair.ge_concrete_graph.utils import convert_to_tensorboard
+from torchair.ge_concrete_graph.utils import convert_to_tensorboard, force_op_unknown_shape
 from torchair.ge_concrete_graph.supported_declaration import Support
 from . import ge_apis as ge
 
@@ -324,7 +324,8 @@ class GeConcreteGraph(ConcreteGraphBase):
                 npu_syms.append(sym)
         if all([isinstance(sym, int) for sym in npu_syms]):
             return npu_syms
-        return ge.Pack(npu_syms, N=len(npu_syms), axis=0)
+        # force unknown shape with ge.Pack when parse symlist
+        return force_op_unknown_shape(ge.Pack(npu_syms, N=len(npu_syms), axis=0))
 
     def parse_node(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
         if hasattr(target, "_ge_converter"):

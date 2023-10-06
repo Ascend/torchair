@@ -20,6 +20,7 @@ from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
 from torchair.ge_concrete_graph.ge_graph import DataType, Tensor, TensorSpec
+from torchair.ge_concrete_graph.utils import force_op_unknown_shape
 
 
 @register_fx_node_ge_converter(torch.ops.aten.sym_size.default)
@@ -39,4 +40,5 @@ def conveter_aten_sym_size_int(self: Tensor, dim: int, meta_outputs: TensorSpec 
         except:
             pass  # Not static dim size
     shape = ge.Shape(self, dtype=DataType.DT_INT64)
-    return ge.Gather(shape, dim)
+    # force unknown shape with ge.Gather when parse symsize
+    return force_op_unknown_shape(ge.Gather(shape, dim))
