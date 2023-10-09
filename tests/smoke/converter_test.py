@@ -36,7 +36,7 @@ def as_tensor(spec: _TypedTensor):
 
 
 def _eager_aten_call(*args, aten_op, **kwargs):
-    return aten_op(*args, **kwargs)
+    return aten_op(*args, **kwargs).clone()
 
 
 def _assemble_testcase_inputs(testcase):
