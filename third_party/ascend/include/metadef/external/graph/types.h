@@ -81,6 +81,7 @@ enum DataType {
   DT_UINT1 = 30,           // uint1 type
   DT_INT2 = 31,            // int2 type
   DT_UINT2 = 32,           // uint2 type
+  DT_COMPLEX32 = 33,       // complex32 type
   DT_MAX                   // Mark the boundaries of data types
 };
 

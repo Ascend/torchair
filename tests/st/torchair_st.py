@@ -49,6 +49,21 @@ class TorchairSt(unittest.TestCase):
         for i in range(2):
             model(x, y)
 
+    def test_complex_type(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                return torch.add(x, x)
+        model = torch.compile(Model(), backend=npu_backend, dynamic=True)
+        x = torch.randn(2).to(torch.complex32)
+        self.assertEqual(model(x).dtype, torch.complex32)
+        x = torch.randn(2).to(torch.complex64)
+        self.assertEqual(model(x).dtype, torch.complex64)
+        x = torch.randn(2).to(torch.complex128)
+        self.assertEqual(model(x).dtype, torch.complex128)
+
     def test_bf16(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -192,7 +207,7 @@ class TorchairSt(unittest.TestCase):
             logger.debug(f'    has_unpack: {has_unpack}')
             logger.debug(f'    has_seed: {has_seed}')
             assert num_data == 2 and has_offset and has_seed and has_unpack
-        
+
         def call_sub(self, *args, **kwargs):
             check_graph(self)
             return args
@@ -206,7 +221,7 @@ class TorchairSt(unittest.TestCase):
             def __init__(self):
                 super().__init__()
                 self.dp = torch.nn.Dropout(0.3)
-            
+
             def forward(self, x):
                 y = self.dp(x)
                 b1 = torch.ops.aten.bernoulli.p(x, 0.8)

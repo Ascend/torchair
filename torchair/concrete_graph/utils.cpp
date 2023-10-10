@@ -173,6 +173,9 @@ Status AtDtypeToGeDtype(const c10::ScalarType &dtype, ge::DataType &ge_dtype) {
     ATEN2GE_MAP_TYPE(c10::ScalarType::Float, ge::DataType::DT_FLOAT);
     ATEN2GE_MAP_TYPE(c10::ScalarType::Double, ge::DataType::DT_DOUBLE);
     ATEN2GE_MAP_TYPE(c10::ScalarType::BFloat16, ge::DataType::DT_BF16);
+    ATEN2GE_MAP_TYPE(c10::ScalarType::ComplexHalf, ge::DataType::DT_COMPLEX32);
+    ATEN2GE_MAP_TYPE(c10::ScalarType::ComplexFloat, ge::DataType::DT_COMPLEX64);
+    ATEN2GE_MAP_TYPE(c10::ScalarType::ComplexDouble, ge::DataType::DT_COMPLEX128);
     default:
       return Status::Error("Unsupported torch type %d by ge", dtype);
   }
@@ -194,6 +197,9 @@ Status GeDtypeToAtDtype(const ge::DataType &ge_dtype, c10::ScalarType &dtype) {
     GE2ATEN_MAP_TYPE(ge::DataType::DT_FLOAT, c10::ScalarType::Float);
     GE2ATEN_MAP_TYPE(ge::DataType::DT_DOUBLE, c10::ScalarType::Double);
     GE2ATEN_MAP_TYPE(ge::DataType::DT_BF16, c10::ScalarType::BFloat16);
+    GE2ATEN_MAP_TYPE(ge::DataType::DT_COMPLEX32, c10::ScalarType::ComplexHalf);
+    GE2ATEN_MAP_TYPE(ge::DataType::DT_COMPLEX64, c10::ScalarType::ComplexFloat);
+    GE2ATEN_MAP_TYPE(ge::DataType::DT_COMPLEX128, c10::ScalarType::ComplexDouble);
     default:
       return Status::Error("Unsupported ge type %d by torch", ge_dtype);
   }

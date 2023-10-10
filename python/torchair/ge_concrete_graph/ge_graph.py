@@ -51,7 +51,8 @@ class DataType:
     DT_UINT1 = 30           # uint1 type
     DT_INT2 = 31            # int2 type
     DT_UINT2 = 32           # uint2 type
-    DT_MAX = 33             # Mark the boundaries of data types
+    DT_COMPLEX32 = 33       # complex64 type
+    DT_MAX = 34             # Mark the boundaries of data types
 
 
 def torch_type_to_ge_type(dtype, m=DataType):
@@ -77,6 +78,8 @@ def torch_type_to_ge_type(dtype, m=DataType):
         return m.DT_DOUBLE
     if dtype == torch.bfloat16:
         return m.DT_BF16
+    if dtype == torch.complex32:
+        return m.DT_COMPLEX32
     if dtype == torch.complex64:
         return m.DT_COMPLEX64
     if dtype == torch.complex128:
@@ -137,6 +140,8 @@ def _ge_dtype_to_ge_proto_dtype(dtype: DataType) -> np.dtype:
         return ProtoDataType.DT_BF16
     if dtype == DataType.DT_INT16:
         return ProtoDataType.DT_INT16
+    if dtype == DataType.DT_COMPLEX32:
+        return ProtoDataType.DT_COMPLEX32
     if dtype == DataType.DT_COMPLEX64:
         return ProtoDataType.DT_COMPLEX64
     if dtype == DataType.DT_COMPLEX128:

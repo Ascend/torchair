@@ -36,6 +36,7 @@ enum DataType
     DT_UINT1 = 29;             // uint1 type
     DT_INT2 = 30;              // int2 type
     DT_UINT2 = 31;             // uint2 type
+    DT_COMPLEX32 = 32;         // complex32 type
 }
 
 message AttrDef
