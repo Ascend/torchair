@@ -368,17 +368,6 @@ class GeGraph(object):
 
         self._python_code += f'{self.format_python_code(outputs_name, func_name, args, kwargs)}\n'
 
-    def add_python_code(self, args, kwargs, outputs, func):
-        args = parse_inputs(args)
-        kwargs = parse_kwargs(kwargs)
-        func_name = f"ge.{func.__name__}"
-
-        outputs_name = ', '.join(parse_inputs(outputs, mode='output'))
-        if func.__name__ == 'NetOutput':
-            outputs_name = f'\n{outputs_name}'
-
-        self._python_code += f'{self.format_python_code(outputs_name, func_name, args, kwargs)}\n'
-
     @property
     def python_code(self):
         return self._python_code
