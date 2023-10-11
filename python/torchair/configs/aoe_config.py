@@ -14,5 +14,5 @@ class AoeConfig(NpuBaseConfig):
 
     def as_dict(self):
         if self.aoe_mode.value is None:
-            return {}
+            return {}, {}
         return super().as_dict()

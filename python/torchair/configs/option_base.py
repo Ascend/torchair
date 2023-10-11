@@ -69,8 +69,9 @@ class NpuBaseConfig:
             super().__setattr__(key, value)
 
     def as_dict(self):
-        """Return updated option in dictionary format"""
-        options = {}
+        """Return updated local options and global options in dictionary format"""
+        local_options = {}
+        global_options = {}
         for k, v in self.__dict__.items():
             if k in self._fixed_attrs:
                 if isinstance(v, DeprecatedValue) and v.value is not None:
@@ -80,9 +81,11 @@ class NpuBaseConfig:
                     else:
                         print(f"[warning][npu fx compiler] Option '{k}' is deprecated and will be removed "
                               f"in future version. Please use '{v.replacement}' instead.")
-                    options.update({k: v.value})
+                    local_options.update({k: v.value})
                 elif isinstance(v, OptionValue) and v.value is not None:
-                    options.update({k: v.value})
+                    local_options.update({k: v.value})
                 elif isinstance(v, NpuBaseConfig):
-                    options.update(v.as_dict())
-        return options
+                    local_option, global_option = v.as_dict()
+                    local_options.update(local_option)
+                    global_options.update(global_option)
+        return local_options, global_options

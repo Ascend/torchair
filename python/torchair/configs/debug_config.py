@@ -49,4 +49,4 @@ class DebugConfig(NpuBaseConfig):
         super(DebugConfig, self).__init__()
 
     def as_dict(self):
-        return {}
+        return {}, {}

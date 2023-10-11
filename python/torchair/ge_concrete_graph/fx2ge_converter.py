@@ -358,10 +358,13 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._fx_inputs_mapping = fx_inputs_mapping
 
     def compile(self) -> Any:
-        compile_options = self._config.as_dict()
-        compile_options["ge.exec.formatMode"] = "1"
-        logger.info("compile options:")
-        for k, v in compile_options.items():
+        local_compile_options, global_compile_options = self._config.as_dict()
+        local_compile_options["ge.exec.formatMode"] = "1"
+        logger.info("local compile options:")
+        for k, v in local_compile_options.items():
+            logger.info(f"  {k}: {v}")
+        logger.info("global compile options:")
+        for k, v in global_compile_options.items():
             logger.info(f"  {k}: {v}")
 
         self.graph.attr["_input_placements"].list.i.extend(
@@ -374,16 +377,19 @@ class GeConcreteGraph(ConcreteGraphBase):
 
         _normalize_ge_graph(self.graph)
 
-        initialize_graph_engine()
+        initialize_graph_engine(global_compile_options)
 
         self._executor.load(self.graph.SerializeToString(),
-                            compile_options)
+                            local_compile_options)
         self._executor.compile()
 
     def export(self, inputs) -> Any:
-        compile_options = self._config.as_dict()
-        logger.info("export options:")
-        for k, v in compile_options.items():
+        local_options, global_options = self._config.as_dict()
+        logger.info("local export options:")
+        for k, v in local_options.items():
+            logger.info(f"  {k}: {v}")
+        logger.info("global export options:")
+        for k, v in global_options.items():
             logger.info(f"  {k}: {v}")
 
         file_path = self._config.export_config.export_path_dir
@@ -401,7 +407,7 @@ class GeConcreteGraph(ConcreteGraphBase):
 
         dump(self._config.debug.graph_dump.full_path(file_path + "/dynamo"), export_graph)
 
-        _torchair.export(export_graph.SerializeToString(), compile_options)
+        _torchair.export(export_graph.SerializeToString(), local_options)
 
     @property
     def should_auto_tune(self) -> bool:
