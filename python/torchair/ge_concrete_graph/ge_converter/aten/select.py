@@ -45,12 +45,5 @@ def conveter_aten_select_int(
     self: Tensor, dim: int, index: Union[int, Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::select.int(Tensor(a) self, int dim, SymInt index) -> Tensor(a)"""
-    if isinstance(index, Tensor):
-        raise NotImplementedError("torch.ops.aten.select.int ge_converter is not implemented!")
 
-    offsets = [0 for _ in range(self.rank)]
-    size = [-1 for _ in range(self.rank)]
-    offsets[dim] = index
-    size[dim] = 1
-    slice = ge.Slice(self, offsets, size)
-    return ge.Squeeze(slice, axis=[dim])
+    return ge.GatherV2(self, index, [dim])
