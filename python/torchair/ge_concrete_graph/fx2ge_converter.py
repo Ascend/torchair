@@ -405,7 +405,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         
         _normalize_ge_graph(export_graph)
 
-        dump(self._config.debug.graph_dump.full_path(file_path + "/dynamo"), export_graph)
+        dump(file_path + "/dynamo.pbtxt", export_graph)
 
         _torchair.export(export_graph.SerializeToString(), local_options)
 

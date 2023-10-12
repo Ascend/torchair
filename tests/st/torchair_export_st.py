@@ -15,7 +15,7 @@ logger.setLevel(logging.DEBUG)
 class TorchairSt(unittest.TestCase):
     def test_export(self):
         def get_dumped_file_list(dir_path, file_extension='.pbtxt'):
-            return [i for i in os.listdir(dir_path) if i.startswith('dynamo_') and i.endswith(f'{file_extension}')]
+            return [i for i in os.listdir(dir_path) if i.startswith('dynamo') and i.endswith(f'{file_extension}')]
 
         class Model(torch.nn.Module):
 
@@ -49,7 +49,7 @@ class TorchairSt(unittest.TestCase):
 
     def test_export_with_sym(self):
         def get_dumped_file_list(dir_path, file_extension='.pbtxt'):
-            return [i for i in os.listdir(dir_path) if i.startswith('dynamo_') and i.endswith(f'{file_extension}')]
+            return [i for i in os.listdir(dir_path) if i.startswith('dynamo') and i.endswith(f'{file_extension}')]
 
         def get_inputnum_in_node(strgraph, opname):
             start_str = opname
@@ -95,7 +95,7 @@ class TorchairSt(unittest.TestCase):
 
     def test_export_with_allreduce(self):
         def get_dumped_file_list(dir_path, file_extension='.pbtxt'):
-            return [i for i in os.listdir(dir_path) if i.startswith('dynamo_') and i.endswith(f'{file_extension}')]
+            return [i for i in os.listdir(dir_path) if i.startswith('dynamo') and i.endswith(f'{file_extension}')]
 
         def mp():
             world_size = 2
