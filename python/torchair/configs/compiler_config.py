@@ -7,6 +7,8 @@ from torchair.configs.aoe_config import AoeConfig
 from torchair.configs.export_config import ExportConfig
 from torchair.configs.debug_config import DebugConfig
 from torchair.configs.dump_config import DataDumpConfig
+from torchair.configs.fusion_config import FusionConfig
+from torchair.configs.experimental_config import ExperimentalConfig
 
 
 class CompilerConfig(NpuBaseConfig):
@@ -18,5 +20,7 @@ class CompilerConfig(NpuBaseConfig):
         self.aoe_config = AoeConfig()
         self.export_config = ExportConfig()
         self.dump_config = DataDumpConfig()
+        self.fusion_config = FusionConfig()
+        self.experimental_config = ExperimentalConfig()
 
         super(CompilerConfig, self).__init__()
