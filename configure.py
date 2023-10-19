@@ -83,8 +83,8 @@ print('|'.join([
             print('Invalid python path: %s torch not installed.' %
                   python_bin_path)
             continue
-        if not compile_args[0].startswith(_COMPAT_TORCH_VERSION):
-            print('Invalid python path: %s compat torch version is %s'
+        if not compile_args[0] >= _COMPAT_TORCH_VERSION:
+            print('Invalid python path: %s expect torch version >= %s'
                   ' got %s.' % (python_bin_path, _COMPAT_TORCH_VERSION,
                                 compile_args[0]))
             continue

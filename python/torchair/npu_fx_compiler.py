@@ -1,5 +1,6 @@
 import functools
 import operator
+import copy
 from typing import List, Callable, Any, Dict, Tuple, Union
 
 import torch
@@ -18,6 +19,7 @@ from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph as Concre
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.configs.aot_config import AotConfig
 from torchair.fx_summary import summarize_fx_graph
+from torchair.fx_dumper import NpuFxDumper
 from torchair.utils.custom_aot_functions import aot_module_simplified_joint
 
 aten = torch.ops.aten
@@ -94,7 +96,8 @@ class NpuGraphConverter(Interpreter):
                 self._graph.graph._python_code += f'\n# File {file_line}\n'
             self._graph.graph._python_code += f'## FX Code: ' \
                 f'{self._graph.graph.format_python_code(n.name, n._pretty_print_target(n.target), n.args, n.kwargs)}\n'
-        return super().run_node(n)
+        with self._graph.converter_context(node=n):
+            return super().run_node(n)
 
     def run(self, *args, **kwargs):
         flat_args, _ = pytree.tree_flatten((args, kwargs))
@@ -303,7 +306,7 @@ class _NpuFxCompiler:
                 return gm
 
         concrete_graph: ConcreteGraphBase = NpuGraphConverter(
-            gm, graph=ConcreteGraph(self.config), garbage_collect_values=False).run(*example_inputs)
+            copy.deepcopy(gm), graph=ConcreteGraph(self.config), garbage_collect_values=False).run(*example_inputs)
 
         if not self.config.export_config.export_mode:
             if self.config.debug.graph_dump.enabled:
@@ -313,14 +316,24 @@ class _NpuFxCompiler:
             concrete_graph.compile()
             logger.info(f'end compile graph: {concrete_graph}')
 
-        def inference(*args, npu_compiled_gm, original_gm, **kwargs):
+        data_dumper = None
+        if self.config.debug.data_dump.enabled:
+            data_dumper = NpuFxDumper(gm, config=self.config.debug.data_dump)
+
+        def inference(*args, npu_compiled_gm, original_gm, data_dumper: NpuFxDumper, **kwargs):
             logger.debug('runtime inputs')
             for i, inp in enumerate(args):
                 logger.debug(f'  input {i}: {_summary(inp)}')
             for k, v in kwargs.items():
                 logger.debug(f'  input {k}: {_summary(v)}')
 
-            compiled_result = npu_compiled_gm(*args, **kwargs)
+            if data_dumper is not None:
+                logger.warning(f'When dumping data of FX Graph, npu run will be skipped, '
+                               'and FALLBACK to EAGER execution, once dump finished, please make sure to disable '
+                               'the data dump config to ensure that the graph is compiled and executed.')
+                compiled_result = data_dumper.run(*args, **kwargs)
+            else:
+                compiled_result = npu_compiled_gm(*args, **kwargs)
 
             logger.debug('runtime outputs')
             for i, inp in enumerate(compiled_result):
@@ -328,7 +341,7 @@ class _NpuFxCompiler:
 
             return compiled_result
 
-        return functools.partial(inference, npu_compiled_gm=concrete_graph, original_gm=gm)
+        return functools.partial(inference, npu_compiled_gm=concrete_graph, original_gm=gm, data_dumper=data_dumper)
 
 
 def get_compiler(compiler_config: CompilerConfig = None):
@@ -344,13 +357,13 @@ def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
     decompositions.update(custom_decompositions)
     compiler = get_compiler(compiler_config)
     if aot_config is not None and aot_config.enable_joint_graph:
-        return aot_module_simplified_joint(gm, example_inputs, 
-            compiler=compiler, decompositions=decompositions, 
+        return aot_module_simplified_joint(gm, example_inputs,
+            compiler=compiler, decompositions=decompositions,
             output_loss_index=int(aot_config.output_loss_index.value))
     return aot_module_simplified(gm, example_inputs, fw_compiler=compiler, decompositions=decompositions)
 
 
-def get_npu_backend(*, compiler_config: CompilerConfig = None, 
+def get_npu_backend(*, compiler_config: CompilerConfig = None,
                     aot_config: AotConfig = None, custom_decompositions: Dict = {}):
-    return functools.partial(_npu_backend, compiler_config=compiler_config, aot_config=aot_config, 
+    return functools.partial(_npu_backend, compiler_config=compiler_config, aot_config=aot_config,
         custom_decompositions=custom_decompositions)

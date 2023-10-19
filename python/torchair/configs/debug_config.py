@@ -17,19 +17,30 @@ class _DebugBase(NpuBaseConfig):
     def enabled(self):
         return self.type.value is not None
 
-    def full_path(self, name: str):
+    def full_path(self, name: str, *, with_timestap=True):
         if not self.enabled:
             return None
 
         path = "." if self.path.value is None else self.path.value
 
-        return f"{path}/{name}_{_timestamp()}.{self.type.value}"
+        if with_timestap:
+            return f"{path}/{name}_{_timestamp()}.{self.type.value}"
+        else:
+            return f"{path}/{name}.{self.type.value}"
 
 
 class _Dump(_DebugBase):
     def __init__(self):
         self.type = OptionValue(None, ["txt", "pbtxt", "py"])
         super(_Dump, self).__init__()
+
+
+class _DataDump(_DebugBase):
+    def __init__(self):
+        self.filter = None
+        self.type = OptionValue(None, ["npy"])
+        super(_DataDump, self).__init__()
+        self._fixed_attrs.append("filter")
 
 
 class _FxSummary(_DebugBase):
@@ -44,6 +55,7 @@ class DebugConfig(NpuBaseConfig):
 
     def __init__(self):
         self.graph_dump = _Dump()
+        self.data_dump = _DataDump()
         self.fx_summary = _FxSummary()
 
         super(DebugConfig, self).__init__()

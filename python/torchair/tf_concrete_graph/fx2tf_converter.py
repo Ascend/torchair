@@ -1,6 +1,7 @@
 from collections import defaultdict
 from typing import Any, Dict, List, Tuple, Union, Callable
 import functools
+from contextlib import contextmanager
 
 import torch
 from torch import Tensor
@@ -58,6 +59,10 @@ class TfConcreteGraph(ConcreteGraphBase):
 
     def context(self):
         return self._graph.as_default()
+
+    @contextmanager
+    def converter_context(self, *, node):
+        pass
 
     def parse_input(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
         if isinstance(meta_outputs, torch.SymInt):

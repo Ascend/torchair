@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Tuple, Union, Callable
 import functools
 import threading
 import contextlib
+from contextlib import contextmanager
 import inspect
 import sys
 import os
@@ -263,9 +264,18 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._executor = TorchNpuGraph(name)
         self._config = config
         self._auto_tune_times = 0
+        self._converter_ctx = threading.local()
 
     def context(self):
         return default_ge_graph(self.graph)
+
+    @contextmanager
+    def converter_context(self, *, node):
+        try:
+            self._converter_ctx.node = node
+            yield
+        finally:
+            self._converter_ctx.node = None
 
     @property
     def is_dynamic(self):
@@ -335,7 +345,16 @@ class GeConcreteGraph(ConcreteGraphBase):
         if converter is None:
             raise RuntimeError(f"Unsupported torch op {target} by ge")
         if converter.require_meta:
-            return converter(*args, **kwargs, meta_outputs=meta_outputs)
+            ge_outputs = converter(*args, **kwargs, meta_outputs=meta_outputs)
+            if meta_outputs is not None and hasattr(self._converter_ctx, 'node') and self._converter_ctx.node:
+                fx_tensor_prefix = f'{self._converter_ctx.node.name}-{self._converter_ctx.node.target}.OUTPUT'
+                if isinstance(ge_outputs, ge.Tensor):
+                    ge_outputs.desc.attr["_fx_tensor_name"].s = compat_as_bytes(f'{fx_tensor_prefix}.0')
+                elif isinstance(ge_outputs, (list, tuple)) and all([isinstance(v, ge.Tensor) for v in ge_outputs]):
+                    for i, ge_output in enumerate(ge_outputs):
+                        ge_output.desc.attr["_fx_tensor_name"].s = compat_as_bytes(f'{fx_tensor_prefix}.{i}')
+
+            return ge_outputs
         else:
             return converter(*args, **kwargs)
 
@@ -402,7 +421,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         num_weight_in_graph = _trans_export_protobuf(inputs, export_graph, file_path, self._config)
 
         _save_weight2file(inputs, file_path, self._config.export_config.weight_name, num_weight_in_graph)
-        
+
         _normalize_ge_graph(export_graph)
 
         dump(file_path + "/dynamo.pbtxt", export_graph)

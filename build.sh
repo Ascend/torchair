@@ -16,6 +16,7 @@ usage() {
   echo "    -u torchair utest"
   echo "    -s torchair stest"
   echo "    -c torchair ci build"
+  echo "    -i torchair ci build and install"
   echo "to be continued ..."
 }
 
@@ -32,7 +33,7 @@ checkopts() {
   ENABLE_TORCHAIR_ST="off"
   ENABLE_CI_BUILD="off"
   # Process the options
-  while getopts 'hj:vuscg:' opt
+  while getopts 'hj:vuiscg:' opt
   do
     case "${opt}" in
       h) usage
@@ -43,6 +44,7 @@ checkopts() {
       u) ENABLE_TORCHAIR_UT="on" ;;
       s) ENABLE_TORCHAIR_ST="on" ;;
       c) ENABLE_CI_BUILD="on" ;;
+      i) ENABLE_CI_BUILD_AND_INSTALL="on" ;;
       *) logging "Undefined option: ${opt}"
          usage
          exit 1 ;;
@@ -62,6 +64,12 @@ build_torchair() {
   local RELEASE_PATH="${TORCHAIR_ROOT}/output"
   mkdir -pv "${RELEASE_PATH}"
   mv "${TORCHAIR_ROOT}/build/dist/dist/torchair-0.1-py3-none-any.whl" ${RELEASE_PATH}
+}
+
+install_torchair() {
+  local RELEASE_PATH="${TORCHAIR_ROOT}/output"
+  pip3 uninstall torchair -y
+  pip3 install ${RELEASE_PATH}/*.whl
 }
 
 run_test() {
@@ -85,7 +93,7 @@ main() {
   PYTHON_BIN_PATH=$(which python3.8 || which python3)
   export TARGET_PYTHON_PATH=${PYTHON_BIN_PATH}
   if [[ "X$ASCEND_CUSTOM_PATH" = "X" ]]; then
-    if [[ "X$ENABLE_CI_BUILD" = "Xon" ]]; then
+    if [[ "X$ENABLE_CI_BUILD" = "Xon" || "X$ENABLE_CI_BUILD_AND_INSTALL" = "Xon" ]]; then
       echo "Building torchair with no ascned-sdk specified"
       export NO_ASCEND_SDK=1
     else
@@ -106,6 +114,11 @@ main() {
 
   if [[ "X$ENABLE_CI_BUILD" = "Xon" ]]; then
     build_torchair
+  fi
+
+  if [[ "X$ENABLE_CI_BUILD_AND_INSTALL" = "Xon" ]]; then
+    build_torchair
+    install_torchair
   fi
 
   if [[ "X$ENABLE_TORCHAIR_UT" = "Xon" ]]; then
