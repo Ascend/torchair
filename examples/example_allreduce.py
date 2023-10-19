@@ -12,7 +12,6 @@ import torchair.ge_concrete_graph.ge_converter.experimental.hcom_allreduce
 
 logger.setLevel(logging.DEBUG)
 config = CompilerConfig()
-config.aoe_config.aoe_mode = "1"
 config.debug.graph_dump.type = "pbtxt"
 
 npu_backend = tng.get_npu_backend(compiler_config=config)

@@ -11,7 +11,6 @@ aten = torch.ops.aten
 
 logger.setLevel(logging.DEBUG)
 config = CompilerConfig()
-config.aoe_config.aoe_mode = "1"
 config.debug.graph_dump.type = "pbtxt"
 
 custom_decompositions=get_decompositions([

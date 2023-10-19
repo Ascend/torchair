@@ -9,7 +9,6 @@ from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.configs.compiler_config import CompilerConfig
 
 config = CompilerConfig()
-config.aoe_config.aoe_mode = "1"
 config.debug.graph_dump.type = "pbtxt"
 
 npu_backend = tng.get_npu_backend(compiler_config=config)

@@ -13,7 +13,6 @@ from torchair.core.utils import logger
 logger.setLevel(logging.DEBUG)
 
 config = CompilerConfig()
-config.aoe_config.aoe_mode = "1"
 config.debug.graph_dump.type = "pbtxt"
 
 npu_backend = tng.get_npu_backend(compiler_config=config)
