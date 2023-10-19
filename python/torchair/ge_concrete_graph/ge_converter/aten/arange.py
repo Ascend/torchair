@@ -18,7 +18,7 @@ import torch
 from torch import Generator, contiguous_format, inf, strided
 from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
-from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, torch_type_to_ge_type, declare_supported
+from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
@@ -43,7 +43,7 @@ def conveter_aten_arange_default(
     return ge.Range(start, limit, delta)
 
 @declare_supported([
-    Support(0, 100, torch.int32),
+    Support(0, 100, dtype=torch.int32),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.arange.start)
 def conveter_aten_arange_start(
@@ -66,6 +66,10 @@ def conveter_aten_arange_start(
     return ge.Range(start, limit, delta)
 
 
+@declare_supported([
+    Support(0, 100, 1, dtype=torch.int32),
+    Support(0, 100, 2, dtype=torch.int32),
+])
 @register_fx_node_ge_converter(torch.ops.aten.arange.start_step)
 def conveter_aten_arange_start_step(
     start: Union[Number, Tensor],
@@ -79,7 +83,13 @@ def conveter_aten_arange_start_step(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::arange.start_step(Scalar start, Scalar end, Scalar step=1, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.arange.start_step ge_converter is not implemented!")
+    if dtype == torch.float16:
+        raise NotImplementedError("torch.ops.aten.arange.start_step converter currently not support dtype : float16")
+    target_dtype = dtype if dtype else meta_outputs.dtype
+    start, limit, delta = dtype_promote(start, end, step, target_dtype=target_dtype)
+
+    # layout, pin_memory and device have no effect on constructing graph.
+    return ge.Range(start, limit, delta)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.arange.start_out)

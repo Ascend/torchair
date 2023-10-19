@@ -18,16 +18,33 @@ import torch
 from torch import Generator, contiguous_format, inf, strided
 from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
-from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType
+from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
+    Support
+from torchair.ge_concrete_graph.utils import dtype_promote
 
 
+@declare_supported([
+    Support(F32(3, 4, 5), 0.0),
+    Support(F32(3, 4, 5), -1),
+    Support(F16(3, 4, 5), -1),
+    Support(I32(3, 4, 5), -1),
+])
 @register_fx_node_ge_converter(torch.ops.aten.clamp_min.default)
 def conveter_aten_clamp_min_default(
     self: Tensor, min: Union[Number, Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::clamp_min(Tensor self, Scalar min) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.clamp_min.default ge_converter is not implemented!")
+    if self.dtype == DataType.DT_INT32 or self.dtype == DataType.DT_INT64:
+        max_value = torch.iinfo(torch.int32).max
+    elif self.dtype == DataType.DT_FLOAT:
+        max_value = torch.finfo(torch.float32).max
+    else:
+        max_value = torch.finfo(torch.float16).max
+    min_value = dtype_promote(min, target_dtype=self.dtype)
+    max_value = dtype_promote(max_value, target_dtype=self.dtype)
+    return ge.ClipByValueV2(self, min_value, max_value)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.clamp_min.Tensor)

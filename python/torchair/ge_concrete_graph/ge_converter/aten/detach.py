@@ -25,4 +25,4 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 @register_fx_node_ge_converter(torch.ops.aten.detach.default)
 def conveter_aten_detach_default(self: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::detach(Tensor(a) self) -> Tensor(a)"""
-    raise NotImplementedError("torch.ops.aten.detach.default ge_converter is not implemented!")
+    return ge.Identity(self)

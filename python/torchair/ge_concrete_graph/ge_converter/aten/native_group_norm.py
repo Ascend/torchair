@@ -18,10 +18,18 @@ import torch
 from torch import Generator, contiguous_format, inf, strided
 from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
-from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
+from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
+    Support
+from torchair.ge_concrete_graph.utils import dtype_promote
 
 
+@declare_supported([
+    Support(F32(2, 320, 64, 64), None, None, 2, 320, 4096, 32, 1e-05),
+    Support(F16(2, 320, 64, 64), None, None, 2, 320, 4096, 32, 1e-05),
+    Support(F32(2, 320, 64, 64), F32(320), F32(320), 2, 320, 4096, 32, 1e-05),
+])
 @register_fx_node_ge_converter(torch.ops.aten.native_group_norm.default)
 def conveter_aten_native_group_norm_default(
     input: Tensor,
@@ -35,7 +43,16 @@ def conveter_aten_native_group_norm_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::native_group_norm(Tensor input, Tensor? weight, Tensor? bias, SymInt N, SymInt C, SymInt HxW, int group, float eps) -> (Tensor, Tensor, Tensor)"""
-    raise NotImplementedError("torch.ops.aten.native_group_norm.default ge_converter is not implemented!")
+    if weight is None:
+        one_value = dtype_promote(1, target_dtype=meta_outputs[0].dtype)
+        weight = ge.Fill([C], one_value)
+    if bias is None:
+        zero_value = dtype_promote(0, target_dtype=meta_outputs[0].dtype)
+        bias = ge.Fill([C], zero_value)
+    y, mean, variance = ge.GroupNorm(input, weight, bias, num_groups=group, eps=eps, is_training=True)
+    eps = dtype_promote(eps, target_dtype=meta_outputs[0].dtype)
+    rstd = ge.Rsqrt(ge.Add(variance, eps))
+    return y, mean, rstd
 
 
 @register_fx_node_ge_converter(torch.ops.aten.native_group_norm.out)
