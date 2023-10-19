@@ -36,7 +36,11 @@ def as_tensor(spec: _TypedTensor):
 
 
 def _eager_aten_call(*args, aten_op, **kwargs):
-    return aten_op(*args, **kwargs).clone()
+    outs = aten_op(*args, **kwargs)
+    if isinstance(outs, (list, tuple)):
+        return [out.clone() for out in outs]
+    else:
+        return outs.clone()
 
 
 def _assemble_testcase_inputs(testcase):
