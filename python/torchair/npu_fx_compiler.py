@@ -2,6 +2,7 @@ import functools
 import operator
 import copy
 from typing import List, Callable, Any, Dict, Tuple, Union
+import logging
 
 import torch
 from torch._subclasses.fake_tensor import is_fake
@@ -321,11 +322,12 @@ class _NpuFxCompiler:
             data_dumper = NpuFxDumper(gm, config=self.config.debug.data_dump)
 
         def inference(*args, npu_compiled_gm, original_gm, data_dumper: NpuFxDumper, **kwargs):
-            logger.debug('runtime inputs')
-            for i, inp in enumerate(args):
-                logger.debug(f'  input {i}: {_summary(inp)}')
-            for k, v in kwargs.items():
-                logger.debug(f'  input {k}: {_summary(v)}')
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug('runtime inputs')
+                for i, inp in enumerate(args):
+                    logger.debug(f'  input {i}: {_summary(inp)}')
+                for k, v in kwargs.items():
+                    logger.debug(f'  input {k}: {_summary(v)}')
 
             if data_dumper is not None:
                 logger.warning(f'When dumping data of FX Graph, npu run will be skipped, '
@@ -335,9 +337,10 @@ class _NpuFxCompiler:
             else:
                 compiled_result = npu_compiled_gm(*args, **kwargs)
 
-            logger.debug('runtime outputs')
-            for i, inp in enumerate(compiled_result):
-                logger.debug(f'  output {i}: {_summary(inp)}')
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug('runtime outputs')
+                for i, inp in enumerate(compiled_result):
+                    logger.debug(f'  output {i}: {_summary(inp)}')
 
             return compiled_result
 
