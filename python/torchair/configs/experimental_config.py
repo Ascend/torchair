@@ -12,6 +12,6 @@ class ExperimentalConfig(NpuBaseConfig):
 
     def as_dict(self):
         global_experiment_option = {}
-        if self.cc_parallel_enable:
+        if self.cc_parallel_enable.value is True:
             global_experiment_option["ge.enableEngineParallel"] = "1"
         return {}, global_experiment_option
