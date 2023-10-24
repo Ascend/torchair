@@ -16,9 +16,8 @@ class StaticNpuGraphExecutor : public Executor {
  private:
   Status AssembleInputs(const std::vector<at::Tensor> &inputs, std::vector<at::Tensor> &retain_tmp_device_inputs);
 
-  Status AssembleOutputs(const std::vector<c10::optional<at::Tensor>> &outputs);
-
-  Status RefreshGraphOutputs(std::vector<at::Tensor> &outputs);
+  Status AssembleOutputs(const std::vector<c10::optional<at::Tensor>> &assigned_outputs,
+                         std::vector<at::Tensor> &outputs);
 
   std::vector<ge::Tensor> inputs_holder_;
   std::vector<ge::Tensor> outputs_holder_;

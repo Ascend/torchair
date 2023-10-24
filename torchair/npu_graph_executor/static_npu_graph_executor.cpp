@@ -62,20 +62,13 @@ Status StaticNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &inp
   return Status::Success();
 }
 
-Status StaticNpuGraphExecutor::AssembleOutputs(const std::vector<c10::optional<at::Tensor>> &outputs) {
-  // TODO: fix this case if necessary
-  // This interface is only needed when partial outputs are specified by user,
-  // but it is not involved currently.
-  TNG_ASSERT(outputs.empty());
-  return Status::Success();
-}
-
-Status StaticNpuGraphExecutor::RefreshGraphOutputs(std::vector<at::Tensor> &outputs) {
+Status StaticNpuGraphExecutor::AssembleOutputs(const std::vector<c10::optional<at::Tensor>> &assigned_outputs,
+                                               std::vector<at::Tensor> &outputs) {
   bool is_first_run = outputs_holder_.empty();
   if (is_first_run) {
     const std::vector<ge::DataType> &output_ge_dtypes = graph_data_->output_dtypes;
     TNG_ASSERT_GE_OK(graph_data_->summary->GetOutputShapes(output_shapes_));
-    TNG_ASSERT(output_shapes_.size() == output_ge_dtypes.size());
+    TNG_ASSERT_EQ(output_shapes_.size(), output_ge_dtypes.size());
     outputs_holder_.resize(output_shapes_.size());
 
     for (size_t i = 0U; i < output_ge_dtypes.size(); ++i) {
@@ -86,12 +79,17 @@ Status StaticNpuGraphExecutor::RefreshGraphOutputs(std::vector<at::Tensor> &outp
     }
   }
 
-  outputs.resize(output_shapes_.size());
+  TNG_ASSERT(assigned_outputs.empty() || assigned_outputs.size() == outputs_holder_.size());
   outputs.clear();
   for (size_t i = 0U; i < output_shapes_.size(); ++i) {
-    auto output_i = at::empty(output_shapes_[i].GetDims(), output_options_[i]);
-    outputs.push_back(output_i);
-
+    if (!assigned_outputs.empty() && assigned_outputs[i].has_value()) {
+      outputs.push_back(assigned_outputs[i].value());
+      TNG_LOG(DEBUG) << "Assemble pre-assigned output " << i << " " << DebugString(outputs.back());
+    } else {
+      outputs.push_back(at::empty(output_shapes_[i].GetDims(), output_options_[i]));
+      TNG_LOG(DEBUG) << "Create empty output " << i << " " << DebugString(outputs.back());
+    }
+    auto &output_i = outputs.back();
     if (is_first_run) {
       TNG_RETURN_IF_ERROR(AtTensorToGeTensor(output_i, outputs_holder_[i]));
     } else {
@@ -110,9 +108,7 @@ Status StaticNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
   std::vector<at::Tensor> retain_tmp_device_inputs;
   TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, retain_tmp_device_inputs));
 
-  TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs));
-
-  TNG_RETURN_IF_ERROR(RefreshGraphOutputs(outputs));
+  TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs, outputs));
 
   if (stream == nullptr) {
     TNG_RETURN_IF_ERROR(GetCurrentStream(&stream));

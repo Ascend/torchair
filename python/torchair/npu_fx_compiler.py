@@ -363,7 +363,9 @@ def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
         return aot_module_simplified_joint(gm, example_inputs,
             compiler=compiler, decompositions=decompositions,
             output_loss_index=int(aot_config.output_loss_index.value))
-    return aot_module_simplified(gm, example_inputs, fw_compiler=compiler, decompositions=decompositions)
+    keep_inference_input_mutations = bool(compiler_config.experimental_config.keep_inference_input_mutations)
+    return aot_module_simplified(gm, example_inputs, fw_compiler=compiler, decompositions=decompositions,
+                                 keep_inference_input_mutations=keep_inference_input_mutations)
 
 
 def get_npu_backend(*, compiler_config: CompilerConfig = None,

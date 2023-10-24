@@ -1,5 +1,6 @@
 from collections import defaultdict
 from typing import Any, Dict, List, Tuple, Union, Callable
+from datetime import datetime
 import functools
 import threading
 import contextlib
@@ -18,9 +19,10 @@ from torchair.core import _torchair
 from torchair.core.concrete_graph import ConcreteGraphBase, ValuePack
 from torchair.core.utils import logger
 from torchair.core.backend import initialize_graph_engine
-from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef, TensorDescriptor, TensorDef
+from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef, TensorDescriptor, TensorDef, OpDef
 from torchair.ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
 from torchair.ge_concrete_graph.ge_graph import default_ge_graph, GeGraph
+from torchair.ge_concrete_graph.ge_graph import Tensor as GeTensor
 from torchair.ge_concrete_graph.ge_graph import compat_as_bytes
 from torchair.ge_concrete_graph.ge_graph import DataType, TensorSpec
 from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type, torch_type_to_ge_proto_type
@@ -30,6 +32,50 @@ from torchair.configs.compiler_config import CompilerConfig
 from torchair.ge_concrete_graph.utils import convert_to_tensorboard, force_op_unknown_shape
 from torchair.ge_concrete_graph.supported_declaration import Support
 from . import ge_apis as ge
+
+
+def _mapping_assign_op_to_graph_output(graph: GraphDef):
+    net_output: OpDef = None  # 输出节点
+    net_inputs: Dict[str, int] = {}  # 输入tensor名称到索引的映射
+
+    for op in graph.op:
+        if op.type == "Data":
+            net_inputs[GeTensor(op).tensor] = op.attr["index"].i
+        elif op.type == "NetOutput":
+            net_output = op
+    assert net_output is not None, "NetOutput not found"
+
+    def _mapping_to_graph_output(graph: GraphDef, graph_out: OpDef, assign_node_out: GeTensor, value_tensor: str):
+        for i, name in enumerate(graph_out.input):
+            if name == assign_node_out.tensor:
+                graph_out.input[i] = value_tensor
+                return i
+        graph_out.input.append(value_tensor)
+        graph_out.input_desc.append(assign_node_out.desc)
+        graph.attr["_output_dtypes"].list.i.append(assign_node_out.dtype)
+        return len(graph_out.input) - 1
+
+    output_refto_input = {}
+    replaced_assign_ops = []
+    for op in graph.op:
+        if op.type != "Assign":
+            continue
+        assign_node_out = GeTensor(op)
+        logger.info(f"Found assign op {assign_node_out}")
+        if op.input[0] in net_inputs.keys(): # Assign在给输入赋值
+            logger.info(
+                f"Replace assign op {op.name} assign value from {op.input[1]} to input {net_inputs[op.input[0]]} {op.input[0]}")
+            output_index = _mapping_to_graph_output(graph, net_output, assign_node_out, op.input[1])
+            output_refto_input[output_index] = net_inputs[op.input[0]]
+            replaced_assign_ops.append(op)
+        else:
+            logger.info(f"Collect assign op {op.name} assign value from {op.input[1]} to {op.input[0]}")
+            net_output.input.append(assign_node_out.controller)
+
+    for op in replaced_assign_ops:
+        graph.op.remove(op)
+
+    return output_refto_input
 
 _CONVERTERS = defaultdict(lambda: None)
 _DECLARED_SUPPORTED_CONVERTERS = defaultdict(lambda: None)
@@ -234,7 +280,7 @@ def _save_weight2file(inputs, file_path, weight_name, num_weight_in_graph):
     logger.info(f'save Weight tensor to file over...')
 
 
-def dump(path: str, graph):
+def dump_graph(path: str, graph):
     if path is None:
         return
 
@@ -261,6 +307,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._inputs = []
         self._fx_inputs_mapping = dict()
         self._input_placements = []
+        self._graph_output_ref_input = {}
         self._executor = TorchNpuGraph(name)
         self._config = config
         self._auto_tune_times = 0
@@ -359,7 +406,7 @@ class GeConcreteGraph(ConcreteGraphBase):
             return converter(*args, **kwargs)
 
     def dump(self, path: str):
-        dump(path, self.graph)
+        dump_graph(path, self.graph)
 
     @property
     def inputs(self):
@@ -393,6 +440,9 @@ class GeConcreteGraph(ConcreteGraphBase):
         self.graph.attr["_executor_type"].i = _get_executor_type()
 
         self._complement_graph_attr()
+        self._graph_output_ref_input = _mapping_assign_op_to_graph_output(self.graph)
+        if len(self._graph_output_ref_input):
+            self.dump(f'dynamo_after_mapping_assign_{datetime.now().strftime("%Y%m%d%H%M%S%f")}.pbtxt')
 
         _normalize_ge_graph(self.graph)
 
@@ -424,7 +474,7 @@ class GeConcreteGraph(ConcreteGraphBase):
 
         _normalize_ge_graph(export_graph)
 
-        dump(file_path + "/dynamo.pbtxt", export_graph)
+        dump_graph(file_path + "/dynamo.pbtxt", export_graph)
 
         _torchair.export(export_graph.SerializeToString(), local_options)
 
@@ -461,9 +511,16 @@ class GeConcreteGraph(ConcreteGraphBase):
         if self.should_auto_tune:
             self.auto_tune(inputs)
 
-        ge_outputs = self._executor.run(inputs)
+        if len(self._graph_output_ref_input):
+            assigned_outputs = [None] * len(self.graph.attr["_output_dtypes"].list.i)
+            for output_index, input_index in self._graph_output_ref_input.items():
+                assigned_outputs[output_index] = inputs[input_index]
+            ge_outputs = self._executor.run(inputs, assigned_outputs)
+        else:
+            ge_outputs = self._executor.run(inputs)
+
         assert len(ge_outputs) == len(
-            self._fx_outputs_mapping), f"output size mismatch, expect {len(self._fx_outputs_mapping)}, got {len(ge_outputs)}"
+            self.graph.attr["_output_dtypes"].list.i), f"output size mismatch, expect {len(self.graph.attr['_output_dtypes'].list.i)}, got {len(ge_outputs)}"
 
         fx_outputs = [v for v in self._fx_outputs]
         for fx_idx, ge_idx in self._fx_outputs_mapping.items():

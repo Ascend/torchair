@@ -7,6 +7,7 @@ class ExperimentalConfig(NpuBaseConfig):
 
     def __init__(self):
         self.cc_parallel_enable = OptionValue(False, [False, True])
+        self.keep_inference_input_mutations = OptionValue(False, [True, False])
 
         super(ExperimentalConfig, self).__init__()
 

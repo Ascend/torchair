@@ -27,7 +27,7 @@ def conveter_aten_copy__default(
     self: Tensor, src: Tensor, non_blocking: bool = False, meta_outputs: TensorSpec = None
 ):
     """NB: aten::copy_(Tensor(a!) self, Tensor src, bool non_blocking=False) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.copy_.default ge_converter is not implemented!")
+    return ge.Assign(self, src)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.copy_.Tensor)

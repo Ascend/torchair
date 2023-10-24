@@ -1,4 +1,6 @@
+#include <cstdint>
 #include <iostream>
+#include <mutex>
 
 #include "external/graph/types.h"
 #include "ge/ge_api.h"
@@ -10,15 +12,28 @@ class CompiledGraphSummary::SummaryData {
  public:
   SummaryData() = default;
   ~SummaryData() = default;
-  bool IsStatic() const { return is_static_; }
-  bool IsFeatureMemoryBaseRefreshable() const { return is_feature_mem_refreshable_; }
-  size_t GetConstMemorySize() const { return const_mem_size_; }
-  size_t GetFeatureMemorySize() const { return feature_mem_size_; }
-  size_t GetStreamNum() const { return stream_num_; }
-  size_t GetEventNum() const { return event_num_; }
-  std::vector<ge::Shape> GetOutputShapes() { return netoutput_shapes_; }
+  bool IsStatic() const {
+    return is_static_;
+  }
+  bool IsFeatureMemoryBaseRefreshable() const {
+    return is_feature_mem_refreshable_;
+  }
+  size_t GetConstMemorySize() const {
+    return const_mem_size_;
+  }
+  size_t GetFeatureMemorySize() const {
+    return feature_mem_size_;
+  }
+  size_t GetStreamNum() const {
+    return stream_num_;
+  }
+  size_t GetEventNum() const {
+    return event_num_;
+  }
+  std::vector<ge::Shape> GetOutputShapes() {
+    return netoutput_shapes_;
+  }
 
- private:
   bool is_static_{false};
   bool is_feature_mem_refreshable_{false};
   size_t const_mem_size_{512UL};
@@ -26,21 +41,25 @@ class CompiledGraphSummary::SummaryData {
   size_t stream_num_{1UL};
   size_t event_num_{2UL};
   std::vector<ge::Shape> netoutput_shapes_;
+  std::vector<ge::DataType> output_dtypes_;
 };
 
 class CompiledGraphSummary::Builder {
  public:
   Builder() = default;
   ~Builder() = default;
-  static CompiledGraphSummaryPtr Build() {
+  static CompiledGraphSummaryPtr Build(const CompiledGraphSummary::SummaryData &data) {
     CompiledGraphSummaryPtr summary(new CompiledGraphSummary);
     summary->data_ = std::make_shared<SummaryData>();
+    *summary->data_ = data;
     return summary;
   }
 };
 
 CompiledGraphSummary::~CompiledGraphSummary() = default;
-bool CompiledGraphSummary::IsStatic() const { return data_->IsStatic(); }
+bool CompiledGraphSummary::IsStatic() const {
+  return data_->IsStatic();
+}
 Status CompiledGraphSummary::GetFeatureMemoryBaseRefreshable(bool &v) const {
   v = data_->IsFeatureMemoryBaseRefreshable();
   return SUCCESS;
@@ -62,34 +81,77 @@ Status CompiledGraphSummary::GetEventNum(size_t &num) const {
   return SUCCESS;
 }
 Status CompiledGraphSummary::GetOutputShapes(std::vector<ge::Shape> &shapes) const {
+  shapes = data_->GetOutputShapes();
   return SUCCESS;
 }
 
-std::string GEGetErrorMsg() { return "[STUB] Something error"; }
+std::string GEGetErrorMsg() {
+  return "[STUB] Something error";
+}
 
 Session::Session(const std::map<AscendString, AscendString> &options) {
   std::cerr << "[STUB] Session::Session created" << std::endl;
 }
 
-Session::~Session() { std::cerr << "[STUB] Session::Session destroyed" << std::endl; }
-
-namespace {
-std::map<uint32_t, size_t> graph_id_to_num_outputs;
+Session::~Session() {
+  std::cerr << "[STUB] Session::Session destroyed" << std::endl;
 }
 
-Status Session::AddGraph(uint32_t id, const ge::Graph &graph, const std::map<AscendString, AscendString> &options) {
-  auto compute_graph = ge::GraphUtilsEx::GetComputeGraph(graph);
-  if (compute_graph == nullptr) {
-    graph_id_to_num_outputs[id] = 0U;
-  } else {
-    auto netoutput = compute_graph->FindFirstNodeMatchType("NetOutput");
-    if (netoutput == nullptr) {
-      graph_id_to_num_outputs[id] = 0U;
-    } else {
-      graph_id_to_num_outputs[id] = netoutput->GetAllInDataAnchorsSize();
-    }
+namespace {
+class GraphSpecManager {
+ public:
+  static CompiledGraphSummary::SummaryData &GetSpec(uint32_t id) {
+    return Instance().Get(id);
   }
-  std::cerr << "[STUB] Session::AddGraph graph " << id << ", num outputs " << graph_id_to_num_outputs[id] << std::endl;
+
+  static CompiledGraphSummary::SummaryData &Add(uint32_t id, const ge::Graph &graph) {
+    auto &spec = Instance().Get(id);
+
+    auto compute_graph = ge::GraphUtilsEx::GetComputeGraph(graph);
+
+    spec.is_static_ = true;
+    for (auto &node : compute_graph->GetDirectNode()) {
+      if (node->GetType() != "Data") {
+        continue;
+      }
+      if (node->GetOpDesc()->GetOutputDesc(0).GetShape().IsUnknownShape()) {
+        spec.is_static_ = false;
+        break;
+      }
+    }
+
+    for (auto &node : compute_graph->GetDirectNode()) {
+      if (node->GetType() != "NetOutput") {
+        continue;
+      }
+      for (auto &desc : node->GetOpDesc()->GetAllInputsDesc()) {
+        spec.output_dtypes_.push_back(desc.GetDataType());
+        spec.netoutput_shapes_.emplace_back(ge::Shape({2, 2}));
+      }
+    }
+
+    return spec;
+  }
+
+ private:
+  GraphSpecManager() = default;
+  static GraphSpecManager &Instance() {
+    static GraphSpecManager instance;
+    return instance;
+  }
+  CompiledGraphSummary::SummaryData &Get(uint32_t id) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return specs_[id];
+  }
+
+  std::mutex mutex_;
+  std::map<uint32_t, CompiledGraphSummary::SummaryData> specs_;
+};
+}  // namespace
+
+Status Session::AddGraph(uint32_t id, const ge::Graph &graph, const std::map<AscendString, AscendString> &options) {
+  auto &spec = GraphSpecManager::Add(id, graph);
+  std::cerr << "[STUB] Session::AddGraph graph " << id << ", num outputs " << spec.output_dtypes_.size() << std::endl;
   return ge::SUCCESS;
 }
 
@@ -100,7 +162,8 @@ Status Session::CompileGraph(uint32_t id) {
 
 std::shared_ptr<ge::CompiledGraphSummary> Session::GetCompiledGraphSummary(uint32_t id) {
   std::cerr << "[STUB] Session::GetCompiledGraphSummary graph " << id << std::endl;
-  return CompiledGraphSummary::Builder::Build();
+  auto summary = CompiledGraphSummary::Builder::Build(GraphSpecManager::GetSpec(id));
+  return summary;
 }
 
 Status Session::RemoveGraph(uint32_t id) {
@@ -114,11 +177,12 @@ Status Session::RunGraph(uint32_t id, const std::vector<ge::Tensor> &inputs, std
     std::cerr << "[STUB] Input size is empty" << id << std::endl;
     return ge::SUCCESS;
   }
-  for (size_t i = 0; i < graph_id_to_num_outputs[id]; ++i) {
+  auto spec = GraphSpecManager::GetSpec(id);
+  for (size_t i = 0; i < spec.output_dtypes_.size(); ++i) {
     ge::Tensor output;
     ge::TensorDesc desc;
-    desc.SetDataType(inputs[0].GetTensorDesc().GetDataType());
-    desc.SetShape(ge::Shape(std::vector<int64_t>{512, 1024, 1024}));
+    desc.SetDataType(spec.output_dtypes_[i]);
+    desc.SetShape(spec.netoutput_shapes_[i]);
     output.SetTensorDesc(desc);
 
     static std::vector<float> data;
