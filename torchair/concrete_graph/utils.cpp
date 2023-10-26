@@ -11,6 +11,7 @@
 #include "torch/torch.h"
 
 #include "ATen/CPUFunctions.h"
+#include "graph/utils/tensor_adapter.h"
 
 namespace tng {
 namespace {
@@ -210,8 +211,15 @@ Status AssembleDataToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor) {
   // The input at tensor must be contiguous(), but not necessarily matched.
   // Therefore, when getting data_ptr, the calculation of the data_ptr address needs to skip storage_offset,
   // and the calculation of nbytes needs to be based on the shape after view.
-  TNG_ASSERT_GE_OK(
-      ge_tensor.SetData(static_cast<uint8_t *>(tensor.data_ptr()), tensor.numel() * tensor.element_size(), kDoNothing));
+  auto as_ge_tensor = ge::TensorAdapter::AsGeTensor(ge_tensor);
+  auto aligned_ptr = as_ge_tensor.GetAlignedPtr();
+  if (aligned_ptr == nullptr) {
+    TNG_ASSERT_GE_OK(ge_tensor.SetData(static_cast<uint8_t *>(tensor.data_ptr()),
+                                       tensor.numel() * tensor.element_size(), kDoNothing));
+  } else {
+    aligned_ptr->Reset(static_cast<uint8_t *>(tensor.data_ptr()), kDoNothing);
+    as_ge_tensor.SetData(aligned_ptr, static_cast<size_t>(tensor.numel() * tensor.element_size()));
+  }
   return Status::Success();
 }
 
