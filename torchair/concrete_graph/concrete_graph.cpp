@@ -32,6 +32,8 @@ tng::Status NormalizeCompileOptions(const std::map<ge::AscendString, ge::AscendS
   // This static memory policy will be replaced by allocator memory pool of torchair for better memory reuse.
   (void)normalized_options.insert(std::make_pair(ge::STATIC_MEMORY_POLICY.c_str(), "2"));
 
+  (void)normalized_options.insert(std::make_pair(ge::MEMORY_OPTIMIZATION_POLICY.c_str(), "MemoryPriority"));
+
   return tng::Status::Success();
 }
 }  // namespace
