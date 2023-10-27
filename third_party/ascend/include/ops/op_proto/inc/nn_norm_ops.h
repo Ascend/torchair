@@ -401,6 +401,7 @@ REG_OP(SoftmaxV2)
     .INPUT(x, TensorType({ DT_DOUBLE, DT_FLOAT16, DT_BF16, DT_FLOAT }))
     .OUTPUT(y, TensorType({ DT_DOUBLE, DT_FLOAT16, DT_BF16, DT_FLOAT }))
     .ATTR(axes, ListInt, {-1})
+    .ATTR(half_to_float, Bool, false)
     .OP_END_FACTORY_REG(SoftmaxV2)
 
 /**

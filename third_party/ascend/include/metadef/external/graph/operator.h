@@ -219,9 +219,18 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY Operator {
 
   ATTRIBUTED_DEPRECATED(graphStatus GetAllAttrNamesAndTypes(std::map<AscendString, AscendString> &) const)
   const std::map<std::string, std::string> GetAllAttrNamesAndTypes() const;
-
+  /**
+   * 获取调用对象上设置好的`自定义属性`和`ir定义属性`的属性名称和类型
+   * @param attr_name_types 出参
+   * @return
+   */
   graphStatus GetAllAttrNamesAndTypes(std::map<AscendString, AscendString> &attr_name_types) const;
-
+  /**
+   * 获取ir定义的属性名称和类型（包含普通attr和required_attr）
+   * @param attr_name_types 出参
+   * @return
+   */
+  graphStatus GetAllIrAttrNamesAndTypes(std::map<AscendString, AscendString> &attr_name_types) const;
   ATTRIBUTED_DEPRECATED(Operator &SetAttr(const char_t *, int64_t))
   Operator &SetAttr(const std::string &name, int64_t attr_value);
   ATTRIBUTED_DEPRECATED(Operator &SetAttr(const char_t *, int32_t))
@@ -600,9 +609,11 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY Operator {
   ATTRIBUTED_DEPRECATED(void RequiredAttrRegister(const char_t *))
   void RequiredAttrRegister(const std::string &name);
   void RequiredAttrRegister(const char_t *name);
+  void RequiredAttrWithTypeRegister(const char_t *name, const char_t *type);
 
   void DataTypeRegister(const char_t *datatype_symbol, const TensorType &type_range);
   void DataTypeRegister(const char_t *datatype_symbol, const ListTensorType &list_type_range);
+  void DataTypeRegister(const char_t *datatype_symbol, const Promote &promote_rule);
 
   graphStatus VerifyAll();
 

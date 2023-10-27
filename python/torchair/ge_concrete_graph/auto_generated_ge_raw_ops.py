@@ -71,7 +71,7 @@ def Aipp(images: Tensor,
     features = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return features
 
 
@@ -106,7 +106,7 @@ def AippData(data: Tensor, *, index: int = 0, dependencies=[], node_name=None):
     out = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return out
 
 
@@ -150,7 +150,7 @@ def LowerBound(sorted_x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -197,7 +197,7 @@ def ReverseSequence(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -243,7 +243,7 @@ def MatrixBandPart(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -290,7 +290,7 @@ def UniqueWithCounts(x: Tensor,
     count = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, idx, count
 
 
@@ -333,7 +333,7 @@ def Unique(x: Tensor,
     idx = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, idx
 
 
@@ -381,7 +381,7 @@ def UniqueExt2(x: Tensor,
     idx = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, idx
 
 
@@ -414,7 +414,7 @@ def InvertPermutation(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -449,7 +449,7 @@ def CheckNumerics(x: Tensor, *, message: str, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -490,7 +490,7 @@ def UnravelIndex(indices: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -534,7 +534,7 @@ def UpperBound(sorted_x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -586,7 +586,7 @@ def UniqueWithCountsExt2(x: Tensor,
     count = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, idx, count
 
 
@@ -630,7 +630,7 @@ def MirrorPad(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -678,7 +678,7 @@ def ListDiff(x: Tensor,
     idx = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return out, idx
 
 
@@ -716,7 +716,7 @@ def _ParallelConcatStart(*,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -760,7 +760,7 @@ def FileConstant(*,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -793,7 +793,7 @@ def Snapshot(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -826,7 +826,7 @@ def GuaranteeConst(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -863,7 +863,7 @@ def BroadcastArgs(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -902,7 +902,7 @@ def PreventGradient(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -947,7 +947,7 @@ def BroadcastGradientArgs(x1: Tensor,
     y2 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y1, y2
 
 
@@ -980,7 +980,7 @@ def StopGradient(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -1013,7 +1013,7 @@ def Identity(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -1054,7 +1054,7 @@ def _IdentityN(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -1091,7 +1091,7 @@ def ExpandDims(x: Tensor, axis: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -1131,7 +1131,7 @@ def Unsqueeze(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -1171,7 +1171,7 @@ def UnsqueezeV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -1208,7 +1208,7 @@ def UnsqueezeV3(x: Tensor, axes: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -1255,7 +1255,7 @@ def Reshape(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -1295,7 +1295,7 @@ def Squeeze(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -1335,7 +1335,7 @@ def SqueezeV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -1381,7 +1381,7 @@ def SqueezeV3(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -1414,7 +1414,7 @@ def Rank(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -1449,7 +1449,7 @@ def Size(x: Tensor, *, dtype: int = 3, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -1497,7 +1497,7 @@ def PlaceHolder(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -1536,7 +1536,7 @@ def ReadVariableOp(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -1578,7 +1578,7 @@ def End(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -1607,7 +1607,7 @@ def Summary(x: Tensor, *, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -1642,7 +1642,7 @@ def Shape(x: Tensor, *, dtype: int = 3, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -1686,7 +1686,7 @@ def GatherShapes(x: List[Tensor],
     shape = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return shape
 
 
@@ -1730,7 +1730,7 @@ def _ShapeN(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -1772,7 +1772,7 @@ def Empty(shape: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -1816,7 +1816,7 @@ def MirrorPadGrad(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -1849,7 +1849,7 @@ def Where(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -1891,7 +1891,7 @@ def _Copy(x: Tensor,
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -1964,7 +1964,7 @@ def ViewCopy(dst: Tensor,
     dst = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dst
 
 
@@ -2005,7 +2005,7 @@ def Fingerprint(data: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -2045,7 +2045,7 @@ def TransShape(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -2110,7 +2110,7 @@ def EditDistance(hypothesis_indices: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -2152,7 +2152,7 @@ def SortV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -2189,7 +2189,7 @@ def Expand(x: Tensor, shape: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -2231,7 +2231,7 @@ def NonZero(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -2281,7 +2281,7 @@ def NonZeroWithValue(x: Tensor,
     count = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return value, index, count
 
 
@@ -2331,7 +2331,7 @@ def NonZeroWithValueShape(value: Tensor,
     out_index = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return out_value, out_index
 
 
@@ -2367,7 +2367,7 @@ def ExpandD(x: Tensor, *, shape: List[int], dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -2402,7 +2402,7 @@ def GetShape(x: List[Tensor], *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -2442,7 +2442,7 @@ def UpdateTensorDesc(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -2487,7 +2487,7 @@ def QueueData(*,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -2527,7 +2527,7 @@ def EnsureShape(input: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -2580,7 +2580,7 @@ def UniqueConsecutive(x: Tensor,
     count = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, idx, count
 
 
@@ -2636,7 +2636,7 @@ def _RaggedTensorFromVariant(encoded_ragged: Tensor,
     output_dense_values = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_nested_splits, output_dense_values
 
 
@@ -2689,7 +2689,7 @@ def UniqueWithCountsAndSorting(x: Tensor,
     counts = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, indices, counts
 
 
@@ -2724,7 +2724,7 @@ def RefData(x: Tensor, *, index: int = 0, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -2777,7 +2777,7 @@ def Mfcc(spectrogram: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -2822,7 +2822,7 @@ def AudioSpectrogram(x: Tensor,
     spectrogram = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return spectrogram
 
 
@@ -2868,7 +2868,7 @@ def DecodeWav(contents: Tensor,
     sample_rate = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return audio, sample_rate
 
 
@@ -2909,7 +2909,7 @@ def EncodeWav(audio: Tensor,
     contents = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return contents
 
 
@@ -2961,7 +2961,7 @@ def AvgPool1DAvgMatrix(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -3038,7 +3038,7 @@ def _Batch(x_tensors: List[Tensor],
     y_id = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y_tensors, y_index, y_id
 
 
@@ -3093,7 +3093,7 @@ def Unbatch(x_tensor: Tensor,
     y_tensor = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y_tensor
 
 
@@ -3151,7 +3151,7 @@ def UnbatchGrad(x_input: Tensor,
     y_grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y_grad
 
 
@@ -3188,7 +3188,7 @@ def LeftShift(x: Tensor, y: Tensor, *, dependencies=[], node_name=None):
     z = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return z
 
 
@@ -3225,7 +3225,7 @@ def RightShift(x: Tensor, y: Tensor, *, dependencies=[], node_name=None):
     z = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return z
 
 
@@ -3276,7 +3276,7 @@ def _BoostedTreesBucketize(float_values: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -3339,7 +3339,7 @@ def ThreadUnsafeUnigramCandidateSampler(true_classes: Tensor,
     sampled_expected_count = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return sampled_candidates, true_expected_count, sampled_expected_count
 
 
@@ -3401,7 +3401,7 @@ def UniformCandidateSampler(true_classes: Tensor,
     sampled_expected_count = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return sampled_candidates, true_expected_count, sampled_expected_count
 
 
@@ -3482,7 +3482,7 @@ def FixedUnigramCandidateSampler(true_classes: Tensor,
     sampled_expected_count = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return sampled_candidates, true_expected_count, sampled_expected_count
 
 
@@ -3544,7 +3544,7 @@ def LearnedUnigramCandidateSampler(true_classes: Tensor,
     sampled_expected_count = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return sampled_candidates, true_expected_count, sampled_expected_count
 
 
@@ -3606,7 +3606,7 @@ def LogUniformCandidateSampler(true_classes: Tensor,
     sampled_expected_count = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return sampled_candidates, true_expected_count, sampled_expected_count
 
 
@@ -3665,7 +3665,7 @@ def AllCandidateSampler(true_classes: Tensor,
     sampled_expected_count = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return sampled_candidates, true_expected_count, sampled_expected_count
 
 
@@ -3723,7 +3723,7 @@ def ComputeAccidentalHits(true_classes: Tensor,
     weights = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return indices, ids, weights
 
 
@@ -3791,7 +3791,7 @@ def KMeansCentroids(x: Tensor,
     kmean_total_sum = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return segment_sum, segment_count, kmean_total_sum
 
 
@@ -3849,7 +3849,7 @@ def CondTake(data: Tensor,
     valid_num = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return out_data, out_index, valid_num
 
 
@@ -3888,7 +3888,7 @@ def Merge(x: List[Tensor], *, dependencies=[], node_name=None):
     value_index = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, value_index
 
 
@@ -3927,7 +3927,7 @@ def RefMerge(x: List[Tensor], *, dependencies=[], node_name=None):
     value_index = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, value_index
 
 
@@ -3968,7 +3968,7 @@ def Switch(data: Tensor, pred: Tensor, *, dependencies=[], node_name=None):
     output_true = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_false, output_true
 
 
@@ -4009,7 +4009,7 @@ def RefSwitch(data: Tensor, pred: Tensor, *, dependencies=[], node_name=None):
     output_true = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_false, output_true
 
 
@@ -4053,7 +4053,7 @@ def _SwitchN(data: Tensor,
         output.append(Tensor(op, i))
     output_index += size_of_output
 
-    # return outputs
+    
     return output
 
 
@@ -4095,7 +4095,7 @@ def Enter(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -4137,7 +4137,7 @@ def RefEnter(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -4170,7 +4170,7 @@ def LoopCond(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -4203,7 +4203,7 @@ def NextIteration(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -4236,7 +4236,7 @@ def RefNextIteration(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -4269,7 +4269,7 @@ def Exit(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -4302,7 +4302,7 @@ def RefExit(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -4327,7 +4327,7 @@ def ControlTrigger(*, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -4378,7 +4378,7 @@ def MapIndex(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -4422,7 +4422,7 @@ def Correlation(filter: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -4488,7 +4488,7 @@ def CTCLoss(inputs: Tensor,
     gradient = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return loss, gradient
 
 
@@ -4544,7 +4544,7 @@ def CTCGreedyDecoder(inputs: Tensor,
     log_probability = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return decoded_indices, decoded_values, decoded_shape, log_probability
 
 
@@ -4615,7 +4615,7 @@ def _CTCBeamSearchDecoder(inputs: Tensor,
     log_probability = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return decoded_indices, decoded_values, decoded_shape, log_probability
 
 
@@ -4680,7 +4680,7 @@ def CTCLossV2(log_probs: Tensor,
     log_alpha = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return neg_log_likelihood, log_alpha
 
 
@@ -4756,7 +4756,7 @@ def CTCLossV2Grad(grad_out: Tensor,
     grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return grad
 
 
@@ -4789,7 +4789,7 @@ def QueueIsClosed(handle: Tensor, *, dependencies=[], node_name=None):
     is_closed = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return is_closed
 
 
@@ -4822,7 +4822,7 @@ def QueueSize(handle: Tensor, *, dependencies=[], node_name=None):
     size = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return size
 
 
@@ -4869,7 +4869,7 @@ def FIFOQueue(*,
     handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handle
 
 
@@ -4911,7 +4911,7 @@ def QueueEnqueue(handle: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -4953,7 +4953,7 @@ def QueueEnqueueMany(handle: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -4999,7 +4999,7 @@ def _QueueDequeue(handle: Tensor,
         components.append(Tensor(op, i))
     output_index += size_of_components
 
-    # return outputs
+    
     return components
 
 
@@ -5050,7 +5050,7 @@ def _QueueDequeueMany(handle: Tensor,
         components.append(Tensor(op, i))
     output_index += size_of_components
 
-    # return outputs
+    
     return components
 
 
@@ -5101,7 +5101,7 @@ def _QueueDequeueUpTo(handle: Tensor,
         components.append(Tensor(op, i))
     output_index += size_of_components
 
-    # return outputs
+    
     return components
 
 
@@ -5147,7 +5147,7 @@ def Stage(values: List[Tensor],
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -5190,7 +5190,7 @@ def StageClear(*,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -5245,7 +5245,7 @@ def _StagePeek(index: Tensor,
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -5292,7 +5292,7 @@ def StageSize(*,
     size = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return size
 
 
@@ -5331,7 +5331,7 @@ def StackPop(handle: Tensor,
     element = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return element
 
 
@@ -5375,7 +5375,7 @@ def StackPush(handle: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -5404,7 +5404,7 @@ def StackClose(handle: Tensor, *, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -5446,7 +5446,7 @@ def Stack(max_size: Tensor,
     handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handle
 
 
@@ -5493,7 +5493,7 @@ def _DynamicPartition(x: Tensor,
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -5541,7 +5541,7 @@ def DynamicStitch(indices: List[Tensor],
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -5589,7 +5589,7 @@ def ParallelDynamicStitch(indices: List[Tensor],
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -5632,7 +5632,7 @@ def MapClear(*,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -5679,7 +5679,7 @@ def MapIncompleteSize(*,
     size = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return size
 
 
@@ -5729,7 +5729,7 @@ def _Unstage(*,
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -5789,7 +5789,7 @@ def MapStage(key: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -5849,7 +5849,7 @@ def _MapUnstage(key: Tensor,
         values.append(Tensor(op, i))
     output_index += size_of_values
 
-    # return outputs
+    
     return values
 
 
@@ -5908,7 +5908,7 @@ def _MapUnstageNoKey(indices: Tensor,
         values.append(Tensor(op, i))
     output_index += size_of_values
 
-    # return outputs
+    
     return key, values
 
 
@@ -5968,7 +5968,7 @@ def _MapPeek(key: Tensor,
         values.append(Tensor(op, i))
     output_index += size_of_values
 
-    # return outputs
+    
     return values
 
 
@@ -6015,7 +6015,7 @@ def MapSize(*,
     size = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return size
 
 
@@ -6074,7 +6074,7 @@ def TensorArray(size: Tensor,
     flow = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handle, flow
 
 
@@ -6103,7 +6103,7 @@ def TensorArrayClose(handle: Tensor, *, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -6155,7 +6155,7 @@ def TensorArrayConcat(handle: Tensor,
     lengths = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return value, lengths
 
 
@@ -6208,7 +6208,7 @@ def TensorArrayGather(handle: Tensor,
     value = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return value
 
 
@@ -6256,7 +6256,7 @@ def TensorArrayGrad(handle: Tensor,
     flow_out = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return grad_handle, flow_out
 
 
@@ -6308,7 +6308,7 @@ def TensorArrayWrite(handle: Tensor,
     flow_out = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return flow_out
 
 
@@ -6361,7 +6361,7 @@ def TensorArrayGradWithShape(handle: Tensor,
     flow_out = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return grad_handle, flow_out
 
 
@@ -6410,7 +6410,7 @@ def TensorArrayRead(handle: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -6462,7 +6462,7 @@ def TensorArrayScatter(handle: Tensor,
     flow_out = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return flow_out
 
 
@@ -6514,7 +6514,7 @@ def TensorArraySplit(handle: Tensor,
     flow_out = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return flow_out
 
 
@@ -6555,7 +6555,7 @@ def TensorArraySize(handle: Tensor,
     size = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return size
 
 
@@ -6611,7 +6611,7 @@ def RandomShuffleQueue(*,
     handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handle
 
 
@@ -6658,7 +6658,7 @@ def PaddingFIFOQueue(*,
     handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handle
 
 
@@ -6705,7 +6705,7 @@ def PriorityQueue(*,
     handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handle
 
 
@@ -6740,7 +6740,7 @@ def QueueClose(handle: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -6800,7 +6800,7 @@ def OrderedMapStage(key: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -6847,7 +6847,7 @@ def OrderedMapSize(*,
     size = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return size
 
 
@@ -6890,7 +6890,7 @@ def OrderedMapClear(*,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -6923,7 +6923,7 @@ def FakeQueue(resource: Tensor, *, dependencies=[], node_name=None):
     handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handle
 
 
@@ -6970,7 +6970,7 @@ def OrderedMapIncompleteSize(*,
     size = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return size
 
 
@@ -7030,7 +7030,7 @@ def _OrderedMapPeek(key: Tensor,
         values.append(Tensor(op, i))
     output_index += size_of_values
 
-    # return outputs
+    
     return values
 
 
@@ -7089,7 +7089,7 @@ def _OrderedMapUnstageNoKey(indices: Tensor,
         values.append(Tensor(op, i))
     output_index += size_of_values
 
-    # return outputs
+    
     return key, values
 
 
@@ -7149,7 +7149,7 @@ def _OrderedMapUnstage(key: Tensor,
         values.append(Tensor(op, i))
     output_index += size_of_values
 
-    # return outputs
+    
     return values
 
 
@@ -7196,7 +7196,7 @@ def Barrier(*,
     handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handle
 
 
@@ -7241,7 +7241,7 @@ def BarrierInsertMany(handle: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -7306,7 +7306,7 @@ def _BarrierTakeMany(handle: Tensor,
         values.append(Tensor(op, i))
     output_index += size_of_values
 
-    # return outputs
+    
     return indices, keys, values
 
 
@@ -7341,7 +7341,7 @@ def BarrierClose(handle: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -7374,7 +7374,7 @@ def BarrierReadySize(handle: Tensor, *, dependencies=[], node_name=None):
     size = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return size
 
 
@@ -7407,7 +7407,7 @@ def BarrierIncompleteSize(handle: Tensor, *, dependencies=[], node_name=None):
     size = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return size
 
 
@@ -7459,7 +7459,7 @@ def RecordInput(*,
     records = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return records
 
 
@@ -7506,7 +7506,7 @@ def ConditionalAccumulator(*,
     handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handle
 
 
@@ -7551,7 +7551,7 @@ def AccumulatorApplyGradient(handle: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -7587,7 +7587,7 @@ def AccumulatorNumAccumulated(handle: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -7624,7 +7624,7 @@ def AccumulatorSetGlobalStep(handle: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -7668,7 +7668,7 @@ def AccumulatorTakeGradient(handle: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -7715,7 +7715,7 @@ def SparseConditionalAccumulator(*,
     handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handle
 
 
@@ -7774,7 +7774,7 @@ def SparseAccumulatorApplyGradient(handle: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -7826,7 +7826,7 @@ def SparseAccumulatorTakeGradient(handle: Tensor,
     shape = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return indices, values, shape
 
 
@@ -7873,7 +7873,7 @@ def ResourceConditionalAccumulator(*,
     handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handle
 
 
@@ -7915,7 +7915,7 @@ def ResourceAccumulatorApplyGradient(handle: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -7951,7 +7951,7 @@ def ResourceAccumulatorNumAccumulated(handle: Tensor,
     num_accumulated = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return num_accumulated
 
 
@@ -7988,7 +7988,7 @@ def ResourceAccumulatorSetGlobalStep(handle: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -8032,7 +8032,7 @@ def ResourceAccumulatorTakeGradient(handle: Tensor,
     average = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return average
 
 
@@ -8069,7 +8069,7 @@ def OutfeedEnqueueOp(x: List[Tensor],
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -8111,7 +8111,7 @@ def OutfeedEnqueueOpV2(x: List[Tensor],
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -8157,7 +8157,7 @@ def LruCache(*,
     cache = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return cache
 
 
@@ -8206,7 +8206,7 @@ def CacheAdd(cache: Tensor, ids: Tensor, *, dependencies=[], node_name=None):
     swap_out_idx = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return swap_in_id, swap_in_idx, swap_out_id, swap_out_idx
 
 
@@ -8247,7 +8247,7 @@ def CacheRemoteIndexToLocal(cache: Tensor,
     local_idx = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return local_idx
 
 
@@ -8286,7 +8286,7 @@ def CacheAllIndexToLocal(cache: Tensor,
     local_idx = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return local_idx
 
 
@@ -8366,7 +8366,7 @@ def LRUCacheV2(index_list: Tensor,
     not_in_cache_number = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return data, cache, tag, index_offset_list, not_in_cache_index_list, not_in_cache_number
 
 
@@ -8421,7 +8421,7 @@ def _DynamicGetNext(x: Tensor,
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -8474,7 +8474,7 @@ def _DynamicGetNextV2(*,
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -8519,7 +8519,7 @@ def _AdpGetNext(*,
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -8564,7 +8564,7 @@ def _GetNextV2(*,
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -8611,7 +8611,7 @@ def _GetNextFromQueue(x: Tensor,
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -8656,7 +8656,7 @@ def _PeekData(*,
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -8703,7 +8703,7 @@ def _OptionalGetValue(optional: Tensor,
         components.append(Tensor(op, i))
     output_index += size_of_components
 
-    # return outputs
+    
     return components
 
 
@@ -8758,7 +8758,7 @@ def _FlowFunc(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -8799,7 +8799,7 @@ def SequenceAt(handle: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -8837,7 +8837,7 @@ def SequenceConstruct(inputs: List[Tensor],
     handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handle
 
 
@@ -8871,7 +8871,7 @@ def SequenceEmpty(*,
     handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handle
 
 
@@ -8917,7 +8917,7 @@ def SequenceErase(handle: Tensor,
     handle_y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handle_y
 
 
@@ -8968,7 +8968,7 @@ def SequenceInsert(handle: Tensor,
     handle_y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handle_y
 
 
@@ -9001,7 +9001,7 @@ def SequenceLength(handle: Tensor, *, dependencies=[], node_name=None):
     length = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return length
 
 
@@ -9053,7 +9053,7 @@ def SplitToSequence(x: Tensor,
     handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handle
 
 
@@ -9095,7 +9095,7 @@ def ConcatFromSequence(handle: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -9150,7 +9150,7 @@ def TabulateFusion(table: Tensor,
     descriptor = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return descriptor
 
 
@@ -9246,7 +9246,7 @@ def ProdEnvMatA(coord: Tensor,
     nlist = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return descrpt, descrpt_deriv, rij, nlist
 
 
@@ -9340,7 +9340,7 @@ def ProdEnvMatACalcRij(coord: Tensor,
     rij_z = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return rij, nlist, distance, rij_x, rij_y, rij_z
 
 
@@ -9439,7 +9439,7 @@ def ProdEnvMatACalcDescrpt(distance: Tensor,
     descrpt_deriv = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return descrpt, descrpt_deriv
 
 
@@ -9497,7 +9497,7 @@ def ProdForceSeA(net_deriv: Tensor,
     atom_force = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return atom_force
 
 
@@ -9564,7 +9564,7 @@ def ProdVirialSeA(net_deriv: Tensor,
     atom_virial = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return virial, atom_virial
 
 
@@ -9630,7 +9630,7 @@ def TabulateFusionGrad(table: Tensor,
     dy_dem = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dy_dem_x, dy_dem
 
 
@@ -9667,7 +9667,7 @@ def AddN(x: List[Tensor], *, N: int, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -9723,7 +9723,7 @@ def MaximumGrad(grads: Tensor,
     y2 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y1, y2
 
 
@@ -9779,7 +9779,7 @@ def MinimumGrad(grads: Tensor,
     y2 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y1, y2
 
 
@@ -9814,7 +9814,7 @@ def Cast(x: Tensor, *, dst_type: int, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -9851,7 +9851,7 @@ def GreaterEqual(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -9888,7 +9888,7 @@ def Less(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -9925,7 +9925,7 @@ def RealDiv(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -9958,7 +9958,7 @@ def Sqrt(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -9995,7 +9995,7 @@ def Maximum(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -10032,7 +10032,7 @@ def Minimum(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -10065,7 +10065,7 @@ def Reciprocal(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -10102,7 +10102,7 @@ def Sub(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -10139,7 +10139,7 @@ def Gcd(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -10172,7 +10172,7 @@ def Abs(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -10209,7 +10209,7 @@ def AbsGrad(y: Tensor, dy: Tensor, *, dependencies=[], node_name=None):
     z = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return z
 
 
@@ -10242,7 +10242,7 @@ def Sign(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -10283,7 +10283,7 @@ def SquaredDifference(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -10316,7 +10316,7 @@ def Cos(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -10353,7 +10353,7 @@ def Div(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -10390,7 +10390,7 @@ def Equal(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -10435,7 +10435,7 @@ def Exp(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -10468,7 +10468,7 @@ def Expm1(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -10501,7 +10501,7 @@ def Expint(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -10534,7 +10534,7 @@ def Inv(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -10571,7 +10571,7 @@ def InvGrad(x: Tensor, grad: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -10608,7 +10608,7 @@ def LessEqual(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -10641,7 +10641,7 @@ def Log1p(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -10678,7 +10678,7 @@ def Mod(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -10715,7 +10715,7 @@ def NotEqual(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -10748,7 +10748,7 @@ def Ndtri(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -10781,7 +10781,7 @@ def Neg(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -10818,7 +10818,7 @@ def TruncateDiv(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -10855,7 +10855,7 @@ def Xdivy(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -10892,7 +10892,7 @@ def Xlog1py(x: Tensor, y: Tensor, *, dependencies=[], node_name=None):
     z = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return z
 
 
@@ -10929,7 +10929,7 @@ def Xlogy(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -10962,7 +10962,7 @@ def Square(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -10995,7 +10995,7 @@ def Rsqrt(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -11028,7 +11028,7 @@ def Asin(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -11065,7 +11065,7 @@ def AsinGrad(y: Tensor, dy: Tensor, *, dependencies=[], node_name=None):
     z = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return z
 
 
@@ -11098,7 +11098,7 @@ def Acos(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -11135,7 +11135,7 @@ def AcosGrad(y: Tensor, dy: Tensor, *, dependencies=[], node_name=None):
     z = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return z
 
 
@@ -11168,7 +11168,7 @@ def Acosh(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -11205,7 +11205,7 @@ def AcoshGrad(y: Tensor, dy: Tensor, *, dependencies=[], node_name=None):
     z = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return z
 
 
@@ -11242,7 +11242,7 @@ def LogicalOr(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -11275,7 +11275,7 @@ def Spence(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -11312,7 +11312,7 @@ def LogicalAnd(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -11345,7 +11345,7 @@ def BesselI0e(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -11378,7 +11378,7 @@ def BesselI1e(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -11423,45 +11423,45 @@ def Log(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
 # This api is auto-generated from IR Mul
 @auto_convert_to_tensor([False, False], [False, False])
 def Mul(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
-    """REG_OP(Mul)\n
-.INPUT(x1, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_UINT8, DT_INT8, DT_UINT16, DT_INT16, DT_INT32, DT_INT64, DT_BF16, DT_COMPLEX64, DT_COMPLEX128}))\n
-.INPUT(x2, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_UINT8, DT_INT8, DT_UINT16, DT_INT16, DT_INT32, DT_INT64, DT_BF16, DT_COMPLEX64, DT_COMPLEX128}))\n
-.OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_UINT8, DT_INT8, DT_UINT16, DT_INT16, DT_INT32, DT_INT64, DT_BF16, DT_COMPLEX64, DT_COMPLEX128}))\n
+  """REG_OP(Mul)\n
+.INPUT(x1, "T1")\n
+.INPUT(x2, "T2")\n
+.OUTPUT(y, "T3")\n
 """
-
-    op = get_default_ge_graph().op.add()
-    op.type = "Mul"
-    op.name = next_unique_name(node_name, "Mul")
-
-    # process dependices
-    for dependency in dependencies:
-        op.input.append(dependency.controller)
-
-    # process inputs
-    op.input.append(x1.tensor)
-    op.input_desc.add().CopyFrom(x1.desc)
-    op.input_desc[-1].name = "x1"
-    op.input.append(x2.tensor)
-    op.input_desc.add().CopyFrom(x2.desc)
-    op.input_desc[-1].name = "x2"
-
-    # process attrs
-
-    # process outputs
-    output_index = 0
-    op.output_desc.add().name = "y"
-    y = Tensor(op, output_index)
-    output_index += 1
-
-    # return outputs
-    return y
+  
+  op = get_default_ge_graph().op.add()
+  op.type = "Mul"
+  op.name = next_unique_name(node_name, "Mul")
+  
+  # process dependices
+  for dependency in dependencies:
+    op.input.append(dependency.controller)
+  
+  # process inputs
+  op.input.append(x1.tensor)
+  op.input_desc.add().CopyFrom(x1.desc)
+  op.input_desc[-1].name = "x1"
+  op.input.append(x2.tensor)
+  op.input_desc.add().CopyFrom(x2.desc)
+  op.input_desc[-1].name = "x2"
+  
+  # process attrs
+  
+  # process outputs
+  output_index = 0
+  op.output_desc.add().name = "y"
+  y = Tensor(op, output_index)
+  output_index += 1
+  
+  
+  return y
 
 
 # This api is auto-generated from IR SqrtGrad
@@ -11497,7 +11497,7 @@ def SqrtGrad(y: Tensor, dy: Tensor, *, dependencies=[], node_name=None):
     z = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return z
 
 
@@ -11534,7 +11534,7 @@ def Add(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -11580,7 +11580,7 @@ def FusedMulAdd(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -11632,7 +11632,7 @@ def FusedMulAddAdd(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -11669,7 +11669,7 @@ def AddV2(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -11713,7 +11713,7 @@ def AssignAdd(ref: Tensor,
     ref = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return ref
 
 
@@ -11760,7 +11760,7 @@ def Assign(ref: Tensor,
     ref = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return ref
 
 
@@ -11804,7 +11804,7 @@ def AssignSub(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -11841,7 +11841,7 @@ def RsqrtGrad(y: Tensor, dy: Tensor, *, dependencies=[], node_name=None):
     z = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return z
 
 
@@ -11874,7 +11874,7 @@ def Sinh(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -11920,7 +11920,7 @@ def ClipByValue(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -11953,7 +11953,7 @@ def Cosh(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -11990,7 +11990,7 @@ def DivNoNan(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -12023,7 +12023,7 @@ def Invert(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -12056,7 +12056,7 @@ def OnesLike(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -12093,7 +12093,7 @@ def ReciprocalGrad(y: Tensor, dy: Tensor, *, dependencies=[], node_name=None):
     z = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return z
 
 
@@ -12130,7 +12130,7 @@ def Greater(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -12163,7 +12163,7 @@ def ZerosLike(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -12196,7 +12196,7 @@ def LogicalNot(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -12229,7 +12229,7 @@ def Asinh(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -12266,7 +12266,7 @@ def AsinhGrad(y: Tensor, dy: Tensor, *, dependencies=[], node_name=None):
     z = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return z
 
 
@@ -12299,7 +12299,7 @@ def Atanh(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -12332,7 +12332,7 @@ def Atan(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -12369,7 +12369,7 @@ def AtanGrad(y: Tensor, dy: Tensor, *, dependencies=[], node_name=None):
     z = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return z
 
 
@@ -12406,7 +12406,7 @@ def Atan2(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -12439,7 +12439,7 @@ def FresnelCos(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -12472,7 +12472,7 @@ def FresnelSin(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -12516,7 +12516,7 @@ def ApproximateEqual(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -12553,7 +12553,7 @@ def AccumulateNV2(x: List[Tensor], *, N: int, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -12601,7 +12601,7 @@ def FakeQuantWithMinMaxArgs(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -12654,7 +12654,7 @@ def FakeQuantWithMinMaxArgsGradient(gradients: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -12706,7 +12706,7 @@ def FakeQuantWithMinMaxVars(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -12772,7 +12772,7 @@ def FakeQuantWithMinMaxVarsGradient(gradients: Tensor,
     backprops_wrt_max = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return backprops_wrt_x, backprops_wrt_min, backprops_wrt_max
 
 
@@ -12824,7 +12824,7 @@ def FakeQuantWithMinMaxVarsPerChannel(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -12891,7 +12891,7 @@ def FakeQuantWithMinMaxVarsPerChannelGradient(gradients: Tensor,
     backprops_wrt_max = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return backprops_wrt_x, backprops_wrt_min, backprops_wrt_max
 
 
@@ -12928,7 +12928,7 @@ def BitwiseAnd(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -12965,7 +12965,7 @@ def BitwiseOr(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -13002,7 +13002,7 @@ def BitwiseXor(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -13035,7 +13035,7 @@ def Ceil(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -13068,7 +13068,7 @@ def Floor(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -13105,7 +13105,7 @@ def FloorDiv(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -13142,45 +13142,45 @@ def FloorMod(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
 # This api is auto-generated from IR Pow
 @auto_convert_to_tensor([False, False], [False, False])
 def Pow(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
-    """REG_OP(Pow)\n
-.INPUT(x1, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT64, DT_INT8, DT_UINT8, DT_DOUBLE, DT_COMPLEX64, DT_COMPLEX128}))\n
-.INPUT(x2, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT64, DT_INT8, DT_UINT8, DT_DOUBLE, DT_COMPLEX64, DT_COMPLEX128}))\n
-.OUTPUT(y, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT64, DT_INT8, DT_UINT8, DT_DOUBLE, DT_COMPLEX64, DT_COMPLEX128}))\n
+  """REG_OP(Pow)\n
+.INPUT(x1, "T1")\n
+.INPUT(x2, "T2")\n
+.OUTPUT(y, "T3")\n
 """
-
-    op = get_default_ge_graph().op.add()
-    op.type = "Pow"
-    op.name = next_unique_name(node_name, "Pow")
-
-    # process dependices
-    for dependency in dependencies:
-        op.input.append(dependency.controller)
-
-    # process inputs
-    op.input.append(x1.tensor)
-    op.input_desc.add().CopyFrom(x1.desc)
-    op.input_desc[-1].name = "x1"
-    op.input.append(x2.tensor)
-    op.input_desc.add().CopyFrom(x2.desc)
-    op.input_desc[-1].name = "x2"
-
-    # process attrs
-
-    # process outputs
-    output_index = 0
-    op.output_desc.add().name = "y"
-    y = Tensor(op, output_index)
-    output_index += 1
-
-    # return outputs
-    return y
+  
+  op = get_default_ge_graph().op.add()
+  op.type = "Pow"
+  op.name = next_unique_name(node_name, "Pow")
+  
+  # process dependices
+  for dependency in dependencies:
+    op.input.append(dependency.controller)
+  
+  # process inputs
+  op.input.append(x1.tensor)
+  op.input_desc.add().CopyFrom(x1.desc)
+  op.input_desc[-1].name = "x1"
+  op.input.append(x2.tensor)
+  op.input_desc.add().CopyFrom(x2.desc)
+  op.input_desc[-1].name = "x2"
+  
+  # process attrs
+  
+  # process outputs
+  output_index = 0
+  op.output_desc.add().name = "y"
+  y = Tensor(op, output_index)
+  output_index += 1
+  
+  
+  return y
 
 
 # This api is auto-generated from IR Rint
@@ -13212,7 +13212,7 @@ def Rint(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -13245,7 +13245,7 @@ def Round(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -13278,7 +13278,7 @@ def Sin(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -13311,7 +13311,7 @@ def Tan(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -13348,7 +13348,7 @@ def TruncateMod(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -13392,7 +13392,7 @@ def BiasAdd(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -13436,7 +13436,7 @@ def ArgMin(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -13478,7 +13478,7 @@ def ArgMinD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -13522,7 +13522,7 @@ def ArgMaxV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -13564,7 +13564,7 @@ def ArgMaxD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -13610,7 +13610,7 @@ def ArgMaxWithValue(x: Tensor,
     values = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return indice, values
 
 
@@ -13656,7 +13656,7 @@ def ArgMinWithValue(x: Tensor,
     values = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return indice, values
 
 
@@ -13704,7 +13704,7 @@ def Eltwise(x: List[Tensor],
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -13737,7 +13737,7 @@ def Erfinv(input_x: Tensor, *, dependencies=[], node_name=None):
     output_y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_y
 
 
@@ -13770,7 +13770,7 @@ def PopulationCount(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -13884,7 +13884,7 @@ def LambNextMVWithDecay(input_mul3: Tensor,
     y4 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y1, y2, y3, y4
 
 
@@ -13998,7 +13998,7 @@ def LambNextMV(input_mul3: Tensor,
     y4 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y1, y2, y3, y4
 
 
@@ -14064,7 +14064,7 @@ def LambNextRight(input_square: Tensor,
     y2 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y1, y2
 
 
@@ -14142,7 +14142,7 @@ def LambUpdateWithLr(input_greater1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -14209,7 +14209,7 @@ def LambUpdateWithLrV2(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -14307,7 +14307,7 @@ def AdamApplyOneWithDecay(input0: Tensor,
     output2 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output0, output1, output2
 
 
@@ -14398,7 +14398,7 @@ def AdamApplyOne(input0: Tensor,
     output2 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output0, output1, output2
 
 
@@ -14496,7 +14496,7 @@ def AdamApplyOneWithDecayAssign(input0: Tensor,
     input3 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return input1, input2, input3
 
 
@@ -14587,7 +14587,7 @@ def AdamApplyOneAssign(input0: Tensor,
     input3 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return input1, input2, input3
 
 
@@ -14692,7 +14692,7 @@ def LambApplyOptimizerAssign(grad: Tensor,
     inputm = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output0, inputv, inputm
 
 
@@ -14749,7 +14749,7 @@ def LambApplyWeightAssign(input0: Tensor,
     input_param = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return input_param
 
 
@@ -14801,7 +14801,7 @@ def ClipByNormNoDivSum(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -14848,7 +14848,7 @@ def SquareSumV2(x: Tensor,
     y2 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y1, y2
 
 
@@ -14891,7 +14891,7 @@ def SquareSumV1(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -14932,7 +14932,7 @@ def SquareSumAll(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y2 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y1, y2
 
 
@@ -14978,7 +14978,7 @@ def FusedMulAddN(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -15028,7 +15028,7 @@ def Bias(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -15085,7 +15085,7 @@ def ConfusionMulGrad(input0: Tensor,
     output1 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output0, output1
 
 
@@ -15135,7 +15135,7 @@ def FusedMulAddNL2loss(x1: Tensor,
     y2 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y1, y2
 
 
@@ -15174,7 +15174,7 @@ def Threshold(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -15223,7 +15223,7 @@ def ArgMaxWithK(x: Tensor,
     values = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return indices, values
 
 
@@ -15258,7 +15258,7 @@ def Muls(x: Tensor, *, value: float, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -15293,7 +15293,7 @@ def Fills(x: Tensor, *, value: float, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -15328,7 +15328,7 @@ def Adds(x: Tensor, *, value: float, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -15365,7 +15365,7 @@ def MulNoNan(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -15409,7 +15409,7 @@ def Axpy(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -15461,7 +15461,7 @@ def CosineEmbeddingLoss(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -15505,7 +15505,7 @@ def KLDiv(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -15538,7 +15538,7 @@ def TensorMove(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -15571,7 +15571,7 @@ def TensorRedirect(x: Tensor, *, dependencies=[], node_name=None):
     output_x = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_x
 
 
@@ -15623,7 +15623,7 @@ def Addcdiv(input_data: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -15675,7 +15675,7 @@ def Addcmul(input_data: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -15721,7 +15721,7 @@ def AxpyV2(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -15771,7 +15771,7 @@ def StrideAdd(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -15812,7 +15812,7 @@ def TensorEqual(input_x: Tensor,
     output_z = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_z
 
 
@@ -15847,7 +15847,7 @@ def MaxN(x: List[Tensor], *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -15891,7 +15891,7 @@ def MaskedScale(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -15937,7 +15937,7 @@ def Lerp(start: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -15984,7 +15984,7 @@ def DataCompare(x1: Tensor,
     num = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return num
 
 
@@ -16019,7 +16019,7 @@ def HardMax(x: Tensor, *, axis: int = -1, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -16056,7 +16056,7 @@ def Dot(input_x: Tensor, input_y: Tensor, *, dependencies=[], node_name=None):
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -16106,7 +16106,7 @@ def IsClose(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -16155,7 +16155,7 @@ def ArgMaxGrad(var: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -16210,7 +16210,7 @@ def ArgMaxGradD(var: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -16267,7 +16267,7 @@ def AddMatMatElements(c: Tensor,
     c = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return c
 
 
@@ -16314,7 +16314,7 @@ def CosineSimilarity(input_x1: Tensor,
     output_y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_y
 
 
@@ -16432,7 +16432,7 @@ def ApplyAdamV2(var: Tensor,
     v = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, m, v
 
 
@@ -16465,7 +16465,7 @@ def Dawsn(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -16510,7 +16510,7 @@ def NanToNum(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -16547,7 +16547,7 @@ def CastLike(x: Tensor, target: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -16593,7 +16593,7 @@ def ClipByValueV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -16634,7 +16634,7 @@ def LDPCDecode(valid_num: Tensor,
     indices = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return indices
 
 
@@ -16750,7 +16750,7 @@ def ApplyAdamW(var: Tensor,
     v = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, m, v
 
 
@@ -16842,7 +16842,7 @@ def ScanSQCodes(ivf: Tensor,
     sq_index = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return actual_count, sq_distance, grouped_extreme_distance, sq_ivf, sq_index
 
 
@@ -16919,7 +16919,7 @@ def TransposeBatchMatMul(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -16972,7 +16972,7 @@ def RotatedNMS(boxes: Tensor,
     keep_indices = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return selected_detections, keep_indices
 
 
@@ -17026,7 +17026,7 @@ def Index(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -17088,7 +17088,7 @@ def IndexPutV2(x: Tensor,
     x = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return x
 
 
@@ -17153,7 +17153,7 @@ def AvgPoolUpdate(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -17205,7 +17205,7 @@ def YUVToRGB(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -17249,7 +17249,7 @@ def DecodeJpegPre(contents: Tensor,
     dvpp_support = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dvpp_support
 
 
@@ -17289,7 +17289,7 @@ def InitPartitionMap(ps_num: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -17314,7 +17314,7 @@ def UninitPartitionMap(*, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -17392,7 +17392,7 @@ def InitEmbeddingHashmap(table_id: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -17452,7 +17452,7 @@ def EmbeddingTableImport(file_path: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -17496,7 +17496,7 @@ def EmbeddingTableFind(table_id: Tensor,
     values = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return values
 
 
@@ -17528,7 +17528,7 @@ def UninitEmbeddingHashmap(table_id: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -17621,7 +17621,7 @@ def EmbeddingTableFindAndInit(table_id: Tensor,
     values = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return values
 
 
@@ -17707,7 +17707,7 @@ def EmbeddingApplyAdam(var_handle: Tensor,
     var_handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var_handle
 
 
@@ -17811,7 +17811,7 @@ def EmbeddingApplyAdamW(var_handle: Tensor,
     var_handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var_handle
 
 
@@ -17877,7 +17877,7 @@ def EmbeddingTableExport(file_path: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -17910,7 +17910,7 @@ def TableToResource(table_id: Tensor, *, dependencies=[], node_name=None):
     table_handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return table_handle
 
 
@@ -17946,7 +17946,7 @@ def EmbeddingFeatureMapping(feature_id: Tensor,
     offset_id = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return offset_id
 
 
@@ -18006,7 +18006,7 @@ def EmbeddingApplyAdaGrad(var_handle: Tensor,
     var_handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var_handle
 
 
@@ -18052,7 +18052,7 @@ def EmbeddingComputeVarExport(file_path: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -18098,7 +18098,7 @@ def EmbeddingComputeVarImport(file_path: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -18145,7 +18145,7 @@ def FusedBiasLeakyRelu(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -18192,7 +18192,7 @@ def FusedBiasLeakyReluGrad(y_grad: Tensor,
     x_grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return x_grad
 
 
@@ -18235,7 +18235,7 @@ def MemSet(*,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -18309,7 +18309,7 @@ def DeformableRoiPoolGrad(grad: Tensor,
     grad_offset = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return grad_x, grad_offset
 
 
@@ -18355,7 +18355,7 @@ def SearchN(x: Tensor,
     n = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return n
 
 
@@ -18404,7 +18404,7 @@ def AdaptiveAvgPoolAssistMatrix(input_size: Tensor,
     weight_matrix = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return left_matrix, right_matrix, weight_matrix
 
 
@@ -18452,7 +18452,7 @@ def AdaptiveAvgPool2dAssistMatrix(input_size: Tensor,
     weight_matrix = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return left_matrix, right_matrix, weight_matrix
 
 
@@ -18504,7 +18504,7 @@ def CorrectBBox(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -18568,7 +18568,7 @@ def DeformableRoiPool(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -18628,7 +18628,7 @@ def PSAMask(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -18688,7 +18688,7 @@ def PSAMaskGrad(y_grad: Tensor,
     x_grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return x_grad
 
 
@@ -18738,7 +18738,7 @@ def BallQuery(xyz: Tensor,
     idx = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return idx
 
 
@@ -18796,7 +18796,7 @@ def StackBallQuery(xyz: Tensor,
     idx = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return idx
 
 
@@ -18849,7 +18849,7 @@ def HcomRemoteLookup(keys: Tensor,
     values = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return values
 
 
@@ -18908,7 +18908,7 @@ def HcomCollRemoteLookup(table_id: Tensor,
     values = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return values
 
 
@@ -18962,7 +18962,7 @@ def HcomCollRemoteUpdate(table_id: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -19037,7 +19037,7 @@ def HcomCollRemoteLookupPaired(table_id: Tensor,
     ps_segments_num = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return values, indices, num_uniqued, ps_segments, ps_segments_num
 
 
@@ -19112,7 +19112,7 @@ def HcomCollRemoteUpdatePaired(table_id: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -19157,7 +19157,7 @@ def HcomGather(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -19190,7 +19190,7 @@ def MinAreaPolygons(pointsets: Tensor, *, dependencies=[], node_name=None):
     polygons = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return polygons
 
 
@@ -19231,7 +19231,7 @@ def PointsInPolygons(points: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -19272,7 +19272,7 @@ def ThreeNN(xyz1: Tensor, xyz2: Tensor, *, dependencies=[], node_name=None):
     idx = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dist, idx
 
 
@@ -19339,7 +19339,7 @@ def Voxelization(points: Tensor,
     voxel_num = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return voxels, coors, num_points_per_voxel, voxel_num
 
 
@@ -19380,7 +19380,7 @@ def ActiveRotatedFilter(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -19421,7 +19421,7 @@ def ActiveRotatedFilterGrad(y_grad: Tensor,
     x_grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return x_grad
 
 
@@ -19491,7 +19491,7 @@ def BlendFaceBgPartOne(face_img: Tensor,
     max_mask = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return acc_face, acc_mask, max_mask
 
 
@@ -19546,7 +19546,7 @@ def BlendFaceBgPartTwo(acc_face: Tensor,
     fused_img = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return fused_img
 
 
@@ -19611,7 +19611,7 @@ def ImgRawDecodePostHandle(img_channel_0: Tensor,
     raw_img = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return raw_img
 
 
@@ -19684,7 +19684,7 @@ def ImgRawDecodePostHandleV2(img_channel_0: Tensor,
     raw_img = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return raw_img
 
 
@@ -19717,7 +19717,7 @@ def YUV4442YUV422(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -19750,7 +19750,7 @@ def RGB2YUV422(rgb: Tensor, *, dependencies=[], node_name=None):
     yuv = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return yuv
 
 
@@ -19870,7 +19870,7 @@ def FlashAttentionScore(query: Tensor,
     attention_out = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return softmax_max, softmax_sum, softmax_out, attention_out
 
 
@@ -20036,7 +20036,7 @@ def FlashAttentionScoreGrad(query: Tensor,
     dpse = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dq, dk, dv, dpse
 
 
@@ -20179,7 +20179,7 @@ def MultiHeadAttentionScoreGrad(query: Tensor,
     dpse = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dq, dk, dv, dpse
 
 
@@ -20272,7 +20272,7 @@ def IncreFlashAttention(query: Tensor,
     attention_out = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return attention_out
 
 
@@ -20367,7 +20367,7 @@ def PromptFlashAttention(query: Tensor,
     attention_out = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return attention_out
 
 
@@ -20422,7 +20422,7 @@ def PasteSubImg(patch_img: Tensor,
     combine_img = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return combine_img
 
 
@@ -20469,7 +20469,7 @@ def RotatedFeatureAlignGrad(dy: Tensor,
     dx = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dx
 
 
@@ -20568,7 +20568,7 @@ def Conv2DTransposeDCompress(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -20612,7 +20612,7 @@ def ForeachNonFiniteCheckAndUnscale(scaled_grads: List[Tensor],
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -20651,7 +20651,7 @@ def ForeachMulScalarInplace(x: List[Tensor],
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -20682,7 +20682,7 @@ def SwitchByIndex(x: Tensor, *, indices: int, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -20740,7 +20740,7 @@ def QuantBatchMatmul(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -20861,7 +20861,7 @@ def MoeFFN(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -20900,7 +20900,7 @@ def ForeachAddScalarInplace(x: List[Tensor],
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -20946,7 +20946,7 @@ def _ForeachAddScalar(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -20985,7 +20985,7 @@ def ForeachAddScalarListInplace(x: List[Tensor],
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -21031,7 +21031,7 @@ def _ForeachAddScalarList(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -21077,7 +21077,7 @@ def ForeachAddListInplace(x1: List[Tensor],
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -21130,7 +21130,7 @@ def _ForeachAddList(x1: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -21169,7 +21169,7 @@ def ForeachSubScalarInplace(x: List[Tensor],
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -21215,7 +21215,7 @@ def _ForeachSubScalar(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -21254,7 +21254,7 @@ def ForeachSubScalarListInplace(x: List[Tensor],
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -21300,7 +21300,7 @@ def _ForeachSubScalarList(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -21346,7 +21346,7 @@ def ForeachSubListInplace(x1: List[Tensor],
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -21399,7 +21399,7 @@ def _ForeachSubList(x1: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -21445,7 +21445,7 @@ def _ForeachMulScalar(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -21484,7 +21484,7 @@ def ForeachMulScalarListInplace(x: List[Tensor],
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -21530,7 +21530,7 @@ def _ForeachMulScalarList(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -21571,7 +21571,7 @@ def ForeachMulListInplace(x1: List[Tensor],
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -21619,7 +21619,7 @@ def _ForeachMulList(x1: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -21658,7 +21658,7 @@ def ForeachDivScalarInplace(x: List[Tensor],
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -21704,7 +21704,7 @@ def _ForeachDivScalar(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -21743,7 +21743,7 @@ def ForeachDivScalarListInplace(x: List[Tensor],
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -21789,7 +21789,7 @@ def _ForeachDivScalarList(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -21830,7 +21830,7 @@ def ForeachDivListInplace(x1: List[Tensor],
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -21878,7 +21878,7 @@ def _ForeachDivList(x1: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -21917,7 +21917,7 @@ def ForeachMaximumScalarInplace(x: List[Tensor],
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -21963,7 +21963,7 @@ def _ForeachMaximumScalar(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -22002,7 +22002,7 @@ def ForeachMaximumScalarListInplace(x: List[Tensor],
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -22048,7 +22048,7 @@ def _ForeachMaximumScalarList(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -22089,7 +22089,7 @@ def ForeachMaximumListInplace(x1: List[Tensor],
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -22137,7 +22137,7 @@ def _ForeachMaximumList(x1: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -22176,7 +22176,7 @@ def ForeachMinimumScalarInplace(x: List[Tensor],
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -22222,7 +22222,7 @@ def _ForeachMinimumScalar(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -22261,7 +22261,7 @@ def ForeachMinimumScalarListInplace(x: List[Tensor],
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -22307,7 +22307,7 @@ def _ForeachMinimumScalarList(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -22348,7 +22348,7 @@ def ForeachMinimumListInplace(x1: List[Tensor],
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -22396,7 +22396,7 @@ def _ForeachMinimumList(x1: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -22435,7 +22435,7 @@ def ForeachPowScalarInplace(x: List[Tensor],
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -22481,7 +22481,7 @@ def _ForeachPowScalar(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -22520,7 +22520,7 @@ def ForeachPowScalarListInplace(x: List[Tensor],
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -22566,7 +22566,7 @@ def _ForeachPowScalarList(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -22607,7 +22607,7 @@ def ForeachPowListInplace(x1: List[Tensor],
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -22655,7 +22655,7 @@ def _ForeachPowList(x1: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -22686,7 +22686,7 @@ def ForeachAbsInplace(x: List[Tensor], *, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -22727,7 +22727,7 @@ def _ForeachAbs(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -22758,7 +22758,7 @@ def ForeachACosInplace(x: List[Tensor], *, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -22799,7 +22799,7 @@ def _ForeachACos(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -22830,7 +22830,7 @@ def ForeachASinInplace(x: List[Tensor], *, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -22871,7 +22871,7 @@ def _ForeachASin(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -22902,7 +22902,7 @@ def ForeachATanInplace(x: List[Tensor], *, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -22943,7 +22943,7 @@ def _ForeachATan(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -22974,7 +22974,7 @@ def ForeachCosInplace(x: List[Tensor], *, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -23015,7 +23015,7 @@ def _ForeachCos(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -23046,7 +23046,7 @@ def ForeachSinInplace(x: List[Tensor], *, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -23087,7 +23087,7 @@ def _ForeachSin(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -23118,7 +23118,7 @@ def ForeachTanInplace(x: List[Tensor], *, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -23159,7 +23159,7 @@ def _ForeachTan(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -23190,7 +23190,7 @@ def ForeachCoshInplace(x: List[Tensor], *, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -23231,7 +23231,7 @@ def _ForeachCosh(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -23262,7 +23262,7 @@ def ForeachSinhInplace(x: List[Tensor], *, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -23303,7 +23303,7 @@ def _ForeachSinh(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -23334,7 +23334,7 @@ def ForeachTanhInplace(x: List[Tensor], *, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -23375,7 +23375,7 @@ def _ForeachTanh(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -23406,7 +23406,7 @@ def ForeachSqrtInplace(x: List[Tensor], *, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -23447,7 +23447,7 @@ def _ForeachSqrt(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -23478,7 +23478,7 @@ def ForeachNegInplace(x: List[Tensor], *, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -23519,7 +23519,7 @@ def _ForeachNeg(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -23550,7 +23550,7 @@ def ForeachExpInplace(x: List[Tensor], *, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -23591,7 +23591,7 @@ def _ForeachExp(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -23622,7 +23622,7 @@ def ForeachExpm1Inplace(x: List[Tensor], *, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -23663,7 +23663,7 @@ def _ForeachExpm1(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -23694,7 +23694,7 @@ def ForeachLogInplace(x: List[Tensor], *, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -23735,7 +23735,7 @@ def _ForeachLog(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -23766,7 +23766,7 @@ def ForeachLog2Inplace(x: List[Tensor], *, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -23807,7 +23807,7 @@ def _ForeachLog2(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -23838,7 +23838,7 @@ def ForeachLog10Inplace(x: List[Tensor], *, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -23879,7 +23879,7 @@ def _ForeachLog10(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -23910,7 +23910,7 @@ def ForeachLog1pInplace(x: List[Tensor], *, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -23951,7 +23951,7 @@ def _ForeachLog1p(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -23985,7 +23985,7 @@ def ForeachReciprocalInplace(x: List[Tensor],
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -24026,7 +24026,7 @@ def _ForeachReciprocal(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -24057,7 +24057,7 @@ def ForeachZeroInplace(x: List[Tensor], *, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -24088,7 +24088,7 @@ def ForeachSigmoidInplace(x: List[Tensor], *, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -24129,7 +24129,7 @@ def _ForeachSigmoid(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -24192,7 +24192,7 @@ def RoiAlignRotatedGrad(x_grad: Tensor,
     y_grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y_grad
 
 
@@ -24225,7 +24225,7 @@ def ToBool(input: Tensor, *, dependencies=[], node_name=None):
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -24288,7 +24288,7 @@ def OpTiling(x: List[Tensor],
     tiling_cond = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return tiling_data, tiling_key, block_dim, tiling_cond
 
 
@@ -24333,7 +24333,7 @@ def ConditionCalc(x: List[Tensor],
     cond = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return cond
 
 
@@ -24373,7 +24373,7 @@ def MakeIterator(x: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -24418,7 +24418,7 @@ def IteratorV2(*,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -24471,7 +24471,7 @@ def _IteratorGetNext(x: Tensor,
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -24516,7 +24516,7 @@ def DeviceQueueDataset(*,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -24564,7 +24564,7 @@ def HcomAllGather(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -24612,7 +24612,7 @@ def HcomAllReduce(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -24665,7 +24665,7 @@ def _HcomBroadcast(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -24716,7 +24716,7 @@ def HcomReduce(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -24767,7 +24767,7 @@ def HcomReduceScatter(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -24808,7 +24808,7 @@ def HcomSend(x: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -24855,7 +24855,7 @@ def HcomReceive(*,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -24894,7 +24894,7 @@ def HcomRemoteRead(remote: Tensor,
     local = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return local
 
 
@@ -24943,7 +24943,7 @@ def HcomRemoteRefRead(remote: Tensor,
     cache_var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return cache_var
 
 
@@ -24980,7 +24980,7 @@ def HcomRemoteWrite(remote: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -25027,7 +25027,7 @@ def HcomRemoteScatterWrite(remote: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -25087,7 +25087,7 @@ def HcomAllToAllV(send_data: Tensor,
     recv_data = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return recv_data
 
 
@@ -25122,7 +25122,7 @@ def HcomAllToAll(x: Tensor, *, group: str, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -25175,7 +25175,7 @@ def HcomAllToAllVC(send_data: Tensor,
     recv_data = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return recv_data
 
 
@@ -25240,7 +25240,7 @@ def HcomGatherAllToAllV(addrinfo: Tensor,
     gathered = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return recv_data, gathered
 
 
@@ -25279,7 +25279,7 @@ def HorovodAllgather(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -25318,7 +25318,7 @@ def HorovodAllreduce(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -25357,7 +25357,7 @@ def HorovodBroadcast(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -25394,7 +25394,7 @@ def LUT3D(img: Tensor, lut_table: Tensor, *, dependencies=[], node_name=None):
     lut_img = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return lut_img
 
 
@@ -25435,7 +25435,7 @@ def AdjustBrightness(images: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -25476,7 +25476,7 @@ def AdjustBrightnessV2(images: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -25525,7 +25525,7 @@ def AdjustContrastWithMean(images: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -25567,7 +25567,7 @@ def RgbToGrayscale(images: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -25611,7 +25611,7 @@ def AdjustSaturationV2(images: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -25658,7 +25658,7 @@ def ResizeTrilinear(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -25716,7 +25716,7 @@ def WarpAffineV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -25763,7 +25763,7 @@ def ResizeV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -25810,7 +25810,7 @@ def GaussianBlur(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -25868,7 +25868,7 @@ def Rotate(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -25917,7 +25917,7 @@ def ImgCrop(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -25950,7 +25950,7 @@ def DecodeGif(contents: Tensor, *, dependencies=[], node_name=None):
     image = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return image
 
 
@@ -25994,7 +25994,7 @@ def AdjustHue(images: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -26035,7 +26035,7 @@ def AdjustSaturation(images: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -26082,7 +26082,7 @@ def AdjustContrast(images: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -26140,7 +26140,7 @@ def CropAndResize(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -26201,7 +26201,7 @@ def CropAndResizeV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -26257,7 +26257,7 @@ def CropAndResizeD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -26312,7 +26312,7 @@ def CropAndResizeGradBoxes(grads: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -26370,7 +26370,7 @@ def CropAndResizeGradImage(grads: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -26428,7 +26428,7 @@ def ExtractGlimpse(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -26461,7 +26461,7 @@ def HSVToRGB(images: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -26527,7 +26527,7 @@ def QuantizedResizeBilinear(images: Tensor,
     y_max = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return resized_images, y_min, y_max
 
 
@@ -26571,7 +26571,7 @@ def ResizeArea(images: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -26618,7 +26618,7 @@ def ResizeBicubicGrad(grads: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -26668,7 +26668,7 @@ def ResizeBicubic(images: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -26715,7 +26715,7 @@ def ResizeNearestNeighborV2Grad(grads: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -26761,7 +26761,7 @@ def ResizeNearestNeighborV2GradD(grads: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -26808,7 +26808,7 @@ def ResizeBilinearV2Grad(grads: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -26869,7 +26869,7 @@ def SyncResizeBilinearV2Grad(grads: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -26919,7 +26919,7 @@ def ResizeBilinearV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -26980,7 +26980,7 @@ def SyncResizeBilinearV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -27013,7 +27013,7 @@ def RGBToHSV(images: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -27087,7 +27087,7 @@ def SampleDistortedBoundingBox(
     bboxes = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return begin, size, bboxes
 
 
@@ -27163,7 +27163,7 @@ def SampleDistortedBoundingBoxExt2(
     bboxes = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return begin, size, bboxes
 
 
@@ -27210,7 +27210,7 @@ def ResizeNearestNeighborV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -27251,7 +27251,7 @@ def DrawBoundingBoxes(images: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -27300,7 +27300,7 @@ def NonMaxSuppression(boxes: Tensor,
     selected_indices = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return selected_indices
 
 
@@ -27352,7 +27352,7 @@ def NonMaxSuppressionV2(boxes: Tensor,
     selected_indices = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return selected_indices
 
 
@@ -27412,7 +27412,7 @@ def NonMaxSuppressionV3(boxes: Tensor,
     selected_indices = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return selected_indices
 
 
@@ -27476,7 +27476,7 @@ def NonMaxSuppressionV4(boxes: Tensor,
     valid_outputs = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return selected_indices, valid_outputs
 
 
@@ -27533,7 +27533,7 @@ def NonMaxSuppressionWithOverlaps(overlaps: Tensor,
     selected_indices = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return selected_indices
 
 
@@ -27596,7 +27596,7 @@ def EncodeJpeg(image: Tensor,
     contents = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return contents
 
 
@@ -27635,7 +27635,7 @@ def EncodePng(image: Tensor,
     contents = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return contents
 
 
@@ -27677,7 +27677,7 @@ def DecodePng(contents: Tensor,
     image = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return image
 
 
@@ -27716,7 +27716,7 @@ def DecodeBmp(contents: Tensor,
     image = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return image
 
 
@@ -27778,7 +27778,7 @@ def DecodeAndCropJpeg(contents: Tensor,
     image = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return image
 
 
@@ -27824,7 +27824,7 @@ def ResizeBilinearV2D(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -27872,7 +27872,7 @@ def KeepRatioResizeBilinear(images: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -27918,7 +27918,7 @@ def ResizeNearestNeighborV2D(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -27957,7 +27957,7 @@ def ExtractJpegShape(contents: Tensor,
     image_shape = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return image_shape
 
 
@@ -28003,7 +28003,7 @@ def DrawBoundingBoxesV2(images: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -28079,7 +28079,7 @@ def NonMaxSuppressionV5(boxes: Tensor,
     valid_outputs = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return selected_indices, selected_scores, valid_outputs
 
 
@@ -28137,7 +28137,7 @@ def ScaleAndTranslate(images: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -28195,7 +28195,7 @@ def ScaleAndTranslateGrad(grads: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -28275,7 +28275,7 @@ def CombinedNonMaxSuppression(boxes: Tensor,
     valid_detections = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
 
 
@@ -28316,7 +28316,7 @@ def IMGWarp(img: Tensor,
     warp_img = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return warp_img
 
 
@@ -28353,7 +28353,7 @@ def Remap(img: Tensor, map_offset: Tensor, *, dependencies=[], node_name=None):
     map_img = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return map_img
 
 
@@ -28394,7 +28394,7 @@ def IMGWarpResize(img: Tensor,
     warp_img = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return warp_img
 
 
@@ -28455,7 +28455,7 @@ def SpatialTransformerD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -28516,7 +28516,7 @@ def SpatialTransformer(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -28602,7 +28602,7 @@ def Resize(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -28683,7 +28683,7 @@ def ResizeGrad(grads: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -28740,7 +28740,7 @@ def DecodeJpeg(contents: Tensor,
     image = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return image
 
 
@@ -28781,7 +28781,7 @@ def DenseImageWarp(image: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -28848,7 +28848,7 @@ def ResizeD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -28915,7 +28915,7 @@ def ResizeGradD(grads: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -28965,7 +28965,7 @@ def DenseImageWarpGrad(grad: Tensor,
     grad_flow = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return grad_image, grad_flow
 
 
@@ -29015,7 +29015,7 @@ def GridSampler2D(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -29074,7 +29074,7 @@ def GridSampler2DGrad(grad: Tensor,
     dgrid = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dx, dgrid
 
 
@@ -29122,7 +29122,7 @@ def GridUnnormal(grid: Tensor,
     position = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return diff, position
 
 
@@ -29166,7 +29166,7 @@ def ImageUnfold(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -29207,7 +29207,7 @@ def IMGWarpOffsets(images: Tensor,
     warp_images = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return warp_images
 
 
@@ -29260,7 +29260,7 @@ def GridSampler3D(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -29319,7 +29319,7 @@ def GridSampler3DGrad(grad: Tensor,
     dgrid = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dx, dgrid
 
 
@@ -29363,7 +29363,7 @@ def UpsampleNearest3d(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -29410,7 +29410,7 @@ def UpsampleTrilinear3d(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -29458,7 +29458,7 @@ def UpsampleNearest3dGrad(grad_output: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -29509,7 +29509,7 @@ def UpsampleTrilinear3dGrad(grad_output: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -29553,7 +29553,7 @@ def UpsampleNearest1d(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -29601,7 +29601,7 @@ def UpsampleNearest1dGrad(grad_output: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -29646,7 +29646,7 @@ def DecodeImage(contents: Tensor,
     image = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return image
 
 
@@ -29687,7 +29687,7 @@ def EncodeJpegVariableQuality(images: Tensor,
     contents = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return contents
 
 
@@ -29761,7 +29761,7 @@ def GenerateBoundingBoxProposals(scores: Tensor,
     rois_probabilities = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return rois, rois_probabilities
 
 
@@ -29813,7 +29813,7 @@ def ImageProjectiveTransform(images: Tensor,
     transformed_images = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return transformed_images
 
 
@@ -29876,7 +29876,7 @@ def ImageProjectiveTransformV2(images: Tensor,
     transformed_images = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return transformed_images
 
 
@@ -29934,7 +29934,7 @@ def ExtractGlimpseV2(input: Tensor,
     glimpse = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return glimpse
 
 
@@ -29967,7 +29967,7 @@ def ImgToTensor(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -30016,7 +30016,7 @@ def NormalizeV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -30072,7 +30072,7 @@ def WarpAffine(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -30116,7 +30116,7 @@ def _AssistHelp(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -30149,7 +30149,7 @@ def CacheUpdate(x: Tensor, *, dependencies=[], node_name=None):
     x = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return x
 
 
@@ -30191,7 +30191,7 @@ def InternalDataMove(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -30228,7 +30228,7 @@ def CholeskyGrad(x: Tensor, grad: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -30261,7 +30261,7 @@ def Cholesky(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -30298,7 +30298,7 @@ def Ger(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -30335,7 +30335,7 @@ def LogMatrixDeterminant(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return sign, y
 
 
@@ -30368,7 +30368,7 @@ def MatrixDeterminant(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -30407,7 +30407,7 @@ def MatrixInverse(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -30451,7 +30451,7 @@ def MatrixSolve(matrix: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -30500,7 +30500,7 @@ def MatrixSolveLs(matrix: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -30547,7 +30547,7 @@ def MatrixTriangularSolve(matrix: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -30590,7 +30590,7 @@ def Qr(x: Tensor,
     r = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return q, r
 
 
@@ -30633,7 +30633,7 @@ def SelfAdjointEig(x: Tensor,
     eigen_vector = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return eigen_value, eigen_vector
 
 
@@ -30670,7 +30670,7 @@ def Slogdet(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return sign, y
 
 
@@ -30720,7 +30720,7 @@ def Svd(x: Tensor,
     v = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return sigma, u, v
 
 
@@ -30763,7 +30763,7 @@ def Lu(input: Tensor,
     p = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return lu, p
 
 
@@ -30796,7 +30796,7 @@ def MatrixSquareRoot(input: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -30840,7 +30840,7 @@ def TridiagonalSolve(diagonals: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -30887,7 +30887,7 @@ def BandedTriangularSolve(bands: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -30928,7 +30928,7 @@ def ConjugateTranspose(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -30972,7 +30972,7 @@ def EmptyTensorList(element_shape: Tensor,
     handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handle
 
 
@@ -31016,7 +31016,7 @@ def TensorListPushBack(input_handle: Tensor,
     output_handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_handle
 
 
@@ -31064,7 +31064,7 @@ def TensorListPopBack(input_handle: Tensor,
     tensor = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_handle, tensor
 
 
@@ -31097,7 +31097,7 @@ def TensorListLength(input_handle: Tensor, *, dependencies=[], node_name=None):
     length = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return length
 
 
@@ -31136,7 +31136,7 @@ def TensorListElementShape(input_handle: Tensor,
     element_shape = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return element_shape
 
 
@@ -31183,7 +31183,7 @@ def TensorListReserve(element_shape: Tensor,
     handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handle
 
 
@@ -31232,7 +31232,7 @@ def TensorListGetItem(input_handle: Tensor,
     item = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return item
 
 
@@ -31281,7 +31281,7 @@ def TensorListSetItem(input_handle: Tensor,
     output_handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_handle
 
 
@@ -31325,7 +31325,7 @@ def TensorListPushBackBatch(input_handles: Tensor,
     output_handles = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_handles
 
 
@@ -31372,7 +31372,7 @@ def TensorListStack(input_handle: Tensor,
     tensor = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return tensor
 
 
@@ -31425,7 +31425,7 @@ def TensorListConcatV2(input_handle: Tensor,
     lengths = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return tensor, lengths
 
 
@@ -31474,7 +31474,7 @@ def TensorListSplit(tensor: Tensor,
     output_handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_handle
 
 
@@ -31518,7 +31518,7 @@ def TensorListFromTensor(tensor: Tensor,
     output_handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_handle
 
 
@@ -31559,7 +31559,7 @@ def TensorListResize(input_handle: Tensor,
     output_handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_handle
 
 
@@ -31608,7 +31608,7 @@ def TensorListGather(input_handle: Tensor,
     values = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return values
 
 
@@ -31663,7 +31663,7 @@ def TensorListScatterV2(tensor: Tensor,
     output_handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_handle
 
 
@@ -31712,7 +31712,7 @@ def TensorListScatterIntoExistingList(input_handle: Tensor,
     output_handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_handle
 
 
@@ -31756,7 +31756,7 @@ def TensorListConcatLists(input_a: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -31785,7 +31785,7 @@ def Timestamp(*, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -31827,7 +31827,7 @@ def Assert(input_condition: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -31858,7 +31858,7 @@ def Print(x: List[Tensor], *, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -31893,7 +31893,7 @@ def PrintV2(x: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -31945,7 +31945,7 @@ def PrintV3(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -31987,7 +31987,7 @@ def LookupTableImport(handle: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -32029,7 +32029,7 @@ def LookupTableInsert(handle: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -32075,7 +32075,7 @@ def LookupTableExport(handle: Tensor,
     values = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return keys, values
 
 
@@ -32108,7 +32108,7 @@ def LookupTableSize(handle: Tensor, *, dependencies=[], node_name=None):
     size = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return size
 
 
@@ -32157,7 +32157,7 @@ def LookupTableFind(handle: Tensor,
     values = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return values
 
 
@@ -32203,7 +32203,7 @@ def HashTable(*,
     handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handle
 
 
@@ -32245,7 +32245,7 @@ def InitializeTable(handle: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -32308,7 +32308,7 @@ def MutableDenseHashTable(empty_key: Tensor,
     handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handle
 
 
@@ -32358,7 +32358,7 @@ def MutableHashTableOfTensors(*,
     handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handle
 
 
@@ -32404,7 +32404,7 @@ def MutableHashTable(*,
     handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handle
 
 
@@ -32441,7 +32441,7 @@ def LookupTableRemove(table_handle: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -32482,7 +32482,7 @@ def TensorMapHasKey(input_handle: Tensor,
     has_key = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return has_key
 
 
@@ -32523,7 +32523,7 @@ def TensorMapErase(input_handle: Tensor,
     output_handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_handle
 
 
@@ -32569,7 +32569,7 @@ def TensorMapInsert(input_handle: Tensor,
     output_handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_handle
 
 
@@ -32613,7 +32613,7 @@ def TensorMapLookup(input_handle: Tensor,
     value = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return value
 
 
@@ -32646,7 +32646,7 @@ def TensorMapSize(input_handle: Tensor, *, dependencies=[], node_name=None):
     size = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return size
 
 
@@ -32685,7 +32685,7 @@ def TensorMapStackKeys(input_handle: Tensor,
     keys = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return keys
 
 
@@ -32714,7 +32714,7 @@ def EmptyTensorMap(*, dependencies=[], node_name=None):
     handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handle
 
 
@@ -32759,7 +32759,7 @@ def Power(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -32796,7 +32796,7 @@ def Igamma(a: Tensor, x: Tensor, *, dependencies=[], node_name=None):
     z = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return z
 
 
@@ -32833,7 +32833,7 @@ def Igammac(a: Tensor, x: Tensor, *, dependencies=[], node_name=None):
     z = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return z
 
 
@@ -32878,7 +32878,7 @@ def Histogram(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -32919,7 +32919,7 @@ def CompareAndBitpack(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -32965,7 +32965,7 @@ def Bincount(array: Tensor,
     bins = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return bins
 
 
@@ -33011,7 +33011,7 @@ def Betainc(a: Tensor,
     z = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return z
 
 
@@ -33048,7 +33048,7 @@ def Zeta(x: Tensor, q: Tensor, *, dependencies=[], node_name=None):
     z = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return z
 
 
@@ -33094,7 +33094,7 @@ def Bucketize(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -33127,7 +33127,7 @@ def Trunc(input_x: Tensor, *, dependencies=[], node_name=None):
     output_y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_y
 
 
@@ -33173,7 +33173,7 @@ def SparseSegmentSum(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -33219,7 +33219,7 @@ def SparseSegmentMean(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -33271,7 +33271,7 @@ def SparseSegmentMeanGrad(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -33308,7 +33308,7 @@ def IgammaGradA(a: Tensor, x: Tensor, *, dependencies=[], node_name=None):
     z = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return z
 
 
@@ -33335,7 +33335,7 @@ def InitData(*, channel_name: str = "", dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -33383,7 +33383,7 @@ def _GetNext(*,
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -33428,7 +33428,7 @@ def GetDynamicDims(input: List[Tensor],
     dims = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dims
 
 
@@ -33461,7 +33461,7 @@ def EndOfSequence(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -33494,7 +33494,7 @@ def Erf(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -33527,7 +33527,7 @@ def Erfc(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -33576,7 +33576,7 @@ def HistogramFixedWidth(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -33623,7 +33623,7 @@ def HistogramFixedWidthD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -33660,7 +33660,7 @@ def NextAfter(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -33695,7 +33695,7 @@ def Pdist(x: Tensor, *, p: float = 2.000000, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -33728,7 +33728,7 @@ def IsFinite(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -33761,7 +33761,7 @@ def IsPosInf(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -33794,7 +33794,7 @@ def IsInf(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -33827,7 +33827,7 @@ def IsNegInf(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -33866,7 +33866,7 @@ def ComplexAbs(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -33899,7 +33899,7 @@ def IsNan(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -33938,7 +33938,7 @@ def Real(input: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -33971,7 +33971,7 @@ def Conj(input: Tensor, *, dependencies=[], node_name=None):
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -34032,7 +34032,7 @@ def NLLLoss(x: Tensor,
     total_weight = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, total_weight
 
 
@@ -34095,7 +34095,7 @@ def NLLLossGrad(x: Tensor,
     x_grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return x_grad
 
 
@@ -34167,7 +34167,7 @@ def IFMR(data: Tensor,
     offset = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return scale, offset
 
 
@@ -34219,7 +34219,7 @@ def WtsARQ(w: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -34283,7 +34283,7 @@ def ActsULQ(x: Tensor,
     x_clamped_loss = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, clamp_min_mask, clamp_max_mask, x_clamped_loss
 
 
@@ -34329,7 +34329,7 @@ def ActsULQInputGrad(y_grad: Tensor,
     x_grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return x_grad
 
 
@@ -34375,7 +34375,7 @@ def ActULQClampMaxGrad(y_grad: Tensor,
     clamp_max_grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return clamp_max_grad
 
 
@@ -34421,7 +34421,7 @@ def ActULQClampMinGrad(y_grad: Tensor,
     clamp_min_grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return clamp_min_grad
 
 
@@ -34470,7 +34470,7 @@ def LpNorm(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -34519,7 +34519,7 @@ def LpNormV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -34568,7 +34568,7 @@ def LpNormReduce(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -34617,7 +34617,7 @@ def LpNormReduceV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -34659,7 +34659,7 @@ def LpNormUpdate(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -34701,7 +34701,7 @@ def LpNormUpdateV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -34745,7 +34745,7 @@ def Complex(real: Tensor,
     out = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return out
 
 
@@ -34805,7 +34805,7 @@ def SparseBincount(indices: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -34844,7 +34844,7 @@ def Imag(input: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -34883,7 +34883,7 @@ def Angle(input: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -34932,7 +34932,7 @@ def SoftMarginLossGrad(predict: Tensor,
     gradient = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return gradient
 
 
@@ -34976,7 +34976,7 @@ def Cross(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -35020,7 +35020,7 @@ def Cdist(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -35075,7 +35075,7 @@ def CdistGrad(grad: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -35130,7 +35130,7 @@ def RaggedBincount(splits: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -35188,7 +35188,7 @@ def DenseCountSparseOutput(values: Tensor,
     output_dense_shape = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_indices, output_values, output_dense_shape
 
 
@@ -35240,7 +35240,7 @@ def SparseSegmentSumGrad(grad: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -35303,7 +35303,7 @@ def RaggedCountSparseOutput(splits: Tensor,
     output_dense_shape = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_indices, output_values, output_dense_shape
 
 
@@ -35345,7 +35345,7 @@ def SignBitsUnpack(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -35397,7 +35397,7 @@ def ScaledMaskedSoftmax(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -35454,7 +35454,7 @@ def ScaledMaskedSoftmaxGrad(y_grad: Tensor,
     x_grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return x_grad
 
 
@@ -35489,7 +35489,7 @@ def SignBitsPack(x: Tensor, *, size: int, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -35538,7 +35538,7 @@ def SobolSample(dim: Tensor,
     samples = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return samples
 
 
@@ -35607,7 +35607,7 @@ def SparseCountSparseOutput(indices: Tensor,
     output_dense_shape = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_indices, output_values, output_dense_shape
 
 
@@ -35662,7 +35662,7 @@ def RaggedBinCount(splits: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -35711,7 +35711,7 @@ def DenseBincount(input: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -35802,7 +35802,7 @@ def AttentionQKVGradW(x: Tensor,
     dbias_value = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dw_query, dw_key, dw_value, dbias_query, dbias_key, dbias_value
 
 
@@ -35880,7 +35880,7 @@ def AttentionQKVGradX(ln_dx: Optional[Tensor],
     dx = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dx
 
 
@@ -36002,7 +36002,7 @@ def AttentionLnQKV(x: Tensor,
     variance = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return norm, query_output, key_output, value_output, mean, variance
 
 
@@ -36083,7 +36083,7 @@ def SwinTransformerLnQKV(x: Tensor,
     value_output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return query_output, key_output, value_output
 
 
@@ -36140,7 +36140,7 @@ def MatMul(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -36211,7 +36211,7 @@ def MatMulV2(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -36290,7 +36290,7 @@ def MatMulV2Compress(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -36353,7 +36353,7 @@ def GEMM(a: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -36400,7 +36400,7 @@ def BatchMatMul(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -36471,7 +36471,7 @@ def BatchMatMulV2(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -36504,7 +36504,7 @@ def L2Loss(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -36537,7 +36537,7 @@ def MatrixDiag(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -36574,7 +36574,7 @@ def MatrixDiagD(x: Tensor, assist: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -36607,7 +36607,7 @@ def MatrixDiagPart(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -36648,7 +36648,7 @@ def MatrixDiagPartD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -36689,7 +36689,7 @@ def MatrixSetDiag(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -36735,7 +36735,7 @@ def MatrixSetDiagD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -36825,7 +36825,7 @@ def AttentionScore(query: Tensor,
     softmax_output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return attention_score, softmax_output
 
 
@@ -36923,7 +36923,7 @@ def AttentionScoreGrad(attention_score: Tensor,
     key_dw = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return value_dw, query_dx, key_dw
 
 
@@ -36972,7 +36972,7 @@ def ScatterNdUpdate(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -37018,7 +37018,7 @@ def TensorScatterUpdate(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -37070,7 +37070,7 @@ def ScatterElements(data: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -37119,7 +37119,7 @@ def ScatterNdMax(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -37168,7 +37168,7 @@ def ScatterAdd(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -37217,7 +37217,7 @@ def ScatterAddWithAxis(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -37266,7 +37266,7 @@ def ScatterDiv(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -37315,7 +37315,7 @@ def ScatterNdAdd(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -37361,7 +37361,7 @@ def TensorScatterAdd(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -37410,7 +37410,7 @@ def ScatterNdSub(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -37459,7 +37459,7 @@ def ScatterNdMin(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -37505,7 +37505,7 @@ def TensorScatterSub(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -37554,7 +37554,7 @@ def ScatterSub(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -37591,7 +37591,7 @@ def DiagPartD(x: Tensor, assist: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -37624,7 +37624,7 @@ def DiagPart(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -37698,7 +37698,7 @@ def FullyConnection(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -37777,7 +37777,7 @@ def FullyConnectionCompress(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -37834,7 +37834,7 @@ def ConfusionMatrix(labels: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -37886,7 +37886,7 @@ def Scatter(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -37935,7 +37935,7 @@ def ScatterMul(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -37984,7 +37984,7 @@ def ScatterMin(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -38033,7 +38033,7 @@ def ScatterMax(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -38083,7 +38083,7 @@ def ScatterMaxWithArgmax(x: Tensor,
     argmax = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, argmax
 
 
@@ -38132,7 +38132,7 @@ def ScatterUpdate(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -38178,7 +38178,7 @@ def MatrixDiagPartV2(input: Tensor,
     diagonal = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return diagonal
 
 
@@ -38224,7 +38224,7 @@ def MatrixSetDiagV2(input: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -38273,7 +38273,7 @@ def MatrixSetDiagV3(input: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -38330,7 +38330,7 @@ def MatrixDiagV2(diagonal: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -38379,7 +38379,7 @@ def IndexAdd(var: Tensor,
     var_out = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var_out
 
 
@@ -38427,7 +38427,7 @@ def IndexPut(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -38462,7 +38462,7 @@ def Triu(x: Tensor, *, diagonal: int = 0, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -38497,7 +38497,7 @@ def Tril(x: Tensor, *, diagonal: int = 0, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -38541,7 +38541,7 @@ def Einsum(x: List[Tensor],
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -38585,7 +38585,7 @@ def Eye(*,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -38627,7 +38627,7 @@ def FillDiagonal(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -38660,7 +38660,7 @@ def Trace(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -38699,7 +38699,7 @@ def Pinverse(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -38745,7 +38745,7 @@ def TensorScatterMax(input: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -38791,7 +38791,7 @@ def TensorScatterMin(input: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -38840,7 +38840,7 @@ def MatrixDiagPartV3(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -38900,7 +38900,7 @@ def MatrixDiagV3(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -39005,7 +39005,7 @@ def SwinAttentionScore(query: Tensor,
     softmax = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return attention_score, softmax
 
 
@@ -39055,7 +39055,7 @@ def SwinAttentionFFN(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -39098,7 +39098,7 @@ def L2Normalize(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -39151,7 +39151,7 @@ def L2NormalizeGrad(x: Tensor,
     dx = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dx
 
 
@@ -39247,7 +39247,7 @@ def BatchNorm(x: Tensor,
     reserve_space_3 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, batch_mean, batch_variance, reserve_space_1, reserve_space_2, reserve_space_3
 
 
@@ -39319,7 +39319,7 @@ def SyncBatchNormGatherStatsWithCounts(mean_all: Tensor,
     running_var_update = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return invert_std, running_var_update
 
 
@@ -39363,7 +39363,7 @@ def SyncBNTrainingUpdate(mean: Tensor,
     running_mean_update = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return running_mean_update
 
 
@@ -39419,7 +39419,7 @@ def SyncBatchNormBackwardReduce(sum_dy: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return sum_dy_xmu, y
 
 
@@ -39486,7 +39486,7 @@ def SyncBatchNormBackwardElemt(grad_output: Tensor,
     grad_input = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return grad_input
 
 
@@ -39561,7 +39561,7 @@ def SyncBatchNormGatherStats(total_sum: Tensor,
     variance = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return batch_mean, batch_invstd, mean, variance
 
 
@@ -39653,7 +39653,7 @@ def BatchNorm3D(x: Tensor,
     reserve_space_2 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, batch_mean, batch_variance, reserve_space_1, reserve_space_2
 
 
@@ -39745,7 +39745,7 @@ def BatchNormExt2(input_x: Tensor,
     output_reserve_space_2 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_y, output_mean, output_variance, output_reserve_space_1, output_reserve_space_2
 
 
@@ -39837,7 +39837,7 @@ def BatchNormGrad(y_backprop: Tensor,
     reserve_space_5 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return x_backprop, scale_backprop, offset_backprop, reserve_space_4, reserve_space_5
 
 
@@ -39919,7 +39919,7 @@ def BatchNorm3DGrad(y_backprop: Tensor,
     reserve_space_5 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return x_backprop, scale_backprop, offset_backprop, reserve_space_4, reserve_space_5
 
 
@@ -40001,7 +40001,7 @@ def BatchNormGradExt2(y_backprop: Tensor,
     reserve_space_4 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return x_backprop, scale_backprop, offset_backprop, reserve_space_3, reserve_space_4
 
 
@@ -40082,7 +40082,7 @@ def BNInference(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -40161,7 +40161,7 @@ def BNInferenceD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -40222,7 +40222,7 @@ def DepthwiseConv2DBackpropFilter(input: Tensor,
     filter_grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return filter_grad
 
 
@@ -40282,7 +40282,7 @@ def DepthwiseConv2DBackpropFilterD(input: Tensor,
     filter_grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return filter_grad
 
 
@@ -40343,7 +40343,7 @@ def DepthwiseConv2DBackpropInput(input_size: Tensor,
     input_grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return input_grad
 
 
@@ -40403,7 +40403,7 @@ def DepthwiseConv2DBackpropInputD(filter: Tensor,
     input_grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return input_grad
 
 
@@ -40483,7 +40483,7 @@ def DepthwiseConv2D(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -40522,7 +40522,7 @@ def BiasAddGrad(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -40586,7 +40586,7 @@ def Conv2DBackpropInput(input_size: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -40649,7 +40649,7 @@ def Conv2DBackpropInputD(filter: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -40732,7 +40732,7 @@ def Deconvolution(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -40796,7 +40796,7 @@ def Conv2DBackpropFilter(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -40859,7 +40859,7 @@ def Conv2DBackpropFilterD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -40942,7 +40942,7 @@ def Conv2D(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -41033,7 +41033,7 @@ def Conv2DCompress(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -41114,7 +41114,7 @@ def DeformableConv2D(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -41197,7 +41197,7 @@ def Conv3D(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -41261,7 +41261,7 @@ def Conv3DBackpropInput(input_size: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -41324,7 +41324,7 @@ def Conv3DBackpropInputD(filter: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -41436,7 +41436,7 @@ def LSTM(x: Tensor,
     c_t = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return h, h_t, c_t
 
 
@@ -41500,7 +41500,7 @@ def Conv3DBackpropFilter(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -41563,7 +41563,7 @@ def Conv3DBackpropFilterD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -41655,7 +41655,7 @@ def Conv3DTranspose(input_size: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -41746,7 +41746,7 @@ def Conv3DTransposeD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -41838,7 +41838,7 @@ def Conv2DTranspose(input_size: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -41929,7 +41929,7 @@ def Conv2DTransposeD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -41995,7 +41995,7 @@ def DeformableOffsets(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -42070,7 +42070,7 @@ def DeformableOffsetsGrad(grad: Tensor,
     grad_offsets = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return grad_x, grad_offsets
 
 
@@ -42117,7 +42117,7 @@ def Dilation(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -42257,7 +42257,7 @@ def FixPipe(x1: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -42300,7 +42300,7 @@ def IsotonicRegression(input: Tensor,
     segments = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output, segments
 
 
@@ -42359,7 +42359,7 @@ def RoiAlignRotated(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -42416,7 +42416,7 @@ def BoundingBoxDecode(
     bboxes = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return bboxes
 
 
@@ -42466,7 +42466,7 @@ def BoundingBoxEncode(
     delats = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return delats
 
 
@@ -42507,7 +42507,7 @@ def CheckValid(bbox_tensor: Tensor,
     valid_tensor = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return valid_tensor
 
 
@@ -42557,7 +42557,7 @@ def Iou(bboxes: Tensor,
     overlap = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return overlap
 
 
@@ -42607,7 +42607,7 @@ def GIoU(bboxes: Tensor,
     overlap = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return overlap
 
 
@@ -42677,7 +42677,7 @@ def ROIAlignGrad(ydiff: Tensor,
     xdiff = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return xdiff
 
 
@@ -42743,7 +42743,7 @@ def ROIAlign(features: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -42821,7 +42821,7 @@ def PriorBox(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -42916,7 +42916,7 @@ def PriorBoxD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -42995,7 +42995,7 @@ def PriorBoxDV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -43045,7 +43045,7 @@ def PSROIPooling(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -43123,7 +43123,7 @@ def FSRDetectionOutput(rois: Tensor,
     box = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return actual_bbox_num, box
 
 
@@ -43203,7 +43203,7 @@ def SSDDetectionOutput(bbox_delta: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return out_boxnum, y
 
 
@@ -43268,7 +43268,7 @@ def Yolo(x: Tensor,
     classes_prob = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return coord_data, obj_prob, classes_prob
 
 
@@ -43333,7 +43333,7 @@ def YoloPreDetection(x: Tensor,
     classes_prob = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return coord_data, obj_prob, classes_prob
 
 
@@ -43418,7 +43418,7 @@ def YoloV5DetectionOutput(x: List[Tensor],
     box_out_num = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return box_out, box_out_num
 
 
@@ -43517,7 +43517,7 @@ def YoloV5DetectionOutputD(x: List[Tensor],
     box_out_num = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return box_out, box_out_num
 
 
@@ -43604,7 +43604,7 @@ def YoloV2DetectionOutput(coord_data: Tensor,
     box_out_num = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return box_out, box_out_num
 
 
@@ -43701,7 +43701,7 @@ def YoloV2DetectionOutputD(coord_data: Tensor,
     box_out_num = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return box_out, box_out_num
 
 
@@ -43827,7 +43827,7 @@ def YoloV3DetectionOutput(coord_data_low: Tensor,
     box_out_num = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return box_out, box_out_num
 
 
@@ -43987,7 +43987,7 @@ def YoloV3DetectionOutputD(coord_data_low: Tensor,
     box_out_num = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return box_out, box_out_num
 
 
@@ -44069,7 +44069,7 @@ def YoloV3DetectionOutputV2(x: List[Tensor],
     box_out_num = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return box_out, box_out_num
 
 
@@ -44165,7 +44165,7 @@ def YoloV3DetectionOutputV2D(x: List[Tensor],
     box_out_num = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return box_out, box_out_num
 
 
@@ -44207,7 +44207,7 @@ def SPP(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -44270,7 +44270,7 @@ def ROIPooling(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -44314,7 +44314,7 @@ def DecodeBbox(box_predictions: Tensor,
     decoded_boxes = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return decoded_boxes
 
 
@@ -44355,7 +44355,7 @@ def ClipBoxes(boxes_input: Tensor,
     boxes_output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return boxes_output
 
 
@@ -44395,7 +44395,7 @@ def ClipBoxesD(boxes_input: Tensor,
     boxes_output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return boxes_output
 
 
@@ -44453,7 +44453,7 @@ def FastrcnnPredictions(rois: Tensor,
     sorted_classes = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return sorted_rois, sorted_scores, sorted_classes
 
 
@@ -44523,7 +44523,7 @@ def RpnProposals(rois: Tensor,
     sorted_box = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return sorted_box
 
 
@@ -44592,7 +44592,7 @@ def RpnProposalsD(rois: Tensor,
     sorted_box = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return sorted_box
 
 
@@ -44658,7 +44658,7 @@ def RpnProposalPostProcessing(sorted_proposal: Tensor,
     sorted_box = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return sorted_box
 
 
@@ -44699,7 +44699,7 @@ def DecodeBoundariesTarget(boundary_predictions: Tensor,
     boundary_encoded = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return boundary_encoded
 
 
@@ -44740,7 +44740,7 @@ def DecodeCornerpointsTargetBG(keypoints_prediction: Tensor,
     keypoints_decoded = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return keypoints_decoded
 
 
@@ -44782,7 +44782,7 @@ def DecodeCornerpointsTargetWrtCenterV1(keypoints_prediction: Tensor,
     keypoints_decoded = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return keypoints_decoded
 
 
@@ -44823,7 +44823,7 @@ def DecodeWheelsTarget(boundary_predictions: Tensor,
     boundary_encoded = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return boundary_encoded
 
 
@@ -44919,7 +44919,7 @@ def BatchMultiClassNonMaxSuppression(boxes: Tensor,
     nmsed_num = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_num
 
 
@@ -44963,7 +44963,7 @@ def ToAbsoluteBBox(normalized_boxes: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -45007,7 +45007,7 @@ def NormalizeBBox(boxes: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -45059,7 +45059,7 @@ def DecodeBboxV2(
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -45108,7 +45108,7 @@ def Sort(x: Tensor,
     y2 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y1, y2
 
 
@@ -45152,7 +45152,7 @@ def PtIou(bboxes: Tensor,
     overlap = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return overlap
 
 
@@ -45230,7 +45230,7 @@ def NonMaxSuppressionV6(boxes: Tensor,
     selected_indices = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return selected_indices
 
 
@@ -45318,7 +45318,7 @@ def NonMaxSuppressionV7(boxes: Tensor,
     selected_indices = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return selected_indices
 
 
@@ -45397,7 +45397,7 @@ def RoiExtractor(
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -45447,7 +45447,7 @@ def PSROIPoolingV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -45501,7 +45501,7 @@ def PSROIPoolingGradV2D(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -45548,7 +45548,7 @@ def AnchorResponseFlags(gt_bboxes: Tensor,
     flags = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return flags
 
 
@@ -45597,7 +45597,7 @@ def YoloBoxesEncode(anchor_boxes: Tensor,
     encoded_bboxes = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return encoded_bboxes
 
 
@@ -45679,7 +45679,7 @@ def GridAssignPositive(assigned_gt_inds: Tensor,
     assigned_gt_inds_pos = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return assigned_gt_inds_pos
 
 
@@ -45738,7 +45738,7 @@ def GIoUGrad(dy: Tensor,
     dgtboxes = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dbboxes, dgtboxes
 
 
@@ -45797,7 +45797,7 @@ def DIoUGrad(dy: Tensor,
     dgtboxes = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dbboxes, dgtboxes
 
 
@@ -45862,7 +45862,7 @@ def CIoUGrad(dy: Tensor,
     dgtboxes = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dbboxes, dgtboxes
 
 
@@ -45906,7 +45906,7 @@ def RotatedOverlaps(boxes: Tensor,
     overlaps = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return overlaps
 
 
@@ -45962,7 +45962,7 @@ def RotatedIou(boxes: Tensor,
     iou = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return iou
 
 
@@ -46009,7 +46009,7 @@ def RotatedBoxEncode(anchor_box: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -46056,7 +46056,7 @@ def RotatedBoxDecode(anchor_box: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -46093,7 +46093,7 @@ def BalanceRois(rois: Tensor, *, dependencies=[], node_name=None):
     index = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return balance_rois, index
 
 
@@ -46150,7 +46150,7 @@ def CIoU(bboxes: Tensor,
     atan_sub = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return overlap, atan_sub
 
 
@@ -46200,7 +46200,7 @@ def DIoU(bboxes: Tensor,
     overlap = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return overlap
 
 
@@ -46237,7 +46237,7 @@ def Iou3D(bboxes: Tensor, gtboxes: Tensor, *, dependencies=[], node_name=None):
     iou = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return iou
 
 
@@ -46278,7 +46278,7 @@ def YoloxBoundingBoxDecode(priors: Tensor,
     decoded_bboxes = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return decoded_bboxes
 
 
@@ -46348,7 +46348,7 @@ def RoiPoolingWithArgMax(x: Tensor,
     argmax = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, argmax
 
 
@@ -46425,7 +46425,7 @@ def RoiPoolingGradWithArgMax(grad: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -46471,7 +46471,7 @@ def RotaryMul(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -46531,7 +46531,7 @@ def RotaryMulGrad(x: Tensor,
     dr2 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dx, dr1, dr2
 
 
@@ -46576,7 +46576,7 @@ def LogSoftmaxGrad(grad: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -46622,7 +46622,7 @@ def SparseSoftmaxCrossEntropyWithLogits(features: Tensor,
     backprop = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return loss, backprop
 
 
@@ -46667,7 +46667,7 @@ def SoftmaxCrossEntropyWithLogits(features: Tensor,
     backprop = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return loss, backprop
 
 
@@ -46712,7 +46712,7 @@ def SoftmaxGrad(softmax: Tensor,
     grad_x = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return grad_x
 
 
@@ -46758,7 +46758,7 @@ def SigmoidCrossEntropyWithLogitsGrad(predict: Tensor,
     gradient = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return gradient
 
 
@@ -46799,7 +46799,7 @@ def SigmoidCrossEntropyWithLogits(predict: Tensor,
     loss = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return loss
 
 
@@ -46864,7 +46864,7 @@ def SigmoidCrossEntropyWithLogitsV2(predict: Tensor,
     loss = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return loss
 
 
@@ -46924,7 +46924,7 @@ def SigmoidFocalLoss(pred: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -46984,7 +46984,7 @@ def SoftmaxFocalLoss(pred: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -47028,7 +47028,7 @@ def SmoothL1Loss(predict: Tensor,
     loss = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return loss
 
 
@@ -47077,7 +47077,7 @@ def SmoothL1LossGrad(predict: Tensor,
     gradient = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return gradient
 
 
@@ -47131,7 +47131,7 @@ def BinaryCrossEntropy(x: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -47191,48 +47191,46 @@ def BinaryCrossEntropyGrad(x: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
 # This api is auto-generated from IR SoftmaxV2
 @auto_convert_to_tensor([False], [False])
-def SoftmaxV2(x: Tensor,
-              *,
-              axes: List[int] = [-1],
-              dependencies=[],
-              node_name=None):
-    """REG_OP(SoftmaxV2)\n
+def SoftmaxV2(x: Tensor, *, axes: List[int]=[-1], half_to_float: bool=False, dependencies=[], node_name=None):
+  """REG_OP(SoftmaxV2)\n
 .INPUT(x, TensorType({ DT_DOUBLE, DT_FLOAT16, DT_BF16, DT_FLOAT }))\n
 .OUTPUT(y, TensorType({ DT_DOUBLE, DT_FLOAT16, DT_BF16, DT_FLOAT }))\n
 .ATTR(axes, ListInt, {-1})\n
+.ATTR(half_to_float, Bool, false)\n
 """
-
-    op = get_default_ge_graph().op.add()
-    op.type = "SoftmaxV2"
-    op.name = next_unique_name(node_name, "SoftmaxV2")
-
-    # process dependices
-    for dependency in dependencies:
-        op.input.append(dependency.controller)
-
-    # process inputs
-    op.input.append(x.tensor)
-    op.input_desc.add().CopyFrom(x.desc)
-    op.input_desc[-1].name = "x"
-
-    # process attrs
-    op.attr["axes"].list.val_type = 2
-    op.attr["axes"].list.i.extend(axes)
-
-    # process outputs
-    output_index = 0
-    op.output_desc.add().name = "y"
-    y = Tensor(op, output_index)
-    output_index += 1
-
-    # return outputs
-    return y
+  
+  op = get_default_ge_graph().op.add()
+  op.type = "SoftmaxV2"
+  op.name = next_unique_name(node_name, "SoftmaxV2")
+  
+  # process dependices
+  for dependency in dependencies:
+    op.input.append(dependency.controller)
+  
+  # process inputs
+  op.input.append(x.tensor)
+  op.input_desc.add().CopyFrom(x.desc)
+  op.input_desc[-1].name = "x"
+  
+  # process attrs
+  op.attr["axes"].list.val_type = 2
+  op.attr["axes"].list.i.extend(axes)
+  op.attr["half_to_float"].b = half_to_float
+  
+  # process outputs
+  output_index = 0
+  op.output_desc.add().name = "y"
+  y = Tensor(op, output_index)
+  output_index += 1
+  
+  
+  return y
 
 
 # This api is auto-generated from IR SoftmaxV2WithDropOutDoMaskV3D
@@ -47283,7 +47281,7 @@ def SoftmaxV2WithDropOutDoMaskV3D(x: Tensor,
     y2 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y1, y2
 
 
@@ -47323,7 +47321,7 @@ def LogSoftmaxV2(logits: Tensor,
     logsoftmax = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return logsoftmax
 
 
@@ -47364,7 +47362,7 @@ def ConfusionSoftmaxGrad(grad: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -47416,7 +47414,7 @@ def SoftmaxGradExt(grad: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -47461,7 +47459,7 @@ def MVN(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -47504,7 +47502,7 @@ def MVNV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -47554,7 +47552,7 @@ def Normalize(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -47617,7 +47615,7 @@ def LayerNorm(x: Tensor,
     variance = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, mean, variance
 
 
@@ -47680,7 +47678,7 @@ def LayerNormV3(x: Tensor,
     rstd = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, mean, rstd
 
 
@@ -47725,7 +47723,7 @@ def Renorm(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -47790,7 +47788,7 @@ def LayerNormGrad(dy: Tensor,
     pd_beta = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return pd_x, pd_gamma, pd_beta
 
 
@@ -47855,7 +47853,7 @@ def LayerNormGradV3(dy: Tensor,
     pd_beta = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return pd_x, pd_gamma, pd_beta
 
 
@@ -47912,7 +47910,7 @@ def LayerNormXBackprop(dy: Tensor,
     pd_x = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return pd_x
 
 
@@ -47973,7 +47971,7 @@ def LayerNormXBackpropV2(dy: Tensor,
     res_for_gamma = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return pd_x, res_for_gamma
 
 
@@ -48034,7 +48032,7 @@ def LayerNormXBackpropV3(dy: Tensor,
     res_for_gamma = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return pd_x, res_for_gamma
 
 
@@ -48094,7 +48092,7 @@ def LayerNormBetaGammaBackprop(dy: Tensor,
     pd_beta = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return pd_gamma, pd_beta
 
 
@@ -48143,7 +48141,7 @@ def LayerNormBetaGammaBackpropV2(dy: Tensor,
     pd_beta = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return pd_gamma, pd_beta
 
 
@@ -48220,7 +48218,7 @@ def LNDropoutGrad(dy: Tensor,
     pd_beta = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return pd_x, pd_x_dropout, pd_gamma, pd_beta
 
 
@@ -48266,7 +48264,7 @@ def DropOutDoMask(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -48312,7 +48310,7 @@ def DropOutDoMaskV3(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -48356,7 +48354,7 @@ def DropOutDoMaskV3D(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -48416,7 +48414,7 @@ def Scale(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -48467,7 +48465,7 @@ def LRN(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -48525,7 +48523,7 @@ def LRNGrad(grads: Tensor,
     z = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return z
 
 
@@ -48584,7 +48582,7 @@ def RNNTLoss(acts: Tensor,
     grads = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return costs, grads
 
 
@@ -48650,7 +48648,7 @@ def GroupNorm(x: Tensor,
     variance = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, mean, variance
 
 
@@ -48744,7 +48742,7 @@ def InstanceNormV2(x: Tensor,
     batch_variance = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, batch_mean, batch_variance
 
 
@@ -48839,7 +48837,7 @@ def INInferV2D(x: Tensor,
     batch_variance = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, batch_mean, batch_variance
 
 
@@ -48899,7 +48897,7 @@ def InstanceNorm(x: Tensor,
     variance = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, mean, variance
 
 
@@ -48964,7 +48962,7 @@ def InstanceNormGrad(dy: Tensor,
     pd_beta = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return pd_x, pd_gamma, pd_beta
 
 
@@ -49016,7 +49014,7 @@ def KlDivLossGrad(grad: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -49065,7 +49063,7 @@ def L1LossGrad(grads: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -49112,7 +49110,7 @@ def LpLoss(predict: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -49161,7 +49159,7 @@ def MseLossGrad(predict: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -49205,7 +49203,7 @@ def MseLoss(predict: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -49257,7 +49255,7 @@ def SmoothL1LossGradV2(predict: Tensor,
     gradient = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return gradient
 
 
@@ -49304,7 +49302,7 @@ def SmoothL1LossV2(predict: Tensor,
     loss = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return loss
 
 
@@ -49344,7 +49342,7 @@ def Centralization(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -49388,7 +49386,7 @@ def Roll(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -49434,7 +49432,7 @@ def RollV2(input: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -49478,7 +49476,7 @@ def SoftMarginLoss(input_x: Tensor,
     output_z = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_z
 
 
@@ -49549,7 +49547,7 @@ def SigmoidCrossEntropyWithLogitsGradV2(predict: Tensor,
     gradient = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return gradient
 
 
@@ -49602,7 +49600,7 @@ def PoissonNllLoss(input_x: Tensor,
     loss = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return loss
 
 
@@ -49644,7 +49642,7 @@ def RnnGenMask(seq_length: Tensor,
     seq_mask = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return seq_mask
 
 
@@ -49692,7 +49690,7 @@ def MultilabelMarginLoss(x: Tensor,
     is_target = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, is_target
 
 
@@ -49739,7 +49737,7 @@ def NormalizeBatch(input_x: Tensor,
     output_y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_y
 
 
@@ -49791,7 +49789,7 @@ def GroupNormRelu(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -49847,7 +49845,7 @@ def DropoutWithMulsAndSoftmaxGrad(y_grad: Tensor,
     x_grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return x_grad
 
 
@@ -49908,7 +49906,7 @@ def SoftmaxCrossEntropyLoss(scores: Tensor,
     log_prop = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return loss, log_prop
 
 
@@ -49968,7 +49966,7 @@ def AxpyWithSoftmaxAndDropOutDoMask(x1: Tensor,
     y2 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y1, y2
 
 
@@ -50034,7 +50032,7 @@ def SigmoidFocalLossGrad(pred: Tensor,
     grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return grad
 
 
@@ -50100,7 +50098,7 @@ def SoftmaxFocalLossGrad(pred: Tensor,
     grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return grad
 
 
@@ -50164,7 +50162,7 @@ def Pooling(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -50214,7 +50212,7 @@ def AvgPool(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -50280,7 +50278,7 @@ def AvgPoolV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -50340,7 +50338,7 @@ def AvgPool3D(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -50420,7 +50418,7 @@ def AvgPool3DD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -50485,7 +50483,7 @@ def AvgPool3DGrad(orig_input_shape: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -50569,7 +50567,7 @@ def AvgPool3DGradD(grads: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -50619,7 +50617,7 @@ def MaxPoolExt2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -50669,7 +50667,7 @@ def MaxPool(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -50730,7 +50728,7 @@ def MaxPool3D(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -50795,7 +50793,7 @@ def MaxPool3DWithArgmax(x: Tensor,
     argmax = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, argmax
 
 
@@ -50839,7 +50837,7 @@ def AdaptiveMaxPool2d(x: Tensor,
     argmax = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, argmax
 
 
@@ -50900,7 +50898,7 @@ def MaxPool3DGradGrad(orig_x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -50960,7 +50958,7 @@ def MaxPoolGrad(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -51020,7 +51018,7 @@ def MaxPoolGradGrad(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -51072,7 +51070,7 @@ def MaxPoolV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -51126,7 +51124,7 @@ def MaxPoolWithArgmax(x: Tensor,
     argmax = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, argmax
 
 
@@ -51183,7 +51181,7 @@ def MaxPoolGradWithArgmax(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -51239,7 +51237,7 @@ def Mask2Argmax(x: Tensor,
     argmax = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return argmax
 
 
@@ -51296,7 +51294,7 @@ def MaxPoolGradGradWithArgmax(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -51351,7 +51349,7 @@ def AvgPoolGrad(orig_input_shape: Tensor,
     out_grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return out_grad
 
 
@@ -51415,7 +51413,7 @@ def AvgPoolGradD(input_grad: Tensor,
     out_grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return out_grad
 
 
@@ -51483,7 +51481,7 @@ def AvgPoolV2Grad(orig_input_shape: Tensor,
     out_grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return out_grad
 
 
@@ -51570,7 +51568,7 @@ def AvgPoolV2GradD(input_grad: Tensor,
     out_grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return out_grad
 
 
@@ -51615,7 +51613,7 @@ def Upsample(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -51675,7 +51673,7 @@ def FractionalMaxPoolGrad(orig_input: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -51738,7 +51736,7 @@ def FractionalAvgPool(x: Tensor,
     col_pooling_sequence = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, row_pooling_sequence, col_pooling_sequence
 
 
@@ -51801,7 +51799,7 @@ def FractionalMaxPool(x: Tensor,
     col_pooling_sequence = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, row_pooling_sequence, col_pooling_sequence
 
 
@@ -51845,7 +51843,7 @@ def NthElement(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -51900,7 +51898,7 @@ def FractionalAvgPoolGrad(orig_input_tensor_shape: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -51942,7 +51940,7 @@ def DataFormatVecPermute(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -52006,7 +52004,7 @@ def MaxPool3DGrad(orig_x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -52058,7 +52056,7 @@ def AvgPool1D(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -52115,7 +52113,7 @@ def AvgPool1DD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -52177,7 +52175,7 @@ def MaxPoolWithArgmaxV2(x: Tensor,
     argmax = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, argmax
 
 
@@ -52245,7 +52243,7 @@ def MaxPoolGradWithArgmaxV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -52305,7 +52303,7 @@ def MaxPoolV3(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -52375,7 +52373,7 @@ def MaxPoolV3Grad(orig_input: Tensor,
     out_grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return out_grad
 
 
@@ -52437,7 +52435,7 @@ def Dilation2D(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -52504,7 +52502,7 @@ def Dilation2DBackpropFilter(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -52571,7 +52569,7 @@ def Dilation2DBackpropInput(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -52611,7 +52609,7 @@ def AdaptiveAvgPool2d(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -52651,7 +52649,7 @@ def AdaptiveAvgPool2dGrad(input_grad: Tensor,
     output_grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_grad
 
 
@@ -52719,7 +52717,7 @@ def MaxPoolGradWithArgmaxV1(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -52781,7 +52779,7 @@ def MaxPoolWithArgmaxV1(x: Tensor,
     argmax = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, argmax
 
 
@@ -52823,7 +52821,7 @@ def SubSample(labels: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -52870,7 +52868,7 @@ def SubSampleLabels(labels: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -52909,7 +52907,7 @@ def GlobalLpPool(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -52942,7 +52940,7 @@ def GlobalAveragePool(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -52988,7 +52986,7 @@ def InTopKV2(predictions: Tensor,
     precision = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return precision
 
 
@@ -53080,7 +53078,7 @@ def FusedBatchNormV2(x: Tensor,
     reserve_space_2 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, batch_mean, batch_variance, reserve_space_1, reserve_space_2
 
 
@@ -53127,7 +53125,7 @@ def SegmentSort(input_data: Tensor,
     output_proposal = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_proposal
 
 
@@ -53176,7 +53174,7 @@ def MultiMerge(input_proposal: Tensor,
     output_index = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_proposal, output_index
 
 
@@ -53222,7 +53220,7 @@ def SingleMerge(input_proposal: Tensor,
     output_index = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_data, output_index
 
 
@@ -53395,7 +53393,7 @@ def MultiHeadAttention(query: Tensor,
     context = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, dropout_mask, query_res, key_res, value_res, attn_scores, attn_res, context
 
 
@@ -53574,7 +53572,7 @@ def MultiHeadAttentionGrad(query: Tensor,
     out_proj_bias_grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return query_weight_grad, key_weight_grad, value_weight_grad, out_proj_weight_grad, query_grad, key_grad, value_grad, query_bias_grad, key_bias_grad, value_bias_grad, out_proj_bias_grad
 
 
@@ -53655,7 +53653,7 @@ def ApplyAdaMax(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -53744,7 +53742,7 @@ def ApplyAdaMaxD(var: Tensor,
     v = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, m, v
 
 
@@ -53811,7 +53809,7 @@ def SparseApplyAdagrad(var: Tensor,
     accum = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, accum
 
 
@@ -53876,7 +53874,7 @@ def SparseApplyAdagradD(var: Tensor,
     accum = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, accum
 
 
@@ -53948,7 +53946,7 @@ def SparseApplyAdagradV2(var: Tensor,
     accum = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, accum
 
 
@@ -54016,7 +54014,7 @@ def SparseApplyAdagradV2D(var: Tensor,
     accum = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, accum
 
 
@@ -54079,7 +54077,7 @@ def ApplyMomentum(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -54146,7 +54144,7 @@ def ApplyMomentumD(var: Tensor,
     accum = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, accum
 
 
@@ -54209,7 +54207,7 @@ def ApplyKerasMomentum(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -54276,7 +54274,7 @@ def ApplyKerasMomentumD(var: Tensor,
     accum = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, accum
 
 
@@ -54373,7 +54371,7 @@ def ApplyAdamWithAmsgradD(var: Tensor,
     vhat = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, m, v, vhat
 
 
@@ -54466,7 +54464,7 @@ def ApplyAdamWithAmsgrad(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -54571,7 +54569,7 @@ def ApplyAdamWithAmsgradV2(var: Tensor,
     vhat = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, m, v, vhat
 
 
@@ -54641,7 +54639,7 @@ def ApplyPowerSign(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -54715,7 +54713,7 @@ def ApplyPowerSignD(var: Tensor,
     m = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, m
 
 
@@ -54775,7 +54773,7 @@ def ApplyProximalGradientDescent(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -54845,7 +54843,7 @@ def ApplyAddSign(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -54919,7 +54917,7 @@ def ApplyAddSignD(var: Tensor,
     m = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, m
 
 
@@ -55000,7 +54998,7 @@ def ApplyCenteredRMSProp(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -55093,7 +55091,7 @@ def ApplyCenteredRMSPropD(var: Tensor,
     mom = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, mg, ms, mom
 
 
@@ -55142,7 +55140,7 @@ def ApplyGradientDescent(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -55200,7 +55198,7 @@ def ApplyAdagrad(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -55262,7 +55260,7 @@ def ApplyAdagradD(var: Tensor,
     accum = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, accum
 
 
@@ -55325,7 +55323,7 @@ def ApplyAdagradV2(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -55390,7 +55388,7 @@ def ApplyAdagradV2D(var: Tensor,
     accum = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, accum
 
 
@@ -55466,7 +55464,7 @@ def ApplyAdagradDA(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -55550,7 +55548,7 @@ def ApplyAdagradDAD(var: Tensor,
     gradient_squared_accumulator = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, gradient_accumulator, gradient_squared_accumulator
 
 
@@ -55592,7 +55590,7 @@ def DataFormatDimMap(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -55663,7 +55661,7 @@ def SGD(parameters: Tensor,
     parameters = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return parameters
 
 
@@ -55739,7 +55737,7 @@ def ApplyRMSProp(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -55816,7 +55814,7 @@ def ApplyRMSPropD(var: Tensor,
     mom = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, ms, mom
 
 
@@ -55881,7 +55879,7 @@ def ApplyProximalAdagrad(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -55950,7 +55948,7 @@ def ApplyProximalAdagradD(var: Tensor,
     accum = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, accum
 
 
@@ -56024,7 +56022,7 @@ def SparseApplyProximalAdagrad(var: Tensor,
     accum = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, accum
 
 
@@ -56098,7 +56096,7 @@ def SparseApplyProximalAdagradD(var: Tensor,
     accum = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, accum
 
 
@@ -56174,7 +56172,7 @@ def ApplyFtrl(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -56258,7 +56256,7 @@ def ApplyFtrlD(var: Tensor,
     linear = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, accum, linear
 
 
@@ -56339,7 +56337,7 @@ def ApplyFtrlV2(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -56428,7 +56426,7 @@ def ApplyFtrlV2D(var: Tensor,
     linear = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, accum, linear
 
 
@@ -56517,7 +56515,7 @@ def ApplyAdam(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -56614,7 +56612,7 @@ def ApplyAdamD(var: Tensor,
     v = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, m, v
 
 
@@ -56684,7 +56682,7 @@ def ApplyAdadelta(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -56762,7 +56760,7 @@ def ApplyAdadeltaD(var: Tensor,
     accum_update = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, accum, accum_update
 
 
@@ -56834,7 +56832,7 @@ def FusedMulApplyMomentum(var: Tensor,
     accum = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, accum
 
 
@@ -56915,7 +56913,7 @@ def FusedMulApplyMomentumExtern(var: Tensor,
     accum = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, var_copy, accum
 
 
@@ -56987,7 +56985,7 @@ def FusedMulApplyKerasMomentum(var: Tensor,
     accum = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, accum
 
 
@@ -57048,7 +57046,7 @@ def LarsV2(w: Tensor,
     g_new = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return g_new
 
 
@@ -57119,7 +57117,7 @@ def LarsV2Update(w: Tensor,
     g_new = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return g_new
 
 
@@ -57208,7 +57206,7 @@ def SparseApplyFtrl(var: Tensor,
     linear = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, accum, linear
 
 
@@ -57288,7 +57286,7 @@ def SparseApplyFtrlD(var: Tensor,
     linear = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, accum, linear
 
 
@@ -57382,7 +57380,7 @@ def SparseApplyFtrlV2(var: Tensor,
     linear = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, accum, linear
 
 
@@ -57465,7 +57463,7 @@ def SparseApplyFtrlV2D(var: Tensor,
     linear = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, accum, linear
 
 
@@ -57554,7 +57552,7 @@ def SparseApplyRMSProp(var: Tensor,
     mom = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, ms, mom
 
 
@@ -57636,7 +57634,7 @@ def SparseApplyRMSPropD(var: Tensor,
     mom = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, ms, mom
 
 
@@ -57720,7 +57718,7 @@ def SparseApplyAdadelta(var: Tensor,
     accum_update = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, accum, accum_update
 
 
@@ -57801,7 +57799,7 @@ def SparseApplyAdadeltaD(var: Tensor,
     accum_update = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var, accum, accum_update
 
 
@@ -57832,7 +57830,7 @@ def AtomicAddrClean(*,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -57863,7 +57861,7 @@ def DynamicAtomicAddrClean(*,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -57896,7 +57894,7 @@ def Gelu(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -57929,7 +57927,7 @@ def HardSwish(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -57966,7 +57964,7 @@ def HardSwishGrad(grad: Tensor, x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -58005,7 +58003,7 @@ def Swish(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -58054,7 +58052,7 @@ def SwishGrad(grad: Tensor,
     grad_x = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return grad_x
 
 
@@ -58100,7 +58098,7 @@ def GeluGrad(dy: Tensor,
     z = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return z
 
 
@@ -58133,7 +58131,7 @@ def FastGelu(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -58166,7 +58164,7 @@ def FastGeluV2(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -58203,7 +58201,7 @@ def FastGeluGrad(dy: Tensor, x: Tensor, *, dependencies=[], node_name=None):
     z = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return z
 
 
@@ -58247,7 +58245,7 @@ def TanhGrad(y: Tensor,
     z = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return z
 
 
@@ -58280,7 +58278,7 @@ def Tanh(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -58313,7 +58311,7 @@ def Relu(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -58346,7 +58344,7 @@ def Relu6(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -58385,7 +58383,7 @@ def Relu6D(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -58426,7 +58424,7 @@ def Relu6Grad(gradients: Tensor,
     backprops = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return backprops
 
 
@@ -58470,7 +58468,7 @@ def EluGradV2(grads: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -58503,7 +58501,7 @@ def Sigmoid(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -58547,7 +58545,7 @@ def SigmoidGrad(y: Tensor,
     z = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return z
 
 
@@ -58580,7 +58578,7 @@ def BNLL(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -58613,7 +58611,7 @@ def Softplus(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -58654,7 +58652,7 @@ def SoftplusGrad(gradients: Tensor,
     backprops = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return backprops
 
 
@@ -58687,7 +58685,7 @@ def Softsign(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -58728,7 +58726,7 @@ def SoftsignGrad(gradients: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -58761,7 +58759,7 @@ def Selu(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -58802,7 +58800,7 @@ def SeluGrad(gradients: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -58843,7 +58841,7 @@ def ReluGrad(gradients: Tensor,
     backprops = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return backprops
 
 
@@ -58884,7 +58882,7 @@ def ReluGradV2(gradients: Tensor,
     backprops = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return backprops
 
 
@@ -58921,7 +58919,7 @@ def ReluV2(x: Tensor, *, dependencies=[], node_name=None):
     mask = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, mask
 
 
@@ -58958,7 +58956,7 @@ def PRelu(x: Tensor, weight: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -59008,7 +59006,7 @@ def PReluGrad(grads: Tensor,
     da = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dx, da
 
 
@@ -59053,7 +59051,7 @@ def Elu(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -59098,7 +59096,7 @@ def Celu(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -59137,7 +59135,7 @@ def CeluV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -59178,7 +59176,7 @@ def EluGrad(grads: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -59217,7 +59215,7 @@ def LeakyRelu(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -59261,7 +59259,7 @@ def LeakyReluGrad(gradients: Tensor,
     backprops = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return backprops
 
 
@@ -59305,7 +59303,7 @@ def ThresholdGradV2D(gradients: Tensor,
     backprops = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return backprops
 
 
@@ -59347,7 +59345,7 @@ def ThresholdV2D(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -59380,7 +59378,7 @@ def Mish(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -59431,7 +59429,7 @@ def MishGrad(grad: Tensor,
     x_grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return x_grad
 
 
@@ -59478,7 +59476,7 @@ def HardtanhGrad(result: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -59520,7 +59518,7 @@ def SoftplusV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -59567,7 +59565,7 @@ def SoftplusV2Grad(input_gradients: Tensor,
     output_backprops = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_backprops
 
 
@@ -59606,7 +59604,7 @@ def ThresholdedRelu(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -59645,7 +59643,7 @@ def HardShrink(input_x: Tensor,
     output_y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_y
 
 
@@ -59689,7 +59687,7 @@ def HardShrinkGrad(gradients: Tensor,
     backprops = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return backprops
 
 
@@ -59731,7 +59729,7 @@ def HardSigmoid(input_x: Tensor,
     output_y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_y
 
 
@@ -59770,7 +59768,7 @@ def SoftShrink(input_x: Tensor,
     output_y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_y
 
 
@@ -59814,7 +59812,7 @@ def SoftShrinkGrad(input_grad: Tensor,
     output_y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_y
 
 
@@ -59855,7 +59853,7 @@ def LogSigmoidGrad(grads: Tensor,
     backprops = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return backprops
 
 
@@ -59888,7 +59886,7 @@ def LogSigmoid(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -59935,7 +59933,7 @@ def HardSigmoidGrad(grads: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -59977,7 +59975,7 @@ def Shrink(input_x: Tensor,
     output_y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_y
 
 
@@ -60028,7 +60026,7 @@ def ThresholdV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -60063,7 +60061,7 @@ def GLU(x: Tensor, *, dim: int = -1, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -60107,7 +60105,7 @@ def GLUGrad(y_grad: Tensor,
     x_grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return x_grad
 
 
@@ -60132,7 +60130,7 @@ def NoOp(*, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -60161,7 +60159,7 @@ def NPUAllocFloatStatusOperator(*, dependencies=[], node_name=None):
     data = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return data
 
 
@@ -60197,7 +60195,7 @@ def NPUClearFloatStatusOperator(addr: Tensor,
     data = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return data
 
 
@@ -60233,7 +60231,7 @@ def NPUGetFloatStatusOperator(addr: Tensor,
     data = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return data
 
 
@@ -60262,7 +60260,7 @@ def NPUAllocFloatStatus(*, dependencies=[], node_name=None):
     data = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return data
 
 
@@ -60295,7 +60293,7 @@ def NPUClearFloatStatus(addr: Tensor, *, dependencies=[], node_name=None):
     data = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return data
 
 
@@ -60328,7 +60326,7 @@ def NPUGetFloatStatus(addr: Tensor, *, dependencies=[], node_name=None):
     data = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return data
 
 
@@ -60353,7 +60351,7 @@ def NPUClearFloatStatusV2(*, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -60382,7 +60380,7 @@ def NPUGetFloatStatusV2(*, dependencies=[], node_name=None):
     data = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return data
 
 
@@ -60440,7 +60438,7 @@ def BatchEnqueue(x: Tensor,
     enqueue_count = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return enqueue_count
 
 
@@ -60518,7 +60516,7 @@ def OCRRecognitionPreHandle(imgs_data: Tensor,
     imgs_piece_fillers = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return imgs, imgs_relation, imgs_lang, imgs_piece_fillers
 
 
@@ -60565,7 +60563,7 @@ def OCRDetectionPreHandle(img: Tensor,
     w_scale = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return resized_img, h_scale, w_scale
 
 
@@ -60618,7 +60616,7 @@ def OCRIdentifyPreHandle(imgs_data: Tensor,
     resized_imgs = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return resized_imgs
 
 
@@ -60699,7 +60697,7 @@ def BatchDilatePolys(polys_data: Tensor,
     dilated_polys_size = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dilated_polys_data, dilated_polys_offset, dilated_polys_size
 
 
@@ -60746,7 +60744,7 @@ def OCRFindContours(img: Tensor,
     polys_size = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return polys_data, polys_offset, polys_size
 
 
@@ -60797,7 +60795,7 @@ def Dequeue(queue_id: Optional[Tensor],
     data = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return data
 
 
@@ -60864,7 +60862,7 @@ def OCRDetectionPostHandle(img: Tensor,
     rect_points = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return imgs_data, imgs_offset, imgs_size, rect_points
 
 
@@ -60943,7 +60941,7 @@ def ResizeAndClipPolys(polys_data: Tensor,
     clipped_polys_num = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return clipped_polys_data, clipped_polys_offset, clipped_polys_size, clipped_polys_num
 
 
@@ -60980,7 +60978,7 @@ def Fill(dims: Tensor, value: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -61016,7 +61014,7 @@ def FillD(value: Tensor, *, dims: List[int], dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -61053,7 +61051,7 @@ def BroadcastTo(x: Tensor, shape: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -61093,7 +61091,7 @@ def BroadcastToD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -61130,7 +61128,7 @@ def Pad(x: Tensor, paddings: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -61170,7 +61168,7 @@ def PadD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -61216,7 +61214,7 @@ def PadV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -61261,7 +61259,7 @@ def PadV2D(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -61318,7 +61316,7 @@ def PadV3(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -61365,7 +61363,7 @@ def PadV3Grad(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -61414,7 +61412,7 @@ def PadV3D(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -61451,7 +61449,7 @@ def DiagD(x: Tensor, assist: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -61484,7 +61482,7 @@ def Diag(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -61523,7 +61521,7 @@ def AscendPadding(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -61570,7 +61568,7 @@ def EmbeddingRankId(addr_table: Tensor,
     rank_id = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return rank_id
 
 
@@ -61625,7 +61623,7 @@ def EmbeddingLocalIndex(addr_table: Tensor,
     recover_idx = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return local_idx, nums, recover_idx
 
 
@@ -61664,7 +61662,7 @@ def FillV2(dims: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -61702,7 +61700,7 @@ def FillV2D(*,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -61741,7 +61739,7 @@ def StringToNumber(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -61831,7 +61829,7 @@ def _ParseSingleExample(serialized: Tensor,
         dense_values.append(Tensor(op, i))
     output_index += size_of_dense_values
 
-    # return outputs
+    
     return sparse_indices, sparse_values, sparse_shapes, dense_values
 
 
@@ -61873,7 +61871,7 @@ def DecodeRaw(bytes: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -61912,7 +61910,7 @@ def ParseTensor(serialized: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -61975,7 +61973,7 @@ def _DecodeCSV(records: Tensor,
         output.append(Tensor(op, i))
     output_index += size_of_output
 
-    # return outputs
+    
     return output
 
 
@@ -62080,7 +62078,7 @@ def _ParseExample(serialized: Tensor,
         dense_values.append(Tensor(op, i))
     output_index += size_of_dense_values
 
-    # return outputs
+    
     return sparse_indices, sparse_values, sparse_shapes, dense_values
 
 
@@ -62267,7 +62265,7 @@ def _ParseSingleSequenceExample(
         feature_list_dense_values.append(Tensor(op, i))
     output_index += size_of_feature_list_dense_values
 
-    # return outputs
+    
     return context_sparse_indices, context_sparse_values, context_sparse_shapes, context_dense_values, feature_list_sparse_indices, feature_list_sparse_values, feature_list_sparse_shapes, feature_list_dense_values
 
 
@@ -62316,7 +62314,7 @@ def Dequantize(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -62368,7 +62366,7 @@ def Quantize(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -62419,7 +62417,7 @@ def AscendQuant(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -62469,7 +62467,7 @@ def AscendDequant(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -62517,7 +62515,7 @@ def AscendAntiQuant(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -62571,7 +62569,7 @@ def AscendDequantS16(x0: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -62615,7 +62613,7 @@ def AscendRequant(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -62676,7 +62674,7 @@ def AscendRequantS16(x0: Tensor,
     y1 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y0, y1
 
 
@@ -62720,7 +62718,7 @@ def AscendWeightQuant(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -62785,7 +62783,7 @@ def _RaggedGather(params_nested_splits: List[Tensor],
     output_dense_values = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_nested_splits, output_dense_values
 
 
@@ -62842,7 +62840,7 @@ def RaggedTensorToSparse(rt_nested_splits: List[Tensor],
     sparse_dense_shape = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return sparse_indices, sparse_values, sparse_dense_shape
 
 
@@ -62904,7 +62902,7 @@ def RaggedTensorToTensor(shape: Tensor,
     result = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return result
 
 
@@ -62957,7 +62955,7 @@ def RaggedRange(starts: Tensor,
     rt_dense_values = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return rt_nested_splits, rt_dense_values
 
 
@@ -63009,7 +63007,7 @@ def DSAGenBitMask(count: Tensor,
     out = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return out
 
 
@@ -63064,7 +63062,7 @@ def DSARandomTruncatedNormal(count: Tensor,
     out = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return out
 
 
@@ -63124,7 +63122,7 @@ def DSAStatelessRandomTruncatedNormal(count: Tensor,
     out = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return out
 
 
@@ -63179,7 +63177,7 @@ def DSARandomNormal(count: Tensor,
     out = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return out
 
 
@@ -63237,7 +63235,7 @@ def DSAStatelessGenBitMask(count: Tensor,
     out = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return out
 
 
@@ -63297,7 +63295,7 @@ def DSAStatelessRandomNormal(count: Tensor,
     out = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return out
 
 
@@ -63357,7 +63355,7 @@ def DSAStatelessRandomUniform(count: Tensor,
     out = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return out
 
 
@@ -63412,7 +63410,7 @@ def DSARandomUniform(count: Tensor,
     out = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return out
 
 
@@ -63462,7 +63460,7 @@ def Multinomial(logits: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -63509,7 +63507,7 @@ def MultinomialAliasDraw(q: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -63546,7 +63544,7 @@ def MultinomialAliasSetup(probs: Tensor, *, dependencies=[], node_name=None):
     q = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return j, q
 
 
@@ -63609,7 +63607,7 @@ def ParameterizedTruncatedNormal(shape: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -63650,7 +63648,7 @@ def RandomGammaGrad(alpha: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -63697,7 +63695,7 @@ def RandomGamma(shape: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -63737,7 +63735,7 @@ def Randperm(*,
     out = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return out
 
 
@@ -63772,7 +63770,7 @@ def Poisson(x: Tensor, *, seed: int = 0, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -63822,7 +63820,7 @@ def RandomPoisson(shape: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -63864,7 +63862,7 @@ def RandomShuffle(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -63909,7 +63907,7 @@ def RandomStandardNormal(shape: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -63946,7 +63944,7 @@ def Normal(mean: Tensor, std: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -63998,7 +63996,7 @@ def RandomUniformInt(shape: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -64043,7 +64041,7 @@ def RandomUniform(shape: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -64088,7 +64086,7 @@ def TruncatedNormal(shape: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -64135,7 +64133,7 @@ def DropOutGenMask(shape: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -64182,7 +64180,7 @@ def DropOutGenMaskV3(shape: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -64244,7 +64242,7 @@ def StatelessDropOutGenMask(shape: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -64299,7 +64297,7 @@ def StatelessBernoulli(shape: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -64348,7 +64346,7 @@ def StatelessBernoulliV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -64400,7 +64398,7 @@ def LinSpaceD(assist: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -64446,7 +64444,7 @@ def LinSpace(start: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -64494,7 +64492,7 @@ def Dropout(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -64543,7 +64541,7 @@ def RandomChoiceWithMask(x: Tensor,
     mask = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, mask
 
 
@@ -64582,7 +64580,7 @@ def ShuffleChannel(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -64627,7 +64625,7 @@ def MultinomialFuss(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -64679,7 +64677,7 @@ def DropoutV2(x: Tensor,
     seed = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, mask, seed
 
 
@@ -64721,7 +64719,7 @@ def Uniform(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -64758,7 +64756,7 @@ def ContinuationIndicator(*,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -64800,7 +64798,7 @@ def Exponential(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -64842,7 +64840,7 @@ def Geometric(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -64894,7 +64892,7 @@ def MultinomialWithReplacement(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -64946,7 +64944,7 @@ def StatelessRandperm(n: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -64996,7 +64994,7 @@ def DropOutGenMaskV4(shape: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -65033,7 +65031,7 @@ def BNTrainingReduce(x: Tensor, *, dependencies=[], node_name=None):
     square_sum = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return sum, square_sum
 
 
@@ -65070,7 +65068,7 @@ def BN3DTrainingReduce(x: Tensor, *, dependencies=[], node_name=None):
     square_sum = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return sum, square_sum
 
 
@@ -65140,7 +65138,7 @@ def BNTrainingReduceGrad(grads: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -65210,7 +65208,7 @@ def BN3DTrainingReduceGrad(grads: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -65299,7 +65297,7 @@ def BNTrainingUpdate(x: Tensor,
     batch_variance = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, mean, variance, batch_mean, batch_variance
 
 
@@ -65388,7 +65386,7 @@ def BN3DTrainingUpdate(x: Tensor,
     batch_variance = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, mean, variance, batch_mean, batch_variance
 
 
@@ -65448,7 +65446,7 @@ def BNInfer(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -65516,7 +65514,7 @@ def BNTrainingUpdateV2(x: Tensor,
     batch_variance = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, batch_mean, batch_variance
 
 
@@ -65592,7 +65590,7 @@ def BNTrainingUpdateV3(x: Tensor,
     reserve_2 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, batch_mean, batch_variance, reserve_1, reserve_2
 
 
@@ -65651,7 +65649,7 @@ def BNTrainingUpdateGrad(grads: Tensor,
     diff_offset = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return diff_scale, diff_offset
 
 
@@ -65710,7 +65708,7 @@ def BN3DTrainingUpdateGrad(grads: Tensor,
     diff_offset = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return diff_scale, diff_offset
 
 
@@ -65759,7 +65757,7 @@ def BNInferGrad(grads: Tensor,
     x_backprop = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return x_backprop
 
 
@@ -65803,7 +65801,7 @@ def ReduceSum(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -65846,7 +65844,7 @@ def ReduceSumD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -65899,7 +65897,7 @@ def ReduceMeanWithCount(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -65942,7 +65940,7 @@ def ReduceAllD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -65986,7 +65984,7 @@ def ReduceAll(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -66030,7 +66028,7 @@ def ReduceProd(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -66073,7 +66071,7 @@ def ReduceProdD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -66120,7 +66118,7 @@ def ReduceMean(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -66166,7 +66164,7 @@ def ReduceMeanD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -66210,7 +66208,7 @@ def ReduceMax(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -66253,7 +66251,7 @@ def ReduceMaxD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -66297,7 +66295,7 @@ def ReduceMin(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -66340,7 +66338,7 @@ def ReduceMinD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -66384,7 +66382,7 @@ def ReduceAny(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -66427,7 +66425,7 @@ def ReduceAnyD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -66472,7 +66470,7 @@ def Reduction(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -66516,7 +66514,7 @@ def EuclideanNorm(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -66559,7 +66557,7 @@ def EuclideanNormD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -66647,7 +66645,7 @@ def INInferV2(x: Tensor,
     batch_variance = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, batch_mean, batch_variance
 
 
@@ -66684,7 +66682,7 @@ def INTrainingReduceV2(x: Tensor, *, dependencies=[], node_name=None):
     square_sum = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return sum, square_sum
 
 
@@ -66785,7 +66783,7 @@ def INTrainingUpdateV2(x: Tensor,
     batch_variance = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, batch_mean, batch_variance
 
 
@@ -66852,7 +66850,7 @@ def INTrainingReduceGrad(dy: Tensor,
     pd_x = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return pd_x
 
 
@@ -66908,7 +66906,7 @@ def INTrainingUpdateGrad(dy: Tensor,
     res_beta = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return res_gamma, res_beta
 
 
@@ -66953,7 +66951,7 @@ def INTrainingUpdateGradGammaBeta(res_gamma: Tensor,
     pd_beta = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return pd_gamma, pd_beta
 
 
@@ -66996,7 +66994,7 @@ def GNTrainingReduce(x: Tensor,
     square_sum = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return sum, square_sum
 
 
@@ -67097,7 +67095,7 @@ def GNTrainingUpdate(x: Tensor,
     batch_variance = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, batch_mean, batch_variance
 
 
@@ -67144,7 +67142,7 @@ def ReduceJoin(input: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -67194,7 +67192,7 @@ def ReduceStd(x: Tensor,
     y2 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y1, y2
 
 
@@ -67254,7 +67252,7 @@ def ReduceStdWithMean(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -67301,7 +67299,7 @@ def ReduceMeanVariance(x: Tensor,
     variance = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return mean, variance
 
 
@@ -67358,7 +67356,7 @@ def ReduceStdV2Update(x: Tensor,
     output_var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_var
 
 
@@ -67402,7 +67400,7 @@ def ReduceLogSumExp(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -67446,7 +67444,7 @@ def ReduceLogSum(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -67490,7 +67488,7 @@ def VarHandleOp(*,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -67530,7 +67528,7 @@ def AssignVariableOp(resource: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -67570,7 +67568,7 @@ def AssignAddVariableOp(resource: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -67610,7 +67608,7 @@ def AssignSubVariableOp(resource: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -67713,7 +67711,7 @@ def BasicLSTMCell(x: Tensor,
     tanhct = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return ct, ht, it, jt, ft, ot, tanhct
 
 
@@ -67759,7 +67757,7 @@ def DynamicLSTM(x: Tensor,
     output_h = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_h
 
 
@@ -67998,7 +67996,7 @@ def _DynamicRNNGrad(x: Tensor,
         dwco.append(Tensor(op, i))
     output_index += size_of_dwco
 
-    # return outputs
+    
     return dw, db, dx, dh_prev, dc_prev, dwci, dwcf, dwco
 
 
@@ -68180,7 +68178,7 @@ def DynamicRNN(x: Tensor,
     tanhc = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, output_h, output_c, i, j, f, o, tanhc
 
 
@@ -68381,7 +68379,7 @@ def DynamicRNNV2(x: Tensor,
     tanhc = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, output_h, output_c, i, j, f, o, tanhc
 
 
@@ -68628,7 +68626,7 @@ def _DynamicRNNV2Grad(x: Tensor,
         dwco.append(Tensor(op, i))
     output_index += size_of_dwco
 
-    # return outputs
+    
     return dw_x, dw_h, db, dx, dh_prev, dc_prev, dwci, dwcf, dwco
 
 
@@ -68828,7 +68826,7 @@ def DynamicRNNV3(x: Tensor,
     tanhc = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, output_h, output_c, i, j, f, o, tanhc
 
 
@@ -68979,7 +68977,7 @@ def DynamicLSTMV2(x: Tensor,
     last_output_c = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, output_h, output_c, last_output_h, last_output_c
 
 
@@ -69086,7 +69084,7 @@ def LSTMInputGrad(w: Tensor,
     dgate = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dx, dh_prev, dc_prev, dgate
 
 
@@ -69199,7 +69197,7 @@ def DynamicLSTMGradCell(init_c: Tensor,
     dct_1 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dgate, dct_1
 
 
@@ -69257,7 +69255,7 @@ def BasicLSTMCellInputGrad(dgate: Tensor,
     dht = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dxt, dht
 
 
@@ -69307,7 +69305,7 @@ def BasicLSTMCellWeightGrad(x: Tensor,
     db = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dw, db
 
 
@@ -69390,7 +69388,7 @@ def BasicLSTMCellCStateGrad(c: Tensor,
     dct_1 = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dgate, dct_1
 
 
@@ -69498,7 +69496,7 @@ def RNN(x: Tensor,
     h_t = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return o, h_t
 
 
@@ -69606,7 +69604,7 @@ def BasicRNNCell(x: Tensor,
     h_t = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return o_t, h_t
 
 
@@ -69723,7 +69721,7 @@ def DynamicGRU(x: Tensor,
     n = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, output_h, r, i, n
 
 
@@ -69860,7 +69858,7 @@ def DynamicGRUV2(x: Tensor,
     hidden_new = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, output_h, update, reset, new, hidden_new
 
 
@@ -69982,7 +69980,7 @@ def DynamicGRUV2Hidden(x_weight_input: Tensor,
     hidden_new = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, output_h, update, reset, new, hidden_new
 
 
@@ -70129,7 +70127,7 @@ def DynamicAUGRU(x: Tensor,
     hidden_new = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, output_h, update, update_att, reset, new, hidden_new
 
 
@@ -70304,7 +70302,7 @@ def DynamicAUGRUGrad(x: Tensor,
     dw_att = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dw_input, dw_hidden, db_input, db_hidden, dx, dh_prev, dw_att
 
 
@@ -70417,7 +70415,7 @@ def AUGRUHiddenGradCell(weight_att: Tensor,
     dw_att_t = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dh_prev, dgate_h, dnt_x, dw_att_t
 
 
@@ -70578,7 +70576,7 @@ def DynamicGRUV2Grad(x: Tensor,
     dh_prev = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dw_input, dw_hidden, db_input, db_hidden, dx, dh_prev
 
 
@@ -70675,7 +70673,7 @@ def GRUV2HiddenGradCell(dh_pre_t: Tensor,
     dnt_x = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dh_prev, dgate_h, dnt_x
 
 
@@ -70781,7 +70779,7 @@ def DynamicGRUCellGrad(dh_pre_t: Tensor,
     dnt_x = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dh_prev, dgate_h, dnt_x
 
 
@@ -70831,7 +70829,7 @@ def EmbeddingDenseGrad(grad: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -70961,7 +70959,7 @@ def CommonLSTM(x: Tensor,
     y_c = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, y_h, y_c
 
 
@@ -71005,7 +71003,7 @@ def RnnGenMaskV2(seq_length: Tensor,
     seq_mask = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return seq_mask
 
 
@@ -71110,7 +71108,7 @@ def CommonGRU(x: Tensor,
     y_h = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, y_h
 
 
@@ -71184,7 +71182,7 @@ def EmbeddingBag(weight: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -71283,7 +71281,7 @@ def LSTMP(x: Tensor,
     output_c = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, output_h, output_c
 
 
@@ -71330,7 +71328,7 @@ def NMSWithMask(box_scores: Tensor,
     selected_mask = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return selected_boxes, selected_idx, selected_mask
 
 
@@ -71395,7 +71393,7 @@ def SortedNMS(boxes: Tensor,
     selected_indices = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return selected_indices
 
 
@@ -71426,7 +71424,7 @@ def Save(tensors: List[Tensor], *, dependencies=[], node_name=None):
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -71569,7 +71567,7 @@ def _SdcaOptimizerV2(sparse_example_indices: List[Tensor],
         out_delta_dense_weights.append(Tensor(op, i))
     output_index += size_of_out_delta_dense_weights
 
-    # return outputs
+    
     return out_example_state_data, out_delta_sparse_weights, out_delta_dense_weights
 
 
@@ -71615,7 +71613,7 @@ def Range(start: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -71660,7 +71658,7 @@ def RangeD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -71697,7 +71695,7 @@ def Tile(x: Tensor, multiples: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -71733,7 +71731,7 @@ def TileD(x: Tensor, *, multiples: List[int], dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -71777,7 +71775,7 @@ def GatherNd(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -71832,7 +71830,7 @@ def GatherV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -71876,7 +71874,7 @@ def GatherV2D(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -71920,7 +71918,7 @@ def GatherElements(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -71969,7 +71967,7 @@ def GatherD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -72036,7 +72034,7 @@ def StridedSlice(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -72099,7 +72097,7 @@ def StridedSliceD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -72166,7 +72164,7 @@ def StridedSliceGradD(dy: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -72238,7 +72236,7 @@ def StridedSliceGrad(shape: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -72287,7 +72285,7 @@ def UnsortedSegmentSum(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -72338,7 +72336,7 @@ def LogSpaceD(assist: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -72382,7 +72380,7 @@ def UnsortedSegmentSumD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -72419,7 +72417,7 @@ def ReverseV2(x: Tensor, axis: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -72455,7 +72453,7 @@ def ReverseV2D(x: Tensor, *, axis: List[int], dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -72501,7 +72499,7 @@ def Select(condition: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -72547,7 +72545,7 @@ def SelectV2(condition: Tensor,
     result = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return result
 
 
@@ -72588,7 +72586,7 @@ def SegmentMax(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -72629,7 +72627,7 @@ def SegmentSum(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -72669,7 +72667,7 @@ def SegmentMaxD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -72724,7 +72722,7 @@ def OneHot(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -72776,7 +72774,7 @@ def OneHotD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -72822,7 +72820,7 @@ def Slice(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -72866,7 +72864,7 @@ def SliceD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -72911,7 +72909,7 @@ def SliceDV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -72968,7 +72966,7 @@ def TopKD(x: Tensor,
     indices = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return values, indices
 
 
@@ -73027,7 +73025,7 @@ def TopKV2D(x: Tensor,
     indices = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return values, indices
 
 
@@ -73081,7 +73079,7 @@ def TopKV2(x: Tensor,
     indices = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return values, indices
 
 
@@ -73135,7 +73133,7 @@ def TopK(x: Tensor,
     indices = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return values, indices
 
 
@@ -73181,7 +73179,7 @@ def ScatterNd(indices: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -73226,7 +73224,7 @@ def ScatterNdD(indices: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -73270,7 +73268,7 @@ def InTopKD(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -73316,7 +73314,7 @@ def InTopK(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -73388,7 +73386,7 @@ def StridedSliceAssign(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -73456,7 +73454,7 @@ def StridedSliceAssignD(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -73509,7 +73507,7 @@ def Gather(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -73556,7 +73554,7 @@ def Cumprod(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -73601,7 +73599,7 @@ def CumprodD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -73648,7 +73646,7 @@ def Cumsum(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -73693,7 +73691,7 @@ def CumsumD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -73739,7 +73737,7 @@ def InplaceUpdate(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -73784,7 +73782,7 @@ def InplaceUpdateD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -73830,7 +73828,7 @@ def InplaceAdd(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -73875,7 +73873,7 @@ def InplaceAddD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -73921,7 +73919,7 @@ def InplaceSub(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -73966,7 +73964,7 @@ def InplaceSubD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -74012,7 +74010,7 @@ def ScatterNonAliasingAdd(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -74058,7 +74056,7 @@ def UnsortedSegmentMin(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -74102,7 +74100,7 @@ def UnsortedSegmentMinD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -74148,7 +74146,7 @@ def UnsortedSegmentMax(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -74192,7 +74190,7 @@ def UnsortedSegmentMaxD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -74238,7 +74236,7 @@ def UnsortedSegmentProd(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -74282,7 +74280,7 @@ def UnsortedSegmentProdD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -74361,7 +74359,7 @@ def Proposal(cls_prob: Tensor,
     actual_rois_num = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return rois, actual_rois_num
 
 
@@ -74446,7 +74444,7 @@ def ProposalD(cls_prob: Tensor,
     actual_rois_num = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return rois, actual_rois_num
 
 
@@ -74488,7 +74486,7 @@ def PassThrough(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -74536,7 +74534,7 @@ def Crop(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -74575,7 +74573,7 @@ def Cummin(x: Tensor, *, axis: int, dependencies=[], node_name=None):
     indices = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, indices
 
 
@@ -74614,7 +74612,7 @@ def Cummax(x: Tensor, *, dim: int, dependencies=[], node_name=None):
     indices = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y, indices
 
 
@@ -74656,7 +74654,7 @@ def TileWithAxis(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -74696,7 +74694,7 @@ def ReadSelect(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -74729,7 +74727,7 @@ def WriteSelect(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -74771,7 +74769,7 @@ def StridedRead(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -74813,7 +74811,7 @@ def StridedWrite(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -74860,7 +74858,7 @@ def CumulativeLogsumexp(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -74905,7 +74903,7 @@ def CumulativeLogsumexpD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -74965,7 +74963,7 @@ def InplaceIndexAdd(var: Tensor,
     var = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return var
 
 
@@ -75011,7 +75009,7 @@ def MaskedFill(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -75052,7 +75050,7 @@ def MaskedSelectV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -75098,7 +75096,7 @@ def MaskedScatter(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -75143,7 +75141,7 @@ def SliceLastDim(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -75225,7 +75223,7 @@ def StridedSliceV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -75274,7 +75272,7 @@ def IndexFillD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -75320,7 +75318,7 @@ def AddRowRanges(x: Tensor,
     x = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return x
 
 
@@ -75375,7 +75373,7 @@ def MaskedFillRange(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -75436,7 +75434,7 @@ def InplaceTopKDistance(topk_pq_distance: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -75493,7 +75491,7 @@ def TopKPQDistanceMerge(sorted_distance: Tensor,
     topk_index = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return topk_distance, topk_ivf, topk_index
 
 
@@ -75560,7 +75558,7 @@ def StridedSliceV3(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -75609,7 +75607,7 @@ def MovingSumWithSigmoid(alpha: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -75646,7 +75644,7 @@ def MaskedSelect(x: Tensor, mask: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -75698,7 +75696,7 @@ def DynSeqOuter(x1: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -75758,7 +75756,7 @@ def NonMaxSuppressionBucketize(input_nmsed_boxes: Tensor,
     output_nmsed_class = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_nmsed_boxes, output_nmsed_score, output_nmsed_class
 
 
@@ -75815,7 +75813,7 @@ def SearchSorted(sorted_sequence: Tensor,
     out = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return out
 
 
@@ -75859,7 +75857,7 @@ def RepeatInterleave(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -75914,7 +75912,7 @@ def DenseToDenseSetOperation(x1: Tensor,
     y_shape = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y_indices, y_values, y_shape
 
 
@@ -75980,7 +75978,7 @@ def DenseToSparseSetOperation(x1: Tensor,
     y_shape = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y_indices, y_values, y_shape
 
 
@@ -76056,7 +76054,7 @@ def SparseToSparseSetOperation(x1_indices: Tensor,
     y_shape = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y_indices, y_values, y_shape
 
 
@@ -76105,7 +76103,7 @@ def SetSize(set_indices: Tensor,
     size = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return size
 
 
@@ -76151,7 +76149,7 @@ def SparseSoftmax(indices: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -76203,7 +76201,7 @@ def SparseTensorDenseAdd(x1_indices: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -76253,7 +76251,7 @@ def SparseReorder(indices: Tensor,
     y_values = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y_indices, y_values
 
 
@@ -76303,7 +76301,7 @@ def SparseReshape(indices: Tensor,
     y_shape = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y_indices, y_shape
 
 
@@ -76355,7 +76353,7 @@ def SparseDenseCwiseAdd(x1_indices: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -76407,7 +76405,7 @@ def SparseDenseCwiseDiv(x1_indices: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -76459,7 +76457,7 @@ def SparseDenseCwiseMul(x1_indices: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -76511,7 +76509,7 @@ def AddSparseToTensorsMap(indices: Tensor,
     handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handle
 
 
@@ -76563,7 +76561,7 @@ def SparseSliceGrad(backprop_val_grad: Tensor,
     y_grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y_grad
 
 
@@ -76628,7 +76626,7 @@ def SparseSlice(indices: Tensor,
     y_shape = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y_indices, y_values, y_shape
 
 
@@ -76684,7 +76682,7 @@ def SparseAddGrad(backprop_val_grad: Tensor,
     x2_val_grad = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return x1_val_grad, x2_val_grad
 
 
@@ -76729,7 +76727,7 @@ def SparseFillEmptyRowsGrad(reverse_index_map: Tensor,
     y_default_value = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y_value, y_default_value
 
 
@@ -76787,7 +76785,7 @@ def SparseTensorDenseMatMul(x1_indices: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -76842,7 +76840,7 @@ def SparseToDense(indices: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -76908,7 +76906,7 @@ def SparseConcat(indices: List[Tensor],
     y_shape = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y_indices, y_values, y_shape
 
 
@@ -76983,7 +76981,7 @@ def SparseAdd(x1_indices: Tensor,
     sum_shape = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return sum_indices, sum_values, sum_shape
 
 
@@ -77047,7 +77045,7 @@ def SparseFillEmptyRows(indices: Tensor,
     reverse_index_map = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y_indices, y_values, empty_row_indicator, reverse_index_map
 
 
@@ -77113,7 +77111,7 @@ def SparseSparseMaximum(x1_indices: Tensor,
     y_values = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y_indices, y_values
 
 
@@ -77179,7 +77177,7 @@ def SparseSparseMinimum(x1_indices: Tensor,
     y_values = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y_indices, y_values
 
 
@@ -77234,7 +77232,7 @@ def SparseReduceMax(x_indices: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -77297,7 +77295,7 @@ def SparseReduceMaxSparse(x_indices: Tensor,
     y_shape = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y_indices, y_values, y_shape
 
 
@@ -77352,7 +77350,7 @@ def SparseReduceSum(x_indices: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -77415,7 +77413,7 @@ def SparseReduceSumSparse(x_indices: Tensor,
     y_shape = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y_indices, y_values, y_shape
 
 
@@ -77487,7 +77485,7 @@ def _SparseSplit(split_dim: Tensor,
         y_shape.append(Tensor(op, i))
     output_index += size_of_y_shape
 
-    # return outputs
+    
     return y_indices, y_values, y_shape
 
 
@@ -77572,7 +77570,7 @@ def SparseCross(indices: List[Tensor],
     output_shape = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_indices, output_values, output_shape
 
 
@@ -77624,7 +77622,7 @@ def AddManySparseToTensorsMap(indices: Tensor,
     handles = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handles
 
 
@@ -77677,7 +77675,7 @@ def TakeManySparseFromTensorsMap(handles: Tensor,
     shape = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return indices, values, shape
 
 
@@ -77726,7 +77724,7 @@ def SerializeSparse(indices: Tensor,
     serialized_sparse = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return serialized_sparse
 
 
@@ -77775,7 +77773,7 @@ def SerializeManySparse(indices: Tensor,
     serialized_sparse = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return serialized_sparse
 
 
@@ -77822,7 +77820,7 @@ def DeserializeSparse(serialized_sparse: Tensor,
     shape = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return indices, values, shape
 
 
@@ -77869,7 +77867,7 @@ def DeserializeManySparse(serialized_sparse: Tensor,
     shape = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return indices, values, shape
 
 
@@ -77902,7 +77900,7 @@ def IFFT(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -77943,7 +77941,7 @@ def RFFT(input: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -77980,7 +77978,7 @@ def IRFFT(x: Tensor, fft_length: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -78013,7 +78011,7 @@ def FFT2D(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -78046,7 +78044,7 @@ def FFT(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -78079,7 +78077,7 @@ def IFFT2D(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -78143,7 +78141,7 @@ def STFT(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -78190,7 +78188,7 @@ def _Split(split_dim: Tensor,
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -78235,7 +78233,7 @@ def _SplitD(x: Tensor,
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -78287,7 +78285,7 @@ def _SplitV(x: Tensor,
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -78336,7 +78334,7 @@ def _SplitVD(x: Tensor,
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -78381,7 +78379,7 @@ def ParallelConcat(values: List[Tensor],
     output_data = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output_data
 
 
@@ -78425,7 +78423,7 @@ def ConcatV2D(x: List[Tensor],
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -78471,7 +78469,7 @@ def ConcatV2(x: List[Tensor],
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -78515,7 +78513,7 @@ def ConcatD(x: List[Tensor],
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -78561,7 +78559,7 @@ def Concat(concat_dim: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -78605,7 +78603,7 @@ def Pack(x: List[Tensor],
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -78654,7 +78652,7 @@ def _ConcatOffset(concat_dim: Tensor,
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -78701,7 +78699,7 @@ def _ConcatOffsetD(x: List[Tensor],
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -78743,7 +78741,7 @@ def Combinations(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -78782,7 +78780,7 @@ def NonDeterministicInts(shape: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -78824,7 +78822,7 @@ def RngSkip(x: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -78884,7 +78882,7 @@ def StatefulRandomBinomial(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -78930,7 +78928,7 @@ def StatefulStandardNormalV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -78976,7 +78974,7 @@ def StatefulTruncatedNormal(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -79022,7 +79020,7 @@ def StatefulUniform(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -79068,7 +79066,7 @@ def StatefulUniformFullInt(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -79125,7 +79123,7 @@ def StatefulUniformInt(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -79171,7 +79169,7 @@ def RngReadAndSkipV2(value: Tensor,
     value = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return value
 
 
@@ -79220,7 +79218,7 @@ def StatelessMultinomial(logits: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -79272,7 +79270,7 @@ def StatelessRandomUniformInt(shape: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -79335,7 +79333,7 @@ def StatelessParameterizedTruncatedNormal(shape: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -79412,7 +79410,7 @@ def StatelessSampleDistortedBoundingBox(
     bboxes = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return begin, size, bboxes
 
 
@@ -79467,7 +79465,7 @@ def StatelessTruncatedNormalV2(shape: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -79513,7 +79511,7 @@ def StatelessRandomGammaV2(shape: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -79557,7 +79555,7 @@ def StatelessRandomUniformFullInt(shape: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -79612,7 +79610,7 @@ def StatelessRandomUniformFullIntV2(shape: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -79674,7 +79672,7 @@ def StatelessRandomUniformIntV2(shape: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -79729,7 +79727,7 @@ def StatelessRandomBinomial(shape: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -79778,7 +79776,7 @@ def StatelessRandomPoisson(shape: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -79807,7 +79805,7 @@ def StatelessRandomGetAlg(*, dependencies=[], node_name=None):
     alg = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return alg
 
 
@@ -79847,7 +79845,7 @@ def StatelessRandomGetKeyCounter(seed: Tensor,
     counter = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return key, counter
 
 
@@ -79891,7 +79889,7 @@ def StatelessRandomGetKeyCounterAlg(seed: Tensor,
     alg = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return key, counter, alg
 
 
@@ -79946,7 +79944,7 @@ def StatelessRandomNormalV2(shape: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -80001,7 +79999,7 @@ def StatelessRandomUniformV2(shape: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -80051,7 +80049,7 @@ def AnonymousSeedGenerator(seed: Tensor,
     deleter = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handle, deleter
 
 
@@ -80088,7 +80086,7 @@ def DeleteSeedGenerator(handle: Tensor,
     # process outputs
     output_index = 0
 
-    # return outputs
+    
     return
 
 
@@ -80117,7 +80115,7 @@ def DummySeedGenerator(*, dependencies=[], node_name=None):
     handle = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return handle
 
 
@@ -80158,7 +80156,7 @@ def TemporaryVariable(*,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -80197,7 +80195,7 @@ def DestroyTemporaryVariable(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -80230,7 +80228,7 @@ def IsVariableInitialized(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -80263,7 +80261,7 @@ def VarIsInitializedOp(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -80298,7 +80296,7 @@ def CountUpTo(ref: Tensor, *, limit: int = 0, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -80362,7 +80360,7 @@ def StringNGrams(data: Tensor,
     ngrams_splits = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return ngrams, ngrams_splits
 
 
@@ -80421,7 +80419,7 @@ def UnicodeDecodeWithOffsets(input: Tensor,
     char_to_byte_starts = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return row_splits, char_values, char_to_byte_starts
 
 
@@ -80476,7 +80474,7 @@ def UnicodeDecode(input: Tensor,
     char_values = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return row_splits, char_values
 
 
@@ -80527,7 +80525,7 @@ def UnicodeTranscode(input: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -80577,7 +80575,7 @@ def UnicodeEncode(input_values: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -80629,7 +80627,7 @@ def StringSplit(input: Tensor,
     shape = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return indices, values, shape
 
 
@@ -80674,7 +80672,7 @@ def StaticRegexReplace(input: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -80713,7 +80711,7 @@ def StaticRegexFullMatch(input: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -80762,7 +80760,7 @@ def UnsortedSegmentJoin(input: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -80801,7 +80799,7 @@ def StringLower(input: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -80840,7 +80838,7 @@ def StringUpper(input: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -80892,7 +80890,7 @@ def StringSplitV2(input: Tensor,
     shape = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return indices, values, shape
 
 
@@ -80925,7 +80923,7 @@ def UnicodeScript(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -80971,7 +80969,7 @@ def Substr(input: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -81010,7 +81008,7 @@ def StringToHashBucketFast(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -81053,7 +81051,7 @@ def StringToHashBucketStrong(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -81092,7 +81090,7 @@ def StringToHashBucket(string_tensor: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -81125,7 +81123,7 @@ def StringStrip(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -81164,7 +81162,7 @@ def StringLength(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -81208,7 +81206,7 @@ def StringJoin(x: List[Tensor],
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -81255,7 +81253,7 @@ def StringFormat(x: List[Tensor],
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -81296,7 +81294,7 @@ def RegexFullMatch(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -81345,7 +81343,7 @@ def RegexReplace(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -81396,7 +81394,7 @@ def AsString(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -81435,7 +81433,7 @@ def EncodeBase64(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -81468,7 +81466,7 @@ def DecodeBase64(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -81517,7 +81515,7 @@ def StringNormalizer(input: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -81559,7 +81557,7 @@ def SwapCo(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -81614,7 +81612,7 @@ def TargetCropAndResize(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -81649,7 +81647,7 @@ def Bitcast(x: Tensor, *, type: int, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -81682,7 +81680,7 @@ def DepthwiseWeight4DTo6D(x: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -81721,7 +81719,7 @@ def DepthwiseWeight6DTo4D(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -81757,7 +81755,7 @@ def TransposeD(x: Tensor, *, perm: List[int], dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -81794,7 +81792,7 @@ def Transpose(x: Tensor, perm: Tensor, *, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -81845,7 +81843,7 @@ def TransData(src: Tensor,
     dst = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dst
 
 
@@ -81893,7 +81891,7 @@ def TransDataRNN(src: Tensor,
     dst = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return dst
 
 
@@ -81933,7 +81931,7 @@ def Permute(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -81968,7 +81966,7 @@ def Flatten(x: Tensor, *, axis: int = 1, dependencies=[], node_name=None):
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -82014,7 +82012,7 @@ def BatchToSpaceND(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -82058,7 +82056,7 @@ def BatchToSpaceNDD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -82104,7 +82102,7 @@ def SpaceToBatchND(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -82148,7 +82146,7 @@ def SpaceToBatchNDD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -82190,7 +82188,7 @@ def SpaceToDepth(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -82235,7 +82233,7 @@ def DepthToSpace(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -82279,7 +82277,7 @@ def BatchToSpace(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -82322,7 +82320,7 @@ def BatchToSpaceD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -82366,7 +82364,7 @@ def SpaceToBatch(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -82409,7 +82407,7 @@ def SpaceToBatchD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -82454,7 +82452,7 @@ def _Unpack(x: Tensor,
         y.append(Tensor(op, i))
     output_index += size_of_y
 
-    # return outputs
+    
     return y
 
 
@@ -82505,7 +82503,7 @@ def ExtractImagePatches(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -82552,7 +82550,7 @@ def ExtractVolumePatches(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -82599,7 +82597,7 @@ def ConfusionTransposeD(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -82647,7 +82645,7 @@ def ConfusionTranspose(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -82689,7 +82687,7 @@ def FlattenV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -82733,7 +82731,7 @@ def Compress(weight: Tensor,
     compress_index = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return weight_compress, compress_index
 
 
@@ -82777,7 +82775,7 @@ def CompressFcOp(weight: Tensor,
     compress_index = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return weight_compress, compress_index
 
 
@@ -82834,7 +82832,7 @@ def Col2im(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -82892,7 +82890,7 @@ def Col2ImV2(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -82947,7 +82945,7 @@ def Im2col(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -82991,7 +82989,7 @@ def AffineGrid(theta: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -83043,7 +83041,7 @@ def AsStrided(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -83111,7 +83109,7 @@ def TfIdfVectorizer(input: Tensor,
     output = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return output
 
 
@@ -83166,7 +83164,7 @@ def GenADC(query: Tensor,
     adc_tables = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return adc_tables
 
 
@@ -83250,7 +83248,7 @@ def TopKPQDistance(actual_count: List[Tensor],
     topk_index = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return topk_distance, topk_ivf, topk_index
 
 
@@ -83304,7 +83302,7 @@ def TopKPQDistanceV2(pq_distance: Tensor,
     topk_index = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return topk_distance, topk_index
 
 
@@ -83397,7 +83395,7 @@ def ScanPQCodes(ivf: Tensor,
     pq_index = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return actual_count, pq_distance, grouped_extreme_distance, pq_ivf, pq_index
 
 
@@ -83450,7 +83448,7 @@ def CalcBucketsLimitAndOffset(bucket_list: Tensor,
     buckets_offset = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return buckets_limit, buckets_offset
 
 
@@ -83511,7 +83509,7 @@ def IndexToAddr(base_addr: Tensor,
     addrs_table = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return addrs_table
 
 
@@ -83560,7 +83558,7 @@ def Coordinates1DTo2D(x: Tensor,
     n = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return row, col, n
 
 
@@ -83599,7 +83597,7 @@ def CaseCondition(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
 
 
@@ -83645,7 +83643,7 @@ def SliceWrite(x: Tensor,
     x = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return x
 
 
@@ -83704,5 +83702,47 @@ def WarpPerspective(x: Tensor,
     y = Tensor(op, output_index)
     output_index += 1
 
-    # return outputs
+    
     return y
+
+# This api is auto-generated from IR ReduceMeanWithCast
+@auto_convert_to_tensor([False, False], [False, False])
+def ReduceMeanWithCast(x: Tensor, axes: Tensor, *, keep_dims: bool=False, noop_with_empty_axes: bool=True, dtype: int=28, dependencies=[], node_name=None):
+  """REG_OP(ReduceMeanWithCast)\n
+.INPUT(x, "T1")\n
+.INPUT(axes, "T2")\n
+.OUTPUT(y, "T3")\n
+.ATTR(keep_dims, Bool, false)\n
+.ATTR(noop_with_empty_axes, Bool, true)\n
+.ATTR(dtype, Type, DT_UNDEFINED)\n
+"""
+  
+  op = get_default_ge_graph().op.add()
+  op.type = "ReduceMeanWithCast"
+  op.name = next_unique_name(node_name, "ReduceMeanWithCast")
+  
+  # process dependices
+  for dependency in dependencies:
+    op.input.append(dependency.controller)
+  
+  # process inputs
+  op.input.append(x.tensor)
+  op.input_desc.add().CopyFrom(x.desc)
+  op.input_desc[-1].name = "x"
+  op.input.append(axes.tensor)
+  op.input_desc.add().CopyFrom(axes.desc)
+  op.input_desc[-1].name = "axes"
+  
+  # process attrs
+  op.attr["keep_dims"].b = keep_dims
+  op.attr["noop_with_empty_axes"].b = noop_with_empty_axes
+  op.attr["dtype"].dt = dtype
+  
+  # process outputs
+  output_index = 0
+  op.output_desc.add().name = "y"
+  y = Tensor(op, output_index)
+  output_index += 1
+  
+  
+  return y

@@ -111,6 +111,20 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY TensorDesc {
 
   void SetConstData(std::unique_ptr<uint8_t[]> const_data_buffer, const size_t &const_data_len);
   bool GetConstData(uint8_t **const_data_buffer, size_t &const_data_len) const;
+ /*
+  * 补维类似于ExpandDims算子，在原有shape的基础上，添加一到多个维度，例如原shape[2,2]有两根轴，那么在两根轴中间补两维后的shape为[2,1,1,2]。
+  * 补维后shape的第0、3根轴被称为原始轴，第1、2根轴被称为补维轴。
+  *
+  * 通过1和0描述补维规则，1代表当前轴为补维轴，0代表当前轴为原始轴，从左到右依次代表当前shape每根轴的来源，例如：
+  * | 补维规则   | 补维前shape | 补维后shape                                                    |
+  * | -------- | ----------- | ------------------------------------------------------------ |
+  * | 0110     | [2, 2]      | [2, 1, 1, 2]                                                 |
+  * | 100      | [2, 3]      | [1, 2, 3]                                                    |
+  * | 1000     | [2, 3]      | 补维规则与补维前shape不匹配，规则指定原始轴有3根，但原始shape只有2根轴，补维报错。 |
+  *
+  */
+  void SetExpandDimsRule(const AscendString &expand_dims_rule);
+  graphStatus GetExpandDimsRule(AscendString &expand_dims_rule) const;
 
  private:
   std::shared_ptr<TensorDescImpl> impl;

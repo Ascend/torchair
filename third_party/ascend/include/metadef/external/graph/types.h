@@ -27,6 +27,8 @@ using float32_t = float;
 using float64_t = double;
 using vector_bit_t = std::vector<bool>;
 
+// set minimal range value as 0 to support empty tensor
+static const int64_t SHAPE_RANGE_LOWER_LIMIT = 0;
 static const int64_t UNKNOWN_DIM = -1;
 static const int64_t UNKNOWN_DIM_NUM = -2;
 static const std::vector<int64_t> UNKNOWN_SHAPE = {-1};
@@ -120,9 +122,10 @@ inline int GetSizeByDataType(DataType data_type) {
       kDataTypeSizeBitOffset + 1,    // DT_UINT1 = 30,            uint1 type
       kDataTypeSizeBitOffset + 2,    // DT_INT2 = 31,             int2 type
       kDataTypeSizeBitOffset + 2,    // DT_UINT2 = 32,            uint2 type
+      4,   // DT_COMPLEX32 = 33,          complex32 type
            // DT_MAX
   };
-  if (data_type >= DT_MAX) {
+  if ((data_type < 0) || (data_type >= DT_MAX)) {
     return -1;
   }
   return data_type_size[data_type];
@@ -231,13 +234,20 @@ inline bool HasSubFormat(int32_t format) {
   return GetSubFormat(format) > 0;
 }
 
-inline int64_t GetC0Value(int32_t format) {
-  return static_cast<int64_t>(1 <<
-      (static_cast<int32_t>((static_cast<uint32_t>(format) & 0xf000000U) >> kBitThreeBytes) - 1));
-}
-
 inline bool HasC0Format(int32_t format) {
   return ((static_cast<uint32_t>(format) & 0xf000000U) >> kBitThreeBytes) > 0;
+}
+
+inline int32_t GetC0Format(int32_t format) {
+  return static_cast<int32_t>((static_cast<uint32_t>(format) & 0xf000000U) >> kBitThreeBytes);
+}
+
+inline int64_t GetC0Value(int32_t format) {
+  if (!HasC0Format(format)) {
+    return -1;
+  }
+  return static_cast<int64_t>(1 <<
+      (static_cast<int32_t>((static_cast<uint32_t>(format) & 0xf000000U) >> kBitThreeBytes) - 1));
 }
 
 // for unknown shape op type
@@ -281,7 +291,7 @@ struct TensorType {
     return TensorType{DT_BOOL,   DT_COMPLEX128, DT_COMPLEX64, DT_DOUBLE, DT_FLOAT,  DT_FLOAT16, DT_INT16,
                       DT_INT32,  DT_INT64,      DT_INT8,      DT_QINT16, DT_QINT32, DT_QINT8,   DT_QUINT16,
                       DT_QUINT8, DT_RESOURCE,   DT_STRING,    DT_UINT16, DT_UINT32, DT_UINT64,  DT_UINT8,
-                      DT_BF16};
+                      DT_BF16, DT_COMPLEX32};
   }
 
   static TensorType QuantifiedType() { return TensorType{DT_QINT16, DT_QINT32, DT_QINT8, DT_QUINT16, DT_QUINT8}; }
@@ -289,20 +299,20 @@ struct TensorType {
   static TensorType OrdinaryType() {
     return TensorType{DT_BOOL,  DT_COMPLEX128, DT_COMPLEX64, DT_DOUBLE, DT_FLOAT,  DT_FLOAT16, DT_INT16,
                       DT_INT32, DT_INT64,      DT_INT8,      DT_UINT16, DT_UINT32, DT_UINT64,  DT_UINT8,
-                      DT_BF16};
+                      DT_BF16, DT_COMPLEX32};
   }
 
   static TensorType BasicType() {
     return TensorType{DT_COMPLEX128, DT_COMPLEX64, DT_DOUBLE, DT_FLOAT,  DT_FLOAT16, DT_INT16,
                       DT_INT32,      DT_INT64,     DT_INT8,   DT_QINT16, DT_QINT32,  DT_QINT8,
                       DT_QUINT16,    DT_QUINT8,    DT_UINT16, DT_UINT32, DT_UINT64,  DT_UINT8,
-                      DT_BF16};
+                      DT_BF16, DT_COMPLEX32};
   }
 
   static TensorType NumberType() {
     return TensorType{DT_COMPLEX128, DT_COMPLEX64, DT_DOUBLE, DT_FLOAT,  DT_FLOAT16, DT_INT16,  DT_INT32,  DT_INT64,
                       DT_INT8,       DT_QINT32,    DT_QINT8,  DT_QUINT8, DT_UINT16,  DT_UINT32, DT_UINT64, DT_UINT8,
-                      DT_BF16};
+                      DT_BF16, DT_COMPLEX32};
   }
 
   static TensorType RealNumberType() {
@@ -310,7 +320,7 @@ struct TensorType {
                       DT_INT8,   DT_UINT16, DT_UINT32,  DT_UINT64, DT_UINT8, DT_BF16};
   }
 
-  static TensorType ComplexDataType() { return TensorType{DT_COMPLEX128, DT_COMPLEX64}; }
+  static TensorType ComplexDataType() { return TensorType{DT_COMPLEX128, DT_COMPLEX64, DT_COMPLEX32}; }
 
   static TensorType IntegerDataType() {
     return TensorType{DT_INT16, DT_INT32, DT_INT64, DT_INT8, DT_UINT16, DT_UINT32, DT_UINT64, DT_UINT8};
@@ -325,7 +335,7 @@ struct TensorType {
   static TensorType IndexNumberType() { return TensorType{DT_INT32, DT_INT64}; }
 
   static TensorType UnaryDataType() {
-    return TensorType{DT_COMPLEX128, DT_COMPLEX64, DT_DOUBLE, DT_FLOAT, DT_FLOAT16, DT_BF16};
+    return TensorType{DT_COMPLEX128, DT_COMPLEX64, DT_DOUBLE, DT_FLOAT, DT_FLOAT16, DT_BF16, DT_COMPLEX32};
   }
 
   static TensorType FLOAT() { return TensorType{DT_FLOAT, DT_FLOAT16, DT_BF16}; }
@@ -336,6 +346,21 @@ struct TensorType {
 struct ListTensorType {
   explicit ListTensorType(const TensorType &type) : tensor_type(type) {};
   TensorType tensor_type;
+};
+
+class Promote {
+ public:
+  Promote(const std::initializer_list<const char *> &syms);
+  std::vector<const char *> Syms() const;
+
+  Promote(const Promote &other) = delete;
+  Promote &operator=(const Promote &other) = delete;
+
+  Promote(Promote &&other) noexcept;
+  Promote &operator=(Promote &&other) noexcept;
+
+ private:
+  std::shared_ptr<void> data_;
 };
 }  // namespace ge
 

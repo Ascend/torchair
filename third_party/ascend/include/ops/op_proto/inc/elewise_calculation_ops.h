@@ -1200,15 +1200,16 @@ REG_OP(Log)
 * Compatible with the TensorFlow operator Multiply.
 */
 REG_OP(Mul)
-    .INPUT(x1, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_UINT8, DT_INT8,
-                           DT_UINT16, DT_INT16, DT_INT32, DT_INT64, DT_BF16,
-                           DT_COMPLEX64, DT_COMPLEX128}))
-    .INPUT(x2, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_UINT8, DT_INT8,
-                           DT_UINT16, DT_INT16, DT_INT32, DT_INT64, DT_BF16,
-                           DT_COMPLEX64, DT_COMPLEX128}))
-    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_UINT8, DT_INT8,
-                           DT_UINT16, DT_INT16, DT_INT32, DT_INT64, DT_BF16,
-                           DT_COMPLEX64, DT_COMPLEX128}))
+    .INPUT(x1, "T1")
+    .INPUT(x2, "T2")
+    .OUTPUT(y, "T3")
+    .DATATYPE(T1, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_UINT8, DT_INT8,
+                              DT_UINT16, DT_INT16, DT_INT32, DT_INT64, DT_BF16,
+                              DT_COMPLEX64, DT_COMPLEX128, DT_COMPLEX32}))
+    .DATATYPE(T2, TensorType({DT_FLOAT16, DT_FLOAT, DT_DOUBLE, DT_UINT8, DT_INT8,
+                              DT_UINT16, DT_INT16, DT_INT32, DT_INT64, DT_BF16,
+                              DT_COMPLEX64, DT_COMPLEX128, DT_COMPLEX32}))
+    .DATATYPE(T3, Promote({"T1", "T2"}))
     .OP_END_FACTORY_REG(Mul)
 
 /**
@@ -2276,12 +2277,14 @@ REG_OP(FloorMod)
 * Compatible with the TensorFlow operator Pow.
 */
 REG_OP(Pow)
-    .INPUT(x1, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT64, DT_INT8,
-                           DT_UINT8, DT_DOUBLE, DT_COMPLEX64, DT_COMPLEX128}))
-    .INPUT(x2, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT64, DT_INT8,
-                           DT_UINT8, DT_DOUBLE, DT_COMPLEX64, DT_COMPLEX128}))
-    .OUTPUT(y, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT64, DT_INT8,
-                           DT_UINT8, DT_DOUBLE, DT_COMPLEX64, DT_COMPLEX128}))
+    .INPUT(x1, "T1")
+    .INPUT(x2, "T2")
+    .OUTPUT(y, "T3")
+    .DATATYPE(T1, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT64, DT_INT8,
+                              DT_UINT8, DT_DOUBLE, DT_COMPLEX64, DT_COMPLEX128}))
+    .DATATYPE(T2, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_INT32, DT_INT64, DT_INT8,
+                              DT_UINT8, DT_DOUBLE, DT_COMPLEX64, DT_COMPLEX128}))
+    .DATATYPE(T3, Promote({"T1", "T2"}))
     .OP_END_FACTORY_REG(Pow)
 
 /**
