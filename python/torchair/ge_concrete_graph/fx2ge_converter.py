@@ -51,7 +51,8 @@ def _mapping_assign_op_to_graph_output(graph: GraphDef):
                 graph_out.input[i] = value_tensor
                 return i
         graph_out.input.append(value_tensor)
-        graph_out.input_desc.append(assign_node_out.desc)
+        graph_out.input_desc.add().CopyFrom(assign_node_out.desc)
+        graph_out.input_desc[-1].name = f"input{len(graph_out.input_desc) - 1}"
         graph.attr["_output_dtypes"].list.i.append(assign_node_out.dtype)
         return len(graph_out.input) - 1
 
