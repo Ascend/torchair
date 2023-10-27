@@ -43,7 +43,6 @@ def conveter_aten_pow_Tensor_Scalar(
     self: Tensor, exponent: Union[Number, Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::pow.Tensor_Scalar(Tensor self, Scalar exponent) -> Tensor"""
-    exponent = dtype_promote(exponent, target_dtype=self.dtype)
     return ge.Pow(self, exponent)
 
 

@@ -82,6 +82,7 @@ def conveter_aten_slice_Tensor(
     return ge.StridedSlice(self, ge_begin, ge_end, ge_strides)
 
 
+
 @register_fx_node_ge_converter(torch.ops.aten.slice.str)
 def conveter_aten_slice_str(
     string: str,

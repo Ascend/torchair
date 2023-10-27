@@ -58,5 +58,5 @@ def conveter_aten_expand_default(
                 positive_size.append(size[i])
                 
         if str(self._symsize) != str(positive_size):
-            return ge.BroadcastTo(self, positive_size)
+            return ge.BroadcastTo(self, size)
         return self

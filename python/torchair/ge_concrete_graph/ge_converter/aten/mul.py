@@ -28,7 +28,6 @@ from torchair.ge_concrete_graph.utils import dtype_promote
 @register_fx_node_ge_converter(torch.ops.aten.mul.Tensor)
 def conveter_aten_mul_Tensor(self: Tensor, other: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::mul.Tensor(Tensor self, Tensor other) -> Tensor"""
-    self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)
     return ge.Mul(self, other)
 
 

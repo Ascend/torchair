@@ -33,9 +33,7 @@ def conveter_aten__softmax_default(
     self: Tensor, dim: int, half_to_float: bool, meta_outputs: TensorSpec = None
 ):
     """NB: aten::_softmax(Tensor self, int dim, bool half_to_float) -> Tensor"""
-    if half_to_float:
-        raise NotImplementedError("torch.ops.aten._softmax.default unsupport param!")
-    return ge.SoftmaxV2(self, axes=[dim])
+    return ge.SoftmaxV2(self, axes=[dim], half_to_float=half_to_float)
 
 
 @register_fx_node_ge_converter(torch.ops.aten._softmax.out)

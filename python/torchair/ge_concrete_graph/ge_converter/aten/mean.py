@@ -19,7 +19,7 @@ from torch import Generator, contiguous_format, inf, strided
 from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, torch_type_to_ge_type
 from torchair.ge_concrete_graph.utils import dtype_promote
 from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
@@ -59,15 +59,13 @@ def conveter_aten_mean_dim(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::mean.dim(Tensor self, int[1]? dim, bool keepdim=False, *, ScalarType? dtype=None) -> Tensor"""
-    if dtype is not None:
-        raise NotImplementedError(
-            "torch.ops.aten.mean.dim have some unprocessed parameters or cases, "
-            "dtype = {}".format(dtype))
     if dim:
         dim_vec = dim
     else:
-        dim_vec = [i for i in self.rank]
-
+        dim_vec = [i for i in range(self.rank)]
+    if dtype is not None:
+        input_ge_dtype = torch_type_to_ge_type(dtype)
+        return ge.ReduceMeanWithCast(self, dim_vec, keep_dims=keepdim, dtype=input_ge_dtype)
     return ge.ReduceMean(self, dim_vec, keep_dims=keepdim)
 
 
