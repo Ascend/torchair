@@ -31,6 +31,8 @@ from torchair.core.backend import TorchNpuGraph
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.ge_concrete_graph.utils import convert_to_tensorboard, force_op_unknown_shape
 from torchair.ge_concrete_graph.supported_declaration import Support
+from torchair.ge_concrete_graph.export_config_generete import get_grouplist_from_graph, generate_atc_config
+from torchair.utils.export_utils import get_subpath, get_export_file_name
 from . import ge_apis as ge
 
 
@@ -454,29 +456,39 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._executor.compile()
 
     def export(self, inputs) -> Any:
-        local_options, global_options = self._config.as_dict()
-        logger.info("local export options:")
-        for k, v in local_options.items():
-            logger.info(f"  {k}: {v}")
-        logger.info("global export options:")
-        for k, v in global_options.items():
-            logger.info(f"  {k}: {v}")
-
         file_path = self._config.export_config.export_path_dir
+        sub_file_path = get_subpath(file_path)
+        file_name_air = get_export_file_name(self._config.export_config.export_name)
+
         export_graph = GeGraph()
         export_graph.MergeFrom(self._graph._proto)
 
         if os.path.exists(file_path) is False:
             os.mkdir(file_path)
 
+        if os.path.exists(sub_file_path) is False:
+            os.mkdir(sub_file_path)
+
         num_weight_in_graph = _trans_export_protobuf(inputs, export_graph, file_path, self._config)
 
-        _save_weight2file(inputs, file_path, self._config.export_config.weight_name, num_weight_in_graph)
+        _save_weight2file(inputs, sub_file_path, self._config.export_config.weight_name, num_weight_in_graph)
 
         _normalize_ge_graph(export_graph)
 
-        dump_graph(file_path + "/dynamo.pbtxt", export_graph)
+        dump_graph(sub_file_path + "/dynamo.pbtxt", export_graph)
 
+        if self._config.export_config.auto_atc_config_generated is True and torch.distributed.is_initialized():
+            from torch.distributed.distributed_c10d import _world
+            world_rank_list = torch.distributed.get_process_group_ranks(_world.default_pg)
+            group_list = get_grouplist_from_graph(export_graph)
+            logger.info(f"generate_atc_config file_path: {file_path}, " +
+                        "file_name: {self._config.export_config.export_name}")
+            generate_atc_config(file_path, export_name=self._config.export_config.export_name,
+                                world_ranklist=world_rank_list, group_list=group_list)
+
+        local_options = {}
+        local_options["export_path_dir"] = file_path
+        local_options["export_name"] = file_name_air
         _torchair.export(export_graph.SerializeToString(), local_options)
 
     @property

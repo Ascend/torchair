@@ -4,7 +4,7 @@ from torch.library import Library
 from torchair.ge_concrete_graph.ge_graph import Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-
+from torchair.ge_concrete_graph.utils import normalize_reduceop_type
 
 _lib = Library("npu_define", "DEF")
 op_name = _lib.define(
@@ -65,7 +65,7 @@ def conveter_allreduce(
     from torch.distributed.distributed_c10d import _world
     rank = torch.distributed.get_rank()
     ranklist = torch.distributed.get_process_group_ranks(_world.default_pg)
-    y = ge.HcomAllReduce(self, reduction=reduce_type, group="hccl_world_group", fusion=0)
+    y = ge.HcomAllReduce(self, reduction=normalize_reduceop_type(reduce_type), group="hccl_world_group", fusion=0)
     y._node.attr["ranklist"].list.i.extend(ranklist)
     try:
         hcom_info = _world.default_pg._get_backend(torch.device("npu")).get_hccl_comm(rank)
@@ -74,3 +74,39 @@ def conveter_allreduce(
     else:
         y._node.attr["comm"].i = hcom_info
     return y
+
+
+def adapter_functional_collectives_all_reduce(tensor, op="sum", group=None, async_op=False):
+    if not isinstance(op, str):
+        raise TypeError("functional_collectives_context patch only sopport str reducetype")
+    if group is None:
+        from torch.distributed.distributed_c10d import _world
+        tensor.copy_(torch.distributed._functional_collectives.all_reduce(tensor, op, _world.default_pg))
+    else:
+        tensor.copy_(torch.distributed._functional_collectives.all_reduce(tensor, op, group))
+
+
+class functional_collectives_context:
+    '''
+    functional_collectives_context支持在作用域内将torch.distributed.all_reduce patch到
+    torch.distributed._functional_collectives中的对应api中使用(当社区支持allreduce直接入图后, 该接口将被逐渐废弃)
+    目的： 用户不用修改脚本,使用torch.distributed相关api也能torch.compile入图
+    使用方式：
+    with functional_collectives_context():
+        opt_mod = torch.compile(mod, ...)
+        compile_result = opt_mod(x)
+    注意:
+    1、该上下文管理器只能支持有限场景下的自动转化入图,如torch.distributed api不能使用如dist.ReduceOp.SUM这种数据类型,
+    如使用上述相关入参将compile失败,此时用户需要手动修改脚本将torch.distributed api替换为 torch.distributed._functional_collectives中的api
+    2、reduce_scatter_tensor并不需要在此patch,因为在原生torch中已经被处理过了
+    '''
+    def __init__(self) -> None:
+        self.torch_all_reduce = None
+
+    def __enter__(self):
+        self.torch_all_reduce = torch.distributed.all_reduce
+        torch.distributed.all_reduce = adapter_functional_collectives_all_reduce
+
+    def __exit__(self, *args, **kwargs):
+        torch.distributed.all_reduce = self.torch_all_reduce
+

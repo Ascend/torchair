@@ -4,6 +4,7 @@ import os
 import shutil
 import logging
 import torch
+import torch.distributed._functional_collectives as funcol
 import torchair
 import torchair.ge_concrete_graph.ge_converter.experimental.hcom_allreduce
 from torchair.core.utils import logger
@@ -94,9 +95,15 @@ class TorchairSt(unittest.TestCase):
         assert get_inputnum_in_node(src, "op: \"NetOutput\"")
 
     def test_export_with_allreduce(self):
-        def get_dumped_file_list(dir_path, file_extension='.pbtxt'):
-            return [i for i in os.listdir(dir_path) if i.startswith('dynamo') and i.endswith(f'{file_extension}')]
-
+        def get_sub_path_dynamo_pbtxt(export_path, rankid):
+            return export_path + "/rank_" + str(rankid) + "/dynamo.pbtxt"
+        
+        def get_model_relation_config(export_path):
+            return export_path + "/model_relation_config.json"
+        
+        def get_numa_config(export_path):
+            return export_path + "/numa_config.json"
+        
         def mp():
             world_size = 2
             torch.multiprocessing.spawn(example, args=(world_size, ), nprocs=world_size, join=True)
@@ -104,31 +111,50 @@ class TorchairSt(unittest.TestCase):
         os.environ["MASTER_ADDR"] = "localhost"
         os.environ["MASTER_PORT"] = "29505"
 
-        export_path1 = "./export_file_rank_0"
-        if os.path.exists(export_path1):
-            shutil.rmtree(export_path1)
-        export_path2 = "./export_file_rank_1"
-        if os.path.exists(export_path2):
-            shutil.rmtree(export_path2)
-
         mp()
 
-        dumped_file_list = get_dumped_file_list(export_path1)
-        dumped_file_list.sort(key=lambda file_name: os.path.getmtime(os.path.join(export_path1, file_name)))
-        assert dumped_file_list.__len__() > 0
-        file_name = os.path.join(export_path1, dumped_file_list[-1])
-
+        file_name = get_sub_path_dynamo_pbtxt("export_file", 0)
         with open(file_name, 'r')as f:
             src = f.read()
-
         assert src.count("op: \"FileConstant\"") == 2
         assert src.count("op: \"Data\"") == 2
         assert src.count("op: \"HcomAllReduce\"") == 1
         assert src.count("key: \"ranklist\"") == 1
 
+        file_name = get_sub_path_dynamo_pbtxt("false_export_path2", 0)
+        with open(file_name, 'r')as f:
+            src = f.read()
+        assert src.count("op: \"HcomAllReduce\"") == 4 # 多group场景
 
-class HcomModel(torch.nn.Module):
+        file_name = get_sub_path_dynamo_pbtxt("true_export_path2", 0)
+        with open(file_name, 'r')as f:
+            src = f.read()
+        assert src.count(" dim: -1") == 3 # 动态图存在-1
 
+        file_name = get_model_relation_config("true_export_path2")
+        with open(file_name, 'r')as f:
+            src = f.read()
+        assert src.count("\"submodel_name\": \"export_rank0.air\"") == 2
+        assert src.count("\"group_rank_list\": \"[0, 1]\"") == 4
+        assert src.count("model_instance_id") == 4
+
+        file_name = get_numa_config("true_export_path2")
+        with open(file_name, 'r')as f:
+            src = f.read()
+        assert src.count("\"item_id\": 1") == 1
+
+        file_name = get_sub_path_dynamo_pbtxt("true_export_path3", 0)
+        with open(file_name, 'r')as f:
+            src = f.read()
+        assert src.count("HcomReduceScatter") == 3 # dist reduce_scatter_tensor入图
+
+        for export_path in ["export_file", "false_export_path2", "true_export_path2", \
+                            "true_export_path3"]:
+            if os.path.exists(export_path):
+                shutil.rmtree(export_path)
+
+
+class AllReduceSingeGroup(torch.nn.Module):
     def __init__(self):
         super().__init__()
         self.p = torch.nn.Parameter(torch.tensor([[1.1, 1.1], [1.1, 1.1]]))
@@ -140,13 +166,57 @@ class HcomModel(torch.nn.Module):
         return x
 
 
+class AllReduceMultiGroup(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        x = funcol.all_reduce(x, reduceOp='SUM', group=[0, 1], tag='test1')
+        x = funcol.all_reduce(x, reduceOp='SUM', group=[0, 1], tag='test2')
+        x = funcol.all_reduce(x, reduceOp='SUM', group=[0, 1], tag='test3')
+        x = funcol.all_reduce(x, reduceOp='SUM', group=[0, 1], tag='test1') # 重复的group case
+        return x
+
+
+class DistReduceScatterTensor(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x, output):
+        from torch.distributed.distributed_c10d import _world
+        # 必须要带group参数
+        torch.distributed.reduce_scatter_tensor(output, x, group=_world.default_pg)
+        return x
+
+
+class FuncolReduceScatterTensor(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        from torch.distributed.distributed_c10d import _world
+        out = funcol.reduce_scatter_tensor(x, "sum", scatter_dim=-1, group=_world.default_pg)
+        return out
+
+
 def example(rank, world_size):
     torch.distributed.init_process_group("gloo", rank=rank, world_size=world_size)
     x = torch.ones([2, 2], dtype=torch.int32)
     y = torch.ones([2, 2], dtype=torch.int32)
-    mod = HcomModel()
+    mod = AllReduceSingeGroup()
     torchair.dynamo_export(x, y, model=mod)
-    torchair.dynamo_export(x, y, model=mod, dynamic=True)
+
+    mod2 = AllReduceMultiGroup()
+    xx2 = torch.ones([3], dtype=torch.int32)
+    torchair.dynamo_export(xx2, model=mod2, dynamic=False, export_path="false_export_path2")
+    torchair.dynamo_export(xx2, model=mod2, dynamic=True, export_path="true_export_path2",
+                           auto_atc_config_generated=True)
+
+    mod3 = DistReduceScatterTensor()
+    xx3 = torch.tensor([0, 1, 2, 3], dtype=torch.int32)
+    output = torch.empty([2], dtype=torch.int32)
+    torchair.dynamo_export(xx3, output, model=mod3, dynamic=True, export_path="true_export_path3")
+
 
 if __name__ == '__main__':
     unittest.main()

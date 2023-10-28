@@ -85,3 +85,22 @@ def force_op_unknown_shape(op: Tensor):
     op.node.attr['_force_unknown_shape'].b = True
     return op
 
+
+def normalize_reduceop_type(op):
+    torch_reduce_optype = torch.distributed.ReduceOp.RedOpType.__members__
+    norm_op = op.upper()
+    ge_reduceop_type = None
+    if norm_op in torch_reduce_optype.keys():
+        if norm_op == 'SUM':
+            ge_reduceop_type = 'sum'
+        elif norm_op == 'MIN':
+            ge_reduceop_type = 'min'
+        elif norm_op == 'MAX':
+            ge_reduceop_type = 'max'
+        elif norm_op == 'PROBUCT':
+            ge_reduceop_type = 'prob'
+        else:
+            raise ValueError(f'ge unsupport reduce type {norm_op}')
+    else:
+        raise ValueError(f'Invalid reduce operation {norm_op}')
+    return ge_reduceop_type

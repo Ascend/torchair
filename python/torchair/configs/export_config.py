@@ -11,6 +11,7 @@ class ExportConfig(NpuBaseConfig):
         self.export_name = None
         self.weight_name = None
         self.inputs_name = None
+        self.auto_atc_config_generated = OptionValue(False, [True, False])
 
     def as_dict(self):
         if self.export_mode:

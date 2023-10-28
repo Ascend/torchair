@@ -31,7 +31,12 @@ def conveter_aten_split_Tensor(
     if isinstance(split_sizes, int):
         split_sizes = [split_size for _ in range(len(meta_outputs))]
         split_sizes[-1] = -1
-    return ge.SplitV(self, split_sizes, dim, num_split=len(split_sizes))
+        return ge.SplitV(self, split_sizes, dim, num_split=len(split_sizes))
+    elif isinstance(split_sizes, Tensor):
+        tensors = [split_size for _ in range(len(meta_outputs))]
+        split_sizes = ge.ConcatV2(tensors, concat_dim=0, N=len(meta_outputs))
+        split_sizes = ge.ConcatV2([split_sizes, -1], concat_dim=0, N=2)
+        return ge.SplitV(self, split_sizes, dim, num_split=len(meta_outputs))
 
 
 @register_fx_node_ge_converter(torch.ops.aten.split.sizes)
