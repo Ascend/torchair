@@ -20184,14 +20184,19 @@ def MultiHeadAttentionScoreGrad(query: Tensor,
 
 
 # This api is auto-generated from IR IncreFlashAttention
-@auto_convert_to_tensor([False, True, True, False, False, False],
-                        [False, False, False, True, True, True])
+@auto_convert_to_tensor([False, True, True, False, False, False, False, False, False, False, False],
+                        [False, False, False, True, True, True, True, True, True, True, True])
 def IncreFlashAttention(query: Tensor,
                         key: List[Tensor],
                         value: List[Tensor],
                         padding_mask: Optional[Tensor],
                         atten_mask: Optional[Tensor],
                         actual_seq_lengths: Optional[Tensor],
+                        dequant_scale1: Optional[Tensor],
+                        quant_scale1: Optional[Tensor],
+                        dequant_scale2: Optional[Tensor],
+                        quant_scale2: Optional[Tensor],
+                        quant_offset2: Optional[Tensor],
                         *,
                         num_heads: int,
                         scale_value: float = 1.000000,
@@ -20200,13 +20205,18 @@ def IncreFlashAttention(query: Tensor,
                         dependencies=[],
                         node_name=None):
     """REG_OP(IncreFlashAttention)\n
-.INPUT(query, TensorType({DT_FLOAT16, DT_FLOAT32}))\n
-.DYNAMIC_INPUT(key, TensorType({DT_FLOAT16, DT_FLOAT32}))\n
-.DYNAMIC_INPUT(value, TensorType({DT_FLOAT16, DT_FLOAT32}))\n
+.INPUT(query, TensorType({DT_FLOAT16, DT_FLOAT32, DT_INT8}))\n
+.DYNAMIC_INPUT(key, TensorType({DT_FLOAT16, DT_FLOAT32, DT_INT8}))\n
+.DYNAMIC_INPUT(value, TensorType({DT_FLOAT16, DT_FLOAT32, DT_INT8}))\n
 .OPTIONAL_INPUT(padding_mask, TensorType({DT_FLOAT16, DT_FLOAT32}))\n
 .OPTIONAL_INPUT(atten_mask, TensorType({DT_FLOAT16, DT_FLOAT32}))\n
 .OPTIONAL_INPUT(actual_seq_lengths, TensorType({DT_INT64}))\n
-.OUTPUT(attention_out, TensorType({DT_FLOAT16, DT_FLOAT32}))\n
+.OPTIONAL_INPUT(dequant_scale1, TensorType({DT_UINT64}))\n
+.OPTIONAL_INPUT(quant_scale1, TensorType({DT_FLOAT}))\n
+.OPTIONAL_INPUT(dequant_scale2, TensorType({DT_UINT64}))\n
+.OPTIONAL_INPUT(quant_scale2, TensorType({DT_FLOAT}))\n
+.OPTIONAL_INPUT(quant_offset2, TensorType({DT_FLOAT}))\n
+.OUTPUT(attention_out, TensorType({DT_FLOAT16, DT_FLOAT32, DT_INT8}))\n
 .REQUIRED_ATTR(num_heads, Int)\n
 .ATTR(scale_value, Float, 1.0)\n
 .ATTR(input_layout, String, "BSH")\n
@@ -20259,6 +20269,46 @@ def IncreFlashAttention(query: Tensor,
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "actual_seq_lengths"
+    if dequant_scale1 is not None:
+        op.input.append(dequant_scale1.tensor)
+        op.input_desc.add().CopyFrom(dequant_scale1.desc)
+        op.input_desc[-1].name = "dequant_scale1"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "dequant_scale1"
+    if quant_scale1 is not None:
+        op.input.append(quant_scale1.tensor)
+        op.input_desc.add().CopyFrom(quant_scale1.desc)
+        op.input_desc[-1].name = "quant_scale1"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "quant_scale1"
+    if dequant_scale2 is not None:
+        op.input.append(dequant_scale2.tensor)
+        op.input_desc.add().CopyFrom(dequant_scale2.desc)
+        op.input_desc[-1].name = "dequant_scale2"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "dequant_scale2"
+    if quant_scale2 is not None:
+        op.input.append(quant_scale2.tensor)
+        op.input_desc.add().CopyFrom(quant_scale2.desc)
+        op.input_desc[-1].name = "quant_scale2"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "quant_scale2"
+    if quant_offset2 is not None:
+        op.input.append(quant_offset2.tensor)
+        op.input_desc.add().CopyFrom(quant_offset2.desc)
+        op.input_desc[-1].name = "quant_offset2"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "quant_offset2"
 
     # process attrs
     op.attr["num_heads"].i = num_heads
@@ -20272,7 +20322,7 @@ def IncreFlashAttention(query: Tensor,
     attention_out = Tensor(op, output_index)
     output_index += 1
 
-    
+
     return attention_out
 
 
