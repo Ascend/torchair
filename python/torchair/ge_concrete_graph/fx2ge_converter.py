@@ -365,11 +365,19 @@ class GeConcreteGraph(ConcreteGraphBase):
         args = args[0]
         for arg in args:
             arg = arg.npu if isinstance(arg, ValuePack) else arg
-            if isinstance(arg, ge.Tensor):
-                self._fx_outputs_mapping[len(
-                    self._fx_outputs)] = len(self._outputs)
-                self._outputs.append(arg)
             self._fx_outputs.append(arg)
+            if not isinstance(arg, ge.Tensor):
+                continue
+
+            output_index = len(self._outputs)
+            for i, output in enumerate(self._outputs):
+                if output.tensor == arg.tensor:
+                    output_index = i
+                    break
+            self._fx_outputs_mapping[len(
+                self._fx_outputs) - 1] = output_index
+            if output_index == len(self._outputs):
+                self._outputs.append(arg)
 
         ge.NetOutput(self._outputs)
         return args

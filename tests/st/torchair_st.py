@@ -125,6 +125,32 @@ class TorchairSt(unittest.TestCase):
         # shape is position input of ge.Empty, check not raise when pass shape by k-v
         ge.Empty(shape=ge.Const(1))
 
+    def test_different_fx_output_from_same_fx_node(self):
+        v = torch.ones(2)
+        @torch.compile(backend=npu_backend)
+        def one_2_two_case1(x):
+            return x, x
+        x, y = one_2_two_case1(v)
+        self.assertTrue(x is y)
+
+        @torch.compile(backend=npu_backend)
+        def one_2_two_case2(x):
+            return x, x + 1, x
+        x, _, y = one_2_two_case2(v)
+        self.assertTrue(x is y)
+
+        @torch.compile(backend=npu_backend)
+        def one_2_two_case3(x):
+            return x + 1, x, x
+        _, x, y = one_2_two_case3(v)
+        self.assertTrue(x is y)
+
+        @torch.compile(backend=npu_backend)
+        def one_2_two_case4(x):
+            return x, x, x + 1
+        x, y, _ = one_2_two_case4(v)
+        self.assertTrue(x is y)
+
     def test_ge_graph_dump_with_py(self):
         class Model(torch.nn.Module):
             def __init__(self):
