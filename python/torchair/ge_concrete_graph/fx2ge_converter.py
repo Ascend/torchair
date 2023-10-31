@@ -452,7 +452,7 @@ class GeConcreteGraph(ConcreteGraphBase):
 
         self._complement_graph_attr()
         self._graph_output_ref_input = _mapping_assign_op_to_graph_output(self.graph)
-        if len(self._graph_output_ref_input):
+        if self._config.debug.graph_dump.enabled and len(self._graph_output_ref_input):
             self.dump(f'dynamo_after_mapping_assign_{datetime.now().strftime("%Y%m%d%H%M%S%f")}.pbtxt')
 
         _normalize_ge_graph(self.graph)
