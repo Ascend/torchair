@@ -105,16 +105,35 @@ def _ge_dtype_to_np_dtype(dtype: DataType) -> np.dtype:
         return np.int8
     if dtype == DataType.DT_UINT8:
         return np.uint8
+    if dtype == DataType.DT_INT16:
+        return np.int16
+    if dtype == DataType.DT_UINT16:
+        return np.uint16
     if dtype == DataType.DT_INT32:
         return np.int32
     if dtype == DataType.DT_UINT32:
         return np.uint32
     if dtype == DataType.DT_INT64:
         return np.int64
+    if dtype == DataType.DT_UINT64:
+        return np.uint64
     if dtype == DataType.DT_BOOL:
         return np.bool_
+    if dtype == DataType.DT_COMPLEX64:
+        return np.complex64
+    if dtype == DataType.DT_COMPLEX128:
+        return np.complex128
 
     raise ValueError(f"Unsupported ge dtype {dtype}")
+
+
+def _is_supported_ge_dtype_by_numpy(ge_dtype: DataType) -> bool:
+    try:
+        _ge_dtype_to_np_dtype(ge_dtype)
+    except Exception:
+        return False
+
+    return True
 
 
 def _ge_dtype_to_ge_proto_dtype(dtype: DataType) -> np.dtype:
@@ -175,6 +194,22 @@ def _ge_proto_dtype_to_ge_dtype(dtype: ProtoDataType):
         return DataType.DT_INT64
     if dtype == ProtoDataType.DT_BOOL:
         return DataType.DT_BOOL
+    if dtype == ProtoDataType.DT_BF16:
+        return DataType.DT_BF16
+    if dtype == ProtoDataType.DT_INT16:
+        return DataType.DT_INT16
+    if dtype == ProtoDataType.DT_COMPLEX32:
+        return DataType.DT_COMPLEX32
+    if dtype == ProtoDataType.DT_COMPLEX64:
+        return DataType.DT_COMPLEX64
+    if dtype == ProtoDataType.DT_COMPLEX128:
+        return DataType.DT_COMPLEX128
+    if dtype == ProtoDataType.DT_QINT8:
+        return DataType.DT_QINT8
+    if dtype == ProtoDataType.DT_QUINT8:
+        return DataType.DT_QUINT8
+    if dtype == ProtoDataType.DT_QINT32:
+        return DataType.DT_QINT32
 
     raise ValueError(f"Unsupported ge proto dtype {dtype}")
 
@@ -213,14 +248,24 @@ def _np_dtype_to_ge_dtype(dtype: np.dtype) -> ProtoDataType:
         return DataType.DT_INT8
     if dtype == np.uint8:
         return DataType.DT_UINT8
+    if dtype == np.int16:
+        return DataType.DT_INT16
+    if dtype == np.uint16:
+        return DataType.DT_UINT16
     if dtype == np.int32:
         return DataType.DT_INT32
     if dtype == np.uint32:
         return DataType.DT_UINT32
     if dtype == np.int64:
         return DataType.DT_INT64
+    if dtype == np.uint64:
+        return DataType.DT_UINT64
     if dtype == np.bool_:
         return DataType.DT_BOOL
+    if dtype == np.complex64:
+        return DataType.DT_COMPLEX64
+    if dtype == np.complex128:
+        return DataType.DT_COMPLEX128
 
     raise ValueError(f"Unsupported numpy dtype {dtype}")
 
@@ -790,7 +835,8 @@ def get_invalid_desc():
 
 
 @auto_convert_to_tensor([], [])
-def Data(*, index: int, dtype: int, shape: List[int] = None, format: str = "ND", placement:str, name: str = None) -> Tensor:
+def Data(*, index: int, dtype: int, shape: List[int] = None, format: str = "ND", placement: str,
+         name: str = None) -> Tensor:
     op = get_default_ge_graph().op.add()
     op.type = "Data"
     op.name = next_unique_name(name, "Data")
@@ -815,23 +861,60 @@ def Data(*, index: int, dtype: int, shape: List[int] = None, format: str = "ND",
     return Tensor(op)
 
 
+@auto_convert_to_tensor([False], [False])
+def Cast(x: Tensor, *, dst_type: int, dependencies=[], node_name=None) -> Tensor:
+    """
+    REG_OP(Cast)
+        .INPUT(x, TensorType({DT_BOOL, DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT32, DT_UINT8, DT_INT64,
+                              DT_UINT64, DT_INT16, DT_UINT16, DT_DOUBLE, DT_COMPLEX64, DT_COMPLEX128, DT_QINT8,
+                              DT_QUINT8, DT_QINT16, DT_QUINT16, DT_QINT32, DT_BF16, DT_UINT1}))
+        .OUTPUT(y, TensorType({DT_BOOL, DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT32, DT_UINT8, DT_INT64,
+                               DT_UINT64, DT_INT16, DT_UINT16, DT_DOUBLE, DT_COMPLEX64, DT_COMPLEX128, DT_QINT8,
+                               DT_QUINT8, DT_QINT16, DT_QUINT16, DT_QINT32, DT_BF16}))
+        .REQUIRED_ATTR(dst_type, Int)
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "Cast"
+    op.name = next_unique_name(node_name, "Cast")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+
+    # process attrs
+    op.attr["dst_type"].i = dst_type
+
+    # process outputs
+    op.output_desc.add().name = "y"
+    y = Tensor(op, 0)
+
+    return y
+
+
 def Const(v: Any, dtype: int = None, name=None) -> Tensor:
+    if dtype is not None and not _is_supported_ge_dtype_by_numpy(dtype):
+        # TO DO: unsupported dtype cast for numpy, currently resolved by inserting ge.Cast
+        return Cast(Const(v, dtype=None, name=name), dst_type=dtype)
+
     op = get_default_ge_graph().op.add()
     op.type = "Const"
     op.name = next_unique_name(name, "Const")
     value = op.attr["value"].t
-    if isinstance(v, np.ndarray):
-        if dtype is None:
+    if dtype is None:
+        if isinstance(v, np.ndarray):
             narray = v
-            dtype = _np_dtype_to_ge_dtype(narray.dtype)
         else:
-            narray = np.array(v, dtype=_ge_dtype_to_np_dtype(dtype))
-    else:
-        if dtype is None:
             narray = array_default_f32(v)
-            dtype = _np_dtype_to_ge_dtype(narray.dtype)
-        else:
-            narray = np.array(v, dtype=_ge_dtype_to_np_dtype(dtype))
+        const_ge_dtype = _np_dtype_to_ge_dtype(narray.dtype)
+    else:
+        narray = np.array(v, dtype=_ge_dtype_to_np_dtype(dtype))
+        const_ge_dtype = dtype
 
     if isinstance(v, (np.ndarray, tuple, list)):
         op.attr["_readable_value"].s = compat_as_bytes(f"{narray.tolist()}")
@@ -839,9 +922,11 @@ def Const(v: Any, dtype: int = None, name=None) -> Tensor:
         op.attr["_readable_value"].s = compat_as_bytes(f"{narray.item()}")
 
     value.data = narray.tobytes()
-    value.desc.dtype = _ge_dtype_to_ge_proto_dtype(dtype)
+    value.desc.dtype = _ge_dtype_to_ge_proto_dtype(const_ge_dtype)
     value.desc.layout = "ND"
     value.desc.shape.dim.extend(narray.shape)
 
     op.output_desc.extend([value.desc])
-    return Tensor(op)
+    const_tensor = Tensor(op)
+
+    return const_tensor

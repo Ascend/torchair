@@ -9,7 +9,7 @@ from torchair.ge_concrete_graph.ge_graph import compat_as_bytes, compat_as_bytes
 from torchair.ge_concrete_graph.ge_graph import trans_to_list_list_int, trans_to_list_list_float
 from torchair.ge_concrete_graph.ge_graph import _ge_dtype_to_ge_proto_dtype
 
-from torchair.ge_concrete_graph.ge_graph import Const, Data
+from torchair.ge_concrete_graph.ge_graph import Cast, Const, Data
 from torchair.ge_concrete_graph.auto_generated_ge_raw_ops import *
 from torchair.ge_concrete_graph.dynamic_output_ops import *
 

@@ -542,7 +542,8 @@ class OpDefBuilder {
  public:
   explicit OpDefBuilder(const std::string& name) {
     const static std::unordered_set<std::string> kBypass = {
-      "Const", "Data", "Constant", "Variable", "VariableV2", "Placeholder", "PlaceholderV2", "PlaceholderWithDefault"};
+      "Const", "Data", "Constant", "Cast", "Variable", "VariableV2", "Placeholder", "PlaceholderV2",
+      "PlaceholderWithDefault"};
 
     if (kBypass.count(name)) {
       def_.err = "Deformed prototype";

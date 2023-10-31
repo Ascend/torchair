@@ -9783,41 +9783,6 @@ def MinimumGrad(grads: Tensor,
     return y1, y2
 
 
-# This api is auto-generated from IR Cast
-@auto_convert_to_tensor([False], [False])
-def Cast(x: Tensor, *, dst_type: int, dependencies=[], node_name=None):
-    """REG_OP(Cast)\n
-.INPUT(x, TensorType({DT_BOOL, DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT32, DT_UINT8, DT_INT64, DT_UINT64, DT_INT16, DT_UINT16, DT_DOUBLE, DT_COMPLEX64, DT_COMPLEX128, DT_QINT8, DT_QUINT8, DT_QINT16, DT_QUINT16, DT_QINT32, DT_BF16, DT_UINT1}))\n
-.OUTPUT(y, TensorType({DT_BOOL, DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT32, DT_UINT8, DT_INT64, DT_UINT64, DT_INT16, DT_UINT16, DT_DOUBLE, DT_COMPLEX64, DT_COMPLEX128, DT_QINT8, DT_QUINT8, DT_QINT16, DT_QUINT16, DT_QINT32, DT_BF16}))\n
-.REQUIRED_ATTR(dst_type, Int)\n
-"""
-
-    op = get_default_ge_graph().op.add()
-    op.type = "Cast"
-    op.name = next_unique_name(node_name, "Cast")
-
-    # process dependices
-    for dependency in dependencies:
-        op.input.append(dependency.controller)
-
-    # process inputs
-    op.input.append(x.tensor)
-    op.input_desc.add().CopyFrom(x.desc)
-    op.input_desc[-1].name = "x"
-
-    # process attrs
-    op.attr["dst_type"].i = dst_type
-
-    # process outputs
-    output_index = 0
-    op.output_desc.add().name = "y"
-    y = Tensor(op, output_index)
-    output_index += 1
-
-    
-    return y
-
-
 # This api is auto-generated from IR GreaterEqual
 @auto_convert_to_tensor([False, False], [False, False])
 def GreaterEqual(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
