@@ -212,7 +212,7 @@ class TorchairSt(unittest.TestCase):
             y = torch.ones([], dtype=torch.int32)
             executor.run([x, y])
 
-    def test_npu_executor_with_assigned_inputs(self):
+    def test_static_npu_executor_with_assigned_inputs(self):
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
         import _privateuse1_backend
@@ -231,10 +231,35 @@ class TorchairSt(unittest.TestCase):
             executor.load(graph.SerializeToString())
             executor.compile()
 
-            x = torch.ones([2, 2], dtype=torch.int32)
-            y = torch.ones([], dtype=torch.int32)
-            executor.run([x, y], [x])
-            executor.run([x, y], [y])
+            x = torch.ones([2, 2], dtype=torch.int32, device='npu')
+            y = torch.ones([], dtype=torch.int32, device='npu')
+            z = executor.run([x, y], [x])
+            self.assertTrue(z[0] is x)
+
+    def test_dynamic_npu_executor_with_assigned_inputs(self):
+        initialize_graph_engine()
+        from torchair.core import _npu_graph_executor
+        import _privateuse1_backend
+        torch.utils.rename_privateuse1_backend("npu")
+
+        with GeGraph() as graph:
+            x = ge.Data(index=0, shape=[-1, 2],
+                        dtype=DataType.DT_INT32, placement='CPU')
+            y = ge.Data(index=1, shape=[],
+                        dtype=DataType.DT_INT32, placement='CPU')
+            z = ge.Add(x, y)
+            output = ge.NetOutput([z])
+
+            set_graph_output_dtypes(graph, [DataType.DT_INT32])
+
+            executor = TorchNpuGraph()
+            executor.load(graph.SerializeToString())
+            executor.compile()
+
+            x = torch.ones([2, 2], dtype=torch.int32, device='npu')
+            y = torch.ones([], dtype=torch.int32, device='npu')
+            z = executor.run([x, y], [x])
+            self.assertTrue(z[0] is x)
 
     def test_rng_into_graph(self):
         def check_graph(concrete_graph):

@@ -52,8 +52,8 @@ Status StaticNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &inp
         // In static graph input shape remains unchanged, only data ptr need to be updated.
         TNG_RETURN_IF_ERROR(AssembleDataToGe(retain_tmp_device_inputs.back(), inputs_holder_[i]));
       }
-      TNG_LOG(DEBUG) << "Assemble aten host input " << i << " " << DebugString(retain_tmp_device_inputs.back())
-                     << " to " << DebugString(inputs_holder_[i]);
+      TNG_LOG(DEBUG) << "Assemble aten host input " << i << " " << DebugString(inputs[i]) << " to "
+                     << DebugString(inputs_holder_[i]);
     } else {
       TNG_ASSERT(false, "Invalid Placement::UNKNOWN of input %zu.", i);
     }
@@ -95,7 +95,7 @@ Status StaticNpuGraphExecutor::AssembleOutputs(const std::vector<c10::optional<a
     } else {
       TNG_RETURN_IF_ERROR(AssembleDataToGe(output_i, outputs_holder_[i]));
     }
-    TNG_LOG(DEBUG) << "Assemble ge output " << i << " " << DebugString(output_i) << " to "
+    TNG_LOG(DEBUG) << "Assemble torch output " << i << " " << DebugString(output_i) << " to "
                    << DebugString(outputs_holder_[i]);
   }
 

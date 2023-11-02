@@ -4,7 +4,6 @@
 #include <utility>
 #include "AllocatorManager.h"
 #include "checker.h"
-#include "graph/utils/type_utils.h"
 #include "logger.h"
 #include "npu_utils.h"
 #include "session.h"
@@ -68,22 +67,13 @@ Status DynamicNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &in
   return Status::Success();
 }
 
-Status DynamicNpuGraphExecutor::AssembleOutputs(const std::vector<c10::optional<at::Tensor>> &outputs) {
-  // TODO: fix this case if necessary
-  // This interface is only needed when partial outputs are specified by user,
-  // but it is not involved currently.
-  TNG_ASSERT(outputs.empty());
-  return Status::Success();
-}
-
 Status DynamicNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
-                                    const std::vector<c10::optional<at::Tensor>> &torch_outputs,
+                                    const std::vector<c10::optional<at::Tensor>> &assigned_outputs,
                                     std::vector<at::Tensor> &outputs, void *stream) {
   TNG_LOG(INFO) << "Dynamic npu graph executor start to run graph " << graph_data_->id;
 
   std::vector<at::Tensor> retain_tmp_device_inputs;
   TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, retain_tmp_device_inputs));
-  TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs));
 
   if (stream == nullptr) {
     TNG_RETURN_IF_ERROR(GetCurrentStream(&stream));
@@ -92,10 +82,18 @@ Status DynamicNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
   // Register allocator for GE before run, according to stream.
   AllocatorManager::GetInstance().EnsureAllocatorRegistered(stream);
 
+  TNG_ASSERT(assigned_outputs.empty() || (assigned_outputs.size() == graph_data_->output_dtypes.size()));
   std::vector<ge::Tensor> ge_outputs;
   ge_outputs.resize(graph_data_->output_dtypes.size());
   TNG_LOG(INFO) << "Graph output size is " << ge_outputs.size();
-  for (size_t i = 0; i < ge_outputs.size(); ++i) {
+  for (size_t i = 0U; i < ge_outputs.size(); ++i) {
+    if (!assigned_outputs.empty() && assigned_outputs[i].has_value()) {
+      TNG_RETURN_IF_ERROR(AtTensorToGeTensor(assigned_outputs[i].value(), ge_outputs[i]));
+      TNG_LOG(DEBUG) << "Assemble assigned output " << i << " " << DebugString(assigned_outputs[i].value()) << " to "
+                     << DebugString(ge_outputs[i]);
+      continue;
+    }
+    TNG_LOG(DEBUG) << "Assemble unfed output " << i;
     const static ge::Tensor::DeleteFunc kDoNothing = [](uint8_t *data) {};
     // setting the i-th tensor data to nullptr means
     // that the i-th tensor memory will be allocated and returned by GE.
@@ -104,7 +102,13 @@ Status DynamicNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
 
   TNG_RETURN_IF_ERROR(Session::GetInstance().RunGraph(graph_data_->id, inputs_holder_, ge_outputs, stream));
   outputs.resize(ge_outputs.size());
-  for (size_t i = 0; i < ge_outputs.size(); ++i) {
+  for (size_t i = 0U; i < ge_outputs.size(); ++i) {
+    if (!assigned_outputs.empty() && assigned_outputs[i].has_value()) {
+      outputs[i] = assigned_outputs[i].value();
+      TNG_LOG(DEBUG) << "Assemble assigned torch output " << i << " " << DebugString(outputs[i]) << "(ge output is "
+                     << DebugString(ge_outputs[i]) << ")";
+      continue;
+    }
     TNG_RETURN_IF_ERROR(GeTensorToAtTensor(ge_outputs[i], outputs[i]));
     TNG_LOG(DEBUG) << "Assemble ge output " << i << " " << DebugString(ge_outputs[i]) << " to torch output "
                    << DebugString(outputs[i]);
