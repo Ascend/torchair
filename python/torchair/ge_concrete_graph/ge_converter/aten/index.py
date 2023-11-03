@@ -19,7 +19,7 @@ from torch import Generator, contiguous_format, inf, strided
 from torch.types import Device, Number, SymInt, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType
 
 
 @register_fx_node_ge_converter(torch.ops.aten.index.Tensor)
@@ -27,7 +27,11 @@ def conveter_aten_index_Tensor(
     self: Tensor, indices: List[Optional[Tensor]], meta_outputs: TensorSpec = None
 ):
     """NB: aten::index.Tensor(Tensor self, Tensor?[] indices) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.index.Tensor ge_converter is not implemented!")
+    if self.dtype in [DataType.DT_BOOL, DataType.DT_UINT8]:
+        raise NotImplementedError("index.Tensor currently not support dtype Bool or Uint8.")
+    mask = [1 if indice else 0 for indice in indices]
+    indices = [i for i in indices if i]
+    return ge.IndexByTensor(self, indices, indices_mask=mask)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.index.Tensor_out)

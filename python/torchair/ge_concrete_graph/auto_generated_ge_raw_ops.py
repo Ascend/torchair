@@ -16941,6 +16941,52 @@ def RotatedNMS(boxes: Tensor,
     return selected_detections, keep_indices
 
 
+@auto_convert_to_tensor([False, True],
+                        [False, False])
+def IndexByTensor(x: Tensor,
+          indices: List[Tensor],
+          *,
+          indices_mask: List[int],
+          dependencies=[],
+          node_name=None):
+    """REG_OP(IndexByTensor)\n
+.INPUT(x, TensorType::BasicType())\n
+.DYNAMIC_INPUT(indices, TensorType({DT_INT64}))\n
+.OUTPUT(y, TensorType::BasicType())\n
+.ATTR(indices_mask, ListInt, {})\n
+"""
+
+    op = get_default_ge_graph().op.add()
+    op.type = "IndexByTensor"
+    op.name = next_unique_name(node_name, "IndexByTensor")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+    assert isinstance(indices, (tuple, list))
+    for i, v in enumerate(indices):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "indices" + str(i)
+
+    # process attrs
+    op.attr["indices_mask"].list.val_type = 2
+    op.attr["indices_mask"].list.i.extend(indices_mask)
+    
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+
+    return y
+
+
 # This api is auto-generated from IR Index
 @auto_convert_to_tensor([False, False, False, True],
                         [False, False, False, False])
