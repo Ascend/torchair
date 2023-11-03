@@ -515,13 +515,17 @@ class GeConcreteGraph(ConcreteGraphBase):
         logger.info(f"End auto tune for round {self._auto_tune_times - 1}")
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
-        inputs = [(arg if arg.is_contiguous() else arg.contiguous()) if isinstance(arg, torch.Tensor)
-                  else torch.tensor(arg) for arg in args]
-
-        ge_inputs = [None for v in self._fx_inputs_mapping]
-        for fx_idx, ge_idx in self._fx_inputs_mapping.items():
-            ge_inputs[ge_idx] = inputs[fx_idx]
-        inputs = ge_inputs
+        fx_input_mapping_cloned_ge_input = []
+        inputs = [None] * len(self._fx_inputs_mapping)
+        for fx_index, ge_index in self._fx_inputs_mapping.items():
+            if isinstance(args[fx_index], torch.Tensor):
+                if args[fx_index].is_contiguous():
+                    inputs[ge_index] = args[fx_index]
+                else:
+                    inputs[ge_index] = args[fx_index].contiguous()
+                    fx_input_mapping_cloned_ge_input.append((fx_index, ge_index))
+            else:
+                inputs[ge_index] = torch.tensor(args[fx_index])
 
         self._consume_data_into_inputs(inputs)
 
@@ -537,16 +541,18 @@ class GeConcreteGraph(ConcreteGraphBase):
             for output_index, input_index in self._graph_output_ref_input.items():
                 assigned_outputs[output_index] = inputs[input_index]
             ge_outputs = self._executor.run(inputs, assigned_outputs)
+
+            for index_tuple in fx_input_mapping_cloned_ge_input:
+                args[index_tuple[0]].copy_(inputs[index_tuple[1]])
         else:
             ge_outputs = self._executor.run(inputs)
 
-        assert len(ge_outputs) == len(
-            self.graph.attr["_output_dtypes"].list.i), f"output size mismatch, expect {len(self.graph.attr['_output_dtypes'].list.i)}, got {len(ge_outputs)}"
+        assert len(ge_outputs) == len(self.graph.attr["_output_dtypes"].list.i),\
+            f"output size mismatch, expect {len(self.graph.attr['_output_dtypes'].list.i)}, got {len(ge_outputs)}"
 
         fx_outputs = [v for v in self._fx_outputs]
         for fx_idx, ge_idx in self._fx_outputs_mapping.items():
-            assert ge_idx < len(
-                ge_outputs), f"output index {ge_idx} out of range {len(ge_outputs)}"
+            assert ge_idx < len(ge_outputs), f"output index {ge_idx} out of range {len(ge_outputs)}"
             fx_outputs[fx_idx] = ge_outputs[ge_idx]
 
         del ge_outputs
