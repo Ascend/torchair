@@ -35,6 +35,8 @@ def conveter_aten_where_self(
     condition: Tensor, self: Tensor, other: Tensor, meta_outputs: TensorSpec = None
 ):
     """NB: aten::where.self(Tensor condition, Tensor self, Tensor other) -> Tensor"""
+    if self._symsize != other._symsize or condition._symsize != self._symsize or condition._symsize != other._symsize:
+        raise NotImplementedError("torch.ops.aten.where.self only supports the same size!")
     if self.desc.dtype != other.desc.dtype:
         self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)
     return ge.Select(condition, self, other)
