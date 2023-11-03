@@ -612,6 +612,11 @@ def list_depth_check(inputs):
     return inputs
 
 def _parse_variables(variables, mode='input'):
+    # Due to the interception of regular Tensor formatting in fake mode, 
+    # the string method is used here to avoid errors.
+    if isinstance(variables, torch.Tensor):
+        return str(variables)
+
     if not isinstance(variables, Tensor):
         return f'{variables}'
 
