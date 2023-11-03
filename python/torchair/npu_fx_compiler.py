@@ -12,6 +12,7 @@ from torch.fx.node import Argument, Target
 from torch._functorch.aot_autograd import aot_module_simplified
 from torch._dynamo.allowed_functions import is_builtin_callable
 from torch._decomp import get_decompositions
+from torch.utils._mode_utils import no_dispatch
 
 from torchair.core.concrete_graph import ConcreteGraphBase, ValuePack, _is_symlist
 from torchair.core.utils import logger
@@ -306,8 +307,10 @@ class _NpuFxCompiler:
                                'to ensure that the graph is compiled and executed.')
                 return gm
 
+        with no_dispatch():
+            mutable_gm = copy.deepcopy(gm)
         concrete_graph: ConcreteGraphBase = NpuGraphConverter(
-            copy.deepcopy(gm), graph=ConcreteGraph(self.config), garbage_collect_values=False).run(*example_inputs)
+            mutable_gm, graph=ConcreteGraph(self.config), garbage_collect_values=False).run(*example_inputs)
 
         if not self.config.export_config.export_mode:
             if self.config.debug.graph_dump.enabled:
