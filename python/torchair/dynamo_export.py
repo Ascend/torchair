@@ -5,7 +5,6 @@ from torchair.core.utils import logger
 from torchair.ge_concrete_graph.fx2ge_converter import ExportSuccess
 from torchair.configs.compiler_config import CompilerConfig
 from torchair import get_npu_backend
-from torchair.ge_concrete_graph.ge_converter.experimental.hcom_allreduce import functional_collectives_context
 
 
 def _save_name(config, model: torch.nn.Module, **kwargs):
@@ -51,6 +50,7 @@ def _get_export_config(model, export_path: str, export_name: str,
 def dynamo_export(*args, model: torch.nn.Module, export_path: str = "export_file",
                   export_name: str = "export", dynamic: bool = False,
                   auto_atc_config_generated: bool = False, **kwargs):
+    from torchair.ge_concrete_graph.ge_converter.experimental.hcom_allreduce import functional_collectives_context
     logger.info(
         f'dynamo_export: export_path: {export_path}, export_name: {export_name}, '
         + f'dynamic: {dynamic}, auto_atc_config_generated: {auto_atc_config_generated}')
