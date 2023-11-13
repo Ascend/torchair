@@ -665,6 +665,8 @@ def _wrap_ge_tensor(v, dtype=None):
 def _torch_tensor_to_ge_const(v: torch.Tensor):
     assert type(v) == torch.Tensor
     with no_dispatch():
+        if v.device.type != "cpu":
+            v = v.cpu()
         return Const(v.numpy())
 
 
