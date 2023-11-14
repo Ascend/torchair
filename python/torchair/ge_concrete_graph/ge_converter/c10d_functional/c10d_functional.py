@@ -35,17 +35,20 @@ def convert_c10d_functional_all_reduce(
     out: Tensor = None,
     meta_outputs: Any = None,
 ):
-    from torch.distributed.distributed_c10d import _world
     rank = torch.distributed.get_rank()
-    ranklist = torch.distributed.get_process_group_ranks(_world.default_pg)
-    y = ge.HcomAllReduce(self, reduction=normalize_reduceop_type(reduce_type), group="hccl_world_group", fusion=0)
-    y._node.attr["ranklist"].list.i.extend(ranklist)
-    try:
-        hcom_info = _world.default_pg._get_backend(torch.device("npu")).get_hccl_comm(rank)
-    except:
-        logger.info(f'get_hccl_comm failed maybe in cpu export')
+    pg = torch.distributed.distributed_c10d._find_or_create_pg_by_ranks_and_tag(tag, ranklist, groupsize)
+    device = torch.distributed.distributed_c10d._get_pg_default_device(pg)
+    if device.type == "cpu":
+        y = ge.HcomAllReduce(self, reduction=normalize_reduceop_type(reduce_type),
+                             group=tag, fusion=0)
+        logger.debug(f'c10d_functional.all_reduce convert in cpu export, group name set as tag name')
+    elif device.type == "npu":
+        hcom_name = pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank)
+        y = ge.HcomAllReduce(self, reduction=normalize_reduceop_type(reduce_type),
+                             group=hcom_name, fusion=0)
     else:
-        y._node.attr["comm"].i = hcom_info
+        raise ValueError("The initialized aggregate communication backend is not a CPU or NPU.")
+    y._node.attr["ranklist"].list.i.extend(ranklist)
     return y
 
 
@@ -60,19 +63,20 @@ def convert_c10d_functional_reduce_scatter_tensor(
     out: Tensor = None,
     meta_outputs: Any = None,
 ):
-    from torch.distributed.distributed_c10d import _world
     rank = torch.distributed.get_rank()
-    ranklist = torch.distributed.get_process_group_ranks(_world.default_pg)
-    ranksize = len(ranklist)
-    y = ge.HcomReduceScatter(self, reduction=normalize_reduceop_type(reduce_type),
-                             group="hccl_world_group", rank_size=ranksize)
-    y._node.attr["ranklist"].list.i.extend(ranklist)
-    try:
-        hcom_info = _world.default_pg._get_backend(torch.device("npu")).get_hccl_comm(rank)
-    except:
-        logger.info(f'get_hccl_comm failed maybe in cpu export')
+    pg = torch.distributed.distributed_c10d._find_or_create_pg_by_ranks_and_tag(tag, ranklist, groupsize)
+    device = torch.distributed.distributed_c10d._get_pg_default_device(pg)
+    if device.type == "cpu":
+        y = ge.HcomReduceScatter(self, reduction=normalize_reduceop_type(reduce_type),
+                                 group=tag, rank_size=groupsize)
+        logger.debug(f'c10d_functional.all_reduce convert in cpu export, group name set as tag name')
+    elif device.type == "npu":
+        hcom_name = pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank)
+        y = ge.HcomReduceScatter(self, reduction=normalize_reduceop_type(reduce_type),
+                                 group=hcom_name, rank_size=groupsize)
     else:
-        y._node.attr["comm"].i = hcom_info
+        raise ValueError("The initialized aggregate communication backend is not a CPU or NPU.")
+    y._node.attr["ranklist"].list.i.extend(ranklist)
     return y
 
 

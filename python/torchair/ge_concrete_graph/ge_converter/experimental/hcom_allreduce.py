@@ -5,6 +5,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
 from torchair.ge_concrete_graph.utils import normalize_reduceop_type
+from torchair.core.utils import logger
 
 _lib = Library("npu_define", "DEF")
 op_name = _lib.define(
@@ -63,16 +64,18 @@ def conveter_allreduce(
         out: Tensor = None,
         meta_outputs: Any = None):
     from torch.distributed.distributed_c10d import _world
-    rank = torch.distributed.get_rank()
     ranklist = torch.distributed.get_process_group_ranks(_world.default_pg)
-    y = ge.HcomAllReduce(self, reduction=normalize_reduceop_type(reduce_type), group="hccl_world_group", fusion=0)
-    y._node.attr["ranklist"].list.i.extend(ranklist)
-    try:
-        hcom_info = _world.default_pg._get_backend(torch.device("npu")).get_hccl_comm(rank)
-    except:
-        pass
+    device = torch.distributed.distributed_c10d._get_pg_default_device(_world.default_pg)
+    if device.type == "cpu":
+        y = ge.HcomAllReduce(self, reduction=normalize_reduceop_type(reduce_type), group="hccl_world_group", fusion=0)
+        logger.debug(f'npu_define.allreduce convert in cpu export')
+    elif device.type == "npu":
+        rank = torch.distributed.get_rank()
+        hcom_name = _world.default_pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank)
+        y = ge.HcomAllReduce(self, reduction=normalize_reduceop_type(reduce_type), group=hcom_name, fusion=0)
     else:
-        y._node.attr["comm"].i = hcom_info
+        raise ValueError("The initialized aggregate communication backend is not a CPU or NPU.")
+    y._node.attr["ranklist"].list.i.extend(ranklist)
     return y
 
 
