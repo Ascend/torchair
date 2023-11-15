@@ -5,13 +5,14 @@ from typing import List, Callable, Any, Dict, Tuple, Union
 import logging
 
 import torch
+from torch._C import DispatchKey
 from torch._subclasses.fake_tensor import is_fake
 import torch.utils._pytree as pytree
 from torch.fx import Interpreter
 from torch.fx.node import Argument, Target
 from torch._functorch.aot_autograd import aot_module_simplified
 from torch._dynamo.allowed_functions import is_builtin_callable
-from torch._decomp import get_decompositions
+from torch._decomp import get_decompositions, decomposition_table
 from torch.utils._mode_utils import no_dispatch
 
 from torchair.core.concrete_graph import ConcreteGraphBase, ValuePack, _is_symlist
@@ -25,6 +26,25 @@ from torchair.fx_dumper import NpuFxDumper
 from torchair.utils.custom_aot_functions import aot_module_simplified_joint
 
 aten = torch.ops.aten
+
+
+def disable_implicit_decomposition():
+    '''
+    Since torch official will implicitly decompose some aten ops,
+    disable some ops here to avoid poor performance after decompose.
+    '''
+    disable_aten_ops = [
+        'aten.upsample_nearest1d.vec', 'aten.upsample_nearest1d.default',
+        'aten.upsample_nearest2d.vec', 'aten.upsample_nearest2d.default',
+        'aten.upsample_nearest3d.vec', 'aten.upsample_nearest3d.default',
+    ]
+
+    for op_override in decomposition_table.keys():
+        if str(op_override) in disable_aten_ops:
+            if DispatchKey.Autograd in op_override.py_kernels:
+                op_override.py_kernels.pop(DispatchKey.Autograd)
+            if DispatchKey.CompositeImplicitAutograd in op_override.py_kernels:
+                op_override.py_kernels.pop(DispatchKey.CompositeImplicitAutograd)
 
 
 def _unpack_meta_list(args):
@@ -375,5 +395,8 @@ def get_npu_backend(*, compiler_config: CompilerConfig = None,
                     aot_config: AotConfig = None, custom_decompositions: Dict = {}):
     if compiler_config is None:
         compiler_config = CompilerConfig()
+
+    disable_implicit_decomposition()
+
     return functools.partial(_npu_backend, compiler_config=compiler_config, aot_config=aot_config,
         custom_decompositions=custom_decompositions)
