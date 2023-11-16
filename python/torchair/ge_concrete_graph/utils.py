@@ -97,8 +97,8 @@ def normalize_reduceop_type(op):
             ge_reduceop_type = 'min'
         elif norm_op == 'MAX':
             ge_reduceop_type = 'max'
-        elif norm_op == 'PROBUCT':
-            ge_reduceop_type = 'prob'
+        elif norm_op == 'PRODUCT':
+            ge_reduceop_type = 'prod'
         else:
             raise ValueError(f'ge unsupport reduce type {norm_op}')
     else:
