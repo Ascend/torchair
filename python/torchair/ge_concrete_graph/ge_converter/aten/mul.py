@@ -22,12 +22,21 @@ from torchair.ge_concrete_graph.fx2ge_converter import declare_supported, regist
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
-from torchair.ge_concrete_graph.utils import dtype_promote
+from torchair.ge_concrete_graph.utils import dtype_promote, DataType
 
 
+@declare_supported([
+    Support(F32(2, 2), F32(2, 2)),
+    Support(F16(2, 2), F16(2, 2)),
+    Support(BOOL(2, 2), BOOL(2, 2)),
+])
 @register_fx_node_ge_converter(torch.ops.aten.mul.Tensor)
 def conveter_aten_mul_Tensor(self: Tensor, other: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::mul.Tensor(Tensor self, Tensor other) -> Tensor"""
+    """Mul operater doesn't support the input format of (bool, bool) till 2023/11/17"""
+    if self.dtype == DataType.DT_BOOL:
+        self, other = dtype_promote(self, other, target_dtype=torch.float16)
+        return ge.Cast(ge.Mul(self, other), dst_type=meta_outputs.dtype)
     return ge.Mul(self, other)
 
 
