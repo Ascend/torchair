@@ -25,12 +25,19 @@ from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, 
 from torchair.ge_concrete_graph.utils import dtype_promote
 
 
+@declare_supported([
+    Support(F32(2, 2), I32(2)),
+    Support(F16(2, 2), I32(2)),
+    Support(F64(2, 2), I8(2)),
+    Support(I64(2, 2), U8(2)),
+])
 @register_fx_node_ge_converter(torch.ops.aten.pow.Tensor_Tensor)
 def conveter_aten_pow_Tensor_Tensor(
     self: Tensor, exponent: Tensor, meta_outputs: TensorSpec = None
 ):
     """NB: aten::pow.Tensor_Tensor(Tensor self, Tensor exponent) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.pow.Tensor_Tensor ge_converter is not implemented!")
+    self, exponent = dtype_promote(self, exponent, target_dtype=meta_outputs.dtype)
+    return ge.Pow(self, exponent)
 
 
 @declare_supported([

@@ -594,6 +594,8 @@ def get_ge_rng_state(philox_num, gen: torch.Generator = None) -> Tuple[int, Tens
 
 
 def array_default_f32(v, dtype=None):
+    if isinstance(v, list) and len(v) == 0 and dtype is None:
+        dtype = np.int32
     if isinstance(v, float) and dtype is None:
         dtype = np.float32
     return np.array(v, dtype=dtype)
@@ -725,19 +727,18 @@ def _auto_type_promotion_for_const(bundle_inputs: list, inputs_dynamic: list, in
                 continue
 
             narray = np.array(input)
-            assert narray.size > 0, f"Cannot promote {func} input {i} value {input} with no dtype specified"
-
-            v = narray.item(0)
-            if isinstance(v, float):
-                assert len(
-                    f_dtypes) <= 1, f"Cannot promote {func} input {i} float {v} with dtypes {f_dtypes}"
-                promoted_inputs.append(_wrap_ge_tensor(
-                    input, dtype=(f_dtypes[0] if len(f_dtypes) else None)))
-            elif isinstance(v, int):
-                assert len(
-                    i_dtypes) <= 1, f"Cannot promote {func} input {i} int {v} with dtypes {i_dtypes}"
-                promoted_inputs.append(_wrap_ge_tensor(
-                    input, dtype=(i_dtypes[0] if len(i_dtypes) else None)))
+            if narray.size > 0:
+                v = narray.item(0)
+                if isinstance(v, float):
+                    assert len(
+                        f_dtypes) <= 1, f"Cannot promote {func} input {i} float {v} with dtypes {f_dtypes}"
+                    promoted_inputs.append(_wrap_ge_tensor(
+                        input, dtype=(f_dtypes[0] if len(f_dtypes) else None)))
+                elif isinstance(v, int):
+                    assert len(
+                        i_dtypes) <= 1, f"Cannot promote {func} input {i} int {v} with dtypes {i_dtypes}"
+                    promoted_inputs.append(_wrap_ge_tensor(
+                        input, dtype=(i_dtypes[0] if len(i_dtypes) else None)))
             else:
                 promoted_inputs.append(_wrap_ge_tensor(input))
             logger.info(

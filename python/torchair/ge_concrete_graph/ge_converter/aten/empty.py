@@ -42,9 +42,7 @@ def conveter_aten_empty_memory_format(
 
     if memory_format is not None and (memory_format != torch.contiguous_format):
         raise NotImplementedError("torch.ops.aten.empty.memory_format is only supported contiguous_format now.")
-
-    dtype = torch_type_to_ge_type(dtype if dtype is not None else torch.float32)
-    return ge.Empty(size, dtype=dtype)
+    return ge.Fill(size, ge.Cast(0., dst_type=torch_type_to_ge_type(dtype)))
 
 @register_fx_node_ge_converter(torch.ops.aten.empty.out)
 def conveter_aten_empty_out(
