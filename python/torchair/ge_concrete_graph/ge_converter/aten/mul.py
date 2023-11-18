@@ -37,6 +37,7 @@ def conveter_aten_mul_Tensor(self: Tensor, other: Tensor, meta_outputs: TensorSp
     if self.dtype == DataType.DT_BOOL:
         self, other = dtype_promote(self, other, target_dtype=torch.float16)
         return ge.Cast(ge.Mul(self, other), dst_type=meta_outputs.dtype)
+    self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)
     return ge.Mul(self, other)
 
 
@@ -48,7 +49,8 @@ def conveter_aten_mul_Scalar(
     self: Tensor, other: Union[Number, Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::mul.Scalar(Tensor self, Scalar other) -> Tensor"""
-    return ge.Mul(self, ge.Cast(other, dst_type=self.dtype))
+    self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)
+    return ge.Mul(self, other)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.mul.out)
