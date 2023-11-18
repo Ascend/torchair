@@ -9,7 +9,15 @@ from typing import Any, Dict, List, Tuple, Union, Callable
 
 
 def convert_to_tensorboard(ge_graph: GraphDef):
-    import tensorflow
+    try:
+        import tensorflow
+    except Exception as e:
+        print(
+            f'Cannot import tensorflow successfully. {e}. \nWhen you want to check the dumped pbtxt graph,'
+            'you should install tensorflow and relational dependency correctly. If not, skip this warning.'
+        )
+        return None
+
     tf = tensorflow.compat.v1
     graph = tf.GraphDef()
     for op in ge_graph.op:

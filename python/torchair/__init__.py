@@ -13,4 +13,3 @@ from torchair.ge_concrete_graph import ge_converter
 protobuf_version = pkg_resources.get_distribution("protobuf").version
 
 assert pkg_resources.parse_version(protobuf_version) >= pkg_resources.parse_version("3.13")
-assert pkg_resources.parse_version(protobuf_version) < pkg_resources.parse_version("4")
