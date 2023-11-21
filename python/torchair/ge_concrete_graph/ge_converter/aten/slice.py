@@ -69,7 +69,7 @@ def conveter_aten_slice_Tensor(
             ge_begin[dim] = start
     if end is not None:
         if isinstance(end, Tensor):
-            ge_end, start = dtype_promote(ge_end, end, target_dtype=DataType.DT_INT64)
+            ge_end, end = dtype_promote(ge_end, end, target_dtype=DataType.DT_INT64)
             ge_end = ge.MaskedFill(ge_end, mask, end)
         else:
             ge_end[dim] = end

@@ -36,9 +36,4 @@ def conveter_aten_split_with_sizes_default(
     meta_outputs: List[TensorSpec] = None,
 ):
     """NB: aten::split_with_sizes(Tensor(a -> *) self, SymInt[] split_sizes, int dim=0) -> Tensor(a)[]"""
-    if isinstance(split_sizes, list):
-        return ge.SplitV(self, split_sizes, dim, num_split=len(meta_outputs))
-    elif isinstance(split_sizes, Tensor):
-        return ge.SplitV(self, split_sizes, dim, num_split=len(meta_outputs))
-    else:
-        raise NotImplementedError("torch.ops.aten.split_with_sizes.default is not support this type input!")
+    return ge.SplitV(self, split_sizes, dim, num_split=len(meta_outputs))
