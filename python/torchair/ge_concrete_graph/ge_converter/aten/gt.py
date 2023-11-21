@@ -25,10 +25,14 @@ from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, 
 from torchair.ge_concrete_graph.utils import dtype_promote
 
 
+@declare_supported([
+    Support(F32(1024, 1024), F32(1024, 1024)),
+])
 @register_fx_node_ge_converter(torch.ops.aten.gt.Tensor)
 def conveter_aten_gt_Tensor(self: Tensor, other: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::gt.Tensor(Tensor self, Tensor other) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.gt.Tensor ge_converter is not implemented!")
+    other = dtype_promote(other, target_dtype=self.dtype)
+    return ge.Greater(self, other)
 
 
 @declare_supported([

@@ -18,13 +18,11 @@ import torch
 from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
-from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, torch_type_to_ge_type, declare_supported, \
-    torch_type_to_ge_type
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType
 from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
 from torchair.ge_concrete_graph.utils import dtype_promote
-
 
 
 @declare_supported([
@@ -34,7 +32,7 @@ from torchair.ge_concrete_graph.utils import dtype_promote
 @register_fx_node_ge_converter(torch.ops.aten.bitwise_not.default)
 def conveter_aten_bitwise_not_default(self: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::bitwise_not(Tensor self) -> Tensor"""
-    if self.dtype == torch_type_to_ge_type(torch.bool):
+    if self.dtype == DataType.DT_BOOL:
         output = ge.LogicalNot(self)
     else:
         output = ge.Invert(self)

@@ -45,8 +45,6 @@ def conveter_aten_zeros_like_default(
     """NB: aten::zeros_like(Tensor self, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None, MemoryFormat? memory_format=None) -> Tensor"""
     if dtype is not None:
         self = dtype_promote(self, target_dtype=dtype)
-    if layout is not None and layout != torch.strided:
-        raise NotImplementedError("torch.ops.aten.zeros_like.default ge_converter is only supported on denser tensor now!")
     return ge.ZerosLike(self)
 
 

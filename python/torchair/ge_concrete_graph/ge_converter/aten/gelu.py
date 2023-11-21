@@ -33,8 +33,6 @@ def conveter_aten_gelu_default(
     self: Tensor, *, approximate: str = "None", meta_outputs: TensorSpec = None
 ):
     """NB: aten::gelu(Tensor self, *, str approximate="none") -> Tensor"""
-    if approximate != "None":
-        raise NotImplementedError("gelu only supports approximate is None")
     return ge.Gelu(self)
 
 

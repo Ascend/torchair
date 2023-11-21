@@ -18,8 +18,11 @@ import torch
 from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
-from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType
+from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
+    Support
+from torchair.ge_concrete_graph.utils import dtype_promote
 
 
 @register_fx_node_ge_converter(torch.ops.aten.max.other)
@@ -28,10 +31,17 @@ def conveter_aten_max_other(self: Tensor, other: Tensor, meta_outputs: TensorSpe
     raise NotImplementedError("torch.ops.aten.max.other ge_converter is not implemented!")
 
 
+@declare_supported([
+    Support(I32(2, 2)),
+    Support(F32(2, 2)),
+    Support(F16(3, 4)),
+])
 @register_fx_node_ge_converter(torch.ops.aten.max.default)
 def conveter_aten_max_default(self: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::max(Tensor self) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.max.default ge_converter is not implemented!")
+    dim = list(range(self.rank))
+    self = dtype_promote(self, target_dtype=meta_outputs.dtype)
+    return ge.ReduceMax(self, dim)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.max.dim)
