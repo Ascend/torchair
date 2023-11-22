@@ -207,6 +207,12 @@ Status GeDtypeToAtDtype(const ge::DataType &ge_dtype, c10::ScalarType &dtype) {
 }
 
 Status AssembleDataToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor) {
+  // Performance optimization:
+  // When at::tensor address is not updated, there is no need to refresh the ge::tensor memory address again.
+  if (ge_tensor.GetData() == static_cast<uint8_t *>(tensor.data_ptr())) {
+    return Status::Success();
+  }
+
   const static ge::Tensor::DeleteFunc kDoNothing = [](uint8_t *data) {};
   // The input at tensor must be contiguous(), but not necessarily matched.
   // Therefore, when getting data_ptr, the calculation of the data_ptr address needs to skip storage_offset,
