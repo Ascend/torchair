@@ -54,12 +54,17 @@ def conveter_aten_pow_Tensor_Scalar(
     return ge.Pow(self, exponent)
 
 
+@declare_supported([
+    Support(10000, F32(32)),
+    Support(6, F16(4)),
+])
 @register_fx_node_ge_converter(torch.ops.aten.pow.Scalar)
 def conveter_aten_pow_Scalar(
     self: Union[Number, Tensor], exponent: Tensor, meta_outputs: TensorSpec = None
 ):
     """NB: aten::pow.Scalar(Scalar self, Tensor exponent) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.pow.Scalar ge_converter is not implemented!")
+    self, exponent = dtype_promote(self, exponent, target_dtype=meta_outputs.dtype)
+    return ge.Pow(self, exponent)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.pow.Scalar_out)
