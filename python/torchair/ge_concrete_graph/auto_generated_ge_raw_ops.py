@@ -83807,3 +83807,53 @@ def ReduceMeanWithCast(x: Tensor, axes: Tensor, *, keep_dims: bool=False, noop_w
   
   
   return y
+
+
+#This api is auto-generated from IR MaskedSoftmaxWithRelPosBias
+@auto_convert_to_tensor([False, False, False], [False, True, False])
+def MaskedSoftmaxWithRelPosBias(x: Tensor, atten_mask: Optional[Tensor], relative_pos_bias: Tensor, *, scale_value: float=1.000000, inner_precision_mode: int=0, dependencies=[], node_name=None):
+  """REG_OP(MaskedSoftmaxWithRelPosBias)\n
+.INPUT(x, TensorType({DT_FLOAT,DT_FLOAT16,DT_BF16}))\n
+.OPTIONAL_INPUT(atten_mask, TensorType({DT_FLOAT,DT_FLOAT16,DT_BF16}))\n
+.INPUT(relative_pos_bias, TensorType({DT_FLOAT,DT_FLOAT16,DT_BF16}))\n
+.OUTPUT(y, TensorType({DT_FLOAT,DT_FLOAT16,DT_BF16}))\n
+.ATTR(scale_value, Float, 1.0)\n
+.ATTR(inner_precision_mode, Int, 0)\n
+"""
+
+  op = get_default_ge_graph().op.add()
+  op.type = "MaskedSoftmaxWithRelPosBias"
+  op.name = next_unique_name(node_name, "MaskedSoftmaxWithRelPosBias")
+
+  # process dependices
+  for dependency in dependencies:
+    op.input.append(dependency.controller)
+
+  # process inputs
+  op.input.append(x.tensor)
+  op.input_desc.add().CopyFrom(x.desc)
+  op.input_desc[-1].name = "x"
+  if atten_mask is not None:
+    op.input.append(atten_mask.tensor)
+    op.input_desc.add().CopyFrom(atten_mask.desc)
+    op.input_desc[-1].name = "atten_mask"
+  else:
+    op.input.append('')
+    op.input_desc.add().CopyFrom(get_invalid_desc())
+    op.input_desc[-1].name = "atten_mask"
+  op.input.append(relative_pos_bias.tensor)
+  op.input_desc.add().CopyFrom(relative_pos_bias.desc)
+  op.input_desc[-1].name = "relative_pos_bias"
+
+  # process attrs
+  op.attr["scale_value"].f = scale_value
+  op.attr["inner_precision_mode"].i = inner_precision_mode
+
+  # process outputs
+  output_index = 0
+  op.output_desc.add().name = "y"
+  y = Tensor(op, output_index)
+  output_index += 1
+
+
+  return y
