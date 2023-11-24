@@ -82,7 +82,7 @@ def _safe_str(x):
 
 
 def _is_binary_operator(target: Target):
-    return target in (operator.add, operator.sub, operator.mul, operator.truediv, operator.floordiv)
+    return target in (operator.add, operator.sub, operator.mul, operator.truediv, operator.floordiv, operator.pow)
 
 
 def trace_print(f):
@@ -359,7 +359,6 @@ class _NpuFxCompiler:
                 compiled_result = data_dumper.run(*args, **kwargs)
             else:
                 compiled_result = npu_compiled_gm(*args, **kwargs)
-
             if logger.isEnabledFor(logging.DEBUG):
                 logger.debug('runtime outputs')
                 for i, inp in enumerate(compiled_result):

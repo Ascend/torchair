@@ -1,3 +1,4 @@
+import math
 from torchair.core.utils import logger
 import logging
 from torchair.core.backend import TorchNpuGraph
@@ -113,6 +114,7 @@ class TorchairSt(unittest.TestCase):
                 x = torch.add(x, y * z)
                 x = torch.add(x, y / z)
                 x = torch.add(x, y // z)
+                x = torch.add(x, y ** z)
                 return x
 
         model = Model()
@@ -308,6 +310,67 @@ class TorchairSt(unittest.TestCase):
         model = torch.compile(model, backend=npu_backend)
         x = torch.randn(4, 3, 32)
         model(x)
+
+        GeConcreteGraph.__call__ = src_call
+
+    def test_torch_sym(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                assert len(x.size()) >= 1
+                a = float(x.size(-1))
+                b = 1 / math.sqrt(x.size(-1))
+                return a + b
+
+        model = Model()
+        model = torch.compile(model, backend=npu_backend, dynamic=True)
+        for i in range(10, 20):
+            x = torch.randn(10, i, i + 1)
+            model(x)
+
+
+
+    def test_no_broadcast_when_input_output_sym_size_is_equal(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, inp, size):
+                a = torch.ops.aten.expand.default(inp, size)
+                return inp + a
+
+        def check_graph(concrete_graph):
+            num_broadcastto = 0
+            for node in concrete_graph.graph.op:
+                if node.type == 'BroadcastTo':
+                    num_broadcastto += 1
+
+            assert num_broadcastto == 0, f"check number of num_broadcastto{num_broadcastto} == 0 failed"
+
+        def my_decorator(func):
+            def wrapper(*args, **kwargs):
+                assert len(args) > 0
+                check_graph(args[0])
+                return func(*args, **kwargs)
+            return wrapper
+
+        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        src_call = GeConcreteGraph.__call__
+        GeConcreteGraph.__call__ = my_decorator(GeConcreteGraph.__call__)
+
+        model = Model()
+        model_dynamic = torch.compile(model, backend=npu_backend, dynamic=True)
+
+        for i in range(10, 15):
+            x = torch.randn(i, i + 1, i + 2, i + 3)
+            model_dynamic(x, x.size())
+
+        model_static = torch.compile(model, backend=npu_backend, dynamic=False)
+        for i in range(10, 15):
+            x = torch.randn(i, i + 1, i + 2, i + 3)
+            model_static(x, x.size())
 
         GeConcreteGraph.__call__ = src_call
 

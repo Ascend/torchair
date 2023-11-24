@@ -83,3 +83,26 @@ def conveter_operator_truediv(
         return self / other
     self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)
     return ge.Div(self, other)
+
+
+@register_fx_node_ge_converter(operator.pow)
+def conveter_operator_pow(
+        self: Union[Number, Tensor],
+        other: Union[Number, Tensor],
+        meta_outputs: TensorSpec = None
+):
+    if all(not isinstance(x, Tensor) for x in (self, other)):
+        return self ** other
+    self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)
+    return ge.Pow(self, other)
+
+
+@register_fx_node_ge_converter(torch.sym_float)
+def conveter_sym_float(
+    self: Union[Number, Tensor],
+    meta_outputs: TensorSpec = None
+):
+    if not isinstance(self, Tensor):
+        return float(self)
+    return ge.Cast(self, dst_type=meta_outputs.dtype)
+

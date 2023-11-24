@@ -46,17 +46,9 @@ def conveter_aten_expand_default(
         raise NotImplementedError(
             "torch.ops.aten.expand.default ge_converter is not implemented, " "when param implicit is True."
         )
+    # performance optimization: if the input and output symbolic shape is equal, do not broadcast
+    if hasattr(self, "_symsize") and meta_outputs is not None and hasattr(meta_outputs, "_symsize"):
+        if str(self._symsize) == str(meta_outputs._symsize):
+            return self
+    return ge.BroadcastTo(self, size)
 
-    if isinstance(size, Tensor):
-        return ge.BroadcastTo(self, size)
-    else:
-        positive_size = []
-        for i in range(len(size)):
-            if size[i] == -1:
-                positive_size.append(meta_outputs.size[i])
-            else:
-                positive_size.append(size[i])
-                
-        if str(self._symsize) != str(positive_size):
-            return ge.BroadcastTo(self, size)
-        return self
