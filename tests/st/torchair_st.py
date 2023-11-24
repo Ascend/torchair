@@ -263,6 +263,62 @@ class TorchairSt(unittest.TestCase):
             z = executor.run([x, y], [x])
             self.assertTrue(z[0] is x)
 
+    def test_input_processing_for_static_graph(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y, z):
+                return x + y + z
+
+        model = torch.compile(Model(), backend=npu_backend, dynamic=False)
+
+        # test nothing to do for input processing
+        x0 = torch.randn(2, 4)
+        model(x0, x0, x0)
+        model(x0, x0, x0)
+
+        # test contiguous for input processing
+        x1 = torch.randn(4, 2).t()
+        model(x0, x1, x0)
+        model(x0, x1, x0)
+
+        # test to_tensor for input processing
+        x2 = 1
+        model(x0, x1, x2)
+        model(x0, x1, x2)
+
+    def test_input_processing_for_dynamic_graph(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, p, x, y, z):
+                return x + y + z
+
+        model = torch.compile(Model(), backend=npu_backend, dynamic=True)
+
+        # test nothing to do for input processing
+        x0 = torch.randn(2, 4)
+        model(x0, x0, x0, x0)
+        model(x0, x0, x0, x0)
+
+        # test contiguous for input processing
+        x1 = torch.randn(2, 5)[:, 1:]
+        model(x0, x1, x0, x0)
+        model(x0, x1, x0, x0)
+        x1 = torch.randn(2, 5)[:, :4]
+        model(x0, x1, x0, x0)
+        model(x0, x1, x0, x0)
+
+        # test to_tensor and eliminate_sym for input processing
+        x2 = 1
+        model(3, x0, x1, x2)
+        model(3, x0, x1, x2)
+        x3 = torch.randn(2, 2, 4)[:, 1, :]
+        model(x3, x0, x1, x2)
+        model(x3, x0, x1, x2)
+
     def test_rng_into_graph(self):
         def check_graph(concrete_graph):
             num_data, has_offset, has_seed, has_unpack = 0, False, False, False

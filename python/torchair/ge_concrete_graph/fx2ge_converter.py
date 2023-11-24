@@ -315,6 +315,8 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._config = config
         self._auto_tune_times = 0
         self._converter_ctx = threading.local()
+        self._fx_input_mapping_cloned_ge_input = []
+        self._inputs_processing = None
 
     def context(self):
         return default_ge_graph(self.graph)
@@ -515,17 +517,9 @@ class GeConcreteGraph(ConcreteGraphBase):
         logger.info(f"End auto tune for round {self._auto_tune_times - 1}")
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
-        fx_input_mapping_cloned_ge_input = []
-        inputs = [None] * len(self._fx_inputs_mapping)
-        for fx_index, ge_index in self._fx_inputs_mapping.items():
-            if isinstance(args[fx_index], torch.Tensor):
-                if args[fx_index].is_contiguous():
-                    inputs[ge_index] = args[fx_index]
-                else:
-                    inputs[ge_index] = args[fx_index].contiguous()
-                    fx_input_mapping_cloned_ge_input.append((fx_index, ge_index))
-            else:
-                inputs[ge_index] = torch.tensor(args[fx_index])
+        if self._inputs_processing is None:
+            self._inputs_processing = self._make_inputs_processing_func(*args)
+        inputs = self._inputs_processing(*args)
 
         self._consume_data_into_inputs(inputs)
 
@@ -542,7 +536,7 @@ class GeConcreteGraph(ConcreteGraphBase):
                 assigned_outputs[output_index] = inputs[input_index]
             ge_outputs = self._executor.run(inputs, assigned_outputs)
 
-            for index_tuple in fx_input_mapping_cloned_ge_input:
+            for index_tuple in self._fx_input_mapping_cloned_ge_input:
                 args[index_tuple[0]].copy_(inputs[index_tuple[1]])
         else:
             ge_outputs = self._executor.run(inputs)
@@ -579,8 +573,47 @@ class GeConcreteGraph(ConcreteGraphBase):
     def _consume_data_into_inputs(self, inputs):
         num_inputs = self.graph.num_inputs()
         diff = num_inputs - len(inputs)
-        inputs.extend([None for _ in range(diff)])
-        for gen in self.graph.generator_rng_state:
-            rng_state = self.graph.get_graph_rng_state(gen)
-            idx, offset = rng_state.consume()
-            inputs[idx] = offset
+        if diff > 0:
+            inputs = list(inputs)
+            inputs.extend([None for _ in range(diff)])
+            for gen in self.graph.generator_rng_state:
+                rng_state = self.graph.get_graph_rng_state(gen)
+                idx, offset = rng_state.consume()
+                inputs[idx] = offset
+
+    def _make_inputs_processing_func(self, *args: Any):
+        uncontiguous_ge_input_idx = []
+        nontensor_ge_input_idx = []
+        for fx_index, ge_index in self._fx_inputs_mapping.items():
+            if isinstance(args[fx_index], torch.Tensor):
+                if not args[fx_index].is_contiguous():
+                    uncontiguous_ge_input_idx.append(ge_index)
+                    self._fx_input_mapping_cloned_ge_input.append((fx_index, ge_index))
+            else:
+                nontensor_ge_input_idx.append(ge_index)
+
+        if len(self._fx_inputs_mapping) == len(args):
+            if len(uncontiguous_ge_input_idx) == 0 and len(nontensor_ge_input_idx) == 0:
+                def inputs_processing(*args: Any):
+                    return args
+            else:
+                def inputs_processing(*args: Any):
+                    inputs = list(args)
+                    for idx in uncontiguous_ge_input_idx:
+                        inputs[idx] = inputs[idx].contiguous()
+                    for idx in nontensor_ge_input_idx:
+                        inputs[idx] = torch.tensor(inputs[idx])
+                    return inputs
+        else:
+            def inputs_processing(*args: Any):
+                inputs = [None] * len(self._fx_inputs_mapping)
+                for fx_idx, ge_idx in self._fx_inputs_mapping.items():
+                    inputs[ge_idx] = args[fx_idx]
+
+                for idx in uncontiguous_ge_input_idx:
+                    inputs[idx] = inputs[idx].contiguous()
+                for idx in nontensor_ge_input_idx:
+                    inputs[idx] = torch.tensor(inputs[idx])
+                return inputs
+
+        return inputs_processing
