@@ -479,11 +479,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         export_graph = GeGraph()
         export_graph.MergeFrom(self._graph._proto)
 
-        if os.path.exists(file_path) is False:
-            os.makedirs(file_path)
-
-        if os.path.exists(sub_file_path) is False:
-            os.makedirs(sub_file_path)
+        os.makedirs(sub_file_path, exist_ok=True)
 
         num_weight_in_graph = _trans_export_protobuf(inputs, export_graph, file_path, self._config)
 
