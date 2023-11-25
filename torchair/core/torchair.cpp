@@ -14,6 +14,7 @@
 
 #include "torchair.h"
 #include "torch/csrc/Exceptions.h"
+#include <ATen/record_function.h>
 
 namespace py = pybind11;
 
@@ -95,6 +96,7 @@ struct TngRuntimeError : public torch::PyTorchError {
 
 namespace tng {
 void Export(const std::string &serialized_proto, const std::map<std::string, std::string> &options) {
+  RECORD_FUNCTION("torchair::Export", {});
   const pybind11::gil_scoped_release release;
   std::map<ge::AscendString, ge::AscendString> compat_options;
   for (const auto &option : options) {
@@ -108,6 +110,7 @@ void Export(const std::string &serialized_proto, const std::map<std::string, std
 TorchNpuGraphBase::TorchNpuGraphBase(const std::string &name) : name_(name), concrete_graph_(nullptr){};
 
 void TorchNpuGraphBase::Load(const std::string &serialized_proto, const std::map<std::string, std::string> &options) {
+  RECORD_FUNCTION("TorchNpuGraphBase::Load", {});
   const pybind11::gil_scoped_release release;
   std::map<ge::AscendString, ge::AscendString> compat_options;
   for (const auto &option : options) {
@@ -119,12 +122,14 @@ void TorchNpuGraphBase::Load(const std::string &serialized_proto, const std::map
 }
 
 void TorchNpuGraphBase::Compile() {
+  RECORD_FUNCTION("TorchNpuGraphBase::Compile", {});
   const pybind11::gil_scoped_release release;
   TNG_RAISE_IF_ERROR(concrete_graph_->Compile());
   const pybind11::gil_scoped_acquire acquire;
 }
 
 void TorchNpuGraphBase::AutoTune(py::object obj) {
+  RECORD_FUNCTION("TorchNpuGraphBase::AutoTune", {});
   py::handle handle = obj.cast<py::handle>();
   PyObject *args = handle.ptr();
 
@@ -145,6 +150,7 @@ void TorchNpuGraphBase::AutoTune(py::object obj) {
 }
 
 py::object TorchNpuGraphBase::Run(py::object obj) {
+  RECORD_FUNCTION("TorchNpuGraphBase::Run", {});
   PyObject *inputs = nullptr;
   PyObject *assigned_outputs = nullptr;
   PyObject *stream = nullptr;

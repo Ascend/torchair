@@ -1,6 +1,8 @@
 #include "external/graph/types.h"
 #include "static_npu_graph_executor.h"
 
+#include <ATen/record_function.h>
+
 #include <utility>
 #include "checker.h"
 #include "graph/utils/type_utils.h"
@@ -10,7 +12,6 @@
 #include "utils.h"
 #include "npu_utils.h"
 #include "AllocatorManager.h"
-#include <ATen/record_function.h>
 
 namespace tng {
 

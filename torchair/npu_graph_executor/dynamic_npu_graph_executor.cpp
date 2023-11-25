@@ -1,6 +1,8 @@
 #include "dynamic_npu_graph_executor.h"
 #include "external/graph/types.h"
 
+#include <ATen/record_function.h>
+
 #include <utility>
 #include "AllocatorManager.h"
 #include "checker.h"
@@ -9,7 +11,6 @@
 #include "session.h"
 #include "torch/torch.h"
 #include "utils.h"
-#include <ATen/record_function.h>
 
 namespace tng {
 

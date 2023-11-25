@@ -13,6 +13,7 @@ from torch.fx.node import Argument, Target
 from torch._functorch.aot_autograd import aot_module_simplified
 from torch._dynamo.allowed_functions import is_builtin_callable
 from torch._decomp import get_decompositions, decomposition_table
+from torch.profiler import record_function
 from torch.utils._mode_utils import no_dispatch
 
 from torchair.core.concrete_graph import ConcreteGraphBase, ValuePack, _is_symlist
@@ -348,26 +349,27 @@ class _NpuFxCompiler:
             data_dumper = NpuFxDumper(gm, config=self.config.debug.data_dump)
 
         def inference(*args, npu_compiled_gm, original_gm, data_dumper: NpuFxDumper, **kwargs):
-            if logger.isEnabledFor(logging.DEBUG):
-                logger.debug('runtime inputs')
-                for i, inp in enumerate(args):
-                    logger.debug(f'  input {i}: {_summary(inp)}')
-                for k, v in kwargs.items():
-                    logger.debug(f'  input {k}: {_summary(v)}')
+            with record_function("npu_fx_compiler inference"):
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.debug('runtime inputs')
+                    for i, inp in enumerate(args):
+                        logger.debug(f'  input {i}: {_summary(inp)}')
+                    for k, v in kwargs.items():
+                        logger.debug(f'  input {k}: {_summary(v)}')
 
-            if data_dumper is not None:
-                logger.warning(f'When dumping data of FX Graph, npu run will be skipped, '
-                               'and FALLBACK to EAGER execution, once dump finished, please make sure to disable '
-                               'the data dump config to ensure that the graph is compiled and executed.')
-                compiled_result = data_dumper.run(*args, **kwargs)
-            else:
-                compiled_result = npu_compiled_gm(*args, **kwargs)
-            if logger.isEnabledFor(logging.DEBUG):
-                logger.debug('runtime outputs')
-                for i, inp in enumerate(compiled_result):
-                    logger.debug(f'  output {i}: {_summary(inp)}')
+                if data_dumper is not None:
+                    logger.warning(f'When dumping data of FX Graph, npu run will be skipped, '
+                                   'and FALLBACK to EAGER execution, once dump finished, please make sure to disable '
+                                   'the data dump config to ensure that the graph is compiled and executed.')
+                    compiled_result = data_dumper.run(*args, **kwargs)
+                else:
+                    compiled_result = npu_compiled_gm(*args, **kwargs)
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.debug('runtime outputs')
+                    for i, inp in enumerate(compiled_result):
+                        logger.debug(f'  output {i}: {_summary(inp)}')
 
-            return compiled_result
+                return compiled_result
 
         return functools.partial(inference, npu_compiled_gm=concrete_graph, original_gm=gm, data_dumper=data_dumper)
 
