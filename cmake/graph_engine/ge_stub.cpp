@@ -104,7 +104,8 @@ class GraphSpecManager {
     return Instance().Get(id);
   }
 
-  static CompiledGraphSummary::SummaryData &Add(uint32_t id, const ge::Graph &graph) {
+  static CompiledGraphSummary::SummaryData &Add(uint32_t id, const ge::Graph &graph,
+                                                const std::map<AscendString, AscendString> &options) {
     auto &spec = Instance().Get(id);
 
     auto compute_graph = ge::GraphUtilsEx::GetComputeGraph(graph);
@@ -130,6 +131,12 @@ class GraphSpecManager {
       }
     }
 
+    auto iter = options.find("ge.featureBaseRefreshable");
+    if (iter != options.end()) {
+      spec.is_feature_mem_refreshable_ = iter->second == "1";
+      std::cerr << "[STUB] Session::Add graph, is_feature_mem_refreshable_ = " << spec.is_feature_mem_refreshable_ << std::endl;
+    }
+
     return spec;
   }
 
@@ -150,7 +157,7 @@ class GraphSpecManager {
 }  // namespace
 
 Status Session::AddGraph(uint32_t id, const ge::Graph &graph, const std::map<AscendString, AscendString> &options) {
-  auto &spec = GraphSpecManager::Add(id, graph);
+  auto &spec = GraphSpecManager::Add(id, graph, options);
   std::cerr << "[STUB] Session::AddGraph graph " << id << ", num outputs " << spec.output_dtypes_.size() << std::endl;
   return ge::SUCCESS;
 }
@@ -207,6 +214,20 @@ Status Session::RegisterExternalAllocator(const void *const stream, std::shared_
 
 Status Session::UnregisterExternalAllocator(const void *const stream) const {
   (void)stream;
+  return ge::SUCCESS;
+}
+
+Status Session::SetGraphConstMemoryBase(uint32_t id, const void *const memory, size_t size) {
+  (void)id;
+  (void)memory;
+  (void)size;
+  return ge::SUCCESS;
+}
+
+Status Session::UpdateGraphFeatureMemoryBase(uint32_t id, const void *const memory, size_t size) {
+  (void)id;
+  (void)memory;
+  (void)size;
   return ge::SUCCESS;
 }
 

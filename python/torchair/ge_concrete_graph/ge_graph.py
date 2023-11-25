@@ -322,13 +322,13 @@ class _GraphRngState:
                 self._gen = torch.default_generator
         self._seed = Const(self._gen.initial_seed(),
                             dtype=DataType.DT_INT64,
-                            name='initial_seed')
+                            node_name='initial_seed')
         self._feed_index = get_default_ge_graph().num_inputs()
         self._offsets = Data(index=self._feed_index,
                             dtype=DataType.DT_INT64,
                             shape=[1],
                             placement='NPU',
-                            name='offset_list')
+                            node_name='offset_list')
         self._offset_count = 0
         self._offset_lists = []
         self._unpack_offset = get_default_ge_graph().op.add()
@@ -396,22 +396,29 @@ class GeGraph(object):
         _graph_stack.stack.remove(self)
 
     @staticmethod
-    def format_python_code(outputs, func_name, args, kwargs):
+    def format_python_code(outputs, func_name, ge_node_name, args, kwargs):
         args_string = ', '.join([f'{i}' for i in args])
         kwargs_string = ', '.join([f'{i}' for i in kwargs])
         inputs_string = ", ".join([i for i in [args_string, kwargs_string] if i])
-        return f'{outputs} = {func_name}({inputs_string})'
+        if ge_node_name is not None:
+            return f'{outputs} = {func_name}({inputs_string}, node_name="{ge_node_name}")'
+        else:
+            return f'{outputs} = {func_name}({inputs_string})'
 
     def add_python_code(self, args, kwargs, outputs, func):
-        args = parse_inputs(args)
-        kwargs = parse_kwargs(kwargs)
+        args_list = parse_inputs(args)
+        kwargs_list = parse_kwargs(kwargs)
         func_name = f"ge.{func.__name__}"
 
         outputs_name = ', '.join(parse_inputs(outputs, mode='output'))
         if func.__name__ == 'NetOutput':
             outputs_name = f'\n{outputs_name}'
 
-        self._python_code += f'{self.format_python_code(outputs_name, func_name, args, kwargs)}\n'
+        ge_name = outputs.node.name if isinstance(outputs, Tensor) else None
+        # if node_name is in kwargs, no need to add ge_name
+        if 'node_name' in kwargs.keys():
+            ge_name = None
+        self._python_code += f'{self.format_python_code(outputs_name, func_name, ge_name, args_list, kwargs_list)}\n'
 
     @property
     def python_code(self):
@@ -844,10 +851,10 @@ def get_invalid_desc():
 
 @auto_convert_to_tensor([], [])
 def Data(*, index: int, dtype: int, shape: List[int] = None, format: str = "ND", placement: str,
-         name: str = None) -> Tensor:
+         node_name=None) -> Tensor:
     op = get_default_ge_graph().op.add()
     op.type = "Data"
-    op.name = next_unique_name(name, "Data")
+    op.name = next_unique_name(node_name, "Data")
     op.attr["index"].i = index
 
     desc = op.output_desc.add()
@@ -905,14 +912,14 @@ def Cast(x: Tensor, *, dst_type: int, dependencies=[], node_name=None) -> Tensor
     return y
 
 
-def Const(v: Any, dtype: int = None, name=None) -> Tensor:
+def Const(v: Any, dtype: int = None, node_name=None) -> Tensor:
     if dtype is not None and not _is_supported_ge_dtype_by_numpy(dtype):
         # TO DO: unsupported dtype cast for numpy, currently resolved by inserting ge.Cast
-        return Cast(Const(v, dtype=None, name=name), dst_type=dtype)
+        return Cast(Const(v, dtype=None, node_name=node_name), dst_type=dtype)
 
     op = get_default_ge_graph().op.add()
     op.type = "Const"
-    op.name = next_unique_name(name, "Const")
+    op.name = next_unique_name(node_name, "Const")
     value = op.attr["value"].t
     if dtype is None:
         if isinstance(v, np.ndarray):

@@ -2,17 +2,22 @@
 #define TORCH_AIR_TORCH_AIR_NPU_GRAPH_EXECUTOR_MEMORY_BLOCK_H_
 
 #include <cstddef>
+#include <functional>
 #include <mutex>
 #include "external/graph/types.h"
 #include "ge/ge_allocator.h"
 #include "torch_npu/inc/core/NPUBlockHandle.h"
 #include "util/object_allocator.h"
+#include "tng_status.h"
+#include "acl/acl_base.h"
 
 namespace tng {
 namespace {
 constexpr size_t kMemBlockPoolSize = 10240U;
 }
 class NpuAllocator;
+using DelMemBlockFunc = std::function<void(ge::MemBlock*)>;
+
 class NpuMemBlock : public ge::MemBlock {
  public:
   NpuMemBlock(ge::Allocator &allocator, void *addr, size_t block_size, void *handle)
@@ -37,8 +42,11 @@ class NpuAllocator : public ge::Allocator {
 
   ge::MemBlock *Malloc(size_t size) override;
   void Free(ge::MemBlock *block) override;
+  ge::MemBlock *MallocFeatureMemory(size_t size, ge::MemBlock *advised_block);
+  Status FreeFeatureMemory(ge::MemBlock *block);
 
  private:
+  std::unordered_map<ge::MemBlock*, aclrtContext> feature_map_mem_pool_;
   ObjectAllocator<NpuMemBlock> mem_block_pool_;
   void *stream_;
   std::mutex allocator_mutex_;

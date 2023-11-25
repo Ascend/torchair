@@ -37,6 +37,10 @@ class Session {
   Status RunGraph(uint32_t id, const std::vector<ge::Tensor> &inputs, std::vector<ge::Tensor> &outputs,
                   void *stream = nullptr);
 
+  Status SetGraphConstMemoryBase(uint32_t id, const void *const memory, size_t size);
+
+  Status UpdateGraphFeatureMemoryBase(uint32_t id, const void *const memory, size_t size);
+
  private:
   Session() : initialized_(false), status_(Status::Success()){};
   std::mutex mu_;

@@ -116,8 +116,10 @@ class NpuGraphConverter(Interpreter):
             file_line = n.stack_trace.split(' File ')[-1].replace('\n', '')
             if file_line not in self._graph.graph._python_code:
                 self._graph.graph._python_code += f'\n# File {file_line}\n'
-            self._graph.graph._python_code += f'## FX Code: ' \
-                f'{self._graph.graph.format_python_code(n.name, n._pretty_print_target(n.target), n.args, n.kwargs)}\n'
+            self._graph.graph._python_code += \
+                f'## FX Code: ' \
+                f'{self._graph.graph.format_python_code(n.name, n._pretty_print_target(n.target), None, n.args, n.kwargs)}\n'
+
         with self._graph.converter_context(node=n):
             return super().run_node(n)
 
@@ -132,6 +134,7 @@ class NpuGraphConverter(Interpreter):
     def _unpack_npu(self, args, kwargs):
         unpacked = []
         unpacked_kwargs = {}
+
         def _get_npu_part(arg):
             if isinstance(arg, (list, tuple)) and len(arg):
                 if _is_symlist(arg):
@@ -213,10 +216,10 @@ def _dynamic_trans(gm: torch.fx.GraphModule):
                     inputs_save_flag.append(False)
                 else:
                     logger.debug(
-                    f' add sym_input_node_list node: {node}, op: {node.op}, target: {node.target}'
-                    +
-                    f' users: {node.users}, meta: {node.meta}, type: {node.type},'
-                    + f' input_nodes: {node._input_nodes}')
+                        f' add sym_input_node_list node: {node}, op: {node.op}, target: {node.target}'
+                        +
+                        f' users: {node.users}, meta: {node.meta}, type: {node.type},'
+                        + f' input_nodes: {node._input_nodes}')
                     sym_input_node_list.append(node)
                     inputs_save_flag.append(node)
             else:
@@ -245,7 +248,7 @@ def _dynamic_trans(gm: torch.fx.GraphModule):
                             + f' input_nodes: {node._input_nodes}')
                         with gm.graph.inserting_after(node):
                             new_add_node = gm.graph.create_node(op="call_function", target=torch.ops.aten.sym_size,
-                                args=(node, j))
+                                                                args=(node, j))
                             will_del_node.replace_all_uses_with(new_add_node, propagate_meta=True)
                             logger.debug(
                                 f' new_add_node: {new_add_node}, op: {new_add_node.op}, target: {new_add_node.target},'
@@ -383,8 +386,8 @@ def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
     compiler = get_compiler(compiler_config)
     if aot_config is not None and aot_config.enable_joint_graph:
         return aot_module_simplified_joint(gm, example_inputs,
-            compiler=compiler, decompositions=decompositions,
-            output_loss_index=int(aot_config.output_loss_index.value))
+                                           compiler=compiler, decompositions=decompositions,
+                                           output_loss_index=int(aot_config.output_loss_index.value))
     keep_inference_input_mutations = bool(compiler_config.experimental_config.keep_inference_input_mutations)
     return aot_module_simplified(gm, example_inputs, fw_compiler=compiler, decompositions=decompositions,
                                  keep_inference_input_mutations=keep_inference_input_mutations)
@@ -398,4 +401,4 @@ def get_npu_backend(*, compiler_config: CompilerConfig = None,
     disable_implicit_decomposition()
 
     return functools.partial(_npu_backend, compiler_config=compiler_config, aot_config=aot_config,
-        custom_decompositions=custom_decompositions)
+                             custom_decompositions=custom_decompositions)

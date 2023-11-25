@@ -21,7 +21,10 @@ class AllocatorManager {
   AllocatorManager(AllocatorManager &&other) = delete;
   AllocatorManager &operator=(AllocatorManager &&other) = delete;
 
-  Status EnsureAllocatorRegistered(void *stream);
+  std::shared_ptr<ge::Allocator> EnsureAllocatorRegistered(void *stream);
+  const std::unordered_map<void *, std::shared_ptr<ge::Allocator>>& GetAllRegisteredAllocator() const {
+    return stream_allocator_registered_;
+  }
 
  private:
   AllocatorManager() = default;

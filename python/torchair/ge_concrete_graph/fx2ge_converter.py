@@ -345,7 +345,7 @@ class GeConcreteGraph(ConcreteGraphBase):
     def parse_input(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
         if is_sym(meta_outputs):
             data = ge.Data(index=len(self._inputs),
-                           dtype=sym_to_ge_dtype(meta_outputs), shape=[], placement='CPU', name=target)
+                           dtype=sym_to_ge_dtype(meta_outputs), shape=[], placement='CPU', node_name=target)
             data.set_meta(meta_outputs)
             self._inputs.append(data)
             self._input_placements.append(Placement.HOST)
@@ -356,7 +356,7 @@ class GeConcreteGraph(ConcreteGraphBase):
             placement = Placement.HOST if (
                 meta_outputs.device is None or meta_outputs.device.type == 'cpu') else Placement.DEVICE
             data = ge.Data(index=len(self._inputs), dtype=dtype,
-                           shape=shape, placement='CPU' if (placement == Placement.HOST) else 'NPU', name=target)
+                           shape=shape, placement='CPU' if (placement == Placement.HOST) else 'NPU', node_name=target)
             data.set_meta(meta_outputs)
             self._inputs.append(data)
             self._input_placements.append(placement)
@@ -439,12 +439,6 @@ class GeConcreteGraph(ConcreteGraphBase):
     def compile(self) -> Any:
         local_compile_options, global_compile_options = self._config.as_dict()
         local_compile_options["ge.exec.formatMode"] = "1"
-        logger.info("local compile options:")
-        for k, v in local_compile_options.items():
-            logger.info(f"  {k}: {v}")
-        logger.info("global compile options:")
-        for k, v in global_compile_options.items():
-            logger.info(f"  {k}: {v}")
 
         self.graph.attr["_input_placements"].list.i.extend(
             self._input_placements)
@@ -454,12 +448,24 @@ class GeConcreteGraph(ConcreteGraphBase):
 
         self._complement_graph_attr()
         self._graph_output_ref_input = _mapping_assign_op_to_graph_output(self.graph)
+
         if self._config.debug.graph_dump.enabled and len(self._graph_output_ref_input):
             self.dump(f'dynamo_after_mapping_assign_{datetime.now().strftime("%Y%m%d%H%M%S%f")}.pbtxt')
+
+        # support output memory reuse while output is not ref to input
+        output_reuse_indexes = [x for x in range(len(self.outputs)) if x not in self._graph_output_ref_input.keys()]
+        local_compile_options["ge.exec.outputReuseMemIndexes"] = ",".join(str(x) for x in output_reuse_indexes)
 
         _normalize_ge_graph(self.graph)
 
         initialize_graph_engine(global_compile_options)
+
+        logger.info("local compile options:")
+        for k, v in local_compile_options.items():
+            logger.info(f"  {k}: {v}")
+        logger.info("global compile options:")
+        for k, v in global_compile_options.items():
+            logger.info(f"  {k}: {v}")
 
         self._executor.load(self.graph.SerializeToString(),
                             local_compile_options)

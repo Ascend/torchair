@@ -138,4 +138,16 @@ Status Session::RunGraph(uint32_t id, const std::vector<ge::Tensor> &inputs, std
 
   return Status::Success();
 }
+
+Status Session::SetGraphConstMemoryBase(uint32_t id, const void *const memory, size_t size) {
+  TNG_RETURN_IF_ERROR(EnsureInitialized());
+  TNG_ASSERT_GE_OK(global_ge_session->SetGraphConstMemoryBase(id, memory, size));
+  return Status::Success();
+}
+
+Status Session::UpdateGraphFeatureMemoryBase(uint32_t id, const void *const memory, size_t size) {
+  TNG_RETURN_IF_ERROR(EnsureInitialized());
+  TNG_ASSERT_GE_OK(global_ge_session->UpdateGraphFeatureMemoryBase(id, memory, size));
+  return Status::Success();
+}
 }  // namespace tng

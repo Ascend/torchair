@@ -319,6 +319,79 @@ class TorchairSt(unittest.TestCase):
         model(x3, x0, x1, x2)
         model(x3, x0, x1, x2)
 
+    def test_npu_static_executor(self):
+        initialize_graph_engine()
+        from torchair.core import _npu_graph_executor
+        import _privateuse1_backend
+
+        with GeGraph() as graph:
+            x = ge.Data(index=0, shape=[1, 2],
+                        dtype=DataType.DT_INT32, placement='CPU')
+            y = ge.Data(index=1, shape=[100, 2],
+                        dtype=DataType.DT_INT32, placement='CPU')
+            z = ge.Add(x, y)
+            output = ge.NetOutput([z])
+
+            set_graph_output_dtypes(graph, [DataType.DT_INT32])
+
+            executor = TorchNpuGraph()
+            executor.load(graph.SerializeToString())
+            executor.compile()
+
+            x = torch.ones([1, 2], dtype=torch.int32)
+            y = torch.ones([100, 2], dtype=torch.int32)
+            result = executor.run((x, y))
+
+    def test_npu_static_executor_with_memory_efficient(self):
+        initialize_graph_engine()
+        from torchair.core import _npu_graph_executor
+        import _privateuse1_backend
+
+        with GeGraph() as graph1:
+            a = ge.Data(index=0, shape=[128, 128],
+                        dtype=DataType.DT_FLOAT16, placement='CPU')
+            b = ge.Data(index=1, shape=[128, 128],
+                        dtype=DataType.DT_FLOAT16, placement='CPU')
+            c = ge.Add(a, b)
+            d = ge.MatMulV2(a, c, bias=None, offset_w=None)
+            e = ge.Mul(a, d)
+            f = ge.RealDiv(a, e)
+            output = ge.NetOutput([f])
+
+        set_graph_output_dtypes(graph1, [DataType.DT_FLOAT16])
+        executor = TorchNpuGraph()
+        local_options = {}
+        local_options["ge.featureBaseRefreshable"] = "1"
+        executor.load(graph1.SerializeToString(), options=local_options)
+        executor.compile()
+
+        x = torch.ones([128, 128], dtype=torch.float16)
+        y = torch.ones([128, 128], dtype=torch.float16)
+        for i in range(3):
+            result = executor.run((x, y))
+
+
+        with GeGraph() as graph2:
+            a = ge.Data(index=0, shape=[16, 16],
+                        dtype=DataType.DT_FLOAT16, placement='CPU')
+            b = ge.Data(index=1, shape=[16, 16],
+                        dtype=DataType.DT_FLOAT16, placement='CPU')
+            c = ge.Add(a, b)
+            d = ge.MatMulV2(a, c, bias=None, offset_w=None)
+            e = ge.Mul(a, d)
+            f = ge.RealDiv(a, e)
+            output = ge.NetOutput([f])
+
+        set_graph_output_dtypes(graph2, [DataType.DT_FLOAT16])
+        executor2 = TorchNpuGraph()
+        executor2.load(graph2.SerializeToString(), options=local_options)
+        executor2.compile()
+
+        x = torch.ones([16, 16], dtype=torch.float16)
+        y = torch.ones([16, 16], dtype=torch.float16)
+        for i in range(3):
+            result = executor2.run((x, y))
+
     def test_rng_into_graph(self):
         def check_graph(concrete_graph):
             num_data, has_offset, has_seed, has_unpack = 0, False, False, False
@@ -385,8 +458,6 @@ class TorchairSt(unittest.TestCase):
         for i in range(10, 20):
             x = torch.randn(10, i, i + 1)
             model(x)
-
-
 
     def test_no_broadcast_when_input_output_sym_size_is_equal(self):
         class Model(torch.nn.Module):

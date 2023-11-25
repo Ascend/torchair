@@ -16,6 +16,14 @@ aclError aclrtResetDevice(int32_t deviceId) {
   return ACL_ERROR_NONE;
 }
 
+aclError aclrtGetCurrentContext(aclrtContext *context) {
+  return ACL_SUCCESS;
+}
+
+aclError aclrtSetCurrentContext(aclrtContext context) {
+  return ACL_SUCCESS;
+}
+
 #ifdef __cplusplus
 }
 #endif
