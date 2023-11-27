@@ -130,7 +130,7 @@ class TorchairSt(unittest.TestCase):
         file_name = get_sub_path_dynamo_pbtxt("export_file", 0)
         with open(file_name, 'r')as f:
             src = f.read()
-        assert src.count("op: \"FileConstant\"") == 2
+        assert src.count("op: \"Const\"") == 2
         assert src.count("op: \"Data\"") == 2
         assert src.count("op: \"HcomAllReduce\"") == 1
         assert src.count("key: \"ranklist\"") == 1
@@ -161,6 +161,42 @@ class TorchairSt(unittest.TestCase):
         with open(file_name, 'r')as f:
             src = f.read()
         assert src.count("HcomReduceScatter") == 3 # dist reduce_scatter_tensor入图
+
+    def test_export_weight_externalized(self):
+        def get_dumped_file_list(dir_path, file_extension='.pbtxt'):
+            return [i for i in os.listdir(dir_path) if i.startswith('dynamo') and i.endswith(f'{file_extension}')]
+
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super().__init__()
+                self.p1 = torch.nn.Parameter(torch.randn([1024, 1024, 1024], dtype=torch.float16)) # 2G weight
+
+            def forward(self, x, y):
+                x = x + y
+                w = self.p1 * 2
+                return x, w
+
+
+        model = Model()
+        x = torch.randn(2, 4)
+        y = torch.randn(2, 4)
+
+        export_path1 = "test_export_file_path"
+
+        torchair.dynamo_export(x, y, model=model, export_path=export_path1, dynamic=False)
+
+        dumped_file_list = get_dumped_file_list(export_path1)
+        dumped_file_list.sort(key=lambda file_name: os.path.getmtime(os.path.join(export_path1, file_name)))
+        assert dumped_file_list.__len__() > 0
+        file_name = os.path.join(export_path1, dumped_file_list[-1])
+
+        with open(file_name, 'r')as f:
+            src = f.read()
+
+        assert src.count("op: \"FileConstant\"") == 1
+        assert src.count("op: \"Data\"") == 2
+        assert src.count("op: \"Shape\"") == 0
 
 
 class AllReduceSingeGroup(torch.nn.Module):

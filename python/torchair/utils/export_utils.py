@@ -40,32 +40,59 @@ def get_export_file_name(export_name):
     return export_file_name
 
 
+def _make_const_node(input_tensor, name):
+    y = ge.Const(input_tensor.numpy(force=True),
+                 dtype=torch_type_to_ge_type(input_tensor.dtype),
+                 node_name=name,
+                 readable=False)
+    return y
+
+
+def _is_weight_externalized(inputs, weight_name, export_graph):
+    protobuf_size = export_graph.ByteSize()
+    weight_externalized = False
+    used_weight_num = 0
+    # protobuf max size 2G, reserved 200M buffer
+    max_protobuf_size = (2048 - 200) * 1024 * 1024
+    for i, inp in enumerate(inputs):
+        if id(inp) in weight_name:
+            protobuf_size += inp.element_size() * inp.nelement()
+            used_weight_num += 1
+
+    if protobuf_size > max_protobuf_size:
+        weight_externalized = True
+
+    logger.info(f'export: protobuf_size and weight to const size = {protobuf_size} , ' + \
+                f'max_protobuf_size {max_protobuf_size}, used_weight_num = {used_weight_num}' + \
+                f'and weight_externalized is {weight_externalized}')
+    return weight_externalized, used_weight_num
+
+
 def _convert_data_to_const(inputs, export_graph, file_path, config):
     weight_name = config.export_config.weight_name
-    used_weight_num = 0
+    weight_externalized, used_weight_num = _is_weight_externalized(inputs, weight_name, export_graph)
+    if used_weight_num == 0:
+        return weight_externalized, used_weight_num
 
     for i, inp in enumerate(inputs):
         file_id = weight_name.get(id(inp))
         if file_id is not None:
             assert inp.is_contiguous()
             logger.debug(f'  Weight {i} dtype: {inp.dtype} shape: {inp.shape}')
-            y = ge.FileConstant(shape=list(inp.shape),
-                                dtype=torch_type_to_ge_type(inp.dtype),
-                                file_path=file_path + "/" + file_id.replace(".", "_"),
-                                node_name=export_graph.op[i].name)
-
+            if weight_externalized:
+                y = ge.FileConstant(shape=list(inp.shape),
+                                    dtype=torch_type_to_ge_type(inp.dtype),
+                                    file_path=file_path + "/" + file_id.replace(".", "_"),
+                                    node_name=export_graph.op[i].name)
+            else:
+                y = _make_const_node(inp, export_graph.op[i].name)
             export_graph.op[i].Clear()
             export_graph.op[i].MergeFrom(y.node)
-            used_weight_num += 1
 
-    return used_weight_num
+    return weight_externalized, used_weight_num
 
 
 def _save_weight2file(inputs, file_path, weight_name, used_weight_num):
-    if used_weight_num == 0:
-        logger.info(f'no Weight tensor need save to file.')
-        return
-
     logger.info(f'save Weight tensor to file...')
     saved_num = 0
     for i, inp in enumerate(inputs):
@@ -88,9 +115,10 @@ def make_export_graph(inputs, config, ori_graph):
 
     os.makedirs(sub_file_path, exist_ok=True)
 
-    used_weight_num = _convert_data_to_const(inputs, export_graph, file_path, config)
+    weight_externalized, used_weight_num = _convert_data_to_const(inputs, export_graph, file_path, config)
 
-    _save_weight2file(inputs, sub_file_path, config.export_config.weight_name, used_weight_num)
+    if used_weight_num != 0 and weight_externalized:
+        _save_weight2file(inputs, sub_file_path, config.export_config.weight_name, used_weight_num)
 
     dump_graph(sub_file_path + "/dynamo.pbtxt", export_graph)
 

@@ -912,7 +912,7 @@ def Cast(x: Tensor, *, dst_type: int, dependencies=[], node_name=None) -> Tensor
     return y
 
 
-def Const(v: Any, dtype: int = None, node_name=None) -> Tensor:
+def Const(v: Any, dtype: int = None, node_name=None, readable=True) -> Tensor:
     if dtype is not None and not _is_supported_ge_dtype_by_numpy(dtype):
         # TO DO: unsupported dtype cast for numpy, currently resolved by inserting ge.Cast
         return Cast(Const(v, dtype=None, node_name=node_name), dst_type=dtype)
@@ -931,10 +931,11 @@ def Const(v: Any, dtype: int = None, node_name=None) -> Tensor:
         narray = np.array(v, dtype=_ge_dtype_to_np_dtype(dtype))
         const_ge_dtype = dtype
 
-    if isinstance(v, (np.ndarray, tuple, list)):
-        op.attr["_readable_value"].s = compat_as_bytes(f"{narray.tolist()}")
-    else:
-        op.attr["_readable_value"].s = compat_as_bytes(f"{narray.item()}")
+    if readable:
+        if isinstance(v, (np.ndarray, tuple, list)):
+            op.attr["_readable_value"].s = compat_as_bytes(f"{narray.tolist()}")
+        else:
+            op.attr["_readable_value"].s = compat_as_bytes(f"{narray.item()}")
 
     value.data = narray.tobytes()
     value.desc.dtype = _ge_dtype_to_ge_proto_dtype(const_ge_dtype)
