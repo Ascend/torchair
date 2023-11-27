@@ -37,7 +37,6 @@ def _save_name(config, model: torch.nn.Module, **kwargs):
 def _get_export_config(model, export_path: str, export_name: str,
                        auto_atc_config_generated: bool = False, **kwargs):
     config = CompilerConfig()
-    config.debug.graph_dump.type = "pbtxt"
     config.export_config.export_mode = True
     config.export_config.auto_atc_config_generated = auto_atc_config_generated
     config.export_config.export_path_dir = export_path

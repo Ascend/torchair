@@ -14,6 +14,20 @@ logger.setLevel(logging.DEBUG)
 
 
 class TorchairSt(unittest.TestCase):
+    def setUp(self) -> None:
+        self.clean_env()
+        return super().setUp()
+
+    def tearDown(self) -> None:
+        self.clean_env()
+        return super().tearDown()
+
+    def clean_env(self):
+        for export_path in ["export_file", "false_export_path2", "true_export_path2", \
+                            "true_export_path3", "test_export_file_path"]:
+            if os.path.exists(export_path):
+                shutil.rmtree(export_path)
+
     def test_export(self):
         def get_dumped_file_list(dir_path, file_extension='.pbtxt'):
             return [i for i in os.listdir(dir_path) if i.startswith('dynamo') and i.endswith(f'{file_extension}')]
@@ -32,7 +46,7 @@ class TorchairSt(unittest.TestCase):
         x = torch.randn(2, 4)
         y = torch.randn(2, 4)
 
-        export_path1 = "./test_export_file_False"
+        export_path1 = "test_export_file_path"
         if os.path.exists(export_path1):
             shutil.rmtree(export_path1)
         torchair.dynamo_export(x, y, model=model, export_path=export_path1, dynamic=False)
@@ -76,7 +90,7 @@ class TorchairSt(unittest.TestCase):
         x = torch.randn(2, 4)
         y = torch.randn(2, 4)
 
-        export_path1 = "./test_export_file_True"
+        export_path1 = "test_export_file_path"
         if os.path.exists(export_path1):
             shutil.rmtree(export_path1)
 
@@ -147,11 +161,6 @@ class TorchairSt(unittest.TestCase):
         with open(file_name, 'r')as f:
             src = f.read()
         assert src.count("HcomReduceScatter") == 3 # dist reduce_scatter_tensor入图
-
-        for export_path in ["export_file", "false_export_path2", "true_export_path2", \
-                            "true_export_path3"]:
-            if os.path.exists(export_path):
-                shutil.rmtree(export_path)
 
 
 class AllReduceSingeGroup(torch.nn.Module):

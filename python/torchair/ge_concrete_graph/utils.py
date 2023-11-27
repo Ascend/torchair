@@ -112,3 +112,21 @@ def normalize_reduceop_type(op):
     else:
         raise ValueError(f'Invalid reduce operation {norm_op}')
     return ge_reduceop_type
+
+
+def dump_graph(path: str, graph):
+    if path is None:
+        return
+
+    if path.endswith(".txt"):
+        with open(path, "w+") as f:
+            f.write(str(graph))
+    elif path.endswith('.py'):
+        with open(path, "w+") as f:
+            f.write(str(graph.python_code))
+    else:
+        try:
+            with open(path, "w+") as f:
+                f.write(str(convert_to_tensorboard(graph)))
+        except Exception as e:
+            print(f"dump pbtxt failed {e}", flush=True)

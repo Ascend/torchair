@@ -29,10 +29,10 @@ from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type, torch_typ
 from torchair.ge_concrete_graph.ge_graph import is_sym, sym_to_ge_dtype
 from torchair.core.backend import TorchNpuGraph
 from torchair.configs.compiler_config import CompilerConfig
-from torchair.ge_concrete_graph.utils import convert_to_tensorboard, force_op_unknown_shape
+from torchair.ge_concrete_graph.utils import convert_to_tensorboard, force_op_unknown_shape, dump_graph
 from torchair.ge_concrete_graph.supported_declaration import Support
 from torchair.ge_concrete_graph.export_config_generete import get_grouplist_from_graph, generate_atc_config
-from torchair.utils.export_utils import get_subpath, get_export_file_name
+from torchair.utils.export_utils import make_export_graph, get_export_file_name
 from . import ge_apis as ge
 
 
@@ -245,62 +245,6 @@ def _get_executor_type():
     return ExecutorType.CPU
 
 
-def _trans_export_protobuf(inputs, export_graph, file_path, config):
-    weight_name = config.export_config.weight_name
-    inputs_name = config.export_config.inputs_name
-    num_weight_in_graph = 0
-    for i, inp in enumerate(inputs):
-        if id(inp) in weight_name:
-            logger.debug(f'  Weight {i} dtype: {inp.dtype} shape: {inp.shape}')
-            file_id = weight_name[id(inp)]
-            y = ge.FileConstant(shape=list(inp.shape),
-                                dtype=torch_type_to_ge_type(inp.dtype),
-                                file_path=file_path + "/" + file_id.replace(".", "_"),
-                                node_name=export_graph.op[i].name)
-            export_graph.op[i].Clear()
-            export_graph.op[i].MergeFrom(y._node)
-            num_weight_in_graph += 1
-        if id(inp) in inputs_name:
-            logger.debug(f'  Input {i} dtype: {inp.dtype} shape: {inp.shape}')
-            export_graph.op[i].attr["use_define_name"].s = compat_as_bytes(inputs_name[id(inp)])
-    return num_weight_in_graph
-
-
-def _save_weight2file(inputs, file_path, weight_name, num_weight_in_graph):
-    logger.info(f'save Weight tensor to file...')
-    saved_num = 0
-    for i, inp in enumerate(inputs):
-        if id(inp) in weight_name:
-            file_id = weight_name[id(inp)]
-            if inp.is_cpu:
-                inp.numpy().tofile(file_path + "/" + file_id.replace(".", "_"))
-            else:
-                inp.cpu().numpy().tofile(file_path + "/" + file_id.replace(".", "_"))
-            saved_num += 1
-            print('\r torchair dynamo export save weight {0}% {1}/{2}'.format(
-                  min(100, int(saved_num / num_weight_in_graph * 100)), saved_num, num_weight_in_graph), end='')
-    print(" ")
-    logger.info(f'save Weight tensor to file over...')
-
-
-def dump_graph(path: str, graph):
-    if path is None:
-        return
-
-    if path.endswith(".txt"):
-        with open(path, "w+") as f:
-            f.write(str(graph))
-    elif path.endswith('.py'):
-        with open(path, "w+") as f:
-            f.write(str(graph.python_code))
-    else:
-        try:
-            with open(path, "w+") as f:
-                f.write(str(convert_to_tensorboard(graph)))
-        except Exception as e:
-            print(f"dump pbtxt failed {e}", flush=True)
-
-
 class GeConcreteGraph(ConcreteGraphBase):
     def __init__(self, config: CompilerConfig, graph=None, name=None):
         self._graph = GeGraph() if graph is None else graph
@@ -317,6 +261,43 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._converter_ctx = threading.local()
         self._fx_input_mapping_cloned_ge_input = []
         self._inputs_processing = None
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        if self._inputs_processing is None:
+            self._inputs_processing = self._make_inputs_processing_func(*args)
+        inputs = self._inputs_processing(*args)
+
+        self._consume_data_into_inputs(inputs)
+
+        if self.config.export_config.export_mode:
+            self.export(inputs)
+            raise ExportSuccess("export graph over")
+
+        if self.should_auto_tune:
+            self.auto_tune(inputs)
+
+        if len(self._graph_output_ref_input):
+            assigned_outputs = [None] * len(self.graph.attr["_output_dtypes"].list.i)
+            for output_index, input_index in self._graph_output_ref_input.items():
+                assigned_outputs[output_index] = inputs[input_index]
+            ge_outputs = self._executor.run(inputs, assigned_outputs)
+
+            for index_tuple in self._fx_input_mapping_cloned_ge_input:
+                args[index_tuple[0]].copy_(inputs[index_tuple[1]])
+        else:
+            ge_outputs = self._executor.run(inputs)
+
+        assert len(ge_outputs) == len(self.graph.attr["_output_dtypes"].list.i),\
+            f"output size mismatch, expect {len(self.graph.attr['_output_dtypes'].list.i)}, got {len(ge_outputs)}"
+
+        fx_outputs = [v for v in self._fx_outputs]
+        for fx_idx, ge_idx in self._fx_outputs_mapping.items():
+            assert ge_idx < len(ge_outputs), f"output index {ge_idx} out of range {len(ge_outputs)}"
+            fx_outputs[fx_idx] = ge_outputs[ge_idx]
+
+        del ge_outputs
+
+        return tuple(fx_outputs)
 
     def context(self):
         return default_ge_graph(self.graph)
@@ -433,11 +414,15 @@ class GeConcreteGraph(ConcreteGraphBase):
     def graph(self):
         return self._graph
 
+    @property
+    def config(self):
+        return self._config
+
     def set_fx_inputs_mapping(self, fx_inputs_mapping):
         self._fx_inputs_mapping = fx_inputs_mapping
 
     def compile(self) -> Any:
-        local_compile_options, global_compile_options = self._config.as_dict()
+        local_compile_options, global_compile_options = self.config.as_dict()
         local_compile_options["ge.exec.formatMode"] = "1"
 
         self.graph.attr["_input_placements"].list.i.extend(
@@ -449,7 +434,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._complement_graph_attr()
         self._graph_output_ref_input = _mapping_assign_op_to_graph_output(self.graph)
 
-        if self._config.debug.graph_dump.enabled and len(self._graph_output_ref_input):
+        if self.config.debug.graph_dump.enabled and len(self._graph_output_ref_input):
             self.dump(f'dynamo_after_mapping_assign_{datetime.now().strftime("%Y%m%d%H%M%S%f")}.pbtxt')
 
         # support output memory reuse while output is not ref to input
@@ -472,30 +457,20 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._executor.compile()
 
     def export(self, inputs) -> Any:
-        file_path = self._config.export_config.export_path_dir
-        sub_file_path = get_subpath(file_path)
-        file_name_air = get_export_file_name(self._config.export_config.export_name)
+        file_path = self.config.export_config.export_path_dir
+        file_name_air = get_export_file_name(self.config.export_config.export_name)
 
-        export_graph = GeGraph()
-        export_graph.MergeFrom(self._graph._proto)
-
-        os.makedirs(sub_file_path, exist_ok=True)
-
-        num_weight_in_graph = _trans_export_protobuf(inputs, export_graph, file_path, self._config)
-
-        _save_weight2file(inputs, sub_file_path, self._config.export_config.weight_name, num_weight_in_graph)
+        export_graph = make_export_graph(inputs, self.config, self.graph)
 
         _normalize_ge_graph(export_graph)
 
-        dump_graph(sub_file_path + "/dynamo.pbtxt", export_graph)
-
-        if self._config.export_config.auto_atc_config_generated is True and torch.distributed.is_initialized():
+        if self.config.export_config.auto_atc_config_generated is True and torch.distributed.is_initialized():
             from torch.distributed.distributed_c10d import _world
             world_rank_list = torch.distributed.get_process_group_ranks(_world.default_pg)
             group_list = get_grouplist_from_graph(export_graph)
             logger.info(f"generate_atc_config file_path: {file_path}, " +
-                        "file_name: {self._config.export_config.export_name}")
-            generate_atc_config(file_path, export_name=self._config.export_config.export_name,
+                        "file_name: {self.config.export_config.export_name}")
+            generate_atc_config(file_path, export_name=self.config.export_config.export_name,
                                 world_ranklist=world_rank_list, group_list=group_list)
 
         local_options = {}
@@ -505,7 +480,7 @@ class GeConcreteGraph(ConcreteGraphBase):
 
     @property
     def should_auto_tune(self) -> bool:
-        if self._config.aoe_config.aoe_mode.value is None:
+        if self.config.aoe_config.aoe_mode.value is None:
             return False
         if self.is_dynamic:
             # AOE is not supported for dynamic shape now
@@ -517,43 +492,6 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._executor.auto_tune(inputs)
         self._auto_tune_times += 1
         logger.info(f"End auto tune for round {self._auto_tune_times - 1}")
-
-    def __call__(self, *args: Any, **kwargs: Any) -> Any:
-        if self._inputs_processing is None:
-            self._inputs_processing = self._make_inputs_processing_func(*args)
-        inputs = self._inputs_processing(*args)
-
-        self._consume_data_into_inputs(inputs)
-
-        if self._config.export_config.export_mode:
-            self.export(inputs)
-            raise ExportSuccess("export graph over")
-
-        if self.should_auto_tune:
-            self.auto_tune(inputs)
-
-        if len(self._graph_output_ref_input):
-            assigned_outputs = [None] * len(self.graph.attr["_output_dtypes"].list.i)
-            for output_index, input_index in self._graph_output_ref_input.items():
-                assigned_outputs[output_index] = inputs[input_index]
-            ge_outputs = self._executor.run(inputs, assigned_outputs)
-
-            for index_tuple in self._fx_input_mapping_cloned_ge_input:
-                args[index_tuple[0]].copy_(inputs[index_tuple[1]])
-        else:
-            ge_outputs = self._executor.run(inputs)
-
-        assert len(ge_outputs) == len(self.graph.attr["_output_dtypes"].list.i),\
-            f"output size mismatch, expect {len(self.graph.attr['_output_dtypes'].list.i)}, got {len(ge_outputs)}"
-
-        fx_outputs = [v for v in self._fx_outputs]
-        for fx_idx, ge_idx in self._fx_outputs_mapping.items():
-            assert ge_idx < len(ge_outputs), f"output index {ge_idx} out of range {len(ge_outputs)}"
-            fx_outputs[fx_idx] = ge_outputs[ge_idx]
-
-        del ge_outputs
-
-        return tuple(fx_outputs)
 
     def _complement_graph_attr(self):
         num_inputs = self.graph.num_inputs()
