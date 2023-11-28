@@ -466,15 +466,20 @@ class TorchairSt(unittest.TestCase):
 
             def forward(self, inp, size):
                 a = torch.ops.aten.expand.default(inp, size)
-                return inp + a
+                b = torch.ops.aten.slice.Tensor(inp)
+                return inp + a + b
 
         def check_graph(concrete_graph):
             num_broadcastto = 0
+            num_strideslice = 0
             for node in concrete_graph.graph.op:
                 if node.type == 'BroadcastTo':
                     num_broadcastto += 1
+                if node.type == 'StridedSlice':
+                    num_strideslice += 1
 
-            assert num_broadcastto == 0, f"check number of num_broadcastto{num_broadcastto} == 0 failed"
+            assert num_broadcastto == 0, f"check number of num_broadcastto {num_broadcastto} == 0 failed"
+            assert num_strideslice == 0, f"check number of num_strideslice {num_strideslice} == 0 failed"
 
         def my_decorator(func):
             def wrapper(*args, **kwargs):

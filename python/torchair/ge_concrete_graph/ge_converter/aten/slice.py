@@ -47,6 +47,12 @@ def conveter_aten_slice_Tensor(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::slice.Tensor(Tensor(a) self, int dim=0, SymInt? start=None, SymInt? end=None, SymInt step=1) -> Tensor(a)"""
+
+    # performance optimization: if the input and output symbolic shape is equal, do not slice
+    if hasattr(self, "_symsize") and meta_outputs is not None and hasattr(meta_outputs, "_symsize"):
+        if str(self._symsize) == str(meta_outputs._symsize):
+            return self
+
     if end is not None and not isinstance(end, Tensor):
         if end == 9223372036854775807:
             end = 2147483647
