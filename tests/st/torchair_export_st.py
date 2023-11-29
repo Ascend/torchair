@@ -146,16 +146,10 @@ class TorchairSt(unittest.TestCase):
         assert src.count(" dim: -1") == 3 # 动态图存在-1
 
         file_name = get_model_relation_config("true_export_path2")
-        with open(file_name, 'r')as f:
-            src = f.read()
-        assert src.count("\"submodel_name\": \"export_rank0.air\"") == 2
-        assert src.count("\"group_rank_list\": \"[0, 1]\"") == 4
-        assert src.count("model_instance_id") == 4
-
+        # mutil group case, can not create atc config file
+        assert os.path.exists(file_name) == False
         file_name = get_numa_config("true_export_path2")
-        with open(file_name, 'r')as f:
-            src = f.read()
-        assert src.count("\"item_id\": 1") == 1
+        assert os.path.exists(file_name) == False
 
         file_name = get_sub_path_dynamo_pbtxt("true_export_path3", 0)
         with open(file_name, 'r')as f:
@@ -197,6 +191,48 @@ class TorchairSt(unittest.TestCase):
         assert src.count("op: \"FileConstant\"") == 1
         assert src.count("op: \"Data\"") == 2
         assert src.count("op: \"Shape\"") == 0
+
+    def test_export_with_atc_config_generated(self):
+        def get_sub_path_dynamo_pbtxt(export_path, rankid):
+            return export_path + "/rank_" + str(rankid) + "/dynamo.pbtxt"
+
+        def get_model_relation_config(export_path):
+            return export_path + "/model_relation_config.json"
+
+        def get_numa_config(export_path):
+            return export_path + "/numa_config.json"
+
+        def mp():
+            world_size = 2
+            torch.multiprocessing.spawn(example_atc_config_generated, args=(world_size, ), nprocs=world_size, join=True)
+
+        os.environ["MASTER_ADDR"] = "localhost"
+        os.environ["MASTER_PORT"] = "29505"
+
+        mp()
+
+        file_name = get_sub_path_dynamo_pbtxt("export_file", 0)
+        with open(file_name, 'r')as f:
+            src = f.read()
+        assert src.count("op: \"Const\"") == 2
+        assert src.count("op: \"Data\"") == 2
+        assert src.count("op: \"HcomAllReduce\"") == 1
+        assert src.count("key: \"ranklist\"") == 1
+
+        file_name = get_model_relation_config("export_file")
+        with open(file_name, 'r')as f:
+            src = f.read()
+        assert src.count("\"submodel_name\": \"export_rank0.air\"") == 2
+        assert src.count("\"group_rank_list\": \"[0, 1]\"") == 1
+        assert src.count("model_instance_id") == 4
+        assert src.count("0:0:0") == 1
+        assert src.count("0:0:1") == 1
+
+        file_name = get_numa_config("export_file")
+        with open(file_name, 'r')as f:
+            src = f.read()
+        assert src.count("\"item_id\": 0") == 1
+        assert src.count("\"item_id\": 1") == 1
 
 
 class AllReduceSingeGroup(torch.nn.Module):
@@ -261,6 +297,14 @@ def example(rank, world_size):
     xx3 = torch.tensor([0, 1, 2, 3], dtype=torch.int32)
     output = torch.empty([2], dtype=torch.int32)
     torchair.dynamo_export(xx3, output, model=mod3, dynamic=True, export_path="true_export_path3")
+
+
+def example_atc_config_generated(rank, world_size):
+    torch.distributed.init_process_group("gloo", rank=rank, world_size=world_size)
+    x = torch.ones([2, 2], dtype=torch.int32)
+    y = torch.ones([2, 2], dtype=torch.int32)
+    mod = AllReduceSingeGroup()
+    torchair.dynamo_export(x, y, model=mod, auto_atc_config_generated=True)
 
 
 if __name__ == '__main__':

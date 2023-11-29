@@ -1,23 +1,29 @@
 import json
 import logging
-from typing import List
+from typing import List, Set
 import torch
 
 from torchair.core.utils import logger
 from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef
 
 
-def generate_atc_config(file_path, export_name, world_ranklist: List, group_list: List):
+hcom_ops_set = {"HcomAllReduce", "HcomReduceScatter", "HcomAllGather", "HcomBroadcast", "HcomReduce",
+                "HcomSend", "HcomReceive", "HcomRemoteRead", "HcomRemoteRefRead", "HcomRemoteWrite",
+                "HcomRemoteScatterWrite", "HcomAllToAllV", "HcomAllToAll", "HcomAllToAllVC",
+                "HcomGatherAllToAllV", "HorovodAllgather", "HorovodAllreduce", "HorovodBroadcast"}
+
+
+def _generate_model_relation_config(file_path, export_name, world_ranklist: List, group_set: Set):
+    if torch.distributed.get_rank() != 0:
+        return
     model_relation_config = {"deploy_config": [], "model_name_to_instance_id": [],
                              "comm_group": [], "rank_table": []}
-    rank = torch.distributed.get_rank()
-    if str(rank) != "0":
-        return
 
     for rankid in world_ranklist:
         submodel_name = export_name + "_rank" + str(rankid) + ".air"
         deploy_config_dict = {}
         deploy_config_dict["submodel_name"] = submodel_name
+        # torch中不存在cluster概念，不能获得nodeid信息,因此全部写为0，需要用户手动调整，资料中解释
         deploy_config_dict["deploy_device_id_list"] = "0:0:" + str(rankid)
         model_relation_config["deploy_config"].append(deploy_config_dict)
 
@@ -32,7 +38,7 @@ def generate_atc_config(file_path, export_name, world_ranklist: List, group_list
         rank_table_dict["model_instance_id"] = rankid
         model_relation_config["rank_table"].append(rank_table_dict)
 
-    for group_tuple in group_list:
+    for group_tuple in group_set:
         comm_group_dict = {}
         comm_group_dict["group_name"] = group_tuple[0]
         comm_group_dict["group_rank_list"] = str(group_tuple[1])
@@ -41,11 +47,18 @@ def generate_atc_config(file_path, export_name, world_ranklist: List, group_list
     with open(file_path + "/model_relation_config.json", 'w') as write_f:
         json.dump(model_relation_config, write_f, indent=4, ensure_ascii=False)
 
-    numa_config = {"cluster": [], "item_def": [{"item_type": ""}],
-                   "node_def": [{"item": [{"item_type": ""}]}]}
+    return
+
+
+def _generate_numa_config(file_path, world_ranklist: List):
+    if torch.distributed.get_rank() != 0:
+        return
+    numa_config = {"cluster": [], "item_def": [{"item_type": "Ascend910"}],
+                   "node_def": [{"item": [{"item_type": "Ascend910"}]}]}
     cluster_nodes = {"cluster_nodes": [], "nodes_toplogy": {}}
-    node = {"node_id": 0, "node_type": "",
-            "ipaddr": "0.0.0.0", "port": 0, "item_list": []}
+    # torch中不能获得nodeid信息,因此node只有node_id=0，将全部rank都放在node0中，后续需要用户手动调整
+    node = {"node_id": 0, "node_type": "ATLAS800",
+            "ipaddr": "127.0.0.1", "port": 29500, "item_list": []}
 
     for rankid in world_ranklist:
         item = {}
@@ -59,13 +72,31 @@ def generate_atc_config(file_path, export_name, world_ranklist: List, group_list
     return
 
 
-def get_grouplist_from_graph(graph: GraphDef):
-    group_list = []
+def _get_groups_from_graph(graph: GraphDef, group_set: Set):
     for op in graph.op:
-        if op.type == "HcomAllReduce" or op.type == "HcomReduceScatter":
-            str_groupname = str(op.attr["group"].s)
+        if op.type in hcom_ops_set:
+            str_groupname = op.attr["group"].s.decode()
             str_ranklist = str(op.attr["ranklist"].list.i)
-            logger.info(
-                f"{op.type} in group = {str_groupname} ranklist = {str_ranklist}")
-            group_list.append((str_groupname, str_ranklist))
-    return group_list
+            group_set.add((str_groupname, str_ranklist))
+            logger.info(f"{op.type} in group = {str_groupname} ranklist = {str_ranklist}")
+            if len(group_set) > 1:
+                # 目前后端部署，只支持单集合通信域
+                logger.error(f"Cann currently does not support multiple groups," + \
+                             f"found at least two groups exist, " + \
+                             f"failed to generate configuration file.")
+                return False
+    return True
+
+
+def generate_config(config, file_path, export_graph):
+    if torch.distributed.is_initialized():
+        default_pg = torch.distributed.distributed_c10d._get_default_group()
+        default_pg_rank_list = torch.distributed.get_process_group_ranks(default_pg)
+        group_set = set()
+        if _get_groups_from_graph(export_graph, group_set):
+            logger.info(f"generate_atc_config file_path: {file_path}, " +
+                        "file_name: {config.export_config.export_name}")
+            _generate_model_relation_config(file_path, config.export_config.export_name,
+                                            default_pg_rank_list, group_set)
+            _generate_numa_config(file_path, default_pg_rank_list)
+    return

@@ -31,7 +31,7 @@ from torchair.core.backend import TorchNpuGraph
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.ge_concrete_graph.utils import convert_to_tensorboard, force_op_unknown_shape, dump_graph
 from torchair.ge_concrete_graph.supported_declaration import Support
-from torchair.ge_concrete_graph.export_config_generete import get_grouplist_from_graph, generate_atc_config
+from torchair.ge_concrete_graph.export_config_generete import generate_config
 from torchair.utils.export_utils import make_export_graph, get_export_file_name
 from . import ge_apis as ge
 
@@ -464,15 +464,8 @@ class GeConcreteGraph(ConcreteGraphBase):
 
         _normalize_ge_graph(export_graph)
 
-        if self.config.export_config.auto_atc_config_generated is True and torch.distributed.is_initialized():
-            from torch.distributed.distributed_c10d import _world
-            world_rank_list = torch.distributed.get_process_group_ranks(_world.default_pg)
-            group_list = get_grouplist_from_graph(export_graph)
-            logger.info(f"generate_atc_config file_path: {file_path}, " +
-                        "file_name: {self.config.export_config.export_name}")
-            generate_atc_config(file_path, export_name=self.config.export_config.export_name,
-                                world_ranklist=world_rank_list, group_list=group_list)
-
+        if self.config.export_config.auto_atc_config_generated:
+            generate_config(self.config, file_path, export_graph)
         local_options = {}
         local_options["export_path_dir"] = file_path
         local_options["export_name"] = file_name_air
