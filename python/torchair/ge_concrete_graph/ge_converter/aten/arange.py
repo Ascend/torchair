@@ -42,9 +42,8 @@ def conveter_aten_arange_default(
     """NB: aten::arange(Scalar end, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
     if dtype == torch.float16:    
         start, limit, delta = dtype_promote(0, end, 1, target_dtype=DataType.DT_FLOAT)
-        result_fp32 = ge.Range(start, limit, delta)
-        result_dtype = dtype 
-        result = dtype_promote(result_fp32, target_dtype=result_dtype)
+        result_fp32 = ge.Range(start, limit, delta) 
+        result = dtype_promote(result_fp32, target_dtype=dtype)
         return result
     target_dtype = dtype if dtype is not None else meta_outputs.dtype
     start, limit, delta = dtype_promote(0, end, 1, target_dtype=target_dtype)
@@ -54,7 +53,8 @@ def conveter_aten_arange_default(
 
 @declare_supported([
     Support(0, 100, dtype=torch.int32),
-    Support(0, 100, dtype=torch.float16)
+    Support(0, 100, dtype=torch.float16),
+    Support(2, 100, dtype=torch.float16)
 ])
 @register_fx_node_ge_converter(torch.ops.aten.arange.start)
 def conveter_aten_arange_start(
@@ -69,10 +69,9 @@ def conveter_aten_arange_start(
 ):
     """NB: aten::arange.start(Scalar start, Scalar end, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
     if dtype == torch.float16:    
-        start, limit, delta = dtype_promote(0, end, 1, target_dtype=DataType.DT_FLOAT)
-        result_fp32 = ge.Range(start, limit, delta)
-        result_dtype = dtype 
-        result = dtype_promote(result_fp32, target_dtype=result_dtype)
+        start, limit, delta = dtype_promote(start, end, 1, target_dtype=DataType.DT_FLOAT)
+        result_fp32 = ge.Range(start, limit, delta) 
+        result = dtype_promote(result_fp32, target_dtype=dtype)
         return result
     target_dtype = dtype if dtype  else meta_outputs.dtype
     start, limit, delta = dtype_promote(start, end, 1, target_dtype=target_dtype)
@@ -100,10 +99,9 @@ def conveter_aten_arange_start_step(
 ):
     """NB: aten::arange.start_step(Scalar start, Scalar end, Scalar step=1, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
     if dtype == torch.float16:    
-        start, limit, delta = dtype_promote(0, end, 1, target_dtype=DataType.DT_FLOAT)
-        result_fp32 = ge.Range(start, limit, delta)
-        result_dtype = dtype 
-        result = dtype_promote(result_fp32, target_dtype=result_dtype)
+        start, limit, delta = dtype_promote(start, end, step, target_dtype=DataType.DT_FLOAT)
+        result_fp32 = ge.Range(start, limit, delta) 
+        result = dtype_promote(result_fp32, target_dtype=dtype)
         return result
     target_dtype = dtype if dtype else meta_outputs.dtype
     start, limit, delta = dtype_promote(start, end, step, target_dtype=target_dtype)
