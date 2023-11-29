@@ -41,7 +41,7 @@ def get_export_file_name(export_name):
 
 
 def _make_const_node(input_tensor, name):
-    y = ge.Const(input_tensor.numpy(force=True),
+    y = ge.Const(input_tensor.cpu(),
                  dtype=torch_type_to_ge_type(input_tensor.dtype),
                  node_name=name,
                  readable=False)
@@ -64,7 +64,7 @@ def _is_weight_externalized(inputs, weight_name, export_graph):
 
     logger.info(f'export: protobuf_size and weight to const size = {protobuf_size} , ' + \
                 f'max_protobuf_size {max_protobuf_size}, used_weight_num = {used_weight_num}' + \
-                f'and weight_externalized is {weight_externalized}')
+                f' , and weight_externalized is {weight_externalized}')
     return weight_externalized, used_weight_num
 
 
@@ -97,12 +97,22 @@ def _save_weight2file(inputs, file_path, weight_name, used_weight_num):
     saved_num = 0
     for i, inp in enumerate(inputs):
         file_id = weight_name.get(id(inp))
-        if file_id is not None:
-            file_path_and_name = file_path + "/" + file_id.replace(".", "_")
+        if file_id is None:
+            continue
+
+        file_path_and_name = file_path + "/" + file_id.replace(".", "_")
+        if inp.dtype is torch.bfloat16:
+            with open(file_path_and_name, "w") as f:
+                # args0: file handle
+                # args1: True mean save as readable not tar.gz or other
+                # args2: False mean not save data len
+                inp.untyped_storage()._write_file(f, True, False, torch._utils._element_size(torch.bfloat16))
+        else:
             inp.numpy(force=True).tofile(file_path_and_name)
-            saved_num += 1
-            print('\r torchair dynamo export save weight {0}% {1}/{2}'.format(
-                  min(100, int(saved_num / used_weight_num * 100)), saved_num, used_weight_num), end='')
+
+        saved_num += 1
+        print('\r torchair dynamo export save weight {0}% {1}/{2}'.format(
+                min(100, int(saved_num / used_weight_num * 100)), saved_num, used_weight_num), end='')
     print(" ")
     logger.info(f'save Weight tensor to file over...')
 

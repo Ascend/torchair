@@ -235,6 +235,45 @@ class TorchairSt(unittest.TestCase):
         assert src.count("\"item_id\": 1") == 1
 
 
+    def test_export_bf16(self):
+        def get_dumped_file_list(dir_path, file_extension='.pbtxt'):
+            return [i for i in os.listdir(dir_path) if i.startswith('dynamo') and i.endswith(f'{file_extension}')]
+
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super().__init__()
+                size = 10
+                self.p1 = torch.nn.Parameter(torch.randn([size], dtype=torch.bfloat16))
+            def forward(self, x, y):
+                x = x + y + torch.ones([2, 4], dtype=torch.float16)
+                w = self.p1 * 2
+                return x, w
+
+
+        model = Model()
+        x = torch.randn([2, 4], dtype=torch.bfloat16)
+        y = torch.randn([2, 4], dtype=torch.bfloat16)
+
+        export_path1 = "test_export_file_path"
+
+        torchair.dynamo_export(x, y, model=model, export_path=export_path1, dynamic=False)
+
+        dumped_file_list = get_dumped_file_list(export_path1)
+        dumped_file_list.sort(key=lambda file_name: os.path.getmtime(os.path.join(export_path1, file_name)))
+        assert dumped_file_list.__len__() > 0
+        file_name = os.path.join(export_path1, dumped_file_list[-1])
+
+        with open(file_name, 'r')as f:
+            src = f.read()
+
+        assert src.count("op: \"Const\"") == 4
+        assert src.count("op: \"Data\"") == 2
+        assert src.count("op: \"Shape\"") == 0
+        assert src.count("dtype: DT_BF16") == 13
+        assert src.count("  dim: 10") == 3
+
+
 class AllReduceSingeGroup(torch.nn.Module):
     def __init__(self):
         super().__init__()

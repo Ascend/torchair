@@ -233,6 +233,8 @@ def _ge_proto_dtype_str(dtype: ProtoDataType) -> str:
         return "DT_INT64"
     if dtype == ProtoDataType.DT_BOOL:
         return "DT_BOOL"
+    if dtype == ProtoDataType.DT_BF16:
+        return "DT_BF16"
 
     return "Unknown"
 
@@ -913,7 +915,7 @@ def Cast(x: Tensor, *, dst_type: int, dependencies=[], node_name=None) -> Tensor
 
 
 def Const(v: Any, dtype: int = None, node_name=None, readable=True) -> Tensor:
-    if dtype is not None and not _is_supported_ge_dtype_by_numpy(dtype):
+    if dtype is not None and not _is_supported_ge_dtype_by_numpy(dtype) and not dtype is DataType.DT_BF16:
         # TO DO: unsupported dtype cast for numpy, currently resolved by inserting ge.Cast
         return Cast(Const(v, dtype=None, node_name=node_name), dst_type=dtype)
 
@@ -921,6 +923,20 @@ def Const(v: Any, dtype: int = None, node_name=None, readable=True) -> Tensor:
     op.type = "Const"
     op.name = next_unique_name(node_name, "Const")
     value = op.attr["value"].t
+
+    if isinstance(v, torch.Tensor) and v.dtype is torch.bfloat16:
+        # TO DO: Maybe other numpy unsupported dtype
+        import io
+        f = io.BytesIO()
+        v.untyped_storage()._write_file(f, False, False, torch._utils._element_size(torch.bfloat16))
+        value.data = f.getvalue()
+        value.desc.dtype = _ge_dtype_to_ge_proto_dtype(DataType.DT_BF16)
+        value.desc.layout = "ND"
+        value.desc.shape.dim.extend(tuple(v.shape))
+        op.output_desc.extend([value.desc])
+        const_tensor = Tensor(op)
+        return const_tensor
+
     if dtype is None:
         if isinstance(v, np.ndarray):
             narray = v
