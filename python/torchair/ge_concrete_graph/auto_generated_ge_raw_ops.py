@@ -20194,6 +20194,79 @@ def MultiHeadAttentionScoreGrad(query: Tensor,
     return dq, dk, dv, dpse
 
 
+# This api is auto-generated from IR ScatterList
+@auto_convert_to_tensor([True, False, False, False],
+                        [False, False, False, True])
+def _ScatterList(var: List[Tensor],
+    indice: Tensor,
+    updates: Tensor,
+    mask: Optional[Tensor],
+    *,
+    size_of_var: int,
+    reduce: str = "update",
+    axis: int = -2,
+    dependencies=[],
+    node_name=None):
+    """REG_OP(ScatterList)\n
+.DYNAMIC_INPUT(var, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT, DT_INT8, DT_INT16, DT_INT32, DT_INT64, DT_UINT8,
+                                    DT_UINT16, DT_UINT32, DT_UINT64}))\n
+.INPUT(indices, TensorType({DT_INT32, DT_INT64}))\n
+.INPUT(updates, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT, DT_INT8, DT_INT16, DT_INT32, DT_INT64, DT_UINT8,
+                                    DT_UINT16, DT_UINT32, DT_UINT64}))\n
+.OPTIONAL_INPUT(mask, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT, DT_INT8, DT_INT16, DT_INT32, DT_INT64, DT_UINT8,
+                                    DT_UINT16, DT_UINT32, DT_UINT64}))\n
+.OUTPUT(var, TensorType({DT_FLOAT16, DT_FLOAT32, DT_INT8}))\n
+.ATTR(reduce, Float, 1.0)\n
+.ATTR(axis, String, "BSH")\n
+"""
+
+    op = get_default_ge_graph().op.add()
+    op.type = "ScatterList"
+    op.name = next_unique_name(node_name, "ScatterList")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    assert isinstance(var, (tuple, list))
+    for i, v in enumerate(var):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "var" + str(i)
+
+    op.input.append(indice.tensor)
+    op.input_desc.add().CopyFrom(indice.desc)
+    op.input_desc[-1].name = "indice"
+
+    op.input.append(updates.tensor)
+    op.input_desc.add().CopyFrom(updates.desc)
+    op.input_desc[-1].name = "updates"
+
+    if mask is not None:
+        op.input.append(mask.tensor)
+        op.input_desc.add().CopyFrom(mask.desc)
+        op.input_desc[-1].name = "mask"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "mask"
+
+    # process attrs
+    op.attr["reduce"].s = compat_as_bytes(reduce)
+    op.attr["axis"].i = axis
+
+    # process outputs
+    output_index = 0
+    var = []
+    for i in range(output_index, output_index + size_of_var):
+        op.output_desc.add().name = "var" + str(i - output_index)
+        var.append(Tensor(op, i))
+    output_index += size_of_var
+
+    return var
+
+
 # This api is auto-generated from IR IncreFlashAttention
 @auto_convert_to_tensor([False, True, True, False, False, False, False, False, False, False, False],
                         [False, False, False, True, True, True, True, True, True, True, True])

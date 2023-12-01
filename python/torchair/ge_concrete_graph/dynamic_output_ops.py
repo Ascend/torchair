@@ -33,6 +33,27 @@ def ShapeN(x: List[Tensor], *, dtype: int = 3, dependencies=[], node_name=None):
     return raw_ops._ShapeN(x, size_of_y=size_of_y, dtype=dtype, dependencies=dependencies, node_name=node_name)
 
 
+# Auto infer num outputs for IR IdentityN
+@auto_convert_to_tensor([True, False, False, False], [False, False, False, True])
+def ScatterList(var: List[Tensor], indice: Tensor, updates: Tensor, mask: Optional[Tensor], *,
+    reduce: str = "update", axis: int = -2, dependencies=[], node_name=None):
+    """REG_OP(ScatterList)\n
+    .DYNAMIC_INPUT(var, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT, DT_INT8, DT_INT16, DT_INT32, DT_INT64, DT_UINT8,
+                                    DT_UINT16, DT_UINT32, DT_UINT64}))\n
+    .INPUT(indice, TensorType::IndexNumberType())\n
+    .INPUT(updates, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT, DT_INT8, DT_INT16, DT_INT32, DT_INT64, DT_UINT8,
+                                DT_UINT16, DT_UINT32, DT_UINT64}))\n
+    .OPTIONAL_INPUT(mask, TensorType({DT_UINT8}))\n
+    .DYNAMIC_OUTPUT(var, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT, DT_INT8, DT_INT16, DT_INT32, DT_INT64, DT_UINT8,
+                                      DT_UINT16, DT_UINT32, DT_UINT64}))\n
+    .ATTR(reduce, String, "update")\n
+      .ATTR(axis, Int, -2)\n
+    """
+    size_of_var = len(var)
+    return raw_ops._ScatterList(var, indice, updates, mask, size_of_var=size_of_var,
+                                 reduce=reduce, axis=axis, dependencies=dependencies, node_name=node_name)
+
+
 # Auto infer num outputs for IR Copy
 @auto_convert_to_tensor([False], [False])
 def Copy(x: Tensor, *, N: int, dependencies=[], node_name=None):

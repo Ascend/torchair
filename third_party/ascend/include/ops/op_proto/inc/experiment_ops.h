@@ -1667,6 +1667,42 @@ REG_OP(FlashAttentionScoreGrad)
     .OP_END_FACTORY_REG(FlashAttentionScoreGrad)
 
 /**
+* @brief Multiplies sparse updates into a variable reference . \n
+
+* @par Inputs:
+* Three inputs, including:
+* @li var: An ND Tensor List.
+* Must be one of the following types: float16, float, int16, int32, int64, int8, uint16, uint32, uint64, uint8, bfloat16
+* @li indices: An ND Tensor.
+* Must be one of the following types: int32 or int64
+* @li updates: An ND Tensor .
+* Must be one of the following types: float16, float, int16, int32, int64, int8, uint16, uint32, uint64, uint8, bfloat16
+* @li mask: An ND Tensor .
+* Must be one of the following types: uint8
+* @par Attributes:
+* @li reduction: An optional attribute. Defaults to string "update"
+* @li axis: An optional attribute. Defaults to -2.
+
+* @par Outputs:
+* var: An ND Tensor List. Has the same type and format as input "var" . \n
+
+* @par Third-party framework compatibility
+* Compatible with the Mindspore operator Scatter.
+*/
+REG_OP(ScatterList)
+    .DYNAMIC_INPUT(var, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT, DT_INT8, DT_INT16, DT_INT32, DT_INT64, DT_UINT8,
+                                    DT_UINT16, DT_UINT32, DT_UINT64}))
+    .INPUT(indice, TensorType::IndexNumberType())
+    .INPUT(updates, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT, DT_INT8, DT_INT16, DT_INT32, DT_INT64, DT_UINT8,
+                                DT_UINT16, DT_UINT32, DT_UINT64}))
+    .OPTIONAL_INPUT(mask, TensorType({DT_UINT8}))
+    .DYNAMIC_OUTPUT(var, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT, DT_INT8, DT_INT16, DT_INT32, DT_INT64, DT_UINT8,
+                                     DT_UINT16, DT_UINT32, DT_UINT64}))
+    .ATTR(reduce, String, "update")
+    .ATTR(axis, Int, -2)
+    .OP_END_FACTORY_REG(ScatterList)
+
+/**
 * @brief Function MultiHeadAttentionScoreGrad. \n
 
 * @par Inputs:
