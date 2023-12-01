@@ -3206,5 +3206,43 @@ REG_OP(RoiAlignRotatedGrad)
     .ATTR(clockwise, Bool, false)
     .OUTPUT(y_grad, TensorType({DT_FLOAT}))
     .OP_END_FACTORY_REG(RoiAlignRotatedGrad)
+
+/**
+* @brief Fusion op for FFN.
+* @par Inputs:
+* ten inputs, including:
+* @li x: A matrix Tensor. The type support int8, float16.
+* @li weight1: A matrix Tensor. The type support int8, float16.
+* @li weight2: A matrix Tensor. The type support int8, float16.
+* @li expert_tokens: A matrix Tensor. The type support int64.
+* @li bias1: A matrix Tensor. The type support int32, float16.
+* @li bias2: A matrix Tensor. The type support int32, float16.
+* @li scale: A matrix Tensor. The type support float32.
+* @li offset: A matrix Tensor. The type support float32.
+* @li deq_scale1: A matrix Tensor. The type support uint64.
+* @li deq_scale2: A matrix Tensor. The type support uint64.
+
+* @par Attributes:
+* @li activation: A string. The type of activation.
+* @li inner_precise: A int. 0, fp16 high precision. 1, high performance. Default value: 0
+*
+* @par Outputs:
+* y: A matrix Tensor. The type support float16. \n
+*/
+REG_OP(FFN)
+    .INPUT(x, TensorType({DT_INT8, DT_FLOAT16}))
+    .INPUT(weight1, TensorType({DT_INT8, DT_FLOAT16}))
+    .INPUT(weight2, TensorType({DT_INT8, DT_FLOAT16}))
+    .OPTIONAL_INPUT(expert_tokens, TensorType({DT_INT64}))
+    .OPTIONAL_INPUT(bias1, TensorType({DT_INT32, DT_FLOAT16}))
+    .OPTIONAL_INPUT(bias2, TensorType({DT_INT32, DT_FLOAT16}))
+    .OPTIONAL_INPUT(scale, TensorType({DT_FLOAT}))
+    .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))
+    .OPTIONAL_INPUT(deq_scale1, TensorType({DT_UINT64}))
+    .OPTIONAL_INPUT(deq_scale2, TensorType({DT_UINT64}))
+    .OUTPUT(y, TensorType({DT_FLOAT16}))
+    .REQUIRED_ATTR(activation, String)
+    .ATTR(inner_precise, Int, 0)
+    .OP_END_FACTORY_REG(FFN)
 }  // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_EXPERIMENT_OPS_H_

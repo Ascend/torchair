@@ -83930,3 +83930,126 @@ def MaskedSoftmaxWithRelPosBias(x: Tensor, atten_mask: Optional[Tensor], relativ
 
 
   return y
+
+
+# This api is auto-generated from IR FFN
+@auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False],
+                        [False, False, False, True, True, True, True, True, True, True])
+def FFN(x: Tensor,
+        weight1: Tensor,
+        weight2: Tensor,
+        expert_tokens: Optional[Tensor],
+        bias1: Optional[Tensor],
+        bias2: Optional[Tensor],
+        scale: Optional[Tensor],
+        offset: Optional[Tensor],
+        deq_scale1: Optional[Tensor],
+        deq_scale2: Optional[Tensor],
+        *,
+        activation: str,
+        inner_precise: int=0,
+        dependencies=[],
+        node_name=None):
+    """REG_OP(FFN)\n
+    .INPUT(x, TensorType({DT_INT8, DT_FLOAT16}))\n
+    .INPUT(weight1, TensorType({DT_INT8, DT_FLOAT16}))\n
+    .INPUT(weight2, TensorType({DT_INT8, DT_FLOAT16}))\n
+    .OPTIONAL_INPUT(expert_tokens, TensorType({DT_INT64}))\n
+    .OPTIONAL_INPUT(bias1, TensorType({DT_INT32, DT_FLOAT16}))\n
+    .OPTIONAL_INPUT(bias2, TensorType({DT_INT32, DT_FLOAT16}))\n
+    .OPTIONAL_INPUT(scale, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(deq_scale1, TensorType({DT_UINT64}))\n
+    .OPTIONAL_INPUT(deq_scale2, TensorType({DT_UINT64}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT16}))\n
+    .REQUIRED_ATTR(activation, String)\n
+    .ATTR(inner_precise, Int, 0)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "FFN"
+    op.name = next_unique_name(node_name, "FFN")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+    op.input.append(weight1.tensor)
+    op.input_desc.add().CopyFrom(weight1.desc)
+    op.input_desc[-1].name = "weight1"
+    op.input.append(weight2.tensor)
+    op.input_desc.add().CopyFrom(weight2.desc)
+    op.input_desc[-1].name = "weight2"
+    if expert_tokens is not None:
+        op.input.append(expert_tokens.tensor)
+        op.input_desc.add().CopyFrom(expert_tokens.desc)
+        op.input_desc[-1].name = "expert_tokens"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "expert_tokens"
+    if bias1 is not None:
+        op.input.append(bias1.tensor)
+        op.input_desc.add().CopyFrom(bias1.desc)
+        op.input_desc[-1].name = "bias1"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "bias1"
+    if bias2 is not None:
+        op.input.append(bias2.tensor)
+        op.input_desc.add().CopyFrom(bias2.desc)
+        op.input_desc[-1].name = "bias2"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "bias2"
+    if scale is not None:
+        op.input.append(scale.tensor)
+        op.input_desc.add().CopyFrom(scale.desc)
+        op.input_desc[-1].name = "scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "scale"
+    if offset is not None:
+        op.input.append(offset.tensor)
+        op.input_desc.add().CopyFrom(offset.desc)
+        op.input_desc[-1].name = "offset"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "offset"
+    if deq_scale1 is not None:
+        op.input.append(deq_scale1.tensor)
+        op.input_desc.add().CopyFrom(deq_scale1.desc)
+        op.input_desc[-1].name = "deq_scale1"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "deq_scale1"
+    if deq_scale2 is not None:
+        op.input.append(deq_scale2.tensor)
+        op.input_desc.add().CopyFrom(deq_scale2.desc)
+        op.input_desc[-1].name = "deq_scale2"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "deq_scale2"
+
+    # process attrs
+    op.attr["activation"].s = compat_as_bytes(activation)
+    op.attr["inner_precise"].i = inner_precise
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+
+
+    return y
