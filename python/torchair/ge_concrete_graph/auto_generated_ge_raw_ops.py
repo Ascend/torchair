@@ -48786,6 +48786,76 @@ def GroupNorm(x: Tensor,
     return y, mean, variance
 
 
+# This api is auto-generated from IR GroupNormSilu
+@auto_convert_to_tensor([False, False, False], [False, True, True])
+def GroupNormSilu(x: Tensor,
+                  gamma: Optional[Tensor],
+                  beta: Optional[Tensor],
+                  *,
+                  num_groups: int,
+                  eps: float = 0.000100,
+                  dependencies=[],
+                  node_name=None):
+    """REG_OP(GroupNormSilu)\n
+.INPUT(x, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))\n
+.OPTIONAL_INPUT(gamma, TensorType({DT_BF16,DT_FLOAT16, DT_FLOAT}))\n
+.OPTIONAL_INPUT(beta, TensorType({DT_BF16,DT_FLOAT16, DT_FLOAT}))\n
+.OUTPUT(y, TensorType({DT_BF16,DT_FLOAT16, DT_FLOAT}))\n
+.OUTPUT(mean, TensorType({DT_BF16,DT_FLOAT16, DT_FLOAT}))\n
+.OUTPUT(rstd, TensorType({DT_BF16,DT_FLOAT16, DT_FLOAT}))\n
+.REQUIRED_ATTR(num_groups, Int)\n
+.ATTR(eps, Float, 0.0001)\n
+"""
+
+    op = get_default_ge_graph().op.add()
+    op.type = "GroupNormSilu"
+    op.name = next_unique_name(node_name, "GroupNormSilu")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+    if gamma is not None:
+        op.input.append(gamma.tensor)
+        op.input_desc.add().CopyFrom(gamma.desc)
+        op.input_desc[-1].name = "gamma"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "gamma"
+    if beta is not None:
+        op.input.append(beta.tensor)
+        op.input_desc.add().CopyFrom(beta.desc)
+        op.input_desc[-1].name = "beta"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "beta"
+
+    # process attrs
+    op.attr["num_groups"].i = num_groups
+    op.attr["eps"].f = eps
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "mean"
+    mean = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "rstd"
+    rstd = Tensor(op, output_index)
+    output_index += 1
+
+    
+    return y, mean, rstd
+
+
 # This api is auto-generated from IR InstanceNormV2
 @auto_convert_to_tensor([False, False, False, False, False],
                         [False, True, True, True, True])

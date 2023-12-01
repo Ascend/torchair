@@ -1307,6 +1307,45 @@ REG_OP(GroupNorm)
     .OP_END_FACTORY_REG(GroupNorm)
 
 /**
+* @brief Performs group normalization . \n
+
+* @par Inputs:
+* Three inputs
+* @li x: A ND Tensor of type bfloat16、float16 or float32, with format NCHW for 4D.
+* @li gamma: A Tensor of type bfloat16、float16 or float32. Must be 1D. Specifies the scaling factor.
+* @li beta: A Tensor of type bfloat16、float16 or float32. Must be 1D. Specifies the offset. \n
+
+* @par Attributes:
+* @li num_groups: An required int32, specifying the number of group.
+* @li eps: An optional float32, specifying the small value added to
+variance to avoid dividing by zero. Defaults to "0.0001".\n
+
+* @par Outputs:
+* Three outputs
+* @li y: A ND Tensor of type bfloat16、float16 or float32 for the normalized "x",
+with format NCHW for 4D.
+* @li mean: A Tensor of type bfloat16、float16 or float32. Must be 1D. Specifies the mean of "x".
+* @li variance: A Tensor of type bfloat16、float16 or float32. Must be 1D. Specifies the variance of "x". \n
+
+* @attention Constraints:
+* @li For Ascend 310, only support NCHW which can be trans to 5HD. \n
+
+* @par Third-party framework compatibility
+* @li Compatible with the PyTorch operator GroupNormSilu.
+
+*/
+REG_OP(GroupNormSilu)
+    .INPUT(x, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))
+    .OPTIONAL_INPUT(gamma, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))
+    .OPTIONAL_INPUT(beta, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(y, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(mean, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(variance, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))
+    .REQUIRED_ATTR(num_groups, Int)
+    .ATTR(eps, Float, 0.0001)
+    .OP_END_FACTORY_REG(GroupNormSilu)
+
+/**
 *@brief Performs instance normalization . \n
 
 *@par Inputs:
