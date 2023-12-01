@@ -22,9 +22,31 @@ from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, torch_type_to_ge_type
 from torchair.ge_concrete_graph.utils import dtype_promote
-from torchair.ge_concrete_graph.supported_declaration import F32, F16, Support
+from torchair.ge_concrete_graph.supported_declaration import F32, F16, I32, U8, Support
 
 
+@declare_supported(
+    [
+        Support([F16(4, 4096, 256), 
+                 F16(4, 4096, 256), 
+                 F16(4, 4096, 256), 
+                 F16(4, 4096, 256), 
+                 F16(4, 4096, 256), 
+                 F16(4, 4096, 256), 
+                 F16(4, 4096, 256), 
+                 F16(4, 4096, 256)], I32(8), F16(8, 4, 1, 256), U8(8),
+            reduce="update", axis=-2),
+        Support([F32(4, 4096, 256), 
+                 F32(4, 4096, 256), 
+                 F32(4, 4096, 256), 
+                 F32(4, 4096, 256), 
+                 F32(4, 4096, 256), 
+                 F32(4, 4096, 256), 
+                 F32(4, 4096, 256), 
+                 F32(4, 4096, 256)], I32(8), F32(8, 4, 1, 256), U8(8),
+            reduce="update", axis=-2),
+    ]
+)
 @register_fx_node_ge_converter(torch.ops.npu.npu_scatter_list.default)
 def conveter_npu_npu_scatter_list_default(var: List[Tensor], indice: Tensor, updates: Tensor,
     mask: Optional[Tensor], reduce: str = 'update', axis: int = -2, meta_outputs: TensorSpec = None):
