@@ -47816,6 +47816,53 @@ def LayerNormV3(x: Tensor,
     return y, mean, rstd
 
 
+# This api is auto-generated from IR RmsNorm
+@auto_convert_to_tensor([False, False], [False, False])
+def RmsNorm(x: Tensor,
+            gamma: Tensor,
+            *,
+            epsilon: float = 0.000001,
+            dependencies=[],
+            node_name=None):
+    """REG_OP(RmsNorm)\n
+.INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+.INPUT(gamma, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+.OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+.OUTPUT(rstd, TensorType({DT_FLOAT, DT_FLOAT, DT_FLOAT}))\n
+.ATTR(epsilon, Float, 1e-6)\n
+"""
+
+    op = get_default_ge_graph().op.add()
+    op.type = "RmsNorm"
+    op.name = next_unique_name(node_name, "RmsNorm")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+    op.input.append(gamma.tensor)
+    op.input_desc.add().CopyFrom(gamma.desc)
+    op.input_desc[-1].name = "gamma"
+
+    # process attrs
+    op.attr["epsilon"].f = epsilon
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "rstd"
+    rstd = Tensor(op, output_index)
+    output_index += 1
+
+    return y, rstd
+
+
 # This api is auto-generated from IR Renorm
 @auto_convert_to_tensor([False], [False])
 def Renorm(x: Tensor,
