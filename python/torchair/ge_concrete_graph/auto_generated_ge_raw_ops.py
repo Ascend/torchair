@@ -20268,8 +20268,9 @@ def _ScatterList(var: List[Tensor],
 
 
 # This api is auto-generated from IR IncreFlashAttention
-@auto_convert_to_tensor([False, True, True, False, False, False, False, False, False, False, False],
-                        [False, False, False, True, True, True, True, True, True, True, True])
+@auto_convert_to_tensor(
+    [False, True, True, False, False, False, False, False, False, False, False, False, False, False],
+    [False, False, False, True, True, True, True, True, True, True, True, True, True, True])
 def IncreFlashAttention(query: Tensor,
                         key: List[Tensor],
                         value: List[Tensor],
@@ -20281,30 +20282,40 @@ def IncreFlashAttention(query: Tensor,
                         dequant_scale2: Optional[Tensor],
                         quant_scale2: Optional[Tensor],
                         quant_offset2: Optional[Tensor],
+                        antiquant_scale: Optional[Tensor],
+                        antiquant_offset: Optional[Tensor],
+                        block_table: Optional[Tensor],
                         *,
                         num_heads: int,
                         scale_value: float = 1.000000,
                         input_layout: str = "BSH",
                         num_key_value_heads: int = 1,
+                        block_size: int = 0,
+                        inner_precise: int = 1,
                         dependencies=[],
                         node_name=None):
     """REG_OP(IncreFlashAttention)\n
-.INPUT(query, TensorType({DT_FLOAT16, DT_FLOAT32, DT_INT8}))\n
-.DYNAMIC_INPUT(key, TensorType({DT_FLOAT16, DT_FLOAT32, DT_INT8}))\n
-.DYNAMIC_INPUT(value, TensorType({DT_FLOAT16, DT_FLOAT32, DT_INT8}))\n
+.INPUT(query, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8}))\n
+.DYNAMIC_INPUT(key, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8}))\n
+.DYNAMIC_INPUT(value, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8}))\n
 .OPTIONAL_INPUT(padding_mask, TensorType({DT_FLOAT16, DT_FLOAT32}))\n
-.OPTIONAL_INPUT(atten_mask, TensorType({DT_FLOAT16, DT_FLOAT32}))\n
+.OPTIONAL_INPUT(atten_mask, TensorType({DT_FLOAT16, DT_BOOL, DT_FLOAT32}))\n
 .OPTIONAL_INPUT(actual_seq_lengths, TensorType({DT_INT64}))\n
 .OPTIONAL_INPUT(dequant_scale1, TensorType({DT_UINT64}))\n
 .OPTIONAL_INPUT(quant_scale1, TensorType({DT_FLOAT}))\n
 .OPTIONAL_INPUT(dequant_scale2, TensorType({DT_UINT64}))\n
 .OPTIONAL_INPUT(quant_scale2, TensorType({DT_FLOAT}))\n
 .OPTIONAL_INPUT(quant_offset2, TensorType({DT_FLOAT}))\n
-.OUTPUT(attention_out, TensorType({DT_FLOAT16, DT_FLOAT32, DT_INT8}))\n
+.OPTIONAL_INPUT(antiquant_scale, TensorType({DT_FLOAT16}))\n
+.OPTIONAL_INPUT(antiquant_offset, TensorType({DT_FLOAT16}))\n
+.OPTIONAL_INPUT(block_table, TensorType({DT_INT32}))\n
+.OUTPUT(attention_out, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8}))\n
 .REQUIRED_ATTR(num_heads, Int)\n
 .ATTR(scale_value, Float, 1.0)\n
 .ATTR(input_layout, String, "BSH")\n
 .ATTR(num_key_value_heads, Int, 1)\n
+.ATTR(block_size, Int, 0)\n
+.ATTR(inner_precise, Int, 1)\n
 """
 
     op = get_default_ge_graph().op.add()
@@ -20393,12 +20404,38 @@ def IncreFlashAttention(query: Tensor,
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "quant_offset2"
+    if antiquant_scale is not None:
+        op.input.append(antiquant_scale.tensor)
+        op.input_desc.add().CopyFrom(antiquant_scale.desc)
+        op.input_desc[-1].name = "antiquant_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "antiquant_scale"
+    if antiquant_offset is not None:
+        op.input.append(antiquant_offset.tensor)
+        op.input_desc.add().CopyFrom(antiquant_offset.desc)
+        op.input_desc[-1].name = "antiquant_offset"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "antiquant_offset"
+    if block_table is not None:
+        op.input.append(block_table.tensor)
+        op.input_desc.add().CopyFrom(block_table.desc)
+        op.input_desc[-1].name = "block_table"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "block_table"
 
     # process attrs
     op.attr["num_heads"].i = num_heads
     op.attr["scale_value"].f = scale_value
     op.attr["input_layout"].s = compat_as_bytes(input_layout)
     op.attr["num_key_value_heads"].i = num_key_value_heads
+    op.attr["block_size"].i = block_size
+    op.attr["inner_precise"].i = inner_precise
 
     # process outputs
     output_index = 0
