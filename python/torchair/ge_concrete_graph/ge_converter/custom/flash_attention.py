@@ -93,10 +93,15 @@ def convert_npu_npu_incre_flash_attention(
     padding_mask: Optional[Tensor] = None,
     atten_mask: Optional[Tensor] = None,
     actual_seq_lengths: Optional[Union[List[int], Tensor]] = None,
+    antiquant_scale: Optional[Tensor] = None,
+    antiquant_offset: Optional[Tensor] = None,
+    block_table: Optional[Tensor] = None,
     num_heads: int = 1,
     scale_value: float = 1.0,
     input_layout: str = "BSH",
     num_key_value_heads: int = 0,
+    block_size: int = 0,
+    inner_precise: int = 1,
     meta_outputs: TensorSpec = None,
 ):
 
@@ -108,6 +113,6 @@ def convert_npu_npu_incre_flash_attention(
 
     return ge.IncreFlashAttention(query, key_list, value_list, padding_mask=padding_mask, atten_mask=atten_mask,
         actual_seq_lengths=actual_seq_lengths, dequant_scale1=None, quant_scale1=None, dequant_scale2=None,
-        quant_scale2=None, quant_offset2=None, antiquant_scale=None, antiquant_offset=None,
-        block_table=None, num_heads=num_heads, scale_value=scale_value, input_layout=input_layout,
-        num_key_value_heads=num_key_value_heads, block_size=0, inner_precise=1)
+        quant_scale2=None, quant_offset2=None, antiquant_scale=antiquant_scale, antiquant_offset=antiquant_offset,
+        block_table=block_table, num_heads=num_heads, scale_value=scale_value, input_layout=input_layout,
+        num_key_value_heads=num_key_value_heads, block_size=block_size, inner_precise=inner_precise)
