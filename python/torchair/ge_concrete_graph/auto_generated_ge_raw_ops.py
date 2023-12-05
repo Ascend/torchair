@@ -20448,14 +20448,20 @@ def IncreFlashAttention(query: Tensor,
 
 
 # This api is auto-generated from IR PromptFlashAttention
-@auto_convert_to_tensor([False, False, False, False, False, False],
-                        [False, False, False, True, True, True])
+@auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False, False, False],
+                        [False, False, False, True, True, True, True, True, True, True, True, True])
 def PromptFlashAttention(query: Tensor,
                          key: Tensor,
                          value: Tensor,
                          padding_mask: Optional[Tensor],
                          atten_mask: Optional[Tensor],
                          actual_seq_lengths: Optional[Tensor],
+                         actual_seq_lengths_kv: Optional[Tensor],
+                         deq_scale1: Optional[Tensor],
+                         quant_scale1: Optional[Tensor],
+                         deq_scale2: Optional[Tensor],
+                         quant_scale2: Optional[Tensor],
+                         quant_offset2: Optional[Tensor],
                          *,
                          num_heads: int,
                          scale_value: float = 1.000000,
@@ -20463,22 +20469,31 @@ def PromptFlashAttention(query: Tensor,
                          next_tokens: int = 0,
                          input_layout: str = "BSH",
                          num_key_value_heads: int = 1,
+                         sparse_mode: int = 0,
                          dependencies=[],
                          node_name=None):
     """REG_OP(PromptFlashAttention)\n
-.INPUT(query, TensorType({DT_FLOAT16, DT_FLOAT32}))\n
-.INPUT(key, TensorType({DT_FLOAT16, DT_FLOAT32}))\n
-.INPUT(value, TensorType({DT_FLOAT16, DT_FLOAT32}))\n
-.OPTIONAL_INPUT(padding_mask, TensorType({DT_FLOAT16, DT_FLOAT32}))\n
-.OPTIONAL_INPUT(atten_mask, TensorType({DT_FLOAT16, DT_FLOAT32}))\n
-.OPTIONAL_INPUT(actual_seq_lengths, TensorType({DT_INT64}))\n
-.OUTPUT(attention_out, TensorType({DT_FLOAT16, DT_FLOAT32}))\n
-.REQUIRED_ATTR(num_heads, Int)\n
-.ATTR(scale_value, Float, 1.0)\n
-.ATTR(pre_tokens, Int, 214748647)\n
-.ATTR(next_tokens, Int, 0)\n
-.ATTR(input_layout, String, "BSH")\n
-.ATTR(num_key_value_heads, Int, 1)\n
+    .INPUT(query, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16, DT_INT8, DT_INT8}))\n
+    .INPUT(key, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16, DT_INT8, DT_INT8}))\n
+    .INPUT(value, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16, DT_INT8, DT_INT8}))\n
+    .OPTIONAL_INPUT(padding_mask, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16, DT_FLOAT16, DT_FLOAT16}))\n
+    .OPTIONAL_INPUT(atten_mask, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BOOL, DT_BOOL, DT_BOOL}))\n
+    .OPTIONAL_INPUT(actual_seq_lengths, TensorType({DT_INT64}))\n
+    .OPTIONAL_INPUT(actual_seq_lengths_kv, TensorType({DT_INT64}))\n
+    .OPTIONAL_INPUT(deq_scale1, TensorType({DT_UINT64}))\n
+    .OPTIONAL_INPUT(quant_scale1, TensorType({DT_FLOAT32}))\n
+    .OPTIONAL_INPUT(deq_scale2, TensorType({DT_UINT64}))\n
+    .OPTIONAL_INPUT(quant_scale2, TensorType({DT_FLOAT32}))\n
+    .OPTIONAL_INPUT(quant_offset2, TensorType({DT_FLOAT32}))\n
+    .OUTPUT(attention_out, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16, DT_FLOAT16, DT_INT8}))\n
+    .REQUIRED_ATTR(num_heads, Int)\n
+    .ATTR(scale_value, Float, 1.0)\n
+    .ATTR(pre_tokens, Int, 214748647)\n
+    .ATTR(next_tokens, Int, 0)\n
+    .ATTR(input_layout, String, "BSH")\n
+    .ATTR(num_key_value_heads, Int, 0)\n
+    .ATTR(sparse_mode, Int, 0)\n
+    .OP_END_FACTORY_REG(PromptFlashAttention)\n
 """
 
     op = get_default_ge_graph().op.add()
@@ -20523,6 +20538,54 @@ def PromptFlashAttention(query: Tensor,
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "actual_seq_lengths"
+    if actual_seq_lengths_kv is not None:
+        op.input.append(actual_seq_lengths_kv.tensor)
+        op.input_desc.add().CopyFrom(actual_seq_lengths_kv.desc)
+        op.input_desc[-1].name = "actual_seq_lengths_kv"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "actual_seq_lengths_kv"
+    if deq_scale1 is not None:
+        op.input.append(deq_scale1.tensor)
+        op.input_desc.add().CopyFrom(deq_scale1.desc)
+        op.input_desc[-1].name = "deq_scale1"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "deq_scale1"
+    if quant_scale1 is not None:
+        op.input.append(quant_scale1.tensor)
+        op.input_desc.add().CopyFrom(quant_scale1.desc)
+        op.input_desc[-1].name = "quant_scale1"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "quant_scale1"
+    if deq_scale2 is not None:
+        op.input.append(deq_scale2.tensor)
+        op.input_desc.add().CopyFrom(deq_scale2.desc)
+        op.input_desc[-1].name = "deq_scale2"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "deq_scale2"
+    if quant_scale2 is not None:
+        op.input.append(quant_scale2.tensor)
+        op.input_desc.add().CopyFrom(quant_scale2.desc)
+        op.input_desc[-1].name = "quant_scale2"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "quant_scale2"
+    if quant_offset2 is not None:
+        op.input.append(quant_offset2.tensor)
+        op.input_desc.add().CopyFrom(quant_offset2.desc)
+        op.input_desc[-1].name = "quant_offset2"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "quant_offset2"
 
     # process attrs
     op.attr["num_heads"].i = num_heads
@@ -20531,6 +20594,7 @@ def PromptFlashAttention(query: Tensor,
     op.attr["next_tokens"].i = next_tokens
     op.attr["input_layout"].s = compat_as_bytes(input_layout)
     op.attr["num_key_value_heads"].i = num_key_value_heads
+    op.attr["sparse_mode"].i = sparse_mode
 
     # process outputs
     output_index = 0

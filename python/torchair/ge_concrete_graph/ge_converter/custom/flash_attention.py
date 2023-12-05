@@ -52,17 +52,23 @@ def convert_npu_npu_prompt_flash_attention(
     next_tokens: int = 0,
     input_layout: str = "BSH",
     num_key_value_heads: int = 0,
+    actual_seq_lengths_kv: Optional[Union[List[int], Tensor]] = None,
+    sparse_mode: int = 0,
     meta_outputs: TensorSpec = None,
 ):
 
-    '''NB: npu::npu_prompt_flash_attention(Tensor query, Tensor key, Tensor value, *, Tensor? padding_mask=None, Tensor? atten_mask=None, int[]? actual_seq_lengths=None, int num_heads=1, float scale_value=1.0, int pre_tokens=2147473647, int next_tokens=0, str input_layout="BSH", int num_key_value_heads=0) -> Tensor'''
+    '''NB: npu::npu_prompt_flash_attention(Tensor query, Tensor key, Tensor value, *, Tensor? padding_mask=None, Tensor? atten_mask=None, int[]? actual_seq_lengths=None, int num_heads=1, float scale_value=1.0, int pre_tokens=2147473647, int next_tokens=0, str input_layout="BSH", int num_key_value_heads=0, int[]? actual_seq_lengths_kv=None, int sparse_mode=0) -> Tensor'''
     if actual_seq_lengths is not None and isinstance(actual_seq_lengths, Tensor):
         raise NotImplementedError("PromptFlashAttention is not implemented while actual_seq_lengths is Tensor!")
+    if actual_seq_lengths_kv is not None and isinstance(actual_seq_lengths_kv, Tensor):
+        raise NotImplementedError("PromptFlashAttention is not implemented while actual_seq_lengths_kv is Tensor!")
 
     return ge.PromptFlashAttention(query, key, value, padding_mask=padding_mask, atten_mask=atten_mask,
-        actual_seq_lengths=actual_seq_lengths, num_heads=num_heads, scale_value=scale_value,
+        actual_seq_lengths=actual_seq_lengths, actual_seq_lengths_kv=actual_seq_lengths_kv,
+        deq_scale1=None, quant_scale1=None, deq_scale2=None, quant_scale2=None, quant_offset2=None,
+        num_heads=num_heads, scale_value=scale_value,
         pre_tokens=pre_tokens, next_tokens=next_tokens, input_layout=input_layout,
-        num_key_value_heads=num_key_value_heads)
+        num_key_value_heads=num_key_value_heads, sparse_mode=sparse_mode)
 
 
 @declare_supported(
