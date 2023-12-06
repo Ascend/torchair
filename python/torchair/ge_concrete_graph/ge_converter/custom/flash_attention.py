@@ -105,9 +105,7 @@ def convert_npu_npu_incre_flash_attention(
     meta_outputs: TensorSpec = None,
 ):
 
-    '''NB: npu::npu_incre_flash_attention(Tensor query, Tensor key, Tensor value, *, Tensor? padding_mask=None, Tensor? atten_mask=None, int[]? actual_seq_lengths=None, int num_heads=1, float scale_value=1.0, str input_layout="BSH", int num_key_value_heads=0) -> Tensor'''
-    if actual_seq_lengths is not None and isinstance(actual_seq_lengths, Tensor):
-        raise NotImplementedError("IncreFlashAttention is not implemented while actual_seq_lengths is Tensor!")
+    '''NB: npu_incre_flash_attention(Tensor query, Tensor key, Tensor value, *, Tensor? padding_mask=None, Tensor? atten_mask=None, SymInt[]? actual_seq_lengths=None, Tensor? antiquant_scale=None, Tensor? antiquant_offset=None, Tensor? block_table=None, int num_heads=1, float scale_value=1.0, str input_layout="BSH", int num_key_value_heads=0, int block_size=0, int inner_precise=1) -> Tensor'''
     key_list = [key]
     value_list = [value]
 
