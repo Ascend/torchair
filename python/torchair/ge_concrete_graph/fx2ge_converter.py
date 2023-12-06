@@ -423,12 +423,11 @@ class GeConcreteGraph(ConcreteGraphBase):
 
     def compile(self) -> Any:
         local_compile_options, global_compile_options = self.config.as_dict()
+        global_compile_options["ge.exec.staticMemoryPolicy"] = "2"
         local_compile_options["ge.exec.formatMode"] = "1"
 
-        self.graph.attr["_input_placements"].list.i.extend(
-            self._input_placements)
-        self.graph.attr["_output_dtypes"].list.i.extend(
-            [output.dtype for output in self.outputs])
+        self.graph.attr["_input_placements"].list.i.extend(self._input_placements)
+        self.graph.attr["_output_dtypes"].list.i.extend([output.dtype for output in self.outputs])
         self.graph.attr["_executor_type"].i = _get_executor_type()
 
         self._complement_graph_attr()
@@ -452,8 +451,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         for k, v in global_compile_options.items():
             logger.info(f"  {k}: {v}")
 
-        self._executor.load(self.graph.SerializeToString(),
-                            local_compile_options)
+        self._executor.load(self.graph.SerializeToString(), local_compile_options)
         self._executor.compile()
 
     def export(self, inputs) -> Any:

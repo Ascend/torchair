@@ -28,8 +28,6 @@ tng::Status NormalizeCompileOptions(const std::map<ge::AscendString, ge::AscendS
 
   // Use separate memory cleaning for atomic nodes to better reuse memory.
   // (void)normalized_options.insert(std::make_pair(ge::ATOMIC_CLEAN_POLICY.c_str(), "1"));
-  // This static memory policy will be replaced by allocator memory pool of torchair for better memory reuse.
-  (void)normalized_options.insert(std::make_pair(ge::STATIC_MEMORY_POLICY.c_str(), "2"));
 
   (void)normalized_options.insert(std::make_pair(ge::MEMORY_OPTIMIZATION_POLICY.c_str(), "MemoryPriority"));
 

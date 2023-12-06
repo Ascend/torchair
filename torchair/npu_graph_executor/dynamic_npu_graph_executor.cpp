@@ -106,18 +106,25 @@ Status DynamicNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
     }
   }
 
-  TNG_RETURN_IF_ERROR(Session::GetInstance().RunGraph(graph_data_->id, inputs_holder_, ge_outputs, stream));
+  {
+    RECORD_FUNCTION("RunGraphWithStreamAsync", {});
+    TNG_RETURN_IF_ERROR(Session::GetInstance().RunGraph(graph_data_->id, inputs_holder_, ge_outputs, stream));
+  }
+
   outputs.resize(ge_outputs.size());
-  for (size_t i = 0U; i < ge_outputs.size(); ++i) {
-    if (!assigned_outputs.empty() && assigned_outputs[i].has_value()) {
-      outputs[i] = assigned_outputs[i].value();
-      TNG_LOG(DEBUG) << "Assemble assigned torch output " << i << " " << DebugString(outputs[i]) << "(ge output is "
-                     << DebugString(ge_outputs[i]) << ")";
-      continue;
+  {
+    RECORD_FUNCTION("RefreshAtTensorFromGeTensor", {});
+    for (size_t i = 0U; i < ge_outputs.size(); ++i) {
+      if (!assigned_outputs.empty() && assigned_outputs[i].has_value()) {
+        outputs[i] = assigned_outputs[i].value();
+        TNG_LOG(DEBUG) << "Assemble assigned torch output " << i << " " << DebugString(outputs[i]) << "(ge output is "
+                       << DebugString(ge_outputs[i]) << ")";
+        continue;
+      }
+      TNG_RETURN_IF_ERROR(GeTensorToAtTensor(ge_outputs[i], outputs[i]));
+      TNG_LOG(DEBUG) << "Assemble ge output " << i << " " << DebugString(ge_outputs[i]) << " to torch output "
+                     << DebugString(outputs[i]);
     }
-    TNG_RETURN_IF_ERROR(GeTensorToAtTensor(ge_outputs[i], outputs[i]));
-    TNG_LOG(DEBUG) << "Assemble ge output " << i << " " << DebugString(ge_outputs[i]) << " to torch output "
-                   << DebugString(outputs[i]);
   }
 
   retain_tmp_device_inputs.clear();
