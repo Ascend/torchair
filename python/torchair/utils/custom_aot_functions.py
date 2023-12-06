@@ -4,8 +4,13 @@ import itertools
 import torch
 from torch import nn
 import torch.utils._pytree as pytree
-from torch._functorch.aot_autograd import aot_export_module, call_func_with_args, \
+from torch._functorch.aot_autograd import aot_export_module, \
     make_boxed_func, _graph_output_names
+
+try:
+    from torch._functorch.aot_autograd import call_func_with_args
+except ImportError:
+    from torch._functorch._aot_autograd.utils import call_func_at_runtime_with_args as call_func_with_args
 
 
 def aot_module_simplified_joint(
