@@ -23,9 +23,13 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
 from torchair.ge_concrete_graph.utils import dtype_promote
+try:
+    from torch import sym_sqrt
+except ImportError:
+    from torch.fx.experimental.symbolic_shapes import sym_sqrt
 
 
-@register_fx_node_ge_converter(torch.fx.experimental.symbolic_shapes.sym_sqrt)
+@register_fx_node_ge_converter(sym_sqrt)
 def conveter_sym_sqrt(
         self: Union[Number, Tensor],
         meta_outputs: TensorSpec = None
