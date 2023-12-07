@@ -50,6 +50,7 @@
 #include "experiment_ops.h"
 #include "fft.h"
 #include "functional_ops.h"
+#include "fusion_ops.h"
 #include "get_data_ops.h"
 #include "hcom_ops.h"
 #include "hpc.h"
