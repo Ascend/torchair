@@ -230,6 +230,10 @@ Status AssembleDataToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor) {
 }
 
 Status AssembleShapeToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor) {
+  const auto &as_ge_tensor = ge::TensorAdapter::AsGeTensor(ge_tensor);
+  if (tensor.sizes() == as_ge_tensor.GetTensorDesc().GetShape().GetDims()) {
+    return Status::Success();
+  }
   auto desc = ge_tensor.GetTensorDesc();
   desc.SetShape(ge::Shape(tensor.sizes().vec()));
   TNG_ASSERT_GE_OK(ge_tensor.SetTensorDesc(desc));
