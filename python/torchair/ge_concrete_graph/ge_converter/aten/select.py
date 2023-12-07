@@ -38,6 +38,7 @@ def conveter_aten_select_Dimname(
     [
         Support(F32(3, 4), dim=0, index=0),
         Support(F16(3, 4, 5), dim=1, index=2),
+        Support(F16(3, 4, 5), dim=1, index=-1)
     ]
 )
 @register_fx_node_ge_converter(torch.ops.aten.select.int)
@@ -46,4 +47,4 @@ def conveter_aten_select_int(
 ):
     """NB: aten::select.int(Tensor(a) self, int dim, SymInt index) -> Tensor(a)"""
 
-    return ge.GatherV2(self, index, [dim])
+    return ge.GatherV2(self, index, [dim], negative_index_support=True)
