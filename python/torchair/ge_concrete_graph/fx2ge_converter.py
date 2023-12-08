@@ -424,7 +424,6 @@ class GeConcreteGraph(ConcreteGraphBase):
     def compile(self) -> Any:
         local_compile_options, global_compile_options = self.config.as_dict()
         global_compile_options["ge.exec.staticMemoryPolicy"] = "2"
-        local_compile_options["ge.exec.formatMode"] = "1"
 
         self.graph.attr["_input_placements"].list.i.extend(self._input_placements)
         self.graph.attr["_output_dtypes"].list.i.extend([output.dtype for output in self.outputs])
