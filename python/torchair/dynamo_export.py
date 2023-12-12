@@ -55,6 +55,7 @@ def dynamo_export(*args, model: torch.nn.Module, export_path: str = "export_file
         + f'dynamic: {dynamic}, auto_atc_config_generated: {auto_atc_config_generated}')
     config = _get_export_config(model, export_path, export_name, auto_atc_config_generated, **kwargs)
 
+    config.experimental_config.keep_inference_input_mutations = False
     torch._dynamo.reset()
     model = torch.compile(model,
                           backend=get_npu_backend(compiler_config=config),
