@@ -350,7 +350,7 @@ class _GraphRngState:
         self._gen.set_offset(offset + self._offset_count)
         return self._feed_index, torch.tensor(self._offset_lists) + offset
 
-    def next(self, philox_num):
+    def next(self, philox_num: int = -1):
         self._unpack_offset.output_desc.add().name = "y" + str(self._consumed)
         offset = Tensor(self._unpack_offset, self._consumed)
         self._consumed += 1
@@ -430,7 +430,7 @@ class GeGraph(object):
     def generator_rng_state(self):
         return self._generator_rng_state
 
-    def rng_state(self, philox_num, gen: torch.Generator = None):
+    def rng_state(self, philox_num: int = -1, gen: torch.Generator = None):
         _graph_rng_state = self._generator_rng_state[gen]
         return _graph_rng_state.next(philox_num)
 
@@ -598,7 +598,7 @@ class Tensor:
         return f'Tensor({self.tensor}, dtype={_ge_proto_dtype_str(self.desc.dtype)}, size={self._symsize})'
 
 
-def get_ge_rng_state(philox_num, gen: torch.Generator = None) -> Tuple[int, Tensor]:
+def get_ge_rng_state(philox_num: int = -1, gen: torch.Generator = None) -> Tuple[int, Tensor]:
     return get_default_ge_graph().rng_state(philox_num, gen)
 
 

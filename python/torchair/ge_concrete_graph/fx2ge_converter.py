@@ -267,7 +267,7 @@ class GeConcreteGraph(ConcreteGraphBase):
             self._inputs_processing = self._make_inputs_processing_func(*args)
         inputs = self._inputs_processing(*args)
 
-        self._consume_data_into_inputs(inputs)
+        inputs = self._consume_data_into_inputs(inputs)
 
         if self.config.export_config.export_mode:
             self.export(inputs)
@@ -504,12 +504,15 @@ class GeConcreteGraph(ConcreteGraphBase):
         num_inputs = self.graph.num_inputs()
         diff = num_inputs - len(inputs)
         if diff > 0:
+            istuple = isinstance(inputs, tuple)
             inputs = list(inputs)
             inputs.extend([None for _ in range(diff)])
             for gen in self.graph.generator_rng_state:
                 rng_state = self.graph.get_graph_rng_state(gen)
                 idx, offset = rng_state.consume()
                 inputs[idx] = offset
+            inputs = tuple(inputs) if istuple else inputs
+        return inputs
 
     def _make_inputs_processing_func(self, *args: Any):
         uncontiguous_ge_input_idx = []
