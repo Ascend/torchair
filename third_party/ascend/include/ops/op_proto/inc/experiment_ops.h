@@ -3233,6 +3233,10 @@ REG_OP(RoiAlignRotatedGrad)
 * @li offset: A matrix Tensor. The type support float32.
 * @li deq_scale1: A matrix Tensor. The type support uint64.
 * @li deq_scale2: A matrix Tensor. The type support uint64.
+* @li antiquant_scale1: A matrix Tensor. The type support float16.
+* @li antiquant_scale2: A matrix Tensor. The type support float16.
+* @li antiquant_offset1: A matrix Tensor. The type support float16.
+* @li antiquant_offset2: A matrix Tensor. The type support float16.
 
 * @par Attributes:
 * @li activation: A string. The type of activation.
@@ -3252,6 +3256,10 @@ REG_OP(FFN)
     .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))
     .OPTIONAL_INPUT(deq_scale1, TensorType({DT_UINT64}))
     .OPTIONAL_INPUT(deq_scale2, TensorType({DT_UINT64}))
+    .OPTIONAL_INPUT(antiquant_scale1, TensorType({DT_FLOAT16}))
+    .OPTIONAL_INPUT(antiquant_scale2, TensorType({DT_FLOAT16}))
+    .OPTIONAL_INPUT(antiquant_offset1, TensorType({DT_FLOAT16}))
+    .OPTIONAL_INPUT(antiquant_offset2, TensorType({DT_FLOAT16}))
     .OUTPUT(y, TensorType({DT_FLOAT16}))
     .REQUIRED_ATTR(activation, String)
     .ATTR(inner_precise, Int, 0)

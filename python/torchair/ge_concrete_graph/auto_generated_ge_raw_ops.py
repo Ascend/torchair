@@ -84151,8 +84151,9 @@ def MaskedSoftmaxWithRelPosBias(x: Tensor, atten_mask: Optional[Tensor], relativ
 
 
 # This api is auto-generated from IR FFN
-@auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False],
-                        [False, False, False, True, True, True, True, True, True, True])
+@auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False,
+                         False, False, False, False],
+                        [False, False, False, True, True, True, True, True, True, True, True, True, True, True])
 def FFN(x: Tensor,
         weight1: Tensor,
         weight2: Tensor,
@@ -84163,6 +84164,10 @@ def FFN(x: Tensor,
         offset: Optional[Tensor],
         deq_scale1: Optional[Tensor],
         deq_scale2: Optional[Tensor],
+        antiquant_scale1: Optional[Tensor],
+        antiquant_scale2: Optional[Tensor],
+        antiquant_offset1: Optional[Tensor],
+        antiquant_offset2: Optional[Tensor],
         *,
         activation: str,
         inner_precise: int=0,
@@ -84179,6 +84184,10 @@ def FFN(x: Tensor,
     .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(deq_scale1, TensorType({DT_UINT64}))\n
     .OPTIONAL_INPUT(deq_scale2, TensorType({DT_UINT64}))\n
+    .OPTIONAL_INPUT(antiquant_scale1, TensorType({DT_FLOAT16}))\n
+    .OPTIONAL_INPUT(antiquant_scale2, TensorType({DT_FLOAT16}))\n
+    .OPTIONAL_INPUT(antiquant_offset1, TensorType({DT_FLOAT16}))\n
+    .OPTIONAL_INPUT(antiquant_offset2, TensorType({DT_FLOAT16}))\n
     .OUTPUT(y, TensorType({DT_FLOAT16}))\n
     .REQUIRED_ATTR(activation, String)\n
     .ATTR(inner_precise, Int, 0)\n
@@ -84258,6 +84267,38 @@ def FFN(x: Tensor,
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "deq_scale2"
+    if antiquant_scale1 is not None:
+        op.input.append(antiquant_scale1.tensor)
+        op.input_desc.add().CopyFrom(antiquant_scale1.desc)
+        op.input_desc[-1].name = "antiquant_scale1"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "antiquant_scale1"
+    if antiquant_scale2 is not None:
+        op.input.append(antiquant_scale2.tensor)
+        op.input_desc.add().CopyFrom(antiquant_scale2.desc)
+        op.input_desc[-1].name = "antiquant_scale2"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "antiquant_scale2"
+    if antiquant_offset1 is not None:
+        op.input.append(antiquant_offset1.tensor)
+        op.input_desc.add().CopyFrom(dantiquant_offset1eq_scale1.desc)
+        op.input_desc[-1].name = "antiquant_offset1"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "antiquant_offset1"
+    if antiquant_offset2 is not None:
+        op.input.append(antiquant_offset2.tensor)
+        op.input_desc.add().CopyFrom(antiquant_offset2.desc)
+        op.input_desc[-1].name = "antiquant_offset2"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "antiquant_offset2"
 
     # process attrs
     op.attr["activation"].s = compat_as_bytes(activation)
