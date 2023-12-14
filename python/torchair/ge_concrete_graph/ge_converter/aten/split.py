@@ -18,8 +18,11 @@ import torch
 from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
-from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType
+from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
+    Support
+from torchair.ge_concrete_graph.utils import dtype_promote
 
 
 @register_fx_node_ge_converter(torch.ops.aten.split.Tensor)
@@ -28,14 +31,20 @@ def conveter_aten_split_Tensor(
 ):
     """NB: aten::split.Tensor(Tensor(a -> *) self, SymInt split_size, int dim=0) -> Tensor(a)[]"""
     split_sizes = split_size
+    if dim > 2147483647:
+        dim = dtype_promote(dim, target_dtype=DataType.DT_INT64)
+    else:
+        dim = dtype_promote(dim, target_dtype=DataType.DT_INT32)
     if isinstance(split_sizes, int):
         split_sizes = [split_size for _ in range(len(meta_outputs))]
         split_sizes[-1] = -1
-        return ge.SplitV(self, split_sizes, dim, num_split=len(split_sizes))
+        split_sizes = dtype_promote(split_sizes, target_dtype=DataType.DT_INT64)
+        return ge.SplitV(self, split_sizes, dim, num_split=len(meta_outputs))
     elif isinstance(split_sizes, Tensor):
         tensors = [split_size for _ in range(len(meta_outputs))]
         split_sizes = ge.ConcatV2(tensors, concat_dim=0, N=len(meta_outputs))
         split_sizes = ge.ConcatV2([split_sizes, -1], concat_dim=0, N=2)
+        split_sizes = dtype_promote(split_sizes, target_dtype=DataType.DT_INT64)
         return ge.SplitV(self, split_sizes, dim, num_split=len(meta_outputs))
 
 
