@@ -7,3 +7,5 @@ coverage
 *.csv
 cmake-*
 .vscode
+__pycache__
+*.egg-info
