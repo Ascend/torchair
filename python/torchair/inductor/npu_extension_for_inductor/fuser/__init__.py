@@ -1,0 +1,1 @@
+from .stub import auto_fuse
