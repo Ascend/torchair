@@ -244,6 +244,10 @@ def _update_internal_format_from_inputs(graph: GraphDef, runtime_inputs):
         assert idx < len(input_index_mapping_graph_op), \
             f"GE graph input index {idx} out of Data ops index range {len(input_index_mapping_graph_op)}"
 
+        if not runtime_inputs[idx].is_npu:
+            logger.info(f'input_{idx} is not npu tensor, skip format updates.')
+            continue
+
         # attr "format_for_int" in proto::TensorDescriptor will be be deserialized as TensorDesc Format in ge.
         input_index_mapping_graph_op[idx].output_desc[0].attr["format_for_int"].i = \
             torch_npu_module.get_npu_format(runtime_inputs[idx])
