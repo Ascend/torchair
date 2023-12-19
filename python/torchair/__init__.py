@@ -7,7 +7,7 @@ from torchair.dynamo_export import dynamo_export
 from torchair.core.backend import stupid_repeat
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.ge_concrete_graph import ge_converter
-
+from torchair.experimental import inference as experimental_inference
 
 # Dependency library version verification
 protobuf_version = pkg_resources.get_distribution("protobuf").version

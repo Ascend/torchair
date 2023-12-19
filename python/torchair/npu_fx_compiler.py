@@ -340,9 +340,6 @@ class _NpuFxCompiler:
             if self.config.debug.graph_dump.enabled:
                 concrete_graph.dump(self.config.debug.graph_dump.full_path("dynamo"))
 
-            logger.info(f'start compile graph: {concrete_graph}')
-            concrete_graph.compile()
-            logger.info(f'end compile graph: {concrete_graph}')
 
         data_dumper = None
         if self.config.debug.data_dump.enabled:
