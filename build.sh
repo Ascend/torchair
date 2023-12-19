@@ -73,6 +73,18 @@ install_torchair() {
 }
 
 run_test() {
+  # Autofuse tests
+  local AUTOFUSE_TEST_PATH="${TORCHAIR_ROOT}/autofuse/build"
+  mkdir -pv "${AUTOFUSE_TEST_PATH}"
+  cd "${AUTOFUSE_TEST_PATH}"
+  cmake .. -DCMAKE_BUILD_TYPE=GCOV -DTORCHAIR_INSTALL_DST=${CMAKE_PATH}/${TYPE}/torchair -DPYTHON_BIN_PATH=${PYTHON_BIN_PATH}
+
+  export PYTHONPATH=${AUTOFUSE_TEST_PATH}/${TYPE}:${PYTHONPATH}
+  export LD_LIBRARY_PATH=${ASCEND_SDK_PATH}/lib:${LD_LIBRARY_PATH}
+  make -j${THREAD_NUM}
+  ctest --output-on-failure
+
+  # Torchair tests
   local TYPE="$1"
 
   local CMAKE_PATH="${TORCHAIR_ROOT}/tests/build"
