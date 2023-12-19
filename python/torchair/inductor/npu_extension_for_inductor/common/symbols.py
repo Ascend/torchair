@@ -12,6 +12,9 @@ class AscSymbol:
             return AscSymbol(self.s + other.s)
         return AscSymbol(self.s + [other])
 
+    def __rmul__(self, other):
+        return self * other
+
     def __pow__(self, power, modulo=None):
         return AscSymbol(self.s * power)
 

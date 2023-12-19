@@ -1,4 +1,2 @@
-from .npu import NPUScheduling, NpuWrapperCodeGen
-from torch._inductor.codegen.common import register_backend_for_device
-
-register_backend_for_device("cpu", NPUScheduling, NpuWrapperCodeGen)
+from .npu import as_default_inductor_backend as _as_default
+_as_default()

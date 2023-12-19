@@ -313,7 +313,7 @@ class AclnnPrj:
         self.device = os.path.join(self.root, "op_kernel")
         self.src = src
         self.proto = self.src.proto
-        self.vendor = "inductor_npu"
+        self.vendor = f"{self.proto.name}"
         self.opp_path = os.getenv("ASCEND_OPP_PATH", "/usr/local/Ascend/latest/opp")
         self.ascend_path = os.path.dirname(self.opp_path)
 
@@ -400,9 +400,19 @@ class NpuInductorKernel:
         self.kernel(*aclnn_args, sym_vals=CSymVals(num=c_size_t(len(sym_vals)), vals=vals))
 
 
-def compile(src: OpCode):
+_compile_cache = dict()
+
+
+def _compile(src: OpCode):
     prj = AclnnPrj(tempfile.mkdtemp(), src)
     core_type = os.getenv("NPU_CORE_TYPE", "ai_core-ascend910B1")
     prj.create(core_type=core_type)
     aclnn_kernel = prj.load_kernel(env={})
-    return NpuInductorKernel(aclnn_kernel)
+    kernel = NpuInductorKernel(aclnn_kernel)
+    _compile_cache[src.proto.name] = kernel
+    return kernel
+
+
+def compile(src: OpCode):
+    kernel = _compile_cache.get(src.proto.name) or _compile(src)
+    return kernel

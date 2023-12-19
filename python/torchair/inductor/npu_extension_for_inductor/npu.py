@@ -1,5 +1,4 @@
 import functools
-import itertools
 from collections import defaultdict
 from collections import namedtuple
 from typing import List, Iterable, Dict
@@ -263,3 +262,26 @@ class NpuWrapperCodeGen(WrapperCodeGen):
                 from npu_extension_for_inductor import codegen as npu_codegen
             """
         )
+
+
+def as_default_inductor_backend():
+    from torch._inductor.codegen.common import register_backend_for_device
+    register_backend_for_device("cpu", NPUScheduling, NpuWrapperCodeGen)
+
+    from torch._inductor.lowering import fallback_handler
+    from torch._inductor.lowering import lowerings
+    def _wrap_npu(op, f):
+        suffix = str(op).split('.')
+        if hasattr(ir, suffix[-1]) or (suffix[-1] == "default" and hasattr(ir, suffix[-2])):
+            print(f"Inductor npu currently support: {op}", flush=True)
+            return f
+
+        @functools.wraps(f)
+        def wrapper(*args, **kwargs):
+            print(f"Inductor npu force fallback: {op}", flush=True)
+            return fallback_handler(op, add_to_fallback_set=False)(*args, **kwargs)
+
+        return wrapper
+
+    for op, lower_fn in lowerings.items():
+        lowerings[op] = _wrap_npu(op, lower_fn)
