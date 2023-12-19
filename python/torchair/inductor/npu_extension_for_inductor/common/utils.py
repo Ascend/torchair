@@ -1,6 +1,8 @@
 from enum import Enum
-
+from collections import namedtuple
 import torch
+
+TypeSet = namedtuple("TypeSet", ['torch', 'acl'])
 
 
 class aclDataType(Enum):
@@ -24,26 +26,36 @@ class aclDataType(Enum):
     ACL_COMPLEX32 = 33
 
 
-def torch_type_to_acl_type(dtype):
-    if dtype == torch.float32:
-        return aclDataType.ACL_FLOAT.value
-    if dtype == torch.int32:
-        return aclDataType.ACL_INT32.value
-    if dtype == torch.bool:
-        return aclDataType.ACL_BOOL.value
-    if dtype == torch.float16:
-        return aclDataType.ACL_FLOAT16.value
-    if dtype == torch.int8:
-        return aclDataType.ACL_INT8.value
-    if dtype == torch.uint8:
-        return aclDataType.ACL_UINT8.value
-    if dtype == torch.int16:
-        return aclDataType.ACL_INT16.value
-    if dtype == torch.int64:
-        return aclDataType.ACL_INT64.value
-    if dtype == torch.float64:
-        return aclDataType.ACL_DOUBLE.value
-    if dtype == torch.bfloat16:
-        return aclDataType.ACL_BF16.value
+_ALL_TYPES = [
+    TypeSet(torch.float32, aclDataType.ACL_FLOAT.value),
+    TypeSet(torch.int32, aclDataType.ACL_INT32.value),
+    TypeSet(torch.bool, aclDataType.ACL_BOOL.value),
+    TypeSet(torch.float16, aclDataType.ACL_FLOAT16.value),
+    TypeSet(torch.int8, aclDataType.ACL_INT8.value),
+    TypeSet(torch.uint8, aclDataType.ACL_UINT8.value),
+    TypeSet(torch.int16, aclDataType.ACL_INT16.value),
+    TypeSet(torch.int64, aclDataType.ACL_INT64.value),
+    TypeSet(torch.float64, aclDataType.ACL_DOUBLE.value),
+    TypeSet(torch.bfloat16, aclDataType.ACL_BF16.value),
+]
 
-    raise RuntimeError(f"Unsupported torch type {dtype} by acl")
+
+def _torch_type_to_type(torch_type, dst):
+    ret = None
+    for type_set in _ALL_TYPES:
+        if type_set.torch == torch_type:
+            ret = getattr(type_set, dst)
+
+    if ret is None:
+        raise RuntimeError(f"Unsupported torch type {torch_type} by {dst}")
+    return ret
+
+
+class TypeUtils:
+    @classmethod
+    def torch_to_acl(cls, dtype):
+        return _torch_type_to_type(dtype, "acl")
+
+    @classmethod
+    def torch_to_asc(cls, dtype):
+        return f"ascir.dtypes.{str(dtype).split('torch.')[1]}"

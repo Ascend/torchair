@@ -1,6 +1,7 @@
 import os
 
 os.environ["NPU_CORE_TYPE"] = "ai_core-ascend910B1"  # 要和stub实现、执行环境匹配
+os.environ["ASCIR_NOT_READY"] = "1"  # 禁用ascir和pyautofuser，使用stub实现
 import npu_extension_for_inductor
 import torch
 

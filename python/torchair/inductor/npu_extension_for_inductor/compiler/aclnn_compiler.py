@@ -1,16 +1,17 @@
+import ctypes
 import os
 import json
 import re
 import itertools
 import tempfile
 from _ctypes import Structure, byref
-from ctypes import cdll, c_size_t, c_int64
+from ctypes import cdll, c_size_t, c_int64, c_void_p
 import subprocess
 
 import torch
 from torch._inductor.codegen.common import IndentedBuffer
 from npu_extension_for_inductor.common.op_code import OpCode, OpProto
-from npu_extension_for_inductor.common.utils import torch_type_to_acl_type
+from npu_extension_for_inductor.common.utils import TypeUtils
 
 
 def _camel_to_snake(name):
@@ -54,11 +55,11 @@ class AclnnArg:
         self.trace = None
         return v
 
-    def pre(self):
-        return None
+    def pre(self, code: IndentedBuffer):
+        pass
 
-    def post(self):
-        return None
+    def post(self, code: IndentedBuffer):
+        pass
 
 
 class TensorArg(AclnnArg):
@@ -67,30 +68,26 @@ class TensorArg(AclnnArg):
         self.inner = f"{name}Tensor"
         self.signature = f"Tensor *{name}"
 
-    def pre(self):
-        buf = IndentedBuffer()
-        buf.writeline(f"auto {self.name}Addr = {self.data_ptr};")
-        buf.splice(f"""
+    def pre(self, code: IndentedBuffer):
+        code.writeline(f"auto {self.name}Addr = {self.data_ptr};")
+        code.splice(f"""
         #ifdef CPU_ONLY
         auto {self.name}Size = GetTensorSize({self.name});
         ASSERT_ACL_SUCCESS(aclrtMalloc(&{self.name}Addr, {self.name}Size, ACL_MEM_MALLOC_NORMAL_ONLY));
         ASSERT_ACL_SUCCESS(aclrtMemcpy({self.name}Addr, {self.name}Size, {self.data_ptr}, {self.name}Size, ACL_MEMCPY_HOST_TO_DEVICE));
         #endif
         """)
-        buf.writeline(
+        code.writeline(
             f"auto {self.inner} = aclCreateTensor({self.shape.dims}, {self.shape.dim_num}, aclDataType({self.dtype}), nullptr, 0, ACL_FORMAT_ND, {self.shape.dims}, {self.shape.dim_num}, {self.name}Addr);")
-        buf.splice(self.debug())
-        return buf
+        code.splice(self.debug())
 
-    def post(self):
-        buf = IndentedBuffer()
-        buf.splice(f"""
+    def post(self, code: IndentedBuffer):
+        code.splice(f"""
         #ifdef CPU_ONLY
         ASSERT_ACL_SUCCESS(aclrtMemcpy({self.data_ptr}, {self.name}Size, {self.name}Addr, {self.name}Size, ACL_MEMCPY_DEVICE_TO_HOST));
         ASSERT_ACL_SUCCESS(aclrtFree({self.name}Addr));
         #endif
         """)
-        return buf
 
     @debug
     def debug(self):
@@ -104,14 +101,39 @@ class StreamArg(AclnnArg):
         super().__init__(name)
         self.signature = f"aclrtStream {name}"
 
-    def pre(self):
-        return self.debug()
+    def pre(self, code: IndentedBuffer):
+        code.splice(self.debug())
 
     @debug
     def debug(self):
         buf = IndentedBuffer()
         buf.writeline(f'std::cerr << "Input:{self.name} = Stream(addr=" << {self.inner} << ")" << std::endl;')
         return buf
+
+
+class SymValsArg(AclnnArg):
+    def __init__(self, name):
+        super().__init__(name)
+        self.signature = f"SymVals *{name}"
+
+    def pre(self, code: IndentedBuffer):
+        code.splice(self.debug())
+
+    @debug
+    def debug(self):
+        buf = IndentedBuffer()
+        buf.writeline(f'std::cerr << "Input:{self.name} = SymVals(" << DebugString({self.inner}) << ")" << std::endl;')
+        return buf
+
+
+class CSymVals(Structure):
+    _fields_ = [("num", c_size_t), ("vals", c_void_p)]
+
+    C_DEFINE = """
+struct SymVals {
+    size_t num = 0;
+    void *vals = nullptr;
+};"""
 
 
 class CTensor(Structure):
@@ -141,18 +163,18 @@ class AclnnKernelBin:
         self.header_file = None
         self.inputs = [TensorArg(v.name) for v in proto.inputs]
         self.outputs = [TensorArg(v.name) for v in proto.outputs]
+        self.sym_vals = SymValsArg("sym_vals")
         self.stream = StreamArg("stream")
+        self.all_args = [self.sym_vals] + self.inputs + self.outputs + [self.stream]
 
         code = IndentedBuffer()
-        signature = ', '.join([v.signature for v in itertools.chain(self.inputs, self.outputs, [self.stream])])
+        signature = ', '.join([v.signature for v in self.all_args])
         signature = f'extern "C" aclError wrapper({signature})'
         code.writeline(signature)
         code.writeline('{')
         with code.indent():
-            for arg in itertools.chain(self.inputs, self.outputs, [self.stream]):
-                pre = arg.pre()
-                if pre:
-                    code.splice(pre)
+            for arg in self.all_args:
+                arg.pre(code)
 
             workspace_args = ', '.join([v.inner for v in itertools.chain(self.inputs, self.outputs)])
             code.splice(f"""
@@ -166,10 +188,8 @@ class AclnnKernelBin:
                 #endif
             """)
 
-            for arg in itertools.chain(self.inputs, self.outputs, [self.stream]):
-                post = arg.post()
-                if post:
-                    code.splice(post)
+            for arg in self.all_args:
+                arg.post(code)
 
             code.writeline("return ACL_SUCCESS;")
 
@@ -184,6 +204,7 @@ class AclnnKernelBin:
         wrapper.writeline(f'#include <sstream>')
         wrapper.writeline(f'#include <vector>')
         wrapper.splice(CTensor.C_DEFINE)
+        wrapper.splice(CSymVals.C_DEFINE)
 
         wrapper.splice("""
         #ifdef INDUCTOR_DEBUG
@@ -201,6 +222,17 @@ class AclnnKernelBin:
                     ss << "]";
                 }
                 ss << ", addr=" << t->data_ptr << ")" << std::endl;
+                return ss.str();
+            }
+            std::string DebugString(SymVals *sym_vals) {
+                std::stringstream ss;
+                if (sym_vals->num > 0U) {
+                    int64_t *vals = static_cast<int64_t *>(sym_vals->vals);
+                    ss << "s0=" << vals[0];
+                    for (size_t i = 1; i < sym_vals->num; i++) {
+                        ss << ", s" << i << "=" << vals[i];
+                    }
+                }
                 return ss.str();
             }
         #else
@@ -348,8 +380,9 @@ class AclnnKernel:
         lib = cdll.LoadLibrary(kernel_bin)
         self.kernel = getattr(lib, f"wrapper")
 
-    def __call__(self, *args: CTensor):
-        args = [byref(arg) for arg in args]
+    def __call__(self, *tensors: CTensor, sym_vals: CSymVals):
+        args = [byref(sym_vals)]
+        args += [byref(tensor) for tensor in tensors]
         self.kernel(*args, None)  # No stream specified from python
 
 
@@ -357,13 +390,14 @@ class NpuInductorKernel:
     def __init__(self, aclnn_kernel: AclnnKernel):
         self.kernel = aclnn_kernel
 
-    def __call__(self, *args: torch.Tensor):
+    def __call__(self, *args: torch.Tensor, sym_vals):
         aclnn_args = []
         for arg in args:
             assert arg.is_contiguous()
             aclnn_args.append(CTensor(data_ptr=arg.data_ptr(), shape=CTensor.Shape(dim_num=arg.dim(), dims=(arg.shape)),
-                                      dtype=torch_type_to_acl_type(arg.dtype)))
-        self.kernel(*aclnn_args)
+                                      dtype=TypeUtils.torch_to_acl(arg.dtype)))
+        vals = ctypes.cast((c_int64 * len(sym_vals))(*sym_vals), c_void_p)
+        self.kernel(*aclnn_args, sym_vals=CSymVals(num=c_size_t(len(sym_vals)), vals=vals))
 
 
 def compile(src: OpCode):
