@@ -43,6 +43,16 @@ enum : EnumValue {
   API_TYPE_COMPUTE
 };
 
+using ComputeType = EnumValue;
+enum : EnumValue {
+  COMPUTE_DATA,
+  COMPUTE_LOAD,
+  COMPUTE_STORE,
+  COMPUTE_ELEWISE,
+  COMPUTE_BROADCAST,
+  COMPUTE_REDUCE
+};
+
 // Start: Ascir it's self needs
 using Identifier = int64_t;
 enum : Identifier {
@@ -557,10 +567,24 @@ struct OperatorInput {
   }
 };
 
+struct SchAttr {
+  template<const char* ATTR_NAME, typename T>
+  using Fields = AttrField<ge::GeTensorDesc *, ATTR_NAME, T>;
+
+  static constexpr char GROUP[] = "sch.group";
+  union {
+    ge::GeTensorDesc *desc;
+    Fields<GROUP, int64_t> group_id;
+  };
+
+  inline SchAttr(ge::GeTensorDesc *desc) : desc(desc) {}
+};
+
 struct NodeAttr {
   static constexpr char SCHED_EXEC_ORDER[] = "ascir.op.sched.exec_order";
   static constexpr char SCHED_AXIS[] = "ascir.op.sched.axis";
   static constexpr char SCHED_LOOP_AXIS[] = "ascir.op.sched.loop_axis";
+  static constexpr char HINT_COMPUTETYPE[] = "ascir.op.hint.computeType";
 
   static constexpr char API_UNIT[] = "ascir.op.api.unit";
   static constexpr char API_TYPE[] = "ascir.op.api.type";
@@ -580,7 +604,9 @@ struct NodeAttr {
       AttrField<ge::OpDesc *, API_UNIT, ComputeUnit> unit;
     } api;
 
+    // 外部给的提示
     union {
+      AttrField<ge::OpDesc*, HINT_COMPUTETYPE, ComputeType> compute_type;
     } hint;
 
     union {

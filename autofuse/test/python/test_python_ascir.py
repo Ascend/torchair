@@ -73,7 +73,8 @@ class TestAscir():
             "    .y.dtype = float32\n",
             "    .y.axis = {}\n",
             "    .y.repeats = {}\n",
-            "    .y.strides = {}\n"
+            "    .y.strides = {}\n",
+            "    .y.vectorized_axis = {}\n"
         ])
 
     @staticmethod
@@ -117,7 +118,8 @@ class TestAscir():
             "    .y.dtype = float16\n",
             "    .y.axis = {z0, z1, z2, }\n",
             "    .y.repeats = {s0, s1, s2, }\n",
-            "    .y.strides = {s1*s2, s2, 1, }\n"
+            "    .y.strides = {s1*s2, s2, 1, }\n",
+            "    .y.vectorized_axis = {}\n"
          ])
 
     @staticmethod
@@ -144,14 +146,16 @@ class TestAscir():
             "    .y.dtype = float32\n"
             "    .y.axis = {}\n",
             "    .y.repeats = {}\n",
-            "    .y.strides = {}\n"
+            "    .y.strides = {}\n",
+            "    .y.vectorized_axis = {}\n"
             "  load: Load (0)\n",
             "    .axis = {}\n",
             "    .x = x.y\n"
             "    .y.dtype = float32\n"
             "    .y.axis = {}\n",
             "    .y.repeats = {}\n",
-            "    .y.strides = {}\n"
+            "    .y.strides = {}\n",
+            "    .y.vectorized_axis = {}\n"
         ])
 
     @staticmethod
@@ -178,7 +182,8 @@ class TestAscir():
             "    .y.dtype = float32\n"
             "    .y.axis = {}\n",
             "    .y.repeats = {}\n",
-            "    .y.strides = {}\n"
+            "    .y.strides = {}\n",
+            "    .y.vectorized_axis = {}\n"
             "  load: Load (0)\n",
             "    .axis = {}\n",
             "    .x = x.y\n"
@@ -186,6 +191,7 @@ class TestAscir():
             "    .y.axis = {}\n",
             "    .y.repeats = {}\n",
             "    .y.strides = {}\n"
+            "    .y.vectorized_axis = {}\n"
         ])
 
 
@@ -270,35 +276,40 @@ class TestAutofuseLoadAbsStore():
             "    .y.dtype = float16\n"
             "    .y.axis = {z0, z1, z2, }\n",
             "    .y.repeats = {s0, s1, s2, }\n",
-            "    .y.strides = {s1*s2, s2, 1, }\n"
+            "    .y.strides = {s1*s2, s2, 1, }\n",
+            "    .y.vectorized_axis = {}\n"
             "  load: Load (1)\n",
             "    .axis = {z0, z1, z2, }\n",
             "    .x = arg3_1.y\n"
             "    .y.dtype = float16\n"
             "    .y.axis = {z0, z1, z2, }\n",
             "    .y.repeats = {s0, s1, s2, }\n",
-            "    .y.strides = {s1*s2, s2, 1, }\n"
+            "    .y.strides = {s1*s2, s2, 1, }\n",
+            "    .y.vectorized_axis = {}\n"
             "  abs: Abs (2)\n",
             "    .axis = {z0, z1, z2, }\n",
             "    .x = load.y\n"
             "    .y.dtype = float16\n"
             "    .y.axis = {z0, z1, z2, }\n",
             "    .y.repeats = {s0, s1, s2, }\n",
-            "    .y.strides = {s1*s2, s2, 1, }\n"
+            "    .y.strides = {s1*s2, s2, 1, }\n",
+            "    .y.vectorized_axis = {}\n"            
             "  store: Store (3)\n",
             "    .axis = {z0, z1, z2, }\n",
             "    .x = abs.y\n"
             "    .y.dtype = float16\n"
             "    .y.axis = {z0, z1, z2, }\n",
             "    .y.repeats = {s0, s1, s2, }\n",
-            "    .y.strides = {s1*s2, s2, 1, }\n"
+            "    .y.strides = {s1*s2, s2, 1, }\n",
+            "    .y.vectorized_axis = {}\n"            
             "  buf1: Data (4)\n",
             "    .axis = {z0, z1, z2, }\n",
             "    .x = store.y\n"
             "    .y.dtype = float16\n"
             "    .y.axis = {z0, z1, z2, }\n",
             "    .y.repeats = {s0, s1, s2, }\n",
-            "    .y.strides = {s1*s2, s2, 1, }\n"
+            "    .y.strides = {s1*s2, s2, 1, }\n",
+            "    .y.vectorized_axis = {}\n"            
         ])
 
     def test_optimize(self):

@@ -223,6 +223,10 @@ static std::stringstream &NodeOutputStr(std::stringstream &ss, const ascir::Grap
   SizeExprListStr(ss, graph, output.strides());
   ss << "}" << std::endl;
 
+  ss << "    ." << output_name << ".vectorized_axis = " << "{";
+  AxisListStr(ss, graph, output.vectorized_axis());
+  ss << "}" << std::endl;
+
   if (verbose) {
       ss << "    ." << output_name << ".mem:" << std::endl;
       ss << "      .tensor_id = " << output.mem.tensor_id << std::endl;

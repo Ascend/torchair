@@ -402,7 +402,8 @@ TEST(Ascir_Utils, DebugHintGraphStr_WillShowAxisInfo) {
                                "    .y.dtype = float32\n"
                                "    .y.axis = {z0_out, z0_in, z1, }\n"
                                "    .y.repeats = {s0/s0_block, s0_block, s1, }\n"
-                               "    .y.strides = {s1*s0_block, s1, 1, }\n"});
+                               "    .y.strides = {s1*s0_block, s1, 1, }\n"
+                               "    .y.vectorized_axis = {}\n"});
 }
 
 TEST(Ascir_Utils, DebugImplGraphStr) {
@@ -462,6 +463,7 @@ TEST(Ascir_Utils, DebugImplGraphStr) {
                             "    .y.axis = {z0_out, z0_in, z1, }\n"
                             "    .y.repeats = {s0/s0_block, s0_block, s1, }\n"
                             "    .y.strides = {s1*s0_block, s1, 1, }\n"
+                            "    .y.vectorized_axis = {}\n"
                             "    .y.mem:\n"
                             "      .tensor_id = 0\n"
                             "      .alloc_type = Queue\n"
