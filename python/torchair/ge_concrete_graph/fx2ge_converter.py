@@ -228,6 +228,29 @@ def _normalize_ge_graph(graph: GraphDef):
                 desc.layout = layout.decode()
 
 
+def _update_internal_format_from_inputs(graph: GraphDef, runtime_inputs):
+    if 'torch_npu' not in sys.modules:
+        logger.info(f'The internal format will only be enabled in a torch npu env.'
+                    'When there is no torch_npu in the env, skip internal format updates')
+        return
+
+    torch_npu_module = sys.modules['torch_npu']
+    input_index_mapping_graph_op: Dict[int, OpDef] = {}  # data节点的index到opDef的映射
+    for op in graph.op:
+        if op.type == "Data":
+            input_index_mapping_graph_op[op.attr["index"].i] = op
+
+    for idx in range(len(runtime_inputs)):
+        assert idx < len(input_index_mapping_graph_op), \
+            f"GE graph input index {idx} out of Data ops index range {len(input_index_mapping_graph_op)}"
+
+        # attr "format_for_int" in proto::TensorDescriptor will be be deserialized as TensorDesc Format in ge.
+        input_index_mapping_graph_op[idx].output_desc[0].attr["format_for_int"].i = \
+            torch_npu_module.get_npu_format(runtime_inputs[idx])
+        logger.info(f'update the Format of output TensorDesc for input_{idx} '
+                    f'to Format {torch_npu_module.get_npu_format(runtime_inputs[idx])}')
+
+
 class Placement:
     UNDEFINED = -1
     HOST = 0
@@ -261,6 +284,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._converter_ctx = threading.local()
         self._fx_input_mapping_cloned_ge_input = []
         self._inputs_processing = None
+        self._is_compiled = False
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         if self._inputs_processing is None:
@@ -273,8 +297,12 @@ class GeConcreteGraph(ConcreteGraphBase):
             self.export(inputs)
             raise ExportSuccess("export graph over")
 
+        self.load(inputs)
+
         if self.should_auto_tune:
             self.auto_tune(inputs)
+
+        self.compile()
 
         if len(self._graph_output_ref_input):
             assigned_outputs = [None] * len(self.graph.attr["_output_dtypes"].list.i)
@@ -298,6 +326,52 @@ class GeConcreteGraph(ConcreteGraphBase):
         del ge_outputs
 
         return tuple(fx_outputs)
+
+    def load(self, runtime_inputs) -> Any:
+        if self._is_compiled:
+            return
+
+        # Initialize based on global options
+        local_compile_options, global_compile_options = self.config.as_dict()
+        global_compile_options["ge.exec.staticMemoryPolicy"] = "2"
+        logger.info("global compile options:")
+        for k, v in global_compile_options.items():
+            logger.info(f"  {k}: {v}")
+
+        initialize_graph_engine(global_compile_options)
+
+        # Update local options
+        self._graph_output_ref_input = _mapping_assign_op_to_graph_output(self.graph)
+        if self.config.debug.graph_dump.enabled and len(self._graph_output_ref_input):
+            self.dump(f'dynamo_after_mapping_assign_{datetime.now().strftime("%Y%m%d%H%M%S%f")}.pbtxt')
+        output_reuse_indexes = [x for x in range(len(self.outputs)) if x not in self._graph_output_ref_input.keys()]
+        if len(output_reuse_indexes) != 0:
+            # support output memory reuse while output is not ref to input
+            local_compile_options["ge.exec.outputReuseMemIndexes"] = ",".join(str(x) for x in output_reuse_indexes)
+        logger.info("local compile options:")
+        for k, v in local_compile_options.items():
+            logger.info(f"  {k}: {v}")
+
+        # Normalize graph
+        self.graph.attr["_input_placements"].list.i.extend(self._input_placements)
+        self.graph.attr["_output_dtypes"].list.i.extend([output.dtype for output in self.outputs])
+        self.graph.attr["_executor_type"].i = _get_executor_type()
+        self._complement_graph_attr()
+
+        _normalize_ge_graph(self.graph)
+
+        _update_internal_format_from_inputs(self.graph, runtime_inputs)
+
+        self._executor.load(self.graph.SerializeToString(), local_compile_options)
+
+    def compile(self) -> Any:
+        if self._is_compiled:
+            return
+
+        logger.info(f'start compile graph: {self}.')
+        self._executor.compile()
+        self._is_compiled = True
+        logger.info(f'end compile graph: {self} and start run graph.')
 
     def context(self):
         return default_ge_graph(self.graph)
@@ -420,38 +494,6 @@ class GeConcreteGraph(ConcreteGraphBase):
 
     def set_fx_inputs_mapping(self, fx_inputs_mapping):
         self._fx_inputs_mapping = fx_inputs_mapping
-
-    def compile(self) -> Any:
-        local_compile_options, global_compile_options = self.config.as_dict()
-        global_compile_options["ge.exec.staticMemoryPolicy"] = "2"
-
-        self.graph.attr["_input_placements"].list.i.extend(self._input_placements)
-        self.graph.attr["_output_dtypes"].list.i.extend([output.dtype for output in self.outputs])
-        self.graph.attr["_executor_type"].i = _get_executor_type()
-
-        self._complement_graph_attr()
-        self._graph_output_ref_input = _mapping_assign_op_to_graph_output(self.graph)
-
-        if self.config.debug.graph_dump.enabled and len(self._graph_output_ref_input):
-            self.dump(f'dynamo_after_mapping_assign_{datetime.now().strftime("%Y%m%d%H%M%S%f")}.pbtxt')
-
-        # support output memory reuse while output is not ref to input
-        output_reuse_indexes = [x for x in range(len(self.outputs)) if x not in self._graph_output_ref_input.keys()]
-        local_compile_options["ge.exec.outputReuseMemIndexes"] = ",".join(str(x) for x in output_reuse_indexes)
-
-        _normalize_ge_graph(self.graph)
-
-        initialize_graph_engine(global_compile_options)
-
-        logger.info("local compile options:")
-        for k, v in local_compile_options.items():
-            logger.info(f"  {k}: {v}")
-        logger.info("global compile options:")
-        for k, v in global_compile_options.items():
-            logger.info(f"  {k}: {v}")
-
-        self._executor.load(self.graph.SerializeToString(), local_compile_options)
-        self._executor.compile()
 
     def export(self, inputs) -> Any:
         file_path = self.config.export_config.export_path_dir
