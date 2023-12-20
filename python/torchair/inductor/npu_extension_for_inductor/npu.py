@@ -60,17 +60,16 @@ class ASCGraph:
 
     def size(self, name):
         self.size_vars.add(name)
-        self.buffer.writeline(f'{name} = ascir.create_size("{name}")')
+        self.buffer.writeline(f'{name} = {self._name}.create_size("{name}")')
 
     def axis(self, name, range_expr):
         self.axis_vars.add(name)
-        self.buffer.writeline(f'{name} = ascir.create_axis("{name}", {AscExpr(range_expr)})')
+        self.buffer.writeline(f'{name} = {self._name}.create_axis("{name}", {AscExpr(range_expr)})')
 
     def mark_iterable(self, buf: str, desc: Loop):
         self.buffer.writeline(f"{buf}.axis = {desc.asc_axis}")
-        self.buffer.writeline(f"{buf}.stride = {desc.asc_stride}")
+        self.buffer.writeline(f"{buf}.strides = {desc.asc_stride}")
         self.buffer.writeline(f"{buf}.size = {desc.asc_size}")
-        self.buffer.writeline(f"{buf}.offset = {desc.asc_offset}")
 
     def build(self):
         graph = IndentedBuffer()
@@ -80,12 +79,10 @@ class ASCGraph:
         """)  # TODO: remove this once ascir ready
         graph.splice(f"""
         from pyautofuse import ascir
-        graph = ascir.HintGraph('{self._name}')
+        {self._name} = ascir.HintGraph('{self._name}')
         """)
         graph.splice(self.buffer.getvalue())
         graph.splice(f"""
-        graph.set_sizes([{', '.join([s for s in sorted(self.size_vars)])}])
-        graph.set_axis([{', '.join([s for s in sorted(self.axis_vars)])}])
         graph.set_inputs([{', '.join([s for s in self.inputs])}])
         graph.set_outputs([{', '.join([s for s in self.outputs])}])
         return graph

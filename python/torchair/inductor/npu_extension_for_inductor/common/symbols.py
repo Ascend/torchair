@@ -19,7 +19,7 @@ class AscSymbol:
         return AscSymbol(self.s * power)
 
     def __str__(self):
-        multipliers = [f"{s}" for s in self.s]
+        multipliers = [f"{s}" for s in self.s if str(s) != "1"]
         return f"ascir.SizeExpr([{','.join(multipliers)}])"
 
 
