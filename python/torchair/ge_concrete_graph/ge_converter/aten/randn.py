@@ -18,8 +18,11 @@ import torch
 from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
-from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType, get_ge_rng_state
+from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
+    Support
+from torchair.ge_concrete_graph.utils import dtype_promote
 
 
 @register_fx_node_ge_converter(torch.ops.aten.randn.default)
@@ -36,6 +39,12 @@ def conveter_aten_randn_default(
     raise NotImplementedError("torch.ops.aten.randn.default ge_converter is not implemented!")
 
 
+@declare_supported(
+    [
+        Support([3, 4, 5], generator=None),
+        Support([3, 4], generator=None, dtype=torch.float16)
+    ]
+)
 @register_fx_node_ge_converter(torch.ops.aten.randn.generator)
 def conveter_aten_randn_generator(
     size: Union[List[int], Tensor],
@@ -48,7 +57,15 @@ def conveter_aten_randn_generator(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::randn.generator(SymInt[] size, *, Generator? generator, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.randn.generator ge_converter is not implemented!")
+    if generator is not None:
+        raise NotImplementedError("parameter generator should be handled in eager!")
+    seed, offset = get_ge_rng_state(philox_num=10)
+    key = ge.Unsqueeze(ge.Cast(seed, dst_type=DataType.DT_UINT64), axes=[0])
+    offset0 = ge.Const(0, dtype=DataType.DT_INT64)
+    offset_list = ge.ConcatV2([offset0, offset], 0, N=2)
+    counter = ge.Cast(offset_list, dst_type=DataType.DT_UINT64)
+    alg = ge.Cast(1, dst_type=DataType.DT_INT32)
+    return ge.StatelessRandomNormalV2(size, key, counter, alg, dtype=meta_outputs.dtype)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.randn.names)
