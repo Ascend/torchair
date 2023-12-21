@@ -369,13 +369,13 @@ PyObject *HintGraph::_create_size(PyObject *self_pyobject, PyObject *args) {
 
 PyObject *HintGraph::_create_axis(PyObject *self_pyobject, PyObject *args) {
   char* name;
-  SizeVar::Object *size;
-  if (!PyArg_ParseTuple(args, "sO!", &name, &SizeVar::Type, &size)) {
+  PyObject *size;
+  if (!PyArg_ParseTuple(args, "sO!", &name, &SizeExpr::Type, &size)) {
     return nullptr;
   }
 
   auto self = (Object *)self_pyobject;
-  auto new_axis = self->graph->CreateAxis(name, ascir::SizeExpr({size->id}));
+  auto new_axis = self->graph->CreateAxis(name, SizeExpr::AsSizeExpr(size));
 
   auto axis_object = Axis::_new(&Axis::Type, nullptr, nullptr);
   if (axis_object == nullptr) {
@@ -443,7 +443,7 @@ PyObject *HintGraph::FromGraph(ascir::Graph *graph) {
   }
 
   graph_object->graph->CopyFrom(*graph);
-  Py_INCREF(graph_object->graph);
+  Py_INCREF(graph_object);
   return (PyObject *)graph_object;
 }
 

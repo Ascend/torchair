@@ -1,5 +1,6 @@
-add_library(autoschedule
+add_library(autoschedule OBJECT
     autoschedule.cpp)
+target_compile_options(autoschedule PRIVATE -fPIC)
 
 target_include_directories(autoschedule PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(autoschedule

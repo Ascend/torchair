@@ -15,8 +15,16 @@ def codegen(graph):
     if os.environ.get('ASCIR_NOT_READY', None):
         return codegen_stub(graph)
 
-    from pyautofuse import Autofuser
+    from pyautofuse import Autofuser, ascir
+    print("Graph before fuse")
+    print(ascir.utils.debug_str(graph))
+
     fuser = Autofuser({})
     fused_graph = fuser.autofuse(graph)
-    op_proto, tiling_def, host_tiling, op_kernel = fuser.codegen(fused_graph)
-    return OpCode(op_proto, tiling_def, host_tiling, op_kernel)
+    print("Graph after fuse")
+    for i in range(len(fused_graph)):
+        print("Impl ", i)
+        print(ascir.utils.debug_str(fused_graph[i]))
+
+    op_proto, tiling_def, host_tiling, op_kernel = fuser.codegen(graph, fused_graph)
+    return OpCode(OpProto(op_proto), tiling_def, host_tiling, op_kernel)

@@ -31,9 +31,9 @@ class TestAscir():
         s1 = graph.create_size("s1")
         s2 = graph.create_size("s2")
 
-        z0 = graph.create_axis("z0", s0)
-        z1 = graph.create_axis("z1", s1)
-        z2 = graph.create_axis("z2", s2)
+        z0 = graph.create_axis("z0", ascir.SizeExpr([s0]))
+        z1 = graph.create_axis("z1", ascir.SizeExpr([s1]))
+        z2 = graph.create_axis("z2", ascir.SizeExpr([s2]))
 
         graph.set_inputs([])
         graph.set_outputs([])
@@ -85,9 +85,9 @@ class TestAscir():
         s1 = graph.create_size("s1")
         s2 = graph.create_size("s2")
 
-        z0 = graph.create_axis("z0", s0)
-        z1 = graph.create_axis("z1", s1)
-        z2 = graph.create_axis("z2", s2)
+        z0 = graph.create_axis("z0", ascir.SizeExpr([s0]))
+        z1 = graph.create_axis("z1", ascir.SizeExpr([s1]))
+        z2 = graph.create_axis("z2", ascir.SizeExpr([s2]))
 
         x = ascir.ops.Data("x")
         x.attr.sched.exec_order = 0
@@ -203,9 +203,9 @@ class TestAutofuseLoadAbsStore():
         s1 = graph.create_size("s1")
         s2 = graph.create_size("s2")
 
-        z0 = graph.create_axis("z0", s0)
-        z1 = graph.create_axis("z1", s1)
-        z2 = graph.create_axis("z2", s2)
+        z0 = graph.create_axis("z0", ascir.SizeExpr([s0]))
+        z1 = graph.create_axis("z1", ascir.SizeExpr([s1]))
+        z2 = graph.create_axis("z2", ascir.SizeExpr([s2]))
 
         arg3_1 = ascir.ops.Data("arg3_1")
         arg3_1.attr.sched.exec_order = 0

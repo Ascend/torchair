@@ -503,8 +503,8 @@ PyMODINIT_FUNC PyInit_graph(void) {
 
 static PyObject *UtilsDebugStr(PyObject *self_pyobject, PyObject *args) {
     PyObject *graph_object;
-    if (!PyArg_ParseTuple(args, "O", &graph_object)) {
-        return NULL;
+    if (!PyArg_ParseTuple(args, "O!", &pyascir::HintGraph::Type, &graph_object)) {
+        return PyErr_Format(PyExc_TypeError, "Argument must be a HintGraph object");
     }
 
     auto graph = (pyascir::HintGraph::Object *)graph_object;

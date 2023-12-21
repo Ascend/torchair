@@ -358,7 +358,7 @@ NodeViewVisitor Graph::GetAllNodes() {
   return NodeViewVisitor{graph->GetAllNodes()};
 }
 
-int Graph::CopyFrom(ascir::Graph &graph) {
+int Graph::CopyFrom(const ascir::Graph &graph) {
   int ret = ge::GraphUtilsEx::CopyGraph(graph, *this);
   if (ret != 0) {
       return ret;

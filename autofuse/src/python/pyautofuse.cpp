@@ -84,33 +84,12 @@ PyObject *Autofuser::autofuse(PyObject *self, PyObject *args, PyObject *kwds) {
   auto self_ = (Autofuser::Object *)self;
 
   pyascir::HintGraph::Object* hint_graph = nullptr;
-  if (!PyArg_ParseTuple(args, "O", &hint_graph)) {
+  if (!PyArg_ParseTuple(args, "O!", &pyascir::HintGraph::Type, &hint_graph)) {
       return PyErr_Format(PyExc_ValueError, "autofuse requires a hint graph");
-  }
-
-  if (!PyObject_IsInstance((PyObject*)hint_graph, (PyObject*)&pyascir::HintGraph::Type)) {
-      return PyErr_Format(PyExc_ValueError, "autofuse requires a hint graph");
-  }
-
-  std::string optimize_graph_name = hint_graph->graph->GetName() + "_optimized";
-  ascir::ImplGraph optimize_graph(optimize_graph_name.c_str());
-  optimize_graph.CopyFrom(*hint_graph->graph);
-
-  int ret = self_->optimizer->GetApiInfo(*hint_graph->graph, optimize_graph);
-  if (ret != 0) {
-    return PyErr_Format(PyExc_ValueError, "autofuse get api info failed");
   }
 
   std::vector<ascir::ImplGraph> impl_graphs;
-  ret = self_->optimizer->AutoScheduler(*hint_graph->graph, optimize_graph, impl_graphs);
-  if (ret != 0) {
-    return PyErr_Format(PyExc_ValueError, "autofuse auto scheduler failed");
-  }
-
-  ret = self_->optimizer->BufQueAlloc(*hint_graph->graph, impl_graphs);
-  if (ret != 0) {
-    return PyErr_Format(PyExc_ValueError, "autofuse buf que alloc failed");
-  }
+  self_->optimizer->Optimize(*hint_graph->graph, impl_graphs);
 
   PyObject* ret_graphs = PyList_New(0);
   for (auto &impl_graph : impl_graphs) {
@@ -121,7 +100,32 @@ PyObject *Autofuser::autofuse(PyObject *self, PyObject *args, PyObject *kwds) {
 }
 
 PyObject *Autofuser::codegen(PyObject *self, PyObject *args, PyObject *kwds) {
-  Py_RETURN_NONE;
+  auto self_ = (Autofuser::Object *)self;
+
+  PyObject *hint_graph_obj = nullptr;
+  PyObject *list_impl_graphs = nullptr;
+  if (!PyArg_ParseTuple(args, "OO", &hint_graph_obj, &list_impl_graphs)) {
+    return PyErr_Format(PyExc_ValueError, "codegen requires a list of impl graphs");
+  }
+
+  if (!PyObject_IsInstance(hint_graph_obj, (PyObject *)&pyascir::HintGraph::Type)) {
+      return PyErr_Format(PyExc_ValueError, "codegen requires a hint graph");
+  }
+  auto hint_graph = (pyascir::HintGraph::Object *)hint_graph_obj;
+
+  std::vector<ascir::ImplGraph> impl_graphs;
+  for (int i = 0; i < PyList_Size(list_impl_graphs); i++) {
+    auto graph = (pyascir::HintGraph::Object *)PyList_GetItem(list_impl_graphs, i);
+    if (PyObject_IsInstance((PyObject*)graph, (PyObject *)&pyascir::HintGraph::Type) < 0) {
+        return PyErr_Format(PyExc_ValueError, "codegen requires a list of impl graphs");
+    }
+
+    auto& impl_graph = impl_graphs.emplace_back(graph->graph->GetName().c_str());
+    impl_graph.CopyFrom(*graph->graph);
+  }
+
+  auto result = self_->codegen->Generate(*hint_graph->graph, impl_graphs);
+  return Py_BuildValue("ssss", result.proto.c_str(), result.tiling_data.c_str(), result.tiling.c_str(), result.kernel.c_str());
 }
 }
 

@@ -25,7 +25,7 @@ class Optimizer {
    * @param [in] optimizer_graph 优化后的图
    * @param [out] impl_graphs 输出不同tiling策略切分的图
    */
-  int AutoScheduler(const ascir::HintGraph& graph, const ascir::ImplGraph optimizer_graph, std::vector<ascir::ImplGraph> &impl_graphs);
+  int AutoScheduler(const ascir::HintGraph& graph, const ascir::ImplGraph& optimizer_graph, std::vector<ascir::ImplGraph> &impl_graphs);
 
   /**
    * Buf/Que 分配

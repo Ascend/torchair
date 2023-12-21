@@ -4,9 +4,9 @@
 #endif
 
 extern "C" void load_abs_store_AutoTiling(optiling::TilingData& tiling_data) {
-    tiling_data.block_dim = 48;
-    tiling_data.z0b_size = 2;
-    tiling_data.z1t_size = 4;
+    tiling_data.set_block_dim(48);
+    tiling_data.set_z0b_size(2);
+    tiling_data.set_z1t_size(4);
 }
 
 #ifndef __CCE_KT_TEST__
@@ -15,13 +15,13 @@ static ge::graphStatus TilingFunc(gert::TilingContext* context)
 {
   TilingData tiling;
   const gert::StorageShape* x1_shape = context->GetInputShape(0);
-  tiling.set_size(48, block_dim);
-  tiling.set_size(x1_shape.GetStorageShape().GetDim(0), s0);
-  tiling.set_size(x1_shape.GetStorageShape().GetDim(1), s1);
-  tiling.set_size(x1_shape.GetStorageShape().GetDim(2), s2);
+  tiling.set_block_dim(48);
+  tiling.set_s0(x1_shape->GetStorageShape().GetDim(0));
+  tiling.set_s1(x1_shape->GetStorageShape().GetDim(1));
+  tiling.set_s2(x1_shape->GetStorageShape().GetDim(2));
 
   load_abs_store_AutoTiling(tiling);
-  context->SetBlockDim(tiling.block_dim);
+  context->SetBlockDim(tiling.get_block_dim());
 
   tiling.SaveToBuffer(context->GetRawTilingData()->GetData(), context->GetRawTilingData()->GetCapacity());
   context->GetRawTilingData()->SetDataSize(tiling.GetDataSize());
@@ -68,6 +68,4 @@ public:
 
 OP_ADD(LoadAbsStore);
 }
-#else
-
 #endif

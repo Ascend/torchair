@@ -1,3 +1,5 @@
+add_subdirectory(autoschedule)
+
 add_library(optimize SHARED
     optimize.cpp
     )
@@ -6,4 +8,5 @@ target_include_directories(optimize PUBLIC
     )
 target_link_libraries(optimize PUBLIC
     ascir
+    autoschedule
     )

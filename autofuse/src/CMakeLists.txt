@@ -1,7 +1,6 @@
 add_subdirectory(ascir)
 add_subdirectory(optimize)
 add_subdirectory(codegen)
-add_subdirectory(optimize/autoschedule)
 
 add_subdirectory(python)
 

@@ -790,7 +790,7 @@ class Graph : public ge::Graph {
   NodeView Find(const char *name);
   NodeViewVisitor GetAllNodes();
 
-  int CopyFrom(ascir::Graph& graph);
+  int CopyFrom(const ascir::Graph &graph);
 
  private:
   ge::NamedAttrs tmp_attr_holder;
