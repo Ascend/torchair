@@ -122,7 +122,8 @@ Status ConvertGraphDefToAir(ge::proto::GraphDef &graph_def, ge::GraphPtr &graph,
     TNG_ASSERT(op_desc->UpdateInputName(io_desc_name2index.first));
     TNG_ASSERT(op_desc->UpdateOutputName(io_desc_name2index.second));
   }
-  const std::string name = "compute_graph";
+  static std::atomic<size_t> x{0};
+  const std::string name = "compute_graph_" + std::to_string(x.fetch_add(1));
   compute_graph->SetName(name);
   graph = ge::GraphUtilsEx::CreateGraphPtrFromComputeGraph(compute_graph);
   TNG_ASSERT_NOTNULL(graph, "Failed to create graph from compute graph");
