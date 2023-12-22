@@ -344,7 +344,13 @@ class GeConcreteGraph(ConcreteGraphBase):
 
         initialize_graph_engine(global_compile_options)
 
-        # Update local options
+        # Update graph attr part1
+        self.graph.attr["_input_placements"].list.i.extend(self._input_placements)
+        self.graph.attr["_output_dtypes"].list.i.extend([output.dtype for output in self.outputs])
+        self.graph.attr["_executor_type"].i = _get_executor_type()
+        self._complement_graph_attr()
+
+        # Update local options and graph attr part2
         self._graph_output_ref_input = _mapping_assign_op_to_graph_output(self.graph)
         if self.config.debug.graph_dump.enabled and len(self._graph_output_ref_input):
             self.dump(f'dynamo_after_mapping_assign_{datetime.now().strftime("%Y%m%d%H%M%S%f")}.pbtxt')
@@ -357,11 +363,6 @@ class GeConcreteGraph(ConcreteGraphBase):
             logger.info(f"  {k}: {v}")
 
         # Normalize graph
-        self.graph.attr["_input_placements"].list.i.extend(self._input_placements)
-        self.graph.attr["_output_dtypes"].list.i.extend([output.dtype for output in self.outputs])
-        self.graph.attr["_executor_type"].i = _get_executor_type()
-        self._complement_graph_attr()
-
         _normalize_ge_graph(self.graph)
 
         _update_internal_format_from_inputs(self.graph, runtime_inputs)
