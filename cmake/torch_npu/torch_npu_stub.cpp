@@ -1,6 +1,8 @@
 #include <iostream>
 #include <unordered_map>
+#include "torch/torch.h"
 #include "core/NPUBlockHandle.h"
+#include "core/NPUFormat.h"
 #include "core/NPUStream.h"
 
 namespace c10_npu {
@@ -64,3 +66,29 @@ size_t GetBlockSize(const void *handle) {
 
 } // namespace NPUCachingAllocator
 }  // namespace c10_npu
+
+namespace at_npu {
+namespace native {
+
+int64_t get_npu_format(const at::Tensor &tensor) {
+  // ACL_FORMAT_ND = 2
+  return 2;
+}
+
+std::vector<int64_t> get_npu_storage_sizes(const at::Tensor &tensor) {
+  auto sizes = tensor.sizes();
+  std::vector<int64_t> vector_storage_sizes(sizes.begin(), sizes.end());
+  return vector_storage_sizes;
+}
+
+at::Tensor npu_format_cast(const at::Tensor &tensor, int64_t acl_format) {
+  return tensor.clone();
+}
+
+at::Tensor empty_with_format(c10::IntArrayRef sizes, const c10::TensorOptions &options, int64_t format,
+                             bool keep_format) {
+  return at::empty(sizes, options);
+}
+
+}  // namespace native
+}  // namespace at_npu

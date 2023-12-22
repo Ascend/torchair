@@ -319,6 +319,36 @@ class TorchairSt(unittest.TestCase):
         model(x3, x0, x1, x2)
         model(x3, x0, x1, x2)
 
+    def test_dynamic_npu_executor_with_internal_format(self):
+        initialize_graph_engine()
+        from torchair.core import _npu_graph_executor
+        import _privateuse1_backend
+        npu_device = _privateuse1_backend.npu_device()
+
+        torch.utils.rename_privateuse1_backend("npu")
+
+        with GeGraph() as graph:
+            x = ge.Data(index=0, shape=[-1, 2],
+                        dtype=DataType.DT_INT32, placement='NPU')
+            y = ge.Data(index=1, shape=[],
+                        dtype=DataType.DT_INT32, placement='CPU')
+            z = ge.Add(x, y)
+            output = ge.NetOutput([z])
+
+            set_graph_output_dtypes(graph, [DataType.DT_INT32])
+
+            executor = TorchNpuGraph()
+            executor.load(graph.SerializeToString())
+            executor.compile()
+
+            cpu_x = torch.ones([2, 2], dtype=torch.int32)
+            npu_x = cpu_x.to(npu_device)
+            y = torch.ones([], dtype=torch.int32)
+            z = executor.run([npu_x, y])
+            self.assertTrue(npu_x.device is not y.device)
+            z = executor.run([npu_x, y])
+            self.assertTrue(npu_x.device is not y.device)
+
     def test_npu_static_executor(self):
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor

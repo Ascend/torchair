@@ -30,9 +30,9 @@ Status DynamicNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &in
       }
 
       if (is_first_run) {
-        TNG_RETURN_IF_ERROR(AtTensorToGeTensor(inputs[i], inputs_holder_[i]));
+        TNG_RETURN_IF_ERROR(AtNpuTensorToGeTensor(inputs[i], inputs_holder_[i]));
       } else {
-        TNG_RETURN_IF_ERROR(AssembleDataAndShapeToGe(inputs[i], inputs_holder_[i]));
+        TNG_RETURN_IF_ERROR(AssembleDataAndStorageShapeToGe(inputs[i], inputs_holder_[i]));
       }
       TNG_LOG(DEBUG) << "Assemble aten device input " << i << " " << DebugString(inputs[i]) << " to "
                      << DebugString(inputs_holder_[i]);
@@ -55,9 +55,9 @@ Status DynamicNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &in
       }
 
       if (is_first_run) {
-        TNG_RETURN_IF_ERROR(AtTensorToGeTensor(*input, inputs_holder_[i]));
+        TNG_RETURN_IF_ERROR(AtNpuTensorToGeTensor(*input, inputs_holder_[i]));
       } else {
-        TNG_RETURN_IF_ERROR(AssembleDataAndShapeToGe(*input, inputs_holder_[i]));
+        TNG_RETURN_IF_ERROR(AssembleDataAndStorageShapeToGe(*input, inputs_holder_[i]));
       }
       TNG_LOG(DEBUG) << "Assemble aten host input " << i << " " << DebugString(inputs[i]) << " to "
                      << DebugString(inputs_holder_[i]);
