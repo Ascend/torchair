@@ -15,6 +15,7 @@ from torch._dynamo.allowed_functions import is_builtin_callable
 from torch._decomp import get_decompositions, decomposition_table
 from torch.profiler import record_function
 from torch.utils._mode_utils import no_dispatch
+from torch._dynamo.utils import detect_fake_mode
 
 from torchair.core.concrete_graph import ConcreteGraphBase, ValuePack, _is_symlist
 from torchair.core.utils import logger
@@ -163,7 +164,9 @@ class NpuGraphConverter(Interpreter):
             if is_builtin_callable(target) and not _is_binary_operator(target):
                 return func(target, args, kwargs)
             args_meta, kwargs_meta = _unpack_meta(args, kwargs)
-            meta_outputs = func(target, args_meta, kwargs_meta)
+            fake_mode = detect_fake_mode(None)
+            with fake_mode:
+                meta_outputs = func(target, args_meta, kwargs_meta)
             args_npu, kwargs_npu = self._unpack_npu(args, kwargs)
             npu_outputs = self._graph.parse_node(target, args_npu, kwargs_npu, meta_outputs)
             if isinstance(npu_outputs, (tuple, list)):
