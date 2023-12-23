@@ -1,12 +1,14 @@
+import dataclasses
 import functools
+import os
 from collections import defaultdict
-from collections import namedtuple
 from typing import List, Iterable, Dict
 from sympy import symbols, simplify
 
 import sympy
 
 import torch  # noqa
+from torch._inductor.codegen.triton import TritonScheduling
 
 from torch._inductor.codegen.wrapper import WrapperCodeGen
 from torch._inductor.ir import LoopBody
@@ -24,8 +26,30 @@ from . import ir
 class NPUOverrides(OpOverrides):
     """Map element-wise ops to NPU Triton backend"""
 
+    @staticmethod
+    def to_dtype(x, dst_dtype, src_dtype=None):
+        dst = TypeUtils.torch_to_asc(dst_dtype)
+        src = TypeUtils.torch_to_asc(src_dtype)
+        return getattr(ir, "to_dtype")(x, dst, src)
+
     def __getattr__(self, item):
         return getattr(ir, item)
+
+
+class BufDesc:
+    def __init__(self, *, size, dtype, is_output=False, src=None):
+        self._size = size
+        self._dtype = dtype
+        self.is_output: bool = is_output
+        self.src = src
+
+    @property
+    def asc_size(self):
+        return [str(AscExpr(s)) for s in self._size]
+
+    @property
+    def asc_dtype(self):
+        return TypeUtils.torch_to_asc(self._dtype)
 
 
 class ASCGraph:
@@ -48,7 +72,7 @@ class ASCGraph:
             name = f"{name}{'' if num == 0 else num}"
         self.buffer.writeline(f"{name} = ascir.ops.{type}('{name}')")
         self.buffer.writeline(f"{name}.attr.sched.exec_order = {self.num_ops}")
-        self.buffer.writeline(f"{name}.attr.sched.axis = [{', '.join([s for s in self.axis_vars])}]")
+        self.buffer.writeline(f"{name}.attr.sched.axis = [{', '.join([s for s in sorted(self.axis_vars)])}]")
         self.num_ops += 1
         return name
 
@@ -74,7 +98,7 @@ class ASCGraph:
     def build(self):
         graph = IndentedBuffer()
         graph.splice("""
-        if os.getenv('ASCIR_NOT_READY', None):
+        if os.getenv('ASCIR_NOT_READY', None) == "1":
             return None
         """)  # TODO: remove this once ascir ready
         graph.splice(f"""
@@ -90,6 +114,18 @@ class ASCGraph:
         return graph
 
 
+@dataclasses.dataclass
+class Reduction:
+    dtype: torch.dtype
+    src_dtype: torch.dtype
+    reduction_type: str
+    value: str
+    src: str
+
+    def __str__(self) -> str:
+        return self.src
+
+
 class NPUKernel(Kernel):
     overrides = NPUOverrides
     _index = 0
@@ -100,17 +136,17 @@ class NPUKernel(Kernel):
         cls._index += 1
         return name
 
-    def __init__(self, *, body: LoopBody, buf_desc):
+    def __init__(self, *, var_ranges, indexing_exprs, buf_desc):
         super().__init__()
         self.graph = ASCGraph(self.compute)
-        self._buf_desc = buf_desc
+        self._buf_desc: Dict[str:BufDesc] = buf_desc
         self._kernel = NPUKernel.next_kernel_name()
         self._size_vars = set()
         self._axis_exprs = dict()
-        for axis, expr in body.var_ranges.items():
+        for axis, expr in var_ranges.items():
             self._size_vars.update(V.graph.sizevars.simplify(expr).free_symbols)
             self._axis_exprs[sympy.Symbol(axis.name)] = expr
-        for index, expr in body.indexing_exprs.items():
+        for index, expr in indexing_exprs.items():
             self._size_vars.update(
                 [s for s in V.graph.sizevars.simplify(expr).free_symbols if not s.name.startswith('z')])
         self._size_vars = sorted(self._size_vars, key=lambda x: x.name)
@@ -125,6 +161,21 @@ class NPUKernel(Kernel):
 
     def _buf_dtype(self, buf):
         return TypeUtils.torch_to_asc(self._buf_desc[buf].dtype)
+
+    def _get_reduce_dims_and_loop(self, index: sympy.Expr):
+        reduce_dims = []
+        loop = Loop()
+        loop.offset = index
+        for i, (axis, range) in enumerate(self._axis_exprs.items()):
+            stride = index.coeff(axis)
+            if str(stride) == "0":
+                reduce_dims.append(i)
+            else:
+                loop.stride.append(stride)
+                loop.offset = simplify(loop.offset.subs(axis, 0))
+                loop.axis.append(axis)
+                loop.size.append(range)
+        return reduce_dims, loop
 
     def _index_to_loop(self, index: sympy.Expr):
         loop = Loop()
@@ -151,8 +202,11 @@ class NPUKernel(Kernel):
         kw_args_val = ', '.join([f"{v}={v}" for v in kw_args])
 
         code.writeline(f"def {self._kernel}_graph():")
+        graph_code = self.graph.build()
+        from npu_extension_for_inductor.common.debug import draw_asc_graph_dot
+        draw_asc_graph_dot(graph_code.getvalue())
         with code.indent():
-            code.splice(self.graph.build())
+            code.splice(graph_code)
         code.writeline(
             f"{self._kernel}_compiled = npu_compiler.aclnn(npu_codegen.aclnn({self._kernel}_graph()))")
         code.writeline(f"def {self._kernel}({arg_def}, *, {kw_args_def}):")
@@ -162,42 +216,67 @@ class NPUKernel(Kernel):
         return code.getvalue()
 
     def load(self, name: str, index: sympy.Expr):
-        self.args.input(name)
-        self.graph.input(name)
-        data = ir.data(name, sizes=self._buf_size(name), dtype=self._buf_dtype(name))
+        buf: BufDesc = self._buf_desc[name]
+        if not buf.src:
+            self.args.input(name)
+            self.graph.input(name)
+            data = ir.data(name, sizes=buf.asc_size, dtype=buf.asc_dtype)
+            buf.src = data
+        else:
+            data = buf.src
         load = ir.load(data)
-        self.graph.mark_iterable(load, self._index_to_loop(index))
+        loop = self._index_to_loop(index)
+        self.graph.mark_iterable(load, loop)
+        if not loop.is_contiguous():
+            load = ir.broadcast(load)
+            self.graph.mark_iterable(load, loop.contiguous())
         return load
 
-    def store_reduction(self, name, index, value):
-        raise NotImplementedError()
+    def _mark_buf_src(self, name, src):
+        buf: BufDesc = self._buf_desc[name]
+        data = ir.data(name, input=src, sizes=buf.asc_size, dtype=buf.asc_dtype)
+        buf.src = data
+        if buf.is_output:
+            self.args.output(name)
+            self.graph.output(name)
+        return data
+
+    def store_reduction(self, name, index, value: Reduction):
+        reduce_dims, loop = self._get_reduce_dims_and_loop(index)
+        reduction = ir.reduction(value.value, dst_dtype=TypeUtils.torch_to_asc(value.dtype),
+                                 src_dtype=TypeUtils.torch_to_asc(value.src_dtype), reduce_type=value.reduction_type)
+        self.graph.mark_iterable(reduction, loop)
+        store = ir.store(reduction)
+        self.graph.mark_iterable(store, loop)
+        value.src = self._mark_buf_src(name, store)
+        self.cse.store_cache.pop(name)  # Inductor cse always cache value, but we don't want to cache it
+        return store
 
     def store(self, name, index, value, mode=None):
-        self.args.output(name)
-        self.graph.output(name)
         store = ir.store(value)
         self.graph.mark_iterable(store, self._index_to_loop(index))
-        ir.data(name, input=store, sizes=self._buf_size(name), dtype=self._buf_dtype(name))
+        self._mark_buf_src(name, store)
+        self.cse.store_cache.pop(name)  # Inductor cse always cache value, but we don't want to cache it
         return store
 
     def reduction(self, dtype, src_dtype, reduction_type, value):
-        raise NotImplementedError()
+        return Reduction(dtype, src_dtype, reduction_type, value, '')
 
 
 class NPUScheduling(BaseScheduling):
     def __init__(self, scheduler):
         super().__init__()
         self.scheduler = scheduler
+        self._fuse_judge = TritonScheduling(scheduler)
 
     def can_fuse_vertical(self, node1: BaseSchedulerNode, node2: BaseSchedulerNode):
-        return False
+        return self._fuse_judge.can_fuse_vertical(node1, node2)
 
     def can_fuse_horizontal(self, node1: BaseSchedulerNode, node2: BaseSchedulerNode):
-        return False
+        return self._fuse_judge.can_fuse_vertical(node1, node2)
 
     def group_fn(self, sizes):
-        # 这个函数是用来处理迭代大小的，例如将[s0, s1, s2]的sizes变换为[s0, s1*s2]
-        return sizes
+        return self._fuse_judge.group_fn(sizes)
 
     def codegen_template(
             self, template_node: SchedulerNode, epilogue_nodes: List[SchedulerNode]
@@ -208,37 +287,52 @@ class NPUScheduling(BaseScheduling):
         """
         Generate a kernel given a list of pre-fused nodes.
         """
-        print(f"{'-' * 5} codegen_nodes {'-' * 5}")
+        print(f"Codegen for {'Fused' if len(nodes) > 1 else ''}SchedulerNode", flush=True)
+        buf_desc = dict()
+        var_ranges = None
+        indexing_exprs = None
+        output_bufs = []
         for i, node in enumerate(nodes):
-            print(f"Node {i}: {type(node).__name__}\n{node._body.debug_str()}")
+            body: LoopBody = getattr(node, "_body")
+            print(f"Codegen for node {node.node.name}", flush=True)
+            print(f"{body.debug_str()}", flush=True)
 
-            BufDesc = namedtuple("BufDesc", ['size', 'dtype'])
-            buf_desc = dict()
-            buf_desc[node.node.name] = BufDesc(node.node.layout.size, V.graph.get_dtype(node.node.name))
+            if i == 0:
+                var_ranges = body.var_ranges
+                indexing_exprs = body.indexing_exprs
+            else:
+                assert str(var_ranges) == str(body.var_ranges)
+                assert str(indexing_exprs) == str(body.indexing_exprs)
+            is_output = any([isinstance(v.node, torch._inductor.scheduler.OutputNode) for v in node.users])
+            if is_output:
+                output_bufs.append(node)
+            buf_desc[node.node.name] = BufDesc(size=node.node.layout.size, dtype=V.graph.get_dtype(node.node.name),
+                                               is_output=is_output)
             for buf in node.read_writes.reads:
-                buf_desc[buf.name] = BufDesc(buf.size, V.graph.get_dtype(buf.name))
+                if buf.name not in buf_desc:
+                    buf_desc[buf.name] = BufDesc(size=buf.size, dtype=V.graph.get_dtype(buf.name))
 
-            kernel = NPUKernel(body=node._body, buf_desc=buf_desc)
+        ranges = [[sympy.Symbol(f"{k}")] for k in dict(var_ranges).keys()]
+        kernel = NPUKernel(var_ranges=var_ranges, indexing_exprs=indexing_exprs, buf_desc=buf_desc)
 
-            ranges = []
-            for k, _ in dict(node._body.var_ranges).items():
-                ranges.append([sympy.Symbol(f"{k}")])
-
+        for i, node in enumerate(nodes):
             with V.set_kernel_handler(kernel), kernel:
                 node.codegen(ranges)
+            kernel.compute.writeline(f"# end of node {node.node.name}")
 
-            wrapper: WrapperCodeGen = V.graph.wrapper_code
-            wrapper.header.splice("\n\n")
-            wrapper.header.splice(kernel.code)
+        wrapper: WrapperCodeGen = V.graph.wrapper_code
+        wrapper.header.splice("\n\n")
+        wrapper.header.splice(kernel.code)
 
-            _, call_args, _ = kernel.args.python_argdefs()
+        _, call_args, _ = kernel.args.python_argdefs()
 
-            # Manual combine size vars with tensor sizes
-            used_sizes = list(sorted(kernel.graph.size_vars))
-            call_args.append(f"sym_vals=[{', '.join([s for s in used_sizes])}]")
+        # Manual combine size vars with tensor sizes
+        used_sizes = list(sorted(kernel.graph.size_vars))
+        call_args.append(f"sym_vals=[{', '.join([s for s in used_sizes])}]")
 
+        for node in output_bufs:
             node.mark_run()
-            wrapper.writeline(wrapper.wrap_kernel_call(kernel.kernel_name, call_args))
+        wrapper.writeline(wrapper.wrap_kernel_call(kernel.kernel_name, call_args))
 
     def codegen_sync(self):
         raise NotImplementedError()
@@ -269,13 +363,15 @@ def as_default_inductor_backend():
     from torch._inductor.lowering import lowerings
     def _wrap_npu(op, f):
         suffix = str(op).split('.')
-        if hasattr(ir, suffix[-1]) or (suffix[-1] == "default" and hasattr(ir, suffix[-2])):
-            print(f"Inductor npu currently support: {op}", flush=True)
+        # TODO: implicit assumption that aten or prims ops are supported
+        if len(suffix) > 1 and hasattr(ir, suffix[1]):
             return f
 
         @functools.wraps(f)
         def wrapper(*args, **kwargs):
-            print(f"Inductor npu force fallback: {op}", flush=True)
+            if os.getenv("DISABLE_NPU_FALLBACK", None) == "1":
+                return f(*args, **kwargs)
+            print(f"Inductor npu fallback: {op}", flush=True)
             return fallback_handler(op, add_to_fallback_set=False)(*args, **kwargs)
 
         return wrapper

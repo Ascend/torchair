@@ -42,6 +42,24 @@ class Loop:
         self.size: List[sympy.Expr] = []
         self.offset: sympy.Expr = sympy.Symbol("0")
 
+    def is_contiguous(self):
+        if len(self.axis) == 0:
+            return True
+        if str(self.stride[-1]) != "1":
+            return False
+        for i in range(len(self.axis) - 1):
+            if self.stride[i] != self.size[i + 1]:
+                return False
+        return True
+
+    def contiguous(self):
+        if len(self.axis) == 0:
+            return self
+        self.stride[-1] = sympy.Symbol("1")
+        for i in range(len(self.axis) - 1):
+            self.stride[i] = self.size[i + 1]
+        return self
+
     @property
     def asc_offset(self):
         return f"[{AscExpr(self.offset)}]"

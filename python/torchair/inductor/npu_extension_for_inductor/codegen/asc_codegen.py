@@ -12,7 +12,7 @@ def codegen_stub(*args, **kwargs):
 
 
 def codegen(graph):
-    if os.environ.get('ASCIR_NOT_READY', None):
+    if os.environ.get('ASCIR_NOT_READY', None) == "1":
         return codegen_stub(graph)
 
     from pyautofuse import Autofuser, ascir

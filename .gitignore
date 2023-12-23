@@ -9,3 +9,8 @@ cmake-*
 .vscode
 __pycache__
 *.egg-info
+*.svg
+_debug_kernel
+torch_compile_debug
+*.gv
+*.gv.pdf
