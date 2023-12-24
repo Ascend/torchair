@@ -98,6 +98,39 @@ REG_OP(AllGatherMatmul)
     .OP_END_FACTORY_REG(AllGatherMatmul)
 
 /**
+* @brief Function WeightQuantBatchMatmulV2. \n
+
+* @par Inputs:
+* @li x: A matrix Tensor.
+* @li weight: A matrix Tensor of quantized weight.
+* @li antiquant_scale: A Tensor for antiquant scale.
+* @li antiquant_offset: A Tensor for antiquant offset.
+* @li quant_scale: A Tensor for quantization parameters.
+* @li quant_offset: A Tensor for quantization parameters.
+* @li bias: A Tensor. \n
+
+
+* @par Attributes:
+* @li transpose_x: A bool. x is transposed if true.
+* @li transpose_weight: A bool. weight is transposed if true. \n
+
+* @par Outputs:
+* y: A matrix Tensor.
+*/
+REG_OP(WeightQuantBatchMatmulV2)
+    .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))
+    .INPUT(weight, TensorType({DT_INT8, DT_INT4}))
+    .INPUT(antiquant_scale, TensorType({DT_FLOAT16, DT_BF16}))
+    .OPTIONAL_INPUT(antiquant_offset, TensorType({DT_FLOAT16, DT_BF16}))
+    .OPTIONAL_INPUT(quant_scale, TensorType({DT_FLOAT, DT_UINT64}))
+    .OPTIONAL_INPUT(quant_offset, TensorType({DT_FLOAT}))
+    .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))
+    .ATTR(transpose_x, Bool, false)
+    .ATTR(transpose_weight, Bool, false)
+    .OP_END_FACTORY_REG(WeightQuantBatchMatmulV2)
+
+/**
 * @brief Fusion op of matmul and reduce scatter.
 * @par Inputs:
 * twelve inputs, including:
