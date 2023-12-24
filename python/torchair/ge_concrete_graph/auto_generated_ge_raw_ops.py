@@ -84377,3 +84377,139 @@ def MatmulAllReduce(x1: Tensor,
 
 
     return y
+
+
+# This api is auto-generated from IR MatmulReduceScatter
+@auto_convert_to_tensor([False, False, False], [False, False, True])
+def MatmulReduceScatter(x1: Tensor,
+                        x2: Tensor,
+                        bias: Optional[Tensor],
+                        *,
+                        group: str,
+                        reduce_op: str="sum",
+                        is_trans_a: bool=False,
+                        is_trans_b: bool=False,
+                        comm_turn: int=0,
+                        dependencies=[],
+                        node_name=None):
+    """
+    REG_OP(MatmulReduceScatter)\n
+    .INPUT(x1, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .INPUT(x2, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .REQUIRED_ATTR(group, String)\n
+    .ATTR(reduce_op, String, "sum")\n
+    .ATTR(is_trans_a, Bool, false)\n
+    .ATTR(is_trans_b, Bool, false)\n
+    .ATTR(comm_turn, Int, 0)\n
+    """
+    op = get_default_ge_graph().op.add()
+    op.type = "MatmulReduceScatter"
+    op.name = next_unique_name(node_name, "MatmulReduceScatter")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x1.tensor)
+    op.input_desc.add().CopyFrom(x1.desc)
+    op.input_desc[-1].name = "x1"
+    op.input.append(x2.tensor)
+    op.input_desc.add().CopyFrom(x2.desc)
+    op.input_desc[-1].name = "x2"
+    if bias is not None:
+        op.input.append(bias.tensor)
+        op.input_desc.add().CopyFrom(bias.desc)
+        op.input_desc[-1].name = "bias"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "bias"
+
+    # process attrs
+    op.attr["group"].s = compat_as_bytes(group)
+    op.attr["reduce_op"].s = compat_as_bytes(reduce_op)
+    op.attr["is_trans_a"].b = is_trans_a
+    op.attr["is_trans_b"].b = is_trans_b
+    op.attr["comm_turn"].i = comm_turn
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+
+
+    return y
+
+
+# This api is auto-generated from IR AllGatherMatmul
+@auto_convert_to_tensor([False, False, False], [False, False, True])
+def AllGatherMatmul(x1: Tensor,
+                    x2: Tensor,
+                    bias: Optional[Tensor],
+                    *,
+                    group: str,
+                    is_trans_a: bool=False,
+                    is_trans_b: bool=False,
+                    gather_index: int=0,
+                    comm_turn: int=0,
+                    dependencies=[],
+                    node_name=None):
+    """
+    REG_OP(AllGatherMatmul)\n
+    .INPUT(x1, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .INPUT(x2, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(gather_out, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .REQUIRED_ATTR(group, String)\n
+    .ATTR(is_trans_a, Bool, false)\n
+    .ATTR(is_trans_b, Bool, false)\n
+    .ATTR(gather_index, Int, 0)\n
+    .ATTR(comm_turn, Int, 0)\n
+    """
+    op = get_default_ge_graph().op.add()
+    op.type = "AllGatherMatmul"
+    op.name = next_unique_name(node_name, "AllGatherMatmul")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x1.tensor)
+    op.input_desc.add().CopyFrom(x1.desc)
+    op.input_desc[-1].name = "x1"
+    op.input.append(x2.tensor)
+    op.input_desc.add().CopyFrom(x2.desc)
+    op.input_desc[-1].name = "x2"
+    if bias is not None:
+        op.input.append(bias.tensor)
+        op.input_desc.add().CopyFrom(bias.desc)
+        op.input_desc[-1].name = "bias"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "bias"
+
+    # process attrs
+    op.attr["group"].s = compat_as_bytes(group)
+    op.attr["is_trans_a"].b = is_trans_a
+    op.attr["is_trans_b"].b = is_trans_b
+    op.attr["gather_index"].i = gather_index
+    op.attr["comm_turn"].i = comm_turn
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "gather_out"
+    gather_out = Tensor(op, output_index)
+    output_index += 1
+
+
+    return y, gather_out
