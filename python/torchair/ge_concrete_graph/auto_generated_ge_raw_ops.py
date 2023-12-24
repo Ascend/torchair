@@ -84513,3 +84513,92 @@ def AllGatherMatmul(x1: Tensor,
 
 
     return y, gather_out
+
+
+# This api is auto-generated from IR WeightQuantBatchMatmulV2
+@auto_convert_to_tensor([False, False, False, False, False, False, False],
+                        [False, False, False, True, True, True, True])
+def WeightQuantBatchMatmulV2(x: Tensor,
+                             weight: Tensor,
+                             antiquant_scale: Tensor,
+                             antiquant_offset: Optional[Tensor],
+                             quant_scale: Optional[Tensor],
+                             quant_offset: Optional[Tensor],
+                             bias: Optional[Tensor],
+                             *,
+                             transpose_x: bool = False,
+                             transpose_weight: bool = False,
+                             dependencies=[],
+                             node_name=None):
+    """REG_OP(WeightQuantBatchMatmulV2)\n
+    .INPUT(x, TensorType({DT_FLOAT16,DT_BF16}))\n
+    .INPUT(weight, TensorType({DT_INT8}))\n
+    .INPUT(antiquant_scale, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OPTIONAL_INPUT(antiquant_offset, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OPTIONAL_INPUT(quant_scale, TensorType({DT_FLOAT, DT_UINT64}))\n
+    .OPTIONAL_INPUT(quant_offset, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT16, DT_FLOAT}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))\n
+    .ATTR(transpose_x, Bool, false)\n
+    .ATTR(transpose_weight, Bool, false)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "WeightQuantBatchMatmulV2"
+    op.name = next_unique_name(node_name, "WeightQuantBatchMatmulV2")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+    op.input.append(weight.tensor)
+    op.input_desc.add().CopyFrom(weight.desc)
+    op.input_desc[-1].name = "weight"
+    op.input.append(antiquant_scale.tensor)
+    op.input_desc.add().CopyFrom(antiquant_scale.desc)
+    op.input_desc[-1].name = "antiquant_scale"
+    if antiquant_offset is not None:
+        op.input.append(antiquant_offset.tensor)
+        op.input_desc.add().CopyFrom(antiquant_offset.desc)
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+    op.input_desc[-1].name = "antiquant_offset"
+    if quant_scale is not None:
+        op.input.append(quant_scale.tensor)
+        op.input_desc.add().CopyFrom(quant_scale.desc)
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+    op.input_desc[-1].name = "quant_scale"
+    if quant_offset is not None:
+        op.input.append(quant_offset.tensor)
+        op.input_desc.add().CopyFrom(quant_offset.desc)
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+    op.input_desc[-1].name = "quant_offset"
+    if bias is not None:
+        op.input.append(bias.tensor)
+        op.input_desc.add().CopyFrom(bias.desc)
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+    op.input_desc[-1].name = "bias"
+
+    # process attrs
+    op.attr["transpose_x"].b = transpose_x
+    op.attr["transpose_weight"].b = transpose_weight
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+
+
+    return y
