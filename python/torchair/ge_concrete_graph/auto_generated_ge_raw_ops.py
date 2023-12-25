@@ -84602,3 +84602,126 @@ def WeightQuantBatchMatmulV2(x: Tensor,
 
 
     return y
+
+
+# This api is auto-generated from IR LayerNormV4
+@auto_convert_to_tensor([False, False, False, False], [False, False, True, True])
+def LayerNormV4(x: Tensor, 
+                normalized_shape: Tensor, 
+                gamma: Optional[Tensor], 
+                beta: Optional[Tensor], 
+                *, 
+                epsilon: float=0.000010, 
+                dependencies=[], 
+                node_name=None):
+    """REG_OP(LayerNormV4)\n
+    .INPUT(x, "T1")\n
+    .INPUT(normalized_shape, "T2")\n
+    .OPTIONAL_INPUT(gamma, "T3")\n
+    .OPTIONAL_INPUT(beta, "T4")\n
+    .OUTPUT(y, "T5")\n
+    .OUTPUT(mean, "T6")\n
+    .OUTPUT(rstd, "T6")\n
+    .ATTR(epsilon, Float, 0.00001)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "LayerNormV4"
+    op.name = next_unique_name(node_name, "LayerNormV4")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+    op.input.append(normalized_shape.tensor)
+    op.input_desc.add().CopyFrom(normalized_shape.desc)
+    op.input_desc[-1].name = "normalized_shape"
+    if gamma is not None:
+        op.input.append(gamma.tensor)
+        op.input_desc.add().CopyFrom(gamma.desc)
+        op.input_desc[-1].name = "gamma"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "gamma"
+    if beta is not None:
+        op.input.append(beta.tensor)
+        op.input_desc.add().CopyFrom(beta.desc)
+        op.input_desc[-1].name = "beta"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "beta"
+
+    # process attrs
+    op.attr["epsilon"].f = epsilon
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "mean"
+    mean = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "rstd"
+    rstd = Tensor(op, output_index)
+    output_index += 1
+
+    # return outputs
+    return y, mean, rstd
+
+
+# This api is auto-generated from IR Sxpy
+@auto_convert_to_tensor([False, False, False], [False, False, True])
+def Sxpy(x1: Tensor, 
+         x2: Tensor, 
+         alpha: Optional[Tensor], 
+         *, 
+         dependencies=[], 
+         node_name=None):
+    """REG_OP(Sxpy)\n
+    .INPUT(x1, "T1")\n
+    .INPUT(x2, "T2")\n
+    .OPTIONAL_INPUT(alpha, "T3")\n
+    .OUTPUT(y, "T4")\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "Sxpy"
+    op.name = next_unique_name(node_name, "Sxpy")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x1.tensor)
+    op.input_desc.add().CopyFrom(x1.desc)
+    op.input_desc[-1].name = "x1"
+    op.input.append(x2.tensor)
+    op.input_desc.add().CopyFrom(x2.desc)
+    op.input_desc[-1].name = "x2"
+    if alpha is not None:
+        op.input.append(alpha.tensor)
+        op.input_desc.add().CopyFrom(alpha.desc)
+        op.input_desc[-1].name = "alpha"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "alpha"
+
+    # process attrs
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+
+    # return outputs
+    return y

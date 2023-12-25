@@ -29,6 +29,7 @@ from torchair.ge_concrete_graph.utils import dtype_promote
 @declare_supported(
     [
         Support(F16(2, 1024), [1024], F16(1024), F16(1024), 1e-5),
+        Support(F16(2, 1024), [1024], None, None, 1e-5),
     ]
 )
 @register_fx_node_ge_converter(torch.ops.aten.native_layer_norm.default)
@@ -41,13 +42,7 @@ def conveter_aten_native_layer_norm_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::native_layer_norm(Tensor input, SymInt[] normalized_shape, Tensor? weight, Tensor? bias, float eps) -> (Tensor, Tensor, Tensor)"""
-    if weight is None or bias is None or isinstance(normalized_shape, Tensor):
-        raise NotImplementedError("torch.ops.aten.native_layer_norm.default ge_converter is not implemented!")
-
-    norm_dim = len(normalized_shape)
-    input_dim = input.rank
-    begin_axis = input_dim - norm_dim
-    return ge.LayerNormV3(input, weight, bias, begin_norm_axis=begin_axis, begin_params_axis=begin_axis, epsilon=eps)
+    return ge.LayerNormV4(input, normalized_shape, gamma=weight, beta=bias, epsilon=eps)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.native_layer_norm.out)
