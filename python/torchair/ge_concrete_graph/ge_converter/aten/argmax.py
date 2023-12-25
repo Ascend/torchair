@@ -18,10 +18,18 @@ import torch
 from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
-from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
+from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.utils import dtype_promote, DataType
+from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
+     Support
 
 
+@declare_supported([
+     Support(F32(3, 2)),
+     Support(F32(3, 2), 1),
+     Support(F32(3, 2), 1, keepdim=True),
+])
 @register_fx_node_ge_converter(torch.ops.aten.argmax.default)
 def conveter_aten_argmax_default(
     self: Tensor,
@@ -30,7 +38,15 @@ def conveter_aten_argmax_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::argmax(Tensor self, int? dim=None, bool keepdim=False) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.argmax.default ge_converter is not implemented!")
+    if not dim:
+        self_cp = ge.Reshape(self, (-1,))
+        return ge.ArgMaxV2(self_cp, 0)
+    if keepdim:
+        index, _ = ge.ArgMaxWithValue(self, dimension=dim, keep_dims=keepdim)
+        index = dtype_promote(index, target_dtype=DataType.DT_FLOAT64)
+        return index
+    dim = dtype_promote(dim, target_dtype=DataType.DT_FLOAT64)
+    return ge.ArgMaxV2(self, dim)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.argmax.out)

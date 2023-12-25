@@ -44,12 +44,18 @@ def conveter_aten_max_default(self: Tensor, meta_outputs: TensorSpec = None):
     return ge.ReduceMax(self, dim)
 
 
+@declare_supported([
+    Support(F32(4, 4), 1, False),
+    Support(F32(4, 4), 0, True),
+])
 @register_fx_node_ge_converter(torch.ops.aten.max.dim)
 def conveter_aten_max_dim(
     self: Tensor, dim: int, keepdim: bool = False, meta_outputs: List[TensorSpec] = None
 ):
     """NB: aten::max.dim(Tensor self, int dim, bool keepdim=False) -> (Tensor values, Tensor indices)"""
-    raise NotImplementedError("torch.ops.aten.max.dim ge_converter is not implemented!")
+    index, output = ge.ArgMaxWithValue(self, dimension=dim, keep_dims=keepdim)
+    index = dtype_promote(index, target_dtype=meta_outputs[1].dtype)
+    return output, index
 
 
 @register_fx_node_ge_converter(torch.ops.aten.max.dim_max)
