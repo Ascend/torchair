@@ -26,7 +26,13 @@ Status AssembleStorageShapeToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor)
 
   if (tensor.device().is_privateuseone()) {
     desc.SetOriginShape(ge::Shape(tensor.sizes().vec()));
-    desc.SetShape(ge::Shape(at_npu::native::get_npu_storage_sizes(tensor)));
+    const bool is_base_format = (desc.GetFormat() == ge::FORMAT_ND) || (desc.GetFormat() == ge::FORMAT_NCHW) ||
+                          (desc.GetFormat() == ge::FORMAT_NHWC);
+    TNG_ASSERT(is_base_format || (tensor.storage_offset() == 0),
+               "Invalid at::tensor with internal format and offset is %lld.", tensor.storage_offset());
+    const std::vector<int64_t> &ge_shape_vec = is_base_format ? tensor.sizes().vec()
+                                                              : at_npu::native::get_npu_storage_sizes(tensor);
+    desc.SetShape(ge::Shape(ge_shape_vec));
   } else {
     desc.SetShape(ge::Shape(tensor.sizes().vec()));
   }
@@ -56,18 +62,26 @@ Status AtNpuTensorToGeTensor(const at::Tensor &tensor, ge::Tensor &ge_tensor) {
                                                     : ge::Format::FORMAT_ND);
 
     // npu tensor may have internal format.
-    const std::vector<int64_t> &storage_sizes = at_npu::native::get_npu_storage_sizes(tensor);
-    desc.SetShape(ge::Shape(storage_sizes));
-    desc.SetFormat(ge::Format(at_npu::native::get_npu_format(tensor)));
+    const auto &npu_format = ge::Format(at_npu::native::get_npu_format(tensor));
+    desc.SetFormat(npu_format);
 
-    TNG_LOG(DEBUG) << "Set ge tensor shape: " << storage_sizes << ", from npu at::tensor storage_sizes_.";
+    const bool is_base_format = (npu_format == ge::FORMAT_ND) || (npu_format == ge::FORMAT_NCHW) ||
+                                (npu_format == ge::FORMAT_NHWC);
+    TNG_ASSERT(is_base_format || (tensor.storage_offset() == 0),
+               "Invalid at::tensor with internal format and offset is %lld.", tensor.storage_offset());
+    const std::vector<int64_t> &ge_shape_vec = is_base_format ? tensor.sizes().vec()
+                                                              : at_npu::native::get_npu_storage_sizes(tensor);
+    desc.SetShape(ge::Shape(ge_shape_vec));
+    TNG_LOG(DEBUG) << "Set ge tensor shape: [" << ge_shape_vec << "] and format: [" << npu_format
+                   << "], from npu at::tensor.";
   } else {
     desc.SetPlacement(ge::Placement::kPlacementHost);
 
     desc.SetShape(ge::Shape(tensor.sizes().vec()));
     desc.SetFormat(ge::FORMAT_ND);
 
-    TNG_LOG(DEBUG) << "Set ge tensor shape: " << tensor.sizes().vec() << ", from cpu at::tensor sizes.";
+    TNG_LOG(DEBUG) << "Set ge tensor shape: [" << tensor.sizes().vec() << "] and format: [" << ge::FORMAT_ND
+                   << "], from cpu at::tensor.";
   }
 
   ge_tensor.SetTensorDesc(desc);
