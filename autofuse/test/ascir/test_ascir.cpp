@@ -31,24 +31,17 @@ void AttrEq(T &holder, const std::string attr_name, const vector<vector<int64_t>
   EXPECT_EQ(value, expect);
 }
 
-REG_OPS(Data)
+namespace ge {
+REG_OP(Data)
     .INPUT(x, TensorType::ALL())
     .OUTPUT(y, TensorType::ALL())
-    .ATTR(index, Int, 0)
-    .END_OPS(Data)
+    .OP_END_FACTORY_REG(Data)
+}
 
-        class Data : public ge::op::Data {
- public:
-  union {
-    ge::Operator *__op;
-    ascir::OperatorInput<0> x;
-    ascir::OperatorOutput<0> y;
-  };
-
-  ascir::NodeAttr attr;
-
-  inline Data(const char *name) : ge::op::Data(name), __op(this), attr(*this) {}
-};
+REG_OPS(Data)
+  OPS_INPUT(0, x)
+  OPS_OUTPUT(0, y)
+END_OPS(Data)
 
 TEST(TestAscir, AscirOperator_ShouldHas_Fields) {
   Data data("test_op");
@@ -57,8 +50,8 @@ TEST(TestAscir, AscirOperator_ShouldHas_Fields) {
   data.attr.sched.axis = {0, 1, 2};
 
   data.y.axis = {0, 1, 2};
-  data.y.repeats = {SizeExpr{{1}, {2}}, SizeExpr{{3}, {4}}};
-  data.y.strides = {SizeExpr{{5, 6}, {7, 8}}, SizeExpr{{9, 10}, {11, 12}}};
+  data.y.repeats = {SizeExpr({1}, {2}), SizeExpr({3}, {4})};
+  data.y.strides = {SizeExpr({5, 6}, {7, 8}), SizeExpr({9, 10}, {11, 12})};
 
   ascir::Graph graph("test_graph");
   graph.SetInputs({data});
@@ -116,12 +109,76 @@ inline ascir::Graph CreateTestGraph() {
   return std::move(graph);
 }
 
+TEST(Ascir_AxisOperations, SizeExpr_SupportZero) {
+  SizeExpr zero = SizeExpr::Zero();
+  EXPECT_TRUE(zero.is_zero);
+}
+
+TEST(Ascir_AxisOperations, SizeExpr_SupportCompareToOne) {
+  SizeExpr one = SizeExpr::One();
+  EXPECT_TRUE(one == 1);
+}
+
+TEST(Ascir_AxisOperations, SizeExpr_MulZero_WillBeZero) {
+  SizeExpr result = SizeExpr::One() * SizeExpr::Zero();
+  EXPECT_TRUE(result.is_zero);
+
+  SizeExpr expr = SizeExpr::One();
+  expr *= SizeExpr::Zero();
+  EXPECT_TRUE(expr.is_zero);
+}
+
+TEST(Ascir_AxisOperations, SizeExpr_ZeroDivAny_WillBeZero) {
+  SizeExpr result = SizeExpr::Zero() / SizeExpr::One();
+  EXPECT_TRUE(result.is_zero);
+
+  SizeExpr expr = SizeExpr::Zero();
+  expr /= SizeExpr::One();
+  EXPECT_TRUE(expr.is_zero);
+}
+
 TEST(Ascir_AxisOperations, SizeExpr_SupportConstructBy_SizeVar) {
-  GTEST_SKIP() << "Not Implemented";
+  ascir::Graph graph("test_graph");
+
+  auto s0 = graph.CreateSizeVar("s0");
+  auto s1 = graph.CreateSizeVar("s1");
+  SizeExpr expr({s0}, {s1});
+
+  ASSERT_EQ(expr.nums.size(), 1);
+  EXPECT_EQ(expr.nums[0], s0.id);
+  ASSERT_EQ(expr.dens.size(), 1);
+  EXPECT_EQ(expr.dens[0], s1.id);
 }
 
 TEST(Ascir_AxisOperations, SizeExpr_SupportConstructBy_Divider) {
-  GTEST_SKIP() << "Not Implemented";
+  ascir::Graph graph("test_graph");
+
+  auto s0 = graph.CreateSizeVar("s0");
+  auto s1 = graph.CreateSizeVar("s1");
+  SizeExpr expr = s0 / s1;
+
+  ASSERT_EQ(expr.nums.size(), 1);
+  EXPECT_EQ(expr.nums[0], s0.id);
+  ASSERT_EQ(expr.dens.size(), 1);
+  EXPECT_EQ(expr.dens[0], s1.id);
+
+  SizeExpr expr2 = s0 / SizeExpr({s1});
+  EXPECT_EQ(expr, expr2);
+}
+
+TEST(Ascir_AxisOperations, SizeExpr_SupportConstructBy_Multiplier) {
+  ascir::Graph graph("test_graph");
+
+  auto s0 = graph.CreateSizeVar("s0");
+  auto s1 = graph.CreateSizeVar("s1");
+  SizeExpr expr = s0 * s1;
+
+  ASSERT_EQ(expr.nums.size(), 2);
+  EXPECT_EQ(expr.nums[0], s0.id);
+  EXPECT_EQ(expr.nums[1], s1.id);
+
+  SizeExpr expr2 = s0 * SizeExpr({s1});
+  EXPECT_EQ(expr, expr2);
 }
 
 TEST(Ascir, CanGetPeer_FromInput) {
@@ -175,8 +232,8 @@ TEST(Ascir_AxisOperations, CreateAxis_WillSetAxisTable_ToGraphAttr) {
   auto s0 = graph.CreateSizeVar("s0");
   auto s1 = graph.CreateSizeVar("s1", 100);
 
-  auto z0 = graph.CreateAxis("z0", ascir::SizeExpr{{s0.id}});
-  auto z1 = graph.CreateAxis("z1", ascir::SizeExpr{{s0.id}, {s1.id}});
+  auto z0 = graph.CreateAxis("z0", s0);
+  auto z1 = graph.CreateAxis("z1", s0 / s1);
 
   EXPECT_EQ(z0.id, 0);
   EXPECT_EQ(z0.name, "z0");
@@ -222,7 +279,7 @@ TEST(Ascir_AxisOperations, BlockSplit_WillCreate_BlockOutAndInAxis) {
   auto graph = CreateTestGraph();
 
   auto s0 = graph.CreateSizeVar("s0");
-  auto z0 = graph.CreateAxis("z0", ascir::SizeExpr{{s0.id}});
+  auto z0 = graph.CreateAxis("z0", s0);
 
   auto [z0_out, z0_in] = graph.BlockSplit(z0.id);
 
@@ -288,7 +345,7 @@ TEST(Ascir_AxisOperations, MergeAxis_WillCreate_MergedAxis) {
   auto s2 = graph.CreateSizeVar("s2");
   auto s3 = graph.CreateSizeVar("s3");
 
-  auto z0 = graph.CreateAxis("z0", ascir::SizeExpr{{s0.id}, {s1.id}});
+  auto z0 = graph.CreateAxis("z0", ascir::SizeExpr{{{s0.id}}, {{s1.id}}});
   auto z1 = graph.CreateAxis("z1", ascir::SizeExpr{{s2.id}, {s3.id}});
 
   auto z3 = graph.MergeAxis({z0.id, z1.id});
@@ -381,8 +438,8 @@ TEST(Ascir_Utils, DebugHintGraphStr_WillShowAxisInfo) {
   data.attr.sched.axis = {z0_out.id, z0_in.id, z1.id};
 
   data.y.axis = {z0_out.id, z0_in.id, z1.id};
-  data.y.repeats = {SizeExpr{{s0.id}, {s0_block.id}}, SizeExpr{{s0_block.id}}, SizeExpr{{s1.id}}};
-  data.y.strides = {SizeExpr{{s0_block.id, s1.id}}, SizeExpr{{s1.id}}, SizeExpr{{}}};
+  data.y.repeats = {s0 / s0_block, s0_block, s1};
+  data.y.strides = {s0_block * s1, s1, {}};
 
   auto result_str = ascir::utils::DebugHintGraphStr(graph);
 
@@ -427,8 +484,8 @@ TEST(Ascir_Utils, DebugImplGraphStr) {
 
   auto data_y = data_op.outputs[0];
   data_y.axis = {z0_out.id, z0_in.id, z1.id};
-  data_y.repeats = {SizeExpr{{s0.id}, {s0_block.id}}, SizeExpr{{s0_block.id}}, SizeExpr{{s1.id}}};
-  data_y.strides = {SizeExpr{{s0_block.id, s1.id}}, SizeExpr{{s1.id}}, SizeExpr{{}}};
+  data.y.repeats = {s0 / s0_block, s0_block, s1};
+  data.y.strides = {s0_block * s1, s1, {}};
   data_y.mem.tensor_id = 0;
   data_y.mem.alloc_type = ALLOC_TYPE_QUEUE;
   data_y.mem.hardware = MEM_HARDWARE_UB;

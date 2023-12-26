@@ -23,9 +23,9 @@ static void Construct_LoadAbsStore(ascir::Graph& graph) {
     auto s1 = graph.CreateSizeVar("s1");
     auto s2 = graph.CreateSizeVar("s2");
 
-    auto z0 = graph.CreateAxis("z0", {{s0.id}});
-    auto z1 = graph.CreateAxis("z1", {{s1.id}});
-    auto z2 = graph.CreateAxis("z2", {{s2.id}});
+    auto z0 = graph.CreateAxis("z0", s0);
+    auto z1 = graph.CreateAxis("z1", s1);
+    auto z2 = graph.CreateAxis("z2", s2);
 
     ops::Data x("x");
     x.attr.sched.exec_order = 0;
@@ -33,8 +33,8 @@ static void Construct_LoadAbsStore(ascir::Graph& graph) {
     x.attr.hint.compute_type = COMPUTE_DATA;
     x.y.dtype = ge::DT_FLOAT16;
     x.y.axis = {z0.id, z1.id, z2.id};
-    x.y.repeats = {{{s0.id}}, {{s1.id}}, {{s2.id}}};
-    x.y.strides = {{{s1.id, s2.id}}, {{s2.id}}, {{}}};
+    x.y.repeats = {s0, s1, s2};
+    x.y.strides = {s1*s2, s2, {}};
 
     ops::Load load("load");
     load.x = x;
@@ -43,8 +43,8 @@ static void Construct_LoadAbsStore(ascir::Graph& graph) {
     load.attr.hint.compute_type = COMPUTE_LOAD;
     load.y.dtype = ge::DT_FLOAT16;
     load.y.axis = {z0.id, z1.id, z2.id};
-    load.y.repeats = {{{s0.id}}, {{s1.id}}, {{s2.id}}};
-    load.y.strides = {{{s1.id, s2.id}}, {{s2.id}}, {{}}};
+    load.y.repeats = {s0, s1, s2};
+    load.y.strides = {s1*s2, s2, {}};
 
     ops::Abs abs("abs");
     abs.x = load.y;
@@ -53,8 +53,8 @@ static void Construct_LoadAbsStore(ascir::Graph& graph) {
     abs.attr.hint.compute_type = COMPUTE_ELEWISE;
     abs.y.dtype = ge::DT_FLOAT16;
     abs.y.axis = {z0.id, z1.id, z2.id};
-    abs.y.repeats = {{{s0.id}}, {{s1.id}}, {{s2.id}}};
-    abs.y.strides = {{{s1.id, s2.id}}, {{s2.id}}, {{}}};
+    abs.y.repeats = {s0, s1, s2};
+    abs.y.strides = {s1*s2, s2, {}};
 
     ops::Store store("store");
     store.x = abs.y;
@@ -63,8 +63,8 @@ static void Construct_LoadAbsStore(ascir::Graph& graph) {
     store.attr.hint.compute_type = COMPUTE_STORE;
     store.y.dtype = ge::DT_FLOAT16;
     store.y.axis = {z0.id, z1.id, z2.id};
-    store.y.repeats = {{{s0.id}}, {{s1.id}}, {{s2.id}}};
-    store.y.strides = {{{s1.id, s2.id}}, {{s2.id}}, {{}}};
+    store.y.repeats = {s0, s1, s2};
+    store.y.strides = {s1*s2, s2, {}};
 
     ops::Data y("y");
     y.x = store.y;
@@ -73,8 +73,8 @@ static void Construct_LoadAbsStore(ascir::Graph& graph) {
     y.attr.hint.compute_type = COMPUTE_DATA;
     y.y.dtype = ge::DT_FLOAT16;
     y.y.axis = {z0.id, z1.id, z2.id};
-    y.y.repeats = {{{s0.id}}, {{s1.id}}, {{s2.id}}};
-    y.y.strides = {{{s1.id, s2.id}}, {{s2.id}}, {{}}};
+    y.y.repeats = {s0, s1, s2};
+    y.y.strides = {s1*s2, s2, {}};
 
     graph.SetInputs({x});
     graph.SetOutputs({y});

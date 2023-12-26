@@ -16,6 +16,19 @@ const char* SizeVar::TypeStr(Type type) {
   return TypeToStr[type];
 }
 
+SizeExpr::SizeExpr(std::initializer_list<SizeVar> nums, std::initializer_list<SizeVar> dens) {
+  for (auto &num : nums) {
+    this->nums.push_back(num.id);
+  }
+
+  for (auto den : dens) {
+    this->dens.push_back(den.id);
+  }
+
+  std::sort(this->nums.begin(), this->nums.end());
+  std::sort(this->dens.begin(), this->dens.end());
+}
+
 SizeExpr::SizeExpr(std::initializer_list<SizeVarId> nums, std::initializer_list<SizeVarId> dens) {
   this->nums = nums;
   this->dens = dens;
@@ -23,12 +36,16 @@ SizeExpr::SizeExpr(std::initializer_list<SizeVarId> nums, std::initializer_list<
   std::sort(this->dens.begin(), this->dens.end());
 }
 
-SizeExpr SizeExpr::operator/(const SizeExpr &rhs) {
+SizeExpr SizeExpr::operator/(const SizeExpr &rhs) const {
   SizeExpr result = *this;
   result.nums.insert(result.nums.end(), rhs.dens.begin(), rhs.dens.end());
   result.dens.insert(result.dens.end(), rhs.nums.begin(), rhs.nums.end());
   std::sort(result.nums.begin(), result.nums.end());
   std::sort(result.dens.begin(), result.dens.end());
+
+  if (rhs.is_zero) {
+    throw std::invalid_argument("division by zero");
+  }
   return result;
 }
 
@@ -37,11 +54,16 @@ SizeExpr &SizeExpr::operator/=(const SizeExpr &rhs) {
   this->dens.insert(this->dens.end(), rhs.nums.begin(), rhs.nums.end());
   std::sort(this->nums.begin(), this->nums.end());
   std::sort(this->dens.begin(), this->dens.end());
+
+  if (rhs.is_zero) {
+    throw std::invalid_argument("division by zero");
+  }
   return *this;
 }
 
-SizeExpr SizeExpr::operator*(const SizeExpr &rhs) {
+SizeExpr SizeExpr::operator*(const SizeExpr &rhs) const {
   SizeExpr result = *this;
+  result.is_zero = this->is_zero || rhs.is_zero;
   result.nums.insert(result.nums.end(), rhs.nums.begin(), rhs.nums.end());
   result.dens.insert(result.dens.end(), rhs.dens.begin(), rhs.dens.end());
   std::sort(result.nums.begin(), result.nums.end());
@@ -50,6 +72,7 @@ SizeExpr SizeExpr::operator*(const SizeExpr &rhs) {
 }
 
 SizeExpr &SizeExpr::operator*=(const SizeExpr &rhs) {
+  this->is_zero = this->is_zero || rhs.is_zero;
   this->nums.insert(this->nums.end(), rhs.nums.begin(), rhs.nums.end());
   this->dens.insert(this->dens.end(), rhs.dens.begin(), rhs.dens.end());
   std::sort(this->nums.begin(), this->nums.end());
@@ -66,6 +89,18 @@ bool SizeExpr::operator==(const SizeExpr &rhs) const {
   }
 
   return this->nums == rhs.nums && this->dens == rhs.dens;
+}
+
+bool SizeExpr::operator==(const int64_t rhs) const {
+  if (rhs == 0 && this->is_zero) {
+    return true;
+  }
+
+  if (rhs == 1 && this->nums.size() == 0 && this->dens.size() == 0 && this->is_zero == false) {
+    return true;
+  }
+
+  return false;
 }
 
 const char *Axis::TypeStr(Type type) {

@@ -76,17 +76,49 @@ struct SizeVar {
 };
 
 struct SizeExpr {
+  bool is_zero = false;
   std::vector<SizeVarId> nums;
   std::vector<SizeVarId> dens;
 
-  SizeExpr operator/(const SizeExpr &rhs);
+  SizeExpr operator/(const SizeExpr &rhs) const;
   SizeExpr &operator/=(const SizeExpr &rhs);
-  SizeExpr operator*(const SizeExpr &rhs);
+  SizeExpr operator*(const SizeExpr &rhs) const;
   SizeExpr &operator*=(const SizeExpr &rhs);
   bool operator==(const SizeExpr &rhs) const;
+  bool operator==(const int64_t rhs) const;
 
-  SizeExpr(std::initializer_list<SizeVarId> nums = {}, std::initializer_list<SizeVarId> dens = {});
+  inline SizeExpr() {};
+  inline SizeExpr(const SizeVar &size) {
+    this->nums.push_back(size.id);
+  };
+  explicit SizeExpr(const SizeVarId &size) {
+    this->nums.push_back(size);
+  }
+  explicit SizeExpr(std::initializer_list<SizeVarId> nums, std::initializer_list<SizeVarId> dens);
+  explicit SizeExpr(std::initializer_list<SizeVar> nums, std::initializer_list<SizeVar> dens);
+
+  static inline SizeExpr One() {
+    return SizeExpr();
+  }
+  static inline SizeExpr Zero() {
+    SizeExpr expr;
+    expr.is_zero = true;
+    return expr;
+  };
 };
+
+inline SizeExpr operator/(const SizeVar &lhs, const SizeVar &rhs) {
+  return SizeExpr({lhs.id}, {rhs.id});
+}
+inline SizeExpr operator/(const SizeVar &lhs, const SizeExpr &rhs) {
+  return SizeExpr({lhs.id}) / rhs;
+}
+inline SizeExpr operator*(const SizeVar &lhs, const SizeVar &rhs) {
+  return SizeExpr({lhs.id, rhs.id}, {});
+}
+inline SizeExpr operator*(const SizeVar &lhs, const SizeExpr &rhs) {
+  return SizeExpr({lhs.id}) * rhs;
+}
 
 using AxisId = Identifier;
 struct Axis {
@@ -184,25 +216,31 @@ struct AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::SizeExpr>> {
 
  public:
   static const std::string NUM_OF_FACTOR;
+  static const std::string IS_ZERO;
   static const std::string NUMS;
   static const std::string DENS;
   void operator=(const vector<SizeExpr> &values) {
     ge::AttrUtils::SetInt(holder, NUM_OF_FACTOR, values.size());
 
+    std::vector<int64_t> is_zero;
     std::vector<std::vector<ascir::SizeVarId>> nums;
     std::vector<std::vector<ascir::SizeVarId>> dens;
     for (auto expr : values) {
+      is_zero.push_back(expr.is_zero);
       nums.push_back(expr.nums);
       dens.push_back(expr.dens);
     }
 
+    ge::AttrUtils::SetListInt(holder, IS_ZERO.c_str(), is_zero);
     ge::AttrUtils::SetListListInt(holder, NUMS.c_str(), nums);
     ge::AttrUtils::SetListListInt(holder, DENS.c_str(), dens);
   }
 
   vector<SizeExpr> operator()() const {
+    std::vector<int64_t> is_zero;
     std::vector<std::vector<ascir::SizeVarId>> nums;
     std::vector<std::vector<ascir::SizeVarId>> dens;
+    ge::AttrUtils::GetListInt(holder, IS_ZERO, is_zero);
     ge::AttrUtils::GetListListInt(holder, NUMS.c_str(), nums);
     ge::AttrUtils::GetListListInt(holder, DENS.c_str(), dens);
 
@@ -210,6 +248,7 @@ struct AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::SizeExpr>> {
     result.reserve(nums.size());
     for (size_t i = 0; i < nums.size(); ++i) {
       ascir::SizeExpr expr;
+      expr.is_zero = is_zero[i];
       expr.nums = nums[i];
       expr.dens = dens[i];
       result.push_back(expr);
@@ -230,6 +269,9 @@ struct AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::SizeExpr>> {
 template <typename Holder, const char *ATTR_NAME_PREFIX>
 const std::string AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::SizeExpr>>::NUM_OF_FACTOR{
     std::string(ATTR_NAME_PREFIX) + ".num_of_factor"};
+template <typename Holder, const char *ATTR_NAME_PREFIX>
+const std::string AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::SizeExpr>>::IS_ZERO {
+    std::string(ATTR_NAME_PREFIX) + ".is_zero"};
 template <typename Holder, const char *ATTR_NAME_PREFIX>
 const std::string AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::SizeExpr>>::NUMS{
     std::string(ATTR_NAME_PREFIX) + ".nums"};
@@ -492,19 +534,23 @@ struct OutputAttrField<OUTPUT_INDEX, ATTR_NAME_PREFIX, std::vector<ascir::SizeEx
 
  public:
   static const std::string NUM_OF_FACTOR;
+  static const std::string IS_ZERO;
   static const std::string NUMS;
   static const std::string DENS;
   void operator=(std::initializer_list<ascir::SizeExpr> &&values) {
     op->SetOutputAttr(OUTPUT_INDEX, NUM_OF_FACTOR.c_str(), (int64_t)values.size());
 
+    std::vector<int64_t> is_zero;
     std::vector<std::vector<ascir::SizeVarId>> nums;
     std::vector<std::vector<ascir::SizeVarId>> dens;
     for (auto expr : values) {
+      is_zero.push_back(expr.is_zero);
       nums.push_back(expr.nums);
       dens.push_back(expr.dens);
     }
 
     auto opdesc = ge::OpDescUtils::GetOpDescFromOperator(*op);
+    ge::AttrUtils::SetListInt(opdesc->MutableOutputDesc(0), IS_ZERO.c_str(), is_zero);
     ge::AttrUtils::SetListListInt(opdesc->MutableOutputDesc(0), NUMS.c_str(), nums);
     ge::AttrUtils::SetListListInt(opdesc->MutableOutputDesc(0), DENS.c_str(), dens);
   }
@@ -513,6 +559,9 @@ struct OutputAttrField<OUTPUT_INDEX, ATTR_NAME_PREFIX, std::vector<ascir::SizeEx
 template <int OUTPUT_INDEX, const char *ATTR_NAME_PREFIX>
 const std::string OutputAttrField<OUTPUT_INDEX, ATTR_NAME_PREFIX, std::vector<ascir::SizeExpr>>::NUM_OF_FACTOR{
     std::string(ATTR_NAME_PREFIX) + ".num_of_factor"};
+template <int OUTPUT_INDEX, const char *ATTR_NAME_PREFIX>
+const std::string OutputAttrField<OUTPUT_INDEX, ATTR_NAME_PREFIX, std::vector<ascir::SizeExpr>>::IS_ZERO{
+    std::string(ATTR_NAME_PREFIX) + ".is_zero"};
 template <int OUTPUT_INDEX, const char *ATTR_NAME_PREFIX>
 const std::string OutputAttrField<OUTPUT_INDEX, ATTR_NAME_PREFIX, std::vector<ascir::SizeExpr>>::NUMS{
     std::string(ATTR_NAME_PREFIX) + ".nums"};
@@ -802,13 +851,19 @@ using ImplGraph = Graph;
 
 // Operator register
 #include "graph/operator_reg.h"
-#define REG_OPS(type) \
-  namespace ge {      \
-  REG_OP(type)
+#define OPS_INPUT(index, name) ascir::OperatorInput<index> name;
+#define OPS_OUTPUT(index, name) ascir::OperatorOutput<index> name;
 
-#define END_OPS(type)      \
-  OP_END_FACTORY_REG(type) \
-  }                        \
-  ;
+#define REG_OPS(type)                 \
+  struct type : public ge::op::type { \
+    union {                           \
+      ge::Operator *__op;
+
+#define END_OPS(type)                                                                \
+    };                                                                               \
+    static constexpr const char *Type = #type;                                       \
+    ascir::NodeAttr attr;                                                            \
+    inline type(const char *name) : ge::op::type(name), __op(this), attr(*this) {} \
+  };
 
 #endif

@@ -102,6 +102,11 @@ static std::stringstream &AxisListStr(std::stringstream& ss, const ascir::Graph 
 static std::string SizeExprStr(const ascir::Graph &graph, const ascir::SizeExpr &size_expr) {
   std::stringstream ss;
 
+  if (size_expr.is_zero) {
+    ss << "0";
+    return ss.str();
+  }
+
   if (size_expr.nums.size() == 0) {
     ss << "1";
   } else {

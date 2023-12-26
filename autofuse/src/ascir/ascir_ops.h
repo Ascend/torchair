@@ -3,83 +3,148 @@
 
 #include "ascir.h"
 
+namespace ge {
+REG_OP(Data)
+    .INPUT(x, TensorType::ALL())
+    .OUTPUT(y, TensorType::ALL())
+.OP_END_FACTORY_REG(Data)
+}
+
+namespace ascir::ops {
 REG_OPS(Data)
+  OPS_INPUT(0, x)
+  OPS_OUTPUT(0, y)
+END_OPS(Data)
+}
+
+namespace ge {
+REG_OP(Load)
     .INPUT(x, TensorType::ALL())
     .OUTPUT(y, TensorType::ALL())
-    .END_OPS(Data)
+.OP_END_FACTORY_REG(Load);
+}
 
 namespace ascir::ops {
-  struct Data : public ge::op::Data {
-    union {
-      ge::Operator *__op;
-      ascir::OperatorInput<0> x;
-      ascir::OperatorOutput<0> y;
-    };
-
-    static constexpr const char *Type = "Data";
-    ascir::NodeAttr attr;
-
-    inline Data(const char *name) : ge::op::Data(name), __op(this), attr(*this) {}
-  };
-};
-
 REG_OPS(Load)
-    .INPUT(x, TensorType::ALL())
-    .OUTPUT(y, TensorType::ALL())
-    .END_OPS(Load);
-
-namespace ascir::ops {
-struct Load : public ge::op::Load {
-  union {
-    ge::Operator *__op;
-    ascir::OperatorInput<0> x;
-    ascir::OperatorOutput<0> y;
-  };
-
-  static constexpr const char *Type = "Load";
-  ascir::NodeAttr attr;
-
-  inline Load(const char *name) : ge::op::Load(name), __op(this), attr(*this) {}
-};
+  OPS_INPUT(0, x)
+  OPS_OUTPUT(0, y)
+END_OPS(Load)
 }  // namespace ascir::ops
 
-REG_OPS(Abs)
+namespace ge {
+REG_OP(Broadcast)
     .INPUT(x, TensorType::ALL())
     .OUTPUT(y, TensorType::ALL())
-    .END_OPS(Abs);
+.OP_END_FACTORY_REG(Broadcast);
+}
 
 namespace ascir::ops {
-struct Abs : public ge::op::Abs {
-  union {
-    ge::Operator *__op;
-    ascir::OperatorInput<0> x;
-    ascir::OperatorOutput<0> y;
-  };
-
-  static constexpr const char *Type = "Abs";
-  ascir::NodeAttr attr;
-
-  inline Abs(const char *name) : ge::op::Abs(name), __op(this), attr(*this) {}
-};
+REG_OPS(Broadcast)
+  OPS_INPUT(0, x)
+  OPS_OUTPUT(0, y)
+END_OPS(Broadcast)
 }  // namespace ascir::ops
 
+namespace ge {
+REG_OP(Store)
+    .INPUT(x, TensorType::ALL())
+    .OUTPUT(y, TensorType::ALL())
+.OP_END_FACTORY_REG(Store)
+}
+
+namespace ascir::ops {
 REG_OPS(Store)
+  OPS_INPUT(0, x)
+  OPS_OUTPUT(0, y)
+END_OPS(Store)
+}  // namespace ascir::ops
+
+namespace ge {
+REG_OP(Abs)
     .INPUT(x, TensorType::ALL())
     .OUTPUT(y, TensorType::ALL())
-    .END_OPS(Store)
+.OP_END_FACTORY_REG(Abs);
+}
 
 namespace ascir::ops {
-struct Store : public ge::op::Store {
-  union {
-    ge::Operator *__op;
-    ascir::OperatorInput<0> x;
-    ascir::OperatorOutput<0> y;
-  };
+REG_OPS(Abs)
+  OPS_INPUT(0, x)
+  OPS_OUTPUT(0, y)
+END_OPS(Abs)
+}  // namespace ascir::ops
 
-  static constexpr const char *Type = "Store";
-  NodeAttr attr;
-  inline Store(const char *name) : ge::op::Store(name), __op(this), attr(*this) {}
-};
+namespace ge {
+REG_OP(Max)
+    .INPUT(x, TensorType::ALL())
+    .OUTPUT(y, TensorType::ALL())
+.OP_END_FACTORY_REG(Max);
+}
+
+namespace ascir::ops {
+REG_OPS(Max)
+  OPS_INPUT(0, x)
+  OPS_OUTPUT(0, y)
+END_OPS(Max)
+}  // namespace ascir::ops
+
+namespace ge {
+REG_OP(Sum)
+    .INPUT(x, TensorType::ALL())
+    .OUTPUT(y, TensorType::ALL())
+.OP_END_FACTORY_REG(Sum);
+}
+
+namespace ascir::ops {
+REG_OPS(Sum)
+  OPS_INPUT(0, x)
+  OPS_OUTPUT(0, y)
+END_OPS(Sum)
+}  // namespace ascir::ops
+
+namespace ge {
+REG_OP(Sub)
+    .INPUT(x1, TensorType::ALL())
+    .INPUT(x2, TensorType::ALL())
+    .OUTPUT(y, TensorType::ALL())
+.OP_END_FACTORY_REG(Sub);
+}
+
+namespace ascir::ops {
+REG_OPS(Sub)
+  OPS_INPUT(0, x1)
+  OPS_INPUT(1, x2)
+  OPS_OUTPUT(0, y)
+END_OPS(Sub)
+}  // namespace ascir::ops
+
+namespace ge {
+REG_OP(Div)
+    .INPUT(x1, TensorType::ALL())
+    .INPUT(x2, TensorType::ALL())
+    .OUTPUT(y, TensorType::ALL())
+.OP_END_FACTORY_REG(Div);
+}
+
+namespace ascir::ops {
+REG_OPS(Div)
+  OPS_INPUT(0, x1)
+  OPS_INPUT(1, x2)
+  OPS_OUTPUT(0, y)
+END_OPS(Div)
+}  // namespace ascir::ops
+
+namespace ge {
+REG_OP(Exp)
+    .INPUT(x, TensorType::ALL())
+    .OUTPUT(y, TensorType::ALL())
+.OP_END_FACTORY_REG(Exp);
+}
+
+namespace ascir::ops {
+REG_OPS(Exp)
+  OPS_INPUT(0, x)
+  OPS_OUTPUT(0, y)
+END_OPS(Exp)
 }  // namespace ascir::ops
 
 #endif
