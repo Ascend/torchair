@@ -169,9 +169,7 @@ class NpuGraphConverter(Interpreter):
                 meta_outputs = func(target, args_meta, kwargs_meta)
             args_npu, kwargs_npu = self._unpack_npu(args, kwargs)
             npu_outputs = self._graph.parse_node(target, args_npu, kwargs_npu, meta_outputs)
-            if isinstance(npu_outputs, (tuple, list)):
-                return [ValuePack(k, v) for k, v in zip(meta_outputs, npu_outputs)]
-            return ValuePack(meta_outputs, npu_outputs)
+            return self._get_value_pack(meta_outputs, npu_outputs)
 
         return inner
 
@@ -200,6 +198,11 @@ class NpuGraphConverter(Interpreter):
         npu_output = self._graph.parse_output(
             target, args, kwargs, meta_output)
         return npu_output
+
+    def _get_value_pack(self, meta_outputs, npu_outputs):
+        if isinstance(npu_outputs, (tuple, list)):
+            return [self._get_value_pack(k, v) for k, v in zip(meta_outputs, npu_outputs)]
+        return ValuePack(meta_outputs, npu_outputs)
 
 
 def _summary(v):
