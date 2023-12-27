@@ -92,6 +92,39 @@ class TorchairSt(unittest.TestCase):
         model(x, 2.0)
         model(x, 3.0)
 
+    def test_enable_constplaceholder_dynamic(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                return torch.add(x, y)
+
+        config_cp = CompilerConfig()
+        config_cp.experimental_config.frozen_parameter = True
+        npu_backend_cp = torchair.get_npu_backend(compiler_config=config_cp)
+        model = torch.compile(Model(), backend=npu_backend_cp, dynamic=True)
+        x = torch.randn(2, 2)
+        x = torch.nn.Parameter(x)
+        model(x, 2)
+
+    def test_enable_constplaceholder_static(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                return torch.add(x, y)
+
+        config_cp = CompilerConfig()
+        config_cp.experimental_config.frozen_parameter = True
+        npu_backend_cp = torchair.get_npu_backend(compiler_config=config_cp)
+        model = torch.compile(Model(), backend=npu_backend_cp, dynamic=False)
+        x = torch.randn(2, 2)
+        y = torch.randn(2, 2)
+        x = torch.nn.Parameter(x)
+        model(x, y)
+
     def test_auto_tune(self):
         class Model(torch.nn.Module):
             def __init__(self):
