@@ -19,7 +19,6 @@ os.environ['TNG_LOG_LEVEL'] = '0'
 logger.setLevel(logging.DEBUG)
 
 config = CompilerConfig()
-config.aoe_config.aoe_mode = "1"
 config.debug.graph_dump.type = "pbtxt"
 npu_backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -132,7 +131,12 @@ class TorchairSt(unittest.TestCase):
 
             def forward(self, x, y):
                 return torch.add(x, y)
-        model = torch.compile(Model(), backend=npu_backend, dynamic=False)
+        config_auto_tune = CompilerConfig()
+        config_auto_tune.aoe_config.aoe_mode = "2"
+        config_auto_tune.debug.graph_dump.type = "pbtxt"
+        npu_backend_auto_tune = torchair.get_npu_backend(compiler_config=config_auto_tune)
+
+        model = torch.compile(Model(), backend=npu_backend_auto_tune, dynamic=False)
         x = torch.randn(2, 2)
         model(x, 2)
 

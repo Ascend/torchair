@@ -39,6 +39,8 @@ Status AssembleDataAndShapeToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor)
 
 Status GeDtypeToAtDtype(const ge::DataType &ge_dtype, c10::ScalarType &dtype);
 
+Status CloneGraph(const ge::Graph &old_graph, ge::Graph &new_graph);
+
 }  // namespace tng
 
 #endif  // TORCH_AIR_TORCH_AIR_CONCRETE_GRAPH_UTILS_H_

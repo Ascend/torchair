@@ -6,7 +6,7 @@ class AoeConfig(NpuBaseConfig):
     """Config for aoe function"""
 
     def __init__(self):
-        self.aoe_mode = OptionValue(None, ["1", "2", "4"])
+        self.aoe_mode = OptionValue(None, ["2"])
         self.work_path = OptionValue("./", None)
         self.aoe_config_file = OptionValue(None, None)
 
