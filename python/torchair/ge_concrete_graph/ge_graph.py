@@ -922,6 +922,10 @@ def Const(v: Any, dtype: int = None, node_name=None, readable=True) -> Tensor:
     if dtype is not None and not _is_supported_ge_dtype_by_numpy(dtype) and not dtype is DataType.DT_BF16:
         # TO DO: unsupported dtype cast for numpy, currently resolved by inserting ge.Cast
         return Cast(Const(v, dtype=None, node_name=node_name), dst_type=dtype)
+    
+    if not isinstance(v, torch.Tensor) and dtype is DataType.DT_BF16:
+        with no_dispatch():
+            v = torch.tensor(v, dtype=torch.bfloat16)
 
     op = get_default_ge_graph().op.add()
     op.type = "Const"
