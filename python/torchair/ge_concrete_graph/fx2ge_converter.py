@@ -92,36 +92,39 @@ def _get_converter(name: Callable):
     return _CONVERTERS[name]
 
 
+def get_meta_outputs(meta_outputs):
+    if isinstance(meta_outputs, (list, tuple)):
+        return [get_meta_outputs(meta_output) for meta_output in meta_outputs]
+    return TensorSpec(meta_outputs)
+
+
+def set_ge_outputs(ge_outputs, meta_outputs):
+    if isinstance(ge_outputs, ge.Tensor):
+        ge_outputs.set_meta(meta_outputs)
+    elif isinstance(ge_outputs, int):
+        assert isinstance(meta_outputs, (torch.SymInt, int))
+    else:
+        assert isinstance(ge_outputs, (list, tuple))
+        assert isinstance(meta_outputs, (list, tuple))
+        assert len(ge_outputs) == len(meta_outputs)
+        for meta_output, ge_output in zip(meta_outputs, ge_outputs):
+            if meta_output is None:
+                continue
+            set_ge_outputs(ge_output, meta_output)
+
+
 def _wrap_converter(converter: Callable):
     @functools.wraps(converter)
     def wrapped_converter(*args, **kwargs):
         meta_outputs = None
         if 'meta_outputs' in kwargs:
             meta_outputs = kwargs['meta_outputs']
-            if isinstance(meta_outputs, (list, tuple)):
-                kwargs['meta_outputs'] = [
-                    (TensorSpec(v) if v is not None else None) for v in meta_outputs]
-            else:
-                kwargs['meta_outputs'] = TensorSpec(
-                    meta_outputs) if meta_outputs is not None else None
+            kwargs['meta_outputs'] = get_meta_outputs(meta_outputs)
 
         ge_outputs = converter(*args, **kwargs)
 
         if meta_outputs is not None:
-            if isinstance(ge_outputs, ge.Tensor):
-                ge_outputs.set_meta(meta_outputs)
-            elif isinstance(ge_outputs, int):
-                assert isinstance(meta_outputs, (torch.SymInt, int))
-            else:
-                assert isinstance(ge_outputs, (list, tuple))
-                assert isinstance(meta_outputs, (list, tuple))
-                assert len(ge_outputs) == len(meta_outputs)
-                for meta_output, ge_output in zip(meta_outputs, ge_outputs):
-                    if meta_output is None:
-                        continue
-                    assert isinstance(meta_output, torch.Tensor)
-                    assert isinstance(ge_output, ge.Tensor)
-                    ge_output.set_meta(meta_output)
+            set_ge_outputs(ge_outputs, meta_outputs)
 
         return ge_outputs
     return wrapped_converter
