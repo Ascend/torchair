@@ -69,7 +69,7 @@ def _is_weight_externalized(inputs, weight_name, export_graph):
 
 
 def _convert_data_to_const(inputs, export_graph, file_path, config):
-    weight_name = config.export_config.weight_name
+    weight_name = config.export.weight_name
     weight_externalized, used_weight_num = _is_weight_externalized(inputs, weight_name, export_graph)
     if used_weight_num == 0:
         return weight_externalized, used_weight_num
@@ -120,7 +120,7 @@ def _save_weight2file(inputs, file_path, weight_name, used_weight_num):
 def make_export_graph(inputs, config, ori_graph):
     export_graph = GeGraph()
     export_graph.MergeFrom(ori_graph._proto)
-    file_path = config.export_config.export_path_dir
+    file_path = config.export.export_path_dir
     sub_file_path = _get_subpath(file_path)
 
     os.makedirs(sub_file_path, exist_ok=True)
@@ -128,7 +128,7 @@ def make_export_graph(inputs, config, ori_graph):
     weight_externalized, used_weight_num = _convert_data_to_const(inputs, export_graph, file_path, config)
 
     if used_weight_num != 0 and weight_externalized:
-        _save_weight2file(inputs, sub_file_path, config.export_config.weight_name, used_weight_num)
+        _save_weight2file(inputs, sub_file_path, config.export.weight_name, used_weight_num)
 
     dump_graph(sub_file_path + "/dynamo.pbtxt", export_graph)
 

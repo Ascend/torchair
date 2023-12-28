@@ -342,7 +342,7 @@ class _NpuFxCompiler:
         concrete_graph: ConcreteGraphBase = NpuGraphConverter(
             mutable_gm, graph=ConcreteGraph(self.config), garbage_collect_values=False).run(*example_inputs)
 
-        if not self.config.export_config.export_mode:
+        if not self.config.export.export_mode:
             if self.config.debug.graph_dump.enabled:
                 concrete_graph.dump(self.config.debug.graph_dump.full_path("dynamo"))
 

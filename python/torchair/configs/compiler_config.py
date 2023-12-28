@@ -18,7 +18,7 @@ class CompilerConfig(NpuBaseConfig):
         self.debug = DebugConfig()
 
         self.aoe_config = AoeConfig()
-        self.export_config = ExportConfig()
+        self.export = ExportConfig()
         self.dump_config = DataDumpConfig()
         self.fusion_config = FusionConfig()
         self.experimental_config = ExperimentalConfig()
