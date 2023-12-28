@@ -803,6 +803,10 @@ def auto_convert_to_tensor(inputs_dynamic, inputs_optional):
                 gegraph = get_default_ge_graph()
                 gegraph.add_python_code(bundle_inputs.args, kwargs, outputs, func)
 
+            attr_maps = getattr(local_variable, 'extral_node_attrs', {})
+            for key, value in attr_maps.items():
+                outputs.node.attr[key].s = value
+
             return outputs
         return wrapper
     return inner
@@ -962,3 +966,12 @@ def Const(v: Any, dtype: int = None, node_name=None, readable=True) -> Tensor:
     const_tensor = Tensor(op)
 
     return const_tensor
+
+
+@contextlib.contextmanager
+def attr_scope(attr_maps):
+    try:
+        setattr(local_variable, "extral_node_attrs", attr_maps)
+        yield
+    finally:
+        setattr(local_variable, "extral_node_attrs", {})

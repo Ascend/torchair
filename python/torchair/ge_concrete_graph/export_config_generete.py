@@ -95,8 +95,8 @@ def generate_config(config, file_path, export_graph):
         group_set = set()
         if _get_groups_from_graph(export_graph, group_set):
             logger.info(f"generate_atc_config file_path: {file_path}, " +
-                        "file_name: {config.export_config.export_name}")
-            _generate_model_relation_config(file_path, config.export_config.export_name,
+                        "file_name: {config.export.export_name}")
+            _generate_model_relation_config(file_path, config.export.export_name,
                                             default_pg_rank_list, group_set)
             _generate_numa_config(file_path, default_pg_rank_list)
     return

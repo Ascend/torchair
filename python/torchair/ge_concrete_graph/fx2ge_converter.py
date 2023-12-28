@@ -21,7 +21,7 @@ from torchair.core.utils import logger
 from torchair.core.backend import initialize_graph_engine
 from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef, TensorDescriptor, TensorDef, OpDef
 from torchair.ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
-from torchair.ge_concrete_graph.ge_graph import default_ge_graph, GeGraph
+from torchair.ge_concrete_graph.ge_graph import default_ge_graph, GeGraph, attr_scope
 from torchair.ge_concrete_graph.ge_graph import Tensor as GeTensor
 from torchair.ge_concrete_graph.ge_graph import compat_as_bytes
 from torchair.ge_concrete_graph.ge_graph import DataType, TensorSpec
@@ -305,7 +305,7 @@ class GeConcreteGraph(ConcreteGraphBase):
 
         inputs = self._consume_data_into_inputs(inputs)
 
-        if self.config.export_config.export_mode:
+        if self.config.export.export_mode:
             self.export(inputs)
             raise ExportSuccess("export graph over")
 
@@ -388,14 +388,6 @@ class GeConcreteGraph(ConcreteGraphBase):
 
     def context(self):
         return default_ge_graph(self.graph)
-
-    @contextmanager
-    def converter_context(self, *, node):
-        try:
-            self._converter_ctx.node = node
-            yield
-        finally:
-            self._converter_ctx.node = None
 
     @property
     def is_dynamic(self):
@@ -481,7 +473,6 @@ class GeConcreteGraph(ConcreteGraphBase):
                 elif isinstance(ge_outputs, (list, tuple)) and all([isinstance(v, ge.Tensor) for v in ge_outputs]):
                     for i, ge_output in enumerate(ge_outputs):
                         ge_output.desc.attr["_fx_tensor_name"].s = compat_as_bytes(f'{fx_tensor_prefix}.{i}')
-
             return ge_outputs
         else:
             return converter(*args, **kwargs)
@@ -509,14 +500,14 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._fx_inputs_mapping = fx_inputs_mapping
 
     def export(self, inputs) -> Any:
-        file_path = self.config.export_config.export_path_dir
-        file_name_air = get_export_file_name(self.config.export_config.export_name)
+        file_path = self.config.export.export_path_dir
+        file_name_air = get_export_file_name(self.config.export.export_name)
 
         export_graph = make_export_graph(inputs, self.config, self.graph)
 
         _normalize_ge_graph(export_graph)
 
-        if self.config.export_config.auto_atc_config_generated:
+        if self.config.export.experimental.auto_atc_config_generated:
             generate_config(self.config, file_path, export_graph)
         local_options = {}
         local_options["export_path_dir"] = file_path
@@ -531,6 +522,20 @@ class GeConcreteGraph(ConcreteGraphBase):
             # AOE is not supported for dynamic shape now
             return False
         return self._auto_tune_times == 0
+
+    @contextmanager
+    def converter_context(self, *, node):
+        try:
+            self._converter_ctx.node = node
+            attr_maps = {}
+            if self.config.export.experimental.enable_record_nn_module_stack:
+                stack = node.meta.get("nn_module_stack")
+                if stack is not None:
+                    attr_maps["nn_module_stack"] = compat_as_bytes(str(stack))
+            with attr_scope(attr_maps):
+                yield
+        finally:
+            self._converter_ctx.node = None
 
     def auto_tune(self, inputs: List[Tensor]) -> Any:
         logger.info(f"Start auto tune for round {self._auto_tune_times}")
