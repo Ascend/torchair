@@ -48,6 +48,7 @@ class Session {
   std::atomic_bool run_with_torch_npu_ = false;
   Status status_;
   int32_t device_index_ = -1;
+  bool auto_tune_init_ = false;
 };
 }  // namespace tng
 
