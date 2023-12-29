@@ -69,11 +69,11 @@ void LoadAbsStore_AfterGetApiInfo(ascir::ImplGraph &graph) {
 
   auto load = graph.Find("load");
   load.attr.api.type = API_TYPE_COMPUTE;
-  load.attr.api.type = UNIT_MTE;
+  load.attr.api.unit = UNIT_MTE;
 
   auto abs = graph.Find("abs");
   abs.attr.api.type = API_TYPE_COMPUTE;
-  abs.attr.api.type = UNIT_VECTOR;
+  abs.attr.api.unit = UNIT_VECTOR;
 
   auto store = graph.Find("store");
   store.attr.api.type = API_TYPE_COMPUTE;

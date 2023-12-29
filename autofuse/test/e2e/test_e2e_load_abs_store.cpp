@@ -161,6 +161,7 @@ TEST_F(E2E_LoadAbsStore, Codegen_Kernel)
   LoadAbsStore_AfterQueBufAlloc(test_impl_graphs[0]);
 
   auto kernel_code = codegen.GenerateKernel(test_impl_graphs);
+  std::cout << kernel_code << std::endl;
   EXPECT_EQ(kernel_code, std::string{
     "#ifdef __CCE_KT_TEST__\n"
     "#include \"tikicpulib.h\"\n"
@@ -224,8 +225,35 @@ TEST_F(E2E_LoadAbsStore, Codegen_Kernel)
     "tpipe.InitBuffer(q1, q1_buf_num, q1_size);\n"
     "\n"
     "\n"
+    "for (int z0b = 0; z0b < t.z0b_size; z0b++) {\n"
+    "for (int z1T = 0; z1T < t.s1 / t.z1t_size; z1T++) {\n"
+    "{\n"
+    "LocalTensor<uint8_t> q0_buf = q0.AllocTensor<uint8_t>();\n"
+    "LocalTensor<half> load_y;\n"
+    "load_y.SetAddrWithOffset(q0_buf, 0);\n"
+    "DataCopy(load_y[0], x_y[z0B * (t.s1 * t.s2 * t.z0b_size) + z0b * (t.s1 * t.s2) + z1T * (t.s2 * t.z1t_size)], load_y_size);\n"
+    "q0.EnQue(q0_buf);\n"
+    "}\n"
+    "{\n"
+    "LocalTensor<uint8_t> q0_buf = q0.DeQue<uint8_t>();\n"
+    "LocalTensor<uint8_t> q1_buf = q1.AllocTensor<uint8_t>();\n"
+    "LocalTensor<half> load_y;\n"
+    "load_y.SetAddrWithOffset(q0_buf, 0);\n"
+    "LocalTensor<half> abs_y;\n"
+    "abs_y.SetAddrWithOffset(q1_buf, 0);\n"
+    "Abs(abs_y[0], load_y[0], load_y_size);\n"
+    "q1.EnQue(q1_buf);\n"
+    "q0.FreeTensor(q0_buf);\n"
+    "}\n"
+    "{\n"
+    "LocalTensor<uint8_t> q1_buf = q1.DeQue<uint8_t>();\n"
+    "LocalTensor<half> abs_y;\n"
+    "abs_y.SetAddrWithOffset(q1_buf, 0);\n"
+    "DataCopy(store_y[z0B * (t.s1 * t.s2 * t.z0b_size) + z0b * (t.s1 * t.s2) + z1T * (t.s2 * t.z1t_size)], abs_y[0], abs_y_size);\n"
+    "q1.FreeTensor(q1_buf);\n"
+    "}\n"
+    "}\n"
+    "}\n"
     "}\n"
   });
-
-  std::cout << kernel_code;
 }

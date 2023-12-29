@@ -59,25 +59,33 @@ const uint32_t q1_buf_num = utils::Max(abs_y_que_buf_num);
 TQue<TPosition::VECOUT, q1_depth> q1;
 tpipe.InitBuffer(q1, q1_buf_num, q1_size);
 
-    for (int z0b = 0; z0b < t.z0b_size; z0b++) {
-        for (int z1T = 0; z1T < t.s1/t.z1t_size; z1T++) {
-            {
-                auto load_y = q0.AllocTensor<half>();
-                DataCopy(load_y, x_y[z0B*t.s1*t.s2*t.z0b_size + z0b*t.s1*t.s2 + z1T*t.s2*t.z1t_size], load_y_size);
-                q0.EnQue(load_y);
-            }
-            {
-                auto load_y = q0.DeQue<half>();
-                auto abs_y = q1.AllocTensor<half>();
-                Abs(abs_y, load_y, load_y_size);
-                q1.EnQue(abs_y);
-                q0.FreeTensor(load_y);
-            }
-            {
-                auto abs_y = q1.DeQue<half>();
-                DataCopy(store_y[z0B*t.s1*t.s2*t.z0b_size + z0b*t.s1*t.s2 + z1T*t.s2*t.z1t_size], abs_y, abs_y_size);
-                q1.FreeTensor(abs_y);
-            }
-        }
-    }
+for (int z0b = 0; z0b < t.z0b_size; z0b++) {
+for (int z1T = 0; z1T < t.s1 / t.z1t_size; z1T++) {
+{
+LocalTensor<uint8_t> q0_buf = q0.AllocTensor<uint8_t>();
+LocalTensor<half> load_y;
+load_y.SetAddrWithOffset(q0_buf, 0);
+DataCopy(load_y[0], x_y[z0B * (t.s1 * t.s2 * t.z0b_size) + z0b * (t.s1 * t.s2) + z1T * (t.s2 * t.z1t_size)], load_y_size);
+q0.EnQue(q0_buf);
+}
+{
+LocalTensor<uint8_t> q0_buf = q0.DeQue<uint8_t>();
+LocalTensor<uint8_t> q1_buf = q1.AllocTensor<uint8_t>();
+LocalTensor<half> load_y;
+load_y.SetAddrWithOffset(q0_buf, 0);
+LocalTensor<half> abs_y;
+abs_y.SetAddrWithOffset(q1_buf, 0);
+Abs(abs_y[0], load_y[0], load_y_size);
+q1.EnQue(q1_buf);
+q0.FreeTensor(q0_buf);
+}
+{
+LocalTensor<uint8_t> q1_buf = q1.DeQue<uint8_t>();
+LocalTensor<half> abs_y;
+abs_y.SetAddrWithOffset(q1_buf, 0);
+DataCopy(store_y[z0B * (t.s1 * t.s2 * t.z0b_size) + z0b * (t.s1 * t.s2) + z1T * (t.s2 * t.z1t_size)], abs_y[0], abs_y_size);
+q1.FreeTensor(q1_buf);
+}
+}
+}
 }

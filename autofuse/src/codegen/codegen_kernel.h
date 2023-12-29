@@ -51,12 +51,10 @@ struct Uint32 : public Variable {
   explicit inline Uint32(const std::string &name) : Variable(Uint32_t, name) {}
 };
 
-class Axis : public ascir::Axis, public Code {
+class Axis : public ascir::Axis, public Variable {
  public:
-  Int var;
-
+  using ascir::Axis::type;
   explicit Axis(const ascir::Axis &axis);
-  std::string Str() const override;
 };
 
 class Tensor : public Variable {
@@ -119,7 +117,13 @@ class TQue : public Variable {
   Uint32 depth;
   Uint32 buf_num;
 
+  Variable buf;
+
   TQue(ascir::QueId id, ascir::Position position);
+  std::string AllocBuf() const;
+  std::string EnqueBuf() const;
+  std::string DequeBuf() const;
+  std::string FreeBuf() const;
 };
 
 class TBuf : public Variable {
@@ -149,7 +153,10 @@ class Tiler : public Code {
 
   std::string Str() const override;
   std::string Size(const ascir::SizeExpr& size) const;
-  std::string TensorVectorizedSize(const Tensor& tensor) const;
+  std::string Offset(const std::vector<ascir::AxisId> &current_axis, const std::vector<ascir::AxisId> &axis,
+                     const std::vector<ascir::SizeExpr> &strides) const;
+  std::string TensorVectorizedOffset(const std::vector<ascir::AxisId> &current_axis, const Tensor &tensor) const;
+  std::string TensorVectorizedSize(const Tensor &tensor) const;
   const Axis& GetAxis(const ascir::AxisId id) const;
   std::string AxisSize(const ascir::AxisId id) const;
   std::string AxisSize(const Axis& axis) const;
@@ -177,14 +184,101 @@ class TPipe : public Variable {
   Tensor& AddTensor(const Tensor &tensor);
   Tensor& AddTensor(const ascir::TensorAttr &tensor, const std::string& name = "");
 
+  const TQue &GetQue(const ascir::QueId id) const;
+  const TBuf &GetBuf(const ascir::BufId id) const;
+  const Tensor &GetTensor(const ascir::TensorId id) const;
+
   std::string InitTQueBuffers(const TQue &que) const;
   std::string InitTBufBuffer(const TBuf &buf) const;
 
+  std::string TensorAlloc(const Tensor& tensor) const;
   std::string TensorSizeCalc() const;
   std::string MergeScopeSizeCalc() const;
   std::string LocalTBufAlloc() const;
   std::string LocalTQueAlloc() const;
   std::string LocalTensorQueBufAlloc() const;
+};
+
+struct ApiCall {
+  std::string type;
+  std::vector<ascir::TensorId> inputs;
+  std::vector<ascir::TensorId> outputs;
+
+  explicit ApiCall(const ascir::NodeView &node);
+  std::string Generate(const TPipe &tpipe, const std::vector<ascir::AxisId> &current_axis,
+                       const std::vector<std::reference_wrapper<const Tensor>> &inputs,
+                       const std::vector<std::reference_wrapper<const Tensor>> &outputs) const;
+};
+
+struct Stage {
+  ascir::ComputeUnit unit;
+  std::set<ascir::QueId> read_ques;
+  std::set<ascir::QueId> write_ques;
+  std::set<ascir::TensorId> reads;
+  std::set<ascir::TensorId> writes;
+  std::vector<ApiCall> calls;
+
+  explicit Stage(ascir::ComputeUnit unit);
+  void AddCall(const ascir::NodeView &node);
+  std::string Generate(const TPipe &tpipe, const std::vector<ascir::AxisId> &current_axis) const;
+};
+
+struct Loop {
+  enum LoopOrStageType { LOOP, STAGE };
+  using LoopId = ascir::Identifier;
+  using StageId = ascir::Identifier;
+  using LoopOrStageId = ascir::Identifier;
+
+  ascir::AxisId axis;
+  std::vector<std::pair<LoopOrStageType, LoopOrStageId>> body;
+
+  explicit Loop(ascir::AxisId axis);
+
+  void AddLoop(LoopId loop);
+  void AddStage(StageId stage);
+};
+
+struct Looper {
+  Loop::LoopOrStageId root_loop;
+  std::vector<Stage> stages;
+  std::vector<Loop> loops;
+
+  Loop::StageId current_stage;
+  std::vector<Loop::LoopId> current_loops;
+  std::vector<ascir::AxisId> current_axis;
+
+  void AddNode(const ascir::NodeView node);
+
+  void InitRootLoop();
+  void EndRootLoop();
+
+  void EnterLoop(ascir::AxisId axis);
+  void ExitLoop();
+
+  void EnterStage(ascir::ComputeUnit unit);
+  void ExitStage();
+
+  std::string GenerateLoop(const Tiler& tiler, const TPipe& tpipe) const;
+
+private:
+  /**
+   * axis中向量化轴和当前current_loop_axis相同的位置，距当前loop当前的距离
+   *
+   * @param axis
+   * @param vectorized_axis
+   *
+   * @return
+   *   - 0表示loop一致
+   *   - 负数表示从current_loop_axis[-return]向前一致
+   *   - 正数表示还有嵌套的循环
+   *
+   * @example
+   *   - current:{1,2}, axis{1,2}, vectorized_axis:1 --> -1
+   *   - current:{1,2}, axis{1,2}, vectorized_axis:2 --> 0
+   *   - current:{1}, axis{1,2}, vectorized_axis:2 --> 1
+   */
+  int LoopAxisDistance(const std::vector<ascir::AxisId> &axis, const ascir::AxisId vectorized_axis);
+  void GenerateLoop(const Tiler& tiler, const TPipe& tpipe, std::vector<ascir::AxisId>& current_axis, const Loop& loop, std::stringstream& ss) const;
 };
 
 class KernelUtils {
@@ -207,6 +301,7 @@ class Kernel {
 
   Tiler tiler;
   TPipe tpipe;
+  Looper looper;
 
   Kernel();
 

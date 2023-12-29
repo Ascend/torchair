@@ -722,6 +722,18 @@ struct TensorPtr : public ge::InDataAnchorPtr {
   }
 };
 
+inline bool operator==(TensorPtr &a, typeof(nullptr) b) {
+  if (a.get() == nullptr) {
+    return true;
+  }
+
+  if (a.get()->GetPeerOutAnchor() == nullptr) {
+    return true;
+  }
+
+  return false;
+}
+
 inline bool operator==(const TensorView &lhs, const TensorPtr &rhs) {
   if (lhs == nullptr || rhs == nullptr) {
     throw std::runtime_error("TensorView and TensorPtr can not be null");

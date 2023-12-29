@@ -44,11 +44,7 @@ std::string Variable::Define(std::string &&init, bool define_const) const {
 }
 
 Axis::Axis(const ascir::Axis& axis)
-    : ascir::Axis(axis), var(axis.name) {}
-
-std::string Axis::Str() const {
-  return name;
-}
+    : ascir::Axis(axis), Variable(Int_t, axis.name) {}
 
 const std::string &Tensor::DtypeName(ge::DataType dtype) {
   static const std::string type_names[] = {
@@ -144,7 +140,32 @@ TQue::TQue(ascir::QueId id, ascir::Position position)
       position(position),
       size(this->name + "_size"),
       depth(this->name + "_depth"),
-      buf_num(this->name + "_buf_num") {}
+      buf_num(this->name + "_buf_num"),
+      buf(Type("LocalTensor<uint8_t>"), name + "_buf") {}
+
+std::string TQue::AllocBuf() const {
+  stringstream ss;
+  ss << this->buf.AsArg() << " = " << this->name << ".AllocTensor<uint8_t>();";
+  return ss.str();
+}
+
+std::string TQue::FreeBuf() const {
+  stringstream ss;
+  ss << this->name << ".FreeTensor(" << this->buf << ");";
+  return ss.str();
+}
+
+std::string TQue::EnqueBuf() const {
+  stringstream ss;
+  ss << this->name << ".EnQue(" << this->buf << ");";
+  return ss.str();
+}
+
+std::string TQue::DequeBuf() const {
+  stringstream ss;
+  ss << this->buf.AsArg() << " = "  << this->name << ".DeQue<uint8_t>();";
+  return ss.str();
+}
 
 TBuf::TBuf(ascir::BufId id, const ascir::Position position)
     : Variable(Type("TBuf<" + PositionValue(position) + ">"), "b" + to_string(id)),
@@ -157,16 +178,66 @@ Tiler::Tiler(const std::string &tiling_data_name)
       block_dim("block_dim")
 {}
 
+std::string Tiler::Offset(const std::vector<ascir::AxisId> &current_axis, const std::vector<ascir::AxisId> &axis,
+                          const std::vector<ascir::SizeExpr> &strides) const {
+  std::stringstream ss;
+  bool is_first = true;
+
+  for (auto a : current_axis) {
+    auto iter = std::find(axis.begin(), axis.end(), a);
+    if (iter == axis.end()) {
+      continue;
+    }
+
+    if (is_first) {
+      is_first = false;
+    } else {
+      ss << " + ";
+    }
+
+    auto stride = strides[iter - axis.begin()];
+    if (stride == 0) {
+      continue;
+    } else if (stride == 1) {
+      ss << this->GetAxis(a);
+    } else {
+      ss << this->GetAxis(a) << " * " << this->Size(stride);
+    }
+  }
+
+  if (is_first) {
+    // Not axis in current_axis
+    ss << "0";
+  }
+  return ss.str();
+}
+
+std::string Tiler::TensorVectorizedOffset(const std::vector<ascir::AxisId> &current_axis, const Tensor &tensor) const {
+  std::vector<ascir::AxisId> current_vectorized_axis;
+  for (auto a : current_axis) {
+    if (find(tensor.vectorized_axis.begin(), tensor.vectorized_axis.end(), a)!= tensor.vectorized_axis.end()) {
+      current_vectorized_axis.emplace_back(a);
+    }
+  }
+  return this->Offset(current_vectorized_axis, tensor.axis, tensor.axis_strides);
+}
+
 std::string Tiler::Str() const {
   return tiling_data.Str();
 }
 
 void codegen::Tiler::AddSizeVar(const ascir::SizeVar &size) {
-  this->sizes.emplace(size.id, size);
+  auto [new_size_var, insert_success] = this->sizes.emplace(size.id, size);
+  if (!insert_success) {
+    throw std::invalid_argument("Duplicate size var id " + to_string(size.id));
+  }
 }
 
 void codegen::Tiler::AddAxis(const ascir::Axis &axis) {
-  this->axis.emplace(axis.id, codegen::Axis(axis));
+  auto [new_axis, insert_success] = this->axis.emplace(axis.id, codegen::Axis(axis));
+  if (!insert_success) {
+    throw std::invalid_argument("Duplicate axis id " + to_string(axis.id));
+  }
 }
 
 std::string codegen::Tiler::Size(const ascir::SizeExpr &size) const {
@@ -280,7 +351,7 @@ std::string codegen::Tiler::BlockOutterAxisDefine() {
 
     stringstream axis_value;
     axis_value << this->block_dim.name << " % (" << this->AxisSize(axis) << ")";
-    code << axis.var.Define(axis_value.str(), true);
+    code << axis.Define(axis_value.str(), true);
     code << " ";
 
     code << this->block_dim.name << " /= " << this->AxisSize(axis) << ";";
@@ -399,6 +470,57 @@ Tensor& TPipe::AddTensor(const Tensor& tensor) {
 
 Tensor& TPipe::AddTensor(const ascir::TensorAttr &tensor, const std::string &name) {
   return this->AddTensor(Tensor(tensor, name));
+}
+
+const TQue &TPipe::GetQue(const ascir::QueId id) const {
+  auto iter = this->ques.find(id);
+  if (iter == this->ques.end()) {
+    throw std::runtime_error("Que not found " + to_string(id));
+  }
+
+  return iter->second;
+}
+
+const TBuf &TPipe::GetBuf(const ascir::BufId id) const {
+  auto iter = this->bufs.find(id);
+  if (iter == this->bufs.end()) {
+    throw std::runtime_error("Buf not found " + to_string(id));
+  }
+
+  return iter->second;
+}
+
+const Tensor &TPipe::GetTensor(const ascir::TensorId id) const {
+  auto iter = this->tensors.find(id);
+  if (iter == this->tensors.end()) {
+    throw std::runtime_error("Tensor not found " + to_string(id));
+  }
+
+  return iter->second;
+}
+
+std::string TPipe::TensorAlloc(const Tensor& tensor) const {
+  std::stringstream ss;
+  ss << tensor.Define() << std::endl;
+
+  const Variable* buf;
+  if (tensor.alloc_type == ascir::ALLOC_TYPE_BUFFER) {
+      buf = &GetBuf(tensor.buf_id);
+  } else if (tensor.alloc_type == ascir::ALLOC_TYPE_QUEUE) {
+      buf = &GetQue(tensor.que_id).buf;
+  } else if (tensor.alloc_type == ascir::ALLOC_TYPE_GLOBAL) {
+      buf = &tensor;
+  } else {
+      throw std::runtime_error("Tensor alloc type not supported " + to_string(tensor.alloc_type));
+  }
+
+  if (tensor.merge_scope == ascir::ID_NONE) {
+      ss << tensor << ".SetAddrWithOffset(" << *buf << ", 0);" << std::endl;
+  } else {
+      throw std::runtime_error("Tensor merge scope not supported " + to_string(tensor.merge_scope));
+  }
+
+  return ss.str();
 }
 
 std::string TPipe::InitTQueBuffers(const TQue &que) const {
@@ -613,6 +735,317 @@ std::string TPipe::LocalTensorQueBufAlloc() const {
   return ss.str();
 }
 
+int Looper::LoopAxisDistance(const std::vector<ascir::AxisId> &axis, const ascir::AxisId loop_axis) {
+  if (axis.size() == 0 || loop_axis == ascir::ID_NONE) {
+    return -this->current_axis.size();
+  }
+
+  int same_axis_num = 0;
+  for (int i = 0; i < axis.size() && i < this->current_axis.size(); ++i) {
+    if (axis[i] == this->current_axis[i]) {
+      same_axis_num++;
+    } else if (axis[i] == loop_axis) {
+      break;
+    }
+  }
+
+  int loop_axis_pos = -1;
+  for (int i = 0; i < axis.size(); ++i) {
+    if (loop_axis == axis[i]) {
+      loop_axis_pos = i;
+      break;
+    }
+  }
+
+  if (loop_axis_pos < 0) {
+    throw std::runtime_error("Vectorized axis not found in axis.");
+  }
+
+  if (same_axis_num < this->current_axis.size()) {
+    if (loop_axis_pos < same_axis_num) {
+      return - (this->current_axis.size() - loop_axis_pos);
+    } else {
+      return - (this->current_axis.size() - same_axis_num);
+    }
+  } else {
+    return (loop_axis_pos + 1) - this->current_axis.size();
+  }
+}
+
+ApiCall::ApiCall(const ascir::NodeView &node) {
+  this->type = node->GetType();
+
+  for (auto input : node.inputs()) {
+    if (input == nullptr) {
+      continue;
+    }
+
+    this->inputs.emplace_back(input->mem.tensor_id);
+  }
+
+  for (auto output : node.outputs()) {
+    if (output == nullptr) {
+      continue;
+    }
+
+    this->outputs.emplace_back(output.mem.tensor_id);
+  }
+}
+
+std::string ApiCall::Generate(const TPipe &tpipe, const std::vector<ascir::AxisId> &current_axis,
+                              const std::vector<std::reference_wrapper<const Tensor>> &inputs,
+                              const std::vector<std::reference_wrapper<const Tensor>> &outputs) const {
+  stringstream ss;
+
+  if (this->type == Load::Type) {
+    auto gm = inputs[0].get();
+    auto ub = outputs[0].get();
+    ss << "DataCopy(" << ub << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, ub) << "], " << gm << "["
+       << tpipe.tiler.Offset(current_axis, ub.axis, ub.axis_strides) << "], " << ub.size << ");" << std::endl;
+  } else if (this->type == Store::Type) {
+    auto gm = outputs[0].get();
+    auto ub = inputs[0].get();
+    ss << "DataCopy(" << gm << "[" << tpipe.tiler.Offset(current_axis, ub.axis, ub.axis_strides) << "], " << ub << "["
+       << tpipe.tiler.TensorVectorizedOffset(current_axis, ub) << "], " << ub.size << ");" << std::endl;
+  } else if (this->type == Abs::Type) {
+    auto x = inputs[0].get();
+    auto y = outputs[0].get();
+    ss << "Abs(" << y << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, y) << "], " << x << "["
+       << tpipe.tiler.TensorVectorizedOffset(current_axis, x) << "], " << x.size << ");" << std::endl;
+  } else {
+    throw std::runtime_error("Unsupported API call: " + this->type);
+  }
+
+  return ss.str();
+}
+
+Stage::Stage(ascir::ComputeUnit unit) : unit(unit) {}
+
+void Stage::AddCall(const ascir::NodeView &node) {
+  if (node.attr.api.unit != this->unit) {
+    throw std::runtime_error("Stage add different unit call.");
+  }
+
+  for (auto input : node.inputs()) {
+    if (input == nullptr) {
+      continue;
+    }
+
+    this->reads.insert(input->mem.tensor_id);
+    if (input->mem.alloc_type == ascir::ALLOC_TYPE_QUEUE) {
+      this->read_ques.insert(input->que.id);
+    }
+  }
+
+  for (auto output : node.outputs()) {
+    if (output == nullptr) {
+      continue;
+    }
+
+    this->writes.insert(output.mem.tensor_id);
+    if (output.mem.alloc_type == ascir::ALLOC_TYPE_QUEUE) {
+      this->write_ques.insert(output.que.id);
+    }
+  }
+
+  this->calls.emplace_back(ApiCall(node));
+}
+
+std::string Stage::Generate(const TPipe &tpipe, const std::vector<ascir::AxisId>& current_axis) const {
+  stringstream ss;
+  ss << "{" << std::endl;
+
+  std::set<ascir::TensorId> alloced_tensors;
+
+  // Read/Write que/buf DeQue/alloc
+  for (auto read_que_id : this->read_ques) {
+    auto que = tpipe.GetQue(read_que_id);
+    ss << que.DequeBuf() << std::endl;
+  }
+  for (auto write_que_id : this->write_ques) {
+    auto que = tpipe.GetQue(write_que_id);
+    ss << que.AllocBuf() << std::endl;
+  }
+
+  // api call
+  for (auto call : this->calls) {
+    std::vector<reference_wrapper<const Tensor>> input_tensors;
+    std::vector<reference_wrapper<const Tensor>> output_tensors;
+    for (auto &[ids, tensors] : {pair{call.inputs, &input_tensors}, {call.outputs, &output_tensors}}) {
+      for (auto id : ids) {
+        auto& tensor = tpipe.GetTensor(id);
+        tensors->emplace_back(ref(tensor));
+
+        if (tensor.alloc_type != ascir::ALLOC_TYPE_GLOBAL && alloced_tensors.find(id) == alloced_tensors.end()) {
+          alloced_tensors.insert(id);
+          ss << tpipe.TensorAlloc(tensor);
+        }
+      }
+    }
+
+    ss << call.Generate(tpipe, current_axis, input_tensors, output_tensors);
+
+    // Not need to free tensor, all tensor will be free when Enque/Free buffer
+  }
+
+  // Read/Write que/buf Enque/free
+  for (auto write_que_id : this->write_ques) {
+    auto que = tpipe.GetQue(write_que_id);
+    ss << que.EnqueBuf() << std::endl;
+  }
+  for (auto read_que_id : this->read_ques) {
+    auto que = tpipe.GetQue(read_que_id);
+    ss << que.FreeBuf() << std::endl;
+  }
+
+  ss << "}" << std::endl;
+  return ss.str();
+}
+
+Loop::Loop(ascir::AxisId axis) : axis(axis) {}
+
+void Loop::AddLoop(codegen::Loop::LoopId loop) {
+    this->body.emplace_back(Loop::LOOP, loop);
+}
+
+void Loop::AddStage(codegen::Loop::StageId stage) {
+    this->body.emplace_back(Loop::STAGE, stage);
+}
+
+void Looper::EnterLoop(ascir::AxisId axis) {
+    if (this->current_loops.empty()) {
+        throw std::runtime_error("Not root loop to enter");
+    }
+
+    if (this->current_stage != ascir::ID_NONE) {
+        this->ExitStage();
+    }
+
+    auto current_loop_id = current_loops.back();
+    Loop::LoopId new_loop_id = this->loops.size();
+    this->loops.emplace_back(Loop{axis});
+
+    this->loops[current_loop_id].AddLoop(new_loop_id);
+    this->current_loops.emplace_back(new_loop_id);
+    this->current_axis.emplace_back(axis);
+}
+
+void Looper::ExitLoop() {
+    if (this->current_loops.size() == 1) {
+        throw std::runtime_error("Can not exit root loop");
+    }
+
+    if (this->current_stage != ascir::ID_NONE) {
+        ExitStage();
+    }
+
+    this->current_loops.pop_back();
+    this->current_axis.pop_back();
+}
+
+void Looper::InitRootLoop() {
+    this->current_stage = ascir::ID_NONE;
+    this->current_axis.clear();
+    this->current_loops.clear();
+
+    this->root_loop = this->loops.size();
+    this->loops.emplace_back(Loop(ascir::ID_NONE));
+    this->current_loops.emplace_back(this->root_loop);
+}
+
+void Looper::EnterStage(ascir::ComputeUnit unit) {
+    if (this->current_stage != ascir::ID_NONE) {
+        throw std::runtime_error("already in stage");
+    }
+
+    if (this->current_loops.empty()) {
+        throw std::runtime_error("Not loop to add stage.");
+    }
+
+    auto new_stage_id = this->stages.size();
+    this->stages.emplace_back(Stage{unit});
+
+    this->loops[this->current_loops.back()].AddStage(new_stage_id);
+    this->current_stage = new_stage_id;
+};
+
+void Looper::ExitStage() {
+    if (this->current_stage == ascir::ID_NONE) {
+        throw std::runtime_error("Not in Stage");
+    }
+    this->current_stage = ascir::ID_NONE;
+}
+
+void Looper::EndRootLoop() {
+    this->current_stage = ascir::ID_NONE;
+    this->current_axis.clear();
+    this->current_loops.clear();
+}
+
+void Looper::AddNode(const ascir::NodeView node) {
+  auto axis = node.attr.sched.axis();
+  auto loop_axis = node.attr.sched.loop_axis();
+
+  int loop_distance = this->LoopAxisDistance(axis, loop_axis);
+  while (loop_distance != 0) {
+    if (loop_distance > 0) {
+        this->EnterLoop(axis[this->current_axis.size()]);
+    } else {
+        this->ExitLoop();
+    }
+
+    loop_distance = this->LoopAxisDistance(axis, loop_axis);
+  }
+
+  auto unit = node.attr.api.unit;
+  if (this->current_stage == ascir::ID_NONE) {
+    this->EnterStage(unit);
+  } else {
+    if (this->stages[current_stage].unit != unit) {
+        this->ExitStage();
+        this->EnterStage(unit);
+    } else {
+        // Pass in same unit
+    }
+  }
+
+  auto& stage = this->stages[this->current_stage];
+
+  stage.AddCall(node);
+}
+
+void Looper::GenerateLoop(const Tiler &tiler, const TPipe& tpipe, std::vector<ascir::AxisId>& current_axis, const Loop &loop, std::stringstream &ss) const {
+  for (auto& [type, body] : loop.body) {
+    if (type == Loop::LOOP) {
+        auto loop = this->loops[body];
+        current_axis.push_back(loop.axis);
+
+        auto axis = tiler.GetAxis(loop.axis);
+        if (axis.type == Axis::AXIS_TYPE_BLOCK_OUTER) {
+            this->GenerateLoop(tiler, tpipe, current_axis, loop, ss);
+        } else {
+            ss << "for (" << axis.AsArg() << " = 0; " << axis << " < " << tiler.Size(axis.size) << "; " << axis << "++) {" << std::endl;
+            this->GenerateLoop(tiler, tpipe,  current_axis, loop, ss);
+            ss << "}" << std::endl;
+        }
+
+        current_axis.pop_back();
+    } else if (type == Loop::STAGE) {
+        auto stage = this->stages[body];
+        ss << stage.Generate(tpipe, current_axis);
+    } else {
+        throw std::runtime_error("Unknown body type.");
+    }
+  }
+}
+
+std::string Looper::GenerateLoop(const Tiler &tiler, const TPipe& tpipe) const {
+  stringstream ss;
+  std::vector<ascir::AxisId> current_axis;
+  this->GenerateLoop(tiler, tpipe, current_axis, this->loops[this->root_loop], ss);
+  return ss.str();
+}
+
 Kernel::Kernel()
     : tiling_data_arg("tiling"),
       workspace_arg("workspace"),
@@ -737,6 +1170,17 @@ Kernel Kernel::ParseGraph(const ascir::ImplGraph &graph) {
     }
   }
 
+  // Parse for loop
+  kernel.looper.InitRootLoop();
+  for (auto node : graph.GetAllNodes()) {
+    if (IsOps<Data>(node) || IsOps<Output>(node)) {
+      continue;
+    }
+
+    kernel.looper.AddNode(node);
+  }
+  kernel.looper.EndRootLoop();
+
   return kernel;
 }
 
@@ -758,6 +1202,8 @@ std::string Kernel::Generate() {
   ss << this->GlobalTensorInit();
   ss << std::endl;
   ss << this->LocalTensorQueBufAlloc();
+
+  ss << this->looper.GenerateLoop(this->tiler, this->tpipe);
 
   ss << "}" << std::endl;
 
