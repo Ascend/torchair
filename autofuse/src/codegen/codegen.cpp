@@ -1,5 +1,9 @@
 #include "codegen.h"
 
+#include <sstream>
+
+#include "codegen_kernel.h"
+
 using namespace codegen;
 
 Codegen::Codegen(const CodegenOptions &options) {}
@@ -22,5 +26,12 @@ std::string Codegen::GenerateTiling(const std::vector<ascir::ImplGraph>& impl_gr
 }
 
 std::string Codegen::GenerateKernel(const std::vector<ascir::ImplGraph>& impl_graphs) const {
-  return "";
+  std::stringstream ss;
+
+  for (auto &impl_graph : impl_graphs) {
+    auto kernel = Kernel::ParseGraph(impl_graph);
+    ss << kernel.Generate();
+  }
+
+  return ss.str();
 }

@@ -9,51 +9,74 @@
 
 using namespace AscendC;
 
-extern "C" __global__ __aicore__ void load_abs_store(GM_ADDR x, GM_ADDR y, GM_ADDR workspace, GM_ADDR tiling)
-{
-    GET_TILING_DATA(t, tiling);
+namespace utils {
+template <typename T>
+constexpr inline __aicore__ T Max(const T a) {
+  return a;
+}
 
-    int z0B = GetBlockIdx() % (t.s0/t.z0b_size);
+template <typename T, typename... Ts>
+constexpr inline __aicore__ T Max(const T a, const Ts... ts) {
+  return a > Max(ts...) ? a : Max(ts...);
+}
 
-    GlobalTensor<half> xGm;
-    xGm.SetGlobalBuffer((__gm__ half*)x, t.s0*t.s1*t.s2);
-    GlobalTensor<half> yGm;
-    yGm.SetGlobalBuffer((__gm__ half*)y, t.s0*t.s1*t.s2);
+template <typename T, typename... Ts>
+constexpr inline __aicore__ T Sum(const T a, const Ts... ts) {
+  return (a + ... + ts);
+}
+}
 
-    size_t x_y_size = (t.z1t_size-1)*t.s2 + (t.s2-1)*1 + 1;
-    size_t load_y_size = (t.z1t_size-1)*t.s2 + (t.s2-1)*1 + 1;
-    size_t abs_y_size = (t.z1t_size-1)*t.s2 + (t.s2-1)*1 + 1;
-    size_t store_y_size = (t.z1t_size-1)*t.s2 + (t.s2-1)*1 + 1;
+extern "C" __global__ __aicore__ void load_abs_store(GM_ADDR x, GM_ADDR y, GM_ADDR workspace, GM_ADDR tiling) {
+GET_TILING_DATA(t, tiling);
 
-    size_t que0_size = load_y_size;
-    size_t que1_size = abs_y_size;
+int block_dim = GetBlockIdx();
+const int z0B = block_dim % (t.s0 / t.z0b_size); block_dim /= t.s0 / t.z0b_size;
 
-    TPipe tpipe;
-    TQue<TPosition::VECIN, 2> que0;
-    tpipe.InitBuffer(que0, 2, que0_size*sizeof(half));
-    TQue<TPosition::VECOUT, 2> que1;
-    tpipe.InitBuffer(que1, 2, que1_size*sizeof(half));
+GlobalTensor<half> x_y;
+x_y.SetGlobalBuffer((__gm__ half*)x);
+GlobalTensor<half> store_y;
+store_y.SetGlobalBuffer((__gm__ half*)y);
+
+TPipe tpipe;
+
+const uint32_t load_y_size = (t.z1t_size - 1) * t.s2 + (t.s2 - 1) + 1;
+const uint32_t load_y_que_depth = 2;
+const uint32_t load_y_que_buf_num = 2;
+const uint32_t abs_y_size = (t.z1t_size - 1) * t.s2 + (t.s2 - 1) + 1;
+const uint32_t abs_y_que_depth = 2;
+const uint32_t abs_y_que_buf_num = 2;
+
+
+const uint32_t q0_size = utils::Max(load_y_size * sizeof(half));
+const uint32_t q0_depth = utils::Max(load_y_que_depth);
+const uint32_t q0_buf_num = utils::Max(load_y_que_buf_num);
+TQue<TPosition::VECIN, q0_depth> q0;
+tpipe.InitBuffer(q0, q0_buf_num, q0_size);
+
+const uint32_t q1_size = utils::Max(abs_y_size * sizeof(half));
+const uint32_t q1_depth = utils::Max(abs_y_que_depth);
+const uint32_t q1_buf_num = utils::Max(abs_y_que_buf_num);
+TQue<TPosition::VECOUT, q1_depth> q1;
+tpipe.InitBuffer(q1, q1_buf_num, q1_size);
 
     for (int z0b = 0; z0b < t.z0b_size; z0b++) {
         for (int z1T = 0; z1T < t.s1/t.z1t_size; z1T++) {
             {
-                auto x_y = xGm[z0B*t.s1*t.s2*t.z0b_size + z0b*t.s1*t.s2 + z1T*t.s2*t.z1t_size];
-                auto load_y = que0.AllocTensor<half>();
-                DataCopy(load_y, x_y, x_y_size);
-                que0.EnQue(load_y);
+                auto load_y = q0.AllocTensor<half>();
+                DataCopy(load_y, x_y[z0B*t.s1*t.s2*t.z0b_size + z0b*t.s1*t.s2 + z1T*t.s2*t.z1t_size], load_y_size);
+                q0.EnQue(load_y);
             }
             {
-                auto load_y = que0.DeQue<half>();
-                auto abs_y = que1.AllocTensor<half>();
+                auto load_y = q0.DeQue<half>();
+                auto abs_y = q1.AllocTensor<half>();
                 Abs(abs_y, load_y, load_y_size);
-                que1.EnQue(abs_y);
-                que0.FreeTensor(load_y);
+                q1.EnQue(abs_y);
+                q0.FreeTensor(load_y);
             }
             {
-                auto abs_y = que1.DeQue<half>();
-                auto store_y = yGm[z0B*t.s1*t.s2*t.z0b_size + z0b*t.s1*t.s2 + z1T*t.s2*t.z1t_size];
-                DataCopy(store_y, abs_y, abs_y_size);
-                que1.FreeTensor(abs_y);
+                auto abs_y = q1.DeQue<half>();
+                DataCopy(store_y[z0B*t.s1*t.s2*t.z0b_size + z0b*t.s1*t.s2 + z1T*t.s2*t.z1t_size], abs_y, abs_y_size);
+                q1.FreeTensor(abs_y);
             }
         }
     }

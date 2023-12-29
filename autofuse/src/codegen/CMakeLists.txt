@@ -1,4 +1,5 @@
 add_library(codegen SHARED
+    codegen_kernel.cpp
     codegen.cpp
     )
 target_include_directories(codegen PUBLIC

@@ -1,7 +1,10 @@
 #ifdef __CCE_KT_TEST__
 #include <stdint.h>
 #define BEGIN_TILING_DATA_DEF(name) struct name {
-#define TILING_DATA_FIELD_DEF(type, name) type name;
+#define TILING_DATA_FIELD_DEF(type, name) \
+  type name; \
+  inline void set_##name(type value) { name = value; } \
+  inline type get_##name() { return name; }
 #define END_TILING_DATA_DEF };
 #define REGISTER_TILING_DATA_CLASS(op_type, tiling_type)
 #else

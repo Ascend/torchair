@@ -20,7 +20,7 @@ void LoadAbsStore_BeforeAutofuse(ascir::HintGraph &graph) {
   x.y.dtype = ge::DT_FLOAT16;
   x.y.axis = {z0.id, z1.id, z2.id};
   x.y.repeats = {s0, s1, s2};
-  x.y.strides = {s1*s2, s1, {}};
+  x.y.strides = {s1*s2, s2, {}};
 
   ops::Load load("load");
   load.x = x;
@@ -29,7 +29,7 @@ void LoadAbsStore_BeforeAutofuse(ascir::HintGraph &graph) {
   load.y.dtype = ge::DT_FLOAT16;
   load.y.axis = {z0.id, z1.id, z2.id};
   load.y.repeats = {s0, s1, s2};
-  load.y.strides = {s1*s2, s1, {}};
+  load.y.strides = {s1*s2, s2, {}};
 
   ops::Abs abs("abs");
   abs.x = load.y;
@@ -38,7 +38,7 @@ void LoadAbsStore_BeforeAutofuse(ascir::HintGraph &graph) {
   abs.y.dtype = ge::DT_FLOAT16;
   abs.y.axis = {z0.id, z1.id, z2.id};
   abs.y.repeats = {s0, s1, s2};
-  abs.y.strides = {s1*s2, s1, {}};
+  abs.y.strides = {s1*s2, s2, {}};
 
   ops::Store store("store");
   store.x = abs.y;
@@ -47,16 +47,16 @@ void LoadAbsStore_BeforeAutofuse(ascir::HintGraph &graph) {
   store.y.dtype = ge::DT_FLOAT16;
   store.y.axis = {z0.id, z1.id, z2.id};
   store.y.repeats = {s0, s1, s2};
-  store.y.strides = {s1*s2, s1, {}};
+  store.y.strides = {s1*s2, s2, {}};
 
-  ops::Data y("y");
+  ops::Output y("y");
   y.x = store.y;
   y.attr.sched.exec_order = 4;
   y.attr.sched.axis = {z0.id, z1.id, z2.id};
   y.y.dtype = ge::DT_FLOAT16;
   y.y.axis = {z0.id, z1.id, z2.id};
   y.y.repeats = {s0, s1, s2};
-  y.y.strides = {s1*s2, s1, {}};
+  y.y.strides = {s1*s2, s2, {}};
 
   graph.SetInputs({x});
   graph.SetOutputs({y});

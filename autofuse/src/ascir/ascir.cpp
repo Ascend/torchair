@@ -375,7 +375,7 @@ void Graph::ApplyMerge(NodeView &node, AxisId merged_axis, std::initializer_list
   return;
 }
 
-NodeView Graph::Find(const char *name) {
+NodeView Graph::FindImpl(const char *name) const {
   auto graph = ge::GraphUtilsEx::GetComputeGraph(*this);
   auto node = graph->FindNode(name);
   if (node == nullptr) {
@@ -385,12 +385,65 @@ NodeView Graph::Find(const char *name) {
   return NodeView{node};
 }
 
-NodeViewVisitor Graph::GetAllNodes() {
+NodeViewVisitor Graph::GetAllNodesImpl() const {
   auto graph = ge::GraphUtilsEx::GetComputeGraph(*this);
   if (graph == nullptr) {
       return NodeViewVisitor{};
   }
   return NodeViewVisitor{graph->GetAllNodes()};
+}
+
+NodeViewVisitor Graph::GraphInputsImpl() const {
+  auto graph = ge::GraphUtilsEx::GetComputeGraph(*this);
+  if (graph == nullptr) {
+      return NodeViewVisitor{};
+  }
+
+  return NodeViewVisitor{graph->GetInputNodes()};
+}
+
+NodeViewVisitor Graph::GraphOutputsImpl() const {
+  auto graph = ge::GraphUtilsEx::GetComputeGraph(*this);
+  if (graph == nullptr) {
+      return NodeViewVisitor{};
+  }
+
+  return NodeViewVisitor{graph->GetOutputNodes()};
+}
+
+NodeView Graph::Find(const char *name) {
+  return FindImpl(name);
+}
+
+NodeViewVisitor Graph::GetAllNodes() {
+  return GetAllNodesImpl();
+}
+
+NodeViewVisitor Graph::GraphInputs() {
+  return GraphInputsImpl();
+}
+
+NodeViewVisitor Graph::GraphOutputs() {
+  return GraphOutputsImpl();
+}
+
+const NodeView Graph::Find(const char *name) const {
+  return FindImpl(name);
+}
+
+NodeViewVisitorConst Graph::GetAllNodes() const {
+  auto tmp = GetAllNodesImpl();
+  return NodeViewVisitorConst(tmp);
+}
+
+NodeViewVisitorConst Graph::GraphInputs() const {
+  auto tmp = GraphInputsImpl();
+  return NodeViewVisitorConst(tmp);
+}
+
+NodeViewVisitorConst Graph::GraphOutputs() const {
+  auto tmp = GraphOutputsImpl();
+  return NodeViewVisitorConst(tmp);
 }
 
 int Graph::CopyFrom(const ascir::Graph &graph) {
@@ -439,4 +492,27 @@ NodeViewIter NodeViewVisitor::begin() {
 
 NodeViewIter NodeViewVisitor::end() {
   return NodeViewIter(ge::ComputeGraph::Vistor<ge::NodePtr>::end());
+}
+
+NodeViewIterConst &NodeViewIterConst::operator++() {
+  NodeViewIter::operator++();
+  return *this;
+}
+
+const NodeView NodeViewIterConst::operator*() {
+  return NodeViewIter::operator*();
+}
+
+bool NodeViewIterConst::operator!=(const NodeViewIterConst &other) const {
+  return NodeViewIter::operator!=(other);
+}
+
+NodeViewIterConst NodeViewVisitorConst::begin() {
+  auto tmp = NodeViewVisitor::begin();
+  return NodeViewIterConst(tmp);
+}
+
+NodeViewIterConst NodeViewVisitorConst::end() {
+  auto tmp = NodeViewVisitor::end();
+  return NodeViewIterConst(tmp);
 }

@@ -447,6 +447,18 @@ template <typename Holder, const char *ATTR_NAME_PREFIX>
 const std::string AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::Axis>>::FROM{std::string(ATTR_NAME_PREFIX) +
                                                                                       ".from"};
 
+struct TensorAttrDtype {
+  ge::GeTensorDesc* tensor_desc;
+
+  inline void operator=(const ge::DataType &other) {
+    tensor_desc->SetDataType(other);
+  }
+
+  inline operator ge::DataType() const {
+    return tensor_desc->GetDataType();
+  };
+};
+
 using TensorId = Identifier;
 using BufId = Identifier;
 using QueId = Identifier;
@@ -478,6 +490,7 @@ class TensorAttr {
 
   union {
     ge::GeTensorDesc *desc;
+    TensorAttrDtype dtype;
     Fields<AXIS, vector<AxisId>> axis;
     Fields<REPEATS, vector<SizeExpr>> repeats;
     Fields<STRIDES, vector<SizeExpr>> strides;
@@ -730,7 +743,7 @@ struct InputsView {
 
   explicit inline InputsView(ge::NodePtr node) : _node(node) {}
 
-  inline std::vector<TensorPtr> operator()() {
+  inline std::vector<TensorPtr> GetAll() const {
     std::vector<TensorPtr> views;
     for (int i = 0; i < _node->GetAllInDataAnchorsSize(); ++i) {
       views.push_back(TensorPtr{_node->GetInDataAnchor(i)});
@@ -738,6 +751,14 @@ struct InputsView {
 
     return views;
   };
+
+  inline std::vector<TensorPtr> operator()() {
+    return GetAll();
+  };
+
+  inline const std::vector<TensorPtr> operator()() const {
+    return GetAll();
+  }
 
   inline TensorPtr operator[](int index) const {
     if (index >= _node->GetAllInDataAnchorsSize()) {
@@ -753,14 +774,22 @@ struct OutputsView {
 
   explicit inline OutputsView(ge::NodePtr node) : _node(node) {}
 
-  inline std::vector<TensorView> operator()() {
+  inline std::vector<TensorView> GetAll() const {
     std::vector<TensorView> views;
     for (int i = 0; i < _node->GetAllOutDataAnchorsSize(); ++i) {
       views.push_back(TensorView{_node->GetOutDataAnchor(i)});
     }
 
     return views;
+  }
+
+  inline std::vector<TensorView> operator()() {
+      return GetAll();
   };
+
+  inline const std::vector<TensorView> operator()() const {
+     return GetAll();
+  }
 
   inline TensorView operator[](int index) {
     if (index >= _node->GetAllOutDataAnchorsSize()) {
@@ -771,7 +800,8 @@ struct OutputsView {
   }
 };
 
-struct NodeView : public ge::NodePtr {
+class NodeView : public ge::NodePtr {
+ public:
   NodeAttr attr;
   InputsView inputs;
   OutputsView outputs;
@@ -787,6 +817,14 @@ class NodeViewIter : protected ge::ComputeGraph::Vistor<ge::NodePtr>::Iterator {
   bool operator!=(const NodeViewIter &other) const;
 };
 
+class NodeViewIterConst : protected NodeViewIter {
+ public:
+  NodeViewIterConst &operator++();
+  const NodeView operator*();
+  bool operator!=(const NodeViewIterConst &other) const;
+  explicit inline NodeViewIterConst(NodeViewIter &other) : NodeViewIter(other){};
+};
+
 class NodeViewVisitor : protected ge::ComputeGraph::Vistor<ge::NodePtr> {
  public:
   using Iterator = ge::ComputeGraph::Vistor<ge::NodePtr>::Iterator;
@@ -795,6 +833,13 @@ class NodeViewVisitor : protected ge::ComputeGraph::Vistor<ge::NodePtr> {
 
   NodeViewVisitor();
   explicit NodeViewVisitor(ge::ComputeGraph::Vistor<ge::NodePtr> &&visitor);
+};
+
+class NodeViewVisitorConst : protected NodeViewVisitor {
+ public:
+  NodeViewIterConst begin();
+  NodeViewIterConst end();
+  explicit inline NodeViewVisitorConst(NodeViewVisitor &other) : NodeViewVisitor(other) {}
 };
 
 class Graph : public ge::Graph {
@@ -838,11 +883,22 @@ class Graph : public ge::Graph {
 
   NodeView Find(const char *name);
   NodeViewVisitor GetAllNodes();
+  NodeViewVisitor GraphInputs();
+  NodeViewVisitor GraphOutputs();
+
+  const NodeView Find(const char *name) const;
+  NodeViewVisitorConst GetAllNodes() const;
+  NodeViewVisitorConst GraphInputs() const;
+  NodeViewVisitorConst GraphOutputs() const;
 
   int CopyFrom(const ascir::Graph &graph);
 
  private:
   ge::NamedAttrs tmp_attr_holder;
+  NodeView FindImpl(const char *name) const;
+  NodeViewVisitor GetAllNodesImpl() const;
+  NodeViewVisitor GraphInputsImpl() const;
+  NodeViewVisitor GraphOutputsImpl() const;
 };
 
 using HintGraph = Graph;

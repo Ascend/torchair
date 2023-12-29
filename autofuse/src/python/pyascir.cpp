@@ -608,9 +608,16 @@ PyMODINIT_FUNC PyInit_ascir(void) {
 
   static PyTypeObject ops_operators[] = {
     pyascir::OpsOperator<ascir::ops::Data>::CreateTypeObject(),
+    pyascir::OpsOperator<ascir::ops::Output>::CreateTypeObject(),
     pyascir::OpsOperator<ascir::ops::Load>::CreateTypeObject(),
-    pyascir::OpsOperator<ascir::ops::Abs>::CreateTypeObject(),
+    pyascir::OpsOperator<ascir::ops::Broadcast>::CreateTypeObject(),
     pyascir::OpsOperator<ascir::ops::Store>::CreateTypeObject(),
+    pyascir::OpsOperator<ascir::ops::Abs>::CreateTypeObject(),
+    pyascir::OpsOperator<ascir::ops::Max>::CreateTypeObject(),
+    pyascir::OpsOperator<ascir::ops::Sum>::CreateTypeObject(),
+    pyascir::OpsOperator<ascir::ops::Sub>::CreateTypeObject(),
+    pyascir::OpsOperator<ascir::ops::Div>::CreateTypeObject(),
+    pyascir::OpsOperator<ascir::ops::Exp>::CreateTypeObject(),
   };
   for (auto &type : ops_operators) {
     if (PyType_Ready(&type) < 0) {

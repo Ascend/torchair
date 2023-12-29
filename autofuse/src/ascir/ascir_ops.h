@@ -3,6 +3,13 @@
 
 #include "ascir.h"
 
+namespace ascir::ops {
+template <typename T>
+bool IsOps(const ascir::NodeView &view) {
+  return view->GetType() == T::Type;
+}
+};
+
 namespace ge {
 REG_OP(Data)
     .INPUT(x, TensorType::ALL())
@@ -15,6 +22,20 @@ REG_OPS(Data)
   OPS_INPUT(0, x)
   OPS_OUTPUT(0, y)
 END_OPS(Data)
+}
+
+namespace ge {
+REG_OP(Output)
+    .INPUT(x, TensorType::ALL())
+    .OUTPUT(y, TensorType::ALL())
+.OP_END_FACTORY_REG(Output)
+}
+
+namespace ascir::ops {
+REG_OPS(Output)
+  OPS_INPUT(0, x)
+  OPS_OUTPUT(0, y)
+END_OPS(Output)
 }
 
 namespace ge {
