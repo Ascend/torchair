@@ -28,17 +28,21 @@ from torchair.ge_concrete_graph.utils import dtype_promote, DataType
 @declare_supported([
     Support(F32(2, 2), F32(2, 2)),
     Support(F16(2, 2), F16(2, 2)),
+    Support(F32(2, 2), BOOL(2, 2)),
+    Support(BOOL(2, 2), F32(2, 2)),
     Support(BOOL(2, 2), BOOL(2, 2)),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.mul.Tensor)
 def conveter_aten_mul_Tensor(self: Tensor, other: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::mul.Tensor(Tensor self, Tensor other) -> Tensor"""
     """Mul operater doesn't support the input format of (bool, bool) till 2023/11/17"""
-    if self.dtype == DataType.DT_BOOL:
-        self, other = dtype_promote(self, other, target_dtype=torch.float16)
-        return ge.Cast(ge.Mul(self, other), dst_type=meta_outputs.dtype)
-    self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)
-    return ge.Mul(self, other)
+    compute_dtype = meta_outputs.dtype
+    if self.dtype == DataType.DT_BOOL and other.dtype == DataType.DT_BOOL:
+        compute_dtype = DataType.DT_UINT8
+    self, other = dtype_promote(self, other, target_dtype=compute_dtype)
+    output = ge.Mul(self, other)
+    output = dtype_promote(output, target_dtype=meta_outputs.dtype)
+    return output
 
 
 @declare_supported([

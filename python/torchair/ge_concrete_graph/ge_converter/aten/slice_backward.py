@@ -40,9 +40,10 @@ def conveter_aten_slice_backward_default(
 ):
     """NB: aten::slice_backward(Tensor grad_output, SymInt[] input_sizes, int dim, SymInt start, SymInt end, SymInt step) -> Tensor"""
 
-    if isinstance(input_sizes, list) and isinstance(end, int) and end == sys.maxsize:
-        end = input_sizes[dim]
-
+    if isinstance(input_sizes, list) and isinstance(end, int):
+        end = input_sizes[dim] if end == sys.maxsize else end
+        end = input_sizes[dim] + end if end < 0 else end
+        
     input_sizes, start, limit, delta = dtype_promote(input_sizes, start, end, step, target_dtype=torch_type_to_ge_type(torch.int32))
     
     grad_input = ge.Fill(input_sizes, ge.Const(0., dtype=grad_output.dtype))
