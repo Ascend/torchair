@@ -8,7 +8,7 @@ namespace tng {
 class Logger : public std::basic_ostringstream<char> {
  public:
   Logger(const char *f, int line, const char *log_level) {
-    *this << "[" << log_level << "] " << f << ":" << line << " ";
+    *this << "[" << log_level << "] TORCHAIR [" << f << ":" << line << "] ";
   }
   ~Logger() override { std::cerr << str() << std::endl; }
 };
