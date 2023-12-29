@@ -16,6 +16,7 @@ add_library(test_e2e OBJECT
 target_link_libraries(test_e2e
     e2e
     autofuse
+    nlohmann_json
     GTest::gtest
     )
 

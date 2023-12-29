@@ -1,6 +1,7 @@
 #include "e2e_load_abs_store.h"
 
 #include "gtest/gtest.h"
+#include "nlohmann/json.hpp"
 
 #include "optimize.h"
 #include "codegen.h"
@@ -90,13 +91,28 @@ TEST_F(E2E_LoadAbsStore, BufQueAlloc) {
 
 TEST_F(E2E_LoadAbsStore, Codegen_Proto)
 {
-  ascir::HintGraph test_graph("test_graph");
+  ascir::HintGraph test_graph("LoadAbsStore");
   LoadAbsStore_BeforeAutofuse(test_graph);
 
   auto proto_code = codegen.GenerateProto(test_graph);
   std::cout << proto_code << std::endl;
 
-  GTEST_SKIP() << "Compare proto code here";
+  auto result = nlohmann::json::parse(proto_code);
+  auto op = result[0];
+  EXPECT_EQ(op["op"], "LoadAbsStore");
+  EXPECT_EQ(op["language"], "cpp");
+
+  auto input = op["input_desc"][0];
+  EXPECT_EQ(input["name"], "x");
+  EXPECT_EQ(input["param_type"], "required");
+  EXPECT_EQ(input["type"][0], "fp16");
+  EXPECT_EQ(input["format"][0], "ND");
+
+  auto output = op["output_desc"][0];
+  EXPECT_EQ(output["name"], "y");
+  EXPECT_EQ(output["param_type"], "required");
+  EXPECT_EQ(output["type"][0], "fp16");
+  EXPECT_EQ(output["format"][0], "ND");
 }
 
 TEST_F(E2E_LoadAbsStore, Codegen_TilingData)

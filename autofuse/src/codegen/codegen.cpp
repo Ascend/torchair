@@ -2,6 +2,7 @@
 
 #include <sstream>
 
+#include "codegen_proto.h"
 #include "codegen_kernel.h"
 
 using namespace codegen;
@@ -14,7 +15,10 @@ CodegenResult Codegen::Generate(const ascir::HintGraph &graph, const std::vector
 }
 
 std::string Codegen::GenerateProto(const ascir::HintGraph &graph) const {
-  return "";
+  OpProto op = OpProto::FromGraph(graph);
+  nlohmann::json j;
+  j.push_back(op);
+  return j.dump();
 }
 
 std::string Codegen::GenerateTilingData(const std::vector<ascir::ImplGraph>& impl_graphs) const {

@@ -15,6 +15,7 @@ set(CMAKE_FIND_ROOT_PATH
     ${ASCEND_OPENSDK}/gtest
     ${ASCEND_OPENSDK}/json)
 
+find_package(nlohmann_json REQUIRED)
 find_package(GTest REQUIRED)
 
 find_package(air)
