@@ -285,6 +285,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._fx_inputs_mapping = dict()
         self._input_placements = []
         self._frozen_flag_list = []
+        self._data_index_after_forozen = dict()
         self._graph_output_ref_input = {}
         self._executor = TorchNpuGraph(name)
         self._config = config
@@ -298,8 +299,8 @@ class GeConcreteGraph(ConcreteGraphBase):
         if self._config.experimental_config.frozen_parameter:
             if not self._is_compiled:
                 self._arg_is_frozen(*args)
-                self._convert_frozen_data_to_constplaceholder(*args)
-                self._process_fx_inputs_mapping_and_input_placements(*args)
+                self._process_data_to_constplaceholder(*args)
+                self._process_fx_inputs_mapping_and_input_placements(len(args))
             else:
                 self._check_args_seqeuence(*args)
         if self._inputs_processing is None:
@@ -616,7 +617,7 @@ class GeConcreteGraph(ConcreteGraphBase):
 
     def _check_args_seqeuence(self, *args: Any):
         for idx, arg in enumerate(args):
-            if self._frozen_flag_list[idx][0]:
+            if self._frozen_flag_list[idx]:
                 assert isinstance(arg, torch.nn.Parameter), \
                     f"Please set experimental_config.frozen_parameter = Fasle "
             else:
@@ -627,60 +628,64 @@ class GeConcreteGraph(ConcreteGraphBase):
         data_num = 0
         for idx, arg in enumerate(args):
             if isinstance(arg, torch.nn.Parameter):
-                self._frozen_flag_list.append((True, -1))
+                self._frozen_flag_list.append(True)
                 logger.info(f"No.{idx} arg is ConstPlaceHolder")
             else:
-                self._frozen_flag_list.append((False, data_num))
+                self._frozen_flag_list.append(False)
                 logger.info(f"No.{idx} arg is Data")
-                data_num += 1
-
-    def _process_fx_inputs_mapping_and_input_placements(self, *args: Any):
-        constplaceholder_num = 0
-        sym_num = 0
-        data_num = 0
-        new_fx_inputs_mapping = dict()
-        new_input_placements = []
-        new_graph_indexed_inputs = {}
-        for idx, arg in enumerate(args):
-            if idx in self._fx_inputs_mapping:
-                if not self._frozen_flag_list[idx][0]:
-                    new_fx_inputs_mapping[idx] = self._fx_inputs_mapping[idx] - constplaceholder_num
-                    new_input_placements.append(self._input_placements[idx - sym_num])
-                    new_graph_indexed_inputs[data_num] = self.graph._indexed_inputs[idx - sym_num]
+                if idx in self._fx_inputs_mapping:
+                    self._data_index_after_forozen[idx] = data_num
                     data_num += 1
-                else:
-                    constplaceholder_num += 1
-            else:
-                sym_num += 1
 
+    def _process_fx_inputs_mapping_and_input_placements(self, args_len):
+        new_input_placements = []
+        new_inputs = []
+        new_graph_indexed_inputs = {}
+        for idx in range(args_len):
+            if idx in self._fx_inputs_mapping:
+                if not self._frozen_flag_list[idx]:
+                    new_input_placements.append(self._input_placements[self._fx_inputs_mapping[idx]])
+                    new_inputs.append(self._inputs[self._fx_inputs_mapping[idx]])
+                    new_graph_indexed_inputs[self._data_index_after_forozen[idx]] = \
+                        self.graph._indexed_inputs[self._fx_inputs_mapping[idx]]
+        self._inputs = new_inputs
         self._input_placements = new_input_placements
-        self._fx_inputs_mapping = new_fx_inputs_mapping
         self.graph._indexed_inputs = new_graph_indexed_inputs
+        self._fx_inputs_mapping = self._data_index_after_forozen
 
-    def _convert_frozen_data_to_constplaceholder(self, *args: Any):
+    def _process_data_to_constplaceholder(self, *args: Any):
         name_mapping_data_to_constplaceholder = dict()
         fx_inputs_mapping_reverse = {value : key for key, value in self._fx_inputs_mapping.items()}
+        frozen_data_op_list = []
         for op in self.graph.op:
             if op.type == "Data":
                 args_index = fx_inputs_mapping_reverse[op.attr["index"].i]
-                if self._frozen_flag_list[args_index][0]:
-                    name = f"ConstPlaceHolder_{args_index}_{args[args_index].data_ptr()}"
-                    name_mapping_data_to_constplaceholder[op.name] = name
-                    op.name = name
-                    op.type = "ConstPlaceHolder"
-                    value = op.attr["value"].t
-                    value.desc.dtype = torch_type_to_ge_proto_type(args[args_index].dtype)
-                    value.desc.layout = "ND"
-                    value.desc.shape.dim.extend(_get_generalized_shape(args[args_index]))
-                    value.desc.attr["origin_shape"].list.i.extend(_get_generalized_shape(args[args_index]))
-                    value.desc.attr["origin_shape_initialized"].b = True
-                    value.desc.attr["_const_addr"].i = args[args_index].data_ptr()
-                    value.desc.device_type = "NPU"
-                    value.desc.size = args[args_index].numel() * args[args_index].element_size()
-                    del op.input_desc[0]
-                    del op.attr["index"]
-                else:
-                    op.attr["index"].i = self._frozen_flag_list[args_index][1]
+                if self._frozen_flag_list[args_index]:
+                    frozen_data_op_list.append(op)
+        for op in frozen_data_op_list:
+            args_index = fx_inputs_mapping_reverse[op.attr["index"].i]
+            name = f"ConstPlaceHolder_{args_index}_{args[args_index].data_ptr()}"
+            name_mapping_data_to_constplaceholder[op.name] = name
+            origin_shape = _get_generalized_shape(args[args_index])
+            storage_shape = _get_generalized_shape(args[args_index])
+            dtype = torch_type_to_ge_proto_type(args[args_index].dtype)
+            addr = args[args_index].data_ptr()
+            size = args[args_index].numel() * args[args_index].element_size()
+            with self.graph:
+                ge.ConstPlaceHolder(origin_shape=origin_shape, origin_format=2,
+                                    storage_shape=storage_shape, storage_format=2, expand_dim_rules="",
+                                    dtype=dtype, addr=addr, size=size, node_name=name)
+        # 删除是constplaceholder的Data节点
+        for frozen_data_op in frozen_data_op_list:
+            for i, op in enumerate(self.graph.op):
+                if op.type == "Data" and op.attr["index"].i == frozen_data_op.attr["index"].i:
+                    del self.graph.op[i]
+        # 修改不是constplaceholder的Data节点的index
+        for op in self.graph.op:
+            if op.type == "Data":
+                args_index = fx_inputs_mapping_reverse[op.attr["index"].i]
+                assert args_index in self._data_index_after_forozen
+                op.attr["index"].i = self._data_index_after_forozen[args_index]
         # 处理边
         for op in self.graph.op:
             for idx, op_input in enumerate(op.input):
