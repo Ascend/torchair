@@ -84725,3 +84725,62 @@ def Sxpy(x1: Tensor,
 
     # return outputs
     return y
+
+# This api is auto-generated from IR ConstPlaceHolder
+@auto_convert_to_tensor([], [])
+def ConstPlaceHolder(*,
+                     origin_shape: List[int],
+                     origin_format: int,
+                     storage_shape: List[int],
+                     storage_format: int,
+                     expand_dim_rules: str,
+                     dtype: int,
+                     addr: int,
+                     size: int,
+                     placement: int=1,
+                     dependencies=[],
+                     node_name=None):
+    """REG_OP(ConstPlaceHolder)\n
+    .OUTPUT(y, TensorType:ALL())\n
+    .REQUIRED_ATTR(origin_shape, ListInt)\n
+    .REQUIRED_ATTR(origin_format, Int)\n
+    .REQUIRED_ATTR(storage_shape, ListInt)\n
+    .REQUIRED_ATTR(storage_format, Int)\n
+    .REQUIRED_ATTR(expand_dim_rules, String)\n
+    .REQUIRED_ATTR(dtype, Int)\n
+    .REQUIRED_ATTR(addr, Int)\n
+    .REQUIRED_ATTR(size, Int)\n
+    .ATTR(placement, Int, 1)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "ConstPlaceHolder"
+    op.name = next_unique_name(node_name, "ConstPlaceHolder")
+    
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+    
+    # process inputs
+
+    # process attrs
+    op.attr["origin_shape"].list.val_type = 2
+    op.attr["origin_shape"].list.i.extend(origin_shape)
+    op.attr["origin_format"].i = origin_format
+    op.attr["storage_shape"].list.val_type = 2
+    op.attr["storage_shape"].list.i.extend(storage_shape)
+    op.attr["storage_format"].i = storage_format
+    op.attr["expand_dim_rules"].s = compat_as_bytes(expand_dim_rules)
+    op.attr["dtype"].dt = dtype
+    op.attr["addr"].i = addr
+    op.attr["size"].i = size
+    op.attr["placement"].i = placement
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+
+    # return outputs
+    return y
