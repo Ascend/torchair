@@ -41,6 +41,7 @@ def conveter_npu_npu_weight_quant_batchmatmul(
     quant_scale: Optional[Tensor] = None,
     quant_offset: Optional[Tensor] = None,
     bias: Optional[Tensor] = None,
+    meta_outputs: TensorSpec = None
 ):
     """NB: npu::npu_weight_quant_batchmatmul(Tensor x, Tensor weight, Tensor antiquant_scale,
     Tensor? antiquant_offset=None, Tensor? quant_scale=None, Tensor? quant_offset=None,
