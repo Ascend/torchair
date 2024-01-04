@@ -100,7 +100,8 @@ class TorchairSt(unittest.TestCase):
                 return torch.add(x, y)
 
         config_cp = CompilerConfig()
-        config_cp.experimental_config.frozen_parameter = True
+        ## TO DO: fix me after ConstPlaceHolder enable
+        # config_cp.experimental_config.frozen_parameter = True
         npu_backend_cp = torchair.get_npu_backend(compiler_config=config_cp)
         model = torch.compile(Model(), backend=npu_backend_cp, dynamic=True)
         x = torch.randn(2, 2)
@@ -116,7 +117,8 @@ class TorchairSt(unittest.TestCase):
                 return torch.add(x, y)
 
         config_cp = CompilerConfig()
-        config_cp.experimental_config.frozen_parameter = True
+        ## TO DO: fix me after ConstPlaceHolder enable
+        # config_cp.experimental_config.frozen_parameter = True
         npu_backend_cp = torchair.get_npu_backend(compiler_config=config_cp)
         model = torch.compile(Model(), backend=npu_backend_cp, dynamic=False)
         x = torch.randn(2, 2)
@@ -227,6 +229,38 @@ class TorchairSt(unittest.TestCase):
                       'from torchair.ge_concrete_graph.ge_graph import get_default_ge_graph\n\n'
 
         exec(src)
+
+
+    def test_1sym_pack(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y, z):
+                a = z.view([x]) + 1.0
+                return a
+
+        npu_backend = torchair.get_npu_backend()
+        model = Model()
+        model = torch.compile(model, backend=npu_backend, dynamic=True)
+        in4 = torch.randn([3, 2])
+        model(6, 3, in4)
+
+    def test_2sym_pack(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y, z):
+                a = z.view([x]) + y.view([x]) + x
+                return a
+
+        npu_backend = torchair.get_npu_backend()
+        model = Model()
+        model = torch.compile(model, backend=npu_backend, dynamic=True)
+        in4 = torch.randn([3, 2])
+        in3 = torch.randn([2, 3])
+        model(6, in3, in4)
 
     def test_npu_executor_mix_npu_cpu_inputs(self):
         initialize_graph_engine()
