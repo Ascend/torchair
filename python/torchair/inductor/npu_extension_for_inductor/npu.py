@@ -143,9 +143,10 @@ class NPUKernel(Kernel):
         kw_args_def = ', '.join(kw_args)
         kw_args_val = ', '.join([f"{v}={v}" for v in kw_args])
 
-        self.graph.view_dot()
         graph_fn = self.graph.name
         self._graph_def = self.graph.codegen(graph_fn)
+        self.graph.view_dot()
+
         code.splice(self._graph_def)
 
         self._kernel_def.clear()

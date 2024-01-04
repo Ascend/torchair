@@ -114,15 +114,18 @@ class StreamArg(AclnnArg):
 class SymValsArg(AclnnArg):
     def __init__(self, name):
         super().__init__(name)
+        self.inner = f"{name}Tensor"
         self.signature = f"SymVals *{name}"
 
     def pre(self, code: IndentedBuffer):
+        code.writeline(
+            f"auto {self.inner} = aclCreateTensor({self.vals}, {self.num}, ACL_FLOAT, nullptr, 0, ACL_FORMAT_ND, {self.vals}, {self.num}, nullptr);")
         code.splice(self.debug())
 
     @debug
     def debug(self):
         buf = IndentedBuffer()
-        buf.writeline(f'std::cerr << "Input:{self.name} = SymVals(" << DebugString({self.inner}) << ")" << std::endl;')
+        buf.writeline(f'std::cerr << "Input:{self.name} = SymVals(" << DebugString({self.name}) << ")" << std::endl;')
         return buf
 
 
@@ -132,7 +135,7 @@ class CSymVals(Structure):
     C_DEFINE = """
 struct SymVals {
     size_t num = 0;
-    void *vals = nullptr;
+    int64_t *vals = nullptr;
 };"""
 
 
@@ -161,7 +164,7 @@ class AclnnKernelBin:
         self.lib_file = f'{_camel_to_snake(self.name)}.so'
 
         self.header_file = None
-        self.inputs = [TensorArg(v.name) for v in proto.inputs]
+        self.inputs = [TensorArg(v.name) for v in proto.inputs if v.name != "size_vars"]
         self.outputs = [TensorArg(v.name) for v in proto.outputs]
         self.sym_vals = SymValsArg("sym_vals")
         self.stream = StreamArg("stream")
@@ -176,7 +179,7 @@ class AclnnKernelBin:
             for arg in self.all_args:
                 arg.pre(code)
 
-            workspace_args = ', '.join([v.inner for v in itertools.chain(self.inputs, self.outputs)])
+            workspace_args = ', '.join([v.inner for v in itertools.chain([self.sym_vals], self.inputs, self.outputs)])
             code.splice(f"""
                 uint64_t workspace_size = 0U;
                 void *workspace = nullptr;

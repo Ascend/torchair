@@ -1,6 +1,7 @@
 from collections import defaultdict
 from typing import Dict, List
 
+import sympy
 from npu_extension_for_inductor.common.symbols import Loop, AscExpr
 from npu_extension_for_inductor.common.utils import StrRep
 from npu_extension_for_inductor.ir import _Op, _Tensor
@@ -17,6 +18,7 @@ class ASCGraph:
         self.inputs = []
         self.outputs = []
         self.ops: List[_Op] = []
+        self.size_vars_holder = self.add_op("Data", name="size_vars")
 
     def add_op(self, type: str, name=None):
         if name is None:
@@ -62,12 +64,16 @@ class ASCGraph:
             graph.writeline("from pyautofuse import ascir")
             graph.writeline(f"{self.name} = ascir.HintGraph('{self.name}')")
             # Size var and axis
+            self.size_vars = sorted(list(self.size_vars))
             for size_var in self.size_vars:
                 graph.writeline(f'{size_var} = {self.name}.create_size("{size_var}")')
             for axis, range_expr in self.axis_vars.items():
                 graph.writeline(f'{axis} = {self.name}.create_axis("{axis}", {repr(AscExpr(range_expr))})')
             # Ops codegen
-            for op in self.ops:
+            for i, op in enumerate(self.ops):
+                if i == 0:
+                    assert op.op_type == "Data" and op.name == "size_vars", "First op must be size_vars"
+                    op.y.size = [AscExpr(sympy.Symbol(str(s))) for s in self.size_vars]
                 graph.splice(op.codegen())
             # Inputs and outputs
             graph.splice(f"""
