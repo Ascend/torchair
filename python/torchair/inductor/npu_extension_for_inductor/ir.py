@@ -1,90 +1,98 @@
-from torch._inductor.virtualized import V
+from typing import Iterable
+
+from npu_extension_for_inductor.common.symbols import Loop
+from torch._inductor.codegen.common import CSEVariable
+from torch.utils._sympy.value_ranges import ValueRanges
+
+from . import asc_ops
 
 
-# TODO: autogen for all ascir ops
-def abs(x):
-    graph = V.kernel.graph
-    op = graph.add_op("Abs")
-    graph.buffer.writeline(f"{op}.x = {x}")
-    return f"{op}.y"
+class _Track:
+    def __init__(self, name, parent=None):
+        self.__dict__["name"] = f"{parent.name}.{name}" if parent else name
+        self.__dict__["_parent"] = parent
+        self.__dict__["_root"] = parent.root if parent else self
+        if not parent:
+            self.__dict__["attrs"] = {}
+
+    def __getattr__(self, item):
+        self.__dict__[item] = _Track(item, self)
+        return self.__dict__[item]
+
+    def __setattr__(self, key, value):
+        self.__dict__[key] = _Track(key, self)
+        self._root.attrs[self.__dict__[key].name] = value
+
+    @property
+    def parent(self):
+        return self._parent
+
+    @property
+    def root(self):
+        return self._root
 
 
-def add(x1, x2):
-    graph = V.kernel.graph
-    op = graph.add_op("Add")
-    graph.buffer.writeline(f"{op}.x1 = {x1}")
-    graph.buffer.writeline(f"{op}.x2 = {x2}")
-    return f"{op}.y"
+class _Tensor(CSEVariable):
+    def __init__(self, v: _Track):
+        assert isinstance(v.parent, _Op)
+        super().__init__(v.name, ValueRanges.unknown())
+        self.op: _Op = v.parent
+
+    def as_loop(self, loop: Loop):
+        self.op.mark_output_loop(self.name, loop)
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return self.name
 
 
-def sub(x1, x2):
-    graph = V.kernel.graph
-    op = graph.add_op("Sub")
-    graph.buffer.writeline(f"{op}.x1 = {x1}")
-    graph.buffer.writeline(f"{op}.x2 = {x2}")
-    return f"{op}.y"
+class _Op(_Track):
+    def __init__(self, type, name):
+        super().__init__(name)
+        self.__dict__['_op'] = type
+        self.__dict__['_loop'] = {}
+
+    def mark_output_loop(self, output, loop):
+        self.__dict__['_loop'][output] = loop
+
+    @property
+    def op_type(self):
+        return self._op
+
+    def codegen(self):
+        from torch._inductor.utils import IndentedBuffer
+        buffer = IndentedBuffer()
+        buffer.writeline(f"{self.name} = ascir.ops.{self._op}('{self.name}')")
+        for k, v in self.attrs.items():
+            buffer.writeline(f"{k} = {repr(v)}")
+        for k, loop in self.__dict__['_loop'].items():
+            buffer.writeline(f"{k}.axis = {loop.asc_axis}")
+            buffer.writeline(f"{k}.strides = {loop.asc_stride}")
+            buffer.writeline(f"{k}.size = {loop.asc_size}")
+        return buffer.getvalue()
 
 
-def exp(x):
-    graph = V.kernel.graph
-    op = graph.add_op("Exp")
-    graph.buffer.writeline(f"{op}.x = {x}")
-    return f"{op}.y"
+class _NpuOverride:
+    def __init__(self, f, dtype=None):
+        self._f = f
+        self._dtype = dtype
+
+    def __call__(self, *args, **kwargs):
+        tensors = self._f(*args, **kwargs)
+        if isinstance(tensors, Iterable):
+            return (_Tensor(t) if not isinstance(t, _Tensor) else t for t in tensors)
+        return _Tensor(tensors) if not isinstance(tensors, _Tensor) else tensors
 
 
-def broadcast(x):
-    graph = V.kernel.graph
-    op = graph.add_op("Broadcast")
-    graph.buffer.writeline(f"{op}.x = {x}")
-    return f"{op}.y"
+class _IRStore:
+    def __init__(self):
+        pass
+
+    def __getattr__(self, item):
+        self.__dict__[item] = _NpuOverride(getattr(asc_ops, item))
+        return self.__dict__[item]
 
 
-def truediv(x1, x2):
-    graph = V.kernel.graph
-    op = graph.add_op("TrueDiv")
-    graph.buffer.writeline(f"{op}.x1 = {x1}")
-    graph.buffer.writeline(f"{op}.x2 = {x2}")
-    return f"{op}.y"
-
-
-def to_dtype(x, dst_dtype, src_dtype=None):
-    graph = V.kernel.graph
-    op = graph.add_op("ToDtype")
-    graph.buffer.writeline(f"{op}.x = {x}")
-    graph.buffer.writeline(f"{op}.attr.src_dtype = {src_dtype}")
-    graph.buffer.writeline(f"{op}.attr.dst_dtype = {dst_dtype}")
-    return f"{op}.y"
-
-
-def reduction(x, *, dst_dtype, src_dtype, reduce_type):
-    graph = V.kernel.graph
-    op = graph.add_op(reduce_type.capitalize())
-    graph.buffer.writeline(f"{op}.x = {x}")
-    graph.buffer.writeline(f"{op}.attr.src_dtype = {src_dtype}")
-    graph.buffer.writeline(f"{op}.attr.dst_dtype = {dst_dtype}")
-    graph.buffer.writeline(f"{op}.attr.compute_type = 'reduce'")
-    return f"{op}.y"
-
-
-def data(name, *, input=None, sizes=(), dtype=None):
-    graph = V.kernel.graph
-    op = graph.add_op("Data", name)
-    graph.buffer.writeline(f"{op}.y.size = [{', '.join(sizes)}]")
-    graph.buffer.writeline(f"{op}.y.dtype = {dtype}")
-    if input:
-        graph.buffer.writeline(f"{op}.x = {input}")
-    return f"{op}.y"
-
-
-def load(data):
-    graph = V.kernel.graph
-    op = graph.add_op("Load")
-    graph.buffer.writeline(f"{op}.x = {data}")
-    return f"{op}.y"
-
-
-def store(value):
-    graph = V.kernel.graph
-    op = graph.add_op("Store")
-    graph.buffer.writeline(f"{op}.x = {value}")
-    return f"{op}.y"
+IR = _IRStore()

@@ -1,6 +1,7 @@
 from typing import List
 
 import sympy
+from npu_extension_for_inductor.common.utils import StrRep
 
 
 class AscSymbol:
@@ -19,6 +20,12 @@ class AscSymbol:
         return AscSymbol(self.s * power)
 
     def __str__(self):
+        multipliers = [str(s) for s in self.s if str(s) != "1"]
+        if len(multipliers) == 0:
+            return "1"
+        return "*".join(multipliers)
+
+    def __repr__(self):
         multipliers = [f"{s}" for s in self.s if str(s) != "1"]
         return f"ascir.SizeExpr([{','.join(multipliers)}])"
 
@@ -33,6 +40,9 @@ class AscExpr:
 
     def __str__(self):
         return str(self.asc_expr)
+
+    def __repr__(self):
+        return repr(self.asc_expr)
 
 
 class Loop:
@@ -62,17 +72,16 @@ class Loop:
 
     @property
     def asc_offset(self):
-        return f"[{AscExpr(self.offset)}]"
+        return AscExpr(self.offset)
 
     @property
     def asc_axis(self):
-        axis = ', '.join([f"{s.name}" for s in self.axis])
-        return f"[{axis}]"
+        return [StrRep(s.name) for s in self.axis]
 
     @property
     def asc_stride(self):
-        return f"[{', '.join([str(AscExpr(exp)) for exp in self.stride])}]"
+        return [AscExpr(exp) for exp in self.stride]
 
     @property
     def asc_size(self):
-        return f"[{', '.join([str(AscExpr(exp)) for exp in self.size])}]"
+        return [AscExpr(exp) for exp in self.size]

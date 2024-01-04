@@ -51,6 +51,24 @@ def _torch_type_to_type(torch_type, dst):
     return ret
 
 
+class StrRep:
+    def __init__(self, value, str_value=None):
+        self.value = value
+        self.str_value = str_value if str_value else value
+
+    def __str__(self):
+        return self.str_value
+
+    def __repr__(self):
+        return self.value
+
+    def __hash__(self):
+        return hash(self.value)
+
+    def __lt__(self, other):
+        return self.value < other.value
+
+
 class TypeUtils:
     @classmethod
     def torch_to_acl(cls, dtype):
@@ -58,4 +76,7 @@ class TypeUtils:
 
     @classmethod
     def torch_to_asc(cls, dtype):
-        return f"ascir.dtypes.{str(dtype).split('torch.')[1]}"
+        if dtype is None:
+            return dtype
+        type_str = str(dtype).split('torch.')[-1]
+        return StrRep(f"ascir.dtypes.{type_str}", type_str)
