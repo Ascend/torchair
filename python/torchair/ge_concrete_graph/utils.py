@@ -1,11 +1,19 @@
 import torch
 from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef
-from torchair.ge_concrete_graph.ge_graph import compat_as_bytes
-from torchair.ge_concrete_graph.ge_graph import DataType
-from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import compat_as_bytes, DataType, is_sym, Tensor, torch_type_to_ge_type
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import Any, Dict, List, Tuple, Union, Callable
+
+
+class Placement:
+    UNDEFINED = -1
+    HOST = 0
+    DEVICE = 1
+
+
+def is_host_data_tensor(tensor: Tensor):
+    return isinstance(tensor, Tensor) and (tensor.node.type == 'Data') and (
+            tensor.node.input_desc[0].device_type == "CPU")
 
 
 def convert_to_tensorboard(ge_graph: GraphDef):

@@ -15,21 +15,19 @@ from torch import Tensor
 from torch._subclasses.fake_tensor import FakeTensor, is_fake
 import torch.utils._pytree as pytree
 
+from torchair.configs.compiler_config import CompilerConfig
 from torchair.core import _torchair
+from torchair.core.backend import initialize_graph_engine, TorchNpuGraph
 from torchair.core.concrete_graph import ConcreteGraphBase, ValuePack
 from torchair.core.utils import logger
-from torchair.core.backend import initialize_graph_engine
 from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef, TensorDescriptor, TensorDef, OpDef
 from torchair.ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
-from torchair.ge_concrete_graph.ge_graph import default_ge_graph, GeGraph, attr_scope
 from torchair.ge_concrete_graph.ge_graph import Tensor as GeTensor
-from torchair.ge_concrete_graph.ge_graph import compat_as_bytes
-from torchair.ge_concrete_graph.ge_graph import DataType, TensorSpec
-from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type, torch_type_to_ge_proto_type
-from torchair.ge_concrete_graph.ge_graph import is_sym, sym_to_ge_dtype
-from torchair.core.backend import TorchNpuGraph
-from torchair.configs.compiler_config import CompilerConfig
-from torchair.ge_concrete_graph.utils import convert_to_tensorboard, force_op_unknown_shape, dump_graph
+from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type, torch_type_to_ge_proto_type, default_ge_graph, \
+    GeGraph, attr_scope, compat_as_bytes, DataType, TensorSpec, is_sym, sym_to_ge_dtype
+from torchair.ge_concrete_graph.graph_pass import optimize_sym_pack
+from torchair.ge_concrete_graph.utils import convert_to_tensorboard, dump_graph, force_op_unknown_shape, \
+    is_host_data_tensor, Placement
 from torchair.ge_concrete_graph.supported_declaration import Support
 from torchair.ge_concrete_graph.export_config_generete import generate_config
 from torchair.utils.export_utils import make_export_graph, get_export_file_name
@@ -248,20 +246,14 @@ def _update_internal_format_from_inputs(graph: GraphDef, runtime_inputs):
             f"GE graph input index {idx} out of Data ops index range {len(input_index_mapping_graph_op)}"
 
         if not runtime_inputs[idx].is_npu:
-            logger.info(f'input_{idx} is not npu tensor, skip format updates.')
+            logger.debug(f'input_{idx} is not npu tensor, skip format updates.')
             continue
 
         # attr "format_for_int" in proto::TensorDescriptor will be be deserialized as TensorDesc Format in ge.
         input_index_mapping_graph_op[idx].output_desc[0].attr["format_for_int"].i = \
             torch_npu_module.get_npu_format(runtime_inputs[idx])
-        logger.info(f'update the Format of output TensorDesc for input_{idx} '
+        logger.debug(f'update the Format of output TensorDesc for input_{idx} '
                     f'to Format {torch_npu_module.get_npu_format(runtime_inputs[idx])}')
-
-
-class Placement:
-    UNDEFINED = -1
-    HOST = 0
-    DEVICE = 1
 
 
 class ExecutorType:
@@ -294,6 +286,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._fx_input_mapping_cloned_ge_input = []
         self._inputs_processing = None
         self._is_compiled = False
+        self._pack_input_processing = None
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         if self._config.experimental_config.frozen_parameter:
@@ -303,9 +296,15 @@ class GeConcreteGraph(ConcreteGraphBase):
                 self._process_fx_inputs_mapping_and_input_placements(len(args))
             else:
                 self._check_args_seqeuence(*args)
+
+        if self._pack_input_processing is None:
+            self._pack_input_processing = optimize_sym_pack(self.graph, self.inputs, self._input_placements,
+                                                             self._fx_inputs_mapping, len(args))
+        fx_inputs = self._pack_input_processing(*args)
+
         if self._inputs_processing is None:
-            self._inputs_processing = self._make_inputs_processing_func(*args)
-        inputs = self._inputs_processing(*args)
+            self._inputs_processing = self._make_inputs_processing_func(*fx_inputs)
+        inputs = self._inputs_processing(*fx_inputs)
 
         inputs = self._consume_data_into_inputs(inputs)
 
@@ -364,8 +363,6 @@ class GeConcreteGraph(ConcreteGraphBase):
 
         # Update local options and graph attr part2
         self._graph_output_ref_input = _mapping_assign_op_to_graph_output(self.graph)
-        if self.config.debug.graph_dump.enabled and len(self._graph_output_ref_input):
-            self.dump(f'dynamo_after_mapping_assign_{datetime.now().strftime("%Y%m%d%H%M%S%f")}.pbtxt')
         output_reuse_indexes = [x for x in range(len(self.outputs)) if x not in self._graph_output_ref_input.keys()]
         if len(output_reuse_indexes) != 0:
             # support output memory reuse while output is not ref to input
@@ -379,6 +376,8 @@ class GeConcreteGraph(ConcreteGraphBase):
 
         _update_internal_format_from_inputs(self.graph, runtime_inputs)
 
+        if self.config.debug.graph_dump.enabled:
+            self.dump(f'dynamo_optimized_graph_{datetime.now().strftime("%Y%m%d%H%M%S%f")}.pbtxt')
         self._executor.load(self.graph.SerializeToString(), local_compile_options)
 
     def compile(self) -> Any:
@@ -458,8 +457,13 @@ class GeConcreteGraph(ConcreteGraphBase):
                 npu_syms.append(sym)
         if all([isinstance(sym, int) for sym in npu_syms]):
             return npu_syms
+
+        pack_tensor = ge.Pack(npu_syms, N=len(npu_syms), axis=0)
+        if all([is_host_data_tensor(sym_i) for sym_i in npu_syms]):
+            pack_tensor.node.attr['_inputs_all_sym'].b = True
+
         # force unknown shape with ge.Pack when parse symlist
-        return force_op_unknown_shape(ge.Pack(npu_syms, N=len(npu_syms), axis=0))
+        return force_op_unknown_shape(pack_tensor)
 
     def parse_node(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
         if hasattr(target, "_ge_converter"):

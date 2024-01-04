@@ -344,7 +344,7 @@ class _NpuFxCompiler:
 
         if not self.config.export.export_mode:
             if self.config.debug.graph_dump.enabled:
-                concrete_graph.dump(self.config.debug.graph_dump.full_path("dynamo"))
+                concrete_graph.dump(self.config.debug.graph_dump.full_path("dynamo_original_graph"))
 
 
         data_dumper = None
