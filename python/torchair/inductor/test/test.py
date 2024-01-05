@@ -113,6 +113,22 @@ class InductorNpuBackendTest(unittest.TestCase):
 
         self.assertTrue(torch.allclose(y, torch.softmax(x, dim=3)))
 
+    def test_constant(self):
+        """
+        测试带有constant算子的图
+        """
+
+        @torch.compile(dynamic=False)
+        def test_constant(x):
+            x = torch.add(x, 2.0)
+            return x
+
+        x = torch.ones(2, dtype=torch.float16)
+        with disable_npu_fallback():
+            y = test_constant(x)
+
+        self.assertTrue(torch.allclose(y, torch.add(x, 3.0)))
+
 
 if __name__ == '__main__':
     unittest.main()

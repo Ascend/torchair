@@ -1,10 +1,50 @@
+import functools
 from typing import Iterable
 
 from npu_extension_for_inductor.common.symbols import Loop
 from torch._inductor.codegen.common import CSEVariable
+from torch._inductor.virtualized import V
 from torch.utils._sympy.value_ranges import ValueRanges
 
 from . import asc_ops
+
+
+class _NpuOverride:
+    def __init__(self, f, dtype=None):
+        self._f = f
+        self._dtype = dtype
+
+    def __call__(self, *args, **kwargs):
+        tensors = self._f(*args, **kwargs)
+        if isinstance(tensors, Iterable):
+            return (_Tensor(t) if not isinstance(t, _Tensor) else t for t in tensors)
+        return _Tensor(tensors) if not isinstance(tensors, _Tensor) else tensors
+
+
+def unsupported(*args, op_type, **kwargs):
+    graph = V.kernel.graph
+    op = graph.add_op(op_type.capitalize())
+    op.is_unsupported = True
+    for i, arg in enumerate(args):
+        setattr(op, f"x{i}", arg)
+    for k, v in kwargs.items():
+        setattr(op, k, v)
+    return op.y
+
+
+class _IRStore:
+    def __init__(self):
+        pass
+
+    def __getattr__(self, item):
+        if hasattr(asc_ops, item):
+            self.__dict__[item] = _NpuOverride(getattr(asc_ops, item))
+        else:
+            self.__dict__[item] = _NpuOverride(functools.partial(unsupported, op_type=item))
+        return self.__dict__[item]
+
+
+IR = _IRStore()
 
 
 class _Track:
@@ -34,6 +74,7 @@ class _Track:
 
 class _Tensor(CSEVariable):
     def __init__(self, v: _Track):
+        assert isinstance(v, _Track)
         assert isinstance(v.parent, _Op)
         super().__init__(v.name, ValueRanges.unknown())
         self.op: _Op = v.parent
@@ -72,27 +113,3 @@ class _Op(_Track):
             buffer.writeline(f"{k}.strides = {loop.asc_stride}")
             buffer.writeline(f"{k}.size = {loop.asc_size}")
         return buffer.getvalue()
-
-
-class _NpuOverride:
-    def __init__(self, f, dtype=None):
-        self._f = f
-        self._dtype = dtype
-
-    def __call__(self, *args, **kwargs):
-        tensors = self._f(*args, **kwargs)
-        if isinstance(tensors, Iterable):
-            return (_Tensor(t) if not isinstance(t, _Tensor) else t for t in tensors)
-        return _Tensor(tensors) if not isinstance(tensors, _Tensor) else tensors
-
-
-class _IRStore:
-    def __init__(self):
-        pass
-
-    def __getattr__(self, item):
-        self.__dict__[item] = _NpuOverride(getattr(asc_ops, item))
-        return self.__dict__[item]
-
-
-IR = _IRStore()

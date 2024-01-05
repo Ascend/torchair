@@ -55,12 +55,20 @@ def div(x1, x2):
     return op.y
 
 
-def to_dtype(x, dst_dtype, src_dtype=None):
+def to_dtype(x, *, dst, src=None):
     graph = V.kernel.graph
     op = graph.add_op("ToDtype")
     op.x = x
-    op.attr.src_dtype = src_dtype
-    op.attr.dst_dtype = dst_dtype
+    op.attr.src = src
+    op.attr.dst = dst
+    return op.y
+
+
+def constant(*, value, dtype):
+    graph = V.kernel.graph
+    op = graph.add_op("Constant")
+    op.attr.value = value
+    op.attr.dtype = dtype
     return op.y
 
 
@@ -71,15 +79,6 @@ def reduction(x, *, dst_dtype, src_dtype, reduce_type):
     op.attr.src_dtype = src_dtype
     op.attr.dst_dtype = dst_dtype
     op.attr.compute_type = 'reduce'
-    return op.y
-
-
-def const(*, v, sizes, dtype):
-    graph = V.kernel.graph
-    op = graph.add_op("Const")
-    op.attr.value = v
-    op.y.size = sizes
-    op.y.dtype = dtype
     return op.y
 
 

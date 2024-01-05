@@ -1,7 +1,6 @@
 import dataclasses
 import functools
 import os
-from collections import defaultdict
 from typing import List, Iterable, Dict
 
 from npu_extension_for_inductor.common.asc_graph import ASCGraph
@@ -32,7 +31,15 @@ class NPUOverrides(OpOverrides):
     def to_dtype(x, dst_dtype, src_dtype=None):
         dst = TypeUtils.torch_to_asc(dst_dtype)
         src = TypeUtils.torch_to_asc(src_dtype)
-        return getattr(ir, "to_dtype")(x, dst, src)
+        return ir.to_dtype(x, dst=dst, src=src)
+
+    @staticmethod
+    def constant(value, dtype):
+        return ir.constant(value=value, dtype=TypeUtils.torch_to_asc(dtype))
+
+    @staticmethod
+    def masked(mask, body, other):
+        return ir.masked(mask, body(), other)
 
     def __getattr__(self, item):
         return getattr(ir, item)
@@ -137,11 +144,10 @@ class NPUKernel(Kernel):
     def codegen(self):
         code = IndentedBuffer()
         args, _, _ = self.args.python_argdefs()
-        arg_def = ', '.join(args)
-
         kw_args = ['sym_vals']
-        kw_args_def = ', '.join(kw_args)
-        kw_args_val = ', '.join([f"{v}={v}" for v in kw_args])
+
+        signature_args = ', '.join(args + ["*"] + kw_args)
+        call_args = ', '.join(args + [f"{v}={v}" for v in kw_args])
 
         graph_fn = self.graph.name
         self._graph_def = self.graph.codegen(graph_fn)
@@ -152,9 +158,9 @@ class NPUKernel(Kernel):
         self._kernel_def.clear()
         self._kernel_def.writeline(
             f"{self._kernel}_compiled = npu_compiler.aclnn(npu_codegen.aclnn({graph_fn}()))")
-        self._kernel_def.writeline(f"def {self._kernel}({arg_def}, *, {kw_args_def}):")
+        self._kernel_def.writeline(f"def {self._kernel}({signature_args}):")
         with self._kernel_def.indent():
-            self._kernel_def.writeline(f"{self._kernel}_compiled({arg_def}, {kw_args_val})")
+            self._kernel_def.writeline(f"{self._kernel}_compiled({call_args})")
         code.splice(self._kernel_def)
 
         return code.getvalue()
@@ -232,6 +238,13 @@ class NPUKernel(Kernel):
 
     def reduction(self, dtype, src_dtype, reduction_type, value):
         return Reduction(dtype, src_dtype, reduction_type, value, '')
+
+    @property
+    def assert_function(self):
+        return "ascir.Assert"
+
+    def index_to_str(self, index):
+        return str(index)
 
 
 class NPUScheduling(BaseScheduling):
@@ -329,6 +342,7 @@ class NpuWrapperCodeGen(WrapperCodeGen):
 def as_default_inductor_backend():
     from torch._inductor.codegen.common import register_backend_for_device
     register_backend_for_device("cpu", NPUScheduling, NpuWrapperCodeGen)
+    register_backend_for_device("npu", NPUScheduling, NpuWrapperCodeGen)
 
     from torch._inductor.lowering import fallback_handler
     from torch._inductor.lowering import lowerings
