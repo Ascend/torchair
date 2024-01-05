@@ -84528,11 +84528,12 @@ def WeightQuantBatchMatmulV2(x: Tensor,
                              *,
                              transpose_x: bool = False,
                              transpose_weight: bool = False,
+                             antiquant_group_size: int = 0,
                              dependencies=[],
                              node_name=None):
     """REG_OP(WeightQuantBatchMatmulV2)\n
     .INPUT(x, TensorType({DT_FLOAT16,DT_BF16}))\n
-    .INPUT(weight, TensorType({DT_INT8}))\n
+    .INPUT(weight, TensorType({DT_INT8,DT_INT4}))\n
     .INPUT(antiquant_scale, TensorType({DT_FLOAT16, DT_BF16}))\n
     .OPTIONAL_INPUT(antiquant_offset, TensorType({DT_FLOAT16, DT_BF16}))\n
     .OPTIONAL_INPUT(quant_scale, TensorType({DT_FLOAT, DT_UINT64}))\n
@@ -84541,6 +84542,7 @@ def WeightQuantBatchMatmulV2(x: Tensor,
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))\n
     .ATTR(transpose_x, Bool, false)\n
     .ATTR(transpose_weight, Bool, false)\n
+    .ATRR(antiquant_group_size, Int, 0)\n
     """
 
     op = get_default_ge_graph().op.add()
@@ -84593,6 +84595,7 @@ def WeightQuantBatchMatmulV2(x: Tensor,
     # process attrs
     op.attr["transpose_x"].b = transpose_x
     op.attr["transpose_weight"].b = transpose_weight
+    op.attr["antiquant_group_size"].i = antiquant_group_size
 
     # process outputs
     output_index = 0
@@ -84725,6 +84728,7 @@ def Sxpy(x1: Tensor,
 
     # return outputs
     return y
+
 
 # This api is auto-generated from IR ConstPlaceHolder
 @auto_convert_to_tensor([], [])

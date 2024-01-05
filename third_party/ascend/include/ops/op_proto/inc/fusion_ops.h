@@ -128,6 +128,7 @@ REG_OP(WeightQuantBatchMatmulV2)
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))
     .ATTR(transpose_x, Bool, false)
     .ATTR(transpose_weight, Bool, false)
+    .ATTR(antiquant_group_size, Int, 0)
     .OP_END_FACTORY_REG(WeightQuantBatchMatmulV2)
 
 /**
