@@ -84784,3 +84784,67 @@ def ConstPlaceHolder(*,
 
     # return outputs
     return y
+
+
+# This api is auto-generated from IR QuantBatchMatmulV3
+@auto_convert_to_tensor([False, False, False, False, False], [False, False, False, True, True])
+def QuantBatchMatmulV3(x1: Tensor, x2: Tensor, scale: Tensor, offset: Optional[Tensor], bias: Optional[Tensor], *,
+                       transpose_x1: bool=False, transpose_x2: bool=False, dependencies=[], node_name=None):
+    """REG_OP(QuantBatchMatmulV3)\n
+    .INPUT(x1, TensorType({DT_INT8}))\n
+    .INPUT(x2, TensorType({DT_INT8}))\n
+    .INPUT(scale, TensorType({DT_UINT64, DT_FLOAT}))\n
+    .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(bias, TensorType({DT_INT32}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT16}))\n
+    .ATTR(transpose_x1, Bool, false)\n
+    .ATTR(transpose_x2, Bool, false)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "QuantBatchMatmulV3"
+    op.name = next_unique_name(node_name, "QuantBatchMatmulV3")
+  
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+  
+    # process inputs
+    op.input.append(x1.tensor)
+    op.input_desc.add().CopyFrom(x1.desc)
+    op.input_desc[-1].name = "x1"
+    op.input.append(x2.tensor)
+    op.input_desc.add().CopyFrom(x2.desc)
+    op.input_desc[-1].name = "x2"
+    op.input.append(scale.tensor)
+    op.input_desc.add().CopyFrom(scale.desc)
+    op.input_desc[-1].name = "scale"
+    if offset is not None:
+        op.input.append(offset.tensor)
+        op.input_desc.add().CopyFrom(offset.desc)
+        op.input_desc[-1].name = "offset"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "offset"
+    if bias is not None:
+        op.input.append(bias.tensor)
+        op.input_desc.add().CopyFrom(bias.desc)
+        op.input_desc[-1].name = "bias"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "bias"
+  
+    # process attrs
+    op.attr["transpose_x1"].b = transpose_x1
+    op.attr["transpose_x2"].b = transpose_x2
+  
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+
+    # return outputs
+    return y
