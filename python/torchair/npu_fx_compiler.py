@@ -26,27 +26,8 @@ from torchair.configs.aot_config import AotConfig
 from torchair.fx_summary import summarize_fx_graph
 from torchair.fx_dumper import NpuFxDumper
 from torchair.utils.custom_aot_functions import aot_module_simplified_joint
-
+from torchair.utils.process_decomposition import process_npu_decomposition
 aten = torch.ops.aten
-
-
-def disable_implicit_decomposition():
-    '''
-    Since torch official will implicitly decompose some aten ops,
-    disable some ops here to avoid poor performance after decompose.
-    '''
-    disable_aten_ops = [
-        'aten.upsample_nearest1d.vec', 'aten.upsample_nearest1d.default',
-        'aten.upsample_nearest2d.vec', 'aten.upsample_nearest2d.default',
-        'aten.upsample_nearest3d.vec', 'aten.upsample_nearest3d.default',
-    ]
-
-    for op_override in decomposition_table.keys():
-        if str(op_override) in disable_aten_ops:
-            if DispatchKey.Autograd in op_override.py_kernels:
-                op_override.py_kernels.pop(DispatchKey.Autograd)
-            if DispatchKey.CompositeImplicitAutograd in op_override.py_kernels:
-                op_override.py_kernels.pop(DispatchKey.CompositeImplicitAutograd)
 
 
 def _unpack_meta_list(args):
@@ -403,7 +384,7 @@ def get_npu_backend(*, compiler_config: CompilerConfig = None,
     if compiler_config is None:
         compiler_config = CompilerConfig()
 
-    disable_implicit_decomposition()
+    process_npu_decomposition()
 
     return functools.partial(_npu_backend, compiler_config=compiler_config, aot_config=aot_config,
                              custom_decompositions=custom_decompositions)
