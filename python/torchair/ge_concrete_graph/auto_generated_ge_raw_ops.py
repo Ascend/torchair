@@ -84151,9 +84151,9 @@ def MaskedSoftmaxWithRelPosBias(x: Tensor, atten_mask: Optional[Tensor], relativ
 
 
 # This api is auto-generated from IR FFN
-@auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False,
-                         False, False, False, False],
-                        [False, False, False, True, True, True, True, True, True, True, True, True, True, True])
+@auto_convert_to_tensor(
+    [False, False, False, False, False, False, False, False, False, False, False, False, False, False],
+    [False, False, False, True, True, True, True, True, True, True, True, True, True, True])
 def FFN(x: Tensor,
         weight1: Tensor,
         weight2: Tensor,
@@ -84285,7 +84285,7 @@ def FFN(x: Tensor,
         op.input_desc[-1].name = "antiquant_scale2"
     if antiquant_offset1 is not None:
         op.input.append(antiquant_offset1.tensor)
-        op.input_desc.add().CopyFrom(dantiquant_offset1eq_scale1.desc)
+        op.input_desc.add().CopyFrom(antiquant_offset1.desc)
         op.input_desc[-1].name = "antiquant_offset1"
     else:
         op.input.append('')
@@ -84312,7 +84312,7 @@ def FFN(x: Tensor,
 
 
     return y
-    
+
 
 # This api is auto-generated from IR MatmulAllReduce
 @auto_convert_to_tensor([False, False, False], [False, False, True])

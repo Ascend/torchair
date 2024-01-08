@@ -22,6 +22,7 @@ from torchair.ge_concrete_graph.fx2ge_converter import declare_supported, regist
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
+from torchair.ge_concrete_graph.utils import dtype_promote
 
 
 @declare_supported(
@@ -60,11 +61,9 @@ def conveter_npu_npu_ffn(
     """
     if expert_tokens is not None and isinstance(expert_tokens, Tensor):
         raise NotImplementedError("FFN is not implemented while expert_tokens is Tensor!")
-    if scale is not None or offset is not None or deq_scale1 is not None or deq_scale2 is not None or \
-        antiquant_scale1 is not None or antiquant_scale2 is not None or antiquant_offset1 is not None or \
-        antiquant_offset2 is not None:
-        raise NotImplementedError("FFN dose not support quant case and antiquant case now!")
 
-    return ge.FFN(x, weight1, weight2, expert_tokens=expert_tokens, bias1=bias1, bias2=bias2, scale=None,
-        offset=None, deq_scale1=None, deq_scale2=None, antiquant_scale1=None, antiquant_scale2=None,
-        antiquant_offset1=None, antiquant_offset2=None, activation=activation, inner_precise=inner_precise)
+    expert_tokens = dtype_promote(expert_tokens, target_dtype=torch.int64)
+    return ge.FFN(x, weight1, weight2, expert_tokens=expert_tokens, bias1=bias1, bias2=bias2, scale=scale,
+        offset=offset, deq_scale1=deq_scale1, deq_scale2=deq_scale2, antiquant_scale1=antiquant_scale1,
+        antiquant_scale2=antiquant_scale2, antiquant_offset1=antiquant_offset1, antiquant_offset2=antiquant_offset2,
+        activation=activation, inner_precise=inner_precise)
