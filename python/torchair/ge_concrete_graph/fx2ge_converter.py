@@ -672,13 +672,14 @@ class GeConcreteGraph(ConcreteGraphBase):
             name_mapping_data_to_constplaceholder[op.name] = name
             origin_shape = _get_generalized_shape(args[args_index])
             storage_shape = _get_generalized_shape(args[args_index])
-            dtype = torch_type_to_ge_proto_type(args[args_index].dtype)
+            dtype = torch_type_to_ge_type(args[args_index].dtype)
             addr = args[args_index].data_ptr()
             size = args[args_index].numel() * args[args_index].element_size()
             with self.graph:
-                ge.ConstPlaceHolder(origin_shape=origin_shape, origin_format=2,
+                constplaceholder = ge.ConstPlaceHolder(origin_shape=origin_shape, origin_format=2,
                                     storage_shape=storage_shape, storage_format=2, expand_dim_rules="",
                                     dtype=dtype, addr=addr, size=size, node_name=name)
+                constplaceholder.set_meta(self.inputs[op.attr["index"].i]._meta)
         # 删除是constplaceholder的Data节点
         for frozen_data_op in frozen_data_op_list:
             for i, op in enumerate(self.graph.op):
