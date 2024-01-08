@@ -196,5 +196,23 @@ REG_OP(QuantBatchMatmulV3)
     .ATTR(transpose_x1, Bool, false)
     .ATTR(transpose_x2, Bool, false)
     .OP_END_FACTORY_REG(QuantBatchMatmulV3)
+
+
+/**
+* @brief Function TransQuantParamV2.
+
+* @par Inputs:
+* two inputs, including:
+* @li scale: A matrix Tensor. The type support uint64, int64.
+* @li offset: A matrix Tensor. The type support float32.
+
+* @par Outputs:
+* y: A matrix Tensor. The type support int64.
+*/
+REG_OP(TransQuantParamV2)
+    .INPUT(scale, TensorType({DT_FLOAT}))
+    .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))
+    .OUTPUT(y, TensorType({DT_INT64}))
+    .OP_END_FACTORY_REG(TransQuantParamV2)
 } // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_FUSION_OPS_H_
