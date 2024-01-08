@@ -1,8 +1,8 @@
+import atexit
 from collections import defaultdict
 from typing import Iterable, Dict
 
 from npu_extension_for_inductor.common.asc_graph import ASCGraph
-from npu_extension_for_inductor.common.symbols import AscSymbol
 from npu_extension_for_inductor.common.utils import StrRep
 from npu_extension_for_inductor.ir import _Op, _Tensor
 
@@ -29,6 +29,11 @@ class OpSummary:
             self.subs[name] = OpSummary(name)
         return self.subs[name]
 
+    def print(self):
+        if self.num_supported == 0 and self.num_unsupported == 0 and len(self.subs) == 0:
+            return
+        print(str(self))
+
     def __str__(self):
         for name, sub in self.subs.items():
             self.num_supported += sub.num_supported
@@ -37,10 +42,10 @@ class OpSummary:
                 self.supported[op_type] += count
             for op_type, count in sub.unsupported.items():
                 self.unsupported[op_type] += count
-        summary = f"Summary {self.name}:\n"
-        summary += f"  Supported op type:{len(self.supported)}/{len(self.unsupported) + len(self.supported)}\n"
-        summary += f"  Supported op nums:{self.num_supported}/{self.num_unsupported + self.num_supported}\n"
-        summary += f"  Unsupported op type: {self.num_unsupported}\n"
+        summary = f"Summary %{self.name}%:\n"
+        summary += f"Supported op nums: {self.num_supported}/{self.num_unsupported + self.num_supported}\n"
+        summary += f"Supported op type: {len(self.supported)}/{len(self.unsupported) + len(self.supported)}\n"
+        summary += f"Unsupported ops:\n"
         sorted_unsupported = sorted(self.unsupported.items(), key=lambda x: x[1], reverse=True)
         for op_type, count in sorted_unsupported:
             summary += f"    {op_type}: {count}\n"
@@ -49,8 +54,10 @@ class OpSummary:
 
 OP_SUMMARY = OpSummary("Model")
 
+atexit.register(lambda: OP_SUMMARY.print())
 
-def draw_asc_graph_dot(asc_graph: ASCGraph, file_path=None):
+
+def make_graph_dot(asc_graph: ASCGraph):
     try:
         import pydot
     except ImportError:
@@ -107,7 +114,11 @@ def draw_asc_graph_dot(asc_graph: ASCGraph, file_path=None):
             cluster_nodes.clear()
         graph.add_subgraph(cluster)
 
-    graph.add_node(pydot.Node("_summary", label=str(summary), shape="plaintext"))
+    graph.add_node(pydot.Node("_summary", label=str(summary), shape="plaintext", fontname="Courier"))
+    return graph
 
+
+def draw_asc_graph_dot(asc_graph: ASCGraph, file_path=None):
+    graph = make_graph_dot(asc_graph)
     file_path = file_path if file_path else f"./{asc_graph.name}.svg"
     graph.write_svg(file_path)

@@ -1,5 +1,6 @@
 import dataclasses
 import functools
+import itertools
 import os
 from typing import List, Iterable, Dict
 
@@ -151,7 +152,6 @@ class NPUKernel(Kernel):
 
         graph_fn = self.graph.name
         self._graph_def = self.graph.codegen(graph_fn)
-        self.graph.view_dot()
 
         code.splice(self._graph_def)
 
@@ -164,6 +164,22 @@ class NPUKernel(Kernel):
         code.splice(self._kernel_def)
 
         return code.getvalue()
+
+    def view_dot(self, nodes):
+        try:
+            import pydot
+            dot_graph = self.graph.as_dot()
+            labels = [_node_label(node) + ['-' * 20] for node in nodes]
+            lines = list(itertools.chain(*labels))
+            max_len = max([len(l) for l in lines])
+            for i, l in enumerate(lines):
+                lines[i] = l.ljust(max_len)
+            dot_graph.add_node(
+                pydot.Node(f"{self.graph.name}_body", shape="plaintext", label='\n'.join(lines),
+                           fontname="Courier"))
+            dot_graph.write_svg(f"./{self.graph.name}.svg")
+        except ImportError:
+            print(f"Unable to save dot for kernel {self.kernel_name} as pydot not installed", flush=True)
 
     def benchmark(self, file_path=None):
         file_path = file_path if file_path else f"./{self._kernel}_benchmark.py"
@@ -247,6 +263,13 @@ class NPUKernel(Kernel):
         return str(index)
 
 
+def _node_label(node: SchedulerNode):
+    lines = node._body.debug_str().split("\n")
+    lines = [l for l in lines if l]
+    lines.insert(0, f"<Node %{node.node.name}% body>:")
+    return lines
+
+
 class NPUScheduling(BaseScheduling):
     def __init__(self, scheduler):
         super().__init__()
@@ -306,7 +329,9 @@ class NPUScheduling(BaseScheduling):
         wrapper: WrapperCodeGen = V.graph.wrapper_code
         wrapper.header.splice("\n\n")
         wrapper.header.splice(kernel.codegen())
+
         kernel.benchmark()  # TODO: Make this work under config
+        kernel.view_dot(nodes)  # TODO: Make this work under config
 
         _, call_args, _ = kernel.args.python_argdefs()
 

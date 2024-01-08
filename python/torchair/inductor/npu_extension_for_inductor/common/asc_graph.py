@@ -51,6 +51,10 @@ class ASCGraph:
         from npu_extension_for_inductor.common.debug import draw_asc_graph_dot
         draw_asc_graph_dot(self, f"./{self.name}.svg")
 
+    def as_dot(self):
+        from npu_extension_for_inductor.common.debug import make_graph_dot
+        return make_graph_dot(self)
+
     def codegen(self, fn_name) -> IndentedBuffer:
         graph = IndentedBuffer()
         graph.writeline(f"def {fn_name}():")
