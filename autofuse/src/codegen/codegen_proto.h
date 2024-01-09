@@ -26,11 +26,9 @@ class OpProto {
 
   static OpProto FromGraph(const ascir::HintGraph& graph);
 };
-};
 
-namespace nlohmann {
-void to_json(json& j, const codegen::OpParamDesc& p);
-void to_json(json& j, const codegen::OpProto& p);
+void to_json(nlohmann::json& j, const OpParamDesc& p);
+void to_json(nlohmann::json& j, const OpProto& p);
 };
 
 #endif

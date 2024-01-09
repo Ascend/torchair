@@ -34,8 +34,8 @@ OpProto OpProto::FromGraph(const ascir::HintGraph &graph) {
   return proto;
 }
 
-void nlohmann::to_json(nlohmann::json &j, const OpParamDesc &param) {
-  j = json{{"name", param.name}, {"param_type", param.param_type}};
+void codegen::to_json(nlohmann::json &j, const OpParamDesc &param) {
+  j = nlohmann::json{{"name", param.name}, {"param_type", param.param_type}};
 
   const std::string dtypes[] = {[ge::DT_FLOAT] = "fp32", [ge::DT_FLOAT16] = "fp16"};
   for (auto dtype : param.type) {
@@ -56,8 +56,8 @@ void nlohmann::to_json(nlohmann::json &j, const OpParamDesc &param) {
   }
 }
 
-void nlohmann::to_json(nlohmann::json &j, const OpProto &proto) {
-  j = json{{"op", proto.op},
+void codegen::to_json(nlohmann::json &j, const OpProto &proto) {
+  j = nlohmann::json{{"op", proto.op},
            {"language", proto.language},
            {"input_desc", proto.input_desc},
            {"output_desc", proto.output_desc}};
