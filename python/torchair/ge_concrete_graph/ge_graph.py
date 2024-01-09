@@ -445,6 +445,9 @@ class GeGraph(object):
     def num_inputs(self):
         return len(self._indexed_inputs)
 
+    def indexed_inputs(self):
+        return self._indexed_inputs
+
 
 class _GeGraphStack(threading.local):
     """A thread-local stack of objects for providing implicit defaults."""

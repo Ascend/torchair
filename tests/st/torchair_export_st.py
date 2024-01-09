@@ -13,6 +13,10 @@ os.environ['TNG_LOG_LEVEL'] = '0'
 logger.setLevel(logging.DEBUG)
 
 
+def get_dumped_file_list(dir_path, file_extension='.pbtxt'):
+    return [i for i in os.listdir(dir_path) if i.startswith('dynamo') and i.endswith(f'{file_extension}')]
+
+
 class TorchairSt(unittest.TestCase):
     def setUp(self) -> None:
         self.clean_env()
@@ -29,9 +33,6 @@ class TorchairSt(unittest.TestCase):
                 shutil.rmtree(export_path)
 
     def test_export(self):
-        def get_dumped_file_list(dir_path, file_extension='.pbtxt'):
-            return [i for i in os.listdir(dir_path) if i.startswith('dynamo') and i.endswith(f'{file_extension}')]
-
         class Model(torch.nn.Module):
 
             def __init__(self):
@@ -63,9 +64,6 @@ class TorchairSt(unittest.TestCase):
         assert src.count("op: \"Shape\"") == 0
 
     def test_export_with_sym(self):
-        def get_dumped_file_list(dir_path, file_extension='.pbtxt'):
-            return [i for i in os.listdir(dir_path) if i.startswith('dynamo') and i.endswith(f'{file_extension}')]
-
         def get_inputnum_in_node(strgraph, opname):
             start_str = opname
             end_str = "attr {"
@@ -157,9 +155,6 @@ class TorchairSt(unittest.TestCase):
         assert src.count("HcomReduceScatter") == 3 # dist reduce_scatter_tensor入图
 
     def test_export_weight_externalized(self):
-        def get_dumped_file_list(dir_path, file_extension='.pbtxt'):
-            return [i for i in os.listdir(dir_path) if i.startswith('dynamo') and i.endswith(f'{file_extension}')]
-
         class Model(torch.nn.Module):
 
             def __init__(self):
@@ -235,9 +230,6 @@ class TorchairSt(unittest.TestCase):
         assert src.count("\"item_id\": 1") == 1
 
     def test_export_bf16(self):
-        def get_dumped_file_list(dir_path, file_extension='.pbtxt'):
-            return [i for i in os.listdir(dir_path) if i.startswith('dynamo') and i.endswith(f'{file_extension}')]
-
         class Model(torch.nn.Module):
 
             def __init__(self):
@@ -273,9 +265,6 @@ class TorchairSt(unittest.TestCase):
         assert src.count("  dim: 10") == 3
 
     def test_export_enable_record_nn_module_stack(self):
-        def get_dumped_file_list(dir_path, file_extension='.pbtxt'):
-            return [i for i in os.listdir(dir_path) if i.startswith('dynamo') and i.endswith(f'{file_extension}')]
-
         class Model2(torch.nn.Module):
             def __init__(self):
                 super().__init__()
@@ -291,7 +280,6 @@ class TorchairSt(unittest.TestCase):
             def forward(self, x, y):
                 x = x * 2
                 return self.submodel(x, y)
-
 
         model = Model()
         x = torch.randn([2, 4], dtype=torch.bfloat16)
@@ -311,6 +299,40 @@ class TorchairSt(unittest.TestCase):
             src = f.read()
         assert src.count("\"nn_module_stack\"") == 3 # 插入了2个cast
         assert src.count("Model2") == 3
+
+    def test_export_with_sym_pack(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y, z, p, m, n):
+                b = p.view([x]) + z.view([x]) + z.view([x])
+                c = m.view([x, x]).sum()
+                a = torch.stack([n, n, n, n])
+                d = (m.view([4, y, y]) + a).sum()
+                return b + c - d
+
+        model = Model()
+        z = torch.randn([3, 2])
+        p = torch.randn([2, 3])
+        m = torch.randn([36])
+        n = torch.randn([3, 3])
+
+        export_path1 = "test_export_file_path"
+        if os.path.exists(export_path1):
+            shutil.rmtree(export_path1)
+        torchair.dynamo_export(6, 3, z, p, m, n, model=model, export_path=export_path1, dynamic=True)
+
+        dumped_file_list = get_dumped_file_list(export_path1)
+        dumped_file_list.sort(key=lambda file_name: os.path.getmtime(os.path.join(export_path1, file_name)))
+        assert dumped_file_list.__len__() > 0
+        file_name = os.path.join(export_path1, dumped_file_list[-1])
+
+        with open(file_name, 'r')as f:
+            src = f.read()
+
+        assert src.count("op: \"Data\"") == 6
+        assert src.count("op: \"Pack\"") == 2
 
 
 class AllReduceSingeGroup(torch.nn.Module):
