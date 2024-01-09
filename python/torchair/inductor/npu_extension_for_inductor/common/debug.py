@@ -1,6 +1,6 @@
 import atexit
 from collections import defaultdict
-from typing import Iterable, Dict
+from typing import Iterable, Dict, List
 
 from npu_extension_for_inductor.common.asc_graph import ASCGraph
 from npu_extension_for_inductor.common.utils import StrRep
@@ -55,6 +55,18 @@ class OpSummary:
 OP_SUMMARY = OpSummary("Model")
 
 atexit.register(lambda: OP_SUMMARY.print())
+
+
+def _left_align_lines(lines: List[str]):
+    max_len = max([len(l) for l in lines])
+    for i, l in enumerate(lines):
+        lines[i] = l.ljust(max_len)
+    return lines
+
+
+def _left_align_str(s: str):
+    lines = s.split("\n")
+    return "\n".join(_left_align_lines(lines))
 
 
 def make_graph_dot(asc_graph: ASCGraph):
@@ -114,7 +126,7 @@ def make_graph_dot(asc_graph: ASCGraph):
             cluster_nodes.clear()
         graph.add_subgraph(cluster)
 
-    graph.add_node(pydot.Node("_summary", label=str(summary), shape="plaintext", fontname="Courier"))
+    graph.add_node(pydot.Node("_summary", label=_left_align_str(str(summary)), shape="plaintext", fontname="Courier"))
     return graph
 
 

@@ -2,9 +2,10 @@ import dataclasses
 import functools
 import itertools
 import os
-from typing import List, Iterable, Dict
+from typing import List, Iterable, Dict, Union
 
 from npu_extension_for_inductor.common.asc_graph import ASCGraph
+from npu_extension_for_inductor.common.debug import _left_align_lines
 from sympy import symbols, simplify
 
 import sympy
@@ -15,6 +16,7 @@ from torch._inductor.codegen.triton import TritonScheduling
 from torch._inductor.codegen.wrapper import WrapperCodeGen
 from torch._inductor.ir import LoopBody
 from torch._inductor.scheduler import BaseSchedulerNode, BaseScheduling, SchedulerNode
+from torch._inductor.utils import sympy_symbol, get_kernel_metadata
 from torch._inductor.virtualized import V
 from torch._inductor.codegen.common import (
     IndentedBuffer,
@@ -41,6 +43,10 @@ class NPUOverrides(OpOverrides):
     @staticmethod
     def masked(mask, body, other):
         return ir.masked(mask, body(), other)
+
+    @staticmethod
+    def indirect_indexing(index_var, size, check=True):
+        return sympy_symbol(str(index_var))
 
     def __getattr__(self, item):
         return getattr(ir, item)
@@ -84,10 +90,11 @@ class NPUKernel(Kernel):
         cls._index += 1
         return name
 
-    def __init__(self, *, var_ranges, indexing_exprs, buf_desc):
+    def __init__(self, *, var_ranges, indexing_exprs, buf_desc, comments=None):
         super().__init__()
         self._buf_desc: Dict[str:BufDesc] = buf_desc
         self.dtype = next(iter(self._buf_desc.values())).asc_dtype
+        self._comments: List[str] = comments
         self._kernel = NPUKernel.next_kernel_name()
         self._kernel_def = IndentedBuffer()
         self._graph_def = IndentedBuffer()
@@ -158,6 +165,7 @@ class NPUKernel(Kernel):
         self._kernel_def.clear()
         self._kernel_def.writeline(
             f"{self._kernel}_compiled = npu_compiler.aclnn(npu_codegen.aclnn({graph_fn}()))")
+        self._kernel_def.writelines(self._comments)
         self._kernel_def.writeline(f"def {self._kernel}({signature_args}):")
         with self._kernel_def.indent():
             self._kernel_def.writeline(f"{self._kernel}_compiled({call_args})")
@@ -171,9 +179,7 @@ class NPUKernel(Kernel):
             dot_graph = self.graph.as_dot()
             labels = [_node_label(node) + ['-' * 20] for node in nodes]
             lines = list(itertools.chain(*labels))
-            max_len = max([len(l) for l in lines])
-            for i, l in enumerate(lines):
-                lines[i] = l.ljust(max_len)
+            lines = _left_align_lines(lines)
             dot_graph.add_node(
                 pydot.Node(f"{self.graph.name}_body", shape="plaintext", label='\n'.join(lines),
                            fontname="Courier"))
@@ -263,10 +269,21 @@ class NPUKernel(Kernel):
         return str(index)
 
 
+def _node_comment(node: Union[BaseSchedulerNode, List[BaseSchedulerNode]]):
+    node = node if isinstance(node, (list, tuple)) else [node]
+    origin_str, detailed_origin_str = get_kernel_metadata(node, V.graph.wrapper_code)
+    lines = []
+    if origin_str:
+        lines.append(origin_str)
+        lines.extend(detailed_origin_str.split("\n"))
+    return lines
+
+
 def _node_label(node: SchedulerNode):
-    lines = node._body.debug_str().split("\n")
+    lines = [f"<Node %{node.node.name}% body>:"]
+    lines.extend(_node_comment(node))
+    lines.extend(node._body.debug_str().split("\n"))
     lines = [l for l in lines if l]
-    lines.insert(0, f"<Node %{node.node.name}% body>:")
     return lines
 
 
@@ -320,13 +337,17 @@ class NPUScheduling(BaseScheduling):
                     buf_desc[buf.name] = BufDesc(size=buf.size, dtype=V.graph.get_dtype(buf.name))
 
         ranges = [[sympy.Symbol(f"{k}")] for k in dict(var_ranges).keys()]
-        kernel = NPUKernel(var_ranges=var_ranges, indexing_exprs=indexing_exprs, buf_desc=buf_desc)
+
+        wrapper: WrapperCodeGen = V.graph.wrapper_code
+        comments = _node_comment(nodes)
+        kernel = NPUKernel(var_ranges=var_ranges, indexing_exprs=indexing_exprs, buf_desc=buf_desc, comments=comments)
+        for comment in comments:
+            wrapper.writeline(comment)
 
         for i, node in enumerate(nodes):
             with V.set_kernel_handler(kernel), kernel:
                 node.codegen(ranges)
 
-        wrapper: WrapperCodeGen = V.graph.wrapper_code
         wrapper.header.splice("\n\n")
         wrapper.header.splice(kernel.codegen())
 
