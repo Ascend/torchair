@@ -1,5 +1,10 @@
-from functools import wraps
+import operator
+from functools import wraps, reduce, lru_cache
+from typing import Callable, Optional
 import torch
+from torch import Tensor
+from torch._ops import OpOverload, OpOverloadPacket
+from torch._subclasses import fake_tensor as _subclasses_fake_tensor
 from torch._C import DispatchKey
 from torch._prims_common.wrappers import out_wrapper
 from torch._decomp import get_decompositions, decomposition_table
@@ -20,6 +25,80 @@ def run_once(f):
         return None
     wrapper.has_run = False
     return wrapper
+
+
+npu_meta_table = {}
+
+
+def _add_op_to_meta_table(op, fn):
+    overloads = []
+    if isinstance(op, OpOverload):
+        overloads.append(op)
+    else:
+        assert isinstance(op, OpOverloadPacket)
+        for ol in op.overloads():
+            overloads.append(getattr(op, ol))
+
+    for op_overload in overloads:
+        if op_overload in npu_meta_table:
+            raise RuntimeError(f"duplicate registrations for npu_meta_table {op_overload}")
+        npu_meta_table[op_overload] = fn
+
+
+def register_meta_npu(op):
+    def meta_decorator(fn: Callable):
+        _add_op_to_meta_table(op, fn)
+        return fn
+
+    return meta_decorator
+
+
+@register_meta_npu(aten.native_dropout)
+def meta_native_dropout(tensor_input: Tensor, p: float, train: Optional[bool]):
+    if train and p != 0:
+        sizes_1 = tensor_input.shape
+        numel = reduce(operator.mul, sizes_1)
+        numel = (numel + 128 - 1) // 128 * 128
+        numel = numel // 8
+        return (torch.empty_like(tensor_input), torch.empty(numel, dtype=torch.uint8, device=tensor_input.device))
+    else:
+        return (tensor_input, torch.ones_like(tensor_input, dtype=torch.bool))
+
+
+@register_meta_npu(aten.native_dropout_backward)
+def meta_native_dropout_backward(grad_output: Tensor, mask: Tensor, scale: float):
+    return torch.empty_like(grad_output)
+
+
+def patch_torch_decomp_decompositions():
+    '''
+    Because source torch_decomp_decompositions only enable the decompositions in
+    torch/_decomp/decompositions.py. Patch it to make decompositions in this file work.
+    '''
+    src_func = _subclasses_fake_tensor.torch_decomp_decompositions
+    @lru_cache(None)
+    def torch_decomp_decompositions_new(func):
+        if func in npu_meta_table.keys():
+            return True
+        return src_func(func)
+    _subclasses_fake_tensor.torch_decomp_decompositions = torch_decomp_decompositions_new
+
+
+def npu_patch_meta():
+    '''
+    Torch official register decompostions and meta func for some aten ops,
+    which will raise conflict when npu outputs' dtype and shape are different
+    from native impl. Delete decompositions and meta func of these ops and add
+    npu decompositions and meta func.
+    '''
+    for op_overload, fn in npu_meta_table.items():
+        assert isinstance(op_overload, OpOverload)
+        decomposition_table[op_overload] = fn
+        op_overload.py_kernels.pop(DispatchKey.Meta, None)
+        op_overload.py_impl(DispatchKey.Meta)(fn)
+
+    patch_torch_decomp_decompositions()
+
 
 
 def disable_implicit_decomposition():
@@ -106,3 +185,4 @@ def register_matmul_backward_decomp():
 def process_npu_decomposition():
     disable_implicit_decomposition()
     register_matmul_backward_decomp()
+    npu_patch_meta()
