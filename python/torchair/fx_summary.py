@@ -12,6 +12,7 @@ from torch.fx import Interpreter
 from torch.fx.node import Argument, Target
 from torch._functorch.aot_autograd import aot_module_simplified
 from torch._dynamo.allowed_functions import is_builtin_callable
+from torch._dynamo.utils import detect_fake_mode
 
 from torchair.core.concrete_graph import ConcreteGraphBase, ValuePack, _is_symlist
 from torchair.core.utils import logger
@@ -125,7 +126,9 @@ def summarize_fx_graph(graph, example_inputs, csv_file: str = None):
         return
 
     interpreter = _SummarizeFxGraph(graph)
-    interpreter.run(*example_inputs)
+    fake_mode = detect_fake_mode(None)
+    with fake_mode:
+        interpreter.run(*example_inputs)
 
     assert csv_file.endswith(".csv"), "file must be a csv file"
     try:
