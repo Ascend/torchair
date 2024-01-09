@@ -262,6 +262,60 @@ class TorchairSt(unittest.TestCase):
         in3 = torch.randn([2, 3])
         model(6, in3, in4)
 
+    def test_same_sym_pack_merge(self):
+        def get_graph_pack_data_num(concrete_graph):
+            pack_num = 0
+            data_num = 0
+            for node in concrete_graph.graph.op:
+                if node.type == "Pack":
+                    pack_num += 1
+                if node.type == "Data":
+                    data_num += 1
+            return pack_num, data_num
+
+        def wrapper_call(func):
+            def wrapper(*args, **kwargs):
+                assert len(args) > 0
+                pack_num, data_num = get_graph_pack_data_num(args[0])
+                assert pack_num == 6, f"before optimize, assert pack op num failed, expect 5, get {pack_num}"
+                assert data_num == 5, f"before optimize, assert data op num failed, expect 6, get {data_num}"
+
+                ret = func(*args, **kwargs)
+
+                pack_num, data_num = get_graph_pack_data_num(args[0])
+                assert pack_num == 2, f"after optimize, assert pack op num failed, expect 2, get {pack_num}"
+                assert data_num == 6, f"after optimize, assert data op num failed, expect 6, get {data_num}"
+                return ret
+
+            return wrapper
+
+        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        src_call = GeConcreteGraph.__call__
+        GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y, z, p, m, n):
+                b = p.view([x]) + z.view([x]) + z.view([x])
+                c = m.view([x, x]).sum()
+                a = torch.stack([n, n, n, n])
+                d = (m.view([4, y, y]) + a).sum()
+                return b + c - d
+
+        model = Model()
+
+        model = torch.compile(model, backend=npu_backend, dynamic=True)
+
+        z = torch.randn([3, 2])
+        p = torch.randn([2, 3])
+        m = torch.randn([36])
+        n = torch.randn([3, 3])
+        model(6, 3, z, p, m, n)
+
+        GeConcreteGraph.__call__ = src_call
+
     def test_npu_executor_mix_npu_cpu_inputs(self):
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
