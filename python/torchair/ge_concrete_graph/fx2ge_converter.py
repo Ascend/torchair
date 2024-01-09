@@ -8,6 +8,7 @@ from contextlib import contextmanager
 import inspect
 import sys
 import os
+import warnings
 
 import torch
 from torch.fx.node import Argument, Target
@@ -291,11 +292,12 @@ class GeConcreteGraph(ConcreteGraphBase):
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         if self._config.experimental_config.frozen_parameter:
             if not self._is_compiled:
+                warnings.warn(f'When enable frozen_parameter, Parameters will be considered frozen.'
+                              'Please make sure that the Parameters data address remain the same '
+                              'throughout the program runtime.')
                 self._arg_is_frozen(*args)
                 self._process_data_to_constplaceholder(*args)
                 self._process_fx_inputs_mapping_and_input_placements(len(args))
-            else:
-                self._check_args_seqeuence(*args)
 
         if self._pack_input_processing is None:
             self._pack_input_processing = optimize_sym_pack(self.graph, self.inputs, self._input_placements,
@@ -618,15 +620,6 @@ class GeConcreteGraph(ConcreteGraphBase):
                 return inputs
 
         return inputs_processing
-
-    def _check_args_seqeuence(self, *args: Any):
-        for idx, arg in enumerate(args):
-            if self._frozen_flag_list[idx]:
-                assert isinstance(arg, torch.nn.Parameter), \
-                    f"Please set experimental_config.frozen_parameter = Fasle "
-            else:
-                assert not isinstance(arg, torch.nn.Parameter), \
-                    f"Please set experimental_config.frozen_parameter = Fasle "
 
     def _arg_is_frozen(self, *args: Any):
         data_num = 0
