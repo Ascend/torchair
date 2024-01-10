@@ -11,7 +11,12 @@ from torch.utils._mode_utils import no_dispatch
 from torch.fx import Interpreter
 from torch.fx.node import Argument, Target
 from torch._functorch.aot_autograd import aot_module_simplified
-from torch._dynamo.allowed_functions import is_builtin_callable
+
+try:
+    from torch._dynamo.allowed_functions import is_builtin_callable
+except ModuleNotFoundError:
+    from torch._dynamo.trace_rules import is_builtin_callable
+    
 from torch._dynamo.utils import detect_fake_mode
 
 from torchair.core.concrete_graph import ConcreteGraphBase, ValuePack, _is_symlist
