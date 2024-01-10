@@ -34,8 +34,8 @@ int Optimizer::GetApiInfo(const ascir::HintGraph &graph, ascir::ImplGraph &optim
 int Optimizer::AutoScheduler(const ascir::HintGraph& graph, const ascir::ImplGraph& optimizer_graph, std::vector<ascir::ImplGraph> &impl_graphs) {
   auto& impl1 = impl_graphs.emplace_back(ascir::ImplGraph((optimizer_graph.GetName() + "_tiling1").c_str()));
   impl1.CopyFrom(optimizer_graph);
-  auto scheduler = autoschedule::AutoSchedule(impl1);
-  scheduler.Scheduler();
+  auto scheduler = autoschedule::AutoSchedule(optimizer_graph, impl_graphs);
+  scheduler.DoAutoSchedule();
   return 0;
 }
 

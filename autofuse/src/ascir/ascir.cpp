@@ -103,6 +103,17 @@ bool SizeExpr::operator==(const int64_t rhs) const {
   return false;
 }
 
+bool SizeExpr::operator!=(const SizeExpr &rhs) const {
+  if (!std::is_sorted(this->nums.begin(), this->nums.end()) ||
+      !std::is_sorted(this->dens.begin(), this->dens.end()) ||
+      !std::is_sorted(rhs.nums.begin(), rhs.nums.end()) ||
+      !std::is_sorted(rhs.dens.begin(), rhs.dens.end())) {
+    throw std::runtime_error("SizeExpr not sorted");
+  }
+
+  return this->nums != rhs.nums || this->dens != rhs.dens;
+}
+
 const char *Axis::TypeStr(Type type) {
   static const char *TypeToStr[] = {
       [AXIS_TYPE_ORIGINAL] = "ORIGINAL",
@@ -286,9 +297,9 @@ void Graph::ApplySplit(NodeView &node, AxisId outter, AxisId inner, AxisId origi
     vector<SizeExpr> new_repeat;
     vector<SizeExpr> new_strides;
 
-    auto axis = node.outputs[i].axis();
-    auto repeat = node.outputs[i].repeats();
-    auto strides = node.outputs[i].strides();
+    auto const axis = node.outputs[i].axis();
+    auto const repeat = node.outputs[i].repeats();
+    auto const strides = node.outputs[i].strides();
 
     for (int a = 0; a < axis.size(); a++) {
       if (axis[a] != original) {

@@ -8,7 +8,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 17)
 add_compile_options(-D_GLIBCXX_USE_CXX11_ABI=0)
 
-set(ASCEND_ROOT $ENV{ASCEND_AICPU_PATH}) # e.g. /usr/local/Ascend/ascend-toolkit/latest
+set(ASCEND_ROOT $ENV{ASCEND_CUSTOM_PATH}) # e.g. /usr/local/Ascend/ascend-toolkit/latest
 set(ASCEND_OPENSDK $ENV{ASCEND_CUSTOM_PATH}/opensdk/opensdk) # e.g. /usr/local/Ascend/latest/opensdk/opensdk
 set(CMAKE_FIND_ROOT_PATH
     ${ASCEND_OPENSDK}/cmake

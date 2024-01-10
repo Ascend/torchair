@@ -50,7 +50,8 @@ enum : EnumValue {
   COMPUTE_STORE,
   COMPUTE_ELEWISE,
   COMPUTE_BROADCAST,
-  COMPUTE_REDUCE
+  COMPUTE_REDUCE,
+  COMPUTE_TRANPOSE
 };
 
 // Start: Ascir it's self needs
@@ -86,6 +87,7 @@ struct SizeExpr {
   SizeExpr &operator*=(const SizeExpr &rhs);
   bool operator==(const SizeExpr &rhs) const;
   bool operator==(const int64_t rhs) const;
+  bool operator!=(const SizeExpr &rhs) const;
 
   inline SizeExpr() {};
   inline SizeExpr(const SizeVar &size) {
@@ -463,6 +465,7 @@ using TensorId = Identifier;
 using BufId = Identifier;
 using QueId = Identifier;
 using MergeScopeId = Identifier;
+using ReuseId = Identifier;
 
 class TensorAttr {
  public:
@@ -485,6 +488,7 @@ class TensorAttr {
 
   static constexpr char BUF_ID[] = "ascir.tensor.buf.id";
 
+  static constexpr char OPT_REUSE_ID[] = "ascir.tensor.opt.reuse_id";
   static constexpr char OPT_REF_TENSOR[] = "ascir.tensor.opt.ref_tensor";
   static constexpr char OPT_MERGE_SCOPE[] = "ascir.tensor.opt.merge_scope";
 
@@ -514,6 +518,7 @@ class TensorAttr {
     } buf;
 
     union {
+      Fields<OPT_REUSE_ID, ReuseId> reuse_id;
       Fields<OPT_REF_TENSOR, TensorId> ref_tensor;
       Fields<OPT_MERGE_SCOPE, MergeScopeId> merge_scope;
     } opt;
@@ -634,9 +639,11 @@ struct SchAttr {
   using Fields = AttrField<ge::GeTensorDesc *, ATTR_NAME, T>;
 
   static constexpr char GROUP[] = "sch.group";
+  static constexpr char DEPENDS[] = "sch.depends";
   union {
     ge::GeTensorDesc *desc;
     Fields<GROUP, int64_t> group_id;
+    Fields<DEPENDS, int64_t> depends;
   };
 
   inline SchAttr(ge::GeTensorDesc *desc) : desc(desc) {}
