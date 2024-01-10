@@ -32,6 +32,8 @@ class AscSymbol:
 
 class AscExpr:
     def __init__(self, expr: sympy.Expr):
+        if not isinstance(expr, (sympy.Expr, sympy.Symbol)):
+            expr = sympy.Symbol(str(expr))
         self.expr = expr
         vals = dict([(str(symbol), AscSymbol(str(symbol))) for symbol in self.expr.free_symbols])
         self.asc_expr = eval(str(self.expr), vals)

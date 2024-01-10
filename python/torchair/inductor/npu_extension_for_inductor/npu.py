@@ -3,9 +3,10 @@ import functools
 import itertools
 import os
 from typing import List, Iterable, Dict, Union
+from unittest.mock import patch
 
 from npu_extension_for_inductor.common.asc_graph import ASCGraph
-from npu_extension_for_inductor.common.debug import _left_align_lines
+from npu_extension_for_inductor.common.debug import _left_align_lines, OP_SUMMARY
 from sympy import symbols, simplify
 
 import sympy
@@ -14,7 +15,7 @@ import torch  # noqa
 from torch._inductor.codegen.triton import TritonScheduling
 
 from torch._inductor.codegen.wrapper import WrapperCodeGen
-from torch._inductor.ir import LoopBody
+from torch._inductor.ir import LoopBody, TensorBox, IRNode, Loops, StorageBox, FlexibleLayout, ComputedBuffer, Pointwise
 from torch._inductor.scheduler import BaseSchedulerNode, BaseScheduling, SchedulerNode
 from torch._inductor.utils import sympy_symbol, get_kernel_metadata
 from torch._inductor.virtualized import V
@@ -24,11 +25,14 @@ from torch._inductor.codegen.common import (
 )
 from npu_extension_for_inductor.common.symbols import AscExpr, Loop
 from npu_extension_for_inductor.common.utils import TypeUtils
-from npu_extension_for_inductor.ir import IR as ir
+from npu_extension_for_inductor.ir import IR as ir, _Tensor
 
 
 class NPUOverrides(OpOverrides):
     """Map element-wise ops to NPU Triton backend"""
+
+    def __init__(self, parent):
+        super().__init__(parent)
 
     @staticmethod
     def to_dtype(x, dst_dtype, src_dtype=None):
@@ -43,10 +47,6 @@ class NPUOverrides(OpOverrides):
     @staticmethod
     def masked(mask, body, other):
         return ir.masked(mask, body(), other)
-
-    @staticmethod
-    def indirect_indexing(index_var, size, check=True):
-        return sympy_symbol(str(index_var))
 
     def __getattr__(self, item):
         return getattr(ir, item)
@@ -80,6 +80,21 @@ class Reduction:
         return self.src
 
 
+class NpuCSEProxy:
+    def __init__(self, parent):
+        self._parent = parent
+
+    def __getattr__(self, item):
+        return getattr(self._parent, item)
+
+    @staticmethod
+    def indirect_indexing(index_var, size, check=True) -> sympy.Symbol:
+        # 这里在处理内存加载进来的index值
+        indirect = V.ops._parent.indirect_indexing(index_var, size, check=check)
+        kernel: NPUKernel = V.kernel
+        return kernel.add_indirect(indirect)
+
+
 class NPUKernel(Kernel):
     overrides = NPUOverrides
     _index = 0
@@ -99,6 +114,7 @@ class NPUKernel(Kernel):
         self._kernel_def = IndentedBuffer()
         self._graph_def = IndentedBuffer()
         self.graph = ASCGraph(name=f"{self._kernel}Graph")
+        self._indirect_to_ces: Dict[str, _Tensor] = dict()
         self._size_vars = set()
         self._axis_exprs = dict()
         for axis, expr in var_ranges.items():
@@ -106,13 +122,32 @@ class NPUKernel(Kernel):
             self._axis_exprs[sympy.Symbol(axis.name)] = expr
         for index, expr in indexing_exprs.items():
             self._size_vars.update(
-                [s for s in V.graph.sizevars.simplify(expr).free_symbols if not s.name.startswith('z')])
+                [s for s in V.graph.sizevars.simplify(expr).free_symbols if s.name.startswith('s')])
         self._size_vars = sorted(self._size_vars, key=lambda x: x.name)
         for size in self._size_vars:
             self.graph.size(size.name)
         self._axis_exprs = dict(sorted(self._axis_exprs.items(), key=lambda item: item[0].name))
         for axis, range_expr in self._axis_exprs.items():
             self.graph.axis(axis.name, range_expr)
+
+    def add_indirect(self, scalar_expr: sympy.Expr):
+        indirect_sym = sympy_symbol(f"npu_scalar{len(self._indirect_to_ces)}")
+        op_name, output_name = str(scalar_expr).split('.')
+        src = self.graph.get_op(op_name)
+        assert src is not None
+        self._indirect_to_ces[str(indirect_sym)] = _Tensor(getattr(src, output_name))
+        return indirect_sym
+
+    def __enter__(self):
+        super().__enter__()
+        assert self.overrides
+        handler = self.overrides(V.get_ops_handler())
+        self.exit_stack.enter_context(V.set_ops_handler(NpuCSEProxy(handler._parent)))
+        self.exit_stack.enter_context(V.set_kernel_handler(self))
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        super().__exit__(exc_type, exc_val, exc_tb)
 
     def _buf_size(self, buf):
         return [str(AscExpr(s)) for s in self._buf_desc[buf].size]
@@ -214,6 +249,13 @@ class NPUKernel(Kernel):
                 becnhmark_code.writeline(f"# Add your test code here")
             f.write(becnhmark_code.getvalue())
 
+    def _get_npu_scalar(self, index: sympy.Expr):
+        scalars = dict()
+        for s in index.free_symbols:
+            if str(s) in self._indirect_to_ces:
+                scalars[s] = self._indirect_to_ces[str(s)]
+        return scalars
+
     def load(self, name: str, index: sympy.Expr):
         buf: BufDesc = self._buf_desc[name]
         if not buf.src:
@@ -223,6 +265,11 @@ class NPUKernel(Kernel):
             buf.src = data
         else:
             data = buf.src
+
+        scalars = self._get_npu_scalar(index)
+        if len(scalars):
+            return ir.load_indrect(data, *scalars.values(), expr=str(index), syms=[str(k) for k in scalars.keys()])
+
         load = ir.load(data)
         loop = self._index_to_loop(index)
         self.graph.mark_iterable(load, loop)
@@ -260,6 +307,12 @@ class NPUKernel(Kernel):
 
     def reduction(self, dtype, src_dtype, reduction_type, value):
         return Reduction(dtype, src_dtype, reduction_type, value, '')
+
+    def rename_indexing(self, index) -> sympy.Expr:
+        if isinstance(index, sympy.Symbol) and index.name.startswith("s"):
+            self.graph.size(index.name)
+            return index
+        return super().rename_indexing(index)
 
     @property
     def assert_function(self):
@@ -325,8 +378,8 @@ class NPUScheduling(BaseScheduling):
                 var_ranges = body.var_ranges
                 indexing_exprs = body.indexing_exprs
             else:
-                assert str(var_ranges) == str(body.var_ranges)
-                assert str(indexing_exprs) == str(body.indexing_exprs)
+                assert str(var_ranges) == str(body.var_ranges), f"{var_ranges} != {body.var_ranges}"
+                assert str(indexing_exprs) == str(body.indexing_exprs), f"{indexing_exprs} != {body.indexing_exprs}"
             is_output = any([isinstance(v.node, torch._inductor.scheduler.OutputNode) for v in node.users])
             if is_output:
                 output_bufs.append(node)
@@ -345,7 +398,7 @@ class NPUScheduling(BaseScheduling):
             wrapper.writeline(comment)
 
         for i, node in enumerate(nodes):
-            with V.set_kernel_handler(kernel), kernel:
+            with kernel:
                 node.codegen(ranges)
 
         wrapper.header.splice("\n\n")
@@ -362,7 +415,7 @@ class NPUScheduling(BaseScheduling):
 
         for node in output_bufs:
             node.mark_run()
-        wrapper.writeline(wrapper.wrap_kernel_call(kernel.kernel_name, call_args))
+        wrapper.writeline(wrapper.wrap_kernel_call(kernel.kernel_name, [str(v) for v in call_args]))
 
     def codegen_sync(self):
         raise NotImplementedError()
@@ -389,21 +442,87 @@ def as_default_inductor_backend():
     from torch._inductor.codegen.common import register_backend_for_device
     register_backend_for_device("cpu", NPUScheduling, NpuWrapperCodeGen)
     register_backend_for_device("npu", NPUScheduling, NpuWrapperCodeGen)
+    import atexit
+    atexit.register(lambda: OP_SUMMARY.print())
 
     from torch._inductor.lowering import fallback_handler
     from torch._inductor.lowering import lowerings
     def _wrap_npu(op, f):
-        suffix = str(op).split('.')
-        # TODO: implicit assumption that aten or prims ops are supported
-        if len(suffix) > 1 and hasattr(ir, suffix[1]):
-            return f
+        class _OpState:
+            CACHED_STATE: Dict[str, "_OpState"] = dict()
+
+            @classmethod
+            def get_cached_state(cls, op, tensor_box) -> "_OpState":
+                if op not in cls.CACHED_STATE:
+                    state = _OpState(op)
+                    with patch.object(FlexibleLayout, "allow_indexing", True):
+                        is_supported_box(tensor_box, state)
+                    cls.CACHED_STATE[op] = state
+                return cls.CACHED_STATE[op]
+
+            def __init__(self, op):
+                self.op = op
+                self.fallback_reason: str = ""
+
+            def fallback(self, reason: str):
+                self.fallback_reason = reason
+
+            @property
+            def is_supported(self):
+                return not self.fallback_reason
+
+        def is_supported_box(tensor_box, state: _OpState):
+            if not isinstance(tensor_box, TensorBox):
+                return True
+            if not isinstance(tensor_box.data, StorageBox):
+                return True
+            if not isinstance(tensor_box.data.data, (Pointwise, Reduction)):
+                return True
+
+            box: StorageBox = tensor_box.data
+            buffer = ComputedBuffer(
+                name=str(op),
+                layout=FlexibleLayout(
+                    device=box.data.get_device(),
+                    dtype=box.data.get_dtype(),
+                    size=box.data.get_size(),
+                ).as_fixed(),
+                data=box.data)
+
+            _, body = buffer.simplify_and_reorder()
+            buf_desc = dict()
+            buf_desc[buffer.name] = BufDesc(size=buffer.layout.size, dtype=box.data.get_dtype(), is_output=True)
+            for buf in buffer.get_reads():
+                if buf.name not in buf_desc:
+                    buf_desc[buf.name] = BufDesc(size=buf.size, dtype=V.graph.get_dtype(buf.name))
+            kernel = NPUKernel(var_ranges=body.var_ranges, indexing_exprs=body.indexing_exprs, buf_desc=buf_desc)
+            kernel.node_to_bounds = body.bounds().get_bounds()
+
+            ranges = [[sympy.Symbol(f"{k}")] for k in dict(body.var_ranges).keys()]
+
+            with kernel:
+                body(*ranges)
+
+            if kernel.graph.unsupported_reason:
+                state.fallback(kernel.graph.unsupported_reason)
+                return False
+
+            return True
 
         @functools.wraps(f)
         def wrapper(*args, **kwargs):
+            tensor_box = f(*args, **kwargs)
+
             if os.getenv("DISABLE_NPU_FALLBACK", None) == "1":
-                return f(*args, **kwargs)
-            print(f"Inductor npu fallback: {op}", flush=True)
-            return fallback_handler(op, add_to_fallback_set=False)(*args, **kwargs)
+                return tensor_box
+
+            state: _OpState = _OpState.get_cached_state(op, tensor_box)
+            if not state.is_supported:
+                print(f"Fallback {op} as: {state.fallback_reason}", flush=True)
+                OP_SUMMARY.fallback(op, state.fallback_reason)
+                return fallback_handler(op, add_to_fallback_set=False)(*args, **kwargs)
+
+            return tensor_box
 
         return wrapper
 

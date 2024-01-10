@@ -21,10 +21,13 @@ class _NpuOverride:
         return _Tensor(tensors) if not isinstance(tensors, _Tensor) else tensors
 
 
+def underline_to_camelcase(s):
+    return ''.join(word.title() for word in s.split('_'))
+
+
 def unsupported(*args, op_type, **kwargs):
     graph = V.kernel.graph
-    op = graph.add_op(op_type.capitalize())
-    op.is_unsupported = True
+    op = graph.add_op(underline_to_camelcase(op_type), is_unsupported=True)
     for i, arg in enumerate(args):
         setattr(op, f"x{i}", arg)
     for k, v in kwargs.items():

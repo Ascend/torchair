@@ -25,6 +25,54 @@ def sub(x1, x2):
     return op.y
 
 
+def lt(x1, x2):
+    graph = V.kernel.graph
+    op = graph.add_op("Lt")
+    op.x1 = x1
+    op.x2 = x2
+    return op.y
+
+
+def ge(x1, x2):
+    graph = V.kernel.graph
+    op = graph.add_op("Ge")
+    op.x1 = x1
+    op.x2 = x2
+    return op.y
+
+
+def mul(x1, x2):
+    graph = V.kernel.graph
+    op = graph.add_op("Mul")
+    op.x1 = x1
+    op.x2 = x2
+    return op.y
+
+
+def sigmoid(x):
+    graph = V.kernel.graph
+    op = graph.add_op("Sigmoid")
+    op.x = x
+    return op.y
+
+
+def maximum(a, b):
+    graph = V.kernel.graph
+    op = graph.add_op("Maximum")
+    op.x1 = a
+    op.x2 = b
+    return op.y
+
+
+def where(x1, x2, x3):
+    graph = V.kernel.graph
+    op = graph.add_op("Where")
+    op.x0 = x1
+    op.x1 = x2
+    op.x2 = x3
+    return op.y
+
+
 def exp(x):
     graph = V.kernel.graph
     op = graph.add_op("Exp")
@@ -84,7 +132,7 @@ def reduction(x, *, dst_dtype, src_dtype, reduce_type):
 
 def data(*, name, input=None, sizes=(), dtype=None):
     graph = V.kernel.graph
-    op = graph.add_op("Data", name)
+    op = graph.add_op("Data", name=name)
     op.y.size = sizes
     op.y.dtype = dtype
     if input:

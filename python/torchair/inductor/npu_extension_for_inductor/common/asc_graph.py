@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Dict, List
+from typing import Dict, List, Set
 
 import sympy
 from npu_extension_for_inductor.common.symbols import Loop, AscExpr
@@ -18,9 +18,16 @@ class ASCGraph:
         self.inputs = []
         self.outputs = []
         self.ops: List[_Op] = []
+        self.unsupported_ops: Set[str] = set()
         self.size_vars_holder = self.add_op("Data", name="size_vars")
 
-    def add_op(self, type: str, name=None):
+    @property
+    def unsupported_reason(self):
+        if len(self.unsupported_ops):
+            return f"Unsupported lowered ops: {', '.join(self.unsupported_ops)}"
+        return None
+
+    def add_op(self, type: str, *, name=None, is_unsupported=False):
         if name is None:
             name = type.lower()
             num = self._op_count[name]
@@ -30,7 +37,16 @@ class ASCGraph:
         op.attr.sched.exec_order = len(self.ops)
         op.attr.sched.axis = sorted(list(self.axis_vars.keys()))
         self.ops.append(op)
+        if is_unsupported:
+            op.is_unsupported = True
+            self.unsupported_ops.add(op.op_type)
         return self.ops[-1]
+
+    def get_op(self, name):
+        for op in self.ops:
+            if op.name == name:
+                return op
+        return None
 
     def input(self, name):
         self.inputs.append(name)

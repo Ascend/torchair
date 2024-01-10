@@ -108,8 +108,7 @@ class InductorNpuBackendTest(unittest.TestCase):
             return x
 
         x = torch.ones(1, 96, 2048, 128, dtype=torch.float16)
-        with disable_npu_fallback():
-            y = test_softmax(x)
+        y = test_softmax(x)
 
         self.assertTrue(torch.allclose(y, torch.softmax(x, dim=3)))
 
@@ -124,10 +123,25 @@ class InductorNpuBackendTest(unittest.TestCase):
             return x
 
         x = torch.ones(2, dtype=torch.float16)
-        with disable_npu_fallback():
-            y = test_constant(x)
+        y = test_constant(x)
 
         self.assertTrue(torch.allclose(y, torch.add(x, 3.0)))
+
+    def test_embeding(self):
+        """
+        测试带有embeding算子的图
+        """
+
+        @torch.compile(dynamic=True)
+        def test_embeding(x, w):
+            x = torch.nn.functional.embedding(x, w)
+            return x
+
+        x = torch.ones(2, dtype=torch.int64)
+        w = torch.arange(0, 200, dtype=torch.float16).view(10, 20)
+        y = test_embeding(x, w)
+
+        self.assertTrue(torch.allclose(y, torch.nn.functional.embedding(x, w)))
 
 
 if __name__ == '__main__':

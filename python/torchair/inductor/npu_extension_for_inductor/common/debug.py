@@ -10,6 +10,8 @@ from npu_extension_for_inductor.ir import _Op, _Tensor
 class OpSummary:
     def __init__(self, name):
         self.name = name
+        self.fallbacks: Dict[str:int] = defaultdict(lambda: 0)
+        self.fallback_reasons: Dict[str:int] = defaultdict(lambda: "unknown")
         self.supported: Dict[str:int] = defaultdict(lambda: 0)
         self.unsupported: Dict[str:int] = defaultdict(lambda: 0)
         self.subs: Dict[str:OpSummary] = {}
@@ -24,14 +26,16 @@ class OpSummary:
             self.num_unsupported += 1
             self.unsupported[op] += 1
 
+    def fallback(self, op: str, reason: str):
+        self.fallbacks[op] += 1
+        self.fallback_reasons[op] = reason
+
     def add_graph_summary(self, name):
         if name not in self.subs:
             self.subs[name] = OpSummary(name)
         return self.subs[name]
 
     def print(self):
-        if self.num_supported == 0 and self.num_unsupported == 0 and len(self.subs) == 0:
-            return
         print(str(self))
 
     def __str__(self):
@@ -49,12 +53,14 @@ class OpSummary:
         sorted_unsupported = sorted(self.unsupported.items(), key=lambda x: x[1], reverse=True)
         for op_type, count in sorted_unsupported:
             summary += f"    {op_type}: {count}\n"
+        summary += f"Fallback aten ops:\n"
+        sorted_fallbacks = sorted(self.fallbacks.items(), key=lambda x: x[1], reverse=True)
+        for op_type, count in sorted_fallbacks:
+            summary += f"    {op_type}: {count}, reason: {self.fallback_reasons[op_type]}\n"
         return summary
 
 
 OP_SUMMARY = OpSummary("Model")
-
-atexit.register(lambda: OP_SUMMARY.print())
 
 
 def _left_align_lines(lines: List[str]):
