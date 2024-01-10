@@ -43,7 +43,7 @@ PyTypeObject Autofuser::Type = {
     .tp_doc = "Autofuser",
     .tp_methods = Autofuser::Methods,
     .tp_members = nullptr,
-    .tp_init = nullptr,
+    .tp_init = Autofuser::_init,
     .tp_new = Autofuser::_new
 };
 
@@ -71,7 +71,7 @@ int Autofuser::_init(PyObject *self, PyObject *args, PyObject *kwds) {
     return -1;
   }
 
-  self_->codegen = new codegen::Codegen(codegen::CodegenOptions{});
+  self_->codegen = new codegen::Codegen(codegen::CodegenOptions{"libgtc.so", "GtcTilingCodegen"});
   if (self_->codegen == nullptr) {
     delete self_->optimizer;
     return -1;

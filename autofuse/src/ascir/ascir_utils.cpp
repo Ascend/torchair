@@ -7,9 +7,9 @@ using namespace ascir::utils;
 void ascir::utils::DumpGraph(const ascir::Graph &graph, const std::string &name) {
 }
 
-static std::string IdentifierToStr(ascir::Identifier id) {
+std::string ascir::utils::IdentifierToStr(ascir::Identifier id) {
   if (id == ascir::ID_NONE) {
-      return "(nil)";
+      return "nil";
   } else {
       return std::to_string(id);
   }
@@ -201,7 +201,7 @@ static std::stringstream &NodeInputStr(std::stringstream &ss, const ascir::Graph
   auto input_name = (*input).GetOwnerNode()->GetOpDesc()->GetInputNameByIndex((*input).GetIdx());
   if (input->Owner() == nullptr) {
     ss << "    ." << input_name << " = "
-       << "(nil)" << std::endl;
+       << "nil" << std::endl;
   } else {
     auto peer_name = input->Owner()->GetName();
     auto peer_output_name = input->Owner()->GetOpDesc()->GetOutputNameByIndex(input->Index());
@@ -257,7 +257,7 @@ static std::stringstream &NodeOutputStr(std::stringstream &ss, const ascir::Grap
   return ss;
 }
 
-std::string ascir::utils::DebugStr(ascir::Graph &graph, bool verbose) {
+std::string ascir::utils::DebugStr(const ascir::Graph &graph, bool verbose) {
   std::stringstream ss;
 
   GraphNameStr(ss, graph);
@@ -285,10 +285,10 @@ std::string ascir::utils::DebugStr(ascir::Graph &graph, bool verbose) {
   return ss.str();
 }
 
-std::string ascir::utils::DebugHintGraphStr(ascir::HintGraph &graph) {
+std::string ascir::utils::DebugHintGraphStr(const ascir::HintGraph &graph) {
   return DebugStr(graph, false);
 }
 
-std::string ascir::utils::DebugImplGraphStr(ascir::ImplGraph &graph) {
+std::string ascir::utils::DebugImplGraphStr(const ascir::ImplGraph &graph) {
   return DebugStr(graph, true);
 }

@@ -13,6 +13,12 @@ class Optimizer {
   int Optimize(ascir::HintGraph &graph, std::vector<ascir::ImplGraph> &optimize_graphs);
 
   /**
+   * 根据HintGraph，推导output的dtype和stride
+   * @param [in,out] graph 原始图，推导dtype和stride
+   */
+  int InferOutput(ascir::HintGraph& graph);
+
+  /**
    * 根据HintGraph，设置ImplGraph中的Api信息
    * @param [in] graph 原始图
    * @param [in,out] optimize_graph 优化后的图，同时也将api信息设置在这个图上
@@ -26,6 +32,8 @@ class Optimizer {
    * @param [out] impl_graphs 输出不同tiling策略切分的图
    */
   int AutoScheduler(const ascir::HintGraph& graph, const ascir::ImplGraph& optimizer_graph, std::vector<ascir::ImplGraph> &impl_graphs);
+
+  int SelectLoopAxis(const ascir::HintGraph& graph, std::vector<ascir::ImplGraph> &impl_graphs);
 
   /**
    * Buf/Que 分配

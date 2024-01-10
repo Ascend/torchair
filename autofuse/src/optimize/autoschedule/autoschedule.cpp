@@ -6,7 +6,9 @@
 #include <sstream>
 #include <list>
 #include <string>
+
 #include "ascir.h"
+#include "ascir_utils.h"
 
 namespace optimize::autoschedule {
 static constexpr int DEFAULT_GID = 0;
@@ -345,14 +347,16 @@ std::string GetTilingCaseStr(std::string graph_name, const TilingCase& tiling_ca
   } else if (tiling_case.schedule_pattern == SCHEDULE_INNER_ALIGN) {
     ss << "_inner_align";
   }
-  ss << "_" << tiling_case.block_tiling_id;
-  ss << "_" << tiling_case.ub_tiling_id_x << "_" << tiling_case.ub_tiling_id_y << "_" << tiling_case.ub_tiling_id_r;
+
+  auto IdStr = ascir::utils::IdentifierToStr;
+  ss << "_" << IdStr(tiling_case.block_tiling_id);
+  ss << "_" << IdStr(tiling_case.ub_tiling_id_x) << "_" << IdStr(tiling_case.ub_tiling_id_y) << "_" << IdStr(tiling_case.ub_tiling_id_r);
   return ss.str();
 }
 
 void AutoSchedule::DoAutoSchedule() {
   this->GenAxesGroup();
-  
+
   std::vector<TilingCase> tiling_cases;
   this->GenTilingCase(tiling_cases);
   for (auto& tiling_case : tiling_cases) {

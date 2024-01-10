@@ -13,10 +13,12 @@ void DumpGraph(const ascir::Graph &graph, const std::string &dump_name);
 /**
  * @brief Prints nodes info in graph.
  */
-std::string DebugStr(ascir::Graph &graph, bool verbose = false);
+std::string DebugStr(const ascir::Graph &graph, bool verbose = false);
 
-std::string DebugHintGraphStr(ascir::HintGraph &graph);
-std::string DebugImplGraphStr(ascir::ImplGraph &graph);
+std::string DebugHintGraphStr(const ascir::HintGraph &graph);
+std::string DebugImplGraphStr(const ascir::ImplGraph &graph);
+
+std::string IdentifierToStr(ascir::Identifier id);
 };  // namespace ascir::utils
 
 #endif

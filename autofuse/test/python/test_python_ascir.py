@@ -69,7 +69,7 @@ class TestAscir():
             "Nodes:\n",
             "  x: Data (0)\n",
             "    .axis = {}\n",
-            "    .x = (nil)\n"
+            "    .x = nil\n"
             "    .y.dtype = float32\n",
             "    .y.axis = {}\n",
             "    .y.repeats = {}\n",
@@ -114,7 +114,7 @@ class TestAscir():
             "Nodes:\n",
             "  x: Data (0)\n",
             "    .axis = {z0, z1, z2, }\n",
-            "    .x = (nil)\n"
+            "    .x = nil\n"
             "    .y.dtype = float16\n",
             "    .y.axis = {z0, z1, z2, }\n",
             "    .y.repeats = {s0, s1, s2, }\n",
@@ -142,7 +142,7 @@ class TestAscir():
             "Nodes:\n",
             "  x: Data (0)\n",
             "    .axis = {}\n",
-            "    .x = (nil)\n"
+            "    .x = nil\n"
             "    .y.dtype = float32\n"
             "    .y.axis = {}\n",
             "    .y.repeats = {}\n",
@@ -178,7 +178,7 @@ class TestAscir():
             "Nodes:\n",
             "  x: Data (0)\n",
             "    .axis = {}\n",
-            "    .x = (nil)\n"
+            "    .x = nil\n"
             "    .y.dtype = float32\n"
             "    .y.axis = {}\n",
             "    .y.repeats = {}\n",
@@ -272,7 +272,7 @@ class TestAutofuseLoadAbsStore():
             "Nodes:\n",
             "  arg3_1: Data (0)\n",
             "    .axis = {z0, z1, z2, }\n",
-            "    .x = (nil)\n"
+            "    .x = nil\n"
             "    .y.dtype = float16\n"
             "    .y.axis = {z0, z1, z2, }\n",
             "    .y.repeats = {s0, s1, s2, }\n",

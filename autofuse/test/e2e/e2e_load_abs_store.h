@@ -4,6 +4,7 @@
 #include "ascir.h"
 
 void LoadAbsStore_BeforeAutofuse(ascir::HintGraph &graph);
+void LoadAbsStore_AfterInferOutput(ascir::HintGraph &graph);
 void LoadAbsStore_AfterGetApiInfo(ascir::ImplGraph &graph);
 void LoadAbsStore_AfterScheduler(ascir::ImplGraph &graph);
 void LoadAbsStore_AfterQueBufAlloc(ascir::ImplGraph &graph);

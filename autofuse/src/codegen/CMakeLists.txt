@@ -1,6 +1,9 @@
 add_library(codegen SHARED
+    codegen_common.cpp
     codegen_proto.cpp
     codegen_kernel.cpp
+    codegen_tiling.cpp
+    codegen_tiling_data.cpp
     codegen.cpp
     )
 target_include_directories(codegen PUBLIC

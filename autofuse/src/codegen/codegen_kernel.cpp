@@ -1,7 +1,9 @@
+#include "codegen_kernel.h"
+
 #include <sstream>
 
 #include "ascir_ops.h"
-#include "codegen_kernel.h"
+#include "codegen_common.h"
 
 using namespace std;
 using namespace ascir::ops;
@@ -758,7 +760,7 @@ int Looper::LoopAxisDistance(const std::vector<ascir::AxisId> &axis, const ascir
   }
 
   if (loop_axis_pos < 0) {
-    throw std::runtime_error("Vectorized axis not found in axis.");
+    throw std::runtime_error("Node loop axis not found in axis.");
   }
 
   if (same_axis_num < this->current_axis.size()) {
@@ -1055,7 +1057,7 @@ std::string Kernel::IncludeAndDefines() const {
     std::stringstream ss;
     ss << "#ifdef __CCE_KT_TEST__" << std::endl;
     ss << "#include \"tikicpulib.h\"" << std::endl;
-    ss << "#include \"load_abs_store_tiling.h\"" << std::endl;
+    ss << "#include \"" << CamelToLowerSneak(this->name) << "_tiling.h\"" << std::endl;
     ss << "#define GET_TILING_DATA(tiling_data, tiling) \\" << std::endl;
     ss << "    optiling::TilingData& tiling_data = *(optiling::TilingData*)(tiling);" << std::endl;
     ss << "#endif" << std::endl;
@@ -1075,7 +1077,7 @@ std::string Kernel::KernelFunctionDeclare() const {
       ss << flag << " ";
     }
     ss << return_type << " ";
-    ss << this->name << "(";
+    ss << CamelToLowerSneak(this->name) << "(";
     for (auto& input : this->inputs) {
       ss << input.AsArg() << ", ";
     }

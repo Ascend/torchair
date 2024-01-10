@@ -455,7 +455,7 @@ TEST(Ascir_Utils, DebugHintGraphStr_WillShowAxisInfo) {
                                "Nodes:\n"
                                "  test_op: Data (0)\n"
                                "    .axis = {z0_out, z0_in, z1, }\n"
-                               "    .x = (nil)\n"
+                               "    .x = nil\n"
                                "    .y.dtype = float32\n"
                                "    .y.axis = {z0_out, z0_in, z1, }\n"
                                "    .y.repeats = {s0/s0_block, s0_block, s1, }\n"
@@ -515,7 +515,7 @@ TEST(Ascir_Utils, DebugImplGraphStr) {
                             "    .api:\n"
                             "      .type = Buffer\n"
                             "      .unit = None\n"
-                            "    .x = (nil)\n"
+                            "    .x = nil\n"
                             "    .y.dtype = float32\n"
                             "    .y.axis = {z0_out, z0_in, z1, }\n"
                             "    .y.repeats = {s0/s0_block, s0_block, s1, }\n"
@@ -531,7 +531,7 @@ TEST(Ascir_Utils, DebugImplGraphStr) {
                             "      .depth = 2\n"
                             "      .buf_num = 2\n"
                             "    .y.opt:\n"
-                            "      .ref_tensor = (nil)\n"
-                            "      .merge_scope = (nil)\n"
+                            "      .ref_tensor = nil\n"
+                            "      .merge_scope = nil\n"
                             });
 }
