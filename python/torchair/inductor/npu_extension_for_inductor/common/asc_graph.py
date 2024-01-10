@@ -20,6 +20,7 @@ class ASCGraph:
         self.ops: List[_Op] = []
         self.unsupported_ops: Set[str] = set()
         self.size_vars_holder = self.add_op("Data", name="size_vars")
+        self.inputs.append("size_vars")
 
     @property
     def unsupported_reason(self):
@@ -90,10 +91,8 @@ class ASCGraph:
             for axis, range_expr in self.axis_vars.items():
                 graph.writeline(f'{axis} = {self.name}.create_axis("{axis}", {repr(AscExpr(range_expr))})')
             # Ops codegen
+            self.size_vars_holder.y.size = [AscExpr(sympy.Symbol(str(s))) for s in self.size_vars]
             for i, op in enumerate(self.ops):
-                if i == 0:
-                    assert op.op_type == "Data" and op.name == "size_vars", "First op must be size_vars"
-                    op.y.size = [AscExpr(sympy.Symbol(str(s))) for s in self.size_vars]
                 graph.splice(op.codegen())
             # Inputs and outputs
             graph.splice(f"""

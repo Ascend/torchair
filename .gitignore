@@ -15,4 +15,5 @@ torch_compile_debug
 *.gv
 *.gv.pdf
 NpuKernel*benchmark.py
+npu_kernel*benchmark.py
 .*
