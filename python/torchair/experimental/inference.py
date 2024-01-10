@@ -16,7 +16,8 @@ def _weight_format_cast(model: torch.nn.Module):
                                    f'You should call model to npu, before calling this API.')
 
             module.weight.data = _TORCH_NPU_MODULE.npu_format_cast(module.weight.data, 29)  # ACL_FORMAT_FRACTAL_NZ
-
+        if isinstance(module, _TORCH_NPU_MODULE.contrib.module.linear_a8w8_quant.LinearA8W8Quant):
+            module.scale.data = _TORCH_NPU_MODULE.npu_trans_quant_param(module.scale, module.offset)
     current_class = model.__class__
     _cast_to_internal_format(model, current_class)
 
