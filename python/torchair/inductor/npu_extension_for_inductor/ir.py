@@ -81,9 +81,12 @@ class _Tensor(CSEVariable):
         assert isinstance(v.parent, _Op)
         super().__init__(v.name, ValueRanges.unknown())
         self.op: _Op = v.parent
+        self._v = v
 
     def as_loop(self, loop: Loop):
-        self.op.mark_output_loop(self.name, loop)
+        self._v.axis = loop.asc_axis
+        self._v.strides = loop.asc_stride
+        self._v.size = loop.asc_size
 
     def __str__(self):
         return self.name
@@ -98,9 +101,6 @@ class _Op(_Track):
         self.__dict__['_op'] = type
         self.__dict__['_loop'] = {}
 
-    def mark_output_loop(self, output, loop):
-        self.__dict__['_loop'][output] = loop
-
     @property
     def op_type(self):
         return self._op
@@ -111,8 +111,4 @@ class _Op(_Track):
         buffer.writeline(f"{self.name} = ascir.ops.{self._op}('{self.name}')")
         for k, v in self.attrs.items():
             buffer.writeline(f"{k} = {repr(v)}")
-        for k, loop in self.__dict__['_loop'].items():
-            buffer.writeline(f"{k}.axis = {loop.asc_axis}")
-            buffer.writeline(f"{k}.strides = {loop.asc_stride}")
-            buffer.writeline(f"{k}.size = {loop.asc_size}")
         return buffer.getvalue()

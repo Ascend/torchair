@@ -325,6 +325,12 @@ class NPUKernel(Kernel):
         return str(index)
 
 
+class DummyKernel(NPUKernel):
+    def __init__(self, *args, **kwargs):
+        with patch.object(NPUKernel, "next_kernel_name", lambda: "DummyKernel"):
+            super().__init__(*args, **kwargs)
+
+
 def _node_comment(node: Union[BaseSchedulerNode, List[BaseSchedulerNode]]):
     node = node if isinstance(node, (list, tuple)) else [node]
     origin_str, detailed_origin_str = get_kernel_metadata(node, V.graph.wrapper_code)
@@ -498,7 +504,7 @@ def as_default_inductor_backend():
             for buf in buffer.get_reads():
                 if buf.name not in buf_desc:
                     buf_desc[buf.name] = BufDesc(size=buf.size, dtype=V.graph.get_dtype(buf.name))
-            kernel = NPUKernel(var_ranges=body.var_ranges, indexing_exprs=body.indexing_exprs, buf_desc=buf_desc)
+            kernel = DummyKernel(var_ranges=body.var_ranges, indexing_exprs=body.indexing_exprs, buf_desc=buf_desc)
             kernel.node_to_bounds = body.bounds().get_bounds()
 
             ranges = [[sympy.Symbol(f"{k}")] for k in dict(body.var_ranges).keys()]
