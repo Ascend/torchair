@@ -174,9 +174,10 @@ class Loop:
                 return False
         return True
 
-    def contiguous(self):
+    def contiguous_(self):
         if len(self.axis) == 0:
             return self
+        self.stride = list([None] * len(self.axis))
         self.stride[-1] = sympy.Symbol("1")
         for i in range(len(self.axis) - 1):
             self.stride[i] = self.size[i + 1]

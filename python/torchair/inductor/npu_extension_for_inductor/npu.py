@@ -36,9 +36,11 @@ class NPUOverrides(OpOverrides):
 
     @staticmethod
     def to_dtype(x, dst_dtype, src_dtype=None):
+        if dst_dtype == src_dtype:
+            return x
         dst = TypeUtils.torch_to_asc(dst_dtype)
         src = TypeUtils.torch_to_asc(src_dtype)
-        return ir.to_dtype(x, dst=dst, src=src)
+        return ir.cast(x, dst=dst, src=src)
 
     @staticmethod
     def constant(value, dtype):
@@ -129,6 +131,15 @@ class NPUKernel(Kernel):
         self._axis_exprs = dict(sorted(self._axis_exprs.items(), key=lambda item: item[0].name))
         for axis, range_expr in self._axis_exprs.items():
             self.graph.axis(axis.name, range_expr)
+
+        self._contiguous_loop = Loop()
+        self._contiguous_loop.axis = list(self._axis_exprs.keys())
+        self._contiguous_loop.size = list(self._axis_exprs.values())
+        self._contiguous_loop.contiguous_()
+
+    @property
+    def contiguous_loop(self):
+        return self._contiguous_loop
 
     def add_indirect(self, scalar_expr: sympy.Expr):
         indirect_sym = sympy_symbol(f"npu_scalar{len(self._indirect_to_ces)}")
@@ -270,12 +281,10 @@ class NPUKernel(Kernel):
         if len(scalars):
             return ir.load_indrect(data, *scalars.values(), expr=str(index), syms=[str(k) for k in scalars.keys()])
 
-        load = ir.load(data)
         loop = self._index_to_loop(index)
-        self.graph.mark_iterable(load, loop)
+        load = ir.load(data, loop=loop)
         if not loop.is_contiguous():
-            load = ir.broadcast(load)
-            self.graph.mark_iterable(load, loop.contiguous())
+            load = ir.broadcast(load, loop=loop.contiguous_())
         return load
 
     def _mark_buf_src(self, name, src):
@@ -292,18 +301,16 @@ class NPUKernel(Kernel):
 
     def store_reduction(self, name, index, value: Reduction):
         reduce_dims, loop = self._get_reduce_dims_and_loop(index)
-        reduction = ir.reduction(value.value, dst_dtype=TypeUtils.torch_to_asc(value.dtype),
-                                 src_dtype=TypeUtils.torch_to_asc(value.src_dtype), reduce_type=value.reduction_type)
-        self.graph.mark_iterable(reduction, loop)
-        store = ir.store(reduction)
-        self.graph.mark_iterable(store, loop)
+        reduction = ir.reduction(value.value, reduce_type=value.reduction_type, loop=loop)
+        reduction = NPUOverrides.to_dtype(reduction, dst_dtype=value.dtype, src_dtype=value.src_dtype)
+
+        store = ir.store(reduction, loop=loop)
         value.src = self._mark_buf_src(name, store)
         self.cse.store_cache.pop(name)  # Inductor cse always cache value, but we don't want to cache it
         return store
 
     def store(self, name, index, value, mode=None):
-        store = ir.store(value)
-        self.graph.mark_iterable(store, self._index_to_loop(index))
+        store = ir.store(value, loop=self._index_to_loop(index))
         self._mark_buf_src(name, store)
         self.cse.store_cache.pop(name)  # Inductor cse always cache value, but we don't want to cache it
         return store

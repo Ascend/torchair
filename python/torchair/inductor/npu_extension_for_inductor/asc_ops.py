@@ -103,12 +103,11 @@ def div(x1, x2):
     return op.y
 
 
-def to_dtype(x, *, dst, src=None):
+def cast(x, *, dst, src=None):
     graph = V.kernel.graph
-    op = graph.add_op("ToDtype")
+    op = graph.add_op("Cast")
     op.x = x
-    op.attr.src = src
-    op.attr.dst = dst
+    op.dst_type = dst
     return op.y
 
 
@@ -120,13 +119,11 @@ def constant(*, value, dtype):
     return op.y
 
 
-def reduction(x, *, dst_dtype, src_dtype, reduce_type):
+def reduction(x, *, reduce_type):
     graph = V.kernel.graph
     op = graph.add_op(reduce_type.capitalize())
     op.x = x
-    op.attr.src_dtype = src_dtype
-    op.attr.dst_dtype = dst_dtype
-    op.attr.compute_type = 'reduce'
+    op.attr.hint.compute_type = 'reduce'
     return op.y
 
 

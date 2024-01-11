@@ -61,9 +61,6 @@ class ASCGraph:
     def axis(self, name, range_expr):
         self.axis_vars[StrRep(name)] = range_expr
 
-    def mark_iterable(self, buf: _Tensor, desc: Loop):
-        buf.as_loop(desc)
-
     def view_dot(self):
         from npu_extension_for_inductor.common.debug import draw_asc_graph_dot
         draw_asc_graph_dot(self, f"./{self.name}.svg")

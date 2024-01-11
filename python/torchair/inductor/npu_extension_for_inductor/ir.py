@@ -10,15 +10,28 @@ from . import asc_ops
 
 
 class _NpuOverride:
-    def __init__(self, f, dtype=None):
+    def __init__(self, op, f, dtype=None):
+        self._op = op
         self._f = f
         self._dtype = dtype
 
-    def __call__(self, *args, **kwargs):
+    def _set_loop(self, tensors, loop=None):
+        if self._op in ["data", "output", "workspace"]:
+            return
+        loop = loop if loop else V.kernel.contiguous_loop
+        tensors = tensors if isinstance(tensors, (list, tuple)) else [tensors]
+        for tensor in tensors:
+            tensor.as_loop(loop)
+
+    def __call__(self, *args, loop=None, **kwargs):
         tensors = self._f(*args, **kwargs)
-        if isinstance(tensors, Iterable):
-            return (_Tensor(t) if not isinstance(t, _Tensor) else t for t in tensors)
-        return _Tensor(tensors) if not isinstance(tensors, _Tensor) else tensors
+        if isinstance(tensors, (list, tuple)):
+            tensors = (_Tensor(t) if not isinstance(t, _Tensor) else t for t in tensors)
+            self._set_loop(tensors, loop)
+            return tensors
+        tensor = _Tensor(tensors) if not isinstance(tensors, _Tensor) else tensors
+        self._set_loop(tensor, loop)
+        return tensor
 
 
 def underline_to_camelcase(s):
@@ -41,9 +54,9 @@ class _IRStore:
 
     def __getattr__(self, item):
         if hasattr(asc_ops, item):
-            self.__dict__[item] = _NpuOverride(getattr(asc_ops, item))
+            self.__dict__[item] = _NpuOverride(item, getattr(asc_ops, item))
         else:
-            self.__dict__[item] = _NpuOverride(functools.partial(unsupported, op_type=item))
+            self.__dict__[item] = _NpuOverride(item, functools.partial(unsupported, op_type=item))
         return self.__dict__[item]
 
 
@@ -99,7 +112,6 @@ class _Op(_Track):
     def __init__(self, type, name):
         super().__init__(name)
         self.__dict__['_op'] = type
-        self.__dict__['_loop'] = {}
 
     @property
     def op_type(self):
