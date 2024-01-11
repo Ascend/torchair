@@ -32,8 +32,9 @@ class SizeExpr {
   struct Object {
     PyObject_HEAD
 
-    PyObject* nums; // list of nums
-    PyObject* dens; // list of dens
+    PyObject *is_zero;      // bool is zero
+    PyObject *nums;         // list of nums
+    PyObject *dens;         // list of dens
   };
 
   static PyTypeObject Type;

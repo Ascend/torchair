@@ -4,6 +4,18 @@ from pyautofuse import ascir, Autofuser
 
 class TestAscir():
     @staticmethod
+    def test_graph_create_size_expr_by_long():
+        s0 = ascir.SizeExpr([0])
+        assert s0.is_zero
+
+        s1 = ascir.SizeExpr([0], [])
+        assert s1.is_zero
+
+        s2 = ascir.SizeExpr([1])
+        assert s2.is_zero == False
+        assert len(s2.nums) == 0 and len(s2.dens) == 0
+
+    @staticmethod
     def test_graph_create_size():
         graph = ascir.HintGraph("test")
         s0 = graph.create_size("s0")

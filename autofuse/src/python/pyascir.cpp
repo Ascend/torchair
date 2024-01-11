@@ -132,8 +132,8 @@ class AttrFieldGetSet<ATTR_NAME, std::vector<ascir::SizeExpr>> {
     auto attr_struct = (AttrHolder::Object *)self;
     for (int i = 0; i < PyList_Size(value); i++) {
       auto size_expr = PyList_GetItem(value, i);
-      if (!PyObject_IsInstance(size_expr, (PyObject*)&SizeExpr::Type)) {
-        PyErr_Format(PyExc_ValueError, "size expression on %d is not SizeExpr type", i);
+      if (!PyObject_IsInstance(size_expr, (PyObject *)&SizeExpr::Type) && !PyLong_Check(size_expr)) {
+        PyErr_Format(PyExc_ValueError, "size expression on %d is not SizeExpr or Long type", i);
         return -1;
       }
 

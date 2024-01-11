@@ -67,6 +67,7 @@ PyTypeObject SizeVar::Type = {
 /** SizeExpr */
 namespace pyascir {
 PyMemberDef SizeExpr::Members[] = {
+    {"is_zero", T_OBJECT, offsetof(SizeExpr::Object, is_zero), 0, "is zero"},
     {"nums", T_OBJECT, offsetof(SizeExpr::Object, nums), 0, "List of Size numerators"},
     {"dens", T_OBJECT, offsetof(SizeExpr::Object, dens), 0, "List of size denominators"},
     {NULL}
@@ -96,6 +97,7 @@ void SizeExpr::_dealloc(PyObject *self) {
 PyObject *SizeExpr::_new(PyTypeObject *type, PyObject *args, PyObject *kwargs) {
   auto self = (Object *)type->tp_alloc(type, 0);
   if (self!= nullptr) {
+    self->is_zero = PyBool_FromLong(false);
     self->nums = PyList_New(0);
     self->dens = PyList_New(0);
   }
@@ -110,6 +112,20 @@ int SizeExpr::_init(PyObject *self_pyobject, PyObject *args, PyObject *kwargs) {
   }
 
   auto self = (Object *)self_pyobject;
+
+  // Support construct by ascir.SizeExpr([0])
+  if (nums != nullptr && PyList_Check(nums) && PyList_Size(nums) == 1
+      && (dens == nullptr || PyList_Check(dens) && PyList_Size(dens) == 0)) {
+    auto num = PyList_GetItem(nums, 0);
+    if (PyLong_Check(num) && PyLong_AsLong(num) == 0) {
+        self->is_zero = PyBool_FromLong(true);
+        return 0;
+    } else if (PyLong_Check(num) && PyLong_AsLong(num) == 1) {
+        return 0;
+    }
+  }
+
+  // Construct from ascir.SizeExpr([s0, s1], [s2, s3])
   if (nums != nullptr) {
     for (int i = 0; i < PyList_Size(nums); ++i) {
       auto size = (SizeVar::Object*)PyList_GetItem(nums, i);
@@ -156,21 +172,30 @@ PyObject *SizeExpr::FromSizeExpr(const ascir::SizeExpr &expr) {
 }
 
 ascir::SizeExpr SizeExpr::AsSizeExpr(PyObject *obj) {
-  if (!PyObject_IsInstance(obj, (PyObject*)&SizeExpr::Type)) {
+  if (PyObject_IsInstance(obj, (PyObject*)&SizeExpr::Type)) {
+    ascir::SizeExpr size_expr;
+
+    auto size = (SizeExpr::Object *)obj;
+    for (int i = 0; i < PyList_Size(size->nums); ++i) {
+      size_expr.nums.push_back(PyLong_AsLong(PyList_GetItem(size->nums, i)));
+    }
+    for (int i = 0; i < PyList_Size(size->dens); ++i) {
+      size_expr.dens.push_back(PyLong_AsLong(PyList_GetItem(size->dens, i)));
+    }
+
+    return size_expr;
+  } else if (PyLong_Check(obj)) {
+    int v = PyLong_AsLong(obj);
+    if (v == 0) {
+      return ascir::SizeExpr::Zero();
+    } else if (v == 1) {
+      return ascir::SizeExpr::One();
+    } else {
+      return ascir::SizeExpr{};
+    }
+  } else {
     return ascir::SizeExpr{};
   }
-
-  ascir::SizeExpr size_expr;
-
-  auto size = (SizeExpr::Object*)obj;
-  for (int i = 0; i < PyList_Size(size->nums); ++i) {
-    size_expr.nums.push_back(PyLong_AsLong(PyList_GetItem(size->nums, i)));
-  }
-  for (int i = 0; i < PyList_Size(size->dens); ++i) {
-    size_expr.dens.push_back(PyLong_AsLong(PyList_GetItem(size->dens, i)));
-  }
-
-  return size_expr;
 }
 } // namespace pyascir for SizeExpr
 
