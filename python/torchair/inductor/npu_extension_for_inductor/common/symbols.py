@@ -1,3 +1,4 @@
+import operator
 from typing import List
 
 import sympy
@@ -5,29 +6,138 @@ from npu_extension_for_inductor.common.utils import StrRep
 
 
 class AscSymbol:
-    def __init__(self, s):
-        self.s = [s] if isinstance(s, str) else s
+    @classmethod
+    def _as_symbol(cls, v):
+        if not isinstance(v, AscSymbol):
+            return AscSymbol(str(v))
+        return v
+
+    def __init__(self, name=None, *, operands=None):
+        if operands is not None:
+            assert isinstance(operands, (list, tuple))
+            self.operands = operands
+        else:
+            assert isinstance(name, str)
+            self.sym = sympy.Symbol(name)
+            self.operands = [self]
+
+    @property
+    def name(self):
+        assert self.is_operand(), f"Only operand has name, got {self}"
+        return self.sym.name
+
+    def free_operands(self):
+        if self.is_operand():
+            return [self]
+        operands = []
+        for operand in self.operands:
+            operands.extend(operand.free_operands())
+        return operands
 
     def __mul__(self, other):
-        if isinstance(other, AscSymbol):
-            return AscSymbol(self.s + other.s)
-        return AscSymbol(self.s + [other])
+        return Asc2OpeSymbol(self, AscSymbol._as_symbol(other), operator.mul)
 
     def __rmul__(self, other):
         return self * other
 
+    def __add__(self, other):
+        return Asc2OpeSymbol(self, AscSymbol._as_symbol(other), operator.add)
+
+    def __radd__(self, other):
+        return self + other
+
+    def __sub__(self, other):
+        return Asc2OpeSymbol(self, AscSymbol._as_symbol(other), operator.sub)
+
+    def __rsub__(self, other):
+        return self - other
+
+    def __truediv__(self, other):
+        return Asc2OpeSymbol(self, AscSymbol._as_symbol(other), operator.truediv)
+
+    def __rtruediv__(self, other):
+        return self / other
+
+    def __floordiv__(self, other):
+        return Asc2OpeSymbol(self, AscSymbol._as_symbol(other), operator.floordiv)
+
+    def __rfloordiv__(self, other):
+        return self // other
+
+    def __mod__(self, other):
+        return Asc2OpeSymbol(self, AscSymbol._as_symbol(other), operator.mod)
+
+    def __rmod__(self, other):
+        return self % other
+
     def __pow__(self, power, modulo=None):
-        return AscSymbol(self.s * power)
+        pow_symbol = self
+        for i in range(power - 1):
+            pow_symbol *= self
+        return pow_symbol
+
+    def is_operand(self):
+        return len(self.operands) == 1 and self.operands[0] is self
+
+    def is_operator(self, op, recursive=False):
+        if isinstance(self, Asc2OpeSymbol) and self.op == op:
+            if not recursive:
+                return True
+            return all([operand.is_operator(op, recursive=True) or operand.is_operand() for operand in self.operands])
+        return False
+
+    def is_mul(self, recursive=False):
+        return self.is_operator(operator.mul, recursive)
+
+    def is_add(self, recursive=False):
+        return self.is_operator(operator.add, recursive)
+
+    def is_sub(self, recursive=False):
+        return self.is_operator(operator.sub, recursive)
+
+    def is_truediv(self, recursive=False):
+        return self.is_operator(operator.truediv, recursive)
+
+    def is_floordiv(self, recursive=False):
+        return self.is_operator(operator.floordiv, recursive)
+
+    def is_mod(self, recursive=False):
+        return self.is_operator(operator.mod, recursive)
+
+    def is_pow(self, recursive=False):
+        return self.is_operator(operator.pow, recursive)
 
     def __str__(self):
-        multipliers = [str(s) for s in self.s if str(s) != "1"]
-        if len(multipliers) == 0:
-            return "1"
-        return "*".join(multipliers)
+        return str(self.sym)
 
     def __repr__(self):
-        multipliers = [f"{s}" for s in self.s if str(s) != "1"]
-        return f"ascir.SizeExpr([{','.join(multipliers)}])"
+        return f"ascir.SizeExpr([{'' if self.sym.name == '1' else self.sym.name}])"
+
+
+class Asc2OpeSymbol(AscSymbol):
+    def __init__(self, left, right, op):
+        super().__init__(operands=[left, right])
+        self.op = op
+        self.sym = self.op(left.sym, right.sym)
+
+    @property
+    def x(self):
+        return self.operands[0]
+
+    @property
+    def y(self):
+        return self.operands[1]
+
+    def __str__(self):
+        return str(self.sym)
+
+    def __repr__(self):
+        if self.is_mul(recursive=True):
+            return f"ascir.SizeExpr([{','.join([v.name for v in self.free_operands() if v.name != '1'])}])"
+        subs = dict()
+        for symbol in self.sym.free_symbols:
+            subs[symbol] = sympy.Symbol(f"ascir.SizeExpr([{symbol}])")
+        return str(self.sym.subs(subs))
 
 
 class AscExpr:
