@@ -142,7 +142,17 @@ def data(*, name, input=None, sizes=(), dtype=None):
 
 def output(*, name, input=None, sizes=(), dtype=None):
     graph = V.kernel.graph
-    op = graph.add_op("Output", name)
+    op = graph.add_op("Output", name=name)
+    op.y.size = sizes
+    op.y.dtype = dtype
+    if input:
+        op.x = input
+    return op.y
+
+
+def workspace(*, name, input=None, sizes=(), dtype=None):
+    graph = V.kernel.graph
+    op = graph.add_op("Workspace", name=name)
     op.y.size = sizes
     op.y.dtype = dtype
     if input:

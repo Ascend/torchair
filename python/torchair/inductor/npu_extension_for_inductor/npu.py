@@ -280,7 +280,10 @@ class NPUKernel(Kernel):
 
     def _mark_buf_src(self, name, src):
         buf: BufDesc = self._buf_desc[name]
-        data = ir.output(name=name, input=src, sizes=buf.asc_size, dtype=buf.asc_dtype)
+        if buf.is_output:
+            data = ir.output(name=name, input=src, sizes=buf.asc_size, dtype=buf.asc_dtype)
+        else:
+            data = ir.workspace(name=name, input=src, sizes=buf.asc_size, dtype=buf.asc_dtype)
         buf.src = data
         if buf.is_output:
             self.args.output(name)

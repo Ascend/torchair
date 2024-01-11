@@ -83,7 +83,7 @@ def make_graph_dot(asc_graph: ASCGraph):
         return
     graph: pydot.Dot = pydot.Dot(rankdir="TB")
     cluster_nodes = []
-    type_colors = {"Data": "AliceBlue", "Broadcast": "LightBlue"}
+    type_colors = {"Data": "AliceBlue", "Workspace": "Gray", "Output": "AliceBlue", "Broadcast": "LightBlue"}
     summary = OP_SUMMARY.add_graph_summary(asc_graph.name)
     for untyped_op in asc_graph.ops:
         n: _Op = untyped_op
@@ -120,7 +120,7 @@ def make_graph_dot(asc_graph: ASCGraph):
         for name, src in inputs:
             graph.add_edge(pydot.Edge(src, n.name, label=str(name)))
 
-        if n.op_type != "Data":
+        if n.op_type not in ["Data", "Output", "Workspace"]:
             cluster_nodes.append(dot_node)
             continue
 
