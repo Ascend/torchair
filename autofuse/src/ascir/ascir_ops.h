@@ -25,6 +25,20 @@ END_OPS(Data)
 }
 
 namespace ge {
+REG_OP(Workspace)
+    .INPUT(x, TensorType::ALL())
+    .OUTPUT(y, TensorType::ALL())
+.OP_END_FACTORY_REG(Workspace)
+}
+
+namespace ascir::ops {
+REG_OPS(Workspace)
+  OPS_INPUT(0, x)
+  OPS_OUTPUT(0, y)
+END_OPS(Workspace)
+}
+
+namespace ge {
 REG_OP(Output)
     .INPUT(x, TensorType::ALL())
     .OUTPUT(y, TensorType::ALL())
@@ -79,6 +93,25 @@ REG_OPS(Store)
   OPS_OUTPUT(0, y)
 END_OPS(Store)
 }  // namespace ascir::ops
+
+namespace ge {
+REG_OP(Cast)
+    .REQUIRED_ATTR(dst_type, Int)
+    .INPUT(x, TensorType::ALL())
+    .OUTPUT(y, TensorType::ALL())
+.OP_END_FACTORY_REG(Cast)
+}
+
+namespace ascir::ops {
+REG_OPS_WITH_ATTR(Cast)
+  OPS_ATTR_NAME_START()
+    OPS_ATTR_NAME(dst_type)
+  OPS_ATTR_NAME_END()
+    OPS_ATTR(dst_type, ge::DataType)
+  OPS_INPUT(0, x)
+  OPS_OUTPUT(0, y)
+END_OPS(Cast)
+}
 
 namespace ge {
 REG_OP(Abs)

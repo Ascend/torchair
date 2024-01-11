@@ -38,7 +38,12 @@ REG_OP(Data)
     .OP_END_FACTORY_REG(Data)
 }
 
-REG_OPS(Data)
+REG_OPS_WITH_ATTR(Data)
+  OPS_ATTR_NAME_START()
+    OPS_ATTR_NAME(v)
+  OPS_ATTR_NAME_END()
+
+  OPS_ATTR(v, int64_t)
   OPS_INPUT(0, x)
   OPS_OUTPUT(0, y)
 END_OPS(Data)
@@ -46,6 +51,7 @@ END_OPS(Data)
 TEST(TestAscir, AscirOperator_ShouldHas_Fields) {
   Data data("test_op");
 
+  data.v = 1;
   data.attr.sched.exec_order = 10;
   data.attr.sched.axis = {0, 1, 2};
 
@@ -57,6 +63,7 @@ TEST(TestAscir, AscirOperator_ShouldHas_Fields) {
   graph.SetInputs({data});
   auto result_op = ge::GraphUtilsEx::GetComputeGraph(graph)->FindNode("test_op")->GetOpDesc();
 
+  AttrEq(result_op, Data::ATTR_v, 1);
   AttrEq(result_op, NodeAttr::SCHED_EXEC_ORDER, 10);
   AttrEq(result_op, NodeAttr::SCHED_AXIS, {0, 1, 2});
 
@@ -455,6 +462,8 @@ TEST(Ascir_Utils, DebugHintGraphStr_WillShowAxisInfo) {
                                "Nodes:\n"
                                "  test_op: Data (0)\n"
                                "    .axis = {z0_out, z0_in, z1, }\n"
+                               "    .hint:\n"
+                               "      .compute_type = data\n"
                                "    .x = nil\n"
                                "    .y.dtype = float32\n"
                                "    .y.axis = {z0_out, z0_in, z1, }\n"
@@ -512,6 +521,8 @@ TEST(Ascir_Utils, DebugImplGraphStr) {
                             "Nodes:\n"
                             "  test_op: Data (0)\n"
                             "    .axis = {z0_out, z0_in, z1, }\n"
+                            "    .hint:\n"
+                            "      .compute_type = data\n"
                             "    .api:\n"
                             "      .type = Buffer\n"
                             "      .unit = None\n"

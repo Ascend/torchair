@@ -618,6 +618,18 @@ union OperatorOutput {
   OutputAttrField<OUTPUT_INDEX, STRIDES, std::vector<SizeExpr>> strides;
 };
 
+template<const char* Name, typename Type>
+struct OperatorAttr {
+ protected:
+  ge::Operator *op;
+
+ public:
+  template<typename T>
+  void operator=(const T &value) {
+    this->op->SetAttr(Name, value);
+  }
+};
+
 template <int INPUT_INDEX>
 struct OperatorInput {
  protected:
@@ -940,5 +952,20 @@ using ImplGraph = Graph;
     ascir::NodeAttr attr;                                                            \
     inline type(const char *name) : ge::op::type(name), __op(this), attr(*this) {} \
   };
+
+#define OPS_ATTR_NAME(name) \
+  static constexpr const char ATTR_##name[] = #name;
+
+#define OPS_ATTR(name, type) \
+  ascir::OperatorAttr<ATTR_##name, type> name;
+
+#define REG_OPS_WITH_ATTR(type) \
+  struct type : public ge::op::type {
+
+#define OPS_ATTR_NAME_START()
+
+#define OPS_ATTR_NAME_END() \
+    union {                           \
+      ge::Operator *__op;
 
 #endif

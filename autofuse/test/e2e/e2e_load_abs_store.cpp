@@ -54,44 +54,48 @@ void LoadAbsStore_BeforeAutofuse(ascir::HintGraph &graph) {
 }
 
 void LoadAbsStore_AfterInferOutput(ascir::HintGraph &graph) {
+  auto x = graph.Find("x");
+  x.attr.hint.compute_type = COMPUTE_DATA;
+
   auto load = graph.Find("load");
   load.outputs[0].dtype = ge::DT_FLOAT16;
+  load.attr.hint.compute_type = COMPUTE_LOAD;
 
   auto abs = graph.Find("abs");
   abs.outputs[0].dtype =(ge::DataType)load.outputs[0].dtype;
   abs.outputs[0].axis = load.outputs[0].axis();
   abs.outputs[0].repeats = load.outputs[0].repeats();
   abs.outputs[0].strides = load.outputs[0].strides();
+  abs.attr.hint.compute_type = COMPUTE_ELEWISE;
 
   auto store = graph.Find("store");
   store.outputs[0].dtype = (ge::DataType)abs.outputs[0].dtype;
+  store.attr.hint.compute_type = COMPUTE_STORE;
+
+  auto y = graph.Find("y");
+  y.attr.hint.compute_type = COMPUTE_DATA;
 }
 
 void LoadAbsStore_AfterGetApiInfo(ascir::ImplGraph &graph) {
   auto x = graph.Find("x");
   x.attr.api.type = API_TYPE_BUFFER;
   x.attr.api.unit = UNIT_NONE;
-  x.attr.hint.compute_type = COMPUTE_DATA;
 
   auto load = graph.Find("load");
   load.attr.api.type = API_TYPE_COMPUTE;
   load.attr.api.unit = UNIT_MTE;
-  load.attr.hint.compute_type = COMPUTE_LOAD;
 
   auto abs = graph.Find("abs");
   abs.attr.api.type = API_TYPE_COMPUTE;
   abs.attr.api.unit = UNIT_VECTOR;
-  abs.attr.hint.compute_type = COMPUTE_ELEWISE;
 
   auto store = graph.Find("store");
   store.attr.api.type = API_TYPE_COMPUTE;
   store.attr.api.unit = UNIT_MTE;
-  store.attr.hint.compute_type = COMPUTE_STORE;
 
   auto y = graph.Find("y");
   y.attr.api.type = API_TYPE_BUFFER;
   y.attr.api.unit = UNIT_NONE;
-  y.attr.hint.compute_type = COMPUTE_DATA;
 }
 
 void LoadAbsStore_AfterScheduler(ascir::ImplGraph &graph) {

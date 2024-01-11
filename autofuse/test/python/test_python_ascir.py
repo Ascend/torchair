@@ -69,7 +69,51 @@ class TestAscir():
             "Nodes:\n",
             "  x: Data (0)\n",
             "    .axis = {}\n",
+            "    .hint:\n"
+            "      .compute_type = data\n"
             "    .x = nil\n"
+            "    .y.dtype = float32\n",
+            "    .y.axis = {}\n",
+            "    .y.repeats = {}\n",
+            "    .y.strides = {}\n",
+            "    .y.vectorized_axis = {}\n"
+        ])
+
+    @staticmethod
+    def test_graph_create_node_with_attr():
+        graph = ascir.HintGraph("test")
+
+        x = ascir.ops.Data("x")
+        cast = ascir.ops.Cast("cast")
+        cast.x = x
+        cast.dst_type = 10
+        cast.attr.hint.compute_type = "elemwise"
+
+        graph.set_inputs([x])
+        graph.set_outputs([])
+
+        debug_str = ascir.utils.debug_str(graph)
+        assert debug_str == "".join([
+            "Graph: test\n",
+            "Sizes:\n",
+            "Axis:\n",
+            "Nodes:\n",
+            "  x: Data (0)\n",
+            "    .axis = {}\n",
+            "    .hint:\n"
+            "      .compute_type = data\n"
+            "    .x = nil\n"
+            "    .y.dtype = float32\n",
+            "    .y.axis = {}\n",
+            "    .y.repeats = {}\n",
+            "    .y.strides = {}\n",
+            "    .y.vectorized_axis = {}\n"
+            "  cast: Cast (0)\n",
+            "    .dst_type = 10\n",
+            "    .axis = {}\n",
+            "    .hint:\n"
+            "      .compute_type = elewise\n"
+            "    .x = x.y\n"
             "    .y.dtype = float32\n",
             "    .y.axis = {}\n",
             "    .y.repeats = {}\n",
@@ -114,6 +158,8 @@ class TestAscir():
             "Nodes:\n",
             "  x: Data (0)\n",
             "    .axis = {z0, z1, z2, }\n",
+            "    .hint:\n"
+            "      .compute_type = data\n"
             "    .x = nil\n"
             "    .y.dtype = float16\n",
             "    .y.axis = {z0, z1, z2, }\n",
@@ -142,6 +188,8 @@ class TestAscir():
             "Nodes:\n",
             "  x: Data (0)\n",
             "    .axis = {}\n",
+            "    .hint:\n"
+            "      .compute_type = data\n"
             "    .x = nil\n"
             "    .y.dtype = float32\n"
             "    .y.axis = {}\n",
@@ -150,6 +198,8 @@ class TestAscir():
             "    .y.vectorized_axis = {}\n"
             "  load: Load (0)\n",
             "    .axis = {}\n",
+            "    .hint:\n"
+            "      .compute_type = data\n"
             "    .x = x.y\n"
             "    .y.dtype = float32\n"
             "    .y.axis = {}\n",
@@ -178,6 +228,8 @@ class TestAscir():
             "Nodes:\n",
             "  x: Data (0)\n",
             "    .axis = {}\n",
+            "    .hint:\n"
+            "      .compute_type = data\n"
             "    .x = nil\n"
             "    .y.dtype = float32\n"
             "    .y.axis = {}\n",
@@ -186,6 +238,8 @@ class TestAscir():
             "    .y.vectorized_axis = {}\n"
             "  load: Load (0)\n",
             "    .axis = {}\n",
+            "    .hint:\n"
+            "      .compute_type = data\n"
             "    .x = x.y\n"
             "    .y.dtype = float32\n"
             "    .y.axis = {}\n",
@@ -272,6 +326,8 @@ class TestAutofuseLoadAbsStore():
             "Nodes:\n",
             "  arg3_1: Data (0)\n",
             "    .axis = {z0, z1, z2, }\n",
+            "    .hint:\n"
+            "      .compute_type = data\n"
             "    .x = nil\n"
             "    .y.dtype = float16\n"
             "    .y.axis = {z0, z1, z2, }\n",
@@ -280,6 +336,8 @@ class TestAutofuseLoadAbsStore():
             "    .y.vectorized_axis = {}\n"
             "  load: Load (1)\n",
             "    .axis = {z0, z1, z2, }\n",
+            "    .hint:\n"
+            "      .compute_type = data\n"
             "    .x = arg3_1.y\n"
             "    .y.dtype = float16\n"
             "    .y.axis = {z0, z1, z2, }\n",
@@ -288,6 +346,8 @@ class TestAutofuseLoadAbsStore():
             "    .y.vectorized_axis = {}\n"
             "  abs: Abs (2)\n",
             "    .axis = {z0, z1, z2, }\n",
+            "    .hint:\n"
+            "      .compute_type = data\n"
             "    .x = load.y\n"
             "    .y.dtype = float16\n"
             "    .y.axis = {z0, z1, z2, }\n",
@@ -296,6 +356,8 @@ class TestAutofuseLoadAbsStore():
             "    .y.vectorized_axis = {}\n"            
             "  store: Store (3)\n",
             "    .axis = {z0, z1, z2, }\n",
+            "    .hint:\n"
+            "      .compute_type = data\n"
             "    .x = abs.y\n"
             "    .y.dtype = float16\n"
             "    .y.axis = {z0, z1, z2, }\n",
@@ -304,6 +366,8 @@ class TestAutofuseLoadAbsStore():
             "    .y.vectorized_axis = {}\n"            
             "  buf1: Data (4)\n",
             "    .axis = {z0, z1, z2, }\n",
+            "    .hint:\n"
+            "      .compute_type = data\n"
             "    .x = store.y\n"
             "    .y.dtype = float16\n"
             "    .y.axis = {z0, z1, z2, }\n",

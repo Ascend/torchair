@@ -27,6 +27,22 @@ static std::string DtypeToStr(ge::DataType dtype) {
   return TypeName[dtype];
 };
 
+static std::string ComputeTypeToStr(ascir::ComputeType compute_type) {
+  const char *TypeName[] = {
+    [ascir::COMPUTE_DATA] = "data",
+    [ascir::COMPUTE_LOAD] = "load",
+    [ascir::COMPUTE_STORE] = "store",
+    [ascir::COMPUTE_ELEWISE] = "elewise",
+    [ascir::COMPUTE_BROADCAST] = "broadcast",
+    [ascir::COMPUTE_REDUCE] = "reduce",
+  };
+
+  if (compute_type >= sizeof(TypeName) / sizeof(TypeName[0])) {
+    return "unknown";
+  }
+  return TypeName[compute_type];
+}
+
 static std::string ApiTypeToStr(ascir::ApiType compute_type) {
   const char *TypeName[] = {
     [ascir::API_TYPE_BUFFER] = "Buffer",
@@ -180,6 +196,20 @@ static std::stringstream &GraphAxisStr(std::stringstream &ss, const ascir::Graph
 
 static std::stringstream &NodeAttrStr(std::stringstream &ss, const ascir::Graph &graph, ascir::NodeView &node,
                                       bool verbose = false) {
+  // Node ir attrs
+  for (auto attr_name : node->GetOpDesc()->GetIrAttrNames()) {
+    ss << "    ." << attr_name << " = ";
+    ge::AnyValue value;
+    node->GetOpDesc()->GetAttr(attr_name, value);
+
+    if (value.GetValueType() == ge::AnyValue::VT_INT) {
+      ss << *value.Get<int64_t>();
+    } else {
+      ss << "Value of " << value.GetValueType();
+    }
+    ss << std::endl;
+  }
+
   // Node sched axis
   ss << "    .axis = "
      << "{";
@@ -187,6 +217,9 @@ static std::stringstream &NodeAttrStr(std::stringstream &ss, const ascir::Graph 
     ss << graph.axis[axis_id].name << ", ";
   }
   ss << "}" << std::endl;
+
+  ss << "    .hint:" << std::endl;
+  ss << "      .compute_type = " << ComputeTypeToStr(node.attr.hint.compute_type) << std::endl;
 
   if (verbose) {
     ss << "    .api:" << std::endl;
