@@ -62,7 +62,8 @@ def conveter_npu_npu_ffn(
     if expert_tokens is not None and isinstance(expert_tokens, Tensor):
         raise NotImplementedError("FFN is not implemented while expert_tokens is Tensor!")
 
-    expert_tokens = dtype_promote(expert_tokens, target_dtype=torch.int64)
+    if expert_tokens is not None:
+        expert_tokens = dtype_promote(expert_tokens, target_dtype=torch.int64)
     return ge.FFN(x, weight1, weight2, expert_tokens=expert_tokens, bias1=bias1, bias2=bias2, scale=scale,
         offset=offset, deq_scale1=deq_scale1, deq_scale2=deq_scale2, antiquant_scale1=antiquant_scale1,
         antiquant_scale2=antiquant_scale2, antiquant_offset1=antiquant_offset1, antiquant_offset2=antiquant_offset2,
