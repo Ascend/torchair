@@ -512,6 +512,28 @@ int Graph::CopyFrom(const ascir::Graph &graph) {
   return 0;
 }
 
+void Graph::SortByExecOrder() {
+  std::vector<NodeView> node_list;
+  for (auto node : GetAllNodes()) {
+      node_list.push_back(node);
+  }
+
+  std::sort(node_list.begin(), node_list.end(), [](const NodeView &a, const NodeView &b) {
+      return a.attr.sched.exec_order < b.attr.sched.exec_order;
+  });
+
+  auto compute_graph = ge::GraphUtilsEx::GetComputeGraph(*this);
+  if (compute_graph == nullptr) {
+      return;
+  }
+  for (auto const node : node_list) {
+      compute_graph->RemoveNode(node);
+  }
+  for (auto const node : node_list) {
+      compute_graph->AddNode(node);
+  }
+}
+
 NodeViewIter::NodeViewIter(NodeViewVisitor::Iterator &&iter) : ge::ComputeGraph::Vistor<ge::NodePtr>::Iterator(iter) {}
 
 NodeViewIter &NodeViewIter::operator++() {

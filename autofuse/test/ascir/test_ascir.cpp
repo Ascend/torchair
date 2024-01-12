@@ -465,6 +465,28 @@ TEST(Ascir_AxisOperations, ApplyReorder_OnNode_WillChangeAxisAndStrideOrder) {
   EXPECT_EQ(result_op.outputs[0].strides[2], s2);
 }
 
+TEST(Ascir_Graph, Graph_SortByExecOrder) {
+  auto graph = CreateTestGraph();
+
+  Data x1("x1");
+  x1.attr.sched.exec_order = 3;
+  Data x2("x2");
+  x2.attr.sched.exec_order = 2;
+  Data x3("x3");
+  x3.attr.sched.exec_order = 1;
+
+  graph.SetInputs({x1, x2, x3});
+
+  graph.SortByExecOrder();
+
+  std::vector<int> expect_order = {1, 2, 3};
+  int i = 0;
+  for (auto node : graph.GetAllNodes()) {
+    EXPECT_EQ(node.attr.sched.exec_order, expect_order[i++])
+        << "Order error " << node->GetName() << " on " << i;
+  }
+}
+
 TEST(Ascir_Utils, DebugHintGraphStr_WillShowAxisInfo) {
   Data data("test_op");
   ascir::Graph graph("test_graph");

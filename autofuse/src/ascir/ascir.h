@@ -925,6 +925,8 @@ class Graph : public ge::Graph {
 
   int CopyFrom(const ascir::Graph &graph);
 
+  void SortByExecOrder();
+
  private:
   ge::NamedAttrs tmp_attr_holder;
   NodeView FindImpl(const char *name) const;
