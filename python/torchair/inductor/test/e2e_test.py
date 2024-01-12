@@ -56,16 +56,6 @@ import torch
 import unittest
 
 
-@contextlib.contextmanager
-def disable_npu_fallback(disable=True):
-    old = os.getenv("DISABLE_NPU_FALLBACK", "0")
-    try:
-        os.environ["DISABLE_NPU_FALLBACK"] = "1" if disable else "0"
-        yield
-    finally:
-        os.environ["DISABLE_NPU_FALLBACK"] = old
-
-
 class InductorNpuBackendTest(unittest.TestCase):
     def test_abs(self):
         """

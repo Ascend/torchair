@@ -1,6 +1,7 @@
 import functools
 from typing import Iterable
 
+import sympy
 from npu_extension_for_inductor.common.symbols import Loop
 from torch._inductor.codegen.common import CSEVariable
 from torch._inductor.virtualized import V
@@ -106,6 +107,13 @@ class _Tensor(CSEVariable):
 
     def __repr__(self):
         return self.name
+
+
+class _Scalar:
+    def __init__(self, cse: _Tensor, max_value: sympy.Symbol, check: bool = True):
+        self.cse = cse
+        self.max_value = max_value
+        self.check = check
 
 
 class _Op(_Track):

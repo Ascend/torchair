@@ -25,7 +25,7 @@ from torch._inductor.codegen.common import (
 )
 from npu_extension_for_inductor.common.symbols import AscExpr, Loop
 from npu_extension_for_inductor.common.utils import TypeUtils
-from npu_extension_for_inductor.ir import IR as ir, _Tensor
+from npu_extension_for_inductor.ir import IR as ir, _Tensor, _Scalar
 
 
 class NPUOverrides(OpOverrides):
@@ -90,11 +90,9 @@ class NpuCSEProxy:
         return getattr(self._parent, item)
 
     @staticmethod
-    def indirect_indexing(index_var, size, check=True) -> sympy.Symbol:
-        # 这里在处理内存加载进来的index值
-        indirect = V.ops._parent.indirect_indexing(index_var, size, check=check)
+    def indirect_indexing(index_var, size, check=False) -> sympy.Symbol:
         kernel: NPUKernel = V.kernel
-        return kernel.add_indirect(indirect)
+        return kernel.indirect_indexing(index_var, size, check)
 
 
 class NPUKernel(Kernel):
@@ -116,7 +114,7 @@ class NPUKernel(Kernel):
         self._kernel_def = IndentedBuffer()
         self._graph_def = IndentedBuffer()
         self.graph = ASCGraph(name=f"{self._kernel}Graph")
-        self._indirect_to_ces: Dict[str, _Tensor] = dict()
+        self._indirect_to_scalar: Dict[str, _Scalar] = dict()
         self._size_vars = set()
         self._axis_exprs = dict()
         for axis, expr in var_ranges.items():
@@ -141,19 +139,19 @@ class NPUKernel(Kernel):
     def contiguous_loop(self):
         return self._contiguous_loop
 
-    def add_indirect(self, scalar_expr: sympy.Expr):
-        indirect_sym = sympy_symbol(f"npu_scalar{len(self._indirect_to_ces)}")
-        op_name, output_name = str(scalar_expr).split('.')
+    def indirect_indexing(self, index_var, size, check=False) -> sympy.Symbol:
+        indirect_sym = sympy_symbol(f"npu_scalar{len(self._indirect_to_scalar)}")
+        op_name, output_name = str(index_var).split('.')
         src = self.graph.get_op(op_name)
         assert src is not None
-        self._indirect_to_ces[str(indirect_sym)] = _Tensor(getattr(src, output_name))
+        self._indirect_to_scalar[str(indirect_sym)] = _Scalar(_Tensor(getattr(src, output_name)), size, check)
         return indirect_sym
 
     def __enter__(self):
         super().__enter__()
         assert self.overrides
-        handler = self.overrides(V.get_ops_handler())
-        self.exit_stack.enter_context(V.set_ops_handler(NpuCSEProxy(handler._parent)))
+        self.overrides(V.get_ops_handler())
+        self.exit_stack.enter_context(V.set_ops_handler(NpuCSEProxy(V.get_ops_handler())))
         self.exit_stack.enter_context(V.set_kernel_handler(self))
         return self
 
@@ -263,8 +261,8 @@ class NPUKernel(Kernel):
     def _get_npu_scalar(self, index: sympy.Expr):
         scalars = dict()
         for s in index.free_symbols:
-            if str(s) in self._indirect_to_ces:
-                scalars[s] = self._indirect_to_ces[str(s)]
+            if str(s) in self._indirect_to_scalar:
+                scalars[s] = self._indirect_to_scalar[str(s)]
         return scalars
 
     def load(self, name: str, index: sympy.Expr):
@@ -277,9 +275,10 @@ class NPUKernel(Kernel):
         else:
             data = buf.src
 
-        scalars = self._get_npu_scalar(index)
+        scalars: Dict[str, _Scalar] = self._get_npu_scalar(index)
         if len(scalars):
-            return ir.load_indrect(data, *scalars.values(), expr=str(index), syms=[str(k) for k in scalars.keys()])
+            return ir.load_indrect(data, *[v.cse for v in scalars.values()], expr=str(index),
+                                   syms=[f"{str(k)}={str(v.cse)}(\\<{v.max_value})" for k, v in scalars.items()])
 
         loop = self._index_to_loop(index)
         load = ir.load(data, loop=loop)

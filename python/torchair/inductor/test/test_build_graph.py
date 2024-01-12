@@ -1,56 +1,153 @@
-import functools
+import contextlib
+import os
 import unittest
 from typing import List, Set
-from unittest.mock import patch
 
 import npu_extension_for_inductor
 from npu_extension_for_inductor.npu import NPUKernel
 import torch
-from torch._inductor.utils import IndentedBuffer
 from torch._inductor.virtualized import V
 
 
-class SoftmaxGraphTest(unittest.TestCase):
-    def test_graph_codegen(self):
+@contextlib.contextmanager
+def disable_npu_fallback(disable=True):
+    old = os.getenv("DISABLE_NPU_FALLBACK", "0")
+    try:
+        os.environ["DISABLE_NPU_FALLBACK"] = "1" if disable else "0"
+        yield
+    finally:
+        os.environ["DISABLE_NPU_FALLBACK"] = old
+
+
+class KernelCapture:
+    def __init__(self):
+        self.kernels: Set[NPUKernel] = set()
+        self.origin = V.set_kernel_handler
+
+    def watch_npu_kernel(self, kernel):
+        if type(kernel) == NPUKernel:
+            self.kernels.add(kernel)
+        return self.origin(kernel)
+
+    def kernel(self, index):
+        return list(self.kernels)[index]
+
+    def graph(self, index):
+        return list(self.kernels)[index].graph
+
+    def graph_str(self, index, replace_name):
+        graph = self.graph(index)
+        return graph.codegen(graph.name).getvalue().replace(graph.name, replace_name)
+
+    def __enter__(self):
+        self.kernels.clear()
+        self.origin = V.set_kernel_handler
+        V.set_kernel_handler = self.watch_npu_kernel
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        V.set_kernel_handler = self.origin
+        print(f"Capture message:\n{exc_val}", flush=True)
+        return True
+
+
+class BuildGraphTest(unittest.TestCase):
+    def assert_graph_equal(self, actual, expect):
+        actual = [line.strip() for line in actual.split('\n') if line.strip()]
+        expect = [line.strip() for line in expect.split('\n') if line.strip()]
+        self.assertEqual(len(actual), len(expect))
+        for i in range(len(actual)):
+            if actual[i] != expect[i]:
+                self.assertEqual(actual[i].replace('TrueDiv', 'Div').replace('truediv', 'div'),
+                                 expect[i].replace('TrueDiv', 'Div').replace('truediv', 'div'))
+
+    def test_abs_graph(self):
+        @torch.compile(dynamic=True)
+        def test_abs(x):
+            x = torch.abs(x)
+            return x
+
+        with KernelCapture() as kernel_capture:
+            x = torch.ones(2, 3, dtype=torch.float16)
+            test_abs(x)
+
+        self.assertEqual(len(kernel_capture.kernels), 1)
+        self.assert_graph_equal(kernel_capture.graph_str(0, "NpuKernel0Graph"), f"""
+            def NpuKernel0Graph():
+            
+                import os
+                if os.getenv('ASCIR_NOT_READY', None) == "1":
+                    return None
+                from pyautofuse import ascir
+                NpuKernel0Graph = ascir.HintGraph('NpuKernel0Graph')
+                s0 = NpuKernel0Graph.create_size("s0")
+                s1 = NpuKernel0Graph.create_size("s1")
+                z0 = NpuKernel0Graph.create_axis("z0", ascir.SizeExpr([s0,s1]))
+                size_vars = ascir.ops.Data('size_vars')
+                size_vars.attr.sched.exec_order = 0
+                size_vars.attr.sched.axis = []
+                size_vars.y.size = [ascir.SizeExpr([s0]), ascir.SizeExpr([s1])]
+                arg2_1 = ascir.ops.Data('arg2_1')
+                arg2_1.attr.sched.exec_order = 1
+                arg2_1.attr.sched.axis = [z0]
+                arg2_1.y.size = [ascir.SizeExpr([s0,s1])]
+                arg2_1.y.dtype = ascir.dtypes.float16
+                load = ascir.ops.Load('load')
+                load.attr.sched.exec_order = 2
+                load.attr.sched.axis = [z0]
+                load.x = arg2_1.y
+                load.y.axis = [z0]
+                load.y.strides = [ascir.SizeExpr([])]
+                load.y.size = [ascir.SizeExpr([s0,s1])]
+                abs = ascir.ops.Abs('abs')
+                abs.attr.sched.exec_order = 3
+                abs.attr.sched.axis = [z0]
+                abs.x = load.y
+                abs.y.axis = [z0]
+                abs.y.strides = [ascir.SizeExpr([])]
+                abs.y.size = [ascir.SizeExpr([s0,s1])]
+                store = ascir.ops.Store('store')
+                store.attr.sched.exec_order = 4
+                store.attr.sched.axis = [z0]
+                store.x = abs.y
+                store.y.axis = [z0]
+                store.y.strides = [ascir.SizeExpr([])]
+                store.y.size = [ascir.SizeExpr([s0,s1])]
+                buf0 = ascir.ops.Output('buf0')
+                buf0.attr.sched.exec_order = 5
+                buf0.attr.sched.axis = [z0]
+                buf0.y.size = [ascir.SizeExpr([s0]), ascir.SizeExpr([s1])]
+                buf0.y.dtype = ascir.dtypes.float16
+                buf0.x = store.y
+            
+                NpuKernel0Graph.set_inputs([size_vars, arg2_1])
+                NpuKernel0Graph.set_outputs([buf0])
+                return NpuKernel0Graph
+            """)
+
+    def test_softmax_graph(self):
         @torch.compile(dynamic=True)
         def test_softmax(x):
             x = torch.softmax(x, dim=3)
             return x
 
-        def watch_npu_kernel(kernel, origin, kernels: Set[NPUKernel]):
-            if type(kernel) == NPUKernel:
-                kernels.add(kernel)
-            return origin(kernel)
+        with KernelCapture() as kernel_capture:
+            x = torch.ones(1, 96, 2048, 128, dtype=torch.float16)
+            test_softmax(x)
 
-        cap_kernels = set()
-        try:
-            with patch.object(V, "set_kernel_handler",
-                              functools.partial(watch_npu_kernel, origin=V.set_kernel_handler, kernels=cap_kernels)):
-                x = torch.ones(1, 96, 2048, 128, dtype=torch.float16)
-                test_softmax(x)
-        except:
-            pass
-
-        cap_kernels = list(cap_kernels)
-        self.assertEqual(len(cap_kernels), 1)
-        kernel: NPUKernel = cap_kernels[0]
-        graph_name = kernel.graph.name
-        actual = kernel.graph.codegen(graph_name)
-        actual = actual.getvalue().split('\n')
-        expect = IndentedBuffer()
-        expect.splice(
-            f"""def {graph_name}():
-
+        self.assertEqual(len(kernel_capture.kernels), 1)
+        self.assert_graph_equal(kernel_capture.graph_str(0, "NpuKernel0Graph"), f"""
+            def NpuKernel0Graph():
                     import os
                     if os.getenv('ASCIR_NOT_READY', None) == "1":
                         return None
                     from pyautofuse import ascir
-                    {graph_name} = ascir.HintGraph('{graph_name}')
-                    s0 = {graph_name}.create_size("s0")
-                    s1 = {graph_name}.create_size("s1")
-                    s2 = {graph_name}.create_size("s2")
-                    z0 = {graph_name}.create_axis("z0", ascir.SizeExpr([s0,s1]))
-                    z1 = {graph_name}.create_axis("z1", ascir.SizeExpr([s2]))
+                    NpuKernel0Graph = ascir.HintGraph('NpuKernel0Graph')
+                    s0 = NpuKernel0Graph.create_size("s0")
+                    s1 = NpuKernel0Graph.create_size("s1")
+                    s2 = NpuKernel0Graph.create_size("s2")
+                    z0 = NpuKernel0Graph.create_axis("z0", ascir.SizeExpr([s0,s1]))
+                    z1 = NpuKernel0Graph.create_axis("z1", ascir.SizeExpr([s2]))
                     size_vars = ascir.ops.Data('size_vars')
                     size_vars.attr.sched.exec_order = 0
                     size_vars.attr.sched.axis = []
@@ -232,14 +329,46 @@ class SoftmaxGraphTest(unittest.TestCase):
                     buf3.y.dtype = ascir.dtypes.float16
                     buf3.x = store3.y
                 
-                    {graph_name}.set_inputs([size_vars, arg3_1])
-                    {graph_name}.set_outputs([buf3])
-                    return {graph_name}""")
+                    NpuKernel0Graph.set_inputs([size_vars, arg3_1])
+                    NpuKernel0Graph.set_outputs([buf3])
+                    return NpuKernel0Graph""")
 
-        expect = expect.getvalue().split('\n')
-        self.assertEqual(len(actual), len(expect))
-        for i in range(len(actual)):
-            self.assertEqual(actual[i].strip(), expect[i].strip())
+    def test_embeding_fallback(self):
+        """
+        测试带有embeding算子的图
+        """
+
+        @torch.compile(dynamic=True)
+        def test_embeding(x, w):
+            x = torch.nn.functional.embedding(x, w)
+            return x
+
+        x = torch.ones(2, dtype=torch.int64)
+        w = torch.arange(0, 200, dtype=torch.float16).view(10, 20)
+        with KernelCapture() as kernel_capture:
+            y = test_embeding(x, w)
+
+        self.assertEqual(len(kernel_capture.kernels), 0)
+
+    def test_disable_fallback(self):
+        """
+        测试带有embeding算子的图
+        """
+
+        @torch.compile(dynamic=True)
+        def test_embeding(x, w):
+            x = torch.nn.functional.embedding(x, w)
+            return x
+
+        x = torch.ones(2, dtype=torch.int64)
+        w = torch.arange(0, 200, dtype=torch.float16).view(10, 20)
+        with KernelCapture() as kernel_capture:
+            with disable_npu_fallback():
+                y = test_embeding(x, w)
+
+        self.assertEqual(len(kernel_capture.kernels), 1)
+        self.assertTrue(len(kernel_capture.graph(0).unsupported_ops) > 0)
+        self.assertNotEqual(kernel_capture.graph(0).unsupported_reason, None)
 
 
 if __name__ == '__main__':
