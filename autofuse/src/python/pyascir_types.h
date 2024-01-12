@@ -43,8 +43,9 @@ class SizeExpr {
   static void _dealloc(PyObject *self);
   static PyObject *_new(PyTypeObject *type, PyObject *args, PyObject *kwargs);
   static int _init(PyObject *self, PyObject *args, PyObject *kwargs);
-  static int _init(PyObject *self, const std::vector<ascir::SizeVarId> &nums,
-                           const std::vector<ascir::SizeVarId> &dens);
+  static int _init(PyObject *self, const bool is_zero,
+                   const std::vector<ascir::SizeVarId> &nums,
+                   const std::vector<ascir::SizeVarId> &dens);
   static PyObject* FromSizeExpr(const ascir::SizeExpr &expr);
   static ascir::SizeExpr AsSizeExpr(PyObject* obj);
 };

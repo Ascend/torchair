@@ -148,9 +148,12 @@ int SizeExpr::_init(PyObject *self_pyobject, PyObject *args, PyObject *kwargs) {
   return 0;
 }
 
-int SizeExpr::_init(PyObject *self_pyobject, const std::vector<ascir::SizeVarId> &nums,
+int SizeExpr::_init(PyObject *self_pyobject,
+                    const bool is_zero,
+                    const std::vector<ascir::SizeVarId> &nums,
                     const std::vector<ascir::SizeVarId> &dens) {
   auto self = (Object *)self_pyobject;
+  self->is_zero = PyBool_FromLong(is_zero);
   for (auto num : nums) {
       PyList_Append(self->nums, PyLong_FromLong(num));
   }
@@ -166,7 +169,7 @@ PyObject *SizeExpr::FromSizeExpr(const ascir::SizeExpr &expr) {
     return nullptr;
   }
 
-  _init(size, expr.nums, expr.dens);
+  _init(size, expr.is_zero, expr.nums, expr.dens);
   Py_IncRef(size);
   return size;
 }
@@ -176,6 +179,8 @@ ascir::SizeExpr SizeExpr::AsSizeExpr(PyObject *obj) {
     ascir::SizeExpr size_expr;
 
     auto size = (SizeExpr::Object *)obj;
+
+    size_expr.is_zero = size->is_zero == Py_True;
     for (int i = 0; i < PyList_Size(size->nums); ++i) {
       size_expr.nums.push_back(PyLong_AsLong(PyList_GetItem(size->nums, i)));
     }
@@ -249,7 +254,7 @@ int Axis::_init(PyObject *self_pyobject, int id, const ascir::SizeExpr &size, co
     return -1;
   }
 
-  SizeExpr::_init(size_object, size.nums, size.dens);
+  SizeExpr::_init(size_object, false, size.nums, size.dens);
   Py_IncRef(size_object);
 
   auto self = (Object *)self_pyobject;
