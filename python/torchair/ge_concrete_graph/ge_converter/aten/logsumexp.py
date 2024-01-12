@@ -19,15 +19,16 @@ from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType
 from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
+from torchair.ge_concrete_graph.utils import dtype_promote
 
 
 @declare_supported(
     [
         Support(F32(2, 4, 6, 6, 2), [1], True),
-        Support(F32(2, 4, 6, 6, 2), [2], True),
+        Support(F32(2, 4, 6, 6, 2), [2], True)
     ]
 )
 @register_fx_node_ge_converter(torch.ops.aten.logsumexp.default)
@@ -35,6 +36,7 @@ def conveter_aten_logsumexp_default(
     self: Tensor, dim: List[int], keepdim: bool = False, meta_outputs: TensorSpec = None
 ):
     """NB: aten::logsumexp(Tensor self, int[1] dim, bool keepdim=False) -> Tensor"""
+    dim = dtype_promote(dim, target_dtype=DataType.DT_INT64)
     maxes = ge.ReduceMax(self, dim, keep_dims=True)
     if keepdim:
         maxes_squeezed = maxes
