@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from npu_extension_for_inductor.common.asc_graph import ASCGraph
 from npu_extension_for_inductor.common.debug import _left_align_lines, OP_SUMMARY
-from sympy import symbols, simplify
+from sympy import symbols, simplify, Eq
 
 import sympy
 
@@ -165,18 +165,8 @@ class NPUKernel(Kernel):
         return TypeUtils.torch_to_asc(self._buf_desc[buf].dtype)
 
     def _get_reduce_dims_and_loop(self, index: sympy.Expr):
-        reduce_dims = []
-        loop = Loop()
-        loop.offset = index
-        for i, (axis, range) in enumerate(self._axis_exprs.items()):
-            stride = index.coeff(axis)
-            if str(stride) == "0":
-                reduce_dims.append(i)
-            else:
-                loop.stride.append(stride)
-                loop.offset = simplify(loop.offset.subs(axis, 0))
-                loop.axis.append(axis)
-                loop.size.append(range)
+        loop = self._index_to_loop(index)
+        reduce_dims = [i for i in range(len(loop.stride)) if Eq(loop.stride[i], 0)]
         return reduce_dims, loop
 
     def _index_to_loop(self, index: sympy.Expr):
@@ -186,7 +176,7 @@ class NPUKernel(Kernel):
             loop.stride.append(index.coeff(axis))
             loop.offset = simplify(loop.offset.subs(axis, 0))
             loop.axis.append(axis)
-            loop.size.append(range)
+            loop.size.append(sympy.S.One if Eq(loop.stride[-1], 0) else range)
         return loop
 
     @property
@@ -281,9 +271,9 @@ class NPUKernel(Kernel):
                                    syms=[f"{str(k)}={str(v.cse)}(\\<{v.max_value})" for k, v in scalars.items()])
 
         loop = self._index_to_loop(index)
-        load = ir.load(data, loop=loop)
+        load = ir.load(data.as_loop(loop=loop), loop=loop)
         if not loop.is_contiguous():
-            load = ir.broadcast(load, loop=loop.contiguous_())
+            load = ir.broadcast(load, loop=self.contiguous_loop)
         return load
 
     def _mark_buf_src(self, name, src):

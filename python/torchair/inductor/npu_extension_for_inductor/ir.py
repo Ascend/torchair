@@ -101,6 +101,7 @@ class _Tensor(CSEVariable):
         self._v.axis = loop.asc_axis
         self._v.strides = loop.asc_stride
         self._v.size = loop.asc_size
+        return self
 
     def __str__(self):
         return self.name
