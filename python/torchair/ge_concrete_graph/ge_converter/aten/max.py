@@ -35,11 +35,13 @@ def conveter_aten_max_other(self: Tensor, other: Tensor, meta_outputs: TensorSpe
     Support(I32(2, 2)),
     Support(F32(2, 2)),
     Support(F16(3, 4)),
+    Support(U8(3, 4))
 ])
 @register_fx_node_ge_converter(torch.ops.aten.max.default)
 def conveter_aten_max_default(self: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::max(Tensor self) -> Tensor"""
     dim = list(range(self.rank))
+    dim = dtype_promote(dim, target_dtype=DataType.DT_INT64)
     self = dtype_promote(self, target_dtype=meta_outputs.dtype)
     return ge.ReduceMax(self, dim)
 
