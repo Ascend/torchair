@@ -326,7 +326,7 @@ void Graph::ApplySplit(NodeView &node, AxisId outter, AxisId inner, AxisId origi
   return;
 }
 
-void Graph::ApplyMerge(NodeView &node, AxisId merged_axis, std::initializer_list<AxisId> original) {
+void Graph::ApplyMerge(NodeView &node, AxisId merged_axis, const std::vector<AxisId> &original) {
   vector<AxisId> new_axis;
 
   auto cur = original.begin();
@@ -384,6 +384,44 @@ void Graph::ApplyMerge(NodeView &node, AxisId merged_axis, std::initializer_list
     node.outputs[i].strides = new_strides;
   }
   return;
+}
+
+void Graph::ApplyReorder(NodeView &node, const std::vector<AxisId> &reordered_axis) {
+  auto node_axis = node.attr.sched.axis();
+  if (node_axis.size() != reordered_axis.size()) {
+    throw std::runtime_error("Miss some axis in reorder");
+  }
+
+  for (auto a : reordered_axis) {
+    auto it = std::find(node_axis.begin(), node_axis.end(), a);
+    if (it == node_axis.end()) {
+      throw std::runtime_error("Miss reorder axis " + std::to_string(a) + "in node axis.");
+    }
+  }
+
+  node.attr.sched.axis = reordered_axis;
+  for (auto output : node.outputs()) {
+    std::vector<AxisId> new_axis;
+    std::vector<SizeExpr> new_repeat;
+    std::vector<SizeExpr> new_strides;
+
+    auto output_axis = output.axis();
+    for (auto axis : reordered_axis) {
+      auto it = std::find(output_axis.begin(), output_axis.end(), axis);
+      if (it == output_axis.end()) {
+        continue;
+      }
+
+      auto pos = std::distance(output_axis.begin(), it);
+      new_axis.push_back(pos);
+      new_repeat.push_back(output.repeats()[pos]);
+      new_strides.push_back(output.strides()[pos]);
+    }
+
+    output.axis = new_axis;
+    output.repeats = new_repeat;
+    output.strides = new_strides;
+  }
 }
 
 NodeView Graph::FindImpl(const char *name) const {

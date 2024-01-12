@@ -910,7 +910,8 @@ class Graph : public ge::Graph {
   Axis MergeAxis(std::initializer_list<AxisId> axis);
 
   void ApplySplit(NodeView &node, AxisId outter, AxisId inner, AxisId original);
-  void ApplyMerge(NodeView &node, AxisId new_axis, std::initializer_list<AxisId> original);
+  void ApplyMerge(NodeView &node, AxisId merged_axi, const std::vector<AxisId> &original);
+  void ApplyReorder(NodeView &node, const std::vector<AxisId> &reordered_axis);
 
   NodeView Find(const char *name);
   NodeViewVisitor GetAllNodes();

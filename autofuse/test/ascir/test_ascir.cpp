@@ -428,6 +428,43 @@ TEST(Ascir_AxisOperations, ApplyMerge_OnNode_WillMergeNodeAxis) {
   EXPECT_EQ(result_op.outputs[0].strides[0], SizeExpr{});
 }
 
+TEST(Ascir_AxisOperations, ApplyReorder_OnNode_WillChangeAxisAndStrideOrder) {
+  auto graph = CreateTestGraph();
+
+  auto s0 = graph.CreateSizeVar("s0");
+  auto s1 = graph.CreateSizeVar("s1");
+  auto s2 = graph.CreateSizeVar("s2");
+  auto z0 = graph.CreateAxis("z0", ascir::SizeExpr{{s0}});
+  auto z1 = graph.CreateAxis("z1", ascir::SizeExpr{{s1}});
+  auto z2 = graph.CreateAxis("z2", ascir::SizeExpr{{s2}});
+
+  Data data("test_op");
+
+  data.attr.sched.axis = {z0.id, z1.id, z2.id};
+  data.y.axis = {z0.id, z1.id, z2.id};
+  data.y.repeats = {s0, s1, s2};
+  data.y.strides = {s1*s2, s2, {}};
+  graph.SetInputs({data});
+
+  auto result_op = graph.Find("test_op");
+
+  graph.ApplyReorder(result_op, {z2.id, z0.id, z1.id});
+
+  EXPECT_EQ(result_op.attr.sched.axis[0], z2.id);
+  EXPECT_EQ(result_op.attr.sched.axis[1], z0.id);
+  EXPECT_EQ(result_op.attr.sched.axis[2], z1.id);
+
+  EXPECT_EQ(result_op.outputs[0].axis[0], z2.id);
+  EXPECT_EQ(result_op.outputs[0].repeats[0], z2.size);
+  EXPECT_EQ(result_op.outputs[0].strides[0], SizeExpr{});
+  EXPECT_EQ(result_op.outputs[0].axis[1], z0.id);
+  EXPECT_EQ(result_op.outputs[0].repeats[1], z0.size);
+  EXPECT_EQ(result_op.outputs[0].strides[1], s1*s2);
+  EXPECT_EQ(result_op.outputs[0].axis[2], z1.id);
+  EXPECT_EQ(result_op.outputs[0].repeats[2], z1.size);
+  EXPECT_EQ(result_op.outputs[0].strides[2], s2);
+}
+
 TEST(Ascir_Utils, DebugHintGraphStr_WillShowAxisInfo) {
   Data data("test_op");
   ascir::Graph graph("test_graph");
