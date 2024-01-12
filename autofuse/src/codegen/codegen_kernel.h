@@ -135,7 +135,10 @@ class TBuf : public Variable {
 
   Uint32 size;
 
+  Variable buf;
+
   TBuf(ascir::BufId id, const ascir::Position position);
+  std::string AllocBuf() const;
 };
 
 class Tiler : public Code {

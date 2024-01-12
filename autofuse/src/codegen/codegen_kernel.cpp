@@ -171,9 +171,16 @@ std::string TQue::DequeBuf() const {
 
 TBuf::TBuf(ascir::BufId id, const ascir::Position position)
     : Variable(Type("TBuf<" + PositionValue(position) + ">"), "b" + to_string(id)),
+      buf(Type("LocalTensor<uint8_t>"), name + "_buf"),
       id(id),
       position(position),
       size(this->name + "_size") {}
+
+std::string TBuf::AllocBuf() const {
+  stringstream ss;
+  ss << this->buf.AsArg() << " = " << this->name << ".Get<uint8_t>();";
+  return ss.str();
+}
 
 Tiler::Tiler(const std::string &tiling_data_name)
     : tiling_data(Type{"optiling::TilingData"}, tiling_data_name),
@@ -507,7 +514,7 @@ std::string TPipe::TensorAlloc(const Tensor& tensor) const {
 
   const Variable* buf;
   if (tensor.alloc_type == ascir::ALLOC_TYPE_BUFFER) {
-      buf = &GetBuf(tensor.buf_id);
+      buf = &GetBuf(tensor.buf_id).buf;
   } else if (tensor.alloc_type == ascir::ALLOC_TYPE_QUEUE) {
       buf = &GetQue(tensor.que_id).buf;
   } else if (tensor.alloc_type == ascir::ALLOC_TYPE_GLOBAL) {
@@ -718,6 +725,7 @@ std::string TPipe::LocalTBufAlloc() const {
     ss << buf.size.DefineConst(tensor_size_max.str()) << std::endl;
     ss << buf.Define() << std::endl;
     ss << this->InitTBufBuffer(buf) << std::endl;
+    ss << buf.AllocBuf() << std::endl;
     ss << std::endl;
   }
 

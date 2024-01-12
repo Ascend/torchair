@@ -275,8 +275,10 @@ TEST(CodegenKernel, TPipe_TensorAlloc_WhenTensorFromQue_AndNotMerge) {
   codegen::TPipe tpipe("tpipe", tiler);
   tpipe.AddTensor(tensor, "test_t");
 
-  EXPECT_EQ(tpipe.TensorAlloc(tpipe.GetTensor(tensor.mem.tensor_id)),
-            std::string{"LocalTensor<half> test_t;\n" "test_t.SetAddrWithOffset(q1_buf, 0);\n"});
+  EXPECT_EQ(tpipe.TensorAlloc(tpipe.GetTensor(tensor.mem.tensor_id)), std::string{
+    "LocalTensor<half> test_t;\n"
+    "test_t.SetAddrWithOffset(q1_buf, 0);\n"
+    });
 }
 
 TEST(CodegenKernel, TPipe_TensorAlloc_WhenTensorFromBuf_AndNotMerge) {
@@ -294,8 +296,10 @@ TEST(CodegenKernel, TPipe_TensorAlloc_WhenTensorFromBuf_AndNotMerge) {
   codegen::TPipe tpipe("tpipe", tiler);
   tpipe.AddTensor(tensor, "test_t");
 
-  EXPECT_EQ(tpipe.TensorAlloc(tpipe.GetTensor(tensor.mem.tensor_id)),
-            std::string{"LocalTensor<half> test_t;\n" "test_t.SetAddrWithOffset(b1, 0);\n"});
+  EXPECT_EQ(tpipe.TensorAlloc(tpipe.GetTensor(tensor.mem.tensor_id)), std::string{
+    "LocalTensor<half> test_t;\n"
+    "test_t.SetAddrWithOffset(b1_buf, 0);\n"
+    });
 }
 
 TEST(CodegenKernel, TPipe_InitTQueBuffers) {
@@ -517,6 +521,7 @@ TEST(CodegenKernel, TPipe_LocalTBufAlloc) {
     "const uint32_t b1_size = utils::Max(m1_size, t1_size * sizeof(float));\n"
     "TBuf<TPosition::VECIN> b1;\n"
     "tpipe.InitBuffer(b1, b1_size);\n"
+    "LocalTensor<uint8_t> b1_buf = b1.Get<uint8_t>();\n"
     "\n"
   });
 }
