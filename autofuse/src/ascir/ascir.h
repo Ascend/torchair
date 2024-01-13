@@ -428,6 +428,12 @@ struct AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::Axis>> {
 
     return this->operator()()[index];
   }
+
+  int64_t Size() const {
+    int64_t num = 0;
+    ge::AttrUtils::GetInt(holder, NUM.c_str(), num);
+    return num;
+  }
 };
 
 template <typename Holder, const char *ATTR_NAME_PREFIX>
@@ -909,8 +915,10 @@ class Graph : public ge::Graph {
   std::tuple<Axis, Axis> TileSplit(AxisId axis);
   Axis MergeAxis(std::initializer_list<AxisId> axis);
 
-  void ApplySplit(NodeView &node, AxisId outter, AxisId inner, AxisId original);
-  void ApplyMerge(NodeView &node, AxisId merged_axi, const std::vector<AxisId> &original);
+  void ApplySplit(NodeView &node, AxisId outter_id, AxisId inner_id, AxisId original_id);
+  void ApplySplit(NodeView &node, AxisId outter_id, AxisId inner_id);
+  void ApplyMerge(NodeView &node, AxisId merged_axis_id, const std::vector<AxisId> &original);
+  void ApplyMerge(NodeView &node, AxisId merged_axis_id);
   void ApplyReorder(NodeView &node, const std::vector<AxisId> &reordered_axis);
 
   NodeView Find(const char *name);

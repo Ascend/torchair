@@ -275,15 +275,15 @@ Axis Graph::MergeAxis(std::initializer_list<AxisId> axis) {
   return this->CreateAxis(name, Axis::AXIS_TYPE_MERGED, size, from);
 }
 
-void Graph::ApplySplit(NodeView &node, AxisId outter, AxisId inner, AxisId original) {
-  SizeExpr split_size{this->axis[inner].size};
+void Graph::ApplySplit(NodeView &node, AxisId outter_id, AxisId inner_id, AxisId original) {
+  SizeExpr split_size{this->axis[inner_id].size};
 
   vector<AxisId> new_axis;
   auto axis = node.attr.sched.axis();
   for (auto &i : axis) {
     if (i == original) {
-      new_axis.push_back(outter);
-      new_axis.push_back(inner);
+      new_axis.push_back(outter_id);
+      new_axis.push_back(inner_id);
     } else {
       new_axis.push_back(i);
     }
@@ -308,11 +308,11 @@ void Graph::ApplySplit(NodeView &node, AxisId outter, AxisId inner, AxisId origi
         new_strides.push_back(strides[a]);
       } else {
         found = true;
-        new_axis.push_back(outter);
+        new_axis.push_back(outter_id);
         new_repeat.push_back(repeat[a] / split_size);
         new_strides.push_back(strides[a] * split_size);
 
-        new_axis.push_back(inner);
+        new_axis.push_back(inner_id);
         new_repeat.push_back(split_size);
         new_strides.push_back(strides[a]);
       }
@@ -326,7 +326,26 @@ void Graph::ApplySplit(NodeView &node, AxisId outter, AxisId inner, AxisId origi
   return;
 }
 
-void Graph::ApplyMerge(NodeView &node, AxisId merged_axis, const std::vector<AxisId> &original) {
+void Graph::ApplySplit(NodeView &node, AxisId outter_id, AxisId inner_id) {
+  if (outter_id >= this->axis.Size() || inner_id >= this->axis.Size()) {
+    throw std::runtime_error("outter_id or inner_id is out of range.");
+  }
+
+  auto out_axis = this->axis[outter_id];
+  auto in_axis = this->axis[inner_id];
+  if (!((out_axis.type == Axis::AXIS_TYPE_BLOCK_OUTER && in_axis.type == Axis::AXIS_TYPE_BLOCK_INNER) ||
+        (out_axis.type == Axis::AXIS_TYPE_TILE_OUTER && in_axis.type == Axis::AXIS_TYPE_TILE_INNER))) {
+    throw std::runtime_error("Outter and inner axis must be all block split or all tile split axis.");
+  }
+
+  if (out_axis.from.size() != 1 || in_axis.from.size()!= 1 || out_axis.from[0] != in_axis.from[0]) {
+    throw std::runtime_error("Outter and inner axis must be split from same axis.");
+  }
+
+  ApplySplit(node, outter_id, inner_id, out_axis.from[0]);
+}
+
+void Graph::ApplyMerge(NodeView &node, AxisId merged_axis_id, const std::vector<AxisId> &original) {
   vector<AxisId> new_axis;
 
   auto cur = original.begin();
@@ -342,7 +361,7 @@ void Graph::ApplyMerge(NodeView &node, AxisId merged_axis, const std::vector<Axi
     }
 
     if (cur == original.end()) {
-      new_axis.push_back(merged_axis);
+      new_axis.push_back(merged_axis_id);
     }
   }
 
@@ -373,7 +392,7 @@ void Graph::ApplyMerge(NodeView &node, AxisId merged_axis, const std::vector<Axi
       }
 
       if (cur == original.end()) {
-        new_axis.push_back(merged_axis);
+        new_axis.push_back(merged_axis_id);
         new_repeat.push_back(merge_repeat);
         new_strides.push_back(strides[a]);
       }
@@ -384,6 +403,19 @@ void Graph::ApplyMerge(NodeView &node, AxisId merged_axis, const std::vector<Axi
     node.outputs[i].strides = new_strides;
   }
   return;
+}
+
+void Graph::ApplyMerge(NodeView &node, AxisId merged_axis_id) {
+  if (merged_axis_id > this->axis.Size()) {
+    throw std::runtime_error("Merged axis id invalid.");
+  }
+
+  auto axis = this->axis[merged_axis_id];
+  if (axis.type != ascir::Axis::AXIS_TYPE_MERGED) {
+    throw std::runtime_error("Merged axis type invalid.");
+  }
+
+  ApplyMerge(node, merged_axis_id, axis.from);
 }
 
 void Graph::ApplyReorder(NodeView &node, const std::vector<AxisId> &reordered_axis) {

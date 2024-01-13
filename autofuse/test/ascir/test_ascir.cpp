@@ -401,6 +401,36 @@ TEST(Ascir_AxisOperations, ApplySplit_OnNode_WillSplitNodeAxis) {
   EXPECT_EQ(result_op.outputs[0].strides[1], SizeExpr{});
 }
 
+TEST(Ascir_AxisOperations, ApplySplitWithoutOriginal_OnNode_WillSplitNodeAxis) {
+  auto graph = CreateTestGraph();
+
+  auto s0 = graph.CreateSizeVar("s0");
+  auto z0 = graph.CreateAxis("z0", ascir::SizeExpr{{s0.id}});
+
+  Data data("test_op");
+
+  data.attr.sched.axis = {z0.id};
+  data.y.axis = {z0.id};
+  data.y.repeats = {SizeExpr{{s0.id}}};
+  data.y.strides = {SizeExpr{}};
+  graph.SetInputs({data});
+
+  auto result_op = graph.Find("test_op");
+
+  auto [z0_out, z0_in] = graph.TileSplit(z0.id);
+  graph.ApplySplit(result_op, z0_out.id, z0_in.id);
+
+  auto tile_size = z0_in.size;
+  EXPECT_EQ(result_op.attr.sched.axis[0], z0_out.id);
+  EXPECT_EQ(result_op.attr.sched.axis[1], z0_in.id);
+  EXPECT_EQ(result_op.outputs[0].axis[0], z0_out.id);
+  EXPECT_EQ(result_op.outputs[0].axis[1], z0_in.id);
+  EXPECT_EQ(result_op.outputs[0].repeats[0], z0.size / tile_size);
+  EXPECT_EQ(result_op.outputs[0].repeats[1], tile_size);
+  EXPECT_EQ(result_op.outputs[0].strides[0], tile_size);
+  EXPECT_EQ(result_op.outputs[0].strides[1], SizeExpr{});
+}
+
 TEST(Ascir_AxisOperations, ApplyMerge_OnNode_WillMergeNodeAxis) {
   auto graph = CreateTestGraph();
 
@@ -421,6 +451,33 @@ TEST(Ascir_AxisOperations, ApplyMerge_OnNode_WillMergeNodeAxis) {
 
   auto z_new = graph.MergeAxis({z0.id, z1.id});
   graph.ApplyMerge(result_op, z_new.id, {z0.id, z1.id});
+
+  EXPECT_EQ(result_op.attr.sched.axis[0], z_new.id);
+  EXPECT_EQ(result_op.outputs[0].axis[0], z_new.id);
+  EXPECT_EQ(result_op.outputs[0].repeats[0], z0.size * z1.size);
+  EXPECT_EQ(result_op.outputs[0].strides[0], SizeExpr{});
+}
+
+TEST(Ascir_AxisOperations, ApplyMergeWithoutOriginal_OnNode_WillMergeNodeAxis) {
+  auto graph = CreateTestGraph();
+
+  auto s0 = graph.CreateSizeVar("s0");
+  auto s1 = graph.CreateSizeVar("s1");
+  auto z0 = graph.CreateAxis("z0", ascir::SizeExpr{{s0.id}});
+  auto z1 = graph.CreateAxis("z0", ascir::SizeExpr{{s1.id}});
+
+  Data data("test_op");
+
+  data.attr.sched.axis = {z0.id, z1.id};
+  data.y.axis = {z0.id, z1.id};
+  data.y.repeats = {SizeExpr{{s0.id}}, SizeExpr{{s1.id}}};
+  data.y.strides = {SizeExpr{{s1.id}}, SizeExpr{}};
+  graph.SetInputs({data});
+
+  auto result_op = graph.Find("test_op");
+
+  auto z_new = graph.MergeAxis({z0.id, z1.id});
+  graph.ApplyMerge(result_op, z_new.id);
 
   EXPECT_EQ(result_op.attr.sched.axis[0], z_new.id);
   EXPECT_EQ(result_op.outputs[0].axis[0], z_new.id);
