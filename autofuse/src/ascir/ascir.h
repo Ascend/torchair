@@ -913,7 +913,7 @@ class Graph : public ge::Graph {
 
   std::tuple<Axis, Axis> BlockSplit(AxisId axis);
   std::tuple<Axis, Axis> TileSplit(AxisId axis);
-  Axis MergeAxis(std::initializer_list<AxisId> axis);
+  Axis MergeAxis(const std::vector<AxisId> &axis);
 
   void ApplySplit(NodeView &node, AxisId outter_id, AxisId inner_id, AxisId original_id);
   void ApplySplit(NodeView &node, AxisId outter_id, AxisId inner_id);

@@ -81,6 +81,10 @@ SizeExpr &SizeExpr::operator*=(const SizeExpr &rhs) {
 }
 
 bool SizeExpr::operator==(const SizeExpr &rhs) const {
+  if (rhs.is_zero == this->is_zero) {
+    return true;
+  }
+
   if (!std::is_sorted(this->nums.begin(), this->nums.end()) ||
       !std::is_sorted(this->dens.begin(), this->dens.end()) ||
       !std::is_sorted(rhs.nums.begin(), rhs.nums.end()) ||
@@ -104,6 +108,10 @@ bool SizeExpr::operator==(const int64_t rhs) const {
 }
 
 bool SizeExpr::operator!=(const SizeExpr &rhs) const {
+  if (rhs.is_zero != this->is_zero) {
+    return true;
+  }
+
   if (!std::is_sorted(this->nums.begin(), this->nums.end()) ||
       !std::is_sorted(this->dens.begin(), this->dens.end()) ||
       !std::is_sorted(rhs.nums.begin(), rhs.nums.end()) ||
@@ -261,7 +269,7 @@ std::tuple<Axis, Axis> Graph::TileSplit(AxisId axis_id) {
   return std::make_tuple(outter, inner);
 }
 
-Axis Graph::MergeAxis(std::initializer_list<AxisId> axis) {
+Axis Graph::MergeAxis(const std::vector<AxisId>& axis) {
   string name;
   SizeExpr size;
   vector<AxisId> from;
@@ -354,14 +362,13 @@ void Graph::ApplyMerge(NodeView &node, AxisId merged_axis_id, const std::vector<
       throw std::runtime_error("Miss some axis in merge");
     }
 
-    if (i == *cur) {
+    if (cur != original.end() && i == *cur) {
       cur++;
+      if (cur == original.end()) {
+        new_axis.push_back(merged_axis_id);
+      }
     } else {
       new_axis.push_back(i);
-    }
-
-    if (cur == original.end()) {
-      new_axis.push_back(merged_axis_id);
     }
   }
 
@@ -384,16 +391,17 @@ void Graph::ApplyMerge(NodeView &node, AxisId merged_axis_id, const std::vector<
         throw std::runtime_error("Miss some axis in merge");
       }
 
-      if (axis[a] == *cur) {
+      if (cur != original.end() && axis[a] == *cur) {
         cur++;
         merge_repeat *= repeat[a];
+        if (cur == original.end()) {
+          new_axis.push_back(merged_axis_id);
+          new_repeat.push_back(merge_repeat);
+          new_strides.push_back(strides[a]);
+        }
       } else {
-        new_axis.push_back(a);
-      }
-
-      if (cur == original.end()) {
-        new_axis.push_back(merged_axis_id);
-        new_repeat.push_back(merge_repeat);
+        new_axis.push_back(axis[a]);
+        new_repeat.push_back(repeat[a]);
         new_strides.push_back(strides[a]);
       }
     }
@@ -406,7 +414,7 @@ void Graph::ApplyMerge(NodeView &node, AxisId merged_axis_id, const std::vector<
 }
 
 void Graph::ApplyMerge(NodeView &node, AxisId merged_axis_id) {
-  if (merged_axis_id > this->axis.Size()) {
+  if (merged_axis_id >= this->axis.Size()) {
     throw std::runtime_error("Merged axis id invalid.");
   }
 
