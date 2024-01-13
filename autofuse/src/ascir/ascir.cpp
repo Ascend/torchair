@@ -413,7 +413,7 @@ void Graph::ApplyReorder(NodeView &node, const std::vector<AxisId> &reordered_ax
       }
 
       auto pos = std::distance(output_axis.begin(), it);
-      new_axis.push_back(pos);
+      new_axis.push_back(output_axis[pos]);
       new_repeat.push_back(output.repeats()[pos]);
       new_strides.push_back(output.strides()[pos]);
     }
