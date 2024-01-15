@@ -403,6 +403,17 @@ class NpuInductorKernel:
         self.kernel(*aclnn_args, sym_vals=CSymVals(num=c_size_t(len(sym_vals)), vals=vals))
 
 
+class DummyNpuInductorKernel:
+    index = 0
+
+    def __init__(self):
+        self.name = f"DummyNpuInductorKernel{DummyNpuInductorKernel.index}"
+        DummyNpuInductorKernel.index += 1
+
+    def __call__(self, *args: torch.Tensor, sym_vals):
+        print(f"{self.name}({', '.join([str(v) for v in args])}, sym_vals={sym_vals})", flush=True)
+
+
 _compile_cache = dict()
 
 
@@ -417,5 +428,7 @@ def _compile(src: OpCode):
 
 
 def compile(src: OpCode):
+    if os.environ.get('ASCIR_NOT_READY', None) == "1":
+        return DummyNpuInductorKernel()
     kernel = _compile_cache.get(src.proto.name) or _compile(src)
     return kernel

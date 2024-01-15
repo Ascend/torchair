@@ -8,6 +8,8 @@ from npu_extension_for_inductor.npu import NPUKernel
 import torch
 from torch._inductor.virtualized import V
 
+os.environ['ASCIR_NOT_READY'] = '1'
+
 
 @contextlib.contextmanager
 def disable_npu_fallback(disable=True):
@@ -47,8 +49,6 @@ class KernelCapture:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         V.set_kernel_handler = self.origin
-        print(f"Capture message:\n{exc_val}", flush=True)
-        return True
 
 
 class BuildGraphTest(unittest.TestCase):
@@ -60,6 +60,18 @@ class BuildGraphTest(unittest.TestCase):
             if actual[i] != expect[i]:
                 self.assertEqual(actual[i].replace('TrueDiv', 'Div').replace('truediv', 'div'),
                                  expect[i].replace('TrueDiv', 'Div').replace('truediv', 'div'))
+
+    def test_recompile_kernel_graph(self):
+        @torch.compile(dynamic=True)
+        def test_abs(x):
+            x = torch.abs(x)
+            return x
+
+        with KernelCapture() as kernel_capture:
+            test_abs(torch.ones(6, dtype=torch.float16))
+            test_abs(torch.ones(2, 4, dtype=torch.float16))
+
+        self.assertEqual(len(kernel_capture.kernels), 2)
 
     def test_abs_graph(self):
         @torch.compile(dynamic=True)

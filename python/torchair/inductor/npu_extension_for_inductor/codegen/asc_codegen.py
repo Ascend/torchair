@@ -8,7 +8,7 @@ def codegen_stub(*args, **kwargs):
     # 在这里粘贴@liqiduan准备的stub代码
     # 在这里粘贴@liqiduan准备的stub代码
 
-    return OpCode(test_op_proto, test_op_tiling, test_op_host_code, test_op_device_code)
+    return None
 
 
 def codegen(graph):
