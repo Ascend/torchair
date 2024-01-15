@@ -802,11 +802,44 @@ ApiCall::ApiCall(const ascir::NodeView &node) {
   }
 }
 
+std::string UnaryApicall(std::string unaryname, const TPipe &tpipe, const std::vector<ascir::AxisId> &current_axis,
+                         const std::vector<std::reference_wrapper<const Tensor>> &inputs,
+                         const std::vector<std::reference_wrapper<const Tensor>> &outputs) {
+    auto x = inputs[0].get();
+    auto y = outputs[0].get();
+    stringstream ss;
+    ss << unaryname << "(" << y << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, y) << "], " << x << "["
+       << tpipe.tiler.TensorVectorizedOffset(current_axis, x) << "], " << x.size << ");" << std::endl;
+    return ss.str();
+}
+
+std::string BinaryApicall(std::string binaryname, const TPipe &tpipe, const std::vector<ascir::AxisId> &current_axis,
+                          const std::vector<std::reference_wrapper<const Tensor>> &inputs,
+                          const std::vector<std::reference_wrapper<const Tensor>> &outputs) {
+    auto x1 = inputs[0].get();
+    auto x2 = inputs[1].get();
+    auto y = outputs[0].get();
+    stringstream ss;
+    ss << binaryname << "(" << y << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, y) << "], "
+       << x1 << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, x1) << "], "
+       << x2 << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, x2) << "], "
+       << x1.size << ");" << std::endl;
+    return ss.str();
+}
+
 std::string ApiCall::Generate(const TPipe &tpipe, const std::vector<ascir::AxisId> &current_axis,
                               const std::vector<std::reference_wrapper<const Tensor>> &inputs,
                               const std::vector<std::reference_wrapper<const Tensor>> &outputs) const {
   stringstream ss;
-
+  using Funcptr = std::function<std::string(std::string, const TPipe&, const std::vector<ascir::AxisId>&,
+                                            const std::vector<std::reference_wrapper<const Tensor>>&,
+                                            const std::vector<std::reference_wrapper<const Tensor>>&)>;
+  map<std::string, pair<std::string, Funcptr>> type2apicall = {
+          {Abs::Type, {"Abs", UnaryApicall}},
+          {Exp::Type, {"Exp", UnaryApicall}},
+          {Div::Type, {"Div", BinaryApicall}},
+          {Sub::Type, {"Sub", BinaryApicall}},
+  };
   if (this->type == Load::Type) {
     auto gm = inputs[0].get();
     auto ub = outputs[0].get();
@@ -817,15 +850,14 @@ std::string ApiCall::Generate(const TPipe &tpipe, const std::vector<ascir::AxisI
     auto ub = inputs[0].get();
     ss << "DataCopy(" << gm << "[" << tpipe.tiler.Offset(current_axis, ub.axis, ub.axis_strides) << "], " << ub << "["
        << tpipe.tiler.TensorVectorizedOffset(current_axis, ub) << "], " << ub.size << ");" << std::endl;
-  } else if (this->type == Abs::Type) {
-    auto x = inputs[0].get();
-    auto y = outputs[0].get();
-    ss << "Abs(" << y << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, y) << "], " << x << "["
-       << tpipe.tiler.TensorVectorizedOffset(current_axis, x) << "], " << x.size << ");" << std::endl;
   } else {
-    throw std::runtime_error("Unsupported API call: " + this->type);
+    auto it = type2apicall.find(this->type);
+    if (it == type2apicall.end()) {
+      throw std::runtime_error("Unsupported API call: " + this->type);
+    }
+    auto& [api_name, func] = it->second;
+    ss << func(api_name, tpipe, current_axis, inputs, outputs);
   }
-
   return ss.str();
 }
 

@@ -1,5 +1,4 @@
 #include "e2e_load_abs_store.h"
-
 #include "gtest/gtest.h"
 #include "nlohmann/json.hpp"
 

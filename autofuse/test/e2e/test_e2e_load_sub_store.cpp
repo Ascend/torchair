@@ -1,0 +1,146 @@
+#include "e2e_load_sub_store.h"
+#include "gtest/gtest.h"
+#include "nlohmann/json.hpp"
+
+#include "ascir_utils.h"
+#include "optimize.h"
+#include "codegen.h"
+
+class E2E_LoadSubStore : public ::testing::Test {
+protected:
+    optimize::Optimizer optimizer;
+    codegen::Codegen codegen;
+
+    E2E_LoadSubStore() : optimizer(optimize::OptimizerOptions{}), codegen(codegen::CodegenOptions{}) {}
+};
+
+TEST_F(E2E_LoadSubStore, Sub_Codegen_Kernel)
+{   ascir::HintGraph test_graph("test_graph");
+    LoadSubStore_BeforeAutofuse(test_graph);
+    LoadSubStore_AfterInferOutput(test_graph);
+
+    std::vector<ascir::ImplGraph> test_impl_graphs = {ascir::ImplGraph("load_exp_store")};
+    test_impl_graphs[0].CopyFrom(test_graph);
+    LoadSubStore_AfterGetApiInfo(test_impl_graphs[0]);
+    LoadSubStore_AfterScheduler(test_impl_graphs[0]);
+    LoadSubStore_AfterQueBufAlloc(test_impl_graphs[0]);
+
+    auto kernel_code = codegen.GenerateKernel(test_graph, test_impl_graphs);
+    std::cout<<"+++++++++sub++++++++++++++"<<std::endl;
+    std::cout << kernel_code << std::endl;
+    std::cout<<"+++++++++++++++++++++++"<<std::endl;
+    EXPECT_EQ(kernel_code, std::string{
+            "#ifdef __CCE_KT_TEST__\n"
+            "#include \"tikicpulib.h\"\n"
+            "#include \"test_graph_tiling.h\"\n"
+            "#define GET_TILING_DATA(tiling_data, tiling) \\\n"
+            "    optiling::TilingData& tiling_data = *(optiling::TilingData*)(tiling);\n"
+            "#endif\n"
+            "\n"
+            "#include \"kernel_operator.h\"\n"
+            "\n"
+            "using namespace AscendC;\n"
+            "\n"
+            "namespace utils {\n"
+            "template <typename T>\n"
+            "constexpr inline __aicore__ T Max(const T a) {\n"
+            "  return a;\n"
+            "}\n"
+            "\n"
+            "template <typename T, typename... Ts>\n"
+            "constexpr inline __aicore__ T Max(const T a, const Ts... ts) {\n"
+            "  return a > Max(ts...) ? a : Max(ts...);\n"
+            "}\n"
+            "\n"
+            "template <typename T, typename... Ts>\n"
+            "constexpr inline __aicore__ T Sum(const T a, const Ts... ts) {\n"
+            "  return (a + ... + ts);\n"
+            "}\n"
+            "}\n"
+            "\n"
+            "extern \"C\" __global__ __aicore__ void test_graph(GM_ADDR x1, GM_ADDR x2, GM_ADDR y, GM_ADDR workspace, GM_ADDR tiling) {\n"
+            "GET_TILING_DATA(t, tiling);\n"
+            "\n"
+            "int block_dim = GetBlockIdx();\n"
+            "const int z0B = block_dim % (t.s0 / t.z0b_size); block_dim /= t.s0 / t.z0b_size;\n"
+            "\n"
+            "GlobalTensor<half> x1_y;\n"
+            "x1_y.SetGlobalBuffer((__gm__ half*)x1);\n"
+            "GlobalTensor<half> x2_y;\n"
+            "x2_y.SetGlobalBuffer((__gm__ half*)x2);\n"
+            "GlobalTensor<half> store_y;\n"
+            "store_y.SetGlobalBuffer((__gm__ half*)y);\n"
+            "\n"
+            "TPipe tpipe;\n"
+            "\n"
+            "const uint32_t load1_y_size = (t.z1t_size - 1) * t.s2 + (t.s2 - 1) + 1;\n"
+            "const uint32_t load1_y_que_depth = 2;\n"
+            "const uint32_t load1_y_que_buf_num = 2;\n"
+            "const uint32_t load2_y_size = (t.z1t_size - 1) * t.s2 + (t.s2 - 1) + 1;\n"
+            "const uint32_t load2_y_que_depth = 2;\n"
+            "const uint32_t load2_y_que_buf_num = 2;\n"
+            "const uint32_t sub_y_size = (t.z1t_size - 1) * t.s2 + (t.s2 - 1) + 1;\n"
+            "const uint32_t sub_y_que_depth = 2;\n"
+            "const uint32_t sub_y_que_buf_num = 2;\n"
+            "\n"
+            "\n"
+            "const uint32_t q0_size = utils::Max(load1_y_size * sizeof(half));\n"
+            "const uint32_t q0_depth = utils::Max(load1_y_que_depth);\n"
+            "const uint32_t q0_buf_num = utils::Max(load1_y_que_buf_num);\n"
+            "TQue<TPosition::VECIN, q0_depth> q0;\n"
+            "tpipe.InitBuffer(q0, q0_buf_num, q0_size);\n"
+            "\n"
+            "const uint32_t q1_size = utils::Max(load2_y_size * sizeof(half));\n"
+            "const uint32_t q1_depth = utils::Max(load2_y_que_depth);\n"
+            "const uint32_t q1_buf_num = utils::Max(load2_y_que_buf_num);\n"
+            "TQue<TPosition::VECIN, q1_depth> q1;\n"
+            "tpipe.InitBuffer(q1, q1_buf_num, q1_size);\n"
+            "\n"
+            "const uint32_t q2_size = utils::Max(sub_y_size * sizeof(half));\n"
+            "const uint32_t q2_depth = utils::Max(sub_y_que_depth);\n"
+            "const uint32_t q2_buf_num = utils::Max(sub_y_que_buf_num);\n"
+            "TQue<TPosition::VECOUT, q2_depth> q2;\n"
+            "tpipe.InitBuffer(q2, q2_buf_num, q2_size);\n"
+            "\n"
+            "\n"
+            "for (int z0b = 0; z0b < t.z0b_size; z0b++) {\n"
+            "for (int z1T = 0; z1T < t.s1 / t.z1t_size; z1T++) {\n"
+            "{\n"
+            "LocalTensor<uint8_t> q0_buf = q0.AllocTensor<uint8_t>();\n"
+            "LocalTensor<uint8_t> q1_buf = q1.AllocTensor<uint8_t>();\n"
+            "LocalTensor<half> load1_y;\n"
+            "load1_y.SetAddrWithOffset(q0_buf, 0);\n"
+            "DataCopy(load1_y[0], x1_y[z0B * (t.s1 * t.s2 * t.z0b_size) + z0b * (t.s1 * t.s2) + z1T * (t.s2 * t.z1t_size)], load1_y_size);\n"
+            "LocalTensor<half> load2_y;\n"
+            "load2_y.SetAddrWithOffset(q1_buf, 0);\n"
+            "DataCopy(load2_y[0], x2_y[z0B * (t.s1 * t.s2 * t.z0b_size) + z0b * (t.s1 * t.s2) + z1T * (t.s2 * t.z1t_size)], load2_y_size);\n"
+            "q0.EnQue(q0_buf);\n"
+            "q1.EnQue(q1_buf);\n"
+            "}\n"
+            "{\n"
+            "LocalTensor<uint8_t> q0_buf = q0.DeQue<uint8_t>();\n"
+            "LocalTensor<uint8_t> q1_buf = q1.DeQue<uint8_t>();\n"
+            "LocalTensor<uint8_t> q2_buf = q2.AllocTensor<uint8_t>();\n"
+            "LocalTensor<half> load1_y;\n"
+            "load1_y.SetAddrWithOffset(q0_buf, 0);\n"
+            "LocalTensor<half> load2_y;\n"
+            "load2_y.SetAddrWithOffset(q1_buf, 0);\n"
+            "LocalTensor<half> sub_y;\n"
+            "sub_y.SetAddrWithOffset(q2_buf, 0);\n"
+            "Sub(sub_y[0], load1_y[0], load2_y[0], load1_y_size);\n"
+            "q2.EnQue(q2_buf);\n"
+            "q0.FreeTensor(q0_buf);\n"
+            "q1.FreeTensor(q1_buf);\n"
+            "}\n"
+            "{\n"
+            "LocalTensor<uint8_t> q2_buf = q2.DeQue<uint8_t>();\n"
+            "LocalTensor<half> sub_y;\n"
+            "sub_y.SetAddrWithOffset(q2_buf, 0);\n"
+            "DataCopy(store_y[z0B * (t.s1 * t.s2 * t.z0b_size) + z0b * (t.s1 * t.s2) + z1T * (t.s2 * t.z1t_size)], sub_y[0], sub_y_size);\n"
+            "q2.FreeTensor(q2_buf);\n"
+            "}\n"
+            "}\n"
+            "}\n"
+            "}\n"
+    });
+}

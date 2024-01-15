@@ -1,0 +1,40 @@
+[
+  {
+    "op": "LoadAbsStore",
+    "language": "cpp",
+    "input_desc": [
+      {
+        "name": "x1",
+        "param_type": "required",
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "fp16"
+        ]
+      },
+      {
+        "name": "x2",
+        "param_type": "required",
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "fp16"
+        ]
+      }
+    ],
+    "output_desc": [
+      {
+        "name": "y",
+        "param_type": "required",
+        "format": [
+          "ND"
+        ],
+        "type": [
+          "fp16"
+        ]
+      }
+    ]
+  }
+]
