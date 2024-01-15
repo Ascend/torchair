@@ -34,6 +34,9 @@ from torchair.ge_concrete_graph.export_config_generete import generate_config
 from torchair.utils.export_utils import make_export_graph, get_export_file_name
 from . import ge_apis as ge
 
+FORMAT_NCHW_INT = 0
+FORMAT_FRACTAL_Z_INT = 4
+
 
 def _mapping_assign_op_to_graph_output(graph: GraphDef):
     net_output: OpDef = None  # 输出节点
@@ -251,8 +254,60 @@ def _update_internal_format_from_inputs(graph: GraphDef, runtime_inputs):
             continue
 
         # attr "format_for_int" in proto::TensorDescriptor will be be deserialized as TensorDesc Format in ge.
-        input_index_mapping_graph_op[idx].output_desc[0].attr["format_for_int"].i = \
-            torch_npu_module.get_npu_format(runtime_inputs[idx])
+        npu_format = torch_npu_module.get_npu_format(runtime_inputs[idx])
+        input_index_mapping_graph_op[idx].output_desc[0].attr["format_for_int"].i = npu_format
+        '''
+           * **********************************************************************************
+           *       ***********    ***********                  *************    *************
+           *       *   Fmap  *    *  Filter *                  *    Fmap   *    *   Filter  *
+           *       *origin:ND*    *origin:ND*                  *origin:NCHW*    *origin:NCHW*
+           *       *layout:ND*    *layout:FZ*                  *layout:NCHW*    *layout:NCHW*
+           *       ***********    ***********                  *************    *************
+           *           \               /                            \               /
+           *      ***************************                  ***************************
+           *      * origin:ND  *  origin:ND *                  *origin:NCHW * origin:NCHW*
+           *      *layout:NCHW * layout:NCHW*                  *layout:NCHW * layout:NCHW*
+           *      ***************************        ===>      ***************************
+           *             *  Conv2D   *                                *  Conv2D   *
+           *             *************                                *************
+           *             * origin:ND *                                *origin:NCHW*
+           *             *layout:NCHW*                                *layout:NCHW*
+           *             *************                                *************
+           *                  |                                             |
+           *              netoutput                                     netoutput
+           *
+           *  Figure 1. Filter's origin is ND. After GE::REfreshOriginFormatOfAnchor processing
+           * ************************************************************************************
+           *       ***********    *************                *************    *************
+           *       *   Fmap  *    *  Filter   *                *    Fmap   *    *   Filter  *
+           *       *origin:ND*    *origin:NCHW*                *origin:NCHW*    *origin:NCHW*
+           *       *layout:ND*    *layout:FZ  *                *layout:NCHW*    *layout:FZ  *
+           *       ***********    *************                *************    *************
+           *           \               /                            \               /
+           *      ***************************                  ***************************
+           *      * origin:ND  *  origin:ND *                  *origin:NCHW * origin:NCHW*
+           *      *layout:NCHW * layout:NCHW*                  *layout:NCHW * layout:NCHW*
+           *      ***************************        ===>      ***************************
+           *             *  Conv2D   *                                *  Conv2D   *
+           *             *************                                *************
+           *             * origin:ND *                                *origin:NCHW*
+           *             *layout:NCHW*                                *layout:NCHW*
+           *             *************                                *************
+           *                  |                                             |
+           *              netoutput                                     netoutput
+           *
+           *  Figure 2. Filter's origin is NCHW. After GE::REfreshOriginFormatOfAnchor processing
+           * ************************************************************************************
+           As shown in Figure 1, when the input of filter node origin_fmt of conv2d is ND, 
+           the operator cannot get the C axis. So, GE can flood storage_fmt NCHW of input1 of 
+           the Conv2d to filter node storage_fmt for Conv2d's constraints. 
+           As a result, filter node storage_fmt FZ changes to NCHW. 
+           
+           Therefore, to enable the internal format FZ of the filter, 
+           you need to specify origin_fmt NCHW of the filter node, as shown in Figure 2.
+        '''
+        if npu_format == FORMAT_FRACTAL_Z_INT:
+            input_index_mapping_graph_op[idx].output_desc[0].attr["origin_format_for_int"].i = FORMAT_NCHW_INT
         logger.debug(f'update the Format of output TensorDesc for input_{idx} '
                     f'to Format {torch_npu_module.get_npu_format(runtime_inputs[idx])}')
 
