@@ -343,12 +343,12 @@ class _GraphRngState:
 
 
     def get_idx_and_offset(self):
-        return self._feed_index, self._offsets
+        return self._offsets.node.attr["index"].i, self._offsets
 
     def consume(self):
         offset = self._gen.get_offset()
         self._gen.set_offset(offset + self._offset_count)
-        return self._feed_index, torch.tensor(self._offset_lists) + offset
+        return self._offsets.node.attr["index"].i, torch.tensor(self._offset_lists) + offset
 
     def next(self, philox_num: int = -1):
         self._unpack_offset.output_desc.add().name = "y" + str(self._consumed)
