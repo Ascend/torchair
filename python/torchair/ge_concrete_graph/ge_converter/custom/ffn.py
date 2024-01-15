@@ -51,7 +51,8 @@ def conveter_npu_npu_ffn(
     antiquant_scale2: Optional[Tensor] = None,
     antiquant_offset1: Optional[Tensor] = None,
     antiquant_offset2: Optional[Tensor] = None,
-    inner_precise: Optional[int] = 0
+    inner_precise: Optional[int] = 0,
+    meta_outputs: TensorSpec = None
 ):
     """NB: npu::npu_ffn(Tensor x, Tensor weight1, Tensor weight2, str activation, *, int[]? expert_tokens=None,
                         Tensor? bias1=None, Tensor? bias2=None, Tensor? scale=None, Tensor? offset=None,
