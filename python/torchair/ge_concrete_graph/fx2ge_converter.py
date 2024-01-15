@@ -14,6 +14,7 @@ import torch
 from torch.fx.node import Argument, Target
 from torch import Tensor
 from torch._subclasses.fake_tensor import FakeTensor, is_fake
+from torch._ops import OpOverload, OpOverloadPacket
 import torch.utils._pytree as pytree
 
 from torchair.configs.compiler_config import CompilerConfig
@@ -84,6 +85,43 @@ def _mapping_assign_op_to_graph_output(graph: GraphDef):
 
 _CONVERTERS = defaultdict(lambda: None)
 _DECLARED_SUPPORTED_CONVERTERS = defaultdict(lambda: None)
+_CHECKPOINT_MAP_FUNC = dict()
+
+
+def _add_op_to_checkpoint_map(op, fn):
+    if isinstance(op, (list, tuple)):
+        for each in op:
+            _add_op_to_checkpoint_map(each, fn)
+        return
+
+    overloads = []
+    if isinstance(op, OpOverload):
+        overloads.append(op)
+    else:
+        assert isinstance(op, OpOverloadPacket)
+        for ol in op.overloads():
+            overloads.append(getattr(op, ol))
+
+    for op_overload in overloads:
+        if op_overload in _CHECKPOINT_MAP_FUNC:
+            raise RuntimeError(f"duplicate registrations for checkpoint map func {op}")
+        _CHECKPOINT_MAP_FUNC[op] = fn
+    return
+
+
+def register_checkpoint_func(ops):
+    def checkpoint_decorator(fn: Callable):
+        _add_op_to_checkpoint_map(ops, fn)
+        return fn
+
+    return checkpoint_decorator
+
+
+def get_checkpoint_func(op: OpOverload):
+    if op not in _CHECKPOINT_MAP_FUNC.keys():
+        raise RuntimeError(f"Target op {op} not registered in _CHECKPOINT_MAP_FUNC.",
+            "Maybe you should check if using unsupported rng ops in torch.utils.checkpoint.checkpoint.")
+    return _CHECKPOINT_MAP_FUNC[op]
 
 
 def _get_converter(name: Callable):
