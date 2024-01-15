@@ -20453,7 +20453,7 @@ def IncreFlashAttention(query: Tensor,
 def PromptFlashAttention(query: Tensor,
                          key: Tensor,
                          value: Tensor,
-                         padding_mask: Optional[Tensor],
+                         pse_shift: Optional[Tensor],
                          atten_mask: Optional[Tensor],
                          actual_seq_lengths: Optional[Tensor],
                          actual_seq_lengths_kv: Optional[Tensor],
@@ -20476,7 +20476,7 @@ def PromptFlashAttention(query: Tensor,
     .INPUT(query, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16, DT_INT8, DT_INT8}))\n
     .INPUT(key, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16, DT_INT8, DT_INT8}))\n
     .INPUT(value, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16, DT_INT8, DT_INT8}))\n
-    .OPTIONAL_INPUT(padding_mask, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16, DT_FLOAT16, DT_FLOAT16}))\n
+    .OPTIONAL_INPUT(pse_shift, TensorType({DT_FLOAT16, DT_FLOAT32}))\n
     .OPTIONAL_INPUT(atten_mask, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BOOL, DT_BOOL, DT_BOOL}))\n
     .OPTIONAL_INPUT(actual_seq_lengths, TensorType({DT_INT64}))\n
     .OPTIONAL_INPUT(actual_seq_lengths_kv, TensorType({DT_INT64}))\n
@@ -20514,14 +20514,14 @@ def PromptFlashAttention(query: Tensor,
     op.input.append(value.tensor)
     op.input_desc.add().CopyFrom(value.desc)
     op.input_desc[-1].name = "value"
-    if padding_mask is not None:
-        op.input.append(padding_mask.tensor)
-        op.input_desc.add().CopyFrom(padding_mask.desc)
-        op.input_desc[-1].name = "padding_mask"
+    if pse_shift is not None:
+        op.input.append(pse_shift.tensor)
+        op.input_desc.add().CopyFrom(pse_shift.desc)
+        op.input_desc[-1].name = "pse_shift"
     else:
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "padding_mask"
+        op.input_desc[-1].name = "pse_shift"
     if atten_mask is not None:
         op.input.append(atten_mask.tensor)
         op.input_desc.add().CopyFrom(atten_mask.desc)
