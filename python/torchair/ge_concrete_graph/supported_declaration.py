@@ -28,6 +28,11 @@ class F16(_TypedTensor):
         super().__init__(*dims, dtype=torch.float16)
 
 
+class BF16(_TypedTensor):
+    def __init__(self, *dims):
+        super().__init__(*dims, dtype=torch.bfloat16)
+
+
 class F64(_TypedTensor):
     def __init__(self, *dims):
         super().__init__(*dims, dtype=torch.float64)
