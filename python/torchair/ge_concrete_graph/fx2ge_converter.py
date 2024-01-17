@@ -472,7 +472,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         _update_internal_format_from_inputs(self.graph, runtime_inputs)
 
         if self.config.debug.graph_dump.enabled:
-            self.dump(f'dynamo_optimized_graph_{datetime.now().strftime("%Y%m%d%H%M%S%f")}.pbtxt')
+            self.dump(self.config.debug.graph_dump.full_path("dynamo_optimized_graph"))
         self._executor.load(self.graph.SerializeToString(), local_compile_options)
 
     def compile(self) -> Any:

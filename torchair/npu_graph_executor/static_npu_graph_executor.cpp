@@ -73,12 +73,16 @@ Status StaticNpuGraphExecutor::AssembleOutputs(const std::vector<c10::optional<a
     TNG_ASSERT_GE_OK(graph_data_->summary->GetOutputShapes(output_shapes_));
     TNG_ASSERT_EQ(output_shapes_.size(), output_ge_dtypes.size());
     outputs_holder_.resize(output_shapes_.size());
+    output_options_.resize(output_shapes_.size());
 
+    TNG_ASSERT(assigned_outputs.empty() || assigned_outputs.size() == output_shapes_.size());
     for (size_t i = 0U; i < output_ge_dtypes.size(); ++i) {
-      c10::ScalarType output_i_torch_dtype;
-      GeDtypeToAtDtype(output_ge_dtypes[i], output_i_torch_dtype);
-      at::TensorOptions option = at::TensorOptions().dtype(output_i_torch_dtype).device(at::kPrivateUse1);
-      output_options_.push_back(option);
+      if (assigned_outputs.empty() || !assigned_outputs[i].has_value()) {
+        c10::ScalarType output_i_torch_dtype = c10::ScalarType::Float;
+        TNG_RETURN_IF_ERROR(GeDtypeToAtDtype(output_ge_dtypes[i], output_i_torch_dtype));
+        at::TensorOptions option = at::TensorOptions().dtype(output_i_torch_dtype).device(at::kPrivateUse1);
+        output_options_[i] = option;
+      }
     }
   }
 
