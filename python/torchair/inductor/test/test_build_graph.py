@@ -53,8 +53,15 @@ class KernelCapture:
 
 class BuildGraphTest(unittest.TestCase):
     def assert_graph_equal(self, actual, expect):
-        actual = [line.strip() for line in actual.split('\n') if line.strip()]
-        expect = [line.strip() for line in expect.split('\n') if line.strip()]
+        def str_to_graph_lines(s: str):
+            lines = [line.strip() for line in s.split('\n') if line.strip()]
+            for start, line in enumerate(lines):
+                if "ascir.HintGraph" in line:
+                    return lines[start:]
+            assert False, "Can't find graph definition"
+
+        actual = str_to_graph_lines(actual)
+        expect = str_to_graph_lines(expect)
         self.assertEqual(len(actual), len(expect))
         for i in range(len(actual)):
             if actual[i] != expect[i]:
@@ -98,6 +105,7 @@ class BuildGraphTest(unittest.TestCase):
                 size_vars = ascir.ops.Data('size_vars')
                 size_vars.attr.sched.exec_order = 0
                 size_vars.attr.sched.axis = []
+                size_vars.y.dtype = ascir.dtypes.float32
                 size_vars.y.size = [ascir.SizeExpr([s0]), ascir.SizeExpr([s1])]
                 arg2_1 = ascir.ops.Data('arg2_1')
                 arg2_1.attr.sched.exec_order = 1
@@ -110,6 +118,7 @@ class BuildGraphTest(unittest.TestCase):
                 load.attr.sched.exec_order = 2
                 load.attr.sched.axis = [z0]
                 load.x = arg2_1.y
+                load.y.dtype = ascir.dtypes.float16
                 load.y.axis = [z0]
                 load.y.strides = [ascir.SizeExpr([])]
                 load.y.size = [ascir.SizeExpr([s0,s1])]
@@ -117,6 +126,7 @@ class BuildGraphTest(unittest.TestCase):
                 abs.attr.sched.exec_order = 3
                 abs.attr.sched.axis = [z0]
                 abs.x = load.y
+                abs.y.dtype = ascir.dtypes.float16
                 abs.y.axis = [z0]
                 abs.y.strides = [ascir.SizeExpr([])]
                 abs.y.size = [ascir.SizeExpr([s0,s1])]
@@ -124,6 +134,7 @@ class BuildGraphTest(unittest.TestCase):
                 store.attr.sched.exec_order = 4
                 store.attr.sched.axis = [z0]
                 store.x = abs.y
+                store.y.dtype = ascir.dtypes.float16
                 store.y.axis = [z0]
                 store.y.strides = [ascir.SizeExpr([])]
                 store.y.size = [ascir.SizeExpr([s0,s1])]
@@ -166,6 +177,7 @@ class BuildGraphTest(unittest.TestCase):
                 size_vars = ascir.ops.Data('size_vars')
                 size_vars.attr.sched.exec_order = 0
                 size_vars.attr.sched.axis = []
+                size_vars.y.dtype = ascir.dtypes.float32
                 size_vars.y.size = [ascir.SizeExpr([s0]), ascir.SizeExpr([s1]), ascir.SizeExpr([s2])]
                 arg3_1 = ascir.ops.Data('arg3_1')
                 arg3_1.attr.sched.exec_order = 1
@@ -178,6 +190,7 @@ class BuildGraphTest(unittest.TestCase):
                 load.attr.sched.exec_order = 2
                 load.attr.sched.axis = [z0, z1]
                 load.x = arg3_1.y
+                load.y.dtype = ascir.dtypes.float16
                 load.y.axis = [z0, z1]
                 load.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 load.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
@@ -186,6 +199,7 @@ class BuildGraphTest(unittest.TestCase):
                 cast.attr.sched.axis = [z0, z1]
                 cast.x = load.y
                 cast.dst_type = ascir.dtypes.float32
+                cast.y.dtype = ascir.dtypes.float32
                 cast.y.axis = [z0, z1]
                 cast.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 cast.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
@@ -194,6 +208,7 @@ class BuildGraphTest(unittest.TestCase):
                 max.attr.sched.axis = [z0, z1]
                 max.x = cast.y
                 max.attr.hint.compute_type = 'reduce'
+                max.y.dtype = ascir.dtypes.float32
                 max.y.axis = [z0, z1]
                 max.y.strides = [ascir.SizeExpr([]), ascir.SizeExpr([0])]
                 max.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([])]
@@ -201,6 +216,7 @@ class BuildGraphTest(unittest.TestCase):
                 store.attr.sched.exec_order = 5
                 store.attr.sched.axis = [z0, z1]
                 store.x = max.y
+                store.y.dtype = ascir.dtypes.float32
                 store.y.axis = [z0, z1]
                 store.y.strides = [ascir.SizeExpr([]), ascir.SizeExpr([0])]
                 store.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([])]
@@ -216,6 +232,7 @@ class BuildGraphTest(unittest.TestCase):
                 load1.attr.sched.exec_order = 7
                 load1.attr.sched.axis = [z0, z1]
                 load1.x = arg3_1.y
+                load1.y.dtype = ascir.dtypes.float16
                 load1.y.axis = [z0, z1]
                 load1.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 load1.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
@@ -224,6 +241,7 @@ class BuildGraphTest(unittest.TestCase):
                 cast1.attr.sched.axis = [z0, z1]
                 cast1.x = load1.y
                 cast1.dst_type = ascir.dtypes.float32
+                cast1.y.dtype = ascir.dtypes.float32
                 cast1.y.axis = [z0, z1]
                 cast1.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 cast1.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
@@ -231,6 +249,7 @@ class BuildGraphTest(unittest.TestCase):
                 load2.attr.sched.exec_order = 9
                 load2.attr.sched.axis = [z0, z1]
                 load2.x = buf0.y
+                load2.y.dtype = ascir.dtypes.float32
                 load2.y.axis = [z0, z1]
                 load2.y.strides = [ascir.SizeExpr([]), ascir.SizeExpr([0])]
                 load2.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([])]
@@ -238,6 +257,7 @@ class BuildGraphTest(unittest.TestCase):
                 broadcast.attr.sched.exec_order = 10
                 broadcast.attr.sched.axis = [z0, z1]
                 broadcast.x = load2.y
+                broadcast.y.dtype = ascir.dtypes.float32
                 broadcast.y.axis = [z0, z1]
                 broadcast.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 broadcast.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
@@ -246,6 +266,7 @@ class BuildGraphTest(unittest.TestCase):
                 sub.attr.sched.axis = [z0, z1]
                 sub.x1 = cast1.y
                 sub.x2 = broadcast.y
+                sub.y.dtype = ascir.dtypes.float32
                 sub.y.axis = [z0, z1]
                 sub.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 sub.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
@@ -253,6 +274,7 @@ class BuildGraphTest(unittest.TestCase):
                 exp.attr.sched.exec_order = 12
                 exp.attr.sched.axis = [z0, z1]
                 exp.x = sub.y
+                exp.y.dtype = ascir.dtypes.float32
                 exp.y.axis = [z0, z1]
                 exp.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 exp.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
@@ -260,6 +282,7 @@ class BuildGraphTest(unittest.TestCase):
                 store1.attr.sched.exec_order = 13
                 store1.attr.sched.axis = [z0, z1]
                 store1.x = exp.y
+                store1.y.dtype = ascir.dtypes.float32
                 store1.y.axis = [z0, z1]
                 store1.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 store1.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
@@ -275,6 +298,7 @@ class BuildGraphTest(unittest.TestCase):
                 load3.attr.sched.exec_order = 15
                 load3.attr.sched.axis = [z0, z1]
                 load3.x = buf1.y
+                load3.y.dtype = ascir.dtypes.float32
                 load3.y.axis = [z0, z1]
                 load3.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 load3.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
@@ -283,6 +307,7 @@ class BuildGraphTest(unittest.TestCase):
                 sum.attr.sched.axis = [z0, z1]
                 sum.x = load3.y
                 sum.attr.hint.compute_type = 'reduce'
+                sum.y.dtype = ascir.dtypes.float32
                 sum.y.axis = [z0, z1]
                 sum.y.strides = [ascir.SizeExpr([]), ascir.SizeExpr([0])]
                 sum.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([])]
@@ -290,6 +315,7 @@ class BuildGraphTest(unittest.TestCase):
                 store2.attr.sched.exec_order = 17
                 store2.attr.sched.axis = [z0, z1]
                 store2.x = sum.y
+                store2.y.dtype = ascir.dtypes.float32
                 store2.y.axis = [z0, z1]
                 store2.y.strides = [ascir.SizeExpr([]), ascir.SizeExpr([0])]
                 store2.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([])]
@@ -305,6 +331,7 @@ class BuildGraphTest(unittest.TestCase):
                 load4.attr.sched.exec_order = 19
                 load4.attr.sched.axis = [z0, z1]
                 load4.x = buf1.y
+                load4.y.dtype = ascir.dtypes.float32
                 load4.y.axis = [z0, z1]
                 load4.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 load4.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
@@ -312,6 +339,7 @@ class BuildGraphTest(unittest.TestCase):
                 load5.attr.sched.exec_order = 20
                 load5.attr.sched.axis = [z0, z1]
                 load5.x = buf2.y
+                load5.y.dtype = ascir.dtypes.float32
                 load5.y.axis = [z0, z1]
                 load5.y.strides = [ascir.SizeExpr([]), ascir.SizeExpr([0])]
                 load5.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([])]
@@ -319,6 +347,7 @@ class BuildGraphTest(unittest.TestCase):
                 broadcast1.attr.sched.exec_order = 21
                 broadcast1.attr.sched.axis = [z0, z1]
                 broadcast1.x = load5.y
+                broadcast1.y.dtype = ascir.dtypes.float32
                 broadcast1.y.axis = [z0, z1]
                 broadcast1.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 broadcast1.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
@@ -327,6 +356,7 @@ class BuildGraphTest(unittest.TestCase):
                 truediv.attr.sched.axis = [z0, z1]
                 truediv.x1 = load4.y
                 truediv.x2 = broadcast1.y
+                truediv.y.dtype = ascir.dtypes.float32
                 truediv.y.axis = [z0, z1]
                 truediv.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 truediv.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
@@ -335,6 +365,7 @@ class BuildGraphTest(unittest.TestCase):
                 cast2.attr.sched.axis = [z0, z1]
                 cast2.x = truediv.y
                 cast2.dst_type = ascir.dtypes.float16
+                cast2.y.dtype = ascir.dtypes.float16
                 cast2.y.axis = [z0, z1]
                 cast2.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 cast2.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
@@ -342,6 +373,7 @@ class BuildGraphTest(unittest.TestCase):
                 store3.attr.sched.exec_order = 24
                 store3.attr.sched.axis = [z0, z1]
                 store3.x = cast2.y
+                store3.y.dtype = ascir.dtypes.float16
                 store3.y.axis = [z0, z1]
                 store3.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 store3.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
@@ -351,7 +383,6 @@ class BuildGraphTest(unittest.TestCase):
                 buf3.y.size = [ascir.SizeExpr([]), ascir.SizeExpr([s0]), ascir.SizeExpr([s1]), ascir.SizeExpr([s2])]
                 buf3.y.dtype = ascir.dtypes.float16
                 buf3.x = store3.y
-            
                 NpuKernel0Graph.set_inputs([size_vars, arg3_1])
                 NpuKernel0Graph.set_outputs([buf3])
                 return NpuKernel0Graph""")

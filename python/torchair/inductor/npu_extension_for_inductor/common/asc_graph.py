@@ -2,8 +2,9 @@ from collections import defaultdict
 from typing import Dict, List, Set
 
 import sympy
+import torch
 from npu_extension_for_inductor.common.symbols import Loop, AscExpr
-from npu_extension_for_inductor.common.utils import StrRep
+from npu_extension_for_inductor.common.utils import StrRep, TypeUtils
 from npu_extension_for_inductor.ir import _Op, _Tensor
 from torch._inductor.utils import IndentedBuffer
 
@@ -20,6 +21,7 @@ class ASCGraph:
         self.ops: List[_Op] = []
         self.unsupported_ops: Set[str] = set()
         self.size_vars_holder = self.add_op("Data", name="size_vars")
+        self.size_vars_holder.y.dtype = TypeUtils.torch_to_asc(torch.float32)
         self.inputs.append("size_vars")
 
     @property
@@ -76,10 +78,12 @@ class ASCGraph:
             graph.splice("""
             import os
             if os.getenv('ASCIR_NOT_READY', None) == "1":
-                return None
+                from npu_extension_for_inductor.common.revert_ascir import RevertAscir
+                ascir = RevertAscir()
+            else:
+                from pyautofuse import ascir
             """)  # TODO: remove this once ascir ready
             # Head graph define
-            graph.writeline("from pyautofuse import ascir")
             graph.writeline(f"{self.name} = ascir.HintGraph('{self.name}')")
             # Size var and axis
             self.size_vars = sorted(list(self.size_vars))

@@ -1,7 +1,6 @@
 import ctypes
 import os
 import json
-import re
 import itertools
 import tempfile
 from _ctypes import Structure, byref
@@ -11,12 +10,7 @@ import subprocess
 import torch
 from torch._inductor.codegen.common import IndentedBuffer
 from npu_extension_for_inductor.common.op_code import OpCode, OpProto
-from npu_extension_for_inductor.common.utils import TypeUtils
-
-
-def _camel_to_snake(name):
-    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+from npu_extension_for_inductor.common.utils import TypeUtils, camel_to_snake
 
 
 def debug(func):
@@ -161,7 +155,7 @@ struct Tensor {
 class AclnnKernelBin:
     def __init__(self, proto: OpProto):
         self.name = proto.name
-        self.lib_file = f'{_camel_to_snake(self.name)}.so'
+        self.lib_file = f'{camel_to_snake(self.name)}.so'
 
         self.header_file = None
         self.inputs = [TensorArg(v.name) for v in proto.inputs if v.name != "size_vars"]
@@ -202,7 +196,7 @@ class AclnnKernelBin:
     def compile(self, *, cwd, compile_flags):
         wrapper = IndentedBuffer()
         wrapper.writeline(f'#include "acl/acl.h"')
-        wrapper.writeline(f'#include "aclnn_{_camel_to_snake(self.name)}.h"')
+        wrapper.writeline(f'#include "aclnn_{camel_to_snake(self.name)}.h"')
         wrapper.writeline(f'#include <iostream>')
         wrapper.writeline(f'#include <sstream>')
         wrapper.writeline(f'#include <vector>')
@@ -323,7 +317,7 @@ class AclnnPrj:
     def create(self, *, core_type):
         os.makedirs(self.root, exist_ok=True)
         op_name = self.proto.name
-        op_name_snake = _camel_to_snake(op_name)
+        op_name_snake = camel_to_snake(op_name)
         config_path = os.path.join(self.root, f"{op_name}.json")
         with open(config_path, 'w') as f:
             f.write("[")
@@ -404,11 +398,8 @@ class NpuInductorKernel:
 
 
 class DummyNpuInductorKernel:
-    index = 0
-
-    def __init__(self):
-        self.name = f"DummyNpuInductorKernel{DummyNpuInductorKernel.index}"
-        DummyNpuInductorKernel.index += 1
+    def __init__(self, name):
+        self.name = f"ACLNN_{name}"
 
     def __call__(self, *args: torch.Tensor, sym_vals):
         print(f"{self.name}({', '.join([str(v) for v in args])}, sym_vals={sym_vals})", flush=True)
@@ -417,7 +408,19 @@ class DummyNpuInductorKernel:
 _compile_cache = dict()
 
 
+def _compiler_validate():
+    try:
+        subprocess.run(["msopgen", "-h"], check=True)
+        return True
+    except FileNotFoundError:
+        return False
+
+
 def _compile(src: OpCode):
+    if os.environ.get('ASCIR_NOT_READY', None) == "1" and not _compiler_validate():
+        kernel = DummyNpuInductorKernel(src.proto.name)
+        _compile_cache[src.proto.name] = kernel
+        return kernel
     prj = AclnnPrj(tempfile.mkdtemp(), src)
     core_type = os.getenv("NPU_CORE_TYPE", "ai_core-ascend910B1")
     prj.create(core_type=core_type)
@@ -428,7 +431,5 @@ def _compile(src: OpCode):
 
 
 def compile(src: OpCode):
-    if os.environ.get('ASCIR_NOT_READY', None) == "1":
-        return DummyNpuInductorKernel()
     kernel = _compile_cache.get(src.proto.name) or _compile(src)
     return kernel

@@ -1,3 +1,4 @@
+import re
 from enum import Enum
 from collections import namedtuple
 import torch
@@ -80,3 +81,8 @@ class TypeUtils:
             return dtype
         type_str = str(dtype).split('torch.')[-1]
         return StrRep(f"ascir.dtypes.{type_str}", type_str)
+
+
+def camel_to_snake(name):
+    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()

@@ -1,14 +1,11 @@
-import json
 import os
+
 from npu_extension_for_inductor.common.op_code import OpCode, OpProto
+from npu_extension_for_inductor.common.revert_ascir import HintGraph
 
 
-def codegen_stub(*args, **kwargs):
-    # 在这里粘贴@liqiduan准备的stub代码
-    # 在这里粘贴@liqiduan准备的stub代码
-    # 在这里粘贴@liqiduan准备的stub代码
-
-    return None
+def codegen_stub(graph: HintGraph):
+    return graph.codegen()
 
 
 def codegen(graph):

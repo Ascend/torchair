@@ -2,7 +2,9 @@ import functools
 from typing import Iterable
 
 import sympy
+import torch
 from npu_extension_for_inductor.common.symbols import Loop
+from npu_extension_for_inductor.common.utils import TypeUtils
 from torch._inductor.codegen.common import CSEVariable
 from torch._inductor.virtualized import V
 from torch.utils._sympy.value_ranges import ValueRanges
@@ -46,6 +48,7 @@ def unsupported(*args, op_type, **kwargs):
         setattr(op, f"x{i}", arg)
     for k, v in kwargs.items():
         setattr(op, k, v)
+    op.y.dtype = TypeUtils.torch_to_asc(torch.float16)
     return op.y
 
 
@@ -97,6 +100,10 @@ class _Tensor(CSEVariable):
         self.op: _Op = v.parent
         self._v = v
 
+    @property
+    def dtype(self):
+        return self.op.attrs[f'{self.name}.dtype']
+
     def as_loop(self, loop: Loop):
         self._v.axis = loop.asc_axis
         self._v.strides = loop.asc_stride
@@ -125,6 +132,10 @@ class _Op(_Track):
     @property
     def op_type(self):
         return self._op
+
+    @property
+    def order(self):
+        return self.attrs[f'{self.name}.attr.sched.exec_order']
 
     def codegen(self):
         from torch._inductor.utils import IndentedBuffer
