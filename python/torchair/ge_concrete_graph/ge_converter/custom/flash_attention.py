@@ -19,9 +19,10 @@ from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType
 from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
+from torchair.ge_concrete_graph.utils import dtype_promote
 
 
 @declare_supported(
@@ -63,6 +64,10 @@ def convert_npu_npu_prompt_flash_attention(
         raise NotImplementedError("PromptFlashAttention is not implemented while actual_seq_lengths is Tensor!")
     if actual_seq_lengths_kv is not None and isinstance(actual_seq_lengths_kv, Tensor):
         raise NotImplementedError("PromptFlashAttention is not implemented while actual_seq_lengths_kv is Tensor!")
+    if actual_seq_lengths is not None:
+        actual_seq_lengths = dtype_promote(actual_seq_lengths, target_dtype=DataType.DT_INT64)
+    if actual_seq_lengths_kv is not None:
+        actual_seq_lengths_kv = dtype_promote(actual_seq_lengths_kv, target_dtype=DataType.DT_INT64)
 
     return ge.PromptFlashAttention(query, key, value, pse_shift=pse_shift, atten_mask=atten_mask,
         actual_seq_lengths=actual_seq_lengths, actual_seq_lengths_kv=actual_seq_lengths_kv,
@@ -109,6 +114,8 @@ def convert_npu_npu_incre_flash_attention(
     '''NB: npu_incre_flash_attention(Tensor query, Tensor key, Tensor value, *, Tensor? padding_mask=None, Tensor? atten_mask=None, SymInt[]? actual_seq_lengths=None, Tensor? antiquant_scale=None, Tensor? antiquant_offset=None, Tensor? block_table=None, int num_heads=1, float scale_value=1.0, str input_layout="BSH", int num_key_value_heads=0, int block_size=0, int inner_precise=1) -> Tensor'''
     key_list = [key]
     value_list = [value]
+    if actual_seq_lengths is not None:
+        actual_seq_lengths = dtype_promote(actual_seq_lengths, target_dtype=DataType.DT_INT64)
 
     return ge.IncreFlashAttention(query, key_list, value_list, padding_mask=padding_mask, atten_mask=atten_mask,
         actual_seq_lengths=actual_seq_lengths, dequant_scale1=None, quant_scale1=None, dequant_scale2=None,
