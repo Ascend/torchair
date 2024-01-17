@@ -30,11 +30,15 @@ static std::string DtypeToStr(ge::DataType dtype) {
 static std::string ComputeTypeToStr(ascir::ComputeType compute_type) {
   const char *TypeName[] = {
     [ascir::COMPUTE_DATA] = "data",
+    [ascir::COMPUTE_REDUCE_DATA] = "reduce_data",
+    [ascir::COMPUTE_WORKSPACE] = "workspace",
     [ascir::COMPUTE_LOAD] = "load",
     [ascir::COMPUTE_STORE] = "store",
+    [ascir::COMPUTE_REDUCE_STORE] = "reduce_store",
     [ascir::COMPUTE_ELEWISE] = "elewise",
     [ascir::COMPUTE_BROADCAST] = "broadcast",
     [ascir::COMPUTE_REDUCE] = "reduce",
+    [ascir::COMPUTE_TRANPOSE] = "transpose"
   };
 
   if (compute_type >= sizeof(TypeName) / sizeof(TypeName[0])) {

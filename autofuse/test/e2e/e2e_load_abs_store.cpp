@@ -104,26 +104,31 @@ void LoadAbsStore_AfterScheduler(ascir::ImplGraph &graph) {
   auto z2 = graph.axis[2].id;
 
   auto [z1T, z1t] = graph.TileSplit(z1);
-  auto [z0B, z0b] = graph.BlockSplit(z0);
+  std::vector<AxisId> axes{z0, z1T.id};
+  auto block_axis = graph.MergeAxis(axes);
+  auto [z0B, z0b] = graph.BlockSplit(block_axis.id);
   vector<AxisId> vectorized_axis{z1t.id, z2};
 
   // ApplySplit on load, abs, store
   auto load = graph.Find("load");
-  graph.ApplySplit(load, z0B.id, z0b.id, z0);
   graph.ApplySplit(load, z1T.id, z1t.id, z1);
-  load.attr.sched.loop_axis = z1T.id;
+  graph.ApplyMerge(load, block_axis.id);
+  graph.ApplySplit(load, z0B.id, z0b.id, block_axis.id);
+  load.attr.sched.loop_axis = z0b.id;
   load.outputs[0].vectorized_axis = vectorized_axis;
 
   auto abs = graph.Find("abs");
-  graph.ApplySplit(abs, z0B.id, z0b.id, z0);
   graph.ApplySplit(abs, z1T.id, z1t.id, z1);
-  abs.attr.sched.loop_axis = z1T.id;
+  graph.ApplyMerge(abs, block_axis.id);
+  graph.ApplySplit(abs, z0B.id, z0b.id, block_axis.id);
+  abs.attr.sched.loop_axis = z0b.id;
   abs.outputs[0].vectorized_axis = vectorized_axis;
 
   auto store = graph.Find("store");
-  graph.ApplySplit(store, z0B.id, z0b.id, z0);
   graph.ApplySplit(store, z1T.id, z1t.id, z1);
-  store.attr.sched.loop_axis = z1T.id;
+  graph.ApplyMerge(store, block_axis.id);
+  graph.ApplySplit(store, z0B.id, z0b.id, block_axis.id);
+  store.attr.sched.loop_axis = z0b.id;
   store.outputs[0].vectorized_axis = vectorized_axis;
 }
 

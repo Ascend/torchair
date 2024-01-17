@@ -1,6 +1,7 @@
 #ifndef __OPTIMIZE_AUTOSCHEDULE_AUTOSCHEDULE_H__
 #define __OPTIMIZE_AUTOSCHEDULE_AUTOSCHEDULE_H__
 
+#include <bits/stdint-intn.h>
 #include "ascir.h"
 #include <tuple>
 #include <unordered_map>
@@ -74,6 +75,22 @@ public:
   static inline bool IsStore(ascir::NodeView& node_view) {
     return node_view.attr.hint.compute_type == ascir::COMPUTE_STORE;
   }
+
+  static inline bool IsWorkspace(ascir::ComputeType compute_Type) {
+    return compute_Type == ascir::COMPUTE_WORKSPACE;
+  }
+
+  static inline bool IsWorkspace(ascir::NodeView& node_view) {
+    return node_view.attr.hint.compute_type == ascir::COMPUTE_WORKSPACE;
+  }
+
+  static inline bool IsGm(ascir::ComputeType compute_Type) {
+    return IsData(compute_Type) || IsWorkspace(compute_Type);
+  }
+
+  static inline bool IsGm(ascir::NodeView& node_view) {
+    return IsData(node_view) || IsWorkspace(node_view);
+  }
 };
 
 class TilingGroup {
@@ -111,10 +128,11 @@ public:
   void NormGroup();
   bool IsEmpty();
 
-private:
+public:
   std::vector<ascir::AxisId> x_group_;
   std::vector<ascir::AxisId> y_group_;
   std::vector<ascir::AxisId> r_group_;
+  std::vector<int64_t> axes_order_;
 };
 
 typedef struct TilingCase {
@@ -122,6 +140,7 @@ typedef struct TilingCase {
   ascir::AxisId ub_tiling_id_y = -1;
   ascir::AxisId ub_tiling_id_r = -1;
   ascir::AxisId block_tiling_id = -1;
+  bool reduce_is_block = false;
   std::tuple<ascir::Axis, ascir::Axis> ub_tiling_x;
   std::tuple<ascir::Axis, ascir::Axis> ub_tiling_y;
   std::tuple<ascir::Axis, ascir::Axis> ub_tiling_r;
@@ -145,6 +164,7 @@ public:
   void Tiling();
   void ApplyTiling();
   void Vectorize();
+  void Reorder();
   void NodeNumber();
 
 private:
@@ -154,9 +174,6 @@ private:
   inline void TileTiling(ascir::AxisId tile_id, std::tuple<ascir::Axis, ascir::Axis>& tiled_axes) {
     if (tile_id != -1) {
       tiled_axes = graph_.TileSplit(tile_id);
-      if (tiling_case_.block_tiling_id == tile_id) {
-        tiling_case_.block_tiling_id = std::get<0>(tiled_axes).id;
-      }
     }
   }
 
@@ -168,10 +185,19 @@ private:
     }
   }
 
+  inline bool HasXGroup() {
+    return tiling_case_.ub_tiling_id_x != -1;
+  }
+
+  inline bool HasRGroup() {
+    return tiling_case_.ub_tiling_id_r != -1;
+  }
+
 private:
   ascir::ImplGraph& graph_;
   const TilingGroup& axes_group_;
   TilingCase tiling_case_;
+  std::vector<ascir::AxisId> axes_order_;
 };
 
 class AutoSchedule {
@@ -186,7 +212,7 @@ public:
   static void SingelNodeAxesGroup(ascir::NodeView& node, TilingGroup& axes_group);
 
 private:
-  void MergeAxesGroup(const TilingGroup& single_node_axes_group);
+  bool MergeAxesGroup(ascir::NodeView& node, const TilingGroup& single_node_axes_group);
 
 private:
   const ascir::ImplGraph& graph_;

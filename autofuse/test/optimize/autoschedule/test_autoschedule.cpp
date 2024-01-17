@@ -247,7 +247,7 @@ TEST(E2E_AutoScheduleAbs, AutoSchedule_eletwise_gen_tilingGroup) {
   EXPECT_EQ(autoSchedule.axes_group_.YGroup().size(), 3);
   EXPECT_EQ(autoSchedule.axes_group_.RGroup().size(), 1);
 
-  ascir::AxisId default_id = 1;
+  ascir::AxisId default_id = -1;
   std::vector<ascir::AxisId> x_group = {default_id};
   std::vector<ascir::AxisId> y_group(abs.attr.sched.axis());
   std::vector<ascir::AxisId> r_group = {default_id};
@@ -269,7 +269,7 @@ TEST(E2E_AutoScheduleAbs, AutoSchedule_eletwise_fusion_gen_tilingGroup) {
   EXPECT_EQ(autoSchedule.axes_group_.YGroup().size(), 1);
   EXPECT_EQ(autoSchedule.axes_group_.RGroup().size(), 1);
 
-  ascir::AxisId default_id = 1;
+  ascir::AxisId default_id = -1;
   std::vector<ascir::AxisId> x_group = {default_id};
   std::vector<ascir::AxisId> y_group(abs.attr.sched.axis());
   std::vector<ascir::AxisId> r_group = {default_id};
@@ -301,8 +301,9 @@ TEST(E2E_AutoScheduleAbs, AutoSchedule_Tiling) {
   std::vector<ascir::AxisId> y_group = abs.attr.sched.axis;
 
   TilingGroup axes_group(y_group);
+  axes_group.axes_order_ = {0, 1, 2};
   TilingCase tiling_case;
-  tiling_case.ub_tiling_id_y = 1;
+  tiling_case.ub_tiling_id_y = y_group[1];
   tiling_case.block_tiling_id = 0;
   Scheduler scheduler(graph, axes_group, tiling_case);
   scheduler.Tiling();
@@ -310,12 +311,12 @@ TEST(E2E_AutoScheduleAbs, AutoSchedule_Tiling) {
   EXPECT_EQ(scheduler.tiling_case_.ub_tiling_id_x, -1);
   EXPECT_EQ(scheduler.tiling_case_.ub_tiling_id_y, 1);
   EXPECT_EQ(scheduler.tiling_case_.ub_tiling_id_r, -1);
-  EXPECT_EQ(scheduler.tiling_case_.block_tiling_id, 0);
-  EXPECT_EQ(graph.axis().size(), 7);
+  EXPECT_EQ(scheduler.tiling_case_.block_tiling_id, 5);
+  EXPECT_EQ(graph.axis().size(), 8);
   EXPECT_EQ(std::get<0>(scheduler.tiling_case_.ub_tiling_y).id, 3);
   EXPECT_EQ(std::get<1>(scheduler.tiling_case_.ub_tiling_y).id, 4);
-  EXPECT_EQ(std::get<0>(scheduler.tiling_case_.block_tling).id, 5);
-  EXPECT_EQ(std::get<1>(scheduler.tiling_case_.block_tling).id, 6);
+  EXPECT_EQ(std::get<0>(scheduler.tiling_case_.block_tling).id, 6);
+  EXPECT_EQ(std::get<1>(scheduler.tiling_case_.block_tling).id, 7);
 }
 
 TEST(E2E_AutoScheduleAbs, Autoschedule_scheduler_elementwise_3axis)
@@ -330,6 +331,7 @@ TEST(E2E_AutoScheduleAbs, Autoschedule_scheduler_elementwise_3axis)
     std::vector<ascir::AxisId> y_group = abs.attr.sched.axis;
 
     TilingGroup axes_group(y_group);
+    axes_group.axes_order_ = {0, 1, 2};
     TilingCase tiling_case;
     tiling_case.ub_tiling_id_y = 1;
     tiling_case.block_tiling_id = 0;
@@ -344,10 +346,13 @@ TEST(E2E_AutoScheduleAbs, Autoschedule_scheduler_elementwise_3axis)
     // split ub
     auto z_ub_id = output.attr.sched.axis[ub_axis_id];
     auto [z_ub_out, z_ub_in] = except_graph.TileSplit(z_ub_id);
+
+    // fuse outer axes
+    std::vector<AxisId> axes{output.attr.sched.axis[0], z_ub_out.id};
+    auto block_axis = except_graph.MergeAxis(axes);
     
     // split block
-    auto z_block_id = output.attr.sched.axis[block_axis_id];
-    auto [z_block_out, z_block_in] = except_graph.BlockSplit(z_block_id);
+    auto [z_block_out, z_block_in] = except_graph.BlockSplit(block_axis.id);
 
     vector<AxisId> vectorize_axis = {z_ub_in.id, output.attr.sched.axis[2]};
 
@@ -356,7 +361,8 @@ TEST(E2E_AutoScheduleAbs, Autoschedule_scheduler_elementwise_3axis)
         continue;
       }
       except_graph.ApplySplit(n, z_ub_out.id, z_ub_in.id, z_ub_id);
-      except_graph.ApplySplit(n, z_block_out.id, z_block_in.id, z_block_id);
+      except_graph.ApplyMerge(n, block_axis.id);
+      except_graph.ApplySplit(n, z_block_out.id, z_block_in.id, block_axis.id);
       n.outputs[0].vectorized_axis = vectorize_axis;
     }
 
@@ -377,6 +383,7 @@ TEST(E2E_AutoScheduleAbs, Autoschedule_scheduler_elementwise_1axis)
     std::vector<ascir::AxisId> y_group = abs.attr.sched.axis;
 
     TilingGroup axes_group(y_group);
+    axes_group.axes_order_ = {0};
     TilingCase tiling_case;
     tiling_case.ub_tiling_id_y = 0;
     tiling_case.block_tiling_id = 0;
@@ -416,7 +423,7 @@ TEST(E2E_AutoScheduleAbs, Autoschedule_autoschedule_elementwise_1axis)
     ascir::Graph graph("LoadAbsStore");
     Construct_ElementwiseAbs(graph);
 
-    ascir::Graph except_graph("LoadAbsStore_general_0_-1_0_-1");
+    ascir::Graph except_graph("LoadAbsStore_general_0_nil_0_nil");
     except_graph.CopyFrom(graph);
 
     std::vector<ImplGraph> impl_graphs;
@@ -457,7 +464,7 @@ TEST(E2E_AutoScheduleAbs, Autoschedule_autoschedule_elementwise_fusion)
     ascir::Graph graph("AbsFusion");
     Construct_ElementwiseFusion(graph);
 
-    ascir::Graph except_graph("AbsFusion_general_0_-1_0_-1");
+    ascir::Graph except_graph("AbsFusion_general_0_nil_0_nil");
     except_graph.CopyFrom(graph);
 
     std::vector<ImplGraph> impl_graphs;

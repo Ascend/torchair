@@ -198,12 +198,15 @@ class AttrFieldGetSet<ascir::NodeAttr::HINT_COMPUTETYPE, std::string> {
 
     static const string names[] = {
       [ascir::COMPUTE_DATA] = "data",
-      [ascir::COMPUTE_LOAD] = "load",
-      [ascir::COMPUTE_STORE] = "store",
-      [ascir::COMPUTE_ELEWISE] = "elemwise",
-      [ascir::COMPUTE_BROADCAST] = "broadcast",
-      [ascir::COMPUTE_REDUCE] = "reduce",
-      [ascir::COMPUTE_TRANPOSE] = "transpose"
+    [ascir::COMPUTE_REDUCE_DATA] = "reduce_data",
+    [ascir::COMPUTE_WORKSPACE] = "workspace",
+    [ascir::COMPUTE_LOAD] = "load",
+    [ascir::COMPUTE_STORE] = "store",
+    [ascir::COMPUTE_REDUCE_STORE] = "reduce_store",
+    [ascir::COMPUTE_ELEWISE] = "elewise",
+    [ascir::COMPUTE_BROADCAST] = "broadcast",
+    [ascir::COMPUTE_REDUCE] = "reduce",
+    [ascir::COMPUTE_TRANPOSE] = "transpose"
     };
 
     if (value < sizeof(names) / sizeof(names[0])) {

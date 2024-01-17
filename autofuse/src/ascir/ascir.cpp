@@ -1,4 +1,6 @@
 #include "ascir.h"
+#include <stdexcept>
+#include <string>
 
 #include "graph_utils_ex.h"
 
