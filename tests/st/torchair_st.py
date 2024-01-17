@@ -661,6 +661,23 @@ class TorchairSt(unittest.TestCase):
 
         GeConcreteGraph.__call__ = src_call
 
+    def test_remove_sym(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y, z):
+                x = torch.cat([torch.ones(x.size()), torch.ones(y.size())])
+                x = torch.ones(x.size())
+                x = torch.split(x, z, dim=0)
+                return x[-1], x[0]
+
+        model = Model()
+        model = torch.compile(model, backend=npu_backend, dynamic=True)
+        model(torch.randn(2, 2), torch.randn(2, 2), [2, 2])
+        model(torch.randn(3, 3), torch.randn(3, 3), [3, 3])
+        model(torch.randn(4, 4), torch.randn(4, 4), [4, 4])
+
 
 if __name__ == '__main__':
     unittest.main()
