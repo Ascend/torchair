@@ -60,6 +60,12 @@ def randn_checkpoint(
     return (seed, offset), ge.StatelessRandomNormalV2(size, key, counter, alg, dtype=out_dtype)
 
 
+@declare_supported(
+    [
+        Support([3, 4, 5], device='npu'),
+        Support([3, 4], dtype=torch.float16, device='npu')
+    ]
+)
 @register_fx_node_ge_converter(torch.ops.aten.randn.default)
 def conveter_aten_randn_default(
     size: Union[List[int], Tensor],
@@ -77,8 +83,8 @@ def conveter_aten_randn_default(
 
 @declare_supported(
     [
-        Support([3, 4, 5], generator=None),
-        Support([3, 4], generator=None, dtype=torch.float16)
+        Support([3, 4, 5], generator=None, device='npu'),
+        Support([3, 4], generator=None, dtype=torch.float16, device='npu')
     ]
 )
 @register_fx_node_ge_converter(torch.ops.aten.randn.generator)
