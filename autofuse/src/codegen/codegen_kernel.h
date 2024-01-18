@@ -226,6 +226,8 @@ struct Stage {
 
   explicit Stage(ascir::ComputeUnit unit);
   void AddCall(const ascir::NodeView &node);
+
+  std::string GenerateApiCalls(const TPipe &tpipe, const std::vector<ascir::AxisId> &current_axis) const;
   std::string Generate(const TPipe &tpipe, const std::vector<ascir::AxisId> &current_axis) const;
 };
 

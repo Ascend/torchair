@@ -591,6 +591,54 @@ TEST(CodegenKernel, Stage_AddCall_WillAddCall) {
   GTEST_SKIP();
 }
 
+TEST(CodegenKernel, Stage_WhenVecInputIsOtherOutput_WillInsertPipeV) {
+  Data x_op("x");
+  Nop nop_op1("nop1");
+  nop_op1.x = x_op;
+  Nop nop_op2("nop2");
+  nop_op2.x = nop_op1;
+
+  ascir::Graph graph("test_graph");
+  graph.SetInputs({x_op});
+
+  auto nop1 = graph.Find("nop1");
+  nop1.attr.api.unit = ascir::UNIT_VECTOR;
+  nop1.outputs[0].dtype = ge::DT_FLOAT16;
+  nop1.outputs[0].mem.tensor_id = 0;
+  nop1.outputs[0].mem.position = ascir::POSITION_VECIN;
+  nop1.outputs[0].mem.alloc_type = ascir::ALLOC_TYPE_BUFFER;
+  nop1.outputs[0].buf.id = 1;
+  nop1.outputs[0].opt.merge_scope = ascir::ID_NONE;
+
+  auto nop2 = graph.Find("nop2");
+  nop2.attr.api.unit = ascir::UNIT_VECTOR;
+  nop2.outputs[0].dtype = ge::DT_FLOAT16;
+  nop2.outputs[0].mem.tensor_id = 1;
+  nop2.outputs[0].mem.position = ascir::POSITION_VECIN;
+  nop2.outputs[0].mem.alloc_type = ascir::ALLOC_TYPE_BUFFER;
+  nop2.outputs[0].buf.id = 2;
+  nop2.outputs[0].opt.merge_scope = ascir::ID_NONE;
+
+  codegen::Tiler tiler;
+  codegen::TPipe tpipe("tpipe", tiler);
+  tpipe.AddTensor(nop1.outputs[0]);
+  tpipe.AddTensor(nop2.outputs[0]);
+
+  codegen::Stage stage(ascir::UNIT_VECTOR);
+  stage.AddCall(nop1);
+  stage.AddCall(nop2);
+
+  EXPECT_EQ(stage.Generate(tpipe, vector<ascir::AxisId>{}), std::string{
+    "{\n"
+    "LocalTensor<half> t0;\n"
+    "t0.SetAddrWithOffset(b1_buf, 0);\n"
+    "pipe_barrier(PIPE_V);\n"
+    "LocalTensor<half> t1;\n"
+    "t1.SetAddrWithOffset(b2_buf, 0);\n"
+    "}\n"
+  });
+}
+
 TEST(CodegenKernel, Stage_WhenHasWriteQue_WillAllocInStart_AndEnqueInEnd) {
   Data x_op("x");
   Nop nop_op("nop");
@@ -602,7 +650,6 @@ TEST(CodegenKernel, Stage_WhenHasWriteQue_WillAllocInStart_AndEnqueInEnd) {
   auto nop = graph.Find("nop");
   nop.attr.api.unit = ascir::UNIT_MTE;
   nop.outputs[0].dtype = ge::DT_FLOAT16;
-  nop.outputs[0].mem.position = ascir::POSITION_VECIN;
   nop.outputs[0].mem.tensor_id = 0;
   nop.outputs[0].mem.position = ascir::POSITION_VECIN;
   nop.outputs[0].mem.alloc_type = ascir::ALLOC_TYPE_QUEUE;

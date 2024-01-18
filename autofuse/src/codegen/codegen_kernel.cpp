@@ -480,7 +480,7 @@ Tensor& TPipe::AddTensor(const Tensor& tensor) {
     }
 
     TBuf *buf = nullptr;
-    auto iter = this->bufs.find(t.id);
+    auto iter = this->bufs.find(t.buf_id);
     if (iter == this->bufs.end()) {
         auto [new_buf, is_insert] = this->bufs.emplace(t.buf_id, TBuf{t.buf_id, t.position});
         buf = &new_buf->second;
@@ -881,10 +881,17 @@ std::string LoadApiCall(const std::string &api_name, const TPipe &tpipe, const s
     auto ub_non0_pos = NonZeroVecAxisPos(ub);
     if ((ub_non0_pos.size() == 1 && ub.axis_strides[ub_non0_pos[0]] == 1)
         || (ub_non0_pos.size() == 2 && ub.axis_strides[ub_non0_pos[0]] == ub.axis_size[ub_non0_pos[1]])) {
-      ss << "DataCopy("
+      ss << "DataCopyPad("
           << ub << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, ub) << "], "
           << gm << "[" << tpipe.tiler.Offset(current_axis, ub.axis, ub.axis_strides) << "], "
-          << ub.size << ");" << std::endl;
+          << "DataCopyParams("
+            << "1, "
+            << "(uint16_t)(" << ub.size << " * sizeof(" <<  Tensor::DtypeName(ub.dtype) << ")), "
+            << "0, "
+            << "0"
+          << "), "
+          << "DataCopyPadParams()"
+          << ");" << std::endl;
     } else if (ub_non0_pos.size() == 2 && ub.axis_strides[ub_non0_pos[1]] == 1) {
       // Set last axis as stride axis
       auto out = ub.vectorized_axis_pos[0];
@@ -917,10 +924,16 @@ std::string StoreApiCall(const std::string &api_name, const TPipe &tpipe, const 
     auto ub_non0_pos = NonZeroVecAxisPos(ub);
     if ((ub_non0_pos.size() == 1 && ub.axis_strides[ub_non0_pos[0]] == 1)
         || (ub_non0_pos.size() == 2 && ub.axis_strides[ub_non0_pos[0]] == ub.axis_size[ub_non0_pos[1]])) {
-      ss << "DataCopy("
+      ss << "DataCopyPad("
           << gm << "[" << tpipe.tiler.Offset(current_axis, ub.axis, ub.axis_strides) << "], "
           << ub << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, ub) << "], "
-          << ub.size << ");" << std::endl;
+          << "DataCopyParams("
+            << "1, "
+            << "(uint16_t)(" << ub.size << " * sizeof(" <<  Tensor::DtypeName(ub.dtype) << ")), "
+            << "0, "
+            << "0"
+          << ")"
+          << ");" << std::endl;
     } else if (ub_non0_pos.size() == 2 && ub.axis_strides[ub_non0_pos[1]] == 1) {
       // Set last axis as stride axis
       auto out = ub.vectorized_axis_pos[0];
@@ -1029,24 +1042,23 @@ void Stage::AddCall(const ascir::NodeView &node) {
   this->calls.emplace_back(ApiCall(node));
 }
 
-std::string Stage::Generate(const TPipe &tpipe, const std::vector<ascir::AxisId>& current_axis) const {
-  stringstream ss;
-  ss << "{" << std::endl;
+std::string Stage::GenerateApiCalls(const TPipe &tpipe, const std::vector<ascir::AxisId> &current_axis) const
+{
+  std::stringstream ss;
 
   std::set<ascir::TensorId> alloced_tensors;
-
-  // Read/Write que/buf DeQue/alloc
-  for (auto read_que_id : this->read_ques) {
-    auto que = tpipe.GetQue(read_que_id);
-    ss << que.DequeBuf() << std::endl;
-  }
-  for (auto write_que_id : this->write_ques) {
-    auto que = tpipe.GetQue(write_que_id);
-    ss << que.AllocBuf() << std::endl;
-  }
+  std::set<ascir::TensorId> unsynced_tensors;
 
   // api call
   for (auto call : this->calls) {
+    for (auto i: call.inputs) {
+      if (unsynced_tensors.find(i) != unsynced_tensors.end()) {
+          ss << "pipe_barrier(PIPE_V);" << std::endl;
+          unsynced_tensors.clear();
+          break;
+      }
+    }
+
     std::vector<reference_wrapper<const Tensor>> input_tensors;
     std::vector<reference_wrapper<const Tensor>> output_tensors;
     for (auto &[ids, tensors] : {pair{call.inputs, &input_tensors}, {call.outputs, &output_tensors}}) {
@@ -1063,8 +1075,31 @@ std::string Stage::Generate(const TPipe &tpipe, const std::vector<ascir::AxisId>
 
     ss << call.Generate(tpipe, current_axis, input_tensors, output_tensors);
 
+    for (auto o: call.outputs) {
+      unsynced_tensors.insert(o);
+    }
+
     // Not need to free tensor, all tensor will be free when Enque/Free buffer
   }
+
+  return ss.str();
+}
+
+std::string Stage::Generate(const TPipe &tpipe, const std::vector<ascir::AxisId>& current_axis) const {
+  stringstream ss;
+  ss << "{" << std::endl;
+
+  // Read/Write que/buf DeQue/alloc
+  for (auto read_que_id : this->read_ques) {
+    auto que = tpipe.GetQue(read_que_id);
+    ss << que.DequeBuf() << std::endl;
+  }
+  for (auto write_que_id : this->write_ques) {
+    auto que = tpipe.GetQue(write_que_id);
+    ss << que.AllocBuf() << std::endl;
+  }
+
+  ss << this->GenerateApiCalls(tpipe, current_axis);
 
   // Read/Write que/buf Enque/free
   for (auto write_que_id : this->write_ques) {

@@ -166,7 +166,7 @@ int Optimizer::BufQueAlloc(const ascir::HintGraph &graph, std::vector<ascir::Imp
       if (ops::IsOps<ops::Data>(node) || ops::IsOps<ops::Output>(node) || ops::IsOps<ops::Store>(node)) {
         node.outputs[0].mem.tensor_id = tensor_id++;
         node.outputs[0].mem.alloc_type = ALLOC_TYPE_GLOBAL;
-        node.outputs[0].mem.hardware = MEM_HARDWARE_UB;
+        node.outputs[0].mem.hardware = MEM_HARDWARE_GM;
         node.outputs[0].mem.position = POSITION_GM;
         node.outputs[0].buf.id = ID_NONE;
         node.outputs[0].que.id = ID_NONE;
@@ -175,6 +175,7 @@ int Optimizer::BufQueAlloc(const ascir::HintGraph &graph, std::vector<ascir::Imp
 
       for (auto output : node.outputs()) {
         output.mem.tensor_id = tensor_id++;
+        output.mem.hardware = MEM_HARDWARE_UB;
         if (ops::IsOps<ops::Load>(node)) {
           output.mem.position = POSITION_VECIN;
         } else {
