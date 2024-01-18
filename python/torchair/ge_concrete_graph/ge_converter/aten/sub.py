@@ -24,8 +24,13 @@ from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, 
     Support
 from torchair.ge_concrete_graph.utils import dtype_promote
 
+
 @declare_supported([
-    Support(F32(2, 2), F32(2, 2), alpha=2.0)
+    Support(F32(2, 2), F32(2, 2), alpha=2.0),
+    Support(F32(2, 2), F16(2, 2), alpha=2.0),
+    Support(F16(2, 2), I8(2), alpha=2.0),
+    Support(I8(2, 2), I16(2, 2), alpha=2),
+    Support(I16(2, 2), I8(2), alpha=2),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.sub.Tensor)
 def conveter_aten_sub_Tensor(
@@ -37,7 +42,9 @@ def conveter_aten_sub_Tensor(
 ):
     """NB: aten::sub.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -> Tensor"""
     if alpha != 1:
+        alpha = ge.Const(alpha, dtype=other.dtype)
         other = ge.Mul(other, alpha)
+    self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)
     return ge.Sub(self, other)
 
 
