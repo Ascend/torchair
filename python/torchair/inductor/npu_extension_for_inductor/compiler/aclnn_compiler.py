@@ -153,8 +153,9 @@ struct Tensor {
 
 
 class AclnnKernelBin:
-    def __init__(self, proto: OpProto):
+    def __init__(self, proto: OpProto, *, aclnn_lib):
         self.name = proto.name
+        self.aclnn_lib = aclnn_lib
         self.lib_file = f'{camel_to_snake(self.name)}.so'
 
         self.header_file = None
@@ -163,13 +164,17 @@ class AclnnKernelBin:
         self.sym_vals = SymValsArg("sym_vals")
         self.stream = StreamArg("stream")
         self.all_args = [self.sym_vals] + self.inputs + self.outputs + [self.stream]
+        self.tiling_fn = "WorkspaceFn"
+        self.kernel_fn = "KernelFn"
 
         code = IndentedBuffer()
+        code.splice(self.init_func_handle)
         signature = ', '.join([v.signature for v in self.all_args])
         signature = f'extern "C" aclError wrapper({signature})'
         code.writeline(signature)
         code.writeline('{')
         with code.indent():
+            code.writeline("if (!initialized) return ACL_ERROR_UNINITIALIZE;")
             for arg in self.all_args:
                 arg.pre(code)
 
@@ -178,8 +183,8 @@ class AclnnKernelBin:
                 uint64_t workspace_size = 0U;
                 void *workspace = nullptr;
                 aclOpExecutor *handle = nullptr;
-                ASSERT_ACL_SUCCESS(aclnn{self.name}GetWorkspaceSize({workspace_args}, &workspace_size, &handle));
-                ASSERT_ACL_SUCCESS(aclnn{self.name}(workspace, workspace_size, handle, {self.stream.inner}));
+                ASSERT_ACL_SUCCESS({self.tiling_fn}({workspace_args}, &workspace_size, &handle));
+                ASSERT_ACL_SUCCESS({self.kernel_fn}(workspace, workspace_size, handle, {self.stream.inner}));
                 #ifdef CPU_ONLY
                 ASSERT_ACL_SUCCESS(aclrtSynchronizeStream({self.stream.inner}));
                 #endif
@@ -193,10 +198,49 @@ class AclnnKernelBin:
         code.writeline('}')
         self.kernel_code = code
 
+    @property
+    def init_func_handle(self):
+        code = IndentedBuffer()
+        code.splice(f"""
+        static void *handle = nullptr;
+        static bool initialized = false;
+        using T_W = decltype(aclnn{self.name}GetWorkspaceSize);
+        using T_K = decltype(aclnn{self.name});
+        static T_W *{self.tiling_fn} = nullptr;
+        static T_K *{self.kernel_fn} = nullptr;
+        __attribute__((constructor)) void Init{self.name}() {{
+            if (initialized) return;
+            handle = dlopen("{self.aclnn_lib}", RTLD_NOW | RTLD_LOCAL);
+            if (!handle) {{
+                std::cerr << "Failed to load {self.aclnn_lib}: " << dlerror() << std::endl;
+                return;
+            }}
+            {self.tiling_fn} = reinterpret_cast<T_W *>(dlsym(handle, "aclnn{self.name}GetWorkspaceSize"));
+            {self.kernel_fn} = reinterpret_cast<T_K *>(dlsym(handle, "aclnn{self.name}"));
+            if (!{self.tiling_fn} || !{self.kernel_fn}) {{
+                std::cerr << "Failed to load api func: " << dlerror() << std::endl;
+                return;
+            }}
+            #ifdef INDUCTOR_DEBUG
+            std::cerr << "Kernel {self.name} api lib {self.aclnn_lib} load succeed" << std::endl;
+            #endif
+            initialized = true;
+        }}
+        __attribute__((destructor)) void DeInit{self.name}() {{
+            if (handle) {{
+                dlclose(handle);
+                handle = nullptr;
+            }}
+            initialized = false;
+        }}
+        """)
+        return code.getvalue()
+
     def compile(self, *, cwd, compile_flags):
         wrapper = IndentedBuffer()
         wrapper.writeline(f'#include "acl/acl.h"')
         wrapper.writeline(f'#include "aclnn_{camel_to_snake(self.name)}.h"')
+        wrapper.writeline(f'#include "dlfcn.h"')
         wrapper.writeline(f'#include <iostream>')
         wrapper.writeline(f'#include <sstream>')
         wrapper.writeline(f'#include <vector>')
@@ -362,12 +406,11 @@ class AclnnPrj:
         compile_flags = [f"-I{self.ascend_path}/include"]
         compile_flags.append(f"-I{self.opp_path}/vendors/{self.vendor}/op_api/include")
         compile_flags.append(f"-L{self.ascend_path}/lib64")
-        compile_flags.append(f"-Wl,-rpath,{self.opp_path}/vendors/{self.vendor}/op_api/lib")
-        compile_flags.append(f"-L{self.opp_path}/vendors/{self.vendor}/op_api/lib")
-        compile_flags.append(f"-lcust_opapi")
         compile_flags.append(f"-lascendcl")
+        compile_flags.append(f"-lnnopbase")
 
-        kernel = AclnnKernelBin(self.proto)
+        aclnn_lib = f"{self.opp_path}/vendors/{self.vendor}/op_api/lib/libcust_opapi.so"
+        kernel = AclnnKernelBin(self.proto, aclnn_lib=aclnn_lib)
         kernel_bin = kernel.compile(cwd=self.kernel_path, compile_flags=compile_flags)
         return AclnnKernel(kernel_bin)
 
