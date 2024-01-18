@@ -16,14 +16,14 @@ TilingLib::TilingLib(const std::string &lib_path, const std::string &codegen_sym
 
   auto handle = dlopen(lib_path.c_str(), RTLD_LAZY);
   if (!handle) {
-      std::cerr << "TilingLib open from " << lib_path << "failed. " << dlerror();
+      std::cerr << "TilingLib open from " << lib_path << " failed. " << dlerror() << std::endl;
       return;
   }
 
   auto func = dlsym(handle, codegen_symbol_name.c_str());
   if (!func) {
     dlclose(handle);
-    std::cerr << "Get codegen function from " << codegen_symbol_name << "failed. " << dlerror();
+    std::cerr << "Get codegen function from " << codegen_symbol_name << " failed. " << dlerror() << std::endl;
     return;
   }
 
@@ -33,6 +33,7 @@ TilingLib::TilingLib(const std::string &lib_path, const std::string &codegen_sym
 std::string TilingLib::Generate(const HintGraph &graph, const std::vector<ImplGraph> &impl_graphs) const {
   std::stringstream ss;
 
+  ss << "#include <stdexcept>" << std::endl;
   ss << "#include \"" << CamelToLowerSneak(graph.GetName()) << "_tiling.h\"" << std::endl;
   ss << "#ifndef __CCE_KT_TEST__" << std::endl;
   ss << "#include \"register/op_def_registry.h\"" << std::endl;

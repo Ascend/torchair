@@ -83,7 +83,7 @@ SizeExpr &SizeExpr::operator*=(const SizeExpr &rhs) {
 }
 
 bool SizeExpr::operator==(const SizeExpr &rhs) const {
-  if (rhs.is_zero == this->is_zero) {
+  if (rhs.is_zero && this->is_zero) {
     return true;
   }
 
@@ -319,12 +319,22 @@ void Graph::ApplySplit(NodeView &node, AxisId outter_id, AxisId inner_id, AxisId
       } else {
         found = true;
         new_axis.push_back(outter_id);
-        new_repeat.push_back(repeat[a] / split_size);
-        new_strides.push_back(strides[a] * split_size);
-
         new_axis.push_back(inner_id);
-        new_repeat.push_back(split_size);
-        new_strides.push_back(strides[a]);
+
+        if (repeat[a] == 1 && strides[a] == 0) {
+          // broadcast axis
+          new_repeat.push_back(SizeExpr::One());
+          new_strides.push_back(SizeExpr::Zero());
+
+          new_repeat.push_back(SizeExpr::One());
+          new_strides.push_back(SizeExpr::Zero());
+        } else {
+          new_repeat.push_back(repeat[a] / split_size);
+          new_strides.push_back(strides[a] * split_size);
+
+          new_repeat.push_back(split_size);
+          new_strides.push_back(strides[a]);
+        }
       }
     }
 

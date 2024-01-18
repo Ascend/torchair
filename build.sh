@@ -82,7 +82,7 @@ run_test() {
   export PYTHONPATH=${AUTOFUSE_TEST_PATH}/${TYPE}:${PYTHONPATH}
   export LD_LIBRARY_PATH=${ASCEND_SDK_PATH}/lib:${LD_LIBRARY_PATH}
   make -j${THREAD_NUM}
-  ctest --output-on-failure
+  ctest -j${THREAD_NUM} --output-on-failure
 
   # Torchair tests
   local TYPE="$1"

@@ -189,6 +189,7 @@ TEST_F(E2E_LoadAbsStore, Codegen_Tiling)
 
   auto tiling_code = codegen.GenerateTiling(test_graph, test_impl_graphs);
   EXPECT_EQ(tiling_code, std::string{
+      "#include <stdexcept>\n"
       "#include \"test_graph_tiling.h\"\n"
       "#ifndef __CCE_KT_TEST__\n"
       "#include \"register/op_def_registry.h\"\n"
@@ -294,6 +295,11 @@ TEST_F(E2E_LoadAbsStore, Codegen_Kernel)
     "template <typename T, typename... Ts>\n"
     "constexpr inline __aicore__ T Sum(const T a, const Ts... ts) {\n"
     "  return (a + ... + ts);\n"
+    "}\n"
+    "\n"
+    "template<typename DataType>\n"
+    "constexpr inline __ai_core__ uint16_t BlkLen(uint32_t size) {\n"
+    "  return size / (ONE_BLK_SIZE / sizeof(DataType));\n"
     "}\n"
     "}\n"
     "\n"

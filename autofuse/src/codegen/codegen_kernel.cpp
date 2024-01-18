@@ -106,7 +106,16 @@ Tensor::Tensor(const ascir::TensorAttr &tensor, const std::string &name)
       que_buf_num(this->name + "_que_buf_num"),
       que_depth_value(tensor.que.depth),
       que_buf_num_value(tensor.que.buf_num),
-      merge_scope(tensor.opt.merge_scope) {}
+      merge_scope(tensor.opt.merge_scope) {
+  for (auto vec_axis : this->vectorized_axis) {
+    auto pos = std::find(this->axis.begin(), this->axis.end(), vec_axis);
+    if (pos == this->axis.end()) {
+      throw std::runtime_error("Vectorized axis " + to_string(vec_axis) + " not found.");
+    }
+
+    this->vectorized_axis_pos.push_back(pos - this->axis.begin());
+  }
+}
 
 std::string Tensor::SetGlobalBuffer(GM_ADDR global) const {
   std::stringstream ss;
@@ -206,7 +215,7 @@ std::string Tiler::Offset(const std::vector<ascir::AxisId> &current_axis, const 
 
     auto stride = strides[iter - axis.begin()];
     if (stride == 0) {
-      continue;
+      ss << "0";
     } else if (stride == 1) {
       ss << this->GetAxis(a);
     } else {
@@ -218,6 +227,18 @@ std::string Tiler::Offset(const std::vector<ascir::AxisId> &current_axis, const 
     // Not axis in current_axis
     ss << "0";
   }
+  return ss.str();
+}
+
+std::string Tiler::BlkLen(ge::DataType dtype, const ascir::SizeExpr &size) const {
+  std::stringstream ss;
+  ss << KernelUtils::BlkLen(dtype) << "(" << this->Size(size) << ")";
+  return ss.str();
+}
+
+std::string Tiler::BlkLenDiff(ge::DataType dtype, const ascir::SizeExpr &size_a, const ascir::SizeExpr &size_b) const {
+  std::stringstream ss;
+  ss << KernelUtils::BlkLen(dtype) << "(" << this->Size(size_a) << " - " << this->Size(size_b) << ")";
   return ss.str();
 }
 
@@ -298,22 +319,16 @@ std::string Tiler::TensorVectorizedSize(const Tensor &tensor) const {
   stringstream ss;
   bool first = true;
 
-  for (auto axis : tensor.vectorized_axis) {
-    auto iter = std::find(tensor.axis.begin(), tensor.axis.end(), axis);
-    if (iter == tensor.axis.end()) {
-      throw std::runtime_error("Vectorized axis " + to_string(axis) + " not found in tensor " + tensor.name);
-    }
-
+  for (auto axis_pos : tensor.vectorized_axis_pos) {
     if (first) {
       first = false;
     } else {
       ss << " + ";
     }
 
-    auto index = iter - tensor.axis.begin();
-    ss << "(" + this->Size(tensor.axis_size[index]) + " - 1)";
-    if (!(tensor.axis_strides[index] == 1)) {
-        ss << " * " << this->Size(tensor.axis_strides[index]);
+    ss << "(" + this->Size(tensor.axis_size[axis_pos]) + " - 1)";
+    if (!(tensor.axis_strides[axis_pos] == 1)) {
+        ss << " * " << this->Size(tensor.axis_strides[axis_pos]);
     }
   }
 
@@ -387,6 +402,11 @@ std::string KernelUtils::FunctionDefines() {
   ss << "constexpr inline __aicore__ T Sum(const T a, const Ts... ts) {" << std::endl;
   ss << "  return (a + ... + ts);" << std::endl;
   ss << "}" << std::endl;
+  ss << std::endl;
+  ss << "template<typename DataType>" << std::endl;
+  ss << "constexpr inline __ai_core__ uint16_t BlkLen(uint32_t size) {" << std::endl;
+  ss << "  return size / (ONE_BLK_SIZE / sizeof(DataType));" << std::endl;
+  ss << "}" << std::endl;
   ss << "}" << std::endl;
 
   return ss.str();
@@ -398,6 +418,12 @@ std::string KernelUtils::Max() {
 
 std::string KernelUtils::Sum() {
   return "utils::Sum";
+}
+
+std::string KernelUtils::BlkLen(ge::DataType dtype) {
+  std::stringstream ss;
+  ss << "utils::BlkLen<" << Tensor::DtypeName(dtype) << ">";
+  return ss.str();
 }
 
 TPipe::TPipe(const std::string &name, const Tiler &tiler)
@@ -802,6 +828,12 @@ ApiCall::ApiCall(const ascir::NodeView &node) {
   }
 }
 
+std::string NopApicall(std::string func, const TPipe &tpipe, const std::vector<ascir::AxisId> &current_axis,
+                       const std::vector<std::reference_wrapper<const Tensor>> &inputs,
+                       const std::vector<std::reference_wrapper<const Tensor>> &outputs) {
+    return "";
+}
+
 std::string UnaryApicall(std::string unaryname, const TPipe &tpipe, const std::vector<ascir::AxisId> &current_axis,
                          const std::vector<std::reference_wrapper<const Tensor>> &inputs,
                          const std::vector<std::reference_wrapper<const Tensor>> &outputs) {
@@ -827,37 +859,141 @@ std::string BinaryApicall(std::string binaryname, const TPipe &tpipe, const std:
     return ss.str();
 }
 
+std::vector<uint32_t> NonZeroVecAxisPos(const Tensor& tensor) {
+  std::vector<uint32_t> axis_pos;
+  for (auto pos : tensor.vectorized_axis_pos) {
+    if (tensor.axis_strides[pos] == 0 || tensor.axis_size[pos] == 0) {
+        continue;
+    }
+    axis_pos.push_back(pos);
+  }
+  return axis_pos;
+}
+
+std::string LoadApiCall(const std::string &api_name, const TPipe &tpipe, const std::vector<ascir::AxisId> &current_axis,
+                        const std::vector<std::reference_wrapper<const Tensor>> &inputs,
+                        const std::vector<std::reference_wrapper<const Tensor>> &outputs)
+{
+    std::stringstream ss;
+    auto gm = inputs[0].get();
+    auto ub = outputs[0].get();
+
+    auto ub_non0_pos = NonZeroVecAxisPos(ub);
+    if ((ub_non0_pos.size() == 1 && ub.axis_strides[ub_non0_pos[0]] == 1)
+        || (ub_non0_pos.size() == 2 && ub.axis_strides[ub_non0_pos[0]] == ub.axis_size[ub_non0_pos[1]])) {
+      ss << "DataCopy("
+          << ub << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, ub) << "], "
+          << gm << "[" << tpipe.tiler.Offset(current_axis, ub.axis, ub.axis_strides) << "], "
+          << ub.size << ");" << std::endl;
+    } else if (ub_non0_pos.size() == 2 && ub.axis_strides[ub_non0_pos[1]] == 1) {
+      // Set last axis as stride axis
+      auto out = ub.vectorized_axis_pos[0];
+      auto in = ub.vectorized_axis_pos[1];
+      auto& tiler = tpipe.tiler;
+      ss << "DataCopy("
+          << ub << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, ub) << "], "
+          << gm << "[" << tpipe.tiler.Offset(current_axis, ub.axis, ub.axis_strides) << "], "
+          << "DataCopyParams("
+            << tiler.Size(ub.axis_size[out]) << ", "
+            << tiler.BlkLen(ub.dtype, ub.axis_size[in]) << ", "
+            << tiler.BlkLenDiff(ub.dtype, ub.axis_strides[out], ub.axis_size[in]) << ", "
+            << "0" // Assert UB is continously, only decide src stride
+          << ")"
+          << ");" << std::endl;
+    } else {
+      throw std::runtime_error("Not support load api call.");
+    }
+    return ss.str();
+}
+
+std::string StoreApiCall(const std::string &api_name, const TPipe &tpipe, const std::vector<ascir::AxisId> &current_axis,
+                         const std::vector<std::reference_wrapper<const Tensor>> &inputs,
+                         const std::vector<std::reference_wrapper<const Tensor>> &outputs)
+{
+    std::stringstream ss;
+    auto gm = outputs[0].get();
+    auto ub = inputs[0].get();
+
+    auto ub_non0_pos = NonZeroVecAxisPos(ub);
+    if ((ub_non0_pos.size() == 1 && ub.axis_strides[ub_non0_pos[0]] == 1)
+        || (ub_non0_pos.size() == 2 && ub.axis_strides[ub_non0_pos[0]] == ub.axis_size[ub_non0_pos[1]])) {
+      ss << "DataCopy("
+          << gm << "[" << tpipe.tiler.Offset(current_axis, ub.axis, ub.axis_strides) << "], "
+          << ub << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, ub) << "], "
+          << ub.size << ");" << std::endl;
+    } else if (ub_non0_pos.size() == 2 && ub.axis_strides[ub_non0_pos[1]] == 1) {
+      // Set last axis as stride axis
+      auto out = ub.vectorized_axis_pos[0];
+      auto in = ub.vectorized_axis_pos[1];
+      auto& tiler = tpipe.tiler;
+      ss << "DataCopy("
+          << gm << "[" << tpipe.tiler.Offset(current_axis, ub.axis, ub.axis_strides) << "], "
+          << ub << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, ub) << "], "
+          << "DataCopyParams("
+            << tiler.Size(ub.axis_size[out]) << ", "
+            << tiler.BlkLen(ub.dtype, ub.axis_size[in]) << ", "
+            << "0, " // Assert UB is continously, only decide dst stride
+            << tiler.BlkLenDiff(ub.dtype, ub.axis_strides[out], ub.axis_size[in])
+          << ")"
+          << ");" << std::endl;
+    } else {
+      throw std::runtime_error("Not support store api call.");
+    }
+    return ss.str();
+}
+
+std::string BroadcastApiCall(const std::string& api_name, const TPipe &tpipe, const std::vector<ascir::AxisId> &current_axis,
+                             const std::vector<std::reference_wrapper<const Tensor>> &inputs,
+                             const std::vector<std::reference_wrapper<const Tensor>> &outputs)
+{
+    auto x = inputs[0].get();
+    auto y = outputs[0].get();
+    if (x.vectorized_axis.size() != 2 || y.vectorized_axis.size() != 2 || x.vectorized_axis != y.vectorized_axis) {
+      throw std::runtime_error("Broadcast only support 2D vectorized axis.");
+    }
+
+    auto& src_m_size = x.axis_size[x.vectorized_axis_pos[0]];
+    auto& src_k_size = x.axis_size[x.vectorized_axis_pos[1]];
+    auto& dst_m_size = y.axis_size[y.vectorized_axis_pos[0]];
+    auto& dst_k_size = y.axis_size[y.vectorized_axis_pos[1]];
+
+    std::stringstream ss;
+    ss << "BroadCastLastImpl("
+       << y << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, y) << "], "
+       << x << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, x) << "], "
+       << "BroadCastLastND{"
+         << tpipe.tiler.Size(dst_m_size) << ", " << tpipe.tiler.Size(dst_k_size) << ", "
+         << tpipe.tiler.Size(src_m_size) << ", " << tpipe.tiler.Size(src_k_size)
+         << "}"
+       << ");" << std::endl;
+    return ss.str();
+}
+
 std::string ApiCall::Generate(const TPipe &tpipe, const std::vector<ascir::AxisId> &current_axis,
                               const std::vector<std::reference_wrapper<const Tensor>> &inputs,
                               const std::vector<std::reference_wrapper<const Tensor>> &outputs) const {
-  stringstream ss;
   using Funcptr = std::function<std::string(std::string, const TPipe&, const std::vector<ascir::AxisId>&,
                                             const std::vector<std::reference_wrapper<const Tensor>>&,
                                             const std::vector<std::reference_wrapper<const Tensor>>&)>;
   map<std::string, pair<std::string, Funcptr>> type2apicall = {
-          {Abs::Type, {"Abs", UnaryApicall}},
-          {Exp::Type, {"Exp", UnaryApicall}},
-          {Div::Type, {"Div", BinaryApicall}},
-          {Sub::Type, {"Sub", BinaryApicall}},
+      {Load::Type, {"Load", LoadApiCall}},
+      {Store::Type, {"Store", StoreApiCall}},
+      {Broadcast::Type, {"Broadcast", BroadcastApiCall}},
+      {Nop::Type, {"Nop", NopApicall}},
+      {Abs::Type, {"Abs", UnaryApicall}},
+      {Exp::Type, {"Exp", UnaryApicall}},
+      {Div::Type, {"Div", BinaryApicall}},
+      {Sub::Type, {"Sub", BinaryApicall}},
   };
-  if (this->type == Load::Type) {
-    auto gm = inputs[0].get();
-    auto ub = outputs[0].get();
-    ss << "DataCopy(" << ub << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, ub) << "], " << gm << "["
-       << tpipe.tiler.Offset(current_axis, ub.axis, ub.axis_strides) << "], " << ub.size << ");" << std::endl;
-  } else if (this->type == Store::Type) {
-    auto gm = outputs[0].get();
-    auto ub = inputs[0].get();
-    ss << "DataCopy(" << gm << "[" << tpipe.tiler.Offset(current_axis, ub.axis, ub.axis_strides) << "], " << ub << "["
-       << tpipe.tiler.TensorVectorizedOffset(current_axis, ub) << "], " << ub.size << ");" << std::endl;
-  } else {
-    auto it = type2apicall.find(this->type);
-    if (it == type2apicall.end()) {
+
+  stringstream ss;
+  auto it = type2apicall.find(this->type);
+  if (it == type2apicall.end()) {
       throw std::runtime_error("Unsupported API call: " + this->type);
-    }
-    auto& [api_name, func] = it->second;
-    ss << func(api_name, tpipe, current_axis, inputs, outputs);
   }
+
+  auto &[api_name, func] = it->second;
+  ss << func(api_name, tpipe, current_axis, inputs, outputs);
   return ss.str();
 }
 

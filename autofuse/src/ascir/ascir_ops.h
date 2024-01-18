@@ -95,6 +95,21 @@ END_OPS(Store)
 }  // namespace ascir::ops
 
 namespace ge {
+REG_OP(Nop)
+    .REQUIRED_ATTR(dst_type, Int)
+    .INPUT(x, TensorType::ALL())
+    .OUTPUT(y, TensorType::ALL())
+.OP_END_FACTORY_REG(Nop)
+}
+
+namespace ascir::ops {
+REG_OPS(Nop)
+  OPS_INPUT(0, x)
+  OPS_OUTPUT(0, y)
+END_OPS(Nop)
+}
+
+namespace ge {
 REG_OP(Cast)
     .REQUIRED_ATTR(dst_type, Int)
     .INPUT(x, TensorType::ALL())

@@ -593,35 +593,34 @@ TEST(CodegenKernel, Stage_AddCall_WillAddCall) {
 
 TEST(CodegenKernel, Stage_WhenHasWriteQue_WillAllocInStart_AndEnqueInEnd) {
   Data x_op("x");
-  Load load_op("load");
-  load_op.x = x_op;
+  Nop nop_op("nop");
+  nop_op.x = x_op;
 
   ascir::Graph graph("test_graph");
   graph.SetInputs({x_op});
 
-  auto load = graph.Find("load");
-  load.attr.api.unit = ascir::UNIT_MTE;
-  load.outputs[0].dtype = ge::DT_FLOAT16;
-  load.outputs[0].mem.position = ascir::POSITION_VECIN;
-  load.outputs[0].mem.tensor_id = 0;
-  load.outputs[0].mem.position = ascir::POSITION_VECIN;
-  load.outputs[0].mem.alloc_type = ascir::ALLOC_TYPE_QUEUE;
-  load.outputs[0].que.id = 1;
-  load.outputs[0].opt.merge_scope = ascir::ID_NONE;
+  auto nop = graph.Find("nop");
+  nop.attr.api.unit = ascir::UNIT_MTE;
+  nop.outputs[0].dtype = ge::DT_FLOAT16;
+  nop.outputs[0].mem.position = ascir::POSITION_VECIN;
+  nop.outputs[0].mem.tensor_id = 0;
+  nop.outputs[0].mem.position = ascir::POSITION_VECIN;
+  nop.outputs[0].mem.alloc_type = ascir::ALLOC_TYPE_QUEUE;
+  nop.outputs[0].que.id = 1;
+  nop.outputs[0].opt.merge_scope = ascir::ID_NONE;
 
   codegen::Tiler tiler;
   codegen::TPipe tpipe("tpipe", tiler);
-  tpipe.AddTensor(load.outputs[0]);
+  tpipe.AddTensor(nop.outputs[0]);
 
   codegen::Stage stage(ascir::UNIT_MTE);
-  stage.AddCall(load);
+  stage.AddCall(nop);
 
   EXPECT_EQ(stage.Generate(tpipe, vector<ascir::AxisId>{}), std::string{
     "{\n"
     "LocalTensor<uint8_t> q1_buf = q1.AllocTensor<uint8_t>();\n"
     "LocalTensor<half> t0;\n"
     "t0.SetAddrWithOffset(q1_buf, 0);\n"
-    "DataCopy(t0[0], t0[0], t0_size);\n"
     "q1.EnQue(q1_buf);\n"
     "}\n"
   });

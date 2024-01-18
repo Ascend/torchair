@@ -70,6 +70,7 @@ class Tensor : public Variable {
 
   vector<ascir::AxisId> axis;
   vector<ascir::AxisId> vectorized_axis;
+  vector<uint32_t> vectorized_axis_pos;
   vector<ascir::SizeExpr> axis_size;
   vector<ascir::SizeExpr> axis_strides;
 
@@ -158,6 +159,8 @@ class Tiler : public Code {
   std::string Size(const ascir::SizeExpr& size) const;
   std::string Offset(const std::vector<ascir::AxisId> &current_axis, const std::vector<ascir::AxisId> &axis,
                      const std::vector<ascir::SizeExpr> &strides) const;
+  std::string BlkLen(ge::DataType dtype, const ascir::SizeExpr& size) const;
+  std::string BlkLenDiff(ge::DataType dtype, const ascir::SizeExpr& size_a, const ascir::SizeExpr& size_b) const;
   std::string TensorVectorizedOffset(const std::vector<ascir::AxisId> &current_axis, const Tensor &tensor) const;
   std::string TensorVectorizedSize(const Tensor &tensor) const;
   const Axis& GetAxis(const ascir::AxisId id) const;
@@ -289,6 +292,7 @@ class KernelUtils {
   static std::string FunctionDefines();
   static std::string Max();
   static std::string Sum();
+  static std::string BlkLen(ge::DataType dtype);
 };
 
 class Kernel {
