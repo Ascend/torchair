@@ -385,8 +385,69 @@ std::string codegen::Tiler::BlockOutterAxisDefine() {
   return code.str();
 }
 
+std::string AscendCApiExtend::GetSetTmp() {
+  return std::string {
+    "LocalTensor<uint8_t> g_local_tmp;\n"
+    "void SetTmp(LocalTensor<uint8_t> tmp){\n"
+    "    g_local_tmp = tmp;\n"
+    "};\n"
+    "\n"
+    "template <typename T>\n"
+    "LocalTensor<T> GetTmp() {\n"
+    "    LocalTensor<T> tmp;\n"
+    "    tmp.SetAddrWithOffset(g_local_tmp, 0);\n"
+    "    return tmp;\n"
+    "}\n"
+  };
+}
+
+std::string codegen::AscendCApiExtend::ReduceLast() {
+  return std::string{
+    "template<typename T>\n"
+    "void WholeReduceSumAdapt(const LocalTensor<T> &dstLocal, const LocalTensor<T> &srcLocal, const int32_t mask,\n"
+    "                         const int32_t repeatTimes, const int32_t dstRepStride, const int32_t srcBlkStride,\n"
+    "                         const int32_t srcRepStride, ReduceOrder order){\n"
+    "    WholeReduceSum(dstLocal, srcLocal, mask, repeatTimes, dstRepStride, srcBlkStride, srcRepStride);\n"
+    "}\n"
+    "\n"
+    "template <typename T,\n"
+    "          void (*WholeReduceFunc)(const LocalTensor<T> &dstLocal, const LocalTensor<T> &srcLocal, const int32_t mask,\n"
+    "                                  const int32_t repeatTimes, const int32_t dstRepStride, const int32_t srcBlkStride,\n"
+    "                                  const int32_t srcRepStride, ReduceOrder order),\n"
+    "          void (*BinaryFunc)(const LocalTensor<T> &dstLocal, const LocalTensor<T> &src0Local,\n"
+    "                             const LocalTensor<T> &src1Local, const int32_t &calCount)>\n"
+    "void ReduceLast(const LocalTensor<T> &dst, const LocalTensor<T> &src, const int32_t m, const int32_t k) {\n"
+    "    if (k <= FULL_MASK_LEN && (k * sizeof(half) % ONE_BLK_SIZE == 0)) {\n"
+    "      int32_t srcRepStride = (k * sizeof(T) + ONE_BLK_SIZE - 1) / ONE_BLK_SIZE;\n"
+    "      WholeReduceFunc(dst, src, k, m, 1, 1, srcRepStride, ReduceOrder::ORDER_ONLY_VALUE);\n"
+    "    } else if (k > FULL_MASK_LEN && k % FULL_MASK_LEN == 0 && m < FULL_MASK_LEN) {\n"
+    "      WholeReduceFunc(dst, src, FULL_MASK_LEN, m, 1, 1, utils::BlkLen<T>(k), ReduceOrder::ORDER_ONLY_VALUE);\n"
+    "\n"
+    "      auto tmp_buf = GetTmp<T>();\n"
+    "      for (int i = FULL_MASK_LEN; i < k; i += FULL_MASK_LEN) {\n"
+    "        pipe_barrier(PIPE_V);\n"
+    "        WholeReduceFunc(tmp_buf, src[i], FULL_MASK_LEN, m, 1, 1, utils::BlkLen<T>(k), ReduceOrder::ORDER_ONLY_VALUE);\n"
+    "        pipe_barrier(PIPE_V);\n"
+    "        BinaryFunc(dst, dst, tmp_buf, m);\n"
+    "      }\n"
+    "    } else {\n"
+    "      ASSERT(false && \"Reduce k size not support.\");\n"
+    "    }\n"
+    "}\n"
+  };
+}
+
+std::string AscendCApiExtend::FunctionDefines() {
+  std::stringstream ss;
+  ss << "/* AscendC Api Extend */" << std::endl;
+  ss << GetSetTmp() << std::endl;
+  ss << ReduceLast() << std::endl;
+  return ss.str();
+}
+
 std::string KernelUtils::FunctionDefines() {
   std::stringstream ss;
+
   ss << "namespace utils {" << std::endl;
   ss << "template <typename T>" << std::endl;
   ss << "constexpr inline __aicore__ T Max(const T a) {" << std::endl;
@@ -407,6 +468,10 @@ std::string KernelUtils::FunctionDefines() {
   ss << "constexpr inline __ai_core__ uint16_t BlkLen(uint32_t size) {" << std::endl;
   ss << "  return size / (ONE_BLK_SIZE / sizeof(DataType));" << std::endl;
   ss << "}" << std::endl;
+  ss << std::endl;
+  ss << "constexpr inline __ai_core__ uint16_t BlkAlign(uint32_t size) {" << std::endl;
+  ss << "  return (size + ONE_BLK_SIZE - 1) / ONE_BLK_SIZE * ONE_BLK_SIZE;" << std::endl;
+  ss << "}" << std::endl;
   ss << "}" << std::endl;
 
   return ss.str();
@@ -424,6 +489,10 @@ std::string KernelUtils::BlkLen(ge::DataType dtype) {
   std::stringstream ss;
   ss << "utils::BlkLen<" << Tensor::DtypeName(dtype) << ">";
   return ss.str();
+}
+
+std::string KernelUtils::BlkAlign() {
+  return "utils::BlkAlign";
 }
 
 TPipe::TPipe(const std::string &name, const Tiler &tiler)
@@ -561,14 +630,14 @@ std::string TPipe::TensorAlloc(const Tensor& tensor) const {
 std::string TPipe::InitTQueBuffers(const TQue &que) const {
   stringstream ss;
   ss << this->name << "."
-     << "InitBuffer(" << que << ", " << que.buf_num << ", " << que.size << ");";
+     << "InitBuffer(" << que << ", " << que.buf_num << ", " << KernelUtils::BlkAlign() << "(" << que.size << "));";
   return ss.str();
 }
 
 std::string TPipe::InitTBufBuffer(const TBuf &buf) const {
   stringstream ss;
   ss << this->name << "."
-     << "InitBuffer(" << buf << ", " << buf.size << ");";
+     << "InitBuffer(" << buf << ", " << KernelUtils::BlkAlign() << "(" << buf.size << "));";
   return ss.str();
 }
 
@@ -859,6 +928,41 @@ std::string BinaryApicall(std::string binaryname, const TPipe &tpipe, const std:
     return ss.str();
 }
 
+std::string ReduceApicall(std::string api_name, const TPipe &tpipe, const std::vector<ascir::AxisId> &current_axis,
+                          const std::vector<std::reference_wrapper<const Tensor>> &inputs,
+                          const std::vector<std::reference_wrapper<const Tensor>> &outputs) {
+    std::map<std::string, pair<std::string, std::string>> api_names = {
+        {"Max", {"WholeReduceMax", "Max"}},
+        {"Min", {"WholeReduceMin", "Min"}},
+        {"Sum", {"WholeReduceSumAdapt", "Add"}},
+    };
+    auto iter = api_names.find(api_name);
+    if (iter == api_names.end()) {
+        throw std::runtime_error("Unsupported reduce api: " + api_name);
+    }
+
+    auto& [reduce_func, binary_func] = iter->second;
+
+    auto x = inputs[0].get();
+    auto y = outputs[0].get();
+
+    auto m_pos = x.vectorized_axis_pos[0];
+    auto k_pos = x.vectorized_axis_pos[1];
+
+    stringstream ss;
+    ss << "ReduceLast<"
+            << Tensor::DtypeName(y.dtype) << ", "
+            << reduce_func << ", "
+            << binary_func
+        << ">" << "("
+        << y << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, y) << "], "
+        << x << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, x) << "], "
+        << tpipe.tiler.Size(x.axis_size[m_pos]) << ", "
+        << tpipe.tiler.Size(x.axis_size[k_pos])
+        << ");" << std::endl;
+    return ss.str();
+}
+
 std::vector<uint32_t> NonZeroVecAxisPos(const Tensor& tensor) {
   std::vector<uint32_t> axis_pos;
   for (auto pos : tensor.vectorized_axis_pos) {
@@ -997,6 +1101,8 @@ std::string ApiCall::Generate(const TPipe &tpipe, const std::vector<ascir::AxisI
       {Exp::Type, {"Exp", UnaryApicall}},
       {Div::Type, {"Div", BinaryApicall}},
       {Sub::Type, {"Sub", BinaryApicall}},
+      {Max::Type, {"Max", ReduceApicall}},
+      {Sum::Type, {"Sum", ReduceApicall}},
   };
 
   stringstream ss;
@@ -1339,6 +1445,15 @@ std::string Kernel::LocalTensorQueBufAlloc() const {
   return ss.str();
 }
 
+std::string Kernel::TmpBufAlloc() const {
+  stringstream ss;
+  ss << "TBuf<TPosition::VECCALC> tmp;" << std::endl
+   << "tpipe.InitBuffer(tmp, 8 * 1024);" << std::endl
+   << "LocalTensor<uint8_t> tmp_buf = tmp.Get<uint8_t>();" << std::endl
+   << "SetTmp(tmp_buf);" << std::endl;
+  return ss.str();
+}
+
 Kernel Kernel::ParseGraph(const ascir::ImplGraph &graph) {
   Kernel kernel;
 
@@ -1406,6 +1521,9 @@ std::string Kernel::Generate() {
   ss << KernelUtils::FunctionDefines();
   ss << std::endl;
 
+  ss << AscendCApiExtend::FunctionDefines();
+  ss << std::endl;
+
   ss << this->KernelFunctionDeclare() <<  " {" << std::endl;
 
   ss << this->tiler.TilingDataDefine(this->tiling_data_arg);
@@ -1415,6 +1533,8 @@ std::string Kernel::Generate() {
   ss << this->GlobalTensorInit();
   ss << std::endl;
   ss << this->LocalTensorQueBufAlloc();
+
+  ss << this->TmpBufAlloc();
 
   ss << this->looper.GenerateLoop(this->tiler, this->tpipe);
 

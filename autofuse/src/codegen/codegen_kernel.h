@@ -289,12 +289,21 @@ private:
   void GenerateLoop(const Tiler& tiler, const TPipe& tpipe, std::vector<ascir::AxisId>& current_axis, const Loop& loop, std::stringstream& ss) const;
 };
 
+class AscendCApiExtend {
+public:
+    static std::string FunctionDefines();
+
+    static std::string GetSetTmp();
+    static std::string ReduceLast();
+};
+
 class KernelUtils {
  public:
   static std::string FunctionDefines();
   static std::string Max();
   static std::string Sum();
   static std::string BlkLen(ge::DataType dtype);
+  static std::string BlkAlign();
 };
 
 class Kernel {
@@ -321,6 +330,7 @@ class Kernel {
   std::string KernelFunctionDeclare() const;
   std::string GlobalTensorInit() const;
   std::string LocalTensorQueBufAlloc() const;
+  std::string TmpBufAlloc() const;
 };
 }
 

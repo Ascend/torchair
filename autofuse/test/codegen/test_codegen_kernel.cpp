@@ -318,7 +318,7 @@ TEST(CodegenKernel, TPipe_InitTQueBuffers) {
   auto que = tpipe.ques.find(tensor.que.id);
   ASSERT_NE(que, tpipe.ques.end());
   EXPECT_EQ(tpipe.InitTQueBuffers(que->second), std::string {
-    "tpipe.InitBuffer(q1, q1_buf_num, q1_size);"});
+    "tpipe.InitBuffer(q1, q1_buf_num, utils::BlkAlign(q1_size));"});
 }
 
 TEST(CodegenKernel, TPipe_InitTBufBuffer) {
@@ -337,7 +337,7 @@ TEST(CodegenKernel, TPipe_InitTBufBuffer) {
   auto buf = tpipe.bufs.find(tensor.buf.id);
   ASSERT_NE(buf, tpipe.bufs.end());
   EXPECT_EQ(tpipe.InitTBufBuffer(buf->second), std::string{
-    "tpipe.InitBuffer(b1, b1_size);"});
+    "tpipe.InitBuffer(b1, utils::BlkAlign(b1_size));"});
 }
 
 TEST(CodegenKernel, TPipe_TensorSizeCalc_AllocFromBuf) {
@@ -520,7 +520,7 @@ TEST(CodegenKernel, TPipe_LocalTBufAlloc) {
   EXPECT_EQ(tpipe.LocalTBufAlloc(), std::string{
     "const uint32_t b1_size = utils::Max(m1_size, t1_size * sizeof(float));\n"
     "TBuf<TPosition::VECIN> b1;\n"
-    "tpipe.InitBuffer(b1, b1_size);\n"
+    "tpipe.InitBuffer(b1, utils::BlkAlign(b1_size));\n"
     "LocalTensor<uint8_t> b1_buf = b1.Get<uint8_t>();\n"
     "\n"
   });
@@ -574,7 +574,7 @@ TEST(CodegenKernel, TPipe_LocalTQueAlloc) {
     "const uint32_t q1_depth = utils::Max(m1_que_depth, t1_que_depth);\n"
     "const uint32_t q1_buf_num = utils::Max(m1_que_buf_num, t1_que_buf_num);\n"
     "TQue<TPosition::VECIN, q1_depth> q1;\n"
-    "tpipe.InitBuffer(q1, q1_buf_num, q1_size);\n"
+    "tpipe.InitBuffer(q1, q1_buf_num, utils::BlkAlign(q1_size));\n"
     "\n"
   });
 }
@@ -1078,7 +1078,7 @@ TEST(CodegenKernel, Kernel_LocalTensorQueBufAlloc) {
     "const uint32_t q0_depth = utils::Max(load_y_que_depth);\n"
     "const uint32_t q0_buf_num = utils::Max(load_y_que_buf_num);\n"
     "TQue<TPosition::VECIN, q0_depth> q0;\n"
-    "tpipe.InitBuffer(q0, q0_buf_num, q0_size);\n"
+    "tpipe.InitBuffer(q0, q0_buf_num, utils::BlkAlign(q0_size));\n"
     "\n"
     "\n"
   });

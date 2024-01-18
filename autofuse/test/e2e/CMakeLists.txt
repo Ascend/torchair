@@ -5,6 +5,7 @@ add_library(e2e SHARED
     ./e2e_load_sub_store.cpp
     ./e2e_softmax.cpp
     ./e2e_broadcast.cpp
+    ./e2e_rmax.cpp
     )
 target_link_libraries(e2e PUBLIC
     autofuse
@@ -34,4 +35,5 @@ else()
     add_subdirectory(load_abs_store_expect_code)
     add_subdirectory(load_sub_store_expect_code)
     add_subdirectory(load_broadcast_store_expect_code)
+    add_subdirectory(load_rmax_store)
 endif()
