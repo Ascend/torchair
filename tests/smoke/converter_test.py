@@ -1,6 +1,7 @@
 import functools
 from typing import Callable
 import torch
+import torch_npu
 import sys
 import contextlib
 import torchair as tng
@@ -10,16 +11,13 @@ from torchair import CompilerConfig
 from torchair.ge_concrete_graph.supported_declaration import _TypedTensor
 aten = torch.ops.aten
 
-_torch_npu_module = None
+_torch_npu_module = torch_npu
+torch_npu.npu.set_device(0)
 
 
 @contextlib.contextmanager
 def _npu_executor_as_default():
     global _torch_npu_module
-    if _torch_npu_module is None:
-        import torch_npu
-        _torch_npu_module = torch_npu
-        torch_npu.npu.set_device(0)
     try:
         sys.modules['torch_npu'] = _torch_npu_module
         yield
@@ -32,15 +30,23 @@ def as_tensor(spec: _TypedTensor):
     dims = spec.dims
     if spec.value is not None:
         return torch.tensor(spec.value, dtype=spec.dtype, device=device)
+
+    if spec.value_range is not None:
+        low = spec.value_range[0]
+        high = spec.value_range[1]
+        result = torch.rand(*dims) * (high - low) + low
+        return result.to(spec.dtype).to(device)
+
     return torch.randn(*dims).to(spec.dtype).to(device)
 
 
-def _eager_aten_call(*args, aten_op, **kwargs):
-    outs = aten_op(*args, **kwargs)
-    if isinstance(outs, (list, tuple)):
-        return [out.clone() for out in outs]
-    else:
+def _eager_aten_call(aten_op):
+    def inner_run(*args, **kwargs):
+        outs = aten_op(*args, **kwargs)
+        if isinstance(outs, (list, tuple)):
+            return [out.clone() for out in outs]
         return outs.clone()
+    return inner_run
 
 
 def _assemble_testcase_inputs(testcase):
@@ -62,13 +68,17 @@ def _assemble_testcase_inputs(testcase):
     return args, kwargs
 
 
+def reset_rng_state():
+    torch.manual_seed(0)
+    torch.npu.manual_seed(0)
+
+
 def _test_converter(converter: Converter, *, backend, result_checker):
     if converter.supported_cases is None:
         print(f"No supported_cases for {converter._aten_op}", flush=True)
         return
 
-    eager_func = functools.partial(
-        _eager_aten_call, aten_op=converter._aten_op)
+    eager_func = _eager_aten_call(converter._aten_op)
     compiled_func = torch.compile(eager_func, backend=backend)
 
     print(
@@ -78,11 +88,14 @@ def _test_converter(converter: Converter, *, backend, result_checker):
         print(f"[RUN] {case_name}", flush=True)
 
         args, kwargs = _assemble_testcase_inputs(testcase)
+
+        reset_rng_state()
         try:
             backend_results = compiled_func(*args, **kwargs)
         except Exception as e:
             backend_results = e
 
+        reset_rng_state()
         try:
             eager_results = eager_func(*args, **kwargs)
         except Exception as e:
