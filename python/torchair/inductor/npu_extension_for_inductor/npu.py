@@ -56,18 +56,18 @@ class NPUOverrides(OpOverrides):
 
 class BufDesc:
     def __init__(self, *, size, dtype, is_output=False, src=None):
-        self._size = size
-        self._dtype = dtype
+        self.size = size
+        self.dtype = dtype
         self.is_output: bool = is_output
         self.src = src
 
     @property
     def asc_size(self):
-        return [AscExpr(s) for s in self._size]
+        return [AscExpr(s) for s in self.size]
 
     @property
     def asc_dtype(self):
-        return TypeUtils.torch_to_asc(self._dtype)
+        return TypeUtils.torch_to_asc(self.dtype)
 
 
 @dataclasses.dataclass
@@ -118,11 +118,16 @@ class NPUKernel(Kernel):
         self._size_vars = set()
         self._axis_exprs = dict()
         for axis, expr in var_ranges.items():
-            self._size_vars.update(V.graph.sizevars.simplify(expr).free_symbols)
+            expr = V.graph.sizevars.simplify(expr)
+            self._size_vars.update(expr.free_symbols)
             self._axis_exprs[sympy.Symbol(axis.name)] = expr
         for index, expr in indexing_exprs.items():
-            self._size_vars.update(
-                [s for s in V.graph.sizevars.simplify(expr).free_symbols if s.name.startswith('s')])
+            expr = V.graph.sizevars.simplify(expr)
+            self._size_vars.update([s for s in expr.free_symbols if s.name.startswith('s')])
+        for desc in self._buf_desc.values():
+            desc.size = [V.graph.sizevars.simplify(v) for v in desc.size]
+            for size in desc.size:
+                self._size_vars.update(size.free_symbols)
         self._size_vars = sorted(self._size_vars, key=lambda x: x.name)
         for size in self._size_vars:
             self.graph.size(size.name)
@@ -385,7 +390,8 @@ class NPUScheduling(BaseScheduling):
             else:
                 assert str(var_ranges) == str(body.var_ranges), f"{var_ranges} != {body.var_ranges}"
                 assert str(indexing_exprs) == str(body.indexing_exprs), f"{indexing_exprs} != {body.indexing_exprs}"
-            is_output = any([isinstance(v.node, torch._inductor.scheduler.OutputNode) for v in node.users])
+            inner_user_num = sum([user.node in nodes for user in node.users])
+            is_output = inner_user_num != len(node.users)
             if is_output:
                 output_bufs.append(node)
             buf_desc[node.node.name] = BufDesc(size=node.node.layout.size, dtype=V.graph.get_dtype(node.node.name),

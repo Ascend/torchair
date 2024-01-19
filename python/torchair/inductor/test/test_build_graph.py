@@ -144,7 +144,7 @@ class BuildGraphTest(unittest.TestCase):
                 buf0.y.size = [ascir.SizeExpr([s0]), ascir.SizeExpr([s1])]
                 buf0.y.dtype = ascir.dtypes.float16
                 buf0.x = store.y
-            
+
                 NpuKernel0Graph.set_inputs([size_vars, arg2_1])
                 NpuKernel0Graph.set_outputs([buf0])
                 return NpuKernel0Graph
@@ -424,6 +424,26 @@ class BuildGraphTest(unittest.TestCase):
         self.assertTrue(len(kernel_capture.graph(0).unsupported_ops) > 0)
         self.assertNotEqual(kernel_capture.graph(0).unsupported_reason, None)
 
+    def test_size_guarded(self):
+        @torch.compile(dynamic=True)
+        def inference(x0, x1):
+            y1 = x0 + x1
+            y2 = torch.conv2d(y1, x1)
+            return y2
+
+        data1 = torch.ones(2, 2, 2, 2)
+        data2 = torch.ones(2, 2, 2, 2)
+        with KernelCapture() as kernel_capture:
+            inference(data1, data2)
+
+        output = kernel_capture.graph(0).ops[-1]
+        self.assertEqual([str(v) for v in output.attrs[f'{output.name}.y.size']], ['2', '2', '2', '2'])
+
 
 if __name__ == '__main__':
-    unittest.main()
+    suite = unittest.TestSuite()
+
+    suite.addTest(BuildGraphTest())
+
+    runner = unittest.TextTestRunner()
+    runner.run(suite)
