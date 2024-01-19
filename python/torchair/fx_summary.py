@@ -50,7 +50,7 @@ def _get_converter_status(converter):
 
     somecase_unsupported = False
     somecase_supported = False
-    if hasattr(converter, '__wrapped__') and _contain_statement(converter.__wrapped__, 'raise '):
+    if hasattr(converter, '__wrapped__') and _contain_statement(converter.__wrapped__, 'raise NotImplementedError'):
         somecase_unsupported = True
 
     if _contain_statement(converter, 'return '):
