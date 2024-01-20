@@ -84849,7 +84849,8 @@ def ConstPlaceHolder(*,
 # This api is auto-generated from IR QuantBatchMatmulV3
 @auto_convert_to_tensor([False, False, False, False, False], [False, False, False, True, True])
 def QuantBatchMatmulV3(x1: Tensor, x2: Tensor, scale: Tensor, offset: Optional[Tensor], bias: Optional[Tensor], *,
-                       transpose_x1: bool=False, transpose_x2: bool=False, dependencies=[], node_name=None):
+                       dtype: int, transpose_x1: bool = False, transpose_x2: bool = False, dependencies=[],
+                       node_name=None):
     """REG_OP(QuantBatchMatmulV3)\n
     .INPUT(x1, TensorType({DT_INT8}))\n
     .INPUT(x2, TensorType({DT_INT8}))\n
@@ -84857,6 +84858,7 @@ def QuantBatchMatmulV3(x1: Tensor, x2: Tensor, scale: Tensor, offset: Optional[T
     .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(bias, TensorType({DT_INT32}))\n
     .OUTPUT(y, TensorType({DT_FLOAT16}))\n
+    .REQUIRED_ATTR(dtype, Int)\n
     .ATTR(transpose_x1, Bool, false)\n
     .ATTR(transpose_x2, Bool, false)\n
     """
@@ -84897,6 +84899,7 @@ def QuantBatchMatmulV3(x1: Tensor, x2: Tensor, scale: Tensor, offset: Optional[T
         op.input_desc[-1].name = "bias"
   
     # process attrs
+    op.attr["dtype"].i = dtype
     op.attr["transpose_x1"].b = transpose_x1
     op.attr["transpose_x2"].b = transpose_x2
   
