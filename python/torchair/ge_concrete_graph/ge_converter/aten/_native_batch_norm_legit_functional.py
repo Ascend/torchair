@@ -47,6 +47,10 @@ def conveter_aten__native_batch_norm_legit_functional_default(
         raise NotImplementedError(
             "torch.ops.aten._native_batch_norm_legit_functional.default ge_converter is not implemented while training is False!"
         )
+    # Prevent op BNTrainingUpdate from modifying value of src running_mean and runnning_var.
+    running_mean = ge.TensorMove(running_mean)
+    running_var = ge.TensorMove(running_var)
+
     sum_output, square_sum = ge.BNTrainingReduce(input)
     specific_op_input_layout(sum_output, indices=0, layout="NCHW")
     specific_op_output_layout(sum_output, indices=[0, 1], layout="NCHW")
