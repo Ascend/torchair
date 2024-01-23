@@ -1,3 +1,4 @@
+import os
 import operator
 from functools import wraps, reduce, lru_cache
 from typing import Callable, Optional
@@ -8,6 +9,10 @@ from torch._subclasses import fake_tensor as _subclasses_fake_tensor
 from torch._C import DispatchKey
 from torch._prims_common.wrappers import out_wrapper
 from torch._decomp import get_decompositions, decomposition_table
+from torch._dynamo.symbolic_convert import break_graph_if_unsupported, InstructionTranslatorBase, stack_op
+from torch._dynamo.exc import Unsupported
+from torch._dynamo.variables.lists import TupleVariable
+from torch._dynamo.variables.nn_module import NNModuleVariable
 
 aten = torch.ops.aten
 
@@ -28,6 +33,8 @@ def run_once(f):
 
 
 npu_meta_table = {}
+break_fn_table = {}
+break_mapping_table = {}
 
 
 def _add_op_to_meta_table(op, fn):
@@ -51,6 +58,15 @@ def register_meta_npu(op):
         return fn
 
     return meta_decorator
+
+
+def register_break_fn(meta_class, op_name):
+    op_name = op_name.upper()
+    def decorator(func: Callable):
+        break_fn_table[op_name] = func
+        break_mapping_table[op_name] = meta_class
+        return func
+    return decorator
 
 
 @register_meta_npu(aten.native_dropout)
@@ -100,6 +116,120 @@ def npu_patch_meta():
     patch_torch_decomp_decompositions()
 
 
+@register_break_fn('BINARY_SUBSCR', 'SLICE')
+def break_fn_slice(self, inst):
+    """
+    break op slice/slice_backward. 
+    For example:
+        x = x[:10, :20, :, :] # slice
+    """
+    if isinstance(self.stack[1], TupleVariable):
+        for var in self.stack[1].as_proxy():
+            if isinstance(var, slice):
+                raise Unsupported(f"Unsupported slice op !")
+            
+            
+@register_break_fn('STORE_SUBSCR', 'SETITEM')
+def break_fn_setitem(self, inst):
+    """
+    break ops like index_put, slice_scatter, etc. 
+    For example:
+        x[:10] = 1 # slice_scatter
+        x[[1, 3, 4]] = 1 # index_put
+    """
+    raise Unsupported(f"Unsupported setitem op !")
+            
+            
+@register_break_fn('CALL_FUNCTION', 'NN.CONV3D')
+def break_fn_conv3d(self, inst):
+    """
+    break module nn.Conv3d. 
+    For example:
+        torch.nn.Conv3d
+    """
+    if isinstance(self.stack[0], NNModuleVariable):
+        if self.stack[0].module_type == torch.nn.Conv3d:
+            raise Unsupported(f"Unsupported conv3d module !")
+
+
+def add_break_graph(op_table):
+    """
+    Initially support:
+        subscr: slice/slice_backward
+        call_function: nn.Conv3d
+        store_subscr: scatter_add/index_put
+    How to customize your own graph breaking function:
+        1、Figure out which function to be patched.
+        2、Register your own break_fn.
+        3、Implement new patch functions.
+    """
+    @break_graph_if_unsupported(push=1)
+    def binary_subscr(self, inst):
+        if 'BINARY_SUBSCR' in op_table:
+            for op_fn in op_table['BINARY_SUBSCR']:
+                op_fn(self, inst)
+        stack_op(operator.getitem)(self, inst)
+        
+    @break_graph_if_unsupported(push=1)
+    def call_function(self, inst):
+        if 'CALL_FUNCTION' in op_table:
+            for op_fn in op_table['CALL_FUNCTION']:
+                op_fn(self, inst)
+        args = self.popn(inst.argval)
+        fn = self.pop()
+        self.call_function(fn, args, {})
+        
+    @break_graph_if_unsupported(push=0)
+    def store_subscr(self, inst):
+        if 'STORE_SUBSCR' in op_table:
+            for op_fn in op_table['STORE_SUBSCR']:
+                op_fn(self, inst)
+        val, obj, key = self.popn(3)
+        result = obj.call_method(self, "__setitem__", [key, val], {})
+        # no result is pushed, so need to lift the guards to global
+        self.output.guards.update(result.guards)
+        
+    InstructionTranslatorBase.BINARY_SUBSCR = binary_subscr
+    InstructionTranslatorBase.STORE_SUBSCR = store_subscr
+    InstructionTranslatorBase.CALL_FUNCTION = call_function
+    
+
+def npu_patch_break_graph():
+    """
+    Automatically break graph through op or module. Initially support slice/slice_backward, 
+    setitem(index_put, slice_scatter), nn.Conv3d by setting environment variable BREAK_GRAPH_OP_LIST.
+    Usage:
+        If you want to break down only `slice` and `nn.Conv3d`, you can achieve it by setting 
+        environment variable BREAK_GRAPH_OP_LIST="SLICE,NN.CONV3D" 
+    Notice: 
+        Valid ops or modules specified by BREAK_GRAPH_OP_LIST is split by ','
+    """
+    break_graph_op_list = os.getenv('BREAK_GRAPH_OP_LIST', False)
+    if not break_graph_op_list:
+        return
+    
+    def add_value_to_dict(my_dict, key, value):
+        if key not in my_dict:
+            my_dict[key] = [value]
+        else:
+            my_dict[key].append(value)
+    
+    op_table = {}
+    for op_name in break_graph_op_list.split(','):
+        op_name = op_name.upper()
+        if op_name in break_mapping_table:
+            patch_fn = break_mapping_table.get(op_name)
+            op_fn = break_fn_table.get(op_name)
+            add_value_to_dict(op_table, patch_fn, op_fn)
+        else:
+            raise RuntimeError(
+                f"Setting BREAK_GRAPH_OP_LIST ERROR: "
+                f"Invalid break op `{op_name}`, please register "
+                f"break fn for `{op_name}` first. The available options "
+                f"are: {list(break_mapping_table.keys())}")
+            
+    add_break_graph(op_table)
+
 
 def disable_implicit_decomposition():
     '''
@@ -137,17 +267,23 @@ def register_matmul_backward_decomp():
         size_other = other.size()
         grad_self = None
         grad_other = None
-        if dim_self == 1 and dim_other == 1:
+        
+        def matmul_backward_1d_1d():
             grad_self = other.mul(grad) if mask[0] else grad_self
             grad_other = self.mul(grad) if mask[1] else grad_other
-        elif dim_self == 2 and dim_other == 1:
+            return grad_self, grad_other
+        
+        def matmul_backward_2d_1d():
             grad_self = grad.unsqueeze(1).mm(other.unsqueeze(0)) if mask[0] else grad_self
             grad_other = self.transpose(-1, -2).mm(grad.unsqueeze(1)).squeeze_(1) if mask[1] else grad_other
-        elif dim_self == 1 and dim_other == 2:
+            return grad_self, grad_other
+        
+        def matmul_backward_1d_2d():
             grad_self = grad.unsqueeze(0).mm(other.transpose(-1, -2)).squeeze_(0) if mask[0] else grad_self
             grad_other = self.unsqueeze(1).mm(grad.unsqueeze(0)) if mask[1] else grad_other
-        elif dim_self >= 3 and (dim_other == 1 or dim_other == 2):
-            # create a 2D-matrix from grad
+            return grad_self, grad_other
+        
+        def matmul_backward_nd_lt3d():
             view_size = 1 if dim_other == 1 else size_grad[-1]
             unfolded_grad = (grad.unsqueeze(-1) if dim_other == 1 else grad).contiguous().view(-1, view_size)
             if mask[0]:
@@ -158,8 +294,9 @@ def register_matmul_backward_decomp():
                 # create a 2D-matrix from self
                 unfolded_self = self.contiguous().view(-1, size_self[-1])
                 grad_other = unfolded_self.transpose(-1, -2).mm(unfolded_grad).view(size_other)
-        elif (dim_self == 1 or dim_self == 2) and dim_other >= 3:
-            # create a 2D-matrix from grad
+            return grad_self, grad_other
+        
+        def matmul_backward_lt3d_nd():
             view_size = 1 if dim_self == 1 else size_grad[size_grad.size() - 2]
             unfolded_grad_t = grad.view(-1, view_size) if dim_self == 1 else \
                                                             grad.transpose(-1, -2).contiguous().view(-1, view_size)
@@ -174,6 +311,20 @@ def register_matmul_backward_decomp():
                 size_other_t.extend([size_other[dim_other - 1], size_other[dim_other - 2]])
                 unfolded_self = self.unsqueeze(0) if dim_self == 1 else self
                 grad_other = unfolded_grad_t.mm(unfolded_self).view(size_other_t).transpose(-1, -2)
+            return grad_self, grad_other
+                
+        if dim_self == 1 and dim_other == 1:
+            grad_self, grad_other = matmul_backward_1d_1d()
+        elif dim_self == 2 and dim_other == 1:
+            grad_self, grad_other = matmul_backward_2d_1d()
+        elif dim_self == 1 and dim_other == 2:
+            grad_self, grad_other = matmul_backward_1d_2d()
+        elif dim_self >= 3 and (dim_other == 1 or dim_other == 2):
+            # create a 2D-matrix from grad
+            grad_self, grad_other = matmul_backward_nd_lt3d()
+        elif (dim_self == 1 or dim_self == 2) and dim_other >= 3:
+            # create a 2D-matrix from grad
+            grad_self, grad_other = matmul_backward_lt3d_nd()
         else:
             grad_self = torch.matmul(grad, other.transpose(-1, -2)) if mask[0] else grad_self
             grad_other = torch.matmul(self.transpose(-1, -2), grad) if mask[1] else grad_other
@@ -182,7 +333,8 @@ def register_matmul_backward_decomp():
 
 
 @run_once
-def process_npu_decomposition():
+def add_npu_patch():
     disable_implicit_decomposition()
     register_matmul_backward_decomp()
     npu_patch_meta()
+    npu_patch_break_graph()
