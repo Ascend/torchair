@@ -36,6 +36,7 @@ def calculate_p(p):
 
 @declare_supported([
     Support(F32(4, 16), 2.0, [1], True),
+    Support(F32(4, 16), 0.5, [1], True),
     Support(F32(4, 16), float(inf), [1], True),
     Support(F32(4, 16), float(-inf), [1], True),
     Support(F32(4, 16, 32), 2.0, [2], True),
@@ -56,7 +57,7 @@ def conveter_aten_linalg_vector_norm_default(
 ):
     """NB: aten::linalg_vector_norm(Tensor self, Scalar ord=2, int[1]? dim=None, bool keepdim=False, *, ScalarType? dtype=None) -> Tensor"""
     pvalue = calculate_p(ord)
-    result = ge.LpNorm(self, p=int(pvalue), axes=dim, keepdim=keepdim, epsilon=0.0)
+    result = ge.LpNormV2(self, p=pvalue, axes=dim, keepdim=keepdim, epsilon=0.0)
     result_dtype = dtype if dtype else self.dtype
     result_promote = dtype_promote(result, target_dtype=result_dtype)
     return result_promote
