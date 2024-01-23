@@ -31,7 +31,7 @@ from torchair.configs.aot_config import AotConfig
 from torchair.fx_summary import summarize_fx_graph
 from torchair.fx_dumper import NpuFxDumper
 from torchair.utils.custom_aot_functions import aot_module_simplified_joint
-from torchair.utils.process_decomposition import process_npu_decomposition
+from torchair.utils import add_npu_patch
 aten = torch.ops.aten
 
 
@@ -419,7 +419,7 @@ def get_npu_backend(*, compiler_config: CompilerConfig = None,
     if compiler_config is None:
         compiler_config = CompilerConfig()
 
-    process_npu_decomposition()
+    add_npu_patch()
 
     return functools.partial(_npu_backend, compiler_config=compiler_config, aot_config=aot_config,
                              custom_decompositions=custom_decompositions)
