@@ -32,7 +32,7 @@ from torchair.ge_concrete_graph.utils import dtype_promote
 @register_fx_node_ge_converter(torch.ops.aten.lt.Tensor)
 def conveter_aten_lt_Tensor(self: Tensor, other: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::lt.Tensor(Tensor self, Tensor other) -> Tensor"""
-    self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)
+    """This geir not implement bool dtype input, and dtype must be same"""
     return ge.Less(self, other)
 
 
@@ -45,8 +45,8 @@ def conveter_aten_lt_Scalar(
     self: Tensor, other: Union[Number, Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::lt.Scalar(Tensor self, Scalar other) -> Tensor"""
-    self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)
-    return ge.Less(self, other)
+    """This geir not implement bool dtype input"""
+    return ge.Less(self, ge.Cast(other, dst_type=self.dtype))
 
 
 @register_fx_node_ge_converter(torch.ops.aten.lt.Scalar_out)
