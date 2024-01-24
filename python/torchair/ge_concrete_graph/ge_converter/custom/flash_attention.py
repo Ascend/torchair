@@ -98,6 +98,7 @@ def convert_npu_npu_incre_flash_attention(
     *,
     padding_mask: Optional[Tensor] = None,
     atten_mask: Optional[Tensor] = None,
+    pse_shift: Optional[Tensor] = None,
     actual_seq_lengths: Optional[Union[List[int], Tensor]] = None,
     antiquant_scale: Optional[Tensor] = None,
     antiquant_offset: Optional[Tensor] = None,
@@ -111,13 +112,13 @@ def convert_npu_npu_incre_flash_attention(
     meta_outputs: TensorSpec = None,
 ):
 
-    '''NB: npu_incre_flash_attention(Tensor query, Tensor key, Tensor value, *, Tensor? padding_mask=None, Tensor? atten_mask=None, SymInt[]? actual_seq_lengths=None, Tensor? antiquant_scale=None, Tensor? antiquant_offset=None, Tensor? block_table=None, int num_heads=1, float scale_value=1.0, str input_layout="BSH", int num_key_value_heads=0, int block_size=0, int inner_precise=1) -> Tensor'''
+    '''NB: npu_incre_flash_attention(Tensor query, Tensor key, Tensor value, *, Tensor? padding_mask=None, Tensor? atten_mask=None, Tensor? pse_shift=None, SymInt[]? actual_seq_lengths=None, Tensor? antiquant_scale=None, Tensor? antiquant_offset=None, Tensor? block_table=None, int num_heads=1, float scale_value=1.0, str input_layout="BSH", int num_key_value_heads=0, int block_size=0, int inner_precise=1) -> Tensor'''
     key_list = [key]
     value_list = [value]
     if actual_seq_lengths is not None:
         actual_seq_lengths = dtype_promote(actual_seq_lengths, target_dtype=DataType.DT_INT64)
 
-    return ge.IncreFlashAttention(query, key_list, value_list, padding_mask=padding_mask, atten_mask=atten_mask,
+    return ge.IncreFlashAttention(query, key_list, value_list, pse_shift=pse_shift, atten_mask=atten_mask,
         actual_seq_lengths=actual_seq_lengths, dequant_scale1=None, quant_scale1=None, dequant_scale2=None,
         quant_scale2=None, quant_offset2=None, antiquant_scale=antiquant_scale, antiquant_offset=antiquant_offset,
         block_table=block_table, num_heads=num_heads, scale_value=scale_value, input_layout=input_layout,
