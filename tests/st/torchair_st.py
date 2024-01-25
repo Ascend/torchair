@@ -13,7 +13,7 @@ import torch
 import unittest
 import time
 import os
-os.environ['TNG_LOG_LEVEL'] = '0'
+os.environ['TNG_LOG_LEVEL'] = '-1'
 
 
 logger.setLevel(logging.DEBUG)
