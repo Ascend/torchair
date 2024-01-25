@@ -903,6 +903,18 @@ std::string NopApicall(std::string func, const TPipe &tpipe, const std::vector<a
     return "";
 }
 
+std::string CastApicall(std::string unaryname, const TPipe &tpipe, const std::vector<ascir::AxisId> &current_axis,
+                        const std::vector<std::reference_wrapper<const Tensor>> &inputs,
+                        const std::vector<std::reference_wrapper<const Tensor>> &outputs) {
+  auto x = inputs[0].get();
+  auto y = outputs[0].get();
+  stringstream ss;
+  ss << "Cast" << "(" << y << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, y) << "], " << x << "["
+     << tpipe.tiler.TensorVectorizedOffset(current_axis, x) << "], "
+     << "RoundMode::CAST_NONE, " << x.size << ");" << std::endl;
+  return ss.str();
+}
+
 std::string UnaryApicall(std::string unaryname, const TPipe &tpipe, const std::vector<ascir::AxisId> &current_axis,
                          const std::vector<std::reference_wrapper<const Tensor>> &inputs,
                          const std::vector<std::reference_wrapper<const Tensor>> &outputs) {
@@ -1097,6 +1109,7 @@ std::string ApiCall::Generate(const TPipe &tpipe, const std::vector<ascir::AxisI
       {Store::Type, {"Store", StoreApiCall}},
       {Broadcast::Type, {"Broadcast", BroadcastApiCall}},
       {Nop::Type, {"Nop", NopApicall}},
+      {Cast::Type, {"Cast", CastApicall}},
       {Abs::Type, {"Abs", UnaryApicall}},
       {Exp::Type, {"Exp", UnaryApicall}},
       {Div::Type, {"Div", BinaryApicall}},
