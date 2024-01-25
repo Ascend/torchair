@@ -9,7 +9,7 @@ import torchair
 import torchair.ge_concrete_graph.ge_converter.experimental.hcom_allreduce
 from torchair.core.utils import logger
 
-os.environ['TNG_LOG_LEVEL'] = '-1'
+os.environ['TNG_LOG_LEVEL'] = '0'
 logger.setLevel(logging.DEBUG)
 
 
