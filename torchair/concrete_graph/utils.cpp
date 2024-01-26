@@ -299,7 +299,7 @@ Status GeTensorToAtTensor(ge::Tensor &ge_tensor, at::Tensor &tensor) {
 Status CloneGraph(const ge::Graph &old_graph, ge::Graph &new_graph) {
   const auto old_compute_graph_ptr = ge::GraphUtilsEx::GetComputeGraph(old_graph);
   TNG_ASSERT(old_compute_graph_ptr != nullptr, "Get compute graph failed");
-  std::string aoe_copied_graph = "aoe_copied_graph";
+  const char* aoe_copied_graph = "aoe_copied_graph";
   ge::ComputeGraphPtr new_compute_graph_ptr = std::make_shared<ge::ComputeGraph>(aoe_copied_graph);
   TNG_ASSERT(new_compute_graph_ptr != nullptr, "Create new compute graph failed");
 
