@@ -449,7 +449,7 @@ include:
 *This operation converts Unicode code points to script codes corresponding to
 *each code point. Script codes correspond to International Components for
 *Unicode (ICU) UScriptCode values.
-*See http://icu-project.org/apiref/icu4c/uscript_8h.html.
+*See icu-project.org.
 *Returns -1 (USCRIPT_INVALID_CODE) for invalid codepoints.
 *Output shape will match input shape . \n
 
@@ -661,8 +661,7 @@ REG_OP(StringLength)
 *The input is a string tensor of any shape. The pattern is a scalar string tensor
 *which is applied to every element of the input tensor. The boolean values
 *(True or False) of the output tensor indicate if the input matches the regex
-*pattern provided. The pattern follows the re2 syntax
-*(https://github.com/google/re2/wiki/Syntax).:
+*pattern provided. The pattern follows the re2 syntax.
 include:
 *x:A list of string tensors. The tensors must all have the same shape,
 *or be scalars. Scalars may be mixed in; these will be broadcast to the shape
@@ -697,8 +696,7 @@ REG_OP(StringJoin)
 *The input is a string tensor of any shape. The pattern is a scalar string tensor
 *which is applied to every element of the input tensor.
 *The boolean values (True or False) of the output tensor indicate if the input
-*matches the regex pattern provided. The pattern follows the re2 syntax
-*(https://github.com/google/re2/wiki/Syntax).:
+*matches the regex pattern provided. The pattern follows the re2 syntax:
 include:
 *x:The tensors to format into the placeholder string . It's a dynamic input. \n
 
@@ -735,8 +733,7 @@ REG_OP(StringFormat)
 *The input is a string tensor of any shape. The pattern is a scalar string tensor
 *which is applied to every element of the input tensor. The boolean values
 *(True or False) of the output tensor indicate if the input matches the regex
-*pattern provided. The pattern follows the re2 syntax
-*(https://github.com/google/re2/wiki/Syntax).:
+*pattern provided. The pattern follows the re2 syntax:
 include:
 *@li x:A string tensor of the text to be processed.
 *@li pattern:A scalar string tensor containing the regular expression to match the input . \n
@@ -763,7 +760,7 @@ REG_OP(RegexFullMatch)
 *replacement string provided in rewrite . \n
 
 *@par Inputs:
-*It follows the re2 syntax (https://github.com/google/re2/wiki/Syntax).:
+*It follows the re2 syntax:
 include:
 *@li x:The text to be processed.
 *@li pattern:The regular expression to be matched in the input strings.
