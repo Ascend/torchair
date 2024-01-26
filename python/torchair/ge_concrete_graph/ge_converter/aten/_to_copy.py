@@ -73,4 +73,5 @@ def conveter_aten__to_copy_out(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::_to_copy.out(Tensor self, *, bool non_blocking=False, MemoryFormat? memory_format=None, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten._to_copy.out ge_converter is not implemented!")
+    raise RuntimeError(
+        "torch.ops.aten._to_copy.out is redundant before pytorch 2.1.0,might be supported in future version.")

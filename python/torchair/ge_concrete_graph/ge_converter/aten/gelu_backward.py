@@ -54,4 +54,6 @@ def conveter_aten_gelu_backward_grad_input(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::gelu_backward.grad_input(Tensor grad_output, Tensor self, *, str approximate="none", Tensor(a!) grad_input) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.gelu_backward.grad_input ge_converter is not implemented!")
+    raise RuntimeError(
+        "torch.ops.aten.gelu_backward.grad_input is redundant before pytorch 2.1.0,"
+        "might be supported in future version.")

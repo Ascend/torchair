@@ -66,4 +66,5 @@ def conveter_aten_addmm_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::addmm.out(Tensor self, Tensor mat1, Tensor mat2, *, Scalar beta=1, Scalar alpha=1, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.addmm.out ge_converter is not implemented!")
+    raise RuntimeError(
+        "torch.ops.aten.addmm.out is redundant before pytorch 2.1.0,might be supported in future version.")

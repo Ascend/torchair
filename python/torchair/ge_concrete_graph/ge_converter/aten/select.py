@@ -30,7 +30,8 @@ def conveter_aten_select_Dimname(
     self: Tensor, dim: str, index: int, meta_outputs: TensorSpec = None
 ):
     """NB: aten::select.Dimname(Tensor(a) self, str dim, int index) -> Tensor(a)"""
-    raise NotImplementedError("torch.ops.aten.select.Dimname ge_converter is not implemented!")
+    raise RuntimeError(
+        "torch.ops.aten.select.Dimname is redundant before pytorch 2.1.0,might be supported in future version.")
 
 
 # TO DO: case2 will fail, fix view output case later
