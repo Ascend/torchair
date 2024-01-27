@@ -218,7 +218,7 @@ Status AssembleDataToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor) {
   // The input at tensor must be contiguous(), but not necessarily matched.
   // Therefore, when getting data_ptr, the calculation of the data_ptr address needs to skip storage_offset,
   // and the calculation of nbytes needs to be based on the shape after view.
-  auto as_ge_tensor = ge::TensorAdapter::AsGeTensor(ge_tensor);
+  auto as_ge_tensor = ge::TensorAdapter::AsGeTensorShared(ge_tensor);
   auto aligned_ptr = as_ge_tensor.GetAlignedPtr();
   if (aligned_ptr == nullptr) {
     TNG_ASSERT_GE_OK(ge_tensor.SetData(static_cast<uint8_t *>(tensor.data_ptr()),

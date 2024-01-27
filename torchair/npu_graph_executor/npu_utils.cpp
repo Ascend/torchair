@@ -10,6 +10,7 @@
 #include "acl/acl_rt.h"
 #include "external/graph/types.h"
 #include "graph/utils/type_utils.h"
+#include "graph/utils/tensor_adapter.h"
 
 namespace tng {
 
@@ -22,22 +23,22 @@ Status GetCurrentStream(void **stream) {
 }
 
 Status AssembleStorageShapeToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor) {
-  auto desc = ge_tensor.GetTensorDesc();
+  auto as_ge_tensor = ge::TensorAdapter::AsGeTensorShared(ge_tensor);
+  auto &desc = as_ge_tensor.MutableTensorDesc();
 
   if (tensor.device().is_privateuseone()) {
-    desc.SetOriginShape(ge::Shape(tensor.sizes().vec()));
+    desc.SetOriginShape(ge::GeShape(tensor.sizes().vec()));
     const bool is_base_format = (desc.GetFormat() == ge::FORMAT_ND) || (desc.GetFormat() == ge::FORMAT_NCHW) ||
                           (desc.GetFormat() == ge::FORMAT_NHWC);
     TNG_ASSERT(is_base_format || (tensor.storage_offset() == 0),
                "Invalid at::tensor with internal format and offset is %lld.", tensor.storage_offset());
     const std::vector<int64_t> &ge_shape_vec = is_base_format ? tensor.sizes().vec()
                                                               : at_npu::native::get_npu_storage_sizes(tensor);
-    desc.SetShape(ge::Shape(ge_shape_vec));
+    desc.SetShape(ge::GeShape(ge_shape_vec));
   } else {
-    desc.SetShape(ge::Shape(tensor.sizes().vec()));
+    desc.SetShape(ge::GeShape(tensor.sizes().vec()));
   }
 
-  TNG_ASSERT_GE_OK(ge_tensor.SetTensorDesc(desc));
   return Status::Success();
 }
 
