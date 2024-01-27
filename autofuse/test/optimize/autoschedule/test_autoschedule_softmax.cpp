@@ -8,6 +8,8 @@
 #include "ascir.h"
 #include "ascir_ops.h"
 #include "ascir_utils.h"
+#include "optimize.h"
+#include "e2e_softmax.h"
 
 #include "graph_utils_ex.h"
 

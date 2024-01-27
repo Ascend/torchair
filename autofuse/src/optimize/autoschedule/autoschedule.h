@@ -168,8 +168,8 @@ public:
   void NodeNumber();
 
 private:
-  void UpdateUpGroupId(ascir::NodeView node, int group_id);
-  void UpdateDownGroupId(ascir::NodeView node, int group_id);
+  void UpdateUpGroupId(ascir::NodeView node, int group_id, ascir::ComputeType stop_type);
+  void UpdateDownGroupId(ascir::NodeView node, int group_id, ascir::ComputeType stop_type);
   void AssignGroupId();
   inline void TileTiling(ascir::AxisId tile_id, std::tuple<ascir::Axis, ascir::Axis>& tiled_axes) {
     if (tile_id != -1) {

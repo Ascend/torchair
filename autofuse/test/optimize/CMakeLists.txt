@@ -5,5 +5,6 @@ add_library(test_optimize OBJECT
     )
 target_link_libraries(test_optimize
     ascir
-    optimize 
+    optimize
+    e2e
     GTest::gtest)

@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstddef>
 #include <initializer_list>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <list>
@@ -314,19 +315,42 @@ void Scheduler::Reorder() {
   }
 }
 
-void Scheduler::UpdateUpGroupId(ascir::NodeView node, int group_id) {
+void Scheduler::UpdateUpGroupId(ascir::NodeView node, int group_id, ascir::ComputeType stop_type) {
+  if (ScheduleUtils::GetComputeType(node) == stop_type) {
+    return;
+  }
   for (auto& input : node.inputs()) {
     ascir::SchAttr sch_attr{input->desc};
     sch_attr.group_id = group_id;
-    UpdateUpGroupId(ascir::NodeView(input->Owner()), group_id);
+    auto last_node = ascir::NodeView(input->Owner());
+    UpdateUpGroupId(last_node, group_id, stop_type);
   }
 }
 
-void Scheduler::UpdateDownGroupId(ascir::NodeView node, int group_id) {
+bool PreHasReduce(ascir::NodeView node) {
+  if (ScheduleUtils::GetComputeType(node) == ascir::COMPUTE_REDUCE) {
+    return true;
+  }
+  for (auto& input : node.inputs()) {
+    auto last_node = ascir::NodeView(input->Owner());
+    if (PreHasReduce(last_node)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void Scheduler::UpdateDownGroupId(ascir::NodeView node, int group_id, ascir::ComputeType stop_type) {
+  if (ScheduleUtils::GetComputeType(node) == stop_type) {
+    return;
+  }
   for (auto& output : node.outputs()) {
     ascir::SchAttr sch_attr{output.desc};
     sch_attr.group_id = group_id;
-    UpdateDownGroupId(ascir::NodeView(output->GetOwnerNode()), group_id);
+    for (auto& peer_input: output->GetPeerInDataAnchors()) {
+      auto next_node = ascir::NodeView(peer_input->GetOwnerNode());
+      UpdateDownGroupId(next_node, group_id, stop_type);
+    }
   }
 }
 
@@ -350,25 +374,28 @@ void HasAllMark(ascir::NodeView node, bool& has_mark_group_id) {
 void Scheduler::AssignGroupId() {
   std::array<std::list<int>, QUEUE_SIZE> busy;
   std::array<std::list<int>, QUEUE_SIZE> free;
+  int64_t cur_id = 0;
   for (auto node : graph_.GetAllNodes()) {
-    if (ScheduleUtils::IsStore(ScheduleUtils::GetComputeType(node)) ||
-        ScheduleUtils::IsData(ScheduleUtils::GetComputeType(node))) {
+    if (ScheduleUtils::IsGm(ScheduleUtils::GetComputeType(node))) {
       continue;
     }
-    for (auto& output : node.outputs()) {
-      auto sch_attr  = ascir::SchAttr(output.desc);
-      sch_attr.depends = output->GetPeerInDataNodesSize();
-      int64_t reuse_id = 0;
-      if (!free[sch_attr.group_id].empty()) {
-        reuse_id = free[sch_attr.group_id].front();
-        free[sch_attr.group_id].pop_front();
-      } else {
-        reuse_id = busy[sch_attr.group_id].size();
+    if (!ScheduleUtils::IsStore(ScheduleUtils::GetComputeType(node))) {
+      for (auto& output : node.outputs()) {
+        auto sch_attr  = ascir::SchAttr(output.desc);
+        sch_attr.depends = output->GetPeerInDataNodesSize();
+        int64_t reuse_id = 0;
+        if (!free[sch_attr.group_id].empty()) {
+          reuse_id = free[sch_attr.group_id].front();
+          free[sch_attr.group_id].pop_front();
+        } else {
+          reuse_id = cur_id;
+          cur_id++;
+        }
+        busy[sch_attr.group_id].push_back(reuse_id);
+        output.opt.reuse_id = reuse_id;
       }
-      busy[sch_attr.group_id].push_back(reuse_id);
-      output.opt.reuse_id = reuse_id;
     }
-
+  
     for (auto& input: node.inputs()) {
       auto sch_attr = ascir::SchAttr(input->desc);
       sch_attr.depends = sch_attr.depends - 1;
@@ -394,10 +421,8 @@ void Scheduler::NodeNumber() {
   // broadcast前：1
   // reduce后broadcast前：2
   // gather和scatter的index：3
-  for (auto node : graph_.GetAllNodes()) {
-    if (ScheduleUtils::IsStore(node)) {
-      SetGroupId(node, -1);
-    }
+  for (const auto& node : graph_.GetAllNodes()) {
+    SetGroupId(node, -1);
   }
 
   for (auto node : graph_.GetAllNodes()) {
@@ -409,11 +434,13 @@ void Scheduler::NodeNumber() {
 
     if (ScheduleUtils::IsBroadcast(node)) {
       SetGroupId(node, DEFAULT_GID);
-      UpdateUpGroupId(node, BEFOR_BRC_GID);
+      if (!PreHasReduce(node)) {
+        UpdateUpGroupId(node, BEFOR_BRC_GID, ascir::COMPUTE_DATA);
+      }
     } else if (ScheduleUtils::IsReduce(node)) {
       SetGroupId(node, AFTER_REDUCE_GID);
-      UpdateDownGroupId(node, AFTER_REDUCE_GID);
-    } else if (!ScheduleUtils::IsStore(node) && !ScheduleUtils::IsData(node) && !ScheduleUtils::IsWorkspace(node)) {
+      UpdateDownGroupId(node, AFTER_REDUCE_GID, ascir::COMPUTE_BROADCAST);
+    } else if (!ScheduleUtils::IsStore(node) && !ScheduleUtils::IsGm(node)) {
       SetGroupId(node, DEFAULT_GID);
     }
     // todo gather and scatter
