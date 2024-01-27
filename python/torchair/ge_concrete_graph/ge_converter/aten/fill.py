@@ -48,10 +48,16 @@ def conveter_aten_fill_Scalar_out(
     raise NotImplementedError("torch.ops.aten.fill.Scalar_out ge_converter is not implemented!")
 
 
+@declare_supported([
+    Support(F32(2, 2), F32(1)),
+    Support(F16(2, 2), F16(1)),
+    Support(F16(4, 2), F16(1)),
+])
 @register_fx_node_ge_converter(torch.ops.aten.fill.Tensor)
 def conveter_aten_fill_Tensor(self: Tensor, value: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::fill.Tensor(Tensor self, Tensor value) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.fill.Tensor ge_converter is not implemented!")
+    dims = ge.Shape(self)
+    return ge.Fill(dims, ge.Cast(value, dst_type=self.dtype))
 
 
 @register_fx_node_ge_converter(torch.ops.aten.fill.Tensor_out)
