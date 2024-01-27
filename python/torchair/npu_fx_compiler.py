@@ -11,10 +11,16 @@ import torch.utils._pytree as pytree
 from torch.fx import Interpreter
 from torch.fx.node import Argument, Target
 from torch._functorch.aot_autograd import aot_module_simplified
-from torch._dynamo.allowed_functions import is_builtin_callable
+
+try:
+    from torch._dynamo.allowed_functions import is_builtin_callable
+except ModuleNotFoundError:
+    from torch._dynamo.trace_rules import is_builtin_callable
+    
 from torch._decomp import get_decompositions, decomposition_table
 from torch.profiler import record_function
 from torch.utils._mode_utils import no_dispatch
+from torch._dynamo.utils import detect_fake_mode
 
 from torchair.core.concrete_graph import ConcreteGraphBase, ValuePack, _is_symlist
 from torchair.core.utils import logger
@@ -25,27 +31,8 @@ from torchair.configs.aot_config import AotConfig
 from torchair.fx_summary import summarize_fx_graph
 from torchair.fx_dumper import NpuFxDumper
 from torchair.utils.custom_aot_functions import aot_module_simplified_joint
-
+from torchair.utils import add_npu_patch
 aten = torch.ops.aten
-
-
-def disable_implicit_decomposition():
-    '''
-    Since torch official will implicitly decompose some aten ops,
-    disable some ops here to avoid poor performance after decompose.
-    '''
-    disable_aten_ops = [
-        'aten.upsample_nearest1d.vec', 'aten.upsample_nearest1d.default',
-        'aten.upsample_nearest2d.vec', 'aten.upsample_nearest2d.default',
-        'aten.upsample_nearest3d.vec', 'aten.upsample_nearest3d.default',
-    ]
-
-    for op_override in decomposition_table.keys():
-        if str(op_override) in disable_aten_ops:
-            if DispatchKey.Autograd in op_override.py_kernels:
-                op_override.py_kernels.pop(DispatchKey.Autograd)
-            if DispatchKey.CompositeImplicitAutograd in op_override.py_kernels:
-                op_override.py_kernels.pop(DispatchKey.CompositeImplicitAutograd)
 
 
 def _unpack_meta_list(args):
@@ -163,12 +150,12 @@ class NpuGraphConverter(Interpreter):
             if is_builtin_callable(target) and not _is_binary_operator(target):
                 return func(target, args, kwargs)
             args_meta, kwargs_meta = _unpack_meta(args, kwargs)
-            meta_outputs = func(target, args_meta, kwargs_meta)
+            fake_mode = detect_fake_mode(None)
+            with fake_mode:
+                meta_outputs = func(target, args_meta, kwargs_meta)
             args_npu, kwargs_npu = self._unpack_npu(args, kwargs)
             npu_outputs = self._graph.parse_node(target, args_npu, kwargs_npu, meta_outputs)
-            if isinstance(npu_outputs, (tuple, list)):
-                return [ValuePack(k, v) for k, v in zip(meta_outputs, npu_outputs)]
-            return ValuePack(meta_outputs, npu_outputs)
+            return self._get_value_pack(meta_outputs, npu_outputs)
 
         return inner
 
@@ -198,6 +185,11 @@ class NpuGraphConverter(Interpreter):
             target, args, kwargs, meta_output)
         return npu_output
 
+    def _get_value_pack(self, meta_outputs, npu_outputs):
+        if isinstance(npu_outputs, (tuple, list)):
+            return [self._get_value_pack(k, v) for k, v in zip(meta_outputs, npu_outputs)]
+        return ValuePack(meta_outputs, npu_outputs)
+
 
 def _summary(v):
     if isinstance(v, torch.Tensor):
@@ -205,68 +197,98 @@ def _summary(v):
     return f'{type(v)}({v})'
 
 
-def _dynamic_trans(gm: torch.fx.GraphModule):
-    sym_input_node_list = []
-    # False mean delete inputs index input, True mean save inputs index input
-    inputs_save_flag = []
+def _get_placeholder_nodes(gm: torch.fx.GraphModule):
+    placeholder_nodes_list = []
     for node in gm.graph.nodes:
         if node.op == "placeholder":
-            if is_sym(node.meta['val']):
-                if node.users == {}:
-                    gm.graph.erase_node(node)
-                    inputs_save_flag.append(False)
-                else:
-                    logger.debug(
-                        f' add sym_input_node_list node: {node}, op: {node.op}, target: {node.target}'
-                        +
-                        f' users: {node.users}, meta: {node.meta}, type: {node.type},'
-                        + f' input_nodes: {node._input_nodes}')
-                    sym_input_node_list.append(node)
-                    inputs_save_flag.append(node)
+            placeholder_nodes_list.append(node)
+    return placeholder_nodes_list
+
+
+def _remove_sym_from_shape(gm: torch.fx.GraphModule):
+    '''
+    函数功能： 消除图中input节点symint部分, 此symint需要能通过input tensor中的某一维shape表达
+    目的： 在线场景为了性能， 离线场景功能要求必须消除dynamo框架产生的输入
+    input中的sx有如下来源
+    1、sx为shape的某一维度被泛化--->该输入可以被优化, 处理为对该输入做sym_size的动作, 并全图将原来的sx替换
+    2、由其他sym组成的syms,如 2*s0 - s1 也是一个sym---->分两种以下场景
+      2.1 组成syms的sym, 至少有一个来自于场景1产生 ----> 此时该输入应当被优化,转化为计算类算子产生后的结果
+      TO DO (当前实现中并未处理这个场景, 离线会出问题）
+      2.2 组成syms的sym, 全都来自场景三 --->暂无相关用例，如果存在，不会被优化（离线场景会出问题）
+    3、用户的int\list[int]被转化为sym---->来自用户的输入，不能优化掉
+      TO DO 离线场景下该如何还原,list[int]被转化为sym的场景,因为用户给的是list[int]入图的却是int
+    '''
+
+    sym_input_node_list = [] # 表示可能被删除的node列表
+    # False mean delete inputs index input, True mean save inputs index input
+    inputs_save_flag = []
+    placeholder_nodes_list = _get_placeholder_nodes(gm)
+
+    for node in placeholder_nodes_list:
+        if is_sym(node.meta['val']):
+            if node.users == {}:
+                gm.graph.erase_node(node)
+                inputs_save_flag.append(False)
             else:
-                inputs_save_flag.append(True)
+                logger.debug(
+                    f' add sym_input_node_list node: {node}, op: {node.op}, target: {node.target}'
+                    +
+                    f' users: {node.users}, meta: {node.meta}, type: {node.type},'
+                    + f' input_nodes: {node._input_nodes}')
+                sym_input_node_list.append(node)
+                inputs_save_flag.append(node)  # 存入node 表示未来可能被删 也可能不被删除
+        else:
+            inputs_save_flag.append(True)
 
     logger.info(f' sym_input_node_list: {sym_input_node_list}')
 
-    for node in gm.graph.nodes:
+    for node in placeholder_nodes_list:
         if len(sym_input_node_list) == 0:
             break
-        if node.op == "placeholder" and is_fake(node.meta['val']):
-            drop_sym_index_list = []
-            for i, will_del_node in enumerate(sym_input_node_list):
-                for j in range(len(node.meta['val'].size())):
-                    # we cannot use == to compare symint, because Symint will from Sx change to int
-                    if str(will_del_node.meta['val']) == str(node.meta['val'].size()[j]):
-                        logger.debug(
-                            f' will replaced node: {will_del_node}, op: {will_del_node.op}, '
-                            + f'target: {will_del_node.target}, users: {will_del_node.users}, '
-                            + f'meta: {will_del_node.meta}, type: {will_del_node.type}, '
-                            + f'input_nodes: {will_del_node._input_nodes}')
-                        logger.debug(
-                            f' inserting_after node: {node}, op: {node.op}, target: {node.target}'
-                            +
-                            f' users: {node.users}, meta: {node.meta}, type: {node.type},'
-                            + f' input_nodes: {node._input_nodes}')
-                        with gm.graph.inserting_after(node):
-                            new_add_node = gm.graph.create_node(op="call_function", target=torch.ops.aten.sym_size,
-                                                                args=(node, j))
-                            will_del_node.replace_all_uses_with(new_add_node, propagate_meta=True)
-                            logger.debug(
-                                f' new_add_node: {new_add_node}, op: {new_add_node.op}, target: {new_add_node.target},'
-                                +
-                                f' users: {new_add_node.users}, meta: {new_add_node.meta}, type: {new_add_node.type},'
-                                + f' input_nodes: {new_add_node._input_nodes}')
-                        gm.graph.erase_node(will_del_node)
-                        drop_sym_index_list.append(i)
+        if not is_fake(node.meta['val']): # Fake tensor not sym
+            continue
 
-            for index in reversed(drop_sym_index_list):
-                del sym_input_node_list[index]
+        drop_sym_index_list = []
+        for i, will_del_node in enumerate(sym_input_node_list):
+            for j in range(len(node.meta['val'].size())):
+                # we cannot use == to compare symint, because Symint will from Sx change to int
+                if str(will_del_node.meta['val']) == str(node.meta['val'].size()[j]):
+                    # 这里表达了，sym必须是shape的某一维度,所以能够识别场景1
+                    logger.debug(
+                        f' will replaced node: {will_del_node}, op: {will_del_node.op}, '
+                        + f'target: {will_del_node.target}, users: {will_del_node.users}, '
+                        + f'meta: {will_del_node.meta}, type: {will_del_node.type}, '
+                        + f'input_nodes: {will_del_node._input_nodes}')
+                    logger.debug(
+                        f' inserting_after node: {node}, op: {node.op}, target: {node.target}'
+                        +
+                        f' users: {node.users}, meta: {node.meta}, type: {node.type},'
+                        + f' input_nodes: {node._input_nodes}')
+                    with gm.graph.inserting_after(node):
+                        new_add_node = gm.graph.create_node(op="call_function", target=torch.ops.aten.sym_size,
+                                                            args=(node, j))
+                        will_del_node.replace_all_uses_with(new_add_node, propagate_meta=True)
+                        logger.debug(
+                            f' new_add_node: {new_add_node}, op: {new_add_node.op}, target: {new_add_node.target},'
+                            +
+                            f' users: {new_add_node.users}, meta: {new_add_node.meta}, type: {new_add_node.type},'
+                            + f' input_nodes: {new_add_node._input_nodes}')
+                    gm.graph.erase_node(will_del_node)
+                    drop_sym_index_list.append(i)
+                    break
+
+
+        # 处理完的sym，就把他从待删除的列表中删除
+        for index in reversed(drop_sym_index_list):
+            del sym_input_node_list[index]
 
     for i in range(len(inputs_save_flag)):
         if isinstance(inputs_save_flag[i], torch.fx.node.Node):
             if inputs_save_flag[i] in sym_input_node_list:
                 inputs_save_flag[i] = True
-                logger.info(f'graph has int input, sx not come from input')
+                # 这里保证真正输入的sym没有被删除，但是他不知道 sym 可能是symlist变的，所以在线ok,离线会出问题
+                logger.info(f'graph has int input, sx not come from input node: {node}, op: {node.op}, '
+                            + f'target: {node.target} users: {node.users}, meta: {node.meta}, type: {node.type}')
             else:
                 inputs_save_flag[i] = False
 
@@ -304,7 +326,7 @@ def _eliminate_sym(example_inputs, gm: torch.fx.GraphModule):
     if not dynamic:
         return gm, input_save_list_flag
 
-    gm, input_save_list_flag = _dynamic_trans(gm)
+    gm, input_save_list_flag = _remove_sym_from_shape(gm)
     assert len(input_save_list_flag) == len(example_inputs)
 
     logger.debug(f'after eliminate_sym graph: {gm.graph}')
@@ -336,13 +358,10 @@ class _NpuFxCompiler:
         concrete_graph: ConcreteGraphBase = NpuGraphConverter(
             mutable_gm, graph=ConcreteGraph(self.config), garbage_collect_values=False).run(*example_inputs)
 
-        if not self.config.export_config.export_mode:
+        if not self.config.export.export_mode:
             if self.config.debug.graph_dump.enabled:
-                concrete_graph.dump(self.config.debug.graph_dump.full_path("dynamo"))
+                concrete_graph.dump(self.config.debug.graph_dump.full_path("dynamo_original_graph"))
 
-            logger.info(f'start compile graph: {concrete_graph}')
-            concrete_graph.compile()
-            logger.info(f'end compile graph: {concrete_graph}')
 
         data_dumper = None
         if self.config.debug.data_dump.enabled:
@@ -400,7 +419,7 @@ def get_npu_backend(*, compiler_config: CompilerConfig = None,
     if compiler_config is None:
         compiler_config = CompilerConfig()
 
-    disable_implicit_decomposition()
+    add_npu_patch()
 
     return functools.partial(_npu_backend, compiler_config=compiler_config, aot_config=aot_config,
                              custom_decompositions=custom_decompositions)

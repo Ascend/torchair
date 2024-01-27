@@ -31,6 +31,7 @@ from torchair.ge_concrete_graph.utils import dtype_promote
         Support(F16(16)),
         Support(F32(8), dtype=torch.float16),
         Support(F16(4, 6), dtype=torch.float32),
+        Support(F16(2, 1, 3, 4), dtype=torch.float16),
     ]
 )
 @register_fx_node_ge_converter(torch.ops.aten._to_copy.default)
@@ -57,10 +58,9 @@ def conveter_aten__to_copy_default(
             "torch.ops.aten._to_copy.default input memory_format only supports torch.contiguous_format now, "
             "but input memory_format = {}".format(memory_format))
 
-    if dtype is None:
-        return ge.Identity(self)
-    else:
+    if dtype is not None and self.dtype != torch_type_to_ge_type(dtype):
         return ge.Cast(self, dst_type=torch_type_to_ge_type(dtype))
+    return ge.TensorMove(self)
 
 
 @register_fx_node_ge_converter(torch.ops.aten._to_copy.out)

@@ -68,14 +68,8 @@ def conveter_aten_rsub_Scalar(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::rsub.Scalar(Tensor self, Scalar other, Scalar alpha=1) -> Tensor"""
-    if not isinstance(alpha, Tensor) and alpha == 1:
-        # just for better permance
-        self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)
-        return ge.Sub(other, self)
-    else:
-        self, other, alpha = dtype_promote(self, other, alpha, target_dtype=meta_outputs.dtype)
-        self_mul = ge.Mul(self, alpha)
-        return ge.Sub(other, self_mul)
+    self, other, alpha = dtype_promote(self, other, alpha, target_dtype=meta_outputs.dtype)
+    return ge.Sxpy(other, self, alpha=alpha)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.rsub.Tensor_out)

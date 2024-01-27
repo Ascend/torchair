@@ -1767,7 +1767,7 @@ REG_OP(IncreFlashAttention)
     .INPUT(query, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8}))
     .DYNAMIC_INPUT(key, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8}))
     .DYNAMIC_INPUT(value, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8}))
-    .OPTIONAL_INPUT(padding_mask, TensorType({DT_FLOAT16, DT_FLOAT32}))
+    .OPTIONAL_INPUT(pse_shift, TensorType({DT_FLOAT16, DT_BF16}))
     .OPTIONAL_INPUT(atten_mask, TensorType({DT_FLOAT16, DT_BOOL, DT_FLOAT32}))
     .OPTIONAL_INPUT(actual_seq_lengths, TensorType({DT_INT64}))
     .OPTIONAL_INPUT(dequant_scale1, TensorType({DT_UINT64}))
@@ -1792,7 +1792,7 @@ REG_OP(PromptFlashAttention)
 .INPUT(query, TensorType({DT_FLOAT16, DT_FLOAT32}))
     .INPUT(key, TensorType({DT_FLOAT16, DT_FLOAT32}))
     .INPUT(value, TensorType({DT_FLOAT16, DT_FLOAT32}))
-    .OPTIONAL_INPUT(padding_mask, TensorType({DT_FLOAT16, DT_FLOAT32}))
+    .OPTIONAL_INPUT(pse_shift, TensorType({DT_FLOAT16, DT_FLOAT32}))
     .OPTIONAL_INPUT(atten_mask, TensorType({DT_FLOAT16, DT_FLOAT32}))
     .OPTIONAL_INPUT(actual_seq_lengths, TensorType({DT_INT64}))
     .OPTIONAL_INPUT(actual_seq_lengths_kv, TensorType({DT_INT64}))
@@ -3233,6 +3233,10 @@ REG_OP(RoiAlignRotatedGrad)
 * @li offset: A matrix Tensor. The type support float32.
 * @li deq_scale1: A matrix Tensor. The type support uint64.
 * @li deq_scale2: A matrix Tensor. The type support uint64.
+* @li antiquant_scale1: A matrix Tensor. The type support float16.
+* @li antiquant_scale2: A matrix Tensor. The type support float16.
+* @li antiquant_offset1: A matrix Tensor. The type support float16.
+* @li antiquant_offset2: A matrix Tensor. The type support float16.
 
 * @par Attributes:
 * @li activation: A string. The type of activation.
@@ -3252,6 +3256,10 @@ REG_OP(FFN)
     .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))
     .OPTIONAL_INPUT(deq_scale1, TensorType({DT_UINT64}))
     .OPTIONAL_INPUT(deq_scale2, TensorType({DT_UINT64}))
+    .OPTIONAL_INPUT(antiquant_scale1, TensorType({DT_FLOAT16}))
+    .OPTIONAL_INPUT(antiquant_scale2, TensorType({DT_FLOAT16}))
+    .OPTIONAL_INPUT(antiquant_offset1, TensorType({DT_FLOAT16}))
+    .OPTIONAL_INPUT(antiquant_offset2, TensorType({DT_FLOAT16}))
     .OUTPUT(y, TensorType({DT_FLOAT16}))
     .REQUIRED_ATTR(activation, String)
     .ATTR(inner_precise, Int, 0)

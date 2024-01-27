@@ -26,6 +26,7 @@ from torchair.ge_concrete_graph.utils import dtype_promote
 
 
 @declare_supported([
+    Support(100, dtype=torch.bfloat16),
     Support(100, dtype=torch.int32),
     Support(100, dtype=torch.float16)
 ])
@@ -40,18 +41,17 @@ def conveter_aten_arange_default(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::arange(Scalar end, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
-    if dtype == torch.float16:    
-        start, limit, delta = dtype_promote(0, end, 1, target_dtype=DataType.DT_FLOAT)
-        result_fp32 = ge.Range(start, limit, delta) 
-        result = dtype_promote(result_fp32, target_dtype=dtype)
-        return result
-    target_dtype = dtype if dtype is not None else meta_outputs.dtype
-    start, limit, delta = dtype_promote(0, end, 1, target_dtype=target_dtype)
+    target_dtype = dtype if dtype else meta_outputs.dtype
+    start = ge.Const(0, DataType.DT_INT32)
+    step = ge.Const(1, DataType.DT_INT32)
+    result = dtype_promote(ge.Range(start, end, step), target_dtype=target_dtype)
+
     # layout, pin_memory and device have no effect on constructing graph.
-    return ge.Range(start, limit, delta)
+    return result
 
 
 @declare_supported([
+    Support(0, 100, dtype=torch.bfloat16),
     Support(0, 100, dtype=torch.int32),
     Support(0, 100, dtype=torch.float16),
     Support(2, 100, dtype=torch.float16)
@@ -68,19 +68,16 @@ def conveter_aten_arange_start(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::arange.start(Scalar start, Scalar end, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
-    if dtype == torch.float16:    
-        start, limit, delta = dtype_promote(start, end, 1, target_dtype=DataType.DT_FLOAT)
-        result_fp32 = ge.Range(start, limit, delta) 
-        result = dtype_promote(result_fp32, target_dtype=dtype)
-        return result
-    target_dtype = dtype if dtype  else meta_outputs.dtype
-    start, limit, delta = dtype_promote(start, end, 1, target_dtype=target_dtype)
+    target_dtype = dtype if dtype else meta_outputs.dtype
+    step = ge.Const(1, DataType.DT_INT32)
+    result = dtype_promote(ge.Range(start, end, step), target_dtype=target_dtype)
 
     # layout, pin_memory and device have no effect on constructing graph.
-    return ge.Range(start, limit, delta)
+    return result
 
 
 @declare_supported([
+    Support(0, 100, 1, dtype=torch.bfloat16),
     Support(0, 100, 1, dtype=torch.int32),
     Support(0, 100, 2, dtype=torch.int32),
     Support(0, 100, 2, dtype=torch.float16)
@@ -98,16 +95,11 @@ def conveter_aten_arange_start_step(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::arange.start_step(Scalar start, Scalar end, Scalar step=1, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
-    if dtype == torch.float16:    
-        start, limit, delta = dtype_promote(start, end, step, target_dtype=DataType.DT_FLOAT)
-        result_fp32 = ge.Range(start, limit, delta) 
-        result = dtype_promote(result_fp32, target_dtype=dtype)
-        return result
     target_dtype = dtype if dtype else meta_outputs.dtype
-    start, limit, delta = dtype_promote(start, end, step, target_dtype=target_dtype)
+    result = dtype_promote(ge.Range(start, end, step), target_dtype=target_dtype)
 
     # layout, pin_memory and device have no effect on constructing graph.
-    return ge.Range(start, limit, delta)
+    return result
 
 
 @register_fx_node_ge_converter(torch.ops.aten.arange.start_out)

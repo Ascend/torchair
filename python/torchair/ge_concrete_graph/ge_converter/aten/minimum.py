@@ -27,12 +27,18 @@ from torchair.ge_concrete_graph.utils import dtype_promote
 
 @declare_supported([
     Support(F32(2, 2), F32(2, 2)),
+    Support(F32(32), F16(32)),
+    Support(F16(32), I8(32)),
+    Support(I8(32), BOOL(32)),
+    Support(F16(32), BOOL(32)),
+    Support(I64(32), I8(32)),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.minimum.default)
 def conveter_aten_minimum_default(
     self: Tensor, other: Tensor, meta_outputs: TensorSpec = None
 ):
     """NB: aten::minimum(Tensor self, Tensor other) -> Tensor"""
+    self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)
     return ge.Minimum(self, other)
 
 

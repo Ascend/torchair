@@ -25,20 +25,27 @@ from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, 
 from torchair.ge_concrete_graph.utils import dtype_promote
 
 
+@declare_supported([
+    Support(F32(2, 2), F32(2, 2)),
+    Support(I8(2, 2), F32(2, 2))
+])
 @register_fx_node_ge_converter(torch.ops.aten.lt.Tensor)
 def conveter_aten_lt_Tensor(self: Tensor, other: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::lt.Tensor(Tensor self, Tensor other) -> Tensor"""
+    """This geir not implement bool dtype input, and dtype must be same"""
     return ge.Less(self, other)
 
 
 @declare_supported([
-    Support(F32(2, 2), 1)
+    Support(F32(2, 2), 1),
+    Support(I8(2, 2), 1)
 ])
 @register_fx_node_ge_converter(torch.ops.aten.lt.Scalar)
 def conveter_aten_lt_Scalar(
     self: Tensor, other: Union[Number, Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::lt.Scalar(Tensor self, Scalar other) -> Tensor"""
+    """This geir not implement bool dtype input"""
     return ge.Less(self, ge.Cast(other, dst_type=self.dtype))
 
 

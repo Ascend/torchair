@@ -8,32 +8,35 @@ from contextlib import contextmanager
 import inspect
 import sys
 import os
+import warnings
 
 import torch
 from torch.fx.node import Argument, Target
 from torch import Tensor
 from torch._subclasses.fake_tensor import FakeTensor, is_fake
+from torch._ops import OpOverload, OpOverloadPacket
 import torch.utils._pytree as pytree
 
+from torchair.configs.compiler_config import CompilerConfig
 from torchair.core import _torchair
+from torchair.core.backend import initialize_graph_engine, TorchNpuGraph
 from torchair.core.concrete_graph import ConcreteGraphBase, ValuePack
 from torchair.core.utils import logger
-from torchair.core.backend import initialize_graph_engine
 from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef, TensorDescriptor, TensorDef, OpDef
 from torchair.ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
-from torchair.ge_concrete_graph.ge_graph import default_ge_graph, GeGraph
 from torchair.ge_concrete_graph.ge_graph import Tensor as GeTensor
-from torchair.ge_concrete_graph.ge_graph import compat_as_bytes
-from torchair.ge_concrete_graph.ge_graph import DataType, TensorSpec
-from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type, torch_type_to_ge_proto_type
-from torchair.ge_concrete_graph.ge_graph import is_sym, sym_to_ge_dtype
-from torchair.core.backend import TorchNpuGraph
-from torchair.configs.compiler_config import CompilerConfig
-from torchair.ge_concrete_graph.utils import convert_to_tensorboard, force_op_unknown_shape, dump_graph
+from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type, torch_type_to_ge_proto_type, default_ge_graph, \
+    GeGraph, attr_scope, compat_as_bytes, DataType, TensorSpec, is_sym, sym_to_ge_dtype
+from torchair.ge_concrete_graph.graph_pass import optimize_sym_pack
+from torchair.ge_concrete_graph.utils import convert_to_tensorboard, dump_graph, force_op_unknown_shape, \
+    is_host_data_tensor, Placement
 from torchair.ge_concrete_graph.supported_declaration import Support
 from torchair.ge_concrete_graph.export_config_generete import generate_config
 from torchair.utils.export_utils import make_export_graph, get_export_file_name
 from . import ge_apis as ge
+
+FORMAT_NCHW_INT = 0
+FORMAT_FRACTAL_Z_INT = 4
 
 
 def _mapping_assign_op_to_graph_output(graph: GraphDef):
@@ -82,6 +85,43 @@ def _mapping_assign_op_to_graph_output(graph: GraphDef):
 
 _CONVERTERS = defaultdict(lambda: None)
 _DECLARED_SUPPORTED_CONVERTERS = defaultdict(lambda: None)
+_CHECKPOINT_MAP_FUNC = dict()
+
+
+def _add_op_to_checkpoint_map(op, fn):
+    if isinstance(op, (list, tuple)):
+        for each in op:
+            _add_op_to_checkpoint_map(each, fn)
+        return
+
+    overloads = []
+    if isinstance(op, OpOverload):
+        overloads.append(op)
+    else:
+        assert isinstance(op, OpOverloadPacket)
+        for ol in op.overloads():
+            overloads.append(getattr(op, ol))
+
+    for op_overload in overloads:
+        if op_overload in _CHECKPOINT_MAP_FUNC:
+            raise RuntimeError(f"duplicate registrations for checkpoint map func {op}")
+        _CHECKPOINT_MAP_FUNC[op] = fn
+    return
+
+
+def register_checkpoint_func(ops):
+    def checkpoint_decorator(fn: Callable):
+        _add_op_to_checkpoint_map(ops, fn)
+        return fn
+
+    return checkpoint_decorator
+
+
+def get_checkpoint_func(op: OpOverload):
+    if op not in _CHECKPOINT_MAP_FUNC.keys():
+        raise RuntimeError(f"Target op {op} not registered in _CHECKPOINT_MAP_FUNC.",
+            "Maybe you should check if using unsupported rng ops in torch.utils.checkpoint.checkpoint.")
+    return _CHECKPOINT_MAP_FUNC[op]
 
 
 def _get_converter(name: Callable):
@@ -92,36 +132,39 @@ def _get_converter(name: Callable):
     return _CONVERTERS[name]
 
 
+def get_meta_outputs(meta_outputs):
+    if isinstance(meta_outputs, (list, tuple)):
+        return [get_meta_outputs(meta_output) for meta_output in meta_outputs]
+    return TensorSpec(meta_outputs)
+
+
+def set_ge_outputs(ge_outputs, meta_outputs):
+    if isinstance(ge_outputs, ge.Tensor):
+        ge_outputs.set_meta(meta_outputs)
+    elif isinstance(ge_outputs, int):
+        assert isinstance(meta_outputs, (torch.SymInt, int))
+    else:
+        assert isinstance(ge_outputs, (list, tuple))
+        assert isinstance(meta_outputs, (list, tuple))
+        assert len(ge_outputs) == len(meta_outputs)
+        for meta_output, ge_output in zip(meta_outputs, ge_outputs):
+            if meta_output is None:
+                continue
+            set_ge_outputs(ge_output, meta_output)
+
+
 def _wrap_converter(converter: Callable):
     @functools.wraps(converter)
     def wrapped_converter(*args, **kwargs):
         meta_outputs = None
         if 'meta_outputs' in kwargs:
             meta_outputs = kwargs['meta_outputs']
-            if isinstance(meta_outputs, (list, tuple)):
-                kwargs['meta_outputs'] = [
-                    (TensorSpec(v) if v is not None else None) for v in meta_outputs]
-            else:
-                kwargs['meta_outputs'] = TensorSpec(
-                    meta_outputs) if meta_outputs is not None else None
+            kwargs['meta_outputs'] = get_meta_outputs(meta_outputs)
 
         ge_outputs = converter(*args, **kwargs)
 
         if meta_outputs is not None:
-            if isinstance(ge_outputs, ge.Tensor):
-                ge_outputs.set_meta(meta_outputs)
-            elif isinstance(ge_outputs, int):
-                assert isinstance(meta_outputs, (torch.SymInt, int))
-            else:
-                assert isinstance(ge_outputs, (list, tuple))
-                assert isinstance(meta_outputs, (list, tuple))
-                assert len(ge_outputs) == len(meta_outputs)
-                for meta_output, ge_output in zip(meta_outputs, ge_outputs):
-                    if meta_output is None:
-                        continue
-                    assert isinstance(meta_output, torch.Tensor)
-                    assert isinstance(ge_output, ge.Tensor)
-                    ge_output.set_meta(meta_output)
+            set_ge_outputs(ge_outputs, meta_outputs)
 
         return ge_outputs
     return wrapped_converter
@@ -228,10 +271,83 @@ def _normalize_ge_graph(graph: GraphDef):
                 desc.layout = layout.decode()
 
 
-class Placement:
-    UNDEFINED = -1
-    HOST = 0
-    DEVICE = 1
+def _update_internal_format_from_inputs(graph: GraphDef, runtime_inputs):
+    if 'torch_npu' not in sys.modules:
+        logger.info(f'The internal format will only be enabled in a torch npu env.'
+                    'When there is no torch_npu in the env, skip internal format updates')
+        return
+
+    torch_npu_module = sys.modules['torch_npu']
+    input_index_mapping_graph_op: Dict[int, OpDef] = {}  # data节点的index到opDef的映射
+    for op in graph.op:
+        if op.type == "Data":
+            input_index_mapping_graph_op[op.attr["index"].i] = op
+
+    for idx in range(len(runtime_inputs)):
+        assert idx < len(input_index_mapping_graph_op), \
+            f"GE graph input index {idx} out of Data ops index range {len(input_index_mapping_graph_op)}"
+
+        if not runtime_inputs[idx].is_npu:
+            logger.debug(f'input_{idx} is not npu tensor, skip format updates.')
+            continue
+
+        # attr "format_for_int" in proto::TensorDescriptor will be be deserialized as TensorDesc Format in ge.
+        npu_format = torch_npu_module.get_npu_format(runtime_inputs[idx])
+        input_index_mapping_graph_op[idx].output_desc[0].attr["format_for_int"].i = npu_format
+        '''
+           * **********************************************************************************
+           *       ***********    ***********                  *************    *************
+           *       *   Fmap  *    *  Filter *                  *    Fmap   *    *   Filter  *
+           *       *origin:ND*    *origin:ND*                  *origin:NCHW*    *origin:NCHW*
+           *       *layout:ND*    *layout:FZ*                  *layout:NCHW*    *layout:NCHW*
+           *       ***********    ***********                  *************    *************
+           *           \               /                            \               /
+           *      ***************************                  ***************************
+           *      * origin:ND  *  origin:ND *                  *origin:NCHW * origin:NCHW*
+           *      *layout:NCHW * layout:NCHW*                  *layout:NCHW * layout:NCHW*
+           *      ***************************        ===>      ***************************
+           *             *  Conv2D   *                                *  Conv2D   *
+           *             *************                                *************
+           *             * origin:ND *                                *origin:NCHW*
+           *             *layout:NCHW*                                *layout:NCHW*
+           *             *************                                *************
+           *                  |                                             |
+           *              netoutput                                     netoutput
+           *
+           *  Figure 1. Filter's origin is ND. After GE::REfreshOriginFormatOfAnchor processing
+           * ************************************************************************************
+           *       ***********    *************                *************    *************
+           *       *   Fmap  *    *  Filter   *                *    Fmap   *    *   Filter  *
+           *       *origin:ND*    *origin:NCHW*                *origin:NCHW*    *origin:NCHW*
+           *       *layout:ND*    *layout:FZ  *                *layout:NCHW*    *layout:FZ  *
+           *       ***********    *************                *************    *************
+           *           \               /                            \               /
+           *      ***************************                  ***************************
+           *      * origin:ND  *  origin:ND *                  *origin:NCHW * origin:NCHW*
+           *      *layout:NCHW * layout:NCHW*                  *layout:NCHW * layout:NCHW*
+           *      ***************************        ===>      ***************************
+           *             *  Conv2D   *                                *  Conv2D   *
+           *             *************                                *************
+           *             * origin:ND *                                *origin:NCHW*
+           *             *layout:NCHW*                                *layout:NCHW*
+           *             *************                                *************
+           *                  |                                             |
+           *              netoutput                                     netoutput
+           *
+           *  Figure 2. Filter's origin is NCHW. After GE::REfreshOriginFormatOfAnchor processing
+           * ************************************************************************************
+           As shown in Figure 1, when the input of filter node origin_fmt of conv2d is ND, 
+           the operator cannot get the C axis. So, GE can flood storage_fmt NCHW of input1 of 
+           the Conv2d to filter node storage_fmt for Conv2d's constraints. 
+           As a result, filter node storage_fmt FZ changes to NCHW. 
+           
+           Therefore, to enable the internal format FZ of the filter, 
+           you need to specify origin_fmt NCHW of the filter node, as shown in Figure 2.
+        '''
+        if npu_format == FORMAT_FRACTAL_Z_INT:
+            input_index_mapping_graph_op[idx].output_desc[0].attr["origin_format_for_int"].i = FORMAT_NCHW_INT
+        logger.debug(f'update the Format of output TensorDesc for input_{idx} '
+                    f'to Format {torch_npu_module.get_npu_format(runtime_inputs[idx])}')
 
 
 class ExecutorType:
@@ -254,6 +370,8 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._inputs = []
         self._fx_inputs_mapping = dict()
         self._input_placements = []
+        self._frozen_flag_list = []
+        self._data_index_after_forozen = dict()
         self._graph_output_ref_input = {}
         self._executor = TorchNpuGraph(name)
         self._config = config
@@ -261,20 +379,40 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._converter_ctx = threading.local()
         self._fx_input_mapping_cloned_ge_input = []
         self._inputs_processing = None
+        self._is_compiled = False
+        self._pack_input_processing = None
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        if self._config.experimental_config.frozen_parameter:
+            if not self._is_compiled:
+                warnings.warn(f'When enable frozen_parameter, Parameters will be considered frozen.'
+                              'Please make sure that the Parameters data address remain the same '
+                              'throughout the program runtime.')
+                self._arg_is_frozen(*args)
+                self._process_data_to_constplaceholder(*args)
+                self._process_fx_inputs_mapping_and_input_placements(len(args))
+
+        if self._pack_input_processing is None:
+            self._pack_input_processing = optimize_sym_pack(self.graph, self.inputs, self._input_placements,
+                                                             self._fx_inputs_mapping, len(args))
+        fx_inputs = self._pack_input_processing(*args)
+
         if self._inputs_processing is None:
-            self._inputs_processing = self._make_inputs_processing_func(*args)
-        inputs = self._inputs_processing(*args)
+            self._inputs_processing = self._make_inputs_processing_func(*fx_inputs)
+        inputs = self._inputs_processing(*fx_inputs)
 
-        self._consume_data_into_inputs(inputs)
+        inputs = self._consume_data_into_inputs(inputs)
 
-        if self.config.export_config.export_mode:
+        if self.config.export.export_mode:
             self.export(inputs)
             raise ExportSuccess("export graph over")
 
+        self.load(inputs)
+
         if self.should_auto_tune:
             self.auto_tune(inputs)
+
+        self.compile()
 
         if len(self._graph_output_ref_input):
             assigned_outputs = [None] * len(self.graph.attr["_output_dtypes"].list.i)
@@ -299,16 +437,55 @@ class GeConcreteGraph(ConcreteGraphBase):
 
         return tuple(fx_outputs)
 
+    def load(self, runtime_inputs) -> Any:
+        if self._is_compiled:
+            return
+
+        # Initialize based on global options
+        local_compile_options, global_compile_options = self.config.as_dict()
+        global_compile_options["ge.exec.staticMemoryPolicy"] = "2"
+        logger.info("global compile options:")
+        for k, v in global_compile_options.items():
+            logger.info(f"  {k}: {v}")
+
+        initialize_graph_engine(global_compile_options)
+
+        # Update graph attr part1
+        self.graph.attr["_input_placements"].list.i.extend(self._input_placements)
+        self.graph.attr["_output_dtypes"].list.i.extend([output.dtype for output in self.outputs])
+        self.graph.attr["_executor_type"].i = _get_executor_type()
+        self._complement_graph_attr()
+
+        # Update local options and graph attr part2
+        self._graph_output_ref_input = _mapping_assign_op_to_graph_output(self.graph)
+        output_reuse_indexes = [x for x in range(len(self.outputs)) if x not in self._graph_output_ref_input.keys()]
+        if len(output_reuse_indexes) != 0:
+            # support output memory reuse while output is not ref to input
+            local_compile_options["ge.exec.outputReuseMemIndexes"] = ",".join(str(x) for x in output_reuse_indexes)
+        logger.info("local compile options:")
+        for k, v in local_compile_options.items():
+            logger.info(f"  {k}: {v}")
+
+        # Normalize graph
+        _normalize_ge_graph(self.graph)
+
+        _update_internal_format_from_inputs(self.graph, runtime_inputs)
+
+        if self.config.debug.graph_dump.enabled:
+            self.dump(self.config.debug.graph_dump.full_path("dynamo_optimized_graph"))
+        self._executor.load(self.graph.SerializeToString(), local_compile_options)
+
+    def compile(self) -> Any:
+        if self._is_compiled:
+            return
+
+        logger.info(f'start compile graph: {self}.')
+        self._executor.compile()
+        self._is_compiled = True
+        logger.info(f'end compile graph: {self} and start run graph.')
+
     def context(self):
         return default_ge_graph(self.graph)
-
-    @contextmanager
-    def converter_context(self, *, node):
-        try:
-            self._converter_ctx.node = node
-            yield
-        finally:
-            self._converter_ctx.node = None
 
     @property
     def is_dynamic(self):
@@ -375,8 +552,13 @@ class GeConcreteGraph(ConcreteGraphBase):
                 npu_syms.append(sym)
         if all([isinstance(sym, int) for sym in npu_syms]):
             return npu_syms
+
+        pack_tensor = ge.Pack(npu_syms, N=len(npu_syms), axis=0)
+        if all([is_host_data_tensor(sym_i) for sym_i in npu_syms]):
+            pack_tensor.node.attr['_inputs_all_sym'].b = True
+
         # force unknown shape with ge.Pack when parse symlist
-        return force_op_unknown_shape(ge.Pack(npu_syms, N=len(npu_syms), axis=0))
+        return force_op_unknown_shape(pack_tensor)
 
     def parse_node(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
         if hasattr(target, "_ge_converter"):
@@ -394,7 +576,6 @@ class GeConcreteGraph(ConcreteGraphBase):
                 elif isinstance(ge_outputs, (list, tuple)) and all([isinstance(v, ge.Tensor) for v in ge_outputs]):
                     for i, ge_output in enumerate(ge_outputs):
                         ge_output.desc.attr["_fx_tensor_name"].s = compat_as_bytes(f'{fx_tensor_prefix}.{i}')
-
             return ge_outputs
         else:
             return converter(*args, **kwargs)
@@ -421,48 +602,15 @@ class GeConcreteGraph(ConcreteGraphBase):
     def set_fx_inputs_mapping(self, fx_inputs_mapping):
         self._fx_inputs_mapping = fx_inputs_mapping
 
-    def compile(self) -> Any:
-        local_compile_options, global_compile_options = self.config.as_dict()
-        global_compile_options["ge.exec.staticMemoryPolicy"] = "2"
-        local_compile_options["ge.exec.formatMode"] = "1"
-
-        self.graph.attr["_input_placements"].list.i.extend(self._input_placements)
-        self.graph.attr["_output_dtypes"].list.i.extend([output.dtype for output in self.outputs])
-        self.graph.attr["_executor_type"].i = _get_executor_type()
-
-        self._complement_graph_attr()
-        self._graph_output_ref_input = _mapping_assign_op_to_graph_output(self.graph)
-
-        if self.config.debug.graph_dump.enabled and len(self._graph_output_ref_input):
-            self.dump(f'dynamo_after_mapping_assign_{datetime.now().strftime("%Y%m%d%H%M%S%f")}.pbtxt')
-
-        # support output memory reuse while output is not ref to input
-        output_reuse_indexes = [x for x in range(len(self.outputs)) if x not in self._graph_output_ref_input.keys()]
-        local_compile_options["ge.exec.outputReuseMemIndexes"] = ",".join(str(x) for x in output_reuse_indexes)
-
-        _normalize_ge_graph(self.graph)
-
-        initialize_graph_engine(global_compile_options)
-
-        logger.info("local compile options:")
-        for k, v in local_compile_options.items():
-            logger.info(f"  {k}: {v}")
-        logger.info("global compile options:")
-        for k, v in global_compile_options.items():
-            logger.info(f"  {k}: {v}")
-
-        self._executor.load(self.graph.SerializeToString(), local_compile_options)
-        self._executor.compile()
-
     def export(self, inputs) -> Any:
-        file_path = self.config.export_config.export_path_dir
-        file_name_air = get_export_file_name(self.config.export_config.export_name)
+        file_path = self.config.export.export_path_dir
+        file_name_air = get_export_file_name(self.config.export.export_name)
 
         export_graph = make_export_graph(inputs, self.config, self.graph)
 
         _normalize_ge_graph(export_graph)
 
-        if self.config.export_config.auto_atc_config_generated:
+        if self.config.export.experimental.auto_atc_config_generated:
             generate_config(self.config, file_path, export_graph)
         local_options = {}
         local_options["export_path_dir"] = file_path
@@ -477,6 +625,20 @@ class GeConcreteGraph(ConcreteGraphBase):
             # AOE is not supported for dynamic shape now
             return False
         return self._auto_tune_times == 0
+
+    @contextmanager
+    def converter_context(self, *, node):
+        try:
+            self._converter_ctx.node = node
+            attr_maps = {}
+            if self.config.export.experimental.enable_record_nn_module_stack:
+                stack = node.meta.get("nn_module_stack")
+                if stack is not None:
+                    attr_maps["nn_module_stack"] = compat_as_bytes(str(stack))
+            with attr_scope(attr_maps):
+                yield
+        finally:
+            self._converter_ctx.node = None
 
     def auto_tune(self, inputs: List[Tensor]) -> Any:
         logger.info(f"Start auto tune for round {self._auto_tune_times}")
@@ -505,12 +667,15 @@ class GeConcreteGraph(ConcreteGraphBase):
         num_inputs = self.graph.num_inputs()
         diff = num_inputs - len(inputs)
         if diff > 0:
+            istuple = isinstance(inputs, tuple)
             inputs = list(inputs)
             inputs.extend([None for _ in range(diff)])
             for gen in self.graph.generator_rng_state:
                 rng_state = self.graph.get_graph_rng_state(gen)
                 idx, offset = rng_state.consume()
                 inputs[idx] = offset
+            inputs = tuple(inputs) if istuple else inputs
+        return inputs
 
     def _make_inputs_processing_func(self, *args: Any):
         uncontiguous_ge_input_idx = []
@@ -548,3 +713,74 @@ class GeConcreteGraph(ConcreteGraphBase):
                 return inputs
 
         return inputs_processing
+
+    def _arg_is_frozen(self, *args: Any):
+        data_num = 0
+        for idx, arg in enumerate(args):
+            if isinstance(arg, torch.nn.Parameter):
+                self._frozen_flag_list.append(True)
+                logger.info(f"No.{idx} arg is ConstPlaceHolder")
+            else:
+                self._frozen_flag_list.append(False)
+                logger.info(f"No.{idx} arg is Data")
+                if idx in self._fx_inputs_mapping:
+                    self._data_index_after_forozen[idx] = data_num
+                    data_num += 1
+
+    def _process_fx_inputs_mapping_and_input_placements(self, args_len):
+        new_input_placements = []
+        new_inputs = []
+        new_graph_indexed_inputs = {}
+        for idx in range(args_len):
+            if idx in self._fx_inputs_mapping:
+                if not self._frozen_flag_list[idx]:
+                    new_input_placements.append(self._input_placements[self._fx_inputs_mapping[idx]])
+                    new_inputs.append(self._inputs[self._fx_inputs_mapping[idx]])
+                    new_graph_indexed_inputs[self._data_index_after_forozen[idx]] = \
+                        self.graph._indexed_inputs[self._fx_inputs_mapping[idx]]
+        self._inputs = new_inputs
+        self._input_placements = new_input_placements
+        self.graph._indexed_inputs = new_graph_indexed_inputs
+        self._fx_inputs_mapping = self._data_index_after_forozen
+
+    def _process_data_to_constplaceholder(self, *args: Any):
+        name_mapping_data_to_constplaceholder = dict()
+        fx_inputs_mapping_reverse = {value : key for key, value in self._fx_inputs_mapping.items()}
+        frozen_data_op_list = []
+        for op in self.graph.op:
+            if op.type == "Data":
+                args_index = fx_inputs_mapping_reverse[op.attr["index"].i]
+                if self._frozen_flag_list[args_index]:
+                    frozen_data_op_list.append(op)
+        for op in frozen_data_op_list:
+            args_index = fx_inputs_mapping_reverse[op.attr["index"].i]
+            name = f"ConstPlaceHolder_{args_index}_{args[args_index].data_ptr()}"
+            name_mapping_data_to_constplaceholder[op.name] = name
+            origin_shape = _get_generalized_shape(args[args_index])
+            storage_shape = _get_generalized_shape(args[args_index])
+            dtype = torch_type_to_ge_type(args[args_index].dtype)
+            addr = args[args_index].data_ptr()
+            size = args[args_index].numel() * args[args_index].element_size()
+            with self.graph:
+                constplaceholder = ge.ConstPlaceHolder(origin_shape=origin_shape, origin_format=2,
+                                    storage_shape=storage_shape, storage_format=2, expand_dim_rules="",
+                                    dtype=dtype, addr=addr, size=size, node_name=name)
+                constplaceholder.set_meta(self.inputs[op.attr["index"].i]._meta)
+        # 删除是constplaceholder的Data节点
+        for frozen_data_op in frozen_data_op_list:
+            for i, op in enumerate(self.graph.op):
+                if op.type == "Data" and op.attr["index"].i == frozen_data_op.attr["index"].i:
+                    del self.graph.op[i]
+        # 修改不是constplaceholder的Data节点的index
+        for op in self.graph.op:
+            if op.type == "Data":
+                args_index = fx_inputs_mapping_reverse[op.attr["index"].i]
+                assert args_index in self._data_index_after_forozen
+                op.attr["index"].i = self._data_index_after_forozen[args_index]
+        # 处理边
+        for op in self.graph.op:
+            for idx, op_input in enumerate(op.input):
+                for key in name_mapping_data_to_constplaceholder.keys():
+                    if key in op_input:
+                        op.input[idx] = f"{name_mapping_data_to_constplaceholder[key]}:{op.input[idx][-1]}"
+                        break

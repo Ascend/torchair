@@ -18,18 +18,19 @@ import torch
 from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
-from torchair.ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
+from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType
-from torchair.ge_concrete_graph.utils import dtype_promote
 from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
+from torchair.ge_concrete_graph.utils import dtype_promote
 
 
 @declare_supported(
     [
         Support(F32(1, 4, 2), 1),
         Support(F32(16, 4, 4, 1, 1), 1),
-        Support(F32(16, 4, 4, 1, 1), 1, True)
+        Support(F32(16, 4, 4, 1, 1), 1, True),
+        Support(I8(1, 4, 2), 1),
     ]
 )
 
@@ -46,6 +47,7 @@ def conveter_aten_sort_default(
         for i in range(self.rank):
             perm.append(i)
         perm[dim], perm[last_dim] = perm[last_dim], perm[dim]
+        perm = dtype_promote(perm, target_dtype=DataType.DT_INT64)
         transpose_self = ge.Transpose(self, perm)
         values, indices = ge.Sort(transpose_self, axis=last_dim, descending=descending)
         values = ge.Transpose(values, perm)

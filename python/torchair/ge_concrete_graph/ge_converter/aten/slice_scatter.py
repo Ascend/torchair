@@ -25,7 +25,8 @@ from torchair.ge_concrete_graph.utils import dtype_promote
 from torchair.ge_concrete_graph.supported_declaration import F32, F16, Support
 
 @declare_supported([
-    Support(F32(22), F32(10), 0, 0, 10)
+    Support(F32(22), F32(10), 0, 0, 10),
+    Support(F32(10), F32(10), 0, 0, 20),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.slice_scatter.default)
 def conveter_aten_slice_scatter_default(
@@ -41,9 +42,9 @@ def conveter_aten_slice_scatter_default(
     if start is None:
         start = 0
     if end is None:
-        end = 9223372036854775807
+        end = sys.maxsize
     if (isinstance(start, int) and start == 0) and (
-            isinstance(end, int) and end == 9223372036854775807) and (
+            isinstance(end, int) and end == sys.maxsize) and (
             isinstance(step, int) and step == 1):
         return ge.Identity(src)
 
@@ -56,6 +57,8 @@ def conveter_aten_slice_scatter_default(
     
     dims_to_expand = [i for i in range(src.rank)]
     dims_to_expand.remove(dim)
+
+    limit = ge.Minimum(ge.Gather(input_sizes, dim), limit)
     idx = ge.Range(start, limit, delta)
 
     if dims_to_expand:

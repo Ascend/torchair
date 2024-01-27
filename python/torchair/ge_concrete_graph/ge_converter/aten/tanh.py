@@ -25,8 +25,11 @@ from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, 
 
 
 @declare_supported([
-    Support(F32(4, 32)),
-    Support(F16(4, 32)),
+    Support(F32(1024)),
+    Support(F16(1024)),
+    Support(F32(10, 40, 1024)),
+    Support(F16(10, 40, 1024)),
+
 ])
 @register_fx_node_ge_converter(torch.ops.aten.tanh.default)
 def conveter_aten_tanh_default(self: Tensor, meta_outputs: TensorSpec = None):

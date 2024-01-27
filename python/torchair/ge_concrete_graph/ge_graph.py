@@ -343,14 +343,14 @@ class _GraphRngState:
 
 
     def get_idx_and_offset(self):
-        return self._feed_index, self._offsets
+        return self._offsets.node.attr["index"].i, self._offsets
 
     def consume(self):
         offset = self._gen.get_offset()
         self._gen.set_offset(offset + self._offset_count)
-        return self._feed_index, torch.tensor(self._offset_lists) + offset
+        return self._offsets.node.attr["index"].i, torch.tensor(self._offset_lists) + offset
 
-    def next(self, philox_num):
+    def next(self, philox_num: int = -1):
         self._unpack_offset.output_desc.add().name = "y" + str(self._consumed)
         offset = Tensor(self._unpack_offset, self._consumed)
         self._consumed += 1
@@ -430,7 +430,7 @@ class GeGraph(object):
     def generator_rng_state(self):
         return self._generator_rng_state
 
-    def rng_state(self, philox_num, gen: torch.Generator = None):
+    def rng_state(self, philox_num: int = -1, gen: torch.Generator = None):
         _graph_rng_state = self._generator_rng_state[gen]
         return _graph_rng_state.next(philox_num)
 
@@ -444,6 +444,9 @@ class GeGraph(object):
 
     def num_inputs(self):
         return len(self._indexed_inputs)
+
+    def indexed_inputs(self):
+        return self._indexed_inputs
 
 
 class _GeGraphStack(threading.local):
@@ -598,7 +601,7 @@ class Tensor:
         return f'Tensor({self.tensor}, dtype={_ge_proto_dtype_str(self.desc.dtype)}, size={self._symsize})'
 
 
-def get_ge_rng_state(philox_num, gen: torch.Generator = None) -> Tuple[int, Tensor]:
+def get_ge_rng_state(philox_num: int = -1, gen: torch.Generator = None) -> Tuple[int, Tensor]:
     return get_default_ge_graph().rng_state(philox_num, gen)
 
 
@@ -803,6 +806,10 @@ def auto_convert_to_tensor(inputs_dynamic, inputs_optional):
                 gegraph = get_default_ge_graph()
                 gegraph.add_python_code(bundle_inputs.args, kwargs, outputs, func)
 
+            attr_maps = getattr(local_variable, 'extral_node_attrs', {})
+            for key, value in attr_maps.items():
+                outputs.node.attr[key].s = value
+
             return outputs
         return wrapper
     return inner
@@ -918,6 +925,10 @@ def Const(v: Any, dtype: int = None, node_name=None, readable=True) -> Tensor:
     if dtype is not None and not _is_supported_ge_dtype_by_numpy(dtype) and not dtype is DataType.DT_BF16:
         # TO DO: unsupported dtype cast for numpy, currently resolved by inserting ge.Cast
         return Cast(Const(v, dtype=None, node_name=node_name), dst_type=dtype)
+    
+    if not isinstance(v, torch.Tensor) and dtype is DataType.DT_BF16:
+        with no_dispatch():
+            v = torch.tensor(v, dtype=torch.bfloat16)
 
     op = get_default_ge_graph().op.add()
     op.type = "Const"
@@ -962,3 +973,12 @@ def Const(v: Any, dtype: int = None, node_name=None, readable=True) -> Tensor:
     const_tensor = Tensor(op)
 
     return const_tensor
+
+
+@contextlib.contextmanager
+def attr_scope(attr_maps):
+    try:
+        setattr(local_variable, "extral_node_attrs", attr_maps)
+        yield
+    finally:
+        setattr(local_variable, "extral_node_attrs", {})

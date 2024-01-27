@@ -26,7 +26,7 @@ from torchair.ge_concrete_graph.supported_declaration import F32, F16, Support
 
 @declare_supported([
     Support(F32(3, 4), [3, 8], 1, 0, 8, 2),
-    Support(F16(3, 4), [3, 8], 1, 0, 8, 2),
+    Support(F16(3, 4), [3, 8], 1, 0, 10, 2),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.slice_backward.default)
 def conveter_aten_slice_backward_default(
@@ -39,15 +39,22 @@ def conveter_aten_slice_backward_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::slice_backward(Tensor grad_output, SymInt[] input_sizes, int dim, SymInt start, SymInt end, SymInt step) -> Tensor"""
+    src_input_sizes = input_sizes
+    src_end = end
 
-    if isinstance(input_sizes, list) and isinstance(end, int) and end == sys.maxsize:
-        end = input_sizes[dim]
-
+    if isinstance(input_sizes, list) and isinstance(end, int):
+        end = input_sizes[dim] if end == sys.maxsize or input_sizes[dim] < end else end
+        end = input_sizes[dim] + end if end < 0 else end
+        
     input_sizes, start, limit, delta = dtype_promote(input_sizes, start, end, step, target_dtype=torch_type_to_ge_type(torch.int32))
     
     grad_input = ge.Fill(input_sizes, ge.Const(0., dtype=grad_output.dtype))
     dims_to_expand = [i for i in range(grad_output.rank)]
     dims_to_expand.remove(dim)
+
+    if isinstance(src_input_sizes, Tensor) or isinstance(src_end, Tensor):
+        limit = ge.Minimum(ge.Gather(input_sizes, dim), limit)
+
     idx = ge.Range(start, limit, delta)
 
     if dims_to_expand:

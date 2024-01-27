@@ -2,60 +2,71 @@ import torch
 
 
 class _TypedTensor:
-    def __init__(self, *dims, dtype, value=None):
+    def __init__(self, *dims, dtype, value=None, value_range=None):
         self.dims = dims
         self.dtype = dtype
         self.value = value
+        assert value_range is None or len(value_range) == 2
+        self.value_range = value_range
 
     def __str__(self) -> str:
         if self.value is not None:
             return f"tensor({self.value}, dtype={self.dtype})"
+        if self.value_range is not None:
+            return f"tensor({self.dims}, dtype={self.dtype}, value_range={self.value_range})"
         return f"Tensor({self.dims}, {self.dtype})"
 
     def __repr__(self) -> str:
         if self.value is not None:
             return f"tensor({self.value}, dtype={self.dtype})"
+        if self.value_range is not None:
+            return f"tensor({self.dims}, dtype={self.dtype}, value_range={self.value_range})"
         return f"Tensor({self.dims}, {self.dtype})"
 
 
 class F32(_TypedTensor):
-    def __init__(self, *dims):
-        super().__init__(*dims, dtype=torch.float32)
+    def __init__(self, *dims, value_range=None):
+        super().__init__(*dims, dtype=torch.float32, value_range=value_range)
 
 
 class F16(_TypedTensor):
+    def __init__(self, *dims, value_range=None):
+        super().__init__(*dims, dtype=torch.float16, value_range=value_range)
+
+
+class BF16(_TypedTensor):
     def __init__(self, *dims):
-        super().__init__(*dims, dtype=torch.float16)
+        super().__init__(*dims, dtype=torch.bfloat16)
 
 
 class F64(_TypedTensor):
-    def __init__(self, *dims):
-        super().__init__(*dims, dtype=torch.float64)
+    def __init__(self, *dims, value_range=None):
+        super().__init__(*dims, dtype=torch.float64, value_range=value_range)
 
 
 class I32(_TypedTensor):
-    def __init__(self, *dims):
-        super().__init__(*dims, dtype=torch.int32)
+    def __init__(self, *dims, value_range=None):
+        super().__init__(*dims, dtype=torch.int32, value_range=value_range)
 
 
 class I16(_TypedTensor):
-    def __init__(self, *dims):
-        super().__init__(*dims, dtype=torch.int16)
+    def __init__(self, *dims, value_range=None):
+        super().__init__(*dims, dtype=torch.int16, value_range=value_range)
 
 
 class I64(_TypedTensor):
-    def __init__(self, *dims):
-        super().__init__(*dims, dtype=torch.int64)
+    def __init__(self, *dims, value_range=None):
+        super().__init__(*dims, dtype=torch.int64, value_range=value_range)
 
 
 class I8(_TypedTensor):
-    def __init__(self, *dims):
-        super().__init__(*dims, dtype=torch.int8)
+    def __init__(self, *dims, value_range=None):
+        super().__init__(*dims, dtype=torch.int8, value_range=value_range)
 
 
 class U8(_TypedTensor):
-    def __init__(self, *dims):
-        super().__init__(*dims, dtype=torch.uint8)
+    def __init__(self, *dims, value_range=None):
+        super().__init__(*dims, dtype=torch.uint8, value_range=value_range)
 
 
 class BOOL(_TypedTensor):

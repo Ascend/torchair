@@ -10,6 +10,7 @@ class ExperimentalConfig(NpuBaseConfig):
         self.keep_inference_input_mutations = OptionValue(True, [True, False])
         self.memory_efficiency = OptionValue(False, [True, False])
         self.separate_atomic_clean = OptionValue(True, [True, False])
+        self.frozen_parameter = OptionValue(False, [True, False])
 
         super(ExperimentalConfig, self).__init__()
 

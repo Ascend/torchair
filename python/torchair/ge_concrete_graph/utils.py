@@ -1,11 +1,21 @@
+import contextlib
+
 import torch
 from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef
-from torchair.ge_concrete_graph.ge_graph import compat_as_bytes
-from torchair.ge_concrete_graph.ge_graph import DataType
-from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge_concrete_graph.ge_graph import compat_as_bytes, DataType, is_sym, Tensor, torch_type_to_ge_type
 from torchair.ge_concrete_graph import ge_apis as ge
 from typing import Any, Dict, List, Tuple, Union, Callable
+
+
+class Placement:
+    UNDEFINED = -1
+    HOST = 0
+    DEVICE = 1
+
+
+def is_host_data_tensor(tensor: Tensor):
+    return isinstance(tensor, Tensor) and (tensor.node.type == 'Data') and (
+            tensor.node.input_desc[0].device_type == "CPU")
 
 
 def convert_to_tensorboard(ge_graph: GraphDef):
@@ -46,6 +56,62 @@ def convert_to_tensorboard(ge_graph: GraphDef):
     return graph
 
 
+class _GraphPbtxt:
+    def __init__(self, buffer):
+        self.buffer = buffer
+
+    def block(self, name):
+        @contextlib.contextmanager
+        def ctx():
+            self.buffer.writeline(f'{name} {{')
+            with self.buffer.indent():
+                yield
+            self.buffer.writeline('}')
+
+        return ctx()
+
+    def set(self, k, v):
+        if isinstance(v, bytes):
+            rep = repr(v)[1:]
+        else:
+            rep = f'"{v}"'
+        self.buffer.writeline(f'{k}: {rep}')
+
+    def attr(self, k, v):
+        with self.block('attr'):
+            self.set('key', k)
+            with self.block('value'):
+                self.set('s', v)
+
+    def input(self, v):
+        self.set('input', v)
+
+    def add_op(self, op):
+        with self.block('node'):
+            self.set('name', op.name)
+            self.set('op', op.type)
+            for op_input in op.input:
+                input_name_list = op_input.split(":")
+                if len(input_name_list) > 1 and input_name_list[1] == "-1":
+                    self.input(f'^{input_name_list[0]}')
+                else:
+                    self.input(op_input)
+            for k, v in op.attr.items():
+                self.attr(k, compat_as_bytes(str(v)))
+            for desc in op.input_desc:
+                self.attr(f'[i]{desc.name}', compat_as_bytes(str(desc)))
+            for desc in op.output_desc:
+                self.attr(f'[o]{desc.name}', compat_as_bytes(str(desc)))
+
+
+def convert_to_pbtxt(ge_graph: GraphDef):
+    from torch._inductor.utils import IndentedBuffer
+    graph = _GraphPbtxt(IndentedBuffer())
+    for op in ge_graph.op:
+        graph.add_op(op)
+    return graph.buffer.getvalue()
+
+
 def dtype_promote(*tensors: Any, target_dtype: Union[torch.dtype, DataType]) -> Any:
     # Promote each input to the specified dtype, and convert non tensor inputs to Const.
     assert len(tensors) != 0, "No object to dtype promotion."
@@ -66,21 +132,21 @@ def dtype_promote(*tensors: Any, target_dtype: Union[torch.dtype, DataType]) -> 
 
 
 def specific_op_input_layout(
-    op: Tensor,
-    indices: Union[int, List[int]],
-    layout: str = "ND"
+        op: Tensor,
+        indices: Union[int, List[int]],
+        layout: str = "ND"
 ):
     # Update the layout information of input op into the attribute through index.
     indices = [indices] if not isinstance(indices, List) else indices
     for index in indices:
         op.node.attr['input_layout_info'].list.i.append(index)
         op.node.attr['input_layout_info'].list.s.append(compat_as_bytes(layout))
-        
+
 
 def specific_op_output_layout(
-    op: Tensor,
-    indices: Union[int, List[int]],
-    layout: str = "ND"
+        op: Tensor,
+        indices: Union[int, List[int]],
+        layout: str = "ND"
 ):
     # Update the layout information of output op into the attribute through index.
     indices = [indices] if not isinstance(indices, List) else indices
@@ -127,6 +193,6 @@ def dump_graph(path: str, graph):
     else:
         try:
             with open(path, "w+") as f:
-                f.write(str(convert_to_tensorboard(graph)))
+                f.write(str(convert_to_pbtxt(graph)))
         except Exception as e:
             print(f"dump pbtxt failed {e}", flush=True)

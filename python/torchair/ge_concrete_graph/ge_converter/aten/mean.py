@@ -79,7 +79,8 @@ def conveter_aten_mean_names_dim(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::mean.names_dim(Tensor self, str[1] dim, bool keepdim=False, *, ScalarType? dtype=None) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.mean.names_dim ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.mean.names_dim is redundant before pytorch 2.1.0, "
+                       "might be supported in future version.")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.mean.names_out)
@@ -93,7 +94,8 @@ def conveter_aten_mean_names_out(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::mean.names_out(Tensor self, str[1] dim, bool keepdim=False, *, ScalarType? dtype=None, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.mean.names_out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.mean.names_out is redundant before pytorch 2.1.0, "
+                       "might be supported in future version.")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.mean.out)
@@ -107,4 +109,5 @@ def conveter_aten_mean_out(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::mean.out(Tensor self, int[1]? dim, bool keepdim=False, *, ScalarType? dtype=None, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.mean.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.mean.out is redundant before pytorch 2.1.0, "
+                       "might be supported in future version.")

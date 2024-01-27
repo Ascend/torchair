@@ -26,6 +26,10 @@ from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, 
 from torchair.ge_concrete_graph.utils import dtype_promote
 
 
+@declare_supported([
+    Support(F16(4, 2), dtype=torch.float),
+    Support(F16(4, 2))
+])
 @register_fx_node_ge_converter(torch.ops.aten.empty.memory_format)
 def conveter_aten_empty_memory_format(
     size: Union[List[int], Tensor],
@@ -42,7 +46,7 @@ def conveter_aten_empty_memory_format(
 
     if memory_format is not None and (memory_format != torch.contiguous_format):
         raise NotImplementedError("torch.ops.aten.empty.memory_format is only supported contiguous_format now.")
-    return ge.Fill(size, ge.Cast(0., dst_type=torch_type_to_ge_type(dtype)))
+    return ge.Fill(size, ge.Cast(0., dst_type=meta_outputs.dtype))
 
 @register_fx_node_ge_converter(torch.ops.aten.empty.out)
 def conveter_aten_empty_out(

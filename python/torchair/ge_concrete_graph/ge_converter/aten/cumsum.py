@@ -24,17 +24,23 @@ from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, 
     Support
 from torchair.ge_concrete_graph.utils import dtype_promote
 
+
+# I16 testcase will fail because eager result's dtype is not correct.
 @declare_supported([
     Support(F32(2, 2, 5), 1),
-    Support(F32(2, 2, 5), 0),
-    Support(F16(2, 2, 5), 1, dtype=torch.float32),
+    Support(F32(5), 0),
+    Support(F16(2, 1, 5), 1, dtype=torch.float32),
+    Support(BOOL(4, 5), 0),
+    Support(I64(10, 3), 1),
+    Support(I16(10, 3), 0),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.cumsum.default)
 def conveter_aten_cumsum_default(
     self: Tensor, dim: int, *, dtype: Optional[int] = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::cumsum(Tensor self, int dim, *, ScalarType? dtype=None) -> Tensor"""
-    self = dtype_promote(self, target_dtype=dtype) if dtype else self
+    target_dtype = dtype if dtype is not None else meta_outputs.dtype
+    self = dtype_promote(self, target_dtype=target_dtype)
     return ge.Cumsum(self, dim)
 
 

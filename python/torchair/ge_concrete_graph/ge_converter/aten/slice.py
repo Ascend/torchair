@@ -53,40 +53,18 @@ def conveter_aten_slice_Tensor(
         if str(self._symsize) == str(meta_outputs._symsize):
             return self
 
+    if start is None:
+        start = 0
+    if end is None:
+        end = 2147483647
     if end is not None and not isinstance(end, Tensor):
         if end == 9223372036854775807:
             end = 2147483647
         elif end > 2147483647:
-            raise NotImplementedError("ge.StridedSlice does not support shapes exceeding the INT32_MAX!")
-
-    mask = [False for _ in range(self.rank)]
-    mask[dim] = True
-    mask = ge.Const(mask, DataType.DT_BOOL)
-
-    ge_begin = [0 for _ in range(self.rank)]
-    ge_end = [2147483647 for _ in range(self.rank)]
-    ge_strides = [1 for _ in range(self.rank)]
-
-    if start is not None:
-        if isinstance(start, Tensor):
-            ge_begin, start = dtype_promote(ge_begin, start, target_dtype=DataType.DT_INT64)
-            ge_begin = ge.MaskedFill(ge_begin, mask, start)
-        else:
-            ge_begin[dim] = start
-    if end is not None:
-        if isinstance(end, Tensor):
-            ge_end, end = dtype_promote(ge_end, end, target_dtype=DataType.DT_INT64)
-            ge_end = ge.MaskedFill(ge_end, mask, end)
-        else:
-            ge_end[dim] = end
-    if isinstance(step, Tensor):
-        ge_strides, step = dtype_promote(ge_strides, step, target_dtype=DataType.DT_INT64)
-        ge_strides = ge.MaskedFill(ge_strides, mask, step)
-    else:
-        ge_strides[dim] = step
-
-    return ge.StridedSlice(self, ge_begin, ge_end, ge_strides)
-
+            raise NotImplementedError("ge.StridedSliceV2 does not support shapes exceeding the INT32_MAX!")
+    
+    dim, start, end, step = dtype_promote(dim, start, end, step, target_dtype=DataType.DT_INT64)
+    return ge.StridedSliceV2(self, start, end, axes=dim, strides=step)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.slice.str)

@@ -3,10 +3,13 @@
 #include "checker.h"
 #include "logger.h"
 #include "session.h"
+#include "utils.h"
 
 #include "ge/ge_api.h"
 #include "ge/ge_api_types.h"
+#include "graph/utils/graph_utils.h"
 #include "acl/acl_rt.h"
+#include "npu_aoe.h"
 
 namespace {
 std::unique_ptr<ge::Session> global_ge_session = nullptr;
@@ -77,6 +80,11 @@ Status Session::Finalize() {
   if (!run_with_torch_npu_) {
     TNG_ASSERT_GE_OK(ge::GEFinalize());
   }
+
+  if (auto_tune_init_) {
+    return NpuAoe::GetInstance().AoeTuningFinalize();
+  }
+
   return Status::Success();
 }
 
@@ -109,8 +117,11 @@ Status Session::AutoTuneGraph(const ge::Graph &graph, const std::map<ge::AscendS
   TNG_RETURN_IF_ERROR(EnsureInitialized());
 
   TNG_LOG(INFO) << "Auto tuning graph";
-
-  return Status::Success();
+  TNG_RETURN_IF_ERROR(NpuAoe::GetInstance().AoeTuningInitialize(options.at("work_path"), options.at("aoe_mode")));
+  auto_tune_init_ = true;
+  ge::Graph clone_graph;
+  (void)CloneGraph(graph, clone_graph);
+  return NpuAoe::GetInstance().RunAoeTuning(clone_graph, options, example_inputs, stream, global_ge_session.get());
 }
 
 Status Session::RemoveGraph(uint32_t id) {

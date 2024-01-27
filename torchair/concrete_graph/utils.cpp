@@ -6,6 +6,7 @@
 #include "external/graph/types.h"
 #include "graph/tensor.h"
 #include "graph/utils/type_utils.h"
+#include "graph/utils/graph_utils.h"
 #include "graph_data.h"
 #include "session.h"
 #include "torch/torch.h"
@@ -292,6 +293,20 @@ Status GeTensorToAtTensor(ge::Tensor &ge_tensor, at::Tensor &tensor) {
 
   // construct output aten tensor real data ptr
   tensor.storage().set_data_ptr(std::move(c10_data_ptr));
+  return Status::Success();
+}
+
+Status CloneGraph(const ge::Graph &old_graph, ge::Graph &new_graph) {
+  const auto old_compute_graph_ptr = ge::GraphUtilsEx::GetComputeGraph(old_graph);
+  TNG_ASSERT(old_compute_graph_ptr != nullptr, "Get compute graph failed");
+  const char* aoe_copied_graph = "aoe_copied_graph";
+  ge::ComputeGraphPtr new_compute_graph_ptr = std::make_shared<ge::ComputeGraph>(aoe_copied_graph);
+  TNG_ASSERT(new_compute_graph_ptr != nullptr, "Create new compute graph failed");
+
+  const auto ret = ge::GraphUtils::CopyComputeGraph(old_compute_graph_ptr, new_compute_graph_ptr);
+  TNG_ASSERT(ret == ge::GRAPH_SUCCESS, "Clone graph failed");
+
+  new_graph = ge::GraphUtilsEx::CreateGraphFromComputeGraph(new_compute_graph_ptr);
   return Status::Success();
 }
 }  // namespace tng
