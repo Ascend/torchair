@@ -79,4 +79,5 @@ def conveter_aten_slice_backward_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::slice_backward.out(Tensor grad_output, SymInt[] input_sizes, int dim, SymInt start, SymInt end, SymInt step, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.slice_backward.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.slice_backward.out ge_converter is "
+                       "redundant before pytorch 2.1.0, might be supported in future version.")

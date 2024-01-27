@@ -43,7 +43,7 @@ def conveter_aten_threshold_backward_default(
 
     # This scenario will be supported in the future.
     if isinstance(threshold, Tensor):
-        raise NotImplementedError("torch.ops.aten.threshold_backward is not implemented while threshold is Tensor!")
+        raise RuntimeError("torch.ops.aten.threshold_backward is not implemented while threshold is Tensor!")
 
     # Suggest a high-performance implementation when threshold is euqal to zero.
     if threshold == 0.:
@@ -62,4 +62,5 @@ def conveter_aten_threshold_backward_grad_input(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::threshold_backward.grad_input(Tensor grad_output, Tensor self, Scalar threshold, *, Tensor(a!) grad_input) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.threshold_backward.grad_input ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.threshold_backward.grad_input ge_converter is "
+                       "redundant before pytorch 2.1.0, might be supported in future version.")

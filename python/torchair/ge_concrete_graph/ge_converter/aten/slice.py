@@ -61,7 +61,7 @@ def conveter_aten_slice_Tensor(
         if end == 9223372036854775807:
             end = 2147483647
         elif end > 2147483647:
-            raise NotImplementedError("ge.StridedSliceV2 does not support shapes exceeding the INT32_MAX!")
+            raise RuntimeError("ge.StridedSliceV2 does not support shapes exceeding the INT32_MAX!")
     
     dim, start, end, step = dtype_promote(dim, start, end, step, target_dtype=DataType.DT_INT64)
     return ge.StridedSliceV2(self, start, end, axes=dim, strides=step)
@@ -76,4 +76,5 @@ def conveter_aten_slice_str(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::slice.str(str string, int? start=None, int? end=None, int step=1) -> str"""
-    raise NotImplementedError("torch.ops.aten.slice.str ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.slice.str ge_converter is "
+                       "redundant before pytorch 2.1.0, might be supported in future version.")

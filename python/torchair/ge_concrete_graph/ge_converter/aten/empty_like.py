@@ -42,11 +42,11 @@ def conveter_aten_empty_like_default(
         dtype = self.dtype
 
     if layout is not None and (layout != torch.strided):
-        raise NotImplementedError("torch.ops.aten.empty_like.default is only supported on dense tensor now.")
+        raise RuntimeError("torch.ops.aten.empty_like.default is only supported on dense tensor now.")
     
     if memory_format is not None and memory_format != torch.contiguous_format \
             and memory_format != torch.preserve_format:
-        raise NotImplementedError("torch.ops.aten.empty_like.default is only supported "
+        raise RuntimeError("torch.ops.aten.empty_like.default is only supported "
                 "contiguous_format and preserve_format now.")
     
     return ge.Empty(ge.Shape(self), dtype=dtype)
@@ -61,4 +61,5 @@ def conveter_aten_empty_like_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::empty_like.out(Tensor self, *, MemoryFormat? memory_format=None, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.empty_like.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.empty_like.out ge_converter is "
+                       "redundant before pytorch 2.1.0, might be supported in future version.")

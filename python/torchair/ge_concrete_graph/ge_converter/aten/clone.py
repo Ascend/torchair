@@ -28,7 +28,7 @@ def conveter_aten_clone_default(
 ):
     """NB: aten::clone(Tensor self, *, MemoryFormat? memory_format=None) -> Tensor"""
     if memory_format is not None and memory_format is not torch.contiguous_format:
-        raise NotImplementedError(
+        raise RuntimeError(
             "torch.ops.aten.clone.default have some unprocessed parameters or cases, "
             "memory_format = {}, torch.contiguous_format = {}".format(memory_format, torch.contiguous_format))
 
@@ -44,4 +44,5 @@ def conveter_aten_clone_out(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::clone.out(Tensor self, *, MemoryFormat? memory_format=None, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.clone.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.clone.out ge_converter is "
+                       "redundant before pytorch 2.1.0, might be supported in future version.")

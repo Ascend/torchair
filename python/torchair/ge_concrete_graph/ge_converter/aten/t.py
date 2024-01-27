@@ -41,4 +41,4 @@ def conveter_aten_t_default(self: Tensor, meta_outputs: TensorSpec = None):
         perm = dtype_promote(perm, target_dtype=DataType.DT_INT64)
         return ge.Transpose(self, perm)
     else:
-        raise NotImplementedError("torch.ops.aten.t.default unsupported case!")
+        raise RuntimeError("torch.ops.aten.t.default unsupported case!")

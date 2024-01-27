@@ -20,7 +20,7 @@ from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType
 from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
 from torchair.ge_concrete_graph.utils import dtype_promote
@@ -42,6 +42,14 @@ def conveter_aten_native_layer_norm_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::native_layer_norm(Tensor input, SymInt[] normalized_shape, Tensor? weight, Tensor? bias, float eps) -> (Tensor, Tensor, Tensor)"""
+    if weight is None:
+        weight = ge.Fill(ge.Const(normalized_shape, dtype=DataType.DT_INT32), 
+                         ge.Cast(1., dst_type=input.dtype))
+        
+    if bias is None:
+        bias = ge.Fill(ge.Const(normalized_shape, dtype=DataType.DT_INT32), 
+                       ge.Cast(0., dst_type=input.dtype))
+    
     return ge.LayerNormV4(input, normalized_shape, gamma=weight, beta=bias, epsilon=eps)
 
 
@@ -59,4 +67,5 @@ def conveter_aten_native_layer_norm_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::native_layer_norm.out(Tensor input, SymInt[] normalized_shape, Tensor? weight, Tensor? bias, float eps, *, Tensor(a!) out0, Tensor(b!) out1, Tensor(c!) out2) -> (Tensor(a!), Tensor(b!), Tensor(c!))"""
-    raise NotImplementedError("torch.ops.aten.native_layer_norm.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.native_layer_norm.out ge_converter is "
+                       "redundant before pytorch 2.1.0, might be supported in future version.")

@@ -43,8 +43,8 @@ def conveter_aten_expand_default(
 ):
     """NB: aten::expand(Tensor(a) self, SymInt[] size, *, bool implicit=False) -> Tensor(a)"""
     if implicit:
-        raise NotImplementedError(
-            "torch.ops.aten.expand.default ge_converter is not implemented, " "when param implicit is True."
+        raise RuntimeError(
+            "torch.ops.aten.expand.default ge_converter is not implemented when param implicit is True."
         )
     # performance optimization: if the input and output symbolic shape is equal, do not broadcast
     if hasattr(self, "_symsize") and meta_outputs is not None and hasattr(meta_outputs, "_symsize"):
