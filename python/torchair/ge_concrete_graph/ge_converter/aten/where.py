@@ -28,6 +28,8 @@ from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, 
 @declare_supported(
     [
         Support(BOOL(8, 4, 10, 10), F32(8, 4, 10, 10), F32(8, 4, 10, 10)),
+        Support(BOOL(1, 1, 10, 10), F32(8, 4, 10, 10), F32(8, 4, 10, 10)),
+        Support(BOOL(1, 1, 10, 10), F32(8, 4, 10, 10), F32(1, 1, 1, 10)),
     ]
 )
 @register_fx_node_ge_converter(torch.ops.aten.where.self)
@@ -35,11 +37,9 @@ def conveter_aten_where_self(
     condition: Tensor, self: Tensor, other: Tensor, meta_outputs: TensorSpec = None
 ):
     """NB: aten::where.self(Tensor condition, Tensor self, Tensor other) -> Tensor"""
-    if self._symsize != other._symsize or condition._symsize != self._symsize:
-        raise NotImplementedError("torch.ops.aten.where.self only supports the same size!")
     if self.desc.dtype != other.desc.dtype:
         self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)
-    return ge.Select(condition, self, other)
+    return ge.SelectV2(condition, self, other)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.where.ScalarOther)
