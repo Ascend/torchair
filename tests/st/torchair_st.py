@@ -678,6 +678,104 @@ class TorchairSt(unittest.TestCase):
         model(torch.randn(3, 3), torch.randn(3, 3), [3, 3])
         model(torch.randn(4, 4), torch.randn(4, 4), [4, 4])
 
+    def test_permute_with_no_transpose(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, inp, dims):
+                a = torch.ops.aten.permute.default(inp, dims)
+                res = torch.ops.aten.add.Scalar(a, 1)
+                return res
+            
+        def check_graph(concreate_graph):
+            num_transpose = 0
+            for node in concreate_graph.graph.op:
+                if node.type == 'Transpose':
+                    num_transpose += 1
+            
+            assert num_transpose == 0, f"check number of num_transpose {num_transpose} == 0 failed"
+            
+        def my_decorator(func):
+            def wrapper(*args, **kwargs):
+                assert len(args) > 0
+                check_graph(args[0])
+                return func(*args, **kwargs)
+            return wrapper
+
+        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        src_call = GeConcreteGraph.__call__
+        GeConcreteGraph.__call__ = my_decorator(GeConcreteGraph.__call__)
+
+        model = Model()
+        model_dynamic = torch.compile(model, backend=npu_backend, dynamic=True)
+
+        a = torch.randn(2, 3, 1)
+        b = torch.randn(1, 2, 3, 1)
+        c = torch.randn(1, 2, 2, 1)
+        model_dynamic(a, [2, 0, 1])
+        model_dynamic(b, [1, 3, 2, 0])
+        model_dynamic(c, [1, 0, 3, 2])
+
+        model_static = torch.compile(model, backend=npu_backend, dynamic=False)
+        a = torch.randn(2, 3, 1)
+        b = torch.randn(1, 2, 3, 1)
+        c = torch.randn(1, 2, 2, 1)
+        model_static(a, [2, 0, 1])
+        model_static(b, [1, 3, 2, 0])
+        model_static(c, [1, 0, 3, 2])
+
+        GeConcreteGraph.__call__ = src_call
+
+    def test_permute_with_transpose(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, inp, dims):
+                a = torch.ops.aten.permute.default(inp, dims)
+                res = torch.ops.aten.add.Scalar(a, 1)
+                return res
+            
+        def check_graph(concreate_graph):
+            num_transpose = 0
+            for node in concreate_graph.graph.op:
+                if node.type == 'Transpose':
+                    num_transpose += 1
+            
+            assert num_transpose != 0, f"check number of num_transpose {num_transpose} != 0 failed"
+            
+        def my_decorator(func):
+            def wrapper(*args, **kwargs):
+                assert len(args) > 0
+                check_graph(args[0])
+                return func(*args, **kwargs)
+            return wrapper
+
+        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        src_call = GeConcreteGraph.__call__
+        GeConcreteGraph.__call__ = my_decorator(GeConcreteGraph.__call__)
+
+        model = Model()
+        model_dynamic = torch.compile(model, backend=npu_backend, dynamic=True)
+
+        a = torch.randn(2, 3, 1)
+        b = torch.randn(1, 2, 3, 1)
+        c = torch.randn(1, 2, 2, 1)
+        model_dynamic(a, [1, 2, 0])
+        model_dynamic(b, [2, 3, 1, 0])
+        model_dynamic(c, [0, 2, 1, 3])
+
+        model_static = torch.compile(model, backend=npu_backend, dynamic=False)
+        a = torch.randn(2, 3, 1)
+        b = torch.randn(1, 2, 3, 1)
+        c = torch.randn(1, 2, 2, 1)
+        model_static(a, [1, 2, 0])
+        model_static(b, [2, 3, 1, 0])
+        model_static(c, [0, 2, 1, 3])
+
+        GeConcreteGraph.__call__ = src_call
+
 
 if __name__ == '__main__':
     unittest.main()
