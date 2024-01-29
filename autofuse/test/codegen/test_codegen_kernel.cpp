@@ -144,11 +144,12 @@ TEST(CodegenKernel, Tiler_BlockOutterAxisDefine) {
   tiler.AddAxis(z2);
 
   auto result_code = tiler.BlockOutterAxisDefine();
+  std::cout<<"result_code:::\n"<<result_code<<std::endl;
   EXPECT_EQ(result_code, std::string{
      "int block_dim = GetBlockIdx();\n"
-     "const int z0 = block_dim % (t.s0); block_dim /= t.s0;\n"
-     "const int z1 = block_dim % (t.s1); block_dim /= t.s1;\n"
-     "const int z2 = block_dim % (t.s2); block_dim /= t.s2;\n"
+     "const int z0 = block_dim % (utils::Ceil(1.0 * t.s0)); block_dim /= t.s0;\n"
+     "const int z1 = block_dim % (utils::Ceil(1.0 * t.s1)); block_dim /= t.s1;\n"
+     "const int z2 = block_dim % (utils::Ceil(1.0 * t.s2)); block_dim /= t.s2;\n"
      });
 }
 

@@ -52,4 +52,6 @@ TEST_P(E2E_LoadAbsStore_Code, CalculateCorrect) {
 }
 
 INSTANTIATE_TEST_SUITE_P(CalcWithDifferentShape, E2E_LoadAbsStore_Code,
-    ::testing::Values(std::vector<int>{96, 16, 16}));
+    ::testing::Values(std::vector<int>{96, 16, 16},
+                      std::vector<int>{95, 16, 16},
+                      std::vector<int>{97, 16, 16}));

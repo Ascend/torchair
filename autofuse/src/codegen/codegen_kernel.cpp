@@ -46,7 +46,7 @@ std::string Variable::Define(std::string &&init, bool define_const) const {
 }
 
 Axis::Axis(const ascir::Axis& axis)
-    : ascir::Axis(axis), Variable(Int_t, axis.name) {}
+    : ascir::Axis(axis), Variable(Int_t, axis.name), loop_size(Variable(Int_t, axis.name + "_loop_size")) {}
 
 const std::string &Tensor::DtypeName(ge::DataType dtype) {
   static const std::string type_names[] = {
@@ -363,6 +363,40 @@ std::string codegen::Tiler::TilingDataDefine(GM_ADDR tiling_data_arg) const {
   return ss.str();
 }
 
+std::string codegen::Tiler::LoopSizeCal() const {
+  std::stringstream ss;
+  ascir::AxisId outer_axis_id = ascir::ID_NONE;
+  ascir::AxisId inner_axis_id = ascir::ID_NONE;
+
+  for (auto& [out_id, out_axis] : this->axis) {
+    if (out_axis.type != ascir::Axis::AXIS_TYPE_BLOCK_OUTER) { continue; }
+    outer_axis_id = out_id;
+
+    inner_axis_id = ascir::ID_NONE;
+    for (auto& [in_id, in_axis] : this->axis) {
+      if (in_axis.type == ascir::Axis::AXIS_TYPE_BLOCK_INNER && in_axis.from == out_axis.from) {
+        inner_axis_id = in_id;
+        break;
+      }
+    }
+
+    if (inner_axis_id == ascir::ID_NONE) {
+      throw std::runtime_error("out axis " + out_axis.Str() + "has no relative block inner axis");
+    }
+    std::string from = this->AxisSize(GetAxis(GetAxis(outer_axis_id).from[0]));
+    std::string outter_axis = GetAxis(outer_axis_id).Str();
+    std::string origin_axis_size = this->AxisSize(GetAxis(GetAxis(outer_axis_id).from[0]));
+    std::string inner_axis_size = this->AxisSize(GetAxis(inner_axis_id));
+    std::string loop_size = "(" + outter_axis + " + 1 ) * " + inner_axis_size + " > " + origin_axis_size
+                            + " ? " + origin_axis_size + " - " + outter_axis + " * " + inner_axis_size
+                            + " : " + inner_axis_size;
+    ss << GetAxis(inner_axis_id).loop_size.DefineConst(move(loop_size)) << std::endl;
+    // 这里的break是因为假设只有一个Block_outter轴，支持多个后就可以去掉
+    break;
+  }
+  return ss.str();
+}
+
 std::string codegen::Tiler::BlockOutterAxisDefine() {
   stringstream code;
 
@@ -374,7 +408,7 @@ std::string codegen::Tiler::BlockOutterAxisDefine() {
     }
 
     stringstream axis_value;
-    axis_value << this->block_dim.name << " % (" << this->AxisSize(axis) << ")";
+    axis_value << this->block_dim.name << " % (utils::Ceil(1.0 * " << this->AxisSize(axis) << "))";
     code << axis.Define(axis_value.str(), true);
     code << " ";
 
@@ -449,6 +483,11 @@ std::string KernelUtils::FunctionDefines() {
   std::stringstream ss;
 
   ss << "namespace utils {" << std::endl;
+  ss << "int Ceil(float num) {" << std::endl;
+  ss << "int ceil_num = (int)num;" << std::endl;
+  ss << "return num == (float)ceil_num ? ceil_num : (ceil_num + 1);" << std::endl;
+  ss << "}" << std::endl;
+  ss << std::endl;
   ss << "template <typename T>" << std::endl;
   ss << "constexpr inline __aicore__ T Max(const T a) {" << std::endl;
   ss << "  return a;" << std::endl;
@@ -1356,7 +1395,8 @@ void Looper::GenerateLoop(const Tiler &tiler, const TPipe& tpipe, std::vector<as
         if (axis.type == Axis::AXIS_TYPE_BLOCK_OUTER) {
             this->GenerateLoop(tiler, tpipe, current_axis, loop, ss);
         } else {
-            ss << "for (" << axis.AsArg() << " = 0; " << axis << " < " << tiler.Size(axis.size) << "; " << axis << "++) {" << std::endl;
+            std::string loop_size = axis.type == ascir::Axis::AXIS_TYPE_BLOCK_INNER ? axis.loop_size.name : tiler.Size(axis.size);
+            ss << "for (" << axis.AsArg() << " = 0; " << axis << " < " << loop_size << "; " << axis << "++) {" << std::endl;
             this->GenerateLoop(tiler, tpipe,  current_axis, loop, ss);
             ss << "}" << std::endl;
         }
@@ -1542,6 +1582,8 @@ std::string Kernel::Generate() {
   ss << this->tiler.TilingDataDefine(this->tiling_data_arg);
   ss << std::endl;
   ss << this->tiler.BlockOutterAxisDefine();
+  ss << std::endl;
+  ss << this->tiler.LoopSizeCal();
   ss << std::endl;
   ss << this->GlobalTensorInit();
   ss << std::endl;

@@ -55,6 +55,7 @@ class Axis : public ascir::Axis, public Variable {
  public:
   using ascir::Axis::type;
   explicit Axis(const ascir::Axis &axis);
+  Variable loop_size;
 };
 
 class Tensor : public Variable {
@@ -175,6 +176,8 @@ class Tiler : public Code {
    * 定义Block外轴，并用blockidx初始化。
    */
   std::string BlockOutterAxisDefine();
+
+  std::string LoopSizeCal() const;
 };
 
 class TPipe : public Variable {
