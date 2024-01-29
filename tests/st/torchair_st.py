@@ -804,5 +804,16 @@ class TorchairSt(unittest.TestCase):
         self.assertEqual(str(context.exception), "aoe_config.work_path : None " +
                          "is not found or is not a file directory, Please change!")
 
+    def test_set_error_static_model_ops_lower_limit(self):
+        config_error1 = CompilerConfig()
+        with self.assertRaises(ValueError) as context:
+            config_error1.experimental_config.static_model_ops_lower_limit = "-1"
+        self.assertEqual(str(context.exception), 'option must a int num')
+        config_error2 = CompilerConfig()
+        with self.assertRaises(ValueError) as context:
+            config_error2.experimental_config.static_model_ops_lower_limit = -2
+        self.assertEqual(str(context.exception), 'option int out of range, ' +
+                         'expect [-1, 9223372036854775807], but got -2')
+
 if __name__ == '__main__':
     unittest.main()
