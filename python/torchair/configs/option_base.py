@@ -4,10 +4,11 @@
 class OptionValue:
     """Options for setting npu basic configurations"""
 
-    def __init__(self, default, optional):
+    def __init__(self, default, optional, option_name=None):
         self.__default = default
         self.__optional = optional
         self.__value = default
+        self.__option_name = option_name
 
     def __bool__(self):
         return bool(self.__value)
@@ -35,6 +36,8 @@ class OptionValue:
 
     @value.setter
     def value(self, v):
+        if callable(self.__optional):
+            self.__optional(v, self.__option_name)
         if isinstance(self.__optional, (tuple, list,)) and v not in self.__optional:
             raise ValueError(
                 "'" + str(v) + "' not in optional list " + str(self.__optional))

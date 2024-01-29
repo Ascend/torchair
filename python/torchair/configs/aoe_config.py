@@ -1,5 +1,6 @@
 from torchair.configs.option_base import OptionValue
 from torchair.configs.option_base import NpuBaseConfig
+from torchair.configs.utils import check_dir_path, check_file
 
 
 class AoeConfig(NpuBaseConfig):
@@ -7,8 +8,8 @@ class AoeConfig(NpuBaseConfig):
 
     def __init__(self):
         self.aoe_mode = OptionValue(None, ["2"])
-        self.work_path = OptionValue("./", None)
-        self.aoe_config_file = OptionValue(None, None)
+        self.work_path = OptionValue("./", check_dir_path, "aoe_config.work_path")
+        self.aoe_config_file = OptionValue(None, check_file, "aoe_config.aoe_config_file")
 
         super(AoeConfig, self).__init__()
 

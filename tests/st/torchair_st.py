@@ -776,6 +776,33 @@ class TorchairSt(unittest.TestCase):
 
         GeConcreteGraph.__call__ = src_call
 
+    def test_set_error_option_path(self):
+        config_error = CompilerConfig()
+        with self.assertRaises(FileNotFoundError) as context:
+            config_error.dump_config.dump_path = "./*****"
+        self.assertEqual(str(context.exception), "dump_config.dump_path : ./***** " +
+                         "is not found or is not a file directory, Please change!")
+        with self.assertRaises(FileNotFoundError) as context:
+            config_error.aoe_config.work_path = "./*****"
+        self.assertEqual(str(context.exception), "aoe_config.work_path : ./***** " +
+                         "is not found or is not a file directory, Please change!")
+        with self.assertRaises(FileNotFoundError) as context:
+            config_error.aoe_config.aoe_config_file = "./*****"
+        self.assertEqual(str(context.exception), "aoe_config.aoe_config_file : ./***** " +
+                         "is not found or is not a file, Please change!")
+        with self.assertRaises(FileNotFoundError) as context:
+            config_error.fusion_config.fusion_switch_file = "./*****"
+        self.assertEqual(str(context.exception), "fusion_config.fusion_switch_file : ./***** " +
+                         "is not found or is not a file, Please change!")
+
+        with self.assertRaises(FileNotFoundError) as context:
+            config_error.dump_config.dump_path = None
+        self.assertEqual(str(context.exception), "dump_config.dump_path : None " +
+                         "is not found or is not a file directory, Please change!")
+        with self.assertRaises(FileNotFoundError) as context:
+            config_error.aoe_config.work_path = None
+        self.assertEqual(str(context.exception), "aoe_config.work_path : None " +
+                         "is not found or is not a file directory, Please change!")
 
 if __name__ == '__main__':
     unittest.main()
