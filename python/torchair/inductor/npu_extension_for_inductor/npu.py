@@ -171,7 +171,7 @@ class NPUKernel(Kernel):
 
     def _get_reduce_dims_and_loop(self, index: sympy.Expr):
         loop = self._index_to_loop(index)
-        reduce_dims = [i for i in range(len(loop.stride)) if Eq(loop.stride[i], 0)]
+        reduce_dims = [i for i in range(len(loop.stride)) if str(loop.stride[i]) == "0"]
         return reduce_dims, loop
 
     def _index_to_loop(self, index: sympy.Expr):
@@ -181,7 +181,7 @@ class NPUKernel(Kernel):
             loop.stride.append(index.coeff(axis))
             loop.offset = simplify(loop.offset.subs(axis, 0))
             loop.axis.append(axis)
-            loop.size.append(sympy.S.One if Eq(loop.stride[-1], 0) else range)
+            loop.size.append(sympy.S.One if str(loop.stride[-1]) == "0" else range)
         return loop
 
     @property

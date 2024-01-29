@@ -460,7 +460,7 @@ def _compiler_validate():
 
 
 def _compile(src: OpCode):
-    if os.environ.get('ASCIR_NOT_READY', None) == "1" and not _compiler_validate():
+    if os.getenv("NPU_INDUCTOR_DUMMY_KERNEL", None) == "1" or not _compiler_validate():
         kernel = DummyNpuInductorKernel(src.proto.name)
         _compile_cache[src.proto.name] = kernel
         return kernel
