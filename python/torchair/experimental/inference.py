@@ -29,6 +29,16 @@ def _weight_format_cast(model: torch.nn.Module):
             module.weight.data = _TORCH_NPU_MODULE.npu_format_cast(module.weight.data, 29)  # ACL_FORMAT_FRACTAL_NZ
         if isinstance(module, _TORCH_NPU_MODULE.contrib.module.linear_a8w8_quant.LinearA8W8Quant):
             module.scale.data = _TORCH_NPU_MODULE.npu_trans_quant_param(module.scale, module.offset)
+
+        if isinstance(module, _TORCH_NPU_MODULE.contrib.module.linear_weight_quant.LinearWeightQuant):
+            if module.quant_scale is not None:
+                quant_scale = model.quant_scale.data
+                quant_offset = None
+                if model.quant_offset is not None:
+                    quant_offset = model.quant_offset.data
+
+                module.quant_scale.data = _TORCH_NPU_MODULE.npu_trans_quant_param(quant_scale, quant_offset)
+
     current_class = model.__class__
     _cast_to_internal_format(model, current_class)
 
