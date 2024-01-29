@@ -274,3 +274,53 @@ model = torch.compile(model, backend=npu_backend)
 - 导出的pbtxt文件是可以被tensorboard读取的构图结果，您可以通过tensorboard等查看
 - 导出的py文件是torch代码经由converter转化后的GEIR代码，支持运行，您可以通过vscode等查看
 
+# torchair常用类和公开接口介绍
+
+## TORCHAIR.GET_NPU_BACKEND
+`torchair.get_npu_backend(*, compiler_config=None, aot_config=None, custom_decompositions={})`
+
+获取能够在NPU上运行的图编译后端npu_backend，可以作为backend参数传入torch.compile。
+
+### Keyword Arguments
+- **compiler_config**(*CompilerConfig*)- 配置项，具体可见torchair.CompilerConfig条目。
+- **aot_config**(*AotConfig*)- 配置是否将前反向图以一个完整图的方式运行。
+- **custom_decomposition**(*Dict*)- 手动指定模型运行时用到的decomposition。
+
+## TORCHAIR.GET_COMPILER
+`torchair.get_compiler(compiler_config=None)`
+
+获取能够在NPU上运行的图编译器。torchair.get_npu_backend()获取的图编译后端默认使用由本接口获取的图编译器。用户也可将获取的图编译器传入自定义的后端中。
+
+### Parameters
+- **compiler_config**(*CompilerConfig*)- 配置项，具体可见torchair.CompilerConfig条目。
+
+## TORCHAIR.COMPILERCONFIG
+`torchair.CompilerConfig`
+
+配置类。用户可以通过CompilerConfig配置以下功能：
+- **debug** 用于配置图dump、Converter支持状态导出等选项。
+- **aoe_config** 用于配置自动调优工具aoe的模式。
+- **export** 用于配置export图时的选项。
+- **fusion_config** 用于配置融合选项。
+- **experimental_config** 用于配置实验功能。
+
+## TORCHAIR.DYNAMO_EXPORT
+`torchair.dynamo_export(*args, model, export_path="export_file", export_name="export", dynamic= False, config=CompilerConfig())`
+
+导出由torchair生成的离线图。
+
+### Parameters
+- **args** 模型的入参。
+- **model** 用户的自定义模型。
+- **export_path** 离线图导出的位置。
+- **export_name** 离线图导出的名字。
+- **dynamic** 是否是动态图。
+- **config** 配置项，具体可见torchair.CompilerConfig条目。
+
+## TORCHAIR.USE_INTERNAL_FORMAT_WEIGHT
+`torchair.use_internal_format_weight(model)`
+
+将模型的权重转换为NPU的私有格式。
+
+### Parameters
+- **model** 用户的自定义模型。
