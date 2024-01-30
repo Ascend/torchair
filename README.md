@@ -274,6 +274,11 @@ model = torch.compile(model, backend=npu_backend)
 - 导出的pbtxt文件是可以被tensorboard读取的构图结果，您可以通过tensorboard等查看
 - 导出的py文件是torch代码经由converter转化后的GEIR代码，支持运行，您可以通过vscode等查看
 
+**需要注意：**
+本段接口可以导出图的相关信息，请用户加强对相关数据的保护。
+请在接口的功能完成之后及时关闭相关选项。
+
+
 # torchair常用类和公开接口介绍
 
 ## TORCHAIR.GET_NPU_BACKEND
@@ -324,3 +329,14 @@ model = torch.compile(model, backend=npu_backend)
 
 ### Parameters
 - **model** 用户的自定义模型。
+
+# 系统安全配置
+用户可在运行系统配置时开启ASLR（级别2）以提高系统安全性，保护系统随机化开启。
+
+可参考以下方式进行配置：
+```python
+echo 2 > /proc/sys/kernel/randomize_va_space
+```
+
+# 公网地址说明
+代码涉及公网地址参考public_address_statement.md
