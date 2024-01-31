@@ -3,9 +3,11 @@ from torchair.core.utils import logger
 import logging
 from torchair.core.backend import TorchNpuGraph
 from torchair.ge_concrete_graph.ge_graph import GeGraph
-from torchair.ge_concrete_graph.fx2ge_converter import ExecutorType, Placement, _normalize_ge_graph
+from torchair.ge_concrete_graph.fx2ge_converter import ExecutorType, Placement, _normalize_ge_graph, \
+    _mapping_assign_op_to_graph_output
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.ge_graph import DataType
+from torchair.ge_concrete_graph.graph_pass import optimize_reference_op_redundant_copy
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core.backend import initialize_graph_engine
 import torchair
@@ -315,6 +317,88 @@ class TorchairSt(unittest.TestCase):
         model(6, 3, z, p, m, n)
 
         GeConcreteGraph.__call__ = src_call
+
+    def test_npu_executor_optimize_ref_op_copy(self):
+        def get_graph_key_op_num(graph):
+            assign_num = 0
+            tensormove_num = 0
+            netoutput_input_num = 0
+            for node in graph.op:
+                if node.type == "Assign":
+                    assign_num += 1
+                elif node.type == "TensorMove":
+                    tensormove_num += 1
+                elif node.type == "NetOutput":
+                    netoutput_input_num = len(node.input)
+            return assign_num, tensormove_num, netoutput_input_num
+
+        initialize_graph_engine()
+        from torchair.core import _npu_graph_executor
+        import _privateuse1_backend
+        npu_device = _privateuse1_backend.npu_device()
+        torch.utils.rename_privateuse1_backend("npu")
+
+        with GeGraph() as graph:
+            dst = ge.Data(index=0, shape=[3, 1, 16, 8],
+                          dtype=DataType.DT_FLOAT, placement='NPU')
+            dst1 = ge.Data(index=1, shape=[3, 1, 16, 8],
+                           dtype=DataType.DT_FLOAT, placement='NPU')
+            src = ge.Data(index=2, shape=[3, 1, 3, 8],
+                          dtype=DataType.DT_FLOAT, placement='NPU')
+            indices = ge.Data(index=3, shape=[3],
+                              dtype=DataType.DT_INT32, placement='NPU')
+            dst2 = ge.Data(index=4, shape=[2, 1, 16, 8],
+                           dtype=DataType.DT_FLOAT, placement='NPU')
+            tm = ge.TensorMove(dst)
+            tm1 = ge.TensorMove(dst1)
+            dst_ = ge.Scatter(tm, indices, src, reduce="update", axis=-2)
+            dst1_ = ge.Scatter(tm1, indices, src, reduce="update", axis=-2)
+            assign = ge.Assign(dst, dst_)
+            assign_ = ge.Assign(dst1, dst1_)
+
+            tm2 = ge.TensorMove(dst_)
+            tm3 = ge.TensorMove(dst1_)
+            dst2_ = ge.Scatter(tm2, indices, src, reduce="update", axis=-2)
+            dst3_ = ge.Scatter(tm3, indices, src, reduce="update", axis=-2)
+            sub = ge.Sub(dst2_, dst3_)
+            add = ge.Add(dst_, dst1_)
+            sub_squeeze = ge.Squeeze(sub, axis=[1])
+            add_squeeze = ge.Squeeze(add, axis=[1])
+            sub_tm = ge.TensorMove(sub_squeeze)
+            add_tm = ge.TensorMove(add_squeeze)
+            dst2_tm = ge.TensorMove(dst2)
+            src_list = ge.Transpose(src, [2, 0, 1, 3])
+            out1, out2, out3 = ge.ScatterList([sub_tm, add_tm, dst2_tm],
+                                              indices, src_list, None, reduce="update", axis=-2)
+            assign3 = ge.Assign(dst2, out3)
+            assign2 = ge.Assign(sub, out2)
+            output = ge.NetOutput([out1, out2, out3])
+
+            set_graph_output_dtypes(graph, [DataType.DT_FLOAT, DataType.DT_FLOAT, DataType.DT_FLOAT])
+            executor = TorchNpuGraph()
+            optimize_reference_op_redundant_copy(graph)
+            assign_num, tm_num, output_in = get_graph_key_op_num(graph)
+            assert assign_num == 2, f"after optimize, assert assign op num failed, expect 2, get {assign_num}"
+            assert tm_num == 4, f"after optimize, assert TensorMove op num failed, expect4, get {tm_num}"
+            assert output_in == 3, f"after optimize, assert output num failed, expect 3, get {output_in}"
+
+            output_ref_input = _mapping_assign_op_to_graph_output(graph)
+            executor.load(graph.SerializeToString())
+            executor.compile()
+
+        dst = torch.ones(3, 1, 16, 8).float().to(npu_device)
+        dst1 = torch.ones(3, 1, 16, 8).float().to(npu_device)
+        src = torch.randn(3, 1, 3, 8).float().to(npu_device)
+        indices = torch.tensor([1, 1]).int().to(npu_device)
+        dst2 = torch.ones(3, 1, 16, 8).float().to(npu_device)
+
+        inputs = [dst, dst1, src, indices, dst2]
+        assigned_outputs = [None] * len(graph.attr["_output_dtypes"].list.i)
+        for output_index, input_index in output_ref_input.items():
+            assigned_outputs[output_index] = inputs[input_index]
+
+        outs = executor.run(inputs, assigned_outputs)
+        self.assertTrue(outs[3] is dst2)
 
     def test_npu_executor_mix_npu_cpu_inputs(self):
         initialize_graph_engine()

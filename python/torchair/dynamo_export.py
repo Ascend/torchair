@@ -49,7 +49,6 @@ def dynamo_export(*args, model: torch.nn.Module, export_path: str = "export_file
     logger.info(f'dynamo_export: export_path: {export_path}, export_name: {export_name}, dynamic: {dynamic}')
     config = _get_export_config(model, export_path, export_name, config, **kwargs)
 
-    config.experimental_config.keep_inference_input_mutations = False
     torch._dynamo.reset()
     model = torch.compile(model,
                           backend=get_npu_backend(compiler_config=config),

@@ -1,4 +1,5 @@
 import copy
+from collections import namedtuple
 from typing import Any, Dict, List, Tuple, Union, Callable
 import torch
 from torchair.core.utils import logger
@@ -121,3 +122,140 @@ def optimize_sym_pack(graph: GraphDef, inputs: List, placements: List, fx_inputs
         return all_fx_inputs
 
     return pack_fx_input_for_data
+
+
+ref_op_info = namedtuple("ref_op_info", ["op_def", "output_id", "ref_input_name", "output_ref_count", "is_net_output"])
+
+
+def _get_output_to_input_ref_idx(op: OpDef) -> Dict[int, int]:
+    """
+    If there are more inplace op that need to be optimized similarly, it is necessary to
+    add a mapping relationship between output and references input in this function.
+    """
+    ref_idx_mapping: Dict[int, int] = {}
+    if op.type == "Scatter":
+        ref_idx_mapping[0] = 0
+    elif op.type == "ScatterList":
+        for i in range(len(op.output_desc)):
+            ref_idx_mapping[i] = i
+
+    return ref_idx_mapping
+
+
+def _find_ref_ops_and_io_ops(graph: GraphDef):
+    data_output_count: Dict[str, Tuple[int, int]] = {}
+    tensormove_ops: Dict[str, OpDef] = {}
+    assign_ops: Dict[str, OpDef] = {}
+    ref_ops: Dict[str, Tuple[OpDef, int, str]] = {}
+    ref_output_count: Dict[str, int] = {}
+    net_output: OpDef = None
+    for op in graph.op:
+        if op.type == "Data":
+            data_output_count[GeTensor(op).tensor] = (op.attr["index"].i, 0)
+        elif op.type == "TensorMove":
+            tensormove_ops[GeTensor(op).tensor] = op
+        elif op.type == "Assign":
+            assign_ops[GeTensor(op).tensor] = op
+        elif op.type == "NetOutput":
+            net_output = op
+        else:
+            ref_io_mapping = _get_output_to_input_ref_idx(op)
+            for output_id, input_id in ref_io_mapping.items():
+                ref_ops[GeTensor(op, output_id).tensor] = (op, output_id, op.input[input_id])
+                ref_output_count[GeTensor(op, output_id).tensor] = 0
+    logger.info(f"Find all TensorMove ops: {tensormove_ops.keys()}, reference ops: {ref_ops.keys()} "
+                f"and Assign ops: {assign_ops.keys()}.")
+
+    for op in graph.op:
+        if op.type == "Data":
+            continue
+        for idx, op_in in enumerate(op.input):
+            if op_in in data_output_count.keys():
+                data_output_count[op_in] = (data_output_count[op_in][0], data_output_count[op_in][1] + 1)
+            if op_in in ref_ops.keys():
+                ref_output_count[op_in] = ref_output_count[op_in] + 1
+
+    ref_op_infos: Dict = {}
+    for op_tenosr in ref_ops.keys():
+        ref_op_infos[op_tenosr] = ref_op_info(op_def=ref_ops[op_tenosr][0],
+                                              output_id=ref_ops[op_tenosr][1],
+                                              ref_input_name=ref_ops[op_tenosr][2],
+                                              output_ref_count=ref_output_count[op_tenosr],
+                                              is_net_output=True if op_tenosr in net_output.input else False)
+
+    return data_output_count, tensormove_ops, assign_ops, ref_op_infos
+
+
+'''
+* ******************************************************************************************************
+*         input                        Data --------|                  Data       
+*           |                            |          |                    |        
+*           |                        TensorMove     |                    |        
+*           |                            |          |                    |        
+*     Scatter_update_    --->      Scatter(ref op) /      --->     Scatter(ref op) 
+*           |                         |      \    /                      |         
+*       other_op                  other_op    \  /                   other_op      
+*           |                         |      assign                      |         
+*        output                   NET_OUTPUT                         NET_OUTPUT    
+* ******************************************************************************************************
+*         input                     Data --------|              Data --------|              Data       
+*           |                         |          |                |          |                |        
+*           |                     TensorMove     |                |          |                |        
+*           |                         |          |                |          |                |        
+*     Scatter_update_   --->    Scatter(ref op) /    --->   Scatter(ref op) /    --->    Scatter(ref op) 
+*           |                      |      \    /               |      \    /                  |         
+*           |                      |       \  /                |       \  /                   |      
+*           |                      |      assign               |      assign                  |         
+*        output                NET_OUTPUT                   NET_OUTPUT                    NET_OUTPUT    
+* ******************************************************************************************************
+
+Due to the limitation that the inplace operator cannot directly enter the fx graph, 
+it will be converted into a non inplace operator and inplace copy for implementation.
+However, this process will introduce two redundant data copies, so we need to optimize the graph
+as shown in the above figure, to simplify the memory copy in the graph.
+'''
+
+
+def optimize_reference_op_redundant_copy(graph: GraphDef):
+    data_ops, tensormove_ops, assign_ops, ref_op_infos = _find_ref_ops_and_io_ops(graph)
+    ref_data_idx = []
+    for assign_tensor, assign_op in assign_ops.items():
+        if (assign_op.input[0] in data_ops.keys()):
+            ref_data_idx.append(data_ops[assign_op.input[0]][0])
+        if (assign_op.input[0] not in data_ops.keys()) or (assign_op.input[1] not in ref_op_infos.keys()):
+            logger.debug(f"Assign op: {assign_tensor} is not used to update ref_op output to data op.")
+            continue
+        ref_op, ref_idx, ref_op_input = ref_op_infos[assign_op.input[1]].op_def, \
+                                        ref_op_infos[assign_op.input[1]].output_id, \
+                                        ref_op_infos[assign_op.input[1]].ref_input_name
+        if ref_op_input not in tensormove_ops.keys():
+            logger.debug(f"ref_op input: {ref_op_input} type is not TensorMove, skip TensorMove optimization.")
+            continue
+        tensormove_op = tensormove_ops[ref_op_input]
+        if tensormove_op.input[0] != assign_op.input[0]:
+            logger.debug(f"TensorMove input: {tensormove_op.input[0]} is not Data to be assigned, skip optimization.")
+            continue
+        data_output_count = data_ops[assign_op.input[0]][1]
+        if (data_output_count != 2):
+            logger.debug(f"Data op: {assign_op.input[0]} output count {data_output_count} is not equal to two, "
+                         f"which means the current Data op cannot be modified inplace, skip TensorMove optimization.")
+            continue
+
+        ref_out_count, is_net_output = ref_op_infos[assign_op.input[1]].output_ref_count, \
+                                       ref_op_infos[assign_op.input[1]].is_net_output
+        if is_net_output or ref_out_count == 1:
+            logger.debug(f"Assign op: {assign_tensor} is used to copy {assign_op.input[1]} to {assign_op.input[0]}, "
+                         f"update ref_op ref_input_{ref_idx} from {ref_op_input} to {tensormove_op.input[0]}.")
+            logger.debug(f"Ref_op ref_output_{ref_idx} is a net_output, Assign op can not be removed, "
+                         f"only remove TensorMove op: {ref_op_input}.")
+            ref_op.input[ref_idx] = tensormove_op.input[0]
+            graph.op.remove(tensormove_op)
+        else:
+            logger.debug(f"Assign op: {assign_tensor} is used to copy {assign_op.input[1]} to {assign_op.input[0]}, "
+                         f"update ref_op ref_input_{ref_idx} from {ref_op_input} to {tensormove_op.input[0]}, "
+                         f"and remove Assign op: {assign_tensor} and TensorMove op: {ref_op_input}.")
+            ref_op.input[ref_idx] = tensormove_op.input[0]
+            graph.op.remove(assign_op)
+            graph.op.remove(tensormove_op)
+
+    return ref_data_idx

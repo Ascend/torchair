@@ -27,7 +27,7 @@ from torchair.ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
 from torchair.ge_concrete_graph.ge_graph import Tensor as GeTensor
 from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type, torch_type_to_ge_proto_type, default_ge_graph, \
     GeGraph, attr_scope, compat_as_bytes, DataType, TensorSpec, is_sym, sym_to_ge_dtype
-from torchair.ge_concrete_graph.graph_pass import optimize_sym_pack
+from torchair.ge_concrete_graph.graph_pass import optimize_sym_pack, optimize_reference_op_redundant_copy
 from torchair.ge_concrete_graph.utils import convert_to_tensorboard, dump_graph, force_op_unknown_shape, \
     is_host_data_tensor, Placement
 from torchair.ge_concrete_graph.supported_declaration import Support
@@ -373,6 +373,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._frozen_flag_list = []
         self._data_index_after_forozen = dict()
         self._graph_output_ref_input = {}
+        self._ref_data_idx = []
         self._executor = TorchNpuGraph(name)
         self._config = config
         self._auto_tune_times = 0
@@ -403,6 +404,8 @@ class GeConcreteGraph(ConcreteGraphBase):
 
         inputs = self._consume_data_into_inputs(inputs)
 
+        self.common_graph_optimization()
+
         if self.config.export.export_mode:
             self.export(inputs)
             raise ExportSuccess("export graph over")
@@ -420,10 +423,13 @@ class GeConcreteGraph(ConcreteGraphBase):
                 assigned_outputs[output_index] = inputs[input_index]
             ge_outputs = self._executor.run(inputs, assigned_outputs)
 
-            for index_tuple in self._fx_input_mapping_cloned_ge_input:
-                args[index_tuple[0]].copy_(inputs[index_tuple[1]])
         else:
             ge_outputs = self._executor.run(inputs)
+
+        if len(self._ref_data_idx) != 0:
+            for index_tuple in self._fx_input_mapping_cloned_ge_input:
+                if index_tuple[1] in self._ref_data_idx:
+                    args[index_tuple[0]].copy_(inputs[index_tuple[1]])
 
         assert len(ge_outputs) == len(self.graph.attr["_output_dtypes"].list.i),\
             f"output size mismatch, expect {len(self.graph.attr['_output_dtypes'].list.i)}, got {len(ge_outputs)}"
@@ -436,6 +442,18 @@ class GeConcreteGraph(ConcreteGraphBase):
         del ge_outputs
 
         return tuple(fx_outputs)
+
+    def common_graph_optimization(self) -> Any:
+        if self._is_compiled:
+            return
+
+        self.graph.attr["_input_placements"].list.i.extend(self._input_placements)
+        self.graph.attr["_output_dtypes"].list.i.extend([output.dtype for output in self.outputs])
+        self.graph.attr["_executor_type"].i = _get_executor_type()
+        self._complement_graph_attr()
+
+        self._ref_data_idx = optimize_reference_op_redundant_copy(self.graph)
+        self._graph_output_ref_input = _mapping_assign_op_to_graph_output(self.graph)
 
     def load(self, runtime_inputs) -> Any:
         if self._is_compiled:
@@ -450,14 +468,7 @@ class GeConcreteGraph(ConcreteGraphBase):
 
         initialize_graph_engine(global_compile_options)
 
-        # Update graph attr part1
-        self.graph.attr["_input_placements"].list.i.extend(self._input_placements)
-        self.graph.attr["_output_dtypes"].list.i.extend([output.dtype for output in self.outputs])
-        self.graph.attr["_executor_type"].i = _get_executor_type()
-        self._complement_graph_attr()
-
-        # Update local options and graph attr part2
-        self._graph_output_ref_input = _mapping_assign_op_to_graph_output(self.graph)
+        # Update local options
         output_reuse_indexes = [x for x in range(len(self.outputs)) if x not in self._graph_output_ref_input.keys()]
         if len(output_reuse_indexes) != 0:
             # support output memory reuse while output is not ref to input

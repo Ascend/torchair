@@ -60,11 +60,35 @@ at::Tensor npu_empty_strided(c10::IntArrayRef size, c10::IntArrayRef stride, c10
   return res_tensor;
 }
 
+at::Tensor npu_scatter_update(const at::Tensor &self, const at::Tensor &indices, const at::Tensor &updates, int64_t axis) {
+  return self.clone();
+}
+
+at::Tensor &npu_scatter_update_(at::Tensor &self, const at::Tensor &indices, const at::Tensor &updates, int64_t axis) {
+  return self;
+}
+
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   m.impl("empty.memory_format", &privateuse1_empty_memory_format);
   m.impl("fill_.Scalar", &privateuse1_fill__scalar);
   m.impl("_copy_from", &privateuse1__copy_from);
   m.impl("empty_strided", &npu_empty_strided);
+  m.impl("scatter_update", &npu_scatter_update);
+  m.impl("scatter_update_", &npu_scatter_update_);
+}
+
+// Register fallthrough for Autograd backends dispatch keys
+// NB: But not the private use ones; maybe the extension wants
+// to override it themselves!
+TORCH_LIBRARY_IMPL(_, AutogradPrivateUse1, m) {
+  m.fallback(torch::CppFunction::makeFallthrough());
+}
+
+TORCH_LIBRARY_FRAGMENT(aten, m) {
+  m.def("scatter_update(Tensor self, Tensor indices, Tensor updates, int axis) -> Tensor",
+        TORCH_FN(npu_scatter_update));
+  m.def("scatter_update_(Tensor(a!) self, Tensor indices, Tensor updates, int axis) -> Tensor(a!)",
+        TORCH_FN(npu_scatter_update_));
 }
 
 c10::Device get_npu_device() {

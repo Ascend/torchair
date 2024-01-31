@@ -40,4 +40,5 @@ def conveter_npu_scatter_update_default(
     and the caller needs to pay attention to this feature.
     """
 
-    return ge.Scatter(data, indices, updates, reduce="update", axis=axis)
+    copy = ge.TensorMove(data)
+    return ge.Scatter(copy, indices, updates, reduce="update", axis=axis)
