@@ -1,14 +1,14 @@
 """NPU basic configurations"""
+import os
 
 
 class OptionValue:
     """Options for setting npu basic configurations"""
 
-    def __init__(self, default, optional, option_name=None):
+    def __init__(self, default, optional=None):
         self.__default = default
         self.__optional = optional
         self.__value = default
-        self.__option_name = option_name
 
     def __bool__(self):
         return bool(self.__value)
@@ -36,12 +36,57 @@ class OptionValue:
 
     @value.setter
     def value(self, v):
-        if callable(self.__optional):
-            self.__optional(v, self.__option_name)
         if isinstance(self.__optional, (tuple, list,)) and v not in self.__optional:
             raise ValueError(
                 "'" + str(v) + "' not in optional list " + str(self.__optional))
         self.__value = v
+
+
+class IntRangeValue(OptionValue):
+    def __init__(self, default, value_min, value_max):
+        super().__init__(default)
+        self.__min = value_min
+        self.__max = value_max
+    
+    @property
+    def value(self):
+        return super().value
+
+    @value.setter
+    def value(self, v):
+        if not isinstance(v, int):
+            raise ValueError(f'Please set integer type, but got {type(v)}')
+        if v < self.__min or v > self.__max:
+            raise ValueError(f'Please set value in [{self.__min}' + ', '
+                             + f'{self.__max}], {str(v)} is out of range.')
+        super().value = v
+
+
+class FileValue(OptionValue):
+    @property
+    def value(self):
+        return super().value
+
+    @value.setter
+    def value(self, v):
+        if v is not None:
+            if not (os.path.exists(v) and os.path.isfile(v)):
+                raise FileNotFoundError('Please set legal file path, '
+                                        + f'{str(v)} is not found or is not a file!')
+        super().value = v
+
+
+class MustExistedPathValue(OptionValue):
+    @property
+    def value(self):
+        return super().value
+
+    @value.setter
+    def value(self, v):
+        if v is None or not (os.path.exists(v) and os.path.isdir(v)):
+            raise FileNotFoundError('Please set legal dir path, '
+                                    + f'{str(v)} is not found or is not a file directory!')
+        super().value = v
 
 
 class DeprecatedValue(OptionValue):

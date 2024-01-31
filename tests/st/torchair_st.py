@@ -780,40 +780,40 @@ class TorchairSt(unittest.TestCase):
         config_error = CompilerConfig()
         with self.assertRaises(FileNotFoundError) as context:
             config_error.dump_config.dump_path = "./*****"
-        self.assertEqual(str(context.exception), "dump_config.dump_path : ./***** " +
-                         "is not found or is not a file directory, Please change!")
+        self.assertEqual(str(context.exception), 'Please set legal dir path, '
+                         + './***** is not found or is not a file directory!')
         with self.assertRaises(FileNotFoundError) as context:
             config_error.aoe_config.work_path = "./*****"
-        self.assertEqual(str(context.exception), "aoe_config.work_path : ./***** " +
-                         "is not found or is not a file directory, Please change!")
+        self.assertEqual(str(context.exception), 'Please set legal dir path, '
+                         + './***** is not found or is not a file directory!')
         with self.assertRaises(FileNotFoundError) as context:
             config_error.aoe_config.aoe_config_file = "./*****"
-        self.assertEqual(str(context.exception), "aoe_config.aoe_config_file : ./***** " +
-                         "is not found or is not a file, Please change!")
+        self.assertEqual(str(context.exception), 'Please set legal file path, '
+                         + './***** is not found or is not a file!')
         with self.assertRaises(FileNotFoundError) as context:
             config_error.fusion_config.fusion_switch_file = "./*****"
-        self.assertEqual(str(context.exception), "fusion_config.fusion_switch_file : ./***** " +
-                         "is not found or is not a file, Please change!")
+        self.assertEqual(str(context.exception), 'Please set legal file path, '
+                         + './***** is not found or is not a file!')
 
         with self.assertRaises(FileNotFoundError) as context:
             config_error.dump_config.dump_path = None
-        self.assertEqual(str(context.exception), "dump_config.dump_path : None " +
-                         "is not found or is not a file directory, Please change!")
+        self.assertEqual(str(context.exception), 'Please set legal dir path, '
+                         + 'None is not found or is not a file directory!')
         with self.assertRaises(FileNotFoundError) as context:
             config_error.aoe_config.work_path = None
-        self.assertEqual(str(context.exception), "aoe_config.work_path : None " +
-                         "is not found or is not a file directory, Please change!")
+        self.assertEqual(str(context.exception), 'Please set legal dir path, '
+                         + 'None is not found or is not a file directory!')
 
     def test_set_error_static_model_ops_lower_limit(self):
         config_error1 = CompilerConfig()
         with self.assertRaises(ValueError) as context:
             config_error1.experimental_config.static_model_ops_lower_limit = "-1"
-        self.assertEqual(str(context.exception), 'option must a int num')
+        self.assertEqual(str(context.exception), "Please set integer type, but got <class 'str'>")
         config_error2 = CompilerConfig()
         with self.assertRaises(ValueError) as context:
             config_error2.experimental_config.static_model_ops_lower_limit = -2
-        self.assertEqual(str(context.exception), 'option int out of range, ' +
-                         'expect [-1, 9223372036854775807], but got -2')
+        self.assertEqual(str(context.exception),
+                         'Please set value in [-1, 9223372036854775807], -2 is out of range.')
 
 if __name__ == '__main__':
     unittest.main()

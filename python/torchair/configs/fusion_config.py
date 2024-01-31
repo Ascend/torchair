@@ -1,14 +1,13 @@
 import os
-from torchair.configs.option_base import OptionValue
+from torchair.configs.option_base import FileValue
 from torchair.configs.option_base import NpuBaseConfig
-from torchair.configs.utils import check_file
 
 
 class FusionConfig(NpuBaseConfig):
     """Config for op fusion"""
 
     def __init__(self):
-        self.fusion_switch_file = OptionValue(None, check_file, "fusion_config.fusion_switch_file")
+        self.fusion_switch_file = FileValue(None)
 
         super(FusionConfig, self).__init__()
 

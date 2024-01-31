@@ -1,6 +1,5 @@
-from torchair.configs.option_base import OptionValue
+from torchair.configs.option_base import OptionValue, IntRangeValue
 from torchair.configs.option_base import NpuBaseConfig
-from torchair.configs.utils import check_int_num
 
 
 class ExperimentalConfig(NpuBaseConfig):
@@ -12,7 +11,7 @@ class ExperimentalConfig(NpuBaseConfig):
         self.memory_efficiency = OptionValue(False, [True, False])
         self.separate_atomic_clean = OptionValue(True, [True, False])
         self.frozen_parameter = OptionValue(False, [True, False])
-        self.static_model_ops_lower_limit = OptionValue(None, check_int_num, [-1, 9223372036854775807])
+        self.static_model_ops_lower_limit = IntRangeValue(None, -1, 9223372036854775807)
 
         super(ExperimentalConfig, self).__init__()
 

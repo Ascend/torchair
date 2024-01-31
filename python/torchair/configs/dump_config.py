@@ -1,6 +1,5 @@
-from torchair.configs.option_base import OptionValue
+from torchair.configs.option_base import OptionValue, MustExistedPathValue
 from torchair.configs.option_base import NpuBaseConfig
-from torchair.configs.utils import check_dir_path
 
 
 class DataDumpConfig(NpuBaseConfig):
@@ -8,7 +7,7 @@ class DataDumpConfig(NpuBaseConfig):
 
     def __init__(self):
         self.enable_dump = OptionValue(False, [False, True])
-        self.dump_path = OptionValue("./", check_dir_path, "dump_config.dump_path")
+        self.dump_path = MustExistedPathValue("./")
         self.dump_mode = OptionValue('all', ['input', 'output', 'all'])
 
         super(DataDumpConfig, self).__init__()
