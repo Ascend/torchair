@@ -34,6 +34,15 @@ class AscSymbol:
             operands.extend(operand.free_operands())
         return operands
 
+    def operators(self, recursive=False):
+        operators = set()
+        if isinstance(self, Asc2OpeSymbol):
+            operators.add(self.op)
+            if recursive:
+                for operand in self.operands:
+                    operators.update(operand.operators(recursive=True))
+        return operators
+
     def __mul__(self, other):
         return Asc2OpeSymbol(self, AscSymbol._as_symbol(other), operator.mul)
 

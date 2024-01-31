@@ -314,11 +314,13 @@ class HintGraph:
         self.outputs: List[AscIO] = []
         self.ordered_op: Dict[int, AscOp] = {}
 
+        inputs = []
         for op in self._graph.ops:
             assert op.order not in self.ordered_op, f"Duplicate order {op.order} from {op}"
             asc_op = AscOp(op)
             self.ordered_op[op.order] = asc_op
             if op.name in self._graph.inputs:
+                inputs.append(asc_op)
                 self.inputs.append(AscIO(op))
             if op.name in self._graph.outputs:
                 self.outputs.append(AscIO(op, is_input=False))
@@ -329,6 +331,17 @@ class HintGraph:
                     assert i_order in self.ordered_op, f"Error order {i_order} for {v.parent}"
                     asc_op.inputs.append(self.ordered_op[i_order])
                     self.ordered_op[i_order].outputs.append(asc_op)
+
+        for data in inputs:
+            if not len(data.outputs) > 1:
+                continue
+            reserved = data.outputs[0]
+            for load in data.outputs[1:]:
+                for op in load.outputs:
+                    op.inputs = [v if v != load else reserved for v in op.inputs]
+                    reserved.outputs.append(op)
+                self.ordered_op.pop(load.order)
+            data.outputs = [reserved]
 
         return OpCode(self.proto, self.tiling_def, self.tiling, self.kernel)
 

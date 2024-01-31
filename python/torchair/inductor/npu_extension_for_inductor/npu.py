@@ -212,7 +212,11 @@ class NPUKernel(Kernel):
 
         return code.getvalue()
 
-    def view_dot(self, nodes):
+    def record_summary(self, nodes):
+        labels = [_node_label(node) for node in nodes]
+        OP_SUMMARY.add_graph_summary(self.graph, loop='\n'.join(itertools.chain(*labels)))
+
+    def view_dot(self, nodes, svg_path=None):
         try:
             import pydot
             dot_graph = self.graph.as_dot()
@@ -222,7 +226,8 @@ class NPUKernel(Kernel):
             dot_graph.add_node(
                 pydot.Node(f"{self.graph.name}_body", shape="plaintext", label='\n'.join(lines),
                            fontname="Courier"))
-            dot_graph.write_svg(f"./{self.graph.name}.svg")
+            svg_path = svg_path if svg_path else f"./{self.graph.name}.svg"
+            dot_graph.write_svg(svg_path)
         except ImportError:
             print(f"Unable to save dot for kernel {self.kernel_name} as pydot not installed", flush=True)
 
@@ -415,8 +420,11 @@ class NPUScheduling(BaseScheduling):
         wrapper.header.splice("\n\n")
         wrapper.header.splice(kernel.codegen())
 
-        kernel.benchmark()  # TODO: Make this work under config
-        kernel.view_dot(nodes)  # TODO: Make this work under config
+        from torch._inductor import config
+        if config.trace.enabled:
+            kernel.benchmark(V.debug.filename(f"{kernel.kernel_name}_benchmark.py"))
+            kernel.view_dot(nodes, V.debug.filename(f"{kernel.graph.name}.svg"))
+        kernel.record_summary(nodes)
 
         _, call_args, _ = kernel.args.python_argdefs()
 
@@ -454,7 +462,7 @@ def as_default_inductor_backend():
     register_backend_for_device("cpu", NPUScheduling, NpuWrapperCodeGen)
     register_backend_for_device("npu", NPUScheduling, NpuWrapperCodeGen)
     import atexit
-    atexit.register(lambda: OP_SUMMARY.print())
+    atexit.register(lambda: OP_SUMMARY.save())
 
     from torch._inductor.lowering import fallback_handler
     from torch._inductor.lowering import lowerings
