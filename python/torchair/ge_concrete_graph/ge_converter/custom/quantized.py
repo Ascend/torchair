@@ -33,7 +33,7 @@ from torchair.ge_concrete_graph.utils import dtype_promote
 def conveter_npu_quantize_default(
     self: Tensor,
     scales: Tensor,
-    zero_points: Tensor,
+    zero_points: Optional[Tensor] = None,
     dtype: int = torch.uint8,
     axis: int = 1,
     meta_outputs: TensorSpec = None
@@ -42,8 +42,7 @@ def conveter_npu_quantize_default(
     NB: aten::quantize_per_channel(Tensor self, Tensor scales, Tensor zero_points,
                                       int axis, ScalarType dtype) -> Tensor
     """
-    if zero_points.rank != 1:
-        raise RuntimeError("Zero points' dim should be equal to 1.")
+    
     if scales.rank != 1:
         raise RuntimeError("Scales' dim should be equal to 1.")
     if axis < 0:
@@ -61,6 +60,9 @@ def conveter_npu_quantize_default(
     for i in range(self.rank):
         if i != axis:
             insert_dims.append(i)
-    zero_points = ge.Unsqueeze(zero_points, axes=insert_dims)
+    if zero_points is not None:
+        if zero_points.rank != 1:
+            raise RuntimeError("Zero points' dim should be equal to 1.")
+        zero_points = ge.Unsqueeze(zero_points, axes=insert_dims)
     scales = ge.Unsqueeze(scales, axes=insert_dims)
     return ge.Quantize(self, scales, zero_points, axis=axis, dtype=dtype_str)

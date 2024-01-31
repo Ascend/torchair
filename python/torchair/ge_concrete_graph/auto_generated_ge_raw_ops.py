@@ -62727,10 +62727,10 @@ def Dequantize(x: Tensor,
 
 
 # This api is auto-generated from IR Quantize
-@auto_convert_to_tensor([False, False, False], [False, False, False])
+@auto_convert_to_tensor([False, False, False], [False, False, True])
 def Quantize(x: Tensor,
              scales: Tensor,
-             zero_points: Tensor,
+             zero_points: Optional[Tensor],
              *,
              dtype: str,
              axis: int = 1,
@@ -62739,7 +62739,7 @@ def Quantize(x: Tensor,
     """REG_OP(Quantize)\n
 .INPUT(x, TensorType({DT_FLOAT16,DT_FLOAT}))\n
 .INPUT(scales, TensorType({DT_FLOAT}))\n
-.INPUT(zero_points, TensorType({DT_INT8,DT_UINT8,DT_INT32}))\n
+.OPTIONAL_INPUT(zero_points, TensorType({DT_INT8,DT_UINT8,DT_INT32}))\n
 .OUTPUT(y, TensorType({DT_INT8,DT_UINT8,DT_INT32}))\n
 .REQUIRED_ATTR(dtype, String)\n
 .ATTR(axis, Int, 1)\n
@@ -62760,9 +62760,14 @@ def Quantize(x: Tensor,
     op.input.append(scales.tensor)
     op.input_desc.add().CopyFrom(scales.desc)
     op.input_desc[-1].name = "scales"
-    op.input.append(zero_points.tensor)
-    op.input_desc.add().CopyFrom(zero_points.desc)
-    op.input_desc[-1].name = "zero_points"
+    if zero_points is not None:
+        op.input.append(zero_points.tensor)
+        op.input_desc.add().CopyFrom(zero_points.desc)
+        op.input_desc[-1].name = "zero_points"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "zero_points"
 
     # process attrs
     op.attr["dtype"].s = compat_as_bytes(dtype)
