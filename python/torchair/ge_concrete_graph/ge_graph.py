@@ -506,7 +506,12 @@ def next_unique_name(name: str, op: str):
 class TensorSpec:
     def __init__(self, meta_output):
         self._meta = meta_output
-        if isinstance(meta_output, torch.Tensor):
+        if meta_output is None:
+            self._torch_dtype = None
+            self._ge_dtype = None
+            self._symsize = None
+            self._size = None
+        elif isinstance(meta_output, torch.Tensor):
             self._torch_dtype = meta_output.dtype
             self._ge_dtype = torch_type_to_ge_type(self._torch_dtype)
             self._symsize = list(meta_output.size())
