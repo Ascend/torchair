@@ -19,7 +19,7 @@ from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType
 from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
 from torchair.ge_concrete_graph.utils import dtype_promote
@@ -33,6 +33,8 @@ from torchair.ge_concrete_graph.utils import dtype_promote
 @register_fx_node_ge_converter(torch.ops.aten.bmm.default)
 def conveter_aten_bmm_default(self: Tensor, mat2: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::bmm(Tensor self, Tensor mat2) -> Tensor"""
+    if self.dtype == DataType.DT_INT8 or mat2.dtype == DataType.DT_INT8:
+        raise RuntimeError("torch.ops.aten.bmm.default ge_converter is not support int8 dtype!")
     self, mat2 = dtype_promote(self, mat2, target_dtype=meta_outputs.dtype)
     return ge.BatchMatMul(self, mat2)
 
