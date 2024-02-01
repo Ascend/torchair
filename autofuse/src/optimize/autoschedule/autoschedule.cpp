@@ -19,7 +19,7 @@ static constexpr int DEFAULT_GID = 0;
 static constexpr int BEFOR_BRC_GID = 1;
 static constexpr int AFTER_REDUCE_GID = 2;
 static constexpr int DEFAULE_GROUP = -1;
-static constexpr int QUEUE_SIZE = 4;
+// static constexpr int QUEUE_SIZE = 4;
 
 void PrintGroup(const std::string& name, const std::vector<ascir::AxisId>& group) {
   std::cout << name << ": [";
@@ -371,9 +371,59 @@ void HasAllMark(ascir::NodeView node, bool& has_mark_group_id) {
   }
 }
 
+bool IsWriteNode(ascir::NodeView& node_view) {
+  if (ScheduleUtils::IsStore(node_view) || ScheduleUtils::IsGm(node_view)) {
+    return false;
+  }
+  for (auto& output : node_view.outputs()) {
+    for (auto& peer_input: output->GetPeerInDataAnchors()) {
+      auto next_node = ascir::NodeView(peer_input->GetOwnerNode());
+      if (ScheduleUtils::IsStore(next_node)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+int64_t Scheduler::GenerateReuseId(ascir::NodeView& node, const ascir::TensorView& output,
+                                   std::array<std::list<int>, QUEUE_SIZE>& free,
+                                   std::set<int64_t>& input_reuse_ids,
+                                   int64_t& cur_id) {
+  auto sch_attr  = ascir::SchAttr(output.desc);
+  sch_attr.depends = output->GetPeerInDataNodesSize();
+  int64_t reuse_id = 0;
+  if (!free[sch_attr.group_id].empty()) {
+    if (!is_reuse_input && IsWriteNode(node)) {
+      int64_t free_size = free[sch_attr.group_id].size();
+      while (free_size > 0) {
+        reuse_id = free[sch_attr.group_id].front();
+        free[sch_attr.group_id].pop_front();
+        if (input_reuse_ids.find(reuse_id) == input_reuse_ids.end()) {
+          break;
+        }
+        free_size--;
+        free[sch_attr.group_id].push_back(reuse_id);
+      }
+      if (free_size == 0) {
+        reuse_id = cur_id;
+        cur_id++;
+      }
+    } else {
+      reuse_id = free[sch_attr.group_id].front();
+      free[sch_attr.group_id].pop_front();
+    }
+  } else {
+    reuse_id = cur_id;
+    cur_id++;
+  }
+  return reuse_id;
+}
+
 void Scheduler::AssignGroupId() {
   std::array<std::list<int>, QUEUE_SIZE> busy;
   std::array<std::list<int>, QUEUE_SIZE> free;
+  std::set<int64_t> input_reuse_ids;
   int64_t cur_id = 0;
   for (auto node : graph_.GetAllNodes()) {
     if (ScheduleUtils::IsGm(ScheduleUtils::GetComputeType(node))) {
@@ -383,16 +433,12 @@ void Scheduler::AssignGroupId() {
       for (auto& output : node.outputs()) {
         auto sch_attr  = ascir::SchAttr(output.desc);
         sch_attr.depends = output->GetPeerInDataNodesSize();
-        int64_t reuse_id = 0;
-        if (!free[sch_attr.group_id].empty()) {
-          reuse_id = free[sch_attr.group_id].front();
-          free[sch_attr.group_id].pop_front();
-        } else {
-          reuse_id = cur_id;
-          cur_id++;
-        }
+        int64_t reuse_id = GenerateReuseId(node, output, free, input_reuse_ids, cur_id);
         busy[sch_attr.group_id].push_back(reuse_id);
         output.opt.reuse_id = reuse_id;
+        if (ScheduleUtils::IsLoad(node)) {
+          input_reuse_ids.insert(reuse_id);
+        }
       }
     }
   

@@ -7,6 +7,7 @@
 #include <unordered_map>
 
 namespace optimize::autoschedule {
+constexpr int QUEUE_SIZE = 4;
 
 enum SchedulePattern {
   SCHEDULE_GENERAL,
@@ -171,6 +172,10 @@ private:
   void UpdateUpGroupId(ascir::NodeView node, int group_id, ascir::ComputeType stop_type);
   void UpdateDownGroupId(ascir::NodeView node, int group_id, ascir::ComputeType stop_type);
   void AssignGroupId();
+  int64_t GenerateReuseId(ascir::NodeView& node, const ascir::TensorView& output,
+                          std::array<std::list<int>, QUEUE_SIZE>& free,
+                          std::set<int64_t>& input_reuse_ids,
+                          int64_t& cur_id);
   inline void TileTiling(ascir::AxisId tile_id, std::tuple<ascir::Axis, ascir::Axis>& tiled_axes) {
     if (tile_id != -1) {
       tiled_axes = graph_.TileSplit(tile_id);
@@ -198,6 +203,7 @@ private:
   const TilingGroup& axes_group_;
   TilingCase tiling_case_;
   std::vector<ascir::AxisId> axes_order_;
+  bool is_reuse_input = false;
 };
 
 class AutoSchedule {

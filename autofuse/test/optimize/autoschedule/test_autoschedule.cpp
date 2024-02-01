@@ -534,7 +534,7 @@ TEST(E2E_AutoScheduleAbs, Autoschedule_number_of_node)
 
     ops::Data y("y");
     y.x = store.y;
-    y.attr.sched.exec_order = 7;
+    y.attr.sched.exec_order = 6;
     y.attr.hint.compute_type = COMPUTE_DATA;
 
     graph.SetInputs({x});
@@ -553,4 +553,53 @@ TEST(E2E_AutoScheduleAbs, Autoschedule_number_of_node)
     EXPECT_EQ(abs1_result.outputs[0].opt.reuse_id, 0);
     auto abs2_result = graph.Find(abs2.GetName().c_str());
     EXPECT_EQ(abs2_result.outputs[0].opt.reuse_id, 1);
+}
+
+TEST(E2E_AutoScheduleAbs, Autoschedule_number_of_node_no_reuse_input)
+{
+    ascir::Graph graph("LoadAbsStore");
+    ops::Data x("x");
+    x.attr.sched.exec_order = 0;
+    x.attr.hint.compute_type = COMPUTE_DATA;
+
+    ops::Load load("load");
+    load.x = x;
+    load.attr.sched.exec_order = 1;
+    load.attr.hint.compute_type = COMPUTE_LOAD;
+
+    ops::Abs abs0("abs0");
+    abs0.x = load.y;
+    abs0.attr.sched.exec_order = 2;
+    abs0.attr.hint.compute_type = COMPUTE_ELEWISE;
+
+    ops::Abs abs1("abs1");
+    abs1.x = abs0.y;
+    abs1.attr.sched.exec_order = 3;
+    abs1.attr.hint.compute_type = COMPUTE_ELEWISE;
+
+    ops::Store store("store");
+    store.x = abs1.y;
+    store.attr.sched.exec_order = 4;
+    store.attr.hint.compute_type = COMPUTE_STORE;
+
+    ops::Data y("y");
+    y.x = store.y;
+    y.attr.sched.exec_order = 5;
+    y.attr.hint.compute_type = COMPUTE_DATA;
+
+    graph.SetInputs({x});
+    graph.SetOutputs({y});
+
+    TilingGroup axes_group;
+    TilingCase tiling_case;
+    Scheduler autoSchedule(graph, axes_group, tiling_case);
+    autoSchedule.is_reuse_input = false;
+    autoSchedule.NodeNumber();
+    
+    auto load_result = graph.Find(load.GetName().c_str());
+    EXPECT_EQ(load_result.outputs[0].opt.reuse_id, 0);
+    auto abs0_result = graph.Find(abs0.GetName().c_str());
+    EXPECT_EQ(abs0_result.outputs[0].opt.reuse_id, 1);
+    auto abs1_result = graph.Find(abs1.GetName().c_str());
+    EXPECT_EQ(abs1_result.outputs[0].opt.reuse_id, 2);
 }
