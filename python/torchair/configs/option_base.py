@@ -8,10 +8,10 @@ class OptionValue:
     def __init__(self, default, optional=None):
         self.__default = default
         self.__optional = optional
-        self.__value = default
+        self._value = default
 
     def __bool__(self):
-        return bool(self.__value)
+        return bool(self._value)
 
     @property
     def default(self):
@@ -26,20 +26,20 @@ class OptionValue:
     @property
     def value(self):
         """Return option value"""
-        if self.__value is None:
+        if self._value is None:
             return None
-        if str(self.__value) == str(True):
+        if str(self._value) == str(True):
             return "1"
-        if str(self.__value) == str(False):
+        if str(self._value) == str(False):
             return "0"
-        return str(self.__value)
+        return str(self._value)
 
     @value.setter
     def value(self, v):
         if isinstance(self.__optional, (tuple, list,)) and v not in self.__optional:
             raise ValueError(
                 "'" + str(v) + "' not in optional list " + str(self.__optional))
-        self.__value = v
+        self._value = v
 
 
 class IntRangeValue(OptionValue):
@@ -59,7 +59,7 @@ class IntRangeValue(OptionValue):
         if v < self.__min or v > self.__max:
             raise ValueError(f'Please set value in [{self.__min}' + ', '
                              + f'{self.__max}], {str(v)} is out of range.')
-        super().value = v
+        self._value = v
 
 
 class FileValue(OptionValue):
@@ -73,7 +73,7 @@ class FileValue(OptionValue):
             if not (os.path.exists(v) and os.path.isfile(v)):
                 raise FileNotFoundError('Please set legal file path, '
                                         + f'{str(v)} is not found or is not a file!')
-        super().value = v
+        self._value = v
 
 
 class MustExistedPathValue(OptionValue):
@@ -86,7 +86,7 @@ class MustExistedPathValue(OptionValue):
         if v is None or not (os.path.exists(v) and os.path.isdir(v)):
             raise FileNotFoundError('Please set legal dir path, '
                                     + f'{str(v)} is not found or is not a file directory!')
-        super().value = v
+        self._value = v
 
 
 class DeprecatedValue(OptionValue):

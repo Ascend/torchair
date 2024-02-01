@@ -899,5 +899,16 @@ class TorchairSt(unittest.TestCase):
         self.assertEqual(str(context.exception),
                          'Please set value in [-1, 9223372036854775807], -2 is out of range.')
 
+    def test_set_option(self):
+        if not os.path.exists("./dump"):
+            os.mkdir("./dump")
+        config_option = CompilerConfig()
+        config_option.dump_config.dump_path = "./dump"
+        self.assertEqual(config_option.dump_config.dump_path.value, "./dump")
+        config_option.aoe_config.work_path = "./dump"
+        self.assertEqual(config_option.aoe_config.work_path.value, "./dump")
+        config_option.experimental_config.static_model_ops_lower_limit = 0
+        self.assertEqual(config_option.experimental_config.static_model_ops_lower_limit.value, '0')
+
 if __name__ == '__main__':
     unittest.main()
