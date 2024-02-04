@@ -42,3 +42,14 @@ def conveter_aten_sym_size_int(self: Tensor, dim: int, meta_outputs: TensorSpec 
     shape = ge.Shape(self, dtype=DataType.DT_INT64)
     # force unknown shape with ge.Gather when parse symsize
     return force_op_unknown_shape(ge.Gather(shape, dim))
+
+
+@register_fx_node_ge_converter(torch.ops.aten.sym_numel)
+def convert_aten_sym_numel(
+    self,
+    out: Tensor = None,
+    meta_outputs: TensorSpec = None,
+):
+    """NB: aten::sym_size.sym_numel(Tensor self) -> SymInt"""
+    return ge.Cast(ge.ReduceProdD(ge.Shape(self), axes=[0]), dst_type=DataType.DT_INT64)
+

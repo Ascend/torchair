@@ -7,8 +7,8 @@ from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_conve
 from torchair.ge_concrete_graph.utils import normalize_reduceop_type
 from torchair.core.utils import logger
 
-_lib = Library("npu_define", "DEF")
-op_name = _lib.define(
+npu_define_lib = Library("npu_define", "DEF")
+op_name = npu_define_lib.define(
     "allreduce(Tensor input, str reduce_type, int[] ranks, float? timeout=None) -> Tensor")
 
 
@@ -29,12 +29,12 @@ def allreduce_npu(inputs, reduce_type, ranks, timeout=None):
 
 
 def allreduce_meta(inputs, reduce_type, ranks, timeout=None):
-    return inputs
+    return inputs.new_empty(inputs.size())
 
 
-_lib.impl(op_name, allreduce_cpu, 'CPU')
-_lib.impl(op_name, allreduce_meta, 'Meta')
-_lib.impl(op_name, allreduce_npu, 'PrivateUse1')
+npu_define_lib.impl(op_name, allreduce_cpu, 'CPU')
+npu_define_lib.impl(op_name, allreduce_meta, 'Meta')
+npu_define_lib.impl(op_name, allreduce_npu, 'PrivateUse1')
 
 
 def npu_all_reduce(tensor, op="sum", group=None, async_op=False):

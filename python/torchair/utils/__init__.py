@@ -8,7 +8,7 @@ from torch._ops import OpOverload, OpOverloadPacket
 from torch._subclasses import fake_tensor as _subclasses_fake_tensor
 from torch._C import DispatchKey
 from torch._prims_common.wrappers import out_wrapper
-from torch._decomp import get_decompositions, decomposition_table
+from torch._decomp import decomposition_table
 from torch._dynamo.symbolic_convert import break_graph_if_unsupported, InstructionTranslatorBase, stack_op
 from torch._dynamo.exc import Unsupported
 from torch._dynamo.variables.lists import TupleVariable

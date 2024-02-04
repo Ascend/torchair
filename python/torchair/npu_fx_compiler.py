@@ -3,6 +3,7 @@ import operator
 import copy
 from typing import List, Callable, Any, Dict, Tuple, Union
 import logging
+import sys
 
 import torch
 from torch._C import DispatchKey
@@ -33,6 +34,14 @@ from torchair.fx_dumper import NpuFxDumper
 from torchair.utils.custom_aot_functions import aot_module_simplified_joint
 from torchair.utils import add_npu_patch
 aten = torch.ops.aten
+
+
+def get_default_decompositions():
+    default_decompositions = []
+    if "torchair.ge_concrete_graph.ge_converter.experimental.hcom_alltoall" in sys.modules:
+        default_decompositions.append(torch.ops.npu_define.all_to_all_single)
+        default_decompositions.append(torch.ops.npu_define.all_to_all)
+    return default_decompositions
 
 
 def _unpack_meta_list(args):
@@ -402,7 +411,7 @@ def get_compiler(compiler_config: CompilerConfig = None):
 def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
                  compiler_config: CompilerConfig = None, aot_config: AotConfig = None,
                  custom_decompositions: Dict = {}):
-    decompositions = get_decompositions([])
+    decompositions = get_decompositions(get_default_decompositions())
     decompositions.update(custom_decompositions)
     compiler = get_compiler(compiler_config)
     if aot_config is not None and aot_config.enable_joint_graph:
