@@ -398,7 +398,104 @@ class TorchairSt(unittest.TestCase):
             assigned_outputs[output_index] = inputs[input_index]
 
         outs = executor.run(inputs, assigned_outputs)
-        self.assertTrue(outs[3] is dst2)
+        self.assertTrue(len(outs) == 3)
+        self.assertTrue(outs[2] is dst2)
+
+    def test_assign_input_in_netoutput(self):
+        def _get_graph_output_num(graph):
+            netoutput_input_num = 0
+            for node in graph.op:
+                if node.type == "NetOutput":
+                    netoutput_input_num = len(node.input)
+            return netoutput_input_num
+
+        initialize_graph_engine()
+        from torchair.core import _npu_graph_executor
+        import _privateuse1_backend
+        npu_device = _privateuse1_backend.npu_device()
+        torch.utils.rename_privateuse1_backend("npu")
+
+        with GeGraph() as graph:
+            x1 = ge.Data(index=0, shape=[3, 4],
+                         dtype=DataType.DT_FLOAT, placement='NPU')
+            x2 = ge.Data(index=1, shape=[3, 4],
+                         dtype=DataType.DT_FLOAT, placement='NPU')
+            res = ge.Add(x1, x2)
+            assign = ge.Assign(x1, res)
+            res2 = ge.Sub(res, x2)
+            output = ge.NetOutput([res, res2])
+
+            set_graph_output_dtypes(graph, [DataType.DT_FLOAT, DataType.DT_FLOAT])
+            executor = TorchNpuGraph()
+            optimize_reference_op_redundant_copy(graph)
+            output_num = _get_graph_output_num(graph)
+            assert output_num == 2, f"before optimize, assert output num failed, expect 2, get {output_num}"
+
+            output_ref_input = _mapping_assign_op_to_graph_output(graph)
+            output_num = _get_graph_output_num(graph)
+            assert output_num == 2, f"after optimize, assert output num failed, expect 2, get {output_num}"
+
+            executor.load(graph.SerializeToString())
+            executor.compile()
+
+        dst = torch.ones(3, 4).float().to(npu_device)
+        dst1 = torch.ones(3, 4).float().to(npu_device)
+        inputs = [dst, dst1]
+        assigned_outputs = [None] * len(graph.attr["_output_dtypes"].list.i)
+        for output_index, input_index in output_ref_input.items():
+            assigned_outputs[output_index] = inputs[input_index]
+
+        outs = executor.run(inputs, assigned_outputs)
+        self.assertTrue(len(outs) == 2)
+        self.assertTrue(outs[0] is dst)
+
+    def test_assign_input_not_netoutput(self):
+        def test_assign_input_in_netoutput(self):
+            def _get_graph_output_num(graph):
+                netoutput_input_num = 0
+                for node in graph.op:
+                    if node.type == "NetOutput":
+                        netoutput_input_num = len(node.input)
+                return netoutput_input_num
+
+            initialize_graph_engine()
+            from torchair.core import _npu_graph_executor
+            import _privateuse1_backend
+            npu_device = _privateuse1_backend.npu_device()
+            torch.utils.rename_privateuse1_backend("npu")
+
+            with GeGraph() as graph:
+                x1 = ge.Data(index=0, shape=[3, 4],
+                             dtype=DataType.DT_FLOAT, placement='NPU')
+                x2 = ge.Data(index=1, shape=[3, 4],
+                             dtype=DataType.DT_FLOAT, placement='NPU')
+                res = ge.Add(x1, x2)
+                assign = ge.Assign(x1, res)
+                output = ge.NetOutput([])
+
+                set_graph_output_dtypes(graph, [DataType.DT_FLOAT])
+                executor = TorchNpuGraph()
+                optimize_reference_op_redundant_copy(graph)
+                output_num = _get_graph_output_num(graph)
+                assert output_num == 0, f"before optimize, assert output num failed, expect 0, get {output_num}"
+
+                output_ref_input = _mapping_assign_op_to_graph_output(graph)
+                output_num = _get_graph_output_num(graph)
+                assert output_num == 1, f"after optimize, assert output num failed, expect 1, get {output_num}"
+
+                executor.load(graph.SerializeToString())
+                executor.compile()
+
+            dst = torch.ones(3, 4).float().to(npu_device)
+            dst1 = torch.ones(3, 4).float().to(npu_device)
+            inputs = [dst, dst1]
+            assigned_outputs = [None] * len(graph.attr["_output_dtypes"].list.i)
+            for output_index, input_index in output_ref_input.items():
+                assigned_outputs[output_index] = inputs[input_index]
+
+            outs = executor.run(inputs, assigned_outputs)
+            self.assertTrue(len(outs) == 1)
+            self.assertTrue(outs[0] is dst)
 
     def test_npu_executor_mix_npu_cpu_inputs(self):
         initialize_graph_engine()

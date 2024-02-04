@@ -51,15 +51,21 @@ def _mapping_assign_op_to_graph_output(graph: GraphDef):
     assert net_output is not None, "NetOutput not found"
 
     def _mapping_to_graph_output(graph: GraphDef, graph_out: OpDef, assign_node_out: GeTensor, value_tensor: str):
+        output_ref_index_list = []
         for i, name in enumerate(graph_out.input):
             if name == assign_node_out.tensor:
                 graph_out.input[i] = value_tensor
-                return i
+                output_ref_index_list.append(i)
+            elif name == value_tensor:
+                output_ref_index_list.append(i)
+        if len(output_ref_index_list) != 0 :
+            return output_ref_index_list
+
         graph_out.input.append(value_tensor)
         graph_out.input_desc.add().CopyFrom(assign_node_out.desc)
         graph_out.input_desc[-1].name = f"input{len(graph_out.input_desc) - 1}"
         graph.attr["_output_dtypes"].list.i.append(assign_node_out.dtype)
-        return len(graph_out.input) - 1
+        return [len(graph_out.input) - 1]
 
     output_refto_input = {}
     replaced_assign_ops = []
@@ -71,8 +77,9 @@ def _mapping_assign_op_to_graph_output(graph: GraphDef):
         if op.input[0] in net_inputs.keys(): # Assign在给输入赋值
             logger.info(
                 f"Replace assign op {op.name} assign value from {op.input[1]} to input {net_inputs[op.input[0]]} {op.input[0]}")
-            output_index = _mapping_to_graph_output(graph, net_output, assign_node_out, op.input[1])
-            output_refto_input[output_index] = net_inputs[op.input[0]]
+            output_ref_index_list = _mapping_to_graph_output(graph, net_output, assign_node_out, op.input[1])
+            for output_ref_index in output_ref_index_list:
+                output_refto_input[output_ref_index] = net_inputs[op.input[0]]
             replaced_assign_ops.append(op)
         else:
             logger.info(f"Collect assign op {op.name} assign value from {op.input[1]} to {op.input[0]}")
