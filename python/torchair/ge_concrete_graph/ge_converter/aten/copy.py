@@ -13,12 +13,12 @@ from torchair.ge_concrete_graph.supported_declaration import Support, F32, F16
     Support(F32(3), F32(3)),
     Support(F32(3), F16(3)),
     Support(F32(5, 3, 4, 1), F32(3, 1, 1)),
+    Support(F32(5, 3, 4, 1), F32(3, 1, 1), non_blocking=False),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.copy.default)
 def conveter_aten_copy_default(
         self: Tensor,
         src: Tensor,
-        *,
         non_blocking: bool = False,
         meta_outputs: Any = None):
     """ NB: aten::copy(Tensor self, Tensor src, bool non_blocking=False) -> Tensor """
@@ -41,9 +41,9 @@ def conveter_aten_copy_default(
 def conveter_aten_copy_out(
         self: Tensor,
         src: Tensor,
+        non_blocking: bool = False,
         *,
         out: Tensor = None,
-        non_blocking: bool = False,
         meta_outputs: Any = None):
     """ NB: aten::copy(Tensor self, Tensor src, bool non_blocking=False, *, Tensor(a!) out) -> Tensor(a!) """
     raise NotImplementedError(

@@ -106,7 +106,7 @@ def _save_weight2file(inputs, file_path, weight_name, used_weight_num):
                 # args0: file handle
                 # args1: True mean save as readable not tar.gz or other
                 # args2: False mean not save data len
-                inp.untyped_storage()._write_file(f, True, False, torch._utils._element_size(torch.bfloat16))
+                inp.cpu().untyped_storage()._write_file(f, True, False, torch._utils._element_size(torch.bfloat16))
         else:
             inp.numpy(force=True).tofile(file_path_and_name)
 

@@ -776,6 +776,23 @@ def _auto_type_promotion_for_const(bundle_inputs: list, inputs_dynamic: list, in
     return promoted_bundle_inputs
 
 
+def _set_extral_node_attrs(outputs):
+    attr_maps = getattr(local_variable, 'extral_node_attrs', {})
+    if len(attr_maps) == 0:
+        return
+
+    if isinstance(outputs, Tensor):
+        for key, value in attr_maps.items():
+            outputs.node.attr[key].s = value
+    elif isinstance(outputs, (list, tuple)):
+        for output in outputs:
+            assert isinstance(output, Tensor), f'expect tensor, but got {type(output)}.'
+            for key, value in attr_maps.items():
+                output.node.attr[key].s = value
+    else:
+        ValueError(f'expect a Tensor, List or Tuple, but got {type(outputs)}.')
+
+
 def auto_convert_to_tensor(inputs_dynamic, inputs_optional):
     def inner(func):
         @functools.wraps(func)
@@ -811,9 +828,7 @@ def auto_convert_to_tensor(inputs_dynamic, inputs_optional):
                 gegraph = get_default_ge_graph()
                 gegraph.add_python_code(bundle_inputs.args, kwargs, outputs, func)
 
-            attr_maps = getattr(local_variable, 'extral_node_attrs', {})
-            for key, value in attr_maps.items():
-                outputs.node.attr[key].s = value
+            _set_extral_node_attrs(outputs)
 
             return outputs
         return wrapper

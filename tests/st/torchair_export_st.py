@@ -270,7 +270,8 @@ class TorchairSt(unittest.TestCase):
                 super().__init__()
 
             def forward(self, x, y):
-                return x + y
+                z = x + y
+                return torch.chunk(z, 2, dim=0)
 
         class Model(torch.nn.Module):
             def __init__(self):
@@ -297,8 +298,8 @@ class TorchairSt(unittest.TestCase):
 
         with open(file_name, 'r')as f:
             src = f.read()
-        assert src.count("\"nn_module_stack\"") == 3 # 插入了2个cast
-        assert src.count("Model2") == 3
+        assert src.count("\"nn_module_stack\"") == 6 # 插入了2个cast,有两个输出
+        assert src.count("Model2") == 6
 
     def test_export_with_sym_pack(self):
         class Model(torch.nn.Module):
