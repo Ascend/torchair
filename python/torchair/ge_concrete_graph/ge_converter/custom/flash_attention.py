@@ -48,6 +48,11 @@ def convert_npu_npu_prompt_flash_attention(
     atten_mask: Optional[Tensor] = None,
     pse_shift: Optional[Tensor] = None,
     actual_seq_lengths: Optional[Union[List[int], Tensor]] = None,
+    deq_scale1: Optional[Tensor] = None,
+    quant_scale1: Optional[Tensor] = None,
+    deq_scale2: Optional[Tensor] = None,
+    quant_scale2: Optional[Tensor] = None,
+    quant_offset2: Optional[Tensor] = None,
     num_heads: int = 1,
     scale_value: float = 1.0,
     pre_tokens: int = 2147473647,
@@ -71,7 +76,8 @@ def convert_npu_npu_prompt_flash_attention(
 
     return ge.PromptFlashAttention(query, key, value, pse_shift=pse_shift, atten_mask=atten_mask,
         actual_seq_lengths=actual_seq_lengths, actual_seq_lengths_kv=actual_seq_lengths_kv,
-        deq_scale1=None, quant_scale1=None, deq_scale2=None, quant_scale2=None, quant_offset2=None,
+        deq_scale1=deq_scale1, quant_scale1=quant_scale1, deq_scale2=deq_scale2,
+        quant_scale2=quant_scale2, quant_offset2=quant_offset2,
         num_heads=num_heads, scale_value=scale_value,
         pre_tokens=pre_tokens, next_tokens=next_tokens, input_layout=input_layout,
         num_key_value_heads=num_key_value_heads, sparse_mode=sparse_mode)
