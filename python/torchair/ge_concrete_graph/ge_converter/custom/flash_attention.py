@@ -109,6 +109,11 @@ def convert_npu_npu_incre_flash_attention(
     antiquant_scale: Optional[Tensor] = None,
     antiquant_offset: Optional[Tensor] = None,
     block_table: Optional[Tensor] = None,
+    dequant_scale1: Optional[Tensor] = None,
+    quant_scale1: Optional[Tensor] = None,
+    dequant_scale2: Optional[Tensor] = None,
+    quant_scale2: Optional[Tensor] = None,
+    quant_offset2: Optional[Tensor] = None,
     num_heads: int = 1,
     scale_value: float = 1.0,
     input_layout: str = "BSH",
@@ -118,14 +123,15 @@ def convert_npu_npu_incre_flash_attention(
     meta_outputs: TensorSpec = None,
 ):
 
-    '''NB: npu_incre_flash_attention(Tensor query, Tensor key, Tensor value, *, Tensor? padding_mask=None, Tensor? atten_mask=None, Tensor? pse_shift=None, SymInt[]? actual_seq_lengths=None, Tensor? antiquant_scale=None, Tensor? antiquant_offset=None, Tensor? block_table=None, int num_heads=1, float scale_value=1.0, str input_layout="BSH", int num_key_value_heads=0, int block_size=0, int inner_precise=1) -> Tensor'''
+    '''NB: npu_incre_flash_attention(Tensor query, Tensor key, Tensor value, *, Tensor? padding_mask=None, Tensor? atten_mask=None, Tensor? pse_shift=None, SymInt[]? actual_seq_lengths=None, Tensor? antiquant_scale=None, Tensor? antiquant_offset=None, Tensor? block_table=None, Tensor? dequant_scale1=None, Tensor? quant_scale1=None, Tensor? dequant_scale2=None, Tensor? quant_scale2=None, Tensor? quant_offset2=None, int num_heads=1, float scale_value=1.0, str input_layout="BSH", int num_key_value_heads=0, int block_size=0, int inner_precise=1) -> Tensor'''
     key_list = [key]
     value_list = [value]
     if actual_seq_lengths is not None:
         actual_seq_lengths = dtype_promote(actual_seq_lengths, target_dtype=DataType.DT_INT64)
 
     return ge.IncreFlashAttention(query, key_list, value_list, pse_shift=pse_shift, atten_mask=atten_mask,
-        actual_seq_lengths=actual_seq_lengths, dequant_scale1=None, quant_scale1=None, dequant_scale2=None,
-        quant_scale2=None, quant_offset2=None, antiquant_scale=antiquant_scale, antiquant_offset=antiquant_offset,
-        block_table=block_table, num_heads=num_heads, scale_value=scale_value, input_layout=input_layout,
+        actual_seq_lengths=actual_seq_lengths, dequant_scale1=dequant_scale1, quant_scale1=quant_scale1,
+        dequant_scale2=dequant_scale2, quant_scale2=quant_scale2, quant_offset2=quant_offset2,
+        antiquant_scale=antiquant_scale, antiquant_offset=antiquant_offset, block_table=block_table,
+        num_heads=num_heads, scale_value=scale_value, input_layout=input_layout,
         num_key_value_heads=num_key_value_heads, block_size=block_size, inner_precise=inner_precise)
