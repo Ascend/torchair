@@ -12,7 +12,7 @@ ge::MemBlock *NpuAllocator::Malloc(size_t size) {
     TNG_LOG(ERROR) << "Failed to malloc memory by allocator, size: " << size;
     return nullptr;
   }
-  TNG_LOG(INFO) << "[MemoryTrace]Malloc memory from NPUCachingAllocator success, block = " << block;
+  TNG_LOG(INFO) << "[MemoryTrace] Malloc memory from NPUCachingAllocator success, block = " << block;
   ge::MemBlock *mem_block = nullptr;
   {
     const std::unique_lock<std::mutex> lk(allocator_mutex_);
@@ -22,7 +22,7 @@ ge::MemBlock *NpuAllocator::Malloc(size_t size) {
     TNG_LOG(ERROR) << "Failed to create ge_block from memory block pool";
     return nullptr;
   }
-  TNG_LOG(INFO) << "[MemoryTrace]Malloc the mem_block success, mem_block = " << mem_block
+  TNG_LOG(INFO) << "[MemoryTrace] Malloc the mem_block success, mem_block = " << mem_block
                 << ", device_ptr = " << mem_block->GetAddr() << ", size = " << mem_block->GetSize();
   return mem_block;
 }
@@ -39,7 +39,7 @@ void NpuAllocator::Free(ge::MemBlock *block) {
     return;
   }
   // free mem_block
-  TNG_LOG(INFO) << "[MemoryTrace]Try to free the mem_block, mem_block = " << mem_block
+  TNG_LOG(INFO) << "[MemoryTrace] Try to free the mem_block, mem_block = " << mem_block
                 << ", NPUCachingAllocator block = " << mem_block->handle_
                 << ", device_ptr = " << GetBlockPtr(mem_block->handle_)
                 << ", size = " << GetBlockSize(mem_block->handle_);
@@ -48,31 +48,29 @@ void NpuAllocator::Free(ge::MemBlock *block) {
     const std::unique_lock<std::mutex> lk(allocator_mutex_);
     mem_block_pool_.Free(*(mem_block));
   }
-  TNG_LOG(INFO) << "[MemoryTrace]Free the mem_block success!";
+  TNG_LOG(INFO) << "[MemoryTrace]Free the mem_block success.";
 }
 
 ge::MemBlock *NpuAllocator::MallocFeatureMemory(size_t size, ge::MemBlock *advised_block) {
   if (advised_block == nullptr) {  // first run
     for (auto &iter : feature_map_mem_pool_) {
-      if (iter.first->GetSize() >= size) {
-        iter.first->AddCount();
-        TNG_LOG(INFO) << "[MemoryTrace]MallocFeatureMemory: Reuse feature memory "
-                      << ", block = " << iter.first << " , addr = " << iter.first->GetAddr()
-                      << ", and size = " << iter.first->GetSize() << " , use count = " << iter.first->GetCount();
-        return iter.first;
+      if (iter->GetSize() >= size) {
+        iter->AddCount();
+        TNG_LOG(INFO) << "[MemoryTrace] MallocFeatureMemory: Reuse feature memory "
+                      << ", block = " << iter << " , addr = " << iter->GetAddr() << ", and size = " << iter->GetSize()
+                      << " , use count = " << iter->GetCount();
+        return iter;
       }
     }
-    TNG_LOG(INFO) << "[MemoryTrace]MallocFeatureMemory: Try Malloc size = " << size;
+    TNG_LOG(INFO) << "[MemoryTrace] MallocFeatureMemory: Try Malloc size = " << size << ", advised_block = " << advised_block;
     ge::MemBlock *block = Malloc(size);
     if (block == nullptr) {
       TNG_LOG(ERROR) << "[MemoryTrace]MallocFeatureMemoryFailed to malloc feature memory, size: " << size;
       return nullptr;
     }
-    TNG_LOG(INFO) << "[MemoryTrace]MallocAdvise: Malloc memory success, size = " << block->GetSize()
+    TNG_LOG(INFO) << "[MemoryTrace] MallocAdvise: Malloc memory success, size = " << block->GetSize()
                   << ", and addr = " << block->GetAddr() << ", use count = " << block->GetCount();
-    aclrtContext malloc_ctx;
-    aclrtGetCurrentContext(&malloc_ctx);
-    return feature_map_mem_pool_.insert(std::make_pair(block, malloc_ctx)).first->first;
+    return *(feature_map_mem_pool_.insert(block).first);
   } else {  // After the first run
     auto iter = feature_map_mem_pool_.find(advised_block);
     if (iter == feature_map_mem_pool_.end()) {
@@ -81,36 +79,27 @@ ge::MemBlock *NpuAllocator::MallocFeatureMemory(size_t size, ge::MemBlock *advis
       return nullptr;
     }
     TNG_LOG(INFO) << "[MemoryTrace]MallocAdvise: find feature map memory from feature memory pool success, size = "
-                  << size << ", and addr = " << iter->first->GetAddr();
-    return iter->first;
+                  << size << ", and addr = " << (*iter)->GetAddr();
+    return *iter;
   }
 }
 
 Status NpuAllocator::FreeFeatureMemory(ge::MemBlock *block) {
   TNG_ASSERT_NOTNULL(block);
-  TNG_LOG(INFO) << "[MemoryTrace]FreeFeatureMemory: Try to Free memory, size = " << block->GetSize()
+  TNG_LOG(INFO) << "[MemoryTrace] FreeFeatureMemory: Try to Free memory, size = " << block->GetSize()
                 << ", and addr = " << block->GetAddr() << " , use count = " << block->GetCount();
   auto iter = feature_map_mem_pool_.find(block);
   if (iter == feature_map_mem_pool_.end()) {
     TNG_LOG(INFO) << "Can not find block = " << block << " from feature map memory pool in current allocator";
     return Status::Success();
   }
-  aclrtContext free_ctx;
-  auto ret = aclrtGetCurrentContext(&free_ctx);
-  // use malloc context to free
-  TNG_ASSERT_GE_OK(aclrtSetCurrentContext(iter->second));
-  TNG_LOG(INFO) << "[MemoryTrace]FreeFeatureMemory: Try to free feature map memory, current free context = " << free_ctx
-                << " , malloc context = " << iter->second;
   block->Free();
   if (block->GetCount() == 0U) {
     feature_map_mem_pool_.erase(iter);
   }
-  TNG_LOG(INFO) << "[MemoryTrace]FreeFeatureMemory: Free feature map memory success, block use count = "
+  TNG_LOG(INFO) << "[MemoryTrace] FreeFeatureMemory: Free feature map memory success, block use count = "
                 << block->GetCount() << " , feature map memory pool size = " << feature_map_mem_pool_.size();
   block = nullptr;
-  if (ret == ACL_ERROR_NONE) {
-    TNG_ASSERT_GE_OK(aclrtSetCurrentContext(free_ctx));
-  }
   return Status::Success();
 }
 }  // namespace tng

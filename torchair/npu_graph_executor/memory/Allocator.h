@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <functional>
 #include <mutex>
+#include <set>
 #include "external/graph/types.h"
 #include "ge/ge_allocator.h"
 #include "torch_npu/inc/core/NPUBlockHandle.h"
@@ -46,7 +47,7 @@ class NpuAllocator : public ge::Allocator {
   Status FreeFeatureMemory(ge::MemBlock *block);
 
  private:
-  std::unordered_map<ge::MemBlock*, aclrtContext> feature_map_mem_pool_;
+  std::set<ge::MemBlock*> feature_map_mem_pool_;
   ObjectAllocator<NpuMemBlock> mem_block_pool_;
   void *stream_;
   std::mutex allocator_mutex_;

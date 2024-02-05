@@ -42,7 +42,6 @@ class TorchairSt(unittest.TestCase):
                 x = x + y
                 return x
 
-
         model = Model()
         x = torch.randn(2, 4)
         y = torch.randn(2, 4)
@@ -57,7 +56,7 @@ class TorchairSt(unittest.TestCase):
         assert dumped_file_list.__len__() > 0
         file_name = os.path.join(export_path1, dumped_file_list[-1])
 
-        with open(file_name, 'r')as f:
+        with open(file_name, 'r') as f:
             src = f.read()
 
         assert src.count("op: \"Data\"") == 2
@@ -83,7 +82,6 @@ class TorchairSt(unittest.TestCase):
                 z = torch.cat((x, y), 0)
                 return z.size()[1], x
 
-
         model = Model()
         x = torch.randn(2, 4)
         y = torch.randn(2, 4)
@@ -99,7 +97,7 @@ class TorchairSt(unittest.TestCase):
         assert dumped_file_list.__len__() > 0
         file_name = os.path.join(export_path1, dumped_file_list[-1])
 
-        with open(file_name, 'r')as f:
+        with open(file_name, 'r') as f:
             src = f.read()
 
         assert src.count("op: \"Shape\"") == 1
@@ -109,16 +107,16 @@ class TorchairSt(unittest.TestCase):
     def test_export_with_allreduce(self):
         def get_sub_path_dynamo_pbtxt(export_path, rankid):
             return export_path + "/rank_" + str(rankid) + "/dynamo.pbtxt"
-        
+
         def get_model_relation_config(export_path):
             return export_path + "/model_relation_config.json"
-        
+
         def get_numa_config(export_path):
             return export_path + "/numa_config.json"
-        
+
         def mp():
             world_size = 2
-            torch.multiprocessing.spawn(example, args=(world_size, ), nprocs=world_size, join=True)
+            torch.multiprocessing.spawn(example, args=(world_size,), nprocs=world_size, join=True)
 
         os.environ["MASTER_ADDR"] = "localhost"
         os.environ["MASTER_PORT"] = "29505"
@@ -126,7 +124,7 @@ class TorchairSt(unittest.TestCase):
         mp()
 
         file_name = get_sub_path_dynamo_pbtxt("export_file", 0)
-        with open(file_name, 'r')as f:
+        with open(file_name, 'r') as f:
             src = f.read()
         assert src.count("op: \"Const\"") == 2
         assert src.count("op: \"Data\"") == 2
@@ -134,14 +132,14 @@ class TorchairSt(unittest.TestCase):
         assert src.count("key: \"ranklist\"") == 1
 
         file_name = get_sub_path_dynamo_pbtxt("false_export_path2", 0)
-        with open(file_name, 'r')as f:
+        with open(file_name, 'r') as f:
             src = f.read()
-        assert src.count("op: \"HcomAllReduce\"") == 4 # 多group场景
+        assert src.count("op: \"HcomAllReduce\"") == 4  # 多group场景
 
         file_name = get_sub_path_dynamo_pbtxt("true_export_path2", 0)
-        with open(file_name, 'r')as f:
+        with open(file_name, 'r') as f:
             src = f.read()
-        assert src.count(" dim: -1") == 3 # 动态图存在-1
+        assert src.count(" dim: -1") == 3  # 动态图存在-1
 
         file_name = get_model_relation_config("true_export_path2")
         # mutil group case, can not create atc config file
@@ -150,22 +148,21 @@ class TorchairSt(unittest.TestCase):
         assert os.path.exists(file_name) == False
 
         file_name = get_sub_path_dynamo_pbtxt("true_export_path3", 0)
-        with open(file_name, 'r')as f:
+        with open(file_name, 'r') as f:
             src = f.read()
-        assert src.count("HcomReduceScatter") == 3 # dist reduce_scatter_tensor入图
+        assert src.count("HcomReduceScatter") == 3  # dist reduce_scatter_tensor入图
 
     def test_export_weight_externalized(self):
         class Model(torch.nn.Module):
 
             def __init__(self):
                 super().__init__()
-                self.p1 = torch.nn.Parameter(torch.randn([1024, 1024, 1024], dtype=torch.float16)) # 2G weight
+                self.p1 = torch.nn.Parameter(torch.randn([1024, 1024, 1024], dtype=torch.float16))  # 2G weight
 
             def forward(self, x, y):
                 x = x + y
                 w = self.p1 * 2
                 return x, w
-
 
         model = Model()
         x = torch.randn(2, 4)
@@ -180,7 +177,7 @@ class TorchairSt(unittest.TestCase):
         assert dumped_file_list.__len__() > 0
         file_name = os.path.join(export_path1, dumped_file_list[-1])
 
-        with open(file_name, 'r')as f:
+        with open(file_name, 'r') as f:
             src = f.read()
 
         assert src.count("op: \"FileConstant\"") == 1
@@ -199,7 +196,7 @@ class TorchairSt(unittest.TestCase):
 
         def mp():
             world_size = 2
-            torch.multiprocessing.spawn(example_atc_config_generated, args=(world_size, ), nprocs=world_size, join=True)
+            torch.multiprocessing.spawn(example_atc_config_generated, args=(world_size,), nprocs=world_size, join=True)
 
         os.environ["MASTER_ADDR"] = "localhost"
         os.environ["MASTER_PORT"] = "29505"
@@ -207,7 +204,7 @@ class TorchairSt(unittest.TestCase):
         mp()
 
         file_name = get_sub_path_dynamo_pbtxt("export_file", 0)
-        with open(file_name, 'r')as f:
+        with open(file_name, 'r') as f:
             src = f.read()
         assert src.count("op: \"Const\"") == 2
         assert src.count("op: \"Data\"") == 2
@@ -215,7 +212,7 @@ class TorchairSt(unittest.TestCase):
         assert src.count("key: \"ranklist\"") == 1
 
         file_name = get_model_relation_config("export_file")
-        with open(file_name, 'r')as f:
+        with open(file_name, 'r') as f:
             src = f.read()
         assert src.count("\"submodel_name\": \"export_rank0.air\"") == 2
         assert src.count("\"group_rank_list\": \"[0, 1]\"") == 1
@@ -224,7 +221,7 @@ class TorchairSt(unittest.TestCase):
         assert src.count("0:0:1") == 1
 
         file_name = get_numa_config("export_file")
-        with open(file_name, 'r')as f:
+        with open(file_name, 'r') as f:
             src = f.read()
         assert src.count("\"item_id\": 0") == 1
         assert src.count("\"item_id\": 1") == 1
@@ -236,11 +233,11 @@ class TorchairSt(unittest.TestCase):
                 super().__init__()
                 size = 10
                 self.p1 = torch.nn.Parameter(torch.randn([size], dtype=torch.bfloat16))
+
             def forward(self, x, y):
                 x = x + y + torch.ones([2, 4], dtype=torch.float16)
                 w = self.p1 * 2
                 return x, w
-
 
         model = Model()
         x = torch.randn([2, 4], dtype=torch.bfloat16)
@@ -255,7 +252,7 @@ class TorchairSt(unittest.TestCase):
         assert dumped_file_list.__len__() > 0
         file_name = os.path.join(export_path1, dumped_file_list[-1])
 
-        with open(file_name, 'r')as f:
+        with open(file_name, 'r') as f:
             src = f.read()
 
         assert src.count("op: \"Const\"") == 4
@@ -296,9 +293,9 @@ class TorchairSt(unittest.TestCase):
         assert dumped_file_list.__len__() > 0
         file_name = os.path.join(export_path1, dumped_file_list[-1])
 
-        with open(file_name, 'r')as f:
+        with open(file_name, 'r') as f:
             src = f.read()
-        assert src.count("\"nn_module_stack\"") == 6 # 插入了2个cast,有两个输出
+        assert src.count("\"nn_module_stack\"") == 6  # 插入了2个cast,有两个输出
         assert src.count("Model2") == 6
 
     def test_export_with_sym_pack(self):
@@ -329,7 +326,7 @@ class TorchairSt(unittest.TestCase):
         assert dumped_file_list.__len__() > 0
         file_name = os.path.join(export_path1, dumped_file_list[-1])
 
-        with open(file_name, 'r')as f:
+        with open(file_name, 'r') as f:
             src = f.read()
 
         assert src.count("op: \"Data\"") == 6
@@ -356,7 +353,7 @@ class AllReduceMultiGroup(torch.nn.Module):
         x = funcol.all_reduce(x, reduceOp='SUM', group=[0, 1], tag='test1')
         x = funcol.all_reduce(x, reduceOp='SUM', group=[0, 1], tag='test2')
         x = funcol.all_reduce(x, reduceOp='SUM', group=[0, 1], tag='test3')
-        x = funcol.all_reduce(x, reduceOp='SUM', group=[0, 1], tag='test1') # 重复的group case
+        x = funcol.all_reduce(x, reduceOp='SUM', group=[0, 1], tag='test1')  # 重复的group case
         return x
 
 

@@ -1,6 +1,13 @@
 import math
-from torchair.core.utils import logger
+import os
+os.environ['TNG_LOG_LEVEL'] = '1'
+import torchair
+import torch
+import unittest
+import time
 import logging
+
+from torchair.core.utils import logger
 from torchair.core.backend import TorchNpuGraph
 from torchair.ge_concrete_graph.ge_graph import GeGraph
 from torchair.ge_concrete_graph.fx2ge_converter import ExecutorType, Placement, _normalize_ge_graph, \
@@ -10,14 +17,6 @@ from torchair.ge_concrete_graph.ge_graph import DataType
 from torchair.ge_concrete_graph.graph_pass import optimize_reference_op_redundant_copy
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core.backend import initialize_graph_engine
-import torchair
-import torch
-import unittest
-import time
-import os
-os.environ['TNG_LOG_LEVEL'] = '0'
-
-
 logger.setLevel(logging.DEBUG)
 
 config = CompilerConfig()
@@ -668,15 +667,34 @@ class TorchairSt(unittest.TestCase):
             z = ge.Add(x, y)
             output = ge.NetOutput([z])
 
-            set_graph_output_dtypes(graph, [DataType.DT_INT32])
+        set_graph_output_dtypes(graph, [DataType.DT_INT32])
 
-            executor = TorchNpuGraph()
-            executor.load(graph.SerializeToString())
-            executor.compile()
+        executor = TorchNpuGraph()
+        executor.load(graph.SerializeToString())
+        executor.compile()
 
-            x = torch.ones([1, 2], dtype=torch.int32)
-            y = torch.ones([100, 2], dtype=torch.int32)
-            result = executor.run((x, y))
+        x = torch.ones([1, 2], dtype=torch.int32)
+        y = torch.ones([100, 2], dtype=torch.int32)
+        result = executor.run((x, y))
+
+        with GeGraph() as graph2:
+            x = ge.Data(index=0, shape=[1, 2],
+                        dtype=DataType.DT_INT32, placement='CPU')
+            y = ge.Data(index=1, shape=[10, 2],
+                        dtype=DataType.DT_INT32, placement='CPU')
+            z = ge.Add(x, y)
+            output = ge.NetOutput([z])
+
+        set_graph_output_dtypes(graph2, [DataType.DT_INT32])
+
+        executor2 = TorchNpuGraph()
+        executor2.load(graph2.SerializeToString())
+        executor2.compile()
+
+        x = torch.ones([1, 2], dtype=torch.int32)
+        y = torch.ones([10, 2], dtype=torch.int32)
+        for i in range(2):
+            result = executor2.run((x, y))
 
     def test_npu_static_executor_with_memory_efficient(self):
         initialize_graph_engine()
@@ -868,15 +886,15 @@ class TorchairSt(unittest.TestCase):
                 a = torch.ops.aten.permute.default(inp, dims)
                 res = torch.ops.aten.add.Scalar(a, 1)
                 return res
-            
+
         def check_graph(concreate_graph):
             num_transpose = 0
             for node in concreate_graph.graph.op:
                 if node.type == 'Transpose':
                     num_transpose += 1
-            
+
             assert num_transpose == 0, f"check number of num_transpose {num_transpose} == 0 failed"
-            
+
         def my_decorator(func):
             def wrapper(*args, **kwargs):
                 assert len(args) > 0
@@ -917,15 +935,15 @@ class TorchairSt(unittest.TestCase):
                 a = torch.ops.aten.permute.default(inp, dims)
                 res = torch.ops.aten.add.Scalar(a, 1)
                 return res
-            
+
         def check_graph(concreate_graph):
             num_transpose = 0
             for node in concreate_graph.graph.op:
                 if node.type == 'Transpose':
                     num_transpose += 1
-            
+
             assert num_transpose != 0, f"check number of num_transpose {num_transpose} != 0 failed"
-            
+
         def my_decorator(func):
             def wrapper(*args, **kwargs):
                 assert len(args) > 0
