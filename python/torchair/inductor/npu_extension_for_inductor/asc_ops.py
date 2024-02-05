@@ -125,15 +125,6 @@ def cast(x, *, dst, src=None):
     return op.y
 
 
-def constant(*, value, dtype):
-    graph = V.kernel.graph
-    op = graph.add_op("Constant")
-    op.attr.value = value
-    op.attr.dtype = dtype
-    op.y.dtype = dtype
-    return op.y
-
-
 def reduction(x, *, reduce_type):
     graph = V.kernel.graph
     op = graph.add_op(reduce_type.capitalize())

@@ -443,9 +443,12 @@ class NpuInductorKernel:
 class DummyNpuInductorKernel:
     def __init__(self, name):
         self.name = f"ACLNN_{name}"
+        from torch._inductor import config
+        self.debug = config.trace.enabled
 
     def __call__(self, *args: torch.Tensor, sym_vals):
-        print(f"{self.name}({', '.join([str(v) for v in args])}, sym_vals={sym_vals})", flush=True)
+        if self.debug:
+            print(f"{self.name}({', '.join([str(v) for v in args])}, sym_vals={sym_vals})", flush=True)
 
 
 _compile_cache = dict()

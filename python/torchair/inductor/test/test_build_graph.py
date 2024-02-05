@@ -14,12 +14,12 @@ os.environ['NPU_INDUCTOR_DUMMY_KERNEL'] = '1'
 
 @contextlib.contextmanager
 def disable_npu_fallback(disable=True):
-    old = os.getenv("DISABLE_NPU_FALLBACK", "0")
+    old = os.getenv("NPU_INDUCTOR_DISABLE_FALLBACK", "0")
     try:
-        os.environ["DISABLE_NPU_FALLBACK"] = "1" if disable else "0"
+        os.environ["NPU_INDUCTOR_DISABLE_FALLBACK"] = "1" if disable else "0"
         yield
     finally:
-        os.environ["DISABLE_NPU_FALLBACK"] = old
+        os.environ["NPU_INDUCTOR_DISABLE_FALLBACK"] = old
 
 
 class KernelCapture:

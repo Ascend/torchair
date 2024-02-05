@@ -20,6 +20,7 @@ class ASCGraph:
         self.outputs = []
         self.ops: List[_Op] = []
         self.unsupported_ops: Set[str] = set()
+        self.fallback_ops: Set[str] = set()
         self.size_vars_holder = self.add_op("Data", name="size_vars")
         self.size_vars_holder.y.dtype = TypeUtils.torch_to_asc(torch.float32)
         self.inputs.append("size_vars")
@@ -28,6 +29,12 @@ class ASCGraph:
     def unsupported_reason(self):
         if len(self.unsupported_ops):
             return f"Unsupported lowered ops: {', '.join(self.unsupported_ops)}"
+        return None
+
+    @property
+    def fallback_reason(self):
+        if len(self.fallback_ops):
+            return f"Must fallback lowered ops: {', '.join(self.fallback_ops)}"
         return None
 
     def add_op(self, type: str, *, name=None, is_unsupported=False):
@@ -43,6 +50,11 @@ class ASCGraph:
         if is_unsupported:
             op.is_unsupported = True
             self.unsupported_ops.add(op.op_type)
+        return self.ops[-1]
+
+    def add_fallback_op(self, type: str, *, name=None):
+        self.add_op(type, name=name, is_unsupported=True)
+        self.fallback_ops.add(type)
         return self.ops[-1]
 
     def get_op(self, name):

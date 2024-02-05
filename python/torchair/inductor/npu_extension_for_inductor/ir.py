@@ -43,7 +43,11 @@ def underline_to_camelcase(s):
 
 def unsupported(*args, op_type, **kwargs):
     graph = V.kernel.graph
-    op = graph.add_op(underline_to_camelcase(op_type), is_unsupported=True)
+    op_type = underline_to_camelcase(op_type)
+    if op_type in ["LoadIndirect", "IndexExpr"]:
+        op = graph.add_fallback_op(op_type)
+    else:
+        op = graph.add_op(op_type, is_unsupported=True)
     for i, arg in enumerate(args):
         setattr(op, f"x{i}", arg)
     for k, v in kwargs.items():

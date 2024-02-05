@@ -68,7 +68,9 @@ class OpSummary:
         with open(fn, 'w+', newline='', encoding='utf-8-sig') as f:
             writer = csv.writer(f)
             print(f"Save summary to {fn}")
-            writer.writerow(["融合节点名", "融合类型", "不支持的操作符", "不支持的表达式", "计算指令统计", "Loop表达"])
+            writer.writerow(
+                ["融合节点名", "融合类型", "计算指令统计", "待支持的计算指令", "待支持的操作符", "待支持的表达式",
+                 "Loop表达"])
             for name, untyped_sub in self.subs.items():
                 sub: OpSummary = untyped_sub
                 mte_ops = [_OpVisitor(op) for op in sub.graph.ops if op.op_type in ["Load", "Store"]]
@@ -84,7 +86,7 @@ class OpSummary:
                         typed_ops_count[op.op_type] = 0
                     typed_ops_count[op.op_type] += 1
 
-                unsupported_exprs = set()
+                unsupported_exps = set()
                 unsupported_operators = set()
                 supported_operators = [operator.mul]
                 size_exp = [op.output_size() + op.output_stride() for op in mte_ops]
@@ -92,12 +94,13 @@ class OpSummary:
                     used_operators = [v for v in expr.asc_expr.operators(True) if v not in supported_operators]
                     if len(used_operators):
                         unsupported_operators.update(used_operators)
-                        unsupported_exprs.add(str(expr.expr))
-                unsupported_exprs = '\n'.join(set(unsupported_exprs))
-                typed_ops_count = '\n'.join([f"{k}: {v}" for k, v in typed_ops_count.items()])
-                unsupported_operators = '\n'.join(
+                        unsupported_exps.add(str(expr.expr))
+                exps = '\n'.join(set(unsupported_exps))
+                ops_count = '\n'.join([f"{k}: {v}" for k, v in typed_ops_count.items()])
+                operators = '\n'.join(
                     [v.__name__ if hasattr(v, '__name__') else str(v) for v in unsupported_operators])
-                writer.writerow([name, graph_type, unsupported_operators, unsupported_exprs, typed_ops_count, sub.loop])
+                unsupported_ops = '\n'.join([f"{v}" for v in sub.graph.unsupported_ops])
+                writer.writerow([name, graph_type, ops_count, unsupported_ops, operators, exps, sub.loop])
 
     def __str__(self):
         for name, sub in self.subs.items():

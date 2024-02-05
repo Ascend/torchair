@@ -202,8 +202,12 @@ class NPUKernel(Kernel):
         code.splice(self._graph_def)
 
         self._kernel_def.clear()
-        self._kernel_def.writeline(
-            f"{self._kernel}_compiled = npu_compiler.aclnn(npu_codegen.aclnn({graph_fn}()))")
+        if os.getenv("NPU_INDUCTOR_DUMMY_KERNEL", None) == "1":
+            self._kernel_def.writeline(
+                "from npu_extension_for_inductor.compiler.aclnn_compiler import DummyNpuInductorKernel")
+            self._kernel_def.writeline(f"{self._kernel}_compiled = DummyNpuInductorKernel({graph_fn})")
+        else:
+            self._kernel_def.writeline(f"{self._kernel}_compiled = npu_compiler.aclnn(npu_codegen.aclnn({graph_fn}()))")
         self._kernel_def.writelines(self._comments)
         self._kernel_def.writeline(f"def {self._kernel}({signature_args}):")
         with self._kernel_def.indent():
@@ -277,8 +281,8 @@ class NPUKernel(Kernel):
 
         scalars: Dict[str, _Scalar] = self._get_npu_scalar(index)
         if len(scalars):
-            return ir.load_indrect(data, *[v.cse for v in scalars.values()], expr=str(index),
-                                   syms=[f"{str(k)}={str(v.cse)}(\\<{v.max_value})" for k, v in scalars.items()])
+            return ir.load_indirect(data, *[v.cse for v in scalars.values()], expr=str(index),
+                                    syms=[f"{str(k)}={str(v.cse)}(\\<{v.max_value})" for k, v in scalars.items()])
 
         loop = self._index_to_loop(index)
         load = ir.load(data.as_loop(loop=loop), loop=loop)
@@ -362,9 +366,13 @@ class NPUScheduling(BaseScheduling):
         self._fuse_judge = TritonScheduling(scheduler)
 
     def can_fuse_vertical(self, node1: BaseSchedulerNode, node2: BaseSchedulerNode):
+        if os.getenv("NPU_INDUCTOR_NO_FUSE", None) == "1":
+            return False
         return self._fuse_judge.can_fuse_vertical(node1, node2)
 
     def can_fuse_horizontal(self, node1: BaseSchedulerNode, node2: BaseSchedulerNode):
+        if os.getenv("NPU_INDUCTOR_NO_FUSE", None) == "1":
+            return False
         return self._fuse_judge.can_fuse_vertical(node1, node2)
 
     def group_fn(self, sizes):
@@ -415,7 +423,7 @@ class NPUScheduling(BaseScheduling):
 
         for i, node in enumerate(nodes):
             with kernel:
-                node.codegen(ranges)
+                node.run(*ranges)
 
         wrapper.header.splice("\n\n")
         wrapper.header.splice(kernel.codegen())
@@ -431,9 +439,6 @@ class NPUScheduling(BaseScheduling):
         # Manual combine size vars with tensor sizes
         used_sizes = list(sorted(kernel.graph.size_vars))
         call_args.append(f"sym_vals=[{', '.join([str(s) for s in used_sizes])}]")
-
-        for node in output_bufs:
-            node.mark_run()
         wrapper.writeline(wrapper.wrap_kernel_call(kernel.kernel_name, [str(v) for v in call_args]))
 
     def codegen_sync(self):
@@ -522,17 +527,21 @@ def as_default_inductor_backend():
             with kernel:
                 body(*ranges)
 
-            if kernel.graph.unsupported_reason:
-                state.fallback(kernel.graph.unsupported_reason)
+            if kernel.graph.fallback_reason:
+                state.fallback(kernel.graph.fallback_reason)
                 return False
 
             return True
 
         @functools.wraps(f)
         def wrapper(*args, **kwargs):
+            if os.getenv("NPU_INDUCTOR_ALWAYS_FALLBACK", None) == "1" and isinstance(op, torch._ops.OpOverload):
+                print(f"Fallback {op} as: env NPU_INDUCTOR_ALWAYS_FALLBACK=1", flush=True)
+                return fallback_handler(op, add_to_fallback_set=False)(*args, **kwargs)
+
             tensor_box = f(*args, **kwargs)
 
-            if os.getenv("DISABLE_NPU_FALLBACK", None) == "1":
+            if os.getenv("NPU_INDUCTOR_DISABLE_FALLBACK", None) == "1":
                 return tensor_box
 
             state: _OpState = _OpState.get_cached_state(op, tensor_box)
