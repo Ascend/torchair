@@ -284,6 +284,8 @@ def register_matmul_backward_decomp():
             return grad_self, grad_other
         
         def matmul_backward_nd_lt3d():
+            grad_self = None
+            grad_other = None
             view_size = 1 if dim_other == 1 else size_grad[-1]
             unfolded_grad = (grad.unsqueeze(-1) if dim_other == 1 else grad).contiguous().view(-1, view_size)
             if mask[0]:
@@ -297,6 +299,8 @@ def register_matmul_backward_decomp():
             return grad_self, grad_other
         
         def matmul_backward_lt3d_nd():
+            grad_self = None
+            grad_other = None
             view_size = 1 if dim_self == 1 else size_grad[size_grad.size() - 2]
             unfolded_grad_t = grad.view(-1, view_size) if dim_self == 1 else \
                                                             grad.transpose(-1, -2).contiguous().view(-1, view_size)
