@@ -19,7 +19,7 @@ from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType
 from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
 from torchair.ge_concrete_graph.utils import dtype_promote
@@ -54,10 +54,13 @@ def conveter_aten_div_Scalar(
     self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)
     return ge.RealDiv(self, other)
 
+
 @declare_supported([
     Support(F32(20), 42, rounding_mode="floor"),
     Support(F32(20), 42, rounding_mode="trunc"),
     Support(F32(20), 42, rounding_mode=None),
+    Support(I16(20), 42, rounding_mode="trunc"),
+    Support(I16(20), I16(20), rounding_mode="trunc"),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.div.Tensor_mode)
 def conveter_aten_div_Tensor_mode(
@@ -73,7 +76,13 @@ def conveter_aten_div_Tensor_mode(
         output = ge.FloorDiv(self, other)
     elif rounding_mode == "trunc":
         output = ge.RealDiv(self, other)
-        output = ge.Trunc(output)
+        dtype = meta_outputs.dtype
+        if dtype in [DataType.DT_INT64, DataType.DT_BOOL, DataType.DT_INT16]:
+            output = ge.Cast(output, dst_type=DataType.DT_FLOAT)
+            output = ge.Trunc(output)
+            output = ge.Cast(output, dst_type=dtype)
+        else:
+            output = ge.Trunc(output)
     else:
         output = ge.RealDiv(self, other)
     return output
@@ -89,7 +98,7 @@ def conveter_aten_div_Scalar_mode(
 ):
     """NB: aten::div.Scalar_mode(Tensor self, Scalar other, *, str? rounding_mode) -> Tensor"""
     raise AssertionError(
-        "torch.ops.aten.div.Scalar_mode is redundant before pytorch 2.1.0, might be supported in furture version.")
+        "torch.ops.aten.div.Scalar_mode is redundant before pytorch 2.1.0, might be supported in future version.")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.div.out)
@@ -98,7 +107,7 @@ def conveter_aten_div_out(
 ):
     """NB: aten::div.out(Tensor self, Tensor other, *, Tensor(a!) out) -> Tensor(a!)"""
     raise AssertionError(
-        "torch.ops.aten.div.out is redundant before pytorch 2.1.0, might be supported in furture version.")
+        "torch.ops.aten.div.out is redundant before pytorch 2.1.0, might be supported in future version.")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.div.out_mode)
@@ -112,7 +121,7 @@ def conveter_aten_div_out_mode(
 ):
     """NB: aten::div.out_mode(Tensor self, Tensor other, *, str? rounding_mode, Tensor(a!) out) -> Tensor(a!)"""
     raise AssertionError(
-        "torch.ops.aten.div.out_mode is redundant before pytorch 2.1.0, might be supported in furture version.")
+        "torch.ops.aten.div.out_mode is redundant before pytorch 2.1.0, might be supported in future version.")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.div.Scalar_out)
@@ -125,7 +134,7 @@ def conveter_aten_div_Scalar_out(
 ):
     """NB: aten::div.Scalar_out(Tensor self, Scalar other, *, Tensor(a!) out) -> Tensor(a!)"""
     raise AssertionError(
-        "torch.ops.aten.div.Scalar_out is redundant before pytorch 2.1.0, might be supported in furture version.")
+        "torch.ops.aten.div.Scalar_out is redundant before pytorch 2.1.0, might be supported in future version.")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.div.Scalar_mode_out)
@@ -139,7 +148,7 @@ def conveter_aten_div_Scalar_mode_out(
 ):
     """NB: aten::div.Scalar_mode_out(Tensor self, Scalar other, *, str? rounding_mode, Tensor(a!) out) -> Tensor(a!)"""
     raise AssertionError(
-        "torch.ops.aten.div.Scalar_mode_out is redundant before pytorch 2.1.0, might be supported in furture version.")
+        "torch.ops.aten.div.Scalar_mode_out is redundant before pytorch 2.1.0, might be supported in future version.")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.div.int)
