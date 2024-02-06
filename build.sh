@@ -90,8 +90,10 @@ run_test() {
 main() {
   checkopts "$@"
 
-  PYTHON_BIN_PATH=$(which python3.8 || which python3)
-  export TARGET_PYTHON_PATH=${PYTHON_BIN_PATH}
+  if [[ "$TARGET_PYTHON_PATH" == "" ]]; then
+      PYTHON_BIN_PATH=$(which python3.8 || which python3)
+      export TARGET_PYTHON_PATH=${PYTHON_BIN_PATH}
+  fi
   if [[ "X$ASCEND_CUSTOM_PATH" = "X" ]]; then
     if [[ "X$ENABLE_CI_BUILD" = "Xon" || "X$ENABLE_CI_BUILD_AND_INSTALL" = "Xon" ]]; then
       echo "Building torchair with no ascned-sdk specified"
