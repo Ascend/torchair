@@ -19,8 +19,9 @@ from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType
 from torchair.ge_concrete_graph.utils import dtype_promote
+from torchair.core.utils import logger
 
 
 @register_fx_node_ge_converter(torch.ops.aten.nll_loss_forward.default)
@@ -35,6 +36,10 @@ def conveter_aten_nll_loss_forward_default(
     """NB: aten::nll_loss_forward(Tensor self, Tensor target, Tensor? weight, int reduction, SymInt ignore_index) -> (Tensor output, Tensor total_weight)"""
     reduction_str = ['none', 'mean', 'sum']
     self = dtype_promote(self, target_dtype=meta_outputs[0].dtype)
+    if target.dtype == DataType.DT_INT64:
+        logger.warning_once("torch.ops.aten.nll_loss_forward.default: \
+                            target shouldn't be the type of int64, it has been changed to int32 automatically.")
+        target = dtype_promote(target, target_dtype=DataType.DT_INT32)
     output, total_weight = ge.NLLLoss(self, target, weight, reduction=reduction_str[reduction], ignore_index=ignore_index)
     return output, total_weight
 

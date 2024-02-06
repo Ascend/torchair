@@ -34279,7 +34279,7 @@ def NLLLoss(x: Tensor,
             node_name=None):
     """REG_OP(NLLLoss)\n
 .INPUT(x, TensorType({DT_FLOAT}))\n
-.INPUT(target, TensorType({DT_INT32, DT_INT64}))\n
+.INPUT(target, TensorType({DT_INT32}))\n
 .OPTIONAL_INPUT(weight, TensorType({DT_FLOAT}))\n
 .OUTPUT(y, TensorType({DT_FLOAT}))\n
 .OUTPUT(total_weight, TensorType({DT_FLOAT}))\n

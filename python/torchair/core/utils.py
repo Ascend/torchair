@@ -1,3 +1,4 @@
+from functools import lru_cache
 import logging
 import sys
 
@@ -32,6 +33,12 @@ def _get_logger(*, level=logging.ERROR, output=sys.stdout, file=None, name=None)
         file_handler = logging.FileHandler(file)
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
+
+    @lru_cache
+    def _warning_once(msg):
+        logger.warning(msg)
+    
+    logger.warning_once = _warning_once
 
     return logger
 

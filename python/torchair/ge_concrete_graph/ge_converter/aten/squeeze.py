@@ -25,10 +25,19 @@ from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, 
 from torchair.ge_concrete_graph.utils import dtype_promote
 
 
+@declare_supported([
+    Support(F32(8, 8, 8)),
+    Support(F32(8, 1, 8, 1, 8, 1)),
+    Support(F16(8, 1, 8, 1, 8, 1)),
+    Support(I64(8, 1, 8, 1, 8, 1)),
+    Support(I32(8, 1, 8, 1, 8, 1)),
+    Support(I16(8, 1, 8, 1, 8, 1)),
+    Support(BOOL(8, 1, 8, 1, 8, 1)),
+])
 @register_fx_node_ge_converter(torch.ops.aten.squeeze.default)
 def conveter_aten_squeeze_default(self: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::squeeze(Tensor(a) self) -> Tensor(a)"""
-    raise NotImplementedError("torch.ops.aten.squeeze.default ge_converter is not implemented!")
+    return ge.Squeeze(self)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.squeeze.dim)
