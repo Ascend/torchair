@@ -24,7 +24,6 @@ namespace {
 tng::Status NormalizeCompileOptions(const std::map<ge::AscendString, ge::AscendString> &options,
                                     std::map<ge::AscendString, ge::AscendString> &normalized_options) {
   normalized_options = options;
-  normalized_options[ge::JIT_COMPILE.c_str()] = "2";
 
   // Use separate memory cleaning for atomic nodes to better reuse memory.
   // (void)normalized_options.insert(std::make_pair(ge::ATOMIC_CLEAN_POLICY.c_str(), "1"));
