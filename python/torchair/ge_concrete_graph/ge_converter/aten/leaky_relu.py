@@ -33,7 +33,9 @@ def conveter_aten_leaky_relu_default(
 ):
     """NB: aten::leaky_relu(Tensor self, Scalar negative_slope=0.01) -> Tensor"""
     if isinstance(negative_slope, Tensor):
-        raise NotImplementedError("torch.ops.aten.leaky_relu.default with negative_slope in tensor ge_converter is not implemented!")
+        raise RuntimeError(
+            "Follow the same implementation as the community, torch.ops.aten.leaky_relu.default "
+            "only supports negative_slope is Number now.")
     return ge.LeakyRelu(self, negative_slope=negative_slope)
 
 @register_fx_node_ge_converter(torch.ops.aten.leaky_relu.out)

@@ -49,14 +49,14 @@ def conveter_aten__to_copy_default(
     """NB: aten::_to_copy(Tensor self, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None, bool non_blocking=False, MemoryFormat? memory_format=None) -> Tensor"""
     # layout, pin_memory, device, non_blocking and memory_format have no effect on constructing graph.
     if layout is not None and (layout != torch.strided):
-        raise NotImplementedError(
-            "torch.ops.aten._to_copy.default input layout only supports torch.strided now, "
-            "but input layout = {}".format(layout))
+        raise RuntimeError(
+            "Follow the same implementation as the community, torch.ops.aten._to_copy.default input layout "
+            "only supports torch.strided now, but input layout = {}".format(layout))
 
     if memory_format is not None and (memory_format != torch.contiguous_format):
-        raise NotImplementedError(
-            "torch.ops.aten._to_copy.default input memory_format only supports torch.contiguous_format now, "
-            "but input memory_format = {}".format(memory_format))
+        raise RuntimeError(
+            "Different from the community implementation, torch.ops.aten._to_copy.default input memory_format "
+            "only supports torch.contiguous_format now, but input memory_format = {}".format(memory_format))
 
     if dtype is not None and self.dtype != torch_type_to_ge_type(dtype):
         return ge.Cast(self, dst_type=torch_type_to_ge_type(dtype))
