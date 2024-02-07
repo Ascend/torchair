@@ -29,11 +29,14 @@ namespace ge {
 * @brief Function MatmulAllReduce.
 
 * @par Inputs:
-* twelve inputs, including:
-* @li x1: A matrix Tensor. The type support float16, bf16.
-* @li x2: A matrix Tensor. The type support float16, bf16.
-* @li bias: A matrix Tensor. The type support float16, bf16. \n
-
+* three inputs, including:
+* @li x1: A matrix Tensor. The type support float16, bf16, int8.
+* @li x2: A matrix Tensor. The type support float16, bf16, int8, int4.
+* @li bias: A matrix Tensor. The type support float16, bf16, int32.
+* @li x3: A matrix Tensor. The type support float16, bf16, float16.
+* @li antiquant_scale: A matrix Tensor. The type support float16, bf16, float16.
+* @li antiquant_offset: A matrix Tensor. The type support float16, bf16, float16.
+* @li dequant_scale: A matrix Tensor. The type support float16, bf16, uint64. \n
 
 * @par Attributes:
 * @li group: A required String identifying the group of ranks
@@ -44,21 +47,27 @@ namespace ge {
 * [M, K] before multiplication. Default: false.
 * @li is_trans_b: A bool. If True, changes the shape of "x2" from [N, K] to
 * [K, N] before multiplication. Default: false.
-* @li comm_turn: A int. Number of communications with AICPU. Default: 0. \n
+* @li comm_turn: A int. Number of communications with AICPU. Default: 0.
+* @li antiquant_group_size: A int. For per-group. Default: 0. \n
 
 * @par Outputs:
-* y: A matrix Tensor. The type support float16, bf16.
+* y: A matrix Tensor. The type support float16, bf16, float16.
 */
 REG_OP(MatmulAllReduce)
-    .INPUT(x1, TensorType({DT_FLOAT16, DT_BF16}))
-    .INPUT(x2, TensorType({DT_FLOAT16, DT_BF16}))
-    .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT16, DT_BF16}))
-    .OUTPUT(y, TensorType({DT_FLOAT16, DT_BF16}))
+    .INPUT(x1, TensorType({DT_FLOAT16, DT_BF16, DT_INT8, DT_FLOAT16, DT_BF16, DT_FLOAT16, DT_BF16}))
+    .INPUT(x2, TensorType({DT_FLOAT16, DT_BF16, DT_INT8, DT_INT8, DT_INT8, DT_INT4, DT_INT4}))
+    .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT16, DT_BF16, DT_INT32, DT_FLOAT16, DT_BF16, DT_FLOAT16, DT_BF16}))
+    .OPTIONAL_INPUT(x3, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT16, DT_FLOAT16, DT_BF16, DT_FLOAT16, DT_BF16}))
+    .OPTIONAL_INPUT(antiquant_scale, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT16, DT_FLOAT16, DT_BF16, DT_FLOAT16, DT_BF16}))
+    .OPTIONAL_INPUT(antiquant_offset, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT16, DT_FLOAT16, DT_BF16, DT_FLOAT16, DT_BF16}))
+    .OPTIONAL_INPUT(dequant_scale, TensorType({DT_FLOAT16, DT_BF16, DT_UINT64, DT_FLOAT16, DT_BF16, DT_FLOAT16, DT_BF16}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT16, DT_FLOAT16, DT_BF16, DT_FLOAT16, DT_BF16}))
     .REQUIRED_ATTR(group, String)
     .ATTR(reduce_op, String, "sum")
     .ATTR(is_trans_a, Bool, false)
     .ATTR(is_trans_b, Bool, false)
     .ATTR(comm_turn, Int, 0)
+    .ATTR(antiquant_group_size, Int, 0)
     .OP_END_FACTORY_REG(MatmulAllReduce)
 
 /**
