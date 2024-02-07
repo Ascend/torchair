@@ -31,7 +31,6 @@ from torchair.ge_concrete_graph.utils import dtype_promote
 @register_fx_node_ge_converter(torch.ops.aten.gt.Tensor)
 def conveter_aten_gt_Tensor(self: Tensor, other: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::gt.Tensor(Tensor self, Tensor other) -> Tensor"""
-    other = dtype_promote(other, target_dtype=self.dtype)
     return ge.Greater(self, other)
 
 
@@ -44,7 +43,6 @@ def conveter_aten_gt_Scalar(
     self: Tensor, other: Union[Number, Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::gt.Scalar(Tensor self, Scalar other) -> Tensor"""
-    other = dtype_promote(other, target_dtype=self.dtype)
     return ge.Greater(self, other)
 
 
