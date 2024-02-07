@@ -37,8 +37,8 @@ def conveter_aten_nll_loss_forward_default(
     reduction_str = ['none', 'mean', 'sum']
     self = dtype_promote(self, target_dtype=meta_outputs[0].dtype)
     if target.dtype == DataType.DT_INT64:
-        logger.warning_once("torch.ops.aten.nll_loss_forward.default: \
-                            target shouldn't be the type of int64, it has been changed to int32 automatically.")
+        logger.warning_once("torch.ops.aten.nll_loss_forward.default: "
+                            "target shouldn't be the type of int64, it has been changed to int32 automatically.")
         target = dtype_promote(target, target_dtype=DataType.DT_INT32)
     output, total_weight = ge.NLLLoss(self, target, weight, reduction=reduction_str[reduction], ignore_index=ignore_index)
     return output, total_weight
