@@ -3223,27 +3223,28 @@ REG_OP(RoiAlignRotatedGrad)
 * @brief Fusion op for FFN.
 * @par Inputs:
 * ten inputs, including:
-* @li x: A matrix Tensor. The type support int8, float16.
-* @li weight1: A matrix Tensor. The type support int8, float16.
-* @li weight2: A matrix Tensor. The type support int8, float16.
+* @li x: A matrix Tensor. The type support int8, float16, bf16.
+* @li weight1: A matrix Tensor. The type support int8, float16, bf16, int4.
+* @li weight2: A matrix Tensor. The type support int8, float16, bf16, int4.
 * @li expert_tokens: A matrix Tensor. The type support int64.
-* @li bias1: A matrix Tensor. The type support int32, float16.
-* @li bias2: A matrix Tensor. The type support int32, float16.
+* @li bias1: A matrix Tensor. The type support int32, float16, float32.
+* @li bias2: A matrix Tensor. The type support int32, float16, float32.
 * @li scale: A matrix Tensor. The type support float32.
 * @li offset: A matrix Tensor. The type support float32.
-* @li deq_scale1: A matrix Tensor. The type support uint64.
-* @li deq_scale2: A matrix Tensor. The type support uint64.
-* @li antiquant_scale1: A matrix Tensor. The type support float16.
-* @li antiquant_scale2: A matrix Tensor. The type support float16.
-* @li antiquant_offset1: A matrix Tensor. The type support float16.
-* @li antiquant_offset2: A matrix Tensor. The type support float16.
+* @li deq_scale1: A matrix Tensor. The type support uint64, bf16.
+* @li deq_scale2: A matrix Tensor. The type support uint64, bf16.
+* @li antiquant_scale1: A matrix Tensor. The type support float16, bf16.
+* @li antiquant_scale2: A matrix Tensor. The type support float16, bf16.
+* @li antiquant_offset1: A matrix Tensor. The type support float16, bf16.
+* @li antiquant_offset2: A matrix Tensor. The type support float16, bf16.
 
 * @par Attributes:
 * @li activation: A string. The type of activation.
 * @li inner_precise: A int. 0, fp16 high precision. 1, high performance. Default value: 0
+* @li output_dtype: A int. 0, dtype float16. 1, dtype bf16. -1, default dtype. Default value: -1
 *
 * @par Outputs:
-* y: A matrix Tensor. The type support float16. \n
+* y: A matrix Tensor. The type support float16, bf16. \n
 */
 REG_OP(FFN)
     .INPUT(x, TensorType({DT_INT8, DT_FLOAT16}))
@@ -3263,6 +3264,7 @@ REG_OP(FFN)
     .OUTPUT(y, TensorType({DT_FLOAT16}))
     .REQUIRED_ATTR(activation, String)
     .ATTR(inner_precise, Int, 0)
+    .ATTR(output_dtype, Int, -1)
     .OP_END_FACTORY_REG(FFN)
 }  // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_EXPERIMENT_OPS_H_

@@ -84344,27 +84344,29 @@ def FFN(x: Tensor,
         antiquant_offset2: Optional[Tensor],
         *,
         activation: str,
-        inner_precise: int=0,
-        dependencies=[],
-        node_name=None):
+        inner_precise: int = 0,
+        output_dtype: int = -1,
+        dependencies = [],
+        node_name = None):
     """REG_OP(FFN)\n
-    .INPUT(x, TensorType({DT_INT8, DT_FLOAT16}))\n
-    .INPUT(weight1, TensorType({DT_INT8, DT_FLOAT16}))\n
-    .INPUT(weight2, TensorType({DT_INT8, DT_FLOAT16}))\n
+    .INPUT(x, TensorType({DT_INT8, DT_FLOAT16, DT_BF16}))\n
+    .INPUT(weight1, TensorType({DT_INT8, DT_FLOAT16, DT_BF16, DT_INT4}))\n
+    .INPUT(weight2, TensorType({DT_INT8, DT_FLOAT16, DT_BF16, DT_INT4}))\n
     .OPTIONAL_INPUT(expert_tokens, TensorType({DT_INT64}))\n
-    .OPTIONAL_INPUT(bias1, TensorType({DT_INT32, DT_FLOAT16}))\n
-    .OPTIONAL_INPUT(bias2, TensorType({DT_INT32, DT_FLOAT16}))\n
+    .OPTIONAL_INPUT(bias1, TensorType({DT_INT32, DT_FLOAT16, DT_FLOAT}))\n
+    .OPTIONAL_INPUT(bias2, TensorType({DT_INT32, DT_FLOAT16, DT_FLOAT}))\n
     .OPTIONAL_INPUT(scale, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))\n
-    .OPTIONAL_INPUT(deq_scale1, TensorType({DT_UINT64}))\n
-    .OPTIONAL_INPUT(deq_scale2, TensorType({DT_UINT64}))\n
-    .OPTIONAL_INPUT(antiquant_scale1, TensorType({DT_FLOAT16}))\n
-    .OPTIONAL_INPUT(antiquant_scale2, TensorType({DT_FLOAT16}))\n
-    .OPTIONAL_INPUT(antiquant_offset1, TensorType({DT_FLOAT16}))\n
-    .OPTIONAL_INPUT(antiquant_offset2, TensorType({DT_FLOAT16}))\n
-    .OUTPUT(y, TensorType({DT_FLOAT16}))\n
+    .OPTIONAL_INPUT(deq_scale1, TensorType({DT_UINT64, DT_BF16}))\n
+    .OPTIONAL_INPUT(deq_scale2, TensorType({DT_UINT64, DT_BF16}))\n
+    .OPTIONAL_INPUT(antiquant_scale1, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OPTIONAL_INPUT(antiquant_scale2, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OPTIONAL_INPUT(antiquant_offset1, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OPTIONAL_INPUT(antiquant_offset2, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_BF16}))\n
     .REQUIRED_ATTR(activation, String)\n
     .ATTR(inner_precise, Int, 0)\n
+    .ATTR(output_dtype, Int, -1)\n
     """
 
     op = get_default_ge_graph().op.add()
@@ -84477,6 +84479,7 @@ def FFN(x: Tensor,
     # process attrs
     op.attr["activation"].s = compat_as_bytes(activation)
     op.attr["inner_precise"].i = inner_precise
+    op.attr["output_dtype"].i = output_dtype
 
     # process outputs
     output_index = 0
