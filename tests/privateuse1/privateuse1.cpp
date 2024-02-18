@@ -4,6 +4,7 @@
 
 #include <c10/core/CPUAllocator.h>
 #include <c10/core/impl/alloc_cpu.h>
+#include <c10/core/StorageImpl.h>
 #include <torch/csrc/Device.h>
 #include <torch/extension.h>
 
@@ -32,6 +33,22 @@ struct DummyNpuAllocator final : at::Allocator {
 // Register npu dummy allocator with device type npu
 static DummyNpuAllocator global_npu_alloc;
 REGISTER_ALLOCATOR(c10::DeviceType::PrivateUse1, &global_npu_alloc);
+
+// Register npu dummy Storage constructor
+c10::intrusive_ptr<c10::StorageImpl> make_npu_storage_impl(c10::StorageImpl::use_byte_size_t, c10::SymInt size_bytes,
+                                                           c10::Allocator *allocator, bool resizable) {
+  c10::intrusive_ptr<c10::StorageImpl> npu_storage_impl =
+      c10::make_intrusive<c10::StorageImpl>(c10::StorageImpl::use_byte_size_t(), size_bytes.as_int_unchecked(),
+                                          allocator->allocate(size_bytes.as_int_unchecked()), allocator, resizable);
+  return npu_storage_impl;
+}
+
+int npu_storage_register() {
+  c10::SetStorageImplCreate(c10::DeviceType::PrivateUse1, &make_npu_storage_impl);
+  return 0;
+}
+
+static const int ret = npu_storage_register();
 
 at::Tensor privateuse1_empty_memory_format(at::IntArrayRef size, c10::optional<at::ScalarType> dtype,
                                            c10::optional<at::Layout> layout, c10::optional<at::Device> device,
@@ -68,6 +85,11 @@ at::Tensor &npu_scatter_update_(at::Tensor &self, const at::Tensor &indices, con
   return self;
 }
 
+at::Tensor &npu_set_(at::Tensor &self, c10::Storage src, long storage_offset, c10::IntArrayRef size,
+                     c10::IntArrayRef stride = {}) {
+  return self;
+}
+
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   m.impl("empty.memory_format", &privateuse1_empty_memory_format);
   m.impl("fill_.Scalar", &privateuse1_fill__scalar);
@@ -75,6 +97,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   m.impl("empty_strided", &npu_empty_strided);
   m.impl("scatter_update", &npu_scatter_update);
   m.impl("scatter_update_", &npu_scatter_update_);
+  m.impl("set_.source_Storage_storage_offset", &npu_set_);
 }
 
 // Register fallthrough for Autograd backends dispatch keys

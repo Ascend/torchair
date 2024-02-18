@@ -281,9 +281,8 @@ Status GeTensorToAtTensor(ge::Tensor &ge_tensor, at::Tensor &tensor) {
   c10::DeviceType device_type = c10::DeviceType::CPU;
   TNG_RETURN_IF_ERROR(GePlacementToAtDeviceType(tensor_desc.GetPlacement(), device_type));
   at::TensorOptions option = at::TensorOptions().dtype(tensor_dtype).device(device_type);
-  const auto &dims = tensor_desc.GetShape().GetDims();
-  // construct output aten tensor shape, stride, offset and option
-  tensor = at::empty(dims, option);
+  // construct output aten npu empty tensor
+  tensor = at::empty({0}, option);
 
   RawGeDataPtr ge_data_ptr = ge_tensor.ResetData();
   auto raw_ge_data = static_cast<void *>(ge_data_ptr.get());
@@ -291,8 +290,22 @@ Status GeTensorToAtTensor(ge::Tensor &ge_tensor, at::Tensor &tensor) {
   static torch::DeleterFnPtr kGeDatatDeleter = &DeleteGeDataPtr;
   at::DataPtr c10_data_ptr(raw_ge_data, ge_ctx.release(), kGeDatatDeleter, tensor.device());
 
-  // construct output aten tensor real data ptr
-  tensor.storage().set_data_ptr(std::move(c10_data_ptr));
+  const auto &dims = tensor_desc.GetShape().GetDims();
+  size_t tensor_nbytes = at::detail::computeStorageNbytesContiguous(dims, tensor.dtype().itemsize());
+
+  at::Storage storage;
+  if (device_type == c10::DeviceType::PrivateUse1) {
+    // get npu storage constructor from register and construct storage
+    auto fptr = c10::GetStorageImplCreate(device_type);
+    storage = fptr(c10::StorageImpl::use_byte_size_t(), 0, c10::GetAllocator(device_type), true);
+    storage.unsafeGetStorageImpl()->set_nbytes(tensor_nbytes);
+    storage.set_data_ptr(std::move(c10_data_ptr));
+  } else {
+    storage = c10::make_intrusive<c10::StorageImpl>(c10::StorageImpl::use_byte_size_t(), tensor_nbytes,
+                                                    std::move(c10_data_ptr), c10::GetAllocator(device_type), true);
+  }
+
+  tensor.set_(storage, 0, dims);
   return Status::Success();
 }
 

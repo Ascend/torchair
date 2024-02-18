@@ -7,6 +7,10 @@
 #include "graph/utils/graph_utils.h"
 #include "graph/utils/graph_utils_ex.h"
 
+namespace {
+constexpr size_t kOutptSize = 512 * 1024 * 1024;
+}
+
 namespace ge {
 class CompiledGraphSummary::SummaryData {
  public:
@@ -203,6 +207,34 @@ Status Session::RunGraph(uint32_t id, const std::vector<ge::Tensor> &inputs, std
 Status Session::RunGraphWithStreamAsync(uint32_t id, void *stream, const std::vector<ge::Tensor> &inputs,
                                         std::vector<ge::Tensor> &outputs) {
   std::cerr << "[STUB] Session::RunGraphWithStreamAsync graph " << id << std::endl;
+  std::cerr << "[STUB] Input size is " << inputs.size() << std::endl;
+  if (inputs.size() < 1U) {
+    std::cerr << "[STUB] Input size is empty " << id << std::endl;
+    return ge::SUCCESS;
+  }
+
+  Placement placement = ge::Placement::kPlacementHost;
+  for (size_t i = 0; i < inputs.size(); ++i) {
+    if (inputs[i].GetTensorDesc().GetPlacement() != ge::Placement::kPlacementHost) {
+      placement = ge::Placement::kPlacementDevice;
+      break;
+    }
+  }
+  outputs.clear();
+  auto spec = GraphSpecManager::GetSpec(id);
+  for (size_t i = 0; i < spec.output_dtypes_.size(); ++i) {
+    ge::Tensor output;
+    ge::TensorDesc desc;
+    desc.SetDataType(spec.output_dtypes_[i]);
+    desc.SetShape(spec.netoutput_shapes_[i]);
+    desc.SetPlacement(placement);
+    output.SetTensorDesc(desc);
+
+    static std::vector<float> data;
+    data.resize(kOutptSize, 0.0);
+    output.SetData(reinterpret_cast<uint8_t *>(data.data()), sizeof(float) * data.size());
+    outputs.push_back(output);
+  }
   return ge::SUCCESS;
 }
 
