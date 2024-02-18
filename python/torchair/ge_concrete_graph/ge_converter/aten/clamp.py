@@ -40,16 +40,16 @@ def conveter_aten_clamp_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::clamp(Tensor self, Scalar? min=None, Scalar? max=None) -> Tensor"""
-    if not min and not max:
+    if min is None and max is None:
         raise NotImplementedError("torch.clamp: At least one of 'min' or 'max' must not be None")
-    if not min:
+    if min is None:
         if self.dtype == DataType.DT_INT32 or self.dtype == DataType.DT_INT64:
             min = torch.iinfo(torch.int32).min
         elif self.dtype == DataType.DT_FLOAT:
             min = torch.finfo(torch.float32).min
         else:
             min = torch.finfo(torch.float16).min
-    if not max:
+    if max is None:
         if self.dtype == DataType.DT_INT32 or self.dtype == DataType.DT_INT64:
             max = torch.iinfo(torch.int32).max
         elif self.dtype == DataType.DT_FLOAT:
