@@ -56,12 +56,10 @@ def conveter_aten__native_batch_norm_legit_functional_default(
                            "ge_converter is not implemented while input dim > 5 or input dim <2!")
     input_size = ge.Shape(input, dtype=DataType.DT_INT32)
     if weight is None:
-        weight = ge.Fill(ge.Gather(input_size, ge.Cast(2 if dim == 5 else 1, dst_type=DataType.DT_INT32)), 
-                         ge.Cast(1., dst_type=input.dtype))
+        weight = ge.Fill(ge.Gather(input_size, 1), ge.Cast(1., dst_type=input.dtype))
         
     if bias is None:
-        bias = ge.Fill(ge.Gather(input_size, ge.Cast(2 if dim == 5 else 1, dst_type=DataType.DT_INT32)), 
-                         ge.Cast(0., dst_type=input.dtype))
+        bias = ge.Fill(ge.Gather(input_size, 1), ge.Cast(0., dst_type=input.dtype))
 
     # Prevent op BNTrainingUpdate from modifying value of src running_mean and runnning_var.
     running_mean = ge.TensorMove(running_mean)
@@ -82,10 +80,10 @@ def conveter_aten__native_batch_norm_legit_functional_default(
         result = (output, batch_mean, batch_variance, mean, variance)
         return result
     
-    sum_output, square_sum = ge.BNTrainingReduce(input)
+    sum_output, square_sum = ge.BN3DTrainingReduce(input)
     specific_op_input_layout(sum_output, indices=0, layout="NCDHW")
     specific_op_output_layout(sum_output, indices=[0, 1], layout="NCDHW")
-    output, mean, variance, batch_mean, batch_variance = ge.BNTrainingUpdate(input, sum_output, \
+    output, mean, variance, batch_mean, batch_variance = ge.BN3DTrainingUpdate(input, sum_output, \
         square_sum, weight, bias, running_mean, running_var, factor=momentum, epsilon=eps)
     specific_op_input_layout(output, indices=list(range(7)), layout="NCDHW")
     specific_op_output_layout(output, indices=list(range(5)), layout="NCDHW")
