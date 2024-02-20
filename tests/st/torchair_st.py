@@ -940,6 +940,7 @@ class TorchairSt(unittest.TestCase):
         model_dynamic(a, [2, 0, 1])
         model_dynamic(b, [1, 3, 2, 0])
         model_dynamic(c, [1, 0, 3, 2])
+        model_dynamic(c, [1, 0, -1, -2])
 
         model_static = torch.compile(model, backend=npu_backend, dynamic=False)
         a = torch.randn(2, 3, 1)
@@ -948,6 +949,7 @@ class TorchairSt(unittest.TestCase):
         model_static(a, [2, 0, 1])
         model_static(b, [1, 3, 2, 0])
         model_static(c, [1, 0, 3, 2])
+        model_static(c, [1, 0, -1, -2])
 
         GeConcreteGraph.__call__ = src_call
 
@@ -989,6 +991,7 @@ class TorchairSt(unittest.TestCase):
         model_dynamic(a, [1, 2, 0])
         model_dynamic(b, [2, 3, 1, 0])
         model_dynamic(c, [0, 2, 1, 3])
+        model_dynamic(c, [0, -2, 1, -1])
 
         model_static = torch.compile(model, backend=npu_backend, dynamic=False)
         a = torch.randn(2, 3, 1)
@@ -997,6 +1000,7 @@ class TorchairSt(unittest.TestCase):
         model_static(a, [1, 2, 0])
         model_static(b, [2, 3, 1, 0])
         model_static(c, [0, 2, 1, 3])
+        model_static(c, [0, -2, 1, -1])
 
         GeConcreteGraph.__call__ = src_call
 

@@ -44,6 +44,9 @@ def conveter_aten_permute_default(
 ):
     """NB: aten::permute(Tensor(a) self, int[] dims) -> Tensor(a)"""
     dim_shape_self, dim_shape_meta, axis_dim, axis_unsqueeze = [], [], [], []
+    for i, index in enumerate(dims):
+        if index < 0:
+            dims[i] = index + len(dims)
     for index, size in enumerate(self._symsize):
         if size != 1:
             dim_shape_self.append(index)
