@@ -20,6 +20,7 @@ from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, register_checkpoint_func
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType, get_ge_rng_state
+from torchair.ge_concrete_graph.utils import dtype_promote
 
 
 @register_checkpoint_func(torch.ops.aten.native_dropout.default)
@@ -32,6 +33,7 @@ def native_dropout_checkpoint(
 ):
     if train is None or train == True:
         prob = 1. - p
+        prob = dtype_promote(prob, target_dtype=tensor_input.dtype)
         shape = ge.Shape(tensor_input)
         if rng_state is None:
             seed, offset = get_ge_rng_state(philox_num=10)
