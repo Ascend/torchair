@@ -1,0 +1,6 @@
+sacrebleu
+bitarray
+cffi
+omegaconf
+hydra-core
+sentencepiece

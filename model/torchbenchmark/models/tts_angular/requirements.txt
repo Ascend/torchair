@@ -1,0 +1,17 @@
+numpy
+scipy
+phonemizer
+unidecode
+Pillow
+flask
+tqdm
+inflect
+bokeh
+pysbd
+soundfile
+nose
+cardboardlint
+pylint
+gdown
+pyyaml
+librosa
