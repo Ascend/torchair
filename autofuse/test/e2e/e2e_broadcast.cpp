@@ -6,7 +6,7 @@
 using namespace ascir;
 using namespace ascir::ops;
 
-void LoadBroadcastStore_BeforeAutofuse(ascir::HintGraph &graph) {
+void LoadBroadcastStore_BeforeAutofuse(ascir::HintGraph &graph, bool is_f16) {
   auto ONE = SizeExpr::One();
   auto ZERO = SizeExpr::Zero();
 
@@ -20,7 +20,11 @@ void LoadBroadcastStore_BeforeAutofuse(ascir::HintGraph &graph) {
 
   Data x("x");
   x.attr.sched.exec_order = exec_order++;
-  x.y.dtype = ge::DT_FLOAT16;
+  if (is_f16) {
+    x.y.dtype = ge::DT_FLOAT16;
+  } else {
+    x.y.dtype = ge::DT_FLOAT;
+  }
 
   Load load("load");
   load.x = x;
@@ -48,33 +52,52 @@ void LoadBroadcastStore_BeforeAutofuse(ascir::HintGraph &graph) {
 
   Output y("y");
   y.x = store.y;
-  y.y.dtype = ge::DT_FLOAT16;
+  if (is_f16) {
+    y.y.dtype = ge::DT_FLOAT16;
+  } else {
+    y.y.dtype = ge::DT_FLOAT;
+  }
 
   graph.SetInputs({x});
   graph.SetOutputs({y});
 }
 
-void LoadBroadcastStore_AfterAutofuse(ascir::ImplGraph& graph) {
+void LoadBroadcastStore_AfterAutofuse(ascir::ImplGraph& graph, bool is_f16) {
   auto x = graph.Find("x");
   x.attr.hint.compute_type = COMPUTE_DATA;
   x.attr.api.type = API_TYPE_BUFFER;
   x.attr.api.unit = UNIT_NONE;
 
   auto load = graph.Find("load");
-  load.outputs[0].dtype = ge::DT_FLOAT16;
+  if (is_f16) {
+    load.outputs[0].dtype = ge::DT_FLOAT16;
+  } else {
+    load.outputs[0].dtype = ge::DT_FLOAT;
+  }
+
   load.attr.hint.compute_type = COMPUTE_LOAD;
   load.attr.api.type = API_TYPE_COMPUTE;
   load.attr.api.unit = UNIT_MTE;
 
   auto broadcast = graph.Find("broadcast");
   broadcast.attr.hint.compute_type = COMPUTE_BROADCAST;
-  broadcast.outputs[0].dtype = ge::DT_FLOAT16;
+  if (is_f16) {
+    broadcast.outputs[0].dtype = ge::DT_FLOAT16;
+  } else {
+    broadcast.outputs[0].dtype = ge::DT_FLOAT;
+  }
+
   broadcast.attr.api.type = API_TYPE_COMPUTE;
   broadcast.attr.api.unit = UNIT_VECTOR;
 
   auto store = graph.Find("store");
   store.attr.hint.compute_type = COMPUTE_STORE;
-  store.outputs[0].dtype = ge::DT_FLOAT16;
+  if (is_f16) {
+    store.outputs[0].dtype = ge::DT_FLOAT16;
+  } else {
+    store.outputs[0].dtype = ge::DT_FLOAT;
+  }
+
   store.attr.api.type = API_TYPE_COMPUTE;
   store.attr.api.unit = UNIT_MTE;
 

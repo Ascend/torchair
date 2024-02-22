@@ -160,8 +160,8 @@ class Tiler : public Code {
   std::string Size(const ascir::SizeExpr& size) const;
   std::string Offset(const std::vector<ascir::AxisId> &current_axis, const std::vector<ascir::AxisId> &axis,
                      const std::vector<ascir::SizeExpr> &strides) const;
-  std::string BlkLen(ge::DataType dtype, const ascir::SizeExpr& size) const;
-  std::string BlkLenDiff(ge::DataType dtype, const ascir::SizeExpr& size_a, const ascir::SizeExpr& size_b) const;
+  std::string BlkNum(ge::DataType dtype, const ascir::SizeExpr& size) const;
+  std::string BlkNumDiff(ge::DataType dtype, const ascir::SizeExpr& size_a, const ascir::SizeExpr& size_b) const;
   std::string TensorVectorizedOffset(const std::vector<ascir::AxisId> &current_axis, const Tensor &tensor) const;
   std::string TensorVectorizedSize(const Tensor &tensor) const;
   const Axis& GetAxis(const ascir::AxisId id) const;
@@ -184,6 +184,7 @@ class TPipe : public Variable {
  public:
   const Tiler& tiler;
 
+  Variable tmp_buf;
   map<ascir::TensorId, Tensor> tensors;
   map<ascir::MergeScopeId, MergeScope> merge_scopes;
   map<ascir::QueId, TQue> ques;
@@ -204,6 +205,7 @@ class TPipe : public Variable {
   std::string TensorSizeCalc() const;
   std::string MergeScopeSizeCalc() const;
   std::string LocalTBufAlloc() const;
+  std::string TmpBufAlloc() const;
   std::string LocalTQueAlloc() const;
   std::string LocalTensorQueBufAlloc() const;
 };
@@ -305,7 +307,7 @@ class KernelUtils {
   static std::string FunctionDefines();
   static std::string Max();
   static std::string Sum();
-  static std::string BlkLen(ge::DataType dtype);
+  static std::string BlkNum(ge::DataType dtype);
   static std::string BlkAlign();
 };
 

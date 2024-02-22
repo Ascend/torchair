@@ -15,15 +15,15 @@ TEST_P(E2E_LoadRmaxStore_Code, CalculateCorrect) {
   int test_size = test_shape[0] * test_shape[1];
 
   optiling::TilingData tiling_data;
-  half *x = (half *)AscendC::GmAlloc(test_size * sizeof(half) + 32);
-  half *y = (half *)AscendC::GmAlloc(test_shape[1] * sizeof(half) + 32);
-  half *expect = (half *)AscendC::GmAlloc(test_shape[1] * sizeof(half) + 32);
+  float *x = (float *)AscendC::GmAlloc(test_size * sizeof(float) + 32);
+  float *y = (float *)AscendC::GmAlloc(test_shape[0] * sizeof(float) + 32);
+  float *expect = (float *)AscendC::GmAlloc(test_shape[0] * sizeof(float) + 32);
 
   // Prepare test and expect data
   for (int i = 0; i < test_shape[0]; i++) {
     for (int j = 0; j < test_shape[1]; j++) {
       int offset = i * test_shape[1] + j;
-      x[offset] = offset;
+      x[offset] = offset * 1.0;
     }
     expect[i] = x[(i + 1) * test_shape[1] - 1];
   }
@@ -33,7 +33,6 @@ TEST_P(E2E_LoadRmaxStore_Code, CalculateCorrect) {
   tiling_data.s0 = test_shape[0];
   tiling_data.s1 = test_shape[1];
   GetTiling(tiling_data);
-
   AscendC::SetKernelMode(KernelMode::AIV_MODE);
   ICPU_RUN_KF(load_rmax_store, tiling_data.block_dim, (uint8_t *)x, (uint8_t *)y, nullptr, (uint8_t *)&tiling_data);
 
@@ -55,6 +54,22 @@ TEST_P(E2E_LoadRmaxStore_Code, CalculateCorrect) {
 
 INSTANTIATE_TEST_SUITE_P(CalcWithDifferentShape, E2E_LoadRmaxStore_Code,
     ::testing::Values(
+        std::vector<int>{48*4*8, 32},
+        std::vector<int>{48*4*8, 64},
+        std::vector<int>{48*4*8, 128},
+        std::vector<int>{48*4*8, 256},
+        std::vector<int>{48*4*8, 512},
+        std::vector<int>{48*4*8, 976},
+
+        std::vector<int>{48*4*8, 16},
+        std::vector<int>{48*4*16, 16},
+        std::vector<int>{48*4*32, 16},
+        std::vector<int>{48*4*64, 16},
+        std::vector<int>{48*4*128, 16},
+        std::vector<int>{48*4*256, 16},
+        std::vector<int>{48*4*488, 16},
+
         std::vector<int>{96*2, 32},
         std::vector<int>{96*2, 128},
-        std::vector<int>{96*2, 256}));
+        std::vector<int>{96*2, 256}
+        ));

@@ -6,15 +6,18 @@
 extern "C" __global__ __aicore__ void load_broadcast_store(GM_ADDR x, GM_ADDR y, GM_ADDR workspace, GM_ADDR tiling);
 extern "C" void GetTiling(optiling::TilingData& tiling_data);
 
-TEST(E2E_Load_Broadcast_Store, BroadCastLast_48block_one_32x32tile) {
+class E2E_Load_Broadcast_Store : public testing::Test,
+                               public testing::WithParamInterface<std::vector<int>> {};
+
+TEST_P(E2E_Load_Broadcast_Store, BroadCastLast111) {
   uint32_t block_dim = 48;
-  uint32_t s0 = 48*32;
-  uint32_t s1 = 64;
+  uint32_t s0 = GetParam()[0];
+  uint32_t s1 = GetParam()[1];
 
   optiling::TilingData tiling_data;
-  half* x = (half*)AscendC::GmAlloc(s0 * sizeof(half));
-  half* y = (half*)AscendC::GmAlloc(s0*s1 * sizeof(half));
-  half* expect = (half*)AscendC::GmAlloc(s0*s1 * sizeof(half));
+  float* x = (float*)AscendC::GmAlloc(s0 * sizeof(float));
+  float* y = (float*)AscendC::GmAlloc(s0*s1 * sizeof(float));
+  float* expect = (float*)AscendC::GmAlloc(s0*s1 * sizeof(float));
 
   // Prepare test and expect data
   for (int i = 0; i < s0; i++) {
@@ -49,3 +52,20 @@ TEST(E2E_Load_Broadcast_Store, BroadCastLast_48block_one_32x32tile) {
   AscendC::GmFree(y);
   AscendC::GmFree(expect);
 }
+
+INSTANTIATE_TEST_SUITE_P(M32_K_BlockAlign, E2E_Load_Broadcast_Store,
+   ::testing::Values(
+       std::vector<int>{48*4*8, 16},
+       std::vector<int>{48*4*16, 16},
+       std::vector<int>{48*4*32, 16},
+       std::vector<int>{48*4*64, 16},
+       std::vector<int>{48*4*128, 16},
+       std::vector<int>{48*4*256, 16},
+       std::vector<int>{48*4*488, 16},
+       std::vector<int>{48*4*8, 976},
+       std::vector<int>{48*4*8, 512},
+       std::vector<int>{48*4*8, 256},
+       std::vector<int>{48*4*8, 128},
+       std::vector<int>{48*4*8, 64},
+       std::vector<int>{48*4*8, 32}
+   ));

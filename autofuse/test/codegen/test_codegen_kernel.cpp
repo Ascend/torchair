@@ -147,9 +147,9 @@ TEST(CodegenKernel, Tiler_BlockOutterAxisDefine) {
   std::cout<<"result_code:::\n"<<result_code<<std::endl;
   EXPECT_EQ(result_code, std::string{
      "int block_dim = GetBlockIdx();\n"
-     "const int z0 = block_dim % (utils::Ceil(1.0 * t.s0)); block_dim /= t.s0;\n"
-     "const int z1 = block_dim % (utils::Ceil(1.0 * t.s1)); block_dim /= t.s1;\n"
-     "const int z2 = block_dim % (utils::Ceil(1.0 * t.s2)); block_dim /= t.s2;\n"
+     "const int z0 = block_dim % (utils::Ceil(1.0f * t.s0)); block_dim /= t.s0;\n"
+     "const int z1 = block_dim % (utils::Ceil(1.0f * t.s1)); block_dim /= t.s1;\n"
+     "const int z2 = block_dim % (utils::Ceil(1.0f * t.s2)); block_dim /= t.s2;\n"
      });
 }
 
@@ -1066,9 +1066,13 @@ TEST(CodegenKernel, Kernel_LocalTensorQueBufAlloc) {
   store.outputs[0].mem.tensor_id = 2;
 
   auto kernel = codegen::Kernel::ParseGraph(graph);
-
   EXPECT_EQ(kernel.LocalTensorQueBufAlloc(), std::string{
     "TPipe tpipe;\n"
+    "\n"
+    "TBuf<TPosition::VECCALC> tmp_tbuf;\n"
+    "tpipe.InitBuffer(tmp_tbuf, 8 * 1024);\n"
+    "LocalTensor<uint8_t> tmp_buf = tmp_tbuf.Get<uint8_t>();\n"
+    "\n"
     "\n"
     "const uint32_t load_y_size = (t.s0 - 1) + 1;\n"
     "const uint32_t load_y_que_depth = 2;\n"

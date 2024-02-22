@@ -230,15 +230,15 @@ std::string Tiler::Offset(const std::vector<ascir::AxisId> &current_axis, const 
   return ss.str();
 }
 
-std::string Tiler::BlkLen(ge::DataType dtype, const ascir::SizeExpr &size) const {
+std::string Tiler::BlkNum(ge::DataType dtype, const ascir::SizeExpr &size) const {
   std::stringstream ss;
-  ss << KernelUtils::BlkLen(dtype) << "(" << this->Size(size) << ")";
+  ss << KernelUtils::BlkNum(dtype) << "(" << this->Size(size) << ")";
   return ss.str();
 }
 
-std::string Tiler::BlkLenDiff(ge::DataType dtype, const ascir::SizeExpr &size_a, const ascir::SizeExpr &size_b) const {
+std::string Tiler::BlkNumDiff(ge::DataType dtype, const ascir::SizeExpr &size_a, const ascir::SizeExpr &size_b) const {
   std::stringstream ss;
-  ss << KernelUtils::BlkLen(dtype) << "(" << this->Size(size_a) << " - " << this->Size(size_b) << ")";
+  ss << KernelUtils::BlkNum(dtype) << "(" << this->Size(size_a) << " - " << this->Size(size_b) << ")";
   return ss.str();
 }
 
@@ -408,7 +408,7 @@ std::string codegen::Tiler::BlockOutterAxisDefine() {
     }
 
     stringstream axis_value;
-    axis_value << this->block_dim.name << " % (utils::Ceil(1.0 * " << this->AxisSize(axis) << "))";
+    axis_value << this->block_dim.name << " % (utils::Ceil(1.0f * " << this->AxisSize(axis) << "))";
     code << axis.Define(axis_value.str(), true);
     code << " ";
 
@@ -419,28 +419,12 @@ std::string codegen::Tiler::BlockOutterAxisDefine() {
   return code.str();
 }
 
-std::string AscendCApiExtend::GetSetTmp() {
-  return std::string {
-    "LocalTensor<uint8_t> g_local_tmp;\n"
-    "void SetTmp(LocalTensor<uint8_t> tmp){\n"
-    "    g_local_tmp = tmp;\n"
-    "};\n"
-    "\n"
-    "template <typename T>\n"
-    "LocalTensor<T> GetTmp() {\n"
-    "    LocalTensor<T> tmp;\n"
-    "    tmp.SetAddrWithOffset(g_local_tmp, 0);\n"
-    "    return tmp;\n"
-    "}\n"
-  };
-}
-
 std::string codegen::AscendCApiExtend::ReduceLast() {
   return std::string{
     "template<typename T>\n"
-    "void WholeReduceSumAdapt(const LocalTensor<T> &dstLocal, const LocalTensor<T> &srcLocal, const int32_t mask,\n"
+    "inline __aicore__ void WholeReduceSumAdapt(const LocalTensor<T> &dstLocal, const LocalTensor<T> &srcLocal, const int32_t mask,\n"
     "                         const int32_t repeatTimes, const int32_t dstRepStride, const int32_t srcBlkStride,\n"
-    "                         const int32_t srcRepStride, ReduceOrder order){\n"
+    "                         const int32_t srcRepStride, ReduceOrder order) {\n"
     "    WholeReduceSum(dstLocal, srcLocal, mask, repeatTimes, dstRepStride, srcBlkStride, srcRepStride);\n"
     "}\n"
     "\n"
@@ -450,23 +434,45 @@ std::string codegen::AscendCApiExtend::ReduceLast() {
     "                                  const int32_t srcRepStride, ReduceOrder order),\n"
     "          void (*BinaryFunc)(const LocalTensor<T> &dstLocal, const LocalTensor<T> &src0Local,\n"
     "                             const LocalTensor<T> &src1Local, const int32_t &calCount)>\n"
-    "void ReduceLast(const LocalTensor<T> &dst, const LocalTensor<T> &src, const int32_t m, const int32_t k) {\n"
-    "    if (k <= FULL_MASK_LEN && (k * sizeof(half) % ONE_BLK_SIZE == 0)) {\n"
-    "      int32_t srcRepStride = (k * sizeof(T) + ONE_BLK_SIZE - 1) / ONE_BLK_SIZE;\n"
+    "inline __aicore__ void ReduceLast(const LocalTensor<T> &dst, const LocalTensor<T> &src, const int32_t m, const int32_t k, LocalTensor<uint8_t>& tmp_buf) {\n"
+    "    const uint16_t k_repeat_size = ONE_REPEAT_BYTE_SIZE / sizeof(T);\n"
+    "    if (m <= MAX_REPEAT_TIMES && k <= k_repeat_size && (k % utils::BlkSize<T>() == 0)) {\n"
+    "      int32_t srcRepStride = utils::BlkNum<T>(k);\n"
     "      WholeReduceFunc(dst, src, k, m, 1, 1, srcRepStride, ReduceOrder::ORDER_ONLY_VALUE);\n"
-    "    } else if (k > FULL_MASK_LEN && k % FULL_MASK_LEN == 0 && m < FULL_MASK_LEN) {\n"
-    "      WholeReduceFunc(dst, src, FULL_MASK_LEN, m, 1, 1, utils::BlkLen<T>(k), ReduceOrder::ORDER_ONLY_VALUE);\n"
-    "\n"
-    "      auto tmp_buf = GetTmp<T>();\n"
-    "      for (int i = FULL_MASK_LEN; i < k; i += FULL_MASK_LEN) {\n"
+    "    } else if (m > MAX_REPEAT_TIMES && k <= k_repeat_size && (k % utils::BlkSize<T>() == 0)) {\n"
+    "      int32_t srcRepStride = utils::BlkNum<T>(k);\n"
+    "      for (int i = 0; i < m; i += MAX_REPEAT_TIMES) {\n"
+    "        WholeReduceFunc(dst[i], src[i*k], k, utils::Min(m - i, MAX_REPEAT_TIMES), 1, 1, srcRepStride, ReduceOrder::ORDER_ONLY_VALUE);\n"
+    "      }\n"
+    "    } else if (m < MAX_REPEAT_TIMES && k > k_repeat_size && (k % utils::BlkSize<T>() == 0)) {\n"
+    "      LocalTensor<T> tmp_tensor;\n"
+    "      tmp_tensor.SetAddrWithOffset(tmp_buf, 0);\n"
+    "      WholeReduceFunc(dst, src, k_repeat_size, m, 1, 1, utils::BlkNum<T>(k), ReduceOrder::ORDER_ONLY_VALUE);\n"
+    "      for (int i = k_repeat_size; i < k; i += k_repeat_size) {\n"
     "        pipe_barrier(PIPE_V);\n"
-    "        WholeReduceFunc(tmp_buf, src[i], FULL_MASK_LEN, m, 1, 1, utils::BlkLen<T>(k), ReduceOrder::ORDER_ONLY_VALUE);\n"
+    "        WholeReduceFunc(tmp_tensor, src[i], i + k_repeat_size < k ? k_repeat_size : k - i, m, 1, 1, utils::BlkNum<T>(k), ReduceOrder::ORDER_ONLY_VALUE);\n"
     "        pipe_barrier(PIPE_V);\n"
-    "        BinaryFunc(dst, dst, tmp_buf, m);\n"
+    "        BinaryFunc(dst, dst, tmp_tensor, m);\n"
     "      }\n"
     "    } else {\n"
     "      ASSERT(false && \"Reduce k size not support.\");\n"
     "    }\n"
+    "}\n"
+    "template <typename T>\n"
+    "inline __aicore__ void Broadcast(const LocalTensor<T>& dst, const LocalTensor<T>& src, const uint16_t m, const uint16_t k)\n"
+    "{\n"
+    "   const uint16_t one_repeat_m_num = 8;\n"
+    "\n"
+    "   // M 8 align, K block align\n"
+    "   if (m % one_repeat_m_num == 0 && k % utils::BlkSize<T>() == 0) {\n"
+    "     const uint16_t k_blk_num = utils::BlkNum<T>(k);\n"
+    "     for (int i = 0; i < k_blk_num; i++) {\n"
+    "       Brcb(dst[i * utils::BlkSize<T>()], src, m / one_repeat_m_num, \n"
+    "               BrcbRepeatParams{k_blk_num, k_blk_num * one_repeat_m_num});\n"
+    "     }\n"
+    "   } else {\n"
+    "     ASSERT(false && \"Broadcast size not support.\");\n"
+    "   }\n"
     "}\n"
   };
 }
@@ -474,7 +480,6 @@ std::string codegen::AscendCApiExtend::ReduceLast() {
 std::string AscendCApiExtend::FunctionDefines() {
   std::stringstream ss;
   ss << "/* AscendC Api Extend */" << std::endl;
-  ss << GetSetTmp() << std::endl;
   ss << ReduceLast() << std::endl;
   return ss.str();
 }
@@ -483,10 +488,21 @@ std::string KernelUtils::FunctionDefines() {
   std::stringstream ss;
 
   ss << "namespace utils {" << std::endl;
-  ss << "int Ceil(float num) {" << std::endl;
+  ss << "constexpr inline __aicore__ int Ceil(float num) {" << std::endl;
   ss << "int ceil_num = (int)num;" << std::endl;
   ss << "return num == (float)ceil_num ? ceil_num : (ceil_num + 1);" << std::endl;
   ss << "}" << std::endl;
+  ss << std::endl;
+  ss << "template <typename T>" << std::endl;
+  ss << "constexpr inline __aicore__ T Min(const T a) {" << std::endl;
+  ss << "  return a;" << std::endl;
+  ss << "}" << std::endl;
+  ss << std::endl;
+  ss << "template <typename T, typename... Ts>" << std::endl;
+  ss << "constexpr inline __aicore__ T Min(const T a, const Ts... ts) {" << std::endl;
+  ss << "  return a > Min(ts...) ? Min(ts...) : a;" << std::endl;
+  ss << "}" << std::endl;
+  ss << std::endl;
   ss << std::endl;
   ss << "template <typename T>" << std::endl;
   ss << "constexpr inline __aicore__ T Max(const T a) {" << std::endl;
@@ -504,8 +520,13 @@ std::string KernelUtils::FunctionDefines() {
   ss << "}" << std::endl;
   ss << std::endl;
   ss << "template<typename DataType>" << std::endl;
-  ss << "constexpr inline __ai_core__ uint16_t BlkLen(uint32_t size) {" << std::endl;
-  ss << "  return size / (ONE_BLK_SIZE / sizeof(DataType));" << std::endl;
+  ss << "constexpr inline __ai_core__ uint16_t BlkSize() {" << std::endl;
+  ss << "  return ONE_BLK_SIZE / sizeof(DataType);" << std::endl;
+  ss << "}" << std::endl;
+  ss << std::endl;
+  ss << "template<typename DataType>" << std::endl;
+  ss << "constexpr inline __ai_core__ uint16_t BlkNum(uint32_t size) {" << std::endl;
+  ss << "  return size / BlkSize<DataType>();" << std::endl;
   ss << "}" << std::endl;
   ss << std::endl;
   ss << "constexpr inline __ai_core__ uint16_t BlkAlign(uint32_t size) {" << std::endl;
@@ -524,9 +545,9 @@ std::string KernelUtils::Sum() {
   return "utils::Sum";
 }
 
-std::string KernelUtils::BlkLen(ge::DataType dtype) {
+std::string KernelUtils::BlkNum(ge::DataType dtype) {
   std::stringstream ss;
-  ss << "utils::BlkLen<" << Tensor::DtypeName(dtype) << ">";
+  ss << "utils::BlkNum<" << Tensor::DtypeName(dtype) << ">";
   return ss.str();
 }
 
@@ -535,7 +556,8 @@ std::string KernelUtils::BlkAlign() {
 }
 
 TPipe::TPipe(const std::string &name, const Tiler &tiler)
-    : Variable(Type{"TPipe"}, name), tiler(tiler) {}
+    : Variable(Type{"TPipe"}, name), tiler(tiler), tmp_buf(Type{"LocalTensor<uint8_t>"}, "tmp_buf") {}
+
 
 Tensor& TPipe::AddTensor(const Tensor& tensor) {
   auto [ret, is_insert] = this->tensors.emplace(tensor.id, tensor);
@@ -816,6 +838,14 @@ std::string TPipe::LocalTQueAlloc() const {
   return ss.str();
 }
 
+std::string TPipe::TmpBufAlloc() const {
+  std::stringstream ss;
+  ss << "TBuf<TPosition::VECCALC> tmp_tbuf;" << std::endl;
+  ss << "tpipe.InitBuffer(tmp_tbuf, 8 * 1024);" <<std::endl;
+  ss << this->tmp_buf.AsArg() << " = tmp_tbuf.Get<uint8_t>();" << std::endl;
+  return ss.str();
+}
+
 std::string TPipe::LocalTBufAlloc() const {
   stringstream ss;
 
@@ -1001,6 +1031,7 @@ std::string ReduceApicall(std::string api_name, const TPipe &tpipe, const std::v
     auto k_pos = x.vectorized_axis_pos[1];
 
     stringstream ss;
+    std::cout<<"Tensor::DtypeName(y.dtype ) == "<<Tensor::DtypeName(y.dtype)<<std::endl;
     ss << "ReduceLast<"
             << Tensor::DtypeName(y.dtype) << ", "
             << reduce_func << ", "
@@ -1009,7 +1040,8 @@ std::string ReduceApicall(std::string api_name, const TPipe &tpipe, const std::v
         << y << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, y) << "], "
         << x << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, x) << "], "
         << tpipe.tiler.Size(x.axis_size[m_pos]) << ", "
-        << tpipe.tiler.Size(x.axis_size[k_pos])
+        << tpipe.tiler.Size(x.axis_size[k_pos]) << ", "
+        << tpipe.tmp_buf
         << ");" << std::endl;
     return ss.str();
 }
@@ -1057,8 +1089,8 @@ std::string LoadApiCall(const std::string &api_name, const TPipe &tpipe, const s
           << gm << "[" << tpipe.tiler.Offset(current_axis, ub.axis, ub.axis_strides) << "], "
           << "DataCopyParams("
             << tiler.Size(ub.axis_size[out]) << ", "
-            << tiler.BlkLen(ub.dtype, ub.axis_size[in]) << ", "
-            << tiler.BlkLenDiff(ub.dtype, ub.axis_strides[out], ub.axis_size[in]) << ", "
+            << tiler.BlkNum(ub.dtype, ub.axis_size[in]) << ", "
+            << tiler.BlkNumDiff(ub.dtype, ub.axis_strides[out], ub.axis_size[in]) << ", "
             << "0" // Assert UB is continously, only decide src stride
           << ")"
           << ");" << std::endl;
@@ -1099,9 +1131,9 @@ std::string StoreApiCall(const std::string &api_name, const TPipe &tpipe, const 
           << ub << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, ub) << "], "
           << "DataCopyParams("
             << tiler.Size(ub.axis_size[out]) << ", "
-            << tiler.BlkLen(ub.dtype, ub.axis_size[in]) << ", "
+            << tiler.BlkNum(ub.dtype, ub.axis_size[in]) << ", "
             << "0, " // Assert UB is continously, only decide dst stride
-            << tiler.BlkLenDiff(ub.dtype, ub.axis_strides[out], ub.axis_size[in])
+            << tiler.BlkNumDiff(ub.dtype, ub.axis_strides[out], ub.axis_size[in])
           << ")"
           << ");" << std::endl;
     } else {
@@ -1126,13 +1158,11 @@ std::string BroadcastApiCall(const std::string& api_name, const TPipe &tpipe, co
     auto& dst_k_size = y.axis_size[y.vectorized_axis_pos[1]];
 
     std::stringstream ss;
-    ss << "BroadCastLastImpl("
+    ss << "Broadcast("
        << y << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, y) << "], "
        << x << "[" << tpipe.tiler.TensorVectorizedOffset(current_axis, x) << "], "
-       << "BroadCastLastND{"
-         << tpipe.tiler.Size(dst_m_size) << ", " << tpipe.tiler.Size(dst_k_size) << ", "
-         << tpipe.tiler.Size(src_m_size) << ", " << tpipe.tiler.Size(src_k_size)
-         << "}"
+       << tpipe.tiler.Size(dst_m_size) << ","
+       << tpipe.tiler.Size(dst_k_size)
        << ");" << std::endl;
     return ss.str();
 }
@@ -1491,19 +1521,13 @@ std::string Kernel::LocalTensorQueBufAlloc() const {
   ss << this->tpipe.Define() << std::endl;
   ss << std::endl;
 
+  ss << this->tpipe.TmpBufAlloc() << std::endl;
+  ss << std::endl;
+
   ss << this->tpipe.LocalTensorQueBufAlloc();
 
   ss << std::endl;
 
-  return ss.str();
-}
-
-std::string Kernel::TmpBufAlloc() const {
-  stringstream ss;
-  ss << "TBuf<TPosition::VECCALC> tmp;" << std::endl
-   << "tpipe.InitBuffer(tmp, 8 * 1024);" << std::endl
-   << "LocalTensor<uint8_t> tmp_buf = tmp.Get<uint8_t>();" << std::endl
-   << "SetTmp(tmp_buf);" << std::endl;
   return ss.str();
 }
 
@@ -1588,8 +1612,6 @@ std::string Kernel::Generate() {
   ss << this->GlobalTensorInit();
   ss << std::endl;
   ss << this->LocalTensorQueBufAlloc();
-
-  ss << this->TmpBufAlloc();
 
   ss << this->looper.GenerateLoop(this->tiler, this->tpipe);
 

@@ -13,11 +13,11 @@ using namespace ascir::ops;
 
 int main(int argc, char *argv[]) {
   Graph graph("LoadBroadcastStore");
-  LoadBroadcastStore_BeforeAutofuse(graph);
+  LoadBroadcastStore_BeforeAutofuse(graph, false);
 
   Graph impl_graph("LoadBroadcastStore_1");
   impl_graph.CopyFrom(graph);
-  LoadBroadcastStore_AfterAutofuse(impl_graph);
+  LoadBroadcastStore_AfterAutofuse(impl_graph, false);
 
   std::cout << ascir::utils::DebugImplGraphStr(impl_graph) << std::endl;
 

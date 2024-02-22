@@ -13,11 +13,11 @@ using namespace ascir::ops;
 
 int main(int argc, char *argv[]) {
   Graph graph("load_rmax_store");
-  LoadRmaxStore_BeforeAutofuse(graph);
+  LoadRmaxStore_BeforeAutofuse(graph, false);
 
   Graph impl_graph("load_rmax_store");
   impl_graph.CopyFrom(graph);
-  LoadRmaxStore_AfterAutofuse(impl_graph);
+  LoadRmaxStore_AfterAutofuse(impl_graph, false);
 
   std::cout << ascir::utils::DebugImplGraphStr(impl_graph) << std::endl;
 
