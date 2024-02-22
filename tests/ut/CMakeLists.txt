@@ -28,7 +28,8 @@ target_link_libraries(torchair_ut_lib PRIVATE
         torch_nopython_libs
         ge_libs
         ascend_metadef_libs
-        acl_libs)
+        acl_libs
+        hccl_libs)
 
 target_link_libraries(torchair_ut_main PRIVATE
         torchair_ut_lib

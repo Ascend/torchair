@@ -47,6 +47,15 @@ extern HcclResult HcclGetRootInfo(HcclRootInfo *rootInfo);
 extern HcclResult HcclCommInitRootInfo(uint32_t nRanks, const HcclRootInfo *rootInfo, uint32_t rank, HcclComm *comm);
 
 /**
+ * @brief Set deterministic calculate
+ *
+ * @param config A struct identifying the config
+ * @param configValue An interger identifying the identify for the config.
+*/
+extern HcclResult HcclSetConfig(HcclConfig config, HcclConfigValue configValue);
+extern HcclResult HcclGetConfig(HcclConfig config, HcclConfigValue *configValue);
+
+/**
  * @brief AllReduce operator.
  *
  * @param sendBuf A pointer identifying the input data address of the operator.

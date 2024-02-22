@@ -480,6 +480,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         if len(output_reuse_indexes) != 0:
             # support output memory reuse while output is not ref to input
             local_compile_options["ge.exec.outputReuseMemIndexes"] = ",".join(str(x) for x in output_reuse_indexes)
+        local_compile_options["ge.deterministic"] = "1" if torch.are_deterministic_algorithms_enabled() else "0"
         logger.info("local compile options:")
         for k, v in local_compile_options.items():
             logger.info(f"  {k}: {v}")

@@ -17,6 +17,8 @@
 #include "logger.h"
 #include "session.h"
 #include "utils.h"
+#include "hccl/hccl_types.h"
+#include "hccl/hccl.h"
 
 char *CreateMessage(const char *format, va_list arg);
 
@@ -68,6 +70,11 @@ Status NpuConcreteGraph::Create(const void *serialized_proto, size_t proto_size,
     // Use zero copy on inputs and outputs to reuse user memory only for npu executor.
     (void)graph_data->compile_options.insert(std::make_pair(ge::OPTION_EXEC_REUSE_ZERO_COPY_MEMORY, "1"));
   }
+  const char *const deterministic_option = "ge.deterministic";
+  auto iter = graph_data->compile_options.find(ge::AscendString(deterministic_option));
+  if (iter != graph_data->compile_options.end()) {
+    graph_data->deterministic_value = (iter->second == static_cast<ge::AscendString>("1")) ? 1 : 0;
+  }
 
   static std::atomic_uint32_t uuid = 0U;
   graph_data->id = uuid++;
@@ -117,6 +124,9 @@ Status NpuConcreteGraph::Run(const std::vector<at::Tensor> &torch_inputs,
                              const std::vector<c10::optional<at::Tensor>> &torch_outputs,
                              std::vector<at::Tensor> &outputs, void *stream) {
   TNG_LOG(INFO) << "Run concrete graph " << graph_data_->id << " with stream " << stream;
+  HcclConfigValue hccl_config = {graph_data_->deterministic_value};
+  TNG_ASSERT(HcclSetConfig(HcclConfig::HCCL_DETERMINISTIC, hccl_config) == HCCL_SUCCESS,
+      "Failed to set HCCL_DETERMINISTIC.");
   TNG_ASSERT_NOTNULL(executor_, "Executor is not initialized.");
   TNG_RETURN_IF_ERROR(executor_->Run(torch_inputs, torch_outputs, outputs, stream));
   return Status::Success();

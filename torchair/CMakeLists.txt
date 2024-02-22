@@ -23,6 +23,7 @@ target_link_libraries(_torchair PRIVATE
         torch_libs
         ge_libs
         acl_libs
-        ascend_metadef_libs)
+        ascend_metadef_libs
+        hccl_libs)
 
 add_subdirectory(npu_graph_executor)
