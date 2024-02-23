@@ -26,7 +26,7 @@ from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef, TensorDescriptor, Ten
 from torchair.ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
 from torchair.ge_concrete_graph.ge_graph import Tensor as GeTensor
 from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type, torch_type_to_ge_proto_type, default_ge_graph, \
-    GeGraph, attr_scope, compat_as_bytes, DataType, TensorSpec, is_sym, sym_to_ge_dtype
+    GeGraph, attr_scope, compat_as_bytes, DataType, Format, TensorSpec, is_sym, sym_to_ge_dtype
 from torchair.ge_concrete_graph.graph_pass import optimize_sym_pack, optimize_reference_op_redundant_copy
 from torchair.ge_concrete_graph.utils import convert_to_tensorboard, dump_graph, force_op_unknown_shape, \
     is_host_data_tensor, Placement
@@ -34,9 +34,6 @@ from torchair.ge_concrete_graph.supported_declaration import Support
 from torchair.ge_concrete_graph.export_config_generete import generate_config
 from torchair.utils.export_utils import make_export_graph, get_export_file_name
 from . import ge_apis as ge
-
-FORMAT_NCHW_INT = 0
-FORMAT_FRACTAL_Z_INT = 4
 
 
 def _mapping_assign_op_to_graph_output(graph: GraphDef):
@@ -298,6 +295,11 @@ def _update_internal_format_from_inputs(graph: GraphDef, runtime_inputs):
             logger.debug(f'input_{idx} is not npu tensor, skip format updates.')
             continue
 
+        if torch_npu_module.get_npu_format(runtime_inputs[idx]) != Format.FORMAT_FRACTAL_NZ.value\
+                and torch_npu_module.get_npu_format(runtime_inputs[idx]) > Format.FORMAT_FRACTAL_Z.value:
+            raise RuntimeError(f"Unsupported input tensor with "
+                               f"format {torch_npu_module.get_npu_format(runtime_inputs[idx])}")
+
         # attr "format_for_int" in proto::TensorDescriptor will be be deserialized as TensorDesc Format in ge.
         npu_format = torch_npu_module.get_npu_format(runtime_inputs[idx])
         input_index_mapping_graph_op[idx].output_desc[0].attr["format_for_int"].i = npu_format
@@ -351,8 +353,8 @@ def _update_internal_format_from_inputs(graph: GraphDef, runtime_inputs):
            Therefore, to enable the internal format FZ of the filter, 
            you need to specify origin_fmt NCHW of the filter node, as shown in Figure 2.
         '''
-        if npu_format == FORMAT_FRACTAL_Z_INT:
-            input_index_mapping_graph_op[idx].output_desc[0].attr["origin_format_for_int"].i = FORMAT_NCHW_INT
+        if npu_format == Format.FORMAT_FRACTAL_Z.value or npu_format == Format.FORMAT_NC1HWC0.value:
+            input_index_mapping_graph_op[idx].output_desc[0].attr["origin_format_for_int"].i = Format.FORMAT_NCHW.value
         logger.debug(f'update the Format of output TensorDesc for input_{idx} '
                     f'to Format {torch_npu_module.get_npu_format(runtime_inputs[idx])}')
 
