@@ -38182,6 +38182,75 @@ def Scatter(var: Tensor,
     return var
 
 
+# This api is auto-generated from IR QuantUpdateScatter
+@auto_convert_to_tensor([False, False, False, False, False], [False, False, False, False, True])
+def QuantUpdateScatter(var: Tensor,
+                       indices: Tensor,
+                       updates: Tensor,
+                       quant_scales: Tensor,
+                       quant_zero_points: Optional[Tensor],
+                       *,
+                       reduce: str,
+                       axis: int = 0,
+                       quant_axis: int = 1,
+                       dependencies=[],
+                       node_name=None):
+    """REG_OP(QuantUpdateScatter)\n
+.INPUT(var, TensorType({DT_INT32, DT_INT8, DT_UINT8}))\n
+.INPUT(indices, TensorType::IndexNumberType())\n
+.INPUT(updates, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))\n
+.INPUT(quant_scales, TensorType({DT_FLOAT, DT_BF16}))\n
+.OPTIONAL_INPUT(quant_zero_points, TensorType({DT_INT8, DT_UINT8, DT_INT32, DT_BF16}))\n
+.OUTPUT(var, TensorType({DT_INT32, DT_INT8, DT_UINT8}))\n
+.REQUIRED_ATTR(reduce, String)\n
+.ATTR(axis, Int, 0)\n
+.ATTR(quant_axis, Int, 1)\n
+"""
+
+    op = get_default_ge_graph().op.add()
+    op.type = "QuantUpdateScatter"
+    op.name = next_unique_name(node_name, "QuantUpdateScatter")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(var.tensor)
+    op.input_desc.add().CopyFrom(var.desc)
+    op.input_desc[-1].name = "var"
+    op.input.append(indices.tensor)
+    op.input_desc.add().CopyFrom(indices.desc)
+    op.input_desc[-1].name = "indices"
+    op.input.append(updates.tensor)
+    op.input_desc.add().CopyFrom(updates.desc)
+    op.input_desc[-1].name = "updates"
+    op.input.append(quant_scales.tensor)
+    op.input_desc.add().CopyFrom(quant_scales.desc)
+    op.input_desc[-1].name = "quant_scales"
+    if quant_zero_points is not None:
+        op.input.append(quant_zero_points.tensor)
+        op.input_desc.add().CopyFrom(quant_zero_points.desc)
+        op.input_desc[-1].name = "quant_zero_points"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "quant_zero_points"
+
+    # process attrs
+    op.attr["reduce"].s = compat_as_bytes(reduce)
+    op.attr["axis"].i = axis
+    op.attr["quant_axis"].i = quant_axis
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "var"
+    var = Tensor(op, output_index)
+    output_index += 1
+
+    return var
+
+
 # This api is auto-generated from IR ScatterMul
 @auto_convert_to_tensor([False, False, False], [False, False, False])
 def ScatterMul(var: Tensor,
