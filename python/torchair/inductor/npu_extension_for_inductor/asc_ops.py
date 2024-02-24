@@ -72,16 +72,6 @@ def maximum(x1, x2):
     return op.y
 
 
-def where(x1, x2, x3):
-    graph = V.kernel.graph
-    op = graph.add_op("Where")
-    op.x0 = x1
-    op.x1 = x2
-    op.x2 = x3
-    op.y.dtype = x1.dtype
-    return op.y
-
-
 def exp(x):
     graph = V.kernel.graph
     op = graph.add_op("Exp")

@@ -6,6 +6,7 @@ from typing import List, Iterable, Dict, Union
 from unittest.mock import patch
 
 from npu_extension_for_inductor.common.asc_graph import ASCGraph
+from npu_extension_for_inductor.common.symbols import Axis
 from npu_extension_for_inductor.common.debug import _left_align_lines, OP_SUMMARY
 from sympy import symbols, simplify, Eq
 
@@ -121,7 +122,7 @@ class NPUKernel(Kernel):
             expr = V.graph.sizevars.simplify(expr)
             self._size_vars.update(expr.free_symbols)
             self._axis_exprs[sympy.Symbol(axis.name)] = expr
-        for index, expr in indexing_exprs.items():
+        for expr in indexing_exprs:
             expr = V.graph.sizevars.simplify(expr)
             self._size_vars.update([s for s in expr.free_symbols if s.name.startswith('s')])
         for desc in self._buf_desc.values():
@@ -216,9 +217,9 @@ class NPUKernel(Kernel):
 
         return code.getvalue()
 
-    def record_summary(self, nodes):
+    def record_summary(self, nodes, model_path=None):
         labels = [_node_label(node) for node in nodes]
-        OP_SUMMARY.add_graph_summary(self.graph, loop='\n'.join(itertools.chain(*labels)))
+        OP_SUMMARY.add_graph_summary(self.graph, loop='\n'.join(itertools.chain(*labels)), model_path=model_path)
 
     def view_dot(self, nodes, svg_path=None):
         try:
@@ -269,6 +270,41 @@ class NPUKernel(Kernel):
                 scalars[s] = self._indirect_to_scalar[str(s)]
         return scalars
 
+    def _get_view_road(self, src: Loop, dst: Loop):
+        num_axis = len(src.axis)
+        hint_to_axis = []
+        for hint, axis, size, order in zip(src.hint_stride, src.axis, src.size, range(num_axis)):
+            if hint != 0:
+                hint_to_axis.append((hint, Axis(axis, size, order)))
+        ordered_axis = [axis for _, axis in sorted(hint_to_axis, reverse=True)]
+        non1_order = [axis.order for axis in ordered_axis]
+        iter_non1_order = iter(non1_order)
+        order = [i if i not in non1_order else next(iter_non1_order) for i in range(num_axis)]
+
+        class MoveOp:
+            def __init__(self, *, kind, src, dst):
+                self.kind = kind
+                self.src = src
+                self.dst = dst
+
+        road = []
+        dst_loop = dst
+        for i, j in zip(range(len(order)), order):
+            if i != j:
+                src_loop = dst_loop.transpose(i, j).contiguous_()
+                src = src.transpose(i, j)
+                road.insert(0, MoveOp(kind="transpose", src=src_loop, dst=dst_loop))
+                dst_loop = src_loop
+                order[i], order[j] = order[j], order[i]
+
+        if [str(v) for v in src.size] != [str(v) for v in dst_loop.size]:
+            road.insert(0, MoveOp(kind="broadcast", src=src, dst=dst_loop))
+
+        if len(road) == 0:
+            road.append(MoveOp(kind="unsupported_view", src=src, dst=dst))
+
+        return road
+
     def load(self, name: str, index: sympy.Expr):
         buf: BufDesc = self._buf_desc[name]
         if not buf.src:
@@ -279,15 +315,21 @@ class NPUKernel(Kernel):
         else:
             data = buf.src
 
+        loop = self._index_to_loop(index)
         scalars: Dict[str, _Scalar] = self._get_npu_scalar(index)
         if len(scalars):
-            return ir.load_indirect(data, *[v.cse for v in scalars.values()], expr=str(index),
+            return ir.load_indirect(data.as_loop(loop), *[v.cse for v in scalars.values()], expr=str(index),
                                     syms=[f"{str(k)}={str(v.cse)}(\\<{v.max_value})" for k, v in scalars.items()])
-
-        loop = self._index_to_loop(index)
-        load = ir.load(data.as_loop(loop=loop), loop=loop)
-        if not loop.is_contiguous():
-            load = ir.broadcast(load, loop=self.contiguous_loop)
+        if loop.is_contiguous():
+            load = ir.load(data.as_loop(loop=loop), loop=loop)
+        else:
+            road = self._get_view_road(loop, self._contiguous_loop)
+            loop = road[0].src
+            load = ir.load(data.as_loop(loop=loop), loop=loop)
+            print(f"Road for index {index} from {loop} to {self.contiguous_loop}", flush=True)
+            for op in road:
+                print(f"  {op.kind} from {op.src} to {op.dst}", flush=True)
+                load = getattr(ir, op.kind)(load, loop=op.dst)
         return load
 
     def _mark_buf_src(self, name, src):
@@ -365,15 +407,26 @@ class NPUScheduling(BaseScheduling):
         self.scheduler = scheduler
         self._fuse_judge = TritonScheduling(scheduler)
 
+    def can_fuse_npu(self, node1: BaseSchedulerNode, node2: BaseSchedulerNode):
+        if len(node1.get_nodes()) == 0 or len(node2.get_nodes()) == 0:
+            return True
+        body1 = getattr(node1.get_nodes()[0], "_body", None)
+        body2 = getattr(node2.get_nodes()[0], "_body", None)
+        assert body1 and body2, f"Node {node1.node.name} or {node2.node.name} has no body"
+        if str(body1.var_ranges) != str(body2.var_ranges):
+            print(f"Cannot fuse {node1.debug_str()} and {node2.debug_str()} due to different var_ranges", flush=True)
+            return False
+        return True
+
     def can_fuse_vertical(self, node1: BaseSchedulerNode, node2: BaseSchedulerNode):
         if os.getenv("NPU_INDUCTOR_NO_FUSE", None) == "1":
             return False
-        return self._fuse_judge.can_fuse_vertical(node1, node2)
+        return self._fuse_judge.can_fuse_vertical(node1, node2) and self.can_fuse_npu(node1, node2)
 
     def can_fuse_horizontal(self, node1: BaseSchedulerNode, node2: BaseSchedulerNode):
         if os.getenv("NPU_INDUCTOR_NO_FUSE", None) == "1":
             return False
-        return self._fuse_judge.can_fuse_vertical(node1, node2)
+        return self._fuse_judge.can_fuse_vertical(node1, node2) and self.can_fuse_npu(node1, node2)
 
     def group_fn(self, sizes):
         return self._fuse_judge.group_fn(sizes)
@@ -390,19 +443,17 @@ class NPUScheduling(BaseScheduling):
         print(f"Codegen for {'Fused' if len(nodes) > 1 else ''}SchedulerNode", flush=True)
         buf_desc = dict()
         var_ranges = None
-        indexing_exprs = None
+        indexing_exprs = []
         output_bufs = []
         for i, node in enumerate(nodes):
             body: LoopBody = getattr(node, "_body")
-            print(f"Codegen for node {node.node.name}", flush=True)
-            print(f"{body.debug_str()}", flush=True)
 
+            print(f"Body of {node.node.name}: {body.debug_str()}", flush=True)
             if i == 0:
                 var_ranges = body.var_ranges
-                indexing_exprs = body.indexing_exprs
             else:
                 assert str(var_ranges) == str(body.var_ranges), f"{var_ranges} != {body.var_ranges}"
-                assert str(indexing_exprs) == str(body.indexing_exprs), f"{indexing_exprs} != {body.indexing_exprs}"
+            indexing_exprs += list(body.indexing_exprs.values())
             inner_user_num = sum([user.node in nodes for user in node.users])
             is_output = inner_user_num != len(node.users)
             if is_output:
@@ -422,7 +473,7 @@ class NPUScheduling(BaseScheduling):
             wrapper.writeline(comment)
 
         for i, node in enumerate(nodes):
-            with kernel:
+            with kernel, kernel.set_current_node(node):
                 node.run(*ranges)
 
         wrapper.header.splice("\n\n")
@@ -432,7 +483,7 @@ class NPUScheduling(BaseScheduling):
         if config.trace.enabled:
             kernel.benchmark(V.debug.filename(f"{kernel.kernel_name}_benchmark.py"))
             kernel.view_dot(nodes, V.debug.filename(f"{kernel.graph.name}.svg"))
-        kernel.record_summary(nodes)
+            kernel.record_summary(nodes, V.debug.filename(f"Model.csv"))
 
         _, call_args, _ = kernel.args.python_argdefs()
 
@@ -519,7 +570,9 @@ def as_default_inductor_backend():
             for buf in buffer.get_reads():
                 if buf.name not in buf_desc:
                     buf_desc[buf.name] = BufDesc(size=buf.size, dtype=V.graph.get_dtype(buf.name))
-            kernel = DummyKernel(var_ranges=body.var_ranges, indexing_exprs=body.indexing_exprs, buf_desc=buf_desc)
+            ranges = body.var_ranges
+            indexes = list(body.indexing_exprs.values())
+            kernel = DummyKernel(var_ranges=ranges, indexing_exprs=indexes, buf_desc=buf_desc)
             kernel.node_to_bounds = body.bounds().get_bounds()
 
             ranges = [[sympy.Symbol(f"{k}")] for k in dict(body.var_ranges).keys()]

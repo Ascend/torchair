@@ -27,13 +27,19 @@ class _NpuOverride:
             tensor.as_loop(loop)
 
     def __call__(self, *args, loop=None, **kwargs):
+        graph = V.kernel.graph
+        cache_key = f"{self._op}({args},{loop},{kwargs})"
+        if cache_key in graph.op_cache:
+            return graph.op_cache[cache_key]
         tensors = self._f(*args, **kwargs)
         if isinstance(tensors, (list, tuple)):
             tensors = (_Tensor(t) if not isinstance(t, _Tensor) else t for t in tensors)
             self._set_loop(tensors, loop)
+            graph.op_cache[cache_key] = tensors
             return tensors
         tensor = _Tensor(tensors) if not isinstance(tensors, _Tensor) else tensors
         self._set_loop(tensor, loop)
+        graph.op_cache[cache_key] = tensor
         return tensor
 
 
@@ -44,7 +50,7 @@ def underline_to_camelcase(s):
 def unsupported(*args, op_type, **kwargs):
     graph = V.kernel.graph
     op_type = underline_to_camelcase(op_type)
-    if op_type in ["LoadIndirect", "IndexExpr"]:
+    if op_type in ["LoadIndirect", "IndexExpr", "UnsupportedView"]:
         op = graph.add_fallback_op(op_type)
     else:
         op = graph.add_op(op_type, is_unsupported=True)
@@ -112,6 +118,11 @@ class _Tensor(CSEVariable):
         self._v.axis = loop.asc_axis
         self._v.strides = loop.asc_stride
         self._v.size = loop.asc_size
+
+        private_name = self.name.replace(f'{self.op.name}.', '')
+        self.op.set_private_attr(f'{private_name}.size', loop.hint_size)
+        self.op.set_private_attr(f'{private_name}.strides', loop.hint_stride)
+        self.op.set_private_attr(f'{private_name}.offset', loop.hint_offset)
         return self
 
     def __str__(self):
@@ -132,6 +143,7 @@ class _Op(_Track):
     def __init__(self, type, name):
         super().__init__(name)
         self.__dict__['_op'] = type
+        self.__dict__['private_attrs'] = {}
 
     @property
     def op_type(self):
@@ -140,6 +152,18 @@ class _Op(_Track):
     @property
     def order(self):
         return self.attrs[f'{self.name}.attr.sched.exec_order']
+
+    @property
+    def supported(self):
+        return not self.get_private_attr('is_unsupported')
+
+    def get_private_attr(self, name):
+        if name in self.private_attrs:
+            return self.private_attrs[name]
+        return None
+
+    def set_private_attr(self, name, value):
+        self.private_attrs[name] = value
 
     def codegen(self):
         from torch._inductor.utils import IndentedBuffer

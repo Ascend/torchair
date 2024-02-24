@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Any
 
 import sympy
 import torch
@@ -7,6 +7,7 @@ from npu_extension_for_inductor.common.symbols import Loop, AscExpr
 from npu_extension_for_inductor.common.utils import StrRep, TypeUtils
 from npu_extension_for_inductor.ir import _Op, _Tensor
 from torch._inductor.utils import IndentedBuffer
+from torch._inductor.virtualized import V
 
 
 class ASCGraph:
@@ -19,6 +20,7 @@ class ASCGraph:
         self.inputs = []
         self.outputs = []
         self.ops: List[_Op] = []
+        self.op_cache: Dict[str, Any] = dict()
         self.unsupported_ops: Set[str] = set()
         self.fallback_ops: Set[str] = set()
         self.size_vars_holder = self.add_op("Data", name="size_vars")
@@ -47,8 +49,12 @@ class ASCGraph:
         op.attr.sched.exec_order = len(self.ops)
         op.attr.sched.axis = sorted(list(self.axis_vars.keys()))
         self.ops.append(op)
+        buffer_name = name
+        if type != "Data" and hasattr(V.kernel, "current_node") and V.kernel.current_node:
+            buffer_name = V.kernel.current_node.node.name
+        op.set_private_attr("buffer_name", buffer_name)
         if is_unsupported:
-            op.is_unsupported = True
+            op.set_private_attr("is_unsupported", True)
             self.unsupported_ops.add(op.op_type)
         return self.ops[-1]
 

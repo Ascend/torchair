@@ -1,7 +1,8 @@
 import atexit
 import operator
 from collections import defaultdict
-from typing import Iterable, Dict, List
+import contextlib
+from typing import Iterable, Dict, List, Set
 
 from npu_extension_for_inductor.common.asc_graph import ASCGraph
 from npu_extension_for_inductor.common.symbols import AscSymbol, AscExpr
@@ -27,7 +28,7 @@ class _OpVisitor:
 
 
 class OpSummary:
-    def __init__(self, graph, *, loop=""):
+    def __init__(self, graph, *, loop="", model_path=None):
         self.graph = ASCGraph(name=graph) if isinstance(graph, str) else graph
         self.loop = loop
         self.name = self.graph.name
@@ -36,10 +37,12 @@ class OpSummary:
         self.supported: Dict[str:int] = defaultdict(lambda: 0)
         self.unsupported: Dict[str:int] = defaultdict(lambda: 0)
         self.subs: Dict[str:OpSummary] = {}
+        self.models: Set[str] = set()
+        self.model_path = model_path
         self.num_supported: int = 0
         self.num_unsupported: int = 0
         for op in self.graph.ops:
-            self.record(op.op_type, f"{op.name}.attr.is_unsupported" not in op.attrs)
+            self.record(op.op_type, op.supported)
 
     def record(self, op, is_supported):
         if is_supported:
@@ -53,24 +56,40 @@ class OpSummary:
         self.fallbacks[op] += 1
         self.fallback_reasons[op] = reason
 
-    def add_graph_summary(self, graph, *, loop):
+    def add_graph_summary(self, graph, *, loop, model_path=None):
         if graph.name not in self.subs:
-            self.subs[graph.name] = OpSummary(graph, loop=loop)
+            self.subs[graph.name] = OpSummary(graph, loop=loop, model_path=model_path)
+            if model_path:
+                self.models.add(model_path)
+
         return self.subs[graph.name]
 
     def save(self):
         self.save_csv(f"{self.name}.csv")
         print(str(self))
 
-    def save_csv(self, fn: str):
+    @contextlib.contextmanager
+    def open_model_csv_writers(self):
         import csv
+        fhs = []
+        try:
+            model_writer = {}
+            for model in self.models:
+                fhs.append(open(model, 'w+', newline='', encoding='utf-8-sig'))
+                model_writer[model] = csv.writer(fhs[-1])
+                model_writer[model].writerow(
+                    ["融合节点名", "融合类型", "计算指令统计", "待支持的计算指令", "待支持的操作符", "待支持的表达式",
+                     "Loop表达"])
+            yield model_writer
+        finally:
+            for fh in fhs:
+                fh.close()
+
+    def save_csv(self, fn: str):
         assert fn.endswith(".csv")
-        with open(fn, 'w+', newline='', encoding='utf-8-sig') as f:
-            writer = csv.writer(f)
-            print(f"Save summary to {fn}")
-            writer.writerow(
-                ["融合节点名", "融合类型", "计算指令统计", "待支持的计算指令", "待支持的操作符", "待支持的表达式",
-                 "Loop表达"])
+        self.models.add(fn)
+        with self.open_model_csv_writers() as writers:
+            writer = writers[fn]
             for name, untyped_sub in self.subs.items():
                 sub: OpSummary = untyped_sub
                 mte_ops = [_OpVisitor(op) for op in sub.graph.ops if op.op_type in ["Load", "Store"]]
@@ -100,7 +119,10 @@ class OpSummary:
                 operators = '\n'.join(
                     [v.__name__ if hasattr(v, '__name__') else str(v) for v in unsupported_operators])
                 unsupported_ops = '\n'.join([f"{v}" for v in sub.graph.unsupported_ops])
-                writer.writerow([name, graph_type, ops_count, unsupported_ops, operators, exps, sub.loop])
+                row = [name, graph_type, ops_count, unsupported_ops, operators, exps, sub.loop]
+                writer.writerow(row)
+                if sub.model_path and sub.model_path in writers:
+                    writers[sub.model_path].writerow(row)
 
     def __str__(self):
         for name, sub in self.subs.items():
@@ -146,7 +168,7 @@ def make_graph_dot(asc_graph: ASCGraph):
         print("Please install pydot first.")
         return
     graph: pydot.Dot = pydot.Dot(rankdir="TB")
-    cluster_nodes = []
+    clusters: Dict[str, pydot.Cluster] = {}
     type_colors = {"Data": "AliceBlue", "Workspace": "Gray", "Output": "AliceBlue", "Broadcast": "LightBlue"}
     for untyped_op in asc_graph.ops:
         n: _Op = untyped_op
@@ -160,18 +182,21 @@ def make_graph_dot(asc_graph: ASCGraph):
         label = "{"
         label += f"name={n.name}|type={n.op_type}"
         inputs = []
+        if not n.supported:
+            style["fillcolor"] = "#FF0000"
         for attr, value in n.attrs.items():
             if isinstance(value, _Tensor):
                 inputs.append((attr, value.op.name))
             else:
                 attr = attr.replace(f"{n.name}.attr.", '')
                 attr = attr.replace(f"{n.name}.", '')
-                if attr == "is_unsupported":
-                    style["fillcolor"] = "#FF0000"
-                    continue
                 if isinstance(value, (list, tuple)):
                     value = [StrRep(str(v)) for v in value]
                 label += f"|{attr}={str(value)}"
+        for attr, value in n.private_attrs.items():
+            if isinstance(value, (list, tuple)):
+                value = [StrRep(str(v)) for v in value]
+            label += f"|private.{attr}={str(value)}"
         label += "}"
 
         if n.op_type in type_colors:
@@ -180,17 +205,13 @@ def make_graph_dot(asc_graph: ASCGraph):
         for name, src in inputs:
             graph.add_edge(pydot.Edge(src, n.name, label=str(name)))
 
-        if n.op_type not in ["Data", "Output", "Workspace"]:
-            cluster_nodes.append(dot_node)
-            continue
+        buffer_name = n.get_private_attr("buffer_name")
+        if buffer_name not in clusters:
+            clusters[buffer_name] = pydot.Cluster(buffer_name, label=buffer_name, labeljust='c')
+            graph.add_subgraph(clusters[buffer_name])
 
-        cluster = pydot.Cluster(n.name, label=n.name, labeljust='c')
+        cluster = clusters[buffer_name]
         cluster.add_node(dot_node)
-        if n.name.startswith("buf"):
-            for node in cluster_nodes:
-                cluster.add_node(node)
-            cluster_nodes.clear()
-        graph.add_subgraph(cluster)
 
     return graph
 

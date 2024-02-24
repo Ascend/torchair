@@ -3,13 +3,13 @@ import os
 import unittest
 from typing import List, Set
 
+os.environ['ASCIR_NOT_READY'] = '1'
+os.environ['NPU_INDUCTOR_DUMMY_KERNEL'] = '1'
+
 import npu_extension_for_inductor
 from npu_extension_for_inductor.npu import NPUKernel
 import torch
 from torch._inductor.virtualized import V
-
-os.environ['ASCIR_NOT_READY'] = '1'
-os.environ['NPU_INDUCTOR_DUMMY_KERNEL'] = '1'
 
 
 @contextlib.contextmanager
@@ -232,47 +232,30 @@ class BuildGraphTest(unittest.TestCase):
                 load1 = ascir.ops.Load('load1')
                 load1.attr.sched.exec_order = 7
                 load1.attr.sched.axis = [z0, z1]
-                load1.x = arg3_1.y
-                load1.y.dtype = ascir.dtypes.float16
+                load1.x = buf0.y
+                load1.y.dtype = ascir.dtypes.float32
                 load1.y.axis = [z0, z1]
-                load1.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
-                load1.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
-                cast1 = ascir.ops.Cast('cast1')
-                cast1.attr.sched.exec_order = 8
-                cast1.attr.sched.axis = [z0, z1]
-                cast1.x = load1.y
-                cast1.dst_type = ascir.dtypes.float32
-                cast1.y.dtype = ascir.dtypes.float32
-                cast1.y.axis = [z0, z1]
-                cast1.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
-                cast1.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
-                load2 = ascir.ops.Load('load2')
-                load2.attr.sched.exec_order = 9
-                load2.attr.sched.axis = [z0, z1]
-                load2.x = buf0.y
-                load2.y.dtype = ascir.dtypes.float32
-                load2.y.axis = [z0, z1]
-                load2.y.strides = [ascir.SizeExpr([]), ascir.SizeExpr([0])]
-                load2.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([])]
+                load1.y.strides = [ascir.SizeExpr([]), ascir.SizeExpr([0])]
+                load1.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([])]
                 broadcast = ascir.ops.Broadcast('broadcast')
-                broadcast.attr.sched.exec_order = 10
+                broadcast.attr.sched.exec_order = 8
                 broadcast.attr.sched.axis = [z0, z1]
-                broadcast.x = load2.y
+                broadcast.x = load1.y
                 broadcast.y.dtype = ascir.dtypes.float32
                 broadcast.y.axis = [z0, z1]
                 broadcast.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 broadcast.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
                 sub = ascir.ops.Sub('sub')
-                sub.attr.sched.exec_order = 11
+                sub.attr.sched.exec_order = 9
                 sub.attr.sched.axis = [z0, z1]
-                sub.x1 = cast1.y
+                sub.x1 = cast.y
                 sub.x2 = broadcast.y
                 sub.y.dtype = ascir.dtypes.float32
                 sub.y.axis = [z0, z1]
                 sub.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 sub.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
                 exp = ascir.ops.Exp('exp')
-                exp.attr.sched.exec_order = 12
+                exp.attr.sched.exec_order = 10
                 exp.attr.sched.axis = [z0, z1]
                 exp.x = sub.y
                 exp.y.dtype = ascir.dtypes.float32
@@ -280,7 +263,7 @@ class BuildGraphTest(unittest.TestCase):
                 exp.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 exp.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
                 store1 = ascir.ops.Store('store1')
-                store1.attr.sched.exec_order = 13
+                store1.attr.sched.exec_order = 11
                 store1.attr.sched.axis = [z0, z1]
                 store1.x = exp.y
                 store1.y.dtype = ascir.dtypes.float32
@@ -288,32 +271,32 @@ class BuildGraphTest(unittest.TestCase):
                 store1.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 store1.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
                 buf1 = ascir.ops.Workspace('buf1')
-                buf1.attr.sched.exec_order = 14
+                buf1.attr.sched.exec_order = 12
                 buf1.attr.sched.axis = [z0, z1]
                 buf1.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
                 buf1.y.dtype = ascir.dtypes.float32
                 buf1.x = store1.y
                 buf1.y.axis = [z0, z1]
                 buf1.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
-                load3 = ascir.ops.Load('load3')
-                load3.attr.sched.exec_order = 15
-                load3.attr.sched.axis = [z0, z1]
-                load3.x = buf1.y
-                load3.y.dtype = ascir.dtypes.float32
-                load3.y.axis = [z0, z1]
-                load3.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
-                load3.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
+                load2 = ascir.ops.Load('load2')
+                load2.attr.sched.exec_order = 13
+                load2.attr.sched.axis = [z0, z1]
+                load2.x = buf1.y
+                load2.y.dtype = ascir.dtypes.float32
+                load2.y.axis = [z0, z1]
+                load2.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
+                load2.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
                 sum = ascir.ops.Sum('sum')
-                sum.attr.sched.exec_order = 16
+                sum.attr.sched.exec_order = 14
                 sum.attr.sched.axis = [z0, z1]
-                sum.x = load3.y
+                sum.x = load2.y
                 sum.attr.hint.compute_type = 'reduce'
                 sum.y.dtype = ascir.dtypes.float32
                 sum.y.axis = [z0, z1]
                 sum.y.strides = [ascir.SizeExpr([]), ascir.SizeExpr([0])]
                 sum.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([])]
                 store2 = ascir.ops.Store('store2')
-                store2.attr.sched.exec_order = 17
+                store2.attr.sched.exec_order = 15
                 store2.attr.sched.axis = [z0, z1]
                 store2.x = sum.y
                 store2.y.dtype = ascir.dtypes.float32
@@ -321,65 +304,57 @@ class BuildGraphTest(unittest.TestCase):
                 store2.y.strides = [ascir.SizeExpr([]), ascir.SizeExpr([0])]
                 store2.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([])]
                 buf2 = ascir.ops.Workspace('buf2')
-                buf2.attr.sched.exec_order = 18
+                buf2.attr.sched.exec_order = 16
                 buf2.attr.sched.axis = [z0, z1]
                 buf2.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([])]
                 buf2.y.dtype = ascir.dtypes.float32
                 buf2.x = store2.y
                 buf2.y.axis = [z0, z1]
                 buf2.y.strides = [ascir.SizeExpr([]), ascir.SizeExpr([0])]
-                load4 = ascir.ops.Load('load4')
-                load4.attr.sched.exec_order = 19
-                load4.attr.sched.axis = [z0, z1]
-                load4.x = buf1.y
-                load4.y.dtype = ascir.dtypes.float32
-                load4.y.axis = [z0, z1]
-                load4.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
-                load4.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
-                load5 = ascir.ops.Load('load5')
-                load5.attr.sched.exec_order = 20
-                load5.attr.sched.axis = [z0, z1]
-                load5.x = buf2.y
-                load5.y.dtype = ascir.dtypes.float32
-                load5.y.axis = [z0, z1]
-                load5.y.strides = [ascir.SizeExpr([]), ascir.SizeExpr([0])]
-                load5.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([])]
+                load3 = ascir.ops.Load('load3')
+                load3.attr.sched.exec_order = 17
+                load3.attr.sched.axis = [z0, z1]
+                load3.x = buf2.y
+                load3.y.dtype = ascir.dtypes.float32
+                load3.y.axis = [z0, z1]
+                load3.y.strides = [ascir.SizeExpr([]), ascir.SizeExpr([0])]
+                load3.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([])]
                 broadcast1 = ascir.ops.Broadcast('broadcast1')
-                broadcast1.attr.sched.exec_order = 21
+                broadcast1.attr.sched.exec_order = 18
                 broadcast1.attr.sched.axis = [z0, z1]
-                broadcast1.x = load5.y
+                broadcast1.x = load3.y
                 broadcast1.y.dtype = ascir.dtypes.float32
                 broadcast1.y.axis = [z0, z1]
                 broadcast1.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 broadcast1.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
                 truediv = ascir.ops.TrueDiv('truediv')
-                truediv.attr.sched.exec_order = 22
+                truediv.attr.sched.exec_order = 19
                 truediv.attr.sched.axis = [z0, z1]
-                truediv.x1 = load4.y
+                truediv.x1 = load2.y
                 truediv.x2 = broadcast1.y
                 truediv.y.dtype = ascir.dtypes.float32
                 truediv.y.axis = [z0, z1]
                 truediv.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 truediv.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
-                cast2 = ascir.ops.Cast('cast2')
-                cast2.attr.sched.exec_order = 23
-                cast2.attr.sched.axis = [z0, z1]
-                cast2.x = truediv.y
-                cast2.dst_type = ascir.dtypes.float16
-                cast2.y.dtype = ascir.dtypes.float16
-                cast2.y.axis = [z0, z1]
-                cast2.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
-                cast2.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
+                cast1 = ascir.ops.Cast('cast1')
+                cast1.attr.sched.exec_order = 20
+                cast1.attr.sched.axis = [z0, z1]
+                cast1.x = truediv.y
+                cast1.dst_type = ascir.dtypes.float16
+                cast1.y.dtype = ascir.dtypes.float16
+                cast1.y.axis = [z0, z1]
+                cast1.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
+                cast1.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
                 store3 = ascir.ops.Store('store3')
-                store3.attr.sched.exec_order = 24
+                store3.attr.sched.exec_order = 21
                 store3.attr.sched.axis = [z0, z1]
-                store3.x = cast2.y
+                store3.x = cast1.y
                 store3.y.dtype = ascir.dtypes.float16
                 store3.y.axis = [z0, z1]
                 store3.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 store3.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
                 buf3 = ascir.ops.Output('buf3')
-                buf3.attr.sched.exec_order = 25
+                buf3.attr.sched.exec_order = 22
                 buf3.attr.sched.axis = [z0, z1]
                 buf3.y.size = [ascir.SizeExpr([]), ascir.SizeExpr([s0]), ascir.SizeExpr([s1]), ascir.SizeExpr([s2])]
                 buf3.y.dtype = ascir.dtypes.float16
@@ -439,6 +414,20 @@ class BuildGraphTest(unittest.TestCase):
 
         output = kernel_capture.graph(0).ops[-1]
         self.assertEqual([str(v) for v in output.attrs[f'{output.name}.y.size']][:2], ['2', '2'])
+
+    def test_view_road_transpose_broadcast(self):
+        @torch.compile(dynamic=True)
+        def test_view_road_transpose_broadcast(x, y):
+            return x + y.transpose(0, 2)
+
+        with KernelCapture() as kernel_capture:
+            x = torch.ones(2, 3, 4, dtype=torch.float16)
+            y = torch.ones(4, 3, 1, dtype=torch.float16)
+            test_view_road_transpose_broadcast(x, y)
+
+        self.assertEqual(len(kernel_capture.kernels), 1)
+        self.assertTrue(kernel_capture.graph(0).get_op("broadcast"))
+        self.assertTrue(kernel_capture.graph(0).get_op("transpose"))
 
 
 if __name__ == '__main__':

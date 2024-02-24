@@ -3,6 +3,7 @@ from typing import List
 
 import sympy
 from npu_extension_for_inductor.common.utils import StrRep
+from torch._inductor.virtualized import V
 
 
 class AscSymbol:
@@ -173,23 +174,60 @@ class Loop:
         self.size: List[sympy.Expr] = []
         self.offset: sympy.Expr = sympy.Symbol("0")
 
+    def transpose(self, dim0, dim1):
+        def swap(arr, i, j):
+            swapped = arr.copy()
+            swapped[i], swapped[j] = swapped[j], swapped[i]
+            return swapped
+
+        loop = Loop()
+        loop.axis = swap(self.axis, dim0, dim1)
+        loop.stride = swap(self.stride, dim0, dim1)
+        loop.size = swap(self.size, dim0, dim1)
+        loop.offset = self.offset
+        return loop
+
+    @staticmethod
+    def get_hint(sym):
+        try:
+            return V.graph.sizevars.size_hint(sym)
+        except Exception:
+            return sym
+
+    @property
+    def hint_size(self):
+        return [self.get_hint(x) for x in self.size]
+
+    @property
+    def hint_stride(self):
+        return [self.get_hint(x) for x in self.stride]
+
+    @property
+    def hint_offset(self):
+        return self.get_hint(self.offset)
+
+    def __str__(self):
+        return f"{self.axis}|{self.size}|{self.stride}|{self.offset}"
+
     def is_contiguous(self):
         if len(self.axis) == 0:
             return True
-        if str(self.stride[-1]) != "1":
-            return False
-        for i in range(len(self.axis) - 1):
-            if self.stride[i] != self.size[i + 1]:
-                return False
-        return True
+        return [str(v) for v in self.stride] == [str(v) for v in self.contiguous_stride()]
+
+    def contiguous_stride(self):
+        stride = []
+        multiplier = sympy.S.One
+        for s in reversed(self.size):
+            stride.append(V.graph.sizevars.simplify(multiplier))
+            multiplier *= s
+
+        return list(reversed(stride))
 
     def contiguous_(self):
         if len(self.axis) == 0:
             return self
-        self.stride = list([None] * len(self.axis))
-        self.stride[-1] = sympy.Symbol("1")
-        for i in range(len(self.axis) - 1):
-            self.stride[i] = self.size[i + 1]
+
+        self.stride = self.contiguous_stride()
         return self
 
     @property
@@ -207,3 +245,19 @@ class Loop:
     @property
     def asc_size(self):
         return [AscExpr(exp) for exp in self.size]
+
+
+class Axis:
+    def __init__(self, name, size, order):
+        self.name = name
+        self.size = size
+        self.order = order
+
+    def __lt__(self, other):
+        return False
+
+    def __str__(self):
+        return f"{self.name}({self.size})"
+
+    def __repr__(self):
+        return f"{self.name}({self.size})"
