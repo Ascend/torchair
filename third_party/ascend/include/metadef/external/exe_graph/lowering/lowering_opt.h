@@ -54,9 +54,16 @@ struct LoweringOption {
   bool always_external_allocator = false;
 
   /**
+   * 使能单流，默认关闭。如果本开关打开，执行时动态根图任务下发在一条流上。
+   * 该开关由rt2的使用者(acl/hybrid model)根据设备上流是否充裕，来决定是否只使用一条流资源。
+   *
+   */
+  bool enable_single_stream = false;
+
+  /**
    * 二进制兼容保留字段，增加option时，对应缩减删除reserved长度
    */
-  uint8_t reserved[5U + 8U] = {0U};
+  uint8_t reserved[4U + 8U] = {0U};
 };
 }  // namespace ge
 

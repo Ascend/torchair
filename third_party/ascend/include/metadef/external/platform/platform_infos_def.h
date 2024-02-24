@@ -61,6 +61,7 @@ class PlatFormInfos {
   std::map<std::string, std::vector<std::string>> GetFixPipeDtypeMap();
   void SetFixPipeDtypeMap(const std::map<std::string, std::vector<std::string>> &fixpipe_dtype_map);
   void SetCoreNumByCoreType(const std::string &core_type);
+  void SetCoreNum(const uint32_t &core_num);
  private:
   uint32_t core_num_ {0};
   PlatFormInfosImplPtr platform_infos_impl_ {nullptr};

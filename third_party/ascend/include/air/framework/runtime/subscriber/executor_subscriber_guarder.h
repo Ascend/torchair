@@ -16,7 +16,6 @@
 
 #ifndef AIR_CXX_INC_FRAMEWORK_RUNTIME_EXECUTOR_SUBSCRIBER_GUARDER_H_
 #define AIR_CXX_INC_FRAMEWORK_RUNTIME_EXECUTOR_SUBSCRIBER_GUARDER_H_
-#include <utility>
 
 #include "framework/common/ge_visibility.h"
 #include "common/checker.h"

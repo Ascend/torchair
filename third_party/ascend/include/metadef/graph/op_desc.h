@@ -21,7 +21,6 @@
 #include "detail/attributes_holder.h"
 #include "graph/range_vistor.h"
 #include "graph/ge_tensor.h"
-
 namespace ge {
 using std::map;
 using std::pair;
@@ -83,6 +82,8 @@ class OpDesc : public std::enable_shared_from_this<OpDesc>, public AttrHolder {
   const char *GetNamePtr() const;
 
   void SetName(const std::string &name);
+
+  void SetNamePtr(const char_t *name);
 
   std::string GetType() const;
   const char *GetTypePtr() const;
@@ -199,8 +200,6 @@ class OpDesc : public std::enable_shared_from_this<OpDesc>, public AttrHolder {
 
   void SetAtomicTilingFuncInfo(void *atomic_tiling_func_info);
 
-  graphStatus VerifyIR();
-
   graphStatus DefaultInferDataType();
 
   void AddInferFunc(const std::function<graphStatus(Operator &)> &func);
@@ -237,10 +236,12 @@ class OpDesc : public std::enable_shared_from_this<OpDesc>, public AttrHolder {
   void AppendIrOutput(std::string name, IrOutputType output_type);
   const std::vector<std::pair<std::string, IrOutputType>> &GetIrOutputs() const;
 
-  void RegisterDataTypeSymbol(const std::string &datatype_symbol, const TensorType &type_range);
-  void RegisterDataTypeSymbol(const std::string &datatype_symbol, const ListTensorType &type_range);
-  void RegisterIrInputDataTypeSymbol(const std::string &input_name, const std::string &datatype_symbol);
-  void RegisterIrOutputDataTypeSymbol(const std::string &output_name, const std::string &datatype_symbol);
+  void SetInputDtypeSymbol(const std::string &ir_input, IrInputType type, const std::string &sym_id);
+  void SetOutputDtypeSymbol(const std::string &ir_output, IrOutputType type, const std::string &sym_id);
+  void DeclareDtypeSymbol(const std::string &sym_id, const TensorType &type);
+  void DeclareDtypeSymbol(const std::string &sym_id, const ListTensorType &type);
+  void DeclareDtypeSymbol(const std::string &sym_id, const Promote &type);
+  void ShareDtypeSymbolsFrom(const ge::OpDesc &src);
 
   using AttrHolder::AddRequiredAttr;
   using AttrHolder::DelAttr;
@@ -254,6 +255,10 @@ class OpDesc : public std::enable_shared_from_this<OpDesc>, public AttrHolder {
   int64_t GetId() const;
   void SetStreamId(const int64_t stream_id);
   int64_t GetStreamId() const;
+  void SetAttachedStreamId(const int64_t stream_id);
+  int64_t GetAttachedStreamId() const;
+  bool HasValidAttachedStreamId() const;
+
   void SetInputName(const std::vector<std::string> &input_name);
   std::vector<std::string> GetInputName() const;
   void SetSrcName(const std::vector<std::string> &src_name);
@@ -313,6 +318,8 @@ class OpDesc : public std::enable_shared_from_this<OpDesc>, public AttrHolder {
   void RemoveSubgraphInstanceName(const std::string &name);
 
   graphStatus GetSubgraphNameByInstanceName(const std::string &instance_name, std::string &subgraph_name) const;
+
+  graphStatus GetPromoteIrInputList(std::vector<std::vector<size_t>> &promote_index_list);
 
  protected:
   ProtoAttrMap &MutableAttrMap() override;

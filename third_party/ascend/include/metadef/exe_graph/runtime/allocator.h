@@ -33,7 +33,7 @@ struct AllocatorDesc {
     return std::tie(placement, usage) < std::tie(other.placement, other.usage);
   }
   std::string GetKey() const {
-    return "Allocator-" + std::to_string(placement) + "-" + std::to_string(static_cast<int32_t>(usage));
+    return "Allocator-" + std::to_string(placement);
   }
 };
 }

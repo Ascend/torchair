@@ -96,13 +96,27 @@ class OpDescUtils {
                                                      GetConstInputOnRuntimeFun get_const_input_func);
   static bool HasCallbackGetConstInputFunc(const Operator &op);
   static std::map<size_t, std::pair<size_t, size_t>> GetInputIrIndexes2InstanceIndexesPairMap(const OpDescPtr &op_desc);
+  static std::map<size_t, std::pair<size_t, size_t>> GetOutputIrIndexes2InstanceIndexesPairMap(
+      const OpDescPtr &op_desc);
+
+  static graphStatus GetIrInputInstanceDescRange(const OpDescPtr &op,
+                                                 std::map<size_t, std::pair<size_t, size_t>> &ir_input_2_range);
+
+  static graphStatus GetIrInputRawDescRange(const OpDescPtr &op,
+                                            std::map<size_t, std::pair<size_t, size_t>> &ir_input_2_range);
+
+  static graphStatus GetIrOutputDescRange(const OpDescPtr &op,
+                                          std::map<size_t, std::pair<size_t, size_t>> &ir_output_2_range);
 
   static ge::graphStatus GetInputIrIndexByInstanceIndex(const OpDescPtr &op_desc,
                                                         size_t instance_index, size_t &ir_index);
   static ge::graphStatus GetInstanceNum(const OpDescPtr &op_desc, size_t ir_index, size_t start_index,
                                         const std::map<uint32_t, std::string> &valid_index_2_names,
                                         size_t &instance_num);
-
+  static ge::graphStatus GetPromoteIrInputList(const OpDescPtr &op_desc,
+                                               std::vector<std::vector<size_t>> &promote_index_list);
+  static ge::graphStatus GetPromoteInstanceInputList(const OpDescPtr &op_desc,
+                                                     std::vector<std::vector<size_t>> &promote_index_list);
  private:
   static GeTensorPtr MutableWeights(ge::OpDesc& op_desc);
   static GeTensorPtr MutableWeights(const ge::OpDescPtr op_desc);

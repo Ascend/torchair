@@ -25,7 +25,6 @@ namespace ge {
 class GraphUtilsEx {
  public:
   // Detach from ComputeGraph
-  static graphStatus Verify(const ComputeGraphPtr &graph);
   static graphStatus InferOriginFormat(const ComputeGraphPtr &graph);
   static graphStatus InferShapeInNeed(const ComputeGraphPtr &graph);
 

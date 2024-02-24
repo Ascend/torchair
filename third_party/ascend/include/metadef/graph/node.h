@@ -133,7 +133,19 @@ class Node : public std::enable_shared_from_this<Node> {
    * @return
    */
   std::vector<Node *> GetInNodesPtr() const;
+
+  /**
+   * 获取Node的输出节点的智能指针对象，存在拷贝所以性能较差，适用于边遍历边修改场景
+   * @return
+   */
   Vistor<NodePtr> GetOutNodes() const;
+
+  /**
+ * 获取Node的输出节点的裸指针，性能优于`Vistor<NodePtr> GetOutNodes()`, 适用于只读场景
+ * @return
+ */
+  std::vector<Node *> GetOutNodesPtr() const;
+
   AnchorPtr GetInAnchor(const int32_t idx) const;
   AnchorPtr GetOutAnchor(const int32_t idx) const;
 
@@ -143,14 +155,22 @@ class Node : public std::enable_shared_from_this<Node> {
   Vistor<NodePtr> GetInDataNodes() const;
   // All in Control nodes
   Vistor<NodePtr> GetInControlNodes() const;
-  // All in Data nodes and Control nodes
+
+  /**
+   * 等价于`Vistor<NodePtr> GetInNodes()`
+   * @return
+   */
   Vistor<NodePtr> GetInAllNodes() const;
 
   // All out Data nodes
   Vistor<NodePtr> GetOutDataNodes() const;
   // All out Control nodes
   Vistor<NodePtr> GetOutControlNodes() const;
-  // All out Data nodes and Control nodes
+
+  /**
+   * 等价于`Vistor<NodePtr> GetOutNodes()`
+   * @return
+   */
   Vistor<NodePtr> GetOutAllNodes() const;
 
   uint32_t GetOutDataNodesSize() const;

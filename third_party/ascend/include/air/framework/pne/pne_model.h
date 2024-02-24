@@ -46,6 +46,7 @@ class PneModel {
 
  public:
   inline Status AddSubModel(const shared_ptr<PneModel> &submodel, const std::string &type = "") {
+    const std::lock_guard<std::mutex> lk(pne_model_mutex_);
     if (submodel == nullptr) {
       GELOGE(INTERNAL_ERROR, "submodel is nullptr, type = %s", type.c_str());
       return INTERNAL_ERROR;
@@ -60,6 +61,7 @@ class PneModel {
   }
 
   inline const std::shared_ptr<PneModel> GetSubmodel(const std::string &name) const {
+    const std::lock_guard<std::mutex> lk(pne_model_mutex_);
     const auto &it = submodels_.find(name);
     if (it == submodels_.end()) {
       return nullptr;
@@ -67,9 +69,13 @@ class PneModel {
     return it->second;
   }
 
-  inline const std::map<std::string, std::shared_ptr<PneModel>> &GetSubmodels() const { return submodels_; }
+  inline const std::map<std::string, std::shared_ptr<PneModel>> &GetSubmodels() const {
+    const std::lock_guard<std::mutex> lk(pne_model_mutex_);
+    return submodels_;
+  }
 
   inline void SetSubmodels(std::map<std::string, std::shared_ptr<PneModel>> submodels) {
+    const std::lock_guard<std::mutex> lk(pne_model_mutex_);
     submodels_ = std::move(submodels);
   }
 
@@ -102,6 +108,11 @@ class PneModel {
   }
 
   inline const std::shared_ptr<ModelCompileResource> GetCompileResource() const { return compile_resource_; }
+
+  inline void SetDeviceId(const int32_t device_id) { device_id_ = device_id; }
+
+  inline int32_t GetDeviceId() const { return device_id_; }
+
  public:
   virtual Status SerializeModel(ModelBufferData &model_buff) = 0;
 
@@ -114,11 +125,24 @@ class PneModel {
   virtual std::string GetLogicDeviceId() const { return ""; }
 
   virtual Status SetLogicDeviceId(const std::string &logic_device_id) {
-    (void)logic_device_id;
+    const std::lock_guard<std::mutex> lk(pne_model_mutex_);
+    for (const auto &submdel : submodels_) {
+      (void)submdel.second->SetLogicDeviceId(logic_device_id);
+    }
     return SUCCESS;
-  };
+  }
+
+  virtual std::string GetRedundantLogicDeviceId() const { return ""; }
+
+  virtual Status SetRedundantLogicDeviceId(const std::string &logic_device_id) {
+    for (const auto &submdel : submodels_) {
+      (void)submdel.second->SetRedundantLogicDeviceId(logic_device_id);
+    }
+    return SUCCESS;
+  }
 
  private:
+  mutable std::mutex pne_model_mutex_;
   std::map<std::string, std::shared_ptr<PneModel>> submodels_;
   std::shared_ptr<ModelRelation> model_relation_;
   std::shared_ptr<ModelDeployResource> deploy_resource_;
@@ -127,6 +151,7 @@ class PneModel {
   std::string model_name_;
   std::string model_type_;
   uint32_t model_id_ = INVALID_MODEL_ID;
+  int32_t device_id_ = -1;
 };
 
 using PneModelPtr = std::shared_ptr<PneModel>;

@@ -22,5 +22,6 @@
 
 namespace ge {
 ge::graphStatus RecoverIrDefinitions(const ge::ComputeGraphPtr &graph, const vector<std::string> &attr_names = {});
+ge::graphStatus RecoverOpDescIrDefinition(const ge::OpDescPtr &desc, const std::string &op_type = "");
 } // namespace ge
 #endif  // GRAPH_IR_DEFINITIONS_RECOVER_H_

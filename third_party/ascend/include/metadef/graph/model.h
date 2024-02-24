@@ -32,7 +32,10 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY Model : public AttrHolder {
 
   Model(const std::string &name, const std::string &custom_version);
 
+  Model(const char_t *name, const char_t *custom_version);
+
   std::string GetName() const;
+
   void SetName(const std::string &name);
 
   uint32_t GetVersion() const;
@@ -57,8 +60,8 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY Model : public AttrHolder {
 
   graphStatus Save(Buffer &buffer, const bool is_dump = false) const;
   graphStatus Save(proto::ModelDef &model_def, const bool is_dump = false) const;
-
-  graphStatus SaveToFile(const std::string &file_name) const;
+  graphStatus SaveWithoutSeparate(Buffer &buffer, const bool is_dump = false) const;
+  graphStatus SaveToFile(const std::string &file_name, const bool force_separate = false) const;
   // Model will be rewrite
   static graphStatus Load(const uint8_t *data, size_t len, Model &model);
   graphStatus Load(ge::proto::ModelDef &model_def);
@@ -74,6 +77,7 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY Model : public AttrHolder {
   void Init();
   graphStatus Load(ge::proto::ModelDef &model_def, const std::string &path);
   graphStatus Save(Buffer &buffer, const std::string &path, const bool is_dump = false) const;
+  graphStatus SaveSeparateModel(Buffer &buffer, const std::string &path, const bool is_dump = false) const;
   AttrStore attrs_;
   friend class ModelSerializeImp;
   friend class GraphDebugImp;

@@ -35,10 +35,26 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY Shape {
   ~Shape() = default;
   explicit Shape(const std::vector<int64_t> &dims);
 
+  /**
+   * `GetDimNum()`标识有效的dim的个数，跟`GetDims().size()`不等价，调用方按需选择
+   * 比如如果dim是[-2], 维度未可知时：
+   * GetDimNum()会返回0；
+   * 而GetDims().size()会返回dim的个数，即1；
+   * 另外如果需要判断是否是标量，推荐使用接口`GetDims.size() == 0U`来判断
+   * @return
+   */
   size_t GetDimNum() const;
   // If the idx is invalid, return 0
   int64_t GetDim(size_t idx) const;
   graphStatus SetDim(size_t idx, int64_t value);
+  /**
+   * `GetDims`标识dim的个数，跟`GetDimNum()`不等价，调用方按需选择
+   * 比如如果dim是[-2], 维度未可知时：
+   * GetDimNum()会返回0；
+   * 而GetDims().size()会返回dim的个数，即1；
+   * 另外如果需要判断是否是标量，推荐使用接口`GetDims.size() == 0U`来判断
+   * @return
+   */
   std::vector<int64_t> GetDims() const;
   /**
    * 获取shape的各个维度的dim值的乘积

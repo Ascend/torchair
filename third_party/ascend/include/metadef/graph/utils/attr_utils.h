@@ -80,6 +80,8 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY AttrUtils {
   static bool GetBool(ConstAttrHolderAdapter &&obj, const std::string &name, bool &value);
   static bool GetListBool(ConstAttrHolderAdapter &&obj, const std::string &name, std::vector<bool> &value);
   static bool GetStr(ConstAttrHolderAdapter &&obj, const std::string &name, std::string &value);
+  static bool GetStr(ConstAttrHolderAdapter &&obj, const std::string &name1, const std::string &name2,
+                     std::string &value);
   static const std::string *GetStr(ConstAttrHolderAdapter &&obj, const std::string &name);
   static bool GetListStr(ConstAttrHolderAdapter &&obj, const std::string &name, std::vector<std::string> &value);
   static bool GetTensorDesc(ConstAttrHolderAdapter &&obj, const std::string &name, GeTensorDesc &value);
@@ -125,9 +127,14 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY AttrUtils {
 
   static OpDescPtr CopyOpDesc(const ConstOpDescPtr &org_op_desc);
   static std::string GetAllAttrsStr(ConstAttrHolderAdapter &&obj);
+  static std::string GetAllAttrsStr(const std::map<std::string, AnyValue> &attr_map);
   static std::map<std::string, AnyValue> GetAllAttrs(ConstAttrHolderAdapter &&obj);
+  static std::map<std::string, AnyValue> GetAllAttrsWithFilter(ConstAttrHolderAdapter &&obj,
+                                                               const AttrNameFilter &attr_filter);
   static std::string GetAttrsStrAfterRid(ConstAttrHolderAdapter &&obj, const std::set<std::string> &un_compute_attrs);
   static bool ClearAllAttrs(AttrHolderAdapter &&obj);
+  static std::string ValueTypeToSerialString(const AnyValue::ValueType value_type);
+  static AnyValue::ValueType SerialStringToValueType(const std::string &value_type_string);
 
   class AttrHolderAdapter {
    public:

@@ -23,7 +23,7 @@
 #include <vector>
 #include <memory>
 
-#include "external/ge/ge_api_error_codes.h"
+#include "external/ge_common/ge_api_error_codes.h"
 #include "external/graph/types.h"
 #include "register/register_error_codes.h"
 #include "register/register_fmk_types.h"

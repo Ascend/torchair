@@ -29,6 +29,7 @@ const std::string TBE_PATTERN_OUTPUT_NODE = "OutputData";
 const std::string OP_PATTERN_ELEMWISE = "ElemWise";
 const std::string OP_PATTERN_COMMONREDUCE = "CommReduce";
 const std::string OP_PATTERN_BROAD_CAST = "Broadcast";
+const std::string OP_PATTERN_BROAD_CAST_NZ = "Broadcast_Nz";
 const std::string OP_PATTERN_SEGMENT = "Segment";
 const std::string OP_PATTERN_MAXPOOL = "MaxPool";
 const std::string OP_PATTERN_CONV = "Convolution";
@@ -62,6 +63,7 @@ const std::string OP_PATTERN_AVGPOOLUPDATE = "AvgPoolUpdate";
 const std::vector<std::string> OP_PATTERN_VEC{OP_PATTERN_ELEMWISE,
                                               OP_PATTERN_COMMONREDUCE,
                                               OP_PATTERN_BROAD_CAST,
+                                              OP_PATTERN_BROAD_CAST_NZ,
                                               OP_PATTERN_SEGMENT,
                                               OP_PATTERN_MAXPOOL,
                                               OP_PATTERN_CONV,

@@ -25,7 +25,7 @@
 
 #include "common/opskernel/ge_task_info.h"
 #include "common/opskernel/ops_kernel_info_types.h"
-#include "common/ge_inner_error_codes.h"
+#include "common/ge_common/ge_inner_error_codes.h"
 #include "graph/node.h"
 #include "external/graph/operator.h"
 
@@ -82,6 +82,13 @@ class OpsKernelInfoStore {
     (void)node_vec;
     return SUCCESS;
   }
+
+  // prepare task for op
+  virtual Status PrepareTaskAsync(GETaskInfo &task) {
+    (void)task;
+    return SUCCESS;
+  }
+
   // load task for op
   virtual Status LoadTask(GETaskInfo &task) {
     (void)task;

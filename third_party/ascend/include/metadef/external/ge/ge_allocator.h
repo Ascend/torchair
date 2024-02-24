@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-#ifndef AIR_CXX_INC_EXTERNAL_GE_ALLOCATOR_H_
-#define AIR_CXX_INC_EXTERNAL_GE_ALLOCATOR_H_
+#ifndef METADEF_CXX_INC_EXTERNAL_GE_ALLOCATOR_H_
+#define METADEF_CXX_INC_EXTERNAL_GE_ALLOCATOR_H_
 #include <cstdlib>
+#include <memory>
 namespace ge {
 class MemBlock;
 class Allocator {
- public:
+public:
   Allocator() = default;
   virtual ~Allocator() = default;
   Allocator(const Allocator &) = delete;
@@ -37,7 +38,7 @@ class Allocator {
 };
 
 class MemBlock {
- public:
+public:
   MemBlock(Allocator &allocator, void *addr, size_t block_size)
       : allocator_(allocator), addr_(addr), count_(1U), block_size_(block_size) {}
   virtual ~MemBlock() = default;
@@ -49,6 +50,9 @@ class MemBlock {
   }
   size_t GetSize() const {
     return block_size_;
+  }
+  void SetSize(const size_t mem_size) {
+    block_size_ = mem_size;
   }
   void Free() {
     if (GetCount() > 0U) {
@@ -67,13 +71,13 @@ class MemBlock {
   size_t GetCount() const {
     return count_;
   }
-
- private:
+private:
   Allocator &allocator_;
   void *addr_;
   size_t count_;
   size_t block_size_;
 };
+
 using AllocatorPtr = std::shared_ptr<Allocator>;
 }  // namespace ge
-#endif  // AIR_CXX_INC_EXTERNAL_GE_ALLOCATOR_H_
+#endif  // METADEF_CXX_INC_EXTERNAL_GE_ALLOCATOR_H_

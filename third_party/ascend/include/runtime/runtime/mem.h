@@ -101,6 +101,14 @@ typedef enum tagRtMemcpyKind {
     RT_MEMCPY_RESERVED,
 } rtMemcpyKind_t;
 
+typedef enum tagRtCmoType {
+    RT_CMO_PREFETCH = 6, // Preload
+    RT_CMO_WRITEBACK, // Prewriteback
+    RT_CMO_INVALID, // invalid
+    RT_CMO_FLUSH, // flush
+    RT_CMO_RESERVED,
+} rtCmoOpCode_t;
+
 typedef enum tagRtMemInfoType {
     RT_MEMORYINFO_DDR,
     RT_MEMORYINFO_HBM,
@@ -371,6 +379,19 @@ RTS_API rtError_t rtInvalidCache(void *base, size_t len);
 RTS_API rtError_t rtMemcpy(void *dst, uint64_t destMax, const void *src, uint64_t cnt, rtMemcpyKind_t kind);
 
 /**
+ * @ingroup dvrt_mem for mbuff
+ * @brief synchronized memcpy
+ * @param [in] dst   destination address pointer
+ * @param [in] Max length of destination address memory
+ * @param [in] src   source address pointer
+ * @param [in] cnt   the number of byte to copy
+ * @param [in] kind   memcpy type
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ */
+RTS_API rtError_t rtMemcpyEx(void *dst, uint64_t destMax, const void *src, uint64_t cnt, rtMemcpyKind_t kind);
+
+/**
  * @ingroup dvrt_mem
  * @brief host task memcpy
  * @param [in] dst   destination address pointer
@@ -398,6 +419,35 @@ RTS_API rtError_t rtMemcpyHostTask(void * const dst, const uint64_t destMax, con
  */
 RTS_API rtError_t rtMemcpyAsync(void *dst, uint64_t destMax, const void *src, uint64_t cnt, rtMemcpyKind_t kind,
                                 rtStream_t stm);
+
+/**
+ * @ingroup dvrt_mem
+ * @brief asynchronized memcpy
+ * @param [in] dst   destination address pointer
+ * @param [in] Max length of destination address memory
+ * @param [in] src   source address pointer
+ * @param [in] cnt   the number of byte to copy
+ * @param [in] kind   memcpy type, not check
+ * @param [in] stm   asynchronized task stream
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ */
+RTS_API rtError_t rtMemcpyAsyncWithoutCheckKind(void *dst, uint64_t destMax, const void *src, uint64_t cnt,
+                                                rtMemcpyKind_t kind, rtStream_t stm);
+
+/**
+ * @ingroup dvrt_mem
+ * @brief dsa update memcpy
+ * @param [in] streamId dsa streamId
+ * @param [in] taskId dsa
+ * @param [in] src   source device address pointer
+ * @param [in] cnt   the number of byte to copy
+ * @param [in] stm   asynchronized task stream
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ */
+RTS_API rtError_t rtLaunchSqeUpdateTask(uint32_t streamId, uint32_t taskId, void *src, uint64_t cnt,
+                                        rtStream_t stm);
 
 /**
  * @ingroup dvrt_mem
@@ -442,6 +492,46 @@ typedef struct {
 
 RTS_API rtError_t rtMemcpyAsyncPtr(void *memcpyAddrInfo, uint64_t destMax, uint64_t count,
                                    rtMemcpyKind_t kind, rtStream_t stream, uint32_t qosCfg);
+
+/**
+ * @ingroup dvrt_mem
+ * @brief launch common cmo task on the stream.
+ * @param [in] cmoAddrInfo      cmo task info
+ * @param [in] destMax          destMax
+ * @param [in] cmoOpCode        opcode
+ * @param [in] stm              launch task on the stream
+ * @param [in] flag             flag
+ * @return RT_ERROR_NONE for ok, others failed
+ */
+typedef struct {
+    uint32_t resv0;
+    uint32_t resv1;
+    uint16_t num_outer;
+    uint16_t num_inner;
+    uint32_t len_inner;
+    uint64_t src;
+    uint32_t stride_outer;
+    uint32_t stride_inner;
+} rtCmoAddrInfo;
+
+RTS_API rtError_t rtCmoAddrTaskLaunch(void *cmoAddrInfo, uint64_t destMax, rtCmoOpCode_t cmoOpCode,
+    rtStream_t stm, uint32_t flag);
+
+/**
+ * @ingroup dvrt_mem
+ * @brief asynchronized memcpy
+ * @param [in] dst   destination address pointer
+ * @param [in] dstMax length of destination address memory
+ * @param [in] dstOffset
+ * @param [in] src   source address pointer
+ * @param [in] cnt   the number of byte to copy
+ * @param [in] srcOffset
+ * @param [in] stm   asynchronized task stream
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ */
+RTS_API rtError_t rtMemcpyD2DAddrAsync(void *dst, uint64_t dstMax, uint64_t dstOffset, const void *src,
+    uint64_t cnt, uint64_t srcOffset, rtStream_t stm);
 
 /**
  * @ingroup dvrt_mem
@@ -717,6 +807,162 @@ RTS_API rtError_t rtSetIpcMemPid(const char_t *name, int32_t pid[], int32_t num)
  * @return RT_ERROR_DRV_ERR for driver error
  */
 RTS_API rtError_t rtRDMADBSend(uint32_t dbIndex, uint64_t dbInfo, rtStream_t stm);
+
+
+typedef struct DrvMemHandle {
+    int32_t id;
+    uint32_t side;
+    uint32_t devid;
+    uint64_t pg_num;
+} rtDrvMemHandle_t;
+
+typedef struct DrvMemProp {
+    uint32_t side;
+    uint32_t devid;
+    uint32_t module_id;
+
+    uint32_t pg_type;
+    uint32_t mem_type;
+    uint64_t reserve;
+} rtDrvMemProp_t;
+
+typedef enum DrvMemHandleType {
+    RT_MEM_HANDLE_TYPE_NONE = 0x0,
+} rtDrvMemHandleType;
+
+typedef enum DrvMemGranularityOptions {
+    RT_MEM_ALLOC_GRANULARITY_MINIMUM = 0x0,
+    RT_MEM_ALLOC_GRANULARITY_RECOMMENDED,
+    RT_MEM_ALLOC_GRANULARITY_INVALID,
+} rtDrvMemGranularityOptions;
+
+/**
+ * @ingroup dvrt_mem
+ * @brief This command is used to reserve a virtual address range
+ * @attention Only support ONLINE scene
+ * @param [in] devPtr Resulting pointer to start of virtual address range allocated.
+ * @param [in] size Size of the reserved virtual address range requested.
+ * @param [in] alignment Alignment of the reserved virtual address range requested,  Currently unused, must be zero.
+ * @param [in] devAddr Expected virtual address space start address Currently, Currently unused, must be zero.
+ * @param [in] flags currently unused, must be zero.
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ * @return RT_ERROR_DRV_ERR for driver error
+ */
+RTS_API rtError_t rtReserveMemAddress(void** devPtr, size_t size, size_t alignment, void *devAddr, uint64_t flags);
+
+/**
+ * @ingroup dvrt_mem
+ * @brief This command is used to free a virtual address range reserved by halMemAddressReserve.
+ * @attention Only support ONLINE scene.
+ * @param [in] devPtr Starting address of the virtual address range to free.
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ * @return RT_ERROR_DRV_ERR for driver error
+ */
+RTS_API rtError_t rtReleaseMemAddress(void* devPtr);
+
+/**
+ * @ingroup dvrt_mem
+ * @brief This command is used to alloc physical memory.
+ * @attention Only support ONLINE scene.
+ * @param [out] handle Value of handle returned,all operations on this allocation are to be performed using this handle.
+ * @param [in] size Size of the allocation requested.
+ * @param [in] prop Properties of the allocation to create.
+ * @param [in] flags Currently unused, must be zero.
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ * @return RT_ERROR_DRV_ERR for driver error
+ */
+RTS_API rtError_t rtMallocPhysical(rtDrvMemHandle_t** handle, size_t size, rtDrvMemProp_t* prop, uint64_t flags);
+
+/**
+ * @ingroup dvrt_mem
+ * @brief This command is used to free physical memory.
+ * @attention Only support ONLINE scene.
+ * @param [in] handle Value of handle which was returned previously by halMemCreate.
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ * @return RT_ERROR_DRV_ERR for driver error
+ */
+RTS_API rtError_t rtFreePhysical(rtDrvMemHandle_t* handle);
+
+/**
+ * @ingroup dvrt_mem
+ * @brief This command is used to map an allocation handle to a reserved virtual address range.
+ * @attention Only support ONLINE scene.
+ * @param [in] devPtr Address where memory will be mapped.
+ * @param [in] size Size of the memory mapping.
+ * @param [in] offset Currently unused, must be zero.
+ * @param [in] handle Value of handle which was returned previously by halMemCreate.
+ * @param [in] flag Currently unused, must be zero.
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ * @return RT_ERROR_DRV_ERR for driver error
+ */
+RTS_API rtError_t rtMapMem(void* devPtr, size_t size, size_t offset, rtDrvMemHandle_t* handle, uint64_t flags);
+
+/**
+ * @ingroup dvrt_mem
+ * @brief This command is used to unmap the backing memory of a given address range.
+ * @attention Only support ONLINE scene.
+ * @param [in] devPtr Starting address for the virtual address range to unmap.
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ * @return RT_ERROR_DRV_ERR for driver error
+ */
+RTS_API rtError_t rtUnmapMem(void* devPtr);
+
+/**
+* @ingroup dvrt_mem
+* @brief This command is used to export an allocation to a shareable handle.
+* @attention Only support ONLINE scene. Not support compute group.
+* @param [in] handle Handle for the memory allocation.
+* @param [in] handleType Currently unused, must be MEM_HANDLE_TYPE_NONE.
+* @param [in] flags Currently unused, must be zero.
+* @param [out] shareableHandle Export a shareable handle.
+* @return DRV_ERROR_NONE : success
+* @return DV_ERROR_XXX : fail
+*/
+RTS_API rtError_t rtMemExportToShareableHandle(rtDrvMemHandle_t* handle, rtDrvMemHandleType handleType,
+    uint64_t flags, uint64_t *shareableHandle);
+
+/**
+* @ingroup dvrt_mem
+* @brief This command is used to import an allocation from a shareable handle.
+* @attention Only support ONLINE scene. Not support compute group.
+* @param [in] shareableHandle Import a shareable handle.
+* @param [in] devId Device id.
+* @param [out] handle Value of handle returned, all operations on this allocation are to be performed using this handle.
+* @return DRV_ERROR_NONE : success
+* @return DV_ERROR_XXX : fail
+*/
+RTS_API rtError_t rtMemImportFromShareableHandle(uint64_t shareableHandle, int32_t devId, rtDrvMemHandle_t** handle);
+
+/**
+* @ingroup dvrt_mem
+* @brief This command is used to configure the process whitelist which can use shareable handle.
+* @attention Only support ONLINE scene. Not support compute group.
+* @param [in] shareableHandle A shareable handle.
+* @param [in] pid Host pid whitelist array.
+* @param [in] pid_num Number of pid arrays.
+* @return DRV_ERROR_NONE : success
+* @return DV_ERROR_XXX : fail
+*/
+RTS_API rtError_t rtMemSetPidToShareableHandle(uint64_t shareableHandle, int pid[], uint32_t pidNum);
+
+/**
+* @ingroup dvrt_mem
+* @brief This command is used to calculate either the minimal or recommended granularity.
+* @attention Only support ONLINE scene.
+* @param [in] prop Properties of the allocation.
+* @param [in] option Determines which granularity to return.
+* @param [out] granularity Returned granularity.
+* @return DRV_ERROR_NONE : success
+* @return DV_ERROR_XXX : fail
+*/
+RTS_API rtError_t rtMemGetAllocationGranularity(rtDrvMemProp_t *prop, rtDrvMemGranularityOptions option,
+    size_t *granularity);
 
 #if defined(__cplusplus)
 }

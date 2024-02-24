@@ -155,7 +155,9 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY AttrHolder {
   graphStatus GetAttr(const std::string &name, AnyValue &value) const;
 
   bool HasAttr(const std::string &name) const;
-
+  bool HasRequiredAttr(const std::string &name) const {
+    return required_attrs_and_type_.find(name) != required_attrs_and_type_.end();
+  }
   graphStatus DelAttr(const std::string &name);
 
   void CopyAttrsFrom(const AttrHolder &holder);
@@ -163,7 +165,7 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY AttrHolder {
   void CopyFrom(const AttrHolder &holder);
 
   void SwapBase(AttrHolder &holder) {
-    required_attrs_.swap(holder.required_attrs_);
+    required_attrs_and_type_.swap(holder.required_attrs_and_type_);
     ext_attrs_.Swap(holder.ext_attrs_);
   }
   /**
@@ -211,11 +213,15 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY AttrHolder {
   bool DelExtAttr(const std::string &name) {
     return ext_attrs_.Erase(name);
   }
-
- protected:
   graphStatus AddRequiredAttr(const std::string &name);
+  graphStatus AddRequiredAttrWithType(const std::string &name, const std::string &type);
+  const std::unordered_map<std::string, std::string> &GetRequiredAttrWithType() const {
+    return required_attrs_and_type_;
+  }
+ protected:
   const std::set<std::string> GetAllAttrNames() const;
   const std::map<std::string, AnyValue> GetAllAttrs() const;
+  const std::map<std::string, AnyValue> GetAllAttrsWithFilter(const AttrNameFilter &attr_filter) const;
 
   virtual ProtoAttrMap &MutableAttrMap() = 0;
   virtual ConstProtoAttrMap &GetAttrMap() const = 0;
@@ -224,7 +230,7 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY AttrHolder {
   friend class AttrUtils;
   friend class OpDescUtils;
   friend class GraphUtils;
-  std::vector<std::string> required_attrs_;
+  std::unordered_map<std::string, std::string> required_attrs_and_type_;
 
  private:
   AnyMap ext_attrs_;

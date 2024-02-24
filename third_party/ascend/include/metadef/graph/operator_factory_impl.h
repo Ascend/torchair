@@ -79,6 +79,8 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY OperatorFactoryImpl {
 
   static InferAxisTypeInfoFunc GetInferAxisTypeInfoFunc(const std::string &operator_type);
 
+  static void SetRegisterOverridable(const bool &is_overridable);
+
   static graphStatus RegisterOperatorCreator(const std::string &operator_type, OpCreator const &op_creator);
 
   static graphStatus RegisterOperatorCreator(const std::string &operator_type, OpCreatorV2 const &op_creator);

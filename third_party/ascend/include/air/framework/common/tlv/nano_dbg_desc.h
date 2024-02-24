@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef INC_FRAMEWORK_COMMON_TLV_LITE_DBG_DESC_H_
-#define INC_FRAMEWORK_COMMON_TLV_LITE_DBG_DESC_H_
+#ifndef INC_FRAMEWORK_COMMON_TLV_NANO_DBG_DESC_H_
+#define INC_FRAMEWORK_COMMON_TLV_NANO_DBG_DESC_H_
 
 #include "framework/common/tlv/tlv.h"
 
@@ -45,7 +45,7 @@ struct DbgOpDescParamTlv1 {
   int32_t task_type;
   uint32_t block_dim;
   uint8_t datadump_is_multiop;
-  uint16_t l2_tlv_num;
+  uint32_t l2_tlv_list_len;
   uint8_t l2_tlv[0]; // TlvHead
 };
 
@@ -79,7 +79,7 @@ struct DbgInputDescParamTlv2 {
   uint64_t addr;
   uint64_t offset;
   uint64_t size;
-  uint16_t l3_tlv_num;
+  uint32_t l3_tlv_list_len;
   uint8_t  l3_tlv[0]; // TlvHead
 };
 
@@ -105,7 +105,7 @@ struct DbgOutputDescParamTlv2 {
   uint64_t addr;
   uint64_t offset;
   uint64_t size;
-  uint16_t l3_tlv_num;
+  uint32_t l3_tlv_list_len;
   uint8_t  l3_tlv[0]; // TlvHead
 };
 
@@ -119,7 +119,7 @@ struct DbgWorkspaceDescParamTlv2 {
   int32_t type;
   uint64_t data_addr;
   uint64_t size;
-  uint16_t l3_tlv_num;
+  uint32_t l3_tlv_list_len;
   uint8_t  l3_tlv[0]; // TlvHead
 };
 
@@ -135,7 +135,7 @@ struct DbgOpBufParamTlv2 {
   uint8_t type;
   uint64_t addr;
   uint64_t size;
-  uint16_t l3_tlv_num;
+  uint32_t l3_tlv_list_len;
   uint8_t  l3_tlv[0]; // TlvHead
 };
 
@@ -152,7 +152,7 @@ struct DbgOpMemInfoTlv2 {
   uint64_t weight_mem_size;
   uint64_t workspace_mem_size;
   uint64_t total_mem_size;
-  uint16_t l3_tlv_num;
+  uint32_t l3_tlv_list_len;
   uint8_t l3_tlv[0]; // TlvHead
 };
 
@@ -168,4 +168,4 @@ struct DbgOpMemInfosTlv2 {
 }
 #endif
 
-#endif  // INC_FRAMEWORK_COMMON_TLV_LITE_DBG_DESC_H_
+#endif  // INC_FRAMEWORK_COMMON_TLV_NANO_DBG_DESC_H_

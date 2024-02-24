@@ -51,6 +51,16 @@ typedef enum tagRtDeviceMode {
 
 /**
  * @ingroup dvrt_base
+ * @brief device status.
+ */
+typedef enum tagRtDeviceStatus {
+    RT_DEVICE_STATUS_NORMAL = 0,
+    RT_DEVICE_STATUS_ABNORMAL,
+    RT_DEVICE_STATUS_END = 0xFFFF
+} rtDeviceStatus;
+
+/**
+ * @ingroup dvrt_base
  * @brief runtime exception numbers.
  */
 typedef enum tagRtExceptionType {
@@ -75,10 +85,19 @@ typedef enum tagRtCondition {
     RT_LESS_OR_EQUAL
 } rtCondition_t;
 
+typedef enum schemModeType {
+    RT_SCHEM_MODE_NORMAL = 0,
+    RT_SCHEM_MODE_BATCH,
+    RT_SCHEM_MODE_SYNC,
+    RT_SCHEM_MODE_END
+} rtschemModeType_t;
+
 typedef struct tagRtTaskCfgInfo {
     uint8_t qos;
     uint8_t partId;
-    uint8_t res[2]; // res
+    uint8_t schemMode; // rtschemModeType_t 0:normal;1:batch;2:sync
+    uint8_t res[1]; // res
+    uint32_t blockDimOffset;
 } rtTaskCfgInfo_t;
 
 /**
@@ -115,6 +134,17 @@ typedef struct rtFftsPlusExDetailInfo {
     uint16_t threadId;
 } rtFftsPlusExDetailInfo_t;
 
+typedef struct rtArgsSizeInfo {
+    void *infoAddr; /* info : atomicIndex|input num input offset|size|size */
+    uint32_t atomicIndex;
+} rtArgsSizeInfo_t;
+
+typedef struct rtExceptionArgsInfo {
+    uint32_t argsize;
+    void *argAddr;
+    rtArgsSizeInfo_t sizeInfo;
+}rtExceptionArgsInfo_t;
+
 typedef struct rtExceptionExpandInfo {
     rtExceptionExpandType_t type;
     union {
@@ -129,6 +159,7 @@ typedef struct rtExceptionInfo {
     uint32_t deviceid;
     uint32_t retcode;
     rtExceptionExpandInfo_t expandInfo;
+    rtExceptionArgsInfo_t exceptionArgs;
 } rtExceptionInfo_t;
 
 typedef void (*rtErrorCallback)(rtExceptionType);
@@ -210,6 +241,7 @@ typedef struct rtProfCommandHandle {
     uint32_t devIdList[RT_PROF_MAX_DEV_NUM];
     uint32_t modelId;
     uint32_t type;
+    uint32_t cacheFlag;
     rtCommandHandleParams_t commandHandleParams;
 } rtProfCommandHandle_t;
 
@@ -344,15 +376,22 @@ RTS_API rtError_t rtSetExceptCallback(rtErrorCallback callback);
  */
 RTS_API rtError_t rtSetTaskFailCallback(rtTaskFailCallback callback);
 
+typedef enum DevCallBackDir {
+    DEV_CB_POS_FRONT = 1,
+    DEV_CB_POS_BACK = 2,
+    DEV_CB_POS_END
+} rtDevCallBackDir_t;
 /**
  * @ingroup dvrt_base
- * @brief register callback for deviceid
- * @param [in] uniName unique register name, can't be null
+ * @brief register callback for deviceid by position
+ * @param [in] regName unique register name, can't be null
  * @param [in] callback Device state callback function
+ * @param [in] notifyPos callback notify Postion
  * @param [out] NA
  * @return RT_ERROR_NONE for ok
  */
-RTS_API rtError_t rtRegDeviceStateCallback(const char_t *regName, rtDeviceStateCallback callback);
+RTS_API rtError_t rtRegDeviceStateCallbackEx(const char_t *regName, rtDeviceStateCallback callback,
+    const rtDevCallBackDir_t notifyPos);
 
 /**
  * @ingroup dvrt_base
@@ -410,20 +449,6 @@ RTS_API rtError_t rtLabelDestroy(rtLabel_t lbl);
 
 /**
  * @ingroup dvrt_base
- * @brief label switch instance
- * @param [in] ptr  address to get value compared
- * @param [in] condition
- * @param [in] val  to compare
- * @param [in] true_label   goto label
- * @param [in] stm  to submit label_switch task
- * @return RT_ERROR_NONE for ok
- * @return RT_ERROR_INVALID_VALUE for error input
- */
-RTS_API rtError_t rtLabelSwitch(void *ptr, rtCondition_t condition, uint32_t val, rtLabel_t trueLabel,
-                                rtStream_t stm);
-
-/**
- * @ingroup dvrt_base
  * @brief goto label instance
  * @param [in] lbl   goto label
  * @param [in] stm  to submit label_goto task
@@ -431,16 +456,6 @@ RTS_API rtError_t rtLabelSwitch(void *ptr, rtCondition_t condition, uint32_t val
  * @return RT_ERROR_INVALID_VALUE for error input
  */
 RTS_API rtError_t rtLabelGoto(rtLabel_t lbl, rtStream_t stm);
-
-/**
- * @ingroup dvrt_base
- * @brief name label instance
- * @param [in] lbl  instance
- * @param [in] name  label name
- * @return RT_ERROR_NONE for ok
- * @return RT_ERROR_INVALID_VALUE for error input
- */
-RTS_API rtError_t rtNameLabel(rtLabel_t lbl, const char_t *name);
 
 /**
  * @ingroup dvrt_base
@@ -533,6 +548,87 @@ RTS_API rtError_t rtStreamSetMode(rtStream_t stm, const uint64_t stmMode);
  * @return RT_ERROR_NONE for ok
  */
 RTS_API rtError_t rtStreamGetMode(rtStream_t const stm, uint64_t * const stmMode);
+
+#define RT_PROCESS_SIGN_LENGTH (49)
+
+typedef enum tagRtDevDrvProcessType {
+    RT_DEVDRV_PROCESS_CP1 = 0,   /* aicpu_scheduler */
+    RT_DEVDRV_PROCESS_CP2,       /* custom_process */
+    RT_DEVDRV_PROCESS_DEV_ONLY,  /* TDT */
+    RT_DEVDRV_PROCESS_QS,        /* queue_scheduler */
+    RT_DEVDRV_PROCESS_HCCP,      /* hccp server */
+    RT_DEVDRV_PROCESS_USER,      /* user proc, can bind many on host or device */
+    RT_DEVDRV_PROCESS_CPTYPE_MAX
+} rtDevDrvProcessType_t;
+
+typedef struct tagRtBindHostpidInfo {
+    int32_t hostPid;
+    uint32_t vfId;
+    uint32_t chipId;
+    int32_t mode;
+    rtDevDrvProcessType_t cpType;
+    uint32_t len;
+    char sign[RT_PROCESS_SIGN_LENGTH];
+} rtBindHostpidInfo;
+
+/**
+ * @ingroup dvrt_base
+ * @brief Bind Device custom-process to aicpu-process.
+ * @param [in] info The Information about the bound hostid.
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ * @return RT_ERROR_DRV_ERR for driver error
+ */
+RTS_API rtError_t rtBindHostPid(rtBindHostpidInfo info);
+
+/**
+ * @ingroup dvrt_base
+ * @brief Unbind Device custom-process to aicpu-process.
+ * @param [in] info The Information about the bound hostid.
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ * @return RT_ERROR_DRV_ERR for driver error
+ */
+RTS_API rtError_t rtUnbindHostPid(rtBindHostpidInfo info);
+
+/**
+ * @ingroup dvrt_base
+ * @brief Query the binding information of the devpid.
+ * @param [in] pid: dev pid
+ * @param [in] chipId chip id
+ * @param [in] vfId vf id
+ * @param [in] hostPid host pid
+ * @param [in] cpType type of custom-process
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ * @return RT_ERROR_DRV_ERR for driver error
+ */
+RTS_API rtError_t rtQueryProcessHostPid(int32_t pid, uint32_t *chipId, uint32_t *vfId, uint32_t *hostPid,
+    uint32_t *cpType);
+/**
+ * @ingroup dvrt_base
+ * @brief Sets the SSID of the shinared notify.
+ * @param [in] name share id name to be set
+ * @param [in] sdid whitelisted sdid
+ * @param [in] pid  whitelisted process
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ * @return RT_ERROR_DRV_ERR for driver error
+ */
+RTS_API rtError_t rtSetIpcNotifySuperPodPid(const char *name, uint32_t sdid, int32_t pid);
+ 
+/**
+ * @ingroup dvrt_base
+ * @brief Setting SSIDs of Shared Memory in Batches.
+ * @param [in] name Name used for sharing between processes
+ * @param [in] sdid whitelisted sdid
+ * @param [in] pid  host pid whitelist array
+ * @param [in] num  number of pid arrays
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ * @return RT_ERROR_DRV_ERR for driver error
+ */
+RTS_API rtError_t rtSetIpcMemorySuperPodPid(const char *name, uint32_t sdid, int32_t pid[], int32_t num);
 #if defined(__cplusplus)
 }
 #endif

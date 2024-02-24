@@ -22,6 +22,7 @@
 #include <string>
 #include "external/graph/types.h"
 #include "graph/ge_error_codes.h"
+#include "ge_common/ge_api_types.h"
 
 namespace ge {
 
@@ -41,6 +42,15 @@ std::string RealPath(const char_t *path);
  * @return 0 success, 1- fail.
  */
 int32_t CreateDir(const std::string &directory_path);
+
+/**
+ * @ingroup domi_common
+ * @brief  Recursively Creating a Directory with mode
+ * @param [in] directory_path  Path, which can be a multi-level directory.
+ * @param [in] mode  dir mode, E.G., 0700
+ * @return 0 success, 1- fail.
+ */
+int32_t CreateDir(const std::string &directory_path, uint32_t mode);
 
 /**
  * @ingroup domi_common
@@ -101,6 +111,14 @@ graphStatus SaveBinToFile(const char * const data, size_t length, const std::str
  * @return graphStatus GRAPH_SUCCESS: success, OTHERS: fail.
  */
 void SplitFilePath(const std::string &file_path, std::string &dir_path, std::string &file_name);
+
+/**
+ * @ingroup domi_common
+ * @brief  Get ASCEND_WORK_PATH environment variable
+ * @param [out] ascend_work_path ASCEND_WORK_PATH's value.
+ * @return graphStatus SUCCESS: success, OTHERS: fail.
+ */
+Status GetAscendWorkPath(std::string &ascend_work_path);
 }
 
 #endif // end COMMON_GRAPH_UTILS_FILE_UTILS_H_

@@ -39,14 +39,53 @@ inline uint64_t FeGetTid() {
 #define D_FE_LOGI(MOD_NAME, fmt, ...) dlog_info(FE, "%lu %s:" #fmt "\n", FeGetTid(), __FUNCTION__, ##__VA_ARGS__)
 #define D_FE_LOGW(MOD_NAME, fmt, ...) dlog_warn(FE, "%lu %s:" #fmt "\n", FeGetTid(), __FUNCTION__, ##__VA_ARGS__)
 #define D_FE_LOGE(MOD_NAME, fmt, ...) dlog_error(FE, "%lu %s:" #fmt "\n", FeGetTid(), __FUNCTION__, ##__VA_ARGS__)
-#define D_FE_LOGV(MOD_NAME, fmt, ...) dlog_event(RUN_LOG_MASK | FE, "%lu %s:" #fmt "\n", FeGetTid(), __FUNCTION__, \
-                                                 ##__VA_ARGS__)
 
-#define FE_LOGD(...) D_FE_LOGD(FE_MODULE_NAME, __VA_ARGS__)
+#define FE_LOGDEBUG(...) D_FE_LOGD(FE_MODULE_NAME, __VA_ARGS__)
 #define FE_LOGI(...) D_FE_LOGI(FE_MODULE_NAME, __VA_ARGS__)
 #define FE_LOGW(...) D_FE_LOGW(FE_MODULE_NAME, __VA_ARGS__)
 #define FE_LOGE(...) D_FE_LOGE(FE_MODULE_NAME, __VA_ARGS__)
-#define FE_LOGV(...) D_FE_LOGV(FE_MODULE_NAME, __VA_ARGS__)
+
+constexpr const int FE_MAX_LOG_SIZE = 8192;
+constexpr const int FE_MSG_LEN = 1024;
+constexpr const size_t FE_MSG_MAX_LEN = FE_MSG_LEN - 200;
+
+#define FE_LOGD(...)                                                      \
+  do {                                                                         \
+    if (CheckLogLevel(static_cast<int32_t>(FE), DLOG_DEBUG) != 1) {            \
+      break;                                                                   \
+    }                                                                          \
+    char msgbuf[FE_MAX_LOG_SIZE];                                              \
+    if (snprintf_s(msgbuf, sizeof(msgbuf), sizeof(msgbuf) - 1, ##__VA_ARGS__) == -1) {     \
+      msgbuf[sizeof(msgbuf) - 1] = '\0';                                      \
+    }                                                                         \
+    size_t msg_len = std::strlen(msgbuf);                                     \
+    if (msg_len < FE_MSG_MAX_LEN) {                                           \
+      FE_LOGDEBUG(__VA_ARGS__);                                               \
+      break;                                                                  \
+    }                                                                         \
+    char *msg_chunk_begin = msgbuf;                                           \
+    char *msg_chunk_end = nullptr;                                            \
+    while (msg_chunk_begin < msgbuf + msg_len) {                              \
+      if (msg_chunk_begin[0] == '\n') {                                       \
+        FE_LOGDEBUG("");                                                      \
+        msg_chunk_begin += 1;                                                 \
+        continue;                                                             \
+      }                                                                       \
+      msg_chunk_end = std::strchr(msg_chunk_begin, '\n');                     \
+      if (msg_chunk_end == nullptr) {                                         \
+        msg_chunk_end = msg_chunk_begin + std::strlen(msg_chunk_begin);       \
+      }                                                                       \
+      while (msg_chunk_end > msg_chunk_begin) {                               \
+        std::string msg_chunk(msg_chunk_begin,                                \
+                              std::min(FE_MSG_MAX_LEN, static_cast<size_t>(msg_chunk_end - msg_chunk_begin))); \
+        FE_LOGDEBUG("%s", msg_chunk.c_str());                                 \
+        msg_chunk_begin += msg_chunk.size();                                  \
+      }                                                                       \
+      msg_chunk_begin += 1;                                                   \
+    }                                                                         \
+  } while (0)
+
+#define IsDebugLogLevel (CheckLogLevel(FE, DLOG_DEBUG) == 1)
 
 #define FE_LOGD_IF(cond, ...) \
   if ((cond)) {               \

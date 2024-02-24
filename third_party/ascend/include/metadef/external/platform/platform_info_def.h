@@ -47,6 +47,7 @@ typedef struct tag_so_c_info {
   L2Type l2_type;
   uint64_t l2_size;
   uint32_t l2PageNum;
+  tag_so_c_info() : ai_core_cnt(0), vector_core_cnt(0), memory_size(0), l2_size(0), l2PageNum(0) {}
 } SoCInfo;
 
 typedef struct tag_ai_core_spec {

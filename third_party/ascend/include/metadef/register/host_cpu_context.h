@@ -17,7 +17,7 @@
 #ifndef INC_REGISTER_HOST_CPU_CONTEXT_H_
 #define INC_REGISTER_HOST_CPU_CONTEXT_H_
 
-#include "external/ge/ge_api_error_codes.h"
+#include "external/ge_common/ge_api_error_codes.h"
 #include "register/register_types.h"
 
 namespace ge {

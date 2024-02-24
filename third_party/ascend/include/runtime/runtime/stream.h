@@ -7,9 +7,10 @@
 #ifndef CCE_RUNTIME_STREAM_H
 #define CCE_RUNTIME_STREAM_H
 
+#include <stdlib.h>
+
 #include "base.h"
 #include "event.h"
-#include <stdlib.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -31,6 +32,8 @@ extern "C" {
 #define RT_STREAM_OVERFLOW (0x100U)
 #define RT_STREAM_FAST_LAUNCH (0x200U)
 #define RT_STREAM_FAST_SYNC   (0x400U)
+#define RT_STREAM_CP_PROCESS_USE (0x800U) // RT_STREAM_CP_PROCESS_USE does not support OR with other flags
+#define RT_STREAM_VECTOR_CORE_USE (0x1000U)
 
 /**
  * @ingroup stream_config
@@ -55,6 +58,8 @@ typedef struct TagStreamConfigHandle {
  */
 #define RT_STREAM_PRIORITY_DEFAULT (0U)
 
+#define RT_MAX_MODELS_IN_ONE_STREAM (255)
+
 /**
  * @ingroup dvrt_stream
  * @brief create stream instance
@@ -64,6 +69,17 @@ typedef struct TagStreamConfigHandle {
  * @return RT_ERROR_INVALID_VALUE for error input
  */
 RTS_API rtError_t rtStreamCreate(rtStream_t *stm, int32_t priority);
+
+/**
+ * @ingroup dvrt_stream
+ * @brief create stream instance for external api
+ * @param [in|out] stm   created stream
+ * @param [in] priority   stream priority
+ * @param [in] flags  stream op flags
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ */
+RTS_API rtError_t rtStreamCreateWithFlagsExternal(rtStream_t *stm, int32_t priority, uint32_t flags);
 
 /**
  * @ingroup dvrt_stream
@@ -235,20 +251,6 @@ rtError_t rtGetAvailEventNum(uint32_t * const eventCount);
 RTS_API rtError_t rtNameStream(rtStream_t stm, const char_t *name);
 
 /**
- * @ingroup dvrt_stream
- * @brief switch to the corresponding stream according to the contents of the ptr
- * @param [in] ptr  Determine the address where the value of the true and false branches is located
- * @param [in] condition switch condition
- * @param [in] val  switch value
- * @param [in] trueStream  Stream that needs to be activated when the value is non-zero
- * @param [in] stm input stream to init task
- * @return RT_ERROR_NONE for complete
- * @return RT_ERROR_INVALID_VALUE for error input
- */
-RTS_API rtError_t rtStreamSwitch(void *ptr, rtCondition_t condition, int64_t val, rtStream_t trueStream,
-                                 rtStream_t stm);
-
-/**
  * @brief execute extensible stream switch task
  * @param [in] ptr   pointer of value
  * @param [in] condition   judge condition
@@ -335,6 +337,16 @@ RTS_API rtError_t rtGetStreamOverflowSwitch(rtStream_t stm, uint32_t *flags);
  * @return RT_ERROR_INVALID_VALUE for error input
  */
 RTS_API rtError_t rtGetStreamTag(rtStream_t stm, uint32_t *geOpTag);
+
+/**
+ * @ingroup dvrt_stream
+ * @brief get remain task num by stream
+ * @param [in]  stream
+ * @param [out]  task num
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error
+ */
+RTS_API rtError_t rtGetRemainTaskNumByStream(rtStream_t stm, uint32_t *taskNum);
 
 #if defined(__cplusplus)
 }

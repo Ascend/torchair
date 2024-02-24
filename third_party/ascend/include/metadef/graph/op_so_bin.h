@@ -27,6 +27,7 @@ typedef struct {
   std::string cpu_info;
   std::string os_info;
   std::string opp_version;
+  std::string compiler_version;
 } SoInOmInfo;
 
 class OpSoBin {

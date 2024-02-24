@@ -17,11 +17,11 @@
 #ifndef INC_COMMON_OPSKERNEL_OPS_KERNEL_BUILDER_H_
 #define INC_COMMON_OPSKERNEL_OPS_KERNEL_BUILDER_H_
 
-#include "external/ge/ge_api_error_codes.h"
+#include "external/ge_common/ge_api_error_codes.h"
 #include "cce/aicpu_engine_struct.h"
 #include "common/opskernel/ops_kernel_info_types.h"
 #include "graph/node.h"
-#include "external/ge/ge_api_types.h"
+#include "external/ge_common/ge_api_types.h"
 #include "proto/task.pb.h"
 
 namespace ge {

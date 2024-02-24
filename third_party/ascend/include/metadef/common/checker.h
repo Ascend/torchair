@@ -19,7 +19,7 @@
 #include <securec.h>
 #include <sstream>
 #include "graph/ge_error_codes.h"
-#include "framework/common/debug/ge_log.h"
+#include "common/ge_common/debug/ge_log.h"
 #include "hyper_status.h"
 
 struct ErrorResult {
@@ -48,6 +48,13 @@ struct ErrorResult {
   template<typename T>
   operator std::vector<T>() const {
     return {};
+  }
+  operator std::string() const {
+    return "";
+  }
+  template<typename T>
+  operator T() const {
+    return T();
   }
 };
 
@@ -81,6 +88,15 @@ inline std::vector<char> CreateErrorMsg() {
     }                                                                                                                  \
   } while (false)
 
+#define GE_WARN_ASSERT(exp, ...)                                                                                       \
+  do {                                                                                                                 \
+    if (!(exp)) {                                                                                                      \
+      auto msg = CreateErrorMsg(__VA_ARGS__);                                                                          \
+      GELOGW("Assert failed: %s", (msg.empty() ? #exp : msg.data()));                                                  \
+      return ::ErrorResult();                                                                                          \
+    }                                                                                                                  \
+  } while (false)
+
 #define GE_ASSERT(exp, ...)                                                                                            \
   do {                                                                                                                 \
     if (!(exp)) {                                                                                                      \
@@ -104,27 +120,5 @@ inline std::vector<char> CreateErrorMsg() {
 #define GE_ASSERT_TRUE(v, ...) GE_ASSERT((v), __VA_ARGS__)
 #define GE_ASSERT_HYPER_SUCCESS(v, ...) GE_ASSERT(((v).IsSuccess()), __VA_ARGS__)
 
-
-#define GE_RETURN_IF(exp, ...)                                                                                         \
-  do {                                                                                                                 \
-    if (exp) {                                                                                                         \
-      auto msg = CreateErrorMsg(__VA_ARGS__);                                                                          \
-      if (msg.empty()) {                                                                                               \
-        REPORT_INNER_ERROR("E19999", "Assert %s failed", #exp);                                                        \
-        GELOGE(ge::FAILED, "Assert %s failed", #exp);                                                                  \
-      } else {                                                                                                         \
-        REPORT_INNER_ERROR("E19999", "%s", msg.data());                                                                \
-        GELOGE(ge::FAILED, "%s", msg.data());                                                                          \
-      }                                                                                                                \
-      return;                                                                                                          \
-    }                                                                                                                  \
-  } while (false)
-
-#define GE_RETURN_IF_NULL(v, ...) GE_RETURN_IF(((v) == nullptr), __VA_ARGS__)
-#define GE_RETURN_IF_SUCCESS(v, ...) GE_RETURN_IF(((v) == ge::SUCCESS), __VA_ARGS__)
-#define GE_RETURN_IF_GRAPH_SUCCESS(v, ...) GE_RETURN_IF(((v) == ge::GRAPH_SUCCESS), __VA_ARGS__)
-#define GE_RETURN_IF_RT_OK(v, ...) GE_RETURN_IF(((v) == 0), __VA_ARGS__)
-#define GE_RETURN_IF_EOK(v, ...) GE_RETURN_IF(((v) == EOK), __VA_ARGS__)
-#define GE_RETURN_IF_TRUE(v, ...) GE_RETURN_IF((v), __VA_ARGS__)
-#define GE_RETURN_IF_HYPER_SUCCESS(v, ...) GE_RETURN_IF(((v).IsSuccess()), __VA_ARGS__)
+#define GE_WARN_ASSERT_GRAPH_SUCCESS(v, ...) GE_WARN_ASSERT(((v) == ge::GRAPH_SUCCESS), __VA_ARGS__)
 #endif  // METADEF_CXX_INC_COMMON_CHECKER_H_

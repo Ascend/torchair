@@ -50,7 +50,10 @@ public:
                      const std::vector<DataFlowInputAttr> &attrs = {});
   FlowNode &MapOutput(uint32_t node_output_index, const ProcessPoint &pp, uint32_t pp_output_index);
   FlowNode &AddPp(const ProcessPoint &pp);
-private:
+  FlowNode &SetBalanceScatter();
+  FlowNode &SetBalanceGather();
+
+ private:
   std::shared_ptr<FlowNodeImpl> impl_;
 };
 
@@ -63,8 +66,32 @@ public:
   const ge::Graph &ToGeGraph() const;
   FlowGraph &SetInputs(const std::vector<FlowOperator> &inputs);
   FlowGraph &SetOutputs(const std::vector<FlowOperator> &outputs);
+  FlowGraph &SetOutputs(const std::vector<std::pair<FlowOperator, std::vector<size_t>>> &output_indexes);
   const char *GetName() const;
-private:
+
+  /**
+   * @brief Set the Contains N Mapping Node object.
+   * default is false, when contain a n-mapping node, you need call this method to set value to true.
+   * n-mapping means one2n(one input split to multi outputs), n2one((multi inputs combine to one output)) or
+   * n2n(multi inputs generate multi outputs) mapping.
+   * @param contains_n_mapping_node whether contain n-mapping node.
+   * @return FlowGraph& return current object
+   */
+  FlowGraph &SetContainsNMappingNode(bool contains_n_mapping_node);
+
+  /**
+   * @brief Set the inputs align attrs.
+   *
+   * @param align_max_cache_num align max cache num(a cache can save a set of inputs),
+   *                            0 means align is not enable, max value is 1024.
+   * @param align_timeout align timeout(ms), -1 means never timeout, and over 0 and less than 600 * 1000(10 minitues).
+   * @param dropout_when_not_align whether dropout data when over max buf num or timeout, default value=false.
+   * @return FlowGraph& return current object
+   */
+  FlowGraph &SetInputsAlignAttrs(uint32_t align_max_cache_num, int32_t align_timeout,
+                                 bool dropout_when_not_align = false);
+
+ private:
   FlowGraphImplPtr impl_;
 };
 }  // namespace dflow

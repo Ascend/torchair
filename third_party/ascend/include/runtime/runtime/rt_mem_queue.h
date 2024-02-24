@@ -101,6 +101,7 @@ typedef enum tagMemQueueQueryCmd {
 #define RT_MQ_DST_ENGINE_DVPP_CPU 6               // device DVPP CPU
 
 #define RT_MQ_SCHED_EVENT_QS_MSG 25 // same as driver's EVENT_QS_MSG
+#define RT_MQ_SCHED_EVENT_DRV_CUSTOM_MSG 56  // drvier's custom msg event
 
 /* When the destination engine is AICPU, select a policy.
    ONLY: The command is executed only on the local AICPU.
@@ -602,8 +603,13 @@ typedef struct {
     uint32_t rsv : 28;
 } rtMemGrpShareAttr_t;
 
-#define RT_MEM_GRP_QUERY_GROUPS_OF_PROCESS 1 // query process all grp
-#define RT_MEM_GRP_QUERY_GROUP_ID 2 // query group id from name
+typedef enum tagGroupQueryCmdType {
+    RT_MEM_GRP_QUERY_GROUP,                  /* query grp info include proc and permission */
+    RT_MEM_GRP_QUERY_GROUPS_OF_PROCESS,      /* query process all grp */
+    RT_MEM_GRP_QUERY_GROUP_ID,               /* query grp ID by grp name */
+    RT_MEM_GRP_QUERY_GROUP_ADDR_INFO,        /* query group addr info */
+    RT_MEM_GRP_QUERY_CMD_MAX
+} rtGroupQueryCmdType;
 
 typedef struct {
     int32_t pid;
@@ -614,10 +620,16 @@ typedef struct {
 } rtMemGrpQueryGroupId_t; // cmd: RT_MEM_GRP_QUERY_GROUP_ID
 
 typedef struct {
+    char grpName[RT_MEM_GRP_NAME_LEN];
+    uint32_t devId;
+} rtMemGrpQueryGroupAddrPara_t; /* cmd: RT_MEM_GRP_QUERY_GROUP_ADDR_PARA */
+
+typedef struct {
     int32_t cmd;
     union {
         rtMemGrpQueryByProc_t grpQueryByProc; // cmd: GRP_QUERY_GROUPS_OF_PROCESS
         rtMemGrpQueryGroupId_t grpQueryGroupId; // cmd: RT_MEM_GRP_QUERY_GROUP_ID
+        rtMemGrpQueryGroupAddrPara_t grpQueryGroupAddrPara; // cmd: RT_MEM_GRP_QUERY_GROUP_ADDR_PARA
     };
 } rtMemGrpQueryInput_t;
 
@@ -631,11 +643,17 @@ typedef struct {
 } rtMemGrpQueryGroupIdInfo_t; // cmd: RT_MEM_GRP_QUERY_GROUP_ID
 
 typedef struct {
+    uint64_t addr; /* cache memory addr */
+    uint64_t size; /* cache memory size */
+} rtMemGrpQueryGroupAddrInfo_t; /* cmd: RT_MEM_GRP_QUERY_GROUP_ADDR_PARA */
+
+typedef struct {
     size_t maxNum; // max number of result
     size_t resultNum; // if the number of results exceeds 'maxNum', only 'maxNum' results are filled in buffer
     union {
         rtMemGrpOfProc_t *groupsOfProc; // cmd: GRP_QUERY_GROUPS_OF_PROCESS
         rtMemGrpQueryGroupIdInfo_t *groupIdInfo; // cmd: RT_MEM_GRP_QUERY_GROUP_ID
+        rtMemGrpQueryGroupAddrInfo_t *groupAddrInfo; // cmd: RT_MEM_GRP_QUERY_GROUP_ADDR_PARA
     };
 } rtMemGrpQueryOutput_t;
 
@@ -806,6 +824,44 @@ RTS_API rtError_t rtQueueSubscribe(int32_t devId, uint32_t qId, uint32_t groupId
 */
 RTS_API rtError_t rtBufEventTrigger(const char_t *name);
 
+// EschedQueryInfo group
+#define EVENT_MAX_GRP_NAME_LEN   16
+typedef enum tagEschedQueryType {
+    RT_QUERY_TYPE_LOCAL_GRP_ID,
+    RT_QUERY_TYPE_REMOTE_GRP_ID,
+    RT_QUERY_TYPE_MAX
+} rtEschedQueryType;
+
+typedef struct tagEschedInputInfo {
+    void *inBuff;
+    unsigned int inLen;
+} rtEschedInputInfo;
+
+typedef struct tagEschedOutputInfo {
+    void *outBuff;
+    unsigned int outLen;
+} rtEschedOutputInfo;
+
+typedef struct tagEschedQueryGidInput {
+    int pid;
+    char grpName[EVENT_MAX_GRP_NAME_LEN];
+} rtEschedQueryGidInput;
+
+typedef struct tagEschedQueryGidOutput {
+    unsigned int grpId;
+} rtEschedQueryGidOutput;
+
+/**
+* @ingroup rtEschedQueryInfo
+* @brief  query esched info, such as grpid.
+* @param [in] devId: logic devid
+* @param [in] type: query info type
+* @param [in] inPut: Input the corresponding data structure based on the type.
+* @param [out] outPut: OutPut the corresponding data structure based on the type.
+* @return   0 for success, others for fail
+*/
+RTS_API rtError_t rtEschedQueryInfo(const uint32_t devId, const rtEschedQueryType type,
+    rtEschedInputInfo *inPut, rtEschedOutputInfo *outPut);
 #if defined(__cplusplus)
 }
 #endif

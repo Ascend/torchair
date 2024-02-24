@@ -22,7 +22,7 @@
 #include "graph/node.h"
 #include "register/op_tiling_registry.h"
 #include "runtime/rt_ffts_plus.h"
-#include "external/ge/ge_api_error_codes.h"
+#include "external/ge_common/ge_api_error_codes.h"
 
 namespace ge {
 struct AutoThreadSubTaskFlush {

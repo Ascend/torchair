@@ -67,10 +67,6 @@ const std::string ATTR_NAME_L2_FUSION_EXTEND_PTR = "l2_fusion_extend_content";
 
 const std::string ATTR_NAME_UNKNOWN_SHAPE = "_unknown_shape";
 
-const std::string ATTR_NAME_IS_UNKNOWN_GRAPH = "_fe_is_unknown_graph";
-
-const std::string ATTR_NAME_IS_UNKNOWN_SHAPE_OP = "_fe_is_unknown_shape_op";
-
 const std::string ATTR_NAME_OWNER_GRAPH_IS_UNKNOWN = "OwnerGraphIsUnknown";
 
 const std::string ATTR_NAME_TBE_KERNEL_SIZE = "_tbeKernelSize";
@@ -92,6 +88,10 @@ const std::string kModeInArgsFirstField = "_mode_in_args_first_field";
 const std::string kForceFp32ToFp16 = "_force_fp32_to_fp16";
 
 const std::string ATTR_NAME_KERNEL_LIST_FIRST_NAME = "_kernel_list_first_name";
+
+const std::string ATTR_NAME_IS_FIRST_NODE = "is_first_node";
+
+const std::string ATTR_NAME_IS_LAST_NODE = "is_last_node";
 
 const std::string OP_SLICE_INFO = "_op_slice_info";
 
@@ -194,11 +194,19 @@ const std::string kPhonyConcatOffset = "_phony_concat_offset";
 
 const std::string kStrDynamic = "dynamic";
 
+const std::string kFunc = "func";
+
 const std::string kNodeSupportDynamicShape = "_node_support_dynamic_shape";
+
+const std::string OP_JSON_FILE_PATH = "json_file_path";
+
+const std::string ATTR_KEY_ATOMIC_KERNEL_NAME = "_atomic_kernelname";
 
 constexpr char const *kPartSrcGraph = "part_src_graph";
 
 constexpr char kAttrIntercoreSync[] = "_inter_core_sync";
+
+constexpr char const * kMixEnhancedKernel = "_mix_with_enhanced_kernel";
 
 extern const std::string kKernelName;
 
@@ -217,6 +225,8 @@ extern const std::string AOE_TUNEFORMAT;
 extern const std::string ATTR_NAME_ATOMIC_CLEAN_NODE;
 
 extern const std::string ATTR_NAME_MEMSET_NODE;
+
+extern const std::string ATTR_NAME_ORIGINAL_NODE;
 
 extern const std::string ATOMIC_CLEAN_OP_TYPE;
 
@@ -243,5 +253,11 @@ extern const std::string TBE_OP_ATOMIC_WORKSPACE_FLAG;
 extern const std::string COMPILE_INFO_JSON;
 
 extern const std::string COMPILE_INFO_KEY;
+
+extern const std::string kThreadAddrOffset;
+
+extern const std::string ATTR_NAME_FALLBACK_ACLNN;
+
+extern const std::string kDynamicTilingDependOp;
 } // namespace fe
 #endif  // FUSION_ENGINE_INC_COMMON_AICORE_UTIL_ATTR_DEFINE_H_

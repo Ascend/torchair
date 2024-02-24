@@ -115,7 +115,7 @@ typedef struct tagFftsPlusSqe {
     uint16_t  totalContextNum;
     uint16_t  readyContextNum;
     uint16_t  preloadContextNum;
-    uint16_t  reserved5;
+    uint16_t  timeout;
     // 32-35 bytes
     uint16_t  reserved6;
     uint16_t  prefetchOstNum : 5;
@@ -135,7 +135,8 @@ typedef struct tagFftsPlusSqe {
     uint32_t contextAddressBaseL;
     uint32_t contextAddressBaseH : 17;
     uint32_t reserved15 : 15;
-    // 48-63 bytes
+    // 48-63 bytes:48-51 use for pid
+    // use reserved16[1] bit 4 for l2cache
     uint32_t reserved16[4];
 } rtFftsPlusSqe_t;
 
@@ -145,7 +146,7 @@ typedef struct tagCmoTaskInfo {
     uint8_t  pmg;
     uint8_t  reserved;
     uint16_t cmoType;
-    uint16_t opCode;
+    uint16_t opCode; // 6: Preload; 7: Prewriteback; 8: invalid; 9: flush;
     uint16_t numInner;
     uint16_t numOuter;
     uint32_t logicId;

@@ -34,10 +34,7 @@ class VISIBILITY_EXPORT GlobalDumper {
   GlobalDumper(GlobalDumper &&) = delete;
   GlobalDumper &operator=(const GlobalDumper &) = delete;
   GlobalDumper &operator==(GlobalDumper &&) = delete;
-  static GlobalDumper *GetInstance() {
-    static GlobalDumper global_dumper;
-    return &global_dumper;
-  }
+  static GlobalDumper *GetInstance();
 
   static void OnGlobalDumperSwitch(void *ins, uint64_t enable_flags);
 
@@ -48,9 +45,10 @@ class VISIBILITY_EXPORT GlobalDumper {
   void SetEnableFlags(const uint64_t enable_flags) {
     enable_flags_ = enable_flags;
   }
-
-  uint64_t GetEnableFlags() const {
-      return enable_flags_;
+  // 判断是否有需要通过OnEvent接口做dump的Dump工具被打开
+  bool IsEnableSubscribeDump() const {
+    return static_cast<bool>(enable_flags_ &
+        (BuiltInSubscriberUtil::EnableBit<DumpType>(DumpType::kNeedSubscribe) - 1UL));
   };
 
   bool IsEnable(DumpType dump_type) const {
@@ -73,6 +71,11 @@ class VISIBILITY_EXPORT GlobalDumper {
     if (!ret.second) {
       GELOGW("[Dumper] Save exception dumper of davinci model failed.");
     }
+  }
+
+  void RemoveInnerExceptionDumpers(ge::ExceptionDumper *exception_dumper) {
+    std::lock_guard<std::mutex> lk(mutex_);
+    (void)exception_dumpers_.erase(exception_dumper);
   }
 
  private:

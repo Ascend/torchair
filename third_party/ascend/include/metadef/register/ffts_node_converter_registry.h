@@ -19,9 +19,10 @@
 #include <string>
 #include <functional>
 #include <vector>
+#include "common/checker.h"
 #include "node_converter_registry.h"
 #include "graph/node.h"
-#include "exe_graph/lowering/value_holder.h"
+#include "exe_graph/lowering/dev_mem_value_holder.h"
 #include "exe_graph/lowering/lowering_global_data.h"
 
 namespace gert {
@@ -35,9 +36,56 @@ using FFTSThreadFunc = std::function<ge::graphStatus(const ge::NodePtr &node,
     const std::vector<bg::ValueHolderPtr> &output_shapes, const bg::ValueHolderPtr thread_dim,
     std::vector<bg::ValueHolderPtr> &output)>;
 
+struct SkipCtxRecord {
+  bool Init() {
+    ctx_id_v = std::unique_ptr<std::vector<uint32_t>>(new(std::nothrow) std::vector<uint32_t>);
+    GE_ASSERT_NOTNULL(ctx_id_v);
+    ctx_type_v = std::unique_ptr<std::vector<uint32_t>>(new(std::nothrow) std::vector<uint32_t>);
+    GE_ASSERT_NOTNULL(ctx_type_v);
+    return true;
+  }
+  size_t GetCtxNum() {
+    if (ctx_id_v == nullptr) {
+      return 0;
+    }
+    return ctx_id_v->size();
+  }
+  bool SetSkipCtx(uint32_t ctx_id, uint32_t ctx_type) {
+    if (ctx_id_v == nullptr || ctx_type_v == nullptr) {
+      return false;
+    }
+    ctx_id_v->emplace_back(ctx_id);
+    ctx_type_v->emplace_back(ctx_type);
+    return true;
+  }
+  bool GetSkipCtx(size_t idx, uint32_t &ctx_id, uint32_t &ctx_type) {
+    if (ctx_id_v == nullptr || ctx_type_v == nullptr) {
+      return false;
+    }
+    if (idx >= ctx_id_v->size() || idx >= ctx_type_v->size()) {
+      return false;
+    }
+    ctx_id = ctx_id_v->at(idx);
+    ctx_type = ctx_type_v->at(idx);
+    return true;
+  }
+  void ClearRecord() {
+    if (ctx_id_v != nullptr) {
+      ctx_id_v->clear();
+    }
+    if (ctx_type_v != nullptr) {
+      ctx_type_v->clear();
+    }
+    return;
+  }
+ private:
+  std::unique_ptr<std::vector<uint32_t>> ctx_id_v{nullptr};
+  std::unique_ptr<std::vector<uint32_t>> ctx_type_v{nullptr};
+};
+
 struct FFTSLowerInput {
   std::vector<bg::ValueHolderPtr> input_shapes;
-  std::vector<bg::ValueHolderPtr> input_addrs;
+  std::vector<bg::DevMemValueHolderPtr> input_addrs;
   std::vector<uint32_t> mem_pool_types;
   LoweringGlobalData *global_data;
   bg::ValueHolderPtr task_info;
@@ -46,6 +94,7 @@ struct FFTSLowerInput {
   bg::ValueHolderPtr args_para;
   bg::ValueHolderPtr ffts_mem_allocator;
   FFTSThreadFunc ffts_thread_fun;
+  bg::ValueHolderPtr skip_ctx_holder;
 };
 class FFTSNodeConverterRegistry {
  public:

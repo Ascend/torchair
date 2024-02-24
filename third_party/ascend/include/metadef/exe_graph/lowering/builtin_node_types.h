@@ -64,6 +64,9 @@ inline bool IsTypeNetOutput(const ge::char_t *const node_type) {
 inline bool IsTypeConst(const ge::char_t *const node_type) {
   return strcmp(kConst, node_type) == 0;
 }
+inline bool IsTypeConstData(const ge::char_t *const node_type) {
+  return strcmp(kConstData, node_type) == 0;
+}
 inline bool IsTypeOutputData(const ge::char_t *const node_type) {
   return strcmp(kOutputData, node_type) == 0;
 }

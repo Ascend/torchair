@@ -18,8 +18,8 @@
 #define COMMON_GRAPH_DEBUG_GE_LOG_H_
 
 #include "graph/ge_error_codes.h"
-#include "framework/common/debug/ge_log.h"
-#include "framework/common/debug/log.h"
+#include "common/ge_common/debug/ge_log.h"
+#include "common/ge_common/debug/log.h"
 
 #define GE_LOGE(fmt, ...) GE_LOG_ERROR(GE_MODULE_NAME, ge::FAILED, fmt, ##__VA_ARGS__)
 

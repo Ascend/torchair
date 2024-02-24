@@ -17,7 +17,7 @@
 #ifndef COMMON_GRAPH_DEBUG_GE_UTIL_H_
 #define COMMON_GRAPH_DEBUG_GE_UTIL_H_
 
-#include "framework/common/util.h"
+#include "common/ge_common/util.h"
 #include "graph/debug/ge_log.h"
 #include "graph/ge_error_codes.h"
 namespace ge {

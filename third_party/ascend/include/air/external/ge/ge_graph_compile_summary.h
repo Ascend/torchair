@@ -21,7 +21,6 @@
 #include <vector>
 #include "ge_api_types.h"
 #include "ge_error_codes.h"
-#include "graph/tensor.h"
 
 namespace ge {
 class GE_FUNC_VISIBILITY CompiledGraphSummary {
@@ -54,6 +53,20 @@ class GE_FUNC_VISIBILITY CompiledGraphSummary {
   Status GetFeatureMemorySize(size_t &size) const;
 
   ///
+  /// @brief get fix fearute memory size after compiled
+  /// @param [out] size const memory size
+  /// @return Status result of function
+  ///
+  Status GetFixedFeatureMemorySize(size_t &size) const;
+
+  ///
+  /// @brief get refreshable fearturemap memory size after compiled, without input and output and fix memory
+  /// @param [out] size fearturemap memory size
+  /// @return Status result of function
+  ///
+  Status GetRefreshableFeatureMemorySize(size_t &size) const;
+
+  ///
   /// @brief get whether or not the graph support featuremap memory base refreshable
   /// @param [out] v refreshable or not
   /// @return Status result of function
@@ -80,6 +93,14 @@ class GE_FUNC_VISIBILITY CompiledGraphSummary {
   /// @return Status result of function
   ///
   Status GetOutputShapes(std::vector<ge::Shape> &shapes) const;
+
+  Status GetOutputDtypes(std::vector<ge::DataType> &dtypes) const;
+
+  Status GetIOIndexesWithSameAddr(std::vector<std::pair<uint32_t, uint32_t>> &io_indexes) const;
+
+  Status GetInputShardMethod(std::map<std::string, std::map<int32_t, std::vector<std::pair<int64_t, int64_t>>>>
+                             &device_id_to_tensor_deployment) const;
+
  private:
   CompiledGraphSummary() = default;
   std::shared_ptr<SummaryData> data_{nullptr};

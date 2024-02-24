@@ -42,6 +42,9 @@ public:
   static bool GenerateReshapeType(const ge::Format &origin_format, const ge::Format &format,
                                   const size_t &origin_dim_size, const std::string &reshape_type,
                                   int64_t &reshape_type_mask);
+  static bool GenerateReshapeTypeByMask(const ge::Format &origin_format, const size_t &origin_dim_size,
+                                        const int64_t &reshape_type_mask, std::string &reshape_type,
+                                        std::string &failed_reason);
   static void ExpandDims(const int64_t &reshape_type, ge::GeShape &shape);
   static void ExpandDims(const int64_t &reshape_type, const ge::GeShape &origin_shape, ge::GeShape &shape);
   static void ExpandDims(const int64_t &reshape_type, gert::Shape &shape);

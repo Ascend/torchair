@@ -19,16 +19,33 @@
 
 #include <iostream>
 #include <vector>
-#include <utility>
 #include <memory>
 #include "register/op_impl_registry.h"
-#include "register/op_check.h"
 #include "graph/operator_reg.h"
 
-namespace ops {
-enum Option { IGNORE = 0, OPTIONAL = 1, REQUIRED = 2, DYNAMIC = 3 };
+namespace optiling {
+#define FUNC_CHECK_SUPPORTED "check_supported"
+#define FUNC_OP_SELECT_FORMAT "op_select_format"
+#define FUNC_GET_OP_SUPPORT_INFO "get_op_support_info"
+#define FUNC_GET_SPECIFIC_INFO "get_op_specific_info"
 
-enum AttrDataType {
+using OP_CHECK_FUNC = ge::graphStatus (*)(const ge::Operator &op, ge::AscendString &result);
+
+using PARAM_GENERALIZE_FUNC = ge::graphStatus (*)(const ge::Operator &op, const ge::AscendString &generalize_config,
+                                      ge::AscendString &generalized_op_params);
+
+class OpCheckFuncHelper {
+public:
+  OpCheckFuncHelper(const ge::AscendString &check_type, const ge::AscendString &op_type, OP_CHECK_FUNC func);
+
+  OpCheckFuncHelper(const ge::AscendString &op_type, PARAM_GENERALIZE_FUNC func);
+};
+}
+
+namespace ops {
+enum Option { IGNORE = 0, OPTIONAL = 1, REQUIRED = 2, DYNAMIC = 3, VIRTUAL = 4 };
+
+enum class AttrDataType {
   ATTR_DT_BOOL = 0,
   ATTR_DT_FLOAT = 1,
   ATTR_DT_INT = 2,
@@ -40,12 +57,12 @@ enum AttrDataType {
   ATTR_DT_MAX
 };
 
-enum ItemFindStatus { ITEM_FIND = 0, ITEM_NOEXIST = 1 };
+enum class ItemFindStatus { ITEM_FIND = 0, ITEM_NOEXIST = 1 };
 
 class OpParamDefImpl;
 class OpParamDef {
 public:
-  OpParamDef(const char *name);
+  explicit OpParamDef(const char *name);
   OpParamDef(const OpParamDef &def);
   ~OpParamDef();
   OpParamDef &operator=(const OpParamDef &def);
@@ -55,17 +72,27 @@ public:
   OpParamDef &DataType(std::vector<ge::DataType> types);
   OpParamDef &Format(std::vector<ge::Format> formats);
   OpParamDef &UnknownShapeFormat(std::vector<ge::Format> formats);
-  OpParamDef &NeedCompile(bool need_compile);
-  OpParamDef &ReshapeType(const char *reshape_type);
   OpParamDef &ValueDepend(Option value_depend);
+  OpParamDef &IgnoreContiguous(void);
+  OpParamDef &AutoContiguous();
+  OpParamDef &Scalar();
+  OpParamDef &ScalarList();
+  OpParamDef &To(const ge::DataType type);
+  OpParamDef &To(const char *name);
+  OpParamDef &Version(uint32_t version);
   ge::AscendString &GetParamName(void);
   Option GetParamType(void);
   std::vector<ge::DataType> &GetDataTypes(void);
   std::vector<ge::Format> &GetFormats(void);
   std::vector<ge::Format> &GetUnknownShapeFormats(void);
-  ge::AscendString &GetNeedCompile(void);
-  ge::AscendString &GetReshapeType(void);
   ge::AscendString &GetValueDepend(void);
+  bool GetIgnoreContiguous(void);
+  bool GetAutoContiguous(void);
+  bool IsScalar(void);
+  bool IsScalarList(void);
+  ge::AscendString &GetScalarName(void);
+  ge::DataType GetScalarType(void);
+  uint32_t GetVersion(void);
 
 private:
   std::unique_ptr<OpParamDefImpl> impl_;
@@ -74,7 +101,7 @@ private:
 class OpAttrDefImpl;
 class OpAttrDef {
 public:
-  OpAttrDef(const char *name);
+  explicit OpAttrDef(const char *name);
   OpAttrDef(const OpAttrDef &attr_def);
   ~OpAttrDef();
   OpAttrDef &operator=(const OpAttrDef &attr_def);
@@ -96,11 +123,13 @@ public:
   OpAttrDef &ListInt(std::vector<int64_t> value);
   OpAttrDef &ListListInt(void);
   OpAttrDef &ListListInt(std::vector<std::vector<int64_t>> value);
+  OpAttrDef &Version(uint32_t version);
   ge::AscendString &GetName(void) const;
   bool IsRequired(void);
   ge::AscendString &GetCfgDataType(void) const;
   ge::AscendString &GetProtoDataType(void) const;
   ge::AscendString &GetAttrDefaultVal(const char *brac);
+  uint32_t GetVersion(void);
 
 private:
   std::unique_ptr<OpAttrDefImpl> impl_;
@@ -115,17 +144,13 @@ public:
   OpAICoreConfig &operator=(const OpAICoreConfig &aicore_config);
   OpParamDef &Input(const char *name);
   OpParamDef &Output(const char *name);
-  OpAICoreConfig &AsyncFlag(bool flag);
   OpAICoreConfig &DynamicCompileStaticFlag(bool flag);
   OpAICoreConfig &DynamicFormatFlag(bool flag);
   OpAICoreConfig &DynamicRankSupportFlag(bool flag);
   OpAICoreConfig &DynamicShapeSupportFlag(bool flag);
-  OpAICoreConfig &HeavyOpFlag(bool flag);
   OpAICoreConfig &NeedCheckSupportFlag(bool flag);
-  OpAICoreConfig &OpPattern(const char *pattern);
   OpAICoreConfig &PrecisionReduceFlag(bool flag);
-  OpAICoreConfig &RangeLimitValue(const char *value);
-  OpAICoreConfig &SlicePatternValue(const char *value);
+  OpAICoreConfig &ExtendCfgInfo(const char *key, const char *value);
   std::vector<OpParamDef> &GetInputs(void);
   std::vector<OpParamDef> &GetOutputs(void);
   std::vector<ge::AscendString> &GetCfgKeys(void);
@@ -145,44 +170,30 @@ public:
   ~OpAICoreDef();
   OpAICoreDef &operator=(const OpAICoreDef &aicore_def);
   OpAICoreDef &SetTiling(gert::OpImplKernelRegistry::TilingKernelFunc func);
-  OpAICoreDef &SetTilingParse(gert::OpImplRegister::TilingParseFunc func);
-  OpAICoreDef &SetCompileInfoCreator(gert::OpImplKernelRegistry::CompileInfoCreatorFunc func);
-  OpAICoreDef &SetCompileInfoDeleter(gert::OpImplKernelRegistry::CompileInfoDeleterFunc func);
   OpAICoreDef &SetCheckSupport(optiling::OP_CHECK_FUNC func);
   OpAICoreDef &SetOpSelectFormat(optiling::OP_CHECK_FUNC func);
   OpAICoreDef &SetOpSupportInfo(optiling::OP_CHECK_FUNC func);
   OpAICoreDef &SetOpSpecInfo(optiling::OP_CHECK_FUNC func);
   OpAICoreDef &SetParamGeneralize(optiling::PARAM_GENERALIZE_FUNC func);
   gert::OpImplKernelRegistry::TilingKernelFunc &GetTiling(void);
-  gert::OpImplRegister::TilingParseFunc &GetTilingParse(void);
-  gert::OpImplKernelRegistry::CompileInfoCreatorFunc &GetCompileInfoCreator(void);
-  gert::OpImplKernelRegistry::CompileInfoDeleterFunc &GetCompileInfoDeleter(void);
   optiling::OP_CHECK_FUNC &GetCheckSupport(void);
   optiling::OP_CHECK_FUNC &GetOpSelectFormat(void);
   optiling::OP_CHECK_FUNC &GetOpSupportInfo(void);
   optiling::OP_CHECK_FUNC &GetOpSpecInfo(void);
   optiling::PARAM_GENERALIZE_FUNC &GetParamGeneralize(void);
-  void AddConfig(const char *soc, OpAICoreConfig &aicore_config);
+  OpAICoreDef &AddConfig(const char *soc);
+  OpAICoreDef &AddConfig(const char *soc, OpAICoreConfig &aicore_config);
   std::map<ge::AscendString, OpAICoreConfig> &GetAICoreConfigs(void);
-  template<class T>
-  void OpTilingPost(const char *op_type) {
-    this->Log(op_type, "do optiling post");
-    gert::OpImplRegisterV2 impl(op_type);
-    impl.Tiling(this->GetTiling());
-    impl.TilingParse<T>(this->GetTilingParse());
-    gert::OpImplRegisterV2 implReg(impl);
-  }
-  void OpCheckPost(const char *op_type);
 
 private:
-  void Log(const char *op_type, const char *info);
+  void Log(const char *op_type, const char *info) const;
   std::unique_ptr<OpAICoreDefImpl> impl_;
 };
 
 class OpDefImpl;
 class OpDef {
 public:
-  OpDef(const char *type);
+  explicit OpDef(const char *type);
   OpDef(const OpDef &op_def);
   ~OpDef();
   OpDef &operator=(const OpDef &op_def);
@@ -203,13 +214,12 @@ public:
   std::vector<OpParamDef> GetMergeInputs(OpAICoreConfig &aicore_config);
   std::vector<OpParamDef> GetMergeOutputs(OpAICoreConfig &aicore_config);
   bool GetWorkspaceFlag(void);
-  void OpProtoPost(const char *op_type);
   OpAICoreDef &AICore(void);
 
 private:
-  void MergeParam(std::vector<OpParamDef> &merge, std::vector<OpParamDef> &aicore_params);
-  void CheckParam(std::vector<OpParamDef> &params);
-  int FindAttr(const char *name, OpAttrDef **attr);
+  void MergeParam(std::vector<OpParamDef> &merge, std::vector<OpParamDef> &aicore_params) const;
+  void CheckParam(std::vector<OpParamDef> &params) const;
+  ItemFindStatus FindAttr(const char *name, OpAttrDef **attr);
   OpAttrDef &AddAttr(OpAttrDef &attr);
   OpAttrDef &GetOrCreateAttr(const char *name);
   std::unique_ptr<OpDefImpl> impl_;

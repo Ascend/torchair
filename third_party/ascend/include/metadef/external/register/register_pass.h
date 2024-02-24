@@ -22,7 +22,7 @@
 #include <string>
 
 #include "graph/graph.h"
-#include "ge/ge_api_error_codes.h"
+#include "external/ge_common/ge_api_error_codes.h"
 #include "register/register_types.h"
 
 namespace ge {

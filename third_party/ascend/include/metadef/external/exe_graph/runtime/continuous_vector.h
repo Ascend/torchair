@@ -23,7 +23,7 @@
 #include <securec.h>
 #include "graph/ge_error_codes.h"
 #include "utils/extern_math_util.h"
-#include "ge/ge_api_error_codes.h"
+#include "external/ge_common/ge_api_error_codes.h"
 
 namespace gert {
 class ContinuousVector {

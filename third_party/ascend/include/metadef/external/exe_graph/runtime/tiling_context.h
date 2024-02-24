@@ -20,7 +20,7 @@
 #include "continuous_vector.h"
 #include "extended_kernel_context.h"
 #include "tiling_data.h"
-#include "ge/ge_api_error_codes.h"
+#include "external/ge_common/ge_api_error_codes.h"
 
 namespace fe {
 class PlatFormInfos;
@@ -141,6 +141,7 @@ class TilingContext : public ExtendedKernelContext {
    * outputs[3]: tiling-data
    * outputs[4]: workspace sizes
    * outputs[5]: tiling condition
+   * outputs[6]: schedule mode
    */
   enum TilingOutputIndex : uint32_t {
     kOutputTilingKey,
@@ -149,8 +150,18 @@ class TilingContext : public ExtendedKernelContext {
     kOutputTilingData,
     kOutputWorkspace,
     kOutputTilingCond,
+    kOutputScheduleMode,
     // add new output definitions here
     kOutputNum
+  };
+
+  /*
+  * outputs[0]: fallible tiling condition
+  */
+  enum FallibleTilingOutputIndex : uint32_t {
+    kTilingStatus = TilingOutputIndex::kOutputNum,
+    // add new output definitions here
+    kFallibleOutputNum
   };
 
   /**
@@ -177,6 +188,32 @@ class TilingContext : public ExtendedKernelContext {
     }
     return *p;
   }
+
+  /**
+   * 设置schedule_mode
+   * @param schedule_mode schedule_mode
+   * @return 成功时返回ge::GRAPH_SUCCESS
+   */
+  ge::graphStatus SetScheduleMode(const uint32_t schedule_mode) {
+    const auto p = GetOutputPointer<uint32_t>(kOutputScheduleMode);
+    if (p == nullptr) {
+      return ge::GRAPH_FAILED;
+    }
+    *p = schedule_mode;
+    return ge::GRAPH_SUCCESS;
+  }
+  /**
+   * 获取设置schedule_mode
+   * @return 设置schedule_mode，获取失败时
+   */
+  uint32_t GetScheduleMode() const {
+    const auto p = GetOutputPointer<uint32_t>(kOutputScheduleMode);
+    if (p == nullptr) {
+      return 0U;
+    }
+    return *p;
+  }
+
   /**
    * 设置block dim
    * @param block_dim block dim
@@ -315,6 +352,25 @@ class TilingContext : public ExtendedKernelContext {
       return nullptr;
     }
     return av->GetValue<fe::PlatFormInfos *>();
+  }
+
+  /**
+   * 获取 确定性计算变量
+   * @return int32 变量
+   */
+  int32_t GetDeterministic() const {
+    const auto compute_node_info = GetComputeNodeInfo();
+    if (compute_node_info == nullptr) {
+      return std::numeric_limits<int32_t>::max();
+    }
+    const size_t index = compute_node_info->GetInputsNum() + compute_node_info->GetOutputsNum();
+    // 此处按照tiling内存排布，将确定性计算的字段添加在
+    // inputshape outputshape compileinfo platform tiling_func之后
+    const auto av = GetInput(index + 3U);
+    if (av == nullptr) {
+      return std::numeric_limits<int32_t>::max();
+    }
+    return av->GetValue<int32_t>();
   }
 };
 static_assert(std::is_standard_layout<TilingContext>::value, "The class TilingContext must be a POD");

@@ -44,7 +44,12 @@ struct WeightInfo {
   int64_t shape_size;
   size_t total_data_size; // data_size * sizeof(datatype). !!!Could be zero!!!
   inline void CalcTotalDataSize() {
-    shape_size = shape.GetShapeSize();
+    if (shape.GetDimNum() == 0) {
+      shape_size = 1;
+    } else {
+      shape_size = shape.GetShapeSize();
+    }
+
     if ((shape_size > 0) && (datatype < data_type_size.size())) {
       total_data_size = (static_cast<size_t>(shape_size)) * data_type_size[datatype];
     } else {
@@ -141,6 +146,12 @@ class FusionTurbo {
   ge::NodePtr AddNodeOnly(const string &op_name, const string &op_type) const;
 
   static ge::NodePtr AddNodeOnly(ge::ComputeGraph &graph, const string &op_name, const string &op_type);
+
+  ge::NodePtr AddNodeOnly(const string &op_name, const string &op_type,
+                          size_t dynamic_num) const;
+
+  static ge::NodePtr AddNodeOnly(ge::ComputeGraph &graph, const string &op_name, const string &op_type,
+                                 size_t dynamic_num);
 
   static Status TransferOutCtrlEdges(const std::vector<ge::NodePtr> &nodes,
                                      const ge::NodePtr &new_node);

@@ -19,6 +19,9 @@
 #include <string>
 #include <sstream>
 #include "exe_graph/runtime/shape.h"
+#include "graph/ge_error_codes.h"
+#include "graph/types.h"
+
 namespace gert {
 extern const Shape g_vec_1_shape;
 /**
@@ -53,5 +56,7 @@ inline std::string ShapeToString(const Shape &shape, const char *join_char = ","
   }
   return ss.str();
 }
+
+ge::graphStatus CalcAlignedSizeByShape(const Shape &shape, ge::DataType data_type, uint64_t &ret_tensor_size);
 }  // namespace gert
 #endif  // METADEF_CXX_INC_EXE_GRAPH_RUNTIME_SHAPE_UTILS_H_

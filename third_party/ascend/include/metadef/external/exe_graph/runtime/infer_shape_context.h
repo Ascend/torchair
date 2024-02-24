@@ -22,7 +22,6 @@
 #include "runtime_attrs.h"
 #include "extended_kernel_context.h"
 #include "graph/inference_context.h"
-#include "register/kernel_registry.h"
 namespace gert {
 /**
  * 在节点输入后的扩展输入的索引，若需要扩展，请新增枚举类型
@@ -54,6 +53,16 @@ class InferShapeContext : public ExtendedKernelContext {
   const Tensor *GetInputTensor(const size_t index) const {
     return GetInputPointer<Tensor>(index);
   }
+
+  /**
+   * 基于算子IR原型定义，获取`OPTIONAL_INPUT`类型的输入tensor指针
+   * @param ir_index IR原型定义中的index
+   * @return tensor指针，index非法，或该INPUT没有实例化时，返回空指针
+   */
+  const Tensor *GetOptionalInputTensor(const size_t ir_index) const {
+    return GetDynamicInputPointer<Tensor>(ir_index, 0);
+  }
+
   /**
    * 基于算子IR原型定义，获取`OPTIONAL_INPUT`类型的输入shape指针
    * @param ir_index IR原型定义中的index
@@ -79,23 +88,6 @@ class InferShapeContext : public ExtendedKernelContext {
    */
   Shape *GetOutputShape(const size_t index) {
     return GetOutputPointer<Shape>(index);
-  }
-
-  /**
-   * 获取InferShapeFunc
-   * @param NA
-   * @return 输出InferShapeFunc指针, 指针在节点输入地址后，仅执行态使用，编译态设置为null
-   */
-  KernelRegistry::KernelFunc GetInferShapeFunc() const {
-    const auto compute_node_info = reinterpret_cast<const ComputeNodeInfo *>(GetContext()->compute_node_info);
-    if (compute_node_info == nullptr) {
-      return nullptr;
-    }
-    const size_t offset = compute_node_info->GetInputsNum() + static_cast<size_t>(InputExternLayout::kInferShapeFunc);
-    if (GetContext()->input_size < offset) {
-      return nullptr;
-    }
-    return GetInputValue<KernelRegistry::KernelFunc>(offset - 1UL);
   }
 
   /**

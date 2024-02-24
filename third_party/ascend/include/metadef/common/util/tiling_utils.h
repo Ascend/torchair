@@ -25,6 +25,12 @@ union Fp32 {
   ge::float32_t f;
 };
 
+inline uint16_t FloatToBfloat16(const ge::float32_t value) {
+  constexpr uint32_t right_shift_16 = 16U;
+  const ge::float32_t *pValue = &value;
+  return (*reinterpret_cast<const uint32_t*>(pValue)) >> right_shift_16;
+}
+
 inline uint16_t FloatToUint16(const ge::float32_t value) {
   constexpr Fp32 f32infty = {static_cast<uint32_t>(255) << static_cast<uint32_t>(23)};
   constexpr uint32_t sign_mask = 0x80000000U;
@@ -44,7 +50,7 @@ inline uint16_t FloatToUint16(const ge::float32_t value) {
     constexpr uint32_t right_shift_13 = 13U;
     constexpr Fp32 f16infty = {static_cast<uint32_t>(31) << static_cast<uint32_t>(23)};
     constexpr Fp32 magic = {static_cast<uint32_t>(15) << static_cast<uint32_t>(23)};
-    constexpr uint32_t round_mask = static_cast<uint32_t>(static_cast<uint16_t>(~0xFFFU));
+    constexpr uint32_t round_mask = static_cast<uint32_t>(~0xFFFU);
 
     temp.u &= round_mask;
     temp.f *= magic.f;
@@ -57,6 +63,13 @@ inline uint16_t FloatToUint16(const ge::float32_t value) {
 
   out = uint16_t(out | (sign >> right_shift_16));
   return out;
+}
+
+inline uint16_t FloatToBF16(const ge::float32_t value) {
+  Fp32 temp;
+  temp.f = value;
+  constexpr uint32_t kInt16BitsNum = 16U;
+  return uint16_t(temp.u >> kInt16BitsNum);
 }
 }  // namespace optiling
 #endif

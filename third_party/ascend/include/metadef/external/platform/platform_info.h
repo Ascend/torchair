@@ -19,8 +19,10 @@
 
 #include <map>
 #include <string>
+#include <array>
 #include "platform_info_def.h"
 #include "platform_infos_def.h"
+#include "platform_infos_lite_def.h"
 
 #ifdef __clang__
 #pragma clang diagnostic push
@@ -68,6 +70,7 @@ class PlatformInfoManager {
 
   uint32_t InitRuntimePlatformInfos(const std::string &SoCVersion);
 
+  uint32_t GetPlatFormInfosLite(SocVersion soc_version, PlatFormInfosLite &platform_infos_lite);
  private:
   PlatformInfoManager();
   ~PlatformInfoManager();
@@ -166,6 +169,8 @@ class PlatformInfoManager {
   PlatFormInfos runtime_platform_infos_;
 
   std::map<uint32_t, PlatFormInfos> runtime_device_platform_infos_map_;
+
+  std::array<PlatFormInfosLite, TOTAL_SOC_COUNT> platform_infos_lite_vec_;
 };
 }  // namespace fe
 

@@ -21,7 +21,7 @@
 #include "graph/ge_tensor.h"
 #include "graph/def_types.h"
 #include "common/checker.h"
-#include "framework/common/debug/ge_log.h"
+#include "common/ge_common/debug/ge_log.h"
 #include "external/register/register_error_codes.h"
 #include "external/utils/extern_math_util.h"
 #include "proto/tensorflow/tensor.pb.h"
@@ -47,6 +47,8 @@ class TensorAssign {
   static bool CheckFloatVal(const tensorflow::DataType data_type);
 
   static bool CheckDoubleVal(const tensorflow::DataType data_type);
+
+  static bool CheckComplex32Val(const tensorflow::DataType data_type);
 
   static bool CheckComplex64Val(const tensorflow::DataType data_type);
 

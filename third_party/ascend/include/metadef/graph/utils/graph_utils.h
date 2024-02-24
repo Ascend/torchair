@@ -112,6 +112,10 @@ class NodeIndexIO {
   const Node *node_ptr_ = nullptr;
 };
 
+// Symbol: nodeName, out or in and index, for example: Sqrt0trans_Cast_4_in_0. @see NodeIndexIO::ToValue()
+using SymbolToAnchors = std::unordered_map<std::string, std::list<NodeIndexIO>>;
+using AnchorToSymbol = std::unordered_map<std::string, std::string>; // symbol and its peer out anchor's symbol
+
 class GraphUtils {
  public:
   /**
@@ -246,17 +250,20 @@ class GraphUtils {
     * @param src_compute_graph 需要是根图对象
     * @param node_filter 节点拷贝白名单过滤器，可以通过传递此参数实现满足条件的节点的复制，不传递时代表全量拷贝
     * @param graph_filter 子图拷贝白名单过滤器，可以通过传递此参数实现满足条件的子图的复制，不传递时代表全量拷贝
+    * @param attr_filter 节点上属性拷贝白名单过滤器，可以通过传递此参数实现满足条件的属性复制，不传递时代表全量拷贝
     * @param dst_compute_graph
     * @return
     */
   static graphStatus CopyComputeGraph(const ComputeGraphPtr &src_compute_graph, const NodeFilter &node_filter,
-                                      const GraphFilter &graph_filter, ComputeGraphPtr &dst_compute_graph);
+                                      const GraphFilter &graph_filter, const AttrFilter &attr_filter,
+                                      ComputeGraphPtr &dst_compute_graph);
 
   /**
   * ComputeGraph图对象的深拷贝接口
   * @param src_compute_graph
   * @param node_filter 节点拷贝白名单过滤器，可以通过传递此参数实现满足条件的节点的复制，不传递时代表全量拷贝
   * @param graph_filter 子图拷贝白名单过滤器，可以通过传递此参数实现满足条件的子图的复制，不传递时代表全量拷贝
+  * @param attr_filter 节点上属性拷贝白名单过滤器，可以通过传递此参数实现满足条件的属性复制，不传递时代表全量拷贝
   * @param dst_compute_graph
   * @param node_old_2_new 新旧节点映射关系
   * @param op_desc_old_2_new 新旧节点描述信息的映射关系
@@ -264,7 +271,8 @@ class GraphUtils {
   * @return
   */
   static graphStatus CopyComputeGraph(const ComputeGraphPtr &src_compute_graph, const NodeFilter &node_filter,
-                                      const GraphFilter &graph_filter, ComputeGraphPtr &dst_compute_graph,
+                                      const GraphFilter &graph_filter, const AttrFilter &attr_filter,
+                                      ComputeGraphPtr &dst_compute_graph,
                                       std::map<ConstNodePtr, NodePtr> &node_old_2_new,
                                       std::map<ConstOpDescPtr, OpDescPtr> &op_desc_old_2_new, const int32_t depth);
 
@@ -297,6 +305,13 @@ class GraphUtils {
    * @return
    */
   static OpDescPtr CopyOpDesc(const ConstOpDescPtr &org_op_desc);
+  /**
+   * `CopyOpDesc`的重载接口
+   * @param org_op_desc
+   * @param attr_filter 节点上属性拷贝白名单过滤器，可以通过传递此参数实现满足条件的属性复制，不传递时代表全量拷贝
+   * @return
+   */
+  static OpDescPtr CopyOpDesc(const ConstOpDescPtr &org_op_desc, const AttrFilter &attr_filter);
   /**
    * 接口行为是在数据`src`锚点所属的`src_node`节点和数据`dsts`锚点所属的`dst_node`节点们之间插入一个`insert_node`节点,
    * 默认是`insert_node`的`0`号数据输入锚点和`0`号输出数据锚点参与连边，`insert_node`插入之后, `src_node`和`insert_node`
@@ -332,6 +347,14 @@ class GraphUtils {
    * @return 如果删除成功返回GRAPH_SUCCESS，失败返回GRAPH_FAILED
    */
   static graphStatus RemoveJustNode(const ComputeGraphPtr compute_graph, const NodePtr &node);
+
+  /**
+   * `RemoveJustNode`的批量删除接口，节点个数较多的时候，调用批量删除接口的性能比遍历`nodes`节点依次调用`RemoveJustNode`更高效一些
+   * @param compute_graph
+   * @param nodes
+   * @return
+   */
+  static graphStatus RemoveJustNodes(const ComputeGraphPtr &compute_graph, const std::unordered_set<NodePtr> &nodes);
 
   /**
    * 从`compute_graph`图对象的包含的nodes列表中删除`node`节点，仅仅是删除节点，不包含对`node`的断边和重新连边等操作
@@ -499,6 +522,14 @@ class GraphUtils {
    */
   static graphStatus CopyOutCtrlEdges(const NodePtr &src_node, const NodePtr &dst_node);
   /**
+    * 选择性拷贝`src_node`的控制输出边到`dst_node`上
+    * @param src_node
+    * @param dst_node
+    * @param node_filter 控制边拷贝白名单过滤器，可以通过传递此参数实现满足条件的边的复制，不传递时代表全量拷贝
+    * @return
+    */
+  static graphStatus CopyOutCtrlEdges(const NodePtr &src_node, const NodePtr &dst_node, const NodeFilter &node_filter);
+  /**
    * 移动`src_node`的控制输出边到`dst_node`上
    * @param src_node
    * @param dst_node
@@ -538,15 +569,14 @@ class GraphUtils {
   static graphStatus CopyTensorAttrs(const OpDescPtr &dst_desc, const NodePtr &src_node);
 
   /**
-   * 获取当前图里面的所有的节点的输入输出tensor的复用关系
-   * @param graph
-   * @param symbol_to_anchors 使用同一块内存特征值的所有的tensor
-   * @param anchor_to_symbol tensor和内存特征值的对应关系
-   * @return
-   */
-  static graphStatus GetRefMapping(const ComputeGraphPtr &graph,
-                                   std::map<std::string, std::list<NodeIndexIO>> &symbol_to_anchors,
-                                   std::map<std::string, std::string> &anchor_to_symbol);
+ * 获取当前图里面的所有的节点的输入输出tensor的复用关系
+ * @param graph
+ * @param symbol_to_anchors
+ * @param anchor_to_symbol
+ * @return
+ */
+  static graphStatus GetRefMapping(const ComputeGraphPtr &graph, SymbolToAnchors &symbol_to_anchors,
+                                   AnchorToSymbol &anchor_to_symbol);
 
   /// Determine if the graph is a UNKNOWN_SHAPE graph based on whether the graph and all subgraphs
   /// of the graph have UNKNOWN_SHAPE operators or not.
@@ -571,6 +601,13 @@ class GraphUtils {
    * @return 如果存在复用关系，返回true, 否则返回false
    */
   static bool IsRefFromInput(const OutDataAnchorPtr &out_data_anchor, int32_t &reuse_in_index);
+  /**
+   * 判断当前`out_data_anchor`是否引用RefData的输出
+   * @param out_data_anchor
+   * @param ref_data 复用的RefData节点
+   * @return 如果存在复用关系，返回true, 否则返回false
+   */
+  static bool IsRefFromRefData(const OutDataAnchorPtr &out_data_anchor, NodePtr &ref_data);
   /**
   * 针对含有`ATTR_NAME_NOPADDING_CONTINUOUS_INPUT`和`ATTR_NAME_NOPADDING_CONTINUOUS_OUTPUT`类型的节点
   * 单独封装的复用接口
@@ -638,7 +675,11 @@ class GraphUtils {
                                  const NodePtr &target_node, const function<bool(const ComputeGraphPtr &)> &filter,
                                  int32_t depth = 0);
 
+  static bool IsSingleOpScene(const ComputeGraphPtr &graph);
+
   static CycleDetectorPtr CreateCycleDetector(const ComputeGraphPtr &graph);
+
+  static CycleDetectorSharedPtr CreateSharedCycleDetector(const ComputeGraphPtr &graph);
 
   /**
      * 将node所有的输入、输出边断开，并移动到dst_graph
@@ -664,50 +705,81 @@ class GraphUtils {
     std::list<std::pair<ge::OutControlAnchorPtr, ge::InControlAnchorPtr>> inner_ctrl_edges_;
     friend class GraphUtils;
   };
-  /// Get reference-mapping for in_data_anchors of node
-  /// @param [in] node
-  /// @param [out] symbol_to_anchors
-  /// @param [out] anchor_to_symbol
-  /// @return success: GRAPH_SUCESS
+
+  /**
+   * 创建节点输入tensor的内存符号，正常情况下，应该跟其对端的输出tensor的内存符号相同，因为二者是一块地址
+   * @param graph
+   * @param node
+   * @param symbol_to_anchors
+   * @param anchor_to_symbol
+   * @return
+   */
   static graphStatus HandleInAnchorMapping(const ComputeGraphPtr &graph, const NodePtr &node,
-                                           std::map<std::string, std::list<NodeIndexIO>> &symbol_to_anchors,
-                                           std::map<std::string, std::string> &anchor_to_symbol);
+                                           SymbolToAnchors &symbol_to_anchors, AnchorToSymbol &anchor_to_symbol);
 
-  /// Get reference-mapping for out_data_anchors of node
-  /// @param [in] node
-  /// @param [out] symbol_to_anchors
-  /// @param [out] anchor_to_symbol
-  /// @return success: GRAPH_SUCESS
-  static graphStatus HandleOutAnchorMapping(const NodePtr &node,
-                                            std::map<std::string, std::list<NodeIndexIO>> &symbol_to_anchors,
-                                            std::map<std::string, std::string> &anchor_to_symbol);
+  /**
+   * 创建节点输出tensor的内存符号
+   * @param node
+   * @param symbol_to_anchors
+   * @param anchor_to_symbol
+   * @return
+   */
+  static graphStatus HandleOutAnchorMapping(const NodePtr &node, SymbolToAnchors &symbol_to_anchors,
+                                            AnchorToSymbol &anchor_to_symbol);
 
-  /// Handle input of subgraph
-  /// @param [in] node
-  /// @param [out] symbol_to_anchors
-  /// @param [out] anchor_to_symbol
-  /// @return success: GRAPH_SUCESS
-  static graphStatus HandleSubgraphInput(const NodePtr &node,
-                                         std::map<std::string, std::list<NodeIndexIO>> &symbol_to_anchors,
-                                         std::map<std::string, std::string> &anchor_to_symbol);
+  /**
+   * 创建子图内Data节点的输出tensor的内存符号，正常应该跟父节点对应的输入tensor内存符号相同
+   * @param node
+   * @param symbol_to_anchors
+   * @param anchor_to_symbol
+   * @return
+   */
+  static graphStatus HandleSubgraphInput(const NodePtr &node, SymbolToAnchors &symbol_to_anchors,
+                                         AnchorToSymbol &anchor_to_symbol);
 
-  /// Handle input of Merge op
-  /// @param [in] node
-  /// @param [out] symbol_to_anchors
-  /// @param [out] anchor_to_symbol
-  /// @return success: GRAPH_SUCESS
-  static graphStatus HandleMergeInput(const NodePtr &node,
-                                      std::map<std::string, std::list<NodeIndexIO>> &symbol_to_anchors,
-                                      std::map<std::string, std::string> &anchor_to_symbol);
+  /**
+   * 创建merge节点的内存符号，merge是特殊的v1控制算子，其输出和多个输入存在复用关系，因此单独封装函数处理
+   * @param node
+   * @param symbol_to_anchors
+   * @param anchor_to_symbol
+   * @return
+   */
+  static graphStatus HandleMergeInput(const NodePtr &node, SymbolToAnchors &symbol_to_anchors,
+                                      AnchorToSymbol &anchor_to_symbol);
 
-  /// Handle output of subgraph
-  /// @param [in] node
-  /// @param [out] symbol_to_anchors
-  /// @param [out] anchor_to_symbol
-  /// @return success: GRAPH_SUCESS
-  static graphStatus HandleSubgraphOutput(const NodePtr &node,
-                                          std::map<std::string, std::list<NodeIndexIO>> &symbol_to_anchors,
-                                          std::map<std::string, std::string> &anchor_to_symbol);
+  /**
+   * 创建子图内Netoutput节点的输出tensor的内存符号，正常应该跟父节点对应的输出tensor内存符号相同
+   * @param node
+   * @param symbol_to_anchors
+   * @param anchor_to_symbol
+   * @return
+   */
+  static graphStatus HandleSubgraphOutput(const NodePtr &node, SymbolToAnchors &symbol_to_anchors,
+                                          AnchorToSymbol &anchor_to_symbol);
+
+  /**
+   * 合并代表同一块地址的不同符号
+   * @param exist_node_info1
+   * @param exist_node_info2
+   * @param symbol_to_anchors
+   * @param anchor_to_symbol
+   * @param symbol
+   * @return
+   */
+  static graphStatus UnionSymbolMapping(const NodeIndexIO &exist_node_info1, const NodeIndexIO &exist_node_info2,
+                                        SymbolToAnchors &symbol_to_anchors, AnchorToSymbol &anchor_to_symbol,
+                                        std::string &symbol);
+
+  /**
+   * 对于同一块地址，使用已有tensor的符号设置当前tensor的符号
+   * @param cur_node_info
+   * @param exist_node_info
+   * @param symbol_to_anchors
+   * @param anchor_to_symbol
+   * @return
+   */
+  static graphStatus UpdateRefMapping(const NodeIndexIO &cur_node_info, const NodeIndexIO &exist_node_info,
+                                      SymbolToAnchors &symbol_to_anchors, AnchorToSymbol &anchor_to_symbol);
 
   /// Relink all edges for cloned ComputeGraph.
   /// @param [in] node: original node.
@@ -716,28 +788,6 @@ class GraphUtils {
   /// @return success: GRAPH_SUCESS
   static graphStatus RelinkGraphEdges(const NodePtr &node, const std::string &suffix,
                                       const std::unordered_map<std::string, NodePtr> &all_nodes);
-
-  /// Union ref-mapping
-  /// @param [in] exist_node_info1
-  /// @param [in] exist_node_info2
-  /// @param [out] symbol_to_anchors
-  /// @param [out] anchor_to_symbol
-  /// @param [out] symbol
-  /// @return success: GRAPH_SUCESS
-  static graphStatus UnionSymbolMapping(const NodeIndexIO &exist_node_info1, const NodeIndexIO &exist_node_info2,
-                                        std::map<std::string, std::list<NodeIndexIO>> &symbol_to_anchors,
-                                        std::map<std::string, std::string> &anchor_to_symbol, std::string &symbol);
-
-  /// Update symbol mapping with a new reference pair
-  /// @param [in] cur_node_info
-  /// @param [in] exist_node_info
-  /// @param [out] symbol_to_anchors
-  /// @param [out] anchor_to_symbol
-  /// @return success: GRAPH_SUCESS
-  static graphStatus UpdateRefMapping(const NodeIndexIO &cur_node_info, const NodeIndexIO &exist_node_info,
-                                      std::map<std::string, std::list<NodeIndexIO>> &symbol_to_anchors,
-                                      std::map<std::string, std::string> &anchor_to_symbol);
-
   static void BuildGraphInfoFromNodes(const std::set<NodePtr> &nodes, GraphInfo &graph_info);
 
   static void BuildInDataEdgesFromNode(const NodePtr &node, const std::set<NodePtr> &nodes,
@@ -759,7 +809,8 @@ class GraphUtils {
   static bool MatchDumpStr(const std::string &suffix);
 
   static graphStatus CopyOpAndSubgraph(const ComputeGraphPtr &src_compute_graph, const NodeFilter &node_filter,
-                                       const GraphFilter &graph_filter, ComputeGraphPtr &dst_compute_graph,
+                                       const GraphFilter &graph_filter, const AttrFilter &attr_filter,
+                                       ComputeGraphPtr &dst_compute_graph,
                                        std::map<ConstNodePtr, NodePtr> &node_old_2_new,
                                        std::map<ConstOpDescPtr, OpDescPtr> &op_desc_old_2_new,
                                        std::unordered_map<std::string, NodePtr> &all_new_nodes, const int32_t depth);
@@ -770,6 +821,14 @@ class GraphUtils {
   static graphStatus CopyGraphImpl(const Graph &src_graph, Graph &dst_graph,
                                    const std::map<ConstNodePtr, NodePtr> &node_old_2_new,
                                    const std::map<ConstOpDescPtr, OpDescPtr> &op_desc_old_2_new);
+
+  /**
+   * 改图接口，将图中的“FileConstant”节点用属性中对应的权重文件恢复成“Const”节点
+   * @param compute_graph
+   * @return
+   */
+  static graphStatus ConvertFileConstToConst(const ComputeGraphPtr &graph);
+  static graphStatus RecoverConstByWeightFile(const OpDescPtr &op_desc, const GeTensorPtr &weight);
 };
 
 class ComputeGraphBuilder {

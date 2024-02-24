@@ -51,6 +51,7 @@ typedef enum tagRtAicpuDeployType {
 typedef enum tagRtFeatureType {
     FEATURE_TYPE_MEMCPY = 0,
     FEATURE_TYPE_MEMORY,
+    FEATURE_TYPE_UPDATE_SQE,
     FEATURE_TYPE_RSV
 } rtFeatureType_t;
 
@@ -58,6 +59,7 @@ typedef enum tagRtDeviceFeatureType {
     FEATURE_TYPE_SCHE,
     FEATURE_TYPE_BLOCKING_OPERATOR,
     FEATURE_TYPE_FFTS_MODE,
+    FEATURE_TYPE_MEMQ_EVENT_CROSS_DEV,
     FEATURE_TYPE_END,
 } rtDeviceFeatureType_t;
 
@@ -70,6 +72,10 @@ typedef enum tagMemoryInfo {
     MEMORY_INFO_TS_LIMITED = 0,
     MEMORY_INFO_RSV
 } rtMemoryInfo_t;
+
+typedef enum tagUpdateSQEInfo {
+    UPDATE_SQE_SUPPORT_DSA = 0
+} rtUpdateSQEInfo_t;
 
 typedef enum tagRtDeviceModuleType {
     RT_MODULE_TYPE_SYSTEM = 0,  /**< system info*/
@@ -405,6 +411,24 @@ RTS_API rtError_t rtSetSocVersion(const char_t *ver);
  * @return RT_ERROR_NONE for ok
  */
 RTS_API rtError_t rtGetSocVersion(char_t *ver, const uint32_t maxLen);
+
+/**
+ * @ingroup dvrt_dev
+ * @brief check socversion
+ * @param [in] omSocVersion   OM SocVersion
+ * @param [in] omArchVersion   OM ArchVersion
+ * @return RT_ERROR_NONE for ok
+ */
+RTS_API rtError_t rtModelCheckCompatibility(const char_t *omSocVersion, const char_t *omArchVersion);
+
+/**
+ * @ingroup dvrt_dev
+ * @brief get device status
+ * @param [in] devId   the device id
+ * @param [out] deviceStatus the device statue
+ * @return RT_ERROR_NONE for ok
+ */
+RTS_API rtError_t rtDeviceStatusQuery(const uint32_t devId, rtDeviceStatus *deviceStatus);
 
 /**
  * @ingroup dvrt_dev

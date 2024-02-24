@@ -18,7 +18,7 @@
 #define INC_REGISTER_CUSTOM_PASS_HELPER_H_
 
 #include <set>
-#include "external/ge/ge_api_error_codes.h"
+#include "external/ge_common/ge_api_error_codes.h"
 #include "external/register/register_pass.h"
 #include "external/register/register_types.h"
 

@@ -30,10 +30,13 @@ class OpDescUtilsEx {
   static graphStatus InferShapeAndType(const OpDescPtr &op_desc);
   static graphStatus InferDataSlice(const OpDescPtr &op_desc);
   static void SetType(OpDescPtr &op_desc, const std::string &type);
+  static void UpdateShapeAndDType(const GeTensorDescPtr &src, const GeTensorDescPtr &dst);
+
  private:
   static graphStatus CallInferFuncV1(const OpDescPtr &op_desc, Operator &op);
   static graphStatus CallInferFuncV2(const OpDescPtr &op_desc, Operator &op);
   static graphStatus CallInferFuncV2Inner(const OpDescPtr &op_desc, Operator &op);
+  static graphStatus InferShapeByOutputShapesAttr(const OpDescPtr &op_desc);
 };
 } // namespace ge
 #endif // __INC_METADEF_OP_DESC_UTILS_EX_H

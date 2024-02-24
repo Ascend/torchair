@@ -23,6 +23,7 @@
 #include "graph/types.h"
 #include "exe_graph/runtime/base_type.h"
 #include "exe_graph/runtime/kernel_context.h"
+#include "exe_graph/runtime/dfx_info_filler.h"
 
 namespace ge {
 class Node;
@@ -38,6 +39,9 @@ class KernelRegistry {
   using KernelFunc = UINT32 (*)(KernelContext *context);
   using OutputsCreatorFunc = UINT32 (*)(const ge::Node *, KernelContext *);
   using TracePrinter = std::vector<std::string> (*)(const KernelContext *);
+  using ProfilingInfoFiller = ge::graphStatus (*)(const KernelContext *, ProfilingInfoWrapper &);
+  using DataDumpInfoFiller = ge::graphStatus (*)(const KernelContext *, DataDumpInfoWrapper &);
+  using ExceptionDumpInfoFiller = ge::graphStatus (*)(const KernelContext *, ExceptionDumpInfoWrapper &);
 
   struct KernelFuncs {
     KernelFunc run_func;
@@ -46,6 +50,9 @@ class KernelRegistry {
     CreateOutputsFunc outputs_initializer; // to be deleted
     OutputsCreatorFunc outputs_creator_func;
     TracePrinter trace_printer;
+    ProfilingInfoFiller profiling_info_filler;
+    DataDumpInfoFiller data_dump_info_filler;
+    ExceptionDumpInfoFiller exception_dump_info_filler;
   };
 
   struct KernelInfo {
@@ -81,6 +88,9 @@ class KernelRegisterV2 {
   ATTRIBUTED_NOT_SUPPORT()
   KernelRegisterV2 &OutputsInitializer(KernelRegistry::CreateOutputsFunc func); // to be deleted
   KernelRegisterV2 &TracePrinter(KernelRegistry::TracePrinter func);
+  KernelRegisterV2 &ProfilingInfoFiller(KernelRegistry::ProfilingInfoFiller func);
+  KernelRegisterV2 &DataDumpInfoFiller(KernelRegistry::DataDumpInfoFiller func);
+  KernelRegisterV2 &ExceptionDumpInfoFiller(KernelRegistry::ExceptionDumpInfoFiller func);
 
  private:
   std::unique_ptr<KernelRegisterData> register_data_;

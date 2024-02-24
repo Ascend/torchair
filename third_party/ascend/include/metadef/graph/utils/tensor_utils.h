@@ -72,6 +72,7 @@ class TensorUtils {
   static ge::graphStatus GetTensorSizeInBytes(const GeTensorDesc &desc_temp, int64_t &size_temp);
   static ge::graphStatus CheckShapeByShapeRange(const GeShape &shape,
                                                 const std::vector<std::pair<int64_t, int64_t>> &shape_range);
+  static bool IsShapeEqual(const GeShape &src, const GeShape &dst);
 };
 }  // namespace ge
 #endif  // INC_GRAPH_UTILS_TENSOR_UTILS_H_

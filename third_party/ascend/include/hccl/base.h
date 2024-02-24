@@ -123,10 +123,17 @@ typedef void *rtStream_t;
 typedef void *rtModel_t;
 
 struct HcomRemoteOperation {
-    void *opdesc;
-    void *keyAddr;
-    int *tableId;
-    void *value;
+    void *opdesc{};
+    void *keyAddr{};
+    int *tableId{};
+    s64 *keyNumInput{};
+    s32 *uniqueIndices{};
+    s32 *keyCount{};
+    void *value{};
+    void *indices{};
+    void *numUniqued{};
+    void *psSeg{};
+    void *psSegNum{};
 };
 
 struct HcomOperation {
@@ -159,7 +166,21 @@ struct HcomRemoteOperationParams {
     int tag;
     rtStream_t stream;
     u64 flag;
+    s32 insertOption;
+    void *indices{};
+    void *numUniqued{};
+    void *psSeg{};
+    void *psSegNum{};
+    s64 *keyNumInput{};
+    s32 *uniqueIndices{};
+    s32 *keyCount{};
     std::string hcclType;
+    s32 flags{};
+
+    s32 intZerocpyFlag{};
+    s32 outZerocpyFlag{};
+    bool disableUnique{};
+    bool uniqued{};
 };
 
 struct HcomAllToAllVParams {
@@ -232,6 +253,7 @@ using LookupReqStatus = struct tagLookupReqStatus {
     int tag;            // 与算子IR中的tag相同
     int actualCount;    // 如果是接收接口的status, 还返回实际接收到的keyCount
     int rsvd0;
+    int workerId;
 };
 
 using UpdateReqStatus = struct tagUpdateReqStatus {
@@ -285,7 +307,7 @@ typedef struct {
     uint64_t count;
     HcclDataType dataType;
     uint32_t root;
-    int32_t rsv1;
+    HcclReduceOp reduceOp;
     int32_t rsv2;
     int32_t rsv3;
 } HcomCollOpInfo;
@@ -310,7 +332,40 @@ typedef struct {
     uint32_t rsv2;
 } HcomStatus;
 
+
+/**
+ * @ingroup Hccl Address type
+ * @brief communication address type of HCCL
+ */
+enum HcclAddrType {
+    HCCL_ADDR_TYPE_ROCE = 0, // Hccl的通信地址类型, RoCE对应{Ipv4, port}
+
+    HCCL_ADDR_TYPE_NUM
+};
+
+/**
+ * @ingroup HcclAddr
+ * @brief Hccl communication address
+ */
+typedef struct {
+    HcclAddrType type;
+
+    union {
+        struct {
+            uint32_t ipv4Addr;
+            uint16_t port;
+        } tcp;
+
+        uint8_t bytes[28];
+    } info;
+} HcclAddr;
+
 typedef void* HcomRequest;
+
+/**
+ * @brief handle to HCCL Connection
+ */
+typedef void* HcclConn;
 
 #define HCCL_REQUEST_NULL   nullptr
 

@@ -236,6 +236,7 @@ typedef enum rtKernelType {
     KERNEL_TYPE_FWK = 1,
     KERNEL_TYPE_AICPU = 2,
     KERNEL_TYPE_AICPU_CUSTOM = 4,
+    KERNEL_TYPE_AICPU_KFC = 5,
     KERNEL_TYPE_HWTS = 10,
     KERNEL_TYPE_RESERVED = 99,
 } rtKernelType_t;
@@ -305,6 +306,8 @@ typedef void (*rtCallback_t)(void *fnData);
 #define RT_KERNEL_CUSTOM_AICPU (0x08U)
 #define RT_KERNEL_FFTSPLUS_DYNAMIC_SHAPE_DUMPFLAG (0x10U)
 #define RT_KERNEL_FFTSPLUS_STATIC_SHAPE_DUMPFLAG  (0x20U)
+// cmdlist does not need to be released by the runtime.
+#define RT_KERNEL_CMDLIST_NOT_FREE                (0x40U)
 
 // STARS topic scheduler sqe : topic_type
 #define RT_KERNEL_DEVICE_FIRST (0x10U)
@@ -477,6 +480,15 @@ RTS_API rtError_t rtKernelGetAddrAndPrefCntV2(void *hdl, const uint64_t tilingKe
                                               const uint32_t flag, rtKernelDetailInfo_t *kernelInfo);
 
 /**
+* @ingroup rt_kernel
+* @brief set input argments size for exception
+* @param [in] sizeInfo argments size info
+* @return RT_ERROR_NONE for ok
+* @return RT_ERROR_INVALID_VALUE for error input
+*/
+RTS_API rtError_t rtSetExceptionExtInfo(const rtArgsSizeInfo_t * const sizeInfo);
+
+/**
  * @ingroup rt_kernel
  * @brief launch kernel to device
  * @param [in] stubFunc   stub function
@@ -646,22 +658,6 @@ RTS_API rtError_t rtAicpuKernelLaunchWithFlag(const rtKernelLaunchNames_t *launc
                                               uint32_t flags);
 
 /**
- * @ingroup rtAicpuKernelLaunchEx
- * @brief launch cpu kernel to device  with dump identifier and kernelType
- * @param [in] kernelType    aicpu kernel type
- * @param [in] soName        address of op name
- * @param [in] blockDim      block dimentions
- * @param [in] argsInfo      argments address for kernel function
- * @param [in] smDesc        shared memory description
- * @param [in] stm           associated stream
- * @param [in] flags         dump flag or others function flag
- * @return RT_ERROR_NONE for ok
- * @return RT_ERROR_INVALID_VALUE for error input
- */
-RTS_API rtError_t rtAicpuKernelLaunchEx(uint32_t kernelType, const rtKernelLaunchNames_t *launchNames,
-                                        uint32_t blockDim, const rtArgsEx_t *argsInfo, rtSmDesc_t *smDesc,
-                                        rtStream_t stm, uint32_t flags);
-/**
  * @ingroup rtAicpuKernelLaunchExWithArgs
  * @brief launch cpu kernel to device  with dump identifier and kernelType
  * @param [in] kernelType    aicpu kernel type
@@ -733,6 +729,29 @@ RTS_API rtError_t rtNpuGetFloatStatus(void *outputAddrPtr, uint64_t outputSize, 
  * @return RT_ERROR_INVALID_VALUE for error input
  */
 RTS_API rtError_t rtNpuClearFloatStatus(uint32_t checkMode, rtStream_t stm);
+
+/**
+ * @ingroup rt_kernel
+ * @brief launch npu get float status task
+ * @param [in] outputAddrPtr  pointer to op output addr
+ * @param [in] outputSize   op output size
+ * @param [in] checkMode   check mode
+ * @param [in] stm   associated stream
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ */
+RTS_API rtError_t rtNpuGetFloatDebugStatus(void *outputAddrPtr, uint64_t outputSize, uint32_t checkMode,
+                                           rtStream_t stm);
+
+/**
+ * @ingroup rt_kernel
+ * @brief launch npu clear float status task
+ * @param [in] checkMode   check mode
+ * @param [in] stm   associated stream
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ */
+RTS_API rtError_t rtNpuClearFloatDebugStatus(uint32_t checkMode, rtStream_t stm);
 
 #ifndef __CLANG_CCE_RUNTIME_H__
 #define __CLANG_CCE_RUNTIME_H__
@@ -1005,6 +1024,20 @@ rtError_t rtLaunchKernelByFuncHandle(rtFuncHandle funcHandle, uint32_t blockDim,
 
 /**
  * @ingroup rt_kernel
+ * @brief Kernel Launch to device
+ * @param [in] funcHandle  function Handle
+ * @param [in] blockDim  block dimentions
+ * @param [in] argsHandle  args Handle
+ * @param [in] stm  associated stream
+ * @param [in] cfgInfo task config info
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ */
+rtError_t rtLaunchKernelByFuncHandleV2(rtFuncHandle funcHandle, uint32_t blockDim, rtLaunchArgsHandle argsHandle,
+                                       rtStream_t stm, const rtTaskCfgInfo_t *cfgInfo);
+
+/**
+ * @ingroup rt_kernel
  * @brief get Saturation Status task
  * @param [in] outputAddrPtr  pointer to op output addr
  * @param [in] outputSize   op output size
@@ -1024,14 +1057,101 @@ RTS_API rtError_t rtCleanDeviceSatStatus(rtStream_t stm);
 
 /**
  * @ingroup rt_kernel
- * @brief Get ConditionKernel Bin
+ * @brief Get Kernel Bin
  * @param [in] binFileName  binFileName
  * @param [out] buffer   bin buffer
  * @param [out] length   buffer length
  * @return RT_ERROR_NONE for ok
  * @return RT_ERROR_INVALID_VALUE for error input
  */
-RTS_API rtError_t rtGetConditionKernelBin(const char_t * const binFileName, char_t **const buffer, uint32_t *length);
+RTS_API rtError_t rtGetKernelBin(const char_t * const binFileName, char_t **const buffer, uint32_t *length);
+
+/**
+ * @ingroup rt_kernel
+ * @brief Free Kernel Bin
+ * @param [in] buffer  bin buffer
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ */
+RTS_API rtError_t rtFreeKernelBin(char_t * const buffer);
+
+/**
+ * @ingroup dvrt_mem
+ * @brief HCCL copy ffts args
+ * @param [in] stm task stream
+ * @param [in] argsInfo args info
+ * @param [out] devArgsAddr device mem addr for args
+ * @param [out] argsHandle copy handler
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ * @return RT_ERROR_DRV_ERR for driver error
+ */
+RTS_API rtError_t rtGetDevArgsAddr(rtStream_t stm, rtArgsEx_t *argsInfo, void **devArgsAddr, void **argsHandle);
+
+/**
+ * @ingroup rt_kernel
+ * @brief subscribe stream for hostFunc thread.
+ * @param [in] threadId   thread id for stream
+ * @param [in] stream     stream for subscribe
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ */
+RTS_API rtError_t rtSubscribeHostFunc(uint64_t threadId, rtStream_t stream);
+
+/**
+ * @ingroup rt_kernel
+ * @brief process hostFunc callback report and hostFunc callback function.
+ * @param [in] timeout           if timeout=-1, while(1); else timeout
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ */
+RTS_API rtError_t rtProcessHostFunc(int32_t timeout);
+
+/**
+ * @ingroup rt_kernel
+ * @brief unsubscribe hostFunc callback report.
+ * @param [in] threadId   thread id for stream
+ * @param [in] stream     stream for subscribe
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ */
+RTS_API rtError_t rtUnSubscribeHostFunc(uint64_t threadId, rtStream_t stream);
+
+/**
+ * @ingroup rt_kernel
+ * @brief Find funcHandle based on binHandle and kernelName.
+ * @param [in] binHandle  funcHandle
+ * @param [in] kernelName   kernelName
+ * @param [out] funcHandle   funcHandle
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ */
+rtError_t rtBinaryGetFunctionByName(const rtBinHandle binHandle, const char *kernelName, rtFuncHandle *funcHandle);
+
+/**
+ * @ingroup rt_kernel
+ * @brief Registers and parses the bin file and loads it to the device.
+ * @param [in] data   device binary data description
+ * @param [in] length   device binary data length
+ * @param [out] binHandle   device binary handle
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ */
+rtError_t rtBinaryLoadWithoutTilingKey(const void *data, const uint64_t length, rtBinHandle *binHandle);
+
+/**
+ * @ingroup rt_kernel
+ * @brief Kernel Launch to device
+ * @param [in] funcHandle  function Handle
+ * @param [in] blockDim  block dimentions
+ * @param [in] argsInfo  args info
+ * @param [in] stm  associated stream
+ * @param [in] cfgInfo task config info
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ */
+rtError_t rtLaunchKernelByFuncHandleV3(rtFuncHandle funcHandle, uint32_t blockDim, const rtArgsEx_t * const argsInfo,
+                                       rtStream_t stm, const rtTaskCfgInfo_t * const cfgInfo);
 
 #if defined(__cplusplus)
 }

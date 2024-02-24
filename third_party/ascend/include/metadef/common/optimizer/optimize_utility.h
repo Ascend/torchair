@@ -17,7 +17,7 @@
 #ifndef INC_COMMON_OPTIMIZER_OPTIMIZE_UTILITY_H_
 #define INC_COMMON_OPTIMIZER_OPTIMIZE_UTILITY_H_
 
-#include "common/ge_inner_error_codes.h"
+#include "common/ge_common/ge_inner_error_codes.h"
 #include "graph/compute_graph.h"
 
 namespace ge {
@@ -26,7 +26,10 @@ class OptimizeUtility {
   virtual ~OptimizeUtility() {}
 
   // Deprecated: will delete later. Graph infershape util
-  virtual Status InferShape(ComputeGraph &compute_graph) = 0;
+  virtual Status InferShape(ComputeGraph &compute_graph) {
+    (void)compute_graph;
+    return SUCCESS;
+  }
 
   // Graph infershape util
   virtual Status InferShape(const ComputeGraphPtr &compute_graph) = 0;
@@ -34,6 +37,12 @@ class OptimizeUtility {
   // Mlti Dims and pre/post process
   virtual Status MultiDimsProcess(const ComputeGraphPtr &compute_graph) {
     (void)compute_graph;
+    return SUCCESS;
+  }
+
+  // Constant folding
+  virtual Status ConstantFolding(NodePtr &node) {
+    (void)node;
     return SUCCESS;
   }
 };

@@ -28,6 +28,28 @@ namespace gert {
 namespace bg {
 class ValueHolder;
 using ValueHolderPtr = std::shared_ptr<ValueHolder>;
+constexpr const ge::char_t *kStageIdsToLastPartitionedCall = "StageIdsToLastPartitionedCall";
+constexpr const ge::char_t *kStageIdsToFirstPartitionedCall = "StageIdsToFirstPartitionedCall";
+/*
+ * 执行的阶段, 越小越靠前执行，越大越靠后执行
+ */
+enum class OnMainRootLastExecStage {
+  kFirstStage = 0,
+  kLastEventSyncStage,
+  kLastResourceClean,
+  // add level before this
+  kStageSize
+};
+
+/*
+ * 执行的阶段, 越小越靠前执行，越大越靠后执行
+ */
+enum class OnMainRootFirstExecStage {
+  kFirstEventSyncStage = 0,
+  // add level before this
+  kStageSize
+};
+
 class GraphFrame {
  public:
   GraphFrame(const GraphFrame &) = delete;
@@ -89,9 +111,13 @@ class GraphFrame {
   const std::vector<ValueHolderPtr> &GetLastExecNodes() const {
     return last_exec_nodes_;
   }
+
+  /*
+   * set last exec node, its priority is first level
+   */
   void SetLastExecNode(const ValueHolderPtr last_exec_node) {
     if (last_exec_node != nullptr) {
-      last_exec_nodes_.emplace_back(last_exec_node);
+      last_exec_nodes_.emplace_back(last_exec_node);  // todo to be deprecated
     }
   }
 
@@ -103,7 +129,7 @@ class GraphFrame {
   std::unordered_map<ge::NodePtr, size_t> &nodes_to_index_;
   std::vector<ge::NodePtr> indexes_to_node_holder_;
   std::vector<ge::NodePtr> &indexes_to_node_;
-  std::vector<ValueHolderPtr> last_exec_nodes_;
+  std::vector<ValueHolderPtr> last_exec_nodes_; // todo to be deprecated
   std::vector<ge::NodePtr> relevant_input_node_holder_;
   std::vector<ge::NodePtr> &relevant_input_node_;
 };

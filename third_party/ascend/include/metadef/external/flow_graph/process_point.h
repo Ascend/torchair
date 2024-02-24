@@ -29,7 +29,8 @@ using GraphBuilder = std::function<ge::Graph()>;
 enum class ProcessPointType {
   FUNCTION = 0,
   GRAPH = 1,
-  INVALID = 2,
+  INNER = 2,
+  INVALID = 3,
 };
 
 class ProcessPointImpl;
@@ -80,6 +81,7 @@ public:
   FunctionPp &SetInitParam(const char_t *attr_name, const ge::DataType &value);
   FunctionPp &SetInitParam(const char_t *attr_name, const std::vector<ge::DataType> &value);
   FunctionPp &AddInvokedClosure(const char_t *name, const GraphPp &graph_pp);
+  FunctionPp &AddInvokedClosure(const char_t *name, const ProcessPoint &pp);
   const std::map<const std::string, const GraphPp> &GetInvokedClosures() const;
   void Serialize(ge::AscendString &str) const override;
 private:

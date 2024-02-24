@@ -18,7 +18,7 @@
 #define INC_REGISTER_REGISTRY_H_
 
 #include "external/register/register.h"
-#include "external/ge/ge_api_error_codes.h"
+#include "external/ge_common/ge_api_error_codes.h"
 #include "graph/ge_error_codes.h"
 
 namespace ge {

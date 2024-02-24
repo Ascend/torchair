@@ -21,7 +21,7 @@
 #include <string>
 #include "graph_optimizer_types.h"
 #include "optimize_utility.h"
-#include "common/ge_inner_error_codes.h"
+#include "common/ge_common/ge_inner_error_codes.h"
 #include "common/opskernel/ops_kernel_info_types.h"
 #include "graph/compute_graph.h"
 #include "graph/op_kernel_bin.h"
@@ -114,6 +114,16 @@ class GraphOptimizer {
   virtual Status OptimizeSubgraphOfPrecompiledOp(ComputeGraph &graph, const KernelLookup &lookup) {
     static_cast<void>(graph);
     static_cast<void>(lookup);
+    return SUCCESS;
+  }
+
+  // 为避免子图优化中多线程操作导致的数据读写冲突，提供子图优化前后的单线程接口，由引擎实现以实现改图功能
+  virtual Status OptimizeSubgraphPreProc(ComputeGraph &graph) {
+    (void)graph;
+    return SUCCESS;
+  }
+  virtual Status OptimizeSubgraphPostProc(ComputeGraph &graph) {
+    (void)graph;
     return SUCCESS;
   }
 };

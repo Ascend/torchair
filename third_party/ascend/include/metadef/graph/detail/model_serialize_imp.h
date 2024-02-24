@@ -31,6 +31,13 @@
 
 namespace ge {
 using ComputeGraphPtr = std::shared_ptr<ComputeGraph>;
+using AnchorWithIndex = std::pair<AnchorPtr, int64_t>;
+struct MyCmp {
+  bool operator()(const AnchorWithIndex &anchor1, const AnchorWithIndex &anchor2) const {
+    return anchor1.second < anchor2.second;
+  }
+};
+using DstAnchors = std::set<AnchorWithIndex, MyCmp>;
 
 struct NodeNameGraphReq {
    public:
@@ -46,10 +53,11 @@ struct NodeNameGraphReq {
 
 struct NodeNameNodeReq {
    public:
-    NodeNameNodeReq(const std::string &src_name, const int32_t src_index, const NodePtr dst_node,
-                    const int32_t dst_index, const std::string &dst_name)
+    NodeNameNodeReq(const std::string &src_name, const int32_t src_index, const int32_t src_out_peer_index,
+                    const NodePtr dst_node, const int32_t dst_index, const std::string &dst_name)
         : src_node_name(src_name),
           src_out_index(src_index),
+          src_out_peer_index(src_out_peer_index),
           dst_node(dst_node),
           dst_in_index(dst_index),
           dst_node_name(dst_name) {}
@@ -58,6 +66,7 @@ struct NodeNameNodeReq {
    private:
     std::string src_node_name;
     int32_t src_out_index;
+    int32_t src_out_peer_index;
     NodePtr dst_node;
     int32_t dst_in_index;
     std::string dst_node_name;
@@ -65,18 +74,25 @@ struct NodeNameNodeReq {
 
 class ModelSerializeImp {
  public:
-  bool SerializeModel(const Model &model, proto::ModelDef *const model_proto, const bool is_dump = false) const;
+  bool SerializeModel(const Model &model, proto::ModelDef *const model_proto, const bool not_dump_all = false) const;
+  // if is_dump_graph is true, ensure peer anchors of node in the same order during serialization and deserialization
+  // if is_dump_graph is false, cannot guarantee peer anchors in the same order during serialization and deserialization
+  bool SerializeModel(const Model &model, const bool is_dump_graph, proto::ModelDef *const model_proto,
+                      const bool not_dump_all = false) const;
 
-  bool SerializeGraph(const ConstComputeGraphPtr &graph,
-                      proto::GraphDef *const graph_proto,
-                      const bool is_dump = false) const;
+  bool SerializeGraph(const ConstComputeGraphPtr &graph, proto::GraphDef *const graph_proto,
+                      const bool not_dump_all = false) const;
+  bool SerializeGraph(const ConstComputeGraphPtr &graph, const bool is_dump_graph, proto::GraphDef *const graph_proto,
+                      const bool not_dump_all = false) const;
 
-  bool SerializeEdge(const NodePtr &node, proto::OpDef *const op_def_proto) const;
+  bool SerializeEdge(const NodePtr &node, proto::OpDef *const op_def_proto, const bool is_dump_graph = false) const;
 
   bool SerializeOpDesc(const ConstOpDescPtr &op_desc, proto::OpDef *const op_def_proto,
-                       const bool is_dump = false) const;
+                       const bool not_dump_all = false) const;
 
-  bool SerializeNode(const NodePtr &node, proto::OpDef *const op_def_proto, const bool is_dump = false) const;
+  bool SerializeNode(const NodePtr &node, proto::OpDef *const op_def_proto, const bool not_dump_all = false) const;
+  bool SerializeNode(const NodePtr &node, const bool is_dump_graph, proto::OpDef *const op_def_proto,
+                     const bool not_dump_all = false) const;
 
   bool SeparateModelDef(Buffer &buffer, const std::string &path, proto::ModelDef &model_def) const;
 
@@ -98,7 +114,7 @@ class ModelSerializeImp {
   void AttrDefToOpDesc(OpDescPtr &op_desc, std::vector<std::string> &key_out, std::vector<uint32_t> &value_out,
                        const std::vector<std::string> &opt_input) const;
   void OpDescToAttrDef(const ConstOpDescPtr &op_desc, proto::OpDef *const op_def_proto,
-                       const bool is_dump = false) const;
+                       const bool not_dump_all = false) const;
   void OpDescIrDefToAttrDef(const ConstOpDescPtr &op_desc,
                             google::protobuf::Map<std::string, ge::proto::AttrDef> *op_desc_attr) const;
   bool UnserializeNode(ComputeGraphPtr &graph, proto::OpDef &op_def_proto);
@@ -124,6 +140,12 @@ class ModelSerializeImp {
                              std::vector<std::string> &key_in, std::vector<uint32_t> &value_in) const;
   void ExtractMetaDataAttr(proto::OpDef &op_def_proto, std::vector<std::string> &key_out,
                            std::vector<uint32_t> &value_out) const;
+
+  int64_t GenDataInputInfo(const OutDataAnchorPtr &src_anchor, const InDataAnchorPtr &dst_anchor) const;
+  int64_t GenCtrlInputInfo(const OutControlAnchorPtr &src_anchor, const InControlAnchorPtr &dst_anchor) const;
+  void SaveEdgeInfo(const AnchorPtr &src_anchor, const AnchorPtr &dst_anchor, const int64_t src_out_peer_index,
+                    const int64_t cur_index, std::unordered_map<AnchorPtr, DstAnchors> &edges) const;
+  bool LinkEdges(const std::unordered_map<AnchorPtr, DstAnchors> &edges) const;
 
   std::vector<NodeNameGraphReq> graph_input_node_names_;
   std::vector<NodeNameGraphReq> graph_output_node_names_;

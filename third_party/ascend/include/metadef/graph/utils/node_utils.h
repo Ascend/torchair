@@ -153,6 +153,29 @@ class NodeUtils {
  */
   static std::vector<NodePtr> GetSubgraphOutputNodes(const Node &node);
 
+  /**
+ * 获取`node`所在的图对应的根图
+ * @param node
+ * @return
+ */
+  static ComputeGraphPtr FindRootGraph(const Node &node);
+
+  /**
+   * 根据`node_filter`获取被node控制的输出节点
+   * @param node
+   * @param node_filter 控制边拷贝白名单过滤器，可以通过传递此参数实现满足条件的输出节点的获取
+   * @return
+   */
+  static std::vector<NodePtr> GetOutControlNodes(const Node &node, const NodeFilter &node_filter);
+
+  /**
+   * 根据`node_filter`获取控制node的输入节点
+   * @param node
+   * @param node_filter 控制边拷贝白名单过滤器，可以通过传递此参数实现满足条件的输入节点的获取
+   * @return
+   */
+  static std::vector<NodePtr> GetInControlNodes(const Node &node, const NodeFilter &node_filter);
+
   static NodePtr GetInDataNodeByIndex(const Node &node, const int32_t index);
   static std::pair<NodePtr, OutDataAnchorPtr> GetInDataNodeAndAnchorByIndex(const Node &node, const int32_t index);
 
@@ -183,8 +206,11 @@ class NodeUtils {
   ///          PartionedCall_0's subgraph: Data->A->Netoutput
   ///          PartionedCall_1's subgraph: Data1->B->Netoutput
   ///          If it is called like GetInNodeCrossPartionCallNode(B,0,peer_node)or(Data1,0,peer_node), peer_node is A
+  /// @param [out] peer_out_anchor_index, peer_node's corresponding out anchor's index
   /// @return [graphStatus] running result of this function
   static graphStatus GetInNodeCrossPartionedCallNode(const NodePtr &node, uint32_t index, NodePtr &peer_node);
+  static graphStatus GetInNodeCrossPartionedCallNode(const NodePtr &node, uint32_t index, NodePtr &peer_node,
+                                                     int32_t &peer_out_anchor_index);
 
   static graphStatus SetNodeParallelGroup(Node &node, const char_t *const group_name);
 
@@ -193,12 +219,40 @@ class NodeUtils {
   static bool IsDtResourceNode(const NodePtr &node);
   static bool IsLikeAtomicClean(const NodePtr &node);
   /**
-   * 用于判断identity节点是否被用于控制读写顺序的，如果是的话，
+   * 用于判断identity节点是否被用于控制先读后写顺序的，如果是的话，
    * 则图优化的时候不能无脑删除identity节点来提升性能
    * @param node_ptr
    * @return
    */
   static bool IsIdentityUsefulForRWControl(const NodePtr &node_ptr);
+  /**
+   * 尝试通过pld占位节点对应的实际const节点来获取权重
+   * @param node_ptr placeholder的占位节点，常见于图拆分中间状态的图的输入节点类型
+   * @param ge_tensor 权重的承载对象，成功获取时ge_tensor被设置为非空
+   * @return 失败时代表内部流程错误，成功时不代表一定获取到了权重
+   */
+  static graphStatus TryGetWeightByPlaceHolderNode(const NodePtr &node_ptr, ConstGeTensorPtr &ge_tensor);
+  /**
+  * 尝试通过Data占位节点对应的实际const节点来获取权重
+  * @param node_ptr Data占位节点，常见于子图的输入节点类型
+  * @param ge_tensor 权重的承载对象，成功获取时ge_tensor被设置为非空
+  * @return 失败时代表内部流程错误，成功时不代表一定获取到了权重
+  */
+  static graphStatus TryGetWeightByDataNode(const NodePtr &node_ptr, ConstGeTensorPtr &ge_tensor);
+  /**
+   * 判断`node`的名称是否是`name`
+   * @param node
+   * @param name
+   * @return 如果是的话，返回true，否则 false
+   */
+  static bool IsNameEqual(const NodePtr &node, const ge::char_t *const name);
+  /**
+   * 判断`node`的类型是否是`type`
+   * @param node
+   * @param type
+   * @return
+   */
+  static bool IsTypeEqual(const NodePtr &node, const ge::char_t *const type);
 };
 
 struct NodeCompareKey {

@@ -26,6 +26,9 @@
 #include "exe_graph/lowering/lowering_opt.h"
 
 namespace gert {
+constexpr int64_t kDefaultMainStreamId = 0;
+// todo change to get stream num from model_desc const data
+constexpr const ge::char_t *kGlobalDataModelStreamNum = "ModelStreamNum";
 class LoweringGlobalData {
  public:
   struct NodeCompileResult {
@@ -34,9 +37,17 @@ class LoweringGlobalData {
     }
     std::vector<domi::TaskDef> task_defs;
   };
-  const bg::ValueHolderPtr &GetStream() const;
-  LoweringGlobalData &SetStream(bg::ValueHolderPtr &&stream);
-  LoweringGlobalData &SetStream(bg::ValueHolderPtr &&stream, const ExecuteGraphType graph_type);
+
+  std::vector<bg::ValueHolderPtr> LoweringAndSplitRtStreams(int64_t stream_num);
+  bg::ValueHolderPtr GetStreamById(int64_t logic_stream_id) const;
+  inline bg::ValueHolderPtr GetStream() const {
+    int64_t current_stream_id = kDefaultMainStreamId;
+    if ((bg::ValueHolder::GetCurrentFrame() != nullptr) &&
+        (bg::ValueHolder::GetCurrentFrame()->GetCurrentComputeNode() != nullptr)) {
+      current_stream_id = bg::ValueHolder::GetCurrentFrame()->GetCurrentComputeNode()->GetOpDesc()->GetStreamId();
+    }
+    return GetStreamById(current_stream_id);
+  }
 
   const NodeCompileResult *FindCompiledResult(const ge::NodePtr &node) const;
   LoweringGlobalData &AddCompiledResult(const ge::NodePtr &node, NodeCompileResult compile_result);
@@ -44,10 +55,23 @@ class LoweringGlobalData {
   void *GetGraphStaticCompiledModel(const std::string &graph_name) const;
   LoweringGlobalData &AddStaticCompiledGraphModel(const std::string &graph_name, void *const model);
 
-  bg::ValueHolderPtr GetAllocator(const AllocatorDesc &desc) const;
+  bg::ValueHolderPtr GetL1Allocator(const AllocatorDesc &desc) const;
   LoweringGlobalData &SetExternalAllocator(bg::ValueHolderPtr &&allocator);
   LoweringGlobalData &SetExternalAllocator(bg::ValueHolderPtr &&allocator, const ExecuteGraphType graph_type);
-  bg::ValueHolderPtr GetOrCreateAllocator(const AllocatorDesc desc);
+
+  bg::ValueHolderPtr GetOrCreateL1Allocator(const AllocatorDesc desc);
+  bg::ValueHolderPtr GetOrCreateL2Allocator(int64_t logic_stream_id, const AllocatorDesc desc);
+  bg::ValueHolderPtr GetInitL2Allocator(const AllocatorDesc desc) const;
+  bg::ValueHolderPtr GetMainL2Allocator(int64_t logic_stream_id, const AllocatorDesc desc) const;
+  inline bg::ValueHolderPtr GetOrCreateAllocator(const AllocatorDesc desc) {
+    int64_t current_stream_id = kDefaultMainStreamId;
+    if ((bg::ValueHolder::GetCurrentFrame() != nullptr) &&
+        (bg::ValueHolder::GetCurrentFrame()->GetCurrentComputeNode() != nullptr)) {
+      current_stream_id = bg::ValueHolder::GetCurrentFrame()->GetCurrentComputeNode()->GetOpDesc()->GetStreamId();
+    }
+    return GetOrCreateL2Allocator(current_stream_id, desc);
+  }
+  bg::ValueHolderPtr GetOrCreateAllL2Allocators();
 
   bg::ValueHolderPtr GetOrCreateUniqueValueHolder(const std::string &name,
                                                   const std::function<bg::ValueHolderPtr()> &builder);
@@ -69,24 +93,42 @@ class LoweringGlobalData {
   const LoweringOption &GetLoweringOption() const;
   void SetLoweringOption(const LoweringOption &lowering_option);
 
+  void SetStaicModelWsSize(const int64_t require_ws_size) {
+    static_model_ws_size = require_ws_size;
+  }
+
+  int64_t GetStaticModelWsSize() const {
+    return static_model_ws_size;
+  }
+
+  void SetFixedFeatureMemoryBase(const void * const memory, const size_t size) {
+    fixed_feature_mem_ = std::make_pair(memory, size);
+  }
+
+  const std::pair<const void *, size_t> &GetFixedFeatureMemoryBase() const { return fixed_feature_mem_; }
  private:
-  struct HoldersByGraph {
+  struct HolderByGraphs {
     bg::ValueHolderPtr holders[static_cast<size_t>(ExecuteGraphType::kNum)];
   };
+  struct HoldersByGraphs {
+    std::vector<bg::ValueHolderPtr> holders[static_cast<size_t>(ExecuteGraphType::kNum)];
+  };
+
+  bg::ValueHolderPtr GetOrCreateInitL2Allocator(const AllocatorDesc desc);
+  bg::ValueHolderPtr GetExternalAllocator(const bool from_init, const string &key, const AllocatorDesc &desc);
 
  private:
-  bg::ValueHolderPtr stream_;  // to be deleted
   std::unordered_map<std::string, NodeCompileResult> node_name_to_compile_result_holders_;
-  std::map<int64_t, void *> node_ids_to_known_subgraph_models_;
   std::map<std::string, void *> graph_to_static_models_;
-  std::map<AllocatorDesc, bg::ValueHolderPtr> placements_to_allocator_;
   std::map<std::string, std::vector<bg::ValueHolderPtr>> unique_name_to_value_holders_;
-  HoldersByGraph streams_;
-  HoldersByGraph external_allocators_;
+  HoldersByGraphs streams_;
+  HolderByGraphs external_allocators_;
   // todo need delete and change to const_data after const_data is ready
   int64_t model_weight_size_;
+  int64_t static_model_ws_size;
   OpImplSpaceRegistryPtr space_registry_;
   LoweringOption lowering_option_;
+  std::pair<const void *, size_t> fixed_feature_mem_;
 };
 }  // namespace gert
 #endif  // AIR_CXX_RUNTIME_V2_LOWERING_LOWERING_GLOBAL_DATA_H_

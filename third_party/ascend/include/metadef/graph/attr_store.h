@@ -26,6 +26,7 @@
 namespace ge {
 using AttrId = uint64_t;
 using AttrSubId = uint32_t;
+using AttrNameFilter = std::function<bool(const std::string &attr_name)>;
 enum class AttrType : uint32_t {
   kAttrPredefinedInIr = 0U,  // IR预定义的属性
   kAttrGeneral = 1U,         // 通用属性
@@ -78,6 +79,7 @@ class AttrStore {
   // unordered版本更好，为了兼容老版本接口，仍然用set和map，不论用哪种数据结构，这都是非常低效的接口
   std::set<std::string> GetAllAttrNames() const;
   std::map<std::string, AnyValue> GetAllAttrs() const;
+  std::map<std::string, AnyValue> GetAllAttrsWithFilter(const AttrNameFilter &attr_filter) const;
 
   AnyValue *MutableAnyValue(const std::string &name) const noexcept;
   AnyValue *GetOrCreateAnyValue(const std::string &name);
@@ -118,6 +120,7 @@ class AttrStore {
 
     void GetAllNames(std::set<std::string> &names) const;
     void GetAllAttrs(std::map<std::string, AnyValue> &names_to_attr) const;
+    void GetAllAttrsWithFilter(std::map<std::string, AnyValue> &names_to_attr, const AttrNameFilter &attr_filter) const;
 
    private:
     std::unordered_map<std::string, AnyValue> attrs_;

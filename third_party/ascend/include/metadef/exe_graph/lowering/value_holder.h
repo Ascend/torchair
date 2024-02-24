@@ -24,10 +24,13 @@
 #include "graph/buffer.h"
 #include "graph/any_value.h"
 #include "graph/compute_graph.h"
+#include "graph/utils/node_utils.h"
 #include "graph/node.h"
 #include "common/hyper_status.h"
 #include "graph_frame.h"
 #include "exe_graph/runtime/tensor.h"
+#include "common/checker.h"
+#include "common/util/mem_utils.h"
 
 namespace gert {
 namespace bg {
@@ -63,15 +66,16 @@ class ValueHolder {
 
   ValueHolder(const ValueHolder &other) = delete;
   ValueHolder &operator=(const ValueHolder &other) = delete;
-  ~ValueHolder();
+  virtual ~ValueHolder();
 
   bool IsOk() const noexcept;
-
+  HyperStatus AddInnerDataToKVMap(int32_t index) const noexcept;
   int64_t GetId() const noexcept;
   ValueHolderType GetType() const noexcept;
   const NodeHolder *GetNode() const noexcept;
   const GraphHolder *GetGraph() const noexcept;
   ValueHolderPtr GetGuarder() const noexcept;
+  void SetGuarder(const bg::ValueHolderPtr &guarder) noexcept;
 
   int32_t GetOutIndex() const noexcept;
   // ref-from other的含义是，本value指向了other（本value没有独立的内存）
@@ -83,7 +87,16 @@ class ValueHolder {
   const int32_t &GetPlacement() const;
   void SetPlacement(const int32_t &placement);
 
-  std::vector<ValueHolderPtr> AppendOutputs(size_t append_count);
+  template<typename T, typename... Args>
+  std::vector<std::shared_ptr<T>> AppendOutputs(size_t append_count, Args... args) {
+    auto node = node_->shared_from_this();
+    auto start_index = node->GetAllOutDataAnchorsSize();
+    auto ret = ge::NodeUtils::AppendOutputAnchor(node, start_index + append_count);
+    if (ret != ge::GRAPH_SUCCESS) {
+      return {};
+    }
+    return CreateFromNode<T>(node, start_index, append_count, args...);
+  }
 
   static ValueHolderPtr CreateError(const ge::char_t *fmt, ...);
   static ValueHolderPtr CreateError(const ge::char_t *fmt, va_list arg);
@@ -94,7 +107,13 @@ class ValueHolder {
   static ValueHolderPtr CreateSingleDataOutput(const ge::char_t *node_type, const std::vector<ValueHolderPtr> &inputs);
   static std::vector<ValueHolderPtr> CreateDataOutput(const ge::char_t *node_type,
                                                       const std::vector<ValueHolderPtr> &inputs, size_t out_count);
-  static ValueHolderPtr CreateVoid(const ge::char_t *node_type, const std::vector<ValueHolderPtr> &inputs);
+  template<typename T, typename... Args>
+  static std::shared_ptr<T> CreateVoid(const ge::char_t *node_type, const std::vector<ValueHolderPtr> &inputs,
+                                       Args... args) {
+    auto node = CreateNode(node_type, inputs, 0);
+    GE_ASSERT_NOTNULL(node);
+    return CreateFromNode<T>(node, -1, ValueHolderType::kOutput, args...);
+  }
   static ValueHolderPtr CreateVoidGuarder(const ge::char_t *node_type, const ValueHolderPtr &resource,
                                           const std::vector<ValueHolderPtr> &args);
   static HyperStatus AddDependency(const ValueHolderPtr &src, const ValueHolderPtr &dst);
@@ -111,6 +130,12 @@ class ValueHolder {
    * @return 创建且挂接成功后，返回创建好的GraphFrame指针，失败时返回空指针
    */
   static GraphFrame *PushGraphFrame(const ValueHolderPtr &belongs, const ge::char_t *graph_name);
+  /**
+   * 压栈一个GraphFrame, 若该graph frame非root frame，需要保证栈顶frame为其父frame
+   * @return 成功后，返回该GraphFrame指针，失败时返回空指针
+   */
+  static GraphFrame *PushGraphFrame(GraphFrame *graph_frame);
+
   static std::unique_ptr<GraphFrame> PopGraphFrame();
   static std::unique_ptr<GraphFrame> PopGraphFrame(const std::vector<ValueHolderPtr> &outputs,
                                                    const std::vector<ValueHolderPtr> &targets);
@@ -125,18 +150,50 @@ class ValueHolder {
 
   static NodeHolderPtr AddNode(const ge::char_t *node_type, size_t input_count,
     size_t output_count, const GraphFrame &frame);
-  static std::vector<ValueHolderPtr> CreateFromNode(const NodeHolderPtr &node,
-    size_t start_index, size_t create_count);
-  static ValueHolderPtr CreateFromNode(NodeHolderPtr node, int32_t index, ValueHolderType type);
+
+  template<typename T, typename... Args>
+  static std::vector<std::shared_ptr<T>> CreateFromNode(const NodeHolderPtr &node, size_t start_index,
+                                                        size_t create_count, Args... args) {
+    if (node == nullptr) {
+      return {create_count, nullptr};
+    }
+    std::vector<std::shared_ptr<T>> holders;
+    for (size_t i = 0; i < create_count; ++i) {
+      holders.emplace_back(
+          CreateFromNode<T>(node, static_cast<int32_t>(i + start_index), ValueHolderType::kOutput, args...));
+    }
+
+    return holders;
+  }
+
+  template<typename T, typename... Args>
+  static std::shared_ptr<T> CreateFromNode(NodeHolderPtr node, int32_t index, ValueHolderType type, Args... args) {
+    auto holder = std::shared_ptr<T>(new (std::nothrow) T(args...));
+    GE_ASSERT_NOTNULL(holder);
+
+    holder->type_ = type;
+    holder->node_ = std::move(node);
+    holder->index_ = index;
+    return holder;
+  }
+  virtual ValueHolderPtr CreateMateFromNode(NodeHolderPtr node, int32_t index, ValueHolderType type);
+
   static std::string GenerateNodeName(const ge::char_t *node_type, const GraphFrame &frame);
 
   static std::vector<ValueHolderPtr> GetLastExecNodes();
 
- private:
+ protected:
   ValueHolder();
-  static std::vector<ValueHolderPtr> CreateFromNode(const NodeHolderPtr &node, size_t out_count);
   static NodeHolderPtr CreateNode(const ge::char_t *node_type, const std::vector<ValueHolderPtr> &inputs,
                                   size_t out_count);
+
+  template<typename T, typename... Args>
+  static std::vector<std::shared_ptr<T>> CreateFromNodeStart(const NodeHolderPtr &node, size_t out_count,
+                                                             Args... args) {
+    return CreateFromNode<T>(node, 0U, out_count, args...);
+  }
+
+  void SetErrorMsg(const char *fmt, va_list arg);
 
  private:
   static std::atomic<int64_t> id_generator_;

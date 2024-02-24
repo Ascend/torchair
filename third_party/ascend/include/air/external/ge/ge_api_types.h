@@ -26,6 +26,8 @@
 #include "graph/tensor.h"
 #include "graph/types.h"
 
+#ifndef GE_API_TYPES_DEF
+#define GE_API_TYPES_DEF
 namespace ge {
 // Option key: graph run mode
 const char_t *const OPTION_GRAPH_RUN_MODE = "ge.graphRunMode";
@@ -40,7 +42,6 @@ const char_t *const OPTION_EXEC_RANK_ID = "ge.exec.rankId";
 const char_t *const OPTION_EXEC_POD_NAME = "ge.exec.podName";
 const char_t *const OPTION_EXEC_DEPLOY_MODE = "ge.exec.deployMode";
 const char_t *const OPTION_EXEC_RANK_TABLE_FILE = "ge.exec.rankTableFile";
-const char_t *const GE_AICPU_FLAG = "ge.aicpuFlag";
 const char_t *const OPTION_EXEC_EXTERN_PLUGIN_PATH = "ge.soLoadPath";
 // Dump flag and para
 const char_t *const OPTION_EXEC_ENABLE_DUMP = "ge.exec.enableDump";
@@ -72,6 +73,7 @@ const char_t *const OPTION_EXEC_DYNAMIC_EXECUTE_MODE = "ge.exec.dynamicGraphExec
 const char_t *const OPTION_EXEC_DATA_INPUTS_SHAPE_RANGE = "ge.exec.dataInputsShapeRange";
 const char_t *const OPTION_EXEC_ENABLE_COPY_OUTPUT_ADDR = "ge.exec.enableCopyOutputAddr";
 const char_t *const OPTION_EXEC_GRAPH_EXEC_TIMEOUT = "ge.exec.graphExecTimeout";
+const char_t *const OPTION_EXEC_OPTIMIZE_SHAPE = "ge.exec.dataInputsOptimizeShape";
 
 // Option key: memory init
 const char_t *const GRAPH_MEMORY_MAX_SIZE = "ge.graphMemoryMaxSize";
@@ -79,12 +81,14 @@ const char_t *const VARIABLE_MEMORY_MAX_SIZE = "ge.variableMemoryMaxSize";
 const char_t *const OPTION_EXEC_REUSE_ZERO_COPY_MEMORY = "ge.exec.reuseZeroCopyMemory";
 const char_t *const OPTION_INPUT_REUSE_MEM_INDEXES = "ge.exec.inputReuseMemIndexes";
 const char_t *const OPTION_OUTPUT_REUSE_MEM_INDEXES = "ge.exec.outputReuseMemIndexes";
+const char_t *const OPTION_GRAPH_IO_MEM_ALLOC_MODE = "ge.exec.graphIOMemAllocMode";
 
 const std::string ATOMIC_CLEAN_POLICY = "ge.exec.atomicCleanPolicy";
 const std::string MEMORY_OPTIMIZATION_POLICY = "ge.exec.memoryOptimizationPolicy";
 const std::string STATIC_MEMORY_POLICY = "ge.exec.staticMemoryPolicy";
 const char_t *const OPTION_FEATURE_BASE_REFRESHABLE = "ge.featureBaseRefreshable";
 const char_t *const OPTION_CONST_LIFECYCLE = "ge.constLifecycle";
+const char_t *const OPTION_HOST_SCHEDULING_MAX_THRESHOLD = "ge.exec.hostSchedulingMaxThreshold";
 
 const char_t *const OPTION_EXEC_LOGICAL_DEVICE_CLUSTER_DEPLOY_MODE = "ge.exec.logicalDeviceClusterDeployMode";
 const char_t *const OPTION_EXEC_LOGICAL_DEVICE_ID = "ge.exec.logicalDeviceId";
@@ -97,6 +101,8 @@ const std::string OPTION_EXEC_CM_CHIEF_PORT = "ge.cmChiefPort";
 const std::string OPTION_EXEC_CM_CHIEF_DEVICE = "ge.cmChiefWorkerDevice";
 const std::string OPTION_EXEC_CM_WORKER_IP = "ge.cmWorkerIp";
 const std::string OPTION_EXEC_CM_WORKER_SIZE = "ge.cmWorkerSize";
+
+const std::string OPTION_NAME_MAP = "ge.optionNameMap";
 
 const std::string OPTION_EXEC_STREAM_SYNC_TIMEOUT = "stream_sync_timeout";
 const std::string OPTION_EXEC_EVENT_SYNC_TIMEOUT = "event_sync_timeout";
@@ -112,9 +118,15 @@ const char_t *const OPTION_EXEC_WORKER_NUM = "ge.exec.workerNum";
 const char_t *const OPTION_EXECUTE_TIMES = "ge.execute_times";
 const char_t *const OPTION_MAX_KEY_NUM = "ge.max_num";
 const char_t *const OPTION_EMBEDDING_DIM = "ge.embedding_dim";
+const char_t *const OPTION_USE_COUNTER_FILTER = "ge.use_counter_filter";
 
 // Option key: Offload
 constexpr char_t const OPTION_EXEC_RANK_MAP[] = "ge.exec.rankMap";
+
+// Option key: enable engine parallel or not
+constexpr char_t const OPTION_EXEC_ENABLE_ENGINE_PARALLEL[] = "ge.exec.enableEngineParallel";
+constexpr char_t const OPTION_EXEC_ENGINE_PARALLEL_CONFIG_PATH[] = "ge.exec.engineParallelConfigPath";
+constexpr char_t const OPTION_EXEC_IS_IN_SHARD_GRAPH[] = "ge.exec.isInShardGraph";
 
 // Option key: host env os & cpu
 const char_t *const OPTION_HOST_ENV_OS = "ge.host_env_os";
@@ -127,6 +139,18 @@ const char_t *const OPTION_GRAPH_KEY = "ge.graph_key";
 
 // optimizations to disable, split by comma
 const char_t *const OPTION_DISABLE_OPTIMIZATIONS = "ge.disableOptimizations";
+const char_t *const ENABLE_GRAPH_PARALLEL = "ge.enableGraphParallel";
+const char_t *const GRAPH_PARALLEL_OPTION_PATH = "ge.graphParallelOptionPath";
+const std::string DISTRIBUTED_CLUSTER_BUILD = "ge.distributed_cluster_build";
+const std::string MODEL_RELATION_CONFIG = "ge.offline_model_relation";
+const std::string CLUSTER_CONFIG = "ge.cluster_config";
+const std::string OPTION_HCCL_COMPILER_OFFLINE = "ge.offline_hccl_compile";
+
+// option for screen log
+const char_t *const OPTION_SCREEN_PRINT_MODE = "ge.screen_print_mode";
+
+// option for experimental
+constexpr char_t const OPTION_STATIC_MODEL_OPS_LOWER_LIMIT[] = "ge.exec.static_model_ops_lower_limit";
 
 namespace configure_option {
 const char_t *const STREAM_NUM = "ge.streamNum";
@@ -143,14 +167,14 @@ const char_t *const INSERT_OP_FILE = "ge.insertOpFile";
 const char_t *const OUTPUT_NODE_NAME = "ge.outputNodeName";
 const char_t *const COMPRESS_FLAG = "ge.compressFlag";
 const char_t *const PRECISION_MODE = "ge.exec.precision_mode";
+const char_t *const PRECISION_MODE_V2 = "ge.exec.precision_mode_v2";
 const char_t *const SINGLE_OP_FLAG = "ge.exec.single_op";
 const char_t *const TRAIN_FLAG = "ge.trainFlag";
 const char_t *const RUN_FLAG = "ge.runFlag";
 const char_t *const LOCAL_FMKOP_FLAG = "ge.enabledLocalFmkop";
 const char_t *const TBE_PLUGIN_PATH_FLAG = "ge.TBE_plugin_path";
-const char_t *const DDK_VERSION_FLAG = "ge.DDK_version";
-const char_t *const GE_FE_FLAG = "ge.feFlag";
 const char_t *const STREAM_MAX_PARALLEL_NUM = "ge.streamMaxParallelNum";
+const char_t *const AC_PARALLEL_ENABLE = "ac_parallel_enable";
 const char_t *const OUTPUT_DATATYPE = "ge.outputDatatype";
 const char_t *const OP_SELECT_IMPL_MODE = "ge.opSelectImplmode";
 const char_t *const OPTYPELIST_FOR_IMPLMODE = "ge.optypelistForImplmode";
@@ -173,12 +197,14 @@ const char_t *const PERFORMANCE_MODE = "ge.performance_mode";
 const char_t *const SHAPE_GENERALIZED_BUILD_MODE = "ge.shape_generalized_build_mode";
 const char_t *const MODIFY_MIXLIST = "ge.exec.modify_mixlist";
 const char_t *const OP_PRECISION_MODE = "ge.exec.op_precision_mode";
+const char_t *const ALLOW_HF32 = "ge.exec.allow_hf32";
 const char_t *const CUSTOMIZE_DTYPES = "ge.customizeDtypes";
 const char_t *const COMPRESSION_OPTIMIZE_CONF = "ge.compressionOptimizeConf";
 const char_t *const OP_DEBUG_CONFIG = "op_debug_config";
 const char_t *const ATOMIC_CLEAN_POLICY = "ge.exec.atomicCleanPolicy";
 const char_t *const STATIC_MEMORY_POLICY = "ge.exec.staticMemoryPolicy";
 const char_t *const EXTERNAL_WEIGHT = "ge.externalWeight";
+const char_t *const QUANT_DUMPABLE = "ge.quant_dumpable";
 static const char_t *const DETERMINISTIC = "ge.deterministic";
 }  // namespace configure_option
 // Configure stream num by Session constructor options param,
@@ -235,6 +261,8 @@ const std::string COMPRESS_FLAG = "ge.compressFlag";
 
 const std::string PRECISION_MODE = "ge.exec.precision_mode";
 
+const std::string PRECISION_MODE_V2 = "ge.exec.precision_mode_v2";
+
 const std::string TUNE_DEVICE_IDS = "ge.exec.tuneDeviceIds";
 
 // Configure single op flag for FE
@@ -259,21 +287,15 @@ const std::string LOCAL_FMKOP_FLAG = "ge.enabledLocalFmkop";
 // this option is to obtain the TBE op plugin path
 const std::string TBE_PLUGIN_PATH_FLAG = "ge.TBE_plugin_path";
 
-// Configure run flag by Session constructor options param,
-// its value should be a path
-// this option is to obtain the DDK Version info
-const std::string DDK_VERSION_FLAG = "ge.DDK_version";
-
-// Configure run flag by Session constructor options param,
-// its value should be a path
-// this option is to obtain fe flag
-const std::string GE_FE_FLAG = "ge.feFlag";
-
 // Configure stream max parallel num only by Session constructor options param,
 // its value should be stream:int, such as "DNN_V100:2,DNN_HCCL:3",
 // default value is "1", such as "DNN_V100:1,DNN_HCCL:1"
 // this option is to obtain stream max parallel num
 const std::string STREAM_MAX_PARALLEL_NUM = "ge.streamMaxParallelNum";
+
+// Configure engines such as Aicpu to compute parallelly with other engines in dynamic shape graphs.
+// its value should be "0" or "1", default value is "0"
+const std::string AC_PARALLEL_ENABLE = "ac_parallel_enable";
 
 // congigure outputDatatype to setting net output type
 const std::string OUTPUT_DATATYPE = "ge.outputDatatype";
@@ -356,6 +378,9 @@ const std::string SAVE_ORIGINAL_MODEL = "ge.saveOriginalModel";
 // Save original model file name
 const std::string ORIGINAL_MODEL_FILE = "ge.originalModelFile";
 
+// Output max size
+const std::string OUTPUT_MAX_SIZE = "ge.outputMaxSize";
+
 const char_t *const OPTION_GE_MAX_DUMP_FILE_NUM = "ge.maxDumpFileNum";
 const char_t *const OPTION_GE_MAX_DUMP_FILE_SIZE = "ge.maxDumpFileSize";
 const char_t *const OPTION_GE_MAX_DUMP_OP_NUM = "ge.maxDumpOpNum";
@@ -429,6 +454,8 @@ const std::string MODIFY_MIXLIST = "ge.exec.modify_mixlist";
 
 const std::string OP_PRECISION_MODE = "ge.exec.op_precision_mode";
 
+const std::string ALLOW_HF32 = "ge.exec.allow_hf32";
+
 const std::string OP_WAIT_TIMEOUT = "ge.exec.opWaitTimeout";
 
 const std::string OP_EXECUTE_TIMEOUT = "ge.exec.opExecuteTimeout";
@@ -440,6 +467,8 @@ const char_t *const FILE_CONSTANT_PATH = "ge.exec.value_bins";
 const std::string EXTERNAL_WEIGHT = "ge.externalWeight";
 
 const std::string DETERMINISTIC = "ge.deterministic";
+
+const std::string QUANT_DUMPABLE = "ge.quant_dumpable";
 
 constexpr char_t EVENT[] = "ge.event";
 
@@ -459,7 +488,7 @@ struct OutputTensorInfo {
   std::unique_ptr<uint8_t[]> data;  // tensor data
   int64_t length{};                 // tensor length
   OutputTensorInfo() : dims({}), data(nullptr) {}
-
+  OutputTensorInfo(OutputTensorInfo &&out) noexcept = default;
   OutputTensorInfo &operator=(OutputTensorInfo &&out)& noexcept {
     if (this != &out) {
       data_type = out.data_type;
@@ -471,6 +500,10 @@ struct OutputTensorInfo {
   }
   OutputTensorInfo(const OutputTensorInfo &) = delete;
   OutputTensorInfo &operator=(const OutputTensorInfo &)& = delete;
+};
+
+struct ModelDistibuteDesc {
+  uint32_t logic_device_number;
 };
 
 using Status = uint32_t;
@@ -492,6 +525,7 @@ static const char_t *const DYNAMIC_IMAGE_SIZE = kDynamicImageSize;
 static const char_t *const DYNAMIC_DIMS = kDynamicDims;
 static const char_t *const INSERT_OP_FILE = ge::INSERT_OP_FILE.c_str();
 static const char_t *const PRECISION_MODE = ge::PRECISION_MODE.c_str();
+static const char_t *const PRECISION_MODE_V2 = ge::PRECISION_MODE_V2.c_str();
 static const char_t *const TUNE_DEVICE_IDS = ge::TUNE_DEVICE_IDS.c_str();
 static const char_t *const EXEC_DISABLE_REUSED_MEMORY = ge::OPTION_EXEC_DISABLE_REUSED_MEMORY;
 static const char_t *const AUTO_TUNE_MODE = ge::AUTO_TUNE_MODE.c_str();
@@ -499,6 +533,7 @@ static const char_t *const CORE_TYPE = ge::CORE_TYPE.c_str();
 static const char_t *const SOC_VERSION = ge::SOC_VERSION.c_str();
 static const char_t *const VIRTUAL_TYPE = ge::VIRTUAL_TYPE.c_str();
 static const char_t *const ENABLE_SINGLE_STREAM = ge::ENABLE_SINGLE_STREAM;
+static const char_t *const AC_PARALLEL_ENABLE = ge::AC_PARALLEL_ENABLE.c_str();
 static const char_t *const AICORE_NUM = ge::AICORE_NUM.c_str();
 static const char_t *const FUSION_SWITCH_FILE = ge::FUSION_SWITCH_FILE.c_str();
 static const char_t *const ENABLE_SMALL_CHANNEL = ge::ENABLE_SMALL_CHANNEL.c_str();
@@ -524,6 +559,7 @@ static const char_t *const PERFORMANCE_MODE = ge::PERFORMANCE_MODE.c_str();
 static const char_t *const SHAPE_GENERALIZED_BUILD_MODE = ge::SHAPE_GENERALIZED_BUILD_MODE.c_str();
 static const char_t *const MODIFY_MIXLIST = ge::MODIFY_MIXLIST.c_str();
 static const char_t *const OP_PRECISION_MODE = ge::OP_PRECISION_MODE.c_str();
+static const char_t *const ALLOW_HF32 = ge::ALLOW_HF32.c_str();
 static const char_t *const CUSTOMIZE_DTYPES = "ge.customizeDtypes";
 static const char_t *const COMPRESSION_OPTIMIZE_CONF = "ge.compressionOptimizeConf";
 static const char_t *const INPUT_DATA_NAMES = "input_data_names";
@@ -532,7 +568,12 @@ static const char_t *const ATOMIC_CLEAN_POLICY = "ge.exec.atomicCleanPolicy";
 static const char_t *const EXTERNAL_WEIGHT = ge::EXTERNAL_WEIGHT.c_str();
 static const char_t *const EXCLUDE_ENGINES = ge::EXCLUDE_ENGINES.c_str();
 static const char_t *const DETERMINISTIC = ge::DETERMINISTIC.c_str();
-
+static const char_t *const DISTRIBUTED_CLUSTER_BUILD = ge::DISTRIBUTED_CLUSTER_BUILD.c_str();
+static const char_t *const MODEL_RELATION_CONFIG = ge::MODEL_RELATION_CONFIG.c_str();
+static const char_t *const CLUSTER_CONFIG = ge::CLUSTER_CONFIG.c_str();
+static const char_t *const ENABLE_GRAPH_PARALLEL = "ge.enableGraphParallel";
+static const char_t *const GRAPH_PARALLEL_OPTION_PATH = "ge.graphParallelOptionPath";
+static const char_t *const QUANT_DUMPABLE = ge::QUANT_DUMPABLE.c_str();
 // for interface: aclgrphBuildModel
 #ifdef __GNUC__
 const std::set<std::string> ir_builder_suppported_options = {INPUT_FORMAT,
@@ -544,7 +585,9 @@ const std::set<std::string> ir_builder_suppported_options = {INPUT_FORMAT,
                                                              DYNAMIC_DIMS,
                                                              INSERT_OP_FILE,
                                                              OP_PRECISION_MODE,
+                                                             ALLOW_HF32,
                                                              PRECISION_MODE,
+                                                             PRECISION_MODE_V2,
                                                              TUNE_DEVICE_IDS,
                                                              EXEC_DISABLE_REUSED_MEMORY,
                                                              AUTO_TUNE_MODE,
@@ -566,12 +609,18 @@ const std::set<std::string> ir_builder_suppported_options = {INPUT_FORMAT,
                                                              BUILD_INNER_MODEL,
                                                              OP_DEBUG_CONFIG,
                                                              EXCLUDE_ENGINES,
-                                                             EXTERNAL_WEIGHT};
+                                                             EXTERNAL_WEIGHT,
+                                                             DISTRIBUTED_CLUSTER_BUILD,
+                                                             MODEL_RELATION_CONFIG,
+                                                             ENABLE_GRAPH_PARALLEL,
+                                                             AC_PARALLEL_ENABLE,
+                                                             GRAPH_PARALLEL_OPTION_PATH,
+                                                             QUANT_DUMPABLE};
 
 // for interface: aclgrphParse
 const std::set<std::string> ir_parser_suppported_options = {
   INPUT_FP16_NODES, IS_INPUT_ADJUST_HW_LAYOUT, IS_OUTPUT_ADJUST_HW_LAYOUT, OUTPUT,
-  OUT_NODES,        ENABLE_SCOPE_FUSION_PASSES, INPUT_DATA_NAMES};
+  OUT_NODES, ENABLE_SCOPE_FUSION_PASSES, INPUT_DATA_NAMES, INPUT_SHAPE};
 
 // for interface: aclgrphBuildInitialize
 const std::set<std::string> global_options = {CORE_TYPE,
@@ -582,10 +631,13 @@ const std::set<std::string> global_options = {CORE_TYPE,
                                               COMPRESS_WEIGHT_CONF,
                                               SPARSITY,
                                               PRECISION_MODE,
+                                              PRECISION_MODE_V2,
+                                              ALLOW_HF32,
                                               TUNE_DEVICE_IDS,
                                               EXEC_DISABLE_REUSED_MEMORY,
                                               AUTO_TUNE_MODE,
                                               ENABLE_SINGLE_STREAM,
+                                              AC_PARALLEL_ENABLE,
                                               AICORE_NUM,
                                               FUSION_SWITCH_FILE,
                                               ENABLE_SMALL_CHANNEL,
@@ -598,9 +650,10 @@ const std::set<std::string> global_options = {CORE_TYPE,
                                               MODIFY_MIXLIST,
                                               COMPRESSION_OPTIMIZE_CONF,
                                               OP_DEBUG_CONFIG,
-                                              DETERMINISTIC};
+                                              DETERMINISTIC,
+                                              CLUSTER_CONFIG};
 #endif
 }  // namespace ir_option
 }  // namespace ge
-
+#endif // GE_API_TYPES_DEF
 #endif  // INC_EXTERNAL_GE_GE_API_TYPES_H_

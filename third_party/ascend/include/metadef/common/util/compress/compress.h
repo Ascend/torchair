@@ -18,6 +18,7 @@
 #define COMPRESS_H
 
 #include <cuchar>
+#include <cstdint>
 
 enum CmpStatus {
     RET_SUCCESS = 0,
@@ -27,11 +28,12 @@ enum CmpStatus {
 struct CompressConfig {
     size_t inputSize; // length of data to compress
     size_t engineNum; // how many decompress engines
-    size_t maxRatio; // how much size of a basic compression block, only 64 supported now (8x: 64 4x: 32)
+    size_t maxRatio; // how much size of a basic compression block (8x: 64 4x: 32)
     size_t channel; // channels of L2 or DDR. For load balance
     size_t fractalSize; // size of compressing block
     bool isTight; // whether compose compressed data tightly
     size_t init_offset;
+    int32_t compressType = 0; // compress type flag only 0 and 1 supported (0: low_sparse, 1: high_sparse)
 };
 
 CmpStatus CompressWeights(char* input,

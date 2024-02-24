@@ -187,6 +187,7 @@ class FusionPattern {
    */
   std::shared_ptr<FusionPattern::OpDesc> GetOpDesc(const std::string &id) const;
 
+  const std::vector<std::shared_ptr<FusionPattern::OpDesc>> &GetOpDescs() const;
  private:
   FusionPattern(const FusionPattern &) = default;
   FusionPattern &operator=(const FusionPattern &) = default;

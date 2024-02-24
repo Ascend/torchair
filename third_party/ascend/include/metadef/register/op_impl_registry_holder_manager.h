@@ -22,7 +22,6 @@
 #include <map>
 #include <mutex>
 #include "graph/op_so_bin.h"
-#include "external/register/op_impl_kernel_registry.h"
 #include "register/op_impl_registry_api.h"
 
 namespace gert {
@@ -86,9 +85,13 @@ class OpImplRegistryHolderManager {
                                                           const ge::SoInOmInfo &so_info,
                                                           const std::function<OpImplRegistryHolderPtr()> create_func);
 
-  size_t GetOpImplRegistrySize() const { return op_impl_registries_.size(); }
+  size_t GetOpImplRegistrySize() {
+    const std::lock_guard<std::mutex> lock(map_mutex_);
+    return op_impl_registries_.size();
+  }
 
   void ClearOpImplRegistries() {
+    const std::lock_guard<std::mutex> lock(map_mutex_);
     op_impl_registries_.clear();
   }
 

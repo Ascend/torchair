@@ -40,6 +40,7 @@ using OperatorImplPtr = std::shared_ptr<OperatorImpl>;
 class ComputeGraphImpl;
 using ComputeGraphImplPtr = std::shared_ptr<ComputeGraphImpl>;
 
+using AttrFilter = std::function<bool(const OpDesc &, const std::string &attr_name)>;
 using NodeFilter = std::function<bool(const Node &)>;
 using GraphFilter = std::function<bool(const Node &, const char_t *, const ComputeGraphPtr &)>;
 
@@ -51,6 +52,7 @@ class ComputeGraph : public std::enable_shared_from_this<ComputeGraph>, public A
   using Vistor = RangeVistor<T, std::shared_ptr<ConstComputeGraph>>;
 
   explicit ComputeGraph(const std::string &name);
+  explicit ComputeGraph(const char_t *name);
   ~ComputeGraph() override;
   ComputeGraph(const ge::ComputeGraph& compute_graph);
   ComputeGraph(ge::ComputeGraph&& compute_graph);
@@ -105,7 +107,7 @@ class ComputeGraph : public std::enable_shared_from_this<ComputeGraph>, public A
   /// Add a subgraph to this graph. The subgraph must has a parent graph and parent node,
   /// which means the member functions `SetParentGraph` and `SetParentNode` of the subgraph
   /// must be called before add it to the root graph. and subgraph->GetParentNode()->GetOwnerGraph()
-  /// must equal to subgraph->GetOwnerGraph().
+  /// must equal to subgraph->GetParentGraph().
   /// The subgraphs can only be added to a *root graph*. A root graph is a graph without any parent graph.
   /// The subgraph's name SHOULD(not must) be the same as the parameter `name`
   graphStatus AddSubgraph(const std::string &name, const std::shared_ptr<ComputeGraph> &subgraph);
@@ -232,6 +234,7 @@ class ComputeGraph : public std::enable_shared_from_this<ComputeGraph>, public A
    */
   graphStatus ReorderEventNodes();
   void ClearNodeList();
+  void ReorderByNodeId();
 
  protected:
   ProtoAttrMap &MutableAttrMap() override;

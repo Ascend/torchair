@@ -43,6 +43,7 @@ enum class AttrDataType : int32_t {
   kListFloat16,
   kListListInt32,
   kListListInt64,
+  kBfloat16,
   kTypeEnd
 };
 class TilingData {

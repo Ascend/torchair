@@ -23,7 +23,18 @@ typedef enum tagRtArchType {
     ARCH_V100 = ARCH_BEGIN,
     ARCH_V200 = 1,
     ARCH_V300 = 2,
-    ARCH_END = 3,
+    ARCH_C100 = 3, /* Ascend910 */
+    ARCH_C220 = 4, /* Ascend910B & Ascend910C */
+    ARCH_M100 = 5, /* Ascend310 */
+    ARCH_M200 = 6, /* Ascend310P & Ascend610 */
+    ARCH_M201 = 7, /* BS9SX1A */
+    ARCH_T300 = 8, /* Tiny */
+    ARCH_N350 = 9, /* Nano */
+    ARCH_M300 = 10, /* Ascend310B & AS31XM1X */
+    ARCH_M310 = 11, /* Ascend610Lite */
+    ARCH_S200 = 12, /* Hi3796CV300ES & TsnsE */
+    ARCH_S202 = 13, /* Hi3796CV300CS & OPTG & SD3403 &TsnsC */
+    ARCH_END,
 } rtArchType_t;
 
 typedef enum tagRtChipType {
@@ -37,8 +48,11 @@ typedef enum tagRtChipType {
     CHIP_NO_DEVICE = 6,
     CHIP_MINI_V3 = 7,
     CHIP_5612 = 8, /* 1910b tiny */
-    CHIP_END = 9,
-    CHIP_NANO = 10,
+    CHIP_NANO = 9,
+    CHIP_1636 = 10,
+    CHIP_AS31XM1 = 11,
+    CHIP_610LITE = 12,
+    CHIP_END
 } rtChipType_t;
 
 typedef enum tagRtAicpuScheType {
@@ -89,9 +103,16 @@ typedef enum tagRtPlatformType {
     PLATFORM_CLOUD_V2_910C2 = 14,
     PLATFORM_CLOUD_V2_910C3 = 15,
     PLATFORM_MDC_BS9SX1A = 16,
-    PLATFORM_MDC_310M1 = 17,
+    PLATFORM_MDC_AS31XM1X = 17,
     PLATFORM_MDC_LITE = 18,
-    PLATFORM_END = 19,
+    PLATFORM_MINI_V3_B1 = 19,
+    PLATFORM_MINI_V3_B2 = 20,
+    PLATFORM_MINI_V3_B3 = 21,
+    PLATFORM_MINI_V3_B4 = 22,
+    PLATFORM_1636 = 23,
+    PLATFORM_CLOUD_V2_910B2C = 24,
+    PLATFORM_CLOUD_V2_910C4 = 25,
+    PLATFORM_END = 26,
 } rtPlatformType_t;
 
 typedef enum tagRtCubeFracMKNFp16 {

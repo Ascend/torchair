@@ -103,17 +103,30 @@ class PatternFusionBasePass : public GraphPass {
   void GetConnectionMatrix(std::unique_ptr<ConnectionMatrix> &connection_matrix);
 
   void SetConnectionMatrix(std::unique_ptr<ConnectionMatrix> &connection_matrix);
+
+  const std::vector<FusionPattern *> &GetPatterns();
+
  protected:
   virtual std::vector<FusionPattern *> DefinePatterns() = 0;
+
   virtual Status Fusion(ge::ComputeGraph &graph, Mapping &mapping, std::vector<ge::NodePtr> &new_nodes) = 0;
+
+  virtual void SetDataDumpAttr(const std::vector<ge::NodePtr> &fused_nodes,
+                               const std::vector<ge::NodePtr> &fusion_nodes);
+
+  virtual void SetOriginalOutputDumpAttr(const std::vector<ge::NodePtr> &fused_nodes,
+                                         const std::vector<ge::NodePtr> &fusion_nodes);
+
+  virtual void SetOriginalOpDumpAttr(const std::vector<ge::NodePtr> &fused_nodes,
+                                     const std::vector<ge::NodePtr> &fusion_nodes);
+
+  void SetActualFusedNodes(const std::vector<ge::NodePtr> &fused_nodes);
 
   std::vector<ge::NodePtr> GetNodesFromMapping(const Mapping &mapping) const;
   ge::NodePtr GetNodeFromMapping(const std::string &id, const Mapping &mapping) const;
 
   void RecordOutputAnchorMap(ge::NodePtr output_node);
   void ClearOutputAnchorMap();
-
-  Status SetDataDumpAttr(std::vector<ge::NodePtr> &original_nodes, std::vector<ge::NodePtr> &fus_nodes);
 
   bool CheckOpSupported(const ge::OpDescPtr &op_desc_ptr) const;
 

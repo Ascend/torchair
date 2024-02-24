@@ -37,6 +37,7 @@ enum class CONFIG_PARAM {
   ReuseMemory,
   AutoTuneMode,
   BufferOptimize,
+  FormatMode,
   ConfigParamBottom
 };
 
@@ -53,7 +54,18 @@ enum class ENV_STR_PARAM {
   AscendCustomOppPath,
   DumpGeGraph,
   DumpGraphLevel,
+  NpuCollectPath,
+  MinCompileResourceUsageCtrl,
+  EnableAclnn,
+  AscendWorkPath,
   EnvStrParamBottom
+};
+
+enum class CONFIG_PARSER_PARAM {
+  ImplMode = 0,
+  CustDtypes,
+  ModifyMixlist,
+  ConfigParserParamBottom
 };
 
 /** @brief Configuration.
@@ -76,6 +88,8 @@ class Configuration {
    * @return Whether the object has been initialized successfully.
    */
   Status Initialize(const std::map<string, string> &options);
+
+  Status InitializeConfigParser(const std::map<string, string> &options);
 
   Status InitializeExtend(const std::map<string, string> &options);
 
@@ -107,7 +121,7 @@ class Configuration {
   /*
    *  get jit compile
    */
-  bool IsEnableJitCompile() const;
+  JitCompileCfg GetJitCompileCfg() const;
 
   /*
    *  get virtualization on compute capability
@@ -124,7 +138,9 @@ class Configuration {
    */
   bool IsEnableSparseMatrixWeight() const;
 
-  const std::map<int32_t, float>& GetCompressRatio() const;
+  const std::map<int32_t, float>& GetCompressRatios() const;
+
+  const float& GetAICoreCompressRatio() const;
 
   /*
    * to get l1fusion option out of the current configuration object
@@ -138,7 +154,15 @@ class Configuration {
 
   bool IsEnableNetworkAnalysis() const;
 
+  bool IsEnableOpImplStrategy() const;
+
+  bool IsEnableUbFusion() const;
+
+  bool IsEnableAclnn() const;
+
   bool IsEnableFirstLayerQuantization() const;
+
+  bool IsEnableCustomImplMode() const;
   /*
    * to get switch switch of dump original nodes to fusion node
    * @return true/false
@@ -149,6 +173,8 @@ class Configuration {
    * @return true/false
    */
   bool GetMixL2Enable() const;
+
+  bool IsEnableSuperkernelPlus() const;
 
   /*
    * to get the soc version out of the current configuration object
@@ -166,21 +192,10 @@ class Configuration {
 
   const string& GetLicenseFusionStr() const;
 
-  AppendArgsMode GetAppendArgsMode() const;
-
   AutoTuneMode GetAutoTuneMode() const;
 
-  void SetAppendArgsMode(AppendArgsMode args_mode);
-
-  /*
-   * to get BufferFusionMode option out of the current configuration object
-   * @return BufferFusionMode
-   */
-  BufferFusionMode GetBufferFusionMode() const;
-
   bool IsEnableReuseMemory() const;
-
-  string GetBuiltInPathInOpp() const;
+  bool IsConfigDebugListOp(const ge::OpDescPtr &op_des_ptr) const;
 
   string GetBuiltInFusionConfigFilePath() const;
 
@@ -223,34 +238,33 @@ class Configuration {
 
   const std::string& GetDumpGraphLevel() const;
 
+  const std::string GetOpDebugConfig() const;
+
   bool GetOpImplMode(const string &op_name, const string &op_type, string &op_impl_mode) const;
 
-  bool CheckSupportCMO() const;
+  bool GetCustomizeDtypeByOpType(const string &op_type, OpCustomizeDtype &custom_dtype);
 
-  bool CheckSocSupportDyn() const;
+  bool GetCustomizeDtypeByOpName(const string &op_name, OpCustomizeDtype &custom_dtype);
 
-  bool GetCustomizeDtypeByOpType(const string &op_type, OpCustomizeDtype &custom_dtype) const;
+  FormatModeType GetFormatModeCfg() const;
 
-  bool GetCustomizeDtypeByOpName(const string &op_name, OpCustomizeDtype &custom_dtype) const;
+  PrecisionPolicy GetPrecisionPolicy(const std::string &op_type, const PrecisionPolicy &op_kernel_policy);
 
-  PrecisionPolicy GetPrecisionPolicy(const std::string &op_type, const PrecisionPolicy &op_kernel_policy) const;
-  PrecisionPolicy GetPrecisionPolicy(const std::string &op_type, const PrecisionPolicy &op_kernel_policy,
-                                     const std::string &session_graph_id) const;
+  const std::map<string, string>& GetBinaryPathMap() const;
 
-  void SetBinaryCfg2Options(std::map<string, string> &options) const;
-  void SetOpDebugCfg2Options(std::map<string, string> &options) const;
+  std::string GetAllOpsImplPath() const;
 
   const std::map<string, string>& GetHardwareInfo() const;
 
   bool IsDynamicImplFirst() const;
 
-  Status RefreshParameters(const std::string &session_graph_id);
+  Status RefreshParameters();
 
-  inline bool GetMemoryCheckSwitch() const {
-    return enable_op_memory_check_;
-  }
+  bool GetMemoryCheckSwitch() const;
 
-  void GetBinaryConfigFile(string &bin_cfg_file) const;
+  const std::string& GetBinaryConfigFilePath() const;
+
+  const std::string& GetAscendWorkPath() const;
 
  private:
   explicit Configuration(const string &engine_name);
@@ -258,40 +272,42 @@ class Configuration {
   bool is_init_;
   string engine_name_;
   string lib_path_;
-  bool is_new_opp_path_;
   std::map<string, string> content_map_;
   std::vector<FEOpsStoreInfo> ops_store_info_vector_;
 
   bool is_dynamic_impl_first_; // env
   bool enable_network_analysis_;
+  bool enable_op_impl_strategy_;
+  bool enable_ub_fusion_;
+  bool enable_aclnn_;
   string ascend_ops_path_; // env
-  std::string ascend_custom_ops_path_;
 
   std::array<string, static_cast<size_t>(ENV_STR_PARAM::EnvStrParamBottom)> env_str_param_vec_;
   std::array<int64_t, static_cast<size_t>(CONFIG_PARAM::ConfigParamBottom)> config_param_vec_;
   std::array<string, static_cast<size_t>(CONFIG_STR_PARAM::ConfigStrParamBottom)> config_str_param_vec_;
+  std::array<std::map<std::string, BaseConfigParserPtr>,
+      static_cast<size_t>(CONFIG_PARSER_PARAM::ConfigParserParamBottom)> config_parser_map_vec_;
+  std::array<std::mutex,
+      static_cast<size_t>(CONFIG_PARSER_PARAM::ConfigParserParamBottom)> config_parser_map_mutex_vec_;
 
-  BufferFusionMode buffer_fusion_mode_;
-  AppendArgsMode append_args_mode_;
   std::set<string> license_fusion_detail_value_;
   std::map<string, string> hardware_info_map_;
 
-  bool enable_op_memory_check_;
   bool enable_first_layer_quantization_;
   string bin_cfg_file_;
-  string op_debug_config_;
   std::unordered_set<string> fp16_op_type_list_;
 
-  bool use_cmo_;
-  int64_t custom_priority_;
+  int64_t op_store_priority_count_;
   int32_t mem_reuse_dist_threshold_;
 
-  std::map<int32_t, float> compress_ratio_;
+  std::map<int32_t, float> compress_ratios_;
+  float ai_core_compress_ratio_;
   std::map<string, string> op_binary_path_map_;
 
   BaseConfigParserPtr cust_dtypes_parser_;
   BaseConfigParserPtr impl_mode_parser_;
   BaseConfigParserPtr mix_list_parser_;
+  BaseConfigParserPtr op_debug_config_parse_;
   std::map<std::string, BaseConfigParserPtr> mix_list_parser_map_;
   mutable std::mutex config_param_mutex_;
   mutable std::mutex mix_list_parser_map_mutex_;
@@ -307,7 +323,23 @@ class Configuration {
 
   Status InitConfigParamFromContext();
 
-  Status RefreshMixList(const std::string &session_graph_id);
+  std::string GetConfigStrParamValueFromContext(CONFIG_STR_PARAM config_str_param_enum_type) const;
+
+  int64_t GetConfigParamValueFromContext(CONFIG_PARAM config_param_enum_type) const;
+
+  std::string CombinedParamsKeyFromOptions(CONFIG_PARSER_PARAM config_parser_param_enum_type,
+                                           const std::map<string, string> &options) const;
+
+  std::string CombinedParamsKeyFromContext(CONFIG_PARSER_PARAM config_parser_param_enum_type) const;
+
+  BaseConfigParserPtr GetConfigParserFromContext(CONFIG_PARSER_PARAM config_parser_param_enum_type,
+                                                 const std::string &combined_params_key);
+
+  Status RefreshImplMode();
+
+  Status RefreshCustDtypes();
+
+  Status RefreshMixList();
 
   /**
    * Get the real Path of current so lib
@@ -318,25 +350,19 @@ class Configuration {
    * Get the real Path of ops
    * path of ops is the path of so package + ops_relative_path
    */
-  void InitAscendCustomConfigFile();
+  void InitCustomOpStore();
   Status InitAscendOpsPath();
 
   bool IsPathExistedInOpp(const std::string &path, bool is_full_path) const;
-  bool SaveContentMap(std::string &key, std::string &value, const std::string &path_type);
   void ResolveBinaryPath(const std::string &sub_path, const std::string &path_type, const int64_t main_impl_type,
-                         bool isOm, int binaryKey);
-  bool ResolveOpImplPath(const std::string &full_or_sub_path, const std::string &path_type,
-                         const int64_t main_impl_type, bool is_full_path);
+                         bool isOm, const std::string &binaryKey);
+  bool AddCustomOpStoreContent(const std::string &full_or_sub_path, const std::string &path_type,
+                               const int64_t main_impl_type, const bool is_full_path);
   bool CheckIsValidAbstractPath(const std::string &path) const;
-  void LoadConfigOldMap();
-  void LoadConfigNewMap();
-    /**
-   * Read the content of configuration file(CONFIG_OPP_CUSTOM_PATH)
-   * Save the data into content_map
-   * @return Whether the config file has been loaded successfully.
-   */
-  void LoadAscendCustomConfig(const std::vector<std::string> &custom_path, bool is_full_path);
-  Status LoadCustomConfigFile();
+
+  Status LoadOppConfigFile();
+
+  Status GetCustomOppPathFromOppConfigFile(std::vector<string> &custom_opp_path_vec) const;
 
   /**
    * Read the content of configuration file(FE_CONFIG_FILE_PATH)
@@ -405,25 +431,20 @@ class Configuration {
 
   void InitCompressRatio();
 
-  void InitUseCmo();
-
   void ParseHardwareInfo();
-
-  void ParseBufferOptimize();
 
   void ParseFusionLicense(const bool &is_config);
 
-  void LoadBuiltinBinaryCfg();
+  Status ParseVirtualType();
+
+  void InitBinaryConfigFilePath();
 
   std::vector<string> ParseConfig(const string &key, char pattern) const;
 
   bool InitFirstLayerQuantization(const std::map<string, string> &options);
 
-  bool ParseOpDebugConfig(const std::map<string, string> &options);
   bool GetConfigValueByKey(const std::map<string, string> &options, const string &file_key,
                            const string &cfg_key, string &value, string &file_path) const;
-
-  BaseConfigParserPtr GetMixListParserPtr(const std::string &session_graph_id) const;
 };
 }  // namespace fe
 #endif  // FUSION_ENGINE_INC_COMMON_CONFIGURATION_H_

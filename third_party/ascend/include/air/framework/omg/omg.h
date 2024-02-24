@@ -62,6 +62,7 @@ GE_FUNC_VISIBILITY domi::Status ParseGraph(ge::Graph &graph, const std::map<std:
                                            const char *op_conf = nullptr, const char *target = nullptr,
                                            RunMode run_mode = RunMode::GEN_OM_MODEL, bool is_dynamic_input = false);
 
+
 /**
  * @ingroup domi_omg
  * @brief generates a simplified JSON file based on the key value of the offline model file in protobuf format
@@ -85,6 +86,13 @@ GE_FUNC_VISIBILITY domi::Status ConvertPbtxtToJson(const char *model_file, const
 GE_FUNC_VISIBILITY domi::Status ConvertFwkModelToJson(const domi::FrameworkType framework, const char *model_file,
                                                       const char *json_file);
 
+/**
+ * @ingroup domi_omg
+ * @brief convert the model file into a execute-om file.
+ * @param [in] om model_file path of offline model file
+ * @param [out] output path of execute-om file
+ * @return Status result code
+ */
 GE_FUNC_VISIBILITY void GetGroupName(ge::proto::ModelDef &model_def);
 
 GE_FUNC_VISIBILITY void FindParserSo(const std::string &path, std::vector<std::string> &file_list,
@@ -92,8 +100,7 @@ GE_FUNC_VISIBILITY void FindParserSo(const std::string &path, std::vector<std::s
 
 GE_FUNC_VISIBILITY domi::Status DumpInfershapeJson(const ge::Graph &graph, const char *json_file);
 
-GE_FUNC_VISIBILITY domi::Status SetOutputNodeInfo(ge::Graph &graph, const std::string &output_type,
-                                                  const std::string &output);
+GE_FUNC_VISIBILITY domi::Status SetOutputNodeInfo(ge::Graph &graph, const std::string &output_type);
 
 GE_FUNC_VISIBILITY domi::Status GetOutputLeaf(ge::NodePtr node,
                                               std::vector<std::pair<ge::NodePtr, int32_t>> &output_nodes_info);

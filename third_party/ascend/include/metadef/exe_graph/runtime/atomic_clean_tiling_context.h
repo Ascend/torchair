@@ -25,7 +25,7 @@ class AtomicCleanTilingContext : public TilingContext {
    * 获取workspace size的列表
    * @return workspace size列表
    */
-  const ContinuousVector *GetCleanWorkspaceSizes() {
+  const ContinuousVector *GetCleanWorkspaceSizes() const {
     return GetInputPointer<ContinuousVector>(0);
   }
 
@@ -34,7 +34,7 @@ class AtomicCleanTilingContext : public TilingContext {
    * @param index 节点输出index
    * @return 需要清理的输出内存的大小
    */
-  uint64_t GetCleanOutputSize(size_t index) {
+  uint64_t GetCleanOutputSize(size_t index) const {
     return GetInputValue<uint64_t>(index + 1U);
   }
 };

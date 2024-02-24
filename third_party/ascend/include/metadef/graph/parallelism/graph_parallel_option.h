@@ -32,18 +32,29 @@ struct PipelineParallelOption {
 struct TensorParallelOption {
   bool is_enabled = false;
   bool is_auto = false;
-  int32_t tensor_parallel_size = 4;
+  int32_t tensor_parallel_size = -1;
   int32_t inter_batch_flow_num = 1;
 };
 
 struct DataParallelOption {
   bool is_enabled = false;
   bool is_auto = false;
+  // to be deleted below
   bool optimizer_state_sharding = false;
   bool gradient_sharding = false;
   bool model_weight_sharding = false;
   bool model_weight_prefetch = true;
   int32_t data_parallel_size = -1;
+  // model weight prefetch buffer size(MB)
+  uint32_t model_weight_prefetch_buffer_size = 0U;
+};
+
+struct TensorShardingOption {
+  bool is_enabled = false;
+  bool optimizer_state_sharding = false;
+  bool gradient_sharding = false;
+  bool model_weight_sharding = false;
+  bool model_weight_prefetch = true;
   // model weight prefetch buffer size(MB)
   uint32_t model_weight_prefetch_buffer_size = 0U;
 };
@@ -54,15 +65,24 @@ struct OptimizerOffloadGraphOption {
   std::string offload_path; // NVME path, reserved
 };
 
+struct EngineParallelOption {
+  bool is_enabled = false;
+  bool is_auto = false;
+  std::string config_path;  // used if is_auto == true
+};
+
 struct GraphParallelOption {
-  int32_t graph_id = -1;
-  int32_t version = -1;
   bool auto_deploy = false;
+  std::string mode;      // AOE mode, search_strategy/search_and_shard_graph/load_strategy/load_and_eval_strategy
+  std::string work_dir;  // AOE dump/load path for strategies
+  std::string opt_level;
   int32_t global_batch_size = -1;
   DataParallelOption data_parallel_option;
   TensorParallelOption tensor_parallel_option;
+  TensorShardingOption tensor_sharding_option;
   PipelineParallelOption pipeline_parallel_option;
   OptimizerOffloadGraphOption optimizer_offload_option;
+  EngineParallelOption engine_parallel_option;
 };
 }  // namespace ge
 

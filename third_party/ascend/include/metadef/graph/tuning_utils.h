@@ -36,10 +36,10 @@
 #include <graph/utils/graph_utils.h>
 #include <graph/utils/type_utils.h>
 
-#include "framework/common/debug/ge_log.h"
+#include "common/ge_common/debug/ge_log.h"
 #include "utils/attr_utils.h"
 #include "utils/node_utils.h"
-#include "external/ge/ge_api_types.h"
+#include "external/ge_common/ge_api_types.h"
 #include "graph/debug/ge_attr_define.h"
 #include "graph/utils/op_desc_utils.h"
 #include "graph/utils/tensor_utils.h"
@@ -108,17 +108,22 @@ private:
     bool is_tuning_graph_;
     const std::string &path_;
     const std::string &user_path_;
+    bool need_preprocess_ = false;
     friend class TuningUtils;
   };
   static graphStatus MakeExeGraph(ComputeGraphPtr &exe_graph,
                                   const HelpInfo& help_info);
   static graphStatus ConvertConstToWeightAttr(const ComputeGraphPtr &exe_graph);
-  static graphStatus HandlePld(NodePtr &node);
+  static graphStatus SetFileConstInfo(const NodePtr &node, const GeTensorPtr &tensor, const std::string &aoe_path,
+                                      const OpDescPtr &op_desc);
+  static graphStatus HandlePld(NodePtr &node, const std::string &aoe_path);
+  static graphStatus HandleConst(NodePtr &node, const std::string &aoe_path);
+  static graphStatus PreProcessNode(const NodePtr &node);
   static graphStatus HandleEnd(NodePtr &node);
   static graphStatus ChangePld2Data(const NodePtr &node, const NodePtr &data_node);
   static graphStatus ChangeEnd2NetOutput(NodePtr &end_node, NodePtr &out_node);
   static graphStatus LinkEnd2NetOutput(NodePtr &end_node, NodePtr &out_node);
-  static graphStatus CreateDataNode(NodePtr &node, NodePtr &data_node);
+  static graphStatus CreateDataNode(NodePtr &node, const std::string &aoe_path, NodePtr &data_node);
   static graphStatus CreateNetOutput(const NodePtr &node, NodePtr &out_node);
   static graphStatus AddAttrToDataNodeForMergeGraph(const NodePtr &pld, const NodePtr &data_node);
   static graphStatus AddAttrToNetOutputForMergeGraph(const NodePtr &end, const NodePtr &out_node, const int64_t index);
@@ -136,6 +141,15 @@ private:
   // Deletes new data and output nodes added by call `MakeExeGraph()` func in part 1
   static graphStatus RemoveDataNetoutputEdge(ComputeGraphPtr &graph);
   static graphStatus HandleContinuousInputNodeNextData(const NodePtr &node);
+  static graphStatus HandleContinuousOutputNodeNextNetOutput(const NodePtr &node);
+  /**
+  * node是模型的输入或者输出节点，为了让引擎切分的子图在输入输出节点直连需要输入输出内存连续的节点时可以正常上板，这个接口内部做了特殊处理
+  * @param node 与图的输入输出节点直连的节点
+  * @param is_need_consider_continue_input 跟netoutput相连的节点不需要判断连续输入属性
+  * @return
+  */
+  static graphStatus MakeContinueMemNotaskNode2TaskNode(const NodePtr &node,
+                                                        bool is_need_consider_continue_input = true);
   static NodePtr FindNode(const std::string &name, int64_t &in_index);
   static graphStatus LoadGraphFromFile(const std::map<int64_t, std::string> &options,
                                        std::vector<ComputeGraphPtr> &root_graphs,
@@ -150,9 +164,16 @@ private:
   static NodeVec netoutput_nodes_;
   static NodeVec merged_graph_nodes_;
   static std::mutex mutex_;
+  static std::set<std::string> reusable_weight_files_;
+  static std::map<std::string, int64_t> name_to_index_;
+  static std::map<size_t, std::vector<std::string>> hash_to_files_;
   // for debug
   static std::string PrintCheckLog();
   static std::string GetNodeNameByAnchor(const Anchor * const anchor);
+  static std::string GenerateFileConstPath(const std::string &aoe_path, const OpDescPtr &op_desc);
+  static Status GetOrSaveReusableFileConst(const GeTensorPtr &tensor, std::string &file_path);
+  static Status CheckFilesSame(const std::string &file_name, const char_t *const data, const size_t data_length,
+                               bool &is_content_same);
 };
 }
 #endif // MAIN_TUNING_UTILS_H

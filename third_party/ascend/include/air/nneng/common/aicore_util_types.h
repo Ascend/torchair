@@ -21,8 +21,8 @@
 #include <string>
 #include <vector>
 #include "graph/anchor.h"
-#include "runtime/kernel.h"
 #include "graph/op_desc.h"
+#include "runtime/kernel.h"
 
 namespace fe {
 struct FusionOpSrc {
@@ -85,6 +85,15 @@ using ToOpStruct_t = struct ToOpStruct {
   }
 };
 
+enum class BitShift {
+  BIT_SHIFT_8 = 8,
+  BIT_SHIFT_16 = 16,
+  BIT_SHIFT_24 = 24,
+  BIT_SHIFT_32 = 32,
+  BIT_SHIFT_40 = 40,
+  BIT_SHIFT_48 = 48,
+};
+
 struct OpCustomizeDtype {
   std::vector<ge::DataType> input_dtypes;
   std::vector<ge::DataType> output_dtypes;
@@ -143,6 +152,11 @@ enum AOEOption {
   AOE_OPT_RESERVED
 };
 
+struct OptimizeConfig {
+  bool enable_superkernel_plus;
+  AOEOption aoe_option;
+};
+
 struct PassChangeInfo {
   std::string pass_name;
   int32_t recovery_times;
@@ -182,16 +196,15 @@ enum class CubeVecStateNew { CUBE_VEC_UNKNOWN = 0, CUBE_VEC_SPLIT, CUBE_VEC_FUSE
 
 enum class UBFusionType { FUSION_TYPE_UB = 0, FUSION_TYPE_MIXL2, FUSION_TYPE_NONE, FUSION_TYPE_RESERVED };
 
-// Don't change the order, only add new mode in the end.
 enum class AppendArgsMode { NO_ARGS = 0, L2_BUFFER_ARGS = 1, L2_CACHE_ARGS = 999};
-
-enum BufferFusionMode { EN_OPTIMIZE_DISABLE = 0, EN_L2_BUFFER, EN_L2_FUSION };
 
 enum BufferOptimize { EN_UNKNOWN_OPTIMIZE = 0, EN_OFF_OPTIMIZE, EN_L1_OPTIMIZE, EN_L2_OPTIMIZE };
 
 enum AutoTuneMode { TUNE_MODE_NO_TUNE = 0, TUNE_MODE_AUTO_TUNE, TUNE_MODE_RL_TUNE, TUNE_MODE_AUTO_AND_RL_TUNE };
 
 enum PrecisionPolicy { WHITE = 0, BLACK = 1, GRAY = 2 };
+
+enum class JitCompileCfg { CFG_FALSE = 0, CFG_TRUE = 1, CFG_AUTO = 2};
 
 enum OpPattern {
   OP_PATTERN_OP_KERNEL = 0,
@@ -211,7 +224,13 @@ enum class DynamicCompileStatic { TUNE = 0, COMPILE, NOT_SUPPORT };
 
 enum class DynamicRankType { NOT_SUPPORT = 0, SUPPORT, UPGRADE_TO_SUPPORT };
 
-enum class JitCompile { DEFAULT = 0, ONLINE, REUSE_BINARY };
+enum class JitCompile {
+  DEFAULT = 0,
+  ONLINE,                         // static_true, dynamic_true || true
+  REUSE_BINARY,                   // static_true, dynamic_false || false
+  STATIC_BINARY_DYNAMIC_ONLINE,   // static_false, dynamic_true
+  STATIC_BINARY_DYNAMIC_BINARY    // static_false, dynamic_false
+};
 
 enum class RangeLimitType { DEFAULT = 0, LIMITED, UNLIMITED, DYNAMIC };
 
@@ -237,11 +256,42 @@ enum class CmoTypeObject {
   WORKSPACE
 };
 
+enum class L2CacheMode {
+  DEFAULT = 0,
+  RC,
+  CMO
+};
+
 enum class L2CacheReadMode {
   RM_NONE = -1,
   READ_LAST = 1,
   READ_INVALID = 2,
   NOT_NEED_WRITEBACK = 3
+};
+
+enum class FormatModeType {
+  FORMAT_MODE_NZNZ = 0,
+  FORMAT_MODE_NDND = 1,
+  FORMAT_MODE_NDNZ = 2,
+  FORMAT_MODE_INVALID,
+};
+
+enum class WeightCompressType {
+  LOW_SPARSE_COMPRESS = 0,
+  HIGH_SPARSE_COMPRESS,
+  DISABLE_COMPRESS
+};
+
+enum class AclnnSupportType {
+  DEFAULT = 0,
+  SUPPORT_ACLNN,
+  ACLNN_ONLY
+};
+
+enum class MultiKernelSupportType {
+  DEFAULT = 0,
+  MULTI_SUPPORT,
+  SINGLE_SUPPORT
 };
 
 using CmoAttr = struct CMO_ATTR {
@@ -263,14 +313,6 @@ template <typename Ret, typename T>
 Ret GetMainImplType(T a)
 {
   return static_cast<Ret>(a & 0xFFFFFFFF);
-}
-
-inline bool IsWeight(const ge::OpDescPtr &op_desc_ptr) {
-  return kWeightTypes.count(op_desc_ptr->GetType());
-}
-
-inline bool IsConst(const ge::OpDescPtr &op_desc_ptr) {
-  return kConstTypes.count(op_desc_ptr->GetType());
 }
 }
 #endif  // FUSION_ENGINE_INC_COMMON_AICORE_UTIL_TYPES_H_

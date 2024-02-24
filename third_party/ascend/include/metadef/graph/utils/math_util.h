@@ -26,7 +26,7 @@
 
 #include "graph/def_types.h"
 #include "external/utils/extern_math_util.h"
-#include "framework/common/debug/log.h"
+#include "common/ge_common/debug/log.h"
 
 namespace ge {
 constexpr uint32_t kDiv16RightShiftBits = 4U;

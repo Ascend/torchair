@@ -50,6 +50,13 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY GeShape {
   ~GeShape();
   explicit GeShape(std::vector<int64_t> s);
 
+  /*
+   * `GetDimNum()`标识有效的dim的个数，跟`GetDims().size()`不等价，调用方按需选择
+   * 比如如果dim是[-2], 维度未可知时：
+   * GetDimNum()会返回0；
+   * 而GetDims().size()会返回dim的个数，即1；
+   * 另外如果需要判断是否是标量，推荐使用接口`IsScalar`
+   */
   size_t GetDimNum() const;
   void SetDimNum(const size_t dim_num);
   void AppendDim(const int64_t dim_size);
@@ -58,6 +65,13 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY GeShape {
   // If the idx is invalid, return 0
   int64_t GetDim(const size_t idx) const;
   graphStatus SetDim(const size_t idx, const int64_t value);
+  /*
+   * `GetDims`标识dim的个数，跟`GetDimNum()`不等价，调用方按需选择
+   * 比如如果dim是[-2], 维度未可知时：
+   * GetDimNum()会返回0；
+   * 而GetDims().size()会返回dim的个数，即1；
+   * 另外如果需要判断是否是标量，推荐使用接口`IsScalar`
+   */
   std::vector<int64_t> GetDims() const;
   const SmallVector<int64_t, kDefaultDimsNum> &GetMutableDims() const;
 
@@ -79,6 +93,14 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY GeShape {
  * 其他情况返回false, 代表非标量
  */
   bool IsScalar() const;
+
+/**
+ * 根据tensor的shape的dim值是否含0判断tensor是否是个空tensor
+ * @return
+ * 如果任一维度的dim值为0，则返回true,代表是空tensor
+ * 其他情况返回false, 代表非空tensor
+ */
+  bool IsEmptyTensor() const;
 
   GeShape(const GeShape &other);
   GeShape(GeShape &&other);
@@ -127,6 +149,7 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY GeTensorDesc : public AttrH
   graphStatus GetOriginShapeRange(std::vector<std::pair<int64_t, int64_t>> &range) const;
 
   const GeShape &GetOriginShape() const;
+  GeShape &MutableOriginShape() const;
 
   void SetOriginShape(const GeShape &origin_shape);
   bool IsOriginShapeInitialized() const;
@@ -136,6 +159,9 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY GeTensorDesc : public AttrH
 
   Format GetOriginFormat() const;
   void SetOriginFormat(const Format origin_format);
+
+  const std::string GetExpandDimsRule() const;
+  void SetExpandDimsRule(const std::string &expand_dims_rule);
 
   void SetName(const std::string &name);
   const std::string GetName() const;
@@ -183,6 +209,7 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY GeTensorDesc : public AttrH
   GeTensorDescImplPtr impl_;
 
   GeShape &ShapeReference() const;
+  GeShape &OriginShapeReference() const;
 };
 
 class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY TensorData {
@@ -208,6 +235,7 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY TensorData {
   std::size_t GetSize() const;
   const std::uint8_t *GetData() const;
   std::uint8_t *GetData();
+  bool IsTensorDataValid() const;
 
   const std::shared_ptr<AlignedPtr> &GetAlignedPtr();
 
@@ -250,6 +278,8 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY GeTensor {
 
   const TensorData &GetData() const;
   TensorData &MutableData();
+
+  bool IsTensorDataValid() const;
 
   graphStatus SetData(std::vector<uint8_t> &&data);
   graphStatus SetData(const std::vector<uint8_t> &data);

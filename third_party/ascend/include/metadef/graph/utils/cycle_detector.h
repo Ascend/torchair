@@ -24,6 +24,7 @@ namespace ge {
 class CycleDetector {
   friend class GraphUtils;
 public:
+  CycleDetector() = default;
   ~CycleDetector() = default;
   /* Detect whether there are cycles in graph
    * after fusing all nodes in param fusion_nodes.
@@ -60,12 +61,16 @@ public:
    */
   void Update(const ComputeGraphPtr &graph, const std::vector<NodePtr> &fusion_nodes);
 
+   /**
+   * Expand dim and update connection matrix based on graph.
+   */
+  void ExpandAndUpdate(const vector<ge::NodePtr> &fusion_nodes, const std::string &node_name);
 private:
-  CycleDetector() = default;
   graphStatus Init(const ComputeGraphPtr &graph);
   std::unique_ptr<ConnectionMatrix> connectivity_{nullptr};
 };
 
 using CycleDetectorPtr = std::unique_ptr<CycleDetector>;
+using CycleDetectorSharedPtr = std::shared_ptr<CycleDetector>;
 }
 #endif  // GRAPH_CYCLE_DETECTOR_H_

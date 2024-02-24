@@ -25,8 +25,8 @@
 #include "graph/types.h"
 #include "graph/def_types.h"
 #include "graph/hash_utils.h"
-#include "framework/common/debug/ge_log.h"
-#include "framework/common/debug/log.h"
+#include "common/ge_common/debug/ge_log.h"
+#include "common/ge_common/debug/log.h"
 
 namespace ge {
 class CompileCacheDesc;

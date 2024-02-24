@@ -60,7 +60,7 @@ class PolicyRegister {
                         static_cast<int32_t>(match_policy_type));
       return iter->second();
     }
-    GELOGE(ge::GRAPH_FAILED, "[GetMatchPolicy] failed. Match policy type : %d  has not been registered",
+    GELOGE(ge::GRAPH_FAILED, "[GetMatchPolicy] failed. Match policy type : %d has not been registered",
            static_cast<int32_t>(match_policy_type));
     return nullptr;
   }
@@ -71,7 +71,7 @@ class PolicyRegister {
                         static_cast<int32_t>(aging_policy_type));
       return iter->second();
     }
-    GELOGE(ge::GRAPH_FAILED, "[GetAgingPolicy] failed. Aging policy type : %d  has not been registered",
+    GELOGE(ge::GRAPH_FAILED, "[GetAgingPolicy] failed. Aging policy type : %d has not been registered",
            static_cast<int32_t>(aging_policy_type));
     return nullptr;
   }

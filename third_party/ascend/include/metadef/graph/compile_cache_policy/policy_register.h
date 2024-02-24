@@ -55,14 +55,12 @@ public:
       if (mp_ptr != nullptr) {
         return mp_ptr;
       } else {
-        GELOGE(ge::GRAPH_FAILED,
-               "[GetMatchPolicy] failed. Match policy type : %d was incorrectly registered",
+        GELOGE(ge::GRAPH_FAILED, "[GetMatchPolicy] failed. Match policy type : %d was incorrectly registered",
                static_cast<int32_t>(match_policy_type));
         return nullptr;
       }
     }
-    GELOGE(ge::GRAPH_FAILED,
-           "[GetMatchPolicy] failed. Match policy type : %d  has not been registered",
+    GELOGE(ge::GRAPH_FAILED, "[GetMatchPolicy] failed. Match policy type : %d has not been registered",
            static_cast<int32_t>(match_policy_type));
     return nullptr;
   }
@@ -73,14 +71,12 @@ public:
       if (ap_ptr != nullptr) {
         return ap_ptr;
       } else {
-        GELOGE(ge::GRAPH_FAILED,
-               "[GetAgingPolicy] failed. Match policy type : %d was incorrectly registered",
+        GELOGE(ge::GRAPH_FAILED, "[GetAgingPolicy] failed. Match policy type : %d was incorrectly registered",
                static_cast<int32_t>(aging_policy_type));
         return nullptr;
       }
     }
-    GELOGE(ge::GRAPH_FAILED,
-           "[GetAgingPolicy] failed. Match policy type : %d  has not been registered",
+    GELOGE(ge::GRAPH_FAILED, "[GetAgingPolicy] failed. Match policy type : %d has not been registered",
            static_cast<int32_t>(aging_policy_type));
     return nullptr;
   }

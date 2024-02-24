@@ -28,23 +28,17 @@
 
 namespace error_message {
 using char_t = char;
+std::string TrimPath(const std::string &str);
 #ifdef __GNUC__
 int32_t FormatErrorMessage(char_t *str_dst, size_t dst_max,
                            const char_t *format, ...)__attribute__((format(printf, 3, 4)));
-inline std::string TrimPath(const std::string &str) {
-  if (str.find_last_of('/') != std::string::npos) {
-    return str.substr(str.find_last_of('/') + 1U);
-  }
-  return str;
-}
+
+void ReportInnerError(const char_t *file_name, const char_t *func, uint32_t line, const std::string error_code,
+                      const char_t *format, ...) __attribute__((format(printf, 5, 6)));
 #else
 int32_t FormatErrorMessage(char_t *str_dst, size_t dst_max, const char_t *format, ...);
-inline std::string TrimPath(const std::string &str) {
-  if (str.find_last_of('\\') != std::string::npos) {
-    return str.substr(str.find_last_of('\\') + 1U);
-  }
-  return str;
-}
+void ReportInnerError(const char_t *file_name, const char_t *func, uint32_t line, const std::string error_code,
+                      const char_t *format, ...);
 #endif
 }
 
@@ -66,18 +60,8 @@ constexpr size_t const LIMIT_PER_MESSAGE = 1024U;
 #define REPORT_ENV_ERROR(error_code, key, value)                                            \
   ErrorManager::GetInstance().ATCReportErrMessage(error_code, key, value)
 
-#define REPORT_INNER_ERROR(error_code, fmt, ...)                                                                       \
-  do {                                                                                                                 \
-    std::vector<char> error_string(LIMIT_PER_MESSAGE, '\0');                                                           \
-    if (error_message::FormatErrorMessage(error_string.data(), error_string.size(), fmt, ##__VA_ARGS__) > 0) {         \
-      if (error_message::FormatErrorMessage(error_string.data(), error_string.size(),                                  \
-                                            "%s[FUNC:%s][FILE:%s][LINE:%zu]", error_string.data(),                     \
-                                            &__FUNCTION__[0], error_message::TrimPath(std::string(__FILE__)).c_str(),  \
-                                            static_cast<size_t>(__LINE__)) > 0) {                                      \
-        (void) ErrorManager::GetInstance().ReportInterErrMessage(error_code, std::string(error_string.data()));        \
-      }                                                                                                                \
-    }                                                                                                                  \
-  } while (false)
+#define REPORT_INNER_ERROR(error_code, fmt, ...) \
+  error_message::ReportInnerError(__FILE__, &__FUNCTION__[0], __LINE__, error_code, fmt, ##__VA_ARGS__)
 
 #define REPORT_CALL_ERROR REPORT_INNER_ERROR
 
@@ -245,7 +229,7 @@ class ErrorManager {
 
   void AssembleInnerErrorMessage(const std::vector<ErrorItem> &error_messages, const std::string &first_code,
                                  std::stringstream &err_stream) const;
-                                 
+
   void ClearErrorMsgContainerByWorkId(const uint64_t work_stream_id);
   void ClearWarningMsgContainerByWorkId(const uint64_t work_stream_id);
 

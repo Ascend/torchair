@@ -35,6 +35,8 @@ class OpImplSpaceRegistry : public std::enable_shared_from_this<OpImplSpaceRegis
 
   const OpImplKernelRegistry::PrivateAttrList &GetPrivateAttrs(const std::string &op_type) const;
 
+  static ge::graphStatus LoadSoAndSaveToRegistry(const std::string &so_path);
+
  private:
   void MergeTypesToImpl(OpTypesToImplMap &merged_impl, OpTypesToImplMap &src_impl) const;
 

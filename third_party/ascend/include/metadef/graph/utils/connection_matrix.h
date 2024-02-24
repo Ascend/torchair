@@ -48,6 +48,7 @@ public:
   // update reachablity map for fused nodes.
   void Update(const ComputeGraphPtr &graph, const std::vector<NodePtr> &fusion_nodes);
 
+  void ExpandAndUpdate(const vector<ge::NodePtr> &fusion_nodes, const std::string &node_name);
 private:
   ConnectionMatrixImplPtr impl_{nullptr};
 };

@@ -19,6 +19,7 @@
 
 #include <stdexcept>
 #include <cmath>
+#include <limits>
 #include "external/register/scope/scope_fusion_pass_register.h"
 #include "external/graph/types.h"
 #include "graph/compute_graph.h"

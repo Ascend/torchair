@@ -30,17 +30,20 @@ class TransferShapeUtils {
 public:
   TransferShapeUtils() {}
   ~TransferShapeUtils() {}
+  static bool InitPlatformInfo();
   static bool TransferShape(const ge::Format &origin_format, const ge::Format &format, const ge::DataType &data_type,
                             const ExtAxisValue &ext_axis, gert::Shape &shape);
   static bool TransferShape(const ge::Format &origin_format, const ge::Format &format, const ge::DataType &data_type,
                             const ExtAxisValue &ext_axis, const gert::Shape &origin_shape, gert::Shape &shape);
+  static int64_t GetC0ByDtype(const ge::DataType &data_type);
+  static int64_t GetM0ByDtype(const ge::DataType &data_type);
 
 private:
   static bool TransferShapeByFormat(const ge::Format &primary_format, const AxisValue &axis_value,
                                     gert::Shape &shape);
   static bool TransferShapeByAxisValue(const ge::Format &primary_format, const AxisValue &axis_value,
                                        gert::Shape &shape);
-  static bool TransferShapeByOriginShape(const ge::Format &primary_format, const int64_t &c0,
+  static bool TransferShapeByOriginShape(const ge::Format &primary_format, const int64_t &c0, const int64_t &m0,
                                          const ExtAxisValue &ext_axis, const gert::Shape &origin_shape,
                                          gert::Shape &shape);
   static bool TransferShapeByFormatIndex(const ge::Format &origin_format, const ge::Format &format, const int64_t &c0,
@@ -100,8 +103,8 @@ private:
   static bool GetC1HWNCoC0Shape(const FormatIndex& format_index, const int64_t &c0, const gert::Shape &origin_shape,
                                 gert::Shape &shape);
 
-  static bool GetFractalNzShape(const ExtAxisValue &ext_axis, const int64_t &c0, const gert::Shape &origin_shape,
-                                gert::Shape &shape);
+  static bool GetFractalNzShape(const int64_t &c0, const int64_t &m0,
+                                const gert::Shape &origin_shape, gert::Shape &shape);
 
   static bool GetFractalZShape(const int64_t &c0, const gert::Shape &origin_shape, gert::Shape &shape);
 
@@ -127,6 +130,15 @@ private:
                                 gert::Shape &shape);
 
   static bool GetNYUVShape(gert::Shape &shape);
+
+  static bool GetFzWinoShapeByAxisValue(const AxisValue &axis_value, gert::Shape &shape);
+
+  static bool GetFractalZWinoShape(const FormatIndex& format_index, const int64_t &c0,
+                                   const gert::Shape &origin_shape, gert::Shape &shape);
+
+  static std::array<uint32_t, static_cast<size_t>(ge::DataType::DT_MAX)> m0_list_;
+  static std::array<uint32_t, static_cast<size_t>(ge::DataType::DT_MAX)> k0_list_;
+  static std::array<uint32_t, static_cast<size_t>(ge::DataType::DT_MAX)> n0_list_;
 };
 }
 #endif  // TRANSFORMER_INC_TRANSFER_SHAPE_UTILS_H_

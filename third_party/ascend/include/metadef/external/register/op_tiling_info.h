@@ -106,7 +106,8 @@ public:
 
   void SetBlockDim(const uint32_t &block_dim);
   uint32_t GetBlockDim() const;
-
+  void SetScheduleMode(const uint32_t schedule_mode);
+  uint32_t GetScheduleMode() const;
   void AddWorkspace(const int64_t &workspace);
   size_t GetWorkspaceNum() const;
   ge::graphStatus GetWorkspace(const size_t &idx, int64_t &workspace) const;
@@ -137,6 +138,7 @@ public:
   void ResetWorkspace();
   void ResetAddrBase(void *const addr_base, const uint64_t max_size);
   void AlignOffsetWith64();
+  bool SetMemCheckBaseOffset(const uint64_t &offset);
   void SetTilingCond(const int32_t tiling_cond);
   int32_t GetTilingCond() const;
 private:

@@ -34,20 +34,64 @@ typedef struct tagIpcIntNoticeInfo {
     uint8_t  ntcEventId;
     uint8_t  msgLen;
     uint8_t  msg[RT_IPCINT_MSGLEN_MAX];
-    uint8_t  reserved1[2];
+    uint16_t phyDevId;
 } rtIpcIntNoticeInfo_t;
 
 /**
  * @ingroup event_flags
  * @brief event op bit flags
  */
-#define RT_EVENT_DEFAULT (0x0EU)
-#define RT_EVENT_WITH_FLAG (0x0BU)
-
 #define RT_EVENT_DDSYNC_NS    0x01U
 #define RT_EVENT_STREAM_MARK  0x02U
 #define RT_EVENT_DDSYNC       0x04U
 #define RT_EVENT_TIME_LINE    0x08U
+#define RT_EVENT_MC2          0x10U             // RT_EVENT_MC2 does not support OR with other flags
+
+#define RT_EVENT_DEFAULT (RT_EVENT_DDSYNC | RT_EVENT_TIME_LINE | RT_EVENT_STREAM_MARK)
+#define RT_EVENT_WITH_FLAG (RT_EVENT_DDSYNC_NS)
+
+#define RT_NOTIFY_FLAG_DEFAULT (0x00U)
+#define RT_NOTIFY_FLAG_DOWNLOAD_TO_DEV (0x01U)  // RT_NOTIFY_FLAG_DOWNLOAD_TO_DEV does not support OR with other flags
+#define RT_NOTIFY_FLAG_SHR_ID_SHADOW (0x1U << 6)
+#define RT_NOTIFY_FLAG_MAX \
+    (RT_NOTIFY_FLAG_DOWNLOAD_TO_DEV |RT_NOTIFY_FLAG_SHR_ID_SHADOW)
+/**
+ * @ingroup notify_flags
+ * @brief notify op bit flags
+ */
+#define RT_NOTIFY_DEFAULT   0x00U
+#define RT_NOTIFY_MC2       0x01U               // RT_NOTIFY_MC2 does not support OR with other flags
+#define RT_DMS_MAX_EVENT_NAME_LENGTH 256
+#define RT_DMS_MAX_EVENT_DATA_LENGTH 32
+#define RT_DMS_MAX_EVENT_RESV_LENGTH 32
+#define RT_DSM_EVENT_FILTER_FLAG_PID (1UL << 3)
+
+typedef struct tagDmsEventFilter {
+    uint64_t filterFlag;
+    uint32_t eventId;
+    unsigned char severity;
+    unsigned char nodeType;
+    unsigned char resv[RT_DMS_MAX_EVENT_RESV_LENGTH]; /**< reserve 32byte */
+} rtDmsEventFilter;
+
+typedef struct tagDmsFaultEvent {
+    uint64_t alarmRaisedTime;
+    uint32_t eventId;
+    int32_t tgid;
+    int32_t eventSerialNum;
+    int32_t notifySerialNum;
+    uint16_t deviceId;
+    uint16_t nodeType;
+    uint16_t subNodeType;
+    unsigned char nodeId;
+    unsigned char subNodeId;
+    unsigned char severity;
+    unsigned char assertion;
+    char eventName[RT_DMS_MAX_EVENT_NAME_LENGTH];
+    char additionalInfo[RT_DMS_MAX_EVENT_DATA_LENGTH];
+    unsigned char osId;
+    unsigned char resv[RT_DMS_MAX_EVENT_RESV_LENGTH]; /* reserve 32byte */
+} rtDmsFaultEvent;
 
 /**
  * @ingroup dvrt_event
@@ -66,6 +110,15 @@ RTS_API rtError_t rtEventCreate(rtEvent_t *evt);
  * @return RT_ERROR_INVALID_VALUE for error input
  */
 RTS_API rtError_t rtEventCreateWithFlag(rtEvent_t *evt, uint32_t flag);
+
+/**
+ * @ingroup dvrt_event
+ * @brief create event instance with flag for single mode
+ * @param [in|out] event  created event  flag event op flag
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ */
+RTS_API rtError_t rtEventCreateExWithFlag(rtEvent_t *evt, uint32_t flag);
 
 /**
  * @ingroup dvrt_event
@@ -185,6 +238,20 @@ RTS_API rtError_t rtEventGetTimeStamp(uint64_t *timeStamp, rtEvent_t evt);
 RTS_API rtError_t rtNameEvent(rtEvent_t evt, const char_t *name);
 
 /**
+ * @ingroup
+ * @brief get fault event .
+ * @param [in] deviceId device id
+ * @param [in] filter filter condition:PID
+ * @param [in] len output length
+ * @param [out] dmsEvent return dms event struct array
+ * @param [out] eventCount return event count
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ */
+RTS_API rtError_t rtGetFaultEvent(const int32_t deviceId, rtDmsEventFilter *filter, rtDmsFaultEvent *dmsEvent,
+    uint32_t len, uint32_t *eventCount);
+
+/**
  * @ingroup dvrt_event
  * @brief Create a notify
  * @param [in] device_id  device id
@@ -193,6 +260,18 @@ RTS_API rtError_t rtNameEvent(rtEvent_t evt, const char_t *name);
  * @return RT_ERROR_INVALID_VALUE for error input
  */
 RTS_API rtError_t rtNotifyCreate(int32_t deviceId, rtNotify_t *notify);
+
+
+/**
+ * @ingroup dvrt_event
+ * @brief Create a notify
+ * @param [in] device_id  device id
+ * @param [in|out] notify_   notify to be created
+ * @param [in] flag  flag notify flag
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ */
+RTS_API rtError_t rtNotifyCreateWithFlag(int32_t deviceId, rtNotify_t *notify, uint32_t flag);
 
 /**
  * @ingroup dvrt_event
@@ -240,16 +319,6 @@ RTS_API rtError_t rtNotifyWaitWithTimeOut(rtNotify_t notify, rtStream_t stm, uin
 
 /**
  * @ingroup dvrt_event
- * @brief Name a notify
- * @param [in] notify_ notify to be named
- * @param [in|out] name   identification name
- * @return RT_ERROR_NONE for ok
- * @return RT_ERROR_INVALID_VALUE for error input
- */
-RTS_API rtError_t rtNameNotify(rtNotify_t notify, const char_t *name);
-
-/**
- * @ingroup dvrt_event
  * @brief get notify id
  * @param [in] notify_ notify to be get
  * @param [in|out] notify_id   notify id
@@ -257,6 +326,17 @@ RTS_API rtError_t rtNameNotify(rtNotify_t notify, const char_t *name);
  * @return RT_ERROR_INVALID_VALUE for error input
  */
 RTS_API rtError_t rtGetNotifyID(rtNotify_t notify, uint32_t *notifyId);
+
+/**
+ * @ingroup dvrt_event
+ * @brief Get notify phy info
+ * @param [in] notify the created/opened notify
+ * @param [out] phyDevId phy device id
+ * @param [out] tsId ts id
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ */
+RTS_API rtError_t rtNotifyGetPhyInfo(rtNotify_t notify, uint32_t *phyDevId, uint32_t *tsId);
 
 /**
  * @ingroup dvrt_event
@@ -277,6 +357,16 @@ RTS_API rtError_t rtIpcSetNotifyName(rtNotify_t notify, char_t *name, uint32_t l
  * @return RT_ERROR_INVALID_VALUE for error input
  */
 RTS_API rtError_t rtIpcOpenNotify(rtNotify_t *notify, const char_t *name);
+
+/**
+ * @ingroup dvrt_event
+ * @brief Open IPC notify
+ * @param [out] notify the opened notify
+ * @param [in] name   identification name
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ */
+RTS_API rtError_t rtIpcOpenNotifyWithFlag(rtNotify_t *notify, const char_t *name, uint32_t flag);
 
 /**
  * @ingroup dvrt_event

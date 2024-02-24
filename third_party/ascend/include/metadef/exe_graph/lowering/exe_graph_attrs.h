@@ -47,6 +47,9 @@ constexpr const ge::char_t *kKernelExtendInfo = "KernelExtendInfo";
 // 打在exe node上，用来标识本node所对应的kernel信息的index
 constexpr const ge::char_t *kKernelExtendIndex = "KernelExtendInfoIndex";
 
+// 打在exe node上，用来标识本node属于某一子图，且该子图内节点源自于子图外部，且对应子图外部节点拥有Guarder
+constexpr const ge::char_t *kNodeWithGuarderOutside = "NodeWithGuarderOutside";
+
 // 打在exe graph上，保存了本graph涉及的所有的二进制buffer（字符串、const值等）
 constexpr const ge::char_t *kBuffer = "buffer";
 
@@ -64,5 +67,8 @@ constexpr const ge::char_t *kPassChangedInfo = "_pass_changed_info";
 
 // 打在exe graph上，保存space_registry的智能指针
 constexpr const ge::char_t *kSpaceRegistry = "SpaceRegistry";
+
+// 打在exe graph上，保存外置权重文件目录的string
+constexpr const ge::char_t *kExternalFileConstantDir = "ExternalFileConstantDir";
 }  // namespace gert
 #endif  // AIR_CXX_RUNTIME_V2_METADEF_EXE_GRAPH_EXE_GRAPH_ATTRS_H_

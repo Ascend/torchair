@@ -36,6 +36,10 @@ public:
   virtual Status InitializeFromContext() {
     return SUCCESS;
   }
+  virtual Status InitializeFromContext(const std::string &combined_params_key) {
+    (void)combined_params_key;
+    return SUCCESS;
+  }
 };
 }  // namespace fe
 #endif  // AIR_COMPILER_GRAPHCOMPILER_ENGINES_NNENG_INC_COMMON_BASE_CONFIG_PARSER_

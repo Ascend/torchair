@@ -172,6 +172,13 @@ class ComputeNodeInfo {
     return ir_inputs_num_;
   }
   /**
+   * 获取算子IR原型定义中的输出个数
+   * @return IR原型中定义的输出个数
+   */
+  size_t GetIrOutputsNum() const {
+    return ir_outputs_num_;
+  }
+  /**
    * 获取计算节点的输入个数
    * @return 计算节点的输入个数
    */
@@ -196,6 +203,22 @@ class ComputeNodeInfo {
     }
     const auto inputs = reinterpret_cast<const AnchorInstanceInfo *>(&place_holder);
     return inputs + ir_index;
+  }
+  /**
+  * 根据IR原型中的输出index，获取对应的实例化信息
+  * @param ir_index IR原型定义中的输出index
+  * @return 输出的实例化信息
+  */
+  const AnchorInstanceInfo *GetOutputInstanceInfo(const size_t ir_index) const {
+    if (ir_index >= ir_outputs_num_) {
+      return nullptr;
+    }
+    const auto outputs = reinterpret_cast<const AnchorInstanceInfo *>(
+        reinterpret_cast<const uint8_t *>(&place_holder) +
+        sizeof(AnchorInstanceInfo) * ir_inputs_num_ +
+        sizeof(CompileTimeTensorDesc) * (inputs_num_ + outputs_num_) +
+        runtime_attr_size_);
+    return outputs + ir_index;
   }
   /**
    * 获取计算节点输入的Tensor描述，注意，编译时无法确定的shape信息不在Tensor描述中
@@ -254,6 +277,12 @@ class ComputeNodeInfo {
    */
   AnchorInstanceInfo *MutableInputInstanceInfo(const size_t ir_index) const;
   /**
+   * 根据IR原型中的输出index，获取对应的实例化信息
+   * @param ir_index IR原型定义中的输出index
+   * @return 输出的实例化信息
+   */
+  AnchorInstanceInfo *MutableOutputInstanceInfo(const size_t ir_index) const;
+  /**
    * 获取计算节点输入的Tensor描述，注意，编译时无法确定的shape信息不在Tensor描述中
    * @param index 计算节点的输入index
    * @return Tensor描述
@@ -274,6 +303,10 @@ class ComputeNodeInfo {
                                   const size_t outputs_num, size_t &total_size);
   void Init(const size_t ir_inputs_num, const size_t inputs_num, const size_t outputs_num,
             const ge::char_t *node_name, const ge::char_t *node_type);
+  static ge::graphStatus CalcSize(const size_t ir_inputs_num, const size_t ir_outputs_num, const size_t inputs_num,
+                                  const size_t outputs_num, size_t &total_size);
+  void Init(const size_t ir_inputs_num, const size_t ir_outputs_num, const size_t inputs_num, const size_t outputs_num,
+            const size_t attr_size, const ge::char_t *node_name, const ge::char_t *node_type);
 
   ComputeNodeInfo() = delete;
   ComputeNodeInfo(const ComputeNodeInfo &) = delete;
@@ -287,8 +320,11 @@ class ComputeNodeInfo {
   size_t ir_inputs_num_;
   size_t inputs_num_;
   size_t outputs_num_;
-  uint8_t reserved_[40];  // Reserved field, 32+8, do not directly use when only 8-byte left
-  // following by AnchorInstanceInfo, inputs-outputs-CompileTimeTensorDesc, RuntimeAttrs
+  size_t ir_outputs_num_;
+  size_t runtime_attr_size_;
+  uint8_t reserved_[24];  // Reserved field, 24+8, do not directly use when only 8-byte left
+  // following by inputs-AnchorInstanceInfo, inputs-outputs-CompileTimeTensorDesc, RuntimeAttrs,
+  // outputs-AnchorInstanceInfo
   uint64_t place_holder;
 };
 static_assert(std::is_standard_layout<ComputeNodeInfo>::value, "The class ComputeNodeInfo must be a POD");

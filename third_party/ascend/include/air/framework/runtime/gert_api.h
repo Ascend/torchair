@@ -21,7 +21,10 @@
 #include "common/ge_types.h"
 #include "common/ge_visibility.h"
 #include "mem_allocator.h"
+#include "memory/allocator_desc.h"
 #include "exe_graph/lowering/lowering_opt.h"
+#include "stream_allocator.h"
+#include "event_allocator.h"
 
 namespace gert {
 /**
@@ -30,7 +33,7 @@ namespace gert {
 class VISIBILITY_EXPORT AllocatorFactory {
  public:
   // 根据placement创建allocator
-  static std::unique_ptr<memory::MemAllocator> Create(const TensorPlacement &placement);
+  static std::unique_ptr<ge::Allocator> Create(const TensorPlacement &placement);
  private:
   AllocatorFactory() = default;
 };
@@ -45,6 +48,13 @@ std::unique_ptr<ModelV2Executor> LoadExecutorFromModelData(const ge::ModelData &
 VISIBILITY_EXPORT
 std::unique_ptr<ModelV2Executor> LoadExecutorFromModelData(const ge::ModelData &model_data,
                                                            const ExecutorOption &executor_option,
+                                                           ge::graphStatus &error_code);
+
+VISIBILITY_EXPORT
+std::unique_ptr<ModelV2Executor> LoadExecutorFromModelData(const ge::ModelData &model_data,
+                                                           const ExecutorOption &executor_option,
+                                                           StreamAllocator *const stream_allocator,
+                                                           EventAllocator *const event_allocator,
                                                            ge::graphStatus &error_code);
 
 VISIBILITY_EXPORT
@@ -82,5 +92,8 @@ ge::graphStatus IsDynamicModel(const ge::char_t *model_path, bool &is_dynamic_mo
 
 VISIBILITY_EXPORT
 ge::graphStatus LoadDataFromFile(const ge::char_t *model_path, ge::ModelData &model_data);
+
+VISIBILITY_EXPORT
+std::unique_ptr<ge::Allocator> CreateExternalAllocator(const ge::AllocatorDesc * const allocatorDesc);
 }  // namespace gert
 #endif  // AIR_CXX_INC_FRAMEWORK_RUNTIME_GERT_API_H_

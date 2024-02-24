@@ -47,13 +47,27 @@ extern HcclResult HcclGetRootInfo(HcclRootInfo *rootInfo);
 extern HcclResult HcclCommInitRootInfo(uint32_t nRanks, const HcclRootInfo *rootInfo, uint32_t rank, HcclComm *comm);
 
 /**
+
  * @brief Set deterministic calculate
  *
- * @param config A struct identifying the config
+ * @param config A struct identifying the Config
  * @param configValue An interger identifying the identify for the config.
-*/
+ */
+
 extern HcclResult HcclSetConfig(HcclConfig config, HcclConfigValue configValue);
 extern HcclResult HcclGetConfig(HcclConfig config, HcclConfigValue *configValue);
+
+/**
+
+ * @brief get commName.
+ *
+ * @param commhandle A pointer identifying the initialized communication resource.
+ * @param commName The name of commhandle.
+ * @return HcclResult
+ * @see HcclCommDestroy()
+ */
+extern HcclResult HcclGetCommName(HcclComm comm, char* commName);
+
 
 /**
  * @brief AllReduce operator.
@@ -101,6 +115,21 @@ extern HcclResult HcclBroadcast(void *buf, uint64_t count, HcclDataType dataType
  */
 extern HcclResult HcclReduceScatter(void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDataType dataType,
     HcclReduceOp op, HcclComm comm, aclrtStream stream);
+
+/**
+ * @brief Scatter operator.
+ *
+ * @param sendBuf A pointer identifying the input data address of the operator.
+ * @param recvBuf A pointer identifying the output data address of the operator.
+ * @param recvCount An integer(u64) identifying the number of the data.
+ * @param dataType The data type of the operator, must be one of the following types: int8, int32, float16, float32.
+ * @param root An integer(u32) identifying the the root rank in the operator.
+ * @param comm A pointer identifying the communication resource based on
+ * @param stream A pointer identifying the stream information.
+ * @return HcclResult 
+ */
+extern HcclResult HcclScatter(void *sendBuf, void *recvBuf, uint64_t recvCount, HcclDataType dataType, uint32_t root,
+    HcclComm comm, aclrtStream stream);
 
 /**
  * @brief AllGather operator.
@@ -190,10 +219,28 @@ uint8, uint16, uint32, uint64, float16, float32, float64.
  * @param stream A pointer identifying the stream information.
  * @return HcclResult
  */
-
 extern HcclResult HcclAlltoAllV(const void *sendBuf, const void *sendCounts, const void *sdispls, HcclDataType sendType,
                          const void *recvBuf, const void *recvCounts, const void *rdispls, HcclDataType recvType,
                          HcclComm comm, aclrtStream stream);
+
+/**
+ * @brief AlltoAll operator.
+ *
+ * @param sendBuff A pointer identifying the input data address of the operator.
+ * @param sendCount Integer, number of elements to send to each proces.
+ * @param sendType Datatype of send buffer elements, must be one of the following types: int8, int16, int32, int64,
+uint8, uint16, uint32, uint64, float16, float32, float64, bfloat16.
+ * @param recvBuf A pointer identifying the output data address of the operator.
+ * @param recvCount Integer, number of elements received from any process.
+ * @param recvType Datatype of receive buffer elements, must be one of the following types: int8, int16, int32, int64,
+uint8, uint16, uint32, uint64, float16, float32, float64.
+ * @param comm A pointer identifying the communication resource based on.
+ * @param stream A pointer identifying the stream information.
+ * @return HcclResult
+ */
+extern HcclResult HcclAlltoAll(const void *sendBuf, uint64_t sendCount, HcclDataType sendType,
+                               const void *recvBuf, uint64_t recvCount, HcclDataType recvType,
+                               HcclComm comm, aclrtStream stream);
 
 /**
  * @brief Reduce operator.
@@ -221,6 +268,38 @@ extern HcclResult HcclReduce(void *sendBuf, void *recvBuf, uint64_t count, HcclD
  */
 extern HcclResult HcclCommDestroy(HcclComm comm);
 
+/**
+ * @brief Create a single-process multi-npu communication domain. Cross-machine is not supported.
+ *
+ * @param ndev: the number of NPUs in a communication domain.
+ * @param devices: Indicates the NPU list in the communication domain. The value is the device logic ID.
+ The communication library creates communication domains in the sequence of devices.
+ * @param comms: Generated communication domain handle, size: ndev * sizeof(HcclComm)
+ * @return HcclResult
+ */
+extern HcclResult HcclCommInitAll(uint32_t ndev, int32_t* devices, HcclComm* comms);
+
+/**
+ * @brief Get hccl error.
+ * @param comm A pointer identifying the communication resource based on.
+ * @param asyncError A pointer identifying the communication error.
+*/
+extern HcclResult HcclGetCommAsyncError(HcclComm comm, HcclResult *asyncError);
+
+/**
+ * @brief  convert a hccl errorCode to a string.
+ * @param code enum HcclResult.
+*/
+extern const char *HcclGetErrorString(HcclResult code);
+
+/**
+ * @brief  Batch SEND/RECV
+ * @param sendRecvInfo A pointer to an send/recv item array.
+ * @param itemNum The size of the send/recv item array.
+ * @param comm A pointer identifying the communication resource based on.
+ * @param stream A pointer identifying the stream information.
+*/
+extern HcclResult HcclBatchSendRecv(HcclSendRecvItem* sendRecvInfo, uint32_t itemNum, HcclComm comm, aclrtStream stream);
 #ifdef __cplusplus
 }
 #endif // __cplusplus

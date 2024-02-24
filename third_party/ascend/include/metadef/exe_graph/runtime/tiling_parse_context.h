@@ -16,7 +16,7 @@
 
 #ifndef METADEF_CXX_INC_EXE_GRAPH_RUNTIME_TILING_PARSE_CONTEXT_H_
 #define METADEF_CXX_INC_EXE_GRAPH_RUNTIME_TILING_PARSE_CONTEXT_H_
-#include "extended_kernel_context.h"
+#include "exe_graph/runtime/extended_kernel_context.h"
 #include "graph/types.h"
 
 namespace fe {

@@ -30,7 +30,6 @@
 #include "graph/graph.h"
 #include "graph/tensor.h"
 #include "ge/ge_allocator.h"
-
 namespace ge {
 typedef uint32_t (*pCallBackFunc)(uint32_t graph_id, const std::map<std::string, ge::Tensor> &params_list);
 
@@ -49,7 +48,14 @@ GE_FUNC_VISIBILITY Status GEFinalize();
 
 GE_FUNC_VISIBILITY std::string GEGetErrorMsg();
 
+GE_FUNC_VISIBILITY ge::AscendString GEGetErrorMsgV2();
+
 GE_FUNC_VISIBILITY std::string GEGetWarningMsg();
+
+GE_FUNC_VISIBILITY ge::AscendString GEGetWarningMsgV2();
+
+GE_FUNC_VISIBILITY Status GetModelDistributeDesc(const void *data, const uint64_t length,
+                                                 ModelDistibuteDesc &model_dist_desc);
 
 class GE_FUNC_VISIBILITY Session {
  public:
@@ -135,6 +141,38 @@ class GE_FUNC_VISIBILITY Session {
   /// @return Status result of function
   ///
   Status RunGraph(uint32_t graph_id, const ContinuousTensorList &inputs, std::vector<Tensor> &outputs);
+
+  ///
+  /// @ingroup ge_graph
+  /// @brief run a distributed graph of the session with specific session id
+  /// @param [in] graphId graph id
+  /// @param [in] device id respond to inputs input data
+  /// @param [out] device id respond to outputs output data
+  /// @return Status result of function
+  ///
+  Status RunGraphDistribute(uint32_t graph_id, const std::map<int32_t, std::vector<Tensor>> &device_to_inputs,
+                            std::map<int32_t, std::vector<Tensor>> &device_to_outputs);
+
+  ///
+  /// @ingroup ge_graph
+  /// @brief Load graph from om
+  /// @param [in] graphId graph id
+  /// @param [in] options graph options
+  /// @param [in] om_file_path offline om path
+  /// @return Status result of function
+  ///
+  /* 规避方案：规避acl系列接口不支持拉远环境；aclModelLoad接口当前不支持分布式的模型加载，不支持session管理权重变量复用
+              根据20230615 SEG会议纪要可以在session中开接口作为临时方案
+     方案详述：acl接口不支持拉远形态，不支持外置权重。使用该接口实现在session加载离线om。
+              1.将om根据指定om_file_path直接加载到ModelManager中
+              2.modelManager判断是异构模型，调用异构部署函数，生成deloyplan
+              3.ModelManger提供接口返回modelid和flowModelPtr GraphPtr，InnerSession根据返回信息注册在GraphManager中生成graphnode
+              4.当前调用进程可以通过RunGraph接口去执行加载的离线模型
+     方案约束：只用于加载异构离线模型，即存储格式为flowmodel下包含一个或多个submodel和modelrelation的离线模型;
+              不支持包含variable的离线模型，variable的值在device侧目前还没有保存到om中的方案
+  */
+  Status LoadGraph(const uint32_t graph_id, const std::map<std::string, std::string> &options,
+                   const std::string &om_file_path) const;
 
   ///
   /// @ingroup ge_graph
@@ -231,6 +269,17 @@ class GE_FUNC_VISIBILITY Session {
                            int32_t timeout);
 
   /// @ingroup ge_graph
+  /// @brief Feed input data to graph.
+  /// @param [in] graph_id graph id
+  /// @param [in] indexes fetch output data order(index cannot be duplicated)
+  /// @param [in] inputs input data
+  /// @param [in] info intput data flow flag
+  /// @param [in] timeout data feed timeout(ms), -1 means never timeout
+  /// @return Status result of function
+  Status FeedDataFlowGraph(uint32_t graph_id, const std::vector<uint32_t> &indexes, const std::vector<Tensor> &inputs,
+                           const DataFlowInfo &info, int32_t timeout);
+
+  /// @ingroup ge_graph
   /// @brief Fetch graph output data in order.
   /// @param [in] graph_id graph id
   /// @param [out] outputs output data
@@ -284,6 +333,26 @@ class GE_FUNC_VISIBILITY Session {
   ///
   Status UpdateGraphFeatureMemoryBase(uint32_t graph_id, const void *const memory, size_t size);
 
+  ///
+  /// @ingroup ge_graph
+  /// @brief set fix feature memory base after compiled and before loaded, only allows setting once
+  /// @param [in] graphId graph id
+  /// @param [in] memory const memory base
+  /// @param [out] size const memory size
+  /// @return Status result of function
+  ///
+  Status SetGraphFixedFeatureMemoryBase(uint32_t graph_id, const void *const memory, size_t size);
+
+  ///
+  /// @ingroup ge_graph
+  /// @brief set or update tefreshable fearture memory base after compiled, not include fix memory
+  /// @param [in] graphId graph id
+  /// @param [in] memory feature map memory base, without input and output mem
+  /// @param [out] size feature map memory size
+  /// @return Status result of function
+  ///
+  Status UpdateGraphRefreshableFeatureMemoryBase(uint32_t graph_id, const void *const memory, size_t size);
+
   /// @ingroup ge_graph
   /// @brief register external allocator to GE.
   /// @param [in] stream stream handle
@@ -297,8 +366,18 @@ class GE_FUNC_VISIBILITY Session {
   /// @return Status result of function
   Status UnregisterExternalAllocator(const void *const stream) const;
 
+  /// @ingroup ge_graph
+  /// @brief shard graphs in the session according the add graph sequence
+  /// @return Status result of function
+  Status ShardGraphs() const;
+
+  /// @ingroup ge_graph
+  /// @brief save graphs in the session with specific file path
+  /// @return Status result of function
+  Status SaveGraphsToPb(const char_t *file_path) const;
+
  private:
-  uint64_t sessionId_;
+  uint64_t sessionId_{0};
 };
 }  // namespace ge
 

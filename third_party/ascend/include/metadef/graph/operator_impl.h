@@ -99,7 +99,53 @@ class OperatorImpl : public std::enable_shared_from_this<OperatorImpl> {
   friend class GraphBuilderImpl;
   friend class OpDescUtils;
 };
+// Used to manage OperatorImpl instances created by ge api.
+class OperatorKeeper {
+ public:
+  static OperatorKeeper &GetInstance();
+  void CheckInOperator(const OperatorImplPtr &op_impl) {
+    if (op_impl) {
+      const std::lock_guard<std::mutex> lock(mutex_);
+      (void)(operators_.insert(op_impl));
+    }
+  }
+  void CheckOutOperator(const OperatorImplPtr &op_impl) {
+    if (op_impl) {
+      const std::lock_guard<std::mutex> lock(mutex_);
+      (void)(operators_.erase(op_impl));
+    }
+  }
 
+  void ClearInvalidOp() {
+    const std::lock_guard<std::mutex> lock(mutex_);
+    for (auto iter = operators_.begin(); iter != operators_.end();) {
+      auto op = iter->lock();
+      if (op == nullptr) {
+        iter = operators_.erase(iter);
+      } else {
+        ++iter;
+      }
+    }
+  }
+
+ private:
+  OperatorKeeper() = default;
+  ~OperatorKeeper() {
+    for (const auto &iter : operators_) {
+      if (!iter.expired()) {
+        iter.lock()->ClearInputLinks();
+      }
+      if (!iter.expired()) {
+        iter.lock()->ClearOutputLinks();
+      }
+    }
+    // Manually clean up for `Operator` destructor may access `operators_`
+    auto operators = std::move(operators_);
+    operators.clear();
+  }
+  std::set<std::weak_ptr<OperatorImpl>, std::owner_less<std::weak_ptr<OperatorImpl>>> operators_;
+  std::mutex mutex_;
+};
 }  // namespace ge
 
 #endif  // METADEF_CXX_OPERATOR_IMPL_H

@@ -22,20 +22,20 @@
 
 #include "graph/node.h"
 #include "external/graph/types.h"
-#include "exe_graph/lowering/value_holder.h"
+#include "exe_graph/lowering/dev_mem_value_holder.h"
 #include "exe_graph/lowering/lowering_global_data.h"
 
 namespace gert {
 struct LowerInput {
   std::vector<bg::ValueHolderPtr> input_shapes;
-  std::vector<bg::ValueHolderPtr> input_addrs;
+  std::vector<bg::DevMemValueHolderPtr> input_addrs;
   LoweringGlobalData *global_data;
 };
 struct LowerResult {
   HyperStatus result;
   std::vector<bg::ValueHolderPtr> order_holders;
   std::vector<bg::ValueHolderPtr> out_shapes;
-  std::vector<bg::ValueHolderPtr> out_addrs;
+  std::vector<bg::DevMemValueHolderPtr> out_addrs;
 };
 class NodeConverterRegistry {
  public:

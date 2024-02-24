@@ -50,6 +50,9 @@ typedef enum tagModelTaskType {
     RT_MODEL_TASK_NPU_GET_FLOAT_STATUS,
     RT_MODEL_TASK_NPU_CLEAR_FLOAT_STATUS,
     RT_MODEL_TASK_DVPP,
+    RT_MODEL_TASK_NPU_GET_DEBUG_FLOAT_STATUS,
+    RT_MODEL_TASK_NPU_CLEAR_DEBUG_FLOAT_STATUS,
+    RT_MODEL_TASK_CMO_ADDR
 } rtModelTaskType_t;
 
 typedef enum tagModelStreamType {
@@ -212,6 +215,17 @@ typedef struct tagrtMemcpyAsyncTaskInfo {
     uint32_t reserved;
 } rtMemcpyAsyncTaskInfo_t;
 
+typedef struct tagrtCmoAddrTaskInfo {
+    const void *src;
+    uint32_t len_inner;
+    uint16_t num_outer;
+    uint16_t num_inner;
+    uint32_t stride_outer;
+    uint32_t stride_inner;
+    uint8_t cmoOpCode;
+    uint8_t reserved[8];
+} rtCmoAddrTaskInfo_t;
+
 typedef struct tagrtNotifyTaskInfo {
     uint32_t notifyID;
     uint32_t reserved[9];
@@ -276,6 +290,18 @@ typedef struct tagrtNpuClearFloatStatusTask_t {
     uint8_t reserved[36];
 } rtNpuClearFloatStatusTask_t;
 
+typedef struct tagrtNpuGetFloatDebugStatusTask_t {
+    uint64_t outputAddr;
+    uint64_t outputSize;
+    uint32_t checkMode;
+    uint8_t reserved[20];
+} rtNpuGetFloatDebugStatusTask_t;
+
+typedef struct tagrtNpuClearFloatDebugStatusTask_t {
+    uint32_t checkMode;
+    uint8_t reserved[36];
+} rtNpuClearFloatDebugStatusTask_t;
+
 typedef struct tagTaskInfo {
     uint32_t type;
     uint32_t streamID;
@@ -303,6 +329,9 @@ typedef struct tagTaskInfo {
         rtStreamLabelGotoTask_t streamLabelGotoTask;
         rtNpuGetFloatStatusTask_t npuGetFloatStatusTask;
         rtNpuClearFloatStatusTask_t npuClearFloatStatusTask;
+        rtNpuGetFloatDebugStatusTask_t npuGetFloatDebugStatusTask;
+        rtNpuClearFloatDebugStatusTask_t npuClearFloatDebugStatusTask;
+        rtCmoAddrTaskInfo_t cmoAddrTask;
         uint32_t reserved[10];
     } u;
 } rtTaskInfo_t;
@@ -331,6 +360,7 @@ typedef struct tagLabelDevInfo_t {
 }rtLabelDevInfo;
 
 typedef struct tagMdlLoad {
+    uint8_t overflow_en;
     uint16_t totalTaskNum;
     void *taskDescBaseAddr;
     void *pcBaseAddr;
@@ -392,37 +422,38 @@ RTS_API rtError_t rtNanoModelExecute(rtMdlExecute_t *modelExec);
 RTS_API rtError_t rtMsgSend(uint32_t tId, uint32_t sendTid, int32_t timeout, void *sendInfo, uint32_t size);
 
 /**
- * @ingroup rtUpdataTaskDescDumpFlag
- * @brief nano update taskdesc dump flag
- * @param [in] taskDescBaseAddr      TaskDesc Base Addr
+ * @ingroup rtSetTaskDescDumpFlag
+ * @brief nano set taskdesc dump flag
+ * @param [in] taskDescBaseAddr  TaskDesc Base Addr
+ * @param [in] taskDescSize      Static TaskDesc Partition size
  * @param [in] taskId   task id
  * @return RT_ERROR_NONE for ok
  * @return RT_ERROR_INVALID_VALUE for error input
  */
-RTS_API rtError_t rtUpdataTaskDescDumpFlag(void *taskDescBaseAddr, uint32_t taskId);
+RTS_API rtError_t rtSetTaskDescDumpFlag(void *taskDescBaseAddr, size_t taskDescSize, uint32_t taskId);
 
 /**
  * @ingroup rt_dump_Init
  * @brief nano dump init
  * @return RT_ERROR_NONE for ok
  */
-RTS_API rtError_t rtDumpInit();
+RTS_API rtError_t rtDumpInit(void);
 
 /**
  * @ingroup rt_dump_deInit
  * @brief nano dump deinit
  * @return RT_ERROR_NONE for ok
  */
-RTS_API rtError_t rtDumpDeInit();
+RTS_API rtError_t rtDumpDeInit(void);
 
 /**
  * @ingroup rt_model
  * @brief nano destroy model instance
- * @param [in] mdl   model to destroy
+ * @param [in] phyMdlId   model to destroy
  * @return RT_ERROR_NONE for ok
  * @return RT_ERROR_INVALID_VALUE for error input
  */
-RTS_API rtError_t rtNanoModelDestroy(uint32_t phy_model_id);
+RTS_API rtError_t rtNanoModelDestroy(uint32_t phyMdlId);
 
 /**
  * @ingroup rt_model
@@ -612,6 +643,33 @@ RTS_API rtError_t rtDebugUnRegister(rtModel_t mdl);
  * @return RT_ERROR_INVALID_VALUE for error input
  */
 RTS_API rtError_t rtModelSetSchGroupId(rtModel_t mdl, const int16_t schGrpId);
+
+/**
+ * @ingroup rt_model
+ * @brief add stream sq lock task
+ * @param [in]  stream
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ */
+RTS_API rtError_t rtSetStreamSqLock(rtStream_t stm);
+
+/**
+ * @ingroup rt_model
+ * @brief add stream sq unlock task
+ * @param [in]  stream
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error input
+ */
+RTS_API rtError_t rtSetStreamSqUnlock(rtStream_t stm);
+
+/**
+ * @ingroup rt_model
+ * @brief support reuse or not
+ * @param [out]  bSupport
+ * @return RT_ERROR_NONE for ok
+ * @return RT_ERROR_INVALID_VALUE for error
+ */
+RTS_API rtError_t rtSupportModelStreamReuse(bool *bSupport);
 
 #if defined(__cplusplus)
 }
