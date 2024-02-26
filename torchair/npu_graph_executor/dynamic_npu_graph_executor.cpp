@@ -69,6 +69,23 @@ Status DynamicNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &in
   return Status::Success();
 }
 
+Status DynamicNpuGraphExecutor::AllocAndSetFixedMemory(void *stream, std::shared_ptr<GraphData> &graph_data) {
+  TNG_LOG(DEBUG) << "Enter DynamicNpuGraphExecutor set fixed_mem_addr_";
+  // Register allocator for GE before run, according to stream.
+  auto allocator = AllocatorManager::GetInstance().EnsureAllocatorRegistered(stream);
+  TNG_ASSERT_NOTNULL(allocator);
+  TNG_ASSERT_NOTNULL(graph_data->summary);
+  size_t fixed_mem_size = 0U;
+  TNG_ASSERT_GE_OK(graph_data->summary->GetFixedFeatureMemorySize(fixed_mem_size));
+  TNG_LOG(DEBUG) << "DynamicNpuGraphExecutor AllocAndSetFixedMemory get fixed_mem_size : " << fixed_mem_size;
+  ge::MemBlock *block = std::dynamic_pointer_cast<NpuAllocator>(allocator)->MallocFeatureMemory(fixed_mem_size, true);
+  TNG_ASSERT_NOTNULL(block);
+  fixed_mem_addr_ = block;
+  TNG_RETURN_IF_ERROR(Session::GetInstance().SetGraphFixedFeatureMemoryBase(graph_data->id, fixed_mem_addr_->GetAddr(),
+                                                                            fixed_mem_addr_->GetSize()));
+  return Status::Success();
+}
+
 Status DynamicNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
                                     const std::vector<c10::optional<at::Tensor>> &assigned_outputs,
                                     std::vector<at::Tensor> &outputs, void *stream) {
@@ -84,6 +101,10 @@ Status DynamicNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
 
   // Register allocator for GE before run, according to stream.
   AllocatorManager::GetInstance().EnsureAllocatorRegistered(stream);
+  if (is_first_run_ && fixed_mem_addr_ == nullptr) {
+      TNG_RETURN_IF_ERROR(AllocAndSetFixedMemory(stream, graph_data_));
+      is_first_run_ = false;
+  }
 
   TNG_ASSERT(assigned_outputs.empty() || (assigned_outputs.size() == graph_data_->output_dtypes.size()));
   std::vector<ge::Tensor> ge_outputs;
@@ -132,6 +153,16 @@ Status DynamicNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
   TNG_LOG(DEBUG) << "Dynamic npu graph executor run graph " << graph_data_->id << " on stream " << stream
                  << " successfully.";
   return Status::Success();
+}
+
+DynamicNpuGraphExecutor::~DynamicNpuGraphExecutor() noexcept {
+  auto stream_to_allocators = AllocatorManager::GetInstance().GetAllRegisteredAllocator();
+  for (const auto &steam_allocator : stream_to_allocators) {
+    if (fixed_mem_addr_ != nullptr) {
+      std::dynamic_pointer_cast<NpuAllocator>(steam_allocator.second)->FreeFeatureMemory(fixed_mem_addr_, true);
+    }
+  }
+  fixed_mem_addr_ = nullptr;
 }
 
 }  // namespace tng

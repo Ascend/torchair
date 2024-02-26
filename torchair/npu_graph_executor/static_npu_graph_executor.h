@@ -17,6 +17,8 @@ class StaticNpuGraphExecutor : public Executor {
   ~StaticNpuGraphExecutor() override;
 
  private:
+  Status AllocAndSetFixedMemory(void *stream, std::shared_ptr<GraphData> &graph_data);
+
   Status AssembleInputs(const std::vector<at::Tensor> &inputs, std::vector<at::Tensor> &retain_tmp_device_inputs);
 
   Status AssembleOutputs(const std::vector<c10::optional<at::Tensor>> &assigned_outputs,
@@ -30,6 +32,7 @@ class StaticNpuGraphExecutor : public Executor {
   std::vector<ge::Tensor> outputs_holder_;
   std::shared_ptr<GraphData> graph_data_;
   std::unique_ptr<ge::MemBlock, DelMemBlockFunc> const_mem_addr_{nullptr};
+  ge::MemBlock *fixed_mem_addr_{nullptr};
   ge::MemBlock *feature_map_block_{nullptr};
   bool fm_refreshable_{false};
   bool is_first_run_{true};

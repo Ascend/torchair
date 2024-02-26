@@ -39,7 +39,11 @@ class Session {
 
   Status SetGraphConstMemoryBase(uint32_t id, const void *const memory, size_t size);
 
+  Status SetGraphFixedFeatureMemoryBase(uint32_t id, const void *const memory, size_t size);
+
   Status UpdateGraphFeatureMemoryBase(uint32_t id, const void *const memory, size_t size);
+
+  Status UpdateGraphRefreshableFeatureMemoryBase(uint32_t id, const void *const memory, size_t size);
 
  private:
   Session() : initialized_(false), status_(Status::Success()){};

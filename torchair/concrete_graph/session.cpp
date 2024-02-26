@@ -169,9 +169,21 @@ Status Session::SetGraphConstMemoryBase(uint32_t id, const void *const memory, s
   return Status::Success();
 }
 
+Status Session::SetGraphFixedFeatureMemoryBase(uint32_t id, const void *const memory, size_t size) {
+  TNG_RETURN_IF_ERROR(EnsureInitialized());
+  TNG_ASSERT_GE_OK(global_ge_session->SetGraphFixedFeatureMemoryBase(id, memory, size));
+  return Status::Success();
+}
+
 Status Session::UpdateGraphFeatureMemoryBase(uint32_t id, const void *const memory, size_t size) {
   TNG_RETURN_IF_ERROR(EnsureInitialized());
   TNG_ASSERT_GE_OK(global_ge_session->UpdateGraphFeatureMemoryBase(id, memory, size));
+  return Status::Success();
+}
+
+Status Session::UpdateGraphRefreshableFeatureMemoryBase(uint32_t id, const void *const memory, size_t size) {
+  TNG_RETURN_IF_ERROR(EnsureInitialized());
+  TNG_ASSERT_GE_OK(global_ge_session->UpdateGraphRefreshableFeatureMemoryBase(id, memory, size));
   return Status::Success();
 }
 }  // namespace tng

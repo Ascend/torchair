@@ -43,11 +43,13 @@ class NpuAllocator : public ge::Allocator {
 
   ge::MemBlock *Malloc(size_t size) override;
   void Free(ge::MemBlock *block) override;
-  ge::MemBlock *MallocFeatureMemory(size_t size, ge::MemBlock *advised_block);
-  Status FreeFeatureMemory(ge::MemBlock *block);
+  ge::MemBlock *MallocFeatureMemory(size_t size, const bool is_fixed);
+  Status FreeFeatureMemory(ge::MemBlock *block, const bool is_fixed);
 
  private:
   std::set<ge::MemBlock*> feature_map_mem_pool_;
+  std::set<ge::MemBlock*> fixed_mem_pool_;
+
   ObjectAllocator<NpuMemBlock> mem_block_pool_;
   void *stream_;
   std::mutex allocator_mutex_;

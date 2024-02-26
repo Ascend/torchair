@@ -139,7 +139,7 @@ Status StaticNpuGraphExecutor::AllocAndUpdateFeatureMemory(void *stream) {
   }
 
   size_t fm_size = 0U;
-  TNG_ASSERT_GE_OK(graph_data_->summary->GetFeatureMemorySize(fm_size));
+  TNG_ASSERT_GE_OK(graph_data_->summary->GetRefreshableFeatureMemorySize(fm_size));
   // Register allocator for GE before run, according to stream.
   auto allocator = AllocatorManager::GetInstance().EnsureAllocatorRegistered(stream);
   TNG_ASSERT_NOTNULL(allocator);
@@ -148,17 +148,34 @@ Status StaticNpuGraphExecutor::AllocAndUpdateFeatureMemory(void *stream) {
 
   if (!fm_refreshable_) {
     // when refreshable fm is also needed to malloc for first run
-    feature_map_block_ = std::dynamic_pointer_cast<NpuAllocator>(allocator)->MallocFeatureMemory(fm_size, nullptr);
+    feature_map_block_ = std::dynamic_pointer_cast<NpuAllocator>(allocator)->MallocFeatureMemory(fm_size, false);
   } else {
     feature_map_block_ = std::dynamic_pointer_cast<NpuAllocator>(allocator)->Malloc(fm_size);
   }
   TNG_ASSERT_NOTNULL(feature_map_block_);
   TNG_ASSERT(Session::GetInstance()
-                 .UpdateGraphFeatureMemoryBase(graph_data_->id, feature_map_block_->GetAddr(),
-                                               feature_map_block_->GetSize()).IsSuccess());
+                     .UpdateGraphRefreshableFeatureMemoryBase(graph_data_->id, feature_map_block_->GetAddr(),
+                                                              feature_map_block_->GetSize()).IsSuccess());
 
   TNG_LOG(INFO) << "AllocAndUpdateFeatureMemory success, feature map addr = " << feature_map_block_->GetAddr()
                 << " , size = " << feature_map_block_->GetSize();
+  return Status::Success();
+}
+
+Status StaticNpuGraphExecutor::AllocAndSetFixedMemory(void *stream, std::shared_ptr<GraphData> &graph_data) {
+  TNG_LOG(DEBUG) << "Enter StaticNpuGraphExecutor and set  fixed_mem_addr_";
+  // Register allocator for GE before run, according to stream.
+  auto allocator = AllocatorManager::GetInstance().EnsureAllocatorRegistered(stream);
+  TNG_ASSERT_NOTNULL(allocator);
+  TNG_ASSERT_NOTNULL(graph_data->summary);
+  size_t fixed_mem_size = 0U;
+  TNG_ASSERT_GE_OK(graph_data->summary->GetFixedFeatureMemorySize(fixed_mem_size));
+  TNG_LOG(DEBUG) << "StaticNpuGraphExecutor AllocAndSetFixedMemory get fixed_mem_size : " << fixed_mem_size;
+  ge::MemBlock *block = std::dynamic_pointer_cast<NpuAllocator>(allocator)->MallocFeatureMemory(fixed_mem_size, true);
+  TNG_ASSERT_NOTNULL(block);
+  fixed_mem_addr_ = block;
+  TNG_RETURN_IF_ERROR(Session::GetInstance().SetGraphFixedFeatureMemoryBase(graph_data->id, fixed_mem_addr_->GetAddr(),
+                                                                            fixed_mem_addr_->GetSize()));
   return Status::Success();
 }
 
@@ -182,11 +199,12 @@ Status StaticNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
   if (is_first_run_) {
     TNG_ASSERT_GE_OK(graph_data_->summary->GetFeatureMemoryBaseRefreshable(fm_refreshable_));
     TNG_RETURN_IF_ERROR(AllocAndSetConstMemory(stream));
-
+    if (fixed_mem_addr_ == nullptr) {
+      TNG_RETURN_IF_ERROR(AllocAndSetFixedMemory(stream, graph_data_));
+    }
     is_first_run_ = false;
   }
 
-  // Alloc and update feature memory
   TNG_RETURN_IF_ERROR(AllocAndUpdateFeatureMemory(stream));
 
   {
@@ -208,10 +226,14 @@ StaticNpuGraphExecutor::~StaticNpuGraphExecutor() noexcept {
   auto stream_to_allocators = AllocatorManager::GetInstance().GetAllRegisteredAllocator();
   for (const auto &steam_allocator : stream_to_allocators) {
     if (feature_map_block_ != nullptr) {
-      std::dynamic_pointer_cast<NpuAllocator>(steam_allocator.second)->FreeFeatureMemory(feature_map_block_);
+      std::dynamic_pointer_cast<NpuAllocator>(steam_allocator.second)->FreeFeatureMemory(feature_map_block_, false);
+    }
+    if (fixed_mem_addr_ != nullptr) {
+      std::dynamic_pointer_cast<NpuAllocator>(steam_allocator.second)->FreeFeatureMemory(fixed_mem_addr_, true);
     }
   }
   feature_map_block_ = nullptr;
+  fixed_mem_addr_ = nullptr;
 }
 
 }  // namespace tng

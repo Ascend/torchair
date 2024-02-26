@@ -28,6 +28,12 @@ class CompiledGraphSummary::SummaryData {
   size_t GetFeatureMemorySize() const {
     return feature_mem_size_;
   }
+  size_t GetFixedFeatureMemorySize() const {
+    return fixed_mem_size_;
+  }
+  size_t GetRefreshableFeatureMemorySize() const {
+    return refreshable_mem_size_;
+  }
   size_t GetStreamNum() const {
     return stream_num_;
   }
@@ -42,6 +48,8 @@ class CompiledGraphSummary::SummaryData {
   bool is_feature_mem_refreshable_{false};
   size_t const_mem_size_{512UL};
   size_t feature_mem_size_{10240UL};
+  size_t fixed_mem_size_{512UL};
+  size_t refreshable_mem_size_{10240UL};
   size_t stream_num_{1UL};
   size_t event_num_{2UL};
   std::vector<ge::Shape> netoutput_shapes_;
@@ -74,6 +82,15 @@ Status CompiledGraphSummary::GetConstMemorySize(size_t &size) const {
 }
 Status CompiledGraphSummary::GetFeatureMemorySize(size_t &size) const {
   size = data_->GetFeatureMemorySize();
+  return SUCCESS;
+}
+Status CompiledGraphSummary::GetFixedFeatureMemorySize(size_t &size) const {
+  size = data_->GetFixedFeatureMemorySize();
+  return SUCCESS;
+}
+
+Status CompiledGraphSummary::GetRefreshableFeatureMemorySize(size_t &size) const {
+  size = data_->GetRefreshableFeatureMemorySize();
   return SUCCESS;
 }
 Status CompiledGraphSummary::GetStreamNum(size_t &num) const {
@@ -258,6 +275,20 @@ Status Session::SetGraphConstMemoryBase(uint32_t id, const void *const memory, s
 
 Status Session::UpdateGraphFeatureMemoryBase(uint32_t id, const void *const memory, size_t size) {
   (void)id;
+  (void)memory;
+  (void)size;
+  return ge::SUCCESS;
+}
+
+Status Session::SetGraphFixedFeatureMemoryBase(uint32_t graph_id, const void *const memory, size_t size) {
+  (void)graph_id;
+  (void)memory;
+  (void)size;
+  return ge::SUCCESS;
+}
+
+Status Session::UpdateGraphRefreshableFeatureMemoryBase(uint32_t graph_id, const void *const memory, size_t size) {
+  (void)graph_id;
   (void)memory;
   (void)size;
   return ge::SUCCESS;
