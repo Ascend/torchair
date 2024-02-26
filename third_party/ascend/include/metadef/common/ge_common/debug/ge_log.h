@@ -94,11 +94,9 @@ inline bool IsLogEnable(const int32_t module_name, const int32_t log_level) {
   do {                                                                                                                 \
     constexpr const char_t *TraceStatStr[] = {"INIT", "RUNNING", "WAITING", "STOP"};                                   \
     constexpr int32_t idx = static_cast<int32_t>(VALUE);                                                               \
-    char_t *k = const_cast<char_t *>("status");                                                                        \
     char_t *v = const_cast<char_t *>(TraceStatStr[idx]);                                                               \
-    KeyValue kv = {k, v};                                                                                              \
-    DlogWithKV((static_cast<uint32_t>(RUN_LOG_MASK) | static_cast<uint32_t>(GE_MODULE_NAME)), DLOG_INFO,               \
-               &kv, 1, "%" PRIu64 " %s:" fmt, GeLog::GetTid(), &__FUNCTION__[0U], ##__VA_ARGS__);                      \
+    dlog_info((static_cast<uint32_t>(RUN_LOG_MASK) | static_cast<uint32_t>(GE_MODULE_NAME)),                           \
+              "[status:%s]%" PRIu64 " %s:" fmt, v, GeLog::GetTid(), &__FUNCTION__[0U], ##__VA_ARGS__);                 \
   } while (false)
 
 #define GE_LOG_ERROR(MOD_NAME, ERROR_CODE, fmt, ...)                                                           \
