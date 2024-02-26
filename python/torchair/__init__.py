@@ -9,9 +9,6 @@ from torchair.configs.compiler_config import CompilerConfig
 from torchair.ge_concrete_graph import ge_converter
 from torchair.experimental.inference import use_internal_format_weight
 
-if os.getenv("ENABLE_ACLNN") is None:
-    os.environ["ENABLE_ACLNN"] = "true"
-
 __all__ = ['get_compiler', 'get_npu_backend', 'dynamo_export', 'CompilerConfig', 'use_internal_format_weight']
 
 # Dependency library version verification
