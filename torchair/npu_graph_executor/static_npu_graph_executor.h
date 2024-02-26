@@ -31,6 +31,8 @@ class StaticNpuGraphExecutor : public Executor {
   std::shared_ptr<GraphData> graph_data_;
   std::unique_ptr<ge::MemBlock, DelMemBlockFunc> const_mem_addr_{nullptr};
   ge::MemBlock *feature_map_block_{nullptr};
+  bool fm_refreshable_{false};
+  bool is_first_run_{true};
 
   std::vector<ge::Shape> output_shapes_;
   std::vector<at::TensorOptions> output_options_;

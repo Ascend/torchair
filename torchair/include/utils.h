@@ -4,6 +4,7 @@
 #include "external/graph/types.h"
 #include "executor.h"
 #include "graph_data.h"
+#include "graph/ge_tensor.h"
 #include "graph/tensor.h"
 #include "graph/utils/type_utils.h"
 #include "torch/torch.h"
@@ -33,7 +34,7 @@ Status AtDtypeToGeDtype(const c10::ScalarType &dtype, ge::DataType &ge_dtype);
 
 Status AssembleDataToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor);
 
-Status AssembleShapeToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor);
+Status AssembleDimsToGeShape(const at::IntArrayRef &dims, ge::GeShape &ge_shape);
 
 Status AssembleDataAndShapeToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor);
 

@@ -230,38 +230,36 @@ Status AssembleDataToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor) {
   return Status::Success();
 }
 
-Status AssembleShapeToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor) {
-  const auto &as_ge_tensor = ge::TensorAdapter::AsGeTensor(ge_tensor);
-  if (tensor.sizes() == as_ge_tensor.GetTensorDesc().GetShape().GetDims()) {
-    return Status::Success();
+Status AssembleDimsToGeShape(const at::IntArrayRef &dims, ge::GeShape &ge_shape) {
+  if (ge_shape.GetDimNum() != dims.size()) {
+    ge_shape.SetDimNum(dims.size());
   }
-  auto desc = ge_tensor.GetTensorDesc();
-  desc.SetShape(ge::Shape(tensor.sizes().vec()));
-  TNG_ASSERT_GE_OK(ge_tensor.SetTensorDesc(desc));
+  for (size_t i = 0U; i < dims.size(); ++i) {
+    ge_shape.SetDim(i, dims[i]);
+  }
+
   return Status::Success();
 }
 
 Status AssembleDataAndShapeToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor) {
   TNG_RETURN_IF_ERROR(AssembleDataToGe(tensor, ge_tensor));
-  TNG_RETURN_IF_ERROR(AssembleShapeToGe(tensor, ge_tensor));
+
+  ge::GeShape &ge_shape = ge::TensorAdapter::AsGeTensorShared(ge_tensor).MutableTensorDesc().MutableShape();
+  TNG_RETURN_IF_ERROR(AssembleDimsToGeShape(tensor.sizes(), ge_shape));
   return Status::Success();
 }
 
 Status AtTensorToGeTensor(const at::Tensor &tensor, ge::Tensor &ge_tensor) {
-  ge::TensorDesc desc;
+  ge::GeTensorDesc &desc = ge::TensorAdapter::AsGeTensorShared(ge_tensor).MutableTensorDesc();
 
   ge::DataType ge_dtype = ge::DT_UNDEFINED;
   TNG_RETURN_IF_ERROR(AtDtypeToGeDtype(tensor.dtype().toScalarType(), ge_dtype));
-
   desc.SetDataType(ge_dtype);
-  desc.SetShape(ge::Shape(tensor.sizes().vec()));
   desc.SetFormat(ge::FORMAT_ND);
   desc.SetPlacement(tensor.device().is_privateuseone() ? ge::Placement::kPlacementDevice
                                                        : ge::Placement::kPlacementHost);
 
-  ge_tensor.SetTensorDesc(desc);
-  TNG_RETURN_IF_ERROR(AssembleDataToGe(tensor, ge_tensor));
-
+  TNG_RETURN_IF_ERROR(AssembleDataAndShapeToGe(tensor, ge_tensor));
   return Status::Success();
 }
 
@@ -275,13 +273,12 @@ void DeleteGeDataPtr(void *data) {
 }  // namespace
 
 Status GeTensorToAtTensor(ge::Tensor &ge_tensor, at::Tensor &tensor) {
-  const ge::TensorDesc &tensor_desc = ge_tensor.GetTensorDesc();
+  ge::GeTensorDesc &tensor_desc = ge::TensorAdapter::AsGeTensorShared(ge_tensor).MutableTensorDesc();
   c10::ScalarType tensor_dtype = c10::ScalarType::Float;
   TNG_RETURN_IF_ERROR(GeDtypeToAtDtype(tensor_desc.GetDataType(), tensor_dtype));
   c10::DeviceType device_type = c10::DeviceType::CPU;
   TNG_RETURN_IF_ERROR(GePlacementToAtDeviceType(tensor_desc.GetPlacement(), device_type));
   at::TensorOptions option = at::TensorOptions().dtype(tensor_dtype).device(device_type);
-  // construct output aten npu empty tensor
   tensor = at::empty({0}, option);
 
   RawGeDataPtr ge_data_ptr = ge_tensor.ResetData();
@@ -290,7 +287,7 @@ Status GeTensorToAtTensor(ge::Tensor &ge_tensor, at::Tensor &tensor) {
   static torch::DeleterFnPtr kGeDatatDeleter = &DeleteGeDataPtr;
   at::DataPtr c10_data_ptr(raw_ge_data, ge_ctx.release(), kGeDatatDeleter, tensor.device());
 
-  const auto &dims = tensor_desc.GetShape().GetDims();
+  const auto &dims = tensor_desc.MutableShape().GetDims();
   size_t tensor_nbytes = at::detail::computeStorageNbytesContiguous(dims, tensor.dtype().itemsize());
 
   at::Storage storage;
