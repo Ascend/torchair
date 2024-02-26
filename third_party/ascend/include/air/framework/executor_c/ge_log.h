@@ -98,33 +98,33 @@ do {                                                                            
 #else
 #define GELOGD(fmt, ...)                                                                           \
   do {                                                                                             \
-    DlogDebugInner(GE_MODULE_NAME, "[DEBUG][%s:%d]%ld " fmt "\n", __FILE__, __LINE__,              \
-                   (long int)GetTid(), ##__VA_ARGS__);                                             \
+    DlogWrite(GE_MODULE_NAME, DLOG_DEBUG, "[DEBUG][%s:%d]%ld " fmt "\n", __FILE__, __LINE__,       \
+              (long int)GetTid(), ##__VA_ARGS__);                                                  \
   } while (false)
 
 #define GELOGI(fmt, ...)                                                                           \
   do {                                                                                             \
-    DlogInfoInner(GE_MODULE_NAME, "[INFO][%s:%d]%ld " fmt "\n", __FILE__, __LINE__,                \
-                  (long int)GetTid(), ##__VA_ARGS__);                                              \
+    DlogWrite(GE_MODULE_NAME, DLOG_INFO, "[INFO][%s:%d]%ld " fmt "\n", __FILE__, __LINE__,         \
+              (long int)GetTid(), ##__VA_ARGS__);                                                  \
   } while (false)
 
 #define GELOGW(fmt, ...)                                                                           \
   do {                                                                                             \
-    DlogWarnInner(GE_MODULE_NAME, "[WARNING][%s:%d]%ld " fmt "\n", __FILE__, __LINE__,             \
-                  (long int)GetTid(), ##__VA_ARGS__);                                              \
+    DlogWrite(GE_MODULE_NAME, DLOG_WARN, "[WARNING][%s:%d]%ld " fmt "\n", __FILE__, __LINE__,      \
+              (long int)GetTid(), ##__VA_ARGS__);                                                  \
   } while (false)
 
 #define GEEVENT(fmt, ...)                                                                          \
   do {                                                                                             \
-    DlogEventInner(GE_MODULE_NAME, "[Event][%s:%d]%ld " fmt "\n", __FILE__, __LINE__,              \
-                   (long int)GetTid(), ##__VA_ARGS__);                                             \
+    DlogWrite(GE_MODULE_NAME, DLOG_EVENT, "[Event][%s:%d]%ld " fmt "\n", __FILE__, __LINE__,       \
+              (long int)GetTid(), ##__VA_ARGS__);                                                  \
   } while (false)
 
 #define GELOGE(ERROR_CODE, fmt, ...)                                                               \
   do {                                                                                             \
-    DlogErrorInner(GE_MODULE_NAME, "[ERROR][%s:%d]%ld:ErrorNo:%u(%s)%s " fmt "\n",                 \
-                   __FILE__, __LINE__, (long int)GetTid(), (uint32_t)ERROR_CODE,                   \
-                   GE_GET_ERRORNO_STR, GE_GET_ERROR_LOG_HEADER, ##__VA_ARGS__);                    \
+    DlogWrite(GE_MODULE_NAME, DLOG_ERROR, "[ERROR][%s:%d]%ld:ErrorNo:%u(%s)%s " fmt "\n",          \
+              __FILE__, __LINE__, (long int)GetTid(), (uint32_t)ERROR_CODE,                        \
+              GE_GET_ERRORNO_STR, GE_GET_ERROR_LOG_HEADER, ##__VA_ARGS__);                         \
   } while (false)
 #endif
 
