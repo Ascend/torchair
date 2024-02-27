@@ -48,8 +48,9 @@ def conveter_aten_empty_like_default(
             and memory_format != torch.preserve_format:
         raise RuntimeError("torch.ops.aten.empty_like.default is only supported "
                 "contiguous_format and preserve_format now.")
-    
-    return ge.Empty(ge.Shape(self), dtype=dtype)
+    # There is a bug with the op Empty when dynamic=True and dtype=int8.
+    # So replace Empty with Fill.
+    return ge.Fill(ge.Shape(self), ge.Cast(0., dst_type=meta_outputs.dtype))
 
 
 @register_fx_node_ge_converter(torch.ops.aten.empty_like.out)

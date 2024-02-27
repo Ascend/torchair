@@ -30,6 +30,7 @@ from torchair.ge_concrete_graph.utils import dtype_promote
         Support(F32(2, 2), F32(2, 2)),
         Support(F32(2, 2), F32(1, 2)),
         Support(F32(2, 2), F16(2, 1)),
+        Support(U8(2, 2), 10),
     ]
 )
 @register_fx_node_ge_converter(torch.ops.aten.div.Tensor)
@@ -60,7 +61,7 @@ def conveter_aten_div_Scalar(
     Support(F32(20), 42, rounding_mode="trunc"),
     Support(F32(20), 42, rounding_mode=None),
     Support(I16(20), 42, rounding_mode="trunc"),
-    Support(I16(20), I16(20), rounding_mode="trunc"),
+    Support(I16(20), I16(20, value_range=(1, 100)), rounding_mode="trunc"),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.div.Tensor_mode)
 def conveter_aten_div_Tensor_mode(
