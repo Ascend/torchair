@@ -62,5 +62,15 @@ REG_OP(RotaryMulGrad)
     .OUTPUT(dr1, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BFLOAT16}))
     .OUTPUT(dr2, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BFLOAT16}))
     .OP_END_FACTORY_REG(RotaryMulGrad)
+
+REG_OP(ApplyRotaryPosEmb)
+    .INPUT(q, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))
+    .INPUT(k, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))
+    .INPUT(cos, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))
+    .INPUT(sin, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))
+    .ATTR(layout, Int, 1)
+    .OUTPUT(q, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))
+    .OUTPUT(k, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))
+    .OP_END_FACTORY_REG(ApplyRotaryPosEmb)
 } // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_NN_OTHER_H_

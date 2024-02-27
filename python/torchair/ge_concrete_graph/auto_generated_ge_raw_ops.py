@@ -46896,6 +46896,65 @@ def RotaryMulGrad(x: Tensor,
     return dx, dr1, dr2
 
 
+# This api is auto-generated from IR ApplyRotaryPosEmb
+@auto_convert_to_tensor([False, False, False, False],
+                        [False, False, False, False])
+def ApplyRotaryPosEmb(q: Tensor,
+                      k: Tensor,
+                      cos: Tensor,
+                      sin: Tensor,
+                      *,
+                      layout: int = 1,
+                      dependencies = [],
+                      node_name = None):
+    """REG_OP(ApplyRotaryPosEmb)\n
+.INPUT(q, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))\n
+.INPUT(k, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))\n
+.INPUT(cos, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))\n
+.INPUT(sin, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))\n
+.ATTR(layout, Int, 1)\n
+.OUTPUT(q, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))\n
+.OUTPUT(k, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))\n
+"""
+
+    op = get_default_ge_graph().op.add()
+    op.type = "ApplyRotaryPosEmb"
+    op.name = next_unique_name(node_name, "ApplyRotaryPosEmb")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(q.tensor)
+    op.input_desc.add().CopyFrom(q.desc)
+    op.input_desc[-1].name = "q"
+    op.input.append(k.tensor)
+    op.input_desc.add().CopyFrom(k.desc)
+    op.input_desc[-1].name = "k"
+    op.input.append(cos.tensor)
+    op.input_desc.add().CopyFrom(cos.desc)
+    op.input_desc[-1].name = "cos"
+    op.input.append(sin.tensor)
+    op.input_desc.add().CopyFrom(sin.desc)
+    op.input_desc[-1].name = "sin"
+
+    # process attrs
+    op.attr["layout"].i = layout
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "q"
+    q = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "l"
+    l = Tensor(op, output_index)
+    output_index += 1
+
+    # return outputs
+    return q, l
+
+
 # This api is auto-generated from IR LogSoftmaxGrad
 @auto_convert_to_tensor([False, False], [False, False])
 def LogSoftmaxGrad(grad: Tensor,
