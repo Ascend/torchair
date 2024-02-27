@@ -3,6 +3,7 @@ import torch
 from torchair.core.utils import logger
 
 _TORCH_NPU_MODULE = None
+_DEEPSPEED_MODULE = None
 
 
 def _weight_format_cast(model: torch.nn.Module):
@@ -27,6 +28,16 @@ def _weight_format_cast(model: torch.nn.Module):
                                    f'You should call model to npu, before calling this API.')
 
             module.weight.data = _TORCH_NPU_MODULE.npu_format_cast(module.weight.data, 29)  # ACL_FORMAT_FRACTAL_NZ
+
+        if _DEEPSPEED_MODULE is not None:
+            if issubclass(class_name, (_DEEPSPEED_MODULE.module_inject.layers.LinearLayer,
+                                       _DEEPSPEED_MODULE.module_inject.layers.LinearAllreduce)):
+                if module.weight.data.is_cpu:
+                    raise RuntimeError(f'Cpu weight is not supported.'
+                                       f'The format cast to FRACTAL_NZ only supports npu tensor.'
+                                       f'You should call model to npu, before calling this API.')
+                module.weight.data = _TORCH_NPU_MODULE.npu_format_cast(module.weight.data, 29)  # ACL_FORMAT_FRACTAL_NZ
+
         if isinstance(module, _TORCH_NPU_MODULE.contrib.module.linear_a8w8_quant.LinearA8W8Quant):
             module.scale.data = _TORCH_NPU_MODULE.npu_trans_quant_param(module.scale, module.offset)
 
@@ -56,5 +67,9 @@ def use_internal_format_weight(model: torch.nn.Module):
         return
     global _TORCH_NPU_MODULE
     _TORCH_NPU_MODULE = sys.modules['torch_npu']
+
+    if 'deepspeed' in sys.modules:
+        global _DEEPSPEED_MODULE
+        _DEEPSPEED_MODULE = sys.modules['deepspeed']
 
     _weight_format_cast(model)
