@@ -20326,8 +20326,8 @@ def _ScatterList(var: List[Tensor],
 
 # This api is auto-generated from IR IncreFlashAttention
 @auto_convert_to_tensor(
-    [False, True, True, False, False, False, False, False, False, False, False, False, False, False],
-    [False, False, False, True, True, True, True, True, True, True, True, True, True, True])
+    [False, True, True, False, False, False, False, False, False, False, False, False, False, False, False],
+    [False, False, False, True, True, True, True, True, True, True, True, True, True, True, True])
 def IncreFlashAttention(query: Tensor,
                         key: List[Tensor],
                         value: List[Tensor],
@@ -20342,6 +20342,7 @@ def IncreFlashAttention(query: Tensor,
                         antiquant_scale: Optional[Tensor],
                         antiquant_offset: Optional[Tensor],
                         block_table: Optional[Tensor],
+                        kv_padding_size: Optional[Tensor],
                         *,
                         num_heads: int,
                         scale_value: float = 1.000000,
@@ -20366,6 +20367,7 @@ def IncreFlashAttention(query: Tensor,
 .OPTIONAL_INPUT(antiquant_scale, TensorType({DT_FLOAT16}))\n
 .OPTIONAL_INPUT(antiquant_offset, TensorType({DT_FLOAT16}))\n
 .OPTIONAL_INPUT(block_table, TensorType({DT_INT32}))\n
+.OPTIONAL_INPUT(kv_padding_size, TensorType({DT_INT64}))\n
 .OUTPUT(attention_out, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8}))\n
 .REQUIRED_ATTR(num_heads, Int)\n
 .ATTR(scale_value, Float, 1.0)\n
@@ -20485,6 +20487,14 @@ def IncreFlashAttention(query: Tensor,
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "block_table"
+    if kv_padding_size is not None:
+        op.input.append(kv_padding_size.tensor)
+        op.input_desc.add().CopyFrom(kv_padding_size.desc)
+        op.input_desc[-1].name = "kv_padding_size"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "kv_padding_size"
 
     # process attrs
     op.attr["num_heads"].i = num_heads

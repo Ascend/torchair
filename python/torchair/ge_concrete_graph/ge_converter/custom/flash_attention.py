@@ -114,6 +114,7 @@ def convert_npu_npu_incre_flash_attention(
     dequant_scale2: Optional[Tensor] = None,
     quant_scale2: Optional[Tensor] = None,
     quant_offset2: Optional[Tensor] = None,
+    kv_padding_size: Optional[Tensor] = None,
     num_heads: int = 1,
     scale_value: float = 1.0,
     input_layout: str = "BSH",
@@ -123,7 +124,7 @@ def convert_npu_npu_incre_flash_attention(
     meta_outputs: TensorSpec = None,
 ):
 
-    '''NB: npu_incre_flash_attention(Tensor query, Tensor key, Tensor value, *, Tensor? padding_mask=None, Tensor? atten_mask=None, Tensor? pse_shift=None, SymInt[]? actual_seq_lengths=None, Tensor? antiquant_scale=None, Tensor? antiquant_offset=None, Tensor? block_table=None, Tensor? dequant_scale1=None, Tensor? quant_scale1=None, Tensor? dequant_scale2=None, Tensor? quant_scale2=None, Tensor? quant_offset2=None, int num_heads=1, float scale_value=1.0, str input_layout="BSH", int num_key_value_heads=0, int block_size=0, int inner_precise=1) -> Tensor'''
+    '''NB: npu_incre_flash_attention(Tensor query, Tensor key, Tensor value, *, Tensor? padding_mask=None, Tensor? atten_mask=None, Tensor? pse_shift=None, SymInt[]? actual_seq_lengths=None, Tensor? antiquant_scale=None, Tensor? antiquant_offset=None, Tensor? block_table=None, Tensor? dequant_scale1=None, Tensor? quant_scale1=None, Tensor? dequant_scale2=None, Tensor? quant_scale2=None, Tensor? quant_offset2=None, Tensor? kv_padding_size=None, int num_heads=1, float scale_value=1.0, str input_layout="BSH", int num_key_value_heads=0, int block_size=0, int inner_precise=1) -> Tensor'''
     key_list = [key]
     value_list = [value]
     if actual_seq_lengths is not None:
@@ -133,5 +134,5 @@ def convert_npu_npu_incre_flash_attention(
         actual_seq_lengths=actual_seq_lengths, dequant_scale1=dequant_scale1, quant_scale1=quant_scale1,
         dequant_scale2=dequant_scale2, quant_scale2=quant_scale2, quant_offset2=quant_offset2,
         antiquant_scale=antiquant_scale, antiquant_offset=antiquant_offset, block_table=block_table,
-        num_heads=num_heads, scale_value=scale_value, input_layout=input_layout,
+        kv_padding_size=kv_padding_size, num_heads=num_heads, scale_value=scale_value, input_layout=input_layout,
         num_key_value_heads=num_key_value_heads, block_size=block_size, inner_precise=inner_precise)
