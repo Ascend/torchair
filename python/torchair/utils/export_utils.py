@@ -125,7 +125,7 @@ def make_export_graph(inputs, config, ori_graph):
 
     os.makedirs(sub_file_path, exist_ok=True)
 
-    weight_externalized, used_weight_num = _convert_data_to_const(inputs, export_graph, file_path, config)
+    weight_externalized, used_weight_num = _convert_data_to_const(inputs, export_graph, sub_file_path, config)
 
     if used_weight_num != 0 and weight_externalized:
         _save_weight2file(inputs, sub_file_path, config.export.weight_name, used_weight_num)

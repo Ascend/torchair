@@ -70,8 +70,7 @@ Name2Index GetDescName2Index(const T &descs) {
   return name2index;
 }
 
-Status ConvertGraphDefToGraph(ge::proto::GraphDef &graph_def, ge::GraphPtr &graph) {
-  ge::ComputeGraphPtr compute_graph = nullptr;
+Status ConvertGraphDefToComputeGraph(ge::proto::GraphDef &graph_def, ge::ComputeGraphPtr &compute_graph) {
   ge::ModelSerializeImp serializer;
   TNG_ASSERT(serializer.UnserializeGraph(compute_graph, graph_def));
   TNG_ASSERT_NOTNULL(compute_graph, "Failed to get compute graph from model");
@@ -93,6 +92,12 @@ Status ConvertGraphDefToGraph(ge::proto::GraphDef &graph_def, ge::GraphPtr &grap
     TNG_ASSERT(op_desc->UpdateInputName(io_desc_name2index.first));
     TNG_ASSERT(op_desc->UpdateOutputName(io_desc_name2index.second));
   }
+  return Status::Success();
+}
+
+Status ConvertGraphDefToGraph(ge::proto::GraphDef &graph_def, ge::GraphPtr &graph) {
+  ge::ComputeGraphPtr compute_graph = nullptr;
+  TNG_RETURN_IF_ERROR(ConvertGraphDefToComputeGraph(graph_def, compute_graph));
 
   graph = ge::GraphUtilsEx::CreateGraphPtrFromComputeGraph(compute_graph);
   TNG_ASSERT_NOTNULL(graph, "Failed to create graph from compute graph");
@@ -101,27 +106,8 @@ Status ConvertGraphDefToGraph(ge::proto::GraphDef &graph_def, ge::GraphPtr &grap
 
 Status ConvertGraphDefToAir(ge::proto::GraphDef &graph_def, ge::GraphPtr &graph, const char *file_name) {
   ge::ComputeGraphPtr compute_graph = nullptr;
-  ge::ModelSerializeImp serializer;
-  TNG_ASSERT(serializer.UnserializeGraph(compute_graph, graph_def));
-  TNG_ASSERT_NOTNULL(compute_graph, "Failed to get compute graph from model");
+  TNG_RETURN_IF_ERROR(ConvertGraphDefToComputeGraph(graph_def, compute_graph));
 
-  std::unordered_map<std::string, std::pair<Name2Index, Name2Index>> op_to_name2index;
-  for (auto &op : graph_def.op()) {
-    TNG_ASSERT(
-        op_to_name2index
-            .emplace(op.name(), std::make_pair(GetDescName2Index(op.input_desc()), GetDescName2Index(op.output_desc())))
-            .second,
-        "Dumplicated op name: %s", op.name().c_str());
-  }
-
-  for (auto &node : compute_graph->GetAllNodes()) {
-    TNG_ASSERT_NOTNULL(node);
-    auto op_desc = node->GetOpDesc();
-    TNG_ASSERT_NOTNULL(op_desc);
-    auto &io_desc_name2index = op_to_name2index[op_desc->GetName()];
-    TNG_ASSERT(op_desc->UpdateInputName(io_desc_name2index.first));
-    TNG_ASSERT(op_desc->UpdateOutputName(io_desc_name2index.second));
-  }
   static std::atomic<size_t> x{0};
   const std::string name = "compute_graph_" + std::to_string(x.fetch_add(1));
   compute_graph->SetName(name);
