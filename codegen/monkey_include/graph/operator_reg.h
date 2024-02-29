@@ -7,9 +7,44 @@
 #include <sstream>
 #include <iostream>
 #include <unordered_set>
+#include <regex>
 
-const std::string k2Space = "  ";
+const std::string k4Space = "    ";
 const char kEnd = '\n';
+
+const std::string kTensorTypeUnknown = "TensorType.TT_UNKNOWN";
+const std::string kTensorTypeAll = "TensorType.TT_ALL";
+const std::string kTensorTypeQuantified = "TensorType.TT_QUANTIFIED";
+const std::string kTensorTypeOrdinary = "TensorType.TT_ORDINARY";
+const std::string kTensorTypeBasic = "TensorType.TT_BASIC";
+const std::string kTensorTypeNumber = "TensorType.TT_NUMBER";
+const std::string kTensorTypeRealNumber = "TensorType.TT_REAL_NUMBER";
+const std::string kTensorTypeComplex = "TensorType.TT_COMPLEX";
+const std::string kTensorTypeInteger = "TensorType.TT_INTEGER";
+const std::string kTensorTypeSigned = "TensorType.TT_SIGNED";
+const std::string kTensorTypeUnsigned = "TensorType.TT_UNSIGNED";
+const std::string kTensorTypeFloating = "TensorType.TT_FLOATING";
+const std::string kTensorTypeIndexNumber = "TensorType.TT_INDEX_NUMBER";
+const std::string kTensorTypeUnary = "TensorType.TT_UNARY";
+const std::string kTensorTypeFloat = "TensorType.TT_FLOAT";
+
+const std::vector<std::pair<std::string, std::string>> kTensorTypeMap{
+  {"QuantifiedType", kTensorTypeQuantified},
+  {"OrdinaryType", kTensorTypeOrdinary},
+  {"BasicType", kTensorTypeBasic},
+  {"RealNumberType", kTensorTypeRealNumber},
+  {"ComplexDataType", kTensorTypeComplex},
+  {"IntegerDataType", kTensorTypeInteger},
+  {"SignedDataType", kTensorTypeSigned},
+  {"UnsignedDataType", kTensorTypeUnsigned},
+  {"FloatingDataType", kTensorTypeFloating},
+  {"IndexNumberType", kTensorTypeIndexNumber},
+  {"UnaryDataType", kTensorTypeUnary},
+  {"NumberType", kTensorTypeNumber},
+  {"FLOAT", kTensorTypeFloat},
+  {"ALL", kTensorTypeAll},
+};
+
 std::string Brack(const std::string& v) { return R"(")" + v + R"(")"; }
 
 std::string GetSig(const std::string& name) {
@@ -102,11 +137,11 @@ class Code : public std::stringstream {
     return *this;
   }
 
-  void Indent() { indent_ += "  "; }
+  void Indent() { indent_ += k4Space; }
 
   void Dedent() {
-    if (indent_.size() >= 2U) {
-      indent_ = indent_.substr(0, indent_.size() - 2U);
+    if (indent_.size() >= 4U) {
+      indent_ = indent_.substr(0, indent_.size() - 4U);
     }
   }
 
@@ -123,6 +158,7 @@ struct InputDef {
   std::string sig;
   bool is_dynamic = false;
   bool is_optional = false;
+  std::string tensorType = "TensorType.TT_UNKNOWN";
   std::string TypeIndicator() const {
     if (is_dynamic) {
       return "List[Tensor]";
@@ -141,21 +177,21 @@ struct InputDef {
         ss << "op.input_desc[-1].name = " << Brack(name);
       } else {
         ss << "if " << sig << " is not None:" << kEnd;
-        ss << k2Space << "op.input.append(" << sig << ".tensor)" << kEnd;
-        ss << k2Space << "op.input_desc.add().CopyFrom(" << sig << ".desc)" << kEnd;
-        ss << k2Space << "op.input_desc[-1].name = " << Brack(name) << kEnd;
+        ss << k4Space << "op.input.append(" << sig << ".tensor)" << kEnd;
+        ss << k4Space << "op.input_desc.add().CopyFrom(" << sig << ".desc)" << kEnd;
+        ss << k4Space << "op.input_desc[-1].name = " << Brack(name) << kEnd;
 
         ss << "else:" << kEnd;
-        ss << k2Space << "op.input.append('')" << kEnd;
-        ss << k2Space << "op.input_desc.add().CopyFrom(get_invalid_desc())" << kEnd;
-        ss << k2Space << "op.input_desc[-1].name = " << Brack(name);
+        ss << k4Space << "op.input.append('')" << kEnd;
+        ss << k4Space << "op.input_desc.add().CopyFrom(get_invalid_desc())" << kEnd;
+        ss << k4Space << "op.input_desc[-1].name = " << Brack(name);
       }
     } else {
       ss << "assert isinstance(" << sig << ", (tuple, list))" << kEnd;
       ss << "for i, v in enumerate(" << sig << "):" << kEnd;
-      ss << k2Space << "op.input.append(v.tensor)" << kEnd;
-      ss << k2Space << "op.input_desc.add().CopyFrom(v.desc)" << kEnd;
-      ss << k2Space << "op.input_desc[-1].name = " << Brack(name) << " + str(i)";
+      ss << k4Space << "op.input.append(v.tensor)" << kEnd;
+      ss << k4Space << "op.input_desc.add().CopyFrom(v.desc)" << kEnd;
+      ss << k4Space << "op.input_desc[-1].name = " << Brack(name) << " + str(i)";
     }
   }
 };
@@ -174,8 +210,8 @@ struct OutputDef {
       ss << sig << " = []" << kEnd;
       ss << "for i in range(output_index, output_index + size_of_" << sig << ")"
          << ":" << kEnd;
-      ss << k2Space << "op.output_desc.add().name = " << Brack(name) << " + str(i - output_index)" << kEnd;
-      ss << k2Space << sig << ".append(Tensor(op, i))" << kEnd;
+      ss << k4Space << "op.output_desc.add().name = " << Brack(name) << " + str(i - output_index)" << kEnd;
+      ss << k4Space << sig << ".append(Tensor(op, i))" << kEnd;
       ss << "output_index += size_of_" << sig;
     } else {
       ss << "op.output_desc.add().name = " << Brack(name) << kEnd;
@@ -299,7 +335,31 @@ struct OpDef {
       ss << (inputs.rbegin()->is_optional ? "True" : "False");
       return ss.str();
     };
-    ss << "@auto_convert_to_tensor([" << kDynamicStr(inputs) << "], [" << kOptionalStr(inputs) << "])" << kEnd;
+    const static auto kTensorTypeStr = [](const std::vector<InputDef>& inputs) {
+      std::stringstream ss;
+      if (inputs.empty()) {
+        return ss.str();
+      }
+      for (size_t i = 0U; i < inputs.size() - 1U; ++i) {
+        ss << inputs[i].tensorType << ", ";
+      }
+      ss << inputs.rbegin()->tensorType;
+      return ss.str();
+    };
+
+    bool needTensorType = false;
+    for (auto it = inputs.begin(); it != inputs.end(); ++it) {
+      if (it->tensorType != kTensorTypeUnknown) {
+        needTensorType = true;
+        break;
+      }
+    }
+    if (needTensorType) {
+      ss << "@auto_convert_to_tensor([" << kDynamicStr(inputs) << "], [" << kOptionalStr(inputs)
+         << "], inputs_tensor_type=[" << kTensorTypeStr(inputs) << "])" << kEnd;
+    } else {
+      ss << "@auto_convert_to_tensor([" << kDynamicStr(inputs) << "], [" << kOptionalStr(inputs) << "])" << kEnd;
+    }
   }
 
   bool IsDynamicOutput() const {
@@ -354,24 +414,35 @@ struct OpDef {
     ss << outputs[num - 1].name;
   }
 
+  void GenNewLine(Code& ss) {
+    ss.Dedent();
+    ss << kEnd;
+    ss.Indent();
+  }
+
   void GenCode(Code& ss) {
     ss.Indent();
-    ss << R"(""")" << doc << R"(""")" << kEnd << kEnd;
+    ss << R"(""")" << doc << R"(""")" << kEnd;
+
+    GenNewLine(ss);
     ss << "op = get_default_ge_graph().op.add()" << kEnd;
     ss << "op.type = " << Brack(op) << kEnd;
     ss << "op.name = next_unique_name(node_name, " << Brack(op) << ")" << kEnd;
 
-    ss << kEnd << "# process dependices" << kEnd;
+    GenNewLine(ss);
+    ss << "# process dependices" << kEnd;
     ss << "for dependency in dependencies:" << kEnd;
-    ss << k2Space << "op.input.append(dependency.controller)" << kEnd;
+    ss << k4Space << "op.input.append(dependency.controller)" << kEnd;
 
-    ss << kEnd << "# process inputs" << kEnd;
+    GenNewLine(ss);
+    ss << "# process inputs" << kEnd;
     for (auto& input : inputs) {
       input.GenCode(ss);
       ss << kEnd;
     }
 
-    ss << kEnd << "# process attrs" << kEnd;
+    GenNewLine(ss);
+    ss << "# process attrs" << kEnd;
     for (auto& attr : attrs) {
       attr.GenCode(ss);
       ss << kEnd;
@@ -381,14 +452,16 @@ struct OpDef {
       ss << kEnd;
     }
 
-    ss << kEnd << "# process outputs" << kEnd;
+    GenNewLine(ss);
+    ss << "# process outputs" << kEnd;
     ss << "output_index = 0" << kEnd;
     for (auto& output : outputs) {
       output.GenCode(ss);
       ss << kEnd;
     }
 
-    ss << kEnd << "# return outputs" << kEnd;
+    GenNewLine(ss);
+    ss << "# return outputs" << kEnd;
     GenReturn(ss);
     ss << kEnd;
 
@@ -557,11 +630,14 @@ class OpDefBuilder {
     }
     return *this;
   }
-  OpDefBuilder& Input(const std::string& input, bool is_dynamic = false, bool is_optional = false) {
+  OpDefBuilder &Input(const std::string &input, const std::string &tensorType, bool is_dynamic = false,
+                      bool is_optional = false) {
     InputDef def;
     def.name = input;
     def.is_dynamic = is_dynamic;
     def.is_optional = is_optional;
+    def.tensorType = GenTensorTypeStr(tensorType);
+    
     def_.inputs.push_back(def);
     return *this;
   }
@@ -597,6 +673,25 @@ class OpDefBuilder {
   }
 
  private:
+  std::string GenTensorTypeStr(const std::string &s) {
+    if (s.find("DT_") != std::string::npos) {
+      std::regex regex("\\s+");
+      auto _s = std::regex_replace(s, regex, "");
+      if (_s == "TensorType({DT_INT32,DT_INT64})" || _s == "TensorType({DT_INT64,DT_INT32})") {
+        return kTensorTypeIndexNumber;
+      }
+      return kTensorTypeUnknown;
+    }
+
+    for (auto it = kTensorTypeMap.begin(); it != kTensorTypeMap.end(); ++it) {
+      if (s.find(it->first) != std::string::npos) {
+        return it->second;
+      }
+    }
+
+    return kTensorTypeUnknown;
+  }
+
   OpDef def_;
   std::stringstream ss_;
   std::string err_;
@@ -609,9 +704,9 @@ class OpDefBuilder {
 
 #define CONCATENATE_STR(...) #__VA_ARGS__
 
-#define INPUT(x, ...) Input(#x).Record(".INPUT(" CONCATENATE_STR(x, __VA_ARGS__) ")")
-#define DYNAMIC_INPUT(x, ...) Input(#x, true).Record(".DYNAMIC_INPUT(" CONCATENATE_STR(x, __VA_ARGS__) ")")
-#define OPTIONAL_INPUT(x, ...) Input(#x, false, true).Record(".OPTIONAL_INPUT(" CONCATENATE_STR(x, __VA_ARGS__) ")")
+#define INPUT(x, t) Input(#x, #t).Record(".INPUT(" CONCATENATE_STR(x, t) ")")
+#define DYNAMIC_INPUT(x, t) Input(#x, #t, true).Record(".DYNAMIC_INPUT(" CONCATENATE_STR(x, t) ")")
+#define OPTIONAL_INPUT(x, t) Input(#x, #t, false, true).Record(".OPTIONAL_INPUT(" CONCATENATE_STR(x, t) ")")
 #define OUTPUT(x, ...) Output(#x).Record(".OUTPUT(" CONCATENATE_STR(x, __VA_ARGS__) ")")
 #define DYNAMIC_OUTPUT(x, ...) Output(#x, true).Record(".DYNAMIC_OUTPUT(" CONCATENATE_STR(x, __VA_ARGS__) ")")
 #define ATTR(x, T, ...)                                                    \

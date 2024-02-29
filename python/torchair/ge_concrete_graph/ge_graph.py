@@ -74,6 +74,24 @@ class DataType:
     DT_MAX = 34             # Mark the boundaries of data types
 
 
+class TensorType:
+    TT_UNKNOWN = 0
+    TT_ALL = 1
+    TT_QUANTIFIED = 2
+    TT_ORDINARY = 3
+    TT_BASIC = 4
+    TT_NUMBER = 5
+    TT_REAL_NUMBER = 6
+    TT_COMPLEX = 7
+    TT_INTEGER = 8
+    TT_SIGNED = 9
+    TT_UNSIGNED = 10
+    TT_FLOATING = 11
+    TT_INDEX_NUMBER = 12
+    TT_UNARY = 13
+    TT_FLOAT = 14
+
+
 def torch_type_to_ge_type(dtype, m=DataType):
     if dtype is None:
         return None
@@ -730,7 +748,33 @@ def _get_promoted_dtype(inputs: list) -> Tuple[List[DataType], List[DataType]]:
     return f_dtypes, i_dtypes
 
 
-def _auto_type_promotion_for_const(bundle_inputs: list, inputs_dynamic: list, inputs_optional: list, func: str) -> list:
+def _inputs_to_bundle_inputs(inputs, input_start_end):
+    promoted_bundle_inputs = []
+    for v in input_start_end:
+        if v is None:
+            promoted_bundle_inputs.append(None)
+        elif isinstance(v, int):
+            promoted_bundle_inputs.append(inputs[v])
+        else:
+            start, end = v
+            promoted_bundle_inputs.append(inputs[start:end])
+    return promoted_bundle_inputs
+
+
+def _auto_type_promotion_by_tensor_type(input, inputs_tensor_type, i):
+    if (inputs_tensor_type is None) or isinstance(input, Tensor):
+        return input
+    if inputs_tensor_type[i] == TensorType.TT_INDEX_NUMBER:
+        return _wrap_ge_tensor(input, DataType.DT_INT64)
+    return input
+
+
+def _auto_type_promotion_for_const(bundle_inputs: list, inputs_dynamic: list, inputs_optional: list,
+                                   inputs_tensor_type: list, func: str) -> list:
+    # NetOutput
+    if len(inputs_dynamic) == 0:
+        return bundle_inputs
+    
     inputs = []
     input_start_end = []
     for i, dynamic_and_optional in enumerate(zip(inputs_dynamic, inputs_optional)):
@@ -745,54 +789,45 @@ def _auto_type_promotion_for_const(bundle_inputs: list, inputs_dynamic: list, in
                 input_start_end.append(None)
             else:
                 input_start_end.append(len(inputs))
-                inputs.append(input)
+                inputs.append(_auto_type_promotion_by_tensor_type(input, inputs_tensor_type, i))
         else:
             input_start_end.append(len(inputs))
-            inputs.append(input)
+            inputs.append(_auto_type_promotion_by_tensor_type(input, inputs_tensor_type, i))
 
     if all([isinstance(input, Tensor) for input in inputs]):
-        return bundle_inputs
+        return _inputs_to_bundle_inputs(inputs, input_start_end)
 
     f_dtypes, i_dtypes = _get_promoted_dtype(inputs)
 
     promoted_inputs = []
     for i, input in enumerate(inputs):
-        if not isinstance(input, Tensor) and input is not None:
-            if type(input) == torch.Tensor:
-                promoted_inputs.append(_torch_tensor_to_ge_const(input))
-                continue
-
-            narray = np.array(input)
-            if narray.size > 0:
-                v = narray.item(0)
-                if isinstance(v, float):
-                    assert len(
-                        f_dtypes) <= 1, f"Cannot promote {func} input {i} float {v} with dtypes {f_dtypes}"
-                    promoted_inputs.append(_wrap_ge_tensor(
-                        input, dtype=(f_dtypes[0] if len(f_dtypes) else None)))
-                elif isinstance(v, int):
-                    assert len(
-                        i_dtypes) <= 1, f"Cannot promote {func} input {i} int {v} with dtypes {i_dtypes}"
-                    promoted_inputs.append(_wrap_ge_tensor(
-                        input, dtype=(i_dtypes[0] if len(i_dtypes) else None)))
-            else:
-                promoted_inputs.append(_wrap_ge_tensor(input))
-            logger.info(
-                f"ge.{func} promote input {i} value {input} to dtype {_ge_proto_dtype_str(promoted_inputs[-1].desc.dtype)}")
-        else:
+        if isinstance(input, Tensor) or (input is None):
             promoted_inputs.append(input)
+            continue
 
-    promoted_bundle_inputs = []
-    for v in input_start_end:
-        if v is None:
-            promoted_bundle_inputs.append(None)
-        elif isinstance(v, int):
-            promoted_bundle_inputs.append(promoted_inputs[v])
+        if type(input) == torch.Tensor:
+            promoted_inputs.append(_torch_tensor_to_ge_const(input))
+            continue
+
+        narray = np.array(input)
+        if narray.size > 0:
+            v = narray.item(0)
+            if isinstance(v, float):
+                assert len(
+                    f_dtypes) <= 1, f"Cannot promote {func} input {i} float {v} with dtypes {f_dtypes}"
+                promoted_inputs.append(_wrap_ge_tensor(
+                    input, dtype=(f_dtypes[0] if len(f_dtypes) else None)))
+            elif isinstance(v, int):
+                assert len(
+                    i_dtypes) <= 1, f"Cannot promote {func} input {i} int {v} with dtypes {i_dtypes}"
+                promoted_inputs.append(_wrap_ge_tensor(
+                    input, dtype=(i_dtypes[0] if len(i_dtypes) else None)))
         else:
-            start, end = v
-            promoted_bundle_inputs.append(promoted_inputs[start:end])
+            promoted_inputs.append(_wrap_ge_tensor(input))
+        logger.info(
+            f"ge.{func} promote input {i} value {input} to dtype {_ge_proto_dtype_str(promoted_inputs[-1].desc.dtype)}")
 
-    return promoted_bundle_inputs
+    return _inputs_to_bundle_inputs(promoted_inputs, input_start_end)
 
 
 def _set_extral_node_attrs(outputs):
@@ -812,7 +847,7 @@ def _set_extral_node_attrs(outputs):
         ValueError(f'expect a Tensor, List or Tuple, but got {type(outputs)}.')
 
 
-def auto_convert_to_tensor(inputs_dynamic, inputs_optional):
+def auto_convert_to_tensor(inputs_dynamic, inputs_optional, *, inputs_tensor_type=None):
     def inner(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -823,7 +858,7 @@ def auto_convert_to_tensor(inputs_dynamic, inputs_optional):
             assert len(inputs_dynamic) == len(inputs_optional)
             assert len(args) >= len(inputs_dynamic)
             args = _auto_type_promotion_for_const(args, inputs_dynamic,
-                                                  inputs_optional, func.__name__)
+                                                  inputs_optional, inputs_tensor_type, func.__name__)
             for i, dynamic_and_optional in enumerate(zip(inputs_dynamic, inputs_optional)):
                 dynamic = dynamic_and_optional[0]
                 optional = dynamic_and_optional[1]
