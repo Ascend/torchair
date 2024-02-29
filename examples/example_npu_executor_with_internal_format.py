@@ -40,14 +40,18 @@ print("eager result: ", eager_result)
 with torch.no_grad():
     static_graph_model = torch.compile(model, backend=npu_backend, dynamic=False)
     graph_result = static_graph_model(ins_nz, in2)
+    assert (graph_result[0] - eager_result[0]).abs().max().item() <= 0.001
+    graph_result = static_graph_model(ins_nz, in2)
+    assert (graph_result[0] - eager_result[0]).abs().max().item() <= 0.001
 print("static graph result: ", graph_result)
-assert (graph_result[0] - eager_result[0]).abs().max().item() <= 0.001
 
 # check dynamic graph
 with torch.no_grad():
     torch._dynamo.reset()
     dynamic_graph_model = torch.compile(model, backend=npu_backend, dynamic=True)
-    torch._dynamo.mark_static(ins_nz)
     graph_result = dynamic_graph_model(ins_nz, in2)
+    assert (graph_result[0] - eager_result[0]).abs().max().item() <= 0.001
+
+    graph_result = dynamic_graph_model(ins_nz, in2)
+    assert (graph_result[0] - eager_result[0]).abs().max().item() <= 0.001
 print("dynamic graph result: ", graph_result)
-assert (graph_result[0] - eager_result[0]).abs().max().item() <= 0.001

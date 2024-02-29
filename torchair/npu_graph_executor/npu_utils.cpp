@@ -32,7 +32,8 @@ Status AssembleStorageShapeToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor)
                                 (desc.GetFormat() == ge::FORMAT_NHWC);
     TNG_ASSERT(is_base_format || (tensor.storage_offset() == 0),
                "Invalid at::tensor with internal format and offset is %lld.", tensor.storage_offset());
-    const at::IntArrayRef &dims = is_base_format ? tensor.sizes() : at_npu::native::get_npu_storage_sizes(tensor);
+    const std::vector<int64_t> &dims = is_base_format ? tensor.sizes().vec() :
+                                                        at_npu::native::get_npu_storage_sizes(tensor);
     AssembleDimsToGeShape(dims, desc.MutableShape());
   } else {
     AssembleDimsToGeShape(tensor.sizes(), desc.MutableShape());
@@ -56,6 +57,7 @@ Status AtNpuTensorToGeTensor(const at::Tensor &tensor, ge::Tensor &ge_tensor) {
 
   if (tensor.device().is_privateuseone()) {
     desc.SetPlacement(ge::Placement::kPlacementDevice);
+    desc.SetOriginShape(ge::GeShape(tensor.sizes().vec()));
     desc.SetOriginFormat(tensor.sizes().size() == 4 ? ge::Format::FORMAT_NCHW
                                                     : ge::Format::FORMAT_ND);
     desc.SetFormat(ge::Format(at_npu::native::get_npu_format(tensor)));
