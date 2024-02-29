@@ -1810,6 +1810,7 @@ REG_OP(PromptFlashAttention)
     .ATTR(input_layout, String, "BSH")
     .ATTR(num_key_value_heads, Int, 1)
     .ATTR(sparse_mode, Int, 0)
+    .ATTR(inner_precise, Int, 1)
     .OP_END_FACTORY_REG(PromptFlashAttention)
 /**
 * @brief paste sub img.

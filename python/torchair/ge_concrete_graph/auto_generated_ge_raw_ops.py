@@ -18409,7 +18409,7 @@ def IncreFlashAttention(query: Tensor,
 
 # This api is auto-generated from IR PromptFlashAttention
 @auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False, False, False], [False, False, False, True, True, True, True, True, True, True, True, True])
-def PromptFlashAttention(query: Tensor, key: Tensor, value: Tensor, pse_shift: Optional[Tensor], atten_mask: Optional[Tensor], actual_seq_lengths: Optional[Tensor], actual_seq_lengths_kv: Optional[Tensor], deq_scale1: Optional[Tensor], quant_scale1: Optional[Tensor], deq_scale2: Optional[Tensor], quant_scale2: Optional[Tensor], quant_offset2: Optional[Tensor], *, num_heads: int, scale_value: float=1.000000, pre_tokens: int=214748647, next_tokens: int=0, input_layout: str="BSH", num_key_value_heads: int=1, sparse_mode: int=0, dependencies=[], node_name=None):
+def PromptFlashAttention(query: Tensor, key: Tensor, value: Tensor, pse_shift: Optional[Tensor], atten_mask: Optional[Tensor], actual_seq_lengths: Optional[Tensor], actual_seq_lengths_kv: Optional[Tensor], deq_scale1: Optional[Tensor], quant_scale1: Optional[Tensor], deq_scale2: Optional[Tensor], quant_scale2: Optional[Tensor], quant_offset2: Optional[Tensor], *, num_heads: int, scale_value: float=1.000000, pre_tokens: int=214748647, next_tokens: int=0, input_layout: str="BSH", num_key_value_heads: int=1, sparse_mode: int=0, inner_precise: int=1, dependencies=[], node_name=None):
     """REG_OP(PromptFlashAttention)\n
 .INPUT(query, TensorType({DT_FLOAT16, DT_FLOAT32}))\n
 .INPUT(key, TensorType({DT_FLOAT16, DT_FLOAT32}))\n
@@ -18431,6 +18431,7 @@ def PromptFlashAttention(query: Tensor, key: Tensor, value: Tensor, pse_shift: O
 .ATTR(input_layout, String, "BSH")\n
 .ATTR(num_key_value_heads, Int, 1)\n
 .ATTR(sparse_mode, Int, 0)\n
+.ATTR(inner_precise, Int, 1)\n
 """
 
     op = get_default_ge_graph().op.add()
@@ -18532,6 +18533,7 @@ def PromptFlashAttention(query: Tensor, key: Tensor, value: Tensor, pse_shift: O
     op.attr["input_layout"].s = compat_as_bytes(input_layout)
     op.attr["num_key_value_heads"].i = num_key_value_heads
     op.attr["sparse_mode"].i = sparse_mode
+    op.attr["inner_precise"].i = inner_precise
 
     # process outputs
     output_index = 0
