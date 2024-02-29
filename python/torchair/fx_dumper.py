@@ -52,7 +52,7 @@ def trace_dump(f):
         if not _is_dumping():
             return f(self, target, args, kwargs)
 
-        if not str(target).startswith('aten'):
+        if not hasattr(target, '_ge_converter'):
             logger.debug(f'Skip dump non aten target {target}')
             return f(self, target, args, kwargs)
 
