@@ -24,6 +24,51 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, torch_type_t
 from torchair.ge_concrete_graph.utils import dtype_promote
 from torchair.ge_concrete_graph.supported_declaration import F32, F16, Support
 
+
+def check_if_skip(start, end, step):
+    if isinstance(start, Tensor) or isinstance(end, Tensor) or isinstance(step, Tensor):
+        return False
+    if start == 0 and end == sys.maxsize and step == 1:
+        return True
+    return False
+
+
+def static_gen(input_sizes, dim, start, end, dtype):
+    # Generate correct tensor for concating grad.
+    new_sizes = input_sizes.copy()
+    real_dim = end - start
+    real_dim = max(real_dim, 0)
+    new_sizes[dim] = real_dim
+    return ge.Fill(new_sizes, ge.Cast(0., dst_type=dtype))
+
+
+def static_concat(grad_output, input_sizes, dim, start, end, meta_outputs):
+    length = input_sizes[dim]
+    result = []
+
+    if start >= length:
+        start = length
+    else:
+        start = start % length
+
+    if end >= length:
+        end = length
+    else:
+        end = end % length
+
+    start = min(start, end)
+    zeros1 = static_gen(input_sizes, dim, 0, start, meta_outputs.dtype)
+    result.append(zeros1)
+
+    result.append(grad_output)
+
+    zeros2 = static_gen(input_sizes, dim, end, length, meta_outputs.dtype)
+    result.append(zeros2)
+
+    grad_input = ge.ConcatV2(result, concat_dim=dim, N=len(result))
+    return grad_input
+
+
 @declare_supported([
     Support(F32(3, 4), [3, 8], 1, 0, 8, 2),
     Support(F16(3, 4), [3, 8], 1, 0, 10, 2),
@@ -39,6 +84,14 @@ def conveter_aten_slice_backward_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::slice_backward(Tensor grad_output, SymInt[] input_sizes, int dim, SymInt start, SymInt end, SymInt step) -> Tensor"""
+    if check_if_skip(start, end, step):
+        return grad_output
+
+    if isinstance(step, int) and step == 1:
+        # If step is 1, optimize slice_backward by ConcatV2.
+        if isinstance(start, int) and isinstance(end, int) and isinstance(input_sizes, list):
+            return static_concat(grad_output, input_sizes, dim, start, end, meta_outputs)
+
     src_input_sizes = input_sizes
     src_end = end
 
