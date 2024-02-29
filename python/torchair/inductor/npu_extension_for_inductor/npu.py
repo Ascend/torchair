@@ -206,7 +206,7 @@ class NPUKernel(Kernel):
         if os.getenv("NPU_INDUCTOR_DUMMY_KERNEL", None) == "1":
             self._kernel_def.writeline(
                 "from npu_extension_for_inductor.compiler.aclnn_compiler import DummyNpuInductorKernel")
-            self._kernel_def.writeline(f"{self._kernel}_compiled = DummyNpuInductorKernel({graph_fn})")
+            self._kernel_def.writeline(f"{self._kernel}_compiled = DummyNpuInductorKernel('{graph_fn}')")
         else:
             self._kernel_def.writeline(f"{self._kernel}_compiled = npu_compiler.aclnn(npu_codegen.aclnn({graph_fn}()))")
         self._kernel_def.writelines(self._comments)
@@ -301,7 +301,7 @@ class NPUKernel(Kernel):
             road.insert(0, MoveOp(kind="broadcast", src=src, dst=dst_loop))
 
         if len(road) == 0:
-            road.append(MoveOp(kind="unsupported_view", src=src, dst=dst))
+            road.append(MoveOp(kind="reinterpret_view", src=src, dst=dst))
 
         return road
 

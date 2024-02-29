@@ -443,12 +443,24 @@ class NpuInductorKernel:
 class DummyNpuInductorKernel:
     def __init__(self, name):
         self.name = f"ACLNN_{name}"
+        from npu_extension_for_inductor.common.debug import OP_SUMMARY
+        self.graph_summary = OP_SUMMARY.get_graph_summary(name)
         from torch._inductor import config
         self.debug = config.trace.enabled
 
+    @staticmethod
+    def arg_str(arg):
+        if isinstance(arg, torch.Tensor):
+            return f"{str(arg.dtype).split('.')[-1]}{tuple(arg.size())}"
+        return str(arg)
+
     def __call__(self, *args: torch.Tensor, sym_vals):
-        if self.debug:
-            print(f"{self.name}({', '.join([str(v) for v in args])}, sym_vals={sym_vals})", flush=True)
+        if self.graph_summary:
+            args_str = [self.arg_str(arg) for arg in args]
+            named_syms = [f's{i}={v}' for i, v in enumerate(sym_vals)]
+            self.graph_summary.record_call_args(','.join(args_str + named_syms))
+            if self.debug:
+                print(f"{self.name}({','.join(args_str + named_syms)})")
 
 
 _compile_cache = dict()

@@ -50,7 +50,7 @@ def underline_to_camelcase(s):
 def unsupported(*args, op_type, **kwargs):
     graph = V.kernel.graph
     op_type = underline_to_camelcase(op_type)
-    if op_type in ["LoadIndirect", "IndexExpr", "UnsupportedView"]:
+    if op_type in ["LoadIndirect", "IndexExpr"]:
         op = graph.add_fallback_op(op_type)
     else:
         op = graph.add_op(op_type, is_unsupported=True)

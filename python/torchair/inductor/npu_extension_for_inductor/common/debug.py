@@ -41,6 +41,7 @@ class OpSummary:
         self.model_path = model_path
         self.num_supported: int = 0
         self.num_unsupported: int = 0
+        self.calls: Dict[str:int] = defaultdict(lambda: 0)
         for op in self.graph.ops:
             self.record(op.op_type, op.supported)
 
@@ -64,6 +65,14 @@ class OpSummary:
 
         return self.subs[graph.name]
 
+    def get_graph_summary(self, name):
+        if name not in self.subs:
+            return None
+        return self.subs[name]
+
+    def record_call_args(self, args):
+        self.calls[args] += 1
+
     def save(self):
         self.save_csv(f"{self.name}.csv")
         print(str(self))
@@ -79,7 +88,7 @@ class OpSummary:
                 model_writer[model] = csv.writer(fhs[-1])
                 model_writer[model].writerow(
                     ["融合节点名", "融合类型", "计算指令统计", "待支持的计算指令", "待支持的操作符", "待支持的表达式",
-                     "Loop表达"])
+                     "Loop表达", "调用统计"])
             yield model_writer
         finally:
             for fh in fhs:
@@ -119,7 +128,11 @@ class OpSummary:
                 operators = '\n'.join(
                     [v.__name__ if hasattr(v, '__name__') else str(v) for v in unsupported_operators])
                 unsupported_ops = '\n'.join([f"{v}" for v in sub.graph.unsupported_ops])
-                row = [name, graph_type, ops_count, unsupported_ops, operators, exps, sub.loop]
+
+                sorted_calls = sorted(sub.calls.items(), key=lambda x: x[1], reverse=True)
+                sorted_calls_str = '\n'.join([f"{item[1]}次：{item[0]}" for item in sorted_calls])
+
+                row = [name, graph_type, ops_count, unsupported_ops, operators, exps, sub.loop, sorted_calls_str]
                 writer.writerow(row)
                 if sub.model_path and sub.model_path in writers:
                     writers[sub.model_path].writerow(row)
