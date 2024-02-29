@@ -18,7 +18,21 @@
 #include "torch/csrc/utils/python_arg_parser.h"
 #include "torch/csrc/autograd/utils/wrap_outputs.h"
 
+#include "torch_npu/inc/core/NPUFormat.h"
+
+namespace tng {
+std::vector<int64_t> GetNpuStorageSizes(const at::Tensor &tensor) {
+  const pybind11::gil_scoped_release release;
+  const std::vector <int64_t> &storage_size = at_npu::native::get_npu_storage_sizes(tensor);
+  const pybind11::gil_scoped_acquire acquire;
+  return storage_size;
+}
+}  // namespace tng
+
 namespace py = pybind11;
 namespace npu {
-PYBIND11_MODULE(_npu_graph_executor, m){};
+PYBIND11_MODULE(_npu_graph_executor, m) {
+
+  (void)m.def("GetNpuStorageSizes", &tng::GetNpuStorageSizes);
+};
 }  // namespace npu

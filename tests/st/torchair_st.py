@@ -771,6 +771,17 @@ class TorchairSt(unittest.TestCase):
         for i in range(3):
             result = executor2.run((x, y))
 
+    def test_npu_graph_executor_func(self):
+        from torchair.core import _npu_graph_executor
+        import _privateuse1_backend
+        npu_device = _privateuse1_backend.npu_device()
+        torch.utils.rename_privateuse1_backend("npu")
+
+        in_shape = [2, 3, 4, 5]
+        x = torch.ones(in_shape).to(npu_device)
+        storage_shape = _npu_graph_executor.GetNpuStorageSizes(x)
+        self.assertTrue(storage_shape == in_shape)
+
     def test_rng_into_graph(self):
         def check_graph(concrete_graph):
             num_data, has_offset, has_seed, has_unpack = 0, False, False, False

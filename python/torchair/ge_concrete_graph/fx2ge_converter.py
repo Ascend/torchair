@@ -778,14 +778,37 @@ class GeConcreteGraph(ConcreteGraphBase):
             name = f"ConstPlaceHolder_{args_index}_{args[args_index].data_ptr()}"
             name_mapping_data_to_constplaceholder[op.name] = name
             origin_shape = _get_generalized_shape(args[args_index])
-            storage_shape = _get_generalized_shape(args[args_index])
             dtype = torch_type_to_ge_type(args[args_index].dtype)
             addr = args[args_index].data_ptr()
-            size = args[args_index].numel() * args[args_index].element_size()
             with self.graph:
-                constplaceholder = ge.ConstPlaceHolder(origin_shape=origin_shape, origin_format=2,
-                                    storage_shape=storage_shape, storage_format=2, expand_dim_rules="",
-                                    dtype=dtype, addr=addr, size=size, node_name=name)
+                if 'torch_npu' in sys.modules:
+                    _torch_npu_module = sys.modules['torch_npu']
+                    from torchair.core import _npu_graph_executor as _npu_executor
+                    storage_format = _torch_npu_module.get_npu_format(args[args_index])
+
+                    constplaceholder = ge.ConstPlaceHolder(
+                        origin_shape=origin_shape,
+                        origin_format=2 if len(origin_shape) != 4 else 0,
+                        storage_shape=_npu_executor.GetNpuStorageSizes(args[args_index]),
+                        storage_format=storage_format,
+                        expand_dim_rules="", dtype=dtype, addr=addr,
+                        size=_torch_npu_module.get_storage_size(args[args_index]) * args[args_index].element_size(),
+                        node_name=name)
+                    logger.debug(f'Construct ConstPlaceHolder_{op.attr["index"].i} from npu tensor, '
+                                 f'storage format={Format(storage_format).name}, '
+                                 f'storage shape={_npu_executor.GetNpuStorageSizes(args[args_index])}.')
+                else:
+                    constplaceholder = ge.ConstPlaceHolder(
+                        origin_shape=origin_shape,
+                        origin_format=2,
+                        storage_shape=origin_shape,
+                        storage_format=2,
+                        expand_dim_rules="", dtype=dtype, addr=addr,
+                        size=args[args_index].numel() * args[args_index].element_size(),
+                        node_name=name)
+                    logger.debug(f'Construct ConstPlaceHolder_{op.attr["index"].i} from cpu tensor, '
+                                 f'storage format=FORMAT_ND, '
+                                 f'storage shape={origin_shape}.')
                 constplaceholder.set_meta(self.inputs[op.attr["index"].i]._meta)
         # 删除是constplaceholder的Data节点
         for frozen_data_op in frozen_data_op_list:
