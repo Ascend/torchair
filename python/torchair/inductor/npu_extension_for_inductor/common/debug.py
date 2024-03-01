@@ -1,4 +1,5 @@
 import atexit
+import functools
 import operator
 from collections import defaultdict
 import contextlib
@@ -13,6 +14,11 @@ from npu_extension_for_inductor.ir import _Op, _Tensor
 class _OpVisitor:
     def __init__(self, op):
         self.op = op
+        self.inputs = [v for v in self.op.attrs.values() if isinstance(v, _Tensor)]
+
+    @property
+    def num_inputs(self):
+        return len(self.inputs)
 
     def output_size(self, name='y'):
         return self.op.attrs[f'{self.op.name}.{name}.size']
@@ -20,11 +26,52 @@ class _OpVisitor:
     def output_stride(self, name='y'):
         return self.op.attrs[f'{self.op.name}.{name}.strides']
 
-    def input_size(self, name='x'):
-        return self.op.attrs[f'{self.op.name}.{name}.size']
+    @property
+    def op_type(self):
+        return self.op.op_type
 
-    def input_stride(self, name='x'):
-        return self.op.attrs[f'{self.op.name}.{name}.strides']
+    @property
+    def compute_type(self):
+        if f'{self.op.name}.attr.hint.compute_type' not in self.op.attrs:
+            return None
+        return self.op.attrs[f'{self.op.name}.attr.hint.compute_type']
+
+
+class _GraphVisitor:
+    def __init__(self, graph: ASCGraph):
+        self.graph = graph
+        self.buffers = []
+        self.workspaces = []
+        self.load_ops = []
+        self.store_ops = []
+        self.reduction_ops = []
+        self.pointwise_ops = []
+        self.ops = [_OpVisitor(op) for op in self.graph.ops]
+        self.num_load_no_fuse = 0
+        self.num_store_no_fuse = 0
+        self.typed_ops_count = defaultdict(lambda: 0)
+        for op in self.ops:
+            self.typed_ops_count[op.op_type] += 1
+            if op.op_type in ["Data", "Output"]:
+                self.buffers.append(op)
+            elif op.op_type == "Workspace":
+                self.workspaces.append(op)
+            elif op.op_type == "Load":
+                self.load_ops.append(op)
+            elif op.op_type == "Store":
+                self.store_ops.append(op)
+            else:
+                self.num_load_no_fuse += op.num_inputs
+                self.num_store_no_fuse += 1
+                if op.compute_type == 'reduce':
+                    self.reduction_ops.append(op)
+                else:
+                    self.pointwise_ops.append(op)
+        self.num_load = len(self.load_ops)
+        self.num_store = len(self.store_ops)
+        self.num_load_optimized = self.num_load_no_fuse - self.num_load
+        self.num_store_optimized = self.num_store_no_fuse - self.num_store
+        self.graph_type = "Fused" if len(self.workspaces) else "Reduction" if len(self.reduction_ops) else "PointWise"
 
 
 class OpSummary:
@@ -42,6 +89,7 @@ class OpSummary:
         self.num_supported: int = 0
         self.num_unsupported: int = 0
         self.calls: Dict[str:int] = defaultdict(lambda: 0)
+        self.calls_detail: Dict[str:int] = defaultdict(lambda: 0)
         for op in self.graph.ops:
             self.record(op.op_type, op.supported)
 
@@ -70,8 +118,17 @@ class OpSummary:
             return None
         return self.subs[name]
 
-    def record_call_args(self, args):
-        self.calls[args] += 1
+    def record_call_args(self, *args, sym_vals):
+        axis_hint_sizes = {}
+        for axis, axis_size in self.graph.axis_vars.items():
+            hint_axis_size = eval(f"{axis_size}", dict((str(s), v) for s, v in zip(self.graph.size_vars, sym_vals)))
+            axis_hint_sizes[axis] = hint_axis_size
+        loop_size = functools.reduce(operator.mul, axis_hint_sizes.values())
+        axis_hint_sizes['loop_size'] = loop_size
+        args_key = ','.join(
+            [f"{k}={v}" for k, v in list(zip(self.graph.size_vars, sym_vals)) + list(axis_hint_sizes.items())])
+        self.calls[loop_size] += 1
+        self.calls_detail[args_key] += 1
 
     def save(self):
         self.save_csv(f"{self.name}.csv")
@@ -88,7 +145,7 @@ class OpSummary:
                 model_writer[model] = csv.writer(fhs[-1])
                 model_writer[model].writerow(
                     ["融合节点名", "融合类型", "计算指令统计", "待支持的计算指令", "待支持的操作符", "待支持的表达式",
-                     "Loop表达", "调用统计"])
+                     "Loop表达", "MTE优化统计", "Loop大小统计", "符号细节统计"])
             yield model_writer
         finally:
             for fh in fhs:
@@ -101,18 +158,8 @@ class OpSummary:
             writer = writers[fn]
             for name, untyped_sub in self.subs.items():
                 sub: OpSummary = untyped_sub
-                mte_ops = [_OpVisitor(op) for op in sub.graph.ops if op.op_type in ["Load", "Store"]]
-                workspace = [_OpVisitor(op) for op in sub.graph.ops if op.op_type == "Workspace"]
-                reduction = [_OpVisitor(op) for op in sub.graph.ops if op.op_type == "Reduction"]
-                graph_type = "Fused" if len(workspace) else "Reduction" if len(reduction) else "PointWise"
-
-                typed_ops_count = {}
-                for op in sub.graph.ops:
-                    if op.op_type in ["Data", "Output", "Workspace"]:
-                        continue
-                    if op.op_type not in typed_ops_count:
-                        typed_ops_count[op.op_type] = 0
-                    typed_ops_count[op.op_type] += 1
+                graph = _GraphVisitor(sub.graph)
+                mte_ops = graph.load_ops + graph.store_ops
 
                 unsupported_exps = set()
                 unsupported_operators = set()
@@ -124,7 +171,7 @@ class OpSummary:
                         unsupported_operators.update(used_operators)
                         unsupported_exps.add(str(expr.expr))
                 exps = '\n'.join(set(unsupported_exps))
-                ops_count = '\n'.join([f"{k}: {v}" for k, v in typed_ops_count.items()])
+                ops_count = '\n'.join([f"{k}: {v}" for k, v in graph.typed_ops_count.items()])
                 operators = '\n'.join(
                     [v.__name__ if hasattr(v, '__name__') else str(v) for v in unsupported_operators])
                 unsupported_ops = '\n'.join([f"{v}" for v in sub.graph.unsupported_ops])
@@ -132,7 +179,14 @@ class OpSummary:
                 sorted_calls = sorted(sub.calls.items(), key=lambda x: x[1], reverse=True)
                 sorted_calls_str = '\n'.join([f"{item[1]}次：{item[0]}" for item in sorted_calls])
 
-                row = [name, graph_type, ops_count, unsupported_ops, operators, exps, sub.loop, sorted_calls_str]
+                optimized_detail = f"mte2减少: {graph.num_load_optimized}个\n"
+                optimized_detail += f"mte3减少: {graph.num_store_optimized}个"
+
+                sorted_calls_detail = sorted(sub.calls_detail.items(), key=lambda x: x[1], reverse=True)
+                sorted_calls_detail_str = '\n'.join([f"{item[1]}次：{item[0]}" for item in sorted_calls_detail])
+
+                row = [name, graph.graph_type, ops_count, unsupported_ops, operators, exps, sub.loop, optimized_detail,
+                       sorted_calls_str, sorted_calls_detail_str]
                 writer.writerow(row)
                 if sub.model_path and sub.model_path in writers:
                     writers[sub.model_path].writerow(row)

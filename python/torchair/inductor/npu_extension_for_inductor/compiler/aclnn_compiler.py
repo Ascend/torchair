@@ -457,10 +457,9 @@ class DummyNpuInductorKernel:
     def __call__(self, *args: torch.Tensor, sym_vals):
         if self.graph_summary:
             args_str = [self.arg_str(arg) for arg in args]
-            named_syms = [f's{i}={v}' for i, v in enumerate(sym_vals)]
-            self.graph_summary.record_call_args(','.join(args_str + named_syms))
+            self.graph_summary.record_call_args(*args, sym_vals=sym_vals)
             if self.debug:
-                print(f"{self.name}({','.join(args_str + named_syms)})")
+                print(f"{self.name}({','.join(args_str)}, sym_vals={sym_vals})")
 
 
 _compile_cache = dict()
