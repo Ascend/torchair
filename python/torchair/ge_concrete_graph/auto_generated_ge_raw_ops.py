@@ -63180,18 +63180,35 @@ def CommonGRU(x: Tensor, w: Tensor, r: Tensor, b: Optional[Tensor], sequence_len
 
 
 # This api is auto-generated from IR EmbeddingBag
-@auto_convert_to_tensor([False, False, False, False], [False, False, True, True])
-def EmbeddingBag(weight: Tensor, indices: Tensor, offsets: Optional[Tensor], per_sample_weights: Optional[Tensor], *, mode: str="mean", scale_grad_by_freq: bool=False, sparse: bool=False, include_last_offset: bool=False, dependencies=[], node_name=None):
-    """REG_OP(EmbeddingBag)\n
-.INPUT(weight, TensorType({ DT_FLOAT32 }))\n
-.INPUT(indices, TensorType({ DT_INT32 }))\n
-.OPTIONAL_INPUT(offsets, TensorType({DT_INT32}))\n
-.OPTIONAL_INPUT(per_sample_weights, TensorType({DT_FLOAT32}))\n
-.OUTPUT(y, TensorType({ DT_FLOAT32 }))\n
-.ATTR(mode, String, "mean")\n
-.ATTR(scale_grad_by_freq, Bool, false)\n
-.ATTR(sparse, Bool, false)\n
-.ATTR(include_last_offset, Bool, false)\n
+@auto_convert_to_tensor([False, False, False, False],
+                        [False, False, True, True])
+def EmbeddingBag(weight: Tensor,
+                 indices: Tensor,
+                 offsets: Optional[Tensor],
+                 per_sample_weights: Optional[Tensor],
+                 *,
+                 mode: str = "mean",
+                 scale_grad_by_freq: bool = False,
+                 sparse: bool = False,
+                 include_last_offset: bool = False,
+                 padding_idx: int = -1,
+                 dependencies=[],
+                 node_name=None):
+    """REG_OP(EmbeddingBag)
+    .INPUT(weight, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .INPUT(indices, TensorType({DT_INT32, DT_INT64}))
+    .OPTIONAL_INPUT(offsets, TensorType({DT_INT32, DT_INT64}))
+    .OPTIONAL_INPUT(per_sample_weights, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(offset2bag, TensorType({DT_INT32, DT_INT64}))
+    .OUTPUT(bag_size, TensorType({DT_INT32, DT_INT64}))
+    .OUTPUT(max_indices, TensorType({DT_INT32, DT_INT64}))
+    .ATTR(mode, String, "mean")
+    .ATTR(scale_grad_by_freq, Bool, false)
+    .ATTR(sparse, Bool, false)
+    .ATTR(include_last_offset, Bool, false)
+    .ATTR(padding_idx, Int, -1)
+    .OP_END_FACTORY_REG(EmbeddingBag)
 """
 
     op = get_default_ge_graph().op.add()
@@ -63231,15 +63248,25 @@ def EmbeddingBag(weight: Tensor, indices: Tensor, offsets: Optional[Tensor], per
     op.attr["scale_grad_by_freq"].b = scale_grad_by_freq
     op.attr["sparse"].b = sparse
     op.attr["include_last_offset"].b = include_last_offset
+    op.attr["padding_idx"].i = padding_idx
 
     # process outputs
     output_index = 0
     op.output_desc.add().name = "y"
     y = Tensor(op, output_index)
     output_index += 1
+    op.output_desc.add().name = "offset2bag"
+    offset2bag = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "bag_size"
+    bag_size = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "max_indices"
+    max_indices = Tensor(op, output_index)
+    output_index += 1
 
     # return outputs
-    return y
+    return y, offset2bag, bag_size, max_indices
 
 
 # This api is auto-generated from IR LSTMP

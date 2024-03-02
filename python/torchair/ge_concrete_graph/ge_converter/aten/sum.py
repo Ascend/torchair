@@ -56,7 +56,7 @@ def conveter_aten_sum_default(
 ):
     """NB: aten::sum(Tensor self, *, ScalarType? dtype=None) -> Tensor"""
     dimlist = [i for i in range(self.rank)]
-    return ge.ReduceSum(self, dimlist)
+    return ge.ReduceSum(ge.Cast(self, dst_type=meta_outputs.dtype), dimlist)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.sum.dim_DimnameList)

@@ -22,13 +22,21 @@ from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_conve
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 
+def _get_mode_str(mode: int):
+    if mode == 0:
+        return "sum"
+    elif mode == 2:
+        return "max"
+    return "mean"
+
+
 @register_fx_node_ge_converter(torch.ops.aten._embedding_bag.default)
 def conveter_aten__embedding_bag_default(
     weight: Tensor,
     indices: Tensor,
     offsets: Tensor,
     scale_grad_by_freq: bool = False,
-    mode: int = 0,
+    mode: int = 1,
     sparse: bool = False,
     per_sample_weights: Optional[Tensor] = None,
     include_last_offset: bool = False,
@@ -36,7 +44,10 @@ def conveter_aten__embedding_bag_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::_embedding_bag(Tensor weight, Tensor indices, Tensor offsets, bool scale_grad_by_freq=False, int mode=0, bool sparse=False, Tensor? per_sample_weights=None, bool include_last_offset=False, int padding_idx=-1) -> (Tensor, Tensor, Tensor, Tensor)"""
-    raise NotImplementedError("torch.ops.aten._embedding_bag.default ge_converter is not implemented!")
+    mode_str = _get_mode_str(mode)
+    return ge.EmbeddingBag(weight=weight, indices=indices, offsets=offsets, per_sample_weights=per_sample_weights,
+                           mode=mode_str, scale_grad_by_freq=scale_grad_by_freq, sparse=sparse,
+                           include_last_offset=include_last_offset, padding_idx=padding_idx)
 
 
 @register_fx_node_ge_converter(torch.ops.aten._embedding_bag.out)
@@ -58,4 +69,5 @@ def conveter_aten__embedding_bag_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::_embedding_bag.out(Tensor weight, Tensor indices, Tensor offsets, bool scale_grad_by_freq=False, int mode=0, bool sparse=False, Tensor? per_sample_weights=None, bool include_last_offset=False, int padding_idx=-1, *, Tensor(a!) out0, Tensor(b!) out1, Tensor(c!) out2, Tensor(d!) out3) -> (Tensor(a!), Tensor(b!), Tensor(c!), Tensor(d!))"""
-    raise NotImplementedError("torch.ops.aten._embedding_bag.out ge_converter is not implemented!")
+    raise AssertionError("torch.ops.aten._embedding_bag_forward.out is redundant before pytorch 2.1.0, "
+                         "might be supported in furture version.")
