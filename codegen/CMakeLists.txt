@@ -1,8 +1,17 @@
 cmake_minimum_required(VERSION 3.14)
-
 add_executable(code_generator codegen.cpp)
 target_include_directories(code_generator BEFORE PRIVATE ${CMAKE_CURRENT_LIST_DIR}/monkey_include)
 target_include_directories(code_generator BEFORE PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../third_party/ascend/include/ops/op_proto/inc)
-
+target_compile_definitions(code_generator PRIVATE -DSINGLE_CUSTOM_REG_OP="all_ops.h")
 target_compile_options(code_generator PRIVATE -std=c++11)
 target_link_libraries(code_generator PRIVATE stdc++)
+
+add_executable(code_generator_single codegen.cpp)
+target_include_directories(code_generator_single BEFORE PRIVATE ${CMAKE_CURRENT_LIST_DIR}/monkey_include)
+if (DEFINED ENV{MY_REG_OP_H})
+    target_compile_definitions(code_generator_single PRIVATE -DSINGLE_CUSTOM_REG_OP="$ENV{MY_REG_OP_H}")
+else ()
+    target_compile_definitions(code_generator_single PRIVATE -DSINGLE_CUSTOM_REG_OP="${CMAKE_CURRENT_LIST_DIR}/custom_op/custom_reg_op.h")
+endif ()
+target_compile_options(code_generator_single PRIVATE -std=c++11)
+target_link_libraries(code_generator_single PRIVATE stdc++)

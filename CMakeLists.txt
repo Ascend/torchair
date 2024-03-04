@@ -68,6 +68,17 @@ add_custom_target(generate_ge_raw_ops ALL
         DEPENDS AUTO_GENERATED_GE_RAW_OPS
         VERBATIM)
 
+add_custom_command(OUTPUT AUTO_GENERATED_GE_RAW_CUSTOM_SINGLE_OPS
+        COMMAND code_generator_single ${CMAKE_CURRENT_LIST_DIR}/codegen/custom_op/auto_generated_ge_raw_custom_ops.py
+        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+        COMMENT "Generating ge apis"
+        DEPENDS code_generator_single
+        VERBATIM)
+
+add_custom_target(generate_ge_raw_custom_ops ALL
+        DEPENDS AUTO_GENERATED_GE_RAW_CUSTOM_SINGLE_OPS
+        VERBATIM)
+
 add_custom_target(copy_pyfiles ALL
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/python ${CMAKE_BINARY_DIR}/dist
         COMMENT "Copy pthon files"

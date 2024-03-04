@@ -257,6 +257,103 @@ dtype_promote（类型提升）的关键，在于converter实现时，需要根�
 需要特别注意，所实现的converter必须支持动态shape，不应该试图从输入的Tensor上获取任何shape信息，Tensor也不会提供任何shape信息。
 > 如果您的converter依赖shape才能工作，这通常意味着实现错误，或者没有选择正确的Ascend IR映射。
 
+### 自定义算子入图插件化注册
+此功能可以让用户注册自定义算子，增加自定义算子的入图能力，且无需重新编译torch_npu与torchair。
+> 注意：在开发自定义算子入图前，需要确保自定义算子已经在torch框架中完成注册。自定义算子指：区别与原生torch算子，为了实现用户自定义计算逻辑而开发注册的算子。
+> 在C++中注册自定义算子参考：https://pytorch.org/tutorials/advanced/dispatcher.html
+
+新增算子入图步骤
+> 1 自定义算子在torch框架中注册（假如：您已完成自定义算子注册，请忽略此步骤，下面代码是为了完成示例）。
+```python
+import torch
+from torch.library import Library, impl
+# 实例化torch.library，完成"custom_op"自定义算子在"npu_define"的namespace的注册，并通过define方法完成schema格式的算子原型定义。
+# 注意："DEF"方式注册不允许namespace重名，python和c++注册不能使用同一个namespace。
+m = Library("npu_define", "DEF")
+m.define("custom_op(Tensor input1, Tensor input2) -> Tensor")
+
+# 通过impl装饰器完成算子实现的注册，示例中使用custom_op这个算子实现Add的功能，"PrivateUse1"表示注册在npu后端。
+@impl(m, "custom_op", "PrivateUse1")
+def plug_custom_op(
+        x: torch.Tensor,
+        y: torch.Tensor,
+):
+    return x + y
+```
+> 2 向torch注册自定义算子meta后端实现，用来完成图模式下的shape推导。
+```python
+
+# '@impl(m, "custom_op", "Meta")'表示: 通过Library实例m，为"custom_op"这个自定义算子注册Meta实现。
+# 注：若自定义算子原型的注册发生在C++，无法直接获得实例化的m。使用'm = Library("npu_define", "IMPL", "Meta")'方式获取实例化m,"IMPL"表示为任何操作符添加实现。
+# 'def custom_op_meta(x, y)'为算子的infershape函数，其入参需要保持与自定义算子一致。
+# 注：此处需要保证输出tensor的device为meta，torch.empty_like(x)可以保证输出与输入x的device相同，皆为meta，其他生成输出tensor的方式需要注意是否需要显式指定device为meta。
+@impl(m, "custom_op", "Meta")
+def custom_op_meta(x, y):
+    return torch.empty_like(x)
+```
+
+> 3 codegen生成ge构图api
+
+假设`npu.custom_op`转换为`ge.Add`这个GE IR，生成`ge.Add`接口步骤如下(注：ge.Add为演示使用，一般新增自定义算子会有对于新增的GE IR)：
+
+（1）将REG_OP算子原型放置到codegen/custom_op/custom_reg_op.h文件中，替换原来示例的REG_OP；
+```c++
+#include "graph/operator_reg.h"
+
+namespace ge {
+ REG_OP(Add)
+    .INPUT(x1, TensorType({DT_FLOAT, DT_INT32, DT_INT64, DT_FLOAT16, DT_BF16, DT_INT16,
+                           DT_INT8, DT_UINT8, DT_DOUBLE, DT_COMPLEX128,
+                           DT_COMPLEX64, DT_STRING}))
+    .INPUT(x2, TensorType({DT_FLOAT, DT_INT32, DT_INT64, DT_FLOAT16, DT_BF16, DT_INT16,
+                           DT_INT8, DT_UINT8, DT_DOUBLE, DT_COMPLEX128,
+                           DT_COMPLEX64, DT_STRING}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_INT32, DT_INT64, DT_FLOAT16, DT_BF16, DT_INT16,
+                           DT_INT8, DT_UINT8, DT_DOUBLE, DT_COMPLEX128,
+                           DT_COMPLEX64, DT_STRING}))
+    .OP_END_FACTORY_REG(Add)
+}
+```
+（2）执行编译命令
+```make
+mkdir build
+cd build
+cmake ..
+make generate_ge_raw_custom_ops
+```
+生成的ge.api函数在codegen/custom_op/auto_generated_ge_raw_custom_ops.py文件中
+
+（3）将您生成的文件import至您的工程中或者拷贝源码至您的调用文件，保证converter能够调用到即可。
+
+> 4 向torchair注册自定义算子的converter，完成自定义算子的torch IR到CANN软件图中的GE IR的转化(此步骤为npu入图独有的操作)。
+
+converter如何开发参考本文章的前序章节。
+需要保证converter调用装饰器`@register_fx_node_ge_converter(torch.ops.npu_define.custom_op.default)`，完成converter注册。其中
+`torch.ops.npu_define.custom_op.default`为自定义算子生成的python函数的函数签名。
+```python
+@register_fx_node_ge_converter(torch.ops.npu_define.custom_op.default)
+def conveter_custom_op(
+        input1: Tensor,
+        input2: Tensor,
+        out: Tensor = None,
+        meta_outputs: Any = None):
+    # 将输入的数据类型提升至与输出一致
+    input1, input2 = dtype_promote(input1, input2, target_dtype=meta_outputs.dtype)
+    # 调用ge构图api
+    return Add(input1, input2)
+```
+
+至此完成全部自定义算子入图适配工作，您可以运行参考用例中的示例验证。
+> 注意： 您在开发您自己的REG_OP(xxx)的自定义算子时，需要向GE注册infershape函数，否则执行时会出错。
+
+
+> 参考用例 
+
+（1）examples/example_custom_op_register/example_custom_op_register_in_one_file.py  一个文件内部完成注册使用。
+
+（2）examples/example_custom_op_register/new_custom_op.py 注册新算子
+examples/example_custom_op_register/example_use_import_new_custom_op.py  import新算子模块，使用注册的新算子。
+
 ## 导出gegraph
 
 torchair提供配置项config.debug.graph_dump开关来导出gegraph，您可以通过如下方式来配置
