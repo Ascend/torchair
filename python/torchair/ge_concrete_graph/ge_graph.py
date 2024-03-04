@@ -620,6 +620,10 @@ class Tensor:
         assert self._symsize is not None, f"Tensor {self} unknown rank"
         return len(self._symsize)
 
+    @property
+    def symsize(self):
+        return self._symsize
+
     def set_torch_dtype(self, dtype):
         self._torch_dtype = dtype
         self._ge_dtype = torch_type_to_ge_type(dtype)
