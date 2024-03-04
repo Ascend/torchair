@@ -295,13 +295,12 @@ def _update_internal_format_from_inputs(graph: GraphDef, runtime_inputs):
             logger.debug(f'input_{idx} is not npu tensor, skip format updates.')
             continue
 
-        if torch_npu_module.get_npu_format(runtime_inputs[idx]) != Format.FORMAT_FRACTAL_NZ.value\
-                and torch_npu_module.get_npu_format(runtime_inputs[idx]) > Format.FORMAT_FRACTAL_Z.value:
-            raise RuntimeError(f"Unsupported input tensor with "
-                               f"format {torch_npu_module.get_npu_format(runtime_inputs[idx])}")
+        npu_format = torch_npu_module.get_npu_format(runtime_inputs[idx])
+        if npu_format > Format.FORMAT_FRACTAL_Z.value \
+                and npu_format != Format.FORMAT_FRACTAL_NZ.value and npu_format != Format.FORMAT_NCDHW.value:
+            raise RuntimeError(f"Unsupported input tensor with format {Format(npu_format).name}.")
 
         # attr "format_for_int" in proto::TensorDescriptor will be be deserialized as TensorDesc Format in ge.
-        npu_format = torch_npu_module.get_npu_format(runtime_inputs[idx])
         input_index_mapping_graph_op[idx].output_desc[0].attr["format_for_int"].i = npu_format
         '''
            * **********************************************************************************
@@ -355,8 +354,7 @@ def _update_internal_format_from_inputs(graph: GraphDef, runtime_inputs):
         '''
         if npu_format == Format.FORMAT_FRACTAL_Z.value or npu_format == Format.FORMAT_NC1HWC0.value:
             input_index_mapping_graph_op[idx].output_desc[0].attr["origin_format_for_int"].i = Format.FORMAT_NCHW.value
-        logger.debug(f'update the Format of output TensorDesc for input_{idx} '
-                    f'to Format {torch_npu_module.get_npu_format(runtime_inputs[idx])}')
+        logger.debug(f'update the Format of output TensorDesc for input_{idx} to Format {Format(npu_format).name}.')
 
 
 class ExecutorType:
