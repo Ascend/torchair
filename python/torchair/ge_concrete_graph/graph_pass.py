@@ -133,7 +133,7 @@ def _get_output_to_input_ref_idx(op: OpDef) -> Dict[int, int]:
     add a mapping relationship between output and references input in this function.
     """
     ref_idx_mapping: Dict[int, int] = {}
-    if op.type == "Scatter" or op.type == "QuantUpdateScatter":
+    if op.type == "Scatter" or op.type == "QuantUpdateScatter" or op.type == "ScatterNdUpdate":
         ref_idx_mapping[0] = 0
     elif op.type == "ScatterList":
         for i in range(len(op.output_desc)):
