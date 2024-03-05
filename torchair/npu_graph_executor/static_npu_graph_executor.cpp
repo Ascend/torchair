@@ -139,7 +139,7 @@ Status StaticNpuGraphExecutor::AllocAndUpdateFeatureMemory(void *stream) {
   }
 
   size_t fm_size = 0U;
-  TNG_ASSERT_GE_OK(graph_data_->summary->GetRefreshableFeatureMemorySize(fm_size));
+  TNG_ASSERT_GE_OK(graph_data_->summary->GetFeatureMemorySize(fm_size));
   // Register allocator for GE before run, according to stream.
   auto allocator = AllocatorManager::GetInstance().EnsureAllocatorRegistered(stream);
   TNG_ASSERT_NOTNULL(allocator);
@@ -153,9 +153,10 @@ Status StaticNpuGraphExecutor::AllocAndUpdateFeatureMemory(void *stream) {
     feature_map_block_ = std::dynamic_pointer_cast<NpuAllocator>(allocator)->Malloc(fm_size);
   }
   TNG_ASSERT_NOTNULL(feature_map_block_);
-  TNG_ASSERT(Session::GetInstance()
-                     .UpdateGraphRefreshableFeatureMemoryBase(graph_data_->id, feature_map_block_->GetAddr(),
-                                                              feature_map_block_->GetSize()).IsSuccess());
+  TNG_ASSERT(
+      Session::GetInstance()
+          .UpdateGraphFeatureMemoryBase(graph_data_->id, feature_map_block_->GetAddr(), feature_map_block_->GetSize())
+          .IsSuccess());
 
   TNG_LOG(INFO) << "AllocAndUpdateFeatureMemory success, feature map addr = " << feature_map_block_->GetAddr()
                 << " , size = " << feature_map_block_->GetSize();
@@ -199,9 +200,6 @@ Status StaticNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
   if (is_first_run_) {
     TNG_ASSERT_GE_OK(graph_data_->summary->GetFeatureMemoryBaseRefreshable(fm_refreshable_));
     TNG_RETURN_IF_ERROR(AllocAndSetConstMemory(stream));
-    if (fixed_mem_addr_ == nullptr) {
-      TNG_RETURN_IF_ERROR(AllocAndSetFixedMemory(stream, graph_data_));
-    }
     is_first_run_ = false;
   }
 
