@@ -93,9 +93,13 @@ class TorchNpuGraph(_torchair.TorchNpuGraphBase):
     def __init__(self, name=""):
         super(TorchNpuGraph, self).__init__(str(name))
 
-    def load(self, serialized_ge_graph, options={}):
+    def load(self, ge_graph, options={}):
         """Load the graph"""
-        return super(TorchNpuGraph, self).load(serialized_ge_graph, options)
+        input_placements = ge_graph.attr["_input_placements"].list.i
+        output_dtypes = ge_graph.attr["_output_dtypes"].list.i
+        executor_type = ge_graph.attr["_executor_type"].i
+        return super(TorchNpuGraph, self).load(ge_graph.SerializeToString(), options, input_placements, output_dtypes,
+                                               executor_type)
 
     def compile(self):
         """Compile the graph"""

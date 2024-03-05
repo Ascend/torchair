@@ -5,7 +5,6 @@
 #include "external/graph/types.h"
 #include "framework/common/ge_types.h"
 #include "ge/ge_api.h"
-#include "ge_ir.pb.h"
 #include "graph/detail/model_serialize_imp.h"
 #include "graph/model_serialize.h"
 #include "graph/utils/graph_utils_ex.h"
@@ -14,11 +13,11 @@
 #include "compat_apis.h"
 #include "executor.h"
 #include "graph_data.h"
+#include "hccl/hccl.h"
+#include "hccl/hccl_types.h"
 #include "logger.h"
 #include "session.h"
 #include "utils.h"
-#include "hccl/hccl_types.h"
-#include "hccl/hccl.h"
 
 char *CreateMessage(const char *format, va_list arg);
 
@@ -34,6 +33,44 @@ tng::Status NormalizeCompileOptions(const std::map<ge::AscendString, ge::AscendS
 
   return tng::Status::Success();
 }
+
+std::vector<tng::Placement> ParsePlacements(const std::vector<int64_t> &input_placements) {
+  std::vector<tng::Placement> placements;
+  placements.reserve(input_placements.size());
+  for (const auto &placement : input_placements) {
+    if (placement == 0) {
+      placements.push_back(tng::Placement::HOST);
+    } else if (placement == 1) {
+      placements.push_back(tng::Placement::DEVICE);
+    } else {
+      placements.push_back(tng::Placement::UNKNOWN);
+    }
+  }
+  return placements;
+}
+
+std::vector<ge::DataType> ParseOutputDtypes(const std::vector<int64_t> &output_dtypes) {
+  std::vector<ge::DataType> dtypes;
+  dtypes.reserve(output_dtypes.size());
+  for (const auto &dtype : output_dtypes) {
+    if (dtype < 0 || dtype >= static_cast<int64_t>(ge::DataType::DT_MAX)) {
+      dtypes.push_back(ge::DataType::DT_UNDEFINED);
+      continue;
+    }
+    dtypes.push_back(static_cast<ge::DataType>(dtype));
+  }
+  return dtypes;
+}
+
+tng::ExecutorType ParseExecutorType(int64_t executor_type) {
+  if (executor_type == 0) {
+    return tng::ExecutorType::CPU;
+  }
+  if (executor_type == 1) {
+    return tng::ExecutorType::NPU;
+  }
+  return tng::ExecutorType::UNKNOWN;
+}
 }  // namespace
 namespace tng {
 NpuConcreteGraph::NpuConcreteGraph(std::shared_ptr<GraphData> graph_data) : graph_data_(std::move(graph_data)){};
@@ -48,21 +85,18 @@ Status NpuConcreteGraph::InitializeResource(const std::map<std::string, std::str
 
 Status NpuConcreteGraph::Create(const void *serialized_proto, size_t proto_size,
                                 const std::map<ge::AscendString, ge::AscendString> &options,
-                                std::unique_ptr<NpuConcreteGraph> &graph) {
+                                std::vector<int64_t> input_placements, std::vector<int64_t> output_dtypes,
+                                int64_t executor_type, std::unique_ptr<NpuConcreteGraph> &graph) {
   TNG_LOG(INFO) << "Creating concrete graph from proto with size " << proto_size;
   TNG_ASSERT_NOTNULL(serialized_proto, "Given serialized proto is nullptr.");
   TNG_ASSERT(ge::IntegerChecker<int32_t>::Compat(proto_size), "Proto size %zu exceed 2G limit.", proto_size);
 
   auto graph_data = std::make_unique<GraphData>();
+  TNG_RETURN_IF_ERROR(compat::ParseGraphFromArray(serialized_proto, proto_size, graph_data->graph));
 
-  TNG_ASSERT(graph_data->graph_def.ParseFromArray(serialized_proto, proto_size));
-  TNG_LOG(INFO) << "Graph parsed successfully and " << graph_data->graph_def.op_size() << " ops parsed.";
-
-  TNG_RETURN_IF_ERROR(compat::ConvertGraphDefToGraph(graph_data->graph_def, graph_data->graph));
-
-  graph_data->input_placements = compat::GetGraphInputPlacemnts(graph_data->graph_def);
-  graph_data->output_dtypes = compat::GetGraphOutputDtypes(graph_data->graph_def);
-  graph_data->executor_type = compat::GetGraphExecutorType(graph_data->graph_def);
+  graph_data->input_placements = ParsePlacements(input_placements);
+  graph_data->output_dtypes = ParseOutputDtypes(output_dtypes);
+  graph_data->executor_type = ParseExecutorType(executor_type);
   TNG_ASSERT(graph_data->executor_type != ExecutorType::UNKNOWN, "Executor type is unknown.");
 
   TNG_RETURN_IF_ERROR(NormalizeCompileOptions(options, graph_data->compile_options));
@@ -76,7 +110,7 @@ Status NpuConcreteGraph::Create(const void *serialized_proto, size_t proto_size,
     graph_data->deterministic_value = (iter->second == static_cast<ge::AscendString>("1")) ? 1 : 0;
   }
 
-  static std::atomic_uint32_t uuid = 0U;
+  static std::atomic_uint32_t uuid{0U};
   graph_data->id = uuid++;
 
   TNG_LOG(INFO) << DebugString(*graph_data);
@@ -126,7 +160,7 @@ Status NpuConcreteGraph::Run(const std::vector<at::Tensor> &torch_inputs,
   TNG_LOG(INFO) << "Run concrete graph " << graph_data_->id << " with stream " << stream;
   HcclConfigValue hccl_config = {graph_data_->deterministic_value};
   TNG_ASSERT(HcclSetConfig(HcclConfig::HCCL_DETERMINISTIC, hccl_config) == HCCL_SUCCESS,
-      "Failed to set HCCL_DETERMINISTIC.");
+             "Failed to set HCCL_DETERMINISTIC.");
   TNG_ASSERT_NOTNULL(executor_, "Executor is not initialized.");
   TNG_RETURN_IF_ERROR(executor_->Run(torch_inputs, torch_outputs, outputs, stream));
   return Status::Success();

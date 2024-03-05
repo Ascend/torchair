@@ -113,7 +113,6 @@ std::string DebugString(const GraphData &graph_data) {
   if (graph_data.summary != nullptr) {
     ss << DebugString(*graph_data.summary) << std::endl;
   }
-  ss << "num nodes: " << graph_data.graph_def.op_size() << std::endl;
   ss << "input placements: " << DebugString(graph_data.input_placements) << std::endl;
   ss << "output dtypes :" << DebugString(graph_data.output_dtypes) << std::endl;
   ss << "executor type :" << ((graph_data.executor_type == tng::ExecutorType::NPU) ? "NPU" : "DEFAULT");

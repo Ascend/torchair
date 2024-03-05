@@ -250,6 +250,11 @@ def _get_generalized_shape(fake: torch.Tensor) -> List[int]:
 
 def _normalize_ge_graph(graph: GraphDef):
     for op in graph.op:
+        op.attr["_input_name_key"].list.s[:] = [compat_as_bytes(desc.name) for desc in op.input_desc]
+        op.attr["_input_name_value"].list.i[:] = list(range(len(op.input_desc)))
+        op.attr["_output_name_key"].list.s[:] = [compat_as_bytes(desc.name) for desc in op.output_desc]
+        op.attr["_output_name_value"].list.i[:] = list(range(len(op.output_desc)))
+
         if op.type == "Data":
             continue
         for desc in op.input_desc:
@@ -345,12 +350,12 @@ def _update_internal_format_from_inputs(graph: GraphDef, runtime_inputs):
            *
            *  Figure 2. Filter's origin is NCHW. After GE::REfreshOriginFormatOfAnchor processing
            * ************************************************************************************
-           As shown in Figure 1, when the input of filter node origin_fmt of conv2d is ND, 
-           the operator cannot get the C axis. So, GE can flood storage_fmt NCHW of input1 of 
-           the Conv2d to filter node storage_fmt for Conv2d's constraints. 
-           As a result, filter node storage_fmt FZ changes to NCHW. 
-           
-           Therefore, to enable the internal format FZ of the filter, 
+           As shown in Figure 1, when the input of filter node origin_fmt of conv2d is ND,
+           the operator cannot get the C axis. So, GE can flood storage_fmt NCHW of input1 of
+           the Conv2d to filter node storage_fmt for Conv2d's constraints.
+           As a result, filter node storage_fmt FZ changes to NCHW.
+
+           Therefore, to enable the internal format FZ of the filter,
            you need to specify origin_fmt NCHW of the filter node, as shown in Figure 2.
         '''
         if npu_format == Format.FORMAT_FRACTAL_Z.value or npu_format == Format.FORMAT_NC1HWC0.value:
@@ -529,7 +534,7 @@ class GeConcreteGraph(ConcreteGraphBase):
 
         if self.config.debug.graph_dump.enabled:
             self.dump(self.config.debug.graph_dump.full_path("dynamo_optimized_graph"))
-        self._executor.load(self.graph.SerializeToString(), local_compile_options)
+        self._executor.load(self.graph, local_compile_options)
 
     def compile(self) -> Any:
         if self._is_compiled:

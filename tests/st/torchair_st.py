@@ -382,7 +382,7 @@ class TorchairSt(unittest.TestCase):
             assert output_in == 3, f"after optimize, assert output num failed, expect 3, get {output_in}"
 
             output_ref_input = _mapping_assign_op_to_graph_output(graph)
-            executor.load(graph.SerializeToString())
+            executor.load(graph)
             executor.compile()
 
         dst = torch.ones(3, 1, 16, 8).float().to(npu_device)
@@ -434,7 +434,7 @@ class TorchairSt(unittest.TestCase):
             output_num = _get_graph_output_num(graph)
             assert output_num == 2, f"after optimize, assert output num failed, expect 2, get {output_num}"
 
-            executor.load(graph.SerializeToString())
+            executor.load(graph)
             executor.compile()
 
         dst = torch.ones(3, 4).float().to(npu_device)
@@ -482,7 +482,7 @@ class TorchairSt(unittest.TestCase):
                 output_num = _get_graph_output_num(graph)
                 assert output_num == 1, f"after optimize, assert output num failed, expect 1, get {output_num}"
 
-                executor.load(graph.SerializeToString())
+                executor.load(graph)
                 executor.compile()
 
             dst = torch.ones(3, 4).float().to(npu_device)
@@ -512,7 +512,7 @@ class TorchairSt(unittest.TestCase):
             set_graph_output_dtypes(graph, [DataType.DT_INT32])
 
             executor = TorchNpuGraph()
-            executor.load(graph.SerializeToString())
+            executor.load(graph)
             executor.compile()
 
             x = torch.ones([2, 2], dtype=torch.int32)
@@ -535,7 +535,7 @@ class TorchairSt(unittest.TestCase):
             set_graph_output_dtypes(graph, [DataType.DT_INT32])
 
             executor = TorchNpuGraph()
-            executor.load(graph.SerializeToString())
+            executor.load(graph)
             executor.compile()
 
             x = torch.ones([2, 2], dtype=torch.int32, device='npu')
@@ -560,7 +560,7 @@ class TorchairSt(unittest.TestCase):
             set_graph_output_dtypes(graph, [DataType.DT_INT32])
 
             executor = TorchNpuGraph()
-            executor.load(graph.SerializeToString())
+            executor.load(graph)
             executor.compile()
 
             x = torch.ones([2, 2], dtype=torch.int32, device='npu')
@@ -642,12 +642,12 @@ class TorchairSt(unittest.TestCase):
             set_graph_output_dtypes(graph, [DataType.DT_INT32])
 
             executor = TorchNpuGraph()
-            executor.load(graph.SerializeToString())
+            executor.load(graph)
             executor.compile()
 
             npu_x = torch.ones([2, 2], dtype=torch.int32).to(npu_device)
             npu_y = torch.ones([], dtype=torch.int32).to(npu_device)
-            out = executor.run([npu_x, npu_y])                    
+            out = executor.run([npu_x, npu_y])
 
     def test_dynamic_npu_executor_with_internal_format(self):
         initialize_graph_engine()
@@ -668,7 +668,7 @@ class TorchairSt(unittest.TestCase):
             set_graph_output_dtypes(graph, [DataType.DT_INT32])
 
             executor = TorchNpuGraph()
-            executor.load(graph.SerializeToString())
+            executor.load(graph)
             executor.compile()
 
             cpu_x = torch.ones([2, 2], dtype=torch.int32)
@@ -695,7 +695,7 @@ class TorchairSt(unittest.TestCase):
         set_graph_output_dtypes(graph, [DataType.DT_INT32])
 
         executor = TorchNpuGraph()
-        executor.load(graph.SerializeToString())
+        executor.load(graph)
         executor.compile()
 
         x = torch.ones([1, 2], dtype=torch.int32)
@@ -713,7 +713,7 @@ class TorchairSt(unittest.TestCase):
         set_graph_output_dtypes(graph2, [DataType.DT_INT32])
 
         executor2 = TorchNpuGraph()
-        executor2.load(graph2.SerializeToString())
+        executor2.load(graph2)
         executor2.compile()
 
         x = torch.ones([1, 2], dtype=torch.int32)
@@ -741,7 +741,7 @@ class TorchairSt(unittest.TestCase):
         executor = TorchNpuGraph()
         local_options = {}
         local_options["ge.featureBaseRefreshable"] = "1"
-        executor.load(graph1.SerializeToString(), options=local_options)
+        executor.load(graph1, options=local_options)
         executor.compile()
 
         x = torch.ones([128, 128], dtype=torch.float16)
@@ -763,7 +763,7 @@ class TorchairSt(unittest.TestCase):
 
         set_graph_output_dtypes(graph2, [DataType.DT_FLOAT16])
         executor2 = TorchNpuGraph()
-        executor2.load(graph2.SerializeToString(), options=local_options)
+        executor2.load(graph2, options=local_options)
         executor2.compile()
 
         x = torch.ones([16, 16], dtype=torch.float16)
