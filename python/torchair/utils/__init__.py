@@ -1,7 +1,7 @@
 import os
 import operator
 from functools import wraps, reduce, lru_cache
-from typing import Callable, Optional
+from typing import Callable, Optional, Tuple
 import torch
 from torch import Tensor
 from torch._ops import OpOverload, OpOverloadPacket
@@ -84,6 +84,26 @@ def meta_native_dropout(tensor_input: Tensor, p: float, train: Optional[bool]):
 @register_meta_npu(aten.native_dropout_backward)
 def meta_native_dropout_backward(grad_output: Tensor, mask: Tensor, scale: float):
     return torch.empty_like(grad_output)
+
+
+raw_batch_norm_func = decomposition_table[aten._native_batch_norm_legit_no_training.default]
+@register_meta_npu(aten._native_batch_norm_legit_no_training.default)
+def meta__native_batch_norm_legit_no_training(
+    input: Tensor,
+    weight: Optional[Tensor],
+    bias: Optional[Tensor],
+    running_mean: Tensor,
+    running_var: Tensor,
+    momentum: float,
+    eps: float,
+) -> Tuple[Tensor, Tensor, Tensor]:
+    output, save_mean, save_rstd = raw_batch_norm_func(input, weight, bias, running_mean, 
+                                                       running_var, momentum, eps)
+    # npu's impl follows cpu's, and npu's [save_mean, save_rstd] shape is different from gpu's and
+    # meta func. So in npu_backend, save_mean and save_rstd will be always emtpy tensor.
+    save_mean = input.new_zeros((0,))
+    save_rstd = input.new_zeros((0,))
+    return output, save_mean, save_rstd
 
 
 def patch_torch_decomp_decompositions():
