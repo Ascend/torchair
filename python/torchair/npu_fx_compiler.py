@@ -82,6 +82,29 @@ def _is_binary_operator(target: Target):
     return target in (operator.add, operator.sub, operator.mul, operator.truediv, operator.floordiv, operator.pow)
 
 
+def make_real_tensor_like(meta_outputs):
+    if isinstance(meta_outputs, (tuple, list)):
+        return [make_real_tensor_like(v) for v in meta_outputs]
+    with no_dispatch():
+        return torch.empty(meta_outputs.size(), dtype=meta_outputs.dtype)
+
+
+def is_zero_element_tensor(tensor):
+    return isinstance(tensor, torch.Tensor) and 0 in tensor.size()
+
+
+def flatten_meta_outputs(meta_outputs):
+    flat_outputs = []
+    if not isinstance(meta_outputs, (tuple, list)):
+        meta_outputs = [meta_outputs]
+    for i in meta_outputs:
+        if isinstance(i, (tuple, list)):
+            flat_outputs.extend(flatten_meta_outputs(i))
+        else:
+            flat_outputs.append(i)
+    return flat_outputs
+
+
 def trace_print(f):
     @functools.wraps(f)
     def inner(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any]):
@@ -163,7 +186,10 @@ class NpuGraphConverter(Interpreter):
             with fake_mode:
                 meta_outputs = func(target, args_meta, kwargs_meta)
             args_npu, kwargs_npu = self._unpack_npu(args, kwargs)
-            npu_outputs = self._graph.parse_node(target, args_npu, kwargs_npu, meta_outputs)
+            if all([is_zero_element_tensor(t) for t in flatten_meta_outputs(meta_outputs)]):
+                npu_outputs = make_real_tensor_like(meta_outputs)
+            else:
+                npu_outputs = self._graph.parse_node(target, args_npu, kwargs_npu, meta_outputs)
             return self._get_value_pack(meta_outputs, npu_outputs)
 
         return inner
