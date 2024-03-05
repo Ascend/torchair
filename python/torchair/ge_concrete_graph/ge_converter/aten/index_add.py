@@ -46,7 +46,18 @@ def conveter_aten_index_add_default(
     alpha = dtype_promote(alpha, target_dtype=self.dtype)
     ndim = self.rank
     pad_shape = []
+    index_rank = index.rank
 
+    # InplaceAdd doesn't support index with size 0, so unsqueeze operator is needed here
+    if index_rank == 0:
+        index = ge.Unsqueeze(index, axes=[0])
+
+    # We shouldn't use shape = index._symsize(), because it will cause error in dynamic mode
+    shape_index = ge.Shape(index, dtype=DataType.DT_INT32)
+    shape_self = ge.Shape(self, dtype=DataType.DT_INT32)
+
+    # Index's rank attribute will be None after dtype_prompt
+    # So it must be placed after index.rank
     if index.dtype != DataType.DT_INT32:
         index = dtype_promote(index, target_dtype=DataType.DT_INT32)
         logger.warning_once("torch.ops.aten.index_add.default: "
@@ -58,14 +69,6 @@ def conveter_aten_index_add_default(
         logger.warning_once("torch.ops.aten.index_add.default: "
                             "operator in NPU doesn't support negative dim now, "
                             "it was transferred to positive value automatically.")
-
-    # InplaceAdd doesn't support index with size 0, so unsqueeze operator is needed here
-    if index.rank == 0:
-        index = ge.Unsqueeze(index, axes=[0])
-
-    # We shouldn't use shape = index._symsize(), because it will cause error in dynamic mode
-    shape_index = ge.Shape(index, dtype=DataType.DT_INT32)
-    shape_self = ge.Shape(self, dtype=DataType.DT_INT32)
 
     # pad_shape[i] = self.shape[i], except pad_shape[dim] = index.shape[0]
     for i in range(ndim):

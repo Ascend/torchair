@@ -37,7 +37,11 @@ def conveter_aten_view_default(
     self: Tensor, size: Union[List[int], Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::view(Tensor(a) self, SymInt[] size) -> Tensor(a)"""
-    size = dtype_promote(size, target_dtype=DataType.DT_INT64)
+    # Use dtype_promote in specific case to reduce the number of Cast operators
+    if isinstance(size, list):
+        size = dtype_promote(size, target_dtype=DataType.DT_INT64)
+    elif size.dtype != DataType.DT_INT64 and size.dtype != DataType.DT_INT32:
+        size = dtype_promote(size, target_dtype=DataType.DT_INT64)
     return ge.Reshape(self, size)
 
 
