@@ -26,8 +26,8 @@ from torchair.ge_concrete_graph.utils import dtype_promote
 
 @declare_supported(
     [
-        Support(F16(24, 1, 1, 128), F16(24, 1, 11, 128), F16(24, 1, 1, 128), F16(24, 1, 1, 128), layout=1),
-        Support(F32(24, 1, 1, 128), F32(24, 1, 11, 128), F32(24, 1, 1, 128), F32(24, 1, 1, 128), layout=1)
+        Support(F16(24, 1, 1, 128), F16(24, 1, 11, 128), F16(24, 1, 1, 128), F16(24, 1, 1, 128), layout='BSH'),
+        Support(F32(24, 1, 1, 128), F32(24, 1, 11, 128), F32(24, 1, 1, 128), F32(24, 1, 1, 128), layout='BSH')
     ]
 )
 @register_fx_node_ge_converter(torch.ops.npu.npu_apply_rotary_pos_emb.default)
@@ -36,7 +36,7 @@ def conveter_npu_apply_rotary_pos_emb_default(
     k: Tensor,
     cos: Tensor,
     sin: Tensor,
-    layout: int = 1,
+    layout: str = 'BSH',
     meta_outputs: List[TensorSpec] = None,
 ):
     """
@@ -48,4 +48,7 @@ def conveter_npu_apply_rotary_pos_emb_default(
              This current usage may cause the input to be changed unexpectedly, and the caller 
              needs to pay attention to this feature.
     """
-    return ge.ApplyRotaryPosEmb(q, k, cos, sin, layout=layout)
+    if layout != 'BSH':
+        raise NotImplementedError("layout only support BSH now!")
+
+    return ge.ApplyRotaryPosEmb(q, k, cos, sin, layout=1)
