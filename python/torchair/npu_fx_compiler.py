@@ -41,6 +41,8 @@ def get_default_decompositions():
     if "torchair.ge_concrete_graph.ge_converter.experimental.hcom_alltoall" in sys.modules:
         default_decompositions.append(torch.ops.npu_define.all_to_all_single)
         default_decompositions.append(torch.ops.npu_define.all_to_all)
+    if "torchair.ge_concrete_graph.ge_converter.experimental.hcom_allgather" in sys.modules:
+        default_decompositions.append(torch.ops.npu_define.allgather)
     return default_decompositions
 
 
