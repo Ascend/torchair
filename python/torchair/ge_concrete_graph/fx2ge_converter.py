@@ -9,6 +9,7 @@ import inspect
 import sys
 import os
 import warnings
+import sympy
 
 import torch
 from torch.fx.node import Argument, Target
@@ -29,7 +30,7 @@ from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type, torch_typ
     GeGraph, attr_scope, compat_as_bytes, DataType, Format, TensorSpec, is_sym, sym_to_ge_dtype
 from torchair.ge_concrete_graph.graph_pass import optimize_sym_pack, optimize_reference_op_redundant_copy
 from torchair.ge_concrete_graph.utils import convert_to_tensorboard, dump_graph, force_op_unknown_shape, \
-    is_host_data_tensor, Placement
+    is_host_data_tensor, get_all_sym_value_mapping, get_used_syms_in_meta, Placement
 from torchair.ge_concrete_graph.supported_declaration import Support
 from torchair.ge_concrete_graph.export_config_generete import generate_config
 from torchair.utils.export_utils import make_export_graph, get_export_file_name
@@ -368,6 +369,38 @@ def _get_executor_type():
     return ExecutorType.CPU
 
 
+class ViewOfInput:
+    def __init__(self, index, meta_output, sym_value_mapping):
+        self._fx_input_index = index
+        self._sym_value_mapping = sym_value_mapping
+        self._output_shape = list(meta_output.size())
+        self._output_stride = list(meta_output.stride())
+        self._output_offset = meta_output.storage_offset()
+
+    def compute_output(self, *args):
+        real_input = args[self._fx_input_index]
+        if self._sym_value_mapping is not None:
+            value_of_sym = self._compute_value_of_sym(*args)
+            self._compute_output_shape_stride_offset(value_of_sym)
+        return torch.as_strided(real_input, self._output_shape, self._output_stride, self._output_offset)
+
+    def _compute_value_of_sym(self, *args):
+        value_of_sym = {}
+        for sym, index in self._sym_value_mapping.items():
+            if index[0] == -1:
+                value_of_sym[sym] = args[index[1]]
+            else:
+                value_of_sym[sym] = args[index[1]].size()[index[0]]
+        return value_of_sym
+
+    def _compute_output_shape_stride_offset(self, value_of_sym):
+        for idx, output_shape in enumerate(self._output_shape):
+            self._output_shape[idx] = sympy.simplify(str(output_shape)).subs(value_of_sym)
+        for idx, output_stride in enumerate(self._output_stride):
+            self._output_stride[idx] = sympy.simplify(str(output_stride)).subs(value_of_sym)
+        self._output_offset = sympy.simplify(str(self._output_offset)).subs(value_of_sym)
+
+
 class GeConcreteGraph(ConcreteGraphBase):
     def __init__(self, config: CompilerConfig, graph=None, name=None):
         self._graph = GeGraph() if graph is None else graph
@@ -442,6 +475,10 @@ class GeConcreteGraph(ConcreteGraphBase):
             f"output size mismatch, expect {len(self.graph.attr['_output_dtypes'].list.i)}, got {len(ge_outputs)}"
 
         fx_outputs = [v for v in self._fx_outputs]
+        for fx_idx, fx_output in enumerate(fx_outputs):
+            if isinstance(fx_output, ViewOfInput):
+                fx_outputs[fx_idx] = fx_output.compute_output(*args)
+
         for fx_idx, ge_idx in self._fx_outputs_mapping.items():
             assert ge_idx < len(ge_outputs), f"output index {ge_idx} out of range {len(ge_outputs)}"
             fx_outputs[fx_idx] = ge_outputs[ge_idx]
@@ -542,10 +579,25 @@ class GeConcreteGraph(ConcreteGraphBase):
     def parse_output(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
         assert isinstance(args, (list, tuple)) and len(args) == 1
         args = args[0]
+        fx_inputs_mapping_reverse = {value : key for key, value in self._fx_inputs_mapping.items()}
+        all_sym_value_mapping = get_all_sym_value_mapping(fx_inputs_mapping_reverse, self.inputs)
+
         for arg in args:
             arg = arg.npu if isinstance(arg, ValuePack) else arg
             self._fx_outputs.append(arg)
             if not isinstance(arg, ge.Tensor):
+                continue
+
+            is_view2output_flag = False
+            for input_index, input in enumerate(self.inputs):
+                if torch._C._is_alias_of(input.meta, arg.meta):
+                    is_view2output_flag = True
+                    fx_input_index = fx_inputs_mapping_reverse[input_index]
+                    used_syms_in_meta_output = get_used_syms_in_meta(arg.meta)
+                    sym_value_mapping = {sym: all_sym_value_mapping[str(sym)] for sym in used_syms_in_meta_output}
+                    self._fx_outputs[-1] = ViewOfInput(fx_input_index, arg.meta, sym_value_mapping)
+                    break
+            if is_view2output_flag:
                 continue
 
             output_index = len(self._outputs)

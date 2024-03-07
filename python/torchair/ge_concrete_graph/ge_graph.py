@@ -614,6 +614,10 @@ class Tensor:
     @property
     def desc(self):
         return self._desc
+    
+    @property
+    def meta(self):
+        return self._meta
 
     @property
     def rank(self):
