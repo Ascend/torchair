@@ -69,11 +69,49 @@
   }                                                                                                                    \
   REGISTER_OP_BANK_KEY_PARSE_FUN(op, ParseFunc##op##bank_key, LoadFunc##op##bank_key);
 
+#define DECLARE_STRUCT_RELATE_WITH_OP_V2(op, bank_key, ...)                                                            \
+  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(bank_key, __VA_ARGS__);                                                           \
+  bool ParseFuncV2##op##bank_key(const std::shared_ptr<void> &in_args, size_t len, ge::AscendString &bank_key_json) {  \
+    if (sizeof(bank_key) != len || in_args == nullptr) {                                                               \
+      return false;                                                                                                    \
+    }                                                                                                                  \
+    nlohmann::json bank_key_json;                                                                                      \
+    bank_key_json = *(std::static_pointer_cast<bank_key>(in_args));                                                    \
+    try {                                                                                                              \
+      bank_key_json_str = bank_key_json.dump();                                                                        \
+      if (bank_key_json_str.empty()) {                                                                                 \
+        return false;                                                                                                  \
+      }                                                                                                                \
+      return true;                                                                                                     \
+    } catch (std::exception& e) {                                                                                      \
+      return false;                                                                                                    \
+    }                                                                                                                  \
+  }                                                                                                                    \
+  bool LoadFuncV2##op##bank_key(std::shared_ptr<void> &in_args, size_t &len, const ge::AscendString &bank_key_json) {  \
+    len = sizeof(bank_key);                                                                                            \
+    TUNING_TILING_MAKE_SHARED(in_args = std::make_shared<bank_key>(), return false);                                   \
+    auto op_ky = std::static_pointer_cast<bank_key>(in_args);                                                          \
+    nlohmann::json bank_key_json;                                                                                      \
+    try {                                                                                                              \
+      bank_key_json = nlohmann::json::parse(bank_key_json_str);                                                        \
+      if (bank_key_json.empty()) {                                                                                     \
+        return false;                                                                                                  \
+      }                                                                                                                \
+    } catch (std::exception& e) {                                                                                      \
+          return false;                                                                                                \
+    }                                                                                                                  \
+    *op_ky = bank_key_json.get<bank_key>();                                                                            \
+    return true;                                                                                                       \
+  }                                                                                                                    \
+  REGISTER_OP_BANK_KEY_PARSE_FUN(op, ParseFuncV2##op##bank_key, LoadFuncV2##op##bank_key);
+
 
 namespace tuningtiling {
 using OpBankKeyConvertFun = std::function<bool(const gert::TilingContext *, std::shared_ptr<void> &, size_t &)>;
 using OpBankParseFun = std::function<bool(const std::shared_ptr<void> &, size_t, nlohmann::json &)>;
 using OpBankLoadFun = std::function<bool(std::shared_ptr<void> &, size_t &, const nlohmann::json &)>;
+using OpBankParseFunV2 = std::function<bool(const std::shared_ptr<void> &, size_t, ge::AscendString &)>;
+using OpBankLoadFunV2 = std::function<bool(std::shared_ptr<void> &, size_t &, const ge::AscendString &)>;
 class FMK_FUNC_HOST_VISIBILITY OpBankKeyFuncInfo {
 public:
   explicit OpBankKeyFuncInfo(const ge::AscendString &optype);
@@ -85,6 +123,8 @@ public:
   const OpBankKeyConvertFun& GetBankKeyConvertFunc() const;
   const OpBankParseFun& GetBankKeyParseFunc() const;
   const OpBankLoadFun& GetBankKeyLoadFunc() const;
+  const OpBankParseFunV2& GetBankKeyParseFuncV2() const;
+  const OpBankLoadFunV2& GetBankKeyLoadFuncV2() const;
   const ge::AscendString& GetOpType() const {
     return optype_;
   }
@@ -100,6 +140,8 @@ public:
   OpBankKeyFuncRegistry(const ge::AscendString &optype, const OpBankKeyConvertFun &convert_func);
   OpBankKeyFuncRegistry(const ge::AscendString &optype, const OpBankParseFun &parse_func,
     const OpBankLoadFun &load_func);
+  OpBankKeyFuncRegistry(const ge::AscendString &optype, const OpBankParseFunV2 &parse_func,
+    const OpBankLoadFunV2 &load_func);
   ~OpBankKeyFuncRegistry() = default;
   static std::unordered_map<ge::AscendString, OpBankKeyFuncInfo> &RegisteredOpFuncInfo();
 };

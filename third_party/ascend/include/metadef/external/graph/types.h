@@ -87,6 +87,12 @@ enum DataType {
   DT_MAX                   // Mark the boundaries of data types
 };
 
+// used for data type of DT_STRING
+struct StringHead {
+  int64_t addr;  // the addr of string
+  int64_t len;   // the length of string
+};
+
 inline int GetSizeByDataType(DataType data_type) {
   static int data_type_size[DT_MAX] = {
       4,   // DT_FLOAT = 0,               float type
@@ -272,6 +278,7 @@ enum DeviceType {
 enum Placement {
   kPlacementHost = 0,     // host data addr
   kPlacementDevice = 1,   // device data addr
+  kPlacementEnd,
 };
 
 ///

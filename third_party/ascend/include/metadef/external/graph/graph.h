@@ -28,6 +28,7 @@
 namespace ge {
 class Graph;
 class GraphImpl;
+class GraphBuffer;
 
 using GraphImplPtr = std::shared_ptr<GraphImpl>;
 using GraphPtr = std::shared_ptr<Graph>;
@@ -88,6 +89,14 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY Graph {
   graphStatus LoadFromFile(const std::string &file_name);
 
   graphStatus LoadFromFile(const char_t *file_name);
+
+  graphStatus LoadFromSerializedModelArray(const void *serialized_model, size_t size);
+
+  graphStatus SaveToMem(GraphBuffer &graph_buffer) const;
+
+  graphStatus LoadFromMem(const GraphBuffer &graph_buffer);
+
+  graphStatus LoadFromMem(const uint8_t *data, const size_t len);
 
   ATTRIBUTED_DEPRECATED(graphStatus GetName(AscendString &) const)
   const std::string &GetName() const;
