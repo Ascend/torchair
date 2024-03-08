@@ -41588,12 +41588,13 @@ def RotaryMul(x: Tensor, r1: Tensor, r2: Tensor, *, dependencies=[], node_name=N
 
 # This api is auto-generated from IR RotaryMulGrad
 @auto_convert_to_tensor([False, False, False, False], [False, False, False, False])
-def RotaryMulGrad(x: Tensor, r1: Tensor, r2: Tensor, dy: Tensor, *, dependencies=[], node_name=None):
+def RotaryMulGrad(x: Tensor, r1: Tensor, r2: Tensor, dy:  Tensor, *, need_backward: bool=True, dependencies=[], node_name=None):
     """REG_OP(RotaryMulGrad)\n
 .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BFLOAT16}))\n
 .INPUT(r1, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BFLOAT16}))\n
 .INPUT(r2, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BFLOAT16}))\n
 .INPUT(dy, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BFLOAT16}))\n
+.ATTR(need_backward, Bool, true)\n
 .OUTPUT(dx, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BFLOAT16}))\n
 .OUTPUT(dr1, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BFLOAT16}))\n
 .OUTPUT(dr2, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BFLOAT16}))\n
@@ -41622,7 +41623,8 @@ def RotaryMulGrad(x: Tensor, r1: Tensor, r2: Tensor, dy: Tensor, *, dependencies
     op.input_desc[-1].name = "dy"
 
     # process attrs
-
+    op.attr["need_backward"].b = need_backward
+    
     # process outputs
     output_index = 0
     op.output_desc.add().name = "dx"
