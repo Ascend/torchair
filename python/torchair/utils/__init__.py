@@ -7,6 +7,7 @@ from torch import Tensor
 from torch._ops import OpOverload, OpOverloadPacket
 from torch._subclasses import fake_tensor as _subclasses_fake_tensor
 from torch._C import DispatchKey
+from torch._refs import div as refs_div
 from torch._prims_common.wrappers import out_wrapper
 from torch._decomp import decomposition_table
 from torch._dynamo.symbolic_convert import break_graph_if_unsupported, InstructionTranslatorBase, stack_op
@@ -356,9 +357,49 @@ def register_matmul_backward_decomp():
         return grad_self, grad_other
 
 
+def npu_patch_register_fast_op_impl():
+    # Fix div dtype infer bug in dynamo when inputs have both IntTensor and SymInt.
+    try:
+        from torch._subclasses.fake_tensor import get_fast_op_impls, register_fast_op_impl, \
+                                                FAST_OP_IMPLEMENTATIONS, make_fast_binary_impl
+    except ImportError:
+        # In torch version >= 2.3, apis about fast_op_impl are removed and this patch is skipped.
+        # So in torch version >= 2.3, div's dtype may be not calculated correctly.
+        return
+
+    def is_int(dtype):
+        if dtype in [torch.int8, torch.uint8, torch.int16, torch.int32, torch.int64]:
+            return True
+        return False
+
+    src_impl = make_fast_binary_impl(refs_div)
+    def make_div_binary_impl(mode, *args, **kwargs):
+        result = src_impl(mode, *args, **kwargs)
+        operands = args
+        all_int = True
+        has_symint = False
+        for op in operands:
+            if isinstance(op, torch.SymInt):
+                has_symint = True
+            if isinstance(op, Tensor) and not is_int(op.dtype):
+                all_int = False
+        if all_int and has_symint:
+            result = result.to(torch.float)
+        return result
+
+    src_get_fast_op_impls = get_fast_op_impls
+    @lru_cache(None)
+    def new_get_fast_op_impls():
+        src_get_fast_op_impls()
+        register_fast_op_impl(aten.div.Tensor)(make_div_binary_impl)
+        return FAST_OP_IMPLEMENTATIONS
+    _subclasses_fake_tensor.get_fast_op_impls = new_get_fast_op_impls
+
+
 @run_once
 def add_npu_patch():
     disable_implicit_decomposition()
     register_matmul_backward_decomp()
     npu_patch_meta()
     npu_patch_break_graph()
+    npu_patch_register_fast_op_impl()
