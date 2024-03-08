@@ -17793,27 +17793,31 @@ def RGB2YUV422(rgb: Tensor, *, dependencies=[], node_name=None):
 
 
 # This api is auto-generated from IR FlashAttentionScore
-@auto_convert_to_tensor([False, False, False, False, False, False, False], [False, False, False, True, True, True, True])
-def FlashAttentionScore(query: Tensor, key: Tensor, value: Tensor, real_shift: Optional[Tensor], drop_mask: Optional[Tensor], padding_mask: Optional[Tensor], atten_mask: Optional[Tensor], *, head_num: int, is_flash: bool, input_layout: str, scale_value: float=1.000000, keep_prob: float=1.000000, pre_tockens: int=2147483647, next_tockens: int=2147483647, dependencies=[], node_name=None):
+@auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False], [False, False, False, True, True, True, True, True, True, True])
+def FlashAttentionScore(query: Tensor, key: Tensor, value: Tensor, real_shift: Optional[Tensor], drop_mask: Optional[Tensor], padding_mask: Optional[Tensor], atten_mask: Optional[Tensor], prefix: Optional[Tensor], actual_seq_qlen: Optional[Tensor], actual_seq_kvlen: Optional[Tensor], *, head_num: int, input_layout: str, scale_value: float=1.000000, keep_prob: float=1.000000, pre_tockens: int=2147483647, next_tockens: int=2147483647, inner_precise: int=1, sparse_mode: int=0, dependencies=[], node_name=None):
     """REG_OP(FlashAttentionScore)\n
-.INPUT(query, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
-.INPUT(key, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
-.INPUT(value, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
-.OPTIONAL_INPUT(real_shift, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
-.OPTIONAL_INPUT(drop_mask, TensorType({DT_UINT1, DT_UINT8}))\n
-.OPTIONAL_INPUT(padding_mask, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
-.OPTIONAL_INPUT(atten_mask, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
+.INPUT(query, TensorType({DT_FLOAT16, DT_BF16}))\n
+.INPUT(key, TensorType({DT_FLOAT16, DT_BF16}))\n
+.INPUT(value, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OPTIONAL_INPUT(real_shift, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OPTIONAL_INPUT(drop_mask, TensorType({DT_UINT8}))\n
+.OPTIONAL_INPUT(padding_mask, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OPTIONAL_INPUT(atten_mask, TensorType({DT_BOOL, DT_UINT8}))\n
+.OPTIONAL_INPUT(prefix, TensorType({DT_INT64}))\n
+.OPTIONAL_INPUT(actual_seq_qlen, TensorType({DT_INT64}))\n
+.OPTIONAL_INPUT(actual_seq_kvlen, TensorType({DT_INT64}))\n
 .OUTPUT(softmax_max, TensorType({DT_FLOAT32}))\n
 .OUTPUT(softmax_sum, TensorType({DT_FLOAT32}))\n
-.OUTPUT(softmax_out, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
-.OUTPUT(attention_out, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
+.OUTPUT(softmax_out, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OUTPUT(attention_out, TensorType({DT_FLOAT16, DT_BF16}))\n
 .ATTR(scale_value, Float, 1.0)\n
 .ATTR(keep_prob, Float, 1.0)\n
 .ATTR(pre_tockens, Int, 2147483647)\n
 .ATTR(next_tockens, Int, 2147483647)\n
 .REQUIRED_ATTR(head_num, Int)\n
-.REQUIRED_ATTR(is_flash, Bool)\n
 .REQUIRED_ATTR(input_layout, String)\n
+.ATTR(inner_precise, Int, 1)\n
+.ATTR(sparse_mode, Int, 0)\n
 """
 
     op = get_default_ge_graph().op.add()
@@ -17866,15 +17870,40 @@ def FlashAttentionScore(query: Tensor, key: Tensor, value: Tensor, real_shift: O
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "atten_mask"
+    if prefix is not None:
+        op.input.append(prefix.tensor)
+        op.input_desc.add().CopyFrom(prefix.desc)
+        op.input_desc[-1].name = "prefix"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "prefix"
+    if actual_seq_qlen is not None:
+        op.input.append(actual_seq_qlen.tensor)
+        op.input_desc.add().CopyFrom(actual_seq_qlen.desc)
+        op.input_desc[-1].name = "actual_seq_qlen"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "actual_seq_qlen"
+    if actual_seq_kvlen is not None:
+        op.input.append(actual_seq_kvlen.tensor)
+        op.input_desc.add().CopyFrom(actual_seq_kvlen.desc)
+        op.input_desc[-1].name = "actual_seq_kvlen"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "actual_seq_kvlen"
 
     # process attrs
     op.attr["head_num"].i = head_num
-    op.attr["is_flash"].b = is_flash
     op.attr["input_layout"].s = compat_as_bytes(input_layout)
     op.attr["scale_value"].f = scale_value
     op.attr["keep_prob"].f = keep_prob
     op.attr["pre_tockens"].i = pre_tockens
     op.attr["next_tockens"].i = next_tockens
+    op.attr["inner_precise"].i = inner_precise
+    op.attr["sparse_mode"].i = sparse_mode
 
     # process outputs
     output_index = 0
@@ -17896,31 +17925,36 @@ def FlashAttentionScore(query: Tensor, key: Tensor, value: Tensor, real_shift: O
 
 
 # This api is auto-generated from IR FlashAttentionScoreGrad
-@auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False, False, False], [False, False, False, False, True, True, True, True, True, True, True, True])
-def FlashAttentionScoreGrad(query: Tensor, key: Tensor, value: Tensor, dy: Tensor, pse_shift: Optional[Tensor], drop_mask: Optional[Tensor], padding_mask: Optional[Tensor], atten_mask: Optional[Tensor], softmax_max: Optional[Tensor], softmax_sum: Optional[Tensor], softmax_in: Optional[Tensor], attention_in: Optional[Tensor], *, head_num: int, input_layout: str, scale_value: float=1.000000, keep_prob: float=1.000000, pre_tockens: int=65536, next_tockens: int=65536, dependencies=[], node_name=None):
+@auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False, False, False, False, False, False], [False, False, False, False, True, True, True, True, True, True, True, True, True, True, True])
+def FlashAttentionScoreGrad(query: Tensor, key: Tensor, value: Tensor, dy: Tensor, pse_shift: Optional[Tensor], drop_mask: Optional[Tensor], padding_mask: Optional[Tensor], atten_mask: Optional[Tensor], softmax_max: Optional[Tensor], softmax_sum: Optional[Tensor], softmax_in: Optional[Tensor], attention_in: Optional[Tensor], prefix: Optional[Tensor], actual_seq_qlen: Optional[Tensor], actual_seq_kvlen: Optional[Tensor], *, head_num: int, input_layout: str, scale_value: float=1.000000, keep_prob: float=1.000000, pre_tockens: int=65536, next_tockens: int=65536, inner_precise: int=1, sparse_mode: int=0, dependencies=[], node_name=None):
     """REG_OP(FlashAttentionScoreGrad)\n
-.INPUT(query, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
-.INPUT(key, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
-.INPUT(value, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
-.INPUT(dy, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
-.OPTIONAL_INPUT(pse_shift, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
+.INPUT(query, TensorType({DT_FLOAT16, DT_BF16}))\n
+.INPUT(key, TensorType({DT_FLOAT16, DT_BF16}))\n
+.INPUT(value, TensorType({DT_FLOAT16, DT_BF16}))\n
+.INPUT(dy, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OPTIONAL_INPUT(pse_shift, TensorType({DT_FLOAT16, DT_BF16}))\n
 .OPTIONAL_INPUT(drop_mask, TensorType({DT_UINT8}))\n
-.OPTIONAL_INPUT(padding_mask, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
-.OPTIONAL_INPUT(atten_mask, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
+.OPTIONAL_INPUT(padding_mask, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OPTIONAL_INPUT(atten_mask, TensorType({DT_BOOL, DT_UINT8}))\n
 .OPTIONAL_INPUT(softmax_max, TensorType({DT_FLOAT32}))\n
 .OPTIONAL_INPUT(softmax_sum, TensorType({DT_FLOAT32}))\n
-.OPTIONAL_INPUT(softmax_in, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
-.OPTIONAL_INPUT(attention_in, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
-.OUTPUT(dq, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
-.OUTPUT(dk, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
-.OUTPUT(dv, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
-.OUTPUT(dpse, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
+.OPTIONAL_INPUT(softmax_in, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OPTIONAL_INPUT(attention_in, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OPTIONAL_INPUT(prefix, TensorType({DT_INT64}))\n
+.OPTIONAL_INPUT(actual_seq_qlen, TensorType({DT_INT64}))\n
+.OPTIONAL_INPUT(actual_seq_kvlen, TensorType({DT_INT64}))\n
+.OUTPUT(dq, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OUTPUT(dk, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OUTPUT(dv, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OUTPUT(dpse, TensorType({DT_FLOAT16, DT_BF16}))\n
 .ATTR(scale_value, Float, 1.0)\n
 .ATTR(keep_prob, Float, 1.0)\n
 .ATTR(pre_tockens, Int, 65536)\n
 .ATTR(next_tockens, Int, 65536)\n
 .REQUIRED_ATTR(head_num, Int)\n
 .REQUIRED_ATTR(input_layout, String)\n
+.ATTR(inner_precise, Int, 1)\n
+.ATTR(sparse_mode, Int, 0)\n
 """
 
     op = get_default_ge_graph().op.add()
@@ -18008,6 +18042,30 @@ def FlashAttentionScoreGrad(query: Tensor, key: Tensor, value: Tensor, dy: Tenso
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "attention_in"
+    if prefix is not None:
+        op.input.append(prefix.tensor)
+        op.input_desc.add().CopyFrom(prefix.desc)
+        op.input_desc[-1].name = "prefix"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "prefix"
+    if actual_seq_qlen is not None:
+        op.input.append(actual_seq_qlen.tensor)
+        op.input_desc.add().CopyFrom(actual_seq_qlen.desc)
+        op.input_desc[-1].name = "actual_seq_qlen"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "actual_seq_qlen"
+    if actual_seq_kvlen is not None:
+        op.input.append(actual_seq_kvlen.tensor)
+        op.input_desc.add().CopyFrom(actual_seq_kvlen.desc)
+        op.input_desc[-1].name = "actual_seq_kvlen"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "actual_seq_kvlen"
 
     # process attrs
     op.attr["head_num"].i = head_num
@@ -18016,6 +18074,8 @@ def FlashAttentionScoreGrad(query: Tensor, key: Tensor, value: Tensor, dy: Tenso
     op.attr["keep_prob"].f = keep_prob
     op.attr["pre_tockens"].i = pre_tockens
     op.attr["next_tockens"].i = next_tockens
+    op.attr["inner_precise"].i = inner_precise
+    op.attr["sparse_mode"].i = sparse_mode
 
     # process outputs
     output_index = 0
