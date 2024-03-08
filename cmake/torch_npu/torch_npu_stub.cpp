@@ -40,6 +40,7 @@ void FreeBlock(void *handle) {
   auto iter = global_mem_pool_.find(handle);
   if (iter == global_mem_pool_.end()) {
     std::cerr << "[STUB] FreeBlock failed with addr " << handle << std::endl;
+    return;
   }
   const uint8_t* ptr = reinterpret_cast<const uint8_t*>((iter->first));
   delete[] ptr;
@@ -52,6 +53,7 @@ void *GetBlockPtr(const void *handle) {
   auto iter = global_mem_pool_.find(handle);
   if (iter == global_mem_pool_.end()) {
     std::cerr << "[STUB] GetBlockPtr failed with addr " << handle << std::endl;
+    return nullptr;
   }
   return const_cast<void*>(iter->first);
 }
@@ -60,6 +62,7 @@ size_t GetBlockSize(const void *handle) {
   auto iter = global_mem_pool_.find(handle);
   if (iter == global_mem_pool_.end()) {
     std::cerr << "[STUB] GetBlockSize failed with addr " << handle << std::endl;
+    return 0U;
   }
   return iter->second;
 }
