@@ -37054,6 +37054,84 @@ def DeformableConv2D(x: Tensor, filter: Tensor, offsets: Tensor, bias: Optional[
     return y
 
 
+# This api is auto-generated from IR QuantConv2D
+@auto_convert_to_tensor([False, False, False, False, False], [False, False, False, True, True])
+def QuantConv2D(x: Tensor, filter: Tensor, scale: Tensor, bias: Optional[Tensor], offset: Optional[Tensor], *, dtype: int, strides: List[int], pads: List[int], dilations: List[int]=[1, 1, 1, 1], groups: int=1, data_format: str="NHWC", offset_x: int=0, round_mode: str="rint", dependencies=[], node_name=None):
+    """REG_OP(QuantConv2D)\n
+.INPUT(x, TensorType({DT_INT8}))\n
+.INPUT(filter, TensorType({DT_INT8}))\n
+.INPUT(scale, TensorType({DT_UINT64, DT_INT64}))\n
+.OPTIONAL_INPUT(bias, TensorType({DT_INT32}))\n
+.OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))\n
+.OUTPUT(y, TensorType({DT_FLOAT16}))\n
+.REQUIRED_ATTR(dtype, Int)\n
+.REQUIRED_ATTR(strides, ListInt)\n
+.REQUIRED_ATTR(pads, ListInt)\n
+.ATTR(dilations, ListInt, {1, 1, 1, 1})\n
+.ATTR(groups, Int, 1)\n
+.ATTR(data_format, String, "NHWC")\n
+.ATTR(offset_x, Int, 0)\n
+.ATTR(round_mode, String, "rint")\n
+"""
+
+    op = get_default_ge_graph().op.add()
+    op.type = "QuantConv2D"
+    op.name = next_unique_name(node_name, "QuantConv2D")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+    op.input.append(filter.tensor)
+    op.input_desc.add().CopyFrom(filter.desc)
+    op.input_desc[-1].name = "filter"
+    op.input.append(scale.tensor)
+    op.input_desc.add().CopyFrom(scale.desc)
+    op.input_desc[-1].name = "scale"
+    if bias is not None:
+        op.input.append(bias.tensor)
+        op.input_desc.add().CopyFrom(bias.desc)
+        op.input_desc[-1].name = "bias"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "bias"
+    if offset is not None:
+        op.input.append(offset.tensor)
+        op.input_desc.add().CopyFrom(offset.desc)
+        op.input_desc[-1].name = "offset"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "offset"
+
+    # process attrs
+    op.attr["dtype"].i = dtype
+    op.attr["strides"].list.val_type = 2
+    op.attr["strides"].list.i.extend(strides)
+    op.attr["pads"].list.val_type = 2
+    op.attr["pads"].list.i.extend(pads)
+    op.attr["dilations"].list.val_type = 2
+    op.attr["dilations"].list.i.extend(dilations)
+    op.attr["groups"].i = groups
+    op.attr["data_format"].s = compat_as_bytes(data_format)
+    op.attr["offset_x"].i = offset_x
+    op.attr["round_mode"].s = compat_as_bytes(round_mode)
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+
+    # return outputs
+    return y
+
+
 # This api is auto-generated from IR Conv3D
 @auto_convert_to_tensor([False, False, False, False], [False, False, True, True])
 def Conv3D(x: Tensor, filter: Tensor, bias: Optional[Tensor], offset_w: Optional[Tensor], *, strides: List[int], pads: List[int], dilations: List[int]=[1, 1, 1, 1, 1], groups: int=1, data_format: str="NDHWC", offset_x: int=0, dependencies=[], node_name=None):

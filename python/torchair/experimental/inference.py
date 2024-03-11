@@ -8,6 +8,25 @@ _DEEPSPEED_MODULE = None
 
 def _weight_format_cast(model: torch.nn.Module):
     def _cast_to_internal_format(module: torch.nn.Module, class_name):
+
+        def _cast_to_internal_format_for_quant_conv2d(module: torch.nn.Module, class_name):
+            if not isinstance(module, _TORCH_NPU_MODULE.contrib.module.quant_conv2d.QuantConv2d):
+                return
+            if module.weight is None or module.weight.data is None:
+                return
+            if module.weight.data.is_cpu:
+                raise RuntimeError(f'Cpu weight is not supported.'
+                                   f'The format cast to FRACTAL_Z only supports npu tensor.'
+                                   f'You should call model to npu, before calling this API.')
+            if module.groups > 1 or module.weight.dtype != torch.int8:
+                return
+            # ACL_FORMAT_FRACTAL_Z
+            module.weight.data = _TORCH_NPU_MODULE.npu_format_cast(module.weight.data, 4)
+
+            if module.scale.dtype != torch.float32:
+                return
+            module.scale.data = _TORCH_NPU_MODULE.npu_trans_quant_param(module.scale, module.offset)
+
         # Add weight format cast for other modules here
         if issubclass(class_name, torch.nn.Conv2d):
             if module.weight is None or module.weight.data is None:
@@ -49,6 +68,8 @@ def _weight_format_cast(model: torch.nn.Module):
                     quant_offset = model.quant_offset.data
 
                 module.quant_scale.data = _TORCH_NPU_MODULE.npu_trans_quant_param(quant_scale, quant_offset)
+
+        _cast_to_internal_format_for_quant_conv2d(module, class_name)
 
     current_class = model.__class__
     _cast_to_internal_format(model, current_class)
