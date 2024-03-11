@@ -9,3 +9,6 @@ except:
 else:
     backup_custom_all_reduce(dist.all_reduce)
     dist.all_reduce = get_npu_all_reduce()
+    # Adapt deepspeed version later than v0.10.0,
+    # inference_all_reduce and all_reduce have save torch backend implementation.
+    dist.inference_all_reduce = get_npu_all_reduce()
