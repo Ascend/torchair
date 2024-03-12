@@ -42887,6 +42887,62 @@ def RmsNorm(x: Tensor, gamma: Tensor, *, epsilon: float=0.000001, dependencies=[
     return y, rstd
 
 
+# This api is auto-generated from IR RmsNorm
+@auto_convert_to_tensor([False, False, False, False], [False, False, False, False])
+def RmsNormGrad(
+    dy: Tensor, 
+    x: Tensor, 
+    rstd: Tensor, 
+    gamma: Tensor, 
+    *, 
+    dependencies=[], 
+    node_name=None):
+    """REG_OP(RmsNormGrad)\n
+.INPUT(dy, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+.INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+.INPUT(rstd, TensorType({DT_FLOAT, DT_FLOAT, DT_FLOAT}))\n
+.INPUT(gamma, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+.OUTPUT(dx, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+.OUTPUT(dgamma, TensorType({DT_FLOAT, DT_FLOAT, DT_FLOAT}))\n
+"""
+
+    op = get_default_ge_graph().op.add()
+    op.type = "RmsNormGrad"
+    op.name = next_unique_name(node_name, "RmsNormGrad")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(dy.tensor)
+    op.input_desc.add().CopyFrom(dy.desc)
+    op.input_desc[-1].name = "dy"
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+    op.input.append(rstd.tensor)
+    op.input_desc.add().CopyFrom(rstd.desc)
+    op.input_desc[-1].name = "rstd"
+    op.input.append(gamma.tensor)
+    op.input_desc.add().CopyFrom(gamma.desc)
+    op.input_desc[-1].name = "gamma"
+
+    # process attrs
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "dx"
+    dx = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "dgamma"
+    dgamma = Tensor(op, output_index)
+    output_index += 1
+
+    # return outputs
+    return dx, dgamma
+
+
 # This api is auto-generated from IR Renorm
 @auto_convert_to_tensor([False], [False], inputs_tensor_type=[TensorType.TT_BASIC])
 def Renorm(x: Tensor, *, p: float, dim: int, maxnorm: float, dependencies=[], node_name=None):
