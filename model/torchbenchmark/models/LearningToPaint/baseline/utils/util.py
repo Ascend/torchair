@@ -1,8 +1,9 @@
 import os
 import torch
 from torch.autograd import Variable
+import torch_npu
 
-USE_CUDA = torch.cuda.is_available()
+USE_DEVICE = torch.cuda.is_available() or torch_npu.npu.is_available()
 
 def prRed(prt): print("\033[91m {}\033[00m" .format(prt))
 def prGreen(prt): print("\033[92m {}\033[00m" .format(prt))
@@ -14,7 +15,7 @@ def prLightGray(prt): print("\033[97m {}\033[00m" .format(prt))
 def prBlack(prt): print("\033[98m {}\033[00m" .format(prt))
 
 def to_numpy(var):
-    return var.cpu().data.numpy() if USE_CUDA else var.data.numpy()
+    return var.cpu().data.numpy() if USE_DEVICE else var.data.numpy()
 
 def to_tensor(ndarray, device):
     return torch.tensor(ndarray, dtype=torch.float, device=device)

@@ -63,6 +63,8 @@ except ImportError:
     # ignore the error if torch_xla is not installed
     pass
 
+import torch_npu
+
 log = logging.getLogger(__name__)
 
 # We are primarily interested in TF32
@@ -380,6 +382,8 @@ def patch_torch_manual_seed():
 
         if not torch.cuda._is_in_bad_fork():
             torch.cuda.manual_seed_all(seed)
+        if torch_npu.npu.available():
+            torch_npu.npu.manual_seed_all(seed)
         return default_generator.manual_seed(seed)
 
     torch.manual_seed = deterministic_torch_manual_seed
@@ -1722,10 +1726,16 @@ class BenchmarkRunner:
             self.autocast = torch.cuda.amp.autocast
         elif (self.args.bfloat16 or self.args.amp) and self.args.devices == ["cpu"]:
             self.autocast = torch.cpu.amp.autocast
+        elif self.args.amp and self.args.device == ["npu"]:
+            self.autocast = torch_npu.npu.amp.autocast
 
     def init_optimizer(self, name, device, params):
         if device == "cuda" and self.args.training and name not in CI_SKIP_OPTIMIZER:
             self.optimizer = torch.optim.SGD(params, lr=0.01, foreach=True)
+        elif device == "npu" and self.args.training and name not in CI_SKIP_OPTIMIZER:
+            # Currently, npu dynamo doesn't support foreach=True.
+            # There may be changes here in the future.
+            self.optimizer = torch.optim.SGD(params, lr=0.01, foreach=False)
         else:
             self.optimizer = None
 
@@ -3121,6 +3131,12 @@ def run(runner, args, original_dir=None):
         }:
             # some of the models do not support use_deterministic_algorithms
             torch.use_deterministic_algorithms(True)
+        else:
+            log.warning("Currently, all models keep deterministic open on npu. "
+                        "But on gpu, this model does not support use_deterministic_algorithms. "
+                        "Please check it to prevent bugs.")
+            torch.use_deterministic_algorithms(True)
+
         os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.allow_tf32 = False
@@ -3151,6 +3167,8 @@ def run(runner, args, original_dir=None):
     if not args.devices:
         if torch.cuda.is_available():
             args.devices = ["cuda"]
+        elif torch_npu.npu.is_available():
+            args.devices = ["npu"]
         else:
             log.warning("torch.cuda.is_available() == False, using CPU")
             args.devices = ["cpu"]
@@ -3158,6 +3176,8 @@ def run(runner, args, original_dir=None):
     if args.devices != ["cpu"] and torch.cuda.is_available():
         global synchronize
         synchronize = torch.cuda.synchronize
+    elif torch_npu.npu.is_available():
+        synchronize = torch_npu.npu.synchronize
 
     if (
         args.devices == ["cuda"]

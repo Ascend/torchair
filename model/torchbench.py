@@ -18,8 +18,13 @@ except ImportError:
 from torch._dynamo.testing import collect_results, reduce_to_scalar_loss
 from torch._dynamo.utils import clone_inputs
 
+import torch_npu
+
 # We are primarily interested in tf32 datatype
 torch.backends.cuda.matmul.allow_tf32 = True
+
+if os.environ.get("USE_ACLNN", "0").upper() not in ["1", "ON"]:
+    torch_npu.npu.set_compile_mode(jit_compile=True)
 
 
 def setup_torchbench_cwd():
@@ -27,6 +32,7 @@ def setup_torchbench_cwd():
 
     os.environ["KALDI_ROOT"] = "/tmp"  # avoids some spam
     for torchbench_dir in (
+        "./benchmark",
         "./torchbenchmark",
         "../torchbenchmark",
         "../torchbench",
