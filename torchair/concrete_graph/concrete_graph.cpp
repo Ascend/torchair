@@ -2,12 +2,8 @@
 
 #include "concrete_graph.h"
 
-#include "external/graph/types.h"
-#include "framework/common/ge_types.h"
+#include "graph/types.h"
 #include "ge/ge_api.h"
-#include "graph/detail/model_serialize_imp.h"
-#include "graph/model_serialize.h"
-#include "graph/utils/graph_utils_ex.h"
 
 #include "checker.h"
 #include "compat_apis.h"

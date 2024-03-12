@@ -6,7 +6,6 @@
 #include <utility>
 #include "graph_data.h"
 #include "graph/tensor.h"
-#include "graph/utils/type_utils.h"
 #include "torch/torch.h"
 #include "session.h"
 #include "checker.h"

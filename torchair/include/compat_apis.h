@@ -7,7 +7,6 @@
 #include "securec.h"
 
 #include "tng_status.h"
-#include "graph/ge_tensor.h"
 #include "graph_data.h"
 
 namespace tng {
@@ -15,7 +14,8 @@ namespace compat {
 Status GeErrorStatus();
 Status DebugString(const ge::Shape &shape);
 Status DebugString(const ge::Tensor &tensor);
-ge::AscendString DebugString(const ge::DataType &dtype);
+std::string DebugString(const ge::DataType &dtype);
+std::string DebugString(const ge::Format &format);
 Status ParseGraphFromArray(const void *serialized_proto, size_t proto_size, ge::GraphPtr &graph);
 }  // namespace compat
 }  // namespace tng

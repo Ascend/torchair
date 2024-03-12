@@ -4,8 +4,6 @@
 
 #include "external/graph/types.h"
 #include "ge/ge_api.h"
-#include "graph/utils/graph_utils.h"
-#include "graph/utils/graph_utils_ex.h"
 
 namespace {
 constexpr size_t kOutptSize = 512 * 1024 * 1024;
@@ -129,26 +127,27 @@ class GraphSpecManager {
                                                 const std::map<AscendString, AscendString> &options) {
     auto &spec = Instance().Get(id);
 
-    auto compute_graph = ge::GraphUtilsEx::GetComputeGraph(graph);
-
     spec.is_static_ = true;
-    for (auto &node : compute_graph->GetDirectNode()) {
-      if (node->GetType() != "Data") {
-        continue;
-      }
-      if (node->GetOpDesc()->GetOutputDesc(0).GetShape().IsUnknownShape()) {
-        spec.is_static_ = false;
-        break;
-      }
-    }
-
-    for (auto &node : compute_graph->GetDirectNode()) {
-      if (node->GetType() != "NetOutput") {
-        continue;
-      }
-      for (auto &desc : node->GetOpDesc()->GetAllInputsDesc()) {
-        spec.output_dtypes_.push_back(desc.GetDataType());
-        spec.netoutput_shapes_.emplace_back(ge::Shape({2, 2}));
+    for (auto &node : graph.GetDirectNode()) {
+      AscendString type;
+      node.GetType(type);
+      TensorDesc desc;
+      if (type == "Data") {
+        node.GetOutputDesc(0, desc);
+        const auto &dims = desc.GetShape().GetDims();
+        for (const auto i : dims) {
+          if (i < 0) {
+            spec.is_static_ = false;
+            break;
+          }
+        }
+      } else if (type == "NetOutput") {
+        size_t input_size = node.GetInputsSize();
+        for (size_t i = 0u; i < input_size; ++i) {
+          node.GetInputDesc(i, desc);
+          spec.output_dtypes_.push_back(desc.GetDataType());
+          spec.netoutput_shapes_.emplace_back(ge::Shape({2, 2}));
+        }
       }
     }
 

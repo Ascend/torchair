@@ -6,8 +6,6 @@
 
 #include "external/graph/types.h"
 #include "ge/ge_api.h"
-#include "graph/model_serialize.h"
-#include "graph/utils/graph_utils_ex.h"
 
 namespace tng {
 enum class Placement {

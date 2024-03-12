@@ -5,7 +5,6 @@
 
 #include <utility>
 #include "checker.h"
-#include "graph/utils/type_utils.h"
 #include "logger.h"
 #include "session.h"
 #include "torch/torch.h"

@@ -3,16 +3,13 @@
 #include "checker.h"
 #include "compat_apis.h"
 #include "executor.h"
-#include "external/graph/types.h"
 #include "graph/tensor.h"
-#include "graph/utils/type_utils.h"
-#include "graph/utils/graph_utils.h"
+#include "graph/types.h"
 #include "graph_data.h"
 #include "session.h"
 #include "torch/torch.h"
 
 #include "ATen/CPUFunctions.h"
-#include "graph/utils/tensor_adapter.h"
 
 namespace tng {
 namespace {
@@ -62,7 +59,7 @@ std::string DebugString(const tng::Placement &placement) {
 }
 
 std::string DebugString(const ge::DataType &dtype) {
-  return compat::DebugString(dtype).GetString();
+  return compat::DebugString(dtype);
 }
 
 std::string DebugString(const std::vector<ge::DataType> &dtypes) {
@@ -147,6 +144,16 @@ std::string DebugString(const ge::Tensor &tensor) {
   return compat::DebugString(tensor).GetErrorMessage();
 }
 
+std::vector<int64_t> GetGeTensorShape(const ge::Tensor &tensor) {
+  size_t rank = tensor.GetShapeDimNum();
+  std::vector <int64_t> shape(rank);
+
+  for (size_t i = 0U; i < rank; ++i) {
+    shape[i] = tensor.GetShapeDim(i);
+  }
+  return shape;
+}
+
 Status GePlacementToAtDeviceType(const ge::Placement &ge_placement, c10::DeviceType &device_type) {
   if (ge_placement == ge::Placement::kPlacementHost) {
     device_type = c10::DeviceType::CPU;
@@ -217,24 +224,17 @@ Status AssembleDataToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor) {
   // The input at tensor must be contiguous(), but not necessarily matched.
   // Therefore, when getting data_ptr, the calculation of the data_ptr address needs to skip storage_offset,
   // and the calculation of nbytes needs to be based on the shape after view.
-  auto as_ge_tensor = ge::TensorAdapter::AsGeTensorShared(ge_tensor);
-  auto aligned_ptr = as_ge_tensor.GetAlignedPtr();
-  if (aligned_ptr == nullptr) {
-    TNG_ASSERT_GE_OK(ge_tensor.SetData(static_cast<uint8_t *>(tensor.data_ptr()),
-                                       tensor.numel() * tensor.element_size(), kDoNothing));
-  } else {
-    aligned_ptr->Reset(static_cast<uint8_t *>(tensor.data_ptr()), kDoNothing);
-    as_ge_tensor.SetData(aligned_ptr, static_cast<size_t>(tensor.numel() * tensor.element_size()));
-  }
+  ge_tensor.ResetData(static_cast<uint8_t *>(tensor.data_ptr()),
+                      static_cast<size_t>(tensor.numel() * tensor.element_size()), kDoNothing);
   return Status::Success();
 }
 
-Status AssembleDimsToGeShape(const at::IntArrayRef &dims, ge::GeShape &ge_shape) {
-  if (ge_shape.GetDimNum() != dims.size()) {
-    ge_shape.SetDimNum(dims.size());
+Status AssembleDimsToShape(const at::IntArrayRef &dims, ge::Tensor &ge_tensor) {
+  if (ge_tensor.GetShapeDimNum() != dims.size()) {
+    TNG_ASSERT_GE_OK(ge_tensor.SetShapeDimNum(dims.size()));
   }
   for (size_t i = 0U; i < dims.size(); ++i) {
-    ge_shape.SetDim(i, dims[i]);
+    TNG_ASSERT_GE_OK(ge_tensor.SetShapeDim(i, dims[i]));
   }
 
   return Status::Success();
@@ -243,20 +243,17 @@ Status AssembleDimsToGeShape(const at::IntArrayRef &dims, ge::GeShape &ge_shape)
 Status AssembleDataAndShapeToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor) {
   TNG_RETURN_IF_ERROR(AssembleDataToGe(tensor, ge_tensor));
 
-  ge::GeShape &ge_shape = ge::TensorAdapter::AsGeTensorShared(ge_tensor).MutableTensorDesc().MutableShape();
-  TNG_RETURN_IF_ERROR(AssembleDimsToGeShape(tensor.sizes(), ge_shape));
+  TNG_RETURN_IF_ERROR(AssembleDimsToShape(tensor.sizes(), ge_tensor));
   return Status::Success();
 }
 
 Status AtTensorToGeTensor(const at::Tensor &tensor, ge::Tensor &ge_tensor) {
-  ge::GeTensorDesc &desc = ge::TensorAdapter::AsGeTensorShared(ge_tensor).MutableTensorDesc();
-
   ge::DataType ge_dtype = ge::DT_UNDEFINED;
   TNG_RETURN_IF_ERROR(AtDtypeToGeDtype(tensor.dtype().toScalarType(), ge_dtype));
-  desc.SetDataType(ge_dtype);
-  desc.SetFormat(ge::FORMAT_ND);
-  desc.SetPlacement(tensor.device().is_privateuseone() ? ge::Placement::kPlacementDevice
-                                                       : ge::Placement::kPlacementHost);
+  ge_tensor.SetDataType(ge_dtype);
+  ge_tensor.SetFormat(ge::FORMAT_ND);
+  ge_tensor.SetPlacement(tensor.device().is_privateuseone() ? ge::Placement::kPlacementDevice
+                                                            : ge::Placement::kPlacementHost);
 
   TNG_RETURN_IF_ERROR(AssembleDataAndShapeToGe(tensor, ge_tensor));
   return Status::Success();
@@ -272,11 +269,10 @@ void DeleteGeDataPtr(void *data) {
 }  // namespace
 
 Status GeTensorToAtTensor(ge::Tensor &ge_tensor, at::Tensor &tensor) {
-  ge::GeTensorDesc &tensor_desc = ge::TensorAdapter::AsGeTensorShared(ge_tensor).MutableTensorDesc();
   c10::ScalarType tensor_dtype = c10::ScalarType::Float;
-  TNG_RETURN_IF_ERROR(GeDtypeToAtDtype(tensor_desc.GetDataType(), tensor_dtype));
+  TNG_RETURN_IF_ERROR(GeDtypeToAtDtype(ge_tensor.GetDataType(), tensor_dtype));
   c10::DeviceType device_type = c10::DeviceType::CPU;
-  TNG_RETURN_IF_ERROR(GePlacementToAtDeviceType(tensor_desc.GetPlacement(), device_type));
+  TNG_RETURN_IF_ERROR(GePlacementToAtDeviceType(ge_tensor.GetPlacement(), device_type));
   at::TensorOptions option = at::TensorOptions().dtype(tensor_dtype).device(device_type);
   tensor = at::empty({0}, option);
 
@@ -286,7 +282,7 @@ Status GeTensorToAtTensor(ge::Tensor &ge_tensor, at::Tensor &tensor) {
   static torch::DeleterFnPtr kGeDatatDeleter = &DeleteGeDataPtr;
   at::DataPtr c10_data_ptr(raw_ge_data, ge_ctx.release(), kGeDatatDeleter, tensor.device());
 
-  const auto &dims = tensor_desc.MutableShape().GetDims();
+  const std::vector<int64_t> &dims = GetGeTensorShape(ge_tensor);
   size_t tensor_nbytes = at::detail::computeStorageNbytesContiguous(dims, tensor.dtype().itemsize());
 
   at::Storage storage;
@@ -302,20 +298,6 @@ Status GeTensorToAtTensor(ge::Tensor &ge_tensor, at::Tensor &tensor) {
   }
 
   tensor.set_(storage, 0, dims);
-  return Status::Success();
-}
-
-Status CloneGraph(const ge::Graph &old_graph, ge::Graph &new_graph) {
-  const auto old_compute_graph_ptr = ge::GraphUtilsEx::GetComputeGraph(old_graph);
-  TNG_ASSERT(old_compute_graph_ptr != nullptr, "Get compute graph failed");
-  const char* aoe_copied_graph = "aoe_copied_graph";
-  ge::ComputeGraphPtr new_compute_graph_ptr = std::make_shared<ge::ComputeGraph>(aoe_copied_graph);
-  TNG_ASSERT(new_compute_graph_ptr != nullptr, "Create new compute graph failed");
-
-  const auto ret = ge::GraphUtils::CopyComputeGraph(old_compute_graph_ptr, new_compute_graph_ptr);
-  TNG_ASSERT(ret == ge::GRAPH_SUCCESS, "Clone graph failed");
-
-  new_graph = ge::GraphUtilsEx::CreateGraphFromComputeGraph(new_compute_graph_ptr);
   return Status::Success();
 }
 }  // namespace tng

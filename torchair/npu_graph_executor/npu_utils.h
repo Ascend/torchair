@@ -8,6 +8,8 @@
 namespace tng {
 Status GetCurrentStream(void **stream);
 
+Status AssembleDimsToOriginShape(const at::IntArrayRef &dims, ge::Tensor &ge_tensor);
+
 Status AssembleStorageShapeToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor);
 
 Status AssembleDataAndStorageShapeToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor);
