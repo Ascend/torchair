@@ -22,7 +22,8 @@ from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_conve
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
-from torchair.ge_concrete_graph.utils import dtype_promote
+from torchair.ge_concrete_graph.utils import dtype_promote, specific_op_input_layout, \
+    specific_op_output_layout
 
 
 @declare_supported([
@@ -50,6 +51,8 @@ def conveter_aten_native_group_norm_default(
         zero_value = dtype_promote(0, target_dtype=meta_outputs[0].dtype)
         bias = ge.Fill([C], zero_value)
     y, mean, variance = ge.GroupNorm(input, weight, bias, num_groups=group, eps=eps, is_training=True)
+    specific_op_input_layout(y, indices=[0, 1, 2], layout="NCHW")
+    specific_op_output_layout(y, indices=[0, 1, 2], layout="NCHW")
     eps = dtype_promote(eps, target_dtype=meta_outputs[0].dtype)
     rstd = ge.Rsqrt(ge.Add(variance, eps))
     return y, mean, rstd
