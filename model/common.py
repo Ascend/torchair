@@ -1726,7 +1726,7 @@ class BenchmarkRunner:
             self.autocast = torch.cuda.amp.autocast
         elif (self.args.bfloat16 or self.args.amp) and self.args.devices == ["cpu"]:
             self.autocast = torch.cpu.amp.autocast
-        elif self.args.amp and self.args.device == ["npu"]:
+        elif self.args.amp and self.args.devices == ["npu"]:
             self.autocast = torch_npu.npu.amp.autocast
 
     def init_optimizer(self, name, device, params):
