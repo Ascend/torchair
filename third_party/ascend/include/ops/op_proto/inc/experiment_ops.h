@@ -3268,5 +3268,41 @@ REG_OP(FFN)
     .ATTR(inner_precise, Int, 0)
     .ATTR(output_dtype, Int, -1)
     .OP_END_FACTORY_REG(FFN)
+
+
+/**
+* @brief Function GroupedMatmul. \n
+* @par Inputs:
+* @li x: A Tensor List.
+* @li weight: A Tensor List of weight.
+* @li bias: A Tensor List of bias.
+* @li scale: A Tensor List of scale.
+* @li offset: A Tensor List of offset.
+* @li antiquant_scale: A Tensor List of antiquant_scale.
+* @li antiquant_offset: A Tensor List of antiquant_offset.
+* @li group_list: a Tensor.
+
+* @par Attributes:
+* @li split_item: A int.
+* @li dtype: A int, User is not visible.
+* @li transpose_weight: A bool, User is not visible.
+*
+* @par Outputs:
+* y: A Tensor List.
+*/
+REG_OP(GroupedMatmul)
+    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))
+    .DYNAMIC_INPUT(weight, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))
+    .DYNAMIC_INPUT(bias, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32}))
+    .DYNAMIC_INPUT(scale, TensorType({DT_UINT64}))
+    .DYNAMIC_INPUT(offset, TensorType({DT_FLOAT32}))
+    .DYNAMIC_INPUT(antiquant_scale, TensorType({DT_FLOAT16, DT_BF16}))
+    .DYNAMIC_INPUT(antiquant_offset, TensorType({DT_FLOAT16, DT_BF16}))
+    .OPTIONAL_INPUT(group_list, TensorType({DT_INT64}))
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT16, DT_BF16}))
+    .ATTR(split_item, Int, 0)
+    .ATTR(dtype, Int, 0)
+    .ATTR(transpose_weight, Bool, false)
+    .OP_END_FACTORY_REG(GroupedMatmul)
 }  // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_EXPERIMENT_OPS_H_
