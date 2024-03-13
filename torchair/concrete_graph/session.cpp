@@ -1,4 +1,5 @@
 #include <future>
+#include <chrono>
 
 #include "checker.h"
 #include "logger.h"
@@ -102,7 +103,12 @@ Status Session::CompileGraph(uint32_t id, std::shared_ptr<ge::CompiledGraphSumma
   TNG_RETURN_IF_ERROR(EnsureInitialized());
 
   std::future<Status> future = std::async(std::launch::async, [&]() {
+    auto start = std::chrono::high_resolution_clock::now();
     TNG_ASSERT_GE_OK(global_ge_session->CompileGraph(id));
+    auto end = std::chrono::high_resolution_clock::now();
+    TNG_LOG(INFO) << "Compile Graph " << id << " consume: "
+                  << (std::chrono::duration_cast<std::chrono::milliseconds>(end - start)).count()
+                  << " ms.";
     if (summary != nullptr) {
       *summary = global_ge_session->GetCompiledGraphSummary(id);
       TNG_ASSERT_NOTNULL(*summary, "Failed get compiled summary of graph %d", id);
