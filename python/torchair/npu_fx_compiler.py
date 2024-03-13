@@ -25,7 +25,7 @@ from torch._dynamo.utils import detect_fake_mode
 
 from torchair.core.concrete_graph import ConcreteGraphBase, ValuePack, _is_symlist
 from torchair.core.utils import logger
-from torchair.ge_concrete_graph.ge_graph import is_sym
+from torchair.ge_concrete_graph.ge_graph import is_sym, _torch_tensor_to_ge_const
 from torchair.ge_concrete_graph.utils import get_used_syms_in_meta
 from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph as ConcreteGraph
 from torchair.configs.compiler_config import CompilerConfig
@@ -89,7 +89,10 @@ def make_real_tensor_like(meta_outputs):
     if isinstance(meta_outputs, (tuple, list)):
         return [make_real_tensor_like(v) for v in meta_outputs]
     with no_dispatch():
-        return torch.empty(meta_outputs.size(), dtype=meta_outputs.dtype)
+        empty_tensor = torch.empty(meta_outputs.size(), dtype=meta_outputs.dtype)
+        ge_empty = _torch_tensor_to_ge_const(empty_tensor)
+        ge_empty.set_meta(meta_outputs)
+        return ge_empty
 
 
 def is_zero_element_tensor(tensor):
