@@ -12,6 +12,8 @@ import torch.utils._pytree as pytree
 from torch.fx import Interpreter
 from torch.fx.node import Argument, Target
 from torch._functorch.aot_autograd import aot_module_simplified
+from torch._functorch.partitioners import default_partition
+from torch._inductor.fx_passes.joint_graph import joint_graph_passes
 
 try:
     from torch._dynamo.allowed_functions import is_builtin_callable
@@ -440,27 +442,70 @@ def get_compiler(compiler_config: CompilerConfig = None):
     return _NpuFxCompiler(compiler_config)
 
 
+def get_partition_fn(compiler_config: CompilerConfig = None):
+    
+    def partition_fn(graph: torch.fx.GraphModule, joint_inputs, **kwargs):
+        joint_graph_passes(graph)
+        return default_partition(graph, joint_inputs, **kwargs)
+    
+    if compiler_config is None:
+        compiler_config = CompilerConfig()
+    if compiler_config.experimental_config.npu_fx_pass:
+        return partition_fn
+    return default_partition
+
+
+def wrap_compiler(compiler: Callable, compiler_config: CompilerConfig):
+    @functools.wraps(compiler)
+    def wrapped_compiler(
+        gm: torch.fx.GraphModule, 
+        example_inputs: List[torch.Tensor], 
+        is_inference: bool
+        ):
+        if is_inference and compiler_config.experimental_config.npu_fx_pass:
+            joint_graph_passes(gm) 
+        return compiler(gm, example_inputs)
+    
+    @functools.wraps(compiler)
+    def joint_compiler(
+        gm: torch.fx.GraphModule, 
+        example_inputs: List[torch.Tensor]
+        ):
+        if compiler_config.experimental_config.npu_fx_pass:
+            joint_graph_passes(gm) 
+        return compiler(gm, example_inputs)
+    
+    fw_compiler = functools.partial(wrapped_compiler, is_inference=False)
+    inference_compiler = functools.partial(wrapped_compiler, is_inference=True)
+    return fw_compiler, inference_compiler, joint_compiler
+
+
 def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
                  compiler_config: CompilerConfig = None, aot_config: AotConfig = None,
-                 custom_decompositions: Dict = {}):
-    decompositions = get_decompositions(get_default_decompositions())
-    decompositions.update(custom_decompositions)
+                 decompositions: Dict = {}):
     compiler = get_compiler(compiler_config)
+    fw_compiler, inference_compiler, joint_compiler = wrap_compiler(compiler, compiler_config)
+    partition_fn = get_partition_fn(compiler_config)
     if aot_config is not None and aot_config.enable_joint_graph:
         return aot_module_simplified_joint(gm, example_inputs,
-                                           compiler=compiler, decompositions=decompositions,
+                                           compiler=joint_compiler, decompositions=decompositions,
                                            output_loss_index=int(aot_config.output_loss_index.value))
     keep_inference_input_mutations = bool(compiler_config.experimental_config.keep_inference_input_mutations)
-    return aot_module_simplified(gm, example_inputs, fw_compiler=compiler, decompositions=decompositions,
-                                 keep_inference_input_mutations=keep_inference_input_mutations)
+    return aot_module_simplified(gm, example_inputs, fw_compiler=fw_compiler, bw_compiler=compiler, 
+                                 decompositions=decompositions, partition_fn=partition_fn, 
+                                 keep_inference_input_mutations=keep_inference_input_mutations,
+                                 inference_compiler=inference_compiler)
 
 
 def get_npu_backend(*, compiler_config: CompilerConfig = None,
                     aot_config: AotConfig = None, custom_decompositions: Dict = {}):
     if compiler_config is None:
         compiler_config = CompilerConfig()
-
-    add_npu_patch()
+        
+    decompositions = get_decompositions(get_default_decompositions())
+    decompositions.update(custom_decompositions)
+    
+    add_npu_patch(decompositions)
 
     return functools.partial(_npu_backend, compiler_config=compiler_config, aot_config=aot_config,
-                             custom_decompositions=custom_decompositions)
+                             decompositions=decompositions)

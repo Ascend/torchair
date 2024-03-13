@@ -13,6 +13,7 @@ class ExperimentalConfig(NpuBaseConfig):
         self.frozen_parameter = OptionValue(False, [True, False])
         self.static_model_ops_lower_limit = IntRangeValue(None, -1, 9223372036854775807)
         self.jit_compile = OptionValue("auto", ["auto"])
+        self.npu_fx_pass = OptionValue(False, [True, False])
 
         super(ExperimentalConfig, self).__init__()
 

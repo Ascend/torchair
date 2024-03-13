@@ -1064,6 +1064,28 @@ class TorchairSt(unittest.TestCase):
         self.assertEqual(config_option.aoe_config.work_path.value, "./dump")
         config_option.experimental_config.static_model_ops_lower_limit = 0
         self.assertEqual(config_option.experimental_config.static_model_ops_lower_limit.value, '0')
+        
+    
+    def test_npu_fx_pass(self):
+        fx_pass_config = CompilerConfig()
+        fx_pass_config.experimental_config.npu_fx_pass = True
+        fx_pass_npu_backend = torchair.get_npu_backend(compiler_config=fx_pass_config)
+        
+        def rotate_half(x):
+            x1 = x[..., : x.shape[-1] // 2]
+            x2 = x[..., x.shape[-1] // 2 :]
+            return torch.cat((-x2, x1), dim=-1)
+
+        def apply_rotary_pos_emb(q, k, cos_data, sin_data):
+            q_embed = (q * cos_data) + (rotate_half(q) * sin_data)
+            k_embed = (k * cos_data) + (rotate_half(k) * sin_data)
+            return q_embed, k_embed
+
+        compiled_fn = torch.compile(apply_rotary_pos_emb, backend=fx_pass_npu_backend)
+        compiled_fn(
+            torch.randn(2, 4, 8, 16), torch.randn(2, 4, 8, 16), 
+            torch.randn(2, 4, 8, 16), torch.randn(2, 4, 8, 16)
+            )
 
     def test_viewofoutput_dynamic_sym(self):
         class Model(torch.nn.Module):

@@ -9,11 +9,14 @@ from torch._subclasses import fake_tensor as _subclasses_fake_tensor
 from torch._C import DispatchKey
 from torch._refs import div as refs_div
 from torch._prims_common.wrappers import out_wrapper
-from torch._decomp import decomposition_table
+from torch._decomp import decomposition_table, decompositions_for_rng
 from torch._dynamo.symbolic_convert import break_graph_if_unsupported, InstructionTranslatorBase, stack_op
 from torch._dynamo.exc import Unsupported
 from torch._dynamo.variables.lists import TupleVariable
 from torch._dynamo.variables.nn_module import NNModuleVariable
+from torch._inductor.fx_passes import joint_graph
+from torch._inductor import decomposition
+from .npu_fx_passes.joint_graph import lazy_init
 
 aten = torch.ops.aten
 
@@ -355,6 +358,26 @@ def register_matmul_backward_decomp():
             grad_other = torch.matmul(self.transpose(-1, -2), grad) if mask[1] else grad_other
 
         return grad_self, grad_other
+    
+
+def npu_patch_fx_pass(decompositions):
+    """
+    Notes:
+        1. replace joint_graph.lazy_init with custom lazy_init
+          fx passes are enabled by lazy_init. This patch disable inductor's fx passes 
+          (which is useless and affects npu fx graph), and enable custom npu fx passes.  
+        2. replace inductor's decompositions with user-defined decompositions.
+          Original joint_graph_pass will decomposite fx graph through inductor's decompositions,
+          which is not compatible with user defined decompositions, and cause the failure of 
+          pattern match. 
+          Here we clear joint_graph.patterns to avoid extra patterns' effects.
+    """
+    joint_graph.patterns.clear()
+    decomposition.decompositions.clear()
+    decompositions_for_rng.extra_random_decomps.clear()
+    decomposition.decompositions.update(decompositions)
+    
+    joint_graph.lazy_init = lazy_init
 
 
 def npu_patch_register_fast_op_impl():
@@ -397,9 +420,11 @@ def npu_patch_register_fast_op_impl():
 
 
 @run_once
-def add_npu_patch():
+def add_npu_patch(decompositions):
     disable_implicit_decomposition()
     register_matmul_backward_decomp()
     npu_patch_meta()
     npu_patch_break_graph()
     npu_patch_register_fast_op_impl()
+    npu_patch_fx_pass(decompositions)
+    
