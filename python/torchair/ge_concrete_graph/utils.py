@@ -204,6 +204,8 @@ def dump_graph(path: str, graph):
 
 
 def get_used_syms_in_meta(meta):
+    if is_sym(meta):
+        return {meta}
     used_syms_in_meta = sympy.simplify(str(meta.storage_offset())).free_symbols
     output_shape = list(meta.size())
     output_stride = list(meta.stride())
@@ -218,12 +220,13 @@ def get_used_syms_in_meta(meta):
 def get_all_sym_value_mapping(fx_inputs_mapping_reverse, inputs):
     sym_value_mapping = {}
     for input_i, input in enumerate(inputs):
-        if is_sym(input.meta) and str(input.meta) not in sym_value_mapping:
-            sym_value_mapping[str(input.meta)] = (-1, fx_inputs_mapping_reverse[input_i])
+        if is_sym(input.meta):
+            if str(input.meta) not in sym_value_mapping:
+                sym_value_mapping[str(input.meta)] = (-1, fx_inputs_mapping_reverse[input_i])
             continue
 
         meta_input_shape = list(input.meta.size())
         for shape_i, shape in enumerate(meta_input_shape):
-            if isinstance(shape, torch.SymInt) and str(shape) not in sym_value_mapping:
+            if is_sym(shape) and str(shape) not in sym_value_mapping:
                 sym_value_mapping[str(shape)] = (shape_i, fx_inputs_mapping_reverse[input_i])
     return sym_value_mapping
