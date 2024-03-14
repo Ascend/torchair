@@ -1,9 +1,9 @@
 # 安全声明
 ## 系统安全加固
 1. 建议用户在系统中配置开启ASLR（级别2），又称**全随机地址空间布局随机化**，可参考以下方式进行配置：
-```
-echo 2 > /proc/sys/kernel/randomize_va_space
-```
+    ```
+    echo 2 > /proc/sys/kernel/randomize_va_space
+    ```
 
 ## 运行用户建议
 出于安全性及权限最小化角度考虑，不建议使用root等管理员类型账户使用TorchAir。
@@ -45,7 +45,7 @@ echo 2 > /proc/sys/kernel/randomize_va_space
 
 ## 数据安全声明
 
-1. TorchAir将[pytorch/benchmark](https://github.com/pytorch/benchmark)中的模型保存了一份副本，其中部分模型文件使用了风险模块pickle，可能存在数据风险。
+1. TorchAir将[pytorch/benchmark](https://github.com/pytorch/benchmark)中的开源模型及开源代码保存了一份副本至model目录下，其中部分模型文件使用了风险模块pickle，可能存在数据安全风险。
 
 ## 构建安全声明
 
@@ -60,7 +60,7 @@ echo 2 > /proc/sys/kernel/randomize_va_space
 
 ## 公网地址声明
 
-代码涉及公网地址参考public_address_statement.md
+代码涉及公网地址参考[public_address_statement.md](https://gitee.com/ascend/torchair/blob/master/public_address_statement.md)
 
 
 ## 公开接口声明
@@ -71,3 +71,11 @@ AscendPyTorch是PyTorch适配插件，TorchAir是为AscendPyTorch提供图模式
 
 TorchAir项目采用C++和Python联合开发，当前正式接口只提供Python接口，在TorchAir的二进制包中动态库不直接提供服务，暴露的接口为内部使用，不建议用户使用。
 
+## 通信安全加固
+
+TorchAir在运行时依赖PyTorch及torch_npu，用户需关注通信安全加固，具体方式可参考torch_npu[通信安全加固](https://gitee.com/ascend/pytorch/blob/master/SECURITYNOTE.md#%E9%80%9A%E4%BF%A1%E5%AE%89%E5%85%A8%E5%8A%A0%E5%9B%BA)。
+
+
+## 通信矩阵
+
+TorchAir在运行时依赖PyTorch及torch_npu，涉及通信矩阵，具体方式可参考torch_npu[通信矩阵](https://gitee.com/ascend/pytorch/blob/master/SECURITYNOTE.md#%E9%80%9A%E4%BF%A1%E7%9F%A9%E9%98%B5)。

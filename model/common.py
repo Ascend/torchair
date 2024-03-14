@@ -382,7 +382,7 @@ def patch_torch_manual_seed():
 
         if not torch.cuda._is_in_bad_fork():
             torch.cuda.manual_seed_all(seed)
-        if torch_npu.npu.available():
+        if torch_npu.npu.is_available():
             torch_npu.npu.manual_seed_all(seed)
         return default_generator.manual_seed(seed)
 
