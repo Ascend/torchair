@@ -29,6 +29,9 @@ from torchair.ge_concrete_graph.utils import dtype_promote, DataType
     Support(BF16(4, 16, 32), BF16(4, 16, 32), BF16(4, 16, 32), head_num=32, 
             input_layout='BSH', pse=None, padding_mask=None, atten_mask=BOOL(4, 1, 16, 16), 
             scale_value=0.0883, keep_prob=1.0, pre_tockens=4096, next_tockens=0),
+    Support(BF16(4, 32, 2048, 128), BF16(4, 32, 2048, 128), BF16(4, 32, 2048, 128), head_num=32, 
+            input_layout='BNSD', pse=None, padding_mask=None, atten_mask=BOOL(4, 1, 2048, 2048), 
+            scale_value=0.0883, keep_prob=1.0, pre_tockens=4096, next_tockens=0),
 ])
 @register_fx_node_ge_converter(torch.ops.npu.npu_fusion_attention.default)
 def conveter_npu_fusion_attention_default(
@@ -60,7 +63,10 @@ def conveter_npu_fusion_attention_default(
     int[]? actual_seq_qlen=None, int[]? actual_seq_kvlen=None, int sparse_mode=0, 
     bool gen_mask_parallel=True, bool sync=False) -> (Tensor, Tensor, Tensor, Tensor, int, int, int)
     """
-    if input_layout == "BSH" and keep_prob == 1.0:  
+    is_bsh_available = True if input_layout == "BSH" and keep_prob == 1.0 else False
+    is_bnsd_available = True if input_layout == "BNSD" and keep_prob == 1.0 else False
+    
+    if is_bsh_available or is_bnsd_available:  
         # if keep_prob == 1.0, no dropout will be performed, so the seed, offset, and numels will have no effect.
         seed, offset, numels = 0, 0, 0
         ret = ge.FlashAttentionScore(
@@ -90,7 +96,7 @@ def conveter_npu_fusion_attention_default(
     else:
         raise NotImplementedError(
                 f"torch.ops.npu.npu_fusion_attention.default ge_converter "
-                f"is not implemented when input_layout != BSH or keep_prob != 1.0 !")
+                f"is not implemented when input_layout != BSH & BNSD or keep_prob != 1.0 !")
     
     
 @declare_supported([
@@ -98,6 +104,10 @@ def conveter_npu_fusion_attention_default(
             input_layout='BSH', pse=None, padding_mask=None, atten_mask=BOOL(4, 1, 16, 16), 
             softmax_max=F32(4, 32, 16, 8), softmax_sum=F32(4, 32, 16, 8), softmax_in=BF16(0), 
             attention_in=BF16(4, 16, 32), scale_value=0.0883, keep_prob=1.0, pre_tockens=4096, next_tockens=0),
+    Support(BF16(4, 32, 2048, 128), BF16(4, 32, 2048, 128), BF16(4, 32, 2048, 128), BF16(4, 32, 2048, 128), head_num=32, 
+            input_layout='BNSD', pse=None, padding_mask=None, atten_mask=BOOL(4, 1, 2048, 2048), 
+            softmax_max=F32(4, 32, 2048, 8), softmax_sum=F32(4, 32, 2048, 8), softmax_in=BF16(0), 
+            attention_in=BF16(4, 32, 2048, 128), scale_value=0.0883, keep_prob=1.0, pre_tockens=4096, next_tockens=0),
 ])
 @register_fx_node_ge_converter(torch.ops.npu.npu_fusion_attention_grad.default)
 def conveter_npu_fusion_attention_grad_default(
@@ -139,7 +149,10 @@ def conveter_npu_fusion_attention_grad_default(
     int[]? actual_seq_kvlen=None, int sparse_mode=0, bool gen_mask_parallel=True,  bool sync=False) 
     -> (Tensor, Tensor, Tensor, Tensor)
     """
-    if input_layout == "BSH" and keep_prob == 1.0:
+    is_bsh_available = True if input_layout == "BSH" and keep_prob == 1.0 else False
+    is_bnsd_available = True if input_layout == "BNSD" and keep_prob == 1.0 else False
+    
+    if is_bsh_available or is_bnsd_available:  
         # if keep_prob == 1.0, no dropout will be performed, so the seed, offset, and numels will have no effect.
         ret = ge.FlashAttentionScoreGrad(
             query,
@@ -171,4 +184,4 @@ def conveter_npu_fusion_attention_grad_default(
     else:
         raise NotImplementedError(
                 f"torch.ops.npu.npu_fusion_attention_grad.default ge_converter "
-                f"is not implemented when input_layout != BSH or keep_prob != 1.0 !")
+                f"is not implemented when input_layout != BSH & BNSD or keep_prob != 1.0 !")
