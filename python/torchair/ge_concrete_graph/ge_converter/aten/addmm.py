@@ -19,13 +19,43 @@ from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType, _ge_dtype_to_ge_proto_dtype
 from torchair.ge_concrete_graph.utils import dtype_promote
 from torchair.ge_concrete_graph.supported_declaration import F32, F16, Support
 
 
 def is_support_nd_out():
-    return True if torch.npu.utils.get_soc_version() >= 220 else False
+    try:
+        return True if torch.npu.utils.get_soc_version() >= 220 else False
+    except ImportError:
+        return True
+
+
+def is_need_to_convert_bias(self, mat):
+    """
+    Use Matmul to speed up the calculation in the following conditions:
+    Self dtype is float16 and self rank is 1
+    self dtype is float16 and self rank is 2, but the first dimension of self is 1, 
+    and the second dimension equal to the second dimension of mat2, for example: mat1: [5, 2], mat2:[2, 4], self: [1, 4]
+    """
+    if_support_nd_out = is_support_nd_out()
+    if self.dtype == DataType.DT_FLOAT16 and if_support_nd_out:
+        if self.rank == 1:
+            return True
+        elif self.rank == 2:
+            return self.symsize[0] == 1 and self.symsize[1] == mat.symsize[1]
+        return False
+    return False
+
+
+def get_addmm_output(self, beta, beta_is_zero, beta_is_one, mm_res):
+    if beta_is_zero:
+        output = mm_res
+    elif beta_is_one:
+        output = ge.Add(mm_res, self)
+    else:
+        output = ge.AxpyV2(mm_res, self, beta)
+    return output
 
 
 @declare_supported(
@@ -51,34 +81,32 @@ def conveter_aten_addmm_default(
 ):
     """NB: aten::addmm(Tensor self, Tensor mat1, Tensor mat2, *, Scalar beta=1, Scalar alpha=1) -> Tensor"""
     # The dtype of alpha and beta will be prompted if necessary, so check their value at first
-    alpha_is_one = True if float(alpha) == 1.0 else False
-    beta_is_one = True if float(beta) == 1.0 else False
+    alpha_is_one = True if not isinstance(alpha, Tensor) and float(alpha) == 1.0 else False
+    beta_is_one = True if not isinstance(beta, Tensor) and float(beta) == 1.0 else False
+    alpha_is_zero = True if not isinstance(alpha, Tensor) and float(alpha) == 0.0 else False
+    beta_is_zero = True if not isinstance(beta, Tensor) and float(beta) == 0.0 else False
 
     mat1, mat2, self = dtype_promote(mat1, mat2, self, target_dtype=meta_outputs.dtype)
     alpha, beta = dtype_promote(alpha, beta, target_dtype=meta_outputs.dtype)
     
-    # If self dtype is float16 and self rank is 1, use Matmul to speed up the calculation.
-    self_rank = self.rank
-    if_support_nd_out = is_support_nd_out()
-    # Case 1, use matmul with bias
-    if self.dtype == DataType.DT_FLOAT16 and self_rank == 1 and if_support_nd_out:
+    # Case 1, alpha is 0
+    if alpha_is_zero:
+        return ge.Mul(self, beta)
+    # Case 2, use matmul with bias
+    if is_need_to_convert_bias(self, mat2):
         if not beta_is_one:
             self = ge.Mul(self, beta)
         if not alpha_is_one:
             mat1 = ge.Mul(mat1, alpha)
 
-        return ge.MatMul(mat1, mat2, self)
-    # Case 2, use mm+add/axpyv2
+        return ge.MatMulV2(mat1, mat2, self, None)
+    # Case 3, use mm+add/axpyv2
     else:
-        mm_res = ge.MatMul(mat1, mat2, None)
-        mm_res = dtype_promote(mm_res, target_dtype=meta_outputs.dtype)
-        if not(not isinstance(alpha, Tensor) and alpha == 1):
-            mm_res = ge.Mul(mm_res, alpha)
-        if beta_is_one:
-            output = ge.Add(mm_res, self)
-        else:
-            output = ge.AxpyV2(mm_res, self, beta)
-        return output
+        mm_res = ge.MatMulV2(mat1, mat2, None, None)
+        mm_res.desc.dtype = _ge_dtype_to_ge_proto_dtype(self.dtype)
+        # fp32 dtype need to reserve this Mul
+        mm_res = ge.Mul(mm_res, alpha)
+        return get_addmm_output(self, beta, beta_is_zero, beta_is_one, mm_res)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.addmm.out)
