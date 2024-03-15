@@ -14,6 +14,8 @@ class ExperimentalConfig(NpuBaseConfig):
         self.static_model_ops_lower_limit = IntRangeValue(None, -1, 9223372036854775807)
         self.jit_compile = OptionValue("auto", ["auto"])
         self.npu_fx_pass = OptionValue(False, [True, False])
+        self.aot_config_enable_joint_graph = OptionValue(False, [True, False])
+        self.aot_config_output_loss_index = OptionValue(0, None)
 
         super(ExperimentalConfig, self).__init__()
 
@@ -30,3 +32,4 @@ class ExperimentalConfig(NpuBaseConfig):
             local_experiment_option["ge.exec.static_model_ops_lower_limit"] = \
                 str(self.static_model_ops_lower_limit.value)
         return local_experiment_option, global_experiment_option
+    

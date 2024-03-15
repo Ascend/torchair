@@ -31,7 +31,6 @@ from torchair.ge_concrete_graph.ge_graph import is_sym, _torch_tensor_to_ge_cons
 from torchair.ge_concrete_graph.utils import get_used_syms_in_meta
 from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph as ConcreteGraph
 from torchair.configs.compiler_config import CompilerConfig
-from torchair.configs.aot_config import AotConfig
 from torchair.fx_summary import summarize_fx_graph
 from torchair.fx_dumper import NpuFxDumper
 from torchair.utils.custom_aot_functions import aot_module_simplified_joint
@@ -442,14 +441,12 @@ def get_compiler(compiler_config: CompilerConfig = None):
     return _NpuFxCompiler(compiler_config)
 
 
-def get_partition_fn(compiler_config: CompilerConfig = None):
+def get_partition_fn(compiler_config: CompilerConfig):
     
     def partition_fn(graph: torch.fx.GraphModule, joint_inputs, **kwargs):
         joint_graph_passes(graph)
         return default_partition(graph, joint_inputs, **kwargs)
     
-    if compiler_config is None:
-        compiler_config = CompilerConfig()
     if compiler_config.experimental_config.npu_fx_pass:
         return partition_fn
     return default_partition
@@ -481,15 +478,17 @@ def wrap_compiler(compiler: Callable, compiler_config: CompilerConfig):
 
 
 def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
-                 compiler_config: CompilerConfig = None, aot_config: AotConfig = None,
-                 decompositions: Dict = {}):
+                 compiler_config: CompilerConfig = None, decompositions: Dict = {}):
+    if compiler_config is None:
+        compiler_config = CompilerConfig()
     compiler = get_compiler(compiler_config)
     fw_compiler, inference_compiler, joint_compiler = wrap_compiler(compiler, compiler_config)
     partition_fn = get_partition_fn(compiler_config)
-    if aot_config is not None and aot_config.enable_joint_graph:
+    if compiler_config.experimental_config.aot_config_enable_joint_graph:
+        output_loss_index = int(compiler_config.experimental_config.aot_config_output_loss_index.value)
         return aot_module_simplified_joint(gm, example_inputs,
                                            compiler=joint_compiler, decompositions=decompositions,
-                                           output_loss_index=int(aot_config.output_loss_index.value))
+                                           output_loss_index=output_loss_index)
     keep_inference_input_mutations = bool(compiler_config.experimental_config.keep_inference_input_mutations)
     return aot_module_simplified(gm, example_inputs, fw_compiler=fw_compiler, bw_compiler=compiler, 
                                  decompositions=decompositions, partition_fn=partition_fn, 
@@ -497,8 +496,7 @@ def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
                                  inference_compiler=inference_compiler)
 
 
-def get_npu_backend(*, compiler_config: CompilerConfig = None,
-                    aot_config: AotConfig = None, custom_decompositions: Dict = {}):
+def get_npu_backend(*, compiler_config: CompilerConfig = None, custom_decompositions: Dict = {}):
     if compiler_config is None:
         compiler_config = CompilerConfig()
         
@@ -507,5 +505,4 @@ def get_npu_backend(*, compiler_config: CompilerConfig = None,
     
     add_npu_patch(decompositions)
 
-    return functools.partial(_npu_backend, compiler_config=compiler_config, aot_config=aot_config,
-                             decompositions=decompositions)
+    return functools.partial(_npu_backend, compiler_config=compiler_config, decompositions=decompositions)
