@@ -11,15 +11,18 @@
 #include "external/graph/types.h"
 
 namespace tng {
+static constexpr size_t kFormatNchwRank = 4;
+static constexpr size_t kFormatNcdhwRank = 5;
+
 namespace {
 ge::Format GetOriginFormatFromAtTensor(const at::Tensor &at_tensor) {
   size_t dim_num = at_tensor.sizes().size();
   ge::Format format = ge::FORMAT_ND;
   switch (dim_num) {
-    case 4:
+    case kFormatNchwRank:
       format = ge::FORMAT_NCHW;
       break;
-    case 5:
+    case kFormatNcdhwRank:
       format = ge::FORMAT_NCDHW;
       break;
     default:
@@ -43,7 +46,7 @@ Status GetCurrentStream(void **stream) {
   return Status::Success();
 }
 
-Status AssembleDimsToOriginShape(const at::IntArrayRef &dims, ge::Tensor &ge_tensor){
+Status AssembleDimsToOriginShape(const at::IntArrayRef &dims, ge::Tensor &ge_tensor) {
   if (ge_tensor.GetOriginShapeDimNum() != dims.size()) {
     TNG_ASSERT_GE_OK(ge_tensor.SetOriginShapeDimNum(dims.size()));
   }

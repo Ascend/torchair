@@ -116,7 +116,9 @@ def _save_weight2file(inputs, file_path, weight_name, used_weight_num):
     print(" ")
     logger.info(f'save Weight tensor to file over...')
 
+
 _next_export_graph_id = 0
+
 
 def make_export_graph(inputs, config, ori_graph):
     export_graph = GeGraph()
