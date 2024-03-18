@@ -16,6 +16,7 @@ class ExperimentalConfig(NpuBaseConfig):
         self.npu_fx_pass = OptionValue(False, [True, False])
         self.aot_config_enable_joint_graph = OptionValue(False, [True, False])
         self.aot_config_output_loss_index = OptionValue(0, None)
+        self.enable_single_stream = OptionValue(False, [True, False])
 
         super(ExperimentalConfig, self).__init__()
 
@@ -24,6 +25,7 @@ class ExperimentalConfig(NpuBaseConfig):
         local_experiment_option = {}
 
         global_experiment_option["ge.exec.enableEngineParallel"] = "1" if self.cc_parallel_enable else "0"
+        global_experiment_option["ge.enableSingleStream"] = "true" if self.enable_single_stream else "false"
         local_experiment_option["ge.featureBaseRefreshable"] = "1" if self.memory_efficiency else "0"
         local_experiment_option["ge.exec.atomicCleanPolicy"] = "1" if self.separate_atomic_clean else "0"
         if self.jit_compile.value == "auto":
