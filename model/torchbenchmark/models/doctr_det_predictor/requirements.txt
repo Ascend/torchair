@@ -1,1 +1,0 @@
-git+https://github.com/mindee/doctr.git@56c8356

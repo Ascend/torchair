@@ -1,6 +1,0 @@
-numpy
-inflect
-scipy
-Unidecode
-pillow
-librosa==0.9.2

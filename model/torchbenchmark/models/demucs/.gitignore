@@ -1,9 +1,0 @@
-__pycache__
-*.egg-info
-build
-dist
-Session.vim
-*.log
-trash
-tex
-demucs_release

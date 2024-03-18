@@ -1,8 +1,0 @@
-eval_benchmark: true
-eval_deterministic: true
-eval_nograd: true
-train_benchmark: true
-train_deterministic: true
-not_implemented:
-  # Disabled due to excessively slow runtime - see GH Issue #100
-  - device: cpu

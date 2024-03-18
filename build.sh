@@ -52,6 +52,8 @@ checkopts() {
   done
 }
 
+PACKAGE_NAME=torchair-0.1-py3-none-any.whl
+
 build_torchair() {
   logging "CMake Args: ${CMAKE_ARGS}"
 
@@ -63,13 +65,13 @@ build_torchair() {
 
   local RELEASE_PATH="${TORCHAIR_ROOT}/output"
   mkdir -pv "${RELEASE_PATH}"
-  mv "${TORCHAIR_ROOT}/build/dist/dist/torchair-0.1-py3-none-any.whl" ${RELEASE_PATH}
+  mv "${TORCHAIR_ROOT}/build/dist/dist/${PACKAGE_NAME}" ${RELEASE_PATH}
 }
 
 install_torchair() {
   local RELEASE_PATH="${TORCHAIR_ROOT}/output"
   pip3 uninstall torchair -y
-  pip3 install ${RELEASE_PATH}/*.whl
+  pip3 install ${RELEASE_PATH}/${PACKAGE_NAME}
 }
 
 run_test() {

@@ -1,3 +1,0 @@
-kornia
-scikit-image
-gym

@@ -1,4 +1,0 @@
-bitarray
-sacrebleu>=1.4.12
-omegaconf
-hydra-core

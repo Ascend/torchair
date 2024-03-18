@@ -1,3 +1,0 @@
-torchrec-nightly
-fbgemm-gpu-nightly
-pyre-extensions
