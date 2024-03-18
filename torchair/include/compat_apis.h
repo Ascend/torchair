@@ -7,7 +7,6 @@
 #include "securec.h"
 
 #include "tng_status.h"
-#include "graph/ge_tensor.h"
 #include "graph_data.h"
 
 namespace tng {
@@ -15,14 +14,9 @@ namespace compat {
 Status GeErrorStatus();
 Status DebugString(const ge::Shape &shape);
 Status DebugString(const ge::Tensor &tensor);
-ge::AscendString GetOpDescName(const ge::OpDescPtr &op_desc);
-ge::AscendString GetOpDescType(const ge::OpDescPtr &op_desc);
-ge::AscendString DebugString(const ge::DataType &dtype);
-Status ConvertGraphDefToGraph(ge::proto::GraphDef &graph_def, ge::GraphPtr &graph);
-Status ConvertGraphDefToAir(ge::proto::GraphDef &graph_def, ge::GraphPtr &graph, const char *file_name);
-std::vector<tng::Placement> GetGraphInputPlacemnts(const ge::proto::GraphDef &graph_def);
-std::vector<ge::DataType> GetGraphOutputDtypes(const ge::proto::GraphDef &graph_def);
-ExecutorType GetGraphExecutorType(const ge::proto::GraphDef &graph_def);
+std::string DebugString(const ge::DataType &dtype);
+std::string DebugString(const ge::Format &format);
+Status ParseGraphFromArray(const void *serialized_proto, size_t proto_size, ge::GraphPtr &graph);
 }  // namespace compat
 }  // namespace tng
 

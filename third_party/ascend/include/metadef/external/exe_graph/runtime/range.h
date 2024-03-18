@@ -29,7 +29,7 @@ class Range {
    * 默认构造一个range
    */
   Range() : min_(nullptr), max_(nullptr) {
-    memset(reserved_, 0, sizeof(reserved_));
+    (void)memset_s(reserved_, sizeof(reserved_), 0, sizeof(reserved_));
   }
 
   /**

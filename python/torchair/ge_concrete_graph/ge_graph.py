@@ -12,7 +12,7 @@ from torch.fx.node import Argument, Target
 from torch.utils._mode_utils import no_dispatch
 
 from torchair.core.utils import logger
-from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef, OpDef, AttrDef, TensorDescriptor
+from torchair.ge_concrete_graph.ge_ir_pb2 import ModelDef, GraphDef, OpDef, AttrDef, TensorDescriptor
 from torchair.ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
 
 local_variable = threading.local()
@@ -407,7 +407,8 @@ def map_graph_rng_state(gen: torch.Generator = None):
 
 class GeGraph(object):
     def __init__(self):
-        self._proto = GraphDef()
+        self._model = ModelDef()
+        self._proto = self._model.graph.add()
         self._python_code = self._python_code_init()
         self._generator_rng_state = defaultdict(
             map_graph_rng_state)
@@ -420,6 +421,9 @@ class GeGraph(object):
         python_code += 'from torchair.ge_concrete_graph import ge_apis as ge\n'
         python_code += 'from torchair.ge_concrete_graph.ge_graph import get_default_ge_graph\n\n'
         return python_code
+
+    def SerializeToString(self):
+        return self._model.SerializeToString()
 
     def __getattr__(self, v):
         return getattr(self._proto, v)
@@ -675,7 +679,7 @@ def list_depth_check(inputs):
     return inputs
 
 def _parse_variables(variables, mode='input'):
-    # Due to the interception of regular Tensor formatting in fake mode, 
+    # Due to the interception of regular Tensor formatting in fake mode,
     # the string method is used here to avoid errors.
     if isinstance(variables, torch.Tensor):
         return str(variables)
@@ -781,7 +785,7 @@ def _auto_type_promotion_for_const(bundle_inputs: list, inputs_dynamic: list, in
     # NetOutput
     if len(inputs_dynamic) == 0:
         return bundle_inputs
-    
+
     inputs = []
     input_start_end = []
     for i, dynamic_and_optional in enumerate(zip(inputs_dynamic, inputs_optional)):
@@ -1006,7 +1010,7 @@ def Const(v: Any, dtype: int = None, node_name=None, readable=True) -> Tensor:
     if dtype is not None and not _is_supported_ge_dtype_by_numpy(dtype) and not dtype is DataType.DT_BF16:
         # TO DO: unsupported dtype cast for numpy, currently resolved by inserting ge.Cast
         return Cast(Const(v, dtype=None, node_name=node_name), dst_type=dtype)
-    
+
     if not isinstance(v, torch.Tensor) and dtype is DataType.DT_BF16:
         with no_dispatch():
             v = torch.tensor(v, dtype=torch.bfloat16)

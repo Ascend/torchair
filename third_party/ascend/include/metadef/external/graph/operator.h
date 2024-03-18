@@ -69,6 +69,7 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY Operator {
  public:
   friend class OperatorImpl;
   friend class GraphBuilderImpl;
+  friend class MultiThreadGraphBuilder;
   friend class NodeUtils;
   friend class OpDescUtils;
   friend class GraphUtils;
@@ -508,6 +509,26 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY Operator {
   Operator &SetOutputAttr(const char_t *dst_name, const char_t *name, const std::vector<float32_t> &attr_value);
   graphStatus GetOutputAttr(const char_t *dst_name, const char_t *name, std::vector<float32_t> &attr_value) const;
 
+  Operator &SetInput(const char_t *dst_name, uint32_t dst_index, const Operator &src_oprt,
+                     const char_t *name);
+
+  Operator &SetInput(const char_t *dst_name, uint32_t dst_index,
+                     const Operator &src_oprt);
+
+  void DynamicInputRegister(const char_t *name, const uint32_t num, bool is_push_back = true);
+  void DynamicInputRegister(const char_t *name, const uint32_t num, const char_t *datatype_symbol,
+                            bool is_push_back = true);
+
+  void DynamicInputRegisterByIndex(const char_t *name, const uint32_t num, size_t index);
+
+  void DynamicOutputRegister(const char_t *name, const uint32_t num, bool is_push_back = true);
+  void DynamicOutputRegister(const char_t *name, const uint32_t num, const char_t *datatype_symbol,
+                             bool is_push_back = true);
+
+  void SubgraphCountRegister(const char_t *ir_name, uint32_t count);
+
+  void SetSubgraphBuilder(const char_t *ir_name, uint32_t index, const SubgraphBuilder &builder);
+
  protected:
   ATTRIBUTED_DEPRECATED(void AttrRegister(const char_t *, float32_t))
   void AttrRegister(const std::string &name, float32_t attr_value);
@@ -590,21 +611,12 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY Operator {
 
   ATTRIBUTED_DEPRECATED(void DynamicInputRegister(const char_t *, const uint32_t, bool))
   void DynamicInputRegister(const std::string &name, const uint32_t num, bool is_push_back = true);
-  void DynamicInputRegister(const char_t *name, const uint32_t num, bool is_push_back = true);
-
-  void DynamicInputRegister(const char_t *name, const uint32_t num, const char_t *datatype_symbol,
-                            bool is_push_back = true);
 
   ATTRIBUTED_DEPRECATED(void DynamicInputRegisterByIndex(const char_t *, const uint32_t, size_t))
   void DynamicInputRegisterByIndex(const std::string &name, const uint32_t num, size_t index);
-  void DynamicInputRegisterByIndex(const char_t *name, const uint32_t num, size_t index);
 
   ATTRIBUTED_DEPRECATED(void DynamicOutputRegister(const char_t *, const uint32_t, bool))
   void DynamicOutputRegister(const std::string &name, const uint32_t num, bool is_push_back = true);
-  void DynamicOutputRegister(const char_t *name, const uint32_t num, bool is_push_back = true);
-
-  void DynamicOutputRegister(const char_t *name, const uint32_t num, const char_t *datatype_symbol,
-                             bool is_push_back = true);
 
   ATTRIBUTED_DEPRECATED(void RequiredAttrRegister(const char_t *))
   void RequiredAttrRegister(const std::string &name);
@@ -621,24 +633,18 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY Operator {
   ATTRIBUTED_DEPRECATED(Operator &SetInput(const char_t *, uint32_t, const Operator &))
   Operator &SetInput(const std::string &dst_name, uint32_t dst_index,
                      const Operator &src_oprt);
-  Operator &SetInput(const char_t *dst_name, uint32_t dst_index,
-                     const Operator &src_oprt);
 
   ATTRIBUTED_DEPRECATED(Operator &SetInput(const char_t *, uint32_t, const Operator &, const char_t *))
   Operator &SetInput(const std::string &dst_name, uint32_t dst_index, const Operator &src_oprt,
                      const std::string &name);
-  Operator &SetInput(const char_t *dst_name, uint32_t dst_index, const Operator &src_oprt,
-                     const char_t *name);
 
   ATTRIBUTED_DEPRECATED(void SubgraphRegister(const char_t *, bool))
   void SubgraphRegister(const std::string &ir_name, bool dynamic);
   void SubgraphRegister(const char_t *ir_name, bool dynamic);
   ATTRIBUTED_DEPRECATED(void SubgraphCountRegister(const char_t *, uint32_t))
   void SubgraphCountRegister(const std::string &ir_name, uint32_t count);
-  void SubgraphCountRegister(const char_t *ir_name, uint32_t count);
   ATTRIBUTED_DEPRECATED(void SetSubgraphBuilder(const char_t *, uint32_t, const SubgraphBuilder &))
   void SetSubgraphBuilder(const std::string &ir_name, uint32_t index, const SubgraphBuilder &builder);
-  void SetSubgraphBuilder(const char_t *ir_name, uint32_t index, const SubgraphBuilder &builder);
   ATTRIBUTED_DEPRECATED(Graph GetSubgraphImpl(const char_t *) const)
   Graph GetSubgraphImpl(const std::string &name) const;
   Graph GetSubgraphImpl(const char_t *name) const;

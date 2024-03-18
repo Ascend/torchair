@@ -1,10 +1,10 @@
-#include "external/graph/types.h"
 #include "executor.h"
 
 #include <utility>
-#include "graph_data.h"
 #include "graph/tensor.h"
-#include "graph/utils/type_utils.h"
+#include "graph/types.h"
+#include "graph_data.h"
+
 #include "torch/torch.h"
 #include "session.h"
 #include "checker.h"

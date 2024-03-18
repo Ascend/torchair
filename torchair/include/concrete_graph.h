@@ -3,13 +3,13 @@
 
 #include <map>
 
-#include "tng_status.h"
-#include "external/graph/types.h"
-#include "external/graph/ascend_string.h"
-#include "graph/tensor.h"
-#include "torch/torch.h"
 #include "executor.h"
 #include "export.h"
+#include "external/graph/ascend_string.h"
+#include "external/graph/types.h"
+#include "graph/tensor.h"
+#include "tng_status.h"
+#include "torch/torch.h"
 
 namespace tng {
 class GraphData;
@@ -17,6 +17,7 @@ class NpuConcreteGraph {
  public:
   static Status Create(const void *serialized_proto, size_t proto_size,
                        const std::map<ge::AscendString, ge::AscendString> &options,
+                       std::vector<int64_t> input_placements, std::vector<int64_t> output_dtypes, int64_t executor_type,
                        std::unique_ptr<NpuConcreteGraph> &graph);
   Status Compile();
   Status AutoTune(const std::vector<at::Tensor> &example_inputs, void *stream = nullptr);
