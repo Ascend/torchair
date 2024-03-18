@@ -140,6 +140,8 @@ def convert_all_to_all_single_npu(
     rank = torch.distributed.get_rank()
     pg = c10d._find_or_create_pg_by_ranks_and_tag(tag, ranklist, group_size)
     device = torch.distributed.distributed_c10d._get_pg_default_device(pg)
+    send_counts, send_displacements, recv_counts, recv_displacements = dtype_promote(send_counts, 
+        send_displacements, recv_counts, recv_displacements, target_dtype=DataType.DT_INT64)
     if device.type == "cpu":
         y = ge.HcomAllToAllV(send_data=input_tensor, send_counts=send_counts, send_displacements=send_displacements,
                              recv_counts=recv_counts, recv_displacements=recv_displacements, group=tag)
