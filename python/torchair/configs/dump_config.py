@@ -15,9 +15,9 @@ class DataDumpConfig(NpuBaseConfig):
 
     def as_dict(self):
         dump_option = {}
-        dump_option["ge.quant_dumpable"] = "1" if self.quant_dumpable else "0"
         if self.enable_dump:
             dump_option['ge.exec.enableDump'] = '1'
             dump_option['ge.exec.dumpPath'] = self.dump_path.value
             dump_option['ge.exec.dumpMode'] = self.dump_mode.value
+            dump_option["ge.quant_dumpable"] = "1" if self.quant_dumpable else "0"
         return {}, dump_option
