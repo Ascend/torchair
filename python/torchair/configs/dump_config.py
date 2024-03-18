@@ -9,11 +9,13 @@ class DataDumpConfig(NpuBaseConfig):
         self.enable_dump = OptionValue(False, [False, True])
         self.dump_path = MustExistedPathValue("./")
         self.dump_mode = OptionValue('all', ['input', 'output', 'all'])
+        self.quant_dumpable = OptionValue(False, [False, True])
 
         super(DataDumpConfig, self).__init__()
 
     def as_dict(self):
         dump_option = {}
+        dump_option["ge.quant_dumpable"] = "1" if self.quant_dumpable else "0"
         if self.enable_dump:
             dump_option['ge.exec.enableDump'] = '1'
             dump_option['ge.exec.dumpPath'] = self.dump_path.value
