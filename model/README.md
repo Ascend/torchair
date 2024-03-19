@@ -1,52 +1,43 @@
-# Torchdynamo Benchmarks
+# TorchAir benchmarks
 
-## What We Benchmark
-TorchDynamo provides a benchmark harness that takes care of uniformly benchmarking different models.  It interleaves runs of eager and dynamo to avoid machine noise/variability issues, and reports results based on medians along with P-values.
+## 简介
 
-The runner integrates with models from TorchBenchmark, HuggingFace and TIMM suites and covers both training and inference.
+为了评测图模式能力，pytorch社区在CI HUD中提供了图模式应用在torchbench/HuggingFace/Timm仓库的多个模型的加速效果。参考社区的实现，TorchAir提供了对torchbench仓和HuggingFace仓中部分模型的支持。用户可按照此README进行NPU图模式的测试。
 
-The infrastructure allows us to specify a loss function. For torchbench models, we use .sum().backward() call in place of the native loss function. For TIMM models, we use a CrossEntropy loss. And HF models contain a loss function inside the model itself, so we don't need any special loss computation handling.
+## Torchbench
 
-Training benchmarks approximate training by running the model forward, computing loss, running backward, and then the optimizer (SGD). Note: the optimizer is currently not compiled by Torchdynamo.
+## 准备环境
+1. 下载TorchAir源码
+    ```
+    git clone https://gitee.com/ascend/torchair.git
+    ```
 
-Inference benchmarks and Training benchmarks measure correctness by comparing dynamo and eager model outputs given fixed inputs and seeds.
+2. 切换到model目录中
+    ```
+    cd torchair/model
+    ```
 
-## Setup
+3. 下载pytorch/pytorch源码，复制其中的microbenchmarks目录至当前目录
+    ```
+    git clone https://github.com/pytorch/pytorch.git -b v2.1.0 --depth=1
+    cp -r pytorch/benchmarks/dynamo/microbenchmarks .
+    ```
+如果下载失败，用户也可通过gitee的[同步仓](https://gitee.com/mirrors/pytorch)进行下载。
 
-### Machine
-We run benchmarks on AWS machines (p4d.24xlarge) using 8xNVidia A100 40GB cards.  We suggest using Cuda 11.6 for consistency.
+4. 下载pytorch/benchmark源码，并切换至指定commit id
+    ```
+    git clone  https://github.com/pytorch/benchmark.git --depth=1
+    cd benchmark
+    git remote set-branches origin '9910b31cc17d175a781412fd9ca6f18a4ee04610'
+    git fetch --depth 1 origin 9910b31cc17d175a781412fd9ca6f18a4ee04610
+    git checkout 9910b31cc17d175a781412fd9ca6f18a4ee04610
+    cd ..
+    ```
 
-### Benchmarks
-Make sure to carefully follow the [torchbench installation](https://github.com/pytorch/benchmark#installation) instructions, taking care to build the auxiliary libraries (torchvision, torchtext) from a matching version to your pytorch version.
+5. 在model目录中运行模型
+    ```
+    python3 torchbench.py --accuracy --cold-start-latency --train --amp --backend npu --only BERT_pytorch
+    ```
+    --accuracy指对图模式的精度进行验证。此外，用户可指定--performance来验证图模式的性能。
 
-For HF and TIMM models, the scripts already install the transformers and timm package respectively on the first run.
-
-## Runbook
-
-### Basic Usage
-There are a lot of flags in the benchmark runner, and it can be confusing to know which settings to use or what machine to run it on. In order to support apples-to-apples comparison, we have provided the following 'standard' settings in `runner.py`. This script is a wrapper over the common benchmarking infrastructure and simplifies the flags. We will continually update `runner.py` with the latest and most relevant compilers for training and inference. It also provides some graph utilities to visualize and compare results. Some of the example commands are:
-
-**Inference Commands**
-* Inference compilers on torchbench models - `python benchmarks/dynamo/runner.py --suites=torchbench --inference --dtypes=float16`
-* Inductor Inference compiler on torchbench models - `python benchmarks/dynamo/runner.py --suites=torchbench --inference --dtypes=float16 --compilers=inductor`
-
-**Training Commands**
-* Training compilers on TIMM models - `python benchmarks/dynamo/runner.py --suites=timm_models --training --dtypes=float32 --output-dir=timm_logs`
-* AOTAutograd Training compiler on TIMM models - `python benchmarks/dynamo/runner.py --suites=timm_models --training --dtypes=float32 --compilers=aot_nvfuser --output-dir=timm_logs`
-* Inductor Training compiler on TIMM models - `python benchmarks/dynamo/runner.py --suites=timm_models --training --dtypes=float32 --compilers=inductor --output-dir=timm_logs`
-
-Running runner.py generates a file named `run.sh`. This file contains the actual commands that invoke the common benchmarking infrastructure with the appropriate flags. Which brings us to the advanced usage.
-
-### Advanced Usage
-
-One could directly call `torchbench.py`, `huggingface.py` or `timm_models.py` with the necessary flags. There are a lot of flags in the benchmarks runner. Some of the examples are as follows. These are subject to change.
-
-**Inference Commands**
-* TorchScript (with TorchDynamo capture) NVFuser Inference - `python benchmarks/dynamo/torchbench.py -dcuda -n100 --speedup-dynamo-ts --performance`
-* TorchInductor CUDA Graphs Inference - `python benchmarks/dynamo/torchbench.py -dcuda --float32 -n50 --inductor --performance`
-
-**Training Commands**
-* TorchScript (with TorchDynamo capture) NVFuser Training - `python benchmarks/dynamo/torchbench.py --float32 -dcuda --training --nvfuser --speedup-dynamo-ts --performance`
-* TorchInductor CUDA Graphs Training - `python benchmarks/dynamo/torchbench.py --float32 -dcuda --training --inductor --performance`
-
-Above commands are for torchbench models. You can simply replace `torchbench.py` with `huggingface.py` for HF models, and `timm_model.py` for TIMM models.
+    --only参数指的是运行的模型，用户可参考[CI HUD](https://hud.pytorch.org/benchmark/torchbench/inductor_no_cudagraphs?startTime=Mon,%2011%20Mar%202024%2011:26:49%20GMT&stopTime=Mon,%2018%20Mar%202024%2011:26:49%20GMT&granularity=hour&mode=training&dtype=amp&lBranch=main&lCommit=c568b84794447b023747cd5a1bf47288fc657b77&rBranch=main&rCommit=660ec3d38d9d1c8567471ae7fe5b40ae7c6d7438)中的模型进行设置。

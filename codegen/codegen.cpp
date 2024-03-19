@@ -1,13 +1,31 @@
 #include SINGLE_CUSTOM_REG_OP
 #include <fstream>
+#include <sys/stat.h>
+
+bool IsSymlink(const char* filePath) {
+  struct stat buf;
+  if (lstat(filePath, &buf) != 0) {
+    return false;
+  }
+  return S_ISLNK(buf.st_mode);
+}
 
 int main(int argc, char** argv) {
   if (argc != 2) {
     std::cerr << "Usage: " << argv[0] << " <output_dir>" << kEnd;
     return 1;
   }
+  if (IsSymlink(argv[1])) {
+    std::cerr << "[Error]: Target file path " << argv[1] << " should not be an symbolic link." << kEnd;
+    return 1;
+  }
   std::fstream file;
   file.open(argv[1], std::ios::out);
+
+  if (!file.is_open()) {
+    std::cerr << "[Error]: Open file " << argv[1] << " failed." << kEnd;
+    return 1;
+  }
 
   Code code;
   std::stringstream ss;

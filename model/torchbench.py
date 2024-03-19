@@ -19,6 +19,7 @@ from torch._dynamo.testing import collect_results, reduce_to_scalar_loss
 from torch._dynamo.utils import clone_inputs
 
 import torch_npu
+from npu_support import patch_torchbench
 
 # We are primarily interested in tf32 datatype
 torch.backends.cuda.matmul.allow_tf32 = True
@@ -478,6 +479,7 @@ class TorchBenchmarkRunner(BenchmarkRunner):
 
 def torchbench_main():
     original_dir = setup_torchbench_cwd()
+    patch_torchbench()
     logging.basicConfig(level=logging.WARNING)
     warnings.filterwarnings("ignore")
     main(TorchBenchmarkRunner(), original_dir)
