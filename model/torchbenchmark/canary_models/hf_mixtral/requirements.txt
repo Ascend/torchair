@@ -1,3 +1,0 @@
-bitsandbytes
-transformers>=4.36.2
-numba

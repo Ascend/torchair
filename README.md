@@ -73,13 +73,17 @@ python3 examples/example.py
 ```shell
 ./build.sh -c
 ```
-编译完成后，会在`output/`目录下生成名为torchair-{version}-py3-none-any.whl的安装包文件。
+编译完成后，会在`output/`目录下生成名为torchair-{version}-py3-none-any.whl的安装包文件。用户需要使用pip3手动安装。
+```
+pip3 install output/torchair-{version}-py3-none-any.whl
+```
+如需要保存安装日志，可在pip3 install命令后面加上参数`--log <PATH>`，并对您指定的目录`<PATH>`做好权限管控。
 
 ## 编译并安装
 ```shell
 ./build.sh -i
 ```
-编译完成后，会在`output/`目录下生成名为torchair-{version}-py3-none-any.whl的安装包文件，并且调用pip3进行安装。
+编译完成后，会在`output/`目录下生成名为torchair-{version}-py3-none-any.whl的安装包文件，并且自动调用pip3进行安装。
 
 ## 执行UT测试
 > 本地执行UT测试需要设置环境变量`ASCEND_CUSTOM_PATH`,将其指定至Ascend sdk的安装路径（指定至ai_cann_x86目录）
@@ -101,6 +105,14 @@ python3 examples/example.py
 
 `-g path` : 将编译过程中使用的编译器指定为path路径下的g++编译器。
 
+## 卸载
+
+torchair的卸载只需要执行命令：
+
+```
+pip3 uninstall torchair
+```
+如需要保存卸载日志，可在pip3 uninstall命令后面加上参数`--log <PATH>`，并对您指定的目录`<PATH>`做好权限管控。
 
 ## 查看覆盖率报告
 UT或ST执行通过后，会在coverage目录下生成覆盖率文件coverage.info，如果您想要查看覆盖率报告，可以执行如下命令
