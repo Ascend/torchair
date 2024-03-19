@@ -44,18 +44,24 @@ def _get_export_config(model, export_path: str, export_name: str, config=Compile
     return config
 
 
+def _is_symlink(path):
+    path_abspath = os.path.abspath(path)
+    if os.path.islink(path_abspath):
+        logger.error(f"Target file path {path_abspath} should not be an symbolic link.")
+        return True
+    return False
+
+
 def dynamo_export(*args, model: torch.nn.Module, export_path: str = "export_file",
                   export_name: str = "export", dynamic: bool = False, config=CompilerConfig(), **kwargs):
     # get last name
     export_name = os.path.split(export_name)[-1]
     # check symbolic link
-    if os.path.islink(export_path):
-        logger.error(f"Target file path {export_path} should not be an symbolic link.")
+    if _is_symlink(export_path):
         return
+
     target_path = os.path.join(export_path, export_name) + ".air"
-    target_path = os.path.abspath(target_path)
-    if os.path.islink(target_path):
-        logger.error(f"Target file path {target_path} should not be an symbolic link.")
+    if _is_symlink(target_path):
         return
 
     from torchair.ge_concrete_graph.ge_converter.experimental.hcom_allreduce import functional_collectives_context
