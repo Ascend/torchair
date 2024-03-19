@@ -14,26 +14,62 @@ from typing import (
     overload,
 )
 
+import sys
 import torch
 from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
-from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
+from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported, DataType
+from torchair.ge_concrete_graph.utils import dtype_promote
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.supported_declaration import F32, F16, BOOL, Support
 
 
+@declare_supported(
+    [
+        Support(BOOL(4, 2)),
+        Support(F32(4, 2)),
+        Support(F16(4, 2)),
+    ]
+)
 @register_fx_node_ge_converter(torch.ops.aten.any.default)
 def conveter_aten_any_default(self: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::any(Tensor self) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.any.default ge_converter is not implemented!")
+    dim = self.rank
+    # ReduceAny only support input dtype of bool
+    self = dtype_promote(self, target_dtype=DataType.DT_BOOL)
+
+    if dim == 0:
+        self = ge.Unsqueeze(self, axes=[0])
+        dims = [0]
+    else:
+        dims = [i for i in range(dim)]
+        
+    return ge.ReduceAny(self, axes=dims, keep_dims=False)
 
 
+@declare_supported(
+    [
+        Support(F32(4, 2), 0),
+        Support(F32(4, 2), 1),
+        Support(BOOL(4, 2), 0, keepdim=True),
+        Support(BOOL(4, 2), 1, keepdim=True),
+    ]
+)
 @register_fx_node_ge_converter(torch.ops.aten.any.dim)
 def conveter_aten_any_dim(
     self: Tensor, dim: int, keepdim: bool = False, meta_outputs: TensorSpec = None
 ):
     """NB: aten::any.dim(Tensor self, int dim, bool keepdim=False) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.any.dim ge_converter is not implemented!")
+    # ReduceAny only support input dtype of bool
+    self = dtype_promote(self, target_dtype=DataType.DT_BOOL)
+
+    if dim == -sys.maxsize - 1:
+        dims = [i for i in range(dim)]
+    else:
+        dims = [dim]
+
+    return ge.ReduceAny(self, axes=dims, keep_dims=keepdim)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.any.out)
