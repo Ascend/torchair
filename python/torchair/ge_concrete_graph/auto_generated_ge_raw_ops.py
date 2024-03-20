@@ -53390,7 +53390,7 @@ def HardShrinkGrad(gradients: Tensor, features: Tensor, *, lambd: float=0.500000
 
 # This api is auto-generated from IR HardSigmoid
 @auto_convert_to_tensor([False], [False])
-def HardSigmoid(input_x: Tensor, *, alpha: float=0.166667, beta: float=0.500000, dependencies=[], node_name=None):
+def HardSigmoid(input_x: Tensor, *, alpha: float=0.16666666, beta: float=0.500000, dependencies=[], node_name=None):
     """REG_OP(HardSigmoid)\n
 .INPUT(input_x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
 .OUTPUT(output_y, TensorType({DT_FLOAT, DT_FLOAT16}))\n
@@ -53571,7 +53571,7 @@ def LogSigmoid(x: Tensor, *, dependencies=[], node_name=None):
 
 # This api is auto-generated from IR HardSigmoidGrad
 @auto_convert_to_tensor([False, False], [False, False])
-def HardSigmoidGrad(grads: Tensor, input_x: Tensor, *, alpha: float=0.166667, beta: float=0.500000, dependencies=[], node_name=None):
+def HardSigmoidGrad(grads: Tensor, input_x: Tensor, *, alpha: float=0.16666666, beta: float=0.500000, dependencies=[], node_name=None):
     """REG_OP(HardSigmoidGrad)\n
 .INPUT(grads, TensorType({DT_FLOAT, DT_FLOAT16}))\n
 .INPUT(input_x, TensorType({DT_FLOAT, DT_FLOAT16}))\n
