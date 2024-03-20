@@ -35,6 +35,8 @@ from torchair.fx_summary import summarize_fx_graph
 from torchair.fx_dumper import NpuFxDumper
 from torchair.utils.custom_aot_functions import aot_module_simplified_joint
 from torchair.utils import add_npu_patch
+from torchair.utils.error_code import pretty_error_msg
+
 aten = torch.ops.aten
 
 
@@ -379,6 +381,7 @@ class _NpuFxCompiler:
     def __init__(self, compiler_config: CompilerConfig) -> None:
         self.config = compiler_config
 
+    @pretty_error_msg
     def __call__(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
         logger.info(f'compiler inputs')
         for i, inp in enumerate(example_inputs):

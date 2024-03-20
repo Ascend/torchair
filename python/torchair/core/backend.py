@@ -10,6 +10,8 @@ from collections import defaultdict
 from typing import Dict
 
 import torch
+from torchair.utils.error_code import pretty_error_msg
+
 from . import _torchair
 
 
@@ -67,6 +69,7 @@ def _try_get_global_init_compile_option(global_options: Dict = None):
     return _GLOBAL_COMPILE_OPTION
 
 
+@pretty_error_msg
 def initialize_graph_engine(global_compile_options: Dict = None):
     options: Dict[str, str] = {}
     options.update(_try_get_global_init_compile_option(global_compile_options))
@@ -82,6 +85,7 @@ def initialize_graph_engine(global_compile_options: Dict = None):
     _torchair.InitializeGraphEngine(options)
 
 
+@pretty_error_msg
 def finalize_graph_engine():
     _torchair.FinalizeGraphEngine()
 
@@ -93,6 +97,7 @@ class TorchNpuGraph(_torchair.TorchNpuGraphBase):
     def __init__(self, name=""):
         super(TorchNpuGraph, self).__init__(str(name))
 
+    @pretty_error_msg
     def load(self, ge_graph, options=None):
         """Load the graph"""
         options = {} if options is None else options
@@ -102,14 +107,17 @@ class TorchNpuGraph(_torchair.TorchNpuGraphBase):
         return super(TorchNpuGraph, self).load(ge_graph.SerializeToString(), options, input_placements, output_dtypes,
                                                executor_type)
 
+    @pretty_error_msg
     def compile(self):
         """Compile the graph"""
         return super(TorchNpuGraph, self).compile()
 
+    @pretty_error_msg
     def auto_tune(self, example_inputs=[], stream=None):
         """Compile the graph with aoe"""
         return super(TorchNpuGraph, self).auto_tune((example_inputs, stream))
 
+    @pretty_error_msg
     def run(self, inputs, assigned_outputs=[], stream=None):
         """Run the graph"""
         return super(TorchNpuGraph, self).run((inputs, assigned_outputs, stream))

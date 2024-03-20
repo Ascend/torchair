@@ -1,6 +1,8 @@
 """NPU basic configurations"""
 import os
 
+from torchair.utils.error_code import pretty_error_msg
+
 
 class OptionValue:
     """Options for setting npu basic configurations"""
@@ -104,6 +106,7 @@ class NpuBaseConfig:
             if isinstance(v, (OptionValue, NpuBaseConfig)):
                 self._fixed_attrs.append(k)
 
+    @pretty_error_msg
     def __setattr__(self, key, value):
         if hasattr(self, '_fixed_attrs'):
             if key not in self._fixed_attrs:
