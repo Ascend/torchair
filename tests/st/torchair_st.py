@@ -1019,40 +1019,40 @@ class TorchairSt(unittest.TestCase):
         config_error = CompilerConfig()
         with self.assertRaises(FileNotFoundError) as context:
             config_error.dump_config.dump_path = "./*****"
-        self.assertEqual(str(context.exception), 'Please set legal dir path, '
-                         + './***** is not found or is not a file directory!')
+        self.assertTrue('Please set legal dir path, ./***** is not found or is not a file directory!'
+                        in str(context.exception))
         with self.assertRaises(FileNotFoundError) as context:
             config_error.aoe_config.work_path = "./*****"
-        self.assertEqual(str(context.exception), 'Please set legal dir path, '
-                         + './***** is not found or is not a file directory!')
+        self.assertTrue('Please set legal dir path, ./***** is not found or is not a file directory!'
+                        in str(context.exception))
         with self.assertRaises(FileNotFoundError) as context:
             config_error.aoe_config.aoe_config_file = "./*****"
-        self.assertEqual(str(context.exception), 'Please set legal file path, '
-                         + './***** is not found or is not a file!')
+        self.assertTrue('Please set legal file path, ./***** is not found or is not a file!'
+                        in str(context.exception))
         with self.assertRaises(FileNotFoundError) as context:
             config_error.fusion_config.fusion_switch_file = "./*****"
-        self.assertEqual(str(context.exception), 'Please set legal file path, '
-                         + './***** is not found or is not a file!')
+        self.assertTrue('Please set legal file path, ./***** is not found or is not a file!'
+                        in str(context.exception))
 
         with self.assertRaises(FileNotFoundError) as context:
             config_error.dump_config.dump_path = None
-        self.assertEqual(str(context.exception), 'Please set legal dir path, '
-                         + 'None is not found or is not a file directory!')
+        self.assertTrue('Please set legal dir path, None is not found or is not a file directory!'
+                        in str(context.exception))
         with self.assertRaises(FileNotFoundError) as context:
             config_error.aoe_config.work_path = None
-        self.assertEqual(str(context.exception), 'Please set legal dir path, '
-                         + 'None is not found or is not a file directory!')
+        self.assertTrue('Please set legal dir path, None is not found or is not a file directory!'
+                        in str(context.exception))
 
     def test_set_error_static_model_ops_lower_limit(self):
         config_error1 = CompilerConfig()
         with self.assertRaises(ValueError) as context:
             config_error1.experimental_config.static_model_ops_lower_limit = "-1"
-        self.assertEqual(str(context.exception), "Please set integer type, but got <class 'str'>")
+        self.assertTrue("Please set integer type, but got <class 'str'>" in str(context.exception))
         config_error2 = CompilerConfig()
         with self.assertRaises(ValueError) as context:
             config_error2.experimental_config.static_model_ops_lower_limit = -2
-        self.assertEqual(str(context.exception),
-                         'Please set value in [-1, 9223372036854775807], -2 is out of range.')
+        self.assertTrue('Please set value in [-1, 9223372036854775807], -2 is out of range.'
+                        in str(context.exception))
 
     def test_set_option(self):
         if not os.path.exists("./dump"):
@@ -1064,7 +1064,11 @@ class TorchairSt(unittest.TestCase):
         self.assertEqual(config_option.aoe_config.work_path.value, "./dump")
         config_option.experimental_config.static_model_ops_lower_limit = 0
         self.assertEqual(config_option.experimental_config.static_model_ops_lower_limit.value, '0')
-        
+
+    def test_error_code(self):
+        with self.assertRaises(RuntimeError) as context:
+            torchair.core.backend.TorchNpuGraph().run(None)
+        self.assertTrue('ERR03005 GRAPH internal error' in str(context.exception))        
     
     def test_npu_fx_pass(self):
         fx_pass_config = CompilerConfig()
