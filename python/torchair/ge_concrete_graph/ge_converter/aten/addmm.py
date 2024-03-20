@@ -24,13 +24,6 @@ from torchair.ge_concrete_graph.utils import dtype_promote
 from torchair.ge_concrete_graph.supported_declaration import F32, F16, Support
 
 
-def is_support_nd_out():
-    try:
-        return True if torch.npu.utils.get_soc_version() >= 220 else False
-    except ImportError:
-        return True
-
-
 def is_need_to_convert_bias(self, mat):
     """
     Use Matmul to speed up the calculation in the following conditions:
@@ -38,8 +31,7 @@ def is_need_to_convert_bias(self, mat):
     self dtype is float16 and self rank is 2, but the first dimension of self is 1, 
     and the second dimension equal to the second dimension of mat2, for example: mat1: [5, 2], mat2:[2, 4], self: [1, 4]
     """
-    if_support_nd_out = is_support_nd_out()
-    if self.dtype == DataType.DT_FLOAT16 and if_support_nd_out:
+    if self.dtype == DataType.DT_FLOAT16:
         if self.rank == 1:
             return True
         elif self.rank == 2:
