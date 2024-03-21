@@ -46,7 +46,8 @@ def _mapping_assign_op_to_graph_output(graph: GraphDef):
             net_inputs[GeTensor(op).tensor] = op.attr["index"].i
         elif op.type == "NetOutput":
             net_output = op
-    assert net_output is not None, "NetOutput not found"
+    if not net_output:
+        raise AssertionError("NetOutput not found")
 
     def _mapping_to_graph_output(graph: GraphDef, graph_out: OpDef, assign_node_out: GeTensor, value_tensor: str):
         output_ref_index_list = []
@@ -103,7 +104,8 @@ def _add_op_to_checkpoint_map(op, fn):
     if isinstance(op, OpOverload):
         overloads.append(op)
     else:
-        assert isinstance(op, OpOverloadPacket)
+        if not isinstance(op, OpOverloadPacket):
+            raise AssertionError("op must be an instance of OpOverloadPacket.")
         for ol in op.overloads():
             overloads.append(getattr(op, ol))
 
@@ -147,7 +149,8 @@ def set_ge_outputs(ge_outputs, meta_outputs):
     if isinstance(ge_outputs, ge.Tensor):
         ge_outputs.set_meta(meta_outputs)
     elif isinstance(ge_outputs, int):
-        assert isinstance(meta_outputs, (torch.SymInt, int))
+        if not isinstance(meta_outputs, (torch.SymInt, int)):
+            raise AssertionError("meta_outputs must be a torch.SymInt or an integer.")
     else:
         if not isinstance(ge_outputs, (list, tuple)):
             raise AssertionError

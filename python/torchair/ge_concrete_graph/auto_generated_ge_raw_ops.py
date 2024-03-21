@@ -4442,7 +4442,8 @@ def QueueEnqueue(handle: Tensor, components: List[Tensor], *, timeout_ms: int=-1
     op.input.append(handle.tensor)
     op.input_desc.add().CopyFrom(handle.desc)
     op.input_desc[-1].name = "handle"
-    assert isinstance(components, (tuple, list))
+    if not isinstance(components, (tuple, list)):
+        raise AssertionError("components must be a tuple or a list.")
     for i, v in enumerate(components):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -4479,7 +4480,8 @@ def QueueEnqueueMany(handle: Tensor, components: List[Tensor], *, timeout_ms: in
     op.input.append(handle.tensor)
     op.input_desc.add().CopyFrom(handle.desc)
     op.input_desc[-1].name = "handle"
-    assert isinstance(components, (tuple, list))
+    if not isinstance(components, (tuple, list)):
+        raise AssertionError("components must be a tuple or a list.")
     for i, v in enumerate(components):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -4643,7 +4645,8 @@ def Stage(values: List[Tensor], *, capacity: int=0, memory_limit: int=0, contain
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(values, (tuple, list))
+    if not isinstance(values, (tuple, list)):
+        raise AssertionError("values must be a tuple or a list.")
     for i, v in enumerate(values):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -4984,7 +4987,8 @@ def DynamicStitch(indices: List[Tensor], x: List[Tensor], *, N: int=1, dependenc
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(indices, (tuple, list))
+    if not isinstance(indices, (tuple, list)):
+        raise AssertionError("indices must be a tuple or a list.")
     for i, v in enumerate(indices):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -5028,7 +5032,8 @@ def ParallelDynamicStitch(indices: List[Tensor], x: List[Tensor], *, N: int=1, d
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(indices, (tuple, list))
+    if not isinstance(indices, (tuple, list)):
+        raise AssertionError("indices must be a tuple or a list.")
     for i, v in enumerate(indices):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -5200,7 +5205,8 @@ def MapStage(key: Tensor, indices: Tensor, values: List[Tensor], *, capacity: in
     op.input.append(indices.tensor)
     op.input_desc.add().CopyFrom(indices.desc)
     op.input_desc[-1].name = "indices"
-    assert isinstance(values, (tuple, list))
+    if not isinstance(values, (tuple, list)):
+        raise AssertionError("values must be a tuple or a list.")
     for i, v in enumerate(values):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -6073,7 +6079,8 @@ def OrderedMapStage(key: Tensor, indices: Tensor, values: List[Tensor], *, capac
     op.input.append(indices.tensor)
     op.input_desc.add().CopyFrom(indices.desc)
     op.input_desc[-1].name = "indices"
-    assert isinstance(values, (tuple, list))
+    if not isinstance(values, (tuple, list)):
+        raise AssertionError("values must be a tuple or a list.")
     for i, v in enumerate(values):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -7854,7 +7861,8 @@ def SequenceConstruct(inputs: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(inputs, (tuple, list))
+    if not isinstance(inputs, (tuple, list)):
+        raise AssertionError("inputs must be a tuple or a list.")
     for i, v in enumerate(inputs):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -15340,7 +15348,8 @@ def IndexByTensor(x: Tensor,
     op.input.append(x.tensor)
     op.input_desc.add().CopyFrom(x.desc)
     op.input_desc[-1].name = "x"
-    assert isinstance(indices, (tuple, list))
+    if not isinstance(indices, (tuple, list)):
+        raise AssertionError("indices must be a tuple or a list.")
     for i, v in enumerate(indices):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -15395,7 +15404,8 @@ def IndexPutImpl(x: Tensor,
     op.input.append(value.tensor)
     op.input_desc.add().CopyFrom(value.desc)
     op.input_desc[-1].name = "value"
-    assert isinstance(indices, (tuple, list))
+    if not isinstance(indices, (tuple, list)):
+        raise AssertionError("indices must be a tuple or a list.")
     for i, v in enumerate(indices):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -15445,7 +15455,8 @@ def Index(x: Tensor, indexed_sizes: Tensor, indexed_strides: Tensor, indices: Li
     op.input.append(indexed_strides.tensor)
     op.input_desc.add().CopyFrom(indexed_strides.desc)
     op.input_desc[-1].name = "indexed_strides"
-    assert isinstance(indices, (tuple, list))
+    if not isinstance(indices, (tuple, list)):
+        raise AssertionError("indices must be a tuple or a list.")
     for i, v in enumerate(indices):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -15497,7 +15508,8 @@ def IndexPutV2(x: Tensor, value: Tensor, indexed_sizes: Tensor, indexed_strides:
     op.input.append(indexed_strides.tensor)
     op.input_desc.add().CopyFrom(indexed_strides.desc)
     op.input_desc[-1].name = "indexed_strides"
-    assert isinstance(indices, (tuple, list))
+    if not isinstance(indices, (tuple, list)):
+        raise AssertionError("indices must be a tuple or a list.")
     for i, v in enumerate(indices):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -18137,7 +18149,8 @@ def _ScatterList(var: List[Tensor], indice: Tensor, updates: Tensor, mask: Optio
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(var, (tuple, list))
+    if not isinstance(var, (tuple, list)):
+        raise AssertionError("var must be a tuple or a list.")
     for i, v in enumerate(var):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -18361,12 +18374,14 @@ def IncreFlashAttention(query: Tensor,
     op.input.append(query.tensor)
     op.input_desc.add().CopyFrom(query.desc)
     op.input_desc[-1].name = "query"
-    assert isinstance(key, (tuple, list))
+    if not isinstance(key, (tuple, list)):
+        raise AssertionError("key must be a tuple or a list.")
     for i, v in enumerate(key):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "key" + str(i)
-    assert isinstance(value, (tuple, list))
+    if not isinstance(value, (tuple, list)):
+        raise AssertionError("value must be a tuple or a list.")
     for i, v in enumerate(value):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -18812,7 +18827,8 @@ def ForeachNonFiniteCheckAndUnscale(scaled_grads: List[Tensor], found_inf: Tenso
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(scaled_grads, (tuple, list))
+    if not isinstance(scaled_grads, (tuple, list)):
+        raise AssertionError("scaled_grads must be a tuple or a list.")
     for i, v in enumerate(scaled_grads):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -19229,12 +19245,14 @@ def ForeachAddListInplace(x1: List[Tensor], x2: List[Tensor], alpha: Tensor, *, 
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x1, (tuple, list))
+    if not isinstance(x1, (tuple, list)):
+        raise AssertionError("x1 must be a tuple or a list.")
     for i, v in enumerate(x1):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "x1" + str(i)
-    assert isinstance(x2, (tuple, list))
+    if not isinstance(x2, (tuple, list)):
+        raise AssertionError("x2 must be a tuple or a list.")
     for i, v in enumerate(x2):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -19271,12 +19289,14 @@ def _ForeachAddList(x1: List[Tensor], x2: List[Tensor], alpha: Tensor, *, size_o
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x1, (tuple, list))
+    if not isinstance(x1, (tuple, list)):
+        raise AssertionError("x1 must be a tuple or a list.")
     for i, v in enumerate(x1):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "x1" + str(i)
-    assert isinstance(x2, (tuple, list))
+    if not isinstance(x2, (tuple, list)):
+        raise AssertionError("x2 must be a tuple or a list.")
     for i, v in enumerate(x2):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -19473,12 +19493,14 @@ def ForeachSubListInplace(x1: List[Tensor], x2: List[Tensor], alpha: Tensor, *, 
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x1, (tuple, list))
+    if not isinstance(x1, (tuple, list)):
+        raise AssertionError("x1 must be a tuple or a list.")
     for i, v in enumerate(x1):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "x1" + str(i)
-    assert isinstance(x2, (tuple, list))
+    if not isinstance(x2, (tuple, list)):
+        raise AssertionError("x2 must be a tuple or a list.")
     for i, v in enumerate(x2):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -19515,12 +19537,14 @@ def _ForeachSubList(x1: List[Tensor], x2: List[Tensor], alpha: Tensor, *, size_o
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x1, (tuple, list))
+    if not isinstance(x1, (tuple, list)):
+        raise AssertionError("x1 must be a tuple or a list.")
     for i, v in enumerate(x1):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "x1" + str(i)
-    assert isinstance(x2, (tuple, list))
+    if not isinstance(x2, (tuple, list)):
+        raise AssertionError("x2 must be a tuple or a list.")
     for i, v in enumerate(x2):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -19680,12 +19704,14 @@ def ForeachMulListInplace(x1: List[Tensor], x2: List[Tensor], *, dependencies=[]
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x1, (tuple, list))
+    if not isinstance(x1, (tuple, list)):
+        raise AssertionError("x1 must be a tuple or a list.")
     for i, v in enumerate(x1):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "x1" + str(i)
-    assert isinstance(x2, (tuple, list))
+    if not isinstance(x2, (tuple, list)):
+        raise AssertionError("x2 must be a tuple or a list.")
     for i, v in enumerate(x2):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -19718,12 +19744,14 @@ def _ForeachMulList(x1: List[Tensor], x2: List[Tensor], *, size_of_y: int, depen
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x1, (tuple, list))
+    if not isinstance(x1, (tuple, list)):
+        raise AssertionError("x1 must be a tuple or a list.")
     for i, v in enumerate(x1):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "x1" + str(i)
-    assert isinstance(x2, (tuple, list))
+    if not isinstance(x2, (tuple, list)):
+        raise AssertionError("x2 must be a tuple or a list.")
     for i, v in enumerate(x2):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -19916,12 +19944,14 @@ def ForeachDivListInplace(x1: List[Tensor], x2: List[Tensor], *, dependencies=[]
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x1, (tuple, list))
+    if not isinstance(x1, (tuple, list)):
+        raise AssertionError("x1 must be a tuple or a list.")
     for i, v in enumerate(x1):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "x1" + str(i)
-    assert isinstance(x2, (tuple, list))
+    if not isinstance(x2, (tuple, list)):
+        raise AssertionError("x2 must be a tuple or a list.")
     for i, v in enumerate(x2):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -19954,12 +19984,14 @@ def _ForeachDivList(x1: List[Tensor], x2: List[Tensor], *, size_of_y: int, depen
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x1, (tuple, list))
+    if not isinstance(x1, (tuple, list)):
+        raise AssertionError("x1 must be a tuple or a list.")
     for i, v in enumerate(x1):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "x1" + str(i)
-    assert isinstance(x2, (tuple, list))
+    if not isinstance(x2, (tuple, list)):
+        raise AssertionError("x2 must be a tuple or a list.")
     for i, v in enumerate(x2):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20152,12 +20184,14 @@ def ForeachMaximumListInplace(x1: List[Tensor], x2: List[Tensor], *, dependencie
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x1, (tuple, list))
+    if not isinstance(x1, (tuple, list)):
+        raise AssertionError("x1 must be a tuple or a list.")
     for i, v in enumerate(x1):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "x1" + str(i)
-    assert isinstance(x2, (tuple, list))
+    if not isinstance(x2, (tuple, list)):
+        raise AssertionError("x2 must be a tuple or a list.")
     for i, v in enumerate(x2):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20190,12 +20224,14 @@ def _ForeachMaximumList(x1: List[Tensor], x2: List[Tensor], *, size_of_y: int, d
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x1, (tuple, list))
+    if not isinstance(x1, (tuple, list)):
+        raise AssertionError("x1 must be a tuple or a list.")
     for i, v in enumerate(x1):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "x1" + str(i)
-    assert isinstance(x2, (tuple, list))
+    if not isinstance(x2, (tuple, list)):
+        raise AssertionError("x2 must be a tuple or a list.")
     for i, v in enumerate(x2):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20388,12 +20424,14 @@ def ForeachMinimumListInplace(x1: List[Tensor], x2: List[Tensor], *, dependencie
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x1, (tuple, list))
+    if not isinstance(x1, (tuple, list)):
+        raise AssertionError("x1 must be a tuple or a list.")
     for i, v in enumerate(x1):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "x1" + str(i)
-    assert isinstance(x2, (tuple, list))
+    if not isinstance(x2, (tuple, list)):
+        raise AssertionError("x2 must be a tuple or a list.")
     for i, v in enumerate(x2):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20426,12 +20464,14 @@ def _ForeachMinimumList(x1: List[Tensor], x2: List[Tensor], *, size_of_y: int, d
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x1, (tuple, list))
+    if not isinstance(x1, (tuple, list)):
+        raise AssertionError("x1 must be a tuple or a list.")
     for i, v in enumerate(x1):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "x1" + str(i)
-    assert isinstance(x2, (tuple, list))
+    if not isinstance(x2, (tuple, list)):
+        raise AssertionError("x2 must be a tuple or a list.")
     for i, v in enumerate(x2):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20624,12 +20664,14 @@ def ForeachPowListInplace(x1: List[Tensor], x2: List[Tensor], *, dependencies=[]
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x1, (tuple, list))
+    if not isinstance(x1, (tuple, list)):
+        raise AssertionError("x1 must be a tuple or a list.")
     for i, v in enumerate(x1):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "x1" + str(i)
-    assert isinstance(x2, (tuple, list))
+    if not isinstance(x2, (tuple, list)):
+        raise AssertionError("x2 must be a tuple or a list.")
     for i, v in enumerate(x2):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20662,12 +20704,14 @@ def _ForeachPowList(x1: List[Tensor], x2: List[Tensor], *, size_of_y: int, depen
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x1, (tuple, list))
+    if not isinstance(x1, (tuple, list)):
+        raise AssertionError("x1 must be a tuple or a list.")
     for i, v in enumerate(x1):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "x1" + str(i)
-    assert isinstance(x2, (tuple, list))
+    if not isinstance(x2, (tuple, list)):
+        raise AssertionError("x2 must be a tuple or a list.")
     for i, v in enumerate(x2):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -22233,7 +22277,8 @@ def OpTiling(x: List[Tensor], output_shape: List[Tensor], *, tiling_node: str, o
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "x" + str(i)
-    assert isinstance(output_shape, (tuple, list))
+    if not isinstance(output_shape, (tuple, list)):
+        raise AssertionError("output_shape must be a tuple or a list.")
     for i, v in enumerate(output_shape):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -28860,7 +28905,8 @@ def Assert(input_condition: Tensor, input_data: List[Tensor], *, summarize: int=
     op.input.append(input_condition.tensor)
     op.input_desc.add().CopyFrom(input_condition.desc)
     op.input_desc[-1].name = "input_condition"
-    assert isinstance(input_data, (tuple, list))
+    if not isinstance(input_data, (tuple, list)):
+        raise AssertionError("input_data must be a tuple or a list.")
     for i, v in enumerate(input_data):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -28963,7 +29009,8 @@ def PrintV3(x: Tensor, data: List[Tensor], *, message: str="", first_n: int=-1, 
     op.input.append(x.tensor)
     op.input_desc.add().CopyFrom(x.desc)
     op.input_desc[-1].name = "x"
-    assert isinstance(data, (tuple, list))
+    if not isinstance(data, (tuple, list)):
+        raise AssertionError("data must be a tuple or a list.")
     for i, v in enumerate(data):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -39207,12 +39254,14 @@ def YoloV5DetectionOutputD(x: List[Tensor], windex: List[Tensor], hindex: List[T
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "x" + str(i)
-    assert isinstance(windex, (tuple, list))
+    if not isinstance(windex, (tuple, list)):
+        raise AssertionError("windex must be a tuple or a list.")
     for i, v in enumerate(windex):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "windex" + str(i)
-    assert isinstance(hindex, (tuple, list))
+    if not isinstance(hindex, (tuple, list)):
+        raise AssertionError("hindex must be a tuple or a list.")
     for i, v in enumerate(hindex):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -39726,12 +39775,14 @@ def YoloV3DetectionOutputV2D(x: List[Tensor], windex: List[Tensor], hindex: List
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "x" + str(i)
-    assert isinstance(windex, (tuple, list))
+    if not isinstance(windex, (tuple, list)):
+        raise AssertionError("windex must be a tuple or a list.")
     for i, v in enumerate(windex):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "windex" + str(i)
-    assert isinstance(hindex, (tuple, list))
+    if not isinstance(hindex, (tuple, list)):
+        raise AssertionError("hindex must be a tuple or a list.")
     for i, v in enumerate(hindex):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -40793,7 +40844,8 @@ def RoiExtractor(features: List[Tensor], rois: Tensor, index: Optional[Tensor], 
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(features, (tuple, list))
+    if not isinstance(features, (tuple, list)):
+        raise AssertionError("features must be a tuple or a list.")
     for i, v in enumerate(features):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -55384,7 +55436,8 @@ def _ParseSingleExample(serialized: Tensor, dense_defaults: List[Tensor], *, siz
     op.input.append(serialized.tensor)
     op.input_desc.add().CopyFrom(serialized.desc)
     op.input_desc[-1].name = "serialized"
-    assert isinstance(dense_defaults, (tuple, list))
+    if not isinstance(dense_defaults, (tuple, list)):
+        raise AssertionError("dense_defaults must be a tuple or a list.")
     for i, v in enumerate(dense_defaults):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -55527,7 +55580,8 @@ def _DecodeCSV(records: Tensor, record_defaults: List[Tensor], *, size_of_output
     op.input.append(records.tensor)
     op.input_desc.add().CopyFrom(records.desc)
     op.input_desc[-1].name = "records"
-    assert isinstance(record_defaults, (tuple, list))
+    if not isinstance(record_defaults, (tuple, list)):
+        raise AssertionError("record_defaults must be a tuple or a list.")
     for i, v in enumerate(record_defaults):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -55589,17 +55643,20 @@ def _ParseExample(serialized: Tensor, name: Tensor, sparse_keys: List[Tensor], d
     op.input.append(name.tensor)
     op.input_desc.add().CopyFrom(name.desc)
     op.input_desc[-1].name = "name"
-    assert isinstance(sparse_keys, (tuple, list))
+    if not isinstance(sparse_keys, (tuple, list)):
+        raise AssertionError("sparse_keys must be a tuple or a list.")
     for i, v in enumerate(sparse_keys):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "sparse_keys" + str(i)
-    assert isinstance(dense_keys, (tuple, list))
+    if not isinstance(dense_keys, (tuple, list)):
+        raise AssertionError("dense_keys must be a tuple or a list.")
     for i, v in enumerate(dense_keys):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "dense_keys" + str(i)
-    assert isinstance(dense_defaults, (tuple, list))
+    if not isinstance(dense_defaults, (tuple, list)):
+        raise AssertionError("dense_defaults must be a tuple or a list.")
     for i, v in enumerate(dense_defaults):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -55688,27 +55745,32 @@ def _ParseSingleSequenceExample(serialized: Tensor, feature_list_dense_missing_a
     op.input.append(feature_list_dense_missing_assumed_empty.tensor)
     op.input_desc.add().CopyFrom(feature_list_dense_missing_assumed_empty.desc)
     op.input_desc[-1].name = "feature_list_dense_missing_assumed_empty"
-    assert isinstance(context_sparse_keys, (tuple, list))
+    if not isinstance(context_sparse_keys, (tuple, list)):
+        raise AssertionError("context_sparse_keys must be a tuple or a list.")
     for i, v in enumerate(context_sparse_keys):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "context_sparse_keys" + str(i)
-    assert isinstance(context_dense_keys, (tuple, list))
+    if not isinstance(context_dense_keys, (tuple, list)):
+        raise AssertionError("context_dense_keys must be a tuple or a list.")
     for i, v in enumerate(context_dense_keys):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "context_dense_keys" + str(i)
-    assert isinstance(feature_list_sparse_keys, (tuple, list))
+    if not isinstance(feature_list_sparse_keys, (tuple, list)):
+        raise AssertionError("feature_list_sparse_keys must be a tuple or a list.")
     for i, v in enumerate(feature_list_sparse_keys):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "feature_list_sparse_keys" + str(i)
-    assert isinstance(feature_list_dense_keys, (tuple, list))
+    if not isinstance(feature_list_dense_keys, (tuple, list)):
+        raise AssertionError("feature_list_dense_keys must be a tuple or a list.")
     for i, v in enumerate(feature_list_dense_keys):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "feature_list_dense_keys" + str(i)
-    assert isinstance(context_dense_defaults, (tuple, list))
+    if not isinstance(context_dense_defaults, (tuple, list)):
+        raise AssertionError("context_dense_defaults must be a tuple or a list.")
     for i, v in enumerate(context_dense_defaults):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -56253,7 +56315,8 @@ def _RaggedGather(params_nested_splits: List[Tensor], params_dense_values: Tenso
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(params_nested_splits, (tuple, list))
+    if not isinstance(params_nested_splits, (tuple, list)):
+        raise AssertionError("params_nested_splits must be a tuple or a list.")
     for i, v in enumerate(params_nested_splits):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -56307,7 +56370,8 @@ def RaggedTensorToSparse(rt_nested_splits: List[Tensor], rt_dense_values: Tensor
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(rt_nested_splits, (tuple, list))
+    if not isinstance(rt_nested_splits, (tuple, list)):
+        raise AssertionError("rt_nested_splits must be a tuple or a list.")
     for i, v in enumerate(rt_nested_splits):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -56367,7 +56431,8 @@ def RaggedTensorToTensor(shape: Tensor, values: Tensor, default_value: Tensor, r
     op.input.append(default_value.tensor)
     op.input_desc.add().CopyFrom(default_value.desc)
     op.input_desc[-1].name = "default_value"
-    assert isinstance(row_partition_tensors, (tuple, list))
+    if not isinstance(row_partition_tensors, (tuple, list)):
+        raise AssertionError("row_partition_tensors must be a tuple or a list.")
     for i, v in enumerate(row_partition_tensors):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -63763,7 +63828,8 @@ def Save(tensors: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(tensors, (tuple, list))
+    if not isinstance(tensors, (tuple, list)):
+        raise AssertionError("tensors must be a tuple or a list.")
     for i, v in enumerate(tensors):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -63815,22 +63881,26 @@ def _SdcaOptimizerV2(sparse_example_indices: List[Tensor], sparse_feature_indice
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(sparse_example_indices, (tuple, list))
+    if not isinstance(sparse_example_indices, (tuple, list)):
+        raise AssertionError("sparse_example_indices must be a tuple or a list.")
     for i, v in enumerate(sparse_example_indices):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "sparse_example_indices" + str(i)
-    assert isinstance(sparse_feature_indices, (tuple, list))
+    if not isinstance(sparse_feature_indices, (tuple, list)):
+        raise AssertionError("sparse_feature_indices must be a tuple or a list.")
     for i, v in enumerate(sparse_feature_indices):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "sparse_feature_indices" + str(i)
-    assert isinstance(sparse_feature_values, (tuple, list))
+    if not isinstance(sparse_feature_values, (tuple, list)):
+        raise AssertionError("sparse_feature_values must be a tuple or a list.")
     for i, v in enumerate(sparse_feature_values):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "sparse_feature_values" + str(i)
-    assert isinstance(dense_features, (tuple, list))
+    if not isinstance(dense_features, (tuple, list)):
+        raise AssertionError("dense_features must be a tuple or a list.")
     for i, v in enumerate(dense_features):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -63841,17 +63911,20 @@ def _SdcaOptimizerV2(sparse_example_indices: List[Tensor], sparse_feature_indice
     op.input.append(example_labels.tensor)
     op.input_desc.add().CopyFrom(example_labels.desc)
     op.input_desc[-1].name = "example_labels"
-    assert isinstance(sparse_indices, (tuple, list))
+    if not isinstance(sparse_indices, (tuple, list)):
+        raise AssertionError("sparse_indices must be a tuple or a list.")
     for i, v in enumerate(sparse_indices):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "sparse_indices" + str(i)
-    assert isinstance(sparse_weights, (tuple, list))
+    if not isinstance(sparse_weights, (tuple, list)):
+        raise AssertionError("sparse_weights must be a tuple or a list.")
     for i, v in enumerate(sparse_weights):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "sparse_weights" + str(i)
-    assert isinstance(dense_weights, (tuple, list))
+    if not isinstance(dense_weights, (tuple, list)):
+        raise AssertionError("dense_weights must be a tuple or a list.")
     for i, v in enumerate(dense_weights):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -68543,17 +68616,20 @@ def SparseConcat(indices: List[Tensor], values: List[Tensor], shapes: List[Tenso
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(indices, (tuple, list))
+    if not isinstance(indices, (tuple, list)):
+        raise AssertionError("indices must be a tuple or a list.")
     for i, v in enumerate(indices):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "indices" + str(i)
-    assert isinstance(values, (tuple, list))
+    if not isinstance(values, (tuple, list)):
+        raise AssertionError("values must be a tuple or a list.")
     for i, v in enumerate(values):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "values" + str(i)
-    assert isinstance(shapes, (tuple, list))
+    if not isinstance(shapes, (tuple, list)):
+        raise AssertionError("shapes must be a tuple or a list.")
     for i, v in enumerate(shapes):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -69108,22 +69184,26 @@ def SparseCross(indices: List[Tensor], values: List[Tensor], shapes: List[Tensor
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(indices, (tuple, list))
+    if not isinstance(indices, (tuple, list)):
+        raise AssertionError("indices must be a tuple or a list.")
     for i, v in enumerate(indices):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "indices" + str(i)
-    assert isinstance(values, (tuple, list))
+    if not isinstance(values, (tuple, list)):
+        raise AssertionError("values must be a tuple or a list.")
     for i, v in enumerate(values):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "values" + str(i)
-    assert isinstance(shapes, (tuple, list))
+    if not isinstance(shapes, (tuple, list)):
+        raise AssertionError("shapes must be a tuple or a list.")
     for i, v in enumerate(shapes):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "shapes" + str(i)
-    assert isinstance(dense_inputs, (tuple, list))
+    if not isinstance(dense_inputs, (tuple, list)):
+        raise AssertionError("dense_inputs must be a tuple or a list.")
     for i, v in enumerate(dense_inputs):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -69863,7 +69943,8 @@ def ParallelConcat(values: List[Tensor], *, shape: List[int], N: int, dependenci
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(values, (tuple, list))
+    if not isinstance(values, (tuple, list)):
+        raise AssertionError("values must be a tuple or a list.")
     for i, v in enumerate(values):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -74161,27 +74242,32 @@ def TopKPQDistance(actual_count: List[Tensor], pq_distance: List[Tensor], groupe
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(actual_count, (tuple, list))
+    if not isinstance(actual_count, (tuple, list)):
+        raise AssertionError("actual_count must be a tuple or a list.")
     for i, v in enumerate(actual_count):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "actual_count" + str(i)
-    assert isinstance(pq_distance, (tuple, list))
+    if not isinstance(pq_distance, (tuple, list)):
+        raise AssertionError("pq_distance must be a tuple or a list.")
     for i, v in enumerate(pq_distance):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "pq_distance" + str(i)
-    assert isinstance(grouped_extreme_distance, (tuple, list))
+    if not isinstance(grouped_extreme_distance, (tuple, list)):
+        raise AssertionError("grouped_extreme_distance must be a tuple or a list.")
     for i, v in enumerate(grouped_extreme_distance):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "grouped_extreme_distance" + str(i)
-    assert isinstance(pq_ivf, (tuple, list))
+    if not isinstance(pq_ivf, (tuple, list)):
+        raise AssertionError("pq_ivf must be a tuple or a list.")
     for i, v in enumerate(pq_ivf):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "pq_ivf" + str(i)
-    assert isinstance(pq_index, (tuple, list))
+    if not isinstance(pq_index, (tuple, list)):
+        raise AssertionError("pq_index must be a tuple or a list.")
     for i, v in enumerate(pq_index):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -75527,32 +75613,38 @@ def GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], sca
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "x" + str(i)
-    assert isinstance(weight, (tuple, list))
+    if not isinstance(weight, (tuple, list)):
+        raise AssertionError("weight must be a tuple or a list.")
     for i, v in enumerate(weight):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "weight" + str(i)
-    assert isinstance(bias, (tuple, list))
+    if not isinstance(bias, (tuple, list)):
+        raise AssertionError("bias must be a tuple or a list.")
     for i, v in enumerate(bias):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "bias" + str(i)
-    assert isinstance(scale, (tuple, list))
+    if not isinstance(scale, (tuple, list)):
+        raise AssertionError("scale must be a tuple or a list.")
     for i, v in enumerate(scale):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "scale" + str(i)
-    assert isinstance(offset, (tuple, list))
+    if not isinstance(offset, (tuple, list)):
+        raise AssertionError("offset must be a tuple or a list.")
     for i, v in enumerate(offset):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "offset" + str(i)
-    assert isinstance(antiquant_scale, (tuple, list))
+    if not isinstance(antiquant_scale, (tuple, list)):
+        raise AssertionError("antiquant_scale must be a tuple or a list.")
     for i, v in enumerate(antiquant_scale):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "antiquant_scale" + str(i)
-    assert isinstance(antiquant_offset, (tuple, list))
+    if not isinstance(antiquant_offset, (tuple, list)):
+        raise AssertionError("antiquant_offset must be a tuple or a list.")
     for i, v in enumerate(antiquant_offset):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
