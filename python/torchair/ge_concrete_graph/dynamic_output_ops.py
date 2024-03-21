@@ -549,7 +549,8 @@ def SplitVD(x: Tensor, *, size_splits: List[int], split_dim: int, num_split: int
   .REQUIRED_ATTR(num_split, Int)\n
   """
 
-    assert len(size_splits) == num_split
+    if len(size_splits) != num_split:
+        raise AssertionError
     size_of_y = num_split
     return raw_ops._SplitVD(x, size_of_y=size_of_y, size_splits=size_splits, split_dim=split_dim, num_split=num_split, dependencies=dependencies, node_name=node_name)
 

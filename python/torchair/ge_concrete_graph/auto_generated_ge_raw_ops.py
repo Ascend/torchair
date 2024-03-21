@@ -959,7 +959,8 @@ def _IdentityN(x: List[Tensor], *, size_of_y: int, dependencies=[], node_name=No
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -1544,7 +1545,8 @@ def GatherShapes(x: List[Tensor], *, axes: List[List[int]], dtype: int=3, depend
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -1582,7 +1584,8 @@ def _ShapeN(x: List[Tensor], *, size_of_y: int, dtype: int=3, dependencies=[], n
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -2192,7 +2195,8 @@ def GetShape(x: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -2730,7 +2734,8 @@ def _Batch(x_tensors: List[Tensor], *, size_of_y_tensors: int, num_batch_threads
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x_tensors, (tuple, list))
+    if not isinstance(x_tensors, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x_tensors):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -2955,12 +2960,14 @@ def _BoostedTreesBucketize(float_values: List[Tensor], bucket_boundaries: List[T
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(float_values, (tuple, list))
+    if not isinstance(float_values, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(float_values):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "float_values" + str(i)
-    assert isinstance(bucket_boundaries, (tuple, list))
+    if not isinstance(bucket_boundaries, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(bucket_boundaries):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -3490,7 +3497,8 @@ def Merge(x: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -3529,7 +3537,8 @@ def RefMerge(x: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -4979,7 +4988,8 @@ def DynamicStitch(indices: List[Tensor], x: List[Tensor], *, N: int=1, dependenc
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "indices" + str(i)
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -5022,7 +5032,8 @@ def ParallelDynamicStitch(indices: List[Tensor], x: List[Tensor], *, N: int=1, d
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "indices" + str(i)
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -7175,7 +7186,8 @@ def OutfeedEnqueueOp(x: List[Tensor], *, channel_name: str="", dependencies=[], 
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -7209,7 +7221,8 @@ def OutfeedEnqueueOpV2(x: List[Tensor], tensor_name: Tensor, *, channel_name: st
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -7760,7 +7773,8 @@ def _FlowFunc(x: List[Tensor], *, size_of_y: int, bin_path: str, func_name: str,
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -8563,7 +8577,8 @@ def AddN(x: List[Tensor], *, N: int, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -11346,7 +11361,8 @@ def AccumulateNV2(x: List[Tensor], *, N: int, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -12405,7 +12421,8 @@ def Eltwise(x: List[Tensor], *, N: int, mode: int=1, coeff: List[float]=[], depe
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -14290,7 +14307,8 @@ def MaxN(x: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -18831,7 +18849,8 @@ def ForeachMulScalarInplace(x: List[Tensor], scalar: Tensor, *, dependencies=[],
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -19052,7 +19071,8 @@ def ForeachAddScalarInplace(x: List[Tensor], scalar: Tensor, *, dependencies=[],
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -19088,7 +19108,8 @@ def _ForeachAddScalar(x: List[Tensor], scalar: Tensor, *, size_of_y: int, depend
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -19128,7 +19149,8 @@ def ForeachAddScalarListInplace(x: List[Tensor], scalars: Tensor, *, dependencie
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -19164,7 +19186,8 @@ def _ForeachAddScalarList(x: List[Tensor], scalars: Tensor, *, size_of_y: int, d
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -19292,7 +19315,8 @@ def ForeachSubScalarInplace(x: List[Tensor], scalar: Tensor, *, dependencies=[],
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -19328,7 +19352,8 @@ def _ForeachSubScalar(x: List[Tensor], scalar: Tensor, *, size_of_y: int, depend
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -19368,7 +19393,8 @@ def ForeachSubScalarListInplace(x: List[Tensor], scalars: Tensor, *, dependencie
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -19404,7 +19430,8 @@ def _ForeachSubScalarList(x: List[Tensor], scalars: Tensor, *, size_of_y: int, d
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -19533,7 +19560,8 @@ def _ForeachMulScalar(x: List[Tensor], scalar: Tensor, *, size_of_y: int, depend
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -19573,7 +19601,8 @@ def ForeachMulScalarListInplace(x: List[Tensor], scalars: Tensor, *, dependencie
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -19609,7 +19638,8 @@ def _ForeachMulScalarList(x: List[Tensor], scalars: Tensor, *, size_of_y: int, d
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -19729,7 +19759,8 @@ def ForeachDivScalarInplace(x: List[Tensor], scalar: Tensor, *, dependencies=[],
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -19765,7 +19796,8 @@ def _ForeachDivScalar(x: List[Tensor], scalar: Tensor, *, size_of_y: int, depend
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -19805,7 +19837,8 @@ def ForeachDivScalarListInplace(x: List[Tensor], scalars: Tensor, *, dependencie
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -19841,7 +19874,8 @@ def _ForeachDivScalarList(x: List[Tensor], scalars: Tensor, *, size_of_y: int, d
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -19961,7 +19995,8 @@ def ForeachMaximumScalarInplace(x: List[Tensor], scalar: Tensor, *, dependencies
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -19997,7 +20032,8 @@ def _ForeachMaximumScalar(x: List[Tensor], scalar: Tensor, *, size_of_y: int, de
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20037,7 +20073,8 @@ def ForeachMaximumScalarListInplace(x: List[Tensor], scalars: Tensor, *, depende
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20073,7 +20110,8 @@ def _ForeachMaximumScalarList(x: List[Tensor], scalars: Tensor, *, size_of_y: in
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20193,7 +20231,8 @@ def ForeachMinimumScalarInplace(x: List[Tensor], scalar: Tensor, *, dependencies
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20229,7 +20268,8 @@ def _ForeachMinimumScalar(x: List[Tensor], scalar: Tensor, *, size_of_y: int, de
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20269,7 +20309,8 @@ def ForeachMinimumScalarListInplace(x: List[Tensor], scalars: Tensor, *, depende
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20305,7 +20346,8 @@ def _ForeachMinimumScalarList(x: List[Tensor], scalars: Tensor, *, size_of_y: in
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20425,7 +20467,8 @@ def ForeachPowScalarInplace(x: List[Tensor], scalar: Tensor, *, dependencies=[],
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20461,7 +20504,8 @@ def _ForeachPowScalar(x: List[Tensor], scalar: Tensor, *, size_of_y: int, depend
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20501,7 +20545,8 @@ def ForeachPowScalarListInplace(x: List[Tensor], scalars: Tensor, *, dependencie
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20537,7 +20582,8 @@ def _ForeachPowScalarList(x: List[Tensor], scalars: Tensor, *, size_of_y: int, d
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20656,7 +20702,8 @@ def ForeachAbsInplace(x: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20688,7 +20735,8 @@ def _ForeachAbs(x: List[Tensor], *, size_of_y: int, dependencies=[], node_name=N
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20724,7 +20772,8 @@ def ForeachACosInplace(x: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20756,7 +20805,8 @@ def _ForeachACos(x: List[Tensor], *, size_of_y: int, dependencies=[], node_name=
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20792,7 +20842,8 @@ def ForeachASinInplace(x: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20824,7 +20875,8 @@ def _ForeachASin(x: List[Tensor], *, size_of_y: int, dependencies=[], node_name=
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20860,7 +20912,8 @@ def ForeachATanInplace(x: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20892,7 +20945,8 @@ def _ForeachATan(x: List[Tensor], *, size_of_y: int, dependencies=[], node_name=
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20928,7 +20982,8 @@ def ForeachCosInplace(x: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20960,7 +21015,8 @@ def _ForeachCos(x: List[Tensor], *, size_of_y: int, dependencies=[], node_name=N
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -20996,7 +21052,8 @@ def ForeachSinInplace(x: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21028,7 +21085,8 @@ def _ForeachSin(x: List[Tensor], *, size_of_y: int, dependencies=[], node_name=N
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21064,7 +21122,8 @@ def ForeachTanInplace(x: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21096,7 +21155,8 @@ def _ForeachTan(x: List[Tensor], *, size_of_y: int, dependencies=[], node_name=N
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21132,7 +21192,8 @@ def ForeachCoshInplace(x: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21164,7 +21225,8 @@ def _ForeachCosh(x: List[Tensor], *, size_of_y: int, dependencies=[], node_name=
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21200,7 +21262,8 @@ def ForeachSinhInplace(x: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21232,7 +21295,8 @@ def _ForeachSinh(x: List[Tensor], *, size_of_y: int, dependencies=[], node_name=
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21268,7 +21332,8 @@ def ForeachTanhInplace(x: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21300,7 +21365,8 @@ def _ForeachTanh(x: List[Tensor], *, size_of_y: int, dependencies=[], node_name=
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21336,7 +21402,8 @@ def ForeachSqrtInplace(x: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21368,7 +21435,8 @@ def _ForeachSqrt(x: List[Tensor], *, size_of_y: int, dependencies=[], node_name=
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21404,7 +21472,8 @@ def ForeachNegInplace(x: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21436,7 +21505,8 @@ def _ForeachNeg(x: List[Tensor], *, size_of_y: int, dependencies=[], node_name=N
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21472,7 +21542,8 @@ def ForeachExpInplace(x: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21504,7 +21575,8 @@ def _ForeachExp(x: List[Tensor], *, size_of_y: int, dependencies=[], node_name=N
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21540,7 +21612,8 @@ def ForeachExpm1Inplace(x: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21572,7 +21645,8 @@ def _ForeachExpm1(x: List[Tensor], *, size_of_y: int, dependencies=[], node_name
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21608,7 +21682,8 @@ def ForeachLogInplace(x: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21640,7 +21715,8 @@ def _ForeachLog(x: List[Tensor], *, size_of_y: int, dependencies=[], node_name=N
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21676,7 +21752,8 @@ def ForeachLog2Inplace(x: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21708,7 +21785,8 @@ def _ForeachLog2(x: List[Tensor], *, size_of_y: int, dependencies=[], node_name=
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21744,7 +21822,8 @@ def ForeachLog10Inplace(x: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21776,7 +21855,8 @@ def _ForeachLog10(x: List[Tensor], *, size_of_y: int, dependencies=[], node_name
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21812,7 +21892,8 @@ def ForeachLog1pInplace(x: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21844,7 +21925,8 @@ def _ForeachLog1p(x: List[Tensor], *, size_of_y: int, dependencies=[], node_name
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21880,7 +21962,8 @@ def ForeachReciprocalInplace(x: List[Tensor], *, dependencies=[], node_name=None
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21912,7 +21995,8 @@ def _ForeachReciprocal(x: List[Tensor], *, size_of_y: int, dependencies=[], node
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21948,7 +22032,8 @@ def ForeachZeroInplace(x: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -21979,7 +22064,8 @@ def ForeachSigmoidInplace(x: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -22011,7 +22097,8 @@ def _ForeachSigmoid(x: List[Tensor], *, size_of_y: int, dependencies=[], node_na
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -22139,7 +22226,8 @@ def OpTiling(x: List[Tensor], output_shape: List[Tensor], *, tiling_node: str, o
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -22192,7 +22280,8 @@ def ConditionCalc(x: List[Tensor], *, cond_func: str, x_dependency: List[int], d
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -22471,7 +22560,8 @@ def _HcomBroadcast(x: List[Tensor], *, size_of_y: int, root_rank: int, group: st
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -27209,7 +27299,8 @@ def _AssistHelp(x: List[Tensor], *, size_of_y: int, func_name: str, dependencies
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -28800,7 +28891,8 @@ def Print(x: List[Tensor], *, dependencies=[], node_name=None):
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -34816,7 +34908,8 @@ def Einsum(x: List[Tensor], *, equation: str, N: int, dependencies=[], node_name
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -39036,7 +39129,8 @@ def YoloV5DetectionOutput(x: List[Tensor], *, biases: List[float], boxes: int=3,
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -39106,7 +39200,8 @@ def YoloV5DetectionOutputD(x: List[Tensor], windex: List[Tensor], hindex: List[T
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -39555,7 +39650,8 @@ def YoloV3DetectionOutputV2(x: List[Tensor], *, biases: List[float], boxes: int=
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -39623,7 +39719,8 @@ def YoloV3DetectionOutputV2D(x: List[Tensor], windex: List[Tensor], hindex: List
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -69805,7 +69902,8 @@ def ConcatV2D(x: List[Tensor], *, concat_dim: int, N: int=1, dependencies=[], no
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -69844,7 +69942,8 @@ def ConcatV2(x: List[Tensor], concat_dim: Tensor, *, N: int=1, dependencies=[], 
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -69885,7 +69984,8 @@ def ConcatD(x: List[Tensor], *, concat_dim: int, N: int=1, dependencies=[], node
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -69927,7 +70027,8 @@ def Concat(concat_dim: Tensor, x: List[Tensor], *, N: int=1, dependencies=[], no
     op.input.append(concat_dim.tensor)
     op.input_desc.add().CopyFrom(concat_dim.desc)
     op.input_desc[-1].name = "concat_dim"
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -69965,7 +70066,8 @@ def Pack(x: List[Tensor], *, N: int, axis: int=0, dependencies=[], node_name=Non
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -70007,7 +70109,8 @@ def _ConcatOffset(concat_dim: Tensor, x: List[Tensor], *, size_of_y: int, N: int
     op.input.append(concat_dim.tensor)
     op.input_desc.add().CopyFrom(concat_dim.desc)
     op.input_desc[-1].name = "concat_dim"
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -70047,7 +70150,8 @@ def _ConcatOffsetD(x: List[Tensor], *, size_of_y: int, concat_dim: int, N: int, 
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -72272,7 +72376,8 @@ def StringJoin(x: List[Tensor], *, N: int, separator: str="", dependencies=[], n
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -72312,7 +72417,8 @@ def StringFormat(x: List[Tensor], *, template: str="%s", placeholder: str="%s", 
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -75414,7 +75520,8 @@ def GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], sca
         op.input.append(dependency.controller)
     
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
