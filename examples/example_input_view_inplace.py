@@ -50,4 +50,4 @@ graph_result = graph_model(dst_graph, indices, src_graph, update_axis)
 print("eager result: ", dst_eager_all)
 print("graph result: ", dst_graph_all)
 
-assert abs(dst_graph - dst_eager).sum().item() == 0
+if not abs(dst_graph - dst_eager).sum().item() == 0: raise AssertionError

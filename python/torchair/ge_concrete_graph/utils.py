@@ -115,7 +115,7 @@ def convert_to_pbtxt(ge_graph: GraphDef):
 
 def dtype_promote(*tensors: Any, target_dtype: Union[torch.dtype, DataType]) -> Any:
     # Promote each input to the specified dtype, and convert non tensor inputs to Const.
-    assert len(tensors) != 0, "No object to dtype promotion."
+    if not len(tensors) != 0: raise AssertionError("No object to dtype promotion.")
 
     target_dtype = torch_type_to_ge_type(target_dtype) if isinstance(
         target_dtype, torch.dtype) else target_dtype

@@ -162,8 +162,8 @@ def npu_all_gather_patch_dist(output_tensor_list, tensor, group=None, async_op=F
     # 判断2个shape是否相同
     # 判断返回output_tensor_list2个shape是否相同
     size_ = len(ranklist)
-    assert len(output_tensor_list) == size_, f'Tensor list input and rank size mismatch,\
-    the len of list input is:{len(output_tensor_list)},but rank size is:{size_}.'
+    if not len(output_tensor_list) == size_: raise AssertionError(f'Tensor list input and rank size mismatch,\
+    the len of list input is:{len(output_tensor_list)},but rank size is:{size_}.')
     npu_out_list = torch.ops.npu_define.allgather(output_tensor_list, tensor, tag, ranklist, size_)
     for i, _ in enumerate(output_tensor_list):
         output_tensor_list[i].copy_(npu_out_list[i])
