@@ -64,7 +64,8 @@ def _try_get_global_init_compile_option(global_options: Dict = None):
     if _GLOBAL_COMPILE_OPTION is None:
         _GLOBAL_COMPILE_OPTION = global_options if global_options else {}
     else:
-        assert global_options is None or is_subset(global_options, _GLOBAL_COMPILE_OPTION)
+        if not (global_options is None or is_subset(global_options, _GLOBAL_COMPILE_OPTION)):
+            raise AssertionError
 
     return _GLOBAL_COMPILE_OPTION
 

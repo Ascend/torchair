@@ -155,7 +155,7 @@ def conveter_aten_div_Scalar_mode_out(
 @register_fx_node_ge_converter(torch.ops.aten.div.int)
 def conveter_aten_div_int(a: int, b: int, meta_outputs: TensorSpec = None):
     """NB: aten::div.int(int a, int b) -> float"""
-    assert ("torch.ops.aten.div.int is redundant. please use torch.ops.aten.div.Tensor instead")
+    raise AssertionError("torch.ops.aten.div.int is redundant. please use torch.ops.aten.div.Tensor instead")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.div.complex)

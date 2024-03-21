@@ -480,7 +480,8 @@ class GeGraph(object):
         return _graph_rng_state
 
     def record_input(self, index, op):
-        assert index not in self._indexed_inputs
+        if index in self._indexed_inputs:
+            raise AssertionError
         self._indexed_inputs[index] = op
 
     def num_inputs(self):
@@ -572,7 +573,8 @@ class TensorSpec:
 
     @property
     def size(self):
-        assert self._size is not None, f"Trying get size() from dynamic spec {self} is not allowed"
+        if self._size is None:
+            raise AssertionError(f"Trying get size() from dynamic spec {self} is not allowed")
         return self._size
 
     @property
@@ -624,7 +626,8 @@ class Tensor:
 
     @property
     def rank(self):
-        assert self._symsize is not None, f"Tensor {self} unknown rank"
+        if self._symsize is None:
+            raise AssertionError(f"Tensor {self} unknown rank")
         return len(self._symsize)
 
     @property
@@ -644,7 +647,8 @@ class Tensor:
             self._desc.attr['_meta'].s = compat_as_bytes(
                 f"Tensor(dtype={meta_output.dtype}, shape={meta_output.size()}")
         else:
-            assert is_sym(meta_output)
+            if not is_sym(meta_output):
+                raise AssertionError
             self.set_torch_dtype(sym_to_torch_dtype(meta_output))
             self._symsize = []
             self._desc.attr['_meta'].s = compat_as_bytes(
@@ -730,7 +734,8 @@ def _wrap_ge_tensor(v, dtype=None):
 
 
 def _torch_tensor_to_ge_const(v: torch.Tensor):
-    assert type(v) == torch.Tensor
+    if type(v) != torch.Tensor:
+        raise AssertionError
     with no_dispatch():
         if v.device.type != "cpu":
             v = v.cpu()
@@ -824,13 +829,11 @@ def _auto_type_promotion_for_const(bundle_inputs: list, inputs_dynamic: list, in
         if narray.size > 0:
             v = narray.item(0)
             if isinstance(v, float):
-                assert len(
-                    f_dtypes) <= 1, f"Cannot promote {func} input {i} float {v} with dtypes {f_dtypes}"
+                _assert_dtypes(len(i_dtypes) <= 1, f"Cannot promote {func} input {i} float {v} with dtypes {f_dtypes}")
                 promoted_inputs.append(_wrap_ge_tensor(
                     input, dtype=(f_dtypes[0] if len(f_dtypes) else None)))
             elif isinstance(v, int):
-                assert len(
-                    i_dtypes) <= 1, f"Cannot promote {func} input {i} int {v} with dtypes {i_dtypes}"
+                _assert_dtypes(len(f_dtypes) <= 1, f"Cannot promote {func} input {i} int {v} with dtypes {i_dtypes}")
                 promoted_inputs.append(_wrap_ge_tensor(
                     input, dtype=(i_dtypes[0] if len(i_dtypes) else None)))
         else:
@@ -839,6 +842,11 @@ def _auto_type_promotion_for_const(bundle_inputs: list, inputs_dynamic: list, in
             f"ge.{func} promote input {i} value {input} to dtype {_ge_proto_dtype_str(promoted_inputs[-1].desc.dtype)}")
 
     return _inputs_to_bundle_inputs(promoted_inputs, input_start_end)
+
+
+def _assert_dtypes(dtypes_flag, error_message):
+    if not dtypes_flag:
+        raise AssertionErrorf(error_message)
 
 
 def _set_extral_node_attrs(outputs):
@@ -851,7 +859,8 @@ def _set_extral_node_attrs(outputs):
             outputs.node.attr[key].s = value
     elif isinstance(outputs, (list, tuple)):
         for output in outputs:
-            assert isinstance(output, Tensor), f'expect tensor, but got {type(output)}.'
+            if not isinstance(output, Tensor):
+                raise AssertionError(f'expect tensor, but got {type(output)}.')
             for key, value in attr_maps.items():
                 output.node.attr[key].s = value
     else:
