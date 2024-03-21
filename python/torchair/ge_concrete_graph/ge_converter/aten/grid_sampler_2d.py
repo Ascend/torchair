@@ -41,8 +41,10 @@ def conveter_aten_grid_sampler_2d_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::grid_sampler_2d(Tensor input, Tensor grid, int interpolation_mode, int padding_mode, bool align_corners) -> Tensor"""
-    assert 0 <= interpolation_mode <= 2, "interpolation_mode must be in range [0~2]"
-    assert 0 <= padding_mode <= 2, "padding_mode must be in range [0~2]"
+    if not (0 <= interpolation_mode <= 2):
+        raise AssertionError("interpolation_mode must be in range [0~2]")
+    if not (0 <= padding_mode <= 2):
+        raise AssertionError("padding_mode must be in range [0~2]")
     input_cp = input
     grid_cp = grid
     if input.desc.dtype == ProtoDataType.DT_FLOAT16:

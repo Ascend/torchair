@@ -135,7 +135,9 @@ def summarize_fx_graph(graph, example_inputs, csv_file: str = None):
     with fake_mode:
         interpreter.run(*example_inputs)
 
-    assert csv_file.endswith(".csv"), "file must be a csv file"
+    if not csv_file.endswith(".csv"):
+        raise AssertionError("file must be a csv file")
+    
     try:
         import csv
     except ImportError:
