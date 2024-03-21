@@ -103,7 +103,7 @@ class NpuFxDumper(Interpreter):
 
     @property
     def step_path(self):
-        return os.path.join(os.path.dirname(self._config.full_path(f'{self._step}/')), self._name)
+        return os.path.join(os.path.dirname(self._config.full_path(f'data_dump/{self._step}/')), self._name)
 
     def run_node(self, n):
         if self._filter and self._filter(n) is None:
