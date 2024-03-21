@@ -46,7 +46,7 @@ def _add_op_to_meta_table(op, fn):
     if isinstance(op, OpOverload):
         overloads.append(op)
     else:
-        if not isinstance(op, OpOverloadPacket): raise AssertionError
+        assert isinstance(op, OpOverloadPacket)
         for ol in op.overloads():
             overloads.append(getattr(op, ol))
 
@@ -132,7 +132,7 @@ def npu_patch_meta():
     npu decompositions and meta func.
     '''
     for op_overload, fn in npu_meta_table.items():
-        if not isinstance(op_overload, OpOverload): raise AssertionError
+        assert isinstance(op_overload, OpOverload)
         decomposition_table[op_overload] = fn
         op_overload.py_kernels.pop(DispatchKey.Meta, None)
         op_overload.py_impl(DispatchKey.Meta)(fn)

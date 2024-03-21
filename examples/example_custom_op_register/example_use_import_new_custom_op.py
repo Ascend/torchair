@@ -28,7 +28,7 @@ def test_add():
     with torch.no_grad():
         output = model(input1, input2)
 
-    if not output.equal(input1 + input2): raise AssertionError
+    assert output.equal(input1 + input2)
 
 
 if __name__ == '__main__':

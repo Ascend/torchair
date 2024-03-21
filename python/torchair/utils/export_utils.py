@@ -77,7 +77,7 @@ def _convert_data_to_const(inputs, export_graph, file_path, config):
     for i, inp in enumerate(inputs):
         file_id = weight_name.get(id(inp))
         if file_id is not None:
-            if not inp.is_contiguous(): raise AssertionError
+            assert inp.is_contiguous()
             logger.debug(f'  Weight {i} dtype: {inp.dtype} shape: {inp.shape}')
             if weight_externalized:
                 y = ge.FileConstant(shape=list(inp.shape),

@@ -350,7 +350,7 @@ def _optimize_fx(example_inputs, gm: torch.fx.GraphModule, graph: ConcreteGraph)
 
     optimize_fx_input = []
     fx_inputs_mapping = {}
-    if not len(input_save_list_flag) == len(example_inputs): raise AssertionError
+    assert len(input_save_list_flag) == len(example_inputs)
     for i in range(len(input_save_list_flag)):
         if input_save_list_flag[i]:
             fx_inputs_mapping[i] = len(optimize_fx_input)
@@ -372,7 +372,7 @@ def _eliminate_sym(example_inputs, gm: torch.fx.GraphModule):
         return gm, input_save_list_flag
 
     gm, input_save_list_flag = _remove_sym_from_shape(gm)
-    if not len(input_save_list_flag) == len(example_inputs): raise AssertionError
+    assert len(input_save_list_flag) == len(example_inputs)
 
     logger.debug(f'after eliminate_sym graph: {gm.graph}')
     return gm, input_save_list_flag
