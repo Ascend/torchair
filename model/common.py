@@ -19,6 +19,7 @@ import signal
 import subprocess
 import sys
 import time
+import warnings
 from contextlib import contextmanager
 
 from typing import Any, Callable, Mapping, NamedTuple, Optional, Tuple, Type
@@ -80,6 +81,41 @@ current_batch_size = None
 output_filename = None
 
 MAX_DOWNLOAD_ATTEMPTS = 5
+
+
+class PathManager:
+    MAX_PATH_LENGTH = 4096
+    MAX_FILE_NAME_LENGTH = 255
+    DATA_FILE_AUTHORITY = 0o640
+    DATA_DIR_AUTHORITY = 0o750
+
+    @classmethod
+    def check_path_owner_consistent(cls, path: str):
+        if not os.path.exists(path):
+            msg = f"The path does not exist: {path}"
+            raise RuntimeError(msg)
+        if os.stat(path).st_uid != os.getuid():
+            warnings.warn(f"Warning: The {path} owner does not match the current user.")
+
+    @classmethod
+    def check_directory_path_readable(cls, path):
+        cls.check_path_owner_consistent(path)
+        if os.path.islink(path):
+            msg = f"Invalid path is a soft chain: {path}"
+            raise RuntimeError(msg)
+        if not os.access(path, os.R_OK):
+            msg = f"The path permission check failed: {path}"
+            raise RuntimeError(msg)
+
+    @classmethod
+    def check_directory_path_writeable(cls, path):
+        cls.check_path_owner_consistent(path)
+        if os.path.islink(path):
+            msg = f"Invalid path is a soft chain: {path}"
+            raise RuntimeError(msg)
+        if not os.access(path, os.W_OK):
+            msg = f"The path permission check failed: {path}"
+            raise RuntimeError(msg)
 
 
 class CI(NamedTuple):
@@ -349,6 +385,8 @@ def load_model_from_path(path_and_class_str):
 
 
 def output_csv(filename, headers, row):
+    abspath = os.path.abspath(filename)
+    PathManager.check_directory_path_readable(abspath)
     if os.path.exists(filename):
         with open(filename) as fd:
             lines = list(csv.reader(fd)) or [[]]
@@ -360,6 +398,7 @@ def output_csv(filename, headers, row):
     else:
         lines = [headers]
     lines.append([(f"{x:.6f}" if isinstance(x, float) else x) for x in row])
+    PathManager.check_directory_path_writeable(abspath)
     with open(filename, "w") as fd:
         writer = csv.writer(fd, lineterminator="\n")
         for line in lines:
@@ -1529,6 +1568,8 @@ def read_batch_size_from_file(args, filename, model_name):
     if os.path.exists("benchmarks"):
         filename = os.path.join("benchmarks", filename)
     assert os.path.exists(filename), filename
+    abspath = os.path.abspath(filename)
+    PathManager.check_directory_path_readable(abspath)
     with open(filename) as f:
         lines = f.readlines()
         lines = [i.split(",") for i in lines if len(i.strip()) > 0]

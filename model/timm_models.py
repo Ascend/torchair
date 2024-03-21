@@ -8,8 +8,7 @@ import sys
 import warnings
 
 import torch
-from common import BenchmarkRunner, download_retry_decorator, main
-
+from common import BenchmarkRunner, download_retry_decorator, main, PathManager
 from torch._dynamo.testing import collect_results, reduce_to_scalar_loss
 from torch._dynamo.utils import clone_inputs
 
@@ -30,6 +29,9 @@ finally:
 
 TIMM_MODELS = dict()
 filename = os.path.join(os.path.dirname(__file__), "timm_models_list.txt")
+
+abspath = os.path.abspath(filename)
+PathManager.check_directory_path_readable(abspath)
 
 with open(filename) as fh:
     lines = fh.readlines()

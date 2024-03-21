@@ -7,11 +7,49 @@ from __future__ import print_function
 import os
 import subprocess
 import sys
+import warnings
 
 _COMPAT_TORCH_VERSION = "2.1"
 _PYTHON_BIN_PATH_ENV = "TARGET_PYTHON_PATH"
 _ASCEND_SDK_ENV = "ASCEND_SDK_PATH"
 _NO_ASCEND_SDK = "NO_ASCEND_SDK"
+
+
+class PathManager:
+    MAX_PATH_LENGTH = 4096
+    MAX_FILE_NAME_LENGTH = 255
+    DATA_FILE_AUTHORITY = 0o640
+    DATA_DIR_AUTHORITY = 0o750
+
+    @classmethod
+    def check_path_owner_consistent(cls, path: str):
+        if not os.path.exists(path):
+            msg = f"The path does not exist: {path}"
+            raise RuntimeError(msg)
+        if os.stat(path).st_uid != os.getuid():
+            warnings.warn(f"Warning: The {path} owner does not match the current user.")
+
+    @classmethod
+    def check_directory_path_writeable(cls, path):
+        cls.check_path_owner_consistent(path)
+        if os.path.islink(path):
+            msg = f"Invalid path is a soft chain: {path}"
+            raise RuntimeError(msg)
+        if not os.access(path, os.W_OK):
+            msg = f"The path permission check failed: {path}"
+            raise RuntimeError(msg)
+
+    @classmethod
+    def create_file_safety(cls, path: str):
+        msg = f"Failed to create file: {path}"
+        if os.path.islink(path):
+            raise RuntimeError(msg)
+        if os.path.exists(path):
+            return
+        try:
+            os.close(os.open(path, os.O_WRONLY | os.O_CREAT, cls.DATA_FILE_AUTHORITY))
+        except Exception as err:
+            raise RuntimeError(msg) from err
 
 
 def run_command(cmd):
@@ -88,6 +126,10 @@ print('|'.join([
                   ' got %s.' % (python_bin_path, _COMPAT_TORCH_VERSION,
                                 compile_args[0]))
             continue
+        for path in ['PYTHON_BIN_PATH', 'TORCH_INSTALLED_PATH', 'COMPILE_FLAGS']:
+            real_path = os.path.abspath(real_config_path(path))
+            PathManager.create_file_safety(real_path)
+            PathManager.check_directory_path_writeable(real_path)
         # Write tools/python_bin_path.sh
         with open(real_config_path('PYTHON_BIN_PATH'), 'w') as f:
             f.write(python_bin_path)
@@ -121,6 +163,11 @@ def setup_ascend_sdk(env_path):
             break
         if not os.path.exists(ascend_path):
             print('Invalid ascend path: %s cannot be found.' % ascend_path)
+
+    for path in ['ASCEND_SDK_PATH', 'env.sh']:
+        real_path = os.path.abspath(real_config_path(path))
+        PathManager.create_file_safety(real_path)
+        PathManager.check_directory_path_writeable(real_path)
 
     with open(real_config_path('ASCEND_SDK_PATH'), 'w') as f:
         f.write(ascend_path)

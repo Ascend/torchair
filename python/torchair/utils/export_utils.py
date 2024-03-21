@@ -6,6 +6,7 @@ from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type
 from torchair.ge_concrete_graph.ge_graph import compat_as_bytes, GeGraph
 from torchair.ge_concrete_graph.utils import dump_graph
+from torchair.utils.path_manager import PathManager
 
 
 def _get_subpath(export_path_dir):
@@ -102,6 +103,7 @@ def _save_weight2file(inputs, file_path, weight_name, used_weight_num):
 
         file_path_and_name = file_path + "/" + file_id.replace(".", "_")
         if inp.dtype is torch.bfloat16:
+            PathManager.check_path_writeable_and_safety(file_path_and_name)
             with open(file_path_and_name, "w") as f:
                 # args0: file handle
                 # args1: True mean save as readable not tar.gz or other

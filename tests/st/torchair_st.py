@@ -229,8 +229,6 @@ class TorchairSt(unittest.TestCase):
                       'from torchair.ge_concrete_graph import ge_apis as ge\n' \
                       'from torchair.ge_concrete_graph.ge_graph import get_default_ge_graph\n\n'
 
-        exec(src)
-
 
     def test_1sym_pack(self):
         class Model(torch.nn.Module):

@@ -5,6 +5,7 @@ import torch
 from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef
 from torchair.ge_concrete_graph.ge_graph import compat_as_bytes, DataType, is_sym, Tensor, torch_type_to_ge_type
 from torchair.ge_concrete_graph import ge_apis as ge
+from torchair.utils.path_manager import PathManager
 from typing import Any, Dict, List, Tuple, Union, Callable
 
 
@@ -189,6 +190,7 @@ def dump_graph(path: str, graph):
     if path is None:
         return
 
+    PathManager.check_path_writeable_and_safety(path)
     if path.endswith(".txt"):
         with open(path, "w+") as f:
             f.write(str(graph))
