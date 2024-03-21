@@ -19,8 +19,9 @@
 extern "C" {
 #endif
 
-#define ACL_EVENT_SYNC      0x00000001u
-#define ACL_EVENT_TIME_LINE 0x00000008u
+#define ACL_EVENT_SYNC                    0x00000001u
+#define ACL_EVENT_CAPTURE_STREAM_PROGRESS 0x00000002u
+#define ACL_EVENT_TIME_LINE               0x00000008u
 
 #define ACL_STREAM_FAST_LAUNCH 0x00000001u
 #define ACL_STREAM_FAST_SYNC   0x00000002u
@@ -55,6 +56,12 @@ typedef enum aclrtEventWaitStatus {
     ACL_EVENT_WAIT_STATUS_NOT_READY = 1,
     ACL_EVENT_WAIT_STATUS_RESERVED  = 0xFFFF,
 } aclrtEventWaitStatus;
+
+typedef enum aclrtStreamStatus {
+    ACL_STREAM_STATUS_COMPLETE  = 0,
+    ACL_STREAM_STATUS_NOT_READY = 1,
+    ACL_STREAM_STATUS_RESERVED  = 0xFFFF,
+} aclrtStreamStatus;
 
 typedef enum aclrtCallbackBlockType {
     ACL_CALLBACK_NO_BLOCK,
@@ -135,9 +142,53 @@ typedef struct tagRtGroupInfo aclrtGroupInfo;
 
 typedef struct rtExceptionInfo aclrtExceptionInfo;
 
+typedef enum aclrtMemLocationType {
+    ACL_MEM_LOCATION_TYPE_HOST = 0, /**< reserved enum, current version not support */
+    ACL_MEM_LOCATION_TYPE_DEVICE,
+} aclrtMemLocationType;
+
+typedef struct aclrtMemLocation {
+    uint32_t id;
+    aclrtMemLocationType type;
+} aclrtMemLocation;
+
+typedef enum aclrtMemAllocationType {
+    ACL_MEM_ALLOCATION_TYPE_PINNED = 0,
+} aclrtMemAllocationType;
+
+typedef enum aclrtMemHandleType {
+    ACL_MEM_HANDLE_TYPE_NONE = 0,
+} aclrtMemHandleType;
+
+typedef struct aclrtPhysicalMemProp {
+    aclrtMemHandleType handleType;
+    aclrtMemAllocationType allocationType;
+    aclrtMemAttr memAttr;
+    aclrtMemLocation location;
+    uint64_t reserve;
+} aclrtPhysicalMemProp;
+
+typedef enum aclrtMemGranularityOptions {
+    ACL_RT_MEM_ALLOC_GRANULARITY_MINIMUM,
+    ACL_RT_MEM_ALLOC_GRANULARITY_RECOMMENDED,
+    ACL_RT_MEM_ALLOC_GRANULARITY_UNDEF = 0xFFFF,
+} aclrtMemGranularityOptions;
+
+typedef void* aclrtDrvMemHandle;
+
 typedef void (*aclrtCallback)(void *userData);
 
 typedef void (*aclrtExceptionInfoCallback)(aclrtExceptionInfo *exceptionInfo);
+
+typedef enum aclrtDeviceStatus {
+    ACL_RT_DEVICE_STATUS_NORMAL = 0,
+    ACL_RT_DEVICE_STATUS_ABNORMAL,
+    ACL_RT_DEVICE_STATUS_END = 0xFFFF,
+} aclrtDeviceStatus;
+
+typedef void* aclrtBinary;
+typedef void* aclrtBinHandle;
+typedef void* aclrtFuncHandle;
 
 /**
  * @ingroup AscendCL
@@ -538,6 +589,18 @@ ACL_FUNC_VISIBILITY aclError aclrtCreateEvent(aclrtEvent *event);
  * @retval OtherValues Failure
  */
 ACL_FUNC_VISIBILITY aclError aclrtCreateEventWithFlag(aclrtEvent *event, uint32_t flag);
+
+/**
+ * @ingroup AscendCL
+ * @brief create event instance with flag, event can be reused naturally
+ *
+ * @param event [OUT]   created event
+ * @param flag [IN]     event flag
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ */
+ACL_FUNC_VISIBILITY aclError aclrtCreateEventExWithFlag(aclrtEvent *event, uint32_t flag);
 
 /**
  * @ingroup AscendCL
@@ -964,6 +1027,109 @@ ACL_FUNC_VISIBILITY aclError aclrtMemsetAsync(void *devPtr,
 
 /**
  * @ingroup AscendCL
+ * @brief Allocate an address range reservation
+ *
+ * @param virPtr [OUT]    Resulting pointer to start of virtual address range allocated
+ * @param size [IN]       Size of the reserved virtual address range requested
+ * @param alignment [IN]  Alignment of the reserved virtual address range requested
+ * @param expectPtr [IN]  Fixed starting address range requested, must be nullptr
+ * @param flags [IN]      Flag of page type
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ *
+ * @see aclrtReleaseMemAddress | aclrtMallocPhysical | aclrtMapMem
+ */
+ACL_FUNC_VISIBILITY aclError aclrtReserveMemAddress(void **virPtr,
+                                                    size_t size,
+                                                    size_t alignment,
+                                                    void *expectPtr,
+                                                    uint64_t flags);
+
+/**
+ * @ingroup AscendCL
+ * @brief Free an address range reservation
+ *
+ * @param virPtr [IN]  Starting address of the virtual address range to free
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ *
+ * @see aclrtReserveMemAddress
+ */
+ACL_FUNC_VISIBILITY aclError aclrtReleaseMemAddress(void *virPtr);
+
+/**
+ * @ingroup AscendCL
+ * @brief Create a memory handle representing a memory allocation of a given
+ * size described by the given properties
+ *
+ * @param handle [OUT]  Value of handle returned. All operations on this
+ * allocation are to be performed using this handle.
+ * @param size [IN]     Size of the allocation requested
+ * @param prop [IN]     Properties of the allocation to create
+ * @param flags [IN]    Currently unused, must be zero
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ *
+ * @see aclrtFreePhysical | aclrtReserveMemAddress | aclrtMapMem
+ */
+ACL_FUNC_VISIBILITY aclError aclrtMallocPhysical(aclrtDrvMemHandle *handle,
+                                                 size_t size,
+                                                 const aclrtPhysicalMemProp *prop,
+                                                 uint64_t flags);
+
+/**
+ * @ingroup AscendCL
+ * @brief Release a memory handle representing a memory allocation which was
+ * previously allocated through aclrtMallocPhysical
+ *
+ * @param handle [IN]  Value of handle which was returned previously by aclrtMallocPhysical
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ *
+ * @see aclrtMallocPhysical
+ */
+ACL_FUNC_VISIBILITY aclError aclrtFreePhysical(aclrtDrvMemHandle handle);
+
+/**
+ * @ingroup AscendCL
+ * @brief Maps an allocation handle to a reserved virtual address range
+ *
+ * @param virPtr [IN]  Address where memory will be mapped
+ * @param size [IN]    Size of the memory mapping
+ * @param offset [IN]  Offset into the memory represented by handle from which to start mapping
+ * @param handle [IN]  Handle to a shareable memory
+ * @param flags [IN]   Currently unused, must be zero
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ *
+ * @see aclrtUnmapMem | aclrtReserveMemAddress | aclrtMallocPhysical
+ */
+ACL_FUNC_VISIBILITY aclError aclrtMapMem(void *virPtr,
+                                         size_t size,
+                                         size_t offset,
+                                         aclrtDrvMemHandle handle,
+                                         uint64_t flags);
+
+/**
+ * @ingroup AscendCL
+ * @brief Unmap the backing memory of a given address range
+ *
+ * @param virPtr [IN]  Starting address for the virtual address range to unmap
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ *
+ * @see aclrtMapMem
+ */
+ACL_FUNC_VISIBILITY aclError aclrtUnmapMem(void *virPtr);
+
+/**
+ * @ingroup AscendCL
  * @brief Create config handle of stream
  *
  * @retval the aclrtStreamConfigHandle pointer
@@ -1026,7 +1192,7 @@ ACL_FUNC_VISIBILITY aclError aclrtCreateStreamV2(aclrtStream *stream, const aclr
  * Can create fast streams through the aclrtCreateStreamWithConfig interface
  *
  * @param  stream [OUT]   the created stream
- * @param  priority [IN]   the priority of stream, reserved param, must be 0
+ * @param  priority [IN]   the priority of stream, value range:0~7
  * @param  flag [IN]   indicate the function for stream
  *
  * @retval ACL_SUCCESS The function is successfully executed.
@@ -1096,6 +1262,18 @@ ACL_FUNC_VISIBILITY aclError aclrtSynchronizeStream(aclrtStream stream);
  * @retval OtherValues Failure
  */
 ACL_FUNC_VISIBILITY aclError aclrtSynchronizeStreamWithTimeout(aclrtStream stream, int32_t timeout);
+
+/**
+ * @ingroup AscendCL
+ * @brief Query a stream for completion status.
+ *
+ * @param  stream [IN]   the stream to query
+ * @param  status [OUT]  stream status
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ */
+ACL_FUNC_VISIBILITY aclError aclrtStreamQuery(aclrtStream stream, aclrtStreamStatus *status);
 
 /**
  * @ingroup AscendCL
@@ -1354,6 +1532,201 @@ ACL_FUNC_VISIBILITY aclError aclrtGetOverflowStatus(void *outputAddr, size_t out
  * @retval OtherValues Failure
  */
 ACL_FUNC_VISIBILITY aclError aclrtResetOverflowStatus(aclrtStream stream);
+
+/**
+ * @ingroup AscendCL
+ * @brief The thread that handles the hostFunc function on the Stream
+ *
+ * @param hostFuncThreadId [IN] thread ID
+ * @param exeStream        [IN] stream handle
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ */
+ACL_FUNC_VISIBILITY aclError aclrtSubscribeHostFunc(uint64_t hostFuncThreadId, aclrtStream exeStream);
+
+/**
+ * @ingroup AscendCL
+ * @brief After waiting for a specified time, trigger hostFunc callback function processing
+ *
+ * @par Function
+ *  The thread processing callback specified by the aclrtSubscribeHostFunc interface
+ *
+ * @param timeout [IN]   timeout value
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ *
+ * @see aclrtSubscribeHostFunc
+ */
+ACL_FUNC_VISIBILITY aclError aclrtProcessHostFunc(int32_t timeout);
+
+/**
+ * @ingroup AscendCL
+ * @brief Cancel thread registration,
+ *        the hostFunc function on the specified Stream
+ *        is no longer processed by the specified thread
+ *
+ * @param hostFuncThreadId [IN]   thread ID
+ * @param exeStream        [IN]   stream handle
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ */
+ACL_FUNC_VISIBILITY aclError aclrtUnSubscribeHostFunc(uint64_t hostFuncThreadId, aclrtStream exeStream);
+
+/**
+ * @ingroup AscendCL
+ * @brief Get device status
+ *
+ * @param deviceId       [IN]   device ID
+ * @param deviceStatus   [OUT]  device status
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ */
+ACL_FUNC_VISIBILITY aclError aclrtQueryDeviceStatus(int32_t deviceId, aclrtDeviceStatus *deviceStatus);
+
+/**
+ * @ingroup AscendCL
+ * @brief Create data of type aclrtBinary
+ *
+ * @param [in] data   binary data
+ * @param [in] dataLen   binary length
+ *
+ * @retval the aclrtBinary
+ */
+ACL_FUNC_VISIBILITY aclrtBinary aclrtCreateBinary(const void *data, size_t dataLen);
+
+/**
+ * @ingroup AscendCL
+ * @brief Destroy data of type aclrtBinary
+ *
+ * @param modelDesc [IN]   aclrtBinary to be destroyed
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ */
+ACL_FUNC_VISIBILITY aclError aclrtDestroyBinary(aclrtBinary binary);
+
+
+/**
+ * @ingroup AscendCL
+ * @brief Registers and parses the bin file and loads it to the device.
+ *
+ * @param [in] binary   device binary description
+ * @param [out] binHandle   device binary handle
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ */
+ACL_FUNC_VISIBILITY aclError aclrtBinaryLoad(const aclrtBinary binary, aclrtBinHandle *binHandle);
+
+
+/**
+ * @ingroup AscendCL
+ * @brief UnLoad binary
+ *
+ * @param [in] binHandle  binary handle
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ */
+ACL_FUNC_VISIBILITY aclError aclrtBinaryUnLoad(aclrtBinHandle binHandle);
+
+/**
+ * @ingroup AscendCL
+ * @brief Find funcHandle based on binHandle and kernel name
+ *
+ * @param [in] binHandle  binHandle
+ * @param [in] kernelName   kernel name
+ * @param [out] funcHandle   funcHandle
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ */
+ACL_FUNC_VISIBILITY aclError aclrtBinaryGetFunction(const aclrtBinHandle binHandle, const char *kernelName,
+                                                    aclrtFuncHandle *funcHandle);
+
+/**
+ * @ingroup AscendCL
+ * @brief Kernel Launch to device
+ * @param [in] funcHandle  function handle
+ * @param [in] blockDim  block dimentions
+ * @param [in] argsData  args data
+ * @param [in] argsSize  args size
+ * @param [in] stream   stream handle
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ */
+ACL_FUNC_VISIBILITY aclError aclrtLaunchKernel(aclrtFuncHandle funcHandle, uint32_t blockDim,
+                                               const void *argsData, size_t argsSize, aclrtStream stream);
+
+/**
+ * @ingroup AscendCL
+ * @brief share the handle that created by the process itself to other process
+ * @param [in] handle   mem handle created by aclrtMallocPhysical
+ * @param [in] handleType  reserved param, must be MEM_HANDLE_TYPE_NONE
+ * @param [in] flags  reserved param, must be 0
+ * @param [out] shareableHandle  shareable Handle
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ */
+ACL_FUNC_VISIBILITY aclError aclrtMemExportToShareableHandle(aclrtDrvMemHandle handle,
+                                                             aclrtMemHandleType handleType, uint64_t flags,
+                                                             uint64_t *shareableHandle);
+
+/**
+ * @ingroup AscendCL
+ * @brief import a mem allocation from a shareable Handle
+ * @param [in] shareableHandle  shareable Handle
+ * @param [in] deviceId  used to generate the handle in the specified Device Id
+ * @param [out] handle handle in the process
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ */
+ACL_FUNC_VISIBILITY aclError aclrtMemImportFromShareableHandle(uint64_t shareableHandle,
+                                                               int32_t deviceId, aclrtDrvMemHandle *handle);
+
+/**
+ * @ingroup AscendCL
+ * @brief set the process whitelist, only the process configured in the whitelist can use this shareableHandle
+ * @param [in] shareableHandle  shareable Handle
+ * @param [in] deviceId  used to generate the handle in the specified Device Id
+ * @param [out] handle handle in the process
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ */
+ACL_FUNC_VISIBILITY aclError aclrtMemSetPidToShareableHandle(uint64_t shareableHandle,
+                                                             int32_t *pid, size_t pidNum);
+
+/**`
+ * @ingroup AscendCL
+ * @brief get the mem allocation granularity by the option
+ * @param [in] prop  aclrtPhysicalMemProp
+ * @param [in] option  mem granularity option
+ * @param [out] granularity granularity
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ */
+ACL_FUNC_VISIBILITY aclError aclrtMemGetAllocationGranularity(aclrtPhysicalMemProp *prop,
+                                                              aclrtMemGranularityOptions option,
+                                                              size_t *granularity);
+
+/**
+ * @ingroup AscendCL
+ * @brief Get the pid for the current process on the physical device
+ * @param [out] pid value of pid
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ */
+ACL_FUNC_VISIBILITY aclError aclrtDeviceGetBareTgid(int32_t *pid);
 
 #ifdef __cplusplus
 }

@@ -4,9 +4,7 @@
 #include "external/graph/types.h"
 #include "executor.h"
 #include "graph_data.h"
-#include "graph/ge_tensor.h"
 #include "graph/tensor.h"
-#include "graph/utils/type_utils.h"
 #include "torch/torch.h"
 #include "session.h"
 #include "checker.h"
@@ -24,6 +22,8 @@ std::string DebugString(const c10::optional<at::Tensor> &tensor);
 
 std::string DebugString(const c10::Device &device);
 
+std::vector<int64_t> GetGeTensorShape(const ge::Tensor &tensor);
+
 Status GePlacementToAtDeviceType(const ge::Placement &ge_placement, c10::DeviceType &device_type);
 
 Status AtTensorToGeTensor(const at::Tensor &tensor, ge::Tensor &ge_tensor);
@@ -34,14 +34,11 @@ Status AtDtypeToGeDtype(const c10::ScalarType &dtype, ge::DataType &ge_dtype);
 
 Status AssembleDataToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor);
 
-Status AssembleDimsToGeShape(const at::IntArrayRef &dims, ge::GeShape &ge_shape);
+Status AssembleDimsToShape(const at::IntArrayRef &dims, ge::Tensor &ge_tensor);
 
 Status AssembleDataAndShapeToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor);
 
 Status GeDtypeToAtDtype(const ge::DataType &ge_dtype, c10::ScalarType &dtype);
-
-Status CloneGraph(const ge::Graph &old_graph, ge::Graph &new_graph);
-
 }  // namespace tng
 
 #endif  // TORCH_AIR_TORCH_AIR_CONCRETE_GRAPH_UTILS_H_

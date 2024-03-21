@@ -3,8 +3,8 @@
 
 #include <atomic>
 #include <iostream>
-#include <memory>
 #include <map>
+#include <memory>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -15,11 +15,11 @@
 #include "pybind11/functional.h"
 #include "pybind11/stl.h"
 
-#include "torch/torch.h"
 #include "torch/csrc/Exceptions.h"
+#include "torch/csrc/autograd/utils/wrap_outputs.h"
 #include "torch/csrc/utils.h"
 #include "torch/csrc/utils/python_arg_parser.h"
-#include "torch/csrc/autograd/utils/wrap_outputs.h"
+#include "torch/torch.h"
 
 #include "concrete_graph.h"
 
@@ -31,7 +31,8 @@ class TorchNpuGraphBase {
   explicit TorchNpuGraphBase(const std::string &name);
   ~TorchNpuGraphBase() = default;
 
-  void Load(const std::string &serialized_proto, const std::map<std::string, std::string> &options);
+  void Load(const std::string &serialized_proto, const std::map<std::string, std::string> &options,
+            std::vector<int64_t> input_placements, std::vector<int64_t> output_dtypes, int64_t executor_type);
 
   void Compile();
 

@@ -178,6 +178,48 @@ class GE_FUNC_DEV_VISIBILITY GE_FUNC_HOST_VISIBILITY Tensor {
   graphStatus SetData(uint8_t *data, size_t size, const Tensor::DeleteFunc &deleter_func);
   graphStatus IsValid();
 
+  graphStatus SetOriginShapeDimNum(const size_t dim_num);
+  size_t GetOriginShapeDimNum() const;
+
+  graphStatus SetOriginShapeDim(const size_t idx, const int64_t dim_value);
+  int64_t GetOriginShapeDim(const size_t idx) const;
+
+  graphStatus SetOriginFormat(const ge::Format &format);
+  ge::Format GetOriginFormat() const;
+
+  graphStatus SetShapeDimNum(const size_t dim_num);
+  size_t GetShapeDimNum() const;
+
+  graphStatus SetShapeDim(const size_t idx, const int64_t dim_value);
+  int64_t GetShapeDim(const size_t idx) const;
+
+  graphStatus SetFormat(const ge::Format &format);
+  ge::Format GetFormat() const;
+
+  graphStatus SetDataType(const ge::DataType &dtype);
+  ge::DataType GetDataType() const;
+
+  graphStatus SetPlacement(const ge::Placement &placement);
+  ge::Placement GetPlacement() const;
+
+  /*
+  * 补维类似于ExpandDims算子，在原有shape的基础上，添加一到多个维度，例如原shape[2,2]有两根轴，那么在两根轴中间补两维后的shape为[2,1,1,2]。
+  * 补维后shape的第0、3根轴被称为原始轴，第1、2根轴被称为补维轴。
+  *
+  * 通过1和0描述补维规则，1代表当前轴为补维轴，0代表当前轴为原始轴，从左到右依次代表当前shape每根轴的来源，例如：
+  * | 补维规则   | 补维前shape | 补维后shape                                                    |
+  * | -------- | ----------- | ------------------------------------------------------------ |
+  * | 0110     | [2, 2]      | [2, 1, 1, 2]                                                 |
+  * | 100      | [2, 3]      | [1, 2, 3]                                                    |
+  * | 1000     | [2, 3]      | 补维规则与补维前shape不匹配，规则指定原始轴有3根，但原始shape只有2根轴，补维报错。 |
+  *
+  */
+  graphStatus SetExpandDimsRule(const AscendString &expand_dims_rule);
+  graphStatus GetExpandDimsRule(AscendString &expand_dims_rule) const;
+
+  // 高性能接口，与SetData接口的区别是避免重复make_shared,此时需要用户保证该tensor的内存只被当前tensor使用，具有独占所有权
+  graphStatus ResetData(uint8_t *data, size_t size, const Tensor::DeleteFunc &deleter_func);
+
   Tensor Clone() const;
 
  private:

@@ -67,6 +67,7 @@ public:
   FlowGraph &SetInputs(const std::vector<FlowOperator> &inputs);
   FlowGraph &SetOutputs(const std::vector<FlowOperator> &outputs);
   FlowGraph &SetOutputs(const std::vector<std::pair<FlowOperator, std::vector<size_t>>> &output_indexes);
+  void SetGraphPpBuilderAsync(bool graphpp_builder_async);
   const char *GetName() const;
 
   /**

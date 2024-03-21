@@ -6,9 +6,6 @@
 
 #include "external/graph/types.h"
 #include "ge/ge_api.h"
-#include "ge_ir.pb.h"
-#include "graph/model_serialize.h"
-#include "graph/utils/graph_utils_ex.h"
 
 namespace tng {
 enum class Placement {
@@ -31,7 +28,6 @@ class GraphData {
   }
   ~GraphData() = default;
   uint32_t id = 0U;
-  ge::proto::GraphDef graph_def;
   ge::GraphPtr graph = nullptr;
   std::map<ge::AscendString, ge::AscendString> compile_options;
   std::vector<Placement> input_placements;

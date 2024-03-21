@@ -8,8 +8,6 @@
 
 #include "ge/ge_api.h"
 #include "ge/ge_api_types.h"
-#include "graph/utils/graph_utils.h"
-#include "graph/debug/ge_attr_define.h"
 #include "acl/acl_rt.h"
 #include "npu_aoe.h"
 
@@ -132,12 +130,7 @@ Status Session::AutoTuneGraph(const ge::Graph &graph, const std::map<ge::AscendS
     TNG_ASSERT_GE_OK(clone_graph.CopyFrom(graph));
     std::map<ge::AscendString, ge::AscendString> optionsTmp;
     TNG_RETURN_IF_ERROR(AddGraph(id, clone_graph, optionsTmp));
-    auto compute_graph = ge::GraphUtilsEx::GetComputeGraph(clone_graph);
-    bool graph_has_been_added = false;
-    if (ge::AttrUtils::GetBool(*compute_graph, ge::ATTR_NAME_GRAPH_HAS_BEEN_ADDED, graph_has_been_added)
-            && graph_has_been_added) {
-        (void)ge::AttrUtils::SetBool(*compute_graph, ge::ATTR_NAME_GRAPH_HAS_BEEN_ADDED, false);
-    }
+
     (void)NpuAoe::GetInstance().RunAoeTuning(clone_graph, options, example_inputs, stream, global_ge_session.get());
   }
   return RemoveGraph(id);

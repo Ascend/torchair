@@ -1,7 +1,7 @@
 #include <atomic>
 #include <iostream>
-#include <memory>
 #include <map>
+#include <memory>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -9,12 +9,12 @@
 #include "pybind11/chrono.h"
 #include "pybind11/complex.h"
 #include "pybind11/functional.h"
-#include "pybind11/stl.h"
 #include "pybind11/pybind11.h"
+#include "pybind11/stl.h"
 
-#include "torchair.h"
-#include "torch/csrc/Exceptions.h"
 #include <ATen/record_function.h>
+#include "torch/csrc/Exceptions.h"
+#include "torchair.h"
 
 namespace py = pybind11;
 
@@ -75,7 +75,9 @@ tng::Status ParseListTensors(PyObject *obj, std::vector<at::Tensor> &tensors) {
 
 struct TngRuntimeError : public torch::PyTorchError {
   using PyTorchError::PyTorchError;
-  PyObject *python_type() override { return PyExc_RuntimeError; }
+  PyObject *python_type() override {
+    return PyExc_RuntimeError;
+  }
 };
 
 #define TNG_RAISE_IF_ERROR(expr)                       \
@@ -102,22 +104,23 @@ void Export(const std::string &serialized_proto, const std::map<std::string, std
   for (const auto &option : options) {
     compat_options[ge::AscendString(option.first.c_str())] = ge::AscendString(option.second.c_str());
   }
-  TNG_RAISE_IF_ERROR(
-    tng::ep::Export(serialized_proto.c_str(), serialized_proto.size(), compat_options));
+  TNG_RAISE_IF_ERROR(tng::ep::Export(serialized_proto.c_str(), serialized_proto.size(), compat_options));
   const pybind11::gil_scoped_acquire acquire;
 }
 
 TorchNpuGraphBase::TorchNpuGraphBase(const std::string &name) : name_(name), concrete_graph_(nullptr){};
 
-void TorchNpuGraphBase::Load(const std::string &serialized_proto, const std::map<std::string, std::string> &options) {
+void TorchNpuGraphBase::Load(const std::string &serialized_proto, const std::map<std::string, std::string> &options,
+                             std::vector<int64_t> input_placements, std::vector<int64_t> output_dtypes,
+                             int64_t executor_type) {
   RECORD_FUNCTION("TorchNpuGraphBase::Load", {});
   const pybind11::gil_scoped_release release;
   std::map<ge::AscendString, ge::AscendString> compat_options;
   for (const auto &option : options) {
     compat_options[ge::AscendString(option.first.c_str())] = ge::AscendString(option.second.c_str());
   }
-  TNG_RAISE_IF_ERROR(
-    tng::NpuConcreteGraph::Create(serialized_proto.c_str(), serialized_proto.size(), compat_options, concrete_graph_));
+  TNG_RAISE_IF_ERROR(tng::NpuConcreteGraph::Create(serialized_proto.c_str(), serialized_proto.size(), compat_options,
+                                                   input_placements, output_dtypes, executor_type, concrete_graph_));
   const pybind11::gil_scoped_acquire acquire;
 }
 
@@ -157,8 +160,8 @@ py::object TorchNpuGraphBase::Run(py::object obj) {
   py::handle handle = obj.cast<py::handle>();
   PyObject *args = handle.ptr();
   TNG_RAISE_ASSERT(
-    PyArg_ParseTuple(args, "OOO", &inputs, &assigned_outputs, &stream),
-    "Parse arg with signature Run(TensorList inputs, c10::List<c10::optional<Tensor>> outputs, c10::Stream) failed");
+      PyArg_ParseTuple(args, "OOO", &inputs, &assigned_outputs, &stream),
+      "Parse arg with signature Run(TensorList inputs, c10::List<c10::optional<Tensor>> outputs, c10::Stream) failed");
 
   std::vector<at::Tensor> input_tensors;
   TNG_RAISE_IF_ERROR(ParseListTensors(inputs, input_tensors));
@@ -173,7 +176,9 @@ py::object TorchNpuGraphBase::Run(py::object obj) {
   return py::cast(outputs);
 }
 
-std::string TorchNpuGraphBase::Summary() const { return ""; }
+std::string TorchNpuGraphBase::Summary() const {
+  return "";
+}
 
 void TorchNpuGraphBase::InitializeGraphEngine(const std::map<std::string, std::string> &options) {
   const pybind11::gil_scoped_release release;

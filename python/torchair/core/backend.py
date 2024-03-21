@@ -98,9 +98,14 @@ class TorchNpuGraph(_torchair.TorchNpuGraphBase):
         super(TorchNpuGraph, self).__init__(str(name))
 
     @pretty_error_msg
-    def load(self, serialized_ge_graph, options={}):
+    def load(self, ge_graph, options=None):
         """Load the graph"""
-        return super(TorchNpuGraph, self).load(serialized_ge_graph, options)
+        options = {} if options is None else options
+        input_placements = ge_graph.attr["_input_placements"].list.i
+        output_dtypes = ge_graph.attr["_output_dtypes"].list.i
+        executor_type = ge_graph.attr["_executor_type"].i
+        return super(TorchNpuGraph, self).load(ge_graph.SerializeToString(), options, input_placements, output_dtypes,
+                                               executor_type)
 
     @pretty_error_msg
     def compile(self):
