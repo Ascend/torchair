@@ -42,7 +42,8 @@ def all_to_all_single_decomposition(
     recv_counts = []
     send_displacements = [0]
     recv_displacements = [0]
-    assert len(input_split_sizes) == len(output_split_sizes)
+    if len(input_split_sizes) != len(output_split_sizes):
+        raise AssertionError
     for i, split_size in enumerate(input_split_sizes):
         send_counts.append(split_size)
         if i > 0:
@@ -68,7 +69,8 @@ def npu_all_to_all_single(
     pg = c10d._find_or_create_pg_by_ranks_and_tag(tag, ranks, group_size)
 
     if output_split_sizes is not None:
-        assert input_tensor.dim() != 0, input_tensor.dim()
+        if input_tensor.dim() == 0: 
+            raise AssertionError(input_tensor.dim())
         out_size = list(input_tensor.size())
         out_size[0] = sum(output_split_sizes)
         out_tensor = input_tensor.new_empty(out_size)
@@ -261,7 +263,8 @@ def npu_all_to_all_patch_dist(
         group=None,
         async_op=False,
 ):
-    assert len(input_tensor_list) == len(output_tensor_list)
+    if len(input_tensor_list) != len(output_tensor_list):
+        raise AssertionError
     if group is None:
         group = c10d._world.default_pg
     ranklist = torch.distributed.get_process_group_ranks(group)
@@ -271,8 +274,8 @@ def npu_all_to_all_patch_dist(
     c10d._ensure_all_tensors_same_dtype(output_tensor_list, input_tensor_list)
 
     npu_out_list = torch.ops.npu_define.all_to_all(input_tensor_list, output_tensor_list, tag, ranklist, len(ranklist))
-    assert len(npu_out_list) == len(output_tensor_list), f'The expect npu_out_list len {len(output_tensor_list)}, \
-        but got {len(npu_out_list)}.'
+    if len(npu_out_list) != len(output_tensor_list):
+        raise AssertionError(f'The expect npu_out_list len {len(output_tensor_list)}, but got {len(npu_out_list)}.')
 
     for i, _ in enumerate(output_tensor_list):
         output_tensor_list[i].copy_(npu_out_list[i])

@@ -18,7 +18,8 @@ def _find_packs_and_io_ops(graph: GraphDef):
         if op.type == "Data" and op.input_desc[0].device_type == "CPU":
             host_data_ops[GeTensor(op).tensor] = (op, 0)
         elif op.type == "Pack" and op.attr['_inputs_all_sym'].b == True:
-            assert op.attr["axis"].i == 0, f"sym pack op attr axis must be 0."
+            if op.attr["axis"].i != 0:
+                raise AssertionError(f"sym pack op attr axis must be 0.")
             sym_pack_ops[GeTensor(op).tensor] = op
     logger.info(f"find all host data ops {host_data_ops.keys()}, and sym pack ops {sym_pack_ops.keys()}.")
 
@@ -106,10 +107,12 @@ def optimize_sym_pack(graph: GraphDef, inputs: List, placements: List, fx_inputs
 
     logger.info(f"before pack optimize, graph fx inputs size {fx_inputs_len}, graph ge inputs size {len(inputs)},"
                 f", graph input mapping {fx_inputs_mapping}")
-    assert len(placements) == len(
-        inputs), f"graph inputs size {len(inputs)} is not equal to input_placements size {len(placements)}"
-    assert len(fx_inputs_mapping) == len(
-        inputs), f"graph inputs size {len(inputs)} is not equal to input_mappings size {len(fx_inputs_mapping)}"
+    if len(placements) != len(inputs):
+        raise AssertionError(f"graph inputs size {len(inputs)} \
+        is not equal to input_placements size {len(placements)}")
+    if len(fx_inputs_mapping) != len(inputs):
+        raise AssertionError(f"graph inputs size {len(inputs)} \
+        is not equal to input_mappings size {len(fx_inputs_mapping)}")
 
     host_data_ops, sym_pack_ops, ops_with_pack_input = _find_packs_and_io_ops(graph)
     additional_fx_inputs: List[List[int]] = _transfer_sym_pack_to_data()
