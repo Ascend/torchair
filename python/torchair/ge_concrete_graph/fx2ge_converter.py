@@ -149,9 +149,12 @@ def set_ge_outputs(ge_outputs, meta_outputs):
     elif isinstance(ge_outputs, int):
         assert isinstance(meta_outputs, (torch.SymInt, int))
     else:
-        assert isinstance(ge_outputs, (list, tuple))
-        assert isinstance(meta_outputs, (list, tuple))
-        assert len(ge_outputs) == len(meta_outputs)
+        if not isinstance(ge_outputs, (list, tuple)):
+            raise AssertionError
+        if not isinstance(meta_outputs, (list, tuple)):
+            raise AssertionError
+        if len(ge_outputs) != len(meta_outputs):
+            raise AssertionError
         for meta_output, ge_output in zip(meta_outputs, ge_outputs):
             if meta_output is None:
                 continue
@@ -213,13 +216,15 @@ class Converter:
     @supported_cases.setter
     def supported_cases(self, supported_cases):
         for testcase in supported_cases:
-            assert isinstance(testcase, Support)
+            if not isinstance(testcase, Support):
+                raise AssertionError
         self._supported_cases = supported_cases
 
 
 def declare_supported(supported_cases: List[Support]):
     def add_testcase(converter):
-        assert isinstance(converter, Converter)
+        if not isinstance(converter, Converter):
+            raise AssertionError
         converter.supported_cases = supported_cases
         _DECLARED_SUPPORTED_CONVERTERS.update({converter._aten_op: converter})
         return converter
@@ -294,8 +299,9 @@ def _update_internal_format_from_inputs(graph: GraphDef, runtime_inputs):
             input_index_mapping_graph_op[op.attr["index"].i] = op
 
     for idx in range(len(runtime_inputs)):
-        assert idx < len(input_index_mapping_graph_op), \
-            f"GE graph input index {idx} out of Data ops index range {len(input_index_mapping_graph_op)}"
+        if not (idx < len(input_index_mapping_graph_op)):
+            raise AssertionError(
+                f"GE graph input index {idx} out of Data ops index range {len(input_index_mapping_graph_op)}")
 
         if not runtime_inputs[idx].is_npu:
             logger.debug(f'input_{idx} is not npu tensor, skip format updates.')
@@ -476,8 +482,9 @@ class GeConcreteGraph(ConcreteGraphBase):
                 if index_tuple[1] in self._ref_data_idx:
                     args[index_tuple[0]].copy_(inputs[index_tuple[1]])
 
-        assert len(ge_outputs) == len(self.graph.attr["_output_dtypes"].list.i),\
-            f"output size mismatch, expect {len(self.graph.attr['_output_dtypes'].list.i)}, got {len(ge_outputs)}"
+        if len(ge_outputs) != len(self.graph.attr["_output_dtypes"].list.i):
+            raise AssertionError(
+                f"output size mismatch, expect {len(self.graph.attr['_output_dtypes'].list.i)}, got {len(ge_outputs)}")
 
         fx_outputs = [v for v in self._fx_outputs]
         for fx_idx, fx_output in enumerate(fx_outputs):
@@ -485,7 +492,8 @@ class GeConcreteGraph(ConcreteGraphBase):
                 fx_outputs[fx_idx] = fx_output.compute_output(*args)
 
         for fx_idx, ge_idx in self._fx_outputs_mapping.items():
-            assert ge_idx < len(ge_outputs), f"output index {ge_idx} out of range {len(ge_outputs)}"
+            if not (ge_idx < len(ge_outputs)):
+                raise AssertionError(f"output index {ge_idx} out of range {len(ge_outputs)}")
             fx_outputs[fx_idx] = ge_outputs[ge_idx]
 
         del ge_outputs
@@ -569,7 +577,8 @@ class GeConcreteGraph(ConcreteGraphBase):
             self._inputs.append(data)
             self._input_placements.append(Placement.HOST)
         else:
-            assert isinstance(meta_outputs, torch.Tensor)
+            if not isinstance(meta_outputs, torch.Tensor):
+                raise AssertionError
             dtype = torch_type_to_ge_type(meta_outputs.dtype)
             shape = _get_generalized_shape(meta_outputs)
             placement = Placement.HOST if (
@@ -582,7 +591,8 @@ class GeConcreteGraph(ConcreteGraphBase):
         return self._inputs[-1]
 
     def parse_output(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
-        assert isinstance(args, (list, tuple)) and len(args) == 1
+        if not (isinstance(args, (list, tuple)) and len(args) == 1):
+            raise AssertionError
         args = args[0]
         fx_inputs_mapping_reverse = {value : key for key, value in self._fx_inputs_mapping.items()}
         all_sym_value_mapping = get_all_sym_value_mapping(fx_inputs_mapping_reverse, self.inputs)
@@ -624,7 +634,8 @@ class GeConcreteGraph(ConcreteGraphBase):
             if isinstance(sym, ValuePack):
                 npu_syms.append(sym.npu)
             else:
-                assert isinstance(sym, int)
+                if not isinstance(sym, int):
+                    raise AssertionError
                 npu_syms.append(sym)
         if all([isinstance(sym, int) for sym in npu_syms]):
             return npu_syms
@@ -733,7 +744,8 @@ class GeConcreteGraph(ConcreteGraphBase):
         for gen in self.graph.generator_rng_state:
             rng_state = self.graph.get_graph_rng_state(gen)
             idx, offset_data = rng_state.get_idx_and_offset()
-            assert len(self._inputs) == len(self._input_placements)
+            if len(self._inputs) != len(self._input_placements):
+                raise AssertionError
             placement = Placement.HOST
             self._inputs[idx] = offset_data
             self._input_placements[idx] = placement
@@ -874,7 +886,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         for op in self.graph.op:
             if op.type == "Data":
                 args_index = fx_inputs_mapping_reverse[op.attr["index"].i]
-                assert args_index in self._data_index_after_forozen
+                self._assert_args_checkout(args_index in self._data_index_after_forozen)
                 op.attr["index"].i = self._data_index_after_forozen[args_index]
         # 处理边
         for op in self.graph.op:
@@ -883,3 +895,7 @@ class GeConcreteGraph(ConcreteGraphBase):
                     if key in op_input:
                         op.input[idx] = f"{name_mapping_data_to_constplaceholder[key]}:{op.input[idx][-1]}"
                         break
+
+    def _assert_args_checkout(arg_flag):
+        if not arg_flag:
+            raise AssertionError

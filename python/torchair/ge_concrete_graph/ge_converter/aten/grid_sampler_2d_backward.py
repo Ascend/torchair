@@ -43,8 +43,10 @@ def conveter_aten_grid_sampler_2d_backward_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::grid_sampler_2d_backward(Tensor grad_output, Tensor input, Tensor grid, int interpolation_mode, int padding_mode, bool align_corners, bool[2] output_mask) -> (Tensor, Tensor)"""
-    assert 0 <= interpolation_mode <= 2, "interpolation_mode must be in range [0~2]"
-    assert 0 <= padding_mode <= 2, "padding_mode must be in range [0~2]"
+    if not (0 <= interpolation_mode <= 2):
+        raise AssertionError("interpolation_mode must be in range [0~2]")
+    if not (0 <= padding_mode <= 2):
+        raise AssertionError("padding_mode must be in range [0~2]")
     grad_output_cp = grad_output
     input_cp = input
     grid_cp = grid

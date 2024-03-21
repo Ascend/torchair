@@ -40,9 +40,11 @@ print("eager result: ", eager_result)
 with torch.no_grad():
     static_graph_model = torch.compile(model, backend=npu_backend, dynamic=False)
     graph_result = static_graph_model(ins_nz, in2)
-    assert (graph_result[0] - eager_result[0]).abs().max().item() <= 0.001
+    if not ((graph_result[0] - eager_result[0]).abs().max().item() <= 0.001):
+        raise AssertionError
     graph_result = static_graph_model(ins_nz, in2)
-    assert (graph_result[0] - eager_result[0]).abs().max().item() <= 0.001
+    if not ((graph_result[0] - eager_result[0]).abs().max().item() <= 0.001):
+        raise AssertionError
 print("static graph result: ", graph_result)
 
 # check dynamic graph
@@ -50,8 +52,10 @@ with torch.no_grad():
     torch._dynamo.reset()
     dynamic_graph_model = torch.compile(model, backend=npu_backend, dynamic=True)
     graph_result = dynamic_graph_model(ins_nz, in2)
-    assert (graph_result[0] - eager_result[0]).abs().max().item() <= 0.001
+    if not ((graph_result[0] - eager_result[0]).abs().max().item() <= 0.001):
+        raise AssertionError
 
     graph_result = dynamic_graph_model(ins_nz, in2)
-    assert (graph_result[0] - eager_result[0]).abs().max().item() <= 0.001
+    if not ((graph_result[0] - eager_result[0]).abs().max().item() <= 0.001):
+        raise AssertionError
 print("dynamic graph result: ", graph_result)

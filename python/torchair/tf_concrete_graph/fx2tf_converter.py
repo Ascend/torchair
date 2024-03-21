@@ -68,13 +68,15 @@ class TfConcreteGraph(ConcreteGraphBase):
         if isinstance(meta_outputs, torch.SymInt):
             self._inputs.append(tf.placeholder(name=target, dtype=tf.int32))
         else:
-            assert isinstance(meta_outputs, torch.Tensor)
+            if not isinstance(meta_outputs, torch.Tensor):
+                raise AssertionError
             self._inputs.append(tf.placeholder(
                 name=target, dtype=_torch_type_to_tf_type(meta_outputs.dtype)))
         return self._inputs[-1]
 
     def parse_output(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
-        assert isinstance(args, (list, tuple)) and len(args) == 1
+        if not (isinstance(args, (list, tuple)) and len(args) == 1):
+            raise AssertionError
         args = args[0]
         for arg in args:
             arg = arg.npu if isinstance(arg, ValuePack) else arg
@@ -92,7 +94,8 @@ class TfConcreteGraph(ConcreteGraphBase):
             if isinstance(sym, ValuePack):
                 concat_inputs.append(sym.npu)
             else:
-                assert isinstance(sym, int)
+                if not isinstance(sym, int):
+                    raise AssertionError
                 concat_inputs.append(tf.constant(sym, name=f"{sym}"))
 
         return tf.stack(concat_inputs, axis=0)

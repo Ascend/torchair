@@ -66,9 +66,8 @@ def aot_module_simplified_joint(
         for i, user_input in enumerate(user_args_flat)
         if user_input.requires_grad
     }
-    assert len(gradients_to_parameters) + len(gradients_to_user_inputs) == len(
-        backward_output_names
-    )
+    if (len(gradients_to_parameters) + len(gradients_to_user_inputs) != len(backward_output_names)):
+        raise AssertionError
     parameters = list(named_parameters)
     buffers = list(named_buffers)
     inputs_buffers = list(range(len(parameters), (len(parameters) + len(buffers))))

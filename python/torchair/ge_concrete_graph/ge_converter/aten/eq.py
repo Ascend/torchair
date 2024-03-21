@@ -33,7 +33,8 @@ from torchair.ge_concrete_graph.utils import dtype_promote
 @register_fx_node_ge_converter(torch.ops.aten.eq.Tensor)
 def conveter_aten_eq_Tensor(self: Tensor, other: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::eq.Tensor(Tensor self, Tensor other) -> Tensor"""
-    assert self.dtype == other.dtype, f"Inputs data type mismatch {other.dtype} vs. {other.dtype}"
+    if self.dtype != other.dtype:
+        raise AssertionError(f"Inputs data type mismatch {other.dtype} vs. {other.dtype}")
     return ge.Equal(self, other)
 
 

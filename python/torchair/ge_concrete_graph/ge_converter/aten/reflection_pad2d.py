@@ -38,7 +38,8 @@ def conveter_aten_reflection_pad2d_default(
     """NB: aten::reflection_pad2d(Tensor self, SymInt[4] padding) -> Tensor"""
     if isinstance(padding, Tensor):
         raise NotImplementedError("When padding is Tensor, torch.ops.aten.reflection_pad2d.default ge_converter is not implemented!")
-    assert len(padding) == 4, "padding size is expected to be 4"
+    if len(padding) != 4:
+        raise AssertionError("padding size is expected to be 4")
     self_cp = ge.Unsqueeze(self, axes=[0]) if self.rank == 3 else self
     pads = [0] * (2 * 4) if self.rank ==3 else [0] * (2 * self.rank)
     if len(padding) <= len(pads):

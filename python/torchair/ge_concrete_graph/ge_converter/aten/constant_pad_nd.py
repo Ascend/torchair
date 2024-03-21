@@ -40,8 +40,10 @@ def conveter_aten_constant_pad_nd_default(
     """NB: aten::constant_pad_nd(Tensor self, SymInt[] pad, Scalar value=0) -> Tensor"""
     if isinstance(pad, Tensor):
         raise NotImplementedError("When pad is Tensor, torch.ops.aten.constant_pad_nd.default ge_converter is not implemented!")
-    assert len(pad) % 2 == 0, f"Length of pad must be even but instead it equals {len(pad)}"
-    assert self.rank >= (len(pad) / 2), "Length of pad should be no more than twice the number of dimensions of the input. "
+    if len(pad) % 2 != 0:
+        raise AssertionError(f"Length of pad must be even but instead it equals {len(pad)}")
+    if not (self.rank >= (len(pad) / 2)):
+        raise AssertionError("Length of pad should be no more than twice the number of dimensions of the input. ")
     paddings = [0] * (2 * self.rank)
     if len(pad) <= len(paddings):
         paddings[0: len(pad)] = pad
