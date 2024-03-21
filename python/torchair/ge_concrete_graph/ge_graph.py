@@ -862,27 +862,37 @@ def auto_convert_to_tensor(inputs_dynamic, inputs_optional, *, inputs_tensor_typ
     def inner(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
+            def dynamic_arg_assert(dynamic, optional, arg):
+                if dynamic:
+                    if optional:
+                        raise AssertionError("Optional input cannot be dynamic")
+                    if not isinstance(arg, (list, tuple)):
+                        raise AssertionError
+                    if not all([isinstance(v, Tensor) for v in arg]):
+                        raise AssertionError
+                else:
+                    if arg is None:
+                        if not optional:
+                            raise AssertionError(f"Input {i} can not be None as it is not optional")
+                    else:
+                        if not isinstance(arg, Tensor):
+                            raise AssertionError
+
             bundle_inputs = inspect.signature(func).bind(*args, **kwargs)
             args = bundle_inputs.args
             kwargs = bundle_inputs.kwargs
 
-            assert len(inputs_dynamic) == len(inputs_optional)
-            assert len(args) >= len(inputs_dynamic)
+            if len(inputs_dynamic) != len(inputs_optional):
+                raise AssertionError
+            if len(args) < len(inputs_dynamic):
+                raise AssertionError
             args = _auto_type_promotion_for_const(args, inputs_dynamic,
                                                   inputs_optional, inputs_tensor_type, func.__name__)
             for i, dynamic_and_optional in enumerate(zip(inputs_dynamic, inputs_optional)):
                 dynamic = dynamic_and_optional[0]
                 optional = dynamic_and_optional[1]
                 arg = args[i]
-                if dynamic:
-                    assert not optional, "Optional input cannot be dynamic"
-                    assert isinstance(arg, (list, tuple))
-                    assert all([isinstance(v, Tensor) for v in arg])
-                else:
-                    if arg is None:
-                        assert optional, f"Input {i} can not be None as it is not optional"
-                    else:
-                        assert isinstance(arg, Tensor)
+                dynamic_arg_assert(dynamic, optional, arg)
 
             auto_convert_nesting = getattr(local_variable, 'auto_convert_nesting', 0)
             setattr(local_variable, 'auto_convert_nesting', auto_convert_nesting + 1)
@@ -907,25 +917,30 @@ def compat_as_bytes(bytes_or_text, encoding='utf-8'):
 
 
 def compat_as_bytes_list(bytes_or_text, encoding='utf-8'):
-    assert isinstance(bytes_or_text, (list, tuple))
+    if not isinstance(bytes_or_text, (list, tuple)):
+        raise AssertionError
     return [compat_as_bytes(v) for v in bytes_or_text]
 
 
 def trans_to_list_list_int(lli):
-    assert isinstance(lli, (list, tuple))
+    if not isinstance(lli, (list, tuple)):
+        raise AssertionError
     attr = AttrDef.ListListInt()
     for li in lli:
-        assert isinstance(li, (list, tuple))
+        if not isinstance(li, (list, tuple)):
+            raise AssertionError
         list_list_i = attr.list_list_i.add()
         list_list_i.list_i.extend(li)
     return attr
 
 
 def trans_to_list_list_float(llf):
-    assert isinstance(llf, (list, tuple))
+    if not isinstance(llf, (list, tuple)):
+        raise AssertionError
     attr = AttrDef.ListListFloat()
     for lf in llf:
-        assert isinstance(lf, (list, tuple))
+        if not isinstance(lf, (list, tuple)):
+            raise AssertionError
         list_list_f = attr.list_list_f.add()
         list_list_f.list_f.extend(lf)
     return attr
@@ -955,7 +970,8 @@ def Data(*, index: int, dtype: int, shape: List[int] = None, format: str = "ND",
     desc.name = "y"
     desc.dtype = _ge_dtype_to_ge_proto_dtype(dtype)
     desc.layout = format
-    assert placement in ["NPU", "CPU"], f"placement should be NPU or CPU, but got {placement}"
+    if not placement in ["NPU", "CPU"]:
+        raise AssertionError(f"placement should be NPU or CPU, but got {placement}")
     desc.device_type = placement
     if shape is not None:
         desc.shape.dim.extend(shape)

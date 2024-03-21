@@ -6,7 +6,8 @@ class _TypedTensor:
         self.dims = dims
         self.dtype = dtype
         self.value = value
-        assert value_range is None or len(value_range) == 2
+        if value_range is not None and len(value_range) != 2:
+            raise AssertionError
         self.value_range = value_range
 
     def __str__(self) -> str:
@@ -81,14 +82,18 @@ class T(_TypedTensor):
 
 class Support:
     def __init__(self, *args, **kwargs) -> None:
+        def is_tensor_assert(arg):
+            if isinstance(arg, torch.Tensor):
+                raise AssertionError
+
         for arg in args:
             if isinstance(arg, (list, tuple)):
                 for v in arg:
-                    assert not isinstance(v, torch.Tensor)
+                    is_tensor_assert(v)
             else:
-                assert not isinstance(arg, torch.Tensor)
+                is_tensor_assert(arg)
         for k, v in kwargs.items():
-            assert not isinstance(v, torch.Tensor)
+            is_tensor_assert(v)
         self.args = args
         self.kwargs = kwargs
         self.title = ""

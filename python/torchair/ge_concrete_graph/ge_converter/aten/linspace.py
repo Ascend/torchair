@@ -43,7 +43,8 @@ def conveter_aten_linspace_default(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::linspace(Scalar start, Scalar end, int steps, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
-    assert steps >= 0, "number of steps must be non-negative"
+    if steps < 0:
+        raise AssertionError("number of steps must be non-negative")
     if layout is not None and layout != torch.strided:
         raise NotImplementedError("torch.ops.aten.linspace.default ge_converter is only supported on dense tensor now!")
     result = ge.LinSpace(start, end, steps)

@@ -16,4 +16,5 @@ __all__ = ['get_compiler', 'get_npu_backend', 'dynamo_export', 'CompilerConfig',
 # Dependency library version verification
 protobuf_version = pkg_resources.get_distribution("protobuf").version
 
-assert pkg_resources.parse_version(protobuf_version) >= pkg_resources.parse_version("3.13")
+if not pkg_resources.parse_version(protobuf_version) >= pkg_resources.parse_version("3.13"):
+    raise AssertionError

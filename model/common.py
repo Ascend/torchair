@@ -377,9 +377,11 @@ def load_model_from_path(path_and_class_str):
     spec.loader.exec_module(module)
 
     model_class = getattr(module, class_name)
-    assert issubclass(model_class, torch.nn.Module)
+    if not issubclass(model_class, torch.nn.Module):
+        raise AssertionError
     model = model_class()
-    assert hasattr(model, "get_example_inputs")
+    if not hasattr(model, "get_example_inputs"):
+        raise AssertionError
     inputs = model.get_example_inputs()
     return model, inputs
 
@@ -832,9 +834,8 @@ def speedup_experiment(args, model_iter_fn, model, example_inputs, **kwargs):
         row,
     )
     headers, data = torch._dynamo.utils.compile_times(repr="csv", aggregate=True)
-    assert (
-        output_filename.find(".csv") > 0
-    ), f"expected output_filename to be a .csv, but got {output_filename}"
+    if output_filename.find(".csv") <= 0:
+        raise AssertionError(f"expected output_filename to be a .csv, but got {output_filename}")
     output_csv(
         output_filename[:-4] + "_compilation_metrics.csv",
         first_headers + headers,
@@ -1026,9 +1027,8 @@ def speedup_experiment_onnx(
         row,
     )
     headers, data = torch._dynamo.utils.compile_times(repr="csv", aggregate=True)
-    assert (
-        output_filename.find(".csv") > 0
-    ), f"expected output_filename to be a .csv, but got {output_filename}"
+    if output_filename.find(".csv") <= 0:
+        raise AssertionError(f"expected output_filename to be a .csv, but got {output_filename}")
     output_csv(
         output_filename[:-4] + "_compilation_metrics.csv",
         ["dev", "name", "batch_size"] + headers,
@@ -1517,9 +1517,8 @@ def optimize_onnx_ctx(
         # NOTE(bowbao): Capture all export & ort errors and diagnostics.
         # Serialize to csv, to be parsed and summarized later by '._onnx/reporter.py'.
         # TODO: Accuracy mismatch is not reported here in csv.
-        assert (
-            output_filename.find(".csv") > 0
-        ), f"expected output_filename to be a .csv, but got {output_filename}"
+        if output_filename.find(".csv") <= 0:
+            raise AssertionError(f"expected output_filename to be a .csv, but got {output_filename}")
         output_error_filename = output_filename[:-4] + "_export_error.csv"
         parser = reporter.ExportErrorParser(
             current_device, current_name, current_batch_size
@@ -1567,7 +1566,8 @@ def read_batch_size_from_file(args, filename, model_name):
     batch_size = None
     if os.path.exists("benchmarks"):
         filename = os.path.join("benchmarks", filename)
-    assert os.path.exists(filename), filename
+    if not os.path.exists(filename):
+        raise AssertionError(filename)
     abspath = os.path.abspath(filename)
     PathManager.check_directory_path_readable(abspath)
     with open(filename) as f:
@@ -1967,16 +1967,14 @@ class BenchmarkRunner:
     def deepcopy_and_maybe_ddp(self, model):
         model = self.deepcopy_model(model)
         if self.args.ddp:
-            assert (
-                torch.distributed.is_available()
-            ), "Can't use DDP without a distributed enabled build"
+            if not torch.distributed.is_available():
+                raise AssertionError("Can't use DDP without a distributed enabled build")
             from torch.nn.parallel import DistributedDataParallel as DDP
 
             model = DDP(model, find_unused_parameters=True)
         elif self.args.fsdp:
-            assert (
-                torch.distributed.is_available()
-            ), "Can't use FSDP without a distributed enabled build"
+            if not torch.distributed.is_available():
+                raise AssertionError("Can't use FSDP without a distributed enabled build")
             from torch.distributed.fsdp import (
                 FullyShardedDataParallel as FSDP,
                 MixedPrecision,
@@ -3086,7 +3084,8 @@ def run(runner, args, original_dir=None):
     args.exclude_exact = args.exclude_exact or []
 
     if args.inductor:
-        assert args.backend is None
+        if args.backend is not None:
+            raise AssertionError
         args.backend = "inductor"
     if args.dynamic_ci_skips_only:
         args.dynamic_shapes = True
@@ -3110,7 +3109,8 @@ def run(runner, args, original_dir=None):
         if args.dynamic_ci_skips_only:
             # Test only the incremental set of jobs whose skipped was
             # caused solely by turning on dynamic shapes
-            assert args.dynamic_shapes
+            if not args.dynamic_shapes:
+                raise AssertionError
             ci = functools.partial(CI, args.backend, training=args.training)
             args.filter = list(
                 set(CI_SKIP[ci(dynamic=True)]) - set(CI_SKIP[ci(dynamic=False)])
@@ -3125,10 +3125,10 @@ def run(runner, args, original_dir=None):
         # TODO: we could also hook DDP bench up to --speedup bench, _not_ for mgpu e2e perf,
         # but just to measure impact on singlenode of performing graph-breaks.
         # Left it as a follow up to keep this PR isolated.
-        assert (
-            args.accuracy
-        ), "DDP benchmark is currently only hooked up to --accuracy bench"
-        assert args.training, "DDP benchmark requires --training mode"
+        if not args.accuracy:
+            raise AssertionError("DDP benchmark is currently only hooked up to --accuracy bench")
+        if not args.training:
+            raise AssertionError("DDP benchmark requires --training mode")
         if args.no_optimize_ddp:
             torch._dynamo.config.optimize_ddp = False
         else:
@@ -3150,7 +3150,8 @@ def run(runner, args, original_dir=None):
                 args.batch_size = 4
             else:
                 # Larger batch size of TIMM models to have stable batch_norm
-                assert runner.suite_name == "timm_models"
+                if runner.suite_name != "timm_models":
+                    raise AssertionError
                 args.batch_size = 8
 
         # Remove sources of randomness
@@ -3346,8 +3347,10 @@ def run(runner, args, original_dir=None):
         output_filename = "nothing.csv"
     elif args.backend or args.export_aot_inductor:
         if args.export_aot_inductor:
-            assert not args.training, "AOTInductor only supports inference"
-            assert args.devices == ["cuda"], "AOTInductor only tested for CUDA"
+            if args.training:
+                raise AssertionError("AOTInductor only supports inference")
+            if args.devices != ["cuda"]:
+                raise AssertionError("AOTInductor only tested for CUDA")
             optimize_ctx = export_aot_inductor
         else:
             optimize_ctx = torch._dynamo.optimize(args.backend, nopython=args.nopython)
@@ -3530,7 +3533,8 @@ def run(runner, args, original_dir=None):
                 and model_name not in CI_SKIP_DYNAMIC_BATCH_ONLY
             ):
                 tree_map_only(torch.Tensor, detect_and_mark_batch, example_inputs)
-                assert marked, f"nothing in example_inputs had a dim with {batch_size}"
+                if not marked:
+                    raise AssertionError(f"nothing in example_inputs had a dim with {batch_size}")
 
             if args.log_operator_inputs:
                 log_operator_inputs(
