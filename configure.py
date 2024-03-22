@@ -5,6 +5,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import re
 import subprocess
 import sys
 import warnings
@@ -75,6 +76,14 @@ def real_config_path(file):
     return os.path.join("tools", file)
 
 
+def get_torch_version_num(version):
+    nums = re.findall(r'\d+', version)
+    if len(nums) < 3:
+        print("Parse torch version failure, version:%s" % version)
+        return ''
+    return "{}{:0>2d}{:0>2d}".format(nums[0], int(nums[1]), int(nums[2]))
+
+
 def setup_python(env_path):
     """Get python install path."""
     default_python_bin_path = sys.executable
@@ -139,13 +148,17 @@ print('|'.join([
             for flag in compile_args[2:-1]:
                 f.write("".join([flag, '\n']))
             f.write("".join(["-I", compile_args[-1], '\n']))
+        torch_version = get_torch_version_num(compile_args[0])
+        if len(torch_version) > 0:
+            with open(real_config_path('TORCH_VERSION'), 'w') as f:
+                f.write(torch_version)
         break
 
 
 def setup_ascend_sdk(env_path):
     """Get ascend install path."""
     ask_ascend_path = f'Specify the location of ascend sdk for debug on localhost or leave empty.' + \
-        f'\n(You can make this quiet by set env [{_ASCEND_SDK_ENV}]): '
+                      f'\n(You can make this quiet by set env [{_ASCEND_SDK_ENV}]): '
     custom_ascend_path = env_path
     while True:
         if not custom_ascend_path:

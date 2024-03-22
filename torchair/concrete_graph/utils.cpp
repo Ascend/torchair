@@ -289,7 +289,12 @@ Status GeTensorToAtTensor(ge::Tensor &ge_tensor, at::Tensor &tensor) {
   if (device_type == c10::DeviceType::PrivateUse1) {
     // get npu storage constructor from register and construct storage
     auto fptr = c10::GetStorageImplCreate(device_type);
-    storage = fptr(c10::StorageImpl::use_byte_size_t(), 0, c10::GetAllocator(device_type), true);
+    auto allocator = c10::GetAllocator(device_type);
+#if defined(TNG_TORCH_VERSION) && (TNG_TORCH_VERSION < 20300)  // v2.3.0
+    storage = fptr(c10::StorageImpl::use_byte_size_t(), 0, allocator, true);
+#else
+    storage = fptr(c10::StorageImpl::use_byte_size_t(), 0, allocator->allocate(0), allocator, true);
+#endif
     storage.unsafeGetStorageImpl()->set_nbytes(tensor_nbytes);
     storage.set_data_ptr(std::move(c10_data_ptr));
   } else {

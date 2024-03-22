@@ -13,7 +13,11 @@ static c10::DeviceIndex npu_device_index = 0;
 struct DummyNpuAllocator final : at::Allocator {
   DummyNpuAllocator() = default;
 
+#if defined(TNG_TORCH_VERSION) && (TNG_TORCH_VERSION < 20300)  // v2.3.0
   at::DataPtr allocate(size_t nbytes) const override {
+#else
+  at::DataPtr allocate(size_t nbytes) override {
+#endif
     void *data = c10::alloc_cpu(nbytes);
     return {data, data, &ReportAndDelete, at::Device(at::DeviceType::PrivateUse1, npu_device_index)};
   }
@@ -28,6 +32,12 @@ struct DummyNpuAllocator final : at::Allocator {
   at::DeleterFnPtr raw_deleter() const override {
     return &ReportAndDelete;
   }
+
+#if defined(TNG_TORCH_VERSION) && (TNG_TORCH_VERSION >= 20300)  // v2.3.0
+  void copy_data(void *dest, const void *src, std::size_t count) const final {
+    default_copy_data(dest, src, count);
+  }
+#endif
 };
 
 // Register npu dummy allocator with device type npu
@@ -35,6 +45,7 @@ static DummyNpuAllocator global_npu_alloc;
 REGISTER_ALLOCATOR(c10::DeviceType::PrivateUse1, &global_npu_alloc);
 
 // Register npu dummy Storage constructor
+#if defined(TNG_TORCH_VERSION) && (TNG_TORCH_VERSION < 20300)  // v2.3.0
 c10::intrusive_ptr<c10::StorageImpl> make_npu_storage_impl(c10::StorageImpl::use_byte_size_t, c10::SymInt size_bytes,
                                                            c10::Allocator *allocator, bool resizable) {
   c10::intrusive_ptr<c10::StorageImpl> npu_storage_impl =
@@ -42,6 +53,21 @@ c10::intrusive_ptr<c10::StorageImpl> make_npu_storage_impl(c10::StorageImpl::use
                                           allocator->allocate(size_bytes.as_int_unchecked()), allocator, resizable);
   return npu_storage_impl;
 }
+#else
+c10::intrusive_ptr<c10::StorageImpl> make_npu_storage_impl(c10::StorageImpl::use_byte_size_t, c10::SymInt size_bytes,
+                                                           c10::DataPtr data_ptr, c10::Allocator *allocator,
+                                                           bool resizable) {
+  c10::intrusive_ptr<c10::StorageImpl> npu_storage_impl;
+  if (data_ptr == nullptr) {
+    npu_storage_impl =
+        c10::make_intrusive<c10::StorageImpl>(c10::StorageImpl::use_byte_size_t(), size_bytes, allocator, resizable);
+  } else {
+    npu_storage_impl = c10::make_intrusive<c10::StorageImpl>(c10::StorageImpl::use_byte_size_t(), size_bytes,
+                                                             std::move(data_ptr), allocator, resizable);
+  }
+  return npu_storage_impl;
+}
+#endif
 
 int npu_storage_register() {
   c10::SetStorageImplCreate(c10::DeviceType::PrivateUse1, &make_npu_storage_impl);
