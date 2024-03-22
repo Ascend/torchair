@@ -9,7 +9,7 @@ def _timestamp():
 
 class _DebugBase(NpuBaseConfig):
     def __init__(self):
-        self.path = OptionValue(None, None)
+        self._path = OptionValue(None, None)
 
         super(_DebugBase, self).__init__()
 
@@ -21,7 +21,7 @@ class _DebugBase(NpuBaseConfig):
         if not self.enabled:
             return None
 
-        path = "." if self.path.value is None else self.path.value
+        path = "." if self._path.value is None else self._path.value
 
         if with_timestap:
             return f"{path}/{name}_{_timestamp()}.{self.type.value}"

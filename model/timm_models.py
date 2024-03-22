@@ -8,8 +8,7 @@ import sys
 import warnings
 
 import torch
-from common import BenchmarkRunner, download_retry_decorator, main
-
+from common import BenchmarkRunner, download_retry_decorator, main, PathManager
 from torch._dynamo.testing import collect_results, reduce_to_scalar_loss
 from torch._dynamo.utils import clone_inputs
 
@@ -19,17 +18,18 @@ def pip_install(package):
 
 
 try:
-    importlib.import_module("timm")
-except ModuleNotFoundError:
-    print("Installing Pytorch Image Models...")
-    pip_install("git+https://github.com/rwightman/pytorch-image-models")
-finally:
     from timm import __version__ as timmversion
     from timm.data import resolve_data_config
     from timm.models import create_model
+except ModuleNotFoundError:
+    print("Please install pytorch-image-models.")
+    raise
 
 TIMM_MODELS = dict()
 filename = os.path.join(os.path.dirname(__file__), "timm_models_list.txt")
+
+abspath = os.path.abspath(filename)
+PathManager.check_directory_path_readable(abspath)
 
 with open(filename) as fh:
     lines = fh.readlines()
@@ -164,6 +164,8 @@ def refresh_model_names():
     filename = "timm_models_list.txt"
     if os.path.exists("benchmarks"):
         filename = "benchmarks/" + filename
+    abspath1 = os.path.abspath(filename)
+    PathManager.check_directory_path_writeable(abspath1)
     with open(filename, "w") as fw:
         for model_name in sorted(chosen_models):
             fw.write(model_name + "\n")

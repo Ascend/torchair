@@ -25,6 +25,7 @@ from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph as Concre
 from torchair.configs.compiler_config import CompilerConfig
 from torch._decomp import core_aten_decompositions, get_decompositions
 from torchair.ge_concrete_graph.fx2ge_converter import _get_converter
+from torchair.utils.path_manager import PathManager
 from torch._subclasses.fake_tensor import FakeTensor
 aten = torch.ops.aten
 
@@ -142,6 +143,7 @@ def summarize_fx_graph(graph, example_inputs, csv_file: str = None):
     except ImportError:
         raise ImportError(
             "Please install csv to use csv file to save summary")
+    PathManager.check_path_writeable_and_safety(csv_file)
     with open(csv_file, 'w+', newline='', encoding='utf-8-sig') as f:
         writer = csv.writer(f)
         writer.writerow(["目标函数", "函数类型", "支持状态", "调用次数", "输入统计", "输出统计"])

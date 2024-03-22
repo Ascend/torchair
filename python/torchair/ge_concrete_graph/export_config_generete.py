@@ -5,7 +5,7 @@ import torch
 
 from torchair.core.utils import logger
 from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef
-
+from torchair.utils.path_manager import PathManager
 
 hcom_ops_set = {"HcomAllReduce", "HcomReduceScatter", "HcomAllGather", "HcomBroadcast", "HcomReduce",
                 "HcomSend", "HcomReceive", "HcomRemoteRead", "HcomRemoteRefRead", "HcomRemoteWrite",
@@ -44,6 +44,7 @@ def _generate_model_relation_config(file_path, export_name, world_ranklist: List
         comm_group_dict["group_rank_list"] = str(group_tuple[1])
         model_relation_config["comm_group"].append(comm_group_dict)
 
+    PathManager.check_path_writeable_and_safety(file_path + "/model_relation_config.json")
     with open(file_path + "/model_relation_config.json", 'w') as write_f:
         json.dump(model_relation_config, write_f, indent=4, ensure_ascii=False)
 
@@ -66,6 +67,7 @@ def _generate_numa_config(file_path, world_ranklist: List):
         node["item_list"].append(item)
     cluster_nodes["cluster_nodes"].append(node)
     numa_config["cluster"].append(cluster_nodes)
+    PathManager.check_path_writeable_and_safety(file_path + "/numa_config.json")
     with open(file_path + "/numa_config.json", 'w') as write_f:
         json.dump(numa_config, write_f, indent=4, ensure_ascii=False)
 

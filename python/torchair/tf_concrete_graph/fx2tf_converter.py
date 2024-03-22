@@ -9,6 +9,7 @@ from torch.fx.node import Argument, Target
 
 from torchair.core.concrete_graph import ConcreteGraphBase, ValuePack
 from torchair.configs.compiler_config import CompilerConfig
+from torchair.utils.path_manager import PathManager
 
 import tensorflow
 tf = tensorflow.compat.v1
@@ -109,6 +110,7 @@ class TfConcreteGraph(ConcreteGraphBase):
     def dump(self, path: str):
         if path is None:
             return
+        PathManager.check_path_writeable_and_safety(path)
         with open(path, "w+") as f:
             f.write(str(self.graph.as_graph_def()))
 

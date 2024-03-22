@@ -78,11 +78,8 @@ DETECTRON2_MODELS = {
 }
 
 SKIP = {
-    # https://github.com/pytorch/torchdynamo/issues/101
     "detectron2_maskrcnn",
-    # https://github.com/pytorch/torchdynamo/issues/145
     "fambench_xlmr",
-    # TIMEOUT, https://github.com/pytorch/pytorch/issues/98467
     "tacotron2",
     "hf_Bert",  # Error: RelaxedUnspecConstraint(L['input_ids'].size()[0]) - inferred constant (4)
     "hf_Bert_large",  # Error: RelaxedUnspecConstraint(L['input_ids'].size()[0]) - inferred constant (4)
@@ -158,7 +155,6 @@ REQUIRE_COSINE_TOLERACE = {
 
 # non-deterministic output / cant check correctness
 NONDETERMINISTIC = {
-    # https://github.com/pytorch/pytorch/issues/98355
     "mobilenet_v3_large",
 }
 
@@ -201,7 +197,7 @@ DONT_CHANGE_BATCH_SIZE = {
     "demucs",
     "pytorch_struct",
     "pyhpc_turbulent_kinetic_energy",
-    "vision_maskrcnn",  # https://github.com/pytorch/benchmark/pull/1656
+    "vision_maskrcnn",
 }
 
 
@@ -212,7 +208,7 @@ SKIP_ACCURACY_CHECK_MODELS = {
     "hf_GPT2_large",
     "hf_T5_large",
     "timm_vision_transformer_large",
-    "maml",  # accuracy https://github.com/pytorch/pytorch/issues/93847
+    "maml",
     "llama_v2_7b_16h",
     "Background_Matting",
 }
@@ -390,7 +386,6 @@ class TorchBenchmarkRunner(BenchmarkRunner):
         # the right example_inputs
         if model_name == "yolov3":
             example_inputs = (torch.rand(batch_size, 3, 384, 512).to(device),)
-        # See https://github.com/pytorch/benchmark/issues/1561
         if model_name == "maml_omniglot":
             batch_size = 5
             if example_inputs[0].shape[0] != batch_size:
@@ -402,7 +397,6 @@ class TorchBenchmarkRunner(BenchmarkRunner):
         # current_name = benchmark.name
 
         if self.args.trace_on_xla:
-            # work around for: https://github.com/pytorch/xla/issues/4174
             import torch_xla  # noqa: F401
         self.validate_model(model, example_inputs)
         return device, benchmark.name, model, example_inputs, batch_size
