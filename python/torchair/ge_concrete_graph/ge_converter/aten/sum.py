@@ -28,7 +28,8 @@ def sum_output_size(self, ndim, dim, keepdim):
     # Calculate output size manually, because meta_outputs.size is invalid when including SymInt.
     shape = ge.Shape(self)
     shape = [ge.Gather(shape, i) for i in range(ndim)]
-    assert isinstance(dim, list) and all(isinstance(d, int) for d in dim)
+    if not isinstance(dim, list) or not all(isinstance(d, int) for d in dim):
+        raise AssertionError("dim must be a list of integers.")
     new_dim = [d % ndim for d in dim]
     new_dim.sort(reverse=True)
     for nd in new_dim:
