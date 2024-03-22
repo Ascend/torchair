@@ -30346,7 +30346,8 @@ def GetDynamicDims(input: List[Tensor], *, shape_info: List[int], N: int, depend
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(input, (tuple, list))
+    if not isinstance(input, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(input):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)

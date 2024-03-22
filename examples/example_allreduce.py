@@ -37,7 +37,8 @@ def example(rank, world_size):
         mod, dynamic=False, fullgraph=True, backend=npu_backend)
     compile_result = opt_mod(x)
     ori_result = mod(x)
-    assert compile_result.equal(ori_result)
+    if not compile_result.equal(ori_result):
+        raise AssertionError
 
 
 def main():

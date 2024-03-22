@@ -164,6 +164,9 @@ def refresh_model_names():
     filename = "timm_models_list.txt"
     if os.path.exists("benchmarks"):
         filename = "benchmarks/" + filename
+
+    abspath1 = os.path.abspath(filename)
+    PathManager.check_directory_path_writeable(abspath1)
     with open(filename, "w") as fw:
         for model_name in sorted(chosen_models):
             fw.write(model_name + "\n")
