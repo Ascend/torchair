@@ -141,6 +141,62 @@ REG_OP(WeightQuantBatchMatmulV2)
     .OP_END_FACTORY_REG(WeightQuantBatchMatmulV2)
 
 /**
+* @brief Combine similar tokens using the matching algorithm.
+* @par Inputs:
+* @li token_a: A Tensor. Type is:DT_FLOAT16.
+* @li token_b: A Tensor. Type is:DT_FLOAT16.
+* @li topk_indice: A Tensor. Type is:DT_INT64.
+* @li arg_max: A Tensor. Type is:DT_INT64.
+* @par Outputs:
+* @li unmerge_token_a: A Tensor. Type is:DT_FLOAT16.
+* @li unmerge_token_b: A Tensor. Type is:DT_FLOAT16.
+* @li unreduce_count: A Tensor. Type is:DT_FLOAT.
+* @par Attributes:
+* @li top_rate: Type is:Float.
+*/
+REG_OP(TomeMerge)
+    .INPUT(token_a, TensorType({DT_FLOAT16}))
+    .INPUT(token_b, TensorType({DT_FLOAT16}))
+    .INPUT(topk_indice, TensorType({DT_INT64}))
+    .INPUT(arg_max, TensorType({DT_INT64}))
+    .OUTPUT(unmerge_token_a, TensorType({DT_FLOAT16}))
+    .OUTPUT(unreduce_token_b, TensorType({DT_FLOAT16}))
+    .OUTPUT(unreduce_count, TensorType({DT_FLOAT}))
+    .ATTR(top_rate, Float, 0.5)
+    .OP_END_FACTORY_REG(TomeMerge)
+
+/**
+ * @brief TomeUnmerge.
+ * @par Inputs:
+ * thirteen input, including:
+ * @li atten_out: A Tensor. Support float16
+ * @li Ori_IndiceA: A Tensor. Support int64
+ * @li Ori_IndiceB: A Tensor. Support int64
+ * @li TOPK_Indice: A Tensor. Support int64
+ * @li Arg_Max: A Tensor. Support float16 \n
+
+ * @par Attributes:
+ * @li topRRate: Support float
+ * @li attn_dim_per_head: Attention dim of a Head, Support int\n
+
+ * @par Outputs:
+ * Eight output, including:
+ * @li unZipToken: A Tensor. Result of Attention. Support float16
+
+ * @par Restrictions:
+ * Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+ */
+REG_OP(TomeUnmerge)
+    .INPUT(atten_out, TensorType({DT_FLOAT16}))
+    .INPUT(Ori_IndiceA, TensorType({DT_INT64}))
+    .INPUT(Ori_IndiceB, TensorType({DT_INT64}))
+    .INPUT(TOPK_Indice, TensorType({DT_INT64}))
+    .INPUT(Arg_Max, TensorType({DT_FLOAT16}))
+    .OUTPUT(unZipToken, TensorType({DT_FLOAT16}))
+    .ATTR(top_r_rate, Float, 0.5)
+    .OP_END_FACTORY_REG(TomeUnmerge)
+
+/**
 * @brief Fusion op of matmul and reduce scatter.
 * @par Inputs:
 * twelve inputs, including:

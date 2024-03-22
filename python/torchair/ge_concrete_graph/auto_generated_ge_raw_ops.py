@@ -75535,6 +75535,126 @@ def QuantBatchMatmulV3(x1: Tensor, x2: Tensor, scale: Tensor, offset: Optional[T
     return y
 
 
+# This api is auto-generated from IR TomeMerge
+@auto_convert_to_tensor([False, False, False, False], [False, False, False, False])
+def TomeMerge(token_a: Tensor, 
+              token_b: Tensor, 
+              topk_indice: Tensor, 
+              arg_max: Tensor, 
+              topRate: float=0.500000, 
+              dependencies=[], 
+              node_name=None):
+    """    REG_OP(TomeMerge)\n
+    .INPUT(token_a, TensorType({DT_FLOAT16}))\n
+    .INPUT(token_b, TensorType({DT_FLOAT16}))\n
+    .INPUT(topk_indice, TensorType({DT_INT64}))\n
+    .INPUT(arg_max, TensorType({DT_INT64}))\n
+    .OUTPUT(unmerge_token_a, TensorType({DT_FLOAT16}))\n
+    .OUTPUT(unreduce_token_b, TensorType({DT_FLOAT16}))\n
+    .OUTPUT(unreduce_count, TensorType({DT_FLOAT}))\n
+    .ATTR(top_rate, Float, 0.5)\n
+    .OP_END_FACTORY_REG(TomeMerge)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "TomeMerge"
+    op.name = next_unique_name(node_name, "TomeMerge")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(token_a.tensor)
+    op.input_desc.add().CopyFrom(token_a.desc)
+    op.input_desc[-1].name = "token_a"
+    op.input.append(token_b.tensor)
+    op.input_desc.add().CopyFrom(token_b.desc)
+    op.input_desc[-1].name = "token_b"
+    op.input.append(topk_indice.tensor)
+    op.input_desc.add().CopyFrom(topk_indice.desc)
+    op.input_desc[-1].name = "topk_indice"
+    op.input.append(arg_max.tensor)
+    op.input_desc.add().CopyFrom(arg_max.desc)
+    op.input_desc[-1].name = "arg_max"
+
+    # process attrs
+    op.attr["topRate"].f = topRate
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "unmerge_token_a"
+    unMergeTokenA = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "unreduce_token_b"
+    unReduceTokenB = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "unreduce_count"
+    unReduceCount = Tensor(op, output_index)
+    output_index += 1
+
+    # return outputs
+    return unMergeTokenA, unReduceTokenB, unReduceCount
+
+
+# This api is auto-generated from IR TomeUnmerge
+@auto_convert_to_tensor([False, False, False, False, False], [False, False, False, False, False])
+def TomeUnmerge(atten_out: Tensor, 
+                Ori_IndiceA: Tensor, 
+                Ori_IndiceB: Tensor, 
+                TOPK_Indice: Tensor, 
+                Arg_Max: Tensor, *, 
+                top_r_rate: float=0.500000, 
+                dependencies=[], 
+                node_name=None):
+    """REG_OP(TomeUnmerge)\n
+    .INPUT(atten_out, TensorType({DT_FLOAT16}))\n
+    .INPUT(Ori_IndiceA, TensorType({DT_INT64}))\n
+    .INPUT(Ori_IndiceB, TensorType({DT_INT64}))\n
+    .INPUT(TOPK_Indice, TensorType({DT_INT64}))\n
+    .INPUT(Arg_Max, TensorType({DT_FLOAT16}))\n
+    .OUTPUT(unZipToken, TensorType({DT_FLOAT16}))\n
+    .ATTR(topRRate, Float, 0.5)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "TomeUnmerge"
+    op.name = next_unique_name(node_name, "TomeUnmerge")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(atten_out.tensor)
+    op.input_desc.add().CopyFrom(atten_out.desc)
+    op.input_desc[-1].name = "atten_out"
+    op.input.append(Ori_IndiceA.tensor)
+    op.input_desc.add().CopyFrom(Ori_IndiceA.desc)
+    op.input_desc[-1].name = "Ori_IndiceA"
+    op.input.append(Ori_IndiceB.tensor)
+    op.input_desc.add().CopyFrom(Ori_IndiceB.desc)
+    op.input_desc[-1].name = "Ori_IndiceB"
+    op.input.append(TOPK_Indice.tensor)
+    op.input_desc.add().CopyFrom(TOPK_Indice.desc)
+    op.input_desc[-1].name = "TOPK_Indice"
+    op.input.append(Arg_Max.tensor)
+    op.input_desc.add().CopyFrom(Arg_Max.desc)
+    op.input_desc[-1].name = "Arg_Max"
+
+    # process attrs
+    op.attr["top_r_rate"].f = top_r_rate
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "unZipToken"
+    unZipToken = Tensor(op, output_index)
+    output_index += 1
+
+    # return outputs
+    return unZipToken
+
+
 # This api is auto-generated from IR TransQuantParamV2
 @auto_convert_to_tensor([False, False], [False, True])
 def TransQuantParamV2(scale: Tensor, offset: Optional[Tensor], *, dependencies=[], node_name=None):
