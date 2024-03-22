@@ -829,11 +829,13 @@ def _auto_type_promotion_for_const(bundle_inputs: list, inputs_dynamic: list, in
         if narray.size > 0:
             v = narray.item(0)
             if isinstance(v, float):
-                _assert_dtypes(len(i_dtypes) <= 1, f"Cannot promote {func} input {i} float {v} with dtypes {f_dtypes}")
+                assert_args_checkout(len(i_dtypes) <= 1,
+                                     f"Cannot promote {func} input {i} float {v} with dtypes {f_dtypes}")
                 promoted_inputs.append(_wrap_ge_tensor(
                     input, dtype=(f_dtypes[0] if len(f_dtypes) else None)))
             elif isinstance(v, int):
-                _assert_dtypes(len(f_dtypes) <= 1, f"Cannot promote {func} input {i} int {v} with dtypes {i_dtypes}")
+                assert_args_checkout(len(f_dtypes) <= 1,
+                                             f"Cannot promote {func} input {i} int {v} with dtypes {i_dtypes}")
                 promoted_inputs.append(_wrap_ge_tensor(
                     input, dtype=(i_dtypes[0] if len(i_dtypes) else None)))
         else:
@@ -842,11 +844,6 @@ def _auto_type_promotion_for_const(bundle_inputs: list, inputs_dynamic: list, in
             f"ge.{func} promote input {i} value {input} to dtype {_ge_proto_dtype_str(promoted_inputs[-1].desc.dtype)}")
 
     return _inputs_to_bundle_inputs(promoted_inputs, input_start_end)
-
-
-def _assert_dtypes(dtypes_flag, error_message):
-    if not dtypes_flag:
-        raise AssertionErrorf(error_message)
 
 
 def _set_extral_node_attrs(outputs):
@@ -1092,3 +1089,11 @@ def attr_scope(attr_maps):
         yield
     finally:
         setattr(local_variable, "extral_node_attrs", {})
+
+
+def assert_args_checkout(arg_flag, message=None):
+    if not arg_flag:
+        if message is None:
+            raise AssertionError
+        else:
+            raise AssertionError(message)

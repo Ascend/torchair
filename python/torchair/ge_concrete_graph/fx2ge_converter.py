@@ -27,7 +27,7 @@ from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef, TensorDescriptor, Ten
 from torchair.ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
 from torchair.ge_concrete_graph.ge_graph import Tensor as GeTensor
 from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type, torch_type_to_ge_proto_type, default_ge_graph, \
-    GeGraph, attr_scope, compat_as_bytes, DataType, Format, TensorSpec, is_sym, sym_to_ge_dtype
+    GeGraph, attr_scope, compat_as_bytes, DataType, Format, TensorSpec, is_sym, sym_to_ge_dtype, assert_args_checkout
 from torchair.ge_concrete_graph.graph_pass import optimize_sym_pack, optimize_reference_op_redundant_copy
 from torchair.ge_concrete_graph.utils import convert_to_tensorboard, dump_graph, force_op_unknown_shape, \
     is_host_data_tensor, get_all_sym_value_mapping, get_used_syms_in_meta, Placement
@@ -889,7 +889,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         for op in self.graph.op:
             if op.type == "Data":
                 args_index = fx_inputs_mapping_reverse[op.attr["index"].i]
-                self._assert_args_checkout(args_index in self._data_index_after_forozen)
+                assert_args_checkout(args_index in self._data_index_after_forozen)
                 op.attr["index"].i = self._data_index_after_forozen[args_index]
         # 处理边
         for op in self.graph.op:
@@ -898,7 +898,3 @@ class GeConcreteGraph(ConcreteGraphBase):
                     if key in op_input:
                         op.input[idx] = f"{name_mapping_data_to_constplaceholder[key]}:{op.input[idx][-1]}"
                         break
-
-    def _assert_args_checkout(arg_flag):
-        if not arg_flag:
-            raise AssertionError

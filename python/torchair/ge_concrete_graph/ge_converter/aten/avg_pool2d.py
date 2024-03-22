@@ -19,7 +19,7 @@ from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType, assert_args_checkout
 from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
      Support
 
@@ -41,16 +41,17 @@ def conveter_aten_avg_pool2d_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::avg_pool2d(Tensor self, int[2] kernel_size, int[2] stride=[], int[2] padding=0, bool ceil_mode=False, bool count_include_pad=True, int? divisor_override=None) -> Tensor"""
-    _assert_args(not ceil_mode,
+    assert_args_checkout(not ceil_mode,
                  "when ceil_mode is True, torch.ops.aten.avg_pool2d.default ge_converter is not supported!")
-    _assert_args(len(kernel_size) == 1 or len(kernel_size) == 2,
+    assert_args_checkout(len(kernel_size) == 1 or len(kernel_size) == 2,
                  "avg_pool2d: kernel_size must either be a single int, or a tuple of two ints")
-    _assert_args(len(stride) == 0 or len(stride) == 1 or len(stride) == 2,
+    assert_args_checkout(len(stride) == 0 or len(stride) == 1 or len(stride) == 2,
                  "avg_pool2d: stride must either be omitted, a single int, or a tuple of two ints")
-    _assert_args(len(padding) == 1 or len(padding) == 2,
+    assert_args_checkout(len(padding) == 1 or len(padding) == 2,
                  "avg_pool2d: padding must either be a single int, or a tuple of two ints")
-    _assert_args(self.rank == 3 or self.rank == 4, "non-empty 3D or 4D (batch mode) tensor expected for input")
-    _assert_args(divisor_override is None or (0 < divisor_override <= 255),
+    assert_args_checkout(self.rank == 3 or self.rank == 4,
+                                 "non-empty 3D or 4D (batch mode) tensor expected for input")
+    assert_args_checkout(divisor_override is None or (0 < divisor_override <= 255),
                  f"The value of divisor_override = {divisor_override} is invalid, only support [1, 255] at present.")
     self_copy = self
     if self.rank == 3:
@@ -80,11 +81,6 @@ def conveter_aten_avg_pool2d_default(
     if self.rank == 3:
         result = ge.Squeeze(result, axis=[0])
     return result
-
-
-def _assert_args(arg, error_message):
-    if not arg:
-        raise AssertionError(error_message)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.avg_pool2d.out)
