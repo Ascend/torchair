@@ -18,14 +18,12 @@ def pip_install(package):
 
 
 try:
-    importlib.import_module("timm")
-except ModuleNotFoundError:
-    print("Installing Pytorch Image Models...")
-    pip_install("git+https://github.com/rwightman/pytorch-image-models")
-finally:
     from timm import __version__ as timmversion
     from timm.data import resolve_data_config
     from timm.models import create_model
+except ModuleNotFoundError:
+    print("Please install pytorch-image-models.")
+    raise
 
 TIMM_MODELS = dict()
 filename = os.path.join(os.path.dirname(__file__), "timm_models_list.txt")

@@ -58,7 +58,6 @@ try:
     import torch_xla
     import torch_xla.core.xla_model as xm
 
-    # This is to woraround the backward issue https://github.com/pytorch/xla/issues/4174
     torch_xla._XLAC._init_computation_client()
 except ImportError:
     # ignore the error if torch_xla is not installed
@@ -180,9 +179,9 @@ CI_SKIP[CI("aot_eager", training=False)] = [
     "BartForConditionalGeneration",  # OOM
     "DebertaV2ForQuestionAnswering",  # OOM
     # Torchbench
-    "speech_transformer",  # https://github.com/pytorch/pytorch/issues/99893
-    "pyhpc_isoneutral_mixing",  # https://github.com/pytorch/pytorch/issues/99893
-    "pyhpc_turbulent_kinetic_energy",  # https://github.com/pytorch/pytorch/issues/99893
+    "speech_transformer",
+    "pyhpc_isoneutral_mixing",
+    "pyhpc_turbulent_kinetic_energy",
 ]
 
 CI_SKIP[CI("aot_eager", training=True)] = [
@@ -262,13 +261,13 @@ CI_SKIP[CI("inductor", training=False, device="cpu")] = [
     "resnet50_quantized_qat",  # Eager model failed to run(Quantize only works on Float Tensor, got Double)
     "sage",  # does not work with fp32
     # Huggingface
-    "MBartForConditionalGeneration",  # Accuracy https://github.com/pytorch/pytorch/issues/94793
-    "PLBartForConditionalGeneration",  # Accuracy https://github.com/pytorch/pytorch/issues/94794
+    "MBartForConditionalGeneration",
+    "PLBartForConditionalGeneration",
     # TIMM
     "cait_m36_384",  # Accuracy
     "pnasnet5large",  # OOM
-    "xcit_large_24_p8_224",  # OOM https://github.com/pytorch/pytorch/issues/95984
-    "opacus_cifar10",  # Fails to run https://github.com/pytorch/pytorch/issues/99201
+    "xcit_large_24_p8_224",
+    "opacus_cifar10",
 ]
 
 CI_SKIP[CI("inductor", training=True)] = [
@@ -293,8 +292,7 @@ CI_SKIP[CI("inductor", training=True)] = [
 
 CI_SKIP[CI("aot_eager", training=False, dynamic=True)] = [
     *CI_SKIP[CI("aot_eager", training=False)],
-    "vision_maskrcnn",  # accuracy failure on boxes, after https://github.com/pytorch/pytorch/issues/101093
-    # https://github.com/pytorch/pytorch/issues/103760
+    "vision_maskrcnn",
     "hf_T5_generate",
     "hf_Bert",  # Error: RelaxedUnspecConstraint(L['input_ids'].size()[0]) - inferred constant (4)
 ]
@@ -340,7 +338,6 @@ CI_SKIP_OPTIMIZER = {
 
 CI_SKIP_DYNAMIC_BATCH_ONLY = {
     "sam",
-    # See https://github.com/mindee/doctr/blob/f2114758d529ed8d3d0030581638f0520b6b98d8/doctr/models/detection/core.py#L89
     # It iterates over the batch, which is dynamic, and dynamo chokes
     # We should be able to graphbreak there.
     "doctr_det_predictor",
@@ -2233,9 +2230,6 @@ class BenchmarkRunner:
     def check_tolerance(
         self, name, model, example_inputs, optimize_ctx, base_device="cpu"
     ):
-        """
-        Checks tolerance based on https://pytorch.org/docs/stable/generated/torch.allclose.html.
-        """
         tolerance_status = "pass"
         if name in self.skip_accuracy_checks_large_models_dashboard:
             tolerance_status = "pass_due_to_skip"
@@ -3060,7 +3054,6 @@ def main(runner, original_dir=None):
     if args.multiprocess:
         # NB: Do NOT query device count before CUDA initialization; we're
         # going to overwrite CUDA_VISIBLE_DEVICES and this will result in
-        # https://github.com/pytorch/pytorch/issues/107300
         device_count = torch.cuda.device_count()
         if device_count <= 1:
             log.warning(
@@ -3166,7 +3159,6 @@ def run(runner, args, original_dir=None):
             "pytorch_unet",
             "Super_SloMo",
             "vgg16",
-            # https://github.com/pytorch/pytorch/issues/96724
             "Wav2Vec2ForCTC",
             "Wav2Vec2ForPreTraining",
             "sam",

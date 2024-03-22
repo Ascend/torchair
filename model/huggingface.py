@@ -61,11 +61,11 @@ try:
         if not hasattr(mod, cls):
             raise ModuleNotFoundError
 except ModuleNotFoundError:
-    print("Installing HuggingFace Transformers...")
-    pip_install("git+https://github.com/huggingface/transformers.git#egg=transformers")
-finally:
-    for cls in imports:
-        exec(f"from transformers import {cls}")
+    print("Please install transformers.")
+    raise
+
+for cls in imports:
+    exec(f"from transformers import {cls}")
 
 
 # These models contain the models present in huggingface_models_list. It is a
