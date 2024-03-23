@@ -14,9 +14,7 @@ from torch._dynamo.symbolic_convert import break_graph_if_unsupported, Instructi
 from torch._dynamo.exc import Unsupported
 from torch._dynamo.variables.lists import TupleVariable
 from torch._dynamo.variables.nn_module import NNModuleVariable
-from torch._inductor.fx_passes import joint_graph
-from torch._inductor import decomposition
-from .npu_fx_passes.joint_graph import lazy_init
+
 
 aten = torch.ops.aten
 
@@ -374,6 +372,10 @@ def npu_patch_fx_pass(decompositions):
           pattern match. 
           Here we clear joint_graph.patterns to avoid extra patterns' effects.
     """
+    from torch._inductor.fx_passes import joint_graph
+    from torch._inductor import decomposition
+    from .npu_fx_passes.joint_graph import lazy_init
+
     joint_graph.patterns.clear()
     decomposition.decompositions.clear()
     decompositions_for_rng.extra_random_decomps.clear()
@@ -422,11 +424,12 @@ def npu_patch_register_fast_op_impl():
 
 
 @run_once
-def add_npu_patch(decompositions):
+def add_npu_patch(decompositions, compiler_config):
     disable_implicit_decomposition()
     register_matmul_backward_decomp()
     npu_patch_meta()
     npu_patch_break_graph()
     npu_patch_register_fast_op_impl()
-    npu_patch_fx_pass(decompositions)
+    if compiler_config.experimental_config.npu_fx_pass:
+        npu_patch_fx_pass(decompositions)
     
