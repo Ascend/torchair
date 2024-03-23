@@ -13,7 +13,6 @@ from torch.fx import Interpreter
 from torch.fx.node import Argument, Target
 from torch._functorch.aot_autograd import aot_module_simplified
 from torch._functorch.partitioners import default_partition
-from torch._inductor.fx_passes.joint_graph import joint_graph_passes
 
 try:
     from torch._dynamo.allowed_functions import is_builtin_callable
@@ -447,10 +446,15 @@ def get_compiler(compiler_config: CompilerConfig = None):
     return _NpuFxCompiler(compiler_config)
 
 
+def npu_joint_graph_passes(graph):
+    from torch._inductor.fx_passes.joint_graph import joint_graph_passes
+    joint_graph_passes(graph)
+
+
 def get_partition_fn(compiler_config: CompilerConfig = None):
     
     def partition_fn(graph: torch.fx.GraphModule, joint_inputs, **kwargs):
-        joint_graph_passes(graph)
+        npu_joint_graph_passes(graph)
         return default_partition(graph, joint_inputs, **kwargs)
     
     if compiler_config is None:
@@ -468,7 +472,7 @@ def wrap_compiler(compiler: Callable, compiler_config: CompilerConfig):
         is_inference: bool
         ):
         if is_inference and compiler_config.experimental_config.npu_fx_pass:
-            joint_graph_passes(gm) 
+            npu_joint_graph_passes(gm) 
         return compiler(gm, example_inputs)
     
     @functools.wraps(compiler)
@@ -477,7 +481,7 @@ def wrap_compiler(compiler: Callable, compiler_config: CompilerConfig):
         example_inputs: List[torch.Tensor]
         ):
         if compiler_config.experimental_config.npu_fx_pass:
-            joint_graph_passes(gm) 
+            npu_joint_graph_passes(gm) 
         return compiler(gm, example_inputs)
     
     fw_compiler = functools.partial(wrapped_compiler, is_inference=False)
@@ -510,7 +514,7 @@ def get_npu_backend(*, compiler_config: CompilerConfig = None,
     decompositions = get_decompositions(get_default_decompositions())
     decompositions.update(custom_decompositions)
     
-    add_npu_patch(decompositions)
+    add_npu_patch(decompositions, compiler_config)
 
     return functools.partial(_npu_backend, compiler_config=compiler_config, aot_config=aot_config,
                              decompositions=decompositions)
