@@ -28,7 +28,7 @@ from torchair.ge_concrete_graph.utils import dtype_promote, is_integral_type
 def get_lt_dtype(self, other):
     if self is None or other is None:
         return None
-    target_dtype = torch.result_dype(self, other)
+    target_dtype = torch.result_type(self, other)
     if is_integral_type(target_dtype, True):
         target_dtype = torch.float
     return target_dtype
