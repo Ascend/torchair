@@ -29,7 +29,7 @@ from torchair.ge_concrete_graph.ge_graph import DataType
             F32(1),
             offset=None,
             bias=None,
-            output_dtype="int8",
+            output_dtype=torch.int8,
             transpose_x1=False,
             transpose_x2=False)
 ])
@@ -39,21 +39,28 @@ def conveter_npu_npu_quant_matmul(
     x1: Tensor,
     x2: Tensor,
     scale: Tensor,
+    *,
     offset: Optional[Tensor] = None,
+    pertoken_scale: Optional[Tensor] = None,
     bias: Optional[Tensor] = None,
-    output_dtype: str = None,
+    output_dtype: torch.dtype = None,
     transpose_x1: bool = False,
     transpose_x2: bool = False,
     meta_outputs: TensorSpec = None
 ):
-    """NB: npu::npu_quant_matmul(Tensor x1, Tensor x2, Tensor scale, Tensor? offset=None,
-                                 Tensor? bias=None, str? output_dtype=None) -> Tensor
+    """NB: npu::npu_quant_matmul(Tensor x1, Tensor x2, Tensor scale, *, Tensor? offset=None,
+                                 Tensor? pertoken_scale=None, Tensor? bias=None,
+                                 ScalarType? output_dtype=torch.Char) -> Tensor
     """
     dtype = DataType.DT_INT8
-    if output_dtype == "float16":
+    if output_dtype is None or output_dtype == torch.int8:
+        dtype = DataType.DT_INT8
+    elif output_dtype == torch.float16:
         dtype = DataType.DT_FLOAT16
-    elif output_dtype == "bfloat16":
+    elif output_dtype == torch.bfloat16:
         dtype = DataType.DT_BF16
+    else:
+        raise RuntimeError("Not supported output dtype is " + str(output_dtype))
 
     return ge.QuantBatchMatmulV3(x1,
                                  x2,
