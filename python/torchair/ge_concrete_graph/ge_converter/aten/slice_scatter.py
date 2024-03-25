@@ -78,7 +78,7 @@ def conveter_aten_slice_scatter_default(
     """NB: aten::slice_scatter(Tensor self, Tensor src, int dim=0, SymInt? start=None, SymInt? end=None, SymInt step=1) -> Tensor"""
     if not (isinstance(start, Tensor) or isinstance(end, Tensor) or \
         isinstance(step, Tensor)) and step == 1:
-        static_slice_scatter_step1(self, src, dim, start, end, step)
+        return static_slice_scatter_step1(self, src, dim, start, end, step)
     if start is None:
         start = 0
     if end is None:
