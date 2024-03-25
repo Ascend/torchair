@@ -25,15 +25,23 @@ from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, 
     Support
 from torchair.ge_concrete_graph.utils import dtype_promote
 
+
+def get_ne_dtype(self, other):
+    if self is None or other is None:
+        return None
+    target_dtype = torch.result_type(self, other)
+    return target_dtype
+
+
 @declare_supported([
     Support(F32(2,2), F32(2,2)),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.ne.Tensor)
 def conveter_aten_ne_Tensor(self: Tensor, other: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::ne.Tensor(Tensor self, Tensor other) -> Tensor"""
-    if self.dtype != other.dtype:
-        value = ge.Cast(ge.Const(0.), dst_type=torch_type_to_ge_type(torch.bool))
-        return ge.Fill(ge.Shape(self), value)
+    target_dtype = get_ne_dtype(self.meta, other.meta)
+    if target_dtype:
+        self, other = dtype_promote(self, other, target_dtype=target_dtype)
     return ge.NotEqual(self, other)
 
 
@@ -45,6 +53,9 @@ def conveter_aten_ne_Scalar(
     self: Tensor, other: Union[Number, Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::ne.Scalar(Tensor self, Scalar other) -> Tensor"""
+    target_dtype = get_ne_dtype(self.meta, other.meta if isinstance(other, torch.Tensor) else other)
+    if target_dtype:
+        self, other = dtype_promote(self, other, target_dtype=target_dtype)
     return ge.NotEqual(self, other)
 
 
