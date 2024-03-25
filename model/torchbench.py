@@ -24,9 +24,6 @@ from npu_support import patch_torchbench
 # We are primarily interested in tf32 datatype
 torch.backends.cuda.matmul.allow_tf32 = True
 
-if os.environ.get("USE_ACLNN", "0").upper() not in ["1", "ON"]:
-    torch_npu.npu.set_compile_mode(jit_compile=True)
-
 
 def setup_torchbench_cwd():
     original_dir = abspath(os.getcwd())
