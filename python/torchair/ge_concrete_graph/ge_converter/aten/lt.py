@@ -22,30 +22,17 @@ from torchair.ge_concrete_graph.fx2ge_converter import declare_supported, regist
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
-from torchair.ge_concrete_graph.utils import dtype_promote, is_integral_type
-
-
-def get_lt_dtype(self, other):
-    if self is None or other is None:
-        return None
-    target_dtype = torch.result_type(self, other)
-    if is_integral_type(target_dtype, True):
-        target_dtype = torch.float
-    return target_dtype
+from torchair.ge_concrete_graph.utils import dtype_promote
 
 
 @declare_supported([
-    Support(F32(1024, 1024), F32(1024, 1024)),
-    Support(I8(1024, 1024), F32(1024, 1024)),
-    Support(F32(1024, 1024), I8(1024, 1024)),
+    Support(F32(2, 2), F32(2, 2)),
+    Support(I8(2, 2), F32(2, 2))
 ])
 @register_fx_node_ge_converter(torch.ops.aten.lt.Tensor)
 def conveter_aten_lt_Tensor(self: Tensor, other: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::lt.Tensor(Tensor self, Tensor other) -> Tensor"""
     """This geir not implement bool dtype input, and dtype must be same"""
-    target_dtype = get_lt_dtype(self.meta, other.meta)
-    if target_dtype:
-        self, other = dtype_promote(self, other, target_dtype=target_dtype)
     return ge.Less(self, other)
 
 
@@ -59,10 +46,7 @@ def conveter_aten_lt_Scalar(
 ):
     """NB: aten::lt.Scalar(Tensor self, Scalar other) -> Tensor"""
     """This geir not implement bool dtype input"""
-    target_dtype = get_lt_dtype(self.meta, other.meta if isinstance(other, torch.Tensor) else other)
-    if target_dtype:
-        self, other = dtype_promote(self, other, target_dtype=target_dtype)
-    return ge.Less(self, other)
+    return ge.Less(self, ge.Cast(other, dst_type=self.dtype))
 
 
 @register_fx_node_ge_converter(torch.ops.aten.lt.Scalar_out)
