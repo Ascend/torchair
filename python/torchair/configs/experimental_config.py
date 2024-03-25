@@ -9,7 +9,6 @@ class ExperimentalConfig(NpuBaseConfig):
         self.cc_parallel_enable = OptionValue(False, [False, True])
         self.keep_inference_input_mutations = OptionValue(True, [True, False])
         self.memory_efficiency = OptionValue(False, [True, False])
-        self.separate_atomic_clean = OptionValue(True, [True, False])
         self.frozen_parameter = OptionValue(False, [True, False])
         self.static_model_ops_lower_limit = IntRangeValue(None, -1, 9223372036854775807)
         self.jit_compile = OptionValue("auto", ["auto"])
@@ -29,7 +28,6 @@ class ExperimentalConfig(NpuBaseConfig):
         global_experiment_option["ge.exec.enableEngineParallel"] = "1" if self.cc_parallel_enable else "0"
         global_experiment_option["ge.enableSingleStream"] = "true" if self.enable_single_stream else "false"
         local_experiment_option["ge.featureBaseRefreshable"] = "1" if self.memory_efficiency else "0"
-        local_experiment_option["ge.exec.atomicCleanPolicy"] = "1" if self.separate_atomic_clean else "0"
         local_experiment_option["ge.topoSortingMode"] = sorting_strategy_dict[self.topology_sorting_strategy.value]
         if self.jit_compile.value == "auto":
             local_experiment_option["ge.jit_compile"] = "2"
