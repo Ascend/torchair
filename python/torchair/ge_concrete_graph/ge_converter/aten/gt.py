@@ -25,12 +25,26 @@ from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, 
 from torchair.ge_concrete_graph.utils import dtype_promote
 
 
+def get_gt_dtype(self, other):
+    if self is None or other is None:
+        return None
+    target_dtype = torch.result_type(self, other)
+    if target_dtype == torch.bool:
+        target_dtype = torch.float
+    return target_dtype
+
+
 @declare_supported([
     Support(F32(1024, 1024), F32(1024, 1024)),
+    Support(F16(1024, 1024), I8(1024, 1024)),
+    Support(I8(1024, 1024), F32(1024, 1024)),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.gt.Tensor)
 def conveter_aten_gt_Tensor(self: Tensor, other: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::gt.Tensor(Tensor self, Tensor other) -> Tensor"""
+    target_dtype = get_gt_dtype(self.meta, other.meta)
+    if target_dtype:
+        self, other = dtype_promote(self, other, target_dtype=target_dtype)
     return ge.Greater(self, other)
 
 
@@ -43,6 +57,9 @@ def conveter_aten_gt_Scalar(
     self: Tensor, other: Union[Number, Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::gt.Scalar(Tensor self, Scalar other) -> Tensor"""
+    target_dtype = get_gt_dtype(self.meta, other.meta if isinstance(other, torch.Tensor) else other)
+    if target_dtype:
+        self, other = dtype_promote(self, other, target_dtype=target_dtype)
     return ge.Greater(self, other)
 
 

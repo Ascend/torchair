@@ -233,3 +233,11 @@ def get_all_sym_value_mapping(fx_inputs_mapping_reverse, inputs):
             if is_sym(shape) and str(shape) not in sym_value_mapping:
                 sym_value_mapping[str(shape)] = (shape_i, fx_inputs_mapping_reverse[input_i])
     return sym_value_mapping
+
+
+def is_integral_type(dtype: torch.dtype, include_bool: bool):
+    if include_bool and dtype == torch.bool:
+        return True
+    if dtype in [torch.int8, torch.uint8, torch.int16, torch.int32, torch.int64]:
+        return True
+    return False
