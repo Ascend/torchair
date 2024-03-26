@@ -1,0 +1,10 @@
+deepspeed
+SentencePiece
+accelerate
+protobuf
+decorator
+absl-py
+cloudpickle
+scipy
+synr==0.5.0
+tornado

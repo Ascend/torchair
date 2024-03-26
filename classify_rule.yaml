@@ -12,6 +12,7 @@ torchair:
       - docs
       - examples
       - tools
+      - npu_tuned_model
   llt:
     ut_check:true
     st_check:true
