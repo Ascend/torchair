@@ -176,6 +176,18 @@ def break_fn_conv3d(self, inst):
             raise Unsupported(f"Unsupported conv3d module !")
 
 
+@register_break_fn('CALL_FUNCTION', 'NN.LINEAR')
+def break_fn_linear(self, inst):
+    """
+    break module nn.Linear.
+    For example:
+        torch.nn.Linear
+    """
+    for stack in self.stack:
+        if isinstance(stack, NNModuleVariable) and stack.module_type == torch.nn.Linear:
+            raise Unsupported(f"Break graph for linear module !")
+
+
 def add_break_graph(op_table):
     """
     Initially support:
