@@ -64,6 +64,7 @@ except ImportError:
     pass
 
 import torch_npu
+from npu_support import patch_model
 
 log = logging.getLogger(__name__)
 
@@ -3038,6 +3039,9 @@ def main(runner, original_dir=None):
     args = parse_args()
     if args.baseline:
         args.baseline = os.path.abspath(args.baseline)
+
+    if args.only:
+        patch_model(args.only)
 
     if should_diff_branch(args):
         import git
