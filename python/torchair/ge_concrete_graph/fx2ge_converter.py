@@ -28,7 +28,8 @@ from torchair.ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
 from torchair.ge_concrete_graph.ge_graph import Tensor as GeTensor
 from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type, torch_type_to_ge_proto_type, default_ge_graph, \
     GeGraph, attr_scope, compat_as_bytes, DataType, Format, TensorSpec, is_sym, sym_to_ge_dtype, assert_args_checkout
-from torchair.ge_concrete_graph.graph_pass import optimize_sym_pack, optimize_reference_op_redundant_copy
+from torchair.ge_concrete_graph.graph_pass import optimize_sym_pack, optimize_reference_op_redundant_copy, \
+    replace_data_to_refdata
 from torchair.ge_concrete_graph.utils import convert_to_tensorboard, dump_graph, force_op_unknown_shape, \
     is_host_data_tensor, get_all_sym_value_mapping, get_used_syms_in_meta, Placement
 from torchair.ge_concrete_graph.supported_declaration import Support
@@ -423,6 +424,8 @@ class ViewOfInput:
 class GeConcreteGraph(ConcreteGraphBase):
     def __init__(self, config: CompilerConfig, graph=None, name=None):
         self._graph = GeGraph() if graph is None else graph
+        if name is not None:
+            self._graph.name = name
         self._fx_outputs = []
         self._fx_outputs_mapping = dict()
         self._outputs = []
@@ -457,13 +460,22 @@ class GeConcreteGraph(ConcreteGraphBase):
                                                              self._fx_inputs_mapping, len(args))
         fx_inputs = self._pack_input_processing(*args)
 
+        self.common_graph_optimization()
+
+        # replace ge.Data to ge.RefData when ref input
+        if self._config.experimental_config.enable_ref_data and not self._is_compiled:
+            ref_data_idx = set()
+            for idx in self._ref_data_idx:
+                ref_data_idx.add(idx)
+            for k, v in self._graph_output_ref_input.items():
+                ref_data_idx.add(v)
+            replace_data_to_refdata(self.graph, ref_data_idx, fx_inputs, self._fx_inputs_mapping)
+
         if self._inputs_processing is None:
             self._inputs_processing = self._make_inputs_processing_func(*fx_inputs)
         inputs = self._inputs_processing(*fx_inputs)
 
         inputs = self._consume_data_into_inputs(inputs)
-
-        self.common_graph_optimization()
 
         if self.config.export.export_mode:
             self.export(inputs)

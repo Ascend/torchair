@@ -39,6 +39,7 @@ def _get_export_config(model, export_path: str, export_name: str, config=Compile
     config.export.export_mode = True
     config.export.export_path_dir = export_path
     config.export.export_name = export_name
+    config.experimental_config.enable_ref_data = True
 
     _save_name(config, model, **kwargs)
     return config

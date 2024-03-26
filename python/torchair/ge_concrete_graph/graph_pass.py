@@ -1,10 +1,11 @@
 import copy
-from collections import namedtuple
+import logging
+from collections import namedtuple, defaultdict
 from typing import Any, Dict, List, Tuple, Union, Callable
 import torch
 from torchair.core.utils import logger
 from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef, TensorDescriptor, TensorDef, OpDef
-from torchair.ge_concrete_graph.ge_graph import _ge_proto_dtype_to_ge_dtype
+from torchair.ge_concrete_graph.ge_graph import _ge_proto_dtype_to_ge_dtype, compat_as_bytes
 from torchair.ge_concrete_graph.ge_graph import Tensor as GeTensor
 from torchair.ge_concrete_graph.utils import Placement
 
@@ -262,3 +263,54 @@ def optimize_reference_op_redundant_copy(graph: GraphDef):
             graph.op.remove(tensormove_op)
 
     return ref_data_idx
+
+
+_GLOBAL_NAME_MAP = defaultdict()
+
+
+def _is_unique_input_name_in_graph(graph_name_key, input_node_name):
+    if graph_name_key not in _GLOBAL_NAME_MAP:
+        _GLOBAL_NAME_MAP.setdefault(graph_name_key, []).append(input_node_name)
+        return True
+
+    if input_node_name not in _GLOBAL_NAME_MAP[graph_name_key]:
+        _GLOBAL_NAME_MAP[graph_name_key].append(input_node_name)
+        return True
+
+    return False
+
+
+def replace_data_to_refdata(graph, ref_input_idx, inputs, fx_inputs_mapping):
+    ge_inputs_mapping = {value: key for key, value in fx_inputs_mapping.items()}
+    replaced_map = {}
+    for op in graph.op:
+        if op.type != "Data":
+            continue
+        data_idx = op.attr["index"].i
+        if data_idx in ref_input_idx:
+            logger.debug(f"Try to deal with ref input {op.name}:{data_idx}")
+            input_tensor = inputs[ge_inputs_mapping[data_idx]]
+            if not (isinstance(input_tensor, torch.Tensor) and input_tensor.is_contiguous()):
+                raise AssertionError(f"the {data_idx}th input of graph expect contiguous torch.Tensor type")
+            shape_str = "_".join(str(x) for x in input_tensor.shape)
+            stride_str = "_".join(str(x) for x in input_tensor.stride())
+            offset_str = str(input_tensor.storage_offset())
+            new_refdata_name = "RefData__" + shape_str + "__" + stride_str + "__" + offset_str + "__" + str(
+                id(input_tensor))
+            if _is_unique_input_name_in_graph(graph.name, new_refdata_name):
+                logger.debug(f"Replace {new_refdata_name}:RefData with {op.name}:{op.type} in graph {graph.name}")
+                op.attr["_origin_data_name"].s = compat_as_bytes(op.name)
+                replaced_map[op.name] = new_refdata_name
+                op.name = new_refdata_name
+                op.type = f"RefData"
+            else:
+                logger.warning(
+                    f"Find repeated input {op.name} in graph {graph.name}, repeat name is {new_refdata_name}")
+
+    for node in graph.op:
+        for idx, node_input in enumerate(node.input):
+            input_name_list = node_input.split(":")
+            if len(input_name_list) > 0 and input_name_list[0] in replaced_map.keys():
+                index_str = ":" + input_name_list[1] if len(input_name_list) > 1 else ""
+                node.input[idx] = replaced_map[input_name_list[0]] + index_str
+

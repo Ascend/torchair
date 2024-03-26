@@ -17,6 +17,7 @@ class ExperimentalConfig(NpuBaseConfig):
         self.aot_config_output_loss_index = OptionValue(0, None)
         self.enable_single_stream = OptionValue(False, [True, False])
         self.topology_sorting_strategy = OptionValue("DFS", ["BFS", "DFS", "RDFS"])
+        self.enable_ref_data = OptionValue(False, [True, False])
 
         super(ExperimentalConfig, self).__init__()
 

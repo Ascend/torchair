@@ -468,8 +468,16 @@ class GeGraph(object):
         return self._python_code
 
     @property
+    def name(self):
+        return self._proto.name
+
+    @property
     def generator_rng_state(self):
         return self._generator_rng_state
+
+    @name.setter
+    def name(self, v):
+        self._proto.name = v
 
     def rng_state(self, philox_num: int = -1, gen: torch.Generator = None):
         _graph_rng_state = self._generator_rng_state[gen]

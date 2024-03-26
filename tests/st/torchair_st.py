@@ -11,7 +11,7 @@ from torchair.core.utils import logger
 from torchair.core.backend import TorchNpuGraph
 from torchair.ge_concrete_graph.ge_graph import GeGraph
 from torchair.ge_concrete_graph.fx2ge_converter import ExecutorType, Placement, _normalize_ge_graph, \
-    _mapping_assign_op_to_graph_output
+    _mapping_assign_op_to_graph_output, replace_data_to_refdata
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.ge_graph import DataType
 from torchair.ge_concrete_graph.graph_pass import optimize_reference_op_redundant_copy
@@ -317,17 +317,14 @@ class TorchairSt(unittest.TestCase):
 
     def test_npu_executor_optimize_ref_op_copy(self):
         def get_graph_key_op_num(graph):
-            assign_num = 0
-            tensormove_num = 0
             netoutput_input_num = 0
+            node_count_dict = {"Assign": 0, "TensorMove": 0, "Data": 0, "RefData": 0}
             for node in graph.op:
-                if node.type == "Assign":
-                    assign_num += 1
-                elif node.type == "TensorMove":
-                    tensormove_num += 1
-                elif node.type == "NetOutput":
+                if node.type == "NetOutput":
                     netoutput_input_num = len(node.input)
-            return assign_num, tensormove_num, netoutput_input_num
+                elif node.type in node_count_dict.keys():
+                    node_count_dict[node.type] += 1
+            return node_count_dict, netoutput_input_num
 
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
@@ -370,33 +367,59 @@ class TorchairSt(unittest.TestCase):
             assign3 = ge.Assign(dst2, out3)
             assign2 = ge.Assign(sub, out2)
             output = ge.NetOutput([out1, out2, out3])
-
             set_graph_output_dtypes(graph, [DataType.DT_FLOAT, DataType.DT_FLOAT, DataType.DT_FLOAT])
             executor = TorchNpuGraph()
-            optimize_reference_op_redundant_copy(graph)
-            assign_num, tm_num, output_in = get_graph_key_op_num(graph)
-            assert assign_num == 2, f"after optimize, assert assign op num failed, expect 2, get {assign_num}"
-            assert tm_num == 4, f"after optimize, assert TensorMove op num failed, expect4, get {tm_num}"
-            assert output_in == 3, f"after optimize, assert output num failed, expect 3, get {output_in}"
+            ref_data_idx = optimize_reference_op_redundant_copy(graph)
+
+            node_count_dict, output_in = get_graph_key_op_num(graph)
+            assert node_count_dict["Assign"] == 2, \
+                f'after optimize, assert assign op num failed, expect 2, get {node_count_dict["Assign"]}'
+            assert node_count_dict["TensorMove"] == 4,\
+                f'after optimize, assert TensorMove op num failed, expect 4, get {node_count_dict["TensorMove"]}'
+            assert output_in == 3, f'after optimize, assert output num failed, expect 3, get {output_in}'
+            assert node_count_dict["Data"] == 5,\
+                f'after optimize, assert input data num failed, expect 5, get {node_count_dict["Data"]}'
+            assert node_count_dict["RefData"] == 0,\
+                f'after optimize, assert output num failed, expect 0, get {node_count_dict["RefData"]}'
 
             output_ref_input = _mapping_assign_op_to_graph_output(graph)
+            _, output_in = get_graph_key_op_num(graph)
+            assert output_in == 4, f"after optimize, assert output num failed, expect 4, get {output_in}"
+
+            dst = torch.ones(3, 1, 16, 8).float().to(npu_device)
+            dst1 = torch.ones(3, 1, 16, 8).float().to(npu_device)
+            src = torch.randn(3, 1, 3, 8).float().to(npu_device)
+            indices = torch.tensor([1, 1]).int().to(npu_device)
+            dst2 = torch.ones(3, 1, 16, 8).float().to(npu_device)
+            inputs = [dst, dst1, src, indices, dst2]
+
+            all_ref_data_idx = set()
+            for idx in ref_data_idx:
+                all_ref_data_idx.add(idx)
+            for k, v in output_ref_input.items():
+                all_ref_data_idx.add(v)
+
+            fx_inputs_mapping = {i: i for i in range(6)}
+            replace_data_to_refdata(graph, all_ref_data_idx, inputs, fx_inputs_mapping)
+            node_count_dict, output_in = get_graph_key_op_num(graph)
+            assert node_count_dict["Assign"] == 1,\
+                f'after optimize, assert assign op num failed, expect 1, get {node_count_dict["Assign"]}'
+            assert node_count_dict["Data"] == 2,\
+                f'after optimize, assert input data num failed, expect 3, get {node_count_dict["Data"]}'
+            assert output_in == 4, f'after optimize, assert output num failed, expect 4, get {output_in}'
+            assert node_count_dict["RefData"] == 3,\
+                f'after optimize, assert output num failed, expect 3, get {node_count_dict["RefData"]}'
+
+            assigned_outputs = [None] * len(graph.attr["_output_dtypes"].list.i)
+            for output_index, input_index in output_ref_input.items():
+                assigned_outputs[output_index] = inputs[input_index]
+
             executor.load(graph)
             executor.compile()
 
-        dst = torch.ones(3, 1, 16, 8).float().to(npu_device)
-        dst1 = torch.ones(3, 1, 16, 8).float().to(npu_device)
-        src = torch.randn(3, 1, 3, 8).float().to(npu_device)
-        indices = torch.tensor([1, 1]).int().to(npu_device)
-        dst2 = torch.ones(3, 1, 16, 8).float().to(npu_device)
-
-        inputs = [dst, dst1, src, indices, dst2]
-        assigned_outputs = [None] * len(graph.attr["_output_dtypes"].list.i)
-        for output_index, input_index in output_ref_input.items():
-            assigned_outputs[output_index] = inputs[input_index]
-
-        outs = executor.run(inputs, assigned_outputs)
-        self.assertTrue(len(outs) == 3)
-        self.assertTrue(outs[2] is dst2)
+            outs = executor.run(inputs, assigned_outputs)
+            self.assertTrue(len(outs) == 3)
+            self.assertTrue(outs[2] is dst2)
 
     def test_assign_input_in_netoutput(self):
         def _get_graph_output_num(graph):
@@ -1066,13 +1089,13 @@ class TorchairSt(unittest.TestCase):
     def test_error_code(self):
         with self.assertRaises(RuntimeError) as context:
             torchair.core.backend.TorchNpuGraph().run(None)
-        self.assertTrue('ERR03005 GRAPH internal error' in str(context.exception))        
-    
+        self.assertTrue('ERR03005 GRAPH internal error' in str(context.exception))
+
     def test_npu_fx_pass(self):
         fx_pass_config = CompilerConfig()
         fx_pass_config.experimental_config.npu_fx_pass = True
         fx_pass_npu_backend = torchair.get_npu_backend(compiler_config=fx_pass_config)
-        
+
         def rotate_half(x):
             x1 = x[..., : x.shape[-1] // 2]
             x2 = x[..., x.shape[-1] // 2 :]
@@ -1085,7 +1108,7 @@ class TorchairSt(unittest.TestCase):
 
         compiled_fn = torch.compile(apply_rotary_pos_emb, backend=fx_pass_npu_backend)
         compiled_fn(
-            torch.randn(2, 4, 8, 16), torch.randn(2, 4, 8, 16), 
+            torch.randn(2, 4, 8, 16), torch.randn(2, 4, 8, 16),
             torch.randn(2, 4, 8, 16), torch.randn(2, 4, 8, 16)
             )
 

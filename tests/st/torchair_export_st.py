@@ -28,7 +28,7 @@ class TorchairSt(unittest.TestCase):
 
     def clean_env(self):
         for export_path in ["export_file", "false_export_path2", "true_export_path2", \
-                            "true_export_path3", "test_export_file_path"]:
+                            "true_export_path3", "test_export_file_path", "test_export_file_path2"]:
             if os.path.exists(export_path):
                 shutil.rmtree(export_path)
 
@@ -331,6 +331,118 @@ class TorchairSt(unittest.TestCase):
 
         assert src.count("op: \"Data\"") == 6
         assert src.count("op: \"Pack\"") == 2
+
+    def test_export_with_ref_data(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                a = x * x
+                return y.add_(a)
+
+        model = Model()
+        export_path = "test_export_file_path"
+        if os.path.exists(export_path):
+            shutil.rmtree(export_path)
+        x = torch.randn([2, 4], dtype=torch.float16)
+        y = torch.randn([2, 4], dtype=torch.float16)
+        torchair.dynamo_export(x, y, model=model, export_path=export_path, dynamic=False)
+
+    def test_one_graph_with_same_ref_data(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                x.mul_(2)
+                return x, y.add_(1)
+
+        model = Model()
+        export_path = "test_export_file_path"
+        if os.path.exists(export_path):
+            shutil.rmtree(export_path)
+        x = torch.randn([2, 4], dtype=torch.float16)
+        torchair.dynamo_export(x, x, model=model, export_path=export_path, dynamic=False)
+
+        dumped_file_list = get_dumped_file_list(export_path)
+        dumped_file_list.sort(key=lambda file_name: os.path.getmtime(os.path.join(export_path, file_name)))
+        assert dumped_file_list.__len__() > 0
+        file_name = os.path.join(export_path, dumped_file_list[-1])
+
+        with open(file_name, 'r') as f:
+            src1 = f.read()
+
+        shape_str = "_".join(str(sh) for sh in x.shape)
+        stride_str = "_".join(str(std) for std in x.stride())
+        offset_str = str(x.storage_offset())
+        new_refdata_name = "RefData__" + shape_str + "__" + stride_str + "__" + offset_str + "__" + str(
+            id(x))
+
+        name_str = f'name: \"{new_refdata_name}\"'
+        assert src1.count(name_str) == 1
+        op_str = f'op: "RefData"'
+        assert src1.count(op_str) == 1
+
+
+
+    def test_two_graph_with_same_ref_data(self):
+        class Model1(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                a = x * x
+                return y.add_(a)
+        class Model2(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                a = torch.mm(x, x)
+                b = a + x
+                return y.mul_(b)
+
+        model = Model1()
+        export_path1 = "test_export_file_path"
+        export_path2 = "test_export_file_path2"
+
+        if os.path.exists(export_path1):
+            shutil.rmtree(export_path1)
+        input_tensor1 = torch.randn([2, 4], dtype=torch.float16)
+        input_tensor2 = torch.randn([2, 4], dtype=torch.float16)
+        print(id(input_tensor1))
+        print(id(input_tensor2))
+
+        torchair.dynamo_export(input_tensor1, input_tensor2, model=model, export_path=export_path1, dynamic=False)
+
+        torchair.dynamo_export(input_tensor1, input_tensor2, model=model, export_path=export_path2, dynamic=False)
+
+        dumped_file_list = get_dumped_file_list(export_path1)
+        dumped_file_list.sort(key=lambda file_name: os.path.getmtime(os.path.join(export_path1, file_name)))
+        assert dumped_file_list.__len__() > 0
+        file_name = os.path.join(export_path1, dumped_file_list[-1])
+
+        with open(file_name, 'r') as f:
+            src1 = f.read()
+
+        shape_str = "_".join(str(x) for x in input_tensor2.shape)
+        stride_str = "_".join(str(x) for x in input_tensor2.stride())
+        offset_str = str(input_tensor2.storage_offset())
+        new_refdata_name = "RefData__" + shape_str + "__" + stride_str + "__" + offset_str + "__" + str(
+            id(input_tensor2))
+
+        sub_str = f'name: \"{new_refdata_name}\"'
+        assert src1.count(sub_str) == 1
+
+        dumped_file_list = get_dumped_file_list(export_path2)
+        dumped_file_list.sort(key=lambda file_name: os.path.getmtime(os.path.join(export_path2, file_name)))
+        assert dumped_file_list.__len__() > 0
+        file_name = os.path.join(export_path2, dumped_file_list[-1])
+
+        with open(file_name, 'r') as f:
+            src2 = f.read()
+        assert src2.count(sub_str) == 1
 
 
 class AllReduceSingeGroup(torch.nn.Module):

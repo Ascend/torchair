@@ -378,6 +378,15 @@ def _eliminate_sym(example_inputs, gm: torch.fx.GraphModule):
     return gm, input_save_list_flag
 
 
+_GLOBAL_GRAPH_ID = 0
+
+
+def _next_unique_graph_id():
+    global _GLOBAL_GRAPH_ID
+    _GLOBAL_GRAPH_ID += 1
+    return _GLOBAL_GRAPH_ID
+
+
 class _NpuFxCompiler:
     def __init__(self, compiler_config: CompilerConfig) -> None:
         self.config = compiler_config
@@ -402,7 +411,8 @@ class _NpuFxCompiler:
         with no_dispatch():
             mutable_gm = copy.deepcopy(gm)
         concrete_graph: ConcreteGraphBase = NpuGraphConverter(
-            mutable_gm, graph=ConcreteGraph(self.config), garbage_collect_values=False).run(*example_inputs)
+            mutable_gm, graph=ConcreteGraph(self.config, name="graph_" + str(_next_unique_graph_id())),
+            garbage_collect_values=False).run(*example_inputs)
 
         if not self.config.export.export_mode:
             if self.config.debug.graph_dump.enabled:

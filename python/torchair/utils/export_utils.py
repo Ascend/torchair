@@ -126,9 +126,7 @@ _next_export_graph_id = 0
 def make_export_graph(inputs, config, ori_graph):
     export_graph = GeGraph()
     export_graph.MergeFrom(ori_graph._proto)
-    global _next_export_graph_id
-    export_graph.name = f"compiled_graph_{_next_export_graph_id}"
-    _next_export_graph_id += 1
+    logger.debug(f'exported graph name: {export_graph.name}')
 
     file_path = config.export.export_path_dir
     sub_file_path = _get_subpath(file_path)
