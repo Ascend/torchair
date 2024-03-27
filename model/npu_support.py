@@ -1,5 +1,6 @@
 import importlib
 import logging
+import os
 from typing import Optional, Tuple
 import torch
 import torch.nn as nn
@@ -304,6 +305,11 @@ def _patch_model_4():
         return attn_output, attn_weights_reshaped, past_key_value
 
     BartAttention.forward = new_forward
+
+
+@register_patch("fastNLP_Bert")
+def _patch_model_5():
+    os.environ['BREAK_GRAPH_OP_LIST'] = 'NN.LINEAR'
 
 
 def patch_model(model_name):
