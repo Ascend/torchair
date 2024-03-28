@@ -5,6 +5,7 @@ from typing import Optional, Tuple
 import torch
 import torch.nn as nn
 import torch_npu
+import torchair
 
 
 log = logging.getLogger(__name__)
@@ -310,6 +311,11 @@ def _patch_model_4():
 @register_patch("fastNLP_Bert")
 def _patch_model_5():
     os.environ['BREAK_GRAPH_OP_LIST'] = 'NN.LINEAR'
+    # None-public interface, just for test.
+    # This env is added after torchair's init,
+    # so need to call break_graph patch again,
+    torchair.utils.npu_patch_break_graph()
+
 
 
 def patch_model(model_name):
