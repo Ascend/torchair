@@ -32,7 +32,7 @@ def conveter_aten_clone_default(
             "torch.ops.aten.clone.default have some unprocessed parameters or cases, "
             "memory_format = {}, torch.contiguous_format = {}".format(memory_format, torch.contiguous_format))
 
-    return ge.Identity(self)
+    return ge.TensorMove(self)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.clone.out)
