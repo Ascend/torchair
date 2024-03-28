@@ -75794,3 +75794,60 @@ def GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], sca
 
     # return outputs
     return y
+
+
+# This api is auto-generated from IR MoeInitRouting
+@auto_convert_to_tensor([False, False, False], [False, False, False])
+def MoeInitRouting(x: Tensor,
+                   row_idx: Tensor,
+                   expert_idx: Tensor,
+                   active_num: int=99, 
+                   dependencies=[], 
+                   node_name=None):
+    """REG_OP(MoeInitRouting)\n
+    .INPUT(x, "T1")\n
+    .INPUT(row_idx, "T2")\n
+    .INPUT(expert_idx, "T2")\n
+    .OUTPUT(expanded_x, "T1")\n
+    .OUTPUT(expanded_row_idx, "T2")\n
+    .OUTPUT(expanded_expert_idx, "T2")\n
+    .DATATYPE(T1, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .DATATYPE(T2, TensorType({DT_INT32}))\n
+    .REQUIRED_ATTR(active_num, Int)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "MoeInitRouting"
+    op.name = next_unique_name(node_name, "MoeInitRouting")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+    op.input.append(row_idx.tensor)
+    op.input_desc.add().CopyFrom(row_idx.desc)
+    op.input_desc[-1].name = "row_idx"
+    op.input.append(expert_idx.tensor)
+    op.input_desc.add().CopyFrom(expert_idx.desc)
+    op.input_desc[-1].name = "expert_idx"
+
+    # process attrs
+    op.attr["active_num"].i = active_num
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "expanded_x"
+    expanded_x = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "expanded_row_idx"
+    expanded_row_idx = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "expanded_expert_idx"
+    expanded_expert_idx = Tensor(op, output_index)
+
+    # return outputs
+    return expanded_x, expanded_row_idx, expanded_expert_idx

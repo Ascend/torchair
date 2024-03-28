@@ -2008,6 +2008,32 @@ REG_OP(MoeFFN)
 
 
 /**
+* @brief compute init routing for moe input.
+* @par Inputs:
+* @li x: A Tensor. Type is:BFloat16, Float16 or Float32.
+* @li row_idx: A Tensor. Type is:Int32.
+* @li expert_idx: A Tensor. Type is:Int32.
+* @par Outputs:
+* @li expanded_x: A Tensor. Type is:BFloat16, Float16 or Float32.
+* @li expanded_row_idx: A Tensor. Type is:Int32.
+* @li expanded_expert_idx: A Tensor. Type is:Int32.
+* @par Attributes:
+* @li active_num: Required parameter. Type is:Int32.
+*/
+REG_OP(MoeInitRouting)
+    .INPUT(x, "T1")
+    .INPUT(row_idx, "T2")
+    .INPUT(expert_idx, "T2")
+    .OUTPUT(expanded_x, "T1")
+    .OUTPUT(expanded_row_idx, "T2")
+    .OUTPUT(expanded_expert_idx, "T2")
+    .DATATYPE(T1, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .DATATYPE(T2, TensorType({DT_INT32}))
+    .REQUIRED_ATTR(active_num, Int)
+    .OP_END_FACTORY_REG(MoeInitRouting)
+
+
+/**
 * @brief Apply add operation for each tensor in tensor list with a scalar in manner of element-wise
 * @par Inputs:
  * Two inputs:
