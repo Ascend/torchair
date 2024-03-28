@@ -98,6 +98,18 @@ class PathManager:
             warnings.warn(f"Warning: The {path} owner does not match the current user.")
 
     @classmethod
+    def create_file_safety(cls, path: str):
+        msg = f"Failed to create file: {path}"
+        if os.path.islink(path):
+            raise RuntimeError(msg)
+        if os.path.exists(path):
+            return
+        try:
+            os.close(os.open(path, os.O_WRONLY | os.O_CREAT, cls.DATA_FILE_AUTHORITY))
+        except Exception as err:
+            raise RuntimeError(msg) from err
+        
+    @classmethod
     def check_directory_path_readable(cls, path):
         cls.check_path_owner_consistent(path)
         if os.path.islink(path):
@@ -386,8 +398,8 @@ def load_model_from_path(path_and_class_str):
 
 def output_csv(filename, headers, row):
     abspath = os.path.abspath(filename)
-    PathManager.check_directory_path_readable(abspath)
     if os.path.exists(filename):
+        PathManager.check_directory_path_readable(abspath)
         with open(filename) as fd:
             lines = list(csv.reader(fd)) or [[]]
             if headers and len(headers) > len(lines[0]):
@@ -398,6 +410,7 @@ def output_csv(filename, headers, row):
     else:
         lines = [headers]
     lines.append([(f"{x:.6f}" if isinstance(x, float) else x) for x in row])
+    PathManager.create_file_safety(abspath)
     PathManager.check_directory_path_writeable(abspath)
     with open(filename, "w") as fd:
         writer = csv.writer(fd, lineterminator="\n")
