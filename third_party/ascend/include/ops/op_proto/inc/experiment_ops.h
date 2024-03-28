@@ -2034,6 +2034,31 @@ REG_OP(MoeInitRouting)
 
 
 /**
+* @brief In MoE computation, the final step involves processing and merging the output results of the MoE FNN.
+* @par Inputs:
+* @li expanded_x: A Tensor. Type is:BFloat16, Float16 or Float32.
+* @li x1: A Tensor. Type is:BFloat16, Float16 or Float32.
+* @li x2: An optional Tensor. Type is:BFloat16, Float16 or Float32.
+* @li bias: A Tensor. Type is:BFloat16, Float16 or Float32.
+* @li scales: A Tensor. Type is:BFloat16, Float16 or Float32.
+* @li expanded_row_idx: A Tensor. Type is:Int32.
+* @li expanded_expert_idx: A Tensor. Type is:Int32.
+* @par Outputs:
+* @li y: A Tensor. Type is:BFloat16, Float16 or Float32.
+*/
+REG_OP(MoeFinalizeRouting)
+    .INPUT(expanded_x, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .OPTIONAL_INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .INPUT(bias, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .INPUT(scales, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .INPUT(expanded_row_idx, TensorType({DT_INT32, DT_INT32, DT_INT32}))
+    .INPUT(expanded_expert_idx, TensorType({DT_INT32, DT_INT32, DT_INT32}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .OP_END_FACTORY_REG(MoeFinalizeRouting)
+
+
+/**
 * @brief Apply add operation for each tensor in tensor list with a scalar in manner of element-wise
 * @par Inputs:
  * Two inputs:

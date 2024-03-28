@@ -19071,6 +19071,68 @@ def MoeFFN(x: Tensor, expert_tokens: Tensor, weight1: Tensor, bias1: Optional[Te
     return y
 
 
+# This api is auto-generated from IR MoeFinalizeRouting
+@auto_convert_to_tensor([False, False, False, False, False, False, False], [False, False, True, False, False, False, False])
+def MoeFinalizeRouting(expanded_x: Tensor, x1: Tensor, x2: Optional[Tensor], bias: Tensor, scales: Tensor, expanded_row_idx: Tensor, expanded_expert_idx: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(MoeFinalizeRouting)\n
+.INPUT(expanded_x, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+.INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+.OPTIONAL_INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+.INPUT(bias, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+.INPUT(scales, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+.INPUT(expanded_row_idx, TensorType({DT_INT32, DT_INT32, DT_INT32}))\n
+.INPUT(expanded_expert_idx, TensorType({DT_INT32, DT_INT32, DT_INT32}))\n
+.OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+"""
+
+    op = get_default_ge_graph().op.add()
+    op.type = "MoeFinalizeRouting"
+    op.name = next_unique_name(node_name, "MoeFinalizeRouting")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(expanded_x.tensor)
+    op.input_desc.add().CopyFrom(expanded_x.desc)
+    op.input_desc[-1].name = "expanded_x"
+    op.input.append(x1.tensor)
+    op.input_desc.add().CopyFrom(x1.desc)
+    op.input_desc[-1].name = "x1"
+    if x2 is not None:
+        op.input.append(x2.tensor)
+        op.input_desc.add().CopyFrom(x2.desc)
+        op.input_desc[-1].name = "x2"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "x2"
+    op.input.append(bias.tensor)
+    op.input_desc.add().CopyFrom(bias.desc)
+    op.input_desc[-1].name = "bias"
+    op.input.append(scales.tensor)
+    op.input_desc.add().CopyFrom(scales.desc)
+    op.input_desc[-1].name = "scales"
+    op.input.append(expanded_row_idx.tensor)
+    op.input_desc.add().CopyFrom(expanded_row_idx.desc)
+    op.input_desc[-1].name = "expanded_row_idx"
+    op.input.append(expanded_expert_idx.tensor)
+    op.input_desc.add().CopyFrom(expanded_expert_idx.desc)
+    op.input_desc[-1].name = "expanded_expert_idx"
+
+    # process attrs
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+
+    # return outputs
+    return y
+
+
 # This api is auto-generated from IR ForeachAddScalarInplace
 @auto_convert_to_tensor([True, False], [False, False])
 def ForeachAddScalarInplace(x: List[Tensor], scalar: Tensor, *, dependencies=[], node_name=None):
