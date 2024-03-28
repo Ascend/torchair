@@ -13,15 +13,20 @@ class ExperimentalConfig(NpuBaseConfig):
         self.static_model_ops_lower_limit = IntRangeValue(None, -1, 9223372036854775807)
         self.jit_compile = OptionValue("auto", ["auto"])
         self.npu_fx_pass = OptionValue(False, [True, False])
+        self.enable_single_stream = OptionValue(False, [True, False])
+        self.topology_sorting_strategy = OptionValue("DFS", ["BFS", "DFS", "RDFS"])
 
         super(ExperimentalConfig, self).__init__()
 
     def as_dict(self):
         global_experiment_option = {}
         local_experiment_option = {}
+        sorting_strategy_dict = {"BFS": "0", "DFS": "1", "RDFS": "2"}
 
         global_experiment_option["ge.exec.enableEngineParallel"] = "1" if self.cc_parallel_enable else "0"
+        global_experiment_option["ge.enableSingleStream"] = "true" if self.enable_single_stream else "false"
         local_experiment_option["ge.featureBaseRefreshable"] = "1" if self.memory_efficiency else "0"
+        local_experiment_option["ge.topoSortingMode"] = sorting_strategy_dict[self.topology_sorting_strategy.value]
         if self.jit_compile.value == "auto":
             local_experiment_option["ge.jit_compile"] = "2"
         if self.static_model_ops_lower_limit.value is not None:
