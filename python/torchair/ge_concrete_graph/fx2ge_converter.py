@@ -846,7 +846,11 @@ class GeConcreteGraph(ConcreteGraphBase):
                     new_input_placements.append(self._input_placements[self._fx_inputs_mapping[idx]])
                     new_inputs.append(self._inputs[self._fx_inputs_mapping[idx]])
                     new_graph_indexed_inputs[self._data_index_after_forozen[idx]] = \
-                        self.graph._indexed_inputs[self._fx_inputs_mapping[idx]]
+                        self.graph.indexed_inputs()[self._fx_inputs_mapping[idx]]
+        for ge_idx, op in self.graph.indexed_inputs().items():
+            if ge_idx not in self._fx_inputs_mapping.values():
+                assert_args_checkout(len(self._data_index_after_forozen) not in new_graph_indexed_inputs)
+                new_graph_indexed_inputs[len(self._data_index_after_forozen)] = op
         self._inputs = new_inputs
         self._input_placements = new_input_placements
         self.graph._indexed_inputs = new_graph_indexed_inputs
@@ -857,7 +861,8 @@ class GeConcreteGraph(ConcreteGraphBase):
         fx_inputs_mapping_reverse = {value : key for key, value in self._fx_inputs_mapping.items()}
         frozen_data_op_list = []
         for op in self.graph.op:
-            if op.type == "Data":
+            if op.type == "Data" and op.attr["index"].i in fx_inputs_mapping_reverse:
+                logger.debug(f'No.{op.attr["index"].i} Data op in original graph will be frozen.')
                 args_index = fx_inputs_mapping_reverse[op.attr["index"].i]
                 if self._frozen_flag_list[args_index]:
                     frozen_data_op_list.append(op)
@@ -906,9 +911,18 @@ class GeConcreteGraph(ConcreteGraphBase):
         # 修改不是constplaceholder的Data节点的index
         for op in self.graph.op:
             if op.type == "Data":
-                args_index = fx_inputs_mapping_reverse[op.attr["index"].i]
-                assert_args_checkout(args_index in self._data_index_after_forozen)
-                op.attr["index"].i = self._data_index_after_forozen[args_index]
+                if op.attr["index"].i in fx_inputs_mapping_reverse:
+                    args_index = fx_inputs_mapping_reverse[op.attr["index"].i]
+                    assert_args_checkout(args_index in self._data_index_after_forozen)
+                    logger.debug(f'Index of No.{op.attr["index"].i} Data op in original graph '
+                                 f'will be set to {self._data_index_after_forozen[args_index]} '
+                                 f'in optimized graph.')
+                    op.attr["index"].i = self._data_index_after_forozen[args_index]
+                else:
+                    logger.debug(f'Index of No.{op.attr["index"].i} Data op in original graph '
+                                 f'will be set to {len(self._data_index_after_forozen)} '
+                                 f'in optimized graph.')
+                    op.attr["index"].i = len(self._data_index_after_forozen)
         # 处理边
         for op in self.graph.op:
             for idx, op_input in enumerate(op.input):

@@ -92,41 +92,6 @@ class TorchairSt(unittest.TestCase):
         model(x, 2.0)
         model(x, 3.0)
 
-    def test_enable_constplaceholder_dynamic(self):
-        class Model(torch.nn.Module):
-            def __init__(self):
-                super().__init__()
-
-            def forward(self, x, y):
-                return torch.add(x, y)
-
-        config_cp = CompilerConfig()
-        ## TO DO: fix me after ConstPlaceHolder enable
-        # config_cp.experimental_config.frozen_parameter = True
-        npu_backend_cp = torchair.get_npu_backend(compiler_config=config_cp)
-        model = torch.compile(Model(), backend=npu_backend_cp, dynamic=True)
-        x = torch.randn(2, 2)
-        x = torch.nn.Parameter(x)
-        model(x, 2)
-
-    def test_enable_constplaceholder_static(self):
-        class Model(torch.nn.Module):
-            def __init__(self):
-                super().__init__()
-
-            def forward(self, x, y):
-                return torch.add(x, y)
-
-        config_cp = CompilerConfig()
-        ## TO DO: fix me after ConstPlaceHolder enable
-        # config_cp.experimental_config.frozen_parameter = True
-        npu_backend_cp = torchair.get_npu_backend(compiler_config=config_cp)
-        model = torch.compile(Model(), backend=npu_backend_cp, dynamic=False)
-        x = torch.randn(2, 2)
-        y = torch.randn(2, 2)
-        x = torch.nn.Parameter(x)
-        model(x, y)
-
     def test_auto_tune(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -1242,6 +1207,265 @@ class TorchairSt(unittest.TestCase):
         self.assertEqual(torch._C._is_alias_of(res, input1), False)
         self.assertEqual(torch._C._is_alias_of(res, input2), False)
 
+    def test_enable_constplaceholder_dynamic_base(self):
+        def get_graph_pack_data_num(concrete_graph):
+            num_cp, num_data = 0, 0
+            for node in concrete_graph.graph.op:
+                if node.type == "ConstPlaceHolder":
+                    num_cp += 1
+                if node.type == "Data":
+                    num_data += 1
+            assert num_cp == 1 and num_data == 1
+
+        def wrapper_call(func):
+            def wrapper(*args, **kwargs):
+                assert len(args) > 0
+                ret = func(*args, **kwargs)
+                get_graph_pack_data_num(args[0])
+                return ret
+
+            return wrapper
+
+        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        src_call = GeConcreteGraph.__call__
+        GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, z, p):
+                return z + p
+
+        model = Model()
+        config_cp = CompilerConfig()
+        config_cp.experimental_config.frozen_parameter = True
+        npu_backend_cp = torchair.get_npu_backend(compiler_config=config_cp)
+        model = torch.compile(model, backend=npu_backend_cp, dynamic=True)
+
+        z = torch.randn([3, 2])
+        z = torch.nn.Parameter(z)
+        p = torch.randn([3, 2])
+        model(z, p)
+
+        GeConcreteGraph.__call__ = src_call
+
+    def test_enable_constplaceholder_static_base(self):
+        def get_graph_pack_data_num(concrete_graph):
+            num_cp, num_data = 0, 0
+            for node in concrete_graph.graph.op:
+                if node.type == "ConstPlaceHolder":
+                    num_cp += 1
+                if node.type == "Data":
+                    num_data += 1
+            assert num_cp == 1 and num_data == 1
+
+        def wrapper_call(func):
+            def wrapper(*args, **kwargs):
+                assert len(args) > 0
+                ret = func(*args, **kwargs)
+                get_graph_pack_data_num(args[0])
+                return ret
+
+            return wrapper
+
+        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        src_call = GeConcreteGraph.__call__
+        GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, z, p):
+                return z + p
+
+        model = Model()
+        config_cp = CompilerConfig()
+        config_cp.experimental_config.frozen_parameter = True
+        npu_backend_cp = torchair.get_npu_backend(compiler_config=config_cp)
+        model = torch.compile(model, backend=npu_backend_cp, dynamic=False)
+
+        z = torch.randn([3, 2])
+        z = torch.nn.Parameter(z)
+        p = torch.randn([3, 2])
+        model(z, p)
+
+        GeConcreteGraph.__call__ = src_call
+
+    def test_enable_constplaceholder_dynamic1(self):
+        def get_graph_pack_data_num(concrete_graph):
+            num_cp, num_data = 0, 0
+            for node in concrete_graph.graph.op:
+                if node.type == "ConstPlaceHolder":
+                    num_cp += 1
+                if node.type == "Data":
+                    num_data += 1
+            assert num_cp == 1 and num_data == 2
+
+        def wrapper_call(func):
+            def wrapper(*args, **kwargs):
+                assert len(args) > 0
+                ret = func(*args, **kwargs)
+                get_graph_pack_data_num(args[0])
+                return ret
+
+            return wrapper
+
+        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        src_call = GeConcreteGraph.__call__
+        GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y, z):
+                return torch.matmul(x[0:2, 0:2], y * z[0:2, 0:2])
+
+        model = Model()
+        config_cp = CompilerConfig()
+        config_cp.experimental_config.frozen_parameter = True
+        npu_backend_cp = torchair.get_npu_backend(compiler_config=config_cp)
+        model = torch.compile(model, backend=npu_backend_cp, dynamic=True)
+
+        x = torch.randn([4, 4])
+        x = torch.nn.Parameter(x)
+        y = torch.randn([2, 2])
+        z = torch.randn([4, 4])
+        model(x, y, z)
+
+        GeConcreteGraph.__call__ = src_call
+
+    def test_enable_constplaceholder_static1(self):
+        def get_graph_pack_data_num(concrete_graph):
+            num_cp, num_data = 0, 0
+            for node in concrete_graph.graph.op:
+                if node.type == "ConstPlaceHolder":
+                    num_cp += 1
+                if node.type == "Data":
+                    num_data += 1
+            assert num_cp == 1 and num_data == 2
+
+        def wrapper_call(func):
+            def wrapper(*args, **kwargs):
+                assert len(args) > 0
+                ret = func(*args, **kwargs)
+                get_graph_pack_data_num(args[0])
+                return ret
+
+            return wrapper
+
+        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        src_call = GeConcreteGraph.__call__
+        GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y, z):
+                return torch.matmul(x[0:2, 0:2], y * z[0:2, 0:2])
+
+        model = Model()
+        config_cp = CompilerConfig()
+        config_cp.experimental_config.frozen_parameter = True
+        npu_backend_cp = torchair.get_npu_backend(compiler_config=config_cp)
+        model = torch.compile(model, backend=npu_backend_cp, dynamic=False)
+
+        x = torch.randn([4, 4])
+        x = torch.nn.Parameter(x)
+        y = torch.randn([2, 2])
+        z = torch.randn([4, 4])
+        model(x, y, z)
+
+        GeConcreteGraph.__call__ = src_call
+
+    def test_enable_constplaceholder_dynamic2(self):
+        def get_graph_pack_data_num(concrete_graph):
+            num_cp, num_data = 0, 0
+            for node in concrete_graph.graph.op:
+                if node.type == "ConstPlaceHolder":
+                    num_cp += 1
+                if node.type == "Data":
+                    num_data += 1
+            assert num_cp == 0 and num_data == 3
+
+        def wrapper_call(func):
+            def wrapper(*args, **kwargs):
+                assert len(args) > 0
+                ret = func(*args, **kwargs)
+                get_graph_pack_data_num(args[0])
+                return ret
+
+            return wrapper
+
+        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        src_call = GeConcreteGraph.__call__
+        GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y, z):
+                return torch.matmul(x[0:2, 0:2], y * z[0:2, 0:2])
+
+        model = Model()
+        config_cp = CompilerConfig()
+        config_cp.experimental_config.frozen_parameter = True
+        npu_backend_cp = torchair.get_npu_backend(compiler_config=config_cp)
+        model = torch.compile(model, backend=npu_backend_cp, dynamic=True)
+
+        x = torch.randn([4, 4])
+        y = torch.randn([2, 2])
+        z = torch.randn([4, 4])
+        model(x, y, z)
+
+        GeConcreteGraph.__call__ = src_call
+
+    def test_enable_constplaceholder_static2(self):
+        def get_graph_pack_data_num(concrete_graph):
+            num_cp, num_data = 0, 0
+            for node in concrete_graph.graph.op:
+                if node.type == "ConstPlaceHolder":
+                    num_cp += 1
+                if node.type == "Data":
+                    num_data += 1
+            assert num_cp == 0 and num_data == 3
+
+        def wrapper_call(func):
+            def wrapper(*args, **kwargs):
+                assert len(args) > 0
+                ret = func(*args, **kwargs)
+                get_graph_pack_data_num(args[0])
+                return ret
+
+            return wrapper
+
+        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        src_call = GeConcreteGraph.__call__
+        GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y, z):
+                return torch.matmul(x[0:2, 0:2], y * z[0:2, 0:2])
+
+        model = Model()
+        config_cp = CompilerConfig()
+        config_cp.experimental_config.frozen_parameter = True
+        npu_backend_cp = torchair.get_npu_backend(compiler_config=config_cp)
+        model = torch.compile(model, backend=npu_backend_cp, dynamic=False)
+
+        x = torch.randn([4, 4])
+        y = torch.randn([2, 2])
+        z = torch.randn([4, 4])
+        model(x, y, z)
+
+        GeConcreteGraph.__call__ = src_call
 
 if __name__ == '__main__':
     unittest.main()
