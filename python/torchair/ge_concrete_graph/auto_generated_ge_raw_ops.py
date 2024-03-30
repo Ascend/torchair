@@ -75951,3 +75951,59 @@ def MoeInitRouting(x: Tensor,
 
     # return outputs
     return expanded_x, expanded_row_idx, expanded_expert_idx
+
+# This api is auto-generated from IR MoeGatingTopKSoftmax
+@auto_convert_to_tensor([False, False], [False, True])
+def MoeGatingTopKSoftmax(x: Tensor,
+                   finished: Optional[Tensor],
+                   *,
+                   k: int,
+                   dependencies=[],
+                   node_name=None):
+    """REG_OP(MoeGatingTopKSoftmax)\n
+    .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .OPTIONAL_INPUT(finished, TensorType({DT_BOOL}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(expert_idx, TensorType({DT_INT32}))\n
+    .OUTPUT(row_idx, TensorType({DT_INT32}))\n
+    .REQUIRED_ATTR(k, Int)\n
+    .OP_END_FACTORY_REG(MoeGatingTopKSoftmax)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "MoeGatingTopKSoftmax"
+    op.name = next_unique_name(node_name, "MoeGatingTopKSoftmax")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+    if finished is not None:
+        op.input.append(finished.tensor)
+        op.input_desc.add().CopyFrom(finished.desc)
+        op.input_desc[-1].name = "finished"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "finished"
+
+    # process attrs
+    op.attr["k"].i = k
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "expert_idx"
+    expert_idx = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "row_idx"
+    row_idx = Tensor(op, output_index)
+
+    # return outputs
+    return y, expert_idx, row_idx
