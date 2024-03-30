@@ -1,9 +1,11 @@
-add_library(ascir SHARED
-    ascir_utils.cpp
-    ascir.cpp
-    )
+add_subdirectory(meta)
+add_subdirectory(generator)
 
-target_include_directories(ascir PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+add_library(ascir INTERFACE)
+
 target_link_libraries(ascir
-    #ge_compiler # Currently only for ascir_utils to Dump graph
-    graph graph_base)
+        INTERFACE
+        ascir_meta
+        ascir_ops_headers
+)
+

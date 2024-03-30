@@ -564,7 +564,7 @@ struct OutputAttrField<OUTPUT_INDEX, ATTR_NAME_PREFIX, std::vector<ascir::SizeEx
   static const std::string IS_ZERO;
   static const std::string NUMS;
   static const std::string DENS;
-  void operator=(std::initializer_list<ascir::SizeExpr> &&values) {
+  OutputAttrField<OUTPUT_INDEX, ATTR_NAME_PREFIX, std::vector<ascir::SizeExpr>> &operator=(const std::vector<ascir::SizeExpr> &values) {
     op->SetOutputAttr(OUTPUT_INDEX, NUM_OF_FACTOR.c_str(), (int64_t)values.size());
 
     std::vector<int64_t> is_zero;
@@ -577,9 +577,10 @@ struct OutputAttrField<OUTPUT_INDEX, ATTR_NAME_PREFIX, std::vector<ascir::SizeEx
     }
 
     auto opdesc = ge::OpDescUtils::GetOpDescFromOperator(*op);
-    ge::AttrUtils::SetListInt(opdesc->MutableOutputDesc(0), IS_ZERO.c_str(), is_zero);
-    ge::AttrUtils::SetListListInt(opdesc->MutableOutputDesc(0), NUMS.c_str(), nums);
-    ge::AttrUtils::SetListListInt(opdesc->MutableOutputDesc(0), DENS.c_str(), dens);
+    ge::AttrUtils::SetListInt(opdesc->MutableOutputDesc(0), IS_ZERO, is_zero);
+    ge::AttrUtils::SetListListInt(opdesc->MutableOutputDesc(0), NUMS, nums);
+    ge::AttrUtils::SetListListInt(opdesc->MutableOutputDesc(0), DENS, dens);
+    return *this;
   }
 };
 
@@ -625,6 +626,33 @@ union OperatorOutput {
 
   static constexpr char STRIDES[] = "ascir.tensor.strides";
   OutputAttrField<OUTPUT_INDEX, STRIDES, std::vector<SizeExpr>> strides;
+
+  void SetContiguousView(const std::vector<Axis> &axes) {
+    std::vector<AxisId> axes_ids;
+    std::vector<SizeExpr> tmp_repeats;
+    std::vector<SizeExpr> tmp_strides;
+    axes_ids.reserve(axes.size());
+    tmp_repeats.reserve(axes.size());
+    tmp_strides.reserve(axes.size());
+
+    std::for_each(axes.rbegin(), axes.rend(),
+                  [&axes_ids, &tmp_repeats, &tmp_strides](const Axis &tmp_axis) {
+                    if (tmp_strides.empty()) {
+                      tmp_strides.emplace_back(SizeExpr::One());
+                    } else {
+                      tmp_strides.emplace_back(*tmp_repeats.rbegin() * *tmp_strides.rbegin());
+                    }
+                    tmp_repeats.emplace_back(tmp_axis.size);
+                    axes_ids.emplace_back(tmp_axis.id);
+                  });
+    std::reverse(axes_ids.begin(), axes_ids.end());
+    std::reverse(tmp_repeats.begin(), tmp_repeats.end());
+    std::reverse(tmp_strides.begin(), tmp_strides.end());
+
+    axis = axes_ids;
+    repeats = tmp_repeats;
+    strides = tmp_strides;
+  }
 };
 
 template<const char* Name, typename Type>
@@ -639,6 +667,8 @@ struct OperatorAttr {
   }
 };
 
+void AddEdgeForNode(const ge::Operator &src_op, int32_t src_index, const ge::Operator &dst_op, int32_t dst_index);
+
 template <int INPUT_INDEX>
 struct OperatorInput {
  protected:
@@ -648,10 +678,12 @@ struct OperatorInput {
   template <const int OUTPUT_INDEX>
   void operator=(const OperatorOutput<OUTPUT_INDEX> &output) {
     this->op->SetInput((uint32_t)INPUT_INDEX, *output.__op, OUTPUT_INDEX);
+    AddEdgeForNode(*output.__op, OUTPUT_INDEX, *this->op, INPUT_INDEX);
   }
 
   void operator=(const ge::Operator &op) {
     this->op->SetInput((uint32_t)INPUT_INDEX, op, 0);
+    AddEdgeForNode(op, 0, *this->op, INPUT_INDEX);
   }
 };
 
@@ -901,6 +933,8 @@ class Graph : public ge::Graph {
 
   explicit Graph(const char *name);
 
+  void AddNode(ge::Operator &op);
+
   SizeVar CreateSizeVar(const std::string &name, SizeVar::Type type, int64_t value);
   SizeVar CreateSizeVar(const std::string &name);
   SizeVar CreateSizeVar(const std::string &name, const int64_t value);
@@ -939,7 +973,6 @@ class Graph : public ge::Graph {
   void SortByExecOrder();
 
  private:
-  ge::NamedAttrs tmp_attr_holder;
   NodeView FindImpl(const char *name) const;
   NodeViewVisitor GetAllNodesImpl() const;
   NodeViewVisitor GraphInputsImpl() const;

@@ -8,28 +8,9 @@
 #include "ascir.h"
 #include "ascir_utils.h"
 
+#include "test_util.h"
+
 using namespace ascir;
-
-template <typename T>
-void AttrEq(T &holder, const std::string attr_name, const int64_t &expect) {
-  int64_t value = -1;
-  ge::AttrUtils::GetInt(holder, attr_name, value);
-  EXPECT_EQ(value, expect);
-}
-
-template <typename T>
-void AttrEq(T &holder, const std::string attr_name, const vector<int64_t> &expect) {
-  vector<int64_t> value;
-  ge::AttrUtils::GetListInt(holder, attr_name, value);
-  EXPECT_EQ(value, expect);
-}
-
-template <typename T>
-void AttrEq(T &holder, const std::string attr_name, const vector<vector<int64_t>> &expect) {
-  vector<vector<int64_t>> value;
-  ge::AttrUtils::GetListListInt(holder, attr_name, value);
-  EXPECT_EQ(value, expect);
-}
 
 namespace ge {
 REG_OP(Data)
@@ -104,6 +85,35 @@ TEST(TestAscir, AscirOperator_ShouldHas_Fields) {
   EXPECT_EQ(stride[1].dens[1], 12);
 
   EXPECT_EQ(result_node.outputs[0].repeats[1].nums[0], 3);
+}
+
+TEST(TestAscir, ContiguousView_CreateOk) {
+  ascir::Graph graph("test_graph");
+
+  auto A = graph.CreateSizeVar("A");
+  auto B = graph.CreateSizeVar("B");
+  auto C = graph.CreateSizeVar("C");
+  auto D = graph.CreateSizeVar("D");
+
+  auto a = graph.CreateAxis("a", A);
+  auto b = graph.CreateAxis("b", B);
+  auto c = graph.CreateAxis("c", C);
+  auto d = graph.CreateAxis("d", D);
+
+  Data data("test_op1");
+  data.y.SetContiguousView({a, b, c, d});
+
+  graph.SetInputs({data});
+  auto result_y = ge::GraphUtilsEx::GetComputeGraph(graph)->FindNode("test_op1")->GetOpDesc()->GetOutputDesc(0);
+
+  AttrEq(result_y, data.y.AXIS, {a.id, b.id, c.id, d.id});
+  AttrEq(result_y, data.y.repeats.NUM_OF_FACTOR, 4);
+  AttrEq(result_y, data.y.repeats.NUMS, vector<vector<int64_t>>{{A.id}, {B.id}, {C.id}, {D.id}});
+  AttrEq(result_y, data.y.repeats.DENS, vector<vector<int64_t>>{{}, {}, {}, {}});
+
+  AttrEq(result_y, data.y.strides.NUM_OF_FACTOR, 4);
+  AttrEq(result_y, data.y.strides.NUMS, vector<vector<int64_t>>{{B.id, C.id, D.id}, {C.id, D.id}, {D.id}, {}});
+  AttrEq(result_y, data.y.strides.DENS, vector<vector<int64_t>>{{}, {}, {}, {}});
 }
 
 /** Create a graph ready for hold attributes */

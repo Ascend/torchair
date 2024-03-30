@@ -3,6 +3,8 @@
 #include <string>
 
 #include "graph_utils_ex.h"
+#include "graph_utils.h"
+#include "node_utils_ex.h"
 
 using namespace ascir;
 
@@ -140,27 +142,28 @@ const char *Axis::TypeStr(Type type) {
 }
 
 Graph::Graph(const char *name) : ge::Graph(name) {
-  holder = &tmp_attr_holder;
+  // 当前没有直接设置本Graph的ComputeGraph指针的能力，通过构造一个新的加Copy来绕路完成该能力
+  auto compute_graph = std::make_shared<ge::ComputeGraph>(name);
+  auto tmp_graph = ge::GraphUtilsEx::CreateGraphFromComputeGraph(compute_graph);
+  ge::GraphUtilsEx::CopyGraph(tmp_graph, *this);
+
+  holder = ge::GraphUtilsEx::GetComputeGraph(*this).get();
 }
+
 
 Graph &Graph::SetInputs(const std::vector<ge::Operator> &inputs) {
   auto compute_graph = ge::GraphUtilsEx::GetComputeGraph(*this);
-  if (compute_graph != nullptr) {
-    ge::AttrUtils::ClearAllAttrs(this->tmp_attr_holder);
-    this->tmp_attr_holder.CopyAttrsFrom(*compute_graph);
-    this->holder = &this->tmp_attr_holder;
-  }
 
   // Will build new compute_graph after set inputs
   ge::Graph::SetInputs(inputs);
-  compute_graph = ge::GraphUtilsEx::GetComputeGraph(*this);
-  if (compute_graph == nullptr) {
+  auto new_compute_graph = ge::GraphUtilsEx::GetComputeGraph(*this);
+  if (new_compute_graph == nullptr) {
     return *this;
   }
 
-  compute_graph->CopyAttrsFrom(*this->holder);
+  new_compute_graph->CopyAttrsFrom(*this->holder);
 
-  this->holder = compute_graph.get();
+  this->holder = new_compute_graph.get();
   return *this;
 }
 
@@ -555,12 +558,9 @@ int Graph::CopyFrom(const ascir::Graph &graph) {
 
   auto compute_graph = ge::GraphUtilsEx::GetComputeGraph(*this);
   if (compute_graph == nullptr) {
-      this->tmp_attr_holder.CopyAttrsFrom(graph.tmp_attr_holder);
-      this->holder = &this->tmp_attr_holder;
-  } else {
-      ge::AttrUtils::ClearAllAttrs(this->tmp_attr_holder);
-      this->holder = compute_graph.get();
+    return 1;
   }
+  this->holder = compute_graph.get();
   return 0;
 }
 
@@ -571,6 +571,12 @@ void Graph::SortByExecOrder() {
     const NodeView node_b(b);
     return node_a.attr.sched.exec_order < node_b.attr.sched.exec_order;
   });
+}
+void Graph::AddNode(ge::Operator &op) {
+  auto op_desc = ge::OpDescUtils::GetOpDescFromOperator(op);
+  auto node = ge::GraphUtilsEx::GetComputeGraph(*this)->AddNode(op_desc);
+  auto new_op = ge::OpDescUtils::CreateOperatorFromNode(node);
+  std::swap(new_op, op);
 }
 
 NodeViewIter::NodeViewIter(NodeViewVisitor::Iterator &&iter) : ge::ComputeGraph::Vistor<ge::NodePtr>::Iterator(iter) {}
@@ -625,4 +631,18 @@ NodeViewIterConst NodeViewVisitorConst::begin() {
 NodeViewIterConst NodeViewVisitorConst::end() {
   auto tmp = NodeViewVisitor::end();
   return NodeViewIterConst(tmp);
+}
+
+namespace ascir {
+void AddEdgeForNode(const ge::Operator &src_op, int32_t src_index, const ge::Operator &dst_op, int32_t dst_index) {
+  auto src_node = ge::NodeUtilsEx::GetNodeFromOperator(src_op);
+  auto dst_node = ge::NodeUtilsEx::GetNodeFromOperator(dst_op);
+  if (src_node == nullptr || dst_node == nullptr) {
+    return;
+  }
+  auto ret = ge::GraphUtils::AddEdge(src_node->GetOutDataAnchor(src_index), dst_node->GetInDataAnchor(dst_index));
+  if (ret != ge::GRAPH_SUCCESS) {
+    throw std::invalid_argument("Invalid src or dst index");
+  }
+}
 }
