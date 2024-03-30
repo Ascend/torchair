@@ -104,7 +104,7 @@ Status Session::CompileGraph(uint32_t id, std::shared_ptr<ge::CompiledGraphSumma
     auto start = std::chrono::high_resolution_clock::now();
     TNG_ASSERT_GE_OK(global_ge_session->CompileGraph(id));
     auto end = std::chrono::high_resolution_clock::now();
-    TNG_LOG(INFO) << "Compile Graph " << id << " consume: "
+    TNG_LOG(EVENT) << "Compile Graph " << id << " consume: "
                   << (std::chrono::duration_cast<std::chrono::milliseconds>(end - start)).count()
                   << " ms.";
     if (summary != nullptr) {

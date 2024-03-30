@@ -423,6 +423,28 @@ model = torch.compile(model, backend=npu_backend)
 ### Parameters
 - **compiler_config**(*CompilerConfig*)- 配置项，具体可见torchair.CompilerConfig条目。
 
+## TORCHAIR C++层日志级别控制
+### 功能简介
+环境变量TNG_LOG_LEVEL开启TorchAir C++的日志系统：
+- TNG_LOG_LEVEL：0, 日志级别DEBUG, 开启后输出DEBUG, INFO, WARNING, ERROR日志。
+- TNG_LOG_LEVEL：1, 日志级别INFO, 开启后输出INFO, WARNING, ERROR日志。
+- TNG_LOG_LEVEL：2, 日志级别WARNING, 开启后输出WARNING, ERROR日志。
+- TNG_LOG_LEVEL：3, 日志级别ERROR, 开启后输出ERROR日志。
+- TNG_LOG_LEVEL：4, 日志级别EVENT, 开启后输出ERROR, EVENT日志。
+- 默认为ERROR级别日志
+
+### 使用方法
+可以通过以下两种方式设置环境变量TNG_LOG_LEVEL：
+1、在shell环境或shell脚本中设置环境变量
+```shell
+export TNG_LOG_LEVEL=0
+```
+2、python脚本中设置环境变量(注意：此方式设置环境变量需要早于import torchair)
+```python
+import os
+os.environ['TNG_LOG_LEVEL'] = '0'
+```
+
 ## TORCHAIR.LOGGER
 `torchair.logger`
 

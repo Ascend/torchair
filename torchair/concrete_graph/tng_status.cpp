@@ -15,13 +15,13 @@ int32_t Logger::kLogLevel = []() -> int32_t {
   auto env_val = std::getenv("TNG_LOG_LEVEL");
   if (env_val) {
     std::string env_tmp(env_val);
-    std::regex reg("[0-3]");
+    std::regex reg("[0-4]");
     if (env_tmp.empty()) {
       return static_cast<int32_t>(tng::LogLevel::ERROR);
     }
     if (!std::regex_match(env_tmp, reg)) {
       tng::Logger(__FILE__, __LINE__, "WARING") << \
-        "Value of TNG_LOG_LEVEL should be in {0, 1, 2, 3}, but got " << env_tmp;
+        "Value of TNG_LOG_LEVEL should be in {0, 1, 2, 3, 4}, but got " << env_tmp;
       return static_cast<int32_t>(tng::LogLevel::ERROR);
     }
     return atoi(env_val);

@@ -12,7 +12,7 @@ ge::MemBlock *NpuAllocator::Malloc(size_t size) {
     TNG_LOG(ERROR) << "Failed to malloc memory by allocator, size: " << size;
     return nullptr;
   }
-  TNG_LOG(INFO) << "[MemoryTrace] Malloc memory from NPUCachingAllocator success, block = " << block;
+  TNG_LOG(DEBUG) << "[MemoryTrace] Malloc memory from NPUCachingAllocator success, block = " << block;
   ge::MemBlock *mem_block = nullptr;
   {
     const std::unique_lock<std::mutex> lk(allocator_mutex_);
@@ -22,7 +22,7 @@ ge::MemBlock *NpuAllocator::Malloc(size_t size) {
     TNG_LOG(ERROR) << "Failed to create ge_block from memory block pool";
     return nullptr;
   }
-  TNG_LOG(INFO) << "[MemoryTrace] Malloc the mem_block success, mem_block = " << mem_block
+  TNG_LOG(DEBUG) << "[MemoryTrace] Malloc the mem_block success, mem_block = " << mem_block
                 << ", device_ptr = " << mem_block->GetAddr() << ", size = " << mem_block->GetSize();
   return mem_block;
 }
@@ -31,7 +31,7 @@ void NpuAllocator::Free(ge::MemBlock *block) {
   auto mem_block = dynamic_cast<NpuMemBlock *>(block);
   if (mem_block == nullptr) {
     if (block == nullptr) {
-      TNG_LOG(INFO) << "Try to free nullptr block failed, due to memory block is nullptr, too";
+      TNG_LOG(DEBUG) << "Try to free nullptr block failed, due to memory block is nullptr, too";
     } else {
       TNG_LOG(WARNING) << "Try to free block" << block
                        << " failed, due to memory block is not belong to mem_block_pool_";
@@ -39,7 +39,7 @@ void NpuAllocator::Free(ge::MemBlock *block) {
     return;
   }
   // free mem_block
-  TNG_LOG(INFO) << "[MemoryTrace] Try to free the mem_block, mem_block = " << mem_block
+  TNG_LOG(DEBUG) << "[MemoryTrace] Try to free the mem_block, mem_block = " << mem_block
                 << ", NPUCachingAllocator block = " << mem_block->handle_
                 << ", device_ptr = " << GetBlockPtr(mem_block->handle_)
                 << ", size = " << GetBlockSize(mem_block->handle_);
@@ -48,7 +48,7 @@ void NpuAllocator::Free(ge::MemBlock *block) {
     const std::unique_lock<std::mutex> lk(allocator_mutex_);
     mem_block_pool_.Free(*(mem_block));
   }
-  TNG_LOG(INFO) << "[MemoryTrace]Free the mem_block success.";
+  TNG_LOG(DEBUG) << "[MemoryTrace]Free the mem_block success.";
 }
 
 ge::MemBlock *NpuAllocator::MallocFeatureMemory(size_t size, const bool is_fixed) {
