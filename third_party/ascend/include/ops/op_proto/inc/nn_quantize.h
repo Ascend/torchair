@@ -22,5 +22,27 @@
 #ifndef OPS_BUILT_IN_OP_PROTO_INC_NN_QUANTIZE_H_
 #define OPS_BUILT_IN_OP_PROTO_INC_NN_QUANTIZE_H_
 
+#include "graph/operator_reg.h"
+
+namespace ge {
+/**
+* @brief Function DynamicQuant.
+
+* @par Inputs:
+* one input, including:
+* @li x: A matrix Tensor, to be quantized. The type support float16, bfloat16. \n
+
+* @par Outputs:
+* two outputs, including:
+* y: A matrix Tensor, quantized from x. The type support int8.
+* scale: A matrix Tensor, scale factor used in quantization. The type support float32.
+*/
+REG_OP(DynamicQuant)
+    .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))
+    .OUTPUT(y, TensorType({DT_INT8}))
+    .OUTPUT(scale, TensorType({DT_FLOAT}))
+    .OP_END_FACTORY_REG(DynamicQuant)
+
+} // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_NN_QUANTIZE_H_

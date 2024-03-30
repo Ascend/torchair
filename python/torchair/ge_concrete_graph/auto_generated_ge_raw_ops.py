@@ -42391,6 +42391,44 @@ def SigmoidFocalLoss(pred: Tensor, target: Tensor, weight: Optional[Tensor], *, 
     return y
 
 
+# This api is auto-generated from IR DynamicQuant
+@auto_convert_to_tensor([False], [False])
+def DynamicQuant(input: Tensor, 
+              dependencies=[], 
+              node_name=None):
+    """REG_OP(DynamicQuant)\n
+    .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(y, TensorType({DT_INT8}))\n
+    .OUTPUT(scale, TensorType({DT_FLOAT}))\n
+    .OP_END_FACTORY_REG(DynamicQuant)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "DynamicQuant"
+    op.name = next_unique_name(node_name, "DynamicQuant")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(input.tensor)
+    op.input_desc.add().CopyFrom(input.desc)
+    op.input_desc[-1].name = "x"
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    output = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "scale"
+    scale = Tensor(op, output_index)
+    output_index += 1
+
+    # return outputs
+    return output, scale
+
+
 # This api is auto-generated from IR SoftmaxFocalLoss
 @auto_convert_to_tensor([False, False, False], [False, False, True])
 def SoftmaxFocalLoss(pred: Tensor, target: Tensor, weight: Optional[Tensor], *, gamma: float=2.000000, alpha: float=0.250000, reduction: str="mean", dependencies=[], node_name=None):
