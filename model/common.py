@@ -3405,7 +3405,10 @@ def run(runner, args, original_dir=None):
             output_filename = os.path.join(args.output_directory, output_filename)
         else:
             output_filename = os.path.join(
-                torch._dynamo.config.base_dir, output_filename
+                # pytorch use torch._dynamo.config.base_dir originally, 
+                # but the generated file will be saved under directory where pytorch was installed,
+                # change the default output saved directory.
+                os.path.dirname(os.path.abspath(__file__)), output_filename
             )
 
     if args.find_batch_sizes and args.only:
