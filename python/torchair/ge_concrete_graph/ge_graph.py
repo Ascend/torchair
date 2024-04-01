@@ -747,7 +747,10 @@ def _torch_tensor_to_ge_const(v: torch.Tensor):
     with no_dispatch():
         if v.device.type != "cpu":
             v = v.cpu()
-        return Const(v.numpy())
+        if v.dtype is torch.bfloat16:
+            return Const(v)
+        else:
+            return Const(v.numpy())
 
 
 def _get_promoted_dtype(inputs: list) -> Tuple[List[DataType], List[DataType]]:
