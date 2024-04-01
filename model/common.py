@@ -1631,6 +1631,10 @@ def get_peak_memory():
     return torch.cuda.max_memory_allocated() / 10**9
 
 
+def get_peak_memory_npu():
+    return torch_npu.npu.max_memory_allocated() / 10**9
+
+
 def null_experiment(args, model_iter_fn, model, example_inputs):
     """
     A no-op experiment useful for making sure TorchBenchark alone works properly.
@@ -2335,6 +2339,9 @@ class BenchmarkRunner:
                 if current_device == "cuda":
                     torch.cuda.reset_peak_memory_stats()
                     torch.cuda.empty_cache()
+                elif current_device == "npu":
+                    torch_npu.npu.reset_peak_memory_status()
+                    torch_npu.npu.empty_cache()
                 t0 = time.perf_counter()
                 for _ in range(niters):
                     fn(model, example_inputs)
@@ -2342,6 +2349,8 @@ class BenchmarkRunner:
                 latency = t1 - t0
                 if current_device == "cuda":
                     peak_mem = get_peak_memory()
+                elif current_device == "npu":
+                    peak_mem = get_peak_memory_npu()
                 elif current_device == "cpu":
                     total = psutil.virtual_memory().total
                     percentage = psutil.Process(os.getpid()).memory_percent()
