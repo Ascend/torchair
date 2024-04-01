@@ -133,6 +133,7 @@ class PathManager:
         if os.path.exists(path):
             return
         try:
+            path = os.path.realpath(path)
             os.makedirs(path, mode=cls.DATA_DIR_AUTHORITY, exist_ok=True)
         except Exception as err:
             raise RuntimeError(msg) from err
@@ -145,6 +146,7 @@ class PathManager:
         if os.path.exists(path):
             return
         try:
+            path = os.path.realpath(path)
             os.close(os.open(path, os.O_WRONLY | os.O_CREAT, cls.DATA_FILE_AUTHORITY))
         except Exception as err:
             raise RuntimeError(msg) from err
