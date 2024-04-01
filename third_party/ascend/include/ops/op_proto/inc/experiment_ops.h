@@ -3377,5 +3377,73 @@ REG_OP(GroupedMatmul)
     .ATTR(dtype, Int, 0)
     .ATTR(transpose_weight, Bool, false)
     .OP_END_FACTORY_REG(GroupedMatmul)
+
+
+/**
+* @brief Function FusedInferAttentionScore.
+
+* @par Inputs:
+* @li query: A matrix Tensor. The type support int8, float16, bf16.
+* @li key: A matrix Tensor. The type support int8, float16, bf16.
+* @li value: A matrix Tensor. The type support int8, float16, bf16.
+* @li pse_shift: A matrix Tensor. The type support float16, bf16.
+* @li atten_mask: A matrix Tensor. The type support float16, bool, uint8, int8.
+* @li actual_seq_lengths: A Tensor. The type support INT64.
+* @li actual_seq_lengths_kv: A Tensor. The type support INT64.
+* @li dequant_scale1: A Tensor. The type support UINT64.
+* @li quant_scale1: A Tensor. The type support float32.
+* @li dequant_scale2: A Tensor. The type support UINT64.
+* @li quant_scale2: A Tensor. The type support float32.
+* @li quant_offset2: A Tensor. The type support float32.
+* @li antiquant_scale: A Tensor. The type support float16, bf16.
+* @li antiquant_offset: A Tensor. The type support float16, bf16.
+* @li block_table: An int.
+
+* @par Attributes:
+* @li num_heads: An int. The number of the heads.
+* @li scale: A float. The scale value. Default: 1.0.
+* @li pre_tokens: An int. Previous tokens. Default: 2147483647.
+* @li next_tokens: An int. Next tokens. Default: 2147483647.
+* @li input_layout: A string. Specifies the layout of `query`, the value must be one of ["BSH", "BNSD", "BSND", "NSD", "SH"]. Default: "BSH".
+* @li num_key_value_heads: key value num heads. Default: 0.
+* @li sparse_mode: sparse mode. Default: 0.
+* @li inner_precise: An int. 0, float16 high precision. 1, high performance. Default: 0.
+* @li block_size: An int. Default: 0.
+
+* @par Outputs:
+* attention_out: A matrix Tensor. The type support float16, float32, int8, bf16. \n
+*/
+REG_OP(FusedInferAttentionScore)
+    .INPUT(query, TensorType({DT_INT8, DT_FLOAT16, DT_BF16}))
+    .DYNAMIC_INPUT(key, TensorType({DT_INT8, DT_FLOAT16, DT_BF16}))
+    .DYNAMIC_INPUT(value, TensorType({DT_INT8, DT_FLOAT16, DT_BF16}))
+    .OPTIONAL_INPUT(pse_shift, TensorType({DT_FLOAT16, DT_BF16}))
+    .OPTIONAL_INPUT(atten_mask, TensorType({DT_FLOAT16, DT_BOOL, DT_UINT8, DT_INT8}))
+    .OPTIONAL_INPUT(actual_seq_lengths, TensorType({DT_INT64}))
+    .OPTIONAL_INPUT(actual_seq_lengths_kv, TensorType({DT_INT64}))
+    .OPTIONAL_INPUT(dequant_scale1, TensorType({DT_UINT64}))
+    .OPTIONAL_INPUT(quant_scale1, TensorType({DT_FLOAT32}))
+    .OPTIONAL_INPUT(dequant_scale2, TensorType({DT_UINT64}))
+    .OPTIONAL_INPUT(quant_scale2, TensorType({DT_FLOAT32, DT_BF16}))
+    .OPTIONAL_INPUT(quant_offset2, TensorType({DT_FLOAT32, DT_BF16}))
+    .OPTIONAL_INPUT(antiquant_scale, TensorType({DT_FLOAT16, DT_BF16}))
+    .OPTIONAL_INPUT(antiquant_offset, TensorType({DT_FLOAT16, DT_BF16}))
+    .OPTIONAL_INPUT(block_table, TensorType({DT_INT32}))
+    .OPTIONAL_INPUT(query_padding_size, TensorType({DT_INT64}))
+    .OPTIONAL_INPUT(kv_padding_size, TensorType({DT_INT64}))
+    .OUTPUT(attention_out, TensorType({DT_FLOAT16, DT_FLOAT32, DT_INT8, DT_BF16}))
+    .OUTPUT(softmax_lse, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))
+    .REQUIRED_ATTR(num_heads, Int)
+    .ATTR(scale, Float, 1.0)
+    .ATTR(pre_tokens, Int, 2147483647)
+    .ATTR(next_tokens, Int, 2147483647)
+    .ATTR(input_layout, String, "BSH")
+    .ATTR(num_key_value_heads, Int, 0)
+    .ATTR(sparse_mode, Int, 0)
+    .ATTR(inner_precise, Int, 0)
+    .ATTR(block_size, Int, 0)
+    .ATTR(antiquant_mode, Int, 0)
+    .ATTR(softmax_lse_flag, Bool, false)
+    .OP_END_FACTORY_REG(FusedInferAttentionScore)
 }  // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_EXPERIMENT_OPS_H_
