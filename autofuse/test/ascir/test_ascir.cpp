@@ -532,6 +532,23 @@ TEST(Ascir_AxisOperations, ApplyReorder_OnNode_WillChangeAxisAndStrideOrder) {
   EXPECT_EQ(result_op.outputs[0].strides[2], s2);
 }
 
+TEST(Ascir_AxisOperations, AxisUpdate) {
+  auto graph = CreateTestGraph();
+
+  auto s0 = graph.CreateSizeVar("s0");
+  auto z0 = graph.CreateAxis("z0", ascir::SizeExpr{{s0}});
+  EXPECT_EQ(z0.align, 1);
+  EXPECT_EQ(z0.allow_oversize_axis, false);
+  EXPECT_EQ(z0.allow_unaligned_tail, true);
+  graph.UpdateAxisAlign(z0.id, 10);
+  graph.UpdateAxisAllowOversizeAxis(z0.id, true);
+  graph.UpdateAxisAllowUnalignedTail(z0.id, false);
+  auto z0_new = graph.axis[z0.id];
+  EXPECT_EQ(z0_new.align, 10);
+  EXPECT_EQ(z0_new.allow_oversize_axis, true);
+  EXPECT_EQ(z0_new.allow_unaligned_tail, false);
+}
+
 TEST(Ascir_Graph, Graph_SortByExecOrder) {
   auto graph = CreateTestGraph();
 

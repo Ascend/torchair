@@ -144,6 +144,9 @@ struct Axis {
   Type type;
   SizeExpr size;
   std::vector<AxisId> from;
+  int32_t align;
+  bool allow_oversize_axis;
+  bool allow_unaligned_tail;
 };
 
 template <typename Holder, const char *ATTR_NAME, typename FieldType>
@@ -368,6 +371,9 @@ struct AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::Axis>> {
   static const std::string SIZE_NUMS;
   static const std::string SIZE_DENS;
   static const std::string FROM;
+  static const std::string ALIGN;
+  static const std::string ALLOW_OVERSIZE_AXIS;
+  static const std::string ALLOW_UNALIGNED_TAIL;
 
   void operator=(std::initializer_list<ascir::Axis> &&values) {
     ge::AttrUtils::SetInt(holder, NUM.c_str(), values.size());
@@ -377,6 +383,9 @@ struct AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::Axis>> {
     std::vector<vector<SizeVarId>> size_nums;
     std::vector<vector<SizeVarId>> size_dens;
     std::vector<vector<AxisId>> from;
+    std::vector<int32_t> aligns;
+    std::vector<bool> allow_oversize_axis;
+    std::vector<bool> allow_unaligned_tail;
 
     for (auto axis : values) {
       names.push_back(axis.name);
@@ -384,6 +393,9 @@ struct AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::Axis>> {
       size_nums.push_back(axis.size.nums);
       size_dens.push_back(axis.size.dens);
       from.push_back(axis.from);
+      aligns.push_back(axis.align);
+      allow_oversize_axis.push_back(axis.allow_oversize_axis);
+      allow_unaligned_tail.push_back(axis.allow_unaligned_tail);
     }
 
     ge::AttrUtils::SetListStr(holder, NAME, names);
@@ -391,6 +403,9 @@ struct AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::Axis>> {
     ge::AttrUtils::SetListListInt(holder, SIZE_NUMS, size_nums);
     ge::AttrUtils::SetListListInt(holder, SIZE_DENS, size_dens);
     ge::AttrUtils::SetListListInt(holder, FROM, from);
+    ge::AttrUtils::SetListInt(holder, ALIGN, aligns);
+    ge::AttrUtils::SetListBool(holder, ALLOW_OVERSIZE_AXIS, allow_oversize_axis);
+    ge::AttrUtils::SetListBool(holder, ALLOW_UNALIGNED_TAIL, allow_unaligned_tail);
   }
 
   vector<Axis> operator()() const {
@@ -399,12 +414,18 @@ struct AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::Axis>> {
     std::vector<vector<SizeVarId>> size_nums;
     std::vector<vector<SizeVarId>> size_dens;
     std::vector<vector<AxisId>> from;
+    std::vector<int32_t> aligns;
+    std::vector<bool> allow_oversize_axis;
+    std::vector<bool> allow_unaligned_tail;
 
     ge::AttrUtils::GetListStr(holder, NAME, names);
     ge::AttrUtils::GetListInt(holder, TYPE, types);
     ge::AttrUtils::GetListListInt(holder, SIZE_NUMS, size_nums);
     ge::AttrUtils::GetListListInt(holder, SIZE_DENS, size_dens);
     ge::AttrUtils::GetListListInt(holder, FROM, from);
+    ge::AttrUtils::GetListInt(holder, ALIGN, aligns);
+    ge::AttrUtils::GetListBool(holder, ALLOW_OVERSIZE_AXIS, allow_oversize_axis);
+    ge::AttrUtils::GetListBool(holder, ALLOW_UNALIGNED_TAIL, allow_unaligned_tail);
 
     std::vector<ascir::Axis> result;
     result.reserve(names.size());
@@ -416,6 +437,9 @@ struct AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::Axis>> {
       axis.size.nums = size_nums[i];
       axis.size.dens = size_dens[i];
       axis.from = from[i];
+      axis.align = aligns[i];
+      axis.allow_oversize_axis = allow_oversize_axis[i];
+      axis.allow_unaligned_tail = allow_unaligned_tail[i];
       result.push_back(axis);
     }
 
@@ -457,6 +481,15 @@ const std::string AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::Axis>>:
 template <typename Holder, const char *ATTR_NAME_PREFIX>
 const std::string AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::Axis>>::FROM{std::string(ATTR_NAME_PREFIX) +
                                                                                       ".from"};
+template <typename Holder, const char *ATTR_NAME_PREFIX>
+const std::string AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::Axis>>::ALIGN{std::string(ATTR_NAME_PREFIX) +
+                                                                                      ".align"};
+template <typename Holder, const char *ATTR_NAME_PREFIX>
+const std::string AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::Axis>>::ALLOW_OVERSIZE_AXIS{std::string(ATTR_NAME_PREFIX) +
+                                                                                      ".allow_oversize_axis"};
+template <typename Holder, const char *ATTR_NAME_PREFIX>
+const std::string AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::Axis>>::ALLOW_UNALIGNED_TAIL{std::string(ATTR_NAME_PREFIX) +
+                                                                                      ".allow_unaligned_tail"};
 
 struct TensorAttrDtype {
   ge::GeTensorDesc* tensor_desc;
@@ -490,6 +523,7 @@ class TensorAttr {
   static constexpr char MEM_ALLOC_TYPE[] = "ascir.tensor.mem.alloc_type";
   static constexpr char MEM_HARDWARE[] = "ascir.tensor.mem.hardware";
   static constexpr char MEM_POSITION[] = "ascir.tensor.mem.position";
+  static constexpr char MEM_BUF_IDS[] = "ascir.tensor.mem.buf_ids";
 
   static constexpr char QUE_ID[] = "ascir.tensor.que.id";
   static constexpr char QUE_DEPTH[] = "ascir.tensor.que.depth";
@@ -514,6 +548,7 @@ class TensorAttr {
       Fields<MEM_ALLOC_TYPE, AllocType> alloc_type;
       Fields<MEM_HARDWARE, MemHardware> hardware;
       Fields<MEM_POSITION, Position> position;
+      Fields<MEM_BUF_IDS, vector<BufId>> buf_ids;
     } mem;
 
     union {
@@ -948,8 +983,8 @@ class Graph : public ge::Graph {
   Axis CreateAxis(const std::string &name, Axis::Type type, const SizeExpr &size, const std::vector<AxisId> &from);
   Axis CreateAxis(const std::string &name, const SizeExpr &size);
 
-  std::tuple<Axis, Axis> BlockSplit(AxisId axis);
-  std::tuple<Axis, Axis> TileSplit(AxisId axis);
+  std::tuple<Axis, Axis> BlockSplit(AxisId axis, std::string innerDimName = "", std::string outterDimName = "");
+  std::tuple<Axis, Axis> TileSplit(AxisId axis, std::string innerDimName = "", std::string outterDimName = "");
   Axis MergeAxis(const std::vector<AxisId> &axis);
 
   void ApplySplit(NodeView &node, AxisId outter_id, AxisId inner_id, AxisId original_id);
@@ -971,6 +1006,10 @@ class Graph : public ge::Graph {
   int CopyFrom(const ascir::Graph &graph);
 
   void SortByExecOrder();
+
+  void UpdateAxisAlign(AxisId id, int32_t align);
+  void UpdateAxisAllowOversizeAxis(AxisId id, bool allow_oversize_axis);
+  void UpdateAxisAllowUnalignedTail(AxisId id, bool allow_unaligned_tail);
 
  private:
   NodeView FindImpl(const char *name) const;

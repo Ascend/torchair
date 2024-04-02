@@ -216,30 +216,45 @@ Axis Graph::CreateAxis(const std::string &name, Axis::Type type, const SizeExpr 
   new_axis.name = name;
   new_axis.size = size;
   new_axis.from = from;
+  new_axis.align = 1;
+  new_axis.allow_oversize_axis = false;
+  new_axis.allow_unaligned_tail = true;
 
   vector<string> axis_names;
   vector<Axis::Type> axis_types;
   vector<vector<SizeVarId>> axis_size_num;
   vector<vector<SizeVarId>> axis_size_den;
   vector<vector<AxisId>> axis_from;
+  vector<int32_t> aligns;
+  vector<bool> allow_oversize_axis;
+  vector<bool> allow_unaligned_tail;
 
   ge::AttrUtils::GetListStr(this->holder, this->axis.NAME, axis_names);
   ge::AttrUtils::GetListInt(this->holder, this->axis.TYPE, axis_types);
   ge::AttrUtils::GetListListInt(this->holder, this->axis.SIZE_NUMS, axis_size_num);
   ge::AttrUtils::GetListListInt(this->holder, this->axis.SIZE_DENS, axis_size_den);
   ge::AttrUtils::GetListListInt(this->holder, this->axis.FROM, axis_from);
+  ge::AttrUtils::GetListInt(this->holder, this->axis.ALIGN, aligns);
+  ge::AttrUtils::GetListBool(this->holder, this->axis.ALLOW_OVERSIZE_AXIS, allow_oversize_axis);
+  ge::AttrUtils::GetListBool(this->holder, this->axis.ALLOW_UNALIGNED_TAIL, allow_unaligned_tail);
 
   axis_names.push_back(name);
   axis_types.push_back(type);
   axis_size_num.push_back(size.nums);
   axis_size_den.push_back(size.dens);
   axis_from.push_back(from);
+  aligns.push_back(new_axis.align);
+  allow_oversize_axis.push_back(new_axis.allow_oversize_axis);
+  allow_unaligned_tail.push_back(new_axis.allow_unaligned_tail);
 
   ge::AttrUtils::SetListStr(this->holder, this->axis.NAME, axis_names);
   ge::AttrUtils::SetListInt(this->holder, this->axis.TYPE, axis_types);
   ge::AttrUtils::SetListListInt(this->holder, this->axis.SIZE_NUMS, axis_size_num);
   ge::AttrUtils::SetListListInt(this->holder, this->axis.SIZE_DENS, axis_size_den);
   ge::AttrUtils::SetListListInt(this->holder, this->axis.FROM, axis_from);
+  ge::AttrUtils::SetListInt(this->holder, this->axis.ALIGN, aligns);
+  ge::AttrUtils::SetListBool(this->holder, this->axis.ALLOW_OVERSIZE_AXIS, allow_oversize_axis);
+  ge::AttrUtils::SetListBool(this->holder, this->axis.ALLOW_UNALIGNED_TAIL, allow_unaligned_tail);
 
   ge::AttrUtils::SetInt(this->holder, this->axis.NUM, num_of_axis + 1);
   return new_axis;
@@ -249,26 +264,38 @@ Axis Graph::CreateAxis(const std::string &name, const SizeExpr &size) {
   return CreateAxis(name, Axis::AXIS_TYPE_ORIGINAL, size, {});
 }
 
-std::tuple<Axis, Axis> Graph::BlockSplit(AxisId axis_id) {
+std::tuple<Axis, Axis> Graph::BlockSplit(AxisId axis_id, std::string innerDimName, std::string outterDimName) {
   auto axis = this->axis[axis_id];
-  auto block_size = this->CreateSizeVar(axis.name + "b_size", SizeVar::SIZE_TYPE_VAR, 0);
+  if (innerDimName.empty()) {
+    innerDimName = axis.name + "b";
+  }
+  if (outterDimName.empty()) {
+    outterDimName = axis.name + "B";
+  }
+  auto block_size = this->CreateSizeVar(innerDimName + "_size", SizeVar::SIZE_TYPE_VAR, 0);
 
-  auto outter = this->CreateAxis(axis.name + "B", Axis::AXIS_TYPE_BLOCK_OUTER,
+  auto outter = this->CreateAxis(outterDimName, Axis::AXIS_TYPE_BLOCK_OUTER,
                                  axis.size / SizeExpr{{block_size.id}}, {axis_id});
-  auto inner = this->CreateAxis(axis.name + "b",
+  auto inner = this->CreateAxis(innerDimName,
                                 Axis::AXIS_TYPE_BLOCK_INNER,
                                 SizeExpr{{block_size.id}}, {axis_id});
   return std::make_tuple(outter, inner);
 }
 
-std::tuple<Axis, Axis> Graph::TileSplit(AxisId axis_id) {
+std::tuple<Axis, Axis> Graph::TileSplit(AxisId axis_id, std::string innerDimName, std::string outterDimName) {
   auto axis = this->axis[axis_id];
-  auto tile_size = this->CreateSizeVar(axis.name + "t_size", SizeVar::SIZE_TYPE_VAR, 0);
+  if (innerDimName.empty()) {
+    innerDimName = axis.name + "t";
+  }
+  if (outterDimName.empty()) {
+    outterDimName = axis.name + "T";
+  }
+  auto tile_size = this->CreateSizeVar(innerDimName + "_size", SizeVar::SIZE_TYPE_VAR, 0);
 
-  auto outter = this->CreateAxis(axis.name + "T",
+  auto outter = this->CreateAxis(outterDimName,
                                  Axis::AXIS_TYPE_TILE_OUTER,
                                  axis.size / SizeExpr{{tile_size.id}}, {axis_id});
-  auto inner = this->CreateAxis(axis.name + "t",
+  auto inner = this->CreateAxis(innerDimName,
                                 Axis::AXIS_TYPE_TILE_INNER,
                                 SizeExpr{{tile_size.id}}, {axis_id});
   return std::make_tuple(outter, inner);
@@ -577,6 +604,27 @@ void Graph::AddNode(ge::Operator &op) {
   auto node = ge::GraphUtilsEx::GetComputeGraph(*this)->AddNode(op_desc);
   auto new_op = ge::OpDescUtils::CreateOperatorFromNode(node);
   std::swap(new_op, op);
+}
+
+void Graph::UpdateAxisAlign(AxisId id, int32_t align) {
+  std::vector<int32_t> tmp;
+  ge::AttrUtils::GetListInt(holder, this->axis.ALIGN, tmp);
+  tmp[id] = align;
+  ge::AttrUtils::SetListInt(holder, this->axis.ALIGN, tmp);
+}
+
+void Graph::UpdateAxisAllowOversizeAxis(AxisId id, bool allow_oversize_axis) {
+  std::vector<bool> tmp;
+  ge::AttrUtils::GetListBool(holder, this->axis.ALLOW_OVERSIZE_AXIS, tmp);
+  tmp[id] = allow_oversize_axis;
+  ge::AttrUtils::SetListBool(holder, this->axis.ALLOW_OVERSIZE_AXIS, tmp);
+}
+
+void Graph::UpdateAxisAllowUnalignedTail(AxisId id, bool allow_unaligned_tail) {
+  std::vector<bool> tmp;
+  ge::AttrUtils::GetListBool(holder, this->axis.ALLOW_UNALIGNED_TAIL, tmp);
+  tmp[id] = allow_unaligned_tail;
+  ge::AttrUtils::SetListBool(holder, this->axis.ALLOW_UNALIGNED_TAIL, tmp);
 }
 
 NodeViewIter::NodeViewIter(NodeViewVisitor::Iterator &&iter) : ge::ComputeGraph::Vistor<ge::NodePtr>::Iterator(iter) {}
