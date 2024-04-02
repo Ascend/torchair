@@ -75673,3 +75673,200 @@ def GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], sca
 
     # return outputs
     return y
+
+
+    # This api is auto-generated from IR FusedInferAttentionScore
+@auto_convert_to_tensor([False, True, True, False, False, False, False, False, False, False, False, False, False, False, False, False, False], [False, False, False, True, True, True, True, True, True, True, True, True, True, True, True, True, True])
+def FusedInferAttentionScore(query: Tensor, key: List[Tensor], value: List[Tensor], pse_shift: Optional[Tensor], atten_mask: Optional[Tensor], actual_seq_lengths: Optional[Tensor], actual_seq_lengths_kv: Optional[Tensor], dequant_scale1: Optional[Tensor], quant_scale1: Optional[Tensor], dequant_scale2: Optional[Tensor], quant_scale2: Optional[Tensor], quant_offset2: Optional[Tensor], antiquant_scale: Optional[Tensor], antiquant_offset: Optional[Tensor], block_table: Optional[Tensor], query_padding_size: Optional[Tensor], kv_padding_size: Optional[Tensor], *, num_heads: int, scale: float=1.000000, pre_tokens: int=2147483647, next_tokens: int=2147483647, input_layout: str="BSH", num_key_value_heads: int=0, sparse_mode: int=0, inner_precise: int=0, block_size: int=0, antiquant_mode: int=0, softmax_lse_flag: bool=False, dependencies=[], node_name=None):
+    """REG_OP(FusedInferAttentionScore)\n
+.INPUT(query, TensorType({DT_INT8, DT_FLOAT16,DT_BF16}))\n
+.DYNAMIC_INPUT(key, TensorType({DT_INT8, DT_FLOAT16,DT_BF16}))\n
+.DYNAMIC_INPUT(value, TensorType({DT_INT8, DT_FLOAT16,DT_BF16}))\n
+.OPTIONAL_INPUT(pse_shift, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OPTIONAL_INPUT(atten_mask, TensorType({DT_FLOAT16, DT_BOOL, DT_UINT8, DT_INT8}))\n
+.OPTIONAL_INPUT(actual_seq_lengths, TensorType({DT_INT64}))\n
+.OPTIONAL_INPUT(actual_seq_lengths_kv, TensorType({DT_INT64}))\n
+.OPTIONAL_INPUT(dequant_scale1, TensorType({DT_UINT64}))\n
+.OPTIONAL_INPUT(quant_scale1, TensorType({DT_FLOAT32}))\n
+.OPTIONAL_INPUT(dequant_scale2, TensorType({DT_UINT64}))\n
+.OPTIONAL_INPUT(quant_scale2, TensorType({DT_FLOAT32, DT_BF16}))\n
+.OPTIONAL_INPUT(quant_offset2, TensorType({DT_FLOAT32, DT_BF16}))\n
+.OPTIONAL_INPUT(antiquant_scale, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OPTIONAL_INPUT(antiquant_offset, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OPTIONAL_INPUT(block_table, TensorType({DT_INT32}))\n
+.OPTIONAL_INPUT(query_padding_size, TensorType({DT_INT64}))\n
+.OPTIONAL_INPUT(kv_padding_size, TensorType({DT_INT64}))\n
+.OUTPUT(attention_out, TensorType({DT_FLOAT16, DT_FLOAT32, DT_INT8, DT_BF16}))\n
+.OUTPUT(softmax_lse, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
+.REQUIRED_ATTR(num_heads, Int)\n
+.ATTR(scale, Float, 1.0)\n
+.ATTR(pre_tokens, Int, 2147483647)\n
+.ATTR(next_tokens, Int, 2147483647)\n
+.ATTR(input_layout, String, "BSH")\n
+.ATTR(num_key_value_heads, Int, 0)\n
+.ATTR(sparse_mode, Int, 0)\n
+.ATTR(inner_precise, Int, 0)\n
+.ATTR(block_size, Int, 0)\n
+.ATTR(antiquant_mode, Int, 0)\n
+.ATTR(softmax_lse_flag, Bool, false)\n
+"""
+
+    op = get_default_ge_graph().op.add()
+    op.type = "FusedInferAttentionScore"
+    op.name = next_unique_name(node_name, "FusedInferAttentionScore")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(query.tensor)
+    op.input_desc.add().CopyFrom(query.desc)
+    op.input_desc[-1].name = "query"
+    assert isinstance(key, (tuple, list))
+    for i, v in enumerate(key):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "key" + str(i)
+    assert isinstance(value, (tuple, list))
+    for i, v in enumerate(value):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "value" + str(i)
+    if pse_shift is not None:
+        op.input.append(pse_shift.tensor)
+        op.input_desc.add().CopyFrom(pse_shift.desc)
+        op.input_desc[-1].name = "pse_shift"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "pse_shift"
+    if atten_mask is not None:
+        op.input.append(atten_mask.tensor)
+        op.input_desc.add().CopyFrom(atten_mask.desc)
+        op.input_desc[-1].name = "atten_mask"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "atten_mask"
+    if actual_seq_lengths is not None:
+        op.input.append(actual_seq_lengths.tensor)
+        op.input_desc.add().CopyFrom(actual_seq_lengths.desc)
+        op.input_desc[-1].name = "actual_seq_lengths"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "actual_seq_lengths"
+    if actual_seq_lengths_kv is not None:
+        op.input.append(actual_seq_lengths_kv.tensor)
+        op.input_desc.add().CopyFrom(actual_seq_lengths_kv.desc)
+        op.input_desc[-1].name = "actual_seq_lengths_kv"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "actual_seq_lengths_kv"
+    if dequant_scale1 is not None:
+        op.input.append(dequant_scale1.tensor)
+        op.input_desc.add().CopyFrom(dequant_scale1.desc)
+        op.input_desc[-1].name = "dequant_scale1"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "dequant_scale1"
+    if quant_scale1 is not None:
+        op.input.append(quant_scale1.tensor)
+        op.input_desc.add().CopyFrom(quant_scale1.desc)
+        op.input_desc[-1].name = "quant_scale1"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "quant_scale1"
+    if dequant_scale2 is not None:
+        op.input.append(dequant_scale2.tensor)
+        op.input_desc.add().CopyFrom(dequant_scale2.desc)
+        op.input_desc[-1].name = "dequant_scale2"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "dequant_scale2"
+    if quant_scale2 is not None:
+        op.input.append(quant_scale2.tensor)
+        op.input_desc.add().CopyFrom(quant_scale2.desc)
+        op.input_desc[-1].name = "quant_scale2"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "quant_scale2"
+    if quant_offset2 is not None:
+        op.input.append(quant_offset2.tensor)
+        op.input_desc.add().CopyFrom(quant_offset2.desc)
+        op.input_desc[-1].name = "quant_offset2"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "quant_offset2"
+    if antiquant_scale is not None:
+        op.input.append(antiquant_scale.tensor)
+        op.input_desc.add().CopyFrom(antiquant_scale.desc)
+        op.input_desc[-1].name = "antiquant_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "antiquant_scale"
+    if antiquant_offset is not None:
+        op.input.append(antiquant_offset.tensor)
+        op.input_desc.add().CopyFrom(antiquant_offset.desc)
+        op.input_desc[-1].name = "antiquant_offset"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "antiquant_offset"
+    if block_table is not None:
+        op.input.append(block_table.tensor)
+        op.input_desc.add().CopyFrom(block_table.desc)
+        op.input_desc[-1].name = "block_table"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "block_table"
+    if query_padding_size is not None:
+        op.input.append(query_padding_size.tensor)
+        op.input_desc.add().CopyFrom(query_padding_size.desc)
+        op.input_desc[-1].name = "query_padding_size"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "query_padding_size"
+    if kv_padding_size is not None:
+        op.input.append(kv_padding_size.tensor)
+        op.input_desc.add().CopyFrom(kv_padding_size.desc)
+        op.input_desc[-1].name = "kv_padding_size"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "kv_padding_size"
+
+    # process attrs
+    op.attr["num_heads"].i = num_heads
+    op.attr["scale"].f = scale
+    op.attr["pre_tokens"].i = pre_tokens
+    op.attr["next_tokens"].i = next_tokens
+    op.attr["input_layout"].s = compat_as_bytes(input_layout)
+    op.attr["num_key_value_heads"].i = num_key_value_heads
+    op.attr["sparse_mode"].i = sparse_mode
+    op.attr["inner_precise"].i = inner_precise
+    op.attr["block_size"].i = block_size
+    op.attr["antiquant_mode"].i = antiquant_mode
+    op.attr["softmax_lse_flag"].b = softmax_lse_flag
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "attention_out"
+    attention_out = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "softmax_lse"
+    softmax_lse = Tensor(op, output_index)
+    output_index += 1
+
+    # return outputs
+    return attention_out, softmax_lse
