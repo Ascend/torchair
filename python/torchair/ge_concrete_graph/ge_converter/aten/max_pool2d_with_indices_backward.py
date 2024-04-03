@@ -68,6 +68,6 @@ def conveter_aten_max_pool2d_with_indices_backward_grad_input(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::max_pool2d_with_indices_backward.grad_input(Tensor grad_output, Tensor self, int[2] kernel_size, int[2] stride, int[2] padding, int[2] dilation, bool ceil_mode, Tensor indices, *, Tensor(a!) grad_input) -> Tensor(a!)"""
-    raise NotImplementedError(
-        "torch.ops.aten.max_pool2d_with_indices_backward.grad_input ge_converter is not implemented!"
-    )
+    raise RuntimeError(
+        "torch.ops.aten.max_pool2d_with_indices_backward.grad_input is redundant before pytorch 2.1.0,"
+        "might be supported in future version.")

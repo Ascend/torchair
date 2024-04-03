@@ -64,4 +64,5 @@ def conveter_aten_new_ones_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::new_ones.out(Tensor self, SymInt[] size, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.new_ones.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.new_ones.out is redundant before pytorch 2.1.0,"
+                       "might be supported in future version.")

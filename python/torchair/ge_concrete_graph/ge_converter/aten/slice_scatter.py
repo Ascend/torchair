@@ -64,6 +64,7 @@ def static_slice_scatter_step1(
     Support(F32(10, 10), F32(10, 2), 1, 1, 3),
     Support(F32(10, 10), F32(10, 1), 1, -1, 9223372036854775807),
     Support(F32(10, 10), F32(10, 10), 1, 0, 9223372036854775807),
+    Support(F32(10, 10), F32(10, 10)),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.slice_scatter.default)
 def conveter_aten_slice_scatter_default(
@@ -76,13 +77,14 @@ def conveter_aten_slice_scatter_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::slice_scatter(Tensor self, Tensor src, int dim=0, SymInt? start=None, SymInt? end=None, SymInt step=1) -> Tensor"""
-    if not (isinstance(start, Tensor) or isinstance(end, Tensor) or \
-        isinstance(step, Tensor)) and step == 1:
-        return static_slice_scatter_step1(self, src, dim, start, end, step)
     if start is None:
         start = 0
     if end is None:
         end = sys.maxsize
+
+    if not (isinstance(start, Tensor) or isinstance(end, Tensor) or \
+        isinstance(step, Tensor)) and step == 1:
+        return static_slice_scatter_step1(self, src, dim, start, end, step)
     if (isinstance(start, int) and start == 0) and (
             isinstance(end, int) and end == sys.maxsize) and (
             isinstance(step, int) and step == 1):
@@ -123,4 +125,5 @@ def conveter_aten_slice_scatter_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::slice_scatter.out(Tensor self, Tensor src, int dim=0, SymInt? start=None, SymInt? end=None, SymInt step=1, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.slice_scatter.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.slice_scatter.out is redundant before pytorch 2.1.0,"
+                       "might be supported in future version.")

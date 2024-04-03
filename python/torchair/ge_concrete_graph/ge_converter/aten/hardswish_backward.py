@@ -41,4 +41,5 @@ def conveter_aten_hardswish_backward_out(
     grad_output: Tensor, self: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::hardswish_backward.out(Tensor grad_output, Tensor self, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.hardswish_backward.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.hardswish_backward.out ge_converter is redundant before pytorch 2.1.0,"
+                       "might be supported in future version.")

@@ -126,4 +126,5 @@ def conveter_aten_native_group_norm_backward_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::native_group_norm_backward.out(Tensor grad_out, Tensor input, Tensor mean, Tensor rstd, Tensor? weight, SymInt N, SymInt C, SymInt HxW, int group, bool[3] output_mask, *, Tensor(a!) out0, Tensor(b!) out1, Tensor(c!) out2) -> (Tensor(a!), Tensor(b!), Tensor(c!))"""
-    raise NotImplementedError("torch.ops.aten.native_group_norm_backward.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.native_group_norm_backward.out is redundant before pytorch 2.1.0,"
+                       "might be supported in future version.")
