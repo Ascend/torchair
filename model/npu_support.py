@@ -317,6 +317,37 @@ def _patch_model_5():
     torchair.utils.npu_patch_break_graph()
 
 
+@register_patch("hf_Longformer")
+"""
+Hf_Longformer failed accurazy test because of discontiguous memory.
+Solving the problem by adding  .contiguous() after .view() and .as_strided in LongformerSelfAttention._chunk.
+This patch would be removed in the near future.
+"""
+def _path_model_6():
+    module_spec = importlib.util.find_spec("transformers")
+    if module_spec is None:
+        return
+    from transformers.models.longformer import LongformerSelfAttention
+    src_chunk = LongformerSelfAttention._chunk
+
+    def _chunk(cls, hidden_states, window_overlap, onnx_export: bool = False):
+        if not onnx_export:
+            hidden_states = hidden_states.view(
+                hidden_states.size(0),
+                torch.div(hidden_states.size(1), (window_overlap * 2), rounding_mode="trunc"),
+                window_overlap * 2,
+                hidden_states.size(2),
+            ).contiguous()
+            chunk_size = list(hidden_states.size())
+            chunk_size[1] = chunk_size[1] * 2 - 1
+
+            chunk_stride = list(hidden_states.stride())
+            chunk_stride[1] = chunk_stride[1] // 2
+            return hidden_states.as_strided(size=chunk_size, stride=chunk_stride).contiguous()
+        return src_chunk(hidden_states, window_overlap, True)
+
+    LongformerSelfAttention._chunk = _chunk
+
 
 def patch_model(model_name):
     if model_name not in _patch_table.keys():
