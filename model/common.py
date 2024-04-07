@@ -2340,7 +2340,7 @@ class BenchmarkRunner:
                     torch.cuda.reset_peak_memory_stats()
                     torch.cuda.empty_cache()
                 elif current_device == "npu":
-                    torch_npu.npu.reset_peak_memory_status()
+                    torch_npu.npu.reset_peak_memory_stats()
                     torch_npu.npu.empty_cache()
                 t0 = time.perf_counter()
                 for _ in range(niters):
