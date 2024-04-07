@@ -506,6 +506,68 @@ void Graph::ApplyReorder(NodeView &node, const std::vector<AxisId> &reordered_ax
   }
 }
 
+Sparse Graph::CreateSparse(const Sparse::Type type, const Sparse::Value &value) {
+  if (type != Sparse::SPARSE_TYPE_OBLIQUE_BAND) {
+    throw std::runtime_error("invalid sparse type.");
+  }
+
+  int64_t num_of_sparse = 0;
+  ge::AttrUtils::GetInt(this->holder, this->sparse.NUM, num_of_sparse);
+
+  Sparse new_sparse {num_of_sparse, type, value};
+
+  std::vector<Sparse::Type> types;
+  std::vector<AxisId> pre_axis_id;
+  std::vector<bool> pre_size_zero;
+  std::vector<vector<SizeVarId>> pre_size_nums;
+  std::vector<vector<SizeVarId>> pre_size_dens;
+  std::vector<AxisId> next_axis_id;
+  std::vector<bool> next_size_zero;
+  std::vector<vector<SizeVarId>> next_size_nums;
+  std::vector<vector<SizeVarId>> next_size_dens;
+
+  ge::AttrUtils::GetListInt(this->holder, this->sparse.TYPE, types);
+  ge::AttrUtils::GetListInt(this->holder, this->sparse.PRE_AXIS_ID, pre_axis_id);
+  ge::AttrUtils::GetListBool(this->holder, this->sparse.PRE_SIZE_ZERO, pre_size_zero);
+  ge::AttrUtils::GetListListInt(this->holder, this->sparse.PRE_SIZE_NUMS, pre_size_nums);
+  ge::AttrUtils::GetListListInt(this->holder, this->sparse.PRE_SIZE_DENS, pre_size_dens);
+  ge::AttrUtils::GetListInt(this->holder, this->sparse.NEXT_AXIS_ID, next_axis_id);
+  ge::AttrUtils::GetListBool(this->holder, this->sparse.NEXT_SIZE_ZERO, next_size_zero);
+  ge::AttrUtils::GetListListInt(this->holder, this->sparse.NEXT_SIZE_NUMS, next_size_nums);
+  ge::AttrUtils::GetListListInt(this->holder, this->sparse.NEXT_SIZE_DENS, next_size_dens);
+
+  types.push_back(new_sparse.type);
+  pre_axis_id.push_back(new_sparse.value.ob.pre.id);
+  pre_size_zero.push_back(new_sparse.value.ob.pre.position.is_zero);
+  pre_size_nums.push_back(new_sparse.value.ob.pre.position.nums);
+  pre_size_dens.push_back(new_sparse.value.ob.pre.position.dens);
+  next_axis_id.push_back(new_sparse.value.ob.next.id);
+  next_size_zero.push_back(new_sparse.value.ob.next.position.is_zero);
+  next_size_nums.push_back(new_sparse.value.ob.next.position.nums);
+  next_size_dens.push_back(new_sparse.value.ob.next.position.dens);
+
+  ge::AttrUtils::SetListInt(this->holder, this->sparse.TYPE, types);
+  ge::AttrUtils::SetListInt(this->holder, this->sparse.PRE_AXIS_ID, pre_axis_id);
+  ge::AttrUtils::SetListBool(this->holder, this->sparse.PRE_SIZE_ZERO, pre_size_zero);
+  ge::AttrUtils::SetListListInt(this->holder, this->sparse.PRE_SIZE_NUMS, pre_size_nums);
+  ge::AttrUtils::SetListListInt(this->holder, this->sparse.PRE_SIZE_DENS, pre_size_dens);
+  ge::AttrUtils::SetListInt(this->holder, this->sparse.NEXT_AXIS_ID, next_axis_id);
+  ge::AttrUtils::SetListBool(this->holder, this->sparse.NEXT_SIZE_ZERO, next_size_zero);
+  ge::AttrUtils::SetListListInt(this->holder, this->sparse.NEXT_SIZE_NUMS, next_size_nums);
+  ge::AttrUtils::SetListListInt(this->holder, this->sparse.NEXT_SIZE_DENS, next_size_dens);
+
+  ge::AttrUtils::SetInt(this->holder, this->sparse.NUM, num_of_sparse + 1);
+  return new_sparse;
+}
+
+Sparse Graph::CreateObliqueBandSparse(const Sparse::AxisInfo &pre_axis,
+                                      const Sparse::AxisInfo &next_axis) {
+  Sparse::Value value(Sparse::SPARSE_TYPE_OBLIQUE_BAND);
+  value.ob.pre = pre_axis;
+  value.ob.next = next_axis;
+  return CreateSparse(Sparse::SPARSE_TYPE_OBLIQUE_BAND, value);
+}
+
 NodeView Graph::FindImpl(const char *name) const {
   auto graph = ge::GraphUtilsEx::GetComputeGraph(*this);
   auto node = graph->FindNode(name);

@@ -149,6 +149,64 @@ struct Axis {
   bool allow_unaligned_tail;
 };
 
+using SparseId = Identifier;
+struct Sparse {
+  using Type = EnumValue;
+  enum : EnumValue {
+    SPARSE_TYPE_OBLIQUE_BAND,
+  };
+  struct AxisInfo {
+    AxisId id;
+    SizeExpr position;
+  };
+  struct ObliqueBand {
+    AxisInfo pre;
+    AxisInfo next;
+  };
+  union Value {
+    explicit Value(const Type type) {
+      if (type == SPARSE_TYPE_OBLIQUE_BAND) {
+        new (&ob)ObliqueBand();
+      } else {
+        throw std::runtime_error("invalid sparse type.");
+      }
+    }
+    Value(const Value &other, const Type type) {
+      if (type == SPARSE_TYPE_OBLIQUE_BAND) {
+        new (&ob)ObliqueBand(other.ob);
+      } else {
+        throw std::runtime_error("invalid sparse type.");
+      }
+    }
+    ~Value() {}
+    ObliqueBand ob;
+  };
+  Sparse(const SparseId sparseId, const Type sparseType, const Value &sparseValue)
+    : id(sparseId), type(sparseType), value(sparseValue, sparseType) {}
+  Sparse(const Sparse &other)
+    : id(other.id), type(other.type), value(other.value, other.type) {}
+  Sparse &operator=(const Sparse &other) {
+    this->id = other.id;
+    this->type = other.type;
+    if (this->type == SPARSE_TYPE_OBLIQUE_BAND) {
+      this->value.ob = other.value.ob;
+    } else {
+      throw std::runtime_error("invalid sparse type.");
+    }
+    return *this;
+  }
+  ~Sparse() {
+    if (type == SPARSE_TYPE_OBLIQUE_BAND) {
+      this->value.ob.~ObliqueBand();
+    } else {
+      throw std::runtime_error("invalid sparse type.");
+    }
+  }
+  SparseId id;
+  Type type;
+  Value value;
+};
+
 template <typename Holder, const char *ATTR_NAME, typename FieldType>
 struct AttrField;
 
@@ -490,6 +548,153 @@ const std::string AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::Axis>>:
 template <typename Holder, const char *ATTR_NAME_PREFIX>
 const std::string AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::Axis>>::ALLOW_UNALIGNED_TAIL{std::string(ATTR_NAME_PREFIX) +
                                                                                       ".allow_unaligned_tail"};
+
+template <typename Holder, const char *ATTR_NAME_PREFIX>
+struct AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::Sparse>> {
+  Holder holder;
+
+ public:
+  static const std::string NUM;
+  static const std::string TYPE;
+  static const std::string PRE_AXIS_ID;
+  static const std::string PRE_SIZE_ZERO;
+  static const std::string PRE_SIZE_NUMS;
+  static const std::string PRE_SIZE_DENS;
+  static const std::string NEXT_AXIS_ID;
+  static const std::string NEXT_SIZE_ZERO;
+  static const std::string NEXT_SIZE_NUMS;
+  static const std::string NEXT_SIZE_DENS;
+
+  void operator=(std::initializer_list<ascir::Sparse> &&values) {
+    ge::AttrUtils::SetInt(holder, NUM.c_str(), values.size());
+
+    std::vector<Sparse::Type> types;
+    std::vector<AxisId> pre_axis_id;
+    std::vector<bool> pre_size_zero;
+    std::vector<vector<SizeVarId>> pre_size_nums;
+    std::vector<vector<SizeVarId>> pre_size_dens;
+    std::vector<AxisId> next_axis_id;
+    std::vector<bool> next_size_zero;
+    std::vector<vector<SizeVarId>> next_size_nums;
+    std::vector<vector<SizeVarId>> next_size_dens;
+
+    for (auto sparse : values) {
+      if (sparse.type != Sparse::SPARSE_TYPE_OBLIQUE_BAND) {
+        throw std::runtime_error("invalid sparse type.");
+      }
+      types.push_back(sparse.type);
+      pre_axis_id.push_back(sparse.value.ob.pre.id);
+      pre_size_zero.push_back(sparse.value.ob.pre.position.is_zero);
+      pre_size_nums.push_back(sparse.value.ob.pre.position.nums);
+      pre_size_dens.push_back(sparse.value.ob.pre.position.dens);
+      next_axis_id.push_back(sparse.value.ob.next.id);
+      next_size_zero.push_back(sparse.value.ob.next.position.is_zero);
+      next_size_nums.push_back(sparse.value.ob.next.position.nums);
+      next_size_dens.push_back(sparse.value.ob.next.position.dens);
+    }
+
+    ge::AttrUtils::SetListInt(holder, TYPE, types);
+    ge::AttrUtils::SetListInt(holder, PRE_AXIS_ID, pre_axis_id);
+    ge::AttrUtils::SetListBool(holder, PRE_SIZE_ZERO, pre_size_zero);
+    ge::AttrUtils::SetListListInt(holder, PRE_SIZE_NUMS, pre_size_nums);
+    ge::AttrUtils::SetListListInt(holder, PRE_SIZE_DENS, pre_size_dens);
+    ge::AttrUtils::SetListInt(holder, NEXT_AXIS_ID, next_axis_id);
+    ge::AttrUtils::SetListBool(holder, NEXT_SIZE_ZERO, next_size_zero);
+    ge::AttrUtils::SetListListInt(holder, NEXT_SIZE_NUMS, next_size_nums);
+    ge::AttrUtils::SetListListInt(holder, NEXT_SIZE_DENS, next_size_dens);
+  }
+
+  vector<Sparse> operator()() const {
+    std::vector<Sparse::Type> types;
+    std::vector<AxisId> pre_axis_id;
+    std::vector<bool> pre_size_zero;
+    std::vector<vector<SizeVarId>> pre_size_nums;
+    std::vector<vector<SizeVarId>> pre_size_dens;
+    std::vector<AxisId> next_axis_id;
+    std::vector<bool> next_size_zero;
+    std::vector<vector<SizeVarId>> next_size_nums;
+    std::vector<vector<SizeVarId>> next_size_dens;
+
+    ge::AttrUtils::GetListInt(holder, TYPE, types);
+    ge::AttrUtils::GetListInt(holder, PRE_AXIS_ID, pre_axis_id);
+    ge::AttrUtils::GetListBool(holder, PRE_SIZE_ZERO, pre_size_zero);
+    ge::AttrUtils::GetListListInt(holder, PRE_SIZE_NUMS, pre_size_nums);
+    ge::AttrUtils::GetListListInt(holder, PRE_SIZE_DENS, pre_size_dens);
+    ge::AttrUtils::GetListInt(holder, NEXT_AXIS_ID, next_axis_id);
+    ge::AttrUtils::GetListBool(holder, NEXT_SIZE_ZERO, next_size_zero);
+    ge::AttrUtils::GetListListInt(holder, NEXT_SIZE_NUMS, next_size_nums);
+    ge::AttrUtils::GetListListInt(holder, NEXT_SIZE_DENS, next_size_dens);
+
+    std::vector<ascir::Sparse> result;
+    result.reserve(types.size());
+    for (size_t i = 0; i < types.size(); ++i) {
+      if (types[i] != Sparse::SPARSE_TYPE_OBLIQUE_BAND) {
+        throw std::runtime_error("invalid sparse type.");
+      }
+      Sparse::Value value(Sparse::SPARSE_TYPE_OBLIQUE_BAND);
+      value.ob.pre.id = pre_axis_id[i];
+      value.ob.pre.position.is_zero = pre_size_zero[i];
+      value.ob.pre.position.nums = pre_size_nums[i];
+      value.ob.pre.position.dens = pre_size_dens[i];
+      value.ob.next.id = next_axis_id[i];
+      value.ob.next.position.is_zero = next_size_zero[i];
+      value.ob.next.position.nums = next_size_nums[i];
+      value.ob.next.position.dens = next_size_dens[i];
+      ascir::Sparse sparse {static_cast<SparseId>(i), static_cast<Sparse::Type>(types[i]), value};
+
+      result.push_back(sparse);
+    }
+
+    return result;
+  }
+
+  Sparse operator[](int index) const {
+    int64_t num = 0;
+    ge::AttrUtils::GetInt(holder, NUM.c_str(), num);
+    if (index >= num) {
+      throw std::out_of_range("index out of range");
+    }
+
+    return this->operator()()[index];
+  }
+
+  int64_t Size() const {
+    int64_t num = 0;
+    ge::AttrUtils::GetInt(holder, NUM.c_str(), num);
+    return num;
+  }
+};
+
+template <typename Holder, const char *ATTR_NAME_PREFIX>
+const std::string AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::Sparse>>::NUM{
+    std::string(ATTR_NAME_PREFIX) + ".num"};
+template <typename Holder, const char *ATTR_NAME_PREFIX>
+const std::string AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::Sparse>>::TYPE{
+    std::string(ATTR_NAME_PREFIX) + ".type"};
+template <typename Holder, const char *ATTR_NAME_PREFIX>
+const std::string AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::Sparse>>::PRE_AXIS_ID{
+    std::string(ATTR_NAME_PREFIX) + ".pre_axis_id"};
+template <typename Holder, const char *ATTR_NAME_PREFIX>
+const std::string AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::Sparse>>::PRE_SIZE_ZERO{
+    std::string(ATTR_NAME_PREFIX) + ".pre_size_zero"};
+template <typename Holder, const char *ATTR_NAME_PREFIX>
+const std::string AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::Sparse>>::PRE_SIZE_NUMS{
+    std::string(ATTR_NAME_PREFIX) + ".pre_size_nums"};
+template <typename Holder, const char *ATTR_NAME_PREFIX>
+const std::string AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::Sparse>>::PRE_SIZE_DENS{
+    std::string(ATTR_NAME_PREFIX) + ".pre_size_dens"};
+template <typename Holder, const char *ATTR_NAME_PREFIX>
+const std::string AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::Sparse>>::NEXT_AXIS_ID{
+    std::string(ATTR_NAME_PREFIX) + ".next_axis_id"};
+template <typename Holder, const char *ATTR_NAME_PREFIX>
+const std::string AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::Sparse>>::NEXT_SIZE_ZERO{
+    std::string(ATTR_NAME_PREFIX) + ".next_size_zero"};
+template <typename Holder, const char *ATTR_NAME_PREFIX>
+const std::string AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::Sparse>>::NEXT_SIZE_NUMS{
+    std::string(ATTR_NAME_PREFIX) + ".next_size_nums"};
+template <typename Holder, const char *ATTR_NAME_PREFIX>
+const std::string AttrField<Holder, ATTR_NAME_PREFIX, std::vector<ascir::Sparse>>::NEXT_SIZE_DENS{
+    std::string(ATTR_NAME_PREFIX) + ".next_size_dens"};
 
 struct TensorAttrDtype {
   ge::GeTensorDesc* tensor_desc;
@@ -953,11 +1158,13 @@ class Graph : public ge::Graph {
  public:
   static constexpr char SIZE_VAR[] = "ascir.graph.size_var";
   static constexpr char AXIS[] = "ascir.graph.axis";
+  static constexpr char SPARSE[] = "ascir.graph.sparse";
 
   union {
     ge::AttrHolder *holder;
     AttrField<ge::AttrHolder *, SIZE_VAR, std::vector<SizeVar>> size_var;
     AttrField<ge::AttrHolder *, AXIS, std::vector<Axis>> axis;
+    AttrField<ge::AttrHolder *, SPARSE, std::vector<Sparse>> sparse;
   };
 
   /* Every time setting the input will build new graph,
@@ -992,6 +1199,10 @@ class Graph : public ge::Graph {
   void ApplyMerge(NodeView &node, AxisId merged_axis_id, const std::vector<AxisId> &original);
   void ApplyMerge(NodeView &node, AxisId merged_axis_id);
   void ApplyReorder(NodeView &node, const std::vector<AxisId> &reordered_axis);
+
+  Sparse CreateSparse(const Sparse::Type type, const Sparse::Value &value);
+  Sparse CreateObliqueBandSparse(const Sparse::AxisInfo &pre_axis,
+                                 const Sparse::AxisInfo &next_axis);
 
   NodeView Find(const char *name);
   NodeViewVisitor GetAllNodes();

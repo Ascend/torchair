@@ -549,6 +549,77 @@ TEST(Ascir_AxisOperations, AxisUpdate) {
   EXPECT_EQ(z0_new.allow_unaligned_tail, false);
 }
 
+TEST(Ascir_SparseOperations, CreateSparse) {
+  auto graph = CreateTestGraph();
+
+  auto s0 = graph.CreateSizeVar("s0");
+  auto z0 = graph.CreateAxis("z0", ascir::SizeExpr{{s0}});
+
+  auto s1 = graph.CreateSizeVar("s1");
+  auto z1 = graph.CreateAxis("z1", ascir::SizeExpr{{s0}});
+
+  auto s2 = graph.CreateSizeVar("s2");
+  auto s3 = graph.CreateSizeVar("s3");
+
+  Sparse::Value val(Sparse::SPARSE_TYPE_OBLIQUE_BAND);
+  val.ob.pre.id = z0.id;
+  val.ob.pre.position = s2;
+  val.ob.next.id = z1.id;
+  val.ob.next.position = s3;
+  auto sparse = graph.CreateSparse(Sparse::SPARSE_TYPE_OBLIQUE_BAND, val);
+  EXPECT_EQ(sparse.type, Sparse::SPARSE_TYPE_OBLIQUE_BAND);
+  EXPECT_EQ(sparse.value.ob.pre.id, z0.id);
+  bool res = (sparse.value.ob.pre.position == s2);
+  EXPECT_TRUE(res);
+  EXPECT_EQ(sparse.value.ob.next.id, z1.id);
+  res = (sparse.value.ob.next.position == s3);
+  EXPECT_TRUE(res);
+  auto get_sparse = graph.sparse[sparse.id];
+  EXPECT_EQ(get_sparse.type, Sparse::SPARSE_TYPE_OBLIQUE_BAND);
+  EXPECT_EQ(get_sparse.value.ob.pre.id, z0.id);
+  res = (get_sparse.value.ob.pre.position == s2);
+  EXPECT_TRUE(res);
+  EXPECT_EQ(get_sparse.value.ob.next.id, z1.id);
+  res = (get_sparse.value.ob.next.position == s3);
+  EXPECT_TRUE(res);
+}
+
+TEST(Ascir_SparseOperations, CreateObliqueBandSparse) {
+  auto graph = CreateTestGraph();
+
+  auto s0 = graph.CreateSizeVar("s0");
+  auto z0 = graph.CreateAxis("z0", ascir::SizeExpr{{s0}});
+
+  auto s1 = graph.CreateSizeVar("s1");
+  auto z1 = graph.CreateAxis("z1", ascir::SizeExpr{{s0}});
+
+  auto s2 = graph.CreateSizeVar("s2");
+  auto s3 = graph.CreateSizeVar("s3");
+
+  Sparse::AxisInfo pre_axis;
+  pre_axis.id = z0.id;
+  pre_axis.position = s2;
+  Sparse::AxisInfo next_axis;
+  next_axis.id = z1.id;
+  next_axis.position = s3;
+  auto sparse = graph.CreateObliqueBandSparse(pre_axis, next_axis);
+  EXPECT_EQ(sparse.type, Sparse::SPARSE_TYPE_OBLIQUE_BAND);
+  EXPECT_EQ(sparse.value.ob.pre.id, z0.id);
+  bool res = (sparse.value.ob.pre.position == s2);
+  EXPECT_TRUE(res);
+  EXPECT_EQ(sparse.value.ob.next.id, z1.id);
+  res = (sparse.value.ob.next.position == s3);
+  EXPECT_TRUE(res);
+  auto get_sparse = graph.sparse[sparse.id];
+  EXPECT_EQ(get_sparse.type, Sparse::SPARSE_TYPE_OBLIQUE_BAND);
+  EXPECT_EQ(get_sparse.value.ob.pre.id, z0.id);
+  res = (get_sparse.value.ob.pre.position == s2);
+  EXPECT_TRUE(res);
+  EXPECT_EQ(get_sparse.value.ob.next.id, z1.id);
+  res = (get_sparse.value.ob.next.position == s3);
+  EXPECT_TRUE(res);
+}
+
 TEST(Ascir_Graph, Graph_SortByExecOrder) {
   auto graph = CreateTestGraph();
 
