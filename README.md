@@ -515,6 +515,7 @@ logger用到的函数继承了logging模块的函数，下面仅列出常用的�
     - *npu_fx_pass* -是否在FX图上执行为npu注册的fx_pass，使能图融合。默认为False，不开启。可选参数为[True, False]。
     - *aot_config_enable_joint_graph* -是否将前反向图以一个完整图的方式运行。默认为False，不开启。可选参数为[True, False]。
     - *aot_config_output_loss_index* -如果指定了aot_config_enable_joint_graph为True，那么损失函数可能会"融合"到模块的前向传播中。通过aot_config_output_loss_index参数来指定某个前向传播的结果来进行反向传播。可选参数为[0, None]。None指的是不融合损失函数；0指的是指定第1个前向传播结果来做反向传播。
+    - *enable_ref_data* -如果存在ref类算子会改写输入内存的情况，构GE图时将Data类型修改为RefData类型，例如Assign、ScatterUpdate等算子。离线dynamo_export接口默认开启，在线时通过开关开启，默认为False，不开启。可选参数为[True, False]。
 
 ## TORCHAIR.DYNAMO_EXPORT
 `torchair.dynamo_export(*args, model, export_path="export_file", export_name="export", dynamic=False, config=CompilerConfig(), **kwargs)`

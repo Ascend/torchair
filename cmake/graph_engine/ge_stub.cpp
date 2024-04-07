@@ -132,7 +132,7 @@ class GraphSpecManager {
       AscendString type;
       node.GetType(type);
       TensorDesc desc;
-      if (type == "Data") {
+      if (type == "Data" || type == "RefData") {
         node.GetOutputDesc(0, desc);
         const auto &dims = desc.GetShape().GetDims();
         for (const auto i : dims) {

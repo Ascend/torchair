@@ -264,7 +264,7 @@ def _normalize_ge_graph(graph: GraphDef):
         op.attr["_output_name_key"].list.s[:] = [compat_as_bytes(desc.name) for desc in op.output_desc]
         op.attr["_output_name_value"].list.i[:] = list(range(len(op.output_desc)))
 
-        if op.type == "Data":
+        if op.type == "Data" or op.type == "RefData":
             continue
         for desc in op.input_desc:
             if not '_is_unfed_optional' in desc.attr:
@@ -299,7 +299,7 @@ def _update_internal_format_from_inputs(graph: GraphDef, runtime_inputs):
     torch_npu_module = sys.modules['torch_npu']
     input_index_mapping_graph_op: Dict[int, OpDef] = {}  # data节点的index到opDef的映射
     for op in graph.op:
-        if op.type == "Data":
+        if op.type == "Data" or op.type == "RefData":
             input_index_mapping_graph_op[op.attr["index"].i] = op
 
     for idx in range(len(runtime_inputs)):
