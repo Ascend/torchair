@@ -388,9 +388,29 @@ class ViewOfInput:
     def __init__(self, index, meta_output, sym_value_mapping):
         self._fx_input_index = index
         self._sym_value_mapping = sym_value_mapping
-        self._meta_output_shape = list(meta_output.size())
-        self._meta_output_stride = list(meta_output.stride())
-        self._meta_output_offset = meta_output.storage_offset()
+        self._meta_output_shape = self._generate_sym_exper(list(meta_output.size()))
+        self._meta_output_stride = self._generate_sym_exper(list(meta_output.stride()))
+        self._meta_output_offset = self._generate_sym_exper(meta_output.storage_offset())
+
+    @staticmethod
+    def _get_sym_int_value(sym_exper, value_of_sym):
+        if isinstance(sym_exper, int):
+            return sym_exper
+
+        if sym_exper in value_of_sym.keys():
+            return value_of_sym[sym_exper]
+        else:
+            return sym_exper.subs(value_of_sym)
+
+    @classmethod
+    def _generate_sym_exper(cls, metas):
+        if isinstance(metas, list):
+            return [cls._generate_sym_exper(meta) for meta in metas]
+
+        if isinstance(metas, int):
+            return metas
+
+        return metas.node.expr
 
     def compute_output(self, *args):
         real_input = args[self._fx_input_index]
@@ -410,14 +430,14 @@ class ViewOfInput:
         return value_of_sym
 
     def _compute_output_shape_stride_offset(self, value_of_sym):
-        if value_of_sym is None:
+        if value_of_sym is None or len(value_of_sym) == 0:
             return self._meta_output_shape, self._meta_output_stride, self._meta_output_offset
         output_shape, output_stride = [], []
         for meta_output_shape in self._meta_output_shape:
-            output_shape.append(sympy.simplify(str(meta_output_shape)).subs(value_of_sym))
+            output_shape.append(self._get_sym_int_value(meta_output_shape, value_of_sym))
         for meta_output_stride in self._meta_output_stride:
-            output_stride.append(sympy.simplify(str(meta_output_stride)).subs(value_of_sym))
-        output_offset = sympy.simplify(str(self._meta_output_offset)).subs(value_of_sym)
+            output_stride.append(self._get_sym_int_value(meta_output_stride, value_of_sym))
+        output_offset = self._get_sym_int_value(self._meta_output_offset, value_of_sym)
         return output_shape, output_stride, output_offset
 
 
@@ -630,7 +650,7 @@ class GeConcreteGraph(ConcreteGraphBase):
                     is_view2output_flag = True
                     fx_input_index = fx_inputs_mapping_reverse[input_index]
                     used_syms_in_meta_output = get_used_syms_in_meta(arg.meta)
-                    sym_value_mapping = {sym: all_sym_value_mapping[str(sym)] for sym in used_syms_in_meta_output}
+                    sym_value_mapping = {sym: all_sym_value_mapping[sym] for sym in used_syms_in_meta_output} 
                     self._fx_outputs[-1] = ViewOfInput(fx_input_index, arg.meta, sym_value_mapping)
                     break
             if is_view2output_flag:

@@ -209,29 +209,45 @@ def dump_graph(path: str, graph):
 def get_used_syms_in_meta(meta):
     if is_sym(meta):
         return {meta}
-    used_syms_in_meta = sympy.simplify(str(meta.storage_offset())).free_symbols
+    used_syms_in_meta = set()
+    if is_sym(meta.storage_offset()):
+        used_syms_in_meta.update(meta.storage_offset().node.expr.free_symbols)
     output_shape = list(meta.size())
     output_stride = list(meta.stride())
 
     for shape in output_shape:
-        used_syms_in_meta.update(sympy.simplify(str(shape)).free_symbols)
+        if is_sym(shape):
+            used_syms_in_meta.update(shape.node.expr.free_symbols)
     for stride in output_stride:
-        used_syms_in_meta.update(sympy.simplify(str(stride)).free_symbols)
+        if is_sym(stride):
+            used_syms_in_meta.update(stride.node.expr.free_symbols)
     return used_syms_in_meta
 
 
 def get_all_sym_value_mapping(fx_inputs_mapping_reverse, inputs):
-    sym_value_mapping = {}
-    for input_i, input in enumerate(inputs):
-        if is_sym(input.meta):
-            if str(input.meta) not in sym_value_mapping:
-                sym_value_mapping[str(input.meta)] = (-1, fx_inputs_mapping_reverse[input_i])
+    sym_symbol_set = set()
+    for _, input_arg in enumerate(inputs):
+        if is_sym(input_arg.meta):
+            sym_symbol_set.update(input_arg.meta.node.expr.free_symbols)
             continue
 
-        meta_input_shape = list(input.meta.size())
+        # 这里的逻辑是fx改图导致的，待fx改图消解后，不需要此处逻辑
+        meta_input_shape = list(input_arg.meta.size())
         for shape_i, shape in enumerate(meta_input_shape):
-            if is_sym(shape) and str(shape) not in sym_value_mapping:
-                sym_value_mapping[str(shape)] = (shape_i, fx_inputs_mapping_reverse[input_i])
+            if is_sym(shape):
+                sym_symbol_set.update(shape.node.expr.free_symbols)
+
+    sym_value_mapping = {}
+    for input_i, input_arg in enumerate(inputs):
+        if is_sym(input_arg.meta):
+            if input_arg.meta.node.expr in sym_symbol_set and input_arg.meta.node.expr not in sym_value_mapping:
+                sym_value_mapping[input_arg.meta.node.expr] = (-1, fx_inputs_mapping_reverse[input_i])
+            continue
+
+        meta_input_shape = list(input_arg.meta.size())
+        for shape_i, shape in enumerate(meta_input_shape):
+            if is_sym(shape) and shape.node.expr in sym_symbol_set and shape.node.expr not in sym_value_mapping:
+                sym_value_mapping[shape.node.expr] = (shape_i, fx_inputs_mapping_reverse[input_i])
     return sym_value_mapping
 
 
