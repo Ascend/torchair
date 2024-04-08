@@ -817,9 +817,9 @@ struct OutputAttrField<OUTPUT_INDEX, ATTR_NAME_PREFIX, std::vector<ascir::SizeEx
     }
 
     auto opdesc = ge::OpDescUtils::GetOpDescFromOperator(*op);
-    ge::AttrUtils::SetListInt(opdesc->MutableOutputDesc(0), IS_ZERO, is_zero);
-    ge::AttrUtils::SetListListInt(opdesc->MutableOutputDesc(0), NUMS, nums);
-    ge::AttrUtils::SetListListInt(opdesc->MutableOutputDesc(0), DENS, dens);
+    ge::AttrUtils::SetListInt(opdesc->MutableOutputDesc(OUTPUT_INDEX), IS_ZERO, is_zero);
+    ge::AttrUtils::SetListListInt(opdesc->MutableOutputDesc(OUTPUT_INDEX), NUMS, nums);
+    ge::AttrUtils::SetListListInt(opdesc->MutableOutputDesc(OUTPUT_INDEX), DENS, dens);
     return *this;
   }
 };
