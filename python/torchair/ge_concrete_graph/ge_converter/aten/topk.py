@@ -32,7 +32,7 @@ def conveter_aten_topk_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::topk(Tensor self, SymInt k, int dim=-1, bool largest=True, bool sorted=True) -> (Tensor values, Tensor indices)"""
-    raise NotImplementedError("torch.ops.aten.topk.default ge_converter is not implemented!")
+    return ge.TopKV2(self, k, sorted=sorted, dim=dim, largest=largest)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.topk.values)

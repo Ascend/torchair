@@ -1467,5 +1467,23 @@ class TorchairSt(unittest.TestCase):
 
         GeConcreteGraph.__call__ = src_call
 
+    def test_topk(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, b):
+                torch.topk(x, b)
+
+        model = Model()
+        model = torch.compile(model, backend=npu_backend, dynamic=True)
+        x = torch.randn([4])
+        b = 3
+        model(x, b)
+        x = torch.randn([6, 7])
+        b = 4
+        model(x, b)
+
+
 if __name__ == '__main__':
     unittest.main()
