@@ -96,12 +96,24 @@ bash setup.sh
 
 ```shell
 export PYTHONPATH=$PYTHONPATH:/path/to/your/torchair/npu_tuned_model/llm
-cann_path=/usr/local/Ascend #昇腾cann包安装目录
+cann_path=/usr/local/Ascend # 昇腾cann包安装目录
 source ${cann_path}/latest/bin/setenv.bash
-deepspeed --num_gpus=8 examples/llama2/run_llama2.py --model_path=xxx/llama2-70b
+model_path=xxx/llama2-70b # 下载的权重和模型信息
+python3 examples/merge_qkv_weight.py --model_path=${model_path} --model_name=llama2 --tp_size=8 --output_path=xxx/llama-70b_qkv
+# 使用models/common/mc2_adapter.py自定义的LinearAllreduce替换原生的deepspeed.module_inject.layers.LinearAllreduce
+deepspeed --num_gpus=8 examples/llama2/run_llama2.py --model_path=xxx/llama2-70b_qkv
 ```
 
 # 使能改造好的npu models
+
+一：先将对应模型的权重进行qkv融合
+
+```shell
+model_path=xxx/llama2-70b # 下载的权重和模型信息
+python3 examples/merge_qkv_weight.py --model_path=${model_path} --model_name=llama2 --tp_size=8 --output_path=xxx/llama-70b_qkv
+```
+
+二：使用models/common/mc2_adapter.py自定义的LinearAllreduce替换原生的deepspeed.module_inject.layers.LinearAllreduce
 
 - 直接导入LlmModelRunner可以快速执行一个已经改造好的models
 
@@ -117,7 +129,7 @@ prompts = [
     "Common sense questions and answers\n\nQuestion: Can you introduce yourself?\nFactual answer:",
 ]
 
-model_path = "/path/to/your/llama2-70b"
+model_path = "/path/to/your/llama2-70b_qkv"
 config = {
     "input_padding": True,
     "dtype": torch.float16,
@@ -165,8 +177,8 @@ _MODELS = {
     "llama2": ("modeling_llama", "LlamaForCausalLM"),
 }
 
-# 前端切分的大模型还需要指定切分的layer
-# "LlamaDecoderLayer", ('self_attn.o_proj', 'mlp.down_proj')是llama2需要做切分的layer
+# 前端切分的大模型还需要指定被切分的layer在哪一层汇聚
+# "LlamaDecoderLayer", ('self_attn.o_proj', 'mlp.down_proj')是llama2需要做allreduce的layer
 _MODEL_INJECTION_POLICY = {
     "llama2" : ("modeling_llama", "LlamaDecoderLayer", ('self_attn.o_proj', 'mlp.down_proj'))
 }

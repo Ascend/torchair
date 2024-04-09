@@ -8,7 +8,7 @@
 
 **优化原因**：transformers的llama源码中对于kv cache的处理是作为模型的输入，模型中通过cat进行拼接后，返回新的kv cache，这种更新方式存在多次申请内存及拷贝的性能损失。
 
-**优化方式**：根据句子最大长度申请号一块固定大小的kv cache tensor，然后通过scatter_update_算子对指定位置上的kv cache进行更新
+**优化方式**：根据句子最大长度申请好一块固定大小的kv cache tensor，然后通过scatter_update_算子对指定位置上的kv cache进行更新
 
 ```python
 # transformers/models/llama/modeling_llama.py
@@ -249,3 +249,206 @@ if use_cache:
 
 hidden_states = self.norm(hidden_states, residual)
 ```
+
+## 全量优化计算量
+
+优化原因：根据网络的计算逻辑，全量计算完logits后只取seq的最新位置的数据，所以在全量的最后线性层计算可以只对最新的seq位置做计算，降低计算量
+
+优化方式：
+
+```python
+# LlamaForCausalLM forward函数计算logits的逻辑
+# 修改前
+if self.pretraining_tp > 1:
+    lm_head_slices = self.lm_head.weight.split(self.vocab_size // self.pretraining_tp, dim=0)
+    logits = [F.linear(hidden_states, lm_head_slices[i]) for i in range(self.pretraining_tp)]
+    logits = torch.cat(logits, dim=-1)
+else:
+    logits = self.lm_head(hidden_states)
+# 修改后
+if self.pretraining_tp > 1:
+    lm_head_slices = self.lm_head.weight.split(self.vocab_size // self.pretraining_tp, dim=0)
+    logits = [F.linear(hidden_states, lm_head_slices[i]) for i in range(self.pretraining_tp)]
+    logits = torch.cat(logits, dim=-1)
+else:
+    # 由于logits最后也只取[:,-1,:]，相当于只取最新seq位置上的数据，l
+    # 所以在全量的最后线性层计算可以只对最新的seq位置做计算，降低计算量
+    bs, seq, hidden = hidden_states.size()
+    if seq > 1:
+        gather_index = torch.ones(bs, dtype=torch.int64, device=hidden_states.device) * (seq - 1)
+        gather_index = gather_index.unsqueeze(dim=1).unsqueeze(dim=2).repeat(1, 1, hidden)
+        hidden_states = torch.gather(hidden_states, 1, gather_index)
+    logits = self.lm_head(hidden_states)
+
+# torch_npu.npu_prompt_flash_attention入参next_token改成0
+```
+
+## qkv融合
+
+优化原因：将三个矩阵乘替换为一个矩阵乘，最大化使用npu的计算能力提升性能
+
+优化方式：
+
+```python
+# LlamaAttention __init__函数新增修改
+self.qkv = nn.Linear(self.hidden_size, self.num_heads * self.head_dim + 2 * self.num_key_value_heads * 		                      self.head_dim, bias=False)
+
+# LlamaAttention forward函数
+# 修改前
+query_states = self.q_proj(hidden_states)
+key_states = self.k_proj(hidden_states)
+value_states = self.v_proj(hidden_states)
+# 修改后，qkv融合后参与矩阵乘计算，然后将计算结果进行拆分
+qkv_states = self.qkv(hidden_states)
+query_states, key_states, value_states = qkv_states.split(
+    [self.q_hidden_size, self.kv_hidden_size, self.kv_hidden_size], dim=2)
+```
+
+**此优化项还需要对权重进行融合，否则新创建的qkv layer没有初始权重值**
+
+```python
+# 权重融合改动
+def merge_qkv_weight(self, tp_size=1):
+  if self.model is None:
+      raise ValueError("Model is None, please check")
+
+  def _to_parameter(data):
+      return nn.Parameter(data, requires_grad=False)
+
+  qw_size = self.model.layers[0].self_attn.q_proj.weight.shape  # [out_channel, in_channel]
+  kw_size = self.model.layers[0].self_attn.k_proj.weight.shape
+  vw_size = self.model.layers[0].self_attn.v_proj.weight.shape
+
+  q_sliced_size = qw_size[0] // tp_size
+  k_sliced_size = kw_size[0] // tp_size
+  v_sliced_size = vw_size[0] // tp_size
+  print(f"sliced out channel size, q:{q_sliced_size}, k:{k_sliced_size}, v:{v_sliced_size}")
+
+  for i in range(len(self.model.layers)):
+      qw = self.model.layers[i].self_attn.q_proj.weight
+      kw = self.model.layers[i].self_attn.k_proj.weight
+      vw = self.model.layers[i].self_attn.v_proj.weight
+
+      weight_list = []
+      for j in range(tp_size):
+          sliced_qw = qw[j * q_sliced_size: (j + 1) * q_sliced_size, :]
+          sliced_kw = kw[j * k_sliced_size: (j + 1) * k_sliced_size, :]
+          sliced_vw = vw[j * v_sliced_size: (j + 1) * v_sliced_size, :]
+          weight_list.append(_to_parameter(torch.cat([sliced_qw, sliced_kw, sliced_vw], axis=0)))
+
+      if len(weight_list) == 1:
+          self.model.layers[i].self_attn.qkv.weight = weight_list[0]
+      else:
+          self.model.layers[i].self_attn.qkv.weight = _to_parameter(torch.cat(weight_list, axis=0))
+```
+
+## 全量替换mc2融合算子
+
+优化原因：原生LinearAllreduce中matmul和allreduce是串行的，多个LinearAllreduce执行也是串行执行，性能较慢。替换mc2融合算子后能够使matmul和allreduce之间产生流水，提高性能。
+
+优化方式：使用**models/common/mc2_adapter.py**自定义的**LinearAllreduce**替换原生的**deepspeed.module_inject.layers.LinearAllreduce**
+
+```python
+import torch
+from torch import nn
+from deepspeed import comm as dist
+import torch_npu
+
+class LinearAllreduce(nn.Module):
+    def __init__(self, weight, bias=None, mp_group=None):
+        super(LinearAllreduce, self).__init__()
+        self.weight = weight
+        self.bias = bias
+        self.mp_group = mp_group
+        if self.mp_group is not None:
+            rank = torch.distributed.get_rank(self.mp_group)
+            global_rank = torch.distributed.get_global_rank(self.mp_group, rank)
+            self.hcomm_info = self.mp_group._get_backend(torch.device("npu")).get_hccl_comm_name(global_rank)
+
+    def forward(self, input):
+        bs, seq, hidden_size = input.shape
+        if seq == 1:
+            output = torch.matmul(input, self.weight.transpose(-1, -2))
+            if self.mp_group is not None:
+                dist.all_reduce(output, group=self.mp_group)
+            if self.bias is not None:
+                output += self.bias
+        else:
+            output = torch_npu.npu_mm_all_reduce_base(input, self.weight.transpose(-1, -2).contiguous(),
+                                                      self.hcomm_info)
+
+        return output
+```
+
+# 性能数据
+
+在Ascend910B4的机器上，执行llama2-70b，4batch size，输入输出padding到1024长度的性能数据如下：
+
+<table class="tg">
+<thead>
+  <tr>
+    <th class="tg-0pky" rowspan="2">优化项</th>
+    <th class="tg-0pky" colspan="2">单算子模式</th>
+    <th class="tg-0pky" colspan="2">图模式</th>
+  </tr>
+  <tr>
+    <th class="tg-0pky">全量</th>
+    <th class="tg-0pky">增量</th>
+    <th class="tg-0pky">全量</th>
+    <th class="tg-0pky">增量</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td class="tg-0pky">原始脚本</td>
+    <td class="tg-0pky"></td>
+    <td class="tg-0pky"></td>
+    <td class="tg-0pky"></td>
+    <td class="tg-0pky"></td>
+  </tr>
+  <tr>
+    <td class="tg-0pky">固定kv cache</td>
+    <td class="tg-0pky"></td>
+    <td class="tg-0pky"></td>
+    <td class="tg-0pky">930ms</td>
+    <td class="tg-0pky">83ms</td>
+  </tr>
+  <tr>
+    <td class="tg-0pky">替换FlashAttention&amp;&amp;cos/sin优化</td>
+    <td class="tg-0pky"></td>
+    <td class="tg-0pky"></td>
+    <td class="tg-0pky">789ms</td>
+    <td class="tg-0pky">44ms</td>
+  </tr>
+  <tr>
+    <td class="tg-0pky">Add+RMSNorm融合</td>
+    <td class="tg-0pky"></td>
+    <td class="tg-0pky"></td>
+    <td class="tg-0pky">660ms</td>
+    <td class="tg-0pky">39ms</td>
+  </tr>
+  <tr>
+    <td class="tg-0pky">全量优化计算量</td>
+    <td class="tg-0pky"></td>
+    <td class="tg-0pky"></td>
+    <td class="tg-0pky">633ms</td>
+    <td class="tg-0pky">39ms</td>
+  </tr>
+  <tr>
+    <td class="tg-0pky">qkv融合</td>
+    <td class="tg-0pky"></td>
+    <td class="tg-0pky"></td>
+    <td class="tg-0pky">629ms</td>
+    <td class="tg-0pky">37.5ms</td>
+  </tr>
+  <tr>
+    <td class="tg-0pky">全量替换mc2融合算子</td>
+    <td class="tg-0pky"></td>
+    <td class="tg-0pky"></td>
+    <td class="tg-0pky">570ms</td>
+    <td class="tg-0pky">37.5ms</td>
+  </tr>
+</tbody>
+</table>
+
+

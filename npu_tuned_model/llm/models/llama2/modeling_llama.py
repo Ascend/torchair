@@ -241,6 +241,9 @@ class LlamaAttention(nn.Module):
         self.max_position_embeddings = config.max_position_embeddings
 
         self.scale_value = 1 / math.sqrt(self.head_dim)
+        # q k v merge config
+        self.q_hidden_size = self.num_heads * self.head_dim // config.world_size
+        self.kv_hidden_size = self.num_key_value_heads * self.head_dim // config.world_size
 
         if (self.head_dim * self.num_heads) != self.hidden_size:
             raise ValueError(
@@ -251,6 +254,8 @@ class LlamaAttention(nn.Module):
         self.k_proj = nn.Linear(self.hidden_size, self.num_key_value_heads * self.head_dim, bias=False)
         self.v_proj = nn.Linear(self.hidden_size, self.num_key_value_heads * self.head_dim, bias=False)
         self.o_proj = nn.Linear(self.num_heads * self.head_dim, self.hidden_size, bias=False)
+        self.qkv = nn.Linear(self.hidden_size,
+                             self.num_heads * self.head_dim + 2 * self.num_key_value_heads * self.head_dim, bias=False)
 
     def _shape(self, tensor: torch.Tensor, seq_len: int, bsz: int):
         return tensor.view(bsz, seq_len, self.num_heads, self.head_dim).transpose(1, 2).contiguous()
@@ -284,9 +289,10 @@ class LlamaAttention(nn.Module):
             value_states = torch.cat(value_states, dim=-1)
 
         else:
-            query_states = self.q_proj(hidden_states)
-            key_states = self.k_proj(hidden_states)
-            value_states = self.v_proj(hidden_states)
+            # qkv融合后参与矩阵乘计算，然后将计算结果进行拆分
+            qkv_states = self.qkv(hidden_states)
+            query_states, key_states, value_states = qkv_states.split(
+                [self.q_hidden_size, self.kv_hidden_size, self.kv_hidden_size], dim=2)
 
         # format BSND
         query_states = query_states.view(bsz, q_len, self.num_heads, self.head_dim)
@@ -314,7 +320,7 @@ class LlamaAttention(nn.Module):
                                                                value_states1.contiguous(), num_heads=self.num_heads,
                                                                input_layout="BSND",
                                                                scale_value=self.scale_value,
-                                                               pre_tokens=65535, next_tokens=65535,
+                                                               pre_tokens=65535, next_tokens=0,
                                                                atten_mask=attention_mask,
                                                                num_key_value_heads=self.num_key_value_heads)
         else:
@@ -739,13 +745,13 @@ class LlamaModel(LlamaPreTrainedModel):
 class LlamaForCausalLM(LlamaPreTrainedModel):
     _tied_weights_keys = ["lm_head.weight"]
 
-    def __init__(self, config, world_size=1):
+    def __init__(self, config):
         super().__init__(config)
+        config.world_size = int(os.getenv("WORLD_SIZE", "1"))
         self.model = LlamaModel(config)
         self.pretraining_tp = config.pretraining_tp
         self.vocab_size = config.vocab_size
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
-        self.world_size = world_size
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -753,6 +759,7 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
         self.padding_mask = None
         self.prompt_length = None
         self.updated_kv_positions = None
+        self.world_size = None
 
     def get_input_embeddings(self):
         return self.model.embed_tokens
@@ -840,6 +847,13 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
             logits = [F.linear(hidden_states, lm_head_slices[i]) for i in range(self.pretraining_tp)]
             logits = torch.cat(logits, dim=-1)
         else:
+            # 由于logits最后也只取[:,-1,:]，相当于只取最新seq位置上的数据，l
+            # 所以在全量的最后线性层计算可以只对最新的seq位置做计算，降低计算量
+            bs, seq, hidden = hidden_states.size()
+            if seq > 1:
+                gather_index = torch.ones(bs, dtype=torch.int64, device=hidden_states.device) * (seq - 1)
+                gather_index = gather_index.unsqueeze(dim=1).unsqueeze(dim=2).repeat(1, 1, hidden)
+                hidden_states = torch.gather(hidden_states, 1, gather_index)
             logits = self.lm_head(hidden_states)
         logits = logits.float()
 
@@ -950,6 +964,39 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
                 tuple(past_state.index_select(0, beam_idx.to(past_state.device)) for past_state in layer_past),
             )
         return reordered_past
+
+    def merge_qkv_weight(self, tp_size=1):
+        if self.model is None:
+            raise ValueError("Model is None, please check")
+
+        def _to_parameter(data):
+            return nn.Parameter(data, requires_grad=False)
+
+        qw_size = self.model.layers[0].self_attn.q_proj.weight.shape  # [out_channel, in_channel]
+        kw_size = self.model.layers[0].self_attn.k_proj.weight.shape
+        vw_size = self.model.layers[0].self_attn.v_proj.weight.shape
+
+        q_sliced_size = qw_size[0] // tp_size
+        k_sliced_size = kw_size[0] // tp_size
+        v_sliced_size = vw_size[0] // tp_size
+        print(f"sliced out channel size, q:{q_sliced_size}, k:{k_sliced_size}, v:{v_sliced_size}")
+
+        for i in range(len(self.model.layers)):
+            qw = self.model.layers[i].self_attn.q_proj.weight
+            kw = self.model.layers[i].self_attn.k_proj.weight
+            vw = self.model.layers[i].self_attn.v_proj.weight
+
+            weight_list = []
+            for j in range(tp_size):
+                sliced_qw = qw[j * q_sliced_size: (j + 1) * q_sliced_size, :]
+                sliced_kw = kw[j * k_sliced_size: (j + 1) * k_sliced_size, :]
+                sliced_vw = vw[j * v_sliced_size: (j + 1) * v_sliced_size, :]
+                weight_list.append(_to_parameter(torch.cat([sliced_qw, sliced_kw, sliced_vw], axis=0)))
+
+            if len(weight_list) == 1:
+                self.model.layers[i].self_attn.qkv.weight = weight_list[0]
+            else:
+                self.model.layers[i].self_attn.qkv.weight = _to_parameter(torch.cat(weight_list, axis=0))
 
     def _mark_model_inputs_static(self, model_inputs):
         for key, value in model_inputs.items():
