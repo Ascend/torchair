@@ -124,16 +124,13 @@ Status Session::AutoTuneGraph(const ge::Graph &graph, const std::map<ge::AscendS
   TNG_LOG(INFO) << "Auto tuning graph";
   TNG_RETURN_IF_ERROR(NpuAoe::GetInstance().AoeTuningInitialize(options.at("work_path"), options.at("aoe_mode")));
   auto_tune_init_ = true;
-  uint32_t id = 9999;
   {
     ge::Graph clone_graph("aoe_aopied_graph");
     TNG_ASSERT_GE_OK(clone_graph.CopyFrom(graph));
-    std::map<ge::AscendString, ge::AscendString> optionsTmp;
-    TNG_RETURN_IF_ERROR(AddGraph(id, clone_graph, optionsTmp));
 
     (void)NpuAoe::GetInstance().RunAoeTuning(clone_graph, options, example_inputs, stream, global_ge_session.get());
   }
-  return RemoveGraph(id);
+  return Status::Success();
 }
 
 Status Session::RemoveGraph(uint32_t id) {
