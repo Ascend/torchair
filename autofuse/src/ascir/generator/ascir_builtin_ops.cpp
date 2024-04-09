@@ -60,6 +60,7 @@ REG_ASC_IR_1IO(Exp).UseFirstInputDataType();
 
 REG_ASC_IR_2I1O(MatMul).UseFirstInputDataType();
 REG_ASC_IR_2I1O(Muls).UseFirstInputDataType();
+REG_ASC_IR_2I1O(Mul).UseFirstInputDataType();
 REG_ASC_IR_2I1O(Add).UseFirstInputDataType();
 
 REG_ASC_IR_START_NODE(TbufData);
