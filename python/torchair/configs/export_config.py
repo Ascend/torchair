@@ -16,7 +16,7 @@ class ExportConfig(NpuBaseConfig):
 
     def __init__(self):
         self.export_mode = OptionValue(False, [False, True])
-        self.export_path_dir = MustExistedPathValue
+        self.export_path_dir = MustExistedPathValue("./")
         self.export_name = None
         self.weight_name = None
         self.inputs_name = None
