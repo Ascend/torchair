@@ -406,9 +406,13 @@ def map_graph_rng_state(gen: torch.Generator = None):
 
 
 class GeGraph(object):
-    def __init__(self):
-        self._model = ModelDef()
-        self._proto = self._model.graph.add()
+    def __init__(self, model_def: ModelDef = None):
+        if model_def is None:
+            self._model = ModelDef()
+            self._proto = self._model.graph.add()
+        else:
+            self._model = model_def
+            self._proto = self._model.graph[0]
         self._python_code = self._python_code_init()
         self._generator_rng_state = defaultdict(
             map_graph_rng_state)
@@ -474,6 +478,10 @@ class GeGraph(object):
     @property
     def generator_rng_state(self):
         return self._generator_rng_state
+
+    @property
+    def model(self):
+        return self._model
 
     @name.setter
     def name(self, v):

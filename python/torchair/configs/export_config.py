@@ -1,4 +1,4 @@
-from torchair.configs.option_base import OptionValue
+from torchair.configs.option_base import OptionValue, MustExistedPathValue
 from torchair.configs.option_base import NpuBaseConfig
 
 
@@ -15,18 +15,17 @@ class ExportConfig(NpuBaseConfig):
     """Config for export"""
 
     def __init__(self):
-        self.export_mode = False
-        self.export_path_dir = None
+        self.export_mode = OptionValue(False, [False, True])
+        self.export_path_dir = MustExistedPathValue
         self.export_name = None
         self.weight_name = None
         self.inputs_name = None
         self.experimental = ExperimentalConfig()
+        self.enable_save_load_mode = OptionValue(False, [False, True])
 
     def as_dict(self):
         if self.export_mode:
-            export_option = {}
-            export_option['export_path_dir'] = self.export_path_dir
-            export_option['export_name'] = self.export_name
+            export_option = {'export_path_dir': self.export_path_dir, 'export_name': self.export_name}
             return export_option, {}
         return {}, {}
 

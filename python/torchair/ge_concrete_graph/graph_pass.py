@@ -4,6 +4,7 @@ from collections import namedtuple, defaultdict
 from typing import Any, Dict, List, Tuple, Union, Callable
 import torch
 from torchair.core.utils import logger
+from torchair.ge_concrete_graph.ge_graph import GeGraph
 from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef, TensorDescriptor, TensorDef, OpDef
 from torchair.ge_concrete_graph.ge_graph import _ge_proto_dtype_to_ge_dtype, compat_as_bytes
 from torchair.ge_concrete_graph.ge_graph import Tensor as GeTensor
@@ -119,13 +120,24 @@ def optimize_sym_pack(graph: GraphDef, inputs: List, placements: List, fx_inputs
     additional_fx_inputs: List[List[int]] = _transfer_sym_pack_to_data()
     _update_date_index_and_mapping()
 
-    def pack_fx_input_for_data(*args: Any):
-        all_fx_inputs = list(args)
-        for input_idx in additional_fx_inputs:
-            all_fx_inputs.append(torch.tensor([all_fx_inputs[idx] for idx in input_idx]))
-        return all_fx_inputs
+    class PackFxInputProcess:
+        def __init__(self, additional_fx_inputs):
+            self._additional_fx_inputs = additional_fx_inputs
 
-    return pack_fx_input_for_data
+        def __call__(self, *args: Any):
+            all_fx_inputs = list(args)
+            for input_idx in self._additional_fx_inputs:
+                all_fx_inputs.append(torch.tensor([all_fx_inputs[idx] for idx in input_idx]))
+            return all_fx_inputs
+
+        def __repr__(self):
+            return f"PackFxInputProcess(additional_fx_inputs={self._additional_fx_inputs})"
+
+        @property
+        def additional_fx_inputs(self):
+            return self._additional_fx_inputs
+
+    return PackFxInputProcess(additional_fx_inputs)
 
 
 ref_op_info = namedtuple("ref_op_info", ["op_def", "output_id", "ref_input_name", "output_ref_count", "is_net_output"])
@@ -230,8 +242,8 @@ def optimize_reference_op_redundant_copy(graph: GraphDef):
             logger.debug(f"Assign op: {assign_tensor} is not used to update ref_op output to data op.")
             continue
         ref_op, ref_idx, ref_op_input = ref_op_infos[assign_op.input[1]].op_def, \
-                                        ref_op_infos[assign_op.input[1]].output_id, \
-                                        ref_op_infos[assign_op.input[1]].ref_input_name
+            ref_op_infos[assign_op.input[1]].output_id, \
+            ref_op_infos[assign_op.input[1]].ref_input_name
         if ref_op_input not in tensormove_ops.keys():
             logger.debug(f"ref_op input: {ref_op_input} type is not TensorMove, skip TensorMove optimization.")
             continue
@@ -246,7 +258,7 @@ def optimize_reference_op_redundant_copy(graph: GraphDef):
             continue
 
         ref_out_count, is_net_output = ref_op_infos[assign_op.input[1]].output_ref_count, \
-                                       ref_op_infos[assign_op.input[1]].is_net_output
+            ref_op_infos[assign_op.input[1]].is_net_output
         if is_net_output or ref_out_count == 1:
             logger.debug(f"Assign op: {assign_tensor} is used to copy {assign_op.input[1]} to {assign_op.input[0]}, "
                          f"update ref_op ref_input_{ref_idx} from {ref_op_input} to {tensormove_op.input[0]}.")
@@ -313,4 +325,3 @@ def replace_data_to_refdata(graph, ref_input_idx, inputs, fx_inputs_mapping):
             if len(input_name_list) > 0 and input_name_list[0] in replaced_map.keys():
                 index_str = ":" + input_name_list[1] if len(input_name_list) > 1 else ""
                 node.input[idx] = replaced_map[input_name_list[0]] + index_str
-

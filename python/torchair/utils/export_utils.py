@@ -1,4 +1,5 @@
 import os
+from typing import TypedDict
 import torch
 
 from torchair.core.utils import logger
@@ -7,6 +8,7 @@ from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type
 from torchair.ge_concrete_graph.ge_graph import compat_as_bytes, GeGraph
 from torchair.ge_concrete_graph.utils import dump_graph
 from torchair.utils.path_manager import PathManager
+from torchair.ge_concrete_graph.ge_ir_pb2 import ModelDef
 
 
 def _get_subpath(export_path_dir):
@@ -69,8 +71,7 @@ def _is_weight_externalized(inputs, weight_name, export_graph):
     return weight_externalized, used_weight_num
 
 
-def _convert_data_to_const(inputs, export_graph, file_path, config):
-    weight_name = config.export.weight_name
+def _convert_data_to_const(inputs, export_graph, file_path, weight_name):
     weight_externalized, used_weight_num = _is_weight_externalized(inputs, weight_name, export_graph)
     if used_weight_num == 0:
         return weight_externalized, used_weight_num
@@ -115,7 +116,7 @@ def _save_weight2file(inputs, file_path, weight_name, used_weight_num):
 
         saved_num += 1
         print('\r torchair dynamo export save weight {0}% {1}/{2}'.format(
-                min(100, int(saved_num / used_weight_num * 100)), saved_num, used_weight_num), end='')
+            min(100, int(saved_num / used_weight_num * 100)), saved_num, used_weight_num), end='')
     print(" ")
     logger.info(f'save Weight tensor to file over...')
 
@@ -123,21 +124,62 @@ def _save_weight2file(inputs, file_path, weight_name, used_weight_num):
 _next_export_graph_id = 0
 
 
-def make_export_graph(inputs, config, ori_graph):
+def make_export_graph(ori_graph, inputs, root_file_path, weight_name):
     export_graph = GeGraph()
     export_graph.MergeFrom(ori_graph._proto)
     logger.debug(f'exported graph name: {export_graph.name}')
 
-    file_path = config.export.export_path_dir
-    sub_file_path = _get_subpath(file_path)
-
+    sub_file_path = _get_subpath(root_file_path)
     os.makedirs(sub_file_path, exist_ok=True)
 
-    weight_externalized, used_weight_num = _convert_data_to_const(inputs, export_graph, sub_file_path, config)
+    weight_externalized, used_weight_num = _convert_data_to_const(inputs, export_graph, sub_file_path, weight_name)
 
     if used_weight_num != 0 and weight_externalized:
-        _save_weight2file(inputs, sub_file_path, config.export.weight_name, used_weight_num)
+        _save_weight2file(inputs, sub_file_path, weight_name, used_weight_num)
 
     dump_graph(sub_file_path + "/dynamo.pbtxt", export_graph)
 
     return export_graph
+
+
+def _get_dict_attr_key_value_name(attr_name):
+    return attr_name + "_keys", attr_name + "_values"
+
+
+def serialize_str_dict_attr(model_def: ModelDef, attr_name, attr_dict):
+    key_name, value_name = _get_dict_attr_key_value_name(attr_name)
+    model_def.attr[key_name].list.s[:] = [compat_as_bytes(_) for _ in attr_dict.keys()]
+    model_def.attr[key_name].list.val_type = 1
+    model_def.attr[value_name].list.s[:] = [compat_as_bytes(_) for _ in attr_dict.values()]
+    model_def.attr[value_name].list.val_type = 1
+
+
+def serialize_int_dict_attr(model_def: ModelDef, attr_name, attr_dict):
+    key_name, value_name = _get_dict_attr_key_value_name(attr_name)
+    model_def.attr[key_name].list.i[:] = [_ for _ in attr_dict.keys()]
+    model_def.attr[key_name].list.val_type = 2
+    model_def.attr[value_name].list.i[:] = [_ for _ in attr_dict.values()]
+    model_def.attr[value_name].list.val_type = 2
+
+
+def _get_attr_list(model_def: ModelDef, attr_name):
+    if model_def.attr[attr_name].list.val_type == 2:
+        return model_def.attr[attr_name].list.i[:]
+    elif model_def.attr[attr_name].list.val_type == 1:
+        return [_.decode("utf-8") for _ in model_def.attr[attr_name].list.s]
+    else:
+        raise ValueError(f"Unsupported value type {model_def.attr[attr_name].list.val_type}")
+
+
+def unserialize_dict_attr(model_def: ModelDef, attr_name):
+    key_name, value_name = _get_dict_attr_key_value_name(attr_name)
+
+    list_key = _get_attr_list(model_def, key_name)
+    list_value = _get_attr_list(model_def, value_name)
+
+    logger.debug(f"get {key_name} keys from graph: {list_key}")
+    logger.debug(f"get {value_name} values from graph:: {list_value}")
+    if len(list_key) != len(list_value):
+        raise AssertionError(f"{attr_name} keys len {len(list_key)}"
+                             f" is not equal to {attr_name} values len {len(list_value)}")
+    return {list_key[i]: list_value[i] for i in range(len(list_key))}

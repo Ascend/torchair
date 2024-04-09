@@ -9,9 +9,11 @@ from torchair.configs.compiler_config import CompilerConfig
 from torchair.ge_concrete_graph import ge_converter
 from torchair.experimental.inference import use_internal_format_weight
 from torchair.core.utils import logger
+from torchair.compiled_model import save_graph, load_graph
+from torchair.ge_concrete_graph.compiled_model import CompiledModel
 
 __all__ = ['get_compiler', 'get_npu_backend', 'dynamo_export', 'CompilerConfig',
-           'use_internal_format_weight', 'logger']
+           'use_internal_format_weight', 'logger', 'save_graph', 'load_graph']
 
 # Dependency library version verification
 protobuf_version = pkg_resources.get_distribution("protobuf").version

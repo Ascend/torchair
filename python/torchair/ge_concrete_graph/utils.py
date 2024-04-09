@@ -257,3 +257,37 @@ def is_integral_type(dtype: torch.dtype, include_bool: bool):
     if dtype in [torch.int8, torch.uint8, torch.int16, torch.int32, torch.int64]:
         return True
     return False
+
+
+class InputProcessing:
+    def __init__(self, fx_inputs_mapping, uncontiguous_ge_input_idx, nontensor_ge_input_idx):
+        self._fx_inputs_mapping = fx_inputs_mapping
+        self._uncontiguous_ge_input_idx = uncontiguous_ge_input_idx
+        self._nontensor_ge_input_idx = nontensor_ge_input_idx
+
+    def __call__(self, *args):
+        if len(self._fx_inputs_mapping) == len(args):
+            if len(self._uncontiguous_ge_input_idx) == 0 and len(self._nontensor_ge_input_idx) == 0:
+                return args
+            else:
+                inputs = list(args)
+                for idx in self._uncontiguous_ge_input_idx:
+                    inputs[idx] = inputs[idx].contiguous()
+                for idx in self._nontensor_ge_input_idx:
+                    inputs[idx] = torch.tensor(inputs[idx])
+                return inputs
+        else:
+            inputs = [None] * len(self._fx_inputs_mapping)
+            for fx_idx, ge_idx in self._fx_inputs_mapping.items():
+                inputs[ge_idx] = args[fx_idx]
+
+            for idx in self._uncontiguous_ge_input_idx:
+                inputs[idx] = inputs[idx].contiguous()
+            for idx in self._nontensor_ge_input_idx:
+                inputs[idx] = torch.tensor(inputs[idx])
+            return inputs
+
+    def __repr__(self):
+        return (f"InputProcessing(fx_inputs_mapping={self._fx_inputs_mapping},"
+                f" uncontiguous_ge_input_idx={self._uncontiguous_ge_input_idx},"
+                f" nontensor_ge_input_idx={self._nontensor_ge_input_idx})")

@@ -538,6 +538,31 @@ logger用到的函数继承了logging模块的函数，下面仅列出常用的�
 ### Parameters
 - **model**(*torch.nn.Module*) -用户的自定义模型。
 
+## TORCHAIR.COMPILEDMODEL.SAVE_GRAPH
+在推理场景下，将用户传入的model导出一张Ge Graph, 该graph经过dynamo编译，同时经过torchair优化后的Ge Graph。
+注意：该接口与`TORCHAIR.COMPILEDMODEL.LOAD_GRAPH`配套使用。
+
+### Parameters
+- **model**(*torch.nn.Module*) -需要导出的model。
+- **args** -save_graph时的样例输入, 需要用Tuple传入
+- **dynamic**(*bool*) -设置导出静态模型还是动态模型。默认为False，静态模型。
+- **config**(*CompilerConfig*) -配置项，具体可见torchair.CompilerConfig。
+- **save_path**(*str*, *pathlib.Path*) -离线图导出的Ge Graph的路径，默认路径为当前目录下的`save_path`，同时会创建Ge Graph文件名字为`compiled_graph.air`(单P)/`compiled_graph{rand_id}.air`(多P)/。
+- **\*\*kwargs** -导出graph时的字典样例输入，不同的输入可能导致model走入不同的分支，进而导致trace的图不同。应当选取执行推理时的典型值。
+
+### Returns
+- None
+
+## TORCHAIR.COMPILEDMODEL.LOAD_GRAPH
+加载由`SAVE_GRAPH`导出的Ge Graph, 以便后续执行,返回值是CompiledModel对象，该对象可以直接执行。
+注意：该接口与`TORCHAIR.COMPILEDMODEL.SAVE_GRAPH`配套使用。
+
+### Parameters
+- **load_path**(*str*，*pathlib.Path*) -加载Graph的路径，需要与`SAVE_GRAPH`时填写的`save_path`一致，多P时会自动根据`rank_id`去子目录下加载不同的graph.
+
+### Returns
+- **CompiledModel对象** -返回CompiledModel对象，可以直接调用`__call__`方法执行
+
 # 公网地址说明
 代码涉及公网地址参考public_address_statement.md
 

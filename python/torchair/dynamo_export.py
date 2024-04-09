@@ -8,9 +8,8 @@ from torchair.configs.compiler_config import CompilerConfig
 from torchair import get_npu_backend
 
 
-def _save_name(config, model: torch.nn.Module, **kwargs):
+def _get_model_weight_names(model: torch.nn.Module):
     weight_name = {}
-    inputs_name = {}
     for name, p in model.named_buffers():
         logger.debug(
             f' named_buffers {name} , tensor id is {id(p)}, size is {p.shape}')
@@ -21,27 +20,15 @@ def _save_name(config, model: torch.nn.Module, **kwargs):
         )
         weight_name[id(p)] = name
 
-    for key, value in kwargs.items():
-        if isinstance(value, torch.Tensor):
-            inputs_name[id(value)] = key
-        else:
-            flat_args, _ = pytree.tree_flatten((value,))
-            for inp in flat_args:
-                if isinstance(inp, torch.Tensor):
-                    inputs_name[id(inp)] = key
-
-    config.export.weight_name = weight_name
-    config.export.inputs_name = inputs_name
-    return
+    return weight_name
 
 
-def _get_export_config(model, export_path: str, export_name: str, config=CompilerConfig(), **kwargs):
+def _get_export_config(model, export_path: str, export_name: str, config=CompilerConfig()):
     config.export.export_mode = True
     config.export.export_path_dir = export_path
     config.export.export_name = export_name
     config.experimental_config.enable_ref_data = True
-
-    _save_name(config, model, **kwargs)
+    config.export.weight_name = _get_model_weight_names(model)
     return config
 
 
@@ -67,7 +54,7 @@ def dynamo_export(*args, model: torch.nn.Module, export_path: str = "export_file
 
     from torchair.ge_concrete_graph.ge_converter.experimental.hcom_allreduce import functional_collectives_context
     logger.info(f'dynamo_export: export_path: {export_path}, export_name: {export_name}, dynamic: {dynamic}')
-    config = _get_export_config(model, export_path, export_name, config, **kwargs)
+    config = _get_export_config(model, export_path, export_name, config)
 
     torch._dynamo.reset()
     model = torch.compile(model,
