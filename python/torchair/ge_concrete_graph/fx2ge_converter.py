@@ -494,7 +494,8 @@ class GeConcreteGraph(ConcreteGraphBase):
 
         self._graph_optimization_based_inputs(inputs, fx_inputs)
 
-        _normalize_ge_graph(self.graph)
+        if not self._is_compiled:
+            _normalize_ge_graph(self.graph)
 
         if self.config.export.export_mode:
             self.export(inputs)
