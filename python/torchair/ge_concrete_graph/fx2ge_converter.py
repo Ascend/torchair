@@ -387,16 +387,17 @@ class ViewOfInput:
     def __init__(self, index, meta_output, sym_value_mapping):
         self._fx_input_index = index
         self._sym_value_mapping = sym_value_mapping
-        self._output_shape = list(meta_output.size())
-        self._output_stride = list(meta_output.stride())
-        self._output_offset = meta_output.storage_offset()
+        self._meta_output_shape = list(meta_output.size())
+        self._meta_output_stride = list(meta_output.stride())
+        self._meta_output_offset = meta_output.storage_offset()
 
     def compute_output(self, *args):
         real_input = args[self._fx_input_index]
-        if self._sym_value_mapping is not None:
-            value_of_sym = self._compute_value_of_sym(*args)
-            self._compute_output_shape_stride_offset(value_of_sym)
-        return torch.as_strided(real_input, self._output_shape, self._output_stride, self._output_offset)
+        value_of_sym = self._compute_value_of_sym(*args)
+        output_shape, output_stride, output_offset \
+            = self._compute_output_shape_stride_offset(value_of_sym)
+        return torch.as_strided(real_input, output_shape, output_stride, output_offset)
+
 
     def _compute_value_of_sym(self, *args):
         value_of_sym = {}
@@ -408,11 +409,15 @@ class ViewOfInput:
         return value_of_sym
 
     def _compute_output_shape_stride_offset(self, value_of_sym):
-        for idx, output_shape in enumerate(self._output_shape):
-            self._output_shape[idx] = sympy.simplify(str(output_shape)).subs(value_of_sym)
-        for idx, output_stride in enumerate(self._output_stride):
-            self._output_stride[idx] = sympy.simplify(str(output_stride)).subs(value_of_sym)
-        self._output_offset = sympy.simplify(str(self._output_offset)).subs(value_of_sym)
+        if value_of_sym is None:
+            return self._meta_output_shape, self._meta_output_stride, self._meta_output_offset
+        output_shape, output_stride = [], []
+        for meta_output_shape in self._meta_output_shape:
+            output_shape.append(sympy.simplify(str(meta_output_shape)).subs(value_of_sym))
+        for meta_output_stride in self._meta_output_stride:
+            output_stride.append(sympy.simplify(str(meta_output_stride)).subs(value_of_sym))
+        output_offset = sympy.simplify(str(self._meta_output_offset)).subs(value_of_sym)
+        return output_shape, output_stride, output_offset
 
 
 class GeConcreteGraph(ConcreteGraphBase):

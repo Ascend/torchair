@@ -1062,11 +1062,14 @@ class TorchairSt(unittest.TestCase):
             def forward(self, x):
                 return x[0:2, 0:2].transpose(0, 1)
 
-        model_dynamo = torch.compile(Model(), backend=npu_backend, dynamic=True)
+        model = torch.compile(Model(), backend=npu_backend, dynamic=True)
 
         input1 = torch.randn(4, 4).float()
-        res_dynamo = model_dynamo(input1)
-        self.assertEqual(torch._C._is_alias_of(res_dynamo, input1), True)
+        res = model(input1)
+        self.assertEqual(torch._C._is_alias_of(res, input1), True)
+        self.assertEqual(res.size(), torch.Size([2, 2]))
+        self.assertEqual(res.stride(), (1, 4))
+        self.assertEqual(res.storage_offset(), 0)
 
     def test_viewofoutput_dynamic_symexpr(self):
         class Model(torch.nn.Module):
@@ -1076,11 +1079,14 @@ class TorchairSt(unittest.TestCase):
             def forward(self, x):
                 return x[1:4, 1:4].transpose(0, 1)
 
-        model_dynamo = torch.compile(Model(), backend=npu_backend, dynamic=True)
+        model = torch.compile(Model(), backend=npu_backend, dynamic=True)
 
         input1 = torch.randn(4, 4).float()
-        res_dynamo = model_dynamo(input1)
-        self.assertEqual(torch._C._is_alias_of(res_dynamo, input1), True)
+        res = model(input1)
+        self.assertEqual(torch._C._is_alias_of(res, input1), True)
+        self.assertEqual(res.size(), torch.Size([3, 3]))
+        self.assertEqual(res.stride(), (1, 4))
+        self.assertEqual(res.storage_offset(), 5)
 
     def test_viewofoutput_dynamic_sym_from_different_input(self):
         class Model(torch.nn.Module):
@@ -1090,12 +1096,18 @@ class TorchairSt(unittest.TestCase):
             def forward(self, x, a):
                 return torch.split(x[1:4, 1:4].transpose(0, 1), a)
 
-        model_dynamo = torch.compile(Model(), backend=npu_backend, dynamic=True)
+        model = torch.compile(Model(), backend=npu_backend, dynamic=True)
 
         input1 = torch.randn(4, 4).float()
-        res_dynamo = model_dynamo(input1, 2)
-        self.assertEqual(torch._C._is_alias_of(res_dynamo[0], input1), True)
-        self.assertEqual(torch._C._is_alias_of(res_dynamo[1], input1), True)
+        res = model(input1, 2)
+        self.assertEqual(torch._C._is_alias_of(res[0], input1), True)
+        self.assertEqual(res[0].size(), torch.Size([2, 3]))
+        self.assertEqual(res[0].stride(), (1, 4))
+        self.assertEqual(res[0].storage_offset(), 5)
+        self.assertEqual(torch._C._is_alias_of(res[1], input1), True)
+        self.assertEqual(res[1].size(), torch.Size([1, 3]))
+        self.assertEqual(res[1].stride(), (1, 4))
+        self.assertEqual(res[1].storage_offset(), 7)
 
     def test_viewofoutput_dynamic_input_changed(self):
         class Model(torch.nn.Module):
@@ -1105,16 +1117,22 @@ class TorchairSt(unittest.TestCase):
             def forward(self, x, a):
                 return torch.split(x[1:4, 1:4].transpose(0, 1), a)
 
-        model_dynamo = torch.compile(Model(), backend=npu_backend, dynamic=True)
+        model = torch.compile(Model(), backend=npu_backend, dynamic=True)
 
         input1 = torch.randn(4, 4).float()
-        res_dynamo = model_dynamo(input1, 2)
-        self.assertEqual(torch._C._is_alias_of(res_dynamo[0], input1), True)
-        self.assertEqual(torch._C._is_alias_of(res_dynamo[1], input1), True)
+        res = model(input1, 2)
+        self.assertEqual(torch._C._is_alias_of(res[0], input1), True)
+        self.assertEqual(torch._C._is_alias_of(res[1], input1), True)
         input1 = torch.randn(6, 6).float()
-        res_dynamo = model_dynamo(input1, 2)
-        self.assertEqual(torch._C._is_alias_of(res_dynamo[0], input1), True)
-        self.assertEqual(torch._C._is_alias_of(res_dynamo[1], input1), True)
+        res = model(input1, 2)
+        self.assertEqual(torch._C._is_alias_of(res[0], input1), True)
+        self.assertEqual(res[0].size(), torch.Size([2, 3]))
+        self.assertEqual(res[0].stride(), (1, 6))
+        self.assertEqual(res[0].storage_offset(), 7)
+        self.assertEqual(torch._C._is_alias_of(res[1], input1), True)
+        self.assertEqual(res[1].size(), torch.Size([1, 3]))
+        self.assertEqual(res[1].stride(), (1, 6))
+        self.assertEqual(res[1].storage_offset(), 9)
 
     def test_viewofoutput_static(self):
         class Model(torch.nn.Module):
@@ -1124,11 +1142,14 @@ class TorchairSt(unittest.TestCase):
             def forward(self, x):
                 return x[1:2, 1:3].transpose(0, 1)
 
-        model_dynamo = torch.compile(Model(), backend=npu_backend, dynamic=False)
+        model = torch.compile(Model(), backend=npu_backend, dynamic=False)
 
         input1 = torch.randn(4, 4).float()
-        res_dynamo = model_dynamo(input1)
-        self.assertEqual(torch._C._is_alias_of(res_dynamo, input1), True)
+        res = model(input1)
+        self.assertEqual(torch._C._is_alias_of(res, input1), True)
+        self.assertEqual(res.size(), torch.Size([2, 1]))
+        self.assertEqual(res.stride(), (1, 4))
+        self.assertEqual(res.storage_offset(), 5)
 
     def test_without_viewofoutput1(self):
         class Model(torch.nn.Module):
@@ -1138,13 +1159,13 @@ class TorchairSt(unittest.TestCase):
             def forward(self, x, y):
                 return x[0:2, 0:1].transpose(0, 1) + y[0:2, 0:1].transpose(0, 1)
 
-        model_dynamo = torch.compile(Model(), backend=npu_backend, dynamic=True)
+        model = torch.compile(Model(), backend=npu_backend, dynamic=True)
 
         input1 = torch.randn(4, 4).float()
         input2 = torch.randn(4, 4).float()
-        res_dynamo = model_dynamo(input1, input2)
-        self.assertEqual(torch._C._is_alias_of(res_dynamo, input1), False)
-        self.assertEqual(torch._C._is_alias_of(res_dynamo, input2), False)
+        res = model(input1, input2)
+        self.assertEqual(torch._C._is_alias_of(res, input1), False)
+        self.assertEqual(torch._C._is_alias_of(res, input2), False)
 
     def test_without_viewofoutput2(self):
         class Model(torch.nn.Module):
@@ -1155,14 +1176,13 @@ class TorchairSt(unittest.TestCase):
                 a = x[0:2, 0:1].transpose(0, 1) + y[0:2, 0:1].transpose(0, 1)
                 return a[0:1, 0:1].transpose(0, 1)
 
-        model_dynamo = torch.compile(Model(), backend=npu_backend, dynamic=True)
-        model_eager = Model()
+        model = torch.compile(Model(), backend=npu_backend, dynamic=True)
 
         input1 = torch.randn(4, 4).float()
         input2 = torch.randn(4, 4).float()
-        res_dynamo = model_dynamo(input1, input2)
-        self.assertEqual(torch._C._is_alias_of(res_dynamo, input1), False)
-        self.assertEqual(torch._C._is_alias_of(res_dynamo, input2), False)
+        res = model(input1, input2)
+        self.assertEqual(torch._C._is_alias_of(res, input1), False)
+        self.assertEqual(torch._C._is_alias_of(res, input2), False)
 
     def test_enable_constplaceholder_dynamic_base(self):
         def get_graph_pack_data_num(concrete_graph):
