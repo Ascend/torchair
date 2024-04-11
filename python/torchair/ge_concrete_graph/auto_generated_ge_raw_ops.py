@@ -75569,15 +75569,16 @@ def ConstPlaceHolder(*,
 
 
 # This api is auto-generated from IR QuantBatchMatmulV3
-@auto_convert_to_tensor([False, False, False, False, False], [False, False, False, True, True])
-def QuantBatchMatmulV3(x1: Tensor, x2: Tensor, scale: Tensor, offset: Optional[Tensor], bias: Optional[Tensor], *,
-                       dtype: int, transpose_x1: bool = False, transpose_x2: bool = False, dependencies=[],
-                       node_name=None):
+@auto_convert_to_tensor([False, False, False, False, False, False], [False, False, False, True, True, True])
+def QuantBatchMatmulV3(x1: Tensor, x2: Tensor, scale: Tensor, offset: Optional[Tensor], pertoken_scale: Optional[Tensor],
+                       bias: Optional[Tensor], *, dtype: int, transpose_x1: bool = False, transpose_x2: bool = False,
+                       dependencies=[], node_name=None):
     """REG_OP(QuantBatchMatmulV3)\n
     .INPUT(x1, TensorType({DT_INT8}))\n
     .INPUT(x2, TensorType({DT_INT8}))\n
     .INPUT(scale, TensorType({DT_UINT64, DT_FLOAT, DT_BF16}))\n
     .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(pertoken_scale, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(bias, TensorType({DT_INT32}))\n
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_INT8, DT_BF16}))\n
     .REQUIRED_ATTR(dtype, Int)\n
@@ -75611,6 +75612,17 @@ def QuantBatchMatmulV3(x1: Tensor, x2: Tensor, scale: Tensor, offset: Optional[T
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "offset"
+    
+    if pertoken_scale is not None:
+        op.input.append(pertoken_scale.tensor)
+        op.input_desc.add().CopyFrom(pertoken_scale.desc)
+        op.input_desc[-1].name = "pertoken_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "pertoken_scale"
+
+
     if bias is not None:
         op.input.append(bias.tensor)
         op.input_desc.add().CopyFrom(bias.desc)

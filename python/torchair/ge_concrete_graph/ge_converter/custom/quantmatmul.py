@@ -28,6 +28,7 @@ from torchair.ge_concrete_graph.ge_graph import DataType
             I8(320, 2560),
             F32(1),
             offset=None,
+            pertoken_scale=None,
             bias=None,
             output_dtype=torch.int8,
             transpose_x1=False,
@@ -50,7 +51,7 @@ def conveter_npu_npu_quant_matmul(
 ):
     """NB: npu::npu_quant_matmul(Tensor x1, Tensor x2, Tensor scale, *, Tensor? offset=None,
                                  Tensor? pertoken_scale=None, Tensor? bias=None,
-                                 ScalarType? output_dtype=torch.Char) -> Tensor
+                                 ScalarType? output_dtype=None) -> Tensor
     """
     dtype = DataType.DT_INT8
     if output_dtype is None or output_dtype == torch.int8:
@@ -66,6 +67,7 @@ def conveter_npu_npu_quant_matmul(
                                  x2,
                                  scale,
                                  offset=offset,
+                                 pertoken_scale=pertoken_scale,
                                  bias=bias,
                                  dtype=dtype,
                                  transpose_x1=False,
