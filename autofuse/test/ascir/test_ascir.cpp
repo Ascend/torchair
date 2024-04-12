@@ -655,6 +655,14 @@ TEST(Ascir_Utils, DebugHintGraphStr_WillShowAxisInfo) {
   auto z0_in = graph.CreateAxis("z0_in", SizeExpr{{s0_block.id}});
   auto z1 = graph.CreateAxis("z1", SizeExpr{{s1.id}});
 
+  Sparse::AxisInfo pre;
+  pre.id = z0_out.id;
+  pre.position = s0;
+  Sparse::AxisInfo next;
+  next.id = z0_in.id;
+  next.position = s1;
+  (void)graph.CreateObliqueBandSparse(pre, next);
+
   data.attr.sched.exec_order = 0;
   data.attr.sched.axis = {z0_out.id, z0_in.id, z1.id};
 
@@ -670,9 +678,11 @@ TEST(Ascir_Utils, DebugHintGraphStr_WillShowAxisInfo) {
                                "  s1: CONST(100)\n"
                                "  s0_block: CONST(100)\n"
                                "Axis:\n"
-                               "  z0_out: s0/s0_block, ORIGINAL\n"
-                               "  z0_in: s0_block, ORIGINAL\n"
-                               "  z1: s1, ORIGINAL\n"
+                               "  z0_out: s0/s0_block, ORIGINAL, align: 1, allow_oversize_axis: 0, allow_unaligned_tail: 1\n"
+                               "  z0_in: s0_block, ORIGINAL, align: 1, allow_oversize_axis: 0, allow_unaligned_tail: 1\n"
+                               "  z1: s1, ORIGINAL, align: 1, allow_oversize_axis: 0, allow_unaligned_tail: 1\n"
+                               "Sparse:\n"
+                               "  type: OBLIQUE_BAND, value: {pre: {z0_out, s0}, next: {z0_in, s1}}\n"
                                "Nodes:\n"
                                "  test_op: Data (0)\n"
                                "    .axis = {z0_out, z0_in, z1, }\n"
@@ -717,6 +727,7 @@ TEST(Ascir_Utils, DebugImplGraphStr) {
   data_y.que.id = 0;
   data_y.que.depth = 2;
   data_y.que.buf_num = 2;
+  data_y.opt.reuse_id = ID_NONE;
   data_y.opt.ref_tensor = ID_NONE;
   data_y.opt.merge_scope = ID_NONE;
 
@@ -729,12 +740,13 @@ TEST(Ascir_Utils, DebugImplGraphStr) {
                             "  s1: CONST(100)\n"
                             "  s0_block: CONST(100)\n"
                             "Axis:\n"
-                            "  z0_out: s0/s0_block, ORIGINAL\n"
-                            "  z0_in: s0_block, ORIGINAL\n"
-                            "  z1: s1, ORIGINAL\n"
+                            "  z0_out: s0/s0_block, ORIGINAL, align: 1, allow_oversize_axis: 0, allow_unaligned_tail: 1\n"
+                            "  z0_in: s0_block, ORIGINAL, align: 1, allow_oversize_axis: 0, allow_unaligned_tail: 1\n"
+                            "  z1: s1, ORIGINAL, align: 1, allow_oversize_axis: 0, allow_unaligned_tail: 1\n"
                             "Nodes:\n"
                             "  test_op: Data (0)\n"
                             "    .axis = {z0_out, z0_in, z1, }\n"
+                            "    .loop_axis = z0_out\n"
                             "    .hint:\n"
                             "      .compute_type = data\n"
                             "    .api:\n"
@@ -751,11 +763,13 @@ TEST(Ascir_Utils, DebugImplGraphStr) {
                             "      .alloc_type = Queue\n"
                             "      .hardware = UB\n"
                             "      .position = VECIN\n"
+                            "      .buf_ids = {}\n"
                             "    .y.que:\n"
                             "      .id = 0\n"
                             "      .depth = 2\n"
                             "      .buf_num = 2\n"
                             "    .y.opt:\n"
+                            "      .reuse_id = nil\n"
                             "      .ref_tensor = nil\n"
                             "      .merge_scope = nil\n"
                             });

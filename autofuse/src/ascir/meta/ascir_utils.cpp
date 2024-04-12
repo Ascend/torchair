@@ -187,12 +187,39 @@ static std::stringstream &GraphAxisStr(std::stringstream &ss, const ascir::Graph
     ss << axis_type_str[axis.type];
 
     if (axis.from.size() > 0) {
-      ss << ", from: ";
+      ss << ", from: {";
       for (auto from_axis : axis.from) {
         ss << graph.axis[from_axis].name << ", ";
       }
+      ss << "}";
     }
 
+    ss << ", align: " << axis.align;
+    ss << ", allow_oversize_axis: " << axis.allow_oversize_axis;
+    ss << ", allow_unaligned_tail: " << axis.allow_unaligned_tail;
+
+    ss << std::endl;
+  }
+  return ss;
+}
+
+static std::stringstream &GraphSparseStr(std::stringstream &ss, const ascir::Graph &graph) {
+  const char *sparse_type_str[] = {
+    [ascir::Sparse::SPARSE_TYPE_OBLIQUE_BAND] = "OBLIQUE_BAND",
+  };
+  if (graph.sparse().size() > 0U) {
+    ss << "Sparse:" << std::endl;
+  }
+  for (auto sparse : graph.sparse()) {
+    ss << "  type: " << sparse_type_str[sparse.type] << ", ";
+    ss << "value: {";
+    if (sparse.type == ascir::Sparse::SPARSE_TYPE_OBLIQUE_BAND) {
+      ss << "pre: {" << graph.axis[sparse.value.ob.pre.id].name << ", "
+        << SizeExprStr(graph, sparse.value.ob.pre.position) << "}, ";
+      ss << "next: {" << graph.axis[sparse.value.ob.next.id].name << ", "
+        << SizeExprStr(graph, sparse.value.ob.next.position) << "}";
+    }
+    ss << "}";
     ss << std::endl;
   }
   return ss;
@@ -221,6 +248,14 @@ static std::stringstream &NodeAttrStr(std::stringstream &ss, const ascir::Graph 
     ss << graph.axis[axis_id].name << ", ";
   }
   ss << "}" << std::endl;
+
+  if (verbose) {
+    const auto loop_axis = node.attr.sched.loop_axis;
+    const auto axis = graph.axis();
+    if ((loop_axis >= 0) && (loop_axis < axis.size())) {
+      ss << "    .loop_axis = " << axis[loop_axis].name << std::endl;
+    }
+  }
 
   ss << "    .hint:" << std::endl;
   ss << "      .compute_type = " << ComputeTypeToStr(node.attr.hint.compute_type) << std::endl;
@@ -275,6 +310,11 @@ static std::stringstream &NodeOutputStr(std::stringstream &ss, const ascir::Grap
       ss << "      .alloc_type = " << AllocTypeToStr(output.mem.alloc_type) << std::endl;
       ss << "      .hardware = " << MemHardwareToStr(output.mem.hardware) << std::endl;
       ss << "      .position = " << PositionToStr(output.mem.position) << std::endl;
+      ss << "      .buf_ids = {";
+       for (const auto buf_id: output.mem.buf_ids()) {
+        ss << buf_id << ", ";
+       }
+      ss << "}"<< std::endl;
 
       if (output.mem.alloc_type == ascir::ALLOC_TYPE_BUFFER) {
         ss << "    ." << output_name << ".buf:" << std::endl;
@@ -287,6 +327,7 @@ static std::stringstream &NodeOutputStr(std::stringstream &ss, const ascir::Grap
       }
 
       ss << "    ." << output_name << ".opt:" << std::endl;
+      ss << "      .reuse_id = " << IdentifierToStr(output.opt.reuse_id) << std::endl;
       ss << "      .ref_tensor = " << IdentifierToStr(output.opt.ref_tensor) << std::endl;
       ss << "      .merge_scope = " << IdentifierToStr(output.opt.merge_scope) << std::endl;
   }
@@ -300,6 +341,7 @@ std::string ascir::utils::DebugStr(const ascir::Graph &graph, bool verbose) {
   GraphNameStr(ss, graph);
   GraphSizeStr(ss, graph);
   GraphAxisStr(ss, graph);
+  GraphSparseStr(ss, graph);
 
   ss << "Nodes:" << std::endl;
   for (auto node : graph.GetAllNodes()) {
