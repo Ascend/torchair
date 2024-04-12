@@ -73,10 +73,6 @@ def convert_npu_npu_fused_infer_attention_score(
 ):
     key_list = [key]
     value_list = [value]
-    if actual_seq_lengths is not None and isinstance(actual_seq_lengths, Tensor):
-        raise NotImplementedError("FusedInferAttentionScore is not implemented while actual_seq_lengths is Tensor!")
-    if actual_seq_lengths_kv is not None and isinstance(actual_seq_lengths_kv, Tensor):
-        raise NotImplementedError("FusedInferAttentionScore is not implemented while actual_seq_lengths_kv is Tensor!")
     if actual_seq_lengths is not None:
         actual_seq_lengths = dtype_promote(actual_seq_lengths, target_dtype=DataType.DT_INT64)
     if actual_seq_lengths_kv is not None:
