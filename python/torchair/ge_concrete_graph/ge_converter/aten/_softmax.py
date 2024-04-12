@@ -19,7 +19,7 @@ from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType
 from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
 from torchair.ge_concrete_graph.utils import dtype_promote
@@ -33,6 +33,10 @@ def conveter_aten__softmax_default(
     self: Tensor, dim: int, half_to_float: bool, meta_outputs: TensorSpec = None
 ):
     """NB: aten::_softmax(Tensor self, int dim, bool half_to_float) -> Tensor"""
+    if half_to_float and self.dtype != DataType.DT_FLOAT16:
+        raise RuntimeError(
+            "torch.ops.aten._softmax.default: "
+            "when half_to_tensor is True, input tensor must be half type.")
     return ge.SoftmaxV2(self, axes=[dim], half_to_float=half_to_float)
 
 
@@ -48,4 +52,4 @@ def conveter_aten__softmax_out(
     """NB: aten::_softmax.out(Tensor self, int dim, bool half_to_float, *, Tensor(a!) out) -> Tensor(a!)"""
     raise RuntimeError(
         "torch.ops.aten._softmax.out is redundant before pytorch 2.1.0,"
-        "might be supported in future version.")
+        "it might be supported in future version.")
