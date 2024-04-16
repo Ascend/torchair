@@ -66,7 +66,7 @@ REG_ASC_IR_2I1O(Add).UseFirstInputDataType();
 REG_ASC_IR_START_NODE(TbufData);
 
 REG_ASC_IR(FlashSoftmax)
-    .Inputs({"x1", "x2"})
+    .Inputs({"x1", "x2", "x3"})
     .Outputs({"y1", "y2", "y3"})
     .UseFirstInputDataType();
 REG_ASC_IR_2I1O(Dropout).UseFirstInputDataType();

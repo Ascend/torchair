@@ -103,8 +103,9 @@ TEST(AscirOps_FlashSoftmaxInferDataType, Ok) {
 
   auto data0 = ascir::cg::ContiguousData("data0", graph, ge::DT_INT32, {a, b, c});
   auto data1 = ascir::cg::ContiguousData("data1", graph, ge::DT_FLOAT16, {a, b, c});
+  auto data2 = ascir::cg::ContiguousData("data2", graph, ge::DT_FLOAT16, {a, b, c});
 
-  ascir::cg::FlashSoftmax("fs", data0.y, data1.y);
+  ascir::cg::FlashSoftmax("fs", data0.y, data1.y, data2.y);
 
   auto fs = graph.Find("fs");
   EXPECT_EQ(fs.outputs[0].dtype, ge::DT_INT32);
