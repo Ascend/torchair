@@ -46,7 +46,7 @@ pip3 install torch-2.1.0-cp38-cp38m-manylinux2014_aarch64.whl
 pip3 install torch_npu-2.1.0*-cp38-cp38m-linux_aarch64.whl
 pip3 install apex-0.1_ascend*-cp38-cp38m-linux_aarch64.whl
 
-pip3 install -r requirements.txt 
+pip3 install -r requirement.txt
 
 git clone https://gitee.com/ascend/torchair.git
 cd torchair/npu_tuned_model/llm
@@ -76,6 +76,7 @@ bash setup.sh
 │  │  
 │  ├─common
 │  │      utils.py
+|  |      mc2_adapter.py
 │  │      
 │  └─llama2
 │          modeling_llama.py
@@ -100,7 +101,7 @@ cann_path=/usr/local/Ascend # 昇腾cann包安装目录
 source ${cann_path}/latest/bin/setenv.bash
 model_path=xxx/llama2-70b # 下载的权重和模型信息
 python3 examples/merge_qkv_weight.py --model_path=${model_path} --model_name=llama2 --tp_size=8 --output_path=xxx/llama-70b_qkv
-# 使用models/common/mc2_adapter.py自定义的LinearAllreduce替换原生的deepspeed.module_inject.layers.LinearAllreduce
+# 若想使能mc2融合算子优化，使用models/common/mc2_adapter.py自定义的LinearAllreduce替换原生的deepspeed.module_inject.layers.LinearAllreduce
 deepspeed --num_gpus=8 examples/llama2/run_llama2.py --model_path=xxx/llama2-70b_qkv
 ```
 
@@ -113,7 +114,7 @@ model_path=xxx/llama2-70b # 下载的权重和模型信息
 python3 examples/merge_qkv_weight.py --model_path=${model_path} --model_name=llama2 --tp_size=8 --output_path=xxx/llama-70b_qkv
 ```
 
-二：使用models/common/mc2_adapter.py自定义的LinearAllreduce替换原生的deepspeed.module_inject.layers.LinearAllreduce
+二：根据执行方式不同
 
 - 直接导入LlmModelRunner可以快速执行一个已经改造好的models
 
@@ -142,7 +143,6 @@ model_runner = LlmModelRunner("llama2", model_path, **config)  # 可以更换不
 # 设置npu上执行的参数配置
 model_runner.execute_mode = "dynamo"
 os.environ["EXE_MODE"] = model_runner.execute_mode
-os.environ["INPUT_PADDING"] = "True"
 model_runner.set_npu_config(jit_compile=False)
 
 # 执行推理
@@ -166,13 +166,16 @@ from transformers import AutoTokenizer, LlamaForCausalLM
 from models.llama2.modeling_llama import LlamaForCausalLM
 ```
 
+**注：mc2融合算子优化需要根据模型优化方式手动使能**
+
 # LlmModelRunner加入用户自定义大模型
 
+- 注意当前提供的模型改造和执行样例都是基于deepspeed的前端切分方式
 - 根据models下已有的大模型改造样例，参考类似模型的改造点，对自定义的大模型进行模型改造
 - 改造完成后，在models目录下新增自定义模型目录，并且创建自定义模型的model文件，同时需要将自定义模型的名字/文件名/class写入\_\_init\_\_.py
 
 ```python
-# llama2时模型名，modeling_llama时对于llama2目录下modeling_llama.py文件，LlamaForCausalLM是自定义llama2模型
+# llama2是模型名，modeling_llama是对于llama2目录下modeling_llama.py文件，LlamaForCausalLM是自定义llama2模型
 _MODELS = {
     "llama2": ("modeling_llama", "LlamaForCausalLM"),
 }
@@ -227,7 +230,6 @@ if __name__ == "__main__":
         "input_max_len": 1024,
         "max_new_tokens": 1024,
     }
-    os.environ["INPUT_PADDING"] = str(input_padding)
     run_llama2(args.model_path, **config)
     logging.info("model run success")
 ```

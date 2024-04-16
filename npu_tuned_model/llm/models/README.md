@@ -9,19 +9,19 @@
 ```python
 # transformers/generation/utils.py中greedy_search函数
 exe_mode = os.getenv("EXE_MODE", "dynamo")
-input_padding = eval(os.getenv("INPUT_PADDING", "True"))
+dynamic_compile = eval(os.getenv("DYNAMIC_COMPILE", "False"))
 
 if exe_mode == "dynamo":
-  logging.info("Start to run model in dynamo mode, dynamic=%s, fullgraph=%s, backend=npu" % (not input_padding,
-    True))
-  import torchair as tng
-  from torchair.configs.compiler_config import CompilerConfig
-  config = CompilerConfig()
-  config.experimental_config.frozen_parameter = True
-  npu_backend = tng.get_npu_backend(compiler_config=config)
-  self = torch.compile(self, dynamic=not input_padding, fullgraph=True, backend=npu_backend)
+    logging.info("Start to run model in dynamo mode, dynamic=%s, fullgraph=%s, backend=npu" % (dynamic_compile,
+                                                                                               True))
+    import torchair as tng
+    from torchair.configs.compiler_config import CompilerConfig
+    config = CompilerConfig()
+    config.experimental_config.frozen_parameter = True
+    npu_backend = tng.get_npu_backend(compiler_config=config)
+    self = torch.compile(self, dynamic=dynamic_compile, fullgraph=True, backend=npu_backend)
 else:
-  logging.info("Start to run model in eager(HOST API) mode")
+    logging.info("Start to run model in eager(HOST API) mode")
 
 # 在模型执行前后添加torch.npu.synchronize()
 torch.npu.synchronize()

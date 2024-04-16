@@ -1,6 +1,6 @@
 # Llama2
 
-本模块主要是llama2模型在npu上的适配迁移点介绍
+本模块主要是transformers==4.31.0版本的llama2模型在npu上的适配迁移点介绍
 
 # 性能优化
 
@@ -8,7 +8,7 @@
 
 **优化原因**：transformers的llama源码中对于kv cache的处理是作为模型的输入，模型中通过cat进行拼接后，返回新的kv cache，这种更新方式存在多次申请内存及拷贝的性能损失。
 
-**优化方式**：根据句子最大长度申请好一块固定大小的kv cache tensor，然后通过scatter_update_算子对指定位置上的kv cache进行更新
+**优化方式**：根据句子最大长度申请好一块固定大小的kv cache tensor，然后通过[scatter_update_](https://www.hiascend.com/document/detail/zh/Pytorch/60RC1/apiref/apilist/ptaoplist_000156.html)算子对指定位置上的kv cache进行更新
 
 ```python
 # transformers/models/llama/modeling_llama.py
@@ -73,7 +73,7 @@ attention_mask = self.model._prepare_decoder_attention_mask(
 
 **优化原因**：将小算子替换为融合大算子，提升性能
 
-**FlashAttention优化方式**:替换LlamaAttention中的Q/K/V和attention_mask相关的两个矩阵乘
+**FlashAttention优化方式**:替换LlamaAttention中的Q/K/V和attention_mask相关的两个矩阵乘，分别替换为[torch_npu.npu_prompt_flash_attention](https://www.hiascend.com/document/detail/zh/Pytorch/60RC1/apiref/apilist/ptaoplist_000142.html)和[torch_npu.npu_incre_flash_attention](https://www.hiascend.com/document/detail/zh/Pytorch/60RC1/apiref/apilist/ptaoplist_000451.html)
 
 ```python
 ''' 替换部分
@@ -128,7 +128,7 @@ else:
                                                        num_key_value_heads=self.num_key_value_heads)
 ```
 
-**cos/sin优化方式**：cos/sin原脚本中在decodelayer中每层都会计算，存在耗时浪费。提到上层，只需计算一次。
+**cos/sin优化方式**：cos/sin原脚本中在decodelayer中每层都会计算，存在耗时浪费。提到上层，只需计算一次。旋转位置编码替换为torch_npu.npu_apply_rotary_pos_emb融合算子
 
 ```python
 # step1 将LlamaAttention::_init_rope函数移到LlamaModel并且到LlamaModel::__init__中调用
@@ -196,7 +196,7 @@ sin = sin.reshape(position_ids.size(0), position_ids.size(1), -1).unsqueeze(2)Ad
 
 **优化原因**：将小算子替换为融合大算子，提升性能
 
-**优化方式**：替换LlamaRMSNorm的forward函数
+**优化方式**：替换LlamaRMSNorm的forward函数，使用融合算子[torch_npu.npu_rms_norm](https://www.hiascend.com/document/detail/zh/Pytorch/60RC1/apiref/apilist/ptaoplist_001031.html)和torch_npu.npu_add_rms_norm
 
 ```python
 class LlamaRMSNorm(nn.Module):
@@ -344,7 +344,7 @@ def merge_qkv_weight(self, tp_size=1):
 
 ## 全量替换mc2融合算子
 
-优化原因：原生LinearAllreduce中matmul和allreduce是串行的，多个LinearAllreduce执行也是串行执行，性能较慢。替换mc2融合算子后能够使matmul和allreduce之间产生流水，提高性能。
+优化原因：原生LinearAllreduce中matmul和allreduce是串行的，性能较慢。替换mc2融合算子[torch_npu.npu_mm_all_reduce_base](https://www.hiascend.com/document/detail/zh/Pytorch/60RC1/apiref/apilist/ptaoplist_000448.html)后能够使matmul和allreduce之间产生流水，提高性能。
 
 优化方式：使用**models/common/mc2_adapter.py**自定义的**LinearAllreduce**替换原生的**deepspeed.module_inject.layers.LinearAllreduce**
 
@@ -401,50 +401,50 @@ class LinearAllreduce(nn.Module):
 <tbody>
   <tr>
     <td class="tg-0pky">原始脚本</td>
-    <td class="tg-0pky"></td>
-    <td class="tg-0pky"></td>
-    <td class="tg-0pky"></td>
-    <td class="tg-0pky"></td>
+    <td class="tg-0pky">1110ms</td>
+    <td class="tg-0pky">211ms</td>
+    <td class="tg-0pky">1110ms</td>
+    <td class="tg-0pky">175ms</td>
   </tr>
   <tr>
     <td class="tg-0pky">固定kv cache</td>
-    <td class="tg-0pky"></td>
-    <td class="tg-0pky"></td>
+    <td class="tg-0pky">1110ms</td>
+    <td class="tg-0pky">187ms</td>
     <td class="tg-0pky">930ms</td>
     <td class="tg-0pky">83ms</td>
   </tr>
   <tr>
     <td class="tg-0pky">替换FlashAttention&amp;&amp;cos/sin优化</td>
-    <td class="tg-0pky"></td>
-    <td class="tg-0pky"></td>
+    <td class="tg-0pky">984ms</td>
+    <td class="tg-0pky">144ms</td>
     <td class="tg-0pky">789ms</td>
     <td class="tg-0pky">44ms</td>
   </tr>
   <tr>
     <td class="tg-0pky">Add+RMSNorm融合</td>
-    <td class="tg-0pky"></td>
-    <td class="tg-0pky"></td>
+    <td class="tg-0pky">680ms</td>
+    <td class="tg-0pky">120ms</td>
     <td class="tg-0pky">660ms</td>
     <td class="tg-0pky">39ms</td>
   </tr>
   <tr>
     <td class="tg-0pky">全量优化计算量</td>
-    <td class="tg-0pky"></td>
-    <td class="tg-0pky"></td>
+    <td class="tg-0pky">664ms</td>
+    <td class="tg-0pky">120ms</td>
     <td class="tg-0pky">633ms</td>
     <td class="tg-0pky">39ms</td>
   </tr>
   <tr>
-    <td class="tg-0pky">qkv融合</td>
-    <td class="tg-0pky"></td>
-    <td class="tg-0pky"></td>
+    <td class="tg-0pky">qkv融合(单算子精度异常)</td>
+    <td class="tg-0pky">664ms</td>
+    <td class="tg-0pky">120ms</td>
     <td class="tg-0pky">629ms</td>
     <td class="tg-0pky">37.5ms</td>
   </tr>
   <tr>
     <td class="tg-0pky">全量替换mc2融合算子</td>
-    <td class="tg-0pky"></td>
-    <td class="tg-0pky"></td>
+    <td class="tg-0pky">615ms</td>
+    <td class="tg-0pky">120ms</td>
     <td class="tg-0pky">570ms</td>
     <td class="tg-0pky">37.5ms</td>
   </tr>

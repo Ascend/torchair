@@ -265,6 +265,8 @@ class LlamaAttention(nn.Module):
         hidden_states: torch.Tensor,
         attention_mask: Optional[torch.Tensor] = None,
         updated_kv_positions: Optional[torch.LongTensor] = None,
+        kv_padding_size: Optional[torch.LongTensor] = None,
+        actual_seq_len: Optional[list] = None,
         rotary_emb_cos: Optional[torch.Tensor] = None,
         rotary_emb_sin: Optional[torch.Tensor] = None,
         past_key_value: Optional[Tuple[torch.Tensor]] = None,
@@ -325,11 +327,13 @@ class LlamaAttention(nn.Module):
                                                                num_key_value_heads=self.num_key_value_heads)
         else:
             attn_output = torch_npu.npu_incre_flash_attention(query_states, key_states1.contiguous(),
-                                                               value_states1.contiguous(), num_heads=self.num_heads,
-                                                               input_layout="BSND",
-                                                               scale_value=self.scale_value,
-                                                               atten_mask=attention_mask,
-                                                               num_key_value_heads=self.num_key_value_heads)
+                                                              value_states1.contiguous(), num_heads=self.num_heads,
+                                                              input_layout="BSND",
+                                                              scale_value=self.scale_value,
+                                                              atten_mask=attention_mask,
+                                                              actual_seq_lengths=actual_seq_len,
+                                                              kv_padding_size=kv_padding_size,
+                                                              num_key_value_heads=self.num_key_value_heads)
 
         attn_output = attn_output.reshape(bsz, q_len, self.hidden_size)
 
@@ -361,6 +365,8 @@ class LlamaDecoderLayer(nn.Module):
         past_residual: Optional[torch.Tensor] = None,
         attention_mask: Optional[torch.Tensor] = None,
         updated_kv_positions: Optional[torch.LongTensor] = None,
+        kv_padding_size: Optional[torch.LongTensor] = None,
+        actual_seq_len: Optional[list] = None,
         rotary_emb_cos: Optional[torch.Tensor] = None,
         rotary_emb_sin: Optional[torch.Tensor] = None,
         past_key_value: Optional[Tuple[torch.Tensor]] = None,
@@ -388,6 +394,8 @@ class LlamaDecoderLayer(nn.Module):
             hidden_states=hidden_states,
             attention_mask=attention_mask,
             updated_kv_positions=updated_kv_positions,
+            kv_padding_size=kv_padding_size,
+            actual_seq_len=actual_seq_len,
             rotary_emb_cos=rotary_emb_cos,
             rotary_emb_sin=rotary_emb_sin,
             past_key_value=past_key_value,
@@ -621,6 +629,8 @@ class LlamaModel(LlamaPreTrainedModel):
         attention_mask: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.LongTensor] = None,
         updated_kv_positions: Optional[torch.LongTensor] = None,
+        kv_padding_size: Optional[torch.LongTensor] = None,
+        actual_seq_len: Optional[list] = None,
         past_key_values: Optional[List[torch.FloatTensor]] = None,
         inputs_embeds: Optional[torch.FloatTensor] = None,
         use_cache: Optional[bool] = None,
@@ -709,6 +719,8 @@ class LlamaModel(LlamaPreTrainedModel):
                     past_residual=residual,
                     attention_mask=attention_mask,
                     updated_kv_positions=updated_kv_positions,
+                    kv_padding_size=kv_padding_size,
+                    actual_seq_len=actual_seq_len,
                     rotary_emb_cos=rotary_emb_cos,
                     rotary_emb_sin=rotary_emb_sin,
                     past_key_value=past_key_value,
@@ -747,7 +759,8 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
 
     def __init__(self, config):
         super().__init__(config)
-        config.world_size = int(os.getenv("WORLD_SIZE", "1"))
+        self.world_size = int(os.getenv("WORLD_SIZE", "1"))
+        config.world_size = self.world_size
         self.model = LlamaModel(config)
         self.pretraining_tp = config.pretraining_tp
         self.vocab_size = config.vocab_size
@@ -755,11 +768,11 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
 
         # Initialize weights and apply final processing
         self.post_init()
-        self.input_padding = eval(os.getenv("INPUT_PADDING", "True"))
+        self.input_padding = None
         self.padding_mask = None
         self.prompt_length = None
         self.updated_kv_positions = None
-        self.world_size = None
+        os.environ["DYNAMIC_COMPILE"] = "True" # 当前由于使能了actual_seq，所以compile的dynamic需要设置为true
 
     def get_input_embeddings(self):
         return self.model.embed_tokens
@@ -787,6 +800,8 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
         attention_mask: Optional[torch.Tensor] = None,
         position_ids: Optional[torch.LongTensor] = None,
         updated_kv_positions: Optional[torch.LongTensor] = None,
+        kv_padding_size: Optional[torch.LongTensor] = None,
+        actual_seq_len: Optional[list] = None,
         past_key_values: Optional[List[torch.FloatTensor]] = None,
         inputs_embeds: Optional[torch.FloatTensor] = None,
         labels: Optional[torch.LongTensor] = None,
@@ -833,6 +848,8 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
             attention_mask=attention_mask,
             position_ids=position_ids,
             updated_kv_positions=updated_kv_positions,
+            kv_padding_size=kv_padding_size,
+            actual_seq_len=actual_seq_len,
             past_key_values=past_key_values,
             inputs_embeds=inputs_embeds,
             use_cache=use_cache,
@@ -938,6 +955,10 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
         attention_mask = self.model._prepare_decoder_attention_mask(
             attention_mask, (batch_size, seq_length), past_key_values[0][0], past_key_values_length
         )
+        # ifa Computational optimization inputs
+        kv_padding_size = torch.tensor(self.model.max_position_embeddings - self.prompt_length,
+                                       device=position_ids.device)
+        actual_seq_len = (position_ids[:, -1] + 1).cpu().tolist()
 
         position_ids = position_ids.clone() # 添加clone目的是为了保证fx图上position_ids不变化
         model_inputs.update(
@@ -947,11 +968,14 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
                 "use_cache": kwargs.get("use_cache"),
                 "attention_mask": attention_mask,
                 "updated_kv_positions": self.updated_kv_positions,
+                "kv_padding_size": kv_padding_size,
+                "actual_seq_len": actual_seq_len,
             }
         )
 
         # 在走动态图模式场景下，实际增量是静态图，所以标记增量的输入tensor为static
-        if (not self.input_padding) and (seq_length <= 1):
+        # fa算子设置了actual_seq_len，需要走动态图mark_static
+        if ((not self.input_padding) and (seq_length <= 1)) or (self.input_padding and (actual_seq_len is not None)):
             self._mark_model_inputs_static(model_inputs)
 
         return model_inputs

@@ -52,6 +52,5 @@ if __name__ == "__main__":
         "input_max_len": 1024,
         "max_new_tokens": 1024,
     }
-    os.environ["INPUT_PADDING"] = str(input_padding)
     run_llama2(args.model_path, **config)
     logging.info("model run success")

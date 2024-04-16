@@ -73,7 +73,7 @@ class LlmModelRunner:
 
         model_cls = ModelRegistry.load_model_cls(self.model_name)
         self.model = model_cls.from_pretrained(self.model_path, low_cpu_mem_usage=True, torch_dtype=self.dtype)
-        self.model.world_size = self.world_size
+        self.model.input_padding = self.input_padding
 
         self.tokenizer = self.generate_tokenizer()
         if self.tokenizer.pad_token is None:
