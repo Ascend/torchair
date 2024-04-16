@@ -75808,6 +75808,38 @@ def TransQuantParamV2(scale: Tensor, offset: Optional[Tensor], *, dependencies=[
     # return outputs
     return y
 
+#This api is auto-generated from IR MoeComputeExpertTokens
+@auto_convert_to_tensor([False], [False])
+def MoeComputeExpertTokens(sorted_experts: Tensor, *, num_experts: int=1, dependencies=[], node_name=None):
+  """REG_OP(MoeComputeExpertTokens)\n
+.INPUT(sorted_experts, TensorType({DT_INT32}))\n
+.OUTPUT(total_rows_before_expert, TensorType({DT_INT32}))\n
+.REQUIRED_ATTR(num_experts, Int)\n
+"""
+
+  op = get_default_ge_graph().op.add()
+  op.type = "MoeComputeExpertTokens"
+  op.name = next_unique_name(node_name, "MoeComputeExpertTokens")
+  # process dependices
+  for dependency in dependencies:
+    op.input.append(dependency.controller)
+
+  # process inputs
+  op.input.append(sorted_experts.tensor)
+  op.input_desc.add().CopyFrom(sorted_experts.desc)
+  op.input_desc[-1].name = "sorted_experts"
+
+  # process attrs
+  op.attr["num_experts"].i = num_experts
+
+  # process outputs
+  output_index = 0
+  op.output_desc.add().name = "total_rows_before_expert"
+  y = Tensor(op, output_index)
+  output_index += 1
+
+
+  return y
 
 # This api is auto-generated from IR GroupedMatmul
 @auto_convert_to_tensor([True, True, True, True, True, True, True, False],

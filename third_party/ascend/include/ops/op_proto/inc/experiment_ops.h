@@ -3295,6 +3295,21 @@ REG_OP(RoiAlignRotatedGrad)
     .OP_END_FACTORY_REG(RoiAlignRotatedGrad)
 
 /**
+* @brief Binary finds the position of the last row processed by each expert in the sorted_experts array.
+* @par Inputs:
+* @li sorted_experts: A Tensor. Type is:Int32.
+* @par Outputs:
+* @li total_rows_before_expert: A Tensor. Type is:Int32.
+* @par Attributes:
+* @li num_experts: Required parameter. Type is:Int. The value must be more than 0 and less than 2147483647.
+*/
+REG_OP(MoeComputeExpertTokens)
+    .INPUT(sorted_experts, TensorType({DT_INT32}))
+    .OUTPUT(total_rows_before_expert, TensorType({DT_INT32}))
+    .REQUIRED_ATTR(num_experts, Int)
+    .OP_END_FACTORY_REG(MoeComputeExpertTokens)
+
+/**
 * @brief Fusion op for FFN.
 * @par Inputs:
 * ten inputs, including:
