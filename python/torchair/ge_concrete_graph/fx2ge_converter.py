@@ -31,7 +31,8 @@ from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type, torch_typ
 from torchair.ge_concrete_graph.graph_pass import optimize_sym_pack, optimize_reference_op_redundant_copy, \
     replace_data_to_refdata
 from torchair.ge_concrete_graph.utils import convert_to_tensorboard, dump_graph, force_op_unknown_shape, \
-    is_host_data_tensor, get_all_sym_value_mapping, get_used_syms_in_meta, Placement, InputProcessing
+    is_host_data_tensor, get_all_sym_value_mapping, get_used_syms_in_meta, Placement, InputProcessing, \
+    compute_value_of_sym, generate_sym_exper, get_sym_int_value
 from torchair.ge_concrete_graph.supported_declaration import Support
 from torchair.ge_concrete_graph.export_config_generete import generate_config
 from torchair.utils.export_utils import make_export_graph, get_export_file_name, serialize_str_dict_attr, \
@@ -387,59 +388,43 @@ def _get_executor_type():
     return ExecutorType.CPU
 
 
+class SymOutput:
+    def __init__(self, meta_output, sym_value_mapping):
+        self._sym_value_mapping = sym_value_mapping
+        # 获取sym对应的sympy属性,sym对象无法存入map,sym_value_mapping和符号都使用sympy对象
+        self._fx_output_smy = generate_sym_exper(meta_output)
+
+    def compute_output(self, *args):
+        value_of_sym = compute_value_of_sym(self._sym_value_mapping, *args)
+        return get_sym_int_value(self._fx_output_smy, value_of_sym)
+
+
 class ViewOfInput:
     def __init__(self, index, meta_output, sym_value_mapping):
         self._fx_input_index = index
         self._sym_value_mapping = sym_value_mapping
-        self._meta_output_shape = self._generate_sym_exper(list(meta_output.size()))
-        self._meta_output_stride = self._generate_sym_exper(list(meta_output.stride()))
-        self._meta_output_offset = self._generate_sym_exper(meta_output.storage_offset())
+        self._meta_output_shape = generate_sym_exper(list(meta_output.size()))
+        self._meta_output_stride = generate_sym_exper(list(meta_output.stride()))
+        self._meta_output_offset = generate_sym_exper(meta_output.storage_offset())
 
-    @staticmethod
-    def _get_sym_int_value(sym_exper, value_of_sym):
-        if isinstance(sym_exper, int):
-            return sym_exper
-
-        if sym_exper in value_of_sym.keys():
-            return value_of_sym[sym_exper]
-        else:
-            return sym_exper.subs(value_of_sym)
-
-    @classmethod
-    def _generate_sym_exper(cls, metas):
-        if isinstance(metas, list):
-            return [cls._generate_sym_exper(meta) for meta in metas]
-
-        if isinstance(metas, int):
-            return metas
-
-        return metas.node.expr
 
     def compute_output(self, *args):
         real_input = args[self._fx_input_index]
-        value_of_sym = self._compute_value_of_sym(*args)
+        value_of_sym = compute_value_of_sym(self._sym_value_mapping, *args)
         output_shape, output_stride, output_offset \
             = self._compute_output_shape_stride_offset(value_of_sym)
         return torch.as_strided(real_input, output_shape, output_stride, output_offset)
 
-    def _compute_value_of_sym(self, *args):
-        value_of_sym = {}
-        for sym, index in self._sym_value_mapping.items():
-            if index[0] == -1:
-                value_of_sym[sym] = args[index[1]]
-            else:
-                value_of_sym[sym] = args[index[1]].size()[index[0]]
-        return value_of_sym
 
     def _compute_output_shape_stride_offset(self, value_of_sym):
         if value_of_sym is None or len(value_of_sym) == 0:
             return self._meta_output_shape, self._meta_output_stride, self._meta_output_offset
         output_shape, output_stride = [], []
         for meta_output_shape in self._meta_output_shape:
-            output_shape.append(self._get_sym_int_value(meta_output_shape, value_of_sym))
+            output_shape.append(get_sym_int_value(meta_output_shape, value_of_sym))
         for meta_output_stride in self._meta_output_stride:
-            output_stride.append(self._get_sym_int_value(meta_output_stride, value_of_sym))
-        output_offset = self._get_sym_int_value(self._meta_output_offset, value_of_sym)
+            output_stride.append(get_sym_int_value(meta_output_stride, value_of_sym))
+        output_offset = get_sym_int_value(self._meta_output_offset, value_of_sym)
         return output_shape, output_stride, output_offset
 
 
@@ -534,7 +519,7 @@ class GeConcreteGraph(ConcreteGraphBase):
 
         fx_outputs = [v for v in self._fx_outputs]
         for fx_idx, fx_output in enumerate(fx_outputs):
-            if isinstance(fx_output, ViewOfInput):
+            if isinstance(fx_output, ViewOfInput) or isinstance(fx_output, SymOutput):
                 fx_outputs[fx_idx] = fx_output.compute_output(*args)
 
         for fx_idx, ge_idx in self._fx_outputs_mapping.items():
@@ -603,6 +588,12 @@ class GeConcreteGraph(ConcreteGraphBase):
             arg = arg.npu if isinstance(arg, ValuePack) else arg
             self._fx_outputs.append(arg)
             if not isinstance(arg, ge.Tensor):
+                continue
+
+            if is_sym(arg.meta):
+                used_syms_in_meta_output = get_used_syms_in_meta(arg.meta)
+                sym_value_mapping = {sym: all_sym_value_mapping[sym] for sym in used_syms_in_meta_output}
+                self._fx_outputs[-1] = SymOutput(arg.meta, sym_value_mapping)
                 continue
 
             is_view2output_flag = False

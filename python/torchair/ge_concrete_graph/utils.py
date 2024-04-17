@@ -207,9 +207,10 @@ def dump_graph(path: str, graph):
 
 
 def get_used_syms_in_meta(meta):
-    if is_sym(meta):
-        return {meta}
     used_syms_in_meta = set()
+    if is_sym(meta):
+        used_syms_in_meta.update(meta.node.expr.free_symbols)
+        return used_syms_in_meta
     if is_sym(meta.storage_offset()):
         used_syms_in_meta.update(meta.storage_offset().node.expr.free_symbols)
     output_shape = list(meta.size())
@@ -249,6 +250,33 @@ def get_all_sym_value_mapping(fx_inputs_mapping_reverse, inputs):
             if is_sym(shape) and shape.node.expr in sym_symbol_set and shape.node.expr not in sym_value_mapping:
                 sym_value_mapping[shape.node.expr] = (shape_i, fx_inputs_mapping_reverse[input_i])
     return sym_value_mapping
+
+
+def compute_value_of_sym(_sym_value_mapping, *args):
+    value_of_sym = {}
+    for sym, index in _sym_value_mapping.items():
+        if index[0] == -1:
+            value_of_sym[sym] = args[index[1]]
+        else:
+            value_of_sym[sym] = args[index[1]].size()[index[0]]
+    return value_of_sym
+
+
+def get_sym_int_value(sym_exper, value_of_sym):
+    if isinstance(sym_exper, int):
+        return sym_exper
+    if sym_exper in value_of_sym.keys():
+        return value_of_sym[sym_exper]
+    else:
+        return sym_exper.subs(value_of_sym)
+
+
+def generate_sym_exper(metas):
+    if isinstance(metas, list):
+        return [generate_sym_exper(meta) for meta in metas]
+    if isinstance(metas, int):
+        return metas
+    return metas.node.expr
 
 
 def is_integral_type(dtype: torch.dtype, include_bool: bool):

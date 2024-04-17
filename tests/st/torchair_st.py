@@ -1,5 +1,6 @@
 import math
 import os
+
 os.environ['TNG_LOG_LEVEL'] = '1'
 import torchair
 import torch
@@ -17,6 +18,7 @@ from torchair.ge_concrete_graph.ge_graph import DataType
 from torchair.ge_concrete_graph.graph_pass import optimize_reference_op_redundant_copy
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core.backend import initialize_graph_engine
+
 logger.setLevel(logging.DEBUG)
 
 config = CompilerConfig()
@@ -31,7 +33,8 @@ def set_graph_output_dtypes(graph, dtypes):
     input_placements = dict()
     for op in graph.op:
         if op.type == "Data":
-            input_placements[op.attr['index'].i] = Placement.HOST if op.output_desc[0].device_type == "CPU" else Placement.DEVICE
+            input_placements[op.attr['index'].i] = Placement.HOST if op.output_desc[
+                                                                         0].device_type == "CPU" else Placement.DEVICE
     for _, v in sorted(input_placements.items()):
         graph.attr["_input_placements"].list.i.append(v)
 
@@ -44,6 +47,7 @@ class TorchairSt(unittest.TestCase):
 
             def forward(self, x, y):
                 return torch.add(x, y)
+
         model = torch.compile(Model(), backend=npu_backend, dynamic=True)
         x = torch.randn(2, 2, 2)
         y = torch.randn(2, 2, 2)
@@ -57,6 +61,7 @@ class TorchairSt(unittest.TestCase):
 
             def forward(self, x):
                 return torch.add(x, x)
+
         model = torch.compile(Model(), backend=npu_backend, dynamic=True)
         x = torch.randn(2).to(torch.complex32)
         self.assertEqual(model(x).dtype, torch.complex32)
@@ -72,6 +77,7 @@ class TorchairSt(unittest.TestCase):
 
             def forward(self, x, y):
                 return torch.add(x, y)
+
         model = torch.compile(Model(), backend=npu_backend, dynamic=True)
         x = torch.randn(2, 2, 2).to(torch.bfloat16)
         y = torch.randn(2, 2, 2).to(torch.bfloat16)
@@ -85,6 +91,7 @@ class TorchairSt(unittest.TestCase):
 
             def forward(self, x, y):
                 return torch.add(x, y)
+
         model = torch.compile(Model(), backend=npu_backend, dynamic=True)
         x = torch.randn(2, 2)
         model(x, 2)
@@ -99,6 +106,7 @@ class TorchairSt(unittest.TestCase):
 
             def forward(self, x, y):
                 return torch.add(x, y)
+
         config_auto_tune = CompilerConfig()
         config_auto_tune.aoe_config.aoe_mode = "2"
         config_auto_tune.debug.graph_dump.type = "pbtxt"
@@ -134,27 +142,32 @@ class TorchairSt(unittest.TestCase):
 
     def test_different_fx_output_from_same_fx_node(self):
         v = torch.ones(2)
+
         @torch.compile(backend=npu_backend)
         def one_2_two_case1(x):
             return x, x
+
         x, y = one_2_two_case1(v)
         self.assertTrue(x is y)
 
         @torch.compile(backend=npu_backend)
         def one_2_two_case2(x):
             return x, x + 1, x
+
         x, _, y = one_2_two_case2(v)
         self.assertTrue(x is y)
 
         @torch.compile(backend=npu_backend)
         def one_2_two_case3(x):
             return x + 1, x, x
+
         _, x, y = one_2_two_case3(v)
         self.assertTrue(x is y)
 
         @torch.compile(backend=npu_backend)
         def one_2_two_case4(x):
             return x, x, x + 1
+
         x, y, _ = one_2_two_case4(v)
         self.assertTrue(x is y)
 
@@ -187,13 +200,12 @@ class TorchairSt(unittest.TestCase):
         assert dumped_py_file_list.__len__() > 0
         file_name = os.path.join('./', dumped_py_file_list[-1])
 
-        with open(file_name, 'r')as f:
+        with open(file_name, 'r') as f:
             src = f.read()
 
         assert src != '# -*- coding: utf-8 -*-\nfrom torch import tensor\n' \
                       'from torchair.ge_concrete_graph import ge_apis as ge\n' \
                       'from torchair.ge_concrete_graph.ge_graph import get_default_ge_graph\n\n'
-
 
     def test_1sym_pack(self):
         class Model(torch.nn.Module):
@@ -339,12 +351,12 @@ class TorchairSt(unittest.TestCase):
             node_count_dict, output_in = get_graph_key_op_num(graph)
             assert node_count_dict["Assign"] == 2, \
                 f'after optimize, assert assign op num failed, expect 2, get {node_count_dict["Assign"]}'
-            assert node_count_dict["TensorMove"] == 4,\
+            assert node_count_dict["TensorMove"] == 4, \
                 f'after optimize, assert TensorMove op num failed, expect 4, get {node_count_dict["TensorMove"]}'
             assert output_in == 3, f'after optimize, assert output num failed, expect 3, get {output_in}'
-            assert node_count_dict["Data"] == 5,\
+            assert node_count_dict["Data"] == 5, \
                 f'after optimize, assert input data num failed, expect 5, get {node_count_dict["Data"]}'
-            assert node_count_dict["RefData"] == 0,\
+            assert node_count_dict["RefData"] == 0, \
                 f'after optimize, assert output num failed, expect 0, get {node_count_dict["RefData"]}'
 
             output_ref_input = _mapping_assign_op_to_graph_output(graph)
@@ -367,12 +379,12 @@ class TorchairSt(unittest.TestCase):
             fx_inputs_mapping = {i: i for i in range(6)}
             replace_data_to_refdata(graph, all_ref_data_idx, inputs, fx_inputs_mapping)
             node_count_dict, output_in = get_graph_key_op_num(graph)
-            assert node_count_dict["Assign"] == 1,\
+            assert node_count_dict["Assign"] == 1, \
                 f'after optimize, assert assign op num failed, expect 1, get {node_count_dict["Assign"]}'
-            assert node_count_dict["Data"] == 2,\
+            assert node_count_dict["Data"] == 2, \
                 f'after optimize, assert input data num failed, expect 3, get {node_count_dict["Data"]}'
             assert output_in == 4, f'after optimize, assert output num failed, expect 4, get {output_in}'
-            assert node_count_dict["RefData"] == 3,\
+            assert node_count_dict["RefData"] == 3, \
                 f'after optimize, assert output num failed, expect 3, get {node_count_dict["RefData"]}'
 
             assigned_outputs = [None] * len(graph.attr["_output_dtypes"].list.i)
@@ -735,7 +747,6 @@ class TorchairSt(unittest.TestCase):
         for i in range(3):
             result = executor.run((x, y))
 
-
         with GeGraph() as graph2:
             a = ge.Data(index=0, shape=[16, 16],
                         dtype=DataType.DT_FLOAT16, placement='CPU')
@@ -798,7 +809,6 @@ class TorchairSt(unittest.TestCase):
         src_call = GeConcreteGraph.__call__
         GeConcreteGraph.__call__ = call_sub
 
-
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
@@ -809,7 +819,6 @@ class TorchairSt(unittest.TestCase):
                 b1 = torch.ops.aten.bernoulli.p(x, 0.8)
                 y = y * b1
                 return y
-
 
         model = Model()
         model = torch.compile(model, backend=npu_backend)
@@ -862,6 +871,7 @@ class TorchairSt(unittest.TestCase):
                 assert len(args) > 0
                 check_graph(args[0])
                 return func(*args, **kwargs)
+
             return wrapper
 
         from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
@@ -922,6 +932,7 @@ class TorchairSt(unittest.TestCase):
                 assert len(args) > 0
                 check_graph(args[0])
                 return func(*args, **kwargs)
+
             return wrapper
 
         from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
@@ -973,6 +984,7 @@ class TorchairSt(unittest.TestCase):
                 assert len(args) > 0
                 check_graph(args[0])
                 return func(*args, **kwargs)
+
             return wrapper
 
         from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
@@ -1063,7 +1075,7 @@ class TorchairSt(unittest.TestCase):
 
         def rotate_half(x):
             x1 = x[..., : x.shape[-1] // 2]
-            x2 = x[..., x.shape[-1] // 2 :]
+            x2 = x[..., x.shape[-1] // 2:]
             return torch.cat((-x2, x1), dim=-1)
 
         def apply_rotary_pos_emb(q, k, cos_data, sin_data):
@@ -1075,7 +1087,7 @@ class TorchairSt(unittest.TestCase):
         compiled_fn(
             torch.randn(2, 4, 8, 16), torch.randn(2, 4, 8, 16),
             torch.randn(2, 4, 8, 16), torch.randn(2, 4, 8, 16)
-            )
+        )
 
     def test_viewofoutput_dynamic_sym(self):
         class Model(torch.nn.Module):
@@ -1483,6 +1495,38 @@ class TorchairSt(unittest.TestCase):
         x = torch.randn([6, 7])
         b = 4
         model(x, b)
+
+    def test_autograd_sym(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                x = x + 1
+                return x, x.size()
+
+        model = torch.compile(Model(), backend=npu_backend, dynamic=True)
+        input0 = torch.randn(size=(4, 2, 4, 4), dtype=torch.float32, requires_grad=True)
+        res = model(input0)
+        self.assertEqual(res[1], torch.Size([4, 2, 4, 4]))
+
+    def test_autograd_symexpr(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                assert len(x.size()) >= 1
+                a = float(x.size(-1))
+                b = math.sqrt(x.size(-1))
+                c = b / b
+                return a + c
+
+        model = Model()
+        model = torch.compile(model, backend=npu_backend, dynamic=True)
+        x = torch.randn(10, 1, 2)
+        res = model(x)
+        self.assertEqual(res, 3)
 
 
 if __name__ == '__main__':
