@@ -34,6 +34,11 @@ class AscirRegister {
     return InferDataType(SameDataTypeFromFirstInput);
   }
 
+  AscirRegister &InferView(AscIrDef::CodeGenerator infer_view_generator);
+  AscirRegister &UseFirstInputView() {
+    return InferView(SameViewFromFirstInput);
+  }
+
   AscirRegister &StartNode();
 
   AscirRegister(const AscirRegister &);

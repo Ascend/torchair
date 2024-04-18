@@ -16,11 +16,11 @@
 
 #ifndef AUTOFUSE_ASCIR_REGISTRY_H
 #define AUTOFUSE_ASCIR_REGISTRY_H
+#include <functional>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <functional>
-#include <sstream>
 namespace ascir {
 // todo c++的类ABI兼容性不好，后面考虑换成C接口实现
 struct AscIrAttrDef {
@@ -42,6 +42,7 @@ struct AscIrDef {
 
   bool start_node;
   CodeGenerator infer_data_type_generator;
+  CodeGenerator infer_view_generator;
 };
 inline void SameDataTypeFromInput(const AscIrDef &def, std::stringstream &ss, const char *input_name) {
   for (const auto &output_def : def.output_defs) {
@@ -50,6 +51,19 @@ inline void SameDataTypeFromInput(const AscIrDef &def, std::stringstream &ss, co
 }
 inline void SameDataTypeFromFirstInput(const AscIrDef &def, std::stringstream &ss) {
   SameDataTypeFromInput(def, ss, def.input_defs[0].c_str());
+}
+inline void SameViewFromInput(const AscIrDef &def, std::stringstream &ss, const char *input_name) {
+  for (const auto &output_def : def.output_defs) {
+    ss << "  op." << output_def << ".axis = static_cast<std::vector<AxisId>>(" << input_name << "_in.axis);"
+       << std::endl;
+    ss << "  op." << output_def << ".repeats = static_cast<std::vector<SizeExpr>>(" << input_name << "_in.repeats);"
+       << std::endl;
+    ss << "  op." << output_def << ".strides = static_cast<std::vector<SizeExpr>>(" << input_name << "_in.strides);"
+       << std::endl;
+  }
+}
+inline void SameViewFromFirstInput(const AscIrDef &def, std::stringstream &ss) {
+  SameViewFromInput(def, ss, def.input_defs[0].c_str());
 }
 
 class AscirRegistry {

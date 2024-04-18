@@ -50,6 +50,10 @@ AscirRegister &AscirRegister::InferDataType(AscIrDef::CodeGenerator infer_data_t
   ir_def_.infer_data_type_generator = std::move(infer_data_type_generator);
   return *this;
 }
+AscirRegister &AscirRegister::InferView(AscIrDef::CodeGenerator infer_view_generator) {
+  ir_def_.infer_view_generator = std::move(infer_view_generator);
+  return *this;
+}
 template <>
 AscirRegister &AscirRegister::Attr<ge::DataType>(std::string name) {
   return Attr(std::move(name), "ge::DataType", "Int");

@@ -24,9 +24,9 @@ REG_ASC_IR_1IO(Data).StartNode();
 REG_ASC_IR_1IO(Workspace).StartNode();
 REG_ASC_IR_1IO(Output);
 
-REG_ASC_IR_1IO(Load).UseFirstInputDataType();
+REG_ASC_IR_1IO(Load).UseFirstInputDataType().UseFirstInputView();
 REG_ASC_IR_1IO(Broadcast).UseFirstInputDataType();
-REG_ASC_IR_1IO(Store).UseFirstInputDataType();
+REG_ASC_IR_1IO(Store).UseFirstInputDataType().UseFirstInputView();
 /*
  * todo nop比较特别，不确定是不是缺陷，原定义中，GEIR与ASCIR是不同的，GEIR多了个必选属性
 namespace ge {
@@ -47,28 +47,24 @@ END_OPS(Nop)
 REG_ASC_IR_1IO(Nop).UseFirstInputDataType();
 REG_ASC_IR_1IO(Cast)
     .Attr<ge::DataType>("dst_type")
-    .InferDataType([](const AscIrDef &def, std::stringstream &ss) {
-      ss << "  op.y.dtype = dst_type;" << std::endl;
-    });
+    .UseFirstInputView()
+    .InferDataType([](const AscIrDef &def, std::stringstream &ss) { ss << "  op.y.dtype = dst_type;" << std::endl; });
 
-REG_ASC_IR_1IO(Abs).UseFirstInputDataType();
+REG_ASC_IR_1IO(Abs).UseFirstInputDataType().UseFirstInputView();
 REG_ASC_IR_1IO(Max).UseFirstInputDataType();
 REG_ASC_IR_1IO(Sum).UseFirstInputDataType();
-REG_ASC_IR_2I1O(Sub).UseFirstInputDataType();
-REG_ASC_IR_2I1O(Div).UseFirstInputDataType();
-REG_ASC_IR_1IO(Exp).UseFirstInputDataType();
+REG_ASC_IR_2I1O(Sub).UseFirstInputDataType().UseFirstInputView();
+REG_ASC_IR_2I1O(Div).UseFirstInputDataType().UseFirstInputView();
+REG_ASC_IR_1IO(Exp).UseFirstInputDataType().UseFirstInputView();
 
 REG_ASC_IR_2I1O(MatMul).UseFirstInputDataType();
-REG_ASC_IR_2I1O(Muls).UseFirstInputDataType();
-REG_ASC_IR_2I1O(Mul).UseFirstInputDataType();
-REG_ASC_IR_2I1O(Add).UseFirstInputDataType();
+REG_ASC_IR_2I1O(Muls).UseFirstInputDataType().UseFirstInputView();
+REG_ASC_IR_2I1O(Mul).UseFirstInputDataType().UseFirstInputView();
+REG_ASC_IR_2I1O(Add).UseFirstInputDataType().UseFirstInputView();
 
 REG_ASC_IR_START_NODE(TbufData);
 
-REG_ASC_IR(FlashSoftmax)
-    .Inputs({"x1", "x2", "x3"})
-    .Outputs({"y1", "y2", "y3"})
-    .UseFirstInputDataType();
+REG_ASC_IR(FlashSoftmax).Inputs({"x1", "x2", "x3"}).Outputs({"y1", "y2", "y3"}).UseFirstInputDataType();
 REG_ASC_IR_2I1O(Dropout).UseFirstInputDataType();
 REG_ASC_IR_2I1O(Select).UseFirstInputDataType();
 }  // namespace ascir

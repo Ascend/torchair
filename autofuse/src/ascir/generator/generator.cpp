@@ -118,6 +118,9 @@ class FunctionGenerator {
       ss << std::endl;
     }
 
+    GenPaddingAxis(ss);
+    ss << std::endl;
+
     GenReturn(ss);
   }
 
@@ -126,6 +129,7 @@ class FunctionGenerator {
   virtual bool GenConnectInputs(std::stringstream &ss) const;
   virtual bool GenAttrAssignment(std::stringstream &ss) const;
   virtual void GenSchedInfo(std::stringstream &ss) const {
+    ss << "  op.attr.sched.exec_order = GenNextExecId(op);" << std::endl;
     ss << "  SET_SCHED_AXIS_IF_IN_CONTEXT();" << std::endl;
   }
   virtual bool GenOutputsAssignment(std::stringstream &ss) const {
@@ -136,7 +140,16 @@ class FunctionGenerator {
       generated = true;
       def_.infer_data_type_generator(def_, ss);
     }
+    if (def_.infer_view_generator != nullptr) {
+      generated = true;
+      def_.infer_view_generator(def_, ss);
+    }
     return generated;
+  }
+  virtual void GenPaddingAxis(std::stringstream &ss) const {
+    for (const auto &name : def_.output_defs) {
+      ss << "  THROW(PadOutputViewToSched(op." << name << "));" << std::endl;
+    }
   }
   virtual void GenReturn(std::stringstream &ss) const {
     ss << "  return op;" << std::endl;

@@ -112,3 +112,48 @@ TEST(AscirOps_FlashSoftmaxInferDataType, Ok) {
   EXPECT_EQ(fs.outputs[1].dtype, ge::DT_INT32);
   EXPECT_EQ(fs.outputs[2].dtype, ge::DT_INT32);
 }
+TEST(AscirOps, ExecOrderIncreaseOk) {
+  ascir::Graph graph("test_graph");
+  auto A = graph.CreateSizeVar("A");
+  auto B = graph.CreateSizeVar("B");
+  auto C = graph.CreateSizeVar("C");
+  auto a = graph.CreateAxis("a", A);
+  auto b = graph.CreateAxis("b", B);
+  auto c = graph.CreateAxis("c", C);
+
+  auto data0 = ascir::cg::ContiguousData("data0", graph, ge::DT_INT32, {a, b, c});
+  auto data1 = ascir::cg::ContiguousData("data1", graph, ge::DT_FLOAT16, {a, b, c});
+  auto data2 = ascir::cg::ContiguousData("data2", graph, ge::DT_FLOAT16, {a, b, c});
+
+  ascir::cg::FlashSoftmax("fs", data0.y, data1.y, data2.y);
+
+  auto data0_node = graph.Find("data0");
+  auto data1_node = graph.Find("data1");
+  auto data2_node = graph.Find("data2");
+  auto fs_node = graph.Find("fs");
+  EXPECT_EQ(static_cast<int64_t>(data0_node.attr.sched.exec_order), 0);
+  EXPECT_EQ(static_cast<int64_t>(data1_node.attr.sched.exec_order), 1);
+  EXPECT_EQ(static_cast<int64_t>(data2_node.attr.sched.exec_order), 2);
+  EXPECT_EQ(static_cast<int64_t>(fs_node.attr.sched.exec_order), 3);
+}
+
+TEST(AscirOps_LoadInferView, Ok) {
+  ascir::Graph graph("test_graph");
+  auto A = graph.CreateSizeVar("A");
+  auto B = graph.CreateSizeVar("B");
+  auto C = graph.CreateSizeVar("C");
+  auto a = graph.CreateAxis("a", A);
+  auto b = graph.CreateAxis("b", B);
+  auto c = graph.CreateAxis("c", C);
+
+  auto data0 = ascir::cg::ContiguousData("data0", graph, ge::DT_FLOAT16, {a, b, c});
+
+  auto l = ascir::cg::Load("fs", data0.y);
+
+  auto load = graph.Find("fs");
+  ASSERT_EQ(load.outputs.GetAll().size(), 1);
+  EXPECT_EQ(load.outputs[0].axis(), std::vector<int64_t>({a.id, b.id, c.id}));
+  EXPECT_EQ(load.outputs[0].repeats(), std::vector<ascir::SizeExpr>({A, B, C}));
+  EXPECT_EQ(load.outputs[0].strides(), std::vector<ascir::SizeExpr>({B*C, C, ascir::SizeExpr::One()}));
+  EXPECT_EQ(load.outputs[0].dtype, ge::DT_FLOAT16);
+}

@@ -822,6 +822,27 @@ struct OutputAttrField<OUTPUT_INDEX, ATTR_NAME_PREFIX, std::vector<ascir::SizeEx
     ge::AttrUtils::SetListListInt(opdesc->MutableOutputDesc(OUTPUT_INDEX), DENS, dens);
     return *this;
   }
+  operator std::vector<ascir::SizeExpr> () const {
+    std::vector<int64_t> is_zero;
+    std::vector<std::vector<ascir::SizeVarId>> nums;
+    std::vector<std::vector<ascir::SizeVarId>> dens;
+
+    auto output_desc = ge::OpDescUtils::GetOpDescFromOperator(*op)->MutableOutputDesc(OUTPUT_INDEX);
+    ge::AttrUtils::GetListInt(output_desc, IS_ZERO, is_zero);
+    ge::AttrUtils::GetListListInt(output_desc, NUMS.c_str(), nums);
+    ge::AttrUtils::GetListListInt(output_desc, DENS.c_str(), dens);
+
+    std::vector<ascir::SizeExpr> result;
+    result.reserve(nums.size());
+    for (size_t i = 0; i < nums.size(); ++i) {
+      ascir::SizeExpr expr;
+      expr.is_zero = is_zero[i];
+      expr.nums = nums[i];
+      expr.dens = dens[i];
+      result.push_back(expr);
+    }
+    return result;
+  }
 };
 
 template <int OUTPUT_INDEX, const char *ATTR_NAME_PREFIX>

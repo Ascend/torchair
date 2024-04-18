@@ -24,8 +24,5 @@ bool IsOps(const ascir::NodeView &view) {
   return view->GetType() == T::Type;
 }
 }
-namespace cg {
-void AddToGraphFollowOp(const ge::Operator &op, ge::Operator &new_op);
-}
 }
 #endif  // AUTOFUSE_ASCIR_OPS_UTILS_H
