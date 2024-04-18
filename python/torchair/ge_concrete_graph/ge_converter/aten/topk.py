@@ -20,6 +20,7 @@ from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.utils import dtype_promote
 
 
 @register_fx_node_ge_converter(torch.ops.aten.topk.default)
@@ -32,7 +33,9 @@ def conveter_aten_topk_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::topk(Tensor self, SymInt k, int dim=-1, bool largest=True, bool sorted=True) -> (Tensor values, Tensor indices)"""
-    return ge.TopKV2(self, k, sorted=sorted, dim=dim, largest=largest)
+    value, indices = ge.TopKV2(self, k, sorted=sorted, dim=dim, largest=largest)
+    indices = dtype_promote(indices, target_dtype=meta_outputs[1].dtype)
+    return value, indices
 
 
 @register_fx_node_ge_converter(torch.ops.aten.topk.values)
