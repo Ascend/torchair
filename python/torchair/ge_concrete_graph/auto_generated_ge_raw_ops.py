@@ -15368,64 +15368,6 @@ def IndexByTensor(x: Tensor,
     return y
 
 
-@auto_convert_to_tensor([False, False, True],
-                        [False, False, False], inputs_tensor_type=[TensorType.TT_BASIC, TensorType.TT_BASIC, TensorType.TT_UNKNOWN])
-def IndexPutImpl(x: Tensor,
-          value: Tensor,
-          indices: List[Tensor],
-          *,
-          indices_mask: List[int],
-          accumulate: bool = False,
-          unsafe: bool = False,
-          dependencies=[],
-          node_name=None):
-    """REG_OP(IndexPutImpl)\n
-.INPUT(x, TensorType::BasicType())\n
-.INPUT(value, TensorType::BasicType())\n
-.DYNAMIC_INPUT(indices, TensorType({DT_INT64}))\n
-.OUTPUT(x, TensorType::BasicType())\n
-.ATTR(indices_mask, ListInt, {})\n
-.ATTR(accumulate, Bool, false)\n
-.ATTR(unsafe, Bool, false)\n
-"""
-
-    op = get_default_ge_graph().op.add()
-    op.type = "IndexPutImpl"
-    op.name = next_unique_name(node_name, "IndexPutImpl")
-
-    # process dependices
-    for dependency in dependencies:
-        op.input.append(dependency.controller)
-
-    # process inputs
-    op.input.append(x.tensor)
-    op.input_desc.add().CopyFrom(x.desc)
-    op.input_desc[-1].name = "x"
-    op.input.append(value.tensor)
-    op.input_desc.add().CopyFrom(value.desc)
-    op.input_desc[-1].name = "value"
-    if not isinstance(indices, (tuple, list)):
-        raise AssertionError("indices must be a tuple or a list.")
-    for i, v in enumerate(indices):
-        op.input.append(v.tensor)
-        op.input_desc.add().CopyFrom(v.desc)
-        op.input_desc[-1].name = "indices" + str(i)
-
-    # process attrs
-    op.attr["indices_mask"].list.val_type = 2
-    op.attr["indices_mask"].list.i.extend(indices_mask)
-    op.attr["accumulate"].b = accumulate
-    op.attr["unsafe"].b = unsafe
-
-    # process outputs
-    output_index = 0
-    op.output_desc.add().name = "y"
-    y = Tensor(op, output_index)
-    output_index += 1
-
-    return y
-
-
 # This api is auto-generated from IR Index
 @auto_convert_to_tensor([False, False, False, True], [False, False, False, False], inputs_tensor_type=[TensorType.TT_BASIC, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN])
 def Index(x: Tensor, indexed_sizes: Tensor, indexed_strides: Tensor, indices: List[Tensor], *, dependencies=[], node_name=None):
