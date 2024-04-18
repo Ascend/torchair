@@ -40,4 +40,4 @@ def conveter_aten_hardsigmoid_out(
     self: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::hardsigmoid.out(Tensor self, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.hardsigmoid.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.hardsigmoid.out ge_converter is redundant before pytorch 2.1.0!")

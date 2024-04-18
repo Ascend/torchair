@@ -41,7 +41,7 @@ def conveter_aten_clamp_default(
 ):
     """NB: aten::clamp(Tensor self, Scalar? min=None, Scalar? max=None) -> Tensor"""
     if min is None and max is None:
-        raise NotImplementedError("torch.clamp: At least one of 'min' or 'max' must not be None")
+        raise RuntimeError("torch.clamp: At least one of 'min' or 'max' must not be None")
     if min is None:
         if self.dtype == DataType.DT_INT32 or self.dtype == DataType.DT_INT64:
             min = torch.iinfo(torch.int32).min
@@ -69,7 +69,7 @@ def conveter_aten_clamp_Tensor(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::clamp.Tensor(Tensor self, Tensor? min=None, Tensor? max=None) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.clamp.Tensor ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.clamp.Tensor ge_converter is redundant before pytorch 2.1.0!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.clamp.out)
@@ -82,7 +82,7 @@ def conveter_aten_clamp_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::clamp.out(Tensor self, Scalar? min=None, Scalar? max=None, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.clamp.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.clamp.out ge_converter is redundant before pytorch 2.1.0!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.clamp.Tensor_out)
@@ -95,4 +95,4 @@ def conveter_aten_clamp_Tensor_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::clamp.Tensor_out(Tensor self, Tensor? min=None, Tensor? max=None, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.clamp.Tensor_out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.clamp.Tensor_out ge_converter is redundant before pytorch 2.1.0!")

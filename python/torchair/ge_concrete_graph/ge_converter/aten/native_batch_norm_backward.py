@@ -60,9 +60,6 @@ def conveter_aten_native_batch_norm_backward_default(
     else:
         mean = running_mean
         invstd = running_var
-    if not all(output_mask):
-        raise RuntimeError("torch.ops.aten.native_batch_norm_backward.default "
-                           "ge_converter is not implemented while output_mask are not all True!")
     dim = input.rank
     if dim > 5 or dim < 2:
         raise RuntimeError("torch.ops.aten.native_batch_norm_backward.default "
@@ -72,35 +69,68 @@ def conveter_aten_native_batch_norm_backward_default(
         weight = ge.Fill(ge.Gather(input_size, ge.Cast(2 if dim == 5 else 1, dst_type=DataType.DT_INT32)),
                          ge.Cast(1., dst_type=input.dtype))
     if dim <= 4:
-        if dim == 2 or dim == 3:
-            input = ge.Unsqueeze(input, axes=list(range(dim, 4)))
-            grad_out = ge.Unsqueeze(grad_out, axes=list(range(dim, 4)))
-
-        diff_scale, diff_offset = ge.BNTrainingUpdateGrad(grad_out, input, mean, invstd, epsilon=eps)
-        specific_op_input_layout(diff_scale, indices=list(range(4)), layout="NCHW")
-        specific_op_output_layout(diff_scale, indices=[0, 1], layout="NCHW")
-
-        if train:
-            grad_in = ge.BNTrainingReduceGrad(grad_out, input, diff_scale, diff_offset,
-                                              weight, mean, invstd, epsilon=eps)
-            specific_op_input_layout(grad_in, indices=list(range(7)), layout="NCHW")
-            specific_op_output_layout(grad_in, indices=0, layout="NCHW")
-            if dim == 2 or dim == 3:
-                grad_in = ge.Squeeze(grad_in, axis=list(range(3, dim - 1, -1)))
-            return grad_in, diff_scale, diff_offset
+        grad_in, diff_scale, diff_offset = __native_batch_norm_backward(dim, eps, grad_out, invstd, mean, output_mask,
+                                                                        train, weight, input)
     else:
-        diff_scale, diff_offset = ge.BN3DTrainingUpdateGrad(grad_out, input, mean, invstd, epsilon=eps)
-        if train:
-            specific_op_input_layout(diff_scale, indices=list(range(4)), layout="NCDHW")
-            specific_op_output_layout(diff_scale, indices=[0, 1], layout="NCDHW")
-            grad_in = ge.BNTrainingReduceGrad(grad_out, input, diff_scale, diff_offset,
-                                            weight, mean, invstd, epsilon=eps)
-            specific_op_input_layout(grad_in, indices=list(range(7)), layout="NCDHW")
-            specific_op_output_layout(grad_in, indices=0, layout="NCDHW")
-            return grad_in, diff_scale, diff_offset
+        grad_in, diff_scale, diff_offset = __native_batch_norm_backward_3d(eps, grad_out, invstd, mean, output_mask,
+                                                                           train, weight, input)
 
-    grad_in = ge.BNInferGrad(grads=grad_out, scale=weight, batch_variance=invstd, epsilon=eps)
+    return __mask_output(grad_in, diff_scale, diff_offset, output_mask)
+
+
+def __mask_output(grad_in, diff_scale, diff_offset, output_mask):
+    out_diff_scale = diff_scale if output_mask[1] else None
+    out_diff_offset = diff_offset if output_mask[2] else None
+    return grad_in, out_diff_scale, out_diff_offset
+
+
+def __native_batch_norm_backward_3d(eps, grad_out, invstd, mean, output_mask, train, weight, x):
+    layout = "NCDHW"
+    diff_scale, diff_offset = ge.BN3DTrainingUpdateGrad(grad_out, x, mean, invstd, epsilon=eps)
+    specific_op_input_layout(diff_scale, indices=list(range(4)), layout=layout)
+    specific_op_output_layout(diff_scale, indices=[0, 1], layout=layout)
+    if not output_mask[0]:
+        grad_in = None
+    elif train:
+        grad_in = ge.BNTrainingReduceGrad(grad_out, x, diff_scale, diff_offset,
+                                          weight, mean, invstd, epsilon=eps)
+        specific_op_input_layout(grad_in, indices=list(range(7)), layout=layout)
+        specific_op_output_layout(grad_in, indices=0, layout=layout)
+    else:
+        grad_in = ge.BNInferGrad(grads=grad_out, scale=weight, batch_variance=invstd, epsilon=eps)
     return grad_in, diff_scale, diff_offset
+
+
+def __native_batch_norm_backward(dim, eps, grad_out, invstd, mean, output_mask, train, weight, x):
+    layout = "NCHW"
+    grad_out, x = __unsqueeze_inputs(dim, grad_out, x)
+    diff_scale, diff_offset = ge.BNTrainingUpdateGrad(grad_out, x, mean, invstd, epsilon=eps)
+    specific_op_input_layout(diff_scale, indices=list(range(4)), layout=layout)
+    specific_op_output_layout(diff_scale, indices=[0, 1], layout=layout)
+    if not output_mask[0]:
+        grad_in = None
+    elif train:
+        grad_in = ge.BNTrainingReduceGrad(grad_out, x, diff_scale, diff_offset,
+                                          weight, mean, invstd, epsilon=eps)
+        specific_op_input_layout(grad_in, indices=list(range(7)), layout=layout)
+        specific_op_output_layout(grad_in, indices=0, layout=layout)
+        grad_in = __squeeze_grad_in(dim, grad_in)
+    else:
+        grad_in = ge.BNInferGrad(grads=grad_out, scale=weight, batch_variance=invstd, epsilon=eps)
+    return grad_in, diff_scale, diff_offset
+
+
+def __squeeze_grad_in(dim, grad_in):
+    if dim == 2 or dim == 3:
+        grad_in = ge.Squeeze(grad_in, axis=list(range(3, dim - 1, -1)))
+    return grad_in
+
+
+def __unsqueeze_inputs(dim, grad_out, x):
+    if dim == 2 or dim == 3:
+        x = ge.Unsqueeze(x, axes=list(range(dim, 4)))
+        grad_out = ge.Unsqueeze(grad_out, axes=list(range(dim, 4)))
+    return grad_out, x
 
 
 @register_fx_node_ge_converter(torch.ops.aten.native_batch_norm_backward.out)

@@ -45,7 +45,7 @@ def conveter_aten_fill_Scalar_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::fill.Scalar_out(Tensor self, Scalar value, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.fill.Scalar_out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.fill.Scalar_out ge_converter is redundant before pytorch 2.1.0!")
 
 
 @declare_supported([
@@ -65,4 +65,4 @@ def conveter_aten_fill_Tensor_out(
     self: Tensor, value: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::fill.Tensor_out(Tensor self, Tensor value, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.fill.Tensor_out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.fill.Tensor_out ge_converter is redundant before pytorch 2.1.0!")

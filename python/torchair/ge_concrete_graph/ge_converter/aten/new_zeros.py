@@ -65,4 +65,4 @@ def conveter_aten_new_zeros_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::new_zeros.out(Tensor self, SymInt[] size, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.new_zeros.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.new_zeros.out ge_converter is redundant before pytorch 2.1.0!")
