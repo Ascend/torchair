@@ -45,10 +45,8 @@ def randn_checkpoint(
     meta_outputs: TensorSpec = None,
     rng_state: Optional[Tensor] = None
 ):
-    if generator is not None:
-        raise RuntimeError("parameter generator should be handled in eager!")
     if rng_state is None:
-        seed, offset = get_ge_rng_state(philox_num=10)
+        seed, offset = get_ge_rng_state(philox_num=10, gen=generator)
     else:
         seed, offset = ge.Unpack(rng_state, num=2, axis=0)
     key = ge.Unsqueeze(ge.Cast(seed, dst_type=DataType.DT_UINT64), axes=[0])
