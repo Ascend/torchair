@@ -382,7 +382,9 @@ class LinearAllreduce(nn.Module):
 
 # 性能数据
 
-在Ascend910B4的机器上，执行llama2-70b，4batch size，输入输出padding到1024长度的性能数据如下：
+执行llama2-70b，加载模型时的tensor类型float16，输入padding到1024长度，输出max_new_tokens是1024的性能数据如下：
+
+**在Ascend910B4的机器上，host是arm，4batch size：**
 
 <table class="tg">
 <thead>
@@ -451,4 +453,101 @@ class LinearAllreduce(nn.Module):
 </tbody>
 </table>
 
+
+**在Ascend910B2的机器上，host是x86，4batch size：**
+
+<table class="tg">
+<thead>
+  <tr>
+    <th class="tg-0pky" rowspan="2">优化项</th>
+    <th class="tg-0pky" colspan="2">单算子模式</th>
+    <th class="tg-0pky" colspan="2">图模式</th>
+  </tr>
+  <tr>
+    <th class="tg-0pky">全量</th>
+    <th class="tg-0pky">增量</th>
+    <th class="tg-0pky">全量</th>
+    <th class="tg-0pky">增量</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td class="tg-0pky">原始脚本</td>
+    <td class="tg-0pky">644ms</td>
+    <td class="tg-0pky">57.9ms</td>
+    <td class="tg-0pky">650ms</td>
+    <td class="tg-0pky">83.5ms</td>
+  </tr>
+  <tr>
+    <td class="tg-0pky">固定kv cache</td>
+    <td class="tg-0pky">640ms</td>
+    <td class="tg-0pky">49.8ms</td>
+    <td class="tg-0pky">654ms</td>
+    <td class="tg-0pky">73.5ms</td>
+  </tr>
+  <tr>
+    <td class="tg-0pky">替换FlashAttention&amp;&amp;cos/sin优化</td>
+    <td class="tg-0pky">574ms</td>
+    <td class="tg-0pky">44.5ms</td>
+    <td class="tg-0pky">520ms</td>
+    <td class="tg-0pky">30.5ms</td>
+  </tr>
+  <tr>
+    <td class="tg-0pky">Add+RMSNorm融合</td>
+    <td class="tg-0pky">478.5ms</td>
+    <td class="tg-0pky">36.1ms</td>
+    <td class="tg-0pky">470ms</td>
+    <td class="tg-0pky">27.3ms</td>
+  </tr>
+  <tr>
+    <td class="tg-0pky">全量优化计算量</td>
+    <td class="tg-0pky">468.5ms</td>
+    <td class="tg-0pky">36.5ms</td>
+    <td class="tg-0pky">455ms</td>
+    <td class="tg-0pky">27.3ms</td>
+  </tr>
+  <tr>
+    <td class="tg-0pky">qkv融合(单算子精度异常)</td>
+    <td class="tg-0pky">467ms</td>
+    <td class="tg-0pky">35ms</td>
+    <td class="tg-0pky">453ms</td>
+    <td class="tg-0pky">26ms</td>
+  </tr>
+  <tr>
+    <td class="tg-0pky">全量替换mc2融合算子</td>
+    <td class="tg-0pky">422.5ms</td>
+    <td class="tg-0pky">35ms</td>
+    <td class="tg-0pky">405ms</td>
+    <td class="tg-0pky">26ms</td>
+  </tr>
+</tbody>
+</table>
+
+
+**Ascend910B4不同bs的图模型性能比较：**
+
+<table class="tg">
+<thead>
+  <tr>
+    <th class="tg-0pky" rowspan="2">batch size</th>
+    <th class="tg-0pky" colspan="2">图模式</th>
+  </tr>
+  <tr>
+    <th class="tg-0pky">全量</th>
+    <th class="tg-0pky">增量</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td class="tg-0pky">4</td>
+    <td class="tg-0pky">570ms</td>
+    <td class="tg-0pky">37.5ms</td>
+  </tr>
+  <tr>
+    <td class="tg-0pky">48</td>
+    <td class="tg-0pky">7118ms</td>
+    <td class="tg-0pky">48.6ms</td>
+  </tr>
+</tbody>
+</table>
 

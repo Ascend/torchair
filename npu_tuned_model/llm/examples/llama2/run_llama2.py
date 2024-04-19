@@ -20,10 +20,12 @@ import torch
 from runner.llm_runner import LlmModelRunner
 
 prompts = [
-    "Common sense questions\n\nQuestion:What is a banana?",
-    "Common sense questions and answers\n\nQuestion: What is a dog?\nFactual answer:",
-    "Common sense questions and answers\nQuestion: How to learn a language?\nFactual answer:",
-    "Common sense questions and answers\n\nQuestion: Can you introduce yourself?\nFactual answer:",
+    "用一句话描述地球为什么是独一无二的。",
+    "给出一段对话，使用合适的语气和回答方式继续对话。\n对话：\nA：你今天看起来很高兴，发生了什么好事？\nB：是的，我刚刚得到一份来自"
+    "梅西银行的工作通知书。\nA：哇，恭喜你！你打算什么时候开始工作？\nB：下个月开始，所以我现在正为这份工作做准备。",
+    "基于以下提示填写以下句子的空格。\n提示：\n- 提供多种现实世界的场景\n- 空格应填写一个形容词或一个形容词短语\n句子:\n______出去"
+    "享受户外活动，包括在公园里散步，穿过树林或在海岸边散步。",
+    "请生成一个新闻标题，描述一场正在发生的大型自然灾害。",
 ]
 
 
