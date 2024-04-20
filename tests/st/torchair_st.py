@@ -253,8 +253,8 @@ class TorchairSt(unittest.TestCase):
             def wrapper(*args, **kwargs):
                 assert len(args) > 0
                 pack_num, data_num = get_graph_pack_data_num(args[0])
-                assert pack_num == 6, f"before optimize, assert pack op num failed, expect 5, get {pack_num}"
-                assert data_num == 5, f"before optimize, assert data op num failed, expect 6, get {data_num}"
+                assert pack_num == 6, f"before optimize, assert pack op num failed, expect 6, get {pack_num}"
+                assert data_num == 8, f"before optimize, assert data op num failed, expect 8, get {data_num}"
 
                 ret = func(*args, **kwargs)
 

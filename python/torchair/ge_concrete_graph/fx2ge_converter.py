@@ -31,8 +31,8 @@ from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type, torch_typ
 from torchair.ge_concrete_graph.graph_pass import optimize_sym_pack, optimize_reference_op_redundant_copy, \
     replace_data_to_refdata
 from torchair.ge_concrete_graph.utils import convert_to_tensorboard, dump_graph, force_op_unknown_shape, \
-    is_host_data_tensor, get_all_sym_value_mapping, get_used_syms_in_meta, Placement, InputProcessing, \
-    compute_value_of_sym, generate_sym_exper, get_sym_int_value
+    is_host_data_tensor, get_used_sym_value_mapping, Placement, InputProcessing, compute_value_of_sym, \
+    generate_sym_exper, get_sym_int_value
 from torchair.ge_concrete_graph.supported_declaration import Support
 from torchair.ge_concrete_graph.export_config_generete import generate_config
 from torchair.utils.export_utils import make_export_graph, get_export_file_name, serialize_str_dict_attr, \
@@ -451,10 +451,12 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._inputs_processing = None
         self._is_compiled = False
         self._pack_input_processing = None
+        self._all_sym_input_idx = {}
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
-        if self._config.experimental_config.frozen_parameter:
-            if not self._is_compiled:
+        if not self._is_compiled:
+            self._fx_inputs_mapping = {i:i for i in range(len(args))}
+            if self._config.experimental_config.frozen_parameter:
                 warnings.warn(f'When enable frozen_parameter, Parameters will be considered frozen.'
                               'Please make sure that the Parameters data address remain the same '
                               'throughout the program runtime.')
@@ -558,6 +560,7 @@ class GeConcreteGraph(ConcreteGraphBase):
 
     def parse_input(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
         if is_sym(meta_outputs):
+            self._all_sym_input_idx[(meta_outputs).node.expr] = len(self.inputs)
             data = ge.Data(index=len(self._inputs),
                            dtype=sym_to_ge_dtype(meta_outputs), shape=[], placement='CPU', node_name=target)
             data.set_meta(meta_outputs)
@@ -581,9 +584,6 @@ class GeConcreteGraph(ConcreteGraphBase):
         if not (isinstance(args, (list, tuple)) and len(args) == 1):
             raise AssertionError
         args = args[0]
-        fx_inputs_mapping_reverse = {value: key for key, value in self._fx_inputs_mapping.items()}
-        all_sym_value_mapping = get_all_sym_value_mapping(fx_inputs_mapping_reverse, self.inputs)
-
         for arg in args:
             arg = arg.npu if isinstance(arg, ValuePack) else arg
             self._fx_outputs.append(arg)
@@ -591,19 +591,16 @@ class GeConcreteGraph(ConcreteGraphBase):
                 continue
 
             if is_sym(arg.meta):
-                used_syms_in_meta_output = get_used_syms_in_meta(arg.meta)
-                sym_value_mapping = {sym: all_sym_value_mapping[sym] for sym in used_syms_in_meta_output}
-                self._fx_outputs[-1] = SymOutput(arg.meta, sym_value_mapping)
+                self._fx_outputs[-1] = SymOutput(arg.meta,
+                                                 get_used_sym_value_mapping(self._all_sym_input_idx, arg.meta))
                 continue
 
             is_view2output_flag = False
-            for input_index, input in enumerate(self.inputs):
-                if torch._C._is_alias_of(input.meta, arg.meta):
+            for fx_input_idx, fx_input in enumerate(self.inputs):
+                if torch._C._is_alias_of(fx_input.meta, arg.meta):
+                    self._fx_outputs[-1] = ViewOfInput(fx_input_idx, arg.meta,
+                                                       get_used_sym_value_mapping(self._all_sym_input_idx, arg.meta))
                     is_view2output_flag = True
-                    fx_input_index = fx_inputs_mapping_reverse[input_index]
-                    used_syms_in_meta_output = get_used_syms_in_meta(arg.meta)
-                    sym_value_mapping = {sym: all_sym_value_mapping[sym] for sym in used_syms_in_meta_output} 
-                    self._fx_outputs[-1] = ViewOfInput(fx_input_index, arg.meta, sym_value_mapping)
                     break
             if is_view2output_flag:
                 continue

@@ -225,40 +225,21 @@ def get_used_syms_in_meta(meta):
     return used_syms_in_meta
 
 
-def get_all_sym_value_mapping(fx_inputs_mapping_reverse, inputs):
-    sym_symbol_set = set()
-    for _, input_arg in enumerate(inputs):
-        if is_sym(input_arg.meta):
-            sym_symbol_set.update(input_arg.meta.node.expr.free_symbols)
-            continue
-
-        # 这里的逻辑是fx改图导致的，待fx改图消解后，不需要此处逻辑
-        meta_input_shape = list(input_arg.meta.size())
-        for shape_i, shape in enumerate(meta_input_shape):
-            if is_sym(shape):
-                sym_symbol_set.update(shape.node.expr.free_symbols)
-
+def get_used_sym_value_mapping(sym_input_idx_mapping, input_meta):
+    used_syms_in_meta_output = get_used_syms_in_meta(input_meta)
     sym_value_mapping = {}
-    for input_i, input_arg in enumerate(inputs):
-        if is_sym(input_arg.meta):
-            if input_arg.meta.node.expr in sym_symbol_set and input_arg.meta.node.expr not in sym_value_mapping:
-                sym_value_mapping[input_arg.meta.node.expr] = (-1, fx_inputs_mapping_reverse[input_i])
-            continue
+    for sym in used_syms_in_meta_output:
+        if sym not in sym_input_idx_mapping:
+            raise AssertionError("undefined sym of input meta.")
 
-        meta_input_shape = list(input_arg.meta.size())
-        for shape_i, shape in enumerate(meta_input_shape):
-            if is_sym(shape) and shape.node.expr in sym_symbol_set and shape.node.expr not in sym_value_mapping:
-                sym_value_mapping[shape.node.expr] = (shape_i, fx_inputs_mapping_reverse[input_i])
+        sym_value_mapping[sym] = sym_input_idx_mapping[sym]
     return sym_value_mapping
 
 
 def compute_value_of_sym(_sym_value_mapping, *args):
     value_of_sym = {}
     for sym, index in _sym_value_mapping.items():
-        if index[0] == -1:
-            value_of_sym[sym] = args[index[1]]
-        else:
-            value_of_sym[sym] = args[index[1]].size()[index[0]]
+        value_of_sym[sym] = args[index]
     return value_of_sym
 
 
