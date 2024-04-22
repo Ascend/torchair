@@ -20,11 +20,18 @@ from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
-from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
-    Support
+from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, I64, I32, I16, I64, Support
 from torchair.ge_concrete_graph.utils import dtype_promote
 
 
+@declare_supported(
+    [
+        Support(F32(20, 20, 30), 0, I64(20, 20, 2, value_range=(0, 20)), 2.0),
+        Support(F16(20, 20, 30), 0, I64(20, 14, 9, value_range=(0, 20)), 7),
+        Support(F16(20, 20), 0, I64(20, 20, value_range=(0, 20)), -2),
+        Support(F16(20, 20), 1, I64(20, 20, value_range=(0, 20)), 5),
+    ]
+)
 @register_fx_node_ge_converter(torch.ops.aten.scatter.value)
 def conveter_aten_scatter_value(
     self: Tensor,
@@ -34,7 +41,9 @@ def conveter_aten_scatter_value(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::scatter.value(Tensor self, int dim, Tensor index, Scalar value) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.scatter.value ge_converter is not implemented!")
+    src = ge.Fill(ge.Shape(index), ge.Cast(value, dst_type=self.dtype))
+    return ge.ScatterElements(self, index, src, axis=dim)
+
 
 @declare_supported(
     [
