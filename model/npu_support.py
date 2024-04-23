@@ -2,11 +2,11 @@ import importlib
 import logging
 import os
 from typing import Optional, Tuple
+
 import torch
 import torch.nn as nn
 import torch_npu
 import torchair
-
 
 log = logging.getLogger(__name__)
 _patch_table = {}
@@ -78,7 +78,7 @@ def _patch_model_3():
         from transformers.models.t5.modeling_t5 import T5Attention
     except (ImportError, ModuleNotFoundError):
         log.warning("Import transformers failed or could not get T5Attention "
-                      "from module transformers.models.t5.modeling_t5")
+                    "from module transformers.models.t5.modeling_t5")
         return
     if transformers.__version__ != '4.36.0':
         log.warning("transformers.__version__ is not equal to 4.36.0, which may cause error patch.")
@@ -101,7 +101,7 @@ def _patch_model_3():
 
         if past_key_value is not None:
             if len(past_key_value) != 2:
-                raise ValueError(f"past_key_value should have 2 past states. Got { len(past_key_value)} past states")
+                raise ValueError(f"past_key_value should have 2 past states. Got {len(past_key_value)} past states")
             real_seq_length += past_key_value[0].shape[2] if query_length is None else query_length
 
         key_length = real_seq_length if key_value_states is None else key_value_states.shape[1]
@@ -149,7 +149,7 @@ def _patch_model_3():
                 position_bias = self.compute_bias(real_seq_length, key_length, device=scores.device)
 
             if past_key_value is not None:
-                position_bias = position_bias[:, :, -hidden_states.size(1) :, :]
+                position_bias = position_bias[:, :, -hidden_states.size(1):, :]
 
             if mask is not None:
                 position_bias = position_bias + mask
@@ -318,12 +318,12 @@ def _patch_model_5():
 
 
 @register_patch("hf_Longformer")
-"""
-Hf_Longformer failed accurazy test because of discontiguous memory.
-Solving the problem by adding  .contiguous() after .view() and .as_strided in LongformerSelfAttention._chunk.
-This patch would be removed in the near future.
-"""
 def _path_model_6():
+    """
+    Hf_Longformer failed accurazy test because of discontiguous memory.
+    Solving the problem by adding  .contiguous() after .view() and .as_strided in LongformerSelfAttention._chunk.
+    This patch would be removed in the near future.
+    """
     module_spec = importlib.util.find_spec("transformers")
     if module_spec is None:
         return
@@ -347,6 +347,36 @@ def _path_model_6():
         return src_chunk(hidden_states, window_overlap, True)
 
     LongformerSelfAttention._chunk = _chunk
+
+
+@register_patch("soft_actor_critic")
+def _path_model_7():
+    """
+    soft_actor_critic failed accurazy test because of discontiguous memory.
+    Solving the problem by adding  .contiguous() in soft_actor_critic/net.py line:242 SquashedNormal.__init__
+    This patch would be removed in the near future.
+    """
+    from torchbenchmark.models.soft_actor_critic.nets import StochasticActor, SquashedNormal, BetaDist
+    import torch.nn.functional as F
+    def new_forward(self, state):
+        x = F.relu(self.fc1(state))
+        x = F.relu(self.fc2(x))
+        out = self.fc3(x)
+        mu, log_std = out.chunk(2, dim=1)
+        if self.dist_impl == "pyd":
+            log_std = torch.tanh(log_std)
+            log_std = self.log_std_low + 0.5 * (
+                    self.log_std_high - self.log_std_low
+            ) * (log_std + 1)
+            std = log_std.exp()
+            dist = SquashedNormal(mu.contiguous(), std.contiguous())
+        elif self.dist_impl == "beta":
+            out = 1.0 + F.softplus(out)
+            alpha, beta = out.chunk(2, dim=1)
+            dist = BetaDist(alpha, beta)
+        return dist
+
+    StochasticActor.forward = new_forward
 
 
 def patch_model(model_name):
