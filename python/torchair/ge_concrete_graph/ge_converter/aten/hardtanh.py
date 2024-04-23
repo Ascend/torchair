@@ -29,6 +29,7 @@ from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, 
         Support(F32(96, 384, 14, 14), 0.0, 6.0),
         Support(F16(96, 384, 14, 14), 0.0, 6.0),
         Support(F32(2, 1280, 7, 7), 0.0, 6.0),
+        Support(F32(2, 1280, 7, 7), 2.0, -2.0),
     ]
 )
 @register_fx_node_ge_converter(torch.ops.aten.hardtanh.default)
@@ -39,6 +40,8 @@ def conveter_aten_hardtanh_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::hardtanh(Tensor self, Scalar min_val=-1, Scalar max_val=1) -> Tensor"""
+    if min_val >= max_val:
+        return ge.Fill(ge.Shape(self), ge.Cast(max_val, dst_type=self.dtype))
     return ge.ClipByValue(self, min_val, max_val)
 
 
