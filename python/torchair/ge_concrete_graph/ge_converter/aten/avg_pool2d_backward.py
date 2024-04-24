@@ -26,7 +26,9 @@ from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, 
 from torchair.ge_concrete_graph.utils import dtype_promote
 
 @declare_supported([
-    Support(F32(96, 512, 1, 1), F32(96, 512, 4, 4), [4, 4], [], [0, 0], False, True, divisor_override=None)
+    Support(F32(96, 512, 1, 1), F32(96, 512, 4, 4), [4, 4], [], [0, 0], False, True, divisor_override=None),
+    Support(F32(96, 512, 1, 1), F32(96, 512, 4, 4), [4], [], [0, 0], False, True, divisor_override=None),
+    Support(F32(96, 512, 1, 1), F32(96, 512, 4, 4), [4, 4], [1], [0], False, True, divisor_override=None),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.avg_pool2d_backward.default)
 def conveter_aten_avg_pool2d_backward_default(
@@ -41,14 +43,21 @@ def conveter_aten_avg_pool2d_backward_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::avg_pool2d_backward(Tensor grad_output, Tensor self, int[2] kernel_size, int[2] stride, int[2] padding, bool ceil_mode, bool count_include_pad, int? divisor_override) -> Tensor"""
-    if stride:
-        strides_size = [1, 1, stride[0], stride[1]]
-    else:
-        strides_size = [1, 1, 1, 1]
-    kernelSize = [1, 1, kernel_size[0], kernel_size[1]]
-    pads = [padding[0], padding[0], padding[1], padding[1]]
+    k_h = kernel_size[0]
+    k_w = k_h if len(kernel_size) == 1 else kernel_size[1]
+    kernel_sizes = [k_h, k_w]
+    d_h = k_h if len(stride) == 0 else stride[0]
+    d_w = k_w if len(stride) == 0 else d_h if len(stride) == 1 else stride[1]
+    strides = [d_h, d_w]
+    pad_h = padding[0]
+    pad_w = pad_h if len(padding) == 1 else padding[1]
+    paddings = [pad_h, pad_w]
+    kernel_size = [1, 1, kernel_sizes[0], kernel_sizes[1]]
+    strides_size = [1, 1, strides[0], strides[1]]
+    pads = [paddings[0], paddings[0], paddings[1], paddings[1]]
     exclusive = False if count_include_pad else True
-    output = ge.AvgPoolV2Grad(ge.Shape(self), grad_output, ksize=kernelSize, strides=strides_size,
+
+    output = ge.AvgPoolV2Grad(ge.Shape(self), grad_output, ksize=kernel_size, strides=strides_size,
                               padding_mode="CALCULATED", pads=pads, data_format="NCHW",
                               global_pooling=False, ceil_mode=ceil_mode, exclusive=exclusive)
     output._node.input_desc[1].layout = "NCHW"
