@@ -20,26 +20,30 @@
 
 - 2024年3月6号：提供llama2适配好的npu模型结构和前端切分分布式执行样例
 
-# 环境依赖
+# 环境准备
 
-|    软件    |             [版本](https://www.hiascend.com/zh/)             |
+请参考[CANN软件安装指南](https://www.hiascend.com/document/redirect/CannCommunityInstWizard)安装对应的驱动/固件/软件包，在安装深度学习框架时选择安装PyTorch框架，根据资料指导进行安装并设置环境变量，涉及的软件包如下：
+
+|    软件    |                             版本                             |
 | :--------: | :----------------------------------------------------------: |
 |   Python   |                            3.8.0                             |
-|   driver   | [2023Q4商发](https://support.huawei.com/enterprise/zh/ascend-computing/ascend-hdk-pid-252764743/software/258924109?idAbsPath=fixnode01%7C23710424%7C251366513%7C22892968%7C252764743) |
-|  firmware  | [2023Q4商发](https://support.huawei.com/enterprise/zh/ascend-computing/ascend-hdk-pid-252764743/software/258924109?idAbsPath=fixnode01%7C23710424%7C251366513%7C22892968%7C252764743) |
-|    CANN    | [2023Q4商发](https://support.huawei.com/enterprise/zh/ascend-computing/cann-pid-251168373/software/258923273?idAbsPath=fixnode01%7C23710424%7C251366513%7C22892968%7C251168373) |
-|   kernel   | [2023Q4商发](https://support.huawei.com/enterprise/zh/ascend-computing/cann-pid-251168373/software/258923273?idAbsPath=fixnode01%7C23710424%7C251366513%7C22892968%7C251168373) |
+|   driver   | [社区版本](https://www.hiascend.com/software/cann/community) |
+|  firmware  | [社区版本](https://www.hiascend.com/software/cann/community) |
+|    CANN    | [社区版本](https://www.hiascend.com/software/cann/community) |
+|   kernel   | [社区版本](https://www.hiascend.com/software/cann/community) |
 |   torch    |                            2.1.0                             |
-| torch_npu  |   [2023Q4商发](https://gitee.com/ascend/pytorch/releases)    |
-|    apex    | [2023Q4商发](https://pytorch-package.obs.cn-north-4.myhuaweicloud.com/pta/Daily/v2.1.0/20231225.2/pytorch_v2.1.0_py38.tar.gz) |
+| torch_npu  |                            2.1.0                             |
+|    apex    |                             0.1                              |
 | 第三方依赖 |                       requirement.txt                        |
 
 # 环境搭建
 
 ```shell
-# python3.8
+# arm环境搭建示例
 conda create -n test python=3.8
 conda activate test
+
+# 根据CANN安装指南安装固件/驱动/cann包
 
 # 安装 torch 和 torch_npu
 pip3 install torch-2.1.0-cp38-cp38m-manylinux2014_aarch64.whl
@@ -52,8 +56,6 @@ git clone https://gitee.com/ascend/torchair.git
 cd torchair/npu_tuned_model/llm
 bash setup.sh
 ```
-
-[昇腾环境准备](https://www.hiascend.com/document/detail/zh/canncommercial/700/modeldevpt/ptmigr/AImpug_000005.html)
 
 **注意**：建议昇腾run包安装在conda创建的镜像中安装
 
