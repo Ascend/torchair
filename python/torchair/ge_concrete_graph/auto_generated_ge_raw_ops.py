@@ -42334,16 +42334,14 @@ def SigmoidFocalLoss(pred: Tensor, target: Tensor, weight: Optional[Tensor], *, 
 
 
 # This api is auto-generated from IR DynamicQuant
-@auto_convert_to_tensor([False], [False])
-def DynamicQuant(input: Tensor, 
-              dependencies=[], 
-              node_name=None):
+@auto_convert_to_tensor([False, False], [False, True])
+def DynamicQuant(x: Tensor, smooth_scales: Optional[Tensor], *, dependencies=[], node_name=None):
     """REG_OP(DynamicQuant)\n
-    .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))\n
-    .OUTPUT(y, TensorType({DT_INT8}))\n
-    .OUTPUT(scale, TensorType({DT_FLOAT}))\n
-    .OP_END_FACTORY_REG(DynamicQuant)\n
-    """
+.INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OPTIONAL_INPUT(smooth_scales, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OUTPUT(y, TensorType({DT_INT8}))\n
+.OUTPUT(scale, TensorType({DT_FLOAT}))\n
+"""
 
     op = get_default_ge_graph().op.add()
     op.type = "DynamicQuant"
@@ -42354,21 +42352,30 @@ def DynamicQuant(input: Tensor,
         op.input.append(dependency.controller)
 
     # process inputs
-    op.input.append(input.tensor)
-    op.input_desc.add().CopyFrom(input.desc)
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
     op.input_desc[-1].name = "x"
+
+    if smooth_scales is not None:
+        op.input.append(smooth_scales.tensor)
+        op.input_desc.add().CopyFrom(smooth_scales.desc)
+        op.input_desc[-1].name = "smooth_scales"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "smooth_scales"
 
     # process outputs
     output_index = 0
     op.output_desc.add().name = "y"
-    output = Tensor(op, output_index)
+    y = Tensor(op, output_index)
     output_index += 1
     op.output_desc.add().name = "scale"
     scale = Tensor(op, output_index)
     output_index += 1
 
     # return outputs
-    return output, scale
+    return y, scale
 
 
 # This api is auto-generated from IR SoftmaxFocalLoss

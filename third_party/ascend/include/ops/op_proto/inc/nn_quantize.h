@@ -30,7 +30,8 @@ namespace ge {
 
 * @par Inputs:
 * one input, including:
-* @li x: A matrix Tensor, to be quantized. The type support float16, bfloat16. \n
+* @li x: A matrix Tensor, to be quantized. The type support float16, bfloat16.
+* @li smooth_scales: A matrix Tensor, to smooth x before quantization. The type support float16, bfloat16. \n
 
 * @par Outputs:
 * two outputs, including:
@@ -39,6 +40,7 @@ namespace ge {
 */
 REG_OP(DynamicQuant)
     .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))
+    .OPTIONAL_INPUT(smooth_scales, TensorType({DT_FLOAT16, DT_BF16}))
     .OUTPUT(y, TensorType({DT_INT8}))
     .OUTPUT(scale, TensorType({DT_FLOAT}))
     .OP_END_FACTORY_REG(DynamicQuant)
