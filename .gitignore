@@ -9,3 +9,5 @@ cmake-*
 .vscode
 auto_generated_ge_raw_custom_ops.py
 custom_reg_op.h
+__pycache__
+.torchair_cache
