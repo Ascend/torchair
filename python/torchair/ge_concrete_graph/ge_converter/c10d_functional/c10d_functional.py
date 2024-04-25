@@ -15,6 +15,7 @@ from typing import (
 )
 
 import torch
+import torch.distributed._functional_collectives
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
