@@ -38,7 +38,8 @@ def conveter_npu_npu_ffn(
     weight2: Tensor,
     activation: str,
     *,
-    expert_tokens: Optional[Union[List[int], Tensor]] = None,
+    expert_tokens: Optional[List[int]] = None,
+    expert_tokens_index: Optional[List[int]] = None,
     bias1: Optional[Tensor] = None,
     bias2: Optional[Tensor] = None,
     scale: Optional[Tensor] = None,
@@ -54,13 +55,18 @@ def conveter_npu_npu_ffn(
     meta_outputs: TensorSpec = None
 ):
     """NB: npu::npu_ffn(Tensor x, Tensor weight1, Tensor weight2, str activation, *, int[]? expert_tokens=None,
-                        Tensor? bias1=None, Tensor? bias2=None, Tensor? scale=None, Tensor? offset=None,
-                        Tensor? deq_scale1=None, Tensor? deq_scale2=None, Tensor? antiquant_scale1=None,
-                        Tensor? antiquant_scale2=None, Tensor? antiquant_offset1=None, Tensor? antiquant_offset2=None,
-                        int? inner_precise=None, ScalarType? output_dtype=None)-> Tensor
+                        int[]? expert_tokens_index=None, Tensor? bias1=None, Tensor? bias2=None, Tensor? scale=None,
+                        Tensor? offset=None, Tensor? deq_scale1=None, Tensor? deq_scale2=None,
+                        Tensor? antiquant_scale1=None, Tensor? antiquant_scale2=None, Tensor? antiquant_offset1=None,
+                        Tensor? antiquant_offset2=None, int? inner_precise=None, ScalarType? output_dtype=None)
+                        -> Tensor
     """
-    if expert_tokens is not None and isinstance(expert_tokens, Tensor):
-        raise NotImplementedError("FFN is not implemented while expert_tokens is Tensor!")
+    tokens_index_flag = False
+    if expert_tokens is not None and expert_tokens_index is not None:
+        raise ValueError("Cannot assign the value to expert_tokens and expert_tokens_index simultaneously!")
+    elif expert_tokens_index is not None:
+        tokens_index_flag = True
+        expert_tokens = expert_tokens_index
 
     y_dtype = -1
     if output_dtype is not None:
@@ -75,6 +81,7 @@ def conveter_npu_npu_ffn(
     if expert_tokens is not None:
         expert_tokens = dtype_promote(expert_tokens, target_dtype=torch.int64)
     return ge.FFN(x, weight1, weight2, expert_tokens=expert_tokens, bias1=bias1, bias2=bias2, scale=scale,
-        offset=offset, deq_scale1=deq_scale1, deq_scale2=deq_scale2, antiquant_scale1=antiquant_scale1,
-        antiquant_scale2=antiquant_scale2, antiquant_offset1=antiquant_offset1, antiquant_offset2=antiquant_offset2,
-        activation=activation, inner_precise=inner_precise, output_dtype=y_dtype)
+                  offset=offset, deq_scale1=deq_scale1, deq_scale2=deq_scale2, antiquant_scale1=antiquant_scale1,
+                  antiquant_scale2=antiquant_scale2, antiquant_offset1=antiquant_offset1,
+                  antiquant_offset2=antiquant_offset2, activation=activation, inner_precise=inner_precise,
+                  output_dtype=y_dtype, tokens_index_flag=tokens_index_flag)

@@ -3332,6 +3332,7 @@ REG_OP(MoeComputeExpertTokens)
 * @li activation: A string. The type of activation.
 * @li inner_precise: A int. 0, fp16 high precision. 1, high performance. Default value: 0
 * @li output_dtype: A int. 0, dtype float16. 1, dtype bf16. -1, default dtype. Default value: -1
+* @li tokens_index_flag: A boolean. Indicates whether to use index token list. Default value: false
 *
 * @par Outputs:
 * y: A matrix Tensor. The type support float16, bf16. \n
@@ -3355,6 +3356,7 @@ REG_OP(FFN)
     .REQUIRED_ATTR(activation, String)
     .ATTR(inner_precise, Int, 0)
     .ATTR(output_dtype, Int, -1)
+    .ATTR(tokens_index_flag, Bool, false)
     .OP_END_FACTORY_REG(FFN)
 
 

@@ -74845,6 +74845,7 @@ def FFN(x: Tensor,
         activation: str,
         inner_precise: int = 0,
         output_dtype: int = -1,
+        tokens_index_flag: bool = False,
         dependencies = [],
         node_name = None):
     """REG_OP(FFN)\n
@@ -74866,6 +74867,7 @@ def FFN(x: Tensor,
     .REQUIRED_ATTR(activation, String)\n
     .ATTR(inner_precise, Int, 0)\n
     .ATTR(output_dtype, Int, -1)\n
+    .ATTR(tokens_index_flag, Bool, false)\n
     """
 
     op = get_default_ge_graph().op.add()
@@ -74979,6 +74981,7 @@ def FFN(x: Tensor,
     op.attr["activation"].s = compat_as_bytes(activation)
     op.attr["inner_precise"].i = inner_precise
     op.attr["output_dtype"].i = output_dtype
+    op.attr["tokens_index_flag"].b = tokens_index_flag
 
     # process outputs
     output_index = 0
