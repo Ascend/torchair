@@ -840,12 +840,12 @@ def _auto_type_promotion_for_const(bundle_inputs: list, inputs_dynamic: list, in
         if narray.size > 0:
             v = narray.item(0)
             if isinstance(v, float):
-                assert_args_checkout(len(i_dtypes) <= 1,
+                assert_args_checkout(len(f_dtypes) <= 1,
                                      f"Cannot promote {func} input {i} float {v} with dtypes {f_dtypes}")
                 promoted_inputs.append(_wrap_ge_tensor(
                     input, dtype=(f_dtypes[0] if len(f_dtypes) else None)))
             elif isinstance(v, int):
-                assert_args_checkout(len(f_dtypes) <= 1,
+                assert_args_checkout(len(i_dtypes) <= 1,
                                              f"Cannot promote {func} input {i} int {v} with dtypes {i_dtypes}")
                 promoted_inputs.append(_wrap_ge_tensor(
                     input, dtype=(i_dtypes[0] if len(i_dtypes) else None)))
