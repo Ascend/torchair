@@ -9,7 +9,7 @@ import types
 import marshal
 import os
 import hashlib
-from typing import List, Optional, Callable, Union, Dict
+from typing import List, Optional, Callable, Union, Dict, Tuple
 import pickle
 import shutil
 
@@ -33,15 +33,15 @@ class ModelCacheMeta:
 
 @dataclass
 class CompiledFX:
-    options: CompilerConfig
+    signature: str
     ge_callable: Union[types.CodeType, torch.fx.GraphModule]
+    input_parameters: List[Tuple[str, bool]]
 
 
 @dataclass
 class ModelCacheArtifact:
     meta: ModelCacheMeta
     compiled_fn: bytes
-    gather_params: bytes
     compiled_fx: CompiledFX
 
 
@@ -65,20 +65,18 @@ class CompiledModel:
         self.meta = meta
         self.name = meta.name
         self.compiled_fn: Optional[types.CodeType] = None
-        self.gather_params: Optional[types.CodeType] = None
         self.compiled_fx: Optional[CompiledFX] = None
 
     def __str__(self):
         if self.compiled_fx is None:
             return f"CompiledModel({self.meta}) not compiled yet"
-        return f"CompiledModel({self.meta}) compiled with {_get_str_options(self.compiled_fx.options)}"
+        return f"CompiledModel({self.meta}) with compiled fx {self.compiled_fx.signature}"
 
     def save(self, cache_bin: str):
-        if not all([self.compiled_fn, self.gather_params, self.compiled_fx]):
+        if not all([self.compiled_fn, self.compiled_fx]):
             raise ValueError(f"Compiled model {self} is not ready to be saved")
 
         artifacts = ModelCacheArtifact(meta=self.meta, compiled_fn=marshal.dumps(self.compiled_fn),
-                                       gather_params=marshal.dumps(self.gather_params),
                                        compiled_fx=self.compiled_fx)
 
         cache_bin = os.path.abspath(cache_bin)
@@ -105,7 +103,6 @@ class CompiledModel:
             raise ValueError(f"Version mismatch: {model.meta.version} != {cls.VERSION}")
 
         model.compiled_fn = marshal.loads(artifacts.compiled_fn)
-        model.gather_params = marshal.loads(artifacts.gather_params)
         model.compiled_fx = artifacts.compiled_fx
         logger.info(f"Cache {model.meta} loaded from {cache_bin}")
         return model
@@ -124,8 +121,9 @@ class CompiledModel:
             cls_name = func.__name__
 
         dist_suffixes = []
-        if torch.distributed.is_available() and torch.distributed.is_initialized():
-            dist_suffixes.append(f'rank{dist.get_rank()}' if rank is None else f'rank{rank}')
+        if torch.distributed.is_available() and torch.distributed.is_initialized() and dist.get_world_size() > 1:
+            rank = dist.get_rank() if rank is None else rank
+            dist_suffixes.append(f'world{dist.get_world_size()}rank{rank}')
         if tp_rank is not None:
             dist_suffixes.append(f'tp_rank{tp_rank}')
         if mp_rank is not None:
@@ -144,31 +142,33 @@ class CompiledModel:
     def rebase(self, model, global_vars=None):
         log = logger if logger.isEnabledFor(logging.DEBUG) else None
         if log is not None:
-            log.debug(f"Rebasing {self} onto {model}")
-
-        global_vars = global_vars or globals()
-        gather_params = types.FunctionType(self.gather_params, global_vars)
+            log.debug(f"Rebasing {self.meta} onto {type(model)}")
 
         fn_names = [f for f in self.compiled_fn.co_names if f.startswith("__compiled_fn")]
         if len(fn_names) != 1:
             raise ValueError(f"Expected 1 compiled function, found {fn_names}")
 
-        parameters = gather_params(model, log)
+        model_params = {
+            **dict(model.named_parameters()),
+            **dict(model.named_buffers())
+        } if model else {}
+
+        parameters = []
+        for name, is_parameter in self.compiled_fx.input_parameters:
+            type_str = 'parameter' if is_parameter else 'buffer'
+            if name not in model_params:
+                raise ValueError(f"{type_str} {name} not found in model {model}")
+            if log is not None:
+                log.debug(f"Prefetch input {len(parameters)} from {type_str} {name}")
+            parameters.append(model_params[name])
 
         def compiled_fn(*args):
             full_args = []
             full_args.extend(parameters)
             full_args.extend(args)
-            if log is not None:
-                log.debug(f"Compiled function {self.name} called with {len(full_args)} inputs")
-                for i, arg in enumerate(full_args):
-                    type_str = 'param or buffer' if i < len(parameters) else 'runtime input'
-                    log.debug(f"input{i}<{type_str}> = {arg}")
-            result = self.compiled_fx.ge_callable(*full_args)
-            if log is not None:
-                log.debug(f"Compiled function {self.name} returns {result}")
-            return result
+            return self.compiled_fx.ge_callable(*full_args)
 
+        global_vars = global_vars or globals()
         g = global_vars.copy()
         g.update({fn_names[0]: compiled_fn})
         compiled_fn = types.FunctionType(self.compiled_fn, g)
@@ -181,11 +181,17 @@ class CompiledModel:
 
         return compiled_method
 
+    def readable(self, print_output=True):
+        readable_str = ['=' * 100, str(self.meta), str(self.compiled_fx.signature)]
+        if print_output:
+            print('\n'.join(readable_str))
+        return '\n'.join(readable_str)
 
-def _get_str_options(options: CompilerConfig):
+
+def _get_str_options(options: CompilerConfig, sep=","):
     g_opts, l_opts = options.as_dict()
     g_opts.update(l_opts)
-    return ",".join([f"{k}={v}" for k, v in g_opts.items()])
+    return sep.join([f"{k}={v}" for k, v in g_opts.items()])
 
 
 def set_dim_gears(t: torch.Tensor, dim_gears: Dict[int, List[int]]):
@@ -208,7 +214,7 @@ class CacheBackend:
             self.compiler = fw_compiler
 
     def __call__(self, gm: torch.fx.GraphModule, inputs: List[torch.Tensor], *args):
-        self.saver.save_gather_params(gm)
+        self.saver.save_reserved_params(gm)
 
         for i, t in enumerate(inputs):
             dim_gears = get_dim_gears(t)
@@ -222,7 +228,7 @@ class CacheBackend:
         for i, dim_gears in self.input_dim_gears.items():
             set_dim_gears(example_inputs[i], dim_gears)
 
-        self.saver.save_compiled_fx(CompiledFX(self.config, gm))
+        self.saver.save_compiled_fx(gm, example_inputs, self.config, gm)
         return self.compiler(gm, example_inputs)
 
     @staticmethod
@@ -241,40 +247,10 @@ class ModelCacheSaver:
         self.compiled_func = torch.compile(func, backend=CacheBackend(config, self), fullgraph=True, dynamic=dynamic)
 
         self._code_id = None
+        self.input_parameters: List[Tuple[str, bool]] = []
 
-    def save_gather_params(self, gm: torch.fx.GraphModule):
-        def _make_src(params):
-            if params is None:
-                return f'''
-def gather_params(_, log):
-    if log is not None:
-        log.debug(f"Skip packing weights for FunctionType: {self.name}")
-    return []
-'''
-            return f'''
-def gather_params(model, log):
-    named_params = {{
-        **dict(model.named_parameters()),
-        **dict(model.named_buffers())
-    }}
-    params = []
-    if log is not None:
-        log.debug(f"Prefetch {len(params)} param or buffers for {self.name}")
-    for i, name in enumerate({repr(params)}):
-        if log is not None:
-            log.debug(f"Prefetch input{{i}} from model.{{name}} for {self.name}")
-        params.append(named_params[name])
-    return params
-'''
-
-        def _compile_gather_params(params):
-            src = _make_src(params)
-            functions = {}
-            exec(src, globals(), functions)
-            return functions['gather_params'].__code__
-
+    def save_reserved_params(self, gm: torch.fx.GraphModule):
         if self.model is None:
-            self.compiled_model.gather_params = _compile_gather_params(None)
             return
 
         gm_params = {
@@ -286,17 +262,37 @@ def gather_params(model, log):
             **dict(self.model.named_parameters()),
             **dict(self.model.named_buffers())
         }
-        ordered_param_names = []
         for param in flat_gm_params:
             for name, model_param in model_params.items():
                 if param is model_param:
-                    ordered_param_names.append(name)
+                    self.input_parameters.append((name, isinstance(param, torch.nn.Parameter)))
                     break
 
-        self.compiled_model.gather_params = _compile_gather_params(ordered_param_names)
+    def save_compiled_fx(self, fx: torch.fx.GraphModule, example_inputs: List[torch.Tensor], config: CompilerConfig,
+                         compiled_fx):
+        placeholders = [n for n in fx.graph.nodes if n.op == 'placeholder']
+        arg_signatures = []
+        for i, n in enumerate(placeholders):
+            if i >= len(self.input_parameters):
+                arg_signatures.append(f'{i}:{n.name} UserInput({i - len(self.input_parameters)})={example_inputs[i]}')
+            else:
+                type_str = 'Parameter' if self.input_parameters[i][1] else 'Buffer'
+                arg_signatures.append(f'{i}:{n.name} {type_str}({self.input_parameters[i][0]})={example_inputs[i]}')
 
-    def save_compiled_fx(self, compiled_fx: CompiledFX):
-        self.compiled_model.compiled_fx = compiled_fx
+        def pretty_title(title, length=100):
+            pad = max(0, length - len(title))
+            return '-' * (pad // 2) + title + '-' * (pad - pad // 2)
+
+        readable = [pretty_title('graph module')]
+        readable += [fx.print_readable(False)]
+        readable += [pretty_title('inputs')]
+        readable += arg_signatures
+        readable += [pretty_title('compile options')]
+        readable += [_get_str_options(config, sep='\n')]
+        signature = '\n'.join(readable)
+
+        logger.debug(f"Saving compiled fx {signature}")
+        self.compiled_model.compiled_fx = CompiledFX(signature, compiled_fx, self.input_parameters)
 
     def save_compiled_fn(self, code_id):
         if self._code_id == code_id:
@@ -377,6 +373,7 @@ class LazyCompiledModel:
                 logger.warning(f'Clear broken cache {cache_bin} as {e}')
                 ModelCacheSaver.remove_cache(cache_bin)
 
+        logger.info(f'Compiling cache for {self.func} to {cache_bin}')
         return ModelCacheSaver(self.func, cache_bin, config=self.config, dynamic=self.dynamic)
 
     def __call__(self, *args, **kwargs):
@@ -472,3 +469,12 @@ class NoGuardCompiledMethod(_NoGuardCompiled):
         if not os.path.exists(cache_bin):
             raise ValueError(f"Cache file {cache_bin} is not exists")
         return CompiledModel.load(cache_bin).rebase(self)
+
+
+def readable_cache(cache_bin, print_output=True):
+    cache_bin = os.path.abspath(cache_bin)
+    if not os.path.exists(cache_bin):
+        raise ValueError(f"Cache file {cache_bin} is not exists")
+
+    model = CompiledModel.load(cache_bin)
+    return model.readable(print_output)

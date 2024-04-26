@@ -204,6 +204,9 @@ class CacheCompileSt(unittest.TestCase):
         self.assertTrue(os.path.exists(cache1))
         self.assertTrue(os.path.exists(cache2))
 
+        torchair.inference.readable_cache(cache1)
+        torchair.inference.readable_cache(cache2)
+
         NoGuardCompiledMethod.load(cache1, self=model)(*prompt1)  # assert not raise
         NoGuardCompiledMethod.load(cache2, self=model)(*prompt2)  # assert not raise
 
