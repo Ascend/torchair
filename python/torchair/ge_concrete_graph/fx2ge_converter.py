@@ -29,10 +29,10 @@ from torchair.ge_concrete_graph.ge_graph import Tensor as GeTensor
 from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type, torch_type_to_ge_proto_type, default_ge_graph, \
     GeGraph, attr_scope, compat_as_bytes, DataType, Format, TensorSpec, is_sym, sym_to_ge_dtype, assert_args_checkout
 from torchair.ge_concrete_graph.graph_pass import optimize_sym_pack, optimize_reference_op_redundant_copy, \
-    replace_data_to_refdata
+    replace_data_to_refdata, get_frozen_flag, frozen_data_by_constplaceholder, remove_dead_data_and_gen_input_mapping
 from torchair.ge_concrete_graph.utils import convert_to_tensorboard, dump_graph, force_op_unknown_shape, \
     is_host_data_tensor, get_used_sym_value_mapping, Placement, InputProcessing, compute_value_of_sym, \
-    generate_sym_exper, get_sym_int_value
+    generate_sym_exper, get_sym_int_value, generate_shape_from_tensor, update_op_input_name_from_mapping
 from torchair.ge_concrete_graph.supported_declaration import Support
 from torchair.ge_concrete_graph.export_config_generete import generate_config
 from torchair.utils.export_utils import make_export_graph, get_export_file_name, serialize_str_dict_attr, \
@@ -248,19 +248,6 @@ def register_fx_node_ge_converter(aten_op):
     return Converter(aten_op)
 
 
-def _get_generalized_shape(fake: torch.Tensor) -> List[int]:
-    generalized_shape = []
-    for dim in fake.size():
-        if not isinstance(dim, torch.SymInt):
-            generalized_shape.append(dim)
-        else:
-            try:
-                generalized_shape.append(int(str(dim)))
-            except:
-                generalized_shape.append(-1)
-    return generalized_shape
-
-
 def _normalize_ge_graph(graph: GraphDef):
     for op in graph.op:
         op.attr["_input_name_key"].list.s[:] = [compat_as_bytes(desc.name) for desc in op.input_desc]
@@ -377,6 +364,39 @@ def _update_internal_format_from_inputs(graph: GraphDef, runtime_inputs):
         logger.debug(f'update the Format of output TensorDesc for input_{idx} to Format {Format(npu_format).name}.')
 
 
+def _update_constplaceholder_attr_from_inputs(graph: GraphDef, op_name_idx_mapping, runtime_inputs):
+    update_node_name_mapping = {}
+    for op in graph.op:
+        if op.type == "ConstPlaceHolder" and op.name in op_name_idx_mapping.keys():
+            real_input = runtime_inputs[op_name_idx_mapping[op.name]]
+            origin_shape = real_input.shape
+            op.attr["origin_shape"].list.i.extend(origin_shape)
+            op.attr["dtype"].dt = torch_type_to_ge_type(real_input.dtype)
+            op.attr["addr"].i = real_input.data_ptr()
+            if 'torch_npu' in sys.modules:
+                _torch_npu_module = sys.modules['torch_npu']
+                from torchair.core import _npu_graph_executor as _npu_executor
+                op.attr["origin_format"].i = 2 if len(origin_shape) != 4 else 0
+                op.attr["storage_shape"].list.i.extend(_npu_executor.GetNpuStorageSizes(real_input))
+                op.attr["storage_format"].i = _torch_npu_module.get_npu_format(real_input)
+                op.attr["size"].i = _torch_npu_module.get_storage_size(real_input) * real_input.element_size()
+            else:
+                op.attr["origin_format"].i = 2
+                op.attr["storage_shape"].list.i.extend(origin_shape)
+                op.attr["storage_format"].i = 2
+                op.attr["size"].i = real_input.numel() * real_input.element_size()
+            logger.debug(f'Update {op.name} attr from input {op_name_idx_mapping[op.name]}, '
+                         f'origin shape={origin_shape}, origin format={Format(op.attr["origin_format"].i).name}, '
+                         f'storage shape={op.attr["storage_shape"].list.i}, '
+                         f'storage format={Format(op.attr["storage_format"].i).name}, data size={op.attr["size"].i}.')
+
+            # Note: Cannot have multiple ConstPlaceHolder nodes with the same name and different add.
+            unique_addr_name = f"{op.name}_{real_input.data_ptr()}"
+            update_node_name_mapping[op.name] = unique_addr_name
+            op.name = unique_addr_name
+    update_op_input_name_from_mapping(graph, update_node_name_mapping)
+
+
 class ExecutorType:
     CPU = 0
     NPU = 1
@@ -437,10 +457,10 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._fx_outputs_mapping = dict()
         self._outputs = []
         self._inputs = []
-        self._fx_inputs_mapping = dict()
         self._input_placements = []
-        self._frozen_flag_list = []
-        self._data_index_after_forozen = dict()
+        self._fx_inputs_mapping = {}
+        self._frozen_op_idx_mapping = {}
+        self._rng_inputs_size = 0
         self._graph_output_ref_input = {}
         self._ref_data_idx = []
         self._executor = TorchNpuGraph(name)
@@ -454,35 +474,11 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._all_sym_input_idx = {}
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
-        if not self._is_compiled:
-            self._fx_inputs_mapping = {i:i for i in range(len(args))}
-            if self._config.experimental_config.frozen_parameter:
-                warnings.warn(f'When enable frozen_parameter, Parameters will be considered frozen.'
-                              'Please make sure that the Parameters data address remain the same '
-                              'throughout the program runtime.')
-                self._arg_is_frozen(*args)
-                self._process_data_to_constplaceholder(*args)
-                self._process_fx_inputs_mapping_and_input_placements(len(args))
+        inputs = self._inputs_processing(*args)
+        inputs = self._consume_data_into_inputs(inputs)
+        inputs.extend(self._pack_input_processing(*args))
 
-        if self._pack_input_processing is None:
-            self._pack_input_processing = optimize_sym_pack(self.graph, self.inputs, self._input_placements,
-                                                            self._fx_inputs_mapping, len(args))
-        self._common_graph_optimization()
-
-        fx_inputs = self._pack_input_processing(*args)
-
-        if self._inputs_processing is None:
-            self._inputs_processing = self._make_inputs_processing_func(*fx_inputs)
-
-        inputs = self._inputs_processing(*fx_inputs)
-        # graph inputs size is greater than fx inputs(eg: generator random seed)
-        if self.graph.num_inputs() > len(inputs):
-            inputs = self._consume_data_into_inputs(inputs)
-
-        self._graph_optimization_based_inputs(inputs, fx_inputs)
-
-        if not self._is_compiled:
-            _normalize_ge_graph(self.graph)
+        self.update_graph_with_runtime(inputs, args)
 
         if self.config.export.export_mode:
             self.export(inputs)
@@ -490,10 +486,7 @@ class GeConcreteGraph(ConcreteGraphBase):
 
         if not self._is_compiled:
             local_compile_options, global_compile_options = self._normalize_ge_option()
-
             initialize_graph_engine(global_compile_options)
-            if self.config.debug.graph_dump.enabled:
-                self.dump(self.config.debug.graph_dump.full_path("dynamo_optimized_graph"))
             self._executor.load(self.graph, local_compile_options)
 
         if self.should_auto_tune:
@@ -506,7 +499,6 @@ class GeConcreteGraph(ConcreteGraphBase):
             for output_index, input_index in self._graph_output_ref_input.items():
                 assigned_outputs[output_index] = inputs[input_index]
             ge_outputs = self._executor.run(inputs, assigned_outputs)
-
         else:
             ge_outputs = self._executor.run(inputs)
 
@@ -530,17 +522,62 @@ class GeConcreteGraph(ConcreteGraphBase):
             fx_outputs[fx_idx] = ge_outputs[ge_idx]
 
         del ge_outputs
-
         return tuple(fx_outputs)
+
+    def optimize_graph_without_runtime(self, *args):
+        if self._config.experimental_config.frozen_parameter:
+            warnings.warn(f'When enable frozen_parameter, Parameters will be considered frozen.'
+                          'Please make sure that the Parameters data address remain the same '
+                          'throughout the program runtime.')
+            frozen_flag_list = get_frozen_flag(*args)
+            self._frozen_op_idx_mapping = frozen_data_by_constplaceholder(self.graph, frozen_flag_list, *args)
+
+        self._complement_graph_rng_inputs(self.inputs, self._input_placements)
+
+        self._pack_input_processing = optimize_sym_pack(self.graph, self.inputs, self._input_placements)
+
+        self._fx_inputs_mapping = remove_dead_data_and_gen_input_mapping(self.graph, self.inputs,
+                                                                         self._input_placements, len(args))
+        self._inputs_processing = self._make_inputs_processing_func(*args)
+
+        self.graph.attr["_input_placements"].list.i.extend(self._input_placements)
+        self.graph.attr["_output_dtypes"].list.i.extend([output.dtype for output in self.outputs])
+        self.graph.attr["_executor_type"].i = _get_executor_type()
+
+        self._ref_data_idx = optimize_reference_op_redundant_copy(self.graph)
+        self._graph_output_ref_input = _mapping_assign_op_to_graph_output(self.graph)
+
+        _normalize_ge_graph(self.graph)
+
+    def update_graph_with_runtime(self, inputs, fx_inputs):
+        if self._is_compiled:
+            return
+
+        if self._config.experimental_config.frozen_parameter:
+            _update_constplaceholder_attr_from_inputs(self.graph, self._frozen_op_idx_mapping, fx_inputs)
+
+        _update_internal_format_from_inputs(self.graph, inputs)
+
+        # replace ge.Data to ge.RefData when ref input
+        if self._config.experimental_config.enable_ref_data:
+            ref_data_idx = set()
+            for idx in self._ref_data_idx:
+                ref_data_idx.add(idx)
+            for k, v in self._graph_output_ref_input.items():
+                ref_data_idx.add(v)
+            replace_data_to_refdata(self.graph, ref_data_idx, inputs)
+
+        if self.config.debug.graph_dump.enabled:
+            self.dump(self.config.debug.graph_dump.full_path("dynamo_optimized_graph"))
 
     def compile(self) -> Any:
         if self._is_compiled:
             return
 
-        logger.info(f'start compile graph: {self}.')
+        logger.info(f'start compile graph: {self.graph.name}.')
         self._executor.compile()
         self._is_compiled = True
-        logger.info(f'end compile graph: {self} and start run graph.')
+        logger.info(f'end compile graph: {self.graph.name} and start run graph.')
 
     def context(self):
         return default_ge_graph(self.graph)
@@ -570,7 +607,7 @@ class GeConcreteGraph(ConcreteGraphBase):
             if not isinstance(meta_outputs, torch.Tensor):
                 raise AssertionError
             dtype = torch_type_to_ge_type(meta_outputs.dtype)
-            shape = _get_generalized_shape(meta_outputs)
+            shape = generate_shape_from_tensor(meta_outputs)
             placement = Placement.HOST if (
                     meta_outputs.device is None or meta_outputs.device.type == 'cpu') else Placement.DEVICE
             data = ge.Data(index=len(self._inputs), dtype=dtype,
@@ -727,59 +764,34 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._auto_tune_times += 1
         logger.info(f"End auto tune for round {self._auto_tune_times - 1}")
 
-    def _common_graph_optimization(self) -> Any:
-        if self._is_compiled:
-            return
+    def _complement_graph_rng_inputs(self, inputs: List, placements: List):
+        self._rng_inputs_size = self.graph.num_inputs - len(inputs)
+        inputs.extend([None for _ in range(self._rng_inputs_size)])
+        placements.extend([None for _ in range(self._rng_inputs_size)])
 
-        self.graph.attr["_input_placements"].list.i.extend(self._input_placements)
-        self.graph.attr["_output_dtypes"].list.i.extend([output.dtype for output in self.outputs])
-        self.graph.attr["_executor_type"].i = _get_executor_type()
-        self._complement_graph_attr()
-
-        self._ref_data_idx = optimize_reference_op_redundant_copy(self.graph)
-        self._graph_output_ref_input = _mapping_assign_op_to_graph_output(self.graph)
-
-    def _graph_optimization_based_inputs(self, inputs, fx_inputs):
-        if self._is_compiled:
-            return
-        _update_internal_format_from_inputs(self.graph, inputs)
-
-        # replace ge.Data to ge.RefData when ref input
-        if self._config.experimental_config.enable_ref_data and not self._is_compiled:
-            ref_data_idx = set()
-            for idx in self._ref_data_idx:
-                ref_data_idx.add(idx)
-            for k, v in self._graph_output_ref_input.items():
-                ref_data_idx.add(v)
-            replace_data_to_refdata(self.graph, ref_data_idx, fx_inputs, self._fx_inputs_mapping)
-
-    def _complement_graph_attr(self):
-        num_inputs = self.graph.num_inputs()
-        diff = num_inputs - len(self._inputs)
-        self._inputs.extend([None for _ in range(diff)])
-        self._input_placements.extend([None for _ in range(diff)])
-        self.graph.attr["_input_placements"].list.i.extend(
-            [-1 for _ in range(diff)])
-
+        real_added_rng_inputs_num = 0
         for gen in self.graph.generator_rng_state:
             rng_state = self.graph.get_graph_rng_state(gen)
             idx, offset_data = rng_state.get_idx_and_offset()
-            if len(self._inputs) != len(self._input_placements):
-                raise AssertionError
+            if len(inputs) != len(placements):
+                raise AssertionError(f"inputs size {len(inputs)} != input placements size {len(placements)}")
             placement = Placement.HOST
-            self._inputs[idx] = offset_data
-            self._input_placements[idx] = placement
-            self.graph.attr["_input_placements"].list.i[idx] = placement
+            inputs[idx] = offset_data
+            placements[idx] = placement
+            real_added_rng_inputs_num += 1
+        if self._rng_inputs_size != real_added_rng_inputs_num:
+            raise AssertionError(f"Added rng inputs size {real_added_rng_inputs_num} != "
+                                 f"recorded additional data nodes size {self._rng_inputs_size}")
 
     def _consume_data_into_inputs(self, inputs):
-        istuple = isinstance(inputs, tuple)
-        inputs = list(inputs)
-        inputs.extend([None for _ in range(self.graph.num_inputs() - len(inputs))])
+        if self._rng_inputs_size == 0:
+            return inputs
+
+        inputs.extend([None for _ in range(self.graph.num_inputs - len(inputs))])
         for gen in self.graph.generator_rng_state:
             rng_state = self.graph.get_graph_rng_state(gen)
             idx, offset = rng_state.consume()
             inputs[idx] = offset
-        inputs = tuple(inputs) if istuple else inputs
         return inputs
 
     def _make_inputs_processing_func(self, *args: Any):
@@ -793,114 +805,6 @@ class GeConcreteGraph(ConcreteGraphBase):
             else:
                 nontensor_ge_input_idx.append(ge_index)
         return InputProcessing(self._fx_inputs_mapping, uncontiguous_ge_input_idx, nontensor_ge_input_idx)
-
-    def _arg_is_frozen(self, *args: Any):
-        data_num = 0
-        for idx, arg in enumerate(args):
-            if isinstance(arg, torch.nn.Parameter):
-                self._frozen_flag_list.append(True)
-                logger.info(f"No.{idx} arg is ConstPlaceHolder")
-            else:
-                self._frozen_flag_list.append(False)
-                logger.info(f"No.{idx} arg is Data")
-                if idx in self._fx_inputs_mapping:
-                    self._data_index_after_forozen[idx] = data_num
-                    data_num += 1
-
-    def _process_fx_inputs_mapping_and_input_placements(self, args_len):
-        new_input_placements = []
-        new_inputs = []
-        new_graph_indexed_inputs = {}
-        for idx in range(args_len):
-            if idx in self._fx_inputs_mapping:
-                if not self._frozen_flag_list[idx]:
-                    new_input_placements.append(self._input_placements[self._fx_inputs_mapping[idx]])
-                    new_inputs.append(self._inputs[self._fx_inputs_mapping[idx]])
-                    new_graph_indexed_inputs[self._data_index_after_forozen[idx]] = \
-                        self.graph.indexed_inputs()[self._fx_inputs_mapping[idx]]
-        for ge_idx, op in self.graph.indexed_inputs().items():
-            if ge_idx not in self._fx_inputs_mapping.values():
-                assert_args_checkout(len(self._data_index_after_forozen) not in new_graph_indexed_inputs)
-                new_graph_indexed_inputs[len(self._data_index_after_forozen)] = op
-        self._inputs = new_inputs
-        self._input_placements = new_input_placements
-        self.graph._indexed_inputs = new_graph_indexed_inputs
-        self._fx_inputs_mapping = self._data_index_after_forozen
-
-    def _process_data_to_constplaceholder(self, *args: Any):
-        name_mapping_data_to_constplaceholder = dict()
-        fx_inputs_mapping_reverse = {value: key for key, value in self._fx_inputs_mapping.items()}
-        frozen_data_op_list = []
-        for op in self.graph.op:
-            if op.type == "Data" and op.attr["index"].i in fx_inputs_mapping_reverse:
-                logger.debug(f'No.{op.attr["index"].i} Data op in original graph will be frozen.')
-                args_index = fx_inputs_mapping_reverse[op.attr["index"].i]
-                if self._frozen_flag_list[args_index]:
-                    frozen_data_op_list.append(op)
-        for op in frozen_data_op_list:
-            args_index = fx_inputs_mapping_reverse[op.attr["index"].i]
-            name = f"ConstPlaceHolder_{args_index}_{args[args_index].data_ptr()}"
-            name_mapping_data_to_constplaceholder[op.name] = name
-            origin_shape = _get_generalized_shape(args[args_index])
-            dtype = torch_type_to_ge_type(args[args_index].dtype)
-            addr = args[args_index].data_ptr()
-            with self.graph:
-                if 'torch_npu' in sys.modules:
-                    _torch_npu_module = sys.modules['torch_npu']
-                    from torchair.core import _npu_graph_executor as _npu_executor
-                    storage_format = _torch_npu_module.get_npu_format(args[args_index])
-
-                    constplaceholder = ge.ConstPlaceHolder(
-                        origin_shape=origin_shape,
-                        origin_format=2 if len(origin_shape) != 4 else 0,
-                        storage_shape=_npu_executor.GetNpuStorageSizes(args[args_index]),
-                        storage_format=storage_format,
-                        expand_dim_rules="", dtype=dtype, addr=addr,
-                        size=_torch_npu_module.get_storage_size(args[args_index]) * args[args_index].element_size(),
-                        node_name=name)
-                    logger.debug(f'Construct ConstPlaceHolder_{op.attr["index"].i} from npu tensor, '
-                                 f'storage format={Format(storage_format).name}, '
-                                 f'storage shape={_npu_executor.GetNpuStorageSizes(args[args_index])}.')
-                else:
-                    constplaceholder = ge.ConstPlaceHolder(
-                        origin_shape=origin_shape,
-                        origin_format=2,
-                        storage_shape=origin_shape,
-                        storage_format=2,
-                        expand_dim_rules="", dtype=dtype, addr=addr,
-                        size=args[args_index].numel() * args[args_index].element_size(),
-                        node_name=name)
-                    logger.debug(f'Construct ConstPlaceHolder_{op.attr["index"].i} from cpu tensor, '
-                                 f'storage format=FORMAT_ND, '
-                                 f'storage shape={origin_shape}.')
-                constplaceholder.set_meta(self.inputs[op.attr["index"].i]._meta)
-        # 删除是constplaceholder的Data节点
-        for frozen_data_op in frozen_data_op_list:
-            for i, op in enumerate(self.graph.op):
-                if op.type == "Data" and op.attr["index"].i == frozen_data_op.attr["index"].i:
-                    del self.graph.op[i]
-        # 修改不是constplaceholder的Data节点的index
-        for op in self.graph.op:
-            if op.type == "Data":
-                if op.attr["index"].i in fx_inputs_mapping_reverse:
-                    args_index = fx_inputs_mapping_reverse[op.attr["index"].i]
-                    assert_args_checkout(args_index in self._data_index_after_forozen)
-                    logger.debug(f'Index of No.{op.attr["index"].i} Data op in original graph '
-                                 f'will be set to {self._data_index_after_forozen[args_index]} '
-                                 f'in optimized graph.')
-                    op.attr["index"].i = self._data_index_after_forozen[args_index]
-                else:
-                    logger.debug(f'Index of No.{op.attr["index"].i} Data op in original graph '
-                                 f'will be set to {len(self._data_index_after_forozen)} '
-                                 f'in optimized graph.')
-                    op.attr["index"].i = len(self._data_index_after_forozen)
-        # 处理边
-        for op in self.graph.op:
-            for idx, op_input in enumerate(op.input):
-                for key in name_mapping_data_to_constplaceholder.keys():
-                    if key in op_input:
-                        op.input[idx] = f"{name_mapping_data_to_constplaceholder[key]}:{op.input[idx][-1]}"
-                        break
 
     # 离线加载再执行场景，对于GE图的输入输出，考虑支持的场景
     # GE图输入处理：
@@ -928,7 +832,7 @@ class GeConcreteGraph(ConcreteGraphBase):
                         f"fx index = {index_tuple[0]}, ge index = {index_tuple[1]}, "
                         f"ref_data_idx list = {self._ref_data_idx}")
         # Unsupported 输入case 3
-        if self._pack_input_processing is not None and len(self._pack_input_processing.additional_fx_inputs) > 1:
+        if self._pack_input_processing is not None and len(self._pack_input_processing.input_indexes) > 1:
             raise NotImplementedError(f"Unsupported packing more than 1 list with CompiledModel1")
         # Unsupported 输入case 4
         if len(self._graph.generator_rng_state) > 0:

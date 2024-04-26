@@ -362,7 +362,7 @@ class _GraphRngState:
         self._seed = Const(self._gen.initial_seed(),
                             dtype=DataType.DT_INT64,
                             node_name='initial_seed')
-        self._feed_index = get_default_ge_graph().num_inputs()
+        self._feed_index = get_default_ge_graph().num_inputs
         self._offsets = Data(index=self._feed_index,
                             dtype=DataType.DT_INT64,
                             shape=[1],
@@ -487,6 +487,14 @@ class GeGraph(object):
     def name(self, v):
         self._proto.name = v
 
+    @property
+    def num_inputs(self):
+        return len(self._indexed_inputs)
+
+    @property
+    def indexed_inputs(self):
+        return self._indexed_inputs
+
     def rng_state(self, philox_num: int = -1, gen: torch.Generator = None):
         _graph_rng_state = self._generator_rng_state[gen]
         return _graph_rng_state.next(philox_num)
@@ -499,12 +507,6 @@ class GeGraph(object):
         if index in self._indexed_inputs:
             raise AssertionError
         self._indexed_inputs[index] = op
-
-    def num_inputs(self):
-        return len(self._indexed_inputs)
-
-    def indexed_inputs(self):
-        return self._indexed_inputs
 
 
 class _GeGraphStack(threading.local):

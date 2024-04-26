@@ -2,6 +2,7 @@ import contextlib
 import sympy
 
 import torch
+from torchair.core.utils import logger
 from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef
 from torchair.ge_concrete_graph.ge_graph import compat_as_bytes, DataType, is_sym, Tensor, torch_type_to_ge_type
 from torchair.ge_concrete_graph import ge_apis as ge
@@ -276,15 +277,12 @@ class InputProcessing:
 
     def __call__(self, *args):
         if len(self._fx_inputs_mapping) == len(args):
-            if len(self._uncontiguous_ge_input_idx) == 0 and len(self._nontensor_ge_input_idx) == 0:
-                return args
-            else:
-                inputs = list(args)
-                for idx in self._uncontiguous_ge_input_idx:
-                    inputs[idx] = inputs[idx].contiguous()
-                for idx in self._nontensor_ge_input_idx:
-                    inputs[idx] = torch.tensor(inputs[idx])
-                return inputs
+            inputs = list(args)
+            for idx in self._uncontiguous_ge_input_idx:
+                inputs[idx] = inputs[idx].contiguous()
+            for idx in self._nontensor_ge_input_idx:
+                inputs[idx] = torch.tensor(inputs[idx])
+            return inputs
         else:
             inputs = [None] * len(self._fx_inputs_mapping)
             for fx_idx, ge_idx in self._fx_inputs_mapping.items():
@@ -300,3 +298,30 @@ class InputProcessing:
         return (f"InputProcessing(fx_inputs_mapping={self._fx_inputs_mapping},"
                 f" uncontiguous_ge_input_idx={self._uncontiguous_ge_input_idx},"
                 f" nontensor_ge_input_idx={self._nontensor_ge_input_idx})")
+
+
+def generate_shape_from_tensor(fake: torch.Tensor) -> List[int]:
+    generalized_shape = []
+    for dim in fake.size():
+        if not isinstance(dim, torch.SymInt):
+            generalized_shape.append(dim)
+        else:
+            try:
+                generalized_shape.append(int(str(dim)))
+            except:
+                generalized_shape.append(-1)
+    return generalized_shape
+
+
+def update_op_input_name_from_mapping(graph: GraphDef, input_name_mapping: Dict):
+    logger.info(f"update graph {graph.name} op input name from mapping {input_name_mapping}.")
+    for op in graph.op:
+        for idx, op_input in enumerate(op.input):
+            if not op_input:
+                continue
+            name_split_list = op_input.split(":")
+            if len(name_split_list) != 2:
+                raise AssertionError(f"undefined op input name format: {op_input}.")
+            if name_split_list[0] in input_name_mapping.keys():
+                op.input[idx] = f"{input_name_mapping[name_split_list[0]]}:{name_split_list[1]}"
+                logger.debug(f"update op {op.name} input {op_input} to {op.input[idx]}.")

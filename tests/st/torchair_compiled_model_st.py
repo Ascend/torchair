@@ -112,9 +112,8 @@ class TorchairSt(unittest.TestCase):
             shutil.rmtree(save_path)
         try:
             torchair.compiled_model.save_graph(Model(), (x0, x1), save_path=save_path)
-        except AssertionError as e:
-            assert type(e).__name__ == "AssertionError"
-
+        except NotImplementedError as e:
+            assert type(e).__name__ == "NotImplementedError"
 
     def test_saved_graph_input_with_1list_supported(self):
         class Model(torch.nn.Module):

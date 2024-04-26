@@ -266,8 +266,8 @@ class TorchairSt(unittest.TestCase):
             return wrapper
 
         from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
-        src_call = GeConcreteGraph.__call__
-        GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
+        bak_optimization = GeConcreteGraph.optimize_graph_without_runtime
+        GeConcreteGraph.optimize_graph_without_runtime = wrapper_call(GeConcreteGraph.optimize_graph_without_runtime)
 
         class Model(torch.nn.Module):
             def __init__(self):
@@ -290,7 +290,7 @@ class TorchairSt(unittest.TestCase):
         n = torch.randn([3, 3])
         model(6, 3, z, p, m, n)
 
-        GeConcreteGraph.__call__ = src_call
+        GeConcreteGraph.optimize_graph_without_runtime = bak_optimization
 
     def test_npu_executor_optimize_ref_op_copy(self):
         def get_graph_key_op_num(graph):
@@ -376,8 +376,7 @@ class TorchairSt(unittest.TestCase):
             for k, v in output_ref_input.items():
                 all_ref_data_idx.add(v)
 
-            fx_inputs_mapping = {i: i for i in range(6)}
-            replace_data_to_refdata(graph, all_ref_data_idx, inputs, fx_inputs_mapping)
+            replace_data_to_refdata(graph, all_ref_data_idx, inputs)
             node_count_dict, output_in = get_graph_key_op_num(graph)
             assert node_count_dict["Assign"] == 1, \
                 f'after optimize, assert assign op num failed, expect 1, get {node_count_dict["Assign"]}'

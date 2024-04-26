@@ -322,6 +322,8 @@ class _NpuFxCompiler:
             mutable_gm, graph=ConcreteGraph(self.config, name="graph_" + str(_next_unique_graph_id())),
             garbage_collect_values=False).run(*example_inputs)
 
+        concrete_graph.optimize_graph_without_runtime(*example_inputs)
+
         if not self.config.export.export_mode:
             if self.config.debug.graph_dump.enabled:
                 concrete_graph.dump(self.config.debug.graph_dump.full_path("dynamo_original_graph"))

@@ -376,7 +376,7 @@ class TorchairSt(unittest.TestCase):
         shape_str = "_".join(str(sh) for sh in x.shape)
         stride_str = "_".join(str(std) for std in x.stride())
         offset_str = str(x.storage_offset())
-        new_refdata_name = "RefData__" + shape_str + "__" + stride_str + "__" + offset_str + "__" + str(
+        new_refdata_name = "RefData_" + shape_str + "_" + stride_str + "_" + offset_str + "_" + str(
             id(x))
 
         name_str = f'name: \"{new_refdata_name}\"'
@@ -429,7 +429,7 @@ class TorchairSt(unittest.TestCase):
         shape_str = "_".join(str(x) for x in input_tensor2.shape)
         stride_str = "_".join(str(x) for x in input_tensor2.stride())
         offset_str = str(input_tensor2.storage_offset())
-        new_refdata_name = "RefData__" + shape_str + "__" + stride_str + "__" + offset_str + "__" + str(
+        new_refdata_name = "RefData_" + shape_str + "_" + stride_str + "_" + offset_str + "_" + str(
             id(input_tensor2))
 
         sub_str = f'name: \"{new_refdata_name}\"'
