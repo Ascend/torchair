@@ -8,7 +8,23 @@ from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type
 from torchair.ge_concrete_graph.ge_graph import compat_as_bytes, GeGraph
 from torchair.ge_concrete_graph.utils import dump_graph
 from torchair.utils.path_manager import PathManager
-from torchair.ge_concrete_graph.ge_ir_pb2 import ModelDef
+from torchair.ge_concrete_graph.ge_ir_pb2 import ModelDef, GraphDef
+
+
+def _sort_graph_data_index(graph: GraphDef):
+    data_index = 0
+    for op in graph.op:
+        if op.type == "Data":
+            op.attr["index"].i = data_index
+            data_index += 1
+    for op in graph.op:
+        if op.type == "RefData":
+            op.attr["index"].i = data_index
+            data_index += 1
+
+
+def get_export_rank_file_name(export_name, rank):
+    return export_name + str(rank) + ".air"
 
 
 def _get_subpath(export_path_dir):
@@ -35,7 +51,7 @@ def get_export_file_name(export_name):
         logger.info(f'not frontend segmentation')
 
     if rank is not None:
-        export_file_name = export_name + str(rank) + ".air"
+        export_file_name = get_export_rank_file_name(export_name, rank)
     else:
         export_file_name = export_name + ".air"
 
@@ -92,6 +108,7 @@ def _convert_data_to_const(inputs, export_graph, file_path, weight_name):
             export_graph.op[i].Clear()
             export_graph.op[i].MergeFrom(y.node)
 
+    _sort_graph_data_index(export_graph)
     return weight_externalized, used_weight_num
 
 

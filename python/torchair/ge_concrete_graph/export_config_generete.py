@@ -6,6 +6,8 @@ import torch
 from torchair.core.utils import logger
 from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef
 from torchair.utils.path_manager import PathManager
+from torchair.utils.export_utils import get_export_rank_file_name
+
 
 hcom_ops_set = {"HcomAllReduce", "HcomReduceScatter", "HcomAllGather", "HcomBroadcast", "HcomReduce",
                 "HcomSend", "HcomReceive", "HcomRemoteRead", "HcomRemoteRefRead", "HcomRemoteWrite",
@@ -20,7 +22,7 @@ def _generate_model_relation_config(file_path, export_name, world_ranklist: List
                              "comm_group": [], "rank_table": []}
 
     for rankid in world_ranklist:
-        submodel_name = export_name + "_rank" + str(rankid) + ".air"
+        submodel_name = get_export_rank_file_name(export_name, rankid)
         deploy_config_dict = {}
         deploy_config_dict["submodel_name"] = submodel_name
         # torch中不存在cluster概念，不能获得nodeid信息,因此全部写为0，需要用户手动调整，资料中解释

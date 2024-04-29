@@ -214,7 +214,7 @@ class TorchairSt(unittest.TestCase):
         file_name = get_model_relation_config("export_file")
         with open(file_name, 'r') as f:
             src = f.read()
-        assert src.count("\"submodel_name\": \"export_rank0.air\"") == 2
+        assert src.count("\"submodel_name\": \"export0.air\"") == 2
         assert src.count("\"group_rank_list\": \"[0, 1]\"") == 1
         assert src.count("model_instance_id") == 4
         assert src.count("0:0:0") == 1
