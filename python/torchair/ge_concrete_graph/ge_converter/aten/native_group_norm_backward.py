@@ -25,12 +25,62 @@ from torchair.ge_concrete_graph.utils import specific_op_input_layout, specific_
 from torchair.ge_concrete_graph.utils import dtype_promote
 
 
+def _get_numel(inputs):
+    numel = 1
+    for symsize in inputs.symsize:
+        numel *= symsize
+    return numel
+
+
+def _output_mask(inputs, mean, rstd, n, c, group, output_mask, grad_in, x_reshape_1, dy):
+    dx = ge.Reshape(grad_in, ge.Shape(inputs))
+
+    zero_contain = 0
+    if inputs.symsize is not None and _get_numel(inputs) == 0:
+        zero_contain = 1
+
+    if zero_contain == 1:
+        return dx, ge.Fill([c], ge.Cast(0., dst_type=mean.dtype)) if output_mask[1] else None, \
+                ge.Fill([c], ge.Cast(0., dst_type=rstd.dtype)) if output_mask[2] else None
+
+    dgamma = dbeta = None
+
+    if output_mask[1]:
+        if mean.rank == 1:
+            pack_1 = ge.Pack([n, group], N=2, axis=0)
+            mean_broadcast = ge.Unsqueeze(ge.Reshape(mean, pack_1), axes=[2])
+            rstd_broadcast = ge.Unsqueeze(ge.Reshape(rstd, pack_1), axes=[2])
+        else:
+            mean_broadcast = ge.Unsqueeze(mean, axes=[2])
+            rstd_broadcast = ge.Unsqueeze(rstd, axes=[2])
+
+        pack_2 = ge.Pack([n, group, ge.RealDiv(c, group)], N=3)
+        pack_3 = ge.Pack([n, c, 1], N=3, axis=0)
+        mean_broadcast = ge.BroadcastTo(mean_broadcast, pack_2)
+        mean_broadcast = ge.Reshape(mean_broadcast, pack_3)
+        rstd_broadcast = ge.BroadcastTo(rstd_broadcast, pack_2)
+        rstd_broadcast = ge.Reshape(rstd_broadcast, pack_3)
+        x_hat = ge.Mul(ge.Sub(x_reshape_1, mean_broadcast), rstd_broadcast)
+        dgamma = ge.Mul(dy, x_hat)
+        dgamma = ge.ReduceSum(dgamma, axes=[0, 2], keep_dims=False)
+    if output_mask[2]:
+        dbeta = ge.ReduceSum(dy, axes=[0, 2], keep_dims=False)
+
+    return dx, dgamma, dbeta
+
+
 @declare_supported(
     [
-        Support(F32(20, 6, 10, 10), F32(20, 6, 10, 10), F32(20, 3), F32(20, 3), weight=F32(6,), N=20, C=6, HxW=100,
+        Support(F32(20, 6, 10, 10), F32(20, 6, 10, 10), F32(20, 3), F32(20, 3), weight=F32(6, ), N=20, C=6, HxW=100,
                 group=3, output_mask=[True, True, True]),
         Support(F32(20, 6, 10), F32(20, 6, 10), F32(20, 3), F32(20, 3), weight=F32(6, ), N=20, C=6, HxW=10,
-                group=3, output_mask=[True, True, True])
+                group=3, output_mask=[True, True, True]),
+        Support(F32(0, 6, 10), F32(0, 6, 10), F32(0, 3), F32(0, 3), weight=F32(6, ), N=0, C=6, HxW=10,
+                group=3, output_mask=[True, True, True]),
+        Support(F32(9, 1), F32(9, 1), F32(9, 1), F32(9, 1), weight=F32(1, ), N=9, C=1, HxW=1,
+                group=1, output_mask=[True, False, False]),
+        Support(F32(0, 10), F32(0, 10), F32(0, 1), F32(0, 1), weight=F32(10, ), N=0, C=10, HxW=1,
+                group=1, output_mask=[True, False, False]),
     ]
 )
 @register_fx_node_ge_converter(torch.ops.aten.native_group_norm_backward.default)
@@ -51,25 +101,29 @@ def conveter_aten_native_group_norm_backward_default(
     eps = 1e-5
     dim = input.rank
     if dim != 3:
-        dy = ge.Reshape(grad_out, [N, C, HxW])
-        x_reshape_1 = ge.Reshape(input, [N, C, HxW])
+        shape_list_0 = ge.Pack([N, C, HxW], N=3, axis=0)
+        dy = ge.Reshape(grad_out, shape_list_0)
+        x_reshape_1 = ge.Reshape(input, shape_list_0)
     else:
         dy = grad_out
         x_reshape_1 = input
 
     if weight is not None:
-        dy_b = ge.Mul(dy, ge.Reshape(weight, [1, C, 1]))
+        dy_b = ge.Mul(dy, ge.Reshape(weight, ge.Pack([1, C, 1], N=3, axis=0)))
     else:
         dy_b = dy
 
-    x_reshaped = ge.Reshape(x_reshape_1, [1, N * group, -1 if N else 1])
-    dy_reshaped = ge.Reshape(dy_b, [1, N * group, -1 if N else 1])
-    mean_reshaped = ge.Reshape(mean, [N * group])
+    group_n = ge.Mul(N, group)
+    shape_list_1 = ge.Pack([1, group_n, -1 if N else 1], N=3, axis=0)
+    shape_list_2 = ge.Pack([group_n], N=1, axis=0)
+    x_reshaped = ge.Reshape(x_reshape_1, shape_list_1)
+    dy_reshaped = ge.Reshape(dy_b, shape_list_1)
+    mean_reshaped = ge.Reshape(mean, shape_list_2)
 
     rstd_square = ge.Mul(rstd, rstd)
     variances = ge.Sub(ge.Reciprocal(rstd_square), eps)
-    rstd_reshaped = ge.Reshape(variances, [N * group])
-    weight_opt = ge.Fill([N * group], dtype_promote(1, target_dtype=input.dtype))
+    rstd_reshaped = ge.Reshape(variances, shape_list_2)
+    weight_opt = ge.Fill(shape_list_2, dtype_promote(1, target_dtype=input.dtype))
 
     x_reshaped = ge.Unsqueeze(x_reshaped, axes=list(range(3, 4)))
     dy_reshaped = ge.Unsqueeze(dy_reshaped, axes=list(range(3, 4)))
@@ -84,27 +138,7 @@ def conveter_aten_native_group_norm_backward_default(
     specific_op_output_layout(grad_in, indices=0, layout="NCHW")
     grad_in = ge.Squeeze(grad_in, axis=list(range(3, 2, -1)))
 
-    dx = ge.Reshape(grad_in, ge.Shape(x_reshape_1))
-    dx = ge.Reshape(dx, ge.Shape(input))
-    dgamma = dbeta = None
-
-    if output_mask[1]:
-        if mean.rank == 1:
-            mean_broadcast = ge.Unsqueeze(ge.Reshape(mean, [N, group]), axes=[2])
-            rstd_broadcast = ge.Unsqueeze(ge.Reshape(rstd, [N, group]), axes=[2])
-        else:
-            mean_broadcast = ge.Unsqueeze(mean, axes=[2])
-            rstd_broadcast = ge.Unsqueeze(rstd, axes=[2])
-        mean_broadcast = ge.BroadcastTo(mean_broadcast, ge.Pack([N, group, C / group], N=3))
-        mean_broadcast = ge.Reshape(mean_broadcast, [N, C, 1])
-        rstd_broadcast = ge.BroadcastTo(rstd_broadcast, ge.Pack([N, group, C / group], N=3))
-        rstd_broadcast = ge.Reshape(rstd_broadcast, [N, C, 1])
-        x_hat = ge.Mul(ge.Sub(x_reshape_1, mean_broadcast), rstd_broadcast)
-        dgamma = ge.Mul(dy, x_hat)
-        dgamma = ge.ReduceSum(dgamma, axes=[0, 2], keep_dims=False)
-    if output_mask[2]:
-        dbeta = ge.ReduceSum(dy, axes=[0, 2], keep_dims=False)
-    return dx, dgamma, dbeta
+    return _output_mask(input, mean, rstd, N, C, group, output_mask, grad_in, x_reshape_1, dy)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.native_group_norm_backward.out)
