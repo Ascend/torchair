@@ -75897,7 +75897,8 @@ def GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], sca
 def MoeInitRouting(x: Tensor,
                    row_idx: Tensor,
                    expert_idx: Tensor,
-                   active_num: int=99, 
+                   *,
+                   active_num: int, 
                    dependencies=[], 
                    node_name=None):
     """REG_OP(MoeInitRouting)\n
