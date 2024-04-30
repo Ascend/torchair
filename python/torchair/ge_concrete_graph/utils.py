@@ -250,7 +250,7 @@ def get_sym_int_value(sym_exper, value_of_sym):
     if sym_exper in value_of_sym.keys():
         return value_of_sym[sym_exper]
     else:
-        return sym_exper.subs(value_of_sym)
+        return int(sym_exper.subs(value_of_sym))
 
 
 def generate_sym_exper(metas):
