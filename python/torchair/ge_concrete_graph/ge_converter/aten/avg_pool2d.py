@@ -25,6 +25,7 @@ from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, 
 
 
 @declare_supported([
+     Support(F32(16, 16, 4, 4), [2, 2], [1, 1], [0, 0], True, False),
      Support(F32(16, 16, 4, 4), [1, 1], [2, 2], [0, 0], False, False),
      Support(F32(96, 16, 4, 4), [4, 4]),
      Support(F32(16, 4, 4), [4, 4])
@@ -41,14 +42,15 @@ def conveter_aten_avg_pool2d_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::avg_pool2d(Tensor self, int[2] kernel_size, int[2] stride=[], int[2] padding=0, bool ceil_mode=False, bool count_include_pad=True, int? divisor_override=None) -> Tensor"""
-    assert_args_checkout(not ceil_mode,
-                 "when ceil_mode is True, torch.ops.aten.avg_pool2d.default ge_converter is not supported!")
     assert_args_checkout(len(kernel_size) == 1 or len(kernel_size) == 2,
-                 "avg_pool2d: kernel_size must either be a single int, or a tuple of two ints")
+                         "torch.ops.aten.avg_pool2d.default: kernel_size must either be a single int, or a tuple of "
+                         "two ints")
     assert_args_checkout(len(stride) == 0 or len(stride) == 1 or len(stride) == 2,
-                 "avg_pool2d: stride must either be omitted, a single int, or a tuple of two ints")
+                         "torch.ops.aten.avg_pool2d.default: stride must either be omitted, a single int, or a tuple "
+                         "of two ints")
     assert_args_checkout(len(padding) == 1 or len(padding) == 2,
-                 "avg_pool2d: padding must either be a single int, or a tuple of two ints")
+                         "torch.ops.aten.avg_pool2d.default: padding must either be a single int, or a tuple of two "
+                         "ints")
     assert_args_checkout(self.rank == 3 or self.rank == 4,
                                  "non-empty 3D or 4D (batch mode) tensor expected for input")
     assert_args_checkout(divisor_override is None or (0 < divisor_override <= 255),
