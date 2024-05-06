@@ -73,7 +73,7 @@ size_t GetBlockSize(const void *handle) {
 namespace at_npu {
 namespace native {
 
-int64_t get_npu_format(const at::Tensor &tensor, bool infer_format) {
+int64_t get_npu_format(const at::Tensor &tensor) {
   // ACL_FORMAT_ND = 2
   return 2;
 }

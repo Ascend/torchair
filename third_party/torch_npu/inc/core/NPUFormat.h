@@ -20,7 +20,7 @@
 namespace at_npu {
 namespace native {
 
-TORCH_NPU_API int64_t get_npu_format(const at::Tensor &tensor, bool infer_format = true);
+TORCH_NPU_API int64_t get_npu_format(const at::Tensor &tensor);
 
 TORCH_NPU_API std::vector<int64_t> get_npu_storage_sizes(const at::Tensor &tensor);
 
