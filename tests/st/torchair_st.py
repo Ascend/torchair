@@ -10,7 +10,7 @@ import logging
 
 from torchair.core.utils import logger
 from torchair.core.backend import TorchNpuGraph
-from torchair.ge_concrete_graph.ge_graph import GeGraph
+from torchair.ge_concrete_graph.ge_graph import GeGraph, Const, _ge_dtype_to_ge_proto_dtype
 from torchair.ge_concrete_graph.fx2ge_converter import ExecutorType, Placement, _normalize_ge_graph, \
     _mapping_assign_op_to_graph_output, replace_data_to_refdata
 from torchair.ge_concrete_graph import ge_apis as ge
@@ -1526,6 +1526,78 @@ class TorchairSt(unittest.TestCase):
         x = torch.randn(10, 1, 2)
         res = model(x)
         self.assertEqual(res, 3)
+
+    def test_ge_const(self):
+        inputs = torch.randn(20, 16, 50, dtype=torch.float)
+        scale, zero_point = 1.0, 0
+        qint8 = torch.quantize_per_tensor(inputs, scale, zero_point, torch.qint8)
+        quint8 = torch.quantize_per_tensor(inputs, scale, zero_point, torch.quint8)
+        qint32 = torch.quantize_per_tensor(inputs, scale, zero_point, torch.qint32)
+        res = Const(qint8)
+        self.assertEqual(_ge_dtype_to_ge_proto_dtype(DataType.DT_QINT8), res.desc.dtype)
+        res = Const(quint8)
+        self.assertEqual(_ge_dtype_to_ge_proto_dtype(DataType.DT_QUINT8), res.desc.dtype)
+        res = Const(qint32)
+        self.assertEqual(_ge_dtype_to_ge_proto_dtype(DataType.DT_QINT32), res.desc.dtype)
+
+        v = torch.randn(2, 3).to(torch.float16)
+        res = Const(v)
+        self.assertEqual(_ge_dtype_to_ge_proto_dtype(DataType.DT_FLOAT16), res.desc.dtype)
+
+        v = torch.randn(2, 3).to(torch.bfloat16)
+        res = Const(v)
+        self.assertEqual(_ge_dtype_to_ge_proto_dtype(DataType.DT_BF16), res.desc.dtype)
+
+        v = torch.randn(0, 3).to(torch.complex32)
+        res = Const(v)
+        self.assertEqual(_ge_dtype_to_ge_proto_dtype(DataType.DT_COMPLEX32), res.desc.dtype)
+
+        v = torch.randn(0, 3).to(torch.complex64)
+        res = Const(v)
+        self.assertEqual(_ge_dtype_to_ge_proto_dtype(DataType.DT_COMPLEX64), res.desc.dtype)
+
+        v = 1
+        res = Const(v)
+        self.assertEqual(_ge_dtype_to_ge_proto_dtype(DataType.DT_INT64), res.desc.dtype)
+
+        v = torch.randn(2, 3).to(torch.float16)
+        v = v.numpy()
+        res = Const(v)
+        self.assertEqual(_ge_dtype_to_ge_proto_dtype(DataType.DT_FLOAT16), res.desc.dtype)
+
+        v = torch.randn(2, 3).to(torch.float32)
+        res = Const(v, dtype=DataType.DT_FLOAT16)
+        self.assertEqual(_ge_dtype_to_ge_proto_dtype(DataType.DT_FLOAT16), res.desc.dtype)
+
+        v = torch.tensor([1]).to(torch.float16)
+        res = Const(v, dtype=DataType.DT_BF16)
+        self.assertEqual(res.node.attr['_readable_value'].s, b'tensor([1.], dtype=torch.float16)')
+        self.assertEqual(_ge_dtype_to_ge_proto_dtype(DataType.DT_BF16), res.desc.dtype)
+
+        v = 1
+        res = Const(v, dtype=DataType.DT_FLOAT16)
+        self.assertEqual(res.node.attr['_readable_value'].s, b'1')
+        self.assertEqual(_ge_dtype_to_ge_proto_dtype(DataType.DT_FLOAT16), res.desc.dtype)
+
+        v = torch.tensor([1]).to(torch.float32)
+        v = v.numpy()
+        res = Const(v, dtype=DataType.DT_FLOAT16)
+        self.assertEqual(res.node.attr['_readable_value'].s, b'array([1.], dtype=float32)')
+        self.assertEqual(_ge_dtype_to_ge_proto_dtype(DataType.DT_FLOAT16), res.desc.dtype)
+
+        v = 1
+        res = Const(v, dtype=DataType.DT_BF16)
+        self.assertEqual(_ge_dtype_to_ge_proto_dtype(DataType.DT_BF16), res.desc.dtype)
+
+        v = torch.randn(2, 3).to(torch.float32)
+        v = v.numpy()
+        res = Const(v, dtype=DataType.DT_BF16)
+        self.assertEqual(_ge_dtype_to_ge_proto_dtype(DataType.DT_BF16), res.desc.dtype)
+
+        v = torch.randn(2, 3).to(torch.float32)
+        v = v.numpy()
+        res = Const(v, dtype=DataType.DT_COMPLEX32)
+        self.assertEqual(_ge_dtype_to_ge_proto_dtype(DataType.DT_COMPLEX32), res.desc.dtype)
 
 
 if __name__ == '__main__':

@@ -131,6 +131,45 @@ def torch_type_to_ge_type(dtype, m=DataType):
     raise RuntimeError(f"Unsupported torch type {dtype} by ge")
 
 
+def ge_type_to_torch_type(dtype: DataType) -> torch.dtype:
+    if dtype is None:
+        return None
+    if dtype == DataType.DT_FLOAT:
+        return torch.float32
+    if dtype == DataType.DT_INT32:
+        return torch.int32
+    if dtype == DataType.DT_BOOL:
+        return torch.bool
+    if dtype == DataType.DT_FLOAT16:
+        return torch.float16
+    if dtype == DataType.DT_INT8:
+        return torch.int8
+    if dtype == DataType.DT_UINT8:
+        return torch.uint8
+    if dtype == DataType.DT_INT16:
+        return torch.int16
+    if dtype == DataType.DT_INT64:
+        return torch.int64
+    if dtype == DataType.DT_DOUBLE:
+        return torch.float64
+    if dtype == DataType.DT_BF16:
+        return torch.bfloat16
+    if dtype == DataType.DT_COMPLEX32:
+        return torch.complex32
+    if dtype == DataType.DT_COMPLEX64:
+        return torch.complex64
+    if dtype == DataType.DT_COMPLEX128:
+        return torch.complex128
+    if dtype == DataType.DT_QINT8:
+        return torch.qint8
+    if dtype == DataType.DT_QUINT8:
+        return torch.quint8
+    if dtype == DataType.DT_QINT32:
+        return torch.qint32
+
+    raise RuntimeError(f"Unsupported ge type {dtype} by torch")
+
+
 def _ge_dtype_to_np_dtype(dtype: DataType) -> np.dtype:
     if dtype == DataType.DT_FLOAT16:
         return np.float16
@@ -637,7 +676,7 @@ class Tensor:
     @property
     def desc(self):
         return self._desc
-    
+
     @property
     def meta(self):
         return self._meta
@@ -681,6 +720,8 @@ def get_ge_rng_state(philox_num: int = -1, gen: torch.Generator = None) -> Tuple
 
 
 def array_default_f32(v, dtype=None):
+    if isinstance(v, np.ndarray):
+        return v
     if isinstance(v, list) and len(v) == 0 and dtype is None:
         dtype = np.int32
     if isinstance(v, float) and dtype is None:
@@ -757,10 +798,7 @@ def _torch_tensor_to_ge_const(v: torch.Tensor):
     with no_dispatch():
         if v.device.type != "cpu":
             v = v.cpu()
-        if v.dtype is torch.bfloat16:
-            return Const(v)
-        else:
-            return Const(v.numpy())
+        return Const(v)
 
 
 def _get_promoted_dtype(inputs: list) -> Tuple[List[DataType], List[DataType]]:
@@ -1050,57 +1088,38 @@ def Cast(x: Tensor, *, dst_type: int, dependencies=[], node_name=None) -> Tensor
 
 
 def Const(v: Any, dtype: int = None, node_name=None, readable=True) -> Tensor:
-    if dtype is not None and not _is_supported_ge_dtype_by_numpy(dtype) and not dtype is DataType.DT_BF16:
-        # TO DO: unsupported dtype cast for numpy, currently resolved by inserting ge.Cast
-        return Cast(Const(v, dtype=None, node_name=node_name), dst_type=dtype)
+    if dtype is None:
+        if isinstance(v, torch.Tensor):
+            dtype = torch_type_to_ge_type(v.dtype)
+        else:
+            dtype = _np_dtype_to_ge_dtype(array_default_f32(v).dtype)
 
-    if not isinstance(v, torch.Tensor) and dtype is DataType.DT_BF16:
+    target_dtype = ge_type_to_torch_type(dtype)
+    origin_v = v
+    if not isinstance(v, torch.Tensor):
         with no_dispatch():
-            v = torch.tensor(v, dtype=torch.bfloat16)
+            v = torch.tensor(v, dtype=target_dtype)
 
+    if v.dtype != target_dtype:
+        v = v.to(target_dtype)
     op = get_default_ge_graph().op.add()
     op.type = "Const"
     op.name = next_unique_name(node_name, "Const")
     value = op.attr["value"].t
-
-    if isinstance(v, torch.Tensor) and v.dtype is torch.bfloat16:
-        # TO DO: Maybe other numpy unsupported dtype
-        import io
-        f = io.BytesIO()
-        v.untyped_storage()._write_file(f, False, False, torch._utils._element_size(torch.bfloat16))
-        value.data = f.getvalue()
-        value.desc.dtype = _ge_dtype_to_ge_proto_dtype(DataType.DT_BF16)
-        value.desc.layout = "ND"
-        value.desc.shape.dim.extend(tuple(v.shape))
-        op.output_desc.extend([value.desc])
-        const_tensor = Tensor(op)
-        return const_tensor
-
-    if dtype is None:
-        if isinstance(v, np.ndarray):
-            narray = v
-        else:
-            narray = array_default_f32(v)
-        const_ge_dtype = _np_dtype_to_ge_dtype(narray.dtype)
-    else:
-        narray = np.array(v, dtype=_ge_dtype_to_np_dtype(dtype))
-        const_ge_dtype = dtype
-
     if readable:
-        if isinstance(v, (np.ndarray, tuple, list)):
-            op.attr["_readable_value"].s = compat_as_bytes(f"{narray.tolist()}")
-        else:
-            op.attr["_readable_value"].s = compat_as_bytes(f"{narray.item()}")
-
-    value.data = narray.tobytes()
-    value.desc.dtype = _ge_dtype_to_ge_proto_dtype(const_ge_dtype)
+        op.attr["_readable_value"].s = compat_as_bytes(f"{repr(origin_v)}")
+    import io
+    f = io.BytesIO()
+    v.untyped_storage()._write_file(f, False, False, torch._utils._element_size(v.dtype))
+    value.data = f.getvalue()
+    value.desc.dtype = _ge_dtype_to_ge_proto_dtype(dtype)
     value.desc.layout = "ND"
-    value.desc.shape.dim.extend(narray.shape)
-
+    value.desc.shape.dim.extend(tuple(v.shape))
     op.output_desc.extend([value.desc])
     const_tensor = Tensor(op)
 
     return const_tensor
+
 
 
 @contextlib.contextmanager
