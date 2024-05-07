@@ -1,5 +1,7 @@
 import contextlib
 import dataclasses
+import functools
+import logging
 from typing import List
 import os
 import unittest
@@ -9,6 +11,46 @@ import torchair
 import torchair.inference
 from torchair.inference.cache_compiler import CompiledModel, ModelCacheSaver
 from torchair.inference.cache_compiler import NoGuardCompiledFunction, NoGuardCompiledMethod
+from torchair.core.utils import logger
+from torchair import npu_fx_compiler
+
+logger.setLevel(logging.INFO)
+_get_compiler = npu_fx_compiler.get_compiler
+
+
+@functools.wraps(_get_compiler)
+def get_compiler(*args, **kwargs):
+    compiler = _get_compiler(*args, **kwargs)
+    if not hasattr(compiler, 'codegen'):
+        print("Codegen by patched compiler codegen", flush=True)
+
+        def codegen(gm, inputs):
+            outputs = gm(*inputs)
+            from torch._inductor.utils import IndentedBuffer
+            arg_names = [n.name for n in gm.graph.nodes if n.op == 'placeholder']
+            arg_names = [str(inputs[i]) if isinstance(inputs[i], torch.SymInt) else n for i, n in enumerate(arg_names)]
+            code = IndentedBuffer()
+            code.splice('''
+            import torch
+            def kernel(*inputs):
+            ''')
+            with code.indent():
+                code.writeline(f'{", ".join(arg_names)} = inputs')
+                code.writeline(f'outputs = [None] * {len(outputs)}')
+                for i, output in enumerate(outputs):
+                    if isinstance(output, torch.Tensor):
+                        code.writeline(f'outputs[{i}] = torch.ones({list(output.size())}, dtype={output.dtype})')
+                    else:
+                        code.writeline(f'outputs[{i}] = {repr(output)}')
+                code.writeline(f'return tuple(outputs)')
+            print(code.getvalue(), flush=True)
+            return code.getvalue()
+
+        setattr(compiler, 'codegen', codegen)
+    return compiler
+
+
+npu_fx_compiler.get_compiler = get_compiler
 
 
 class PatchAttr:
@@ -205,7 +247,11 @@ class CacheCompileSt(unittest.TestCase):
         self.assertTrue(os.path.exists(cache2))
 
         torchair.inference.readable_cache(cache1)
-        torchair.inference.readable_cache(cache2)
+
+        readable_file = 'cache2_readable.py'
+        ModelCacheSaver.remove_cache(readable_file)
+        torchair.inference.readable_cache(cache2, print_output=False, file=readable_file)
+        self.assertTrue(os.path.exists(readable_file))
 
         NoGuardCompiledMethod.load(cache1, self=model)(*prompt1)  # assert not raise
         NoGuardCompiledMethod.load(cache2, self=model)(*prompt2)  # assert not raise

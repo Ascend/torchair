@@ -4,12 +4,15 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 import datetime
 import fcntl
+import functools
 import logging
+import time
 import types
 import marshal
 import os
 import hashlib
 from typing import List, Optional, Callable, Union, Dict, Tuple
+from types import ModuleType
 import pickle
 import shutil
 
@@ -28,13 +31,12 @@ class ModelCacheMeta:
     name: str
     date: str
     version: str
-    fx: torch.fx.GraphModule = None
 
 
 @dataclass
 class CompiledFX:
     signature: str
-    ge_callable: Union[types.CodeType, torch.fx.GraphModule]
+    py_code: str
     input_parameters: List[Tuple[str, bool]]
 
 
@@ -52,6 +54,19 @@ def file_lock(file_descriptor, lock_type):
         yield
     finally:
         fcntl.flock(file_descriptor, fcntl.LOCK_UN)
+
+
+@contextmanager
+def timer(prefix: str):
+    start_time = time.time()
+    yield
+    logger.info("%s took %.3f [s]", prefix, time.time() - start_time)
+
+
+def _compile_ge_kernel(py_code: str):
+    ge_mod = ModuleType('ge_mod')
+    exec(compile(py_code, '<string>', 'exec'), ge_mod.__dict__, ge_mod.__dict__)
+    return getattr(ge_mod, 'kernel')
 
 
 class CompiledModel:
@@ -74,8 +89,9 @@ class CompiledModel:
 
     def save(self, cache_bin: str):
         if not all([self.compiled_fn, self.compiled_fx]):
-            raise ValueError(f"Compiled model {self} is not ready to be saved")
+            return
 
+        logger.info(f'Saving cache for {self.name} to {cache_bin}')
         artifacts = ModelCacheArtifact(meta=self.meta, compiled_fn=marshal.dumps(self.compiled_fn),
                                        compiled_fx=self.compiled_fx)
 
@@ -94,7 +110,7 @@ class CompiledModel:
         if not os.path.exists(cache_bin):
             raise ValueError(f"Cache file {cache_bin} is not exists")
 
-        with open(cache_bin, "rb") as f:
+        with open(cache_bin, "rb") as f, timer(f"load cache from {cache_bin}"):
             with file_lock(f, fcntl.LOCK_SH):
                 artifacts: ModelCacheArtifact = pickle.load(f)
 
@@ -162,11 +178,14 @@ class CompiledModel:
                 log.debug(f"Prefetch input {len(parameters)} from {type_str} {name}")
             parameters.append(model_params[name])
 
+        with timer(f"{self.name} compile ge graph"):
+            ge_kernel = _compile_ge_kernel(self.compiled_fx.py_code)
+
         def compiled_fn(*args):
             full_args = []
             full_args.extend(parameters)
             full_args.extend(args)
-            return self.compiled_fx.ge_callable(*full_args)
+            return ge_kernel(*full_args)
 
         global_vars = global_vars or globals()
         g = global_vars.copy()
@@ -181,10 +200,19 @@ class CompiledModel:
 
         return compiled_method
 
-    def readable(self, print_output=True):
+    def readable(self, print_output=True, file: Optional[str] = None):
         readable_str = ['=' * 100, str(self.meta), str(self.compiled_fx.signature)]
         if print_output:
             print('\n'.join(readable_str))
+        if file:
+            abs_file = os.path.abspath(file)
+            os.makedirs(os.path.dirname(abs_file), exist_ok=True)
+            with open(file, 'w') as f:
+                comments = '\n'.join(readable_str).split('\n')
+                f.write('\n'.join([f'# {c}' for c in comments]))
+                f.write('\n')
+                f.write(self.compiled_fx.py_code)
+                os.chmod(f.fileno(), 0o755)
         return '\n'.join(readable_str)
 
 
@@ -228,8 +256,21 @@ class CacheBackend:
         for i, dim_gears in self.input_dim_gears.items():
             set_dim_gears(example_inputs[i], dim_gears)
 
-        self.saver.save_compiled_fx(gm, example_inputs, self.config, gm)
-        return self.compiler(gm, example_inputs)
+        if not hasattr(self.compiler, 'codegen'):
+            logger.warning(f"Skip cache as compiler {type(self.compiler)} does not support codegen")
+            return self.compiler(gm, example_inputs)
+
+        # Codegen return compiled fx directly if not support codegen
+        with timer(f"{self.saver.name} codegen"):
+            py_code = getattr(self.compiler, 'codegen')(gm, example_inputs)
+
+        if not isinstance(py_code, str):
+            logger.warning(f"Skip cache as compiler {type(self.compiler)} codegen return non-str {type(py_code)}")
+            return py_code
+
+        self.saver.save_compiled_fx(gm, example_inputs, self.config, py_code)
+        with timer(f"{self.saver.name} compile ge graph"):
+            return _compile_ge_kernel(py_code)
 
     @staticmethod
     def bw_compiler(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
@@ -269,7 +310,7 @@ class ModelCacheSaver:
                     break
 
     def save_compiled_fx(self, fx: torch.fx.GraphModule, example_inputs: List[torch.Tensor], config: CompilerConfig,
-                         compiled_fx):
+                         py_code: str):
         placeholders = [n for n in fx.graph.nodes if n.op == 'placeholder']
         arg_signatures = []
         for i, n in enumerate(placeholders):
@@ -292,7 +333,7 @@ class ModelCacheSaver:
         signature = '\n'.join(readable)
 
         logger.debug(f"Saving compiled fx {signature}")
-        self.compiled_model.compiled_fx = CompiledFX(signature, compiled_fx, self.input_parameters)
+        self.compiled_model.compiled_fx = CompiledFX(signature, py_code, self.input_parameters)
 
     def save_compiled_fn(self, code_id):
         if self._code_id == code_id:
@@ -304,7 +345,6 @@ class ModelCacheSaver:
             return
         self._code_id = code_id
         self.compiled_model.compiled_fn = ctypes.cast(code_id, ctypes.py_object).value
-        logger.info(f'Saving cache for {self.name} to {self.cache_bin}')
         self.compiled_model.save(self.cache_bin)
 
     def __call__(self, *args, **kwargs):
@@ -471,10 +511,10 @@ class NoGuardCompiledMethod(_NoGuardCompiled):
         return CompiledModel.load(cache_bin).rebase(self)
 
 
-def readable_cache(cache_bin, print_output=True):
+def readable_cache(cache_bin, print_output=True, file=None):
     cache_bin = os.path.abspath(cache_bin)
     if not os.path.exists(cache_bin):
         raise ValueError(f"Cache file {cache_bin} is not exists")
 
     model = CompiledModel.load(cache_bin)
-    return model.readable(print_output)
+    return model.readable(print_output, file)
