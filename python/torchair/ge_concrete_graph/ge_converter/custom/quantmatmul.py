@@ -67,8 +67,8 @@ def conveter_npu_npu_quant_matmul(
                                  x2,
                                  scale,
                                  offset=offset,
-                                 pertoken_scale=pertoken_scale,
                                  bias=bias,
+                                 pertoken_scale=pertoken_scale,
                                  dtype=dtype,
                                  transpose_x1=False,
                                  transpose_x2=False)
