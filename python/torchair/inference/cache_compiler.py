@@ -4,7 +4,6 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 import datetime
 import fcntl
-import functools
 import logging
 import time
 import types
@@ -12,7 +11,6 @@ import marshal
 import os
 import hashlib
 from typing import List, Optional, Callable, Union, Dict, Tuple
-from types import ModuleType
 import pickle
 import shutil
 
@@ -64,6 +62,7 @@ def timer(prefix: str):
 
 
 def _compile_ge_kernel(py_code: str):
+    from types import ModuleType
     ge_mod = ModuleType('ge_mod')
     exec(compile(py_code, '<string>', 'exec'), ge_mod.__dict__, ge_mod.__dict__)
     return getattr(ge_mod, 'kernel')
@@ -126,7 +125,7 @@ class CompiledModel:
     @staticmethod
     def get_cache_bin(func, *, config: Optional[CompilerConfig] = None, dynamic: bool = True,
                       root: Optional[str] = None, rank: Optional[int] = None, tp_rank: Optional[int] = None,
-                      mp_rank: Optional[int] = None) -> str:
+                      mp_rank: Optional[int] = None, **kwargs) -> str:
         root = root or os.getenv('TORCHAIR_CACHE_HOME', os.path.join(os.getcwd(), ".torchair_cache"))
         config = config or CompilerConfig()
         if isinstance(func, types.MethodType):
@@ -426,7 +425,7 @@ class LazyCompiledModel:
 
 def cache_compile(func, *, config: Optional[CompilerConfig] = None, dynamic: bool = True,
                   root: Optional[str] = None, rank: Optional[int] = None, tp_rank: Optional[int] = None,
-                  mp_rank: Optional[int] = None) -> Callable:
+                  mp_rank: Optional[int] = None, **kwargs) -> Callable:
     if not isinstance(func, types.MethodType):
         raise ValueError(f"Only method can be cached now, got {func}")
 
