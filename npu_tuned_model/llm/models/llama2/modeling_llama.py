@@ -769,7 +769,6 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
         # Initialize weights and apply final processing
         self.post_init()
         self.input_padding = None
-        self.padding_mask = None
         self.prompt_length = None
         self.updated_kv_positions = None
         os.environ["DYNAMIC_COMPILE"] = "True" # 当前由于使能了actual_seq，所以compile的dynamic需要设置为true
@@ -902,6 +901,7 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
     def prepare_inputs_for_generation(
         self, input_ids, past_key_values=None, attention_mask=None, inputs_embeds=None, **kwargs
     ):
+        self.prompt_length = input_ids.shape[1]
         if past_key_values:
             input_ids = input_ids[:, -1:]
         input_ids = input_ids.clone()  # 添加clone目的是为了保证fx图上input_ids不变化
@@ -926,11 +926,14 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
             kv_shape = (
                 batch_size, self.model.max_position_embeddings, self.model.num_key_value_heads // self.world_size,
                 self.model.hidden_size // self.model.num_attention_heads)
-            past_key_values = ()
-            for i in range(self.model.num_hidden_layers):
-                k_cache = torch.zeros(kv_shape, dtype=use_dtype, device=input_ids.device)
-                v_cache = torch.zeros(kv_shape, dtype=use_dtype, device=input_ids.device)
-                past_key_values += ((k_cache, v_cache),)
+            if kwargs.get("kv_tensors", None) is None:
+                past_key_values = ()
+                for i in range(self.model.num_hidden_layers):
+                    k_cache = torch.zeros(kv_shape, dtype=use_dtype, device=input_ids.device)
+                    v_cache = torch.zeros(kv_shape, dtype=use_dtype, device=input_ids.device)
+                    past_key_values += ((k_cache, v_cache),)
+            else:
+                past_key_values = kwargs["kv_tensors"]
 
         # 将attention mask的创建挪到最外层主要是为了在图模式场景下固定输入
         # 增量图attention_mask padding到最大长度
@@ -939,16 +942,13 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
         if seq_length > 1:
             if attention_mask is None:
                 attention_mask = torch.ones((batch_size, seq_length), dtype=torch.bool, device=input_ids.device)
-            self.padding_mask = torch.zeros(batch_size, self.model.max_position_embeddings, device=input_ids.device)
-            self.prompt_length = seq_length
             self.updated_kv_positions = torch.zeros(batch_size, dtype=position_ids.dtype, device=position_ids.device)
         else:
             bsz, src_len = attention_mask.size()
-            padding_mask = self.padding_mask
+            padding_mask = torch.zeros(batch_size, self.model.max_position_embeddings, device=input_ids.device)
             padding_mask[:, :src_len] = attention_mask
             attention_mask = padding_mask
             past_key_values_length = self.model.max_position_embeddings
-            self.prompt_length += 1
             self.updated_kv_positions = torch.ones(position_ids.shape, dtype=position_ids.dtype,
                                                    device=position_ids.device) * (self.prompt_length - 1)
 

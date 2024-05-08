@@ -18,6 +18,7 @@
 
 # 公告
 
+- 2024年5月6号：提供llama2基于分离部署api的适配样例
 - 2024年3月6号：提供llama2适配好的npu模型结构和前端切分分布式执行样例
 
 # 环境准备
@@ -57,36 +58,48 @@ cd torchair/npu_tuned_model/llm
 bash setup.sh
 ```
 
-**注意**：建议昇腾run包安装在conda创建的镜像中安装
+**注意**：建议昇腾run包安装在conda创建的镜像中安装。如果遇到ASCEND_HOME_PATH环境变量未设置，设置为run包安装路径
 
 # 项目结构
 
-```t
+```tex
 │  README.md
 │  requirement.txt
 │  setup.sh
-│      
-├─examples           # 模型脚本样例
+│  
+├─examples # 脚本样例
+│  │  merge_qkv_weight.py
 │  │  __init__.py
 │  │  
 │  └─llama2
-│          run_llama2.py
-│          
-├─models            # 模型结构样例
+│      │  run_llama2.py # pytorch执行脚本
+│      │  
+│      └─separate_deployment # 分离部署执行脚本
+│              run_decoder.py
+│              run_prompt.py
+│              分离部署迁移指南.md
+│              
+├─models # 模型结构样例
 │  │  README.md
 │  │  __init__.py
 │  │  
 │  ├─common
+│  │      mc2_adapter.py
 │  │      utils.py
-|  |      mc2_adapter.py
 │  │      
 │  └─llama2
 │          modeling_llama.py
 │          README.md
 │          
 └─runner
-        llm_runner.py
-
+    │  common_runner.py
+    │  llm_runner.py
+    │  __init__.py
+    │  
+    └─separate_deployment # 分离部署执行api
+            llm_decoder.py
+            llm_inference.py
+            llm_prompt.py
 ```
 
 # 模型及数据集
@@ -246,3 +259,8 @@ cann_path=/usr/local/Ascend #昇腾cann包安装目录
 source ${cann_path}/latest/bin/setenv.bash
 deepspeed --num_gpus=8 examples/llama2/run_llama2.py --model_path=/path/to/your/model/weight
 ```
+
+# 使能分离部署功能
+
+详情参考[分离部署迁移指南](./examples/llama2/separate_deployment/分离部署迁移指南.md)
+
