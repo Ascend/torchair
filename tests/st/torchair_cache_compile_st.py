@@ -89,6 +89,11 @@ class InputMeta:
     is_prompt: bool
 
 
+@dataclasses.dataclass
+class BaseModelOutputWithPast:
+    last_hidden_state: torch.Tensor = None
+
+
 class CacheCompileSt(unittest.TestCase):
     def test_cache_hint(self):
         class Model(torch.nn.Module):
@@ -277,6 +282,36 @@ class CacheCompileSt(unittest.TestCase):
 
         NoGuardCompiledFunction.load(cache1)(*prompt1)  # assert not raise
         NoGuardCompiledFunction.load(cache2)(*prompt2)  # assert not raise
+
+    def test_use_outer_globals(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.compiled = torchair.inference.cache_compile(self._forward)
+
+            def forward(self, x):
+                return self.compiled(x)
+
+            def _forward(self, x):
+                x = torch.abs(x)
+                return BaseModelOutputWithPast(
+                    last_hidden_state=x
+                )
+
+        model = Model()
+
+        cache_dir = CompiledModel.get_cache_bin(model._forward)
+        ModelCacheSaver.remove_cache(cache_dir)
+
+        x = torch.ones(1, 1, 2)
+
+        self.assertFalse(os.path.exists(cache_dir))
+        model(x)
+        self.assertTrue(os.path.exists(cache_dir))  # cache compiled
+
+        model_match_cache = Model()
+        with forbidden_attr(ModelCacheSaver, '__call__'):
+            model_match_cache(x)  # cache hint
 
 
 if __name__ == '__main__':

@@ -397,7 +397,7 @@ class LazyCompiledModel:
         self.mp_rank = mp_rank
         self._compiled_model = None
 
-    def compile(self):
+    def compile(self, global_vars=None):
         cache_bin = CompiledModel.get_cache_bin(self.func, config=self.config, dynamic=self.dynamic, root=self.root,
                                                 rank=self.rank, tp_rank=self.tp_rank, mp_rank=self.mp_rank)
         if os.path.exists(cache_bin):
@@ -407,7 +407,7 @@ class LazyCompiledModel:
                 if compiled_model.compiled_fx is None:
                     compiled_model.recompile(self.config)
                 model = self.func.__self__ if isinstance(self.func, types.MethodType) else None
-                return compiled_model.rebase(model)
+                return compiled_model.rebase(model, global_vars)
             except Exception as e:
                 logger.warning(f'Clear broken cache {cache_bin} as {e}')
                 ModelCacheSaver.remove_cache(cache_bin)
@@ -419,7 +419,7 @@ class LazyCompiledModel:
         if self._compiled_model is not None:
             return self._compiled_model(*args, **kwargs)
 
-        self._compiled_model = self.compile()
+        self._compiled_model = self.compile(inspect.currentframe().f_back.f_globals)
         return self._compiled_model(*args, **kwargs)
 
 
