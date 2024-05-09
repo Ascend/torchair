@@ -33,7 +33,7 @@ def conveter_aten_sym_size_default(self: Tensor, meta_outputs: TensorSpec = None
 def conveter_aten_sym_size_int(self: Tensor, dim: int, meta_outputs: TensorSpec = None):
     """NB: aten::sym_size.int(Tensor self, int dim) -> SymInt"""
     if isinstance(meta_outputs._meta, int):
-        return meta_outputs
+        return meta_outputs._meta
     if isinstance(meta_outputs._meta, torch.SymInt):
         try:
             return int(str(meta_outputs._meta))

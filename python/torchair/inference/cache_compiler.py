@@ -482,7 +482,7 @@ class _NoGuardCompiled:
         self._ready = False
 
 
-class NoGuardCompiledFunction(_NoGuardCompiled):
+class _NoGuardCompiledFunction(_NoGuardCompiled):
     def __init__(self, func, *, config: Optional[CompilerConfig] = None, dynamic: bool = True):
         if not isinstance(func, types.FunctionType):
             raise ValueError(f"Trying cache non-function {func}")
@@ -496,7 +496,7 @@ class NoGuardCompiledFunction(_NoGuardCompiled):
         return CompiledModel.load(cache_bin).rebase(None)
 
 
-class NoGuardCompiledMethod(_NoGuardCompiled):
+class _NoGuardCompiledMethod(_NoGuardCompiled):
     def __init__(self, func, *, config: Optional[CompilerConfig] = None, dynamic: bool = True):
         if not isinstance(func, types.MethodType):
             raise ValueError(f"Trying cache non-method {func}")

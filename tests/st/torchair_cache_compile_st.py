@@ -10,7 +10,8 @@ import torch
 import torchair
 import torchair.inference
 from torchair.inference.cache_compiler import CompiledModel, ModelCacheSaver
-from torchair.inference.cache_compiler import NoGuardCompiledFunction, NoGuardCompiledMethod
+from torchair.inference.cache_compiler import _NoGuardCompiledFunction as NoGuardCompiledFunction
+from torchair.inference.cache_compiler import _NoGuardCompiledMethod as NoGuardCompiledMethod
 from torchair.core.utils import logger
 from torchair import npu_fx_compiler
 
