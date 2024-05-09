@@ -244,7 +244,13 @@ def _declare_supported_converters():
     return _DECLARED_SUPPORTED_CONVERTERS
 
 
+def empty_function(*args, **kwargs):
+    pass
+
+
 def register_fx_node_ge_converter(aten_op):
+    if aten_op is None:
+        return empty_function
     return Converter(aten_op)
 
 

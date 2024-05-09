@@ -690,7 +690,7 @@ class Tensor:
     @property
     def symsize(self):
         return self._symsize
-
+    
     def set_torch_dtype(self, dtype):
         self._torch_dtype = dtype
         self._ge_dtype = torch_type_to_ge_type(dtype)
@@ -713,6 +713,14 @@ class Tensor:
 
     def __repr__(self) -> str:
         return f'Tensor({self.tensor}, dtype={_ge_proto_dtype_str(self.desc.dtype)}, size={self._symsize})'
+    
+    def get_numel(self):
+        if self._symsize is None:
+            raise AssertionError(f"Tensor {self} cannot get numel")
+        numel = 1
+        for sz in self._symsize:
+            numel *= sz
+        return numel
 
 
 def get_ge_rng_state(philox_num: int = -1, gen: torch.Generator = None) -> Tuple[int, Tensor]:
