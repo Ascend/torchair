@@ -90,7 +90,7 @@ class InputMeta:
 
 
 @dataclasses.dataclass
-class BaseModelOutputWithPast:
+class CustomData:
     last_hidden_state: torch.Tensor = None
 
 
@@ -294,7 +294,7 @@ class CacheCompileSt(unittest.TestCase):
 
             def _forward(self, x):
                 x = torch.abs(x)
-                return BaseModelOutputWithPast(
+                return CustomData(
                     last_hidden_state=x
                 )
 
@@ -312,6 +312,24 @@ class CacheCompileSt(unittest.TestCase):
         model_match_cache = Model()
         with forbidden_attr(ModelCacheSaver, '__call__'):
             model_match_cache(x)  # cache hint
+
+    def test_huggingface_dataclass(self):
+        try:
+            import transformers.file_utils
+        except:
+            print("Skip test_huggingface_dataclass as transformers is not installed")
+            return
+
+        def f(x):
+            from transformers.modeling_outputs import BaseModelOutputWithPast
+            x = torch.add(x, x)
+            return BaseModelOutputWithPast(x)
+
+        cache_file = 'test_huggingface_dataclass'
+        ModelCacheSaver.remove_cache(cache_file)
+        NoGuardCompiledFunction(f).for_inputs(torch.ones(2)).save_to(cache_file)
+        self.assertTrue(os.path.exists(cache_file))
+        NoGuardCompiledFunction(f).load(cache_file)(torch.ones(2))
 
 
 if __name__ == '__main__':

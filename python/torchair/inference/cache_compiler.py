@@ -68,6 +68,23 @@ def _compile_ge_kernel(py_code: str):
     return getattr(ge_mod, 'kernel')
 
 
+def _patch_user_const(code: types.CodeType):
+    consts = tuple(f'<user_class>{c.__module__}|{c.__name__}' if isinstance(c, type) else c for c in code.co_consts)
+    return code.replace(co_consts=consts)
+
+
+def _depatch_user_const(code: types.CodeType):
+    consts = []
+    for c in code.co_consts:
+        if isinstance(c, str) and c.startswith('<user_class>'):
+            import importlib
+            module, name = c[len('<user_class>'):].split('|')
+            consts.append(importlib.import_module(module).__dict__[name])
+        else:
+            consts.append(c)
+    return code.replace(co_consts=tuple(consts))
+
+
 class CompiledModel:
     VERSION = "1.0.0"
     FILE = "compiled_module"
@@ -91,8 +108,15 @@ class CompiledModel:
             return
 
         logger.info(f'Saving cache for {self.name} to {cache_bin}')
-        artifacts = ModelCacheArtifact(meta=self.meta, compiled_fn=marshal.dumps(self.compiled_fn),
-                                       compiled_fx=self.compiled_fx)
+        try:
+            serialized_fn = marshal.dumps(self.compiled_fn)
+        except ValueError as e:
+            try:
+                serialized_fn = marshal.dumps(_patch_user_const(self.compiled_fn))
+            except:
+                logger.warning(f"Skip cache as failed to serialize compiled fn: \n{_readable_inst(self.compiled_fn)}")
+                return
+        artifacts = ModelCacheArtifact(meta=self.meta, compiled_fn=serialized_fn, compiled_fx=self.compiled_fx)
 
         cache_bin = os.path.abspath(cache_bin)
         os.makedirs(os.path.dirname(cache_bin), exist_ok=True)
@@ -117,7 +141,7 @@ class CompiledModel:
         if model.meta.version != cls.VERSION:
             raise ValueError(f"Version mismatch: {model.meta.version} != {cls.VERSION}")
 
-        model.compiled_fn = marshal.loads(artifacts.compiled_fn)
+        model.compiled_fn = _depatch_user_const(marshal.loads(artifacts.compiled_fn))
         model.compiled_fx = artifacts.compiled_fx
         logger.info(f"Cache {model.meta} loaded from {cache_bin}")
         return model
@@ -200,7 +224,8 @@ class CompiledModel:
         return compiled_method
 
     def readable(self, print_output=True, file: Optional[str] = None):
-        readable_str = ['=' * 100, str(self.meta), str(self.compiled_fx.signature)]
+        readable_str = ['=' * 100, str(self.meta), str(self.compiled_fx.signature), _pretty_title('caller frame'),
+                        _readable_inst(self.compiled_fn)]
         if print_output:
             print('\n'.join(readable_str))
         if file:
@@ -219,6 +244,19 @@ def _get_str_options(options: CompilerConfig, sep=","):
     g_opts, l_opts = options.as_dict()
     g_opts.update(l_opts)
     return sep.join([f"{k}={v}" for k, v in g_opts.items()])
+
+
+def _pretty_title(title, length=100):
+    pad = max(0, length - len(title))
+    return '-' * (pad // 2) + title + '-' * (pad - pad // 2)
+
+
+def _readable_inst(code):
+    import dis
+    import io
+    output = io.StringIO()
+    dis.dis(code, file=output)
+    return output.getvalue()
 
 
 def set_dim_gears(t: torch.Tensor, dim_gears: Dict[int, List[int]]):
@@ -319,15 +357,11 @@ class ModelCacheSaver:
                 type_str = 'Parameter' if self.input_parameters[i][1] else 'Buffer'
                 arg_signatures.append(f'{i}:{n.name} {type_str}({self.input_parameters[i][0]})={example_inputs[i]}')
 
-        def pretty_title(title, length=100):
-            pad = max(0, length - len(title))
-            return '-' * (pad // 2) + title + '-' * (pad - pad // 2)
-
-        readable = [pretty_title('graph module')]
+        readable = [_pretty_title('graph module')]
         readable += [fx.print_readable(False)]
-        readable += [pretty_title('inputs')]
+        readable += [_pretty_title('inputs')]
         readable += arg_signatures
-        readable += [pretty_title('compile options')]
+        readable += [_pretty_title('compile options')]
         readable += [_get_str_options(config, sep='\n')]
         signature = '\n'.join(readable)
 
@@ -338,8 +372,8 @@ class ModelCacheSaver:
         if self._code_id == code_id:
             return
         if self._code_id is not None:
-            logger.warning(
-                f"Skipping cache as {self.name} recompiled, set torch._logging.set_logs(recompiles=True) for details")
+            logger.warning_once(
+                f"Skip cache as {self.name} recompiled, set torch._logging.set_logs(recompiles=True) for details")
             self.__class__.remove_cache(self.cache_bin)
             return
         self._code_id = code_id
@@ -493,7 +527,7 @@ class _NoGuardCompiledFunction(_NoGuardCompiled):
         cache_bin = os.path.abspath(cache_bin)
         if not os.path.exists(cache_bin):
             raise ValueError(f"Cache file {cache_bin} is not exists")
-        return CompiledModel.load(cache_bin).rebase(None)
+        return CompiledModel.load(cache_bin).rebase(None, global_vars=inspect.currentframe().f_back.f_globals)
 
 
 class _NoGuardCompiledMethod(_NoGuardCompiled):
@@ -507,7 +541,7 @@ class _NoGuardCompiledMethod(_NoGuardCompiled):
         cache_bin = os.path.abspath(cache_bin)
         if not os.path.exists(cache_bin):
             raise ValueError(f"Cache file {cache_bin} is not exists")
-        return CompiledModel.load(cache_bin).rebase(self)
+        return CompiledModel.load(cache_bin).rebase(self, global_vars=inspect.currentframe().f_back.f_globals)
 
 
 def readable_cache(cache_bin, print_output=True, file=None):
