@@ -178,7 +178,7 @@ class CompiledModel:
     def recompile(self, config: CompilerConfig):
         raise RuntimeError(f"Recompile {self} is not supported yet")
 
-    def rebase(self, model, global_vars=None):
+    def rebase(self, model, global_vars=None, closure=None):
         log = logger if logger.isEnabledFor(logging.DEBUG) else None
         if log is not None:
             log.debug(f"Rebasing {self.meta} onto {type(model)}")
@@ -213,7 +213,7 @@ class CompiledModel:
         global_vars = global_vars or globals()
         g = global_vars.copy()
         g.update({fn_names[0]: compiled_fn})
-        compiled_fn = types.FunctionType(self.compiled_fn, g)
+        compiled_fn = types.FunctionType(self.compiled_fn, g, closure=closure)
 
         if model is None:
             return compiled_fn
@@ -441,7 +441,7 @@ class LazyCompiledModel:
                 if compiled_model.compiled_fx is None:
                     compiled_model.recompile(self.config)
                 model = self.func.__self__ if isinstance(self.func, types.MethodType) else None
-                return compiled_model.rebase(model, global_vars)
+                return compiled_model.rebase(model, global_vars, closure=self.func.__closure__)
             except Exception as e:
                 logger.warning(f'Clear broken cache {cache_bin} as {e}')
                 ModelCacheSaver.remove_cache(cache_bin)

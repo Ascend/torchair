@@ -329,7 +329,40 @@ class CacheCompileSt(unittest.TestCase):
         ModelCacheSaver.remove_cache(cache_file)
         NoGuardCompiledFunction(f).for_inputs(torch.ones(2)).save_to(cache_file)
         self.assertTrue(os.path.exists(cache_file))
-        NoGuardCompiledFunction(f).load(cache_file)(torch.ones(2))
+        NoGuardCompiledFunction.load(cache_file)(torch.ones(2))
+
+    def test_func_use_closure(self):
+        y = torch.ones(2)
+        z = torch.ones(2)
+
+        def closure_func(x):
+            return torch.add(x, z)
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.compiled = torchair.inference.cache_compile(self._forward)
+
+            def forward(self, x):
+                return self.compiled(x)
+
+            def _forward(self, x):
+                return torch.add(x, closure_func(y))
+
+        model = Model()
+
+        cache_dir = CompiledModel.get_cache_bin(model._forward)
+        ModelCacheSaver.remove_cache(cache_dir)
+
+        x = torch.ones(2)
+
+        self.assertFalse(os.path.exists(cache_dir))
+        model(x)
+        self.assertTrue(os.path.exists(cache_dir))  # cache compiled
+
+        model_match_cache = Model()
+        with forbidden_attr(ModelCacheSaver, '__call__'):
+            model_match_cache(x)  # cache hint
 
 
 if __name__ == '__main__':
