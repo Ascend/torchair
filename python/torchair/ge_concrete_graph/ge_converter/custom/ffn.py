@@ -63,20 +63,21 @@ def conveter_npu_npu_ffn(
     """
     tokens_index_flag = False
     if expert_tokens is not None and expert_tokens_index is not None:
-        raise ValueError("Cannot assign the value to expert_tokens and expert_tokens_index simultaneously!")
+        raise ValueError("torch.ops.npu.npu_ffn.default: " \
+                         "Cannot assign the value to expert_tokens and expert_tokens_index simultaneously!")
     elif expert_tokens_index is not None:
         tokens_index_flag = True
         expert_tokens = expert_tokens_index
 
     y_dtype = -1
-    if output_dtype is not None:
-        if x.dtype == DataType.DT_INT8 and output_dtype == torch.float16:
+    if x.dtype == DataType.DT_INT8 and output_dtype is not None:
+        if output_dtype == torch.float16:
             y_dtype = 0
-        elif x.dtype == DataType.DT_INT8 and output_dtype == torch.bfloat16:
+        elif output_dtype == torch.bfloat16:
             y_dtype = 1
         else:
-            raise NotImplementedError("In the quant scenario, output_dtype should be float16 or bfloat16," \
-                                      "otherwise it should be None!")
+            raise NotImplementedError("torch.ops.npu.npu_ffn.default: In the quant scenario, " \
+                                      "output_dtype should be float16 or bfloat16, otherwise it should be None!")
 
     if expert_tokens is not None:
         expert_tokens = dtype_promote(expert_tokens, target_dtype=torch.int64)
