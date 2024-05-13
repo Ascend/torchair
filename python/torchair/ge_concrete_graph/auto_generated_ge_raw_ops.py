@@ -52436,12 +52436,15 @@ def Relu6Grad(gradients: Tensor, features: Tensor, *, dependencies=[], node_name
 
 # This api is auto-generated from IR EluGradV2
 @auto_convert_to_tensor([False, False], [False, False])
-def EluGradV2(grads: Tensor, activations: Tensor, *, alpha: float=1.000000, dependencies=[], node_name=None):
+def EluGradV2(grads: Tensor, activations: Tensor, *, alpha: float=1.000000, scale: float=1.000000, input_scale: float=1.000000, is_result: bool=False, dependencies=[], node_name=None):
     """REG_OP(EluGradV2)\n
 .INPUT(grads, TensorType({DT_FLOAT, DT_FLOAT16}))\n
 .INPUT(activations, TensorType({DT_FLOAT, DT_FLOAT16}))\n
 .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))\n
 .ATTR(alpha, Float, 1.0)\n
+.ATTR(scale, Float, 1.0)\n
+.ATTR(input_scale, Float, 1.0)\n
+.ATTR(is_result, Bool, false)\n
 """
 
     op = get_default_ge_graph().op.add()
@@ -52462,6 +52465,9 @@ def EluGradV2(grads: Tensor, activations: Tensor, *, alpha: float=1.000000, depe
 
     # process attrs
     op.attr["alpha"].f = alpha
+    op.attr["scale"].f = scale
+    op.attr["input_scale"].f = input_scale
+    op.attr["is_result"].b = is_result
 
     # process outputs
     output_index = 0
