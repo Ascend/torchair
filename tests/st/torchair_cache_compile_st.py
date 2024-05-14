@@ -8,51 +8,12 @@ import unittest
 
 import torch
 import torchair
+from torchair.core.utils import logger
 import torchair.inference
 from torchair.inference.cache_compiler import CompiledModel, ModelCacheSaver
 from torchair.inference.cache_compiler import _NoGuardCompiledFunction as NoGuardCompiledFunction
 from torchair.inference.cache_compiler import _NoGuardCompiledMethod as NoGuardCompiledMethod
-from torchair.core.utils import logger
-from torchair import npu_fx_compiler
-
-logger.setLevel(logging.INFO)
-_get_compiler = npu_fx_compiler.get_compiler
-
-
-@functools.wraps(_get_compiler)
-def get_compiler(*args, **kwargs):
-    compiler = _get_compiler(*args, **kwargs)
-    if not hasattr(compiler, 'codegen'):
-        print("Codegen by patched compiler codegen", flush=True)
-
-        def codegen(gm, inputs):
-            outputs = gm(*inputs)
-            from torch._inductor.utils import IndentedBuffer
-            arg_names = [n.name for n in gm.graph.nodes if n.op == 'placeholder']
-            arg_names = [str(inputs[i]) if isinstance(inputs[i], torch.SymInt) else n for i, n in enumerate(arg_names)]
-            code = IndentedBuffer()
-            code.splice('''
-            import torch
-            def kernel(*inputs):
-            ''')
-            with code.indent():
-                code.writeline(f'{", ".join(arg_names)} = inputs')
-                code.writeline(f'outputs = [None] * {len(outputs)}')
-                for i, output in enumerate(outputs):
-                    if isinstance(output, torch.Tensor):
-                        code.writeline(f'outputs[{i}] = torch.ones({list(output.size())}, dtype={output.dtype})')
-                    else:
-                        code.writeline(f'outputs[{i}] = {repr(output)}')
-                code.writeline(f'return tuple(outputs)')
-            print(code.getvalue(), flush=True)
-            return code.getvalue()
-
-        setattr(compiler, 'codegen', codegen)
-    return compiler
-
-
-npu_fx_compiler.get_compiler = get_compiler
-
+logger.setLevel(logging.DEBUG)
 
 class PatchAttr:
     def __init__(self, obj, attr_name, new_value):
@@ -151,6 +112,58 @@ class CacheCompileSt(unittest.TestCase):
             model_match_cache(*prompt2)  # cache hint
             model_match_cache(*decode1)  # cache hint
             model_match_cache(*decode2)  # cache hint
+
+    def test_cache_hint_for_complex_io_process(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear1 = torch.nn.Linear(2, 1)
+                self.linear2 = torch.nn.Linear(2, 1)
+                for param in self.parameters():
+                    torch.nn.init.ones_(param)
+
+                self.cached_prompt = torchair.inference.cache_compile(self.prompt)
+                self.cached_decode = torchair.inference.cache_compile(self.decode)
+
+            def forward(self, x: InputMeta, y: List[torch.Tensor], z, s1, s2):
+                if x.is_prompt:
+                    return self.cached_prompt(x, y, z, s1, s2)
+                return self.cached_decode(x, y, z, s1, s2)
+
+            def _forward(self, x, y, z, s1, s2):
+                mm1 = self.linear1(x.data) + self.linear2(y[0])
+                sum1 = z + mm1.sum()
+                ones1 = torch.ones([s1, s2]).view(-1)
+                add1 = sum1 + ones1 + s2
+                return (add1, add1.shape[0], 2 * s1, y[0].view(2, -1))
+
+            def prompt(self, x, y, z, s1, s2):
+                return self._forward(x, y, z, s1, s2)
+
+            def decode(self, x, y, z, s1, s2):
+                return self._forward(x, y, z, s1, s2)
+
+        model = Model()
+
+        prompt_cache_dir = CompiledModel.get_cache_bin(model.prompt)
+        decode_cache_dir = CompiledModel.get_cache_bin(model.decode)
+        ModelCacheSaver.remove_cache(prompt_cache_dir)
+        ModelCacheSaver.remove_cache(decode_cache_dir)
+
+        prompt1 = InputMeta(torch.ones(3, 2), True), [torch.ones(3, 2)], torch.randn([6, 2])[:, 0], 2, 3
+        decode1 = InputMeta(torch.ones(3, 2), False), [torch.ones(3, 2)], torch.randn([6, 2])[:, 0], 2, 3
+
+        self.assertFalse(os.path.exists(prompt_cache_dir))
+        model(*prompt1)
+        self.assertTrue(os.path.exists(prompt_cache_dir))
+        self.assertFalse(os.path.exists(decode_cache_dir))
+        model(*decode1)
+        self.assertTrue(os.path.exists(decode_cache_dir))
+
+        model_match_cache = Model()
+        with forbidden_attr(ModelCacheSaver, '__call__'):
+            model_match_cache(*prompt1)  # cache hint
+            model_match_cache(*decode1)  # cache hint
 
     def test_forbidden_backward(self):
         class Model(torch.nn.Module):

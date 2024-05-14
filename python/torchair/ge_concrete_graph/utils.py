@@ -269,37 +269,6 @@ def is_integral_type(dtype: torch.dtype, include_bool: bool):
     return False
 
 
-class InputProcessing:
-    def __init__(self, fx_inputs_mapping, uncontiguous_ge_input_idx, nontensor_ge_input_idx):
-        self._fx_inputs_mapping = fx_inputs_mapping
-        self._uncontiguous_ge_input_idx = uncontiguous_ge_input_idx
-        self._nontensor_ge_input_idx = nontensor_ge_input_idx
-
-    def __call__(self, *args):
-        if len(self._fx_inputs_mapping) == len(args):
-            inputs = list(args)
-            for idx in self._uncontiguous_ge_input_idx:
-                inputs[idx] = inputs[idx].contiguous()
-            for idx in self._nontensor_ge_input_idx:
-                inputs[idx] = torch.tensor(inputs[idx])
-            return inputs
-        else:
-            inputs = [None] * len(self._fx_inputs_mapping)
-            for fx_idx, ge_idx in self._fx_inputs_mapping.items():
-                inputs[ge_idx] = args[fx_idx]
-
-            for idx in self._uncontiguous_ge_input_idx:
-                inputs[idx] = inputs[idx].contiguous()
-            for idx in self._nontensor_ge_input_idx:
-                inputs[idx] = torch.tensor(inputs[idx])
-            return inputs
-
-    def __repr__(self):
-        return (f"InputProcessing(fx_inputs_mapping={self._fx_inputs_mapping},"
-                f" uncontiguous_ge_input_idx={self._uncontiguous_ge_input_idx},"
-                f" nontensor_ge_input_idx={self._nontensor_ge_input_idx})")
-
-
 def generate_shape_from_tensor(fake: torch.Tensor) -> List[int]:
     generalized_shape = []
     for dim in fake.size():
@@ -315,6 +284,9 @@ def generate_shape_from_tensor(fake: torch.Tensor) -> List[int]:
 
 def update_op_input_name_from_mapping(graph: GraphDef, input_name_mapping: Dict):
     logger.info(f"update graph {graph.name} op input name from mapping {input_name_mapping}.")
+    if not input_name_mapping:
+        return
+
     for op in graph.op:
         for idx, op_input in enumerate(op.input):
             if not op_input:
@@ -325,3 +297,21 @@ def update_op_input_name_from_mapping(graph: GraphDef, input_name_mapping: Dict)
             if name_split_list[0] in input_name_mapping.keys():
                 op.input[idx] = f"{input_name_mapping[name_split_list[0]]}:{name_split_list[1]}"
                 logger.debug(f"update op {op.name} input {op_input} to {op.input[idx]}.")
+
+
+def get_graph_input_placements(graph: GraphDef):
+    input_placements = [None] * len(graph.named_inputs_func)
+    for op in graph.op:
+        if op.type != "Data":
+            continue
+        device_type = op.output_desc[0].device_type
+        if not device_type in ["NPU", "CPU"]:
+            raise AssertionError(f"Undefined device type {device_type}, expect be NPU or CPU.")
+        if op.attr["index"].i >= len(input_placements):
+            raise AssertionError(f"Data index {op.attr['index'].i} exceeds total data number {len(input_placements)}, "
+                                 f"please first reorder graph data index.")
+        input_placements[op.attr["index"].i] = Placement.HOST if device_type == "CPU" else Placement.DEVICE
+    if not all([placement is not None for placement in input_placements]):
+        raise AssertionError(f"Graph {graph.name} data index is not continuous, please first reorder data index.")
+    logger.info(f"Get graph {graph.name} input placements [{input_placements}].")
+    return input_placements

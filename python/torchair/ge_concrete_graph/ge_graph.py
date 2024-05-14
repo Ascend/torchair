@@ -386,6 +386,82 @@ def torch_type_to_ge_proto_type(dtype):
     return torch_type_to_ge_type(dtype, ProtoDataType)
 
 
+class _InputBase:
+    def __init__(self):
+        pass
+
+    def __call__(self, *args):
+        pass
+
+    def codegen(self, input_names):
+        pass
+
+
+class _ValueInput(_InputBase):
+    def __init__(self, index: int):
+        super().__init__()
+        self.fx_input_idx = index
+
+    def __call__(self, *args):
+        return torch.tensor(args[self.fx_input_idx])
+
+    def codegen(self, input_names):
+        return f"torch.tensor({input_names[self.fx_input_idx]})"
+
+
+class _TensorInput(_InputBase):
+    def __init__(self, index: int):
+        super().__init__()
+        self.fx_input_idx = index
+
+    def __call__(self, *args):
+        return args[self.fx_input_idx]
+
+    def codegen(self, input_names):
+        return f"{input_names[self.fx_input_idx]}"
+
+
+class _DiscontiguousTensorInput(_InputBase):
+    def __init__(self, index: int):
+        super().__init__()
+        self.fx_input_idx = index
+
+    def __call__(self, *args):
+        return args[self.fx_input_idx].contiguous()
+
+    def codegen(self, input_names):
+        return f"{input_names[self.fx_input_idx]}.contiguous()"
+
+
+class _RngStatusInput(_InputBase):
+    def __init__(self, rng_status):
+        super().__init__()
+        self.rng_status = rng_status
+
+    def __call__(self, *args):
+        offset_input = self.rng_status.consume()
+        return offset_input
+
+    def codegen(self, input_names):
+        raise AssertionError(f"unsupport codegen for rng status input")
+
+
+class _SymPackInput(_InputBase):
+    def __init__(self, index_list: List[int]):
+        super().__init__()
+        self.fx_input_idx_list = index_list
+
+    def __call__(self, *args):
+        return torch.tensor([args[idx] for idx in self.fx_input_idx_list])
+
+    def codegen(self, input_names):
+        input_str = "torch.tensor(["
+        for idx in self.fx_input_idx_list:
+            input_str += f"{input_names[idx]}, "
+        input_str += "])"
+        return input_str
+
+
 class _GraphRngState:
     def __init__(self, gen: torch.Generator = None) -> None:
         self._gen = gen
@@ -401,12 +477,11 @@ class _GraphRngState:
         self._seed = Const(self._gen.initial_seed(),
                             dtype=DataType.DT_INT64,
                             node_name='initial_seed')
-        self._feed_index = get_default_ge_graph().num_inputs
-        self._offsets = Data(index=self._feed_index,
-                            dtype=DataType.DT_INT64,
-                            shape=[1],
-                            placement='NPU',
-                            node_name='offset_list')
+        self._offsets = Data(index=get_default_ge_graph().num_inputs,
+                             dtype=DataType.DT_INT64,
+                             shape=[1],
+                             placement='NPU',
+                             node_name='offset_list')
         self._offset_count = 0
         self._offset_lists = []
         self._unpack_offset = get_default_ge_graph().op.add()
@@ -417,14 +492,10 @@ class _GraphRngState:
         self._unpack_offset.input_desc.add().CopyFrom(self._offsets.desc)
         self._unpack_offset.input_desc[-1].name = "x"
 
-
-    def get_idx_and_offset(self):
-        return self._offsets.node.attr["index"].i, self._offsets
-
     def consume(self):
         offset = self._gen.get_offset()
         self._gen.set_offset(offset + self._offset_count)
-        return self._offsets.node.attr["index"].i, torch.tensor(self._offset_lists) + offset
+        return torch.tensor(self._offset_lists) + offset
 
     def next(self, philox_num: int = -1):
         self._unpack_offset.output_desc.add().name = "y" + str(self._consumed)
@@ -445,17 +516,27 @@ def map_graph_rng_state(gen: torch.Generator = None):
 
 
 class GeGraph(object):
-    def __init__(self, model_def: ModelDef = None):
-        if model_def is None:
+    def __init__(self, model_def=None, serialized_model_def=None, name=None):
+        from torchair.core.backend import TorchNpuGraph
+        if model_def is not None and serialized_model_def is not None:
+            raise AssertionError(f"Unsupported init method: both model_def and serialized_model_def are specified.")
+        elif model_def is None and serialized_model_def is None:
             self._model = ModelDef()
             self._proto = self._model.graph.add()
+        elif serialized_model_def is not None:
+            self._model = ModelDef()
+            self._model.ParseFromString(serialized_model_def)
+            self._proto = self._model.graph[0]
         else:
             self._model = model_def
             self._proto = self._model.graph[0]
+
+        self._proto.name = name if name is not None else self._proto.name
+        self._executor = TorchNpuGraph(self._proto.name)
         self._python_code = self._python_code_init()
-        self._generator_rng_state = defaultdict(
-            map_graph_rng_state)
+        self._generator_rng_state = defaultdict(map_graph_rng_state)
         self._indexed_inputs = {}
+        self._named_inputs_func = {}
 
     def _python_code_init(self):
         python_code = ''
@@ -467,6 +548,18 @@ class GeGraph(object):
 
     def SerializeToString(self):
         return self._model.SerializeToString()
+
+    def load(self, options):
+        self._executor.load(self, options)
+
+    def compile(self):
+        self._executor.compile()
+
+    def run(self, inputs, assigned_outputs=[], stream=None):
+        return self._executor.run(inputs, assigned_outputs, stream)
+
+    def auto_tune(self, example_inputs=[], stream=None):
+        self._executor.auto_tune(example_inputs, stream)
 
     def __getattr__(self, v):
         return getattr(self._proto, v)
@@ -536,6 +629,7 @@ class GeGraph(object):
 
     def rng_state(self, philox_num: int = -1, gen: torch.Generator = None):
         _graph_rng_state = self._generator_rng_state[gen]
+        self.record_input_func(_graph_rng_state._offsets.node.name, _RngStatusInput(_graph_rng_state))
         return _graph_rng_state.next(philox_num)
 
     def get_graph_rng_state(self, gen: torch.Generator = None):
@@ -546,6 +640,15 @@ class GeGraph(object):
         if index in self._indexed_inputs:
             raise AssertionError
         self._indexed_inputs[index] = op
+
+    def record_input_func(self, name, input_func):
+        if name in self._named_inputs_func.keys():
+            logger.warning(f'Input func has been recorded repeatedly for data {name}')
+        self._named_inputs_func[name] = input_func
+
+    @property
+    def named_inputs_func(self):
+        return self._named_inputs_func
 
 
 class _GeGraphStack(threading.local):

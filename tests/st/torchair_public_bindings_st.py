@@ -42,21 +42,6 @@ SKIP_CHECK_MODULES = [  # Do NOT add new modules to this list
 ]
 
 LEGACY_PUBLIC_APIS = [  # Do NOT add new modules to this list
-    'torchair.compiled_model.Any',  # should not be public
-    'torchair.compiled_model.Callable',  # should not be public
-    'torchair.compiled_model.CompiledModel',  # should not be public
-    'torchair.compiled_model.CompilerConfig',  # should not be public
-    'torchair.compiled_model.Dict',  # should not be public
-    'torchair.compiled_model.ExportSuccess',  # should not be public
-    'torchair.compiled_model.List',  # should not be public
-    'torchair.compiled_model.Optional',  # should not be public
-    'torchair.compiled_model.PathManager',  # should not be public
-    'torchair.compiled_model.Tuple',  # should not be public
-    'torchair.compiled_model.Union',  # should not be public
-    'torchair.compiled_model.dynamo_export',  # should not be public
-    'torchair.compiled_model.get_export_file_name',  # should not be public
-    'torchair.compiled_model.get_npu_backend',  # should not be public
-    'torchair.compiled_model.unserialize_graph',  # should not be public
     'torchair.dynamo_export.CompilerConfig',  # should not be public
     'torchair.dynamo_export.ExportSuccess',  # should not be public
     'torchair.dynamo_export.get_npu_backend',  # should not be public
@@ -118,7 +103,6 @@ LEGACY_PUBLIC_APIS = [  # Do NOT add new modules to this list
     'torchair.npu_fx_compiler.ConcreteGraph',  # should not be public
     'torchair.npu_fx_compiler.ConcreteGraphBase',  # should not be public
     'torchair.npu_fx_compiler.Dict',  # should not be public
-    'torchair.npu_fx_compiler.DispatchKey',  # should not be public
     'torchair.npu_fx_compiler.Interpreter',  # should not be public
     'torchair.npu_fx_compiler.List',  # should not be public
     'torchair.npu_fx_compiler.NpuFxDumper',  # should not be public

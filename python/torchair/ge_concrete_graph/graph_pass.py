@@ -4,9 +4,9 @@ from collections import namedtuple, defaultdict
 from typing import Any, Dict, List, Tuple, Union, Callable
 import torch
 from torchair.core.utils import logger
-from torchair.ge_concrete_graph.ge_graph import GeGraph
 from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef, TensorDescriptor, TensorDef, OpDef
-from torchair.ge_concrete_graph.ge_graph import _ge_proto_dtype_to_ge_dtype, compat_as_bytes, torch_type_to_ge_type
+from torchair.ge_concrete_graph.ge_graph import _ge_proto_dtype_to_ge_dtype, compat_as_bytes, torch_type_to_ge_type, \
+    _SymPackInput
 from torchair.ge_concrete_graph.ge_graph import Tensor as GeTensor
 from torchair.ge_concrete_graph.utils import Placement, update_op_input_name_from_mapping, generate_shape_from_tensor
 
@@ -37,58 +37,36 @@ def _find_data_of_same_pack(datas: List[Tuple[GeTensor, OpDef]], pack_op: OpDef)
     return None
 
 
-def optimize_sym_pack(graph: GraphDef, inputs: List, placements: List):
-    if len(placements) != len(inputs):
-        raise AssertionError(f"inputs size {len(inputs)} is not equal to input placements size {len(placements)}")
-
+def optimize_sym_pack(graph: GraphDef):
+    from torchair.ge_concrete_graph.ge_graph import get_default_ge_graph
     host_data_ops, sym_pack_ops = _find_pack_and_data_ops(graph)
-    pack_input_idx_list: List[List[int]] = []
     additional_data: List[Tuple[GeTensor, OpDef]] = []
     pack_to_data_name_mapping = {}
     for pack_op in sym_pack_ops:
         new_data = _find_data_of_same_pack(additional_data, pack_op)
         if new_data is None:
+            if not all([pack_in in host_data_ops for pack_in in pack_op.input]):
+                raise AssertionError("Find undefined sym pack op which inputs are not data ops.")
+            pack_input_idx_list = [host_data_ops[pack_in] for pack_in in pack_op.input]
+
             with graph:
                 new_data = ge.Data(index=graph.num_inputs,
                                    dtype=_ge_proto_dtype_to_ge_dtype(pack_op.input_desc[0].dtype),
                                    shape=[len(pack_op.input)],
                                    placement='CPU',
                                    node_name=None)
+                graph.record_input_func(new_data.node.name, _SymPackInput(pack_input_idx_list))
             if GeTensor(pack_op).meta is not None:
                 new_data.set_meta(GeTensor(pack_op).meta)
-            inputs.append(new_data)
-            placements.append(Placement.HOST)
-
-            if not all([pack_in in host_data_ops for pack_in in pack_op.input]):
-                raise AssertionError("Find undefined sym pack op which inputs are not data ops.")
-            pack_input_idx_list.append([host_data_ops[pack_in] for pack_in in pack_op.input])
             additional_data.append((new_data, pack_op))
-            logger.debug(f"create new data op {new_data.node.name} to replace pack op {pack_op.name}.")
+            logger.debug(f"create new data op {new_data.node.name} with input list [{pack_input_idx_list}] "
+                         f"to replace pack op {pack_op.name}.")
         else:
             logger.debug(f"skip create data, set data op {new_data.node.name} to replace pack op {pack_op.name}.")
 
         pack_to_data_name_mapping[pack_op.name] = new_data.node.name
         graph.op.remove(pack_op)
     update_op_input_name_from_mapping(graph, pack_to_data_name_mapping)
-
-    class PackFxInputProcess:
-        def __init__(self, pack_input_idx_list):
-            self._input_indexes = pack_input_idx_list
-
-        def __call__(self, *args: Any):
-            additional_inputs = []
-            for input_idx in self._input_indexes:
-                additional_inputs.append(torch.tensor([args[idx] for idx in input_idx]))
-            return additional_inputs
-
-        def __repr__(self):
-            return f"PackFxInputProcess(input_indexes={self._input_indexes})"
-
-        @property
-        def input_indexes(self):
-            return self._input_indexes
-
-    return PackFxInputProcess(pack_input_idx_list)
 
 
 ref_op_info = namedtuple("ref_op_info", ["op_def", "output_id", "ref_input_name", "output_ref_count", "is_net_output"])
@@ -283,7 +261,7 @@ def get_frozen_flag(*args: Any):
     return frozen_flag_list
 
 
-def frozen_data_by_constplaceholder(graph: GraphDef, frozen_flag_list: List, *args: Any):
+def frozen_data_by_constplaceholder(graph: GraphDef, frozen_flag_list: List, meta_outputs: Dict):
     frozen_data_op_list = []
     for op in graph.op:
         if op.type != "Data":
@@ -292,28 +270,22 @@ def frozen_data_by_constplaceholder(graph: GraphDef, frozen_flag_list: List, *ar
             frozen_data_op_list.append(op)
 
     data_to_constplaceholder_name_mapping = {}
-    frozen_op_index_mapping = {}
     for op in frozen_data_op_list:
         arg_idx = op.attr["index"].i
         name = f"ConstPlaceHolder_{arg_idx}"
         data_to_constplaceholder_name_mapping[op.name] = name
-        frozen_op_index_mapping[name] = arg_idx
         with graph:
             constplaceholder = ge.ConstPlaceHolder(origin_shape=[], origin_format=2, storage_shape=[], storage_format=2,
                                                    expand_dim_rules="", dtype=0, addr=0, size=4, node_name=name)
             logger.debug(f'Replace {op.name} by constructing fake {name} [shape=[], dtype=DT_FLOAT, format=FORMAT_ND]')
-            if GeTensor(op).meta is not None:
-                constplaceholder.set_meta(GeTensor(op).meta)
+            constplaceholder.node.attr["update_node_from_fx_input_idx"].i = arg_idx
+            if arg_idx in meta_outputs.keys() and meta_outputs[arg_idx] is not None:
+                constplaceholder.set_meta(meta_outputs[arg_idx])
 
     update_op_input_name_from_mapping(graph, data_to_constplaceholder_name_mapping)
-    return frozen_op_index_mapping
 
 
-def remove_dead_data_and_gen_input_mapping(graph: GraphDef, inputs: List, placements: List, fx_input_len: int):
-    if len(placements) != len(inputs):
-        raise AssertionError(f"inputs size {len(inputs)} is not equal to input placements size {len(placements)}.")
-    logger.info(f"before removing dead data, fx input size={fx_input_len}, graph all inputs size={len(inputs)}.")
-
+def remove_dead_data_and_reorder_data_index(graph: GraphDef):
     all_data_and_refcount: Dict[str, Tuple[OpDef, int]] = {}
     for op in graph.op:
         if op.type == "Data":
@@ -324,29 +296,24 @@ def remove_dead_data_and_gen_input_mapping(graph: GraphDef, inputs: List, placem
         for idx, op_in in enumerate(op.input):
             if op_in in all_data_and_refcount.keys():
                 all_data_and_refcount[op_in] = (all_data_and_refcount[op_in][0], all_data_and_refcount[op_in][1] + 1)
+    logger.info(f"before removing dead data, graph all inputs size={len(all_data_and_refcount)}.")
 
-    saved_inputs, saved_placements = copy.copy(inputs), copy.copy(placements)
-    saved_indexed_input_ops = copy.copy(graph.indexed_inputs)
-    inputs.clear()
-    placements.clear()
-    graph.indexed_inputs.clear()
-    fx_inputs_mapping = {}
-    for idx in range(len(saved_indexed_input_ops)):
-        data_tensor = GeTensor(saved_indexed_input_ops[idx])
-        if data_tensor.tensor in all_data_and_refcount.keys() and all_data_and_refcount[data_tensor.tensor][1] == 0:
-            logger.debug(f"remove ge graph data op {saved_indexed_input_ops[idx].name}.")
-            graph.op.remove(all_data_and_refcount[data_tensor.tensor][0])
+    all_inputs_func = copy.copy(graph.named_inputs_func)
+    graph.named_inputs_func.clear()
+    saved_inputs_func = []
+    for _, op_tuple in all_data_and_refcount.items():
+        if op_tuple[1] == 0:
+            logger.debug(f"remove ge graph data op {op_tuple[0].name}.")
+            graph.op.remove(op_tuple[0])
         else:
-            ori_index = data_tensor.node.attr["index"].i
-            data_tensor.node.attr["index"].i = graph.num_inputs
-            graph.record_input(graph.num_inputs, saved_indexed_input_ops[idx])
+            logger.debug(f"update ge graph data index from {op_tuple[0].attr['index'].i} "
+                         f"to {len(graph.named_inputs_func)}.")
+            op_tuple[0].attr["index"].i = len(graph.named_inputs_func)
+            if op_tuple[0].name not in all_inputs_func.keys():
+                raise AssertionError(f"Cannot find input func for data op {op_tuple[0].name}. "
+                                     f"All expected inputs func for data are {all_inputs_func.keys()}.")
+            graph.record_input_func(op_tuple[0].name, all_inputs_func[op_tuple[0].name])
+            saved_inputs_func.append(all_inputs_func[op_tuple[0].name])
 
-            if ori_index >= len(saved_inputs) or ori_index >= len(saved_placements):
-                raise AssertionError(f"invalid origin data index_{ori_index} when graph input size={len(saved_inputs)}")
-            inputs.append(saved_inputs[ori_index])
-            placements.append(saved_placements[ori_index])
-
-            if ori_index < fx_input_len:
-                fx_inputs_mapping[ori_index] = data_tensor.node.attr["index"].i
-    logger.info(f"after update index, graph all inputs size={len(inputs)}, input mapping {fx_inputs_mapping}.")
-    return fx_inputs_mapping
+    logger.info(f"after update index, graph all inputs size={len(graph.named_inputs_func)}.")
+    return saved_inputs_func

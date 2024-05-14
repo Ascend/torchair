@@ -20,24 +20,23 @@ import torch.utils._pytree as pytree
 
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core import _torchair
-from torchair.core.backend import initialize_graph_engine, TorchNpuGraph
+from torchair.core.backend import initialize_graph_engine
 from torchair.core.concrete_graph import ConcreteGraphBase, ValuePack
 from torchair.core.utils import logger
 from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef, TensorDescriptor, TensorDef, OpDef
 from torchair.ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
 from torchair.ge_concrete_graph.ge_graph import Tensor as GeTensor
+from torchair.ge_concrete_graph.ge_graph import _ValueInput, _TensorInput, _DiscontiguousTensorInput, _RngStatusInput
 from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type, torch_type_to_ge_proto_type, default_ge_graph, \
     GeGraph, attr_scope, compat_as_bytes, DataType, Format, TensorSpec, is_sym, sym_to_ge_dtype, assert_args_checkout
 from torchair.ge_concrete_graph.graph_pass import optimize_sym_pack, optimize_reference_op_redundant_copy, \
-    replace_data_to_refdata, get_frozen_flag, frozen_data_by_constplaceholder, remove_dead_data_and_gen_input_mapping
+    replace_data_to_refdata, get_frozen_flag, frozen_data_by_constplaceholder
 from torchair.ge_concrete_graph.utils import convert_to_tensorboard, dump_graph, force_op_unknown_shape, \
-    is_host_data_tensor, get_used_sym_value_mapping, Placement, InputProcessing, compute_value_of_sym, \
+    is_host_data_tensor, get_used_sym_value_mapping, Placement, compute_value_of_sym, \
     generate_sym_exper, get_sym_int_value, generate_shape_from_tensor, update_op_input_name_from_mapping
 from torchair.ge_concrete_graph.supported_declaration import Support
 from torchair.ge_concrete_graph.export_config_generete import generate_config
-from torchair.utils.export_utils import make_export_graph, get_export_file_name, serialize_str_dict_attr, \
-    serialize_int_dict_attr
-from torchair.ge_concrete_graph.compiled_model import serialize_save_graph
+from torchair.utils.export_utils import make_export_graph, get_export_file_name
 from . import ge_apis as ge
 
 
@@ -370,11 +369,14 @@ def _update_internal_format_from_inputs(graph: GraphDef, runtime_inputs):
         logger.debug(f'update the Format of output TensorDesc for input_{idx} to Format {Format(npu_format).name}.')
 
 
-def _update_constplaceholder_attr_from_inputs(graph: GraphDef, op_name_idx_mapping, runtime_inputs):
+def _update_constplaceholder_attr_from_inputs(graph: GraphDef, runtime_inputs):
     update_node_name_mapping = {}
     for op in graph.op:
-        if op.type == "ConstPlaceHolder" and op.name in op_name_idx_mapping.keys():
-            real_input = runtime_inputs[op_name_idx_mapping[op.name]]
+        if op.type == "ConstPlaceHolder":
+            if not 'update_node_from_fx_input_idx' in op.attr:
+                logger.debug(f'No need to update {op.name}.')
+                continue
+            real_input = runtime_inputs[op.attr["update_node_from_fx_input_idx"].i]
             origin_shape = real_input.shape
             op.attr["origin_shape"].list.i.extend(origin_shape)
             op.attr["dtype"].dt = torch_type_to_ge_type(real_input.dtype)
@@ -391,7 +393,7 @@ def _update_constplaceholder_attr_from_inputs(graph: GraphDef, op_name_idx_mappi
                 op.attr["storage_shape"].list.i.extend(origin_shape)
                 op.attr["storage_format"].i = 2
                 op.attr["size"].i = real_input.numel() * real_input.element_size()
-            logger.debug(f'Update {op.name} attr from input {op_name_idx_mapping[op.name]}, '
+            logger.debug(f'Update {op.name} attr from input {op.attr["update_node_from_fx_input_idx"].i}, '
                          f'origin shape={origin_shape}, origin format={Format(op.attr["origin_format"].i).name}, '
                          f'storage shape={op.attr["storage_shape"].list.i}, '
                          f'storage format={Format(op.attr["storage_format"].i).name}, data size={op.attr["size"].i}.')
@@ -417,6 +419,7 @@ def _get_executor_type():
 class SymOutput:
     def __init__(self, meta_output, sym_value_mapping):
         self._sym_value_mapping = sym_value_mapping
+        self._ori_meta_sym = meta_output
         # 获取sym对应的sympy属性,sym对象无法存入map,sym_value_mapping和符号都使用sympy对象
         self._fx_output_smy = generate_sym_exper(meta_output)
 
@@ -429,6 +432,9 @@ class ViewOfInput:
     def __init__(self, index, meta_output, sym_value_mapping):
         self._fx_input_index = index
         self._sym_value_mapping = sym_value_mapping
+        self._ori_meta_shape = list(meta_output.size())
+        self._ori_meta_stride = list(meta_output.stride())
+        self._ori_meta_offset = meta_output.storage_offset()
         self._meta_output_shape = generate_sym_exper(list(meta_output.size()))
         self._meta_output_stride = generate_sym_exper(list(meta_output.stride()))
         self._meta_output_offset = generate_sym_exper(meta_output.storage_offset())
@@ -455,34 +461,30 @@ class ViewOfInput:
 
 
 class GeConcreteGraph(ConcreteGraphBase):
-    def __init__(self, config: CompilerConfig, graph=None, name=None):
-        self._graph = GeGraph() if graph is None else graph
-        if name is not None:
-            self._graph.name = name
+    def __init__(self, config: CompilerConfig, name=None):
+        self._graph = GeGraph(name=name)
         self._fx_outputs = []
         self._fx_outputs_mapping = dict()
         self._outputs = []
-        self._inputs = []
-        self._input_placements = []
-        self._fx_inputs_mapping = {}
-        self._frozen_op_idx_mapping = {}
-        self._rng_inputs_size = 0
+        self._fx_input_names = []
+        self._input_process = None
+        self._input_func_list = []
         self._graph_output_ref_input = {}
         self._ref_data_idx = []
-        self._executor = TorchNpuGraph(name)
+        self._cloned_ge_input_mapping = {}
         self._config = config
         self._auto_tune_times = 0
         self._converter_ctx = threading.local()
-        self._fx_input_mapping_cloned_ge_input = []
-        self._inputs_processing = None
         self._is_compiled = False
-        self._pack_input_processing = None
         self._all_sym_input_idx = {}
+        self._all_meta_tensor_input = {}
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
-        inputs = self._inputs_processing(*args)
-        inputs = self._consume_data_into_inputs(inputs)
-        inputs.extend(self._pack_input_processing(*args))
+        if not self._is_compiled:
+            # Equivalent functionality to 'self._input_func_list[i](*args)', but better performance.
+            self._input_process = self._gen_input_process(self._fx_input_names, self._all_sym_input_idx,
+                                                          self._input_func_list)
+        inputs = self._input_process(*args)
 
         self.update_graph_with_runtime(inputs, args)
 
@@ -493,7 +495,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         if not self._is_compiled:
             local_compile_options, global_compile_options = self._normalize_ge_option()
             initialize_graph_engine(global_compile_options)
-            self._executor.load(self.graph, local_compile_options)
+            self.graph.load(local_compile_options)
 
         if self.should_auto_tune:
             self.auto_tune(inputs)
@@ -504,14 +506,14 @@ class GeConcreteGraph(ConcreteGraphBase):
             assigned_outputs = [None] * len(self.graph.attr["_output_dtypes"].list.i)
             for output_index, input_index in self._graph_output_ref_input.items():
                 assigned_outputs[output_index] = inputs[input_index]
-            ge_outputs = self._executor.run(inputs, assigned_outputs)
+            ge_outputs = self.graph.run(inputs, assigned_outputs)
         else:
-            ge_outputs = self._executor.run(inputs)
+            ge_outputs = self.graph.run(inputs)
 
         if len(self._ref_data_idx) != 0:
-            for index_tuple in self._fx_input_mapping_cloned_ge_input:
-                if index_tuple[1] in self._ref_data_idx:
-                    args[index_tuple[0]].copy_(inputs[index_tuple[1]])
+            for ge_index, fx_index in self._cloned_ge_input_mapping.items():
+                if ge_index in self._ref_data_idx:
+                    args[fx_index].copy_(inputs[ge_index])
 
         if len(ge_outputs) != len(self.graph.attr["_output_dtypes"].list.i):
             raise AssertionError(
@@ -531,27 +533,30 @@ class GeConcreteGraph(ConcreteGraphBase):
         return tuple(fx_outputs)
 
     def optimize_graph_without_runtime(self, *args):
+        from torchair.ge_concrete_graph.graph_pass import remove_dead_data_and_reorder_data_index
+        from torchair.ge_concrete_graph.utils import get_graph_input_placements
         if self._config.experimental_config.frozen_parameter:
             warnings.warn(f'When enable frozen_parameter, Parameters will be considered frozen.'
                           'Please make sure that the Parameters data address remain the same '
                           'throughout the program runtime.')
             frozen_flag_list = get_frozen_flag(*args)
-            self._frozen_op_idx_mapping = frozen_data_by_constplaceholder(self.graph, frozen_flag_list, *args)
+            frozen_data_by_constplaceholder(self.graph, frozen_flag_list, self._all_meta_tensor_input)
 
-        self._complement_graph_rng_inputs(self.inputs, self._input_placements)
+        optimize_sym_pack(self.graph)
 
-        self._pack_input_processing = optimize_sym_pack(self.graph, self.inputs, self._input_placements)
+        # Note:
+        # Please do not take any actions to add or delete data nodes, or change the index of data nodes after this.
+        self._input_func_list = remove_dead_data_and_reorder_data_index(self.graph)
 
-        self._fx_inputs_mapping = remove_dead_data_and_gen_input_mapping(self.graph, self.inputs,
-                                                                         self._input_placements, len(args))
-        self._inputs_processing = self._make_inputs_processing_func(*args)
-
-        self.graph.attr["_input_placements"].list.i.extend(self._input_placements)
+        self.graph.attr["_input_placements"].list.i.extend(get_graph_input_placements(self.graph))
         self.graph.attr["_output_dtypes"].list.i.extend([output.dtype for output in self.outputs])
         self.graph.attr["_executor_type"].i = _get_executor_type()
 
         self._ref_data_idx = optimize_reference_op_redundant_copy(self.graph)
         self._graph_output_ref_input = _mapping_assign_op_to_graph_output(self.graph)
+        for ge_index, input_func in enumerate(self._input_func_list):
+            if isinstance(input_func, _DiscontiguousTensorInput):
+                self._cloned_ge_input_mapping[ge_index] = input_func.fx_input_idx
 
         _normalize_ge_graph(self.graph)
 
@@ -559,8 +564,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         if self._is_compiled:
             return
 
-        if self._config.experimental_config.frozen_parameter:
-            _update_constplaceholder_attr_from_inputs(self.graph, self._frozen_op_idx_mapping, fx_inputs)
+        _update_constplaceholder_attr_from_inputs(self.graph, fx_inputs)
 
         _update_internal_format_from_inputs(self.graph, inputs)
 
@@ -581,9 +585,82 @@ class GeConcreteGraph(ConcreteGraphBase):
             return
 
         logger.info(f'start compile graph: {self.graph.name}.')
-        self._executor.compile()
+        self.graph.compile()
         self._is_compiled = True
         logger.info(f'end compile graph: {self.graph.name} and start run graph.')
+
+    def codegen(self):
+        from torch._inductor.utils import IndentedBuffer
+        if self._config.experimental_config.enable_ref_data or self.config.export.export_mode \
+                or self.config.aoe_config.aoe_mode.value is not None:
+            logger.info(f'Unsupported codegen for graph with config enable_ref_data or export_mode or aoe_mode.')
+            return None
+
+        head = IndentedBuffer()
+        head.splice('''
+        import torch
+        from torchair.core.backend import initialize_graph_engine
+        from torchair.ge_concrete_graph.ge_graph import GeGraph
+        from torchair.ge_concrete_graph.fx2ge_converter import _update_constplaceholder_attr_from_inputs
+        from torchair.ge_concrete_graph.fx2ge_converter import _update_internal_format_from_inputs
+        ''')
+        head.writelines(['', f'serialized_graph = {self.graph.SerializeToString()}'])
+        head.writelines(['', f'global_compile_options = {{}}'])
+        local_compile_options, global_compile_options = self._normalize_ge_option()
+        for k, v in global_compile_options.items():
+            head.writeline(f'global_compile_options["{k}"] = "{v}"')
+        head.writeline(f'local_compile_options = {{}}')
+        for k, v in local_compile_options.items():
+            head.writeline(f'local_compile_options["{k}"] = "{v}"')
+        head.writelines(['', 'initialize_graph_engine(global_compile_options)',
+                         'ge_graph = GeGraph(serialized_model_def=serialized_graph)'])
+
+        kernel = IndentedBuffer()
+        kernel.writelines(['', '_is_first_run = True', f'def kernel(*args):'])
+        with kernel.indent():
+            input_code = self._codegen_input(self._fx_input_names, self._all_sym_input_idx, self._input_func_list)
+            kernel.splice(input_code)
+
+            # for info update in first run
+            kernel.writelines(['', 'global _is_first_run', 'if _is_first_run:'])
+            with kernel.indent():
+                kernel.writelines(['_is_first_run = False',
+                                   '_update_constplaceholder_attr_from_inputs(ge_graph, args)',
+                                   '_update_internal_format_from_inputs(ge_graph, ge_inputs)',
+                                   'ge_graph.load(local_compile_options)',
+                                   'ge_graph.compile()'])
+
+            kernel.writeline('')
+            if len(self._graph_output_ref_input):
+                kernel.writeline(f'assigned_outputs = [None] * {len(self.graph.attr["_output_dtypes"].list.i)}')
+                for output_index, input_index in self._graph_output_ref_input.items():
+                    kernel.writeline(f'assigned_outputs[{output_index}] = ge_inputs[{input_index}]')
+                kernel.writeline(f'ge_outputs = ge_graph.run(ge_inputs, assigned_outputs)')
+            else:
+                kernel.writeline(f'ge_outputs = ge_graph.run(ge_inputs)')
+            if len(self._ref_data_idx) != 0:
+                for ge_index, fx_index in self._cloned_ge_input_mapping.items():
+                    if ge_index in self._ref_data_idx:
+                        kernel.writeline(f'arg{fx_index}_1.copy_(ge_inputs[{ge_index}])')
+
+            kernel.writeline(f'fx_outputs = [None] * {len(self._fx_outputs)}')
+            for idx, out in enumerate(self._fx_outputs):
+                if isinstance(out, ViewOfInput):
+                    kernel.writeline(f'fx_outputs[{idx}] = torch.as_strided(arg{out._fx_input_index}_1, {out._ori_meta_shape}, {out._ori_meta_stride}, {out._ori_meta_offset})')
+                elif isinstance(out, SymOutput):
+                    kernel.writeline(f'fx_outputs[{idx}] = {str(out._ori_meta_sym.node.expr)}')
+                elif not isinstance(out, GeTensor):
+                    kernel.writeline(f'fx_outputs[{idx}] = {self._fx_outputs[idx]}')
+                else:
+                    if idx not in self._fx_outputs_mapping.keys():
+                        raise AssertionError
+                    kernel.writeline(f'fx_outputs[{idx}] = ge_outputs[{self._fx_outputs_mapping[idx]}]')
+            kernel.writelines(['', 'del ge_outputs', 'return tuple(fx_outputs)'])
+
+        code = IndentedBuffer()
+        code.splice(head)
+        code.splice(kernel)
+        return code.getvalue()
 
     def context(self):
         return default_ge_graph(self.graph)
@@ -593,8 +670,10 @@ class GeConcreteGraph(ConcreteGraphBase):
         if hasattr(self, '_is_dynamic'):
             return self._is_dynamic
 
-        for input in self._inputs:
-            if (-1 in input.desc.shape.dim) or (-2 in input.desc.shape.dim):
+        for data_op in self.graph.op:
+            if data_op.type != "Data":
+                continue
+            if (-1 in data_op.output_desc[0].shape.dim) or (-2 in data_op.output_desc[0].shape.dim):
                 self._is_dynamic = True
                 return True
 
@@ -602,26 +681,26 @@ class GeConcreteGraph(ConcreteGraphBase):
         return False
 
     def parse_input(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
+        data_index = self.graph.num_inputs
+        self._fx_input_names.append(target)
         if is_sym(meta_outputs):
-            self._all_sym_input_idx[(meta_outputs).node.expr] = len(self.inputs)
-            data = ge.Data(index=len(self._inputs),
-                           dtype=sym_to_ge_dtype(meta_outputs), shape=[], placement='CPU', node_name=target)
+            self._all_sym_input_idx[(meta_outputs).node.expr] = data_index
+            data = ge.Data(index=data_index, dtype=sym_to_ge_dtype(meta_outputs), shape=[], placement='CPU',
+                           node_name=target)
             data.set_meta(meta_outputs)
-            self._inputs.append(data)
-            self._input_placements.append(Placement.HOST)
+            self.graph.record_input_func(data.node.name, _ValueInput(data_index))
         else:
             if not isinstance(meta_outputs, torch.Tensor):
                 raise AssertionError
+            self._all_meta_tensor_input[data_index] = meta_outputs
             dtype = torch_type_to_ge_type(meta_outputs.dtype)
             shape = generate_shape_from_tensor(meta_outputs)
-            placement = Placement.HOST if (
-                    meta_outputs.device is None or meta_outputs.device.type == 'cpu') else Placement.DEVICE
-            data = ge.Data(index=len(self._inputs), dtype=dtype,
-                           shape=shape, placement='CPU' if (placement == Placement.HOST) else 'NPU', node_name=target)
+            placement = 'CPU' if (meta_outputs.device is None or meta_outputs.device.type == 'cpu') else 'NPU'
+            data = ge.Data(index=data_index, dtype=dtype, shape=shape, placement=placement, node_name=target)
             data.set_meta(meta_outputs)
-            self._inputs.append(data)
-            self._input_placements.append(placement)
-        return self._inputs[-1]
+            self.graph.record_input_func(data.node.name, _TensorInput(
+                data_index) if meta_outputs.is_contiguous() else _DiscontiguousTensorInput(data_index))
+        return data
 
     def parse_output(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
         if not (isinstance(args, (list, tuple)) and len(args) == 1):
@@ -639,8 +718,8 @@ class GeConcreteGraph(ConcreteGraphBase):
                 continue
 
             is_view2output_flag = False
-            for fx_input_idx, fx_input in enumerate(self.inputs):
-                if torch._C._is_alias_of(fx_input.meta, arg.meta):
+            for fx_input_idx, fx_input_meta in self._all_meta_tensor_input.items():
+                if torch._C._is_alias_of(fx_input_meta, arg.meta):
                     self._fx_outputs[-1] = ViewOfInput(fx_input_idx, arg.meta,
                                                        get_used_sym_value_mapping(self._all_sym_input_idx, arg.meta))
                     is_view2output_flag = True
@@ -704,10 +783,6 @@ class GeConcreteGraph(ConcreteGraphBase):
         dump_graph(path, self.graph)
 
     @property
-    def inputs(self):
-        return self._inputs
-
-    @property
     def outputs(self):
         return self._outputs
 
@@ -718,9 +793,6 @@ class GeConcreteGraph(ConcreteGraphBase):
     @property
     def config(self):
         return self._config
-
-    def set_fx_inputs_mapping(self, fx_inputs_mapping):
-        self._fx_inputs_mapping = fx_inputs_mapping
 
     def export(self, inputs) -> Any:
         file_path = self.config.export.export_path_dir
@@ -766,92 +838,9 @@ class GeConcreteGraph(ConcreteGraphBase):
 
     def auto_tune(self, inputs: List[Tensor]) -> Any:
         logger.info(f"Start auto tune for round {self._auto_tune_times}")
-        self._executor.auto_tune(inputs)
+        self.graph.auto_tune(inputs)
         self._auto_tune_times += 1
         logger.info(f"End auto tune for round {self._auto_tune_times - 1}")
-
-    def _complement_graph_rng_inputs(self, inputs: List, placements: List):
-        self._rng_inputs_size = self.graph.num_inputs - len(inputs)
-        inputs.extend([None for _ in range(self._rng_inputs_size)])
-        placements.extend([None for _ in range(self._rng_inputs_size)])
-
-        real_added_rng_inputs_num = 0
-        for gen in self.graph.generator_rng_state:
-            rng_state = self.graph.get_graph_rng_state(gen)
-            idx, offset_data = rng_state.get_idx_and_offset()
-            if len(inputs) != len(placements):
-                raise AssertionError(f"inputs size {len(inputs)} != input placements size {len(placements)}")
-            placement = Placement.HOST
-            inputs[idx] = offset_data
-            placements[idx] = placement
-            real_added_rng_inputs_num += 1
-        if self._rng_inputs_size != real_added_rng_inputs_num:
-            raise AssertionError(f"Added rng inputs size {real_added_rng_inputs_num} != "
-                                 f"recorded additional data nodes size {self._rng_inputs_size}")
-
-    def _consume_data_into_inputs(self, inputs):
-        if self._rng_inputs_size == 0:
-            return inputs
-
-        inputs.extend([None for _ in range(self.graph.num_inputs - len(inputs))])
-        for gen in self.graph.generator_rng_state:
-            rng_state = self.graph.get_graph_rng_state(gen)
-            idx, offset = rng_state.consume()
-            inputs[idx] = offset
-        return inputs
-
-    def _make_inputs_processing_func(self, *args: Any):
-        uncontiguous_ge_input_idx = []
-        nontensor_ge_input_idx = []
-        for fx_index, ge_index in self._fx_inputs_mapping.items():
-            if isinstance(args[fx_index], torch.Tensor):
-                if not args[fx_index].is_contiguous():
-                    uncontiguous_ge_input_idx.append(ge_index)
-                    self._fx_input_mapping_cloned_ge_input.append((fx_index, ge_index))
-            else:
-                nontensor_ge_input_idx.append(ge_index)
-        return InputProcessing(self._fx_inputs_mapping, uncontiguous_ge_input_idx, nontensor_ge_input_idx)
-
-    # 离线加载再执行场景，对于GE图的输入输出，考虑支持的场景
-    # GE图输入处理：
-    # 1.Tensor输入：
-    #  1.1：连续的Tensor：---支持
-    #  1.2：非连续的Tensor输入：
-    #   1.2.1：非连续同时需要反刷GE输入结果到之前非连续的arg ---暂不支持
-    #   1.2.2：非连续不需要反刷的  ---支持
-    # 2. 用户的输入跟fx的输入都是sym的  ---支持
-    # 3. 用户的输入是list,被打散成sym,然后由torchair合并成GE的一个输入的  ---当前考虑仅支持一个list输入
-    # 4. GE图的输入比fx输入个数多的，比如generator   ---不支持
-    # GE图输出处理：
-    # 1. 直接由GE执行器返回的   ---支持
-    # 2. 某一个输入直接喂给输出的  ---支持(可以不支持返回)
-    # 3. const类型的输出，数字或者None ---暂不支持
-    # 4. 输出来自与输入view后的场景   ---暂不支持
-    # 5. 其他的sym输出，包括sym计算表达式   ---在线当前未支持，save_graph暂不支持
-    def _check_support_for_save_graph(self):
-        # Unsupported 输入case 1.2.2
-        if len(self._ref_data_idx) != 0:
-            for index_tuple in self._fx_input_mapping_cloned_ge_input:
-                if index_tuple[1] in self._ref_data_idx:
-                    raise NotImplementedError(
-                        "Unsupported uncontiguous input is a ref input with CompiledModel,"
-                        f"fx index = {index_tuple[0]}, ge index = {index_tuple[1]}, "
-                        f"ref_data_idx list = {self._ref_data_idx}")
-        # Unsupported 输入case 3
-        if self._pack_input_processing is not None and len(self._pack_input_processing.input_indexes) > 1:
-            raise NotImplementedError(f"Unsupported packing more than 1 list with CompiledModel1")
-        # Unsupported 输入case 4
-        if len(self._graph.generator_rng_state) > 0:
-            raise NotImplementedError(f"Unsupported generator random seed with CompiledModel!")
-
-        # 输出只考虑支持case1、2
-        for fx_idx, fx_output in enumerate(self._fx_outputs):
-            if not (isinstance(fx_output, ge.Tensor) or
-                    isinstance(fx_output, torch.Tensor) or
-                    isinstance(fx_output, FakeTensor)):
-                raise NotImplementedError(f"Unsupported output type {type(fx_output)} with CompiledModel!")
-
-        return True
 
     def _normalize_ge_option(self):
         # Initialize based on global options
@@ -874,13 +863,56 @@ class GeConcreteGraph(ConcreteGraphBase):
 
         return local_compile_options, global_compile_options
 
-    def _normalize_exportd_graph_attr(self, model_def):
-        local_compile_options, global_compile_options = self._normalize_ge_option()
+    @staticmethod
+    def _codegen_input(all_input_names, all_sym_input, input_func_list):
+        from torch._inductor.utils import IndentedBuffer
+        input_code = IndentedBuffer()
+        all_input_str = ', '.join(all_input_names)
+        if all_input_str:
+            if len(all_input_names) == 1:
+                all_input_str += ', '
+            input_code.writeline(f'{all_input_str} = args')
+        for name, idx in all_sym_input.items():
+            if str(name).isdigit() or not isinstance(name, sympy.Symbol):
+                # skip invalid expression, such as 2=arg0_1; s0*s1=arg1_1;
+                continue
+            input_code.writeline(f'{str(name)} = {all_input_names[idx]}')
+        input_code.writeline(f'ge_inputs = [None] * {len(input_func_list)}')
+        for idx, func in enumerate(input_func_list):
+            if isinstance(func, _RngStatusInput):
+                logger.info(f"skip codegen for rng input for ge input_{idx}.")
+                continue
+            input_code.writeline(f'ge_inputs[{idx}] = {func.codegen(all_input_names)}')
+        return input_code.getvalue()
 
-        model_def.attr["_inputs_processing"].s = compat_as_bytes(repr(self._inputs_processing))
+    @staticmethod
+    def _gen_input_process(all_input_names, all_sym_input, input_func_list):
+        from torch._inductor.utils import IndentedBuffer
+        from types import ModuleType
+        kernel = IndentedBuffer()
+        kernel.writelines(['import torch', f'def kernel(*args):'])
+        with kernel.indent():
+            ge_inputs = GeConcreteGraph._codegen_input(all_input_names, all_sym_input, input_func_list)
+            kernel.splice(ge_inputs)
+            kernel.writeline('return ge_inputs')
 
-        serialize_str_dict_attr(model_def, "_local_compile_options", local_compile_options)
-        serialize_str_dict_attr(model_def, "_global_compile_options", global_compile_options)
-        serialize_int_dict_attr(model_def, "_fx_inputs_mapping", self._fx_inputs_mapping)
-        serialize_int_dict_attr(model_def, "_fx_outputs_mapping", self._fx_outputs_mapping)
-        serialize_int_dict_attr(model_def, "_graph_output_ref_input", self._graph_output_ref_input)
+        logger.info(f"input process func is: \n{kernel.getvalue()}")
+        inputs_mod = ModuleType('inputs_mod')
+        exec(compile(kernel.getvalue(), '<string>', 'exec'), inputs_mod.__dict__, inputs_mod.__dict__)
+        normal_inputs_func = getattr(inputs_mod, 'kernel')
+
+        unsupported_codegen_input = {}
+        for idx, func in enumerate(input_func_list):
+            if isinstance(func, _RngStatusInput):
+                unsupported_codegen_input[idx] = func
+        if len(unsupported_codegen_input) == 0:
+            return normal_inputs_func
+
+        def full_inputs_func(*args):
+            ge_inputs = normal_inputs_func(*args)
+            # update ge inputs for unsupported codegen input func
+            for idx, func in enumerate(unsupported_codegen_input):
+                ge_inputs[idx] = func(args)
+            return ge_inputs
+
+        return full_inputs_func

@@ -6,7 +6,6 @@ import logging
 import sys
 
 import torch
-from torch._C import DispatchKey
 from torch._subclasses.fake_tensor import is_fake
 import torch.utils._pytree as pytree
 from torch.fx import Interpreter
@@ -286,6 +285,29 @@ def _optimize_sym_input(graph_module: torch.fx.GraphModule):
     return graph_module
 
 
+class GmRunner:
+    def __init__(self, runner: Callable):
+        self.runner = runner
+
+    def __call__(self, *args, **kwargs):
+        with record_function("npu_fx_compiler inference"):
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug('runtime inputs')
+                for i, inp in enumerate(args):
+                    logger.debug(f'  input {i}: {_summary(inp)}')
+                for k, v in kwargs.items():
+                    logger.debug(f'  input {k}: {_summary(v)}')
+
+            gm_result = self.runner(*args, **kwargs)
+
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug('runtime outputs')
+                for i, inp in enumerate(gm_result):
+                    logger.debug(f'  output {i}: {_summary(inp)}')
+
+            return gm_result
+
+
 _GLOBAL_GRAPH_ID = 0
 
 
@@ -301,11 +323,25 @@ class _NpuFxCompiler:
 
     @pretty_error_msg
     def __call__(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
-        logger.info(f'compiler inputs')
-        for i, inp in enumerate(example_inputs):
-            logger.info(f'  input {i}: {inp}')
-        logger.info(f'  graph: {gm.graph}')
+        return self._get_compiled_gm(gm, example_inputs)
 
+    @pretty_error_msg
+    def codegen(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
+        gm_runner = self._get_compiled_gm(gm, example_inputs)
+        if not hasattr(gm_runner.runner, 'codegen'):
+            logger.warning(f'When enable FX Graph summarizing or dumping, codegen is unsupported.')
+            return gm_runner
+
+        code = gm_runner.runner.codegen()
+        if code is None:
+            logger.warning(f'There are some configurations that cannot be supported by codegen, skipping codegen.')
+            return gm_runner
+
+        logger.debug(f'Codegen for {gm_runner.runner.graph.name} successfully, code:\n{code}.')
+        return code
+
+    @pretty_error_msg
+    def _get_compiled_gm(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
         if self.config.debug.fx_summary.enabled:
             summarize_fx_graph(
                 gm, example_inputs, self.config.debug.fx_summary.full_path("summary"))
@@ -314,7 +350,23 @@ class _NpuFxCompiler:
                                'and FALLBACK to EAGER execution to ensure the integrity of the analysis data. '
                                'Once the analysis is complete, please make sure to disable the summary config '
                                'to ensure that the graph is compiled and executed.')
-                return gm
+                return GmRunner(gm)
+
+        if self.config.debug.data_dump.enabled:
+            logger.warning(f'When dumping data of FX Graph, npu run will be skipped, '
+                           'and FALLBACK to EAGER execution, once dump finished, please make sure to disable '
+                           'the data dump config to ensure that the graph is compiled and executed.')
+            data_dumper = NpuFxDumper(gm, config=self.config.debug.data_dump)
+            return GmRunner(data_dumper)
+
+        return GmRunner(self.gen_compiled_gm(gm, example_inputs))
+
+    @pretty_error_msg
+    def gen_compiled_gm(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
+        logger.info(f'compiler inputs')
+        for i, inp in enumerate(example_inputs):
+            logger.info(f'  input {i}: {inp}')
+        logger.info(f'  graph: {gm.graph}')
 
         with no_dispatch():
             mutable_gm = copy.deepcopy(gm)
@@ -322,40 +374,11 @@ class _NpuFxCompiler:
             mutable_gm, graph=ConcreteGraph(self.config, name="graph_" + str(_next_unique_graph_id())),
             garbage_collect_values=False).run(*example_inputs)
 
+        if self.config.debug.graph_dump.enabled and not self.config.export.export_mode:
+            concrete_graph.dump(self.config.debug.graph_dump.full_path("dynamo_original_graph"))
+
         concrete_graph.optimize_graph_without_runtime(*example_inputs)
-
-        if not self.config.export.export_mode:
-            if self.config.debug.graph_dump.enabled:
-                concrete_graph.dump(self.config.debug.graph_dump.full_path("dynamo_original_graph"))
-
-        data_dumper = None
-        if self.config.debug.data_dump.enabled:
-            data_dumper = NpuFxDumper(gm, config=self.config.debug.data_dump)
-
-        def inference(*args, npu_compiled_gm, original_gm, data_dumper: NpuFxDumper, **kwargs):
-            with record_function("npu_fx_compiler inference"):
-                if logger.isEnabledFor(logging.DEBUG):
-                    logger.debug('runtime inputs')
-                    for i, inp in enumerate(args):
-                        logger.debug(f'  input {i}: {_summary(inp)}')
-                    for k, v in kwargs.items():
-                        logger.debug(f'  input {k}: {_summary(v)}')
-
-                if data_dumper is not None:
-                    logger.warning(f'When dumping data of FX Graph, npu run will be skipped, '
-                                   'and FALLBACK to EAGER execution, once dump finished, please make sure to disable '
-                                   'the data dump config to ensure that the graph is compiled and executed.')
-                    compiled_result = data_dumper.run(*args, **kwargs)
-                else:
-                    compiled_result = npu_compiled_gm(*args, **kwargs)
-                if logger.isEnabledFor(logging.DEBUG):
-                    logger.debug('runtime outputs')
-                    for i, inp in enumerate(compiled_result):
-                        logger.debug(f'  output {i}: {_summary(inp)}')
-
-                return compiled_result
-
-        return functools.partial(inference, npu_compiled_gm=concrete_graph, original_gm=gm, data_dumper=data_dumper)
+        return concrete_graph
 
 
 def get_compiler(compiler_config: CompilerConfig = None):

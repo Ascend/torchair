@@ -2,7 +2,6 @@ add_custom_command(OUTPUT ST_TESTCASES
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_export_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_loglevel_st.py ${CMAKE_BINARY_DIR}/st
-        COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_compiled_model_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_cache_compile_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_public_bindings_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_BINARY_DIR}/stubs/_privateuse1_backend.so ${CMAKE_BINARY_DIR}/st
@@ -14,7 +13,6 @@ add_custom_target(run_torchair_py_cases ALL
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_st
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_export_st
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_loglevel_st
-        COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_compiled_model_st
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_cache_compile_st
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_public_bindings_st
         DEPENDS install_torchair ST_TESTCASES
