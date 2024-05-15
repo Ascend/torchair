@@ -627,7 +627,7 @@ class GeConcreteGraph(ConcreteGraphBase):
                 kernel.writelines(['_is_first_run = False',
                                    '_update_constplaceholder_attr_from_inputs(ge_graph, args)',
                                    '_update_internal_format_from_inputs(ge_graph, ge_inputs)',
-                                   'ge_graph.load(local_compile_options)',
+                                   'ge_graph.load(local_compile_options, create_pg=True)',
                                    'ge_graph.compile()'])
 
             kernel.writeline('')

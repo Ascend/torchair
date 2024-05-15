@@ -12,6 +12,7 @@ import torchair
 import torchair.ge_concrete_graph.ge_converter.experimental.hcom_alltoall
 from torchair.core.utils import logger
 from torchair.configs.compiler_config import CompilerConfig
+import torchair.inference
 
 
 class All2allsinge(torch.nn.Module):
@@ -344,6 +345,43 @@ def check_export_file_and_clean_env():
     shutil.rmtree("export_file")
 
 
+class CacheHcomModel(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.cached_module = torchair.inference.cache_compile(self.prompt, dynamic=False)
+
+    def inner_forward(self, x, y):
+        ret = x + y
+        torch.distributed.all_reduce(ret)
+        return ret
+
+    def forward(self, x, y):
+        return self.cached_module(x, y)
+
+    def prompt(self, x, y):
+        return self.inner_forward(x, y)
+
+
+def test_cache_allreduce(rank, world_size):
+    torch.npu.set_device(rank)
+    dist.init_process_group(backend='hccl', rank=rank, world_size=world_size)
+    model = CacheHcomModel().npu()
+    x = torch.ones(2, 2).npu()
+    y = torch.ones(2, 2).npu()
+    out = torch.ones(2, 2).npu() * 2 * world_size
+    ret = model(x, y)
+    assert out.equal(ret)
+    dist.destroy_process_group()
+    return
+
+
+def check_cache_file_and_clean_env(path: str = ''):
+    if not path:
+        path = ".torchair_cache"
+    assert os.path.exists(path)
+    shutil.rmtree(path)
+
+
 def mp():
     world_size = 4
     # =================  case 1 基本入图场景 动态图 + 单算子混跑 + split_sizes入参==================
@@ -391,7 +429,14 @@ def mp():
     check_export_file_and_clean_env()
     print("==================case 12 pass =============================", flush=True)
     print("==================all case all_to_all pass =================", flush=True)
-    
+
+    # =================  case 13 creat cache + hcom ==================
+    torch.multiprocessing.spawn(test_cache_allreduce, args=(world_size, ), nprocs=world_size, join=True)
+    print("==================case 13 pass =============================", flush=True)
+    # =================  case 14 use cache + hcom ==================
+    torch.multiprocessing.spawn(test_cache_allreduce, args=(world_size, ), nprocs=world_size, join=True)
+    print("==================case 14 pass =============================", flush=True)
+    check_cache_file_and_clean_env()
 
 if __name__ == '__main__':
     os.environ["MASTER_ADDR"] = "localhost"

@@ -515,6 +515,25 @@ def map_graph_rng_state(gen: torch.Generator = None):
     return _GraphRngState(gen)
 
 
+def _create_graph_pg(graph):
+    group_map = {}
+    rank = None
+    for op in graph.op:
+        if "group" not in op.attr or "ranklist" not in op.attr:
+            continue
+
+        group_name = op.attr["group"].s.decode()
+        if group_name not in group_map:
+            if rank is None:
+                rank = torch.distributed.get_rank()
+            ranklist = list(op.attr["ranklist"].list.i)
+            pg = torch.distributed.new_group(ranklist)
+            group_map[group_name] = pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank)
+            logger.info(f'Create process group {group_map[group_name]} for group_name {group_name} '
+                        f'use ranklist {ranklist} on rank {rank}')
+        op.attr["group"].s = compat_as_bytes(group_map[group_name])
+
+
 class GeGraph(object):
     def __init__(self, model_def=None, serialized_model_def=None, name=None):
         from torchair.core.backend import TorchNpuGraph
@@ -549,7 +568,9 @@ class GeGraph(object):
     def SerializeToString(self):
         return self._model.SerializeToString()
 
-    def load(self, options):
+    def load(self, options, *, create_pg=False):
+        if create_pg:
+            _create_graph_pg(self._proto)
         self._executor.load(self, options)
 
     def compile(self):
