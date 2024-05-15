@@ -22,11 +22,16 @@ from torchair.ge_concrete_graph.fx2ge_converter import declare_supported, regist
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
+from torchair.ge_concrete_graph.utils import dtype_promote
 
 
 @declare_supported(
     [
         Support(BOOL(2, 2), BOOL(2, 2)),
+        Support(F32(2, 2), F32(2, 2)),
+        Support(F16(2, 2), F16(2, 2)),
+        Support(I32(2, 2), I16(2, 2)),
+        Support(I32(2, 2), F16(2, 2))
     ]
 )
 @register_fx_node_ge_converter(torch.ops.aten.logical_or.default)
@@ -34,6 +39,7 @@ def conveter_aten_logical_or_default(
     self: Tensor, other: Tensor, meta_outputs: TensorSpec = None
 ):
     """NB: aten::logical_or(Tensor self, Tensor other) -> Tensor"""
+    self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)
     return ge.LogicalOr(self, other)
 
 
