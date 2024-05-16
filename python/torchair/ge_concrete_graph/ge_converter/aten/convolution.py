@@ -214,7 +214,8 @@ def conveter_aten_convolution_default(
     if bias is not None:
         bias = dtype_promote(bias, target_dtype=meta_outputs.dtype)
     x, weight = dtype_promote(x, weight, target_dtype=meta_outputs.dtype)
-
+    if len(padding) == 1:
+        padding = padding * 3
     input_is_3d = False
     if meta_outputs.rank == 3:
         input_is_3d = True
