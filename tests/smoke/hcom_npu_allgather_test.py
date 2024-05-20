@@ -6,7 +6,7 @@ import torch
 import torch.distributed as dist
 import torch_npu
 import torchair as tng
-import torchair.ge_concrete_graph.ge_converter.experimental.hcom_allgather
+import torchair._ge_concrete_graph.ge_converter.experimental.hcom_allgather
 from torchair.core.utils import logger
 from torchair.configs.compiler_config import CompilerConfig
 

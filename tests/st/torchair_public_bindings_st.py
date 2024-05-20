@@ -35,10 +35,10 @@ def _discover_path_importables(pkg_pth, pkg_name):
 
 
 SKIP_CHECK_MODULES = [  # Do NOT add new modules to this list
-    'torchair.ge_concrete_graph.ge_converter',
-    'torchair.ge_concrete_graph.ge_apis',
-    'torchair.contrib',
-    'torchair.tf_concrete_graph',
+    'torchair._ge_concrete_graph.ge_converter',
+    'torchair._ge_concrete_graph.ge_apis',
+    'torchair._contrib',
+    'torchair._tf_concrete_graph',
 ]
 
 LEGACY_PUBLIC_APIS = [  # Do NOT add new modules to this list
@@ -124,43 +124,43 @@ LEGACY_PUBLIC_APIS = [  # Do NOT add new modules to this list
     'torchair.npu_fx_compiler.pretty_error_msg',  # should not be public
     'torchair.npu_fx_compiler.record_function',  # should not be public
     'torchair.npu_fx_compiler.summarize_fx_graph',  # should not be public
-    'torchair.utils.Callable',  # should not be public
-    'torchair.utils.DispatchKey',  # should not be public
-    'torchair.utils.InstructionTranslatorBase',  # should not be public
-    'torchair.utils.NNModuleVariable',  # should not be public
-    'torchair.utils.OpOverload',  # should not be public
-    'torchair.utils.OpOverloadPacket',  # should not be public
-    'torchair.utils.Optional',  # should not be public
-    'torchair.utils.Tensor',  # should not be public
-    'torchair.utils.Tuple',  # should not be public
-    'torchair.utils.TupleVariable',  # should not be public
-    'torchair.utils.Unsupported',  # should not be public
-    'torchair.utils.break_graph_if_unsupported',  # should not be public
-    'torchair.utils.lru_cache',  # should not be public
-    'torchair.utils.out_wrapper',  # should not be public
-    'torchair.utils.raw_batch_norm_func',  # should not be public
-    'torchair.utils.reduce',  # should not be public
-    'torchair.utils.refs_div',  # should not be public
-    'torchair.utils.stack_op',  # should not be public
-    'torchair.utils.wraps',  # should not be public
-    'torchair.utils.custom_aot_functions.Any',  # should not be public
-    'torchair.utils.custom_aot_functions.Callable',  # should not be public
-    'torchair.utils.custom_aot_functions.Dict',  # should not be public
-    'torchair.utils.custom_aot_functions.List',  # should not be public
-    'torchair.utils.custom_aot_functions.Optional',  # should not be public
-    'torchair.utils.custom_aot_functions.Tuple',  # should not be public
-    'torchair.utils.custom_aot_functions.Union',  # should not be public
-    'torchair.utils.custom_aot_functions.aot_export_module',  # should not be public
-    'torchair.utils.custom_aot_functions.call_func_with_args',  # should not be public
-    'torchair.utils.custom_aot_functions.make_boxed_func',  # should not be public
-    'torchair.utils.export_utils.GeGraph',  # should not be public
-    'torchair.utils.export_utils.GraphDef',  # should not be public
-    'torchair.utils.export_utils.ModelDef',  # should not be public
-    'torchair.utils.export_utils.PathManager',  # should not be public
-    'torchair.utils.export_utils.TypedDict',  # should not be public
-    'torchair.utils.export_utils.compat_as_bytes',  # should not be public
-    'torchair.utils.export_utils.dump_graph',  # should not be public
-    'torchair.utils.export_utils.torch_type_to_ge_type',  # should not be public
+    'torchair._utils.Callable',  # should not be public
+    'torchair._utils.DispatchKey',  # should not be public
+    'torchair._utils.InstructionTranslatorBase',  # should not be public
+    'torchair._utils.NNModuleVariable',  # should not be public
+    'torchair._utils.OpOverload',  # should not be public
+    'torchair._utils.OpOverloadPacket',  # should not be public
+    'torchair._utils.Optional',  # should not be public
+    'torchair._utils.Tensor',  # should not be public
+    'torchair._utils.Tuple',  # should not be public
+    'torchair._utils.TupleVariable',  # should not be public
+    'torchair._utils.Unsupported',  # should not be public
+    'torchair._utils.break_graph_if_unsupported',  # should not be public
+    'torchair._utils.lru_cache',  # should not be public
+    'torchair._utils.out_wrapper',  # should not be public
+    'torchair._utils.raw_batch_norm_func',  # should not be public
+    'torchair._utils.reduce',  # should not be public
+    'torchair._utils.refs_div',  # should not be public
+    'torchair._utils.stack_op',  # should not be public
+    'torchair._utils.wraps',  # should not be public
+    'torchair._utils.custom_aot_functions.Any',  # should not be public
+    'torchair._utils.custom_aot_functions.Callable',  # should not be public
+    'torchair._utils.custom_aot_functions.Dict',  # should not be public
+    'torchair._utils.custom_aot_functions.List',  # should not be public
+    'torchair._utils.custom_aot_functions.Optional',  # should not be public
+    'torchair._utils.custom_aot_functions.Tuple',  # should not be public
+    'torchair._utils.custom_aot_functions.Union',  # should not be public
+    'torchair._utils.custom_aot_functions.aot_export_module',  # should not be public
+    'torchair._utils.custom_aot_functions.call_func_with_args',  # should not be public
+    'torchair._utils.custom_aot_functions.make_boxed_func',  # should not be public
+    'torchair._utils.export_utils.GeGraph',  # should not be public
+    'torchair._utils.export_utils.GraphDef',  # should not be public
+    'torchair._utils.export_utils.ModelDef',  # should not be public
+    'torchair._utils.export_utils.PathManager',  # should not be public
+    'torchair._utils.export_utils.TypedDict',  # should not be public
+    'torchair._utils.export_utils.compat_as_bytes',  # should not be public
+    'torchair._utils.export_utils.dump_graph',  # should not be public
+    'torchair._utils.export_utils.torch_type_to_ge_type',  # should not be public
     'torchair.inference.cache_compiler.Callable',  # should not be public
     'torchair.inference.cache_compiler.CompilerConfig',  # should not be public
     'torchair.inference.cache_compiler.Dict',  # should not be public
@@ -171,24 +171,24 @@ LEGACY_PUBLIC_APIS = [  # Do NOT add new modules to this list
     'torchair.inference.cache_compiler.aot_module_simplified',  # should not be public
     'torchair.inference.cache_compiler.contextmanager',  # should not be public
     'torchair.inference.cache_compiler.dataclass',  # should not be public
-    'torchair.core.backend.Dict',  # should not be public
-    'torchair.core.backend.defaultdict',  # should not be public
-    'torchair.core.backend.finalize_graph_engine',  # should not be public
-    'torchair.core.backend.initialize_graph_engine',  # should not be public
-    'torchair.core.backend.pretty_error_msg',  # should not be public
-    'torchair.core.concrete_graph.ABC',  # should not be public
-    'torchair.core.concrete_graph.Any',  # should not be public
-    'torchair.core.concrete_graph.Argument',  # should not be public
-    'torchair.core.concrete_graph.Callable',  # should not be public
-    'torchair.core.concrete_graph.CompilerConfig',  # should not be public
-    'torchair.core.concrete_graph.Dict',  # should not be public
-    'torchair.core.concrete_graph.FakeTensor',  # should not be public
-    'torchair.core.concrete_graph.List',  # should not be public
-    'torchair.core.concrete_graph.Target',  # should not be public
-    'torchair.core.concrete_graph.Tensor',  # should not be public
-    'torchair.core.concrete_graph.Tuple',  # should not be public
-    'torchair.core.concrete_graph.Union',  # should not be public
-    'torchair.core.concrete_graph.abstractmethod',  # should not be public
+    'torchair.core._backend.Dict',  # should not be public
+    'torchair.core._backend.defaultdict',  # should not be public
+    'torchair.core._backend.finalize_graph_engine',  # should not be public
+    'torchair.core._backend.initialize_graph_engine',  # should not be public
+    'torchair.core._backend.pretty_error_msg',  # should not be public
+    'torchair.core._concrete_graph.ABC',  # should not be public
+    'torchair.core._concrete_graph.Any',  # should not be public
+    'torchair.core._concrete_graph.Argument',  # should not be public
+    'torchair.core._concrete_graph.Callable',  # should not be public
+    'torchair.core._concrete_graph.CompilerConfig',  # should not be public
+    'torchair.core._concrete_graph.Dict',  # should not be public
+    'torchair.core._concrete_graph.FakeTensor',  # should not be public
+    'torchair.core._concrete_graph.List',  # should not be public
+    'torchair.core._concrete_graph.Target',  # should not be public
+    'torchair.core._concrete_graph.Tensor',  # should not be public
+    'torchair.core._concrete_graph.Tuple',  # should not be public
+    'torchair.core._concrete_graph.Union',  # should not be public
+    'torchair.core._concrete_graph.abstractmethod',  # should not be public
     'torchair.core.utils.lru_cache',  # should not be public
     'torchair.configs.aoe_config.FileValue',  # should not be public
     'torchair.configs.aoe_config.MustExistedPathValue',  # should not be public
@@ -218,247 +218,247 @@ LEGACY_PUBLIC_APIS = [  # Do NOT add new modules to this list
     'torchair.configs.fusion_config.FileValue',  # should not be public
     'torchair.configs.fusion_config.NpuBaseConfig',  # should not be public
     'torchair.configs.option_base.pretty_error_msg',  # should not be public
-    'torchair.ge_concrete_graph.auto_generated_ge_raw_ops.Any',  # should not be public
-    'torchair.ge_concrete_graph.auto_generated_ge_raw_ops.Callable',  # should not be public
-    'torchair.ge_concrete_graph.auto_generated_ge_raw_ops.DataType',  # should not be public
-    'torchair.ge_concrete_graph.auto_generated_ge_raw_ops.Dict',  # should not be public
-    'torchair.ge_concrete_graph.auto_generated_ge_raw_ops.GraphDef',  # should not be public
-    'torchair.ge_concrete_graph.auto_generated_ge_raw_ops.List',  # should not be public
-    'torchair.ge_concrete_graph.auto_generated_ge_raw_ops.OpDef',  # should not be public
-    'torchair.ge_concrete_graph.auto_generated_ge_raw_ops.Optional',  # should not be public
-    'torchair.ge_concrete_graph.auto_generated_ge_raw_ops.Tensor',  # should not be public
-    'torchair.ge_concrete_graph.auto_generated_ge_raw_ops.TensorDef',  # should not be public
-    'torchair.ge_concrete_graph.auto_generated_ge_raw_ops.TensorDescriptor',  # should not be public
-    'torchair.ge_concrete_graph.auto_generated_ge_raw_ops.TensorSpec',  # should not be public
-    'torchair.ge_concrete_graph.auto_generated_ge_raw_ops.TensorType',  # should not be public
-    'torchair.ge_concrete_graph.auto_generated_ge_raw_ops.Tuple',  # should not be public
-    'torchair.ge_concrete_graph.auto_generated_ge_raw_ops.Union',  # should not be public
-    'torchair.ge_concrete_graph.auto_generated_ge_raw_ops.auto_convert_to_tensor',  # should not be public
-    'torchair.ge_concrete_graph.auto_generated_ge_raw_ops.compat_as_bytes',  # should not be public
-    'torchair.ge_concrete_graph.auto_generated_ge_raw_ops.compat_as_bytes_list',  # should not be public
-    'torchair.ge_concrete_graph.auto_generated_ge_raw_ops.get_default_ge_graph',  # should not be public
-    'torchair.ge_concrete_graph.auto_generated_ge_raw_ops.get_invalid_desc',  # should not be public
-    'torchair.ge_concrete_graph.auto_generated_ge_raw_ops.next_unique_name',  # should not be public
-    'torchair.ge_concrete_graph.auto_generated_ge_raw_ops.trans_to_list_list_float',  # should not be public
-    'torchair.ge_concrete_graph.auto_generated_ge_raw_ops.trans_to_list_list_int',  # should not be public
-    'torchair.ge_concrete_graph.compiled_model.Any',  # should not be public
-    'torchair.ge_concrete_graph.compiled_model.GeGraph',  # should not be public
-    'torchair.ge_concrete_graph.compiled_model.InputProcessing',  # should not be public
-    'torchair.ge_concrete_graph.compiled_model.ModelDef',  # should not be public
-    'torchair.ge_concrete_graph.compiled_model.TorchNpuGraph',  # should not be public
-    'torchair.ge_concrete_graph.compiled_model.initialize_graph_engine',  # should not be public
-    'torchair.ge_concrete_graph.compiled_model.unserialize_dict_attr',  # should not be public
-    'torchair.ge_concrete_graph.dynamic_output_ops.Any',  # should not be public
-    'torchair.ge_concrete_graph.dynamic_output_ops.Callable',  # should not be public
-    'torchair.ge_concrete_graph.dynamic_output_ops.DataType',  # should not be public
-    'torchair.ge_concrete_graph.dynamic_output_ops.Dict',  # should not be public
-    'torchair.ge_concrete_graph.dynamic_output_ops.GraphDef',  # should not be public
-    'torchair.ge_concrete_graph.dynamic_output_ops.List',  # should not be public
-    'torchair.ge_concrete_graph.dynamic_output_ops.OpDef',  # should not be public
-    'torchair.ge_concrete_graph.dynamic_output_ops.Optional',  # should not be public
-    'torchair.ge_concrete_graph.dynamic_output_ops.Tensor',  # should not be public
-    'torchair.ge_concrete_graph.dynamic_output_ops.TensorDef',  # should not be public
-    'torchair.ge_concrete_graph.dynamic_output_ops.TensorDescriptor',  # should not be public
-    'torchair.ge_concrete_graph.dynamic_output_ops.TensorSpec',  # should not be public
-    'torchair.ge_concrete_graph.dynamic_output_ops.Tuple',  # should not be public
-    'torchair.ge_concrete_graph.dynamic_output_ops.Union',  # should not be public
-    'torchair.ge_concrete_graph.dynamic_output_ops.auto_convert_to_tensor',  # should not be public
-    'torchair.ge_concrete_graph.dynamic_output_ops.compat_as_bytes',  # should not be public
-    'torchair.ge_concrete_graph.dynamic_output_ops.compat_as_bytes_list',  # should not be public
-    'torchair.ge_concrete_graph.dynamic_output_ops.get_default_ge_graph',  # should not be public
-    'torchair.ge_concrete_graph.dynamic_output_ops.next_unique_name',  # should not be public
-    'torchair.ge_concrete_graph.dynamic_output_ops.trans_to_list_list_float',  # should not be public
-    'torchair.ge_concrete_graph.dynamic_output_ops.trans_to_list_list_int',  # should not be public
-    'torchair.ge_concrete_graph.export_config_generete.GraphDef',  # should not be public
-    'torchair.ge_concrete_graph.export_config_generete.List',  # should not be public
-    'torchair.ge_concrete_graph.export_config_generete.PathManager',  # should not be public
-    'torchair.ge_concrete_graph.export_config_generete.Set',  # should not be public
-    'torchair.ge_concrete_graph.export_config_generete.get_export_rank_file_name',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.Any',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.Argument',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.Callable',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.CompilerConfig',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.ConcreteGraphBase',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.DataType',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.Dict',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.FakeTensor',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.Format',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.GeGraph',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.GeTensor',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.GraphDef',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.InputProcessing',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.List',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.OpDef',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.OpOverload',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.OpOverloadPacket',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.Placement',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.Support',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.Target',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.Tensor',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.TensorDef',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.TensorDescriptor',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.TensorSpec',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.TorchNpuGraph',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.Tuple',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.Union',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.ValuePack',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.assert_args_checkout',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.attr_scope',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.compat_as_bytes',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.compute_value_of_sym',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.contextmanager',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.convert_to_tensorboard',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.datetime',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.default_ge_graph',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.defaultdict',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.dump_graph',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.force_op_unknown_shape',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.frozen_data_by_constplaceholder',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.generate_config',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.generate_shape_from_tensor',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.generate_sym_exper',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.get_export_file_name',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.get_frozen_flag',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.get_sym_int_value',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.get_used_sym_value_mapping',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.initialize_graph_engine',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.is_fake',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.is_host_data_tensor',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.is_sym',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.make_export_graph',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.optimize_reference_op_redundant_copy',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.optimize_sym_pack',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.remove_dead_data_and_gen_input_mapping',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.replace_data_to_refdata',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.serialize_int_dict_attr',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.serialize_save_graph',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.serialize_str_dict_attr',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.sym_to_ge_dtype',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.torch_type_to_ge_proto_type',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.torch_type_to_ge_type',  # should not be public
-    'torchair.ge_concrete_graph.fx2ge_converter.update_op_input_name_from_mapping',  # should not be public
-    'torchair.ge_concrete_graph.ge_graph.Any',  # should not be public
-    'torchair.ge_concrete_graph.ge_graph.Argument',  # should not be public
-    'torchair.ge_concrete_graph.ge_graph.AttrDef',  # should not be public
-    'torchair.ge_concrete_graph.ge_graph.Callable',  # should not be public
-    'torchair.ge_concrete_graph.ge_graph.Dict',  # should not be public
-    'torchair.ge_concrete_graph.ge_graph.Enum',  # should not be public
-    'torchair.ge_concrete_graph.ge_graph.GraphDef',  # should not be public
-    'torchair.ge_concrete_graph.ge_graph.List',  # should not be public
-    'torchair.ge_concrete_graph.ge_graph.ModelDef',  # should not be public
-    'torchair.ge_concrete_graph.ge_graph.OpDef',  # should not be public
-    'torchair.ge_concrete_graph.ge_graph.Target',  # should not be public
-    'torchair.ge_concrete_graph.ge_graph.TensorDescriptor',  # should not be public
-    'torchair.ge_concrete_graph.ge_graph.Tuple',  # should not be public
-    'torchair.ge_concrete_graph.ge_graph.Union',  # should not be public
-    'torchair.ge_concrete_graph.ge_graph.defaultdict',  # should not be public
-    'torchair.ge_concrete_graph.ge_graph.no_dispatch',  # should not be public
-    'torchair.ge_concrete_graph.ge_ir_by_protoc_3_13_pb2.AttrDef',  # should not be public
-    'torchair.ge_concrete_graph.ge_ir_by_protoc_3_13_pb2.GraphDef',  # should not be public
-    'torchair.ge_concrete_graph.ge_ir_by_protoc_3_13_pb2.ModelDef',  # should not be public
-    'torchair.ge_concrete_graph.ge_ir_by_protoc_3_13_pb2.NamedAttrs',  # should not be public
-    'torchair.ge_concrete_graph.ge_ir_by_protoc_3_13_pb2.OpDef',  # should not be public
-    'torchair.ge_concrete_graph.ge_ir_by_protoc_3_13_pb2.ShapeDef',  # should not be public
-    'torchair.ge_concrete_graph.ge_ir_by_protoc_3_13_pb2.TensorDef',  # should not be public
-    'torchair.ge_concrete_graph.ge_ir_by_protoc_3_13_pb2.TensorDescriptor',  # should not be public
-    'torchair.ge_concrete_graph.ge_ir_by_protoc_3_19_pb2.AttrDef',  # should not be public
-    'torchair.ge_concrete_graph.ge_ir_by_protoc_3_19_pb2.GraphDef',  # should not be public
-    'torchair.ge_concrete_graph.ge_ir_by_protoc_3_19_pb2.ModelDef',  # should not be public
-    'torchair.ge_concrete_graph.ge_ir_by_protoc_3_19_pb2.NamedAttrs',  # should not be public
-    'torchair.ge_concrete_graph.ge_ir_by_protoc_3_19_pb2.OpDef',  # should not be public
-    'torchair.ge_concrete_graph.ge_ir_by_protoc_3_19_pb2.ShapeDef',  # should not be public
-    'torchair.ge_concrete_graph.ge_ir_by_protoc_3_19_pb2.TensorDef',  # should not be public
-    'torchair.ge_concrete_graph.ge_ir_by_protoc_3_19_pb2.TensorDescriptor',  # should not be public
-    'torchair.ge_concrete_graph.ge_ir_pb2.AttrDef',  # should not be public
-    'torchair.ge_concrete_graph.ge_ir_pb2.GraphDef',  # should not be public
-    'torchair.ge_concrete_graph.ge_ir_pb2.ModelDef',  # should not be public
-    'torchair.ge_concrete_graph.ge_ir_pb2.OpDef',  # should not be public
-    'torchair.ge_concrete_graph.ge_ir_pb2.ShapeDef',  # should not be public
-    'torchair.ge_concrete_graph.ge_ir_pb2.TensorDef',  # should not be public
-    'torchair.ge_concrete_graph.ge_ir_pb2.TensorDescriptor',  # should not be public
-    'torchair.ge_concrete_graph.graph_pass.Any',  # should not be public
-    'torchair.ge_concrete_graph.graph_pass.Callable',  # should not be public
-    'torchair.ge_concrete_graph.graph_pass.Dict',  # should not be public
-    'torchair.ge_concrete_graph.graph_pass.GeGraph',  # should not be public
-    'torchair.ge_concrete_graph.graph_pass.GeTensor',  # should not be public
-    'torchair.ge_concrete_graph.graph_pass.GraphDef',  # should not be public
-    'torchair.ge_concrete_graph.graph_pass.List',  # should not be public
-    'torchair.ge_concrete_graph.graph_pass.OpDef',  # should not be public
-    'torchair.ge_concrete_graph.graph_pass.Placement',  # should not be public
-    'torchair.ge_concrete_graph.graph_pass.TensorDef',  # should not be public
-    'torchair.ge_concrete_graph.graph_pass.TensorDescriptor',  # should not be public
-    'torchair.ge_concrete_graph.graph_pass.Tuple',  # should not be public
-    'torchair.ge_concrete_graph.graph_pass.Union',  # should not be public
-    'torchair.ge_concrete_graph.graph_pass.compat_as_bytes',  # should not be public
-    'torchair.ge_concrete_graph.graph_pass.defaultdict',  # should not be public
-    'torchair.ge_concrete_graph.graph_pass.generate_shape_from_tensor',  # should not be public
-    'torchair.ge_concrete_graph.graph_pass.namedtuple',  # should not be public
-    'torchair.ge_concrete_graph.graph_pass.torch_type_to_ge_type',  # should not be public
-    'torchair.ge_concrete_graph.graph_pass.update_op_input_name_from_mapping',  # should not be public
-    'torchair.ge_concrete_graph.utils.Any',  # should not be public
-    'torchair.ge_concrete_graph.utils.Callable',  # should not be public
-    'torchair.ge_concrete_graph.utils.DataType',  # should not be public
-    'torchair.ge_concrete_graph.utils.Dict',  # should not be public
-    'torchair.ge_concrete_graph.utils.GraphDef',  # should not be public
-    'torchair.ge_concrete_graph.utils.List',  # should not be public
-    'torchair.ge_concrete_graph.utils.PathManager',  # should not be public
-    'torchair.ge_concrete_graph.utils.Tensor',  # should not be public
-    'torchair.ge_concrete_graph.utils.Tuple',  # should not be public
-    'torchair.ge_concrete_graph.utils.Union',  # should not be public
-    'torchair.ge_concrete_graph.utils.compat_as_bytes',  # should not be public
-    'torchair.ge_concrete_graph.utils.is_sym',  # should not be public
-    'torchair.ge_concrete_graph.utils.torch_type_to_ge_type',  # should not be public
-    'torchair.utils.custom_aot_functions.Any',  # should not be public
-    'torchair.utils.custom_aot_functions.Callable',  # should not be public
-    'torchair.utils.custom_aot_functions.Dict',  # should not be public
-    'torchair.utils.custom_aot_functions.List',  # should not be public
-    'torchair.utils.custom_aot_functions.Optional',  # should not be public
-    'torchair.utils.custom_aot_functions.Tuple',  # should not be public
-    'torchair.utils.custom_aot_functions.Union',  # should not be public
-    'torchair.utils.custom_aot_functions.aot_export_module',  # should not be public
-    'torchair.utils.custom_aot_functions.call_func_with_args',  # should not be public
-    'torchair.utils.custom_aot_functions.make_boxed_func',  # should not be public
-    'torchair.utils.export_utils.GeGraph',  # should not be public
-    'torchair.utils.export_utils.GraphDef',  # should not be public
-    'torchair.utils.export_utils.ModelDef',  # should not be public
-    'torchair.utils.export_utils.PathManager',  # should not be public
-    'torchair.utils.export_utils.TypedDict',  # should not be public
-    'torchair.utils.export_utils.compat_as_bytes',  # should not be public
-    'torchair.utils.export_utils.dump_graph',  # should not be public
-    'torchair.utils.export_utils.torch_type_to_ge_type',  # should not be public
-    'torchair.utils.npu_fx_passes.joint_graph.init_once_fakemode',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_fusion_attention.filter_nodes',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_fusion_attention.inference_graph',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_fusion_attention.register_joint_graph_pass',
+    'torchair._ge_concrete_graph.auto_generated_ge_raw_ops.Any',  # should not be public
+    'torchair._ge_concrete_graph.auto_generated_ge_raw_ops.Callable',  # should not be public
+    'torchair._ge_concrete_graph.auto_generated_ge_raw_ops.DataType',  # should not be public
+    'torchair._ge_concrete_graph.auto_generated_ge_raw_ops.Dict',  # should not be public
+    'torchair._ge_concrete_graph.auto_generated_ge_raw_ops.GraphDef',  # should not be public
+    'torchair._ge_concrete_graph.auto_generated_ge_raw_ops.List',  # should not be public
+    'torchair._ge_concrete_graph.auto_generated_ge_raw_ops.OpDef',  # should not be public
+    'torchair._ge_concrete_graph.auto_generated_ge_raw_ops.Optional',  # should not be public
+    'torchair._ge_concrete_graph.auto_generated_ge_raw_ops.Tensor',  # should not be public
+    'torchair._ge_concrete_graph.auto_generated_ge_raw_ops.TensorDef',  # should not be public
+    'torchair._ge_concrete_graph.auto_generated_ge_raw_ops.TensorDescriptor',  # should not be public
+    'torchair._ge_concrete_graph.auto_generated_ge_raw_ops.TensorSpec',  # should not be public
+    'torchair._ge_concrete_graph.auto_generated_ge_raw_ops.TensorType',  # should not be public
+    'torchair._ge_concrete_graph.auto_generated_ge_raw_ops.Tuple',  # should not be public
+    'torchair._ge_concrete_graph.auto_generated_ge_raw_ops.Union',  # should not be public
+    'torchair._ge_concrete_graph.auto_generated_ge_raw_ops.auto_convert_to_tensor',  # should not be public
+    'torchair._ge_concrete_graph.auto_generated_ge_raw_ops.compat_as_bytes',  # should not be public
+    'torchair._ge_concrete_graph.auto_generated_ge_raw_ops.compat_as_bytes_list',  # should not be public
+    'torchair._ge_concrete_graph.auto_generated_ge_raw_ops.get_default_ge_graph',  # should not be public
+    'torchair._ge_concrete_graph.auto_generated_ge_raw_ops.get_invalid_desc',  # should not be public
+    'torchair._ge_concrete_graph.auto_generated_ge_raw_ops.next_unique_name',  # should not be public
+    'torchair._ge_concrete_graph.auto_generated_ge_raw_ops.trans_to_list_list_float',  # should not be public
+    'torchair._ge_concrete_graph.auto_generated_ge_raw_ops.trans_to_list_list_int',  # should not be public
+    'torchair._ge_concrete_graph.compiled_model.Any',  # should not be public
+    'torchair._ge_concrete_graph.compiled_model.GeGraph',  # should not be public
+    'torchair._ge_concrete_graph.compiled_model.InputProcessing',  # should not be public
+    'torchair._ge_concrete_graph.compiled_model.ModelDef',  # should not be public
+    'torchair._ge_concrete_graph.compiled_model.TorchNpuGraph',  # should not be public
+    'torchair._ge_concrete_graph.compiled_model.initialize_graph_engine',  # should not be public
+    'torchair._ge_concrete_graph.compiled_model.unserialize_dict_attr',  # should not be public
+    'torchair._ge_concrete_graph.dynamic_output_ops.Any',  # should not be public
+    'torchair._ge_concrete_graph.dynamic_output_ops.Callable',  # should not be public
+    'torchair._ge_concrete_graph.dynamic_output_ops.DataType',  # should not be public
+    'torchair._ge_concrete_graph.dynamic_output_ops.Dict',  # should not be public
+    'torchair._ge_concrete_graph.dynamic_output_ops.GraphDef',  # should not be public
+    'torchair._ge_concrete_graph.dynamic_output_ops.List',  # should not be public
+    'torchair._ge_concrete_graph.dynamic_output_ops.OpDef',  # should not be public
+    'torchair._ge_concrete_graph.dynamic_output_ops.Optional',  # should not be public
+    'torchair._ge_concrete_graph.dynamic_output_ops.Tensor',  # should not be public
+    'torchair._ge_concrete_graph.dynamic_output_ops.TensorDef',  # should not be public
+    'torchair._ge_concrete_graph.dynamic_output_ops.TensorDescriptor',  # should not be public
+    'torchair._ge_concrete_graph.dynamic_output_ops.TensorSpec',  # should not be public
+    'torchair._ge_concrete_graph.dynamic_output_ops.Tuple',  # should not be public
+    'torchair._ge_concrete_graph.dynamic_output_ops.Union',  # should not be public
+    'torchair._ge_concrete_graph.dynamic_output_ops.auto_convert_to_tensor',  # should not be public
+    'torchair._ge_concrete_graph.dynamic_output_ops.compat_as_bytes',  # should not be public
+    'torchair._ge_concrete_graph.dynamic_output_ops.compat_as_bytes_list',  # should not be public
+    'torchair._ge_concrete_graph.dynamic_output_ops.get_default_ge_graph',  # should not be public
+    'torchair._ge_concrete_graph.dynamic_output_ops.next_unique_name',  # should not be public
+    'torchair._ge_concrete_graph.dynamic_output_ops.trans_to_list_list_float',  # should not be public
+    'torchair._ge_concrete_graph.dynamic_output_ops.trans_to_list_list_int',  # should not be public
+    'torchair._ge_concrete_graph.export_config_generete.GraphDef',  # should not be public
+    'torchair._ge_concrete_graph.export_config_generete.List',  # should not be public
+    'torchair._ge_concrete_graph.export_config_generete.PathManager',  # should not be public
+    'torchair._ge_concrete_graph.export_config_generete.Set',  # should not be public
+    'torchair._ge_concrete_graph.export_config_generete.get_export_rank_file_name',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.Any',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.Argument',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.Callable',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.CompilerConfig',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.ConcreteGraphBase',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.DataType',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.Dict',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.FakeTensor',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.Format',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.GeGraph',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.GeTensor',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.GraphDef',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.InputProcessing',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.List',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.OpDef',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.OpOverload',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.OpOverloadPacket',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.Placement',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.Support',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.Target',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.Tensor',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.TensorDef',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.TensorDescriptor',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.TensorSpec',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.TorchNpuGraph',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.Tuple',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.Union',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.ValuePack',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.assert_args_checkout',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.attr_scope',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.compat_as_bytes',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.compute_value_of_sym',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.contextmanager',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.convert_to_tensorboard',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.datetime',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.default_ge_graph',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.defaultdict',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.dump_graph',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.force_op_unknown_shape',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.frozen_data_by_constplaceholder',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.generate_config',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.generate_shape_from_tensor',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.generate_sym_exper',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.get_export_file_name',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.get_frozen_flag',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.get_sym_int_value',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.get_used_sym_value_mapping',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.initialize_graph_engine',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.is_fake',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.is_host_data_tensor',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.is_sym',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.make_export_graph',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.optimize_reference_op_redundant_copy',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.optimize_sym_pack',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.remove_dead_data_and_gen_input_mapping',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.replace_data_to_refdata',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.serialize_int_dict_attr',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.serialize_save_graph',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.serialize_str_dict_attr',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.sym_to_ge_dtype',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.torch_type_to_ge_proto_type',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.torch_type_to_ge_type',  # should not be public
+    'torchair._ge_concrete_graph.fx2ge_converter.update_op_input_name_from_mapping',  # should not be public
+    'torchair._ge_concrete_graph.ge_graph.Any',  # should not be public
+    'torchair._ge_concrete_graph.ge_graph.Argument',  # should not be public
+    'torchair._ge_concrete_graph.ge_graph.AttrDef',  # should not be public
+    'torchair._ge_concrete_graph.ge_graph.Callable',  # should not be public
+    'torchair._ge_concrete_graph.ge_graph.Dict',  # should not be public
+    'torchair._ge_concrete_graph.ge_graph.Enum',  # should not be public
+    'torchair._ge_concrete_graph.ge_graph.GraphDef',  # should not be public
+    'torchair._ge_concrete_graph.ge_graph.List',  # should not be public
+    'torchair._ge_concrete_graph.ge_graph.ModelDef',  # should not be public
+    'torchair._ge_concrete_graph.ge_graph.OpDef',  # should not be public
+    'torchair._ge_concrete_graph.ge_graph.Target',  # should not be public
+    'torchair._ge_concrete_graph.ge_graph.TensorDescriptor',  # should not be public
+    'torchair._ge_concrete_graph.ge_graph.Tuple',  # should not be public
+    'torchair._ge_concrete_graph.ge_graph.Union',  # should not be public
+    'torchair._ge_concrete_graph.ge_graph.defaultdict',  # should not be public
+    'torchair._ge_concrete_graph.ge_graph.no_dispatch',  # should not be public
+    'torchair._ge_concrete_graph.ge_ir_by_protoc_3_13_pb2.AttrDef',  # should not be public
+    'torchair._ge_concrete_graph.ge_ir_by_protoc_3_13_pb2.GraphDef',  # should not be public
+    'torchair._ge_concrete_graph.ge_ir_by_protoc_3_13_pb2.ModelDef',  # should not be public
+    'torchair._ge_concrete_graph.ge_ir_by_protoc_3_13_pb2.NamedAttrs',  # should not be public
+    'torchair._ge_concrete_graph.ge_ir_by_protoc_3_13_pb2.OpDef',  # should not be public
+    'torchair._ge_concrete_graph.ge_ir_by_protoc_3_13_pb2.ShapeDef',  # should not be public
+    'torchair._ge_concrete_graph.ge_ir_by_protoc_3_13_pb2.TensorDef',  # should not be public
+    'torchair._ge_concrete_graph.ge_ir_by_protoc_3_13_pb2.TensorDescriptor',  # should not be public
+    'torchair._ge_concrete_graph.ge_ir_by_protoc_3_19_pb2.AttrDef',  # should not be public
+    'torchair._ge_concrete_graph.ge_ir_by_protoc_3_19_pb2.GraphDef',  # should not be public
+    'torchair._ge_concrete_graph.ge_ir_by_protoc_3_19_pb2.ModelDef',  # should not be public
+    'torchair._ge_concrete_graph.ge_ir_by_protoc_3_19_pb2.NamedAttrs',  # should not be public
+    'torchair._ge_concrete_graph.ge_ir_by_protoc_3_19_pb2.OpDef',  # should not be public
+    'torchair._ge_concrete_graph.ge_ir_by_protoc_3_19_pb2.ShapeDef',  # should not be public
+    'torchair._ge_concrete_graph.ge_ir_by_protoc_3_19_pb2.TensorDef',  # should not be public
+    'torchair._ge_concrete_graph.ge_ir_by_protoc_3_19_pb2.TensorDescriptor',  # should not be public
+    'torchair._ge_concrete_graph.ge_ir_pb2.AttrDef',  # should not be public
+    'torchair._ge_concrete_graph.ge_ir_pb2.GraphDef',  # should not be public
+    'torchair._ge_concrete_graph.ge_ir_pb2.ModelDef',  # should not be public
+    'torchair._ge_concrete_graph.ge_ir_pb2.OpDef',  # should not be public
+    'torchair._ge_concrete_graph.ge_ir_pb2.ShapeDef',  # should not be public
+    'torchair._ge_concrete_graph.ge_ir_pb2.TensorDef',  # should not be public
+    'torchair._ge_concrete_graph.ge_ir_pb2.TensorDescriptor',  # should not be public
+    'torchair._ge_concrete_graph.graph_pass.Any',  # should not be public
+    'torchair._ge_concrete_graph.graph_pass.Callable',  # should not be public
+    'torchair._ge_concrete_graph.graph_pass.Dict',  # should not be public
+    'torchair._ge_concrete_graph.graph_pass.GeGraph',  # should not be public
+    'torchair._ge_concrete_graph.graph_pass.GeTensor',  # should not be public
+    'torchair._ge_concrete_graph.graph_pass.GraphDef',  # should not be public
+    'torchair._ge_concrete_graph.graph_pass.List',  # should not be public
+    'torchair._ge_concrete_graph.graph_pass.OpDef',  # should not be public
+    'torchair._ge_concrete_graph.graph_pass.Placement',  # should not be public
+    'torchair._ge_concrete_graph.graph_pass.TensorDef',  # should not be public
+    'torchair._ge_concrete_graph.graph_pass.TensorDescriptor',  # should not be public
+    'torchair._ge_concrete_graph.graph_pass.Tuple',  # should not be public
+    'torchair._ge_concrete_graph.graph_pass.Union',  # should not be public
+    'torchair._ge_concrete_graph.graph_pass.compat_as_bytes',  # should not be public
+    'torchair._ge_concrete_graph.graph_pass.defaultdict',  # should not be public
+    'torchair._ge_concrete_graph.graph_pass.generate_shape_from_tensor',  # should not be public
+    'torchair._ge_concrete_graph.graph_pass.namedtuple',  # should not be public
+    'torchair._ge_concrete_graph.graph_pass.torch_type_to_ge_type',  # should not be public
+    'torchair._ge_concrete_graph.graph_pass.update_op_input_name_from_mapping',  # should not be public
+    'torchair._ge_concrete_graph.utils.Any',  # should not be public
+    'torchair._ge_concrete_graph.utils.Callable',  # should not be public
+    'torchair._ge_concrete_graph.utils.DataType',  # should not be public
+    'torchair._ge_concrete_graph.utils.Dict',  # should not be public
+    'torchair._ge_concrete_graph.utils.GraphDef',  # should not be public
+    'torchair._ge_concrete_graph.utils.List',  # should not be public
+    'torchair._ge_concrete_graph.utils.PathManager',  # should not be public
+    'torchair._ge_concrete_graph.utils.Tensor',  # should not be public
+    'torchair._ge_concrete_graph.utils.Tuple',  # should not be public
+    'torchair._ge_concrete_graph.utils.Union',  # should not be public
+    'torchair._ge_concrete_graph.utils.compat_as_bytes',  # should not be public
+    'torchair._ge_concrete_graph.utils.is_sym',  # should not be public
+    'torchair._ge_concrete_graph.utils.torch_type_to_ge_type',  # should not be public
+    'torchair._utils.custom_aot_functions.Any',  # should not be public
+    'torchair._utils.custom_aot_functions.Callable',  # should not be public
+    'torchair._utils.custom_aot_functions.Dict',  # should not be public
+    'torchair._utils.custom_aot_functions.List',  # should not be public
+    'torchair._utils.custom_aot_functions.Optional',  # should not be public
+    'torchair._utils.custom_aot_functions.Tuple',  # should not be public
+    'torchair._utils.custom_aot_functions.Union',  # should not be public
+    'torchair._utils.custom_aot_functions.aot_export_module',  # should not be public
+    'torchair._utils.custom_aot_functions.call_func_with_args',  # should not be public
+    'torchair._utils.custom_aot_functions.make_boxed_func',  # should not be public
+    'torchair._utils.export_utils.GeGraph',  # should not be public
+    'torchair._utils.export_utils.GraphDef',  # should not be public
+    'torchair._utils.export_utils.ModelDef',  # should not be public
+    'torchair._utils.export_utils.PathManager',  # should not be public
+    'torchair._utils.export_utils.TypedDict',  # should not be public
+    'torchair._utils.export_utils.compat_as_bytes',  # should not be public
+    'torchair._utils.export_utils.dump_graph',  # should not be public
+    'torchair._utils.export_utils.torch_type_to_ge_type',  # should not be public
+    'torchair._utils.npu_fx_passes.joint_graph.init_once_fakemode',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_fusion_attention.filter_nodes',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_fusion_attention.inference_graph',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_fusion_attention.register_joint_graph_pass',
     # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_fusion_attention.register_replacement',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_fusion_attention.training_graph',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_rms_norm.filter_nodes',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_rms_norm.inference_graph',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_rms_norm.register_joint_graph_pass',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_rms_norm.register_replacement',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_rms_norm.training_graph',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_rotary_mul.filter_nodes',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_rotary_mul.inference_graph',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_rotary_mul.register_joint_graph_pass',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_rotary_mul.register_replacement',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_rotary_mul.training_graph',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_fusion_attention.filter_nodes',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_fusion_attention.inference_graph',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_fusion_attention.register_joint_graph_pass',
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_fusion_attention.register_replacement',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_fusion_attention.training_graph',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_rms_norm.filter_nodes',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_rms_norm.inference_graph',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_rms_norm.register_joint_graph_pass',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_rms_norm.register_replacement',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_rms_norm.training_graph',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_rotary_mul.filter_nodes',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_rotary_mul.inference_graph',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_rotary_mul.register_joint_graph_pass',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_rotary_mul.register_replacement',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_rotary_mul.training_graph',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_fusion_attention.filter_nodes',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_fusion_attention.inference_graph',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_fusion_attention.register_joint_graph_pass',
     # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_fusion_attention.register_replacement',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_fusion_attention.training_graph',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_rms_norm.filter_nodes',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_rms_norm.inference_graph',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_rms_norm.register_joint_graph_pass',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_rms_norm.register_replacement',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_rms_norm.training_graph',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_rotary_mul.filter_nodes',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_rotary_mul.inference_graph',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_rotary_mul.register_joint_graph_pass',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_rotary_mul.register_replacement',  # should be public
-    'torchair.utils.npu_fx_passes.joint_graph_passes.npu_rotary_mul.training_graph',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_fusion_attention.register_replacement',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_fusion_attention.training_graph',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_rms_norm.filter_nodes',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_rms_norm.inference_graph',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_rms_norm.register_joint_graph_pass',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_rms_norm.register_replacement',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_rms_norm.training_graph',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_rotary_mul.filter_nodes',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_rotary_mul.inference_graph',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_rotary_mul.register_joint_graph_pass',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_rotary_mul.register_replacement',  # should be public
+    'torchair._utils.npu_fx_passes.joint_graph_passes.npu_rotary_mul.training_graph',  # should be public
 ]
 
 

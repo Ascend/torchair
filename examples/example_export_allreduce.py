@@ -7,7 +7,7 @@ import torch.distributed as dist
 
 import torchair
 from torchair.core.utils import logger
-import torchair.ge_concrete_graph.ge_converter.experimental.hcom_allreduce
+import torchair._ge_concrete_graph.ge_converter.experimental.hcom_allreduce
 
 logger.setLevel(logging.DEBUG)
 

@@ -4,7 +4,7 @@ import torch
 import torch_npu
 
 import torchair as tng
-from torchair.ge_concrete_graph import ge_apis as ge
+from torchair._ge_concrete_graph import ge_apis as ge
 from torchair.configs.compiler_config import CompilerConfig
 
 config = CompilerConfig()

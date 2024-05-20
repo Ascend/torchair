@@ -6,7 +6,7 @@ from torchair.npu_fx_compiler import get_compiler
 from torchair.npu_fx_compiler import get_npu_backend
 from torchair.dynamo_export import dynamo_export
 from torchair.configs.compiler_config import CompilerConfig
-from torchair.ge_concrete_graph import ge_converter
+from torchair._ge_concrete_graph import ge_converter
 from torchair.experimental.inference import use_internal_format_weight
 from torchair.core.utils import logger
 

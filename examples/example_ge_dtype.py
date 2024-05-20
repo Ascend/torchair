@@ -1,7 +1,7 @@
 import torch
 import torch_npu
 import torchair
-from torchair.ge_concrete_graph import ge_graph as grp
+from torchair._ge_concrete_graph import ge_graph as grp
 
 dtype_torch = [torch.float32, torch.int32, torch.bool, torch.float16, 
                torch.int8, torch.uint8, torch.int16, torch.int64,

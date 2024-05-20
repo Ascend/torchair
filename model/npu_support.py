@@ -314,7 +314,7 @@ def _patch_model_5():
     # None-public interface, just for test.
     # This env is added after torchair's init,
     # so need to call break_graph patch again,
-    torchair.utils.npu_patch_break_graph()
+    torchair._utils.npu_patch_break_graph()
 
 
 @register_patch("hf_Longformer")

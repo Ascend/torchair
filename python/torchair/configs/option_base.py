@@ -1,7 +1,7 @@
 """NPU basic configurations"""
 import os
 
-from torchair.utils.error_code import pretty_error_msg
+from torchair._utils.error_code import pretty_error_msg
 
 
 class OptionValue:

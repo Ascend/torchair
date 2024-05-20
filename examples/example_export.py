@@ -6,7 +6,7 @@ from torch._functorch.aot_autograd import aot_module_simplified
 import torch
 
 import torchair
-from torchair.ge_concrete_graph import ge_apis as ge
+from torchair._ge_concrete_graph import ge_apis as ge
 from torchair.configs.compiler_config import CompilerConfig
 
 from torchair.core.utils import logger
