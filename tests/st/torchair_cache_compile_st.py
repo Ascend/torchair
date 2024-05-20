@@ -377,6 +377,43 @@ class CacheCompileSt(unittest.TestCase):
         with forbidden_attr(ModelCacheSaver, '__call__'):
             model_match_cache(x)  # cache hint
 
+    def test_cache_hint_for_anonymous_buffer(self):
+        class AnonymousModule(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.buffer = torch.ones(2, 2)
+
+            def forward(self, x):
+                return torch.add(x, self.buffer)
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.anonymous = AnonymousModule()
+                self.anonymous_buffer = torch.ones(2, 2)
+                self.cached_forward = torchair.inference.cache_compile(self._forward)
+
+            def forward(self, x):
+                return self.cached_forward(x)
+
+            def _forward(self, x):
+                return self.anonymous(torch.add(x, self.anonymous_buffer))
+
+        model = Model()
+
+        cache_dir = CompiledModel.get_cache_bin(model._forward)
+        ModelCacheSaver.remove_cache(cache_dir)
+
+        prompt1 = torch.ones(2, 2),
+        prompt2 = torch.ones(2, 2),
+        model(*prompt1)
+        model(*prompt2)
+
+        model_match_cache = Model()
+        with forbidden_attr(ModelCacheSaver, '__call__'):
+            model_match_cache(*prompt1)  # cache hint
+            model_match_cache(*prompt2)  # cache hint
+
 
 if __name__ == '__main__':
     unittest.main()

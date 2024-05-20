@@ -178,14 +178,8 @@ class CompiledModel:
     def recompile(self, config: CompilerConfig):
         raise RuntimeError(f"Recompile {self} is not supported yet")
 
-    def rebase(self, model, global_vars=None, closure=None):
+    def _get_used_params(self, model):
         log = logger if logger.isEnabledFor(logging.DEBUG) else None
-        if log is not None:
-            log.debug(f"Rebasing {self.meta} onto {type(model)}")
-
-        fn_names = [f for f in self.compiled_fn.co_names if f.startswith("__compiled_fn")]
-        if len(fn_names) != 1:
-            raise ValueError(f"Expected 1 compiled function, found {fn_names}")
 
         model_params = {
             **dict(model.named_parameters()),
@@ -195,14 +189,35 @@ class CompiledModel:
         parameters = []
         for name, is_parameter in self.compiled_fx.input_parameters:
             type_str = 'parameter' if is_parameter else 'buffer'
-            if name not in model_params:
-                raise ValueError(f"{type_str} {name} not found in model {model}")
             if log is not None:
                 log.debug(f"Prefetch input {len(parameters)} from {type_str} {name}")
-            parameters.append(model_params[name])
+            if name in model_params:
+                parameters.append(model_params[name])
+            else:
+                attr_road = name.split('.')
+                if attr_road[0] != "L['self']":
+                    raise ValueError(f"{type_str} {name} not supported now")
+                attr_value = model
+                for attr in attr_road[1:]:
+                    if not hasattr(attr_value, attr):
+                        raise ValueError(f"{type_str} {name} not found in model {model}")
+                    attr_value = getattr(attr_value, attr)
+                parameters.append(attr_value)
+        return parameters
+
+    def rebase(self, model, global_vars=None, closure=None):
+        log = logger if logger.isEnabledFor(logging.DEBUG) else None
+        if log is not None:
+            log.debug(f"Rebasing {self.meta} onto {type(model)}")
+
+        fn_names = [f for f in self.compiled_fn.co_names if f.startswith("__compiled_fn")]
+        if len(fn_names) != 1:
+            raise ValueError(f"Expected 1 compiled function, found {fn_names}")
 
         with timer(f"{self.name} compile ge graph"):
             ge_kernel = _compile_ge_kernel(self.compiled_fx.py_code)
+
+        parameters = self._get_used_params(model)
 
         def compiled_fn(*args):
             full_args = []
@@ -327,6 +342,8 @@ class ModelCacheSaver:
         self._code_id = None
         self.input_parameters: List[Tuple[str, bool]] = []
 
+        self.errors = []  # for record caching errors
+
     def save_reserved_params(self, gm: torch.fx.GraphModule):
         if self.model is None:
             return
@@ -335,16 +352,23 @@ class ModelCacheSaver:
             **dict(gm.named_parameters(remove_duplicate=False)),
             **dict(gm.named_buffers(remove_duplicate=False))
         }
-        flat_gm_params, _ = pytree.tree_flatten(gm_params)
         model_params = {
             **dict(self.model.named_parameters()),
             **dict(self.model.named_buffers())
         }
-        for param in flat_gm_params:
-            for name, model_param in model_params.items():
+        for name, param in gm_params.items():
+            found_named_param = False
+            for source, model_param in model_params.items():
                 if param is model_param:
-                    self.input_parameters.append((name, isinstance(param, torch.nn.Parameter)))
+                    self.input_parameters.append((source, isinstance(param, torch.nn.Parameter)))
+                    found_named_param = True
                     break
+            if not found_named_param:
+                try:
+                    source = getattr(gm, '_param_name_to_source')[name].name()
+                    self.input_parameters.append((source, False))
+                except AttributeError or KeyError or ValueError as e:
+                    self.errors.append(f"Failed to find source for gm parameter {name} as {e}")
 
     def save_compiled_fx(self, fx: torch.fx.GraphModule, example_inputs: List[torch.Tensor], config: CompilerConfig,
                          py_code: str):
@@ -375,6 +399,9 @@ class ModelCacheSaver:
             logger.warning_once(
                 f"Skip cache as {self.name} recompiled, set torch._logging.set_logs(recompiles=True) for details")
             self.__class__.remove_cache(self.cache_bin)
+            return
+        if len(self.errors) > 0:
+            logger.warning(f"Skip cache {self.name} as following errors: {self.errors}")
             return
         self._code_id = code_id
         self.compiled_model.compiled_fn = ctypes.cast(code_id, ctypes.py_object).value
