@@ -1,6 +1,8 @@
-from torchair.configs.option_base import OptionValue
-from torchair.configs.option_base import NpuBaseConfig
+from torchair.configs._option_base import OptionValue
+from torchair.configs._option_base import NpuBaseConfig
 from datetime import datetime
+
+__all__ = []
 
 
 def _timestamp():
@@ -50,7 +52,7 @@ class _FxSummary(_DebugBase):
         super(_FxSummary, self).__init__()
 
 
-class DebugConfig(NpuBaseConfig):
+class _DebugConfig(NpuBaseConfig):
     """Config for aoe function"""
 
     def __init__(self):
@@ -58,7 +60,7 @@ class DebugConfig(NpuBaseConfig):
         self.data_dump = _DataDump()
         self.fx_summary = _FxSummary()
 
-        super(DebugConfig, self).__init__()
+        super(_DebugConfig, self).__init__()
 
     def as_dict(self):
         return {}, {}

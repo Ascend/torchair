@@ -1,8 +1,10 @@
-from torchair.configs.option_base import OptionValue, IntRangeValue
-from torchair.configs.option_base import NpuBaseConfig
+from torchair.configs._option_base import OptionValue, IntRangeValue
+from torchair.configs._option_base import NpuBaseConfig
+
+__all__ = []
 
 
-class ExperimentalConfig(NpuBaseConfig):
+class _ExperimentalConfig(NpuBaseConfig):
     """Config for experimental"""
 
     def __init__(self):
@@ -19,7 +21,7 @@ class ExperimentalConfig(NpuBaseConfig):
         self.topology_sorting_strategy = OptionValue("DFS", ["BFS", "DFS", "RDFS"])
         self.enable_ref_data = OptionValue(False, [True, False])
 
-        super(ExperimentalConfig, self).__init__()
+        super(_ExperimentalConfig, self).__init__()
 
     def as_dict(self):
         global_experiment_option = {}

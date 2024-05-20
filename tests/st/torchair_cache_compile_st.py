@@ -10,9 +10,9 @@ import torch
 import torchair
 from torchair.core.utils import logger
 import torchair.inference
-from torchair.inference.cache_compiler import CompiledModel, ModelCacheSaver
-from torchair.inference.cache_compiler import _NoGuardCompiledFunction as NoGuardCompiledFunction
-from torchair.inference.cache_compiler import _NoGuardCompiledMethod as NoGuardCompiledMethod
+from torchair.inference._cache_compiler import CompiledModel, ModelCacheSaver
+from torchair.inference._cache_compiler import _NoGuardCompiledFunction as NoGuardCompiledFunction
+from torchair.inference._cache_compiler import _NoGuardCompiledMethod as NoGuardCompiledMethod
 logger.setLevel(logging.DEBUG)
 
 class PatchAttr:

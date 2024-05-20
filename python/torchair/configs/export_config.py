@@ -1,17 +1,19 @@
-from torchair.configs.option_base import OptionValue, MustExistedPathValue
-from torchair.configs.option_base import NpuBaseConfig
+from torchair.configs._option_base import OptionValue, MustExistedPathValue
+from torchair.configs._option_base import NpuBaseConfig
+
+__all__ = []
 
 
-class ExperimentalConfig(NpuBaseConfig):
+class _ExperimentalConfig(NpuBaseConfig):
     """Config for experimental"""
 
     def __init__(self):
         self.enable_record_nn_module_stack = OptionValue(False, [True, False])
         self.auto_atc_config_generated = OptionValue(False, [True, False])
-        super(ExperimentalConfig, self).__init__()
+        super(_ExperimentalConfig, self).__init__()
 
 
-class ExportConfig(NpuBaseConfig):
+class _ExportConfig(NpuBaseConfig):
     """Config for export"""
 
     def __init__(self):
@@ -20,7 +22,7 @@ class ExportConfig(NpuBaseConfig):
         self.export_name = None
         self.weight_name = None
         self.inputs_name = None
-        self.experimental = ExperimentalConfig()
+        self.experimental = _ExperimentalConfig()
         self.enable_save_load_mode = OptionValue(False, [False, True])
 
     def as_dict(self):

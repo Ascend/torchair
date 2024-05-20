@@ -15,6 +15,8 @@ from datetime import datetime
 import numpy as np
 import threading
 
+__all__ = []
+
 
 def _timestamp():
     return datetime.now().strftime("%Y%m%d%H%M%S%f")
@@ -46,7 +48,8 @@ def _get_node_stack(node):
 def _is_dumping():
     return hasattr(_dump_info, 'node') and _dump_info.node is not None
 
-def trace_dump(f):
+
+def _trace_dump(f):
     @functools.wraps(f)
     def inner(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any]):
         if not _is_dumping():
@@ -80,7 +83,7 @@ def trace_dump(f):
     return inner
 
 
-class NpuFxDumper(Interpreter):
+class _NpuFxDumper(Interpreter):
     """
     Interpreter for collect npu graph meta from fx graph, such as sym of output, input shape ranges, etc.
     TODO: Add doc here
@@ -117,6 +120,6 @@ class NpuFxDumper(Interpreter):
         with _dump_ctx(node=n):
             return super().run_node(n)
 
-    @trace_dump
+    @_trace_dump
     def call_function(self, target: Target, args: Tuple[Argument, ...], kwargs: Dict[str, Any]) -> Any:
         return super().call_function(target, args=args, kwargs=kwargs)

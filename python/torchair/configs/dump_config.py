@@ -1,8 +1,10 @@
-from torchair.configs.option_base import OptionValue, MustExistedPathValue
-from torchair.configs.option_base import NpuBaseConfig
+from torchair.configs._option_base import OptionValue, MustExistedPathValue
+from torchair.configs._option_base import NpuBaseConfig
+
+__all__ = []
 
 
-class DataDumpConfig(NpuBaseConfig):
+class _DataDumpConfig(NpuBaseConfig):
     """Config for data dump"""
 
     def __init__(self):
@@ -11,7 +13,7 @@ class DataDumpConfig(NpuBaseConfig):
         self.dump_mode = OptionValue('all', ['input', 'output', 'all'])
         self.quant_dumpable = OptionValue(False, [False, True])
 
-        super(DataDumpConfig, self).__init__()
+        super(_DataDumpConfig, self).__init__()
 
     def as_dict(self):
         dump_option = {}

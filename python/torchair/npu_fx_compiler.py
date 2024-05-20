@@ -29,16 +29,18 @@ from torchair._ge_concrete_graph.ge_graph import is_sym, _torch_tensor_to_ge_con
 from torchair._ge_concrete_graph.utils import get_used_syms_in_meta
 from torchair._ge_concrete_graph.fx2ge_converter import GeConcreteGraph as ConcreteGraph
 from torchair.configs.compiler_config import CompilerConfig
-from torchair.fx_summary import summarize_fx_graph
-from torchair.fx_dumper import NpuFxDumper
+from torchair.fx_summary import _summarize_fx_graph
+from torchair.fx_dumper import _NpuFxDumper
 from torchair._utils.custom_aot_functions import aot_module_simplified_joint
 from torchair._utils import add_npu_patch
 from torchair._utils.error_code import pretty_error_msg
 
+__all__ = ["get_npu_backend", "get_compiler"]
+
 aten = torch.ops.aten
 
 
-def get_default_decompositions():
+def _get_default_decompositions():
     default_decompositions = []
     if "torchair._ge_concrete_graph.ge_converter.experimental.hcom_alltoall" in sys.modules:
         default_decompositions.append(torch.ops.npu_define.all_to_all_single)
@@ -86,9 +88,9 @@ def _is_binary_operator(target: Target):
     return target in (operator.add, operator.sub, operator.mul, operator.truediv, operator.floordiv, operator.pow)
 
 
-def make_real_tensor_like(meta_outputs):
+def _make_real_tensor_like(meta_outputs):
     if isinstance(meta_outputs, (tuple, list)):
-        return [make_real_tensor_like(v) for v in meta_outputs]
+        return [_make_real_tensor_like(v) for v in meta_outputs]
     with no_dispatch():
         empty_tensor = torch.empty(meta_outputs.size(), dtype=meta_outputs.dtype)
         ge_empty = _torch_tensor_to_ge_const(empty_tensor)
@@ -96,23 +98,23 @@ def make_real_tensor_like(meta_outputs):
         return ge_empty
 
 
-def is_zero_element_tensor(tensor):
+def _is_zero_element_tensor(tensor):
     return isinstance(tensor, torch.Tensor) and 0 in tensor.size() and not get_used_syms_in_meta(tensor)
 
 
-def flatten_meta_outputs(meta_outputs):
+def _flatten_meta_outputs(meta_outputs):
     flat_outputs = []
     if not isinstance(meta_outputs, (tuple, list)):
         meta_outputs = [meta_outputs]
     for i in meta_outputs:
         if isinstance(i, (tuple, list)):
-            flat_outputs.extend(flatten_meta_outputs(i))
+            flat_outputs.extend(_flatten_meta_outputs(i))
         else:
             flat_outputs.append(i)
     return flat_outputs
 
 
-def trace_print(f):
+def _trace_print(f):
     @functools.wraps(f)
     def inner(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any]):
         logger.debug(f'-------------------')
@@ -128,7 +130,7 @@ def trace_print(f):
     return inner
 
 
-class NpuGraphConverter(Interpreter):
+class _NpuGraphConverter(Interpreter):
     """
     Interpreter for collect npu graph meta from fx graph, such as sym of output, input shape ranges, etc.
     TODO: Add doc here
@@ -184,7 +186,7 @@ class NpuGraphConverter(Interpreter):
 
     def _wrap(self, fn):
         def inner(target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any]):
-            func = getattr(super(NpuGraphConverter, self), fn)
+            func = getattr(super(_NpuGraphConverter, self), fn)
             if is_builtin_callable(target) and not _is_binary_operator(target):
                 return func(target, args, kwargs)
             args_meta, kwargs_meta = _unpack_meta(args, kwargs)
@@ -192,33 +194,33 @@ class NpuGraphConverter(Interpreter):
             with fake_mode:
                 meta_outputs = func(target, args_meta, kwargs_meta)
             args_npu, kwargs_npu = self._unpack_npu(args, kwargs)
-            if all([is_zero_element_tensor(t) for t in flatten_meta_outputs(meta_outputs)]):
-                npu_outputs = make_real_tensor_like(meta_outputs)
+            if all([_is_zero_element_tensor(t) for t in _flatten_meta_outputs(meta_outputs)]):
+                npu_outputs = _make_real_tensor_like(meta_outputs)
             else:
                 npu_outputs = self._graph.parse_node(target, args_npu, kwargs_npu, meta_outputs)
             return self._get_value_pack(meta_outputs, npu_outputs)
 
         return inner
 
-    @trace_print
+    @_trace_print
     def placeholder(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any]) -> Any:
         meta_input = super().placeholder(target, args=args, kwargs=kwargs)
         npu_input = self._graph.parse_input(target, args, kwargs, meta_input)
         return ValuePack(meta_input, npu_input)
 
-    @trace_print
+    @_trace_print
     def call_function(self, target: Target, args: Tuple[Argument, ...], kwargs: Dict[str, Any]) -> Any:
         return self._wrap('call_function')(target, args, kwargs)
 
-    @trace_print
+    @_trace_print
     def call_method(self, target: Target, args: Tuple[Argument, ...], kwargs: Dict[str, Any]) -> Any:
         return self._wrap('call_method')(target, args, kwargs)
 
-    @trace_print
+    @_trace_print
     def call_module(self, target: Target, args: Tuple[Argument, ...], kwargs: Dict[str, Any]) -> Any:
         return self._wrap('call_module')(target, args, kwargs)
 
-    @trace_print
+    @_trace_print
     def output(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any]) -> Any:
         args_meta, kwargs_meta = _unpack_meta(args, kwargs)
         meta_output = super().placeholder(target, args=args_meta, kwargs=kwargs_meta)
@@ -285,7 +287,7 @@ def _optimize_sym_input(graph_module: torch.fx.GraphModule):
     return graph_module
 
 
-class GmRunner:
+class _GmRunner:
     def __init__(self, runner: Callable):
         self.runner = runner
 
@@ -343,23 +345,23 @@ class _NpuFxCompiler:
     @pretty_error_msg
     def _get_compiled_gm(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
         if self.config.debug.fx_summary.enabled:
-            summarize_fx_graph(
+            _summarize_fx_graph(
                 gm, example_inputs, self.config.debug.fx_summary.full_path("summary"))
             if self.config.debug.fx_summary.skip_compile:
                 logger.warning(f'When summarizing FX Graph, npu compilation will be skipped, '
                                'and FALLBACK to EAGER execution to ensure the integrity of the analysis data. '
                                'Once the analysis is complete, please make sure to disable the summary config '
                                'to ensure that the graph is compiled and executed.')
-                return GmRunner(gm)
+                return _GmRunner(gm)
 
         if self.config.debug.data_dump.enabled:
             logger.warning(f'When dumping data of FX Graph, npu run will be skipped, '
                            'and FALLBACK to EAGER execution, once dump finished, please make sure to disable '
                            'the data dump config to ensure that the graph is compiled and executed.')
-            data_dumper = NpuFxDumper(gm, config=self.config.debug.data_dump)
-            return GmRunner(data_dumper)
+            data_dumper = _NpuFxDumper(gm, config=self.config.debug.data_dump)
+            return _GmRunner(data_dumper)
 
-        return GmRunner(self.gen_compiled_gm(gm, example_inputs))
+        return _GmRunner(self.gen_compiled_gm(gm, example_inputs))
 
     @pretty_error_msg
     def gen_compiled_gm(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
@@ -370,7 +372,7 @@ class _NpuFxCompiler:
 
         with no_dispatch():
             mutable_gm = copy.deepcopy(gm)
-        concrete_graph: ConcreteGraphBase = NpuGraphConverter(
+        concrete_graph: ConcreteGraphBase = _NpuGraphConverter(
             mutable_gm, graph=ConcreteGraph(self.config, name="graph_" + str(_next_unique_graph_id())),
             garbage_collect_values=False).run(*example_inputs)
 
@@ -387,15 +389,15 @@ def get_compiler(compiler_config: CompilerConfig = None):
     return _NpuFxCompiler(compiler_config)
 
 
-def npu_joint_graph_passes(graph):
+def _npu_joint_graph_passes(graph):
     from torch._inductor.fx_passes.joint_graph import joint_graph_passes
     joint_graph_passes(graph)
 
 
-def get_partition_fn(compiler_config: CompilerConfig):
+def _get_partition_fn(compiler_config: CompilerConfig):
 
     def partition_fn(graph: torch.fx.GraphModule, joint_inputs, **kwargs):
-        npu_joint_graph_passes(graph)
+        _npu_joint_graph_passes(graph)
         return default_partition(graph, joint_inputs, **kwargs)
 
     if compiler_config.experimental_config.npu_fx_pass:
@@ -403,7 +405,7 @@ def get_partition_fn(compiler_config: CompilerConfig):
     return default_partition
 
 
-def wrap_compiler(compiler: Callable, compiler_config: CompilerConfig):
+def _wrap_compiler(compiler: Callable, compiler_config: CompilerConfig):
     @functools.wraps(compiler)
     def wrapped_compiler(
             gm: torch.fx.GraphModule,
@@ -411,7 +413,7 @@ def wrap_compiler(compiler: Callable, compiler_config: CompilerConfig):
             is_inference: bool
     ):
         if is_inference and compiler_config.experimental_config.npu_fx_pass:
-            npu_joint_graph_passes(gm)
+            _npu_joint_graph_passes(gm)
         return compiler(gm, example_inputs)
 
     @functools.wraps(compiler)
@@ -420,7 +422,7 @@ def wrap_compiler(compiler: Callable, compiler_config: CompilerConfig):
             example_inputs: List[torch.Tensor]
     ):
         if compiler_config.experimental_config.npu_fx_pass:
-            npu_joint_graph_passes(gm)
+            _npu_joint_graph_passes(gm)
         return compiler(gm, example_inputs)
 
     fw_compiler = functools.partial(wrapped_compiler, is_inference=False)
@@ -433,8 +435,8 @@ def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
     if compiler_config is None:
         compiler_config = CompilerConfig()
     compiler = get_compiler(compiler_config)
-    fw_compiler, inference_compiler, joint_compiler = wrap_compiler(compiler, compiler_config)
-    partition_fn = get_partition_fn(compiler_config)
+    fw_compiler, inference_compiler, joint_compiler = _wrap_compiler(compiler, compiler_config)
+    partition_fn = _get_partition_fn(compiler_config)
     if compiler_config.experimental_config.aot_config_enable_joint_graph:
         output_loss_index = int(compiler_config.experimental_config.aot_config_output_loss_index.value)
         return aot_module_simplified_joint(gm, example_inputs,
@@ -451,7 +453,7 @@ def get_npu_backend(*, compiler_config: CompilerConfig = None, custom_decomposit
     if compiler_config is None:
         compiler_config = CompilerConfig()
 
-    decompositions = get_decompositions(get_default_decompositions())
+    decompositions = get_decompositions(_get_default_decompositions())
     decompositions.update(custom_decompositions)
 
     add_npu_patch(decompositions, compiler_config)

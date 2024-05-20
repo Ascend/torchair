@@ -1,15 +1,17 @@
 import os
-from torchair.configs.option_base import FileValue
-from torchair.configs.option_base import NpuBaseConfig
+from torchair.configs._option_base import FileValue
+from torchair.configs._option_base import NpuBaseConfig
+
+__all__ = []
 
 
-class FusionConfig(NpuBaseConfig):
+class _FusionConfig(NpuBaseConfig):
     """Config for op fusion"""
 
     def __init__(self):
         self.fusion_switch_file = FileValue(None)
 
-        super(FusionConfig, self).__init__()
+        super(_FusionConfig, self).__init__()
 
     def as_dict(self):
         fusion_option = {}

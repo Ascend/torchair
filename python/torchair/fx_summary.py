@@ -27,6 +27,9 @@ from torch._decomp import core_aten_decompositions, get_decompositions
 from torchair._ge_concrete_graph.fx2ge_converter import _get_converter
 from torchair._utils.path_manager import PathManager
 from torch._subclasses.fake_tensor import FakeTensor
+
+__all__ = []
+
 aten = torch.ops.aten
 
 
@@ -127,7 +130,7 @@ class _SummarizeFxGraph(Interpreter):
         return output
 
 
-def summarize_fx_graph(graph, example_inputs, csv_file: str = None):
+def _summarize_fx_graph(graph, example_inputs, csv_file: str = None):
     if csv_file is None:
         return
 
