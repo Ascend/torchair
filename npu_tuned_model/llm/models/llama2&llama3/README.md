@@ -1,4 +1,4 @@
-# Llama2
+# Llama2&Llama3
 
 本模块主要是transformers==4.31.0版本的llama2模型在npu上的适配迁移点介绍
 
@@ -382,6 +382,8 @@ class LinearAllreduce(nn.Module):
 
 # 性能数据
 
+## llama2-70B
+
 执行llama2-70b，加载模型时的tensor类型float16，输入padding到1024长度，输出max_new_tokens是1024的性能数据如下：
 
 **在800I A2的机器上，host是arm，4batch size：**
@@ -501,3 +503,123 @@ class LinearAllreduce(nn.Module):
 </tbody>
 </table>
 
+## lama3-70B
+
+执行llama3-70b，加载模型时的tensor类型float16，输入padding到1024长度，输出max_new_tokens是1024的性能数据如下：
+
+**在800I A2的机器上，host是arm，4batch size：**
+
+<table class="tg">
+<thead>
+  <tr>
+    <th class="tg-0pky" rowspan="2">优化项</th>
+    <th class="tg-0pky" colspan="2">单算子模式</th>
+    <th class="tg-0pky" colspan="2">图模式</th>
+  </tr>
+  <tr>
+    <th class="tg-0pky">全量</th>
+    <th class="tg-0pky">增量</th>
+    <th class="tg-0pky">全量</th>
+    <th class="tg-0pky">增量</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td class="tg-0pky">原始脚本</td>
+    <td class="tg-0pky">1138ms</td>
+    <td class="tg-0pky">215</td>
+    <td class="tg-0pky">1183ms</td>
+    <td class="tg-0pky">182ms</td>
+  </tr>
+  <tr>
+    <td class="tg-0pky">固定kv cache</td>
+    <td class="tg-0pky">1134ms</td>
+    <td class="tg-0pky">191ms</td>
+    <td class="tg-0pky">1177ms</td>
+    <td class="tg-0pky">161ms</td>
+  </tr>
+  <tr>
+    <td class="tg-0pky">替换FlashAttention&amp;&amp;cos/sin优化</td>
+    <td class="tg-0pky">991ms</td>
+    <td class="tg-0pky">148ms</td>
+    <td class="tg-0pky">912ms</td>
+    <td class="tg-0pky">46ms</td>
+  </tr>
+  <tr>
+    <td class="tg-0pky">Add+RMSNorm融合</td>
+    <td class="tg-0pky">705ms</td>
+    <td class="tg-0pky">122ms</td>
+    <td class="tg-0pky">679ms</td>
+    <td class="tg-0pky">40ms</td>
+  </tr>
+  <tr>
+    <td class="tg-0pky">全量优化计算量</td>
+    <td class="tg-0pky">654ms</td>
+    <td class="tg-0pky">122ms</td>
+    <td class="tg-0pky">631ms</td>
+    <td class="tg-0pky">40ms</td>
+  </tr>
+  <tr>
+    <td class="tg-0pky">qkv融合(单算子精度异常)</td>
+    <td class="tg-0pky">654ms</td>
+    <td class="tg-0pky">124ms</td>
+    <td class="tg-0pky">620ms</td>
+    <td class="tg-0pky">40ms</td>
+  </tr>
+  <tr>
+    <td class="tg-0pky">全量替换mc2融合算子</td>
+    <td class="tg-0pky">618ms</td>
+    <td class="tg-0pky">124ms</td>
+    <td class="tg-0pky">567ms</td>
+    <td class="tg-0pky">39ms</td>
+  </tr>
+</tbody>
+</table>
+
+
+**800I A2不同bs的图模型性能比较：**
+
+<table class="tg">
+<thead>
+  <tr>
+    <th class="tg-0pky" rowspan="2">batch size</th>
+    <th class="tg-0pky" colspan="2">图模式</th>
+  </tr>
+  <tr>
+    <th class="tg-0pky">全量</th>
+    <th class="tg-0pky">增量</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td class="tg-0lax">1</td>
+    <td class="tg-0lax">177.5ms</td>
+    <td class="tg-0lax">37.4ms</td>
+  </tr>
+  <tr>
+    <td class="tg-0lax">2</td>
+    <td class="tg-0lax">298ms</td>
+    <td class="tg-0lax">37.9ms</td>
+  </tr>
+  <tr>
+    <td class="tg-0pky">4</td>
+    <td class="tg-0pky">566.7ms</td>
+    <td class="tg-0pky">38.9ms</td>
+  </tr>
+  <tr>
+    <td class="tg-0lax">8</td>
+    <td class="tg-0lax">1104.5ms</td>
+    <td class="tg-0lax">40.1ms</td>
+  </tr>
+  <tr>
+    <td class="tg-0lax">16</td>
+    <td class="tg-0lax">2324.1ms</td>
+    <td class="tg-0lax">43.4ms</td>
+  </tr>
+  <tr>
+    <td class="tg-0lax">32</td>
+    <td class="tg-0lax">4863.4ms</td>
+    <td class="tg-0lax">48.2ms</td>
+  </tr>
+</tbody>
+</table>
