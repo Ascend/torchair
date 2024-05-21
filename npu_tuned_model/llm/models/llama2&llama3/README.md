@@ -1,6 +1,6 @@
 # Llama2&Llama3
 
-本模块主要是transformers==4.31.0版本的llama2模型在npu上的适配迁移点介绍
+本模块主要是llama2/llama3模型在npu上的适配迁移点介绍，其中llama2使用transformers==4.31.0版本，llama3使用transformers==4.40.0版本。
 
 # 性能优化
 
@@ -623,3 +623,4 @@ class LinearAllreduce(nn.Module):
   </tr>
 </tbody>
 </table>
+备注：llama3 48 Batch图模式切分8卡场景:由于llama3网络 权重（19.8543G），图分配内存（8.29G）, IO内存（3.87G），超过 B4 device内存（约29G），导致48Batch因为OOM问题无法部署。
