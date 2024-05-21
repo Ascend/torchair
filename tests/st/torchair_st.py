@@ -1599,6 +1599,55 @@ class TorchairSt(unittest.TestCase):
         res = Const(v, dtype=DataType.DT_COMPLEX32)
         self.assertEqual(_ge_dtype_to_ge_proto_dtype(DataType.DT_COMPLEX32), res.desc.dtype)
 
+    def test_view_operator_optimize(self):
+        def get_graph_transpose_reshape_num(concrete_graph):
+            transpose_num = 0
+            reshape_num = 0
+            for node in concrete_graph.graph.op:
+                if node.type == "Transpose":
+                    transpose_num += 1
+                if node.type == "Reshape":
+                    reshape_num += 1
+            return transpose_num, reshape_num
+
+        def wrapper_call(func):
+            def wrapper(*args, **kwargs):
+                assert len(args) > 0
+                ret = func(*args, **kwargs)
+                transpose_num, reshape_num = get_graph_transpose_reshape_num(args[0])
+                assert transpose_num == 1, f"after optimize, assert pack op num failed, expect 1, get {transpose_num}"
+                assert reshape_num == 1, f"after optimize, assert data op num failed, expect 1, get {reshape_num}"
+                return ret
+
+            return wrapper
+
+        from torchair._ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        src_call = GeConcreteGraph.__call__
+        GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                v = x.view(6, 6)
+                t = v.transpose(0, 1)
+                v2 = t.view(3, 2, 2, 3)
+                t2 = v2.transpose(1, 3)
+                res = t2 + 1
+                return res
+
+        model = Model()
+        config_view = CompilerConfig()
+        config_view.experimental_config.enable_view_optimize = True
+        npu_backend_view = torchair.get_npu_backend(compiler_config=config_view)
+        model = torch.compile(model, backend=npu_backend_view, dynamic=False)
+
+        x = torch.randn([36])
+        model(x)
+
+        GeConcreteGraph.__call__ = src_call
+
 
 if __name__ == '__main__':
     unittest.main()

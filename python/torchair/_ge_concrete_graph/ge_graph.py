@@ -382,6 +382,15 @@ def sym_to_torch_dtype(v):
     raise RuntimeError(f"Unsupported sym type {type(v)}")
 
 
+def list_to_torch_dtype(l):
+    for v in l:
+        if isinstance(v, torch.SymInt) or isinstance(v, int):
+            continue
+        else:
+            raise RuntimeError(f"Unsupported list type {type(v)}")
+    return torch.int64
+
+
 def torch_type_to_ge_proto_type(dtype):
     return torch_type_to_ge_type(dtype, ProtoDataType)
 
@@ -827,6 +836,11 @@ class Tensor:
             self._symsize = list(meta_output.size())
             self._desc.attr['_meta'].s = compat_as_bytes(
                 f"Tensor(dtype={meta_output.dtype}, shape={meta_output.size()}")
+        elif isinstance(meta_output, list):
+            self.set_torch_dtype(list_to_torch_dtype(meta_output))
+            self._symsize = [len(meta_output)]
+            self._desc.attr['_meta'].s = compat_as_bytes(
+                f"{type(meta_output)}({meta_output})")
         else:
             if not is_sym(meta_output):
                 raise AssertionError
@@ -1031,7 +1045,7 @@ def _auto_type_promotion_for_const(bundle_inputs: list, inputs_dynamic: list, in
                     input, dtype=(i_dtypes[0] if len(i_dtypes) else None)))
         else:
             promoted_inputs.append(_wrap_ge_tensor(input))
-        logger.info(
+        logger.debug(
             f"ge.{func} promote input {i} value {input} to dtype {_ge_proto_dtype_str(promoted_inputs[-1].desc.dtype)}")
 
     return _inputs_to_bundle_inputs(promoted_inputs, input_start_end)

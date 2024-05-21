@@ -35,6 +35,7 @@ from torchair._ge_concrete_graph.utils import convert_to_tensorboard, dump_graph
     is_host_data_tensor, get_used_sym_value_mapping, Placement, compute_value_of_sym, \
     generate_sym_exper, get_sym_int_value, generate_shape_from_tensor, update_op_input_name_from_mapping
 from torchair._ge_concrete_graph.supported_declaration import Support
+from torchair._ge_concrete_graph.continguous_utils import guard_view_input
 from torchair._ge_concrete_graph.export_config_generete import generate_config
 from torchair._utils.export_utils import make_export_graph, get_export_file_name
 from . import ge_apis as ge
@@ -702,6 +703,7 @@ class GeConcreteGraph(ConcreteGraphBase):
                 data_index) if meta_outputs.is_contiguous() else _DiscontiguousTensorInput(data_index))
         return data
 
+    @guard_view_input
     def parse_output(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
         if not (isinstance(args, (list, tuple)) and len(args) == 1):
             raise AssertionError
@@ -753,12 +755,14 @@ class GeConcreteGraph(ConcreteGraphBase):
             return npu_syms
 
         pack_tensor = ge.Pack(npu_syms, N=len(npu_syms), axis=0)
+        pack_tensor.set_meta([sym.meta if isinstance(sym, ValuePack) else sym for sym in syms])
         if all([is_host_data_tensor(sym_i) for sym_i in npu_syms]):
             pack_tensor.node.attr['_inputs_all_sym'].b = True
 
         # force unknown shape with ge.Pack when parse symlist
         return force_op_unknown_shape(pack_tensor)
 
+    @guard_view_input
     def parse_node(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
         if hasattr(target, "_ge_converter"):
             converter = target._ge_converter
