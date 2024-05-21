@@ -21,11 +21,13 @@ import torch.nn as nn
 # model name -> (module, class).
 _MODELS = {
     "llama2": ("modeling_llama", "LlamaForCausalLM"),
+    "llama3": ("modeling_llama", "LlamaForCausalLM"),
 }
 
 # model injection_policy
 _MODEL_INJECTION_POLICY = {
-    "llama2": ("modeling_llama", "LlamaDecoderLayer", ('self_attn.o_proj', 'mlp.down_proj'))
+    "llama2": ("modeling_llama", "LlamaDecoderLayer", ('self_attn.o_proj', 'mlp.down_proj')),
+    "llama3": ("modeling_llama", "LlamaDecoderLayer", ('self_attn.o_proj', 'mlp.down_proj')),
 }
 
 
@@ -36,8 +38,11 @@ class ModelRegistry:
             return None
 
         module_file, model_cls_name = _MODELS[model_name]
+        model_module_name = model_name
+        if model_name == "llama2" or model_name == "llama3":
+            model_module_name = "llama2_llama3"
         module = importlib.import_module(
-            f"models.{model_name}.{module_file}")
+            f"models.{model_module_name}.{module_file}")
         return getattr(module, model_cls_name, None)
 
     @staticmethod
@@ -50,8 +55,10 @@ class ModelRegistry:
             return None
 
         module_file, model_cls_name, layers = _MODEL_INJECTION_POLICY[model_name]
+        if model_name == "llama2" or model_name == "llama3":
+            model_module_name = "llama2_llama3"
         module = importlib.import_module(
-            f"models.{model_name}.{module_file}")
+            f"models.{model_module_name}.{module_file}")
         model_cls = getattr(module, model_cls_name, None)
         return {model_cls: layers}
 

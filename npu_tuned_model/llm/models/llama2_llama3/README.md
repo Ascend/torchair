@@ -527,7 +527,7 @@ class LinearAllreduce(nn.Module):
   <tr>
     <td class="tg-0pky">原始脚本</td>
     <td class="tg-0pky">1138ms</td>
-    <td class="tg-0pky">215</td>
+    <td class="tg-0pky">215ms</td>
     <td class="tg-0pky">1183ms</td>
     <td class="tg-0pky">182ms</td>
   </tr>
