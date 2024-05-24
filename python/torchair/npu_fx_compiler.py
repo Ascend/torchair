@@ -25,9 +25,9 @@ from torch._dynamo.utils import detect_fake_mode
 
 from torchair.core._concrete_graph import ConcreteGraphBase, ValuePack, _is_symlist
 from torchair.core.utils import logger
-from torchair._ge_concrete_graph.ge_graph import is_sym, _torch_tensor_to_ge_const
-from torchair._ge_concrete_graph.utils import get_used_syms_in_meta
-from torchair._ge_concrete_graph.fx2ge_converter import GeConcreteGraph as ConcreteGraph
+from torchair.ge_concrete_graph.ge_graph import is_sym, _torch_tensor_to_ge_const
+from torchair.ge_concrete_graph.utils import get_used_syms_in_meta
+from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph as ConcreteGraph
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.fx_summary import _summarize_fx_graph
 from torchair.fx_dumper import _NpuFxDumper
@@ -42,10 +42,10 @@ aten = torch.ops.aten
 
 def _get_default_decompositions():
     default_decompositions = []
-    if "torchair._ge_concrete_graph.ge_converter.experimental.hcom_alltoall" in sys.modules:
+    if "torchair.ge_concrete_graph.ge_converter.experimental.hcom_alltoall" in sys.modules:
         default_decompositions.append(torch.ops.npu_define.all_to_all_single)
         default_decompositions.append(torch.ops.npu_define.all_to_all)
-    if "torchair._ge_concrete_graph.ge_converter.experimental.hcom_allgather" in sys.modules:
+    if "torchair.ge_concrete_graph.ge_converter.experimental.hcom_allgather" in sys.modules:
         default_decompositions.append(torch.ops.npu_define.allgather)
     return default_decompositions
 

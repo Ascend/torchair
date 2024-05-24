@@ -8,7 +8,7 @@ import torch.distributed as dist
 from torchair.core.utils import logger
 from torchair.configs.compiler_config import CompilerConfig
 import torchair as tng
-import torchair._ge_concrete_graph.ge_converter.experimental.hcom_allreduce
+import torchair.ge_concrete_graph.ge_converter.experimental.hcom_allreduce
 
 logger.setLevel(logging.DEBUG)
 config = CompilerConfig()

@@ -5,10 +5,10 @@ import torch.multiprocessing as mp
 import torch
 import torch.distributed._functional_collectives as funcol
 import torch_npu
-import torchair._ge_concrete_graph.ge_converter.experimental.hcom_allreduce
+import torchair.ge_concrete_graph.ge_converter.experimental.hcom_allreduce
 from torchair.core.utils import logger
 from torchair.configs.compiler_config import CompilerConfig
-from torchair._ge_concrete_graph.ge_converter.experimental.hcom_allreduce import functional_collectives_context
+from torchair.ge_concrete_graph.ge_converter.experimental.hcom_allreduce import functional_collectives_context
 
 os.environ['TNG_LOG_LEVEL'] = '0'
 logger.setLevel(logging.DEBUG)

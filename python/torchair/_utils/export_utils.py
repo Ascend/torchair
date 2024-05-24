@@ -3,12 +3,12 @@ from typing import TypedDict
 import torch
 
 from torchair.core.utils import logger
-from torchair._ge_concrete_graph import ge_apis as ge
-from torchair._ge_concrete_graph.ge_graph import torch_type_to_ge_type
-from torchair._ge_concrete_graph.ge_graph import compat_as_bytes, GeGraph
-from torchair._ge_concrete_graph.utils import dump_graph
+from torchair.ge_concrete_graph import ge_apis as ge
+from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type
+from torchair.ge_concrete_graph.ge_graph import compat_as_bytes, GeGraph
+from torchair.ge_concrete_graph.utils import dump_graph
 from torchair._utils.path_manager import PathManager
-from torchair._ge_concrete_graph.ge_ir_pb2 import ModelDef, GraphDef
+from torchair.ge_concrete_graph.ge_ir_pb2 import ModelDef, GraphDef
 
 
 def _sort_graph_data_index(graph: GraphDef):

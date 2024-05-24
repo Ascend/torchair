@@ -1,9 +1,9 @@
 from torchair.core.utils import logger
 from torchair.core._backend import initialize_graph_engine
-from torchair._ge_concrete_graph.ge_graph import DataType
-from torchair._ge_concrete_graph.fx2ge_converter import ExecutorType, Placement, _normalize_ge_graph
-from torchair._ge_concrete_graph import ge_apis as ge
-from torchair._ge_concrete_graph.ge_graph import GeGraph
+from torchair.ge_concrete_graph.ge_graph import DataType
+from torchair.ge_concrete_graph.fx2ge_converter import ExecutorType, Placement, _normalize_ge_graph
+from torchair.ge_concrete_graph import ge_apis as ge
+from torchair.ge_concrete_graph.ge_graph import GeGraph
 from torchair.core._backend import TorchNpuGraph
 import logging
 import torch

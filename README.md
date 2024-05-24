@@ -147,15 +147,15 @@ torch.compile(model, backend=npu_backend)
 ```
 执行后，会生成summary_{timestamp}.csv文件，您可以通过excel等工具来查看。
 通过导出的csv文件，您可以看打当前模型fx图中涉及的所有converter
-- 对于`支持状态`为`未支持`的converter，您需要在`_ge_concrete_graph/ge_converter`目录下对应文件中补齐实现
+- 对于`支持状态`为`未支持`的converter，您需要在`ge_concrete_graph/ge_converter`目录下对应文件中补齐实现
 > 当前已经为aten下的op提供了一个壳子实现（固定抛出未支持的异常），您应当在此基础上补齐实现
 
-- 对于`支持状态`为`未注册`的converter，您需要在`_ge_concrete_graph/ge_converter`目录下对应文件中新增注册并补齐实现
+- 对于`支持状态`为`未注册`的converter，您需要在`ge_concrete_graph/ge_converter`目录下对应文件中新增注册并补齐实现
 
-- 对于`支持状态`为`部分支持`的converter，您需要查看位于`_ge_concrete_graph/ge_converter`目录下的实现，并根据输入数据列决定是否需要补齐场景实现
+- 对于`支持状态`为`部分支持`的converter，您需要查看位于`ge_concrete_graph/ge_converter`目录下的实现，并根据输入数据列决定是否需要补齐场景实现
 
 ## 实现converter
-您可以参考`_ge_concrete_graph/ge_converter`目录下的实现，实现对应的converter。
+您可以参考`ge_concrete_graph/ge_converter`目录下的实现，实现对应的converter。
 我们以torch.ops.aten.add.Tensor的converter实现为例说明converter实现时的一些细节：
 ```python
 @declare_supported([
@@ -210,7 +210,7 @@ python3 smoke/converter_test.py aten.add.Tensor
 
 ### converter的函数签名
 ```python
-from torchair._ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 
 @register_fx_node_ge_converter(torch.ops.aten.add.Tensor)
 def conveter_aten_add_Tensor(
@@ -223,7 +223,7 @@ def conveter_aten_add_Tensor(
 ```
 我们逐行解释下上述代码片段：
 ```python
-from torchair._ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 ```
 文件的开头从GE graph的文件中导入了Tensor和TensorSpec，这两个类分别表示GE图上的Tensor和TensorSpec。
 需要特别注意的是，Tensor和TensorSpec绝不是运行时的真实数据，你只能从Tensor上获得dtype和rank信息，而不能从Tensor上获得shape和数据。

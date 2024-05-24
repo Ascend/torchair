@@ -64,7 +64,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/cmake/ascend_protobuf.cmake)
 
 add_subdirectory(codegen)
 add_custom_command(OUTPUT AUTO_GENERATED_GE_RAW_OPS
-        COMMAND code_generator ${CMAKE_CURRENT_LIST_DIR}/python/torchair/_ge_concrete_graph/auto_generated_ge_raw_ops.py
+        COMMAND code_generator ${CMAKE_CURRENT_LIST_DIR}/python/torchair/ge_concrete_graph/auto_generated_ge_raw_ops.py
         WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
         COMMENT "Generating ge apis"
         DEPENDS code_generator

@@ -10,12 +10,12 @@ import logging
 
 from torchair.core.utils import logger
 from torchair.core._backend import TorchNpuGraph
-from torchair._ge_concrete_graph.ge_graph import GeGraph, Const, _ge_dtype_to_ge_proto_dtype
-from torchair._ge_concrete_graph.fx2ge_converter import ExecutorType, Placement, _normalize_ge_graph, \
+from torchair.ge_concrete_graph.ge_graph import GeGraph, Const, _ge_dtype_to_ge_proto_dtype
+from torchair.ge_concrete_graph.fx2ge_converter import ExecutorType, Placement, _normalize_ge_graph, \
     _mapping_assign_op_to_graph_output, replace_data_to_refdata
-from torchair._ge_concrete_graph import ge_apis as ge
-from torchair._ge_concrete_graph.ge_graph import DataType
-from torchair._ge_concrete_graph.graph_pass import optimize_reference_op_redundant_copy
+from torchair.ge_concrete_graph import ge_apis as ge
+from torchair.ge_concrete_graph.ge_graph import DataType
+from torchair.ge_concrete_graph.graph_pass import optimize_reference_op_redundant_copy
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core._backend import initialize_graph_engine
 
@@ -204,8 +204,8 @@ class TorchairSt(unittest.TestCase):
             src = f.read()
 
         assert src != '# -*- coding: utf-8 -*-\nfrom torch import tensor\n' \
-                      'from torchair._ge_concrete_graph import ge_apis as ge\n' \
-                      'from torchair._ge_concrete_graph.ge_graph import get_default_ge_graph\n\n'
+                      'from torchair.ge_concrete_graph import ge_apis as ge\n' \
+                      'from torchair.ge_concrete_graph.ge_graph import get_default_ge_graph\n\n'
 
     def test_1sym_pack(self):
         class Model(torch.nn.Module):
@@ -265,7 +265,7 @@ class TorchairSt(unittest.TestCase):
 
             return wrapper
 
-        from torchair._ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
         bak_optimization = GeConcreteGraph.optimize_graph_without_runtime
         GeConcreteGraph.optimize_graph_without_runtime = wrapper_call(GeConcreteGraph.optimize_graph_without_runtime)
 
@@ -804,7 +804,7 @@ class TorchairSt(unittest.TestCase):
             check_graph(self)
             return args
 
-        from torchair._ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
         src_call = GeConcreteGraph.__call__
         GeConcreteGraph.__call__ = call_sub
 
@@ -873,7 +873,7 @@ class TorchairSt(unittest.TestCase):
 
             return wrapper
 
-        from torchair._ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
         src_call = GeConcreteGraph.__call__
         GeConcreteGraph.__call__ = my_decorator(GeConcreteGraph.__call__)
 
@@ -934,7 +934,7 @@ class TorchairSt(unittest.TestCase):
 
             return wrapper
 
-        from torchair._ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
         src_call = GeConcreteGraph.__call__
         GeConcreteGraph.__call__ = my_decorator(GeConcreteGraph.__call__)
 
@@ -986,7 +986,7 @@ class TorchairSt(unittest.TestCase):
 
             return wrapper
 
-        from torchair._ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
         src_call = GeConcreteGraph.__call__
         GeConcreteGraph.__call__ = my_decorator(GeConcreteGraph.__call__)
 
@@ -1237,7 +1237,7 @@ class TorchairSt(unittest.TestCase):
 
             return wrapper
 
-        from torchair._ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
         src_call = GeConcreteGraph.__call__
         GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
 
@@ -1280,7 +1280,7 @@ class TorchairSt(unittest.TestCase):
 
             return wrapper
 
-        from torchair._ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
         src_call = GeConcreteGraph.__call__
         GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
 
@@ -1323,7 +1323,7 @@ class TorchairSt(unittest.TestCase):
 
             return wrapper
 
-        from torchair._ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
         src_call = GeConcreteGraph.__call__
         GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
 
@@ -1367,7 +1367,7 @@ class TorchairSt(unittest.TestCase):
 
             return wrapper
 
-        from torchair._ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
         src_call = GeConcreteGraph.__call__
         GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
 
@@ -1411,7 +1411,7 @@ class TorchairSt(unittest.TestCase):
 
             return wrapper
 
-        from torchair._ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
         src_call = GeConcreteGraph.__call__
         GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
 
@@ -1454,7 +1454,7 @@ class TorchairSt(unittest.TestCase):
 
             return wrapper
 
-        from torchair._ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
         src_call = GeConcreteGraph.__call__
         GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
 
@@ -1621,7 +1621,7 @@ class TorchairSt(unittest.TestCase):
 
             return wrapper
 
-        from torchair._ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
         src_call = GeConcreteGraph.__call__
         GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
 

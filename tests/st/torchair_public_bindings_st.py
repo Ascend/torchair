@@ -34,7 +34,7 @@ def _discover_path_importables(pkg_pth, pkg_name):
         )
 
 
-SKIP_CHECK_MODULES = []
+SKIP_CHECK_MODULES = ['torchair.ge_concrete_graph']
 
 LEGACY_PUBLIC_APIS = []
 

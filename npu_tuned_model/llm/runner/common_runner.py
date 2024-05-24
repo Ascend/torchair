@@ -84,7 +84,7 @@ class LlmCommonModelRunner:
             import deepspeed
             deepspeed.init_distributed(dist_backend="hccl")
             if self._execute_mode == "dynamo":
-                import torchair._ge_concrete_graph.ge_converter.experimental.patch_for_hcom_allreduce
+                import torchair.ge_concrete_graph.ge_converter.experimental.patch_for_hcom_allreduce
 
             deepspeed_model = deepspeed.init_inference(
                 model=self.model,

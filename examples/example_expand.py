@@ -4,7 +4,7 @@ from torch._functorch.aot_autograd import aot_module_simplified
 import torch
 
 import torchair as tng
-from torchair._ge_concrete_graph import ge_apis as ge
+from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.configs.compiler_config import CompilerConfig
 
 config = CompilerConfig()

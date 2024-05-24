@@ -3,11 +3,11 @@ import torch
 from torch.library import Library, impl
 import torch_npu
 import torchair
-from torchair._ge_concrete_graph.utils import dtype_promote
-from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair._ge_concrete_graph.ge_graph import Tensor, TensorSpec
-from torchair._ge_concrete_graph.ge_graph import get_default_ge_graph, next_unique_name
-from torchair._ge_concrete_graph.ge_graph import compat_as_bytes, compat_as_bytes_list
+from torchair.ge_concrete_graph.utils import dtype_promote
+from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.ge_graph import get_default_ge_graph, next_unique_name
+from torchair.ge_concrete_graph.ge_graph import compat_as_bytes, compat_as_bytes_list
 
 
 m = Library("npu_define", "DEF")
