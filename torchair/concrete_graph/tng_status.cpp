@@ -20,7 +20,7 @@ int32_t Logger::kLogLevel = []() -> int32_t {
       return static_cast<int32_t>(tng::LogLevel::ERROR);
     }
     if (!std::regex_match(env_tmp, reg)) {
-      tng::Logger(__FILE__, __LINE__, "WARING") << \
+      tng::Logger(__FILE__, __LINE__, "WARNING") << \
         "Value of TNG_LOG_LEVEL should be in {0, 1, 2, 3, 4}, but got " << env_tmp;
       return static_cast<int32_t>(tng::LogLevel::ERROR);
     }
