@@ -148,9 +148,9 @@ class CompiledModel:
 
     @staticmethod
     def get_cache_bin(func, *, config: Optional[CompilerConfig] = None, dynamic: bool = True,
-                      root: Optional[str] = None, rank: Optional[int] = None, tp_rank: Optional[int] = None,
-                      mp_rank: Optional[int] = None, **kwargs) -> str:
-        root = root or os.getenv('TORCHAIR_CACHE_HOME', os.path.join(os.getcwd(), ".torchair_cache"))
+                      cache_dir: Optional[str] = None, global_rank: Optional[int] = None, tp_rank: Optional[int] = None,
+                      pp_rank: Optional[int] = None, **kwargs) -> str:
+        cache_dir = cache_dir or os.getenv('TORCHAIR_CACHE_HOME', os.path.join(os.getcwd(), ".torchair_cache"))
         config = config or CompilerConfig()
         if isinstance(func, types.MethodType):
             constraint = str(func.__self__) + _get_str_options(config)
@@ -161,17 +161,17 @@ class CompiledModel:
 
         dist_suffixes = []
         if torch.distributed.is_available() and torch.distributed.is_initialized() and dist.get_world_size() > 1:
-            rank = dist.get_rank() if rank is None else rank
-            dist_suffixes.append(f'world{dist.get_world_size()}rank{rank}')
+            global_rank = dist.get_rank() if global_rank is None else global_rank
+            dist_suffixes.append(f'world{dist.get_world_size()}global_rank{global_rank}')
         if tp_rank is not None:
             dist_suffixes.append(f'tp_rank{tp_rank}')
-        if mp_rank is not None:
-            dist_suffixes.append(f'mp_rank{mp_rank}')
+        if pp_rank is not None:
+            dist_suffixes.append(f'pp_rank{pp_rank}')
         dist_dir = '_'.join(dist_suffixes)
 
         trace_tag = ['dynamic'] if dynamic else ['static']
         md5 = hashlib.md5(constraint.encode()).hexdigest()
-        cache_bin = os.path.join(root, '_'.join([cls_name] + trace_tag + [str(md5)]), dist_dir, func.__name__,
+        cache_bin = os.path.join(cache_dir, '_'.join([cls_name] + trace_tag + [str(md5)]), dist_dir, func.__name__,
                                  CompiledModel.FILE)
         return os.path.abspath(cache_bin)
 
@@ -446,21 +446,21 @@ class ModelCacheWatcher:
 
 class LazyCompiledModel:
     def __init__(self, func, *, config: Optional[CompilerConfig] = None, dynamic: bool = True,
-                 root: Optional[str] = None,
-                 rank: Optional[int] = None, tp_rank: Optional[int] = None,
-                 mp_rank: Optional[int] = None):
+                 cache_dir: Optional[str] = None, global_rank: Optional[int] = None, tp_rank: Optional[int] = None,
+                 pp_rank: Optional[int] = None):
         self.func = func
         self.config = config or CompilerConfig()
         self.dynamic = dynamic
-        self.root = root
-        self.rank = rank
+        self.cache_dir = cache_dir
+        self.global_rank = global_rank
         self.tp_rank = tp_rank
-        self.mp_rank = mp_rank
+        self.pp_rank = pp_rank
         self._compiled_model = None
 
     def compile(self, global_vars=None):
-        cache_bin = CompiledModel.get_cache_bin(self.func, config=self.config, dynamic=self.dynamic, root=self.root,
-                                                rank=self.rank, tp_rank=self.tp_rank, mp_rank=self.mp_rank)
+        cache_bin = CompiledModel.get_cache_bin(self.func, config=self.config, dynamic=self.dynamic,
+                                                cache_dir=self.cache_dir, global_rank=self.global_rank,
+                                                tp_rank=self.tp_rank, pp_rank=self.pp_rank)
         if os.path.exists(cache_bin):
             try:
                 logger.info(f'Loading cache from {cache_bin}')
@@ -485,17 +485,17 @@ class LazyCompiledModel:
 
 
 def cache_compile(func, *, config: Optional[CompilerConfig] = None, dynamic: bool = True,
-                  root: Optional[str] = None, rank: Optional[int] = None, tp_rank: Optional[int] = None,
-                  mp_rank: Optional[int] = None, **kwargs) -> Callable:
+                  cache_dir: Optional[str] = None, global_rank: Optional[int] = None, tp_rank: Optional[int] = None,
+                  pp_rank: Optional[int] = None, **kwargs) -> Callable:
     if not isinstance(func, types.MethodType):
         raise ValueError(f"Only method can be cached now, got {func}")
 
     if not isinstance(func.__self__, torch.nn.Module):
         raise ValueError(f"Only torch.nn.Module method can be cached now, got {func}")
 
-    # Lazy trigger cache load and determine the cache directory by distributed rank
-    return LazyCompiledModel(func, config=config, dynamic=dynamic, root=root, rank=rank, tp_rank=tp_rank,
-                             mp_rank=mp_rank)
+    # Lazy trigger cache load and determine the cache directory by distributed global_rank
+    return LazyCompiledModel(func, config=config, dynamic=dynamic, cache_dir=cache_dir, global_rank=global_rank,
+                             tp_rank=tp_rank, pp_rank=pp_rank)
 
 
 class _NoGuardCompiled:
