@@ -1,6 +1,8 @@
 #include <ATen/EmptyTensor.h>
 #include <ATen/native/DispatchStub.h>
 #include <ATen/native/cpu/Loops.h>
+#include <ATen/core/GeneratorForPrivateuseone.h>
+#include <ATen/detail/PrivateUse1HooksInterface.h>
 
 #include <c10/core/CPUAllocator.h>
 #include <c10/core/impl/alloc_cpu.h>
@@ -144,6 +146,78 @@ c10::Device get_npu_device() {
   return c10::Device(c10::DeviceType::PrivateUse1, 0);
 }
 
+class PrivateGeneratorImpl : public at::CPUGeneratorImpl {
+public:
+    PrivateGeneratorImpl(c10::DeviceIndex device_index) {
+      device_ = c10::Device(c10::DeviceType::PrivateUse1, device_index);
+      key_set_ = c10::DispatchKeySet(c10::DispatchKey::PrivateUse1);
+    }
+
+    ~PrivateGeneratorImpl() override = default;
+
+    void set_offset(uint64_t offset) override {
+      offset_ = offset;
+    };
+
+    uint64_t get_offset() const override {
+      return offset_;
+    };
+
+    uint64_t offset_ = 0;
+};
+
+// this is used to register generator
+at::Generator make_generator_privateuse1(c10::DeviceIndex device_index) {
+  return at::make_generator<PrivateGeneratorImpl>(device_index);
+}
+
+void register_generator() {
+  REGISTER_GENERATOR_PRIVATEUSE1(make_generator_privateuse1)
+}
+
+struct FooHooksInterface : public at::PrivateUse1HooksInterface {
+    ~FooHooksInterface() override = default;
+
+    const at::Generator &getDefaultGenerator(c10::DeviceIndex device_index) override {
+      static auto device_gen = make_generator_privateuse1(device_index);
+      return device_gen;
+    }
+};
+
+struct FooHooksArgs : public at::PrivateUse1HooksArgs {
+};
+
+TORCH_DECLARE_REGISTRY(PrivateUse1HooksRegistry, FooHooksInterface, FooHooksArgs
+);
+#define REGISTER_PRIVATEUSE1_HOOKS(clsname) \
+  C10_REGISTER_CLASS(PrivateUse1HooksRegistry, clsname, clsname)
+
+C10_DEFINE_REGISTRY(PrivateUse1HooksRegistry, FooHooksInterface, FooHooksArgs
+)
+
+static at::PrivateUse1HooksInterface *get_private_hooks() {
+  static at::PrivateUse1HooksInterface *privateuse1_hooks;
+  static c10::once_flag once;
+  c10::call_once(once, [] {
+      privateuse1_hooks = PrivateUse1HooksRegistry()->Create("PrivateUse1Hooks", {}).release();
+      if (!privateuse1_hooks) {
+        privateuse1_hooks = new FooHooksInterface();
+      }
+  });
+  return privateuse1_hooks;
+}
+
+void register_hook() {
+  at::RegisterPrivateUse1HooksInterface(get_private_hooks());
+}
+
+const at::Generator &default_generator(c10::DeviceIndex device_index) {
+  return at::globalContext().defaultGenerator(at::Device(c10::DeviceType::PrivateUse1, device_index));
+}
+
 PYBIND11_MODULE(_privateuse1_backend, m) {
   m.def("npu_device", &get_npu_device, "get npu device object");
+  m.def("register_generator", &register_generator, "register generator for custom device");
+  m.def("register_hook", &register_hook, "register_hook for privateuse1");
+  m.def("default_generator", &default_generator, "default_generator for privateuse1");
 }

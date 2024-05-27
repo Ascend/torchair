@@ -489,7 +489,7 @@ class _GraphRngState:
         self._offsets = Data(index=get_default_ge_graph().num_inputs,
                              dtype=DataType.DT_INT64,
                              shape=[1],
-                             placement='NPU',
+                             placement='CPU',
                              node_name='offset_list')
         self._offset_count = 0
         self._offset_lists = []

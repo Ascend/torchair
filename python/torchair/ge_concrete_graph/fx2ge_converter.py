@@ -915,7 +915,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         def full_inputs_func(*args):
             ge_inputs = normal_inputs_func(*args)
             # update ge inputs for unsupported codegen input func
-            for idx, func in enumerate(unsupported_codegen_input):
+            for idx, func in unsupported_codegen_input.items():
                 ge_inputs[idx] = func(args)
             return ge_inputs
 

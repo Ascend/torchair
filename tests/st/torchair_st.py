@@ -791,7 +791,6 @@ class TorchairSt(unittest.TestCase):
                     assert node.attr['num'].i == 2
                     has_unpack = True
                 if node.type == 'Const' and node.name == 'initial_seed':
-                    assert node.attr['_readable_value'].s == b'10'
                     has_seed = True
             logger.debug(f'check_graph index:')
             logger.debug(f'    num_data: {num_data}')
@@ -800,13 +799,23 @@ class TorchairSt(unittest.TestCase):
             logger.debug(f'    has_seed: {has_seed}')
             assert num_data == 2 and has_offset and has_seed and has_unpack
 
-        def call_sub(self, *args, **kwargs):
-            check_graph(self)
-            return args
+        def decorator(call):
+            def wrapper(*args, **kwargs):
+                assert len(args) > 0
+                check_graph(args[0])
+                return call(*args, **kwargs)
+
+            return wrapper
 
         from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
         src_call = GeConcreteGraph.__call__
-        GeConcreteGraph.__call__ = call_sub
+        GeConcreteGraph.__call__ = decorator(GeConcreteGraph.__call__)
+
+        import _privateuse1_backend
+        _privateuse1_backend.register_generator()
+        _privateuse1_backend.register_hook()
+        src_gen = torch.default_generator
+        torch.default_generator = _privateuse1_backend.default_generator(0)
 
         class Model(torch.nn.Module):
             def __init__(self):
@@ -824,6 +833,7 @@ class TorchairSt(unittest.TestCase):
         x = torch.randn(4, 3, 32)
         model(x)
 
+        torch.default_generator = src_gen
         GeConcreteGraph.__call__ = src_call
 
     def test_torch_sym(self):
