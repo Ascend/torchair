@@ -818,6 +818,8 @@ class GeConcreteGraph(ConcreteGraphBase):
         export_graph = make_export_graph(self.graph, inputs, self.config.export.export_path_dir,
                                          self.config.export.weight_name)
 
+
+        _normalize_ge_graph(export_graph)
         if self.config.export.enable_save_load_mode:
             if not self._check_support_for_save_graph():
                 raise RuntimeError("Check support for save graph error")
