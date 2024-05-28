@@ -379,6 +379,24 @@ def _path_model_7():
     StochasticActor.forward = new_forward
 
 
+@register_patch("dcgan", "mobilenet_v2", "phlippe_resnet", "timm_vision_transformer", "shufflenet_v2_x1_0",
+                "timm_nfnet")
+def _path_model_8():
+    """
+    close conv amp for some model only in accuracy mode.
+    This patch would be removed in the near future.
+    """
+    import sys
+    if {"--only", "--amp", "--accuracy"} <= set(sys.argv):
+        from torch.nn.modules.conv import Conv2d
+
+        def conv2d_amp_disabled(self, x):
+            with torch.npu.amp.autocast(enabled=False):
+                return self._conv_forward(x, self.weight, self.bias)
+
+        Conv2d.forward = conv2d_amp_disabled
+
+
 def patch_model(model_name):
     if model_name not in _patch_table.keys():
         return
