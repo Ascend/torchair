@@ -31,71 +31,98 @@ def gen_contiguous_stride(shapes):
 
 
 #获取动态shape，若遇到动态shape从view节点获取的mapsym中寻找，除此之外的动态shape目前不支持构造节点
-def get_sym_node_from_graph(npu_input, symbol_dim, graph):
-    mapsym = getattr(npu_input, "view_faketensor").mapsym
-    for op in graph.op:
-        if op.name == mapsym[str(symbol_dim)].split(":")[0]:
-            return Tensor(op, int(mapsym[str(symbol_dim)].split(":")[1]))
+def get_sym_node_from_graph(npu_input_src, symbol_dim, graph):
+    mapsym = getattr(npu_input_src, "view_faketensor").mapsym
+    srcshape = getattr(npu_input_src, "view_faketensor").srcshape
+    if str(symbol_dim) in mapsym.keys():
+        for op in graph.op:
+            if op.name == mapsym[str(symbol_dim)].split(":")[0]:
+                return Tensor(op, int(mapsym[str(symbol_dim)].split(":")[1]))
+    elif symbol_dim in srcshape:
+        for dim_idx, dim_val in enumerate(srcshape):
+            if is_sym(dim_val) and dim_val == symbol_dim:
+                return ge.Gather(ge.Shape(npu_input_src, dtype=DataType.DT_INT32), dim_idx)
     raise AssertionError("unsupported case for reshape.")
 
 
 def _build_valid_stride(stride, shape):
-    simplestride, simpleshape = [], []
-    strideindexdicts = {}
+    need_transpose = False
+    simple_stride, simple_shape = [], []
+    stride_index_dicts = {}
     for i, j in zip(stride, shape):
-        simplestride.append(i)
-        simpleshape.append(j)
-    for index, stride in enumerate(simplestride):
-        strideindexdicts[index] = [simplestride[index], simpleshape[index]]
-    
-    return strideindexdicts
+        if i != 0 and j != 1:
+            simple_stride.append(i)
+            simple_shape.append(j)
+    last_stride = simple_stride[0]
+    for index, stride in enumerate(simple_stride):
+        stride_index_dicts[index] = [simple_stride[index], simple_shape[index]]
+        if last_stride < hint_int(stride):
+            need_transpose = True
+        last_stride = hint_int(stride)
+    return stride_index_dicts, need_transpose
 
 
-def _build_reshape_node(npu_input, meta_size, graph):
+def _build_reshape_node(npu_input, npu_input_src, meta_size, graph):
     if all([not sympy.simplify(str(meta_dim)).has(sympy.Symbol) for meta_dim in meta_size]):
         return ge.Reshape(npu_input, ge.Const(meta_size, dtype=DataType.DT_INT64))
 
     target_shape = []
+    srcshape_tensor = getattr(npu_input_src, "srcshape_tensor", {})
     for meta_dim in meta_size:
         if not sympy.simplify(str(meta_dim)).has(sympy.Symbol):
             target_shape.append(ge.Const(meta_dim, dtype=DataType.DT_INT64))
         else:
-            target_shape.append(get_sym_node_from_graph(npu_input, meta_dim, graph))
+            if str(meta_dim) in srcshape_tensor.keys():
+                target_shape.append(srcshape_tensor.get(str(meta_dim)))
+            else:
+                srcshape_tensor[str(meta_dim)] = get_sym_node_from_graph(npu_input_src, meta_dim, graph)
+                target_shape.append(srcshape_tensor.get(str(meta_dim)))
+    setattr(npu_input_src, "srcshape_tensor", srcshape_tensor)
     pack_tensor = ge.Pack(target_shape, N=len(target_shape), axis=0)
     if all([is_host_data_tensor(sym_i) for sym_i in target_shape]):
         pack_tensor.node.attr['_inputs_all_sym'].b = True
     return ge.Reshape(npu_input, pack_tensor)
 
 
-def _build_transpose_perm(strideindexdicts):
+def _build_transpose_perm(stride_index_dicts):
     permidx = []
-    srctransshape = []
-    for indexes in strideindexdicts.keys():
+    src_trans_shape = []
+    dst_trans_shape = []
+    for indexes in stride_index_dicts.keys():
         permidx.append(int(indexes))
-    for values in strideindexdicts.values():
-        srctransshape.append(values[1])
+    for values in stride_index_dicts.values():
+        src_trans_shape.append(values[1])
     permlist = [None] * len(permidx)
     for i, value in enumerate(permidx):
         permlist[value] = i
-    return permlist, srctransshape
+    for idx, _ in enumerate(permlist):
+        dst_trans_shape.append(stride_index_dicts.get(idx)[1])
+    return permlist, src_trans_shape, dst_trans_shape
 
 
 def _optimize_non_contiguous(npu_input, meta_input, graph):
+    npu_input_src = npu_input
     npu_shape = getattr(npu_input, "view_faketensor").srcshape
     meta_shape = list(meta_input.size())
     meta_stride = list(meta_input.stride())
+    need_transpose = False
 
     #剔除shape为1的stride，并记录shape、stride与index的映射关系，同时判断是否存在transpose
-    strideindexdicts = _build_valid_stride(meta_stride, meta_shape)
+    stride_index_dicts, need_transpose = _build_valid_stride(meta_stride, meta_shape)
 
     #存在transpose，则计算transpose的相关参数
-    strideindexdicts = dict(sorted(strideindexdicts.items(), key=lambda \
+    stride_index_dicts = dict(sorted(stride_index_dicts.items(), key=lambda \
         s:(hint_int(s[1][0]), hint_int(s[1][1])), reverse=True))
-    permlist, srctransshape = _build_transpose_perm(strideindexdicts)
+    permlist, src_trans_shape, dst_trans_shape = _build_transpose_perm(stride_index_dicts)
 
-    if srctransshape != npu_shape:
-        npu_input = _build_reshape_node(npu_input, srctransshape, graph)
-    npu_input = ge.Transpose(npu_input, permlist)
+    if need_transpose:
+        if src_trans_shape != npu_shape:
+            npu_input = _build_reshape_node(npu_input, npu_input_src, src_trans_shape, graph)
+        npu_input = ge.Transpose(npu_input, permlist)
+        if dst_trans_shape != meta_shape:
+            npu_input = _build_reshape_node(npu_input, npu_input_src, meta_shape, graph)
+    else:
+        npu_input = _build_reshape_node(npu_input, npu_input_src, meta_shape, graph)
 
     return npu_input
 
@@ -124,7 +151,7 @@ def optimize_view(npu_input, graph):
 
     #经过view类操作的arg判断是否为长度为1，若为连续则只经过Reshape；若为非连续则进入反推判断
     if len(meta_shape) == 1:
-        npu_input = _build_reshape_node(npu_input, meta_shape, graph)
+        npu_input = _build_reshape_node(npu_input, npu_input, meta_shape, graph)
     else:
         npu_input = _optimize_non_contiguous(npu_input, meta_input, graph)
     npu_input.set_meta(meta_real)

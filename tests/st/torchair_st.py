@@ -1625,8 +1625,8 @@ class TorchairSt(unittest.TestCase):
                 assert len(args) > 0
                 ret = func(*args, **kwargs)
                 transpose_num, reshape_num = get_graph_transpose_reshape_num(args[0])
-                assert transpose_num == 1, f"after optimize, assert pack op num failed, expect 1, get {transpose_num}"
-                assert reshape_num == 1, f"after optimize, assert data op num failed, expect 1, get {reshape_num}"
+                assert transpose_num == 1, f"assert transpose op num failed, expect 1, get {transpose_num}"
+                assert reshape_num == 1, f"assert reshape op num failed, expect 1, get {reshape_num}"
                 return ret
 
             return wrapper
@@ -1657,6 +1657,106 @@ class TorchairSt(unittest.TestCase):
         model(x)
 
         GeConcreteGraph.__call__ = src_call
+
+    def test_view_operator_optimize_to_reshape(self):
+        def get_graph_transpose_reshape_num(concrete_graph):
+            transpose_num = 0
+            reshape_num = 0
+            for node in concrete_graph.graph.op:
+                if node.type == "Transpose":
+                    transpose_num += 1
+                if node.type == "Reshape":
+                    reshape_num += 1
+            return transpose_num, reshape_num
+
+        def wrapper_call(func):
+            def wrapper(*args, **kwargs):
+                assert len(args) > 0
+                ret = func(*args, **kwargs)
+                transpose_num, reshape_num = get_graph_transpose_reshape_num(args[0])
+                assert transpose_num == 0, f"assert transpose op num failed, expect 0, get {transpose_num}"
+                assert reshape_num == 1, f"assert reshape op num failed, expect 1, get {reshape_num}"
+                return ret
+
+            return wrapper
+
+        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        src_call = GeConcreteGraph.__call__
+        GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, a):
+                v1 = x.view(a, 32, 1, 128)
+                t1 = v1.permute(0, 2, 1, 3)
+                v2 = t1.view(a, 1, 4096)
+                v3 = v2.view(a, 4096)
+                res = v3 + 1
+                return res
+
+        model = Model()
+        config_view = CompilerConfig()
+        config_view.experimental_config.enable_view_optimize = True
+        npu_backend_view = torchair.get_npu_backend(compiler_config=config_view)
+        model = torch.compile(model, backend=npu_backend_view, dynamic=True)
+
+        x = torch.randn([256, 1, 128])
+        a = 8
+        model(x, a)
+
+        GeConcreteGraph.__call__ = src_call    
+
+    def test_view_operator_repeat_gather(self):
+        def get_graph_gather_reshape_num(concrete_graph):
+            gather_num = 0
+            transpose_num = 0
+            reshape_num = 0
+            for node in concrete_graph.graph.op:
+                if node.type == "Gather":
+                    gather_num += 1
+                if node.type == "Transpose":
+                    transpose_num += 1
+                if node.type == "Reshape":
+                    reshape_num += 1
+            return gather_num, transpose_num, reshape_num
+
+        def wrapper_call(func):
+            def wrapper(*args, **kwargs):
+                assert len(args) > 0
+                ret = func(*args, **kwargs)
+                gather_num, transpose_num, reshape_num = get_graph_gather_reshape_num(args[0])
+                assert gather_num == 2, f"assert gather op num failed, expect 2, get {gather_num}"
+                assert transpose_num == 0, f"assert transpose op num failed, expect 0, get {transpose_num}"
+                assert reshape_num == 1, f"assert reshape op num failed, expect 1, get {reshape_num}"
+                return ret
+
+            return wrapper
+
+        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        src_call = GeConcreteGraph.__call__
+        GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                t1 = x.transpose(2, 3)
+                res = t1 + 1
+                return res
+
+        model = Model()
+        config_view = CompilerConfig()
+        config_view.experimental_config.enable_view_optimize = True
+        npu_backend_view = torchair.get_npu_backend(compiler_config=config_view)
+        model = torch.compile(model, backend=npu_backend_view, dynamic=True)
+
+        x = torch.randn([6, 6, 4, 1])
+        model(x)
+
+        GeConcreteGraph.__call__ = src_call 
 
 
 if __name__ == '__main__':
