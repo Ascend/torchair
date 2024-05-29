@@ -2104,8 +2104,8 @@ class BenchmarkRunner:
         model, example_inputs = self.maybe_cast(model, example_inputs)
         accuracy_status = "pass"
 
-        # use aclop by default
-        if os.environ.get("USE_ACLNN", "0").upper() not in ["1", "ON"]:
+        # use aclnn by default
+        if os.environ.get("USE_ACLOP", "0").upper() in ["1", "ON"]:
             torch_npu.npu.set_compile_mode(jit_compile=True)
 
         with self.pick_grad(name, self.args.training):

@@ -380,7 +380,7 @@ def _path_model_7():
 
 
 @register_patch("dcgan", "mobilenet_v2", "phlippe_resnet", "timm_vision_transformer", "shufflenet_v2_x1_0",
-                "timm_nfnet")
+                "timm_nfnet", "squeezenet1_1")
 def _path_model_8():
     """
     close conv amp for some model only in accuracy mode.

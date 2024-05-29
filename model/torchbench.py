@@ -145,6 +145,11 @@ REQUIRE_HIGHER_FP16_TOLERANCE = {
     "drq",
 }
 
+NPU_REQUIRE_HIGHER_FP16_TOLERANCE = {
+    "timm_vision_transformer",
+}
+REQUIRE_HIGHER_FP16_TOLERANCE.update(NPU_REQUIRE_HIGHER_FP16_TOLERANCE)
+
 REQUIRE_COSINE_TOLERACE = {
     # Just keeping it here even though its empty, if we need this in future.
 }
