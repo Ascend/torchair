@@ -342,7 +342,6 @@ class _NpuFxCompiler:
         logger.debug(f'Codegen for {gm_runner.runner.graph.name} successfully, code:\n{code}.')
         return code
 
-    @pretty_error_msg
     def _get_compiled_gm(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
         if self.config.debug.fx_summary.enabled:
             _summarize_fx_graph(
@@ -361,10 +360,9 @@ class _NpuFxCompiler:
             data_dumper = _NpuFxDumper(gm, config=self.config.debug.data_dump)
             return _GmRunner(data_dumper)
 
-        return _GmRunner(self.gen_compiled_gm(gm, example_inputs))
+        return _GmRunner(self._gen_compiled_gm(gm, example_inputs))
 
-    @pretty_error_msg
-    def gen_compiled_gm(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
+    def _gen_compiled_gm(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
         logger.info(f'compiler inputs')
         for i, inp in enumerate(example_inputs):
             logger.info(f'  input {i}: {inp}')

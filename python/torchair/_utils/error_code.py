@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import traceback
 
 
 def format_error_msg():
@@ -37,6 +38,7 @@ def pretty_error_msg(func):
         try:
             return func(*args, **kwargs)
         except Exception as e:
-            raise type(e)(str(e) + get_error_msg(e))
+            msg = [str(e), traceback.format_exc(), get_error_msg(e)]
+            raise type(e)("\n".join(msg))
 
     return wapper
