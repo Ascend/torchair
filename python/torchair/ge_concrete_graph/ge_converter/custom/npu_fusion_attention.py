@@ -65,7 +65,9 @@ def conveter_npu_fusion_attention_default(
     """
     is_bsh_available = True if input_layout == "BSH" and keep_prob == 1.0 else False
     is_bnsd_available = True if input_layout == "BNSD" and keep_prob == 1.0 else False
-    
+    q_start_idx = 0
+    kv_start_idx = 0
+
     if is_bsh_available or is_bnsd_available:  
         # if keep_prob == 1.0, no dropout will be performed, so the seed, offset, and numels will have no effect.
         seed, offset, numels = 0, 0, 0
@@ -80,6 +82,8 @@ def conveter_npu_fusion_attention_default(
             prefix=prefix,
             actual_seq_qlen=actual_seq_qlen,
             actual_seq_kvlen=actual_seq_kvlen,
+            q_start_idx=q_start_idx,
+            kv_start_idx=kv_start_idx,
             head_num=head_num,
             input_layout=input_layout,
             scale_value=scale,
@@ -151,7 +155,9 @@ def conveter_npu_fusion_attention_grad_default(
     """
     is_bsh_available = True if input_layout == "BSH" and keep_prob == 1.0 else False
     is_bnsd_available = True if input_layout == "BNSD" and keep_prob == 1.0 else False
-    
+    q_start_idx = 0
+    kv_start_idx = 0
+
     if is_bsh_available or is_bnsd_available:  
         # if keep_prob == 1.0, no dropout will be performed, so the seed, offset, and numels will have no effect.
         ret = ge.FlashAttentionScoreGrad(
@@ -170,6 +176,8 @@ def conveter_npu_fusion_attention_grad_default(
             prefix=prefix,
             actual_seq_qlen=actual_seq_qlen,
             actual_seq_kvlen=actual_seq_kvlen,
+            q_start_idx=q_start_idx,
+            kv_start_idx=kv_start_idx,
             head_num=head_num,
             input_layout=input_layout,
             scale_value=scale_value,
