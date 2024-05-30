@@ -3393,6 +3393,8 @@ REG_OP(GroupedMatmul)
     .ATTR(split_item, Int, 0)
     .ATTR(dtype, Int, 0)
     .ATTR(transpose_weight, Bool, false)
+    .ATTR(transpose_x, Bool, false)
+    .ATTR(group_type, Int, -1)
     .OP_END_FACTORY_REG(GroupedMatmul)
 
 

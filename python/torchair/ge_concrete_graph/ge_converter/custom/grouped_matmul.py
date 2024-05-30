@@ -25,11 +25,18 @@ from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, 
 from torchair.ge_concrete_graph.utils import dtype_promote
 
 
+def fill_empty_tensorlist(input_data, desired_dtype):
+    if input_data is None:
+        return [ge.Fill([0], ge.Cast(0., dst_type=desired_dtype))]
+    else:
+        return input_data
+
+
 @declare_supported([
     Support([F16(8192, 320)], [F16(320, 2560)], [F16(2560)], None, None, None, None, None, split_item=0),
-    Support([F16(8192, 320), F16(8192, 320), F16(8192, 320)], 
-            [F16(320, 2560), F16(320, 2560), F16(320, 2560)], 
-            [F16(2560), F16(2560), F16(2560)], 
+    Support([F16(8192, 320), F16(8192, 320), F16(8192, 320)],
+            [F16(320, 2560), F16(320, 2560), F16(320, 2560)],
+            [F16(2560), F16(2560), F16(2560)],
             None, None, None, None, None, split_item=0),
 ])
 @register_fx_node_ge_converter(torch.ops.npu.npu_grouped_matmul.default)
@@ -51,37 +58,27 @@ def conveter_npu_npu_grouped_matmul(
     Tensor[]? antiquant_scale, Tensor[]? antiquant_offset, int[]? group_list=None, int? split_item=0,
     ScalarType? output_dtype=None) -> Tensor[]
     """
-    if bias is None:
-        dtype = x[0].dtype
-        if dtype == DataType.DT_BF16:
-            dtype = DataType.DT_FLOAT
-        elif dtype == DataType.DT_UINT8:
-            dtype = DataType.DT_INT32
-        bias = [ge.Fill([0], ge.Cast(0., dst_type=dtype))]
 
-    if scale is None:
-        dtype = DataType.DT_UINT64
-        scale = [ge.Fill([0], ge.Cast(0., dst_type=dtype))]
+    x_dtype = x[0].dtype
 
-    if offset is None:
-        dtype = DataType.DT_FLOAT
-        offset = [ge.Fill([0], ge.Cast(0., dst_type=dtype))]
+    if x_dtype == DataType.DT_BF16:
+        bias = fill_empty_tensorlist(bias, DataType.DT_FLOAT)
+    elif x_dtype == DataType.DT_UINT8:
+        bias = fill_empty_tensorlist(bias, DataType.DT_INT32)
+    else:
+        bias = fill_empty_tensorlist(bias, x_dtype)
 
-    if antiquant_scale is None:
-        x_dtype = x[0].dtype
-        w_dtype = weight[0].dtype
-        dtype = DataType.DT_FLOAT16
-        if (dtype == DataType.DT_FLOAT16 or dtype == DataType.DT_BF16) and w_dtype == DataType.DT_INT8:
-            dtype = x_dtype
-        antiquant_scale = [ge.Fill([0], ge.Cast(0., dst_type=dtype))]
-    
-    if antiquant_offset is None:
-        x_dtype = x[0].dtype
-        w_dtype = weight[0].dtype
-        dtype = DataType.DT_FLOAT16
-        if (dtype == DataType.DT_FLOAT16 or dtype == DataType.DT_BF16) and w_dtype == DataType.DT_INT8:
-            dtype = x_dtype
-        antiquant_offset = [ge.Fill([0], ge.Cast(0., dst_type=dtype))]
+    scale = fill_empty_tensorlist(scale, DataType.DT_UINT64)
+    offset = fill_empty_tensorlist(offset, DataType.DT_FLOAT)
+
+    w_dtype = weight[0].dtype
+
+    if (x_dtype == DataType.DT_FLOAT16 or x_dtype == DataType.DT_BF16) and w_dtype == DataType.DT_INT8:
+        antiquant_scale = fill_empty_tensorlist(antiquant_scale, x_dtype)
+        antiquant_offset = fill_empty_tensorlist(antiquant_offset, x_dtype)
+    else:
+        antiquant_scale = fill_empty_tensorlist(antiquant_scale, DataType.DT_FLOAT16)
+        antiquant_offset = fill_empty_tensorlist(antiquant_offset, DataType.DT_FLOAT16)
 
     y_dtype = -1
     if output_dtype is not None:
@@ -93,5 +90,11 @@ def conveter_npu_npu_grouped_matmul(
     if group_list is not None:
         group_list = dtype_promote(group_list, target_dtype=torch.int64)
 
+    group_type = -1 # -1 means input tensors no not need to be split
+    if len(x) != len(weight) or split_item == 2 or split_item == 3: # When split_item = 2 or 3, output is single tensor
+        group_type = 0
+
     return ge.GroupedMatmul(x, weight, bias, scale, offset, antiquant_scale, antiquant_offset, group_list,
-                            size_of_y=len(meta_outputs), split_item=split_item, dtype=y_dtype, transpose_weight=False)
+                            split_item=split_item, dtype=y_dtype, transpose_weight=False, transpose_x=False,
+                            group_type=group_type)
+

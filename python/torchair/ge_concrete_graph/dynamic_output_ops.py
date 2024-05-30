@@ -20,6 +20,41 @@ def IdentityN(x: List[Tensor], *, dependencies=[], node_name=None):
     return raw_ops._IdentityN(x, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
 
 
+# Auto infer num outputs for IR GroupedMatmul
+@auto_convert_to_tensor([True, True, True, True, True, True, True, False],
+                        [False, False, False, False, False, False, False, True])
+def GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], scale: List[Tensor], offset: List[Tensor],
+                  antiquant_scale: List[Tensor], antiquant_offset: List[Tensor], group_list: Optional[Tensor], *,
+                  split_item: int = 0, dtype: int = 0, transpose_weight: bool = False, transpose_x: bool = False,
+                  group_type: int = -1):
+    """REG_OP(GroupedMatmul)\n
+    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))\n
+    .DYNAMIC_INPUT(weight, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))\n
+    .DYNAMIC_INPUT(bias, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32}))\n
+    .DYNAMIC_INPUT(scale, TensorType({DT_UINT64}))\n
+    .DYNAMIC_INPUT(offset, TensorType({DT_FLOAT32}))\n
+    .DYNAMIC_INPUT(antiquant_scale, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .DYNAMIC_INPUT(antiquant_offset, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OPTIONAL_INPUT(group_list, TensorType({DT_INT64}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .ATTR(split_item, Int, 0)\n
+    .ATTR(dtype, Int, 0)\n
+    .ATTR(transpose_weight, Bool, false)\n
+    .ATTR(transpose_x, Bool, false)\n
+    .ATTR(group_type, Int, -1)\n
+    """
+
+    size_of_y = 0
+    if split_item == 0 or split_item == 1:
+        size_of_y = len(x)
+    elif split_item == 2 or split_item == 3:
+        size_of_y = 1
+
+    return raw_ops._GroupedMatmul(x, weight, bias, scale, offset, antiquant_scale, antiquant_offset, group_list,
+                                  size_of_y=size_of_y, split_item=split_item, dtype=dtype,
+                                  transpose_weight=transpose_weight, transpose_x=transpose_x, group_type=group_type)
+
+
 # Auto infer num outputs for IR ShapeN
 @auto_convert_to_tensor([True], [False])
 def ShapeN(x: List[Tensor], *, dtype: int = 3, dependencies=[], node_name=None):
