@@ -14,11 +14,16 @@ except ImportError:
 from torch._dynamo.utils import counters
 from torch._inductor.pattern_matcher import (
     filter_nodes,
-    inference_graph,
     register_replacement,
-    training_graph,
     _return_true
 )
+
+try:
+    from torch._inductor.pattern_matcher import inference_graph, training_graph
+except ImportError:
+    from torch._inductor.pattern_matcher import fwd_only as inference_graph
+    from torch._inductor.pattern_matcher import joint_fwd_bwd as training_graph
+    
 from torch._inductor.fx_passes.joint_graph import patterns
 from torchair._utils.npu_fx_passes.joint_graph import register_joint_graph_pass
 from torchair.core.utils import logger
