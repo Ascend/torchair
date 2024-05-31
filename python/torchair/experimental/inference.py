@@ -71,7 +71,8 @@ def _weight_format_cast(model: torch.nn.Module):
                     quant_offset = module.quant_offset.data
 
                 module.quant_scale.data = _TORCH_NPU_MODULE.npu_trans_quant_param(quant_scale, quant_offset)
-            if "Ascend310P" in _TORCH_NPU_MODULE.npu.get_device_name():
+            if "Ascend310P" in _TORCH_NPU_MODULE.npu.get_device_name() or \
+               "Ascend910B" in _TORCH_NPU_MODULE.npu.get_device_name():
                 module.weight.data = _TORCH_NPU_MODULE.npu_format_cast(module.weight.data, 29) # ACL_FORMAT_FRACTAL_NZ
 
         _cast_to_internal_format_for_quant_conv2d(module, class_name)

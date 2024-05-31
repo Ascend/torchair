@@ -50,6 +50,16 @@ def conveter_npu_npu_weight_quant_batchmatmul(
     """
     if quant_scale is not None and quant_scale.dtype == DataType.DT_INT64:
         quant_scale = ge.Cast(quant_scale, dst_type=DataType.DT_UINT64)
+    if weight is not None and weight.dtype == DataType.DT_INT32:
+        perm = [1, 0]
+        if "Transpose" in weight.tensor():
+            weight = ge.Transpose(weight, perm)
+        shape = ge.Shape(weight)
+        const = ge.Const([1, 8])
+        weight_shape = ge.Mul(shape, const)
+        weight = ge.Bitcast(weight, type=DataType.DT_INT4)
+        weight = ge.Reshape(weight, weight_shape)
+        weight = ge.Transpose(weight, perm)
     return ge.WeightQuantBatchMatmulV2(x, weight, antiquant_scale, antiquant_offset=antiquant_offset,
                                        quant_scale=quant_scale, quant_offset=quant_offset, bias=bias,
                                        transpose_x=False, transpose_weight=False,
