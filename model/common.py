@@ -3229,9 +3229,15 @@ def run(runner, args, original_dir=None):
         print("Invalid partition id")
         return sys.exit(-1)
 
+    def __check_if_transfer_to_npu():
+        return torch.cuda.is_available == torch_npu.npu.is_available
+
     if not args.devices:
         if torch.cuda.is_available():
-            args.devices = ["cuda"]
+            if __check_if_transfer_to_npu():
+                args.devices = ["npu"]
+            else:
+                args.devices = ["cuda"]
         elif torch_npu.npu.is_available():
             args.devices = ["npu"]
         else:

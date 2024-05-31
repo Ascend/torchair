@@ -2,11 +2,12 @@ import importlib
 import logging
 import os
 from typing import Optional, Tuple
-
+import sys
 import torch
 import torch.nn as nn
 import torch_npu
 import torchair
+
 
 log = logging.getLogger(__name__)
 _patch_table = {}
@@ -380,13 +381,12 @@ def _path_model_7():
 
 
 @register_patch("dcgan", "mobilenet_v2", "phlippe_resnet", "timm_vision_transformer", "shufflenet_v2_x1_0",
-                "timm_nfnet", "squeezenet1_1")
+                "squeezenet1_1")
 def _path_model_8():
     """
     close conv amp for some model only in accuracy mode.
     This patch would be removed in the near future.
     """
-    import sys
     if {"--only", "--amp", "--accuracy"} <= set(sys.argv):
         from torch.nn.modules.conv import Conv2d
 
@@ -395,6 +395,67 @@ def _path_model_8():
                 return self._conv_forward(x, self.weight, self.bias)
 
         Conv2d.forward = conv2d_amp_disabled
+
+
+
+@register_patch("timm_nfnet")
+def _path_model_9():
+    # close conv amp for timm_nfnet only in accuracy mode.
+    # Increase the batch_size to a larger size 16,
+    # to mitigate the impact of BatchNorm's tolerance on convolution
+    if {"--only", "--amp", "--accuracy"} <= set(sys.argv):
+        try:
+            import timm
+            import torch.nn.functional as F
+            from timm.layers.std_conv import ScaledStdConv2dSame
+            from timm.layers.padding import pad_same
+        except (ImportError, ModuleNotFoundError):
+            log.warning("Import timm failed or could not get ScaledStdConv2dSame"
+                        "from module timm.layers.std_conv.ScaledStdConv2dSame")
+            return
+        if timm.__version__ != '0.9.16':
+            log.warning("timm.__version__ is not equal to 0.9.16, which may cause error patch.")
+
+        def new_forward(self, x):
+            if self.same_pad:
+                x = pad_same(x, self.kernel_size, self.stride, self.dilation)
+            weight = F.batch_norm(
+                self.weight.reshape(1, self.out_channels, -1), None, None,
+                weight=(self.gain * self.scale).view(-1),
+                training=True, momentum=0., eps=self.eps).reshape_as(self.weight)
+            with torch.npu.amp.autocast(enabled=False):
+                return F.conv2d(x, weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
+        ScaledStdConv2dSame.forward = new_forward
+
+    try:
+        from torchbenchmark.models.timm_nfnet import Model
+    except (ImportError, ModuleNotFoundError):
+        log.warning("Import Model failed or could not find timm_nfnet"
+                    "from module torchbenchmark.models.timm_nfnet.Model")
+        return
+    def new__init(self, test, device, jit=False, batch_size=None, extra_args=None):
+        super(Model, self).__init__(test=test, model_name='dm_nfnet_f0',
+                                    device=device, batch_size=16, extra_args=extra_args)
+    Model.__init__ = new__init
+
+
+@register_patch("nvidia_deeprecommender")
+def _path_model_10():
+    try:
+        from torch_npu.contrib import transfer_to_npu
+    except (ImportError, ModuleNotFoundError):
+        log.warning("NPU_FlAG is False!")
+        return
+
+    try:
+        from torchbenchmark.models.nvidia_deeprecommender.nvtrain import DeepRecommenderTrainBenchmark
+    except (ImportError, ModuleNotFoundError):
+        log.warning("Import nvidia_deeprecommender failed or could not get DeepRecommenderTrainBenchmark"
+                    "from module torchbenchmark.models.nvidia_deeprecommender.nvtrain.DeepRecommenderTrainBenchmark")
+        return
+    def new_init(self, device="cpu", jit=False, batch_size=256, process_command_line=False):
+        self.TrainInit("cuda", jit, batch_size, process_command_line)
+    DeepRecommenderTrainBenchmark.__init__ = new_init
 
 
 def patch_model(model_name):
