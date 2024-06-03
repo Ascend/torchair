@@ -17,6 +17,7 @@ from typing import (
 import torch
 from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
+from torchair.ge_concrete_graph.utils import dtype_promote
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
@@ -26,12 +27,16 @@ from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, 
 
 @declare_supported(
     [
-        Support(F32(12, 384, 1)),
+        Support(F32(12, 384, 1, value_range=(1, 100))),
+        Support(F16(12, 384, value_range=(1, 100))),
+        Support(I32(16, 256, value_range=(1, 100))),
+        Support(I64(32, 64, value_range=(1, 100))),
     ]
 )
 @register_fx_node_ge_converter(torch.ops.aten.sqrt.default)
 def conveter_aten_sqrt_default(self: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::sqrt(Tensor self) -> Tensor"""
+    self = dtype_promote(self, target_dtype=meta_outputs.dtype)
     return ge.Sqrt(self)
 
 
