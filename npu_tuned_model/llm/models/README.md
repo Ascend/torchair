@@ -4,8 +4,8 @@
 
 **注意**：模型迁移，先把eager模式跑通，然后再进行下面的图模式修改
 
-此适配点主要是加入走pytorch图模式分支
-
+此适配点主要是加入走pytorch图模式分支。
+对于chatglm3模型部分如图，无需对下上述文件进行修改。
 ```python
 # transformers/generation/utils.py中greedy_search函数
 exe_mode = os.getenv("EXE_MODE", "dynamo")

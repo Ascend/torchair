@@ -13,4 +13,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from examples.llama2.run_llama2 import run_llama2
+from examples.llama.run_llama import run_llama

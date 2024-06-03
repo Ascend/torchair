@@ -63,43 +63,39 @@ bash setup.sh
 # 项目结构
 
 ```tex
-│  README.md
-│  requirement.txt
-│  setup.sh
-│  
-├─examples # 脚本样例
-│  │  merge_qkv_weight.py
-│  │  __init__.py
-│  │  
-│  └─llama2
-│      │  run_llama2.py # pytorch执行脚本
-│      │  
-│      └─separate_deployment # 分离部署执行脚本
-│              run_decoder.py
-│              run_prompt.py
-│              分离部署迁移指南.md
-│              
-├─models # 模型结构样例
-│  │  README.md
-│  │  __init__.py
-│  │  
-│  ├─common
-│  │      mc2_adapter.py
-│  │      utils.py
-│  │      
-│  └─llama2
-│          modeling_llama.py
-│          README.md
-│          
-└─runner
-    │  common_runner.py
-    │  llm_runner.py
-    │  __init__.py
-    │  
-    └─separate_deployment # 分离部署执行api
-            llm_decoder.py
-            llm_inference.py
-            llm_prompt.py
+├── README.md
+├── chatglm
+│   ├── README.md
+│   ├── benchmark_chatglm.py
+│   └── modeling_chatglm.py
+├── examples
+│   ├── __init__.py
+│   ├── llama
+│   │   ├── run_llama.py
+│   │   └── separate_deployment
+│   │       ├── run_decoder.py
+│   │       ├── run_prompt.py
+│   │       └── 分离部署迁移指南.md
+│   └── merge_qkv_weight.py
+├── models
+│   ├── README.md
+│   ├── __init__.py
+│   ├── common
+│   │   ├── mc2_adapter.py
+│   │   └── utils.py
+│   └── llama
+│       ├── README.md
+│       └── modeling_llama.py
+├── requirement.txt
+├── runner
+│   ├── __init__.py
+│   ├── common_runner.py
+│   ├── llm_runner.py
+│   └── separate_deployment
+│       ├── llm_decoder.py
+│       ├── llm_inference.py
+│       └── llm_prompt.py
+└── setup.sh
 ```
 
 # 模型及数据集
@@ -107,9 +103,11 @@ bash setup.sh
 | 数据集 | 参数量                                                       |
 | ------ | ------------------------------------------------------------ |
 | llama2 | [70b](https://huggingface.co/TheBloke/Llama-2-70B-fp16/tree/main) |
+| llama3 | [70b](https://huggingface.co/meta-llama/Meta-Llama-3-70B/tree/main) |
+| chatglm3 | [6b](https://huggingface.co/THUDM/chatglm3-6b) |
 
 # 快速体验
-
+以llama2为例：
 ```shell
 export PYTHONPATH=$PYTHONPATH:/path/to/your/torchair/npu_tuned_model/llm
 cann_path=/usr/local/Ascend # 昇腾cann包安装目录
@@ -178,7 +176,7 @@ model_runner.execute_model(prompts, **config)
 # 以llama2为例。替换前，导入的是用户脚本中原有的models
 from transformers import AutoTokenizer, LlamaForCausalLM
 #替换后
-from models.llama2.modeling_llama import LlamaForCausalLM
+from models.llama.modeling_llama import LlamaForCausalLM
 ```
 
 **注：mc2融合算子优化需要根据模型优化方式手动使能**
@@ -190,15 +188,17 @@ from models.llama2.modeling_llama import LlamaForCausalLM
 - 改造完成后，在models目录下新增自定义模型目录，并且创建自定义模型的model文件，同时需要将自定义模型的名字/文件名/class写入\_\_init\_\_.py
 
 ```python
-# llama2是模型名，modeling_llama是对于llama2目录下modeling_llama.py文件，LlamaForCausalLM是自定义llama2模型
+# llama2是模型名，llama是模型所在的文件夹，modeling_llama是对于llama目录下modeling_llama.py文件，LlamaForCausalLM是自定义llama2模型
 _MODELS = {
-    "llama2": ("modeling_llama", "LlamaForCausalLM"),
+    "llama2": ("llama", "modeling_llama", "LlamaForCausalLM"),
+    "llama3": ("llama", "modeling_llama", "LlamaForCausalLM"),
 }
 
 # 前端切分的大模型还需要指定被切分的layer在哪一层汇聚
 # "LlamaDecoderLayer", ('self_attn.o_proj', 'mlp.down_proj')是llama2需要做allreduce的layer
 _MODEL_INJECTION_POLICY = {
-    "llama2" : ("modeling_llama", "LlamaDecoderLayer", ('self_attn.o_proj', 'mlp.down_proj'))
+    "llama2": ("llama", "modeling_llama", "LlamaDecoderLayer", ('self_attn.o_proj', 'mlp.down_proj')),
+    "llama3": ("llama", "modeling_llama", "LlamaDecoderLayer", ('self_attn.o_proj', 'mlp.down_proj')),
 }
 ```
 
@@ -257,7 +257,7 @@ if __name__ == "__main__":
 export PYTHONPATH=$PYTHONPATH:/path/to/your/torchair/npu_tuned_model/llm
 cann_path=/usr/local/Ascend #昇腾cann包安装目录
 source ${cann_path}/latest/bin/setenv.bash
-deepspeed --num_gpus=8 examples/llama2/run_llama2.py --model_path=/path/to/your/model/weight
+deepspeed --num_gpus=8 examples/llama/run_llama.py --model_path=/path/to/your/model/weight
 ```
 
 # 使能分离部署功能

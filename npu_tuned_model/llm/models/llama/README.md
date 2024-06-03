@@ -189,7 +189,7 @@ torch_npu.scatter_update_(past_key_value[1], tmp_ids, value_states, 1)
 # step3 cos，sin调整unsqueeze的dim
 # _prepare_decoder_rotary_cos_sin函数
 cos = cos.reshape(position_ids.size(0), position_ids.size(1), -1).unsqueeze(2)
-sin = sin.reshape(position_ids.size(0), position_ids.size(1), -1).unsqueeze(2)Add_RMSNorm融合
+sin = sin.reshape(position_ids.size(0), position_ids.size(1), -1).unsqueeze(2)
 ```
 
 ## Add+RMSNorm融合

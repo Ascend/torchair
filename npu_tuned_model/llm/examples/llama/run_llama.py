@@ -37,7 +37,8 @@ def parse_args():
     return parser_args
 
 
-def run_llama2(model_path, **kwargs):
+def run_llama(model_path, **kwargs):
+    # the first paramter should be changed to llama3 if running llama3 model
     model_runner = LlmModelRunner("llama2", model_path, **kwargs)
     model_runner.execute_mode = "dynamo"
     os.environ["EXE_MODE"] = model_runner.execute_mode
@@ -54,5 +55,5 @@ if __name__ == "__main__":
         "input_max_len": 1024,
         "max_new_tokens": 1024,
     }
-    run_llama2(args.model_path, **config)
+    run_llama(args.model_path, **config)
     logging.info("model run success")
