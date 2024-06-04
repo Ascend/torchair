@@ -158,15 +158,8 @@ def _npu_fusion_attention_replace_2(
     return attn_output
 
 
-@register_joint_graph_pass('npu_fusion_attention')
-@functools.lru_cache(None)
-def _npu_fusion_attention_init():
-    if 'torch_npu' not in sys.modules:
-        logger.info(f'The npu_fusion_attention fx pass will only be enabled in a torch npu env.'
-                    'When there is no torch_npu in the env, skip npu_fusion_attention fx pass.')
-        return
+def _get_npu_fusion_attention_candidates():
     device = "npu"
-    
     # sizes/values don't actually matter for initial trace
     # once we get a possible match we re-trace with the actual values and verify the match still holds
     q1 = functools.partial(torch.empty, (2, 32, 2048, 128), dtype=torch.bfloat16, device=device, requires_grad=True)
@@ -174,32 +167,48 @@ def _npu_fusion_attention_init():
     v1 = functools.partial(torch.empty, (2, 32, 2048, 128), dtype=torch.bfloat16, device=device, requires_grad=True)
     am1 = functools.partial(torch.empty, (2, 1, 2048, 2048), dtype=torch.float32, device=device, requires_grad=False)
     d1 = {"head_dim":128}
-
-    q2 = functools.partial(torch.empty, (2, 2048, 4096), dtype=torch.bfloat16, device=device, requires_grad=True)
-    k2 = functools.partial(torch.empty, (2, 2048, 4096), dtype=torch.bfloat16, device=device, requires_grad=True)
-    v2 = functools.partial(torch.empty, (2, 2048, 4096), dtype=torch.bfloat16, device=device, requires_grad=True)
-    am2 = functools.partial(torch.empty, (2, 1, 2048, 2048), dtype=torch.float32, device=device, requires_grad=False)
+    candidates = [
+            ( 
+                _npu_fusion_attention_pattern_1,
+                _npu_fusion_attention_replace_1,
+                [q1(), k1(), v1(), am1()], 
+                d1,
+                _return_true,
+            )
+        ]
+    
+    qkv = functools.partial(torch.empty, (2, 2048, 4096), dtype=torch.bfloat16, device=device, requires_grad=True)
     position_ids = functools.partial(torch.empty, (1, 2048), dtype=torch.int64, device=device, requires_grad=False)
-    cos_cached = functools.partial(torch.empty, (4096, 128), dtype=torch.float32, device=device, requires_grad=False)
-    sin_cached = functools.partial(torch.empty, (4096, 128), dtype=torch.float32, device=device, requires_grad=False)
+    am2 = functools.partial(torch.empty, (2, 1, 2048, 2048), device=device, requires_grad=False)
+    cos_cached = functools.partial(torch.empty, (4096, 128), device=device, requires_grad=False)
+    sin_cached = functools.partial(torch.empty, (4096, 128), device=device, requires_grad=False)
     d2 = {"num_heads":32, "head_dim":128}
+    for dtype in [torch.float32, torch.bfloat16]:
+        am2_dtype = functools.partial(am2, dtype=dtype)
+        cos_cached_dtype = functools.partial(cos_cached, dtype=dtype)
+        sin_cached_dtype = functools.partial(sin_cached, dtype=dtype)
+        candidates.append(
+                (
+                    _npu_fusion_attention_pattern_2,
+                    _npu_fusion_attention_replace_2,
+                    [qkv(), qkv(), qkv(), am2_dtype(), position_ids(), cos_cached_dtype(), sin_cached_dtype()], 
+                    d2,
+                    _return_true,
+                ),
+            )
+    return candidates
 
-    for pattern, replacement, args, workaround, extra_check in [
-        (
-            _npu_fusion_attention_pattern_1,
-            _npu_fusion_attention_replace_1,
-            [q1(), k1(), v1(), am1()], 
-            d1,
-            _return_true,
-        ),
-        (
-            _npu_fusion_attention_pattern_2,
-            _npu_fusion_attention_replace_2,
-            [q2(), k2(), v2(), am2(), position_ids(), cos_cached(), sin_cached()], 
-            d2,
-            _return_true,
-        ),
-    ]:
+        
+@register_joint_graph_pass('npu_fusion_attention')
+@functools.lru_cache(None)
+def _npu_fusion_attention_init():
+    if 'torch_npu' not in sys.modules:
+        logger.info(f'The npu_fusion_attention fx pass will only be enabled in a torch npu env.'
+                    'When there is no torch_npu in the env, skip npu_fusion_attention fx pass.')
+        return
+    candidates = _get_npu_fusion_attention_candidates()
+    
+    for pattern, replacement, args, workaround, extra_check in candidates:
         args = [*args, *workaround.values()]
         register_replacement(
             pattern,
@@ -210,4 +219,3 @@ def _npu_fusion_attention_init():
             extra_check=extra_check,
             scalar_workaround=workaround,
         )
-        
