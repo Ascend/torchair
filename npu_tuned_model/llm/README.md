@@ -262,5 +262,5 @@ deepspeed --num_gpus=8 examples/llama/run_llama.py --model_path=/path/to/your/mo
 
 # 使能分离部署功能
 
-详情参考[分离部署迁移指南](./examples/llama2/separate_deployment/分离部署迁移指南.md)
+详情参考[分离部署迁移指南](./examples/llama/separate_deployment/分离部署迁移指南.md)
 

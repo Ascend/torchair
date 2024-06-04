@@ -172,8 +172,9 @@ class RMSNorm(torch.nn.Module):
 
 ## chatglm3
 
-执行chatglm3-6b，加载模型时的tensor类型float16，输入padding到1024长度，输出max_new_tokens是1024的性能数据如下：
-
+执行chatglm3-6b，加载模型时的tensor类型float16，输入padding到1024长度，输出max_new_tokens是1024的性能数据如下：  
+*优化点1：替换FlashAttention*	  
+*优化点2：替换RMSNorm*  
 **在800I A2的机器上，host是arm，4batch size：**
 
 <table class="tg">
@@ -184,47 +185,39 @@ class RMSNorm(torch.nn.Module):
     <th class="tg-0pky" colspan="2">图模式</th>
   </tr>
   <tr>
-    <th class="tg-0pky">全量</th>
-    <th class="tg-0pky">增量</th>
-    <th class="tg-0pky">全量</th>
-    <th class="tg-0pky">增量</th>
+    <th class="tg-0pky">全量(ms)</th>
+    <th class="tg-0pky">增量(ms)</th>
+    <th class="tg-0pky">全量(ms)</th>
+    <th class="tg-0pky">增量(ms)</th>
   </tr>
 </thead>
 <tbody>
   <tr>
     <td class="tg-0pky">原始脚本</td>
-    <td class="tg-0pky">489.7ms</td>
-    <td class="tg-0pky">68.6ms</td>
-    <td class="tg-0pky">447.7ms</td>
-    <td class="tg-0pky">56.6ms</td>
+    <td class="tg-0pky">489.7</td>
+    <td class="tg-0pky">68.6</td>
+    <td class="tg-0pky">447.7</td>
+    <td class="tg-0pky">56.6</td>
   </tr>
   <tr>
-    <td class="tg-0pky">固定kv cache</td>
-    <td class="tg-0pky">506ms（
-    劣化）</td>
-    <td class="tg-0pky">84.8ms（劣化）</td>
-    <td class="tg-0pky">/</td>
-    <td class="tg-0pky">/</td>
+    <td class="tg-0pky">优化点(1)</td>
+    <td class="tg-0pky">423.1</td>
+    <td class="tg-0pky">61</td>
+    <td class="tg-0pky">377.3</td>
+    <td class="tg-0pky">48.8</td>
   </tr>
   <tr>
-    <td class="tg-0pky">替换FlashAttention</td>
-    <td class="tg-0pky">423.1ms</td>
-    <td class="tg-0pky">61ms</td>
-    <td class="tg-0pky">377.3ms</td>
-    <td class="tg-0pky">48.8ms</td>
-  </tr>
-  <tr>
-    <td class="tg-0pky">RMSNorm融合</td>
-    <td class="tg-0pky">384.7ms</td>
-    <td class="tg-0pky">53ms</td>
-    <td class="tg-0pky">345.2ms</td>
-    <td class="tg-0pky">44.7ms</td>
+    <td class="tg-0pky">优化点(1,2)</td>
+    <td class="tg-0pky">384.7</td>
+    <td class="tg-0pky">53</td>
+    <td class="tg-0pky">345.2</td>
+    <td class="tg-0pky">44.7</td>
   </tr>
 </tbody>
 </table>
 
 
-**800I A2不同bs的图模型性能比较：**
+**800I A2在同时采用优化点1，2后不同bs的图模型性能比较：**
  tensor类型float16，输入padding到1024长度，输出max_new_tokens是1024的性能数据如下：
 <table class="tg">
 <thead>
@@ -233,52 +226,64 @@ class RMSNorm(torch.nn.Module):
     <th class="tg-0pky" colspan="2">图模式</th>
   </tr>
   <tr>
-    <th class="tg-0pky">全量</th>
-    <th class="tg-0pky">增量</th>
+    <th class="tg-0pky">全量(ms)</th>
+    <th class="tg-0pky">增量(ms)</th>
   </tr>
 </thead>
 <tbody>
   <tr>
     <td class="tg-0lax">1</td>
-    <td class="tg-0lax">108.3ms</td>
-    <td class="tg-0lax">27.6ms</td>
+    <td class="tg-0lax">108.3</td>
+    <td class="tg-0lax">27.6</td>
   </tr>
   <tr>
     <td class="tg-0pky">4</td>
     <td class="tg-0pky">345.2</td>
-    <td class="tg-0pky">44.7ms</td>
+    <td class="tg-0pky">44.7</td>
   </tr>
   <tr>
     <td class="tg-0lax">8</td>
-    <td class="tg-0lax">758.2ms</td>
-    <td class="tg-0lax">69.7ms</td>
+    <td class="tg-0lax">758.2</td>
+    <td class="tg-0lax">69.7</td>
   </tr>
   <tr>
     <td class="tg-0lax">16</td>
-    <td class="tg-0lax">1474.5ms</td>
-    <td class="tg-0lax">117.4ms</td>
+    <td class="tg-0lax">1474.5</td>
+    <td class="tg-0lax">117.4</td>
   </tr>
   <tr>
     <td class="tg-0lax">32</td>
-    <td class="tg-0lax">2937.4ms</td>
-    <td class="tg-0lax">220.8ms</td>
+    <td class="tg-0lax">2937.4</td>
+    <td class="tg-0lax">220.8</td>
   </tr>
   <tr>
     <td class="tg-0pky">48</td>
-    <td class="tg-0pky">4420.9ms</td>
-    <td class="tg-0pky">312.3ms</td>
+    <td class="tg-0pky">4420.9</td>
+    <td class="tg-0pky">312.3</td>
   </tr>
 </tbody>
 </table>
 
 # 性能测试
-benchmark_chatglm.py脚本提供了对接deepspeed 多卡切分执行chatglm的样例参考    
+benchmark_chatglm.py脚本提供了对接deepspeed多卡切分执行chatglm的样例参考, 本文性能数据基于deepspeed（0.14.1） transformers(4.31.0)在arm host + 800I A2环境执行进行统计   
+下载模型权重及模型文件 
+```bash  
 git lfs install  
-git clone git@hf.co:THUDM/chatglm3-6b(也可以直接进入页面点击下载)  
-git checkout f30825950ce00cb0577bf6a15e0d95de58e328dc（如果手动下载的文件请确认modeling文件为指定commitid版本）  
+git clone git@hf.co:THUDM/chatglm3-6b chatglm3  
+git checkout f30825950ce00cb0577bf6a15e0d95de58e328dc  
+```
 将当前目录中的modeling_chatglm.py文件替换下载目录下的modeling_chatglm.py文件  
-设置环境变量 export PYTHONPATH=$PYTHONPATH:/model_download  
-deepspeed --num_gpus=8 benchmark_chatglm.py --model_path=/model_download --execute_mode="dynamo"
+```bash
+cp modeling_chatglm.py chatglm3/modeling_chatglm.py
+```
+设置环境变量 
+```bash
+export PYTHONPATH=$PYTHONPATH:chatglm3/
+```
+deepspeed 拉起chatglm模型在8卡上切分执行
+```bash
+deepspeed --num_gpus=8 benchmark_chatglm.py --model_path=chatglm3/ --execute_mode="dynamo"
+```
 1. promts维度对应batch size，样例中为4
 2. main函数中input_max_len指定seq_len
 3. model_runner.execute_mode = "dynamo"指明脚本默认执行图模式，如果需要执行单算子模式需要将该属性设置为eager
