@@ -1,0 +1,9 @@
+diffusers==0.24.0
+accelerate
+protobuf
+decorator
+absl-py
+cloudpickle
+scipy
+synr==0.5.0
+tornado
