@@ -69,6 +69,40 @@ def static_concat(grad_output, input_sizes, dim, start, end, meta_outputs):
     return grad_input
 
 
+def dynamic_concat(grad_output, input_sizes, dim, start, end, meta_outputs):
+    length = ge.Gather(input_sizes, dim)
+    result = []
+
+    start = ge.SelectV2(ge.GreaterEqual(start, length), length, ge.FloorMod(start, length))
+    end = ge.SelectV2(ge.GreaterEqual(end, length), length, ge.FloorMod(end, length))
+
+    start = ge.Minimum(start, end)
+    zeros1 = dynamic_gen(grad_output, input_sizes, dim, 0, start, meta_outputs.dtype)
+    result.append(zeros1)
+
+    result.append(grad_output)
+
+    zeros2 = dynamic_gen(grad_output, input_sizes, dim, end, length, meta_outputs.dtype)
+    result.append(zeros2)
+
+    grad_input = ge.ConcatV2(result, concat_dim=dim, N=len(result))
+    return grad_input
+
+
+def dynamic_gen(grad_output, input_sizes, dim, start, end, dtype):
+    # Generate correct tensor for concating grad.
+    real_dim = ge.Sub(end, start)
+    real_dim = ge.Maximum(real_dim, 0)
+    new_sizes = []
+    for i in range(grad_output.rank):
+        if i == dim:
+            new_sizes.append(real_dim)
+        else:
+            new_sizes.append(ge.Gather(input_sizes, i))
+    new_sizes = ge.Pack(new_sizes, N=grad_output.rank, axis=0)
+    return ge.Fill(new_sizes, ge.Cast(0., dst_type=dtype))
+
+
 @declare_supported([
     Support(F32(3, 4), [3, 8], 1, 0, 8, 2),
     Support(F16(3, 4), [3, 8], 1, 0, 10, 2),
@@ -91,7 +125,9 @@ def conveter_aten_slice_backward_default(
         # If step is 1, optimize slice_backward by ConcatV2.
         if isinstance(start, int) and isinstance(end, int) and isinstance(input_sizes, list):
             return static_concat(grad_output, input_sizes, dim, start, end, meta_outputs)
-
+        else:
+            return dynamic_concat(grad_output, input_sizes, dim, start, end, meta_outputs)
+        
     src_input_sizes = input_sizes
     src_end = end
 

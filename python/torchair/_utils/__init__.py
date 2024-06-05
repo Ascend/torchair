@@ -292,6 +292,16 @@ def register_matmul_backward_decomp():
     instead of mm and mm_backwrd. This will lead to some bug in npu_backend
     and the decomposition can fix it.
     '''
+    @aten.to.other.py_impl(DispatchKey.AutogradPrivateUse1)
+    def to_other_decomposition(self, other, non_blocking=False, copy=False, memory_format=None):
+        output = self.to(other.dtype)
+        return output
+
+    @aten.type_as.default.py_impl(DispatchKey.AutogradPrivateUse1) 
+    def type_as_decomposition(self, other):
+        output = self.to(other.dtype)
+        return output
+    
     @aten.matmul_backward.default.py_impl(DispatchKey.CompositeImplicitAutograd)
     @out_wrapper("grad_self", "grad_other")
     def matmul_backward_decomposition(grad, self, other, mask):
