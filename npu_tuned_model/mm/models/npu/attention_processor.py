@@ -22,7 +22,7 @@ import torch.nn.functional as F
 from torch import nn
 from diffusers.models.attention_processor import Attention
 
-import torchair.contrib.custom_torch_ops
+import torchair._contrib.custom_torch_ops
 
 
 class AttnProcessor2_0:
@@ -205,9 +205,6 @@ class AttnProcessor2_0Tome:
         hidden_states = attn.to_out[0](hidden_states, *args)
         # dropout
         hidden_states = attn.to_out[1](hidden_states)
-
-        if input_ndim == 4:
-            hidden_states = hidden_states.transpose(-1, -2).reshape(bs, c, h, w)
 
         # Step 3: token unmerge
         hidden_states = torch.ops.npu_inference.npu_tome_unmerge(

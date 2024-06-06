@@ -1,4 +1,4 @@
-export PYTHONPATH=$PYTHONPATH:/your/path/to/torchair/npu_tuned_model/mm:/home/c00806609/torchair/npu_tuned_model/mm/engines/src/
+export PYTHONPATH=$PYTHONPATH:/your/path/to/torchair/npu_tuned_model/mm
 cann_path=/usr/local/Ascend # 昇腾cann包安装目录
 model_path=xxx/stable-diffusion-2-1-base # 下载的权重和模型信息
 device_list="0"

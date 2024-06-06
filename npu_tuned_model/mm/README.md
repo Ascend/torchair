@@ -60,7 +60,7 @@ pip3 install -r requirement.txt
 git clone https://gitee.com/ascend/torchair.git
 ```
 
-针对昇腾NPU，我们提供了优化补丁，以便模型能够更好地进行部署：
+针对昇腾NPU，我们提供了优化补丁，以便模型能够更好地进行部署（依赖patch命令）：
 ```shell
 cd torchair/npu_tuned_model/mm/engines
 bash diffusers_patch.sh
