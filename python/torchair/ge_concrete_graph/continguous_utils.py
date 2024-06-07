@@ -63,9 +63,10 @@ def set_ge_outputs(ge_outputs, meta_outputs):
 def set_meta_tensor_info(arg):
     view_shape = arg.symsize
     view_stride = gen_contiguous_stride(view_shape)
-    view_storagesize = gen_contiguous_storagesize(view_shape)
-    meta_empty = torch.empty([view_storagesize], device=arg.meta.device, dtype=arg.meta.dtype)
-    args_meta = meta_empty.as_strided(view_shape, view_stride, 0)
+    if list(arg.meta.stride()) != view_stride:
+        args_meta = arg.meta.as_strided(view_shape, view_stride, 0)
+    else:
+        args_meta = arg.meta
         
     return args_meta
 

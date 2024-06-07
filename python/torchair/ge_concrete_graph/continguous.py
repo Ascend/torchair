@@ -1,4 +1,3 @@
-import sympy
 from torch.fx.experimental.symbolic_shapes import hint_int
 from torchair.core._concrete_graph import ValuePack
 from torchair.ge_concrete_graph.ge_graph import Tensor, is_sym, DataType
@@ -35,7 +34,7 @@ def get_sym_node_from_graph(npu_input_src, symbol_dim, graph):
     mapsym = getattr(npu_input_src, "view_faketensor").mapsym
     srcshape = getattr(npu_input_src, "view_faketensor").srcshape
     if str(symbol_dim) in mapsym.keys():
-        for op in graph.op:
+        for op in reversed(graph.op):
             if op.name == mapsym[str(symbol_dim)].split(":")[0]:
                 return Tensor(op, int(mapsym[str(symbol_dim)].split(":")[1]))
     elif symbol_dim in srcshape:
@@ -63,21 +62,21 @@ def _build_valid_stride(stride, shape):
 
 
 def _build_reshape_node(npu_input, npu_input_src, meta_size, graph):
-    if all([not sympy.simplify(str(meta_dim)).has(sympy.Symbol) for meta_dim in meta_size]):
+    if all([not is_sym(meta_dim) for meta_dim in meta_size]):
         return ge.Reshape(npu_input, ge.Const(meta_size, dtype=DataType.DT_INT64))
 
     target_shape = []
-    srcshape_tensor = getattr(npu_input_src, "srcshape_tensor", {})
+    view_operator_map = getattr(graph, "view_operator_map", {})
     for meta_dim in meta_size:
-        if not sympy.simplify(str(meta_dim)).has(sympy.Symbol):
+        if not is_sym(meta_dim):
             target_shape.append(ge.Const(meta_dim, dtype=DataType.DT_INT64))
         else:
-            if str(meta_dim) in srcshape_tensor.keys():
-                target_shape.append(srcshape_tensor.get(str(meta_dim)))
+            if str(meta_dim) in view_operator_map.keys():
+                target_shape.append(view_operator_map.get(str(meta_dim)))
             else:
-                srcshape_tensor[str(meta_dim)] = get_sym_node_from_graph(npu_input_src, meta_dim, graph)
-                target_shape.append(srcshape_tensor.get(str(meta_dim)))
-    setattr(npu_input_src, "srcshape_tensor", srcshape_tensor)
+                view_operator_map[str(meta_dim)] = get_sym_node_from_graph(npu_input_src, meta_dim, graph)
+                target_shape.append(view_operator_map.get(str(meta_dim)))
+    setattr(graph, "view_operator_map", view_operator_map)
     pack_tensor = ge.Pack(target_shape, N=len(target_shape), axis=0)
     if all([is_host_data_tensor(sym_i) for sym_i in target_shape]):
         pack_tensor.node.attr['_inputs_all_sym'].b = True
@@ -130,7 +129,9 @@ def _optimize_non_contiguous(npu_input, meta_input, graph):
 def optimize_view(npu_input, graph):
     if isinstance(npu_input, ValuePack):
         npu_input = npu_input.npu
-    
+    npu_input_src = npu_input
+
+    view_operator_map = getattr(graph, "view_operator_map", {})
     #非Tensor的arg直接返回
     if not hasattr(npu_input, "view_faketensor"):
         if isinstance(npu_input, (list, tuple)):
@@ -149,10 +150,16 @@ def optimize_view(npu_input, graph):
     if meta_shape == npu_shape and meta_stride == npu_stride:
         return npu_input
 
+    if (npu_input_src, meta_input) in view_operator_map.keys():
+        return view_operator_map[(npu_input_src, meta_input)]
+
     #经过view类操作的arg判断是否为长度为1，若为连续则只经过Reshape；若为非连续则进入反推判断
     if len(meta_shape) == 1:
         npu_input = _build_reshape_node(npu_input, npu_input, meta_shape, graph)
     else:
         npu_input = _optimize_non_contiguous(npu_input, meta_input, graph)
+
+    view_operator_map[(npu_input_src, meta_input)] = npu_input
+    setattr(graph, "view_operator_map", view_operator_map)
     npu_input.set_meta(meta_real)
     return npu_input

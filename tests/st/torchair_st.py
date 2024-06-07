@@ -12,7 +12,7 @@ from torchair.core.utils import logger
 from torchair.core._backend import TorchNpuGraph
 from torchair.ge_concrete_graph.ge_graph import GeGraph, Const, _ge_dtype_to_ge_proto_dtype
 from torchair.ge_concrete_graph.fx2ge_converter import ExecutorType, Placement, _normalize_ge_graph, \
-    _mapping_assign_op_to_graph_output, replace_data_to_refdata
+    _mapping_assign_op_to_graph_output, replace_data_to_refdata, GeConcreteGraph
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.ge_graph import DataType
 from torchair.ge_concrete_graph.graph_pass import optimize_reference_op_redundant_copy
@@ -40,6 +40,16 @@ def set_graph_output_dtypes(graph, dtypes):
 
 
 class TorchairSt(unittest.TestCase):
+    def setUp(self) -> None:
+        self.call_bak = GeConcreteGraph.__call__
+        self.optimize_bak = GeConcreteGraph.optimize_graph_without_runtime
+        return super().setUp()
+
+    def tearDown(self) -> None:
+        GeConcreteGraph.__call__ = self.call_bak
+        GeConcreteGraph.optimize_graph_without_runtime = self.optimize_bak
+        return super().tearDown()
+
     def test_basic(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -253,7 +263,7 @@ class TorchairSt(unittest.TestCase):
             def wrapper(*args, **kwargs):
                 assert len(args) > 0
                 pack_num, data_num = get_graph_pack_data_num(args[0])
-                assert pack_num == 6, f"before optimize, assert pack op num failed, expect 6, get {pack_num}"
+                assert pack_num == 10, f"before optimize, assert pack op num failed, expect 10, get {pack_num}"
                 assert data_num == 8, f"before optimize, assert data op num failed, expect 8, get {data_num}"
 
                 ret = func(*args, **kwargs)
@@ -265,7 +275,6 @@ class TorchairSt(unittest.TestCase):
 
             return wrapper
 
-        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
         bak_optimization = GeConcreteGraph.optimize_graph_without_runtime
         GeConcreteGraph.optimize_graph_without_runtime = wrapper_call(GeConcreteGraph.optimize_graph_without_runtime)
 
@@ -807,8 +816,6 @@ class TorchairSt(unittest.TestCase):
 
             return wrapper
 
-        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
-        src_call = GeConcreteGraph.__call__
         GeConcreteGraph.__call__ = decorator(GeConcreteGraph.__call__)
 
         import _privateuse1_backend
@@ -832,9 +839,7 @@ class TorchairSt(unittest.TestCase):
         model = torch.compile(model, backend=npu_backend)
         x = torch.randn(4, 3, 32)
         model(x)
-
         torch.default_generator = src_gen
-        GeConcreteGraph.__call__ = src_call
 
     def test_torch_sym(self):
         class Model(torch.nn.Module):
@@ -883,10 +888,7 @@ class TorchairSt(unittest.TestCase):
 
             return wrapper
 
-        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
-        src_call = GeConcreteGraph.__call__
         GeConcreteGraph.__call__ = my_decorator(GeConcreteGraph.__call__)
-
         model = Model()
         model_dynamic = torch.compile(model, backend=npu_backend, dynamic=True)
 
@@ -898,8 +900,6 @@ class TorchairSt(unittest.TestCase):
         for i in range(10, 15):
             x = torch.randn(i, i + 1, i + 2, i + 3)
             model_static(x, x.size())
-
-        GeConcreteGraph.__call__ = src_call
 
     def test_remove_sym(self):
         class Model(torch.nn.Module):
@@ -944,10 +944,7 @@ class TorchairSt(unittest.TestCase):
 
             return wrapper
 
-        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
-        src_call = GeConcreteGraph.__call__
         GeConcreteGraph.__call__ = my_decorator(GeConcreteGraph.__call__)
-
         model = Model()
         model_dynamic = torch.compile(model, backend=npu_backend, dynamic=True)
 
@@ -967,8 +964,6 @@ class TorchairSt(unittest.TestCase):
         model_static(b, [1, 3, 2, 0])
         model_static(c, [1, 0, 3, 2])
         model_static(c, [1, 0, -1, -2])
-
-        GeConcreteGraph.__call__ = src_call
 
     def test_permute_with_transpose(self):
         class Model(torch.nn.Module):
@@ -996,8 +991,6 @@ class TorchairSt(unittest.TestCase):
 
             return wrapper
 
-        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
-        src_call = GeConcreteGraph.__call__
         GeConcreteGraph.__call__ = my_decorator(GeConcreteGraph.__call__)
 
         model = Model()
@@ -1019,8 +1012,6 @@ class TorchairSt(unittest.TestCase):
         model_static(b, [2, 3, 1, 0])
         model_static(c, [0, 2, 1, 3])
         model_static(c, [0, -2, 1, -1])
-
-        GeConcreteGraph.__call__ = src_call
 
     def test_set_error_option_path(self):
         config_error = CompilerConfig()
@@ -1247,8 +1238,6 @@ class TorchairSt(unittest.TestCase):
 
             return wrapper
 
-        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
-        src_call = GeConcreteGraph.__call__
         GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
 
         class Model(torch.nn.Module):
@@ -1268,8 +1257,6 @@ class TorchairSt(unittest.TestCase):
         z = torch.nn.Parameter(z)
         p = torch.randn([3, 2])
         model(z, p)
-
-        GeConcreteGraph.__call__ = src_call
 
     def test_enable_constplaceholder_static_base(self):
         def get_graph_pack_data_num(concrete_graph):
@@ -1290,8 +1277,6 @@ class TorchairSt(unittest.TestCase):
 
             return wrapper
 
-        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
-        src_call = GeConcreteGraph.__call__
         GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
 
         class Model(torch.nn.Module):
@@ -1312,8 +1297,6 @@ class TorchairSt(unittest.TestCase):
         p = torch.randn([3, 2])
         model(z, p)
 
-        GeConcreteGraph.__call__ = src_call
-
     def test_enable_constplaceholder_dynamic1(self):
         def get_graph_pack_data_num(concrete_graph):
             num_cp, num_data = 0, 0
@@ -1333,8 +1316,6 @@ class TorchairSt(unittest.TestCase):
 
             return wrapper
 
-        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
-        src_call = GeConcreteGraph.__call__
         GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
 
         class Model(torch.nn.Module):
@@ -1355,8 +1336,6 @@ class TorchairSt(unittest.TestCase):
         y = torch.randn([2, 2])
         z = torch.randn([4, 4])
         model(x, y, z)
-
-        GeConcreteGraph.__call__ = src_call
 
     def test_enable_constplaceholder_static1(self):
         def get_graph_pack_data_num(concrete_graph):
@@ -1377,8 +1356,6 @@ class TorchairSt(unittest.TestCase):
 
             return wrapper
 
-        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
-        src_call = GeConcreteGraph.__call__
         GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
 
         class Model(torch.nn.Module):
@@ -1400,8 +1377,6 @@ class TorchairSt(unittest.TestCase):
         z = torch.randn([4, 4])
         model(x, y, z)
 
-        GeConcreteGraph.__call__ = src_call
-
     def test_enable_constplaceholder_dynamic2(self):
         def get_graph_pack_data_num(concrete_graph):
             num_cp, num_data = 0, 0
@@ -1421,8 +1396,6 @@ class TorchairSt(unittest.TestCase):
 
             return wrapper
 
-        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
-        src_call = GeConcreteGraph.__call__
         GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
 
         class Model(torch.nn.Module):
@@ -1443,8 +1416,6 @@ class TorchairSt(unittest.TestCase):
         z = torch.randn([4, 4])
         model(x, y, z)
 
-        GeConcreteGraph.__call__ = src_call
-
     def test_enable_constplaceholder_static2(self):
         def get_graph_pack_data_num(concrete_graph):
             num_cp, num_data = 0, 0
@@ -1464,8 +1435,6 @@ class TorchairSt(unittest.TestCase):
 
             return wrapper
 
-        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
-        src_call = GeConcreteGraph.__call__
         GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
 
         class Model(torch.nn.Module):
@@ -1485,8 +1454,6 @@ class TorchairSt(unittest.TestCase):
         y = torch.randn([2, 2])
         z = torch.randn([4, 4])
         model(x, y, z)
-
-        GeConcreteGraph.__call__ = src_call
 
     def test_topk(self):
         class Model(torch.nn.Module):
@@ -1631,8 +1598,6 @@ class TorchairSt(unittest.TestCase):
 
             return wrapper
 
-        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
-        src_call = GeConcreteGraph.__call__
         GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
 
         class Model(torch.nn.Module):
@@ -1656,8 +1621,6 @@ class TorchairSt(unittest.TestCase):
         x = torch.randn([36])
         model(x)
 
-        GeConcreteGraph.__call__ = src_call
-
     def test_view_operator_optimize_to_reshape(self):
         def get_graph_transpose_reshape_num(concrete_graph):
             transpose_num = 0
@@ -1680,8 +1643,6 @@ class TorchairSt(unittest.TestCase):
 
             return wrapper
 
-        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
-        src_call = GeConcreteGraph.__call__
         GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
 
         class Model(torch.nn.Module):
@@ -1705,8 +1666,6 @@ class TorchairSt(unittest.TestCase):
         x = torch.randn([256, 1, 128])
         a = 8
         model(x, a)
-
-        GeConcreteGraph.__call__ = src_call    
 
     def test_view_operator_repeat_gather(self):
         def get_graph_gather_reshape_num(concrete_graph):
@@ -1734,8 +1693,6 @@ class TorchairSt(unittest.TestCase):
 
             return wrapper
 
-        from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
-        src_call = GeConcreteGraph.__call__
         GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
 
         class Model(torch.nn.Module):
@@ -1756,8 +1713,53 @@ class TorchairSt(unittest.TestCase):
         x = torch.randn([6, 6, 4, 1])
         model(x)
 
-        GeConcreteGraph.__call__ = src_call 
+    def test_view_operator_repeat_transpose(self):
+        def get_graph_gather_reshape_num(concrete_graph):
+            gather_num = 0
+            transpose_num = 0
+            reshape_num = 0
+            for node in concrete_graph.graph.op:
+                if node.type == "Gather":
+                    gather_num += 1
+                if node.type == "Transpose":
+                    transpose_num += 1
+                if node.type == "Reshape":
+                    reshape_num += 1
+            return gather_num, transpose_num, reshape_num
 
+        def wrapper_call(func):
+            def wrapper(*args, **kwargs):
+                assert len(args) > 0
+                ret = func(*args, **kwargs)
+                gather_num, transpose_num, reshape_num = get_graph_gather_reshape_num(args[0])
+                assert gather_num == 2, f"assert gather op num failed, expect 2, get {gather_num}"
+                assert transpose_num == 1, f"assert transpose op num failed, expect 1, get {transpose_num}"
+                assert reshape_num == 2, f"assert reshape op num failed, expect 2, get {reshape_num}"
+                return ret
+
+            return wrapper
+
+        GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                t1 = x.transpose(0, 2)
+                add = t1 + 1
+                sub = t1 - 1
+                res = add + sub
+                return res
+
+        model = Model()
+        config_view = CompilerConfig()
+        config_view.experimental_config.enable_view_optimize = True
+        npu_backend_view = torchair.get_npu_backend(compiler_config=config_view)
+        model = torch.compile(model, backend=npu_backend_view, dynamic=True)
+
+        x = torch.randn([3, 1, 4])
+        model(x)
 
 if __name__ == '__main__':
     unittest.main()
