@@ -22,7 +22,11 @@ def get_error_msg(e):
     if "torch_npu" not in sys.modules:
         return format_error_msg()
 
-    from torch_npu.utils.error_code import ErrCode, graph_error
+    try:
+        from torch_npu.utils._error_code import ErrCode, graph_error
+    except (ModuleNotFoundError, ImportError):
+        return format_error_msg()
+
     code = ErrCode.INTERNAL
     if isinstance(e, NotImplementedError):
         code = ErrCode.NOT_SUPPORT
