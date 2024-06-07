@@ -19,7 +19,7 @@ from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType
 from torchair.ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
 
@@ -54,6 +54,8 @@ def convert_npu_mm_all_reduce_base(
                                        Tensor? antiquant_scale=None, Tensor? antiquant_offset=None, Tensor? x3=None,
                                        Tensor? dequant_scale=None, int antiquant_group_size=0,
                                        int comm_turn=0) -> Tensor'''
+    check_dtype(self, x2, bias=bias, x3=x3, antiquant_scale=antiquant_scale,
+                antiquant_offset=antiquant_offset, dequant_scale=dequant_scale)
     return ge.MatmulAllReduce(self,
                               x2,
                               bias=bias,
@@ -67,3 +69,16 @@ def convert_npu_mm_all_reduce_base(
                               is_trans_b=transpose_x2,
                               comm_turn=comm_turn,
                               antiquant_group_size=antiquant_group_size)
+
+
+def check_dtype(x1: Tensor, x2: Tensor, bias: Optional[Tensor], x3: Optional[Tensor],
+                antiquant_scale: Optional[Tensor], antiquant_offset: Optional[Tensor],
+                dequant_scale: Optional[Tensor]):
+    if (x1.dtype == DataType.DT_FLOAT16 or x1.dtype == DataType.DT_BF16) and \
+        (x2.dtype == DataType.DT_FLOAT16 or x2.dtype == DataType.DT_BF16):
+        if x2.dtype != x1.dtype:
+            raise AssertionError(f"type of x1:{x1.dtype} and x2:{x2.dtype} must be same.")
+        if bias is not None and bias.dtype != x1.dtype:
+            raise AssertionError(f"type of x1:{x1.dtype} and bias:{bias.dtype} must be same.")
+        if x3 is not None and x3.dtype != x1.dtype:
+            raise AssertionError(f"type of x1:{x1.dtype} and x3:{x3.dtype} must be same.")
