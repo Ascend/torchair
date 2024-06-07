@@ -11,17 +11,17 @@
 #include "utils.h"
 #include "npu_utils.h"
 #include "AllocatorManager.h"
+#include "acl/acl_rt.h"
 
 namespace tng {
 
-Status StaticNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &inputs,
-                                              std::vector<at::Tensor> &retain_tmp_device_inputs) {
+Status StaticNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &inputs, void *stream) {
   TNG_ASSERT(graph_data_->input_placements.size() == inputs.size());
   bool is_first_run = inputs_holder_.empty();
   if (is_first_run) {
     inputs_holder_.resize(inputs.size());
+    host_input_holders_.resize(inputs.size());
   }
-
   for (size_t i = 0U; i < inputs.size(); ++i) {
     if (graph_data_->input_placements[i] == Placement::DEVICE) {
       if (!inputs[i].device().is_privateuseone()) {
@@ -41,26 +41,23 @@ Status StaticNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &inp
         return Status::Error("Input %zu placement %s is incompatible with expected CPU.", i,
                              DebugString(inputs[i].device()).c_str());
       }
-      // copy host input to device
-      auto device_input = at::empty(inputs[i].sizes(), inputs[i].options().device(at::kPrivateUse1));
-      device_input.copy_(inputs[i], true);
-      // device_input is a temporary variable that will be destructed after leaving the scope,
-      // and it is necessary to control its destruct timing.
-      retain_tmp_device_inputs.emplace_back(std::move(device_input));
-
+      TNG_LOG(DEBUG) << "Host input " << i << " " << DebugString(inputs[i]) << " need copy to device";
       if (is_first_run) {
-        TNG_RETURN_IF_ERROR(AtTensorToGeTensor(retain_tmp_device_inputs.back(), inputs_holder_[i]));
-      } else {
-        // In static graph input shape remains unchanged, only data ptr need to be updated.
-        TNG_RETURN_IF_ERROR(AssembleDataToGe(retain_tmp_device_inputs.back(), inputs_holder_[i]));
+        auto host_input_holder = at::empty(inputs[i].sizes(), inputs[i].options().device(at::kPrivateUse1));
+        size_t copy_size = static_cast<size_t>(inputs[i].numel() * inputs[i].element_size());
+        host_input_holders_[i] = std::make_pair(host_input_holder, copy_size);
+        TNG_RETURN_IF_ERROR(AtTensorToGeTensor(host_input_holders_[i].first, inputs_holder_[i]));
       }
+      auto ret = aclrtMemcpyAsync(host_input_holders_[i].first.data_ptr(), host_input_holders_[i].second,
+                                  inputs[i].data_ptr(), host_input_holders_[i].second, ACL_MEMCPY_HOST_TO_DEVICE,
+                                  stream);
+      TNG_ASSERT(ret == ACL_ERROR_NONE, "ACL memory copy failed, return %d", ret);
       TNG_LOG(DEBUG) << "Assemble aten host input " << i << " " << DebugString(inputs[i]) << " to "
                      << DebugString(inputs_holder_[i]);
     } else {
       TNG_ASSERT(false, "Invalid Placement::UNKNOWN of input %zu.", i);
     }
   }
-
   return Status::Success();
 }
 
@@ -182,18 +179,16 @@ Status StaticNpuGraphExecutor::AllocAndSetFixedMemory(void *stream, std::shared_
 Status StaticNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
                                    const std::vector<c10::optional<at::Tensor>> &torch_outputs,
                                    std::vector<at::Tensor> &outputs, void *stream) {
-  std::vector<at::Tensor> retain_tmp_device_inputs;
+  if (stream == nullptr) {
+    TNG_RETURN_IF_ERROR(GetCurrentStream(&stream));
+  }
   {
     RECORD_FUNCTION("AssembleInputs", std::vector<c10::IValue>({}));
-    TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, retain_tmp_device_inputs));
+    TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, stream));
   }
   {
     RECORD_FUNCTION("AssembleOutputs", std::vector<c10::IValue>({}));
     TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs, outputs));
-  }
-
-  if (stream == nullptr) {
-    TNG_RETURN_IF_ERROR(GetCurrentStream(&stream));
   }
 
   if (is_first_run_) {
@@ -208,7 +203,6 @@ Status StaticNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
     RECORD_FUNCTION("RunGraphWithStreamAsync", std::vector<c10::IValue>({}));
     TNG_RETURN_IF_ERROR(Session::GetInstance().RunGraph(graph_data_->id, inputs_holder_, outputs_holder_, stream));
   }
-  retain_tmp_device_inputs.clear();
   TNG_LOG(INFO) << "StaticNpuGraphExecutor::Run graph " << graph_data_->id << " on stream " << stream
                 << " successfully.";
   if (fm_refreshable_) {

@@ -547,7 +547,9 @@ class TorchairSt(unittest.TestCase):
             x = torch.ones([2, 2], dtype=torch.int32, device='npu')
             y = torch.ones([], dtype=torch.int32, device='npu')
             z = executor.run([x, y], [x])
+            k = executor.run([x, y], [x])
             self.assertTrue(z[0] is x)
+            self.assertTrue(k[0] is x)
 
     def test_dynamic_npu_executor_with_assigned_inputs(self):
         initialize_graph_engine()
@@ -570,9 +572,13 @@ class TorchairSt(unittest.TestCase):
             executor.compile()
 
             x = torch.ones([2, 2], dtype=torch.int32, device='npu')
-            y = torch.ones([], dtype=torch.int32, device='npu')
+            y = torch.ones([2, ], dtype=torch.int32, device='npu')
             z = executor.run([x, y], [x])
+            x1 = torch.ones([3, 3], dtype=torch.int32, device='npu')
+            y1 = torch.ones([3, ], dtype=torch.int32, device='npu')
+            z1 = executor.run([x1, y1], [x1])
             self.assertTrue(z[0] is x)
+            self.assertTrue(z1[0] is x1)
 
     def test_input_processing_for_static_graph(self):
         class Model(torch.nn.Module):

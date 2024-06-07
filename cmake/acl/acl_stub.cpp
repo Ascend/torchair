@@ -24,6 +24,21 @@ aclError aclrtSetCurrentContext(aclrtContext context) {
   return ACL_SUCCESS;
 }
 
+aclError aclrtMemcpy(void *dst, size_t destMax,
+                     const void *src,
+                     size_t count,
+                     aclrtMemcpyKind kind) {
+    return ACL_SUCCESS;
+}
+
+aclError aclrtMemcpyAsync(void *dst, size_t destMax,
+                          const void *src,
+                          size_t count,
+                          aclrtMemcpyKind kind,
+                          aclrtStream stream) {
+    return ACL_SUCCESS;
+}
+
 #ifdef __cplusplus
 }
 #endif

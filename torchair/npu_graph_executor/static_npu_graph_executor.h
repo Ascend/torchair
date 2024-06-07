@@ -19,7 +19,7 @@ class StaticNpuGraphExecutor : public Executor {
  private:
   Status AllocAndSetFixedMemory(void *stream, std::shared_ptr<GraphData> &graph_data);
 
-  Status AssembleInputs(const std::vector<at::Tensor> &inputs, std::vector<at::Tensor> &retain_tmp_device_inputs);
+  Status AssembleInputs(const std::vector<at::Tensor> &inputs, void *stream);
 
   Status AssembleOutputs(const std::vector<c10::optional<at::Tensor>> &assigned_outputs,
                          std::vector<at::Tensor> &outputs);
@@ -39,6 +39,7 @@ class StaticNpuGraphExecutor : public Executor {
 
   std::vector<ge::Shape> output_shapes_;
   std::vector<at::TensorOptions> output_options_;
+  std::vector<std::pair<at::Tensor, size_t>> host_input_holders_;
 };
 }  // namespace tng
 
