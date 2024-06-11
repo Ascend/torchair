@@ -20,7 +20,7 @@ class _ExperimentalConfig(NpuBaseConfig):
         self.enable_single_stream = OptionValue(False, [True, False])
         self.topology_sorting_strategy = OptionValue("DFS", ["BFS", "DFS", "RDFS", "StableRDFS"])
         self.enable_ref_data = OptionValue(False, [True, False])
-        self.enable_view_optimize = OptionValue(True, [True, False])
+        self.enable_view_optimize = OptionValue(False, [True, False])
 
         super(_ExperimentalConfig, self).__init__()
 

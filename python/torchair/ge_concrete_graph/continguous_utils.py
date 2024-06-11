@@ -145,7 +145,8 @@ def guard_view_input(func):
                 return ge_outputs                     
             else:
                 args_new = [optimize_view(arg, self.graph) for arg in args]
-            return func(self, target, args_new, kwargs, meta_outputs)
+                kwargs_new = {key: optimize_view(val, self.graph) for key, val in kwargs.items()}
+            return func(self, target, args_new, kwargs_new, meta_outputs)
         else:
             return func(self, target, args, kwargs, meta_outputs)
 
