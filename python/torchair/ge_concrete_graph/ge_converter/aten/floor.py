@@ -18,14 +18,18 @@ import torch
 from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
-from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
+from torchair.ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
 from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge_concrete_graph.supported_declaration import Support, F32
 
 
+@declare_supported([
+    Support(F32(100)),
+])
 @register_fx_node_ge_converter(torch.ops.aten.floor.default)
 def conveter_aten_floor_default(self: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::floor(Tensor self) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.floor.default ge_converter is not implemented!")
+    return ge.Floor(self)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.floor.out)
