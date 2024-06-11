@@ -26,7 +26,8 @@ from torchair.core.utils import logger
 from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef, TensorDescriptor, TensorDef, OpDef
 from torchair.ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
 from torchair.ge_concrete_graph.ge_graph import Tensor as GeTensor
-from torchair.ge_concrete_graph.ge_graph import _ValueInput, _TensorInput, _DiscontiguousTensorInput, _RngStatusInput
+from torchair.ge_concrete_graph.ge_graph import _ValueInput, _TensorInput, _DiscontiguousTensorInput, _RngStatusInput, \
+    _ValueType, _GeInputInfo
 from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type, torch_type_to_ge_proto_type, default_ge_graph, \
     GeGraph, attr_scope, compat_as_bytes, DataType, Format, TensorSpec, is_sym, sym_to_ge_dtype, assert_args_checkout
 from torchair.ge_concrete_graph.graph_pass import optimize_sym_pack, optimize_reference_op_redundant_copy, \
@@ -701,8 +702,7 @@ class GeConcreteGraph(ConcreteGraphBase):
             self._all_sym_input_idx[(meta_outputs).node.expr] = data_index
             data = ge.Data(index=data_index, dtype=sym_to_ge_dtype(meta_outputs), shape=[], placement='CPU',
                            node_name=target)
-            data.set_meta(meta_outputs)
-            self.graph.record_input_func(data.node.name, _ValueInput(data_index))
+            input_info = _GeInputInfo(value_type=_ValueType.TENSOR, func=_ValueInput(data_index), shape=[])
         else:
             if not isinstance(meta_outputs, torch.Tensor):
                 raise AssertionError
@@ -711,9 +711,14 @@ class GeConcreteGraph(ConcreteGraphBase):
             shape = generate_shape_from_tensor(meta_outputs)
             placement = 'CPU' if (meta_outputs.device is None or meta_outputs.device.type == 'cpu') else 'NPU'
             data = ge.Data(index=data_index, dtype=dtype, shape=shape, placement=placement, node_name=target)
-            data.set_meta(meta_outputs)
-            self.graph.record_input_func(data.node.name, _TensorInput(
-                data_index) if meta_outputs.is_contiguous() else _DiscontiguousTensorInput(data_index))
+            input_info = _GeInputInfo(
+                value_type=_ValueType.PARAMETER if isinstance(meta_outputs, torch.nn.Parameter) else _ValueType.TENSOR,
+                func=_TensorInput(data_index) if meta_outputs.is_contiguous() else _DiscontiguousTensorInput(
+                    data_index),
+                shape=shape)
+
+        data.set_meta(meta_outputs)
+        self.graph.record_input_info(data.node.name, input_info)
         return data
 
     @guard_view_input

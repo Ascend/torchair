@@ -6,7 +6,7 @@ import torch
 from torchair.core.utils import logger
 from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef, TensorDescriptor, TensorDef, OpDef
 from torchair.ge_concrete_graph.ge_graph import _ge_proto_dtype_to_ge_dtype, compat_as_bytes, torch_type_to_ge_type, \
-    _SymPackInput
+    _SymPackInput, _ValueType, _GeInputInfo
 from torchair.ge_concrete_graph.ge_graph import Tensor as GeTensor
 from torchair.ge_concrete_graph.utils import Placement, update_op_input_name_from_mapping, generate_shape_from_tensor
 
@@ -38,7 +38,6 @@ def _find_data_of_same_pack(datas: List[Tuple[GeTensor, OpDef]], pack_op: OpDef)
 
 
 def optimize_sym_pack(graph: GraphDef):
-    from torchair.ge_concrete_graph.ge_graph import get_default_ge_graph
     host_data_ops, sym_pack_ops = _find_pack_and_data_ops(graph)
     additional_data: List[Tuple[GeTensor, OpDef]] = []
     pack_to_data_name_mapping = {}
@@ -55,7 +54,9 @@ def optimize_sym_pack(graph: GraphDef):
                                    shape=[len(pack_op.input)],
                                    placement='CPU',
                                    node_name=None)
-                graph.record_input_func(new_data.node.name, _SymPackInput(pack_input_idx_list))
+                input_info = _GeInputInfo(value_type=_ValueType.TENSOR, func=_SymPackInput(pack_input_idx_list),
+                                          shape=[len(pack_op.input)])
+                graph.record_input_info(new_data.node.name, input_info)
             if GeTensor(pack_op).meta is not None:
                 new_data.set_meta(GeTensor(pack_op).meta)
             additional_data.append((new_data, pack_op))
@@ -298,22 +299,22 @@ def remove_dead_data_and_reorder_data_index(graph: GraphDef):
                 all_data_and_refcount[op_in] = (all_data_and_refcount[op_in][0], all_data_and_refcount[op_in][1] + 1)
     logger.info(f"before removing dead data, graph all inputs size={len(all_data_and_refcount)}.")
 
-    all_inputs_func = copy.copy(graph.named_inputs_func)
-    graph.named_inputs_func.clear()
-    saved_inputs_func = []
+    saved_inputs_info = []
+    to_del_data_name = []
     for _, op_tuple in all_data_and_refcount.items():
         if op_tuple[1] == 0:
             logger.debug(f"remove ge graph data op {op_tuple[0].name}.")
+            to_del_data_name.append(op_tuple[0].name)
             graph.op.remove(op_tuple[0])
         else:
-            logger.debug(f"update ge graph data index from {op_tuple[0].attr['index'].i} "
-                         f"to {len(graph.named_inputs_func)}.")
-            op_tuple[0].attr["index"].i = len(graph.named_inputs_func)
-            if op_tuple[0].name not in all_inputs_func.keys():
-                raise AssertionError(f"Cannot find input func for data op {op_tuple[0].name}. "
-                                     f"All expected inputs func for data are {all_inputs_func.keys()}.")
-            graph.record_input_func(op_tuple[0].name, all_inputs_func[op_tuple[0].name])
-            saved_inputs_func.append(all_inputs_func[op_tuple[0].name])
+            logger.debug(f"update ge graph data index from {op_tuple[0].attr['index'].i} to {len(saved_inputs_info)}.")
+            op_tuple[0].attr["index"].i = len(saved_inputs_info)
+            if op_tuple[0].name not in graph.named_inputs_info.keys():
+                raise AssertionError(f"Cannot find input info for data {op_tuple[0].name}. "
+                                     f"All expected inputs info for data are {graph.named_inputs_info.keys()}.")
+            saved_inputs_info.append(graph.named_inputs_info[op_tuple[0].name].func)
+    for data_name in to_del_data_name:
+        del graph.named_inputs_info[data_name]
 
-    logger.info(f"after update index, graph all inputs size={len(graph.named_inputs_func)}.")
-    return saved_inputs_func
+    logger.info(f"after update index, graph all inputs size={len(saved_inputs_info)}.")
+    return saved_inputs_info

@@ -1,4 +1,5 @@
 from collections import defaultdict
+from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple, Union, Callable
 import functools
 import threading
@@ -395,7 +396,7 @@ def torch_type_to_ge_proto_type(dtype):
     return torch_type_to_ge_type(dtype, ProtoDataType)
 
 
-class _InputBase:
+class _FuncBase:
     def __init__(self):
         pass
 
@@ -406,7 +407,7 @@ class _InputBase:
         pass
 
 
-class _ValueInput(_InputBase):
+class _ValueInput(_FuncBase):
     def __init__(self, index: int):
         super().__init__()
         self.fx_input_idx = index
@@ -418,7 +419,7 @@ class _ValueInput(_InputBase):
         return f"torch.tensor({input_names[self.fx_input_idx]})"
 
 
-class _TensorInput(_InputBase):
+class _TensorInput(_FuncBase):
     def __init__(self, index: int):
         super().__init__()
         self.fx_input_idx = index
@@ -430,7 +431,7 @@ class _TensorInput(_InputBase):
         return f"{input_names[self.fx_input_idx]}"
 
 
-class _DiscontiguousTensorInput(_InputBase):
+class _DiscontiguousTensorInput(_FuncBase):
     def __init__(self, index: int):
         super().__init__()
         self.fx_input_idx = index
@@ -442,7 +443,7 @@ class _DiscontiguousTensorInput(_InputBase):
         return f"{input_names[self.fx_input_idx]}.contiguous()"
 
 
-class _RngStatusInput(_InputBase):
+class _RngStatusInput(_FuncBase):
     def __init__(self, rng_status):
         super().__init__()
         self.rng_status = rng_status
@@ -455,7 +456,7 @@ class _RngStatusInput(_InputBase):
         raise AssertionError(f"unsupport codegen for rng status input")
 
 
-class _SymPackInput(_InputBase):
+class _SymPackInput(_FuncBase):
     def __init__(self, index_list: List[int]):
         super().__init__()
         self.fx_input_idx_list = index_list
@@ -469,6 +470,19 @@ class _SymPackInput(_InputBase):
             input_str += f"{input_names[idx]}, "
         input_str += "])"
         return input_str
+
+
+class _ValueType(Enum):
+    TENSOR = 0
+    PARAMETER = 1
+    BUFFER = 2
+
+
+@dataclass
+class _GeInputInfo:
+    value_type: _ValueType
+    func: _FuncBase
+    shape: List[int]
 
 
 class _GraphRngState:
@@ -564,7 +578,7 @@ class GeGraph(object):
         self._python_code = self._python_code_init()
         self._generator_rng_state = defaultdict(map_graph_rng_state)
         self._indexed_inputs = {}
-        self._named_inputs_func = {}
+        self._named_inputs_info = {}
 
     def _python_code_init(self):
         python_code = ''
@@ -659,8 +673,12 @@ class GeGraph(object):
 
     def rng_state(self, philox_num: int = -1, gen: torch.Generator = None):
         _graph_rng_state = self._generator_rng_state[gen]
-        self.record_input_func(_graph_rng_state._offsets.node.name, _RngStatusInput(_graph_rng_state))
-        return _graph_rng_state.next(philox_num)
+        seed, offset = _graph_rng_state.next(philox_num)
+        input_info = _GeInputInfo(value_type=_ValueType.TENSOR, func=_RngStatusInput(_graph_rng_state),
+                                  shape=[len(_graph_rng_state._offset_lists)])
+        self.record_input_info(_graph_rng_state._offsets.node.name, input_info)
+
+        return seed, offset
 
     def get_graph_rng_state(self, gen: torch.Generator = None):
         _graph_rng_state = self._generator_rng_state[gen]
@@ -671,14 +689,14 @@ class GeGraph(object):
             raise AssertionError
         self._indexed_inputs[index] = op
 
-    def record_input_func(self, name, input_func):
-        if name in self._named_inputs_func.keys():
-            logger.warning(f'Input func has been recorded repeatedly for data {name}')
-        self._named_inputs_func[name] = input_func
+    def record_input_info(self, name, input_info):
+        if name in self._named_inputs_info.keys():
+            logger.warning(f'Input info has been recorded repeatedly for data {name}')
+        self._named_inputs_info[name] = input_info
 
     @property
-    def named_inputs_func(self):
-        return self._named_inputs_func
+    def named_inputs_info(self):
+        return self._named_inputs_info
 
 
 class _GeGraphStack(threading.local):

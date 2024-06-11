@@ -283,10 +283,10 @@ def generate_shape_from_tensor(fake: torch.Tensor) -> List[int]:
 
 
 def update_op_input_name_from_mapping(graph: GraphDef, input_name_mapping: Dict):
-    logger.info(f"update graph {graph.name} op input name from mapping {input_name_mapping}.")
     if not input_name_mapping:
         return
 
+    logger.debug(f"update graph {graph.name} op input name from mapping {input_name_mapping}.")
     for op in graph.op:
         for idx, op_input in enumerate(op.input):
             if not op_input:
@@ -300,7 +300,7 @@ def update_op_input_name_from_mapping(graph: GraphDef, input_name_mapping: Dict)
 
 
 def get_graph_input_placements(graph: GraphDef):
-    input_placements = [None] * len(graph.named_inputs_func)
+    input_placements = [None] * len(graph.named_inputs_info)
     for op in graph.op:
         if op.type != "Data":
             continue
@@ -313,5 +313,5 @@ def get_graph_input_placements(graph: GraphDef):
         input_placements[op.attr["index"].i] = Placement.HOST if device_type == "CPU" else Placement.DEVICE
     if not all([placement is not None for placement in input_placements]):
         raise AssertionError(f"Graph {graph.name} data index is not continuous, please first reorder data index.")
-    logger.info(f"Get graph {graph.name} input placements [{input_placements}].")
+    logger.info(f"Get graph {graph.name} input placements {input_placements}.")
     return input_placements
