@@ -39,6 +39,10 @@ aclError aclrtMemcpyAsync(void *dst, size_t destMax,
     return ACL_SUCCESS;
 }
 
+aclError aclrtSynchronizeDevice(void) {
+  return ACL_SUCCESS;
+}
+
 #ifdef __cplusplus
 }
 #endif

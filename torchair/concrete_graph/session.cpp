@@ -76,6 +76,14 @@ Status Session::Finalize() {
     TNG_LOG(WARNING) << "ACL reset device index " << device_index_ << " failed, returned " << ret;
   }
 
+  TNG_LOG(INFO) << "Start to synchronize device in Finalize.";
+  auto sync_ret = aclrtSynchronizeDevice();
+  if (sync_ret != ACL_ERROR_NONE) {
+    TNG_LOG(ERROR) << "ACL synchronize device failed in Finalize, return " << sync_ret;
+  } else {
+    TNG_LOG(INFO) << "ACL synchronize device success in Finalize.";
+  }
+
   global_ge_session.reset(nullptr);
   if (!run_with_torch_npu_) {
     TNG_ASSERT_GE_OK(ge::GEFinalize());
