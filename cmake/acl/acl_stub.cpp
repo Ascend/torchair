@@ -43,6 +43,10 @@ aclError aclrtSynchronizeDevice(void) {
   return ACL_SUCCESS;
 }
 
+aclError aclrtSynchronizeStream(aclrtStream stream) {
+    return ACL_SUCCESS;
+}
+
 #ifdef __cplusplus
 }
 #endif

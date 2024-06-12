@@ -49,11 +49,13 @@ Status DynamicNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &in
         if (inputs[i].sizes() != host_input_holders_[i].sizes()) {
           host_input_holders_[i] = at::empty(inputs[i].sizes(), inputs[i].options().device(at::kPrivateUse1));
         } else {
-            update_shape_flag = false;
+          update_shape_flag = false;
         }
+        auto stream_ret = aclrtSynchronizeStream(stream);
+        TNG_ASSERT(stream_ret == ACL_ERROR_NONE, "ACL sync stream failed, return %d", stream_ret);
         size_t copy_size = static_cast<size_t>(inputs[i].numel() * inputs[i].element_size());
-        auto ret = aclrtMemcpyAsync(host_input_holders_[i].data_ptr(), copy_size, inputs[i].data_ptr(), copy_size,
-                                    ACL_MEMCPY_HOST_TO_DEVICE, stream);
+        auto ret = aclrtMemcpy(host_input_holders_[i].data_ptr(), copy_size, inputs[i].data_ptr(), copy_size,
+                               ACL_MEMCPY_HOST_TO_DEVICE);
         TNG_ASSERT(ret == ACL_ERROR_NONE, "ACL memory copy failed, return %d", ret);
         input = &host_input_holders_[i];
      }
