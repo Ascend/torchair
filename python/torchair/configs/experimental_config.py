@@ -21,6 +21,7 @@ class _ExperimentalConfig(NpuBaseConfig):
         self.topology_sorting_strategy = OptionValue("DFS", ["BFS", "DFS", "RDFS", "StableRDFS"])
         self.enable_ref_data = OptionValue(False, [True, False])
         self.enable_view_optimize = OptionValue(False, [True, False])
+        self.tiling_schedule_optimize = OptionValue(False, [True, False])
 
         super(_ExperimentalConfig, self).__init__()
 
@@ -31,6 +32,7 @@ class _ExperimentalConfig(NpuBaseConfig):
 
         global_experiment_option["ge.exec.enableEngineParallel"] = "1" if self.cc_parallel_enable else "0"
         global_experiment_option["ge.enableSingleStream"] = "true" if self.enable_single_stream else "false"
+        global_experiment_option["ge.tiling_schedule_optimize"] = "1" if self.tiling_schedule_optimize else "0"
         local_experiment_option["ge.featureBaseRefreshable"] = "1" if self.memory_efficiency else "0"
         local_experiment_option["ge.topoSortingMode"] = sorting_strategy_dict[self.topology_sorting_strategy.value]
         if self.jit_compile.value == "auto":
