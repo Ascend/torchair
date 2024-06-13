@@ -8,6 +8,7 @@ from torchair.configs.export_config import _ExportConfig
 from torchair.configs.debug_config import _DebugConfig
 from torchair.configs.dump_config import _DataDumpConfig
 from torchair.configs.fusion_config import _FusionConfig
+from torchair.configs.inference_config import _InferenceConfig
 from torchair.configs.experimental_config import _ExperimentalConfig
 
 
@@ -25,5 +26,6 @@ class CompilerConfig(NpuBaseConfig):
         self.dump_config = _DataDumpConfig()
         self.fusion_config = _FusionConfig()
         self.experimental_config = _ExperimentalConfig()
+        self.inference_config = _InferenceConfig()
 
         super(CompilerConfig, self).__init__()

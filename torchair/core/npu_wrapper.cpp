@@ -38,6 +38,7 @@ PYBIND11_MODULE(_torchair, m) {
   py::class_<tng::TorchNpuGraphBase>(m, "TorchNpuGraphBase")
     .def(py::init<const std::string &>())
     .def("load", &tng::TorchNpuGraphBase::Load)
+    .def("set_hint_shape", &tng::TorchNpuGraphBase::SetHintShape)
     .def("compile", &tng::TorchNpuGraphBase::Compile)
     .def("auto_tune", &tng::TorchNpuGraphBase::AutoTune)
     .def("summary", &tng::TorchNpuGraphBase::Summary)

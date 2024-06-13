@@ -22,6 +22,7 @@ import torch.distributed as dist
 
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core.utils import logger
+from torchair.inference._gear_utils import get_dim_gears, set_dim_gears, guard_gears_shape
 
 
 @dataclass
@@ -274,14 +275,6 @@ def _readable_inst(code):
     return output.getvalue()
 
 
-def set_dim_gears(t: torch.Tensor, dim_gears: Dict[int, List[int]]):
-    setattr(t, "dim_gears", dim_gears)
-
-
-def get_dim_gears(t: torch.Tensor):
-    return getattr(t, "dim_gears", None)
-
-
 class CacheBackend:
     def __init__(self, config: Optional[CompilerConfig], saver: 'ModelCacheSaver', *, fw_compiler: Callable = None):
         self.config = config or CompilerConfig()
@@ -307,6 +300,7 @@ class CacheBackend:
     def fw_compiler(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
         for i, dim_gears in self.input_dim_gears.items():
             set_dim_gears(example_inputs[i], dim_gears)
+        guard_gears_shape(example_inputs)
 
         if not hasattr(self.compiler, 'codegen'):
             logger.warning(f"Skip cache as compiler {type(self.compiler)} does not support codegen")

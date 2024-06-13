@@ -13,6 +13,7 @@ import torchair.inference
 from torchair.inference._cache_compiler import CompiledModel, ModelCacheSaver
 from torchair.inference._cache_compiler import _NoGuardCompiledFunction as NoGuardCompiledFunction
 from torchair.inference._cache_compiler import _NoGuardCompiledMethod as NoGuardCompiledMethod
+from torchair.inference import set_dim_gears
 logger.setLevel(logging.DEBUG)
 
 class PatchAttr:
@@ -413,6 +414,67 @@ class CacheCompileSt(unittest.TestCase):
         with forbidden_attr(ModelCacheSaver, '__call__'):
             model_match_cache(*prompt1)  # cache hint
             model_match_cache(*prompt2)  # cache hint
+
+    def test_cache_hint_gears(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear1 = torch.nn.Linear(2, 1)
+                self.linear2 = torch.nn.Linear(2, 1)
+                for param in self.parameters():
+                    torch.nn.init.ones_(param)
+
+                self.cached_prompt = torchair.inference.cache_compile(self.prompt)
+                self.cached_decode = torchair.inference.cache_compile(self.decode)
+
+            def forward(self, x: InputMeta, y: List[torch.Tensor]):
+                if x.is_prompt:
+                    return self.cached_prompt(x, y)
+                return self.cached_decode(x, y)
+
+            def _forward(self, x, y):
+                return self.linear2(x.data) + self.linear2(y[0])
+
+            def prompt(self, x, y):
+                return self._forward(x, y)
+
+            def decode(self, x, y):
+                return self._forward(x, y)
+
+        model = Model()
+
+        prompt_cache_dir = CompiledModel.get_cache_bin(model.prompt)
+        decode_cache_dir = CompiledModel.get_cache_bin(model.decode)
+        ModelCacheSaver.remove_cache(prompt_cache_dir)
+        ModelCacheSaver.remove_cache(decode_cache_dir)
+
+        prompt1 = InputMeta(torch.ones(3, 2), True), [torch.ones(3, 2)]
+        set_dim_gears(prompt1[0].data, {0: [2, 3]})
+        set_dim_gears(prompt1[1][0], {0: [2, 3]})
+        prompt2 = InputMeta(torch.ones(2, 2), True), [torch.ones(2, 2)]
+        decode1 = InputMeta(torch.ones(3, 2), False), [torch.ones(3, 2)]
+        set_dim_gears(decode1[0].data, {0: [3, 4]})
+        set_dim_gears(decode1[1][0], {0: [3, 4]})
+        decode2 = InputMeta(torch.ones(4, 2), False), [torch.ones(4, 2)]
+
+        self.assertFalse(os.path.exists(prompt_cache_dir))
+        model(*prompt1)
+        self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
+        model(*prompt2)
+        self.assertTrue(os.path.exists(prompt_cache_dir))  # not recompile
+
+        self.assertFalse(os.path.exists(decode_cache_dir))
+        model(*decode1)
+        self.assertTrue(os.path.exists(decode_cache_dir))  # cache compiled
+        model(*decode2)
+        self.assertTrue(os.path.exists(decode_cache_dir))  # not recompile
+
+        model_match_cache = Model()
+        with forbidden_attr(ModelCacheSaver, '__call__'):
+            model_match_cache(*prompt1)  # cache hint
+            model_match_cache(*prompt2)  # cache hint
+            model_match_cache(*decode1)  # cache hint
+            model_match_cache(*decode2)  # cache hint
 
 
 if __name__ == '__main__':

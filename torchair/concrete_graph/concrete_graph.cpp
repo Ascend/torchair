@@ -161,4 +161,12 @@ Status NpuConcreteGraph::Run(const std::vector<at::Tensor> &torch_inputs,
   TNG_RETURN_IF_ERROR(executor_->Run(torch_inputs, torch_outputs, outputs, stream));
   return Status::Success();
 }
+
+Status NpuConcreteGraph::SetHintShape(const std::vector<std::vector<int64_t>> &inputs_shape,
+                                      const std::vector<std::vector<int64_t>> &outputs_shape) {
+  TNG_ASSERT(graph_data_, "After load graph, graph_data_ should not nullptr");
+  graph_data_->inputs_shape = inputs_shape;
+  graph_data_->outputs_shape = outputs_shape;
+  return Status::Success();
+}
 }  // namespace tng

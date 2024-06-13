@@ -22,6 +22,10 @@ std::string DebugString(const c10::optional<at::Tensor> &tensor);
 
 std::string DebugString(const c10::Device &device);
 
+std::string DebugString(const std::vector<std::vector<int64_t>> &shapes);
+
+std::string DebugString(const std::vector<int64_t> &shape);
+
 std::vector<int64_t> GetGeTensorShape(const ge::Tensor &tensor);
 
 Status GePlacementToAtDeviceType(const ge::Placement &ge_placement, c10::DeviceType &device_type);

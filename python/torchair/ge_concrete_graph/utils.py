@@ -315,3 +315,15 @@ def get_graph_input_placements(graph: GraphDef):
         raise AssertionError(f"Graph {graph.name} data index is not continuous, please first reorder data index.")
     logger.info(f"Get graph {graph.name} input placements {input_placements}.")
     return input_placements
+
+
+def _get_input_shape(graph):
+    map_input_shape = {}
+    for op in graph.op:
+        if op.type == "Data" or op.type == "RefData":
+            map_input_shape[op.attr["index"].i] = list(op.input_desc[0].shape.dim)
+
+    inputs_shape = [None] * len(map_input_shape)
+    for k, v in map_input_shape.items():
+        inputs_shape[k] = v
+    return inputs_shape

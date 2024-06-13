@@ -21,7 +21,8 @@ class NpuConcreteGraph {
                        std::unique_ptr<NpuConcreteGraph> &graph);
   Status Compile();
   Status AutoTune(const std::vector<at::Tensor> &example_inputs, void *stream = nullptr);
-
+  Status SetHintShape(const std::vector<std::vector<int64_t>> &inputs_shape,
+                      const std::vector<std::vector<int64_t>> &outputs_shape);
   Status Run(const std::vector<at::Tensor> &torch_inputs, const std::vector<c10::optional<at::Tensor>> &torch_outputs,
              std::vector<at::Tensor> &outputs, void *stream = nullptr);
 

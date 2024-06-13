@@ -34,6 +34,7 @@ from torchair.fx_dumper import _NpuFxDumper
 from torchair._utils.custom_aot_functions import aot_module_simplified_joint
 from torchair._utils import add_npu_patch
 from torchair._utils.error_code import pretty_error_msg
+from torchair.inference._gear_utils import get_dim_gears, set_dim_gears, guard_gears_shape
 
 __all__ = ["get_npu_backend", "get_compiler"]
 
@@ -428,12 +429,35 @@ def _wrap_compiler(compiler: Callable, compiler_config: CompilerConfig):
     return fw_compiler, inference_compiler, joint_compiler
 
 
+def _set_gear_to_compiler(compiler: Callable, compiler_config: CompilerConfig, input_dim_gears: Dict[int, List[int]]):
+    @functools.wraps(compiler)
+    def gear_compiler(
+            gm: torch.fx.GraphModule,
+            example_inputs: List[torch.Tensor],
+    ):
+        for i, dim_gears in input_dim_gears.items():
+            set_dim_gears(example_inputs[i], dim_gears)
+        guard_gears_shape(example_inputs)
+        return compiler(gm, example_inputs)
+    return gear_compiler
+
+
 def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
                  compiler_config: CompilerConfig = None, decompositions: Dict = {}):
     if compiler_config is None:
         compiler_config = CompilerConfig()
     compiler = get_compiler(compiler_config)
+
+    input_dim_gears = dict()
+    for i, t in enumerate(example_inputs):
+        dim_gears = get_dim_gears(t)
+        if dim_gears is not None:
+            input_dim_gears[i - len(example_inputs)] = dim_gears
+
     fw_compiler, inference_compiler, joint_compiler = _wrap_compiler(compiler, compiler_config)
+    fw_compiler = _set_gear_to_compiler(fw_compiler, compiler_config, input_dim_gears)
+    inference_compiler = _set_gear_to_compiler(inference_compiler, compiler_config, input_dim_gears)
+
     partition_fn = _get_partition_fn(compiler_config)
     if compiler_config.experimental_config.aot_config_enable_joint_graph:
         output_loss_index = int(compiler_config.experimental_config.aot_config_output_loss_index.value)

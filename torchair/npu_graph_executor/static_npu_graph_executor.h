@@ -24,10 +24,10 @@ class StaticNpuGraphExecutor : public Executor {
   Status AssembleOutputs(const std::vector<c10::optional<at::Tensor>> &assigned_outputs,
                          std::vector<at::Tensor> &outputs);
 
+ protected:
   Status AllocAndSetConstMemory(void *stream);
 
   Status AllocAndUpdateFeatureMemory(void *stream);
-
   std::vector<ge::Tensor> inputs_holder_;
   std::vector<ge::Tensor> outputs_holder_;
   std::shared_ptr<GraphData> graph_data_;

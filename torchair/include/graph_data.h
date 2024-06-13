@@ -8,6 +8,9 @@
 #include "ge/ge_api.h"
 
 namespace tng {
+static const int64_t UNKONWN_DIM = -1;
+static const int64_t UNKONWN_DIM_NUM = -2;
+
 enum class Placement {
   UNKNOWN = -1,
   HOST = 0,
@@ -31,6 +34,8 @@ class GraphData {
   ge::GraphPtr graph = nullptr;
   std::map<ge::AscendString, ge::AscendString> compile_options;
   std::vector<Placement> input_placements;
+  std::vector<std::vector<int64_t>> inputs_shape;
+  std::vector<std::vector<int64_t>> outputs_shape;
   std::vector<ge::DataType> output_dtypes;
   ExecutorType executor_type = ExecutorType::UNKNOWN;
   std::shared_ptr<ge::CompiledGraphSummary> summary = nullptr;

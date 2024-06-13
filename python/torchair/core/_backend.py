@@ -7,11 +7,11 @@ import atexit
 import sys
 from collections import defaultdict
 
-from typing import Dict
-
+from typing import Dict, List
 import torch
 from torchair._utils.error_code import pretty_error_msg
-
+from torchair.core.utils import logger
+from torchair.ge_concrete_graph.utils import _get_input_shape
 from . import _torchair
 
 
@@ -105,8 +105,11 @@ class TorchNpuGraph(_torchair.TorchNpuGraphBase):
         input_placements = ge_graph.attr["_input_placements"].list.i
         output_dtypes = ge_graph.attr["_output_dtypes"].list.i
         executor_type = ge_graph.attr["_executor_type"].i
-        return super(TorchNpuGraph, self).load(ge_graph.SerializeToString(), options, input_placements, output_dtypes,
-                                               executor_type)
+        inputs_shape = _get_input_shape(ge_graph)
+        super(TorchNpuGraph, self).load(ge_graph.SerializeToString(), options, input_placements, output_dtypes,
+                                        executor_type)
+        super(TorchNpuGraph, self).set_hint_shape(inputs_shape, [])
+        logger.debug(f'Load garph set_hint_shape input shape: {inputs_shape}')
 
     @pretty_error_msg
     def compile(self):

@@ -38,6 +38,9 @@ class TorchNpuGraphBase {
 
   void AutoTune(py::object obj);
 
+  void SetHintShape(std::vector<std::vector<int64_t>> inputs_shape,
+                    std::vector<std::vector<int64_t>> outputs_shape);
+
   py::object Run(py::object obj);
 
   std::string Summary() const;

@@ -124,6 +124,15 @@ void TorchNpuGraphBase::Load(const std::string &serialized_proto, const std::map
   const pybind11::gil_scoped_acquire acquire;
 }
 
+void TorchNpuGraphBase::SetHintShape(std::vector<std::vector<int64_t>> inputs_shape,
+                                     std::vector<std::vector<int64_t>> outputs_shape) {
+  RECORD_FUNCTION("TorchNpuGraphBase::SetHintShape", {});
+  const pybind11::gil_scoped_release release;
+  TNG_RAISE_ASSERT(concrete_graph_, "Set graph inputs and outputs shape must after load");
+  TNG_RAISE_IF_ERROR(concrete_graph_->SetHintShape(inputs_shape, outputs_shape));
+  const pybind11::gil_scoped_acquire acquire;
+}
+
 void TorchNpuGraphBase::Compile() {
   RECORD_FUNCTION("TorchNpuGraphBase::Compile", {});
   const pybind11::gil_scoped_release release;

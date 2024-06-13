@@ -39,6 +39,8 @@ from torchair.ge_concrete_graph.supported_declaration import Support
 from torchair.ge_concrete_graph.continguous_utils import guard_view_input
 from torchair.ge_concrete_graph.export_config_generete import generate_config
 from torchair._utils.export_utils import make_export_graph, get_export_file_name
+from torchair.inference._gear_utils import generate_dynamic_dims_option, get_dim_gears
+from torchair.ge_concrete_graph.ge_graph import compat_as_bytes, _ge_proto_dtype_to_ge_dtype
 from . import ge_apis as ge
 
 
@@ -68,7 +70,7 @@ def _mapping_assign_op_to_graph_output(graph: GraphDef):
         graph_out.input.append(value_tensor)
         graph_out.input_desc.add().CopyFrom(assign_node_out.desc)
         graph_out.input_desc[-1].name = f"input{len(graph_out.input_desc) - 1}"
-        graph.attr["_output_dtypes"].list.i.append(assign_node_out.dtype)
+        graph.attr["_output_dtypes"].list.i.append(_ge_proto_dtype_to_ge_dtype(assign_node_out.desc.dtype))
         return [len(graph_out.input) - 1]
 
     output_refto_input = {}
@@ -715,7 +717,7 @@ class GeConcreteGraph(ConcreteGraphBase):
                 value_type=_ValueType.PARAMETER if isinstance(meta_outputs, torch.nn.Parameter) else _ValueType.TENSOR,
                 func=_TensorInput(data_index) if meta_outputs.is_contiguous() else _DiscontiguousTensorInput(
                     data_index),
-                shape=shape)
+                shape=shape, dim_gears=get_dim_gears(meta_outputs) or {})
 
         data.set_meta(meta_outputs)
         self.graph.record_input_info(data.node.name, input_info)
@@ -881,6 +883,8 @@ class GeConcreteGraph(ConcreteGraphBase):
             local_compile_options["ge.exec.outputReuseMemIndexes"] = ",".join(str(x) for x in output_reuse_indexes)
         local_compile_options["ge.deterministic"] = "1" if torch.are_deterministic_algorithms_enabled() else "0"
         local_compile_options["ge.exec.atomicCleanPolicy"] = "1"
+        local_compile_options.update(generate_dynamic_dims_option(self.graph.named_inputs_info,
+                                     self.config.inference_config.dynamic_gears_merge_policy.value))
         logger.info("local compile options:")
         for k, v in local_compile_options.items():
             logger.info(f"  {k}: {v}")

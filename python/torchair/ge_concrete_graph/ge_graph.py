@@ -1,5 +1,5 @@
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Tuple, Union, Callable
 import functools
 import threading
@@ -483,6 +483,7 @@ class _GeInputInfo:
     value_type: _ValueType
     func: _FuncBase
     shape: List[int]
+    dim_gears: Dict[int, List[int]] = field(default_factory=dict)
 
 
 class _GraphRngState:
@@ -841,7 +842,7 @@ class Tensor:
     @property
     def symsize(self):
         return self._symsize
-    
+
     def set_torch_dtype(self, dtype):
         self._torch_dtype = dtype
         self._ge_dtype = torch_type_to_ge_type(dtype)

@@ -86,6 +86,31 @@ std::string DebugString(const std::vector<tng::Placement> &placements) {
   return ss.str() + DebugString(placements.back()) + "]";
 }
 
+
+std::string DebugString(const std::vector<int64_t> &shape) {
+  if (shape.empty()) {
+    return "[]";
+  }
+  std::stringstream ss;
+  ss << "[";
+  for (size_t i = 0U; i < shape.size() - 1U; ++i) {
+    ss << shape[i] << ", ";
+  }
+  return ss.str() + std::to_string(shape.back()) + "]";
+}
+
+std::string DebugString(const std::vector<std::vector<int64_t>> &shapes) {
+  if (shapes.empty()) {
+    return "[]";
+  }
+  std::stringstream ss;
+  ss << "[";
+  for (size_t i = 0U; i < shapes.size() - 1U; ++i) {
+    ss << DebugString(shapes[i]) << ", ";
+  }
+  return ss.str() + DebugString(shapes.back()) + "]";
+}
+
 std::string DebugString(const ge::CompiledGraphSummary &summary) {
   std::stringstream ss;
   ss << "static compiled: " << (summary.IsStatic() ? "True" : "False");
@@ -111,6 +136,8 @@ std::string DebugString(const GraphData &graph_data) {
     ss << DebugString(*graph_data.summary) << std::endl;
   }
   ss << "input placements: " << DebugString(graph_data.input_placements) << std::endl;
+  ss << "inputs shape: " << DebugString(graph_data.inputs_shape) << std::endl;
+  ss << "outputs shape: " << DebugString(graph_data.outputs_shape) << std::endl;
   ss << "output dtypes :" << DebugString(graph_data.output_dtypes) << std::endl;
   ss << "executor type :" << ((graph_data.executor_type == tng::ExecutorType::NPU) ? "NPU" : "DEFAULT");
   return ss.str();
