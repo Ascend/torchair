@@ -192,6 +192,7 @@ TorchAir项目采用C++和Python联合开发，当前正式接口只提供Python
         - *topology_sorting_strategy* -图模式编译节点遍历方式。默认为"DFS"，深度优先搜索。可选参数为["BFS", "DFS", "RDFS", "StableRDFS"]，"RDFS"为Reverse DFS。
         - *enable_single_stream* -是否开启图单流执行。默认为False，不开启。可选参数为[True, False]。
         - *enable_ref_data* -如果存在ref类算子会改写输入内存的情况，构GE图时将Data类型修改为RefData类型，例如Assign、ScatterUpdate等算子。离线dynamo_export接口默认开启，在线时通过开关开启，默认为False，不开启。可选参数为[True, False]。
+        - *tiling_schedule_optimize* -是否开启tiling下沉功能。可选参数为[True, False]，默认为False，不开启。
 
 5. **TORCHAIR.DYNAMO_EXPORT**
     
