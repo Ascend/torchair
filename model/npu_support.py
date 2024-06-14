@@ -1,7 +1,7 @@
 import importlib
 import logging
 import os
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Type, Union
 import sys
 import torch
 import torch.nn as nn
@@ -456,6 +456,113 @@ def _path_model_10():
     def new_init(self, device="cpu", jit=False, batch_size=256, process_command_line=False):
         self.TrainInit("cuda", jit, batch_size, process_command_line)
     DeepRecommenderTrainBenchmark.__init__ = new_init
+
+
+@register_patch("functorch_dp_cifar10")
+def _patch_model_11():
+    if {"--only", "--amp", "--accuracy"} <= set(sys.argv):
+        try:
+            import torchvision
+            from torchvision.models.resnet import BasicBlock, Bottleneck, ResNet, conv1x1
+        except (ImportError, ModuleNotFoundError):
+            log.warning("Import torchvision failed or could not get BasicBlock,Bottleneck,ResNet,conv1x1 "
+                        "from module torchvision.models.resnet")
+            return
+
+        class GraphBreak(nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                torch._dynamo.graph_break()
+                return x
+
+        def new_forward(self, x):
+            identity = x
+
+            out = self.conv1(x)
+            torch._dynamo.graph_break()
+            out = self.bn1(out)
+            out = self.relu(out)
+
+            out = self.conv2(out)
+            torch._dynamo.graph_break()
+            out = self.bn2(out)
+
+            if self.downsample is not None:
+                identity = self.downsample(x)
+
+            out += identity
+            out = self.relu(out)
+
+            return out
+
+        def _new_forward_impl(self, x):
+            # See note [TorchScript super()]
+            x = self.conv1(x)
+            torch._dynamo.graph_break()
+            x = self.bn1(x)
+            x = self.relu(x)
+            x = self.maxpool(x)
+
+            x = self.layer1(x)
+            x = self.layer2(x)
+            x = self.layer3(x)
+            x = self.layer4(x)
+
+            x = self.avgpool(x)
+            x = torch.flatten(x, 1)
+            x = self.fc(x)
+
+            return x
+
+        def _new_make_layer(
+                self,
+                block: Type[Union[BasicBlock, Bottleneck]],
+                planes: int,
+                blocks: int,
+                stride: int = 1,
+                dilate: bool = False,
+        ) -> nn.Sequential:
+            norm_layer = self._norm_layer
+            downsample = None
+            previous_dilation = self.dilation
+            if dilate:
+                self.dilation *= stride
+                stride = 1
+            if stride != 1 or self.inplanes != planes * block.expansion:
+                downsample = nn.Sequential(
+                    conv1x1(self.inplanes, planes * block.expansion, stride),
+                    GraphBreak(),
+                    norm_layer(planes * block.expansion),
+                )
+
+            layers = []
+            layers.append(
+                block(
+                    self.inplanes, planes, stride, downsample, self.groups, self.base_width, previous_dilation,
+                    norm_layer
+                )
+            )
+            self.inplanes = planes * block.expansion
+            for _ in range(1, blocks):
+                layers.append(
+                    block(
+                        self.inplanes,
+                        planes,
+                        groups=self.groups,
+                        base_width=self.base_width,
+                        dilation=self.dilation,
+                        norm_layer=norm_layer,
+                    )
+                )
+
+            return nn.Sequential(*layers)
+
+        ResNet._make_layer = _new_make_layer
+        ResNet._forward_impl = _new_forward_impl
+        BasicBlock.forward = new_forward
+
 
 
 def patch_model(model_name):
