@@ -1,5 +1,6 @@
 import math
 import os
+import sys
 
 os.environ['TNG_LOG_LEVEL'] = '1'
 import torchair
@@ -39,6 +40,14 @@ def set_graph_output_dtypes(graph, dtypes):
         graph.attr["_input_placements"].list.i.append(v)
 
 
+def register_is_npu():
+    @property
+    def _is_npu(self):
+        return not self.is_cpu
+
+    torch.Tensor.is_npu = _is_npu
+
+
 class TorchairSt(unittest.TestCase):
     def setUp(self) -> None:
         self.call_bak = GeConcreteGraph.__call__
@@ -64,7 +73,7 @@ class TorchairSt(unittest.TestCase):
         for i in range(2):
             model(x, y)
 
-    def test_complex_type(self):
+    def test_multiple_input_types(self):
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
@@ -79,20 +88,8 @@ class TorchairSt(unittest.TestCase):
         self.assertEqual(model(x).dtype, torch.complex64)
         x = torch.randn(2).to(torch.complex128)
         self.assertEqual(model(x).dtype, torch.complex128)
-
-    def test_bf16(self):
-        class Model(torch.nn.Module):
-            def __init__(self):
-                super().__init__()
-
-            def forward(self, x, y):
-                return torch.add(x, y)
-
-        model = torch.compile(Model(), backend=npu_backend, dynamic=True)
         x = torch.randn(2, 2, 2).to(torch.bfloat16)
-        y = torch.randn(2, 2, 2).to(torch.bfloat16)
-        for i in range(2):
-            model(x, y)
+        self.assertEqual(model(x).dtype, torch.bfloat16)
 
     def test_sym_input(self):
         class Model(torch.nn.Module):
@@ -217,31 +214,15 @@ class TorchairSt(unittest.TestCase):
                       'from torchair.ge_concrete_graph import ge_apis as ge\n' \
                       'from torchair.ge_concrete_graph.ge_graph import get_default_ge_graph\n\n'
 
-    def test_1sym_pack(self):
-        class Model(torch.nn.Module):
-            def __init__(self):
-                super().__init__()
-
-            def forward(self, x, y, z):
-                a = z.view([x]) + 1.0
-                return a
-
-        npu_backend = torchair.get_npu_backend()
-        model = Model()
-        model = torch.compile(model, backend=npu_backend, dynamic=True)
-        in4 = torch.randn([3, 2])
-        model(6, 3, in4)
-
     def test_2sym_pack(self):
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
 
             def forward(self, x, y, z):
-                a = z.view([x]) + y.view([x]) + x
+                a = z.view([x]) + y.view([x, 1]) + x
                 return a
 
-        npu_backend = torchair.get_npu_backend()
         model = Model()
         model = torch.compile(model, backend=npu_backend, dynamic=True)
         in4 = torch.randn([3, 2])
@@ -290,7 +271,6 @@ class TorchairSt(unittest.TestCase):
                 return b + c - d
 
         model = Model()
-
         model = torch.compile(model, backend=npu_backend, dynamic=True)
 
         z = torch.randn([3, 2])
@@ -319,16 +299,11 @@ class TorchairSt(unittest.TestCase):
         torch.utils.rename_privateuse1_backend("npu")
 
         with GeGraph() as graph:
-            dst = ge.Data(index=0, shape=[3, 1, 16, 8],
-                          dtype=DataType.DT_FLOAT, placement='NPU')
-            dst1 = ge.Data(index=1, shape=[3, 1, 16, 8],
-                           dtype=DataType.DT_FLOAT, placement='NPU')
-            src = ge.Data(index=2, shape=[3, 1, 3, 8],
-                          dtype=DataType.DT_FLOAT, placement='NPU')
-            indices = ge.Data(index=3, shape=[3],
-                              dtype=DataType.DT_INT32, placement='NPU')
-            dst2 = ge.Data(index=4, shape=[2, 1, 16, 8],
-                           dtype=DataType.DT_FLOAT, placement='NPU')
+            dst = ge.Data(index=0, shape=[3, 1, 16, 8], dtype=DataType.DT_FLOAT, placement='NPU')
+            dst1 = ge.Data(index=1, shape=[3, 1, 16, 8], dtype=DataType.DT_FLOAT, placement='NPU')
+            src = ge.Data(index=2, shape=[3, 1, 3, 8], dtype=DataType.DT_FLOAT, placement='NPU')
+            indices = ge.Data(index=3, shape=[3], dtype=DataType.DT_INT32, placement='NPU')
+            dst2 = ge.Data(index=4, shape=[2, 1, 16, 8], dtype=DataType.DT_FLOAT, placement='NPU')
             tm = ge.TensorMove(dst)
             tm1 = ge.TensorMove(dst1)
             dst_ = ge.Scatter(tm, indices, src, reduce="update", axis=-2)
@@ -421,10 +396,8 @@ class TorchairSt(unittest.TestCase):
         torch.utils.rename_privateuse1_backend("npu")
 
         with GeGraph() as graph:
-            x1 = ge.Data(index=0, shape=[3, 4],
-                         dtype=DataType.DT_FLOAT, placement='NPU')
-            x2 = ge.Data(index=1, shape=[3, 4],
-                         dtype=DataType.DT_FLOAT, placement='NPU')
+            x1 = ge.Data(index=0, shape=[3, 4], dtype=DataType.DT_FLOAT, placement='NPU')
+            x2 = ge.Data(index=1, shape=[3, 4], dtype=DataType.DT_FLOAT, placement='NPU')
             res = ge.Add(x1, x2)
             assign = ge.Assign(x1, res)
             res2 = ge.Sub(res, x2)
@@ -470,10 +443,8 @@ class TorchairSt(unittest.TestCase):
             torch.utils.rename_privateuse1_backend("npu")
 
             with GeGraph() as graph:
-                x1 = ge.Data(index=0, shape=[3, 4],
-                             dtype=DataType.DT_FLOAT, placement='NPU')
-                x2 = ge.Data(index=1, shape=[3, 4],
-                             dtype=DataType.DT_FLOAT, placement='NPU')
+                x1 = ge.Data(index=0, shape=[3, 4], dtype=DataType.DT_FLOAT, placement='NPU')
+                x2 = ge.Data(index=1, shape=[3, 4], dtype=DataType.DT_FLOAT, placement='NPU')
                 res = ge.Add(x1, x2)
                 assign = ge.Assign(x1, res)
                 output = ge.NetOutput([])
@@ -508,10 +479,8 @@ class TorchairSt(unittest.TestCase):
         import _privateuse1_backend
 
         with GeGraph() as graph:
-            x = ge.Data(index=0, shape=[-1, 2],
-                        dtype=DataType.DT_INT32, placement='CPU')
-            y = ge.Data(index=1, shape=[],
-                        dtype=DataType.DT_INT32, placement='CPU')
+            x = ge.Data(index=0, shape=[-1, 2], dtype=DataType.DT_INT32, placement='CPU')
+            y = ge.Data(index=1, shape=[], dtype=DataType.DT_INT32, placement='CPU')
             z = ge.Add(x, y)
             output = ge.NetOutput([z])
 
@@ -531,10 +500,8 @@ class TorchairSt(unittest.TestCase):
         import _privateuse1_backend
 
         with GeGraph() as graph:
-            x = ge.Data(index=0, shape=[1, 2],
-                        dtype=DataType.DT_INT32, placement='CPU')
-            y = ge.Data(index=1, shape=[],
-                        dtype=DataType.DT_INT32, placement='CPU')
+            x = ge.Data(index=0, shape=[1, 2], dtype=DataType.DT_INT32, placement='CPU')
+            y = ge.Data(index=1, shape=[], dtype=DataType.DT_INT32, placement='CPU')
             z = ge.Add(x, y)
             output = ge.NetOutput([z])
 
@@ -558,10 +525,8 @@ class TorchairSt(unittest.TestCase):
         torch.utils.rename_privateuse1_backend("npu")
 
         with GeGraph() as graph:
-            x = ge.Data(index=0, shape=[-1, 2],
-                        dtype=DataType.DT_INT32, placement='CPU')
-            y = ge.Data(index=1, shape=[],
-                        dtype=DataType.DT_INT32, placement='CPU')
+            x = ge.Data(index=0, shape=[-1, 2], dtype=DataType.DT_INT32, placement='CPU')
+            y = ge.Data(index=1, shape=[], dtype=DataType.DT_INT32, placement='CPU')
             z = ge.Add(x, y)
             output = ge.NetOutput([z])
 
@@ -644,10 +609,8 @@ class TorchairSt(unittest.TestCase):
         torch.utils.rename_privateuse1_backend("npu")
 
         with GeGraph() as graph:
-            x = ge.Data(index=0, shape=[-1, 2],
-                        dtype=DataType.DT_INT32, placement='NPU')
-            y = ge.Data(index=1, shape=[],
-                        dtype=DataType.DT_INT32, placement='NPU')
+            x = ge.Data(index=0, shape=[-1, 2], dtype=DataType.DT_INT32, placement='NPU')
+            y = ge.Data(index=1, shape=[], dtype=DataType.DT_INT32, placement='NPU')
             z = ge.Add(x, y)
             output = ge.NetOutput([z])
 
@@ -670,10 +633,8 @@ class TorchairSt(unittest.TestCase):
         torch.utils.rename_privateuse1_backend("npu")
 
         with GeGraph() as graph:
-            x = ge.Data(index=0, shape=[-1, 2],
-                        dtype=DataType.DT_INT32, placement='NPU')
-            y = ge.Data(index=1, shape=[],
-                        dtype=DataType.DT_INT32, placement='CPU')
+            x = ge.Data(index=0, shape=[-1, 2], dtype=DataType.DT_INT32, placement='NPU')
+            y = ge.Data(index=1, shape=[], dtype=DataType.DT_INT32, placement='CPU')
             z = ge.Add(x, y)
             output = ge.NetOutput([z])
 
@@ -697,10 +658,8 @@ class TorchairSt(unittest.TestCase):
         import _privateuse1_backend
 
         with GeGraph() as graph:
-            x = ge.Data(index=0, shape=[1, 2],
-                        dtype=DataType.DT_INT32, placement='CPU')
-            y = ge.Data(index=1, shape=[100, 2],
-                        dtype=DataType.DT_INT32, placement='CPU')
+            x = ge.Data(index=0, shape=[1, 2], dtype=DataType.DT_INT32, placement='CPU')
+            y = ge.Data(index=1, shape=[100, 2], dtype=DataType.DT_INT32, placement='CPU')
             z = ge.Add(x, y)
             output = ge.NetOutput([z])
 
@@ -715,10 +674,8 @@ class TorchairSt(unittest.TestCase):
         result = executor.run((x, y))
 
         with GeGraph() as graph2:
-            x = ge.Data(index=0, shape=[1, 2],
-                        dtype=DataType.DT_INT32, placement='CPU')
-            y = ge.Data(index=1, shape=[10, 2],
-                        dtype=DataType.DT_INT32, placement='CPU')
+            x = ge.Data(index=0, shape=[1, 2], dtype=DataType.DT_INT32, placement='CPU')
+            y = ge.Data(index=1, shape=[10, 2], dtype=DataType.DT_INT32, placement='CPU')
             z = ge.Add(x, y)
             output = ge.NetOutput([z])
 
@@ -739,10 +696,8 @@ class TorchairSt(unittest.TestCase):
         import _privateuse1_backend
 
         with GeGraph() as graph1:
-            a = ge.Data(index=0, shape=[128, 128],
-                        dtype=DataType.DT_FLOAT16, placement='CPU')
-            b = ge.Data(index=1, shape=[128, 128],
-                        dtype=DataType.DT_FLOAT16, placement='CPU')
+            a = ge.Data(index=0, shape=[128, 128], dtype=DataType.DT_FLOAT16, placement='CPU')
+            b = ge.Data(index=1, shape=[128, 128], dtype=DataType.DT_FLOAT16, placement='CPU')
             c = ge.Add(a, b)
             d = ge.MatMulV2(a, c, bias=None, offset_w=None)
             e = ge.Mul(a, d)
@@ -762,10 +717,8 @@ class TorchairSt(unittest.TestCase):
             result = executor.run((x, y))
 
         with GeGraph() as graph2:
-            a = ge.Data(index=0, shape=[16, 16],
-                        dtype=DataType.DT_FLOAT16, placement='CPU')
-            b = ge.Data(index=1, shape=[16, 16],
-                        dtype=DataType.DT_FLOAT16, placement='CPU')
+            a = ge.Data(index=0, shape=[16, 16], dtype=DataType.DT_FLOAT16, placement='CPU')
+            b = ge.Data(index=1, shape=[16, 16], dtype=DataType.DT_FLOAT16, placement='CPU')
             c = ge.Add(a, b)
             d = ge.MatMulV2(a, c, bias=None, offset_w=None)
             e = ge.Mul(a, d)
@@ -1225,21 +1178,28 @@ class TorchairSt(unittest.TestCase):
         self.assertEqual(torch._C._is_alias_of(res, input1), False)
         self.assertEqual(torch._C._is_alias_of(res, input2), False)
 
-    def test_enable_constplaceholder_dynamic_base(self):
-        def get_graph_pack_data_num(concrete_graph):
+    def test_constplaceholder_with_device_npu(self):
+        register_is_npu()
+        from torchair.core import _npu_graph_executor
+        import _privateuse1_backend
+        npu_device = _privateuse1_backend.npu_device()
+        torch.utils.rename_privateuse1_backend("npu")
+
+        def get_op_num(concrete_graph):
             num_cp, num_data = 0, 0
             for node in concrete_graph.graph.op:
                 if node.type == "ConstPlaceHolder":
                     num_cp += 1
                 if node.type == "Data":
                     num_data += 1
-            assert num_cp == 1 and num_data == 1
+            assert num_cp == 1, f"check number of ConstPlaceHolder {num_cp} == 1 failed"
+            assert num_data == 3, f"check number of Data {num_data} == 3 failed"
 
         def wrapper_call(func):
             def wrapper(*args, **kwargs):
                 assert len(args) > 0
                 ret = func(*args, **kwargs)
-                get_graph_pack_data_num(args[0])
+                get_op_num(args[0])
                 return ret
 
             return wrapper
@@ -1249,217 +1209,24 @@ class TorchairSt(unittest.TestCase):
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
+                weight = torch.randn([3, 2]).to(npu_device)
+                self.weight = torch.nn.Parameter(weight)
+                self.bias = torch.randn([3, 2]).to(npu_device)
+                buf = torch.randn([3, 2]).to(npu_device)
+                self.register_buffer("buffer", buf, persistent=False)
+                self.scalar = 1.0
 
-            def forward(self, z, p):
-                return z + p
-
-        model = Model()
-        config_cp = CompilerConfig()
-        config_cp.experimental_config.frozen_parameter = True
-        npu_backend_cp = torchair.get_npu_backend(compiler_config=config_cp)
-        model = torch.compile(model, backend=npu_backend_cp, dynamic=True)
-
-        z = torch.randn([3, 2])
-        z = torch.nn.Parameter(z)
-        p = torch.randn([3, 2])
-        model(z, p)
-
-    def test_enable_constplaceholder_static_base(self):
-        def get_graph_pack_data_num(concrete_graph):
-            num_cp, num_data = 0, 0
-            for node in concrete_graph.graph.op:
-                if node.type == "ConstPlaceHolder":
-                    num_cp += 1
-                if node.type == "Data":
-                    num_data += 1
-            assert num_cp == 1 and num_data == 1
-
-        def wrapper_call(func):
-            def wrapper(*args, **kwargs):
-                assert len(args) > 0
-                ret = func(*args, **kwargs)
-                get_graph_pack_data_num(args[0])
-                return ret
-
-            return wrapper
-
-        GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
-
-        class Model(torch.nn.Module):
-            def __init__(self):
-                super().__init__()
-
-            def forward(self, z, p):
-                return z + p
+            def forward(self, x):
+                return x + self.weight + self.bias + self.buffer + self.scalar
 
         model = Model()
         config_cp = CompilerConfig()
         config_cp.experimental_config.frozen_parameter = True
         npu_backend_cp = torchair.get_npu_backend(compiler_config=config_cp)
         model = torch.compile(model, backend=npu_backend_cp, dynamic=False)
-
-        z = torch.randn([3, 2])
-        z = torch.nn.Parameter(z)
-        p = torch.randn([3, 2])
-        model(z, p)
-
-    def test_enable_constplaceholder_dynamic1(self):
-        def get_graph_pack_data_num(concrete_graph):
-            num_cp, num_data = 0, 0
-            for node in concrete_graph.graph.op:
-                if node.type == "ConstPlaceHolder":
-                    num_cp += 1
-                if node.type == "Data":
-                    num_data += 1
-            assert num_cp == 1 and num_data == 2
-
-        def wrapper_call(func):
-            def wrapper(*args, **kwargs):
-                assert len(args) > 0
-                ret = func(*args, **kwargs)
-                get_graph_pack_data_num(args[0])
-                return ret
-
-            return wrapper
-
-        GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
-
-        class Model(torch.nn.Module):
-            def __init__(self):
-                super().__init__()
-
-            def forward(self, x, y, z):
-                return torch.matmul(x[0:2, 0:2], y * z[0:2, 0:2])
-
-        model = Model()
-        config_cp = CompilerConfig()
-        config_cp.experimental_config.frozen_parameter = True
-        npu_backend_cp = torchair.get_npu_backend(compiler_config=config_cp)
-        model = torch.compile(model, backend=npu_backend_cp, dynamic=True)
-
-        x = torch.randn([4, 4])
-        x = torch.nn.Parameter(x)
-        y = torch.randn([2, 2])
-        z = torch.randn([4, 4])
-        model(x, y, z)
-
-    def test_enable_constplaceholder_static1(self):
-        def get_graph_pack_data_num(concrete_graph):
-            num_cp, num_data = 0, 0
-            for node in concrete_graph.graph.op:
-                if node.type == "ConstPlaceHolder":
-                    num_cp += 1
-                if node.type == "Data":
-                    num_data += 1
-            assert num_cp == 1 and num_data == 2
-
-        def wrapper_call(func):
-            def wrapper(*args, **kwargs):
-                assert len(args) > 0
-                ret = func(*args, **kwargs)
-                get_graph_pack_data_num(args[0])
-                return ret
-
-            return wrapper
-
-        GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
-
-        class Model(torch.nn.Module):
-            def __init__(self):
-                super().__init__()
-
-            def forward(self, x, y, z):
-                return torch.matmul(x[0:2, 0:2], y * z[0:2, 0:2])
-
-        model = Model()
-        config_cp = CompilerConfig()
-        config_cp.experimental_config.frozen_parameter = True
-        npu_backend_cp = torchair.get_npu_backend(compiler_config=config_cp)
-        model = torch.compile(model, backend=npu_backend_cp, dynamic=False)
-
-        x = torch.randn([4, 4])
-        x = torch.nn.Parameter(x)
-        y = torch.randn([2, 2])
-        z = torch.randn([4, 4])
-        model(x, y, z)
-
-    def test_enable_constplaceholder_dynamic2(self):
-        def get_graph_pack_data_num(concrete_graph):
-            num_cp, num_data = 0, 0
-            for node in concrete_graph.graph.op:
-                if node.type == "ConstPlaceHolder":
-                    num_cp += 1
-                if node.type == "Data":
-                    num_data += 1
-            assert num_cp == 0 and num_data == 3
-
-        def wrapper_call(func):
-            def wrapper(*args, **kwargs):
-                assert len(args) > 0
-                ret = func(*args, **kwargs)
-                get_graph_pack_data_num(args[0])
-                return ret
-
-            return wrapper
-
-        GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
-
-        class Model(torch.nn.Module):
-            def __init__(self):
-                super().__init__()
-
-            def forward(self, x, y, z):
-                return torch.matmul(x[0:2, 0:2], y * z[0:2, 0:2])
-
-        model = Model()
-        config_cp = CompilerConfig()
-        config_cp.experimental_config.frozen_parameter = True
-        npu_backend_cp = torchair.get_npu_backend(compiler_config=config_cp)
-        model = torch.compile(model, backend=npu_backend_cp, dynamic=True)
-
-        x = torch.randn([4, 4])
-        y = torch.randn([2, 2])
-        z = torch.randn([4, 4])
-        model(x, y, z)
-
-    def test_enable_constplaceholder_static2(self):
-        def get_graph_pack_data_num(concrete_graph):
-            num_cp, num_data = 0, 0
-            for node in concrete_graph.graph.op:
-                if node.type == "ConstPlaceHolder":
-                    num_cp += 1
-                if node.type == "Data":
-                    num_data += 1
-            assert num_cp == 0 and num_data == 3
-
-        def wrapper_call(func):
-            def wrapper(*args, **kwargs):
-                assert len(args) > 0
-                ret = func(*args, **kwargs)
-                get_graph_pack_data_num(args[0])
-                return ret
-
-            return wrapper
-
-        GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
-
-        class Model(torch.nn.Module):
-            def __init__(self):
-                super().__init__()
-
-            def forward(self, x, y, z):
-                return torch.matmul(x[0:2, 0:2], y * z[0:2, 0:2])
-
-        model = Model()
-        config_cp = CompilerConfig()
-        config_cp.experimental_config.frozen_parameter = True
-        npu_backend_cp = torchair.get_npu_backend(compiler_config=config_cp)
-        model = torch.compile(model, backend=npu_backend_cp, dynamic=False)
-
-        x = torch.randn([4, 4])
-        y = torch.randn([2, 2])
-        z = torch.randn([4, 4])
-        model(x, y, z)
+        ins = torch.randn([3, 2]).to(npu_device)
+        with torch.no_grad():
+            model(ins)
 
     def test_topk(self):
         class Model(torch.nn.Module):
