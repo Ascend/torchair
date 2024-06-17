@@ -75094,7 +75094,7 @@ def FFN(x: Tensor,
 
 
 # This api is auto-generated from IR MatmulAllReduce
-@auto_convert_to_tensor([False, False, False, False, False, False, False, False], [False, False, True, True, True, True, True, True])
+@auto_convert_to_tensor([False, False, False, False, False, False, False], [False, False, True, True, True, True, True])
 def MatmulAllReduce(x1: Tensor,
                     x2: Tensor,
                     bias: Optional[Tensor],
@@ -75102,7 +75102,6 @@ def MatmulAllReduce(x1: Tensor,
                     antiquant_scale: Optional[Tensor],
                     antiquant_offset: Optional[Tensor],
                     dequant_scale: Optional[Tensor],
-                    pertoken_scale: Optional[Tensor],
                     *,
                     group: str,
                     reduce_op: str="sum",
@@ -75119,8 +75118,7 @@ def MatmulAllReduce(x1: Tensor,
     .OPTIONAL_INPUT(x3, TensorType({DT_FLOAT16, DT_BF16}))\n
     .OPTIONAL_INPUT(antiquant_scale, TensorType({DT_FLOAT16, DT_BF16}))\n
     .OPTIONAL_INPUT(antiquant_offset, TensorType({DT_FLOAT16, DT_BF16}))\n
-    .OPTIONAL_INPUT(dequant_scale, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16, DT_UINT64, DT_INT64}))\n
-    .OPTIONAL_INPUT(pertoken_scale, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(dequant_scale, TensorType({DT_FLOAT16, DT_BF16, DT_UINT64, DT_INT64}))\n
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_BF16}))\n
     .REQUIRED_ATTR(group, String)\n
     .ATTR(reduce_op, String, "sum")\n
@@ -75185,14 +75183,6 @@ def MatmulAllReduce(x1: Tensor,
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "dequant_scale"
-    if pertoken_scale is not None:
-        op.input.append(pertoken_scale.tensor)
-        op.input_desc.add().CopyFrom(pertoken_scale.desc)
-        op.input_desc[-1].name = "pertoken_scale"
-    else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "pertoken_scale"
         
     # process attrs
     op.attr["group"].s = compat_as_bytes(group)
