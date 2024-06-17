@@ -123,6 +123,24 @@ class TorchairSt(unittest.TestCase):
         x = torch.randn(2, 2)
         model(x, 2)
 
+    def test_fx_dumper(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                return x + x
+
+        dumper_config = CompilerConfig()
+        dumper_config.debug.data_dump.type = "npy"
+        dumper_backend = torchair.get_npu_backend(compiler_config=dumper_config)
+
+        model = torch.compile(Model(), backend=dumper_backend)
+        x = torch.randn([2, 3, 4, 5])
+        model(x)
+        y = torch.randn([2, 3, 4, 7])
+        model(y)
+
     def test_builtin_with_sym(self):
         class Model(torch.nn.Module):
             def __init__(self):

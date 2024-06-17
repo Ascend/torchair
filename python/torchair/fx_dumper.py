@@ -97,7 +97,7 @@ class _NpuFxDumper(Interpreter):
         self._name = name if name else f'gm_{_timestamp()}_dump'
 
     def __call__(self, *args, **kwargs):
-        self.run(*args, **kwargs)
+        return self.run(*args, **kwargs)
 
     def run(self, *args, **kwargs):
         self._step += 1
