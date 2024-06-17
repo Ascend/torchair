@@ -1,7 +1,7 @@
 from torch.fx.experimental.symbolic_shapes import hint_int
 from torchair.core._concrete_graph import ValuePack
 from torchair.ge_concrete_graph.ge_graph import Tensor, is_sym, DataType
-from torchair.ge_concrete_graph.utils import is_host_data_tensor
+from torchair.ge_concrete_graph.utils import is_host_data_tensor, force_op_unknown_shape
 from . import ge_apis as ge
 
 
@@ -80,7 +80,7 @@ def _build_reshape_node(npu_input, npu_input_src, meta_size, graph):
     pack_tensor = ge.Pack(target_shape, N=len(target_shape), axis=0)
     if all([is_host_data_tensor(sym_i) for sym_i in target_shape]):
         pack_tensor.node.attr['_inputs_all_sym'].b = True
-    return ge.Reshape(npu_input, pack_tensor)
+    return ge.Reshape(npu_input, force_op_unknown_shape(pack_tensor))
 
 
 def _build_transpose_perm(stride_index_dicts):
