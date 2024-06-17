@@ -1,13 +1,17 @@
 import importlib
+import json
 import logging
 import os
-from typing import Optional, Tuple, Type, Union
 import sys
+from typing import Optional, Tuple, Type, Union
+
 import torch
 import torch.nn as nn
 import torch_npu
-import torchair
+from torch_npu.dynamo.torchair._utils.path_manager import PathManager
 
+import common
+import torchair
 
 log = logging.getLogger(__name__)
 _patch_table = {}
@@ -18,6 +22,7 @@ def register_patch(*model_names):
         for model_name in model_names:
             _patch_table[model_name] = fn
         return fn
+
     return meta_decorator
 
 
@@ -34,6 +39,8 @@ def _patch_model_2():
     # for model hf_GPT2,hf_GPT2_large (transformers.models.gpt2)
     # torch_npu.compile cannot get gpt2.past_key_value correctly because gpt2.past_key_value is discontinuous.
     # this patch should be removed after torch_npu.compile bug fixed
+    # close AddLayerNormFusionPass
+    close_add_layer_norm_fusion_pass()
     module_spec = importlib.util.find_spec("transformers")
     if module_spec is None:
         return
@@ -197,6 +204,8 @@ def _patch_model_4():
     # nn.functional.softmax will convert to float with autocast, and there will be a loss of precision in eager
     # In Dynamo, _to_copy will ge.cast float32 and float16, there will be a fussion pass to prevent it happens.
     # Add _to_copy before nn.functional.softmax to invoke TensorMove for accuracy check
+    # close AddLayerNormFusionPass
+    close_add_layer_norm_fusion_pass()
     try:
         import transformers
         from transformers.models.bart.modeling_bart import BartAttention
@@ -244,7 +253,6 @@ def _patch_model_4():
             value_states = self._shape(self.v_proj(hidden_states), -1, bsz)
 
         if self.is_decoder:
-
             past_key_value = (key_states, value_states)
 
         proj_shape = (bsz * self.num_heads, -1, self.head_dim)
@@ -269,7 +277,7 @@ def _patch_model_4():
             attn_weights = attn_weights.view(bsz, self.num_heads, tgt_len, src_len) + attention_mask
             attn_weights = attn_weights.view(bsz * self.num_heads, tgt_len, src_len)
 
-        #only patch here _to_copy inputs before softmax
+        # only patch here _to_copy inputs before softmax
         attn_weights = torch.ops.aten._to_copy.default(attn_weights)
         attn_weights = nn.functional.softmax(attn_weights, dim=-1)
 
@@ -319,12 +327,14 @@ def _patch_model_5():
 
 
 @register_patch("hf_Longformer")
-def _path_model_6():
+def _patch_model_6():
     """
     Hf_Longformer failed accurazy test because of discontiguous memory.
     Solving the problem by adding  .contiguous() after .view() and .as_strided in LongformerSelfAttention._chunk.
     This patch would be removed in the near future.
     """
+    # close AddLayerNormFusionPass
+    close_add_layer_norm_fusion_pass()
     module_spec = importlib.util.find_spec("transformers")
     if module_spec is None:
         return
@@ -351,7 +361,7 @@ def _path_model_6():
 
 
 @register_patch("soft_actor_critic")
-def _path_model_7():
+def _patch_model_7():
     """
     soft_actor_critic failed accurazy test because of discontiguous memory.
     Solving the problem by adding  .contiguous() in soft_actor_critic/net.py line:242 SquashedNormal.__init__
@@ -380,9 +390,8 @@ def _path_model_7():
     StochasticActor.forward = new_forward
 
 
-@register_patch("dcgan", "mobilenet_v2", "phlippe_resnet", "timm_vision_transformer", "shufflenet_v2_x1_0",
-                "squeezenet1_1")
-def _path_model_8():
+@register_patch("dcgan", "mobilenet_v2", "phlippe_resnet", "shufflenet_v2_x1_0", "squeezenet1_1")
+def _patch_model_8():
     """
     close conv amp for some model only in accuracy mode.
     This patch would be removed in the near future.
@@ -397,9 +406,8 @@ def _path_model_8():
         Conv2d.forward = conv2d_amp_disabled
 
 
-
 @register_patch("timm_nfnet")
-def _path_model_9():
+def _patch_model_9():
     # close conv amp for timm_nfnet only in accuracy mode.
     # Increase the batch_size to a larger size 16,
     # to mitigate the impact of BatchNorm's tolerance on convolution
@@ -425,6 +433,7 @@ def _path_model_9():
                 training=True, momentum=0., eps=self.eps).reshape_as(self.weight)
             with torch.npu.amp.autocast(enabled=False):
                 return F.conv2d(x, weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
+
         ScaledStdConv2dSame.forward = new_forward
 
     try:
@@ -433,14 +442,16 @@ def _path_model_9():
         log.warning("Import Model failed or could not find timm_nfnet"
                     "from module torchbenchmark.models.timm_nfnet.Model")
         return
+
     def new__init(self, test, device, jit=False, batch_size=None, extra_args=None):
         super(Model, self).__init__(test=test, model_name='dm_nfnet_f0',
                                     device=device, batch_size=16, extra_args=extra_args)
+
     Model.__init__ = new__init
 
 
 @register_patch("nvidia_deeprecommender")
-def _path_model_10():
+def _patch_model_10():
     try:
         from torch_npu.contrib import transfer_to_npu
     except (ImportError, ModuleNotFoundError):
@@ -453,8 +464,10 @@ def _path_model_10():
         log.warning("Import nvidia_deeprecommender failed or could not get DeepRecommenderTrainBenchmark"
                     "from module torchbenchmark.models.nvidia_deeprecommender.nvtrain.DeepRecommenderTrainBenchmark")
         return
+
     def new_init(self, device="cpu", jit=False, batch_size=256, process_command_line=False):
         self.TrainInit("cuda", jit, batch_size, process_command_line)
+
     DeepRecommenderTrainBenchmark.__init__ = new_init
 
 
@@ -563,6 +576,33 @@ def _patch_model_11():
         ResNet._forward_impl = _new_forward_impl
         BasicBlock.forward = new_forward
 
+
+def close_add_layer_norm_fusion_pass():
+    fusion_config = {}
+    fusion_config.setdefault("Switch", {}).setdefault("GraphFusion", {})["AddLayerNormFusionPass"] = "off"
+    fusion_config_file = os.getcwd() + "/fusion_switch.cfg"
+    PathManager.check_path_writeable_and_safety(fusion_config_file)
+    with os.fdopen(os.open(fusion_config_file, os.O_WRONLY | os.O_CREAT, mode=600), 'w') as f:
+        json.dump(fusion_config, f)
+    config = torchair.CompilerConfig()
+    config.fusion_config.fusion_switch_file = fusion_config_file
+    npu_backend = torchair.get_npu_backend(compiler_config=config)
+
+    def compile_with_fusion_switch(args):
+        return torch._dynamo.optimize(npu_backend, nopython=args.nopython)
+
+    def clean_fusion_config_file():
+        PathManager.remove_file_safety(fusion_config_file)
+
+    common.compile_with_backend = compile_with_fusion_switch
+    from common import register_callback
+    register_callback(clean_fusion_config_file)
+
+
+@register_patch("hf_BigBird", "hf_DistilBert")
+def _patch_model_12():
+    # close AddLayerNormFusionPass
+    close_add_layer_norm_fusion_pass()
 
 
 def patch_model(model_name):

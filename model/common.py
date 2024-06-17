@@ -358,6 +358,12 @@ CI_SKIP_DYNAMIC_BATCH_ONLY = {
     "dlrm",
 }
 
+callbacks = []
+
+
+def register_callback(callback):
+    callbacks.append(callback)
+
 
 def model_specified_by_path(path_and_class_str):
     return ":" in path_and_class_str
@@ -3098,6 +3104,10 @@ def main(runner, original_dir=None):
         args.world_size = 1
         process_entry(0, runner, original_dir, args)
 
+    # exec callback functions registered in npu_support.py
+    for fn in callbacks:
+        fn()
+
 
 def run(runner, args, original_dir=None):
     # Pass the parsed args object to benchmark runner object
@@ -3382,7 +3392,7 @@ def run(runner, args, original_dir=None):
                 raise AssertionError("AOTInductor only tested for CUDA")
             optimize_ctx = export_aot_inductor
         else:
-            optimize_ctx = torch._dynamo.optimize(args.backend, nopython=args.nopython)
+            optimize_ctx = compile_with_backend(args)
         experiment = speedup_experiment
         if args.accuracy:
             output_filename = f"accuracy_{args.backend}.csv"
@@ -3651,6 +3661,10 @@ def run(runner, args, original_dir=None):
                 print("ERROR", file=sys.stderr)
                 write_csv("infra_error")
         print_summary(output_filename, print_dataframe=args.print_dataframe_summary)
+
+
+def compile_with_backend(args):
+    return torch._dynamo.optimize(args.backend, nopython=args.nopython)
 
 
 def log_operator_inputs(model, example_inputs, model_iter_fn, name, args):
