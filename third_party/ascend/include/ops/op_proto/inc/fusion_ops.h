@@ -36,7 +36,8 @@ namespace ge {
 * @li x3: A matrix Tensor. The type support float16, bf16, float16.
 * @li antiquant_scale: A matrix Tensor. The type support float16, bf16, float16.
 * @li antiquant_offset: A matrix Tensor. The type support float16, bf16, float16.
-* @li dequant_scale: A matrix Tensor. The type support float16, bf16, uint64. \n
+* @li dequant_scale: A matrix Tensor. The type support float32, float16, bf16, uint64.
+* @li pertoken_scale: A matrix Tensor. The type support float32. \n
 
 * @par Attributes:
 * @li group: A required String identifying the group of ranks
@@ -60,7 +61,8 @@ REG_OP(MatmulAllReduce)
     .OPTIONAL_INPUT(x3, TensorType({DT_FLOAT16, DT_BF16}))
     .OPTIONAL_INPUT(antiquant_scale, TensorType({DT_FLOAT16, DT_BF16}))
     .OPTIONAL_INPUT(antiquant_offset, TensorType({DT_FLOAT16, DT_BF16}))
-    .OPTIONAL_INPUT(dequant_scale, TensorType({DT_FLOAT16, DT_BF16, DT_UINT64, DT_INT64}))
+    .OPTIONAL_INPUT(dequant_scale, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16, DT_UINT64, DT_INT64}))
+    .OPTIONAL_INPUT(pertoken_scale, TensorType({DT_FLOAT}))
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_BF16}))
     .REQUIRED_ATTR(group, String)
     .ATTR(reduce_op, String, "sum")
