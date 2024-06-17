@@ -252,7 +252,7 @@ def replace_data_to_refdata(graph, ref_input_idx, inputs):
 def get_frozen_flag(*args: Any):
     frozen_flag_list = []
     for idx, input_i in enumerate(args):
-        if isinstance(input_i, torch.nn.Parameter):
+        if isinstance(input_i, torch.nn.Parameter) and input_i.device.type == "npu":
             frozen_flag_list.append(True)
             logger.debug(f"No.{idx} arg is ConstPlaceHolder")
         else:

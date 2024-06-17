@@ -394,6 +394,8 @@ def _update_constplaceholder_attr_from_inputs(graph: GraphDef, runtime_inputs):
                 logger.debug(f'No need to update {op.name}.')
                 continue
             real_input = runtime_inputs[op.attr["update_node_from_fx_input_idx"].i]
+            if not real_input.is_npu:
+                raise AssertionError("ConstPlaceHolder only support npu tensor.")
             origin_shape = real_input.shape
             op.attr["origin_shape"].list.i.extend(origin_shape)
             op.attr["dtype"].dt = torch_type_to_ge_type(real_input.dtype)
