@@ -1,8 +1,66 @@
 # Llama2&Llama3
 
-本模块主要是llama2/llama3模型在npu上的适配迁移点介绍，其中llama2使用transformers==4.31.0版本，llama3使用transformers==4.40.0版本。
+本模块主要是llama2/llama3模型在npu上的适配迁移点介绍，其中llama2使用transformers==4.31.0版本，llama3使用transformers==4.40.0版本，模型是在对于的transformers目录下的models/llama/modeling_llama.py。
+
+# 图模式适配
+
+[模型迁移指导](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/80RC1alpha003/devguide/moddevg/torchair/torchair_01_0001.html)
+
+**注意**：模型迁移，先把eager模式跑通，然后再进行下面的图模式修改
+
+此适配点主要是加入走pytorch图模式分支。
+
+```python
+# transformers/generation/utils.py的greedy_search函数while True前添加
+import os
+import time
+import logging
+
+exe_mode = os.getenv("EXE_MODE", "dynamo")
+dynamic_compile = eval(os.getenv("DYNAMIC_COMPILE", "False"))
+
+if exe_mode == "dynamo":
+    logging.info("Start to run model in dynamo mode, dynamic=%s, fullgraph=%s, backend=npu" % (dynamic_compile, True))
+    import torchair as tng
+    from torchair.configs.compiler_config import CompilerConfig
+    config = CompilerConfig()
+    config.experimental_config.frozen_parameter = True
+    npu_backend = tng.get_npu_backend(compiler_config=config)
+    self = torch.compile(self, dynamic=dynamic_compile, fullgraph=True, backend=npu_backend)
+else:
+    logging.info("Start to run model in eager(HOST API) mode")
+
+while True:
+    if synced_gpus:
+        ...
+
+# 在模型执行前后添加torch.npu.synchronize()，主要是做性能统计，打点位置参考如下
+torch.npu.synchronize()
+start = time.time()
+outputs = self(
+    **model_inputs,
+    return_dict=True,
+    output_attentions=output_attentions,
+    output_hidden_states=output_hidden_states,
+)
+torch.npu.synchronize()
+end = time.time()
+cost = end - start # 每个step的耗时统计
+```
+
+- torchair提供了NPU的图构造/图编译/图执行能力。相关能力全部集成到NPU图的后端，在使用torch.compile接口时，指定NPU图后端来使能。同时提供了开关和config控制图的编译和执行流程。
+- 在使用NPU图后端的时候，torchair提供了静态图和动态图两种图执行的能力。根据dynamic参数决定是否走动态图。
+
+**注**：若使用deepspeed框架，需要额外导入hccl算子入图
+
+```python
+import torch_npu
+import torchair.ge_concrete_graph.ge_converter.experimental.patch_for_hcom_allreduce
+```
 
 # 性能优化
+
+**注**：在modeling_llama.py中，被修改的原函数都加了‘__’前缀，可用于对比修改后的函数变化。下面列出了优化项主要的改动，不同的大模型适配完主要改动后，在根据模型实际代码逻辑进行调试。如果期望使用的模型时llama2和llama3，可以直接使用改造后的modeling_llama.py
 
 ## 固定kv cache大小
 
@@ -346,7 +404,7 @@ def merge_qkv_weight(self, tp_size=1):
 
 优化原因：原生LinearAllreduce中matmul和allreduce是串行的，性能较慢。替换mc2融合算子[torch_npu.npu_mm_all_reduce_base](https://www.hiascend.com/document/detail/zh/Pytorch/60RC1/apiref/apilist/ptaoplist_000448.html)后能够使matmul和allreduce之间产生流水，提高性能。
 
-优化方式：使用**models/common/mc2_adapter.py**自定义的**LinearAllreduce**替换原生的**deepspeed.module_inject.layers.LinearAllreduce**
+优化方式：使用**benchmark/deepspeed/mc2_adapter.py**自定义的**LinearAllreduce**替换原生的**deepspeed.module_inject.layers.LinearAllreduce**
 
 ```python
 import torch
@@ -624,3 +682,56 @@ class LinearAllreduce(nn.Module):
 </tbody>
 </table>
 备注：llama3 48 Batch图模式切分8卡场景:由于llama3网络 权重（19.8543G），图分配内存（8.29G）, IO内存（3.87G），超过 B4 device内存（约29G），导致48Batch因为OOM问题无法部署。
+
+# 性能测试
+
+在benchmark目录下的deepspeed目录提供了对接deepspeed框架多卡切分的llama执行样例参考。上述性能数据基于deepspeed(0.14.1)在arm host + 800I A2环境执行进行统计 
+
+**基于搭建的conda环境，安装对应的transformers版本**
+
+```shell
+# llama2
+pip3 install transformers==4.31.0
+# llama3
+pip3 install transformers==4.40.0
+```
+
+**根据图模式适配方式替换transformers中的utils.py**
+
+```shell
+transformers_path=$(pip3 show transformers|grep Location|awk '{print $2}')
+# 根据图模式适配方式修改${transformers_path}/transformers/generation/utils.py中的函数
+```
+
+**设置环境变量**
+
+```shell
+export PYTHONPATH=$PYTHONPATH:/path/to/your/torchair/npu_tuned_model/llm/llama
+cann_path=/usr/local/Ascend # 昇腾cann包安装目录
+source ${cann_path}/latest/bin/setenv.bash
+export ASCEND_HOME_PATH=${cann_path}/latest
+```
+
+**qkv权重融合**
+
+```shell
+model_path=xxx/llama2-70b # 下载的权重和模型信息
+python3 merge_qkv_weight.py --model_path=${model_path} --tp_size=8 --output_path=xxx/llama-70b_qkv
+```
+
+**将替换了mc2融合算子的LinearAllreduce替换deepspeed原生的LinearAllreduce**
+
+将benchmark/deepspeed/mc2_adapter.py的LinearAllreduce整个类拷贝替换原生deepspeed的deepspeed/module_inject/layers.py中的LinearAllreduce类，并且import torch_npu
+
+**deepspeed方式拉起8卡执行**
+
+```shell
+# 图模式
+deepspeed --num_gpus=8 benchmark/deepspeed/benchmark_llama.py --model_path=xxx/llama2-70b_qkv
+# 单算子
+deepspeed --num_gpus=8 benchmark/deepspeed/benchmark_llama.py --model_path=xxx/llama2-70b_qkv --execute_mode=eager
+```
+
+**性能数据打点位置**
+
+参考图模式适配模型执行部分修改。全量耗时统计的是模型第一个step数据，增量耗时统计后续step数据的均值。

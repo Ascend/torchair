@@ -23,14 +23,48 @@ import torch
 import llm_link_torch
 from llm_engine import *
 from llm_engine.v2.llm_engine_v2 import LLMEngine
-from runner.separate_deployment.llm_decoder import LlmDecoderRunner
+from llm_inference import SeparateDeployModelRunner
 
 _INVALID_ID = 2 ** 64 - 1
+
+root_logger = logging.getLogger()
+root_logger.handlers.clear()
+logging.basicConfig(format='%(asctime)s - %(levelname)s - [LLM](%(filename)s:%(lineno)d): %(message)s',
+                    level=logging.INFO)
+logging.getLogger("paramiko").setLevel(logging.ERROR)
+
+
+class LlmDecoderRunner(SeparateDeployModelRunner):
+    def __init__(self, model_path, **kwargs):
+        super().__init__(model_path=model_path, **kwargs)
+
+    # 增量的首次输入来自全量，并在后续迭代过程中更新，更新的逻辑不同模型有差异，以具体模型为准
+    def prepare_decoder_inputs(self, outputs_param, **kwargs):
+        if (outputs_param.get("input_ids", None) is None or outputs_param.get("generate_ids", None) is None or
+                outputs_param.get("attention_mask", None) is None):
+            raise ValueError("input_ids or generate_ids or attention_mask is None")
+        kwargs_params = self._generate_params(outputs_param)
+        kwargs_params["input_ids"] = torch.cat([kwargs_params["input_ids"], kwargs_params["generate_ids"]], dim=-1)
+        attention_mask = kwargs_params["attention_mask"]
+        kwargs_params["attention_mask"] = torch.cat(
+            [attention_mask, attention_mask.new_ones((attention_mask.shape[0], 1))], dim=-1)
+
+        return kwargs_params
+
+    @torch.inference_mode()
+    def execute_model(self, params, **kwargs):
+        model_inputs = self.model.prepare_inputs_for_generation(input_ids=params["input_ids"],
+                                                                attention_mask=params["attention_mask"],
+                                                                **kwargs)
+        outputs = self.model_generate(model_inputs)
+        return outputs
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="llm run parameters")
     parser.add_argument('--model_path', type=str, help="Location of model weights")
+    parser.add_argument('--execute_mode', type=str, default="dynamo", choices=["dynamo", "eager"],
+                        help="eager or dynamo")
     parser.add_argument('--local_rank', type=int, default=0, help="Local rank id")
     parser_args = parser.parse_args()
     return parser_args
@@ -41,6 +75,7 @@ def init_clusters_info():
     cluster.remote_cluster_id = 0
     # 此处需要更改为使用机器的大端device ip的int值, local_ip和remote_ip的顺序一一对应
     # local_ip_info的port可以随便填，remote_ip_info的port需要指定可用port并且和全量的listen_ip_info设置一致
+    # 示例cluster是1v1 8卡的配置，可根据实际卡数调整，对于一个增量cluster，支持1v N全量
     cluster.append_local_ip_info(3517263133, 26000)
     cluster.append_local_ip_info(907029789, 26000)
     cluster.append_local_ip_info(641871133, 26000)
@@ -64,12 +99,14 @@ def init_clusters_info():
 def init_llm_engine(rank_id: int) -> LLMEngine:
     cluster_id = 0
     engine = LLMEngine(LLMRole.DECODER, cluster_id)
+    # 示例option是执行8卡的配置，可根据实际卡数调整
     cluster_info_str = {"cluster_id": 0,
                         "logic_device_id":
                             ["0:0:0:0", "0:0:1:0", "0:0:2:0", "0:0:3:0", "0:0:4:0", "0:0:5:0", "0:0:6:0", "0:0:7:0"]}
     options = {
         "llm.ClusterInfo": json.dumps(cluster_info_str),
         "ge.exec.rankId": str(rank_id),
+        # 和kv cache的大小有关联，全量需要大于一个请求kv cache的N倍，增量至少需要大于1个请求kv cache
         "ge.flowGraphMemMaxSize": "2589934592",
     }
     engine.init(options)
@@ -91,6 +128,7 @@ class TorchModelRunner(ModelRunner):
         kv_cache_tensors = list(zip(k_tensors, v_tensors))
         # 此处传递的参数根据不同模型区分全量和增量的入参进行调整
         kwargs["past_key_values"] = kv_cache_tensors
+        # input_tensors[0]对应predict接口入参inputs
         outputs = self._model_runner.execute_model(input_tensors[0], **kwargs)
         return outputs
 
@@ -131,6 +169,20 @@ def recv_inputs_from_prompt():
     return loaded_dict
 
 
+def _init_model_options():
+    # 构造kv shape的dtype和shape，需要根据网络的不同情况进行调整
+    num_layers = 80
+    world_size = int(os.getenv("WORLD_SIZE", "1"))
+    kv_shape = f"4,2048,{8 // world_size},128"
+    shapes_str = ";".join([kv_shape] * num_layers * 2)
+    dtypes_str = ";".join(['1'] * num_layers * 2)
+    model_options = {
+        "llm.RefInputShapes": shapes_str,
+        "llm.RefInputDtypes": dtypes_str
+    }
+    return model_options
+
+
 if __name__ == "__main__":
     args = parse_args()
     local_rank = args.local_rank
@@ -141,29 +193,22 @@ if __name__ == "__main__":
 
     max_new_tokens = 1024
     config = {
-        "input_padding": True,
-        "dtype": torch.float16,
-        "input_max_len": 1024,
-        "max_new_tokens": max_new_tokens,
+        "dtype": torch.float16,  # 和模型权重目录中config.json里的torch_dtype一致
+        "input_max_len": 1024,  # 输入padding的长度
+        "max_new_tokens": max_new_tokens,  # 最大输出token个数
     }
 
-    model_runner = LlmDecoderRunner("llama2", args.model_path, **config)
-    model_runner.execute_mode = "dynamo"
-    model_runner.set_npu_config(jit_compile=False)
+    os.environ["EXE_MODE"] = args.execute_mode
+    model_runner = LlmDecoderRunner(args.model_path, **config)
+    # 表示在图模式下开启二进制编译，提高图模式下编译阶段性能
+    torch.npu.set_compile_mode(jit_compile=False)
     model_runner.init_model()
+    # 走图模式需要进行图编译
     model_runner.compile_model()
 
-    num_layers = 80
-    world_size = int(os.getenv("WORLD_SIZE", "1"))
-    kv_shape = f"4,2048,{8 // world_size},128"
-    shapes_str = ";".join([kv_shape] * num_layers * 2)
-    dtypes_str = ";".join(['1'] * num_layers * 2)
-    model_options = {
-        "llm.RefInputShapes": shapes_str,
-        "llm.RefInputDtypes": dtypes_str
-    }
     batch_size = 4  # bs大小取决于模型给的输入的bs大小
-    llm_model = decoder_engine.add_model(model_options, TorchModelRunner(model_runner, decoder_engine.kv_cache_manager))
+    llm_model = decoder_engine.add_model(_init_model_options(),
+                                         TorchModelRunner(model_runner, decoder_engine.kv_cache_manager))
     llm_reqs = _init_llm_req(llm_model, 0, 4, batch_size)
     step_inputs = _numpy_to_tensor(recv_inputs_from_prompt())
     # warmup
@@ -171,6 +216,7 @@ if __name__ == "__main__":
     _ = llm_model.predict(llm_reqs, [inputs], **config)
     model_runner.reset_time_statistics()
 
+    # 增量迭代推理，可以自己控制请求的加入和退出，新请求加入前需要pull_kv和merge_kv
     llm_reqs = _init_llm_req(llm_model, 4, 8, batch_size)
     input_len = len(step_inputs["input_ids"][0])
     for i in range(max_new_tokens):
@@ -194,4 +240,5 @@ if __name__ == "__main__":
             logging.info(f"Inference decode result: \n{output_tokens}")
 
     decoder_engine.unlink_clusters(clusters_info)
+    decoder_engine.finalize()
     logging.info("model run success")

@@ -18,16 +18,53 @@ import logging
 import time
 import torch
 import torch_npu
+import deepspeed
+from transformers import AutoTokenizer
+from modeling_llama import LlamaForCausalLM, LlamaDecoderLayer
 import torchair as tng
 from torchair.configs.compiler_config import CompilerConfig
-from runner.common_runner import LlmCommonModelRunner
 
 
-class SeparateDeployModelRunner(LlmCommonModelRunner):
-    def __init__(self, model_name, model_path, **kwargs):
+class SeparateDeployModelRunner:
+    def __init__(self, model_path, **kwargs):
+        self.model_path = model_path
+        self.dtype = kwargs.get("dtype", torch.float16)
+        self.tokenizer = None
+        self.model = None
+        self.device = None
+        self.local_rank = int(os.getenv("LOCAL_RANK", "0"))
+        self.world_size = int(os.getenv("WORLD_SIZE", "1"))
+        self.is_logging = (self.local_rank == 0)
         self.cnt = 0
         self.run_time = 0
-        super().__init__(model_name=model_name, model_path=model_path, **kwargs)
+
+    def init_model(self):
+        logging.info("Set execution using npu index: %s", self.local_rank)
+        self.device = torch.device("%s:%s" % ("npu", self.local_rank))
+        torch.npu.set_device(self.device)
+
+        logging.info("Try to load pretrained model in path: %s", self.model_path) if self.is_logging else None
+        self.model = LlamaForCausalLM.from_pretrained(self.model_path, low_cpu_mem_usage=True, torch_dtype=self.dtype)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_path, use_fast=False, padding_side="left")
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+            self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
+
+        deepspeed.init_distributed(dist_backend="hccl")
+        if os.getenv("EXE_MODE", None) == "dynamo":
+            import torchair.ge_concrete_graph.ge_converter.experimental.patch_for_hcom_allreduce
+
+        deepspeed_model = deepspeed.init_inference(
+            model=self.model,
+            mp_size=self.world_size,
+            dtype=self.dtype,
+            relace_method="auto",
+            replace_with_kernel_inject=False,
+            injection_policy={LlamaDecoderLayer: ('self_attn.o_proj', 'mlp.down_proj')}
+        )
+        deepspeed_model.to(self.device)
+        self.model.to(self.device)
+        logging.info("The final model structure is: \n %s", self.model) if self.is_logging else None
 
     def process_output(self, generate_ids):
         res = self.tokenizer.batch_decode(generate_ids,
@@ -62,7 +99,7 @@ class SeparateDeployModelRunner(LlmCommonModelRunner):
 
     def compile_model(self):
         dynamic_compile = eval(os.getenv("DYNAMIC_COMPILE", "False"))
-        if self._execute_mode == "dynamo":
+        if os.getenv("EXE_MODE") == "dynamo":
             logging.info(f"Start to run model in dynamo mode, dynamic={dynamic_compile}, fullgraph=True, backend=npu")
             config = CompilerConfig()
             config.experimental_config.frozen_parameter = True

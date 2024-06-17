@@ -17,13 +17,12 @@ import os
 import shutil
 import argparse
 import torch
-from models import ModelRegistry
+from modeling_llama import LlamaForCausalLM
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="convert weight parameters")
     parser.add_argument('--model_path', type=str, help="Location of model weights")
-    parser.add_argument('--model_name', type=str, default="llama2", help="model name, e.g., llama2")
     parser.add_argument('--tp_size', type=int, default=1, help="The number of tensor split")
     parser.add_argument('--output_path', type=str, help="The output directory where the results are saved")
     parser_args = parser.parse_args()
@@ -43,7 +42,6 @@ if __name__ == "__main__":
     if not os.path.exists(args.output_path):
         os.makedirs(args.output_path)
     copy_files_with_prefix(args.model_path, args.output_path, "tokenizer")
-    model_cls = ModelRegistry.load_model_cls(args.model_name)
-    model = model_cls.from_pretrained(args.model_path, low_cpu_mem_usage=True, torch_dtype=torch.float16)
+    model = LlamaForCausalLM.from_pretrained(args.model_path, low_cpu_mem_usage=True, torch_dtype=torch.float16)
     model.merge_qkv_weight(args.tp_size)
     model.save_pretrained(args.output_path, from_pt=True)
