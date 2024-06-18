@@ -75922,37 +75922,44 @@ def _GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], sc
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x, (tuple, list))
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "x" + str(i)
-    assert isinstance(weight, (tuple, list))
+    if not isinstance(weight, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(weight):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "weight" + str(i)
-    assert isinstance(bias, (tuple, list))
+    if not isinstance(bias, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(bias):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "bias" + str(i)
-    assert isinstance(scale, (tuple, list))
+    if not isinstance(scale, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(scale):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "scale" + str(i)
-    assert isinstance(offset, (tuple, list))
+    if not isinstance(offset, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(offset):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "offset" + str(i)
-    assert isinstance(antiquant_scale, (tuple, list))
+    if not isinstance(antiquant_scale, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(antiquant_scale):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "antiquant_scale" + str(i)
-    assert isinstance(antiquant_offset, (tuple, list))
+    if not isinstance(antiquant_offset, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(antiquant_offset):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
