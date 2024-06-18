@@ -63,7 +63,8 @@ def generate_dynamic_dims_option(named_inputs_info, config):
         str_inputshape += f"{op_name}:{','.join(map(str, data_shape))};"
         if len(dim_gears) == 0:
             continue
-        for dim_index, gear in dim_gears.items():
+        sorted_dim_gears = dict(sorted(dim_gears.items(), key=lambda x: x[0]))
+        for dim_index, gear in sorted_dim_gears.items():
             if data_shape[dim_index] != -1:
                 raise AssertionError(f"Set dim gear index shape must generalize -1.")
             gear_list.append(tuple(gear))
