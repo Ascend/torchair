@@ -43,6 +43,7 @@ def convert_npu_mm_all_reduce_base(
     antiquant_offset: Optional[Tensor] = None,
     x3: Optional[Tensor] = None,
     dequant_scale: Optional[Tensor] = None,
+    pertoken_scale: Optional[Tensor] = None,
     antiquant_group_size: int = 0,
     comm_turn: int = 0,
     meta_outputs: TensorSpec = None
@@ -52,8 +53,8 @@ def convert_npu_mm_all_reduce_base(
     transpose_x2 = False
     '''NB: npu::npu_mm_all_reduce_base(Tensor x1, Tensor x2, str hcom, *, str reduce_op='sum', Tensor? bias=None,
                                        Tensor? antiquant_scale=None, Tensor? antiquant_offset=None, Tensor? x3=None,
-                                       Tensor? dequant_scale=None, int antiquant_group_size=0,
-                                       int comm_turn=0) -> Tensor'''
+                                       Tensor? dequant_scale=None, Tensor? pertoken_scale=None,
+                                       int antiquant_group_size=0, int comm_turn=0) -> Tensor'''
     check_dtype(self, x2, bias=bias, x3=x3, antiquant_scale=antiquant_scale,
                 antiquant_offset=antiquant_offset, dequant_scale=dequant_scale)
     return ge.MatmulAllReduce(self,
@@ -63,6 +64,7 @@ def convert_npu_mm_all_reduce_base(
                               antiquant_scale=antiquant_scale,
                               antiquant_offset=antiquant_offset,
                               dequant_scale=dequant_scale,
+                              pertoken_scale=pertoken_scale,
                               group=hcom,
                               reduce_op=reduce_op,
                               is_trans_a=transpose_x1,
