@@ -681,7 +681,6 @@ class LinearAllreduce(nn.Module):
   </tr>
 </tbody>
 </table>
-备注：llama3 48 Batch图模式切分8卡场景:由于llama3网络 权重（19.8543G），图分配内存（8.29G）, IO内存（3.87G），超过 B4 device内存（约29G），导致48Batch因为OOM问题无法部署。
 
 # 性能测试
 
