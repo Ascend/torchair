@@ -89,11 +89,17 @@ Status Session::Finalize() {
     TNG_ASSERT_GE_OK(ge::GEFinalize());
   }
 
+  auto result = Status::Success();
   if (auto_tune_init_) {
-    return NpuAoe::GetInstance().AoeTuningFinalize();
+    result = NpuAoe::GetInstance().AoeTuningFinalize();
   }
 
-  return Status::Success();
+  aclrtContext detect_context = aclrtContext();
+  auto ctx_ret = aclrtGetCurrentContext(&detect_context);
+  auto ctx_ptr = (ctx_ret == ACL_ERROR_NONE) ? detect_context : nullptr;
+  TNG_LOG(DEBUG) << "After torchair finalize, got context pointer: " << ctx_ptr;
+
+  return result;
 }
 
 Status Session::AddGraph(uint32_t id, const ge::Graph &graph,
