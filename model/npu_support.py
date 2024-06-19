@@ -605,6 +605,113 @@ def _patch_model_12():
     close_add_layer_norm_fusion_pass()
 
 
+@register_patch("moco")
+def _patch_model_13():
+    from argparse import Namespace
+    import torch.distributed as dist
+
+    try:
+        from torch_npu.contrib import transfer_to_npu
+    except (ImportError, ModuleNotFoundError):
+        log.warning("NPU_FlAG is False!")
+        return
+
+    try:
+        import torchvision.models as models
+        from torchbenchmark.models.moco import Model
+        from torchbenchmark.models.moco.moco.builder import MoCo
+    except (ImportError, ModuleNotFoundError):
+        log.warning("import torchvision fail or could not get Model,MoCo from module torchbenchmark.models.moco ")
+        return
+
+    def new_init(self, test, device, batch_size=None, extra_args=[]):
+        super(Model, self).__init__(test=test, device=device, batch_size=batch_size, extra_args=extra_args)
+        self.opt = Namespace(**{
+            "arch": "resnet50", "epochs": 2, "start_epoch": 0, "lr": 0.03, "schedule": [120, 160], "momentum": 0.9,
+            "weight_decay": 1e-4, "gpu": None, "moco_dim": 128, "moco_k": 32000, "moco_m": 0.999, "moco_t": 0.07,
+            "mlp": False, "aug_plus": False, "cos": False, "fake_data": True, "distributed": True,
+        })
+        try:
+            dist.init_process_group(backend="nccl", init_method="tcp://localhost:10001", world_size=1, rank=0)
+        except RuntimeError:
+            pass  # already initialized?
+
+        if device == "cpu":
+            raise NotImplementedError("DistributedDataParallel/allgather requires npu")
+
+        self.model = MoCo(
+            models.__dict__[self.opt.arch],
+            self.opt.moco_dim,
+            self.opt.moco_k,
+            self.opt.moco_m,
+            self.opt.moco_t,
+            self.opt.mlp,
+        )
+        self.model.to(self.device)
+
+        # Define loss function (criterion) and optimizer
+        self.criterion = nn.CrossEntropyLoss().to(self.device)
+
+        self.optimizer = torch.optim.SGD(
+            self.model.parameters(),
+            self.opt.lr,
+            momentum=self.opt.momentum,
+            weight_decay=self.opt.weight_decay,
+        )
+
+        def collate_train_fn(data):
+            ind = data[0]
+            return [batches[2 * ind], batches[2 * ind + 1]], 0
+
+        batches = []
+        for i in range(4):
+            batches.append(torch.randn(self.batch_size, 3, 224, 224).to(self.device))
+        self.example_inputs = torch.utils.data.DataLoader(range(2), collate_fn=collate_train_fn)
+        if torch.cuda.is_available():
+            for i, (images, _) in enumerate(self.example_inputs):
+                images[0] = images[0].cuda(device=0, non_blocking=True)
+                images[1] = images[1].cuda(device=0, non_blocking=True)
+        else:
+            for i, (images, _) in enumerate(self.example_inputs):
+                images[0] = images[0].npu(device=0, non_blocking=True)
+                images[1] = images[1].npu(device=0, non_blocking=True)
+
+    Model.__init__ = new_init
+
+    if {"--only", "--amp", "--accuracy"} <= set(sys.argv):
+        try:
+            import torchvision
+            from torchvision.models.resnet import ResNet
+        except (ImportError, ModuleNotFoundError):
+            log.warning("Import torchvision failed or could not get ResNet "
+                        "from module torchvision.models.resnet")
+            return
+
+        def _new_forward_impl(self, x):
+            # See note [TorchScript super()]
+            x = self.conv1(x)
+            x = self.bn1(x)
+            x = self.relu(x)
+            x = self.maxpool(x)
+
+            x = self.layer1(x)
+            x = self.layer2(x)
+            x = self.layer3(x)
+            x = self.layer4(x)
+
+            @torch.compiler.disable(recursive=False)
+            def avgpool(x):
+                x = self.avgpool(x)
+                return x
+
+            x = self.avgpool(x)
+            x = torch.flatten(x, 1)
+            x = self.fc(x)
+            return x
+
+        ResNet._forward_impl = _new_forward_impl
+
+
 def patch_model(model_name):
     if model_name not in _patch_table.keys():
         return

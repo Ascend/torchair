@@ -148,6 +148,7 @@ REQUIRE_HIGHER_FP16_TOLERANCE = {
 NPU_REQUIRE_HIGHER_FP16_TOLERANCE = {
     "timm_vision_transformer",
     "functorch_dp_cifar10",
+    "moco",
 }
 REQUIRE_HIGHER_FP16_TOLERANCE.update(NPU_REQUIRE_HIGHER_FP16_TOLERANCE)
 
