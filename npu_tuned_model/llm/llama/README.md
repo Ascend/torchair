@@ -17,7 +17,7 @@ import time
 import logging
 
 exe_mode = os.getenv("EXE_MODE", "dynamo")
-dynamic_compile = eval(os.getenv("DYNAMIC_COMPILE", "False"))
+dynamic_compile = True # 因为当模型结构使能了actual_seq_length
 
 if exe_mode == "dynamo":
     logging.info("Start to run model in dynamo mode, dynamic=%s, fullgraph=%s, backend=npu" % (dynamic_compile, True))

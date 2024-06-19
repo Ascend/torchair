@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import os
+import stat
 import argparse
 import logging
 import json
@@ -164,7 +165,7 @@ def _numpy_to_tensor(params):
 
 # 此函数是接收来自全量的输出作为增量的输入，此处仅通过文件的形式进行数据传递，可替换为实际业务场景数据传递方式
 def recv_inputs_from_prompt():
-    with open("prompt.pkl", "rb") as f:
+    with os.fdopen(os.open("prompt.pkl", os.O_RDONLY, stat.S_IRUSR), "rb") as f:
         loaded_dict = pickle.load(f)
     return loaded_dict
 

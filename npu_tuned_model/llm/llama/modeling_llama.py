@@ -655,7 +655,7 @@ LLAMA_START_DOCSTRING = r"""
     library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
     etc.)
 
-    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    This model is also a PyTorch [torch.nn.Module] subclass.
     Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
     and behavior.
 
@@ -719,7 +719,7 @@ LLAMA_INPUTS_DOCSTRING = r"""
             `past_key_values`).
 
             If you want to change padding behavior, you should read [`modeling_opt._prepare_decoder_attention_mask`]
-            and modify to your needs. See diagram 1 in [the paper](https://arxiv.org/abs/1910.13461) for more
+            and modify to your needs. See diagram 1 in [the paper] for more
             information on the default strategy.
 
             - 1 indicates the head is **not masked**,
@@ -1155,7 +1155,6 @@ class LlamaForCausalLM(LlamaPreTrainedModel):
         self.post_init()
         self.prompt_length = None
         self.updated_kv_positions = None
-        os.environ["DYNAMIC_COMPILE"] = "True" # 当前由于使能了actual_seq，所以compile的dynamic需要设置为true
 
     def get_input_embeddings(self):
         return self.model.embed_tokens

@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import os
+import stat
 import time
 import argparse
 import json
@@ -172,7 +173,9 @@ def send_prompt_outputs(model_inputs, model_outputs):
     params["generate_ids"] = model_outputs[:, None]
     params["input_ids"] = model_inputs["input_ids"]
     params["attention_mask"] = model_inputs["attention_mask"]
-    with open("prompt.pkl", "wb") as f:
+    flags = os.O_RDWR | os.O_CREAT
+    mode = stat.S_IWUSR | stat.S_IRUSR
+    with os.fdopen(os.open("prompt.pkl", flags, mode), "wb") as f:
         pickle.dump(_tensor_to_numpy(params), f)
 
 

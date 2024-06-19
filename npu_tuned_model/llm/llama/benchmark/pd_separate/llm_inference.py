@@ -98,7 +98,7 @@ class SeparateDeployModelRunner:
         raise NotImplementedError
 
     def compile_model(self):
-        dynamic_compile = eval(os.getenv("DYNAMIC_COMPILE", "False"))
+        dynamic_compile = True # 因为当模型结构使能了actual_seq_length
         if os.getenv("EXE_MODE") == "dynamo":
             logging.info(f"Start to run model in dynamo mode, dynamic={dynamic_compile}, fullgraph=True, backend=npu")
             config = CompilerConfig()
