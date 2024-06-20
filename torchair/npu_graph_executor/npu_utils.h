@@ -16,6 +16,8 @@ Status AssembleDataAndStorageShapeToGe(const at::Tensor &tensor, ge::Tensor &ge_
 
 Status AtNpuTensorToGeTensor(const at::Tensor &tensor, ge::Tensor &ge_tensor);
 
+bool IsBaseFormat(const ge::Format &format);
+
 }  // namespace tng
 
 #endif  // TORCH_AIR_TORCH_AIR_NPU_GRAPH_EXECUTOR_NPU_UTILS_H_
