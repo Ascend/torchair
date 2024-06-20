@@ -10,6 +10,7 @@ from torchair.ge_concrete_graph import ge_converter
 from torchair.experimental.inference import use_internal_format_weight
 from torchair.core.utils import logger
 import torchair.inference
+import torchair.llm_datadist
 
 __all__ = ['get_compiler', 'get_npu_backend', 'dynamo_export', 'CompilerConfig',
            'use_internal_format_weight', 'logger']

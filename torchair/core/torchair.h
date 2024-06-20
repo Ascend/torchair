@@ -54,5 +54,4 @@ class TorchNpuGraphBase {
   std::unique_ptr<tng::NpuConcreteGraph> concrete_graph_ = nullptr;
 };
 }  // namespace tng
-
 #endif  // TORCH_AIR_TORCH_AIR_CORE_TORCH_AIR_H_

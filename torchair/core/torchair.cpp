@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <functional>
 
 #include "pybind11/chrono.h"
 #include "pybind11/complex.h"
