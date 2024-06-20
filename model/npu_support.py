@@ -712,6 +712,54 @@ def _patch_model_13():
         ResNet._forward_impl = _new_forward_impl
 
 
+@register_patch("timm_vovnet")
+def _patch_model_14():
+    if {"--only", "--amp", "--accuracy"} <= set(sys.argv):
+        import torch.nn.functional as F
+        from torch.nn.modules.conv import Conv2d
+        from torch.nn.modules.pooling import AdaptiveAvgPool2d
+        from torch.nn.modules.linear import Linear
+
+        def conv2d_amp_disabled(self, x):
+            with torch.npu.amp.autocast(enabled=False):
+                return self._conv_forward(x, self.weight, self.bias)
+        Conv2d.forward = conv2d_amp_disabled
+
+        def adaptive_avgpool_amp_disabled(self, x):
+            with torch.npu.amp.autocast(enabled=False):
+                return F.adaptive_avg_pool2d(x.float(), self.output_size)
+        AdaptiveAvgPool2d.forward = adaptive_avgpool_amp_disabled
+
+        def linear_amp_disabled(self, x):
+            with torch.npu.amp.autocast(enabled=False):
+                return F.linear(x, self.weight, self.bias)
+        Linear.forward = linear_amp_disabled
+
+
+@register_patch("speech_transformer")
+def _patch_model_15():
+    # In same scenarios, bmm will influence the format of softmax to NZ;
+    # Therefore, specify _softmax input and output format to NHWC for the accuracy test
+    close_add_layer_norm_fusion_pass()
+    from torchair.ge_concrete_graph import ge_apis as ge
+    from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType
+    from torchair.ge_concrete_graph.utils import specific_op_input_layout, specific_op_output_layout
+    from torchair.ge_concrete_graph.ge_converter.aten import _softmax
+
+    def new_conveter_aten__softmax_default(
+            self: Tensor, dim: int, half_to_float: bool, meta_outputs: TensorSpec = None
+    ):
+        """NB: aten::_softmax(Tensor self, int dim, bool half_to_float) -> Tensor"""
+        if half_to_float and self.dtype != DataType.DT_FLOAT16:
+            raise RuntimeError(
+                "torch.ops.aten._softmax.default: "
+                "when half_to_tensor is True, input tensor must be half type.")
+        specific_op_input_layout(self, indices=0, layout="NHWC")
+        specific_op_output_layout(self, indices=0, layout="NHWC")
+        return ge.SoftmaxV2(self, axes=[dim], half_to_float=half_to_float)
+    _softmax.conveter_aten__softmax_default = new_conveter_aten__softmax_default
+
+
 def patch_model(model_name):
     if model_name not in _patch_table.keys():
         return
