@@ -63,15 +63,15 @@
 
 - 拆分完的脚本有各自的**输入预处理，模型执行和输出后处理**。此处如果是集成接口，需要根据集成接口内部对于输入输出的处理进行调整。
 
-  **全量的输入预处理和模型执行参考**[llm_prompt.py](../../../runner/separate_deployment/llm_prompt.py)
+  **全量的输入预处理和模型执行参考**[run_prompt.py](./run_prompt.py)的LlmPromptRunner
 
-  **增量的输入预处理和模型执行参考**[llm_decoder.py](../../../runner/separate_deployment/llm_decoder.py)
+  **增量的输入预处理和模型执行参考**[run_decoder.py](./run_decoder.py)的LlmDecoderRunner
 
 - 加入**分离部署功能**。
 
   **注意**：下面用不同参数"kv_tensors"和"past_key_values"传递kv cache的tensor主要是区分llama2中的全量和增量执行，不同模型根据实际情况进行调整。
 
-**全量用例执行参考**[run_prompt.py](./run_prompt.py)
+**全量用例执行参考**[run_prompt.py](./run_prompt.py)的main函数
 
 涉及到的分离部署接口：
 
@@ -104,7 +104,7 @@ llm_req = LLMReq()
 result = llm_model.predict(llm_reqs[4:], [inputs], **config)
 ```
 
-**增量用例执行参考**[run_decoder.py](./run_decoder.py)
+**增量用例执行参考**[run_decoder.py](./run_decoder.py)的main函数
 
 涉及到的分离部署接口：
 
@@ -140,9 +140,11 @@ llm_model.merge_kv(llm_req, i)
 result = llm_model.predict(llm_reqs, [inputs], **config)
 ```
 
-# 快速体验
+# 性能及功能测试
 
-## 环境搭建
+模型结构使用的是已经改造后的modeling_llama.py
+
+**搭建环境**
 
 ```shell
 # arm环境搭建示例
@@ -152,44 +154,57 @@ conda activate test
 # 根据CANN安装指南安装固件/驱动/cann包
 
 # 安装 torch 和 torch_npu
-pip3 install torch-2.1.0-cp38-cp38m-manylinux2014_aarch64.whl
-pip3 install torch_npu-2.1.0*-cp38-cp38m-linux_aarch64.whl
-pip3 install apex-0.1_ascend*-cp38-cp38m-linux_aarch64.whl
-
-pip3 install -r requirement.txt
+pip3 install torch-2.1.0-cp39-cp39m-manylinux2014_aarch64.whl
+pip3 install torch_npu-2.1.0*-cp39-cp39m-linux_aarch64.whl
+pip3 install apex-0.1_ascend*-cp39-cp39m-linux_aarch64.whl
 
 git clone https://gitee.com/ascend/torchair.git
 cd torchair/npu_tuned_model/llm
-bash setup.sh
+pip3 install -r requirement.txt
+
+# llama2
+pip3 install transformers==4.31.0
+# llama3
+pip3 install transformers==4.40.0
 ```
 
 [llm_link_torch包安装](https://gitee.com/cann/air/blob/ge_dev/python/llm_link_torch/README.md)
 
-**注意**：建议昇腾run包安装在conda创建的镜像中安装。当前功能暂不支持社区版本，cann包从主线获取。如果遇到ASCEND_HOME_PATH环境变量未设置，设置为run包安装路径
-
-## 用例执行
+**设置环境变量**
 
 ```shell
-export PYTHONPATH=$PYTHONPATH:/path/to/your/torchair/npu_tuned_model/llm
+export PYTHONPATH=$PYTHONPATH:/path/to/your/torchair/npu_tuned_model/llm/llama
 cann_path=/usr/local/Ascend # 昇腾cann包安装目录
 source ${cann_path}/latest/bin/setenv.bash
-model_path=xxx/llama2-70b # 下载的权重和模型信息
-python3 examples/merge_qkv_weight.py --model_path=${model_path} --model_name=llama2 --tp_size=8 --output_path=xxx/llama-70b_qkv
-# 若想使能mc2融合算子优化，使用models/common/mc2_adapter.py自定义的LinearAllreduce替换原生的deepspeed.module_inject.layers.LinearAllreduce
+export ASCEND_HOME_PATH=${cann_path}/latest
 export RESOURCE_CONFIG_PATH=numa_config.json # numa_config配置参考内部资料
 ```
 
-上述操作分别在全量和增量机器上完成后，
+**qkv权重融合**
+
+```shell
+model_path=xxx/llama2-70b # 下载的权重和模型信息
+python3 merge_qkv_weight.py --model_path=${model_path} --tp_size=8 --output_path=xxx/llama-70b_qkv
+```
+
+**将替换了mc2融合算子的LinearAllreduce替换deepspeed原生的LinearAllreduce**
+
+将benchmark/deepspeed/mc2_adapter.py的LinearAllreduce整个类拷贝替换原生deepspeed的deepspeed/module_inject/layers.py中的LinearAllreduce类，并且import torch_npu
+
+**注：上述操作分别在全量和增量机器上完成后，**
 
 先拉起全量的执行脚本
 
 ```shell
-deepspeed --num_gpus=8 examples/llama/separate_deployment/run_prompt.py --model_path=xxx/llama2-70b_qkv
+deepspeed --num_gpus=8 benchmark/pd_separate/run_prompt.py --model_path=xxx/llama2-70b_qkv
 ```
 
 将目录下生成的prompt.pkl文件拷贝到增量执行目录下
 
 ```shell
-deepspeed --num_gpus=8 examples/llama/separate_deployment/run_decoder.py --model_path=xxx/llama2-70b_qkv
+deepspeed --num_gpus=8 benchmark/pd_separate/run_decoder.py --model_path=xxx/llama2-70b_qkv
 ```
 
+**打点位置**
+
+在llm_inference.py的model_generate函数中start和end

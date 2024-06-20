@@ -134,9 +134,6 @@ class RotaryEmbedding(nn.Module):
             self, seq_len: int, n_elem: int, dtype: torch.dtype, device: torch.device, base: int = 10000
     ):
         """Enhanced Transformer with Rotary Position Embedding.
-
-        Derived from: https://github.com/labmlai/annotated_deep_learning_paper_implementations/blob/master/labml_nn/
-        https://github.com/labmlai/annotated_deep_learning_paper_implementations/blob/master/license.
         """
         # $\Theta = {\theta_i = 10000^{\frac{2(i-1)}{d}}, i \in [1, 2, ..., \frac{d}{2}]}$
         theta = 1.0 / (base ** (torch.arange(0, n_elem, 2, dtype=torch.float, device=device) / n_elem))
@@ -1249,8 +1246,7 @@ class ChatGLMForConditionalGeneration(ChatGLMPreTrainedModel):
                 logger.warn(
                     f"Both `max_new_tokens` (={generation_config.max_new_tokens}) and `max_length`(="
                     f"{generation_config.max_length}) seem to have been set. `max_new_tokens` will take precedence. "
-                    "Please refer to the documentation for more information. "
-                    "(https://huggingface.co/docs/transformers/main/en/main_classes/text_generation)",
+                    "Please refer to the documentation for more information. ",
                     UserWarning,
                 )
 
