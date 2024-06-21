@@ -561,7 +561,7 @@ class LinearAllreduce(nn.Module):
 </tbody>
 </table>
 
-## lama3-70B
+## llama3-70B
 
 执行llama3-70b，加载模型时的tensor类型float16，输入padding到1024长度，输出max_new_tokens是1024的性能数据如下：
 
