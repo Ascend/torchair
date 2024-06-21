@@ -76153,12 +76153,14 @@ def FusedInferAttentionScore(query: Tensor, key: List[Tensor], value: List[Tenso
     op.input.append(query.tensor)
     op.input_desc.add().CopyFrom(query.desc)
     op.input_desc[-1].name = "query"
-    assert isinstance(key, (tuple, list))
+    if not isinstance(key, (tuple, list)):
+        raise AssertionError("key must be a tuple or a list.")
     for i, v in enumerate(key):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "key" + str(i)
-    assert isinstance(value, (tuple, list))
+    if not isinstance(value, (tuple, list)):
+        raise AssertionError("value must be a tuple or a list.")
     for i, v in enumerate(value):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
