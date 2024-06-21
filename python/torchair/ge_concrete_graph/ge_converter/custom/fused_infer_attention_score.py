@@ -58,6 +58,13 @@ def convert_npu_npu_fused_infer_attention_score(
     block_table: Optional[Tensor] = None,
     query_padding_size: Optional[Tensor] = None,
     kv_padding_size: Optional[Tensor] = None,
+    key_antiquant_scale: Optional[Tensor] = None,
+    key_antiquant_offset: Optional[Tensor] = None,
+    value_antiquant_scale: Optional[Tensor] = None,
+    value_antiquant_offset: Optional[Tensor] = None,
+    key_shared_prefix: Optional[Tensor] = None,
+    value_shared_prefix: Optional[Tensor] = None,
+    actual_shared_prefix_len: Optional[Union[List[int], Tensor]] = None,
     num_heads: int = 1,
     scale: float = 1.0,
     pre_tokens: int = 2147483647,
@@ -69,6 +76,8 @@ def convert_npu_npu_fused_infer_attention_score(
     block_size: int = 0,
     antiquant_mode: int = 0,
     softmax_lse_flag: bool = False,
+    key_antiquant_mode: int = 0,
+    value_antiquant_mode: int = 0,
     meta_outputs: TensorSpec = None,
 ):
     key_list = [key]
@@ -77,13 +86,20 @@ def convert_npu_npu_fused_infer_attention_score(
         actual_seq_lengths = dtype_promote(actual_seq_lengths, target_dtype=DataType.DT_INT64)
     if actual_seq_lengths_kv is not None:
         actual_seq_lengths_kv = dtype_promote(actual_seq_lengths_kv, target_dtype=DataType.DT_INT64)
+    if actual_shared_prefix_len is not None:
+        actual_shared_prefix_len = dtype_promote(actual_shared_prefix_len, target_dtype=DataType.DT_INT64)
 
     return ge.FusedInferAttentionScore(query, key_list, value_list, pse_shift=pse_shift, atten_mask=atten_mask,
         actual_seq_lengths=actual_seq_lengths, actual_seq_lengths_kv=actual_seq_lengths_kv,
         dequant_scale1=dequant_scale1, quant_scale1=quant_scale1, dequant_scale2=dequant_scale2,
         quant_scale2=quant_scale2, quant_offset2=quant_offset2, antiquant_scale=antiquant_scale,
         antiquant_offset=antiquant_offset, block_table=block_table, query_padding_size=query_padding_size,
-        kv_padding_size=kv_padding_size, num_heads=num_heads, scale=scale,
+        kv_padding_size=kv_padding_size, key_antiquant_scale=key_antiquant_scale,
+        key_antiquant_offset=key_antiquant_offset, value_antiquant_scale=value_antiquant_scale,
+        value_antiquant_offset=value_antiquant_offset, key_shared_prefix=key_shared_prefix,
+        value_shared_prefix=value_shared_prefix, actual_shared_prefix_len=actual_shared_prefix_len,
+        num_heads=num_heads, scale=scale,
         pre_tokens=pre_tokens, next_tokens=next_tokens, input_layout=input_layout,
         num_key_value_heads=num_key_value_heads, sparse_mode=sparse_mode, inner_precise=inner_precise,
-        block_size=block_size, antiquant_mode=antiquant_mode, softmax_lse_flag=softmax_lse_flag)
+        block_size=block_size, antiquant_mode=antiquant_mode, softmax_lse_flag=softmax_lse_flag,
+        key_antiquant_mode=key_antiquant_mode, value_antiquant_mode=value_antiquant_mode)
