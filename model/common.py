@@ -2110,9 +2110,6 @@ class BenchmarkRunner:
         model, example_inputs = self.maybe_cast(model, example_inputs)
         accuracy_status = "pass"
 
-        # use aclnn by default
-        if os.environ.get("USE_ACLOP", "0").upper() in ["1", "ON"]:
-            torch_npu.npu.set_compile_mode(jit_compile=True)
 
         with self.pick_grad(name, self.args.training):
             # Get results of native pytorch
@@ -3104,10 +3101,6 @@ def main(runner, original_dir=None):
         args.world_size = 1
         process_entry(0, runner, original_dir, args)
 
-    # exec callback functions registered in npu_support.py
-    for fn in callbacks:
-        fn()
-
 
 def run(runner, args, original_dir=None):
     # Pass the parsed args object to benchmark runner object
@@ -3480,6 +3473,10 @@ def run(runner, args, original_dir=None):
             # Go back to main branch
             repo.git.checkout(main_branch)
     elif args.only:
+        # use aclnn by default, otherwise compared with aclop
+        if os.environ.get("USE_ACLOP", "0").upper() in ["1", "ON"]:
+            torch_npu.npu.set_compile_mode(jit_compile=True)
+
         model_name = args.only
         for device in args.devices:
             batch_size = args.batch_size
@@ -3611,6 +3608,9 @@ def run(runner, args, original_dir=None):
                     *Stats.aot_summary(),
                 ],
             )
+        # exec callback functions registered in npu_support.py
+        for fn in callbacks:
+            fn()
     else:
         if output_filename and os.path.exists(output_filename):
             os.unlink(output_filename)
