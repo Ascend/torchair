@@ -21,6 +21,120 @@ def register_patch(*model_names):
     return meta_decorator
 
 
+def check_transformers_version(required_version):
+    import transformers
+    if transformers.__version__ != required_version:
+        log.warning(f"transformers.__version__ is not equal to {required_version}, which may cause error patch.")
+
+
+def use_aclnn():
+    os.environ["USE_ACLOP"] = "0"
+
+
+def _hf_t5_mt5_conditionalgeneration_forward_new(
+    self,
+    hidden_states,
+    mask=None,
+    key_value_states=None,
+    position_bias=None,
+    past_key_value=None,
+    layer_head_mask=None,
+    query_length=None,
+    use_cache=False,
+    output_attentions=False,
+):
+    batch_size, seq_length = hidden_states.shape[:2]
+
+    real_seq_length = seq_length
+
+    if past_key_value is not None:
+        if len(past_key_value) != 2:
+            raise ValueError(f"past_key_value should have 2 past states. Got {len(past_key_value)} past states")
+        real_seq_length += past_key_value[0].shape[2] if query_length is None else query_length
+
+    key_length = real_seq_length if key_value_states is None else key_value_states.shape[1]
+
+    def shape(states):
+        return states.view(batch_size, -1, self.n_heads, self.key_value_proj_dim).transpose(1, 2)
+
+    def unshape(states):
+        return states.transpose(1, 2).contiguous().view(batch_size, -1, self.inner_dim)
+
+    def project(hidden_states, proj_layer, key_value_states, past_key_value):
+        if key_value_states is None:
+            hidden_states = shape(proj_layer(hidden_states))
+        elif past_key_value is None:
+            hidden_states = shape(proj_layer(key_value_states))
+
+        if past_key_value is not None:
+            if key_value_states is None:
+                hidden_states = torch.cat([past_key_value, hidden_states], dim=2)
+            elif past_key_value.shape[2] != key_value_states.shape[1]:
+                hidden_states = shape(proj_layer(key_value_states))
+            else:
+                hidden_states = past_key_value
+        return hidden_states
+
+    query_states = shape(self.q(hidden_states))
+
+    key_states = project(
+        hidden_states, self.k, key_value_states, past_key_value[0] if past_key_value is not None else None
+    )
+    value_states = project(
+        hidden_states, self.v, key_value_states, past_key_value[1] if past_key_value is not None else None
+    )
+
+    scores = torch.matmul(query_states, key_states.transpose(3, 2))
+
+    def process_position_bias():
+        if not self.has_relative_attention_bias:
+            position_bias = torch.zeros(
+                (1, self.n_heads, real_seq_length, key_length), device=scores.device, dtype=scores.dtype
+            )
+            if self.gradient_checkpointing and self.training:
+                position_bias.requires_grad = True
+        else:
+            position_bias = self.compute_bias(real_seq_length, key_length, device=scores.device)
+
+        if past_key_value is not None:
+            position_bias = position_bias[:, :, -hidden_states.size(1):, :]
+
+        if mask is not None:
+            position_bias = position_bias + mask
+        return position_bias
+
+    if position_bias is None:
+        position_bias = process_position_bias()
+
+    if self.pruned_heads:
+        mask = torch.ones(position_bias.shape[1])
+        mask[list(self.pruned_heads)] = 0
+        position_bias_masked = position_bias[:, mask.bool()]
+    else:
+        position_bias_masked = position_bias
+
+    # Only patch here, src code: [scores += position_bias_masked]
+    # Prevent from two continuous _to_copy.
+    scores = scores.float() + position_bias_masked
+
+    attn_weights = nn.functional.softmax(scores.float(), dim=-1).type_as(scores)
+
+    attn_weights = nn.functional.dropout(attn_weights, p=self.dropout, training=self.training)
+
+    if layer_head_mask is not None:
+        attn_weights = attn_weights * layer_head_mask
+
+    attn_output = unshape(torch.matmul(attn_weights, value_states))
+    attn_output = self.o(attn_output)
+
+    present_key_value_state = (key_states, value_states) if (self.is_decoder and use_cache) else None
+    outputs = (attn_output,) + (present_key_value_state,) + (position_bias,)
+
+    if output_attentions:
+        outputs = outputs + (attn_weights,)
+    return outputs
+
+
 @register_patch("LearningToPaint")
 def _patch_model_1():
     # For model LearningToPaint.
@@ -81,113 +195,9 @@ def _patch_model_3():
         log.warning("Import transformers failed or could not get T5Attention "
                     "from module transformers.models.t5.modeling_t5")
         return
-    if transformers.__version__ != '4.36.0':
-        log.warning("transformers.__version__ is not equal to 4.36.0, which may cause error patch.")
+    check_transformers_version("4.36.0")
 
-    def new_forward(
-        self,
-        hidden_states,
-        mask=None,
-        key_value_states=None,
-        position_bias=None,
-        past_key_value=None,
-        layer_head_mask=None,
-        query_length=None,
-        use_cache=False,
-        output_attentions=False,
-    ):
-        batch_size, seq_length = hidden_states.shape[:2]
-
-        real_seq_length = seq_length
-
-        if past_key_value is not None:
-            if len(past_key_value) != 2:
-                raise ValueError(f"past_key_value should have 2 past states. Got {len(past_key_value)} past states")
-            real_seq_length += past_key_value[0].shape[2] if query_length is None else query_length
-
-        key_length = real_seq_length if key_value_states is None else key_value_states.shape[1]
-
-        def shape(states):
-            return states.view(batch_size, -1, self.n_heads, self.key_value_proj_dim).transpose(1, 2)
-
-        def unshape(states):
-            return states.transpose(1, 2).contiguous().view(batch_size, -1, self.inner_dim)
-
-        def project(hidden_states, proj_layer, key_value_states, past_key_value):
-            if key_value_states is None:
-                hidden_states = shape(proj_layer(hidden_states))
-            elif past_key_value is None:
-                hidden_states = shape(proj_layer(key_value_states))
-
-            if past_key_value is not None:
-                if key_value_states is None:
-                    hidden_states = torch.cat([past_key_value, hidden_states], dim=2)
-                elif past_key_value.shape[2] != key_value_states.shape[1]:
-                    hidden_states = shape(proj_layer(key_value_states))
-                else:
-                    hidden_states = past_key_value
-            return hidden_states
-
-        query_states = shape(self.q(hidden_states))
-
-        key_states = project(
-            hidden_states, self.k, key_value_states, past_key_value[0] if past_key_value is not None else None
-        )
-        value_states = project(
-            hidden_states, self.v, key_value_states, past_key_value[1] if past_key_value is not None else None
-        )
-
-        scores = torch.matmul(query_states, key_states.transpose(3, 2))
-
-        def process_position_bias():
-            if not self.has_relative_attention_bias:
-                position_bias = torch.zeros(
-                    (1, self.n_heads, real_seq_length, key_length), device=scores.device, dtype=scores.dtype
-                )
-                if self.gradient_checkpointing and self.training:
-                    position_bias.requires_grad = True
-            else:
-                position_bias = self.compute_bias(real_seq_length, key_length, device=scores.device)
-
-            if past_key_value is not None:
-                position_bias = position_bias[:, :, -hidden_states.size(1):, :]
-
-            if mask is not None:
-                position_bias = position_bias + mask
-            return position_bias
-
-        if position_bias is None:
-            position_bias = process_position_bias()
-
-        if self.pruned_heads:
-            mask = torch.ones(position_bias.shape[1])
-            mask[list(self.pruned_heads)] = 0
-            position_bias_masked = position_bias[:, mask.bool()]
-        else:
-            position_bias_masked = position_bias
-
-        # Only patch here, src code: [scores += position_bias_masked]
-        # Prevent from two continuous _to_copy.
-        scores = scores.float() + position_bias_masked
-
-        attn_weights = nn.functional.softmax(scores.float(), dim=-1).type_as(scores)
-
-        attn_weights = nn.functional.dropout(attn_weights, p=self.dropout, training=self.training)
-
-        if layer_head_mask is not None:
-            attn_weights = attn_weights * layer_head_mask
-
-        attn_output = unshape(torch.matmul(attn_weights, value_states))
-        attn_output = self.o(attn_output)
-
-        present_key_value_state = (key_states, value_states) if (self.is_decoder and use_cache) else None
-        outputs = (attn_output,) + (present_key_value_state,) + (position_bias,)
-
-        if output_attentions:
-            outputs = outputs + (attn_weights,)
-        return outputs
-
-    T5Attention.forward = new_forward
+    T5Attention.forward = _hf_t5_mt5_conditionalgeneration_forward_new
 
 
 @register_patch("hf_Bart")
@@ -204,8 +214,7 @@ def _patch_model_4():
         log.warning("Import transformers failed or could not get BartAttention "
                     "from module transformers.models.bart.modeling_bart")
         return
-    if transformers.__version__ != '4.36.0':
-        log.warning("transformers.__version__ is not equal to 4.36.0, which may cause error patch.")
+    check_transformers_version("4.36.0")
 
     def new_forward(
         self,
@@ -563,6 +572,29 @@ def _patch_model_11():
         ResNet._forward_impl = _new_forward_impl
         BasicBlock.forward = new_forward
 
+
+@register_patch("MT5ForConditionalGeneration")
+def _patch_model_12():
+    # For model huggingface model MT5ForConditionalGeneration.
+    # In this model, accuracy check will fail because in the model's block [MT5Attention],
+    # two continuous _to_copy are invoked: the first _to_copy converts Tensor to half
+    # and the second converts it to float. In eager, there will be a loss of precision.
+    # But in graph, there will be a fusion pass to prevent it happens, causing acc check fail.
+    try:
+        from transformers.models.mt5.modeling_mt5 import MT5Attention
+    except (ImportError, ModuleNotFoundError):
+        log.warning("Import transformers failed or could not get MT5Attention "
+                    "from module transformers.models.mt5.modeling_mt5")
+        return
+    check_transformers_version("4.36.0")
+
+    MT5Attention.forward = _hf_t5_mt5_conditionalgeneration_forward_new
+
+    from common import register_callback
+    # use aclop for MT5ForConditionalGeneration
+    os.environ["USE_ACLOP"] = "1"
+    # set it back to aclnn afterwards
+    register_callback(use_aclnn)
 
 
 def patch_model(model_name):

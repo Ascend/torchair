@@ -188,6 +188,14 @@ FP32_ONLY_MODELS = {
     "GoogleFnet",
 }
 
+NPU_FP32_ONLY_MODELS = {
+    "MT5ForConditionalGeneration"  # Accuracy Fails in npu amp mode for train mode
+}
+
+NPU_ACC_FORCE_BATCH_SIZE = {
+    "MT5ForConditionalGeneration"  # There is a bug in batch_size=1, will be fixed soon
+}
+
 
 def get_module_cls_by_model_name(model_cls_name):
     _module_by_model_name = {
@@ -414,7 +422,7 @@ class HuggingfaceRunner(BenchmarkRunner):
 
     @property
     def fp32_only_models(self):
-        return FP32_ONLY_MODELS
+        return FP32_ONLY_MODELS.union(NPU_FP32_ONLY_MODELS)
 
     def _get_model_cls_and_config(self, model_name):
         if model_name not in EXTRA_MODELS:
@@ -480,6 +488,10 @@ class HuggingfaceRunner(BenchmarkRunner):
                 log.info(
                     f"Running smaller batch size={batch_size} for {model_name}, orig batch_size={batch_size_default}"
                 )
+
+        # we need to set batch_size in some specific cases
+        if model_name in NPU_ACC_FORCE_BATCH_SIZE:
+            batch_size = 4
 
         example_inputs = generate_inputs_for_model(
             model_cls, model, model_name, batch_size, device, include_loss_args=True
