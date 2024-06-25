@@ -19,6 +19,7 @@
 #include "torch/csrc/autograd/utils/wrap_outputs.h"
 
 #include "torchair.h"
+#include "llm_datadist/llm_datadist.h"
 
 namespace py = pybind11;
 namespace npu {
@@ -43,5 +44,22 @@ PYBIND11_MODULE(_torchair, m) {
     .def("auto_tune", &tng::TorchNpuGraphBase::AutoTune)
     .def("summary", &tng::TorchNpuGraphBase::Summary)
     .def("run", &tng::TorchNpuGraphBase::Run);
+
+  (void)py::enum_<llm_datadist::TorchDataType>(m, "TorchDataType")
+      .value("BOOL", llm_datadist::TorchDataType::kBool)
+      .value("UINT8", llm_datadist::TorchDataType::kUint8)
+      .value("INT8", llm_datadist::TorchDataType::kInt8)
+      .value("INT16", llm_datadist::TorchDataType::kInt16)
+      .value("INT32", llm_datadist::TorchDataType::kInt32)
+      .value("INT64", llm_datadist::TorchDataType::kInt64)
+      .value("BF16", llm_datadist::TorchDataType::kBfloat16)
+      .value("FLOAT16", llm_datadist::TorchDataType::kFloat16)
+      .value("FLOAT32", llm_datadist::TorchDataType::kFloat32)
+      .value("FLOAT64", llm_datadist::TorchDataType::kFloat64)
+      .value("COMPLEX32", llm_datadist::TorchDataType::kComplex32)
+      .value("COMPLEX64", llm_datadist::TorchDataType::kComplex64)
+      .value("COMPLEX128", llm_datadist::TorchDataType::kComplex128)
+      .export_values();
+  (void)m.def("as_torch_tensors", &llm_datadist::AsTorchTensor);
 };
 }  // namespace npu

@@ -1552,5 +1552,16 @@ class TorchairSt(unittest.TestCase):
         x = torch.randn([3, 1, 4])
         model(x)
 
+    def test_create_torch_tensor_success(self):
+        torchair.llm_datadist.create_npu_tensors([0], torch.float, [0])
+
+    def test_create_torch_tensor_check_failed(self):
+        with self.assertRaises(TypeError):
+            torchair.llm_datadist.create_npu_tensors(["str"], torch.float, [0])
+        with self.assertRaises(TypeError):
+            torchair.llm_datadist.create_npu_tensors([1], "str", [0])
+        with self.assertRaises(TypeError):
+            torchair.llm_datadist.create_npu_tensors([1], torch.float, ["str"])
+
 if __name__ == '__main__':
     unittest.main()
