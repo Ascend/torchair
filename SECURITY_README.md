@@ -178,19 +178,19 @@ TorchAir项目采用C++和Python联合开发，当前正式接口只提供Python
 
         - *fusion_switch_file* -指定融合配置文件的路径，用于指定融合规则的开启和关闭。
 
+    - **ge_config** 用于配置ge option。
+
+        - *enable_single_stream* -是否开启图单流执行。默认为False，不开启。可选参数为[True, False]。
+
     - **experimental_config** 用于配置实验功能。
         - *cc_parallel_enable* -是否开启计算与通信并行功能。默认为False，不开启。可选参数为[False, True]。
         - *keep_inference_input_mutation* -是否开启inplace场景入图性能优化。默认为True，开启。可选参数为[True, False]。
         - *memory_efficiency* -是否开启内存优化。默认为False，不开启。可选参数为[Fasle, True]。
         - *separate_atomic_clean* -是否集中清理网络中所有atomic算子（含有atomic属性的算子都是atomic算子）占用的内存。默认为True，开启。可选参数为[True, False]。
         - *frozen_parameter* -推理场景是否固定权重的内存地址，以降低图执行时输入地址刷新耗时。默认为False，不固定。可选参数为[True, False]。
-        - *static_model_ops_lower_limit* -动静子图拆分场景性能优化。参数指定静态子图中包含节点的个数上限。默认为None，不进行优化。参数范围为[0, 9223372036854775807)。
+        - *static_model_ops_lower_limit* -动静子图拆分场景性能优化。参数指定静态子图中包含节点的个数上限。默认为None，不进行优化。参数范围为[-1, 9223372036854775807)。
         - *jit_compile* -配置编译模式。默认为"auto"，在静态shape时调用二进制kernel函数，在动态shape时自动编译。可选参数为["auto"]。
-        - *npu_fx_pass* -是否在FX图上执行为npu注册的fx_pass，使能图融合。默认为False，不开启。可选参数为[True, False]。
-        - *aot_config_enable_joint_graph* -是否将前反向图以一个完整图的方式运行。默认为False，不开启。可选参数为[True, False]。
-        - *aot_config_output_loss_index* -如果指定了aot_config_enable_joint_graph为True，那么损失函数可能会"融合"到模块的前向传播中。通过aot_config_output_loss_index参数来指定某个前向传播的结果来进行反向传播。可选参数为[0, None]。None指的是不融合损失函数；0指的是指定第1个前向传播结果来做反向传播。
         - *topology_sorting_strategy* -图模式编译节点遍历方式。默认为"DFS"，深度优先搜索。可选参数为["BFS", "DFS", "RDFS", "StableRDFS"]，"RDFS"为Reverse DFS。
-        - *enable_single_stream* -是否开启图单流执行。默认为False，不开启。可选参数为[True, False]。
         - *enable_ref_data* -如果存在ref类算子会改写输入内存的情况，构GE图时将Data类型修改为RefData类型，例如Assign、ScatterUpdate等算子。离线dynamo_export接口默认开启，在线时通过开关开启，默认为False，不开启。可选参数为[True, False]。
         - *tiling_schedule_optimize* -是否开启tiling下沉功能。可选参数为[True, False]，默认为False，不开启。
 
