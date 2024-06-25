@@ -18,9 +18,8 @@ import time
 import argparse
 import logging
 import torch
-
+import torch_npu
 from transformers import AutoTokenizer
-from modeling_llama import LlamaForCausalLM
 
 root_logger = logging.getLogger()
 root_logger.handlers.clear()
@@ -33,6 +32,7 @@ class ModelRunner:
     def __init__(self, model_path, **kwargs):
         self.model_path = model_path
         self.dtype = kwargs.get("dtype", torch.float16)
+        self.quant_mode = kwargs.get("quant_mode", "")
         self.tokenizer = None
         self.model = None
         self.device = None
@@ -44,6 +44,12 @@ class ModelRunner:
         torch.npu.set_device(self.device)
 
         logging.info("Try to load pretrained model in path: %s", self.model_path)
+        if self.quant_mode == "":
+            from modeling_llama import LlamaForCausalLM
+        elif self.quant_mode == "a8w8c8":
+            from quantization.modeling_llama_a8w8c8 import LlamaForCausalLM
+        else:
+            raise ValueError(f"quant mode:{self.quant_mode} is not support currently.")
         self.model = LlamaForCausalLM.from_pretrained(self.model_path, low_cpu_mem_usage=True, torch_dtype=self.dtype)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_path, use_fast=False, padding_side="left")
         if self.tokenizer.pad_token is None:
@@ -107,6 +113,8 @@ def parse_args():
     parser.add_argument('--model_path', type=str, help="Location of model weights")
     parser.add_argument('--execute_mode', type=str, default="dynamo", choices=["dynamo", "eager"],
                         help="eager or dynamo")
+    parser.add_argument('--quant_mode', type=str, default="", choices=["", "a8w8c8"], 
+                        help="set quant mode")
     parser.add_argument('--local_rank', type=int, default=0, help="Local rank id")
     parser_args = parser.parse_args()
     return parser_args
@@ -129,6 +137,7 @@ if __name__ == "__main__":
         "dtype": torch.float16,  # 和模型权重目录中config.json里的torch_dtype一致
         "input_max_len": 1024,  # 输入padding的长度
         "max_new_tokens": 1024,  # 最大输出token个数
+        "quant_mode": f"{args.quant_mode}", # 量化类型，默认为空，不做量化操作
     }
     os.environ["EXE_MODE"] = args.execute_mode
     run_llama(args.model_path, **config)
