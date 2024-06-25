@@ -25,7 +25,7 @@ from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
 @register_fx_node_ge_converter(torch.ops.aten.isinf.default)
 def conveter_aten_isinf_default(self: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::isinf(Tensor self) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.isinf.default ge_converter is not implemented!")
+    return ge.IsInf(self)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.isinf.out)

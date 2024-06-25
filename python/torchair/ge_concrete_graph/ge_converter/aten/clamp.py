@@ -40,25 +40,29 @@ def conveter_aten_clamp_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::clamp(Tensor self, Scalar? min=None, Scalar? max=None) -> Tensor"""
-    if min is None and max is None:
+    return clamp(self, max, min)
+
+
+def clamp(self, max_value, min_value):
+    if min_value is None and max_value is None:
         raise RuntimeError("torch.clamp: At least one of 'min' or 'max' must not be None")
-    if min is None:
+    if min_value is None:
         if self.dtype == DataType.DT_INT32 or self.dtype == DataType.DT_INT64:
-            min = torch.iinfo(torch.int32).min
+            min_value = torch.iinfo(torch.int32).min
         elif self.dtype == DataType.DT_FLOAT:
-            min = torch.finfo(torch.float32).min
+            min_value = torch.finfo(torch.float32).min
         else:
-            min = torch.finfo(torch.float16).min
-    if max is None:
+            min_value = torch.finfo(torch.float16).min
+    if max_value is None:
         if self.dtype == DataType.DT_INT32 or self.dtype == DataType.DT_INT64:
-            max = torch.iinfo(torch.int32).max
+            max_value = torch.iinfo(torch.int32).max
         elif self.dtype == DataType.DT_FLOAT:
-            max = torch.finfo(torch.float32).max
+            max_value = torch.finfo(torch.float32).max
         else:
-            max = torch.finfo(torch.float16).max
-    min = dtype_promote(min, target_dtype=self.dtype)
-    max = dtype_promote(max, target_dtype=self.dtype)
-    return ge.ClipByValue(self, min, max)
+            max_value = torch.finfo(torch.float16).max
+    min_value = dtype_promote(min_value, target_dtype=self.dtype)
+    max_value = dtype_promote(max_value, target_dtype=self.dtype)
+    return ge.ClipByValue(self, min_value, max_value)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.clamp.Tensor)
@@ -69,7 +73,7 @@ def conveter_aten_clamp_Tensor(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::clamp.Tensor(Tensor self, Tensor? min=None, Tensor? max=None) -> Tensor"""
-    raise RuntimeError("torch.ops.aten.clamp.Tensor ge_converter is redundant before pytorch 2.1.0!")
+    return clamp(self, max, min)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.clamp.out)

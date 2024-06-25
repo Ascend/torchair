@@ -272,7 +272,7 @@ def conveter_aten_convolution_backward_default(
             logger.warning_once("conv3d only support non-generalized scenarios before 2024.02: "
                                 "padding must be less than weight/filter/kernel."
                                 "might be support generalized scenarios in future vision.")
-            raise NotImplementedError("torch.nn.Conv3d backward ge_converter is not implemented!")
+            return npu_conv3d_backward(x, grad, weight, stride, padding, dilation, groups, output_mask)
 
     if dim == 4 or dim == 3:
         return npu_conv_transpose2d_backward(x, grad, weight, padding, output_padding, stride, dilation,
