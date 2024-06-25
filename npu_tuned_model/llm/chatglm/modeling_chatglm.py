@@ -46,7 +46,6 @@ _CONFIG_FOR_DOC = "ChatGLMConfig"
 
 CHATGLM_6B_PRETRAINED_MODEL_ARCHIVE_LIST = [
     "THUDM/chatglm3-6b",
-    # See all ChatGLM models at https://huggingface.co/models?filter=chatglm
 ]
 
 
@@ -510,7 +509,6 @@ class MLP(torch.nn.Module):
 
         self.add_bias = config.add_bias_linear
 
-        # Project to 4h. If using swiglu double the output width, see https://arxiv.org/pdf/2002.05202.pdf
         self.dense_h_to_4h = nn.Linear(
             config.hidden_size,
             config.ffn_hidden_size * 2,
