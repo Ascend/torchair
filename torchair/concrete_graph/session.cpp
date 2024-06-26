@@ -70,11 +70,6 @@ Status Session::Finalize() {
   if (!initialized_) {
     return Status::Success();
   }
-  // reset device
-  auto ret = aclrtResetDevice(device_index_);
-  if (ret != ACL_ERROR_NONE) {
-    TNG_LOG(WARNING) << "ACL reset device index " << device_index_ << " failed, returned " << ret;
-  }
 
   TNG_LOG(INFO) << "Start to synchronize device in Finalize.";
   auto sync_ret = aclrtSynchronizeDevice();
