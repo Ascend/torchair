@@ -841,7 +841,7 @@ class GeConcreteGraph(ConcreteGraphBase):
             serialize_save_graph(export_graph, file_path + "/" + file_name_air)
         else:
             if self.config.export.experimental.auto_atc_config_generated:
-                generate_config(self.config, file_path, export_graph)
+                generate_config(self.config.export.export_name, file_path, export_graph.used_process_group)
             local_options = {"export_path_dir": file_path, "export_name": file_name_air}
             _torchair.export(export_graph.SerializeToString(), local_options)
 

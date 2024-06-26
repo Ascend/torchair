@@ -1,21 +1,13 @@
 import json
-import logging
-from typing import List, Set
+from typing import List, Set, Dict
 import torch
 
 from torchair.core.utils import logger
-from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef
 from torchair._utils.path_manager import PathManager
 from torchair._utils.export_utils import get_export_rank_file_name
 
 
-hcom_ops_set = {"HcomAllReduce", "HcomReduceScatter", "HcomAllGather", "HcomBroadcast", "HcomReduce",
-                "HcomSend", "HcomReceive", "HcomRemoteRead", "HcomRemoteRefRead", "HcomRemoteWrite",
-                "HcomRemoteScatterWrite", "HcomAllToAllV", "HcomAllToAll", "HcomAllToAllVC",
-                "HcomGatherAllToAllV", "HorovodAllgather", "HorovodAllreduce", "HorovodBroadcast"}
-
-
-def _generate_model_relation_config(file_path, export_name, world_ranklist: List, group_set: Set):
+def _generate_model_relation_config(file_path, export_name, world_ranklist: List, groups_in_graph: Dict):
     if torch.distributed.get_rank() != 0:
         return
     model_relation_config = {"deploy_config": [], "model_name_to_instance_id": [],
@@ -40,10 +32,10 @@ def _generate_model_relation_config(file_path, export_name, world_ranklist: List
         rank_table_dict["model_instance_id"] = rankid
         model_relation_config["rank_table"].append(rank_table_dict)
 
-    for group_tuple in group_set:
+    for group_name, rank_list in groups_in_graph.items():
         comm_group_dict = {}
-        comm_group_dict["group_name"] = group_tuple[0]
-        comm_group_dict["group_rank_list"] = str(group_tuple[1])
+        comm_group_dict["group_name"] = group_name
+        comm_group_dict["group_rank_list"] = str(rank_list)
         model_relation_config["comm_group"].append(comm_group_dict)
 
     PathManager.check_path_writeable_and_safety(file_path + "/model_relation_config.json")
@@ -76,31 +68,14 @@ def _generate_numa_config(file_path, world_ranklist: List):
     return
 
 
-def _get_groups_from_graph(graph: GraphDef, group_set: Set):
-    for op in graph.op:
-        if op.type in hcom_ops_set:
-            str_groupname = op.attr["group"].s.decode()
-            str_ranklist = str(op.attr["ranklist"].list.i)
-            group_set.add((str_groupname, str_ranklist))
-            logger.info(f"{op.type} in group = {str_groupname} ranklist = {str_ranklist}")
-            if len(group_set) > 1:
-                # 目前后端部署，只支持单集合通信域
-                logger.error(f"Cann currently does not support multiple groups," + \
-                             f"found at least two groups exist, " + \
-                             f"failed to generate configuration file.")
-                return False
-    return True
+def generate_config(export_name, file_path, used_process_group):
+    if not torch.distributed.is_initialized() or len(used_process_group) == 0:
+        return
+    default_pg = torch.distributed.distributed_c10d._get_default_group()
+    default_pg_rank_list = torch.distributed.get_process_group_ranks(default_pg)
 
+    logger.info(f"generate_atc_config file_path: {file_path}, file_name: {export_name}")
+    _generate_model_relation_config(file_path, export_name,
+                                    default_pg_rank_list, used_process_group)
+    _generate_numa_config(file_path, default_pg_rank_list)
 
-def generate_config(config, file_path, export_graph):
-    if torch.distributed.is_initialized():
-        default_pg = torch.distributed.distributed_c10d._get_default_group()
-        default_pg_rank_list = torch.distributed.get_process_group_ranks(default_pg)
-        group_set = set()
-        if _get_groups_from_graph(export_graph, group_set):
-            logger.info(f"generate_atc_config file_path: {file_path}, " +
-                        "file_name: {config.export.export_name}")
-            _generate_model_relation_config(file_path, config.export.export_name,
-                                            default_pg_rank_list, group_set)
-            _generate_numa_config(file_path, default_pg_rank_list)
-    return

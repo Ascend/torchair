@@ -219,7 +219,6 @@ class TorchairSt(unittest.TestCase):
         assert src.count("op: \"Const\"") == 2
         assert src.count("op: \"Data\"") == 2
         assert src.count("op: \"HcomAllReduce\"") == 1
-        assert src.count("key: \"ranklist\"") == 1
 
         file_name = get_sub_path_dynamo_pbtxt("false_export_path2", 0)
         with open(file_name, 'r') as f:
@@ -232,10 +231,10 @@ class TorchairSt(unittest.TestCase):
         assert src.count(" dim: -1") == 3  # 动态图存在-1
 
         file_name = get_model_relation_config("true_export_path2")
-        # mutil group case, can not create atc config file
-        assert os.path.exists(file_name) == False
+        # mutil group case, create atc config file too
+        assert os.path.exists(file_name) == True
         file_name = get_numa_config("true_export_path2")
-        assert os.path.exists(file_name) == False
+        assert os.path.exists(file_name) == True
 
         file_name = get_sub_path_dynamo_pbtxt("true_export_path3", 0)
         with open(file_name, 'r') as f:
@@ -383,7 +382,6 @@ class TorchairSt(unittest.TestCase):
         assert src.count("op: \"Const\"") == 2
         assert src.count("op: \"Data\"") == 2
         assert src.count("op: \"HcomAllReduce\"") == 1
-        assert src.count("key: \"ranklist\"") == 1
 
         file_name = get_model_relation_config("export_file")
         with open(file_name, 'r') as f:

@@ -1,14 +1,11 @@
 from typing import Any, Dict, Iterator, List, Optional, Tuple, Union, Callable
-import warnings
 import torch
-from torch.library import Library
 from torch._decomp import register_decomposition
 import torch.distributed.distributed_c10d as c10d
-from torchair.ge_concrete_graph.ge_graph import Tensor, DataType
+from torchair.ge_concrete_graph.ge_graph import Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.utils import normalize_reduceop_type, dtype_promote
-from torchair.core.utils import logger
+from torchair.ge_concrete_graph.utils import get_group_name_and_record
 from .hcom_allreduce import npu_define_lib
 from .hcom_broadcast import op_broadcast
 
@@ -44,24 +41,13 @@ def conveter_allgather_in_tensor(
         output_tensor: torch.Tensor,
         input_tensor: torch.Tensor,
         tag: str,
-        ranks,
+        rank_list,
         group_size: int,
         meta_outputs: Any = None,
 ):
     """allgather_in_tensor(Tensor out, Tensor input, str tag, int[] ranks, int group_size) -> Tensor"""
-    from torch.distributed.distributed_c10d import _world
-    device = torch.distributed.distributed_c10d._get_pg_default_device(_world.default_pg)
-    if device.type == "cpu":
-        y = ge.HcomAllGather(input_tensor, rank_size=group_size, group="hccl_world_group", fusion=0)
-        logger.debug(f'npu_define.allgather convert in cpu export')
-    elif device.type == "npu":
-        rank = torch.distributed.get_rank()
-        hcom_name = _world.default_pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank)
-        y = ge.HcomAllGather(input_tensor, rank_size=group_size, group=hcom_name, fusion=0)
-    else:
-        raise ValueError("The initialized aggregate communication backend is not a CPU or NPU.")
-    y._node.attr["ranklist"].list.i.extend(ranks)
-    return y
+    group_name = get_group_name_and_record(tag, rank_list, group_size)
+    return ge.HcomAllGather(input_tensor, rank_size=group_size, group=group_name, fusion=0)
 
 
 def npu_allgather_in_tensor_patch_dist(output_tensor, input_tensor, group=None, async_op=False):
