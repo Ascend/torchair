@@ -68,7 +68,7 @@ class TorchairSt(unittest.TestCase):
         npu_backend = torchair.get_npu_backend(compiler_config=config)
         model = torch.compile(Model(), backend=npu_backend, dynamic=True)
         x = torch.ones([8, 8])
-        set_dim_gears(x, {0: [8, 4], 1: [8, 12]})
+        set_dim_gears(x, {1: [8, 12], 0: [8, 4]})
         def my_warp_function(named_inputs_info, config):
             result = generate_dynamic_dims_option(named_inputs_info, config)
             self.assertTrue(result == {'ge.inputShape': 'arg2_1:-1,-1',
