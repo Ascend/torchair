@@ -93,7 +93,9 @@ Status MutiGearNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &i
       if (is_first_run) {
         TNG_RETURN_IF_ERROR(AtNpuTensorToGeTensor(inputs[i], inputs_holder_[i]));
         if (!input_gears_[i].empty()) {
-          TNG_ASSERT(inputs_holder_[i].GetFormat() == ge::FORMAT_ND, "Gear input must ND");
+          TNG_ASSERT(IsBaseFormat(inputs_holder_[i].GetFormat()),
+                     "Gear input expect format is base format not private format, but got format is %d.",
+                     static_cast<int32_t>(inputs_holder_[i].GetFormat()));
         }
       } else {
         if (!input_gears_[i].empty()) {

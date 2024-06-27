@@ -31,11 +31,11 @@ ge::Format GetOriginFormatFromAtTensor(const at::Tensor &at_tensor) {
 
   return format;
 }
+}
 
-inline bool IsBaseFormat(const ge::Format &format) {
+bool IsBaseFormat(const ge::Format &format) {
   return (format == ge::FORMAT_ND) || (format == ge::FORMAT_NCHW) || (format == ge::FORMAT_NHWC) ||
          (format == ge::FORMAT_NCDHW);
-}
 }
 
 Status GetCurrentStream(void **stream) {

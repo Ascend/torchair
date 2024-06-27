@@ -18,7 +18,7 @@ from torchair.ge_concrete_graph.ge_graph import trans_to_list_list_int
 logger.setLevel(logging.DEBUG)
 
 
-def set_graph_output_dtypes(graph, dtypes, inputs_shape, outputs_shape):
+def set_graph_output_dtypes(graph, dtypes):
     _normalize_ge_graph(graph)
     graph.attr["_output_dtypes"].list.i.extend(dtypes)
     graph.attr["_executor_type"].i = ExecutorType.NPU
@@ -94,12 +94,13 @@ class TorchairSt(unittest.TestCase):
             z = ge.Mul(x, y)
             output = ge.NetOutput([z])
 
-            set_graph_output_dtypes(graph, [DataType.DT_INT32], [[-1, 2], []], [[-1, 2]])
+            set_graph_output_dtypes(graph, [DataType.DT_INT32])
 
             executor = TorchNpuGraph()
             executor.load(graph, options={"ge.dynamicDims": "8;12",
                                           "ge.dynamicNodeType": "1",
                                           "ge.inputShape": "arg:-1,2"})
+            executor.set_hint_shape([[-1, 2], []], [[-1, 2]])
             executor.compile()
 
             x = torch.ones([2, 2], dtype=torch.int32, device='npu').to(npu_device)
@@ -126,13 +127,13 @@ class TorchairSt(unittest.TestCase):
             z2 = ge.Mul(w, y)
             output = ge.NetOutput([z1, z2])
 
-            set_graph_output_dtypes(graph, [DataType.DT_INT32, DataType.DT_INT32],
-                                    [[-1, 2], [], [2, 2]], [[-1, 2], [2, 2]])
+            set_graph_output_dtypes(graph, [DataType.DT_INT32, DataType.DT_INT32])
 
             executor = TorchNpuGraph()
             executor.load(graph, options={"ge.dynamicDims": "2;4",
                                           "ge.dynamicNodeType": "1",
                                           "ge.inputShape": "arg:-1,2;;2,2"})
+            executor.set_hint_shape([[-1, 2], [], [2, 2]], [[-1, 2], [2, 2]])
             executor.compile()
 
             x = torch.ones([2, 2], dtype=torch.int32, device='npu').to(npu_device)
