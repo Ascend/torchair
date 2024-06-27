@@ -14,7 +14,9 @@ from torchair.inference._cache_compiler import CompiledModel, ModelCacheSaver
 from torchair.inference._cache_compiler import _NoGuardCompiledFunction as NoGuardCompiledFunction
 from torchair.inference._cache_compiler import _NoGuardCompiledMethod as NoGuardCompiledMethod
 from torchair.inference import set_dim_gears
+
 logger.setLevel(logging.DEBUG)
+
 
 class PatchAttr:
     def __init__(self, obj, attr_name, new_value):
@@ -113,6 +115,74 @@ class CacheCompileSt(unittest.TestCase):
             model_match_cache(*prompt2)  # cache hint
             model_match_cache(*decode1)  # cache hint
             model_match_cache(*decode2)  # cache hint
+
+    def test_cache_hint_with_kwargs(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(2, 1)
+                for param in self.parameters():
+                    torch.nn.init.ones_(param)
+
+                self.cached_forward = torchair.inference.cache_compile(self.raw_forward)
+
+            def forward(self, x: torch.Tensor):
+                return self.cached_forward(x=x)
+
+            def raw_forward(self, x: torch.Tensor):
+                return self.linear(x)
+
+        model = Model()
+
+        cache_dir = CompiledModel.get_cache_bin(model.raw_forward)
+        ModelCacheSaver.remove_cache(cache_dir)
+
+        prompt = torch.ones(3, 2)
+
+        self.assertFalse(os.path.exists(cache_dir))
+        model(prompt)
+        self.assertTrue(os.path.exists(cache_dir))  # cache compiled
+        model(prompt)
+        self.assertTrue(os.path.exists(cache_dir))  # not recompile
+
+        model_match_cache = Model()
+        with forbidden_attr(ModelCacheSaver, '__call__'):
+            model_match_cache(prompt)  # cache hint
+            model_match_cache(prompt)  # cache hint
+
+    def test_cache_hint_with_explicit_kwargs(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(2, 1)
+                for param in self.parameters():
+                    torch.nn.init.ones_(param)
+
+                self.cached_forward = torchair.inference.cache_compile(self.raw_forward)
+
+            def forward(self, *, x: torch.Tensor):
+                return self.cached_forward(x=x)
+
+            def raw_forward(self, *, x: torch.Tensor):
+                return self.linear(x)
+
+        model = Model()
+
+        cache_dir = CompiledModel.get_cache_bin(model.raw_forward)
+        ModelCacheSaver.remove_cache(cache_dir)
+
+        prompt = torch.ones(3, 2)
+
+        self.assertFalse(os.path.exists(cache_dir))
+        model(x=prompt)
+        self.assertTrue(os.path.exists(cache_dir))  # cache compiled
+        model(x=prompt)
+        self.assertTrue(os.path.exists(cache_dir))  # not recompile
+
+        model_match_cache = Model()
+        with forbidden_attr(ModelCacheSaver, '__call__'):
+            model_match_cache(x=prompt)  # cache hint
+            model_match_cache(x=prompt)  # cache hint
 
     def test_cache_hint_for_complex_io_process(self):
         class Model(torch.nn.Module):
