@@ -234,8 +234,8 @@ class CompiledModel:
         if model is None:
             return compiled_fn
 
-        def compiled_method(*args):
-            return compiled_fn(model, *args)
+        def compiled_method(*args, **kwargs):
+            return compiled_fn(model, *args, **kwargs)
 
         return compiled_method
 
