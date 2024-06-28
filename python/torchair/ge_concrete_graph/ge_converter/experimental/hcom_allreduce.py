@@ -1,10 +1,12 @@
 from typing import Any, Dict, Iterator, List, Optional, Tuple, Union, Callable
 import torch
 from torch.library import Library
+import torch.distributed.distributed_c10d as c10d
+from torch.distributed.distributed_c10d import _world
 from torchair.ge_concrete_graph.ge_graph import Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.utils import normalize_reduceop_type
+from torchair.ge_concrete_graph.utils import normalize_reduceop_type, get_group_name_and_record
 from torchair.core.utils import logger
 
 npu_define_lib = Library("npu_define", "DEF")
@@ -38,7 +40,8 @@ npu_define_lib.impl(op_name, allreduce_npu, 'PrivateUse1')
 
 
 def npu_all_reduce(tensor, op="sum", group=None, async_op=False):
-    tensor.copy_(torch.ops.npu_define.allreduce(tensor, "sum", []))
+    rank_list = torch.distributed.get_process_group_ranks(_world.default_pg)
+    tensor.copy_(torch.ops.npu_define.allreduce(tensor, "sum", rank_list))
 
 
 torch_all_reduce = torch.distributed.all_reduce
@@ -59,31 +62,19 @@ def backup_custom_all_reduce(func: None):
 def conveter_allreduce(
         self: Tensor,
         reduce_type,
-        ranklist,
+        rank_list,
         *,
         out: Tensor = None,
         meta_outputs: Any = None):
-    from torch.distributed.distributed_c10d import _world
-    ranklist = torch.distributed.get_process_group_ranks(_world.default_pg)
-    device = torch.distributed.distributed_c10d._get_pg_default_device(_world.default_pg)
-    if device.type == "cpu":
-        y = ge.HcomAllReduce(self, reduction=normalize_reduceop_type(reduce_type), group="hccl_world_group", fusion=0)
-        logger.debug(f'npu_define.allreduce convert in cpu export')
-    elif device.type == "npu":
-        rank = torch.distributed.get_rank()
-        hcom_name = _world.default_pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank)
-        y = ge.HcomAllReduce(self, reduction=normalize_reduceop_type(reduce_type), group=hcom_name, fusion=0)
-    else:
-        raise ValueError("The initialized aggregate communication backend is not a CPU or NPU.")
-    y._node.attr["ranklist"].list.i.extend(ranklist)
-    return y
+    group_name = get_group_name_and_record(c10d._world.pg_to_tag[_world.default_pg],
+                                           rank_list, _world.default_pg.size())
+    return ge.HcomAllReduce(self, reduction=normalize_reduceop_type(reduce_type), group=group_name, fusion=0)
 
 
 def adapter_functional_collectives_all_reduce(tensor, op="sum", group=None, async_op=False):
     if not isinstance(op, str):
         raise TypeError("functional_collectives_context patch only sopport str reducetype")
     if group is None:
-        from torch.distributed.distributed_c10d import _world
         tensor.copy_(torch.distributed._functional_collectives.all_reduce(tensor, op, _world.default_pg))
     else:
         tensor.copy_(torch.distributed._functional_collectives.all_reduce(tensor, op, group))

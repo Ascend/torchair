@@ -606,6 +606,7 @@ class GeGraph(object):
         self._generator_rng_state = defaultdict(map_graph_rng_state)
         self._indexed_inputs = {}
         self._named_inputs_info = {}
+        self._used_process_group = {}
 
     def _python_code_init(self):
         python_code = ''
@@ -697,6 +698,13 @@ class GeGraph(object):
     @property
     def indexed_inputs(self):
         return self._indexed_inputs
+
+    @property
+    def used_process_group(self):
+        return self._used_process_group
+
+    def record_process_group(self, group_name, rank_list):
+        self._used_process_group[group_name] = rank_list
 
     def rng_state(self, philox_num: int = -1, gen: torch.Generator = None):
         _graph_rng_state = self._generator_rng_state[gen]

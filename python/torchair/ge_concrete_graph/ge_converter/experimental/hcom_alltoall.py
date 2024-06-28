@@ -1,14 +1,11 @@
 from typing import Any, Dict, Iterator, List, Optional, Tuple, Union, Callable
-import warnings
 import torch
-from torch.library import Library
 from torch._decomp import register_decomposition
 import torch.distributed.distributed_c10d as c10d
 from torchair.ge_concrete_graph.ge_graph import Tensor, DataType
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge_concrete_graph.utils import normalize_reduceop_type, dtype_promote
-from torchair.core.utils import logger
+from torchair.ge_concrete_graph.utils import dtype_promote, get_group_name_and_record
 from .hcom_allreduce import npu_define_lib
 
 
@@ -132,29 +129,18 @@ def convert_all_to_all_single_npu(
     recv_counts: Union[Tensor, List[int]],
     recv_displacements: Union[Tensor, List[int]],
     tag: str,
-    ranklist: List,
+    rank_list: List,
     group_size: int,
     out: Tensor = None,
     meta_outputs: Any = None,
 ):
     """NB: npu_define::all_to_all_single_npu(Tensor input, SymInt[] send_counts, SymInt[] send_displacements, \
         SymInt[] recv_counts, SymInt[] recv_displacements, str tag, int[] ranks, int group_size) -> Tensor"""
-    rank = torch.distributed.get_rank()
-    pg = c10d._find_or_create_pg_by_ranks_and_tag(tag, ranklist, group_size)
-    device = torch.distributed.distributed_c10d._get_pg_default_device(pg)
     send_counts, send_displacements, recv_counts, recv_displacements = dtype_promote(send_counts, 
         send_displacements, recv_counts, recv_displacements, target_dtype=DataType.DT_INT64)
-    if device.type == "cpu":
-        y = ge.HcomAllToAllV(send_data=input_tensor, send_counts=send_counts, send_displacements=send_displacements,
-                             recv_counts=recv_counts, recv_displacements=recv_displacements, group=tag)
-    elif device.type == "npu":
-        hcom_name = pg._get_backend(device).get_hccl_comm_name(rank)
-        y = ge.HcomAllToAllV(send_data=input_tensor, send_counts=send_counts, send_displacements=send_displacements,
-                             recv_counts=recv_counts, recv_displacements=recv_displacements, group=hcom_name)
-    else:
-        raise ValueError("The initialized aggregate communication backend is not a CPU or NPU.")
-    y._node.attr["ranklist"].list.i.extend(ranklist)
-    return y
+    group_name = get_group_name_and_record(tag, rank_list, group_size)
+    return ge.HcomAllToAllV(send_data=input_tensor, send_counts=send_counts, send_displacements=send_displacements,
+                            recv_counts=recv_counts, recv_displacements=recv_displacements, group=group_name)
 
 
 def npu_all_to_all_single_patch_dist(
