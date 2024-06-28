@@ -22,12 +22,16 @@ from typing import List
 import pickle
 import logging
 import torch
-import llm_link_torch
-from llm_engine import *
-from llm_engine.v2.llm_engine_v2 import LLMEngine
+import torch_npu
+import torchair
+from llm_datadist import LLMDataDist, LLMRole, LLMConfig, ModelRunner, LLMReq
 from llm_inference import SeparateDeployModelRunner
 
 _INVALID_ID = 2 ** 64 - 1
+# 需要根据实际的全量机器的device ip进行调整
+# 可通过for i in {0..7}; do hccn_tool -i $i -ip -g; done获取机器的device ip信息
+_LISTEN_IP_INFO = ["1.1.1.0:26000", "1.1.1.1:26000", "1.1.1.2:26000", "1.1.1.3:26000", "1.1.1.4:26000", "1.1.1.5:26000",
+                   "1.1.1.6:26000", "1.1.1.7:26000"]
 
 root_logger = logging.getLogger()
 root_logger.handlers.clear()
@@ -82,27 +86,19 @@ def parse_args():
 
 
 # 初始化分离部署的engine
-def init_llm_engine(rank_id: int) -> LLMEngine:
+def init_llm_engine(rank_id: int) -> LLMDataDist:
     cluster_id = 0
-    engine = LLMEngine(LLMRole.PROMPT, cluster_id)
+    engine = LLMDataDist(LLMRole.PROMPT, cluster_id)
+    llm_config = LLMConfig()
+    llm_config.device_id = rank_id
     # listen_ip_info的ip需要根据实际全量机器的device ip地址进行设置， ip和port需要和增量脚本中remote_ip_info一致
-    # 示例option是执行8卡的配置，可根据实际卡数调整
-    cluster_info_str = {"cluster_id": 0,
-                        "logic_device_id":
-                            ["0:0:0:0", "0:0:1:0", "0:0:2:0", "0:0:3:0", "0:0:4:0", "0:0:5:0", "0:0:6:0", "0:0:7:0"],
-                        "listen_ip_info": [
-                            {"ip": 1865362717, "port": 26000}, {"ip": 444083485, "port": 26000},
-                            {"ip": 795946269, "port": 26000}, {"ip": 995044637, "port": 26000},
-                            {"ip": 2456169757, "port": 26000}, {"ip": 1158098205, "port": 26000},
-                            {"ip": 3060739357, "port": 26000}, {"ip": 3205508381, "port": 26000}
-                        ]}
-    options = {
-        "llm.ClusterInfo": json.dumps(cluster_info_str),
-        "ge.exec.rankId": str(rank_id),
+    llm_config.listen_ip_info = _LISTEN_IP_INFO[rank_id]
+    ge_options = {
         # 和kv cache的大小有关联，全量需要大于一个请求kv cache的N倍，增量至少需要大于1个请求kv cache
         "ge.flowGraphMemMaxSize": "2589934592",
     }
-    engine.init(options)
+    llm_config.ge_options = ge_options
+    engine.init(llm_config.generate_options())
     return engine
 
 
@@ -115,7 +111,7 @@ class TorchModelRunner(ModelRunner):
 
     def run_model(self, kv_cache, input_tensors: List, **kwargs) -> List:
         kv_tensor_addrs = kv_cache.per_device_tensor_addrs[0]
-        kv_tensors = llm_link_torch.create_npu_tensors(kv_cache.cache_desc.shape, torch.float16, kv_tensor_addrs)
+        kv_tensors = torchair.llm_datadist.create_npu_tensors(kv_cache.cache_desc.shape, torch.float16, kv_tensor_addrs)
         mid = len(kv_tensors) // 2
         k_tensors = kv_tensors[: mid]
         v_tensors = kv_tensors[mid:]
