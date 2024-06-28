@@ -23,6 +23,7 @@ import torch.distributed as dist
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core.utils import logger
 from torchair.inference._gear_utils import get_dim_gears, set_dim_gears, guard_gears_shape
+from torchair._utils import add_npu_patch, get_npu_default_decompositions
 
 
 @dataclass
@@ -276,9 +277,11 @@ def _readable_inst(code):
 
 
 class CacheBackend:
-    def __init__(self, config: Optional[CompilerConfig], saver: 'ModelCacheSaver', *, fw_compiler: Callable = None):
+    def __init__(self, config: Optional[CompilerConfig], saver: 'ModelCacheSaver', *,
+                 fw_compiler: Callable = None, decompositions: dict = None):
         self.config = config or CompilerConfig()
         self.saver = saver
+        self.custom_decompositions = decompositions or {}
         self.input_dim_gears: Dict[int, List[int]] = dict()
         if fw_compiler is None:
             from torchair.npu_fx_compiler import get_compiler
@@ -294,8 +297,11 @@ class CacheBackend:
             if dim_gears is not None:
                 self.input_dim_gears[i - len(inputs)] = dim_gears
 
+        decompositions = get_npu_default_decompositions()
+        decompositions.update(self.custom_decompositions)
+        add_npu_patch(decompositions, self.config)
         return aot_module_simplified(gm, inputs, self.fw_compiler, self.bw_compiler,
-                                     keep_inference_input_mutations=True)
+                                     decompositions=decompositions, keep_inference_input_mutations=True)
 
     def fw_compiler(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
         for i, dim_gears in self.input_dim_gears.items():
@@ -325,13 +331,15 @@ class CacheBackend:
 
 class ModelCacheSaver:
     def __init__(self, func: Union[types.FunctionType, types.MethodType], cache_bin, *,
-                 config: Optional[CompilerConfig] = None, dynamic: bool = True):
+                 config: Optional[CompilerConfig] = None, dynamic: bool = True,
+                 decompositions: Optional[dict] = None):
         self.func = func
         self.model: Optional[torch.nn.Module] = None if isinstance(func, types.FunctionType) else func.__self__
         self.cache_bin = cache_bin
         self.compiled_model = CompiledModel(func)
         self.name = self.compiled_model.name
-        self.compiled_func = torch.compile(func, backend=CacheBackend(config, self), fullgraph=True, dynamic=dynamic)
+        cache_backend = CacheBackend(config, self, decompositions=decompositions)
+        self.compiled_func = torch.compile(func, backend=cache_backend, fullgraph=True, dynamic=dynamic)
 
         self._code_id = None
         self.input_parameters: List[Tuple[str, bool]] = []
@@ -441,7 +449,7 @@ class ModelCacheWatcher:
 class LazyCompiledModel:
     def __init__(self, func, *, config: Optional[CompilerConfig] = None, dynamic: bool = True,
                  cache_dir: Optional[str] = None, global_rank: Optional[int] = None, tp_rank: Optional[int] = None,
-                 pp_rank: Optional[int] = None):
+                 pp_rank: Optional[int] = None, decompositions: Optional[dict] = None):
         self.func = func
         self.config = config or CompilerConfig()
         self.dynamic = dynamic
@@ -450,6 +458,7 @@ class LazyCompiledModel:
         self.tp_rank = tp_rank
         self.pp_rank = pp_rank
         self._compiled_model = None
+        self.decompositions = decompositions
 
     def compile(self, global_vars=None):
         cache_bin = CompiledModel.get_cache_bin(self.func, config=self.config, dynamic=self.dynamic,
@@ -468,7 +477,8 @@ class LazyCompiledModel:
                 ModelCacheSaver.remove_cache(cache_bin)
 
         logger.info(f'Compiling cache for {self.func} to {cache_bin}')
-        return ModelCacheSaver(self.func, cache_bin, config=self.config, dynamic=self.dynamic)
+        return ModelCacheSaver(self.func, cache_bin, config=self.config, dynamic=self.dynamic,
+                               decompositions=self.decompositions)
 
     def __call__(self, *args, **kwargs):
         if self._compiled_model is not None:
@@ -480,7 +490,7 @@ class LazyCompiledModel:
 
 def cache_compile(func, *, config: Optional[CompilerConfig] = None, dynamic: bool = True,
                   cache_dir: Optional[str] = None, global_rank: Optional[int] = None, tp_rank: Optional[int] = None,
-                  pp_rank: Optional[int] = None, **kwargs) -> Callable:
+                  pp_rank: Optional[int] = None, custom_decompositions: Optional[dict] = None, **kwargs) -> Callable:
     if not isinstance(func, types.MethodType):
         raise ValueError(f"Only method can be cached now, got {func}")
 
@@ -489,7 +499,7 @@ def cache_compile(func, *, config: Optional[CompilerConfig] = None, dynamic: boo
 
     # Lazy trigger cache load and determine the cache directory by distributed global_rank
     return LazyCompiledModel(func, config=config, dynamic=dynamic, cache_dir=cache_dir, global_rank=global_rank,
-                             tp_rank=tp_rank, pp_rank=pp_rank)
+                             tp_rank=tp_rank, pp_rank=pp_rank, decompositions=custom_decompositions)
 
 
 class _NoGuardCompiled:

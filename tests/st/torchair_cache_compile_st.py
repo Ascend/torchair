@@ -485,6 +485,46 @@ class CacheCompileSt(unittest.TestCase):
             model_match_cache(*prompt1)  # cache hint
             model_match_cache(*prompt2)  # cache hint
 
+    def test_decomp(self):
+        from torch.library import Library
+        npu_define_lib = Library("test", "DEF")
+        op_name = npu_define_lib.define("add(Tensor input) -> Tensor")
+
+        def add_cpu(t):
+            return t
+
+        def add_meta(t):
+            return t.new_empty(t.size())
+
+        npu_define_lib.impl(op_name, add_cpu, 'CPU')
+        npu_define_lib.impl(op_name, add_meta, 'Meta')
+
+        from torch._decomp import get_decompositions, register_decomposition
+
+        @register_decomposition(torch.ops.test.add.default)
+        def test_add_decomp(self):
+            return self * 3
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.cached = torchair.inference.cache_compile(self.inner_forward,
+                    custom_decompositions=get_decompositions([torch.ops.test.add.default]))
+
+            def inner_forward(self, tensor):
+                return torch.ops.test.add(tensor)
+
+            def forward(self, tensor):
+                return self.cached(tensor)
+
+        decom_model = Model()
+        t = torch.ones(1)
+        cache_dir = CompiledModel.get_cache_bin(decom_model.inner_forward)
+        ModelCacheSaver.remove_cache(cache_dir)
+        decom_model(t)
+        self.assertTrue(os.path.exists(cache_dir))
+        decom_model(t) # cache hint
+
     def test_cache_hint_gears(self):
         class Model(torch.nn.Module):
             def __init__(self):

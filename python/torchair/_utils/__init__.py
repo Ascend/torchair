@@ -1,4 +1,5 @@
 import os
+import sys
 import operator
 from functools import wraps, reduce, lru_cache
 from typing import Callable, Optional, Tuple
@@ -9,7 +10,7 @@ from torch._subclasses import fake_tensor as _subclasses_fake_tensor
 from torch._C import DispatchKey
 from torch._refs import div as refs_div
 from torch._prims_common.wrappers import out_wrapper
-from torch._decomp import decomposition_table, decompositions_for_rng
+from torch._decomp import decomposition_table, decompositions_for_rng, get_decompositions
 from torch._dynamo.symbolic_convert import break_graph_if_unsupported, InstructionTranslatorBase, stack_op
 from torch._dynamo.exc import Unsupported
 from torch._dynamo.variables.lists import TupleVariable
@@ -454,4 +455,13 @@ def add_npu_patch(decompositions, compiler_config):
     npu_patch_register_fast_op_impl()
     if compiler_config.experimental_config.npu_fx_pass:
         npu_patch_fx_pass(decompositions)
-    
+
+
+def get_npu_default_decompositions():
+    default_decompositions = []
+    if "torchair.ge_concrete_graph.ge_converter.experimental.hcom_alltoall" in sys.modules:
+        default_decompositions.append(torch.ops.npu_define.all_to_all_single)
+        default_decompositions.append(torch.ops.npu_define.all_to_all)
+    if "torchair.ge_concrete_graph.ge_converter.experimental.hcom_allgather" in sys.modules:
+        default_decompositions.append(torch.ops.npu_define.allgather)
+    return get_decompositions(default_decompositions)
