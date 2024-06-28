@@ -9,7 +9,6 @@ import numpy as np
 from enum import Enum
 
 import torch
-import torch.distributed.distributed_c10d as c10d
 from torch.fx.node import Argument, Target
 from torch.utils._mode_utils import no_dispatch
 
@@ -540,50 +539,6 @@ def map_graph_rng_state(gen: torch.Generator = None):
     return _GraphRngState(gen)
 
 
-def _save_npu_process_group(graph):
-    if not torch.distributed.is_initialized():
-        return {}
-    device = c10d._get_pg_default_device(c10d._world.default_pg)
-    if device.type != "npu":
-        raise AssertionError("This function only save npu process group, and only npu backend can get hccl comm name.")
-
-    all_create_pg = {}
-    rank = torch.distributed.get_rank()
-    for pg in c10d._world.pg_map.keys():
-        tag = c10d._world.pg_to_tag[pg]
-        pg_rank_list = c10d.get_process_group_ranks(pg)
-        group_size = c10d._get_group_size(pg)
-        hcom_pg_name = pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank)
-        all_create_pg[hcom_pg_name] = (tag, pg_rank_list, group_size)
-
-    saved_process_group = {}
-    for op in graph.op:
-        if op.attr["group"].s.decode() in all_create_pg:
-            saved_process_group[op.attr["group"].s.decode()] = all_create_pg[op.attr["group"].s.decode()]
-    return saved_process_group
-
-
-def _recover_npu_process_group(graph, saved_process_group):
-    if len(saved_process_group) == 0:
-        return
-    for k, v in saved_process_group.items():
-        tag, rank_list, group_size = v
-        logger.debug(f'Need recover saved process group {k} from tag {tag}, '
-                     f'rank_list {rank_list}, group_size {group_size}')
-    device = c10d._get_pg_default_device(c10d._world.default_pg)
-    if device.type != "npu":
-        raise AssertionError("This function only recover npu process group, "
-                             "and only npu backend can get hccl comm name.")
-
-    rank = torch.distributed.get_rank()
-    for op in graph.op:
-        if op.attr["group"].s.decode() in saved_process_group:
-            tag, rank_list, group_size = saved_process_group[op.attr["group"].s.decode()]
-            pg = c10d._find_or_create_pg_by_ranks_and_tag(tag, rank_list, group_size)
-            new_group_name = pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank)
-            op.attr["group"].s = compat_as_bytes(new_group_name)
-
-
 class GeGraph(object):
     def __init__(self, model_def=None, serialized_model_def=None, name=None):
         from torchair.core._backend import TorchNpuGraph
@@ -619,9 +574,23 @@ class GeGraph(object):
     def SerializeToString(self):
         return self._model.SerializeToString()
 
-    def load(self, options, *, process_group=None):
-        if process_group is not None:
-            _recover_npu_process_group(self._proto, process_group)
+    def load(self, options, *, create_pg=False):
+        if create_pg and len(self.used_process_group) != 0:
+            rank = torch.distributed.get_rank()
+            created_group = {}
+            for op in self._proto.op:
+                group_name = op.attr["group"].s.decode()
+                if group_name not in self.used_process_group:
+                    continue
+                if group_name not in created_group:
+                    rank_list = self.used_process_group[group_name]
+                    pg = torch.distributed.distributed_c10d.new_group(rank_list)
+                    new_group_name = pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank)
+                    created_group[group_name] = new_group_name
+                    logger.debug(f'Recover used process group name {group_name} from rank_list {rank_list} '
+                                 f'replace it with new_group_name {new_group_name}.')
+                op.attr["group"].s = compat_as_bytes(created_group[group_name])
+
         self._executor.load(self, options)
 
     def compile(self):
@@ -705,6 +674,9 @@ class GeGraph(object):
 
     def record_process_group(self, group_name, rank_list):
         self._used_process_group[group_name] = rank_list
+
+    def set_used_process_group(self, used_process_group):
+        self._used_process_group = used_process_group
 
     def rng_state(self, philox_num: int = -1, gen: torch.Generator = None):
         _graph_rng_state = self._generator_rng_state[gen]
