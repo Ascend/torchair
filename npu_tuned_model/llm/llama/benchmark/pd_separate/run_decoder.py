@@ -21,12 +21,16 @@ import json
 import pickle
 from typing import List
 import torch
-import llm_link_torch
-from llm_engine import *
-from llm_engine.v2.llm_engine_v2 import LLMEngine
+import torch_npu
+import torchair
+from llm_datadist import LLMClusterInfo, LLMDataDist, LLMRole, LLMConfig, ModelRunner, LLMReq
 from llm_inference import SeparateDeployModelRunner
 
 _INVALID_ID = 2 ** 64 - 1
+# 此处ip信息需要根据实际的device ip进行更改
+# 可通过for i in {0..7}; do hccn_tool -i $i -ip -g; done获取机器的device ip信息
+_LOCAL_IP_INFOS = ["1.1.1.0", "1.1.1.1", "1.1.1.2", "1.1.1.3", "1.1.1.4", "1.1.1.5", "1.1.1.6", "1.1.1.7"]
+_REMOTE_IP_INFOS = ["2.2.2.0", "2.2.2.1", "2.2.2.2", "2.2.2.3", "2.2.2.4", "2.2.2.5", "2.2.2.6", "2.2.2.7"]
 
 root_logger = logging.getLogger()
 root_logger.handlers.clear()
@@ -71,46 +75,29 @@ def parse_args():
     return parser_args
 
 
-def init_clusters_info():
+def init_clusters_info(rank_id):
     cluster = LLMClusterInfo()
     cluster.remote_cluster_id = 0
-    # 此处需要更改为使用机器的大端device ip的int值, local_ip和remote_ip的顺序一一对应
+    # 此处local_ip和remote_ip需要一一对应
     # local_ip_info的port可以随便填，remote_ip_info的port需要指定可用port并且和全量的listen_ip_info设置一致
-    # 示例cluster是1v1 8卡的配置，可根据实际卡数调整，对于一个增量cluster，支持1v N全量
-    cluster.append_local_ip_info(3517263133, 26000)
-    cluster.append_local_ip_info(907029789, 26000)
-    cluster.append_local_ip_info(641871133, 26000)
-    cluster.append_local_ip_info(2503355677, 26000)
-    cluster.append_local_ip_info(1069034781, 26000)
-    cluster.append_local_ip_info(1297755421, 26000)
-    cluster.append_local_ip_info(2455973149, 26000)
-    cluster.append_local_ip_info(796208413, 26000)
-    cluster.append_remote_ip_info(1865362717, 26000)
-    cluster.append_remote_ip_info(444083485, 26000)
-    cluster.append_remote_ip_info(795946269, 26000)
-    cluster.append_remote_ip_info(995044637, 26000)
-    cluster.append_remote_ip_info(2456169757, 26000)
-    cluster.append_remote_ip_info(1158098205, 26000)
-    cluster.append_remote_ip_info(3060739357, 26000)
-    cluster.append_remote_ip_info(3205508381, 26000)
+    # 对于一个增量cluster，支持1v N全量
+    cluster.append_local_ip_info(_LOCAL_IP_INFOS[rank_id], 26000)
+    cluster.append_remote_ip_info(_REMOTE_IP_INFOS[rank_id], 26000)
     clusters = [cluster]
     return clusters
 
 
-def init_llm_engine(rank_id: int) -> LLMEngine:
+def init_llm_engine(rank_id: int) -> LLMDataDist:
     cluster_id = 0
-    engine = LLMEngine(LLMRole.DECODER, cluster_id)
-    # 示例option是执行8卡的配置，可根据实际卡数调整
-    cluster_info_str = {"cluster_id": 0,
-                        "logic_device_id":
-                            ["0:0:0:0", "0:0:1:0", "0:0:2:0", "0:0:3:0", "0:0:4:0", "0:0:5:0", "0:0:6:0", "0:0:7:0"]}
-    options = {
-        "llm.ClusterInfo": json.dumps(cluster_info_str),
-        "ge.exec.rankId": str(rank_id),
+    engine = LLMDataDist(LLMRole.DECODER, cluster_id)
+    llm_config = LLMConfig()
+    llm_config.device_id = rank_id
+    ge_options = {
         # 和kv cache的大小有关联，全量需要大于一个请求kv cache的N倍，增量至少需要大于1个请求kv cache
         "ge.flowGraphMemMaxSize": "2589934592",
     }
-    engine.init(options)
+    llm_config.ge_options = ge_options
+    engine.init(llm_config.generate_options())
     return engine
 
 
@@ -122,7 +109,7 @@ class TorchModelRunner(ModelRunner):
 
     def run_model(self, kv_cache, input_tensors: List, **kwargs) -> List:
         kv_tensor_addrs = kv_cache.per_device_tensor_addrs[0]
-        kv_tensors = llm_link_torch.create_npu_tensors(kv_cache.cache_desc.shape, torch.float16, kv_tensor_addrs)
+        kv_tensors = torchair.llm_datadist.create_npu_tensors(kv_cache.cache_desc.shape, torch.float16, kv_tensor_addrs)
         mid = len(kv_tensors) // 2
         k_tensors = kv_tensors[: mid]
         v_tensors = kv_tensors[mid:]
@@ -189,7 +176,7 @@ if __name__ == "__main__":
     local_rank = args.local_rank
     decoder_engine = init_llm_engine(local_rank)
     torch.npu.set_device(local_rank)
-    clusters_info = init_clusters_info()
+    clusters_info = init_clusters_info(local_rank)
     decoder_engine.link_clusters(clusters_info)
 
     max_new_tokens = 1024
