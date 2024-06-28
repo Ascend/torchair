@@ -27,7 +27,7 @@ from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef, TensorDescriptor, Ten
 from torchair.ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
 from torchair.ge_concrete_graph.ge_graph import Tensor as GeTensor
 from torchair.ge_concrete_graph.ge_graph import _ValueInput, _TensorInput, _DiscontiguousTensorInput, _RngStatusInput, \
-    _ValueType, _GeInputInfo
+    _ValueType, _GeInputInfo, _save_npu_process_group
 from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type, torch_type_to_ge_proto_type, default_ge_graph, \
     GeGraph, attr_scope, compat_as_bytes, DataType, Format, TensorSpec, is_sym, sym_to_ge_dtype, assert_args_checkout
 from torchair.ge_concrete_graph.graph_pass import optimize_sym_pack, optimize_reference_op_redundant_copy, \
@@ -631,6 +631,10 @@ class GeConcreteGraph(ConcreteGraphBase):
         head.writeline(f'local_compile_options = {{}}')
         for k, v in local_compile_options.items():
             head.writeline(f'local_compile_options["{k}"] = "{v}"')
+        groups_in_graph = _save_npu_process_group(self.graph)
+        head.writelines(['', f'process_group = {{}}'])
+        for k, v in groups_in_graph.items():
+            head.writeline(f'process_group["{k}"] = {v}')
         head.writelines(['', 'initialize_graph_engine(global_compile_options)',
                          'ge_graph = GeGraph(serialized_model_def=serialized_graph)'])
 
@@ -646,7 +650,7 @@ class GeConcreteGraph(ConcreteGraphBase):
                 kernel.writelines(['_is_first_run = False',
                                    '_update_constplaceholder_attr_from_inputs(ge_graph, args)',
                                    '_update_internal_format_from_inputs(ge_graph, ge_inputs)',
-                                   'ge_graph.load(local_compile_options, create_pg=True)',
+                                   'ge_graph.load(local_compile_options, process_group=process_group)',
                                    'ge_graph.compile()'])
 
             kernel.writeline('')

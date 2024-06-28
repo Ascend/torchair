@@ -9,6 +9,7 @@ import numpy as np
 from enum import Enum
 
 import torch
+import torch.distributed.distributed_c10d as c10d
 from torch.fx.node import Argument, Target
 from torch.utils._mode_utils import no_dispatch
 
@@ -539,23 +540,48 @@ def map_graph_rng_state(gen: torch.Generator = None):
     return _GraphRngState(gen)
 
 
-def _create_graph_pg(graph):
-    group_map = {}
-    rank = None
-    for op in graph.op:
-        if "group" not in op.attr or "ranklist" not in op.attr:
-            continue
+def _save_npu_process_group(graph):
+    if not torch.distributed.is_initialized():
+        return {}
+    device = c10d._get_pg_default_device(c10d._world.default_pg)
+    if device.type != "npu":
+        raise AssertionError("This function only save npu process group, and only npu backend can get hccl comm name.")
 
-        group_name = op.attr["group"].s.decode()
-        if group_name not in group_map:
-            if rank is None:
-                rank = torch.distributed.get_rank()
-            ranklist = list(op.attr["ranklist"].list.i)
-            pg = torch.distributed.new_group(ranklist)
-            group_map[group_name] = pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank)
-            logger.info(f'Create process group {group_map[group_name]} for group_name {group_name} '
-                        f'use ranklist {ranklist} on rank {rank}')
-        op.attr["group"].s = compat_as_bytes(group_map[group_name])
+    all_create_pg = {}
+    rank = torch.distributed.get_rank()
+    for pg in c10d._world.pg_map.keys():
+        tag = c10d._world.pg_to_tag[pg]
+        pg_rank_list = c10d.get_process_group_ranks(pg)
+        group_size = c10d._get_group_size(pg)
+        hcom_pg_name = pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank)
+        all_create_pg[hcom_pg_name] = (tag, pg_rank_list, group_size)
+
+    saved_process_group = {}
+    for op in graph.op:
+        if op.attr["group"].s.decode() in all_create_pg:
+            saved_process_group[op.attr["group"].s.decode()] = all_create_pg[op.attr["group"].s.decode()]
+    return saved_process_group
+
+
+def _recover_npu_process_group(graph, saved_process_group):
+    if len(saved_process_group) == 0:
+        return
+    for k, v in saved_process_group.items():
+        tag, rank_list, group_size = v
+        logger.debug(f'Need recover saved process group {k} from tag {tag}, '
+                     f'rank_list {rank_list}, group_size {group_size}')
+    device = c10d._get_pg_default_device(c10d._world.default_pg)
+    if device.type != "npu":
+        raise AssertionError("This function only recover npu process group, "
+                             "and only npu backend can get hccl comm name.")
+
+    rank = torch.distributed.get_rank()
+    for op in graph.op:
+        if op.attr["group"].s.decode() in saved_process_group:
+            tag, rank_list, group_size = saved_process_group[op.attr["group"].s.decode()]
+            pg = c10d._find_or_create_pg_by_ranks_and_tag(tag, rank_list, group_size)
+            new_group_name = pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank)
+            op.attr["group"].s = compat_as_bytes(new_group_name)
 
 
 class GeGraph(object):
@@ -592,9 +618,9 @@ class GeGraph(object):
     def SerializeToString(self):
         return self._model.SerializeToString()
 
-    def load(self, options, *, create_pg=False):
-        if create_pg:
-            _create_graph_pg(self._proto)
+    def load(self, options, *, process_group=None):
+        if process_group is not None:
+            _recover_npu_process_group(self._proto, process_group)
         self._executor.load(self, options)
 
     def compile(self):
