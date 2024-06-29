@@ -10,21 +10,26 @@ from torchair.ge_concrete_graph.ge_graph import _TensorInput, _DiscontiguousTens
 from torchair.core.utils import logger
 
 
-def set_dim_gears(t: torch.Tensor, dim_gears: Dict[int, List[int]]):
-    def check_len(gears):
-        return len(gears) < 2 or len(gears) > 100
-    def check_range(gears):
-        return max(gears) > 2048 or min(gears) < 1
-    def check_int_list(gears):
-        return any(not isinstance(gear, int) for gear in gears)
+def set_dim_gears(t: torch.Tensor, dim_gears: Dict[int, Union[List[int], Tuple[int, ...]]]):
+    for dim_index, gears in dim_gears.items():
+        if not isinstance(dim_index, int):
+            raise AssertionError(
+                f"Dim index in dim_gears must be an integer, but got {type(dim_index)}.")
+        if dim_index < 0 or dim_index >= len(t.shape):
+            raise AssertionError(
+                f"Dim index in dim_gears must be in range [0, {len(t.shape) - 1}], but got {dim_index}.")
+        if not isinstance(gears, (list, tuple)):
+            raise AssertionError(
+                f"Gears for dim index {dim_index} in dim_gears must be a list or tuple, but got {type(gears)}.")
+        for index, gear in enumerate(gears):
+            if not isinstance(gear, int):
+                raise AssertionError(f"Element at index {index} of value for dim index {dim_index} in "
+                                     f"dim_gears must be an integer, but got {type(gear)}.")
+        if not 2 <= len(gears) <= 100:
+            raise AssertionError(f"Length of gears for dim index {dim_index} in dim_gears must be in "
+                                 f"range [2, 100], but got {len(gears)}.")
 
-    if any(check_len(gears) or check_int_list(gears) or check_range(gears) for gears in dim_gears.values()):
-        raise AssertionError(f'The gears value list size is at least 2 and not over 100, '
-                             f'and value must in range [1, 2048], type is int, '
-                             f'but config gears is {dim_gears}')
-
-    for key in dim_gears.keys():
-        torch._dynamo.mark_dynamic(t, key)
+        torch._dynamo.mark_dynamic(t, dim_index)
 
     setattr(t, "dim_gears", dim_gears)
 

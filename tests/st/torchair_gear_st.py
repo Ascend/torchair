@@ -67,21 +67,29 @@ def set_graph_output_dtypes(graph, dtypes):
 class TorchairSt(unittest.TestCase):
     def test_set_dim_gears(self):
         x = torch.ones([2, 2])
-        try:
-            set_dim_gears(x, {0: [1, 2049]})
-            print("enter this , not raise error, test false")
-            raise_exception()
-        except AssertionError:
-            print("check max gears over 2048")
+        with self.assertRaises(AssertionError) as cm:
+            set_dim_gears(x, {0.3: [1, 2]})
+        exception = cm.exception
+        self.assertEqual(str(exception), "Dim index in dim_gears must be an integer, but got <class 'float'>.")
 
-        try:
+        with self.assertRaises(AssertionError) as cm:
+            set_dim_gears(x, {0: 1})
+        exception = cm.exception
+        self.assertEqual(str(exception), "Gears for dim index 0 in dim_gears must be a list or tuple, "
+                         "but got <class 'int'>.")
+
+        with self.assertRaises(AssertionError) as cm:
+            set_dim_gears(x, {0: [1, 2], 2: [1, 2]})
+        exception = cm.exception
+        self.assertEqual(str(exception), "Dim index in dim_gears must be in range [0, 1], but got 2.")
+
+        with self.assertRaises(AssertionError) as cm:
             set_dim_gears(x, {0: [1, 1.5]})
-            print("enter this , not raise error, test false")
-            raise_exception()
-        except AssertionError:
-            print("check gears type is int")
+        exception = cm.exception
+        self.assertEqual(str(exception), "Element at index 1 of value for dim index 0 in dim_gears must "
+                         "be an integer, but got <class 'float'>.")
 
-        try:
+        with self.assertRaises(AssertionError) as cm:
             set_dim_gears(x, {0: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
                                   11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
                                   21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
@@ -93,10 +101,9 @@ class TorchairSt(unittest.TestCase):
                                   81, 82, 83, 84, 85, 86, 87, 88, 89, 90,
                                   91, 92, 93, 94, 95, 96, 97, 98, 99, 100,
                                   101]})
-            print("enter this , not raise error, test false")
-            raise_exception()
-        except AssertionError:
-            print("check gears list len over 100")
+        exception = cm.exception
+        self.assertEqual(str(exception), "Length of gears for dim index 0 in dim_gears must be in range [2, 100],"
+                         " but got 101.")
 
     def test_guard_gears(self):
         class Model(torch.nn.Module):
@@ -161,12 +168,10 @@ class TorchairSt(unittest.TestCase):
             func=None,
             shape=[-1, 8], dim_gears={0: [8, 4, 3]})
         named_inputs_info2 = {'arg1': input_info3, 'arg2': input_info4}
-        try:
+        with self.assertRaises(AssertionError) as cm:
             result = generate_dynamic_dims_option(named_inputs_info2, "zip")
-            print("enter this , not raise error, test false")
-            raise_exception()
-        except AssertionError:
-            print("check zip gears list must same")
+        exception = cm.exception
+        self.assertEqual(str(exception), 'when dynamic_gears_merge_policy is zip, input gears len must same.')
 
         # 验证带重复档位的设置也是支持的
         input_info6 = _GeInputInfo(
@@ -199,30 +204,25 @@ class TorchairSt(unittest.TestCase):
             shape=[-1, 8], dim_gears={0: [20, 21, 22, 23, 24, 25, 26, 27, 28, 29]})
         named_inputs_info4 = {'arg1': input_info5,
                               'arg2': input_info6, 'arg3': input_info7}
-        try:
-            result = generate_dynamic_dims_option(
-                named_inputs_info4, "product")
-            print("enter this , not raise error, test false")
-            raise_exception()
-        except AssertionError:
-            print("check can not over 100 gears num")
+
+        with self.assertRaises(AssertionError) as cm:
+            generate_dynamic_dims_option(named_inputs_info4, "product")
+        exception = cm.exception
+        self.assertEqual(str(exception), "The total number of gears set cannot exceed 100, "
+                         "and the current number of gears is: 900")
 
         # test 档位去重功能
         input_info5 = _GeInputInfo(
             value_type=_ValueType.TENSOR,
             func=None,
-            shape=[-1, 8], dim_gears={0: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]})
+            shape=[-1, 8], dim_gears={0: [1, 2]})
         input_info6 = _GeInputInfo(
             value_type=_ValueType.TENSOR,
             func=None,
-            shape=[-1, 8], dim_gears={0: [10, 11, 12, 13, 14, 10, 11, 12, 13, 14]})
+            shape=[-1, 8], dim_gears={0: [10, 11, 10, 11]})
         named_inputs_info4 = {'arg1': input_info5, 'arg2': input_info6}
-        try:
-            result = generate_dynamic_dims_option(
-                named_inputs_info4, "product")
-            # 不去重会超过100档位报错
-        except AssertionError as e:
-            raise_exception()
+        result = generate_dynamic_dims_option(named_inputs_info4, "product")
+        self.assertEqual(result["ge.dynamicDims"], "1,11;2,10;2,11;1,10")
 
 
     def test_muti_gear_npu_executor(self):
