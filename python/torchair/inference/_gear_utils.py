@@ -11,6 +11,9 @@ from torchair.core.utils import logger
 
 
 def set_dim_gears(t: torch.Tensor, dim_gears: Dict[int, Union[List[int], Tuple[int, ...]]]):
+    if get_dim_gears(t) is not None and get_dim_gears(t) != dim_gears:
+        raise AssertionError(
+            f"Tensor {t} already has set dim gears, and it is not supported to set it again.")
     for dim_index, gears in dim_gears.items():
         if not isinstance(dim_index, int):
             raise AssertionError(
