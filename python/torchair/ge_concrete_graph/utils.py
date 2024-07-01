@@ -344,3 +344,22 @@ def get_group_name_and_record(tag, rank_list, group_size):
     # record rank list for export
     get_default_ge_graph().record_process_group(group_name, rank_list)
     return group_name
+
+
+def record_pg_to_graph(graph):
+    # This func will update pg to graph, special for op like MC2, who is not record process group in convert
+    if not torch.distributed.is_initialized():
+        return
+    all_create_pg = {}
+    rank = torch.distributed.get_rank()
+    for pg in torch.distributed.distributed_c10d._world.pg_map.keys():
+        if torch.distributed.distributed_c10d.get_backend(pg) != "hccl":
+            continue
+        pg_rank_list = torch.distributed.distributed_c10d.get_process_group_ranks(pg)
+        hcom_pg_name = pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank)
+        all_create_pg[hcom_pg_name] = pg_rank_list
+
+    for op in graph.op:
+        group_name = op.attr["group"].s.decode()
+        if group_name in all_create_pg:
+            graph.record_process_group(group_name, all_create_pg[group_name])

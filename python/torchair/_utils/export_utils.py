@@ -144,7 +144,7 @@ _next_export_graph_id = 0
 def make_export_graph(ori_graph, inputs, root_file_path, weight_name):
     export_graph = GeGraph()
     export_graph.MergeFrom(ori_graph._proto)
-    export_graph._used_process_group = ori_graph.used_process_group
+    export_graph.set_used_process_group(ori_graph.used_process_group)
     logger.debug(f'exported graph name: {export_graph.name}')
 
     sub_file_path = _get_subpath(root_file_path)

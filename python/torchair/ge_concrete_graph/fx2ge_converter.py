@@ -27,14 +27,15 @@ from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef, TensorDescriptor, Ten
 from torchair.ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
 from torchair.ge_concrete_graph.ge_graph import Tensor as GeTensor
 from torchair.ge_concrete_graph.ge_graph import _ValueInput, _TensorInput, _DiscontiguousTensorInput, _RngStatusInput, \
-    _ValueType, _GeInputInfo, _save_npu_process_group
+    _ValueType, _GeInputInfo
 from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type, torch_type_to_ge_proto_type, default_ge_graph, \
     GeGraph, attr_scope, compat_as_bytes, DataType, Format, TensorSpec, is_sym, sym_to_ge_dtype, assert_args_checkout
 from torchair.ge_concrete_graph.graph_pass import optimize_sym_pack, optimize_reference_op_redundant_copy, \
     replace_data_to_refdata, get_frozen_flag, frozen_data_by_constplaceholder
 from torchair.ge_concrete_graph.utils import convert_to_tensorboard, dump_graph, force_op_unknown_shape, \
     is_host_data_tensor, get_used_sym_value_mapping, Placement, compute_value_of_sym, \
-    generate_sym_exper, get_sym_int_value, generate_shape_from_tensor, update_op_input_name_from_mapping
+    generate_sym_exper, get_sym_int_value, generate_shape_from_tensor, update_op_input_name_from_mapping, \
+    record_pg_to_graph
 from torchair.ge_concrete_graph.supported_declaration import Support
 from torchair.ge_concrete_graph.continguous_utils import guard_view_input
 from torchair.ge_concrete_graph.export_config_generete import generate_config
@@ -562,6 +563,7 @@ class GeConcreteGraph(ConcreteGraphBase):
             frozen_data_by_constplaceholder(self.graph, frozen_flag_list, self._all_meta_tensor_input)
 
         optimize_sym_pack(self.graph)
+        record_pg_to_graph(self.graph)
 
         # Note:
         # Please do not take any actions to add or delete data nodes, or change the index of data nodes after this.
@@ -631,13 +633,9 @@ class GeConcreteGraph(ConcreteGraphBase):
         head.writeline(f'local_compile_options = {{}}')
         for k, v in local_compile_options.items():
             head.writeline(f'local_compile_options["{k}"] = "{v}"')
-        groups_in_graph = _save_npu_process_group(self.graph)
-        head.writelines(['', f'process_group = {{}}'])
-        for k, v in groups_in_graph.items():
-            head.writeline(f'process_group["{k}"] = {v}')
         head.writelines(['', 'initialize_graph_engine(global_compile_options)',
                          'ge_graph = GeGraph(serialized_model_def=serialized_graph)'])
-
+        head.writeline(f'ge_graph.set_used_process_group({self.graph.used_process_group})')
         kernel = IndentedBuffer()
         kernel.writelines(['', '_is_first_run = True', f'def kernel(*args):'])
         with kernel.indent():
@@ -650,7 +648,7 @@ class GeConcreteGraph(ConcreteGraphBase):
                 kernel.writelines(['_is_first_run = False',
                                    '_update_constplaceholder_attr_from_inputs(ge_graph, args)',
                                    '_update_internal_format_from_inputs(ge_graph, ge_inputs)',
-                                   'ge_graph.load(local_compile_options, process_group=process_group)',
+                                   'ge_graph.load(local_compile_options, create_pg=True)',
                                    'ge_graph.compile()'])
 
             kernel.writeline('')
