@@ -18,7 +18,6 @@ try:
 except ModuleNotFoundError:
     from torch._dynamo.trace_rules import is_builtin_callable
 
-from torch._decomp import get_decompositions, decomposition_table
 from torch.profiler import record_function
 from torch.utils._mode_utils import no_dispatch
 from torch._dynamo.utils import detect_fake_mode
@@ -32,23 +31,13 @@ from torchair.configs.compiler_config import CompilerConfig
 from torchair.fx_summary import _summarize_fx_graph
 from torchair.fx_dumper import _NpuFxDumper
 from torchair._utils.custom_aot_functions import aot_module_simplified_joint
-from torchair._utils import add_npu_patch
+from torchair._utils import add_npu_patch, get_npu_default_decompositions
 from torchair._utils.error_code import pretty_error_msg
 from torchair.inference._gear_utils import get_dim_gears, set_dim_gears, guard_gears_shape
 
 __all__ = ["get_npu_backend", "get_compiler"]
 
 aten = torch.ops.aten
-
-
-def _get_default_decompositions():
-    default_decompositions = []
-    if "torchair.ge_concrete_graph.ge_converter.experimental.hcom_alltoall" in sys.modules:
-        default_decompositions.append(torch.ops.npu_define.all_to_all_single)
-        default_decompositions.append(torch.ops.npu_define.all_to_all)
-    if "torchair.ge_concrete_graph.ge_converter.experimental.hcom_allgather" in sys.modules:
-        default_decompositions.append(torch.ops.npu_define.allgather)
-    return default_decompositions
 
 
 def _unpack_meta_list(args):
@@ -475,7 +464,7 @@ def get_npu_backend(*, compiler_config: CompilerConfig = None, custom_decomposit
     if compiler_config is None:
         compiler_config = CompilerConfig()
 
-    decompositions = get_decompositions(_get_default_decompositions())
+    decompositions = get_npu_default_decompositions()
     decompositions.update(custom_decompositions)
 
     add_npu_patch(decompositions, compiler_config)
