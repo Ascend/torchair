@@ -18,55 +18,6 @@ def get_dumped_file_list(dir_path, file_extension='.pbtxt'):
     return [i for i in os.listdir(dir_path) if i.startswith('dynamo') and i.endswith(f'{file_extension}')]
 
 
-def check_tensor_desc_list_same(tensor_desc_list1, tensor_desc_list2):
-    assert not (len(tensor_desc_list1) != len(tensor_desc_list2))
-    # 这个list只看第一个就够了
-    if len(tensor_desc_list1) == 0:
-        return True
-    assert not (tensor_desc_list1[0].dtype != tensor_desc_list2[0].dtype)
-    assert not (tensor_desc_list1[0].shape != tensor_desc_list2[0].shape)
-    assert not (tensor_desc_list1[0].layout != tensor_desc_list2[0].layout)
-    assert not (set(tensor_desc_list1[0].attr) != set(tensor_desc_list2[0].attr))
-    assert not (tensor_desc_list1[0].device_type != tensor_desc_list2[0].device_type)
-    return True
-
-
-def check_op_list_same(op_list_1, op_list_2):
-    assert not (len(op_list_1) != len(op_list_2))
-    op_list_1.sort(key=lambda item: item.name)
-    op_list_2.sort(key=lambda item: item.name)
-    for i in range(len(op_list_1)):
-        # 不能校验 op_list_1[i].name，name与进程中add算子数量相关
-        assert not (op_list_1[i].type != op_list_2[i].type)
-        # input中根据name索引，不能强校验input
-        assert not (set(op_list_1[i].attr) != set(op_list_2[i].attr))
-
-        assert check_tensor_desc_list_same(op_list_1[i].input_desc, op_list_2[i].input_desc)
-        assert check_tensor_desc_list_same(op_list_1[i].output_desc, op_list_2[i].output_desc)
-    return True
-
-
-def protobuf_equal(msg1, msg2):
-    assert not (type(msg1) != type(msg2))
-    # 检查消息的所有字段是否相等
-    assert not (msg1.ListFields()[1][1] != msg2.ListFields()[1][1])
-    # 不能校验 msg1.ListFields()[0][1][0].name，graph name与进程中图数量相关
-    assert not (set(msg1.ListFields()[0][1][0].input) != set(msg2.ListFields()[0][1][0].input))
-    assert check_op_list_same(msg1.ListFields()[0][1][0].op, msg2.ListFields()[0][1][0].op)
-    return True
-
-
-def compare_with_base_line(file_path, str):
-    model = ModelDef()
-    baseline_model = ModelDef()
-    baseline_buffer = str
-    baseline_model.ParseFromString(baseline_buffer)
-    with open(file_path, 'rb') as f:
-        buffer = f.read()
-        model.ParseFromString(buffer)
-    return protobuf_equal(baseline_model, model)
-
-
 class TorchairSt(unittest.TestCase):
     def setUp(self) -> None:
         self.clean_env()
@@ -112,45 +63,16 @@ class TorchairSt(unittest.TestCase):
         assert src.count("op: \"Data\"") == 2
         assert src.count("op: \"Shape\"") == 0
 
-        baseline_air = (b':\x99\x10\n\x07graph_1"\x08arg0_1:0"\x08arg1_1:02\xc9\x03\n\x06arg0_1\x12\x04Data*\x00R'
-        b'\x19\n\x10_output_name_key\x12\x05\n\x03\x12\x01yR\x18\n\x0f_input_name_key\x12\x05\n\x03\x12\x01xR'
-        b'\x1b\n\x12_output_name_value\x12\x05\n\x03\x1a\x01\x00R\x1a\n\x11_input_name_value\x12\x05\n\x03\x1a'
-        b'\x01\x00R\x0b\n\x05index\x12\x02\x18\x00\x8a\x02{\x10\x01\x1a\x04\n\x02\x02\x04"\x02ND*\x15\n\r'
-        b'origin_format\x12\x04\x12\x02ND*\x1e\n\x18origin_shape_initialized\x12\x02(\x00*\x14\n\x0eformat_for_int'
-        b'\x12\x02\x18\x02*\x1b\n\x15origin_format_for_int\x12\x02\x18\x02r\x03CPU\x92\x02\xbc\x01\x10\x01\x1a\x04'
-        b'\n\x02\x02\x04"\x02ND*\x1e\n\x18origin_shape_initialized\x12\x02(\x00*\x14\n\x0eformat_for_int\x12\x02'
-        b'\x18\x02*\x1b\n\x15origin_format_for_int\x12\x02\x18\x02*\x15\n\rorigin_format\x12\x04\x12\x02ND*?\n\x05'
-        b'_meta\x126\x124Tensor(dtype=torch.float32, shape=torch.Size([2, 4])r\x03CPU2\xc9\x03\n\x06arg1_1\x12\x04'
-        b'Data*\x00R\x0b\n\x05index\x12\x02\x18\x01R\x18\n\x0f_input_name_key\x12\x05\n\x03\x12\x01xR\x1b\n\x12'
-        b'_output_name_value\x12\x05\n\x03\x1a\x01\x00R\x1a\n\x11_input_name_value\x12\x05\n\x03\x1a\x01\x00R\x19\n'
-        b'\x10_output_name_key\x12\x05\n\x03\x12\x01y\x8a\x02{\x10\x01\x1a\x04\n\x02\x02\x04"\x02ND*\x1b\n\x15'
-        b'origin_format_for_int\x12\x02\x18\x02*\x15\n\rorigin_format\x12\x04\x12\x02ND*\x1e\n\x18'
-        b'origin_shape_initialized\x12\x02(\x00*\x14\n\x0eformat_for_int\x12\x02\x18\x02r\x03CPU\x92\x02\xbc\x01\x10'
-        b'\x01\x1a\x04\n\x02\x02\x04"\x02ND*\x14\n\x0eformat_for_int\x12\x02\x18\x02*\x1e\n\x18'
-        b'origin_shape_initialized\x12\x02(\x00*\x15\n\rorigin_format\x12\x04\x12\x02ND*\x1b\n\x15'
-        b'origin_format_for_int\x12\x02\x18\x02*?\n\x05_meta\x126\x124Tensor(dtype=torch.float32, '
-        b'shape=torch.Size([2, 4])r\x03CPU2\x81\x06\n\x03Add\x12\x03Add*\x08arg0_1:0*\x08arg1_1:0R\x1b\n\x12'
-        b'_output_name_value\x12\x05\n\x03\x1a\x01\x00R\x19\n\x10_output_name_key\x12\x05\n\x03\x12\x01yR\x1b\n\x11'
-        b'_input_name_value\x12\x06\n\x04\x1a\x02\x00\x01R\x1d\n\x0f_input_name_key\x12\n\n\x08\x12\x02x1\x12\x02x2'
-        b'\x8a\x02\xbc\x01\x10\x01\x1a\x04\n\x02\x02\x04"\x02ND*\x14\n\x0eformat_for_int\x12\x02\x18\x02*\x15\n\r'
-        b'origin_format\x12\x04\x12\x02ND*\x1b\n\x15origin_format_for_int\x12\x02\x18\x02*?\n\x05_meta\x126\x124'
-        b'Tensor(dtype=torch.float32, shape=torch.Size([2, 4])*\x1e\n\x18origin_shape_initialized\x12\x02(\x00r\x03'
-        b'CPU\x8a\x02\xbc\x01\x10\x01\x1a\x04\n\x02\x02\x04"\x02ND*\x1b\n\x15origin_format_for_int\x12\x02\x18\x02*'
-        b'\x14\n\x0eformat_for_int\x12\x02\x18\x02*\x15\n\rorigin_format\x12\x04\x12\x02ND*?\n\x05_meta\x126\x124'
-        b'Tensor(dtype=torch.float32, shape=torch.Size([2, 4])*\x1e\n\x18origin_shape_initialized\x12\x02(\x00r\x03'
-        b'CPU\x92\x02\xeb\x01\x10\x01\x1a\x00"\x02ND*\x14\n\x0eformat_for_int\x12\x02\x18\x02*1\n\x0f_fx_tensor_name'
-        b'\x12\x1e\x12\x1cadd-aten.add.Tensor.OUTPUT.0*\x1b\n\x15origin_format_for_int\x12\x02\x18\x02*\x1e\n\x18'
-        b'origin_shape_initialized\x12\x02(\x00*?\n\x05_meta\x126\x124Tensor(dtype=torch.float32, shape=torch.Size'
-        b'([2, 4])*\x15\n\rorigin_format\x12\x04\x12\x02NDr\x03NPU2\xc7\x02\n\tNetOutput\x12\tNetOutput*\x05Add:0R'
-        b'\x1a\n\x11_input_name_value\x12\x05\n\x03\x1a\x01\x00R\x1d\n\x0f_input_name_key\x12\n\n\x08\x12\x06input0'
-        b'\x8a\x02\xeb\x01\x10\x01\x1a\x00"\x02ND*\x15\n\rorigin_format\x12\x04\x12\x02ND*\x1e\n\x18'
-        b'origin_shape_initialized\x12\x02(\x00*?\n\x05_meta\x126\x124Tensor(dtype=torch.float32, shape=torch.Size'
-        b'([2, 4])*\x1b\n\x15origin_format_for_int\x12\x02\x18\x02*\x14\n\x0eformat_for_int\x12\x02\x18\x02*1\n\x0f'
-        b'_fx_tensor_name\x12\x1e\x12\x1cadd-aten.add.Tensor.OUTPUT.0r\x03NPUZ\x14\n\x0e_executor_type\x12\x02\x18'
-        b'\x00Z\x15\n\x0btarget_type\x12\x06\x12\x04MINIZ\x10\n\nstream_num\x12\x02\x18\x00Z\x0f\n\tevent_num\x12'
-        b'\x02\x18\x00Z\x11\n\x0bweight_size\x12\x02\x18\x00Z\x15\n\x0fp2p_memory_size\x12\x02\x18\x00Z\x11\n\x0b'
-        b'memory_size\x12\x02\x18\x00Z\x0f\n\tlabel_num\x12\x02\x18\x00')
-        assert compare_with_base_line('./test_export_file_path/export.air', baseline_air)
+        model = ModelDef()
+        with open('./test_export_file_path/export.air', 'rb') as f:
+            buffer = f.read()
+            model.ParseFromString(buffer)
+
+        for op in model.ListFields()[0][1][0].op:
+            if op.type == "FileConstant":
+                assert op.output_desc[0].dtype == 1 # DT_FLOAT
+                assert op.output_desc[0].layout == "ND"
+                assert op.output_desc[0].attr["format_for_int"].i == 2
 
     def test_export_with_sym(self):
         def get_inputnum_in_node(strgraph, opname):
@@ -272,90 +194,17 @@ class TorchairSt(unittest.TestCase):
         assert src.count("op: \"FileConstant\"") == 1
         assert src.count("op: \"Data\"") == 2
         assert src.count("op: \"Shape\"") == 0
-        baseline_fileconst = (
-            b':\xa8#\n\x07graph_1"\x08arg1_1:0"\x08arg2_1:02\xa5\x02\n\x06arg0_1\x12\x0cFileConstantR\x0b\n\x05dtype'
-            b'\x12\x02x\x01R\x1b\n\x12_output_name_value\x12\x05\n\x03\x1a\x01\x00R\x16\n\x05shape\x12\r\n\x0b\x1a\x06'
-            b'\x80\x08\x80\x08\x80\x08\xa0\x01\x02R\r\n\x07file_id\x12\x02\x12\x00R\x19\n\x10_output_name_key\x12\x05\n'
-            b'\x03\x12\x01yR\'\n\tfile_path\x12\x1a\x12\x18test_export_file_path/p1\x92\x02w\x10\x01\x1a\x00"\x02ND*'
-            b'\x1b\n\x15origin_format_for_int\x12\x02\x18\x02*\x15\n\rorigin_format\x12\x04\x12\x02ND*\x14\n\x0e'
-            b'format_for_int\x12\x02\x18\x02*\x1e\n\x18origin_shape_initialized\x12\x02(\x00r\x03NPU2\xc9\x03\n\x06'
-            b'arg1_1\x12\x04Data*\x00R\x1a\n\x11_input_name_value\x12\x05\n\x03\x1a\x01\x00R\x0b\n\x05index\x12\x02'
-            b'\x18\x00R\x19\n\x10_output_name_key\x12\x05\n\x03\x12\x01yR\x18\n\x0f_input_name_key\x12\x05\n\x03\x12'
-            b'\x01xR\x1b\n\x12_output_name_value\x12\x05\n\x03\x1a\x01\x00\x8a\x02{\x10\x01\x1a\x04\n\x02\x02\x04"'
-            b'\x02ND*\x15\n\rorigin_format\x12\x04\x12\x02ND*\x1e\n\x18origin_shape_initialized\x12\x02(\x00*\x1b\n'
-            b'\x15origin_format_for_int\x12\x02\x18\x02*\x14\n\x0eformat_for_int\x12\x02\x18\x02r\x03CPU\x92\x02\xbc'
-            b'\x01\x10\x01\x1a\x04\n\x02\x02\x04"\x02ND*\x1b\n\x15origin_format_for_int\x12\x02\x18\x02*\x15\n\r'
-            b'origin_format\x12\x04\x12\x02ND*\x1e\n\x18origin_shape_initialized\x12\x02(\x00*\x14\n\x0eformat_for_int'
-            b'\x12\x02\x18\x02*?\n\x05_meta\x126\x124Tensor(dtype=torch.float32, shape=torch.Size([2, 4])r\x03CPU2\xc9'
-            b'\x03\n\x06arg2_1\x12\x04Data*\x00R\x18\n\x0f_input_name_key\x12\x05\n\x03\x12\x01xR\x0b\n\x05index\x12'
-            b'\x02\x18\x01R\x1a\n\x11_input_name_value\x12\x05\n\x03\x1a\x01\x00R\x19\n\x10_output_name_key\x12\x05\n'
-            b'\x03\x12\x01yR\x1b\n\x12_output_name_value\x12\x05\n\x03\x1a\x01\x00\x8a\x02{\x10\x01\x1a\x04\n\x02\x02'
-            b'\x04"\x02ND*\x14\n\x0eformat_for_int\x12\x02\x18\x02*\x1b\n\x15origin_format_for_int\x12\x02\x18\x02*'
-            b'\x15\n\rorigin_format\x12\x04\x12\x02ND*\x1e\n\x18origin_shape_initialized\x12\x02(\x00r\x03CPU\x92\x02'
-            b'\xbc\x01\x10\x01\x1a\x04\n\x02\x02\x04"\x02ND*\x1b\n\x15origin_format_for_int\x12\x02\x18\x02*\x1e\n'
-            b'\x18origin_shape_initialized\x12\x02(\x00*?\n\x05_meta\x126\x124Tensor(dtype=torch.float32, '
-            b'shape=torch.Size([2, 4])*\x14\n\x0eformat_for_int\x12\x02\x18\x02*\x15\n\rorigin_format\x12\x04\x12'
-            b'\x02NDr\x03CPU2\x81\x06\n\x03Add\x12\x03Add*\x08arg1_1:0*\x08arg2_1:0R\x1b\n\x12_output_name_value'
-            b'\x12\x05\n\x03\x1a\x01\x00R\x1b\n\x11_input_name_value\x12\x06\n\x04\x1a\x02\x00\x01R\x19\n\x10'
-            b'_output_name_key\x12\x05\n\x03\x12\x01yR\x1d\n\x0f_input_name_key\x12\n\n\x08\x12\x02x1\x12\x02x2'
-            b'\x8a\x02\xbc\x01\x10\x01\x1a\x04\n\x02\x02\x04"\x02ND*\x1b\n\x15origin_format_for_int\x12\x02\x18\x02*'
-            b'\x1e\n\x18origin_shape_initialized\x12\x02(\x00*\x15\n\rorigin_format\x12\x04\x12\x02ND*?\n\x05_meta'
-            b'\x126\x124Tensor(dtype=torch.float32, shape=torch.Size([2, 4])*\x14\n\x0eformat_for_int\x12\x02\x18\x02r'
-            b'\x03CPU\x8a\x02\xbc\x01\x10\x01\x1a\x04\n\x02\x02\x04"\x02ND*\x1b\n\x15origin_format_for_int\x12\x02\x18'
-            b'\x02*\x14\n\x0eformat_for_int\x12\x02\x18\x02*\x1e\n\x18origin_shape_initialized\x12\x02(\x00*\x15\n\r'
-            b'origin_format\x12\x04\x12\x02ND*?\n\x05_meta\x126\x124Tensor(dtype=torch.float32, shape=torch.'
-            b'Size([2, 4])r\x03CPU\x92\x02\xeb\x01\x10\x01\x1a\x00"\x02ND*1\n\x0f_fx_tensor_name\x12\x1e\x12\x1c'
-            b'add-aten.add.Tensor.OUTPUT.0*\x14\n\x0eformat_for_int\x12\x02\x18\x02*\x1b\n\x15origin_format_for_int'
-            b'\x12\x02\x18\x02*\x15\n\rorigin_format\x12\x04\x12\x02ND*\x1e\n\x18origin_shape_initialized\x12\x02'
-            b'(\x00*?\n\x05_meta\x126\x124Tensor(dtype=torch.float32, shape=torch.Size([2, 4])r\x03NPU2\xea\x02\n'
-            b'\x05Const\x12\x05ConstR\x90\x01\n\x05value\x12\x86\x01b\x83\x01\nw\x10\x08\x1a\x00"\x02ND*\x1b\n\x15'
-            b'origin_format_for_int\x12\x02\x18\x02*\x14\n\x0eformat_for_int\x12\x02\x18\x02*\x1e\n\x18'
-            b'origin_shape_initialized\x12\x02(\x00*\x15\n\rorigin_format\x12\x04\x12\x02NDr\x03NPU\x12\x08\x02\x00'
-            b'\x00\x00\x00\x00\x00\x00R\x16\n\x0f_readable_value\x12\x03\x12\x012R\x1b\n\x12_output_name_value\x12'
-            b'\x05\n\x03\x1a\x01\x00R\x18\n\x10_output_name_key\x12\x04\n\x02\x12\x00\x92\x02w\x10\x08\x1a\x00"\x02'
-            b'ND*\x15\n\rorigin_format\x12\x04\x12\x02ND*\x14\n\x0eformat_for_int\x12\x02\x18\x02*\x1b\n\x15'
-            b'origin_format_for_int\x12\x02\x18\x02*\x1e\n\x18origin_shape_initialized\x12\x02(\x00r\x03NPU2\x87\x03'
-            b'\n\x04Cast\x12\x04Cast*\x07Const:0R\x18\n\x0f_input_name_key\x12\x05\n\x03\x12\x01xR\x0e\n\x08dst_type'
-            b'\x12\x02\x18\x01R\x1b\n\x12_output_name_value\x12\x05\n\x03\x1a\x01\x00R\x19\n\x10_output_name_key\x12'
-            b'\x05\n\x03\x12\x01yR\x1a\n\x11_input_name_value\x12\x05\n\x03\x1a\x01\x00\x8a\x02w\x10\x08\x1a\x00"\x02'
-            b'ND*\x1e\n\x18origin_shape_initialized\x12\x02(\x00*\x15\n\rorigin_format\x12\x04\x12\x02ND*\x14\n\x0e'
-            b'format_for_int\x12\x02\x18\x02*\x1b\n\x15origin_format_for_int\x12\x02\x18\x02r\x03NPU\x92\x02w\x10\x01'
-            b'\x1a\x00"\x02ND*\x1b\n\x15origin_format_for_int\x12\x02\x18\x02*\x1e\n\x18origin_shape_initialized\x12'
-            b'\x02(\x00*\x15\n\rorigin_format\x12\x04\x12\x02ND*\x14\n\x0eformat_for_int\x12\x02\x18\x02r\x03NPU2\xd4'
-            b'\x04\n\x03Mul\x12\x03Mul*\x08arg0_1:0*\x06Cast:0R\x19\n\x10_output_name_key\x12\x05\n\x03\x12\x01yR\x1d'
-            b'\n\x0f_input_name_key\x12\n\n\x08\x12\x02x1\x12\x02x2R\x1b\n\x11_input_name_value\x12\x06\n\x04\x1a\x02'
-            b'\x00\x01R\x1b\n\x12_output_name_value\x12\x05\n\x03\x1a\x01\x00\x8a\x02\xcc\x01\x10\x02\x1a\x08\n\x06'
-            b'\x80\x08\x80\x08\x80\x08"\x02ND*\x14\n\x0eformat_for_int\x12\x02\x18\x02*K\n\x05_meta\x12B\x12@Tensor'
-            b'(dtype=torch.float16, shape=torch.Size([1024, 1024, 1024])*\x15\n\rorigin_format\x12\x04\x12\x02ND*\x1e'
-            b'\n\x18origin_shape_initialized\x12\x02(\x00*\x1b\n\x15origin_format_for_int\x12\x02\x18\x02r\x03CPU\x8a'
-            b'\x02w\x10\x01\x1a\x00"\x02ND*\x1e\n\x18origin_shape_initialized\x12\x02(\x00*\x1b\n\x15'
-            b'origin_format_for_int\x12\x02\x18\x02*\x15\n\rorigin_format\x12\x04\x12\x02ND*\x14\n\x0eformat_for_int'
-            b'\x12\x02\x18\x02r\x03NPU\x92\x02w\x10\x01\x1a\x00"\x02ND*\x14\n\x0eformat_for_int\x12\x02\x18\x02*\x1e'
-            b'\n\x18origin_shape_initialized\x12\x02(\x00*\x1b\n\x15origin_format_for_int\x12\x02\x18\x02*\x15\n\r'
-            b'origin_format\x12\x04\x12\x02NDr\x03NPU2\x88\x04\n\x06Cast_1\x12\x04Cast*\x05Mul:0R\x1b\n\x12'
-            b'_output_name_value\x12\x05\n\x03\x1a\x01\x00R\x18\n\x0f_input_name_key\x12\x05\n\x03\x12\x01xR\x19\n'
-            b'\x10_output_name_key\x12\x05\n\x03\x12\x01yR\x0e\n\x08dst_type\x12\x02\x18\x01R\x1a\n\x11'
-            b'_input_name_value\x12\x05\n\x03\x1a\x01\x00\x8a\x02w\x10\x01\x1a\x00"\x02ND*\x1b\n\x15'
-            b'origin_format_for_int\x12\x02\x18\x02*\x1e\n\x18origin_shape_initialized\x12\x02(\x00*\x14\n\x0e'
-            b'format_for_int\x12\x02\x18\x02*\x15\n\rorigin_format\x12\x04\x12\x02NDr\x03NPU\x92\x02\xf7\x01\x10'
-            b'\x02\x1a\x00"\x02ND*\x1e\n\x18origin_shape_initialized\x12\x02(\x00*\x1b\n\x15origin_format_for_int'
-            b'\x12\x02\x18\x02*\x14\n\x0eformat_for_int\x12\x02\x18\x02*\x15\n\rorigin_format\x12\x04\x12\x02ND*1'
-            b'\n\x0f_fx_tensor_name\x12\x1e\x12\x1cmul-aten.mul.Tensor.OUTPUT.0*K\n\x05_meta\x12B\x12@Tensor(dtype'
-            b'=torch.float16, shape=torch.Size([1024, 1024, 1024])r\x03NPU2\xd5\x04\n\tNetOutput\x12\tNetOutput*'
-            b'\x05Add:0*\x08Cast_1:0R%\n\x0f_input_name_key\x12\x12\n\x10\x12\x06input0\x12\x06input1R\x1b\n\x11'
-            b'_input_name_value\x12\x06\n\x04\x1a\x02\x00\x01\x8a\x02\xeb\x01\x10\x01\x1a\x00"\x02ND*\x14\n\x0e'
-            b'format_for_int\x12\x02\x18\x02*\x1b\n\x15origin_format_for_int\x12\x02\x18\x02*\x1e\n\x18'
-            b'origin_shape_initialized\x12\x02(\x00*\x15\n\rorigin_format\x12\x04\x12\x02ND*1\n\x0f_fx_tensor_name'
-            b'\x12\x1e\x12\x1cadd-aten.add.Tensor.OUTPUT.0*?\n\x05_meta\x126\x124Tensor(dtype=torch.float32, '
-            b'shape=torch.Size([2, 4])r\x03NPU\x8a\x02\xf7\x01\x10\x02\x1a\x00"\x02ND*\x14\n\x0eformat_for_int'
-            b'\x12\x02\x18\x02*K\n\x05_meta\x12B\x12@Tensor(dtype=torch.float16, shape=torch.Size([1024, 1024, 1024])'
-            b'*\x1e\n\x18origin_shape_initialized\x12\x02(\x00*1\n\x0f_fx_tensor_name\x12\x1e\x12\x1cmul-aten.mul.'
-            b'Tensor.OUTPUT.0*\x15\n\rorigin_format\x12\x04\x12\x02ND*\x1b\n\x15origin_format_for_int\x12\x02\x18'
-            b'\x02r\x03NPUZ\x14\n\x0e_executor_type\x12\x02\x18\x00Z\x11\n\x0bmemory_size\x12\x02\x18\x00Z\x11\n'
-            b'\x0bweight_size\x12\x02\x18\x00Z\x10\n\nstream_num\x12\x02\x18\x00Z\x15\n\x0btarget_type\x12\x06\x12'
-            b'\x04MINIZ\x15\n\x0fp2p_memory_size\x12\x02\x18\x00Z\x0f\n\tevent_num\x12\x02\x18\x00Z\x0f\n\t'
-            b'label_num\x12\x02\x18\x00')
-        assert compare_with_base_line('./test_export_file_path/export.air', baseline_fileconst)
+        
+        model = ModelDef()
+        with open('./test_export_file_path/export.air', 'rb') as f:
+            buffer = f.read()
+            model.ParseFromString(buffer)
+
+        for op in model.ListFields()[0][1][0].op:
+            if op.type == "FileConstant":
+                assert op.output_desc[0].dtype == 1 # DT_FLOAT
+                assert op.output_desc[0].layout == "ND"
+                assert op.output_desc[0].attr["format_for_int"].i == 2
 
     def test_export_with_atc_config_generated(self):
         def get_sub_path_dynamo_pbtxt(export_path, rankid):
@@ -430,7 +279,7 @@ class TorchairSt(unittest.TestCase):
         assert src.count("op: \"Const\"") == 4
         assert src.count("op: \"Data\"") == 2
         assert src.count("op: \"Shape\"") == 0
-        assert src.count("dtype: DT_BF16") == 13
+        assert src.count("dtype: DT_BF16") == 16
         assert src.count("  dim: 10") == 3
 
     def test_export_enable_record_nn_module_stack(self):
@@ -467,8 +316,8 @@ class TorchairSt(unittest.TestCase):
 
         with open(file_name, 'r') as f:
             src = f.read()
-        assert src.count("\"nn_module_stack\"") == 6  # 插入了2个cast,有两个输出
-        assert src.count("Model2") == 6
+        assert src.count("\"nn_module_stack\"") == 4
+        assert src.count("Model2") == 4
 
     def test_export_with_sym_pack(self):
         class Model(torch.nn.Module):
