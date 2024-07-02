@@ -43,12 +43,7 @@ def conveter_aten_squeeze_default(self: Tensor, meta_outputs: TensorSpec = None)
 @register_fx_node_ge_converter(torch.ops.aten.squeeze.dim)
 def conveter_aten_squeeze_dim(self: Tensor, dim: int, meta_outputs: TensorSpec = None):
     """NB: aten::squeeze.dim(Tensor(a) self, int dim) -> Tensor(a)"""
-    if self.symsize is not None and all([not isinstance(s, torch.SymInt) for s in self.symsize]):
-        if self.symsize[dim] != 1:
-            return self
-        return ge.Squeeze(self, axis=[dim])
-    return ge.SelectV2(ge.Equal(ge.Gather(ge.Shape(self), dim), ge.Cast(1, dst_type=DataType.DT_INT32)),
-                       ge.Squeeze(self, axis=[dim]), self)
+    return ge.Squeeze(self, axis=[dim])
 
 
 @register_fx_node_ge_converter(torch.ops.aten.squeeze.dims)
