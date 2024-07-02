@@ -10,12 +10,26 @@ from torchair.ge_concrete_graph.ge_graph import _TensorInput, _DiscontiguousTens
 from torchair.core.utils import logger
 
 
-def set_dim_gears(t: torch.Tensor, dim_gears: Dict[int, List[int]]):
-    if any(len(gears) < 2 for gears in dim_gears.values()):
-        raise AssertionError(f'The gears size at least 2, but config gears is {dim_gears}')
+def set_dim_gears(t: torch.Tensor, dim_gears: Dict[int, Union[List[int], Tuple[int, ...]]]):
+    for dim_index, gears in dim_gears.items():
+        if not isinstance(dim_index, int):
+            raise AssertionError(
+                f"Dim index in dim_gears must be an integer, but got {type(dim_index)}.")
+        if dim_index < 0 or dim_index >= len(t.shape):
+            raise AssertionError(
+                f"Dim index in dim_gears must be in range [0, {len(t.shape) - 1}], but got {dim_index}.")
+        if not isinstance(gears, (list, tuple)):
+            raise AssertionError(
+                f"Gears for dim index {dim_index} in dim_gears must be a list or tuple, but got {type(gears)}.")
+        for index, gear in enumerate(gears):
+            if not isinstance(gear, int):
+                raise AssertionError(f"Element at index {index} of value for dim index {dim_index} in "
+                                     f"dim_gears must be an integer, but got {type(gear)}.")
+        if not 2 <= len(gears) <= 100:
+            raise AssertionError(f"Length of gears for dim index {dim_index} in dim_gears must be in "
+                                 f"range [2, 100], but got {len(gears)}.")
 
-    for key in dim_gears.keys():
-        torch._dynamo.mark_dynamic(t, key)
+        torch._dynamo.mark_dynamic(t, dim_index)
 
     setattr(t, "dim_gears", dim_gears)
 
@@ -25,11 +39,21 @@ def get_dim_gears(t: torch.Tensor):
 
 
 def _guard_dynamic_dim(dim, dynamic_gears):
-    gear_guard = functools.reduce(lambda x, y: x | y, [dim == gear for gear in dynamic_gears])
+    sorted_gears = sorted(list(set(dynamic_gears)))
+    gear_guard = (dim >= sorted_gears[0]) & (dim <= sorted_gears[-1])
     if not bool(gear_guard):
-        raise AssertionError(f'The index {dim} of the current tensor shape '
+        raise AssertionError(f'The index {int(dim)} of the current tensor shape '
                              f'is not within the range {dynamic_gears}')
     guard_bool(gear_guard)
+
+    for i, gear in enumerate(sorted_gears[:-1]):
+        left = gear
+        right = sorted_gears[i + 1]
+        gear_guard = (dim <= left) | (dim >= right)
+        if not bool(gear_guard):
+            raise AssertionError(f'The index {int(dim)} of the current tensor shape '
+                                 f'is not within the range {dynamic_gears}')
+        guard_bool(gear_guard)
 
 
 def guard_gears_shape(example_inputs):
@@ -65,9 +89,8 @@ def generate_dynamic_dims_option(named_inputs_info, config):
             continue
         sorted_dim_gears = dict(sorted(dim_gears.items(), key=lambda x: x[0]))
         for dim_index, gear in sorted_dim_gears.items():
-            if data_shape[dim_index] != -1:
-                raise AssertionError(f"Set dim gear index shape must generalize -1.")
-            gear_list.append(tuple(gear))
+            if data_shape[dim_index] == -1:
+                gear_list.append(tuple(gear))
 
     ge_option['ge.inputShape'] = str_inputshape.rstrip(";")
 
@@ -76,14 +99,20 @@ def generate_dynamic_dims_option(named_inputs_info, config):
 
     if config == "zip":
         if all(len(sublist) == len(gear_list[0]) for sublist in gear_list):
-            dynamic_dims = ';'.join([','.join(map(str, sublist)) for sublist in list(zip(*gear_list))])
+            dynamic_dims = list(zip(*gear_list))
         else:
             raise AssertionError("when dynamic_gears_merge_policy is zip, input gears len must same.")
     elif config == "product":
-        dynamic_dims = ';'.join([','.join(map(str, sublist)) for sublist in list(itertools.product(*gear_list))])
+        dynamic_dims = list(itertools.product(*gear_list))
     else:
         raise AssertionError("dynamic_gears_merge_policy only support zip and product.")
 
-    ge_option["ge.dynamicDims"] = dynamic_dims
+    duplicated_dynamic_dims = list(set(dynamic_dims))
+    if len(duplicated_dynamic_dims) > 100:
+        raise AssertionError(f'The total number of gears set cannot exceed 100, '
+                             f'and the current number of gears is: {len(duplicated_dynamic_dims)}')
+
+    option_dynamic_dims = ';'.join([','.join(map(str, sublist)) for sublist in duplicated_dynamic_dims])
+    ge_option["ge.dynamicDims"] = option_dynamic_dims
 
     return ge_option

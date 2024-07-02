@@ -1,5 +1,6 @@
 import unittest
 import os
+import contextlib
 import logging
 import torch
 os.environ['TNG_LOG_LEVEL'] = '0'
@@ -9,13 +10,44 @@ from torchair.core.utils import logger
 from torchair.inference import set_dim_gears
 from torchair.core._backend import TorchNpuGraph
 from torchair.ge_concrete_graph import ge_apis as ge
+from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
 from torchair.ge_concrete_graph.ge_graph import GeGraph, DataType
 from torchair.core._backend import initialize_graph_engine
 from torchair.ge_concrete_graph.fx2ge_converter import ExecutorType, Placement, _normalize_ge_graph
 from torchair.inference._gear_utils import generate_dynamic_dims_option
-from torchair.ge_concrete_graph.ge_graph import trans_to_list_list_int
+from torchair.ge_concrete_graph.ge_graph import _ValueType, _GeInputInfo
+
 
 logger.setLevel(logging.DEBUG)
+
+
+class PatchAttr:
+    def __init__(self, obj, attr_name, new_value):
+        self.obj = obj
+        self.attr_name = attr_name
+        self.new_value = new_value
+        self.original_value = None
+
+    def __enter__(self):
+        if hasattr(self.obj, self.attr_name):
+            self.original_value = getattr(self.obj, self.attr_name)
+            setattr(self.obj, self.attr_name, self.new_value)
+        else:
+            raise AttributeError(f"{self.obj} does not have attribute {self.attr_name}")
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        setattr(self.obj, self.attr_name, self.original_value)
+
+
+def raise_exception(*args, **kwargs):
+    raise Exception("Should not be called")
+
+
+@contextlib.contextmanager
+def forbidden_attr(obj, attr_name):
+    with PatchAttr(obj, attr_name, raise_exception):
+        yield
 
 
 def set_graph_output_dtypes(graph, dtypes):
@@ -32,9 +64,48 @@ def set_graph_output_dtypes(graph, dtypes):
         graph.attr["_input_placements"].list.i.append(v)
 
 
-
 class TorchairSt(unittest.TestCase):
-    def test_mark_dynamic(self):
+    def test_set_dim_gears(self):
+        x = torch.ones([2, 2])
+        with self.assertRaises(AssertionError) as cm:
+            set_dim_gears(x, {0.3: [1, 2]})
+        exception = cm.exception
+        self.assertEqual(str(exception), "Dim index in dim_gears must be an integer, but got <class 'float'>.")
+
+        with self.assertRaises(AssertionError) as cm:
+            set_dim_gears(x, {0: 1})
+        exception = cm.exception
+        self.assertEqual(str(exception), "Gears for dim index 0 in dim_gears must be a list or tuple, "
+                         "but got <class 'int'>.")
+
+        with self.assertRaises(AssertionError) as cm:
+            set_dim_gears(x, {0: [1, 2], 2: [1, 2]})
+        exception = cm.exception
+        self.assertEqual(str(exception), "Dim index in dim_gears must be in range [0, 1], but got 2.")
+
+        with self.assertRaises(AssertionError) as cm:
+            set_dim_gears(x, {0: [1, 1.5]})
+        exception = cm.exception
+        self.assertEqual(str(exception), "Element at index 1 of value for dim index 0 in dim_gears must "
+                         "be an integer, but got <class 'float'>.")
+
+        with self.assertRaises(AssertionError) as cm:
+            set_dim_gears(x, {0: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+                                  11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+                                  21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+                                  31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+                                  41, 42, 43, 44, 45, 46, 47, 48, 49, 50,
+                                  51, 52, 53, 54, 55, 56, 57, 58, 59, 60,
+                                  61, 62, 63, 64, 65, 66, 67, 68, 69, 70,
+                                  71, 72, 73, 74, 75, 76, 77, 78, 79, 80,
+                                  81, 82, 83, 84, 85, 86, 87, 88, 89, 90,
+                                  91, 92, 93, 94, 95, 96, 97, 98, 99, 100,
+                                  101]})
+        exception = cm.exception
+        self.assertEqual(str(exception), "Length of gears for dim index 0 in dim_gears must be in range [2, 100],"
+                         " but got 101.")
+
+    def test_guard_gears(self):
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
@@ -46,38 +117,113 @@ class TorchairSt(unittest.TestCase):
         model = torch.compile(Model(), backend=npu_backend, dynamic=True)
         x = torch.ones([8, 8])
         set_dim_gears(x, {0: [8, 4]})
-        def my_warp_function(named_inputs_info, config):
-            result = generate_dynamic_dims_option(named_inputs_info, config)
-            self.assertTrue(result == {'ge.inputShape': 'arg2_1:-1,8',
-                                       'ge.dynamicDims': '8;4',
-                                       'ge.dynamicNodeType': '1'})
-            return result
-        with unittest.mock.patch('torchair.inference._gear_utils.generate_dynamic_dims_option', my_warp_function):
-            model(x)
-            model(x)
+        model(x)
+        y = torch.ones([4, 8])
+        with forbidden_attr(GeConcreteGraph, '_normalize_ge_option'):
+            model(y)  # hit compile graph
 
-    def test_product(self):
-        class Model(torch.nn.Module):
-            def __init__(self):
-                super().__init__()
+        y = torch.ones([8, 8, 8])
+        # 校验不会触发guard的parse stack over
+        set_dim_gears(y, {0: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+                              11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+                              21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+                              31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+                              41, 42, 43, 44, 45, 46, 47, 48, 49, 50,
+                              51, 52, 53, 54, 55, 56, 57, 58, 59, 60,
+                              61, 62, 63, 64, 65, 66, 67, 68, 69, 70,
+                              71, 72, 73, 74, 75, 76, 77, 78, 79, 80,
+                              81, 82, 83, 84, 85, 86, 87, 88, 89, 90,
+                              91, 92, 93, 94, 95, 96, 97, 98]})
+        model(y)
 
-            def forward(self, x):
-                return x * 2
-        config = CompilerConfig()
-        config.inference_config.dynamic_gears_merge_policy = "product"
-        npu_backend = torchair.get_npu_backend(compiler_config=config)
-        model = torch.compile(Model(), backend=npu_backend, dynamic=True)
-        x = torch.ones([8, 8])
-        set_dim_gears(x, {1: [8, 12], 0: [8, 4]})
-        def my_warp_function(named_inputs_info, config):
-            result = generate_dynamic_dims_option(named_inputs_info, config)
-            self.assertTrue(result == {'ge.inputShape': 'arg2_1:-1,-1',
-                                        'ge.dynamicDims': '8,8;8,12;4,8;4,12',
-                                        'ge.dynamicNodeType': '1'})
-            return result
-        with unittest.mock.patch('torchair.inference._gear_utils.generate_dynamic_dims_option', my_warp_function):
-            model(x)
-            model(x)
+    def test_config_and_gear_set(self):
+        input_info = _GeInputInfo(
+            value_type=_ValueType.TENSOR,
+            func=None,
+            shape=[-1, -1], dim_gears={0: [8, 4], 1: [8, 12]})
+        named_inputs_info = {'arg2_1': input_info}
+        result = generate_dynamic_dims_option(named_inputs_info, "product")
+        self.assertTrue(result['ge.inputShape'] == 'arg2_1:-1,-1')
+        self.assertTrue('8,8' in result['ge.dynamicDims'])
+        self.assertTrue('8,12' in result['ge.dynamicDims'])
+        self.assertTrue('4,8' in result['ge.dynamicDims'])
+        self.assertTrue('4,12' in result['ge.dynamicDims'])
+
+        input_info2 = _GeInputInfo(
+            value_type=_ValueType.TENSOR,
+            func=None,
+            shape=[-1, 8], dim_gears={0: [8, 4]})
+        named_inputs_info2 = {'arg2_1': input_info2}
+        result = generate_dynamic_dims_option(named_inputs_info2, "zip")
+        self.assertTrue(result['ge.inputShape'] == 'arg2_1:-1,8')
+        self.assertTrue('8' in result['ge.dynamicDims'])
+        self.assertTrue('4' in result['ge.dynamicDims'])
+
+        input_info3 = _GeInputInfo(
+            value_type=_ValueType.TENSOR,
+            func=None,
+            shape=[-1, 8], dim_gears={0: [8, 4]})
+        input_info4 = _GeInputInfo(
+            value_type=_ValueType.TENSOR,
+            func=None,
+            shape=[-1, 8], dim_gears={0: [8, 4, 3]})
+        named_inputs_info2 = {'arg1': input_info3, 'arg2': input_info4}
+        with self.assertRaises(AssertionError) as cm:
+            result = generate_dynamic_dims_option(named_inputs_info2, "zip")
+        exception = cm.exception
+        self.assertEqual(str(exception), 'when dynamic_gears_merge_policy is zip, input gears len must same.')
+
+        # 验证带重复档位的设置也是支持的
+        input_info6 = _GeInputInfo(
+            value_type=_ValueType.TENSOR,
+            func=None,
+            shape=[-1, -1], dim_gears={0: [1, 2, 4, 1, 2, 4], 1: [10, 10, 10, 20, 20, 20]})
+        named_inputs_info = {'arg2_1': input_info6}
+        result = generate_dynamic_dims_option(named_inputs_info, "zip")
+
+        self.assertTrue(result['ge.inputShape'] == 'arg2_1:-1,-1')
+        self.assertTrue('1,10' in result['ge.dynamicDims'])
+        self.assertTrue('2,10' in result['ge.dynamicDims'])
+        self.assertTrue('4,10' in result['ge.dynamicDims'])
+        self.assertTrue('1,20' in result['ge.dynamicDims'])
+        self.assertTrue('2,20' in result['ge.dynamicDims'])
+        self.assertTrue('4,20' in result['ge.dynamicDims'])
+
+    def test_gears_name(self):
+        input_info5 = _GeInputInfo(
+            value_type=_ValueType.TENSOR,
+            func=None,
+            shape=[-1, 8], dim_gears={0: [1, 2, 3, 4, 5, 6, 7, 8, 9]})
+        input_info6 = _GeInputInfo(
+            value_type=_ValueType.TENSOR,
+            func=None,
+            shape=[-1, 8], dim_gears={0: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]})
+        input_info7 = _GeInputInfo(
+            value_type=_ValueType.TENSOR,
+            func=None,
+            shape=[-1, 8], dim_gears={0: [20, 21, 22, 23, 24, 25, 26, 27, 28, 29]})
+        named_inputs_info4 = {'arg1': input_info5,
+                              'arg2': input_info6, 'arg3': input_info7}
+
+        with self.assertRaises(AssertionError) as cm:
+            generate_dynamic_dims_option(named_inputs_info4, "product")
+        exception = cm.exception
+        self.assertEqual(str(exception), "The total number of gears set cannot exceed 100, "
+                         "and the current number of gears is: 900")
+
+        # test 档位去重功能
+        input_info5 = _GeInputInfo(
+            value_type=_ValueType.TENSOR,
+            func=None,
+            shape=[-1, 8], dim_gears={0: [1, 2]})
+        input_info6 = _GeInputInfo(
+            value_type=_ValueType.TENSOR,
+            func=None,
+            shape=[-1, 8], dim_gears={0: [10, 11, 10, 11]})
+        named_inputs_info4 = {'arg1': input_info5, 'arg2': input_info6}
+        result = generate_dynamic_dims_option(named_inputs_info4, "product")
+        self.assertEqual(result["ge.dynamicDims"], "1,11;2,10;2,11;1,10")
+
 
     def test_muti_gear_npu_executor(self):
         initialize_graph_engine()
