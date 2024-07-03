@@ -5,6 +5,8 @@ coverage
 .idea
 *.pbtxt
 *.csv
+*.so
+*.a
 cmake-*
 .vscode
 auto_generated_ge_raw_custom_ops.py
