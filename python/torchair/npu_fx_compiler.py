@@ -1,5 +1,6 @@
 import functools
 import operator
+import math
 import copy
 from typing import List, Callable, Any, Dict, Tuple, Union
 import logging
@@ -75,7 +76,8 @@ def _safe_str(x):
 
 
 def _is_binary_operator(target: Target):
-    return target in (operator.add, operator.sub, operator.mul, operator.truediv, operator.floordiv, operator.pow)
+    return target in (operator.add, operator.sub, operator.mul, operator.truediv, \
+        operator.floordiv, operator.pow, math.floor)
 
 
 def _make_real_tensor_like(meta_outputs):

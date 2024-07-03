@@ -140,7 +140,7 @@ def guard_view_input(func):
             #判断经过的target是可跳过的view类操作，则刷新反推的meta信息
             #若为不可跳过的view类操作或计算类节点，则对参数做反推的推导
             if is_view_case(target, args, meta_outputs):
-                logger.info(f"Do view optimize, skip the operator {str(target)}")
+                logger.debug(f"Do view optimize, skip the operator {str(target)}")
                 ge_outputs = _get_npu_outputs_of_view_ops(target, args, kwargs, meta_outputs)
                 return ge_outputs                     
             else:

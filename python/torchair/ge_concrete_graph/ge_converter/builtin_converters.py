@@ -14,6 +14,7 @@ from typing import (
     overload,
 )
 import operator
+import math
 
 import torch
 from torch import Generator, contiguous_format, inf, strided, SymInt
@@ -106,3 +107,12 @@ def conveter_sym_float(
         return float(self)
     return ge.Cast(self, dst_type=meta_outputs.dtype)
 
+
+@register_fx_node_ge_converter(math.floor)
+def conveter_math_floor(
+    self: Union[Number, Tensor],
+    meta_outputs: TensorSpec = None
+):
+    if not isinstance(self, Tensor):
+        return math.floor(self)
+    return ge.Floor(self)

@@ -41,7 +41,7 @@ def conveter_aten_split_Tensor(
         split_sizes = dtype_promote(split_sizes, target_dtype=DataType.DT_INT64)
         return ge.SplitV(self, split_sizes, dim, num_split=len(meta_outputs))
     elif isinstance(split_sizes, Tensor):
-        tensors = [split_size for _ in range(len(meta_outputs))]
+        tensors = [split_size for _ in range(len(meta_outputs) - 1)]
         split_sizes = ge.ConcatV2(tensors, concat_dim=0, N=len(meta_outputs))
         split_sizes = ge.ConcatV2([split_sizes, -1], concat_dim=0, N=2)
         split_sizes = dtype_promote(split_sizes, target_dtype=DataType.DT_INT64)

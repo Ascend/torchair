@@ -95,7 +95,7 @@ def conveter_aten_addmm_default(
     # Case 3, use mm+add/axpyv2
     else:
         mm_res = ge.MatMulV2(mat1, mat2, None, None)
-        mm_res.desc.dtype = _ge_dtype_to_ge_proto_dtype(self.dtype)
+        mm_res.desc.dtype = _ge_dtype_to_ge_proto_dtype(meta_outputs.dtype)
         # fp32 dtype need to reserve this Mul
         mm_res = ge.Mul(mm_res, alpha)
         return get_addmm_output(self, beta, beta_is_zero, beta_is_one, mm_res)

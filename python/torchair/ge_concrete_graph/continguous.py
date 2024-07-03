@@ -154,7 +154,7 @@ def optimize_view(npu_input, graph):
         return view_operator_map[(npu_input_src, meta_input)]
 
     #经过view类操作的arg判断是否为长度为1，若为连续则只经过Reshape；若为非连续则进入反推判断
-    if len(meta_shape) == 1:
+    if len(meta_shape) == 1 or all(shape == 1 for shape in meta_shape):
         npu_input = _build_reshape_node(npu_input, npu_input, meta_shape, graph)
     else:
         npu_input = _optimize_non_contiguous(npu_input, meta_input, graph)

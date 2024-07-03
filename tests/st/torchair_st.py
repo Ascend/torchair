@@ -1563,5 +1563,22 @@ class TorchairSt(unittest.TestCase):
         with self.assertRaises(TypeError):
             torchair.llm_datadist.create_npu_tensors([1], torch.float, ["str"])
 
+    def test_torch_floor(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                a = x.size(dim=0) + 1.0
+                b = math.floor(a)
+                res = b * 3
+                return res
+
+        model = Model()
+        model = torch.compile(model, backend=npu_backend, dynamic=True, fullgraph=True)
+        x = torch.randn([10, 2])
+        res = model(x)
+        self.assertEqual(res, 33)
+
 if __name__ == '__main__':
     unittest.main()
