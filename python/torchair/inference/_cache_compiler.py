@@ -199,12 +199,8 @@ class CompiledModel:
                 attr_road = name.split('.')
                 if attr_road[0] != "L['self']":
                     raise ValueError(f"{type_str} {name} not supported now")
-                attr_value = model
-                for attr in attr_road[1:]:
-                    if not hasattr(attr_value, attr):
-                        raise ValueError(f"{type_str} {name} not found in model {model}")
-                    attr_value = getattr(attr_value, attr)
-                parameters.append(attr_value)
+                user_buffer = eval(f"obj.{'.'.join(attr_road[1:])}", globals(), {'obj': model})
+                parameters.append(user_buffer)
         return parameters
 
     def rebase(self, model, global_vars=None, closure=None):
