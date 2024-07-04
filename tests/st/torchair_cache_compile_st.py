@@ -367,6 +367,27 @@ class CacheCompileSt(unittest.TestCase):
         NoGuardCompiledFunction.load(cache1)(*prompt1)  # assert not raise
         NoGuardCompiledFunction.load(cache2)(*prompt2)  # assert not raise
 
+    def test_cache_with_explicit_module(self):
+        torchair.foo_tensor = torch.ones(3, 2)
+
+        def func(x):
+            import torchair
+            return torch.add(x, torchair.foo_tensor)
+
+        prompt = [torch.ones(3, 2)]
+
+        cache = 'func_with_explicit_module'
+        ModelCacheSaver.remove_cache(cache)
+
+        NoGuardCompiledFunction(func, dynamic=False).for_inputs(*prompt).save_to(cache)
+
+        self.assertTrue(os.path.exists(cache))
+
+        online_only_keys = [k for k in globals().keys() if k.startswith('__import_')]
+        for k in online_only_keys:
+            globals().pop(k)
+        NoGuardCompiledFunction.load(cache)(*prompt)  # assert not raise
+
     def test_use_outer_globals(self):
         class Model(torch.nn.Module):
             def __init__(self):

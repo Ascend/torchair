@@ -1,4 +1,5 @@
 import ctypes
+import importlib
 import inspect
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -226,6 +227,13 @@ class CompiledModel:
         global_vars = global_vars or globals()
         g = global_vars.copy()
         g.update({fn_names[0]: compiled_fn})
+        for var_name in self.compiled_fn.co_names:
+            if not var_name.startswith("__import_") or var_name in g:
+                continue
+            module_name = var_name[len("__import_"):].replace("_dot_", ".")
+            logging.debug(f"Importing module {module_name} for {var_name}")
+            module = importlib.import_module(module_name)
+            g.update({var_name: module})
         compiled_fn = types.FunctionType(self.compiled_fn, g, closure=closure)
 
         if model is None:
