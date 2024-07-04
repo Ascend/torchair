@@ -123,13 +123,12 @@ Status MutiGearNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &i
         size_t copy_size = static_cast<size_t>(inputs[i].numel() * inputs[i].element_size());
         host_input_holders_[i] = std::make_pair(host_input_holder, copy_size);
         TNG_RETURN_IF_ERROR(AtTensorToGeTensor(host_input_holders_[i].first, inputs_holder_[i]));
-      } else {
-        auto stream_ret = aclrtSynchronizeStream(stream);
-        TNG_ASSERT(stream_ret == ACL_ERROR_NONE, "ACL sync stream failed, return %d", stream_ret);
-        auto ret = aclrtMemcpy(host_input_holders_[i].first.data_ptr(), host_input_holders_[i].second,
-                               inputs[i].data_ptr(), host_input_holders_[i].second, ACL_MEMCPY_HOST_TO_DEVICE);
-        TNG_ASSERT(ret == ACL_ERROR_NONE, "ACL memory copy failed, return %d", ret);
       }
+      auto stream_ret = aclrtSynchronizeStream(stream);
+      TNG_ASSERT(stream_ret == ACL_ERROR_NONE, "ACL sync stream failed, return %d", stream_ret);
+      auto ret = aclrtMemcpy(host_input_holders_[i].first.data_ptr(), host_input_holders_[i].second,
+                             inputs[i].data_ptr(), host_input_holders_[i].second, ACL_MEMCPY_HOST_TO_DEVICE);
+      TNG_ASSERT(ret == ACL_ERROR_NONE, "ACL memory copy failed, return %d", ret);
       TNG_LOG(DEBUG) << "Assemble aten host input " << i << " " << DebugString(inputs[i]) << " to "
                      << DebugString(inputs_holder_[i]);
     } else {
