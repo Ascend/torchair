@@ -485,6 +485,42 @@ class CacheCompileSt(unittest.TestCase):
             model_match_cache(*prompt1)  # cache hint
             model_match_cache(*prompt2)  # cache hint
 
+    def test_cache_hint_for_anonymous_buffer_with_comma(self):
+        class AnonymousModule(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.buffer = torch.ones(2, 2)
+
+            def forward(self, x):
+                return torch.add(x, self.buffer)
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.layers = [AnonymousModule()]  # buffer name will be self.layers[0].buffer
+                self.cached_forward = torchair.inference.cache_compile(self.raw_forward)
+
+            def forward(self, x):
+                return self.cached_forward(x)
+
+            def raw_forward(self, x):
+                return self.layers[0](torch.add(x, x))
+
+        model = Model()
+
+        cache_dir = CompiledModel.get_cache_bin(model.raw_forward)
+        ModelCacheSaver.remove_cache(cache_dir)
+
+        prompt1 = torch.ones(2, 2),
+        prompt2 = torch.ones(2, 2),
+        model(*prompt1)
+        model(*prompt2)
+
+        model_match_cache = Model()
+        with forbidden_attr(ModelCacheSaver, '__call__'):
+            model_match_cache(*prompt1)  # cache hint
+            model_match_cache(*prompt2)  # cache hint
+
     def test_cache_hint_gears(self):
         class Model(torch.nn.Module):
             def __init__(self):
