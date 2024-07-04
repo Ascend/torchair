@@ -14,10 +14,24 @@
 #include "logger.h"
 #include "session.h"
 #include "utils.h"
+#include "acl/acl_op_compiler.h"
 
 char *CreateMessage(const char *format, va_list arg);
 
 namespace {
+tng::Status GetAclCompileopt(aclCompileOpt opt, std::string& val) {
+  auto opt_size = aclGetCompileoptSize(opt);
+  char value[opt_size];
+  auto acl_ret = aclGetCompileopt(opt, value, opt_size);
+  if (acl_ret == ACL_ERROR_API_NOT_SUPPORT) {
+    TNG_LOG(WARNING) << "ACL get compile opt, " << opt << " unsupport, opt size " << opt_size;
+    return tng::Status::Success();
+  }
+  TNG_ASSERT(acl_ret == ACL_SUCCESS, "ACL get compile opt failed, return %d", acl_ret);
+  val = std::string(value);
+  return tng::Status::Success();
+}
+
 tng::Status NormalizeCompileOptions(const std::map<ge::AscendString, ge::AscendString> &options,
                                     std::map<ge::AscendString, ge::AscendString> &normalized_options) {
   normalized_options = options;
@@ -26,6 +40,12 @@ tng::Status NormalizeCompileOptions(const std::map<ge::AscendString, ge::AscendS
   // (void)normalized_options.insert(std::make_pair(ge::ATOMIC_CLEAN_POLICY.c_str(), "1"));
 
   (void)normalized_options.insert(std::make_pair(ge::MEMORY_OPTIMIZATION_POLICY.c_str(), "MemoryPriority"));
+
+  std::string val = "";
+  TNG_RETURN_IF_ERROR(GetAclCompileopt(ACL_OP_DEBUG_OPTION, val));
+  if (!val.empty()) {
+    (void)normalized_options.insert(std::make_pair("op_debug_option", val.c_str()));
+  }
 
   return tng::Status::Success();
 }

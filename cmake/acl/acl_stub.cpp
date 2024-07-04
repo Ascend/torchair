@@ -1,8 +1,11 @@
 #include "acl/acl_rt.h"
+#include "acl/acl_op_compiler.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+constexpr size_t COMPILE_OPT_SIZE = 256U;
 
 aclError aclrtSetDevice(int32_t deviceId) {
   return ACL_ERROR_NONE;
@@ -45,6 +48,14 @@ aclError aclrtSynchronizeDevice(void) {
 
 aclError aclrtSynchronizeStream(aclrtStream stream) {
     return ACL_SUCCESS;
+}
+
+size_t aclGetCompileoptSize(aclCompileOpt opt) {
+  return COMPILE_OPT_SIZE;
+}
+
+aclError aclGetCompileopt(aclCompileOpt opt, char *value, size_t length) {
+  return ACL_SUCCESS;
 }
 
 #ifdef __cplusplus
