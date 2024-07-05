@@ -5,6 +5,17 @@ from torchair.ge_concrete_graph.utils import is_host_data_tensor, force_op_unkno
 from . import ge_apis as ge
 
 
+def is_contiguous(stride, shape):
+    if len(stride) <= 1:
+        return True
+    if stride[-1] != 1:
+        return False
+    for i in range(len(shape) - 1):
+        if hint_int(stride[i]) != hint_int(stride[i + 1]) * hint_int(shape[i + 1]):
+            return False
+    return True
+
+
 def gen_contiguous_storagesize(shapes):
     if not isinstance(shapes, (tuple, list)):
         raise AssertionError(f"Invalid shape type:{type(shapes)} to generate contiguous stride.")
@@ -154,7 +165,7 @@ def optimize_view(npu_input, graph):
         return view_operator_map[(npu_input_src, meta_input)]
 
     #经过view类操作的arg判断是否为长度为1，若为连续则只经过Reshape；若为非连续则进入反推判断
-    if len(meta_shape) == 1 or all(shape == 1 for shape in meta_shape):
+    if is_contiguous(meta_shape, meta_stride):
         npu_input = _build_reshape_node(npu_input, npu_input, meta_shape, graph)
     else:
         npu_input = _optimize_non_contiguous(npu_input, meta_input, graph)
