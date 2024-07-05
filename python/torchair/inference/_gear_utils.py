@@ -110,12 +110,12 @@ def generate_dynamic_dims_option(named_inputs_info, config):
     else:
         raise AssertionError("dynamic_gears_merge_policy only support zip and product.")
 
-    duplicated_dynamic_dims = list(set(dynamic_dims))
-    if len(duplicated_dynamic_dims) > 100:
+    unique_dynamic_dims = list(set(dynamic_dims))
+    if len(unique_dynamic_dims) > 100:
         raise AssertionError(f'The total number of gears set cannot exceed 100, '
-                             f'and the current number of gears is: {len(duplicated_dynamic_dims)}')
+                             f'and the current number of gears is: {len(unique_dynamic_dims)}')
 
-    option_dynamic_dims = ';'.join([','.join(map(str, sublist)) for sublist in duplicated_dynamic_dims])
+    option_dynamic_dims = ';'.join([','.join(map(str, sublist)) for sublist in unique_dynamic_dims])
     ge_option["ge.dynamicDims"] = option_dynamic_dims
 
     return ge_option

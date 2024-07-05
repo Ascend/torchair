@@ -3,6 +3,7 @@ import time
 import os
 import shutil
 import logging
+import unittest.mock
 import torch
 import torch.distributed._functional_collectives as funcol
 import torchair
@@ -179,7 +180,7 @@ class TorchairSt(unittest.TestCase):
 
             def __init__(self):
                 super().__init__()
-                self.p1 = torch.nn.Parameter(torch.randn([1024, 1024, 1024], dtype=torch.float16))  # 2G weight
+                self.p1 = torch.nn.Parameter(torch.randn([10, 10, 10], dtype=torch.float16))
 
             def forward(self, x, y):
                 x = x + y
@@ -191,8 +192,26 @@ class TorchairSt(unittest.TestCase):
         y = torch.randn(2, 4)
 
         export_path1 = "test_export_file_path"
+        def my_warp_fun(inputs, weight_name, export_graph):
+            protobuf_size = export_graph.ByteSize()
+            weight_externalized = False
+            used_weight_num = 0
+            # patch max protobuf_size very samll
+            max_protobuf_size = 10 
+            for i, inp in enumerate(inputs):
+                if id(inp) in weight_name:
+                    protobuf_size += inp.element_size() * inp.nelement()
+                    used_weight_num += 1
 
-        torchair.dynamo_export(x, y, model=model, export_path=export_path1, dynamic=False)
+            if protobuf_size > max_protobuf_size:
+                weight_externalized = True
+
+            logger.info(f'export: protobuf_size and weight to const size = {protobuf_size} , ' + \
+                        f'max_protobuf_size {max_protobuf_size}, used_weight_num = {used_weight_num}' + \
+                        f' , and weight_externalized is {weight_externalized}')
+            return weight_externalized, used_weight_num
+        with unittest.mock.patch('torchair._utils.export_utils._is_weight_externalized', my_warp_fun):
+            torchair.dynamo_export(x, y, model=model, export_path=export_path1, dynamic=False)
 
         dumped_file_list = get_dumped_file_list(export_path1)
         dumped_file_list.sort(key=lambda file_name: os.path.getmtime(os.path.join(export_path1, file_name)))
