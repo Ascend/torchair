@@ -14,10 +14,14 @@
 
 支持的Hugging Face大模型:
 
-- llama2
+- llama2、llama3
+- chatglm
+- qwen2
 
 # 公告
 
+- 2024年7月5号：提供qwen2适配好的npu模型结构和前端切分分布式执行样例
+- 2024年6月3号：提供chatglm3适配好的npu模型结构和前端切分分布式执行样例
 - 2024年5月6号：提供llama2基于分离部署api的适配样例
 - 2024年3月6号：提供llama2适配好的npu模型结构和前端切分分布式执行样例
 
@@ -60,17 +64,20 @@ pip3 install -r requirement.txt
 
 # 模型及数据集
 
-| 数据集 | 参数量                                                       |
-| ------ | ------------------------------------------------------------ |
-| llama2 | [70b](https://huggingface.co/TheBloke/Llama-2-70B-fp16/tree/main) |
-| llama3 | [70b](https://huggingface.co/meta-llama/Meta-Llama-3-70B/tree/main) |
-| chatglm3 | [6b](https://huggingface.co/THUDM/chatglm3-6b) |
+| 数据集      | 参数量                                                                                               |
+|----------|---------------------------------------------------------------------------------------------------|
+| llama2   | [70b](https://huggingface.co/TheBloke/Llama-2-70B-fp16/tree/main)                                 |
+| llama3   | [70b](https://huggingface.co/meta-llama/Meta-Llama-3-70B/tree/main)                               |
+| chatglm3 | [6b](https://huggingface.co/THUDM/chatglm3-6b)                                                    |
+| qwen2    | [7B](https://huggingface.co/Qwen/Qwen2-7B) \| [72B](https://huggingface.co/Qwen/Qwen2-72B) |
 
 # 快速体验
 
-[llama](./llama#性能测试)
+[llama](./llama/README.md#性能测试)
 
-[chatglm3](./chatglm#性能测试)
+[chatglm3](./chatglm/README.md#性能测试)
+
+[qwen2](./qwen/README.md#性能测试)
 
 # 新模型改造
 

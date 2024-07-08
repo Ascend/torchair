@@ -6,9 +6,9 @@
 
 [模型迁移指导](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/80RC1alpha003/devguide/moddevg/torchair/torchair_01_0001.html)
 
-**注意**：模型迁移，先把eager模式跑通，然后再进行下面的图模式修改
+**注意**：需先保证模型在npu上的eager模式功能正常和精度正确，然后再进行以下图模式的迁移和适配。
 
-此适配点主要是加入走pytorch图模式分支。
+此适配点主要是新增pytorch图模式分支。
 
 ```python
 # transformers/generation/utils.py的greedy_search函数while True前添加
