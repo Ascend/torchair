@@ -578,13 +578,20 @@ class GeGraph(object):
         if create_pg and len(self.used_process_group) != 0:
             rank = torch.distributed.get_rank()
             created_group = {}
+            for pg in torch.distributed.distributed_c10d._world.pg_map.keys():
+                if torch.distributed.distributed_c10d.get_backend(pg) != "hccl":
+                    continue
+                hcom_pg_name = pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank)
+                created_group[hcom_pg_name] = hcom_pg_name
+
             for op in self._proto.op:
                 group_name = op.attr["group"].s.decode()
                 if group_name not in self.used_process_group:
                     continue
                 if group_name not in created_group:
                     rank_list = self.used_process_group[group_name]
-                    pg = torch.distributed.distributed_c10d.new_group(rank_list)
+                    pg = torch.distributed.distributed_c10d._find_or_create_pg_by_ranks_and_tag(
+                        group_name, rank_list, len(rank_list))
                     new_group_name = pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank)
                     created_group[group_name] = new_group_name
                     logger.debug(f'Recover used process group name {group_name} from rank_list {rank_list} '
