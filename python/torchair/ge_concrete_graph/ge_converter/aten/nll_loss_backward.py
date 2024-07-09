@@ -66,4 +66,4 @@ def conveter_aten_nll_loss_backward_grad_input(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::nll_loss_backward.grad_input(Tensor grad_output, Tensor self, Tensor target, Tensor? weight, int reduction, SymInt ignore_index, Tensor total_weight, *, Tensor(a!) grad_input) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.nll_loss_backward.grad_input ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.nll_loss_backward.grad_input ge_converter is not supported!")

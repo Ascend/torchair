@@ -49,7 +49,7 @@ def conveter_aten_scatter_add_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::scatter_add.out(Tensor self, int dim, Tensor index, Tensor src, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.scatter_add.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.scatter_add.out ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.scatter_add.dimname)
@@ -57,4 +57,4 @@ def conveter_aten_scatter_add_dimname(
     self: Tensor, dim: str, index: Tensor, src: Tensor, meta_outputs: TensorSpec = None
 ):
     """NB: aten::scatter_add.dimname(Tensor self, str dim, Tensor index, Tensor src) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.scatter_add.dimname ge_converter is not implemented!")
+    raise RuntimeError("aten::scatter_add.dimname is not yet supported with named tensors. ")

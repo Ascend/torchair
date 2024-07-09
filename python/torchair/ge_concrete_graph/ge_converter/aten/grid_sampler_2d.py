@@ -72,4 +72,4 @@ def conveter_aten_grid_sampler_2d_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::grid_sampler_2d.out(Tensor input, Tensor grid, int interpolation_mode, int padding_mode, bool align_corners, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.grid_sampler_2d.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.grid_sampler_2d.out ge_converter is not supported!")

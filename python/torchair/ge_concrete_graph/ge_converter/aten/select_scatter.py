@@ -58,4 +58,4 @@ def conveter_aten_select_scatter_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::select_scatter.out(Tensor self, Tensor src, int dim, SymInt index, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.select_scatter.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.select_scatter.out ge_converter is not supported!")

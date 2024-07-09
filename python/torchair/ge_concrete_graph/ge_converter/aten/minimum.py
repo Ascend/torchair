@@ -47,4 +47,4 @@ def conveter_aten_minimum_out(
     self: Tensor, other: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::minimum.out(Tensor self, Tensor other, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.minimum.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.minimum.out ge_converter is not supported!")

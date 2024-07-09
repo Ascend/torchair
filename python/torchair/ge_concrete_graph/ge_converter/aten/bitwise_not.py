@@ -44,4 +44,4 @@ def conveter_aten_bitwise_not_out(
     self: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::bitwise_not.out(Tensor self, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.bitwise_not.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.bitwise_not.out ge_converter is not supported!")

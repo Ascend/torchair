@@ -50,4 +50,4 @@ def conveter_aten__log_softmax_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::_log_softmax.out(Tensor self, int dim, bool half_to_float, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten._log_softmax.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten._log_softmax.out ge_converter is not supported!")
