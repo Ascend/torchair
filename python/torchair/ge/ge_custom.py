@@ -22,6 +22,7 @@ def _assemble_inputs(op, inputs):
             continue
 
         if tensor is None:
+            op.input.append('')
             op.input_desc.add().CopyFrom(get_invalid_desc())
             op.input_desc[-1].name = name
             continue

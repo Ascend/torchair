@@ -91,7 +91,7 @@ class CustomOpSt(unittest.TestCase):
         op_def: OpDef = tensor.node
 
         self.assertEqual(op_def.type, 'CustomOp')
-        self.assertEqual(len(op_def.input), 0)
+        self.assertEqual(len(op_def.input), 1)
         self.assertEqual(len(op_def.input_desc), 1)
         self.assertEqual(op_def.input_desc[0].name, 'x')
 
