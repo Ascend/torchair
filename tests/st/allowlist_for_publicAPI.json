@@ -4,7 +4,8 @@
         "dynamo_export",
         "get_compiler",
         "get_npu_backend",
-        "use_internal_format_weight"
+        "use_internal_format_weight",
+        "register_fx_node_ge_converter"
       ],
     "torchair.ge": [
         "custom_op",
@@ -14,5 +15,27 @@
         "Format",
         "Tensor",
         "TensorSpec"
-      ]
+      ],
+    "torchair.ge.attr": [
+        "Bool",
+        "DataType",
+        "Float",
+        "Int",
+        "ListBool",
+        "ListDataType",
+        "ListFloat",
+        "ListInt",
+        "ListListFloat",
+        "ListListInt",
+        "ListStr",
+        "Str"
+      ],
+    "torchair.inference": [
+      "cache_compile",
+      "readable_cache",
+      "set_dim_gears"
+    ],
+    "torchair.llm_datadist": [
+      "create_npu_tensors"
+    ]
 }

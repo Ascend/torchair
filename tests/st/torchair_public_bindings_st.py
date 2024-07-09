@@ -3,6 +3,7 @@ import importlib
 from typing import Callable
 import inspect
 import os
+import json
 import unittest
 from pathlib import Path
 
@@ -32,6 +33,22 @@ def _discover_path_importables(pkg_pth, pkg_name):
             (str(pkg_dir_path),), prefix=f'{pkg_pref}.', onerror=lambda x: print(f'Failed import {x}')
         )
         )
+
+
+def _read_allow_api_json():
+    with open(os.path.join(os.path.dirname(__file__), 'allowlist_for_publicAPI.json')) as allow_file_json:
+        allow_api_dict = json.load(allow_file_json)
+        allow_api = []
+        for key, values in allow_api_dict.items():
+            allow_api.extend([f'{key}.{value}' for value in values])
+    return allow_api
+
+
+def _is_alias(public_api_fun_name, public_api):
+
+    if public_api.split('.')[-1] in public_api_fun_name:
+        return True
+    return False
 
 
 SKIP_CHECK_MODULES = ['torchair.ge_concrete_graph']
@@ -70,6 +87,10 @@ class TestPublicBindings(unittest.TestCase):
           `__module__` that start with the current submodule.
         '''
         failure_list = []
+        allow_api = _read_allow_api_json()
+        public_api_fun_name = set()
+        for api in allow_api:
+            public_api_fun_name.add(api.split('.')[-1])
 
         def test_module(modname):
             try:
@@ -143,6 +164,12 @@ class TestPublicBindings(unittest.TestCase):
                     failure_list.append("  - You can do either of these two things to fix this problem:")
                     failure_list.append(f"    - To make it{looks_public_str} public: {fix_is_public}")
                     failure_list.append(f"    - To make it{is_public_str} look public: {fix_looks_public}")
+
+                if is_public and looks_public:
+                    public_api = f"{modname}.{elem}"
+                    if public_api not in allow_api and not _is_alias(public_api_fun_name, public_api):
+                        failure_list.append(f"# {public_api} is public api, "
+                                            f"please add it to allowlist_for_publicAPI.json.")
 
             if hasattr(mod, '__all__'):
                 public_api = mod.__all__
