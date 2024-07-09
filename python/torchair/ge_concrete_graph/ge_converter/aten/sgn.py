@@ -41,4 +41,4 @@ def conveter_aten_sgn_out(
     self: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::sgn.out(Tensor self, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.sgn.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.sgn.out ge_converter is not supported!")

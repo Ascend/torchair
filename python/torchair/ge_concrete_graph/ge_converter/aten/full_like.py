@@ -60,4 +60,4 @@ def conveter_aten_full_like_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::full_like.out(Tensor self, Scalar fill_value, *, MemoryFormat? memory_format=None, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.full_like.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.full_like.out ge_converter is not supported!")

@@ -58,7 +58,7 @@ def conveter_aten_lt_Scalar_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::lt.Scalar_out(Tensor self, Scalar other, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.lt.Scalar_out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.lt.Scalar_out ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.lt.Tensor_out)
@@ -66,31 +66,31 @@ def conveter_aten_lt_Tensor_out(
     self: Tensor, other: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::lt.Tensor_out(Tensor self, Tensor other, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.lt.Tensor_out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.lt.Tensor_out ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.lt.int)
 def conveter_aten_lt_int(a: int, b: int, meta_outputs: TensorSpec = None):
     """NB: aten::lt.int(int a, int b) -> bool"""
-    raise NotImplementedError("torch.ops.aten.lt.int ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.lt.int ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.lt.float)
 def conveter_aten_lt_float(a: float, b: float, meta_outputs: TensorSpec = None):
     """NB: aten::lt.float(float a, float b) -> bool"""
-    raise NotImplementedError("torch.ops.aten.lt.float ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.lt.float ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.lt.int_float)
 def conveter_aten_lt_int_float(a: int, b: float, meta_outputs: TensorSpec = None):
     """NB: aten::lt.int_float(int a, float b) -> bool"""
-    raise NotImplementedError("torch.ops.aten.lt.int_float ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.lt.int_float ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.lt.float_int)
 def conveter_aten_lt_float_int(a: float, b: int, meta_outputs: TensorSpec = None):
     """NB: aten::lt.float_int(float a, int b) -> bool"""
-    raise NotImplementedError("torch.ops.aten.lt.float_int ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.lt.float_int ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.lt.default)
@@ -98,10 +98,10 @@ def conveter_aten_lt_default(
     a: Union[Number, Tensor], b: Union[Number, Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::lt(Scalar a, Scalar b) -> bool"""
-    raise NotImplementedError("torch.ops.aten.lt.default ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.lt.default ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.lt.str)
 def conveter_aten_lt_str(a: str, b: str, meta_outputs: TensorSpec = None):
     """NB: aten::lt.str(str a, str b) -> bool"""
-    raise NotImplementedError("torch.ops.aten.lt.str ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.lt.str ge_converter is not supported!")

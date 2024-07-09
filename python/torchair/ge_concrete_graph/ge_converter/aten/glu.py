@@ -43,4 +43,4 @@ def conveter_aten_glu_out(
     self: Tensor, dim: int = -1, *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::glu.out(Tensor self, int dim=-1, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.glu.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.glu.out ge_converter is not supported!")

@@ -48,4 +48,4 @@ def conveter_aten_glu_backward_grad_input(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::glu_backward.grad_input(Tensor grad_output, Tensor self, int dim, *, Tensor(a!) grad_input) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.glu_backward.grad_input ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.glu_backward.grad_input ge_converter is not supported!")

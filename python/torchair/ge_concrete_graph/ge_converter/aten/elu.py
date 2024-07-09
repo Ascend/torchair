@@ -52,4 +52,4 @@ def conveter_aten_elu_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::elu.out(Tensor self, Scalar alpha=1, Scalar scale=1, Scalar input_scale=1, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.elu.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.elu.out ge_converter is not supported!")

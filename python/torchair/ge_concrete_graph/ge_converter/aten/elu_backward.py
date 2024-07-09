@@ -64,4 +64,4 @@ def conveter_aten_elu_backward_grad_input(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::elu_backward.grad_input(Tensor grad_output, Scalar alpha, Scalar scale, Scalar input_scale, bool is_result, Tensor self_or_result, *, Tensor(a!) grad_input) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.elu_backward.grad_input ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.elu_backward.grad_input ge_converter is not supported!")

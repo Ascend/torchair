@@ -80,7 +80,7 @@ def conveter_aten_logsumexp_names(
     self: Tensor, dim: List[str], keepdim: bool = False, meta_outputs: TensorSpec = None
 ):
     """NB: aten::logsumexp.names(Tensor self, str[1] dim, bool keepdim=False) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.logsumexp.names ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.logsumexp.names ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.logsumexp.names_out)
@@ -93,7 +93,7 @@ def conveter_aten_logsumexp_names_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::logsumexp.names_out(Tensor self, str[1] dim, bool keepdim=False, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.logsumexp.names_out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.logsumexp.names_out ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.logsumexp.out)
@@ -106,4 +106,4 @@ def conveter_aten_logsumexp_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::logsumexp.out(Tensor self, int[1] dim, bool keepdim=False, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.logsumexp.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.logsumexp.out ge_converter is not supported!")
