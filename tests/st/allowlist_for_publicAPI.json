@@ -1,0 +1,18 @@
+{
+    "torchair": [
+        "CompilerConfig",
+        "dynamo_export",
+        "get_compiler",
+        "get_npu_backend",
+        "use_internal_format_weight"
+      ],
+    "torchair.ge": [
+        "custom_op",
+        "Const",
+        "Cast",
+        "DataType",
+        "Format",
+        "Tensor",
+        "TensorSpec"
+      ]
+}
