@@ -96,9 +96,6 @@ def conveter_aten_arange_start_step(
 ):
     """NB: aten::arange.start_step(Scalar start, Scalar end, Scalar step=1, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
     target_dtype = dtype if dtype else meta_outputs.dtype
-    start = ge.Cast(start, dst_type=target_dtype)
-    step = ge.Cast(step, dst_type=target_dtype)
-    end = ge.Cast(end, dst_type=target_dtype)
     result = dtype_promote(ge.Range(start, end, step), target_dtype=target_dtype)
 
     # layout, pin_memory and device have no effect on constructing graph.
