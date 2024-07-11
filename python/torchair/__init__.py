@@ -24,4 +24,4 @@ if not pkg_resources.parse_version(protobuf_version) >= pkg_resources.parse_vers
     raise AssertionError
 
 def register_fx_node_ge_converter(aten_op):
-    _register_fx_node_ge_converter(aten_op)
+    return _register_fx_node_ge_converter(aten_op)

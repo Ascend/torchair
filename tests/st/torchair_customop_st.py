@@ -182,6 +182,42 @@ class CustomOpSt(unittest.TestCase):
                          "Invalid output type:tuple[str] vs expect tuple[str, int] for custom "
                          "op 'CustomOp'.")
 
+    def test_public_api_register_fx_node_ge_converter(self):
+        from torchair import register_fx_node_ge_converter
+        import torch
+        import inspect
+        from torch.library import Library, impl
+        m = Library("test", "DEF")
+        m.define("custom_op(Tensor input1) -> Tensor")
+
+        @impl(m, "custom_op", "Meta")
+        def custom_op_meta(x, y):
+            return torch.empty_like(x)
+
+        from torchair.ge_concrete_graph.fx2ge_converter import Converter, _wrap_converter
+        test_add_opp = []
+        def my_warp_fun(self, converter):
+            wrapped_converter = _wrap_converter(converter)
+            if 'meta_outputs' in inspect.signature(converter).parameters:
+                wrapped_converter.require_meta = True
+            else:
+                wrapped_converter.require_meta = False
+            try:
+                self._aten_op._ge_converter = wrapped_converter
+                # 记录个UT 可观测的信息
+                test_add_opp.append(self._aten_op)
+            except:
+                global _CONVERTERS
+                _CONVERTERS.update({self._aten_op: wrapped_converter})
+            return self
+
+        with unittest.mock.patch.object(Converter, '__call__', my_warp_fun):
+            @register_fx_node_ge_converter(torch.ops.test.custom_op.default)
+            def conveter_custom_op(input1, out, meta_outputs):
+                return input1
+
+        self.assertTrue(torch.ops.test.custom_op.default in test_add_opp)
+
 
 if __name__ == '__main__':
     unittest.main()
