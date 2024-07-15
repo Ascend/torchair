@@ -88,6 +88,25 @@ attention_mask = _prepare_4d_causal_attention_mask(
 """
 ```
 
+```python
+# 修改Qwen2Attention中forward逻辑，避免oom问题
+if q_len > 1:
+    attn_output = attn_output.reshape(bsz, q_len, self.hidden_size)
+else:
+    attn_output = attn_output.reshape(bsz, self.hidden_size)
+
+attn_output = self.o_proj(attn_output)
+
+if q_len == 1:
+    attn_output = attn_output.unsqueeze(1)
+
+""" 替换部分
+attn_output = attn_output.reshape(bsz, q_len, self.hidden_size)
+
+attn_output = self.o_proj(attn_output)
+"""
+```
+
 # 性能优化
 
 **注：** 在modeling_qwen2.py文件中，被修改的原函数都加了'_'前缀，可用于对比修改后的函数变化。下面列出了优化项主要的改动，不同的大模型适配完主要改动后，再根据模型实际代码逻辑进行调试。
@@ -611,15 +630,15 @@ def merge_qkv_weight(self, tp_size=1):
     <td class="tg-0pky">原始脚本</td>
     <td class="tg-0pky">1179ms</td>
     <td class="tg-0pky">207ms</td>
-    <td class="tg-0pky">oom</td>
-    <td class="tg-0pky">/</td>
+    <td class="tg-0pky">1228ms</td>
+    <td class="tg-0pky">165ms</td>
   </tr>
   <tr>
     <td class="tg-0pky">固定kv cache</td>
     <td class="tg-0pky">1185ms</td>
     <td class="tg-0pky">206ms</td>
-    <td class="tg-0pky">oom</td>
-    <td class="tg-0pky">/</td>
+    <td class="tg-0pky">1092ms</td>
+    <td class="tg-0pky">65ms</td>
   </tr>
   <tr>
     <td class="tg-0pky">替换FlashAttention&amp;&amp;cos/sin优化</td>

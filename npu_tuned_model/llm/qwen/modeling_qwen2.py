@@ -406,9 +406,15 @@ class Qwen2Attention(nn.Module):
                                                               atten_mask=attention_mask,
                                                               num_key_value_heads=self.num_key_value_heads)
 
-        attn_output = attn_output.reshape(bsz, q_len, self.hidden_size)
+        if q_len > 1:
+            attn_output = attn_output.reshape(bsz, q_len, self.hidden_size)
+        else:
+            attn_output = attn_output.reshape(bsz, self.hidden_size)
 
         attn_output = self.o_proj(attn_output)
+
+        if q_len == 1:
+            attn_output = attn_output.unsqueeze(1)
 
         if not output_attentions:
             attn_weights = None
