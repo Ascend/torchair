@@ -11,11 +11,11 @@ from torchair.inference import set_dim_gears
 from torchair.core._backend import TorchNpuGraph
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import GeConcreteGraph
-from torchair.ge_concrete_graph.ge_graph import GeGraph, DataType
+from torchair.ge._ge_graph import GeGraph, DataType
 from torchair.core._backend import initialize_graph_engine
 from torchair.ge_concrete_graph.fx2ge_converter import ExecutorType, Placement, _normalize_ge_graph
 from torchair.inference._gear_utils import generate_dynamic_dims_option
-from torchair.ge_concrete_graph.ge_graph import _ValueType, _GeInputInfo
+from torchair.ge._ge_graph import _ValueType, _GeInputInfo
 
 
 logger.setLevel(logging.DEBUG)

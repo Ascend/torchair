@@ -1,8 +1,8 @@
 from typing import Dict, Union, List, Optional, Tuple
 from torchair.ge.attr import _Attr
-from torchair.ge_concrete_graph.ge_graph import get_default_ge_graph, next_unique_name
-from torchair.ge_concrete_graph.ge_graph import Tensor
-from torchair.ge_concrete_graph.ge_graph import get_invalid_desc
+from torchair.ge._ge_graph import get_default_ge_graph, next_unique_name
+from torchair.ge._ge_graph import Tensor
+from torchair.ge._ge_graph import get_invalid_desc
 
 
 def _assemble_inputs(op, inputs):

@@ -1,6 +1,6 @@
 from torch.fx.experimental.symbolic_shapes import hint_int
 from torchair.core._concrete_graph import ValuePack
-from torchair.ge_concrete_graph.ge_graph import Tensor, is_sym, DataType
+from torchair.ge._ge_graph import Tensor, is_sym, DataType
 from torchair.ge_concrete_graph.utils import is_host_data_tensor, force_op_unknown_shape
 from . import ge_apis as ge
 

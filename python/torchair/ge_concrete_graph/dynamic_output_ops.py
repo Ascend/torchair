@@ -1,10 +1,10 @@
 from typing import Any, Dict, List, Tuple, Union, Callable, Optional
 from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef, OpDef, TensorDescriptor, TensorDef
-from torchair.ge_concrete_graph.ge_graph import get_default_ge_graph, next_unique_name
-from torchair.ge_concrete_graph.ge_graph import auto_convert_to_tensor
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType
-from torchair.ge_concrete_graph.ge_graph import compat_as_bytes, compat_as_bytes_list
-from torchair.ge_concrete_graph.ge_graph import trans_to_list_list_int, trans_to_list_list_float
+from torchair.ge._ge_graph import get_default_ge_graph, next_unique_name
+from torchair.ge._ge_graph import auto_convert_to_tensor
+from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
+from torchair.ge._ge_graph import compat_as_bytes, compat_as_bytes_list
+from torchair.ge._ge_graph import trans_to_list_list_int, trans_to_list_list_float
 from torchair.ge_concrete_graph import auto_generated_ge_raw_ops as raw_ops
 
 

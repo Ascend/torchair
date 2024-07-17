@@ -2,12 +2,12 @@
 # Summary: total 1627, generated 1610, skipped 17
 from typing import Any, Dict, List, Tuple, Union, Callable, Optional
 from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef, OpDef, TensorDescriptor, TensorDef
-from torchair.ge_concrete_graph.ge_graph import get_default_ge_graph, next_unique_name
-from torchair.ge_concrete_graph.ge_graph import auto_convert_to_tensor
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType, TensorType
-from torchair.ge_concrete_graph.ge_graph import compat_as_bytes, compat_as_bytes_list
-from torchair.ge_concrete_graph.ge_graph import trans_to_list_list_int, trans_to_list_list_float
-from torchair.ge_concrete_graph.ge_graph import get_invalid_desc
+from torchair.ge._ge_graph import get_default_ge_graph, next_unique_name
+from torchair.ge._ge_graph import auto_convert_to_tensor
+from torchair.ge._ge_graph import Tensor, TensorSpec, DataType, TensorType
+from torchair.ge._ge_graph import compat_as_bytes, compat_as_bytes_list
+from torchair.ge._ge_graph import trans_to_list_list_int, trans_to_list_list_float
+from torchair.ge._ge_graph import get_invalid_desc
 # IR Const skipped as Deformed prototype
 # IR Constant skipped as Deformed prototype
 # IR Data skipped as Deformed prototype

@@ -5,8 +5,9 @@ import functools
 import threading
 import contextlib
 import inspect
-import numpy as np
 from enum import Enum
+from abc import abstractmethod
+import numpy as np
 
 import torch
 from torch.fx.node import Argument, Target
@@ -16,7 +17,48 @@ from torchair.core.utils import logger
 from torchair.ge_concrete_graph.ge_ir_pb2 import ModelDef, GraphDef, OpDef, AttrDef, TensorDescriptor
 from torchair.ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
 
+
 local_variable = threading.local()
+
+
+class TensorBase():
+    @abstractmethod
+    def __init__(self):
+        ...
+
+    @abstractmethod
+    def index(self):
+        ...
+
+    @abstractmethod
+    def dtype():
+        ...
+
+    @abstractmethod
+    def rank():
+        ...
+
+    __module__ = "torchair.ge"
+
+
+class TensorSpecBase():
+    @abstractmethod
+    def __init__(self):
+        ...
+
+    @abstractmethod
+    def dtype():
+        ...
+
+    @abstractmethod
+    def rank():
+        ...
+
+    @abstractmethod
+    def size():
+        ...
+
+    __module__ = "torchair.ge"
 
 
 class Format(Enum):
@@ -35,6 +77,8 @@ class Format(Enum):
     FORMAT_FRACTAL_Z_3D = 33
     FORMAT_NC = 35
     FORMAT_NCL = 47
+
+    __module__ = "torchair.ge"
 
 
 class DataType:
@@ -73,6 +117,8 @@ class DataType:
     DT_UINT2 = 32           # uint2 type
     DT_COMPLEX32 = 33       # complex64 type
     DT_MAX = 34             # Mark the boundaries of data types
+
+    __module__ = "torchair.ge"
 
 
 class TensorType:
@@ -568,7 +614,7 @@ class GeGraph(object):
         python_code += '# -*- coding: utf-8 -*-\n'
         python_code += 'from torch import tensor\n'
         python_code += 'from torchair.ge_concrete_graph import ge_apis as ge\n'
-        python_code += 'from torchair.ge_concrete_graph.ge_graph import get_default_ge_graph\n\n'
+        python_code += 'from torchair.ge._ge_graph import get_default_ge_graph\n\n'
         return python_code
 
     def SerializeToString(self):
@@ -767,7 +813,7 @@ def next_unique_name(name: str, op: str):
     return f'{op}_{_g_name_dict[op]}'
 
 
-class TensorSpec:
+class TensorSpec(TensorSpecBase):
     def __init__(self, meta_output):
         self._meta = meta_output
         if isinstance(meta_output, torch.Tensor):
@@ -807,7 +853,7 @@ class TensorSpec:
         return f'TensorSpec(dtype={_ge_proto_dtype_str(_ge_dtype_to_ge_proto_dtype(self._ge_dtype))}, size={self._symsize})'
 
 
-class Tensor:
+class Tensor(TensorBase):
     def __init__(self, node: OpDef, index: int = 0):
         self._node = node
         self._index = index

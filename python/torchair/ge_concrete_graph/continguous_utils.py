@@ -8,7 +8,7 @@ from torch._dynamo.utils import detect_fake_mode
 from torch._subclasses.fake_tensor import FakeTensor
 
 from torchair.core.utils import logger
-from torchair.ge_concrete_graph.ge_graph import is_sym, Tensor
+from torchair.ge._ge_graph import is_sym, Tensor
 from torchair.ge_concrete_graph.continguous import gen_contiguous_storagesize, gen_contiguous_stride, optimize_view
 
 view_white_list = {'aten.permute.default': 0, 'aten.view.default': 0, 'aten.transpose.int': 0, 'aten.t.default': 0}

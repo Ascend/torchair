@@ -18,7 +18,7 @@ import torch
 from torch.types import Number
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType
+from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
 from torchair.ge_concrete_graph.supported_declaration import F32, F16, I64, Support
 from torchair.ge_concrete_graph.utils import dtype_promote
 from torchair.core.utils import logger

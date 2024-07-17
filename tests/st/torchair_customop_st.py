@@ -4,7 +4,7 @@ import unittest
 import torchair
 import torchair.ge as ge
 from torchair.ge_concrete_graph import ge_apis as raw_ops
-from torchair.ge_concrete_graph.ge_graph import GeGraph
+from torchair.ge._ge_graph import GeGraph, compat_as_bytes
 from torchair.ge_concrete_graph.ge_ir_pb2 import OpDef
 
 torchair.logger.setLevel(logging.DEBUG)
@@ -217,6 +217,35 @@ class CustomOpSt(unittest.TestCase):
                 return input1
 
         self.assertTrue(torch.ops.test.custom_op.default in test_add_opp)
+
+    def test_Const_Cast(self):
+
+        with GeGraph():
+            const = torchair.ge.Const(10, dtype=ge.DataType.DT_FLOAT, node_name='Const_name', readable=True)
+            data = raw_ops.Data(index=0, dtype=ge.DataType.DT_INT32, placement='CPU', node_name='data')
+            cast = torchair.ge.Cast(data, dst_type=ge.DataType.DT_FLOAT, node_name='cast_name')
+
+            self.assertEqual(const.node.type, 'Const')
+            self.assertEqual(const.node.name, 'Const_name')
+            self.assertEqual(const.node.attr["_readable_value"].s, compat_as_bytes(f"{repr(10)}"))
+            self.assertEqual(cast.node.type, 'Cast')
+            self.assertEqual(cast.node.name, 'cast_name')
+            self.assertEqual(cast.node.attr["dst_type"].i, ge.DataType.DT_FLOAT)
+
+    def test_public_Class(self):
+        self.assertEqual(len(torchair.ge.Tensor.__dict__.keys()), 8)
+        self.assertIn('__init__', torchair.ge.Tensor.__dict__.keys())
+        self.assertIn('index', torchair.ge.Tensor.__dict__.keys())
+        self.assertIn('dtype', torchair.ge.Tensor.__dict__.keys())
+        self.assertIn('rank', torchair.ge.Tensor.__dict__.keys())
+        self.assertEqual(len(torchair.ge.TensorSpec.__dict__.keys()), 8)
+        self.assertIn('__init__', torchair.ge.TensorSpec.__dict__.keys())
+        self.assertIn('dtype', torchair.ge.TensorSpec.__dict__.keys())
+        self.assertIn('rank', torchair.ge.TensorSpec.__dict__.keys())
+        self.assertIn('size', torchair.ge.TensorSpec.__dict__.keys())
+        # 枚举值考虑扩展不做长度校验，取典型值保证接口功能
+        self.assertIn('FORMAT_FRACTAL_NZ', dir(torchair.ge.Format))
+        self.assertIn('DT_BF16', dir(torchair.ge.DataType))
 
 
 if __name__ == '__main__':

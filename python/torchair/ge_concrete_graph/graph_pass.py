@@ -5,9 +5,9 @@ from typing import Any, Dict, List, Tuple, Union, Callable
 import torch
 from torchair.core.utils import logger
 from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef, TensorDescriptor, TensorDef, OpDef
-from torchair.ge_concrete_graph.ge_graph import _ge_proto_dtype_to_ge_dtype, compat_as_bytes, torch_type_to_ge_type, \
+from torchair.ge._ge_graph import _ge_proto_dtype_to_ge_dtype, compat_as_bytes, torch_type_to_ge_type, \
     _SymPackInput, _ValueType, _GeInputInfo
-from torchair.ge_concrete_graph.ge_graph import Tensor as GeTensor
+from torchair.ge._ge_graph import Tensor as GeTensor
 from torchair.ge_concrete_graph.utils import Placement, update_op_input_name_from_mapping, generate_shape_from_tensor
 
 from . import ge_apis as ge

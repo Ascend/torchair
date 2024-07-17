@@ -4,7 +4,7 @@ import sympy
 import torch
 from torchair.core.utils import logger
 from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef
-from torchair.ge_concrete_graph.ge_graph import compat_as_bytes, DataType, is_sym, Tensor, torch_type_to_ge_type, \
+from torchair.ge._ge_graph import compat_as_bytes, DataType, is_sym, Tensor, torch_type_to_ge_type, \
     get_default_ge_graph
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair._utils.path_manager import PathManager

@@ -25,10 +25,10 @@ from torchair.core._concrete_graph import ConcreteGraphBase, ValuePack
 from torchair.core.utils import logger
 from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef, TensorDescriptor, TensorDef, OpDef
 from torchair.ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
-from torchair.ge_concrete_graph.ge_graph import Tensor as GeTensor
-from torchair.ge_concrete_graph.ge_graph import _ValueInput, _TensorInput, _DiscontiguousTensorInput, _RngStatusInput, \
+from torchair.ge._ge_graph import Tensor as GeTensor
+from torchair.ge._ge_graph import _ValueInput, _TensorInput, _DiscontiguousTensorInput, _RngStatusInput, \
     _ValueType, _GeInputInfo
-from torchair.ge_concrete_graph.ge_graph import torch_type_to_ge_type, torch_type_to_ge_proto_type, default_ge_graph, \
+from torchair.ge._ge_graph import torch_type_to_ge_type, torch_type_to_ge_proto_type, default_ge_graph, \
     GeGraph, attr_scope, compat_as_bytes, DataType, Format, TensorSpec, is_sym, sym_to_ge_dtype, assert_args_checkout
 from torchair.ge_concrete_graph.graph_pass import optimize_sym_pack, optimize_reference_op_redundant_copy, \
     replace_data_to_refdata, get_frozen_flag, frozen_data_by_constplaceholder
@@ -41,7 +41,7 @@ from torchair.ge_concrete_graph.continguous_utils import guard_view_input
 from torchair.ge_concrete_graph.export_config_generete import generate_config
 from torchair._utils.export_utils import make_export_graph, get_export_file_name
 from torchair.inference._gear_utils import generate_dynamic_dims_option, get_dim_gears
-from torchair.ge_concrete_graph.ge_graph import compat_as_bytes, _ge_proto_dtype_to_ge_dtype
+from torchair.ge._ge_graph import compat_as_bytes, _ge_proto_dtype_to_ge_dtype
 from . import ge_apis as ge
 
 
@@ -621,7 +621,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         head.splice('''
         import torch
         from torchair.core._backend import initialize_graph_engine
-        from torchair.ge_concrete_graph.ge_graph import GeGraph
+        from torchair.ge._ge_graph import GeGraph
         from torchair.ge_concrete_graph.fx2ge_converter import _update_constplaceholder_attr_from_inputs
         from torchair.ge_concrete_graph.fx2ge_converter import _update_internal_format_from_inputs
         ''')

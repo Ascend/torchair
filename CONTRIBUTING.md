@@ -179,7 +179,7 @@ print(graph_result)
     2. **converter的函数签名**
         
         ```python
-        from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+        from torchair.ge._ge_graph import Tensor, TensorSpec
 
         @register_fx_node_ge_converter(torch.ops.aten.add.Tensor)
         def conveter_aten_add_Tensor(
@@ -192,7 +192,7 @@ print(graph_result)
         ```
         我们逐行解释下上述代码片段：
         ```python
-        from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+        from torchair.ge._ge_graph import Tensor, TensorSpec
         ```
         文件的开头从GE graph的文件中导入了Tensor和TensorSpec，这两个类分别表示GE图上的Tensor和TensorSpec。
         需要特别注意的是，Tensor和TensorSpec绝不是运行时的真实数据，你只能从Tensor上获得dtype和rank信息，而不能从Tensor上获得shape和数据。

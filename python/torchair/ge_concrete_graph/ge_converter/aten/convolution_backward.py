@@ -19,7 +19,7 @@ from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge._ge_graph import Tensor, TensorSpec
 from torchair.ge_concrete_graph.utils import dtype_promote, specific_op_input_layout, \
     specific_op_output_layout
 from torchair.ge_concrete_graph.supported_declaration import F32, F16, Support

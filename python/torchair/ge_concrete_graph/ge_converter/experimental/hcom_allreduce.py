@@ -3,7 +3,7 @@ import torch
 from torch.library import Library
 import torch.distributed.distributed_c10d as c10d
 from torch.distributed.distributed_c10d import _world
-from torchair.ge_concrete_graph.ge_graph import Tensor
+from torchair.ge._ge_graph import Tensor
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
 from torchair.ge_concrete_graph.utils import normalize_reduceop_type, get_group_name_and_record

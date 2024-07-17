@@ -54,9 +54,9 @@ def _make_attr_builder(field, setter=" = {}", getter="{}", *, list_type=None, cl
     attr_obj = f'obj.{field}'
     get_command = f'{getter.format(attr_obj)}'
 
-    from torchair.ge_concrete_graph.ge_graph import trans_to_list_list_int, trans_to_list_list_float
-    from torchair.ge_concrete_graph.ge_graph import compat_as_bytes
-    from torchair.ge_concrete_graph.ge_graph import compat_as_bytes_list
+    from torchair.ge._ge_graph import trans_to_list_list_int, trans_to_list_list_float
+    from torchair.ge._ge_graph import compat_as_bytes
+    from torchair.ge._ge_graph import compat_as_bytes_list
 
     used_function = {
         'trans_to_list_list_int': trans_to_list_list_int,

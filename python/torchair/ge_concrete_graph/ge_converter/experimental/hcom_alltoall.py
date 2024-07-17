@@ -2,7 +2,7 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple, Union, Callable
 import torch
 from torch._decomp import register_decomposition
 import torch.distributed.distributed_c10d as c10d
-from torchair.ge_concrete_graph.ge_graph import Tensor, DataType
+from torchair.ge._ge_graph import Tensor, DataType
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
 from torchair.ge_concrete_graph.utils import dtype_promote, get_group_name_and_record

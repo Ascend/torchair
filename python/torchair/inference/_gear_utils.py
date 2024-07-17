@@ -6,7 +6,7 @@ import torch
 from torch.fx.experimental.symbolic_shapes import guard_int, guard_bool
 from torchair.ge_concrete_graph.ge_ir_pb2 import GraphDef
 from torchair.configs.compiler_config import CompilerConfig
-from torchair.ge_concrete_graph.ge_graph import _TensorInput, _DiscontiguousTensorInput, is_sym
+from torchair.ge._ge_graph import _TensorInput, _DiscontiguousTensorInput, is_sym
 from torchair.core.utils import logger
 
 

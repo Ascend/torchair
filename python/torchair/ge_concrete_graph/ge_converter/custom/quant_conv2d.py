@@ -20,7 +20,7 @@ from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float
 from torchair.ge_concrete_graph import ge_apis as ge
 from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported, \
     torch_type_to_ge_type
-from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec
+from torchair.ge._ge_graph import Tensor, TensorSpec
 from torchair.ge_concrete_graph.supported_declaration import F32, I8, I32, Support
 
 
