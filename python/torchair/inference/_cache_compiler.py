@@ -152,7 +152,7 @@ class CompiledModel:
     @staticmethod
     def get_cache_bin(func, *, config: Optional[CompilerConfig] = None, dynamic: bool = True,
                       cache_dir: Optional[str] = None, global_rank: Optional[int] = None, tp_rank: Optional[int] = None,
-                      pp_rank: Optional[int] = None, **kwargs) -> str:
+                      pp_rank: Optional[int] = None, ge_cache: bool = False, **kwargs) -> str:
         cache_dir = cache_dir or os.getenv('TORCHAIR_CACHE_HOME', os.path.join(os.getcwd(), ".torchair_cache"))
         config = config or CompilerConfig()
         if isinstance(func, types.MethodType):
@@ -174,8 +174,12 @@ class CompiledModel:
 
         trace_tag = ['dynamic'] if dynamic else ['static']
         md5 = hashlib.md5(constraint.encode()).hexdigest()
-        cache_bin = os.path.join(cache_dir, '_'.join([cls_name] + trace_tag + [str(md5)]), dist_dir, func.__name__,
-                                 CompiledModel.FILE)
+
+        suffixes = [cls_name] + trace_tag
+        if ge_cache:
+            suffixes += ['gecache']
+        suffixes += [str(md5)]
+        cache_bin = os.path.join(cache_dir, '_'.join(suffixes), dist_dir, func.__name__, CompiledModel.FILE)
         return os.path.abspath(cache_bin)
 
     def recompile(self, config: CompilerConfig):
@@ -282,9 +286,10 @@ def _readable_inst(code):
 
 class CacheBackend:
     def __init__(self, config: Optional[CompilerConfig], saver: 'ModelCacheSaver', *,
-                 fw_compiler: Callable = None, decompositions: dict = None):
+                 fw_compiler: Callable = None, decompositions: dict = None, extend_config: Optional[dict] = None):
         self.config = config or CompilerConfig()
         self.saver = saver
+        self.extend_config = extend_config
         self.custom_decompositions = decompositions or {}
         self.input_dim_gears: Dict[int, List[int]] = dict()
         if fw_compiler is None:
@@ -318,12 +323,15 @@ class CacheBackend:
 
         # Codegen return compiled fx directly if not support codegen
         with timer(f"{self.saver.name} codegen"):
-            py_code = getattr(self.compiler, 'codegen')(gm, example_inputs)
+            py_code = getattr(self.compiler, 'codegen')(gm, example_inputs, extend_config=self.extend_config)
 
         if not isinstance(py_code, str):
             logger.warning(f"Skip cache as compiler {type(self.compiler)} codegen return non-str {type(py_code)}")
             return py_code
 
+        # need to create ge cache dir
+        ge_cache_dir = os.path.dirname(os.path.abspath(self.saver.cache_bin))
+        py_code += "\n" + f"os.makedirs('{ge_cache_dir}', exist_ok=True)"
         self.saver.save_compiled_fx(gm, example_inputs, self.config, py_code)
         with timer(f"{self.saver.name} compile ge graph"):
             return _compile_ge_kernel(py_code)
@@ -336,13 +344,15 @@ class CacheBackend:
 class ModelCacheSaver:
     def __init__(self, func: Union[types.FunctionType, types.MethodType], cache_bin, *,
                  config: Optional[CompilerConfig] = None, dynamic: bool = True,
-                 decompositions: Optional[dict] = None):
+                 decompositions: Optional[dict] = None, ge_cache: bool = False):
         self.func = func
         self.model: Optional[torch.nn.Module] = None if isinstance(func, types.FunctionType) else func.__self__
         self.cache_bin = cache_bin
+        self.cache_dir = os.path.abspath(os.path.dirname(cache_bin))
         self.compiled_model = CompiledModel(func)
         self.name = self.compiled_model.name
-        cache_backend = CacheBackend(config, self, decompositions=decompositions)
+        extend_config = {"ge.graph_compiler_cache_dir": self.cache_dir, "ge.graph_key": "ge_cache"} if ge_cache else {}
+        cache_backend = CacheBackend(config, self, decompositions=decompositions, extend_config=extend_config)
         self.compiled_func = torch.compile(func, backend=cache_backend, fullgraph=True, dynamic=dynamic)
 
         self._code_id = None
@@ -377,7 +387,7 @@ class ModelCacheSaver:
                     self.errors.append(f"Failed to find source for gm parameter {name} as {e}")
 
     def save_compiled_fx(self, fx: torch.fx.GraphModule, example_inputs: List[torch.Tensor], config: CompilerConfig,
-                         py_code: str):
+                         py_code: str) -> object:
         placeholders = [n for n in fx.graph.nodes if n.op == 'placeholder']
         arg_signatures = []
         for i, n in enumerate(placeholders):
@@ -404,7 +414,7 @@ class ModelCacheSaver:
         if self._code_id is not None:
             logger.warning_once(
                 f"Skip cache as {self.name} recompiled, set torch._logging.set_logs(recompiles=True) for details")
-            self.__class__.remove_cache(self.cache_bin)
+            self.__class__.remove_cache(self.cache_dir)
             return
         if len(self.errors) > 0:
             logger.warning(f"Skip cache {self.name} as following errors: {self.errors}")
@@ -453,7 +463,7 @@ class ModelCacheWatcher:
 class LazyCompiledModel:
     def __init__(self, func, *, config: Optional[CompilerConfig] = None, dynamic: bool = True,
                  cache_dir: Optional[str] = None, global_rank: Optional[int] = None, tp_rank: Optional[int] = None,
-                 pp_rank: Optional[int] = None, decompositions: Optional[dict] = None):
+                 pp_rank: Optional[int] = None, decompositions: Optional[dict] = None, ge_cache: bool = False):
         self.func = func
         self.config = config or CompilerConfig()
         self.dynamic = dynamic
@@ -463,11 +473,12 @@ class LazyCompiledModel:
         self.pp_rank = pp_rank
         self._compiled_model = None
         self.decompositions = decompositions
+        self.ge_cache = ge_cache
 
     def compile(self, global_vars=None):
         cache_bin = CompiledModel.get_cache_bin(self.func, config=self.config, dynamic=self.dynamic,
                                                 cache_dir=self.cache_dir, global_rank=self.global_rank,
-                                                tp_rank=self.tp_rank, pp_rank=self.pp_rank)
+                                                tp_rank=self.tp_rank, pp_rank=self.pp_rank, ge_cache=self.ge_cache)
         if os.path.exists(cache_bin):
             try:
                 logger.info(f'Loading cache from {cache_bin}')
@@ -478,11 +489,11 @@ class LazyCompiledModel:
                 return compiled_model.rebase(model, global_vars, closure=self.func.__closure__)
             except Exception as e:
                 logger.warning(f'Clear broken cache {cache_bin} as {e}')
-                ModelCacheSaver.remove_cache(cache_bin)
+                ModelCacheSaver.remove_cache(os.path.abspath(os.path.dirname(cache_bin)))
 
         logger.info(f'Compiling cache for {self.func} to {cache_bin}')
         return ModelCacheSaver(self.func, cache_bin, config=self.config, dynamic=self.dynamic,
-                               decompositions=self.decompositions)
+                               decompositions=self.decompositions, ge_cache=self.ge_cache)
 
     def __call__(self, *args, **kwargs):
         if self._compiled_model is not None:
@@ -494,16 +505,21 @@ class LazyCompiledModel:
 
 def cache_compile(func, *, config: Optional[CompilerConfig] = None, dynamic: bool = True,
                   cache_dir: Optional[str] = None, global_rank: Optional[int] = None, tp_rank: Optional[int] = None,
-                  pp_rank: Optional[int] = None, custom_decompositions: Optional[dict] = None, **kwargs) -> Callable:
+                  pp_rank: Optional[int] = None, custom_decompositions: Optional[dict] = None, ge_cache: bool = False,
+                  **kwargs) -> Callable:
     if not isinstance(func, types.MethodType):
         raise ValueError(f"Only method can be cached now, got {func}")
 
     if not isinstance(func.__self__, torch.nn.Module):
         raise ValueError(f"Only torch.nn.Module method can be cached now, got {func}")
 
+    if ge_cache and config is not None and config.experimental_config.frozen_parameter:
+        raise ValueError("ge_cache and experimental_config.frozen_param cannot be enabled at the same time. "
+                         "Please disable one of them.")
+
     # Lazy trigger cache load and determine the cache directory by distributed global_rank
     return LazyCompiledModel(func, config=config, dynamic=dynamic, cache_dir=cache_dir, global_rank=global_rank,
-                             tp_rank=tp_rank, pp_rank=pp_rank, decompositions=custom_decompositions)
+                             tp_rank=tp_rank, pp_rank=pp_rank, decompositions=custom_decompositions, ge_cache=ge_cache)
 
 
 class _NoGuardCompiled:

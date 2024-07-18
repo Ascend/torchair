@@ -136,6 +136,7 @@ LEGACY_PUBLIC_APIS = [
     "torchair.ge_concrete_graph.fx2ge_converter.TensorDescriptor",
     "torchair.ge_concrete_graph.fx2ge_converter.TensorSpec",
     "torchair.ge_concrete_graph.fx2ge_converter.Tuple",
+    "torchair.ge_concrete_graph.fx2ge_converter.Optional",
     "torchair.ge_concrete_graph.fx2ge_converter.Union",
     "torchair.ge_concrete_graph.fx2ge_converter.ValuePack",
     "torchair.ge_concrete_graph.fx2ge_converter.assert_args_checkout",

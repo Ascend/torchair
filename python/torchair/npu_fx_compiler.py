@@ -2,7 +2,7 @@ import functools
 import operator
 import math
 import copy
-from typing import List, Callable, Any, Dict, Tuple, Union
+from typing import List, Optional, Callable, Any, Dict, Tuple, Union
 import logging
 import sys
 
@@ -320,13 +320,14 @@ class _NpuFxCompiler:
         return self._get_compiled_gm(gm, example_inputs)
 
     @pretty_error_msg
-    def codegen(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
+    def codegen(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor], *,
+                extend_config: Optional[dict] = None):
         gm_runner = self._get_compiled_gm(gm, example_inputs)
         if not hasattr(gm_runner.runner, 'codegen'):
             logger.warning(f'When enable FX Graph summarizing or dumping, codegen is unsupported.')
             return gm_runner
 
-        code = gm_runner.runner.codegen()
+        code = gm_runner.runner.codegen(extend_config)
         if code is None:
             logger.warning(f'There are some configurations that cannot be supported by codegen, skipping codegen.')
             return gm_runner

@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, Dict, List, Tuple, Union, Callable
+from typing import Any, Dict, List, Tuple, Union, Callable, Optional
 from datetime import datetime
 import functools
 import threading
@@ -610,7 +610,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._is_compiled = True
         logger.info(f'end compile graph: {self.graph.name} and start run graph.')
 
-    def codegen(self):
+    def codegen(self, extend_config):
         from torch._inductor.utils import IndentedBuffer
         if self._config.experimental_config.enable_ref_data or self.config.export.export_mode \
                 or self.config.aoe_config.aoe_mode.value is not None:
@@ -620,6 +620,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         head = IndentedBuffer()
         head.splice('''
         import torch
+        import os
         from torchair.core._backend import initialize_graph_engine
         from torchair.ge._ge_graph import GeGraph
         from torchair.ge_concrete_graph.fx2ge_converter import _update_constplaceholder_attr_from_inputs
@@ -632,6 +633,8 @@ class GeConcreteGraph(ConcreteGraphBase):
             head.writeline(f'global_compile_options["{k}"] = "{v}"')
         head.writeline(f'local_compile_options = {{}}')
         for k, v in local_compile_options.items():
+            head.writeline(f'local_compile_options["{k}"] = "{v}"')
+        for k, v in extend_config.items():
             head.writeline(f'local_compile_options["{k}"] = "{v}"')
         head.writelines(['', 'initialize_graph_engine(global_compile_options)',
                          'ge_graph = GeGraph(serialized_model_def=serialized_graph)'])
