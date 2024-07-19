@@ -57,4 +57,4 @@ def conveter_aten__log_softmax_backward_data_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::_log_softmax_backward_data.out(Tensor grad_output, Tensor output, int dim, ScalarType input_dtype, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten._log_softmax_backward_data.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten._log_softmax_backward_data.out ge_converter is not supported!")

@@ -50,7 +50,7 @@ def conveter_aten_where_ScalarOther(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::where.ScalarOther(Tensor condition, Tensor self, Scalar other) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.where.ScalarOther ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.where.ScalarOther ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.where.ScalarSelf)
@@ -61,7 +61,7 @@ def conveter_aten_where_ScalarSelf(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::where.ScalarSelf(Tensor condition, Scalar self, Tensor other) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.where.ScalarSelf ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.where.ScalarSelf ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.where.Scalar)
@@ -72,13 +72,13 @@ def conveter_aten_where_Scalar(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::where.Scalar(Tensor condition, Scalar self, Scalar other) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.where.Scalar ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.where.Scalar ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.where.default)
 def conveter_aten_where_default(condition: Tensor, meta_outputs: List[TensorSpec] = None):
     """NB: aten::where(Tensor condition) -> Tensor[]"""
-    raise NotImplementedError("torch.ops.aten.where.default ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.where.default ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.where.self_out)
@@ -91,4 +91,4 @@ def conveter_aten_where_self_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::where.self_out(Tensor condition, Tensor self, Tensor other, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.where.self_out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.where.self_out ge_converter is not supported!")
