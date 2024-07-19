@@ -749,10 +749,10 @@ def _patch_model_15():
     # In same scenarios, bmm will influence the format of softmax to NZ;
     # Therefore, specify _softmax input and output format to NHWC for the accuracy test
     close_add_layer_norm_fusion_pass()
-    from torchair.ge_concrete_graph import ge_apis as ge
+    from torchair._ge_concrete_graph import ge_apis as ge
     from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
-    from torchair.ge_concrete_graph.utils import specific_op_input_layout, specific_op_output_layout
-    from torchair.ge_concrete_graph.ge_converter.aten import _softmax
+    from torchair._ge_concrete_graph.utils import specific_op_input_layout, specific_op_output_layout
+    from torchair._ge_concrete_graph.ge_converter.aten import _softmax
 
     def new_conveter_aten__softmax_default(
             self: Tensor, dim: int, half_to_float: bool, meta_outputs: TensorSpec = None

@@ -5,13 +5,13 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 import torch
 import torch.distributed as dist
 import torch_npu
-import torchair as tng
-import torchair.ge_concrete_graph.ge_converter.experimental.hcom_allgather
+import torchair
 from torchair.core.utils import logger
 from torchair.configs.compiler_config import CompilerConfig
 
 config = CompilerConfig()
-npu_backend = tng.get_npu_backend(compiler_config=config)
+npu_backend = torchair.get_npu_backend(compiler_config=config)
+torchair.patch_for_hcom()
 
 
 class allgather(torch.nn.Module):

@@ -9,10 +9,12 @@ from torch.distributed import distributed_c10d
 import torch.distributed.distributed_c10d as c10d
 import torch_npu
 import torchair
-import torchair.ge_concrete_graph.ge_converter.experimental.hcom_alltoall
 from torchair.core.utils import logger
 from torchair.configs.compiler_config import CompilerConfig
 import torchair.inference
+
+
+torchair.patch_for_hcom()
 
 
 class All2allsinge(torch.nn.Module):

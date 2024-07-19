@@ -2,8 +2,9 @@ import os
 import torch
 import torch.utils._pytree as pytree
 
+import torchair
 from torchair.core.utils import logger
-from torchair.ge_concrete_graph.fx2ge_converter import ExportSuccess
+from torchair._ge_concrete_graph.fx2ge_converter import ExportSuccess
 from torchair.configs.compiler_config import CompilerConfig
 from torchair import get_npu_backend
 
@@ -54,7 +55,8 @@ def dynamo_export(*args, model: torch.nn.Module, export_path: str = "export_file
     if _is_symlink(target_path):
         return
 
-    from torchair.ge_concrete_graph.ge_converter.experimental.hcom_allreduce import functional_collectives_context
+    if torch.__version__ < '2.3.0':
+        torchair.patch_for_hcom()
     logger.info(f'dynamo_export: export_path: {export_path}, export_name: {export_name}, dynamic: {dynamic}')
     config = _get_export_config(model, export_path, export_name, config)
 
@@ -64,7 +66,7 @@ def dynamo_export(*args, model: torch.nn.Module, export_path: str = "export_file
                           fullgraph=True,
                           dynamic=dynamic)
 
-    with torch.no_grad(), functional_collectives_context():
+    with torch.no_grad():
         try:
             model(*args, **kwargs)
         except ExportSuccess as e:

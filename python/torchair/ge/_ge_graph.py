@@ -14,8 +14,8 @@ from torch.fx.node import Argument, Target
 from torch.utils._mode_utils import no_dispatch
 
 from torchair.core.utils import logger
-from torchair.ge_concrete_graph.ge_ir_pb2 import ModelDef, GraphDef, OpDef, AttrDef, TensorDescriptor
-from torchair.ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
+from torchair._ge_concrete_graph.ge_ir_pb2 import ModelDef, GraphDef, OpDef, AttrDef, TensorDescriptor
+from torchair._ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
 
 
 local_variable = threading.local()
@@ -613,7 +613,7 @@ class GeGraph(object):
         python_code = ''
         python_code += '# -*- coding: utf-8 -*-\n'
         python_code += 'from torch import tensor\n'
-        python_code += 'from torchair.ge_concrete_graph import ge_apis as ge\n'
+        python_code += 'from torchair._ge_concrete_graph import ge_apis as ge\n'
         python_code += 'from torchair.ge._ge_graph import get_default_ge_graph\n\n'
         return python_code
 

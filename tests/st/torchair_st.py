@@ -12,11 +12,11 @@ import logging
 from torchair.core.utils import logger
 from torchair.core._backend import TorchNpuGraph
 from torchair.ge._ge_graph import GeGraph, Const, _ge_dtype_to_ge_proto_dtype
-from torchair.ge_concrete_graph.fx2ge_converter import ExecutorType, Placement, _normalize_ge_graph, \
+from torchair._ge_concrete_graph.fx2ge_converter import ExecutorType, Placement, _normalize_ge_graph, \
     _mapping_assign_op_to_graph_output, replace_data_to_refdata, GeConcreteGraph
-from torchair.ge_concrete_graph import ge_apis as ge
+from torchair._ge_concrete_graph import ge_apis as ge
 from torchair.ge._ge_graph import DataType
-from torchair.ge_concrete_graph.graph_pass import optimize_reference_op_redundant_copy
+from torchair._ge_concrete_graph.graph_pass import optimize_reference_op_redundant_copy
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core._backend import initialize_graph_engine
 
@@ -229,7 +229,7 @@ class TorchairSt(unittest.TestCase):
             src = f.read()
 
         assert src != '# -*- coding: utf-8 -*-\nfrom torch import tensor\n' \
-                      'from torchair.ge_concrete_graph import ge_apis as ge\n' \
+                      'from torchair._ge_concrete_graph import ge_apis as ge\n' \
                       'from torchair.ge._ge_graph import get_default_ge_graph\n\n'
 
     def test_2sym_pack(self):

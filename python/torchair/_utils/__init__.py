@@ -459,9 +459,9 @@ def add_npu_patch(decompositions, compiler_config):
 
 def get_npu_default_decompositions():
     default_decompositions = []
-    if "torchair.ge_concrete_graph.ge_converter.experimental.hcom_alltoall" in sys.modules:
+    if "torchair._ge_concrete_graph.ge_converter.experimental.hcom_alltoall" in sys.modules:
         default_decompositions.append(torch.ops.npu_define.all_to_all_single)
         default_decompositions.append(torch.ops.npu_define.all_to_all)
-    if "torchair.ge_concrete_graph.ge_converter.experimental.hcom_allgather" in sys.modules:
+    if "torchair._ge_concrete_graph.ge_converter.experimental.hcom_allgather" in sys.modules:
         default_decompositions.append(torch.ops.npu_define.allgather)
     return get_decompositions(default_decompositions)

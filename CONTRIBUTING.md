@@ -113,16 +113,16 @@ print(graph_result)
     ```
     执行后，会生成summary_{timestamp}.csv文件，您可以通过excel等工具来查看。
     通过导出的csv文件，您可以看打当前模型fx图中涉及的所有converter
-    - 对于`支持状态`为`未支持`的converter，您需要在`ge_concrete_graph/ge_converter`目录下对应文件中补齐实现
+    - 对于`支持状态`为`未支持`的converter，您需要在`_ge_concrete_graph/ge_converter`目录下对应文件中补齐实现
     > 当前已经为aten下的op提供了一个壳子实现（固定抛出未支持的异常），您应当在此基础上补齐实现
 
-    - 对于`支持状态`为`未注册`的converter，您需要在`ge_concrete_graph/ge_converter`目录下对应文件中新增注册并补齐实现
+    - 对于`支持状态`为`未注册`的converter，您需要在`_ge_concrete_graph/ge_converter`目录下对应文件中新增注册并补齐实现
 
-    - 对于`支持状态`为`部分支持`的converter，您需要查看位于`ge_concrete_graph/ge_converter`目录下的实现，并根据输入数据列决定是否需要补齐场景实现
+    - 对于`支持状态`为`部分支持`的converter，您需要查看位于`_ge_concrete_graph/ge_converter`目录下的实现，并根据输入数据列决定是否需要补齐场景实现
 
 2. **实现converter**
     
-    您可以参考`ge_concrete_graph/ge_converter`目录下的实现，实现对应的converter。
+    您可以参考`_ge_concrete_graph/ge_converter`目录下的实现，实现对应的converter。
     我们以torch.ops.aten.add.Tensor的converter实现为例说明converter实现时的一些细节：
     ```python
     @declare_supported([

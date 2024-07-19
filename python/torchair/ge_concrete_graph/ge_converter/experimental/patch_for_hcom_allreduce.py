@@ -1,14 +1,11 @@
-from torchair.ge_concrete_graph.ge_converter.experimental.hcom_allreduce import backup_custom_all_reduce
-from torchair.ge_concrete_graph.ge_converter.experimental.hcom_allreduce import get_npu_all_reduce
-from torchair.core.utils import logger
+import torch
 
-try :
-    from deepspeed import comm as dist
-except:
-    logger.info(f'env not import deepspeed, only patch pytorch dist api')
-else:
-    backup_custom_all_reduce(dist.all_reduce)
-    dist.all_reduce = get_npu_all_reduce()
-    # Adapt deepspeed version later than v0.10.0,
-    # inference_all_reduce and all_reduce have save torch backend implementation.
-    dist.inference_all_reduce = get_npu_all_reduce()
+from torchair._ge_concrete_graph.ge_converter.experimental.hcom_allreduce import npu_allreduce_patch_dist, \
+patch_for_deepspeed_allreduce
+
+
+
+__all__ = []
+
+torch.distributed.all_reduce = npu_allreduce_patch_dist
+patch_for_deepspeed_allreduce()

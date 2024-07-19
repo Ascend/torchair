@@ -3,9 +3,9 @@ import unittest
 
 import torchair
 import torchair.ge as ge
-from torchair.ge_concrete_graph import ge_apis as raw_ops
+from torchair._ge_concrete_graph import ge_apis as raw_ops
 from torchair.ge._ge_graph import GeGraph, compat_as_bytes
-from torchair.ge_concrete_graph.ge_ir_pb2 import OpDef
+from torchair._ge_concrete_graph.ge_ir_pb2 import OpDef
 
 torchair.logger.setLevel(logging.DEBUG)
 
@@ -194,7 +194,7 @@ class CustomOpSt(unittest.TestCase):
         def custom_op_meta(x, y):
             return torch.empty_like(x)
 
-        from torchair.ge_concrete_graph.fx2ge_converter import Converter, _wrap_converter
+        from torchair._ge_concrete_graph.fx2ge_converter import Converter, _wrap_converter
         test_add_opp = []
         def my_warp_fun(self, converter):
             wrapped_converter = _wrap_converter(converter)

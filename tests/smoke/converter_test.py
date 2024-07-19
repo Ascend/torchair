@@ -5,10 +5,10 @@ import torch_npu
 import sys
 import contextlib
 import torchair as tng
-from torchair.ge_concrete_graph.fx2ge_converter import Converter
-from torchair.ge_concrete_graph.fx2ge_converter import _declare_supported_converters
+from torchair._ge_concrete_graph.fx2ge_converter import Converter
+from torchair._ge_concrete_graph.fx2ge_converter import _declare_supported_converters
 from torchair import CompilerConfig
-from torchair.ge_concrete_graph.supported_declaration import _TypedTensor
+from torchair._ge_concrete_graph.supported_declaration import _TypedTensor
 aten = torch.ops.aten
 
 _torch_npu_module = torch_npu

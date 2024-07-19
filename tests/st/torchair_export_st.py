@@ -7,8 +7,7 @@ import unittest.mock
 import torch
 import torch.distributed._functional_collectives as funcol
 import torchair
-import torchair.ge_concrete_graph.ge_converter.experimental.hcom_allreduce
-from torchair.ge_concrete_graph.ge_ir_pb2 import ModelDef
+from torchair._ge_concrete_graph.ge_ir_pb2 import ModelDef
 from torchair.core.utils import logger
 
 os.environ['TNG_LOG_LEVEL'] = '0'

@@ -11,7 +11,7 @@ from typing import Dict, List
 import torch
 from torchair._utils.error_code import pretty_error_msg
 from torchair.core.utils import logger
-from torchair.ge_concrete_graph.utils import _get_input_shape
+from torchair._ge_concrete_graph.utils import _get_input_shape
 from . import _torchair
 
 
