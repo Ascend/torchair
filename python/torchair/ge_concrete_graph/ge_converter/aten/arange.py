@@ -80,7 +80,9 @@ def conveter_aten_arange_start(
     Support(0, 100, 1, dtype=torch.bfloat16),
     Support(0, 100, 1, dtype=torch.int32),
     Support(0, 100, 2, dtype=torch.int32),
-    Support(0, 100, 2, dtype=torch.float16)
+    Support(0, 100, 2, dtype=torch.float16),
+    Support(0, 100, 2.5, dtype=torch.float16),
+    Support(0, 100, 2.5),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.arange.start_step)
 def conveter_aten_arange_start_step(
@@ -96,6 +98,7 @@ def conveter_aten_arange_start_step(
 ):
     """NB: aten::arange.start_step(Scalar start, Scalar end, Scalar step=1, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
     target_dtype = dtype if dtype else meta_outputs.dtype
+    start, end, step = dtype_promote(start, end, step, target_dtype=target_dtype)
     result = dtype_promote(ge.Range(start, end, step), target_dtype=target_dtype)
 
     # layout, pin_memory and device have no effect on constructing graph.
