@@ -10,6 +10,8 @@
 
 此适配点主要是新增pytorch图模式分支。
 
+CompilerConfig配置参考[torchair资料](https://www.hiascend.com/document/detail/zh/Pytorch/60RC2/modthirdparty/torchairuseguide/torchair_0021.html)
+
 ```python
 # transformers/generation/utils.py的greedy_search函数while True前添加
 import os
@@ -25,6 +27,7 @@ if exe_mode == "dynamo":
     from torchair.configs.compiler_config import CompilerConfig
     config = CompilerConfig()
     config.experimental_config.frozen_parameter = True
+    config.experimental_config.tiling_schedule_optimize = True # tiling全下沉性能优化
     npu_backend = tng.get_npu_backend(compiler_config=config)
     self = torch.compile(self, dynamic=dynamic_compile, fullgraph=True, backend=npu_backend)
 else:
@@ -179,11 +182,33 @@ if q_len > 1:
                                                        num_key_value_heads=self.num_key_value_heads)
 else:
     attn_output = torch_npu.npu_incre_flash_attention(query_states, key_states1.contiguous(),
-                                                       value_states1.contiguous(), num_heads=self.num_heads,
-                                                       input_layout="BSND",
-                                                       scale_value=self.scale_value,
-                                                       atten_mask=attention_mask,
-                                                       num_key_value_heads=self.num_key_value_heads)
+                                                      value_states1.contiguous(), num_heads=self.num_heads,
+                                                      input_layout="BSND",
+                                                      scale_value=self.scale_value,
+                                                      atten_mask=attention_mask,
+                                                      actual_seq_lengths=actual_seq_len,
+                                                      kv_padding_size=kv_padding_size,
+                                                      num_key_value_heads=self.num_key_value_heads)
+```
+
+```python
+# 在prepare_inputs_for_generation函数中新增kv_padding_size和actual_seq_len输入，透传给LlamaAttention的forward函数
+# ifa Computational optimization inputs
+kv_padding_size = torch.tensor(self.model.max_position_embeddings - self.prompt_length,
+                               device=position_ids.device)
+actual_seq_len = (position_ids[:, -1] + 1).cpu().tolist()
+# 新增kv_padding_size和actual_seq_len
+model_inputs.update(
+    {
+        "position_ids": position_ids,
+        "past_key_values": past_key_values,
+        "use_cache": kwargs.get("use_cache"),
+        "attention_mask": attention_mask,
+        "updated_kv_positions": self.updated_kv_positions,
+        "kv_padding_size": kv_padding_size,
+        "actual_seq_len": actual_seq_len,
+    }
+)
 ```
 
 **cos/sin优化方式**：cos/sin原脚本中在decodelayer中每层都会计算，存在耗时浪费。提到上层，只需计算一次。旋转位置编码替换为torch_npu.npu_apply_rotary_pos_emb融合算子
