@@ -70,6 +70,11 @@ class U8(_TypedTensor):
         super().__init__(*dims, dtype=torch.uint8, value_range=value_range)
 
 
+class C64(_TypedTensor):
+    def __init__(self, *dims, value_range=None):
+        super().__init__(*dims, dtype=torch.complex64, value_range=value_range)
+
+
 class BOOL(_TypedTensor):
     def __init__(self, *dims):
         super().__init__(*dims, dtype=torch.bool)

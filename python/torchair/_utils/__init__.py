@@ -8,7 +8,8 @@ from torch import Tensor
 from torch._ops import OpOverload, OpOverloadPacket
 from torch._subclasses import fake_tensor as _subclasses_fake_tensor
 from torch._C import DispatchKey
-from torch._refs import div as refs_div
+from torch._refs import div as refs_div, _broadcast_shapes
+from torch._prims_common import corresponding_real_dtype
 from torch._prims_common.wrappers import out_wrapper
 from torch._decomp import decomposition_table, decompositions_for_rng, get_decompositions
 from torch._dynamo.symbolic_convert import break_graph_if_unsupported, InstructionTranslatorBase, stack_op
@@ -108,6 +109,12 @@ def meta__native_batch_norm_legit_no_training(
     save_mean = input.new_zeros((0,))
     save_rstd = input.new_zeros((0,))
     return output, save_mean, save_rstd
+
+
+@register_meta_npu(aten.view_as_real.default)
+def meta_native_view_as_real(self: Tensor):
+    out_shape = _broadcast_shapes(self.shape)
+    return self.new_empty(out_shape, dtype=corresponding_real_dtype(self.dtype))
 
 
 def patch_torch_decomp_decompositions():
