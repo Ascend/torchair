@@ -45,4 +45,4 @@ def conveter_aten_tanh_backward_grad_input(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::tanh_backward.grad_input(Tensor grad_output, Tensor output, *, Tensor(a!) grad_input) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.tanh_backward.grad_input ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.tanh_backward.grad_input ge_converter is not supported!")

@@ -49,7 +49,7 @@ def conveter_aten_new_full_default(
     else:
         fill_value = dtype_promote(fill_value, target_dtype=self.dtype)
     if layout is not None and layout != torch.strided:
-        raise NotImplementedError("torch.ops.aten.new_full.default ge_converter is only supported on dense tensor now!")
+        raise RuntimeError("torch.ops.aten.new_full.default ge_converter is only supported on dense tensor now!")
     return ge.Fill(size, fill_value)
 
 
@@ -63,4 +63,4 @@ def conveter_aten_new_full_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::new_full.out(Tensor self, SymInt[] size, Scalar fill_value, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.new_full.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.new_full.out ge_converter is not supported!")

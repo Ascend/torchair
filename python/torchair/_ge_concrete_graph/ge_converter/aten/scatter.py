@@ -68,7 +68,7 @@ def conveter_aten_scatter_reduce(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::scatter.reduce(Tensor self, int dim, Tensor index, Tensor src, *, str reduce) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.scatter.reduce ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.scatter.reduce ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.scatter.value_reduce)
@@ -82,7 +82,7 @@ def conveter_aten_scatter_value_reduce(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::scatter.value_reduce(Tensor self, int dim, Tensor index, Scalar value, *, str reduce) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.scatter.value_reduce ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.scatter.value_reduce ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.scatter.src_out)
@@ -96,7 +96,7 @@ def conveter_aten_scatter_src_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::scatter.src_out(Tensor self, int dim, Tensor index, Tensor src, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.scatter.src_out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.scatter.src_out ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.scatter.value_out)
@@ -110,7 +110,7 @@ def conveter_aten_scatter_value_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::scatter.value_out(Tensor self, int dim, Tensor index, Scalar value, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.scatter.value_out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.scatter.value_out ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.scatter.reduce_out)
@@ -125,7 +125,7 @@ def conveter_aten_scatter_reduce_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::scatter.reduce_out(Tensor self, int dim, Tensor index, Tensor src, *, str reduce, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.scatter.reduce_out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.scatter.reduce_out ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.scatter.value_reduce_out)
@@ -140,7 +140,7 @@ def conveter_aten_scatter_value_reduce_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::scatter.value_reduce_out(Tensor self, int dim, Tensor index, Scalar value, *, str reduce, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.scatter.value_reduce_out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.scatter.value_reduce_out ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.scatter.dimname_src)
@@ -148,7 +148,7 @@ def conveter_aten_scatter_dimname_src(
     self: Tensor, dim: str, index: Tensor, src: Tensor, meta_outputs: TensorSpec = None
 ):
     """NB: aten::scatter.dimname_src(Tensor self, str dim, Tensor index, Tensor src) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.scatter.dimname_src ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.scatter.dimname_src ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.scatter.dimname_value)
@@ -160,4 +160,4 @@ def conveter_aten_scatter_dimname_value(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::scatter.dimname_value(Tensor self, str dim, Tensor index, Scalar value) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.scatter.dimname_value ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.scatter.dimname_value ge_converter is not supported!")

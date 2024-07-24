@@ -79,10 +79,9 @@ def conveter_aten_randint_default(
 ):
     """NB: aten::randint(SymInt high, SymInt[] size, *, ScalarType? dtype=4, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
     if isinstance(size, Tensor):
-        raise NotImplementedError("torch.ops.aten.randint.default ge converter is not implement"
-                                  " when size is tensor")
+        raise RuntimeError("torch.ops.aten.randint.default ge converter is not supported when size is tensor.")
     if not isinstance(high, Tensor) and high <= 0:
-        raise RuntimeError(f"from must be less than to, but now from is 0, to is {high}")
+        raise RuntimeError(f"from must be less than high, but now from is 0, high is {high}")
 
     _, result = randint_checkpoint(high, size, None, dtype, layout, device, pin_memory, meta_outputs, None)
     return result
@@ -101,7 +100,7 @@ def conveter_aten_randint_generator(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::randint.generator(SymInt high, SymInt[] size, *, Generator? generator, ScalarType? dtype=4, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.randint.generator ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.randint.generator ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.randint.low)
@@ -117,7 +116,7 @@ def conveter_aten_randint_low(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::randint.low(SymInt low, SymInt high, SymInt[] size, *, ScalarType? dtype=4, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.randint.low ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.randint.low ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.randint.low_generator)
@@ -134,7 +133,7 @@ def conveter_aten_randint_low_generator(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::randint.low_generator(SymInt low, SymInt high, SymInt[] size, *, Generator? generator, ScalarType? dtype=4, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.randint.low_generator ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.randint.low_generator ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.randint.out)
@@ -146,7 +145,7 @@ def conveter_aten_randint_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::randint.out(SymInt high, SymInt[] size, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.randint.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.randint.out ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.randint.generator_out)
@@ -159,7 +158,7 @@ def conveter_aten_randint_generator_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::randint.generator_out(SymInt high, SymInt[] size, *, Generator? generator, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.randint.generator_out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.randint.generator_out ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.randint.low_out)
@@ -172,7 +171,7 @@ def conveter_aten_randint_low_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::randint.low_out(SymInt low, SymInt high, SymInt[] size, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.randint.low_out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.randint.low_out ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.randint.low_generator_out)
@@ -186,4 +185,4 @@ def conveter_aten_randint_low_generator_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::randint.low_generator_out(SymInt low, SymInt high, SymInt[] size, *, Generator? generator, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.randint.low_generator_out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.randint.low_generator_out ge_converter is not supported!")

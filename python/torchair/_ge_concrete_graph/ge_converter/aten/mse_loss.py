@@ -53,4 +53,4 @@ def conveter_aten_mse_loss_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::mse_loss.out(Tensor self, Tensor target, int reduction=1, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.mse_loss.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.mse_loss.out ge_converter is not supported!")

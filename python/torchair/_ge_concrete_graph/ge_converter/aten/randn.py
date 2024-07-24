@@ -113,7 +113,7 @@ def conveter_aten_randn_names(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::randn.names(SymInt[] size, *, str[]? names, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.randn.names ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.randn.names ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.randn.generator_with_names)
@@ -129,7 +129,7 @@ def conveter_aten_randn_generator_with_names(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::randn.generator_with_names(SymInt[] size, *, Generator? generator, str[]? names, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.randn.generator_with_names ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.randn.generator_with_names ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.randn.out)
@@ -137,7 +137,7 @@ def conveter_aten_randn_out(
     size: Union[List[int], Tensor], *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::randn.out(SymInt[] size, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.randn.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.randn.out ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.randn.generator_out)
@@ -149,7 +149,7 @@ def conveter_aten_randn_generator_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::randn.generator_out(SymInt[] size, *, Generator? generator, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.randn.generator_out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.randn.generator_out ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.randn.names_out)
@@ -161,7 +161,7 @@ def conveter_aten_randn_names_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::randn.names_out(SymInt[] size, *, str[]? names, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.randn.names_out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.randn.names_out ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.randn.generator_with_names_out)
@@ -174,4 +174,4 @@ def conveter_aten_randn_generator_with_names_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::randn.generator_with_names_out(SymInt[] size, *, Generator? generator, str[]? names, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.randn.generator_with_names_out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.randn.generator_with_names_out ge_converter is not supported!")

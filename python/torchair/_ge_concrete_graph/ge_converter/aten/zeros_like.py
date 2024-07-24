@@ -57,4 +57,4 @@ def conveter_aten_zeros_like_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::zeros_like.out(Tensor self, *, MemoryFormat? memory_format=None, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.zeros_like.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.zeros_like.out ge_converter is not supported!")

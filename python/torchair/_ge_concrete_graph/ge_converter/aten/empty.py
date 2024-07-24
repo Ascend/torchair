@@ -42,10 +42,10 @@ def conveter_aten_empty_memory_format(
 ):
     """NB: aten::empty.memory_format(SymInt[] size, *, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None, MemoryFormat? memory_format=None) -> Tensor"""
     if layout is not None and (layout != torch.strided):
-        raise NotImplementedError("torch.ops.aten.empty.memory_format is only supported on dense tensor now.")
+        raise RuntimeError("torch.ops.aten.empty.memory_format is only supported on dense tensor now.")
 
     if memory_format is not None and (memory_format != torch.contiguous_format):
-        raise NotImplementedError("torch.ops.aten.empty.memory_format is only supported contiguous_format now.")
+        raise RuntimeError("torch.ops.aten.empty.memory_format is only supported contiguous_format now.")
     return ge.Fill(size, ge.Cast(0., dst_type=meta_outputs.dtype))
 
 @register_fx_node_ge_converter(torch.ops.aten.empty.out)
@@ -56,7 +56,7 @@ def conveter_aten_empty_out(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::empty.out(SymInt[] size, *, MemoryFormat? memory_format=None, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.empty.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.empty.out ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.empty.names)
@@ -71,7 +71,7 @@ def conveter_aten_empty_names(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::empty.names(int[] size, *, str[]? names, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None, MemoryFormat? memory_format=None) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.empty.names ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.empty.names ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.empty.names_out)
@@ -83,4 +83,4 @@ def conveter_aten_empty_names_out(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::empty.names_out(int[] size, *, str[]? names, MemoryFormat? memory_format=None, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.empty.names_out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.empty.names_out ge_converter is not supported!")

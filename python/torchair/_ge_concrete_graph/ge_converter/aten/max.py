@@ -28,7 +28,7 @@ from torchair._ge_concrete_graph.utils import dtype_promote
 @register_fx_node_ge_converter(torch.ops.aten.max.other)
 def conveter_aten_max_other(self: Tensor, other: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::max.other(Tensor self, Tensor other) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.max.other ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.max.other ge_converter is not supported!")
 
 
 @declare_supported([
@@ -71,7 +71,7 @@ def conveter_aten_max_dim_max(
     meta_outputs: List[TensorSpec] = None
 ):
     """NB: aten::max.dim_max(Tensor self, int dim, bool keepdim=False, *, Tensor(a!) max, Tensor(b!) max_values) -> (Tensor(a!) values, Tensor(b!) indices)"""
-    raise NotImplementedError("torch.ops.aten.max.dim_max ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.max.dim_max ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.max.names_dim)
@@ -79,7 +79,7 @@ def conveter_aten_max_names_dim(
     self: Tensor, dim: str, keepdim: bool = False, meta_outputs: List[TensorSpec] = None
 ):
     """NB: aten::max.names_dim(Tensor self, str dim, bool keepdim=False) -> (Tensor values, Tensor indices)"""
-    raise NotImplementedError("torch.ops.aten.max.names_dim ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.max.names_dim ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.max.names_dim_max)
@@ -93,7 +93,7 @@ def conveter_aten_max_names_dim_max(
     meta_outputs: List[TensorSpec] = None
 ):
     """NB: aten::max.names_dim_max(Tensor self, str dim, bool keepdim=False, *, Tensor(a!) max, Tensor(b!) max_values) -> (Tensor(a!) values, Tensor(b!) indices)"""
-    raise NotImplementedError("torch.ops.aten.max.names_dim_max ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.max.names_dim_max ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.max.unary_out)
@@ -101,7 +101,7 @@ def conveter_aten_max_unary_out(
     self: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::max.unary_out(Tensor self, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.max.unary_out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.max.unary_out ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.max.out)
@@ -109,4 +109,4 @@ def conveter_aten_max_out(
     self: Tensor, other: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::max.out(Tensor self, Tensor other, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.max.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.max.out ge_converter is not supported!")

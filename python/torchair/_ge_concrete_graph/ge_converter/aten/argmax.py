@@ -70,4 +70,4 @@ def conveter_aten_argmax_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::argmax.out(Tensor self, int? dim=None, bool keepdim=False, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.argmax.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.argmax.out ge_converter is not supported!")

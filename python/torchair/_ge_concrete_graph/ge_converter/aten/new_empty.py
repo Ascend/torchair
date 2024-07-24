@@ -43,7 +43,7 @@ def conveter_aten_new_empty_default(
         dtype = torch_type_to_ge_type(dtype)
     size = dtype_promote(size, target_dtype=DataType.DT_INT32)
     if layout is not None and layout != torch.strided:
-        raise NotImplementedError("torch.ops.aten.new_empty.default ge_converter is only supported on dense tensor now!")
+        raise RuntimeError(f"torch.ops.aten.new_empty.default layout only support torch.strided, but now is {layout}!")
     return ge.Empty(size, dtype=dtype)
 
 
@@ -56,4 +56,4 @@ def conveter_aten_new_empty_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::new_empty.out(Tensor self, SymInt[] size, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.new_empty.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.new_empty.out ge_converter is not supported!")

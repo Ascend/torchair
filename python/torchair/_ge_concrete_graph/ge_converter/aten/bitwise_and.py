@@ -47,7 +47,7 @@ def conveter_aten_bitwise_and_Scalar(
     self: Tensor, other: Union[Number, Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::bitwise_and.Scalar(Tensor self, Scalar other) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.bitwise_and.Scalar ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.bitwise_and.Scalar ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.bitwise_and.Scalar_Tensor)
@@ -55,7 +55,7 @@ def conveter_aten_bitwise_and_Scalar_Tensor(
     self: Union[Number, Tensor], other: Tensor, meta_outputs: TensorSpec = None
 ):
     """NB: aten::bitwise_and.Scalar_Tensor(Scalar self, Tensor other) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.bitwise_and.Scalar_Tensor ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.bitwise_and.Scalar_Tensor ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.bitwise_and.Tensor_out)
@@ -63,7 +63,7 @@ def conveter_aten_bitwise_and_Tensor_out(
     self: Tensor, other: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::bitwise_and.Tensor_out(Tensor self, Tensor other, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.bitwise_and.Tensor_out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.bitwise_and.Tensor_out ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.bitwise_and.Scalar_out)
@@ -75,7 +75,7 @@ def conveter_aten_bitwise_and_Scalar_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::bitwise_and.Scalar_out(Tensor self, Scalar other, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.bitwise_and.Scalar_out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.bitwise_and.Scalar_out ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten.bitwise_and.Scalar_Tensor_out)
@@ -87,4 +87,4 @@ def conveter_aten_bitwise_and_Scalar_Tensor_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::bitwise_and.Scalar_Tensor_out(Scalar self, Tensor other, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.bitwise_and.Scalar_Tensor_out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.bitwise_and.Scalar_Tensor_out ge_converter is not supported!")

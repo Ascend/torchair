@@ -46,7 +46,7 @@ def conveter_aten_linspace_default(
     if steps < 0:
         raise AssertionError("number of steps must be non-negative")
     if layout is not None and layout != torch.strided:
-        raise NotImplementedError("torch.ops.aten.linspace.default ge_converter is only supported on dense tensor now!")
+        raise RuntimeError("torch.ops.aten.linspace.default ge_converter is only supported on dense tensor now!")
     result = ge.LinSpace(start, end, steps)
     if dtype is not None:
         result = dtype_promote(result, target_dtype=dtype)
@@ -63,4 +63,4 @@ def conveter_aten_linspace_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::linspace.out(Scalar start, Scalar end, int steps, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.linspace.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.linspace.out ge_converter is not supported!")

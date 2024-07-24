@@ -40,4 +40,4 @@ def conveter_aten_triu_out(
     self: Tensor, diagonal: int = 0, *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::triu.out(Tensor self, int diagonal=0, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.triu.out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten.triu.out ge_converter is not supported!")
