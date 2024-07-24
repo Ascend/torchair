@@ -27,22 +27,48 @@ from torchair._ge_concrete_graph.utils import dtype_promote
 
 @declare_supported([
     Support(F32(8, 8, 8)),
+    Support(F32(1, 1, 1)),
     Support(F32(8, 1, 8, 1, 8, 1)),
     Support(F16(8, 1, 8, 1, 8, 1)),
     Support(I64(8, 1, 8, 1, 8, 1)),
     Support(I32(8, 1, 8, 1, 8, 1)),
-    Support(I16(8, 1, 8, 1, 8, 1)),
     Support(BOOL(8, 1, 8, 1, 8, 1)),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.squeeze.default)
 def conveter_aten_squeeze_default(self: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::squeeze(Tensor(a) self) -> Tensor(a)"""
+    if self.symsize is not None:
+        need_squeeze_dims = []
+        for idx, dim_value in enumerate(self.symsize):
+            if not isinstance(dim_value, torch.SymInt) and dim_value == 1:
+                need_squeeze_dims.append(idx)
+        if len(need_squeeze_dims) == 0:
+            return ge.Identity(self)
+        else:
+            return ge.Squeeze(self, axis=need_squeeze_dims)
+
     return ge.Squeeze(self)
 
 
+@declare_supported([
+    Support(F32(2, 1, 1, 4), dim=1),
+    Support(F32(2, 1, 1, 4), dim=3),
+    Support(F16(2, 1, 1, 4), dim=1),
+    Support(F16(2, 1, 1, 4), dim=3),
+    Support(I64(2, 1, 1, 4), dim=1),
+    Support(I64(2, 1, 1, 4), dim=3),
+    Support(I32(2, 1, 1, 4), dim=1),
+    Support(I32(2, 1, 1, 4), dim=3),
+])
 @register_fx_node_ge_converter(torch.ops.aten.squeeze.dim)
 def conveter_aten_squeeze_dim(self: Tensor, dim: int, meta_outputs: TensorSpec = None):
     """NB: aten::squeeze.dim(Tensor(a) self, int dim) -> Tensor(a)"""
+    if self.symsize is not None:
+        if not isinstance(self.symsize[dim], torch.SymInt) and self.symsize[dim] == 1:
+            return ge.Squeeze(self, axis=[dim])
+        else:
+            return ge.Identity(self)
+
     return ge.Squeeze(self, axis=[dim])
 
 

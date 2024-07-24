@@ -1580,5 +1580,53 @@ class TorchairSt(unittest.TestCase):
         res = model(x)
         self.assertEqual(res, 33)
 
+    def test_squeeze_opt_for_dim_not_one(self):
+        def check_graph_key_op_num(concrete_graph):
+            num_identity = 0
+            num_squeeze = 0
+            for node in concrete_graph.graph.op:
+                if node.type == 'Identity':
+                    num_identity += 1
+                if node.type == 'Squeeze':
+                    num_squeeze += 1
+            assert num_identity == 2, f"check number of Identity {num_identity} == 2 failed"
+            assert num_squeeze == 3, f"check number of Squeeze {num_squeeze} == 3 failed"
+
+        def wrapper_call(func):
+            def wrapper(*args, **kwargs):
+                assert len(args) > 0
+                check_graph_key_op_num(args[0])
+                return func(*args, **kwargs)
+
+            return wrapper
+
+        GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, l, m, n):
+                y = x.squeeze(1) + 1  # to squeeze
+                z = x.squeeze(2) + 1  # to identity
+                l = l.squeeze() + 1  # to identity
+                m = m.squeeze() + 1  # to squeeze
+                n = n.squeeze() + 1  # to squeeze
+
+                return y, z, l, m, n
+
+        in1 = torch.randn([2, 1, 3])
+        in2 = torch.randn([2, 3, 4])
+        in3 = torch.randn([2, 1, 1])
+        in4 = torch.randn([1, 1, 1])
+        model = Model()
+
+        model_dynamic = torch.compile(model, backend=npu_backend, dynamic=False)
+        model_dynamic(in1, in2, in3, in4)
+
+        model_static = torch.compile(model, backend=npu_backend, dynamic=False)
+        model_dynamic(in1, in2, in3, in4)
+
+
 if __name__ == '__main__':
     unittest.main()
