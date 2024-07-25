@@ -51,6 +51,13 @@ def _is_alias(public_api_fun_name, public_api):
     return False
 
 
+SKIP_CHECK_MODULES = [
+    "torchair.ge_concrete_graph.ge_apis",
+    "torchair.ge_concrete_graph.ge_graph",
+    "torchair.ge_concrete_graph.fx2ge_converter",
+]
+
+
 class TestPublicBindings(unittest.TestCase):
     @staticmethod
     def _is_mod_public(modname):
@@ -60,6 +67,12 @@ class TestPublicBindings(unittest.TestCase):
                 return False
         return True
 
+    @staticmethod
+    def _is_legacy_public(modname):
+        for mod in SKIP_CHECK_MODULES:
+            if modname.startswith(mod):
+                return True
+        return False
 
     def test_correct_module_names(self):
         '''
@@ -94,6 +107,8 @@ class TestPublicBindings(unittest.TestCase):
                 # verifies that each public API has the correct module name and naming semantics
 
             def check_one_element(elem, modname, mod, *, is_public, is_all):
+                if self._is_legacy_public(f'{modname}.{elem}'):
+                    return
                 obj = getattr(mod, elem)
                 if not (isinstance(obj, Callable) or inspect.isclass(obj)):
                     return
@@ -181,6 +196,20 @@ class TestPublicBindings(unittest.TestCase):
 
         # empty lists are considered false in python
         self.assertTrue(not failure_list, msg)
+
+
+    def test_compatible_api(self):
+        try:
+            from torchair.ge_concrete_graph import ge_apis as ge
+            from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
+            from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType
+            from torchair.ge_concrete_graph.ge_graph import get_default_ge_graph, next_unique_name
+            from torchair.ge_concrete_graph.ge_graph import compat_as_bytes
+            from torchair.ge_concrete_graph.ge_graph import get_invalid_desc
+        except:
+            raise AssertionError("import compatible api failed, UT failed")
+        else:
+            self.assertTrue(True)
 
 
 if __name__ == '__main__':
