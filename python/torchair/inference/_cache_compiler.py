@@ -424,7 +424,7 @@ class ModelCacheSaver:
         self.compiled_model.save(self.cache_bin)
 
     def __call__(self, *args, **kwargs):
-        with ModelCacheWatcher(self.func.__code__, self), torch.inference_mode():
+        with ModelCacheWatcher(self.func.__code__, self), torch.no_grad():
             return self.compiled_func(*args, **kwargs)
 
     @classmethod
@@ -555,7 +555,7 @@ class _NoGuardCompiled:
         self._args = None
         self._kwargs = None
         torch._dynamo.reset()  # reset all dynamo cache for new cache
-        with torch.inference_mode():
+        with torch.no_grad():
             result = ModelCacheSaver(self.func, cache_file, config=self.config, dynamic=self.dynamic)(*args, **kwargs)
         self._reset()
         return result
