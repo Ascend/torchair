@@ -342,7 +342,7 @@ def _patch_model_6():
     This patch would be removed in the near future.
     """
     # close AddLayerNormFusionPass
-    close_add_layer_norm_fusion_pass()
+    close_view_optimise()
     module_spec = importlib.util.find_spec("transformers")
     if module_spec is None:
         return
@@ -585,7 +585,7 @@ def _patch_model_11():
         BasicBlock.forward = new_forward
 
 
-def close_add_layer_norm_fusion_pass():
+def create_fusion_switch_file():
     fusion_config = {}
     fusion_config.setdefault("Switch", {}).setdefault("GraphFusion", {})["AddLayerNormFusionPass"] = "off"
     fusion_config_file = os.getcwd() + "/fusion_switch.cfg"
@@ -594,17 +594,31 @@ def close_add_layer_norm_fusion_pass():
         json.dump(fusion_config, f)
     config = torchair.CompilerConfig()
     config.fusion_config.fusion_switch_file = fusion_config_file
-    npu_backend = torchair.get_npu_backend(compiler_config=config)
-
-    def compile_with_fusion_switch(args):
-        return torch._dynamo.optimize(npu_backend, nopython=args.nopython)
 
     def clean_fusion_config_file():
         PathManager.remove_file_safety(fusion_config_file)
 
-    common.compile_with_backend = compile_with_fusion_switch
     from common import register_callback
     register_callback(clean_fusion_config_file)
+    return config
+
+
+def close_view_optimise():
+    config = create_fusion_switch_file()
+    config.experimental_config.enable_view_optimize = False
+    npu_backend = torchair.get_npu_backend(compiler_config=config)
+
+    def compile_with_view_switch(args):
+        return torch._dynamo.optimize(npu_backend, nopython=args.nopython)
+    common.compile_with_backend = compile_with_view_switch
+
+
+def close_add_layer_norm_fusion_pass():
+    npu_backend = torchair.get_npu_backend(compiler_config=create_fusion_switch_file())
+
+    def compile_with_fusion_switch(args):
+        return torch._dynamo.optimize(npu_backend, nopython=args.nopython)
+    common.compile_with_backend = compile_with_fusion_switch
 
 
 @register_patch("hf_BigBird", "hf_DistilBert")
