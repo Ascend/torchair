@@ -19,6 +19,7 @@ from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
+from torchair._ge_concrete_graph.utils import dtype_promote
 from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
 
 
@@ -28,7 +29,7 @@ def conveter_aten_index_Tensor(
 ):
     """NB: aten::index.Tensor(Tensor self, Tensor?[] indices) -> Tensor"""
     mask = [1 if indice else 0 for indice in indices]
-    indices = [i for i in indices if i]
+    indices = [dtype_promote(i, target_dtype=DataType.DT_INT64) for i in indices if i]
     return ge.IndexByTensor(self, indices, indices_mask=mask)
 
 
