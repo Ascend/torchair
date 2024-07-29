@@ -592,6 +592,9 @@ def as_default_inductor_backend():
                 print(f"Fallback {op} as: env NPU_INDUCTOR_ALWAYS_FALLBACK=1", flush=True)
                 return fallback_handler(op, add_to_fallback_set=False)(*args, **kwargs)
 
+            if "inductor" in str(op):
+                return fallback_handler(op, add_to_fallback_set=False)(*args, **kwargs)
+
             tensor_box = f(*args, **kwargs)
 
             if os.getenv("NPU_INDUCTOR_DISABLE_FALLBACK", None) == "1":
