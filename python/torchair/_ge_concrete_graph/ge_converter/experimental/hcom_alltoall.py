@@ -151,6 +151,17 @@ def npu_all_to_all_single_patch_dist(
     group=None,
     async_op=False,
 ):
+    if not torch.distributed._functional_collectives._are_we_tracing():
+        return torch.distributed.distributed_c10d.all_to_all_single(output_tensor, input_tensor,
+                                                                    output_split_sizes,
+                                                                    input_split_sizes,
+                                                                    group, async_op)
+    if async_op:
+        AssertionError(f'When you enable torch.compile or use the cache_compile feature, '
+                       f'use the patch_for_hcom interface to ensure that collective communication functions '
+                       f'are included in the graph. However, unlike the eager mode, the compile mode '
+                       f'does not support the async_op = True parameter for collective communication APIs.')
+
     c10d._check_single_tensor(output_tensor, "output_tensor")
     c10d._check_single_tensor(input_tensor, "input_tensor")
     c10d._ensure_all_tensors_same_dtype(output_tensor, input_tensor)
@@ -249,6 +260,14 @@ def npu_all_to_all_patch_dist(
         group=None,
         async_op=False,
 ):
+    if not torch.distributed._functional_collectives._are_we_tracing():
+        return torch.distributed.distributed_c10d.all_to_all(output_tensor_list, input_tensor_list, group, async_op)
+    if async_op:
+        AssertionError(f'When you enable torch.compile or use the cache_compile feature, '
+                       f'use the patch_for_hcom interface to ensure that collective communication functions '
+                       f'are included in the graph. However, unlike the eager mode, the compile mode '
+                       f'does not support the async_op = True parameter for collective communication APIs.')
+
     if len(input_tensor_list) != len(output_tensor_list):
         raise AssertionError
     if group is None:

@@ -30,7 +30,14 @@ def convert_reduce_op(op):
         raise ValueError(f"Unsupported reduce op: {op}")
 
 
-def npu_allreduce_patch_dist(tensor, op="sum", group=None, async_op=False):
+def npu_allreduce_patch_dist(tensor, op=torch.distributed.ReduceOp.SUM, group=None, async_op=False):
+    if not torch.distributed._functional_collectives._are_we_tracing():
+        return torch.distributed.distributed_c10d.all_reduce(tensor, op, group, async_op)
+    if async_op:
+        AssertionError(f'When you enable torch.compile or use the cache_compile feature, '
+                       f'use the patch_for_hcom interface to ensure that collective communication functions '
+                       f'are included in the graph. However, unlike the eager mode, the compile mode '
+                       f'does not support the async_op = True parameter for collective communication APIs.')
     op = convert_reduce_op(op)
     group = _world.default_pg if group is None else group
     tensor.copy_(torch.distributed._functional_collectives.all_reduce(tensor, op, group))

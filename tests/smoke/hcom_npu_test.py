@@ -384,6 +384,29 @@ def check_cache_file_and_clean_env(path: str = ''):
     shutil.rmtree(path)
 
 
+class AllReduceSingeGroup(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x, y):
+        handle = torch.distributed.all_reduce(x, op=torch.distributed.ReduceOp.SUM, async_op=True)
+        handle.wait()
+        x = x + y
+        return x
+
+
+def test_patch_allreduce_async_op(rank, world_size):
+    torch.npu.set_device(rank)
+    torch.distributed.init_process_group("hccl", rank=rank, world_size=world_size)
+    x = torch.ones([2, 2], dtype=torch.int32).to("npu:" + str(rank))
+    y = torch.ones([2, 2], dtype=torch.int32).to("npu:" + str(rank))
+    model = AllReduceSingeGroup().to("npu:" + str(rank))
+    out = torch.ones([2, 2], dtype=torch.int32).to("npu:" + str(rank)) * world_size + y
+    ret = model(x, y)
+    assert out.equal(ret)
+    torch.distributed.destroy_process_group()
+
+
 def mp():
     world_size = 4
     # =================  case 1 基本入图场景 动态图 + 单算子混跑 + split_sizes入参==================
@@ -439,6 +462,11 @@ def mp():
     torch.multiprocessing.spawn(test_cache_allreduce, args=(world_size, ), nprocs=world_size, join=True)
     print("==================case 14 pass =============================", flush=True)
     check_cache_file_and_clean_env()
+
+    # =================  case 15 use patch eager aync_op = True ==================
+    torch.multiprocessing.spawn(test_patch_allreduce_async_op, args=(world_size, ), nprocs=world_size, join=True)
+    print("==================case 15 pass =============================", flush=True)
+
 
 if __name__ == '__main__':
     os.environ["MASTER_ADDR"] = "localhost"

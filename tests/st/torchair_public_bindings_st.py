@@ -199,6 +199,7 @@ class TestPublicBindings(unittest.TestCase):
 
 
     def test_compatible_api(self):
+        # 以下接口均为N+4版本保留兼容性的接口，将在一年之后删除(自2024/7/27始)
         try:
             from torchair.ge_concrete_graph import ge_apis as ge
             from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
@@ -206,6 +207,7 @@ class TestPublicBindings(unittest.TestCase):
             from torchair.ge_concrete_graph.ge_graph import get_default_ge_graph, next_unique_name
             from torchair.ge_concrete_graph.ge_graph import compat_as_bytes
             from torchair.ge_concrete_graph.ge_graph import get_invalid_desc
+            import torchair.ge_concrete_graph.ge_converter.experimental.hcom_allgather
         except:
             raise AssertionError("import compatible api failed, UT failed")
         else:
