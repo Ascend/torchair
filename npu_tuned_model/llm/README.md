@@ -20,6 +20,7 @@
 
 # 公告
 
+- 2024年7月19号：qwen2优化torch_npu.npu_incre_flash_attention算子计算量和使能tiling全下沉配置
 - 2024年7月5号：提供qwen2适配好的npu模型结构和前端切分分布式执行样例
 - 2024年6月3号：提供chatglm3适配好的npu模型结构和前端切分分布式执行样例
 - 2024年5月6号：提供llama2基于分离部署api的适配样例

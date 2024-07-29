@@ -355,6 +355,8 @@ class Qwen2Attention(nn.Module):
         position_ids: Optional[torch.LongTensor] = None,
         past_key_value: Optional[Cache] = None,
         updated_kv_positions: Optional[torch.LongTensor] = None,
+        kv_padding_size: Optional[torch.LongTensor] = None,
+        actual_seq_len: Optional[list] = None,
         rotary_emb_cos: Optional[torch.Tensor] = None,
         rotary_emb_sin: Optional[torch.Tensor] = None,
         output_attentions: bool = False,
@@ -404,6 +406,8 @@ class Qwen2Attention(nn.Module):
                                                               input_layout="BSND",
                                                               scale_value=self.scale_value,
                                                               atten_mask=attention_mask,
+                                                              actual_seq_lengths=actual_seq_len,
+                                                              kv_padding_size=kv_padding_size,
                                                               num_key_value_heads=self.num_key_value_heads)
 
         if q_len > 1:
@@ -843,6 +847,8 @@ class Qwen2DecoderLayer(nn.Module):
         position_ids: Optional[torch.LongTensor] = None,
         past_key_value: Optional[Tuple[torch.Tensor]] = None,
         updated_kv_positions: Optional[torch.LongTensor] = None,
+        kv_padding_size: Optional[torch.LongTensor] = None,
+        actual_seq_len: Optional[list] = None,
         rotary_emb_cos: Optional[torch.Tensor] = None,
         rotary_emb_sin: Optional[torch.Tensor] = None,
         output_attentions: Optional[bool] = False,
@@ -877,6 +883,8 @@ class Qwen2DecoderLayer(nn.Module):
             position_ids=position_ids,
             past_key_value=past_key_value,
             updated_kv_positions=updated_kv_positions,
+            kv_padding_size=kv_padding_size,
+            actual_seq_len=actual_seq_len,
             rotary_emb_cos=rotary_emb_cos,
             rotary_emb_sin=rotary_emb_sin,
             output_attentions=output_attentions,
@@ -1220,6 +1228,8 @@ class Qwen2Model(Qwen2PreTrainedModel):
         position_ids: Optional[torch.LongTensor] = None,
         past_key_values: Optional[List[torch.FloatTensor]] = None,
         updated_kv_positions: Optional[torch.LongTensor] = None,
+        kv_padding_size: Optional[torch.LongTensor] = None,
+        actual_seq_len: Optional[list] = None,
         inputs_embeds: Optional[torch.FloatTensor] = None,
         use_cache: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
@@ -1314,6 +1324,8 @@ class Qwen2Model(Qwen2PreTrainedModel):
                     position_ids=position_ids,
                     past_key_value=past_key_values,
                     updated_kv_positions=updated_kv_positions,
+                    kv_padding_size=kv_padding_size,
+                    actual_seq_len=actual_seq_len,
                     rotary_emb_cos=rotary_emb_cos,
                     rotary_emb_sin=rotary_emb_sin,
                     output_attentions=output_attentions,
@@ -1389,6 +1401,8 @@ class Qwen2ForCausalLM(Qwen2PreTrainedModel):
         position_ids: Optional[torch.LongTensor] = None,
         past_key_values: Optional[List[torch.FloatTensor]] = None,
         updated_kv_positions: Optional[torch.LongTensor] = None,
+        kv_padding_size: Optional[torch.LongTensor] = None,
+        actual_seq_len: Optional[list] = None,
         inputs_embeds: Optional[torch.FloatTensor] = None,
         labels: Optional[torch.LongTensor] = None,
         use_cache: Optional[bool] = None,
@@ -1435,6 +1449,8 @@ class Qwen2ForCausalLM(Qwen2PreTrainedModel):
             position_ids=position_ids,
             past_key_values=past_key_values,
             updated_kv_positions=updated_kv_positions,
+            kv_padding_size=kv_padding_size,
+            actual_seq_len=actual_seq_len,
             inputs_embeds=inputs_embeds,
             use_cache=use_cache,
             output_attentions=output_attentions,
@@ -1580,6 +1596,10 @@ class Qwen2ForCausalLM(Qwen2PreTrainedModel):
         attention_mask = _prepare_4d_causal_attention_mask(attention_mask, (batch_size, seq_length), inputs_embeds,
                                                            past_key_values_length)
 
+        # ifa Computational optimization inputs
+        kv_padding_size = torch.tensor(self.config.max_position_embeddings - prompt_length, device=position_ids.device)
+        actual_seq_len = (position_ids[:, -1] + 1).cpu().tolist()
+
         position_ids = position_ids.clone()
         model_inputs.update(
             {
@@ -1588,9 +1608,23 @@ class Qwen2ForCausalLM(Qwen2PreTrainedModel):
                 "updated_kv_positions": updated_kv_positions,
                 "use_cache": kwargs.get("use_cache"),
                 "attention_mask": attention_mask,
+                "kv_padding_size": kv_padding_size,
+                "actual_seq_len": actual_seq_len,
             }
         )
+        # 在走动态图模式场景下，实际增量是静态图，所以标记增量的输入tensor为static
+        # fa算子设置了actual_seq_len，需要走动态图mark_static
+        self._mark_model_inputs_static(model_inputs)
         return model_inputs
+
+    def _mark_model_inputs_static(self, model_inputs):
+        for key, value in model_inputs.items():
+            if key == "past_key_values" and value is not None:
+                for i in range(self.config.num_hidden_layers):
+                    torch._dynamo.mark_static(value[i][0])
+                    torch._dynamo.mark_static(value[i][1])
+            elif isinstance(value, torch.Tensor):
+                torch._dynamo.mark_static(value)
 
     @staticmethod
     def _reorder_cache(past_key_values, beam_idx):

@@ -489,6 +489,55 @@ def merge_qkv_weight(self, tp_size=1):
             self.model.layers[i].self_attn.qkv.bias = _to_parameter(torch.cat(bias_list, axis=0))
 ```
 
+## IFA算子计算优化+tiling全下沉
+
+优化原因：IFA算子在进行增量计算时，由于输出做了padding，导致存在冗余的计算，可以通过传入actual_seq_lengths和kv_padding_size参数
+来消除冗余的计算。同时使能tiling全下沉配置项，将IFA算子的tiling计算转移到AICPU侧异步执行，减少host-device间的同步和调度时延。
+
+优化方式：
+```python
+# Step1：prepare_inputs_for_generation新增模型入参actual_seq_len和kv_padding_size
+kv_padding_size = torch.tensor(self.config.max_position_embeddings - prompt_length, device=position_ids.device)
+actual_seq_len = (position_ids[:, -1] + 1).cpu().tolist()
+
+
+# Step2：使能IFA算子的actual_seq_lengths和kv_padding_size后，模型需要走动态模式，但模型实际输入为静态，
+# 所以prepare_inputs_for_generation中需要对输入进行mark_static
+self._mark_model_inputs_static(model_inputs)
+
+def _mark_model_inputs_static(self, model_inputs):
+    for key, value in model_inputs.items():
+        if key == "past_key_values" and value is not None:
+            for i in range(self.config.num_hidden_layers):
+                torch._dynamo.mark_static(value[i][0])
+                torch._dynamo.mark_static(value[i][1])
+        elif isinstance(value, torch.Tensor):
+            torch._dynamo.mark_static(value)
+
+            
+# Step3：Qwen2Attention中torch_npu.npu_incre_flash_attention算子新增参数actual_seq_lengths和kv_padding_size：
+attn_output = torch_npu.npu_incre_flash_attention(query_states, key_states.contiguous(),
+                                                  value_states.contiguous(), num_heads=self.num_heads,
+                                                  input_layout="BSND",
+                                                  scale_value=self.scale_value,
+                                                  atten_mask=attention_mask,
+                                                  actual_seq_lengths=actual_seq_len,      # 新增
+                                                  kv_padding_size=kv_padding_size,        # 新增
+                                                  num_key_value_heads=self.num_key_value_heads)
+```
+
+**开启tiling全下沉配置，并将torch.compile的dynamic参数配置为True**
+```python
+# 将transformers/generation/utils.py中greedy_search函数中的图模式代码改为：
+import torchair as tng
+from torchair.configs.compiler_config import CompilerConfig
+config = CompilerConfig()
+config.experimental_config.frozen_parameter = True
+config.experimental_config.tiling_schedule_optimize = True    # 使能tiling全下沉配置
+npu_backend = tng.get_npu_backend(compiler_config=config)
+self = torch.compile(self, dynamic=True, fullgraph=True, backend=npu_backend)    # 将dynamic参数配置为True
+```
+
 
 # 性能数据
 
@@ -715,6 +764,33 @@ def merge_qkv_weight(self, tp_size=1):
     <td class="tg-0lax">32</td>
     <td class="tg-0lax">4920ms</td>
     <td class="tg-0lax">47ms</td>
+  </tr>
+</tbody>
+</table>
+
+<table class="tg">
+<thead>
+  <tr>
+    <th class="tg-0pky" rowspan="2">优化项</th>
+    <th class="tg-0pky" colspan="2">单算子模式</th>
+    <th class="tg-0pky" colspan="2">图模式</th>
+  </tr>
+  <tr>
+    <th class="tg-0pky">全量</th>
+    <th class="tg-0pky">增量</th>
+    <th class="tg-0pky">全量</th>
+    <th class="tg-0pky">增量</th>
+  </tr>
+</thead>
+<tbody>
+
+**2024年7月19号，4batch新增性能数据：**
+  <tr>
+    <td class="tg-0pky">IFA算子计算优化+tiling全下沉</td>
+    <td class="tg-0pky">700ms</td>
+    <td class="tg-0pky">123ms</td>
+    <td class="tg-0pky">673ms</td>
+    <td class="tg-0pky">36ms</td>
   </tr>
 </tbody>
 </table>
