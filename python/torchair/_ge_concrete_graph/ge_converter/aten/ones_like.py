@@ -49,8 +49,8 @@ def conveter_aten_ones_like_default(
     
     if layout and layout != torch.strided:
         raise NotImplementedError("torch.ops.aten.ones_like.out ge_converter is only supportded on dense tensor!")
-    
-    return ge.Fill(ge.Shape(self), ge.Cast(1., dst_type=dtype))
+    self = dtype_promote(self, target_dtype=dtype)
+    return ge.OnesLike(self)
 
 @register_fx_node_ge_converter(torch.ops.aten.ones_like.out)
 def conveter_aten_ones_like_out(
