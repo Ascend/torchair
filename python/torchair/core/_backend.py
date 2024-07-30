@@ -55,9 +55,8 @@ def _try_get_global_init_compile_option(global_options: Dict = None):
         for key, value in subset.items():
             if key not in superset or superset[key] != value:
                 raise ValueError(
-                    'Unsupport different initialization options twice, new option value [{}] is different from init '
-                    'option value [{}] while option key is [{}], please check your compile config when use '
-                    'torch.compile()'.format(value, superset[key], key))
+                    f'Unsupport twice initialtion with different options, new option key {key} value {value}, '
+                    f'and all recorded options are {superset}. Please check your compile config for torch.compile()')
         return True
 
     global _GLOBAL_COMPILE_OPTION

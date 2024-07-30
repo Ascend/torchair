@@ -213,7 +213,7 @@ Status Session::RunGraph(uint32_t id, const std::vector<ge::Tensor> &inputs, std
     output.SetTensorDesc(desc);
 
     static std::vector<float> data;
-    data.resize(512 * 1024 * 1024, 1.0);
+    data.resize(1024, 1.0);
     output.SetData(reinterpret_cast<uint8_t *>(data.data()), sizeof(float) * data.size());
     outputs.push_back(output);
   }

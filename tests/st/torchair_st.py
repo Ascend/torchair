@@ -52,6 +52,7 @@ class TorchairSt(unittest.TestCase):
     def setUp(self) -> None:
         self.call_bak = GeConcreteGraph.__call__
         self.optimize_bak = GeConcreteGraph.optimize_graph_without_runtime
+        torchair.core._backend._GLOBAL_COMPILE_OPTION = None
         return super().setUp()
 
     def tearDown(self) -> None:
@@ -232,7 +233,7 @@ class TorchairSt(unittest.TestCase):
                       'from torchair._ge_concrete_graph import ge_apis as ge\n' \
                       'from torchair.ge._ge_graph import get_default_ge_graph\n\n'
 
-    def test_2sym_pack(self):
+    def test_sym_pack(self):
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
@@ -1621,11 +1622,11 @@ class TorchairSt(unittest.TestCase):
         in4 = torch.randn([1, 1, 1])
         model = Model()
 
-        model_dynamic = torch.compile(model, backend=npu_backend, dynamic=False)
+        model_dynamic = torch.compile(model, backend=npu_backend, dynamic=True)
         model_dynamic(in1, in2, in3, in4)
 
         model_static = torch.compile(model, backend=npu_backend, dynamic=False)
-        model_dynamic(in1, in2, in3, in4)
+        model_static(in1, in2, in3, in4)
 
 
 if __name__ == '__main__':
