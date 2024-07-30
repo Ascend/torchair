@@ -174,6 +174,8 @@ def torch_type_to_ge_type(dtype, m=DataType):
         return m.DT_QUINT8
     if dtype == torch.qint32:
         return m.DT_QINT32
+    if dtype == torch.quint4x2:
+        return m.DT_INT4
 
     raise RuntimeError(f"Unsupported torch type {dtype} by ge")
 
