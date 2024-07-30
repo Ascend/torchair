@@ -102,7 +102,7 @@ bash diffusers_patch.sh
 
 在npu_tuned_model/mm/examples/sd2.1/run_sd.sh中首先根据提示配置：
 ```shell
-export PYTHONPATH=$PYTHONPATH:/path/to/your/torchair/npu_tuned_model/mm:/path/to/your/torchair/npu_tuned_model/mm/engines/src/
+export PYTHONPATH=$PYTHONPATH:/path/to/your/torchair/npu_tuned_model/mm/stable_diffusion:/path/to/your/torchair/npu_tuned_model/mm/stable_diffusion/engines/src/
 cann_path=/usr/local/Ascend # 昇腾cann包安装目录
 source ${cann_path}/latest/bin/setenv.bash
 model_path=xxx/stable-diffusion-2-1-base # 下载的权重和模型信息

@@ -120,7 +120,7 @@ attn_output = self.o_proj(attn_output)
 优化方式：根据句子最大长度申请好一块固定大小的kv cache tensor，然后通过scatter_update_算子对指定位置上的kv_cache进行更新。
 
 ```python
-# modeling_llama.py中Qwen2Model创建past_kv_values的逻辑替换如下：
+# modeling_qwen2.py中Qwen2Model创建past_kv_values的逻辑替换如下：
 # 固定kv cache的大小，用作全量图和增量图的kv cache更新
 batch_size, seq_length = input_ids.shape
 if use_cache:
@@ -302,7 +302,7 @@ value_states = value_states.view(bsz, q_len, self.num_key_value_heads, self.head
 # step2 kv_cache shape调整shape， scatter_update的dim
 # prepare_inputs_for_generation函数
 kv_shape = (batch_size, self.model.max_position_embeddings, self.model.num_key_value_heads // self.world_size, self.model.hidden_size // self.model.num_attention_heads)
-# LlamaAttention::forward函数
+# Qwen2Attention::forward函数
 torch_npu.scatter_update_(past_key_value.key_cache[self.layer_idx], tmp_ids, key_states, 1)
 torch_npu.scatter_update_(past_key_value.value_cache[self.layer_idx], tmp_ids, value_states, 1)
 
@@ -417,7 +417,7 @@ logits = logits.float()
 # Qwen2Attention __init__函数新增修改
 self.qkv = nn.Linear(self.hidden_size, self.num_heads * self.head_dim + 2 * self.num_key_value_heads * self.head_dim, bias=True)
 
-# LlamaAttention forward函数
+# Qwen2Attention forward函数
 # 修改前
 query_states = self.q_proj(hidden_states)
 key_states = self.k_proj(hidden_states)

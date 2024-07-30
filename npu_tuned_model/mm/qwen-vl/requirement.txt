@@ -1,0 +1,7 @@
+transformers==4.37.0
+accelerate
+tiktoken
+einops
+scipy
+pillow
+matplotlib
