@@ -32,18 +32,32 @@ def convert_npu_anti_quant_default(
 ):
     """NB: npu::npu_anti_quant(Tensor x, Tensor scale, *, Tensor? offset, ScalarType? dst_dtype,
                                ScalarType? src_dtype) -> (Tensor)"""
-    if x.dtype != DataType.DT_INT8:
-        raise RuntimeError("AntiQuant only support int8 for input x")
 
-    if src_dtype is not None:
-        if src_dtype != torch.int8:
-            raise NotImplementedError("AntiQuant only support int8 for src_dtype")
+    if x.dtype == DataType.DT_INT8:
+        if all((src_dtype is not None, src_dtype != torch.int8)):
+            raise RuntimeError("torch.ops.npu.npu_anti_quant.default: x data type is int8, "
+                f"src_dtype should be same to x, but current src_dtype is {src_dtype}")
+    elif x.dtype == DataType.DT_INT32:
+        if all((src_dtype is not None, src_dtype != torch.quint4x2)):
+            raise RuntimeError("torch.ops.npu.npu_anti_quant.default: x data type is int32, "
+                f"src_dtype should be torch.quint4x2, but current src_dtype is {src_dtype}")
 
-        if src_dtype != x.dtype:
-            x.set_torch_dtype(src_dtype)
+        x_dim_num = x.rank
+        if x_dim_num == 0:
+            raise RuntimeError(f"torch.ops.npu.npu_anti_quant.default: when x data type is int32, "
+                "AntiQuant no support for x is scalar")
 
-    dst_type = DataType.DT_FLOAT16
+        bit_shape = [1, ] * (x_dim_num - 1) + [8, ]
+        const = ge.Const(bit_shape)
+        x_shape_int32 = ge.Shape(x)
+        x_shape_int4 = ge.Mul(x_shape_int32, const)
+        x = ge.Bitcast(x, type=DataType.DT_INT4)
+        x = ge.Reshape(x, x_shape_int4)
+    else:
+        raise RuntimeError("torch.ops.npu.npu_anti_quant.default: AntiQuant only support int8 or int32 for input x")
+
+    attr_dst_type = DataType.DT_FLOAT16
     if dst_dtype is not None:
-        dst_type = torch_type_to_ge_type(dst_dtype)
+        attr_dst_type = torch_type_to_ge_type(dst_dtype)
     
-    return ge.AscendAntiQuantV2(x, scale, offset, dst_type=dst_type, sqrt_mode=False)
+    return ge.AscendAntiQuantV2(x, scale, offset=offset, dst_type=attr_dst_type, sqrt_mode=False)
