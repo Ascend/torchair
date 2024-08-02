@@ -1,4 +1,5 @@
 import functools
+import itertools
 import json
 import os
 from typing import List, Dict
@@ -192,118 +193,49 @@ class HintGraph:
     def tiling_def(self):
         code = IndentedBuffer()
         code.splice(f"""
-        # include "register/tilingdata_base.h"
-        namespace optiling {{
-            BEGIN_TILING_DATA_DEF(TilingData)
-            TILING_DATA_FIELD_DEF(uint32_t, total_size); // 数据总量
-            TILING_DATA_FIELD_DEF(uint32_t, blob_size); // 数据内存块大小
-            TILING_DATA_FIELD_DEF(uint32_t, blob_num); // 数据内存块数量
-            TILING_DATA_FIELD_DEF(uint32_t, blob_num_per_core); // 单个核心处理的内存块数量 = (blob_num / core_num(=8))
-    
-            TILING_DATA_FIELD_DEF(uint32_t, tile_size); // 单指令操作数据量
-            TILING_DATA_FIELD_DEF(uint32_t, tile_num_per_core); // 单个核心指令数量 = blob_num_per_core * blob_size / tile_size
-    
-            END_TILING_DATA_DEF;
-            REGISTER_TILING_DATA_CLASS({self.name}, TilingData)
-        }}
+        #include <iostream>
+        struct {self.name}TilingData {{
+            uint32_t total_size; // 数据总量
+            uint32_t blob_size; // 数据内存块大小
+            uint32_t blob_num; // 数据内存块数量
+            uint32_t blob_num_per_core; // 单个核心处理的内存块数量 = (blob_num / core_num(=8))
+            uint32_t tile_size; // 单指令操作数据量
+            uint32_t tile_num_per_core; // 单个核心指令数量 = blob_num_per_core * blob_size / tile_size
+        }};
         """)
         return code.getvalue()
 
     @property
     def tiling(self):
-        core_type = os.getenv("NPU_CORE_TYPE", "ai_core-ascend910B1")
-        core_type = core_type.split('ai_core-')[-1].lower()
-        inputs_def = '\n'.join([op.io_def() for op in self.inputs])
-        outputs_def = '\n'.join([op.io_def() for op in self.outputs])
+        signature = [f"int64_t {str(v)}" for v in sorted(self.graph.size_vars)]
+        signature.append(f"{self.name}TilingData *tiling_data")
+        signature.append(f"int64_t *workspace_size")
+        signature.append(f"int64_t *block_dim")
+        debug_code = '\n'.join(
+            [f'std::cerr << "[STUB]{self.name}TilingFunc {v} = " << {v} << std::endl;' for v in self.graph.size_vars])
         code = IndentedBuffer()
         code.splice(f"""
-        # include "{camel_to_snake(self.name)}_tiling.h"
-        # include "register/op_def_registry.h"
-        namespace optiling {{
-            static ge::graphStatus TilingFunc(gert::TilingContext * ctx) {{
-                uint32_t BLOCK_DIM = {HintGraph.BLOCK_DIM};
-                uint32_t BLOCK_SIZE = {HintGraph.BLOCK_SIZE};
-                uint32_t TILE_SIZE = {HintGraph.TILE_SIZE};
-    
-                TilingData tiling;
-                const auto & syms = ctx->GetInputShape(0)->GetStorageShape();
-                uint32_t data_size = 1U;
-                for (int i = 0; i < syms.GetDimNum(); ++i) {{
-                    data_size *= syms.GetDim(i);
-                }}
-                tiling.set_total_size(data_size);
-                tiling.set_blob_size(BLOCK_SIZE);
-                tiling.set_blob_num((data_size + BLOCK_SIZE - 1) / BLOCK_SIZE);
-                tiling.set_blob_num_per_core(tiling.get_blob_num() / BLOCK_DIM);
-                tiling.set_tile_size(TILE_SIZE);
-                tiling.set_tile_num_per_core(tiling.get_blob_num_per_core() * BLOCK_SIZE / TILE_SIZE);
-        
-                ctx->SetBlockDim({HintGraph.BLOCK_DIM});
-                tiling.SaveToBuffer(ctx->GetRawTilingData()->GetData(), ctx->GetRawTilingData()->GetCapacity());
-                ctx->GetRawTilingData()->SetDataSize(tiling.GetDataSize());
-                
-                return ge::GRAPH_SUCCESS;
-            }}
-        }}
-        namespace ops {{
-            class {self.name}: public OpDef {{
-            public:
-                explicit {self.name}(const char * name): OpDef(name) {{
-                    {inputs_def}
-                    {outputs_def}
-                    this->AICore().SetTiling(optiling::TilingFunc);
-                    this->AICore().AddConfig("{core_type}");
-                }}
-            }};
-            OP_ADD({self.name});
+        extern "C" int {self.name}TilingFunc({', '.join(signature)}) {{
+            {debug_code}
+            return 0;
         }}
         """)
         return code.getvalue()
 
     @property
-    def kernel_args(self):
-        args = [f"GM_ADDR {op.name}" for op in self.inputs + self.outputs]
-        args += ["GM_ADDR workspace", "GM_ADDR tiling"]
-        return args
-
-    @property
     def kernel(self):
-        pipe = "tpipe"
-        td = "tiling_data"
-        buffer_size = f"{td}.blob_num_per_core * {td}.blob_size"
-        offset = "offset"
-        tile_size = f"{td}.tile_size"
-        tile_num = f"{td}.tile_num_per_core"
-        inputs = self.inputs[1:]
-        init_global_buffer = '\n'.join([op.global_buffer(buffer_size) for op in inputs + self.outputs])
-        init_global_pipe = '\n'.join([op.global_pipe(pipe, f"{tile_size}") for op in inputs + self.outputs])
-
-        compute = IndentedBuffer()
-        stack = {}
-        tiling = Tiling(offset, tile_size, pipe)
-        for order, op in list(self.ordered_op.items()):
-            op: AscOp = op
-            op_vals = []
-            for i in op.inputs:
-                op_vals.append(stack[i.order])
-            stack[order] = op.compute(op_vals, tiling, compute)
-
+        signature = ["int64_t block_dim", "void *stream"]
+        buf_names = self.graph.inputs + self.graph.outputs + ['workspace']
+        signature.extend([f"int64_t *{v}" for v in buf_names])
+        signature.append(f"{self.name}TilingData *tiling_data")
+        debug_names = buf_names + ['block_dim', 'stream']
+        debug_code = '\n'.join(
+            [f'std::cerr << "[STUB]aclrtlaunch_{self.name} {v} = " << {v} << std::endl;' for v in debug_names])
         code = IndentedBuffer()
         code.splice(f"""
-        # include "kernel_operator.h"
-        using namespace AscendC;
-
-        extern "C" __global__ __aicore__ void {camel_to_snake(self.name)}({', '.join(self.kernel_args)}) {{
-            GET_TILING_DATA({td}, tiling);
-            if (GetBlockIdx() >= GetBlockNum()) return;
-    
-            TPipe {pipe};
-            {init_global_buffer}
-            {init_global_pipe}
-            for (int i = 0; i < {tile_num}; ++i) {{
-                uint32_t {offset} = i * {tile_size};
-                {compute.getvalue()}
-            }}
+        extern "C" int aclrtlaunch_{self.name}({', '.join(signature)}) {{
+            {debug_code}
+            return 0;
         }}
         """)
         return code.getvalue()

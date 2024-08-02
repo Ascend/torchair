@@ -21,26 +21,7 @@ class FusedKernelSpec:
     cpp_wrapper: str
 
 
-def _get_signature(cpp_wrapper: str, kernel_name: str):
-    pattern = re.compile(r'wrapper\(([^)]*)\)')
-    args = [s.strip() for s in pattern.findall(cpp_wrapper)[0].split(',')][:-1]  # Remove the end stream arg
-    num_addr_args = 0
-    for arg in args:
-        if not arg.startswith("void *"):
-            break
-        num_addr_args += 1
-    tiling_dtype = f"{kernel_name}TilingData"
-    launch_signature = ', '.join(
-        ["int64_t block_dim", "void *stream"] + args[:num_addr_args] + [f"{tiling_dtype} *tiling_data"])
-    tiling_signature = ', '.join(
-        args[num_addr_args:] + [f"{tiling_dtype} *tiling_data", "int64_t *workspace_size", "int64_t *block_dim"])
-
-    return tiling_signature, launch_signature
-
-
 def codegen_cpp_source(kernel_spec: FusedKernelSpec, kernel_path: str):
-    tiling_def = kernel_spec.tiling_def
-    cpp_wrapper = kernel_spec.cpp_wrapper
     wrapper = IndentedBuffer()
     wrapper.splice('''
     #include <iostream>
@@ -48,47 +29,49 @@ def codegen_cpp_source(kernel_spec: FusedKernelSpec, kernel_path: str):
     #include "torch_npu/csrc/core/npu/NPUStream.h"
     ''')
 
-    wrapper.splice(tiling_def)
+    wrapper.splice(kernel_spec.tiling_def)
 
-    tiling_signature, launch_signature = _get_signature(cpp_wrapper, kernel_spec.name)
-
-    wrapper.splice(f"""
+    wrapper.writeline(f'const char *kernel_file = "{kernel_path}";')
+    wrapper.splice("""
     const static bool debug = std::getenv("NPU_INDUCTOR_DEBUG") != nullptr;
     #undef DLOG
     #define DLOG() if (debug) std::cerr
     static void *handle = nullptr;
     static bool initialized = false;
-    typedef void (*TilingFuncType)({tiling_signature});
-    typedef void (*LaunchFuncType)({launch_signature});
-    static TilingFuncType tiling_fn = nullptr;
-    static LaunchFuncType kernel_fn = nullptr;
-    namespace {{
-    __attribute__((constructor)) void Init() {{
+    namespace {
+    __attribute__((constructor)) void Init() {
         if (initialized) return;
-        handle = dlopen("{kernel_path}", RTLD_NOW | RTLD_LOCAL);
-        if (!handle) {{
-            std::cerr << "Failed to load {kernel_path}: " << dlerror() << std::endl;
+        handle = dlopen(kernel_file, RTLD_NOW | RTLD_LOCAL);
+        if (!handle) {
+            std::cerr << "Failed to load " << kernel_file << ": " << dlerror() << std::endl;
             return;
-        }}
-        tiling_fn = reinterpret_cast<TilingFuncType>(dlsym(handle, "aclnnTiling"));
-        kernel_fn = reinterpret_cast<LaunchFuncType>(dlsym(handle, "aclnnKernel"));
-        if (!tiling_fn || !kernel_fn) {{
-            std::cerr << "Failed to load api func: " << dlerror() << std::endl;
-            return;
-        }}
-        DLOG() << "Kernel api lib {kernel_path} load succeed" << std::endl;
+        }
+        DLOG() << "Kernel api lib " << kernel_file << " load succeed" << std::endl;
         initialized = true;
-    }}
-    __attribute__((destructor)) void DeInit() {{
-        if (handle) {{
+    }
+    __attribute__((destructor)) void DeInit() {
+        if (handle) {
             dlclose(handle);
             handle = nullptr;
-        }}
+        }
         initialized = false;
-    }}
-    }} // namespace
+    }
+    inline void *GetFunc(const char *func_name) {
+        if (handle == nullptr) {
+            return nullptr;
+        }
+        void *func = dlsym(handle, func_name);
+        if (func == nullptr) {
+            std::cerr << "Failed to load api func: " << dlerror() << std::endl;
+        }
+        return func;
+    }
+    inline void *GetStream(void *stream) {
+        return (stream == nullptr) ? c10_npu::getCurrentNPUStream().stream() : stream;
+    }
+    } // namespace
     """)
-    wrapper.splice(cpp_wrapper)
+    wrapper.splice(kernel_spec.cpp_wrapper)
 
     return wrapper.getvalue()
 
@@ -130,6 +113,11 @@ def build_ascend_lib(spec: FusedKernelSpec, *, output_path):
 
     core_type = os.getenv("NPU_CORE_TYPE", "ascend910b1")
     lib_file = os.path.join(output_path, f"kernel_{core_type}.so")
+
+    if os.getenv('ASCIR_NOT_READY', None) == "1":
+        _build_cpp('\n'.join([spec.tiling_def, spec.host_impl, spec.device_impl]), output_file=lib_file)
+        return lib_file
+
     run_jit_command(output_file=lib_file, soc_version=core_type)
 
     return lib_file

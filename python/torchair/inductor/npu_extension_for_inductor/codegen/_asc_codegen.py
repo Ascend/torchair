@@ -91,24 +91,40 @@ def codegen_cpp_wrapper(graph: ASCGraph):
     symbols = [SymArg(str(v)) for v in sorted(list(graph.size_vars))]
     stream = StreamArg("stream")
     all_args = inputs + outputs + workspaces + symbols + [stream]
+    tiling_dtype = f"{graph.name}TilingData"
 
     signature = ', '.join([v.signature for v in all_args])
     tiling_args = [v.name for v in symbols]
-    kernel_args = [v.name for v in itertools.chain(inputs, outputs, workspaces)]
+    launch_args = [v.name for v in itertools.chain(inputs, outputs, workspaces)]
+
+    tiling_signature = [v.signature for v in symbols]
+    tiling_signature.append(f"{tiling_dtype} *tiling_data")
+    tiling_signature.append(f"int64_t *workspace_size")
+    tiling_signature.append(f"int64_t *block_dim")
+
+    launch_signature = ["int64_t block_dim", "void *stream"]
+    launch_signature.extend([v.signature for v in itertools.chain(inputs, outputs, workspaces)])
+    launch_signature.append(f"{tiling_dtype} *tiling_data")
+
     wrapper.splice(f'''
+    typedef int (*TilingFuncType)({', '.join(tiling_signature)});
+    typedef int (*LaunchFuncType)({', '.join(launch_signature)});
+    static TilingFuncType tiling_fn = reinterpret_cast<TilingFuncType>(GetFunc("{graph.name}TilingFunc"));
+    static LaunchFuncType launch_fn = reinterpret_cast<LaunchFuncType>(GetFunc("aclrtlaunch_{graph.name}"));
     extern "C" int wrapper({signature}) {{
-        {graph.name}TilingData tiling_data;
+        {tiling_dtype} tiling_data;
         int64_t workspace_size = 0;
         int64_t block_dim = 0;
-        void *current_stream = (stream == nullptr) ? c10_npu::getCurrentNPUStream().stream() : stream;
-        if (tiling_fn == nullptr || kernel_fn == nullptr) {{
+        if (tiling_fn == nullptr || launch_fn == nullptr) {{
             if (tiling_fn == nullptr) std::cerr << "{graph.name} kernel tiling func not found" << std::endl;
-            if (kernel_fn == nullptr) std::cerr << "{graph.name} kernel launch func not found" << std::endl;
+            if (launch_fn == nullptr) std::cerr << "{graph.name} kernel launch func not found" << std::endl;
             return -1;
         }}
-        tiling_fn({', '.join(tiling_args + ["&tiling_data", "&workspace_size", "&block_dim"])});
-        kernel_fn({', '.join(["block_dim", "current_stream"] + kernel_args + ["&tiling_data"])});
-        return 0;
+        int result = tiling_fn({', '.join(tiling_args + ["&tiling_data", "&workspace_size", "&block_dim"])});
+        if (result != 0) {{
+            return result;
+        }}
+        return launch_fn({', '.join(["block_dim", "GetStream(stream)"] + launch_args + ["&tiling_data"])});
     }}
     ''')
 
