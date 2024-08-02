@@ -8,6 +8,7 @@ from unittest.mock import patch
 from npu_extension_for_inductor.common.asc_graph import ASCGraph
 from npu_extension_for_inductor.common.symbols import Axis
 from npu_extension_for_inductor.common.debug import _left_align_lines, OP_SUMMARY
+from npu_extension_for_inductor.common.utils import camel_to_snake
 from sympy import symbols, simplify, Eq
 
 import sympy
@@ -113,7 +114,6 @@ class NPUKernel(Kernel):
         self._comments: List[str] = comments
         self._kernel = NPUKernel.next_kernel_name()
         self._kernel_def = IndentedBuffer()
-        self._graph_def = IndentedBuffer()
         self.graph = ASCGraph(name=f"{self._kernel}Graph")
         self._indirect_to_scalar: Dict[str, _Scalar] = dict()
         self._size_vars = set()
@@ -192,27 +192,22 @@ class NPUKernel(Kernel):
     def codegen(self):
         code = IndentedBuffer()
         args, _, _ = self.args.python_argdefs()
-        kw_args = ['sym_vals']
+        args.append('workspace')
+        kw_args = [str(v) for v in list(sorted(self.graph.size_vars))]
 
-        signature_args = ', '.join(args + ["*"] + kw_args)
+        signature_args = ', '.join(args + ["*"] + kw_args) if len(kw_args) else ', '.join(args)
         call_args = ', '.join(args + [f"{v}={v}" for v in kw_args])
 
         graph_fn = self.graph.name
-        self._graph_def = self.graph.codegen(graph_fn)
-
-        code.splice(self._graph_def)
-
         self._kernel_def.clear()
-        if os.getenv("NPU_INDUCTOR_DUMMY_KERNEL", None) == "1":
-            self._kernel_def.writeline(
-                "from npu_extension_for_inductor.compiler.aclnn_compiler import DummyNpuInductorKernel")
-            self._kernel_def.writeline(f"{self._kernel}_compiled = DummyNpuInductorKernel('{graph_fn}')")
-        else:
-            self._kernel_def.writeline(f"{self._kernel}_compiled = npu_compiler.aclnn(npu_codegen.aclnn({graph_fn}()))")
+        kernel_var_name = f"{self._kernel}_compiled"
+
+        from npu_extension_for_inductor import codegen as npu_codegen
+        self._kernel_def.splice(npu_codegen.codegen_kernel_def(self.graph, kernel_var_name))
         self._kernel_def.writelines(self._comments)
         self._kernel_def.writeline(f"def {self._kernel}({signature_args}):")
         with self._kernel_def.indent():
-            self._kernel_def.writeline(f"{self._kernel}_compiled({call_args})")
+            self._kernel_def.writeline(f"{kernel_var_name}({call_args})")
         code.splice(self._kernel_def)
 
         return code.getvalue()
@@ -242,25 +237,13 @@ class NPUKernel(Kernel):
             self.codegen()
         with open(file_path, "w") as f:
             becnhmark_code = IndentedBuffer()
-            becnhmark_code.splice(self._graph_def)
+            becnhmark_code.writeline("from npu_extension_for_inductor import compiler as npu_compiler")
+            becnhmark_code.splice(self._kernel_def)
             becnhmark_code.writelines(["\n"] * 2)
-
             becnhmark_code.writeline("if __name__ == '__main__':")
             with becnhmark_code.indent():
-                becnhmark_code.splice("""
-                import os
-                # os.environ['ASCIR_NOT_READY'] = "1"
-                os.environ["NPU_CORE_TYPE"] = "ai_core-ascend910B1"
-                """)
-                becnhmark_code.writeline("# Construct asc graph")
-                becnhmark_code.writeline(f"graph = {self.graph.name}()")
-                becnhmark_code.splice("""
-                # Compile and run npu kernel
-                from npu_extension_for_inductor import compiler as npu_compiler
-                from npu_extension_for_inductor import codegen as npu_codegen
-                """)
-                becnhmark_code.splice(self._kernel_def.getvalue().replace(f"{self.graph.name}()", "graph"))
                 becnhmark_code.writeline(f"# Add your test code here")
+                becnhmark_code.writeline(f"pass")
             f.write(becnhmark_code.getvalue())
 
     def _get_npu_scalar(self, index: sympy.Expr):
@@ -488,8 +471,12 @@ class NPUScheduling(BaseScheduling):
         _, call_args, _ = kernel.args.python_argdefs()
 
         # Manual combine size vars with tensor sizes
+        workspace_var_name = f"{camel_to_snake(kernel.kernel_name)}_workspace"
+        # Todo: symbolic workspace size
+        wrapper.writeline(f"{workspace_var_name} = torch.empty(1024 * 1024) # Todo: symbolic workspace size")
         used_sizes = list(sorted(kernel.graph.size_vars))
-        call_args.append(f"sym_vals=[{', '.join([str(s) for s in used_sizes])}]")
+        call_args.append(workspace_var_name)
+        call_args.extend([f"{v}={v}" for v in used_sizes])
         wrapper.writeline(wrapper.wrap_kernel_call(kernel.kernel_name, [str(v) for v in call_args]))
 
     def codegen_sync(self):
@@ -508,7 +495,6 @@ class NpuWrapperCodeGen(WrapperCodeGen):
         self.header.splice(
             f"""
                 from npu_extension_for_inductor import compiler as npu_compiler
-                from npu_extension_for_inductor import codegen as npu_codegen
             """
         )
 

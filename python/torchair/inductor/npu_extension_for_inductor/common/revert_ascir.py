@@ -6,7 +6,6 @@ from typing import List, Dict
 import torch
 import sympy
 from npu_extension_for_inductor.common.asc_graph import ASCGraph
-from npu_extension_for_inductor.common.op_code import OpCode, OpProto
 from npu_extension_for_inductor.common.utils import camel_to_snake
 from npu_extension_for_inductor.ir import _Track, _Op, _Tensor
 from torch._inductor.utils import IndentedBuffer
@@ -187,7 +186,7 @@ class HintGraph:
         proto['language'] = 'cpp'
         proto['input_desc'] = [op.desc() for op in self.inputs]
         proto['output_desc'] = [op.desc() for op in self.outputs]
-        return OpProto(json.dumps(proto, indent=4, sort_keys=True))
+        return proto
 
     @property
     def tiling_def(self):
@@ -282,7 +281,7 @@ class HintGraph:
         compute = IndentedBuffer()
         stack = {}
         tiling = Tiling(offset, tile_size, pipe)
-        for order, op in list(self.ordered_op.items())[1:]:  # Skip size vars
+        for order, op in list(self.ordered_op.items()):
             op: AscOp = op
             op_vals = []
             for i in op.inputs:
@@ -343,7 +342,7 @@ class HintGraph:
                 self.ordered_op.pop(load.order)
             data.outputs = [reserved]
 
-        return OpCode(self.proto, self.tiling_def, self.tiling, self.kernel)
+        return self.tiling_def, self.tiling, self.kernel
 
     def create_size(self, name):
         self._graph.size(name)
