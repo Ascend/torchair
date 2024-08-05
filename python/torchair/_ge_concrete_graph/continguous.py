@@ -63,7 +63,7 @@ def _build_valid_stride(stride, shape):
         if i != 0 and j != 1:
             simple_stride.append(i)
             simple_shape.append(j)
-    last_stride = simple_stride[0]
+    last_stride = hint_int(simple_stride[0])
     for index, stride in enumerate(simple_stride):
         stride_index_dicts[index] = [simple_stride[index], simple_shape[index]]
         if last_stride < hint_int(stride):

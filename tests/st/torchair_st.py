@@ -1628,6 +1628,32 @@ class TorchairSt(unittest.TestCase):
         model_static = torch.compile(model, backend=npu_backend, dynamic=False)
         model_static(in1, in2, in3, in4)
 
+    def test_recompile_of_symsize(self):
+        torch._dynamo.config.error_on_recompile = True
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                view = x.reshape(-1, 8192)
+                permute = y.permute(1, 0)
+                mm = torch.mm(view, permute)
+                view2 = mm.view(x.size(0), x.size(1), 3072)
+                return view2
+
+        model = Model()
+        model = torch.compile(model, backend=npu_backend, dynamic=True, fullgraph=True)
+
+        x = torch.randn([4, 190, 8192])
+        y = torch.randn([3072, 8192])
+        model(x, y)
+
+        x = torch.randn([4, 180, 8192])
+        y = torch.randn([3072, 8192])
+        model(x, y)
+
+        torch._dynamo.config.error_on_recompile = False
 
 if __name__ == '__main__':
     unittest.main()
