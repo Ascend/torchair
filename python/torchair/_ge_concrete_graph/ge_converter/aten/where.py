@@ -28,8 +28,8 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
 @declare_supported(
     [
         Support(BOOL(8, 4, 10, 10), F32(8, 4, 10, 10), F32(8, 4, 10, 10)),
-        Support(BOOL(1, 1, 10, 10), F32(8, 4, 10, 10), F32(8, 4, 10, 10)),
-        Support(BOOL(1, 1, 10, 10), F32(8, 4, 10, 10), F32(1, 1, 1, 10)),
+        Support(BOOL(1, 1, 10, 10), F16(8, 4, 10, 10), F32(8, 4, 10, 10)),
+        Support(BOOL(1, 1, 10, 10), I32(8, 4, 10, 10), F32(1, 1, 1, 10)),
     ]
 )
 @register_fx_node_ge_converter(torch.ops.aten.where.self)
@@ -37,7 +37,7 @@ def conveter_aten_where_self(
     condition: Tensor, self: Tensor, other: Tensor, meta_outputs: TensorSpec = None
 ):
     """NB: aten::where.self(Tensor condition, Tensor self, Tensor other) -> Tensor"""
-    if self.desc.dtype != other.desc.dtype:
+    if self.dtype != other.dtype:
         self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)
     return ge.SelectV2(condition, self, other)
 
