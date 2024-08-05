@@ -128,7 +128,6 @@ class QWenAttention(nn.Module):
 
         self.projection_size = config.kv_channels * config.num_attention_heads
 
-        assert self.projection_size % config.num_attention_heads == 0
         self.hidden_size_per_attention_head = (
             self.projection_size // config.num_attention_heads
         )
@@ -518,7 +517,6 @@ class QWenModel(QWenPreTrainedModel):
         if config.rotary_pct == 1.0:
             self.rotary_ndims = None
         else:
-            assert config.rotary_pct < 1
             self.rotary_ndims = int(
                 config.kv_channels * config.rotary_pct
             )
@@ -598,7 +596,6 @@ class QWenModel(QWenPreTrainedModel):
         if past_key_values is None and torch.any(input_ids == self.config.visual['image_start_id']):
             bos_pos = torch.where(input_ids == self.config.visual['image_start_id'])
             eos_pos = torch.where(input_ids == self.config.visual['image_start_id'] + 1)
-            assert (bos_pos[0] == eos_pos[0]).all()
             img_pos = torch.stack((bos_pos[0], bos_pos[1], eos_pos[1]), dim=1)
             images = []
             for i, a, b in img_pos:
@@ -607,7 +604,6 @@ class QWenModel(QWenPreTrainedModel):
                 images.append(bytes(image).decode('utf-8'))
 
             images = self.visual.encode(images)
-            assert images.shape[0] == len(images)
             fake_images = None
         elif self.training:
             fake_images=torch.zeros(1,3,224,224).to(
@@ -933,9 +929,6 @@ class QWenLMHeadModel(QWenPreTrainedModel):
 
     def ___init__(self, config):
         super().__init__(config)
-        assert (
-            config.bf16 + config.fp16 + config.fp32 <= 1
-        ), "Only one of \"bf16\", \"fp16\", \"fp32\" can be true"
 
         autoset_precision = config.bf16 + config.fp16 + config.fp32 == 0
 
@@ -954,16 +947,6 @@ class QWenLMHeadModel(QWenPreTrainedModel):
                 config.fp16 = True
             else:
                 config.fp32 = True
-
-        if config.bf16 and SUPPORT_CUDA and not SUPPORT_BF16:
-            logger.warn("Your device does NOT seem to support bf16, you can switch to fp16 or fp32 by by passing fp16/fp32=True in \"AutoModelForCausalLM.from_pretrained\".")
-        if config.fp16 and SUPPORT_CUDA and not SUPPORT_FP16:
-            logger.warn("Your device does NOT support faster inference with fp16, please switch to fp32 which is likely to be faster")
-        if config.fp32:
-            if SUPPORT_BF16:
-                logger.warn("Your device support faster inference by passing bf16=True in \"AutoModelForCausalLM.from_pretrained\".")
-            elif SUPPORT_FP16:
-                logger.warn("Your device support faster inference by passing fp16=True in \"AutoModelForCausalLM.from_pretrained\".")
 
         self.transformer = QWenModel(config)
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
@@ -978,9 +961,6 @@ class QWenLMHeadModel(QWenPreTrainedModel):
 
     def __init__(self, config):
         super().__init__(config)
-        assert (
-                config.bf16 + config.fp16 + config.fp32 <= 1
-        ), "Only one of \"bf16\", \"fp16\", \"fp32\" can be true"
 
         autoset_precision = config.bf16 + config.fp16 + config.fp32 == 0
 
@@ -999,16 +979,6 @@ class QWenLMHeadModel(QWenPreTrainedModel):
                 config.fp16 = True
             else:
                 config.fp32 = True
-
-        if config.bf16 and SUPPORT_CUDA and not SUPPORT_BF16:
-            logger.warn("Your device does NOT seem to support bf16, you can switch to fp16 or fp32 by by passing fp16/fp32=True in \"AutoModelForCausalLM.from_pretrained\".")
-        if config.fp16 and SUPPORT_CUDA and not SUPPORT_FP16:
-            logger.warn("Your device does NOT support faster inference with fp16, please switch to fp32 which is likely to be faster")
-        if config.fp32:
-            if SUPPORT_BF16:
-                logger.warn("Your device support faster inference by passing bf16=True in \"AutoModelForCausalLM.from_pretrained\".")
-            elif SUPPORT_FP16:
-                logger.warn("Your device support faster inference by passing fp16=True in \"AutoModelForCausalLM.from_pretrained\".")
 
         self.visual = VisionTransformer(**config.visual)
         self.transformer = QWenModel(config)
@@ -1028,7 +998,6 @@ class QWenLMHeadModel(QWenPreTrainedModel):
         if config.rotary_pct == 1.0:
             self.rotary_ndims = None
         else:
-            assert config.rotary_pct < 1
             self.rotary_ndims = int(
                 config.kv_channels * config.rotary_pct
             )
@@ -1081,7 +1050,6 @@ class QWenLMHeadModel(QWenPreTrainedModel):
         if past_key_values is None and torch.any(input_ids == self.config.visual['image_start_id']):
             bos_pos = torch.where(input_ids == self.config.visual['image_start_id'])
             eos_pos = torch.where(input_ids == self.config.visual['image_start_id'] + 1)
-            assert (bos_pos[0] == eos_pos[0]).all()
             img_pos = torch.stack((bos_pos[0], bos_pos[1], eos_pos[1]), dim=1)
             image_paths = []
             for i, a, b in img_pos:
@@ -1425,9 +1393,6 @@ class QWenLMHeadModel(QWenPreTrainedModel):
         **kwargs,
     ) -> Tuple[str, HistoryType]:
         generation_config = generation_config if generation_config is not None else self.generation_config
-
-        assert stream is _SENTINEL, _ERROR_STREAM_IN_CHAT
-        assert generation_config.chat_format == 'chatml', _ERROR_BAD_CHAT_FORMAT
         if history is None:
             history = []
         if stop_words_ids is None:
@@ -1484,7 +1449,6 @@ class QWenLMHeadModel(QWenPreTrainedModel):
             **kwargs,
     ) -> Generator[str, Any, None]:
         generation_config = generation_config if generation_config is not None else self.generation_config
-        assert generation_config.chat_format == 'chatml', _ERROR_BAD_CHAT_FORMAT
         if history is None:
             history = []
         if stop_words_ids is None:

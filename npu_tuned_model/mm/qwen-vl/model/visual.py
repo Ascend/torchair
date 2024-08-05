@@ -72,8 +72,6 @@ def get_2d_sincos_pos_embed(embed_dim, grid_size, cls_token=False):
 
 
 def get_2d_sincos_pos_embed_from_grid(embed_dim, grid):
-    assert embed_dim % 2 == 0
-
     # use half of dimensions to encode grid_h
     emb_h = get_1d_sincos_pos_embed_from_grid(embed_dim // 2, grid[0])  # (H*W, D/2)
     emb_w = get_1d_sincos_pos_embed_from_grid(embed_dim // 2, grid[1])  # (H*W, D/2)
@@ -88,7 +86,6 @@ def get_1d_sincos_pos_embed_from_grid(embed_dim, pos):
     pos: a list of positions to be encoded: size (M,)
     out: (M, D)
     """
-    assert embed_dim % 2 == 0
     omega = np.arange(embed_dim // 2, dtype=np.float32)
     omega /= embed_dim / 2.
     omega = 1. / 10000**omega  # (D/2,)
@@ -188,13 +185,11 @@ class VisualAttention(nn.Module):
         self.num_heads = num_heads
 
         # Per attention head and per partition values.
-        assert embed_dim % num_heads == 0
         self.hidden_size_per_attention_head = embed_dim // num_heads
         self.num_attention_heads_per_partition = num_heads
         self.hidden_size_per_partition = embed_dim
 
         # Strided linear layer.
-        assert self._qkv_same_embed_dim, 'Only Support SelfAttention Currently'
         self.in_proj = nn.Linear(embed_dim, 3 * embed_dim)
         self.out_proj = nn.Linear(embed_dim, embed_dim)
         self.norm_factor = math.sqrt(self.hidden_size_per_attention_head)
