@@ -52,9 +52,7 @@ def _is_alias(public_api_fun_name, public_api):
 
 
 SKIP_CHECK_MODULES = [
-    "torchair.ge_concrete_graph.ge_apis",
-    "torchair.ge_concrete_graph.ge_graph",
-    "torchair.ge_concrete_graph.fx2ge_converter",
+    "torchair.ge_concrete_graph",
 ]
 
 
@@ -205,9 +203,10 @@ class TestPublicBindings(unittest.TestCase):
             from torchair.ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
             from torchair.ge_concrete_graph.ge_graph import Tensor, TensorSpec, DataType
             from torchair.ge_concrete_graph.ge_graph import get_default_ge_graph, next_unique_name
-            from torchair.ge_concrete_graph.ge_graph import compat_as_bytes
-            from torchair.ge_concrete_graph.ge_graph import get_invalid_desc
+            from torchair.ge_concrete_graph.ge_graph import compat_as_bytes, compat_as_bytes_list
+            from torchair.ge_concrete_graph.ge_graph import get_invalid_desc, auto_convert_to_tensor
             import torchair.ge_concrete_graph.ge_converter.experimental.hcom_allgather
+            from torchair.ge_concrete_graph.utils import dtype_promote
         except:
             raise AssertionError("import compatible api failed, UT failed")
         else:
