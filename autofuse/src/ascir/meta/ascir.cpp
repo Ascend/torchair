@@ -668,6 +668,17 @@ void Graph::AddNode(ge::Operator &op) {
   std::swap(new_op, op);
 }
 
+void Graph::UpdateAxisValue(AxisId id, int64_t value) {
+  std::vector<Axis::Type> size_types;
+  std::vector<int64_t> size_values;
+  ge::AttrUtils::GetListInt(this->holder, this->size_var.TYPE, size_types);
+  ge::AttrUtils::GetListInt(this->holder, this->size_var.VALUE, size_values);
+  size_types[id] = SizeVar::SIZE_TYPE_CONST;
+  size_values[id] = value;
+  ge::AttrUtils::SetListInt(this->holder, this->size_var.TYPE, size_types);
+  ge::AttrUtils::SetListInt(this->holder, this->size_var.VALUE, size_values);
+}
+
 void Graph::UpdateAxisAlign(AxisId id, int32_t align) {
   std::vector<int32_t> tmp;
   ge::AttrUtils::GetListInt(holder, this->axis.ALIGN, tmp);

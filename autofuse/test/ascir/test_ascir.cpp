@@ -547,6 +547,21 @@ TEST(Ascir_AxisOperations, AxisUpdate) {
   EXPECT_EQ(z0_new.align, 10);
   EXPECT_EQ(z0_new.allow_oversize_axis, true);
   EXPECT_EQ(z0_new.allow_unaligned_tail, false);
+
+  auto s1 = graph.CreateSizeVar("s1", 10);
+  auto z1 = graph.CreateAxis("z1", ascir::SizeExpr{{s1}});
+  graph.UpdateAxisValue(z1.id, 100);
+  auto z1_new = graph.axis[z1.id];
+  EXPECT_EQ(z1_new.size.nums.size(),  1);
+  EXPECT_EQ(z1_new.size.nums[0],  s1.id);
+  EXPECT_EQ(z1_new.size.dens.size(),  0);
+  std::vector<Axis::Type> size_types;
+  std::vector<int64_t> size_values;
+  auto result_graph = ge::GraphUtilsEx::GetComputeGraph(graph);
+  ge::AttrUtils::GetListInt(result_graph, graph.size_var.TYPE, size_types);
+  ge::AttrUtils::GetListInt(result_graph, graph.size_var.VALUE, size_values);
+  EXPECT_EQ(size_types[z1.id],  SizeVar::SIZE_TYPE_CONST);
+  EXPECT_EQ(size_values[z1.id],  100);
 }
 
 TEST(Ascir_SparseOperations, CreateSparse) {

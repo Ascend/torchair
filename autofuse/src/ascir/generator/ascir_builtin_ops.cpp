@@ -53,6 +53,8 @@ REG_ASC_IR_1IO(Cast)
 REG_ASC_IR_1IO(Abs).UseFirstInputDataType().UseFirstInputView();
 REG_ASC_IR_1IO(Max).UseFirstInputDataType();
 REG_ASC_IR_1IO(Sum).UseFirstInputDataType();
+REG_ASC_IR_2I1O(Mmad).UseFirstInputDataType();
+REG_ASC_IR_1IO(Fixpipe).UseFirstInputDataType();
 REG_ASC_IR_2I1O(Sub).UseFirstInputDataType().UseFirstInputView();
 REG_ASC_IR_2I1O(Div).UseFirstInputDataType().UseFirstInputView();
 REG_ASC_IR_1IO(Exp).UseFirstInputDataType().UseFirstInputView();

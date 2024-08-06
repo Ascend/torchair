@@ -16,6 +16,16 @@ enum : EnumValue {
   POSITION_GM,
   POSITION_VECIN,
   POSITION_VECOUT,
+  POSITION_VECCALC,
+  POSITION_A1,   // store complete A for cube
+  POSITION_B1,   // store complete B for cube
+  POSITION_C1,   // store complete bias for cube
+  POSITION_A2,   // store part of A for cube
+  POSITION_B2,   // store part of B for cube
+  POSITION_C2,   // store part of bias for cube
+  POSITION_CO1, // store part of  C which is result of A *B
+  POSITION_CO2, // store complete C which is result of A *B
+  POSITION_C2PIPE2GM, // store FIXPIPE quantization parameter
 };
 
 using AllocType = EnumValue;
@@ -25,6 +35,12 @@ using MemHardware = EnumValue;
 enum : EnumValue {
   MEM_HARDWARE_GM,
   MEM_HARDWARE_UB,
+  MEM_HARDWARE_L1,
+  MEM_HARDWARE_L0A,
+  MEM_HARDWARE_L0B,
+  MEM_HARDWARE_L0C,
+  MEM_HARDWARE_BTBUF,
+  MEM_HARDWARE_L2,
 };
 
 // Start: As extend to AscendC Api
@@ -1239,6 +1255,7 @@ class Graph : public ge::Graph {
 
   void SortByExecOrder();
 
+  void UpdateAxisValue(AxisId id, int64_t value);
   void UpdateAxisAlign(AxisId id, int32_t align);
   void UpdateAxisAllowOversizeAxis(AxisId id, bool allow_oversize_axis);
   void UpdateAxisAllowUnalignedTail(AxisId id, bool allow_unaligned_tail);
