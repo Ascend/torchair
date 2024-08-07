@@ -1,18 +1,11 @@
-/**
- * Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+/* Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ * ===================================================================================================================*/
 
 #ifndef INC_EXTERNAL_GRAPH_TYPES_H_
 #define INC_EXTERNAL_GRAPH_TYPES_H_
@@ -54,15 +47,16 @@ enum DataType {
   DT_FLOAT = 0,            // float type
   DT_FLOAT16 = 1,          // fp16 type
   DT_INT8 = 2,             // int8 type
+  DT_INT32 = 3,            // int32 type
+  DT_UINT8 = 4,            // uint8 type
+                           // reserved
   DT_INT16 = 6,            // int16 type
   DT_UINT16 = 7,           // uint16 type
-  DT_UINT8 = 4,            // uint8 type
-  DT_INT32 = 3,            //
-  DT_INT64 = 9,            // int64 type
   DT_UINT32 = 8,           // unsigned int32
+  DT_INT64 = 9,            // int64 type
   DT_UINT64 = 10,          // unsigned int64
-  DT_BOOL = 12,            // bool type
   DT_DOUBLE = 11,          // double type
+  DT_BOOL = 12,            // bool type
   DT_STRING = 13,          // string type
   DT_DUAL_SUB_INT8 = 14,   // dual output int8 type
   DT_DUAL_SUB_UINT8 = 15,  // dual output uint8 type
@@ -95,41 +89,41 @@ struct StringHead {
 
 inline int GetSizeByDataType(DataType data_type) {
   static int data_type_size[DT_MAX] = {
-      4,   // DT_FLOAT = 0,               float type
-      2,   // DT_FLOAT16 = 1,             fp16 type
-      1,   // DT_INT8 = 2,                int8 type
-      4,   // DT_INT32 = 3,
-      1,   // DT_UINT8 = 4,               uint8 type
-      -1,
-      2,   // DT_INT16 = 6,               int16 type
-      2,   // DT_UINT16 = 7,              uint16 type
-      4,   // DT_UINT32 = 8,              unsigned int32
-      8,   // DT_INT64 = 9,               int64 type
-      8,   // DT_UINT64 = 10,             unsigned int64
-      8,   // DT_DOUBLE = 11,             double type
-      1,   // DT_BOOL = 12,               bool type
-      -1,  // DT_STRING = 13,             string type
-      1,   // DT_DUAL_SUB_INT8 = 14,      dual output int8 type
-      1,   // DT_DUAL_SUB_UINT8 = 15,     dual output uint8 type
-      8,   // DT_COMPLEX64 = 16,          complex64 type
-      16,  // DT_COMPLEX128 = 17,         complex128 type
-      1,   // DT_QINT8 = 18,              qint8 type
-      2,   // DT_QINT16 = 19,             qint16 type
-      4,   // DT_QINT32 = 20,             qint32 type
-      1,   // DT_QUINT8 = 21,             quint8 type
-      2,   // DT_QUINT16 = 22,            quint16 type
-      8,   // DT_RESOURCE = 23,           resource type
-      -1,  // DT_STRING_REF = 24,         string ref type
-      5,   // DT_DUAL = 25,               dual output type (float + int8)
-      8,   // DT_VARIANT                  variant type
-      2,   // DT_BF16 = 27,               bf16 type
-      -1,  // DT_UNDEFINED = 28           Used to indicate a DataType field has not been set.
-      kDataTypeSizeBitOffset + 4,    // DT_INT4 = 29,             int4 type
-      kDataTypeSizeBitOffset + 1,    // DT_UINT1 = 30,            uint1 type
-      kDataTypeSizeBitOffset + 2,    // DT_INT2 = 31,             int2 type
-      kDataTypeSizeBitOffset + 2,    // DT_UINT2 = 32,            uint2 type
-      4,   // DT_COMPLEX32 = 33,          complex32 type
-           // DT_MAX
+      4,                           // DT_FLOAT = 0,             float type
+      2,                           // DT_FLOAT16 = 1,           fp16 type
+      1,                           // DT_INT8 = 2,              int8 type
+      4,                           // DT_INT32 = 3,             int32 type
+      1,                           // DT_UINT8 = 4,             uint8 type
+      -1,                          // reserved
+      2,                           // DT_INT16 = 6,             int16 type
+      2,                           // DT_UINT16 = 7,            uint16 type
+      4,                           // DT_UINT32 = 8,            unsigned int32
+      8,                           // DT_INT64 = 9,             int64 type
+      8,                           // DT_UINT64 = 10,           unsigned int64
+      8,                           // DT_DOUBLE = 11,           double type
+      1,                           // DT_BOOL = 12,             bool type
+      -1,                          // DT_STRING = 13,           string type
+      1,                           // DT_DUAL_SUB_INT8 = 14,    dual output int8 type
+      1,                           // DT_DUAL_SUB_UINT8 = 15,   dual output uint8 type
+      8,                           // DT_COMPLEX64 = 16,        complex64 type
+      16,                          // DT_COMPLEX128 = 17,       complex128 type
+      1,                           // DT_QINT8 = 18,            qint8 type
+      2,                           // DT_QINT16 = 19,           qint16 type
+      4,                           // DT_QINT32 = 20,           qint32 type
+      1,                           // DT_QUINT8 = 21,           quint8 type
+      2,                           // DT_QUINT16 = 22,          quint16 type
+      8,                           // DT_RESOURCE = 23,         resource type
+      -1,                          // DT_STRING_REF = 24,       string ref type
+      5,                           // DT_DUAL = 25,             dual output type (float + int8)
+      8,                           // DT_VARIANT                variant type
+      2,                           // DT_BF16 = 27,             bf16 type
+      -1,                          // DT_UNDEFINED = 28         Used to indicate a DataType field has not been set.
+      kDataTypeSizeBitOffset + 4,  // DT_INT4 = 29,             int4 type
+      kDataTypeSizeBitOffset + 1,  // DT_UINT1 = 30,            uint1 type
+      kDataTypeSizeBitOffset + 2,  // DT_INT2 = 31,             int2 type
+      kDataTypeSizeBitOffset + 2,  // DT_UINT2 = 32,            uint2 type
+      4,                           // DT_COMPLEX32 = 33,        complex32 type
+                                   // DT_MAX
   };
   if ((data_type < 0) || (data_type >= DT_MAX)) {
     return -1;
@@ -193,6 +187,7 @@ enum Format {
   FORMAT_NYUV_A,
   FORMAT_NCL,
   FORMAT_FRACTAL_Z_WINO,
+  FORMAT_C1HWC0,
   // Add new formats definition here
   FORMAT_END,
   // FORMAT_MAX defines the max value of Format.

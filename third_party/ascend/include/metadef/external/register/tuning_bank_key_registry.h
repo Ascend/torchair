@@ -1,56 +1,70 @@
-/**
- * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
+/* Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ * ===================================================================================================================*/
 
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
-
- * http://www.apache.org/licenses/LICENSE-2.0
-
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
-*/
 #ifndef __INC_REGISTER_TUNING_BANK_KEY_REGISTRY_HEADER__
 #define __INC_REGISTER_TUNING_BANK_KEY_REGISTRY_HEADER__
 #include <memory>
 #include <unordered_map>
 #include <nlohmann/json.hpp>
+#include <string>
 #include "graph/ascend_string.h"
-#include "common/ge_common/debug/ge_log.h"
-#include "external/register/register_types.h"
+#include "register/register_types.h"
 #include "exe_graph/runtime/tiling_context.h"
 
+// 待v2版本宏定义上库后删除
 #define REGISTER_OP_BANK_KEY_CONVERT_FUN(op, opfunc)                                                                   \
-  REGISTER_OP_BANK_KEY_CONVERT_FUN_UNIQ_HELPER(op, (opfunc), __COUNTER__)
+  REGISTER_OP_BANK_KEY_CONVERT_FUN_UNIQ_HELPER(op, (opfunc))
 
-#define REGISTER_OP_BANK_KEY_CONVERT_FUN_UNIQ_HELPER(optype, opfunc, counter)                                          \
-  REGISTER_OP_BANK_KEY_UNIQ(optype, (opfunc), counter)
+#define REGISTER_OP_BANK_KEY_CONVERT_FUN_UNIQ_HELPER(optype, opfunc)                                       \
+  REGISTER_OP_BANK_KEY_UNIQ(optype, (opfunc))
 
-#define REGISTER_OP_BANK_KEY_UNIQ(optype, opfunc, counter)                                                             \
-  static tuningtiling::OpBankKeyFuncRegistry g_##optype##BankKeyRegistryInterf##counter(#optype, (opfunc))
+#define REGISTER_OP_BANK_KEY_UNIQ(optype, opfunc)                                                          \
+  static tuningtiling::OpBankKeyFuncRegistry g_##optype##BankKeyRegistryInterf(#optype, (opfunc))
 
-#define REGISTER_OP_BANK_KEY_PARSE_FUN(op, parse_func, load_func)                                                      \
-  REGISTER_OP_BANK_KEY_PARSE_FUN_UNIQ_HELPER(op, (parse_func), (load_func), __COUNTER__)
+#define REGISTER_OP_BANK_KEY_PARSE_FUN(op, parse_func, load_func)                                                   \
+  REGISTER_OP_BANK_KEY_PARSE_FUN_UNIQ_HELPER(op, (parse_func), (load_func))
 
-#define REGISTER_OP_BANK_KEY_PARSE_FUN_UNIQ_HELPER(optype, parse_func, load_func, counter)                             \
-  REGISTER_OP_BANK_KEY_PARSE_UNIQ(optype, (parse_func), (load_func), counter)
+#define REGISTER_OP_BANK_KEY_PARSE_FUN_UNIQ_HELPER(optype, parse_func, load_func)                          \
+  REGISTER_OP_BANK_KEY_PARSE_UNIQ(optype, (parse_func), (load_func))
 
-#define REGISTER_OP_BANK_KEY_PARSE_UNIQ(optype, parse_func, load_func, counter)                                        \
-  static tuningtiling::OpBankKeyFuncRegistry g_##optype##BankParseInterf##counter(#optype, (parse_func), (load_func))
+#define REGISTER_OP_BANK_KEY_PARSE_UNIQ(optype, parse_func, load_func)                                     \
+  static tuningtiling::OpBankKeyFuncRegistry g_##optype##BankParseInterf(#optype, (parse_func), (load_func))
+
+// 上库后替代上面的宏定义
+#define REGISTER_OP_BANK_KEY_CONVERT_FUN_V2(op, opfunc)                                                                \
+  REGISTER_OP_BANK_KEY_CONVERT_FUN_UNIQ_HELPER_V2(op, (opfunc))
+
+#define REGISTER_OP_BANK_KEY_CONVERT_FUN_UNIQ_HELPER_V2(optype, opfunc)                                       \
+  REGISTER_OP_BANK_KEY_UNIQ_V2(optype, (opfunc))
+
+#define REGISTER_OP_BANK_KEY_UNIQ_V2(optype, opfunc)                                                          \
+  static tuningtiling::OpBankKeyFuncRegistryV2 g_##optype##BankKeyRegistryInterf(#optype, (opfunc))
+
+#define REGISTER_OP_BANK_KEY_PARSE_FUN_V2(op, parse_func, load_func)                                                   \
+  REGISTER_OP_BANK_KEY_PARSE_FUN_UNIQ_HELPER_V2(op, (parse_func), (load_func))
+
+#define REGISTER_OP_BANK_KEY_PARSE_FUN_UNIQ_HELPER_V2(optype, parse_func, load_func)                          \
+  REGISTER_OP_BANK_KEY_PARSE_UNIQ_V2(optype, (parse_func), (load_func))
+
+#define REGISTER_OP_BANK_KEY_PARSE_UNIQ_V2(optype, parse_func, load_func)                                     \
+  static tuningtiling::OpBankKeyFuncRegistryV2 g_##optype##BankParseInterf(#optype, (parse_func), (load_func))
 
 #define TUNING_TILING_MAKE_SHARED(exec_expr0, exec_expr1)                                                              \
   do {                                                                                                                 \
     try {                                                                                                              \
       exec_expr0;                                                                                                      \
     } catch (...) {                                                                                                    \
-      GELOGW("Make shared failed");                                                                                    \
       exec_expr1;                                                                                                      \
     }                                                                                                                  \
   } while (0)
 
+// 待v2版本宏定义上库后删除
 #define DECLARE_STRUCT_RELATE_WITH_OP(op, bank_key, ...)                                                               \
   NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(bank_key, __VA_ARGS__);                                                           \
   bool ParseFunc##op##bank_key(const std::shared_ptr<void> &in_args, size_t len, nlohmann::json &bank_key_json) {      \
@@ -69,49 +83,52 @@
   }                                                                                                                    \
   REGISTER_OP_BANK_KEY_PARSE_FUN(op, ParseFunc##op##bank_key, LoadFunc##op##bank_key);
 
+// 上库后替代上面的宏定义
 #define DECLARE_STRUCT_RELATE_WITH_OP_V2(op, bank_key, ...)                                                            \
   NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(bank_key, __VA_ARGS__);                                                           \
-  bool ParseFuncV2##op##bank_key(const std::shared_ptr<void> &in_args, size_t len, ge::AscendString &bank_key_json) {  \
+  bool ParseFuncV2##op##bank_key(const std::shared_ptr<void> &in_args, size_t len,                                     \
+    ge::AscendString &bank_key_json_str) {                                                                             \
     if (sizeof(bank_key) != len || in_args == nullptr) {                                                               \
       return false;                                                                                                    \
     }                                                                                                                  \
     nlohmann::json bank_key_json;                                                                                      \
     bank_key_json = *(std::static_pointer_cast<bank_key>(in_args));                                                    \
     try {                                                                                                              \
-      bank_key_json_str = bank_key_json.dump();                                                                        \
-      if (bank_key_json_str.empty()) {                                                                                 \
-        return false;                                                                                                  \
-      }                                                                                                                \
-      return true;                                                                                                     \
+      std::string json_dump_str = bank_key_json.dump();                                                                \
+      bank_key_json_str = ge::AscendString(json_dump_str.c_str());                                                     \
     } catch (std::exception& e) {                                                                                      \
       return false;                                                                                                    \
     }                                                                                                                  \
+    return true;                                                                                                       \
   }                                                                                                                    \
-  bool LoadFuncV2##op##bank_key(std::shared_ptr<void> &in_args, size_t &len, const ge::AscendString &bank_key_json) {  \
+  bool LoadFuncV2##op##bank_key(std::shared_ptr<void> &in_args, size_t &len,                                           \
+    const ge::AscendString &bank_key_json_str) {                                                                       \
     len = sizeof(bank_key);                                                                                            \
     TUNING_TILING_MAKE_SHARED(in_args = std::make_shared<bank_key>(), return false);                                   \
-    auto op_ky = std::static_pointer_cast<bank_key>(in_args);                                                          \
     nlohmann::json bank_key_json;                                                                                      \
     try {                                                                                                              \
-      bank_key_json = nlohmann::json::parse(bank_key_json_str);                                                        \
-      if (bank_key_json.empty()) {                                                                                     \
-        return false;                                                                                                  \
-      }                                                                                                                \
+      bank_key_json = nlohmann::json::parse(bank_key_json_str.GetString());                                            \
+      auto op_ky = std::static_pointer_cast<bank_key>(in_args);                                                        \
+      *op_ky = bank_key_json.get<bank_key>();                                                                          \
     } catch (std::exception& e) {                                                                                      \
           return false;                                                                                                \
     }                                                                                                                  \
-    *op_ky = bank_key_json.get<bank_key>();                                                                            \
     return true;                                                                                                       \
   }                                                                                                                    \
-  REGISTER_OP_BANK_KEY_PARSE_FUN(op, ParseFuncV2##op##bank_key, LoadFuncV2##op##bank_key);
+  REGISTER_OP_BANK_KEY_PARSE_FUN_V2(op, ParseFuncV2##op##bank_key, LoadFuncV2##op##bank_key);
 
 
 namespace tuningtiling {
+// 待v2版本上库后删除
 using OpBankKeyConvertFun = std::function<bool(const gert::TilingContext *, std::shared_ptr<void> &, size_t &)>;
 using OpBankParseFun = std::function<bool(const std::shared_ptr<void> &, size_t, nlohmann::json &)>;
 using OpBankLoadFun = std::function<bool(std::shared_ptr<void> &, size_t &, const nlohmann::json &)>;
+
+// 上库后删除上面的引用
+using OpBankKeyConvertFunV2 = std::function<bool(const gert::TilingContext *, std::shared_ptr<void> &, size_t &)>;
 using OpBankParseFunV2 = std::function<bool(const std::shared_ptr<void> &, size_t, ge::AscendString &)>;
 using OpBankLoadFunV2 = std::function<bool(std::shared_ptr<void> &, size_t &, const ge::AscendString &)>;
+// 待v2版本上库后删除
 class FMK_FUNC_HOST_VISIBILITY OpBankKeyFuncInfo {
 public:
   explicit OpBankKeyFuncInfo(const ge::AscendString &optype);
@@ -123,27 +140,59 @@ public:
   const OpBankKeyConvertFun& GetBankKeyConvertFunc() const;
   const OpBankParseFun& GetBankKeyParseFunc() const;
   const OpBankLoadFun& GetBankKeyLoadFunc() const;
-  const OpBankParseFunV2& GetBankKeyParseFuncV2() const;
-  const OpBankLoadFunV2& GetBankKeyLoadFuncV2() const;
   const ge::AscendString& GetOpType() const {
     return optype_;
   }
+
 private:
   ge::AscendString optype_;
   OpBankKeyConvertFun convert_func_;
   OpBankParseFun parse_func_;
   OpBankLoadFun load_func_;
+  
 };
 
+// 上库后删除上面的类
+class FMK_FUNC_HOST_VISIBILITY OpBankKeyFuncInfoV2 {
+public:
+  explicit OpBankKeyFuncInfoV2(const ge::AscendString &optypeV2);
+  OpBankKeyFuncInfoV2() = default;
+  ~OpBankKeyFuncInfoV2() = default;
+  void SetOpConvertFuncV2(const OpBankKeyConvertFunV2 &convert_funcV2);
+  void SetOpParseFuncV2(const OpBankParseFunV2 &parse_funcV2);
+  void SetOpLoadFuncV2(const OpBankLoadFunV2 &load_funcV2);
+  const OpBankKeyConvertFunV2& GetBankKeyConvertFuncV2() const;
+  const OpBankParseFunV2& GetBankKeyParseFuncV2() const;
+  const OpBankLoadFunV2& GetBankKeyLoadFuncV2() const;
+  const ge::AscendString& GetOpTypeV2() const {
+    return optypeV2_;
+  }
+
+private:
+  ge::AscendString optypeV2_;
+  OpBankKeyConvertFunV2 convert_funcV2_;
+  OpBankParseFunV2 parse_funcV2_;
+  OpBankLoadFunV2 load_funcV2_;
+};
+
+// 该类在v2版本上库后删除
 class FMK_FUNC_HOST_VISIBILITY OpBankKeyFuncRegistry {
 public:
   OpBankKeyFuncRegistry(const ge::AscendString &optype, const OpBankKeyConvertFun &convert_func);
   OpBankKeyFuncRegistry(const ge::AscendString &optype, const OpBankParseFun &parse_func,
     const OpBankLoadFun &load_func);
-  OpBankKeyFuncRegistry(const ge::AscendString &optype, const OpBankParseFunV2 &parse_func,
-    const OpBankLoadFunV2 &load_func);
   ~OpBankKeyFuncRegistry() = default;
   static std::unordered_map<ge::AscendString, OpBankKeyFuncInfo> &RegisteredOpFuncInfo();
+};
+
+// 上库后替代上面的类
+class FMK_FUNC_HOST_VISIBILITY OpBankKeyFuncRegistryV2 {
+public:
+  OpBankKeyFuncRegistryV2(const ge::AscendString &optype, const OpBankKeyConvertFunV2 &convert_funcV2);
+  OpBankKeyFuncRegistryV2(const ge::AscendString &optype, const OpBankParseFunV2 &parse_funcV2,
+    const OpBankLoadFunV2 &load_funcV2);
+  ~OpBankKeyFuncRegistryV2() = default;
+  static std::unordered_map<ge::AscendString, OpBankKeyFuncInfoV2> &RegisteredOpFuncInfoV2();
 };
 }  // namespace tuningtiling
 #endif

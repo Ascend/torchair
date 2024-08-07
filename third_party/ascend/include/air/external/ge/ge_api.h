@@ -1,18 +1,11 @@
-/**
- * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+/* Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ * ===================================================================================================================*/
 
 #ifndef INC_EXTERNAL_GE_GE_API_H_
 #define INC_EXTERNAL_GE_GE_API_H_
@@ -30,6 +23,7 @@
 #include "graph/graph.h"
 #include "graph/tensor.h"
 #include "ge/ge_allocator.h"
+#include "exe_graph/runtime/tensor.h"
 namespace ge {
 typedef uint32_t (*pCallBackFunc)(uint32_t graph_id, const std::map<std::string, ge::Tensor> &params_list);
 
@@ -185,6 +179,9 @@ class GE_FUNC_VISIBILITY Session {
   ///
   Status RunGraphWithStreamAsync(uint32_t graph_id, void *stream, const std::vector<Tensor> &inputs,
                                  std::vector<Tensor> &outputs);
+  
+  Status ExecuteGraphWithStreamAsync(uint32_t graph_id, void *stream, const std::vector<gert::Tensor> &inputs,
+                                 std::vector<gert::Tensor> &outputs);
 
   ///
   /// @ingroup ge_graph
@@ -280,6 +277,17 @@ class GE_FUNC_VISIBILITY Session {
                            const DataFlowInfo &info, int32_t timeout);
 
   /// @ingroup ge_graph
+  /// @brief Feed input data to graph.
+  /// @param [in] graph_id graph id
+  /// @param [in] raw_data_list can be 1 or n, feed will be combine n raw data automatically
+  /// @param [in] indexes feed input index
+  /// @param [in] info intput data flow flag
+  /// @param [in] timeout data feed timeout(ms), -1 means never timeout
+  /// @return Status result of function
+  Status FeedRawData(uint32_t graph_id, const std::vector<RawData> &raw_data_list, const uint32_t index,
+                     const DataFlowInfo &info, int32_t timeout);
+
+  /// @ingroup ge_graph
   /// @brief Fetch graph output data in order.
   /// @param [in] graph_id graph id
   /// @param [out] outputs output data
@@ -345,6 +353,18 @@ class GE_FUNC_VISIBILITY Session {
 
   ///
   /// @ingroup ge_graph
+  /// @brief set fix feature memory base with type after compiled and before loaded, one type only allows setting once
+  /// @param [in] graph_id graph id
+  /// @param [in] type memory type
+  /// @param [in] memory const memory base
+  /// @param [out] size const memory size
+  /// @return Status result of function
+  ///
+  Status SetGraphFixedFeatureMemoryBaseWithType(uint32_t graph_id, MemoryType type, const void *const memory,
+                                                size_t size);
+
+  ///
+  /// @ingroup ge_graph
   /// @brief set or update tefreshable fearture memory base after compiled, not include fix memory
   /// @param [in] graphId graph id
   /// @param [in] memory feature map memory base, without input and output mem
@@ -369,12 +389,25 @@ class GE_FUNC_VISIBILITY Session {
   /// @ingroup ge_graph
   /// @brief shard graphs in the session according the add graph sequence
   /// @return Status result of function
+  Status ShardGraphsToFile(const char_t *file_path = "./") const;
+
+  /// @ingroup ge_graph
+  /// @brief shard graphs in the session according the add graph sequence
+  /// @return Status result of function
   Status ShardGraphs() const;
 
   /// @ingroup ge_graph
   /// @brief save graphs in the session with specific file path
   /// @return Status result of function
   Status SaveGraphsToPb(const char_t *file_path) const;
+
+  /// @ingroup ge_graph
+  /// @brief virtual memory need to remap
+  /// @param [in] va virtual memory
+  /// @param [in] new_pa new physical memory
+  /// @param [in] len the lens of va to remap
+  /// @return Status result of function
+  Status PaRemapped(const uint64_t va, const uint64_t new_pa, const uint64_t len) const;
 
  private:
   uint64_t sessionId_{0};

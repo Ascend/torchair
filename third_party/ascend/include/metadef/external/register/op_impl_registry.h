@@ -1,18 +1,11 @@
-/**
- * Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+/* Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ * ===================================================================================================================*/
 
 #ifndef INC_EXTERNAL_REGISTER_OP_IMPL_REGISTRY_H_
 #define INC_EXTERNAL_REGISTER_OP_IMPL_REGISTRY_H_
@@ -25,6 +18,11 @@
 #include "register/op_impl_kernel_registry.h"
 
 namespace gert {
+enum TilingPlacement {
+  TILING_ON_HOST = 0,
+  TILING_ON_AICPU = 1,
+};
+
 class OpImplRegisterV2Impl;
 class OpImplRegisterV2 {
  public:
@@ -61,6 +59,8 @@ class OpImplRegisterV2 {
   OpImplRegisterV2 &OpExecuteFunc(OpImplKernelRegistry::OpExecuteFunc op_execute_func);
   OpImplRegisterV2 &HostInputs(std::initializer_list<int32_t> inputs);
   OpImplRegisterV2 &TilingInputsDataDependency(std::initializer_list<int32_t> inputs);
+  OpImplRegisterV2 &TilingInputsDataDependency(std::initializer_list<int32_t> inputs,
+                    std::initializer_list<TilingPlacement> placements);
  private:
   OpImplRegisterV2 &TilingParse(OpImplKernelRegistry::KernelFunc tiling_parse_func,
                                 OpImplKernelRegistry::CompileInfoCreatorFunc creator_func,
@@ -85,5 +85,10 @@ class OpImplRegisterV2 {
 #define IMPL_OP_COUNTER_NUMBER(op_type, name, counter) IMPL_OP_COUNTER(op_type, name, counter)
 #define IMPL_OP(op_type) IMPL_OP_COUNTER_NUMBER(op_type, op_impl_register_##op_type, __COUNTER__)
 #define IMPL_OP_DEFAULT() IMPL_OP(DefaultImpl)
+
+#define IMPL_OP_INFERSHAPE(op_type) \
+  gert::OpImplRegisterV2 VAR_UNUSED op_impl_register_infershape_##op_type = gert::OpImplRegisterV2(#op_type)
+#define IMPL_OP_OPTILING(op_type) \
+  gert::OpImplRegisterV2 VAR_UNUSED op_impl_register_optiling_##op_type = gert::OpImplRegisterV2(#op_type)
 
 #endif  // INC_EXTERNAL_REGISTER_OP_IMPL_REGISTRY_H_

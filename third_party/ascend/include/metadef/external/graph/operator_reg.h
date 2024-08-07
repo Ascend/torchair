@@ -1,18 +1,11 @@
-/**
- * Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+/* Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ * ===================================================================================================================*/
 
 #ifndef INC_EXTERNAL_GRAPH_OPERATOR_REG_H_
 #define INC_EXTERNAL_GRAPH_OPERATOR_REG_H_
@@ -38,7 +31,6 @@
 #define FORCE_INLINE inline
 #endif
 
-namespace {
 template<typename T>
 ge::AscendString ConvertToAscendString(T str);
 
@@ -72,7 +64,6 @@ inline std::vector<ge::AscendString> ConvertToListAscendString(std::vector<std::
 template<>
 inline std::vector<ge::AscendString> ConvertToListAscendString(std::vector<ge::AscendString> strs) {
   return strs;
-}
 }
 namespace ge {
 using std::function;
@@ -682,7 +673,7 @@ class OpReg {
 
 #define INFER_FUNC_REG(op_name, x) __INFER_FUNC_REG_IMPL__(op_name, INFER_VERIFY_FUNC(op_name, x), __COUNTER__)
 
-#define COMMON_INFER_FUNC_REG(op_name, x) __INFER_FUNC_REG_IMPL__(op_name, COMMON_INFER_VERIFY_FUNC(x), __COUNTER__)
+#define COMMON_INFER_FUNC_REG(op_name, x) __INFER_FUNC_REG_IMPL__(op_name, COMMON_INFER_VERIFY_FUNC((x)), __COUNTER__)
 
 #define VERIFY_FUNC_REG(op_name, x) __VERIFY_FUNC_REG_IMPL__(op_name, INFER_VERIFY_FUNC(op_name, x), __COUNTER__)
 
@@ -709,12 +700,18 @@ class OpReg {
 
 #define ELMTWISE_INFER_SHAPEANDTYPE(in_name, out_name)                                                                 \
   [](Operator op) -> graphStatus {                                                                                     \
-    auto x_shape = op.GetInputDescByName(in_name).GetShape().GetDims();                                                \
-    auto x_type = op.GetInputDescByName(in_name).GetDataType();                                                        \
+    auto x_input_desc = op.GetInputDescByName(in_name);                                                                \
+    auto x_shape = x_input_desc.GetShape().GetDims();                                                                  \
+    auto x_type = x_input_desc.GetDataType();                                                                          \
+    std::vector<std::pair<int64_t, int64_t>> x_shape_range;                                                            \
+    (void) x_input_desc.GetShapeRange(x_shape_range);                                                                  \
     TensorDesc op_output_desc = op.GetOutputDescByName(out_name);                                                      \
     op_output_desc.SetShape(ge::Shape(x_shape));                                                                       \
     op_output_desc.SetOriginShape(ge::Shape(x_shape));                                                                 \
     op_output_desc.SetDataType(x_type);                                                                                \
+    if (!x_shape_range.empty()) {                                                                                      \
+      op_output_desc.SetShapeRange(x_shape_range);                                                                     \
+    }                                                                                                                  \
     return op.UpdateOutputDesc(out_name, op_output_desc);                                                              \
   }
 

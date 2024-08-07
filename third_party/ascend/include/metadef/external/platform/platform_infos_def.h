@@ -1,18 +1,11 @@
-/**
- * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+/* Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ * ===================================================================================================================*/
 
 #ifndef PLATFORM_INFOS_DEF_H
 #define PLATFORM_INFOS_DEF_H
@@ -45,6 +38,7 @@ class PlatFormInfos {
   bool GetPlatformResWithLock(const std::string &label, const std::string &key, std::string &val);
   bool GetPlatformRes(const std::string &label, std::map<std::string, std::string> &res);
   bool GetPlatformResWithLock(const std::string &label, std::map<std::string, std::string> &res);
+  bool GetPlatformResWithLock(std::map<std::string, std::map<std::string, std::string>> &res);
   uint32_t GetCoreNum() const;
   uint32_t GetCoreNumWithLock() const;
   void GetLocalMemSize(const LocalMemType &mem_type, uint64_t &size);
@@ -62,7 +56,12 @@ class PlatFormInfos {
   void SetFixPipeDtypeMap(const std::map<std::string, std::vector<std::string>> &fixpipe_dtype_map);
   void SetCoreNumByCoreType(const std::string &core_type);
   void SetCoreNum(const uint32_t &core_num);
+
+  std::string SaveToBuffer();
+  bool LoadFromBuffer(const char *buf_ptr, const size_t buf_len);
+  uint32_t GetCoreNumByType(const std::string &core_type);
  private:
+  bool InitByInstance();
   uint32_t core_num_ {0};
   PlatFormInfosImplPtr platform_infos_impl_ {nullptr};
 };

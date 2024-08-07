@@ -7,14 +7,32 @@
  * See LICENSE in the root of the software repository for the full text of the License.
  * ===================================================================================================================*/
 
-#ifndef INC_EXTERNAL_GRAPH_RESOURCE_CONTEXT_H_
-#define INC_EXTERNAL_GRAPH_RESOURCE_CONTEXT_H_
+#ifndef INC_EXTERNAL_REGISTER_OP_CT_IMPL_REGISTRY_API_H_
+#define INC_EXTERNAL_REGISTER_OP_CT_IMPL_REGISTRY_API_H_
 
-namespace ge {
-// For resource op infershape, indicate content stored in resources, shape/dtype etc.
-// Op can inherit from this struct and extend more content
-struct ResourceContext {
-  virtual ~ResourceContext() {}
-}; // struct ResourceContext
-}  // namespace ge
-#endif  // INC_EXTERNAL_GRAPH_RESOURCE_CONTEXT_H_
+#include <cstdlib>
+#include "op_ct_impl_kernel_registry.h"
+
+struct TypesToCtImpl {
+  const char *op_type;
+  gert::OpCtImplKernelRegistry::OpCtImplFunctions funcs;
+};
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifdef __GNUC__
+#define METADEF_FUNC_VISIBILITY __attribute__((visibility("default")))
+#else
+#define METADEF_FUNC_VISIBILITY
+#endif
+
+METADEF_FUNC_VISIBILITY size_t GetRegisteredOpCtNum(void);
+METADEF_FUNC_VISIBILITY int32_t GetOpCtImplFunctions(TypesToCtImpl *impl, size_t impl_num);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif  // INC_EXTERNAL_REGISTER_OP_CT_IMPL_REGISTRY_API_H_

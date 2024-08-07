@@ -1,8 +1,11 @@
 /*
- * Copyright (c) Huawei Technologies Co., Ltd. 2020-2022. All rights reserved.
- * Description: HCCL data type definition
- * Author: lilianlin
- * Create: 2020-09-09
+ * Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
  */
 
 #ifndef HCCL_TYPES_H_
@@ -40,6 +43,7 @@ typedef enum {
     HCCL_E_NETWORK = 19,            /**< call network api fail */
     HCCL_E_AGAIN = 20,              /**< try again */
     HCCL_E_REMOTE = 21,             /**< error cqe */
+    HCCL_E_SUSPENDING = 22,         /**< error communicator suspending */
     HCCL_E_RESERVED                 /**< reserved */
 } HcclResult;
 
@@ -90,13 +94,26 @@ union HcclConfigValue {
 };
 
 const uint32_t HCCL_ROOT_INFO_BYTES =  4108; // 4108: root info length
-const uint32_t MAX_GROUP_NAME = 128; // group name max length
+const uint32_t COMM_NAME_MAX_LENGTH = 128; // group name max length
 /**
  * @brief HCCL root info
  */
 typedef struct HcclRootInfoDef {
     char internal[HCCL_ROOT_INFO_BYTES];
 } HcclRootInfo;
+
+const uint32_t HCCL_COMM_CONFIG_INFO_BYTES = 24;
+const uint32_t HCCL_COMM_CONFIG_MAGIC_WORD = 0xf0f0f0f0;
+const uint32_t HCCL_COMM_CONFIG_VERSION = 2;
+const uint32_t HCCL_COMM_DEFAULT_BUFFSIZE = 200;
+const uint32_t HCCL_COMM_DEFAULT_DETERMINISTIC = 0;
+
+typedef struct HcclCommConfigDef {
+    char reserved[HCCL_COMM_CONFIG_INFO_BYTES];
+    uint32_t hcclBufferSize;
+    uint32_t hcclDeterministic;
+    char hcclCommName[COMM_NAME_MAX_LENGTH];
+} HcclCommConfig;
 
 typedef enum {
     HCCL_SEND = 0,

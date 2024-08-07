@@ -1,17 +1,11 @@
-/**
-* Copyright (c) Huawei Technologies Co., Ltd. 2020. All rights reserved.
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-
-* http://www.apache.org/licenses/LICENSE-2.0
-
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+/* Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ * ===================================================================================================================*/
 
 #ifndef INC_EXTERNAL_GE_IR_BUILD_H_
 #define INC_EXTERNAL_GE_IR_BUILD_H_
@@ -43,6 +37,17 @@ const int32_t IR_PATCH_VERSION = 0;
 struct ModelBufferData {
   std::shared_ptr<uint8_t> data = nullptr;
   uint64_t length;
+};
+
+struct GraphWithOptions {
+  ge::Graph graph;
+  std::map<AscendString, AscendString> build_options;
+};
+
+struct WeightRefreshableGraphs {
+  ge::Graph infer_graph;
+  ge::Graph var_init_graph;
+  ge::Graph var_update_graph;
 };
 
 enum aclgrphAttrType { ATTR_TYPE_KEEP_DTYPE = 0, ATTR_TYPE_WEIGHT_COMPRESS };
@@ -119,6 +124,40 @@ ATTRIBUTED_DEPRECATED(GE_FUNC_VISIBILITY graphStatus aclgrphSaveModel(const char
 GE_FUNC_VISIBILITY graphStatus aclgrphSaveModel(const std::string &output_file, const ModelBufferData &model);
 
 GE_FUNC_VISIBILITY graphStatus aclgrphSaveModel(const char_t *output_file, const ModelBufferData &model);
+
+/**
+ * @ingroup AscendCL
+ *
+ * @param origin_graph[IN]   the origin graph ready to be converted
+ * @param const_names[IN] const names in origin graph which to be converted to variable
+ * @param weight_refreshable_graphs[OUT]  refreshable weight graphs
+ * @retval GRAPH_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ */
+GE_FUNC_VISIBILITY graphStatus aclgrphConvertToWeightRefreshableGraphs(const ge::Graph &origin_graph,
+    const std::vector<AscendString> &const_names, WeightRefreshableGraphs &weight_refreshable_graphs);
+/**
+ * @ingroup AscendCL
+ * @brief build model.Notice the model is stored in buffer
+ *
+ * @param graph_with_options[IN]   the multiple graphs and build options ready to build
+ * @param model[OUT]  builded bundle model
+ * @retval GRAPH_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ */
+GE_FUNC_VISIBILITY graphStatus aclgrphBundleBuildModel(const std::vector<ge::GraphWithOptions> &graph_with_options,
+                                                       ModelBufferData &model);
+
+/**
+ * @ingroup AscendCL
+ * @brief save bundle model buffer to file
+ *
+ * @param output_file[IN]   the file path to be saved
+ * @param model[IN]         model buffer data
+ * @retval GRAPH_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ */
+GE_FUNC_VISIBILITY graphStatus aclgrphBundleSaveModel(const char_t *output_file, const ModelBufferData &model);
 
 /**
  * @ingroup AscendCL

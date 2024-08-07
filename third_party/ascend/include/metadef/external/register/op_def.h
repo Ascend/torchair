@@ -1,18 +1,11 @@
-/**
- * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+/* Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ * ===================================================================================================================*/
 
 #ifndef OP_DEF_H
 #define OP_DEF_H
@@ -43,6 +36,13 @@ public:
 }
 
 namespace ops {
+class AclnnOpGenerator;
+class Generator;
+class OpProtoGenerator;
+class GeneratorFactory;
+class CfgGenerator;
+class OpParamTrunk;
+
 enum Option { IGNORE = 0, OPTIONAL = 1, REQUIRED = 2, DYNAMIC = 3, VIRTUAL = 4 };
 
 enum class AttrDataType {
@@ -57,6 +57,85 @@ enum class AttrDataType {
   ATTR_DT_MAX
 };
 
+enum class InitValueType : uint32_t {
+  INIT_VALUE_UINT64_T = 0,
+  INIT_VALUE_DEFAULT = static_cast<uint32_t>(-1),
+};
+
+enum class ScalarType : uint32_t {
+  UINT64 = 0,
+  INT64 = 1,
+  UINT32 = 2,
+  INT32 = 3,
+  UINT16 = 4,
+  INT16 = 5,
+  UINT8 = 6,
+  INT8 = 7,
+  FLOAT32 = 8,
+  FLOAT16 = 9,
+  INVALID_DTYPE = static_cast<uint32_t>(-1),
+};
+
+union ScalarNum {
+  uint64_t value_u64;
+  int64_t value_i64;
+  float value_f32;
+  ScalarNum() : value_u64(0) {}
+  explicit ScalarNum(uint64_t value) : value_u64(value) {}
+  explicit ScalarNum(int64_t value) : value_i64(value) {}
+  explicit ScalarNum(float value) : value_f32(value) {}
+};
+
+using InitValueNum = ScalarNum;
+
+struct ScalarVar {
+  ScalarType scalar_type;
+  ScalarNum scalar_num;
+  ScalarVar() : scalar_type(ScalarType::INVALID_DTYPE) {}
+  ScalarVar(ScalarType type, uint64_t num) : scalar_type(type), scalar_num(num) {
+    if (type == ScalarType::FLOAT32 || type == ScalarType::FLOAT16) {
+      scalar_num = ScalarNum(static_cast<float>(num));
+    }
+  }
+  ScalarVar(ScalarType type, int64_t num) : scalar_type(type), scalar_num(num) {
+    if (type == ScalarType::FLOAT32 || type == ScalarType::FLOAT16) {
+      scalar_num = ScalarNum(static_cast<float>(num));
+    }
+  }
+  ScalarVar(ScalarType type, int num) : scalar_type(type), scalar_num(static_cast<int64_t>(num)) {
+    if (type == ScalarType::FLOAT32 || type == ScalarType::FLOAT16) {
+      scalar_num = ScalarNum(static_cast<float>(num));
+    }
+  }
+  ScalarVar(ScalarType type, unsigned int num) : scalar_type(type), scalar_num(static_cast<uint64_t>(num)) {
+    if (type == ScalarType::FLOAT32 || type == ScalarType::FLOAT16) {
+      scalar_num = ScalarNum(static_cast<float>(num));
+    }
+  }
+  ScalarVar(ScalarType type, float num) : scalar_type(type), scalar_num(num) {
+    if (type != ScalarType::FLOAT32 && type != ScalarType::FLOAT16) {
+      if (type == ScalarType::UINT64) {
+        scalar_num = ScalarNum(static_cast<uint64_t>(num));
+      }
+      scalar_num = ScalarNum(static_cast<int64_t>(num));
+    }
+  }
+  ScalarVar(ScalarType type, double num) : scalar_type(type), scalar_num(static_cast<float>(num)) {
+    if (type != ScalarType::FLOAT32 && type != ScalarType::FLOAT16) {
+      if (type == ScalarType::UINT64) {
+        scalar_num = ScalarNum(static_cast<uint64_t>(num));
+      }
+      scalar_num = ScalarNum(static_cast<int64_t>(num));
+    }
+  }
+  bool operator==(const ScalarVar& other) const {
+    if (scalar_type == other.scalar_type && scalar_num.value_u64 == other.scalar_num.value_u64) {
+      return true;
+    }
+    return false;
+  }
+};
+
 enum class ItemFindStatus { ITEM_FIND = 0, ITEM_NOEXIST = 1 };
 
 class OpParamDefImpl;
@@ -66,11 +145,11 @@ public:
   OpParamDef(const OpParamDef &def);
   ~OpParamDef();
   OpParamDef &operator=(const OpParamDef &def);
-  bool operator==(const OpParamDef &def) const;
-  void MergeParam(const OpParamDef &def);
   OpParamDef &ParamType(Option param_type);
   OpParamDef &DataType(std::vector<ge::DataType> types);
+  OpParamDef &DataTypeList(std::vector<ge::DataType> types);
   OpParamDef &Format(std::vector<ge::Format> formats);
+  OpParamDef &FormatList(std::vector<ge::Format> formats);
   OpParamDef &UnknownShapeFormat(std::vector<ge::Format> formats);
   OpParamDef &ValueDepend(Option value_depend);
   OpParamDef &IgnoreContiguous(void);
@@ -80,21 +159,48 @@ public:
   OpParamDef &To(const ge::DataType type);
   OpParamDef &To(const char *name);
   OpParamDef &Version(uint32_t version);
-  ge::AscendString &GetParamName(void);
+  OpParamDef &InitValue(uint64_t value);
+  OpParamDef &InitValue(const ScalarVar &value);
+  OpParamDef &InitValue(const std::vector<ScalarVar> &value);
+
+private:
+  friend class AclnnOpGenerator;
+  friend class Generator;
+  friend class OpProtoGenerator;
+  friend class GeneratorFactory;
+  friend class CfgGenerator;
+  friend class OpParamTrunk;
+  friend class OpDef;
+
+  bool operator==(const OpParamDef &def) const;
+  void MergeParam(const OpParamDef &def);
+  ge::AscendString &GetParamName(void) const;
   Option GetParamType(void);
   std::vector<ge::DataType> &GetDataTypes(void);
+  std::vector<ge::DataType> &GetOriginDataTypes(void);
+  std::vector<ge::DataType> &GetDataTypesList(void);
   std::vector<ge::Format> &GetFormats(void);
+  std::vector<ge::Format> &GetFormatsList(void);
   std::vector<ge::Format> &GetUnknownShapeFormats(void);
   ge::AscendString &GetValueDepend(void);
   bool GetIgnoreContiguous(void);
   bool GetAutoContiguous(void);
-  bool IsScalar(void);
-  bool IsScalarList(void);
-  ge::AscendString &GetScalarName(void);
-  ge::DataType GetScalarType(void);
+  bool IsScalar(void) const;
+  bool IsScalarList(void) const;
+  bool IsScalarOrScalarList(void) const;
+  bool IsScalarTypeSet(void) const;
+  bool IsScalarNameSet(void) const;
+  bool IsValueDepend(void) const;
+  bool IsDtype(void) const;
+  bool IsDtypeList(void) const;
+  bool IsFormat(void) const;
+  bool IsFormatList(void) const;
+  ge::AscendString &GetScalarName(void) const;
+  ge::DataType GetScalarType(void) const;
   uint32_t GetVersion(void);
-
-private:
+  InitValueType &GetInitValueType(void);
+  InitValueNum &GetInitValue(void);
+  std::vector<ScalarVar> &GetInitValueList(void);
   std::unique_ptr<OpParamDefImpl> impl_;
 };
 
@@ -105,7 +211,6 @@ public:
   OpAttrDef(const OpAttrDef &attr_def);
   ~OpAttrDef();
   OpAttrDef &operator=(const OpAttrDef &attr_def);
-  bool operator==(const OpAttrDef &attr_def) const;
   OpAttrDef &AttrType(Option attr_type);
   OpAttrDef &Bool(void);
   OpAttrDef &Bool(bool value);
@@ -126,12 +231,22 @@ public:
   OpAttrDef &Version(uint32_t version);
   ge::AscendString &GetName(void) const;
   bool IsRequired(void);
+
+private:
+  friend class AclnnOpGenerator;
+  friend class Generator;
+  friend class OpProtoGenerator;
+  friend class GeneratorFactory;
+  friend class CfgGenerator;
+  friend class OpParamTrunk;
+  friend class OpDef;
+
+  bool operator==(const OpAttrDef &attr_def) const;
   ge::AscendString &GetCfgDataType(void) const;
   ge::AscendString &GetProtoDataType(void) const;
   ge::AscendString &GetAttrDefaultVal(const char *brac);
   uint32_t GetVersion(void);
 
-private:
   std::unique_ptr<OpAttrDefImpl> impl_;
 };
 
@@ -151,14 +266,23 @@ public:
   OpAICoreConfig &NeedCheckSupportFlag(bool flag);
   OpAICoreConfig &PrecisionReduceFlag(bool flag);
   OpAICoreConfig &ExtendCfgInfo(const char *key, const char *value);
-  std::vector<OpParamDef> &GetInputs(void);
-  std::vector<OpParamDef> &GetOutputs(void);
+
+private:
+  friend class AclnnOpGenerator;
+  friend class Generator;
+  friend class OpProtoGenerator;
+  friend class GeneratorFactory;
+  friend class CfgGenerator;
+  friend class OpParamTrunk;
+  friend class OpDef;
+
+  std::vector<OpParamDef> &GetInputs(void) const;
+  std::vector<OpParamDef> &GetOutputs(void) const;
   std::vector<ge::AscendString> &GetCfgKeys(void);
   std::map<ge::AscendString, ge::AscendString> &GetCfgInfo(void);
   ge::AscendString &GetConfigValue(const char *key);
-
-private:
   void AddCfgItem(const char *key, const char *value);
+
   std::unique_ptr<OpAICoreConfigImpl> impl_;
 };
 
@@ -183,11 +307,42 @@ public:
   optiling::PARAM_GENERALIZE_FUNC &GetParamGeneralize(void);
   OpAICoreDef &AddConfig(const char *soc);
   OpAICoreDef &AddConfig(const char *soc, OpAICoreConfig &aicore_config);
-  std::map<ge::AscendString, OpAICoreConfig> &GetAICoreConfigs(void);
 
 private:
+  friend class AclnnOpGenerator;
+  friend class Generator;
+  friend class OpProtoGenerator;
+  friend class GeneratorFactory;
+  friend class CfgGenerator;
+  friend class OpParamTrunk;
+  friend class OpDef;
+
+  std::map<ge::AscendString, OpAICoreConfig> &GetAICoreConfigs(void);
   void Log(const char *op_type, const char *info) const;
+
   std::unique_ptr<OpAICoreDefImpl> impl_;
+};
+
+class OpMC2DefImpl;
+class OpMC2Def {
+public:
+  OpMC2Def();
+  OpMC2Def(const OpMC2Def &mc2_def);
+  ~OpMC2Def();
+  OpMC2Def &operator=(const OpMC2Def &mc2_def);
+  OpMC2Def &HcclGroup(const char *value);
+  OpMC2Def &HcclGroup(std::vector<const char *> value);
+
+private:
+  friend class AclnnOpGenerator;
+  friend class Generator;
+  friend class OpProtoGenerator;
+  friend class GeneratorFactory;
+  friend class CfgGenerator;
+  friend class OpParamTrunk;
+
+  std::vector<ge::AscendString> &GetHcclGroups(void) const;
+  std::unique_ptr<OpMC2DefImpl> impl_;
 };
 
 class OpDefImpl;
@@ -206,22 +361,49 @@ public:
   gert::OpImplKernelRegistry::InferShapeKernelFunc &GetInferShape(void);
   gert::OpImplKernelRegistry::InferShapeRangeKernelFunc &GetInferShapeRange(void);
   gert::OpImplKernelRegistry::InferDataTypeKernelFunc &GetInferDataType(void);
-  void SetWorkspaceFlag(bool flag);
+  OpAICoreDef &AICore(void);
+  OpMC2Def &MC2(void);
+
+private:
+  friend class AclnnOpGenerator;
+  friend class Generator;
+  friend class OpProtoGenerator;
+  friend class GeneratorFactory;
+  friend class CfgGenerator;
+  friend class OpParamTrunk;
+  struct DfsParam {
+    std::vector<std::vector<ge::DataType>> full_types;
+    std::vector<std::vector<ge::Format>> full_formats;
+    std::vector<ge::DataType> types;
+    std::vector<ge::Format> formats;
+  };
+
   ge::AscendString &GetOpType(void);
   std::vector<OpParamDef> &GetInputs(void);
   std::vector<OpParamDef> &GetOutputs(void);
   std::vector<OpAttrDef> &GetAttrs(void);
   std::vector<OpParamDef> GetMergeInputs(OpAICoreConfig &aicore_config);
   std::vector<OpParamDef> GetMergeOutputs(OpAICoreConfig &aicore_config);
-  bool GetWorkspaceFlag(void);
-  OpAICoreDef &AICore(void);
-
-private:
+  void CheckIncompatible(const std::vector<OpParamDef>& all) const;
+  void FullPermutation(const std::vector<OpParamDef> &input_param, const std::vector<OpParamDef> &output_param) const;
+  void DfsFullPermutation(DfsParam &dfs_param, const std::vector<OpParamDef> &all_param,
+                          uint32_t list_idx, uint32_t non_list_idx) const;
+  void DfsDataType(DfsParam &dfs_param, const std::vector<OpParamDef> &all_param,
+                   uint32_t list_idx, uint32_t non_list_idx) const;
+  void DfsFormat(DfsParam &dfs_param, const std::vector<OpParamDef> &all_param,
+                 uint32_t list_idx, uint32_t non_list_idx) const;
+  uint32_t CalcNonListLen(const std::vector<OpParamDef> &all_param) const;
+  bool IsNonListTypes(const OpParamDef &def) const;
+  bool IsNonListFormats(const OpParamDef &def) const;
+  void SetDefaultND(const std::vector<OpParamDef> &defs) const;
+  std::vector<std::vector<OpParamDef>> GetMergeInputsOutputs(const OpAICoreConfig &aicore_config);
+  void SetPermutedInputOutput(const DfsParam &dfs_param, const std::vector<OpParamDef> &input,
+                              const std::vector<OpParamDef> &output) const;
   void MergeParam(std::vector<OpParamDef> &merge, std::vector<OpParamDef> &aicore_params) const;
-  void CheckParam(std::vector<OpParamDef> &params) const;
   ItemFindStatus FindAttr(const char *name, OpAttrDef **attr);
   OpAttrDef &AddAttr(OpAttrDef &attr);
   OpAttrDef &GetOrCreateAttr(const char *name);
+
   std::unique_ptr<OpDefImpl> impl_;
 };
 }  // namespace ops

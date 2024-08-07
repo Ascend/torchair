@@ -1,22 +1,15 @@
-/**
- * Copyright (c) Huawei Technologies Co., Ltd. 2022. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+/* Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ * ===================================================================================================================*/
+
 #ifndef METADEF_CXX_INC_EXE_GRAPH_TENSOR_DATA_H_
 #define METADEF_CXX_INC_EXE_GRAPH_TENSOR_DATA_H_
 
-#include <securec.h>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -30,7 +23,30 @@ enum TensorPlacement : int32_t {
     kOnDeviceHbm,  ///< Tensor位于Device上的HBM内存
     kOnHost,       ///< Tensor位于Host
     kFollowing,    ///< Tensor位于Host，且数据紧跟在结构体后面
+    kOnDeviceP2p,  ///< Tensor位于Device上的P2p内存
     kTensorPlacementEnd
+};
+
+class TensorPlacementUtils {
+ public:
+  static bool IsOnDevice(TensorPlacement placement) {
+    return (placement == kOnDeviceHbm) || (placement == kOnDeviceP2p);
+  }
+  static bool IsOnHost(TensorPlacement placement) {
+    return (placement == kOnHost) || (placement == kFollowing);
+  }
+  static bool IsOnHostFollowing(TensorPlacement placement) {
+    return (placement == kFollowing);
+  }
+  static bool IsOnHostNotFollowing(TensorPlacement placement) {
+    return (placement == kOnHost);
+  }
+  static bool IsOnDeviceHbm(TensorPlacement placement) {
+    return (placement == kOnDeviceHbm);
+  }
+  static bool IsOnDeviceP2p(TensorPlacement placement) {
+    return (placement == kOnDeviceP2p);
+  }
 };
 
 enum TensorOperateType : int32_t {
@@ -52,13 +68,14 @@ class TensorData {
    * @param addr tensor的地址
    * @param manager tensor data的管理函数，若manager为空，则认为addr就是tensor的数据地址，且此数据不需要被释放
    */
+  // memse函数misra告警屏蔽
   explicit TensorData(TensorAddress addr = nullptr, const TensorAddrManager manager = nullptr)
       : addr_(addr), manager_(manager), size_(0U), placement_(kTensorPlacementEnd), reserved_0_(0U) {
-    (void)memset_s(reserved_1_, sizeof(reserved_1_), 0, sizeof(reserved_1_));
+    (void)memset(reserved_1_, 0, sizeof(reserved_1_));
   }
   explicit TensorData(TensorAddress addr, const TensorAddrManager manager, size_t size, TensorPlacement placement)
       : addr_(addr), manager_(manager), size_(size), placement_(placement), reserved_0_(0U) {
-    (void)memset_s(reserved_1_, sizeof(reserved_1_), 0, sizeof(reserved_1_));
+    (void)memset(reserved_1_, 0, sizeof(reserved_1_));
   }
   TensorData(const TensorData &) = delete;
   TensorData(TensorData &&other) noexcept : addr_(other.addr_), manager_(other.manager_),
@@ -68,7 +85,7 @@ class TensorData {
     other.size_ = 0U;
     other.placement_ = kTensorPlacementEnd;
     reserved_0_ = other.reserved_0_;
-    (void)memcpy_s(reserved_1_, sizeof(reserved_1_), other.reserved_1_, sizeof(reserved_1_));
+    (void)memcpy(reserved_1_, other.reserved_1_, sizeof(reserved_1_));
   }
   TensorData &operator=(const TensorData &other) = delete;
   TensorData &operator=(TensorData &&other) noexcept {
@@ -83,7 +100,7 @@ class TensorData {
       other.size_ = 0U;
       other.placement_ = kTensorPlacementEnd;
       reserved_0_ = other.reserved_0_;
-      (void)memcpy_s(reserved_1_, sizeof(reserved_1_), other.reserved_1_, sizeof(reserved_1_));
+      (void)memcpy(reserved_1_, other.reserved_1_, sizeof(reserved_1_));
     }
     return *this;
   }

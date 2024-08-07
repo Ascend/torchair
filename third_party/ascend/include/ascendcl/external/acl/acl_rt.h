@@ -73,6 +73,7 @@ typedef enum aclrtMemcpyKind {
     ACL_MEMCPY_HOST_TO_DEVICE,
     ACL_MEMCPY_DEVICE_TO_HOST,
     ACL_MEMCPY_DEVICE_TO_DEVICE,
+    ACL_MEMCPY_DEFAULT,
 } aclrtMemcpyKind;
 
 typedef enum aclrtMemMallocPolicy {
@@ -189,6 +190,15 @@ typedef enum aclrtDeviceStatus {
 typedef void* aclrtBinary;
 typedef void* aclrtBinHandle;
 typedef void* aclrtFuncHandle;
+
+#define MAX_MEM_UCE_INFO_ARRAY_SIZE 128
+#define UCE_INFO_RESERVED_SIZE 14
+
+typedef struct aclrtMemUceInfo {
+    void* addr;
+    size_t len;
+    size_t reserved[UCE_INFO_RESERVED_SIZE];
+} aclrtMemUceInfo;
 
 /**
  * @ingroup AscendCL
@@ -1727,6 +1737,40 @@ ACL_FUNC_VISIBILITY aclError aclrtMemGetAllocationGranularity(aclrtPhysicalMemPr
  * @retval OtherValues Failure
  */
 ACL_FUNC_VISIBILITY aclError aclrtDeviceGetBareTgid(int32_t *pid);
+
+/**`
+ * @ingroup AscendCL
+ * @brief get the mem uce info
+ * @param [in] deviceId
+ * @param [in/out] memUceInfoArray
+ * @param [in] arraySize
+ * @param [out] retSize
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ */
+ACL_FUNC_VISIBILITY aclError aclrtGetMemUceInfo(int32_t deviceId, aclrtMemUceInfo *memUceInfoArray,
+                                                size_t arraySize, size_t *retSize);
+
+/**`
+ * @ingroup AscendCL
+ * @brief stop the task on specified device
+ * @param [in] deviceId
+ * @param [in] timeout
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ */
+ACL_FUNC_VISIBILITY aclError aclrtDeviceTaskAbort(int32_t deviceId, uint32_t timeout);
+
+/**`
+ * @ingroup AscendCL
+ * @brief repair the mem uce
+ * @param [in] deviceId
+ * @param [in/out] memUceInfoArray
+ * @param [in] arraySize
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ */
+ACL_FUNC_VISIBILITY aclError aclrtMemUceRepair(int32_t deviceId, aclrtMemUceInfo *memUceInfoArray, size_t arraySize);
 
 #ifdef __cplusplus
 }

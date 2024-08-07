@@ -1,18 +1,11 @@
-/**
- * Copyright (c) Huawei Technologies Co., Ltd. 2021. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+/* Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ * ===================================================================================================================*/
 
 #ifndef INC_EXTERNAL_GE_COMMON_GE_API_TYPES_H_
 #define INC_EXTERNAL_GE_COMMON_GE_API_TYPES_H_
@@ -97,6 +90,9 @@ const char_t *const OPTION_EXEC_MODEL_DEPLOY_MODE = "ge.exec.modelDeployMode";
 const char_t *const OPTION_EXEC_MODEL_DEPLOY_DEVICELIST = "ge.exec.modelDeployDevicelist";
 const char_t *const OPTION_EXEC_ENABLE_FUSION = "ge.exec.enableFusion";
 
+// if the input_size is not bigger than this value, the H2D of those inputs will be merged (H2H2D)
+const char_t *const OPTION_EXEC_INPUT_FUSION_SIZE = "ge.exec.input_fusion_size";
+
 const std::string OPTION_EXEC_CM_CHIEF_IP = "ge.cmChiefIp";
 const std::string OPTION_EXEC_CM_CHIEF_PORT = "ge.cmChiefPort";
 const std::string OPTION_EXEC_CM_CHIEF_DEVICE = "ge.cmChiefWorkerDevice";
@@ -116,7 +112,6 @@ const char_t *const OPTION_EXEC_ROLE_TABLE_ADDR = "ge.exec.roleTableAddr";
 const char_t *const OPTION_EXEC_RANK_TABLE_LEN = "ge.exec.rankTableLen";
 const char_t *const OPTION_EXEC_ROLE_TABLE_LEN = "ge.exec.roleTableLen";
 const char_t *const OPTION_EXEC_WORKER_NUM = "ge.exec.workerNum";
-const char_t *const OPTION_EXECUTE_TIMES = "ge.execute_times";
 const char_t *const OPTION_MAX_KEY_NUM = "ge.max_key_num";
 const char_t *const OPTION_EMBEDDING_DIM = "ge.embedding_dim";
 
@@ -128,6 +123,7 @@ constexpr char_t const OPTION_EXEC_ENABLE_ENGINE_PARALLEL[] = "ge.exec.enableEng
 // Option key: host env os & cpu
 const char_t *const OPTION_HOST_ENV_OS = "ge.host_env_os";
 const char_t *const OPTION_HOST_ENV_CPU = "ge.host_env_cpu";
+const char_t *const OPTION_OP_DEPENDENCY_IN_OM = "ge.op_dependency_in_om";
 
 // config value should be a exist dir
 const char_t *const OPTION_GRAPH_COMPILER_CACHE_DIR = "ge.graph_compiler_cache_dir";
@@ -163,6 +159,8 @@ const char_t *const OPTION_DATAFLOW_DEPLOY_INFO_PATH = "ge.experiment.data_flow_
 const char_t *const OPTION_MOMORY_POOL_THRESHOLD = "ge.experiment.memory_pool_threshold";
 const char_t *const OPTION_HCCL_ALGORITHM = "HCCL_algorithm";
 const char_t *const OPTION_ES_CLUSTER_CONFIG = "ge.esClusterConfig";
+const char_t *const OPTION_EXECUTE_TIMES = "execute_times";
+const char_t *const OPTION_ES_MAX_REMOTEOP_NUM_PER_STREAM = "es_max_remoteop_num_per_stream";
 const char_t *const OPTION_HOST_SCHEDULING_MAX_THRESHOLD = "ge.exec.hostSchedulingMaxThreshold";
 
 // option for experimental
@@ -225,6 +223,9 @@ const char_t *const EXTERNAL_WEIGHT = "ge.externalWeight";
 static const char_t *const QUANT_DUMPABLE = "ge.quant_dumpable";
 const char_t *const QUANT_BIAS_OPTIMIZE = "ge.experiment.quant_bias_optimize";
 static const char_t *const DETERMINISTIC = "ge.deterministic";
+const char_t *const OP_DEBUG_OPTION = "op_debug_option";
+const char_t *const TILING_SCHEDULE_OPTIMIZE = "ge.tiling_schedule_optimize";
+const char_t *const GRAPH_MAX_PARALLEL_MODEL_NUM = "ge.graphMaxParallelModelNum";
 }  // namespace configure_option
 // Configure stream num by Session constructor options param,
 // its value should be int32_t type, default value is "1"
@@ -448,6 +449,9 @@ const std::string INPUT_FP16_NODES = "ge.INPUT_NODES_SET_FP16";
 // 0: close debug; 1: open TBE compiler; 2: open ccec compiler
 const std::string OP_DEBUG_LEVEL = "ge.opDebugLevel";
 
+// configure op compile param, example: "oom,-g"
+const std::string OP_DEBUG_OPTION = "op_debug_option";
+
 // Configure model bank path
 const std::string MDL_BANK_PATH_FLAG = "ge.mdl_bank_path";
 
@@ -500,6 +504,11 @@ const std::string QUANT_DUMPABLE = "ge.quant_dumpable";
 
 const std::string QUANT_BIAS_OPTIMIZE = "ge.experiment.quant_bias_optimize";
 
+// option for tiling sink
+const std::string TILING_SCHEDULE_OPTIMIZE = "ge.tiling_schedule_optimize";
+
+const std::string GRAPH_MAX_PARALLEL_MODEL_NUM = "ge.graphMaxParallelModelNum";
+
 constexpr char_t EVENT[] = "ge.event";
 
 // Graph run mode
@@ -534,6 +543,19 @@ struct OutputTensorInfo {
 
 struct ModelDistibuteDesc {
   uint32_t logic_device_number;
+};
+
+enum class MemoryType : std::int64_t {
+  /*
+   * call aclrtMalloc with aclrtMemMallocPolicy::ACL_MEM_MALLOC_HUGE_FIRST,
+   * ACL_MEM_MALLOC_HUGE_ONLY, ACL_MEM_MALLOC_NORMAL_ONLY
+   */
+  MEMORY_TYPE_DEFAULT,
+  /*
+   * call aclrtMalloc with aclrtMemMallocPolicy::ACL_MEM_MALLOC_HUGE_FIRST_P2P,
+   * ACL_MEM_MALLOC_HUGE_ONLY_P2P, ACL_MEM_MALLOC_NORMAL_ONLY_P2P
+   */
+  MEMORY_TYPE_P2P
 };
 
 using Status = uint32_t;
@@ -605,6 +627,10 @@ static const char_t *const ENABLE_GRAPH_PARALLEL = "ge.enableGraphParallel";
 static const char_t *const GRAPH_PARALLEL_OPTION_PATH = "ge.graphParallelOptionPath";
 static const char_t *const QUANT_DUMPABLE = ge::QUANT_DUMPABLE.c_str();
 static const char_t *const QUANT_BIAS_OPTIMIZE = ge::QUANT_BIAS_OPTIMIZE.c_str();
+static const char_t *const OP_DEPENDENCY_IN_OM = ge::OPTION_OP_DEPENDENCY_IN_OM;
+static const char_t *const OP_DEBUG_OPTION = ge::OP_DEBUG_OPTION.c_str();
+static const char_t *const TILING_SCHEDULE_OPTIMIZE = ge::TILING_SCHEDULE_OPTIMIZE.c_str();
+static const char_t *const GRAPH_MAX_PARALLEL_MODEL_NUM = ge::GRAPH_MAX_PARALLEL_MODEL_NUM.c_str();
 // for interface: aclgrphBuildModel
 #ifdef __GNUC__
 const std::set<std::string> ir_builder_suppported_options = {INPUT_FORMAT,
@@ -627,6 +653,7 @@ const std::set<std::string> ir_builder_suppported_options = {INPUT_FORMAT,
                                                              INPUT_FP16_NODES,
                                                              LOG_LEVEL,
                                                              OP_DEBUG_LEVEL,
+                                                             OP_DEBUG_OPTION,
                                                              DEBUG_DIR,
                                                              OP_COMPILER_CACHE_DIR,
                                                              OP_COMPILER_CACHE_MODE,
@@ -646,7 +673,9 @@ const std::set<std::string> ir_builder_suppported_options = {INPUT_FORMAT,
                                                              ENABLE_GRAPH_PARALLEL,
                                                              AC_PARALLEL_ENABLE,
                                                              GRAPH_PARALLEL_OPTION_PATH,
-                                                             QUANT_DUMPABLE};
+                                                             QUANT_DUMPABLE,
+                                                             TILING_SCHEDULE_OPTIMIZE,
+                                                             GRAPH_MAX_PARALLEL_MODEL_NUM};
 
 // for interface: aclgrphParse
 const std::set<std::string> ir_parser_suppported_options = {
@@ -675,6 +704,7 @@ const std::set<std::string> global_options = {CORE_TYPE,
                                               OP_SELECT_IMPL_MODE,
                                               OPTYPELIST_FOR_IMPLMODE,
                                               OP_DEBUG_LEVEL,
+                                              OP_DEBUG_OPTION,
                                               DEBUG_DIR,
                                               OP_COMPILER_CACHE_DIR,
                                               OP_COMPILER_CACHE_MODE,
@@ -682,7 +712,10 @@ const std::set<std::string> global_options = {CORE_TYPE,
                                               COMPRESSION_OPTIMIZE_CONF,
                                               OP_DEBUG_CONFIG,
                                               DETERMINISTIC,
-                                              CLUSTER_CONFIG};
+                                              CLUSTER_CONFIG,
+                                              OP_DEPENDENCY_IN_OM,
+                                              TILING_SCHEDULE_OPTIMIZE,
+                                              GRAPH_MAX_PARALLEL_MODEL_NUM};
 #endif
 }  // namespace ir_option
 }  // namespace ge

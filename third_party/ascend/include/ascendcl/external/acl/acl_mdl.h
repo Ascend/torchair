@@ -83,7 +83,17 @@ typedef enum {
     ACL_MDL_OUTPUTQ_NUM_SIZET,
     ACL_MDL_OUTPUTQ_ADDR_PTR, /**< pointer to outputQ with shallow copy */
     ACL_MDL_WORKSPACE_MEM_OPTIMIZE,
-    ACL_MDL_WEIGHT_PATH_PTR /* < pointer to weight path with deep copy */
+    ACL_MDL_WEIGHT_PATH_PTR, /**< pointer to weight path with deep copy */
+    ACL_MDL_MODEL_DESC_PTR, /**< pointer to model desc of model with shallow copy */
+    ACL_MDL_MODEL_DESC_SIZET,
+    ACL_MDL_KERNEL_PTR, /**< pointer to kernel bin of model with shallow copy */
+    ACL_MDL_KERNEL_SIZET,
+    ACL_MDL_KERNEL_ARGS_PTR, /**< pointer to kernel args of model with shallow copy */
+    ACL_MDL_KERNEL_ARGS_SIZET,
+    ACL_MDL_STATIC_TASK_PTR, /**< pointer to static task desc of model with shallow copy */
+    ACL_MDL_STATIC_TASK_SIZET,
+    ACL_MDL_DYNAMIC_TASK_PTR, /**< pointer to dynamic task desc of model with shallow copy */
+    ACL_MDL_DYNAMIC_TASK_SIZET
 } aclmdlConfigAttr;
 
 typedef enum {
@@ -182,6 +192,17 @@ typedef struct aclAippInfo {
     aclAippDims outDims[ACL_MAX_SHAPE_COUNT];
     aclAippExtendInfo *aippExtend; /**< reserved parameters, current version needs to be null */
 } aclAippInfo;
+
+typedef struct aclmdlExeOMDesc {
+  size_t workSize;
+  size_t weightSize;
+  size_t modelDescSize;
+  size_t kernelSize;
+  size_t kernelArgsSize;
+  size_t staticTaskSize;
+  size_t dynamicTaskSize;
+  size_t reserved[9];
+} aclmdlExeOMDesc;
 
 /**
  * @ingroup AscendCL
@@ -407,6 +428,83 @@ ACL_FUNC_VISIBILITY aclError aclmdlLoadFromFile(const char *modelPath, uint32_t 
 
 /**
  * @ingroup AscendCL
+ * @brief Load offline bundle model data from file
+ * and manage memory internally by the system
+ *
+ * @par Function
+ * After the system finishes loading the bundle model,
+ * the bundle model ID returned is used as a mark to identify the bundle model
+ * during subsequent operations
+ *
+ * @param modelPath [IN]   Storage path for offline bundle model file
+ * @param bundleId [OUT]   Bundle model id generated after
+ *        the system finishes loading the bundle model
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ */
+ACL_FUNC_VISIBILITY aclError aclmdlBundleLoadFromFile(const char *modelPath, uint32_t *bundleId);
+
+/**
+ * @ingroup AscendCL
+ * @brief Load offline bundle model data from memory and manage the memory of
+ * model running internally by the system
+ *
+ * @par Function
+ * After the system finishes loading the bundle model,
+ * the bundle model ID returned is used as a mark to identify the bundle  model
+ * during subsequent operations
+ *
+ * @param model [IN]      Bundle model data stored in memory
+ * @param modelSize [IN]  model data size
+ * @param bundleId [OUT]  Bundle model id generated after
+ *        the system finishes loading the model
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ */
+ACL_FUNC_VISIBILITY aclError aclmdlBundleLoadFromMem(const void *model,  size_t modelSize, uint32_t *bundleId);
+
+/**
+ * @ingroup AscendCL
+ * @brief unload bundle model with bundle model id
+ *
+ * @param  bundleId [IN]   bundle model id to be unloaded
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ */
+ACL_FUNC_VISIBILITY aclError aclmdlBundleUnload(uint32_t bundleId);
+
+/**
+ * @ingroup AscendCL
+ * @brief get bundle model inner model nums
+ *
+ * @param bundleId [IN] bundle id acquired by aclmdlBundleLoadFromFile or aclmdlBundleLoadFromMem
+ * @param modelNum [OUT]    the pointer to model num
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ *
+ */
+ACL_FUNC_VISIBILITY aclError aclmdlBundleGetModelNum(uint32_t bundleId, size_t *modelNum);
+
+/**
+ * @ingroup AscendCL
+ * @brief get inner model id by index
+ *
+ * @param bundleId [IN] bundle id acquired by aclmdlBundleLoadFromFile or aclmdlBundleLoadFromMem
+ * @param index [IN] index of bundle models
+ * @param modelId [OUT]    the pointer to inner model id which to be executed
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ *
+ */
+ACL_FUNC_VISIBILITY aclError aclmdlBundleGetModelId(uint32_t bundleId, size_t index, uint32_t *modelId);
+
+/**
+ * @ingroup AscendCL
  * @brief Load offline model data from memory and manage the memory of
  * model running internally by the system
  *
@@ -423,8 +521,7 @@ ACL_FUNC_VISIBILITY aclError aclmdlLoadFromFile(const char *modelPath, uint32_t 
  * @retval ACL_SUCCESS The function is successfully executed.
  * @retval OtherValues Failure
  */
-ACL_FUNC_VISIBILITY aclError aclmdlLoadFromMem(const void *model,  size_t modelSize,
-                                               uint32_t *modelId);
+ACL_FUNC_VISIBILITY aclError aclmdlLoadFromMem(const void *model,  size_t modelSize, uint32_t *modelId);
 
 /**
  * @ingroup AscendCL
@@ -597,6 +694,19 @@ ACL_FUNC_VISIBILITY aclError aclmdlUnload(uint32_t modelId);
  * @retval OtherValues Failure
  */
 ACL_FUNC_VISIBILITY aclError aclmdlQuerySize(const char *fileName, size_t *workSize, size_t *weightSize);
+
+/**
+ * @ingroup AscendCL
+ * @brief Get the size of each partition and working memory size
+ * required for model execution according to the model file
+ *
+ * @param  fileName [IN]          Model path to get memory information
+ * @param  aclmdlExeOMDesc [OUT]  The size of each partition and working memory size
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ */
+ACL_FUNC_VISIBILITY aclError aclmdlQueryExeOMDesc(const char *fileName, aclmdlExeOMDesc *mdlPartitionSize);
 
 /**
  * @ingroup AscendCL
@@ -917,6 +1027,18 @@ ACL_FUNC_VISIBILITY aclmdlAIPP *aclmdlCreateAIPP(uint64_t batchSize);
  * @retval OtherValues Failure
  */
 ACL_FUNC_VISIBILITY aclError aclmdlDestroyAIPP(const aclmdlAIPP *aippParmsSet);
+
+/**
+ * @ingroup AscendCL
+ * @brief Get dynamic aipp data need size according to batchSize
+ *
+ * @param batchSize [IN]    batchsizes of model
+ * @param size [OUT]    Pointer of aipp data need size according to batchSize
+ *
+ * @retval ACL_SUCCESS The function is successfully executed.
+ * @retval OtherValues Failure
+ */
+ACL_FUNC_VISIBILITY aclError aclmdlGetAippDataSize(uint64_t batchSize, size_t *size);
 
 /**
  * @ingroup AscendCL

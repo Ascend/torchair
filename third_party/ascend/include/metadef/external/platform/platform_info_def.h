@@ -1,18 +1,11 @@
-/**
- * Copyright (c) Huawei Technologies Co., Ltd. 2023. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+/* Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ * ===================================================================================================================*/
 
 #ifndef PLATFORM_INFO_DEF_H
 #define PLATFORM_INFO_DEF_H
@@ -29,6 +22,8 @@ namespace fe {
 enum MemoryType { DDR = 0, HBM };
 
 enum L2Type { Cache = 0, Buff };
+
+enum JitCompileMode { REUSE_BINARY = 0, COMPILE_ONLINE, AUTO };
 
 typedef struct tag_str_info {
   std::string aic_version;
@@ -47,7 +42,12 @@ typedef struct tag_so_c_info {
   L2Type l2_type;
   uint64_t l2_size;
   uint32_t l2PageNum;
-  tag_so_c_info() : ai_core_cnt(0), vector_core_cnt(0), memory_size(0), l2_size(0), l2PageNum(0) {}
+  uint32_t task_num;
+  int32_t arch_type;
+  int32_t chip_type;
+  tag_so_c_info()
+      : ai_core_cnt(0), vector_core_cnt(0), memory_size(0), l2_size(0), l2PageNum(0), task_num(0), arch_type(-1),
+        chip_type(-1) {}
 } SoCInfo;
 
 typedef struct tag_ai_core_spec {
@@ -125,8 +125,10 @@ typedef struct tag_cpu_cache {
 
 typedef struct tag_software_spec {
   bool jit_compile_default_value;
+  JitCompileMode jit_compile_mode;
   tag_software_spec() {
     jit_compile_default_value = false;
+    jit_compile_mode = AUTO;
   }
 } SoftwareSpec;
 
