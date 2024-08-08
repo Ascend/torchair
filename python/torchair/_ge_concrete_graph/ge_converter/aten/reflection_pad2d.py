@@ -52,6 +52,8 @@ def conveter_aten_reflection_pad2d_default(
         paddings.append(pads[pads_len - 2])
         paddings.append(pads[pads_len - 1])
         pads_len -= 2
+    self_rank = 4 if self.rank == 3 else self.rank
+    paddings = ge.Reshape(paddings, [self_rank, 2])
     result = ge.MirrorPad(self_cp, paddings, mode="REFLECT")
     if self.rank == 3:
         result = ge.Squeeze(result, axis=[0])
