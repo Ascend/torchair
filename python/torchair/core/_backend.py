@@ -19,14 +19,22 @@ def stupid_repeat(word, times):
     return _torchair.StupidRepeat(word, times)
 
 
-def _try_get_torch_npu_device():
+_cached_device_id = None
+
+
+def _get_device_id():
+    global _cached_device_id
+    if _cached_device_id is not None:
+        return _cached_device_id
+
     if 'torch_npu' not in sys.modules:
-        return None
+        _cached_device_id = int(os.getenv('ASCEND_DEVICE_ID', '0'))
+    else:
+        from . import _npu_graph_executor
 
-    from . import _npu_graph_executor
-
-    torch_npu_module = sys.modules['torch_npu']
-    return torch_npu_module.npu.current_device()
+        torch_npu_module = sys.modules['torch_npu']
+        _cached_device_id = torch_npu_module.npu.current_device()
+    return _cached_device_id
 
 
 def _get_global_op_compile_config():
@@ -73,16 +81,15 @@ def _try_get_global_init_compile_option(global_options: Dict = None):
 def initialize_graph_engine(global_compile_options: Dict = None):
     options: Dict[str, str] = {}
     options.update(_try_get_global_init_compile_option(global_compile_options))
-    torch_npu_device = _try_get_torch_npu_device()
-    if torch_npu_device is not None:
-        options['ge.exec.deviceId'] = str(torch_npu_device)
-        options['ge_run_with_torch_npu'] = "1"
-    else:
-        options['ge.exec.deviceId'] = os.getenv('ASCEND_DEVICE_ID', '0')
-        options['ge_run_with_torch_npu'] = "0"
+    options['ge.exec.deviceId'] = str(_get_device_id())
+    options['ge_run_with_torch_npu'] = '1' if 'torch_npu' in sys.modules else '0'
 
     options.update(_get_global_op_compile_config())
     _torchair.InitializeGraphEngine(options)
+
+
+def init_device_stdout_channel():
+    return _torchair.InitDeviceStdoutChannel(_get_device_id())
 
 
 @pretty_error_msg

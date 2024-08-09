@@ -32,6 +32,8 @@ PYBIND11_MODULE(_torchair, m) {
 
   (void)m.def("InitializeGraphEngine", &tng::TorchNpuGraphBase::InitializeGraphEngine);
 
+  (void)m.def("InitDeviceStdoutChannel", &tng::wrapper::StartStdoutChannel);
+
   (void)m.def("FinalizeGraphEngine", &tng::TorchNpuGraphBase::FinalizeGraphEngine);
 
   (void)m.def("export", &tng::Export);

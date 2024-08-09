@@ -53,5 +53,8 @@ class TorchNpuGraphBase {
   std::string name_;
   std::unique_ptr<tng::NpuConcreteGraph> concrete_graph_ = nullptr;
 };
+namespace wrapper {
+void StartStdoutChannel(int32_t device);
+}  // namespace wrapper
 }  // namespace tng
 #endif  // TORCH_AIR_TORCH_AIR_CORE_TORCH_AIR_H_

@@ -16,6 +16,7 @@
 #include <ATen/record_function.h>
 #include "torch/csrc/Exceptions.h"
 #include "torchair.h"
+#include "hdc_channel.h"
 
 namespace py = pybind11;
 
@@ -201,4 +202,12 @@ void TorchNpuGraphBase::FinalizeGraphEngine() {
   TNG_RAISE_IF_ERROR(tng::NpuConcreteGraph::ReleaseResource());
   const pybind11::gil_scoped_acquire acquire;
 }
+
+namespace wrapper {
+void StartStdoutChannel(int32_t device) {
+  const pybind11::gil_scoped_release release;
+  TNG_RAISE_IF_ERROR(tng::StartStdoutChannel(device));
+  const pybind11::gil_scoped_acquire acquire;
+}
+}  // namespace wrapper
 }  // namespace tng

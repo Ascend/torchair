@@ -52,8 +52,6 @@ Status Session::Initialize(const std::map<std::string, std::string> &options) {
     global_ge_session = std::make_unique<ge::Session>(ge_options);
     if (global_ge_session == nullptr) {
       status_ = Status::Error("Failed to create GE session");
-    } else {
-      status_ = StartStdoutChannel(device_index_);
     }
   }
 

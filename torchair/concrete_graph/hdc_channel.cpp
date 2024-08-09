@@ -129,6 +129,10 @@ public:
   }
 
   tng::Status Start() {
+    std::unique_lock<std::mutex> lock(mu_);
+    if (worker_ != nullptr) {
+      return tng::Status::Success();
+    }
     if (channel_ == nullptr) {
       constexpr size_t kChannelCapacity = 2;
       channel_ = Channel::Create(device_, "_npu_log", kChannelCapacity);
@@ -176,6 +180,7 @@ private:
   std::unique_ptr<std::thread> worker_;
   std::unique_ptr<Channel> channel_;
   std::atomic<bool> running_{true};
+  std::mutex mu_;
 };
 
 Status StartStdoutChannel(int32_t device) {
