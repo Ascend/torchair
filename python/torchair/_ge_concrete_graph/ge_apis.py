@@ -15,10 +15,14 @@ from torchair._ge_concrete_graph.dynamic_output_ops import *
 
 
 @auto_convert_to_tensor([], [])
-def NetOutput(inputs: List[Tensor], name=None) -> Tensor:
+def NetOutput(inputs: List[Tensor], name=None, *, dependencies=()) -> Tensor:
     op = get_default_ge_graph().op.add()
     op.type = "NetOutput"
     op.name = next_unique_name(name, "NetOutput")
+
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
     for i, input in enumerate(inputs):
         op.input.append(input.tensor)
         op.input_desc.append(input.desc)

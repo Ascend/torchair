@@ -610,6 +610,7 @@ class GeGraph(object):
         self._indexed_inputs = {}
         self._named_inputs_info = {}
         self._used_process_group = {}
+        self._dont_prune_me_ops = []
 
     def _python_code_init(self):
         python_code = ''
@@ -757,8 +758,15 @@ class GeGraph(object):
         self._named_inputs_info[name] = input_info
 
     @property
+    def must_keep_ops(self):
+        return self._dont_prune_me_ops
+
+    @property
     def named_inputs_info(self):
         return self._named_inputs_info
+
+    def dont_prune_me(self, op):
+        self._dont_prune_me_ops.append(op)
 
 
 class _GeGraphStack(threading.local):
@@ -855,6 +863,15 @@ class TensorSpec(TensorSpecBase):
         return f'TensorSpec(dtype={_ge_proto_dtype_str(_ge_dtype_to_ge_proto_dtype(self._ge_dtype))}, size={self._symsize})'
 
 
+class ControlTensor:
+    def __init__(self, node: OpDef):
+        self._node = node
+
+    @property
+    def controller(self):
+        return f'{self._node.name}:-1'
+
+
 class Tensor(TensorBase):
     def __init__(self, node: OpDef, index: int = 0):
         self._node = node
@@ -943,6 +960,10 @@ class Tensor(TensorBase):
 
 def get_ge_rng_state(philox_num: int = -1, gen: torch.Generator = None) -> Tuple[int, Tensor]:
     return get_default_ge_graph().rng_state(philox_num, gen)
+
+
+def dont_prune_me(op: Tensor):
+    return get_default_ge_graph().dont_prune_me(op)
 
 
 def array_default_f32(v, dtype=None):

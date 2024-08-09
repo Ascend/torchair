@@ -766,7 +766,7 @@ class GeConcreteGraph(ConcreteGraphBase):
             if output_index == len(self._outputs):
                 self._outputs.append(arg)
 
-        ge.NetOutput(self._outputs)
+        ge.NetOutput(self._outputs, dependencies=self.graph.must_keep_ops)
         return args
 
     def parse_symlist(self, syms):

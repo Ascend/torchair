@@ -19,6 +19,7 @@ from torchair._ge_concrete_graph.ge_converter.experimental.hcom_alltoall import 
 npu_all_to_all_patch_dist
 import torchair.inference
 import torchair.llm_datadist
+import torchair.ops
 import torchair.ge
 
 __all__ = ['get_compiler', 'get_npu_backend', 'dynamo_export', 'CompilerConfig',

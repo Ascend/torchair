@@ -1,15 +1,17 @@
 #include <future>
 #include <chrono>
+#include <utility>
 
 #include "checker.h"
 #include "logger.h"
 #include "session.h"
-#include "utils.h"
 
 #include "ge/ge_api.h"
 #include "ge/ge_api_types.h"
 #include "acl/acl_rt.h"
+#include "acl/acl_tdt.h"
 #include "npu_aoe.h"
+#include "hdc_channel.h"
 
 namespace {
 std::unique_ptr<ge::Session> global_ge_session = nullptr;
@@ -38,6 +40,10 @@ Status Session::Initialize(const std::map<std::string, std::string> &options) {
 
   auto iter = ge_options.find(ge::AscendString(ge::OPTION_EXEC_DEVICE_ID));
   TNG_ASSERT(iter != ge_options.end(), "Device id is not specified when initializing GE");
+  // the context will switch after ge Session created
+  // set device index in option in order to keep original context
+  device_index_ = static_cast<int32_t>(std::atoi(iter->second.GetString()));
+  TNG_ASSERT(device_index_ >= 0, "device_index_ = %d, assert device_index_ >= 0 failed!", device_index_);
 
   if (ge::GEInitialize(ge_options) != ge::SUCCESS) {
     status_ = Status::Error("Failed to initialize GE %s", compat::GeErrorStatus().GetErrorMessage());
@@ -46,12 +52,11 @@ Status Session::Initialize(const std::map<std::string, std::string> &options) {
     global_ge_session = std::make_unique<ge::Session>(ge_options);
     if (global_ge_session == nullptr) {
       status_ = Status::Error("Failed to create GE session");
+    } else {
+      status_ = StartStdoutChannel(device_index_);
     }
   }
-  // the context will switch after ge Session created
-  // set device index in option in order to keep original context
-  device_index_ = static_cast<int32_t>(std::atoi(iter->second.GetString()));
-  TNG_ASSERT(device_index_ >= 0, "device_index_ = %d, assert device_index_ >= 0 failed!", device_index_);
+
   auto ret = aclrtSetDevice(device_index_);
   TNG_ASSERT(ret == ACL_ERROR_NONE, "ACL set device id failed, return %d", ret);
 
@@ -80,6 +85,7 @@ Status Session::Finalize() {
   }
 
   global_ge_session.reset(nullptr);
+  StopStdoutChannel(device_index_); // Stopped after all graph run finished
   if (!run_with_torch_npu_) {
     TNG_ASSERT_GE_OK(ge::GEFinalize());
   }
