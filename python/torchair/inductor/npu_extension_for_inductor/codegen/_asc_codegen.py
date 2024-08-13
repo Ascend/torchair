@@ -6,6 +6,7 @@ from types import ModuleType
 from torch._inductor.codegen.common import IndentedBuffer
 from npu_extension_for_inductor.common.asc_graph import ASCGraph
 from npu_extension_for_inductor.common.debug import save_asserts
+from npu_extension_for_inductor.common.utils import camel_to_snake
 
 
 class KernelArg:
@@ -110,7 +111,7 @@ def codegen_cpp_wrapper(graph: ASCGraph):
     typedef int (*TilingFuncType)({', '.join(tiling_signature)});
     typedef int (*LaunchFuncType)({', '.join(launch_signature)});
     static TilingFuncType tiling_fn = reinterpret_cast<TilingFuncType>(GetFunc("{graph.name}TilingFunc"));
-    static LaunchFuncType launch_fn = reinterpret_cast<LaunchFuncType>(GetFunc("aclrtlaunch_{graph.name}"));
+    static LaunchFuncType launch_fn = reinterpret_cast<LaunchFuncType>(GetFunc("aclrtlaunch_{camel_to_snake(graph.name)}"));
     extern "C" int wrapper({signature}) {{
         {tiling_dtype} tiling_data;
         int64_t workspace_size = 0;

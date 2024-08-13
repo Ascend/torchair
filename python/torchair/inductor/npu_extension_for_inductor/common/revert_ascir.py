@@ -233,7 +233,7 @@ class HintGraph:
             [f'std::cerr << "[STUB]aclrtlaunch_{self.name} {v} = " << {v} << std::endl;' for v in debug_names])
         code = IndentedBuffer()
         code.splice(f"""
-        extern "C" int aclrtlaunch_{self.name}({', '.join(signature)}) {{
+        extern "C" int aclrtlaunch_{camel_to_snake(self.name)}({', '.join(signature)}) {{
             {debug_code}
             return 0;
         }}

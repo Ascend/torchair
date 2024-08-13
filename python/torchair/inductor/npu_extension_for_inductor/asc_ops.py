@@ -1,4 +1,6 @@
 from torch._inductor.virtualized import V
+from npu_extension_for_inductor.common.utils import TypeUtils
+import torch
 
 
 # TODO: autogen for all ascir ops
@@ -42,7 +44,16 @@ def ge(x1, x2):
     op = graph.add_op("Ge")
     op.x1 = x1
     op.x2 = x2
-    op.y.dtype = x1.dtype
+    op.y.dtype = TypeUtils.torch_to_asc(torch.bool)
+    return op.y
+
+
+def gt(x1, x2):
+    graph = V.kernel.graph
+    op = graph.add_op("Gt")
+    op.x1 = x1
+    op.x2 = x2
+    op.y.dtype = TypeUtils.torch_to_asc(torch.bool)
     return op.y
 
 
