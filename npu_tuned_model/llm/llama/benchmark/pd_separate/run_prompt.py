@@ -18,13 +18,13 @@ import stat
 import time
 import argparse
 import json
-from typing import List
+from typing import Dict
 import pickle
 import logging
 import torch
 import torch_npu
 import torchair
-from llm_datadist import LLMDataDist, LLMRole, LLMConfig, ModelRunner, LLMReq
+from llm_datadist import LLMDataDist, LLMRole, LLMConfig, ModelRunner, LLMReq, CacheDesc, DataType, CacheKey, KvCache
 from llm_inference import SeparateDeployModelRunner
 
 _INVALID_ID = 2 ** 64 - 1
@@ -102,55 +102,30 @@ def init_llm_engine(rank_id: int) -> LLMDataDist:
     return engine
 
 
-# 自定义了一个ModelRunner子类，并重写run_model方法，里面调用torch的模型执行接口
-# ModelRunner是llm engine提供的高阶api类
-class TorchModelRunner(ModelRunner):
-    def __init__(self, runner, kv_cache_manager):
-        self._model_runner = runner
-        self._kv_cache_manager = kv_cache_manager
-
-    def run_model(self, kv_cache, input_tensors: List, **kwargs) -> List:
-        kv_tensor_addrs = kv_cache.per_device_tensor_addrs[0]
-        kv_tensors = torchair.llm_datadist.create_npu_tensors(kv_cache.cache_desc.shape, torch.float16, kv_tensor_addrs)
-        mid = len(kv_tensors) // 2
-        k_tensors = kv_tensors[: mid]
-        v_tensors = kv_tensors[mid:]
-        kv_cache_tensors = list(zip(k_tensors, v_tensors))
-        # 此处传递的参数根据不同模型区分全量和增量的入参进行调整
-        kwargs["kv_tensors"] = kv_cache_tensors
-        # input_tensors[0]对应predict接口入参inputs
-        outputs = self._model_runner.execute_model(input_tensors[0], **kwargs)
-        return outputs
+def run_model(cache: KvCache, input_tensors: Dict, runner: LlmPromptRunner, **kwargs):
+    kv_tensor_addrs = cache.per_device_tensor_addrs[0]
+    kv_tensors = torchair.llm_datadist.create_npu_tensors(cache.cache_desc.shape, torch.float16, kv_tensor_addrs)
+    mid = len(kv_tensors) // 2
+    k_tensors = kv_tensors[: mid]
+    v_tensors = kv_tensors[mid:]
+    kv_cache_tensors = list(zip(k_tensors, v_tensors))
+    # 此处传递的参数根据不同模型区分全量和增量的入参进行调整
+    kwargs["kv_tensors"] = kv_cache_tensors
+    outputs = runner.execute_model(input_tensors, **kwargs)
+    return outputs
 
 
-def _llm_req(req_id: int, prefix_id: int = -1, prompt_length: int = 256) -> LLMReq:
-    llm_req = LLMReq()
-    llm_req.req_id = req_id
-    llm_req.prefix_id = prefix_id
-    llm_req.prompt_length = prompt_length
-    return llm_req
-
-
-def _init_llm_req(req_num):
-    reqs = []
-    for i in range(req_num):
-        llm_req = _llm_req(i, _INVALID_ID, 1024)
-        reqs.append(llm_req)
-    return reqs
-
-
-def _init_model_options():
-    # 构造kv shape的dtype和shape，需要根据网络的不同情况进行调整
-    num_layers = 80
+def _allocate_kv_cache(cache_manager, start_id, end_id):
+    # 申请kv cache内存。kv shape和num_tensor和实际模型相关，不同模型需要调整。
+    # num_tensors是等于layers * 2
     world_size = int(os.getenv("WORLD_SIZE", "1"))
-    kv_shape = f"4,2048,{8 // world_size},128"
-    shapes_str = ";".join([kv_shape] * num_layers * 2)
-    dtypes_str = ";".join(['1'] * num_layers * 2)
-    model_options = {
-        "llm.RefInputShapes": shapes_str,
-        "llm.RefInputDtypes": dtypes_str
-    }
-    return model_options
+    kv_cache_desc = CacheDesc(num_tensors=160, shape=[4, 2048, 8 // world_size, 128],
+                              data_type=DataType.DT_FLOAT16)
+    kv_cache_keys = []
+    for i in range(start_id, end_id):
+        kv_cache_keys.append(CacheKey(prompt_cluster_id=0, req_id=i, model_id=0))
+    cache = cache_manager.allocate_cache(kv_cache_desc, kv_cache_keys)
+    return cache, kv_cache_keys
 
 
 # 此处是为了将全量的输出以numpy保存做了tensor到numpy的转换
@@ -193,24 +168,28 @@ if __name__ == "__main__":
     model_runner.init_model()
     # 走图模式需要进行图编译
     model_runner.compile_model()
-    # 分离部署engine添加需要执行的模型
-    llm_model = prompt_engine.add_model(_init_model_options(),
-                                        TorchModelRunner(model_runner, prompt_engine.kv_cache_manager))
 
+    kv_cache_manager = prompt_engine.kv_cache_manager
+
+    # warmup
+    warmup_kv_cache, warmup_cache_keys = _allocate_kv_cache(kv_cache_manager, 0, 4)
     # _PROMPTS里的个数表示模型执行一次的batch size大小
     inputs = model_runner.prepare_prompt_inputs(_PROMPTS, **config)
-    # 创建多个请求，predict接口传的请求数需要和_PROMPTS的数量一致
-    llm_reqs = _init_llm_req(8)
-    # 选择4个请求进行warmup
-    _ = llm_model.predict(llm_reqs[:4], [inputs], **config)
+    _ = run_model(warmup_kv_cache, inputs, model_runner, **config)
     model_runner.reset_time_statistics()
-    # 另外4个请求inference
-    result = llm_model.predict(llm_reqs[4:], [inputs], **config)
+
+    # 模型推理，将申请好的kv cache传递给模型，替换原模型中的kv cache tensor
+    kv_cache, cache_keys = _allocate_kv_cache(prompt_engine.kv_cache_manager, 4, 8)
+    result = run_model(kv_cache, inputs, model_runner, **config)
     avg_time = model_runner.inference_avg_time()
     logging.info(f"Average token cost time: {avg_time} s")
     send_prompt_outputs(inputs, result)
     logging.info("model run success")
     time.sleep(1200)  # 目的是为了保持全量进程不立马退出导致增量建链和拉kv失败，根据业务自行调整
-    for req in llm_reqs:
-        prompt_engine.complete_request(req)
+
+    # 清理kv cache资源
+    for allocated_cache in [warmup_kv_cache, kv_cache]:
+        kv_cache_manager.deallocate_cache(allocated_cache)
+    for cache_keys in (warmup_cache_keys + cache_keys):
+        kv_cache_manager.remove_cache_key(cache_keys)
     prompt_engine.finalize()

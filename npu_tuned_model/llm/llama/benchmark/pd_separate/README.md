@@ -71,73 +71,64 @@
 
   **注意**：下面用不同参数"kv_tensors"和"past_key_values"传递kv cache的tensor主要是区分llama2中的全量和增量执行，不同模型根据实际情况进行调整。
 
+[分离部署接口API参考资料](https://www.hiascend.com/document/detail/zh/canncommercial/80RC2/apiref/llmdatadist/llm_python_002.html)
+
 **全量用例执行参考**[run_prompt.py](./run_prompt.py)的main函数
 
-涉及到的分离部署接口：
+涉及到的分离部署接口示例，实际参考：[run_prompt.py](./run_prompt.py)
 
 ```python
-engine = LLMEngine(LLMRole.PROMPT, cluster_id)
+prompt_engine = LLMDataDist(LLMRole.PROMPT, cluster_id)
 # 分离部署资源初始化
-engine.init(options)
-# 自定义模型执行接口，将申请好的kv cache tensor传入适配好的模型
-class TorchModelRunner(ModelRunner):
-    def __init__(self, model_runner, kv_cache_manager):
-        self._model_runner = model_runner
-        self._kv_cache_manager = kv_cache_manager
+llm_config = LLMConfig()
+prompt_engine.init(llm_config.generate_options())
 
-    def run_model(self, kv_cache, input_tensors: List, **kwargs) -> List:
-        kv_tensor_addrs = kv_cache.per_device_tensor_addrs[0]
-        kv_tensors = llm_link_torch.create_npu_tensors(kv_cache.cache_desc.shape, torch.float16, kv_tensor_addrs)
-        mid = len(kv_tensors) // 2
-        k_tensors = kv_tensors[: mid]
-        v_tensors = kv_tensors[mid:]
-        kv_cache_tensors = list(zip(k_tensors, v_tensors))
-        # 此处传递的参数根据不同模型区分全量和增量的入参进行调整
-        kwargs["kv_tensors"] = kv_cache_tensors
-        outputs = self._model_runner.execute_model(input_tensors[0], **kwargs)
-        return outputs
-# 添加engine执行的模型
-llm_model = engine.add_model(model_options, TorchModelRunner(model_runner, engine.kv_cache_manager))
-# 创建llm_req
-llm_req = LLMReq()
-# 模型执行
-result = llm_model.predict(llm_reqs[4:], [inputs], **config)
+# 申请kv cache
+kv_cache_manager = prompt_engine.kv_cache_manager
+kv_cache_desc = CacheDesc(num_tensors=80, shape=[4, 2048, 8 // world_size, 128],
+                          data_type=DataType.DT_FLOAT16)
+kv_cache_keys = [CacheKey(prompt_cluster_id=0, req_id=0, model_id=0)]
+cache = cache_manager.allocate_cache(kv_cache_desc, kv_cache_keys)
+
+# 模型执行，将申请好的kv cache传递给模型，替换原模型中的kv cache tensor
+kv_tensor_addrs = cache.per_device_tensor_addrs[0]
+kv_tensors = torchair.llm_datadist.create_npu_tensors(cache.cache_desc.shape, torch.float16,                                                                       kv_tensor_addrs)
+mid = len(kv_tensors) // 2
+k_tensors = kv_tensors[: mid]
+v_tensors = kv_tensors[mid:]
+kv_cache_tensors = list(zip(k_tensors, v_tensors))
+# 此处传递的参数根据不同模型区分全量和增量的入参进行调整
+kwargs["kv_tensors"] = kv_cache_tensors
+outputs = runner.execute_model(input_tensors, **kwargs)
 ```
 
 **增量用例执行参考**[run_decoder.py](./run_decoder.py)的main函数
 
-涉及到的分离部署接口：
+涉及到的分离部署接口示例，实际参考：[run_decoder.py](./run_decoder.py)
 
 ```python
-engine = LLMEngine(LLMRole.DECODER, cluster_id)
+decoder_engine = LLMDataDist(LLMRole.DECODER, cluster_id)
 # 分离部署资源初始化
-engine.init(options)
-# 自定义模型执行接口，将申请好的kv cache tensor传入适配好的模型
-class TorchModelRunner(ModelRunner):
-    def __init__(self, model_runner, kv_cache_manager):
-        self._model_runner = model_runner
-        self._kv_cache_manager = kv_cache_manager
+llm_config = LLMConfig()
+decoder_engine.init(llm_config.generate_options())
 
-    def run_model(self, kv_cache, input_tensors: List, **kwargs) -> List:
-        kv_tensor_addrs = kv_cache.per_device_tensor_addrs[0]
-        kv_tensors = llm_link_torch.create_npu_tensors(kv_cache.cache_desc.shape, torch.float16, kv_tensor_addrs)
-        mid = len(kv_tensors) // 2
-        k_tensors = kv_tensors[: mid]
-        v_tensors = kv_tensors[mid:]
-        kv_cache_tensors = list(zip(k_tensors, v_tensors))
-        # 此处传递的参数根据不同模型区分全量和增量的入参进行调整
-        kwargs["past_key_values"] = kv_cache_tensors
-        outputs = self._model_runner.execute_model(input_tensors[0], **kwargs)
-        return outputs
-# 添加engine执行的模型
-llm_model = engine.add_model(model_options, TorchModelRunner(model_runner, engine.kv_cache_manager))
-# 创建llm_req
-llm_req = LLMReq()
-# 从全量拉kv和merge kv到指定batch位置
-llm_model.pull_kv(llm_req)
-llm_model.merge_kv(llm_req, i)
-# 模型执行
-result = llm_model.predict(llm_reqs, [inputs], **config)
+# 申请kv cache，pull_cache
+kv_cache_desc = CacheDesc(num_tensors=80, shape=[4, 2048, 8 // world_size, 128],
+                          data_type=DataType.DT_FLOAT16)
+cache = cache_manager.allocate_cache(kv_cache_desc)
+prompt_cache_key = CacheKey(prompt_cluster_id=0, req_id=0, model_id=0)
+cache_manager.pull_cache(prompt_cache_key, cache, 0)
+
+# 模型执行，将申请好的kv cache传递给模型，替换原模型中的kv cache tensor
+kv_tensor_addrs = cache.per_device_tensor_addrs[0]
+kv_tensors = torchair.llm_datadist.create_npu_tensors(cache.cache_desc.shape, torch.float16,                                                                       kv_tensor_addrs)
+mid = len(kv_tensors) // 2
+k_tensors = kv_tensors[: mid]
+v_tensors = kv_tensors[mid:]
+kv_cache_tensors = list(zip(k_tensors, v_tensors))
+# 此处传递的参数根据不同模型区分全量和增量的入参进行调整
+kwargs["past_key_values"] = kv_cache_tensors
+outputs = runner.execute_model(input_tensors, **kwargs)
 ```
 
 # 性能及功能测试
@@ -167,8 +158,6 @@ pip3 install transformers==4.31.0
 # llama3
 pip3 install transformers==4.40.0
 ```
-
-[llm_link_torch包安装](https://gitee.com/cann/air/blob/ge_dev/python/llm_link_torch/README.md)
 
 **设置环境变量**
 
