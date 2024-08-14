@@ -32,7 +32,8 @@ def _generate_model_relation_config(file_path, export_name, world_ranklist: List
         rank_table_dict["model_instance_id"] = rankid
         model_relation_config["rank_table"].append(rank_table_dict)
 
-    for group_name, rank_list in groups_in_graph.items():
+    for group_name, rank_info in groups_in_graph.items():
+        rank_list = rank_info[0]
         comm_group_dict = {}
         comm_group_dict["group_name"] = group_name
         comm_group_dict["group_rank_list"] = str(rank_list)

@@ -3,7 +3,7 @@ import torch
 import torch.distributed.distributed_c10d as c10d
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair._ge_concrete_graph.utils import get_group_name_and_record
+from torchair._ge_concrete_graph.hcom_utils import get_group_name_and_record
 from .hcom_allreduce import npu_define_lib
 
 op_broadcast = npu_define_lib.define(

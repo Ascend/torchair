@@ -634,6 +634,8 @@ class GeGraph(object):
                 created_group[hcom_pg_name] = hcom_pg_name
 
             for op in self._proto.op:
+                if "group" not in op.attr:
+                    continue
                 group_name = op.attr["group"].s.decode()
                 if group_name not in self.used_process_group:
                     continue
@@ -728,8 +730,8 @@ class GeGraph(object):
     def used_process_group(self):
         return self._used_process_group
 
-    def record_process_group(self, group_name, rank_list):
-        self._used_process_group[group_name] = rank_list
+    def record_process_group(self, group_name, rank_list, tag):
+        self._used_process_group[group_name] = (rank_list, tag)
 
     def set_used_process_group(self, used_process_group):
         self._used_process_group = used_process_group

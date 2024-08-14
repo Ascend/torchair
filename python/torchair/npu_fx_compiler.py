@@ -327,7 +327,7 @@ class _NpuFxCompiler:
             logger.warning(f'When enable FX Graph summarizing or dumping, codegen is unsupported.')
             return gm_runner
 
-        code = gm_runner.runner.codegen(extend_config)
+        code = gm_runner.runner.codegen(extend_config, enable_cache=True)
         if code is None:
             logger.warning(f'There are some configurations that cannot be supported by codegen, skipping codegen.')
             return gm_runner

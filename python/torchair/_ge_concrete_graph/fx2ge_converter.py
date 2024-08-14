@@ -34,8 +34,9 @@ from torchair._ge_concrete_graph.graph_pass import optimize_sym_pack, optimize_r
     replace_data_to_refdata, get_frozen_flag, frozen_data_by_constplaceholder
 from torchair._ge_concrete_graph.utils import convert_to_tensorboard, dump_graph, force_op_unknown_shape, \
     is_host_data_tensor, get_used_sym_value_mapping, Placement, compute_value_of_sym, \
-    generate_sym_exper, get_sym_int_value, generate_shape_from_tensor, update_op_input_name_from_mapping, \
-    record_pg_to_graph
+    generate_sym_exper, get_sym_int_value, generate_shape_from_tensor, update_op_input_name_from_mapping
+from torchair._ge_concrete_graph.hcom_utils import record_pg_to_graph, codegen_refresh_cache_pgname, \
+    rename_cached_pgname
 from torchair._ge_concrete_graph.supported_declaration import Support
 from torchair._ge_concrete_graph.continguous_utils import guard_view_input
 from torchair._ge_concrete_graph.export_config_generete import generate_config
@@ -610,7 +611,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._is_compiled = True
         logger.info(f'end compile graph: {self.graph.name} and start run graph.')
 
-    def codegen(self, extend_config):
+    def codegen(self, extend_config, enable_cache=False):
         from torch._inductor.utils import IndentedBuffer
         if self._config.experimental_config.enable_ref_data or self.config.export.export_mode \
                 or self.config.aoe_config.aoe_mode.value is not None:
@@ -626,7 +627,14 @@ class GeConcreteGraph(ConcreteGraphBase):
         from torchair._ge_concrete_graph.fx2ge_converter import _update_constplaceholder_attr_from_inputs
         from torchair._ge_concrete_graph.fx2ge_converter import _update_internal_format_from_inputs
         ''')
-        head.writelines(['', f'serialized_graph = {self.graph.SerializeToString()}'])
+        need_rebuild_pg = enable_cache and (len(self.graph.used_process_group) != 0)
+        if need_rebuild_pg:
+            cache_graph = GeGraph()
+            cache_graph.MergeFrom(self.graph._proto)
+            rename_cached_pgname(cache_graph._proto, self.graph.used_process_group)
+            head.writelines(['', f'serialized_graph = {cache_graph.SerializeToString()}'])
+        else:
+            head.writelines(['', f'serialized_graph = {self.graph.SerializeToString()}'])
         head.writelines(['', f'global_compile_options = {{}}'])
         local_compile_options, global_compile_options = self._normalize_ge_option()
         for k, v in global_compile_options.items():
@@ -638,7 +646,10 @@ class GeConcreteGraph(ConcreteGraphBase):
             head.writeline(f'local_compile_options["{k}"] = "{v}"')
         head.writelines(['', 'initialize_graph_engine(global_compile_options)',
                          'ge_graph = GeGraph(serialized_model_def=serialized_graph)'])
-        head.writeline(f'ge_graph.set_used_process_group({self.graph.used_process_group})')
+
+        if need_rebuild_pg:
+            create_pgname_code = codegen_refresh_cache_pgname(self.graph.used_process_group)
+            head.splice(create_pgname_code)
         kernel = IndentedBuffer()
         kernel.writelines(['', '_is_first_run = True', f'def kernel(*args):'])
         with kernel.indent():
@@ -651,7 +662,7 @@ class GeConcreteGraph(ConcreteGraphBase):
                 kernel.writelines(['_is_first_run = False',
                                    '_update_constplaceholder_attr_from_inputs(ge_graph, args)',
                                    '_update_internal_format_from_inputs(ge_graph, ge_inputs)',
-                                   'ge_graph.load(local_compile_options, create_pg=True)',
+                                   'ge_graph.load(local_compile_options, create_pg=False)',
                                    'ge_graph.compile()'])
 
             kernel.writeline('')

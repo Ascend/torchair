@@ -21,7 +21,8 @@ from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
 from torchair.core.utils import logger
-from torchair._ge_concrete_graph.utils import normalize_reduceop_type, dtype_promote, get_group_name_and_record
+from torchair._ge_concrete_graph.utils import normalize_reduceop_type, dtype_promote
+from torchair._ge_concrete_graph.hcom_utils import get_group_name_and_record
 
 
 try:

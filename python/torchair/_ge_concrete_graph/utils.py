@@ -4,8 +4,7 @@ import sympy
 import torch
 from torchair.core.utils import logger
 from torchair._ge_concrete_graph.ge_ir_pb2 import GraphDef
-from torchair.ge._ge_graph import compat_as_bytes, DataType, is_sym, Tensor, torch_type_to_ge_type, \
-    get_default_ge_graph
+from torchair.ge._ge_graph import compat_as_bytes, DataType, is_sym, Tensor, torch_type_to_ge_type
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._utils.path_manager import PathManager
 from typing import Any, Dict, List, Tuple, Union, Callable
@@ -327,38 +326,3 @@ def _get_input_shape(graph):
     for k, v in map_input_shape.items():
         inputs_shape[k] = v
     return inputs_shape
-
-
-def get_group_name_and_record(tag, rank_list, group_size):
-    pg = torch.distributed.distributed_c10d._find_or_create_pg_by_ranks_and_tag(tag, rank_list, group_size)
-    device = torch.distributed.distributed_c10d._get_pg_default_device(pg)
-    if device.type == "cpu":
-        # create unqiue group name to same pg by tag and ranklist
-        group_name = f"tag:{tag};rank_list:{','.join(str(i) for i in rank_list)}"
-    elif device.type == "npu":
-        rank = torch.distributed.get_rank()
-        group_name = pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank)
-    else:
-        raise ValueError("The initialized aggregate communication backend is not a CPU or NPU.")
-    # record rank list for export
-    get_default_ge_graph().record_process_group(group_name, rank_list)
-    return group_name
-
-
-def record_pg_to_graph(graph):
-    # This func will update pg to graph, special for op like MC2, who is not record process group in convert
-    if not torch.distributed.is_initialized():
-        return
-    all_create_pg = {}
-    rank = torch.distributed.get_rank()
-    for pg in torch.distributed.distributed_c10d._world.pg_map.keys():
-        if torch.distributed.distributed_c10d.get_backend(pg) != "hccl":
-            continue
-        pg_rank_list = torch.distributed.distributed_c10d.get_process_group_ranks(pg)
-        hcom_pg_name = pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank)
-        all_create_pg[hcom_pg_name] = pg_rank_list
-
-    for op in graph.op:
-        group_name = op.attr["group"].s.decode()
-        if group_name in all_create_pg:
-            graph.record_process_group(group_name, all_create_pg[group_name])
