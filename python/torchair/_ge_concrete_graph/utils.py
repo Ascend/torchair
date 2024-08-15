@@ -326,3 +326,46 @@ def _get_input_shape(graph):
     for k, v in map_input_shape.items():
         inputs_shape[k] = v
     return inputs_shape
+
+
+def _display_ge_type(ge_dtype: DataType):
+    ge_datatype = {
+        DataType.DT_FLOAT: 'DT_FLOAT',
+        DataType.DT_FLOAT16: 'DT_FLOAT16',
+        DataType.DT_INT8: 'DT_INT8',
+        DataType.DT_INT16: 'DT_INT16',
+        DataType.DT_UINT16: 'DT_UINT16',
+        DataType.DT_UINT8: 'DT_UINT8',
+        DataType.DT_INT32: 'DT_INT32',
+        DataType.DT_INT64: 'DT_INT64',
+        DataType.DT_UINT32: 'DT_UINT32',
+        DataType.DT_UINT64: 'DT_UINT64',
+        DataType.DT_BOOL: 'DT_BOOL',
+        DataType.DT_DOUBLE: 'DT_DOUBLE',
+        DataType.DT_STRING: 'DT_STRING',
+        DataType.DT_DUAL_SUB_INT8: 'DT_DUAL_SUB_INT8',
+        DataType.DT_DUAL_SUB_UINT8: 'DT_DUAL_SUB_UINT8',
+        DataType.DT_COMPLEX64: 'DT_COMPLEX64',
+        DataType.DT_COMPLEX128: 'DT_COMPLEX128',
+        DataType.DT_QINT8: 'DT_QINT8',
+        DataType.DT_QINT16: 'DT_QINT16',
+        DataType.DT_QINT32: 'DT_QINT32',
+        DataType.DT_QUINT8: 'DT_QUINT8',
+        DataType.DT_QUINT16: 'DT_QUINT16',
+        DataType.DT_RESOURCE: 'DT_RESOURCE',
+        DataType.DT_STRING_REF: 'DT_STRING_REF',
+        DataType.DT_DUAL: 'DT_DUAL',
+        DataType.DT_VARIANT: 'DT_VARIANT',
+        DataType.DT_BF16: 'DT_BF16',
+        DataType.DT_UNDEFINED: 'DT_UNDEFINED',
+        DataType.DT_INT4: 'DT_INT4',
+        DataType.DT_UINT1: 'DT_UINT1',
+        DataType.DT_INT2: 'DT_INT2',
+        DataType.DT_UINT2: 'DT_UINT2',
+        DataType.DT_COMPLEX32: 'DT_COMPLEX32',
+        DataType.DT_MAX: 'DT_MAX',
+    }
+    if ge_dtype in ge_datatype:
+        return ge_datatype[ge_dtype]
+    else:
+        return 'unknown'
