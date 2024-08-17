@@ -255,8 +255,8 @@ REG_OP(MatmulReduceScatter)
 * y: A matrix Tensor. The type support float16, int8, bfloat16.
 */
 REG_OP(QuantBatchMatmulV3)
-    .INPUT(x1, TensorType({DT_INT8}))
-    .INPUT(x2, TensorType({DT_INT8}))
+    .INPUT(x1, TensorType({DT_INT8, DT_INT4}))
+    .INPUT(x2, TensorType({DT_INT8, DT_INT4}))
     .INPUT(scale, TensorType({DT_UINT64, DT_FLOAT, DT_BF16}))
     .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))
     .OPTIONAL_INPUT(bias, TensorType({DT_INT32}))

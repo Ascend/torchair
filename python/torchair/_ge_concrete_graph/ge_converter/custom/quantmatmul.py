@@ -63,6 +63,26 @@ def conveter_npu_npu_quant_matmul(
     else:
         raise RuntimeError("Not supported output dtype is " + str(output_dtype))
 
+    if x1.dtype == DataType.DT_INT32 and x2.dtype == DataType.DT_INT32:
+        perm = [1, 0]
+        # 1个INT32数据存储8个有效的INT4数据，数据类型转换后内轴维度放大8倍
+        const = ge.Const([1, 8])
+        trans_x2 = x1.symsize[-1] == x2.symsize[-2]
+
+        shape_x1 = ge.Shape(x1)
+        shape_x1 = ge.Mul(shape_x1, const)
+        x1 = ge.Bitcast(x1, type=DataType.DT_INT4)
+        x1 = ge.Reshape(x1, shape_x1)
+
+        if trans_x2:
+            x2 = ge.Transpose(x2, perm)
+        shape_x2 = ge.Shape(x2)
+        shape_x2 = ge.Mul(shape_x2, const)
+        x2 = ge.Bitcast(x2, type=DataType.DT_INT4)
+        x2 = ge.Reshape(x2, shape_x2)
+        if trans_x2:
+            x2 = ge.Transpose(x2, perm)
+
     return ge.QuantBatchMatmulV3(x1,
                                  x2,
                                  scale,

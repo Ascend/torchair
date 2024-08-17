@@ -75629,8 +75629,8 @@ def QuantBatchMatmulV3(x1: Tensor, x2: Tensor, scale: Tensor, offset: Optional[T
                        pertoken_scale: Optional[Tensor], *, dtype: int, transpose_x1: bool = False, transpose_x2: bool = False,
                        dependencies=[], node_name=None):
     """REG_OP(QuantBatchMatmulV3)\n
-    .INPUT(x1, TensorType({DT_INT8}))\n
-    .INPUT(x2, TensorType({DT_INT8}))\n
+    .INPUT(x1, TensorType({DT_INT8, DT_INT4}))\n
+    .INPUT(x2, TensorType({DT_INT8, DT_INT4}))\n
     .INPUT(scale, TensorType({DT_UINT64, DT_FLOAT, DT_BF16}))\n
     .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(bias, TensorType({DT_INT32}))\n
