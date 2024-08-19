@@ -25,20 +25,23 @@ class Tensor {
  public:
   // memse函数misra告警屏蔽
   Tensor() {
-    (void)memset(reserved_, 0, sizeof(reserved_));
-    (void)memset(reserved_field_, 0, sizeof(reserved_field_));
+    (void) memset(reserved_, 0, sizeof(reserved_));
+    (void) memset(reserved_field_, 0, sizeof(reserved_field_));
   }
   Tensor(const StorageShape &storage_shape, const StorageFormat &storage_format, const TensorPlacement placement,
          const ge::DataType data_type, TensorAddress addr)
-      : storage_shape_(storage_shape), storage_format_(storage_format), data_type_(data_type),
-        tensor_data_(addr, nullptr, static_cast<size_t>(ge::GetSizeInBytes(GetShapeSize(), data_type_)), placement) {
-    (void)memset(reserved_, 0, sizeof(reserved_));
-    (void)memset(reserved_field_, 0, sizeof(reserved_field_));
-  }
+      : Tensor(storage_shape, storage_format, placement, data_type, addr, nullptr) {}
   Tensor(const StorageShape &storage_shape, const StorageFormat &storage_format, ge::DataType data_type)
       : storage_shape_(storage_shape), storage_format_(storage_format), data_type_(data_type) {
-    (void)memset(reserved_, 0, sizeof(reserved_));
-    (void)memset(reserved_field_, 0, sizeof(reserved_field_));
+    (void) memset(reserved_, 0, sizeof(reserved_));
+    (void) memset(reserved_field_, 0, sizeof(reserved_field_));
+  }
+  Tensor(const StorageShape &storage_shape, const StorageFormat &storage_format, const TensorPlacement placement,
+         const ge::DataType data_type, TensorAddress addr, TensorAddrManager manager)
+      : storage_shape_(storage_shape), storage_format_(storage_format), data_type_(data_type),
+        tensor_data_(addr, manager, static_cast<size_t>(ge::GetSizeInBytes(GetShapeSize(), data_type_)), placement) {
+    (void) memset(reserved_, 0, sizeof(reserved_));
+    (void) memset(reserved_field_, 0, sizeof(reserved_field_));
   }
   /**
    * 获取shape size，所谓shape size是指本shape中包含的element数量
@@ -154,7 +157,7 @@ class Tensor {
       return nullptr;
     }
     auto tensor = reinterpret_cast<Tensor *>(holder.get());
-    new (holder.get()) Tensor({}, {},  dt);
+    new (holder.get()) Tensor({}, {}, dt);
     tensor->SetPlacement(kFollowing);
     tensor->tensor_data_ = TensorData(nullptr, nullptr, total_size - sizeof(Tensor), kFollowing);
     return holder;

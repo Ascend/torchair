@@ -1,20 +1,22 @@
-#include <future>
+#include <dlfcn.h>
 #include <chrono>
+#include <future>
 #include <utility>
 
 #include "checker.h"
 #include "logger.h"
 #include "session.h"
 
-#include "ge/ge_api.h"
-#include "ge/ge_api_types.h"
+#include <ATen/record_function.h>
 #include "acl/acl_rt.h"
 #include "acl/acl_tdt.h"
-#include "npu_aoe.h"
+#include "ge/ge_api_types.h"
 #include "hdc_channel.h"
+#include "npu_aoe.h"
 
 namespace {
 std::unique_ptr<ge::Session> global_ge_session = nullptr;
+void *libge_runner_handle = nullptr;
 }  // namespace
 
 namespace tng {
@@ -58,6 +60,14 @@ Status Session::Initialize(const std::map<std::string, std::string> &options) {
   auto ret = aclrtSetDevice(device_index_);
   TNG_ASSERT(ret == ACL_ERROR_NONE, "ACL set device id failed, return %d", ret);
 
+  libge_runner_handle = dlopen("libge_runner.so", RTLD_NOW);
+  TNG_ASSERT_NOTNULL(libge_runner_handle, "libge_runner.so dlopen failed, %s", dlerror());
+  fast_load_graph_ = reinterpret_cast<GeSessionLoadGraphFunc *>(dlsym(libge_runner_handle, "GeSessionLoadGraph"));
+  fast_execute_graph_async_ =
+      reinterpret_cast<GeFastExecuteGraphFunc *>(dlsym(libge_runner_handle, "GeSessionExecuteGraphWithStreamAsync"));
+  TNG_LOG(DEBUG) << "In current cann version"
+                 << ", FastLoadGraph api is " << (IsFastLoadGraphSupported() ? "supported" : "unsupported")
+                 << ", FastExecuteGraph api is " << (IsFastExecuteGraphSupported() ? "supported" : "unsupported");
   initialized_ = true;
   return status_;
 }
@@ -83,7 +93,14 @@ Status Session::Finalize() {
   }
 
   global_ge_session.reset(nullptr);
-  StopStdoutChannel(device_index_); // Stopped after all graph run finished
+  StopStdoutChannel(device_index_);  // Stopped after all graph run finished
+
+  fast_load_graph_ = nullptr;
+  fast_execute_graph_async_ = nullptr;
+  if (libge_runner_handle) {
+    dlclose(libge_runner_handle);
+    libge_runner_handle = nullptr;
+  }
   if (!run_with_torch_npu_) {
     TNG_ASSERT_GE_OK(ge::GEFinalize());
   }
@@ -118,8 +135,8 @@ Status Session::CompileGraph(uint32_t id, std::shared_ptr<ge::CompiledGraphSumma
     TNG_ASSERT_GE_OK(global_ge_session->CompileGraph(id));
     auto end = std::chrono::high_resolution_clock::now();
     TNG_LOG(EVENT) << "Compile Graph " << id << " consume: "
-                  << (std::chrono::duration_cast<std::chrono::milliseconds>(end - start)).count()
-                  << " ms.";
+                   << (std::chrono::duration_cast<std::chrono::milliseconds>(end - start)).count()
+                   << " ms.";
     if (summary != nullptr) {
       *summary = global_ge_session->GetCompiledGraphSummary(id);
       TNG_ASSERT_NOTNULL(*summary, "Failed get compiled summary of graph %d", id);
@@ -161,7 +178,9 @@ Status Session::RegisterExternalAllocator(const void *const stream, std::shared_
 
 Status Session::RunGraph(uint32_t id, const std::vector<ge::Tensor> &inputs, std::vector<ge::Tensor> &outputs,
                          void *stream) {
+  RECORD_FUNCTION("RunGraph", {});
   TNG_RETURN_IF_ERROR(EnsureInitialized());
+  TNG_LOG(DEBUG) << "Start to session run graph " << id;
 
   if (stream == nullptr) {
     TNG_ASSERT_GE_OK(global_ge_session->RunGraph(id, inputs, outputs));
@@ -193,6 +212,29 @@ Status Session::UpdateGraphFeatureMemoryBase(uint32_t id, const void *const memo
 Status Session::UpdateGraphRefreshableFeatureMemoryBase(uint32_t id, const void *const memory, size_t size) {
   TNG_RETURN_IF_ERROR(EnsureInitialized());
   TNG_ASSERT_GE_OK(global_ge_session->UpdateGraphRefreshableFeatureMemoryBase(id, memory, size));
+  return Status::Success();
+}
+
+Status Session::FastLoadGraph(uint32_t graph_id, const std::map<ge::AscendString, ge::AscendString> &option,
+                              void *stream) {
+  RECORD_FUNCTION("LoadGraph", {});
+  TNG_RETURN_IF_ERROR(EnsureInitialized());
+  TNG_ASSERT_NOTNULL(fast_load_graph_, "FastLoadGraph is unsupported, please dont use it in current cann version.");
+  TNG_LOG(DEBUG) << "Start to session load graph " << graph_id;
+
+  TNG_ASSERT_GE_OK(fast_load_graph_(*global_ge_session, graph_id, option, stream));
+  return Status::Success();
+}
+
+Status Session::FastExecuteGraph(uint32_t graph_id, const std::vector<gert::Tensor> &inputs,
+                                 std::vector<gert::Tensor> &outputs, void *stream) {
+  RECORD_FUNCTION("ExecuteGraph", {});
+  TNG_RETURN_IF_ERROR(EnsureInitialized());
+  TNG_ASSERT_NOTNULL(fast_execute_graph_async_,
+                     "FastExecuteGraph is unsupported, please dont use it in current cann version.");
+  TNG_LOG(DEBUG) << "Start to session execute graph " << graph_id;
+
+  TNG_ASSERT_GE_OK(fast_execute_graph_async_(*global_ge_session, graph_id, stream, inputs, outputs));
   return Status::Success();
 }
 }  // namespace tng

@@ -1,25 +1,28 @@
-#include "external/graph/types.h"
 #include "static_npu_graph_executor.h"
+#include "external/graph/types.h"
 
 #include <ATen/record_function.h>
 
 #include <utility>
+#include "AllocatorManager.h"
+#include "acl/acl_rt.h"
 #include "checker.h"
 #include "logger.h"
+#include "npu_utils.h"
 #include "session.h"
 #include "torch/torch.h"
 #include "utils.h"
-#include "npu_utils.h"
-#include "AllocatorManager.h"
-#include "acl/acl_rt.h"
 
 namespace tng {
 
-Status StaticNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &inputs, void *stream) {
+template <typename T>
+Status StaticNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders,
+                                              void *stream) {
+  RECORD_FUNCTION("AssembleInputs", std::vector<c10::IValue>({}));
   TNG_ASSERT(graph_data_->input_placements.size() == inputs.size());
-  bool is_first_run = inputs_holder_.empty();
+  bool is_first_run = input_holders.empty();
   if (is_first_run) {
-    inputs_holder_.resize(inputs.size());
+    input_holders.resize(inputs.size());
     host_input_holders_.resize(inputs.size());
   }
   for (size_t i = 0U; i < inputs.size(); ++i) {
@@ -29,13 +32,13 @@ Status StaticNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &inp
                              DebugString(inputs[i].device()).c_str());
       }
       if (is_first_run) {
-        TNG_RETURN_IF_ERROR(AtTensorToGeTensor(inputs[i], inputs_holder_[i]));
+        TNG_RETURN_IF_ERROR(AtTensorToGeTensor(inputs[i], input_holders[i]));
       } else {
         // In static graph input shape remains unchanged, only data ptr need to be updated.
-        TNG_RETURN_IF_ERROR(AssembleDataToGe(inputs[i], inputs_holder_[i]));
+        TNG_RETURN_IF_ERROR(AssembleDataToGe(inputs[i], input_holders[i]));
       }
       TNG_LOG(DEBUG) << "Assemble aten device input " << i << " " << DebugString(inputs[i]) << " to "
-                     << DebugString(inputs_holder_[i]);
+                     << DebugString(input_holders[i]);
     } else if (graph_data_->input_placements[i] == Placement::HOST) {
       if (!inputs[i].device().is_cpu()) {
         return Status::Error("Input %zu placement %s is incompatible with expected CPU.", i,
@@ -46,15 +49,17 @@ Status StaticNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &inp
         auto host_input_holder = at::empty(inputs[i].sizes(), inputs[i].options().device(at::kPrivateUse1));
         size_t copy_size = static_cast<size_t>(inputs[i].numel() * inputs[i].element_size());
         host_input_holders_[i] = std::make_pair(host_input_holder, copy_size);
-        TNG_RETURN_IF_ERROR(AtTensorToGeTensor(host_input_holders_[i].first, inputs_holder_[i]));
+        TNG_RETURN_IF_ERROR(AtTensorToGeTensor(host_input_holders_[i].first, input_holders[i]));
       }
-      auto stream_ret = aclrtSynchronizeStream(stream);
-      TNG_ASSERT(stream_ret == ACL_ERROR_NONE, "ACL sync stream failed, return %d", stream_ret);
-      auto ret = aclrtMemcpy(host_input_holders_[i].first.data_ptr(), host_input_holders_[i].second,
-                             inputs[i].data_ptr(), host_input_holders_[i].second, ACL_MEMCPY_HOST_TO_DEVICE);
-      TNG_ASSERT(ret == ACL_ERROR_NONE, "ACL memory copy failed, return %d", ret);
+      if (host_input_holders_[i].second > 0) {
+        auto stream_ret = aclrtSynchronizeStream(stream);
+        TNG_ASSERT(stream_ret == ACL_ERROR_NONE, "ACL sync stream failed, return %d", stream_ret);
+        auto ret = aclrtMemcpy(host_input_holders_[i].first.data_ptr(), host_input_holders_[i].second,
+                               inputs[i].data_ptr(), host_input_holders_[i].second, ACL_MEMCPY_HOST_TO_DEVICE);
+        TNG_ASSERT(ret == ACL_ERROR_NONE, "ACL memory copy failed, return %d", ret);
+      }
       TNG_LOG(DEBUG) << "Assemble aten host input " << i << " " << DebugString(inputs[i]) << " to "
-                     << DebugString(inputs_holder_[i]);
+                     << DebugString(input_holders[i]);
     } else {
       TNG_ASSERT(false, "Invalid Placement::UNKNOWN of input %zu.", i);
     }
@@ -62,15 +67,20 @@ Status StaticNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &inp
   return Status::Success();
 }
 
+template <typename T>
 Status StaticNpuGraphExecutor::AssembleOutputs(const std::vector<c10::optional<at::Tensor>> &assigned_outputs,
-                                               std::vector<at::Tensor> &outputs) {
-  bool is_first_run = outputs_holder_.empty();
+                                               std::vector<at::Tensor> &outputs, std::vector<T> &output_holders) {
+  RECORD_FUNCTION("AssembleOutputs", std::vector<c10::IValue>({}));
+  bool is_first_run = output_holders.empty();
   if (is_first_run) {
     const std::vector<ge::DataType> &output_ge_dtypes = graph_data_->output_dtypes;
-    TNG_ASSERT_GE_OK(graph_data_->summary->GetOutputShapes(output_shapes_));
-    TNG_ASSERT_EQ(output_shapes_.size(), output_ge_dtypes.size());
-    outputs_holder_.resize(output_shapes_.size());
-    output_options_.resize(output_shapes_.size());
+    std::vector<ge::Shape> output_ge_shapes;
+    TNG_ASSERT_GE_OK(graph_data_->summary->GetOutputShapes(output_ge_shapes));
+    TNG_ASSERT_EQ(output_ge_shapes.size(), output_ge_dtypes.size());
+
+    output_holders.resize(output_ge_shapes.size());
+    output_options_.resize(output_ge_shapes.size());
+    output_shapes_.resize(output_ge_shapes.size());
 
     TNG_ASSERT(assigned_outputs.empty() || assigned_outputs.size() == output_shapes_.size());
     for (size_t i = 0U; i < output_ge_dtypes.size(); ++i) {
@@ -79,28 +89,29 @@ Status StaticNpuGraphExecutor::AssembleOutputs(const std::vector<c10::optional<a
         TNG_RETURN_IF_ERROR(GeDtypeToAtDtype(output_ge_dtypes[i], output_i_torch_dtype));
         at::TensorOptions option = at::TensorOptions().dtype(output_i_torch_dtype).device(at::kPrivateUse1);
         output_options_[i] = option;
+        output_shapes_[i] = output_ge_shapes[i].GetDims();
       }
     }
   }
 
-  TNG_ASSERT(assigned_outputs.empty() || assigned_outputs.size() == outputs_holder_.size());
+  TNG_ASSERT(assigned_outputs.empty() || assigned_outputs.size() == output_holders.size());
   outputs.clear();
   for (size_t i = 0U; i < output_shapes_.size(); ++i) {
     if (!assigned_outputs.empty() && assigned_outputs[i].has_value()) {
       outputs.push_back(assigned_outputs[i].value());
       TNG_LOG(DEBUG) << "Assemble pre-assigned output " << i << " " << DebugString(outputs.back());
     } else {
-      outputs.push_back(at::empty(output_shapes_[i].GetDims(), output_options_[i]));
+      outputs.push_back(at::empty(output_shapes_[i], output_options_[i]));
       TNG_LOG(DEBUG) << "Create empty output " << i << " " << DebugString(outputs.back());
     }
     auto &output_i = outputs.back();
     if (is_first_run) {
-      TNG_RETURN_IF_ERROR(AtTensorToGeTensor(output_i, outputs_holder_[i]));
+      TNG_RETURN_IF_ERROR(AtTensorToGeTensor(output_i, output_holders[i]));
     } else {
-      TNG_RETURN_IF_ERROR(AssembleDataToGe(output_i, outputs_holder_[i]));
+      TNG_RETURN_IF_ERROR(AssembleDataToGe(output_i, output_holders[i]));
     }
     TNG_LOG(DEBUG) << "Assemble torch output " << i << " " << DebugString(output_i) << " to "
-                   << DebugString(outputs_holder_[i]);
+                   << DebugString(output_holders[i]);
   }
 
   return Status::Success();
@@ -183,27 +194,35 @@ Status StaticNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
   if (stream == nullptr) {
     TNG_RETURN_IF_ERROR(GetCurrentStream(&stream));
   }
-  {
-    RECORD_FUNCTION("AssembleInputs", std::vector<c10::IValue>({}));
-    TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, stream));
-  }
-  {
-    RECORD_FUNCTION("AssembleOutputs", std::vector<c10::IValue>({}));
-    TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs, outputs));
-  }
 
   if (is_first_run_) {
     TNG_ASSERT_GE_OK(graph_data_->summary->GetFeatureMemoryBaseRefreshable(fm_refreshable_));
     TNG_RETURN_IF_ERROR(AllocAndSetConstMemory(stream));
-    is_first_run_ = false;
   }
-
   TNG_RETURN_IF_ERROR(AllocAndUpdateFeatureMemory(stream));
 
-  {
-    RECORD_FUNCTION("RunGraphWithStreamAsync", std::vector<c10::IValue>({}));
+  static bool enable_load_execute_graph =
+      Session::GetInstance().IsFastLoadGraphSupported() && Session::GetInstance().IsFastExecuteGraphSupported();
+  if (enable_load_execute_graph) {
+    TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, gert_inputs_holder_, stream));
+
+    TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs, outputs, gert_outputs_holder_));
+
+    if (is_first_run_) {
+      std::map<ge::AscendString, ge::AscendString> load_options;
+      TNG_RETURN_IF_ERROR(Session::GetInstance().FastLoadGraph(graph_data_->id, load_options, stream));
+    }
+
+    TNG_RETURN_IF_ERROR(
+        Session::GetInstance().FastExecuteGraph(graph_data_->id, gert_inputs_holder_, gert_outputs_holder_, stream));
+  } else {
+    TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, inputs_holder_, stream));
+
+    TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs, outputs, outputs_holder_));
+
     TNG_RETURN_IF_ERROR(Session::GetInstance().RunGraph(graph_data_->id, inputs_holder_, outputs_holder_, stream));
   }
+
   TNG_LOG(INFO) << "StaticNpuGraphExecutor::Run graph " << graph_data_->id << " on stream " << stream
                 << " successfully.";
   if (fm_refreshable_) {
@@ -211,6 +230,7 @@ Status StaticNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
     feature_map_block_->Free();
     feature_map_block_ = nullptr;
   }
+  is_first_run_ = false;
   return Status::Success();
 }
 

@@ -3,13 +3,15 @@
 #include "checker.h"
 #include "compat_apis.h"
 #include "executor.h"
-#include "graph/tensor.h"
-#include "graph/types.h"
 #include "graph_data.h"
 #include "session.h"
-#include "torch/torch.h"
+
+#include "exe_graph/runtime/tensor_data.h"
+#include "graph/tensor.h"
+#include "graph/types.h"
 
 #include "ATen/CPUFunctions.h"
+#include "torch/torch.h"
 
 namespace tng {
 namespace {
@@ -85,7 +87,6 @@ std::string DebugString(const std::vector<tng::Placement> &placements) {
   }
   return ss.str() + DebugString(placements.back()) + "]";
 }
-
 
 std::string DebugString(const std::vector<int64_t> &shape) {
   if (shape.empty()) {
@@ -167,13 +168,21 @@ std::string DebugString(const ge::Shape &shape) {
   return compat::DebugString(shape).GetErrorMessage();
 }
 
+std::string DebugString(const gert::Shape &shape) {
+  return compat::DebugString(shape).GetErrorMessage();
+}
+
 std::string DebugString(const ge::Tensor &tensor) {
+  return compat::DebugString(tensor).GetErrorMessage();
+}
+
+std::string DebugString(const gert::Tensor &tensor) {
   return compat::DebugString(tensor).GetErrorMessage();
 }
 
 std::vector<int64_t> GetGeTensorShape(const ge::Tensor &tensor) {
   size_t rank = tensor.GetShapeDimNum();
-  std::vector <int64_t> shape(rank);
+  std::vector<int64_t> shape(rank);
 
   for (size_t i = 0U; i < rank; ++i) {
     shape[i] = tensor.GetShapeDim(i);
@@ -181,10 +190,26 @@ std::vector<int64_t> GetGeTensorShape(const ge::Tensor &tensor) {
   return shape;
 }
 
+std::vector<int64_t> GetGeTensorShape(const gert::Tensor &tensor) {
+  return tensor.GetOriginShape().GetDims();
+}
+
 Status GePlacementToAtDeviceType(const ge::Placement &ge_placement, c10::DeviceType &device_type) {
   if (ge_placement == ge::Placement::kPlacementHost) {
     device_type = c10::DeviceType::CPU;
   } else if (ge_placement == ge::Placement::kPlacementDevice) {
+    device_type = c10::DeviceType::PrivateUse1;
+  } else {
+    return Status::Error("Unsupported ge placement %d.", ge_placement);
+  }
+  return Status::Success();
+}
+
+Status GePlacementToAtDeviceType(const gert::TensorPlacement &ge_placement, c10::DeviceType &device_type) {
+  if (ge_placement == gert::TensorPlacement::kOnHost || ge_placement == gert::TensorPlacement::kFollowing) {
+    device_type = c10::DeviceType::CPU;
+  } else if (ge_placement == gert::TensorPlacement::kOnDeviceHbm ||
+             ge_placement == gert::TensorPlacement::kOnDeviceP2p) {
     device_type = c10::DeviceType::PrivateUse1;
   } else {
     return Status::Error("Unsupported ge placement %d.", ge_placement);
@@ -256,6 +281,21 @@ Status AssembleDataToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor) {
   return Status::Success();
 }
 
+Status AssembleDataToGe(const at::Tensor &tensor, gert::Tensor &ge_tensor) {
+  // Performance optimization:
+  // When at::tensor address is not updated, there is no need to refresh the ge::tensor memory address again.
+  if (ge_tensor.GetAddr() == tensor.data_ptr()) {
+    return Status::Success();
+  }
+
+  // The input at tensor must be contiguous(), but not necessarily matched.
+  // Therefore, when getting data_ptr, the calculation of the data_ptr address needs to skip storage_offset,
+  // and the calculation of nbytes needs to be based on the shape after view.
+  ge_tensor.MutableTensorData().SetAddr(tensor.data_ptr(), nullptr);
+  ge_tensor.MutableTensorData().SetSize(static_cast<size_t>(tensor.numel() * tensor.element_size()));
+  return Status::Success();
+}
+
 Status AssembleDimsToShape(const at::IntArrayRef &dims, ge::Tensor &ge_tensor) {
   if (ge_tensor.GetShapeDimNum() != dims.size()) {
     TNG_ASSERT_GE_OK(ge_tensor.SetShapeDimNum(dims.size()));
@@ -267,7 +307,29 @@ Status AssembleDimsToShape(const at::IntArrayRef &dims, ge::Tensor &ge_tensor) {
   return Status::Success();
 }
 
+Status AssembleDimsToShape(const at::IntArrayRef &dims, gert::Tensor &ge_tensor) {
+  if (ge_tensor.GetOriginShape().GetDimNum() != dims.size()) {
+    ge_tensor.MutableOriginShape().SetDimNum(dims.size());
+  }
+  if (ge_tensor.GetStorageShape().GetDimNum() != dims.size()) {
+    ge_tensor.MutableStorageShape().SetDimNum(dims.size());
+  }
+  for (size_t i = 0U; i < dims.size(); ++i) {
+    ge_tensor.MutableOriginShape().SetDim(i, dims[i]);
+    ge_tensor.MutableStorageShape().SetDim(i, dims[i]);
+  }
+
+  return Status::Success();
+}
+
 Status AssembleDataAndShapeToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor) {
+  TNG_RETURN_IF_ERROR(AssembleDataToGe(tensor, ge_tensor));
+
+  TNG_RETURN_IF_ERROR(AssembleDimsToShape(tensor.sizes(), ge_tensor));
+  return Status::Success();
+}
+
+Status AssembleDataAndShapeToGe(const at::Tensor &tensor, gert::Tensor &ge_tensor) {
   TNG_RETURN_IF_ERROR(AssembleDataToGe(tensor, ge_tensor));
 
   TNG_RETURN_IF_ERROR(AssembleDimsToShape(tensor.sizes(), ge_tensor));
@@ -286,11 +348,32 @@ Status AtTensorToGeTensor(const at::Tensor &tensor, ge::Tensor &ge_tensor) {
   return Status::Success();
 }
 
+Status AtTensorToGeTensor(const at::Tensor &tensor, gert::Tensor &ge_tensor) {
+  ge::DataType ge_dtype = ge::DT_UNDEFINED;
+  TNG_RETURN_IF_ERROR(AtDtypeToGeDtype(tensor.dtype().toScalarType(), ge_dtype));
+  ge_tensor.SetDataType(ge_dtype);
+  ge_tensor.SetOriginFormat(ge::FORMAT_ND);
+  ge_tensor.SetStorageFormat(ge::FORMAT_ND);
+  TNG_RETURN_IF_ERROR(AssembleDimsToShape(tensor.sizes(), ge_tensor));
+
+  ge_tensor.SetData(gert::TensorData(
+      tensor.data_ptr(), nullptr, static_cast<size_t>(tensor.numel() * tensor.element_size()),
+      tensor.device().is_privateuseone() ? gert::TensorPlacement::kOnDeviceHbm : gert::TensorPlacement::kOnHost));
+  return Status::Success();
+}
+
 using RawGeDataPtr = std::unique_ptr<uint8_t[], ge::Tensor::DeleteFunc>;
 namespace {
 void DeleteGeDataPtr(void *data) {
   if (data != nullptr) {
     delete static_cast<RawGeDataPtr *>(data);
+  }
+}
+
+void FreeGeBlockPtr(void *data) {
+  if (data != nullptr) {
+    static_cast<ge::MemBlock *>(data)->Free();
+    data = nullptr;
   }
 }
 }  // namespace
@@ -327,6 +410,47 @@ Status GeTensorToAtTensor(ge::Tensor &ge_tensor, at::Tensor &tensor) {
   } else {
     storage = c10::make_intrusive<c10::StorageImpl>(c10::StorageImpl::use_byte_size_t(), tensor_nbytes,
                                                     std::move(c10_data_ptr), c10::GetAllocator(device_type), true);
+  }
+
+  tensor.set_(storage, 0, dims);
+  return Status::Success();
+}
+
+Status GeTensorToAtTensor(gert::Tensor &ge_tensor, at::Tensor &tensor) {
+  c10::ScalarType tensor_dtype = c10::ScalarType::Float;
+  TNG_RETURN_IF_ERROR(GeDtypeToAtDtype(ge_tensor.GetDataType(), tensor_dtype));
+  c10::DeviceType device_type = c10::DeviceType::CPU;
+  TNG_RETURN_IF_ERROR(GePlacementToAtDeviceType(ge_tensor.GetPlacement(), device_type));
+  at::TensorOptions option = at::TensorOptions().dtype(tensor_dtype).device(device_type);
+  tensor = at::empty({0}, option);
+
+  const std::vector<int64_t> &dims = ge_tensor.GetOriginShape().GetDims();
+  if (ge_tensor.GetStorageShape().GetDims() != dims) {
+    return Status::Error("Unsupported ge tensor with different origin shape and storage shape, ",
+                         DebugString(ge_tensor).c_str());
+  }
+  size_t tensor_nbytes = at::detail::computeStorageNbytesContiguous(dims, tensor.dtype().itemsize());
+
+  at::Storage storage;
+  if (device_type == c10::DeviceType::PrivateUse1) {
+    // get npu storage constructor from register and construct storage
+    static auto fptr = c10::GetStorageImplCreate(device_type);
+    auto allocator = c10::GetAllocator(device_type);
+#if defined(TNG_TORCH_VERSION) && (TNG_TORCH_VERSION < 20300)  // v2.3.0
+    storage = fptr(c10::StorageImpl::use_byte_size_t(), 0, allocator, true);
+#else
+    storage = fptr(c10::StorageImpl::use_byte_size_t(), 0, allocator->allocate(0), allocator, true);
+#endif
+    storage.unsafeGetStorageImpl()->set_nbytes(tensor_nbytes);
+
+    gert::TensorAddrManager block_manager = nullptr;
+    gert::TensorAddress addr_block = ge_tensor.MutableTensorData().Release(block_manager);
+    auto mem_block = reinterpret_cast<ge::MemBlock *>(addr_block);
+    static torch::DeleterFnPtr kFreeMemBlock = &FreeGeBlockPtr;
+    at::DataPtr c10_data_ptr(mem_block->GetAddr(), addr_block, kFreeMemBlock, tensor.device());
+    storage.set_data_ptr(std::move(c10_data_ptr));
+  } else {
+    return Status::Error("Unsupported ge tensor to at tensor for cpu tensor: ", DebugString(ge_tensor).c_str());
   }
 
   tensor.set_(storage, 0, dims);

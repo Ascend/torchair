@@ -4,12 +4,17 @@
 #include <map>
 #include <mutex>
 
-#include "external/graph/graph.h"
+#include "graph/graph.h"
+#include "exe_graph/runtime/tensor.h"
 #include "ge/ge_graph_compile_summary.h"
 #include "tng_status.h"
+#include "ge/ge_api.h"
 #include "ge/ge_allocator.h"
 
 namespace tng {
+using GeSessionLoadGraphFunc = decltype(GeSessionLoadGraph);
+using GeFastExecuteGraphFunc = decltype(GeSessionExecuteGraphWithStreamAsync);
+
 class Session {
  public:
   static Session &GetInstance() {
@@ -45,6 +50,19 @@ class Session {
 
   Status UpdateGraphRefreshableFeatureMemoryBase(uint32_t id, const void *const memory, size_t size);
 
+  bool IsFastLoadGraphSupported() const {
+    return fast_load_graph_ != nullptr;
+  }
+
+  bool IsFastExecuteGraphSupported() const {
+    return fast_execute_graph_async_ != nullptr;
+  }
+
+  Status FastLoadGraph(uint32_t graph_id, const std::map<ge::AscendString, ge::AscendString> &option, void *stream);
+
+  Status FastExecuteGraph(uint32_t graph_id, const std::vector<gert::Tensor> &inputs,
+                          std::vector<gert::Tensor> &outputs, void *stream);
+
  private:
   Session() : initialized_(false), status_(Status::Success()){};
   std::mutex mu_;
@@ -53,6 +71,8 @@ class Session {
   Status status_;
   int32_t device_index_ = -1;
   bool auto_tune_init_ = false;
+  GeSessionLoadGraphFunc *fast_load_graph_ = nullptr;
+  GeFastExecuteGraphFunc *fast_execute_graph_async_ = nullptr;
 };
 }  // namespace tng
 

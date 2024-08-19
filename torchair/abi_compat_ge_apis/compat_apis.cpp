@@ -1,16 +1,16 @@
 #include <unordered_map>
 
 #include "checker.h"
-#include "external/graph/types.h"
+#include "tng_status.h"
+
 #include "ge/ge_api.h"
 #include "graph/tensor.h"
-
-#include "tng_status.h"
+#include "graph/types.h"
 
 namespace tng {
 namespace compat {
 namespace {
-const std::map <ge::DataType, std::string> kDataTypeToStringMap = {
+const std::map<ge::DataType, std::string> kDataTypeToStringMap = {
     {ge::DataType::DT_UNDEFINED,      "DT_UNDEFINED"},          // Used to indicate a DataType field has not been set.
     {ge::DataType::DT_FLOAT,          "DT_FLOAT"},                    // float type
     {ge::DataType::DT_FLOAT16,        "DT_FLOAT16"},                // fp16 type
@@ -46,7 +46,7 @@ const std::map <ge::DataType, std::string> kDataTypeToStringMap = {
     {ge::DataType::DT_UINT2,          "DT_UINT2"}                     // dt_variant type
 };
 
-const std::map <ge::Format, std::string> kFormatToStringMap = {
+const std::map<ge::Format, std::string> kFormatToStringMap = {
     {ge::Format::FORMAT_NCHW,                            "NCHW"},
     {ge::Format::FORMAT_NHWC,                            "NHWC"},
     {ge::Format::FORMAT_ND,                              "ND"},
@@ -98,7 +98,7 @@ const std::map <ge::Format, std::string> kFormatToStringMap = {
     {ge::Format::FORMAT_END,                             "END"},
     {ge::Format::FORMAT_MAX,                             "MAX"}
 };
-}
+}  // namespace
 
 using Name2Index = std::map<std::string, uint32_t>;
 template <typename T>
@@ -138,6 +138,21 @@ Status DebugString(const ge::Shape &shape) {
   return Status::Error(ss.str().c_str());
 }
 
+Status DebugString(const gert::Shape &shape) {
+  auto dims = shape.GetDims();
+  if (dims.empty()) {
+    return Status::Error("[]");
+  }
+  std::stringstream ss;
+  ss << "[";
+  size_t index = 0U;
+  for (; index < (dims.size() - 1U); index++) {
+    ss << dims[index] << ", ";
+  }
+  ss << dims[index] << "]";
+  return Status::Error(ss.str().c_str());
+}
+
 Status DebugString(const ge::Tensor &tensor) {
   const auto &desc = tensor.GetTensorDesc();
   std::stringstream ss;
@@ -146,6 +161,18 @@ Status DebugString(const ge::Tensor &tensor) {
      << ", dtype=" << DebugString(desc.GetDataType())
      << ", device=" << (desc.GetPlacement() == ge::Placement::kPlacementHost ? "CPU" : "NPU")
      << ", addr=" << static_cast<const void *>(tensor.GetData()) << ")";
+  return Status::Error(ss.str().c_str());
+}
+
+Status DebugString(const gert::Tensor &tensor) {
+  std::stringstream ss;
+  ss << "ge::Tensor(storage shape=" << DebugString(tensor.GetStorageShape()).GetErrorMessage()
+     << ", origin shape=" << DebugString(tensor.GetOriginShape()).GetErrorMessage()
+     << ", storage format=" << DebugString(tensor.GetStorageFormat())
+     << ", origin format=" << DebugString(tensor.GetOriginFormat())
+     << ", dtype=" << DebugString(tensor.GetDataType())
+     << ", device=" << (tensor.GetPlacement() == gert::TensorPlacement::kOnDeviceHbm ? "NPU" : "CPU")
+     << ", addr=" << static_cast<const void *>(tensor.GetAddr()) << ")";
   return Status::Error(ss.str().c_str());
 }
 

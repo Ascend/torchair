@@ -2,8 +2,10 @@
 #include <iostream>
 #include <mutex>
 
-#include "external/graph/types.h"
+#include "exe_graph/runtime/tensor.h"
+#include "exe_graph/runtime/tensor_data.h"
 #include "ge/ge_api.h"
+#include "graph/types.h"
 
 namespace {
 constexpr size_t kOutptSize = 512 * 1024 * 1024;
@@ -302,3 +304,53 @@ Status GEFinalize() {
   return ge::SUCCESS;
 }
 }  // namespace ge
+
+extern "C" {
+ge::Status GeSessionLoadGraph(ge::Session &session, uint32_t graph_id,
+                              const std::map<ge::AscendString, ge::AscendString> &option, void *stream) {
+  std::cerr << "[STUB] GeSessionLoadGraph, graph id is" << graph_id << std::endl;
+  return ge::SUCCESS;
+}
+
+ge::Status GeSessionExecuteGraphWithStreamAsync(ge::Session &session, uint32_t graph_id, void *stream,
+                                                const std::vector<gert::Tensor> &inputs,
+                                                std::vector<gert::Tensor> &outputs) {
+  std::cerr << "[STUB] GeSessionExecuteGraphWithStreamAsync, graph id is " << graph_id << std::endl;
+  if (inputs.size() < 1U) {
+    std::cerr << "[STUB] Input size is empty for graph" << graph_id << std::endl;
+    return ge::SUCCESS;
+  }
+  std::cerr << "[STUB] Input size is " << inputs.size() << std::endl;
+
+  auto spec = ge::GraphSpecManager::GetSpec(graph_id);
+  if (outputs.size() != spec.output_dtypes_.size()) {
+    std::cerr << "[STUB] Output size " << outputs.size() << " is incompatible with expected "
+              << spec.output_dtypes_.size() << std::endl;
+    return ge::FAILED;
+  }
+  std::cerr << "[STUB] Output size is " << outputs.size() << std::endl;
+
+  for (size_t i = 0; i < spec.output_dtypes_.size(); ++i) {
+    gert::Tensor &output_i = outputs[i];
+    output_i.SetDataType(spec.output_dtypes_[i]);
+    output_i.SetPlacement(gert::TensorPlacement::kOnDeviceHbm);
+    output_i.SetOriginFormat(ge::FORMAT_ND);
+    output_i.SetStorageFormat(ge::FORMAT_ND);
+
+    const std::vector<int64_t> &dims = spec.netoutput_shapes_[i].GetDims();
+    output_i.MutableOriginShape().SetDimNum(dims.size());
+    output_i.MutableStorageShape().SetDimNum(dims.size());
+    for (size_t j = 0; j < dims.size(); j++) {
+      output_i.MutableOriginShape().SetDim(j, dims[j]);
+      output_i.MutableStorageShape().SetDim(j, dims[j]);
+    }
+
+    static std::vector<float> datas;
+    datas.resize(kOutptSize, 0.0);
+    output_i.SetData(gert::TensorData(datas.data(), nullptr, sizeof(float) * datas.size(),
+                                      gert::TensorPlacement::kOnDeviceHbm));
+  }
+
+  return ge::SUCCESS;
+}
+} // extern "C"

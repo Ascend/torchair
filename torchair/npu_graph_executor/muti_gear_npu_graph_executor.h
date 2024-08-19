@@ -2,8 +2,8 @@
 #define TORCH_AIR_TORCH_AIR_MUTI_GEAR_NPU_GRAPH_EXECUTOR_NPU_GRAPH_EXECUTOR_H_
 
 #include "executor.h"
-#include "graph_data.h"
 #include "graph/tensor.h"
+#include "graph_data.h"
 #include "memory/Allocator.h"
 #include "static_npu_graph_executor.h"
 
@@ -17,12 +17,15 @@ class MutiGearNpuGraphExecutor : public StaticNpuGraphExecutor {
 
   Status Run(const std::vector<at::Tensor> &torch_inputs, const std::vector<c10::optional<at::Tensor>> &torch_outputs,
              std::vector<at::Tensor> &outputs, void *stream) override;
+
  private:
+  template <typename T>
+  Status AssembleInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders, void *stream);
 
-  Status AssembleInputs(const std::vector<at::Tensor> &inputs, void *stream);
-
+  template <typename T>
   Status AssembleOutputs(const std::vector<c10::optional<at::Tensor>> &assigned_outputs,
-                         std::vector<ge::MemBlock *> &output_gear_memblock, void *stream);
+                         std::vector<ge::MemBlock *> &output_mem_blocks, std::vector<T> &output_holders, void *stream);
+
   std::vector<c10::ScalarType> output_torch_dtype_;
   std::vector<std::vector<int64_t>> input_gears_;
   std::vector<size_t> output_size_;

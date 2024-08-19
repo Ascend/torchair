@@ -208,6 +208,24 @@ class TensorData {
     }
   }
 
+  /**
+   * 释放对TensorAddress的所有权，本接口调用后，本对象不再管理TensorAddress，
+   * 而且TensorAddress并没有被释放，因此调用者负责通过manager释放TensorAddress
+   * @param manager 出参，用于管理返回的`TensorAddress`的函数，若本对象无所有权，那么manager被设置为nullptr
+   * @return 本对象持有的`TensorAddress`指针，若本对象不持有任何指针，则返回nullptr
+   */
+  TensorAddress Release(TensorAddrManager &manager) {
+    auto tmp_addr = addr_;
+    manager = manager_;
+
+    addr_ = nullptr;
+    manager_ = nullptr;
+    size_ = 0U;
+    placement_ = kTensorPlacementEnd;
+
+    return tmp_addr;
+  }
+
  private:
   TensorAddress addr_;
   TensorAddrManager manager_;
