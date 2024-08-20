@@ -768,6 +768,7 @@ self = torch.compile(self, dynamic=True, fullgraph=True, backend=npu_backend)   
 </tbody>
 </table>
 
+**2024年8月20号，4batch新增性能数据：**
 <table class="tg">
 <thead>
   <tr>
@@ -783,14 +784,12 @@ self = torch.compile(self, dynamic=True, fullgraph=True, backend=npu_backend)   
   </tr>
 </thead>
 <tbody>
-
-**2024年7月19号，4batch新增性能数据：**
   <tr>
     <td class="tg-0pky">IFA算子计算优化+tiling全下沉</td>
-    <td class="tg-0pky">700ms</td>
-    <td class="tg-0pky">123ms</td>
-    <td class="tg-0pky">673ms</td>
-    <td class="tg-0pky">36ms</td>
+    <td class="tg-0pky">689ms</td>
+    <td class="tg-0pky">122ms</td>
+    <td class="tg-0pky">688ms</td>
+    <td class="tg-0pky">37ms</td>
   </tr>
 </tbody>
 </table>
@@ -857,11 +856,7 @@ model_path=xxx/Qwen2-72b # 下载的权重和模型信息
 python3 merge_qkv_weight.py --model_path=${model_path} --tp_size=8 --output_path=xxx/Qwen2-72b-qkv
 ```
 
-**Step2：将替换了mc2融合算子的LinearAllreduce替换deepspeed原生的LinearAllreduce**
-
-将benchmark/deepspeed/mc2_adapter.py的LinearAllreduce整个类拷贝替换原生deepspeed的deepspeed/module_inject/layers.py中的LinearAllreduce类，并且import torch_npu。
-
-**Step3：deepspeed方式拉起8卡执行**
+**Step2：deepspeed方式拉起8卡执行**
 
 ```shell
 # 图模式

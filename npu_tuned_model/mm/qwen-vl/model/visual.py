@@ -10,6 +10,7 @@ from typing import Callable, Optional, Sequence, Tuple, List
 import numpy as np
 
 import torch
+import torch_npu
 from torch import nn
 from torch.nn import functional as F
 from torch.nn.init import trunc_normal_
@@ -113,6 +114,7 @@ class Resampler(nn.Module):
             embed_dim,
             num_heads,
             kv_dim=None,
+            tgt_size=1024,
             norm_layer=nn.LayerNorm
     ):
         super().__init__()
@@ -123,6 +125,8 @@ class Resampler(nn.Module):
         self.pos_embed = nn.Parameter(
             torch.from_numpy(get_2d_sincos_pos_embed(embed_dim, grid_size)).float()
         ).requires_grad_(False)
+
+        self.abs_pos_embed = nn.Parameter(torch.empty(tgt_size, embed_dim), requires_grad=False)
 
         self.query = nn.Parameter(torch.zeros(self.num_queries, embed_dim))
         trunc_normal_(self.query, std=.02)
@@ -147,7 +151,7 @@ class Resampler(nn.Module):
             nn.init.constant_(m.bias, 0)
             nn.init.constant_(m.weight, 1.0)
 
-    def forward(self, x, attn_mask=None):
+    def _forward(self, x, attn_mask=None):
 
         pos_embed = get_abs_pos(self.pos_embed, x.size(1))
 
@@ -159,6 +163,19 @@ class Resampler(nn.Module):
         out = self.attn(
             self._repeat(q, N) + self.pos_embed.unsqueeze(1),
             x + pos_embed.unsqueeze(1),
+            x,
+            attn_mask=attn_mask)[0]
+        return out.permute(1, 0, 2)
+
+    def forward(self, x, attn_mask=None):
+        x = self.kv_proj(x)
+        x = self.ln_kv(x).permute(1, 0, 2)
+
+        N = x.shape[1]
+        q = self.ln_q(self.query)
+        out = self.attn(
+            self._repeat(q, N) + self.pos_embed.unsqueeze(1),
+            x + self.abs_pos_embed.unsqueeze(1),
             x,
             attn_mask=attn_mask)[0]
         return out.permute(1, 0, 2)
@@ -188,18 +205,17 @@ class VisualAttention(nn.Module):
         self.hidden_size_per_attention_head = embed_dim // num_heads
         self.num_attention_heads_per_partition = num_heads
         self.hidden_size_per_partition = embed_dim
+        self.res = 16 - self.hidden_size_per_attention_head % 16  # align 16
 
         # Strided linear layer.
         self.in_proj = nn.Linear(embed_dim, 3 * embed_dim)
         self.out_proj = nn.Linear(embed_dim, embed_dim)
         self.norm_factor = math.sqrt(self.hidden_size_per_attention_head)
 
-    def forward(self, query, key, value, attn_mask = None):
+    def _forward(self, query, key, value, attn_mask = None):
         # query/key/value: [sq, b, h]
         sq, b, _ = query.size()
 
-        # torch.allclose不支持入图，此处注释掉
-        # assert torch.allclose(query, key), 'Only Support Self-Attention Currently'
         sk = sq
         mixed_x_layer = self.in_proj(query)
 
@@ -249,6 +265,43 @@ class VisualAttention(nn.Module):
             (self.hidden_size_per_partition,)
         context_layer = context_layer.view(*new_context_layer_shape)
 
+        output = self.out_proj(context_layer)
+
+        return output
+
+    def forward(self, query, key, value, attn_mask=None):
+        # query/key/value: [b, sq, h]
+        b, sq, _ = query.size()
+        mixed_x_layer = self.in_proj(query)
+
+        # [b, sq, (np * 3 * hn)] --> [b, sq, np, 3 * hn]
+        new_tensor_shape = mixed_x_layer.size()[:-1] + \
+                           (self.num_attention_heads_per_partition,
+                            3 * self.hidden_size_per_attention_head)
+        mixed_x_layer = mixed_x_layer.view(*new_tensor_shape)
+
+        # [b, sq, np, 3 * hn] --> 3 [b, sq, np, hn]
+        query_layer, key_layer, value_layer = mixed_x_layer.split(
+            self.hidden_size_per_attention_head, dim=-1)
+
+        # [b, sq, np, hn] --> [b, np, sq, hn]
+        query_layer = query_layer.transpose(1, 2)
+        key_layer = key_layer.transpose(1, 2)
+        value_layer = value_layer.transpose(1, 2)
+
+        if 0 < self.res < 16:
+            query_layer = F.pad(query_layer, [0, self.res])
+            key_layer = F.pad(key_layer, [0, self.res])
+            value_layer = F.pad(value_layer, [0, self.res])
+        context_layer = torch_npu.npu_fused_infer_attention_score(query_layer, key_layer, value_layer,
+                                                                  num_heads=self.num_heads,
+                                                                  input_layout="BNSD_BSND",
+                                                                  scale=1. / self.norm_factor,
+                                                                  inner_precise=0)[0]
+        if 0 < self.res < 16:
+            context_layer = context_layer[..., :self.hidden_size_per_attention_head]
+
+        context_layer = context_layer.reshape(b, sq, self.embed_dim)
         output = self.out_proj(context_layer)
 
         return output
@@ -372,12 +425,12 @@ class VisionTransformer(nn.Module):
         patch_height, patch_width = self.patch_size = (patch_size, patch_size)
         self.grid_size = (image_height // patch_height, image_width // patch_width)
         self.output_dim = output_dim
+        tgt_size = math.prod(self.grid_size)
 
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=width, kernel_size=patch_size, stride=patch_size, bias=False)
 
         # class embeddings and positional embeddings
-        scale = width ** -0.5
-        self.positional_embedding = nn.Parameter(scale * torch.randn(256, width))
+        self.positional_embedding = nn.Parameter(torch.empty(tgt_size, width))
 
         norm_layer = partial(nn.LayerNorm, eps=1e-6)
         act_layer = nn.GELU
@@ -397,12 +450,13 @@ class VisionTransformer(nn.Module):
             embed_dim=output_dim,
             num_heads=output_dim // 128,
             kv_dim=width,
+            tgt_size=tgt_size,
             norm_layer=norm_layer,
         )
         self.ln_post = norm_layer(output_dim)
         self.proj = nn.Parameter((output_dim** -0.5) * torch.randn(output_dim, output_dim))
 
-    def forward(self, x: torch.Tensor):
+    def _forward(self, x: torch.Tensor):
         x = x.to(
             dtype=self.transformer.get_cast_dtype(),
             device=self.transformer.get_cast_device(),
@@ -419,6 +473,28 @@ class VisionTransformer(nn.Module):
         x = x.permute(1, 0, 2)  # NLD -> LND
         x = self.transformer(x)
         x = x.permute(1, 0, 2)  # LND -> NLD
+
+        x = self.attn_pool(x)
+        x = self.ln_post(x)
+        x = x @ self.proj
+
+        return x
+
+    def forward(self, x: torch.Tensor):
+        x = x.to(
+            dtype=self.transformer.get_cast_dtype(),
+            device=self.transformer.get_cast_device(),
+        )
+        # to patches
+        x = self.conv1(x)  # shape = [*, width, grid, grid]
+        x = x.reshape(x.shape[0], x.shape[1], -1)  # shape = [*, width, grid ** 2]
+        x = x.permute(0, 2, 1)  # shape = [*, grid ** 2, width]
+
+        x = x + self.positional_embedding
+
+        x = self.ln_pre(x)
+
+        x = self.transformer(x)
 
         x = self.attn_pool(x)
         x = self.ln_post(x)

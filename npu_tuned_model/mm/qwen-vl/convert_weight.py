@@ -14,9 +14,11 @@
 # limitations under the License.
 
 import os
+import math
 import shutil
 import argparse
 import torch
+from torch.nn import functional as F
 
 
 def load_model(model_dir):
@@ -39,13 +41,35 @@ def save_model(stat_dict, model_dir, safe_serialization=False):
         torch.save(stat_dict, f"{model_dir}/pytorch_model.bin")
 
 
+def get_abs_pos(x, tgt_size=1024):
+    src_size = int(math.sqrt(x.size(0)))
+    tgt_size = int(math.sqrt(tgt_size))
+    dtype = x.dtype
+
+    return F.interpolate(
+        x.float().reshape(1, src_size, src_size, -1).permute(0, 3, 1, 2).contiguous(),
+        size=(tgt_size, tgt_size),
+        mode="bicubic",
+        align_corners=False,
+    ).permute(0, 2, 3, 1).flatten(0, 2).to(dtype=dtype)
+
+
 def replace_key(stat_dict, stat_dict_new):
     for key in stat_dict.keys():
         if "transformer.visual" in key:
             new_key = key.replace("transformer.visual", "visual")
         else:
             new_key = key
-        stat_dict_new[new_key] = stat_dict[key]
+
+        # add if/elif to generate abs_pos_embed offline
+        if "visual.positional_embedding" in new_key:
+            stat_dict_new[new_key] = get_abs_pos(stat_dict[key])  # replace parameter with new value
+        elif "visual.attn_pool.pos_embed" in new_key:
+            stat_dict_new[new_key] = stat_dict[key]  # reserve origin parameter
+            new_key = new_key.replace("pos_embed", "abs_pos_embed")
+            stat_dict_new[new_key] = get_abs_pos(stat_dict[key])  # replace parameter with new value
+        else:
+            stat_dict_new[new_key] = stat_dict[key]
 
 
 def parse_args():

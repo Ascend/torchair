@@ -381,6 +381,118 @@ attn_output = torch_npu.npu_incre_flash_attention(query, key.contiguous(),
 config.experimental_config.tiling_schedule_optimize = True
 ```
 
+## VIT离线计算位置编码
+
+优化原因：当前visual.py中计算位置编码函数get_abs_pos中的interpolate算子性能较差，考虑到其输入参数都是已知的和输入图片无关，
+可以提前将其结果离线计算好，从而减少模型执行的耗时。
+
+优化方式：
+```python
+# Step1：将get_abs_pos的结果提前计算好并保存为模型的权重。在convert_weight.py文件中新增以下逻辑：
+def get_abs_pos(x, tgt_size=1024):
+    src_size = int(math.sqrt(x.size(0)))
+    tgt_size = int(math.sqrt(tgt_size))
+    dtype = x.dtype
+
+    return F.interpolate(
+        x.float().reshape(1, src_size, src_size, -1).permute(0, 3, 1, 2).contiguous(),
+        size=(tgt_size, tgt_size),
+        mode="bicubic",
+        align_corners=False,
+    ).permute(0, 2, 3, 1).flatten(0, 2).to(dtype=dtype)
+
+
+def replace_key(stat_dict, stat_dict_new):
+    for key in stat_dict.keys():
+        if "transformer.visual" in key:
+            new_key = key.replace("transformer.visual", "visual")
+        else:
+            new_key = key
+
+        # add if/elif to generate abs_pos_embed offline
+        if "visual.positional_embedding" in new_key:
+            stat_dict_new[new_key] = get_abs_pos(stat_dict[key])  # replace parameter with new value
+        elif "visual.attn_pool.pos_embed" in new_key:
+            stat_dict_new[new_key] = stat_dict[key]  # reserve origin parameter
+            new_key = new_key.replace("pos_embed", "abs_pos_embed")
+            stat_dict_new[new_key] = get_abs_pos(stat_dict[key])  # replace parameter with new value
+        else:
+            stat_dict_new[new_key] = stat_dict[key]
+
+
+# Step2：将visual.py中调用get_abs_pos的地方替换为已经计算好的权重
+# Resampler的forward函数，替换前：
+'''
+pos_embed = get_abs_pos(self.pos_embed, x.size(1))
+
+out = self.attn(
+    self._repeat(q, N) + self.pos_embed.unsqueeze(1),
+    x + pos_embed.unsqueeze(1),
+    x,
+    attn_mask=attn_mask)[0]
+'''
+# 替换后：
+out = self.attn(
+    self._repeat(q, N) + self.pos_embed.unsqueeze(1),
+    x + self.abs_pos_embed.unsqueeze(1),       # self.abs_pos_embed为提前计算好的权重
+    x,
+    attn_mask=attn_mask)[0]
+
+
+# VisionTransformer的forward函数，替换前：
+'''
+x = x + get_abs_pos(self.positional_embedding, x.size(1))
+'''
+
+# 替换后：
+x = x + self.positional_embedding     # self.positional_embedding为计算好的权重
+```
+
+## VIT使能FIA算子
+**优化原因:** 将小算子替换为融合大算子，提升计算性能。
+
+**优化方式：** 将VisualAttention中矩阵乘相关部分替换为：
+[torch_npu.npu_fused_infer_attention_score](https://www.hiascend.com/document/detail/zh/Pytorch/60RC1/apiref/apilist/ptaoplist_000135.html)。
+```python
+def forward(self, query, key, value, attn_mask=None):
+    # query/key/value: [b, sq, h]
+    sq, b, _ = query.size()
+    mixed_x_layer = self.in_proj(query)
+
+    # [b, sq, (np * 3 * hn)] --> [b, sq, np, 3 * hn]
+    new_tensor_shape = mixed_x_layer.size()[:-1] + \
+                       (self.num_attention_heads_per_partition,
+                        3 * self.hidden_size_per_attention_head)
+    mixed_x_layer = mixed_x_layer.view(*new_tensor_shape)
+
+    # [b, sq, np, 3 * hn] --> 3 [b, sq, np, hn]
+    query_layer, key_layer, value_layer = mixed_x_layer.split(
+        self.hidden_size_per_attention_head, dim=-1)
+
+    # [b, sq, np, hn] --> [b, np, sq, hn]
+    query_layer = query_layer.transpose(1, 2)
+    key_layer = key_layer.transpose(1, 2)
+    value_layer = value_layer.transpose(1, 2)
+
+    if 0 < self.res < 16:
+        query_layer = F.pad(query_layer, [0, self.res])
+        key_layer = F.pad(key_layer, [0, self.res])
+        value_layer = F.pad(value_layer, [0, self.res])
+    context_layer = torch_npu.npu_fused_infer_attention_score(query_layer, key_layer, value_layer,
+                                                              num_heads=self.num_heads,
+                                                              input_layout="BNSD_BSND",
+                                                              scale=1. / self.norm_factor,
+                                                              inner_precise=0)[0]
+    if 0 < self.res < 16:
+        context_layer = context_layer[..., :self.hidden_size_per_attention_head]
+
+    context_layer = context_layer.reshape(b, sq, self.embed_dim)
+    output = self.out_proj(context_layer)
+
+    return output
+```
+
+
 
 # 性能数据
 
@@ -390,6 +502,11 @@ config.experimental_config.tiling_schedule_optimize = True
 
 **在800I A2的机器上，host是arm，4batch size，单卡性能数据：**
 
+**4张图片的分辨率分别为：2048×1365、1802×1309、1500×1001、6143×4095**
+
+**图片预处理总耗时：938ms**
+
+
 <table class="tg">
 <thead>
   <tr>
@@ -398,9 +515,9 @@ config.experimental_config.tiling_schedule_optimize = True
     <th class="tg-0pky" colspan="2">图模式</th>
   </tr>
   <tr>
-    <th class="tg-0pky">全量</th>
+    <th class="tg-0pky">Vit+全量</th>
     <th class="tg-0pky">增量</th>
-    <th class="tg-0pky">全量</th>
+    <th class="tg-0pky">Vit+全量</th>
     <th class="tg-0pky">增量</th>
   </tr>
 </thead>
@@ -459,7 +576,7 @@ config.experimental_config.tiling_schedule_optimize = True
     <th class="tg-0pky" colspan="2">图模式</th>
   </tr>
   <tr>
-    <th class="tg-0pky">全量</th>
+    <th class="tg-0pky">Vit+全量</th>
     <th class="tg-0pky">增量</th>
   </tr>
 </thead>
@@ -483,6 +600,39 @@ config.experimental_config.tiling_schedule_optimize = True
     <td class="tg-0lax">8</td>
     <td class="tg-0lax">1470ms</td>
     <td class="tg-0lax">30ms</td>
+  </tr>
+</tbody>
+</table>
+
+**2024年8月20号，4batch新增性能数据：**
+<table class="tg">
+<thead>
+  <tr>
+    <th class="tg-0pky" rowspan="2">优化项</th>
+    <th class="tg-0pky" colspan="2">单算子模式</th>
+    <th class="tg-0pky" colspan="2">图模式</th>
+  </tr>
+  <tr>
+    <th class="tg-0pky">Vit+全量</th>
+    <th class="tg-0pky">增量</th>
+    <th class="tg-0pky">Vit+全量</th>
+    <th class="tg-0pky">增量</th>
+  </tr>
+</thead>
+<tbody>
+  <tr>
+    <td class="tg-0pky">VIT离线计算位置编码</td>
+    <td class="tg-0pky">562ms</td>
+    <td class="tg-0pky">38ms</td>
+    <td class="tg-0pky">539ms</td>
+    <td class="tg-0pky">26ms</td>
+  </tr>
+  <tr>
+    <td class="tg-0pky">VIT使能FIA算子</td>
+    <td class="tg-0pky">534ms</td>
+    <td class="tg-0pky">38ms</td>
+    <td class="tg-0pky">520ms</td>
+    <td class="tg-0pky">26ms</td>
   </tr>
 </tbody>
 </table>
