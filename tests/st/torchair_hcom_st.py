@@ -11,12 +11,12 @@ from torchair.ge._ge_graph import GeGraph
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair.ge._ge_graph import DataType
 
-
 tag_name = 0
 unqiue_pg_name = 0
 global_ranklist = None
 default_pg = None
 pg_map = {}
+pg_name_map = {}
 
 
 class MockPG():
@@ -38,10 +38,16 @@ class MockPG():
             return ''
         else:
             if not self.pg_name:
-                global unqiue_pg_name
-                unqiue_pg_name = unqiue_pg_name + 1
-                self.pg_name = "pg_name" + str(unqiue_pg_name)
+                if pg_name_map.get(0) is None:
+                    global unqiue_pg_name
+                    unqiue_pg_name = unqiue_pg_name + 1
+                    self.pg_name = "pg_name" + str(unqiue_pg_name)
+                else:
+                    self.pg_name = pg_name_map.get(0)
             return self.pg_name
+
+    def _set_hccl_comm_name(self, group_name):
+        pg_name_map[0] = group_name
 
     def _get_backend(self, device):
         return self
@@ -119,7 +125,6 @@ class PatchWorld:
 
 
 PatchWorld = PatchWorld()
-
 
 torch.distributed.init_process_group = patch_init_process_group
 torch.distributed.new_group = patch_new_group
@@ -262,6 +267,46 @@ class TorchairSt(unittest.TestCase):
         exec(compile(head.getvalue(), '<string>', 'exec'))
         self.assertFalse(unused_pg.is_init_comm)
         self.assertTrue(default_pg.is_init_comm)
+        self.assertEqual(len(PatchWorld.pg_map), 2)
+
+    def test_use_ge_cache_no_pgname_init(self):
+        torch.distributed.init_process_group(
+            backend='hccl', world_size=2, rank=0)
+        with GeGraph() as cache_graph:
+            x = ge.Data(index=0, shape=[1, 2],
+                        dtype=DataType.DT_INT32, placement='CPU')
+            y = ge.HcomAllReduce(x, reduction="sum",
+                                 group=encode_pg_tag_ranklist('tag1', [0, 1]), fusion=0)
+        head = IndentedBuffer()
+        head.writelines(['import torch', 'from torchair.ge._ge_graph import GeGraph',
+                         f'serialized_graph = {cache_graph.SerializeToString()}'])
+        head.writelines(['ge_graph = GeGraph(serialized_model_def=serialized_graph)'])
+        code = codegen_refresh_cache_pgname({'pg_name1': ([0, 1], "tag1")},
+                                            extend_config={"ge.graph_compiler_cache_dir": "/root"})
+        head.splice(code)
+        exec(compile(head.getvalue(), '<string>', 'exec'))
+        self.assertTrue(default_pg.is_init_comm)
+        self.assertEqual(len(PatchWorld.pg_map), 1)
+        self.assertEqual(default_pg.get_hccl_comm_name(0, init_comm=False), "pg_name1")
+
+    def test_use_ge_cache_in_new_pgname_init(self):
+        torch.distributed.init_process_group(
+            backend='hccl', world_size=2, rank=0)
+        default_pg.get_hccl_comm_name(0, init_comm=True)
+        self.assertEqual(default_pg.get_hccl_comm_name(0, init_comm=False), "pg_name1")
+        with GeGraph() as cache_graph:
+            x = ge.Data(index=0, shape=[1, 2],
+                        dtype=DataType.DT_INT32, placement='CPU')
+            y = ge.HcomAllReduce(x, reduction="sum",
+                                 group=encode_pg_tag_ranklist('tag1', [0, 1]), fusion=0)
+        head = IndentedBuffer()
+        head.writelines(['import torch', 'from torchair.ge._ge_graph import GeGraph',
+                         f'serialized_graph = {cache_graph.SerializeToString()}'])
+        head.writelines(['ge_graph = GeGraph(serialized_model_def=serialized_graph)'])
+        code = codegen_refresh_cache_pgname({'pg_name2': ([0, 1], "tag1")},
+                                            extend_config={"ge.graph_compiler_cache_dir": "/root"})
+        head.splice(code)
+        exec(compile(head.getvalue(), '<string>', 'exec'))
         self.assertEqual(len(PatchWorld.pg_map), 2)
 
 

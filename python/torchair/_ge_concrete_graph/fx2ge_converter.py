@@ -629,6 +629,13 @@ class GeConcreteGraph(ConcreteGraphBase):
         ''')
         need_rebuild_pg = enable_cache and (len(self.graph.used_process_group) != 0)
         if need_rebuild_pg:
+            if extend_config.get("ge.graph_compiler_cache_dir") is not None:
+                head.splice(f'''
+                import torch_npu
+                if not torch_npu.distributed._is_support_hccl_comm_name():
+                    raise AssertionError(f"The current CANN does not support used torch.distributed function " 
+                                         f"in ge cache, Please upgrade CANN version.")
+                    ''')
             cache_graph = GeGraph()
             cache_graph.MergeFrom(self.graph._proto)
             rename_cached_pgname(cache_graph._proto, self.graph.used_process_group)
@@ -646,9 +653,8 @@ class GeConcreteGraph(ConcreteGraphBase):
             head.writeline(f'local_compile_options["{k}"] = "{v}"')
         head.writelines(['', 'initialize_graph_engine(global_compile_options)',
                          'ge_graph = GeGraph(serialized_model_def=serialized_graph)'])
-
         if need_rebuild_pg:
-            create_pgname_code = codegen_refresh_cache_pgname(self.graph.used_process_group)
+            create_pgname_code = codegen_refresh_cache_pgname(self.graph.used_process_group, extend_config)
             head.splice(create_pgname_code)
         kernel = IndentedBuffer()
         kernel.writelines(['', '_is_first_run = True', f'def kernel(*args):'])

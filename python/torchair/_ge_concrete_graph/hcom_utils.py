@@ -60,7 +60,7 @@ def rename_cached_pgname(graph_proto, pg_name_to_tag_ranklist):
         op.attr["group"].s = compat_as_bytes(encode_pg_tag_ranklist(tag, rank_list))
 
 
-def codegen_refresh_cache_pgname(used_process_group):
+def codegen_refresh_cache_pgname(used_process_group, extend_config=None):
     from torch._inductor.utils import IndentedBuffer
     code = IndentedBuffer()
     code.writelines([f'def init_process_group(ge_graph):'])
@@ -68,10 +68,11 @@ def codegen_refresh_cache_pgname(used_process_group):
         fun_encode_pg_tag_ranklist_source = inspect.getsource(encode_pg_tag_ranklist)
         code.writelines(fun_encode_pg_tag_ranklist_source.splitlines())
         code.writelines(['', f'cache_inited_group = {{}}',
-                         f'used_process_group = {list(used_process_group.values())}',
+                         f'used_process_group = {used_process_group}',
                          f'rank = torch.distributed.get_rank()'])
-        code.splice(f'''
-        for rank_list, tag in used_process_group:
+        code.writelines([f'for group_name, (rank_list, tag) in used_process_group.items():'])
+        with code.indent():
+            code.splice(f'''
             pg = torch.distributed.distributed_c10d._find_pg_by_ranks_and_tag(tag, rank_list)
             if pg is None:
                 raise AssertionError(f"During cache loading, ",
@@ -81,9 +82,26 @@ def codegen_refresh_cache_pgname(used_process_group):
                                      f" which makes it impossible to find the created pg through the tag. ",
                                      f"Please check the script, or delete the cache files of the cache_module ",
                                      f"and try again.")
-            new_group_name = pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank, init_comm=True)
-            cache_inited_group[encode_pg_tag_ranklist(tag, rank_list)] = new_group_name
-
+            ''')
+            if extend_config is None or extend_config.get("ge.graph_compiler_cache_dir") is None:
+                code.writelines(
+                    [f'new_group_name = pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank, init_comm=True)'])
+            else:
+                code.splice(f'''
+                new_group_name = pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank, init_comm=False)
+                if new_group_name == "":
+                    pg._get_backend(torch.device("npu"))._set_hccl_comm_name(group_name)
+                    new_group_name = pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank, init_comm=True)
+                elif new_group_name != group_name:
+                    pg_new = torch.distributed.new_group()
+                    pg_new._get_backend(torch.device("npu"))._set_hccl_comm_name(group_name)
+                    new_group_name = pg_new._get_backend(torch.device("npu")).get_hccl_comm_name(rank, init_comm=True)
+                if new_group_name != group_name:
+                    raise AssertionError(f"The current CANN does not support used torch.distributed function "
+                                         f"in ge cache, Please upgrade CANN version.")
+                ''')
+            code.writelines([f'cache_inited_group[encode_pg_tag_ranklist(tag, rank_list)] = new_group_name'])
+        code.splice(f'''
         from torchair.ge.attr import Str
         for op in ge_graph._proto.op:
             if "group" not in op.attr:
