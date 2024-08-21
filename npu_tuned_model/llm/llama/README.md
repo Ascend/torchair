@@ -609,52 +609,52 @@ class LinearAllreduce(nn.Module):
 <tbody>
   <tr>
     <td class="tg-0pky">原始脚本</td>
-    <td class="tg-0pky">1138ms</td>
-    <td class="tg-0pky">215ms</td>
+    <td class="tg-0pky">1134ms</td>
+    <td class="tg-0pky">212mms</td>
     <td class="tg-0pky">1183ms</td>
     <td class="tg-0pky">182ms</td>
   </tr>
   <tr>
     <td class="tg-0pky">固定kv cache</td>
-    <td class="tg-0pky">1134ms</td>
-    <td class="tg-0pky">191ms</td>
+    <td class="tg-0pky">1169ms</td>
+    <td class="tg-0pky">209ms</td>
     <td class="tg-0pky">1177ms</td>
     <td class="tg-0pky">161ms</td>
   </tr>
   <tr>
     <td class="tg-0pky">替换FlashAttention&amp;&amp;cos/sin优化</td>
-    <td class="tg-0pky">991ms</td>
-    <td class="tg-0pky">148ms</td>
-    <td class="tg-0pky">912ms</td>
+    <td class="tg-0pky">995ms</td>
+    <td class="tg-0pky">141ms</td>
+    <td class="tg-0pky">1003ms</td>
     <td class="tg-0pky">46ms</td>
   </tr>
   <tr>
     <td class="tg-0pky">Add+RMSNorm融合</td>
-    <td class="tg-0pky">705ms</td>
-    <td class="tg-0pky">122ms</td>
-    <td class="tg-0pky">679ms</td>
-    <td class="tg-0pky">40ms</td>
+    <td class="tg-0pky">699ms</td>
+    <td class="tg-0pky">115ms</td>
+    <td class="tg-0pky">707ms</td>
+    <td class="tg-0pky">41ms</td>
   </tr>
   <tr>
     <td class="tg-0pky">全量优化计算量</td>
-    <td class="tg-0pky">654ms</td>
-    <td class="tg-0pky">122ms</td>
-    <td class="tg-0pky">631ms</td>
-    <td class="tg-0pky">40ms</td>
+    <td class="tg-0pky">650ms</td>
+    <td class="tg-0pky">116ms</td>
+    <td class="tg-0pky">656ms</td>
+    <td class="tg-0pky">41ms</td>
   </tr>
   <tr>
     <td class="tg-0pky">qkv融合(单算子精度异常)</td>
-    <td class="tg-0pky">654ms</td>
-    <td class="tg-0pky">124ms</td>
-    <td class="tg-0pky">620ms</td>
-    <td class="tg-0pky">40ms</td>
+    <td class="tg-0pky">659ms</td>
+    <td class="tg-0pky">113ms</td>
+    <td class="tg-0pky">622ms</td>
+    <td class="tg-0pky">37ms</td>
   </tr>
   <tr>
     <td class="tg-0pky">全量替换mc2融合算子</td>
-    <td class="tg-0pky">618ms</td>
-    <td class="tg-0pky">124ms</td>
-    <td class="tg-0pky">567ms</td>
-    <td class="tg-0pky">39ms</td>
+    <td class="tg-0pky">616ms</td>
+    <td class="tg-0pky">113ms</td>
+    <td class="tg-0pky">572ms</td>
+    <td class="tg-0pky">37ms</td>
   </tr>
 </tbody>
 </table>
@@ -676,33 +676,33 @@ class LinearAllreduce(nn.Module):
 <tbody>
   <tr>
     <td class="tg-0lax">1</td>
-    <td class="tg-0lax">177.5ms</td>
-    <td class="tg-0lax">37.4ms</td>
+    <td class="tg-0lax">178ms</td>
+    <td class="tg-0lax">37ms</td>
   </tr>
   <tr>
     <td class="tg-0lax">2</td>
-    <td class="tg-0lax">298ms</td>
-    <td class="tg-0lax">37.9ms</td>
+    <td class="tg-0lax">297ms</td>
+    <td class="tg-0lax">37ms</td>
   </tr>
   <tr>
     <td class="tg-0pky">4</td>
-    <td class="tg-0pky">566.7ms</td>
-    <td class="tg-0pky">38.9ms</td>
+    <td class="tg-0pky">572ms</td>
+    <td class="tg-0pky">37ms</td>
   </tr>
   <tr>
     <td class="tg-0lax">8</td>
-    <td class="tg-0lax">1104.5ms</td>
-    <td class="tg-0lax">40.1ms</td>
+    <td class="tg-0lax">1107ms</td>
+    <td class="tg-0lax">38ms</td>
   </tr>
   <tr>
     <td class="tg-0lax">16</td>
-    <td class="tg-0lax">2324.1ms</td>
-    <td class="tg-0lax">43.4ms</td>
+    <td class="tg-0lax">2368ms</td>
+    <td class="tg-0lax">41ms</td>
   </tr>
   <tr>
     <td class="tg-0lax">32</td>
-    <td class="tg-0lax">4863.4ms</td>
-    <td class="tg-0lax">48.2ms</td>
+    <td class="tg-0lax">4863ms</td>
+    <td class="tg-0lax">48ms</td>
   </tr>
 </tbody>
 </table>
