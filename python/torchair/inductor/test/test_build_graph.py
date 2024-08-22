@@ -430,6 +430,28 @@ class BuildGraphTest(unittest.TestCase):
         self.assertTrue(len(kernel_capture.graph(0).unsupported_ops) > 0)
         self.assertNotEqual(kernel_capture.graph(0).unsupported_reason, None)
 
+    def test_multi_moda_encoder_allow_fallback(self):
+        """
+        测试dropout融合算子
+        """
+
+        def bias_dropout_add(x, bias, residual, prob, training):
+            out = torch.nn.functional.dropout(x + bias, p=prob, training=training)
+            return residual + out
+
+        @torch.compile(dynamic=True)
+        def bias_dropout_add_fused_train(x, bias, residual, prob):
+            return bias_dropout_add(x, bias, residual, prob, True)
+
+        x = torch.ones(2)
+        bias = torch.ones(2)
+        residual = torch.ones(2)
+        prob = 0.3
+        with KernelCapture() as kernel_capture:
+            y = bias_dropout_add_fused_train(x, bias, residual, prob)
+
+        self.assertEqual(len(kernel_capture.kernels), 1)
+
 
 if __name__ == '__main__':
     suite = unittest.TestSuite()

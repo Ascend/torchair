@@ -192,11 +192,12 @@ class NPUKernel(Kernel):
     def codegen(self):
         code = IndentedBuffer()
         args, _, _ = self.args.python_argdefs()
+        call_args = sorted(args)
         args.append('workspace')
         kw_args = [str(v) for v in list(sorted(self.graph.size_vars))]
 
         signature_args = ', '.join(args + ["*"] + kw_args) if len(kw_args) else ', '.join(args)
-        call_args = ', '.join(args + [f"{v}={v}" for v in kw_args])
+        call_args = ', '.join(call_args + [f"{v}={v}" for v in kw_args])
 
         graph_fn = self.graph.name
         self._kernel_def.clear()
@@ -291,8 +292,7 @@ class NPUKernel(Kernel):
     def load(self, name: str, index: sympy.Expr):
         buf: BufDesc = self._buf_desc[name]
         if not buf.src:
-            self.args.input(name)
-            self.graph.input(name)
+            self.graph.input(name, self.args.input(name))
             data = ir.data(name=name, sizes=buf.asc_size, dtype=buf.asc_dtype)
             buf.src = data
         else:
@@ -323,8 +323,7 @@ class NPUKernel(Kernel):
             data = ir.workspace(name=name, input=src, sizes=buf.asc_size, dtype=buf.asc_dtype)
         buf.src = data
         if buf.is_output:
-            self.args.output(name)
-            self.graph.output(name)
+            self.graph.output(name, self.args.output(name))
         return data
 
     def store_reduction(self, name, index, value: Reduction):
@@ -473,7 +472,9 @@ class NPUScheduling(BaseScheduling):
         # Manual combine size vars with tensor sizes
         workspace_var_name = f"{camel_to_snake(kernel.kernel_name)}_workspace"
         # Todo: symbolic workspace size
-        wrapper.writeline(f"{workspace_var_name} = torch.empty(1024 * 1024) # Todo: symbolic workspace size")
+        device = f'{call_args[0]}.device' if len(call_args) else 'npu'
+        wrapper.writeline("# Todo: symbolic workspace size")
+        wrapper.writeline(f"{workspace_var_name} = torch.empty(1024 * 1024, device={device})")
         used_sizes = list(sorted(kernel.graph.size_vars))
         call_args.append(workspace_var_name)
         call_args.extend([f"{v}={v}" for v in used_sizes])

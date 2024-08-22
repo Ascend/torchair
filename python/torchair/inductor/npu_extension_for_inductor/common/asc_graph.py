@@ -18,7 +18,9 @@ class ASCGraph:
         self.size_vars = set()
         self.axis_vars = dict()
         self.inputs = []
+        self.inputs_outer = []
         self.outputs = []
+        self.outputs_outer = []
         self.ops: List[_Op] = []
         self.op_cache: Dict[str, Any] = dict()
         self.unsupported_ops: Set[str] = set()
@@ -66,11 +68,15 @@ class ASCGraph:
                 return op
         return None
 
-    def input(self, name):
+    def input(self, name, outer_name=None):
+        outer_name = outer_name or name
         self.inputs.append(name)
+        self.inputs_outer.append(outer_name)
 
-    def output(self, name):
+    def output(self, name, outer_name=None):
+        outer_name = outer_name or name
         self.outputs.append(name)
+        self.outputs_outer.append(outer_name)
 
     def size(self, name):
         self.size_vars.add(StrRep(name))

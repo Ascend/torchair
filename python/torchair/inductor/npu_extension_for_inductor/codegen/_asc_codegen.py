@@ -91,10 +91,15 @@ def codegen_cpp_wrapper(graph: ASCGraph):
     workspaces = [TensorArg("workspace")]
     symbols = [SymArg(str(v)) for v in sorted(list(graph.size_vars))]
     stream = StreamArg("stream")
-    all_args = inputs + outputs + workspaces + symbols + [stream]
     tiling_dtype = f"{graph.name}TilingData"
 
+    unique_outer = sorted(set(graph.inputs_outer + graph.outputs_outer))
+    all_args = [TensorArg(v) for v in unique_outer] + workspaces + symbols + [stream]
     signature = ', '.join([v.signature for v in all_args])
+    buffer_assign = '\n'.join(
+        [f'auto *{in_name} = {out_name};' for in_name, out_name in
+         zip(graph.inputs + graph.outputs, graph.inputs_outer + graph.outputs_outer)])
+
     tiling_args = [v.name for v in symbols]
     launch_args = [v.name for v in itertools.chain(inputs, outputs, workspaces)]
 
@@ -125,6 +130,7 @@ def codegen_cpp_wrapper(graph: ASCGraph):
         if (result != 0) {{
             return result;
         }}
+        {buffer_assign}
         return launch_fn({', '.join(["block_dim", "GetStream(stream)"] + launch_args + ["&tiling_data"])});
     }}
     ''')

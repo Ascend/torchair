@@ -295,17 +295,13 @@ def draw_asc_graph_dot(asc_graph: ASCGraph, file_path=None):
 
 
 def save_asserts(name, context, fn):
-    debug_dir = os.getenv("NPU_INDUCTOR_DEBUG_DIR", None)
-    if debug_dir is None:
+    from torch._inductor import config
+    if not config.trace.enabled:
         return
 
-    if not os.path.exists(debug_dir):
-        raise ValueError(f'{debug_dir}(env:NPU_INDUCTOR_DEBUG_DIR) not existed')
+    from torch._inductor.virtualized import V
 
-    if not os.path.isdir(debug_dir):
-        raise ValueError(f'{debug_dir}(env:NPU_INDUCTOR_DEBUG_DIR) is file')
-
-    asserts_dir = os.path.join(debug_dir, name)
+    asserts_dir = V.debug.filename(name)
     os.makedirs(asserts_dir, exist_ok=True)
 
     fd = os.open(os.path.join(asserts_dir, fn), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
