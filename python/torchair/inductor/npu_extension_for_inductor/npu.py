@@ -194,6 +194,7 @@ class NPUKernel(Kernel):
         args, _, _ = self.args.python_argdefs()
         call_args = sorted(args)
         args.append('workspace')
+        call_args.append('workspace')
         kw_args = [str(v) for v in list(sorted(self.graph.size_vars))]
 
         signature_args = ', '.join(args + ["*"] + kw_args) if len(kw_args) else ', '.join(args)

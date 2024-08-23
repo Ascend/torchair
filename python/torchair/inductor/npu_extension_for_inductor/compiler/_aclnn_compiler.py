@@ -33,7 +33,7 @@ def codegen_cpp_source(kernel_spec: FusedKernelSpec, kernel_path: str):
 
     wrapper.writeline(f'const char *kernel_file = "{kernel_path}";')
     wrapper.splice("""
-    const static bool debug = std::getenv("NPU_INDUCTOR_DEBUG") != nullptr;
+    const static bool debug = std::getenv("TORCH_COMPILE_DEBUG") != nullptr;
     #undef DLOG
     #define DLOG() if (debug) std::cerr
     static void *handle = nullptr;
