@@ -9,7 +9,7 @@ from torch._ops import OpOverload, OpOverloadPacket
 from torch._subclasses import fake_tensor as _subclasses_fake_tensor
 from torch._C import DispatchKey
 from torch._refs import div as refs_div, _broadcast_shapes
-from torch._prims_common import corresponding_real_dtype
+from torch._prims_common import corresponding_real_dtype, corresponding_complex_dtype
 from torch._prims_common.wrappers import out_wrapper
 from torch._decomp import decomposition_table, decompositions_for_rng, get_decompositions
 from torch._dynamo.symbolic_convert import break_graph_if_unsupported, InstructionTranslatorBase, stack_op
@@ -39,9 +39,10 @@ def run_once(f):
 npu_meta_table = {}
 break_fn_table = {}
 break_mapping_table = {}
+avoid_make_fallback_table = []
 
 
-def _add_op_to_meta_table(op, fn):
+def _add_op_to_meta_table(op, fn, avoid_fallback_flag=False):
     overloads = []
     if isinstance(op, OpOverload):
         overloads.append(op)
@@ -55,11 +56,13 @@ def _add_op_to_meta_table(op, fn):
         if op_overload in npu_meta_table:
             raise RuntimeError(f"duplicate registrations for npu_meta_table {op_overload}")
         npu_meta_table[op_overload] = fn
+        if avoid_fallback_flag:
+            avoid_make_fallback_table.append(op_overload)
 
 
-def register_meta_npu(op):
+def register_meta_npu(op, avoid_fallback_flag=False):
     def meta_decorator(fn: Callable):
-        _add_op_to_meta_table(op, fn)
+        _add_op_to_meta_table(op, fn, avoid_fallback_flag)
         return fn
 
     return meta_decorator
@@ -117,6 +120,12 @@ def meta_native_view_as_real(self: Tensor):
     return self.new_empty(out_shape, dtype=corresponding_real_dtype(self.dtype))
 
 
+@register_meta_npu(aten.view_as_complex.default, True)
+def meta_view_as_complex(self: Tensor):
+    out_shape = _broadcast_shapes(self.shape)
+    return self.new_empty(out_shape, dtype=corresponding_complex_dtype(self.dtype))
+
+
 def patch_torch_decomp_decompositions():
     '''
     Because source torch_decomp_decompositions only enable the decompositions in
@@ -141,7 +150,8 @@ def npu_patch_meta():
     for op_overload, fn in npu_meta_table.items():
         if not isinstance(op_overload, OpOverload):
             raise AssertionError
-        decomposition_table[op_overload] = fn
+        if op_overload not in avoid_make_fallback_table:
+            decomposition_table[op_overload] = fn
         op_overload.py_kernels.pop(DispatchKey.Meta, None)
         op_overload.py_impl(DispatchKey.Meta)(fn)
 
