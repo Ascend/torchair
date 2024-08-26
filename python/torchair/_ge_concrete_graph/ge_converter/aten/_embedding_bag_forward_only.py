@@ -19,7 +19,8 @@ from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge._ge_graph import Tensor, TensorSpec
+from torchair._ge_concrete_graph.utils import dtype_promote
+from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
 
 
 def _get_mode_str(mode: int):
@@ -45,6 +46,8 @@ def conveter_aten__embedding_bag_forward_only_default(
 ):
     """NB: aten::_embedding_bag_forward_only(Tensor weight, Tensor indices, Tensor offsets, bool scale_grad_by_freq=False, int mode=0, bool sparse=False, Tensor? per_sample_weights=None, bool include_last_offset=False, int padding_idx=-1) -> (Tensor, Tensor, Tensor, Tensor)"""
     mode_str = _get_mode_str(mode)
+    indices = dtype_promote(indices, target_dtype=DataType.DT_INT32)
+    offsets = dtype_promote(offsets, target_dtype=DataType.DT_INT32)
     return ge.EmbeddingBag(weight=weight, indices=indices, offsets=offsets, per_sample_weights=per_sample_weights,
                            mode=mode_str, scale_grad_by_freq=scale_grad_by_freq, sparse=sparse,
                            include_last_offset=include_last_offset, padding_idx=padding_idx)
