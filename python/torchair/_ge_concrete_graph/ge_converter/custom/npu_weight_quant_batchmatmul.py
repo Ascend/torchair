@@ -48,6 +48,8 @@ def conveter_npu_npu_weight_quant_batchmatmul(
     Tensor? antiquant_offset=None, Tensor? quant_scale=None, Tensor? quant_offset=None,
     Tensor? bias=None) -> Tensor
     """
+    if antiquant_scale is not None and antiquant_scale.dtype == DataType.DT_INT64:
+        antiquant_scale = ge.Cast(antiquant_scale, dst_type=DataType.DT_UINT64)
     if quant_scale is not None and quant_scale.dtype == DataType.DT_INT64:
         quant_scale = ge.Cast(quant_scale, dst_type=DataType.DT_UINT64)
     if weight is not None and weight.dtype == DataType.DT_INT32:
