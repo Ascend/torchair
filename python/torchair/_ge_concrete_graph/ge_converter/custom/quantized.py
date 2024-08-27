@@ -27,8 +27,9 @@ from torchair._ge_concrete_graph.utils import dtype_promote
 
 
 @declare_supported([
-    Support(F32(2, 2), F32(2), I32(2), 1, torch.quint8),
-    Support(F16(2, 2), F32(2), I32(2), 0, torch.qint32)
+    Support(F32(2, 2), F32(2), I32(2), dtype=torch.quint8, axis=1),
+    Support(F16(2, 2), F32(2), I32(2), dtype=torch.qint32, axis=0),
+    Support(F32(2, 2), F32(2), F32(2), dtype=torch.qint8, axis=-2, div_mode=False),
 ])
 @register_fx_node_ge_converter(torch.ops.npu.npu_quantize.default)
 def conveter_npu_quantize_default(
@@ -47,8 +48,10 @@ def conveter_npu_quantize_default(
     if not div_mode:
         if dtype == torch.qint8:
             dtype = torch.int8
+        if axis > -1:
+            axis = -1
         y = ge.AscendQuantV2(self, scales, zero_points, sqrt_mode=False, round_mode="round",
-                             dst_type=torch_type_to_ge_type(dtype))
+                             dst_type=torch_type_to_ge_type(dtype), axis=axis)
         if dtype == torch.quint4x2:
             dim_num = self.rank
             bit_shape = []

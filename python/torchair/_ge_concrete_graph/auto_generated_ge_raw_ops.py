@@ -56071,16 +56071,26 @@ def AscendQuant(x: Tensor, *, scale: float, offset: float, sqrt_mode: bool=False
 
 # This api is auto-generated from IR AscendQuantV2
 @auto_convert_to_tensor([False, False, False], [False, False, True])
-def AscendQuantV2(x: Tensor, scale: Tensor, offset: Optional[Tensor], *, sqrt_mode: bool=False, round_mode: str="round", dst_type: int=2, dependencies=[], node_name=None):
+def AscendQuantV2(x: Tensor,
+                  scale: Tensor,
+                  offset: Optional[Tensor],
+                  *,
+                  sqrt_mode: bool = False,
+                  round_mode: str = "round",
+                  dst_type: int = 2,
+                  axis: int = -1,
+                  dependencies=[],
+                  node_name=None):
     """REG_OP(AscendQuantV2)\n
-.INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))\n
-.INPUT(scale, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))\n
-.OPTIONAL_INPUT(offset, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))\n
-.OUTPUT(y, TensorType({DT_INT8, DT_INT4}))\n
-.ATTR(sqrt_mode, Bool, false)\n
-.ATTR(round_mode, String, "round")\n
-.ATTR(dst_type, Int, DT_INT8)\n
-"""
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))\n
+    .INPUT(scale, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))\n
+    .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))\n
+    .OUTPUT(y, TensorType({DT_INT8, DT_INT4}))\n
+    .ATTR(sqrt_mode, Bool, false)\n
+    .ATTR(round_mode, String, "round")\n
+    .ATTR(dst_type, Int, DT_INT8)\n
+    .ATTR(axis, Int, -1)\n
+    """
 
     op = get_default_ge_graph().op.add()
     op.type = "AscendQuantV2"
@@ -56110,6 +56120,7 @@ def AscendQuantV2(x: Tensor, scale: Tensor, offset: Optional[Tensor], *, sqrt_mo
     op.attr["sqrt_mode"].b = sqrt_mode
     op.attr["round_mode"].s = compat_as_bytes(round_mode)
     op.attr["dst_type"].i = dst_type
+    op.attr["axis"].i = axis
 
     # process outputs
     output_index = 0

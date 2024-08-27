@@ -131,6 +131,7 @@ REG_OP(AscendQuant)
 * @li round_mode: An optional string, specifying the float16 to int8 cast type.
 * The value range is [round, floor, ceil, trunc]. Defaults to "round" .
 * @li dst_type: A optional int32, specifying the output data type. Defaults to "DT_INT8" . \n
+* @li axis: A optional int32, specifying axis to scale and offset. Defaults to "-1" . \n
 
 * @par Outputs:
 * y: The quantized output tensor of type int8 or int4. \n
@@ -152,6 +153,7 @@ REG_OP(AscendQuantV2)
     .ATTR(sqrt_mode, Bool, false)
     .ATTR(round_mode, String, "round")
     .ATTR(dst_type, Int, DT_INT8)
+    .ATTR(axis, Int, -1)
     .OP_END_FACTORY_REG(AscendQuantV2)
 
 /**
