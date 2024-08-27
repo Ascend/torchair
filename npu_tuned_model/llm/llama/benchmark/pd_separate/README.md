@@ -44,7 +44,7 @@
 
 - 上述做完后，根据模型结构定义的代码如何区分全量和增量执行的，将**执行脚本拆分为全量执行脚本和增量执行脚本**。大模型脚本多以seq_length和kv cache区分全量和增量执行。
 
-  以llama2为例，llama2中通过past_key_values这个输入是否是None，区分了全量和增量。当past_key_values为None时是全量推理，非None时时增量推理。示例代码：
+  以llama2为例，llama2中通过past_key_values这个输入是否是None，区分了全量和增量。当past_key_values为None时是全量推理，非None时是增量推理。示例代码：
 
   ```python
   # 参考models/llama/modeling_llama.py的LlamaForCausalLM.prepare_inputs_for_generation函数

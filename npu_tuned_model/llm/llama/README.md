@@ -495,48 +495,49 @@ class LinearAllreduce(nn.Module):
   </tr>
   <tr>
     <td class="tg-0pky">固定kv cache</td>
-    <td class="tg-0pky">1110ms</td>
-    <td class="tg-0pky">187ms</td>
-    <td class="tg-0pky">930ms</td>
-    <td class="tg-0pky">83ms</td>
+    <td class="tg-0pky">1107ms</td>
+    <td class="tg-0pky">175ms</td>
+    <td class="tg-0pky">1123ms</td>
+    <td class="tg-0pky">153ms</td>
   </tr>
   <tr>
     <td class="tg-0pky">替换FlashAttention&amp;&amp;cos/sin优化</td>
-    <td class="tg-0pky">984ms</td>
-    <td class="tg-0pky">144ms</td>
-    <td class="tg-0pky">789ms</td>
-    <td class="tg-0pky">44ms</td>
+    <td class="tg-0pky">964ms</td>
+    <td class="tg-0pky">129ms</td>
+    <td class="tg-0pky">775ms</td>
+    <td class="tg-0pky">39ms</td>
   </tr>
   <tr>
     <td class="tg-0pky">Add+RMSNorm融合</td>
-    <td class="tg-0pky">680ms</td>
-    <td class="tg-0pky">120ms</td>
-    <td class="tg-0pky">660ms</td>
-    <td class="tg-0pky">39ms</td>
+    <td class="tg-0pky">663ms</td>
+    <td class="tg-0pky">106ms</td>
+    <td class="tg-0pky">638ms</td>
+    <td class="tg-0pky">36.1ms</td>
   </tr>
   <tr>
     <td class="tg-0pky">全量优化计算量</td>
-    <td class="tg-0pky">664ms</td>
-    <td class="tg-0pky">120ms</td>
-    <td class="tg-0pky">633ms</td>
-    <td class="tg-0pky">39ms</td>
+    <td class="tg-0pky">650ms</td>
+    <td class="tg-0pky">106ms</td>
+    <td class="tg-0pky">621ms</td>
+    <td class="tg-0pky">36.2ms</td>
   </tr>
   <tr>
     <td class="tg-0pky">qkv融合(单算子精度异常)</td>
-    <td class="tg-0pky">664ms</td>
-    <td class="tg-0pky">120ms</td>
-    <td class="tg-0pky">629ms</td>
-    <td class="tg-0pky">37.5ms</td>
+    <td class="tg-0pky">655ms</td>
+    <td class="tg-0pky">109ms</td>
+    <td class="tg-0pky">620ms</td>
+    <td class="tg-0pky">35.1ms</td>
   </tr>
   <tr>
     <td class="tg-0pky">全量替换mc2融合算子</td>
-    <td class="tg-0pky">615ms</td>
-    <td class="tg-0pky">120ms</td>
-    <td class="tg-0pky">570ms</td>
-    <td class="tg-0pky">37.5ms</td>
+    <td class="tg-0pky">610ms</td>
+    <td class="tg-0pky">110ms</td>
+    <td class="tg-0pky">565ms</td>
+    <td class="tg-0pky">35.1ms</td>
   </tr>
 </tbody>
 </table>
+
 
 
 **800I A2不同bs的图模型性能比较：**
@@ -556,35 +557,36 @@ class LinearAllreduce(nn.Module):
   <tr>
     <td class="tg-0lax">1</td>
     <td class="tg-0lax">175ms</td>
-    <td class="tg-0lax">35.9ms</td>
+    <td class="tg-0lax">34.6ms</td>
   </tr>
   <tr>
     <td class="tg-0pky">4</td>
-    <td class="tg-0pky">570ms</td>
-    <td class="tg-0pky">37.5ms</td>
+    <td class="tg-0pky">565ms</td>
+    <td class="tg-0pky">35.1ms</td>
   </tr>
   <tr>
     <td class="tg-0lax">8</td>
-    <td class="tg-0lax">1112ms</td>
-    <td class="tg-0lax">38.6ms</td>
+    <td class="tg-0lax">1101ms</td>
+    <td class="tg-0lax">35.5ms</td>
   </tr>
   <tr>
     <td class="tg-0lax">16</td>
-    <td class="tg-0lax">2325ms</td>
-    <td class="tg-0lax">41.2ms</td>
+    <td class="tg-0lax">2357ms</td>
+    <td class="tg-0lax">38.1ms</td>
   </tr>
   <tr>
     <td class="tg-0lax">32</td>
-    <td class="tg-0lax">4757ms</td>
-    <td class="tg-0lax">46ms</td>
+    <td class="tg-0lax">4895ms</td>
+    <td class="tg-0lax">42.5ms</td>
   </tr>
   <tr>
     <td class="tg-0pky">48</td>
-    <td class="tg-0pky">7118ms</td>
-    <td class="tg-0pky">48.6ms</td>
+    <td class="tg-0pky">7253ms</td>
+    <td class="tg-0pky">46.4ms</td>
   </tr>
 </tbody>
 </table>
+
 
 ## llama3-70B
 
