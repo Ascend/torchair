@@ -1,4 +1,4 @@
-from torchair.configs._option_base import OptionValue, MustExistedPathValue
+from torchair.configs._option_base import OptionValue, MustExistedPathValue, RegexValue
 from torchair.configs._option_base import NpuBaseConfig
 
 __all__ = []
@@ -12,6 +12,8 @@ class _DataDumpConfig(NpuBaseConfig):
         self.dump_path = MustExistedPathValue("./")
         self.dump_mode = OptionValue('all', ['input', 'output', 'all'])
         self.quant_dumpable = OptionValue(False, [False, True])
+        self.dump_step = RegexValue("", r'^[0-9|-]{0,50}$')
+        self.dump_layer = RegexValue("", r'^[0-9a-zA-Z_" "]{0,500}$')
 
         super(_DataDumpConfig, self).__init__()
 
@@ -22,4 +24,8 @@ class _DataDumpConfig(NpuBaseConfig):
             dump_option['ge.exec.dumpPath'] = self.dump_path.value
             dump_option['ge.exec.dumpMode'] = self.dump_mode.value
             dump_option["ge.quant_dumpable"] = "1" if self.quant_dumpable else "0"
+            if self.dump_step.value != "":
+                dump_option['ge.exec.dumpStep'] = self.dump_step.value
+            if self.dump_layer.value != "":
+                dump_option['ge.exec.dumpLayer'] = self.dump_layer.value
         return {}, dump_option

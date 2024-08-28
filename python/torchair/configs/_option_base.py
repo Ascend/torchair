@@ -1,5 +1,6 @@
 """NPU basic configurations"""
 import os
+import re
 
 from torchair._utils.error_code import pretty_error_msg
 
@@ -87,6 +88,23 @@ class MustExistedPathValue(OptionValue):
         if v is None or not (os.path.exists(v) and os.path.isdir(v)):
             raise FileNotFoundError('Please set legal dir path, '
                                     + f'{str(v)} is not found or is not a file directory!')
+        self._value = v
+
+
+class RegexValue(OptionValue):
+    def __init__(self, default, regex):
+        super().__init__(default)
+        self.__regex = regex
+
+    @property
+    def value(self):
+        return super().value
+
+    @value.setter
+    def value(self, v):
+        if not re.match(self.__regex, v):
+            raise ValueError(f'Please set legal regex value format match {self.__regex}, '
+                             + f'{str(v)} is Illegal format!')
         self._value = v
 
 

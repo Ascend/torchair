@@ -1655,5 +1655,20 @@ class TorchairSt(unittest.TestCase):
 
         torch._dynamo.config.error_on_recompile = False
 
+    def test_fx_data_dump_step(self):
+        config.dump_config.enable_dump = True
+        config.dump_config.dump_step = "0|1|2-5|6"
+        with self.assertRaises(ValueError):
+            config.dump_config.dump_step = "0ad"
+        with self.assertRaises(ValueError):
+            config.dump_config.dump_step = "0|2&"
+
+    def test_fx_data_dump_layer(self):
+        config.dump_config.enable_dump = True
+        config.dump_config.dump_layer = "Add Cast_1 Cast_2"
+        with self.assertRaises(ValueError):
+            config.dump_config.dump_layer = "Add|"
+
+
 if __name__ == '__main__':
     unittest.main()
