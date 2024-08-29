@@ -33642,6 +33642,51 @@ def ScatterElements(data: Tensor, indices: Tensor, updates: Tensor, *, axis: int
     return y
 
 
+# This api is generated from IR ScatterElementsV2
+@auto_convert_to_tensor([False, False, False], [False, False, False], inputs_tensor_type=[TensorType.TT_NUMBER, TensorType.TT_INDEX_NUMBER, TensorType.TT_NUMBER])
+def ScatterElementsV2(data: Tensor, indices: Tensor, updates: Tensor, *, axis: int=0, reduction: str="none", dependencies=[], node_name=None):
+    """REG_OP(ScatterElementsV2)\n
+.INPUT(data, TensorType::NumberType())\n
+.INPUT(indices, TensorType::IndexNumberType())\n
+.INPUT(updates, TensorType::NumberType())\n
+.OUTPUT(y, TensorType::NumberType())\n
+.ATTR(axis, Int, 0)\n
+.ATTR(reduction, String, "none")\n
+"""
+
+    op = get_default_ge_graph().op.add()
+    op.type = "ScatterElementsV2"
+    op.name = next_unique_name(node_name, "ScatterElementsV2")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(data.tensor)
+    op.input_desc.add().CopyFrom(data.desc)
+    op.input_desc[-1].name = "data"
+    op.input.append(indices.tensor)
+    op.input_desc.add().CopyFrom(indices.desc)
+    op.input_desc[-1].name = "indices"
+    op.input.append(updates.tensor)
+    op.input_desc.add().CopyFrom(updates.desc)
+    op.input_desc[-1].name = "updates"
+
+    # process attrs
+    op.attr["axis"].i = axis
+    op.attr["reduction"].s = compat_as_bytes(reduction)
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+
+    # return outputs
+    return y
+
+
 # This api is auto-generated from IR ScatterNdMax
 @auto_convert_to_tensor([False, False, False], [False, False, False], inputs_tensor_type=[TensorType.TT_BASIC, TensorType.TT_INDEX_NUMBER, TensorType.TT_BASIC])
 def ScatterNdMax(var: Tensor, indices: Tensor, updates: Tensor, *, use_locking: bool=False, dependencies=[], node_name=None):
