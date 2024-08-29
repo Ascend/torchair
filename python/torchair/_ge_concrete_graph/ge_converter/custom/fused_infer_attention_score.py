@@ -80,6 +80,35 @@ def convert_npu_npu_fused_infer_attention_score(
     value_antiquant_mode: int = 0,
     meta_outputs: TensorSpec = None,
 ):
+    if input_layout == 'BSH':
+        const = ge.Const([1, 1, 8])
+    else:
+        const = ge.Const([1, 1, 1, 8])
+    if key is not None and key.dtype == DataType.DT_INT32:
+        shape = ge.Shape(key)
+        key_shape = ge.Mil(shape, const)
+        key = ge.Bitcast(key, type=DataType.DT_INT4)
+        key = ge.Reshape(key, key_shape)
+ 
+    if value is not None and value.dtype == DataType.DT_INT32:
+        shape = ge.Shape(value)
+        value_shape = ge.Mil(shape, const)
+        value = ge.Bitcast(value, type=DataType.DT_INT4)
+        value = ge.Reshape(value, value_shape)
+ 
+    if key_shared_prefix is not None and key_shared_prefix.dtype == DataType.DT_INT32:
+        shape = ge.Shape(key_shared_prefix)
+        key_shared_prefix_shape = ge.Mil(shape, const)
+        key_shared_prefix = ge.Bitcast(key_shared_prefix, type=DataType.DT_INT4)
+        key_shared_prefix = ge.Reshape(key_shared_prefix, key_shared_prefix_shape)
+ 
+    if value_shared_prefix is not None and value_shared_prefix.dtype == DataType.DT_INT32:
+        shape = ge.Shape(value_shared_prefix)
+        value_shared_prefix_shape = ge.Mil(shape, const)
+        value_shared_prefix = ge.Bitcast(value_shared_prefix, type=DataType.DT_INT4)
+        value_shared_prefix = ge.Reshape(value_shared_prefix, value_shared_prefix_shape)
+ 
+
     key_list = [key]
     value_list = [value]
     if actual_seq_lengths is not None:
