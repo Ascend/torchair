@@ -67,6 +67,18 @@ def codegen_refresh_cache_pgname(used_process_group, extend_config=None):
     with code.indent():
         fun_encode_pg_tag_ranklist_source = inspect.getsource(encode_pg_tag_ranklist)
         code.writelines(fun_encode_pg_tag_ranklist_source.splitlines())
+        ge_cache_no_used = extend_config is None or extend_config.get("ge.graph_compiler_cache_dir") is None
+        if not ge_cache_no_used:
+            code.splice(f'''
+            all_created_pg = {{}}
+            rank = torch.distributed.get_rank()
+            for pg in torch.distributed.distributed_c10d._world.pg_map.keys():
+                if torch.distributed.distributed_c10d.get_backend(pg) != "hccl":
+                    continue
+                hcom_pg_name = pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank, init_comm=False)
+                if hcom_pg_name != "":
+                    all_created_pg[hcom_pg_name] = hcom_pg_name
+            ''')
         code.writelines(['', f'cache_inited_group = {{}}',
                          f'used_process_group = {used_process_group}',
                          f'rank = torch.distributed.get_rank()'])
@@ -83,23 +95,29 @@ def codegen_refresh_cache_pgname(used_process_group, extend_config=None):
                                      f"Please check the script, or delete the cache files of the cache_module ",
                                      f"and try again.")
             ''')
-            if extend_config is None or extend_config.get("ge.graph_compiler_cache_dir") is None:
+            if ge_cache_no_used:
                 code.writelines(
                     [f'new_group_name = pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank, init_comm=True)'])
             else:
-                code.splice(f'''
-                new_group_name = pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank, init_comm=False)
-                if new_group_name == "":
-                    pg._get_backend(torch.device("npu"))._set_hccl_comm_name(group_name)
-                    new_group_name = pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank, init_comm=True)
-                elif new_group_name != group_name:
-                    pg_new = torch.distributed.new_group()
-                    pg_new._get_backend(torch.device("npu"))._set_hccl_comm_name(group_name)
-                    new_group_name = pg_new._get_backend(torch.device("npu")).get_hccl_comm_name(rank, init_comm=True)
-                if new_group_name != group_name:
-                    raise AssertionError(f"The current CANN does not support used torch.distributed function "
-                                         f"in ge cache, Please upgrade CANN version.")
-                ''')
+                code.writelines([f'new_group_name = group_name'])
+                code.writelines([f'if all_created_pg.get(group_name) is None:'])
+                with code.indent():
+                    code.splice(f'''
+                    new_group_name = pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank, init_comm=False)
+                    if new_group_name == "":
+                        pg._get_backend(torch.device("npu"))._set_hccl_comm_name(group_name)
+                        new_group_name = pg._get_backend(torch.device("npu")).get_hccl_comm_name(rank, init_comm=True)
+                    elif new_group_name != group_name:
+                        pg_new = torch.distributed.new_group()
+                        pg_new._get_backend(torch.device("npu"))._set_hccl_comm_name(group_name)
+                        new_group_name = pg_new._get_backend(torch.device("npu")).get_hccl_comm_name(rank, init_comm=True)
+                    if new_group_name != group_name:
+                        raise AssertionError(f"During cache loading, "
+                                             f"it is not possible to create a PG with the same name in the ge cache. " 
+                                             f"This may be due to the low version of CANN you are using. " 
+                                             f"Please upgrade and try again.")
+                                            
+                    ''')
             code.writelines([f'cache_inited_group[encode_pg_tag_ranklist(tag, rank_list)] = new_group_name'])
         code.splice(f'''
         from torchair.ge.attr import Str

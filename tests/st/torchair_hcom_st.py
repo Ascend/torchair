@@ -17,6 +17,7 @@ global_ranklist = None
 default_pg = None
 pg_map = {}
 pg_name_map = {}
+pg_name_init_map = []
 
 
 class MockPG():
@@ -43,7 +44,11 @@ class MockPG():
                     unqiue_pg_name = unqiue_pg_name + 1
                     self.pg_name = "pg_name" + str(unqiue_pg_name)
                 else:
-                    self.pg_name = pg_name_map.get(0)
+                    if pg_name_map.get(0) not in pg_name_init_map:
+                        self.pg_name = pg_name_map.get(0)
+                    else:
+                        raise RuntimeError("The current PG has been used!")
+            pg_name_init_map.append(self.pg_name)
             return self.pg_name
 
     def _set_hccl_comm_name(self, group_name):
@@ -198,6 +203,8 @@ class TorchairSt(unittest.TestCase):
         # 记录MC2
         record_pg_to_graph(graph)
         self.assertTrue("pg_name1" in graph.used_process_group)
+        pg_name_init_map.clear()
+        pg_name_map.clear()
 
     def test_rename_cached_pgname(self):
         torch.distributed.init_process_group(
@@ -223,6 +230,8 @@ class TorchairSt(unittest.TestCase):
                 check_success = True
         self.assertTrue(check_success)
         self.assertFalse(unused_pg.is_init_comm)
+        pg_name_init_map.clear()
+        pg_name_map.clear()
 
     def test_build_cache_not_init_unuse_pg(self):
         torch.distributed.init_process_group(
@@ -248,6 +257,8 @@ class TorchairSt(unittest.TestCase):
         head.splice(code)
         exec(compile(head.getvalue(), '<string>', 'exec'))
         self.assertFalse(unused_pg.is_init_comm)
+        pg_name_init_map.clear()
+        pg_name_map.clear()
 
     def test_use_cache_not_init_unuse_pg(self):
         torch.distributed.init_process_group(
@@ -268,6 +279,8 @@ class TorchairSt(unittest.TestCase):
         self.assertFalse(unused_pg.is_init_comm)
         self.assertTrue(default_pg.is_init_comm)
         self.assertEqual(len(PatchWorld.pg_map), 2)
+        pg_name_init_map.clear()
+        pg_name_map.clear()
 
     def test_use_ge_cache_no_pgname_init(self):
         torch.distributed.init_process_group(
@@ -288,6 +301,8 @@ class TorchairSt(unittest.TestCase):
         self.assertTrue(default_pg.is_init_comm)
         self.assertEqual(len(PatchWorld.pg_map), 1)
         self.assertEqual(default_pg.get_hccl_comm_name(0, init_comm=False), "pg_name1")
+        pg_name_init_map.clear()
+        pg_name_map.clear()
 
     def test_use_ge_cache_in_new_pgname_init(self):
         torch.distributed.init_process_group(
@@ -307,6 +322,31 @@ class TorchairSt(unittest.TestCase):
                                             extend_config={"ge.graph_compiler_cache_dir": "/root"})
         head.splice(code)
         exec(compile(head.getvalue(), '<string>', 'exec'))
+        self.assertEqual(len(PatchWorld.pg_map), 2)
+        pg_name_init_map.clear()
+        pg_name_map.clear()
+
+    def test_use_ge_cache_in_second_graph_used_old_pg(self):
+        torch.distributed.init_process_group(
+            backend='hccl', world_size=2, rank=0)
+        default_pg.get_hccl_comm_name(0, init_comm=True)
+        self.assertEqual(default_pg.get_hccl_comm_name(0, init_comm=False), "pg_name1")
+        with GeGraph() as cache_graph:
+            x = ge.Data(index=0, shape=[1, 2],
+                        dtype=DataType.DT_INT32, placement='CPU')
+            y = ge.HcomAllReduce(x, reduction="sum",
+                                 group=encode_pg_tag_ranklist('tag1', [0, 1]), fusion=0)
+        head = IndentedBuffer()
+        head.writelines(['import torch', 'from torchair.ge._ge_graph import GeGraph',
+                         f'serialized_graph = {cache_graph.SerializeToString()}'])
+        head.writelines(['ge_graph = GeGraph(serialized_model_def=serialized_graph)'])
+        code = codegen_refresh_cache_pgname({'pg_name2': ([0, 1], "tag1")},
+                                            extend_config={"ge.graph_compiler_cache_dir": "/root"})
+        head.splice(code)
+        exec(compile(head.getvalue(), '<string>', 'exec'))
+        exec(compile(head.getvalue(), '<string>', 'exec'))
+        pg_name_init_map.clear()
+        pg_name_map.clear()
         self.assertEqual(len(PatchWorld.pg_map), 2)
 
 

@@ -633,8 +633,10 @@ class GeConcreteGraph(ConcreteGraphBase):
                 head.splice(f'''
                 import torch_npu
                 if not torch_npu.distributed._is_support_hccl_comm_name():
-                    raise AssertionError(f"The current CANN does not support used torch.distributed function " 
-                                         f"in ge cache, Please upgrade CANN version.")
+                    raise AssertionError(f"During cache loading, "
+                                         f"it is not possible to create a PG with the same name in the ge cache. " 
+                                         f"This may be due to the low version of CANN you are using. " 
+                                         f"Please upgrade and try again.")
                     ''')
             cache_graph = GeGraph()
             cache_graph.MergeFrom(self.graph._proto)
