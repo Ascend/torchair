@@ -1657,15 +1657,32 @@ class TorchairSt(unittest.TestCase):
 
     def test_fx_data_dump_step(self):
         config.dump_config.enable_dump = True
+        config.dump_config.dump_step = "0"
+        config.dump_config.dump_step = "12"
+        config.dump_config.dump_step = "02|3|4"
+        config.dump_config.dump_step = "0-1"
         config.dump_config.dump_step = "0|1|2-5|6"
         with self.assertRaises(ValueError):
             config.dump_config.dump_step = "0ad"
         with self.assertRaises(ValueError):
             config.dump_config.dump_step = "0|2&"
+        with self.assertRaises(ValueError):
+            config.dump_config.dump_step = "--"
+        with self.assertRaises(ValueError):
+            config.dump_config.dump_step = "1-"
+        with self.assertRaises(ValueError):
+            config.dump_config.dump_step = "-1"
+        with self.assertRaises(ValueError):
+            config.dump_config.dump_step = "02||||34"
+        with self.assertRaises(ValueError):
+            config.dump_config.dump_step = "1--"
+        with self.assertRaises(ValueError):
+            config.dump_config.dump_step = "1--6"
 
     def test_fx_data_dump_layer(self):
         config.dump_config.enable_dump = True
-        config.dump_config.dump_layer = "Add Cast_1 Cast_2"
+        config.dump_config.dump_layer = "Add_1Mul_1/Square\Add_2Add_3.Add_4 Add5"
+        config.dump_config.dump_layer = "Add_1Mul_1 Add5"
         with self.assertRaises(ValueError):
             config.dump_config.dump_layer = "Add|"
 
