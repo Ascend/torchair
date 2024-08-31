@@ -1,3 +1,4 @@
+import os
 import functools
 import unittest
 import io
@@ -56,7 +57,7 @@ add(abs(x), 1) = [[2 ... 2]
         for x, y in zip(lines, expect_lines):
             self.assertEqual(x, y)
 
-        compiled_model = torch.compile(func)
+        compiled_model = torch.compile(func, backend='aot_eager')
         with CapturedStdout() as stdout:
             compiled_model(t)
         lines = stdout.non_empty_lines()
@@ -93,7 +94,40 @@ add(abs(x), 1) = [[2 2]
         for x, y in zip(lines, expect_lines):
             self.assertEqual(x, y)
 
-        compiled_model = torch.compile(func)
+        compiled_model = torch.compile(func, backend='aot_eager')
+        with CapturedStdout() as stdout:
+            compiled_model(t)
+        lines = stdout.non_empty_lines()
+        self.assertEqual(len(lines), len(expect_lines))
+        for x, y in zip(lines, expect_lines):
+            self.assertEqual(x, y)
+
+    def test_inplace_after_print(self):
+        def func(v):
+            torchair.ops.npu_print(v, summarize_size=-1)
+            v.add_(1)
+            torchair.ops.npu_print(v, summarize_size=-1)
+            return v
+
+        t = torch.arange(2, dtype=torch.bfloat16)
+
+        expect_lines = ["[0 1]", "[1 2]"]
+        compiled_model = torch.compile(func, backend='aot_eager')
+        with CapturedStdout() as stdout:
+            compiled_model(t)
+        lines = stdout.non_empty_lines()
+        self.assertEqual(len(lines), len(expect_lines))
+        for x, y in zip(lines, expect_lines):
+            self.assertEqual(x, y)
+
+    def test_side_effect_print(self):
+        def func(v):
+            torchair.ops.npu_print(v, summarize_size=-1)
+
+        t = torch.arange(2, dtype=torch.bfloat16)
+
+        expect_lines = ["[0 1]"]
+        compiled_model = torch.compile(func, backend='aot_eager')
         with CapturedStdout() as stdout:
             compiled_model(t)
         lines = stdout.non_empty_lines()
@@ -125,6 +159,40 @@ add(abs(x), 1) = [[2 2]
         compiled_model(t)
 
         self.assertTrue(reached)
+
+    def test_npu_backend_with_inplace(self):
+        from torchair.core import _npu_graph_executor
+        import _privateuse1_backend
+        npu_device = _privateuse1_backend.npu_device()
+        torch.utils.rename_privateuse1_backend("npu")
+
+        def func(v):
+            torchair.ops.npu_print(v)
+            v.add_(1)
+            return v
+
+        t = torch.ones(2, device='npu')
+        t.is_npu = True
+
+        class FakeTorchNpu:
+
+            def __getattr__(self, item):
+                return self
+
+            @staticmethod
+            def get_npu_format(*args, **kwargs):
+                return 0
+
+        try:
+            origin_torch_npu = sys.modules.get('torch_npu', None)
+            sys.modules['torch_npu'] = FakeTorchNpu()
+            compiled_model = torch.compile(func, backend=torchair.get_npu_backend())
+            compiled_model(t)
+        finally:
+            if origin_torch_npu:
+                sys.modules['torch_npu'] = origin_torch_npu
+
+        self.assertTrue(True)  # assert not raise
 
     def test_invalid_summarize(self):
         self.assertRaises(ValueError, torchair.ops.npu_print, "x =", torch.ones(2, 2), summarize_size=0)

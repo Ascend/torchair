@@ -1,12 +1,12 @@
 import copy
 import logging
 from collections import namedtuple, defaultdict
-from typing import Any, Dict, List, Tuple, Union, Callable
+from typing import Any, Dict, List, Tuple, Union, Callable, Set
 import torch
 from torchair.core.utils import logger
 from torchair._ge_concrete_graph.ge_ir_pb2 import GraphDef, TensorDescriptor, TensorDef, OpDef
 from torchair.ge._ge_graph import _ge_proto_dtype_to_ge_dtype, compat_as_bytes, torch_type_to_ge_type, \
-    _SymPackInput, _ValueType, _GeInputInfo
+    _SymPackInput, _ValueType, _GeInputInfo, GeGraph, ControlTensor
 from torchair.ge._ge_graph import Tensor as GeTensor
 from torchair._ge_concrete_graph.utils import Placement, update_op_input_name_from_mapping, generate_shape_from_tensor
 
@@ -318,3 +318,69 @@ def remove_dead_data_and_reorder_data_index(graph: GraphDef):
 
     logger.info(f"after update index, graph all inputs size={len(saved_inputs_info)}.")
     return saved_inputs_info
+
+
+_SIDE_EFFECT_OPS = {"PrintV2", "Print", "Assert"}
+
+
+def explict_order_for_side_effect_nodes(graph: GeGraph, graph_output_ref_input=None):
+    """
+    For nodes with side effects, such as nodes that write Data (allocate the same memory for its output as
+    the graph input), and ge operators like Print with side effects (the order of screen printing needs to
+    be guaranteed), we need to ensure that they are executed in the correct order.
+    The following nodes will execute in strictly order:
+    - Nodes that write graph input memory and all other users of the data node.
+    - Nodes that have side effects, such as PrintV2.
+    """
+    strict_order_nodes: Dict[int, OpDef] = dict()  # Node to execute in strict order
+
+    net_output: OpDef = None  # sink node for graph
+    net_inputs: Dict[int, str] = {}  # net input index to op
+
+    op_hint_order: Dict[str, int] = dict()  # op name to its hint order(origin eager order)
+    name_to_op: Dict[str, OpDef] = {op.name: op for op in graph.op}
+    for order, op in enumerate(graph.op):
+        if op.type == "Data":
+            net_inputs[op.attr["index"].i] = GeTensor(op).tensor
+        elif op.type == "NetOutput":
+            net_output = op
+        elif op.type in _SIDE_EFFECT_OPS:
+            logger.debug(f"Strict order find side effect op {op.name} in order {order}.")
+            strict_order_nodes[order] = op
+        op_hint_order[op.name] = order
+
+    graph_output_ref_input = graph_output_ref_input or {}
+    mutate_net_inputs: Set[str] = set()
+    net_output_src_nodes: Set[str] = set([t.split(":")[0] for t in net_output.input if not t.endswith(":-1")])
+    for output_idx, op_name in enumerate(net_output_src_nodes):
+        node = name_to_op[op_name]
+        input_index = graph_output_ref_input.get(output_idx, None)
+        if input_index is None:
+            continue
+        logger.debug(f"Strict order find node {node.name} mutate input[{input_index}] {net_inputs[input_index]}, "
+                     f"output index {output_idx}.")
+        strict_order_nodes[op_hint_order[node.name]] = node
+        mutate_net_inputs.add(net_inputs[input_index])
+
+    for op in graph.op:
+        for op_input in op.input:
+            if op_input in mutate_net_inputs:
+                logger.debug(f"Strict order find node {op.name} use mutated input {op_input}.")
+                strict_order_nodes[op_hint_order[op.name]] = op
+                break
+
+    ordered_nodes = dict(sorted(strict_order_nodes.items())).values()
+    ordered_nodes = [op for op in ordered_nodes if op.type not in ["NetOutput", "Data"]]
+
+    if len(ordered_nodes) == 0:
+        return
+    for i, op in enumerate(ordered_nodes[:-1]):
+        dst: OpDef = ordered_nodes[i + 1]
+        control = ControlTensor(op).controller
+        logger.debug(f"Strict order add control edge from {op.name} to {dst.name}.")
+        if control not in dst.input:
+            dst.input.append(control)
+    # Keep the last node connected to the net output to prevent side effect nodes pruned by ge
+    sink_controller = ControlTensor(ordered_nodes[-1]).controller
+    if ordered_nodes[-1].name not in [v.split(":")[0] for v in net_output.input]:
+        net_output.input.append(sink_controller)

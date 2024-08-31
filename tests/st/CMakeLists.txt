@@ -9,6 +9,7 @@ add_custom_command(OUTPUT ST_TESTCASES
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_hcom_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_customop_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_print_st.py ${CMAKE_BINARY_DIR}/st
+        COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_explicit_order_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_BINARY_DIR}/stubs/_privateuse1_backend.so ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_BINARY_DIR}/stubs/libaoe_tuning.so ${CMAKE_BINARY_DIR}/st
         DEPENDS _privateuse1_backend libaoe_tuning
@@ -24,6 +25,7 @@ add_custom_target(run_torchair_py_cases ALL
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_hcom_st
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_customop_st
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_print_st
+        COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_explicit_order_st
         DEPENDS install_torchair ST_TESTCASES
         VERBATIM)
 

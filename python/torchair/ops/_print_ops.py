@@ -1,7 +1,7 @@
-import os
 from typing import List
 
 import torch
+from torch.fx.node import has_side_effect
 import numpy as np
 from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
 from torchair.ge._ge_graph import Tensor, TensorSpec, ControlTensor, DataType
@@ -14,16 +14,17 @@ from ._lib import lib
 
 lib.define(
     """
-    print(Tensor[] tensors, Dimname msg_format, Dimname placeholder, int summarize_size) -> Tensor[]
+    print(Tensor[] tensors, str msg_format, str placeholder, int summarize_size) -> None
     """
 )
+has_side_effect(torch.ops.air.print.default)
 
 
 def summarize_tensor(tensor: torch.Tensor, summarize_size) -> str:
     def _value(v):
         return f"{v:.0f}" if v.is_integer() else f"{v}"
 
-    def _summarize_array(array: np.ndarray, nums):
+    def _summarize_array(array, nums):
         if not isinstance(array, np.ndarray):
             return _value(array)
 
@@ -52,61 +53,50 @@ def summarize_tensor(tensor: torch.Tensor, summarize_size) -> str:
 
 
 @torch.library.impl(lib, "print", "Meta")
-def kernel(
+def kernel_meta(
         tensors: List[torch.Tensor],
         msg_format: str,
         placeholder: str,
         summarize_size: int
-) -> List[torch.Tensor]:
-    if len(tensors) == 0:
-        raise RuntimeError("print op requires at least one tensor")
-    if summarize_size < -1 or summarize_size == 0:
-        raise ValueError(f"summarize_size must be positive or -1 for all elements, got {summarize_size}")
-    return tensors
+):
+    return None
 
 
-def _print_tensors(tensors: List[torch.Tensor],
-                   msg_format: str,
-                   placeholder: str,
-                   summarize_size: int):
+def kernel_impl(
+        tensors: List[torch.Tensor],
+        msg_format: str,
+        placeholder: str,
+        summarize_size: int
+):
     for t in tensors:
         tensor_str = summarize_tensor(t.detach(), summarize_size)
         msg_format = msg_format.replace(placeholder, tensor_str, 1)
-    print(msg_format)
+    print(msg_format, flush=True)
 
 
-@torch.library.impl(lib, "print", "CPU")
-def kernel(
-        tensors: List[torch.Tensor],
-        msg_format: str,
-        placeholder: str,
-        summarize_size: int
-) -> List[torch.Tensor]:
-    _print_tensors(tensors, msg_format, placeholder, summarize_size)
-    return tensors
-
-
-@torch.library.impl(lib, "print", "PrivateUse1")
-def kernel(
-        tensors: List[torch.Tensor],
-        msg_format: str,
-        placeholder: str,
-        summarize_size: int
-) -> List[torch.Tensor]:
-    _print_tensors(tensors, msg_format, placeholder, summarize_size)
-    return tensors
+torch.library.impl(lib, "print", "CPU")(kernel_impl)
+torch.library.impl(lib, "print", "PrivateUse1")(kernel_impl)
 
 
 def _npu_print(*args, summarize_size):
-    joint_str = " ".join([arg if isinstance(arg, str) else "[]" for arg in args])
+    for i, arg in enumerate(args):
+        if not isinstance(arg, (torch.Tensor, str, bool, float, int)):
+            raise TypeError(f"position arguments of npu_print() must be torch.Tensor or "
+                            f"basic type in (str, bool, float, int), but got '{type(arg).__name__}' at position {i}")
+    tensors = [arg for arg in args if isinstance(arg, torch.Tensor)]
+    if len(tensors) == 0:
+        raise ValueError("npu_print() requires at least one tensor input")
+    if summarize_size < -1 or summarize_size == 0:
+        raise ValueError(f"summarize_size must be positive or -1 for all elements, got {summarize_size}")
+
+    joint_str = " ".join(["[]" if isinstance(arg, torch.Tensor) else str(arg) for arg in args])
     i = 0
     placeholder = '{}'
     while placeholder in joint_str:
         placeholder = f'{{{i}}}'
         i += 1
-    msg_format = " ".join([arg if isinstance(arg, str) else placeholder for arg in args])
-    tensors = [arg for arg in args if not isinstance(arg, str)]
-    return torch.ops.air.print(tensors, msg_format, placeholder, summarize_size)
+    msg_format = " ".join([placeholder if isinstance(arg, torch.Tensor) else str(arg) for arg in args])
+    torch.ops.air.print(tensors, msg_format, placeholder, summarize_size)
 
 
 @register_fx_node_ge_converter(torch.ops.air.print.default)
@@ -121,6 +111,3 @@ def convert_print(tensors: List[Tensor],
     ge.PrintV2(msg)
     print_op = get_default_ge_graph().op[-1]
     attr.Str('extend').merge_to(print_op.attr['_kernel'])
-    outputs = ControlTensor(print_op)
-    dont_prune_me(outputs)
-    return [ge.Identity(x, dependencies=[outputs]) for x in tensors]

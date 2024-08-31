@@ -59,13 +59,17 @@ def _mapping_assign_op_to_graph_output(graph: GraphDef):
         raise AssertionError("NetOutput not found")
 
     def _mapping_to_graph_output(graph: GraphDef, graph_out: OpDef, assign_node_out: GeTensor, value_tensor: str):
+        raw_index_to_data_index = {}
+        for i, name in enumerate(graph_out.input):
+            if not name.endswith(":-1"):
+                raw_index_to_data_index[i] = len(raw_index_to_data_index)
         output_ref_index_list = []
         for i, name in enumerate(graph_out.input):
             if name == assign_node_out.tensor:
                 graph_out.input[i] = value_tensor
-                output_ref_index_list.append(i)
+                output_ref_index_list.append(raw_index_to_data_index[i])
             elif name == value_tensor:
-                output_ref_index_list.append(i)
+                output_ref_index_list.append(raw_index_to_data_index[i])
         if len(output_ref_index_list) != 0:
             return output_ref_index_list
 
@@ -73,7 +77,7 @@ def _mapping_assign_op_to_graph_output(graph: GraphDef):
         graph_out.input_desc.add().CopyFrom(assign_node_out.desc)
         graph_out.input_desc[-1].name = f"input{len(graph_out.input_desc) - 1}"
         graph.attr["_output_dtypes"].list.i.append(_ge_proto_dtype_to_ge_dtype(assign_node_out.desc.dtype))
-        return [len(graph_out.input) - 1]
+        return [len(graph_out.input_desc) - 1]
 
     output_refto_input = {}
     replaced_assign_ops = []
@@ -555,6 +559,7 @@ class GeConcreteGraph(ConcreteGraphBase):
 
     def optimize_graph_without_runtime(self, *args):
         from torchair._ge_concrete_graph.graph_pass import remove_dead_data_and_reorder_data_index
+        from torchair._ge_concrete_graph.graph_pass import explict_order_for_side_effect_nodes
         from torchair._ge_concrete_graph.utils import get_graph_input_placements
         if self._config.experimental_config.frozen_parameter:
             warnings.warn(f'When enable frozen_parameter, Parameters will be considered frozen.'
@@ -580,6 +585,8 @@ class GeConcreteGraph(ConcreteGraphBase):
             if isinstance(input_func, _DiscontiguousTensorInput):
                 self._cloned_ge_input_mapping[ge_index] = input_func.fx_input_idx
 
+        # Note: The following two passes must be executed after the above pass.
+        explict_order_for_side_effect_nodes(self.graph, self._graph_output_ref_input)
         _normalize_ge_graph(self.graph)
 
     def update_graph_with_runtime(self, inputs, fx_inputs):
