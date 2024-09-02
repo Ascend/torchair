@@ -320,7 +320,7 @@ def remove_dead_data_and_reorder_data_index(graph: GraphDef):
     return saved_inputs_info
 
 
-_SIDE_EFFECT_OPS = {"PrintV2", "Print", "Assert"}
+_SIDE_EFFECT_OPS = {"PrintV2"}
 
 
 def explict_order_for_side_effect_nodes(graph: GeGraph, graph_output_ref_input=None):
@@ -349,31 +349,12 @@ def explict_order_for_side_effect_nodes(graph: GeGraph, graph_output_ref_input=N
             strict_order_nodes[order] = op
         op_hint_order[op.name] = order
 
-    graph_output_ref_input = graph_output_ref_input or {}
-    mutate_net_inputs: Set[str] = set()
-    net_output_src_nodes: Set[str] = set([t.split(":")[0] for t in net_output.input if not t.endswith(":-1")])
-    for output_idx, op_name in enumerate(net_output_src_nodes):
-        node = name_to_op[op_name]
-        input_index = graph_output_ref_input.get(output_idx, None)
-        if input_index is None:
-            continue
-        logger.debug(f"Strict order find node {node.name} mutate input[{input_index}] {net_inputs[input_index]}, "
-                     f"output index {output_idx}.")
-        strict_order_nodes[op_hint_order[node.name]] = node
-        mutate_net_inputs.add(net_inputs[input_index])
-
-    for op in graph.op:
-        for op_input in op.input:
-            if op_input in mutate_net_inputs:
-                logger.debug(f"Strict order find node {op.name} use mutated input {op_input}.")
-                strict_order_nodes[op_hint_order[op.name]] = op
-                break
-
-    ordered_nodes = dict(sorted(strict_order_nodes.items())).values()
-    ordered_nodes = [op for op in ordered_nodes if op.type not in ["NetOutput", "Data"]]
-
-    if len(ordered_nodes) == 0:
+    if len(strict_order_nodes) == 0:
+        logger.debug("No side effect op found in graph, skip strict order optimization.")
         return
+
+    strict_order_nodes = dict(sorted(strict_order_nodes.items()))
+    ordered_nodes = list(strict_order_nodes.values())
     for i, op in enumerate(ordered_nodes[:-1]):
         dst: OpDef = ordered_nodes[i + 1]
         control = ControlTensor(op).controller
@@ -384,3 +365,40 @@ def explict_order_for_side_effect_nodes(graph: GeGraph, graph_output_ref_input=N
     sink_controller = ControlTensor(ordered_nodes[-1]).controller
     if ordered_nodes[-1].name not in [v.split(":")[0] for v in net_output.input]:
         net_output.input.append(sink_controller)
+
+    graph_output_ref_input = graph_output_ref_input or {}
+    input_to_its_written: Dict[str, str] = dict()
+    net_output_src_nodes: Set[str] = set([t.split(":")[0] for t in net_output.input if not t.endswith(":-1")])
+    for output_idx, op_name in enumerate(net_output_src_nodes):
+        input_index = graph_output_ref_input.get(output_idx, None)
+        if input_index is None:
+            continue
+        node = name_to_op[op_name]
+        logger.debug(f"Strict order find node {node.name} mutate input[{input_index}] {net_inputs[input_index]}, "
+                     f"output index {output_idx}.")
+        input_to_its_written[net_inputs[input_index]] = node.name
+
+    def get_op_input_other_users(op: OpDef):
+        logger.debug(f"Strict order find node {op.name} input {op.input}.")
+        users: Set[str] = set()
+        for v in op.input:
+            written_op = input_to_its_written.get(v, None)
+            if written_op is not None:
+                logger.debug(f"Strict order find node {op.name} input {v} is written by {written_op}.")
+                users.add(written_op)
+                continue
+            input_op = name_to_op[v.split(":")[0]]
+            if op.type == "PrintV2" and input_op.type == "StringFormat":
+                users |= get_op_input_other_users(input_op)
+        return users
+
+    for order, op in strict_order_nodes.items():
+        other_users = get_op_input_other_users(op)
+        for user in other_users:
+            src, dst = op, name_to_op[user]
+            if op_hint_order[src.name] > op_hint_order[dst.name]:
+                src, dst = dst, src
+            control = ControlTensor(src).controller
+            logger.debug(f"Strict order add control edge from {src.name} to {dst.name}.")
+            if control not in dst.input:
+                dst.input.append(control)

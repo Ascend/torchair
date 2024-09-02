@@ -146,7 +146,7 @@ class NpuExplictOrderSt(unittest.TestCase):
         self.assertEqual(origin_op_inputs["NetOutput"], current_op_inputs["NetOutput"][:-1])
         self.assertEqual(current_op_inputs["NetOutput"][-1], "PrintV2_1:-1")
         self.assertEqual(current_op_inputs["Add"][-1], "PrintV2:-1")
-        self.assertEqual(current_op_inputs["PrintV2_1"][-1], "Add:-1")
+        self.assertEqual(current_op_inputs["PrintV2_1"][-1], "PrintV2:-1")
 
     def test_multi_stateful_with_inplace_2(self):
         def func(v):
@@ -161,10 +161,10 @@ class NpuExplictOrderSt(unittest.TestCase):
         origin_op_inputs = captured.origin_op_inputs
         current_op_inputs = _get_op_inputs(captured.graph)
 
-        self.assertEqual(origin_op_inputs["NetOutput"], current_op_inputs["NetOutput"])
-        self.assertEqual(current_op_inputs["Add_1"][-1], "PrintV2:-1")
+        self.assertEqual(origin_op_inputs["NetOutput"], current_op_inputs["NetOutput"][:-1])
+        self.assertEqual(current_op_inputs["NetOutput"][-1], "PrintV2:-1")
 
-    def test_inplace_with_non_inplace(self):
+    def test_unchanged_when_no_side_effects(self):
         def func(v):
             x = torch.add(v, 1)
             v.add_(1)
@@ -174,11 +174,7 @@ class NpuExplictOrderSt(unittest.TestCase):
             compiled_model = torch.compile(func, backend=torchair.get_npu_backend())
             compiled_model(npu_tensor(2, device='npu'))
 
-        origin_op_inputs = captured.origin_op_inputs
-        current_op_inputs = _get_op_inputs(captured.graph)
-
-        self.assertEqual(origin_op_inputs["NetOutput"], current_op_inputs["NetOutput"])
-        self.assertEqual(current_op_inputs["Add_1"][-1], "Add:-1")
+        self.assertEqual(captured.origin_op_inputs, _get_op_inputs(captured.graph))
 
 
 if __name__ == '__main__':
