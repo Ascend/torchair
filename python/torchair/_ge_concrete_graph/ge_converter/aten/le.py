@@ -28,10 +28,10 @@ from torchair._ge_concrete_graph.utils import dtype_promote, _display_ge_type
 
 def check_support_dtype(self, other):
     self_dtype = self.dtype
-    if isinstance(other, Number):
-        other_dtype = torch_type_to_ge_type(utils.type_to_dtype(type(other)))
-    else:
+    if isinstance(other, Tensor):
         other_dtype = other.dtype
+    else:
+        other_dtype = torch_type_to_ge_type(utils.type_to_dtype(type(other)))
     supported_dtype = [DataType.DT_BOOL, DataType.DT_UINT8, DataType.DT_INT8, DataType.DT_INT16, DataType.DT_INT32,
                        DataType.DT_INT64, DataType.DT_FLOAT16, DataType.DT_BF16, DataType.DT_FLOAT, DataType.DT_DOUBLE]
     if any(input_dtype not in supported_dtype for input_dtype in [self_dtype, other_dtype]):
