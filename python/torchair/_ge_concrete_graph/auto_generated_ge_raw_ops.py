@@ -75418,6 +75418,7 @@ def WeightQuantBatchMatmulV2(x: Tensor,
                              transpose_x: bool = False,
                              transpose_weight: bool = False,
                              antiquant_group_size: int = 0,
+                             dtype: int = -1,
                              dependencies=[],
                              node_name=None):
     """REG_OP(WeightQuantBatchMatmulV2)\n
@@ -75432,6 +75433,7 @@ def WeightQuantBatchMatmulV2(x: Tensor,
     .ATTR(transpose_x, Bool, false)\n
     .ATTR(transpose_weight, Bool, false)\n
     .ATRR(antiquant_group_size, Int, 0)\n
+    .ATRR(dtype, Int, -1)\n
     """
 
     op = get_default_ge_graph().op.add()
@@ -75485,6 +75487,7 @@ def WeightQuantBatchMatmulV2(x: Tensor,
     op.attr["transpose_x"].b = transpose_x
     op.attr["transpose_weight"].b = transpose_weight
     op.attr["antiquant_group_size"].i = antiquant_group_size
+    op.attr["dtype"].i = dtype
 
     # process outputs
     output_index = 0
