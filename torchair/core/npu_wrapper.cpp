@@ -20,6 +20,7 @@
 
 #include "torchair.h"
 #include "llm_datadist/llm_datadist.h"
+#include "cann_ir_ability.h"
 
 namespace py = pybind11;
 namespace npu {
@@ -63,5 +64,6 @@ PYBIND11_MODULE(_torchair, m) {
       .value("COMPLEX128", llm_datadist::TorchDataType::kComplex128)
       .export_values();
   (void)m.def("as_torch_tensors", &llm_datadist::AsTorchTensor);
+  m.def("check_cann_compat", &cann_ir_ability::CheckCannCompat);
 };
 }  // namespace npu

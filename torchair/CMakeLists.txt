@@ -6,7 +6,8 @@ add_subdirectory(abi_compat_ge_apis)
 file(GLOB_RECURSE SOURCES
         ${CMAKE_CURRENT_LIST_DIR}/core/*.cpp
         ${CMAKE_CURRENT_LIST_DIR}/concrete_graph/*.cpp
-        ${CMAKE_CURRENT_LIST_DIR}/llm_datadist/*.cpp)
+        ${CMAKE_CURRENT_LIST_DIR}/llm_datadist/*.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/cann_ir_ability/*.cpp)
 foreach (CPP_SOURCE ${SOURCES})
     file(RELATIVE_PATH RELATIVE_CPP_SOURCE ${CMAKE_CURRENT_SOURCE_DIR} ${CPP_SOURCE})
     set_property(SOURCE ${CPP_SOURCE} PROPERTY COMPILE_DEFINITIONS __FILE__=\"${RELATIVE_CPP_SOURCE}\")

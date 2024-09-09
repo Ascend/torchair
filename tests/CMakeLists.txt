@@ -38,5 +38,6 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lgcov --coverage -fprofil
 
 add_subdirectory(privateuse1)
 add_subdirectory(aoe)
+add_subdirectory(reg_op_stub)
 add_subdirectory(ut)
 add_subdirectory(st)

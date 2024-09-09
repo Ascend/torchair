@@ -159,6 +159,7 @@ struct InputDef {
   bool is_dynamic = false;
   bool is_optional = false;
   std::string tensorType = "TensorType.TT_UNKNOWN";
+  std::string tensorTypeStr;
   std::string TypeIndicator() const {
     if (is_dynamic) {
       return "List[Tensor]";
@@ -170,29 +171,19 @@ struct InputDef {
   }
   void GenSig(Code& ss) const { ss << sig << ": " << TypeIndicator(); }
   void GenCode(Code& ss) const {
-    if (!is_dynamic) {
-      if (!is_optional) {
-        ss << "op.input.append(" << sig << ".tensor)" << kEnd;
-        ss << "op.input_desc.add().CopyFrom(" << sig << ".desc)" << kEnd;
-        ss << "op.input_desc[-1].name = " << Brack(name);
-      } else {
-        ss << "if " << sig << " is not None:" << kEnd;
-        ss << k4Space << "op.input.append(" << sig << ".tensor)" << kEnd;
-        ss << k4Space << "op.input_desc.add().CopyFrom(" << sig << ".desc)" << kEnd;
-        ss << k4Space << "op.input_desc[-1].name = " << Brack(name) << kEnd;
-
-        ss << "else:" << kEnd;
-        ss << k4Space << "op.input.append('')" << kEnd;
-        ss << k4Space << "op.input_desc.add().CopyFrom(get_invalid_desc())" << kEnd;
-        ss << k4Space << "op.input_desc[-1].name = " << Brack(name);
-      }
-    } else {
-      ss << "assert isinstance(" << sig << ", (tuple, list))" << kEnd;
-      ss << "for i, v in enumerate(" << sig << "):" << kEnd;
-      ss << k4Space << "op.input.append(v.tensor)" << kEnd;
-      ss << k4Space << "op.input_desc.add().CopyFrom(v.desc)" << kEnd;
-      ss << k4Space << "op.input_desc[-1].name = " << Brack(name) << " + str(i)";
+    ss << k4Space << Brack(name) << ": " << sig << ",";
+  }
+  void GenIrDefCode(Code& ss) const {
+    if (is_dynamic) {
+      ss << k4Space << ".dynamic_input(" << Brack(name) << ", " << Brack(tensorTypeStr) << ") \\";
+      return;
     }
+    if (is_optional) {
+      ss << k4Space << ".optional_input(" << Brack(name) << ", " << Brack(tensorTypeStr) << ") \\";
+      return;
+    }
+    ss << k4Space << ".input(" << Brack(name) << ", " << Brack(tensorTypeStr) << ") \\";
+    return;
   }
 };
 
@@ -200,6 +191,7 @@ struct OutputDef {
   std::string name;
   std::string sig;
   bool is_dynamic = false;
+  std::string tensorTypeStr;
   void GenSig(Code& ss) const {
     if (is_dynamic) {
       ss << "size_of_" << sig << ": int";
@@ -207,16 +199,17 @@ struct OutputDef {
   }
   void GenCode(Code& ss) const {
     if (is_dynamic) {
-      ss << sig << " = []" << kEnd;
-      ss << "for i in range(output_index, output_index + size_of_" << sig << ")"
-         << ":" << kEnd;
-      ss << k4Space << "op.output_desc.add().name = " << Brack(name) << " + str(i - output_index)" << kEnd;
-      ss << k4Space << sig << ".append(Tensor(op, i))" << kEnd;
-      ss << "output_index += size_of_" << sig;
+      ss << "(" << Brack(name) << ", size_of_" << sig << "),";
     } else {
-      ss << "op.output_desc.add().name = " << Brack(name) << kEnd;
-      ss << sig << " = Tensor(op, output_index)" << kEnd;
-      ss << "output_index += 1";
+      ss << Brack(name) << ",";
+    }
+  }
+
+  void GenIrDefCode(Code& ss) const {
+    if (is_dynamic) {
+      ss << k4Space << ".dynamic_output(" << Brack(name) << " , " << Brack(tensorTypeStr) << ") \\";
+    } else {
+      ss << k4Space << ".output(" << Brack(name) << " , " << Brack(tensorTypeStr) << ") \\";
     }
   }
 };
@@ -261,45 +254,60 @@ struct AttrDef {
   std::string type;
   std::string proto;
   void GenSig(Code& ss) const { ss << sig << ": " << type; }
-  void GenCode(Code& ss) const {
-    if (proto == "i" || proto == "f" || proto == "b" || proto == "dt") {
-      ss << "op.attr[" << Brack(name) << "]." << proto << " = " << sig;
-      return;
+  std::string GenAttrCode() const {
+    if (proto == "i") {
+      return "Int";
     }
-    if (proto == "t") {
-      ss << "op.attr[" << Brack(name) << "]." << proto << ".CopyFrom(" << sig << ")";
-      return;
+    if (proto == "f") {
+      return "Float";
     }
-    if (proto == "list.i" || proto == "list.t" || proto == "list.f" || proto == "list.b" || proto == "list.dt") {
-      ss << "op.attr[" << Brack(name) << "].list.val_type = " << GetListValueType(proto) << kEnd;
-      ss << "op.attr[" << Brack(name) << "]." << proto << ".extend(" << sig << ")";
-      return;
+    if (proto == "b") {
+      return "Bool";
+    }
+    if (proto == "dt") {
+      return "DataType";
+    }
+    if (proto == "list.i") {
+      return "ListInt";
+    }
+    if (proto == "list.f") {
+      return "ListFloat";
+    }
+    if (proto == "list.b") {
+      return "ListBool";
+    }
+    if (proto == "list.dt") {
+      return "ListDataType";
     }
     if (proto == "s") {
-      ss << "op.attr[" << Brack(name) << "]." << proto << " = compat_as_bytes(" << sig << ")";
-      return;
+      return "Str";
     }
     if (proto == "list.s") {
-      ss << "op.attr[" << Brack(name) << "].list.val_type = " << GetListValueType(proto) << kEnd;
-      ss << "op.attr[" << Brack(name) << "]." << proto << ".extend(compat_as_bytes_list(" << sig << "))";
-      return;
+      return "ListStr";
     }
     if (proto == "list_list_int") {
-      ss << "op.attr[" << Brack(name) << "]." << proto << ".CopyFrom(trans_to_list_list_int(" << sig << "))";
-      return;
+      return "ListListInt";
     }
     if (proto == "list_list_float") {
-      ss << "op.attr[" << Brack(name) << "]." << proto << ".CopyFrom(trans_to_list_list_float(" << sig << "))";
-      return;
+      return "ListListFloat";
     }
+  }
 
-    ss << "op.attr[" << Brack(name) << "]." << proto << " = " << sig;
+  void GenCode(Code& ss) const {
+    ss << k4Space << Brack(name) << ": attr." << GenAttrCode() << "(" << sig << "),";
+  }
+
+  void GenIrDefCode(Code& ss) const {
+    ss << k4Space << ".required_attr(" << Brack(name) << ", attr." << GenAttrCode() << ") \\";
   }
 };
 
 struct AttrDefWithDefault : public AttrDef {
   std::string value;
   void GenSig(Code& ss) const { ss << sig << ": " << type << "=" << value; }
+  void GenIrDefCode(Code& ss) const {
+    ss << k4Space << ".attr(" << Brack(name) << ", attr." << GenAttrCode() << "(" << value << ")) \\";
+  }
 };
 
 struct OpDef {
@@ -397,7 +405,7 @@ struct OpDef {
   }
 
   void GenDoc(Code& ss) const {
-    ss << kEnd << kEnd;
+    ss << kEnd;
     ss << "# This api is auto-generated from IR " << op << kEnd;
   }
 
@@ -425,24 +433,17 @@ struct OpDef {
     ss << R"(""")" << doc << R"(""")" << kEnd;
 
     GenNewLine(ss);
-    ss << "op = get_default_ge_graph().op.add()" << kEnd;
-    ss << "op.type = " << Brack(op) << kEnd;
-    ss << "op.name = next_unique_name(node_name, " << Brack(op) << ")" << kEnd;
-
-    GenNewLine(ss);
-    ss << "# process dependices" << kEnd;
-    ss << "for dependency in dependencies:" << kEnd;
-    ss << k4Space << "op.input.append(dependency.controller)" << kEnd;
-
-    GenNewLine(ss);
     ss << "# process inputs" << kEnd;
+    ss << "inputs = {" << kEnd;
     for (auto& input : inputs) {
       input.GenCode(ss);
       ss << kEnd;
     }
+    ss << "}" << kEnd;
 
     GenNewLine(ss);
     ss << "# process attrs" << kEnd;
+    ss << "attrs = {" << kEnd;
     for (auto& attr : attrs) {
       attr.GenCode(ss);
       ss << kEnd;
@@ -451,21 +452,57 @@ struct OpDef {
       attr.GenCode(ss);
       ss << kEnd;
     }
+    ss << "}" << kEnd;
 
     GenNewLine(ss);
     ss << "# process outputs" << kEnd;
-    ss << "output_index = 0" << kEnd;
+    ss << "outputs = [" << kEnd;
     for (auto& output : outputs) {
       output.GenCode(ss);
       ss << kEnd;
     }
+    ss << "]" << kEnd;
 
     GenNewLine(ss);
-    ss << "# return outputs" << kEnd;
-    GenReturn(ss);
-    ss << kEnd;
-
+    ss << "return ge_op(" << kEnd;
+    ss << k4Space << "op_type=" << Brack(op) << "," << kEnd;
+    ss << k4Space << "inputs=inputs," << kEnd;
+    ss << k4Space << "attrs=attrs," << kEnd;
+    ss << k4Space << "outputs=outputs," << kEnd;
+    ss << k4Space << "ir=";
+    GenIrDef(ss);
+    ss << ")" << kEnd;
     ss.Dedent();
+  }
+
+  void GenIrDef(Code& ss) {
+    Code buffer;
+    buffer << "IrDef(" << Brack(op) << ") \\" << kEnd;
+    buffer.Indent();
+    for (auto& input : inputs) {
+      input.GenIrDefCode(buffer);
+      buffer << kEnd;
+    }
+
+    for (auto& attr : attrs) {
+      attr.GenIrDefCode(buffer);
+      buffer << kEnd;
+    }
+    for (auto& attr : attrs_with_default) {
+      attr.GenIrDefCode(buffer);
+      buffer << kEnd;
+    }
+
+    for (auto& output : outputs) {
+      output.GenIrDefCode(buffer);
+      buffer << kEnd;
+    }
+    std::string temp = buffer.str();
+    // 删除尾部的反斜杠
+    temp.pop_back();
+    temp.pop_back();
+    temp.pop_back();
+    ss << temp << kEnd;
   }
 
   void Gen(Code& ss) {
@@ -637,14 +674,16 @@ class OpDefBuilder {
     def.is_dynamic = is_dynamic;
     def.is_optional = is_optional;
     def.tensorType = GenTensorTypeStr(tensorType);
+    def.tensorTypeStr = GenTensorTypeIrStr(tensorType);
     
     def_.inputs.push_back(def);
     return *this;
   }
-  OpDefBuilder& Output(const std::string& input, bool is_dynamic = false) {
+  OpDefBuilder& Output(const std::string& input, const std::string &tensorType, bool is_dynamic = false) {
     OutputDef def;
     def.name = input;
     def.is_dynamic = is_dynamic;
+    def.tensorTypeStr = GenTensorTypeIrStr(tensorType);
     def_.outputs.push_back(def);
     return *this;
   }
@@ -692,6 +731,16 @@ class OpDefBuilder {
     return kTensorTypeUnknown;
   }
 
+  std::string GenTensorTypeIrStr(const std::string &str) {
+    size_t start = str.find("{") + 1;
+    size_t end = str.rfind("}");
+    if (start != std::string::npos && end != std::string::npos && start < end) {
+        return str.substr(start, end - start);
+    } else {
+        return "";
+    }
+  }
+
   OpDef def_;
   std::stringstream ss_;
   std::string err_;
@@ -707,8 +756,8 @@ class OpDefBuilder {
 #define INPUT(x, t) Input(#x, #t).Record(".INPUT(" CONCATENATE_STR(x, t) ")")
 #define DYNAMIC_INPUT(x, t) Input(#x, #t, true).Record(".DYNAMIC_INPUT(" CONCATENATE_STR(x, t) ")")
 #define OPTIONAL_INPUT(x, t) Input(#x, #t, false, true).Record(".OPTIONAL_INPUT(" CONCATENATE_STR(x, t) ")")
-#define OUTPUT(x, ...) Output(#x).Record(".OUTPUT(" CONCATENATE_STR(x, __VA_ARGS__) ")")
-#define DYNAMIC_OUTPUT(x, ...) Output(#x, true).Record(".DYNAMIC_OUTPUT(" CONCATENATE_STR(x, __VA_ARGS__) ")")
+#define OUTPUT(x, t) Output(#x, #t).Record(".OUTPUT(" CONCATENATE_STR(x, t) ")")
+#define DYNAMIC_OUTPUT(x, t) Output(#x, #t, true).Record(".DYNAMIC_OUTPUT(" CONCATENATE_STR(x, t) ")")
 #define ATTR(x, T, ...)                                                    \
   AttrWithDefault(#x, Value<T>::Type(), Value<T>::Proto(), T(__VA_ARGS__)) \
     .Record(".ATTR(" CONCATENATE_STR(x, T, __VA_ARGS__) ")")

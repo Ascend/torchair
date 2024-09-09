@@ -256,9 +256,9 @@ print(graph_result)
         需要特别注意，所实现的converter必须支持动态shape，不应该试图从输入的Tensor上获取任何shape信息，Tensor也不会提供任何shape信息。
         > 如果您的converter依赖shape才能工作，这通常意味着实现错误，或者没有选择正确的Ascend IR映射。
 
-    5. **自定义算子入图插件化注册**
+    5. **新增自定义算子入图注册**
         
-        此功能可以让用户注册自定义算子，增加自定义算子的入图能力，且无需重新编译torch_npu与torchair。
+        此功能可以让用户注册新增自定义算子，增加自定义算子的入图能力。
         > 注意：在开发自定义算子入图前，需要确保自定义算子已经在torch框架中完成注册。自定义算子指：区别与原生torch算子，为了实现用户自定义计算逻辑而开发注册的算子。
         > 在C++中注册自定义算子参考：https://pytorch.org/tutorials/advanced/dispatcher.html
 
@@ -321,9 +321,50 @@ print(graph_result)
         cmake ..
         make generate_ge_raw_custom_ops
         ```
-        生成的ge.api函数在codegen/custom_op/auto_generated_ge_raw_custom_ops.py文件中
+        生成的ge.api函数在codegen/custom_op/auto_generated_ge_raw_custom_ops.py文件中, 内容如下所示
+        ```
+        from typing import Any, Dict, List, Tuple, Union, Callable, Optional
+        from torchair.ge._ge_graph import auto_convert_to_tensor, TensorType
+        from torchair.ge import Tensor, DataType, attr
+        from torchair._ge_concrete_graph.ge_converter.compat_ir import ge_op, IrDef
 
-        （3）将您生成的文件import至您的工程中或者拷贝源码至您的调用文件，保证converter能够调用到即可。
+
+        # This api is auto-generated from IR Add
+        @auto_convert_to_tensor([False, False], [False, False])
+        def Add(x1: Tensor, x2: Tensor, *, dependencies=[], node_name=None):
+            """REG_OP(Add)\n
+        .INPUT(x1, TensorType({DT_FLOAT, DT_INT32, DT_INT64, DT_FLOAT16, DT_BF16, DT_INT16, DT_INT8, DT_UINT8, DT_DOUBLE, DT_COMPLEX128, DT_COMPLEX64, DT_STRING}))\n
+        .INPUT(x2, TensorType({DT_FLOAT, DT_INT32, DT_INT64, DT_FLOAT16, DT_BF16, DT_INT16, DT_INT8, DT_UINT8, DT_DOUBLE, DT_COMPLEX128, DT_COMPLEX64, DT_STRING}))\n
+        .OUTPUT(y, TensorType({DT_FLOAT, DT_INT32, DT_INT64, DT_FLOAT16, DT_BF16, DT_INT16, DT_INT8, DT_UINT8, DT_DOUBLE, DT_COMPLEX128, DT_COMPLEX64, DT_STRING}))\n
+        """
+
+            # process inputs
+            inputs = {
+                "x1": x1,
+                "x2": x2,
+            }
+
+            # process attrs
+            attrs = {
+            }
+
+            # process outputs
+            outputs = [
+            "y",
+            ]
+
+            return ge_op(
+                op_type="Add",
+                inputs=inputs,
+                attrs=attrs,
+                outputs=outputs,
+                ir=IrDef("Add") \
+                .input("x1", "DT_FLOAT, DT_INT32, DT_INT64, DT_FLOAT16, DT_BF16, DT_INT16, DT_INT8, DT_UINT8, DT_DOUBLE, DT_COMPLEX128, DT_COMPLEX64, DT_STRING") \
+                .input("x2", "DT_FLOAT, DT_INT32, DT_INT64, DT_FLOAT16, DT_BF16, DT_INT16, DT_INT8, DT_UINT8, DT_DOUBLE, DT_COMPLEX128, DT_COMPLEX64, DT_STRING") \
+                .output("y" , "DT_FLOAT, DT_INT32, DT_INT64, DT_FLOAT16, DT_BF16, DT_INT16, DT_INT8, DT_UINT8, DT_DOUBLE, DT_COMPLEX128, DT_COMPLEX64, DT_STRING")
+            )
+        ```
+        （3）将您生成的文件内容拷贝至工程目录python/torchair/_ge_concrete_graph/ge_converter/custom中合适的文件中。
 
         > 4 向torchair注册自定义算子的converter，完成自定义算子的torch IR到CANN软件图中的GE IR的转化(此步骤为npu入图独有的操作)。
 
@@ -340,19 +381,11 @@ print(graph_result)
             # 将输入的数据类型提升至与输出一致
             input1, input2 = dtype_promote(input1, input2, target_dtype=meta_outputs.dtype)
             # 调用ge构图api
-            return Add(input1, input2)
+            return ge.Add(input1, input2)
         ```
 
         至此完成全部自定义算子入图适配工作，您可以运行参考用例中的示例验证。
         > 注意： 您在开发您自己的REG_OP(xxx)的自定义算子时，需要向GE注册infershape函数，否则执行时会出错。
-
-
-        > 参考用例 
-
-        （1）examples/example_custom_op_register/example_custom_op_register_in_one_file.py  一个文件内部完成注册使用。
-
-        （2）examples/example_custom_op_register/new_custom_op.py 注册新算子
-        examples/example_custom_op_register/example_use_import_new_custom_op.py  import新算子模块，使用注册的新算子。
 
 3. **导出gegraph**
     

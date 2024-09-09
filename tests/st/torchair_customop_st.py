@@ -6,6 +6,7 @@ import torchair.ge as ge
 from torchair._ge_concrete_graph import ge_apis as raw_ops
 from torchair.ge._ge_graph import GeGraph, compat_as_bytes
 from torchair._ge_concrete_graph.ge_ir_pb2 import OpDef
+from torchair._ge_concrete_graph.ge_converter.compat_ir import is_cann_compat, ge_op, IrDef, IrElement
 
 torchair.logger.setLevel(logging.DEBUG)
 
@@ -246,6 +247,210 @@ class CustomOpSt(unittest.TestCase):
         # 枚举值考虑扩展不做长度校验，取典型值保证接口功能
         self.assertIn('FORMAT_FRACTAL_NZ', dir(torchair.ge.Format))
         self.assertIn('DT_BF16', dir(torchair.ge.DataType))
+
+    def test_is_cann_compat_success(self):
+        ir_v1 = IrDef("TestV1") \
+            .input("x1", "DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8") \
+            .dynamic_input("x2", "DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8") \
+            .optional_input("x3", "DT_FLOAT16, DT_BF16") \
+            .required_attr("attr1", ge.attr.Int) \
+            .attr("attr2", ge.attr.Float(1.000000)) \
+            .output("y1", "DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8") \
+            .dynamic_output("y2", "DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8")
+        ir_v2 = IrDef("TestV2") \
+            .input("x1", "DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8") \
+            .dynamic_input("x2", "DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8") \
+            .optional_input("x3", "DT_FLOAT16, DT_BF16") \
+            .optional_input("x4", "DT_FLOAT16, DT_BOOL, DT_FLOAT32") \
+            .required_attr("attr1", ge.attr.Int) \
+            .attr("attr2", ge.attr.Float(1.000000)) \
+            .attr("attr3", ge.attr.Str("BSH")) \
+            .output("y1", "DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8") \
+            .dynamic_output("y2", "DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8")
+        # V1是老cann的能力，V2是新cann的能力
+        # 老PTA + 老cann
+        success = is_cann_compat(optype="TestV1",
+                                 runtime_optional_inputs=("x3",),
+                                 runtime_optional_attrs=("attr2",))
+        self.assertEqual(success, "")
+
+        # 新PTA + 新cann
+        success = is_cann_compat(optype="TestV2",
+                                 runtime_optional_inputs=("x3", "x4"),
+                                 runtime_optional_attrs=("attr2", "attr3"))
+        self.assertEqual(success, "")
+
+        # 老PTA + 新cann
+        success = is_cann_compat(optype="TestV2",
+                                 runtime_optional_inputs=("x3",),
+                                 runtime_optional_attrs=("attr2",))
+        self.assertEqual(success, "")
+
+        # 新PTA + 老cann, 可选输入不传，新增optional_attr为默认值(因此已被滤除，所以输入没有attr3)
+        success = is_cann_compat(optype="TestV1",
+                                 runtime_optional_inputs=("x3",),
+                                 runtime_optional_attrs=("attr2",))
+        self.assertEqual(success, "")
+
+    def test_is_cann_compat_assert_raise(self):
+        ir_v1 = IrDef("TestV1") \
+            .input("x1", "DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8") \
+            .dynamic_input("x2", "DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8") \
+            .optional_input("x3", "DT_FLOAT16, DT_BF16") \
+            .required_attr("attr1", ge.attr.Int) \
+            .attr("attr2", ge.attr.Float(1.000000)) \
+            .output("y1", "DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8") \
+            .dynamic_output("y2", "DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8")
+        # V1是老cann的能力，V2是新cann的能力
+        # 使用不支持的optype
+        error_msg = is_cann_compat(
+            optype="TestV100", runtime_optional_inputs=(), runtime_optional_attrs=())
+
+        self.assertEqual(error_msg,
+                         f"OperatorFactory find optype TestV100 failed, "
+                         f"maybe you need upgrade cann version.")
+
+        # 新PTA + 老cann，可选输入不为空
+        error_msg = is_cann_compat(optype="TestV1",
+                                   runtime_optional_inputs=("x3", "x4"),
+                                   runtime_optional_attrs=("attr2",))
+
+        self.assertEqual(error_msg,
+                         f"optype TestV1 unsupport optional input [x4], optional attr [], "
+                         f"please upgrade cann version.")
+
+        # 新PTA + 老cann， 可选attr不是默认值
+        error_msg = is_cann_compat(optype="TestV1",
+                                   runtime_optional_inputs=("x3",),
+                                   runtime_optional_attrs=("attr2", "attr3"))
+
+        self.assertEqual(error_msg,
+                         f"optype TestV1 unsupport optional input [], optional attr [attr3], "
+                         f"please upgrade cann version.")
+
+    def test_ir_def(self):
+        ir = IrDef("TestV1") \
+            .input("x1", "DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8") \
+            .dynamic_input("x2", "DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8") \
+            .optional_input("x3", "DT_FLOAT16, DT_BF16") \
+            .required_attr("attr1", ge.attr.Int) \
+            .attr("attr2", ge.attr.Float(1.000000)) \
+            .output("y1", "DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8") \
+            .dynamic_output("y2", "DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8")
+        self.assertEqual("TestV1", ir.op_type)
+        self.assertEqual(IrElement.RequireInput, ir.indexed_inputs[0][0])
+        self.assertEqual("x1", ir.indexed_inputs[0][1])
+        self.assertEqual(
+            "DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8", ir.indexed_inputs[0][2])
+
+        self.assertEqual(IrElement.DynamicInput, ir.indexed_inputs[1][0])
+        self.assertEqual("x2", ir.indexed_inputs[1][1])
+        self.assertEqual(
+            "DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8", ir.indexed_inputs[1][2])
+
+        self.assertEqual(IrElement.OptionalInput, ir.indexed_inputs[2][0])
+        self.assertEqual("x3", ir.indexed_inputs[2][1])
+        self.assertEqual("DT_FLOAT16, DT_BF16", ir.indexed_inputs[2][2])
+
+        self.assertEqual(IrElement.RequireAttr, ir.indexed_attrs[0][0])
+        self.assertEqual("attr1", ir.indexed_attrs[0][1])
+        self.assertEqual(ge.attr.Int, ir.indexed_attrs[0][2])
+
+        self.assertEqual(IrElement.OptionalAttr, ir.indexed_attrs[1][0])
+        self.assertEqual("attr2", ir.indexed_attrs[1][1])
+        self.assertEqual(ge.attr.Float(1.000000), ir.indexed_attrs[1][2])
+
+        self.assertEqual(IrElement.RequireOutput, ir.indexed_outputs[0][0])
+        self.assertEqual("y1", ir.indexed_outputs[0][1])
+        self.assertEqual("DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8", ir.indexed_outputs[0][2])
+
+        self.assertEqual(IrElement.DynamicOutput, ir.indexed_outputs[1][0])
+        self.assertEqual("y2", ir.indexed_outputs[1][1])
+        self.assertEqual("DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8", ir.indexed_outputs[1][2])
+
+
+    def test_ge_op_basic(self):
+        ir = IrDef("TestV1") \
+            .input("x1", "DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8") \
+            .dynamic_input("x2", "DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8") \
+            .optional_input("x3", "DT_FLOAT16, DT_BF16") \
+            .required_attr("attr1", ge.attr.Int) \
+            .attr("attr2", ge.attr.Float(1.000000)) \
+            .output("y1", "DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8") \
+            .dynamic_output("y2", "DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8")
+        with GeGraph():
+            data1 = raw_ops.Data(
+                index=0, dtype=ge.DataType.DT_FLOAT, placement='CPU', node_name='data1')
+            data2 = raw_ops.Data(
+                index=1, dtype=ge.DataType.DT_FLOAT, placement='CPU', node_name='data2')
+            data3 = raw_ops.Data(
+                index=2, dtype=ge.DataType.DT_FLOAT, placement='CPU', node_name='data3')
+
+            tensor = ge_op(op_type='TestV1', inputs={'x1': data1, 'x2': data2, 'x3': data3},
+                           attrs={"attr1": ge.attr.Int(1), "attr2": ge.attr.Float(1.000000)},
+                           outputs=["y1", ("y2", 2)],
+                           ir=ir)
+
+            self.assertTrue(isinstance(tensor[0], raw_ops.Tensor))
+            op_def: OpDef = tensor[0].node
+
+            self.assertEqual(op_def.type, 'TestV1')
+            self.assertEqual(len(op_def.input), 3)
+            self.assertEqual(op_def.input[0], 'data1:0')
+            self.assertEqual(op_def.input[1], 'data2:0')
+            self.assertEqual(op_def.input[2], 'data3:0')
+            self.assertEqual(op_def.input_desc[0].name, 'x1')
+            self.assertEqual(op_def.input_desc[1].name, 'x2')
+            self.assertEqual(op_def.input_desc[2].name, 'x3')
+            self.assertIn("attr1", op_def.attr)
+            self.assertEqual(op_def.attr["attr1"].i, 1)
+            self.assertNotIn("attr2", op_def.attr)  # 默认值被删除了
+            self.assertEqual(len(op_def.output_desc), 3)
+            self.assertEqual(op_def.output_desc[0].name, 'y1')
+            self.assertEqual(op_def.output_desc[1].name, 'y20')
+            self.assertEqual(op_def.output_desc[2].name, 'y21')
+
+    def test_ge_op_optional(self):
+        ir = IrDef("TestV1") \
+            .input("x1", "DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8") \
+            .dynamic_input("x2", "DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8") \
+            .optional_input("x3", "DT_FLOAT16, DT_BF16") \
+            .required_attr("attr1", ge.attr.Int) \
+            .attr("attr2", ge.attr.Float(1.000000)) \
+            .output("y1", "DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8") \
+            .dynamic_output("y2", "DT_FLOAT16, DT_BF16, DT_FLOAT32, DT_INT8")
+        with GeGraph():
+            data1 = raw_ops.Data(
+                index=0, dtype=ge.DataType.DT_FLOAT, placement='CPU', node_name='data1')
+            data2 = raw_ops.Data(
+                index=1, dtype=ge.DataType.DT_FLOAT, placement='CPU', node_name='data2')
+
+            tensor = ge_op(op_type='TestV1', inputs={'x1': data1, 'x2': data2, 'x3': None},
+                           attrs={"attr1": ge.attr.Int(
+                               1), "attr2": ge.attr.Float(3.000000), },
+                           outputs=["y1", ("y2", 2)],
+                           ir=ir)
+
+            self.assertTrue(isinstance(tensor[0], raw_ops.Tensor))
+            op_def: OpDef = tensor[0].node
+            self.assertEqual(op_def.type, 'TestV1')
+            self.assertEqual(len(op_def.input), 2)  # 可选输入不占位
+            self.assertIn("attr1", op_def.attr)
+            self.assertEqual(op_def.attr["attr1"].i, 1)
+            self.assertIn("attr2", op_def.attr)  # 非默认值不能删
+            self.assertEqual(op_def.attr["attr2"].f, 3.000000)
+
+    def test_check_cann_compat(self):
+        from torchair.core import _torchair
+        error_msg = _torchair.check_cann_compat(
+            "TestV1", ["x3"], ["attr2"])
+        self.assertEqual(error_msg, "")
+
+        error_msg = _torchair.check_cann_compat(
+            "TestV1", ["inputname"], ["attr2"])
+        self.assertEqual(error_msg,
+                         f"optype TestV1 unsupport optional input [inputname], optional attr [], "
+                         f"please upgrade cann version.")
 
 
 if __name__ == '__main__':
