@@ -76427,3 +76427,88 @@ def FusedInferAttentionScore(query: Tensor, key: List[Tensor], value: List[Tenso
 
     # return outputs
     return attention_out, softmax_lse
+
+
+# This api is auto-generated from IR MoeFinalizeRoutingV2
+@auto_convert_to_tensor([False, False, False, False, False, False, False], [False, False, True, True, True, True, True])
+def MoeFinalizeRoutingV2(expanded_x: Tensor, expanded_row_idx: Tensor, x1: Optional[Tensor], x2: Optional[Tensor],
+                         bias: Optional[Tensor], scales: Optional[Tensor], expert_idx: Optional[Tensor], *,
+                         drop_pad_mode: int=0, dependencies=[], node_name=None):
+    """REG_OP(MoeFinalizeRoutingV2)\n
+    .INPUT(expanded_x, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .INPUT(expanded_row_idx, TensorType({DT_INT32}))\n
+    .OPTIONAL_INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .OPTIONAL_INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .OPTIONAL_INPUT(scales, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .OPTIONAL_INPUT(expert_idx, TensorType({DT_INT32}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .ATTR(drop_pad_mode, Int, 0)\n
+    """
+    
+    op = get_default_ge_graph().op.add()
+    op.type = "MoeFinalizeRoutingV2"
+    op.name = next_unique_name(node_name, "MoeFinalizeRoutingV2")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(expanded_x.tensor)
+    op.input_desc.add().CopyFrom(expanded_x.desc)
+    op.input_desc[-1].name = "expanded_x"
+    op.input.append(expanded_row_idx.tensor)
+    op.input_desc.add().CopyFrom(expanded_row_idx.desc)
+    op.input_desc[-1].name = "expanded_row_idx"
+    if x1 is not None:
+        op.input.append(x1.tensor)
+        op.input_desc.add().CopyFrom(x1.desc)
+        op.input_desc[-1].name = "x1"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "x1"
+    if x2 is not None:
+        op.input.append(x2.tensor)
+        op.input_desc.add().CopyFrom(x2.desc)
+        op.input_desc[-1].name = "x2"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "x2"
+    if bias is not None:
+        op.input.append(bias.tensor)
+        op.input_desc.add().CopyFrom(bias.desc)
+        op.input_desc[-1].name = "bias"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "bias"
+    if scales is not None:
+        op.input.append(scales.tensor)
+        op.input_desc.add().CopyFrom(scales.desc)
+        op.input_desc[-1].name = "scales"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "scales"
+    if expert_idx is not None:
+        op.input.append(expert_idx.tensor)
+        op.input_desc.add().CopyFrom(expert_idx.desc)
+        op.input_desc[-1].name = "expert_idx"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "expert_idx"
+
+    # process attrs
+    op.attr["drop_pad_mode"].i = drop_pad_mode
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+
+    return y
