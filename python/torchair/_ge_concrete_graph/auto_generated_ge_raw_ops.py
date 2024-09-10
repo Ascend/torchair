@@ -76512,3 +76512,36 @@ def MoeFinalizeRoutingV2(expanded_x: Tensor, expanded_row_idx: Tensor, x1: Optio
     output_index += 1
 
     return y
+
+
+#This api is auto-generated from IR Cmo
+@auto_convert_to_tensor([False], [False], inputs_tensor_type=[TensorType.TT_NUMBER])
+def Cmo(src: Tensor, *, max_size: int, type: int=6, dependencies=[], node_name=None):
+    """REG_OP(Cmo)\n
+.INPUT(src, TensorType::NumberType())\n
+.REQUIRED_ATTR(max_size, Int)\n
+.ATTR(type, Int, 6)\n
+"""
+
+    op = get_default_ge_graph().op.add()
+    op.type = "Cmo"
+    op.name = next_unique_name(node_name, "Cmo")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(src.tensor)
+    op.input_desc.add().CopyFrom(src.desc)
+    op.input_desc[-1].name = "src"
+
+    # process attrs
+    op.attr["max_size"].i = max_size
+    op.attr["type"].i = type
+
+    # process outputs
+    output_index = 0
+
+    # return outputs
+    return

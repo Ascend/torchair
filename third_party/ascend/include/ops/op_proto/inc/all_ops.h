@@ -32,6 +32,7 @@
 #include "bitwise.h"
 #include "bitwise_ops.h"
 #include "boosted_trees_ops.h"
+#include "cache_management_ops.h"
 #include "candidate_sampling_ops.h"
 #include "cast.h"
 #include "cluster.h"
