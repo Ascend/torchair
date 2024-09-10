@@ -195,6 +195,8 @@ class TorchairSt(unittest.TestCase):
                                    antiquant_offset=None,
                                    dequant_scale=None,
                                    pertoken_scale=None,
+                                   comm_quant_scale_1=None,
+                                   comm_quant_scale_2=None,
                                    reduce_op="sum",
                                    is_trans_a=1,
                                    is_trans_b=1,
