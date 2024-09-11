@@ -197,6 +197,7 @@ add(abs(x), 1) = [[2 2]
     def test_invalid_summarize(self):
         self.assertRaises(ValueError, torchair.ops.npu_print, "x =", torch.ones(2, 2), summarize_size=0)
         self.assertRaises(ValueError, torchair.ops.npu_print, "x =", torch.ones(2, 2), summarize_size=-2)
+        self.assertRaises(TypeError, torchair.ops.npu_print, "x =", torch.ones(2, 2), summarize_size=3.2)
 
 
 if __name__ == '__main__':

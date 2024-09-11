@@ -17,6 +17,17 @@
 namespace {
 std::unique_ptr<ge::Session> global_ge_session = nullptr;
 void *libge_runner_handle = nullptr;
+
+bool IsGraphNeedLogChannel(const ge::Graph &graph) {
+  const static std::string kPrintV2OpType = "PrintV2";
+  for (auto &node : graph.GetAllNodes()) {
+    ge::AscendString op_type("");
+    if ((node.GetType(op_type) == ge::GRAPH_SUCCESS) && (op_type.GetString() == kPrintV2OpType)) {
+      return true;
+    }
+  }
+  return false;
+}
 }  // namespace
 
 namespace tng {
@@ -121,6 +132,10 @@ Status Session::Finalize() {
 Status Session::AddGraph(uint32_t id, const ge::Graph &graph,
                          const std::map<ge::AscendString, ge::AscendString> &options) {
   TNG_RETURN_IF_ERROR(EnsureInitialized());
+
+  if (IsGraphNeedLogChannel(graph)) {
+    TNG_RETURN_IF_ERROR(StartStdoutChannel(device_index_));
+  }
 
   TNG_ASSERT_GE_OK(global_ge_session->AddGraph(id, graph, options));
 

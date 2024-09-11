@@ -86,6 +86,8 @@ def _npu_print(*args, summarize_size):
     tensors = [arg for arg in args if isinstance(arg, torch.Tensor)]
     if len(tensors) == 0:
         raise ValueError("npu_print() requires at least one tensor input")
+    if not isinstance(summarize_size, int):
+        raise TypeError(f"summarize_size must be int, got {type(summarize_size).__name__}")
     if summarize_size < -1 or summarize_size == 0:
         raise ValueError(f"summarize_size must be positive or -1 for all elements, got {summarize_size}")
 
@@ -105,7 +107,6 @@ def convert_print(tensors: List[Tensor],
                   placeholder: str,
                   summarize_size: int,
                   meta_outputs: List[TensorSpec] = None):
-    init_device_stdout_channel()
     printable_tensors = [ge.Cast(t, dst_type=DataType.DT_FLOAT) if t.dtype == DataType.DT_BF16 else t for t in tensors]
     msg = ge.StringFormat(printable_tensors, template=msg_format, placeholder=placeholder, summarize=summarize_size)
     ge.PrintV2(msg)
