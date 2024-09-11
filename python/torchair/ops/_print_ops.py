@@ -22,11 +22,15 @@ has_side_effect(torch.ops.air.print.default)
 
 def summarize_tensor(tensor: torch.Tensor, summarize_size) -> str:
     def _value(v):
+        v = float(v)
         return f"{v:.0f}" if v.is_integer() else f"{v}"
 
     def _summarize_array(array, nums):
         if not isinstance(array, np.ndarray):
             return _value(array)
+
+        if array.ndim == 0:
+            return _value(array.item())
 
         if array.ndim == 1:
             if nums < 0 or array.shape[0] <= 2 * nums:

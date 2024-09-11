@@ -135,6 +135,58 @@ add(abs(x), 1) = [[2 2]
         for x, y in zip(lines, expect_lines):
             self.assertEqual(x, y)
 
+    def test_scalar_print(self):
+        def func(v):
+            torchair.ops.npu_print(v, summarize_size=-1)
+
+        compiled_model = torch.compile(func, backend='aot_eager')
+
+        t = torch.tensor(2.5)
+
+        expect_lines = ["2.5"]
+        with CapturedStdout() as stdout:
+            compiled_model(t)
+        lines = stdout.non_empty_lines()
+        self.assertEqual(len(lines), len(expect_lines))
+        for x, y in zip(lines, expect_lines):
+            self.assertEqual(x, y)
+
+        t = torch.tensor(3)
+
+        expect_lines = ["3"]
+        with CapturedStdout() as stdout:
+            compiled_model(t)
+        lines = stdout.non_empty_lines()
+        self.assertEqual(len(lines), len(expect_lines))
+        for x, y in zip(lines, expect_lines):
+            self.assertEqual(x, y)
+
+        t = torch.tensor(True)
+
+        expect_lines = ["1"]
+        with CapturedStdout() as stdout:
+            compiled_model(t)
+        lines = stdout.non_empty_lines()
+        self.assertEqual(len(lines), len(expect_lines))
+        for x, y in zip(lines, expect_lines):
+            self.assertEqual(x, y)
+
+    def test_bool_print(self):
+        def func(v):
+            torchair.ops.npu_print(v, summarize_size=-1)
+
+        compiled_model = torch.compile(func, backend='aot_eager')
+
+        t = torch.tensor([True, False])
+
+        expect_lines = ["[1 0]"]
+        with CapturedStdout() as stdout:
+            compiled_model(t)
+        lines = stdout.non_empty_lines()
+        self.assertEqual(len(lines), len(expect_lines))
+        for x, y in zip(lines, expect_lines):
+            self.assertEqual(x, y)
+
     def test_npu_backend(self):
         def func(v):
             torchair.ops.npu_print("x =", v)
