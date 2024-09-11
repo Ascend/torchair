@@ -51,4 +51,7 @@ def conveter_npu_apply_rotary_pos_emb_default(
     if layout != 'BSH':
         raise NotImplementedError("layout only support BSH now!")
 
-    return ge.ApplyRotaryPosEmb(q, k, cos, sin, layout=1)
+    copy_q = ge.TensorMove(q)
+    copy_k = ge.TensorMove(k)
+
+    return ge.ApplyRotaryPosEmb(copy_q, copy_k, cos, sin, layout=1)
