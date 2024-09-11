@@ -63,6 +63,8 @@ def _weight_format_cast(model: torch.nn.Module):
             module.scale.data = _TORCH_NPU_MODULE.npu_trans_quant_param(module.scale, module.offset)
             if "Ascend310P" in _TORCH_NPU_MODULE.npu.get_device_name():
                 module.weight.data = _TORCH_NPU_MODULE.npu_format_cast(module.weight.data, 29)
+        if isinstance(module, _TORCH_NPU_MODULE.contrib.module.linear_quant.LinearQuant):
+            module.weight.data = _TORCH_NPU_MODULE.npu_format_cast(module.weight.data, 29)
         if isinstance(module, _TORCH_NPU_MODULE.contrib.module.linear_weight_quant.LinearWeightQuant):
             if module.quant_scale is not None:
                 quant_scale = module.quant_scale.data
