@@ -70,7 +70,7 @@ public:
     }
 
     ChannelData channel_data(acl_dataset);
-    auto acl_status = acltdtReceiveTensor(handle_, acl_dataset, -1 /* no timeout */);
+    auto acl_status = acltdtReceiveTensor(handle_, acl_dataset, 1000);
     if (acl_status != ACL_ERROR_NONE) {
       return ChannelData();
     }
