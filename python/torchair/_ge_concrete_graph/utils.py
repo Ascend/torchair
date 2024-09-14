@@ -1,3 +1,4 @@
+import os
 import contextlib
 import sympy
 
@@ -369,3 +370,21 @@ def _display_ge_type(ge_dtype: DataType):
         return ge_datatype[ge_dtype]
     else:
         return 'unknown'
+
+
+def get_cann_opp_version() -> str:
+    version_str = ""
+    version_info = os.path.join(os.getenv("ASCEND_OPP_PATH"), "version.info")
+    if not os.path.exists(version_info):
+        return version_str
+    with open(version_info, "r") as fd:
+        for line in fd.readlines():
+            version_str = line.strip()
+            if "Version" in version_str:
+                break
+            else:
+                version_str = ""
+    if version_str == "":
+        return version_str
+    else:
+        return version_str.split("=")[-1]

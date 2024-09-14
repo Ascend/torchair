@@ -14,6 +14,7 @@ from typing import (
     overload,
 )
 
+import os
 import torch
 from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
@@ -22,6 +23,7 @@ from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_conv
 from torchair.ge._ge_graph import Tensor, TensorSpec
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, Support
 from torchair._ge_concrete_graph.utils import dtype_promote
+from torchair._ge_concrete_graph.utils import get_cann_opp_version
 
 
 @declare_supported(
@@ -51,4 +53,16 @@ def conveter_npu_apply_rotary_pos_emb_default(
     if layout != 'BSH':
         raise NotImplementedError("layout only support BSH now!")
 
-    return ge.ApplyRotaryPosEmb(q, k, cos, sin, layout=1)
+    version_list = ["7.2", "7.3"]
+    opp_ver = get_cann_opp_version()
+    insert_tensor_move = True
+    for ver in version_list:
+        if opp_ver.startswith(ver):
+            insert_tensor_move = False
+            break
+    if insert_tensor_move:
+        tm_q = ge.TensorMove(q)
+        tm_k = ge.TensorMove(k)
+        return ge.ApplyRotaryPosEmb(tm_q, tm_k, cos, sin, layout=1)
+    else:
+        return ge.ApplyRotaryPosEmb(q, k, cos, sin, layout=1)
