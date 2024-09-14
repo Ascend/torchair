@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
   file << "from typing import Any, Dict, List, Tuple, Union, Callable, Optional" << kEnd;
   file << "from torchair.ge._ge_graph import auto_convert_to_tensor, TensorType" << kEnd;
   file << "from torchair.ge import Tensor, DataType, attr" << kEnd;
-  file << "from torchair._ge_concrete_graph.ge_converter.compat_ir import ge_op, IrDef" << kEnd;
+  file << "from torchair._ge_concrete_graph.ge_converter import ge_op, IrDef" << kEnd;
   file << ss.str() << kEnd;
   file << code.str() << kEnd;
 

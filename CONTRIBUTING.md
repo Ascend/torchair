@@ -326,7 +326,7 @@ print(graph_result)
         from typing import Any, Dict, List, Tuple, Union, Callable, Optional
         from torchair.ge._ge_graph import auto_convert_to_tensor, TensorType
         from torchair.ge import Tensor, DataType, attr
-        from torchair._ge_concrete_graph.ge_converter.compat_ir import ge_op, IrDef
+        from torchair._ge_concrete_graph.compat_ir import ge_op, IrDef
 
 
         # This api is auto-generated from IR Add

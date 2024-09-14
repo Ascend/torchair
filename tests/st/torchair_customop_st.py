@@ -6,7 +6,7 @@ import torchair.ge as ge
 from torchair._ge_concrete_graph import ge_apis as raw_ops
 from torchair.ge._ge_graph import GeGraph, compat_as_bytes
 from torchair._ge_concrete_graph.ge_ir_pb2 import OpDef
-from torchair._ge_concrete_graph.ge_converter.compat_ir import is_cann_compat, ge_op, IrDef, IrElement
+from torchair._ge_concrete_graph.compat_ir import is_cann_compat, ge_op, IrDef, IrElement
 
 torchair.logger.setLevel(logging.DEBUG)
 

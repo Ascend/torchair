@@ -8,6 +8,8 @@ from torchair.ge._ge_graph import Tensor, TensorSpec, DataType, TensorType
 from torchair.ge._ge_graph import compat_as_bytes, compat_as_bytes_list
 from torchair.ge._ge_graph import trans_to_list_list_int, trans_to_list_list_float
 from torchair.ge._ge_graph import get_invalid_desc
+from torchair._ge_concrete_graph.compat_ir import ge_op, IrDef
+from torchair.ge import attr
 # IR Const skipped as Deformed prototype
 # IR Constant skipped as Deformed prototype
 # IR Data skipped as Deformed prototype
