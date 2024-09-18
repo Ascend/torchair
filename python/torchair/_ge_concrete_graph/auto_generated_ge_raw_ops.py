@@ -42461,6 +42461,67 @@ def DynamicQuant(x: Tensor, smooth_scales: Optional[Tensor], *, dependencies=[],
     return y, scale
 
 
+# This api is auto-generated from IR DynamicQuantV2
+@auto_convert_to_tensor([False, False, False], [False, True, True])
+def DynamicQuantV2(x: Tensor, smooth_scales: Optional[Tensor], group_index: Optional[Tensor], *, dst_type: int=2, dependencies=[], node_name=None):
+    """REG_OP(DynamicQuantV2)\n
+.INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OPTIONAL_INPUT(smooth_scales, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OPTIONAL_INPUT(group_index, TensorType({DT_INT32}))\n
+.OUTPUT(y, TensorType({DT_INT8, DT_INT4}))\n
+.OUTPUT(scale, TensorType({DT_FLOAT}))\n
+.OUTPUT(offset, TensorType({DT_FLOAT}))\n
+.ATTR(dst_type, Int, DT_INT8)\n
+"""
+
+    op = get_default_ge_graph().op.add()
+    op.type = "DynamicQuantV2"
+    op.name = next_unique_name(node_name, "DynamicQuantV2")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+    if smooth_scales is not None:
+        op.input.append(smooth_scales.tensor)
+        op.input_desc.add().CopyFrom(smooth_scales.desc)
+        op.input_desc[-1].name = "smooth_scales"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "smooth_scales"
+    if group_index is not None:
+        op.input.append(group_index.tensor)
+        op.input_desc.add().CopyFrom(group_index.desc)
+        op.input_desc[-1].name = "group_index"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "group_index"
+
+    # process attrs
+    op.attr["dst_type"].i = dst_type
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "scale"
+    scale = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "offset"
+    offset = Tensor(op, output_index)
+    output_index += 1
+
+    # return outputs
+    return y, scale, offset
+
+
 # This api is auto-generated from IR SoftmaxFocalLoss
 @auto_convert_to_tensor([False, False, False], [False, False, True])
 def SoftmaxFocalLoss(pred: Tensor, target: Tensor, weight: Optional[Tensor], *, gamma: float=2.000000, alpha: float=0.250000, reduction: str="mean", dependencies=[], node_name=None):
