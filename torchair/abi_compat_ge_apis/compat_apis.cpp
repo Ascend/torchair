@@ -2,6 +2,7 @@
 
 #include "checker.h"
 #include "tng_status.h"
+#include "utils.h"
 
 #include "ge/ge_api.h"
 #include "graph/tensor.h"
@@ -139,7 +140,7 @@ Status DebugString(const ge::Shape &shape) {
 }
 
 Status DebugString(const gert::Shape &shape) {
-  auto dims = shape.GetDims();
+  auto dims = GetDims(shape);
   if (dims.empty()) {
     return Status::Error("[]");
   }

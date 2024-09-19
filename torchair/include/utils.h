@@ -64,6 +64,8 @@ Status AssembleDataAndShapeToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor)
 Status AssembleDataAndShapeToGe(const at::Tensor &tensor, gert::Tensor &ge_tensor);
 
 Status GeDtypeToAtDtype(const ge::DataType &ge_dtype, c10::ScalarType &dtype);
+
+std::vector<int64_t> GetDims(const gert::Shape &shape);
 }  // namespace tng
 
 #endif  // TORCH_AIR_TORCH_AIR_CONCRETE_GRAPH_UTILS_H_
