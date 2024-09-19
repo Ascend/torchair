@@ -493,7 +493,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._outputs = []
         self._fx_input_names = []
         self._input_process = None
-        self._input_func_list = []
+        self._input_info_list = []
         self._graph_output_ref_input = {}
         self._ref_data_idx = []
         self._cloned_ge_input_mapping = {}
@@ -507,8 +507,9 @@ class GeConcreteGraph(ConcreteGraphBase):
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         if not self._is_compiled:
             # Equivalent functionality to 'self._input_func_list[i](*args)', but better performance.
+            _input_func_list = [info.func for info in self._input_info_list]
             self._input_process = self._gen_input_process(self._fx_input_names, self._all_sym_input_idx,
-                                                          self._input_func_list)
+                                                          _input_func_list)
         inputs = self._input_process(*args)
 
         self.update_graph_with_runtime(inputs, args)
@@ -573,17 +574,16 @@ class GeConcreteGraph(ConcreteGraphBase):
 
         # Note:
         # Please do not take any actions to add or delete data nodes, or change the index of data nodes after this.
-        self._input_func_list = remove_dead_data_and_reorder_data_index(self.graph)
+        self._input_info_list = remove_dead_data_and_reorder_data_index(self.graph)
 
         self.graph.attr["_input_placements"].list.i.extend(get_graph_input_placements(self.graph))
         self.graph.attr["_output_dtypes"].list.i.extend([output.dtype for output in self.outputs])
         self.graph.attr["_executor_type"].i = _get_executor_type()
-
         self._ref_data_idx = optimize_reference_op_redundant_copy(self.graph)
         self._graph_output_ref_input = _mapping_assign_op_to_graph_output(self.graph)
-        for ge_index, input_func in enumerate(self._input_func_list):
-            if isinstance(input_func, _DiscontiguousTensorInput):
-                self._cloned_ge_input_mapping[ge_index] = input_func.fx_input_idx
+        for ge_index, input_info in enumerate(self._input_info_list):
+            if isinstance(input_info.func, _DiscontiguousTensorInput):
+                self._cloned_ge_input_mapping[ge_index] = input_info.func.fx_input_idx
 
         # Note: The following two passes must be executed after the above pass.
         explict_order_for_side_effect_nodes(self.graph, self._graph_output_ref_input)
@@ -668,7 +668,8 @@ class GeConcreteGraph(ConcreteGraphBase):
         kernel = IndentedBuffer()
         kernel.writelines(['', '_is_first_run = True', f'def kernel(*args):'])
         with kernel.indent():
-            input_code = self._codegen_input(self._fx_input_names, self._all_sym_input_idx, self._input_func_list)
+            _input_func_list = [info.func for info in self._input_info_list]
+            input_code = self._codegen_input(self._fx_input_names, self._all_sym_input_idx, _input_func_list)
             kernel.splice(input_code)
 
             # for info update in first run
@@ -918,6 +919,11 @@ class GeConcreteGraph(ConcreteGraphBase):
         local_compile_options["ge.exec.atomicCleanPolicy"] = "1"
         local_compile_options.update(generate_dynamic_dims_option(self.graph.named_inputs_info,
                                      self.config.inference_config.dynamic_gears_merge_policy.value))
+        optimize_frozen_flag_list = []
+        for input_info in self._input_info_list:
+            optimize_frozen_flag_list.append(1 if input_info.value_type == _ValueType.PARAMETER else 0)
+        if len(optimize_frozen_flag_list) != 0:
+            local_compile_options["frozenInput"] = ",".join(str(x) for x in optimize_frozen_flag_list)
         logger.info("local compile options:")
         for k, v in local_compile_options.items():
             logger.info(f"  {k}: {v}")

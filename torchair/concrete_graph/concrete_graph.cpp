@@ -125,6 +125,14 @@ Status NpuConcreteGraph::Create(const void *serialized_proto, size_t proto_size,
   if (iter != graph_data->compile_options.end()) {
     graph_data->deterministic_value = (iter->second == static_cast<ge::AscendString>("1")) ? 1 : 0;
   }
+  const char *const frozenInput_option = "frozenInput";
+  auto frozen_iter = graph_data->compile_options.find(ge::AscendString(frozenInput_option));
+  if (frozen_iter != graph_data->compile_options.end()) {
+    graph_data->frozen_input_flag_list = Split(frozen_iter->second.GetString(), ',');
+  }
+  if (graph_data->frozen_input_flag_list.empty()) {
+    graph_data->frozen_input_flag_list.resize(input_placements.size(), 0);
+  }
 
   static std::atomic_uint32_t uuid{0U};
   graph_data->id = uuid++;

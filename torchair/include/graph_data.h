@@ -40,6 +40,7 @@ class GraphData {
   ExecutorType executor_type = ExecutorType::UNKNOWN;
   std::shared_ptr<ge::CompiledGraphSummary> summary = nullptr;
   int32_t deterministic_value = 1;
+  std::vector<bool> frozen_input_flag_list;
 };
 }  // namespace tng
 #endif  // TORCH_AIR_TORCH_AIR_CONCRETE_GRAPH_GRAPH_DATA_H_

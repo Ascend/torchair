@@ -2,7 +2,7 @@ import math
 import os
 import sys
 
-os.environ['TNG_LOG_LEVEL'] = '1'
+os.environ['TNG_LOG_LEVEL'] = '0'
 import torchair
 import torch
 import unittest
@@ -1685,6 +1685,75 @@ class TorchairSt(unittest.TestCase):
         config.dump_config.dump_layer = "Add_1Mul_1 Add5"
         with self.assertRaises(ValueError):
             config.dump_config.dump_layer = "Add|"
+
+    def test_frozen_input_static(self):
+        initialize_graph_engine()
+        from torchair.core import _npu_graph_executor
+        import _privateuse1_backend
+
+        with GeGraph() as graph1:
+            a = ge.Data(index=0, shape=[128, 128], dtype=DataType.DT_FLOAT16, placement='CPU')
+            b = ge.Data(index=1, shape=[1, 2], dtype=DataType.DT_FLOAT16, placement='CPU')
+            d = ge.Add(a, b)
+            output = ge.NetOutput([d])
+
+        set_graph_output_dtypes(graph1, [DataType.DT_FLOAT16])
+        executor = TorchNpuGraph()
+        executor.load(graph1, options={"frozenInput": "0,1"})
+        executor.compile()
+
+        x = torch.ones([128, 128], dtype=torch.float16)
+        y = torch.ones([1, 2], dtype=torch.float16)
+        for i in range(2):
+            result = executor.run((x, y))
+
+    def test_frozen_input_dynamic(self):
+        initialize_graph_engine()
+        from torchair.core import _npu_graph_executor
+        import _privateuse1_backend
+        npu_device = _privateuse1_backend.npu_device()
+        torch.utils.rename_privateuse1_backend("npu")
+
+        with GeGraph() as graph:
+            x = ge.Data(index=0, shape=[-1, 2], dtype=DataType.DT_INT32, placement='NPU')
+            y = ge.Data(index=1, shape=[], dtype=DataType.DT_INT32, placement='NPU')
+            z = ge.Add(x, y)
+            output = ge.NetOutput([z])
+
+            set_graph_output_dtypes(graph, [DataType.DT_INT32])
+
+            executor = TorchNpuGraph()
+            executor.load(graph, options={"frozenInput": "0,1"})
+            executor.compile()
+
+            npu_x = torch.ones([2, 2], dtype=torch.int32).to(npu_device)
+            npu_y = torch.ones([], dtype=torch.int32).to(npu_device)
+            for i in range(2):
+                out = executor.run([npu_x, npu_y])
+
+    def test_frozen_input_no_used(self):
+        initialize_graph_engine()
+        from torchair.core import _npu_graph_executor
+        import _privateuse1_backend
+        npu_device = _privateuse1_backend.npu_device()
+        torch.utils.rename_privateuse1_backend("npu")
+
+        with GeGraph() as graph:
+            x = ge.Data(index=0, shape=[-1, 2], dtype=DataType.DT_INT32, placement='NPU')
+            y = ge.Data(index=1, shape=[], dtype=DataType.DT_INT32, placement='NPU')
+            z = ge.Add(x, y)
+            output = ge.NetOutput([z])
+
+            set_graph_output_dtypes(graph, [DataType.DT_INT32])
+
+            executor = TorchNpuGraph()
+            executor.load(graph, options={"frozenInput": "0,0"})
+            executor.compile()
+
+            npu_x = torch.ones([2, 2], dtype=torch.int32).to(npu_device)
+            npu_y = torch.ones([], dtype=torch.int32).to(npu_device)
+            for i in range(2):
+                out = executor.run([npu_x, npu_y])
 
 
 if __name__ == '__main__':

@@ -312,7 +312,7 @@ def remove_dead_data_and_reorder_data_index(graph: GraphDef):
             if op_tuple[0].name not in graph.named_inputs_info.keys():
                 raise AssertionError(f"Cannot find input info for data {op_tuple[0].name}. "
                                      f"All expected inputs info for data are {graph.named_inputs_info.keys()}.")
-            saved_inputs_info.append(graph.named_inputs_info[op_tuple[0].name].func)
+            saved_inputs_info.append(graph.named_inputs_info[op_tuple[0].name])
     for data_name in to_del_data_name:
         del graph.named_inputs_info[data_name]
 

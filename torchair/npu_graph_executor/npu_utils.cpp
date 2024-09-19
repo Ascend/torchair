@@ -169,4 +169,28 @@ Status AssembleDimsToShape(const at::IntArrayRef &origin_dims, const at::IntArra
   return Status::Success();
 }
 
+Status AssembleFrozenOption(const std::vector <bool> &frozen_input_flag_list,
+                            const std::vector <at::Tensor> &torch_inputs,
+                            std::string &frozen_option_value) {
+  if (frozen_input_flag_list.empty()) {
+    return Status::Success();
+  }
+  TNG_ASSERT(frozen_input_flag_list.size() == torch_inputs.size());
+  std::stringstream frozen_input_flag_list_stream;
+  for (size_t i = 0U; i < frozen_input_flag_list.size(); i++) {
+    if (frozen_input_flag_list[i]) {
+      if (frozen_input_flag_list_stream.str() != "") {
+        frozen_input_flag_list_stream << ";";
+      }
+      const std::vector<int64_t> &storage_sizes = at_npu::native::get_npu_storage_sizes(torch_inputs[i]);
+      const int64_t num = std::accumulate(storage_sizes.cbegin(), storage_sizes.cend(), 1LL,
+                                          std::multiplies<int64_t>());
+      frozen_input_flag_list_stream << i << "," << reinterpret_cast<uintptr_t>(torch_inputs[i].data_ptr()) << ","
+                                    << static_cast<size_t>(num * torch_inputs[i].element_size());
+    }
+  }
+  frozen_option_value = frozen_input_flag_list_stream.str();
+  return Status::Success();
+}
+
 }  // namespace tng
