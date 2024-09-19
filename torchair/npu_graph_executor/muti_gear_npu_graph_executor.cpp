@@ -140,8 +140,14 @@ Status MutiGearNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &i
     input_holders.resize(inputs.size());
     host_input_holders_.resize(inputs.size());
     TNG_RETURN_IF_ERROR(ParseInputGears(inputs, input_gears_, graph_data_->inputs_shape));
+    TNG_ASSERT(graph_data_->frozen_input_flag_list.size() == inputs.size());
   }
   for (size_t i = 0U; i < inputs.size(); ++i) {
+    if (!is_first_run && graph_data_->frozen_input_flag_list[i]) {
+      TNG_LOG(DEBUG) << "Assemble frozen input " << i << " " << DebugString(inputs[i])
+                     << ", does not need to assemble if not in first run.";
+      continue;
+    }
     if (graph_data_->input_placements[i] == Placement::DEVICE) {
       if (!inputs[i].device().is_privateuseone()) {
         return Status::Error("Input %zu placement %s is incompatible with expected PrivateUse1.", i,
@@ -269,6 +275,11 @@ Status MutiGearNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs
 
     if (is_first_run_) {
       std::map<ge::AscendString, ge::AscendString> load_options;
+      std::string frozen_option_value;
+      TNG_RETURN_IF_ERROR(AssembleFrozenOption(graph_data_->frozen_input_flag_list, torch_inputs, frozen_option_value));
+      if (frozen_option_value != "") {
+        load_options[ge::AscendString("ge.exec.frozenInputIndexes")] = ge::AscendString(frozen_option_value.c_str());
+      }
       TNG_RETURN_IF_ERROR(Session::GetInstance().FastLoadGraph(graph_data_->id, load_options, stream));
     }
 

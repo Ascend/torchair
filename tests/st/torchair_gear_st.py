@@ -290,7 +290,8 @@ class TorchairSt(unittest.TestCase):
             executor = TorchNpuGraph()
             executor.load(graph, options={"ge.dynamicDims": "2;4",
                                           "ge.dynamicNodeType": "1",
-                                          "ge.inputShape": "arg:-1,2;;2,2"})
+                                          "ge.inputShape": "arg:-1,2;;2,2",
+                                          "frozenInput": "0,1,1"})
             executor.set_hint_shape([[-1, 2], [], [2, 2]], [[-1, 2], [2, 2]])
             executor.compile()
 

@@ -466,4 +466,26 @@ Status GeTensorToAtTensor(gert::Tensor &ge_tensor, at::Tensor &tensor) {
   tensor.set_(storage, 0, dims);
   return Status::Success();
 }
+
+std::vector<bool> Split(const std::string &str, char pattern) {
+  std::string str_pattern(1, pattern);
+  std::vector<bool> res_vec;
+  if (str.empty()) {
+    return res_vec;
+  }
+  std::string str_and_pattern = str + str_pattern;
+  size_t pos = str_and_pattern.find(str_pattern);
+  size_t size = str_and_pattern.size();
+  while (pos != std::string::npos) {
+    std::string sub_str = str_and_pattern.substr(0, pos);
+    bool sub_bool;
+    std::istringstream(sub_str)>>sub_bool;
+    res_vec.push_back(sub_bool);
+    str_and_pattern = str_and_pattern.substr(pos + str_pattern.size(), size);
+    pos = str_and_pattern.find(str_pattern);
+  }
+  return res_vec;
+}
+
+
 }  // namespace tng

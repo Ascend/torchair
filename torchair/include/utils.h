@@ -35,6 +35,8 @@ std::string DebugString(const std::vector<std::vector<int64_t>> &shapes);
 
 std::string DebugString(const std::vector<int64_t> &shape);
 
+std::vector<bool> Split(const std::string &str, char pattern);
+
 std::vector<int64_t> GetGeTensorShape(const ge::Tensor &tensor);
 
 Status GePlacementToAtDeviceType(const ge::Placement &ge_placement, c10::DeviceType &device_type);
