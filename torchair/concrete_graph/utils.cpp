@@ -180,6 +180,16 @@ std::string DebugString(const gert::Tensor &tensor) {
   return compat::DebugString(tensor).GetErrorMessage();
 }
 
+std::vector<int64_t> GetDims(const gert::Shape &shape) {
+    std::vector<int64_t> dims;
+    size_t dim_num_ = shape.GetDimNum();
+    dims.resize(dim_num_);
+    for (size_t i = 0U; i < dim_num_; ++i) {
+      dims.push_back(shape.GetDim(i));
+    }
+    return dims;
+}
+
 std::vector<int64_t> GetGeTensorShape(const ge::Tensor &tensor) {
   size_t rank = tensor.GetShapeDimNum();
   std::vector<int64_t> shape(rank);
@@ -191,7 +201,7 @@ std::vector<int64_t> GetGeTensorShape(const ge::Tensor &tensor) {
 }
 
 std::vector<int64_t> GetGeTensorShape(const gert::Tensor &tensor) {
-  return tensor.GetOriginShape().GetDims();
+  return GetDims(tensor.GetOriginShape());
 }
 
 Status GePlacementToAtDeviceType(const ge::Placement &ge_placement, c10::DeviceType &device_type) {
@@ -424,8 +434,8 @@ Status GeTensorToAtTensor(gert::Tensor &ge_tensor, at::Tensor &tensor) {
   at::TensorOptions option = at::TensorOptions().dtype(tensor_dtype).device(device_type);
   tensor = at::empty({0}, option);
 
-  const std::vector<int64_t> &dims = ge_tensor.GetOriginShape().GetDims();
-  if (ge_tensor.GetStorageShape().GetDims() != dims) {
+  const std::vector<int64_t> &dims = GetDims(ge_tensor.GetOriginShape());
+  if (GetDims(ge_tensor.GetStorageShape()) != dims) {
     return Status::Error("Unsupported ge tensor with different origin shape and storage shape, ",
                          DebugString(ge_tensor).c_str());
   }
