@@ -205,13 +205,6 @@ struct Shape {
     return *this;
   }
 
-std::vector<int64_t> GetDims() const {
-  std::vector<int64_t> dims;
-  dims.resize(dim_num_);
-  (void)std::copy(dims_, dims_ + dim_num_, dims.begin());
-  return dims;
-}
-
  private:
   size_t dim_num_;
   int64_t dims_[kMaxDimNum];

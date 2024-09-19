@@ -182,9 +182,9 @@ std::string DebugString(const gert::Tensor &tensor) {
 
 std::vector<int64_t> GetDims(const gert::Shape &shape) {
     std::vector<int64_t> dims;
-    size_t dim_num_ = shape.GetDimNum();
-    dims.resize(dim_num_);
-    for (size_t i = 0U; i < dim_num_; ++i) {
+    size_t dim_num = shape.GetDimNum();
+    dims.reserve(dim_num);
+    for (size_t i = 0U; i < dim_num; ++i) {
       dims.push_back(shape.GetDim(i));
     }
     return dims;
