@@ -25,10 +25,10 @@ enum class SocVersion {
   ASCEND910B3 = 7,
   ASCEND910B4 = 8,
 
-  /* claster ASCEND910C */
-  ASCEND910C1 = 9,
-  ASCEND910C2 = 10,
-  ASCEND910C3 = 11,
+  /* claster ASCEND910_93 */
+  ASCEND910_9391 = 9,
+  ASCEND910_9381 = 10,
+  ASCEND910_9372 = 11,
 
   /* claster ASCEND310P */
   ASCEND310P1 = 12,
@@ -75,9 +75,9 @@ const std::map<std::string, SocVersion> SOC_VERSION_STR {
     {"Ascend910B3", SocVersion::ASCEND910B3},
     {"Ascend910B4", SocVersion::ASCEND910B4},
     {"Ascend910B2C", SocVersion::ASCEND910B2C},
-    {"Ascend910C1", SocVersion::ASCEND910C1},
-    {"Ascend910C2", SocVersion::ASCEND910C2},
-    {"Ascend910C3", SocVersion::ASCEND910C3},
+    {"Ascend910_9391", SocVersion::ASCEND910_9391},
+    {"Ascend910_9381", SocVersion::ASCEND910_9381},
+    {"Ascend910_9372", SocVersion::ASCEND910_9372},
     {"Ascend920A", SocVersion::ASCEND920A},
     {"Ascend310P1", SocVersion::ASCEND310P1},
     {"Ascend310P3", SocVersion::ASCEND310P3},
