@@ -20884,8 +20884,8 @@ def _ForeachACos(x: List[Tensor], *, size_of_y: int, dependencies=[], node_name=
 """
 
     op = get_default_ge_graph().op.add()
-    op.type = "ForeachACos"
-    op.name = next_unique_name(node_name, "ForeachACos")
+    op.type = "ForeachAcos"
+    op.name = next_unique_name(node_name, "ForeachAcos")
 
     # process dependices
     for dependency in dependencies:
@@ -20954,8 +20954,8 @@ def _ForeachASin(x: List[Tensor], *, size_of_y: int, dependencies=[], node_name=
 """
 
     op = get_default_ge_graph().op.add()
-    op.type = "ForeachASin"
-    op.name = next_unique_name(node_name, "ForeachASin")
+    op.type = "ForeachAsin"
+    op.name = next_unique_name(node_name, "ForeachAsin")
 
     # process dependices
     for dependency in dependencies:
@@ -21024,8 +21024,8 @@ def _ForeachATan(x: List[Tensor], *, size_of_y: int, dependencies=[], node_name=
 """
 
     op = get_default_ge_graph().op.add()
-    op.type = "ForeachATan"
-    op.name = next_unique_name(node_name, "ForeachATan")
+    op.type = "ForeachAtan"
+    op.name = next_unique_name(node_name, "ForeachAtan")
 
     # process dependices
     for dependency in dependencies:
@@ -21750,6 +21750,80 @@ def _ForeachExpm1(x: List[Tensor], *, size_of_y: int, dependencies=[], node_name
     output_index += size_of_y
 
     # return outputs
+    return y
+
+
+# This api is auto-generated from IR ForeachErf
+@auto_convert_to_tensor([True], [False])
+def _ForeachErf(x: List[Tensor], *, size_of_y: int, dependencies=[], node_name=None):
+    """REG_OP(ForeachErf)\n
+.DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+"""
+
+    op = get_default_ge_graph().op.add()
+    op.type = "ForeachErf"
+    op.name = next_unique_name(node_name, "ForeachErf")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(x):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x" + str(i)
+
+    # process attrs
+
+    # process outputs
+    output_index = 0
+    y = []
+    for i in range(output_index, output_index + size_of_y):
+        op.output_desc.add().name = "y" + str(i - output_index)
+        y.append(Tensor(op, i))
+    output_index += size_of_y
+
+    return y
+
+
+# This api is auto-generated from IR ForeachErfc
+@auto_convert_to_tensor([True], [False])
+def _ForeachErfc(x: List[Tensor], *, size_of_y: int, dependencies=[], node_name=None):
+    """REG_OP(ForeachErfc)\n
+.DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+"""
+
+    op = get_default_ge_graph().op.add()
+    op.type = "ForeachErfc"
+    op.name = next_unique_name(node_name, "ForeachErfc")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(x):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x" + str(i)
+
+    # process attrs
+
+    # process outputs
+    output_index = 0
+    y = []
+    for i in range(output_index, output_index + size_of_y):
+        op.output_desc.add().name = "y" + str(i - output_index)
+        y.append(Tensor(op, i))
+    output_index += size_of_y
+
     return y
 
 

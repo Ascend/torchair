@@ -632,3 +632,125 @@ def Unpack(x: Tensor, *, num: int, axis: int = 0, dependencies=[], node_name=Non
 
     size_of_y = num
     return raw_ops._Unpack(x, size_of_y=size_of_y, num=num, axis=axis, dependencies=dependencies, node_name=node_name)
+
+
+@auto_convert_to_tensor([True], [False])
+def ForeachCos(x: List[Tensor], *, dependencies=[], node_name=None):
+    """REG_OP(ForeachCos)\n
+    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    """
+    size_of_y = len(x)
+    return raw_ops._ForeachCos(x, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+@auto_convert_to_tensor([True], [False])
+def ForeachACos(x: List[Tensor], *, dependencies=[], node_name=None):
+    """REG_OP(ForeachACos)\n
+    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    """
+    
+    size_of_y = len(x)
+    return raw_ops._ForeachACos(x, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+@auto_convert_to_tensor([True], [False])
+def ForeachAbs(x: List[Tensor], *, dependencies=[], node_name=None):
+    """REG_OP(ForeachAbs)\n
+    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+    """
+    size_of_y = len(x)
+    return raw_ops._ForeachAbs(x, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+@auto_convert_to_tensor([True], [False])
+def ForeachASin(x: List[Tensor], *, dependencies=[], node_name=None):
+    """REG_OP(ForeachASin)\n
+    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    """
+    size_of_y = len(x)
+    return raw_ops._ForeachASin(x, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+@auto_convert_to_tensor([True], [False])
+def ForeachATan(x: List[Tensor], *, dependencies=[], node_name=None):
+    """REG_OP(ForeachATan)\n
+    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    """
+    size_of_y = len(x)
+    return raw_ops._ForeachATan(x, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+@auto_convert_to_tensor([True], [False])
+def ForeachCosh(x: List[Tensor], *, dependencies=[], node_name=None):
+    """REG_OP(ForeachCosh)\n
+    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    """
+    size_of_y = len(x)
+    return raw_ops._ForeachCosh(x, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+@auto_convert_to_tensor([True], [False])
+def ForeachErf(x: List[Tensor], *, dependencies=[], node_name=None):
+    """REG_OP(ForeachErf)\n
+    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    """
+    size_of_y = len(x)
+    return raw_ops._ForeachErf(x, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+@auto_convert_to_tensor([True], [False])
+def ForeachErfc(x: List[Tensor], *, dependencies=[], node_name=None):
+    """REG_OP(ForeachErfc)\n
+    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    """
+    size_of_y = len(x)
+    return raw_ops._ForeachErfc(x, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+@auto_convert_to_tensor([True], [False])
+def ForeachExp(x: List[Tensor], *, dependencies=[], node_name=None):
+    """REG_OP(ForeachExp)\n
+    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    """
+    size_of_y = len(x)
+    return raw_ops._ForeachExp(x, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+@auto_convert_to_tensor([True], [False])
+def ForeachExpm1(x: List[Tensor], *, dependencies=[], node_name=None):
+    """REG_OP(ForeachExpm1)\n
+    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    """
+    size_of_y = len(x)
+    return raw_ops._ForeachExpm1(x, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+@auto_convert_to_tensor([True], [False])
+def ForeachLog(x: List[Tensor], *, dependencies=[], node_name=None):
+    """REG_OP(ForeachLog)\n
+    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    """
+    size_of_y = len(x)
+    return raw_ops._ForeachLog(x, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+@auto_convert_to_tensor([True], [False])
+def ForeachLog10(x: List[Tensor], *, dependencies=[], node_name=None):
+    """REG_OP(ForeachLog10)\n
+    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    """
+    size_of_y = len(x)
+    return raw_ops._ForeachLog10(x, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
