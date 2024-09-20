@@ -12,8 +12,8 @@ class _DataDumpConfig(NpuBaseConfig):
         self.dump_path = MustExistedPathValue("./")
         self.dump_mode = OptionValue('all', ['input', 'output', 'all'])
         self.quant_dumpable = OptionValue(False, [False, True])
-        self.dump_step = RegexValue("", r'^(((\d+)|(\d+-{0,1}\d+))\|{0,1})*$')
-        self.dump_layer = RegexValue("", r'^[0-9a-zA-Z_" "/\\.]*$')
+        self.dump_step = RegexValue("", r'^(((\d+)|(\d+-{0,1}\d+))\|{0,1})*$', "0|1|2-5|6")
+        self.dump_layer = RegexValue("", r'^[0-9a-zA-Z_" "/\\.]*$', "Mul_1 Add1 Conv2D_1")
 
         super(_DataDumpConfig, self).__init__()
 

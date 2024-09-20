@@ -92,9 +92,10 @@ class MustExistedPathValue(OptionValue):
 
 
 class RegexValue(OptionValue):
-    def __init__(self, default, regex):
+    def __init__(self, default, regex, example):
         super().__init__(default)
         self.__regex = regex
+        self.__example = example
 
     @property
     def value(self):
@@ -104,7 +105,7 @@ class RegexValue(OptionValue):
     def value(self, v):
         if not re.match(self.__regex, v):
             raise ValueError(f'Please set legal regex value format match {self.__regex}, '
-                             + f'{str(v)} is Illegal format!')
+                             + f'{str(v)} is Illegal format, correct example:{self.__example}.')
         self._value = v
 
 
