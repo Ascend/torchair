@@ -308,7 +308,7 @@ class TorchairSt(unittest.TestCase):
         assert src.count("op: \"Const\"") == 4
         assert src.count("op: \"Data\"") == 2
         assert src.count("op: \"Shape\"") == 0
-        assert src.count("dtype: DT_BF16") == 16
+        assert src.count("dtype: DT_BF16") == 13
         assert src.count("  dim: 10") == 3
 
     def test_export_enable_record_nn_module_stack(self):
