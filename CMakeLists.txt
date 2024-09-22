@@ -45,11 +45,7 @@ if(DEFINED TORCH_VERSION)
   add_definitions(-DTNG_TORCH_VERSION=${TORCH_VERSION})
 endif()
 
-if (NOT EXISTS ${CMAKE_CURRENT_LIST_DIR}/tools/ASCEND_SDK_PATH)
-    set(ASCEND_SDK_HEADERS_PATH ${CMAKE_CURRENT_LIST_DIR}/third_party/ascend)
-else()
-    file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/tools/ASCEND_SDK_PATH" ASCEND_SDK_HEADERS_PATH)
-endif ()
+set(ASCEND_SDK_HEADERS_PATH ${CMAKE_CURRENT_LIST_DIR}/third_party/ascend)
 
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/secure_c.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/metadef/module.cmake)

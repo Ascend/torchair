@@ -168,7 +168,7 @@ def setup_ascend_sdk(env_path):
             custom_ascend_path = None
 
         if not ascend_path:
-            print(f"No ascend sdk path specified, skip setting up 'ASCEND_SDK_HEADERS_PATH'")
+            print(f"No ascend sdk path specified")
             return
 
         # Check if the path is valid
@@ -187,7 +187,7 @@ def setup_ascend_sdk(env_path):
 
     with open(real_config_path('env.sh'), 'w') as f:
         stub_libs = os.path.dirname(os.path.abspath(__file__)) + "/build/stubs"
-        sdk_libs = f"{ascend_path}/lib"
+        sdk_libs = f"{ascend_path}/lib:{ascend_path}/lib64"
         f.write(f"#!/bin/sh\n")
         f.write(f'export LD_LIBRARY_PATH={stub_libs}:{sdk_libs}')
 

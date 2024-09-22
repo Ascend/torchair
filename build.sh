@@ -101,8 +101,13 @@ main() {
       echo "Building torchair with no ascned-sdk specified"
       export NO_ASCEND_SDK=1
     else
-      echo "ASCEND_CUSTOM_PATH must be set when running ut or st"
-      exit 1
+      if [[ "X$ASCEND_HOME_PATH" = "X" ]]; then
+        echo "ASCEND_CUSTOM_PATH or ASCEND_HOME_PATH must be set when running ut or st"
+        exit 1
+      else
+        echo "Building torchair with ascned-sdk in ${ASCEND_HOME_PATH}"
+        export ASCEND_SDK_PATH=${ASCEND_HOME_PATH}
+      fi
     fi
   else
     echo "Building torchair with ascned-sdk in ${ASCEND_CUSTOM_PATH}"

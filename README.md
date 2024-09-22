@@ -39,7 +39,7 @@ Specify the location of ascend sdk for debug on localhost or leave empty.
 (You can make this quiet by set env [ASCEND_SDK_PATH]):
 ```
 
-如果您不需要在本地CPU调试，可以直接回车跳过。否则，需要输入昇腾处理器开发套件的安装路径（需指定至opensdk/opensdk目录）。
+如果您不需要在本地CPU模拟执行，可以直接回车跳过。否则，需要输入昇腾处理器开发套件的安装路径（默认安装路径通常为~/Ascend/ascend-toolkit/latest/）。
 
 > 您可以通过设置 `ASCEND_SDK_PATH` 环境变量指定 SDK 目录 或 设置 `NO_ASCEND_SDK` 环境变量指定不需要 SDK 来抑制交互式窗口弹出。
 

@@ -1,12 +1,6 @@
+#include <unordered_set>
+#include <sstream>
 #include "graph/operator_factory.h"
-#include "logger.h"
-#include "pybind11/pybind11.h"
-#include "pybind11/stl.h"
-#include "torch/csrc/Exceptions.h"
-#include "torch/csrc/autograd/utils/wrap_outputs.h"
-
-
-namespace py = pybind11;
 
 namespace cann_ir_ability {
 
@@ -25,7 +19,7 @@ std::string CheckCannCompat(const std::string &optype, const std::vector<std::st
   }
 
   std::unordered_set<std::string> support_attrs;
-  for (const auto item : attr_names_types) {
+  for (const auto &item : attr_names_types) {
     support_attrs.insert(item.first.GetString());
   }
 
