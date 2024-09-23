@@ -22279,6 +22279,47 @@ def _ForeachSigmoid(x: List[Tensor], *, size_of_y: int, dependencies=[], node_na
     return y
 
 
+# This api is auto-generated from IR ForeachRoundOffNumber
+@auto_convert_to_tensor([True, False], [False, False])
+def _ForeachRoundOffNumber(x: List[Tensor], roundMode: Tensor, *, size_of_y: int, dependencies=[], node_name=None):
+    """REG_OP(ForeachRoundOffNumber)\n
+.DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+.INPUT(roundMode, TensorType({DT_INT64}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+"""
+
+    op = get_default_ge_graph().op.add()
+    op.type = "ForeachRoundOffNumber"
+    op.name = next_unique_name(node_name, "ForeachRoundOffNumber")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(x):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x" + str(i)
+    op.input.append(roundMode.tensor)
+    op.input_desc.add().CopyFrom(roundMode.desc)
+    op.input_desc[-1].name = "roundMode"
+
+    # process attrs
+
+    # process outputs
+    output_index = 0
+    y = []
+    for i in range(output_index, output_index + size_of_y):
+        op.output_desc.add().name = "y" + str(i - output_index)
+        y.append(Tensor(op, i))
+    output_index += size_of_y
+
+    return y
+
+
 # This api is auto-generated from IR RoiAlignRotatedGrad
 @auto_convert_to_tensor([False, False], [False, False])
 def RoiAlignRotatedGrad(x_grad: Tensor, rois: Tensor, *, y_grad_shape: List[int], pooled_h: int, pooled_w: int, spatial_scale: float, sampling_ratio: int=0, aligned: bool=True, clockwise: bool=False, dependencies=[], node_name=None):
