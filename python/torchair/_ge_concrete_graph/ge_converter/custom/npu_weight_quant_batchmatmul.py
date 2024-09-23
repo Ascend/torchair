@@ -26,10 +26,11 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
 
 @declare_supported(
     [
-        #支持Abf16W8 bf16输出 | Afp16W8 fp16输出
+        # 支持Abf16W8 bf16输出 | Afp16W8 fp16输出
         # bf16输入时，bias需为fp32 , fp16输入时，bias为fp16
         Support(F16(32, 11264), F16(11264, 1664), F16(1, 1664), F16(1, 1664)),
-
+        # 支持Afp16W8, antiquantScale为int64, antiquantOffset为int32，输出为fp16
+        Support(F16(96, 11264), F16(64, 11264), I64(64, 1), I32(64, 1)),
     ]
 )
 @register_fx_node_ge_converter(torch.ops.npu.npu_weight_quant_batchmatmul.default)
@@ -48,8 +49,6 @@ def conveter_npu_npu_weight_quant_batchmatmul(
     Tensor? antiquant_offset=None, Tensor? quant_scale=None, Tensor? quant_offset=None,
     Tensor? bias=None) -> Tensor
     """
-    if antiquant_scale is not None and antiquant_scale.dtype == DataType.DT_INT64:
-        antiquant_scale = ge.Cast(antiquant_scale, dst_type=DataType.DT_UINT64)
     if quant_scale is not None and quant_scale.dtype == DataType.DT_INT64:
         quant_scale = ge.Cast(quant_scale, dst_type=DataType.DT_UINT64)
     if weight is not None and weight.dtype == DataType.DT_INT32:
