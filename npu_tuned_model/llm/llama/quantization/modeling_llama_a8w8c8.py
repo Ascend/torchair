@@ -32,10 +32,10 @@ from quantization.npu_quantize import NpuA8W8Linear
 
 from torch.nn import Parameter
 from transformers.activations import ACT2FN
-from transformers.modeling_outputs import BaseModelOutputWithPast, 
+from transformers.modeling_outputs import BaseModelOutputWithPast, \
     CausalLMOutputWithPast, SequenceClassifierOutputWithPast
 from transformers.modeling_utils import PreTrainedModel
-from transformers.utils import add_start_docstrings, 
+from transformers.utils import add_start_docstrings, \
     add_start_docstrings_to_model_forward, logging, replace_return_docstrings
 from transformers.models.llama.configuration_llama import LlamaConfig
 
@@ -295,7 +295,7 @@ class LlamaAttention(nn.Module):
                 f" and `num_heads`: {self.num_heads})."
             )
         self.o_proj = NpuA8W8Linear(self.q_hidden_size, self.hidden_size)
-        self.qkv = nn.Linear(self.hidden_size, self.q_hidden_size + 2 * self.kv_hidden_size)
+        self.qkv = NpuA8W8Linear(self.hidden_size, self.q_hidden_size + 2 * self.kv_hidden_size)
 
         ## qkvo activation asymmetric quantization parameters
         self.register_buffer("scale_qkv", torch.ones(self.hidden_size, dtype=torch.float32, device="npu"))

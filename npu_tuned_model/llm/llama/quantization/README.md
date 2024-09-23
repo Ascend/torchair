@@ -278,9 +278,9 @@ source ${cann_path}/setenv.bash
 **拉起脚本&执行**
 
 ```shell
-# 图模式 A8W8C8
+# torch dynamo图模式 A8W8C8
 python3 benchmark/npu/benchmark_llama.py --model_path=xxx/llama2-7b/fp16_model_dir/ --execute_mode=dynamo --quant_mode="a8w8c8"
-# 单算子 A8W8C8
+# torch eager 单算子模式 A8W8C8
 python3 benchmark/npu/benchmark_llama.py --model_path=xxx/llama2-7b/fp16_model_dir/ --execute_mode=eager --quant_mode="a8w8c8"
 ```
 
