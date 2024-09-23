@@ -62,7 +62,6 @@ _CONFIG_FOR_DOC = "Qwen2Config"
 
 QWEN2_PRETRAINED_MODEL_ARCHIVE_LIST = [
     "Qwen/Qwen2-7B-beta",
-    # See all Qwen2 models at https://huggingface.co/models?filter=qwen2
 ]
 
 
@@ -440,7 +439,7 @@ class Qwen2FlashAttention2(Qwen2Attention):
         super().__init__(*args, **kwargs)
 
         # TODO: Should be removed once Flash Attention for RoCm is bumped to 2.1.
-        # flash_attn<2.1 generates top-left aligned causal mask, while what is needed here is bottom-right alignement, that was made default for flash_attn>=2.1. This attribute is used to handle this difference. Reference: https://github.com/Dao-AILab/flash-attention/releases/tag/v2.1.0.
+        # flash_attn<2.1 generates top-left aligned causal mask, while what is needed here is bottom-right alignement, that was made default for flash_attn>=2.1. This attribute is used to handle this difference.
         # Beware that with flash_attn<2.1, using q_seqlen != k_seqlen (except for the case q_seqlen == 1) produces a wrong mask (top-left).
         self._flash_attn_uses_top_left_mask = not is_flash_attn_greater_or_equal_2_10()
 
@@ -792,7 +791,6 @@ class Qwen2SdpaAttention(Qwen2Attention):
                 )
 
         # SDPA with memory-efficient backend is currently (torch==2.1.2) bugged with non-contiguous inputs with custom attn_mask,
-        # Reference: https://github.com/pytorch/pytorch/issues/112577.
         if query_states.device.type == "cuda" and attention_mask is not None:
             query_states = query_states.contiguous()
             key_states = key_states.contiguous()
@@ -911,7 +909,7 @@ QWEN2_START_DOCSTRING = r"""
     library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
     etc.)
 
-    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    This model is also a PyTorch [torch.nn.Module] subclass.
     Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
     and behavior.
 
@@ -974,8 +972,7 @@ QWEN2_INPUTS_DOCSTRING = r"""
             `past_key_values`).
 
             If you want to change padding behavior, you should read [`modeling_opt._prepare_decoder_attention_mask`]
-            and modify to your needs. See diagram 1 in [the paper](https://arxiv.org/abs/1910.13461) for more
-            information on the default strategy.
+            and modify to your needs.
 
             - 1 indicates the head is **not masked**,
             - 0 indicates the head is **masked**.
