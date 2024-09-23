@@ -51,13 +51,14 @@ def conveter_aten_gt_Tensor(self: Tensor, other: Tensor, meta_outputs: TensorSpe
 @declare_supported([
     Support(F32(1024, 1024), 0),
     Support(F32(1024, 1024), 1.0),
+    Support(I8(1024, 1024), -1.1),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.gt.Scalar)
 def conveter_aten_gt_Scalar(
     self: Tensor, other: Union[Number, Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::gt.Scalar(Tensor self, Scalar other) -> Tensor"""
-    target_dtype = get_gt_dtype(self.meta, other.meta if isinstance(other, torch.Tensor) else other)
+    target_dtype = get_gt_dtype(self.meta, other.meta if isinstance(other, Tensor) else other)
     if target_dtype:
         self, other = dtype_promote(self, other, target_dtype=target_dtype)
     return ge.Greater(self, other)
