@@ -398,7 +398,8 @@ def _patch_model_7():
     StochasticActor.forward = new_forward
 
 
-@register_patch("dcgan", "mobilenet_v2", "phlippe_resnet", "shufflenet_v2_x1_0", "squeezenet1_1")
+@register_patch("dcgan", "mobilenet_v2", "phlippe_resnet", "shufflenet_v2_x1_0", "squeezenet1_1", "vgg16",
+                "alexnet", "densenet121", "maml_omniglot")
 def _patch_model_8():
     """
     close conv amp for some model only in accuracy mode.
@@ -483,106 +484,26 @@ def _patch_model_10():
 def _patch_model_11():
     if {"--only", "--amp", "--accuracy"} <= set(sys.argv):
         try:
-            import torchvision
-            from torchvision.models.resnet import BasicBlock, Bottleneck, ResNet, conv1x1
+            from torchbenchmark.models.functorch_dp_cifar10 import Model
+            import torchvision.models as models
         except (ImportError, ModuleNotFoundError):
-            log.warning("Import torchvision failed or could not get BasicBlock,Bottleneck,ResNet,conv1x1 "
-                        "from module torchvision.models.resnet")
+            log.warning("import torchvision fail or could not get Model from module "
+                        "torchbenchmark.models.functorch_dp_cifar10")
             return
 
-        class GraphBreak(nn.Module):
-            def __init__(self):
-                super().__init__()
-
-            def forward(self, x):
-                torch._dynamo.graph_break()
-                return x
-
-        def new_forward(self, x):
-            identity = x
-
-            out = self.conv1(x)
-            torch._dynamo.graph_break()
-            out = self.bn1(out)
-            out = self.relu(out)
-
-            out = self.conv2(out)
-            torch._dynamo.graph_break()
-            out = self.bn2(out)
-
-            if self.downsample is not None:
-                identity = self.downsample(x)
-
-            out += identity
-            out = self.relu(out)
-
-            return out
-
-        def _new_forward_impl(self, x):
-            # See note [TorchScript super()]
-            x = self.conv1(x)
-            torch._dynamo.graph_break()
-            x = self.bn1(x)
-            x = self.relu(x)
-            x = self.maxpool(x)
-
-            x = self.layer1(x)
-            x = self.layer2(x)
-            x = self.layer3(x)
-            x = self.layer4(x)
-
-            x = self.avgpool(x)
-            x = torch.flatten(x, 1)
-            x = self.fc(x)
-
-            return x
-
-        def _new_make_layer(
-                self,
-                block: Type[Union[BasicBlock, Bottleneck]],
-                planes: int,
-                blocks: int,
-                stride: int = 1,
-                dilate: bool = False,
-        ) -> nn.Sequential:
-            norm_layer = self._norm_layer
-            downsample = None
-            previous_dilation = self.dilation
-            if dilate:
-                self.dilation *= stride
-                stride = 1
-            if stride != 1 or self.inplanes != planes * block.expansion:
-                downsample = nn.Sequential(
-                    conv1x1(self.inplanes, planes * block.expansion, stride),
-                    GraphBreak(),
-                    norm_layer(planes * block.expansion),
-                )
-
-            layers = []
-            layers.append(
-                block(
-                    self.inplanes, planes, stride, downsample, self.groups, self.base_width, previous_dilation,
-                    norm_layer
-                )
+        def new_init(self, test, device, batch_size=None, extra_args=[]):
+            super(Model, self).__init__(test=test, device=device, batch_size=32, extra_args=extra_args)
+            self.model = models.__dict__['resnet18'](
+                pretrained=False, norm_layer=(lambda c: nn.GroupNorm(min(c, 32), c)))
+            self.model = self.model.to(device)
+            self.example_inputs = (
+                torch.randn((self.batch_size, 3, 32, 32), device=self.device),
             )
-            self.inplanes = planes * block.expansion
-            for _ in range(1, blocks):
-                layers.append(
-                    block(
-                        self.inplanes,
-                        planes,
-                        groups=self.groups,
-                        base_width=self.base_width,
-                        dilation=self.dilation,
-                        norm_layer=norm_layer,
-                    )
-                )
+            self.example_target = torch.randint(0, 10, (self.batch_size,), device=self.device)
+            self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001)
+            self.criterion = nn.CrossEntropyLoss()
 
-            return nn.Sequential(*layers)
-
-        ResNet._make_layer = _new_make_layer
-        ResNet._forward_impl = _new_forward_impl
-        BasicBlock.forward = new_forward
+        Model.__init__ = new_init
 
 
 def create_fusion_switch_file():
@@ -814,7 +735,39 @@ def _patch_model_17():
     # set it back to aclnn afterwards
     register_callback(use_aclnn)
 
-    
+
+@register_patch("resnet50", "resnet152", "resnext50_32x4d")
+def _patch_model_18():
+    if {"--only", "--amp", "--accuracy"} <= set(sys.argv):
+        try:
+            import torchvision.models as models
+        except (ImportError, ModuleNotFoundError):
+            log.warning("Import torchvision failed or could not get models "
+                    "from module torchvision.models")
+            return
+
+        if 'resnet50' in sys.argv:
+            from torchbenchmark.models.resnet50 import Model
+            model = 'resnet50'
+            weight = models.ResNet50_Weights.IMAGENET1K_V1
+        elif 'resnet152' in sys.argv:
+            from torchbenchmark.models.resnet152 import Model
+            model = 'resnet152'
+            weight = models.ResNet152_Weights.IMAGENET1K_V1
+        elif 'resnext50_32x4d' in sys.argv:
+            from torchbenchmark.models.resnext50_32x4d import Model
+            model = 'resnext50_32x4d'
+            weight = models.ResNeXt50_32X4D_Weights.IMAGENET1K_V1
+        else:
+            raise RuntimeError("args.only expect model resnet50, resnet152 or resnext50_32x4d")
+
+        def new_init(self, test, device, batch_size=None, extra_args=[]):
+            super(Model, self).__init__(model_name=model, test=test, device=device,
+                                        batch_size=32, weights=weight,
+                                        extra_args=extra_args)
+        Model.__init__ = new_init
+
+
 def patch_model(model_name):
     if model_name not in _patch_table.keys():
         return
