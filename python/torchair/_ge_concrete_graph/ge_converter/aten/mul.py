@@ -25,6 +25,15 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
 from torchair._ge_concrete_graph.utils import dtype_promote, DataType
 
 
+def _get_mul_compute_dtype(self, other, output_dtype):
+    if isinstance(self, Tensor) and isinstance(other, Tensor) and \
+            self.dtype == DataType.DT_BOOL and other.dtype == DataType.DT_BOOL:
+        return DataType.DT_UINT8
+    if isinstance(self, Tensor) and self.dtype == DataType.DT_BF16 and not isinstance(other, Tensor):
+        return DataType.DT_FLOAT
+    return output_dtype
+
+
 @declare_supported([
     Support(F32(2, 2), F32(2, 2)),
     Support(F16(2, 2), F16(2, 2)),
@@ -38,10 +47,7 @@ from torchair._ge_concrete_graph.utils import dtype_promote, DataType
 def conveter_aten_mul_Tensor(self: Tensor, other: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::mul.Tensor(Tensor self, Tensor other) -> Tensor"""
     """Mul operater doesn't support the input format of (bool, bool) till 2023/11/17"""
-    compute_dtype = meta_outputs.dtype
-    if isinstance(self, Tensor) and isinstance(other, Tensor) and \
-        self.dtype == DataType.DT_BOOL and other.dtype == DataType.DT_BOOL:
-        compute_dtype = DataType.DT_UINT8
+    compute_dtype = _get_mul_compute_dtype(self, other, meta_outputs.dtype)
     self, other = dtype_promote(self, other, target_dtype=compute_dtype)
     output = ge.Mul(self, other)
     output = dtype_promote(output, target_dtype=meta_outputs.dtype)
