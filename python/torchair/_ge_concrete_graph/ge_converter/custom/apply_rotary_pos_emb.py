@@ -34,8 +34,8 @@ from torchair._ge_concrete_graph.utils import get_cann_opp_version
 )
 @register_fx_node_ge_converter(torch.ops.npu.npu_apply_rotary_pos_emb.default)
 def conveter_npu_apply_rotary_pos_emb_default(
-    q: Tensor,
-    k: Tensor,
+    query: Tensor,
+    key: Tensor,
     cos: Tensor,
     sin: Tensor,
     layout: str = 'BSH',
@@ -61,8 +61,8 @@ def conveter_npu_apply_rotary_pos_emb_default(
             insert_tensor_move = False
             break
     if insert_tensor_move:
-        tm_q = ge.TensorMove(q)
-        tm_k = ge.TensorMove(k)
+        tm_q = ge.TensorMove(query)
+        tm_k = ge.TensorMove(key)
         return ge.ApplyRotaryPosEmb(tm_q, tm_k, cos, sin, layout=1)
     else:
-        return ge.ApplyRotaryPosEmb(q, k, cos, sin, layout=1)
+        return ge.ApplyRotaryPosEmb(query, key, cos, sin, layout=1)

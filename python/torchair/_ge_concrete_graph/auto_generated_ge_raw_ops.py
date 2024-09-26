@@ -42126,22 +42126,15 @@ def AddRmsNorm(x1: Tensor, x2: Tensor, gamma: Tensor, *, epsilon: float=0.000001
 # This api is auto-generated from IR ApplyRotaryPosEmb
 @auto_convert_to_tensor([False, False, False, False],
                         [False, False, False, False])
-def ApplyRotaryPosEmb(q: Tensor,
-                      k: Tensor,
-                      cos: Tensor,
-                      sin: Tensor,
-                      *,
-                      layout: int = 1,
-                      dependencies = [],
-                      node_name = None):
+def ApplyRotaryPosEmb(query: Tensor, key: Tensor, cos: Tensor, sin: Tensor, *, layout: int = 1, dependencies = [], node_name = None):
     """REG_OP(ApplyRotaryPosEmb)\n
-.INPUT(q, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))\n
-.INPUT(k, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))\n
+.INPUT(query, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))\n
+.INPUT(key, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))\n
 .INPUT(cos, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))\n
 .INPUT(sin, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))\n
 .ATTR(layout, Int, 1)\n
-.OUTPUT(q, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))\n
-.OUTPUT(k, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))\n
+.OUTPUT(query, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))\n
+.OUTPUT(key, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))\n
 """
 
     op = get_default_ge_graph().op.add()
@@ -42153,12 +42146,12 @@ def ApplyRotaryPosEmb(q: Tensor,
         op.input.append(dependency.controller)
 
     # process inputs
-    op.input.append(q.tensor)
-    op.input_desc.add().CopyFrom(q.desc)
-    op.input_desc[-1].name = "q"
-    op.input.append(k.tensor)
-    op.input_desc.add().CopyFrom(k.desc)
-    op.input_desc[-1].name = "k"
+    op.input.append(query.tensor)
+    op.input_desc.add().CopyFrom(query.desc)
+    op.input_desc[-1].name = "query"
+    op.input.append(key.tensor)
+    op.input_desc.add().CopyFrom(key.desc)
+    op.input_desc[-1].name = "key"
     op.input.append(cos.tensor)
     op.input_desc.add().CopyFrom(cos.desc)
     op.input_desc[-1].name = "cos"
@@ -42171,15 +42164,15 @@ def ApplyRotaryPosEmb(q: Tensor,
 
     # process outputs
     output_index = 0
-    op.output_desc.add().name = "q"
-    q = Tensor(op, output_index)
+    op.output_desc.add().name = "query"
+    query = Tensor(op, output_index)
     output_index += 1
-    op.output_desc.add().name = "l"
-    l = Tensor(op, output_index)
+    op.output_desc.add().name = "key"
+    key = Tensor(op, output_index)
     output_index += 1
 
     # return outputs
-    return q, l
+    return query, key
 
 
 # This api is auto-generated from IR LogSoftmaxGrad
