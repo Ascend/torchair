@@ -5,7 +5,8 @@ import sympy
 import torch
 from torchair.core.utils import logger
 from torchair._ge_concrete_graph.ge_ir_pb2 import GraphDef
-from torchair.ge._ge_graph import compat_as_bytes, DataType, is_sym, Tensor, torch_type_to_ge_type
+from torchair.ge._ge_graph import compat_as_bytes, DataType, is_sym, Tensor, \
+    torch_type_to_ge_type, ge_type_to_torch_type
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._utils.path_manager import PathManager
 from typing import Any, Dict, List, Tuple, Union, Callable
@@ -388,3 +389,23 @@ def get_cann_opp_version() -> str:
         return version_str
     else:
         return version_str.split("=")[-1]
+
+
+def normalize_min_value(srcdtype: DataType):
+    if srcdtype in [DataType.DT_INT32, DataType.DT_INT64, DataType.DT_INT16, DataType.DT_INT8, DataType.DT_UINT8]:
+        min_value = torch.iinfo(ge_type_to_torch_type(srcdtype)).min
+    elif srcdtype in [DataType.DT_DOUBLE, DataType.DT_FLOAT]:
+        min_value = -float("inf")
+    else:
+        min_value = -float("inf")
+    return min_value
+
+
+def normalize_max_value(srcdtype: DataType):
+    if srcdtype in [DataType.DT_INT32, DataType.DT_INT64, DataType.DT_INT16, DataType.DT_INT8, DataType.DT_UINT8]:
+        max_value = torch.iinfo(ge_type_to_torch_type(srcdtype)).max
+    elif srcdtype in [DataType.DT_DOUBLE, DataType.DT_FLOAT]:
+        max_value = float("inf")
+    else:
+        max_value = float("inf")
+    return max_value

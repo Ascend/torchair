@@ -22,7 +22,7 @@ from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_conv
 from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
-from torchair._ge_concrete_graph.utils import dtype_promote
+from torchair._ge_concrete_graph.utils import dtype_promote, normalize_max_value
 
 
 @declare_supported([
@@ -36,14 +36,10 @@ def conveter_aten_clamp_min_default(
     self: Tensor, min: Union[Number, Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::clamp_min(Tensor self, Scalar min) -> Tensor"""
-    if self.dtype == DataType.DT_INT32 or self.dtype == DataType.DT_INT64:
-        max_value = torch.iinfo(torch.int32).max
-    elif self.dtype == DataType.DT_FLOAT:
-        max_value = torch.finfo(torch.float32).max
-    else:
-        max_value = torch.finfo(torch.float16).max
-    min_value = dtype_promote(min, target_dtype=self.dtype)
-    max_value = dtype_promote(max_value, target_dtype=self.dtype)
+    max_value = normalize_max_value(self.dtype)
+    self = dtype_promote(self, target_dtype=meta_outputs.dtype)
+    min_value = dtype_promote(min, target_dtype=meta_outputs.dtype)
+    max_value = dtype_promote(max_value, target_dtype=meta_outputs.dtype)
     return ge.ClipByValueV2(self, min_value, max_value)
 
 
