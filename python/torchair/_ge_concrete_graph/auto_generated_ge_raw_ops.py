@@ -56348,6 +56348,64 @@ def AscendQuantV2(x: Tensor,
     return y
 
 
+# This api is auto-generated from IR GroupQuant
+@auto_convert_to_tensor([False, False, False, False], [False, False, False, True])
+def GroupQuant(x: Tensor,
+               scale: Tensor,
+               group_index: Tensor,
+               offset: Optional[Tensor],
+               *,
+               dst_type: int = 2,
+               dependencies=[],
+               node_name=None):
+    """REG_OP(GroupQuant)\n
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))\n
+    .INPUT(scale, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))\n
+    .INPUT(group_index,offset TensorType({DT_INT32, DT_INT64}))\n
+    .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))\n
+    .OUTPUT(y, TensorType({DT_INT8, DT_INT4}))\n
+    .ATTR(dst_type, Int, DT_INT8)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "GroupQuant"
+    op.name = next_unique_name(node_name, "GroupQuant")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+    op.input.append(scale.tensor)
+    op.input_desc.add().CopyFrom(scale.desc)
+    op.input_desc[-1].name = "scale"
+    op.input.append(group_index.tensor)
+    op.input_desc.add().CopyFrom(group_index.desc)
+    op.input_desc[-1].name = "group_index"
+    if offset is not None:
+        op.input.append(offset.tensor)
+        op.input_desc.add().CopyFrom(offset.desc)
+        op.input_desc[-1].name = "offset"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "offset"
+
+    # process attrs
+    op.attr["dst_type"].i = dst_type
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+
+    return y
+
+
 # This api is auto-generated from IR AscendDequant
 @auto_convert_to_tensor([False, False], [False, False])
 def AscendDequant(x: Tensor, deq_scale: Tensor, *, sqrt_mode: bool=False, relu_flag: bool=False, dtype: int=0, dependencies=[], node_name=None):
