@@ -20,7 +20,7 @@ from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
 from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
-from torchair._ge_concrete_graph.utils import dtype_promote
+from torchair._ge_concrete_graph.utils import dtype_promote, normalize_max_value, normalize_min_value
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
 
@@ -43,25 +43,16 @@ def conveter_aten_clamp_default(
     return clamp(self, max, min)
 
 
-def clamp(self, max_value, min_value):
+def clamp(self, max_value, min_value, meta_outputs):
     if min_value is None and max_value is None:
         raise RuntimeError("torch.clamp: At least one of 'min' or 'max' must not be None")
     if min_value is None:
-        if self.dtype == DataType.DT_INT32 or self.dtype == DataType.DT_INT64:
-            min_value = torch.iinfo(torch.int32).min
-        elif self.dtype == DataType.DT_FLOAT:
-            min_value = torch.finfo(torch.float32).min
-        else:
-            min_value = torch.finfo(torch.float16).min
+        min_value = normalize_min_value(self.dtype)
     if max_value is None:
-        if self.dtype == DataType.DT_INT32 or self.dtype == DataType.DT_INT64:
-            max_value = torch.iinfo(torch.int32).max
-        elif self.dtype == DataType.DT_FLOAT:
-            max_value = torch.finfo(torch.float32).max
-        else:
-            max_value = torch.finfo(torch.float16).max
-    min_value = dtype_promote(min_value, target_dtype=self.dtype)
-    max_value = dtype_promote(max_value, target_dtype=self.dtype)
+        max_value = normalize_max_value(self.dtype)
+    self = dtype_promote(self, target_dtype=meta_outputs.dtype)
+    min_value = dtype_promote(min_value, target_dtype=meta_outputs.dtype)
+    max_value = dtype_promote(max_value, target_dtype=meta_outputs.dtype)
     return ge.ClipByValue(self, min_value, max_value)
 
 
@@ -73,7 +64,7 @@ def conveter_aten_clamp_Tensor(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::clamp.Tensor(Tensor self, Tensor? min=None, Tensor? max=None) -> Tensor"""
-    return clamp(self, max, min)
+    return clamp(self, max, min, meta_outputs)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.clamp.out)
