@@ -69,15 +69,6 @@ chatglm3-6b https://huggingface.co/THUDM/chatglm3-6b
 ```
 
 # 性能优化
-
-## 固定kv cache大小
-
-**优化思路**：对于kv cache的处理是作为模型的输入，模型中通过cat进行拼接后，返回新的kv cache，这种更新方式存在多次申请内存及拷贝的性能损失。可以根据句子最大长度申请好一块固定大小的kv cache tensor，然后通过scatter_update_算子对指定位置上的kv cache进行更新。
-
-**不适用原因**： torch_npu scatter_update_算子只支持后两个维度的更新，chatglm网络中seq_len在第0维度，如果使用npu算子还需要进行转置，增加时间开销，实测性能无提升，该优化点不适用于chatglm网络。
-
-
-
 ## 替换FlashAttention
 
 **优化原因**：将小算子替换为融合大算子，提升性能
@@ -159,6 +150,93 @@ class RMSNorm(torch.nn.Module):
 
 ```
 
+## 调整QKV的格式为BSND
+**优化原因**：原始的chatglm3网络QKV tensor中seq_len在首维，即SBND格式。由于Torch NPU的npu_prompt_flash_attention算子和npu_incre_flash_attention算子中input_layout输入只支持BNSD或BSND（BSH）格式，CoreAttention在调用上述NPU算子前需要使用permute进行转置，导致在网络中引入了transpose算子，调整QKV及相关tensor维度，使QKV tensor始终保持BSH/BSND格式，可以避免插入transpose算子，提升网络性能。    
+**优化方式**：
+```python
+# 1.ChatGLMForConditionalGeneration forward函数中
+        hidden_states = transformer_outputs[0]
+        if return_last_logit:
+            # 替换
+            # hidden_states = hidden_states[-1:]
+            hidden_states = hidden_states[:,-1:,:]
+        lm_logits = self.transformer.output_layer(hidden_states)
+        # 删除
+        # lm_logits = lm_logits.transpose(0, 1).contiguous()
+
+# 2.ChatGLMModel 
+    # def _wrap_graph函数
+      # 删除
+      # rotary_pos_emb = rotary_pos_emb.transpose(0, 1).contiguous()
+    # forward函数中
+        '''
+        hidden_states, presents, all_hidden_states, all_self_attentions = self._wrap_graph(position_ids, seq_length,inputs_embeds, full_attention_mask,   past_key_values,use_cache,output_hidden_states)
+        '''
+        # 替换
+        inputs_embeds_permute= inputs_embeds.permute(1,0,2)
+        hidden_states, presents, all_hidden_states, all_self_attentions = self._wrap_graph(position_ids, seq_length, inputs_embeds_permute, full_attention_mask,   past_key_values,use_cache,output_hidden_states)
+
+# 3.ChatGLMPreTrainedModel get_masks函数中
+        if past_key_values:
+            # 替换
+            # past_length = past_key_values[0][0].shape[0]
+            past_length = past_key_values[0][0].shape[1]
+
+# 4.SelfAttention forward函数中
+        if kv_cache is not None:
+            cache_k, cache_v = kv_cache
+            # 替换
+            # key_layer = torch.cat((cache_k, key_layer), dim=0)
+            # value_layer = torch.cat((cache_v, value_layer), dim=0)
+            key_layer = torch.cat((cache_k, key_layer), dim=1)
+            value_layer = torch.cat((cache_v, value_layer), dim=1)
+
+# 5.CoreAttention forward函数中修改
+        # 删除
+        # query_layer, key_layer, value_layer = [k.permute(1, 2, 0, 3) for k in [query_layer, key_layer, value_layer]]
+        if attention_mask is None and query_layer.shape[2] == key_layer.shape[3]:
+            attention_mask = torch.ones(query_layer.size(0), 1, query_layer.size(2), key_layer.size(2),
+                                        device = query_layer.device, dtype = torch.bool)
+            attention_mask.tril_()
+            attention_mask = ~attention_mask
+        if query_layer.ssize(1) > 1:
+            attention_mask_pfa = attention_mask.to(torch.bool)
+            context_layer = torch_npu.npu_prompt_flash_attention(query_layer.contiguous(),
+                                                                 key_layer.contiguous(),
+                                                                 value_layer.contiguous(),
+                                                                 num_heads = query_layer.size(2),
+                                                                 input_layout = "BSND",
+                                                                 scale_value = self.scale_value,
+                                                                 pre_tokens = 65535,
+                                                                 next_tokens = 65535,
+                                                                 atten_mask = attention_mask_pfa)
+        else:
+            attention_mask_ifa = attention_mask.to(torch.bool)
+            context_layer = torch_npu.npu_prompt_flash_attention(query_layer.contiguous(),
+                                                                 key_layer.contiguous(),
+                                                                 value_layer.contiguous(),
+                                                                 num_heads = query_layer.size(2),
+                                                                 input_layout = "BSND",
+                                                                 scale_value = self.scale_value,
+                                                                 atten_mask = attention_mask_ifa)
+        # 删除
+        #  context_layer = context_layer.permute(2, 0, 1, 3)
+
+# 6.apply_rotary_pos_emb
+    # 替换
+    # sq, b, np, hn = x.size(0), x.size(1), x.size(2), x.size(3)
+    sq, b, np, hn = x.size(1), x.size(0), x.size(2), x.size(3)
+    rot_dim = rope_cache.shape[-2] * 2
+    x, x_pass = x[..., :rot_dim], x[..., rot_dim:]
+    # truncate to support variable sizes
+    # rope_cache = rope_cache[:sq]
+    rope_cache = rope_cache[:,:sq,:,:]
+    # xshaped = x.reshape(sq, -1, np, rot_dim // 2, 2)
+    xshaped = x.reshape(-1, sq, np, rot_dim // 2, 2)
+    # rope_cache = rope_cache.view(sq, -1, 1, xshaped.size(3), 2)
+    rope_cache = rope_cache.view(-1, sq, 1, xshaped.size(3), 2)
+```
+
 ## 全量优化计算量
 
 **优化原因**：根据网络的计算逻辑，全量计算完logits后只取seq的最新位置的数据，所以在全量的最后线性层计算可以只对最新的seq位置做计算，降低计算量。原始模式已经存在该优化
@@ -192,24 +270,31 @@ class RMSNorm(torch.nn.Module):
 <tbody>
   <tr>
     <td class="tg-0pky">原始脚本</td>
-    <td class="tg-0pky">494.9</td>
-    <td class="tg-0pky">60.5</td>
-    <td class="tg-0pky">440.0</td>
-    <td class="tg-0pky">49.7</td>
+    <td class="tg-0pky">438.1</td>
+    <td class="tg-0pky">68.3</td>
+    <td class="tg-0pky">434.3</td>
+    <td class="tg-0pky">49.3</td>
   </tr>
   <tr>
     <td class="tg-0pky">替换FlashAttention</td>
-    <td class="tg-0pky">428.3</td>
-    <td class="tg-0pky">58.2</td>
-    <td class="tg-0pky">370.7</td>
-    <td class="tg-0pky">47.9</td>
+    <td class="tg-0pky">426.1</td>
+    <td class="tg-0pky">65.8</td>
+    <td class="tg-0pky">375.2</td>
+    <td class="tg-0pky">47.0</td>
   </tr>
   <tr>
     <td class="tg-0pky">替换RMSNorm</td>
-    <td class="tg-0pky">388.9</td>
-    <td class="tg-0pky">51.9</td>
-    <td class="tg-0pky">337.2</td>
-    <td class="tg-0pky">40.9</td>
+    <td class="tg-0pky">386.1</td>
+    <td class="tg-0pky">58.0</td>
+    <td class="tg-0pky">331.9</td>
+    <td class="tg-0pky">40.3</td>
+  </tr>
+  <tr>
+    <td class="tg-0pky">调整QKV的格式为BSND</td>
+    <td class="tg-0pky">378.0</td>
+    <td class="tg-0pky">56.7</td>
+    <td class="tg-0pky">329.2</td>
+    <td class="tg-0pky">38.8</td>
   </tr>
 </tbody>
 </table>
@@ -231,33 +316,33 @@ class RMSNorm(torch.nn.Module):
 <tbody>
   <tr>
     <td class="tg-0lax">1</td>
-    <td class="tg-0lax">108.3</td>
-    <td class="tg-0lax">27.6</td>
+    <td class="tg-0lax">105.8</td>
+    <td class="tg-0lax">24.8</td>
   </tr>
   <tr>
     <td class="tg-0pky">4</td>
-    <td class="tg-0pky">337.2</td>
-    <td class="tg-0pky">40.9</td>
+    <td class="tg-0pky">329.2</td>
+    <td class="tg-0pky">38.8</td>
   </tr>
   <tr>
     <td class="tg-0lax">8</td>
-    <td class="tg-0lax">701.1</td>
-    <td class="tg-0lax">53.0</td>
+    <td class="tg-0lax">659.0</td>
+    <td class="tg-0lax">42.1</td>
   </tr>
   <tr>
     <td class="tg-0lax">16</td>
-    <td class="tg-0lax">1383.3</td>
-    <td class="tg-0lax">88.5</td>
+    <td class="tg-0lax">1325.8</td>
+    <td class="tg-0lax">52.2</td>
   </tr>
   <tr>
     <td class="tg-0lax">32</td>
-    <td class="tg-0lax">2789.5</td>
-    <td class="tg-0lax">152.0</td>
+    <td class="tg-0lax">2679.3</td>
+    <td class="tg-0lax">75.2</td>
   </tr>
   <tr>
     <td class="tg-0pky">48</td>
-    <td class="tg-0pky">4125.2</td>
-    <td class="tg-0pky">226.6</td>
+    <td class="tg-0pky">3919.9</td>
+    <td class="tg-0pky">99.1</td>
   </tr>
 </tbody>
 </table>

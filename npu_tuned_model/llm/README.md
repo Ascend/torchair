@@ -33,12 +33,10 @@
 |    软件    |                             版本                             |
 | :--------: | :----------------------------------------------------------: |
 |   Python   |                            3.8.0                             |
-|   driver   | [社区版本](https://www.hiascend.com/software/cann/community) |
-|  firmware  | [社区版本](https://www.hiascend.com/software/cann/community) |
-|    CANN    | [社区版本](https://www.hiascend.com/software/cann/community) |
-|   kernel   | [社区版本](https://www.hiascend.com/software/cann/community) |
+|    CANN    | [社区版本](https://www.hiascend.com/developer/download/community/result?module=pt+cann&pt=6.0.RC3.alpha002&cann=8.0.RC3.alpha002) |
+|   kernel   | [社区版本](https://www.hiascend.com/developer/download/community/result?module=pt+cann&pt=6.0.RC3.alpha002&cann=8.0.RC3.alpha002) |
 |   torch    |                            2.1.0                             |
-| torch_npu  |                            2.1.0                             |
+| torch_npu  | [2.1.0](https://gitee.com/ascend/pytorch/releases/tag/v6.0.rc2-pytorch2.1.0) |
 |    apex    |                             0.1                              |
 | 第三方依赖 |                       requirement.txt                        |
 
