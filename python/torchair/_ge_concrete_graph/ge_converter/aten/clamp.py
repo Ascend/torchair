@@ -40,7 +40,7 @@ def conveter_aten_clamp_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::clamp(Tensor self, Scalar? min=None, Scalar? max=None) -> Tensor"""
-    return clamp(self, max, min)
+    return clamp(self, max, min, meta_outputs)
 
 
 def clamp(self, max_value, min_value, meta_outputs):
