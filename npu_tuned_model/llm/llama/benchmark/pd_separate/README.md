@@ -11,29 +11,24 @@
 - 查看脚本执行推理的代码**是否是调用的集成接口**。什么是集成接口，就是调用一次可以完成整个句子长度推理的接口。transformers提供的generate接口示例：
 
   ```python
-  # 参考runner/llm_runner.py的LlmModelRunner.model_generate函数
-  if self.input_padding:
-      inputs = self.tokenizer(prompts,
-                              return_tensors="pt",  # 返回pytorch tensor
-                              truncation=True,
-                              padding='max_length',
-                              max_length=kwargs.get("input_max_len", 1024))
-  else:
-      inputs = self.tokenizer(prompts,
-                              return_tensors="pt",  # 返回pytorch tensor
-                              truncation=True)
-  
+  # 参考llm/llama/benchmark/npu/benchmark_llama.py的ModelRunner.model_generate函数
+  inputs = self.tokenizer(prompts,
+                          return_tensors="pt",  # 返回pytorch tensor
+                          truncation=True,
+                          padding='max_length',
+                          max_length=kwargs.get("input_max_len", 1024))
+
   kwargs_params = self._generate_params(inputs, kwargs.get("max_new_tokens", 1024))
   start_time = time.time()
-  with torch.no_grad():
-      generate_ids = self.model.generate(**kwargs_params)
+  generate_ids = self.model.generate(**kwargs_params)
   elapse = time.time() - start_time
+  logging.info("Model execute success, time cost: %.2fs", elapse)
   ```
 
 - 如果是集成接口，那么需要做的**调整脚本执行推理的代码，修改为一次调用只会推理一次**。pytorch主要修改为直接调用模型定义的forward函数。一次调用只做一次推理的示例：
 
   ```python
-  # 参考runner/separate_deployment/llm_inference.py的SeparateDeployModelRunner.model_generate函数
+  # 参考llm/llama/benchmark/pd_separate/llm_inference.py的SeparateDeployModelRunner.model_generate函数
   torch.npu.synchronize()
   outputs = self.model(**model_inputs)
   torch.npu.synchronize()
@@ -47,7 +42,7 @@
   以llama2为例，llama2中通过past_key_values这个输入是否是None，区分了全量和增量。当past_key_values为None时是全量推理，非None时是增量推理。示例代码：
 
   ```python
-  # 参考models/llama/modeling_llama.py的LlamaForCausalLM.prepare_inputs_for_generation函数
+  # 参考llm/llama/modeling_llama.py的LlamaForCausalLM.prepare_inputs_for_generation函数
   # 根据past_key_values不一样，会导致模型的输入变化。
   if past_key_values:
       input_ids = input_ids[:, -1:]
@@ -83,7 +78,7 @@ prompt_engine = LLMDataDist(LLMRole.PROMPT, cluster_id)
 llm_config = LLMConfig()
 prompt_engine.init(llm_config.generate_options())
 
-# 申请kv cache
+# 申请全量请求kv cache
 kv_cache_manager = prompt_engine.kv_cache_manager
 kv_cache_desc = CacheDesc(num_tensors=80, shape=[4, 2048, 8 // world_size, 128],
                           data_type=DataType.DT_FLOAT16)
@@ -111,12 +106,15 @@ decoder_engine = LLMDataDist(LLMRole.DECODER, cluster_id)
 # 分离部署资源初始化
 llm_config = LLMConfig()
 decoder_engine.init(llm_config.generate_options())
+# 动态集群链路管理
+decoder_engine.link_clusters(clusters_info)
 
-# 申请kv cache，pull_cache
+# 申请增量模型kv cache
 kv_cache_desc = CacheDesc(num_tensors=80, shape=[4, 2048, 8 // world_size, 128],
                           data_type=DataType.DT_FLOAT16)
 cache = cache_manager.allocate_cache(kv_cache_desc)
 prompt_cache_key = CacheKey(prompt_cluster_id=0, req_id=0, model_id=0)
+# 从全量集群拉取kv cache到指定batch index位置
 cache_manager.pull_cache(prompt_cache_key, cache, 0)
 
 # 模型执行，将申请好的kv cache传递给模型，替换原模型中的kv cache tensor
@@ -189,13 +187,13 @@ for i in {0..7}; do hccn_tool -i $i -ip -g; done
 
 注：出现hccn_tool命令找不到的，可在cann包安装目录下搜索hccn_tool，找到可执行文件执行
 
-更改全量脚本中**_LISTEN_IP_INFO**为实际机器device ip信息，拉起全量的执行脚本
+更改全量脚本中**_LISTEN_IP_INFO**为实际机器device ip信息，拉起全量的执行脚本，可通过--execute_mode参数选择单算子或者图模式
 
 ```shell
 deepspeed --num_gpus=8 benchmark/pd_separate/run_prompt.py --model_path=xxx/llama2-70b_qkv
 ```
 
-将全量执行完目录下生成的prompt.pkl文件拷贝到增量执行目录下，更改增加脚本中的**_LOCAL_IP_INFOS**和**_REMOTE_IP_INFOS**为实际机器device ip信息，拉起增量的执行脚本
+将全量执行完目录下生成的prompt.pkl文件拷贝到增量执行目录下，更改增加脚本中的**_LOCAL_IP_INFOS**和**_REMOTE_IP_INFOS**为实际机器device ip信息，拉起增量的执行脚本，可通过--execute_mode参数选择单算子或者图模式
 
 **_LOCAL_IP_INFOS**是增量机器的device ip信息，**_REMOTE_IP_INFOS**是全量机器的device ip信息
 

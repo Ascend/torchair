@@ -163,10 +163,8 @@ if __name__ == "__main__":
     }
     os.environ["EXE_MODE"] = args.execute_mode
     model_runner = LlmPromptRunner(args.model_path, **config)
-    # 表示在图模式下开启二进制编译，提高图模式下编译阶段性能
-    torch.npu.set_compile_mode(jit_compile=False)
     model_runner.init_model()
-    # 走图模式需要进行图编译
+    # 根据execute_mode选择是否走图模式编译
     model_runner.compile_model()
 
     kv_cache_manager = prompt_engine.kv_cache_manager

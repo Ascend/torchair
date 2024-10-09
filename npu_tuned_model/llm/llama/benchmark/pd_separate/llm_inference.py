@@ -98,11 +98,14 @@ class SeparateDeployModelRunner:
         raise NotImplementedError
 
     def compile_model(self):
-        dynamic_compile = True # 因为当模型结构使能了actual_seq_length
         if os.getenv("EXE_MODE") == "dynamo":
+            # 表示在图模式下开启二进制编译，提高图模式下编译阶段性能
+            torch.npu.set_compile_mode(jit_compile=False)
+            dynamic_compile = True # 因为当模型结构使能了actual_seq_length
             logging.info(f"Start to run model in dynamo mode, dynamic={dynamic_compile}, fullgraph=True, backend=npu")
             config = CompilerConfig()
             config.experimental_config.frozen_parameter = True
+            config.experimental_config.tiling_schedule_optimize = True # tiling全下沉性能优化
             npu_backend = tng.get_npu_backend(compiler_config=config)
             self.model = torch.compile(self.model, dynamic=dynamic_compile, fullgraph=True, backend=npu_backend)
         else:
