@@ -40,7 +40,8 @@ at::Tensor MakeAtTensor(const std::vector<int64_t> &dims, c10::ScalarType &torch
   storage.set_data_ptr(std::move(c10_data_ptr));
 
   auto tensor = at::detail::make_tensor<c10::TensorImpl>(
-      std::move(storage), c10::DispatchKeySet{c10::DispatchKey::PrivateUse1, c10::DispatchKey::AutogradPrivateUse1},
+      std::move(storage),
+      c10::DispatchKeySet{c10::DispatchKey::PrivateUse1, c10::DispatchKey::AutogradPrivateUse1},
       c10::scalarTypeToTypeMeta(torch_dtype));
   at::TensorImpl *tensor_impl = tensor.unsafeGetTensorImpl();
   tensor_impl->set_sizes_contiguous(dims);
@@ -128,6 +129,16 @@ inline Status UpdateTensorData(gert::Tensor &ge_tensor, void *addr, const size_t
   ge_tensor.MutableTensorData().SetSize(data_size);
   return Status::Success();
 }
+
+template <typename T>
+inline Status RefreshOutputShape(std::vector<std::vector<int64_t>> &real_output_shape,
+                                 std::vector<T> &outputs_holder) {
+  TNG_ASSERT_EQ(real_output_shape.size(), outputs_holder.size());
+  for (size_t i = 0U; i < real_output_shape.size(); ++i) {
+    TNG_RETURN_IF_ERROR(GetShapeFromGeTensor(real_output_shape[i], outputs_holder[i]));
+  }
+  return Status::Success();
+}
 }  // namespace
 
 template <typename T>
@@ -166,8 +177,8 @@ Status MutiGearNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &i
         }
         TNG_RETURN_IF_ERROR(AssembleDataToGe(inputs[i], input_holders[i]));
       }
-      TNG_LOG(DEBUG) << "Assemble aten device input " << i << " " << DebugString(inputs[i]) << " to "
-                     << DebugString(input_holders[i]);
+      TNG_LOG(DEBUG) << "Assemble aten device input " << i << " " << DebugString(inputs[i])
+                     << " to " << DebugString(input_holders[i]);
     } else if (graph_data_->input_placements[i] == Placement::HOST) {
       if (!inputs[i].device().is_cpu()) {
         return Status::Error("Input %zu placement %s is incompatible with expected CPU.", i,
@@ -189,8 +200,8 @@ Status MutiGearNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &i
                                inputs[i].data_ptr(), host_input_holders_[i].second, ACL_MEMCPY_HOST_TO_DEVICE);
         TNG_ASSERT(ret == ACL_ERROR_NONE, "ACL memory copy failed, return %d", ret);
       }
-      TNG_LOG(DEBUG) << "Assemble aten host input " << i << " " << DebugString(inputs[i]) << " to "
-                     << DebugString(input_holders[i]);
+      TNG_LOG(DEBUG) << "Assemble aten host input " << i << " " << DebugString(inputs[i])
+                     << " to " << DebugString(input_holders[i]);
     } else {
       TNG_ASSERT(false, "Invalid Placement::UNKNOWN of input %zu.", i);
     }
@@ -214,11 +225,13 @@ Status MutiGearNpuGraphExecutor::AssembleOutputs(const std::vector<c10::optional
     output_size_.resize(output_ge_dtypes.size());
     output_shapes_.resize(output_ge_dtypes.size());
     output_torch_dtype_.resize(output_ge_dtypes.size());
+    real_output_shape_.resize(output_ge_dtypes.size());
 
     TNG_ASSERT(assigned_outputs.empty() || assigned_outputs.size() == output_ge_dtypes.size());
     for (size_t i = 0U; i < output_ge_dtypes.size(); ++i) {
       TNG_RETURN_IF_ERROR(GeDtypeToAtDtype(output_ge_dtypes[i], output_torch_dtype_[i]));
       output_shapes_[i] = output_ge_shapes[i].GetDims();
+      real_output_shape_[i] = output_ge_shapes[i].GetDims();
       output_size_[i] =
           at::detail::computeStorageNbytesContiguous(output_shapes_[i], elementSize(output_torch_dtype_[i]));
 
@@ -285,12 +298,16 @@ Status MutiGearNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs
 
     TNG_RETURN_IF_ERROR(
         Session::GetInstance().FastExecuteGraph(graph_data_->id, gert_inputs_holder_, gert_outputs_holder_, stream));
+
+    TNG_RETURN_IF_ERROR(RefreshOutputShape(real_output_shape_, gert_outputs_holder_));
   } else {
     TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, inputs_holder_, stream));
 
     TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs, output_mem_blocks, outputs_holder_, stream));
 
     TNG_RETURN_IF_ERROR(Session::GetInstance().RunGraph(graph_data_->id, inputs_holder_, outputs_holder_, stream));
+
+    TNG_RETURN_IF_ERROR(RefreshOutputShape(real_output_shape_, outputs_holder_));
   }
 
   outputs.clear();
@@ -301,12 +318,13 @@ Status MutiGearNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs
         outputs.push_back(torch_outputs[i].value());
         continue;
       }
-      outputs.push_back(MakeAtTensor(output_shapes_[i], output_torch_dtype_[i], output_size_[i], output_mem_blocks[i]));
+      outputs.push_back(
+          MakeAtTensor(real_output_shape_[i], output_torch_dtype_[i], output_size_[i], output_mem_blocks[i]));
       TNG_LOG(DEBUG) << "Refresh gears torch output " << i << " " << DebugString(outputs[i]);
     }
   }
-  TNG_LOG(INFO) << "Muti_gear npu graph executor run graph " << graph_data_->id << " on stream " << stream
-                << " successfully.";
+  TNG_LOG(INFO) << "Muti_gear npu graph executor run graph " << graph_data_->id << " on stream "
+                << stream << " successfully.";
   if (fm_refreshable_) {
     TNG_ASSERT_NOTNULL(feature_map_block_);
     feature_map_block_->Free();

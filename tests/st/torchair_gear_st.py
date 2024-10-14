@@ -64,6 +64,19 @@ def set_graph_output_dtypes(graph, dtypes):
         graph.attr["_input_placements"].list.i.append(v)
 
 
+@contextlib.contextmanager
+def set_env_var(key, value):
+    original_value = os.environ.get(key)
+    os.environ[key] = value
+    try:
+        yield
+    finally:
+        if original_value is None:
+            del os.environ[key]
+        else:
+            os.environ[key] = original_value
+
+
 class TorchairSt(unittest.TestCase):
     def test_set_dim_gears_twice(self):
         x = torch.ones([2, 2])
@@ -237,7 +250,7 @@ class TorchairSt(unittest.TestCase):
         result = generate_dynamic_dims_option(named_inputs_info4, "product")
         self.assertEqual(result["ge.dynamicDims"], "1,11;2,10;2,11;1,10")
 
-    def test_muti_gear_npu_executor(self):
+    def test_muti_gear_npu_executor_pre_assigned_outputs(self):
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
         import _privateuse1_backend
@@ -274,7 +287,7 @@ class TorchairSt(unittest.TestCase):
         npu_device = _privateuse1_backend.npu_device()
         torch.utils.rename_privateuse1_backend("npu")
 
-        with GeGraph() as graph:
+        with GeGraph() as graph, set_env_var("ST_GEARS_STUB_OUTPUTSHAPE", "output_use_input_shape"):
             x = ge.Data(index=0, shape=[2, 2],
                         dtype=DataType.DT_INT32, placement='NPU')
             y = ge.Data(index=1, shape=[],
@@ -299,7 +312,17 @@ class TorchairSt(unittest.TestCase):
             y = torch.ones([], dtype=torch.int32)
             w = torch.ones([2, 2], dtype=torch.int32, device='npu').to(npu_device)
             z1, z2 = executor.run([x, y, w])
+            self.assertEqual(z1.shape, torch.Size([2, 2]))
+            self.assertEqual(z2.shape, torch.Size([2, 2]))
             z1, z2 = executor.run([x, y, w])
+            self.assertEqual(z1.shape, torch.Size([2, 2]))
+            self.assertEqual(z2.shape, torch.Size([2, 2]))
+            x_new = torch.ones([4, 2], dtype=torch.int32, device='npu').to(npu_device)
+            y_new = torch.ones([], dtype=torch.int32)
+            w_new = torch.ones([4, 2], dtype=torch.int32, device='npu').to(npu_device)
+            z1_new, z2_new = executor.run([x_new, y_new, w_new])
+            self.assertEqual(z1_new.shape, torch.Size([4, 2]))
+            self.assertEqual(z2_new.shape, torch.Size([4, 2]))
 
 
 if __name__ == '__main__':

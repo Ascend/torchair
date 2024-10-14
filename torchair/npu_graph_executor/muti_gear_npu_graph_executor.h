@@ -29,6 +29,7 @@ class MutiGearNpuGraphExecutor : public StaticNpuGraphExecutor {
   std::vector<c10::ScalarType> output_torch_dtype_;
   std::vector<std::vector<int64_t>> input_gears_;
   std::vector<size_t> output_size_;
+  std::vector<std::vector<int64_t>> real_output_shape_;
 };
 }  // namespace tng
 

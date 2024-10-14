@@ -244,7 +244,17 @@ Status Session::RunGraphWithStreamAsync(uint32_t id, void *stream, const std::ve
     ge::Tensor output;
     ge::TensorDesc desc;
     desc.SetDataType(spec.output_dtypes_[i]);
-    desc.SetShape(spec.netoutput_shapes_[i]);
+    char *st_muti_gear_stub = std::getenv("ST_GEARS_STUB_OUTPUTSHAPE");
+    if (st_muti_gear_stub != NULL) {
+      std::vector<int64_t> dims;
+      dims.resize(inputs[0].GetShapeDimNum());
+      for (size_t i = 0U; i < dims.size(); ++i) {
+        dims[i] = inputs[0].GetShapeDim(i);
+      }
+      desc.SetShape(ge::Shape(dims));
+    } else {
+      desc.SetShape(spec.netoutput_shapes_[i]);
+    }
     desc.SetPlacement(placement);
     output.SetTensorDesc(desc);
 
@@ -337,7 +347,16 @@ ge::Status GeSessionExecuteGraphWithStreamAsync(ge::Session &session, uint32_t g
     output_i.SetOriginFormat(ge::FORMAT_ND);
     output_i.SetStorageFormat(ge::FORMAT_ND);
 
-    const std::vector<int64_t> &dims = spec.netoutput_shapes_[i].GetDims();
+    char *st_muti_gear_stub = std::getenv("ST_GEARS_STUB_OUTPUTSHAPE");
+    std::vector<int64_t> dims;
+    if (st_muti_gear_stub != NULL) {
+      dims.resize(inputs[0].GetShape().GetOriginShape().GetDimNum());
+      for (size_t i = 0U; i < dims.size(); ++i) {
+        dims[i] = inputs[0].GetShape().GetOriginShape().GetDim(i);
+      }
+    } else {
+      dims = spec.netoutput_shapes_[i].GetDims();
+    }
     output_i.MutableOriginShape().SetDimNum(dims.size());
     output_i.MutableStorageShape().SetDimNum(dims.size());
     for (size_t j = 0; j < dims.size(); j++) {

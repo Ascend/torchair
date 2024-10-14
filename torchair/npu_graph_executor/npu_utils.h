@@ -34,6 +34,10 @@ Status AssembleFrozenOption(const std::vector<bool> &frozen_input_flag_list,
                             const std::vector <at::Tensor> &torch_inputs,
                             std::string &frozen_option_value);
 
+Status GetShapeFromGeTensor(std::vector<int64_t> &real_output_shape, const ge::Tensor &ge_tensor);
+
+Status GetShapeFromGeTensor(std::vector<int64_t> &real_output_shape, const gert::Tensor &ge_tensor);
+
 }  // namespace tng
 
 #endif  // TORCH_AIR_TORCH_AIR_NPU_GRAPH_EXECUTOR_NPU_UTILS_H_

@@ -36,12 +36,12 @@ Status RefreshAtTensorFromGeTensor(std::vector<T> &outputs_holder,
   for (size_t i = 0U; i < outputs_holder.size(); ++i) {
     if (!assigned_outputs.empty() && assigned_outputs[i].has_value()) {
       outputs[i] = assigned_outputs[i].value();
-      TNG_LOG(DEBUG) << "Refresh assigned torch output " << i << " " << DebugString(outputs[i]) << " from ge output "
-                     << DebugString(outputs_holder[i]);
+      TNG_LOG(DEBUG) << "Refresh assigned torch output " << i << " " << DebugString(outputs[i])
+                     << " from ge output " << DebugString(outputs_holder[i]);
     } else {
       TNG_RETURN_IF_ERROR(GeTensorToAtTensor(outputs_holder[i], outputs[i]));
-      TNG_LOG(DEBUG) << "Refresh unfed torch output " << i << " " << DebugString(outputs[i]) << " from ge output "
-                     << DebugString(outputs_holder[i]);
+      TNG_LOG(DEBUG) << "Refresh unfed torch output " << i << " " << DebugString(outputs[i])
+                     << " from ge output " << DebugString(outputs_holder[i]);
     }
   }
   return Status::Success();
