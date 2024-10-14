@@ -128,7 +128,6 @@ TorchAir常用特性介绍
 | 6.0.rc1 | 2.1.0 | 6.0.rc1 | 8.0.rc1 | Python3.8.x<br/>Python3.9.x<br/>Python3.10.x | 
 
 # 支持的型号
-- Atlas 训练系列产品
 - Atlas A2 训练系列产品
 - Atlas 推理系列产品（配置Ascend 310P AI处理器）
 
