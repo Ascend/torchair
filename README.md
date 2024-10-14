@@ -1,6 +1,6 @@
 # 简介
 本项目开发了名为TorchAir(Torch Ascend Intermediate Representation)的扩展库，支持用户基于PyTorch框架和torch_npu插件在昇腾NPU上使用图模式进行训练和推理。
-TorchAir继承自PyTorch框架[Dynamo模式](https://pytorch.org/docs/stable/torch.compiler_deepdive.html)，将PyTorch的[FX图](https://pytorch.org/docs/stable/fx.html)转换为GE计算图，并提供了GE计算图在昇腾NPU的编译与执行的能力。
+TorchAir继承自PyTorch框架[Dynamo模式](https://pytorch.org/docs/stable/torch.compiler_dynamo_deepdive.html)，将PyTorch的[FX图](https://pytorch.org/docs/stable/fx.html)转换为GE计算图，并提供了GE计算图在昇腾NPU的编译与执行的能力。
 > - **如果您想了解如何使用TorchAir，可以优先通过访问[TorchAir图模式使用指南](https://www.hiascend.com/document/detail/zh/Pytorch/60RC1/modthirdparty/torchairuseguide/torchair_0001.html)，了解关于TorchAir的更多信息。**
 > - **如果您计划为TorchAir贡献代码，请参考REAMDE内容。**
 
@@ -119,6 +119,18 @@ TorchAir常用特性介绍
 | converter功能拓展       |  用户自行扩展模型中缺失的converter功能             | [参考链接](https://www.hiascend.com/document/detail/zh/Pytorch/60RC1/modthirdparty/torchairuseguide/torchair_0026.html)        |
 | 支持的aten API清单      |  支持的aten API清单               | [参考链接](https://www.hiascend.com/document/detail/zh/Pytorch/60RC1/modthirdparty/torchairuseguide/torchair_0042.html)        |
 
+# 版本配套表
+| TorchAir版本 | PyTorch版本 | torch_npu版本 | CANN版本 | Python版本
+| ----------------- | ----------------- | ----------------- | ----------------- | ----------------- |
+| master（主线） | 2.1.0 | 在研版本 | 在研版本 | Python3.8.x<br/>Python3.9.x<br/>Python3.10.x | 
+| 6.0.rc3 | 2.1.0 | 6.0.rc3 | 8.0.rc3 | Python3.8.x<br/>Python3.9.x<br/>Python3.10.x | 
+| 6.0.rc2 | 2.1.0 | 6.0.rc2 | 8.0.rc2 | Python3.8.x<br/>Python3.9.x<br/>Python3.10.x | 
+| 6.0.rc1 | 2.1.0 | 6.0.rc1 | 8.0.rc1 | Python3.8.x<br/>Python3.9.x<br/>Python3.10.x | 
+
+# 支持的型号
+- Atlas 训练系列产品
+- Atlas A2 训练系列产品
+- Atlas 推理系列产品（配置Ascend 310P AI处理器）
 
 # 贡献
 如果您计划为TorchAir做出贡献，请参考[CONTRIBUTING](https://gitee.com/ascend/torchair/tree/master/CONTRIBUTING.md)。
