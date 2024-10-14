@@ -23,7 +23,6 @@ class _ExportConfig(NpuBaseConfig):
         self.weight_name = None
         self.inputs_name = None
         self.experimental = _ExperimentalConfig()
-        self.enable_save_load_mode = OptionValue(False, [False, True])
 
     def as_dict(self):
         if self.export_mode:
