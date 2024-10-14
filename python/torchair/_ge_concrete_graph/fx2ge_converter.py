@@ -859,19 +859,11 @@ class GeConcreteGraph(ConcreteGraphBase):
         export_graph = make_export_graph(self.graph, inputs, self.config.export.export_path_dir,
                                          self.config.export.weight_name)
 
-
         _normalize_ge_graph(export_graph)
-        if self.config.export.enable_save_load_mode:
-            if not self._check_support_for_save_graph():
-                raise RuntimeError("Check support for save graph error")
-            logger.debug(f"Serialize model with save mode, graph name is {export_graph.name}")
-            self._normalize_exportd_graph_attr(export_graph.model)
-            serialize_save_graph(export_graph, file_path + "/" + file_name_air)
-        else:
-            if self.config.export.experimental.auto_atc_config_generated:
-                generate_config(self.config.export.export_name, file_path, export_graph.used_process_group)
-            local_options = {"export_path_dir": file_path, "export_name": file_name_air}
-            _torchair.export(export_graph.SerializeToString(), local_options)
+        if self.config.export.experimental.auto_atc_config_generated:
+            generate_config(self.config.export.export_name, file_path, export_graph.used_process_group)
+        local_options = {"export_path_dir": file_path, "export_name": file_name_air}
+        _torchair.export(export_graph.SerializeToString(), local_options)
 
     @property
     def should_auto_tune(self) -> bool:
