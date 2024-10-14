@@ -193,4 +193,20 @@ Status AssembleFrozenOption(const std::vector <bool> &frozen_input_flag_list,
   return Status::Success();
 }
 
+Status GetShapeFromGeTensor(std::vector<int64_t> &real_output_shape, const ge::Tensor &ge_tensor) {
+  TNG_ASSERT_EQ(real_output_shape.size(), ge_tensor.GetShapeDimNum());
+  for (size_t i = 0U; i < real_output_shape.size(); ++i) {
+    real_output_shape[i] = ge_tensor.GetShapeDim(i);
+  }
+  return Status::Success();
+}
+
+Status GetShapeFromGeTensor(std::vector<int64_t> &real_output_shape, const gert::Tensor &ge_tensor) {
+  TNG_ASSERT_EQ(real_output_shape.size(), ge_tensor.GetStorageShape().GetDimNum());
+  for (size_t i = 0U; i < real_output_shape.size(); ++i) {
+    real_output_shape[i] = ge_tensor.GetStorageShape().GetDim(i);
+  }
+  return Status::Success();
+}
+
 }  // namespace tng
