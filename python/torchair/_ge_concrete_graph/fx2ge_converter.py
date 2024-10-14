@@ -913,7 +913,8 @@ class GeConcreteGraph(ConcreteGraphBase):
                                      self.config.inference_config.dynamic_gears_merge_policy.value))
         optimize_frozen_flag_list = []
         for input_info in self._input_info_list:
-            optimize_frozen_flag_list.append(1 if input_info.value_type == _ValueType.PARAMETER else 0)
+            optimize_frozen_flag_list.append(1 if (input_info.value_type == _ValueType.PARAMETER) and (
+                isinstance(input_info.func, _TensorInput)) else 0)
         if len(optimize_frozen_flag_list) != 0:
             local_compile_options["frozenInput"] = ",".join(str(x) for x in optimize_frozen_flag_list)
         logger.info("local compile options:")
