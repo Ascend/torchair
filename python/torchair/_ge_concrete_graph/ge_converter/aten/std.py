@@ -1,3 +1,5 @@
+import functools
+import operator
 from typing import (
     Any,
     Callable,
@@ -22,6 +24,55 @@ from torchair._ge_concrete_graph.fx2ge_converter import declare_supported, regis
 from torchair.ge._ge_graph import Tensor, TensorSpec
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
+
+
+def calc_shape_prod(size, dim):
+    shape_prod = 1
+    if len(size) == 0:
+        shape_prod = 1
+    elif len(dim) == 0:
+        shape_prod = functools.reduce(operator.mul, size, 1)
+    else:
+        for d in dim:
+            shape_prod *= size[d]
+    return shape_prod
+
+
+def get_output_size(tensor, ndim, dim, keepdim):
+    shape = ge.Shape(tensor)
+    shape = [ge.Gather(shape, i) for i in range(ndim)]
+    if not isinstance(dim, list) or not all(isinstance(d, int) for d in dim):
+        return None
+    new_dim = [d % ndim for d in dim]
+    new_dim.sort(reverse=True)
+    for nd in new_dim:
+        if keepdim:
+            shape[nd] = 1
+        else:
+            del shape[nd]
+    if not shape:
+        return []
+    shape = ge.Pack(shape, N=len(shape), axis=0)
+    return shape
+
+
+def process_special_shape(tensor, dim, correction, keepdim):
+    size = tensor.symsize
+    if size is None:
+        return None
+    shape_prod = calc_shape_prod(size, dim)
+    if isinstance(shape_prod, torch.SymInt):
+        return None
+    output_size = get_output_size(tensor, len(size), dim, keepdim)
+    if output_size is None:
+        return None
+    if shape_prod == 0 or (shape_prod == 1 and not isinstance(correction, Tensor) and shape_prod <= correction):
+        std = ge.Fill(output_size, float('nan'))
+        return std
+    if not isinstance(correction, Tensor) and correction > 1 and shape_prod <= correction:
+        std = ge.Fill(output_size, float('inf'))
+        return std
+    return None
 
 
 @register_fx_node_ge_converter(torch.ops.aten.std.default)
@@ -51,6 +102,9 @@ def conveter_aten_std_dim(
         Support(F32(4, 4, 4), [0, 2], correction=1, keepdim=False),
         Support(F32(4, 4, 4), [0, 1, 2], correction=1, keepdim=False),
         Support(F32(2, 2), 0, correction=0, keepdim=False),
+        Support(F32(2, 0, 5), [1], keepdim=True),
+        Support(F32(2, 0, 5), [1], keepdim=False),
+        Support(F32(2, 1, 5), [1], keepdim=True, correction=2),
     ]
 )
 @register_fx_node_ge_converter(torch.ops.aten.std.correction)
@@ -63,6 +117,10 @@ def conveter_aten_std_correction(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::std.correction(Tensor self, int[1]? dim=None, *, Scalar? correction=None, bool keepdim=False) -> Tensor"""
+    correction = 1 if correction is None else correction
+    std_or_none = process_special_shape(self, dim, correction, keepdim)
+    if std_or_none is not None:
+        return std_or_none
     mean = ge.ReduceMean(self, axes=dim, keep_dims=keepdim)
     if len(dim) == 1 and dim[0] == -1:
         pass

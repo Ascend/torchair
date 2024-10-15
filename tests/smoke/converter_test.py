@@ -152,7 +152,7 @@ def check_tensor_same(a, b):
 
     if a.dtype in (torch.float16, torch.float32, torch.float64):
         assert torch.allclose(
-            a, b, rtol=1e-3, atol=1e-5), f"Value mismatch {a} vs. {b}"
+            a, b, rtol=1e-3, atol=1e-5, equal_nan=True), f"Value mismatch {a} vs. {b}"
     else:
         assert torch.all(a == b), f"Value mismatch {a} vs. {b}"
 
