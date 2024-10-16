@@ -56,7 +56,7 @@ def get_output_size(tensor, ndim, dim, keepdim):
     return shape
 
 
-def process_special_shape(tensor, dim, correction, keepdim):
+def process_special_shape(tensor, dim, correction, keepdim, dtype):
     size = tensor.symsize
     if size is None:
         return None
@@ -67,10 +67,10 @@ def process_special_shape(tensor, dim, correction, keepdim):
     if output_size is None:
         return None
     if shape_prod == 0 or (shape_prod == 1 and not isinstance(correction, Tensor) and shape_prod <= correction):
-        std = ge.Fill(output_size, float('nan'))
+        std = ge.Fill(output_size, ge.Cast(float('nan'), dst_type=dtype))
         return std
     if not isinstance(correction, Tensor) and correction > 1 and shape_prod <= correction:
-        std = ge.Fill(output_size, float('inf'))
+        std = ge.Fill(output_size, ge.Cast(float('inf'), dst_type=dtype))
         return std
     return None
 
@@ -103,7 +103,7 @@ def conveter_aten_std_dim(
         Support(F32(4, 4, 4), [0, 1, 2], correction=1, keepdim=False),
         Support(F32(2, 2), 0, correction=0, keepdim=False),
         Support(F32(2, 0, 5), [1], keepdim=True),
-        Support(F32(2, 0, 5), [1], keepdim=False),
+        Support(F16(2, 0, 5), [1], keepdim=False),
         Support(F32(2, 1, 5), [1], keepdim=True, correction=2),
     ]
 )
@@ -118,7 +118,7 @@ def conveter_aten_std_correction(
 ):
     """NB: aten::std.correction(Tensor self, int[1]? dim=None, *, Scalar? correction=None, bool keepdim=False) -> Tensor"""
     correction = 1 if correction is None else correction
-    std_or_none = process_special_shape(self, dim, correction, keepdim)
+    std_or_none = process_special_shape(self, dim, correction, keepdim, meta_outputs.dtype)
     if std_or_none is not None:
         return std_or_none
     mean = ge.ReduceMean(self, axes=dim, keep_dims=keepdim)
