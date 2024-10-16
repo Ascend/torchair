@@ -7,6 +7,9 @@ TorchAir继承自PyTorch框架[Dynamo模式](https://pytorch.org/docs/stable/tor
 
 # 安装与卸载
 1. 安装
+- 安装依赖
+
+在安装TorchAir之前，请参考[版本配套表](#version_match)和[支持型号](#hardware_support)说明，确保您的硬件能够使用TorchAir，并安装最新昇腾软件栈。
 
 - 编译准备
 
@@ -119,6 +122,7 @@ TorchAir常用特性介绍
 | converter功能拓展       |  用户自行扩展模型中缺失的converter功能             | [参考链接](https://www.hiascend.com/document/detail/zh/Pytorch/60RC1/modthirdparty/torchairuseguide/torchair_0026.html)        |
 | 支持的aten API清单      |  支持的aten API清单               | [参考链接](https://www.hiascend.com/document/detail/zh/Pytorch/60RC1/modthirdparty/torchairuseguide/torchair_0042.html)        |
 
+<a id="version_match"></a>
 # 版本配套表
 | TorchAir版本 | PyTorch版本 | torch_npu版本 | CANN版本 | Python版本
 | ----------------- | ----------------- | ----------------- | ----------------- | ----------------- |
@@ -127,6 +131,7 @@ TorchAir常用特性介绍
 | 6.0.rc2 | 2.1.0 | 6.0.rc2 | 8.0.rc2 | Python3.8.x<br/>Python3.9.x<br/>Python3.10.x | 
 | 6.0.rc1 | 2.1.0 | 6.0.rc1 | 8.0.rc1 | Python3.8.x<br/>Python3.9.x<br/>Python3.10.x | 
 
+<a id="hardware_support"></a>
 # 支持的型号
 - Atlas A2 训练系列产品
 - Atlas 推理系列产品（配置Ascend 310P AI处理器）
