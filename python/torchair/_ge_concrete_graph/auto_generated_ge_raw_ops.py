@@ -76796,3 +76796,73 @@ def Cmo(src: Tensor, *, max_size: int, type: int=6, dependencies=[], node_name=N
 
     # return outputs
     return
+
+# This api is auto-generated from IR SwiGlu
+@auto_convert_to_tensor([False], [False])
+def SwiGlu(x: Tensor, *, dim: int=-1, dependencies=[], node_name=None):
+    """REG_OP(SwiGlu)\n
+    .INPUT(x, "T")\n
+    .OUTPUT(y, "T")\n
+    .ATTR(dim, Int, -1)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "SwiGlu"
+    op.name = next_unique_name(node_name, "SwiGlu")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+
+    # process attrs
+    op.attr["dim"].i = dim
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+
+    return y
+
+# This api is auto-generated from IR SwiGluGrad
+@auto_convert_to_tensor([False, False], [False, False])
+def SwiGluGrad(y_grad: Tensor, x: Tensor, *, dim: int=-1, dependencies=[], node_name=None):
+    """REG_OP(SwiGluGrad)\n
+    .INPUT(y_grad, "T")\n
+    .INPUT(x, "T")\n
+    .OUTPUT(y, "T")\n
+    .ATTR(dim, Int, -1)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "SwiGluGrad"
+    op.name = next_unique_name(node_name, "SwiGluGrad")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(y_grad.tensor)
+    op.input_desc.add().CopyFrom(y_grad.desc)
+    op.input_desc[-1].name = "y_grad"
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+
+    # process attrs
+    op.attr["dim"].i = dim
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+
+    return y                   
