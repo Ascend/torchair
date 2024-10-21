@@ -1,16 +1,12 @@
 torchair:
   commiter:
-    "xxx"
+    "xuepenginnanjing"
   team: "torchair"
   src:
     release:
-      - torchair
       - python
     unrelease:
       - tests
-      - third_party
-      - docs
-      - examples
       - tools
   llt:
     ut_check:true

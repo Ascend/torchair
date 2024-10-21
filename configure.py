@@ -10,8 +10,6 @@ import sys
 
 _COMPAT_TORCH_VERSION = "2.1"
 _PYTHON_BIN_PATH_ENV = "TARGET_PYTHON_PATH"
-_ASCEND_SDK_ENV = "ASCEND_SDK_PATH"
-_NO_ASCEND_SDK = "NO_ASCEND_SDK"
 
 
 def run_command(cmd):
@@ -100,44 +98,10 @@ print('|'.join([
         break
 
 
-def setup_ascend_sdk(env_path):
-    """Get ascend install path."""
-    ask_ascend_path = f'Specify the location of ascend sdk for debug on localhost or leave empty.' + \
-        f'\n(You can make this quiet by set env [{_ASCEND_SDK_ENV}]): '
-    custom_ascend_path = env_path
-    while True:
-        if not custom_ascend_path:
-            ascend_path = get_input(ask_ascend_path)
-        else:
-            ascend_path = custom_ascend_path
-            custom_ascend_path = None
-
-        if not ascend_path:
-            print(f"No ascend sdk path specified, skip setting up 'ASCEND_SDK_HEADERS_PATH'")
-            return
-
-        # Check if the path is valid
-        if os.path.isdir(ascend_path) and os.access(ascend_path, os.X_OK):
-            break
-        if not os.path.exists(ascend_path):
-            print('Invalid ascend path: %s cannot be found.' % ascend_path)
-
-    with open(real_config_path('ASCEND_SDK_PATH'), 'w') as f:
-        f.write(ascend_path)
-
-    with open(real_config_path('env.sh'), 'w') as f:
-        stub_libs = os.path.dirname(os.path.abspath(__file__)) + "/build/stubs"
-        sdk_libs = f"{ascend_path}/lib"
-        f.write(f"#!/bin/sh\n")
-        f.write(f'export LD_LIBRARY_PATH={stub_libs}:{sdk_libs}')
-
-
 def main():
     """Entry point for configuration"""
     env_snapshot = dict(os.environ)
     setup_python(env_snapshot.get(_PYTHON_BIN_PATH_ENV))
-    if not env_snapshot.get(_NO_ASCEND_SDK) in ["1", "true", "True"]:
-        setup_ascend_sdk(env_snapshot.get(_ASCEND_SDK_ENV))
 
 
 if __name__ == '__main__':

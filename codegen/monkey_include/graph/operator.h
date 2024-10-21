@@ -1,4 +1,0 @@
-#ifndef CODEGEN_OPERATOR_H_
-#define CODEGEN_OPERATOR_H_
-
-#endif  // CODEGEN_OPERATOR_H_

@@ -53,50 +53,38 @@ checkopts() {
 }
 
 build_torchair() {
-  logging "CMake Args: ${CMAKE_ARGS}"
-
-  local CMAKE_PATH="${TORCHAIR_ROOT}/build"
-  mkdir -pv "${CMAKE_PATH}"
-  cd "${CMAKE_PATH}" && cmake ${CMAKE_ARGS} ..
-
-  make torchair ${VERBOSE} -j${THREAD_NUM}
+  local BUILD_PATH="${TORCHAIR_ROOT}/build/compile"
+  rm -rf "${BUILD_PATH}"
+  mkdir -pv "${BUILD_PATH}"
+  cp -r "${TORCHAIR_ROOT}/python" "${BUILD_PATH}"
 
   local RELEASE_PATH="${TORCHAIR_ROOT}/output"
   mkdir -pv "${RELEASE_PATH}"
-  mv "${TORCHAIR_ROOT}/build/dist/dist/torchair-0.1-py3-none-any.whl" ${RELEASE_PATH}
+  cd "${BUILD_PATH}/python" && python3 setup.py bdist_wheel --dist-dir ${RELEASE_PATH}
 }
 
 install_torchair() {
   local RELEASE_PATH="${TORCHAIR_ROOT}/output"
-  pip3 uninstall torchair -y
+  pip3 uninstall npu_extension_for_inductor -y
   pip3 install ${RELEASE_PATH}/*.whl
 }
 
 run_test() {
-  # Autofuse tests
-  local AUTOFUSE_TEST_PATH="${TORCHAIR_ROOT}/autofuse/build"
-  mkdir -pv "${AUTOFUSE_TEST_PATH}"
-  cd "${AUTOFUSE_TEST_PATH}"
-  cmake .. -DCMAKE_BUILD_TYPE=GCOV -DTORCHAIR_INSTALL_DST=${CMAKE_PATH}/${TYPE}/torchair -DPYTHON_BIN_PATH=${PYTHON_BIN_PATH}
-
-  export PYTHONPATH=${AUTOFUSE_TEST_PATH}/${TYPE}:${PYTHONPATH}
-  export LD_LIBRARY_PATH=${ASCEND_SDK_PATH}/lib:${LD_LIBRARY_PATH}
-  make -j${THREAD_NUM}
-  ctest -j${THREAD_NUM} --output-on-failure
-
-  # Torchair tests
   local TYPE="$1"
+  local TEST_PATH="${TORCHAIR_ROOT}/build/${TYPE}"
+  rm -rf "${TEST_PATH}"
+  mkdir -pv "${TEST_PATH}"
+  cp -r "${TORCHAIR_ROOT}/python" "${TEST_PATH}"
+  export PYTHONPATH="${TEST_PATH}/python"
+  cd "${TEST_PATH}"
 
-  local CMAKE_PATH="${TORCHAIR_ROOT}/tests/build"
-  mkdir -pv "${CMAKE_PATH}"
-  cd "${CMAKE_PATH}" && cmake .. -DCMAKE_BUILD_TYPE=GCOV -DTORCHAIR_INSTALL_DST=${CMAKE_PATH}/${TYPE}/torchair -DPYTHON_BIN_PATH=${PYTHON_BIN_PATH}
-
-  export PYTHONPATH=${CMAKE_PATH}/${TYPE}:${PYTHONPATH}
-  export LD_LIBRARY_PATH=${CMAKE_PATH}/stubs:${ASCEND_SDK_PATH}/lib:${LD_LIBRARY_PATH}
-
+  if [[ "X$TYPE" = "Xut" ]]; then
+    ${PYTHON_BIN_PATH} -m unittest discover -s "${TORCHAIR_ROOT}/tests" -p "test_*.py"
+  elif [[ "X$TYPE" = "Xst" ]]; then
+    ${PYTHON_BIN_PATH} -m unittest discover -s "${TORCHAIR_ROOT}/tests" -p "test_*.py"
+  fi
   mkdir -pv "${TORCHAIR_ROOT}/coverage"
-  make torchair_${TYPE} -j${THREAD_NUM}
-  lcov -o ${TORCHAIR_ROOT}/coverage/coverage.info -e ${CMAKE_PATH}/${TYPE}/${TYPE}.coverage "*torchair/torchair*"
+  lcov --capture --initial --directory . --output-file "${TORCHAIR_ROOT}/coverage/coverage.info"
 }
 
 main() {
@@ -104,25 +92,7 @@ main() {
 
   PYTHON_BIN_PATH=$(which python3.8 || which python3)
   export TARGET_PYTHON_PATH=${PYTHON_BIN_PATH}
-  if [[ "X$ASCEND_CUSTOM_PATH" = "X" ]]; then
-    if [[ "X$ENABLE_CI_BUILD" = "Xon" || "X$ENABLE_CI_BUILD_AND_INSTALL" = "Xon" ]]; then
-      echo "Building torchair with no ascned-sdk specified"
-      export NO_ASCEND_SDK=1
-    else
-      echo "ASCEND_CUSTOM_PATH must be set when running ut or st"
-      exit 1
-    fi
-  else
-    echo "Building torchair with ascned-sdk in ${ASCEND_CUSTOM_PATH}"
-    export ASCEND_SDK_PATH=${ASCEND_CUSTOM_PATH}/opensdk/opensdk/
-  fi
   PYTHON_BIN_PATH=${PYTHON_BIN_PATH} bash ${TORCHAIR_ROOT}/configure
-
-  ${GCC_PREFIX}g++ -v
-
-  if [[ "$GCC_PREFIX" != "" ]]; then
-    CMAKE_ARGS="$CMAKE_ARGS -DGCC_PREFIX=$GCC_PREFIX"
-  fi
 
   if [[ "X$ENABLE_CI_BUILD" = "Xon" ]]; then
     build_torchair
