@@ -10,6 +10,7 @@ from torch.fx import Interpreter
 from torch.fx.graph_module import GraphModule
 from torch.fx.node import Argument, Target
 from torchair.core.utils import logger
+from torchair._ge_concrete_graph.fx2ge_converter import _get_converter
 from contextlib import contextmanager
 from datetime import datetime
 import numpy as np
@@ -26,7 +27,7 @@ _dump_info = threading.local()
 
 
 @contextmanager
-def _dump_ctx(*, node = None):
+def _dump_ctx(*, node=None):
     try:
         _dump_info.node = node
         yield
@@ -42,8 +43,10 @@ def _as_numpy(x):
     except:
         return np.array(f'{x}')
 
+
 def _get_node_stack(node):
     return node.stack_trace.split(' File ')[-1].replace('\n', '') if node.stack_trace else '<no stack>'
+
 
 def _is_dumping():
     return hasattr(_dump_info, 'node') and _dump_info.node is not None
@@ -55,7 +58,7 @@ def _trace_dump(f):
         if not _is_dumping():
             return f(self, target, args, kwargs)
 
-        if not hasattr(target, '_ge_converter'):
+        if _get_converter(target) is None:
             logger.debug(f'Skip dump non aten target {target}')
             return f(self, target, args, kwargs)
 
