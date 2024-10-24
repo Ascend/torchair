@@ -107,7 +107,6 @@ class BuildGraphTest(unittest.TestCase):
                 load.attr.sched.exec_order = 1
                 load.attr.sched.axis = [z0]
                 load.x = arg2_1.y
-                load.y.dtype = ascir.dtypes.float16
                 load.y.axis = [z0]
                 load.y.strides = [ascir.SizeExpr([])]
                 load.y.size = [ascir.SizeExpr([s0,s1])]
@@ -115,7 +114,6 @@ class BuildGraphTest(unittest.TestCase):
                 abs.attr.sched.exec_order = 2
                 abs.attr.sched.axis = [z0]
                 abs.x = load.y
-                abs.y.dtype = ascir.dtypes.float16
                 abs.y.axis = [z0]
                 abs.y.strides = [ascir.SizeExpr([])]
                 abs.y.size = [ascir.SizeExpr([s0,s1])]
@@ -123,7 +121,6 @@ class BuildGraphTest(unittest.TestCase):
                 store.attr.sched.exec_order = 3
                 store.attr.sched.axis = [z0]
                 store.x = abs.y
-                store.y.dtype = ascir.dtypes.float16
                 store.y.axis = [z0]
                 store.y.strides = [ascir.SizeExpr([])]
                 store.y.size = [ascir.SizeExpr([s0,s1])]
@@ -166,7 +163,6 @@ class BuildGraphTest(unittest.TestCase):
                 load.attr.sched.exec_order = 1
                 load.attr.sched.axis = [z0, z1]
                 load.x = arg3_1.y
-                load.y.dtype = ascir.dtypes.float16
                 load.y.axis = [z0, z1]
                 load.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 load.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
@@ -175,7 +171,6 @@ class BuildGraphTest(unittest.TestCase):
                 cast.attr.sched.axis = [z0, z1]
                 cast.x = load.y
                 cast.dst_type = ascir.dtypes.float32
-                cast.y.dtype = ascir.dtypes.float32
                 cast.y.axis = [z0, z1]
                 cast.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 cast.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
@@ -184,7 +179,6 @@ class BuildGraphTest(unittest.TestCase):
                 max.attr.sched.axis = [z0, z1]
                 max.x = cast.y
                 max.attr.hint.compute_type = 'reduce'
-                max.y.dtype = ascir.dtypes.float32
                 max.y.axis = [z0, z1]
                 max.y.strides = [ascir.SizeExpr([]), ascir.SizeExpr([0])]
                 max.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([])]
@@ -192,7 +186,6 @@ class BuildGraphTest(unittest.TestCase):
                 store.attr.sched.exec_order = 4
                 store.attr.sched.axis = [z0, z1]
                 store.x = max.y
-                store.y.dtype = ascir.dtypes.float32
                 store.y.axis = [z0, z1]
                 store.y.strides = [ascir.SizeExpr([]), ascir.SizeExpr([0])]
                 store.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([])]
@@ -208,7 +201,6 @@ class BuildGraphTest(unittest.TestCase):
                 load1.attr.sched.exec_order = 6
                 load1.attr.sched.axis = [z0, z1]
                 load1.x = buf0.y
-                load1.y.dtype = ascir.dtypes.float32
                 load1.y.axis = [z0, z1]
                 load1.y.strides = [ascir.SizeExpr([]), ascir.SizeExpr([0])]
                 load1.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([])]
@@ -216,7 +208,6 @@ class BuildGraphTest(unittest.TestCase):
                 broadcast.attr.sched.exec_order = 7
                 broadcast.attr.sched.axis = [z0, z1]
                 broadcast.x = load1.y
-                broadcast.y.dtype = ascir.dtypes.float32
                 broadcast.y.axis = [z0, z1]
                 broadcast.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 broadcast.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
@@ -225,7 +216,6 @@ class BuildGraphTest(unittest.TestCase):
                 sub.attr.sched.axis = [z0, z1]
                 sub.x1 = cast.y
                 sub.x2 = broadcast.y
-                sub.y.dtype = ascir.dtypes.float32
                 sub.y.axis = [z0, z1]
                 sub.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 sub.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
@@ -233,7 +223,6 @@ class BuildGraphTest(unittest.TestCase):
                 exp.attr.sched.exec_order = 9
                 exp.attr.sched.axis = [z0, z1]
                 exp.x = sub.y
-                exp.y.dtype = ascir.dtypes.float32
                 exp.y.axis = [z0, z1]
                 exp.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 exp.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
@@ -241,7 +230,6 @@ class BuildGraphTest(unittest.TestCase):
                 store1.attr.sched.exec_order = 10
                 store1.attr.sched.axis = [z0, z1]
                 store1.x = exp.y
-                store1.y.dtype = ascir.dtypes.float32
                 store1.y.axis = [z0, z1]
                 store1.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 store1.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
@@ -257,7 +245,6 @@ class BuildGraphTest(unittest.TestCase):
                 load2.attr.sched.exec_order = 12
                 load2.attr.sched.axis = [z0, z1]
                 load2.x = buf1.y
-                load2.y.dtype = ascir.dtypes.float32
                 load2.y.axis = [z0, z1]
                 load2.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 load2.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
@@ -266,7 +253,6 @@ class BuildGraphTest(unittest.TestCase):
                 sum.attr.sched.axis = [z0, z1]
                 sum.x = load2.y
                 sum.attr.hint.compute_type = 'reduce'
-                sum.y.dtype = ascir.dtypes.float32
                 sum.y.axis = [z0, z1]
                 sum.y.strides = [ascir.SizeExpr([]), ascir.SizeExpr([0])]
                 sum.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([])]
@@ -274,7 +260,6 @@ class BuildGraphTest(unittest.TestCase):
                 store2.attr.sched.exec_order = 14
                 store2.attr.sched.axis = [z0, z1]
                 store2.x = sum.y
-                store2.y.dtype = ascir.dtypes.float32
                 store2.y.axis = [z0, z1]
                 store2.y.strides = [ascir.SizeExpr([]), ascir.SizeExpr([0])]
                 store2.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([])]
@@ -290,7 +275,6 @@ class BuildGraphTest(unittest.TestCase):
                 load3.attr.sched.exec_order = 16
                 load3.attr.sched.axis = [z0, z1]
                 load3.x = buf2.y
-                load3.y.dtype = ascir.dtypes.float32
                 load3.y.axis = [z0, z1]
                 load3.y.strides = [ascir.SizeExpr([]), ascir.SizeExpr([0])]
                 load3.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([])]
@@ -298,7 +282,6 @@ class BuildGraphTest(unittest.TestCase):
                 broadcast1.attr.sched.exec_order = 17
                 broadcast1.attr.sched.axis = [z0, z1]
                 broadcast1.x = load3.y
-                broadcast1.y.dtype = ascir.dtypes.float32
                 broadcast1.y.axis = [z0, z1]
                 broadcast1.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 broadcast1.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
@@ -307,7 +290,6 @@ class BuildGraphTest(unittest.TestCase):
                 truediv.attr.sched.axis = [z0, z1]
                 truediv.x1 = load2.y
                 truediv.x2 = broadcast1.y
-                truediv.y.dtype = ascir.dtypes.float32
                 truediv.y.axis = [z0, z1]
                 truediv.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 truediv.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
@@ -316,7 +298,6 @@ class BuildGraphTest(unittest.TestCase):
                 cast1.attr.sched.axis = [z0, z1]
                 cast1.x = truediv.y
                 cast1.dst_type = ascir.dtypes.float16
-                cast1.y.dtype = ascir.dtypes.float16
                 cast1.y.axis = [z0, z1]
                 cast1.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 cast1.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
@@ -324,7 +305,6 @@ class BuildGraphTest(unittest.TestCase):
                 store3.attr.sched.exec_order = 20
                 store3.attr.sched.axis = [z0, z1]
                 store3.x = cast1.y
-                store3.y.dtype = ascir.dtypes.float16
                 store3.y.axis = [z0, z1]
                 store3.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                 store3.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]

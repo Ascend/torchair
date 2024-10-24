@@ -58,7 +58,6 @@ def unsupported(*args, op_type, **kwargs):
         setattr(op, f"x{i}", arg)
     for k, v in kwargs.items():
         setattr(op, k, v)
-    op.y.dtype = TypeUtils.torch_to_asc(torch.float16)
     return op.y
 
 
