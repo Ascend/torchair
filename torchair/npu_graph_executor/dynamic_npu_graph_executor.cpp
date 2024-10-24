@@ -59,6 +59,7 @@ Status DynamicNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &in
     input_holders.resize(inputs.size());
     host_input_holders_.resize(inputs.size());
     TNG_ASSERT(graph_data_->frozen_input_flag_list.size() == inputs.size());
+    first_stream = stream;
   }
 
   for (size_t i = 0U; i < inputs.size(); ++i) {
@@ -95,12 +96,20 @@ Status DynamicNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &in
         } else {
           update_shape_flag = false;
         }
-
-        size_t copy_size = static_cast<size_t>(inputs[i].numel() * inputs[i].element_size());
-        if (copy_size > 0) {
+        size_t dst_size = static_cast<size_t>(host_input_holders_[i].numel() * host_input_holders_[i].element_size());
+        size_t src_size = static_cast<size_t>(inputs[i].numel() * inputs[i].element_size());
+        if (src_size > 0) {
+          TNG_ASSERT(first_stream == stream,
+                     "When the Tensor input is located on the host, the backend cannot support host input. "
+                     "It is necessary to perform an H2D copy of the data before proceeding with asynchronous dispatch. "
+                     "During the H2D copy of the input data, it is a synchronous copy without a stream, "
+                     "while dispatching is an asynchronous operation with a stream. "
+                     "To prevent the data copied to the device from being erroneously refreshed due to stream switching"
+                     ", when there is host input, switching to different streams is not supported "
+                     "during each execution.");
           auto stream_ret = aclrtSynchronizeStream(stream);
           TNG_ASSERT(stream_ret == ACL_ERROR_NONE, "ACL sync stream failed, return %d", stream_ret);
-          auto ret = aclrtMemcpy(host_input_holders_[i].data_ptr(), copy_size, inputs[i].data_ptr(), copy_size,
+          auto ret = aclrtMemcpy(host_input_holders_[i].data_ptr(), dst_size, inputs[i].data_ptr(), src_size,
                                  ACL_MEMCPY_HOST_TO_DEVICE);
           TNG_ASSERT(ret == ACL_ERROR_NONE, "ACL memory copy failed, return %d", ret);
         }

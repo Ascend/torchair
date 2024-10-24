@@ -178,7 +178,7 @@ Status AssembleFrozenOption(const std::vector <bool> &frozen_input_flag_list,
   TNG_ASSERT(frozen_input_flag_list.size() == torch_inputs.size());
   std::stringstream frozen_input_flag_list_stream;
   for (size_t i = 0U; i < frozen_input_flag_list.size(); i++) {
-    if (frozen_input_flag_list[i]) {
+    if (frozen_input_flag_list[i] && torch_inputs[i].device().is_privateuseone()) {
       if (frozen_input_flag_list_stream.str() != "") {
         frozen_input_flag_list_stream << ";";
       }

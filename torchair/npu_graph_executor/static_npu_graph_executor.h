@@ -33,6 +33,11 @@ class StaticNpuGraphExecutor : public Executor {
 
   Status AllocAndUpdateFeatureMemory(void *stream);
 
+  template <typename T>
+  Status AssembleHostInputs(const at::Tensor &inputs, T &input_holders,
+                            std::pair<at::Tensor, std::pair<size_t, size_t>> &host_input_holder_,
+                            void *stream, bool is_first_run);
+
   std::vector<ge::Tensor> inputs_holder_;
   std::vector<ge::Tensor> outputs_holder_;
   std::vector<gert::Tensor> gert_inputs_holder_;
@@ -43,10 +48,11 @@ class StaticNpuGraphExecutor : public Executor {
   ge::MemBlock *feature_map_block_{nullptr};
   bool fm_refreshable_{false};
   bool is_first_run_{true};
+  void *first_stream{nullptr};
 
   std::vector<std::vector<int64_t>> output_shapes_;
   std::vector<at::TensorOptions> output_options_;
-  std::vector<std::pair<at::Tensor, size_t>> host_input_holders_;
+  std::vector<std::pair<at::Tensor, std::pair<size_t, size_t>>> host_input_holders_;
 };
 }  // namespace tng
 

@@ -186,22 +186,9 @@ Status MutiGearNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &i
       }
       TNG_ASSERT(input_gears_[i].empty(), "CPU tensor unsupport set gears");
       TNG_LOG(DEBUG) << "Host input " << i << " " << DebugString(inputs[i]) << " need copy to device";
-
-      if (is_first_run) {
-        auto host_input_holder = at::empty(inputs[i].sizes(), inputs[i].options().device(at::kPrivateUse1));
-        size_t copy_size = static_cast<size_t>(inputs[i].numel() * inputs[i].element_size());
-        host_input_holders_[i] = std::make_pair(host_input_holder, copy_size);
-        TNG_RETURN_IF_ERROR(AtTensorToGeTensor(host_input_holders_[i].first, input_holders[i]));
-      }
-      if (host_input_holders_[i].second > 0) {
-        auto stream_ret = aclrtSynchronizeStream(stream);
-        TNG_ASSERT(stream_ret == ACL_ERROR_NONE, "ACL sync stream failed, return %d", stream_ret);
-        auto ret = aclrtMemcpy(host_input_holders_[i].first.data_ptr(), host_input_holders_[i].second,
-                               inputs[i].data_ptr(), host_input_holders_[i].second, ACL_MEMCPY_HOST_TO_DEVICE);
-        TNG_ASSERT(ret == ACL_ERROR_NONE, "ACL memory copy failed, return %d", ret);
-      }
-      TNG_LOG(DEBUG) << "Assemble aten host input " << i << " " << DebugString(inputs[i])
-                     << " to " << DebugString(input_holders[i]);
+      TNG_RETURN_IF_ERROR(AssembleHostInputs(inputs[i], input_holders[i], host_input_holders_[i], stream, is_first_run));
+      TNG_LOG(DEBUG) << "Assemble aten host input " << i << " " << DebugString(inputs[i]) << " to "
+                     << DebugString(input_holders[i]);
     } else {
       TNG_ASSERT(false, "Invalid Placement::UNKNOWN of input %zu.", i);
     }

@@ -93,7 +93,7 @@ main() {
   checkopts "$@"
 
   if [[ "$TARGET_PYTHON_PATH" == "" ]]; then
-      PYTHON_BIN_PATH=$(which python3.8 || which python3)
+      PYTHON_BIN_PATH=$(which python3 || which python3.8)
       export TARGET_PYTHON_PATH=${PYTHON_BIN_PATH}
   fi
   if [[ "X$ASCEND_CUSTOM_PATH" = "X" ]]; then

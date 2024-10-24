@@ -30,7 +30,7 @@ class Session {
 
   Status AddGraph(uint32_t id, const ge::Graph &graph, const std::map<ge::AscendString, ge::AscendString> &options);
 
-  Status CompileGraph(uint32_t id, std::shared_ptr<ge::CompiledGraphSummary> *summary);
+  Status CompileGraph(uint32_t id, std::shared_ptr<ge::CompiledGraphSummary> &summary);
 
   Status AutoTuneGraph(const ge::Graph &graph, const std::map<ge::AscendString, ge::AscendString> &options,
                        const std::vector<ge::Tensor> &example_inputs, void *stream = nullptr);

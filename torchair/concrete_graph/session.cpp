@@ -142,7 +142,7 @@ Status Session::AddGraph(uint32_t id, const ge::Graph &graph,
   return Status::Success();
 }
 
-Status Session::CompileGraph(uint32_t id, std::shared_ptr<ge::CompiledGraphSummary> *summary) {
+Status Session::CompileGraph(uint32_t id, std::shared_ptr<ge::CompiledGraphSummary> &summary) {
   TNG_RETURN_IF_ERROR(EnsureInitialized());
 
   std::future<Status> future = std::async(std::launch::async, [&]() {
@@ -152,9 +152,9 @@ Status Session::CompileGraph(uint32_t id, std::shared_ptr<ge::CompiledGraphSumma
     TNG_LOG(EVENT) << "Compile Graph " << id << " consume: "
                    << (std::chrono::duration_cast<std::chrono::milliseconds>(end - start)).count()
                    << " ms.";
-    if (summary != nullptr) {
-      *summary = global_ge_session->GetCompiledGraphSummary(id);
-      TNG_ASSERT_NOTNULL(*summary, "Failed get compiled summary of graph %d", id);
+    if (summary == nullptr) {
+      summary = global_ge_session->GetCompiledGraphSummary(id);
+      TNG_ASSERT_NOTNULL(summary, "Failed get compiled summary of graph %d", id);
     }
     return Status::Success();
   });
