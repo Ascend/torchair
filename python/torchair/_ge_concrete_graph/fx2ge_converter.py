@@ -561,6 +561,7 @@ class GeConcreteGraph(ConcreteGraphBase):
     def optimize_graph_without_runtime(self, *args):
         from torchair._ge_concrete_graph.graph_pass import remove_dead_data_and_reorder_data_index
         from torchair._ge_concrete_graph.graph_pass import explict_order_for_side_effect_nodes
+        from torchair._ge_concrete_graph.graph_pass import explict_order_for_cmo
         from torchair._ge_concrete_graph.utils import get_graph_input_placements
         if self._config.experimental_config.frozen_parameter:
             warnings.warn(f'When enable frozen_parameter, Parameters will be considered frozen.'
@@ -587,6 +588,7 @@ class GeConcreteGraph(ConcreteGraphBase):
 
         # Note: The following two passes must be executed after the above pass.
         explict_order_for_side_effect_nodes(self.graph, self._graph_output_ref_input)
+        explict_order_for_cmo(self.graph)
         _normalize_ge_graph(self.graph)
 
     def update_graph_with_runtime(self, inputs, fx_inputs):
