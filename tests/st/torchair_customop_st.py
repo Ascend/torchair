@@ -1,7 +1,14 @@
 import logging
 import unittest
-
+import os
+import unittest.mock
+import torch
+from torch.utils._mode_utils import no_dispatch
 import torchair
+from torchair.configs.compiler_config import CompilerConfig
+from torchair.core._concrete_graph import ConcreteGraphBase
+from torchair.npu_fx_compiler import _NpuGraphConverter, _next_unique_graph_id, _NpuFxCompiler
+from torchair._ge_concrete_graph.fx2ge_converter import GeConcreteGraph as ConcreteGraph
 import torchair.ge as ge
 from torchair._ge_concrete_graph import ge_apis as raw_ops
 from torchair.ge._ge_graph import GeGraph, compat_as_bytes
@@ -185,7 +192,6 @@ class CustomOpSt(unittest.TestCase):
 
     def test_public_api_register_fx_node_ge_converter(self):
         from torchair import register_fx_node_ge_converter
-        import torch
         import inspect
         from torch.library import Library, impl
         m = Library("test", "DEF")
@@ -451,6 +457,41 @@ class CustomOpSt(unittest.TestCase):
         self.assertEqual(error_msg,
                          f"optype TestV1 unsupport optional input [inputname], optional attr [], "
                          f"please upgrade cann version.")
+
+
+    def test_upsample_nearest2d_decomposition_adjust_dynamic(self):
+        def get_dumped_py_file_list(dir_path, file_extension='.py'):
+            return [i for i in os.listdir(dir_path) if i.startswith('dynamo_') and i.endswith(f'{file_extension}')]
+
+        for file_name in get_dumped_py_file_list('./'):
+            os.remove(os.path.join('./', file_name))
+        config = CompilerConfig()
+        config.debug.graph_dump.type = "py"
+        npu_backend = torchair.get_npu_backend(compiler_config=config)
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x2):
+                y2 = torch.nn.functional.interpolate(
+                    x2, scale_factor=2, mode="nearest")
+                return y2
+
+        model2 = Model()
+        model_dynamic = torch.compile(
+            model2, backend=npu_backend, dynamic=True)
+        unused = model_dynamic(torch.randn(2, 2, 2, 2))
+
+        dumped_py_file_list = get_dumped_py_file_list('./')
+        dumped_py_file_list.sort(
+            key=lambda file_name: os.path.getmtime(os.path.join('./', file_name)))
+        assert dumped_py_file_list.__len__() > 0
+        file_name = os.path.join('./', dumped_py_file_list[-1])
+
+        with open(file_name, 'r') as f:
+            src = f.read()
+        self.assertTrue("torch.ops.aten.upsample_nearest2d.default" in src)
 
 
 if __name__ == '__main__':

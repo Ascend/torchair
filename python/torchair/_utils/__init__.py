@@ -16,6 +16,7 @@ from torch._dynamo.symbolic_convert import break_graph_if_unsupported, Instructi
 from torch._dynamo.exc import Unsupported
 from torch._dynamo.variables.lists import TupleVariable
 from torch._dynamo.variables.nn_module import NNModuleVariable
+from .adjust_implicit_decomposition import adjust_implicit_decomposition
 
 
 aten = torch.ops.aten
@@ -285,25 +286,6 @@ def npu_patch_break_graph():
     add_break_graph(op_table)
 
 
-def disable_implicit_decomposition():
-    '''
-    Since torch official will implicitly decompose some aten ops,
-    disable some ops here to avoid poor performance after decompose.
-    '''
-    disable_aten_ops = [
-        'aten.upsample_nearest1d.vec', 'aten.upsample_nearest1d.default',
-        'aten.upsample_nearest2d.vec', 'aten.upsample_nearest2d.default',
-        'aten.upsample_nearest3d.vec', 'aten.upsample_nearest3d.default',
-    ]
-
-    for op_override in decomposition_table.keys():
-        if str(op_override) in disable_aten_ops:
-            if DispatchKey.Autograd in op_override.py_kernels:
-                op_override.py_kernels.pop(DispatchKey.Autograd)
-            if DispatchKey.CompositeImplicitAutograd in op_override.py_kernels:
-                op_override.py_kernels.pop(DispatchKey.CompositeImplicitAutograd)
-
-
 def register_matmul_backward_decomp():
     '''
     Torch_npu currently dispatch linear to matmul and matmul_backward
@@ -465,7 +447,7 @@ def npu_patch_register_fast_op_impl():
 
 @run_once
 def add_npu_patch(decompositions, compiler_config):
-    disable_implicit_decomposition()
+    adjust_implicit_decomposition()
     register_matmul_backward_decomp()
     npu_patch_meta()
     npu_patch_break_graph()

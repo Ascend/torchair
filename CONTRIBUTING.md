@@ -407,3 +407,20 @@ print(graph_result)
     > **需要注意:**
     > 本段接口可以导出图的相关信息，请用户加强对相关数据的保护。
     > 请在接口的功能完成之后及时关闭相关选项。
+
+# 调整interpolate下的默认decomposition
+  **动机：**
+    pytorch中存在一些默认的decomposition旨在将算子decompose为更小的[算子集合](https://pytorch.org/docs/stable/torch.compiler_ir.html)，例如aten.upsample_nearest2d算子会在torch.compile的模式下被拆解为一系列小算子。
+    该行为有时不符合预期：
+    - 拆解为小算子后，对于特定的backend可能造成性能的裂化。
+    - 在export场景，不希望被拆解。
+    因此提供一种方式，在torchair中屏蔽原生pytorch中的某些decomposition。
+  **decomposition实现原理：**
+    1、pytorch使用装饰器[register_decomposition](https://github.com/pytorch/pytorch/blob/v2.1.0/torch/_decomp/__init__.py#L99)将特定的atenIR拆解为被装饰函数所调用的小算子。
+    2、[特殊场景]某些atenIR存在特殊的dispatch key，如DispatchKey.CompositeImplicitAutograd。该dispatch key对应的C++
+    实现，是无法进行dynamic=True时torch.compile模式下的sym符号推导。此时，通过aten.upsample_nearest2d.vec.py_impl装饰器
+    将该dispatch key注册python实现解决该问题。
+  **调整默认decomposition：**
+    调整算子IR的默认decomposition一般有两种策略，禁止算子的默认decomposition与替换算子的默认decomposition。
+    > 其中替换decomposition需要关注, 被替换的算子是否还存在decomposition，以及是否需要被禁止。
+    如果您有屏蔽某些算子的decomposition的需求，欢迎贡献相关代码至python/torchair/_utils/adjust_implicit_decomposition.py。
