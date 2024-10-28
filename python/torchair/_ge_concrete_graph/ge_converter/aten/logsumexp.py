@@ -64,12 +64,12 @@ def conveter_aten_logsumexp_default(
     self = dtype_promote(self, target_dtype=meta_outputs.dtype)
     dim_int64 = dtype_promote(dim, target_dtype=DataType.DT_INT64)
     maxes = ge.ReduceMax(self, dim_int64, keep_dims=True)
+    mask = ge.Equal(ge.Abs(maxes), ge.Const(float("inf"), dtype=meta_outputs.dtype))
+    maxes = ge.MaskedFill(maxes, mask, 0.)
     if keepdim:
         maxes_squeezed = maxes
     else:
         maxes_squeezed = squeeze_multiple(maxes, dim, self_rank)
-    mask = ge.Equal(ge.Abs(maxes_squeezed), ge.Const(float("inf"), dtype=meta_outputs.dtype))
-    maxes_squeezed = ge.MaskedFill(maxes_squeezed, mask, 0.)
     result = ge.ReduceLogSumExp(ge.Sub(self, maxes), dim_int64, keep_dims=keepdim)
     result = ge.Add(result, maxes_squeezed)
     return result
