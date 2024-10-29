@@ -246,7 +246,7 @@ REG_OP(MatmulReduceScatter)
 * @li x2: A matrix Tensor. The type support int8.
 * @li scale: A matrix Tensor. The type support uint64, float32, bfloat16.
 * @li offset: A matrix Tensor. The type support float32.
-* @li bias: A matrix Tensor. The type support int32.
+* @li bias: A matrix Tensor. The type support int32, bfloat16, float16, float32.
 * @li pertoken_scale: A matrix Tensor. The type support float32. \n
 
 * @par Attributes:
@@ -264,7 +264,7 @@ REG_OP(QuantBatchMatmulV3)
     .INPUT(x2, TensorType({DT_INT8, DT_INT4}))
     .INPUT(scale, TensorType({DT_UINT64, DT_FLOAT, DT_BF16}))
     .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))
-    .OPTIONAL_INPUT(bias, TensorType({DT_INT32}))
+    .OPTIONAL_INPUT(bias, TensorType({DT_INT32, DT_BF16, DT_FLOAT16, DT_FLOAT}))
     .OPTIONAL_INPUT(pertoken_scale, TensorType({DT_FLOAT}))
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_INT8, DT_BF16}))
     .REQUIRED_ATTR(dtype, Int)
