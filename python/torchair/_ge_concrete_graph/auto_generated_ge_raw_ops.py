@@ -19113,6 +19113,367 @@ def MoeFinalizeRouting(expanded_x: Tensor, x1: Tensor, x2: Optional[Tensor], bia
     return y
 
 
+# This api is auto-generated from IR ForeachAddcdivScalar
+@auto_convert_to_tensor([True, True, True, False], [False, False, False, False])
+def _ForeachAddcdivScalar(x: List[Tensor], x1: List[Tensor], x2: List[Tensor], scalar: Tensor, *, size_of_y: int, dependencies=[], node_name=None):
+    """REG_OP(ForeachAddcdivScalar)\n
+.DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+"""
+    op = get_default_ge_graph().op.add()
+    op.type = "ForeachAddcdivScalar"
+    op.name = next_unique_name(node_name, "ForeachAddcdivScalar")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(x):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x" + str(i)
+
+    if not isinstance(x1, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(x1):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x1" + str(i)
+
+    if not isinstance(x2, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(x2):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x2" + str(i)
+
+    op.input.append(scalar.tensor)
+    op.input_desc.add().CopyFrom(scalar.desc)
+    op.input_desc[-1].name = "scalar"
+
+    # process attrs
+
+    # process outputs
+    output_index = 0
+    y = []
+    for i in range(output_index, output_index + size_of_y):
+        op.output_desc.add().name = "y" + str(i - output_index)
+        y.append(Tensor(op, i))
+    output_index += size_of_y
+
+    return y
+
+
+# This api is auto-generated from IR ForeachAddcdivScalarList
+@auto_convert_to_tensor([True, True, True, False], [False, False, False, False])
+def _ForeachAddcdivScalarList(x: List[Tensor], x1: List[Tensor], x2: List[Tensor], scalar: Tensor, *, size_of_y: int, dependencies=[], node_name=None):
+    """REG_OP(ForeachAddcdivScalarList)\n
+.DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+"""
+    op = get_default_ge_graph().op.add()
+    op.type = "ForeachAddcdivScalarList"
+    op.name = next_unique_name(node_name, "ForeachAddcdivScalarList")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(x):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x" + str(i)
+
+    if not isinstance(x1, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(x1):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x1" + str(i)
+
+    if not isinstance(x2, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(x2):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x2" + str(i)
+
+    op.input.append(scalar.tensor)
+    op.input_desc.add().CopyFrom(scalar.desc)
+    op.input_desc[-1].name = "scalar"
+
+    # process attrs
+
+    # process outputs
+    output_index = 0
+    y = []
+    for i in range(output_index, output_index + size_of_y):
+        op.output_desc.add().name = "y" + str(i - output_index)
+        y.append(Tensor(op, i))
+    output_index += size_of_y
+
+    return y
+
+
+# This api is auto-generated from IR ForeachAddcmulScalar
+@auto_convert_to_tensor([True, True, True, False], [False, False, False, False])
+def _ForeachAddcmulScalar(x1: List[Tensor], x2: List[Tensor], x3: List[Tensor], scalar: Tensor, *, size_of_y: int, dependencies=[], node_name=None):
+    """REG_OP(ForeachAddcmulScalar)\n
+.DYNAMIC_INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+.DYNAMIC_INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+.DYNAMIC_INPUT(x3, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+.INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+"""
+
+    op = get_default_ge_graph().op.add()
+    op.type = "ForeachAddcmulScalar"
+    op.name = next_unique_name(node_name, "ForeachAddcmulScalar")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    assert isinstance(x1, (tuple, list))
+    for i, v in enumerate(x1):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x1" + str(i)
+    assert isinstance(x2, (tuple, list))
+    for i, v in enumerate(x2):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x2" + str(i)
+    assert isinstance(x3, (tuple, list))
+    for i, v in enumerate(x3):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x3" + str(i)
+    op.input.append(scalar.tensor)
+    op.input_desc.add().CopyFrom(scalar.desc)
+    op.input_desc[-1].name = "scalar"
+
+    # process attrs
+
+    # process outputs
+    output_index = 0
+    y = []
+    for i in range(output_index, output_index + size_of_y):
+        op.output_desc.add().name = "y" + str(i - output_index)
+        y.append(Tensor(op, i))
+    output_index += size_of_y
+
+    # return outputs
+    return y
+
+
+# This api is auto-generated from IR ForeachAddcmulScalarList
+@auto_convert_to_tensor([True, True, True, False], [False, False, False, False])
+def _ForeachAddcmulScalarList(x1: List[Tensor], x2: List[Tensor], x3: List[Tensor], scalar: Tensor, *, size_of_y: int, dependencies=[], node_name=None):
+    """REG_OP(ForeachAddcmulScalarList)\n
+.DYNAMIC_INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+.DYNAMIC_INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+.DYNAMIC_INPUT(x3, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+.INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+"""
+
+    op = get_default_ge_graph().op.add()
+    op.type = "ForeachAddcmulScalarList"
+    op.name = next_unique_name(node_name, "ForeachAddcmulScalarList")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    assert isinstance(x1, (tuple, list))
+    for i, v in enumerate(x1):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x1" + str(i)
+    assert isinstance(x2, (tuple, list))
+    for i, v in enumerate(x2):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x2" + str(i)
+    assert isinstance(x3, (tuple, list))
+    for i, v in enumerate(x3):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x3" + str(i)
+    op.input.append(scalar.tensor)
+    op.input_desc.add().CopyFrom(scalar.desc)
+    op.input_desc[-1].name = "scalar"
+
+    # process attrs
+
+    # process outputs
+    output_index = 0
+    y = []
+    for i in range(output_index, output_index + size_of_y):
+        op.output_desc.add().name = "y" + str(i - output_index)
+        y.append(Tensor(op, i))
+    output_index += size_of_y
+
+    return y
+
+
+# This api is auto-generated from IR ForeachLerpScalar
+@auto_convert_to_tensor([True, True, False], [False, False, False])
+def _ForeachLerpScalar(x1: List[Tensor], x2: List[Tensor], weight: Tensor, *, size_of_y: int, dependencies=[], node_name=None):
+    """REG_OP(ForeachLerpScalar)\n
+    .DYNAMIC_INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .DYNAMIC_INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .INPUT(weight, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+"""
+
+    op = get_default_ge_graph().op.add()
+    op.type = "ForeachLerpScalar"
+    op.name = next_unique_name(node_name, "ForeachLerpScalar")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    if not isinstance(x1, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(x1):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x1" + str(i)
+    if not isinstance(x2, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(x2):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x2" + str(i)
+    op.input.append(weight.tensor)
+    op.input_desc.add().CopyFrom(weight.desc)
+    op.input_desc[-1].name = "weight"
+
+    # process attrs
+
+    # process outputs
+    output_index = 0
+    y = []
+    for i in range(output_index, output_index + size_of_y):
+        op.output_desc.add().name = "y" + str(i - output_index)
+        y.append(Tensor(op, i))
+    output_index += size_of_y
+
+    return y
+
+
+# This api is auto-generated from IR ForeachLerpList
+@auto_convert_to_tensor([True, True, True], [False, False, False])
+def _ForeachLerpList(x1: List[Tensor], x2: List[Tensor], weights: List[Tensor], *, size_of_y: int, dependencies=[], node_name=None):
+    """REG_OP(ForeachLerpList)\n
+    .DYNAMIC_INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .DYNAMIC_INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .INPUT(weight, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+"""
+
+    op = get_default_ge_graph().op.add()
+    op.type = "ForeachLerpList"
+    op.name = next_unique_name(node_name, "ForeachLerpList")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    if not isinstance(x1, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(x1):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x1" + str(i)
+    if not isinstance(x2, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(x2):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x2" + str(i)
+
+    if not isinstance(weights, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(weights):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "weights" + str(i)
+    # op.input.append(weight.tensor)
+    # op.input_desc.add().CopyFrom(weight.desc)
+    # op.input_desc[-1].name = "weight"
+
+    output_index = 0
+    y = []
+    for i in range(output_index, output_index + size_of_y):
+        op.output_desc.add().name = "y" + str(i - output_index)
+        y.append(Tensor(op, i))
+    output_index += size_of_y
+
+    return y
+
+
+# This api is auto-generated from IR ForeachNorm
+@auto_convert_to_tensor([True, False], [False, False])
+def _ForeachNorm(x1: List[Tensor], scalar: Tensor, *, size_of_y: int, dependencies=[], node_name=None):
+    """REG_OP(ForeachNorm)\n
+    .DYNAMIC_INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+"""
+
+    op = get_default_ge_graph().op.add()
+    op.type = "ForeachNorm"
+    op.name = next_unique_name(node_name, "ForeachNorm")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    if not isinstance(x1, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(x1):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x1" + str(i)
+    
+    op.input.append(scalar.tensor)
+    op.input_desc.add().CopyFrom(scalar.desc)
+    op.input_desc[-1].name = "scalar"
+
+    # process attrs
+
+    # process outputs
+    output_index = 0
+    y = []
+    for i in range(output_index, output_index + size_of_y):
+        op.output_desc.add().name = "y" + str(i - output_index)
+        y.append(Tensor(op, i))
+    output_index += size_of_y
+
+    return y
+
+
 # This api is auto-generated from IR ForeachAddScalarInplace
 @auto_convert_to_tensor([True, False], [False, False])
 def ForeachAddScalarInplace(x: List[Tensor], scalar: Tensor, *, dependencies=[], node_name=None):

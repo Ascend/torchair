@@ -68,7 +68,7 @@ def conveter_aten__foreach_addcdiv_Scalar_out(
     out: List[Tensor] = None
 ):
     """NB: aten::_foreach_addcdiv.Scalar_out(Tensor[] self, Tensor[] tensor1, Tensor[] tensor2, Scalar value=1, *, Tensor(a!)[] out) -> ()"""
-    raise NotImplementedError("torch.ops.aten._foreach_addcdiv.Scalar_out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten._foreach_addcdiv.Scalar_out ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten._foreach_addcdiv.ScalarList_out)
@@ -81,7 +81,7 @@ def conveter_aten__foreach_addcdiv_ScalarList_out(
     out: List[Tensor] = None
 ):
     """NB: aten::_foreach_addcdiv.ScalarList_out(Tensor[] self, Tensor[] tensor1, Tensor[] tensor2, Scalar[] scalars, *, Tensor(a!)[] out) -> ()"""
-    raise NotImplementedError("torch.ops.aten._foreach_addcdiv.ScalarList_out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten._foreach_addcdiv.ScalarList_out ge_converter is not supported!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten._foreach_addcdiv.Tensor_out)
@@ -94,4 +94,4 @@ def conveter_aten__foreach_addcdiv_Tensor_out(
     out: List[Tensor] = None
 ):
     """NB: aten::_foreach_addcdiv.Tensor_out(Tensor[] self, Tensor[] tensor1, Tensor[] tensor2, Tensor scalars, *, Tensor(a!)[] out) -> ()"""
-    raise NotImplementedError("torch.ops.aten._foreach_addcdiv.Tensor_out ge_converter is not implemented!")
+    raise RuntimeError("torch.ops.aten._foreach_addcdiv.Tensor_out ge_converter is not supported!")

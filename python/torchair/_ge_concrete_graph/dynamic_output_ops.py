@@ -836,3 +836,388 @@ def ForeachRoundOffNumber(x: List[Tensor], roundMode: int, *, dependencies=[], n
     return raw_ops._ForeachRoundOffNumber(x, roundMode=roundMode, size_of_y=size_of_y,
                                           dependencies=dependencies, node_name=node_name)
 
+
+@auto_convert_to_tensor([True, True, True, False], [False, False, False, False])
+def ForeachAddcdivScalar(x: List[Tensor], x1: List[Tensor], x2: List[Tensor], scalar: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(ForeachAddcdivScalar)\n
+    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+    .DYNAMIC_INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+    .DYNAMIC_INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+    .INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+    """
+    size_of_y = len(x)
+    return raw_ops._ForeachAddcdivScalar(x, x1, x2, scalar, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+@auto_convert_to_tensor([True, True, True, False], [False, False, False, False])
+def ForeachAddcdivScalarList(x: List[Tensor], x1: List[Tensor], x2: List[Tensor], scalar: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(ForeachAddcdivScalarList)\n
+    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+    .DYNAMIC_INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+    .DYNAMIC_INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+    .INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+    """
+    size_of_y = len(x)
+    return raw_ops._ForeachAddcdivScalarList(x, x1, x2, scalar, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+# This api is auto-generated from IR ForeachAddcmulScalar
+@auto_convert_to_tensor([True, True, True, False], [False, False, False, False])
+def ForeachAddcmulScalar(x1: List[Tensor], x2: List[Tensor], x3: List[Tensor], scalar: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(ForeachAddcmulScalar)\n
+.DYNAMIC_INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+.DYNAMIC_INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+.DYNAMIC_INPUT(x3, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+.INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+"""
+
+    size_of_y = len(x1)
+    return raw_ops._ForeachAddcmulScalar(x1, x2, x3, scalar, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+# This api is auto-generated from IR ForeachAddcmulScalarList
+@auto_convert_to_tensor([True, True, True, False], [False, False, False, False])
+def ForeachAddcmulScalarList(x1: List[Tensor], x2: List[Tensor], x3: List[Tensor], scalar: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(ForeachAddcmulScalarList)\n
+.DYNAMIC_INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+.DYNAMIC_INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+.DYNAMIC_INPUT(x3, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+.INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+"""
+
+    size_of_y = len(x1)
+    return raw_ops._ForeachAddcmulScalarList(x1, x2, x3, scalar, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+# This api is auto-generated from IR ForeachLerpScalar
+@auto_convert_to_tensor([True, True, False], [False, False, False])
+def ForeachLerpScalar(x1: List[Tensor], x2: List[Tensor], weight: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(ForeachLerpScalar)\n
+    .DYNAMIC_INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .DYNAMIC_INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .INPUT(weight, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .OP_END_FACTORY_REG(ForeachLerpScalar)\n
+"""
+    size_of_y = len(x1)
+    return raw_ops._ForeachLerpScalar(x1, x2, weight, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+# This api is auto-generated from IR ForeachLerpList
+@auto_convert_to_tensor([True, True, True], [False, False, False])
+def ForeachLerpList(x1: List[Tensor], x2: List[Tensor], weights: List[Tensor], *, dependencies=[], node_name=None):
+    """REG_OP(ForeachLerpList)\n
+    .DYNAMIC_INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .DYNAMIC_INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .INPUT(weight, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .OP_END_FACTORY_REG(ForeachLerpList)\n
+"""
+    size_of_y = len(x1)
+    return raw_ops._ForeachLerpList(x1, x2, weights, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+# This api is auto-generated from IR ForeachMaximumScalar
+@auto_convert_to_tensor([True, False], [False, False])
+def ForeachMaximumScalar(x: List[Tensor], scalar: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(ForeachMaximumScalar)\n
+    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .OP_END_FACTORY_REG(ForeachMaximumScalar)\n
+"""
+    size_of_y = len(x)
+    return raw_ops._ForeachMaximumScalar(x, scalar, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+# This api is auto-generated from IR ForeachMaximumScalarList
+@auto_convert_to_tensor([True, False], [False, False])
+def ForeachMaximumScalarList(x: List[Tensor], scalars: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(ForeachMaximumScalarList)\n
+.DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.INPUT(scalars, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+"""
+
+    size_of_y = len(x)
+    return raw_ops._ForeachMaximumScalarList(x, scalars, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+# This api is auto-generated from IR ForeachMaximumList
+@auto_convert_to_tensor([True, True], [False, False])
+def ForeachMaximumList(x1: List[Tensor], x2: List[Tensor], *, dependencies=[], node_name=None):
+    """REG_OP(ForeachMaximumList)\n
+.DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.INPUT(scalars, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+"""
+
+    size_of_y = len(x1)
+    return raw_ops._ForeachMaximumList(x1, x2, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+# This api is auto-generated from IR ForeachMinimumScalar
+@auto_convert_to_tensor([True, False], [False, False])
+def ForeachMinimumScalar(x: List[Tensor], scalar: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(ForeachMinimumScalar)\n
+    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .OP_END_FACTORY_REG(ForeachMinimumScalar)\n
+"""
+    size_of_y = len(x)
+    return raw_ops._ForeachMinimumScalar(x, scalar, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+# This api is auto-generated from IR ForeachMinimumScalarList
+@auto_convert_to_tensor([True, False], [False, False])
+def ForeachMinimumScalarList(x: List[Tensor], scalars: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(ForeachMinimumScalarList)\n
+.DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.INPUT(scalars, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+"""
+
+    size_of_y = len(x)
+    return raw_ops._ForeachMinimumScalarList(x, scalars, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+# This api is auto-generated from IR ForeachMinimumList
+@auto_convert_to_tensor([True, True], [False, False])
+def ForeachMinimumList(x1: List[Tensor], x2: List[Tensor], *, dependencies=[], node_name=None):
+    """REG_OP(ForeachMinimumList)\n
+.DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.INPUT(scalars, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+"""
+
+    size_of_y = len(x1)
+    return raw_ops._ForeachMinimumList(x1, x2, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+# This api is auto-generated from IR ForeachNorm
+@auto_convert_to_tensor([True, False], [False, False])
+def ForeachNorm(x: List[Tensor], scalar: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(ForeachNorm)\n
+.DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+"""
+
+    size_of_y = len(x)
+    return raw_ops._ForeachNorm(x, scalar, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+# This api is auto-generated from IR ForeachAddScalar
+@auto_convert_to_tensor([True, False], [False, False])
+def ForeachAddScalar(x: List[Tensor], scalar: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(ForeachAddScalar)\n
+.DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+"""
+
+    size_of_y = len(x)
+    return raw_ops._ForeachAddScalar(x, scalar, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+# This api is auto-generated from IR ForeachAddList
+@auto_convert_to_tensor([True, True, False], [False, False, False])
+def ForeachAddList(x1: List[Tensor], x2: List[Tensor], alpha: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(ForeachAddList)\n
+.DYNAMIC_INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.INPUT(alpha, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+"""
+
+    size_of_y = len(x1)
+    return raw_ops._ForeachAddList(x1, x2, alpha, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+# This api is auto-generated from IR ForeachAddScalarList
+@auto_convert_to_tensor([True, False], [False, False])
+def ForeachAddScalarList(x1: List[Tensor], x2: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(ForeachAddScalarList)\n
+.DYNAMIC_INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.INPUT(alpha, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+"""
+
+    size_of_y = len(x1)
+    return raw_ops._ForeachAddScalarList(x1, x2, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+# This api is auto-generated from IR ForeachDivScalarList
+@auto_convert_to_tensor([True, False], [False, False])
+def ForeachDivScalarList(x1: List[Tensor], x2: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(ForeachDivScalarList)\n
+.DYNAMIC_INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.INPUT(alpha, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+"""
+
+    size_of_y = len(x1)
+    return raw_ops._ForeachDivScalarList(x1, x2, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+# This api is auto-generated from IR ForeachDivScalar
+@auto_convert_to_tensor([True, False], [False, False])
+def ForeachDivScalar(x: List[Tensor], scalar: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(ForeachDivScalar)\n
+.DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+"""
+
+    size_of_y = len(x)
+    return raw_ops._ForeachDivScalar(x, scalar, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+# This api is auto-generated from IR ForeachDivList
+@auto_convert_to_tensor([True, True], [False, False])
+def ForeachDivList(x1: List[Tensor], x2: List[Tensor], *, dependencies=[], node_name=None):
+    """REG_OP(ForeachDivList)\n
+.DYNAMIC_INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+.DYNAMIC_INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+"""
+    size_of_y = len(x1)
+    return raw_ops._ForeachDivList(x1, x2, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+# This api is auto-generated from IR ForeachMulList
+# @auto_convert_to_tensor([True, True, False], [False, False, False])
+@auto_convert_to_tensor([True, True], [False, False])
+def ForeachMulList(x1: List[Tensor], x2: List[Tensor], *, dependencies=[], node_name=None):
+    """REG_OP(ForeachMulList)\n
+.DYNAMIC_INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+"""
+
+    size_of_y = len(x1)
+    return raw_ops._ForeachMulList(x1, x2, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+# This api is auto-generated from IR ForeachMulScalar
+@auto_convert_to_tensor([True, False], [False, False])
+def ForeachMulScalar(x: List[Tensor], scalar: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(ForeachMulScalar)\n
+.DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT
+"""
+
+    size_of_y = len(x)
+    return raw_ops._ForeachMulScalar(x, scalar, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+# This api is auto-generated from IR ForeachMulScalarList
+@auto_convert_to_tensor([True, False], [False, False])
+def ForeachMulScalarList(x1: List[Tensor], x2: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(ForeachMulScalarList)\n
+.DYNAMIC_INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.INPUT(alpha, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+"""
+
+    size_of_y = len(x1)
+    return raw_ops._ForeachMulScalarList(x1, x2, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+# This api is auto-generated from IR ForeachNeg
+@auto_convert_to_tensor([True], [False])
+def ForeachNeg(x: List[Tensor], *, dependencies=[], node_name=None):
+    """REG_OP(ForeachNeg)\n
+.DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+"""
+
+    size_of_y = len(x)
+    return raw_ops._ForeachNeg(x, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+# This api is auto-generated from IR ForeachPowList
+@auto_convert_to_tensor([True, True], [False, False])
+def ForeachPowList(x: List[Tensor], x1: List[Tensor], *, dependencies=[], node_name=None):
+    """REG_OP(ForeachPowList)\n
+    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+    .INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+"""
+
+    size_of_y = len(x)
+    return raw_ops._ForeachPowList(x, x1, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+# This api is auto-generated from IR ForeachPowScalar
+@auto_convert_to_tensor([True, False], [False, False])
+def ForeachPowScalar(x: List[Tensor], scalar: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(ForeachPowScalar)\n
+    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+    .INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+"""
+
+    size_of_y = len(x)
+    return raw_ops._ForeachPowScalar(x, scalar, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+# This api is auto-generated from IR ForeachPowScalarList
+@auto_convert_to_tensor([True, False], [False, False])
+def ForeachPowScalarList(x: List[Tensor], scalar: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(ForeachPowScalarList)\n
+    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+    .INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+"""
+
+    size_of_y = len(x)
+    return raw_ops._ForeachPowScalarList(x, scalar, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+# This api is auto-generated from IR ForeachSubScalar
+@auto_convert_to_tensor([True, False], [False, False])
+def ForeachSubScalar(x: List[Tensor], scalar: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(ForeachSubScalar)\n
+.DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+"""
+
+    size_of_y = len(x)
+    return raw_ops._ForeachSubScalar(x, scalar, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+# This api is auto-generated from IR ForeachSubList
+@auto_convert_to_tensor([True, True, False], [False, False, False])
+def ForeachSubList(x: List[Tensor], x1: List[Tensor], alpha: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(ForeachSubList)\n
+.DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+"""
+
+    size_of_y = len(x)
+    return raw_ops._ForeachSubList(x, x1, alpha, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+# This api is auto-generated from IR ForeachSubScalarList
+@auto_convert_to_tensor([True, False], [False, False])
+def ForeachSubScalarList(x: List[Tensor], scalar: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(ForeachSubScalarList)\n
+.DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+"""
+
+    size_of_y = len(x)
+    return raw_ops._ForeachSubScalarList(x, scalar, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
