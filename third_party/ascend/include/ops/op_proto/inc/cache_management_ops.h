@@ -39,6 +39,7 @@ REG_OP(Cmo)
     .INPUT(src, TensorType::NumberType())
     .REQUIRED_ATTR(max_size, Int)
     .ATTR(type, Int, 6) // 6:prefetch
+    .ATTR(offset, Int, 0)
     .OP_END_FACTORY_REG(Cmo)
 } // namespace ge
 

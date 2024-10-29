@@ -64,6 +64,9 @@ def _assemble_outputs(op, outputs):
         raise AssertionError(
             f"Invalid output type:{type(outputs).__name__} vs expect one of [list, tuple] for "
             f"custom op '{op_type}'.")
+    
+    if len(outputs) == 0:
+        return None
 
     result = []
     index = 0
