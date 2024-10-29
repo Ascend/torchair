@@ -168,11 +168,11 @@ class AscExpr:
 
 
 class Loop:
-    def __init__(self):
-        self.axis: List[sympy.Symbol] = []
-        self.stride: List[sympy.Expr] = []
-        self.size: List[sympy.Expr] = []
-        self.offset: sympy.Expr = sympy.Symbol("0")
+    def __init__(self, *, axis=None, size=None, stride=None, offset=None):
+        self.axis: List[sympy.Symbol] = axis if axis is not None else []
+        self.size: List[sympy.Expr] = size if size is not None else []
+        self.stride: List[sympy.Expr] = stride if stride is not None else []
+        self.offset: sympy.Expr = offset if offset is not None else sympy.Symbol("0")
 
     def transpose(self, dim0, dim1):
         def swap(arr, i, j):
@@ -245,6 +245,12 @@ class Loop:
     @property
     def asc_size(self):
         return [AscExpr(exp) for exp in self.size]
+
+
+class DenseLoop(Loop):
+    def __init__(self, axis, size):
+        super().__init__(axis=axis, size=size)
+        self.contiguous_()
 
 
 class Axis:

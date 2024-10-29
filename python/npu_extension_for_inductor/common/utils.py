@@ -69,6 +69,9 @@ class StrRep:
     def __lt__(self, other):
         return self.value < other.value
 
+    def __eq__(self, value: object) -> bool:
+        return self.value == value
+
 
 class TypeUtils:
     @classmethod

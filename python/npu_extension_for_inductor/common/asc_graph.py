@@ -1,9 +1,9 @@
 from collections import defaultdict
-from typing import Dict, List, Set, Any
+from typing import Dict, List, Set, Any, Optional
 
 import sympy
 import torch
-from npu_extension_for_inductor.common.symbols import Loop, AscExpr
+from npu_extension_for_inductor.common.symbols import Loop, AscExpr, DenseLoop
 from npu_extension_for_inductor.common.utils import StrRep, TypeUtils
 from npu_extension_for_inductor.ir import _Op, _Tensor
 from torch._inductor.utils import IndentedBuffer
@@ -25,6 +25,7 @@ class ASCGraph:
         self.op_cache: Dict[str, Any] = dict()
         self.unsupported_ops: Set[str] = set()
         self.fallback_ops: Set[str] = set()
+        self._current_loop: Optional[DenseLoop] = None
 
     @property
     def unsupported_reason(self):
@@ -38,6 +39,9 @@ class ASCGraph:
             return f"Must fallback lowered ops: {', '.join(self.fallback_ops)}"
         return None
 
+    def set_current_loop(self, loop: DenseLoop):
+        self._current_loop = loop
+
     def add_op(self, type: str, *, name=None, is_unsupported=False):
         if name is None:
             name = type.lower()
@@ -46,7 +50,7 @@ class ASCGraph:
             name = f"{name}{'' if num == 0 else num}"
         op = _Op(type, name)
         op.attr.sched.exec_order = len(self.ops)
-        op.attr.sched.axis = sorted(list(self.axis_vars.keys()))
+        op.attr.sched.axis = self._current_loop.axis
         self.ops.append(op)
         buffer_name = name
         if type != "Data" and hasattr(V.kernel, "current_node") and V.kernel.current_node:

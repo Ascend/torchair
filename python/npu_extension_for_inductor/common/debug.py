@@ -219,6 +219,7 @@ class OpSummary:
 
 
 OP_SUMMARY = OpSummary("Model")
+atexit.register(lambda: OP_SUMMARY.save())
 
 
 def _left_align_lines(lines: List[str]):

@@ -32,8 +32,9 @@ checkopts() {
   ENABLE_TORCHAIR_UT="off"
   ENABLE_TORCHAIR_ST="off"
   ENABLE_CI_BUILD="off"
+  TESTCASE_FILTER="*"
   # Process the options
-  while getopts 'hj:vuiscg:' opt
+  while getopts 'hj:vuisck:g:' opt
   do
     case "${opt}" in
       h) usage
@@ -44,6 +45,7 @@ checkopts() {
       u) ENABLE_TORCHAIR_UT="on" ;;
       s) ENABLE_TORCHAIR_ST="on" ;;
       c) ENABLE_CI_BUILD="on" ;;
+      k) TESTCASE_FILTER=$OPTARG ;;
       i) ENABLE_CI_BUILD_AND_INSTALL="on" ;;
       *) logging "Undefined option: ${opt}"
          usage
@@ -79,9 +81,9 @@ run_test() {
   cd "${TEST_PATH}"
 
   if [[ "X$TYPE" = "Xut" ]]; then
-    ${PYTHON_BIN_PATH} -m unittest discover -s "${TORCHAIR_ROOT}/tests" -p "test_*.py"
+    ${PYTHON_BIN_PATH} -m unittest discover -s "${TORCHAIR_ROOT}/tests" -p "test_*.py" -v -k "${TESTCASE_FILTER}"
   elif [[ "X$TYPE" = "Xst" ]]; then
-    ${PYTHON_BIN_PATH} -m unittest discover -s "${TORCHAIR_ROOT}/tests" -p "test_*.py"
+    ${PYTHON_BIN_PATH} -m unittest discover -s "${TORCHAIR_ROOT}/tests" -p "test_*.py" -v -k "${TESTCASE_FILTER}"
   fi
   mkdir -pv "${TORCHAIR_ROOT}/coverage"
   lcov --capture --initial --directory . --output-file "${TORCHAIR_ROOT}/coverage/coverage.info"
