@@ -164,7 +164,7 @@ class AscOps:
         return lambda name: self.graph.add_op(item, name=name)
 
 
-class HintGraph:
+class ASCHintGraph:
     BLOCK_DIM = 8  # 计算核心数量
     BLOCK_SIZE = 512  # 单个核心数据块大小
     TILE_SIZE = 128  # 单指令操作数据量
@@ -300,9 +300,42 @@ class HintGraph:
 class RevertAscir(_Track):
     def __init__(self):
         super().__init__('')
-        self.__dict__['graph'] = ASCGraph()
-        self.graph.set_current_loop(_Track(''))
-        self.__dict__['ops'] = AscOps(self.graph)
         self.__dict__['dtypes'] = AscDtypes()
-        self.__dict__['HintGraph'] = lambda name: HintGraph(name, self.graph)
         self.__dict__['SizeExpr'] = lambda syms: functools.reduce(lambda x, y: x * y, syms + [sympy.S.One])
+        self.__dict__['HintGraph'] = self.hint_graph
+
+    def hint_graph(self, name):
+        graph = ASCGraph()
+        graph.set_current_loop(_Track(''))
+        self.__dict__['ops'] = AscOps(graph)
+        return ASCHintGraph(name, graph)
+
+
+class AutofuserOptions:
+    def __init__(self, *args, **kwargs):
+        pass
+
+
+class Autofuser:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    @staticmethod
+    def autofuse(graph):
+        return graph
+
+    @staticmethod
+    def codegen(graph, fused_graph):
+        return None, *graph.codegen()
+
+
+class AutofuseStub:
+    def __init__(self):
+        self.ascir = RevertAscir()
+        self.__dict__['Autofuser'] = Autofuser
+        self.__dict__['AutofuserOptions'] = AutofuserOptions
+
+
+class AscCompilerStub:
+    def __init__(self):
+        self.jit_compile = lambda *args, **kwargs: None

@@ -49,6 +49,7 @@ def underline_to_camelcase(s):
 
 
 def unsupported(*args, op_type, **kwargs):
+    assert 'name' not in kwargs, "name is a reserved keyword"
     graph = V.kernel.graph
     op_type = underline_to_camelcase(op_type)
     if op_type in ["LoadIndirect", "IndexExpr"]:

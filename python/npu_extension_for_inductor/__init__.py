@@ -1,6 +1,7 @@
 import functools
 import os
 import torch
+import sys
 
 from torch._inductor.lowering import lowerings
 from torch._inductor.lowering import fallback_handler
@@ -47,3 +48,9 @@ def can_fuse_vertical_npu(self, node1, node2, *, orig_fn):
     if NPUScheduling.can_fuse_npu(node1, node2):
         return True
     return orig_fn(self, node1, node2)
+
+
+if os.getenv('ASCIR_NOT_READY', None) == "1":
+    from npu_extension_for_inductor.common.revert_ascir import AutofuseStub, AscCompilerStub
+    sys.modules['pyautofuse'] = AutofuseStub()
+    sys.modules['compile_adapter'] = AscCompilerStub()

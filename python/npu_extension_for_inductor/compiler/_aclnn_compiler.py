@@ -114,10 +114,6 @@ def build_ascend_lib(spec: FusedKernelSpec, *, output_path):
     core_type = os.getenv("NPU_CORE_TYPE", "ascend910b1")
     lib_file = os.path.join(output_path, f"kernel_{core_type}.so")
 
-    if os.getenv('ASCIR_NOT_READY', None) == "1":
-        _build_cpp('\n'.join([spec.tiling_def, spec.host_impl, spec.device_impl]), output_file=lib_file)
-        return lib_file
-
     run_jit_command(output_file=lib_file, soc_version=core_type)
 
     return lib_file
@@ -167,15 +163,12 @@ class DummyNpuInductorKernel:
         from npu_extension_for_inductor.common.debug import OP_SUMMARY
         self.graph_summary = OP_SUMMARY.get_graph_summary(name)
         from torch._inductor import config
-        self.debug = config.trace.enabled
 
     def __call__(self, *args: torch.Tensor, **sym_vals):
         sym_vals = list(sym_vals.values())
         if self.graph_summary:
-            args_str = [self.arg_str(arg) for arg in args]
             self.graph_summary.record_call_args(*args, sym_vals=sym_vals)
-            if self.debug:
-                print(f"{self.name}({','.join(args_str)}, sym_vals={sym_vals})")
+        print(f"{self.name}({','.join([self.arg_str(arg) for arg in args])}, sym_vals={sym_vals})")
 
     @staticmethod
     def arg_str(arg):
@@ -194,6 +187,8 @@ def compile_ascendc(artifacts: Dict):
     save_asserts(kernel_spec.name, cpp_source, 'inductor_wrapper.cpp')
 
     lib_wrapper = os.path.join(lib_dir, f"wrapper.so")
+    if os.getenv("ASCIR_NOT_READY", None) == "1":
+        return DummyNpuInductorKernel(kernel_spec.name)
     _build_cpp(cpp_source, output_file=lib_wrapper)
     kernel = NpuInductorKernel(lib_wrapper, name=kernel_spec.name)
     return kernel

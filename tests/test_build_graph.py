@@ -1,14 +1,12 @@
-import contextlib
-import os
 import unittest
-from typing import List, Set
+from typing import Set
+import os
+os.environ['ASCIR_NOT_READY'] = '1'
+
 import torch
 from torch._inductor.virtualized import V
 import npu_extension_for_inductor
 from npu_extension_for_inductor.npu import NPUKernel
-
-os.environ['ASCIR_NOT_READY'] = '1'
-os.environ['NPU_INDUCTOR_DUMMY_KERNEL'] = '1'
 
 
 class KernelCapture:
@@ -383,8 +381,11 @@ class BuildGraphTest(unittest.TestCase):
         with KernelCapture() as kernel_capture:
             inference(data1, data2)
 
-        output = kernel_capture.graph(-1).ops[-1]
-        self.assertEqual([str(v) for v in output.attrs[f'{output.name}.y.size']][:2], ['2', '2'])
+        self.assertEqual(len(kernel_capture.kernels), 2)
+        output0 = kernel_capture.graph(0).ops[-1]
+        output1 = kernel_capture.graph(1).ops[-1]
+        self.assertEqual([str(v) for v in output0.attrs[f'{output0.name}.y.size']][:2], ['2', '2'])
+        self.assertEqual([str(v) for v in output1.attrs[f'{output1.name}.y.size']][:2], ['2', '2'])
 
     def test_view_road_transpose_broadcast(self):
         @torch.compile(dynamic=True)
@@ -495,8 +496,7 @@ class BuildGraphTest(unittest.TestCase):
                                 concat = ascir.ops.Concat('concat')
                                 concat.attr.sched.exec_order = 4
                                 concat.attr.sched.axis = [z0, z1]
-                                concat.x0 = load.y
-                                concat.x1 = load1.y
+                                concat.x = [load.y, load1.y]
                                 concat.y.axis = [z0, z1]
                                 concat.y.strides = [ascir.SizeExpr([s1]) + ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                                 concat.y.size = [ascir.SizeExpr([s0]), ascir.SizeExpr([s1]) + ascir.SizeExpr([s2])]
@@ -585,8 +585,7 @@ class BuildGraphTest(unittest.TestCase):
                                 concat = ascir.ops.Concat('concat')
                                 concat.attr.sched.exec_order = 5
                                 concat.attr.sched.axis = [z0, z1]
-                                concat.x0 = load.y
-                                concat.x1 = transpose.y
+                                concat.x = [load.y, transpose.y]
                                 concat.y.axis = [z0, z1]
                                 concat.y.strides = [ascir.SizeExpr([s1]) + ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                                 concat.y.size = [ascir.SizeExpr([s0]), ascir.SizeExpr([s1]) + ascir.SizeExpr([s2])]

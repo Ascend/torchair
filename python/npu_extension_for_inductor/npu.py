@@ -56,11 +56,47 @@ class NPUOverrides(OpOverrides):
 
     @staticmethod
     def constant(value, dtype):
-        return ir.constant(value=value, dtype=TypeUtils.torch_to_asc(dtype))
+        return ir.constant(value=repr(value))
 
     @staticmethod
     def masked(mask, body, other):
         return ir.masked(mask, body(), other)
+
+    @staticmethod
+    def reciprocal(x):
+        return ir.div(ir.constant("1"), x)
+
+    @staticmethod
+    def square(x):
+        return ir.mul(x, x)
+
+    @staticmethod
+    def bitwise_not(x):
+        return ir.bitwise_not(x)
+
+    @staticmethod
+    def bitwise_and(x, y):
+        return ir.bitwise_and(x, y)
+
+    @staticmethod
+    def bitwise_or(x, y):
+        return ir.bitwise_or(x, y)
+
+    @staticmethod
+    def bitwise_xor(x, y):
+        return ir.bitwise_xor(x, y)
+
+    @staticmethod
+    def bitwise_left_shift(x, y):
+        return ir.bitwise_left_shift(x, y)
+
+    @staticmethod
+    def bitwise_right_shift(x, y):
+        return ir.bitwise_right_shift(x, y)
+
+    @staticmethod
+    def load_seed(name, offset):
+        return ir.load_seed(offset=sympy.Integer(offset))
 
 
 class BufDesc:
@@ -125,8 +161,9 @@ class NPUKernel(Kernel):
         for node in nodes:
             inner_user_num = sum([user.node in nodes for user in node.users])
             is_output = inner_user_num != len(node.users)
-            self._buf_desc[node.node.name] = BufDesc(size=node.node.layout.size,
-                                                     dtype=V.graph.get_dtype(node.node.name), is_output=is_output)
+            layout_size = [V.graph.sizevars.simplify(s) for s in node.node.layout.size]
+            self._buf_desc[node.node.name] = BufDesc(size=layout_size, dtype=V.graph.get_dtype(node.node.name),
+                                                     is_output=is_output)
             for buf in node.read_writes.reads:
                 if buf.name not in self._buf_desc:
                     self._buf_desc[buf.name] = BufDesc(size=buf.size, dtype=V.graph.get_dtype(buf.name))

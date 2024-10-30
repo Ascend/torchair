@@ -1,5 +1,5 @@
 import os
-import json
+import sys
 import itertools
 from types import ModuleType
 
@@ -44,43 +44,32 @@ def codegen_kernel_def(graph: ASCGraph, var_name=None) -> str:
     var_name = var_name or graph.name
     kernel_def = IndentedBuffer()
     graph_fn = graph.name
-    if os.getenv("NPU_INDUCTOR_DUMMY_KERNEL", None) == "1":
-        kernel_def.writeline(
-            "from npu_extension_for_inductor.compiler._aclnn_compiler import DummyNpuInductorKernel")
-        kernel_def.writeline(f"{var_name} = DummyNpuInductorKernel('{graph.name}')")
-    else:
-        graph_py_code = IndentedBuffer()
-        if os.getenv('ASCIR_NOT_READY', None) == "1":
-            graph_py_code.splice("from npu_extension_for_inductor.common.revert_ascir import RevertAscir")
-            graph_py_code.splice("ascir = RevertAscir()")
-            graph_py_code.splice(graph.codegen())
-            graph_py_code.splice(f'tiling_def, host_impl, device_impl = {graph.name}.codegen()')
-        else:
-            graph_py_code.splice(f"from pyautofuse import ascir")
-            graph_py_code.splice(f'from pyautofuse import Autofuser, AutofuserOptions')
-            graph_py_code.splice(graph.codegen())
-            graph_py_code.splice(f'''
-            fuser = Autofuser(AutofuserOptions())
-            fused_{graph.name} = fuser.autofuse({graph.name})
-            op_proto, tiling_def, host_impl, device_impl = fuser.codegen({graph.name}, fused_{graph.name})
-            ''')
-        save_asserts(graph.name, graph_py_code.getvalue(), 'asc_graph_python.py')
 
-        codegen_mod = ModuleType('codegen_mod')
-        local_vars = dict()
-        exec(compile(graph_py_code.getvalue(), '<string>', 'exec'), globals(), local_vars)
+    graph_py_code = IndentedBuffer()
+    graph_py_code.splice(f"from pyautofuse import ascir")
+    graph_py_code.splice(f'from pyautofuse import Autofuser, AutofuserOptions')
+    graph_py_code.splice(graph.codegen())
+    graph_py_code.splice(f'''
+    fuser = Autofuser(AutofuserOptions())
+    fused_{graph.name} = fuser.autofuse({graph.name})
+    op_proto, tiling_def, host_impl, device_impl = fuser.codegen({graph.name}, fused_{graph.name})
+    ''')
+    save_asserts(graph.name, graph_py_code.getvalue(), 'asc_graph_python.py')
 
-        artifacts = dict()
-        artifacts['name'] = graph.name
-        artifacts['tiling_def'] = local_vars.get('tiling_def')
-        artifacts['host_impl'] = local_vars.get('host_impl')
-        artifacts['device_impl'] = local_vars.get('device_impl')
-        artifacts['cpp_wrapper'] = codegen_cpp_wrapper(graph)
+    local_vars = dict()
+    exec(compile(graph_py_code.getvalue(), '<string>', 'exec'), globals(), local_vars)
 
-        kernel_def.writeline(f"{graph_fn}_artifacts = {{}}")
-        for k, v in artifacts.items():
-            kernel_def.splice(f"{graph_fn}_artifacts['{k}'] = '''{v}'''")
-        kernel_def.writeline(f"{var_name} = npu_compiler.aclnn({graph_fn}_artifacts)")
+    artifacts = dict()
+    artifacts['name'] = graph.name
+    artifacts['tiling_def'] = local_vars.get('tiling_def')
+    artifacts['host_impl'] = local_vars.get('host_impl')
+    artifacts['device_impl'] = local_vars.get('device_impl')
+    artifacts['cpp_wrapper'] = codegen_cpp_wrapper(graph)
+
+    kernel_def.writeline(f"{graph_fn}_artifacts = {{}}")
+    for k, v in artifacts.items():
+        kernel_def.splice(f"{graph_fn}_artifacts['{k}'] = '''{v}'''")
+    kernel_def.writeline(f"{var_name} = npu_compiler.aclnn({graph_fn}_artifacts)")
 
     return kernel_def.getvalue()
 
