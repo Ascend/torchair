@@ -20,7 +20,7 @@ from torch._inductor.codegen.triton import TritonScheduling
 
 from torch._inductor.codegen.wrapper import WrapperCodeGen
 from torch._inductor.ir import LoopBody
-from torch._inductor.scheduler import BaseSchedulerNode, BaseScheduling, SchedulerNode
+from torch._inductor.scheduler import BaseSchedulerNode, BaseScheduling, SchedulerNode, FusedSchedulerNode
 from torch._inductor.utils import sympy_symbol, get_kernel_metadata
 from torch._inductor.virtualized import V
 from torch._inductor.codegen.common import (
@@ -30,6 +30,7 @@ from torch._inductor.codegen.common import (
 from npu_extension_for_inductor.common.symbols import AscExpr, Loop, DenseLoop
 from npu_extension_for_inductor.common.utils import TypeUtils
 from npu_extension_for_inductor.ir import IR as ir, _Tensor, _Scalar
+from npu_extension_for_inductor.ir import UBConcat
 
 
 class NPUOverrides(OpOverrides):
@@ -37,6 +38,9 @@ class NPUOverrides(OpOverrides):
 
     def __init__(self, parent):
         super().__init__(parent)
+
+    def __getattr__(self, item):
+        return getattr(ir, item)
 
     @staticmethod
     def to_dtype(x, dst_dtype, src_dtype=None):
@@ -47,15 +51,16 @@ class NPUOverrides(OpOverrides):
         return ir.cast(x, dst=dst, src=src)
 
     @staticmethod
+    def logical_not(x):
+        return ir.logical_not(x)
+
+    @staticmethod
     def constant(value, dtype):
         return ir.constant(value=value, dtype=TypeUtils.torch_to_asc(dtype))
 
     @staticmethod
     def masked(mask, body, other):
         return ir.masked(mask, body(), other)
-
-    def __getattr__(self, item):
-        return getattr(ir, item)
 
 
 class BufDesc:
@@ -217,7 +222,7 @@ class NPUKernel(Kernel):
             svg_path = svg_path if svg_path else f"./{self.graph.name}.svg"
             dot_graph.write_svg(svg_path)
         except ImportError:
-            logging.info(f"Unable to save dot for kernel {self.kernel_name} as pydot not installed", flush=True)
+            logging.info(f"Unable to save dot for kernel {self.kernel_name} as pydot not installed")
 
     def benchmark(self, file_path=None):
         file_path = file_path if file_path else f"./{self._kernel}_benchmark.py"
@@ -259,9 +264,9 @@ class NPUKernel(Kernel):
             road = self._get_view_road(loop, DenseLoop(axis=loop.axis, size=sizes))
             loop = road[0].src
             load = ir.load(data.as_loop(loop=loop), loop=loop)
-            logging.info(f"Road for index {index} from {loop} to {self.contiguous_loop}", flush=True)
+            logging.info(f"Road for index {index} from {loop} to {self.contiguous_loop}")
             for op in road:
-                logging.info(f"  {op.kind} from {op.src} to {op.dst}", flush=True)
+                logging.info(f"  {op.kind} from {op.src} to {op.dst}")
                 load = getattr(ir, op.kind)(load, loop=op.dst)
         return load
 
@@ -396,21 +401,31 @@ class NPUScheduling(BaseScheduling):
 
     @classmethod
     def can_fuse_npu(cls, node1: BaseSchedulerNode, node2: BaseSchedulerNode):
-        def get_cat_names(node):
-            cat_names = []
-            for snode in node.get_nodes():
-                if 'ops.concat' in snode.debug_str():
-                    cat_names.append(snode.get_name())
-            return cat_names
+        def get_concat_nodes(node: BaseSchedulerNode):
+            concats = []
+            for n in node.get_nodes():
+                if hasattr(n, 'node') and hasattr(n.node, 'data') and isinstance(n.node.data, UBConcat):
+                    concats.append(n)
+            return concats
 
-        if len(get_cat_names(node1)) > 0:
+        n1_concats = get_concat_nodes(node1)
+        n2_concats = get_concat_nodes(node2)
+
+        if len(n1_concats) > 1 or len(n2_concats) > 1:
             return False
 
-        node2_cat_names = get_cat_names(node2)
-        if len(node2_cat_names) != 1:
+        if len(n1_concats) == len(n2_concats):
             return False
 
-        return node2_cat_names[0] in [u.get_name() for u in node1.users]
+        def is_user(src: BaseSchedulerNode, dst: BaseSchedulerNode):
+            for node in src.get_nodes():
+                if node.users is None:
+                    continue
+                if node.users and any([user.node == dst for user in node.users]):
+                    return True
+            return False
+
+        return is_user(node2, n1_concats[0]) if n1_concats else is_user(node1, n2_concats[0])
 
     def can_fuse_vertical(self, node1: BaseSchedulerNode, node2: BaseSchedulerNode):
         return self._fuse_judge.can_fuse_vertical(node1, node2) or self.can_fuse_npu(node1, node2)
@@ -437,7 +452,7 @@ class NPUScheduling(BaseScheduling):
 
         kernel = NPUKernel(nodes, comments=comments)
         for i, node in enumerate(nodes):
-            logging.info(f"Codegen [{i+1}/{len(nodes)}] {node.debug_str()}", flush=True)
+            logging.info(f"Codegen [{i+1}/{len(nodes)}] {node.debug_str()}")
 
             body = getattr(node, '_body')
             var_ranges = body.var_ranges

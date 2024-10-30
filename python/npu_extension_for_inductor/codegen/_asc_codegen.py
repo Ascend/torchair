@@ -3,6 +3,7 @@ import json
 import itertools
 from types import ModuleType
 
+import torch
 from torch._inductor.codegen.common import IndentedBuffer
 from npu_extension_for_inductor.common.asc_graph import ASCGraph
 from npu_extension_for_inductor.common.debug import save_asserts
@@ -67,7 +68,7 @@ def codegen_kernel_def(graph: ASCGraph, var_name=None) -> str:
 
         codegen_mod = ModuleType('codegen_mod')
         local_vars = dict()
-        exec(compile(graph_py_code.getvalue(), '<string>', 'exec'), codegen_mod.__dict__, local_vars)
+        exec(compile(graph_py_code.getvalue(), '<string>', 'exec'), globals(), local_vars)
 
         artifacts = dict()
         artifacts['name'] = graph.name

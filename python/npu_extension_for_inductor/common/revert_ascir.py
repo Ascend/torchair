@@ -25,12 +25,8 @@ class AscOpBase:
         self.name = op.name
         self.op_type = op.op_type
         self.order = op.order
-        torch_dtype = op.attrs[f'{op.name}.y.dtype']
-        assert isinstance(torch_dtype, type(torch.float)), f"Unsupported dtype {torch_dtype}"
-        if torch_dtype == torch.float:
-            torch_dtype = torch.float32
-        self.str_type = str(torch_dtype).replace('torch.', '')
-        self.type = self.str_type.replace('float16', 'half').replace('float32', 'float')
+        self.str_type = 'float16'
+        self.type = 'half'
 
         self.q = f"que_{self.name}"
         self.local = f"local_{self.name}"
@@ -305,6 +301,7 @@ class RevertAscir(_Track):
     def __init__(self):
         super().__init__('')
         self.__dict__['graph'] = ASCGraph()
+        self.graph.set_current_loop(_Track(''))
         self.__dict__['ops'] = AscOps(self.graph)
         self.__dict__['dtypes'] = AscDtypes()
         self.__dict__['HintGraph'] = lambda name: HintGraph(name, self.graph)

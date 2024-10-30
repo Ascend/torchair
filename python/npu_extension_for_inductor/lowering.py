@@ -1,21 +1,13 @@
 from typing import List, Tuple
 import sympy
 import torch
-from torch._inductor.ir import Pointwise
 from torch._inductor.lowering import register_lowering
 from torch._inductor.virtualized import ops
-
-
-class UBConcat(Pointwise):
-    def __init__(self, *args, dim, input_sizes, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.dim = dim
-        self.input_sizes = input_sizes
+from npu_extension_for_inductor.ir import UBConcat
 
 
 @register_lowering(torch.ops.aten.cat.default)
 def pointwise_cat(inputs, dim=0):
-    print("Lowering cat")
     for inp in inputs:
         inp.realize()
 

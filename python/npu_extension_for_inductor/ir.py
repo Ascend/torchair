@@ -7,6 +7,7 @@ from npu_extension_for_inductor.common.symbols import Loop
 from npu_extension_for_inductor.common.utils import TypeUtils
 from torch._inductor.codegen.common import CSEVariable
 from torch._inductor.virtualized import V
+from torch._inductor.ir import Pointwise
 from torch.utils._sympy.value_ranges import ValueRanges
 
 from . import asc_ops
@@ -171,3 +172,10 @@ class _Op(_Track):
         for k, v in self.attrs.items():
             buffer.writeline(f"{k} = {repr(v)}")
         return buffer.getvalue()
+
+
+class UBConcat(Pointwise):
+    def __init__(self, *args, dim, input_sizes, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.dim = dim
+        self.input_sizes = input_sizes

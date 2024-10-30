@@ -517,6 +517,18 @@ class BuildGraphTest(unittest.TestCase):
                                 NpuKernel0Graph.set_outputs([buf0])
                                 """)
 
+    def test_cat_fused_with_pointwise(self):
+        @torch.compile(dynamic=True)
+        def test_cat(x, y):
+            return torch.cat([x.abs(), y.exp()], dim=1)
+
+        with KernelCapture() as kernel_capture:
+            x = torch.ones(2, 3, dtype=torch.float16)
+            y = torch.ones(2, 4, dtype=torch.float16)
+            test_cat(x, y)
+
+        self.assertEqual(len(kernel_capture.kernels), 1)
+
     def test_cat_lowering_with_transpose(self):
         @torch.compile(dynamic=True)
         def test_cat(x, y):
