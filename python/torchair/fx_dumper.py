@@ -37,6 +37,8 @@ def _dump_ctx(*, node=None):
 
 def _as_numpy(x):
     if isinstance(x, torch.Tensor):
+        if x.dtype == torch.bfloat16:
+            return x.detach().cpu().to(torch.float32).numpy()
         return x.detach().cpu().numpy()
     try:
         return np.array(x)

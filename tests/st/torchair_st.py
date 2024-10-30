@@ -1756,5 +1756,14 @@ class TorchairSt(unittest.TestCase):
                 out = executor.run([npu_x, npu_y])
 
 
+    def test_as_numpy(self):
+        from torchair.fx_dumper import _as_numpy
+        import numpy as np
+        x = torch.tensor([1.0, 2.0, 3.0], dtype=torch.bfloat16)
+        np_array = _as_numpy(x)
+        expected = np.array([1.0, 2.0, 3.0], dtype=np.float32)
+        self.assertEqual(np_array.dtype, expected.dtype)
+
+
 if __name__ == '__main__':
     unittest.main()
