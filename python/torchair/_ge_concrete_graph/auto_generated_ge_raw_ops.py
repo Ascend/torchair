@@ -77157,6 +77157,7 @@ def Cmo(src: Tensor, *, max_size: int, type: int=6, offset: int=0, dependencies=
         inputs=inputs,
         attrs=attrs,
         outputs=outputs,
+        dependencies=dependencies,
         ir=IrDef("Cmo") \
         .input("src", "") \
         .required_attr("max_size", attr.Int) \

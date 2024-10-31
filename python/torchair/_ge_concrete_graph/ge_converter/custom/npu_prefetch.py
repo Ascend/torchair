@@ -19,8 +19,8 @@ import torch
 from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair.ge import attr
-from torchair.ge.ge_custom import custom_op
 from torchair._ge_concrete_graph import ge_apis as ge
+from torchair._ge_concrete_graph.compat_ir import ge_op
 from torchair._ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
 from torchair.ge._ge_graph import Tensor, TensorSpec, get_default_ge_graph
 from torchair._ge_concrete_graph.utils import dtype_promote, get_cann_opp_version
@@ -70,5 +70,5 @@ def conveter_npu_prefetch_default(
 
         outputs = [
         ]
-        custom_op(op_type="Cmo", inputs=inputs, outputs=outputs, attrs=attrs)
+        ge_op(op_type="Cmo", inputs=inputs, outputs=outputs, attrs=attrs, dependencies=[dependency])
 

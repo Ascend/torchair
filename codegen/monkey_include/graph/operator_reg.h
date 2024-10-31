@@ -469,6 +469,7 @@ struct OpDef {
     ss << k4Space << "inputs=inputs," << kEnd;
     ss << k4Space << "attrs=attrs," << kEnd;
     ss << k4Space << "outputs=outputs," << kEnd;
+    ss << k4Space << "dependencies=dependencies," << kEnd;
     ss << k4Space << "ir=";
     GenIrDef(ss);
     ss << ")" << kEnd;
