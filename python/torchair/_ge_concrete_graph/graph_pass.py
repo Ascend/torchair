@@ -287,17 +287,31 @@ def frozen_data_by_constplaceholder(graph: GraphDef, frozen_flag_list: List, met
     update_op_input_name_from_mapping(graph, data_to_constplaceholder_name_mapping)
 
 
+def _remove_op_controller_from_input(data: OpDef, op: OpDef):
+    for idx, input_name in enumerate(op.input):
+        if input_name.endswith("-1") and (input_name.split(":")[0] == data.name):
+            logger.debug(f"remove ge graph op {op.name} controller {input_name}.")
+            del op.input[idx]
+            break
+
+
 def remove_dead_data_and_reorder_data_index(graph: GraphDef):
     all_data_and_refcount: Dict[str, Tuple[OpDef, int]] = {}
+    all_data_and_controller: Dict[str, List[OpDef]] = {}
     for op in graph.op:
         if op.type == "Data":
             all_data_and_refcount[GeTensor(op).tensor] = (op, 0)
+            all_data_and_controller[op.name] = []
     for op in graph.op:
         if op.type == "Data":
             continue
         for idx, op_in in enumerate(op.input):
             if op_in in all_data_and_refcount.keys():
                 all_data_and_refcount[op_in] = (all_data_and_refcount[op_in][0], all_data_and_refcount[op_in][1] + 1)
+            # record controller from Data
+            input_name = op_in.split(":")[0]
+            if op_in.endswith("-1") and (input_name in all_data_and_controller.keys()):
+                all_data_and_controller[input_name].append(op)
     logger.info(f"before removing dead data, graph all inputs size={len(all_data_and_refcount)}.")
 
     saved_inputs_info = []
@@ -307,6 +321,8 @@ def remove_dead_data_and_reorder_data_index(graph: GraphDef):
             logger.debug(f"remove ge graph data op {op_tuple[0].name}.")
             to_del_data_name.append(op_tuple[0].name)
             graph.op.remove(op_tuple[0])
+            for op in all_data_and_controller.get(op_tuple[0].name, []):
+                _remove_op_controller_from_input(op_tuple[0], op)
         else:
             logger.debug(f"update ge graph data index from {op_tuple[0].attr['index'].i} to {len(saved_inputs_info)}.")
             op_tuple[0].attr["index"].i = len(saved_inputs_info)
