@@ -1,12 +1,13 @@
+import logging
 import unittest
 from typing import Set
-import os
-os.environ['ASCIR_NOT_READY'] = '1'
 
-import torch
-from torch._inductor.virtualized import V
-import npu_extension_for_inductor
 from npu_extension_for_inductor.npu import NPUKernel
+import npu_extension_for_inductor
+from torch._inductor.virtualized import V
+import torch
+
+logging.basicConfig(level=logging.INFO)
 
 
 class KernelCapture:
@@ -86,11 +87,8 @@ class BuildGraphTest(unittest.TestCase):
                 z0 = NpuKernel0Graph.create_axis("z0", ascir.SizeExpr([s0,s1]))
                 arg2_1 = ascir.ops.Data('arg2_1')
                 arg2_1.attr.sched.exec_order = 0
-                arg2_1.attr.sched.axis = [z0]
-                arg2_1.y.size = [ascir.SizeExpr([s0,s1])]
+                arg2_1.y.size = [ascir.SizeExpr([s0]), ascir.SizeExpr([s1])]
                 arg2_1.y.dtype = ascir.dtypes.float16
-                arg2_1.y.axis = [z0]
-                arg2_1.y.strides = [ascir.SizeExpr([])]
                 load = ascir.ops.Load('load')
                 load.attr.sched.exec_order = 1
                 load.attr.sched.axis = [z0]
@@ -114,7 +112,6 @@ class BuildGraphTest(unittest.TestCase):
                 store.y.size = [ascir.SizeExpr([s0,s1])]
                 buf0 = ascir.ops.Output('buf0')
                 buf0.attr.sched.exec_order = 4
-                buf0.attr.sched.axis = [z0]
                 buf0.y.size = [ascir.SizeExpr([s0]), ascir.SizeExpr([s1])]
                 buf0.y.dtype = ascir.dtypes.float16
                 buf0.x = store.y
@@ -148,11 +145,8 @@ class BuildGraphTest(unittest.TestCase):
             buf3_z1 = NpuKernel0Graph.create_axis("buf3_z1", ascir.SizeExpr([s2]))
             arg3_1 = ascir.ops.Data('arg3_1')
             arg3_1.attr.sched.exec_order = 0
-            arg3_1.attr.sched.axis = [buf0_z0, buf0_z1]
-            arg3_1.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
+            arg3_1.y.size = [ascir.SizeExpr([]), ascir.SizeExpr([s0]), ascir.SizeExpr([s1]), ascir.SizeExpr([s2])]
             arg3_1.y.dtype = ascir.dtypes.float16
-            arg3_1.y.axis = [buf1_z0, buf1_z1]
-            arg3_1.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
             load = ascir.ops.Load('load')
             load.attr.sched.exec_order = 1
             load.attr.sched.axis = [buf0_z0, buf0_z1]
@@ -185,12 +179,9 @@ class BuildGraphTest(unittest.TestCase):
             store.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([])]
             buf0 = ascir.ops.Workspace('buf0')
             buf0.attr.sched.exec_order = 5
-            buf0.attr.sched.axis = [buf0_z0, buf0_z1]
-            buf0.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([])]
+            buf0.y.size = [ascir.SizeExpr([]), ascir.SizeExpr([s0]), ascir.SizeExpr([s1]), ascir.SizeExpr([])]
             buf0.y.dtype = ascir.dtypes.float32
             buf0.x = store.y
-            buf0.y.axis = [buf1_z0, buf1_z1]
-            buf0.y.strides = [ascir.SizeExpr([]), ascir.SizeExpr([0])]
             load1 = ascir.ops.Load('load1')
             load1.attr.sched.exec_order = 6
             load1.attr.sched.axis = [buf1_z0, buf1_z1]
@@ -244,12 +235,9 @@ class BuildGraphTest(unittest.TestCase):
             store1.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
             buf1 = ascir.ops.Workspace('buf1')
             buf1.attr.sched.exec_order = 13
-            buf1.attr.sched.axis = [buf1_z0, buf1_z1]
-            buf1.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
+            buf1.y.size = [ascir.SizeExpr([]), ascir.SizeExpr([s0]), ascir.SizeExpr([s1]), ascir.SizeExpr([s2])]
             buf1.y.dtype = ascir.dtypes.float32
             buf1.x = store1.y
-            buf1.y.axis = [buf3_z0, buf3_z1]
-            buf1.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
             load3 = ascir.ops.Load('load3')
             load3.attr.sched.exec_order = 14
             load3.attr.sched.axis = [buf2_z0, buf2_z1]
@@ -274,12 +262,9 @@ class BuildGraphTest(unittest.TestCase):
             store2.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([])]
             buf2 = ascir.ops.Workspace('buf2')
             buf2.attr.sched.exec_order = 17
-            buf2.attr.sched.axis = [buf2_z0, buf2_z1]
-            buf2.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([])]
+            buf2.y.size = [ascir.SizeExpr([]), ascir.SizeExpr([s0]), ascir.SizeExpr([s1]), ascir.SizeExpr([])]
             buf2.y.dtype = ascir.dtypes.float32
             buf2.x = store2.y
-            buf2.y.axis = [buf3_z0, buf3_z1]
-            buf2.y.strides = [ascir.SizeExpr([]), ascir.SizeExpr([0])]
             load4 = ascir.ops.Load('load4')
             load4.attr.sched.exec_order = 18
             load4.attr.sched.axis = [buf3_z0, buf3_z1]
@@ -326,7 +311,6 @@ class BuildGraphTest(unittest.TestCase):
             store3.y.size = [ascir.SizeExpr([s0,s1]), ascir.SizeExpr([s2])]
             buf3 = ascir.ops.Output('buf3')
             buf3.attr.sched.exec_order = 24
-            buf3.attr.sched.axis = [buf3_z0, buf3_z1]
             buf3.y.size = [ascir.SizeExpr([]), ascir.SizeExpr([s0]), ascir.SizeExpr([s1]), ascir.SizeExpr([s2])]
             buf3.y.dtype = ascir.dtypes.float16
             buf3.x = store3.y
@@ -467,11 +451,8 @@ class BuildGraphTest(unittest.TestCase):
                                 z1 = NpuKernel0Graph.create_axis("z1", ascir.SizeExpr([s1]) + ascir.SizeExpr([s2]))
                                 arg2_1 = ascir.ops.Data('arg2_1')
                                 arg2_1.attr.sched.exec_order = 0
-                                arg2_1.attr.sched.axis = [z0, z1]
                                 arg2_1.y.size = [ascir.SizeExpr([s0]), ascir.SizeExpr([s1])]
                                 arg2_1.y.dtype = ascir.dtypes.float16
-                                arg2_1.y.axis = [z0, z1]
-                                arg2_1.y.strides = [ascir.SizeExpr([s1]), ascir.SizeExpr([])]
                                 load = ascir.ops.Load('load')
                                 load.attr.sched.exec_order = 1
                                 load.attr.sched.axis = [z0, z1]
@@ -481,11 +462,8 @@ class BuildGraphTest(unittest.TestCase):
                                 load.y.size = [ascir.SizeExpr([s0]), ascir.SizeExpr([s1])]
                                 arg4_1 = ascir.ops.Data('arg4_1')
                                 arg4_1.attr.sched.exec_order = 2
-                                arg4_1.attr.sched.axis = [z0, z1]
                                 arg4_1.y.size = [ascir.SizeExpr([s0]), ascir.SizeExpr([s2])]
                                 arg4_1.y.dtype = ascir.dtypes.float16
-                                arg4_1.y.axis = [z0, z1]
-                                arg4_1.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                                 load1 = ascir.ops.Load('load1')
                                 load1.attr.sched.exec_order = 3
                                 load1.attr.sched.axis = [z0, z1]
@@ -509,7 +487,6 @@ class BuildGraphTest(unittest.TestCase):
                                 store.y.size = [ascir.SizeExpr([s0]), ascir.SizeExpr([s1]) + ascir.SizeExpr([s2])]
                                 buf0 = ascir.ops.Output('buf0')
                                 buf0.attr.sched.exec_order = 6
-                                buf0.attr.sched.axis = [z0, z1]
                                 buf0.y.size = [ascir.SizeExpr([s0]), ascir.SizeExpr([s1]) + ascir.SizeExpr([s2])]
                                 buf0.y.dtype = ascir.dtypes.float16
                                 buf0.x = store.y
@@ -549,11 +526,8 @@ class BuildGraphTest(unittest.TestCase):
                                 z1 = NpuKernel0Graph.create_axis("z1", ascir.SizeExpr([s1]) + ascir.SizeExpr([s2]))
                                 arg2_1 = ascir.ops.Data('arg2_1')
                                 arg2_1.attr.sched.exec_order = 0
-                                arg2_1.attr.sched.axis = [z0, z1]
                                 arg2_1.y.size = [ascir.SizeExpr([s0]), ascir.SizeExpr([s1])]
                                 arg2_1.y.dtype = ascir.dtypes.float16
-                                arg2_1.y.axis = [z0, z1]
-                                arg2_1.y.strides = [ascir.SizeExpr([s1]), ascir.SizeExpr([])]
                                 load = ascir.ops.Load('load')
                                 load.attr.sched.exec_order = 1
                                 load.attr.sched.axis = [z0, z1]
@@ -563,11 +537,8 @@ class BuildGraphTest(unittest.TestCase):
                                 load.y.size = [ascir.SizeExpr([s0]), ascir.SizeExpr([s1])]
                                 arg4_1 = ascir.ops.Data('arg4_1')
                                 arg4_1.attr.sched.exec_order = 2
-                                arg4_1.attr.sched.axis = [z0, z1]
-                                arg4_1.y.size = [ascir.SizeExpr([s2]), ascir.SizeExpr([s0])]
+                                arg4_1.y.size = [ascir.SizeExpr([s0]), ascir.SizeExpr([s2])]
                                 arg4_1.y.dtype = ascir.dtypes.float16
-                                arg4_1.y.axis = [z1, z0]
-                                arg4_1.y.strides = [ascir.SizeExpr([s0]), ascir.SizeExpr([])]
                                 load1 = ascir.ops.Load('load1')
                                 load1.attr.sched.exec_order = 3
                                 load1.attr.sched.axis = [z0, z1]
@@ -598,7 +569,6 @@ class BuildGraphTest(unittest.TestCase):
                                 store.y.size = [ascir.SizeExpr([s0]), ascir.SizeExpr([s1]) + ascir.SizeExpr([s2])]
                                 buf0 = ascir.ops.Output('buf0')
                                 buf0.attr.sched.exec_order = 7
-                                buf0.attr.sched.axis = [z0, z1]
                                 buf0.y.size = [ascir.SizeExpr([s0]), ascir.SizeExpr([s1]) + ascir.SizeExpr([s2])]
                                 buf0.y.dtype = ascir.dtypes.float16
                                 buf0.x = store.y

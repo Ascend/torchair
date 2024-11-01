@@ -80,6 +80,7 @@ run_test() {
   export PYTHONPATH="${TEST_PATH}/python"
   cd "${TEST_PATH}"
 
+  export ASCIR_NOT_READY=1
   if [[ "X$TYPE" = "Xut" ]]; then
     ${PYTHON_BIN_PATH} -m unittest discover -s "${TORCHAIR_ROOT}/tests" -p "test_*.py" -v -k "${TESTCASE_FILTER}"
   elif [[ "X$TYPE" = "Xst" ]]; then

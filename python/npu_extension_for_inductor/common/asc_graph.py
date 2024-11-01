@@ -39,6 +39,10 @@ class ASCGraph:
             return f"Must fallback lowered ops: {', '.join(self.fallback_ops)}"
         return None
 
+    @staticmethod
+    def is_memory_op(op):
+        return op.op_type in ["Data", "Output", "Workspace"]
+
     def set_current_loop(self, loop: DenseLoop):
         self._current_loop = loop
 
@@ -50,7 +54,8 @@ class ASCGraph:
             name = f"{name}{'' if num == 0 else num}"
         op = _Op(type, name)
         op.attr.sched.exec_order = len(self.ops)
-        op.attr.sched.axis = self._current_loop.axis
+        if not ASCGraph.is_memory_op(op):
+            op.attr.sched.axis = self._current_loop.axis
         self.ops.append(op)
         buffer_name = name
         if type != "Data" and hasattr(V.kernel, "current_node") and V.kernel.current_node:

@@ -209,6 +209,10 @@ class Loop:
     def __str__(self):
         return f"{self.axis}|{self.size}|{self.stride}|{self.offset}"
 
+    def __eq__(self, other: 'Loop') -> bool:
+        return str(self.axis) == str(other.axis) and str(self.size) == str(other.size) and \
+               str(self.stride) == str(other.stride) and str(self.offset) == str(other.offset)
+
     def is_contiguous(self):
         if len(self.axis) == 0:
             return True
@@ -218,7 +222,7 @@ class Loop:
         stride = []
         multiplier = sympy.S.One
         for s in reversed(self.size):
-            stride.append(V.graph.sizevars.simplify(multiplier))
+            stride.append(V.graph.sizevars.simplify(multiplier) if str(s) != "1" else sympy.S.Zero)
             multiplier *= s
 
         return list(reversed(stride))

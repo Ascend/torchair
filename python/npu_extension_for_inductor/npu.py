@@ -4,7 +4,7 @@ import itertools
 import contextlib
 import logging
 import os
-from typing import List, Iterable, Dict, Union
+from typing import List, Iterable, Dict, Union, Set
 from unittest.mock import patch
 
 from npu_extension_for_inductor.common.asc_graph import ASCGraph
@@ -100,11 +100,11 @@ class NPUOverrides(OpOverrides):
 
 
 class BufDesc:
-    def __init__(self, *, size, dtype, is_output=False, src=None):
-        self.size = size
+    def __init__(self, *, dtype, size, stride=None):
         self.dtype = dtype
-        self.is_output: bool = is_output
-        self.src = src
+        self.size = size
+        self.stride = stride
+        self.src = None
 
     @property
     def asc_size(self):
@@ -149,7 +149,6 @@ class NPUKernel(Kernel):
 
     def __init__(self, nodes, *, comments=None):
         super().__init__()
-        self._buf_desc: Dict[str:BufDesc] = {}
         self._comments: List[str] = comments
         self._kernel = NPUKernel.next_kernel_name()
         self._kernel_def = IndentedBuffer()
@@ -157,17 +156,13 @@ class NPUKernel(Kernel):
         self._indirect_to_scalar: Dict[str, _Scalar] = dict()
         self._current_loop = None
         self._current_input_index = 0
+        self._output_buffers: Set[str] = set()
+        self._buf_desc: Dict[str:BufDesc] = {}
 
         for node in nodes:
             inner_user_num = sum([user.node in nodes for user in node.users])
-            is_output = inner_user_num != len(node.users)
-            layout_size = [V.graph.sizevars.simplify(s) for s in node.node.layout.size]
-            self._buf_desc[node.node.name] = BufDesc(size=layout_size, dtype=V.graph.get_dtype(node.node.name),
-                                                     is_output=is_output)
-            for buf in node.read_writes.reads:
-                if buf.name not in self._buf_desc:
-                    self._buf_desc[buf.name] = BufDesc(size=buf.size, dtype=V.graph.get_dtype(buf.name))
-        self.dtype = next(iter(self._buf_desc.values())).asc_dtype
+            if inner_user_num != len(node.users):
+                self._output_buffers.add(node.node.name)
 
     def __enter__(self):
         super().__enter__()
@@ -209,6 +204,19 @@ class NPUKernel(Kernel):
             yield
         finally:
             self._current_loop = prior
+
+    def get_buffer_desc(self, name):
+        if name in self._buf_desc:
+            return self._buf_desc[name]
+        buf = V.graph.get_buffer(name)
+        layout_size = [V.graph.sizevars.simplify(s) for s in buf.layout.size]
+        for size_expr in layout_size:
+            size_vars = [s for s in size_expr.free_symbols if s.name.startswith('s')]
+            for v in size_vars:
+                self.graph.size(v.name)
+
+        self._buf_desc[name] = BufDesc(dtype=buf.layout.dtype, size=layout_size)
+        return self._buf_desc[name]
 
     def indirect_indexing(self, index_var, size, check=False) -> sympy.Symbol:
         indirect_sym = sympy_symbol(f"npu_scalar{len(self._indirect_to_scalar)}")
@@ -277,7 +285,7 @@ class NPUKernel(Kernel):
             f.write(becnhmark_code.getvalue())
 
     def load(self, name: str, index: sympy.Expr):
-        buf: BufDesc = self._buf_desc[name]
+        buf: BufDesc = self.get_buffer_desc(name)
         if not buf.src:
             self.graph.input(name, self.args.input(name))
             data = ir.data(name=name, sizes=buf.asc_size, dtype=buf.asc_dtype)
@@ -293,18 +301,19 @@ class NPUKernel(Kernel):
         loop = self._index_to_loop(index, sizes=sizes)
         scalars: Dict[str, _Scalar] = self._get_npu_scalar(index)
         if len(scalars):
-            return ir.load_indirect(data.as_loop(loop), *[v.cse for v in scalars.values()], expr=str(index),
+            return ir.load_indirect(data, *[v.cse for v in scalars.values()], expr=str(index),
                                     syms=[f"{str(k)}={str(v.cse)}(\\<{v.max_value})" for k, v in scalars.items()])
-        if loop.is_contiguous():
-            load = ir.load(data.as_loop(loop=loop), loop=loop)
-        else:
-            road = self._get_view_road(loop, DenseLoop(axis=loop.axis, size=sizes))
-            loop = road[0].src
-            load = ir.load(data.as_loop(loop=loop), loop=loop)
-            logging.info(f"Road for index {index} from {loop} to {self.contiguous_loop}")
-            for op in road:
-                logging.info(f"  {op.kind} from {op.src} to {op.dst}")
-                load = getattr(ir, op.kind)(load, loop=op.dst)
+
+        road = self._get_view_road(loop, DenseLoop(axis=loop.axis, size=sizes))
+        if len(road) == 0:
+            logging.info(f"Index {index} is dense from {loop} to {self.contiguous_loop}")
+            return ir.load(data, loop=loop)
+        loop = road[0].src
+        load = ir.load(data, loop=loop)
+        logging.info(f"Road for index {index} from {loop} to {self.contiguous_loop}")
+        for op in road:
+            logging.info(f"  {op.kind} from {op.src} to {op.dst}")
+            load = getattr(ir, op.kind)(load, loop=op.dst)
         return load
 
     def store_reduction(self, name, index, value: Reduction):
@@ -359,14 +368,14 @@ class NPUKernel(Kernel):
         return loop
 
     def _mark_buf_src(self, name, src):
-        buf: BufDesc = self._buf_desc[name]
-        if buf.is_output:
+        buf: BufDesc = self.get_buffer_desc(name)
+        is_output = name in self._output_buffers
+        if is_output:
+            self.graph.output(name, self.args.output(name))
             data = ir.output(name=name, input=src, sizes=buf.asc_size, dtype=buf.asc_dtype)
         else:
             data = ir.workspace(name=name, input=src, sizes=buf.asc_size, dtype=buf.asc_dtype)
         buf.src = data
-        if buf.is_output:
-            self.graph.output(name, self.args.output(name))
         return data
 
     def _get_npu_scalar(self, index: sympy.Expr):
@@ -377,6 +386,8 @@ class NPUKernel(Kernel):
         return scalars
 
     def _get_view_road(self, src: Loop, dst: Loop):
+        if src == dst:
+            return []
         num_axis = len(src.axis)
         hint_to_axis = []
         for hint, axis, size, order in zip(src.hint_stride, src.axis, src.size, range(num_axis)):
@@ -505,7 +516,7 @@ class NPUScheduling(BaseScheduling):
             for indexing_expr in itertools.chain(indexing_exprs, var_ranges.values()):
                 indexing_expr = V.graph.sizevars.simplify(indexing_expr)
                 size_vars = [s for s in indexing_expr.free_symbols if s.name.startswith('s')]
-                for v in sorted(size_vars, key=lambda x: x.name):
+                for v in size_vars:
                     kernel.graph.size(v.name)
 
             dense_loop = DenseLoop(axis=list(node_axis.keys()), size=list(node_axis.values()))

@@ -260,6 +260,8 @@ def make_graph_dot(asc_graph: ASCGraph):
         for attr, value in n.attrs.items():
             if isinstance(value, _Tensor):
                 inputs.append((attr, value.op.name))
+            elif isinstance(value, (list, tuple)) and all(isinstance(v, _Tensor) for v in value):
+                inputs.append((attr, [v.op.name for v in value]))
             else:
                 attr = attr.replace(f"{n.name}.attr.", '')
                 attr = attr.replace(f"{n.name}.", '')
@@ -276,7 +278,11 @@ def make_graph_dot(asc_graph: ASCGraph):
             style["fillcolor"] = type_colors[n.op_type]
         dot_node = pydot.Node(n.name, label=label, **style)
         for name, src in inputs:
-            graph.add_edge(pydot.Edge(src, n.name, label=str(name)))
+            if isinstance(src, str):
+                graph.add_edge(pydot.Edge(src, n.name, label=str(name)))
+            else:
+                for i, s in enumerate(src):
+                    graph.add_edge(pydot.Edge(s, n.name, label=f'{name}[{i}]'))
 
         buffer_name = n.get_private_attr("buffer_name")
         if buffer_name not in clusters:
