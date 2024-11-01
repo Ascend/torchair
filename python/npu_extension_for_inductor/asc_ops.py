@@ -127,33 +127,26 @@ def reduction(x, *, reduce_type):
     return op.y
 
 
-def data(*, name, input=None, sizes=(), dtype):
+def data(*, name, dtype):
     graph = V.kernel.graph
     op = graph.add_op("Data", name=name)
-    op.y.size = sizes
     op.y.dtype = dtype
-    if input:
-        op.x = input
     return op.y
 
 
-def output(*, name, input=None, sizes=(), dtype):
+def output(*, name, src, dtype):
     graph = V.kernel.graph
     op = graph.add_op("Output", name=name)
-    op.y.size = sizes
+    op.x = src
     op.y.dtype = dtype
-    if input:
-        op.x = input
     return op.y
 
 
-def workspace(*, name, input=None, sizes=(), dtype):
+def workspace(*, name, src, dtype):
     graph = V.kernel.graph
     op = graph.add_op("Workspace", name=name)
-    op.y.size = sizes
+    op.x = src
     op.y.dtype = dtype
-    if input:
-        op.x = input
     return op.y
 
 

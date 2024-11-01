@@ -99,11 +99,18 @@ class NPUOverrides(OpOverrides):
         return ir.load_seed(offset=sympy.Integer(offset))
 
 
-class BufDesc:
-    def __init__(self, *, dtype, size, stride=None):
-        self.dtype = dtype
-        self.size = size
-        self.stride = stride
+class ASCBuffer:
+    def __init__(self, layout):
+        self.dtype = layout.dtype
+        self.size = [V.graph.sizevars.simplify(s) for s in layout.size]
+        self.stride = [V.graph.sizevars.simplify(s) for s in layout.stride]
+        self.offset = V.graph.sizevars.simplify(layout.offset)
+        self.device = layout.device.type
+
+        self._hint_size = [Loop.get_hint(s) for s in self.size]
+        self._hint_stride = [Loop.get_hint(s) for s in self.stride]
+        self._hint_offset = Loop.get_hint(self.offset)
+
         self.src = None
 
     @property
@@ -113,6 +120,20 @@ class BufDesc:
     @property
     def asc_dtype(self):
         return TypeUtils.torch_to_asc(self.dtype)
+
+    def bind(self, src):
+        self.src = src
+        self.src.op.set_private_attr(f'layout.device', self.device)
+        self.src.op.set_private_attr(f'layout.dtype', self.dtype)
+        self.src.op.set_private_attr(f'layout.size', self.size)
+        self.src.op.set_private_attr(f'layout.stride', self.stride)
+        self.src.op.set_private_attr(f'layout.offset', self.offset)
+
+        self.src.op.set_private_attr(f'layout.hint.size', self._hint_size)
+        self.src.op.set_private_attr(f'layout.hint.stride', self._hint_stride)
+        self.src.op.set_private_attr(f'layout.hint.offset', self._hint_offset)
+
+        return self.src
 
 
 @dataclasses.dataclass
@@ -157,7 +178,7 @@ class NPUKernel(Kernel):
         self._current_loop = None
         self._current_input_index = 0
         self._output_buffers: Set[str] = set()
-        self._buf_desc: Dict[str:BufDesc] = {}
+        self._asc_buffer: Dict[str:ASCBuffer] = {}
 
         for node in nodes:
             inner_user_num = sum([user.node in nodes for user in node.users])
@@ -205,9 +226,9 @@ class NPUKernel(Kernel):
         finally:
             self._current_loop = prior
 
-    def get_buffer_desc(self, name):
-        if name in self._buf_desc:
-            return self._buf_desc[name]
+    def get_asc_buffer(self, name):
+        if name in self._asc_buffer:
+            return self._asc_buffer[name]
         buf = V.graph.get_buffer(name)
         layout_size = [V.graph.sizevars.simplify(s) for s in buf.layout.size]
         for size_expr in layout_size:
@@ -215,8 +236,8 @@ class NPUKernel(Kernel):
             for v in size_vars:
                 self.graph.size(v.name)
 
-        self._buf_desc[name] = BufDesc(dtype=buf.layout.dtype, size=layout_size)
-        return self._buf_desc[name]
+        self._asc_buffer[name] = ASCBuffer(buf.layout)
+        return self._asc_buffer[name]
 
     def indirect_indexing(self, index_var, size, check=False) -> sympy.Symbol:
         indirect_sym = sympy_symbol(f"npu_scalar{len(self._indirect_to_scalar)}")
@@ -285,14 +306,7 @@ class NPUKernel(Kernel):
             f.write(becnhmark_code.getvalue())
 
     def load(self, name: str, index: sympy.Expr):
-        buf: BufDesc = self.get_buffer_desc(name)
-        if not buf.src:
-            self.graph.input(name, self.args.input(name))
-            data = ir.data(name=name, sizes=buf.asc_size, dtype=buf.asc_dtype)
-            buf.src = data
-        else:
-            data = buf.src
-
+        data = self._load_buffer(name)
         if hasattr(self.current_node.node.data, 'input_sizes'):
             sizes = self.current_node.node.data.input_sizes[self._current_input_index]
         else:
@@ -322,13 +336,13 @@ class NPUKernel(Kernel):
         reduction = NPUOverrides.to_dtype(reduction, dst_dtype=value.dtype, src_dtype=value.src_dtype)
 
         store = ir.store(reduction, loop=loop)
-        value.src = self._mark_buf_src(name, store)
+        value.src = self._store_buffer(name, store)
         self.cse.store_cache.pop(name)  # Inductor cse always cache value, but we don't want to cache it
         return store
 
     def store(self, name, index, value, mode=None):
         store = ir.store(value, loop=self._index_to_loop(index))
-        self._mark_buf_src(name, store)
+        self._store_buffer(name, store)
         self.cse.store_cache.pop(name)  # Inductor cse always cache value, but we don't want to cache it
         return store
 
@@ -344,11 +358,19 @@ class NPUKernel(Kernel):
     def index_to_str(self, index):
         return str(index)
 
-    def _buf_size(self, buf):
-        return [str(AscExpr(s)) for s in self._buf_desc[buf].size]
+    def _load_buffer(self, name):
+        buf: ASCBuffer = self.get_asc_buffer(name)
+        if not buf.src:
+            self.graph.input(name, self.args.input(name))
+            return buf.bind(ir.data(name=name, dtype=buf.asc_dtype))
+        return buf.src
 
-    def _buf_dtype(self, buf):
-        return TypeUtils.torch_to_asc(self._buf_desc[buf].dtype)
+    def _store_buffer(self, name, src):
+        buf: ASCBuffer = self.get_asc_buffer(name)
+        if name in self._output_buffers:
+            self.graph.output(name, self.args.output(name))
+            return buf.bind(ir.output(name=name, src=src, dtype=buf.asc_dtype))
+        return buf.bind(ir.workspace(name=name, src=src, dtype=buf.asc_dtype))
 
     def _get_reduce_dims_and_loop(self, index: sympy.Expr):
         loop = self._index_to_loop(index)
@@ -366,17 +388,6 @@ class NPUKernel(Kernel):
             loop.axis.append(axis)
             loop.size.append(sympy.S.One if str(loop.stride[-1]) == "0" else axis_size)
         return loop
-
-    def _mark_buf_src(self, name, src):
-        buf: BufDesc = self.get_buffer_desc(name)
-        is_output = name in self._output_buffers
-        if is_output:
-            self.graph.output(name, self.args.output(name))
-            data = ir.output(name=name, input=src, sizes=buf.asc_size, dtype=buf.asc_dtype)
-        else:
-            data = ir.workspace(name=name, input=src, sizes=buf.asc_size, dtype=buf.asc_dtype)
-        buf.src = data
-        return data
 
     def _get_npu_scalar(self, index: sympy.Expr):
         scalars = dict()
