@@ -320,7 +320,7 @@ class NPUKernel(Kernel):
 
         road = self._get_view_road(loop, DenseLoop(axis=loop.axis, size=sizes))
         if len(road) == 0:
-            logging.info(f"Index {index} is dense from {loop} to {self.contiguous_loop}")
+            logging.info(f"Road for {index} from {loop} to {self.contiguous_loop} is dense")
             return ir.load(data, loop=loop)
         loop = road[0].src
         load = ir.load(data, loop=loop)
@@ -382,11 +382,12 @@ class NPUKernel(Kernel):
         loop.offset = index
         axises = axises if axises else self.contiguous_loop.axis
         sizes = sizes if sizes else self.contiguous_loop.size
-        for axis, axis_size in zip(axises, sizes):
-            loop.stride.append(index.coeff(axis))
-            loop.offset = simplify(loop.offset.subs(axis, 0))
-            loop.axis.append(axis)
-            loop.size.append(sympy.S.One if str(loop.stride[-1]) == "0" else axis_size)
+
+        loop.stride = V.graph.sizevars.stride_vars(index, axises)
+        loop.offset = V.graph.sizevars.offset_var(index, axises)
+        loop.axis = axises
+        loop.size = [sympy.S.One if str(loop.stride[i]) == "0" else s for i, s in enumerate(sizes)]
+
         return loop
 
     def _get_npu_scalar(self, index: sympy.Expr):
@@ -396,7 +397,7 @@ class NPUKernel(Kernel):
                 scalars[s] = self._indirect_to_scalar[str(s)]
         return scalars
 
-    def _get_view_road(self, src: Loop, dst: Loop):
+    def _get_view_road(self, src: Loop, dst: DenseLoop):
         if src == dst:
             return []
         num_axis = len(src.axis)
@@ -416,20 +417,28 @@ class NPUKernel(Kernel):
                 self.dst = dst
 
         road = []
-        dst_loop = dst
+        src_loop = src.copy()
         for i, j in zip(range(len(order)), order):
             if i != j:
-                src_loop = dst_loop.transpose(i, j).contiguous_()
-                src = src.transpose(i, j)
-                road.insert(0, MoveOp(kind="transpose", src=src_loop, dst=dst_loop))
-                dst_loop = src_loop
+                road_dst = road[0].src if road else dst
+                road_src = road_dst.copy().transpose_(i, j).contiguous_()
+                src_loop.transpose_(i, j)
+                road.insert(0, MoveOp(kind="transpose", src=road_src, dst=road_dst))
                 order[i], order[j] = order[j], order[i]
 
-        if [str(v) for v in src.size] != [str(v) for v in dst_loop.size]:
-            road.insert(0, MoveOp(kind="broadcast", src=src, dst=dst_loop))
+        road_dst = road[0].src if road else dst
+        if src_loop == road_dst:
+            return road
 
-        if len(road) == 0:
-            road.append(MoveOp(kind="reinterpret_view", src=src, dst=dst))
+        road_src = src_loop.copy()
+        for i, (src_size, dst_size) in enumerate(zip(road_src.size, road_dst.size)):
+            if str(src_size) == '1' and str(src_size) != str(dst_size):
+                road_src.broadcast_(i, dst_size)
+
+        if road_src == road_dst:
+            road.insert(0, MoveOp(kind="broadcast", src=src_loop, dst=road_dst))
+        else:
+            road.insert(0, MoveOp(kind="reinterpret_view", src=src_loop, dst=road_dst))
 
         return road
 

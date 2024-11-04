@@ -377,6 +377,17 @@ class BuildGraphTest(unittest.TestCase):
         self.assertTrue(kernel_capture.graph(0).get_op("broadcast"))
         self.assertTrue(kernel_capture.graph(0).get_op("transpose"))
 
+    def test_unsupported_view_road(self):
+        def test_unsupported_view_road(x):
+            return torch.diagonal(x).abs()
+
+        with KernelCapture() as kernel_capture:
+            x = torch.ones(4, 4, dtype=torch.float16)
+            torch.compile(dynamic=True)(test_unsupported_view_road)(x)
+
+        self.assertEqual(len(kernel_capture.kernels), 1)
+        self.assertTrue(kernel_capture.graph(0).get_op("reinterpretview"))
+
     def test_multi_moda_encoder(self):
         """
         测试dropout融合算子

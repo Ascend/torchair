@@ -1,3 +1,4 @@
+import functools
 import operator
 from typing import List
 
@@ -174,18 +175,12 @@ class Loop:
         self.stride: List[sympy.Expr] = stride if stride is not None else []
         self.offset: sympy.Expr = offset if offset is not None else sympy.Symbol("0")
 
-    def transpose(self, dim0, dim1):
-        def swap(arr, i, j):
-            swapped = arr.copy()
-            swapped[i], swapped[j] = swapped[j], swapped[i]
-            return swapped
+    def __str__(self):
+        return f"{self.axis}|{self.size}|{self.stride}|{self.offset}"
 
-        loop = Loop()
-        loop.axis = swap(self.axis, dim0, dim1)
-        loop.stride = swap(self.stride, dim0, dim1)
-        loop.size = swap(self.size, dim0, dim1)
-        loop.offset = self.offset
-        return loop
+    def __eq__(self, other: 'Loop') -> bool:
+        return str(self.axis) == str(other.axis) and str(self.size) == str(other.size) and \
+            str(self.stride) == str(other.stride) and str(self.offset) == str(other.offset)
 
     @staticmethod
     def get_hint(sym):
@@ -206,12 +201,21 @@ class Loop:
     def hint_offset(self):
         return self.get_hint(self.offset)
 
-    def __str__(self):
-        return f"{self.axis}|{self.size}|{self.stride}|{self.offset}"
+    @property
+    def asc_offset(self):
+        return AscExpr(self.offset)
 
-    def __eq__(self, other: 'Loop') -> bool:
-        return str(self.axis) == str(other.axis) and str(self.size) == str(other.size) and \
-               str(self.stride) == str(other.stride) and str(self.offset) == str(other.offset)
+    @property
+    def asc_axis(self):
+        return [StrRep(s.name) for s in self.axis]
+
+    @property
+    def asc_stride(self):
+        return [AscExpr(exp) for exp in self.stride]
+
+    @property
+    def asc_size(self):
+        return [AscExpr(exp) for exp in self.size]
 
     def is_contiguous(self):
         if len(self.axis) == 0:
@@ -234,21 +238,22 @@ class Loop:
         self.stride = self.contiguous_stride()
         return self
 
-    @property
-    def asc_offset(self):
-        return AscExpr(self.offset)
+    def transpose_(self, dim0, dim1):
+        def swap(swapped, i, j):
+            swapped[i], swapped[j] = swapped[j], swapped[i]
 
-    @property
-    def asc_axis(self):
-        return [StrRep(s.name) for s in self.axis]
+        swap(self.axis, dim0, dim1)
+        swap(self.stride, dim0, dim1)
+        swap(self.size, dim0, dim1)
+        return self
 
-    @property
-    def asc_stride(self):
-        return [AscExpr(exp) for exp in self.stride]
+    def broadcast_(self, dim, size):
+        self.size[dim] = size
+        self.stride[:dim] = [size * stride for stride in self.stride[:dim]]
+        self.stride[dim] = functools.reduce(operator.mul, self.size[dim + 1:], sympy.S.One)
 
-    @property
-    def asc_size(self):
-        return [AscExpr(exp) for exp in self.size]
+    def copy(self):
+        return Loop(axis=self.axis.copy(), size=self.size.copy(), stride=self.stride.copy(), offset=self.offset)
 
 
 class DenseLoop(Loop):
