@@ -506,6 +506,90 @@ class BuildGraphTest(unittest.TestCase):
 
         self.assertEqual(len(kernel_capture.kernels), 1)
 
+    def test_cat_fused_with_broadcast_transpose(self):
+        def test_cat(x, y):
+            return torch.cat([x.transpose(0, 1), y.transpose(2, 1)], dim=0)
+
+        x = torch.ones(2, 3, 1, dtype=torch.float16).expand(2, 3, 5)
+        y = torch.ones(4, 5, 2, dtype=torch.float16)
+        with KernelCapture() as kernel_capture:
+            torch.compile(dynamic=True)(test_cat)(x, y)
+
+        self.assertEqual(len(kernel_capture.kernels), 1)
+        self.assertTrue(kernel_capture.graph(0).get_op("broadcast"))
+        self.assertTrue(kernel_capture.graph(0).get_op("transpose"))
+        self.assert_graph_equal(kernel_capture.graph_str(0, "NpuKernel0Graph"),
+            """NpuKernel0Graph = ascir.HintGraph('NpuKernel0Graph')
+            s0 = NpuKernel0Graph.create_size("s0")
+            s1 = NpuKernel0Graph.create_size("s1")
+            s2 = NpuKernel0Graph.create_size("s2")
+            s3 = NpuKernel0Graph.create_size("s3")
+            z0 = NpuKernel0Graph.create_axis("z0", ascir.SizeExpr([s1]) + ascir.SizeExpr([s3]))
+            z1 = NpuKernel0Graph.create_axis("z1", ascir.SizeExpr([s0]))
+            z2 = NpuKernel0Graph.create_axis("z2", ascir.SizeExpr([s2]))
+            arg3_1 = ascir.ops.Data('arg3_1')
+            arg3_1.attr.sched.exec_order = 0
+            arg3_1.y.dtype = ascir.dtypes.float16
+            load = ascir.ops.Load('load')
+            load.attr.sched.exec_order = 1
+            load.attr.sched.axis = [z0, z1, z2]
+            load.x = arg3_1.y
+            load.y.axis = [z1, z0, z2]
+            load.y.strides = [ascir.SizeExpr([s1]), ascir.SizeExpr([]), ascir.SizeExpr([0])]
+            load.y.size = [ascir.SizeExpr([s0]), ascir.SizeExpr([s1]), ascir.SizeExpr([])]
+            broadcast = ascir.ops.Broadcast('broadcast')
+            broadcast.attr.sched.exec_order = 2
+            broadcast.attr.sched.axis = [z0, z1, z2]
+            broadcast.x = load.y
+            broadcast.y.axis = [z1, z0, z2]
+            broadcast.y.strides = [ascir.SizeExpr([s1,s2]), ascir.SizeExpr([s2]), ascir.SizeExpr([])]
+            broadcast.y.size = [ascir.SizeExpr([s0]), ascir.SizeExpr([s1]), ascir.SizeExpr([s2])]
+            transpose = ascir.ops.Transpose('transpose')
+            transpose.attr.sched.exec_order = 3
+            transpose.attr.sched.axis = [z0, z1, z2]
+            transpose.x0 = broadcast.y
+            transpose.y.axis = [z0, z1, z2]
+            transpose.y.strides = [ascir.SizeExpr([s0,s2]), ascir.SizeExpr([s2]), ascir.SizeExpr([])]
+            transpose.y.size = [ascir.SizeExpr([s1]), ascir.SizeExpr([s0]), ascir.SizeExpr([s2])]
+            arg5_1 = ascir.ops.Data('arg5_1')
+            arg5_1.attr.sched.exec_order = 4
+            arg5_1.y.dtype = ascir.dtypes.float16
+            load1 = ascir.ops.Load('load1')
+            load1.attr.sched.exec_order = 5
+            load1.attr.sched.axis = [z0, z1, z2]
+            load1.x = arg5_1.y
+            load1.y.axis = [z0, z2, z1]
+            load1.y.strides = [ascir.SizeExpr([s0,s2]), ascir.SizeExpr([s0]), ascir.SizeExpr([])]
+            load1.y.size = [ascir.SizeExpr([s3]), ascir.SizeExpr([s2]), ascir.SizeExpr([s0])]
+            transpose1 = ascir.ops.Transpose('transpose1')
+            transpose1.attr.sched.exec_order = 6
+            transpose1.attr.sched.axis = [z0, z1, z2]
+            transpose1.x0 = load1.y
+            transpose1.y.axis = [z0, z1, z2]
+            transpose1.y.strides = [ascir.SizeExpr([s0,s2]), ascir.SizeExpr([s2]), ascir.SizeExpr([])]
+            transpose1.y.size = [ascir.SizeExpr([s3]), ascir.SizeExpr([s0]), ascir.SizeExpr([s2])]
+            concat = ascir.ops.Concat('concat')
+            concat.attr.sched.exec_order = 7
+            concat.attr.sched.axis = [z0, z1, z2]
+            concat.x = [transpose.y, transpose1.y]
+            concat.y.axis = [z0, z1, z2]
+            concat.y.strides = [ascir.SizeExpr([s0,s2]), ascir.SizeExpr([s2]), ascir.SizeExpr([])]
+            concat.y.size = [ascir.SizeExpr([s1]) + ascir.SizeExpr([s3]), ascir.SizeExpr([s0]), ascir.SizeExpr([s2])]
+            store = ascir.ops.Store('store')
+            store.attr.sched.exec_order = 8
+            store.attr.sched.axis = [z0, z1, z2]
+            store.x = concat.y
+            store.y.axis = [z0, z1, z2]
+            store.y.strides = [ascir.SizeExpr([s0,s2]), ascir.SizeExpr([s2]), ascir.SizeExpr([])]
+            store.y.size = [ascir.SizeExpr([s1]) + ascir.SizeExpr([s3]), ascir.SizeExpr([s0]), ascir.SizeExpr([s2])]
+            buf0 = ascir.ops.Output('buf0')
+            buf0.attr.sched.exec_order = 9
+            buf0.x = store.y
+            buf0.y.dtype = ascir.dtypes.float16
+            NpuKernel0Graph.set_inputs([arg3_1, arg5_1])
+            NpuKernel0Graph.set_outputs([buf0])
+            """)
+
     def test_cat_lowering_with_transpose(self):
         @torch.compile(dynamic=True)
         def test_cat(x, y):

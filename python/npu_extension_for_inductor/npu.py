@@ -307,8 +307,14 @@ class NPUKernel(Kernel):
 
     def load(self, name: str, index: sympy.Expr):
         data = self._load_buffer(name)
-        if hasattr(self.current_node.node.data, 'input_sizes'):
-            sizes = self.current_node.node.data.input_sizes[self._current_input_index]
+        ir_data = self.current_node.node.data
+        if isinstance(ir_data, UBConcat):
+            sizes = self.contiguous_loop.size[:]
+            concat_size = ir_data.output_concat_dim_size
+            for i, size in enumerate(self.contiguous_loop.size):
+                coeff = size.coeff(concat_size)
+                if str(coeff) != '0':
+                    sizes[i] = coeff * ir_data.input_concat_dim_sizes[self._current_input_index]
         else:
             sizes = self.contiguous_loop.size
         self._current_input_index += 1

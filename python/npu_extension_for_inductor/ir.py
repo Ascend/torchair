@@ -176,7 +176,7 @@ class _Op(_Track):
 
 
 class UBConcat(Pointwise):
-    def __init__(self, *args, dim, input_sizes, **kwargs):
+    def __init__(self, *args, input_concat_dim_sizes, output_concat_dim_size, **kwargs):
         super().__init__(*args, **kwargs)
-        self.dim = dim
-        self.input_sizes = input_sizes
+        self.input_concat_dim_sizes = input_concat_dim_sizes
+        self.output_concat_dim_size = output_concat_dim_size
