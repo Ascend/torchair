@@ -863,6 +863,19 @@ def ForeachAddcdivScalarList(x: List[Tensor], x1: List[Tensor], x2: List[Tensor]
     return raw_ops._ForeachAddcdivScalarList(x, x1, x2, scalar, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
 
 
+@auto_convert_to_tensor([True, True, True, False], [False, False, False, False])
+def ForeachAddcdivList(x: List[Tensor], x1: List[Tensor], x2: List[Tensor], scalar: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(ForeachAddcdivList)\n
+    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+    .DYNAMIC_INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+    .DYNAMIC_INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+    .INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+    """
+    size_of_y = len(x)
+    return raw_ops._ForeachAddcdivList(x, x1, x2, scalar, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
 # This api is auto-generated from IR ForeachAddcmulScalar
 @auto_convert_to_tensor([True, True, True, False], [False, False, False, False])
 def ForeachAddcmulScalar(x1: List[Tensor], x2: List[Tensor], x3: List[Tensor], scalar: Tensor, *, dependencies=[], node_name=None):
@@ -891,6 +904,19 @@ def ForeachAddcmulScalarList(x1: List[Tensor], x2: List[Tensor], x3: List[Tensor
 
     size_of_y = len(x1)
     return raw_ops._ForeachAddcmulScalarList(x1, x2, x3, scalar, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
+@auto_convert_to_tensor([True, True, True, False], [False, False, False, False])
+def ForeachAddcmulList(x: List[Tensor], x1: List[Tensor], x2: List[Tensor], scalar: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(ForeachAddcmulList)\n
+    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+    .DYNAMIC_INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+    .DYNAMIC_INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+    .INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+    """
+    size_of_y = len(x)
+    return raw_ops._ForeachAddcmulList(x, x1, x2, scalar, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
 
 
 # This api is auto-generated from IR ForeachLerpScalar
@@ -1201,7 +1227,8 @@ def ForeachSubScalar(x: List[Tensor], scalar: Tensor, *, dependencies=[], node_n
 def ForeachSubList(x: List[Tensor], x1: List[Tensor], alpha: Tensor, *, dependencies=[], node_name=None):
     """REG_OP(ForeachSubList)\n
 .DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
-.INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))
+.INPUT(alpha, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
 .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
 """
 

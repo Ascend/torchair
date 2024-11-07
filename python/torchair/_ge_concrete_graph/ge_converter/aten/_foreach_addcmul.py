@@ -43,6 +43,14 @@ def conveter_aten__foreach_addcmul_Scalar(
     return ge.ForeachAddcmulScalar(self, tensor1, tensor2, value)
 
 
+@declare_supported(
+    [
+        Support([I32(2, 2, 2), I32(2, 3)], [I32(2, 2, 2), I32(2, 3)], [I32(2, 2, 2), I32(2, 3)], [1, 1]),
+        Support([F32(2, 2, 2), F32(2, 3)], [F32(2, 2, 2), F32(2, 3)], [F32(2, 2, 2), F32(2, 3)], [1., 1.]),
+        Support([F16(2, 2, 2), F16(2, 3)], [F16(2, 2, 2), F16(2, 3)], [F16(2, 2, 2), F16(2, 3)], [1., 1.]),
+        Support([BF16(2, 2, 2), BF16(2, 3)], [BF16(2, 2, 2), BF16(2, 3)], [BF16(2, 2, 2), BF16(2, 3)], [1., 1.]),
+    ]
+)
 @register_fx_node_ge_converter(torch.ops.aten._foreach_addcmul.ScalarList)
 def conveter_aten__foreach_addcmul_ScalarList(
     self: List[Tensor],
@@ -52,7 +60,7 @@ def conveter_aten__foreach_addcmul_ScalarList(
     meta_outputs: List[TensorSpec] = None,
 ):
     """NB: aten::_foreach_addcmul.ScalarList(Tensor[] self, Tensor[] tensor1, Tensor[] tensor2, Scalar[] scalars) -> Tensor[]"""
-    raise NotImplementedError("torch.ops.aten._foreach_addcmul.ScalarList ge_converter is not implemented!")
+    return ge.ForeachAddcmulScalarList(self, tensor1, tensor2, scalars)
 
 
 @register_fx_node_ge_converter(torch.ops.aten._foreach_addcmul.Tensor)
@@ -64,7 +72,7 @@ def conveter_aten__foreach_addcmul_Tensor(
     meta_outputs: List[TensorSpec] = None,
 ):
     """NB: aten::_foreach_addcmul.Tensor(Tensor[] self, Tensor[] tensor1, Tensor[] tensor2, Tensor scalars) -> Tensor[]"""
-    raise NotImplementedError("torch.ops.aten._foreach_addcmul.Tensor ge_converter is not implemented!")
+    return ge.ForeachAddcmulList(self, tensor1, tensor2, scalars)
 
 
 @register_fx_node_ge_converter(torch.ops.aten._foreach_addcmul.Scalar_out)

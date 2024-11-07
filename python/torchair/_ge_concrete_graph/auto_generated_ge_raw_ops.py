@@ -19137,21 +19137,21 @@ def _ForeachAddcdivScalar(x: List[Tensor], x1: List[Tensor], x2: List[Tensor], s
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
-        op.input_desc[-1].name = "x" + str(i)
+        op.input_desc[-1].name = "x1" + str(i)
 
     if not isinstance(x1, (tuple, list)):
         raise AssertionError
     for i, v in enumerate(x1):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
-        op.input_desc[-1].name = "x1" + str(i)
+        op.input_desc[-1].name = "x2" + str(i)
 
     if not isinstance(x2, (tuple, list)):
         raise AssertionError
     for i, v in enumerate(x2):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
-        op.input_desc[-1].name = "x2" + str(i)
+        op.input_desc[-1].name = "x3" + str(i)
 
     op.input.append(scalar.tensor)
     op.input_desc.add().CopyFrom(scalar.desc)
@@ -19194,25 +19194,82 @@ def _ForeachAddcdivScalarList(x: List[Tensor], x1: List[Tensor], x2: List[Tensor
     for i, v in enumerate(x):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
-        op.input_desc[-1].name = "x" + str(i)
+        op.input_desc[-1].name = "x1" + str(i)
 
     if not isinstance(x1, (tuple, list)):
         raise AssertionError
     for i, v in enumerate(x1):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
-        op.input_desc[-1].name = "x1" + str(i)
+        op.input_desc[-1].name = "x2" + str(i)
 
     if not isinstance(x2, (tuple, list)):
         raise AssertionError
     for i, v in enumerate(x2):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
-        op.input_desc[-1].name = "x2" + str(i)
+        op.input_desc[-1].name = "x3" + str(i)
 
     op.input.append(scalar.tensor)
     op.input_desc.add().CopyFrom(scalar.desc)
-    op.input_desc[-1].name = "scalar"
+    op.input_desc[-1].name = "scalars"
+
+    # process attrs
+
+    # process outputs
+    output_index = 0
+    y = []
+    for i in range(output_index, output_index + size_of_y):
+        op.output_desc.add().name = "y" + str(i - output_index)
+        y.append(Tensor(op, i))
+    output_index += size_of_y
+
+    return y
+
+
+# This api is auto-generated from IR ForeachAddcdivList
+@auto_convert_to_tensor([True, True, True, False], [False, False, False, False])
+def _ForeachAddcdivList(x: List[Tensor], x1: List[Tensor], x2: List[Tensor], scalar: Tensor, *, size_of_y: int, dependencies=[], node_name=None):
+    """REG_OP(ForeachAddcdivList)\n
+.DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+"""
+    op = get_default_ge_graph().op.add()
+    op.type = "ForeachAddcdivList"
+    op.name = next_unique_name(node_name, "ForeachAddcdivList")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(x):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x1" + str(i)
+
+    if not isinstance(x1, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(x1):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x2" + str(i)
+
+    if not isinstance(x2, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(x2):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x3" + str(i)
+
+    op.input.append(scalar.tensor)
+    op.input_desc.add().CopyFrom(scalar.desc)
+    op.input_desc[-1].name = "scalars"
 
     # process attrs
 
@@ -19317,7 +19374,64 @@ def _ForeachAddcmulScalarList(x1: List[Tensor], x2: List[Tensor], x3: List[Tenso
         op.input_desc[-1].name = "x3" + str(i)
     op.input.append(scalar.tensor)
     op.input_desc.add().CopyFrom(scalar.desc)
-    op.input_desc[-1].name = "scalar"
+    op.input_desc[-1].name = "scalars"
+
+    # process attrs
+
+    # process outputs
+    output_index = 0
+    y = []
+    for i in range(output_index, output_index + size_of_y):
+        op.output_desc.add().name = "y" + str(i - output_index)
+        y.append(Tensor(op, i))
+    output_index += size_of_y
+
+    return y
+
+
+# This api is auto-generated from IR ForeachAddcmulList
+@auto_convert_to_tensor([True, True, True, False], [False, False, False, False])
+def _ForeachAddcmulList(x: List[Tensor], x1: List[Tensor], x2: List[Tensor], scalar: Tensor, *, size_of_y: int, dependencies=[], node_name=None):
+    """REG_OP(ForeachAddcmulList)\n
+.DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+"""
+    op = get_default_ge_graph().op.add()
+    op.type = "ForeachAddcmulList"
+    op.name = next_unique_name(node_name, "ForeachAddcmulList")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(x):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x1" + str(i)
+
+    if not isinstance(x1, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(x1):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x2" + str(i)
+
+    if not isinstance(x2, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(x2):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x3" + str(i)
+
+    op.input.append(scalar.tensor)
+    op.input_desc.add().CopyFrom(scalar.desc)
+    op.input_desc[-1].name = "scalars"
 
     # process attrs
 
@@ -19417,10 +19531,7 @@ def _ForeachLerpList(x1: List[Tensor], x2: List[Tensor], weights: List[Tensor], 
     for i, v in enumerate(weights):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
-        op.input_desc[-1].name = "weights" + str(i)
-    # op.input.append(weight.tensor)
-    # op.input_desc.add().CopyFrom(weight.desc)
-    # op.input_desc[-1].name = "weight"
+        op.input_desc[-1].name = "weight" + str(i)
 
     output_index = 0
     y = []
@@ -19455,7 +19566,7 @@ def _ForeachNorm(x1: List[Tensor], scalar: Tensor, *, size_of_y: int, dependenci
     for i, v in enumerate(x1):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
-        op.input_desc[-1].name = "x1" + str(i)
+        op.input_desc[-1].name = "x" + str(i)
     
     op.input.append(scalar.tensor)
     op.input_desc.add().CopyFrom(scalar.desc)
