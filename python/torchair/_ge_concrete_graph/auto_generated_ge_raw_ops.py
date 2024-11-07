@@ -19304,17 +19304,20 @@ def _ForeachAddcmulScalar(x1: List[Tensor], x2: List[Tensor], x3: List[Tensor], 
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x1, (tuple, list))
+    if not isinstance(x1, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x1):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "x1" + str(i)
-    assert isinstance(x2, (tuple, list))
+    if not isinstance(x2, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x2):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "x2" + str(i)
-    assert isinstance(x3, (tuple, list))
+    if not isinstance(x3, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x3):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
@@ -19357,17 +19360,20 @@ def _ForeachAddcmulScalarList(x1: List[Tensor], x2: List[Tensor], x3: List[Tenso
         op.input.append(dependency.controller)
 
     # process inputs
-    assert isinstance(x1, (tuple, list))
+    if not isinstance(x1, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x1):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "x1" + str(i)
-    assert isinstance(x2, (tuple, list))
+    if not isinstance(x2, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x2):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "x2" + str(i)
-    assert isinstance(x3, (tuple, list))
+    if not isinstance(x3, (tuple, list)):
+        raise AssertionError
     for i, v in enumerate(x3):
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
