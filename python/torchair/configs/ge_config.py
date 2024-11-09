@@ -12,6 +12,7 @@ class _GEConfig(NpuBaseConfig):
         self.oo_level = OptionValue("O3", ["O1", "O3"])
         self.oo_constant_folding = OptionValue(None, [True, False])
         self.oo_dead_code_elimination = OptionValue(None, [True, False])
+        self.export_compile_stat = OptionValue("2", ["0", "1", "2"])
 
         super(_GEConfig, self).__init__()
 
@@ -29,4 +30,6 @@ class _GEConfig(NpuBaseConfig):
                 if self.oo_dead_code_elimination else "false"
         if self.oo_level.value == "O1":
             local_option["ge.topoSortingMode"] = sorting_strategy_dict["StableRDFS"]
+        global_option["ge.exportCompileStat"] = self.export_compile_stat.value
+
         return local_option, global_option

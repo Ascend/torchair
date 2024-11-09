@@ -40,7 +40,9 @@ class OptionValue:
     @value.setter
     def value(self, v):
         if isinstance(self.__optional, (tuple, list,)) and v not in self.__optional:
-            raise ValueError(f"{repr(v)} not in optional list " + repr(self.__optional))
+            raise ValueError(f"Value {repr(v)} (type: {type(v)})"
+                             f" not in optional list {repr(self.__optional)}"
+                             f" (type: {None if len(self.__optional) == 0 else type(self.__optional[0])}).")
         self._value = v
 
 
