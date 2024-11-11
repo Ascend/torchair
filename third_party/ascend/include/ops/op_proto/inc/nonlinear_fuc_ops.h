@@ -1302,5 +1302,61 @@ REG_OP(GLUGrad)
       .OUTPUT(x_grad, TensorType::FloatingDataType())
       .ATTR(dim, Int, -1)
       .OP_END_FACTORY_REG(GLUGrad)
+
+/**
+* @brief The GELUV2 activation function is x*Φ(x),
+* where Φ(x) the standard Gaussian cumulative distribution function.
+
+* @par Inputs:
+* One input, including: \n
+* x: A Tensor. Must be one of the following types: bfloat16, float16, float32. \n
+
+* @par Outputs:
+* y: A Tensor. Has the same type as "x". \n
+
+* @par Attributes:
+* approximate: A optional string. The gelu approximation algorithm to use: 'none' or 'tanh', default is 'none'. \n
+
+* @par Third-party framework compatibility:
+* Compatible with the Pytorch operator Gelu.
+*/
+REG_OP(GeluV2)
+    .INPUT(x, "T")
+    .OUTPUT(y, "T")
+    .DATATYPE(T, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))
+    .ATTR(approximate, String, "none")
+    .OP_END_FACTORY_REG(GeluV2)
+
+	/**
+* @brief Computes the gradient for the gelu of "x" .
+
+* @par Inputs:
+* Two inputs, including:
+* @li dy: A Tensor. Must be one of the following types:bfloat16, float16, float32.
+* @li x: A Tensor of the same type as "dy".
+
+* @par Outputs:
+* z: A Tensor. Has the same type as "dy".
+
+* @par Attributes:
+* approximate: A optional string.
+* The gelu grad approximation algorithm to use: 'none' or 'tanh', default is 'none'. \n
+
+* @par Third-party framework compatibility
+* Compatible with the Pytorch operator GeluGrad.
+
+* @attention Constraints:
+* if the GeluGradV2 operator has approximate='none':
+* when x is -inf, the computation result is 0.
+* when x is inf, the computation result is dy.
+
+*/
+REG_OP(GeluGradV2)
+    .INPUT(dy, "T")
+    .INPUT(x, "T")
+    .OUTPUT(z, "T")
+    .DATATYPE(T, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))
+    .ATTR(approximate, String, "none")
+    .OP_END_FACTORY_REG(GeluGradV2)
 } // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_NONLINEAR_FUC_OPS_H_
