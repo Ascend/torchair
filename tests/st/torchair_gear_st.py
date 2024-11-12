@@ -162,7 +162,7 @@ class TorchairSt(unittest.TestCase):
         input_info = _GeInputInfo(
             value_type=_ValueType.TENSOR,
             func=None,
-            shape=[-1, -1], dim_gears={0: [8, 4], 1: [8, 12]})
+            shape=[-1, -1], dim_gears={0: [8, 4], 1: [8, 12]}, device_type="CPU")
         named_inputs_info = {'arg2_1': input_info}
         result = generate_dynamic_dims_option(named_inputs_info, "product")
         self.assertTrue(result['ge.inputShape'] == 'arg2_1:-1,-1')
@@ -175,7 +175,7 @@ class TorchairSt(unittest.TestCase):
         input_info2 = _GeInputInfo(
             value_type=_ValueType.TENSOR,
             func=None,
-            shape=[-1, 8], dim_gears={0: [8, 4]})
+            shape=[-1, 8], dim_gears={0: [8, 4]}, device_type="CPU")
         named_inputs_info2 = {'arg2_1': input_info2}
         result = generate_dynamic_dims_option(named_inputs_info2, "zip")
         self.assertTrue(result['ge.inputShape'] == 'arg2_1:-1,8')
@@ -186,11 +186,11 @@ class TorchairSt(unittest.TestCase):
         input_info3 = _GeInputInfo(
             value_type=_ValueType.TENSOR,
             func=None,
-            shape=[-1, 8], dim_gears={0: [8, 4]})
+            shape=[-1, 8], dim_gears={0: [8, 4]}, device_type="CPU")
         input_info4 = _GeInputInfo(
             value_type=_ValueType.TENSOR,
             func=None,
-            shape=[-1, 8], dim_gears={0: [8, 4, 3]})
+            shape=[-1, 8], dim_gears={0: [8, 4, 3]}, device_type="CPU")
         named_inputs_info2 = {'arg1': input_info3, 'arg2': input_info4}
         with self.assertRaises(AssertionError) as cm:
             result = generate_dynamic_dims_option(named_inputs_info2, "zip")
@@ -202,7 +202,7 @@ class TorchairSt(unittest.TestCase):
         input_info6 = _GeInputInfo(
             value_type=_ValueType.TENSOR,
             func=None,
-            shape=[-1, -1], dim_gears={0: [1, 2, 4, 1, 2, 4], 1: [10, 10, 10, 20, 20, 20]})
+            shape=[-1, -1], dim_gears={0: [1, 2, 4, 1, 2, 4], 1: [10, 10, 10, 20, 20, 20]}, device_type="CPU")
         named_inputs_info = {'arg2_1': input_info6}
         result = generate_dynamic_dims_option(named_inputs_info, "zip")
 
@@ -218,15 +218,15 @@ class TorchairSt(unittest.TestCase):
         input_info5 = _GeInputInfo(
             value_type=_ValueType.TENSOR,
             func=None,
-            shape=[-1, 8], dim_gears={0: [1, 2, 3, 4, 5, 6, 7, 8, 9]})
+            shape=[-1, 8], dim_gears={0: [1, 2, 3, 4, 5, 6, 7, 8, 9]}, device_type="CPU")
         input_info6 = _GeInputInfo(
             value_type=_ValueType.TENSOR,
             func=None,
-            shape=[-1, 8], dim_gears={0: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]})
+            shape=[-1, 8], dim_gears={0: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]}, device_type="CPU")
         input_info7 = _GeInputInfo(
             value_type=_ValueType.TENSOR,
             func=None,
-            shape=[-1, 8], dim_gears={0: [20, 21, 22, 23, 24, 25, 26, 27, 28, 29]})
+            shape=[-1, 8], dim_gears={0: [20, 21, 22, 23, 24, 25, 26, 27, 28, 29]}, device_type="CPU")
         named_inputs_info4 = {'arg1': input_info5,
                               'arg2': input_info6, 'arg3': input_info7}
 
@@ -241,11 +241,11 @@ class TorchairSt(unittest.TestCase):
         input_info5 = _GeInputInfo(
             value_type=_ValueType.TENSOR,
             func=None,
-            shape=[-1, 8], dim_gears={0: [1, 2]})
+            shape=[-1, 8], dim_gears={0: [1, 2]}, device_type="CPU")
         input_info6 = _GeInputInfo(
             value_type=_ValueType.TENSOR,
             func=None,
-            shape=[-1, 8], dim_gears={0: [10, 11, 10, 11]})
+            shape=[-1, 8], dim_gears={0: [10, 11, 10, 11]}, device_type="CPU")
         named_inputs_info4 = {'arg1': input_info5, 'arg2': input_info6}
         result = generate_dynamic_dims_option(named_inputs_info4, "product")
         self.assertEqual(result["ge.dynamicDims"], "1,11;2,10;2,11;1,10")

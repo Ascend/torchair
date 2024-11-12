@@ -370,7 +370,7 @@ class _NpuFxCompiler:
         if self.config.debug.graph_dump.enabled and not self.config.export.export_mode:
             concrete_graph.dump(self.config.debug.graph_dump.full_path("dynamo_original_graph"))
 
-        concrete_graph.optimize_graph_without_runtime(*example_inputs)
+        concrete_graph.optimize_graph_without_runtime()
         return concrete_graph
 
 
