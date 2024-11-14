@@ -21326,6 +21326,45 @@ def _ForeachPowList(x1: List[Tensor], x2: List[Tensor], *, size_of_y: int, depen
     return y
 
 
+# This api is auto-generated from IR ForeachPowScalarAndTensor
+@auto_convert_to_tensor([False, True], [False, False])
+def _ForeachPowScalarAndTensor(scalar: Tensor, x: List[Tensor], *, size_of_y: int, dependencies=[], node_name=None):
+    """REG_OP(ForeachPowScalarAndTensor)\n
+.INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32}))\n
+"""
+
+    op = get_default_ge_graph().op.add()
+    op.type = "ForeachPowScalarAndTensor"
+    op.name = next_unique_name(node_name, "ForeachPowScalarAndTensor")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(scalar.tensor)
+    op.input_desc.add().CopyFrom(scalar.desc)
+    op.input_desc[-1].name = "scalar"
+
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(x):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x" + str(i)
+
+    output_index = 0
+    y = []
+    for i in range(output_index, output_index + size_of_y):
+        op.output_desc.add().name = "y" + str(i - output_index)
+        y.append(Tensor(op, i))
+    output_index += size_of_y
+
+    return y
+
+
 # This api is auto-generated from IR ForeachAbsInplace
 @auto_convert_to_tensor([True], [False])
 def ForeachAbsInplace(x: List[Tensor], *, dependencies=[], node_name=None):
