@@ -43,6 +43,8 @@ def as_tensor(spec: _TypedTensor):
 def _eager_aten_call(aten_op):
     def inner_run(*args, **kwargs):
         outs = aten_op(*args, **kwargs)
+        if isinstance(outs, int):
+            return outs
         if isinstance(outs, (list, tuple)):
             return [out.clone() for out in outs]
         return outs.clone()
@@ -165,9 +167,9 @@ def _check_result(compiled_rets, eager_rets):
     assert type(compiled_rets) == type(
         eager_rets), f"result type mismatch {type(compiled_rets)} vs. {type(eager_rets)}"
     compiled_rets = (compiled_rets, ) if isinstance(
-        compiled_rets, torch.Tensor) else compiled_rets
+        compiled_rets, (torch.Tensor, int)) else compiled_rets
     eager_rets = (eager_rets, ) if isinstance(
-        eager_rets, torch.Tensor) else eager_rets
+        eager_rets, (torch.Tensor, int)) else eager_rets
     for c_ret, e_ret in zip(compiled_rets, eager_rets):
         assert type(c_ret) == type(
             e_ret), f"result type mismatch {type(c_ret)} vs. {type(e_ret)}"
@@ -175,7 +177,10 @@ def _check_result(compiled_rets, eager_rets):
             for c_tensor, e_tensor in zip(c_ret, e_ret):
                 check_tensor_same(c_tensor, e_tensor)
         else:
-            assert isinstance(c_ret, torch.Tensor)
+            if isinstance(c_ret, int):
+                assert c_ret == e_ret
+                continue
+            assert isinstance(c_ret, torch.Tensor), f"unsupported result type {type(c_ret)}"
             check_tensor_same(c_ret, e_ret)
 
 
