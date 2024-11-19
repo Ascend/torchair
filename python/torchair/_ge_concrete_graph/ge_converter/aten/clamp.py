@@ -53,7 +53,7 @@ def clamp(self, max_value, min_value, meta_outputs):
     self = dtype_promote(self, target_dtype=meta_outputs.dtype)
     min_value = dtype_promote(min_value, target_dtype=meta_outputs.dtype)
     max_value = dtype_promote(max_value, target_dtype=meta_outputs.dtype)
-    return ge.ClipByValue(self, min_value, max_value)
+    return ge.ClipByValueV2(self, min_value, max_value)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.clamp.Tensor)
