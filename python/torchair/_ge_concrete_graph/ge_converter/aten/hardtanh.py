@@ -42,7 +42,7 @@ def conveter_aten_hardtanh_default(
     """NB: aten::hardtanh(Tensor self, Scalar min_val=-1, Scalar max_val=1) -> Tensor"""
     if min_val >= max_val:
         return ge.Fill(ge.Shape(self), ge.Cast(max_val, dst_type=self.dtype))
-    return ge.ClipByValue(self, min_val, max_val)
+    return ge.ClipByValueV2(self, min_val, max_val)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.hardtanh.out)
