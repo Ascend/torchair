@@ -116,7 +116,8 @@ def _find_ref_ops_and_io_ops(graph: GraphDef):
         if op.type == "Data":
             continue
         for idx, op_in in enumerate(op.input):
-            if op_in in data_output_count.keys():
+            # Cmo OP prefetch address, Data output count ignore Cmo.
+            if (op_in in data_output_count.keys()) and (op.type != "Cmo"):
                 data_output_count[op_in] = (data_output_count[op_in][0], data_output_count[op_in][1] + 1)
             if op_in in ref_ops.keys():
                 ref_output_count[op_in] = ref_output_count[op_in] + 1
@@ -286,17 +287,31 @@ def frozen_data_by_constplaceholder(graph: GraphDef, frozen_flag_list: List, met
     update_op_input_name_from_mapping(graph, data_to_constplaceholder_name_mapping)
 
 
+def _remove_op_controller_from_input(data: OpDef, op: OpDef):
+    for idx, input_name in enumerate(op.input):
+        if input_name.endswith("-1") and (input_name.split(":")[0] == data.name):
+            logger.debug(f"remove ge graph op {op.name} controller {input_name}.")
+            del op.input[idx]
+            break
+
+
 def remove_dead_data_and_reorder_data_index(graph: GraphDef):
     all_data_and_refcount: Dict[str, Tuple[OpDef, int]] = {}
+    all_data_and_controller: Dict[str, List[OpDef]] = {}
     for op in graph.op:
         if op.type == "Data":
             all_data_and_refcount[GeTensor(op).tensor] = (op, 0)
+            all_data_and_controller[op.name] = []
     for op in graph.op:
         if op.type == "Data":
             continue
         for idx, op_in in enumerate(op.input):
             if op_in in all_data_and_refcount.keys():
                 all_data_and_refcount[op_in] = (all_data_and_refcount[op_in][0], all_data_and_refcount[op_in][1] + 1)
+            # record controller from Data
+            input_name = op_in.split(":")[0]
+            if op_in.endswith("-1") and (input_name in all_data_and_controller.keys()):
+                all_data_and_controller[input_name].append(op)
     logger.info(f"before removing dead data, graph all inputs size={len(all_data_and_refcount)}.")
 
     saved_inputs_info = []
@@ -306,6 +321,8 @@ def remove_dead_data_and_reorder_data_index(graph: GraphDef):
             logger.debug(f"remove ge graph data op {op_tuple[0].name}.")
             to_del_data_name.append(op_tuple[0].name)
             graph.op.remove(op_tuple[0])
+            for op in all_data_and_controller.get(op_tuple[0].name, []):
+                _remove_op_controller_from_input(op_tuple[0], op)
         else:
             logger.debug(f"update ge graph data index from {op_tuple[0].attr['index'].i} to {len(saved_inputs_info)}.")
             op_tuple[0].attr["index"].i = len(saved_inputs_info)
@@ -320,7 +337,7 @@ def remove_dead_data_and_reorder_data_index(graph: GraphDef):
     return saved_inputs_info
 
 
-_SIDE_EFFECT_OPS = {"PrintV2", "Cmo"}
+_SIDE_EFFECT_OPS = {"PrintV2"}
 
 
 def explict_order_for_side_effect_nodes(graph: GeGraph, graph_output_ref_input=None):
@@ -368,7 +385,7 @@ def explict_order_for_side_effect_nodes(graph: GeGraph, graph_output_ref_input=N
 
     graph_output_ref_input = graph_output_ref_input or {}
     input_to_its_written: Dict[str, str] = dict()
-    net_output_src_nodes: Set[str] = set([t.split(":")[0] for t in net_output.input if not t.endswith(":-1")])
+    net_output_src_nodes: List[str] = [t.split(":")[0] for t in net_output.input if not t.endswith(":-1")]
     for output_idx, op_name in enumerate(net_output_src_nodes):
         input_index = graph_output_ref_input.get(output_idx, None)
         if input_index is None:
@@ -402,3 +419,37 @@ def explict_order_for_side_effect_nodes(graph: GeGraph, graph_output_ref_input=N
             logger.debug(f"Strict order add control edge from {src.name} to {dst.name}.")
             if control not in dst.input:
                 dst.input.append(control)
+
+
+def explict_order_for_cmo(graph: GeGraph):
+    """
+    Cmo nodes need be in strict order in graph.
+    Cmo can be parallel to RefOp, system ensures that memory r/w are correct.
+    """
+    cmo_nodes: Dict[int, OpDef] = dict()  # Node to execute in strict order
+    net_output: OpDef = None  # sink node for graph
+
+    for order, op in enumerate(graph.op):
+        if op.type == "NetOutput":
+            net_output = op
+        elif op.type == "Cmo":
+            logger.debug(f"Strict order find Cmo in order {order}.")
+            cmo_nodes[order] = op
+
+    if len(cmo_nodes) == 0:
+        logger.debug("No Cmo found in graph, skip Cmo strict order optimization.")
+        return
+
+    cmo_nodes = dict(sorted(cmo_nodes.items()))
+    ordered_nodes = list(cmo_nodes.values())
+    for i, op in enumerate(ordered_nodes[:-1]):
+        dst: OpDef = ordered_nodes[i + 1]
+        control = ControlTensor(op).controller
+        logger.debug(f"Strict order add control edge from {op.name} to {dst.name}.")
+        if control not in dst.input:
+            dst.input.append(control)
+    # Keep the last node connected to the net output to prevent side effect nodes pruned by ge
+    sink_controller = ControlTensor(ordered_nodes[-1]).controller
+    if ordered_nodes[-1].name not in [v.split(":")[0] for v in net_output.input]:
+        net_output.input.append(sink_controller)
+

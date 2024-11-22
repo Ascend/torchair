@@ -76538,34 +76538,42 @@ def MoeFinalizeRoutingV2(expanded_x: Tensor, expanded_row_idx: Tensor, x1: Optio
     return y
 
 
-#This api is auto-generated from IR Cmo
+# This api is auto-generated from IR Cmo
 @auto_convert_to_tensor([False], [False], inputs_tensor_type=[TensorType.TT_NUMBER])
-def Cmo(src: Tensor, *, max_size: int, type: int=6, dependencies=[], node_name=None):
+def Cmo(src: Tensor, *, max_size: int, type: int=6, offset: int=0, dependencies=[], node_name=None):
     """REG_OP(Cmo)\n
 .INPUT(src, TensorType::NumberType())\n
 .REQUIRED_ATTR(max_size, Int)\n
 .ATTR(type, Int, 6)\n
+.ATTR(offset, Int, 0)\n
 """
 
-    op = get_default_ge_graph().op.add()
-    op.type = "Cmo"
-    op.name = next_unique_name(node_name, "Cmo")
-
-    # process dependices
-    for dependency in dependencies:
-        op.input.append(dependency.controller)
-
     # process inputs
-    op.input.append(src.tensor)
-    op.input_desc.add().CopyFrom(src.desc)
-    op.input_desc[-1].name = "src"
+    inputs = {
+        "src": src,
+    }
 
     # process attrs
-    op.attr["max_size"].i = max_size
-    op.attr["type"].i = type
+    attrs = {
+        "max_size": attr.Int(max_size),
+        "type": attr.Int(type),
+        "offset": attr.Int(offset),
+    }
 
     # process outputs
-    output_index = 0
+    outputs = [
+    ]
 
-    # return outputs
-    return
+    return ge_op(
+        op_type="Cmo",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("Cmo") \
+        .input("src", "") \
+        .required_attr("max_size", attr.Int) \
+        .attr("type", attr.Int(6)) \
+        .attr("offset", attr.Int(0))
+    )
+
