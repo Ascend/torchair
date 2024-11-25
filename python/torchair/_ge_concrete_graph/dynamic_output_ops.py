@@ -1209,6 +1209,19 @@ def ForeachPowScalarList(x: List[Tensor], scalar: Tensor, *, dependencies=[], no
     return raw_ops._ForeachPowScalarList(x, scalar, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
 
 
+# This api is auto-generated from IR ForeachPowScalarAndTensor
+@auto_convert_to_tensor([False, True], [False, False])
+def ForeachPowScalarAndTensor(scalar: Tensor, x: List[Tensor], *, dependencies=[], node_name=None):
+    """REG_OP(ForeachPowScalarAndTensor)\n
+    .INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
+    """
+
+    size_of_y = len(x)
+    return raw_ops._ForeachPowScalarAndTensor(scalar, x, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
+
+
 # This api is auto-generated from IR ForeachSubScalar
 @auto_convert_to_tensor([True, False], [False, False])
 def ForeachSubScalar(x: List[Tensor], scalar: Tensor, *, dependencies=[], node_name=None):

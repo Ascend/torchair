@@ -68,12 +68,19 @@ def conveter_aten__foreach_pow_ScalarList(
     return ge.ForeachPowScalarList(self, exponent)
 
 
+@declare_supported(
+    [
+        Support(1., [F32(2, 2, 2), F32(2, 3), F32(2, 3)]),
+        Support(1., [F16(2, 2, 2), F16(2, 3), F16(2, 3)]),
+        Support(1., [BF16(2, 2, 2), BF16(2, 3), BF16(2, 3)]),
+    ]
+)
 @register_fx_node_ge_converter(torch.ops.aten._foreach_pow.ScalarAndTensor)
 def conveter_aten__foreach_pow_ScalarAndTensor(
     self: Union[Number, Tensor], exponent: List[Tensor], meta_outputs: List[TensorSpec] = None
 ):
     """NB: aten::_foreach_pow.ScalarAndTensor(Scalar self, Tensor[] exponent) -> Tensor[]"""
-    raise NotImplementedError("torch.ops.aten._foreach_pow.ScalarAndTensor ge_converter is not implemented!")
+    return ge.ForeachPowScalarAndTensor(self, exponent)
 
 
 @register_fx_node_ge_converter(torch.ops.aten._foreach_pow.List_out)
