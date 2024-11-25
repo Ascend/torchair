@@ -44,11 +44,12 @@ def conveter_npu_npu_weight_quant_batchmatmul(
     quant_offset: Optional[Tensor] = None,
     bias: Optional[Tensor] = None,
     antiquant_group_size: Optional[int] = 0,
+    inner_precise: Optional[int] = 0,
     meta_outputs: TensorSpec = None
 ):
     """NB: npu::npu_weight_quant_batchmatmul(Tensor x, Tensor weight, Tensor antiquant_scale,
     Tensor? antiquant_offset=None, Tensor? quant_scale=None, Tensor? quant_offset=None,
-    Tensor? bias=None) -> Tensor
+    Tensor? bias=None, int antiquant_group_size=0, int inner_precise=0) -> Tensor
     """
     if quant_scale is not None and quant_scale.dtype == DataType.DT_INT64:
         quant_scale = ge.Cast(quant_scale, dst_type=DataType.DT_UINT64)
@@ -72,4 +73,5 @@ def conveter_npu_npu_weight_quant_batchmatmul(
     return ge.WeightQuantBatchMatmulV2(x, weight, antiquant_scale, antiquant_offset=antiquant_offset,
                                        quant_scale=quant_scale, quant_offset=quant_offset, bias=bias,
                                        transpose_x=False, transpose_weight=False,
-                                       antiquant_group_size=antiquant_group_size)
+                                       antiquant_group_size=antiquant_group_size,
+                                       inner_precise=inner_precise)
