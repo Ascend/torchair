@@ -22,6 +22,7 @@ from torchair._ge_concrete_graph.fx2ge_converter import declare_supported, regis
 from torchair.ge._ge_graph import DataType, Tensor, TensorSpec
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
+from torchair._ge_concrete_graph.utils import get_cann_opp_version
 
 
 @declare_supported(
@@ -51,7 +52,12 @@ def conveter_npu_npu_weight_quant_batchmatmul(
     """
     if quant_scale is not None and quant_scale.dtype == DataType.DT_INT64:
         quant_scale = ge.Cast(quant_scale, dst_type=DataType.DT_UINT64)
-    if weight is not None and weight.dtype == DataType.DT_INT32:
+
+    version_list = ["7.3", "7.4", "7.5"]
+    opp_ver = get_cann_opp_version()
+    add_bitcast = any(opp_ver.startswith(version) for version in version_list)
+
+    if add_bitcast and weight is not None and weight.dtype == DataType.DT_INT32:
         perm = [1, 0]
         trans_weight = "Transpose" in weight.tensor
         if trans_weight:
