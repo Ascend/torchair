@@ -238,40 +238,94 @@ REG_OP(MatmulReduceScatter)
     .OP_END_FACTORY_REG(MatmulReduceScatter)
 
 /**
-* @brief Function QuantBatchMatmulV3.
+* @brief Quant Batch Matmul Version 3 Calculation.
 
 * @par Inputs:
-* twelve inputs, including:
-* @li x1: A matrix Tensor. The type support int8.
-* @li x2: A matrix Tensor. The type support int8.
-* @li scale: A matrix Tensor. The type support uint64, float32, bfloat16.
-* @li offset: A matrix Tensor. The type support float32.
-* @li bias: A matrix Tensor. The type support int32, bfloat16, float16, float32.
-* @li pertoken_scale: A matrix Tensor. The type support float32. \n
+* Six inputs, including:
+* @li x1: A matrix Tensor. Must be one of the following types: int8, int4.
+          The format supports ND. The shape should be within 2 ~ 6 dimension.
+          When transpose_x1 is false, the shape is (batch,m,k), where batch is optional.
+* @li x2: A matrix Tensor. Must be one of the following types: int8, the format supports ND and NZ;
+          int4, the format only supports ND.
+          In ND format and int8 dtype, the shape ranges from 2D to 6D. When transpose_x2 is false, the shape is (batch,k,n), where
+          batch is optional; in int4 dtype, shape only supports 2D.
+          In NZ (Ascend affinity) format, the shape ranges from 4D to 8D. When tranpose_x2 is true, the shape is
+          (batch,k1,n1,n0,k0), batch is optional, k0 = 32, and n0 = 16. k in the shape of x1 and k1 in the shape of x2
+          must meet the following requirement: ceilDiv(k,32) = k1. When transpose_x2 is false, the shape is
+          (batch,n1,k1,k0,n0), batch is optional, k0 = 16, n0 = 32. k in the shape of x1 and k1 in the shape of x2 must
+          meet the following requirement: ceilDiv(k,16) = k1.
+* @li scale: A matrix Tensor, quantization parameter.
+             Must be one of the following types: uint64, float32, int64, bfloat16. The format
+             supports ND. The shape is 1D (t,), with t equal to 1 or n, where n is the same as that of x2.
+             When the output is int8 type, data type of scale have to be int64 or uint64.
+             When the output is bfloat16 type, data type of scale have to be bfloat16 or float32.
+             When the outout is float16 type, if pertoken_scale is not empty, scale have to be float32 type.
+* @li offset: An optional matrix Tensor, quantization parameter. Must be one of the following types: float32.
+              The format supports ND. The shape is 1D (t,), with t equal to 1 or n, where n is the same as that of x2.
+* @li bias: An optional matrix Tensor. Must be one of the following types: int32, bfloat16, float16, float32. The format supports ND.
+            The shape is 1D (t,) or 3 dimensional(batch, 1, n),
+            with t equal to n, where n is the same as that of x2.
+* @li pertoken_scale: A optional matrix Tensor. The type supports float32. The format supports ND.
+                      The shape is 1D (t,), with t equal to m, where m is the same as that of x1. \n
 
 * @par Attributes:
-* @li dtype: A Int. declare the output dtype, support float16, int8.
-* @li transpose_x1: A bool. If True, changes the shape of "x1" from [K, M] to
-* [M, K] before multiplication. Default: false.
-* @li transpose_x1: A bool. If True, changes the shape of "x2" from [N, K] to
-* [K, N] before multiplication. Default: false. \n
+* Three attributes, including:
+* @li dtype: A Int. Declare the output dtype, supports 1(float16), 2(int8), 27(bfloat16). Default: 2(int8).
+* @li transpose_x1: A bool. If true, changes the shape of "x1" from [m, k] to
+* [k, m] before multiplication. Default: false.
+* @li transpose_x2: A bool. If true, changes the shape of "x2" from [k, n] to
+* [n, k] before multiplication. Default: false. \n
 
 * @par Outputs:
-* y: A matrix Tensor. The type support float16, int8, bfloat16.
+* One output, including:
+* y: A matrix Tensor. Must be one of the following types: float16, int8, bfloat16, int32.
+     The format supports ND. The shape ranges from 2D to 6D,
+     that is, (batch,m,n), where batch is optional. Broadcasting can be performed on the batch dimension of x1 and x2.
+     The output batch is the same as the batch after broadcasting, m is the same as that of x1, and n is the same as
+     that of x2. \n
+
+* @attention Constraints:
+* @li The shape of bias should be 1D when the shape of out is 2D, 4D, 5D or 6D, and the shape of bias should be 1D or 3D
+* when the out shape is 3D.
+* @li The size of the last dimension of x1 or x2 cannot exceed 65535. The last dimension of x1 refers to m when
+* transpose_x1 is true or k when transpose_x1 is false. The last dimension of x2 refers to k when transpose_x2 is true
+* or n when transpose_x2 is false.
+* @li If input dtype of x1 and x2 is int4, transpose_x1 should be false, the size of the last dimension of x1 or x2 should
+* be an even number.
+* @li Input does not support tensor with dimension size 0.
+* @li The following are the supported data type combinations by platform.
+
+* - Atlas Inference Series Product:
+*\n
+| x1       | x2       | scale        | offset   | bias     | pertoken | out      |
+| -------: | :------: | :----------: | :------: | :------: | :------: | :------: |
+| int8     | int8     | uint64/int64 | null     | int32    | null     | float16  |
+| int8     | int8     | uint64/int64 | float32  | int32    | null     | int8     |
+*\n
+* - Atlas A2 Trainging Series Product/Atlas 800I A2 Inference Product or Atlas A3 Training Series Product:
+*\n
+| x1       | x2       | scale            | offset   | bias                   | pertoken     | out      |
+| -------: | :------: | :--------------: | :------: | :--------------------: | :----------: | :------: |
+| int8     | int8     | uint64/int64     | null     | int32                  | null         | float16  |
+| int8     | int8     | uint64/int64     | float32  | int32                  | null         | int8     |
+| int8     | int8     | float32/bfloat16 | null     | int32/bfloat16/float32 | null/float32 | bfloat16 |
+| int8     | int8     | float32          | null     | int32/float16/float32  | float32      | float16  |
+| int4     | int4     | uint64/int64     | null     | int32                  | null         | float16  |
+| int8     | int8     | float32/bfloat16 | null     | int32                  | null         | int32    |
+*\n
 */
 REG_OP(QuantBatchMatmulV3)
     .INPUT(x1, TensorType({DT_INT8, DT_INT4}))
     .INPUT(x2, TensorType({DT_INT8, DT_INT4}))
-    .INPUT(scale, TensorType({DT_UINT64, DT_FLOAT, DT_BF16}))
+    .INPUT(scale, TensorType({DT_UINT64, DT_FLOAT, DT_INT64, DT_BF16}))
     .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))
     .OPTIONAL_INPUT(bias, TensorType({DT_INT32, DT_BF16, DT_FLOAT16, DT_FLOAT}))
     .OPTIONAL_INPUT(pertoken_scale, TensorType({DT_FLOAT}))
-    .OUTPUT(y, TensorType({DT_FLOAT16, DT_INT8, DT_BF16}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_INT8, DT_BF16, DT_INT32}))
     .REQUIRED_ATTR(dtype, Int)
     .ATTR(transpose_x1, Bool, false)
     .ATTR(transpose_x2, Bool, false)
     .OP_END_FACTORY_REG(QuantBatchMatmulV3)
-
 
 /**
 * @brief Function TransQuantParamV2.

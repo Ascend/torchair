@@ -76536,11 +76536,11 @@ def QuantBatchMatmulV3(x1: Tensor, x2: Tensor, scale: Tensor, offset: Optional[T
     """REG_OP(QuantBatchMatmulV3)\n
     .INPUT(x1, TensorType({DT_INT8, DT_INT4}))\n
     .INPUT(x2, TensorType({DT_INT8, DT_INT4}))\n
-    .INPUT(scale, TensorType({DT_UINT64, DT_FLOAT, DT_BF16}))\n
+    .INPUT(scale, TensorType({DT_UINT64, DT_FLOAT, DT_INT64, DT_BF16}))\n
     .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(bias, TensorType({DT_INT32, DT_BF16, DT_FLOAT16, DT_FLOAT}))\n
     .OPTIONAL_INPUT(pertoken_scale, TensorType({DT_FLOAT}))\n
-    .OUTPUT(y, TensorType({DT_FLOAT16, DT_INT8, DT_BF16}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_INT8, DT_BF16, DT_INT32}))\n
     .REQUIRED_ATTR(dtype, Int)\n
     .ATTR(transpose_x1, Bool, false)\n
     .ATTR(transpose_x2, Bool, false)\n

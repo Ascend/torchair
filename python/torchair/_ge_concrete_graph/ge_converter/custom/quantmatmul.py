@@ -60,6 +60,8 @@ def conveter_npu_npu_quant_matmul(
         dtype = DataType.DT_FLOAT16
     elif output_dtype == torch.bfloat16:
         dtype = DataType.DT_BF16
+    elif output_dtype == torch.int32:
+        dtype = DataType.DT_INT32
     else:
         raise RuntimeError("Not supported output dtype is " + str(output_dtype))
 
