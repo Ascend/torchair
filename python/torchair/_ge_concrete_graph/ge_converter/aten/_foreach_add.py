@@ -19,8 +19,9 @@ from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
-from torchair.ge._ge_graph import Tensor, TensorSpec
+from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
 from torchair._ge_concrete_graph.supported_declaration import F32, F16, BF16, I32, Support
+from torchair._ge_concrete_graph.utils import dtype_promote
 
 
 @declare_supported(
@@ -55,6 +56,7 @@ def conveter_aten__foreach_add_List(
     [
         Support([F16(2, 2, 2), F16(2, 3), F16(2, 3)], [1., 2., 3.]),
         Support([BF16(2, 2, 2), BF16(2, 3), BF16(2, 3)], [1., 2., 3.]),
+        Support([I32(2, 2, 2), I32(2, 3), I32(2, 3)], [1, 2, 3]),
     ]
 )
 @register_fx_node_ge_converter(torch.ops.aten._foreach_add.ScalarList)
@@ -62,6 +64,8 @@ def conveter_aten__foreach_add_ScalarList(
     self: List[Tensor], scalars: Union[List[Number], Tensor], meta_outputs: List[TensorSpec] = None
 ):
     """NB: aten::_foreach_add.ScalarList(Tensor[] self, Scalar[] scalars) -> Tensor[]"""
+    if len(scalars) > 0 and isinstance(scalars[0], int):
+        scalars = dtype_promote(scalars, target_dtype=DataType.DT_INT64)
     return ge.ForeachAddScalarList(self, scalars)
 
 
