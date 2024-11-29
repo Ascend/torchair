@@ -26,6 +26,21 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
 from torchair._ge_concrete_graph.utils import dtype_promote
 
 
+def _fill_if_none(
+    tensor: Optional[Tensor],
+    normalized_shape: Union[List[int], Tensor],
+    value: float,
+    dtype: DataType
+) -> Tensor:
+    if tensor is None:
+        if isinstance(normalized_shape, Tensor):
+            dtype_promote(normalized_shape, target_dtype=DataType.DT_INT32)
+            return ge.Fill(normalized_shape, ge.Const(value, dtype))
+        else:
+            return ge.Fill(ge.Const(normalized_shape, dtype=DataType.DT_INT32), ge.Const(value, dtype))
+    return tensor
+
+
 @declare_supported(
     [
         Support(F16(2, 1024), [1024], F16(1024), F16(1024), 1e-5),
@@ -42,14 +57,9 @@ def conveter_aten_native_layer_norm_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::native_layer_norm(Tensor input, SymInt[] normalized_shape, Tensor? weight, Tensor? bias, float eps) -> (Tensor, Tensor, Tensor)"""
-    if weight is None:
-        weight = ge.Fill(ge.Const(normalized_shape, dtype=DataType.DT_INT32), 
-                         ge.Cast(1., dst_type=input.dtype))
-        
-    if bias is None:
-        bias = ge.Fill(ge.Const(normalized_shape, dtype=DataType.DT_INT32), 
-                       ge.Cast(0., dst_type=input.dtype))
-    
+    weight = _fill_if_none(weight, normalized_shape, 1., input.dtype)
+    bias = _fill_if_none(bias, normalized_shape, 0., input.dtype)
+
     return ge.LayerNormV4(input, normalized_shape, gamma=weight, beta=bias, epsilon=eps)
 
 
