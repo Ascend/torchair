@@ -21,7 +21,7 @@ from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
 from torchair.ge._ge_graph import Tensor, TensorSpec
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
-    Support
+    Support, BF16
 from torchair._ge_concrete_graph.utils import dtype_promote, DataType
 
 
@@ -29,8 +29,6 @@ def _get_mul_compute_dtype(self, other, output_dtype):
     if isinstance(self, Tensor) and isinstance(other, Tensor) and \
             self.dtype == DataType.DT_BOOL and other.dtype == DataType.DT_BOOL:
         return DataType.DT_UINT8
-    if isinstance(self, Tensor) and self.dtype == DataType.DT_BF16 and not isinstance(other, Tensor):
-        return DataType.DT_FLOAT
     return output_dtype
 
 
@@ -42,11 +40,18 @@ def _get_mul_compute_dtype(self, other, output_dtype):
     Support(BOOL(2, 2), BOOL(2, 2)),
     Support(BOOL(2, 2), 3),
     Support(3, BOOL(2, 2)),
+    Support(F16(2, 2), 2),
+    Support(BF16(2, 2), 2),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.mul.Tensor)
 def conveter_aten_mul_Tensor(self: Tensor, other: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::mul.Tensor(Tensor self, Tensor other) -> Tensor"""
     """Mul operater doesn't support the input format of (bool, bool) till 2023/11/17"""
+    if not isinstance(other, Tensor) and isinstance(self, Tensor) and \
+            self.dtype in [DataType.DT_FLOAT16, DataType.DT_BF16]:
+        output = ge.Muls(self, value=other)
+        return dtype_promote(output, target_dtype=meta_outputs.dtype)
+
     compute_dtype = _get_mul_compute_dtype(self, other, meta_outputs.dtype)
     self, other = dtype_promote(self, other, target_dtype=compute_dtype)
     output = ge.Mul(self, other)

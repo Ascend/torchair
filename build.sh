@@ -82,7 +82,7 @@ run_test() {
   cd "${CMAKE_PATH}" && cmake .. -DCMAKE_BUILD_TYPE=GCOV -DTORCHAIR_INSTALL_DST=${CMAKE_PATH}/${TYPE}/torchair -DPYTHON_BIN_PATH=${PYTHON_BIN_PATH}
 
   export PYTHONPATH=${CMAKE_PATH}/${TYPE}:${PYTHONPATH}
-  export LD_LIBRARY_PATH=${CMAKE_PATH}/stubs:${ASCEND_SDK_PATH}/lib:${LD_LIBRARY_PATH}
+  export LD_LIBRARY_PATH=${CMAKE_PATH}/stubs:${ASCEND_SDK_PATH}/lib:${ASCEND_SDK_PATH}/lib64:${LD_LIBRARY_PATH}
 
   mkdir -pv "${TORCHAIR_ROOT}/coverage"
   make torchair_${TYPE} -j${THREAD_NUM}

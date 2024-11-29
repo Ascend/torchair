@@ -196,7 +196,7 @@ class TorchairSt(unittest.TestCase):
             weight_externalized = False
             used_weight_num = 0
             # patch max protobuf_size very samll
-            max_protobuf_size = 10 
+            max_protobuf_size = 10
             for i, inp in enumerate(inputs):
                 if id(inp) in weight_name:
                     protobuf_size += inp.element_size() * inp.nelement()
@@ -223,7 +223,7 @@ class TorchairSt(unittest.TestCase):
         assert src.count("op: \"FileConstant\"") == 1
         assert src.count("op: \"Data\"") == 2
         assert src.count("op: \"Shape\"") == 0
-        
+
         model = ModelDef()
         with open('./test_export_file_path/export.air', 'rb') as f:
             buffer = f.read()
@@ -305,11 +305,11 @@ class TorchairSt(unittest.TestCase):
         with open(file_name, 'r') as f:
             src = f.read()
 
-        assert src.count("op: \"Const\"") == 4
-        assert src.count("op: \"Data\"") == 2
-        assert src.count("op: \"Shape\"") == 0
-        assert src.count("dtype: DT_BF16") == 13
-        assert src.count("  dim: 10") == 3
+        self.assertEqual(src.count("op: \"Const\""), 3)
+        self.assertEqual(src.count("op: \"Data\""), 2)
+        self.assertEqual(src.count("op: \"Shape\""), 0)
+        self.assertEqual(src.count("dtype: DT_BF16"), 13)
+        self.assertEqual(src.count("  dim: 10"), 3)
 
     def test_export_enable_record_nn_module_stack(self):
         class Model2(torch.nn.Module):
