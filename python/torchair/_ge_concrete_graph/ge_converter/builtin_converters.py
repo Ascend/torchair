@@ -20,10 +20,11 @@ import torch
 from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair._ge_concrete_graph import ge_apis as ge
-from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
+from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
 from torchair.ge._ge_graph import Tensor, TensorSpec
 from torchair.ge._ge_graph import is_sym
 from torchair._ge_concrete_graph.utils import dtype_promote
+from torchair._ge_concrete_graph.supported_declaration import F32, F16, I32, Support
 
 
 @register_fx_node_ge_converter(operator.add)
@@ -116,3 +117,21 @@ def conveter_math_floor(
     if not isinstance(self, Tensor):
         return math.floor(self)
     return ge.Floor(self)
+
+
+@declare_supported([
+    Support(F32(2, 2), F32(2, 2)),
+    Support(F16(2, 2), F16(2, 2)),
+    Support(F16(2, 2), F32(2, 2)),
+    Support(F16(4, 3), I32(4, 3)),
+])
+@register_fx_node_ge_converter(operator.mod)
+def conveter_operator_pow(
+        self: Union[Number, Tensor],
+        other: Union[Number, Tensor],
+        meta_outputs: TensorSpec = None
+):
+    if all(not isinstance(x, Tensor) for x in (self, other)):
+        return self % other
+    self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)
+    return ge.Mod(self, other)
