@@ -80,6 +80,8 @@ def conveter_aten__foreach_pow_ScalarAndTensor(
     self: Union[Number, Tensor], exponent: List[Tensor], meta_outputs: List[TensorSpec] = None
 ):
     """NB: aten::_foreach_pow.ScalarAndTensor(Scalar self, Tensor[] exponent) -> Tensor[]"""
+    if isinstance(self, float):
+        self = ge.Fill([1], ge.Cast(self, dst_type=DataType.DT_FLOAT))
     return ge.ForeachPowScalarAndTensor(self, exponent)
 
 
