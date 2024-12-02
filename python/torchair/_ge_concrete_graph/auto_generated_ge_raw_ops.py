@@ -43042,48 +43042,48 @@ def SigmoidFocalLoss(pred: Tensor, target: Tensor, weight: Optional[Tensor], *, 
 
 
 # This api is auto-generated from IR DynamicQuant
-@auto_convert_to_tensor([False, False], [False, True])
-def DynamicQuant(x: Tensor, smooth_scales: Optional[Tensor], *, dependencies=[], node_name=None):
+@auto_convert_to_tensor([False, False, False], [False, True, True])
+def DynamicQuant(x: Tensor, smooth_scales: Optional[Tensor], group_index: Optional[Tensor], *, dst_type: int=2, dependencies=[], node_name=None):
     """REG_OP(DynamicQuant)\n
 .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))\n
 .OPTIONAL_INPUT(smooth_scales, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OPTIONAL_INPUT(group_index, TensorType({DT_INT32}))\n
 .OUTPUT(y, TensorType({DT_INT8}))\n
 .OUTPUT(scale, TensorType({DT_FLOAT}))\n
+.ATTR(dst_type, Int, DT_INT8)\n
 """
 
-    op = get_default_ge_graph().op.add()
-    op.type = "DynamicQuant"
-    op.name = next_unique_name(node_name, "DynamicQuant")
-
-    # process dependices
-    for dependency in dependencies:
-        op.input.append(dependency.controller)
-
     # process inputs
-    op.input.append(x.tensor)
-    op.input_desc.add().CopyFrom(x.desc)
-    op.input_desc[-1].name = "x"
+    inputs = {
+        "x": x,
+        "smooth_scales": smooth_scales,
+        "group_index": group_index
+    }
 
-    if smooth_scales is not None:
-        op.input.append(smooth_scales.tensor)
-        op.input_desc.add().CopyFrom(smooth_scales.desc)
-        op.input_desc[-1].name = "smooth_scales"
-    else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "smooth_scales"
+    # process attrs
+    attrs = {
+        "dst_type": attr.Int(dst_type)
+    }
 
     # process outputs
-    output_index = 0
-    op.output_desc.add().name = "y"
-    y = Tensor(op, output_index)
-    output_index += 1
-    op.output_desc.add().name = "scale"
-    scale = Tensor(op, output_index)
-    output_index += 1
+    outputs = [
+        "y",
+        "scale"
+    ]
 
-    # return outputs
-    return y, scale
+    return ge_op(
+        op_type="DynamicQuant",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        ir=IrDef("DynamicQuant") \
+        .input("x", "DT_FLOAT16, DT_BF16") \
+        .optional_input("smooth_scales", "DT_FLOAT16, DT_BF16") \
+        .optional_input("group_index", "DT_INT32") \
+        .attr("dst_type", attr.Int(2)) \
+        .output("y" , "DT_INT8, DT_INT4") \
+        .output("scale" , "DT_FLOAT")
+    )
 
 
 # This api is auto-generated from IR DynamicQuantV2

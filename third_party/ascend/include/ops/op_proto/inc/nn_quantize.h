@@ -29,9 +29,15 @@ namespace ge {
 * @brief Function DynamicQuant.
 
 * @par Inputs:
-* two input, including:
+* three input, including:
 * @li x: A matrix Tensor, to be quantized. The type support float16, bfloat16.
 * @li smooth_scales: A matrix Tensor, to smooth x before quantization. The type support float16, bfloat16. \n
+* @li group_index: A matrix Tensor, to select the smooth_scale for different rows in x. The type support int32. \n
+
+* @par Attributes:
+* one attr, including:
+* @li dst_type: a int32 scalar, specifying the output data type.
+* than 0.
 
 * @par Outputs:
 * two outputs, including:
@@ -41,8 +47,10 @@ namespace ge {
 REG_OP(DynamicQuant)
     .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))
     .OPTIONAL_INPUT(smooth_scales, TensorType({DT_FLOAT16, DT_BF16}))
-    .OUTPUT(y, TensorType({DT_INT8}))
+    .OPTIONAL_INPUT(group_index, TensorType({DT_INT32}))
+    .OUTPUT(y, TensorType({DT_INT8, DT_INT4}))
     .OUTPUT(scale, TensorType({DT_FLOAT}))
+    .ATTR(dst_type, Int, DT_INT8)
     .OP_END_FACTORY_REG(DynamicQuant)
 
 
