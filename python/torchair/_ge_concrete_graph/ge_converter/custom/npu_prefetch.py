@@ -23,7 +23,7 @@ from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.compat_ir import ge_op
 from torchair._ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
 from torchair.ge._ge_graph import Tensor, TensorSpec, get_default_ge_graph
-from torchair._ge_concrete_graph.utils import dtype_promote, get_cann_opp_version
+from torchair._ge_concrete_graph.utils import dtype_promote
 from torchair._ge_concrete_graph.supported_declaration import F32, F16, Support
 
 
@@ -46,16 +46,12 @@ def conveter_npu_prefetch_default(
     
     if offset < 0:
         raise ValueError(f"offset should be nonnegative, but got {max_size}")
-    
-    opp_version = get_cann_opp_version()
-    if (offset != 0) and opp_version.startswith('7.5'):
-        raise NotImplementedError("torch.ops.npu.npu_prefetch.default unsupport offset attr.")
 
     if dependency is None:
         raise NotImplementedError("torch.ops.npu.npu_prefetch.default ge converter is not implement "
                                   "when dependency is None.")
     
-    if not opp_version.startswith('7.5'):
+    if offset != 0:
         ge.Cmo(self, max_size=max_size, offset=offset, dependencies=[dependency])
     else:
         # Cmo does not have offset attr in 7.5 version, and can not use ge_op for compatibility check.
