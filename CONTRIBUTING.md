@@ -424,3 +424,7 @@ print(graph_result)
     调整算子IR的默认decomposition一般有两种策略，禁止算子的默认decomposition与替换算子的默认decomposition。
     > 其中替换decomposition需要关注, 被替换的算子是否还存在decomposition，以及是否需要被禁止。
     如果您有屏蔽某些算子的decomposition的需求，欢迎贡献相关代码至python/torchair/_utils/adjust_implicit_decomposition.py。
+  **提醒：**
+    确认替换后的算子是否具有完备的meta infershape函数。
+    > 替换算子本身的meta infershape是否完整，其中若只有C++ TORCH_META_FUNC宏注册的infershape可能无法在dynamic=True时工作，需要额外注册python的infershape函数。
+    > 替换算子的backward算子的infershape是否完整，确保在训练场景能够正常工作。
