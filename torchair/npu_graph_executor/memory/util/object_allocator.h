@@ -3,6 +3,7 @@
 #include <new>
 #include "link.h"
 #include "link_node.h"
+#include "checker.h"
 
 namespace tng {
 template <typename T>
@@ -32,6 +33,7 @@ class ObjectAllocator {
     if (!elem) {
       elem = new (std::nothrow) Element();
     }
+    TNG_ASSERT_NOTNULL(elem, "elem is nullptr.");
     return reinterpret_cast<T *>(elem->buff);
   }
 
