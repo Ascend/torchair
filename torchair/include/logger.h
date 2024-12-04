@@ -1,17 +1,69 @@
 #ifndef TORCH_AIR_TORCH_AIR_CONCRETE_GRAPH_LOGGER_H_
 #define TORCH_AIR_TORCH_AIR_CONCRETE_GRAPH_LOGGER_H_
 
+#include <sys/syscall.h>
 #include <iostream>
 #include <sstream>
+#include <fstream>
 #include <cstring>
+#include <unistd.h>
+#include <iomanip>
+#include <chrono>
+#include <ctime>
 
 namespace tng {
+constexpr int32_t time_width = 3;
+
+inline std::string GetCurrentTimeStamp() {
+  auto now = std::chrono::high_resolution_clock::now();
+  auto time_now = std::chrono::system_clock::to_time_t(now);
+  std::tm* local_time = std::localtime(&time_now);
+
+  auto duration = now.time_since_epoch();
+  auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count() % 1000;
+  auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(duration).count() % 1000;
+
+  std::ostringstream ss;
+  ss << std::put_time(local_time, "%Y-%m-%d-%H:%M:%S");
+  ss << "." << std::setfill('0') << std::setw(time_width) << milliseconds;
+  ss << "." << std::setfill('0') << std::setw(time_width) << microseconds;
+  return ss.str();
+}
+
+inline std::string GetProcessIdAndName() {
+  static std::string process_id_and_name = []() {
+    std::stringstream ss;
+    std::string process_name;
+    pid_t pid = getpid();
+    ss << pid;
+    std::stringstream path_ss;
+    path_ss << "/proc/" << pid << "/cmdline";
+    std::ifstream file(path_ss.str());
+    if (file.is_open()) {
+      std::getline(file, process_name, '\0');
+      file.close();
+      size_t pos = process_name.find_last_of('/');
+      if (pos != std::string::npos) {
+        ss << "," << process_name.substr(pos + 1);
+      } else {
+        ss << process_name;
+      }
+    } else {
+      ss << ",unknown";
+    }
+
+    return ss.str();
+  }();
+  return process_id_and_name;
+}
+
 class Logger : public std::basic_ostringstream<char> {
  public:
   static int32_t kLogLevel;
   size_t prefix_len;
   Logger(const char *f, int line, const char *log_level) {
-    *this << "[" << log_level << "] TORCHAIR [" << f << ":" << line << "] ";
+    *this << "[" << log_level << "] TORCHAIR(" << GetProcessIdAndName() << "):" \
+          << GetCurrentTimeStamp() << " [" << f << ":" << line << "]" << syscall(SYS_gettid) << " ";
     prefix_len = str().length();
   }
   ~Logger() override {

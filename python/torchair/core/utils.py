@@ -1,30 +1,29 @@
 from functools import lru_cache
 import logging
 import sys
+import os
+import threading
+from datetime import datetime
 
 __all__ = []
+
+
+class _MillisecAndMicrosecFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        ct = datetime.fromtimestamp(record.created)
+        s = ct.strftime("%Y-%m-%d %H:%M:%S")
+        s += ('.{:03d}'.format(ct.microsecond // 1000) + \
+              '.{:03d}'.format(ct.microsecond % 1000))
+        return s
 
 
 def _get_logger(*, level=logging.ERROR, output=sys.stdout, file=None, name=None):
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
-    try:
-        import colorlog
-    except ImportError:
-        formatter = logging.Formatter(
-            '[%(levelname)s] TORCHAIR %(asctime)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-    else:
-        formatter = colorlog.ColoredFormatter(
-            '%(log_color)s[%(levelname)s] TORCHAIR %(asctime)s %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S',
-            log_colors={
-                'DEBUG': 'cyan',
-                'INFO': 'green',
-                'WARNING': 'yellow',
-                'ERROR': 'red',
-                'CRITICAL': 'bold_red',
-            })
+    formatter = _MillisecAndMicrosecFormatter(
+        f'[%(levelname)s] TORCHAIR(%(process)d,{os.path.basename(sys.executable)})' \
+        f':%(asctime)s [%(filename)s:%(lineno)d]{threading.get_native_id()} %(message)s')
 
     if output:
         console_handler = logging.StreamHandler(output)
@@ -39,7 +38,7 @@ def _get_logger(*, level=logging.ERROR, output=sys.stdout, file=None, name=None)
     @lru_cache
     def _warning_once(msg):
         logger.warning(msg)
-    
+
     logger.warning_once = _warning_once
 
     return logger
