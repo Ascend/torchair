@@ -22,6 +22,7 @@ from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_conv
 from torchair.ge._ge_graph import Tensor, TensorSpec, DataType, assert_args_checkout
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
      Support
+from torchair._ge_concrete_graph.utils import specific_op_input_layout, specific_op_output_layout
 
 
 @declare_supported([
@@ -76,10 +77,14 @@ def conveter_aten_avg_pool2d_default(
     if self.dtype == DataType.DT_FLOAT16 or self.dtype == DataType.DT_INT8:
         result = ge.AvgPoolV2(self_copy, ksize=kernel_size_new, strides=strides_size_new, pads=pads,
                               ceil_mode=ceil_mode, exclusive=True, divisor_override=divisor_override_value)
+        specific_op_input_layout(result, indices=[0], layout="NCHW")
+        specific_op_output_layout(result, indices=0, layout="NCHW")
     else:
         result = ge.AvgPoolV2(self_copy, ksize=kernel_size_new, strides=strides_size_new, pads=pads,
                               ceil_mode=ceil_mode, exclusive=not count_include_pad, 
                               divisor_override=divisor_override_value)
+        specific_op_input_layout(result, indices=[0], layout="NCHW")
+        specific_op_output_layout(result, indices=0, layout="NCHW")
     if self.rank == 3:
         result = ge.Squeeze(result, axis=[0])
     return result
