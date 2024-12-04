@@ -1338,6 +1338,8 @@ def Cast(x: Tensor, *, dst_type: int, dependencies=[], node_name=None) -> Tensor
 
 
 def Const(v: Any, dtype: int = None, node_name=None, readable=True) -> Tensor:
+    if isinstance(v, Tensor):
+        raise ValueError("Input v should not be a Tensor object for creating a Const node.")
     if dtype is None:
         if isinstance(v, torch.Tensor):
             dtype = torch_type_to_ge_type(v.dtype)
