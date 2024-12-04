@@ -315,23 +315,25 @@ def register_matmul_backward_decomp():
         grad_other = None
         
         def matmul_backward_1d_1d():
+            nonlocal grad_self, grad_other
             grad_self = other.mul(grad) if mask[0] else grad_self
             grad_other = self.mul(grad) if mask[1] else grad_other
             return grad_self, grad_other
         
         def matmul_backward_2d_1d():
+            nonlocal grad_self, grad_other
             grad_self = grad.unsqueeze(1).mm(other.unsqueeze(0)) if mask[0] else grad_self
             grad_other = self.transpose(-1, -2).mm(grad.unsqueeze(1)).squeeze_(1) if mask[1] else grad_other
             return grad_self, grad_other
         
         def matmul_backward_1d_2d():
+            nonlocal grad_self, grad_other
             grad_self = grad.unsqueeze(0).mm(other.transpose(-1, -2)).squeeze_(0) if mask[0] else grad_self
             grad_other = self.unsqueeze(1).mm(grad.unsqueeze(0)) if mask[1] else grad_other
             return grad_self, grad_other
         
         def matmul_backward_nd_lt3d():
-            grad_self = None
-            grad_other = None
+            nonlocal grad_self, grad_other
             view_size = 1 if dim_other == 1 else size_grad[-1]
             unfolded_grad = (grad.unsqueeze(-1) if dim_other == 1 else grad).contiguous().view(-1, view_size)
             if mask[0]:
@@ -345,9 +347,8 @@ def register_matmul_backward_decomp():
             return grad_self, grad_other
         
         def matmul_backward_lt3d_nd():
-            grad_self = None
-            grad_other = None
-            view_size = 1 if dim_self == 1 else size_grad[size_grad.size() - 2]
+            nonlocal grad_self, grad_other
+            view_size = 1 if dim_self == 1 else size_grad[-2]
             unfolded_grad_t = grad.view(-1, view_size) if dim_self == 1 else \
                                                             grad.transpose(-1, -2).contiguous().view(-1, view_size)
             if mask[0]:
@@ -357,7 +358,7 @@ def register_matmul_backward_decomp():
                 grad_self = unfolded_other_t.mm(unfolded_grad_t).transpose(-1, -2).view(size_self)
 
             if mask[1]:
-                size_other_t = size_other[:-2]
+                size_other_t = list(size_other[:-2])
                 size_other_t.extend([size_other[dim_other - 1], size_other[dim_other - 2]])
                 unfolded_self = self.unsqueeze(0) if dim_self == 1 else self
                 grad_other = unfolded_grad_t.mm(unfolded_self).view(size_other_t).transpose(-1, -2)
