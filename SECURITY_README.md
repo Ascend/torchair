@@ -227,3 +227,9 @@ TorchAir在运行时依赖PyTorch及torch_npu，用户需关注通信安全加�
 ## 通信矩阵
 
 TorchAir在运行时依赖PyTorch及torch_npu，涉及通信矩阵，具体方式可参考torch_npu[通信矩阵](https://gitee.com/ascend/pytorch/blob/master/SECURITYNOTE.md#%E9%80%9A%E4%BF%A1%E7%9F%A9%E9%98%B5)。
+
+### 特殊场景
+
+| 场景 | 使用方法 | 端口 | 是否有风险|
+| --------------- | --------------- | --------------- | --------------- |
+| 使用from_pretrained下载模型代码 | 调用from_pretrained函数 | 随机端口 | 无风险 |
