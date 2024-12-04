@@ -452,11 +452,7 @@ class HuggingfaceRunner(BenchmarkRunner):
     @download_retry_decorator
     def _download_model(self, model_name):
         model_cls, config = self._get_model_cls_and_config(model_name)
-        if "auto" in model_cls.__module__:
-            # Handle auto classes
-            model = model_cls.from_config(config)
-        else:
-            model = model_cls(config)
+        model = model_cls(config)
         return model
 
     def load_model(
