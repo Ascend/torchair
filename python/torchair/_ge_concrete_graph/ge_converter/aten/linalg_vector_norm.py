@@ -57,7 +57,8 @@ def conveter_aten_linalg_vector_norm_default(
 ):
     """NB: aten::linalg_vector_norm(Tensor self, Scalar ord=2, int[1]? dim=None, bool keepdim=False, *, ScalarType? dtype=None) -> Tensor"""
     pvalue = calculate_p(ord)
-    result = ge.LpNormV2(self, p=pvalue, axes=dim, keepdim=keepdim, epsilon=0.0)
+    result_axes = dim if dim else []
+    result = ge.LpNormV2(self, p=pvalue, axes=result_axes, keepdim=keepdim, epsilon=0.0)
     result_dtype = dtype if dtype else self.dtype
     result_promote = dtype_promote(result, target_dtype=result_dtype)
     return result_promote
