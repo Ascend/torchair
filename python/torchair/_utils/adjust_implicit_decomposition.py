@@ -4,14 +4,6 @@ from torch._decomp import decomposition_table
 from torch._decomp.decompositions import upsample_compute_output_size, get_scale_value
 
 
-def new_upsample_nearest1d_vec(input_tensor, output_size, scale_factors):
-    osize = upsample_compute_output_size(
-        input_tensor.size(), output_size, scale_factors)
-    scale = get_scale_value(scale_factors, 0)
-
-    return torch.ops.aten.upsample_nearest1d(input_tensor, osize, scale)
-
-
 def new_upsample_nearest2d_vec(input_tensor, output_size, scale_factors):
     osize = upsample_compute_output_size(
         input_tensor.size(), output_size, scale_factors)
@@ -21,30 +13,16 @@ def new_upsample_nearest2d_vec(input_tensor, output_size, scale_factors):
     return torch.ops.aten.upsample_nearest2d(input_tensor, osize, scale_h, scale_w)
 
 
-def new_upsample_nearest3d_vec(input_tensor, output_size, scale_factors):
-    osize = upsample_compute_output_size(
-        input_tensor.size(), output_size, scale_factors)
-    scale_d = get_scale_value(scale_factors, 0)
-    scale_h = get_scale_value(scale_factors, 1)
-    scale_w = get_scale_value(scale_factors, 2)
-
-    return torch.ops.aten.upsample_nearest3d(input_tensor, osize, scale_d, scale_h, scale_w)
-
-
 '''
 Since torch official will implicitly decompose some aten ops,
 replace and disable some ops here to avoid poor performance after decompose.
 '''
 replace_aten_ops = {
-    'aten.upsample_nearest1d.vec': new_upsample_nearest1d_vec,
     'aten.upsample_nearest2d.vec': new_upsample_nearest2d_vec,
-    'aten.upsample_nearest3d.vec': new_upsample_nearest3d_vec,
 }
 
 disable_aten_ops = [
-    'aten.upsample_nearest1d.default',
     'aten.upsample_nearest2d.default',
-    'aten.upsample_nearest3d.default',
 ]
 
 
