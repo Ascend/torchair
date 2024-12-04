@@ -322,6 +322,13 @@ ge::Status GeSessionLoadGraph(ge::Session &session, uint32_t graph_id,
   return ge::SUCCESS;
 }
 
+ge::graphStatus manager(gert::TensorAddress addr, gert::TensorOperateType operate_type, void **out) {
+  if (operate_type == gert::kGetTensorAddress) {
+    *out = addr;
+  }
+  return ge::GRAPH_SUCCESS;
+}
+
 ge::Status GeSessionExecuteGraphWithStreamAsync(ge::Session &session, uint32_t graph_id, void *stream,
                                                 const std::vector<gert::Tensor> &inputs,
                                                 std::vector<gert::Tensor> &outputs) {
@@ -331,6 +338,15 @@ ge::Status GeSessionExecuteGraphWithStreamAsync(ge::Session &session, uint32_t g
     return ge::SUCCESS;
   }
   std::cerr << "[STUB] Input size is " << inputs.size() << std::endl;
+
+  auto placement = gert::TensorPlacement::kOnHost;
+  for (size_t i = 0; i < inputs.size(); ++i) {
+    if (inputs[i].GetPlacement() == gert::TensorPlacement::kOnDeviceHbm) {
+      placement = gert::TensorPlacement::kOnDeviceHbm;
+      break;
+    }
+  }
+  std::cerr << "[STUB] Output placement is " << placement << std::endl;
 
   auto spec = ge::GraphSpecManager::GetSpec(graph_id);
   if (outputs.size() != spec.output_dtypes_.size()) {
@@ -343,7 +359,7 @@ ge::Status GeSessionExecuteGraphWithStreamAsync(ge::Session &session, uint32_t g
   for (size_t i = 0; i < spec.output_dtypes_.size(); ++i) {
     gert::Tensor &output_i = outputs[i];
     output_i.SetDataType(spec.output_dtypes_[i]);
-    output_i.SetPlacement(gert::TensorPlacement::kOnDeviceHbm);
+    output_i.SetPlacement(placement);
     output_i.SetOriginFormat(ge::FORMAT_ND);
     output_i.SetStorageFormat(ge::FORMAT_ND);
 
@@ -366,10 +382,15 @@ ge::Status GeSessionExecuteGraphWithStreamAsync(ge::Session &session, uint32_t g
 
     static std::vector<float> datas;
     datas.resize(kOutptSize, 0.0);
-    output_i.SetData(gert::TensorData(datas.data(), nullptr, sizeof(float) * datas.size(),
-                                      gert::TensorPlacement::kOnDeviceHbm));
+    gert::TensorAddrManager mgr = nullptr;
+    if (placement == gert::TensorPlacement::kOnDeviceHbm) {
+      mgr = &manager;
+    }
+    output_i.SetData(gert::TensorData(datas.data(), mgr, sizeof(float) * datas.size(),
+                                      placement));
   }
 
   return ge::SUCCESS;
 }
 } // extern "C"
+
