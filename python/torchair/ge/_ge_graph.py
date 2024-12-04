@@ -531,6 +531,7 @@ class _GeInputInfo:
     value_type: _ValueType
     func: _FuncBase
     shape: List[int]
+    device_type: str
     dim_gears: Dict[int, List[int]] = field(default_factory=dict)
 
 
@@ -740,7 +741,7 @@ class GeGraph(object):
         _graph_rng_state = self._generator_rng_state[gen]
         seed, offset = _graph_rng_state.next(philox_num)
         input_info = _GeInputInfo(value_type=_ValueType.TENSOR, func=_RngStatusInput(_graph_rng_state),
-                                  shape=[len(_graph_rng_state._offset_lists)])
+                                  shape=[len(_graph_rng_state._offset_lists)], device_type="CPU")
         self.record_input_info(_graph_rng_state._offsets.node.name, input_info)
 
         return seed, offset

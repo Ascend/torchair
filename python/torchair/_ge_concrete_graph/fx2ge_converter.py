@@ -558,7 +558,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         del ge_outputs
         return tuple(fx_outputs)
 
-    def optimize_graph_without_runtime(self, *args):
+    def optimize_graph_without_runtime(self):
         from torchair._ge_concrete_graph.graph_pass import remove_dead_data_and_reorder_data_index
         from torchair._ge_concrete_graph.graph_pass import explict_order_for_side_effect_nodes
         from torchair._ge_concrete_graph.graph_pass import explict_order_for_cmo
@@ -567,7 +567,7 @@ class GeConcreteGraph(ConcreteGraphBase):
             warnings.warn(f'When enable frozen_parameter, Parameters will be considered frozen.'
                           'Please make sure that the Parameters data address remain the same '
                           'throughout the program runtime.')
-            frozen_flag_list = get_frozen_flag(*args)
+            frozen_flag_list = get_frozen_flag(self.graph.named_inputs_info.values())
             frozen_data_by_constplaceholder(self.graph, frozen_flag_list, self._all_meta_tensor_input)
 
         optimize_sym_pack(self.graph)
@@ -740,7 +740,8 @@ class GeConcreteGraph(ConcreteGraphBase):
             self._all_sym_input_idx[(meta_outputs).node.expr] = data_index
             data = ge.Data(index=data_index, dtype=sym_to_ge_dtype(meta_outputs), shape=[], placement='CPU',
                            node_name=target)
-            input_info = _GeInputInfo(value_type=_ValueType.TENSOR, func=_ValueInput(data_index), shape=[])
+            input_info = _GeInputInfo(value_type=_ValueType.TENSOR, func=_ValueInput(data_index), shape=[],
+                                      device_type="CPU")
         else:
             if not isinstance(meta_outputs, torch.Tensor):
                 raise AssertionError
@@ -753,7 +754,7 @@ class GeConcreteGraph(ConcreteGraphBase):
                 value_type=_ValueType.PARAMETER if isinstance(meta_outputs, torch.nn.Parameter) else _ValueType.TENSOR,
                 func=_TensorInput(data_index) if meta_outputs.is_contiguous() else _DiscontiguousTensorInput(
                     data_index),
-                shape=shape, dim_gears=get_dim_gears(meta_outputs) or {})
+                shape=shape, dim_gears=get_dim_gears(meta_outputs) or {}, device_type=placement)
 
         data.set_meta(meta_outputs)
         self.graph.record_input_info(data.node.name, input_info)
@@ -913,10 +914,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         local_compile_options["ge.exec.atomicCleanPolicy"] = "1"
         local_compile_options.update(generate_dynamic_dims_option(self.graph.named_inputs_info,
                                      self.config.inference_config.dynamic_gears_merge_policy.value))
-        optimize_frozen_flag_list = []
-        for input_info in self._input_info_list:
-            optimize_frozen_flag_list.append(1 if (input_info.value_type == _ValueType.PARAMETER) and (
-                isinstance(input_info.func, _TensorInput)) else 0)
+        optimize_frozen_flag_list = get_frozen_flag(self._input_info_list)
         if len(optimize_frozen_flag_list) != 0:
             local_compile_options["frozenInput"] = ",".join(str(x) for x in optimize_frozen_flag_list)
         logger.info("local compile options:")

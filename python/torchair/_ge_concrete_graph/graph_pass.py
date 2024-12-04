@@ -6,7 +6,7 @@ import torch
 from torchair.core.utils import logger
 from torchair._ge_concrete_graph.ge_ir_pb2 import GraphDef, TensorDescriptor, TensorDef, OpDef
 from torchair.ge._ge_graph import _ge_proto_dtype_to_ge_dtype, compat_as_bytes, torch_type_to_ge_type, \
-    _SymPackInput, _ValueType, _GeInputInfo, GeGraph, ControlTensor
+    _SymPackInput, _ValueType, _GeInputInfo, GeGraph, ControlTensor, _TensorInput
 from torchair.ge._ge_graph import Tensor as GeTensor
 from torchair._ge_concrete_graph.utils import Placement, update_op_input_name_from_mapping, generate_shape_from_tensor
 
@@ -55,7 +55,7 @@ def optimize_sym_pack(graph: GraphDef):
                                    placement='CPU',
                                    node_name=None)
                 input_info = _GeInputInfo(value_type=_ValueType.TENSOR, func=_SymPackInput(pack_input_idx_list),
-                                          shape=[len(pack_op.input)])
+                                          shape=[len(pack_op.input)], device_type="CPU")
                 graph.record_input_info(new_data.node.name, input_info)
             if GeTensor(pack_op).meta is not None:
                 new_data.set_meta(GeTensor(pack_op).meta)
@@ -250,14 +250,15 @@ def replace_data_to_refdata(graph, ref_input_idx, inputs):
     update_op_input_name_from_mapping(graph, replaced_map)
 
 
-def get_frozen_flag(*args: Any):
+def get_frozen_flag(input_infos):
     frozen_flag_list = []
-    for idx, input_i in enumerate(args):
-        if isinstance(input_i, torch.nn.Parameter) and input_i.device.type == "npu":
-            frozen_flag_list.append(True)
-            logger.debug(f"No.{idx} arg is ConstPlaceHolder")
+    for idx, input_info in enumerate(input_infos):
+        if (input_info.value_type == _ValueType.PARAMETER) and isinstance(input_info.func, _TensorInput) and (
+                input_info.device_type == "NPU"):
+            frozen_flag_list.append(1)
+            logger.debug(f"No.{idx} arg is frozen data")
         else:
-            frozen_flag_list.append(False)
+            frozen_flag_list.append(0)
             logger.debug(f"No.{idx} arg is Data")
 
     return frozen_flag_list
