@@ -25,27 +25,25 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
 from torchair._ge_concrete_graph.utils import dtype_promote
 
 
+@declare_supported([
+    Support(F16(7, 2), 2),
+    Support(F16(8, 2), 2),
+    Support(F16(7, 2), 4)
+])
 @register_fx_node_ge_converter(torch.ops.aten.split.Tensor)
 def conveter_aten_split_Tensor(
     self: Tensor, split_size: Union[int, Tensor], dim: int = 0, meta_outputs: List[TensorSpec] = None
 ):
     """NB: aten::split.Tensor(Tensor(a -> *) self, SymInt split_size, int dim=0) -> Tensor(a)[]"""
-    split_sizes = split_size
     if dim > 2147483647:
         dim = dtype_promote(dim, target_dtype=DataType.DT_INT64)
     else:
         dim = dtype_promote(dim, target_dtype=DataType.DT_INT32)
-    if isinstance(split_sizes, int):
-        split_sizes = [split_size for _ in range(len(meta_outputs))]
-        split_sizes[-1] = -1
-        split_sizes = dtype_promote(split_sizes, target_dtype=DataType.DT_INT64)
-        return ge.SplitV(self, split_sizes, dim, num_split=len(meta_outputs))
-    elif isinstance(split_sizes, Tensor):
-        tensors = [split_size for _ in range(len(meta_outputs) - 1)]
-        split_sizes = ge.ConcatV2(tensors, concat_dim=0, N=len(meta_outputs))
-        split_sizes = ge.ConcatV2([split_sizes, -1], concat_dim=0, N=2)
-        split_sizes = dtype_promote(split_sizes, target_dtype=DataType.DT_INT64)
-        return ge.SplitV(self, split_sizes, dim, num_split=len(meta_outputs))
+    split_sizes = [split_size for _ in range(len(meta_outputs))]
+    split_sizes[-1] = -1
+    split_sizes = ge.Pack(split_sizes, N=len(meta_outputs))
+    split_sizes = dtype_promote(split_sizes, target_dtype=DataType.DT_INT64)
+    return ge.SplitV(self, split_sizes, dim, num_split=len(meta_outputs))
 
 
 @register_fx_node_ge_converter(torch.ops.aten.split.sizes)
