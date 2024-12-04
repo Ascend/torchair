@@ -77,7 +77,7 @@ def _safe_str(x):
 
 def _is_binary_operator(target: Target):
     return target in (operator.add, operator.sub, operator.mul, operator.truediv, \
-        operator.floordiv, operator.pow, math.floor)
+        operator.floordiv, operator.pow, math.floor, operator.mod)
 
 
 def _make_real_tensor_like(meta_outputs):
