@@ -56,6 +56,7 @@ def get_numel(self):
 @declare_supported([
     Support(F32(3, 8, 4), dim=[1], keepdim=True),
     Support(F32(3, 8, 4), dim=[2], keepdim=False),
+    Support(F32(3, 8, 4), dim=None, keepdim=False),
     Support(I32([]), dim=[0], keepdim=False),
     Support(I32([0]), dim=[0], keepdim=False),
 ])
@@ -73,7 +74,7 @@ def conveter_aten_sum_dim_IntList(
         output_size = sum_output_size(self, self.rank, dim, keepdim)
         return ge.Fill(output_size, ge.Cast(0., dst_type=meta_outputs.dtype))
 
-    if len(dim) == 0:
+    if dim is None or (isinstance(dim, List) and len(dim) == 0):
         dim = list(range(self.rank))
     self = dtype_promote(self, target_dtype=meta_outputs.dtype)
     return ge.ReduceSum(self, dim, keep_dims=keepdim)
