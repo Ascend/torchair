@@ -20,7 +20,7 @@ from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
-from torchair.ge._ge_graph import Tensor, TensorSpec
+from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
 from torchair._ge_concrete_graph.utils import dtype_promote, specific_op_input_layout, \
     specific_op_output_layout
 from torchair._ge_concrete_graph.supported_declaration import F32, F16, Support
@@ -83,6 +83,8 @@ def _conv_transpose2d_npu_output_size(x, weight, padding, output_padding, stride
     kernel_size_3 = ge.Gather(weight_shape, 3)
     h = _cal_length(height_input, dilation, kernel_size_2, output_padding, padding, stride, index=0)
     w = _cal_length(weight_input, dilation, kernel_size_3, output_padding, padding, stride, index=1)
+
+    n, c, h, w = dtype_promote(n, c, h, w, target_dtype=DataType.DT_INT32)
     return ge.Pack([n, c, h, w], N=4, axis=0)
 
 
@@ -119,6 +121,7 @@ def _conv_transpose3d_npu_output_size(x, w, padding, output_padding, stride, dil
     h = _cal_length(height_input, dilation, kernel_size_3, output_padding, padding, stride, index=1)
     w = _cal_length(weight_input, dilation, kernel_size_4, output_padding, padding, stride, index=2)
 
+    n, c, d, h, w = dtype_promote(n, c, d, h, w, target_dtype=DataType.DT_INT32)
     return ge.Pack([n, c, d, h, w], N=5, axis=0)
 
 
@@ -135,6 +138,7 @@ def _conv_transpose3d_npu_output_size_const(x: Tensor, weight: Tensor, padding: 
     d = (depth_input - 1) * stride[0] - 2 * padding[0] + dilation[0] * (weight_shape[2] - 1) + output_padding[0] + 1
     h = (height_input - 1) * stride[1] - 2 * padding[1] + dilation[1] * (weight_shape[3] - 1) + output_padding[1] + 1
     w = (weight_input - 1) * stride[2] - 2 * padding[2] + dilation[2] * (weight_shape[4] - 1) + output_padding[2] + 1
+    n, c, d, h, w = dtype_promote(n, c, d, h, w, target_dtype=DataType.DT_INT32)
     return ge.Pack([n, c, d, h, w], N=5, axis=0)
 
 
