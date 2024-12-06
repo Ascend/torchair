@@ -56,7 +56,7 @@ class NPUOverrides(OpOverrides):
 
     @staticmethod
     def constant(value, dtype):
-        return ir.constant(value=repr(value))
+        return ir.constant(repr(value))
 
     @staticmethod
     def masked(mask, body, other):

@@ -57,7 +57,8 @@ def unsupported(*args, op_type, **kwargs):
     else:
         op = graph.add_op(op_type, is_unsupported=True)
     for i, arg in enumerate(args):
-        setattr(op, f"x{i}", arg)
+        index = '' if len(args) == 1 else i
+        setattr(op, f"x{index}", arg)
     for k, v in kwargs.items():
         setattr(op, k, v)
     return op.y

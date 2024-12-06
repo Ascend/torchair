@@ -119,6 +119,13 @@ def concat(*x):
     return op.y
 
 
+def constant(value: str):
+    graph = V.kernel.graph
+    op = graph.add_op("Constant")
+    op.value = value
+    return op.y
+
+
 def reduction(x, *, reduce_type):
     graph = V.kernel.graph
     op = graph.add_op(reduce_type.capitalize())

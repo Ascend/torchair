@@ -547,7 +547,7 @@ class BuildGraphTest(unittest.TestCase):
             transpose = ascir.ops.Transpose('transpose')
             transpose.attr.sched.exec_order = 3
             transpose.attr.sched.axis = [z0, z1, z2]
-            transpose.x0 = broadcast.y
+            transpose.x = broadcast.y
             transpose.y.axis = [z0, z1, z2]
             transpose.y.strides = [ascir.SizeExpr([s0,s2]), ascir.SizeExpr([s2]), ascir.SizeExpr([])]
             transpose.y.size = [ascir.SizeExpr([s1]), ascir.SizeExpr([s0]), ascir.SizeExpr([s2])]
@@ -564,7 +564,7 @@ class BuildGraphTest(unittest.TestCase):
             transpose1 = ascir.ops.Transpose('transpose1')
             transpose1.attr.sched.exec_order = 6
             transpose1.attr.sched.axis = [z0, z1, z2]
-            transpose1.x0 = load1.y
+            transpose1.x = load1.y
             transpose1.y.axis = [z0, z1, z2]
             transpose1.y.strides = [ascir.SizeExpr([s0,s2]), ascir.SizeExpr([s2]), ascir.SizeExpr([])]
             transpose1.y.size = [ascir.SizeExpr([s3]), ascir.SizeExpr([s0]), ascir.SizeExpr([s2])]
@@ -631,7 +631,7 @@ class BuildGraphTest(unittest.TestCase):
                                 transpose = ascir.ops.Transpose('transpose')
                                 transpose.attr.sched.exec_order = 4
                                 transpose.attr.sched.axis = [z0, z1]
-                                transpose.x0 = load1.y
+                                transpose.x = load1.y
                                 transpose.y.axis = [z0, z1]
                                 transpose.y.strides = [ascir.SizeExpr([s2]), ascir.SizeExpr([])]
                                 transpose.y.size = [ascir.SizeExpr([s0]), ascir.SizeExpr([s2])]
