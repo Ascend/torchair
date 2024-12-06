@@ -73,6 +73,81 @@ def Aipp(images: Tensor, params: Optional[Tensor], *, aipp_config_path: str="./a
     return features
 
 
+# This api is auto-generated from IR GeluV2
+@auto_convert_to_tensor([False], [False])
+def GeluV2(x: Tensor, *, approximate: str="none", dependencies=[], node_name=None): 
+    """REG_OP(GeluV2)\n
+    .INPUT(x, "T")\n
+    .OUTPUT(y, "T")\n
+    .ATTR(approximate, String, "none")\n
+    """
+
+    # process inputs
+    inputs = {
+        "x": x,
+    }
+
+    # process attrs
+    attrs = {
+        "approximate": attr.Str(approximate),
+    }
+
+    # process outputs
+    outputs = [
+        "y",
+    ]
+
+    return ge_op(
+        op_type="GeluV2", 
+        inputs = inputs, 
+        attrs = attrs, 
+        outputs = outputs, 
+        ir=IrDef("GeluV2") \
+         .input("x", "") \
+         .attr("approximate", attr.Str("none")) \
+         .output("y", "")
+    )
+
+
+# This api is auto-generated from IR GeluGradV2
+@auto_convert_to_tensor([False, False], [False, False])
+def GeluGradV2(dy: Tensor, x: Tensor, *, approximate: str="none", dependencies=[], node_name=None): 
+    """REG_OP(GeluGradV2)\n
+    .INPUT(dy, "T")\n
+    .INPUT(x, "T")\n
+    .OUTPUT(z, "T")\n
+    .ATTR(approximate, String, "none")\n
+    """
+
+    # process inputs
+    inputs = {
+        "dy": dy,
+        "x": x,
+    }
+
+    # process attrs
+    attrs = {
+        "approximate": attr.Str(approximate),
+    }
+
+    # process outputs
+    outputs = [
+        "z",
+    ]
+
+    return ge_op(
+        op_type="GeluGradV2", 
+        inputs = inputs, 
+        attrs = attrs, 
+        outputs = outputs, 
+        ir=IrDef("GeluGradV2") \
+         .input("dy", "") \
+         .input("x", "") \
+         .attr("approximate", attr.Str("none")) \
+         .output("z", "")
+    )
+
+
 # This api is auto-generated from IR AippData
 @auto_convert_to_tensor([False], [False], inputs_tensor_type=[TensorType.TT_ALL])
 def AippData(data: Tensor, *, index: int=0, dependencies=[], node_name=None):

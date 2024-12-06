@@ -1,0 +1,42 @@
+from typing import (
+    Any,
+    Callable,
+    ContextManager,
+    Iterator,
+    List,
+    Literal,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+    overload,
+)
+
+import sys
+import torch
+from torchair._ge_concrete_graph import ge_apis as ge
+from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
+from torchair.ge._ge_graph import Tensor, TensorSpec
+from torchair._ge_concrete_graph.supported_declaration import F32, F16, Support
+
+
+@declare_supported(
+    [
+        Support(F32(4, 8), approximate="tanh"),
+        Support(F32(4, 8), approximate="none"),
+        Support(F16(4, 8), approximate="tanh"),
+        Support(F16(4, 8), approximate="none"),
+        Support(F32(4, 8)),
+        Support(F16(4, 8)),
+    ]
+)
+@register_fx_node_ge_converter(torch.ops.npu.npu_gelu.default)
+def conveter_aten_npu_gelu(
+    self: Tensor, *, approximate: str = "none", meta_outputs: TensorSpec = None
+):
+    """NB: aten::npu_gelu(Tensor self, *, str approximate="none") -> Tensor"""
+    if approximate not in ["tanh", "none"]: 
+        raise ValueError(f"approximate argument must be either none or tanh.")
+    return ge.GeluV2(self, approximate=approximate)
