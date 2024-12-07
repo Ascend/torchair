@@ -34,6 +34,8 @@ from torchair._ge_concrete_graph.utils import dtype_promote
 @register_fx_node_ge_converter(torch.ops.aten.asinh.default)
 def conveter_aten_asinh_default(self: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::asinh(Tensor self) -> Tensor"""
+    if meta_outputs:
+        self = dtype_promote(self, target_dtype=meta_outputs.dtype)
     return ge.Asinh(self)
 
 
