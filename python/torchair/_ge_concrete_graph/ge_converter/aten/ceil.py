@@ -20,6 +20,7 @@ from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
 from torchair.ge._ge_graph import Tensor, TensorSpec
+from torchair._ge_concrete_graph.utils import dtype_promote
 from torchair._ge_concrete_graph.supported_declaration import F32, F16, Support
 
 
@@ -30,7 +31,7 @@ from torchair._ge_concrete_graph.supported_declaration import F32, F16, Support
 @register_fx_node_ge_converter(torch.ops.aten.ceil.default)
 def conveter_aten_ceil_default(self: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::ceil(Tensor self) -> Tensor"""
-    return ge.Ceil(self)
+    return dtype_promote(ge.Ceil(self), target_dtype=meta_outputs.dtype)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.ceil.out)

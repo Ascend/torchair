@@ -20,6 +20,7 @@ from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
 from torchair.ge._ge_graph import Tensor, TensorSpec
+from torchair._ge_concrete_graph.utils import dtype_promote
 from torchair._ge_concrete_graph.supported_declaration import Support, F32
 
 
@@ -29,7 +30,7 @@ from torchair._ge_concrete_graph.supported_declaration import Support, F32
 @register_fx_node_ge_converter(torch.ops.aten.floor.default)
 def conveter_aten_floor_default(self: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::floor(Tensor self) -> Tensor"""
-    return ge.Floor(self)
+    return dtype_promote(ge.Floor(self), target_dtype=meta_outputs.dtype)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.floor.out)
