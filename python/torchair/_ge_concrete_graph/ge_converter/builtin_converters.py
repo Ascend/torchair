@@ -109,6 +109,11 @@ def conveter_sym_float(
     return ge.Cast(self, dst_type=meta_outputs.dtype)
 
 
+@declare_supported([
+    Support(32),
+    Support(F16(1)),
+    Support(I32(1)),
+])
 @register_fx_node_ge_converter(math.floor)
 def conveter_math_floor(
     self: Union[Number, Tensor],
@@ -116,7 +121,7 @@ def conveter_math_floor(
 ):
     if not isinstance(self, Tensor):
         return math.floor(self)
-    return ge.Floor(self)
+    return dtype_promote(ge.Floor(self), target_dtype=meta_outputs.dtype)
 
 
 @declare_supported([
