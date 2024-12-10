@@ -89,9 +89,7 @@ def __native_batch_norm_backward_3d(eps, grad_out, invstd, mean, output_mask, tr
     diff_scale, diff_offset = ge.BN3DTrainingUpdateGrad(grad_out, x, mean, invstd, epsilon=eps)
     specific_op_input_layout(diff_scale, indices=list(range(4)), layout=layout)
     specific_op_output_layout(diff_scale, indices=[0, 1], layout=layout)
-    if not output_mask[0]:
-        grad_in = None
-    elif train:
+    if train:
         grad_in = ge.BNTrainingReduceGrad(grad_out, x, diff_scale, diff_offset,
                                           weight, mean, invstd, epsilon=eps)
         specific_op_input_layout(grad_in, indices=list(range(7)), layout=layout)
@@ -107,9 +105,7 @@ def __native_batch_norm_backward(dim, eps, grad_out, invstd, mean, output_mask, 
     diff_scale, diff_offset = ge.BNTrainingUpdateGrad(grad_out, x, mean, invstd, epsilon=eps)
     specific_op_input_layout(diff_scale, indices=list(range(4)), layout=layout)
     specific_op_output_layout(diff_scale, indices=[0, 1], layout=layout)
-    if not output_mask[0]:
-        grad_in = None
-    elif train:
+    if train:
         grad_in = ge.BNTrainingReduceGrad(grad_out, x, diff_scale, diff_offset,
                                           weight, mean, invstd, epsilon=eps)
         specific_op_input_layout(grad_in, indices=list(range(7)), layout=layout)
