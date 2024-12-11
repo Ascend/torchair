@@ -565,11 +565,12 @@ class NPUScheduling(BaseScheduling):
         # Todo: symbolic workspace size
         device = f'{call_args[0]}.device' if len(call_args) else 'npu'
         wrapper.writeline("# Todo: symbolic workspace size")
-        wrapper.writeline(f"{workspace_var_name} = torch.empty(1024 * 1024, device={device})")
+        wrapper.writeline(f"{workspace_var_name} = torch.empty(1024 * 1024 * 1024 // 4, device={device})")
         used_sizes = list(sorted(kernel.graph.size_vars))
         call_args.append(workspace_var_name)
         call_args.extend([f"{v}={v}" for v in used_sizes])
         wrapper.writeline(wrapper.wrap_kernel_call(kernel.kernel_name, [str(v) for v in call_args]))
+        wrapper.writeline(f"del {workspace_var_name}")
 
     def codegen_sync(self):
         raise NotImplementedError()

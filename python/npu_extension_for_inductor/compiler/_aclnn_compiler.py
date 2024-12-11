@@ -1,4 +1,6 @@
 import contextlib
+import functools
+import hashlib
 import os
 import re
 import tempfile
@@ -94,29 +96,10 @@ def never_change_dir(func):
 
 
 @never_change_dir
-def build_ascend_lib(spec: FusedKernelSpec, *, output_path):
-    def run_jit_command(**kwargs):
-        command_args = [f'--{k}={v}' for k, v in kwargs.items()]
-        py_code = IndentedBuffer()
-        py_code.splice(f"from compile_adapter import jit_compile")
-        py_code.splice(f"tiling_def = '''{spec.tiling_def}'''")
-        py_code.splice(f"host_impl = '''{spec.host_impl}'''")
-        py_code.splice(f"device_impl = '''{spec.device_impl}'''")
-        py_code.writeline(
-            f"jit_compile('{spec.name}', tiling_def, host_impl, device_impl, {command_args})")
-
-        save_asserts(spec.name, py_code.getvalue(), 'asc_graph_build_kernel.py')
-
-        from types import ModuleType
-        mod = ModuleType('build_kernel_mod')
-        exec(compile(py_code.getvalue(), '<string>', 'exec'), mod.__dict__, mod.__dict__)
-
-    core_type = os.getenv("NPU_CORE_TYPE", "ascend910b1")
-    lib_file = os.path.join(output_path, f"kernel_{core_type}.so")
-
-    run_jit_command(output_file=lib_file, soc_version=core_type)
-
-    return lib_file
+def build_ascend_lib(jit_command):
+    from types import ModuleType
+    mod = ModuleType('build_kernel_mod')
+    exec(compile(jit_command, '<string>', 'exec'), mod.__dict__, mod.__dict__)
 
 
 @never_change_dir
@@ -177,18 +160,65 @@ class DummyNpuInductorKernel:
         return str(arg)
 
 
+def setup_asc_jit_command(spec, **kwargs):
+    command_args = [f'--{k}={v}' for k, v in kwargs.items()]
+    py_code = IndentedBuffer()
+    py_code.splice(f"from compile_adapter import jit_compile")
+    py_code.splice(f"tiling_def = '''{spec.tiling_def}'''")
+    py_code.splice(f"host_impl = '''{spec.host_impl}'''")
+    py_code.splice(f"device_impl = '''{spec.device_impl}'''")
+    py_code.writeline(
+        f"jit_compile('{spec.name}', tiling_def, host_impl, device_impl, {command_args})")
+    return py_code.getvalue()
+
+
+def is_file_content_equal(file_path: str, content: str) -> bool:
+    if not os.path.exists(file_path):
+        return False
+    with open(file_path, 'r') as file:
+        file_content = file.read()
+    return file_content.strip() == content.strip()
+
+
+def save_manual_asserts(fn, content):
+    fd = os.open(fn, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
+    with os.fdopen(fd, 'w+') as f:
+        f.write(content)
+
+
 def compile_ascendc(artifacts: Dict):
     kernel_spec = FusedKernelSpec(**artifacts)
     lib_dir = os.path.join(os.getcwd(), ".npu_kernels", kernel_spec.name)
     os.makedirs(lib_dir, exist_ok=True)
 
-    lib_kernel = build_ascend_lib(kernel_spec, output_path=lib_dir)
+    lib_wrapper = os.path.join(lib_dir, f"wrapper.so")
+    lib_kernel = os.path.join(lib_dir, f"kernel.so")
+
+    jit_command = setup_asc_jit_command(kernel_spec, output_file=lib_kernel)
+    save_asserts(kernel_spec.name, jit_command, 'asc_graph_build_kernel.py')
+
+    def cache_command(cache_file, content, func, target):
+        if not os.path.exists(cache_file) or not os.path.exists(target):
+            save_manual_asserts(cache_file, content)
+            func(content)
+            return
+        if is_file_content_equal(cache_file, content):
+            return
+        if os.getenv("NPU_INDUCTOR_UNSAFE_CACHE", None) == "1":
+            print(f"[WARNING] Cache changed but skip recompiling {target} as NPU_INDUCTOR_UNSAFE_CACHE=1")
+            return
+        save_manual_asserts(cache_file, content)
+        func(content)
+
+    cache_command(os.path.join(lib_dir, 'asc_graph_build_kernel.py'), jit_command, build_ascend_lib, lib_kernel)
+
     cpp_source = codegen_cpp_source(kernel_spec, lib_kernel)
     save_asserts(kernel_spec.name, cpp_source, 'inductor_wrapper.cpp')
 
-    lib_wrapper = os.path.join(lib_dir, f"wrapper.so")
     if os.getenv("ASCIR_NOT_READY", None) == "1":
         return DummyNpuInductorKernel(kernel_spec.name)
-    _build_cpp(cpp_source, output_file=lib_wrapper)
-    kernel = NpuInductorKernel(lib_wrapper, name=kernel_spec.name)
-    return kernel
+
+    build_wrapper = functools.partial(_build_cpp, output_file=lib_wrapper)
+    cache_command(os.path.join(lib_dir, 'inductor_wrapper.cpp'), cpp_source, build_wrapper, lib_wrapper)
+
+    return NpuInductorKernel(lib_wrapper, name=kernel_spec.name)
