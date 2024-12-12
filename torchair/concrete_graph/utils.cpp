@@ -386,6 +386,27 @@ void FreeGeBlockPtr(void *data) {
     data = nullptr;
   }
 }
+
+struct Context {
+  Context(gert::TensorAddrManager mgr, gert::TensorAddress address) {
+    manager = mgr;
+    addr = address;
+  };
+
+  ~Context() {
+    manager(addr, gert::kFreeTensor, nullptr);
+    manager = nullptr;
+    addr = nullptr;
+  };
+
+  gert::TensorAddrManager manager;
+  gert::TensorAddress addr;
+};
+
+void ContextDeleter(void *data) {
+  auto ctx = (Context*)data;
+  delete ctx;
+}
 }  // namespace
 
 Status GeTensorToAtTensor(ge::Tensor &ge_tensor, at::Tensor &tensor) {
@@ -441,6 +462,22 @@ Status GeTensorToAtTensor(gert::Tensor &ge_tensor, at::Tensor &tensor) {
   }
   size_t tensor_nbytes = at::detail::computeStorageNbytesContiguous(dims, tensor.dtype().itemsize());
 
+  gert::TensorAddrManager block_manager = nullptr;
+  gert::TensorAddress addr_block = ge_tensor.MutableTensorData().Release(block_manager);
+  
+  at::DataPtr c10_data_ptr;
+  if (block_manager) {
+    void *addr = nullptr;
+    TNG_ASSERT(block_manager(addr_block, gert::kGetTensorAddress, &addr) == ge::GRAPH_SUCCESS,
+               "Get ge tensor addr error.");
+    Context *ctx = new Context(block_manager, addr_block);
+    c10_data_ptr = at::DataPtr(addr, ctx, &ContextDeleter, tensor.device());
+  } else {
+    TNG_ASSERT(device_type != c10::DeviceType::PrivateUse1, "device ge tensor block manager is null.");
+    c10_data_ptr = c10::GetAllocator(device_type)->allocate(tensor_nbytes);
+    memcpy(c10_data_ptr.get(), addr_block, tensor_nbytes);
+  }
+
   at::Storage storage;
   if (device_type == c10::DeviceType::PrivateUse1) {
     // get npu storage constructor from register and construct storage
@@ -452,15 +489,10 @@ Status GeTensorToAtTensor(gert::Tensor &ge_tensor, at::Tensor &tensor) {
     storage = fptr(c10::StorageImpl::use_byte_size_t(), 0, allocator->allocate(0), allocator, true);
 #endif
     storage.unsafeGetStorageImpl()->set_nbytes(tensor_nbytes);
-
-    gert::TensorAddrManager block_manager = nullptr;
-    gert::TensorAddress addr_block = ge_tensor.MutableTensorData().Release(block_manager);
-    auto mem_block = reinterpret_cast<ge::MemBlock *>(addr_block);
-    static torch::DeleterFnPtr kFreeMemBlock = &FreeGeBlockPtr;
-    at::DataPtr c10_data_ptr(mem_block->GetAddr(), addr_block, kFreeMemBlock, tensor.device());
     storage.set_data_ptr(std::move(c10_data_ptr));
   } else {
-    return Status::Error("Unsupported ge tensor to at tensor for cpu tensor: ", DebugString(ge_tensor).c_str());
+    storage = c10::make_intrusive<c10::StorageImpl>(c10::StorageImpl::use_byte_size_t(), tensor_nbytes,
+                                                    std::move(c10_data_ptr), c10::GetAllocator(device_type), true);
   }
 
   tensor.set_(storage, 0, dims);
@@ -486,6 +518,5 @@ std::vector<bool> Split(const std::string &str, char pattern) {
   }
   return res_vec;
 }
-
-
 }  // namespace tng
+
