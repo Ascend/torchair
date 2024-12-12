@@ -361,6 +361,14 @@ class _NpuFxCompiler:
             logger.info(f'  input {i}: {inp}')
         logger.info(f'  graph: {gm.graph}')
 
+        #to temporarily fix weight_quant_batchmatmul bug
+        if "torch_npu" in sys.modules:
+            for n in gm.graph.nodes:
+                if n.op == "call_function" and str(n.target) == "npu.npu_weight_quant_batchmatmul.default":
+                    self.config.experimental_config.enable_view_optimize = False
+                    logger.warning(f'To temporarily fix weight_quant_batchmatmul bug, close enable_view_optimize.')
+                    break
+
         with no_dispatch():
             mutable_gm = copy.deepcopy(gm)
         concrete_graph: ConcreteGraphBase = _NpuGraphConverter(
