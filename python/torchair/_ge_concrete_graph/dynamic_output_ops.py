@@ -123,7 +123,6 @@ def Batch(x_tensors: List[Tensor], *, num_batch_threads: int, max_batch_size: in
 
     size_of_y_tensors = 0
     raise RuntimeError("Fix this by determine num outputs of Batch")
-    return raw_ops._Batch(x_tensors, size_of_y_tensors=size_of_y_tensors, num_batch_threads=num_batch_threads, max_batch_size=max_batch_size, batch_timeout_micros=batch_timeout_micros, grad_timeout_micros=grad_timeout_micros, max_enqueued_batches=max_enqueued_batches, allowed_batch_sizes=allowed_batch_sizes, container=container, shared_name=shared_name, batching_queue=batching_queue, dependencies=dependencies, node_name=node_name)
 
 
 # Auto infer num outputs for IR BoostedTreesBucketize
@@ -137,9 +136,7 @@ def BoostedTreesBucketize(float_values: List[Tensor], bucket_boundaries: List[Te
   """
 
     size_of_y = 0
-    raise RuntimeError(
-        "Fix this by determine num outputs of BoostedTreesBucketize")
-    return raw_ops._BoostedTreesBucketize(float_values, bucket_boundaries, size_of_y=size_of_y, num_features=num_features, dependencies=dependencies, node_name=node_name)
+    raise RuntimeError("Fix this by determine num outputs of BoostedTreesBucketize")
 
 
 # Auto infer num outputs for IR SwitchN
@@ -152,9 +149,7 @@ def SwitchN(data: Tensor, pred_value: Tensor, *, dependencies=[], node_name=None
   """
 
     size_of_output = 0
-    raise RuntimeError(
-        "Fix this by determine num outputs of BoostedTreesBucketize")
-    return raw_ops._SwitchN(data, pred_value, size_of_output=size_of_output, dependencies=dependencies, node_name=node_name)
+    raise RuntimeError("Fix this by determine num outputs of BoostedTreesBucketize")
 
 
 # Auto infer num outputs for IR CTCBeamSearchDecoder
@@ -175,9 +170,7 @@ def CTCBeamSearchDecoder(inputs: Tensor, sequence_length: Tensor, *, beam_width:
     size_of_decoded_indices = 0
     size_of_decoded_values = 0
     size_of_decoded_shape = 0
-    raise RuntimeError(
-        "Fix this by determine num outputs of CTCBeamSearchDecoder")
-    return raw_ops._CTCBeamSearchDecoder(inputs, sequence_length, size_of_decoded_indices=size_of_decoded_indices, size_of_decoded_values=size_of_decoded_values, size_of_decoded_shape=size_of_decoded_shape, beam_width=beam_width, top_paths=top_paths, merge_repeated=merge_repeated, dependencies=dependencies, node_name=node_name)
+    raise RuntimeError("Fix this by determine num outputs of CTCBeamSearchDecoder")
 
 
 # Auto infer num outputs for IR QueueDequeue
