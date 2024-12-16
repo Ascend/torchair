@@ -66,6 +66,20 @@ def sigmoid(x):
     return op.y
 
 
+def sqrt(x):
+    graph = V.kernel.graph
+    op = graph.add_op("Sqrt")
+    op.x = x
+    return op.y
+
+
+def rsqrt(x):
+    graph = V.kernel.graph
+    op = graph.add_op("Rsqrt")
+    op.x = x
+    return op.y
+
+
 def maximum(x1, x2):
     graph = V.kernel.graph
     op = graph.add_op("Maximum")
