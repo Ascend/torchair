@@ -475,6 +475,9 @@ class NPUScheduling(BaseScheduling):
 
     @classmethod
     def can_fuse_npu(cls, node1: BaseSchedulerNode, node2: BaseSchedulerNode):
+        if not all([isinstance(node, (SchedulerNode, FusedSchedulerNode)) for node in [node1, node2]]):
+            return False
+
         def get_concat_nodes(node: BaseSchedulerNode):
             concats = []
             for n in node.get_nodes():

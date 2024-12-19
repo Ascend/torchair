@@ -1,16 +1,21 @@
 from typing import List, Tuple
 import functools
 import operator
+import os
 import torch
 import sympy
 from torch._inductor.virtualized import V
 from torch._inductor.lowering import register_lowering
+from torch._inductor.lowering import fallback_handler
 from torch._inductor.virtualized import ops
 from npu_extension_for_inductor.ir import UBConcat
 
 
 @register_lowering(torch.ops.aten.cat.default)
 def pointwise_cat(inputs, dim=0):
+    if os.getenv("ASCIR_SUPPORT_CONCAT", None) != "1":
+        return fallback_handler(torch.ops.aten.cat.default, add_to_fallback_set=False)(inputs, dim=dim)
+
     for inp in inputs:
         inp.realize()
 

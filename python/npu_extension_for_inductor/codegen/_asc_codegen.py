@@ -8,6 +8,7 @@ from torch._inductor.codegen.common import IndentedBuffer
 from npu_extension_for_inductor.common.asc_graph import ASCGraph
 from npu_extension_for_inductor.common.debug import save_asserts
 from npu_extension_for_inductor.common.utils import camel_to_snake
+from npu_extension_for_inductor.common.utils import load_autofuser
 
 
 class KernelArg:
@@ -57,7 +58,8 @@ def codegen_kernel_def(graph: ASCGraph, var_name=None) -> str:
     save_asserts(graph.name, graph_py_code.getvalue(), 'asc_graph_python.py')
 
     local_vars = dict()
-    exec(compile(graph_py_code.getvalue(), '<string>', 'exec'), globals(), local_vars)
+    with load_autofuser(graph.name):
+        exec(compile(graph_py_code.getvalue(), '<string>', 'exec'), globals(), local_vars)
 
     artifacts = dict()
     artifacts['name'] = graph.name

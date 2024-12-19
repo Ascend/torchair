@@ -12,6 +12,7 @@ from dataclasses import dataclass
 import torch
 from torch._inductor.codegen.common import IndentedBuffer
 from npu_extension_for_inductor.common.debug import save_asserts
+from npu_extension_for_inductor.common.utils import load_compiler, is_kernel_need_stub
 
 
 @dataclass
@@ -210,12 +211,13 @@ def compile_ascendc(artifacts: Dict):
         save_manual_asserts(cache_file, content)
         func(content)
 
-    cache_command(os.path.join(lib_dir, 'asc_graph_build_kernel.py'), jit_command, build_ascend_lib, lib_kernel)
+    with load_compiler(kernel_spec.name):
+        cache_command(os.path.join(lib_dir, 'asc_graph_build_kernel.py'), jit_command, build_ascend_lib, lib_kernel)
 
     cpp_source = codegen_cpp_source(kernel_spec, lib_kernel)
     save_asserts(kernel_spec.name, cpp_source, 'inductor_wrapper.cpp')
 
-    if os.getenv("ASCIR_NOT_READY", None) == "1":
+    if is_kernel_need_stub(kernel_spec.name):
         return DummyNpuInductorKernel(kernel_spec.name)
 
     build_wrapper = functools.partial(_build_cpp, output_file=lib_wrapper)

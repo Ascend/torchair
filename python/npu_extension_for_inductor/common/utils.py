@@ -1,6 +1,9 @@
 import re
+import sys
+import os
 from enum import Enum
 from collections import namedtuple
+from contextlib import contextmanager
 import torch
 
 TypeSet = namedtuple("TypeSet", ['torch', 'acl'])
@@ -89,3 +92,38 @@ class TypeUtils:
 def camel_to_snake(name):
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+
+
+def is_kernel_need_stub(graph_name):
+    if os.getenv('ASCIR_NOT_READY', None) != "1":
+        return False
+    kernel_filter = os.getenv('ASCIR_FORCE_ASCGEN_FILTER', None)
+    if kernel_filter is None:
+        return True
+    return not re.compile(kernel_filter).match(graph_name)
+
+
+@contextmanager
+def load_compiler(graph_name):
+    need_stub = is_kernel_need_stub(graph_name)
+    try:
+        if need_stub:
+            from npu_extension_for_inductor.common.revert_ascir import AscCompilerStub
+            sys.modules['compile_adapter'] = AscCompilerStub()
+        yield
+    finally:
+        if need_stub:
+            sys.modules.pop('compile_adapter')
+
+
+@contextmanager
+def load_autofuser(graph_name):
+    need_stub = is_kernel_need_stub(graph_name)
+    try:
+        if need_stub:
+            from npu_extension_for_inductor.common.revert_ascir import AutofuseStub
+            sys.modules['pyautofuse'] = AutofuseStub()
+        yield
+    finally:
+        if need_stub:
+            sys.modules.pop('pyautofuse')

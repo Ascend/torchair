@@ -1,6 +1,8 @@
+import os
 import logging
 import unittest
 from typing import Set
+from contextlib import contextmanager
 
 from npu_extension_for_inductor.npu import NPUKernel
 import npu_extension_for_inductor
@@ -8,6 +10,22 @@ from torch._inductor.virtualized import V
 import torch
 
 logging.basicConfig(level=logging.INFO)
+
+
+@contextmanager
+def test_with_env(**kwargs):
+    old_env = {}
+    for key, value in kwargs.items():
+        old_env[key] = os.getenv(key)
+        os.environ[key] = str(value)
+    try:
+        yield
+    finally:
+        for key, value in old_env.items():
+            if value is None:
+                del os.environ[key]
+            else:
+                os.environ[key] = value
 
 
 class KernelCapture:
@@ -434,6 +452,7 @@ class BuildGraphTest(unittest.TestCase):
 
         self.assertEqual(len(kernel_capture.kernels), 1)
 
+    @test_with_env(ASCIR_SUPPORT_CONCAT="1")
     def test_cat_lowering(self):
         @torch.compile(dynamic=True)
         def test_cat(x, y):
@@ -494,6 +513,7 @@ class BuildGraphTest(unittest.TestCase):
                                 NpuKernel0Graph.set_outputs([buf0])
                                 """)
 
+    @test_with_env(ASCIR_SUPPORT_CONCAT="1")
     def test_cat_fused_with_pointwise(self):
         @torch.compile(dynamic=True)
         def test_cat(x, y):
@@ -506,6 +526,7 @@ class BuildGraphTest(unittest.TestCase):
 
         self.assertEqual(len(kernel_capture.kernels), 1)
 
+    @test_with_env(ASCIR_SUPPORT_CONCAT="1")
     def test_cat_fused_with_broadcast_transpose(self):
         def test_cat(x, y):
             return torch.cat([x.transpose(0, 1), y.transpose(2, 1)], dim=0)
@@ -519,7 +540,7 @@ class BuildGraphTest(unittest.TestCase):
         self.assertTrue(kernel_capture.graph(0).get_op("broadcast"))
         self.assertTrue(kernel_capture.graph(0).get_op("transpose"))
         self.assert_graph_equal(kernel_capture.graph_str(0, "NpuKernel0Graph"),
-            """NpuKernel0Graph = ascir.HintGraph('NpuKernel0Graph')
+                                """NpuKernel0Graph = ascir.HintGraph('NpuKernel0Graph')
             s0 = NpuKernel0Graph.create_size("s0")
             s1 = NpuKernel0Graph.create_size("s1")
             s2 = NpuKernel0Graph.create_size("s2")
@@ -590,6 +611,7 @@ class BuildGraphTest(unittest.TestCase):
             NpuKernel0Graph.set_outputs([buf0])
             """)
 
+    @test_with_env(ASCIR_SUPPORT_CONCAT="1")
     def test_cat_lowering_with_transpose(self):
         @torch.compile(dynamic=True)
         def test_cat(x, y):
