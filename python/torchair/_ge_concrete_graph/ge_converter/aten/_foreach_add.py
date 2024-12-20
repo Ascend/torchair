@@ -37,6 +37,11 @@ def conveter_aten__foreach_add_Scalar(
     self: List[Tensor], scalar: Union[Number, Tensor], meta_outputs: List[TensorSpec] = None
 ):
     """NB: aten::_foreach_add.Scalar(Tensor[] self, Scalar scalar) -> Tensor[]"""
+    if len(self) > 0:
+        if self[0].dtype == DataType.DT_BF16:
+            scalar = dtype_promote(scalar, target_dtype=DataType.DT_FLOAT)
+        else:
+            scalar = dtype_promote(scalar, target_dtype=self[0].dtype)
     return ge.ForeachAddScalar(self, scalar)
 
 
@@ -49,6 +54,11 @@ def conveter_aten__foreach_add_List(
     meta_outputs: List[TensorSpec] = None
 ):
     """NB: aten::_foreach_add.List(Tensor[] self, Tensor[] other, *, Scalar alpha=1) -> Tensor[]"""
+    if len(self) > 0:
+        if self[0].dtype == DataType.DT_BF16:
+            alpha = dtype_promote(alpha, target_dtype=DataType.DT_FLOAT)
+        else:
+            alpha = dtype_promote(alpha, target_dtype=self[0].dtype)
     return ge.ForeachAddList(self, other, alpha)
 
 

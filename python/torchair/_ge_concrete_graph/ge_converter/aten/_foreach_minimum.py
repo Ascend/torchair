@@ -38,6 +38,11 @@ def conveter_aten__foreach_minimum_scalar(
     scalar: Union[Number, Tensor],
     meta_outputs: List[TensorSpec] = None):
     """NB: aten::_foreach_minimum.Scalar(Tensor[] self, Scalar scalar) -> Tensor[]"""
+    if len(self) > 0:
+        if self[0].dtype == DataType.DT_BF16:
+            scalar = dtype_promote(scalar, target_dtype=DataType.DT_FLOAT)
+        else:
+            scalar = dtype_promote(scalar, target_dtype=self[0].dtype)
     return ge.ForeachMinimumScalar(self, scalar)
 
 

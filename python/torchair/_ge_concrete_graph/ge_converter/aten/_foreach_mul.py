@@ -37,6 +37,11 @@ def conveter_aten__foreach_mul_Scalar(
     self: List[Tensor], scalar: Union[Number, Tensor], meta_outputs: List[TensorSpec] = None
 ):
     """NB: aten::_foreach_mul.Scalar(Tensor[] self, Scalar scalar) -> Tensor[]"""
+    if len(self) > 0:
+        if self[0].dtype == DataType.DT_BF16:
+            scalar = dtype_promote(scalar, target_dtype=DataType.DT_FLOAT)
+        else:
+            scalar = dtype_promote(scalar, target_dtype=self[0].dtype)
     return ge.ForeachMulScalar(self, scalar)
 
 

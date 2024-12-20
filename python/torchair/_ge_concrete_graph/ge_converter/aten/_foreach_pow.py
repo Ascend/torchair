@@ -21,6 +21,7 @@ from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
 from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
 from torchair._ge_concrete_graph.supported_declaration import F32, F16, BF16, I32, Support
+from torchair._ge_concrete_graph.utils import dtype_promote
 
 
 @declare_supported(
@@ -50,6 +51,11 @@ def conveter_aten__foreach_pow_Scalar(
     self: List[Tensor], exponent: Union[Number, Tensor], meta_outputs: List[TensorSpec] = None
 ):
     """NB: aten::_foreach_pow.Scalar(Tensor[] self, Scalar exponent) -> Tensor[]"""
+    if len(self) > 0:
+        if self[0].dtype == DataType.DT_BF16:
+            exponent = dtype_promote(exponent, target_dtype=DataType.DT_FLOAT)
+        else:
+            exponent = dtype_promote(exponent, target_dtype=self[0].dtype)
     return ge.ForeachPowScalar(self, exponent)
 
 
