@@ -106,7 +106,7 @@ def codegen_cpp_wrapper(graph: ASCGraph):
     launch_signature.append(f"{tiling_dtype} *tiling_data")
 
     wrapper.splice(f'''
-    typedef int (*TilingFuncType)({', '.join(tiling_signature)});
+    typedef uint32_t (*TilingFuncType)({', '.join(tiling_signature)});
     typedef int (*LaunchFuncType)({', '.join(launch_signature)});
     static TilingFuncType tiling_fn = reinterpret_cast<TilingFuncType>(GetFunc("{graph.name}TilingFunc"));
     static LaunchFuncType launch_fn = reinterpret_cast<LaunchFuncType>(GetFunc("aclrtlaunch_{camel_to_snake(graph.name)}"));
@@ -119,9 +119,9 @@ def codegen_cpp_wrapper(graph: ASCGraph):
             if (launch_fn == nullptr) std::cerr << "{graph.name} kernel launch func not found" << std::endl;
             return -1;
         }}
-        int result = tiling_fn({', '.join(tiling_args + ["&tiling_data", "&workspace_size", "&block_dim"])});
+        uint32_t result = tiling_fn({', '.join(tiling_args + ["&tiling_data", "&workspace_size", "&block_dim"])});
         if (result != 0) {{
-            return result;
+            return -1;
         }}
         {buffer_assign}
         DLOG() << "block_dim: " << block_dim << std::endl;

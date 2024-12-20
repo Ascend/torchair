@@ -157,7 +157,10 @@ class DummyNpuInductorKernel:
     @staticmethod
     def arg_str(arg):
         if isinstance(arg, torch.Tensor):
-            return f"{str(arg.dtype).split('.')[-1]}{tuple(arg.size())}"
+            size = tuple(arg.size())
+            stride = tuple(arg.stride())
+            offset = arg.storage_offset()
+            return f"{str(arg.dtype).split('.')[-1]}{size}, {stride}, {offset}"
         return str(arg)
 
 
