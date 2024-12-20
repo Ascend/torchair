@@ -56,7 +56,7 @@ class NPUOverrides(OpOverrides):
 
     @staticmethod
     def constant(value, dtype):
-        return ir.constant(repr(value))
+        return ir.constant(repr(value), TypeUtils.torch_to_asc(dtype))
 
     @staticmethod
     def masked(mask, body, other):
@@ -97,6 +97,11 @@ class NPUOverrides(OpOverrides):
     @staticmethod
     def load_seed(name, offset):
         return ir.load_seed(offset=sympy.Integer(offset))
+
+    @staticmethod
+    def indirect_indexing(index_var, size, check=False) -> sympy.Symbol:
+        kernel: NPUKernel = V.kernel
+        return kernel.indirect_indexing(index_var, size, check)
 
 
 class ASCBuffer:
@@ -151,19 +156,6 @@ class Reduction:
         return self.src
 
 
-class NpuCSEProxy:
-    def __init__(self, parent):
-        self._parent = parent
-
-    def __getattr__(self, item):
-        return getattr(self._parent, item)
-
-    @staticmethod
-    def indirect_indexing(index_var, size, check=False) -> sympy.Symbol:
-        kernel: NPUKernel = V.kernel
-        return kernel.indirect_indexing(index_var, size, check)
-
-
 class NPUKernel(Kernel):
     overrides = NPUOverrides
     _index = 0
@@ -184,17 +176,6 @@ class NPUKernel(Kernel):
             inner_user_num = sum([user.node in nodes for user in node.users])
             if inner_user_num != len(node.users):
                 self._output_buffers.add(node.node.name)
-
-    def __enter__(self):
-        super().__enter__()
-        assert self.overrides
-        self.overrides(V.get_ops_handler())
-        self.exit_stack.enter_context(V.set_ops_handler(NpuCSEProxy(V.get_ops_handler())))
-        self.exit_stack.enter_context(V.set_kernel_handler(self))
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        super().__exit__(exc_type, exc_val, exc_tb)
 
     @property
     def contiguous_loop(self):
@@ -238,14 +219,6 @@ class NPUKernel(Kernel):
 
         self._asc_buffer[name] = ASCBuffer(buf.layout)
         return self._asc_buffer[name]
-
-    def indirect_indexing(self, index_var, size, check=False) -> sympy.Symbol:
-        indirect_sym = sympy_symbol(f"npu_scalar{len(self._indirect_to_scalar)}")
-        op_name, output_name = str(index_var).split('.')
-        src = self.graph.get_op(op_name)
-        assert src is not None
-        self._indirect_to_scalar[str(indirect_sym)] = _Scalar(_Tensor(getattr(src, output_name)), size, check)
-        return indirect_sym
 
     def codegen(self):
         code = IndentedBuffer()
@@ -360,6 +333,14 @@ class NPUKernel(Kernel):
             self.graph.size(index.name)
             return index
         return super().rename_indexing(index)
+
+    def indirect_indexing(self, index_var, size, check=False) -> sympy.Symbol:
+        indirect_sym = sympy_symbol(f"npu_scalar{len(self._indirect_to_scalar)}")
+        op_name, output_name = str(index_var).split('.')
+        src = self.graph.get_op(op_name)
+        assert src is not None
+        self._indirect_to_scalar[str(indirect_sym)] = _Scalar(_Tensor(getattr(src, output_name)), size, check)
+        return indirect_sym
 
     def index_to_str(self, index):
         return str(index)

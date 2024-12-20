@@ -133,7 +133,7 @@ def concat(*x):
     return op.y
 
 
-def constant(value: str):
+def constant(value: str, dtype=None):
     graph = V.kernel.graph
     op = graph.add_op("Constant")
     op.value = value

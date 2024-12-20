@@ -113,7 +113,7 @@ def load_compiler(graph_name):
         yield
     finally:
         if need_stub:
-            sys.modules.pop('compile_adapter')
+            sys.modules.pop('compile_adapter', None)
 
 
 @contextmanager
@@ -126,4 +126,4 @@ def load_autofuser(graph_name):
         yield
     finally:
         if need_stub:
-            sys.modules.pop('pyautofuse')
+            sys.modules.pop('pyautofuse', None)
