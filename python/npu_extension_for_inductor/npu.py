@@ -295,7 +295,8 @@ class NPUKernel(Kernel):
         self._current_input_index += 1
         scalars: Dict[str, _Scalar] = self._get_npu_scalar(index)
         if len(scalars):
-            return ir.load_indirect(self._load_buffer(name)[0], *[v.cse for v in scalars.values()], expr=str(index),
+            return ir.load_indirect(self._load_indirect_buffer(name), *[v.cse for v in scalars.values()],
+                                    expr=str(index),
                                     syms=[f"{str(k)}={str(v.cse)}(\\<{v.max_value})" for k, v in scalars.items()])
 
         data, loop = self._load_buffer(name, self._index_to_loop(index, sizes=sizes))
@@ -347,7 +348,23 @@ class NPUKernel(Kernel):
     def index_to_str(self, index):
         return str(index)
 
-    def _load_buffer(self, name, loop: Loop = None):
+    def _load_indirect_buffer(self, name):
+        buf: ASCBuffer = self.get_asc_buffer(name)
+        if buf.src:
+            return buf.src
+
+        if os.getenv("ASCIR_FORCE_CONTIGUOUS", None) != '1':
+            self.graph.input(name, self.args.input(name))
+            return buf.bind(ir.data(name=name, dtype=buf.asc_dtype))
+
+        exist_tensor = self.graph.get_tensor(name)
+        if exist_tensor is not None:
+            return exist_tensor
+        else:
+            self.graph.input(name, self.args.input(name))
+            return ir.data(name=name, dtype=buf.asc_dtype)
+
+    def _load_buffer(self, name, loop: Loop):
         buf: ASCBuffer = self.get_asc_buffer(name)
         if buf.src:
             return buf.src, loop
