@@ -160,7 +160,7 @@ class DummyNpuInductorKernel:
             size = tuple(arg.size())
             stride = tuple(arg.stride())
             offset = arg.storage_offset()
-            return f"{str(arg.dtype).split('.')[-1]}{size}, {stride}, {offset}"
+            return f"{str(arg.dtype).split('.')[-1]}({size}, {stride}, {offset})"
         return str(arg)
 
 

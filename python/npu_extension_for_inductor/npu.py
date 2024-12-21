@@ -171,6 +171,7 @@ class NPUKernel(Kernel):
         self._current_input_index = 0
         self._output_buffers: Set[str] = set()
         self._asc_buffer: Dict[str:ASCBuffer] = {}
+        self._torch_arg_wrappers = dict()
 
         for node in nodes:
             inner_user_num = sum([user.node in nodes for user in node.users])
@@ -223,7 +224,7 @@ class NPUKernel(Kernel):
     def codegen(self):
         code = IndentedBuffer()
         args, _, _ = self.args.python_argdefs()
-        call_args = sorted(args)
+        call_args = sorted(self.graph.inputs_outer + self.graph.outputs_outer)
         args.append('workspace')
         call_args.append('workspace')
         kw_args = [str(v) for v in list(sorted(self.graph.size_vars))]
@@ -239,6 +240,8 @@ class NPUKernel(Kernel):
         self._kernel_def.writelines(self._comments)
         self._kernel_def.writeline(f"def {self._kernel}({signature_args}):")
         with self._kernel_def.indent():
+            for k, v in self._torch_arg_wrappers.items():
+                self._kernel_def.writeline(f"{k} = {v}")
             self._kernel_def.writeline(f"{kernel_var_name}({call_args})")
         code.splice(self._kernel_def)
 
@@ -279,7 +282,6 @@ class NPUKernel(Kernel):
             f.write(becnhmark_code.getvalue())
 
     def load(self, name: str, index: sympy.Expr):
-        data = self._load_buffer(name)
         ir_data = self.current_node.node.data
         if isinstance(ir_data, UBConcat):
             sizes = self.contiguous_loop.size[:]
@@ -291,12 +293,12 @@ class NPUKernel(Kernel):
         else:
             sizes = self.contiguous_loop.size
         self._current_input_index += 1
-        loop = self._index_to_loop(index, sizes=sizes)
         scalars: Dict[str, _Scalar] = self._get_npu_scalar(index)
         if len(scalars):
-            return ir.load_indirect(data, *[v.cse for v in scalars.values()], expr=str(index),
+            return ir.load_indirect(self._load_buffer(name)[0], *[v.cse for v in scalars.values()], expr=str(index),
                                     syms=[f"{str(k)}={str(v.cse)}(\\<{v.max_value})" for k, v in scalars.items()])
 
+        data, loop = self._load_buffer(name, self._index_to_loop(index, sizes=sizes))
         road = self._get_view_road(loop, DenseLoop(axis=loop.axis, size=sizes))
         if len(road) == 0:
             logging.info(f"Road for {index} from {loop} to {self.contiguous_loop} is dense")
@@ -345,12 +347,32 @@ class NPUKernel(Kernel):
     def index_to_str(self, index):
         return str(index)
 
-    def _load_buffer(self, name):
+    def _load_buffer(self, name, loop: Loop = None):
         buf: ASCBuffer = self.get_asc_buffer(name)
-        if not buf.src:
+        if buf.src:
+            return buf.src, loop
+
+        if os.getenv("ASCIR_FORCE_CONTIGUOUS", None) != '1':
             self.graph.input(name, self.args.input(name))
-            return buf.bind(ir.data(name=name, dtype=buf.asc_dtype))
-        return buf.src
+            return buf.bind(ir.data(name=name, dtype=buf.asc_dtype)), loop
+
+        kernel_arg = f"{name}_{loop.encode()}"
+        exist_tensor = self.graph.get_tensor(kernel_arg)
+        if exist_tensor is not None:
+            return exist_tensor, loop.copy().contiguous_(zero_offset=True)
+
+        # kernel arg: input of kernel call
+        # wrapper arg: input of cpp wrapper call
+        # torch arg: input of python kernel call
+        # torch arg alias with wrapper arg by name
+        # wrapper arg alias cwrapper arg by sorted name order
+        # cwrapper arg alias kernel arg by name
+        data = ir.data(name=kernel_arg, dtype=buf.asc_dtype)
+        torch_arg = self.args.input(name)
+        wrapper_arg = f"{kernel_arg}_contiguous"
+        self._torch_arg_wrappers[wrapper_arg] = loop.codegen_contiguous(torch_arg)
+        self.graph.input(kernel_arg, wrapper_arg)
+        return data, loop.copy().contiguous_(zero_offset=True)
 
     def _store_buffer(self, name, src):
         buf: ASCBuffer = self.get_asc_buffer(name)

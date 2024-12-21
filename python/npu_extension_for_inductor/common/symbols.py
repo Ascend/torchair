@@ -231,7 +231,9 @@ class Loop:
 
         return list(reversed(stride))
 
-    def contiguous_(self):
+    def contiguous_(self, zero_offset=False):
+        if zero_offset:
+            self.offset = sympy.S.Zero
         if len(self.axis) == 0:
             return self
 
@@ -254,6 +256,16 @@ class Loop:
 
     def copy(self):
         return Loop(axis=self.axis.copy(), size=self.size.copy(), stride=self.stride.copy(), offset=self.offset)
+
+    def encode(self):
+        size_str = "_".join([str(s) for s in self.size])
+        stride_str = "_".join([str(s) for s in self.stride])
+        return f"shape{size_str}stride{stride_str}offset{self.offset}"
+
+    def codegen_contiguous(self, name):
+        size = f"{tuple(self.size)}"
+        stride = f"{tuple(self.stride)}"
+        return f"reinterpret_tensor({name}, {size}, {stride}, {self.offset}).contiguous()"
 
 
 class DenseLoop(Loop):

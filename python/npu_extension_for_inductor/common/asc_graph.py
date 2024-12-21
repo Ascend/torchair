@@ -77,6 +77,13 @@ class ASCGraph:
                 return op
         return None
 
+    def get_tensor(self, name, index=0):
+        op: _Op = self.get_op(name)
+        if op is not None:
+            assert index == 0, f"Only support single tensor for now, but got {index}"
+            return _Tensor(op.y)
+        return None
+
     def input(self, name, outer_name=None):
         outer_name = outer_name or name
         self.inputs.append(name)
