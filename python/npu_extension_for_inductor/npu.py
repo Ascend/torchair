@@ -224,7 +224,10 @@ class NPUKernel(Kernel):
     def codegen(self):
         code = IndentedBuffer()
         args, _, _ = self.args.python_argdefs()
-        call_args = sorted(self.graph.inputs_outer + self.graph.outputs_outer)
+        if os.getenv("ASCIR_FORCE_CONTIGUOUS", None) != '1':
+            call_args = sorted(args)
+        else:
+            call_args = sorted(self.graph.inputs_outer + self.graph.outputs_outer)
         args.append('workspace')
         call_args.append('workspace')
         kw_args = [str(v) for v in list(sorted(self.graph.size_vars))]
