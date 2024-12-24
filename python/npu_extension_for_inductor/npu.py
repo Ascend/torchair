@@ -595,8 +595,16 @@ class NPUScheduling(BaseScheduling):
         used_sizes = list(sorted(kernel.graph.size_vars))
         call_args.append(workspace_var_name)
         call_args.extend([f"{v}={v}" for v in used_sizes])
+        if os.getenv("NPU_INDUCTOR_DEBUG_SINGLE_KERNEL", None) == '1':
+            for arg in [str(v) for v in call_args][:len(call_args) - len(used_sizes)]:
+                wrapper.writeline(f"print({repr(kernel.kernel_name)}, {repr(arg)}, {arg}.device, {arg}.dtype, "
+                                  f"{arg}.shape, {arg}.stride(), {arg}.storage_offset(), flush=True)")
         wrapper.writeline(wrapper.wrap_kernel_call(kernel.kernel_name, [str(v) for v in call_args]))
         wrapper.writeline(f"del {workspace_var_name}")
+        if os.getenv("NPU_INDUCTOR_DEBUG_SINGLE_KERNEL", None) == '1':
+            wrapper.writeline(f"print('Start synchronize kernel {kernel.kernel_name}', flush=True)")
+            wrapper.writeline(f"torch.npu.synchronize()")
+            wrapper.writeline(f"print('Finish synchronize kernel {kernel.kernel_name}', flush=True)")
 
     def codegen_sync(self):
         raise NotImplementedError()

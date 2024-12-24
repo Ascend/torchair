@@ -81,6 +81,7 @@ run_test() {
   cd "${TEST_PATH}"
 
   export ASCIR_NOT_READY=1
+  export NPU_INDUCTOR_FALLBACK_INT64=0
   if [[ "X$TYPE" = "Xut" ]]; then
     ${PYTHON_BIN_PATH} -m unittest discover -s "${TORCHAIR_ROOT}/tests" -p "test_*.py" -v -k "${TESTCASE_FILTER}"
   elif [[ "X$TYPE" = "Xst" ]]; then

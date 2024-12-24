@@ -68,6 +68,9 @@ def codegen_kernel_def(graph: ASCGraph, var_name=None) -> str:
     artifacts['device_impl'] = local_vars.get('device_impl')
     artifacts['cpp_wrapper'] = codegen_cpp_wrapper(graph)
 
+    if not all(v.strip() for v in artifacts.values()):
+        raise RuntimeError(f"Failed to generate artifacts for kernel {graph.name}: {artifacts}")
+
     kernel_def.writeline(f"{graph_fn}_artifacts = {{}}")
     for k, v in artifacts.items():
         kernel_def.splice(f"{graph_fn}_artifacts['{k}'] = '''{v}'''")
