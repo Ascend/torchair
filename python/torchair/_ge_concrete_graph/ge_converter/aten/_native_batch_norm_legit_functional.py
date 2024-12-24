@@ -65,27 +65,20 @@ def conveter_aten__native_batch_norm_legit_functional_default(
     running_mean = ge.TensorMove(running_mean)
     running_var = ge.TensorMove(running_var)
 
+    if dim == 2 or dim == 3:
+        input = ge.Unsqueeze(input, axes=list(range(dim, 4)))
+
+    output, mean, var, save_mean, save_rstd = ge.BatchNormV3(input, weight, bias, running_mean, \
+                                                            running_var, epsilon=eps, \
+                                                            momentum=momentum, is_training=training)
     if dim <= 4:
-        if dim == 2 or dim == 3:
-            input = ge.Unsqueeze(input, axes=list(range(dim, 4)))
-        sum_output, square_sum = ge.BNTrainingReduce(input)
-        specific_op_input_layout(sum_output, indices=0, layout="NCHW")
-        specific_op_output_layout(sum_output, indices=[0, 1], layout="NCHW")
-        output, mean, variance, batch_mean, batch_variance = ge.BNTrainingUpdate(input, sum_output, \
-            square_sum, weight, bias, running_mean, running_var, factor=momentum, epsilon=eps)
-        specific_op_input_layout(output, indices=list(range(7)), layout="NCHW")
+        specific_op_input_layout(output, indices=list(range(5)), layout="NCHW")
         specific_op_output_layout(output, indices=list(range(5)), layout="NCHW")
         if dim == 2 or dim == 3:
             output = ge.Squeeze(output, axis=list(range(3, dim - 1, -1)))
-        result = (output, batch_mean, batch_variance, mean, variance)
-        return result
-    
-    sum_output, square_sum = ge.BN3DTrainingReduce(input)
-    specific_op_input_layout(sum_output, indices=0, layout="NCDHW")
-    specific_op_output_layout(sum_output, indices=[0, 1], layout="NCDHW")
-    output, mean, variance, batch_mean, batch_variance = ge.BN3DTrainingUpdate(input, sum_output, \
-        square_sum, weight, bias, running_mean, running_var, factor=momentum, epsilon=eps)
-    specific_op_input_layout(output, indices=list(range(7)), layout="NCDHW")
-    specific_op_output_layout(output, indices=list(range(5)), layout="NCDHW")
-    result = (output, batch_mean, batch_variance, mean, variance)
+    else:
+        specific_op_input_layout(output, indices=list(range(5)), layout="NCDHW")
+        specific_op_output_layout(output, indices=list(range(5)), layout="NCDHW")
+
+    result = (output, mean, var, save_mean, save_rstd)
     return result

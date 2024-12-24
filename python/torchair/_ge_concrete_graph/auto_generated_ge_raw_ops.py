@@ -36393,6 +36393,79 @@ def BatchNorm(x: Tensor, scale: Tensor, offset: Tensor, mean: Optional[Tensor], 
     return y, batch_mean, batch_variance, reserve_space_1, reserve_space_2, reserve_space_3
 
 
+# This api is auto-generated from IR BatchNormV3
+@auto_convert_to_tensor([False, False, False, False, False], [False, False, False, False, False])
+def BatchNormV3(x: Tensor, weight: Tensor, bias: Tensor, mean: Tensor, var: Tensor, *, epsilon: float=1e-05, momentum: float=0.1, is_training: bool=True, dependencies=[], node_name=None):
+    """REG_OP(BatchNormV3)\n
+    .INPUT(x, "T1")
+    .INPUT(weight, "T2")
+    .INPUT(bias, "T2")
+    .INPUT(running_mean, "T3")
+    .INPUT(running_var, "T3")
+    .OUTPUT(y, "T1")
+    .OUTPUT(running_mean, "T3")
+    .OUTPUT(running_var, "T3")
+    .OUTPUT(save_mean, "T3")
+    .OUTPUT(save_rstd, "T3")
+    .ATTR(epsilon, Float, 1e-5f)
+    .ATTR(momentum, Float, 0.1f)
+    .ATTR(is_training, Bool, true)
+    .DATATYPE(T1, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .DATATYPE(T2, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .DATATYPE(T3, TensorType({DT_FLOAT}))
+"""
+    op = get_default_ge_graph().op.add()
+    op.type = "BatchNormV3"
+    op.name = next_unique_name(node_name, "BatchNormV3")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+    op.input.append(weight.tensor)
+    op.input_desc.add().CopyFrom(weight.desc)
+    op.input_desc[-1].name = "weight"
+    op.input.append(bias.tensor)
+    op.input_desc.add().CopyFrom(bias.desc)
+    op.input_desc[-1].name = "bias"
+    op.input.append(mean.tensor)
+    op.input_desc.add().CopyFrom(mean.desc)
+    op.input_desc[-1].name = "running_mean"
+    op.input.append(var.tensor)
+    op.input_desc.add().CopyFrom(var.desc)
+    op.input_desc[-1].name = "running_var"
+
+    # process attrs
+    op.attr["epsilon"].f = epsilon
+    op.attr["momentum"].f = momentum
+    op.attr["is_training"].b = is_training
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "running_mean"
+    running_mean = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "running_var"
+    running_var = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "save_mean"
+    save_mean = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "save_rstd"
+    save_rstd = Tensor(op, output_index)
+    output_index += 1
+
+    # return outputs
+    return y, running_mean, running_var, save_mean, save_rstd
+
+
 # This api is auto-generated from IR SyncBatchNormGatherStatsWithCounts
 @auto_convert_to_tensor([False, False, False, False, False, False], [False, False, False, False, False, False])
 def SyncBatchNormGatherStatsWithCounts(mean_all: Tensor, invert_std_all: Tensor, count_all: Tensor, mean_broadcast: Tensor, count_sum: Tensor, running_var: Tensor, *, momentum: float=0.100000, epsilon: float=0.001000, dependencies=[], node_name=None):
