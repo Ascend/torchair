@@ -161,7 +161,7 @@ class AscOps:
         self.graph.inputs.clear()
 
     def __getattr__(self, item):
-        return lambda name: self.graph.add_op(item, name=name)
+        return lambda name, graph: self.graph.add_op(item, name=name)
 
 
 class ASCHintGraph:
@@ -301,7 +301,7 @@ class RevertAscir(_Track):
     def __init__(self):
         super().__init__('')
         self.__dict__['dtypes'] = AscDtypes()
-        self.__dict__['SizeExpr'] = lambda syms: functools.reduce(lambda x, y: x * y, syms + [sympy.S.One])
+        self.__dict__['SizeExpr'] = lambda digit: sympy.Symbol(str(digit))
         self.__dict__['HintGraph'] = self.hint_graph
 
     def hint_graph(self, name):

@@ -122,7 +122,9 @@ class AscSymbol:
         return str(self.sym)
 
     def __repr__(self):
-        return f"ascir.SizeExpr([{'' if self.sym.name == '1' else self.sym.name}])"
+        if self.sym.name.isdigit():
+            return f"ascir.SizeExpr({self.sym.name})"
+        return self.sym.name
 
 
 class Asc2OpeSymbol(AscSymbol):
@@ -144,10 +146,15 @@ class Asc2OpeSymbol(AscSymbol):
 
     def __repr__(self):
         if self.is_mul(recursive=True):
-            return f"ascir.SizeExpr([{','.join([v.name for v in self.free_operands() if v.name != '1'])}])"
+            operands = [
+                f"ascir.SizeExpr({v.name})" if v.name.isdigit() else v.name
+                for v in self.free_operands() if v.name != "1"
+            ]
+            return " * ".join(operands)
+
         subs = dict()
         for symbol in self.sym.free_symbols:
-            subs[symbol] = sympy.Symbol(f"ascir.SizeExpr([{symbol}])")
+            subs[symbol] = sympy.Symbol(f"{symbol}")
         return str(self.sym.subs(subs))
 
 

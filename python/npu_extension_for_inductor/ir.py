@@ -167,10 +167,10 @@ class _Op(_Track):
     def set_private_attr(self, name, value):
         self.private_attrs[name] = value
 
-    def codegen(self):
+    def codegen(self, graph):
         from torch._inductor.utils import IndentedBuffer
         buffer = IndentedBuffer()
-        buffer.writeline(f"{self.name} = ascir.ops.{self._op}('{self.name}')")
+        buffer.writeline(f"{self.name} = ascir.ops.{self._op}('{self.name}', {graph})")
         for k, v in self.attrs.items():
             buffer.writeline(f"{k} = {repr(v)}")
         return buffer.getvalue()

@@ -121,10 +121,5 @@ class ASCGraph:
             graph.writeline(f'{axis} = {var_name}.create_axis("{axis}", {repr(AscExpr(range_expr))})')
         # Ops codegen
         for i, op in enumerate(self.ops):
-            graph.splice(op.codegen())
-        # Inputs and outputs
-        graph.splice(f"""
-        {var_name}.set_inputs([{', '.join([s for s in self.inputs])}])
-        {var_name}.set_outputs([{', '.join([s for s in self.outputs])}])
-        """)
+            graph.splice(op.codegen(var_name))
         return graph
