@@ -4,6 +4,82 @@
 
 本章节主要介绍如何将一个pytorch的大模型脚本迁移为可以全量和增量分离部署的脚本
 
+# 快速使用
+
+模型结构使用的是已经改造后的modeling_llama.py
+
+**搭建环境**
+
+```shell
+# arm环境搭建示例
+conda create -n test python=3.9
+conda activate test
+
+# 根据CANN安装指南安装固件/驱动/cann包
+
+# 安装 torch 和 torch_npu
+pip3 install torch-2.1.0-cp39-cp39m-manylinux2014_aarch64.whl
+pip3 install torch_npu-2.1.0*-cp39-cp39m-linux_aarch64.whl
+pip3 install apex-0.1_ascend*-cp39-cp39m-linux_aarch64.whl
+
+git clone https://gitee.com/ascend/torchair.git
+cd torchair/npu_tuned_model/llm
+pip3 install -r requirement.txt
+
+# llama2
+pip3 install transformers==4.31.0
+# llama3
+pip3 install transformers==4.40.0
+```
+
+**设置环境变量**
+
+```shell
+export PYTHONPATH=$PYTHONPATH:/path/to/your/torchair/npu_tuned_model/llm/llama
+cann_path=/usr/local/Ascend # 昇腾cann包安装目录
+source ${cann_path}/latest/bin/setenv.bash
+export ASCEND_HOME_PATH=${cann_path}/latest
+```
+
+**qkv权重融合**
+
+```shell
+model_path=xxx/llama2-70b # 下载的权重和模型信息
+python3 merge_qkv_weight.py --model_path=${model_path} --tp_size=8 --output_path=xxx/llama-70b_qkv
+```
+
+**将替换了mc2融合算子的LinearAllreduce替换deepspeed原生的LinearAllreduce**
+
+将benchmark/deepspeed/mc2_adapter.py的LinearAllreduce整个类拷贝替换原生deepspeed的deepspeed/module_inject/layers.py中的LinearAllreduce类，并且import torch_npu
+
+**注：上述操作分别在全量和增量机器上完成后，**
+
+分别查询全量和增量机器的device_ip信息
+
+```shell
+for i in {0..7}; do hccn_tool -i $i -ip -g; done
+```
+
+注：出现hccn_tool命令找不到的，可在cann包安装目录下搜索hccn_tool，找到可执行文件执行
+
+更改全量脚本中**_LISTEN_IP_INFO**为实际机器device ip信息，拉起全量的执行脚本，可通过--execute_mode参数选择单算子或者图模式
+
+```shell
+deepspeed --num_gpus=8 benchmark/pd_separate/run_prompt.py --model_path=xxx/llama2-70b_qkv
+```
+
+将全量执行完目录下生成的prompt.pkl文件拷贝到增量执行目录下，更改增加脚本中的**_LOCAL_IP_INFOS**和**_REMOTE_IP_INFOS**为实际机器device ip信息，拉起增量的执行脚本，可通过--execute_mode参数选择单算子或者图模式
+
+**_LOCAL_IP_INFOS**是增量机器的device ip信息，**_REMOTE_IP_INFOS**是全量机器的device ip信息
+
+```shell
+deepspeed --num_gpus=8 benchmark/pd_separate/run_decoder.py --model_path=xxx/llama2-70b_qkv
+```
+
+**打点位置**
+
+在llm_inference.py的model_generate函数中start和end
+
 # 迁移步骤
 
 - 准备一个**能够成功执行**推理的大模型脚本。
@@ -128,79 +204,3 @@ kv_cache_tensors = list(zip(k_tensors, v_tensors))
 kwargs["past_key_values"] = kv_cache_tensors
 outputs = runner.execute_model(input_tensors, **kwargs)
 ```
-
-# 性能及功能测试
-
-模型结构使用的是已经改造后的modeling_llama.py
-
-**搭建环境**
-
-```shell
-# arm环境搭建示例
-conda create -n test python=3.9
-conda activate test
-
-# 根据CANN安装指南安装固件/驱动/cann包
-
-# 安装 torch 和 torch_npu
-pip3 install torch-2.1.0-cp39-cp39m-manylinux2014_aarch64.whl
-pip3 install torch_npu-2.1.0*-cp39-cp39m-linux_aarch64.whl
-pip3 install apex-0.1_ascend*-cp39-cp39m-linux_aarch64.whl
-
-git clone https://gitee.com/ascend/torchair.git
-cd torchair/npu_tuned_model/llm
-pip3 install -r requirement.txt
-
-# llama2
-pip3 install transformers==4.31.0
-# llama3
-pip3 install transformers==4.40.0
-```
-
-**设置环境变量**
-
-```shell
-export PYTHONPATH=$PYTHONPATH:/path/to/your/torchair/npu_tuned_model/llm/llama
-cann_path=/usr/local/Ascend # 昇腾cann包安装目录
-source ${cann_path}/latest/bin/setenv.bash
-export ASCEND_HOME_PATH=${cann_path}/latest
-```
-
-**qkv权重融合**
-
-```shell
-model_path=xxx/llama2-70b # 下载的权重和模型信息
-python3 merge_qkv_weight.py --model_path=${model_path} --tp_size=8 --output_path=xxx/llama-70b_qkv
-```
-
-**将替换了mc2融合算子的LinearAllreduce替换deepspeed原生的LinearAllreduce**
-
-将benchmark/deepspeed/mc2_adapter.py的LinearAllreduce整个类拷贝替换原生deepspeed的deepspeed/module_inject/layers.py中的LinearAllreduce类，并且import torch_npu
-
-**注：上述操作分别在全量和增量机器上完成后，**
-
-分别查询全量和增量机器的device_ip信息
-
-```shell
-for i in {0..7}; do hccn_tool -i $i -ip -g; done
-```
-
-注：出现hccn_tool命令找不到的，可在cann包安装目录下搜索hccn_tool，找到可执行文件执行
-
-更改全量脚本中**_LISTEN_IP_INFO**为实际机器device ip信息，拉起全量的执行脚本，可通过--execute_mode参数选择单算子或者图模式
-
-```shell
-deepspeed --num_gpus=8 benchmark/pd_separate/run_prompt.py --model_path=xxx/llama2-70b_qkv
-```
-
-将全量执行完目录下生成的prompt.pkl文件拷贝到增量执行目录下，更改增加脚本中的**_LOCAL_IP_INFOS**和**_REMOTE_IP_INFOS**为实际机器device ip信息，拉起增量的执行脚本，可通过--execute_mode参数选择单算子或者图模式
-
-**_LOCAL_IP_INFOS**是增量机器的device ip信息，**_REMOTE_IP_INFOS**是全量机器的device ip信息
-
-```shell
-deepspeed --num_gpus=8 benchmark/pd_separate/run_decoder.py --model_path=xxx/llama2-70b_qkv
-```
-
-**打点位置**
-
-在llm_inference.py的model_generate函数中start和end

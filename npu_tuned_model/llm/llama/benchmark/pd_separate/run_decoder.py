@@ -166,6 +166,8 @@ if __name__ == "__main__":
 
     os.environ["EXE_MODE"] = args.execute_mode
     model_runner = LlmDecoderRunner(args.model_path, **config)
+    # 表示开启二进制编译，提高编译阶段性能
+    torch.npu.set_compile_mode(jit_compile=False)
     model_runner.init_model()
     # 根据execute_mode选择是否走图模式编译
     model_runner.compile_model()

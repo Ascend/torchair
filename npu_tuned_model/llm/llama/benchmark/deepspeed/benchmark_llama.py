@@ -132,7 +132,7 @@ def parse_args():
 
 def run_llama(model_path, **kwargs):
     model_runner = ModelRunner(model_path, **kwargs)
-    # 表示在图模式下开启二进制编译，提高图模式下编译阶段性能
+    # 表示开启二进制编译，提高编译阶段性能
     torch.npu.set_compile_mode(jit_compile=False)
     model_runner.init_model()
     # warmup

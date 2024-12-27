@@ -2,15 +2,68 @@
 
 本模块主要是llama2/llama3模型在npu上的适配迁移点介绍，其中llama2使用transformers==4.31.0版本，llama3使用transformers==4.40.0版本，模型是在对于的transformers目录下的models/llama/modeling_llama.py。
 
+# 快速使用
+
+在benchmark目录下的deepspeed目录提供了对接deepspeed框架多卡切分的llama执行样例参考。上述性能数据基于deepspeed(0.14.1)在arm host + 800I A2环境执行进行统计 
+
+**基于搭建的conda环境，安装对应的transformers版本**
+
+```shell
+# llama2
+pip3 install transformers==4.31.0
+# llama3
+pip3 install transformers==4.40.0
+```
+
+**根据图模式适配方式替换transformers中的utils.py**
+
+```shell
+transformers_path=$(pip3 show transformers|grep Location|awk '{print $2}')
+# 根据图模式适配方式修改${transformers_path}/transformers/generation/utils.py中的函数
+```
+
+**设置环境变量**
+
+```shell
+export PYTHONPATH=$PYTHONPATH:/path/to/your/torchair/npu_tuned_model/llm/llama
+cann_path=/usr/local/Ascend # 昇腾cann包安装目录
+source ${cann_path}/latest/bin/setenv.bash
+export ASCEND_HOME_PATH=${cann_path}/latest
+```
+
+**qkv权重融合**
+
+```shell
+model_path=xxx/llama2-70b # 下载的权重和模型信息
+python3 merge_qkv_weight.py --model_path=${model_path} --tp_size=8 --output_path=xxx/llama-70b_qkv
+```
+
+**将替换了mc2融合算子的LinearAllreduce替换deepspeed原生的LinearAllreduce**
+
+将benchmark/deepspeed/mc2_adapter.py的LinearAllreduce整个类拷贝替换原生deepspeed的deepspeed/module_inject/layers.py中的LinearAllreduce类，并且import torch_npu
+
+**deepspeed方式拉起8卡执行**
+
+```shell
+# 图模式
+deepspeed --num_gpus=8 benchmark/deepspeed/benchmark_llama.py --model_path=xxx/llama2-70b_qkv
+# 单算子
+deepspeed --num_gpus=8 benchmark/deepspeed/benchmark_llama.py --model_path=xxx/llama2-70b_qkv --execute_mode=eager
+```
+
+**性能数据打点位置**
+
+参考图模式适配模型执行部分修改。全量耗时统计的是模型第一个step数据，增量耗时统计后续step数据的均值。
+
 # 图模式适配
 
-[模型迁移指导](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/80RC1alpha003/devguide/moddevg/torchair/torchair_01_0001.html)
+[模型迁移指导](https://www.hiascend.com/document/detail/zh/Pytorch/60RC3/quickstart/useguide/useguide_0001.html)
 
 **注意**：需先保证模型在npu上的eager模式功能正常和精度正确，然后再进行以下图模式的迁移和适配。
 
 此适配点主要是新增pytorch图模式分支。
 
-CompilerConfig配置参考[torchair资料](https://www.hiascend.com/document/detail/zh/Pytorch/60RC2/modthirdparty/torchairuseguide/torchair_0021.html)
+CompilerConfig配置参考[torchair资料](https://www.hiascend.com/document/detail/zh/Pytorch/60RC2/modthirdparty/torchairuseguide/torchair_0001.html)
 
 ```python
 # transformers/generation/utils.py的greedy_search函数while True前添加
@@ -69,7 +122,7 @@ import torchair.ge_concrete_graph.ge_converter.experimental.patch_for_hcom_allre
 
 **优化原因**：transformers的llama源码中对于kv cache的处理是作为模型的输入，模型中通过cat进行拼接后，返回新的kv cache，这种更新方式存在多次申请内存及拷贝的性能损失。
 
-**优化方式**：根据句子最大长度申请好一块固定大小的kv cache tensor，然后通过[scatter_update_](https://www.hiascend.com/document/detail/zh/Pytorch/60RC1/apiref/apilist/ptaoplist_000156.html)算子对指定位置上的kv cache进行更新
+**优化方式**：根据句子最大长度申请好一块固定大小的kv cache tensor，然后通过[scatter_update_](https://www.hiascend.com/document/detail/zh/Pytorch/60RC3/apiref/apilist/ptaoplist_000002.html)算子对指定位置上的kv cache进行更新
 
 ```python
 # transformers/models/llama/modeling_llama.py
@@ -134,7 +187,7 @@ attention_mask = self.model._prepare_decoder_attention_mask(
 
 **优化原因**：将小算子替换为融合大算子，提升性能
 
-**FlashAttention优化方式**:替换LlamaAttention中的Q/K/V和attention_mask相关的两个矩阵乘，分别替换为[torch_npu.npu_prompt_flash_attention](https://www.hiascend.com/document/detail/zh/Pytorch/60RC1/apiref/apilist/ptaoplist_000142.html)和[torch_npu.npu_incre_flash_attention](https://www.hiascend.com/document/detail/zh/Pytorch/60RC1/apiref/apilist/ptaoplist_000451.html)
+**FlashAttention优化方式**:替换LlamaAttention中的Q/K/V和attention_mask相关的两个矩阵乘，分别替换为[torch_npu.npu_prompt_flash_attention](https://www.hiascend.com/document/detail/zh/Pytorch/60RC3/apiref/apilist/ptaoplist_000002.html)和[torch_npu.npu_incre_flash_attention](https://www.hiascend.com/document/detail/zh/Pytorch/60RC3/apiref/apilist/ptaoplist_000002.html)
 
 ```python
 ''' 替换部分
@@ -279,7 +332,7 @@ sin = sin.reshape(position_ids.size(0), position_ids.size(1), -1).unsqueeze(2)
 
 **优化原因**：将小算子替换为融合大算子，提升性能
 
-**优化方式**：替换LlamaRMSNorm的forward函数，使用融合算子[torch_npu.npu_rms_norm](https://www.hiascend.com/document/detail/zh/Pytorch/60RC1/apiref/apilist/ptaoplist_001031.html)和torch_npu.npu_add_rms_norm
+**优化方式**：替换LlamaRMSNorm的forward函数，使用融合算子[torch_npu.npu_rms_norm](https://www.hiascend.com/document/detail/zh/Pytorch/60RC3/modthirdparty/torchairuseguide/torchair_0001.html)和torch_npu.npu_add_rms_norm
 
 ```python
 class LlamaRMSNorm(nn.Module):
@@ -427,7 +480,7 @@ def merge_qkv_weight(self, tp_size=1):
 
 ## 全量替换mc2融合算子
 
-优化原因：原生LinearAllreduce中matmul和allreduce是串行的，性能较慢。替换mc2融合算子[torch_npu.npu_mm_all_reduce_base](https://www.hiascend.com/document/detail/zh/Pytorch/60RC1/apiref/apilist/ptaoplist_000448.html)后能够使matmul和allreduce之间产生流水，提高性能。
+优化原因：原生LinearAllreduce中matmul和allreduce是串行的，性能较慢。替换mc2融合算子[torch_npu.npu_mm_all_reduce_base](https://www.hiascend.com/document/detail/zh/Pytorch/60RC3/modthirdparty/torchairuseguide/torchair_0001.html)后能够使matmul和allreduce之间产生流水，提高性能。
 
 优化方式：使用**benchmark/deepspeed/mc2_adapter.py**自定义的**LinearAllreduce**替换原生的**deepspeed.module_inject.layers.LinearAllreduce**
 
@@ -708,56 +761,3 @@ class LinearAllreduce(nn.Module):
   </tr>
 </tbody>
 </table>
-
-# 性能测试
-
-在benchmark目录下的deepspeed目录提供了对接deepspeed框架多卡切分的llama执行样例参考。上述性能数据基于deepspeed(0.14.1)在arm host + 800I A2环境执行进行统计 
-
-**基于搭建的conda环境，安装对应的transformers版本**
-
-```shell
-# llama2
-pip3 install transformers==4.31.0
-# llama3
-pip3 install transformers==4.40.0
-```
-
-**根据图模式适配方式替换transformers中的utils.py**
-
-```shell
-transformers_path=$(pip3 show transformers|grep Location|awk '{print $2}')
-# 根据图模式适配方式修改${transformers_path}/transformers/generation/utils.py中的函数
-```
-
-**设置环境变量**
-
-```shell
-export PYTHONPATH=$PYTHONPATH:/path/to/your/torchair/npu_tuned_model/llm/llama
-cann_path=/usr/local/Ascend # 昇腾cann包安装目录
-source ${cann_path}/latest/bin/setenv.bash
-export ASCEND_HOME_PATH=${cann_path}/latest
-```
-
-**qkv权重融合**
-
-```shell
-model_path=xxx/llama2-70b # 下载的权重和模型信息
-python3 merge_qkv_weight.py --model_path=${model_path} --tp_size=8 --output_path=xxx/llama-70b_qkv
-```
-
-**将替换了mc2融合算子的LinearAllreduce替换deepspeed原生的LinearAllreduce**
-
-将benchmark/deepspeed/mc2_adapter.py的LinearAllreduce整个类拷贝替换原生deepspeed的deepspeed/module_inject/layers.py中的LinearAllreduce类，并且import torch_npu
-
-**deepspeed方式拉起8卡执行**
-
-```shell
-# 图模式
-deepspeed --num_gpus=8 benchmark/deepspeed/benchmark_llama.py --model_path=xxx/llama2-70b_qkv
-# 单算子
-deepspeed --num_gpus=8 benchmark/deepspeed/benchmark_llama.py --model_path=xxx/llama2-70b_qkv --execute_mode=eager
-```
-
-**性能数据打点位置**
-
-参考图模式适配模型执行部分修改。全量耗时统计的是模型第一个step数据，增量耗时统计后续step数据的均值。
