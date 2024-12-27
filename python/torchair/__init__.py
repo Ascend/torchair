@@ -13,10 +13,12 @@ from torchair.core.utils import logger
 from torchair._ge_concrete_graph.ge_converter.experimental.hcom_allreduce import npu_allreduce_patch_dist, \
 patch_for_deepspeed_allreduce
 from torchair._ge_concrete_graph.ge_converter.experimental.hcom_allgather import npu_all_gather_patch_dist, \
-npu_allgather_in_tensor_patch_dist
+    npu_allgather_in_tensor_patch_dist, npu_allgather_into_tensor_uneven_patch_dist
 from torchair._ge_concrete_graph.ge_converter.experimental.hcom_broadcast import npu_broadcast_patch_dist
 from torchair._ge_concrete_graph.ge_converter.experimental.hcom_alltoall import npu_all_to_all_single_patch_dist, \
 npu_all_to_all_patch_dist
+from torchair._ge_concrete_graph.ge_converter.experimental.hcom_reducescatter import \
+    npu_reduce_scatter_tensor_uneven_patch_dist
 import torchair.inference
 import torchair.llm_datadist
 import torchair.ops
@@ -42,6 +44,8 @@ def patch_for_hcom():
     torch.distributed.all_reduce = npu_allreduce_patch_dist
     torch.distributed.all_gather = npu_all_gather_patch_dist
     torch.distributed.all_gather_into_tensor = npu_allgather_in_tensor_patch_dist
+    torch.distributed.all_gather_into_tensor_uneven = npu_allgather_into_tensor_uneven_patch_dist
+    torch.distributed.reduce_scatter_tensor_uneven = npu_reduce_scatter_tensor_uneven_patch_dist
     torch.distributed.broadcast = npu_broadcast_patch_dist
     torch.distributed.all_to_all_single = npu_all_to_all_single_patch_dist
     torch.distributed.all_to_all = npu_all_to_all_patch_dist

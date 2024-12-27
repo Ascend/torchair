@@ -56,6 +56,33 @@ REG_OP(HcomAllGather)
     .OP_END_FACTORY_REG(HcomAllGather)
 
 /**
+ * @brief Outputs a tensor gathering all input tensors, input tensors can have diffrent dim 0 size.
+ * @par Inputs:
+ * x: A tensor. Must be one of the following types: int8, int16, int32, float16, float32.
+ * @li send_data: A tensor. the memory to send.
+ * @li send_count: A int, the number of elements in send_data to send to rank i.
+ * @li recv_counts: A list, where entry i specifies the number of
+  elements to receive from rank i.
+ * @li recv_displs: A list, , where entry i specifies the displacement
+  (offset from recv_data) to which data from rank i should be written.
+ * @par Outputs:
+ * y: A Tensor  has same element type as send_data.
+ * @par Attributes:
+ * @li group: A string identifying the group name of ranks participating in
+  the op.
+* @attention all ranks participating in the op should be full-mesh networking
+  using the RDMA.
+ */
+REG_OP(HcomAllGatherV)
+    .INPUT(x, TensorType({DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_INT64}))
+    .INPUT(send_count, TensorType({DT_INT64}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_INT64}))
+    .INPUT(recv_counts, TensorType({DT_INT64}))
+    .INPUT(recv_displs, TensorType({DT_INT64}))
+    .REQUIRED_ATTR(group, String)
+    .OP_END_FACTORY_REG(HcomAllGatherV)
+
+/**
  * @brief Outputs a tensor containing the reduction across all input tensors
   passed to op.
  * @par Inputs:
@@ -181,6 +208,38 @@ REG_OP(HcomReduceScatter)
     .REQUIRED_ATTR(group, String)
     .REQUIRED_ATTR(rank_size, Int)
     .OP_END_FACTORY_REG(HcomReduceScatter)
+
+/**
+* @brief Performs reduction across all input tensors, scattering in equal
+  blocks among ranks, each rank getting a chunk of data based on its rank
+  index.
+ * @par Inputs:
+ * x: A tensor. Must be one of the following types: int8, int16, int32, float16, float32.
+ * @li send_data: A tensor. the memory to send.
+ * @li send_counts: A list, where entry i specifies the number of
+  elements to send from rank i.
+ * @li recv_counts: A int, the number of elements to receive to rank i.
+ * @li send_displs: A list, where entry i specifies the displacement
+  (offset from send_data) to which data from rank i should be written.
+ * @par Outputs:
+ * y: A Tensor  has same element type as send_data.
+ * @par Attributes:
+ * @li group: A string identifying the group name of ranks participating in
+  the op.
+ * @li reduction: A required string identifying the reduction operation to
+  perform. The supported operation are: "sum", "max", "min", "prod".
+ * @attention all ranks participating in the op should be full-mesh networking
+  using the RDMA.
+ */
+REG_OP(HcomReduceScatterV)
+    .INPUT(x, TensorType({DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_INT64}))
+    .INPUT(send_counts, TensorType({DT_INT64}))
+    .INPUT(send_displs, TensorType({DT_INT64}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_INT64}))
+    .INPUT(recv_count, TensorType({DT_INT64}))
+    .REQUIRED_ATTR(reduction, String)
+    .REQUIRED_ATTR(group, String)
+    .OP_END_FACTORY_REG(HcomReduceScatterV)
 
 /**
  * @brief Sends the input tensor to destination rank.

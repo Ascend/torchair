@@ -32,6 +32,24 @@ class allgather_in_tensor(torch.nn.Module):
         return out_tensor
 
 
+class AllGatherInTensorUneven(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, out_tensor, x, output_split_sizes=None):
+        torch.distributed.all_gather_into_tensor_uneven(out_tensor, x, output_split_sizes)
+        return out_tensor
+
+
+class ReduceScatterTensorUneven(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, out_tensor, x, intput_split_sizes=None):
+        torch.distributed.reduce_scatter_tensor_uneven(out_tensor, x, intput_split_sizes)
+        return out_tensor
+
+
 class Broadcast(torch.nn.Module):
     def __init__(self):
         super().__init__()
@@ -206,6 +224,80 @@ def test_allgather_in_tensor_no_same_size(rank, world_size):
     assert ori_result.equal(compile_result)
 
 
+def test_allgather_in_tensor_uneven_different_size(rank, world_size, dynamic=False):
+    torch.npu.set_device("npu:" + str(rank))
+    dist.init_process_group("hccl", rank=rank, world_size=world_size)
+    if rank == 0:
+        x = torch.ones(4, 2, dtype=torch.int32).to("npu:" + str(rank)) + 1 + 2 * rank
+    else:
+        x = torch.ones(1, 2, dtype=torch.int32).to("npu:" + str(rank)) + 1 + 2 * rank
+    tensor_list = torch.zeros(5, 2, dtype=torch.int32).to("npu:" + str(rank))
+    output_split_sizes = [4, 1]
+    mod = AllGatherInTensorUneven()
+    mod = mod.to("npu:" + str(rank))
+    ori_result = mod(tensor_list, x, output_split_sizes)
+    print("ori_result:", ori_result)
+    torch._dynamo.reset()
+    opt_mod = torch.compile(mod, dynamic=dynamic, fullgraph=True, backend=npu_backend)
+    compile_result = opt_mod(tensor_list, x, output_split_sizes)
+    print("compile_result:", compile_result)
+    assert ori_result.equal(compile_result)
+
+
+def test_allgather_in_tensor_uneven_same_size(rank, world_size, dynamic=False):
+    torch.npu.set_device("npu:" + str(rank))
+    dist.init_process_group("hccl", rank=rank, world_size=world_size)
+    x = torch.ones(2, 2, dtype=torch.int32).to("npu:" + str(rank)) + 1 + 2 * rank
+    tensor_list = torch.zeros(4, 2, dtype=torch.int32).to("npu:" + str(rank))
+    mod = AllGatherInTensorUneven()
+    mod = mod.to("npu:" + str(rank))
+    ori_result = mod(tensor_list, x)
+    print("ori_result:", ori_result)
+    torch._dynamo.reset()
+    opt_mod = torch.compile(mod, dynamic=dynamic, fullgraph=True, backend=npu_backend)
+    compile_result = opt_mod(tensor_list, x)
+    print("compile_result:", compile_result)
+    assert ori_result.equal(compile_result)
+
+
+def test_reducescatter_tensor_uneven_same_size(rank, world_size, dynamic=False):
+    torch.npu.set_device("npu:" + str(rank))
+    dist.init_process_group("hccl", rank=rank, world_size=world_size)
+    tensor_in = torch.arange(world_size * 2, dtype=torch.int32).to("npu:" + str(rank))
+    tensor_in = torch.reshape(tensor_in, (world_size, 2))
+    tensor_out = torch.zeros(2, dtype=torch.int32).to("npu:" + str(rank))
+    mod = ReduceScatterTensorUneven()
+    mod = mod.to("npu:" + str(rank))
+    ori_result = mod(tensor_out, tensor_in)
+    print("ori_result:", ori_result)
+    torch._dynamo.reset()
+    opt_mod = torch.compile(mod, dynamic=dynamic, fullgraph=True, backend=npu_backend)
+    compile_result = opt_mod(tensor_out, tensor_in)
+    print("compile_result:", compile_result)
+    assert ori_result.equal(compile_result)
+
+
+def test_reducescatter_tensor_uneven_different_size(rank, world_size, dynamic=False):
+    torch.npu.set_device("npu:" + str(rank))
+    dist.init_process_group("hccl", rank=rank, world_size=world_size)
+    tensor_in = torch.arange(5 * 2, dtype=torch.int32).to("npu:" + str(rank))
+    tensor_in = torch.reshape(tensor_in, (5, 2))
+    input_split_sizes = [4, 1]
+    if rank == 0:
+        tensor_out = torch.zeros(4, 2, dtype=torch.int32).to("npu:" + str(rank))
+    else:
+        tensor_out = torch.zeros(1, 2, dtype=torch.int32).to("npu:" + str(rank))
+    mod = ReduceScatterTensorUneven()
+    mod = mod.to("npu:" + str(rank))
+    ori_result = mod(tensor_out, tensor_in, input_split_sizes)
+    print("ori_result:", ori_result)
+    torch._dynamo.reset()
+    opt_mod = torch.compile(mod, dynamic=dynamic, fullgraph=True, backend=npu_backend)
+    compile_result = opt_mod(tensor_out, tensor_in, input_split_sizes)
+    print("compile_result:", compile_result)
+    assert ori_result.equal(compile_result)
+
+
 def test_broadcast_static(rank, world_size):
     torch.npu.set_device(rank)
     dist.init_process_group(backend='hccl', rank=rank, world_size=world_size)
@@ -305,7 +397,24 @@ def mp():
     # =================  case 11 broadcast动态入图==================
     torch.multiprocessing.spawn(test_broadcast_dynamic, args=(world_size,), nprocs=world_size, join=True)
     print("==================case 11 pass =============================", flush=True)
-    print("==================all case allgather、allgather_in_tensor、broadcast pass =================", flush=True)
+    # =================  case 12 allgather_in_tensor_uneven静态入图，size相同，新算子不支持动态入图==================
+    torch.multiprocessing.spawn(test_allgather_in_tensor_uneven_same_size, args=(world_size,), nprocs=world_size,
+                                join=True)
+    print("==================case 12 pass =============================", flush=True)
+    # =================  case 13 allgather_in_tensor_uneven静态入图，size不同，新算子不支持动态入图==================
+    torch.multiprocessing.spawn(test_allgather_in_tensor_uneven_different_size, args=(world_size,), nprocs=world_size,
+                                join=True)
+    print("==================case 13 pass =============================", flush=True)
+    # =================  case 14 reducescatter_tensor_uneven静态入图，size相同，新算子不支持动态入图==================
+    torch.multiprocessing.spawn(test_reducescatter_tensor_uneven_same_size, args=(world_size,), nprocs=world_size,
+                                join=True)
+    print("==================case 14 pass =============================", flush=True)
+    # =================  case 15 reducescatter_tensor_uneven静态入图，size不同，新算子不支持动态入图==================
+    torch.multiprocessing.spawn(test_reducescatter_tensor_uneven_different_size, args=(world_size,), nprocs=world_size,
+                                join=True)
+    print("==================case 15 pass =============================", flush=True)
+    print("==================all case allgather、allgather_in_tensor、allgather_in_tensor_uneven、"
+          "reducescatter_tensor_uneven、broadcast pass =================", flush=True)
 
 
 if __name__ == '__main__':
