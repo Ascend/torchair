@@ -17,6 +17,7 @@ from torch._dynamo.exc import Unsupported
 from torch._dynamo.variables.lists import TupleVariable
 from torch._dynamo.variables.nn_module import NNModuleVariable
 from .adjust_implicit_decomposition import adjust_implicit_decomposition
+from .adjust_traceable_collective_remaps import adjust_traceable_collective_remaps
 
 
 aten = torch.ops.aten
@@ -449,6 +450,7 @@ def npu_patch_register_fast_op_impl():
 @run_once
 def add_npu_patch(decompositions, compiler_config):
     adjust_implicit_decomposition()
+    adjust_traceable_collective_remaps()
     register_matmul_backward_decomp()
     npu_patch_meta()
     npu_patch_break_graph()

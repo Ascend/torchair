@@ -46,6 +46,23 @@ def convert_c10d_functional_all_reduce(
     return ge.HcomAllReduce(self, reduction=normalize_reduceop_type(reduce_type), group=group_name, fusion=0)
 
 
+if torch.__version__ >= '2.3.1':
+    @register_fx_node_ge_converter(torch.ops._c10d_functional.all_reduce.default)
+    def convert_c10d_functional_all_reduce_v2(
+        self: Tensor,
+        reduce_type: str,
+        group_name: str,
+        *,
+        out: Tensor = None,
+        meta_outputs: Any = None,
+    ):
+        group = torch.distributed.distributed_c10d._resolve_process_group(group_name)
+        rank_list = torch.distributed.get_process_group_ranks(group)
+        tag = torch.distributed.distributed_c10d._get_group_tag(group)
+        hccl_group_name = get_group_name_and_record(tag, rank_list, len(rank_list))
+        return ge.HcomAllReduce(self, reduction=normalize_reduceop_type(reduce_type), group=hccl_group_name, fusion=0)
+
+
 @register_fx_node_ge_converter(torch.ops.c10d_functional.reduce_scatter_tensor.default)
 def convert_c10d_functional_reduce_scatter_tensor(
     self: Tensor,
@@ -62,6 +79,25 @@ def convert_c10d_functional_reduce_scatter_tensor(
                                 group=group_name, rank_size=group_size)
 
 
+if torch.__version__ >= '2.3.1':
+    @register_fx_node_ge_converter(torch.ops._c10d_functional.reduce_scatter_tensor.default)
+    def convert_c10d_functional_reduce_scatter_tensor_v2(
+        self: Tensor,
+        reduce_type: str,
+        group_size: int,
+        group_name: str,
+        *,
+        out: Tensor = None,
+        meta_outputs: Any = None,
+    ):
+        group = torch.distributed.distributed_c10d._resolve_process_group(group_name)
+        rank_list = torch.distributed.get_process_group_ranks(group)
+        tag = torch.distributed.distributed_c10d._get_group_tag(group)
+        hccl_group_name = get_group_name_and_record(tag, rank_list, group_size)
+        return ge.HcomReduceScatter(self, reduction=normalize_reduceop_type(reduce_type),
+                                    group=hccl_group_name, rank_size=group_size)
+
+
 @register_fx_node_ge_converter(torch.ops.c10d_functional.all_gather_into_tensor.default)
 def convert_c10d_functional_all_gather_into_tensor(
     self: Tensor,
@@ -74,6 +110,23 @@ def convert_c10d_functional_all_gather_into_tensor(
 ):
     group_name = get_group_name_and_record(tag, rank_list, group_size)
     return ge.HcomAllGather(self, group=group_name, rank_size=group_size)
+
+
+if torch.__version__ >= '2.3.1':
+    @register_fx_node_ge_converter(torch.ops._c10d_functional.all_gather_into_tensor.default)
+    def convert_c10d_functional_all_gather_into_tensor_v2(
+        self: Tensor,
+        group_size: int,
+        group_name: str,
+        *,
+        out: Tensor = None,
+        meta_outputs: Any = None,
+    ):
+        group = torch.distributed.distributed_c10d._resolve_process_group(group_name)
+        rank_list = torch.distributed.get_process_group_ranks(group)
+        tag = torch.distributed.distributed_c10d._get_group_tag(group)
+        hccl_group_name = get_group_name_and_record(tag, rank_list, group_size)
+        return ge.HcomAllGather(self, group=hccl_group_name, rank_size=group_size)
 
 
 @register_fx_node_ge_converter(ALL_TO_ALL_SINGLE)
@@ -130,3 +183,14 @@ def convert_c10d_functional_wait_tensor(
     meta_outputs: Any = None,
 ):
     return ge.Identity(self)
+
+
+if torch.__version__ >= '2.3.1':
+    @register_fx_node_ge_converter(torch.ops._c10d_functional.wait_tensor.default)
+    def convert_c10d_functional_wait_tensor_v2(
+        self: Tensor,
+        *,
+        out: Tensor = None,
+        meta_outputs: Any = None,
+    ):
+        return ge.Identity(self)

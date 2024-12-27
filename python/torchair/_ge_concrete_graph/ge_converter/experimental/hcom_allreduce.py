@@ -46,8 +46,8 @@ def npu_allreduce_patch_dist(tensor, op=torch.distributed.ReduceOp.SUM, group=No
 def patch_for_deepspeed_allreduce():
     try:
         from deepspeed import comm as dist
-    except ModuleNotFoundError:
-        logger.info(f'env not import deepspeed, only patch pytorch dist api')
+    except Exception as e:
+        logger.info(f'env import deepspeed error {str(e)}, only patch pytorch dist api')
     else:
         dist.all_reduce = npu_allreduce_patch_dist
         # Adapt deepspeed version later than v0.10.0,

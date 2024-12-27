@@ -40,6 +40,8 @@ def register_fx_node_ge_converter(aten_op):
 
 
 def patch_for_hcom():
+    if torch.__version__ >= "2.3.1":
+        logger.warning(f'For versions 2.3.1 and above of PyTorch, there is no need to call patch_for_hcom anymore.')
     patch_for_deepspeed_allreduce()
     torch.distributed.all_reduce = npu_allreduce_patch_dist
     torch.distributed.all_gather = npu_all_gather_patch_dist
