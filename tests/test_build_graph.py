@@ -603,6 +603,19 @@ class BuildGraphTest(unittest.TestCase):
             buf0.y.dtype = ascir.dtypes.float16
             """)
 
+    @test_with_env(NPU_INDUCTOR_FALLBACK_INT64="1")
+    def test_fallback_output_int64_box(self):
+        def test_fallback(x: torch.Tensor, y: torch.Tensor, z: torch.Tensor):
+            return torch.sum(x)
+
+        with KernelCapture() as kernel_capture:
+            x = torch.ones(2, 3, dtype=torch.int32)
+            y = torch.ones(4, 2, dtype=torch.bool)
+            z = torch.ones(4, 2, dtype=torch.int64)
+            torch.compile(test_fallback)(x, y, z)
+
+        self.assertEqual(len(kernel_capture.kernels), 0)
+
     @test_with_env(ASCIR_SUPPORT_CONCAT="1")
     def test_cat_lowering_with_transpose(self):
         @torch.compile(dynamic=True)

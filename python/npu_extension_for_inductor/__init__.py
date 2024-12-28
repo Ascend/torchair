@@ -43,14 +43,18 @@ LOWER_SUMMARY = LowerSummary("lower_summary.txt")
 atexit.register(lambda: LOWER_SUMMARY.save())
 
 
-def _is_int64_box(box):
-    if hasattr(box, 'dtype') and box.dtype == torch.int64:
-        return True
-    if hasattr(box, 'layout') and _is_int64_box(box.layout):
-        return True
-    if hasattr(box, 'data') and _is_int64_box(box.data):
-        return True
-    return False
+def _get_box_dtypes(*boxes, **kwargs):
+    dtypes = set()
+    for box in boxes:
+        if hasattr(box, 'dtype'):
+            dtypes.add(box.dtype)
+        if hasattr(box, 'layout'):
+            dtypes |= _get_box_dtypes(box.layout)
+        if hasattr(box, 'data'):
+            dtypes |= _get_box_dtypes(box.data)
+    if 'dtype' in kwargs and isinstance(kwargs['dtype'], torch.dtype):
+        dtypes.add(kwargs['dtype'])
+    return dtypes
 
 
 def _wrap_npu(aten_fn, f):
@@ -61,14 +65,23 @@ def _wrap_npu(aten_fn, f):
             LOWER_SUMMARY.add_fallback(aten_fn)
             return fallback_handler(aten_fn, add_to_fallback_set=False)(*args, **kwargs)
 
-        for arg in args:
-            if _is_int64_box(arg) and os.getenv("NPU_INDUCTOR_FALLBACK_INT64", "1") == "1":
-                LOWER_SUMMARY.add_fallback(aten_fn)
-                print(f"Fallback {aten_fn} due to int64 box {arg}", flush=True)
-                return fallback_handler(aten_fn, add_to_fallback_set=False)(*args, **kwargs)
+        if os.getenv("NPU_INDUCTOR_FALLBACK_INT64", "1") != "1":
+            LOWER_SUMMARY.add_lowered(aten_fn)
+            return f(*args, **kwargs)
+
+        if torch.int64 in _get_box_dtypes(*args, **kwargs):
+            LOWER_SUMMARY.add_fallback(aten_fn)
+            print(f"Fallback {aten_fn} due to input int64 box", flush=True)
+            return fallback_handler(aten_fn, add_to_fallback_set=False)(*args, **kwargs)
+
+        box = f(*args, **kwargs)
+        if torch.int64 in _get_box_dtypes(box):
+            LOWER_SUMMARY.add_fallback(aten_fn)
+            print(f"Fallback {aten_fn} due to output int64 box", flush=True)
+            return fallback_handler(aten_fn, add_to_fallback_set=False)(*args, **kwargs)
 
         LOWER_SUMMARY.add_lowered(aten_fn)
-        return f(*args, **kwargs)
+        return box
 
     return wrapper
 
