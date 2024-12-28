@@ -149,7 +149,7 @@ class OpSummary:
                 fhs.append(open(model, 'w+', newline='', encoding='utf-8-sig'))
                 model_writer[model] = csv.writer(fhs[-1])
                 model_writer[model].writerow(
-                    ["融合节点名", "融合类型", "计算指令统计", "待支持的计算指令", "待支持的操作符", "待支持的表达式",
+                    ["融合节点名", "融合类型", "计算指令统计", "待支持的计算指令", "符号表达式",
                      "Loop表达", "MTE优化统计", "Loop大小统计", "符号细节统计"])
             yield model_writer
         finally:
@@ -166,19 +166,12 @@ class OpSummary:
                 graph = _GraphVisitor(sub.graph)
                 mte_ops = graph.load_ops + graph.store_ops
 
-                unsupported_exps = set()
-                unsupported_operators = set()
-                supported_operators = [operator.mul]
+                used_exps = set()
                 size_exp = [op.output_size() + op.output_stride() for op in mte_ops]
                 for expr in [v for k in size_exp for v in k]:
-                    used_operators = [v for v in expr.asc_expr.operators(True) if v not in supported_operators]
-                    if len(used_operators):
-                        unsupported_operators.update(used_operators)
-                        unsupported_exps.add(str(expr.expr))
-                exps = '\n'.join(set(unsupported_exps))
+                    used_exps.add(str(expr))
+                exps = '\n'.join(set(used_exps))
                 ops_count = '\n'.join([f"{k}: {v}" for k, v in graph.typed_ops_count.items()])
-                operators = '\n'.join(
-                    [v.__name__ if hasattr(v, '__name__') else str(v) for v in unsupported_operators])
                 unsupported_ops = '\n'.join([f"{v}" for v in sub.graph.unsupported_ops])
 
                 sorted_calls = sorted(sub.calls.items(), key=lambda x: x[1], reverse=True)
@@ -190,14 +183,14 @@ class OpSummary:
                 sorted_calls_detail = sorted(sub.calls_detail.items(), key=lambda x: x[1], reverse=True)
                 sorted_calls_detail_str = '\n'.join([f"{item[1]}次：{item[0]}" for item in sorted_calls_detail])
 
-                row = [name, graph.graph_type, ops_count, unsupported_ops, operators, exps, sub.loop, optimized_detail,
+                row = [name, graph.graph_type, ops_count, unsupported_ops, exps, sub.loop, optimized_detail,
                        sorted_calls_str, sorted_calls_detail_str]
                 writer.writerow(row)
                 if sub.model_path and sub.model_path in writers:
                     writers[sub.model_path].writerow(row)
 
     def __str__(self):
-        for name, sub in self.subs.items():
+        for _, sub in self.subs.items():
             self.num_supported += sub.num_supported
             self.num_unsupported += sub.num_unsupported
             for op_type, count in sub.supported.items():
@@ -207,6 +200,10 @@ class OpSummary:
         summary = f"Summary %{self.name}%:\n"
         summary += f"Supported op nums: {self.num_supported}/{self.num_unsupported + self.num_supported}\n"
         summary += f"Supported op type: {len(self.supported)}/{len(self.unsupported) + len(self.supported)}\n"
+        summary += f"Supported ops:\n"
+        sorted_supported = sorted(self.supported.items(), key=lambda x: x[1], reverse=True)
+        for op_type, count in sorted_supported:
+            summary += f"    {op_type}: {count}\n"
         summary += f"Unsupported ops:\n"
         sorted_unsupported = sorted(self.unsupported.items(), key=lambda x: x[1], reverse=True)
         for op_type, count in sorted_unsupported:

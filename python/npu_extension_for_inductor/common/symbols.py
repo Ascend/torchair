@@ -8,171 +8,98 @@ from torch._inductor.virtualized import V
 
 
 class AscSymbol:
-    @classmethod
-    def _as_symbol(cls, v):
-        if not isinstance(v, AscSymbol):
-            return AscSymbol(str(v))
-        return v
-
-    def __init__(self, name=None, *, operands=None):
-        if operands is not None:
-            assert isinstance(operands, (list, tuple))
-            self.operands = operands
+    def __init__(self, sym):
+        if isinstance(sym, AscSymbol):
+            sym = sym.sym
+        if not isinstance(sym, (sympy.Symbol, sympy.Expr)):
+            try:
+                sym = sympy.Symbol(f"ascir.SizeExpr({int(str(sym))})")
+            except ValueError:
+                sym = sympy.Symbol(str(sym))
         else:
-            assert isinstance(name, str)
-            self.sym = sympy.Symbol(name)
-            self.operands = [self]
-
-    @property
-    def name(self):
-        assert self.is_operand(), f"Only operand has name, got {self}"
-        return self.sym.name
-
-    def free_operands(self):
-        if self.is_operand():
-            return [self]
-        operands = []
-        for operand in self.operands:
-            operands.extend(operand.free_operands())
-        return operands
-
-    def operators(self, recursive=False):
-        operators = set()
-        if isinstance(self, Asc2OpeSymbol):
-            operators.add(self.op)
-            if recursive:
-                for operand in self.operands:
-                    operators.update(operand.operators(recursive=True))
-        return operators
+            sym = sympy.Symbol(f"ascir.SizeExpr({sym})") if str(sym).isdigit() else sym
+        self.sym = sym
 
     def __mul__(self, other):
-        return Asc2OpeSymbol(self, AscSymbol._as_symbol(other), operator.mul)
+        return AscSymbol(self.sym * AscSymbol._as_symbol(other))
 
     def __rmul__(self, other):
         return self * other
 
     def __add__(self, other):
-        return Asc2OpeSymbol(self, AscSymbol._as_symbol(other), operator.add)
+        return AscSymbol(self.sym + AscSymbol._as_symbol(other))
 
     def __radd__(self, other):
         return self + other
 
     def __sub__(self, other):
-        return Asc2OpeSymbol(self, AscSymbol._as_symbol(other), operator.sub)
+        return AscSymbol(self.sym - AscSymbol._as_symbol(other))
 
     def __rsub__(self, other):
         return self - other
 
     def __truediv__(self, other):
-        return Asc2OpeSymbol(self, AscSymbol._as_symbol(other), operator.truediv)
+        return AscSymbol(self.sym / AscSymbol._as_symbol(other))
 
     def __rtruediv__(self, other):
-        return self / other
+        return AscSymbol(other) / self
 
     def __floordiv__(self, other):
-        return Asc2OpeSymbol(self, AscSymbol._as_symbol(other), operator.floordiv)
+        return AscSymbol(self.sym // AscSymbol._as_symbol(other))
 
     def __rfloordiv__(self, other):
-        return self // other
+        return AscSymbol(other) // self
 
     def __mod__(self, other):
-        return Asc2OpeSymbol(self, AscSymbol._as_symbol(other), operator.mod)
+        return AscSymbol(self.sym % AscSymbol._as_symbol(other))
 
     def __rmod__(self, other):
         return self % other
 
     def __pow__(self, power, modulo=None):
-        pow_symbol = self
-        for i in range(power - 1):
-            pow_symbol *= self
-        return pow_symbol
+        return AscSymbol(self.sym ** AscSymbol._as_symbol(power))
 
-    def is_operand(self):
-        return len(self.operands) == 1 and self.operands[0] is self
-
-    def is_operator(self, op, recursive=False):
-        if isinstance(self, Asc2OpeSymbol) and self.op == op:
-            if not recursive:
-                return True
-            return all([operand.is_operator(op, recursive=True) or operand.is_operand() for operand in self.operands])
-        return False
-
-    def is_mul(self, recursive=False):
-        return self.is_operator(operator.mul, recursive)
-
-    def is_add(self, recursive=False):
-        return self.is_operator(operator.add, recursive)
-
-    def is_sub(self, recursive=False):
-        return self.is_operator(operator.sub, recursive)
-
-    def is_truediv(self, recursive=False):
-        return self.is_operator(operator.truediv, recursive)
-
-    def is_floordiv(self, recursive=False):
-        return self.is_operator(operator.floordiv, recursive)
-
-    def is_mod(self, recursive=False):
-        return self.is_operator(operator.mod, recursive)
-
-    def is_pow(self, recursive=False):
-        return self.is_operator(operator.pow, recursive)
+    def __neg__(self):
+        return AscSymbol(-self.sym)
 
     def __str__(self):
         return str(self.sym)
 
     def __repr__(self):
-        if self.sym.name.isdigit():
-            return f"ascir.SizeExpr({self.sym.name})"
-        return self.sym.name
+        return repr(self.sym)
 
-
-class Asc2OpeSymbol(AscSymbol):
-    def __init__(self, left, right, op):
-        super().__init__(operands=[left, right])
-        self.op = op
-        self.sym = self.op(left.sym, right.sym)
-
-    @property
-    def x(self):
-        return self.operands[0]
-
-    @property
-    def y(self):
-        return self.operands[1]
-
-    def __str__(self):
-        return str(self.sym)
-
-    def __repr__(self):
-        if self.is_mul(recursive=True):
-            operands = [
-                f"ascir.SizeExpr({v.name})" if v.name.isdigit() else v.name
-                for v in self.free_operands() if v.name != "1"
-            ]
-            return " * ".join(operands)
-
-        subs = dict()
-        for symbol in self.sym.free_symbols:
-            subs[symbol] = sympy.Symbol(f"{symbol}")
-        return str(self.sym.subs(subs))
+    @staticmethod
+    def _as_symbol(obj):
+        if isinstance(obj, AscSymbol):
+            return obj.sym
+        return sympy.Symbol(f"ascir.SizeExpr({obj})")
 
 
 class AscExpr:
     def __init__(self, expr: sympy.Expr):
         if not isinstance(expr, (sympy.Expr, sympy.Symbol)):
             expr = sympy.Symbol(str(expr))
-        self.expr = expr
-        vals = dict([(str(symbol), AscSymbol(str(symbol))) for symbol in self.expr.free_symbols])
-        self.asc_expr = eval(str(self.expr), vals)
-        if not isinstance(self.asc_expr, AscSymbol):
-            self.asc_expr = AscSymbol(str(self.asc_expr))
+        self.expr = sympy.simplify(expr)
+
+        stubs = {str(v): AscSymbol(v) for v in self.expr.free_symbols}
+        try:
+            self.asc_expr = AscSymbol(eval(str(self.expr), stubs))
+        except NameError:
+            self.asc_expr = AscSymbol(self.expr)
 
     def __str__(self):
         return str(self.asc_expr)
 
     def __repr__(self):
         return repr(self.asc_expr)
+
+    def expand_pow(self):
+        def expand(node):
+            if node.is_Pow and node.exp.is_Integer and node.exp > 1:
+                return sympy.Symbol('*'.join([node.base.name] * node.exp))
+            return node
+
+        return AscExpr(self.expr.replace(lambda e: e.is_Pow, expand))
 
 
 class Loop:
