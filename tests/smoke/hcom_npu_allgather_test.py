@@ -37,7 +37,7 @@ class AllGatherInTensorUneven(torch.nn.Module):
         super().__init__()
 
     def forward(self, out_tensor, x, output_split_sizes=None):
-        torch.distributed.all_gather_into_tensor_uneven(out_tensor, x, output_split_sizes)
+        torch_npu.distributed.all_gather_into_tensor_uneven(out_tensor, x, output_split_sizes)
         return out_tensor
 
 
@@ -46,7 +46,7 @@ class ReduceScatterTensorUneven(torch.nn.Module):
         super().__init__()
 
     def forward(self, out_tensor, x, intput_split_sizes=None):
-        torch.distributed.reduce_scatter_tensor_uneven(out_tensor, x, intput_split_sizes)
+        torch_npu.distributed.reduce_scatter_tensor_uneven(out_tensor, x, intput_split_sizes)
         return out_tensor
 
 

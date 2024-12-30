@@ -35,3 +35,19 @@ def adjust_traceable_collective_remaps():
         })
         setattr(torch.distributed._functional_collectives,
                 'all_gather_tensor_inplace_fixed', all_gather_tensor_inplace_fixed)
+        try:
+            from torch_npu.distributed import all_gather_into_tensor_uneven, reduce_scatter_tensor_uneven
+            from torchair._ge_concrete_graph.ge_converter.experimental.hcom_allgather import (
+                npu_allgather_into_tensor_uneven_patch_dist)
+            from torchair._ge_concrete_graph.ge_converter.experimental.hcom_reducescatter import (
+                npu_reduce_scatter_tensor_uneven_patch_dist)
+            traceable_collective_remaps.update({
+                all_gather_into_tensor_uneven: npu_allgather_into_tensor_uneven_patch_dist,
+                reduce_scatter_tensor_uneven: npu_reduce_scatter_tensor_uneven_patch_dist,
+            })
+            setattr(torch.distributed._functional_collectives,
+                    'npu_allgather_into_tensor_uneven_patch_dist', npu_allgather_into_tensor_uneven_patch_dist)
+            setattr(torch.distributed._functional_collectives,
+                    'npu_reduce_scatter_tensor_uneven_patch_dist', npu_reduce_scatter_tensor_uneven_patch_dist)
+        except ImportError:
+            return
