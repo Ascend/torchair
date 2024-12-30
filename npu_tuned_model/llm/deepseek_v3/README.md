@@ -192,10 +192,12 @@ export HCCL_OP_EXPANSION_MODE=AIV
 <table>
   <tr><th>类别归属</th><th>环境变量</th><th>说明</th></tr>
 
-  <tr><td rowspan="4">环境配置项</td></tr>
+  <tr><td rowspan="6">环境配置项</td></tr>
   <tr><td><code>WORLD_SIZE</code></td><td>多卡执行时，用于声明可使用的卡数</td></tr>
   <tr><td><code>LOCAL_RANK</code></td><td>每个进程在整体通信域中感知到的rank_id</td></tr>
   <tr><td><code>RANK_ID</code></td><td>每个进程在整体通信域中感知到的rank_id</td></tr>
+  <tr><td><code>MASTER_ADDR</code></td><td>HCCL通信域中master主机IP</td></tr>
+  <tr><td><code>MASTER_PORT</code></td><td>HCCL通信域中master主机的通信端口</td></tr>
 
   <tr><td rowspan="7">模型基础配置项</td></tr>
   <tr><td><code>MODEL_NAME</code></td><td>模型名</td></tr>

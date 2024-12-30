@@ -6,6 +6,9 @@ export MAX_NEW_TOKENS=32
 export BATCH_SIZE=1
 export EXE_MODE="eager"
 
+export MASTER_ADDR="127.0.0.1"
+export MASTER_PORT=6038
+
 for((i=0; i<${WORLD_SIZE}; i++))
 do
     export LOCAL_RANK=$i

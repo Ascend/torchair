@@ -119,7 +119,7 @@ class DeepseekV3RMSNorm(nn.Module):
         return result
 
     def forward(self, hidden_states, *args):
-        if len(args) == 0: # only hidden _states exists
+        if len(args) == 0: # only hidden_states exists
             result = self.ln_npu(hidden_states)
             return result
         elif len(args) == 1 and args[0] is None: # residual is None
@@ -485,7 +485,7 @@ class DeepseekV3MLPGMM(nn.Module):
 
         self.group_w1_w3 = nn.Parameter(
             torch.ones(self.num_experts, self.intermediate_size_per_rank * 2, self.hidden_size),
-            equires_grad=False)
+            requires_grad=False)
         self.group_w2 = nn.Parameter(
             torch.ones(self.num_experts, self.hidden_size, self.intermediate_size_per_rank),
             requires_grad=False)
