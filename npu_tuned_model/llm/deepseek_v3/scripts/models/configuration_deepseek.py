@@ -11,7 +11,7 @@ class DeepseekV3Config(PretrainedConfig):
     r"""
     This is the configuration class to store the configuration of a [`DeepseekV3Model`]. 
     It is used to instantiate an DeepSeek model according to the specified arguments, defining the model architecture.
-    Instantiating a configuration with the defaults will yield a similar configuration to that of the DeepSeek-V2.
+    Instantiating a configuration with the defaults will yield a similar configuration to that of the DeepSeek-V3.
 
     Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
     documentation from [`PretrainedConfig`] for more information.
@@ -106,14 +106,14 @@ class DeepseekV3Config(PretrainedConfig):
     ```python
     >>> from transformers import DeepseekV3Model, DeepseekV3Config
 
-    >>> # Initializing a Deepseek-V2 style configuration
+    >>> # Initializing a Deepseek-V3 style configuration
     >>> configuration = DeepseekV3Config()
 
     >>> # Accessing the model configuration
     >>> configuration = model.config
     ```"""
 
-    model_type = "deepseek_v2"
+    model_type = "deepseek_v3"
     keys_to_ignore_at_inference = ["past_key_values"]
 
     def __init__(

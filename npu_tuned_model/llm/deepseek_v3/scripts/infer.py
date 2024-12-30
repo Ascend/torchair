@@ -77,7 +77,7 @@ def parse_args():
                         help="eager or dynamo")
     parser.add_argument('--tokenizer_mode', type=str, default="default", choices=["default", "chat"],
                         help="tokenizer_mode should be default or chat")
-    parser.add_argument('--local_rank', type=int, default=0, help="local rank id for torch distributed launch")
+    parser.add_argument('--local_rank', type=int, default=0, help="Local rank id for torch distributed launch")
     parser.add_argument('--input_max_len', type=int, default=1024, help="Max number of input")
     parser.add_argument('--max_new_tokens', type=int, default=32, help="Max number of new tokens")
     parser.add_argument('--batch_size', type=int, default=2, help="Batch size for testing")

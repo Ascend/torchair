@@ -83,7 +83,7 @@ def split_w_attn(block, dst_model, i, local_rank):
             block.self_attn.q_a_proj.weight.data
         dst_model.model.layers[i].self_attn.q_a_layernorm.weight.data = \
             block.self_attn.q_a_layernorm.weight.data
-        dst_model.model.layers[i].self_attn.q_ab_proj.weight.data = \
+        dst_model.model.layers[i].self_attn.q_b_proj.weight.data = \
             block.self_attn.q_b_proj.weight.data[local_rank * q_dim: (local_rank + 1) * q_dim, :].contiguous()
 
     dst_model.model.layers[i].self_attn.kv_a_proj_woth_mqa.weight.data = \
@@ -137,10 +137,10 @@ def split_w(src_model, dst_model, world_size, local_rank):
         kv_low_rank_split(block, dst_model, i, local_rank)
 
         # moe experts weights
-        if not (i >= dst_model.config.first_k_dense_replace and i % dst_model.config.moe_layer_freq == 0):
-            split_w_dense(block, dst_model, i, local_rank)
-        else:
+        if i >= dst_model.config.first_k_dense_replace and i % dst_model.config.moe_layer_freq == 0:
             split_w_moe(block, dst_model, i, local_rank)
+        else:
+            split_w_dense(block, dst_model, i, local_rank)
 
 
 def copy_files_with_prefix(src_dir, dst_dir, prefix):
@@ -152,7 +152,7 @@ def copy_files_with_prefix(src_dir, dst_dir, prefix):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="split weight parameters with tensor parallel")
+    parser = argparse.ArgumentParser(description="Split weight parameters with tensor parallel")
     parser.add_argument('--model-path', type=str, help="Path of model weights")
     parser.add_argument('--output-path', type=str, help="The output directory where the results are saved")
     parser.add_argument('--world-size', type=int, default=8, help="The split times of model weights")
