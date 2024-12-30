@@ -222,6 +222,8 @@ def npu_allgather_into_tensor_uneven_patch_dist(output, input, output_split_size
                                                 async_op=False):
     if not torch.distributed._functional_collectives._are_we_tracing():
         from torchair import ALL_GATHER_INTO_TENSOR_UNEVEN
+        if ALL_GATHER_INTO_TENSOR_UNEVEN is None:
+            raise AttributeError(f'torch_npu.distributed has no attribute: all_gather_into_tensor_uneven')
         ALL_GATHER_INTO_TENSOR_UNEVEN(output, input, output_split_sizes, group, async_op)
     if async_op:
         raise AssertionError(f'When you enable torch.compile or use the cache_compile feature, '

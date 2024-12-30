@@ -40,7 +40,7 @@ try:
     import torch_npu
     ALL_GATHER_INTO_TENSOR_UNEVEN = torch_npu.distributed.all_gather_into_tensor_uneven
     REDUCE_SCATTER_TENSOR_UNEVEN = torch_npu.distributed.reduce_scatter_tensor_uneven
-except ImportError:
+except (ImportError, AttributeError) as e:
     ALL_GATHER_INTO_TENSOR_UNEVEN = None
     REDUCE_SCATTER_TENSOR_UNEVEN = None
 

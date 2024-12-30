@@ -68,6 +68,8 @@ def npu_reduce_scatter_tensor_uneven_patch_dist(
 ):
     if not torch.distributed._functional_collectives._are_we_tracing():
         from torchair import REDUCE_SCATTER_TENSOR_UNEVEN
+        if REDUCE_SCATTER_TENSOR_UNEVEN is None:
+            raise AttributeError(f'torch_npu.distributed has no attribute: reduce_scatter_tensor_uneven')
         REDUCE_SCATTER_TENSOR_UNEVEN(output, input, input_split_sizes, op, group, async_op)
     if async_op:
         raise AssertionError(f'When you enable torch.compile or use the cache_compile feature, '
