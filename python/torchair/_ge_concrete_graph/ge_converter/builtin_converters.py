@@ -140,3 +140,19 @@ def conveter_operator_pow(
         return self % other
     self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)
     return ge.Mod(self, other)
+
+
+@declare_supported([
+    Support(32.34),
+    Support(32.76),
+    Support(F16(1)),
+    Support(I32(1)),
+])
+@register_fx_node_ge_converter(math.ceil)
+def conveter_math_floor(
+        self: Union[Number, Tensor],
+        meta_outputs: TensorSpec = None
+):
+    if not isinstance(self, Tensor):
+        return math.ceil(self)
+    return dtype_promote(ge.ceil(self), target_dtype=meta_outputs.dtype)
