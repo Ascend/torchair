@@ -18,8 +18,7 @@ from torchair._ge_concrete_graph.ge_converter.experimental.hcom_allgather import
 from torchair._ge_concrete_graph.ge_converter.experimental.hcom_broadcast import npu_broadcast_patch_dist
 from torchair._ge_concrete_graph.ge_converter.experimental.hcom_alltoall import npu_all_to_all_single_patch_dist, \
     npu_all_to_all_patch_dist
-from torchair._ge_concrete_graph.ge_converter.experimental.hcom_reducescatter import \
-    npu_reduce_scatter_tensor_uneven_patch_dist
+
 import torchair.inference
 import torchair.llm_datadist
 import torchair.ops
@@ -65,6 +64,8 @@ def patch_for_hcom():
             logger.warning(f'The patch for torch_npu.distributed.xxx will only be enabled in a torch npu env.'
                         'When there is no torch_npu in the env, skip patch for torch_npu.')
             return
+        from torchair._ge_concrete_graph.ge_converter.experimental.hcom_reducescatter import \
+            npu_reduce_scatter_tensor_uneven_patch_dist
         torch_npu.distributed.all_gather_into_tensor_uneven = npu_allgather_into_tensor_uneven_patch_dist
         torch_npu.distributed.reduce_scatter_tensor_uneven = npu_reduce_scatter_tensor_uneven_patch_dist
 
