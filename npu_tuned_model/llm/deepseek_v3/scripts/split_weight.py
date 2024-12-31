@@ -19,6 +19,20 @@ def _to_parameter(data):
     return nn.Parameter(data, requires_grad=False)
 
 
+def split_w_dense_dp(block, dst_model, i, locak_rank):
+    up_weight_list = []
+
+    gate_weight = block.mlp.gate_proj.weight
+    up_weight = block.mlp.up_proj.weight
+    up_weight_list.append(_to_parameter(torch.cat([gate_weight, up_weight], axis=0)))
+
+    if len(up_weight_list) == 1:
+        dst_model.model.layers[i].mlp.merge_up_gate_proj.weight = up_weight_list[0]
+    else:
+        dst_model.model.layers[i].mlp.merge_up_gate_proj.weight = _to_parameter(torch.cat(up_weight_list, axis=0))
+    dst_model.model.layers[i].mlp.down_proj.weight.data = block.mlp.down_proj.weight.data.contiguous()
+
+
 def split_w_dense(block, dst_model, i, local_rank):
     up_weight_list = []
     ffn_dim = dst_model.model.layers[i].mlp.intermediate_size_per_rank
@@ -27,31 +41,31 @@ def split_w_dense(block, dst_model, i, local_rank):
     up_weight_list.append(_to_parameter(torch.cat([gate_weight, up_weight], axis=0)))
 
     if len(up_weight_list) == 1:
-        dst_model.model.layers[i].mlp.merged_up_gate_proj.weight = up_weight_list[0]
+        dst_model.model.layers[i].mlp.merge_up_gate_proj.weight = up_weight_list[0]
     else:
-        dst_model.model.layers[i].mlp.merged_up_gate_proj.weight = _to_parameter(torch.cat(up_weight_list, axis=0))
-    dst_model.model.layers[i].mlp.down_proj.weight = \
+        dst_model.model.layers[i].mlp.merge_up_gate_proj.weight = _to_parameter(torch.cat(up_weight_list, axis=0))
+    dst_model.model.layers[i].mlp.down_proj.weight.data = \
         block.mlp.down_proj.weight.data[:, local_rank * ffn_dim: (local_rank + 1) * ffn_dim].contiguous()
 
 
 def split_w_moe(block, dst_model, i, local_rank):
     shared_up_weight_list = []
-    ffn_dim = dst_model.model.layers[i].mlp.shared_expert.intermediate_size_per_rank
+    ffn_dim = dst_model.model.layers[i].mlp.shared_experts.intermediate_size_per_rank
     gate_weight = \
-        block.mlp.shared_expert.gate_proj.weight[local_rank * ffn_dim: (local_rank + 1) * ffn_dim, :].contiguous()
+        block.mlp.shared_experts.gate_proj.weight[local_rank * ffn_dim: (local_rank + 1) * ffn_dim, :].contiguous()
     up_weight = \
-        block.mlp.shared_expert.up_proj.weight[local_rank * ffn_dim: (local_rank + 1) * ffn_dim, :].contiguous()
+        block.mlp.shared_experts.up_proj.weight[local_rank * ffn_dim: (local_rank + 1) * ffn_dim, :].contiguous()
     shared_up_weight_list.append(_to_parameter(torch.cat([gate_weight, up_weight], axis=0)))
     if len(shared_up_weight_list) == 1:
-        dst_model.model.layers[i].mlp.shared_expert.merged_up_gate_proj.weight = shared_up_weight_list[0]
+        dst_model.model.layers[i].mlp.shared_experts.merge_up_gate_proj.weight = shared_up_weight_list[0]
     else:
-        dst_model.model.layers[i].mlp.shared_expert.merged_up_gate_proj.weight = \
+        dst_model.model.layers[i].mlp.shared_experts.merge_up_gate_proj.weight = \
             _to_parameter(torch.cat(shared_up_weight_list, axis=0))
-    dst_model.model.layers[i].mlp.shared_expert.down_proj.weight = \
-        block.mlp.shared_expert.down_proj.weight.data[:, local_rank * ffn_dim: (local_rank + 1) * ffn_dim].contiguous()
+    dst_model.model.layers[i].mlp.shared_experts.down_proj.weight.data = \
+        block.mlp.shared_experts.down_proj.weight.data[:, local_rank * ffn_dim: (local_rank + 1) * ffn_dim].contiguous()
     dst_model.model.layers[i].mlp.gate.weight.data = block.mlp.gate.weight.data
     if dst_model.model.layers[i].mlp.gate.topk_method == "noaux_tc":
-        dst_model.model.layers[i].mlp.gate.a_score_correction_bias.data = block.mlp.gate.a_score_correction_bias.data
+        dst_model.model.layers[i].mlp.gate.e_score_correction_bias.data = block.mlp.gate.e_score_correction_bias.data
 
     expert_num = block.mlp.config.n_routed_experts
     gate_proj_list, down_proj_list, up_proj_list = [], [], []  
@@ -72,8 +86,8 @@ def split_w_moe(block, dst_model, i, local_rank):
 
 
 def split_w_attn(block, dst_model, i, local_rank):
-    q_dim = dst_model.layers[0].self_attn.num_heads_per_rank * dst_model.layers[0].self_attn.q_head_dim
-    o_dim = dst_model.layers[0].self_attn.num_heads_per_rank * dst_model.layers[0].self_attn.v_head_dim
+    q_dim = dst_model.model.layers[0].self_attn.num_heads_per_rank * dst_model.model.layers[0].self_attn.q_head_dim
+    o_dim = dst_model.model.layers[0].self_attn.num_heads_per_rank * dst_model.model.layers[0].self_attn.v_head_dim
 
     if dst_model.model.layers[i].self_attn.q_lora_rank is None:
         dst_model.model.layers[i].self_attn.q_proj.weight.data = \
@@ -86,28 +100,28 @@ def split_w_attn(block, dst_model, i, local_rank):
         dst_model.model.layers[i].self_attn.q_b_proj.weight.data = \
             block.self_attn.q_b_proj.weight.data[local_rank * q_dim: (local_rank + 1) * q_dim, :].contiguous()
 
-    dst_model.model.layers[i].self_attn.kv_a_proj_woth_mqa.weight.data = \
-        block.self_attn.kv_a_proj_woth_mqa.weight.data
+    dst_model.model.layers[i].self_attn.kv_a_proj_with_mqa.weight.data = \
+        block.self_attn.kv_a_proj_with_mqa.weight.data
 
     dst_model.model.layers[i].self_attn.kv_a_layernorm.weight.data = \
         block.self_attn.kv_a_layernorm.weight.data
     dst_model.model.layers[i].self_attn.o_proj.weight.data = \
         block.self_attn.o_proj.weight.data[:, local_rank * o_dim: (local_rank + 1) * o_dim].contiguous()
-    dst_model.model.layers[i].self_attn.input_layernorm.weight.data = \
-        block.self_attn.input_layernorm.weight.data
-    dst_model.model.layers[i].self_attn.post_attention_layernorm.weight.data = \
-        block.self_attn.post_attention_layernorm.weight.data
+    dst_model.model.layers[i].input_layernorm.weight.data = \
+        block.input_layernorm.weight.data
+    dst_model.model.layers[i].post_attention_layernorm.weight.data = \
+        block.post_attention_layernorm.weight.data
 
 
 def kv_low_rank_split(block, dst_model, i, local_rank):
-    k_dim = dst_model.layers[0].self_attn.num_heads_per_rank * \
-                (dst_model.layers[0].self_attn.qk_nope_head_dim + dst_model.layers[0].self_attn.v_head_dim)
+    k_dim = dst_model.model.layers[0].self_attn.num_heads_per_rank * \
+                (dst_model.model.layers[0].self_attn.qk_nope_head_dim + dst_model.model.layers[0].self_attn.v_head_dim)
     kv_b_proj_weight_data = \
         block.self_attn.kv_b_proj.weight.data[local_rank * k_dim: (local_rank + 1) * k_dim, :].contiguous()
-    qk_nope_head_dim = dst_model.layers[i].self_attn.qk_nope_head_dim
-    num_heads_per_rank = dst_model.layers[i].self_attn.num_heads_per_rank
-    kv_lora_rank = dst_model.layers[i].self_attn.kv_lora_rank
-    v_head_dim = dst_model.layers[i].self_attn.v_head_dim
+    qk_nope_head_dim = dst_model.model.layers[i].self_attn.qk_nope_head_dim
+    num_heads_per_rank = dst_model.model.layers[i].self_attn.num_heads_per_rank
+    kv_lora_rank = dst_model.model.layers[i].self_attn.kv_lora_rank
+    v_head_dim = dst_model.model.layers[i].self_attn.v_head_dim
 
     index_tensor = torch.arange(qk_nope_head_dim).repeat(num_heads_per_rank) + \
         torch.arange(num_heads_per_rank).repeat_interleave(qk_nope_head_dim) * (qk_nope_head_dim + v_head_dim)
@@ -186,7 +200,7 @@ if __name__ == "__main__":
 
     for rank_id in range(rank_size):
         logging.info("rank_id={} / rank_size={}".format(rank_id, rank_size))
-        os.environ["LOCAL_RANK"] = rank_id
+        os.environ["LOCAL_RANK"] = str(rank_id)
 
         save_path = os.path.join(output_path, f"rank_{rank_id}")
         logging.info("Split weight for rank %s start, save path is: %s", rank_id, save_path)

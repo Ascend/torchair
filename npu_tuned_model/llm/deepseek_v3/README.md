@@ -41,6 +41,7 @@ pip3 install -e MindSpeed
 cann_path=/usr/local/Ascend # 昇腾cann包安装目录
 source ${cann_path}/latest/bin/setenv.bash
 export ASCEND_HOME_PATH=${cann_path}/latest
+export WORLD_SIZE=8 # 多卡推理时使用的卡数，默认为8
 ```
 
 ## 1.2. 权重准备
@@ -63,7 +64,8 @@ python3 scripts/split_weight.py --model-path model_path_origin --output-path mod
 
 基于已切分好的权重路径`model_path_tp`，可通过已提供的推理启动脚本`scripts/infer.sh`进行多卡推理:
 ```shell
-bash scripts/infer.sh model_path_tp
+cd scripts
+bash infer.sh model_path_tp
 ```
 **需要注意**
 默认的推理脚本通过调用推理执行脚本`scripts/infer.py`实现：
