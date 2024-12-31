@@ -6,7 +6,8 @@
         "get_npu_backend",
         "use_internal_format_weight",
         "register_fx_node_ge_converter",
-        "patch_for_hcom"
+        "patch_for_hcom",
+        "NpuStreamSwitch"
       ],
     "torchair.ge": [
         "custom_op",
@@ -40,6 +41,7 @@
       "create_npu_tensors"
     ],
     "torchair.ops": [
-        "npu_print"
+        "npu_print",
+		"npu_wait_tensor"
     ]
 }

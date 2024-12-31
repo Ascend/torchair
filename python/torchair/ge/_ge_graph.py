@@ -612,6 +612,9 @@ class GeGraph(object):
         self._named_inputs_info = {}
         self._used_process_group = {}
         self._dont_prune_me_ops = []
+        self._stream_tag = None
+        self._stream_priority = 0
+
 
     def _python_code_init(self):
         python_code = ''
@@ -768,8 +771,27 @@ class GeGraph(object):
     def named_inputs_info(self):
         return self._named_inputs_info
 
+
+    @property
+    def stream_tag(self):
+        return self._stream_tag
+
+
+    @property
+    def stream_priority(self):
+        return self._stream_priority
+
+
     def dont_prune_me(self, op):
         self._dont_prune_me_ops.append(op)
+
+
+    def set_stream_tag(self, stream_tag: str):
+        self._stream_tag = stream_tag
+
+
+    def set_stream_priority(self, stream_priority: int):
+        self._stream_priority = stream_priority
 
 
 class _GeGraphStack(threading.local):

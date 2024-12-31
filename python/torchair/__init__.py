@@ -27,7 +27,7 @@ import torchair.ge
 
 __all__ = ['get_compiler', 'get_npu_backend', 'dynamo_export', 'CompilerConfig',
            'use_internal_format_weight', 'logger', 'register_fx_node_ge_converter',
-           'patch_for_hcom']
+           'patch_for_hcom', 'NpuStreamSwitch']
 
 # Dependency library version verification
 protobuf_version = pkg_resources.get_distribution("protobuf").version
@@ -67,3 +67,17 @@ def patch_for_hcom():
             return
         torch_npu.distributed.all_gather_into_tensor_uneven = npu_allgather_into_tensor_uneven_patch_dist
         torch_npu.distributed.reduce_scatter_tensor_uneven = npu_reduce_scatter_tensor_uneven_patch_dist
+
+
+class NpuStreamSwitch:
+    def __init__(self, stream_tag: str, stream_priority: int = 0):
+        self.stream_tag = stream_tag
+        self.stream_priority = stream_priority
+
+    def __enter__(self):
+        from torchair.ops._stream_in import _npu_stream_in
+        return _npu_stream_in(self.stream_tag, self.stream_priority)
+
+    def __exit__(self, *args):
+        from torchair.ops._stream_out import _npu_stream_out
+        return _npu_stream_out(self.stream_tag, self.stream_priority)
