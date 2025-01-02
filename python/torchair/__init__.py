@@ -11,13 +11,6 @@ from torchair._ge_concrete_graph import ge_converter
 from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter as _register_fx_node_ge_converter
 from torchair.experimental.inference import use_internal_format_weight
 from torchair.core.utils import logger
-from torchair._ge_concrete_graph.ge_converter.experimental.hcom_allreduce import npu_allreduce_patch_dist, \
-    patch_for_deepspeed_allreduce
-from torchair._ge_concrete_graph.ge_converter.experimental.hcom_allgather import npu_all_gather_patch_dist, \
-    npu_allgather_in_tensor_patch_dist, npu_allgather_into_tensor_uneven_patch_dist
-from torchair._ge_concrete_graph.ge_converter.experimental.hcom_broadcast import npu_broadcast_patch_dist
-from torchair._ge_concrete_graph.ge_converter.experimental.hcom_alltoall import npu_all_to_all_single_patch_dist, \
-    npu_all_to_all_patch_dist
 
 import torchair.inference
 import torchair.llm_datadist
@@ -51,6 +44,14 @@ def register_fx_node_ge_converter(aten_op):
 def patch_for_hcom():
     if torch.__version__ >= "2.3.1":
         logger.warning(f'For versions 2.3.1 and above of PyTorch, there is no need to call patch_for_hcom anymore.')
+
+    from torchair._ge_concrete_graph.ge_converter.experimental.hcom_allreduce import npu_allreduce_patch_dist, \
+        patch_for_deepspeed_allreduce
+    from torchair._ge_concrete_graph.ge_converter.experimental.hcom_allgather import (npu_all_gather_patch_dist,
+        npu_allgather_in_tensor_patch_dist, npu_allgather_into_tensor_uneven_patch_dist)
+    from torchair._ge_concrete_graph.ge_converter.experimental.hcom_broadcast import npu_broadcast_patch_dist
+    from torchair._ge_concrete_graph.ge_converter.experimental.hcom_alltoall import (npu_all_to_all_single_patch_dist,
+                                                                                     npu_all_to_all_patch_dist)
     patch_for_deepspeed_allreduce()
     torch.distributed.all_reduce = npu_allreduce_patch_dist
     torch.distributed.all_gather = npu_all_gather_patch_dist
