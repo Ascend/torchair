@@ -21,8 +21,15 @@ from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
 from torchair.ge._ge_graph import Tensor, TensorSpec
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
-    Support
+    Support, T
 from torchair._ge_concrete_graph.utils import dtype_promote
+
+
+def get_eq_dtype(self, other):
+    if self is None or other is None:
+        return None
+    target_dtype = torch.result_type(self, other)
+    return target_dtype
 
 
 @declare_supported(
@@ -40,8 +47,12 @@ def conveter_aten_eq_Tensor(self: Tensor, other: Tensor, meta_outputs: TensorSpe
 
 @declare_supported(
     [
-        Support(F32(2, 2), 0),
-        Support(F32(2, 2), 1.0),
+        Support(T([0], dtype=torch.int16), -2.873923888223145e+37),
+        Support(T([0.], dtype=torch.bfloat16), 1),
+        Support(T([0.], dtype=torch.bfloat16), 0),
+        Support(T([0.], dtype=torch.float16), -1.0),
+        Support(T([0], dtype=torch.uint8), 1),
+        Support(T([0], dtype=torch.int8), -1.0),
     ]
 )
 @register_fx_node_ge_converter(torch.ops.aten.eq.Scalar)
@@ -49,7 +60,9 @@ def conveter_aten_eq_Scalar(
     self: Tensor, other: Union[Number, Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::eq.Scalar(Tensor self, Scalar other) -> Tensor"""
-    other = dtype_promote(other, target_dtype=self.dtype)
+    target_dtype = get_eq_dtype(self.meta, other.meta if isinstance(other, Tensor) else other)
+    if target_dtype:
+        self, other = dtype_promote(self, other, target_dtype=target_dtype)
     return ge.Equal(self, other)
 
 
