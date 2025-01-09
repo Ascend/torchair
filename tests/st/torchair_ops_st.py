@@ -36,7 +36,7 @@ class TorchairSt(unittest.TestCase):
 
             def forward(self, in1, in2, in3, in4):
                 add_result = torch.add(in1, in2)
-                with torchair.NpuStreamSwitch('1', 3): 
+                with torchair.ops.NpuStreamSwitch('1', 3): 
                     torchair.ops.npu_wait_tensor(in4, add_result)
                     mm_result = torch.mm(in3, in4)
                 return add_result, mm_result
