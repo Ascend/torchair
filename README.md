@@ -18,6 +18,11 @@ TorchAir继承自PyTorch框架[Dynamo模式](https://pytorch.org/docs/stable/tor
 git clone https://gitee.com/ascend/torchair.git
 ```
 
+下载依赖三方库
+```shell
+git submodule update --init --recursive
+```
+
 配置编译环境，执行配置命令
 > 配置只需要进行一次，用于获取pytorch的编译选项（如当前的torch是否开启ABI）及Ascend sdk的安装路径（如果需要在本地CPU上进行调试）。
 ```shell

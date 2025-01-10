@@ -54,6 +54,11 @@ checkopts() {
 
 PACKAGE_NAME=torchair-0.1-py3-none-any.whl
 
+install_submodules(){
+  logging "--- Trying to initialize submodules"
+  git submodule update --init --recursive
+}
+
 build_torchair() {
   logging "CMake Args: ${CMAKE_ARGS}"
 
@@ -120,6 +125,8 @@ main() {
   if [[ "$GCC_PREFIX" != "" ]]; then
     CMAKE_ARGS="$CMAKE_ARGS -DGCC_PREFIX=$GCC_PREFIX"
   fi
+
+  install_submodules
 
   if [[ "X$ENABLE_CI_BUILD" = "Xon" ]]; then
     build_torchair

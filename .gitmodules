@@ -1,0 +1,7 @@
+[submodule "third_party/secure_c"]
+	path = third_party/secure_c
+	url = https://gitee.com/openeuler/libboundscheck.git
+[submodule "third_party/googletest"]
+	path = third_party/googletest
+	url = https://gitee.com/mirrors/googletest.git
+	branch = v1.8.x

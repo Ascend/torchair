@@ -15,8 +15,6 @@ endif()
 
 set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/stubs)
 
-include(${TORCHAIR_SRC_DIR}/cmake/gtest.cmake)
-include(${TORCHAIR_SRC_DIR}/cmake/secure_c.cmake)
 include(${TORCHAIR_SRC_DIR}/cmake/metadef/module.cmake)
 include(${TORCHAIR_SRC_DIR}/cmake/graph_engine/module.cmake)
 include(${TORCHAIR_SRC_DIR}/cmake/acl/module.cmake)
@@ -24,10 +22,15 @@ include(${TORCHAIR_SRC_DIR}/cmake/aoe/module.cmake)
 include(${TORCHAIR_SRC_DIR}/cmake/hccl/module.cmake)
 include(${TORCHAIR_SRC_DIR}/cmake/pytorch/module.cmake)
 include(${TORCHAIR_SRC_DIR}/cmake/torch_npu/module.cmake)
-include(${TORCHAIR_SRC_DIR}/cmake/ascend_protobuf.cmake)
 include_directories(${TORCHAIR_SRC_DIR}/torchair/include)
 
 add_subdirectory(${TORCHAIR_SRC_DIR} torchair)
+
+add_subdirectory(${TORCHAIR_SRC_DIR}/third_party/googletest gtest)
+include_directories(${TORCHAIR_SRC_DIR}/third_party/googletest/googletest/include)
+include_directories(${TORCHAIR_SRC_DIR}/third_party/secure_c/include)
+
+
 
 set(CMAKE_CXX_FLAGS "-D_FORTIFY_SOURCE=2 -Wno-class-memaccess -Wno-float-equal -Wextra -Wno-unused-parameter -Wno-ignored-qualifiers -Wno-comment -Wno-deprecated-declarations -Wall -fPIC -fstack-protector-all -Wl,--no-as-needed -Wl,-z,relro,-z,now,-z,noexecstack -fno-common -pipe -fno-strict-aliasing -Wdate-time -Wformat=2 -Wno-shadow -Wno-undef -Wunused -Wdelete-non-virtual-dtor -Wnon-virtual-dtor -Wno-overloaded-virtual ${CMAKE_CXX_FLAGS}")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lgcov --coverage -fprofile-arcs -ftest-coverage ")

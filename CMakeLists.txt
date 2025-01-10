@@ -47,7 +47,6 @@ endif()
 
 set(ASCEND_SDK_HEADERS_PATH ${CMAKE_CURRENT_LIST_DIR}/third_party/ascend)
 
-include(${CMAKE_CURRENT_LIST_DIR}/cmake/secure_c.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/metadef/module.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/graph_engine/module.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/acl/module.cmake)
@@ -55,8 +54,11 @@ include(${CMAKE_CURRENT_LIST_DIR}/cmake/aoe/module.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/hccl/module.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/pytorch/module.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/torch_npu/module.cmake)
-include(${CMAKE_CURRENT_LIST_DIR}/cmake/ascend_protobuf.cmake)
+include_directories(${CMAKE_CURRENT_LIST_DIR}/third_party/secure_c/include)
 
+if(NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/third_party/secure_c/include")
+    message(FATAL_ERROR "Please execute 'git submodule update --init --recursive' to download and update third-party libraries!")
+endif()
 
 add_subdirectory(codegen)
 add_custom_command(OUTPUT AUTO_GENERATED_GE_RAW_OPS
