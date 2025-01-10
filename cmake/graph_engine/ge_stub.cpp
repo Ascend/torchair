@@ -364,6 +364,7 @@ ge::Status GeSessionExecuteGraphWithStreamAsync(ge::Session &session, uint32_t g
     output_i.SetStorageFormat(ge::FORMAT_ND);
 
     char *st_muti_gear_stub = std::getenv("ST_GEARS_STUB_OUTPUTSHAPE");
+    char *st_output_reuse_input_addr_stub = std::getenv("ST_OUTPUT_REUSE_INPUT_ADDR");
     std::vector<int64_t> dims;
     if (st_muti_gear_stub != NULL) {
       dims.resize(inputs[0].GetShape().GetOriginShape().GetDimNum());
@@ -386,8 +387,15 @@ ge::Status GeSessionExecuteGraphWithStreamAsync(ge::Session &session, uint32_t g
     if (placement == gert::TensorPlacement::kOnDeviceHbm) {
       mgr = &manager;
     }
-    output_i.SetData(gert::TensorData(datas.data(), mgr, sizeof(float) * datas.size(),
-                                      placement));
+    if (i == 0 && st_output_reuse_input_addr_stub != NULL) {
+      std::cerr << "[STUB] Output 0 reuse input 0 addr, and set manager is nullptr. " << std::endl;
+      // 模拟复用输入内存的场景
+      output_i.SetData(gert::TensorData(inputs[0].GetTensorData().GetAddr(), nullptr,
+                                        inputs[0].GetSize(), placement));
+    } else {
+      output_i.SetData(gert::TensorData(datas.data(), mgr, sizeof(float) * datas.size(),
+                                        placement));
+    }
   }
 
   return ge::SUCCESS;

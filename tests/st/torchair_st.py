@@ -1,6 +1,7 @@
 import math
 import os
 import sys
+import contextlib
 
 os.environ['TNG_LOG_LEVEL'] = '0'
 import torchair
@@ -46,6 +47,19 @@ def register_is_npu():
         return not self.is_cpu
 
     torch.Tensor.is_npu = _is_npu
+
+
+@contextlib.contextmanager
+def set_env_var(key, value):
+    original_value = os.environ.get(key)
+    os.environ[key] = value
+    try:
+        yield
+    finally:
+        if original_value is None:
+            del os.environ[key]
+        else:
+            os.environ[key] = original_value
 
 
 class TorchairSt(unittest.TestCase):
@@ -1764,6 +1778,31 @@ class TorchairSt(unittest.TestCase):
         expected = np.array([1.0, 2.0, 3.0], dtype=np.float32)
         self.assertEqual(np_array.dtype, expected.dtype)
 
+    def test_dynamic_npu_executor_with_reuse_input_addrs(self):
+        initialize_graph_engine()
+        from torchair.core import _npu_graph_executor
+        import _privateuse1_backend
+        npu_device = _privateuse1_backend.npu_device()
+        torch.utils.rename_privateuse1_backend("npu")
+
+        with GeGraph() as graph, set_env_var("ST_OUTPUT_REUSE_INPUT_ADDR", ""):
+            copy = ge.Data(index=0, shape=[1, 1, -1, -1], dtype=DataType.DT_INT32, placement='NPU')
+            indices = ge.Data(index=1, shape=[1], dtype=DataType.DT_INT32, placement='NPU')
+            updates = ge.Data(index=2, shape=[1, 1, 1, -1], dtype=DataType.DT_INT32, placement='NPU')
+            z = ge.Scatter(copy, indices, updates, reduce="update", axis=0)
+            output = ge.NetOutput([z])
+
+            set_graph_output_dtypes(graph, [DataType.DT_INT32])
+
+            executor = TorchNpuGraph()
+            executor.load(graph)
+            executor.compile()
+
+            copy = torch.ones([1, 1, 2, 8], dtype=torch.int32).to(npu_device)
+            indices = torch.ones([1], dtype=torch.int32).to(npu_device)
+            updates = torch.ones([1, 1, 1, 8], dtype=torch.int32).to(npu_device)
+            z = executor.run([copy, indices, updates])
+            self.assertTrue(z[0].data_ptr() == copy.data_ptr())
 
 if __name__ == '__main__':
     unittest.main()

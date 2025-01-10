@@ -463,6 +463,7 @@ Status GeTensorToAtTensor(gert::Tensor &ge_tensor, at::Tensor &tensor) {
   size_t tensor_nbytes = at::detail::computeStorageNbytesContiguous(dims, tensor.dtype().itemsize());
 
   gert::TensorAddrManager block_manager = nullptr;
+  gert::TensorAddress backup_addr = ge_tensor.GetAddr();
   gert::TensorAddress addr_block = ge_tensor.MutableTensorData().Release(block_manager);
   
   at::DataPtr c10_data_ptr;
@@ -473,9 +474,12 @@ Status GeTensorToAtTensor(gert::Tensor &ge_tensor, at::Tensor &tensor) {
     Context *ctx = new Context(block_manager, addr_block);
     c10_data_ptr = at::DataPtr(addr, ctx, &ContextDeleter, tensor.device());
   } else {
-    TNG_ASSERT(device_type != c10::DeviceType::PrivateUse1, "device ge tensor block manager is null.");
-    c10_data_ptr = c10::GetAllocator(device_type)->allocate(tensor_nbytes);
-    memcpy(c10_data_ptr.get(), addr_block, tensor_nbytes);
+    if (device_type == c10::DeviceType::PrivateUse1) {
+      c10_data_ptr = at::DataPtr(backup_addr, nullptr, &c10::detail::deleteNothing, tensor.device());
+    } else {
+      c10_data_ptr = c10::GetAllocator(device_type)->allocate(tensor_nbytes);
+      memcpy(c10_data_ptr.get(), addr_block, tensor_nbytes);
+    }
   }
 
   at::Storage storage;
