@@ -61,7 +61,7 @@ std::string DebugString(const tng::Placement &placement) {
 }
 
 std::string DebugString(const ge::DataType &dtype) {
-  return compat::DebugString(dtype);
+  return compat::DebugString(dtype).GetErrorMessage();
 }
 
 std::string DebugString(const std::vector<ge::DataType> &dtypes) {

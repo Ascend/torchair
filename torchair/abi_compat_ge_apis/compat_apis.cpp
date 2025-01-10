@@ -158,8 +158,8 @@ Status DebugString(const ge::Tensor &tensor) {
   const auto &desc = tensor.GetTensorDesc();
   std::stringstream ss;
   ss << "ge::Tensor(shape=" << DebugString(desc.GetShape()).GetErrorMessage()
-     << ", format=" << DebugString(desc.GetFormat())
-     << ", dtype=" << DebugString(desc.GetDataType())
+     << ", format=" << DebugString(desc.GetFormat()).GetErrorMessage()
+     << ", dtype=" << DebugString(desc.GetDataType()).GetErrorMessage()
      << ", device=" << (desc.GetPlacement() == ge::Placement::kPlacementHost ? "CPU" : "NPU")
      << ", addr=" << static_cast<const void *>(tensor.GetData()) << ")";
   return Status::Error(ss.str().c_str());
@@ -169,28 +169,28 @@ Status DebugString(const gert::Tensor &tensor) {
   std::stringstream ss;
   ss << "ge::Tensor(storage shape=" << DebugString(tensor.GetStorageShape()).GetErrorMessage()
      << ", origin shape=" << DebugString(tensor.GetOriginShape()).GetErrorMessage()
-     << ", storage format=" << DebugString(tensor.GetStorageFormat())
-     << ", origin format=" << DebugString(tensor.GetOriginFormat())
-     << ", dtype=" << DebugString(tensor.GetDataType())
+     << ", storage format=" << DebugString(tensor.GetStorageFormat()).GetErrorMessage()
+     << ", origin format=" << DebugString(tensor.GetOriginFormat()).GetErrorMessage()
+     << ", dtype=" << DebugString(tensor.GetDataType()).GetErrorMessage()
      << ", device=" << (tensor.GetPlacement() == gert::TensorPlacement::kOnDeviceHbm ? "NPU" : "CPU")
      << ", addr=" << static_cast<const void *>(tensor.GetAddr()) << ")";
   return Status::Error(ss.str().c_str());
 }
 
-std::string DebugString(const ge::DataType &dtype) {
+Status DebugString(const ge::DataType &dtype) {
   const auto iter = kDataTypeToStringMap.find(dtype);
   if (iter != kDataTypeToStringMap.end()) {
-    return iter->second;
+    return Status::Error(iter->second.c_str());
   }
-  return "Unsupported dtype " + std::to_string(dtype);
+  return Status::Error(("Unsupported dtype " + std::to_string(dtype)).c_str());
 }
 
-std::string DebugString(const ge::Format &format) {
+Status DebugString(const ge::Format &format) {
   const auto iter = kFormatToStringMap.find(format);
   if (iter != kFormatToStringMap.end()) {
-    return iter->second;
+    return Status::Error(iter->second.c_str());
   }
-  return "Unsupported format " + std::to_string(format);
+  return Status::Error(("Unsupported format " + std::to_string(format)).c_str());
 }
 }  // namespace compat
 }  // namespace tng

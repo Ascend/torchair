@@ -253,7 +253,7 @@ Status StaticNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
     TNG_RETURN_IF_ERROR(Session::GetInstance().RunGraph(graph_data_->id, inputs_holder_, outputs_holder_, stream));
   }
 
-  TNG_LOG(INFO) << "StaticNpuGraphExecutor::Run graph " << graph_data_->id << " on stream " << stream
+  TNG_LOG(INFO) << "Static npu graph executor run run graph " << graph_data_->id << " on stream " << stream
                 << " successfully.";
   if (fm_refreshable_) {
     TNG_ASSERT_NOTNULL(feature_map_block_);

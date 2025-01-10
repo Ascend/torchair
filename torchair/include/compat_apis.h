@@ -19,8 +19,8 @@ Status DebugString(const ge::Shape &shape);
 Status DebugString(const gert::Shape &shape);
 Status DebugString(const ge::Tensor &tensor);
 Status DebugString(const gert::Tensor &tensor);
-std::string DebugString(const ge::DataType &dtype);
-std::string DebugString(const ge::Format &format);
+Status DebugString(const ge::DataType &dtype);
+Status DebugString(const ge::Format &format);
 Status ParseGraphFromArray(const void *serialized_proto, size_t proto_size, ge::GraphPtr &graph);
 }  // namespace compat
 }  // namespace tng
