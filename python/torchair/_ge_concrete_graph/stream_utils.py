@@ -33,7 +33,12 @@ def get_op_from_graph(graph, input_name):
 
 def is_finished(find_op, *args):
     for arg in args:
-        if arg.node.name == find_op.name:
+        if isinstance(arg, (list, tuple)):
+            for item in arg:
+                if isinstance(item, ge.Tensor) and (item.node.name == find_op.name):
+                    return True
+            continue
+        if isinstance(arg, ge.Tensor) and (arg.node.name == find_op.name):
             return True
     return find_op.type in {'Data', 'Const'}
 
@@ -43,8 +48,6 @@ def traverse_input(graph, inputs, visited, *args):
         if input_item == '':
             continue
         input_name_list = input_item.split(":")
-        if len(input_name_list) <= 0:
-            continue
         input_name = input_name_list[0]
         if input_name not in visited:
             visited.add(input_name)
