@@ -149,10 +149,10 @@ def conveter_operator_pow(
     Support(I32(1)),
 ])
 @register_fx_node_ge_converter(math.ceil)
-def conveter_math_floor(
+def conveter_math_ceil(
         self: Union[Number, Tensor],
         meta_outputs: TensorSpec = None
 ):
     if not isinstance(self, Tensor):
         return math.ceil(self)
-    return dtype_promote(ge.ceil(self), target_dtype=meta_outputs.dtype)
+    return dtype_promote(ge.Ceil(self), target_dtype=meta_outputs.dtype)
