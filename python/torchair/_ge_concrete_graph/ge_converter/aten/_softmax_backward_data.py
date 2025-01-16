@@ -46,6 +46,7 @@ def conveter_aten__softmax_backward_data_default(
                                " or input to be at::Float and grad to be at::Half")
     return ge.SoftmaxGrad(output, grad_output, axes=[dim])
 
+
 @register_fx_node_ge_converter(torch.ops.aten._softmax_backward_data.out)
 def conveter_aten__softmax_backward_data_out(
     grad_output: Tensor,

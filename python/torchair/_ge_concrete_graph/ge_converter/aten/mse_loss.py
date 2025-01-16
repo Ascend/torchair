@@ -24,9 +24,11 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
     Support
 from torchair._ge_concrete_graph.utils import dtype_promote
 
+
 def get_reduction_str(reduction):
     reduction_str = ["none", "mean", "sum"]
     return reduction_str[reduction]
+
 
 @declare_supported([
     Support(F32(6, 512, 44, 44), F32(6, 512, 44, 44), 0),

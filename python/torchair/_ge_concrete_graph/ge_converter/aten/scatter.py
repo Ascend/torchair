@@ -47,7 +47,7 @@ def conveter_aten_scatter_value(
 
 @declare_supported(
     [
-        Support(F32(2, 2), 0, I64(2,2), F32(2, 2)),
+        Support(F32(2, 2), 0, I64(2, 2), F32(2, 2)),
     ]
 )
 @register_fx_node_ge_converter(torch.ops.aten.scatter.src)
@@ -56,6 +56,7 @@ def conveter_aten_scatter_src(
 ):
     """NB: aten::scatter.src(Tensor self, int dim, Tensor index, Tensor src) -> Tensor"""
     return ge.ScatterElements(self, index, src, axis=dim)
+
 
 @register_fx_node_ge_converter(torch.ops.aten.scatter.reduce)
 def conveter_aten_scatter_reduce(

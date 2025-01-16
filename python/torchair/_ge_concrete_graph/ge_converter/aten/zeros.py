@@ -24,6 +24,7 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
     Support
 from torchair._ge_concrete_graph.utils import dtype_promote
 
+
 @register_fx_node_ge_converter(torch.ops.aten.zeros.names)
 def conveter_aten_zeros_names(
     size: List[int],

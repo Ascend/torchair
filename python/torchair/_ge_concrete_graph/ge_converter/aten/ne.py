@@ -34,7 +34,7 @@ def get_ne_dtype(self, other):
 
 
 @declare_supported([
-    Support(F32(2,2), F32(2,2)),
+    Support(F32(2, 2), F32(2, 2)),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.ne.Tensor)
 def conveter_aten_ne_Tensor(self: Tensor, other: Tensor, meta_outputs: TensorSpec = None):

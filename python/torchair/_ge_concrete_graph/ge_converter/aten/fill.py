@@ -36,6 +36,7 @@ def conveter_aten_fill_Scalar(
     dims = ge.Shape(self)
     return ge.Fill(dims, ge.Cast(value, dst_type=self.dtype))
 
+
 @register_fx_node_ge_converter(torch.ops.aten.fill.Scalar_out)
 def conveter_aten_fill_Scalar_out(
     self: Tensor,

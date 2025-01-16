@@ -25,6 +25,7 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
     Support
 from torchair._ge_concrete_graph.utils import dtype_promote
 
+
 @declare_supported([
     Support(F32(2, 2), 1, dtype_promote=torch.float16),
     Support(F32(2, 1), 1),

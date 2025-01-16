@@ -25,13 +25,14 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
     Support
 from torchair._ge_concrete_graph.utils import dtype_promote
 
+
 @declare_supported([
     Support(BOOL(2, 2), BOOL(2, 2)),
     Support(I32(2, 2), I32(2, 2)),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.bitwise_and.Tensor)
 def conveter_aten_bitwise_and_Tensor(
-    self: Tensor, other: Tensor, meta_outputs: TensorSpec = None
+        self: Tensor, other: Tensor, meta_outputs: TensorSpec = None
 ):
     """NB: aten::bitwise_and.Tensor(Tensor self, Tensor other) -> Tensor"""
     self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)

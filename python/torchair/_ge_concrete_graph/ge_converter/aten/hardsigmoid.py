@@ -35,6 +35,7 @@ def conveter_aten_hardsigmoid_default(self: Tensor, meta_outputs: TensorSpec = N
     """NB: aten::hardsigmoid(Tensor self) -> Tensor"""
     return ge.HardSigmoid(self)
 
+
 @register_fx_node_ge_converter(torch.ops.aten.hardsigmoid.out)
 def conveter_aten_hardsigmoid_out(
     self: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None

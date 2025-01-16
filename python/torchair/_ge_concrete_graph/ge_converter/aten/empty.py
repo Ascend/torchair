@@ -48,6 +48,7 @@ def conveter_aten_empty_memory_format(
         raise RuntimeError("torch.ops.aten.empty.memory_format is only supported contiguous_format now.")
     return ge.Fill(size, ge.Cast(0., dst_type=meta_outputs.dtype))
 
+
 @register_fx_node_ge_converter(torch.ops.aten.empty.out)
 def conveter_aten_empty_out(
     size: Union[List[int], Tensor],

@@ -20,8 +20,8 @@ from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
 from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
-from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
-    Support
+from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, \
+    BOOL, Support
 
 
 @declare_supported(
@@ -37,8 +37,8 @@ def convert_npu_all_gather_base_mm(
     hcom: str,
     world_size: int,
     bias: Optional[Tensor] = None,
-    gather_index: int=0,
-    gather_output: bool=True,
+    gather_index: int = 0,
+    gather_output: bool = True,
     comm_turn: int = 0,
     meta_outputs: TensorSpec = None
 ):

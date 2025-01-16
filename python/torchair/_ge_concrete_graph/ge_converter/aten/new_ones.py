@@ -27,9 +27,9 @@ from torchair._ge_concrete_graph.utils import dtype_promote
 
 
 @declare_supported([
-    Support(F32(2, 2), (2,3)),
-    Support(F32(2, 2), (2,3), dtype=torch.int),
-    Support(F16(2, 2), (2,3)),
+    Support(F32(2, 2), (2, 3)),
+    Support(F32(2, 2), (2, 3), dtype=torch.int),
+    Support(F16(2, 2), (2, 3)),
     Support(I32(2, 2), (2, 3)),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.new_ones.default)

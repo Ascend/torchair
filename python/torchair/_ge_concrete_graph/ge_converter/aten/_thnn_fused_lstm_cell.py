@@ -34,6 +34,7 @@ def conveter_aten__thnn_fused_lstm_cell_default(
     """NB: aten::_thnn_fused_lstm_cell(Tensor input_gates, Tensor hidden_gates, Tensor cx, Tensor? input_bias=None, Tensor? hidden_bias=None) -> (Tensor, Tensor, Tensor)"""
     raise NotImplementedError("torch.ops.aten._thnn_fused_lstm_cell.default ge_converter is not implemented!")
 
+
 @register_fx_node_ge_converter(torch.ops.aten._thnn_fused_lstm_cell.out)
 def conveter_aten__thnn_fused_lstm_cell_out(
     input_gates: Tensor,

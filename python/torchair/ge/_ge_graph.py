@@ -1000,6 +1000,7 @@ def array_default_f32(v, dtype=None):
         dtype = np.float32
     return np.array(v, dtype=dtype)
 
+
 def list_depth_check(inputs):
     list_depth = 1
 
@@ -1012,6 +1013,7 @@ def list_depth_check(inputs):
         inputs = [inputs]
 
     return inputs
+
 
 def _parse_variables(variables, mode='input'):
     # Due to the interception of regular Tensor formatting in fake mode,
@@ -1051,7 +1053,7 @@ def parse_inputs(inputs, mode='input'):
 
 def parse_kwargs(kwargs):
     kwargs_list = []
-    for k,v in kwargs.items():
+    for k, v in kwargs.items():
         if isinstance(v, str):
             v = f'"{v}"'
         kwargs_list.append(f'{k}={v}')

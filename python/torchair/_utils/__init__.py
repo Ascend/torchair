@@ -134,6 +134,7 @@ def patch_torch_decomp_decompositions():
     torch/_decomp/decompositions.py. Patch it to make decompositions in this file work.
     '''
     src_func = _subclasses_fake_tensor.torch_decomp_decompositions
+
     @lru_cache(None)
     def torch_decomp_decompositions_new(func):
         if func in npu_meta_table.keys():
@@ -424,6 +425,7 @@ def npu_patch_register_fast_op_impl():
         return False
 
     src_impl = make_fast_binary_impl(refs_div)
+
     def make_div_binary_impl(mode, *args, **kwargs):
         result = src_impl(mode, *args, **kwargs)
         operands = args
@@ -439,6 +441,7 @@ def npu_patch_register_fast_op_impl():
         return result
 
     src_get_fast_op_impls = get_fast_op_impls
+
     @lru_cache(None)
     def new_get_fast_op_impls():
         src_get_fast_op_impls()

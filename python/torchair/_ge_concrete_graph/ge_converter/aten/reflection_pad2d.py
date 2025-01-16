@@ -41,7 +41,7 @@ def conveter_aten_reflection_pad2d_default(
     if len(padding) != 4:
         raise AssertionError("padding size is expected to be 4")
     self_cp = ge.Unsqueeze(self, axes=[0]) if self.rank == 3 else self
-    pads = [0] * (2 * 4) if self.rank ==3 else [0] * (2 * self.rank)
+    pads = [0] * (2 * 4) if self.rank == 3 else [0] * (2 * self.rank)
     if len(padding) <= len(pads):
         pads[0: len(padding)] = padding
     else:

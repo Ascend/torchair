@@ -58,6 +58,7 @@ def static_slice_scatter_step1(
     output = ge.ConcatV2([to_pad, src, to_pad2], concat_dim=dim, N=3)
     return output
 
+
 @declare_supported([
     Support(F32(22), F32(10), 0, 0, 10),
     Support(F32(10), F32(10), 0, 0, 20),

@@ -20,8 +20,8 @@ from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
 from torchair.ge._ge_graph import Tensor, TensorSpec
-from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
-    T, Support
+from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, \
+    T, BOOL, Support
 from torchair._ge_concrete_graph.utils import dtype_promote
 
 
@@ -35,21 +35,21 @@ def conveter_aten_masked_fill_Scalar(
     self: Tensor, mask: Tensor, value: Union[Number, Tensor], meta_outputs: TensorSpec = None
 ):
     """NB: aten::masked_fill.Scalar(Tensor self, Tensor mask, Scalar value) -> Tensor"""
-    value = dtype_promote(value, target_dtype = meta_outputs.dtype)
+    value = dtype_promote(value, target_dtype=meta_outputs.dtype)
     return ge.MaskedFill(self, mask, value)
 
 
 @declare_supported([
-    Support(F32(16), BOOL(16), T(0, dtype = torch.float32)),
-    Support(F32(16, 16), BOOL(16, 16), T(0, dtype = torch.int64)),
-    Support(F16(16, 16), BOOL(16, 16), T(0, dtype = torch.float16)),
+    Support(F32(16), BOOL(16), T(0, dtype=torch.float32)),
+    Support(F32(16, 16), BOOL(16, 16), T(0, dtype=torch.int64)),
+    Support(F16(16, 16), BOOL(16, 16), T(0, dtype=torch.float16)),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.masked_fill.Tensor)
 def conveter_aten_masked_fill_Tensor(
-    self: Tensor, mask: Tensor, value: Tensor, meta_outputs: TensorSpec = None
+        self: Tensor, mask: Tensor, value: Tensor, meta_outputs: TensorSpec = None
 ):
     """NB: aten::masked_fill.Tensor(Tensor self, Tensor mask, Tensor value) -> Tensor"""
-    value = dtype_promote(value, target_dtype = meta_outputs.dtype)
+    value = dtype_promote(value, target_dtype=meta_outputs.dtype)
     return ge.MaskedFill(self, mask, value)
 
 

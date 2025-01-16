@@ -24,8 +24,9 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
     Support
 from torchair._ge_concrete_graph.utils import dtype_promote
 
+
 @declare_supported([
-    Support(F32(2,2)),
+    Support(F32(2, 2)),
 ])
 @register_fx_node_ge_converter(torch.ops.aten.abs.default)
 def conveter_aten_abs_default(self: Tensor, meta_outputs: TensorSpec = None):

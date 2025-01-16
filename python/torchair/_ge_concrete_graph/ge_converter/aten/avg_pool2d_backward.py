@@ -25,6 +25,7 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
     Support
 from torchair._ge_concrete_graph.utils import dtype_promote
 
+
 @declare_supported([
     Support(F32(96, 512, 1, 1), F32(96, 512, 4, 4), [4, 4], [], [0, 0], False, True, divisor_override=None),
     Support(F32(96, 512, 1, 1), F32(96, 512, 4, 4), [4], [], [0, 0], False, True, divisor_override=None),
@@ -63,6 +64,7 @@ def conveter_aten_avg_pool2d_backward_default(
     output._node.input_desc[1].layout = "NCHW"
     output._node.output_desc[0].layout = "NCHW"
     return output
+
 
 @register_fx_node_ge_converter(torch.ops.aten.avg_pool2d_backward.grad_input)
 def conveter_aten_avg_pool2d_backward_grad_input(

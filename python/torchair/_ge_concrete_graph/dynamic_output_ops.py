@@ -1163,6 +1163,7 @@ def ForeachNeg(x: List[Tensor], *, dependencies=[], node_name=None):
     size_of_y = len(x)
     return raw_ops._ForeachNeg(x, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
 
+
 # This api is auto-generated from IR ForeachPowList
 @auto_convert_to_tensor([True, True], [False, False])
 def ForeachPowList(x: List[Tensor], x1: List[Tensor], *, dependencies=[], node_name=None):

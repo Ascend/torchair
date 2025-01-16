@@ -35,9 +35,10 @@ def conveter_aten_hardswish_default(self: Tensor, meta_outputs: TensorSpec = Non
     """NB: aten::hardswish(Tensor self) -> Tensor"""
     return ge.HardSwish(self)
 
+
 @register_fx_node_ge_converter(torch.ops.aten.hardswish.out)
 def conveter_aten_hardswish_out(
-    self: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
+        self: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::hardswish.out(Tensor self, *, Tensor(a!) out) -> Tensor(a!)"""
     raise RuntimeError(

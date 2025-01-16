@@ -39,10 +39,9 @@ def conveter_aten__log_softmax_backward_data_default(
     input_ge_type = torch_type_to_ge_type(input_dtype)
     half_to_float = grad_output.dtype != input_ge_type
     if half_to_float:
-        if grad_output.dtype != DataType.DT_FLOAT or \
-            input_ge_type != DataType.DT_FLOAT16:
-                raise NotImplementedError("expected input and grad types to match,",
-                        " or input to be at::Half and grad to be at::Float")
+        if grad_output.dtype != DataType.DT_FLOAT or input_ge_type != DataType.DT_FLOAT16:
+            raise NotImplementedError("expected input and grad types to match,",
+                                      " or input to be at::Half and grad to be at::Float")
     return ge.LogSoftmaxGrad(grad_output, output, axis=[dim])
 
 
