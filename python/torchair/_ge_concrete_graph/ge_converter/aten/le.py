@@ -71,7 +71,10 @@ def conveter_aten_le_Scalar(
     """NB: aten::le.Scalar(Tensor self, Scalar other) -> Tensor"""
     check_support_dtype(self, other)
     self_dtype = ge_type_to_torch_type(self.dtype)
-    other_dtype = utils.type_to_dtype(type(other))
+    if isinstance(other, Tensor):
+        other_dtype = ge_type_to_torch_type(other.dtype)
+    else:    
+        other_dtype = utils.type_to_dtype(type(other))
     if self_dtype != other_dtype:
         calculate_dtype = utils.get_higher_dtype(self_dtype, other_dtype)
         self, other = dtype_promote(self, other, target_dtype=calculate_dtype)
