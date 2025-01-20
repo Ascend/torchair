@@ -410,7 +410,7 @@ def npu_patch_fx_pass(decompositions):
 
 
 def npu_patch_register_fast_op_impl():
-    # Fix div dtype infer bug in dynamo when inputs have both IntTensor and SymInt.
+    # Fix div dtype infer bug in dynamo when inputs have both IntTensor and SymInt/int.
     try:
         from torch._subclasses.fake_tensor import get_fast_op_impls, register_fast_op_impl, \
                                                 FAST_OP_IMPLEMENTATIONS, make_fast_binary_impl
@@ -429,14 +429,14 @@ def npu_patch_register_fast_op_impl():
     def make_div_binary_impl(mode, *args, **kwargs):
         result = src_impl(mode, *args, **kwargs)
         operands = args
-        all_int = True
-        has_symint = False
+        tensor_all_int = True
+        has_int_or_symint = False
         for op in operands:
-            if isinstance(op, torch.SymInt):
-                has_symint = True
+            if isinstance(op, (torch.SymInt, int)):
+                has_int_or_symint = True
             if isinstance(op, Tensor) and not is_int(op.dtype):
-                all_int = False
-        if all_int and has_symint:
+                tensor_all_int = False
+        if tensor_all_int and has_int_or_symint:
             result = result.to(torch.float)
         return result
 

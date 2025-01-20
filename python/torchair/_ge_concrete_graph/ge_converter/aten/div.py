@@ -21,7 +21,7 @@ from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
 from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
-    Support
+    Support, T
 from torchair._ge_concrete_graph.utils import dtype_promote
 
 
@@ -31,6 +31,8 @@ from torchair._ge_concrete_graph.utils import dtype_promote
         Support(F32(2, 2), F32(1, 2)),
         Support(F32(2, 2), F16(2, 1)),
         Support(U8(2, 2), 10),
+        Support(T([0, -6], dtype=torch.int32), -2),
+        Support(T([[5, -3]], dtype=torch.int16), 0),
     ]
 )
 @register_fx_node_ge_converter(torch.ops.aten.div.Tensor)
