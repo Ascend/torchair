@@ -11,9 +11,6 @@ import torch_npu
 import torchair
 
 
-torchair.patch_for_hcom()
-
-
 class CacheHcomModel(torch.nn.Module):
     def __init__(self):
         super().__init__()
@@ -34,6 +31,16 @@ class CacheHcomModel(torch.nn.Module):
 class HcomCacheTest(unittest.TestCase):
     @classmethod
     def _init_dist_hccl(cls, rank, world_size):
+        torchair.patch_for_hcom()
+        os.environ['MASTER_ADDR'] = '127.0.0.1'
+        os.environ['MASTER_PORT'] = '29510'
+        os.environ['HCCL_WHITELIST_DISABLE'] = '1'
+        torch_npu.npu.set_device(rank)
+        dist.init_process_group(backend='hccl', world_size=world_size, rank=rank)
+        return dist
+
+    @classmethod
+    def _init_dist_hccl_without_patch(cls, rank, world_size):
         os.environ['MASTER_ADDR'] = '127.0.0.1'
         os.environ['MASTER_PORT'] = '29510'
         os.environ['HCCL_WHITELIST_DISABLE'] = '1'
@@ -132,6 +139,20 @@ class HcomCacheTest(unittest.TestCase):
                                     HcomCacheTest._init_dist_hccl, world_size)
         HcomCacheTest.check_cache_file_and_clean_env()
 
+    @unittest.skipIf(torch.__version__ < '2.3.1', "patch needed for torch version < 2.3.1")
+    def test_cache_codegen_without_patch(self):
+        ranks = [2]
+        for world_size in ranks:
+            self._test_multiprocess(HcomCacheTest._test_hccl_cache_not_create_pg,
+                                    HcomCacheTest._init_dist_hccl_without_patch, world_size)
+        HcomCacheTest.check_cache_file_and_clean_env()
+        for world_size in ranks:
+            self._test_multiprocess(HcomCacheTest._test_hccl_create_cache_get_hccl_comm_name,
+                                    HcomCacheTest._init_dist_hccl_without_patch, world_size)
+        for world_size in ranks:
+            self._test_multiprocess(HcomCacheTest._test_hccl_use_cache_get_hccl_comm_name,
+                                    HcomCacheTest._init_dist_hccl_without_patch, world_size)
+        HcomCacheTest.check_cache_file_and_clean_env()
 
 if __name__ == '__main__':
     unittest.main()

@@ -463,10 +463,10 @@ def add_npu_patch(decompositions, compiler_config):
 
 
 def get_npu_default_decompositions():
-    default_decompositions = []
-    if "torchair._ge_concrete_graph.ge_converter.experimental.hcom_alltoall" in sys.modules:
-        default_decompositions.append(torch.ops.npu_define.all_to_all_single)
-        default_decompositions.append(torch.ops.npu_define.all_to_all)
-    if "torchair._ge_concrete_graph.ge_converter.experimental.hcom_allgather" in sys.modules:
-        default_decompositions.append(torch.ops.npu_define.allgather)
-    return get_decompositions(default_decompositions)
+    default_decompositions = {}
+    if torch.__version__ >= "2.3.1":
+        from torchair._ge_concrete_graph.ge_converter.c10d_functional.c10d_functional import \
+            decomp_c10d_functional_all_to_all_single
+        default_decompositions.update(
+            {torch.ops._c10d_functional.all_to_all_single.default: decomp_c10d_functional_all_to_all_single})
+    return default_decompositions

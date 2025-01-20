@@ -12,8 +12,6 @@ from torchair.ge._ge_graph import Tensor, DataType, is_sym
 from .hcom_allreduce import npu_define_lib
 from .hcom_broadcast import op_broadcast
 
-op_allgather = npu_define_lib.define(
-    "allgather(Tensor[] tensor_list,Tensor input, str tag, int[] ranks, int group_size) -> Tensor[]")
 
 op_allgather_in_tensor = npu_define_lib.define(
     "allgather_in_tensor(Tensor out, Tensor input, str tag, int[] ranks, int group_size) -> Tensor")
@@ -21,17 +19,6 @@ op_allgather_in_tensor = npu_define_lib.define(
 op_allgather_in_tensor_uneven = npu_define_lib.define(
     "allgather_in_tensor_uneven(Tensor input, int send_count, int[] recv_counts, \
     int[] recv_displacements, str tag, int[] ranks, int group_size) -> Tensor")
-
-
-def allgather_in_tensor_npu(
-        output_tensor: torch.Tensor,
-        input_tensor: torch.Tensor,
-        tag: str,
-        ranks: List[int],
-        group_size: int, ):
-    pg = c10d._find_or_create_pg_by_ranks_and_tag(tag, ranks, group_size)
-    c10d.all_gather_into_tensor(output_tensor, input_tensor, group=pg, async_op=False)
-    return output_tensor
 
 
 def allgather_in_tensor_meta(
@@ -76,27 +63,6 @@ def npu_allgather_in_tensor_patch_dist(output_tensor, input_tensor, group=None, 
 
 
 npu_define_lib.impl(op_allgather_in_tensor, allgather_in_tensor_meta, 'Meta')
-npu_define_lib.impl(op_allgather_in_tensor, allgather_in_tensor_npu, 'PrivateUse1')
-
-
-def allgather_npu(
-        output_tensor_list: List[Tensor],
-        intput: Tensor,
-        tag: str,
-        ranks: List[int],
-        group_size: int, ):
-    pg = c10d._find_or_create_pg_by_ranks_and_tag(tag, ranks, group_size)
-    c10d.all_gather(output_tensor_list, intput, group=pg, async_op=False)
-    return output_tensor_list
-
-
-def allgather_meta(
-        output_tensor_list: List[Tensor],
-        intput: Tensor,
-        tag: str,
-        ranks: List[int],
-        group_size: int, ):
-    return output_tensor_list
 
 
 def check_same_size(output_tensor_list):
@@ -160,13 +126,11 @@ def convert_allgather_in_tensor_uneven(
                              recv_displs=recv_displacements, group=group_name)
 
 
-@register_decomposition(torch.ops.npu_define.allgather)
-def allgather_decomposition(
-        output_tensor_list: List[torch.Tensor],
-        input_tensor: Tensor,
-        tag: str,
-        ranks: List[int],
-        group_size: int,
+def _allgather(output_tensor_list: List[torch.Tensor],
+               input_tensor: Tensor,
+               tag: str,
+               ranks: List[int],
+               group_size: int,
 ):
     if check_same_size(output_tensor_list):
         return allgather_in_same_size(output_tensor_list, input_tensor, tag, ranks, group_size)
@@ -192,13 +156,9 @@ def npu_all_gather_patch_dist(output_tensor_list, tensor, group=None, async_op=F
     if len(output_tensor_list) != size_:
         raise AssertionError(f'Tensor list input and rank size mismatch,\
         the len of list input is:{len(output_tensor_list)},but rank size is:{size_}.')
-    npu_out_list = torch.ops.npu_define.allgather(output_tensor_list, tensor, tag, ranklist, size_)
+    npu_out_list = _allgather(output_tensor_list, tensor, tag, ranklist, size_)
     for i, _ in enumerate(output_tensor_list):
         output_tensor_list[i].copy_(npu_out_list[i])
-
-
-npu_define_lib.impl(op_allgather, allgather_meta, 'Meta')
-npu_define_lib.impl(op_allgather, allgather_npu, 'PrivateUse1')
 
 
 def allgather_in_tensor_uneven_meta(

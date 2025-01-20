@@ -44,9 +44,10 @@ def conveter_broadcast(
     return ge.HcomBroadcast([input_tensor], root_rank=src, group=group_name, fusion=0)[0]
 
 
-def npu_broadcast_patch_dist(input_tensor, src, group=None, async_op=False):
+# The parameter names must be consistent with the original function, otherwise an error will occur.
+def npu_broadcast_patch_dist(tensor, src, group=None, async_op=False):
     if not torch.distributed._functional_collectives._are_we_tracing():
-        return torch.distributed.distributed_c10d.broadcast(input_tensor, src, group, async_op)
+        return torch.distributed.distributed_c10d.broadcast(tensor, src, group, async_op)
     if async_op:
         AssertionError(f'When you enable torch.compile or use the cache_compile feature, '
                        f'use the patch_for_hcom interface to ensure that collective communication functions '
@@ -57,8 +58,8 @@ def npu_broadcast_patch_dist(input_tensor, src, group=None, async_op=False):
         group = c10d._world.default_pg
     ranks = torch.distributed.get_process_group_ranks(group)
     tag = c10d._get_group_tag(group)
-    out = torch.ops.npu_define.broadcast(input_tensor, src, tag, ranks, len(ranks))
-    input_tensor.copy_(out)
+    out = torch.ops.npu_define.broadcast(tensor, src, tag, ranks, len(ranks))
+    tensor.copy_(out)
 
 
 npu_define_lib.impl(op_broadcast, broadcast_meta, 'Meta')
