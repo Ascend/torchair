@@ -46,7 +46,7 @@ inline std::string GetProcessIdAndName() {
       if (pos != std::string::npos) {
         ss << "," << process_name.substr(pos + 1);
       } else {
-        ss << process_name;
+        ss << "," << process_name;
       }
     } else {
       ss << ",unknown";
