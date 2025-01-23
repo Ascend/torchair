@@ -76585,6 +76585,181 @@ def LayerNormV4(x: Tensor,
     return y, mean, rstd
 
 
+def dequant_rope_quant_kvcache_init_inputs(op: any,
+                                           x: Tensor,
+                                           cos: Tensor,
+                                           sin: Tensor,
+                                           k_cache: Tensor,
+                                           v_cache: Tensor,
+                                           indices: Tensor,
+                                           scale_k: Tensor,
+                                           scale_v: Tensor):
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+    op.input.append(cos.tensor)
+    op.input_desc.add().CopyFrom(cos.desc)
+    op.input_desc[-1].name = "cos"
+    op.input.append(sin.tensor)
+    op.input_desc.add().CopyFrom(sin.desc)
+    op.input_desc[-1].name = "sin"
+    op.input.append(k_cache.tensor)
+    op.input_desc.add().CopyFrom(k_cache.desc)
+    op.input_desc[-1].name = "k_cache"
+    op.input.append(v_cache.tensor)
+    op.input_desc.add().CopyFrom(v_cache.desc)
+    op.input_desc[-1].name = "v_cache"
+    op.input.append(indices.tensor)
+    op.input_desc.add().CopyFrom(indices.desc)
+    op.input_desc[-1].name = "indices"
+    op.input.append(scale_k.tensor)
+    op.input_desc.add().CopyFrom(scale_k.desc)
+    op.input_desc[-1].name = "scale_k"
+    op.input.append(scale_v.tensor)
+    op.input_desc.add().CopyFrom(scale_v.desc)
+    op.input_desc[-1].name = "scale_v"
+
+
+def dequant_rope_quant_kvcache_process_inputs(op: any,
+                                              offset_k: Optional[Tensor] = None,
+                                              offset_v: Optional[Tensor] = None,
+                                              weight_scale: Optional[Tensor] = None,
+                                              activation_scale: Optional[Tensor] = None,
+                                              bias: Optional[Tensor] = None):
+    if offset_k is not None:
+        op.input.append(offset_k.tensor)
+        op.input_desc.add().CopyFrom(offset_k.desc)
+        op.input_desc[-1].name = "offset_k"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "offset_k"
+    if offset_v is not None:
+        op.input.append(offset_v.tensor)
+        op.input_desc.add().CopyFrom(offset_v.desc)
+        op.input_desc[-1].name = "offset_v"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "offset_v"
+    if weight_scale is not None:
+        op.input.append(weight_scale.tensor)
+        op.input_desc.add().CopyFrom(weight_scale.desc)
+        op.input_desc[-1].name = "weight_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "weight_scale"
+    if activation_scale is not None:
+        op.input.append(activation_scale.tensor)
+        op.input_desc.add().CopyFrom(activation_scale.desc)
+        op.input_desc[-1].name = "activation_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "activation_scale"
+    if bias is not None:
+        op.input.append(bias.tensor)
+        op.input_desc.add().CopyFrom(bias.desc)
+        op.input_desc[-1].name = "bias"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "bias"
+
+
+# This api is auto-generated from IR DequantRopeQuantKvcache
+@auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False, False, False, False],
+                        [False, False, False, False, False, False, False, False, True, True, True, True, True],
+                        inputs_tensor_type=[TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN,
+                                            TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_INDEX_NUMBER,
+                                            TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN,
+                                            TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN,
+                                            TensorType.TT_UNKNOWN])
+def dequant_rope_quant_kvcache(x: Tensor,
+                               cos: Tensor,
+                               sin: Tensor,
+                               k_cache: Tensor,
+                               v_cache: Tensor,
+                               indices: Tensor,
+                               scale_k: Tensor,
+                               scale_v: Tensor,
+                               offset_k: Optional[Tensor] = None,
+                               offset_v: Optional[Tensor] = None,
+                               weight_scale: Optional[Tensor] = None,
+                               activation_scale: Optional[Tensor] = None,
+                               bias: Optional[Tensor] = None,
+                               *,
+                               size_splits: List[int],
+                               quant_mode: str = "static",
+                               layout: str = "BSND",
+                               kv_output: bool = False,
+                               cache_mode: str = "contiguous",
+                               dependencies=[],
+                               node_name=None):
+    """REG_OP(DequantRopeQuantKvcache)\n
+    .INPUT(x, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT32}))\n
+    .INPUT(cos, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .INPUT(sin, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .INPUT(k_cache, TensorType({DT_INT8}))\n
+    .INPUT(v_cache, TensorType({DT_INT8}))\n
+    .INPUT(indices, TensorType({DT_INT32, DT_INT64}))\n
+    .INPUT(scale_k, TensorType({DT_FLOAT32, DT_BF16}))\n
+    .INPUT(scale_v, TensorType({DT_FLOAT32, DT_BF16}))\n
+    .OPTIONAL_INPUT(offset_k, TensorType({DT_INT32, DT_FLOAT32, DT_BF16}))\n
+    .OPTIONAL_INPUT(offset_v, TensorType({DT_INT32, DT_FLOAT32, DT_BF16}))\n
+    .OPTIONAL_INPUT(weight_scale, TensorType({DT_FLOAT32, DT_BF16}))\n
+    .OPTIONAL_INPUT(activation_scale, TensorType({DT_FLOAT32}))\n
+    .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT32,DT_BF16, DT_FLOAT16, DT_INT32}))\n
+    .OUTPUT(q, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(k, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(v, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(k_cache, TensorType({DT_INT8}))\n
+    .OUTPUT(v_cache, TensorType({DT_INT8}))\n
+    .REQUIRED_ATTR(size_splits, ListInt)\n
+    .ATTR(quant_mode, String, "static")\n
+    .ATTR(layout, String, "BSND")\n
+    .ATTR(kv_output, Bool, false)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "DequantRopeQuantKvcache"
+    op.name = next_unique_name(node_name, "DequantRopeQuantKvcache")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    dequant_rope_quant_kvcache_init_inputs(op, x, cos, sin, k_cache, v_cache, indices, scale_k, scale_v)
+    dequant_rope_quant_kvcache_process_inputs(op, offset_k, offset_v, weight_scale, activation_scale, bias)
+
+    # process attrs
+    op.attr["size_splits"].list.val_type = 2
+    op.attr["size_splits"].list.i.extend(size_splits)
+    op.attr["quant_mode"].s = compat_as_bytes(quant_mode)
+    op.attr["layout"].s = compat_as_bytes(layout)
+    op.attr["kv_output"].b = kv_output
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "q"
+    q = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "k"
+    k = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "v"
+    v = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "k_cache"
+    k_cache = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "v_cache"
+    v_cache = Tensor(op, output_index)
+    output_index += 1
+    return q, k, v, k_cache, v_cache
+
 # This api is auto-generated from IR Sxpy
 @auto_convert_to_tensor([False, False, False], [False, False, True])
 def Sxpy(x1: Tensor, 
