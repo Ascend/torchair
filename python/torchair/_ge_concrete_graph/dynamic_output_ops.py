@@ -21,37 +21,44 @@ def IdentityN(x: List[Tensor], *, dependencies=[], node_name=None):
 
 
 # Auto infer num outputs for IR GroupedMatmul
-@auto_convert_to_tensor([True, True, True, True, True, True, True, False],
-                        [False, False, False, False, False, False, False, True])
-def GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], scale: List[Tensor], offset: List[Tensor],
-                  antiquant_scale: List[Tensor], antiquant_offset: List[Tensor], group_list: Optional[Tensor], *,
-                  split_item: int = 0, dtype: int = 0, transpose_weight: bool = False, transpose_x: bool = False,
-                  group_type: int = -1):
+@auto_convert_to_tensor([True, True, True, True, True, True, True, False, False], 
+                        [False, False, False, False, False, False, False, True, True])
+def _GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], scale: List[Tensor], offset: List[Tensor], 
+                   antiquant_scale: List[Tensor], antiquant_offset: List[Tensor], group_list: Optional[Tensor]=None, 
+                   per_token_scale: Optional[Tensor]=None, *, size_of_y: int, split_item: int = 0, dtype: int = 0, 
+                   transpose_weight: bool = False, transpose_x: bool = False, group_type: int = -1, 
+                   group_list_type: int = 0, act_type: int = 0, dependencies = [], node_name=None):
     """REG_OP(GroupedMatmul)\n
-    .DYNAMIC_INPUT(x, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))\n
-    .DYNAMIC_INPUT(weight, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))\n
-    .DYNAMIC_INPUT(bias, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32}))\n
-    .DYNAMIC_INPUT(scale, TensorType({DT_UINT64}))\n
-    .DYNAMIC_INPUT(offset, TensorType({DT_FLOAT32}))\n
-    .DYNAMIC_INPUT(antiquant_scale, TensorType({DT_FLOAT16, DT_BF16}))\n
-    .DYNAMIC_INPUT(antiquant_offset, TensorType({DT_FLOAT16, DT_BF16}))\n
-    .OPTIONAL_INPUT(group_list, TensorType({DT_INT64}))\n
-    .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT16, DT_BF16}))\n
-    .ATTR(split_item, Int, 0)\n
-    .ATTR(dtype, Int, 0)\n
-    .ATTR(transpose_weight, Bool, false)\n
-    .ATTR(transpose_x, Bool, false)\n
-    .ATTR(group_type, Int, -1)\n
-    """
+.DYNAMIC_INPUT(x, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))\n
+.DYNAMIC_INPUT(weight, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))\n
+.DYNAMIC_INPUT(bias, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32}))\n
+.DYNAMIC_INPUT(scale, TensorType({DT_UINT64}))\n
+.DYNAMIC_INPUT(offset, TensorType({DT_FLOAT32}))\n
+.DYNAMIC_INPUT(antiquant_scale, TensorType({DT_FLOAT16, DT_BF16}))\n
+.DYNAMIC_INPUT(antiquant_offset, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OPTIONAL_INPUT(group_list, TensorType({DT_INT64}))\n
+.OPTIONAL_INPUT(per_token_scale, TensorType({DT_FLOAT}))\n
+.DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT16, DT_BF16, DT_INT8, DT_FLOAT}))\n
+.ATTR(split_item, Int, 0)\n
+.ATTR(dtype, Int, 0)\n
+.ATTR(transpose_weight, Bool, false)\n
+.ATTR(transpose_x, Bool, false)\n
+.ATTR(group_type, Int, -1)\n
+.ATTR(group_list_type, Int, -1)\n
+.ATTR(act_type, Int, 0)\n
+"""
 
     size_of_y = 0
     if split_item == 0 or split_item == 1:
-        size_of_y = len(x)
+        if group_list is not None:
+            size_of_y = len(group_list)
+        else:
+            size_of_y = len(x)
     elif split_item == 2 or split_item == 3:
         size_of_y = 1
 
-    return raw_ops._GroupedMatmul(x, weight, bias, scale, offset, antiquant_scale, antiquant_offset, group_list,
-                                  size_of_y=size_of_y, split_item=split_item, dtype=dtype,
+    return raw_ops._GroupedMatmul(x, weight, bias, scale, offset, antiquant_scale, antiquant_offset, 
+                                  group_list, per_token_scale, size_of_y=size_of_y, split_item=split_item, dtype=dtype,
                                   transpose_weight=transpose_weight, transpose_x=transpose_x, group_type=group_type)
 
 
