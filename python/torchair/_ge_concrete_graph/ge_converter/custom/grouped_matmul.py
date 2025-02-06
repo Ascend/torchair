@@ -25,40 +25,13 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
 from torchair._ge_concrete_graph.utils import dtype_promote
 
 
-def fill(dims: Tensor, value: Tensor):
-    """REG_OP(fill)\n
-    .INPUT(dims, TensorType::IndexNumberType()\n
-    .INPUT(value, TensorType({{DT_FLOAT, DT_FLOAT16, DT_BF16, DT_INT8, DT_INT16, DT_INT32, DT_INT64, DT_UINT8, 
-           DT_UINT16, DT_UINT32, DT_UINT64, DT_DOUBLE, DT_COMPLEX64, DT_BOOL, DT_STRING}))\n
-    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16, DT_INT8, DT_INT16, DT_INT32, DT_INT64, DT_UINT8, 
-            DT_UINT16, DT_UINT32, DT_UINT64, DT_DOUBLE, DT_COMPLEX64, DT_BOOL, DT_STRING}))\n
-    """
-
-    y = torchair.ge.custom_op("fill",
-        inputs={ 
-            "dims":dims,
-            "value":value
-        },
-        outputs=["y"]
-    )
-    return y
-
-
 def fill_empty_tensorlist(input_data, desired_dtype):
     if input_data is None:
-        return [fill(ge.Const(0), ge.Const(0., dst_type=desired_dtype))]
+        return [ge.Fill([0], ge.Cast(0., dst_type=desired_dtype))]
     else:
         return input_data
 
 
-@declare_supported([
-    Support([F16(8192, 320)], [F16(320, 2560)], [F16(2560)], None, None, None, None, None, split_item=0),
-    Support([F16(8192, 320), F16(8192, 320), F16(8192, 320)],
-            [F16(320, 2560), F16(320, 2560), F16(320, 2560)],
-            [F16(2560), F16(2560), F16(2560)],
-            None, None, None, None, None, split_item=0),
-])
-@register_fx_node_ge_converter(torch.ops.npu.npu_grouped_matmul.default)
 def conveter_npu_npu_grouped_matmul(
     x: List[Tensor],
     weight: List[Tensor],
@@ -68,7 +41,8 @@ def conveter_npu_npu_grouped_matmul(
     offset: Optional[List[Tensor]] = None,
     antiquant_scale: Optional[List[Tensor]] = None,
     antiquant_offset: Optional[List[Tensor]] = None,
-    group_list: Optional[List[int]] = None,
+    per_token_scale: Optional[List[Tensor]] = None,
+    group_list: Optional[Union[List[int], Tensor]] = None,
     activation_input: Optional[List[Tensor]] = None,
     activation_quant_scale: Optional[List[Tensor]] = None,
     activation_quant_offset: Optional[List[Tensor]] = None,
@@ -88,7 +62,7 @@ def conveter_npu_npu_grouped_matmul(
 
     if x_dtype == DataType.DT_BF16:
         bias = fill_empty_tensorlist(bias, DataType.DT_FLOAT)
-    elif x_dtype == DataType.DT_UINT8:
+    elif x_dtype == DataType.DT_INT8:
         bias = fill_empty_tensorlist(bias, DataType.DT_INT32)
     else:
         bias = fill_empty_tensorlist(bias, x_dtype)
@@ -98,27 +72,51 @@ def conveter_npu_npu_grouped_matmul(
 
     w_dtype = weight[0].dtype
 
-    if x_dtype == DataType.DT_BF16:
-        antiquant_scale = fill_empty_tensorlist(antiquant_scale, DataType.DT_BF16)
-        antiquant_offset = fill_empty_tensorlist(antiquant_offset, DataType.DT_BF16)
+    if (x_dtype == DataType.DT_FLOAT16 or x_dtype == DataType.DT_BF16) and w_dtype == DataType.DT_INT8:
+        antiquant_scale = fill_empty_tensorlist(antiquant_scale, x_dtype)
+        antiquant_offset = fill_empty_tensorlist(antiquant_offset, x_dtype)
     else:
         antiquant_scale = fill_empty_tensorlist(antiquant_scale, DataType.DT_FLOAT16)
         antiquant_offset = fill_empty_tensorlist(antiquant_offset, DataType.DT_FLOAT16)
 
     y_dtype = -1
-    if output_dtype is None or output_dtype == torch.float16:
-        y_dtype = 0
-    elif output_dtype == torch.bfloat16:
-        y_dtype = 1
-    elif output_dtype == torch.int8:
-        raise ValueError("output_dtype not support int8 yet for graph mode")
-    else:
-        raise ValueError(f"output_dtype should be int8, float16 or bfloat16, "
+    if output_dtype is not None and x[0].dtype == DataType.DT_INT8:
+        if output_dtype == torch.float16:
+            y_dtype = 0
+        elif output_dtype == torch.bfloat16:
+            y_dtype = 1
+        elif output_dtype == torch.int32:
+            y_dtype = 2
+        elif output_dtype == torch.int8:
+            raise ValueError("output_dtype not support int8 yet for graph mode")
+        else:
+            raise ValueError(f"output_dtype should be float16, bfloat16 or int32, "
                              f"otherwise it should be None, but got {output_dtype}")
 
-    if group_list is not None:
+    per_token_scale = per_token_scale[0] if per_token_scale is not None and len(per_token_scale) else None
+
+    if group_list is not None and not isinstance(group_list, Tensor):
         group_list = dtype_promote(group_list, target_dtype=torch.int64)
 
     return ge.GroupedMatmul(x, weight, bias, scale, offset, antiquant_scale, antiquant_offset, group_list,
-                            per_token_scale, split_item=split_item, dtype=y_dtype, transpose_weight=False, 
-                            transpose_x=False, group_type=group_type)
+                            per_token_scale, split_item=split_item, dtype=y_dtype, transpose_weight=False,
+                            transpose_x=False, group_type=group_type, group_list_type=group_list_type,
+                            act_type=act_type)
+
+
+gmm_reg = register_fx_node_ge_converter(torch.ops.npu.npu_grouped_matmul.default)(conveter_npu_npu_grouped_matmul)
+gmm_List_reg = register_fx_node_ge_converter(torch.ops.npu.npu_grouped_matmul.List)(conveter_npu_npu_grouped_matmul)
+
+declare_supported([
+    Support([F16(8192, 320)], [F16(320, 2560)], bias=[F16(2560)], split_item=0),
+    Support([F16(8192, 320), F16(8192, 320), F16(8192, 320)],
+            [F16(320, 2560), F16(320, 2560), F16(320, 2560)],
+            bias=[F16(2560), F16(2560), F16(2560)], split_item=0),
+])(gmm_reg)
+
+declare_supported([
+    Support([F16(8192, 320)], [F16(320, 2560)], bias=[F16(2560)], split_item=0),
+    Support([F16(8192, 320), F16(8192, 320), F16(8192, 320)],
+            [F16(320, 2560), F16(320, 2560), F16(320, 2560)],
+            bias=[F16(2560), F16(2560), F16(2560)], split_item=0),
+])(gmm_List_reg)

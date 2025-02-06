@@ -77143,18 +77143,13 @@ def MoeComputeExpertTokens(sorted_experts: Tensor, *, num_experts: int=1, depend
 
 
 # This api is auto-generated from IR GroupedMatmul
-@auto_convert_to_tensor([True, True, True, True, True, True, True, False, False], 
-                        [False, False, False, False, False, False, False, True, True])
-def _GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], scale: List[Tensor], offset: List[Tensor],
-                   antiquant_scale: List[Tensor], antiquant_offset: List[Tensor], group_list: Optional[Tensor]=None,
-                   per_token_scale: Optional[Tensor]=None, *, size_of_y: int, split_item: int = 0, dtype: int = 0,
-                   transpose_weight: bool=False, transpose_x: bool=False, group_type: int = -1, group_list_type: int = 0,
-                   act_type: int = 0, dependencies=[], node_name=None):
+@auto_convert_to_tensor([True, True, True, True, True, True, True, False, False], [False, False, False, False, False, False, False, True, True])
+def _GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], scale: List[Tensor], offset: List[Tensor], antiquant_scale: List[Tensor], antiquant_offset: List[Tensor], group_list: Optional[Tensor], per_token_scale: Optional[Tensor], *, size_of_y: int, split_item: int=0, dtype: int=0, transpose_weight: bool=False, transpose_x: bool=False, group_type: int=-1, group_list_type: int=0, act_type: int=0, dependencies=[], node_name=None):
     """REG_OP(GroupedMatmul)\n
-.DYNAMIC_INPUT(x, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))\n
-.DYNAMIC_INPUT(weight, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))\n
+.DYNAMIC_INPUT(x, TensorType({DT_FLOAT16, DT_BF16, DT_INT8, DT_FLOAT}))\n
+.DYNAMIC_INPUT(weight, TensorType({DT_FLOAT16, DT_BF16, DT_INT8, DT_FLOAT, DT_INT4}))\n
 .DYNAMIC_INPUT(bias, TensorType({DT_FLOAT16, DT_FLOAT, DT_INT32}))\n
-.DYNAMIC_INPUT(scale, TensorType({DT_UINT64}))\n
+.DYNAMIC_INPUT(scale, TensorType({DT_UINT64, DT_BF16, DT_FLOAT32}))\n
 .DYNAMIC_INPUT(offset, TensorType({DT_FLOAT32}))\n
 .DYNAMIC_INPUT(antiquant_scale, TensorType({DT_FLOAT16, DT_BF16}))\n
 .DYNAMIC_INPUT(antiquant_offset, TensorType({DT_FLOAT16, DT_BF16}))\n
@@ -77166,10 +77161,9 @@ def _GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], sc
 .ATTR(transpose_weight, Bool, false)\n
 .ATTR(transpose_x, Bool, false)\n
 .ATTR(group_type, Int, -1)\n
-.ATTR(group_list_type, Int, -1)\n
+.ATTR(group_list_type, Int, 0)\n
 .ATTR(act_type, Int, 0)\n
 """
-
     # process inputs
     inputs = {
         "x": x,
@@ -77196,8 +77190,9 @@ def _GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], sc
 
     # process outputs
     outputs = [
-        ("y", size_of_y),
+    ("y", size_of_y)
     ]
+
     return ge_op(
         op_type="GroupedMatmul",
         inputs=inputs,
@@ -77205,10 +77200,10 @@ def _GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], sc
         outputs=outputs,
         dependencies=dependencies,
         ir=IrDef("GroupedMatmul") \
-        .dynamic_input("x", "DT_FLOAT16, DT_BF16, DT_INT8") \
-        .dynamic_input("weight", "DT_FLOAT16, DT_BF16, DT_INT8") \
+        .dynamic_input("x", "DT_FLOAT16, DT_BF16, DT_INT8, DT_FLOAT") \
+        .dynamic_input("weight", "DT_FLOAT16, DT_BF16, DT_INT8, DT_FLOAT, DT_INT4") \
         .dynamic_input("bias", "DT_FLOAT16, DT_FLOAT, DT_INT32") \
-        .dynamic_input("scale", "DT_UINT64") \
+        .dynamic_input("scale", "DT_UINT64, DT_BF16, DT_FLOAT32") \
         .dynamic_input("offset", "DT_FLOAT32") \
         .dynamic_input("antiquant_scale", "DT_FLOAT16, DT_BF16") \
         .dynamic_input("antiquant_offset", "DT_FLOAT16, DT_BF16") \
@@ -77222,7 +77217,7 @@ def _GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], sc
         .attr("group_list_type", attr.Int(0)) \
         .attr("act_type", attr.Int(0)) \
         .dynamic_output("y", "DT_FLOAT16, DT_BF16, DT_INT8, DT_FLOAT")
-    ) 
+    )
 
 
 # This api is auto-generated from IR MoeInitRouting
