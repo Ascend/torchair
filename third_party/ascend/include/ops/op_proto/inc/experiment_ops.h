@@ -3399,6 +3399,147 @@ REG_OP(GroupedMatmul)
 
 
 /**
+ * @brief The fusion operator of RMSNorm, RotaryPositionEmbedding and Update KVCache.
+ *
+ * @par Inputs:
+ * @li kv: A Tensor. The type support float16. Format: ND.
+ * @li gamma: A Tensor, used in RMS Norm. The type support float16. Format: ND.
+ * @li cos: A Tensor, from position embedding. The type support float16. Format: ND.
+ * @li sin: A Tensor, from position embedding. The type support float16. Format: ND.
+ * @li index: A Tensor. The type support int64. Format: ND.
+ * @li k_cache: A Tensor. The type support float16. Format: ND.
+ * @li v_cache: A Tensor. The type support float16. Format: ND.
+ *
+ * @par Outputs:
+ * @li k_cache: A Tensor. The type support float16. Format: ND.
+ * @li v_cache: A Tensor. The type support float16. Format: ND.
+ *
+ * @par Attributes:
+ * epsilon: A float32. The epsilon value for RMSNorm. Default: 1e-5.
+ *
+ * @par Restrictions:
+ * Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+ */
+REG_OP(KvRmsNormRopeCache)
+    .INPUT(kv, TensorType({DT_FLOAT16}))
+    .INPUT(gamma, TensorType({DT_FLOAT16}))
+    .INPUT(cos, TensorType({DT_FLOAT16}))
+    .INPUT(sin, TensorType({DT_FLOAT16}))
+    .INPUT(index, TensorType({DT_INT64}))
+    .INPUT(k_cache, TensorType({DT_FLOAT16}))
+    .INPUT(v_cache, TensorType({DT_FLOAT16}))
+    .OUTPUT(k_cache, TensorType({DT_FLOAT16}))
+    .OUTPUT(v_cache, TensorType({DT_FLOAT16}))
+    .ATTR(epsilon, Float, 1e-5)
+    .OP_END_FACTORY_REG(KvRmsNormRopeCache)
+
+
+/**
+ * @brief The fusion operator of Single RotaryPositionEmbedding.
+ *
+ * @par Inputs:
+ * @li x: A Tensor. The type support float16. Format: ND.
+ * @li cos: A Tensor. The type support float16. Format: ND.
+ * @li sin: A Tensor. The type support float16. Format: ND.
+ *
+ * @par Outputs:
+ * y: A Tensor. The type support float16. Format: ND.
+ *
+ * @par Restrictions:
+ * Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+ */
+REG_OP(SingleRope)
+    .INPUT(x, TensorType({DT_FLOAT16}))
+    .INPUT(cos, TensorType({DT_FLOAT16}))
+    .INPUT(sin, TensorType({DT_FLOAT16}))
+    .OUTPUT(y, TensorType({DT_FLOAT16}))
+    .OP_END_FACTORY_REG(SingleRope)
+
+
+/**
+ * @brief compute softmax and topk for moe input.
+ * @par Inputs:
+ * @li x: A 2D Tensor. Type is:BFloat16, Float16 or Float32. Format support ND.
+ * @li bias: A 2D Tensor. Type is:BFloat16, Float16 or Float32. Format support ND.
+ * @par Outputs:
+ * @li y: A Tensor. Type is:BFloat16, Float16 or Float32. The data type must be the same as that of x.
+     The size of the non-1 axis must be the same as that of the corresponding axis of x.
+        The size of the -1 axis must be the same as that of k. Format support ND.
+* @li expert_idx: A Tensor. Type is:Int32. The shape must be the same as that of y. Format support ND.
+* @li out: A Tensor. Type is:Float32. The shape must be the same as that of x. Format support ND.
+* @par Attributes:
+* @li k: Required parameter. Type is:Int32. The value must greater than 0 and less than or equal to the size
+        of the -1 axis of x, and k must not greater than 1024.
+* @li k_group: Optional parameter. Type is:Int32.
+* @li group_count: Optional parameter. Type is:Int32.
+* @li group_select_mode: Optional parameter. Type is:Int32.
+* @li renorm: Optional parameter. Type is:Int32.
+* @li y2_flag: Optional parameter. Type is:Bool.
+* @li routed_scaling_factor: Optional parameter. Type is:Float32.
+* @li eps: Optional parameter. Type is:Float32.
+* @par Restrictions:
+* Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+*/
+REG_OP(MoeGatingTopK)
+    .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .OUTPUT(expert_idx, TensorType({DT_INT32}))
+    .OUTPUT(out, TensorType({DT_FLOAT}))
+    .REQUIRED_ATTR(k, Int)
+    .ATTR(k_group, Int, 1)
+    .ATTR(group_count, Int, 1)
+    .ATTR(group_select_mode, Int, 0)
+    .ATTR(renorm, Int, 0)
+    .ATTR(norm_type, Int, 0)
+    .ATTR(y2_flag, Bool, false)
+    .ATTR(routed_scaling_factor, Float, 1.0)
+    .ATTR(eps, Float, 1e-20)
+    .OP_END_FACTORY_REG(MoeGatingTopK)
+
+
+/**
+* @brief Combine Dequant + Swiglu + Quant.
+
+* @par Inputs:
+* Seven inputs, including:
+* @li x: A Tensor. Type is:DT_INT32. Shape is (X..., H), Dim must > 2, and H must be even.
+* @li weight_scale: A optional tensor. Type is:DT_FLOAT. Shape is (1..., H).
+* @li activation_scale: A optional tensor. Type is:DT_FLOAT. Shape is  (X..., 1).
+* @li bias: A optional tensor. Type is:DT_FLOAT. Shape is (X..., H).
+* @li quant_scale: A optional tensor. Type is:DT_FLOAT. Shape is (1..., H).
+* @li quant_offset: A optional tensor. Type is:DT_FLOAT. Shape is (1..., H).
+* @li group_index: A optional tensor. Type is:DT_INT64, DT_INT32. Shape is (1,). mean group input. \n
+
+* @par Outputs:
+* @li y: A Tensor. Type is:DT_INT8.
+* @li scale: A Tensor. Type is:DT_FLOAT.
+
+* @par Attributes:
+* @li activate_left: Type is: Bool.
+* The swi activate_left algorithm to use:
+*     'false'(activate right) or 'true'(activate left), defalut is 'false'(activate right).
+* @li quant_mode: Type is: String. The quant mode to use: 'static' or 'dynamic', defalut is 'static'.
+
+* @par Restrictions:
+* Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
+*/
+REG_OP(DequantSwigluQuant)
+    .INPUT(x, TensorType({DT_INT32}))
+    .OPTIONAL_INPUT(weight_scale, TensorType({DT_FLOAT}))
+    .OPTIONAL_INPUT(activation_scale, TensorType({DT_FLOAT}))
+    .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT}))
+    .OPTIONAL_INPUT(quant_scale, TensorType({DT_FLOAT}))
+    .OPTIONAL_INPUT(quant_offset, TensorType({DT_FLOAT}))
+    .OPTIONAL_INPUT(group_index, TensorType({DT_INT32, DT_INT64}))
+    .OUTPUT(y, TensorType({DT_INT8}))
+    .OUTPUT(scale, TensorType({DT_FLOAT}))
+    .ATTR(activate_left, Bool, false)
+    .ATTR(quant_mode, String, "static")
+    .OP_END_FACTORY_REG(DequantSwigluQuant)
+
+
+/**
 * @brief Function FusedInferAttentionScore.
 
 * @par Inputs:

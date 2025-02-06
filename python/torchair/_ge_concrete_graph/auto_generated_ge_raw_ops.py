@@ -77793,3 +77793,298 @@ def SwiGluGrad(y_grad: Tensor, x: Tensor, *, dim: int=-1, dependencies=[], node_
 
     return y
 
+
+@auto_convert_to_tensor([False, False], [False, True])
+def MoeGatingTopK(x: Tensor,
+                   bias: Optional[Tensor],
+                   *,
+                   k: int,
+                   k_group:int = 1,
+                   group_count:int = 1,
+                   group_select_mode:int = 0,
+                   renorm:int = 0,
+                   norm_type:int = 0,
+                   y2_flag:bool = False,
+                   routed_scaling_factor:float = 1.0,
+                   eps:float = 1e-20,
+                   dependencies=[],
+                   node_name=None):
+    """REG_OP(MoeGatingTopK)
+    .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .OUTPUT(expert_idx, TensorType({DT_INT32}))
+    .OUTPUT(y2, TensorType({DT_FLOAT}))
+    .REQUIRED_ATTR(k, Int)
+    .ATTR(k_group, Int, 1)
+    .ATTR(group_count, Int, 1)
+    .ATTR(group_select_mode, Int, 0)
+    .ATTR(renorm, Int, 0)
+    .ATTR(norm_type, Int, 0)
+    .ATTR(y2_flag, Bool, false)
+    .ATTR(routed_scaling_factor, Float, 1.0)
+    .ATTR(eps, Float, 1e-20)
+    .OP_END_FACTORY_REG(MoeGatingTopK)
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "MoeGatingTopK"
+    op.name = next_unique_name(node_name, "MoeGatingTopK")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+    if bias is not None:
+        op.input.append(bias.tensor)
+        op.input_desc.add().CopyFrom(bias.desc)
+        op.input_desc[-1].name = "bias"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "bias"
+
+    # process attrs
+    op.attr["k"].i = k
+    op.attr["k_group"].i = k_group
+    op.attr["group_count"].i = group_count
+    op.attr["group_select_mode"].i = group_select_mode
+    op.attr["renorm"].i = renorm
+    op.attr["norm_type"].i = norm_type
+    op.attr["y2_flag"].b = y2_flag
+    op.attr["routed_scaling_factor"].f = routed_scaling_factor
+    op.attr["eps"].f = eps
+
+    # process outputs
+    op.output_desc.add().name = "y"
+    y = Tensor(op, 0)
+    op.output_desc.add().name = "expert_idx"
+    expert_idx = Tensor(op, 1)
+    op.output_desc.add().name = "out"
+    out = Tensor(op, 2)
+    return y, expert_idx, out
+
+
+# This api is auto-generated from IR KvRmsNormRopeCache
+@auto_convert_to_tensor([False, False, False, False, False, False, False], [False, False, False, False, False, False, False])
+def KvRmsNormRopeCache(kv: Tensor,
+                       gamma: Tensor,
+                       cos: Tensor,
+                       sin: Tensor,
+                       index: Tensor,
+                       k_cache: Tensor,
+                       v_cache: Tensor,
+                       *,
+                       epsilon: float = 1e-5,
+                       dependencies=[],
+                       node_name=None):
+    """REG_OP(KvRmsNormRopeCache)\n
+    .INPUT(kv, TensorType({DT_FLOAT16}))\n
+    .INPUT(gamma, TensorType({DT_FLOAT16}))\n
+    .INPUT(cos, TensorType({DT_FLOAT16}))\n
+    .INPUT(sin, TensorType({DT_FLOAT16}))\n
+    .INPUT(index, TensorType({DT_INT64}))\n
+    .INPUT(k_cache, TensorType({DT_FLOAT16}))\n
+    .INPUT(v_cache, TensorType({DT_FLOAT16}))\n
+    .OUTPUT(k_cache, TensorType({DT_FLOAT16}))\n
+    .OUTPUT(v_cache, TensorType({DT_FLOAT16}))\n
+    .ATTR(epsilon, Float, 1e-5)\n
+    .OP_END_FACTORY_REG(KvRmsNormRopeCache)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "KvRmsNormRopeCache"
+    op.name = next_unique_name(node_name, "KvRmsNormRopeCache")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(kv.tensor)
+    op.input_desc.add().CopyFrom(kv.desc)
+    op.input_desc[-1].name = "kv"
+
+    op.input.append(gamma.tensor)
+    op.input_desc.add().CopyFrom(gamma.desc)
+    op.input_desc[-1].name = "gamma"
+
+    op.input.append(cos.tensor)
+    op.input_desc.add().CopyFrom(cos.desc)
+    op.input_desc[-1].name = "cos"
+
+    op.input.append(sin.tensor)
+    op.input_desc.add().CopyFrom(sin.desc)
+    op.input_desc[-1].name = "sin"
+
+    op.input.append(index.tensor)
+    op.input_desc.add().CopyFrom(index.desc)
+    op.input_desc[-1].name = "index"
+
+    op.input.append(k_cache.tensor)
+    op.input_desc.add().CopyFrom(k_cache.desc)
+    op.input_desc[-1].name = "k_cache"
+
+    op.input.append(v_cache.tensor)
+    op.input_desc.add().CopyFrom(v_cache.desc)
+    op.input_desc[-1].name = "v_cache"
+
+    # process attrs
+    op.attr["epsilon"].f = epsilon
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "k_cache"
+    k_cache = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "v_cache"
+    v_cache = Tensor(op, output_index)
+    output_index += 1
+
+    return k_cache, v_cache
+
+
+# This api is auto-generated from IR SingleRope
+@auto_convert_to_tensor([False, False, False], [False, False, False])
+def SingleRope(x: Tensor, cos: Tensor, sin: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(SingleRope)\n
+    .INPUT(x, TensorType({DT_FLOAT16}))\n
+    .INPUT(cos, TensorType({DT_FLOAT16}))\n
+    .INPUT(sin, TensorType({DT_FLOAT16}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT16}))\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "SingleRope"
+    op.name = next_unique_name(node_name, "SingleRope")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+
+    op.input.append(cos.tensor)
+    op.input_desc.add().CopyFrom(cos.desc)
+    op.input_desc[-1].name = "cos"
+
+    op.input.append(sin.tensor)
+    op.input_desc.add().CopyFrom(sin.desc)
+    op.input_desc[-1].name = "sin"
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+
+    return y
+
+
+@auto_convert_to_tensor([False, False, False, False, False, False, False], [False, True, True, True, True, True, True])
+def DequantSwigluQuant(x: Tensor,
+                       weight_scale: Optional[Tensor],
+                       activation_scale: Optional[Tensor],
+                       bias: Optional[Tensor],
+                       quant_scale: Optional[Tensor],
+                       quant_offset: Optional[Tensor],
+                       group_index: Optional[Tensor],
+                       *,
+                       activate_left: bool = False,
+                       quant_mode: str = "static",
+                       dependencies=[], node_name=None):
+    """REG_OP(DequantSwigluQuant)\n
+    .INPUT(x, TensorType({DT_FLOAT16, DT_BF16, DT_INT32}))\n
+    .OPTIONAL_INPUT(weight_scale, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(activation_scale, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(bias, TensorType({DT_BF16, DT_FLOAT16, DT_INT32, DT_FLOAT}))\n
+    .OPTIONAL_INPUT(quant_scale, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(quant_offset, TensorType({DT_FLOATT}))\n
+    .OPTIONAL_INPUT(group_index, TensorType({DT_INT32, DT_INT64}))\n
+    .OUTPUT(y, TensorType({DT_INT8}))\n
+    .OUTPUT(scale, TensorType({DT_FLOAT}))\n
+    .ATTR(activate_left, Bool, false)\n
+    .ATTR(quant_mode, std::string, "static")\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "DequantSwigluQuant"
+    op.name = next_unique_name(node_name, "DequantSwigluQuant")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+    if weight_scale is not None:
+        op.input.append(weight_scale.tensor)
+        op.input_desc.add().CopyFrom(weight_scale.desc)
+        op.input_desc[-1].name = "weight_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "weight_scale"
+    if activation_scale is not None:
+        op.input.append(activation_scale.tensor)
+        op.input_desc.add().CopyFrom(activation_scale.desc)
+        op.input_desc[-1].name = "activation_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "activation_scale"
+    if bias is not None:
+        op.input.append(bias.tensor)
+        op.input_desc.add().CopyFrom(bias.desc)
+        op.input_desc[-1].name = "bias"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "bias"
+    if quant_scale is not None:
+        op.input.append(quant_scale.tensor)
+        op.input_desc.add().CopyFrom(quant_scale.desc)
+        op.input_desc[-1].name = "quant_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "quant_scale"
+    if quant_offset is not None:
+        op.input.append(quant_offset.tensor)
+        op.input_desc.add().CopyFrom(quant_offset.desc)
+        op.input_desc[-1].name = "quant_offset"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "quant_offset"
+    if group_index is not None:
+        op.input.append(group_index.tensor)
+        op.input_desc.add().CopyFrom(group_index.desc)
+        op.input_desc[-1].name = "group_index"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "group_index"
+
+    # process attrs
+    op.attr["activate_left"].b = activate_left
+    op.attr["quant_mode"].s = compat_as_bytes(quant_mode)
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "scale"
+    scale = Tensor(op, output_index)
+    output_index += 1
+    return y, scale
