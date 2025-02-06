@@ -13,6 +13,9 @@ from .hcom_allreduce import npu_define_lib
 from .hcom_broadcast import op_broadcast
 
 
+op_allgather = npu_define_lib.define(
+    "allgather(Tensor[] tensor_list,Tensor input, str tag, int[] ranks, int group_size) -> Tensor[]")
+
 op_allgather_in_tensor = npu_define_lib.define(
     "allgather_in_tensor(Tensor out, Tensor input, str tag, int[] ranks, int group_size) -> Tensor")
 
@@ -62,6 +65,16 @@ def npu_allgather_in_tensor_patch_dist(output_tensor, input_tensor, group=None, 
     output_tensor.copy_(out)
 
 
+def allgather_meta(
+        output_tensor_list: List[Tensor],
+        intput: Tensor,
+        tag: str,
+        ranks: List[int],
+        group_size: int, ):
+    return output_tensor_list
+
+
+npu_define_lib.impl(op_allgather, allgather_meta, 'Meta')
 npu_define_lib.impl(op_allgather_in_tensor, allgather_in_tensor_meta, 'Meta')
 
 
@@ -88,9 +101,10 @@ def allgather_in_same_size(output_tensor_list, input_tensor, tag, ranks, group_s
     # 2、返回值按照dim=0进行切分
     npu_output_tensor_list = list(torch.split(out, recv_out_counts, dim=0))
     # 3、reshape成用户size的tensor
+    output_tensor_list_new = []
     for i, output_tensor in enumerate(npu_output_tensor_list):
-        output_tensor_list[i] = torch.reshape(output_tensor, output_shape_size[i])
-    return output_tensor_list
+        output_tensor_list_new.append(torch.reshape(output_tensor, output_shape_size[i]))
+    return output_tensor_list_new
 
 
 def allgather_in_different_size(output_tensor_list, input_tensor, tag, ranks, group_size):
@@ -126,7 +140,8 @@ def convert_allgather_in_tensor_uneven(
                              recv_displs=recv_displacements, group=group_name)
 
 
-def _allgather(output_tensor_list: List[torch.Tensor],
+@register_decomposition(torch.ops.npu_define.allgather)
+def allgather_decomposition(output_tensor_list: List[torch.Tensor],
                input_tensor: Tensor,
                tag: str,
                ranks: List[int],
@@ -156,7 +171,7 @@ def npu_all_gather_patch_dist(output_tensor_list, tensor, group=None, async_op=F
     if len(output_tensor_list) != size_:
         raise AssertionError(f'Tensor list input and rank size mismatch,\
         the len of list input is:{len(output_tensor_list)},but rank size is:{size_}.')
-    npu_out_list = _allgather(output_tensor_list, tensor, tag, ranklist, size_)
+    npu_out_list = torch.ops.npu_define.allgather(output_tensor_list, tensor, tag, ranklist, size_)
     for i, _ in enumerate(output_tensor_list):
         output_tensor_list[i].copy_(npu_out_list[i])
 
