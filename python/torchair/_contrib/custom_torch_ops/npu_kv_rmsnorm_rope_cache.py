@@ -35,7 +35,8 @@ def conveter_npu_kv_rmsnorm_rope_cache_default(
     k_cache: torch.Tensor,
     v_cache: torch.Tensor,
     epsilon: float = 1e-5,
+    cache_mode: str = 'Norm',
     meta_outputs: List[TensorSpec] = None
 
 ):
-    return ge.KvRmsNormRopeCache(kv, gamma, cos, sin, index, k_cache, v_cache, epsilon=epsilon)
+    return ge.KvRmsNormRopeCache(kv, gamma, cos, sin, index, k_cache, v_cache, epsilon=epsilon, cache_mode=cache_mode)

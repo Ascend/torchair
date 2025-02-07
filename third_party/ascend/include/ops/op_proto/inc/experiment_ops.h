@@ -3431,6 +3431,7 @@ REG_OP(KvRmsNormRopeCache)
     .OUTPUT(k_cache, TensorType({DT_FLOAT16}))
     .OUTPUT(v_cache, TensorType({DT_FLOAT16}))
     .ATTR(epsilon, Float, 1e-5)
+    .ATTR(cache_mode, String, 'Norm')
     .OP_END_FACTORY_REG(KvRmsNormRopeCache)
 
 

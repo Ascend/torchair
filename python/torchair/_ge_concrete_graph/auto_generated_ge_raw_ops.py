@@ -78047,6 +78047,7 @@ def KvRmsNormRopeCache(kv: Tensor,
                        v_cache: Tensor,
                        *,
                        epsilon: float = 1e-5,
+                       cache_mode: str = 'Norm',
                        dependencies=[],
                        node_name=None):
     """REG_OP(KvRmsNormRopeCache)\n
@@ -78060,6 +78061,7 @@ def KvRmsNormRopeCache(kv: Tensor,
     .OUTPUT(k_cache, TensorType({DT_FLOAT16}))\n
     .OUTPUT(v_cache, TensorType({DT_FLOAT16}))\n
     .ATTR(epsilon, Float, 1e-5)\n
+    .ATTR(cache_mode, String, 'Norm')\n
     .OP_END_FACTORY_REG(KvRmsNormRopeCache)\n
     """
 
@@ -78102,6 +78104,7 @@ def KvRmsNormRopeCache(kv: Tensor,
 
     # process attrs
     op.attr["epsilon"].f = epsilon
+    op.attr["cache_mode"].s = compat_as_bytes(cache_mode)
 
     # process outputs
     output_index = 0
