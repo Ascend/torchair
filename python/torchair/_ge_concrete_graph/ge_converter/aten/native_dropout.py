@@ -31,7 +31,7 @@ def native_dropout_checkpoint(
     meta_outputs: TensorSpec = None,
     rng_state: Optional[Tensor] = None
 ):
-    if train is None or train == True:
+    if train is None or train is True:
         prob = 1. - p
         prob = dtype_promote(prob, target_dtype=tensor_input.dtype)
         shape = ge.Shape(tensor_input)

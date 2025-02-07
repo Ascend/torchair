@@ -72,10 +72,12 @@ def register_meta_npu(op, avoid_fallback_flag=False):
 
 def register_break_fn(meta_class, op_name):
     op_name = op_name.upper()
+
     def decorator(func: Callable):
         break_fn_table[op_name] = func
         break_mapping_table[op_name] = meta_class
         return func
+
     return decorator
 
 
@@ -97,6 +99,8 @@ def meta_native_dropout_backward(grad_output: Tensor, mask: Tensor, scale: float
 
 
 raw_batch_norm_func = decomposition_table[aten._native_batch_norm_legit_no_training.default]
+
+
 @register_meta_npu(aten._native_batch_norm_legit_no_training.default)
 def meta__native_batch_norm_legit_no_training(
     input: Tensor,

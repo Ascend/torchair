@@ -19,7 +19,7 @@ def _find_pack_and_data_ops(graph: GraphDef):
     for op in graph.op:
         if op.type == "Data" and op.input_desc[0].device_type == "CPU":
             host_data_ops[GeTensor(op).tensor] = op.attr["index"].i
-        elif op.type == "Pack" and op.attr['_inputs_all_sym'].b == True:
+        elif op.type == "Pack" and op.attr['_inputs_all_sym'].b is True:
             if op.attr["axis"].i != 0:
                 raise AssertionError(f"sym pack op attr axis must be 0.")
             sym_pack_ops.append(op)
@@ -60,10 +60,10 @@ def optimize_sym_pack(graph: GraphDef):
             if GeTensor(pack_op).meta is not None:
                 new_data.set_meta(GeTensor(pack_op).meta)
             additional_data.append((new_data, pack_op))
-            logger.debug(f"create new data op {new_data.node.name} with input list [{pack_input_idx_list}] "
-                         f"to replace pack op {pack_op.name}.")
+            logger.debug("create new data op %s with input list [%s] "
+                         "to replace pack op %s.", new_data.node.name, pack_input_idx_list, pack_op.name)
         else:
-            logger.debug(f"skip create data, set data op {new_data.node.name} to replace pack op {pack_op.name}.")
+            logger.debug("skip create data, set data op %s to replace pack op %s.", new_data.node.name, pack_op.name)
 
         pack_to_data_name_mapping[pack_op.name] = new_data.node.name
         graph.op.remove(pack_op)
@@ -115,7 +115,7 @@ def _find_ref_ops_and_io_ops(graph: GraphDef):
     for op in graph.op:
         if op.type == "Data":
             continue
-        for idx, op_in in enumerate(op.input):
+        for _, op_in in enumerate(op.input):
             # Cmo OP prefetch address, Data output count ignore Cmo.
             if (op_in in data_output_count.keys()) and (op.type != "Cmo"):
                 data_output_count[op_in] = (data_output_count[op_in][0], data_output_count[op_in][1] + 1)
@@ -170,37 +170,40 @@ def optimize_reference_op_redundant_copy(graph: GraphDef):
         if (assign_op.input[0] in data_ops.keys()):
             ref_data_idx.append(data_ops[assign_op.input[0]][0])
         if (assign_op.input[0] not in data_ops.keys()) or (assign_op.input[1] not in ref_op_infos.keys()):
-            logger.debug(f"Assign op: {assign_tensor} is not used to update ref_op output to data op.")
+            logger.debug("Assign op: %s is not used to update ref_op output to data op.", assign_tensor)
             continue
         ref_op, ref_idx, ref_op_input = ref_op_infos[assign_op.input[1]].op_def, \
             ref_op_infos[assign_op.input[1]].output_id, \
             ref_op_infos[assign_op.input[1]].ref_input_name
         if ref_op_input not in tensormove_ops.keys():
-            logger.debug(f"ref_op input: {ref_op_input} type is not TensorMove, skip TensorMove optimization.")
+            logger.debug("ref_op input: %s type is not TensorMove, skip TensorMove optimization.", ref_op_input)
             continue
         tensormove_op = tensormove_ops[ref_op_input]
         if tensormove_op.input[0] != assign_op.input[0]:
-            logger.debug(f"TensorMove input: {tensormove_op.input[0]} is not Data to be assigned, skip optimization.")
+            logger.debug("TensorMove input: %s is not Data to be assigned, skip optimization.", tensormove_op.input[0])
             continue
         data_output_count = data_ops[assign_op.input[0]][1]
         if (data_output_count != 2):
-            logger.debug(f"Data op: {assign_op.input[0]} output count {data_output_count} is not equal to two, "
-                         f"which means the current Data op cannot be modified inplace, skip TensorMove optimization.")
+            logger.debug("Data op: %s output count %s is not equal to two, "
+                         "which means the current Data op cannot be modified inplace, skip TensorMove optimization.",
+                         assign_op.input[0], data_output_count)
             continue
 
         ref_out_count, is_net_output = ref_op_infos[assign_op.input[1]].output_ref_count, \
             ref_op_infos[assign_op.input[1]].is_net_output
         if is_net_output or ref_out_count == 1:
-            logger.debug(f"Assign op: {assign_tensor} is used to copy {assign_op.input[1]} to {assign_op.input[0]}, "
-                         f"update ref_op ref_input_{ref_idx} from {ref_op_input} to {tensormove_op.input[0]}.")
-            logger.debug(f"Ref_op ref_output_{ref_idx} is a net_output, Assign op can not be removed, "
-                         f"only remove TensorMove op: {ref_op_input}.")
+            logger.debug("Assign op: %s is used to copy %s to %s, update ref_op ref_input_%s from %s to %s.",
+                         assign_tensor, assign_op.input[1], assign_op.input[0], ref_idx, ref_op_input,
+                         tensormove_op.input[0])
+            logger.debug("Ref_op ref_output_%s is a net_output, Assign op can not be removed, "
+                         "only remove TensorMove op: %s.", ref_idx, ref_op_input)
             ref_op.input[ref_idx] = tensormove_op.input[0]
             graph.op.remove(tensormove_op)
         else:
-            logger.debug(f"Assign op: {assign_tensor} is used to copy {assign_op.input[1]} to {assign_op.input[0]}, "
-                         f"update ref_op ref_input_{ref_idx} from {ref_op_input} to {tensormove_op.input[0]}, "
-                         f"and remove Assign op: {assign_tensor} and TensorMove op: {ref_op_input}.")
+            logger.debug("Assign op: %s is used to copy %s to %s, update ref_op ref_input_%s from %s to %s, "
+                         "and remove Assign op: %s and TensorMove op: %s.",
+                         assign_tensor, assign_op.input[1], assign_op.input[0], ref_idx, ref_op_input,
+                         tensormove_op.input[0], assign_tensor, ref_op_input)
             ref_op.input[ref_idx] = tensormove_op.input[0]
             graph.op.remove(assign_op)
             graph.op.remove(tensormove_op)
@@ -230,7 +233,7 @@ def replace_data_to_refdata(graph, ref_input_idx, inputs):
             continue
         data_idx = op.attr["index"].i
         if data_idx in ref_input_idx:
-            logger.debug(f"Try to deal with ref input {op.name}:{data_idx}")
+            logger.debug("Try to deal with ref input %s:%s", op.name, data_idx)
             input_tensor = inputs[data_idx]
             shape_str = "_".join(str(x) for x in input_tensor.shape)
             stride_str = "_".join(str(x) for x in input_tensor.stride())
@@ -238,7 +241,8 @@ def replace_data_to_refdata(graph, ref_input_idx, inputs):
             new_refdata_name = "RefData_" + shape_str + "_" + stride_str + "_" + offset_str + "_" + str(
                 id(input_tensor))
             if _is_unique_input_name_in_graph(graph.name, new_refdata_name):
-                logger.debug(f"Replace {new_refdata_name}:RefData with {op.name}:{op.type} in graph {graph.name}")
+                logger.debug("Replace %s:RefData with %s:%s in graph %s", new_refdata_name, op.name, op.type,
+                             graph.name)
                 op.attr["_origin_data_name"].s = compat_as_bytes(op.name)
                 replaced_map[op.name] = new_refdata_name
                 op.name = new_refdata_name
@@ -256,10 +260,10 @@ def get_frozen_flag(input_infos):
         if (input_info.value_type == _ValueType.PARAMETER) and isinstance(input_info.func, _TensorInput) and (
                 input_info.device_type == "NPU"):
             frozen_flag_list.append(1)
-            logger.debug(f"No.{idx} arg is frozen data")
+            logger.debug("No.%s arg is frozen data", idx)
         else:
             frozen_flag_list.append(0)
-            logger.debug(f"No.{idx} arg is Data")
+            logger.debug("No.%s arg is Data", idx)
 
     return frozen_flag_list
 
@@ -280,7 +284,8 @@ def frozen_data_by_constplaceholder(graph: GraphDef, frozen_flag_list: List, met
         with graph:
             constplaceholder = ge.ConstPlaceHolder(origin_shape=[], origin_format=2, storage_shape=[], storage_format=2,
                                                    expand_dim_rules="", dtype=0, addr=0, size=4, node_name=name)
-            logger.debug(f'Replace {op.name} by constructing fake {name} [shape=[], dtype=DT_FLOAT, format=FORMAT_ND]')
+            logger.debug('Replace %s by constructing fake %s [shape=[], dtype=DT_FLOAT, format=FORMAT_ND]', op.name,
+                         name)
             constplaceholder.node.attr["update_node_from_fx_input_idx"].i = arg_idx
             if arg_idx in meta_outputs.keys() and meta_outputs[arg_idx] is not None:
                 constplaceholder.set_meta(meta_outputs[arg_idx])
@@ -291,7 +296,7 @@ def frozen_data_by_constplaceholder(graph: GraphDef, frozen_flag_list: List, met
 def _remove_op_controller_from_input(data: OpDef, op: OpDef):
     for idx, input_name in enumerate(op.input):
         if input_name.endswith("-1") and (input_name.split(":")[0] == data.name):
-            logger.debug(f"remove ge graph op {op.name} controller {input_name}.")
+            logger.debug("remove ge graph op %s controller %s.", op.name, input_name)
             del op.input[idx]
             break
 
@@ -306,7 +311,7 @@ def remove_dead_data_and_reorder_data_index(graph: GraphDef):
     for op in graph.op:
         if op.type == "Data":
             continue
-        for idx, op_in in enumerate(op.input):
+        for _, op_in in enumerate(op.input):
             if op_in in all_data_and_refcount.keys():
                 all_data_and_refcount[op_in] = (all_data_and_refcount[op_in][0], all_data_and_refcount[op_in][1] + 1)
             # record controller from Data
@@ -319,13 +324,14 @@ def remove_dead_data_and_reorder_data_index(graph: GraphDef):
     to_del_data_name = []
     for _, op_tuple in all_data_and_refcount.items():
         if op_tuple[1] == 0:
-            logger.debug(f"remove ge graph data op {op_tuple[0].name}.")
+            logger.debug("remove ge graph data op %s.", op_tuple[0].name)
             to_del_data_name.append(op_tuple[0].name)
             graph.op.remove(op_tuple[0])
             for op in all_data_and_controller.get(op_tuple[0].name, []):
                 _remove_op_controller_from_input(op_tuple[0], op)
         else:
-            logger.debug(f"update ge graph data index from {op_tuple[0].attr['index'].i} to {len(saved_inputs_info)}.")
+            logger.debug("update ge graph data index from %s to %s.", op_tuple[0].attr['index'].i,
+                         len(saved_inputs_info))
             op_tuple[0].attr["index"].i = len(saved_inputs_info)
             if op_tuple[0].name not in graph.named_inputs_info.keys():
                 raise AssertionError(f"Cannot find input info for data {op_tuple[0].name}. "
@@ -363,7 +369,7 @@ def explict_order_for_side_effect_nodes(graph: GeGraph, graph_output_ref_input=N
         elif op.type == "NetOutput":
             net_output = op
         elif op.type in _SIDE_EFFECT_OPS:
-            logger.debug(f"Strict order find side effect op {op.name} in order {order}.")
+            logger.debug("Strict order find side effect op %s in order %s.", op.name, order)
             strict_order_nodes[order] = op
         op_hint_order[op.name] = order
 
@@ -376,7 +382,7 @@ def explict_order_for_side_effect_nodes(graph: GeGraph, graph_output_ref_input=N
     for i, op in enumerate(ordered_nodes[:-1]):
         dst: OpDef = ordered_nodes[i + 1]
         control = ControlTensor(op).controller
-        logger.debug(f"Strict order add control edge from {op.name} to {dst.name}.")
+        logger.debug("Strict order add control edge from %s to %s.", op.name, dst.name)
         if control not in dst.input:
             dst.input.append(control)
     # Keep the last node connected to the net output to prevent side effect nodes pruned by ge
@@ -392,17 +398,17 @@ def explict_order_for_side_effect_nodes(graph: GeGraph, graph_output_ref_input=N
         if input_index is None:
             continue
         node = name_to_op[op_name]
-        logger.debug(f"Strict order find node {node.name} mutate input[{input_index}] {net_inputs[input_index]}, "
-                     f"output index {output_idx}.")
+        logger.debug("Strict order find node %s mutate input[%s] %s, "
+                     "output index %s.", node.name, input_index, net_inputs[input_index], output_idx)
         input_to_its_written[net_inputs[input_index]] = node.name
 
     def get_op_input_other_users(op: OpDef):
-        logger.debug(f"Strict order find node {op.name} input {op.input}.")
+        logger.debug("Strict order find node %s input %s.", op.name, op.input)
         users: Set[str] = set()
         for v in op.input:
             written_op = input_to_its_written.get(v, None)
             if written_op is not None:
-                logger.debug(f"Strict order find node {op.name} input {v} is written by {written_op}.")
+                logger.debug("Strict order find node %s input %s is written by %s.", op.name, v, written_op)
                 users.add(written_op)
                 continue
             input_op = name_to_op[v.split(":")[0]]
@@ -410,7 +416,7 @@ def explict_order_for_side_effect_nodes(graph: GeGraph, graph_output_ref_input=N
                 users |= get_op_input_other_users(input_op)
         return users
 
-    for order, op in strict_order_nodes.items():
+    for _, op in strict_order_nodes.items():
         other_users = get_op_input_other_users(op)
         for user in other_users:
             src, dst = op, name_to_op[user]
@@ -434,7 +440,7 @@ def explict_order_for_cmo(graph: GeGraph):
         if op.type == "NetOutput":
             net_output = op
         elif op.type == "Cmo":
-            logger.debug(f"Strict order find Cmo in order {order}.")
+            logger.debug("Strict order find Cmo in order %s.", order)
             cmo_nodes[order] = op
 
     if len(cmo_nodes) == 0:
@@ -446,7 +452,7 @@ def explict_order_for_cmo(graph: GeGraph):
     for i, op in enumerate(ordered_nodes[:-1]):
         dst: OpDef = ordered_nodes[i + 1]
         control = ControlTensor(op).controller
-        logger.debug(f"Strict order add control edge from {op.name} to {dst.name}.")
+        logger.debug("Strict order add control edge from %s to %s.", op.name, dst.name)
         if control not in dst.input:
             dst.input.append(control)
     # Keep the last node connected to the net output to prevent side effect nodes pruned by ge

@@ -1,6 +1,7 @@
 import os
 import contextlib
 import sympy
+from typing import Any, Dict, List, Tuple, Union, Callable
 
 import torch
 from torchair.core.utils import logger
@@ -9,7 +10,6 @@ from torchair.ge._ge_graph import compat_as_bytes, DataType, is_sym, Tensor, \
     torch_type_to_ge_type, ge_type_to_torch_type
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._utils.path_manager import PathManager
-from typing import Any, Dict, List, Tuple, Union, Callable
 
 
 class Placement:
@@ -278,7 +278,7 @@ def generate_shape_from_tensor(fake: torch.Tensor) -> List[int]:
         else:
             try:
                 generalized_shape.append(int(str(dim)))
-            except:
+            except Exception:
                 generalized_shape.append(-1)
     return generalized_shape
 

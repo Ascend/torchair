@@ -1,12 +1,14 @@
-import torch
 import logging
 import sys
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Tuple, Union, Callable
+
+import torch
 from torch.fx.node import Argument, Target
 from torch import Tensor
-from torchair.configs.compiler_config import CompilerConfig
 from torch._subclasses.fake_tensor import FakeTensor
+from torchair.configs.compiler_config import CompilerConfig
+
 
 
 class ValuePack:
@@ -32,7 +34,7 @@ class ValuePack:
         else:
             try:
                 meta_str = f"{type(self._meta)}({self._meta})"
-            except:
+            except Exception:
                 meta_str = f"{type(self._meta)}"
         return f'Pack(meta:{meta_str} npu:{self._npu_meta})'
 

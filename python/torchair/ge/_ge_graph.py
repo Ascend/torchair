@@ -31,11 +31,11 @@ class TensorBase():
         ...
 
     @abstractmethod
-    def dtype():
+    def dtype(self):
         ...
 
     @abstractmethod
-    def rank():
+    def rank(self):
         ...
 
     __module__ = "torchair.ge"
@@ -47,15 +47,15 @@ class TensorSpecBase():
         ...
 
     @abstractmethod
-    def dtype():
+    def dtype(self):
         ...
 
     @abstractmethod
-    def rank():
+    def rank(self):
         ...
 
     @abstractmethod
-    def size():
+    def size(self):
         ...
 
     __module__ = "torchair.ge"
@@ -431,8 +431,8 @@ def sym_to_torch_dtype(v):
     raise RuntimeError(f"Unsupported sym type {type(v)}")
 
 
-def list_to_torch_dtype(l):
-    for v in l:
+def list_to_torch_dtype(input_list):
+    for v in input_list:
         if isinstance(v, torch.SymInt) or isinstance(v, int):
             continue
         else:
@@ -857,7 +857,7 @@ class TensorSpec(TensorSpecBase):
             self._symsize = list(meta_output.size())
             try:
                 self._size = [int(str(s)) for s in self._symsize]
-            except:
+            except Exception:
                 self._size = None
         elif is_sym(meta_output):
             self._torch_dtype = sym_to_torch_dtype(meta_output)
@@ -1067,7 +1067,7 @@ def _wrap_ge_tensor(v, dtype=None):
 
 
 def _torch_tensor_to_ge_const(v: torch.Tensor):
-    if type(v) != torch.Tensor:
+    if not isinstance(v, torch.Tensor):
         raise AssertionError
     with no_dispatch():
         if v.device.type != "cpu":
@@ -1082,8 +1082,8 @@ def _get_promoted_dtype(inputs: list) -> Tuple[List[DataType], List[DataType]]:
             try:
                 dtype = input.dtype
                 dtypes.add(dtype)
-            except:
-                pass
+            except Exception as e:
+                logger.debug("Failed to get dtype for input: %s, Error: %s", input, e)
 
     f_dtypes = []
     i_dtypes = []
@@ -1154,7 +1154,7 @@ def _auto_type_promotion_for_const(bundle_inputs: list, inputs_dynamic: list, in
             promoted_inputs.append(input)
             continue
 
-        if type(input) == torch.Tensor:
+        if isinstance(input, torch.Tensor):
             promoted_inputs.append(_torch_tensor_to_ge_const(input))
             continue
 
@@ -1309,7 +1309,7 @@ def Data(*, index: int, dtype: int, shape: List[int] = None, format: str = "ND",
     desc.name = "y"
     desc.dtype = _ge_dtype_to_ge_proto_dtype(dtype)
     desc.layout = format
-    if not placement in ["NPU", "CPU"]:
+    if placement not in ["NPU", "CPU"]:
         raise AssertionError(f"placement should be NPU or CPU, but got {placement}")
     desc.device_type = placement
     if shape is not None:
