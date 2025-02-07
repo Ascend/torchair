@@ -76,7 +76,8 @@ AttrDef = _reflection.GeneratedProtocolMessageType('AttrDef', (_message.Message,
         'DESCRIPTOR': _ATTRDEF_LISTVALUE,
         '__module__': 'ge_ir_pb2'
         # @@protoc_insertion_point(class_scope:ge.proto.AttrDef.ListValue)
-    }),
+    })
+    ,
 
     'ListListInt': _reflection.GeneratedProtocolMessageType('ListListInt', (_message.Message,), {
 
@@ -84,11 +85,13 @@ AttrDef = _reflection.GeneratedProtocolMessageType('AttrDef', (_message.Message,
             'DESCRIPTOR': _ATTRDEF_LISTLISTINT_LISTINT,
             '__module__': 'ge_ir_pb2'
             # @@protoc_insertion_point(class_scope:ge.proto.AttrDef.ListListInt.ListInt)
-        }),
+        })
+        ,
         'DESCRIPTOR': _ATTRDEF_LISTLISTINT,
         '__module__': 'ge_ir_pb2'
         # @@protoc_insertion_point(class_scope:ge.proto.AttrDef.ListListInt)
-    }),
+    })
+    ,
 
     'ListListFloat': _reflection.GeneratedProtocolMessageType('ListListFloat', (_message.Message,), {
 
@@ -96,11 +99,13 @@ AttrDef = _reflection.GeneratedProtocolMessageType('AttrDef', (_message.Message,
             'DESCRIPTOR': _ATTRDEF_LISTLISTFLOAT_LISTFLOAT,
             '__module__': 'ge_ir_pb2'
             # @@protoc_insertion_point(class_scope:ge.proto.AttrDef.ListListFloat.ListFloat)
-        }),
+        })
+        ,
         'DESCRIPTOR': _ATTRDEF_LISTLISTFLOAT,
         '__module__': 'ge_ir_pb2'
         # @@protoc_insertion_point(class_scope:ge.proto.AttrDef.ListListFloat)
-    }),
+    })
+    ,
     'DESCRIPTOR': _ATTRDEF,
     '__module__': 'ge_ir_pb2'
     # @@protoc_insertion_point(class_scope:ge.proto.AttrDef)
@@ -118,7 +123,8 @@ NamedAttrs = _reflection.GeneratedProtocolMessageType('NamedAttrs', (_message.Me
         'DESCRIPTOR': _NAMEDATTRS_ATTRENTRY,
         '__module__': 'ge_ir_pb2'
         # @@protoc_insertion_point(class_scope:ge.proto.NamedAttrs.AttrEntry)
-    }),
+    })
+    ,
     'DESCRIPTOR': _NAMEDATTRS,
     '__module__': 'ge_ir_pb2'
     # @@protoc_insertion_point(class_scope:ge.proto.NamedAttrs)
@@ -139,7 +145,8 @@ TensorDescriptor = _reflection.GeneratedProtocolMessageType('TensorDescriptor', 
         'DESCRIPTOR': _TENSORDESCRIPTOR_ATTRENTRY,
         '__module__': 'ge_ir_pb2'
         # @@protoc_insertion_point(class_scope:ge.proto.TensorDescriptor.AttrEntry)
-    }),
+    })
+    ,
     'DESCRIPTOR': _TENSORDESCRIPTOR,
     '__module__': 'ge_ir_pb2'
     # @@protoc_insertion_point(class_scope:ge.proto.TensorDescriptor)
@@ -160,7 +167,8 @@ OpDef = _reflection.GeneratedProtocolMessageType('OpDef', (_message.Message,), {
         'DESCRIPTOR': _OPDEF_ATTRENTRY,
         '__module__': 'ge_ir_pb2'
         # @@protoc_insertion_point(class_scope:ge.proto.OpDef.AttrEntry)
-    }),
+    })
+    ,
     'DESCRIPTOR': _OPDEF,
     '__module__': 'ge_ir_pb2'
     # @@protoc_insertion_point(class_scope:ge.proto.OpDef)
@@ -174,7 +182,8 @@ GraphDef = _reflection.GeneratedProtocolMessageType('GraphDef', (_message.Messag
         'DESCRIPTOR': _GRAPHDEF_ATTRENTRY,
         '__module__': 'ge_ir_pb2'
         # @@protoc_insertion_point(class_scope:ge.proto.GraphDef.AttrEntry)
-    }),
+    })
+    ,
     'DESCRIPTOR': _GRAPHDEF,
     '__module__': 'ge_ir_pb2'
     # @@protoc_insertion_point(class_scope:ge.proto.GraphDef)
@@ -188,7 +197,8 @@ ModelDef = _reflection.GeneratedProtocolMessageType('ModelDef', (_message.Messag
         'DESCRIPTOR': _MODELDEF_ATTRENTRY,
         '__module__': 'ge_ir_pb2'
         # @@protoc_insertion_point(class_scope:ge.proto.ModelDef.AttrEntry)
-    }),
+    })
+    ,
     'DESCRIPTOR': _MODELDEF,
     '__module__': 'ge_ir_pb2'
     # @@protoc_insertion_point(class_scope:ge.proto.ModelDef)
@@ -196,7 +206,7 @@ ModelDef = _reflection.GeneratedProtocolMessageType('ModelDef', (_message.Messag
 _sym_db.RegisterMessage(ModelDef)
 _sym_db.RegisterMessage(ModelDef.AttrEntry)
 
-if _descriptor._USE_C_DESCRIPTORS is False:
+if _descriptor._USE_C_DESCRIPTORS == False:
     DESCRIPTOR._options = None
     _NAMEDATTRS_ATTRENTRY._options = None
     _NAMEDATTRS_ATTRENTRY._serialized_options = b'8\001'

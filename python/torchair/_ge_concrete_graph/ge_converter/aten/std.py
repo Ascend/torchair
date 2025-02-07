@@ -124,7 +124,7 @@ def conveter_aten_std_correction(
     mean = ge.ReduceMean(self, axes=dim, keep_dims=keepdim)
     if len(dim) == 1 and dim[0] == -1:
         pass
-    elif len(dim) != self.rank and keepdim is False:
+    elif len(dim) != self.rank and keepdim == False:
         dim_copy = dim.copy()
         dim_copy.sort()
         for d in dim_copy:

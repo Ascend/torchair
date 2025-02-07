@@ -19,12 +19,12 @@ def all_gather_tensor_inplace_fixed(
     tag: str = "",
     gather_dim: int = 0,
 ):
-    if async_op:
-        raise ValueError("Can't remap async version of inplace op to functional collective")
+    assert (
+        not async_op
+    ), "Can't remap async version of inplace op to functional collective"
 
     group = group or dist.group.WORLD
-    if group is None:
-        raise ValueError("Group is not set")
+    assert group is not None
 
     return output_tensor.copy_(all_gather_tensor(input_tensor, gather_dim, group, tag))
 

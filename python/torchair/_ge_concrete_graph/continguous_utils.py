@@ -122,7 +122,7 @@ def _get_npu_outputs_of_view_ops(target, args, kwargs, meta_outputs):
     fake.set_meta(meta_outputs_contiguous)
     if isinstance(meta_outputs_contiguous, (tuple, list)):
         view_npu_outputs = [copy.copy(args[input_tensor_index]) for _ in range(len(meta_outputs))]
-        for _, npu_output in enumerate(view_npu_outputs):
+        for idx, npu_output in enumerate(view_npu_outputs):
             setattr(npu_output, "view_faketensor", fake)
     elif isinstance(meta_outputs_contiguous, FakeTensor):
         view_npu_outputs = copy.copy(args[input_tensor_index])

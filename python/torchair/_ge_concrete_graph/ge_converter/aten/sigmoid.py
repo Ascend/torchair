@@ -35,7 +35,6 @@ def conveter_aten_sigmoid_default(self: Tensor, meta_outputs: TensorSpec = None)
     """NB: aten::sigmoid(Tensor self) -> Tensor"""
     return ge.Sigmoid(self)
 
-
 @register_fx_node_ge_converter(torch.ops.aten.sigmoid.out)
 def conveter_aten_sigmoid_out(
     self: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
