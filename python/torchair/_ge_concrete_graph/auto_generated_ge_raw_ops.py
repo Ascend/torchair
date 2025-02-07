@@ -77683,6 +77683,173 @@ def MoeFinalizeRoutingV2(expanded_x: Tensor, expanded_row_idx: Tensor, x1: Optio
     return y
 
 
+# This api is auto-generated from IR MoeDistributeCombine
+@auto_convert_to_tensor([False, False, False, False, False, False], [False, False, False, False, False, False])
+def MoeDistributeCombine(expand_x: Tensor, expert_ids: Tensor, expand_idx: Tensor, ep_send_counts: Tensor, tp_send_counts: Tensor, expert_scales: Tensor, *, group_ep: str, group_tp: str, ep_world_size: int, tp_world_size: int, ep_rank_id: int, tp_rank_id: int, expert_shard_type: int, shared_expert_rank_num: int, moe_expert_num: int, global_bs: int=0, dependencies=[], node_name=None):
+    """REG_OP(MoeDistributeCombine)\n
+    .INPUT(expand_x, TensorType({DT_BF16, DT_FLOAT16}))\n
+    .INPUT(expert_ids, TensorType({DT_INT32}))\n
+    .INPUT(expand_idx, TensorType({DT_INT32}))\n
+    .INPUT(ep_send_counts, TensorType({DT_INT32}))\n
+    .INPUT(tp_send_counts, TensorType({DT_INT32}))\n
+    .INPUT(expert_scales, TensorType({DT_FLOAT}))\n
+    .OUTPUT(x, TensorType({DT_BF16, DT_FLOAT16}))\n
+    .REQUIRED_ATTR(group_ep, String)\n
+    .REQUIRED_ATTR(group_tp, String)\n
+    .REQUIRED_ATTR(ep_world_size, Int)\n
+    .REQUIRED_ATTR(tp_world_size, Int)\n
+    .REQUIRED_ATTR(ep_rank_id, Int)\n
+    .REQUIRED_ATTR(tp_rank_id, Int)\n
+    .REQUIRED_ATTR(expert_shard_type, Int)\n
+    .REQUIRED_ATTR(shared_expert_rank_num, Int)\n
+    .REQUIRED_ATTR(moe_expert_num, Int)\n
+    .ATTR(global_bs, Int, 0)\n
+    """
+
+    # process inputs
+    inputs = {
+        "expand_x": expand_x,
+        "expert_ids": expert_ids,
+        "expand_idx": expand_idx,
+        "ep_send_counts": ep_send_counts,
+        "tp_send_counts": tp_send_counts,
+        "expert_scales": expert_scales,
+    }
+
+    # process attrs
+    attrs = {
+        "group_ep": attr.Str(group_ep),
+        "group_tp": attr.Str(group_tp),
+        "ep_world_size": attr.Int(ep_world_size),
+        "tp_world_size": attr.Int(tp_world_size),
+        "ep_rank_id": attr.Int(ep_rank_id),
+        "tp_rank_id": attr.Int(tp_rank_id),
+        "expert_shard_type": attr.Int(expert_shard_type),
+        "shared_expert_rank_num": attr.Int(shared_expert_rank_num),
+        "moe_expert_num": attr.Int(moe_expert_num),
+        "global_bs": attr.Int(global_bs),
+    }
+
+    # process outputs
+    outputs = [
+    "x",
+    ]
+
+    return ge_op(
+        op_type="MoeDistributeCombine",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("MoeDistributeCombine") \
+        .input("expand_x", "DT_BF16, DT_FLOAT16") \
+        .input("expert_ids", "DT_INT32") \
+        .input("expand_idx", "DT_INT32") \
+        .input("ep_send_counts", "DT_INT32") \
+        .input("tp_send_counts", "DT_INT32") \
+        .input("expert_scales", "DT_FLOAT") \
+        .required_attr("group_ep", attr.Str) \
+        .required_attr("group_tp", attr.Str) \
+        .required_attr("ep_world_size", attr.Int) \
+        .required_attr("tp_world_size", attr.Int) \
+        .required_attr("ep_rank_id", attr.Int) \
+        .required_attr("tp_rank_id", attr.Int) \
+        .required_attr("expert_shard_type", attr.Int) \
+        .required_attr("shared_expert_rank_num", attr.Int) \
+        .required_attr("moe_expert_num", attr.Int) \
+        .attr("global_bs", attr.Int(0)) \
+        .output("x", "DT_BF16, DT_FLOAT16")
+    )
+
+
+# This api is auto-generated from IR MoeDistributeDispatch
+@auto_convert_to_tensor([False, False, False], [False, False, True])
+def MoeDistributeDispatch(x: Tensor, expert_ids: Tensor, scales: Optional[Tensor], *, group_ep: str, group_tp: str, ep_world_size: int, tp_world_size: int, ep_rank_id: int, tp_rank_id: int, expert_shard_type: int, shared_expert_rank_num: int, moe_expert_num: int, quant_mode: int=0, global_bs: int=0, dependencies=[], node_name=None):
+    """REG_OP(MoeDistributeDispatch)\n
+    .INPUT(x, TensorType({DT_BF16, DT_FLOAT16}))\n
+    .INPUT(expert_ids, TensorType({DT_INT32}))\n
+    .OPTIONAL_INPUT(scales, TensorType({DT_FLOAT}))\n
+    .OUTPUT(expand_x, TensorType({DT_BF16, DT_INT8, DT_FLOAT16}))\n
+    .OUTPUT(dynamic_scales, TensorType({DT_FLOAT}))\n
+    .OUTPUT(expand_idx, TensorType({DT_INT32}))\n
+    .OUTPUT(expert_token_nums, TensorType({DT_INT64}))\n
+    .OUTPUT(ep_recv_count, TensorType({DT_INT32}))\n
+    .OUTPUT(tp_recv_count, TensorType({DT_INT32}))\n
+    .REQUIRED_ATTR(group_ep, String)\n
+    .REQUIRED_ATTR(group_tp, String)\n
+    .REQUIRED_ATTR(ep_world_size, Int)\n
+    .REQUIRED_ATTR(tp_world_size, Int)\n
+    .REQUIRED_ATTR(ep_rank_id, Int)\n
+    .REQUIRED_ATTR(tp_rank_id, Int)\n
+    .REQUIRED_ATTR(expert_shard_type, Int)\n
+    .REQUIRED_ATTR(shared_expert_rank_num, Int)\n
+    .REQUIRED_ATTR(moe_expert_num, Int)\n
+    .ATTR(quant_mode, Int, 0)\n
+    .ATTR(global_bs, Int, 0)\n
+    """
+
+    # process inputs
+    inputs = {
+        "x": x,
+        "expert_ids": expert_ids,
+        "scales": scales,
+    }
+
+    # process attrs
+    attrs = {
+        "group_ep": attr.Str(group_ep),
+        "group_tp": attr.Str(group_tp),
+        "ep_world_size": attr.Int(ep_world_size),
+        "tp_world_size": attr.Int(tp_world_size),
+        "ep_rank_id": attr.Int(ep_rank_id),
+        "tp_rank_id": attr.Int(tp_rank_id),
+        "expert_shard_type": attr.Int(expert_shard_type),
+        "shared_expert_rank_num": attr.Int(shared_expert_rank_num),
+        "moe_expert_num": attr.Int(moe_expert_num),
+        "quant_mode": attr.Int(quant_mode),
+        "global_bs": attr.Int(global_bs),
+    }
+
+    # process outputs
+    outputs = [
+    "expand_x",
+    "dynamic_scales",
+    "expand_idx",
+    "expert_token_nums",
+    "ep_recv_count",
+    "tp_recv_count",
+    ]
+
+    return ge_op(
+        op_type="MoeDistributeDispatch",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("MoeDistributeDispatch") \
+        .input("x", "DT_BF16, DT_FLOAT16") \
+        .input("expert_ids", "DT_INT32") \
+        .optional_input("scales", "DT_FLOAT") \
+        .required_attr("group_ep", attr.Str) \
+        .required_attr("group_tp", attr.Str) \
+        .required_attr("ep_world_size", attr.Int) \
+        .required_attr("tp_world_size", attr.Int) \
+        .required_attr("ep_rank_id", attr.Int) \
+        .required_attr("tp_rank_id", attr.Int) \
+        .required_attr("expert_shard_type", attr.Int) \
+        .required_attr("shared_expert_rank_num", attr.Int) \
+        .required_attr("moe_expert_num", attr.Int) \
+        .attr("quant_mode", attr.Int(0)) \
+        .attr("global_bs", attr.Int(0)) \
+        .output("expand_x", "DT_BF16, DT_INT8, DT_FLOAT16") \
+        .output("dynamic_scales", "DT_FLOAT") \
+        .output("expand_idx", "DT_INT32") \
+        .output("expert_token_nums", "DT_INT64") \
+        .output("ep_recv_count", "DT_INT32") \
+        .output("tp_recv_count", "DT_INT32")
+    )
+
+
 # This api is auto-generated from IR Cmo
 @auto_convert_to_tensor([False], [False], inputs_tensor_type=[TensorType.TT_NUMBER])
 def Cmo(src: Tensor, *, max_size: int, type: int=6, offset: int=0, dependencies=[], node_name=None):
