@@ -1,12 +1,14 @@
+from datetime import datetime, timezone
+
 from torchair.configs._option_base import OptionValue
 from torchair.configs._option_base import NpuBaseConfig
-from datetime import datetime
+
 
 __all__ = []
 
 
 def _timestamp():
-    return datetime.now().strftime("%Y%m%d%H%M%S%f")
+    return datetime.now(tz=timezone.utc).strftime("%Y%m%d%H%M%S%f")
 
 
 class _DebugBase(NpuBaseConfig):

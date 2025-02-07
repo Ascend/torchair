@@ -3,7 +3,7 @@ import importlib
 import inspect
 from contextlib import contextmanager
 from dataclasses import dataclass
-import datetime
+from datetime import datetime, timezone
 import fcntl
 import logging
 import time
@@ -95,7 +95,7 @@ class CompiledModel:
     def __init__(self, meta: Union[ModelCacheMeta, types.FunctionType, types.MethodType]):
         if isinstance(meta, (types.FunctionType, types.MethodType)):
             signature = f'{meta.__qualname__}{inspect.signature(meta)}'
-            meta = ModelCacheMeta(name=signature, date=str(datetime.datetime.now()), version=self.VERSION)
+            meta = ModelCacheMeta(name=signature, date=str(datetime.now(tz=timezone.utc)), version=self.VERSION)
         self.meta = meta
         self.name = meta.name
         self.compiled_fn: Optional[types.CodeType] = None
@@ -116,7 +116,7 @@ class CompiledModel:
         except ValueError as e:
             try:
                 serialized_fn = marshal.dumps(_patch_user_const(self.compiled_fn))
-            except:
+            except Exception:
                 logger.warning(f"Skip cache as failed to serialize compiled fn: \n{_readable_inst(self.compiled_fn)}")
                 return
         artifacts = ModelCacheArtifact(meta=self.meta, compiled_fn=serialized_fn, compiled_fx=self.compiled_fx)
@@ -235,7 +235,7 @@ class CompiledModel:
             if not var_name.startswith("__import_") or var_name in g:
                 continue
             module_name = var_name[len("__import_"):].replace("_dot_", ".")
-            logging.debug(f"Importing module {module_name} for {var_name}")
+            logging.debug("Importing module %s for %s", module_name, var_name)
             module = importlib.import_module(module_name)
             g.update({var_name: module})
         compiled_fn = types.FunctionType(self.compiled_fn, g, closure=closure)
@@ -405,7 +405,7 @@ class ModelCacheSaver:
         readable += [_get_str_options(config, sep='\n')]
         signature = '\n'.join(readable)
 
-        logger.debug(f"Saving compiled fx {signature}")
+        logger.debug("Saving compiled fx %s", signature)
         self.compiled_model.compiled_fx = CompiledFX(signature, py_code, self.input_parameters)
 
     def save_compiled_fn(self, code_id):

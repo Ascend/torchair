@@ -115,7 +115,7 @@ class TorchNpuGraph(_torchair.TorchNpuGraphBase):
         super(TorchNpuGraph, self).load(ge_graph.SerializeToString(), options, input_placements, output_dtypes,
                                         executor_type)
         super(TorchNpuGraph, self).set_hint_shape(inputs_shape, [])
-        logger.debug(f'Load graph set_hint_shape input shape: {inputs_shape}')
+        logger.debug('Load graph set_hint_shape input shape: %s', inputs_shape)
 
     @pretty_error_msg
     def compile(self):

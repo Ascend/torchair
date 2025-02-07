@@ -68,7 +68,7 @@ def _unpack_meta(args, kwargs):
 
 def _safe_str(x):
     try:
-        if type(x) is torch.Tensor:
+        if isinstance(x, torch.Tensor):
             return f"torch.Tensor(dtype={x.dtype}, size={list(x.size())}"
         return f"{x}"
     except Exception:
@@ -110,13 +110,13 @@ def _trace_print(f):
     @functools.wraps(f)
     def inner(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any]):
         logger.debug(f'-------------------')
-        logger.debug(f'target: {target}')
+        logger.debug('target: %s', target)
         for i, inp in enumerate(args):
-            logger.debug(f'input {i}: {_safe_str(inp)}')
+            logger.debug('input %s: %s', i, _safe_str(inp))
         for k, v in kwargs.items():
-            logger.debug(f'input {k}: {_safe_str(v)}')
+            logger.debug('input %s: %s', k, _safe_str(v))
         result = f(self, target, args, kwargs)
-        logger.debug(f'output {result}')
+        logger.debug('output %s', result)
         return result
 
     return inner
@@ -235,11 +235,11 @@ def _summary(v):
 def _optimize_fx(graph_module: torch.fx.GraphModule):
     # More optimization passes here
     graph_module = _optimize_sym_input(graph_module)
-    logger.debug(f'after sym input optimization, graph is {graph_module.graph}')
+    logger.debug('after sym input optimization, graph is %s', graph_module.graph)
 
 
 def _optimize_sym_input(graph_module: torch.fx.GraphModule):
-    logger.debug(f'before sym input optimization, graph is {graph_module.graph}')
+    logger.debug('before sym input optimization, graph is %s', graph_module.graph)
     sym_input_list = []
     tensor_input_list = []
     for node in graph_module.graph.nodes:
@@ -267,8 +267,9 @@ def _optimize_sym_input(graph_module: torch.fx.GraphModule):
                     sym_size_node = graph_module.graph.create_node(op="call_function", target=torch.ops.aten.sym_size,
                                                                    args=(tensor_node, i))
                     sym_node.replace_all_uses_with(sym_size_node, propagate_meta=True)
-                    logger.debug(f'Replace node {sym_node} by inserting new node {sym_size_node}[op: {sym_size_node.op}'
-                                 f', target: {sym_size_node.target}, meta: {sym_size_node.meta}].')
+                    logger.debug('Replace node %s by inserting new node %s[op: %s'
+                                 ', target: %s, meta: %s].', sym_node, sym_size_node, sym_size_node.op,
+                                 sym_size_node.target, sym_size_node.meta)
                 find_sym_in_tensor = True
                 break
             if find_sym_in_tensor:
@@ -288,16 +289,16 @@ class _GmRunner:
             if logger.isEnabledFor(logging.DEBUG):
                 logger.debug('runtime inputs')
                 for i, inp in enumerate(args):
-                    logger.debug(f'  input {i}: {_summary(inp)}')
+                    logger.debug('  input %s: %s', i, _summary(inp))
                 for k, v in kwargs.items():
-                    logger.debug(f'  input {k}: {_summary(v)}')
+                    logger.debug('  input %s: %s', k, _summary(v))
 
             gm_result = self.runner(*args, **kwargs)
 
             if logger.isEnabledFor(logging.DEBUG):
                 logger.debug('runtime outputs')
                 for i, inp in enumerate(gm_result):
-                    logger.debug(f'  output {i}: {_summary(inp)}')
+                    logger.debug('  output %s: %s', i, _summary(inp))
 
             return gm_result
 
@@ -332,7 +333,7 @@ class _NpuFxCompiler:
             logger.warning(f'There are some configurations that cannot be supported by codegen, skipping codegen.')
             return gm_runner
 
-        logger.debug(f'Codegen for {gm_runner.runner.graph.name} successfully, code:\n{code}.')
+        logger.debug('Codegen for %s successfully, code:\n%s.', gm_runner.runner.graph.name, code)
         return code
 
     def _get_compiled_gm(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
@@ -358,8 +359,8 @@ class _NpuFxCompiler:
     def _gen_compiled_gm(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
         logger.info(f'compiler inputs')
         for i, inp in enumerate(example_inputs):
-            logger.info(f'  input {i}: {inp}')
-        logger.info(f'  graph: {gm.graph}')
+            logger.info('  input %s: %s', i, inp)
+        logger.info('  graph: %s', gm.graph)
 
         #to temporarily fix weight_quant_batchmatmul bug
         if "torch_npu" in sys.modules:

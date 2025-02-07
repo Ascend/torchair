@@ -159,7 +159,7 @@ def get_checkpoint_func(op: OpOverload):
 
 
 def _get_converter(name: Callable):
-    if not name in _CONVERTERS:
+    if name not in _CONVERTERS:
         from torchair._ge_concrete_graph.ge_converter import custom
         if hasattr(name, "_ge_converter"):
             return name._ge_converter
@@ -235,7 +235,7 @@ class Converter:
             wrapped_converter.require_meta = False
         try:
             self._aten_op._ge_converter = wrapped_converter
-        except:
+        except Exception:
             global _CONVERTERS
             _CONVERTERS.update({self._aten_op: wrapped_converter})
         return self
@@ -287,7 +287,7 @@ def _normalize_ge_graph(graph: GraphDef):
         if op.type == "Data" or op.type == "RefData":
             continue
         for desc in op.input_desc:
-            if not '_is_unfed_optional' in desc.attr:
+            if '_is_unfed_optional' not in desc.attr:
                 desc.layout = "ND"
                 if desc.dtype == ProtoDataType.DT_UNDEFINED:
                     desc.dtype = ProtoDataType.DT_FLOAT
@@ -300,7 +300,7 @@ def _normalize_ge_graph(graph: GraphDef):
             layouts = op.attr['input_layout_info'].list.s
             for index, layout in zip(indices, layouts):
                 desc = op.input_desc[index]
-                if not '_is_unfed_optional' in desc.attr:
+                if '_is_unfed_optional' not in desc.attr:
                     desc.layout = layout.decode()
         if 'output_layout_info' in op.attr:
             indices = op.attr['output_layout_info'].list.i
@@ -322,7 +322,7 @@ def _update_internal_format_from_inputs(graph: GraphDef, runtime_inputs):
         if op.type == "Data" or op.type == "RefData":
             input_index_mapping_graph_op[op.attr["index"].i] = op
 
-    for idx in range(len(runtime_inputs)):
+    for idx, item in enumerate(runtime_inputs):
         if not (idx < len(input_index_mapping_graph_op)):
             raise AssertionError(
                 f"GE graph input index {idx} out of Data ops index range {len(input_index_mapping_graph_op)}")
@@ -398,7 +398,7 @@ def _update_constplaceholder_attr_from_inputs(graph: GraphDef, runtime_inputs):
     update_node_name_mapping = {}
     for op in graph.op:
         if op.type == "ConstPlaceHolder":
-            if not 'update_node_from_fx_input_idx' in op.attr:
+            if 'update_node_from_fx_input_idx' not in op.attr:
                 logger.debug(f'No need to update {op.name}.')
                 continue
             real_input = runtime_inputs[op.attr["update_node_from_fx_input_idx"].i]
@@ -466,14 +466,12 @@ class ViewOfInput:
         self._meta_output_stride = generate_sym_exper(list(meta_output.stride()))
         self._meta_output_offset = generate_sym_exper(meta_output.storage_offset())
 
-
     def compute_output(self, *args):
         real_input = args[self._fx_input_index]
         value_of_sym = compute_value_of_sym(self._sym_value_mapping, *args)
         output_shape, output_stride, output_offset \
             = self._compute_output_shape_stride_offset(value_of_sym)
         return torch.as_strided(real_input, output_shape, output_stride, output_offset)
-
 
     def _compute_output_shape_stride_offset(self, value_of_sym):
         if value_of_sym is None or len(value_of_sym) == 0:
@@ -606,7 +604,7 @@ class GeConcreteGraph(ConcreteGraphBase):
             ref_data_idx = set()
             for idx in self._ref_data_idx:
                 ref_data_idx.add(idx)
-            for k, v in self._graph_output_ref_input.items():
+            for _, v in self._graph_output_ref_input.items():
                 ref_data_idx.add(v)
             replace_data_to_refdata(self.graph, ref_data_idx, inputs)
 
@@ -701,7 +699,9 @@ class GeConcreteGraph(ConcreteGraphBase):
             kernel.writeline(f'fx_outputs = [None] * {len(self._fx_outputs)}')
             for idx, out in enumerate(self._fx_outputs):
                 if isinstance(out, ViewOfInput):
-                    kernel.writeline(f'fx_outputs[{idx}] = torch.as_strided(arg{out._fx_input_index}_1, {out._ori_meta_shape}, {out._ori_meta_stride}, {out._ori_meta_offset})')
+                    kernel.writeline(
+                        f'fx_outputs[{idx}] = torch.as_strided(arg{out._fx_input_index}_1, {out._ori_meta_shape}, '
+                        f'{out._ori_meta_stride}, {out._ori_meta_offset})')
                 elif isinstance(out, SymOutput):
                     kernel.writeline(f'fx_outputs[{idx}] = {str(out._ori_meta_sym.node.expr)}')
                 elif not isinstance(out, GeTensor):
