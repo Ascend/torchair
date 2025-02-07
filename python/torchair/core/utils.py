@@ -22,7 +22,7 @@ def _get_logger(*, level=logging.ERROR, output=sys.stdout, file=None, name=None)
     logger.setLevel(level)
 
     formatter = _MillisecAndMicrosecFormatter(
-        f'[%(levelname)s] TORCHAIR(%(process)d,{os.path.basename(sys.executable)})' \
+        f'[%(levelname)s] TORCHAIR({os.getpid()},{os.path.basename(sys.executable)})' \
         f':%(asctime)s [%(filename)s:%(lineno)d]{threading.get_native_id()} %(message)s')
 
     if output:
