@@ -79,7 +79,7 @@ npu_define_lib.impl(op_allgather_in_tensor, allgather_in_tensor_meta, 'Meta')
 
 
 def check_same_size(output_tensor_list):
-    for _, t in enumerate(output_tensor_list):
+    for i, t in enumerate(output_tensor_list):
         if t.size() != output_tensor_list[0].size():
             return False
     return True
@@ -87,12 +87,12 @@ def check_same_size(output_tensor_list):
 
 def allgather_in_same_size(output_tensor_list, input_tensor, tag, ranks, group_size):
     output_shape_size = []
-    for _, output_tensor in enumerate(output_tensor_list):
+    for i, output_tensor in enumerate(output_tensor_list):
         output_shape_size.append(list(output_tensor.size()))
 
     ops_output_tensor = []
     recv_out_counts = []
-    for _ in range(group_size):
+    for i in range(group_size):
         ops_output_tensor.append(input_tensor)
         recv_out_counts.append(input_tensor.shape[0])
     # 1、把input_tensor进行按照0维度进行拼接成一个tensor用于allgather_in_tensor输入

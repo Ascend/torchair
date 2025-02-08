@@ -1,4 +1,3 @@
-import os
 import json
 from typing import List, Set, Dict
 import torch
@@ -40,9 +39,8 @@ def _generate_model_relation_config(file_path, export_name, world_ranklist: List
         comm_group_dict["group_rank_list"] = str(rank_list)
         model_relation_config["comm_group"].append(comm_group_dict)
 
-    file_path = os.path.join(file_path, "model_relation_config.json")
-    PathManager.check_path_writeable_and_safety(file_path)
-    with open(file_path, 'w') as write_f:
+    PathManager.check_path_writeable_and_safety(file_path + "/model_relation_config.json")
+    with open(file_path + "/model_relation_config.json", 'w') as write_f:
         json.dump(model_relation_config, write_f, indent=4, ensure_ascii=False)
 
     return
@@ -64,9 +62,8 @@ def _generate_numa_config(file_path, world_ranklist: List):
         node["item_list"].append(item)
     cluster_nodes["cluster_nodes"].append(node)
     numa_config["cluster"].append(cluster_nodes)
-    file_path = os.path.join(file_path, "numa_config.json")
-    PathManager.check_path_writeable_and_safety(file_path)
-    with open(file_path, 'w') as write_f:
+    PathManager.check_path_writeable_and_safety(file_path + "/numa_config.json")
+    with open(file_path + "/numa_config.json", 'w') as write_f:
         json.dump(numa_config, write_f, indent=4, ensure_ascii=False)
 
     return

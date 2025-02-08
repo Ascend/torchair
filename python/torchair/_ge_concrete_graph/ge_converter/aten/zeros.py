@@ -39,7 +39,6 @@ def conveter_aten_zeros_names(
     """NB: aten::zeros.names(int[] size, *, str[]? names, ScalarType? dtype=None, Layout? layout=None, Device? device=None, bool? pin_memory=None) -> Tensor"""
     raise RuntimeError("torch.ops.aten.zeros.names ge_converter is not supported!")
 
-
 @declare_supported(
     [
         Support((2, 3)),

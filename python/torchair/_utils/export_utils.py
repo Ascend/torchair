@@ -31,7 +31,7 @@ def _get_subpath(export_path_dir):
     rank = None
     try:
         rank = torch.distributed.get_rank()
-    except Exception as e:
+    except:
         logger.info(f'not frontend segmentation')
 
     if rank is not None:
@@ -47,7 +47,7 @@ def get_export_file_name(export_name):
     rank = None
     try:
         rank = torch.distributed.get_rank()
-    except Exception as e:
+    except:
         logger.info(f'not frontend segmentation')
 
     if rank is not None:
@@ -73,7 +73,7 @@ def _is_weight_externalized(inputs, weight_name, export_graph):
     used_weight_num = 0
     # protobuf max size 2G, reserved 200M buffer
     max_protobuf_size = (2048 - 200) * 1024 * 1024
-    for _, inp in enumerate(inputs):
+    for i, inp in enumerate(inputs):
         if id(inp) in weight_name:
             protobuf_size += inp.element_size() * inp.nelement()
             used_weight_num += 1
@@ -115,7 +115,7 @@ def _convert_data_to_const(inputs, export_graph, file_path, weight_name):
 def _save_weight2file(inputs, file_path, weight_name, used_weight_num):
     logger.info(f'save Weight tensor to file...')
     saved_num = 0
-    for _, inp in enumerate(inputs):
+    for i, inp in enumerate(inputs):
         file_id = weight_name.get(id(inp))
         if file_id is None:
             continue
@@ -155,6 +155,6 @@ def make_export_graph(ori_graph, inputs, root_file_path, weight_name):
     if used_weight_num != 0 and weight_externalized:
         _save_weight2file(inputs, sub_file_path, weight_name, used_weight_num)
 
-    dump_graph(os.path.join(sub_file_path, "dynamo.pbtxt"), export_graph)
+    dump_graph(sub_file_path + "/dynamo.pbtxt", export_graph)
 
     return export_graph

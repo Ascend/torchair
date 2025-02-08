@@ -97,7 +97,7 @@ class Support:
                     is_tensor_assert(v)
             else:
                 is_tensor_assert(arg)
-        for _, v in kwargs.items():
+        for k, v in kwargs.items():
             is_tensor_assert(v)
         self.args = args
         self.kwargs = kwargs

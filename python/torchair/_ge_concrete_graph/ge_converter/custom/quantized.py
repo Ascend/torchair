@@ -55,7 +55,7 @@ def conveter_npu_quantize_default(
         if dtype == torch.quint4x2:
             dim_num = self.rank
             bit_shape = []
-            for _ in range(dim_num - 1):
+            for i in range(dim_num - 1):
                 bit_shape.append(1)
             bit_shape.append(8)
             div_x2 = ge.Cast(ge.Const(bit_shape), dst_type=DataType.DT_INT32)
