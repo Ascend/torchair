@@ -23,7 +23,7 @@ def conveter_npu_dynamic_quant_default(
     if dst_type == torch.quint4x2:
         dim_num = input_data.rank
         bit_shape = []
-        for i in range(dim_num - 1):
+        for _ in range(dim_num - 1):
             bit_shape.append(1)
         bit_shape.append(8)
         div_x2 = ge.Const(bit_shape, dtype=DataType.DT_INT32)
@@ -53,7 +53,7 @@ def conveter_npu_dynamic_quant_asymmetric_default(
     if dst_type == torch.quint4x2:
         dim_num = input_data.rank
         bit_shape = []
-        for i in range(dim_num - 1):
+        for _ in range(dim_num - 1):
             bit_shape.append(1)
         bit_shape.append(8)
         div_x2 = ge.Const(bit_shape, dtype=DataType.DT_INT32)

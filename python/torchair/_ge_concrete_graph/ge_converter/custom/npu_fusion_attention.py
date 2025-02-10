@@ -1,3 +1,5 @@
+import math
+
 from typing import (
     Any,
     Callable,
@@ -63,8 +65,8 @@ def conveter_npu_fusion_attention_default(
     int[]? actual_seq_qlen=None, int[]? actual_seq_kvlen=None, int sparse_mode=0, 
     bool gen_mask_parallel=True, bool sync=False) -> (Tensor, Tensor, Tensor, Tensor, int, int, int)
     """
-    is_bsh_available = True if input_layout == "BSH" and keep_prob == 1.0 else False
-    is_bnsd_available = True if input_layout == "BNSD" and keep_prob == 1.0 else False
+    is_bsh_available = True if input_layout == "BSH" and math.isclose(keep_prob, 1.0, rel_tol=1e-9) else False
+    is_bnsd_available = True if input_layout == "BNSD" and math.isclose(keep_prob, 1.0, rel_tol=1e-9) else False
     q_start_idx = 0
     kv_start_idx = 0
 
@@ -153,8 +155,8 @@ def conveter_npu_fusion_attention_grad_default(
     int[]? actual_seq_kvlen=None, int sparse_mode=0, bool gen_mask_parallel=True,  bool sync=False) 
     -> (Tensor, Tensor, Tensor, Tensor)
     """
-    is_bsh_available = True if input_layout == "BSH" and keep_prob == 1.0 else False
-    is_bnsd_available = True if input_layout == "BNSD" and keep_prob == 1.0 else False
+    is_bsh_available = True if input_layout == "BSH" and math.isclose(keep_prob, 1.0, rel_tol=1e-9) else False
+    is_bnsd_available = True if input_layout == "BNSD" and math.isclose(keep_prob, 1.0, rel_tol=1e-9) else False
     q_start_idx = 0
     kv_start_idx = 0
 

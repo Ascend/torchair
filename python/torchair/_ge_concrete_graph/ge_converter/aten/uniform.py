@@ -1,3 +1,4 @@
+import math
 from typing import (
     Any,
     Callable,
@@ -46,7 +47,7 @@ def _uniform_checkpoint(
     counter = ge.Cast(offset_list, dst_type=DataType.DT_UINT64)
     alg = ge.Cast(1, dst_type=DataType.DT_INT32)
     result = ge.StatelessRandomUniformV2(size, key, counter, alg, dtype=self.dtype)
-    if from_ == 0.0 and to == 1.0:
+    if math.isclose(from_, 0.0, rel_tol=1e-9) and math.isclose(to, 1.0, rel_tol=1e-9):
         return (seed, offset), result
     # U(0~1) --> U(from_~to)
     from_, to = dtype_promote(from_, to, target_dtype=self.dtype)

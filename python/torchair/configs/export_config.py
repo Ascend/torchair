@@ -29,4 +29,3 @@ class _ExportConfig(NpuBaseConfig):
             export_option = {'export_path_dir': self.export_path_dir, 'export_name': self.export_name}
             return export_option, {}
         return {}, {}
-

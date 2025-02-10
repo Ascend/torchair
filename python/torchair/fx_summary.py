@@ -18,15 +18,15 @@ except ModuleNotFoundError:
     from torch._dynamo.trace_rules import is_builtin_callable
     
 from torch._dynamo.utils import detect_fake_mode
+from torch._decomp import core_aten_decompositions, get_decompositions
+from torch._subclasses.fake_tensor import FakeTensor
 
 from torchair.core._concrete_graph import ConcreteGraphBase, ValuePack, _is_symlist
 from torchair.core.utils import logger
 from torchair._ge_concrete_graph.fx2ge_converter import GeConcreteGraph as ConcreteGraph
 from torchair.configs.compiler_config import CompilerConfig
-from torch._decomp import core_aten_decompositions, get_decompositions
 from torchair._ge_concrete_graph.fx2ge_converter import _get_converter
 from torchair._utils.path_manager import PathManager
-from torch._subclasses.fake_tensor import FakeTensor
 
 __all__ = []
 

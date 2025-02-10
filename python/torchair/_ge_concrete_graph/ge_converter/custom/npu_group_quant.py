@@ -49,7 +49,7 @@ def conveter_npu_group_quant_default(
     if dst_dtype == torch.quint4x2:
         dim_num = x.rank
         bit_shape = []
-        for i in range(dim_num - 1):
+        for _ in range(dim_num - 1):
             bit_shape.append(1)
         bit_shape.append(8)
         # y int4 shape is (..., 8n), y int32 shape is (..., n), y bitcast shape is (..., n, 8)

@@ -2,25 +2,27 @@ import contextlib
 import functools
 import inspect
 import os
+import threading
+from datetime import datetime, timezone
 from collections import defaultdict
 from typing import List, Callable, Any, Dict, Tuple, Union
 
+import numpy as np
 import torch
 from torch.fx import Interpreter
 from torch.fx.graph_module import GraphModule
 from torch.fx.node import Argument, Target
+
+from contextlib import contextmanager
 from torchair.core.utils import logger
 from torchair._ge_concrete_graph.fx2ge_converter import _get_converter
-from contextlib import contextmanager
-from datetime import datetime
-import numpy as np
-import threading
+
 
 __all__ = []
 
 
 def _timestamp():
-    return datetime.now().strftime("%Y%m%d%H%M%S%f")
+    return datetime.now(tz=timezone.utc).strftime("%Y%m%d%H%M%S%f")
 
 
 _dump_info = threading.local()
@@ -42,7 +44,7 @@ def _as_numpy(x):
         return x.detach().cpu().numpy()
     try:
         return np.array(x)
-    except:
+    except Exception:
         return np.array(f'{x}')
 
 
