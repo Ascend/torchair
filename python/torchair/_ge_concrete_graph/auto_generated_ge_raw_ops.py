@@ -77996,7 +77996,7 @@ def MoeGatingTopK(x: Tensor,
                    group_select_mode:int = 0,
                    renorm:int = 0,
                    norm_type:int = 0,
-                   y2_flag:bool = False,
+                   out_flag:bool = False,
                    routed_scaling_factor:float = 1.0,
                    eps:float = 1e-20,
                    dependencies=[],
@@ -78013,7 +78013,7 @@ def MoeGatingTopK(x: Tensor,
     .ATTR(group_select_mode, Int, 0)
     .ATTR(renorm, Int, 0)
     .ATTR(norm_type, Int, 0)
-    .ATTR(y2_flag, Bool, false)
+    .ATTR(out_flag, Bool, false)
     .ATTR(routed_scaling_factor, Float, 1.0)
     .ATTR(eps, Float, 1e-20)
     .OP_END_FACTORY_REG(MoeGatingTopK)
@@ -78047,7 +78047,7 @@ def MoeGatingTopK(x: Tensor,
     op.attr["group_select_mode"].i = group_select_mode
     op.attr["renorm"].i = renorm
     op.attr["norm_type"].i = norm_type
-    op.attr["y2_flag"].b = y2_flag
+    op.attr["out_flag"].b = out_flag
     op.attr["routed_scaling_factor"].f = routed_scaling_factor
     op.attr["eps"].f = eps
 

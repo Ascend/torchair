@@ -10,7 +10,7 @@ m.define("npu_tome_unmerge(Tensor atten_out, Tensor ori_indice_a, Tensor ori_ind
          Tensor topk_indice, Tensor arg_max, float top_rate) -> Tensor")
 m.define("npu_moe_gating_top_k(Tensor x, int k, *, Tensor? bias=None, int k_group=1, \
          int group_count=1, int group_select_mode=0, int renorm=0, int norm_type=0, \
-         bool y2_flag=False, float routed_scaling_factor=1.0, float eps=1e-20) \
+         bool out_flag=False, float routed_scaling_factor=1.0, float eps=1e-20) \
          -> (Tensor, Tensor, Tensor)")
 m.define("npu_kv_rmsnorm_rope_cache(Tensor kv, Tensor gamma, Tensor cos, Tensor sin, \
           Tensor index, Tensor k_cache, Tensor v_cache, float epsilon=1e-5, \
@@ -59,7 +59,7 @@ def npu_tome_unmerge_meta(atten_out, ori_indice_a, ori_indice_b, topk_indice, ar
 
 @impl(m, "npu_moe_gating_top_k", "Meta")
 def npu_moe_gating_top_k(x, k, *, bias=None, k_group=1, group_count=1, group_select_mode=0, renorm=0,
-                         norm_type=0, y2_flag=False, routed_scaling_factor=1.0, eps=1e-20):
+                         norm_type=0, out_flag=False, routed_scaling_factor=1.0, eps=1e-20):
     x_dim = x.dim()
     if bias is not None:
         bias_dim = bias.dim()

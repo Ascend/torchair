@@ -3475,7 +3475,7 @@ REG_OP(SingleRope)
 * @li group_count: Optional parameter. Type is:Int32.
 * @li group_select_mode: Optional parameter. Type is:Int32.
 * @li renorm: Optional parameter. Type is:Int32.
-* @li y2_flag: Optional parameter. Type is:Bool.
+* @li out_flag: Optional parameter. Type is:Bool.
 * @li routed_scaling_factor: Optional parameter. Type is:Float32.
 * @li eps: Optional parameter. Type is:Float32.
 * @par Restrictions:
@@ -3493,7 +3493,7 @@ REG_OP(MoeGatingTopK)
     .ATTR(group_select_mode, Int, 0)
     .ATTR(renorm, Int, 0)
     .ATTR(norm_type, Int, 0)
-    .ATTR(y2_flag, Bool, false)
+    .ATTR(out_flag, Bool, false)
     .ATTR(routed_scaling_factor, Float, 1.0)
     .ATTR(eps, Float, 1e-20)
     .OP_END_FACTORY_REG(MoeGatingTopK)
