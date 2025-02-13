@@ -60,7 +60,7 @@ def convert_reduce_scatter_tensor_uneven(
 
 def npu_reduce_scatter_tensor_uneven_patch_dist(
         output,
-        input,
+        input_tensor,
         input_split_sizes=None,
         op=torch.distributed.ReduceOp.SUM,
         group=None,
@@ -70,7 +70,7 @@ def npu_reduce_scatter_tensor_uneven_patch_dist(
         from torchair import REDUCE_SCATTER_TENSOR_UNEVEN
         if REDUCE_SCATTER_TENSOR_UNEVEN is None:
             raise AttributeError(f'torch_npu.distributed has no attribute: reduce_scatter_tensor_uneven')
-        REDUCE_SCATTER_TENSOR_UNEVEN(output, input, input_split_sizes, op, group, async_op)
+        REDUCE_SCATTER_TENSOR_UNEVEN(output, input_tensor, input_split_sizes, op, group, async_op)
     if async_op:
         raise AssertionError(f'When you enable torch.compile or use the cache_compile feature, '
                        f'use the patch_for_hcom interface to ensure that collective communication functions '
@@ -86,10 +86,10 @@ def npu_reduce_scatter_tensor_uneven_patch_dist(
 
     # each rank get equal split from input tensor by dim 0
     if input_split_sizes is None:
-        input_split_sizes = [input.size(0) // group_size for _ in rank_list]
-    if sum(input_split_sizes) != input.size(0):
+        input_split_sizes = [input_tensor.size(0) // group_size for _ in rank_list]
+    if sum(input_split_sizes) != input_tensor.size(0):
         raise AssertionError(f'Split sizes sum does not match total dim 0 size')
-    input_row_size = input.numel() // input.size(0) if input.size(0) != 0 else 1
+    input_row_size = input_tensor.numel() // input_tensor.size(0) if input_tensor.size(0) != 0 else 1
     send_counts = []
     recv_count = output.numel()
     send_displacements = [0]
@@ -97,6 +97,6 @@ def npu_reduce_scatter_tensor_uneven_patch_dist(
         send_counts.append(split_size * input_row_size)
         if i > 0:
             send_displacements.append(send_displacements[i - 1] + send_counts[i - 1])
-    npu_output = torch.ops.npu_define.reduce_scatter_tensor_uneven(input, send_counts, send_displacements,
+    npu_output = torch.ops.npu_define.reduce_scatter_tensor_uneven(input_tensor, send_counts, send_displacements,
                                                                    recv_count, op, tag, rank_list, group_size)
     output.copy_(npu_output.reshape(output.size()))

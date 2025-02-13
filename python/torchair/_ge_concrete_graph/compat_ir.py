@@ -217,7 +217,8 @@ def ge_op(op_type: str, *, inputs: Optional[Dict[str, Optional[Union['Tensor', L
                 f"Invalid attrs type:{type(attrs).__name__} vs expect one of [None, dict] for ge_op op '{op_type}'.")
         optional_attrs = ir.get_optional_attr()
         attrs = {
-            k: v for k, v in attrs.items()
+            k: v
+            for k, v in attrs.items()
             if k not in optional_attrs or v != optional_attrs[k]
         }
         required_optional_attr.extend([

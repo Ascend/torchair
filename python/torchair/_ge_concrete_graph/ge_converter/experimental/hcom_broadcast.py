@@ -60,7 +60,7 @@ def npu_broadcast_patch_dist(tensor, src, group=None, async_op=False):
     tag = c10d._get_group_tag(group)
     out = torch.ops.npu_define.broadcast(tensor, src, tag, ranks, len(ranks))
     tensor.copy_(out)
-
+    return
 
 npu_define_lib.impl(op_broadcast, broadcast_meta, 'Meta')
 npu_define_lib.impl(op_broadcast, broadcast_npu, 'PrivateUse1')

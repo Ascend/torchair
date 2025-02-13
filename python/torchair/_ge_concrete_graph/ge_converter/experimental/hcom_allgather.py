@@ -193,13 +193,13 @@ def allgather_in_tensor_uneven_meta(
 npu_define_lib.impl(op_allgather_in_tensor_uneven, allgather_in_tensor_uneven_meta, 'Meta')
 
 
-def npu_allgather_into_tensor_uneven_patch_dist(output, input, output_split_sizes=None, group=None,
+def npu_allgather_into_tensor_uneven_patch_dist(output, input_tensor, output_split_sizes=None, group=None,
                                                 async_op=False):
     if not torch.distributed._functional_collectives._are_we_tracing():
         from torchair import ALL_GATHER_INTO_TENSOR_UNEVEN
         if ALL_GATHER_INTO_TENSOR_UNEVEN is None:
             raise AttributeError(f'torch_npu.distributed has no attribute: all_gather_into_tensor_uneven')
-        ALL_GATHER_INTO_TENSOR_UNEVEN(output, input, output_split_sizes, group, async_op)
+        ALL_GATHER_INTO_TENSOR_UNEVEN(output, input_tensor, output_split_sizes, group, async_op)
     if async_op:
         raise AssertionError(f'When you enable torch.compile or use the cache_compile feature, '
                        f'use the patch_for_hcom interface to ensure that collective communication functions '
@@ -215,13 +215,13 @@ def npu_allgather_into_tensor_uneven_patch_dist(output, input, output_split_size
     if sum(output_split_sizes) != output.size(0):
         raise AssertionError(f'Split sizes sum does not match total dim 0 size')
     output_row_size = output.numel() // output.size(0) if output.size(0) != 0 else 1
-    send_count = input.numel()
+    send_count = input_tensor.numel()
     recv_counts = []
     recv_displacements = [0]
     for i, output_split_size in enumerate(output_split_sizes):
         recv_counts.append(output_split_size * output_row_size)
         if i > 0:
             recv_displacements.append(recv_displacements[i - 1] + recv_counts[i - 1])
-    npu_output = torch.ops.npu_define.allgather_in_tensor_uneven(input, send_count, recv_counts,
+    npu_output = torch.ops.npu_define.allgather_in_tensor_uneven(input_tensor, send_count, recv_counts,
                                                                  recv_displacements, tag, rank_list, group_size)
     output.copy_(npu_output.reshape(output.size()))

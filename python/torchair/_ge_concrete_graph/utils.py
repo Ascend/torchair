@@ -1,8 +1,8 @@
 import os
 import contextlib
-import sympy
 from typing import Any, Dict, List, Tuple, Union, Callable
 
+import sympy
 import torch
 from torchair.core.utils import logger
 from torchair._ge_concrete_graph.ge_ir_pb2 import GraphDef
@@ -306,7 +306,7 @@ def get_graph_input_placements(graph: GraphDef):
         if op.type != "Data":
             continue
         device_type = op.output_desc[0].device_type
-        if not device_type in ["NPU", "CPU"]:
+        if device_type not in ["NPU", "CPU"]:
             raise AssertionError(f"Undefined device type {device_type}, expect be NPU or CPU.")
         if op.attr["index"].i >= len(input_placements):
             raise AssertionError(f"Data index {op.attr['index'].i} exceeds total data number {len(input_placements)}, "

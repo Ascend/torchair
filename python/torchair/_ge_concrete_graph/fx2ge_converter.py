@@ -322,7 +322,7 @@ def _update_internal_format_from_inputs(graph: GraphDef, runtime_inputs):
         if op.type == "Data" or op.type == "RefData":
             input_index_mapping_graph_op[op.attr["index"].i] = op
 
-    for idx, item in enumerate(runtime_inputs):
+    for idx, _ in enumerate(runtime_inputs):
         if not (idx < len(input_index_mapping_graph_op)):
             raise AssertionError(
                 f"GE graph input index {idx} out of Data ops index range {len(input_index_mapping_graph_op)}")

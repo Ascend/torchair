@@ -128,8 +128,10 @@ def all_to_all_decomposition(
     output_tensor = torch.ops.npu_define.all_to_all_single_npu(input_tensor,
         send_counts, send_displacements, recv_counts, recv_displacements, tag, ranks, group_size)
 
-    npu_output_tensor_list = [torch.reshape(tensor, output_shape_size[i]) for i, tensor in enumerate(
-        torch.split(output_tensor, recv_counts, dim=0))]
+    npu_output_tensor_list = [
+        torch.reshape(tensor, output_shape_size[i])
+        for i, tensor in enumerate(torch.split(output_tensor, recv_counts, dim=0))
+    ]
     return npu_output_tensor_list
 
 

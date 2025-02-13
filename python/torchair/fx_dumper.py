@@ -6,6 +6,7 @@ import threading
 from datetime import datetime, timezone
 from collections import defaultdict
 from typing import List, Callable, Any, Dict, Tuple, Union
+from contextlib import contextmanager
 
 import numpy as np
 import torch
@@ -13,7 +14,6 @@ from torch.fx import Interpreter
 from torch.fx.graph_module import GraphModule
 from torch.fx.node import Argument, Target
 
-from contextlib import contextmanager
 from torchair.core.utils import logger
 from torchair._ge_concrete_graph.fx2ge_converter import _get_converter
 

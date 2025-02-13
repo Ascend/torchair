@@ -24,7 +24,7 @@ def get_error_msg(e):
 
     try:
         from torch_npu.utils._error_code import ErrCode, graph_error
-    except (ModuleNotFoundError, ImportError):
+    except ImportError:
         return format_error_msg()
 
     code = ErrCode.INTERNAL

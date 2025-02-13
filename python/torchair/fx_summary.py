@@ -35,9 +35,13 @@ aten = torch.ops.aten
 
 @contextlib.contextmanager
 def _pretty_faketensor():
+
+    def fake_tensor_repr(self):
+        return f"{str(self.dtype).split('.')[-1]}{tuple(self.size())}"
+
     prior = FakeTensor.__repr__
     try:
-        FakeTensor.__repr__ = lambda self: f"{str(self.dtype).split('.')[-1]}{tuple(self.size())}"
+        FakeTensor.__repr__ = fake_tensor_repr
         yield
     finally:
         FakeTensor.__repr__ = prior
@@ -144,9 +148,8 @@ def _summarize_fx_graph(graph, example_inputs, csv_file: str = None):
     
     try:
         import csv
-    except ImportError:
-        raise ImportError(
-            "Please install csv to use csv file to save summary")
+    except ImportError as e:
+        raise ImportError("Please install csv to use csv file to save summary") from e
     PathManager.check_path_writeable_and_safety(csv_file)
     with open(csv_file, 'w+', newline='', encoding='utf-8-sig') as f:
         writer = csv.writer(f)

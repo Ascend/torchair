@@ -1218,7 +1218,7 @@ def ForeachPowScalarAndTensor(scalar: Tensor, x: List[Tensor], *, dependencies=[
     .INPUT(scalar, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
     .DYNAMIC_INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
     .DYNAMIC_OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
-"""
+    """
 
     size_of_y = len(x)
     return raw_ops._ForeachPowScalarAndTensor(scalar, x, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)

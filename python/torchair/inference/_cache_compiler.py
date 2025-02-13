@@ -80,7 +80,6 @@ def _depatch_user_const(code: types.CodeType):
     consts = []
     for c in code.co_consts:
         if isinstance(c, str) and c.startswith('<user_class>'):
-            import importlib
             module, name = c[len('<user_class>'):].split('|')
             consts.append(importlib.import_module(module).__dict__[name])
         else:

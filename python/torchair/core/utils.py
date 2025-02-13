@@ -18,8 +18,8 @@ class _MillisecAndMicrosecFormatter(logging.Formatter):
 
 
 def _get_logger(*, level=logging.ERROR, output=sys.stdout, file=None, name=None):
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
+    torchair_logger = logging.getLogger(name)
+    torchair_logger.setLevel(level)
 
     formatter = _MillisecAndMicrosecFormatter(
         f'[%(levelname)s] TORCHAIR({os.getpid()},{os.path.basename(sys.executable)})' \
@@ -28,20 +28,20 @@ def _get_logger(*, level=logging.ERROR, output=sys.stdout, file=None, name=None)
     if output:
         console_handler = logging.StreamHandler(output)
         console_handler.setFormatter(formatter)
-        logger.addHandler(console_handler)
+        torchair_logger.addHandler(console_handler)
 
     if file:
         file_handler = logging.FileHandler(file)
         file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
+        torchair_logger.addHandler(file_handler)
 
     @lru_cache
     def _warning_once(msg):
-        logger.warning(msg)
+        torchair_logger.warning(msg)
 
-    logger.warning_once = _warning_once
+    torchair_logger.warning_once = _warning_once
 
-    return logger
+    return torchair_logger
 
 
 logger = _get_logger(name="torchair")

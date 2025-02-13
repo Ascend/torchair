@@ -20,7 +20,6 @@ def _check_isinstance(arg_name, arg_value, classes, inner_class=None):
     if not check:
         raise TypeError(
             f"{arg_name} only support {[clazz.__name__ for clazz in classes]}, but got {format(type(arg_value))}.")
-    return arg_value
 
 
 _TORCH_DTYPE_TO_GE_TYPE: Dict[torch.dtype, int] = {

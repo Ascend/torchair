@@ -47,7 +47,7 @@ def conveter_aten__foreach_floor_default(self: List[Tensor], meta_outputs: List[
     """NB: aten::_foreach_floor(Tensor[] self) -> Tensor[]"""
     int_id, int_tensor, float_tensor = split_float_int_tensor(self)
     round_mode = ge.Fill(1, ge.Cast(2, dst_type=DataType.DT_INT8))
-    if len(float_tensor):
+    if float_tensor:
         out = ge.ForeachRoundOffNumber(float_tensor, roundMode=round_mode)
         int_idx = range(len(int_id))
         for i in int_idx:
@@ -93,7 +93,7 @@ def conveter_aten__foreach_round_default(self: List[Tensor], meta_outputs: List[
     """NB: aten::_foreach_round(Tensor[] self) -> Tensor[]"""
     int_id, int_tensor, float_tensor = split_float_int_tensor(self)
     round_mode = ge.Fill(1, ge.Cast(4, dst_type=DataType.DT_INT8))
-    if len(float_tensor):
+    if float_tensor:
         out = ge.ForeachRoundOffNumber(float_tensor, roundMode=round_mode)
         int_idx = range(len(int_id))
         for i in int_idx:
