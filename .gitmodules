@@ -4,4 +4,3 @@
 [submodule "third_party/googletest"]
 	path = third_party/googletest
 	url = https://gitee.com/mirrors/googletest.git
-	branch = v1.8.x
