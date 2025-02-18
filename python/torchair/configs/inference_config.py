@@ -1,8 +1,7 @@
-from torchair.configs._option_base import OptionValue
-from torchair.configs._option_base import NpuBaseConfig
-
 __all__ = []
 
+from torchair.configs._option_base import OptionValue
+from torchair.configs._option_base import NpuBaseConfig
 
 
 class _InferenceConfig(NpuBaseConfig):

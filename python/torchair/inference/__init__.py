@@ -1,3 +1,5 @@
+__all__ = ["cache_compile", "readable_cache", "set_dim_gears"]
+
 from typing import List, Optional, Callable, Dict
 
 import torch
@@ -5,8 +7,6 @@ from torchair.inference._cache_compiler import cache_compile as _cache_compile
 from torchair.inference._cache_compiler import readable_cache as _readable_cache
 from torchair.inference._gear_utils import set_dim_gears as _set_dim_gears
 from torchair.configs.compiler_config import CompilerConfig
-
-__all__ = ["cache_compile", "readable_cache", "set_dim_gears"]
 
 
 def cache_compile(func, *, config: Optional[CompilerConfig] = None, dynamic: bool = True,

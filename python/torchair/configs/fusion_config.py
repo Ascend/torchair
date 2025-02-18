@@ -1,8 +1,8 @@
+__all__ = []
+
 import os
 from torchair.configs._option_base import FileValue
 from torchair.configs._option_base import NpuBaseConfig
-
-__all__ = []
 
 
 class _FusionConfig(NpuBaseConfig):

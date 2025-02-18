@@ -1,11 +1,11 @@
+__all__ = []
+
 from functools import lru_cache
 import logging
 import sys
 import os
 import threading
 from datetime import datetime
-
-__all__ = []
 
 
 class _MillisecAndMicrosecFormatter(logging.Formatter):

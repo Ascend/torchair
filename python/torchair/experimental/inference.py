@@ -1,8 +1,9 @@
+__all__ = ["use_internal_format_weight"]
+
 import sys
 import torch
 from torchair.core.utils import logger
 
-__all__ = ["use_internal_format_weight"]
 
 _TORCH_NPU_MODULE = None
 _DEEPSPEED_MODULE = None

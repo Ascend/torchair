@@ -1,5 +1,7 @@
 """Construct CompilerConfig configuration"""
 
+__all__ = ["CompilerConfig"]
+
 from torchair.configs._option_base import OptionValue
 from torchair.configs._option_base import DeprecatedValue
 from torchair.configs._option_base import NpuBaseConfig
@@ -11,9 +13,6 @@ from torchair.configs.fusion_config import _FusionConfig
 from torchair.configs.inference_config import _InferenceConfig
 from torchair.configs.experimental_config import _ExperimentalConfig
 from torchair.configs.ge_config import _GEConfig
-
-
-__all__ = ["CompilerConfig"]
 
 
 class CompilerConfig(NpuBaseConfig):

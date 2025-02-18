@@ -1,7 +1,7 @@
+__all__ = []
+
 from torchair.configs._option_base import OptionValue, MustExistedPathValue, RegexValue
 from torchair.configs._option_base import NpuBaseConfig
-
-__all__ = []
 
 
 class _DataDumpConfig(NpuBaseConfig):

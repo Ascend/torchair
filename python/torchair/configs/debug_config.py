@@ -1,10 +1,9 @@
+__all__ = []
+
 from datetime import datetime, timezone
 
 from torchair.configs._option_base import OptionValue
 from torchair.configs._option_base import NpuBaseConfig
-
-
-__all__ = []
 
 
 def _timestamp():

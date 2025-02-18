@@ -31,11 +31,11 @@ class TensorBase():
         ...
 
     @abstractmethod
-    def dtype():
+    def dtype(self):
         ...
 
     @abstractmethod
-    def rank():
+    def rank(self):
         ...
 
     __module__ = "torchair.ge"
@@ -47,15 +47,15 @@ class TensorSpecBase():
         ...
 
     @abstractmethod
-    def dtype():
+    def dtype(self):
         ...
 
     @abstractmethod
-    def rank():
+    def rank(self):
         ...
 
     @abstractmethod
-    def size():
+    def size(self):
         ...
 
     __module__ = "torchair.ge"

@@ -1,3 +1,5 @@
+__all__ = ["get_npu_backend", "get_compiler"]
+
 import functools
 import operator
 import math
@@ -36,7 +38,6 @@ from torchair._utils import add_npu_patch, get_npu_default_decompositions
 from torchair._utils.error_code import pretty_error_msg
 from torchair.inference._gear_utils import get_dim_gears, set_dim_gears, guard_gears_shape
 
-__all__ = ["get_npu_backend", "get_compiler"]
 
 aten = torch.ops.aten
 

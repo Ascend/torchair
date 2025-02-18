@@ -1,3 +1,5 @@
+__all__ = ["dynamo_export"]
+
 import os
 import torch
 import torch.utils._pytree as pytree
@@ -7,8 +9,6 @@ from torchair.core.utils import logger
 from torchair._ge_concrete_graph.fx2ge_converter import ExportSuccess
 from torchair.configs.compiler_config import CompilerConfig
 from torchair import get_npu_backend
-
-__all__ = ["dynamo_export"]
 
 
 def _get_model_weight_names(model: torch.nn.Module):

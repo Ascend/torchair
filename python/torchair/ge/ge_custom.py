@@ -1,3 +1,5 @@
+__all__ = ['custom_op']
+
 from typing import Dict, Union, List, Optional, Tuple
 from torchair.ge.attr import _Attr
 from torchair.ge._ge_graph import Tensor
@@ -10,4 +12,3 @@ def custom_op(op_type: str, *, inputs: Optional[Dict[str, Optional[Union['Tensor
     return ge_op(op_type=op_type, inputs=inputs, outputs=outputs, attrs=attrs, node_name=node_name)
 
 
-__all__ = ['custom_op']

@@ -1,3 +1,7 @@
+__all__ = ['get_compiler', 'get_npu_backend', 'dynamo_export', 'CompilerConfig',
+           'use_internal_format_weight', 'logger', 'register_fx_node_ge_converter',
+           'patch_for_hcom']
+
 import os
 import sys
 import torch
@@ -17,9 +21,6 @@ import torchair.llm_datadist
 import torchair.ops
 import torchair.ge
 
-__all__ = ['get_compiler', 'get_npu_backend', 'dynamo_export', 'CompilerConfig',
-           'use_internal_format_weight', 'logger', 'register_fx_node_ge_converter',
-           'patch_for_hcom']
 
 # Dependency library version verification
 protobuf_version = pkg_resources.get_distribution("protobuf").version

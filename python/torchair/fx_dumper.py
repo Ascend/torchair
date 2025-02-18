@@ -1,3 +1,5 @@
+__all__ = []
+
 import contextlib
 import functools
 import inspect
@@ -16,9 +18,6 @@ from torch.fx.node import Argument, Target
 
 from torchair.core.utils import logger
 from torchair._ge_concrete_graph.fx2ge_converter import _get_converter
-
-
-__all__ = []
 
 
 def _timestamp():

@@ -1,7 +1,7 @@
+__all__ = []
+
 from torchair.configs._option_base import OptionValue
 from torchair.configs._option_base import NpuBaseConfig
-
-__all__ = []
 
 
 class _GEConfig(NpuBaseConfig):

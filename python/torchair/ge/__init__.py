@@ -1,3 +1,5 @@
+__all__ = ['custom_op', 'Const', 'Cast', 'DataType', 'Format', 'Tensor', 'TensorSpec']
+
 from torchair.ge.ge_custom import custom_op
 from torchair.ge._ge_graph import Const as _Const
 from torchair.ge._ge_graph import Cast as _Cast
@@ -5,9 +7,6 @@ from torchair.ge._ge_graph import TensorBase as Tensor
 from torchair.ge._ge_graph import TensorSpecBase as TensorSpec
 from torchair.ge._ge_graph import DataType
 from torchair.ge._ge_graph import Format
-
-
-__all__ = ['custom_op', 'Const', 'Cast', 'DataType', 'Format', 'Tensor', 'TensorSpec']
 
 
 from . import attr

@@ -87,7 +87,7 @@ class ConcreteGraphBase(ABC):
         pass
 
     @abstractmethod
-    def compile(self, *, options: CompilerConfig, example_inputs: List[Tensor] = None) -> Any:
+    def compile(self) -> Any:
         '''
         编译图，返回一个可调用的对象，用于执行fx图
         '''

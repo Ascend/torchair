@@ -1,3 +1,5 @@
+__all__ = []
+
 import contextlib
 import functools
 import inspect
@@ -28,7 +30,6 @@ from torchair.configs.compiler_config import CompilerConfig
 from torchair._ge_concrete_graph.fx2ge_converter import _get_converter
 from torchair._utils.path_manager import PathManager
 
-__all__ = []
 
 aten = torch.ops.aten
 
