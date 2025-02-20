@@ -77108,6 +77108,52 @@ def TransQuantParamV2(scale: Tensor, offset: Optional[Tensor], *, dependencies=[
     # return outputs
     return y
 
+
+# This api is auto-generated from IR FlatQuant
+@auto_convert_to_tensor([False, False, False], [False, False, False])
+def FlatQuant(x: Tensor, kronecker_p1: Tensor, kronecker_p2: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(FlatQuant)\n
+    .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .INPUT(kronecker_p1, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .INPUT(kronecker_p2, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(out, TensorType({DT_INT4}))\n
+    .OUTPUT(quant_scale, TensorType({DT_FLOAT32}))\n
+    """
+  
+    op = get_default_ge_graph().op.add()
+    op.type = "FlatQuant"
+    op.name = next_unique_name(node_name, "FlatQuant")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+  
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+    op.input.append(kronecker_p1.tensor)
+    op.input_desc.add().CopyFrom(kronecker_p1.desc)
+    op.input_desc[-1].name = "kronecker_p1"
+    op.input.append(kronecker_p2.tensor)
+    op.input_desc.add().CopyFrom(kronecker_p2.desc)
+    op.input_desc[-1].name = "kronecker_p2"
+
+
+    # process attrs
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "out"
+    out = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "quant_scale"
+    quant_scale = Tensor(op, output_index)
+    output_index += 1
+
+    return out, quant_scale
+
+
 #This api is auto-generated from IR MoeComputeExpertTokens
 @auto_convert_to_tensor([False], [False])
 def MoeComputeExpertTokens(sorted_experts: Tensor, *, num_experts: int=1, dependencies=[], node_name=None):
