@@ -151,3 +151,17 @@ TorchAir安全声明参考[SECURITY_README](https://gitee.com/ascend/torchair/bl
 # 许可证
 TorchAir插件使用BSD许可证。详见[LICENSE](https://gitee.com/ascend/torchair/blob/master/LICENSE)文件。
 
+
+---
+
+# 免责声明
+
+## 致TorchAir使用者
+
+1. TorchAir提供的模型仅供您用于非商业目的。
+2. 对于各模型，TorchAir平台仅提示性地向您建议可用于训练的数据集，华为不提供任何数据集，如您使用这些数据集进行训练，请您特别注意应遵守对应数据集的License，如您因使用数据集而产生侵权纠纷，华为不承担任何责任。
+3. 如您在使用TorchAir模型过程中，发现任何问题（包括但不限于功能问题、合规问题），请在Gitee提交issue，我们将及时审视并解决。
+
+## 致数据集所有者
+
+如果您不希望您的数据集在TorchAir中的模型被提及，或希望更新TorchAir中的模型关于您的数据集的描述，请在Gitee提交issue，我们将根据您的issue要求删除或更新您的数据集描述。衷心感谢您对TorchAir的理解和贡献。
