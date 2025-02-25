@@ -665,7 +665,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         head.writelines(['', 'initialize_graph_engine(global_compile_options)',
                          'ge_graph = GeGraph(serialized_model_def=serialized_graph)'])
         if need_rebuild_pg:
-            create_pgname_code = codegen_refresh_cache_pgname(self.graph.used_process_group, extend_config)
+            create_pgname_code = codegen_refresh_cache_pgname(self.graph.used_process_group)
             head.splice(create_pgname_code)
         kernel = IndentedBuffer()
         kernel.writelines(['', '_is_first_run = True', f'def kernel(*args):'])

@@ -296,8 +296,7 @@ class TorchairSt(unittest.TestCase):
         head.writelines(['import torch', 'from torchair.ge._ge_graph import GeGraph',
                          f'serialized_graph = {cache_graph.SerializeToString()}'])
         head.writelines(['ge_graph = GeGraph(serialized_model_def=serialized_graph)'])
-        code = codegen_refresh_cache_pgname({'pg_name1': ([0, 1], "tag1")},
-                                            extend_config={"ge.graph_compiler_cache_dir": "/root"})
+        code = codegen_refresh_cache_pgname({'pg_name1': ([0, 1], "tag1")})
         head.splice(code)
         exec(compile(head.getvalue(), '<string>', 'exec'))
         self.assertTrue(default_pg.is_init_comm)
@@ -320,11 +319,10 @@ class TorchairSt(unittest.TestCase):
         head.writelines(['import torch', 'from torchair.ge._ge_graph import GeGraph',
                          f'serialized_graph = {cache_graph.SerializeToString()}'])
         head.writelines(['ge_graph = GeGraph(serialized_model_def=serialized_graph)'])
-        code = codegen_refresh_cache_pgname({'pg_name2': ([0, 1], "tag1")},
-                                            extend_config={"ge.graph_compiler_cache_dir": "/root"})
+        code = codegen_refresh_cache_pgname({'pg_name2': ([0, 1], "tag1")})
         head.splice(code)
         exec(compile(head.getvalue(), '<string>', 'exec'))
-        self.assertEqual(len(PatchWorld.pg_map), 2)
+        self.assertEqual(len(PatchWorld.pg_map), 1)
         pg_name_init_map.clear()
         pg_name_map.clear()
 
@@ -342,14 +340,13 @@ class TorchairSt(unittest.TestCase):
         head.writelines(['import torch', 'from torchair.ge._ge_graph import GeGraph',
                          f'serialized_graph = {cache_graph.SerializeToString()}'])
         head.writelines(['ge_graph = GeGraph(serialized_model_def=serialized_graph)'])
-        code = codegen_refresh_cache_pgname({'pg_name2': ([0, 1], "tag1")},
-                                            extend_config={"ge.graph_compiler_cache_dir": "/root"})
+        code = codegen_refresh_cache_pgname({'pg_name2': ([0, 1], "tag1")})
         head.splice(code)
         exec(compile(head.getvalue(), '<string>', 'exec'))
         exec(compile(head.getvalue(), '<string>', 'exec'))
         pg_name_init_map.clear()
         pg_name_map.clear()
-        self.assertEqual(len(PatchWorld.pg_map), 2)
+        self.assertEqual(len(PatchWorld.pg_map), 1)
 
 
 if __name__ == '__main__':
