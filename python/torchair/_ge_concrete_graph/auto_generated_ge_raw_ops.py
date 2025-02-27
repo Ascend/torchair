@@ -76759,6 +76759,71 @@ def dequant_rope_quant_kvcache(x: Tensor,
     v_cache = Tensor(op, output_index)
     output_index += 1
     return q, k, v, k_cache, v_cache
+    
+# This api is auto-generated from IR DequantBias
+
+
+@auto_convert_to_tensor([False, False, False, False], [False, False, True, True])
+def dequant_bias(x: Tensor,
+                 weight_scale: Tensor,
+                 activate_scale: Optional[Tensor] = None,
+                 bias: Optional[Tensor] = None,
+                 *,
+                 output_dtype: int,
+                 dependencies=[],
+                 node_name=None):
+    """REG_OP(DequantBias)\n
+.INPUT(x, TensorType({DT_INT32}))\n
+.INPUT(weight_scale, TensorType({DT_FLOAT, DT_BF16}))\n
+.OPTIONAL_INPUT(activate_scale, TensorType({DT_FLOAT, DT_BF16}))\n
+.OPTIONAL_INPUT(bias, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16, DT_INT32}))\n
+.OUTPUT(y, TensorType({DT_FLOAT16, DT_BF16}))\n
+.REQUIRED_ATTR(output_dtype, Int)\n
+"""
+
+    op = get_default_ge_graph().op.add()
+    op.type = "DequantBias"
+    op.name = next_unique_name(node_name, "DequantBias")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+    op.input.append(weight_scale.tensor)
+    op.input_desc.add().CopyFrom(weight_scale.desc)
+    op.input_desc[-1].name = "weight_scale"
+
+    if activate_scale is not None:
+        op.input.append(activate_scale.tensor)
+        op.input_desc.add().CopyFrom(activate_scale.desc)
+        op.input_desc[-1].name = "activate_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "activate_scale"
+    if bias is not None:
+        op.input.append(bias.tensor)
+        op.input_desc.add().CopyFrom(bias.desc)
+        op.input_desc[-1].name = "bias"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "bias"
+
+    # process attrs
+    op.attr["output_dtype"].i = output_dtype
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+
+    return y
 
 # This api is auto-generated from IR Sxpy
 @auto_convert_to_tensor([False, False, False], [False, False, True])

@@ -181,6 +181,30 @@ REG_OP(DequantRopeQuantKvcache)
     .OP_END_FACTORY_REG(DequantRopeQuantKvcache)
 
 /**
+* @brief DequantBias. \n
+
+* @par Inputs:
+* @li x: A tensor of type int32.
+* @li weight_scale: A tensor of type float or bf16.
+* @li activate_scale: A tensor of type float.
+* @li bias: A tensor of type float, bf16, float16 or int32.
+
+* @par Attributes:
+* @li output_dtype: A int attr.
+
+* @par Outputs:
+* @li y: A tensor of type int32. \n
+*/
+REG_OP(DequantBias)
+    .INPUT(x, TensorType({DT_INT32}))
+    .INPUT(weight_scale, TensorType({DT_FLOAT32, DT_BF16}))
+    .OPTIONAL_INPUT(activate_scale, TensorType({DT_FLOAT32}))
+    .OPTIONAL_INPUT(bias, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT32, DT_INT32}))
+    .REQUIRED_ATTR(output_dtype, Int)
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_BF16}))
+    .OP_END_FACTORY_REG(DequantBias)
+
+/**
 * @brief Function WeightQuantBatchMatmulV2. \n
 
 * @par Inputs:
