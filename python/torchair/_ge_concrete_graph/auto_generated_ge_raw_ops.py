@@ -18552,9 +18552,102 @@ def IncreFlashAttention(query: Tensor,
     attention_out = Tensor(op, output_index)
     output_index += 1
 
-
     return attention_out
+# This api is auto-generated from IR MlaProlog
+@auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False], [False, False, False, False, False, False, False, False, False, False, False, False, True, True, True, True])
+def MlaProlog(token_x: Tensor, weight_dq: Tensor, weight_uq_qr: Tensor, weight_uk: Tensor, weight_dkv_kr: Tensor, rmsnorm_gamma_cq: Tensor, rmsnorm_gamma_ckv: Tensor, rope_sin: Tensor, rope_cos: Tensor, cache_index: Tensor, kv_cache: Tensor, kr_cache: Tensor, dequant_scale_cq: Optional[Tensor], dequant_scale_qc_qr: Optional[Tensor], dequant_scale_ckv_kr: Optional[Tensor], quant_scale_cq: Optional[Tensor], *, rmsnorm_epsilon_cq: float=0.000010, rmsnorm_epsilon_ckv: float=0.000010, cache_mode: str="BNSD", dependencies=[], node_name=None):
+    """REG_OP(MlaProlog)\n
+.INPUT(token_x, TensorType({DT_INT8, DT_BF16}))\n
+.INPUT(weight_dq, TensorType({DT_INT8, DT_BF16}))\n
+.INPUT(weight_uq_qr, TensorType({DT_INT8, DT_BF16}))\n
+.INPUT(weight_uk, TensorType({DT_FLOAT16, DT_BF16}))\n
+.INPUT(weight_dkv_kr, TensorType({DT_INT8, DT_BF16}))\n
+.INPUT(rmsnorm_gamma_cq, TensorType({DT_FLOAT16, DT_BF16}))\n
+.INPUT(rmsnorm_gamma_ckv, TensorType({DT_FLOAT16, DT_BF16}))\n
+.INPUT(rope_sin, TensorType({DT_FLOAT16, DT_BF16}))\n
+.INPUT(rope_cos, TensorType({DT_FLOAT16, DT_BF16}))\n
+.INPUT(cache_index, TensorType({DT_INT64}))\n
+.INPUT(kv_cache, TensorType({DT_FLOAT16, DT_BF16}))\n
+.INPUT(kr_cache, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OPTIONAL_INPUT(dequant_scale_cq, TensorType({DT_INT64}))\n
+.OPTIONAL_INPUT(dequant_scale_qc_qr, TensorType({DT_INT64}))\n
+.OPTIONAL_INPUT(dequant_scale_ckv_kr, TensorType({DT_INT64}))\n
+.OPTIONAL_INPUT(quant_scale_cq, TensorType({DT_FLOAT}))\n
+.ATTR(rmsnorm_epsilon_cq, Float, 1e-05)\n
+.ATTR(rmsnorm_epsilon_ckv, Float, 1e-05)\n
+.ATTR(cache_mode, String, "BNSD")\n
+.OUTPUT(query, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OUTPUT(query_rope, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OUTPUT(kv_cache, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OUTPUT(kr_cache, TensorType({DT_FLOAT16, DT_BF16}))\n
+"""
 
+    # process inputs
+    inputs = {
+        "token_x": token_x,
+        "weight_dq": weight_dq,
+        "weight_uq_qr": weight_uq_qr,
+        "weight_uk": weight_uk,
+        "weight_dkv_kr": weight_dkv_kr,
+        "rmsnorm_gamma_cq": rmsnorm_gamma_cq,
+        "rmsnorm_gamma_ckv": rmsnorm_gamma_ckv,
+        "rope_sin": rope_sin,
+        "rope_cos": rope_cos,
+        "cache_index": cache_index,
+        "kv_cache": kv_cache,
+        "kr_cache": kr_cache,
+        "dequant_scale_cq": dequant_scale_cq,
+        "dequant_scale_qc_qr": dequant_scale_qc_qr,
+        "dequant_scale_ckv_kr": dequant_scale_ckv_kr,
+        "quant_scale_cq": quant_scale_cq,
+    }
+
+    # process attrs
+    attrs = {
+        "rmsnorm_epsilon_cq": attr.Float(rmsnorm_epsilon_cq),
+        "rmsnorm_epsilon_ckv": attr.Float(rmsnorm_epsilon_ckv),
+        "cache_mode": attr.Str(cache_mode),
+    }
+
+    # process outputs
+    outputs = [
+    "query",
+    "query_rope",
+    "kv_cache",
+    "kr_cache",
+    ]
+
+    return ge_op(
+        op_type="MlaProlog",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("MlaProlog") \
+        .input("token_x", "DT_INT8, DT_BF16") \
+        .input("weight_dq", "DT_INT8, DT_BF16") \
+        .input("weight_uq_qr", "DT_INT8, DT_BF16") \
+        .input("weight_uk", "DT_FLOAT16, DT_BF16") \
+        .input("weight_dkv_kr", "DT_INT8, DT_BF16") \
+        .input("rmsnorm_gamma_cq", "DT_FLOAT16, DT_BF16") \
+        .input("rmsnorm_gamma_ckv", "DT_FLOAT16, DT_BF16") \
+        .input("rope_sin", "DT_FLOAT16, DT_BF16") \
+        .input("rope_cos", "DT_FLOAT16, DT_BF16") \
+        .input("cache_index", "DT_INT64") \
+        .input("kv_cache", "DT_FLOAT16, DT_BF16") \
+        .input("kr_cache", "DT_FLOAT16, DT_BF16") \
+        .optional_input("dequant_scale_cq", "DT_INT64") \
+        .optional_input("dequant_scale_qc_qr", "DT_INT64") \
+        .optional_input("dequant_scale_ckv_kr", "DT_INT64") \
+        .optional_input("quant_scale_cq", "DT_FLOAT") \
+        .attr("rmsnorm_epsilon_cq", attr.Float(0.000010)) \
+        .attr("rmsnorm_epsilon_ckv", attr.Float(0.000010)) \
+        .attr("cache_mode", attr.Str("BNSD")) \
+        .output("query" , "DT_FLOAT16, DT_BF16") \
+        .output("query_rope" , "DT_FLOAT16, DT_BF16") \
+        .output("kv_cache" , "DT_FLOAT16, DT_BF16") \
+        .output("kr_cache" , "DT_FLOAT16, DT_BF16")
+    )
 
 # This api is auto-generated from IR PromptFlashAttention
 @auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False, False, False], [False, False, False, True, True, True, True, True, True, True, True, True])
