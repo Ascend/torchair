@@ -7,6 +7,7 @@
 #include "graph/tensor.h"
 #include "tng_status.h"
 #include "torch/torch.h"
+#include "ge/ge_allocator.h"
 
 namespace tng {
 Status GetCurrentStream(void **stream);
@@ -37,6 +38,19 @@ Status AssembleFrozenOption(const std::vector<bool> &frozen_input_flag_list,
 Status GetShapeFromGeTensor(std::vector<int64_t> &real_output_shape, const ge::Tensor &ge_tensor);
 
 Status GetShapeFromGeTensor(std::vector<int64_t> &real_output_shape, const gert::Tensor &ge_tensor);
+
+at::Tensor MakeAtTensor(const std::vector<int64_t> &dims, c10::ScalarType &torch_dtype, size_t tensor_nbytes,
+                        ge::MemBlock *block);
+
+Status UpdateTensorInfos(ge::Tensor &ge_tensor, const std::vector<int64_t> &shape, const ge::Format format,
+                         const ge::DataType data_type);
+
+Status UpdateTensorInfos(gert::Tensor &ge_tensor, const std::vector<int64_t> &shape, const ge::Format format,
+                         const ge::DataType data_type);
+
+Status UpdateTensorData(ge::Tensor &ge_tensor, void *addr, const size_t data_size);
+
+Status UpdateTensorData(gert::Tensor &ge_tensor, void *addr, const size_t data_size);
 
 }  // namespace tng
 

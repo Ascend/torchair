@@ -209,4 +209,70 @@ Status GetShapeFromGeTensor(std::vector<int64_t> &real_output_shape, const gert:
   return Status::Success();
 }
 
+void FreeMemBlock(void *data) {
+  if (data != nullptr) {
+    static_cast<ge::MemBlock *>(data)->Free();
+    data = nullptr;
+  }
+}
+
+at::Tensor MakeAtTensor(const std::vector<int64_t> &dims, c10::ScalarType &torch_dtype, size_t tensor_nbytes,
+                        ge::MemBlock *block) {
+  at::Storage storage;
+  // get npu storage constructor from register and construct storage
+  auto fptr = c10::GetStorageImplCreate(c10::DeviceType::PrivateUse1);
+  auto allocator = c10::GetAllocator(c10::DeviceType::PrivateUse1);
+#if defined(TNG_TORCH_VERSION) && (TNG_TORCH_VERSION < 20300)  // v2.3.0
+  storage = fptr(c10::StorageImpl::use_byte_size_t(), 0, allocator, true);
+#else
+  storage = fptr(c10::StorageImpl::use_byte_size_t(), 0, allocator->allocate(0), allocator, true);
+#endif
+  storage.unsafeGetStorageImpl()->set_nbytes(tensor_nbytes);
+
+  static torch::DeleterFnPtr kFreeMemBlock = &FreeMemBlock;
+  at::DataPtr c10_data_ptr(block->GetAddr(), block, kFreeMemBlock, storage.device());
+  storage.set_data_ptr(std::move(c10_data_ptr));
+
+  auto tensor = at::detail::make_tensor<c10::TensorImpl>(
+    std::move(storage),
+    c10::DispatchKeySet{c10::DispatchKey::PrivateUse1, c10::DispatchKey::AutogradPrivateUse1},
+    c10::scalarTypeToTypeMeta(torch_dtype));
+  at::TensorImpl *tensor_impl = tensor.unsafeGetTensorImpl();
+  tensor_impl->set_sizes_contiguous(dims);
+  return tensor;
+}
+
+Status UpdateTensorInfos(ge::Tensor &ge_tensor, const std::vector<int64_t> &shape, const ge::Format format,
+                         const ge::DataType data_type) {
+  TNG_ASSERT_GE_OK(ge_tensor.SetDataType(data_type));
+  TNG_ASSERT_GE_OK(ge_tensor.SetPlacement(ge::Placement::kPlacementDevice));
+  TNG_ASSERT_GE_OK(ge_tensor.SetFormat(format));
+  TNG_ASSERT_GE_OK(ge_tensor.SetShapeDimNum(shape.size()));
+  for (size_t index = 0U; index < shape.size(); ++index) {
+    TNG_ASSERT_GE_OK(ge_tensor.SetShapeDim(index, shape[index]));
+  }
+  return Status::Success();
+}
+
+Status UpdateTensorInfos(gert::Tensor &ge_tensor, const std::vector<int64_t> &shape, const ge::Format format,
+                         const ge::DataType data_type) {
+  ge_tensor.SetDataType(data_type);
+  ge_tensor.SetPlacement(gert::TensorPlacement::kOnDeviceHbm);
+  ge_tensor.SetOriginFormat(format);
+  ge_tensor.SetStorageFormat(format);
+  TNG_RETURN_IF_ERROR(AssembleDimsToShape(shape, ge_tensor));
+  return Status::Success();
+}
+
+Status UpdateTensorData(ge::Tensor &ge_tensor, void *addr, const size_t data_size) {
+  const static ge::Tensor::DeleteFunc kDoNothing = [](uint8_t *data) {};
+  TNG_ASSERT_GE_OK(ge_tensor.ResetData(static_cast<uint8_t *>(addr), static_cast<size_t>(data_size), kDoNothing));
+  return Status::Success();
+}
+
+Status UpdateTensorData(gert::Tensor &ge_tensor, void *addr, const size_t data_size) {
+  TNG_ASSERT_GE_OK(ge_tensor.MutableTensorData().SetAddr(addr, nullptr));
+  ge_tensor.MutableTensorData().SetSize(data_size);
+  return Status::Success();
+}
 }  // namespace tng

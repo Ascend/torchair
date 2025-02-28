@@ -94,49 +94,52 @@ Status StaticNpuGraphExecutor::AssembleHostInputs(const at::Tensor &input, T &in
 
 template <typename T>
 Status StaticNpuGraphExecutor::AssembleOutputs(const std::vector<c10::optional<at::Tensor>> &assigned_outputs,
-                                               std::vector<at::Tensor> &outputs, std::vector<T> &output_holders) {
+                                               std::vector<ge::MemBlock *> &output_mem_blocks,
+                                               std::vector<T> &output_holders, void *stream) {
   RECORD_FUNCTION("AssembleOutputs", std::vector<c10::IValue>({}));
   bool is_first_run = output_holders.empty();
   if (is_first_run) {
-    const std::vector<ge::DataType> &output_ge_dtypes = graph_data_->output_dtypes;
+    auto output_ge_dtypes = graph_data_->output_dtypes;
     std::vector<ge::Shape> output_ge_shapes;
     TNG_ASSERT_GE_OK(graph_data_->summary->GetOutputShapes(output_ge_shapes));
     TNG_ASSERT_EQ(output_ge_shapes.size(), output_ge_dtypes.size());
+    output_holders.resize(output_ge_dtypes.size());
+    output_size_.resize(output_ge_dtypes.size());
+    output_shapes_.resize(output_ge_dtypes.size());
+    output_torch_dtype_.resize(output_ge_dtypes.size());
 
-    output_holders.resize(output_ge_shapes.size());
-    output_options_.resize(output_ge_shapes.size());
-    output_shapes_.resize(output_ge_shapes.size());
-
-    TNG_ASSERT(assigned_outputs.empty() || assigned_outputs.size() == output_shapes_.size());
+    TNG_ASSERT(assigned_outputs.empty() || assigned_outputs.size() == output_ge_dtypes.size());
     for (size_t i = 0U; i < output_ge_dtypes.size(); ++i) {
-      if (assigned_outputs.empty() || !assigned_outputs[i].has_value()) {
-        c10::ScalarType output_i_torch_dtype = c10::ScalarType::Float;
-        TNG_RETURN_IF_ERROR(GeDtypeToAtDtype(output_ge_dtypes[i], output_i_torch_dtype));
-        at::TensorOptions option = at::TensorOptions().dtype(output_i_torch_dtype).device(at::kPrivateUse1);
-        output_options_[i] = option;
-        output_shapes_[i] = output_ge_shapes[i].GetDims();
-      }
+      TNG_RETURN_IF_ERROR(GeDtypeToAtDtype(output_ge_dtypes[i], output_torch_dtype_[i]));
+      output_shapes_[i] = output_ge_shapes[i].GetDims();
+      output_size_[i] =
+        at::detail::computeStorageNbytesContiguous(output_shapes_[i], elementSize(output_torch_dtype_[i]));
+
+      TNG_RETURN_IF_ERROR(UpdateTensorInfos(output_holders[i], output_shapes_[i], ge::FORMAT_ND, output_ge_dtypes[i]));
     }
   }
 
   TNG_ASSERT(assigned_outputs.empty() || assigned_outputs.size() == output_holders.size());
-  outputs.clear();
-  for (size_t i = 0U; i < output_shapes_.size(); ++i) {
+  const std::shared_ptr<ge::Allocator> &allocator = AllocatorManager::GetInstance().EnsureAllocatorRegistered(stream);
+  TNG_ASSERT_NOTNULL(allocator);
+  output_mem_blocks.resize(output_holders.size());
+  for (size_t i = 0U; i < output_holders.size(); ++i) {
     if (!assigned_outputs.empty() && assigned_outputs[i].has_value()) {
-      outputs.push_back(assigned_outputs[i].value());
-      TNG_LOG(DEBUG) << "Assemble pre-assigned output " << i << " " << DebugString(outputs.back());
-    } else {
-      outputs.push_back(at::empty(output_shapes_[i], output_options_[i]));
-      TNG_LOG(DEBUG) << "Create empty output " << i << " " << DebugString(outputs.back());
+      if (is_first_run) {
+        TNG_RETURN_IF_ERROR(AtNpuTensorToGeTensor(assigned_outputs[i].value(), output_holders[i]));
+      } else {
+        TNG_RETURN_IF_ERROR(AssembleDataAndStorageShapeToGe(assigned_outputs[i].value(), output_holders[i]));
+      }
+      TNG_LOG(DEBUG) << "Assemble pre-assigned output " << i << " " << DebugString(assigned_outputs[i].value())
+                     << " to " << DebugString(output_holders[i]);
+      continue;
     }
-    auto &output_i = outputs.back();
-    if (is_first_run) {
-      TNG_RETURN_IF_ERROR(AtTensorToGeTensor(output_i, output_holders[i]));
-    } else {
-      TNG_RETURN_IF_ERROR(AssembleDataToGe(output_i, output_holders[i]));
-    }
-    TNG_LOG(DEBUG) << "Assemble torch output " << i << " " << DebugString(output_i) << " to "
-                   << DebugString(output_holders[i]);
+
+    ge::MemBlock *block = allocator->Malloc(output_size_[i]);
+    TNG_ASSERT_NOTNULL(block);
+    output_mem_blocks[i] = block;
+    TNG_RETURN_IF_ERROR(UpdateTensorData(output_holders[i], block->GetAddr(), output_size_[i]));
+    TNG_LOG(DEBUG) << "Malloc " << output_size_[i] << " for ge output tensor.";
   }
 
   return Status::Success();
@@ -216,6 +219,7 @@ Status StaticNpuGraphExecutor::AllocAndSetFixedMemory(void *stream, std::shared_
 Status StaticNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
                                    const std::vector<c10::optional<at::Tensor>> &torch_outputs,
                                    std::vector<at::Tensor> &outputs, void *stream) {
+  std::vector<ge::MemBlock *> output_mem_blocks;
   if (stream == nullptr) {
     TNG_RETURN_IF_ERROR(GetCurrentStream(&stream));
   }
@@ -231,7 +235,7 @@ Status StaticNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
   if (enable_load_execute_graph) {
     TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, gert_inputs_holder_, stream));
 
-    TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs, outputs, gert_outputs_holder_));
+    TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs, output_mem_blocks, gert_outputs_holder_, stream));
 
     if (is_first_run_) {
       std::map<ge::AscendString, ge::AscendString> load_options;
@@ -248,9 +252,22 @@ Status StaticNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
   } else {
     TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, inputs_holder_, stream));
 
-    TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs, outputs, outputs_holder_));
+    TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs, output_mem_blocks, outputs_holder_, stream));
 
     TNG_RETURN_IF_ERROR(Session::GetInstance().RunGraph(graph_data_->id, inputs_holder_, outputs_holder_, stream));
+  }
+
+  outputs.clear();
+  {
+    RECORD_FUNCTION("RefreshAtTensorFromGearsGeTensor", {});
+    for (size_t i = 0U; i < output_mem_blocks.size(); i++) {
+      if (!torch_outputs.empty() && torch_outputs[i].has_value()) {
+        outputs.push_back(torch_outputs[i].value());
+        continue;
+      }
+      outputs.push_back(MakeAtTensor(output_shapes_[i], output_torch_dtype_[i], output_size_[i], output_mem_blocks[i]));
+      TNG_LOG(DEBUG) << "Refresh gears torch output " << i << " " << DebugString(outputs[i]);
+    }
   }
 
   TNG_LOG(INFO) << "Static npu graph executor run run graph " << graph_data_->id << " on stream " << stream

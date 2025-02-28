@@ -24,10 +24,6 @@ class StaticNpuGraphExecutor : public Executor {
   template <typename T>
   Status AssembleInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders, void *stream);
 
-  template <typename T>
-  Status AssembleOutputs(const std::vector<c10::optional<at::Tensor>> &assigned_outputs,
-                         std::vector<at::Tensor> &outputs, std::vector<T> &output_holders);
-
  protected:
   Status AllocAndSetConstMemory(void *stream);
 
@@ -37,6 +33,10 @@ class StaticNpuGraphExecutor : public Executor {
   Status AssembleHostInputs(const at::Tensor &inputs, T &input_holders,
                             std::pair<at::Tensor, std::pair<size_t, size_t>> &host_input_holder_,
                             void *stream, bool is_first_run);
+
+  template <typename T>
+  Status AssembleOutputs(const std::vector<c10::optional<at::Tensor>> &assigned_outputs,
+                         std::vector<ge::MemBlock *> &output_mem_blocks, std::vector<T> &output_holders, void *stream);
 
   std::vector<ge::Tensor> inputs_holder_;
   std::vector<ge::Tensor> outputs_holder_;
@@ -51,8 +51,10 @@ class StaticNpuGraphExecutor : public Executor {
   void *first_stream{nullptr};
 
   std::vector<std::vector<int64_t>> output_shapes_;
-  std::vector<at::TensorOptions> output_options_;
   std::vector<std::pair<at::Tensor, std::pair<size_t, size_t>>> host_input_holders_;
+
+  std::vector<c10::ScalarType> output_torch_dtype_;
+  std::vector<size_t> output_size_;
 };
 }  // namespace tng
 
