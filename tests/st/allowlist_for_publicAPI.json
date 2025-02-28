@@ -42,6 +42,7 @@
     "torchair.ops": [
         "npu_print",
         "npu_wait_tensor",
-        "NpuStreamSwitch"
+        "NpuStreamSwitch",
+		"SuperKernelScope"
     ]
 }

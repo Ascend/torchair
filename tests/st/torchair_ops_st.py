@@ -78,5 +78,42 @@ class TorchairSt(unittest.TestCase):
         GeConcreteGraph.optimize_graph_without_runtime = bak_optimization
 
 
+    def test_super_kernel_scope(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, in1, in2):
+                with torchair.ops.SuperKernelScope('test_scope', 'test_option'): 
+                    mm_result = torch.mm(in1, in2)
+                return mm_result
+
+        def wrapper_call(func):
+            def wrapper(*args, **kwargs):
+                assert len(args) > 0
+                graph = args[0].graph
+                mm_op = None
+                for op in graph.op:
+                    if op.name == 'MatMul_1':
+                        mm_op = op
+                scope = mm_op.attr["_super_kernel_scope"].s
+                options = mm_op.attr["_super_kernel_options"].s
+                self.assertTrue(scope == b'test_scope')
+                self.assertTrue(options == b'test_option')
+                ret = func(*args, **kwargs)
+                return ret
+            return wrapper
+        bak_optimization = GeConcreteGraph.optimize_graph_without_runtime
+        GeConcreteGraph.optimize_graph_without_runtime = wrapper_call(GeConcreteGraph.optimize_graph_without_runtime)
+        model = Model()
+        config_view = CompilerConfig()
+        npu_backend_view = torchair.get_npu_backend(compiler_config=config_view)
+        model = torch.compile(model, backend=npu_backend_view, dynamic=False)
+        in1 = torch.randn(2, 2)
+        in2 = torch.randn(2, 2)
+        model(in1, in2)
+        GeConcreteGraph.optimize_graph_without_runtime = bak_optimization
+
+
 if __name__ == '__main__':
     unittest.main()
