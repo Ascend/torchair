@@ -79,6 +79,8 @@ def conveter_npu_quantize_default(
         dtype_str = "torch.qint8"
     elif dtype == torch.qint32:
         dtype_str = "torch.qint32"
+    elif dtype == torch.int16:
+        dtype_str = "torch.qint16"
     else:
         raise RuntimeError("Not supportted output dtype.")
     insert_dims = []
