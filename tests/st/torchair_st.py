@@ -427,6 +427,8 @@ class TorchairSt(unittest.TestCase):
         import _privateuse1_backend
         npu_device = _privateuse1_backend.npu_device()
         torch.utils.rename_privateuse1_backend("npu")
+        _privateuse1_backend.register_hook()
+
 
         with GeGraph() as graph:
             x1 = ge.Data(index=0, shape=[3, 4], dtype=DataType.DT_FLOAT, placement='NPU')
@@ -812,7 +814,6 @@ class TorchairSt(unittest.TestCase):
 
         import _privateuse1_backend
         _privateuse1_backend.register_generator()
-        _privateuse1_backend.register_hook()
         src_gen = torch.default_generator
         torch.default_generator = _privateuse1_backend.default_generator(0)
 

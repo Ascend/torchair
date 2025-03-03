@@ -218,6 +218,9 @@ void FreeMemBlock(void *data) {
 
 at::Tensor MakeAtTensor(const std::vector<int64_t> &dims, c10::ScalarType &torch_dtype, size_t tensor_nbytes,
                         ge::MemBlock *block) {
+  at::TensorOptions option = at::TensorOptions().dtype(torch_dtype).device(c10::DeviceType::PrivateUse1);
+  at::Tensor tensor = at::empty({0}, option);
+
   at::Storage storage;
   // get npu storage constructor from register and construct storage
   auto fptr = c10::GetStorageImplCreate(c10::DeviceType::PrivateUse1);
@@ -233,12 +236,7 @@ at::Tensor MakeAtTensor(const std::vector<int64_t> &dims, c10::ScalarType &torch
   at::DataPtr c10_data_ptr(block->GetAddr(), block, kFreeMemBlock, storage.device());
   storage.set_data_ptr(std::move(c10_data_ptr));
 
-  auto tensor = at::detail::make_tensor<c10::TensorImpl>(
-    std::move(storage),
-    c10::DispatchKeySet{c10::DispatchKey::PrivateUse1, c10::DispatchKey::AutogradPrivateUse1},
-    c10::scalarTypeToTypeMeta(torch_dtype));
-  at::TensorImpl *tensor_impl = tensor.unsafeGetTensorImpl();
-  tensor_impl->set_sizes_contiguous(dims);
+  tensor.set_(storage, 0, dims);
   return tensor;
 }
 

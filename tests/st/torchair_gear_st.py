@@ -284,6 +284,7 @@ class TorchairSt(unittest.TestCase):
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
         import _privateuse1_backend
+        _privateuse1_backend.register_hook()
         npu_device = _privateuse1_backend.npu_device()
         torch.utils.rename_privateuse1_backend("npu")
 

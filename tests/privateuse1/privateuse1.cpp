@@ -125,7 +125,7 @@ at::Tensor &npu_scatter_update_(at::Tensor &self, const at::Tensor &indices, con
 at::Tensor &npu_set_(at::Tensor &self, c10::Storage src, long storage_offset, c10::IntArrayRef size,
                      c10::IntArrayRef stride = {}) {
   void* data_ptr = const_cast<void*>(src.data());
-  auto tensor = at::from_blob(data_ptr, {}, src.device());
+  auto tensor = at::from_blob(data_ptr, size, src.device());
   self = tensor;
   return self;
 }
@@ -200,6 +200,9 @@ struct FooHooksInterface : public at::PrivateUse1HooksInterface {
       static auto device_gen = make_generator_privateuse1(device_index);
       return device_gen;
     }
+    at::Device getDeviceFromPtr(void* data) const override {
+      return at::Device(c10::DeviceType::PrivateUse1, 0);
+   }
 };
 
 struct FooHooksArgs : public at::PrivateUse1HooksArgs {

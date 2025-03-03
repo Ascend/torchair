@@ -5,11 +5,14 @@ import unittest
 import sys
 
 import torch
+import _privateuse1_backend
 import torchair
 from torchair._ge_concrete_graph.graph_pass import explict_order_for_side_effect_nodes
 from torchair._ge_concrete_graph import graph_pass
 
+
 captured_graph = threading.local()
+_privateuse1_backend.register_hook()
 
 
 def _get_op_inputs(graph):
@@ -63,7 +66,6 @@ def _mock_npu():
     if _initialized:
         return
     from torchair.core import _npu_graph_executor
-    import _privateuse1_backend
     torch.utils.rename_privateuse1_backend("npu")
     _initialized = True
 
