@@ -1211,56 +1211,6 @@ class TorchairSt(unittest.TestCase):
         self.assertEqual(torch._C._is_alias_of(res, input1), False)
         self.assertEqual(torch._C._is_alias_of(res, input2), False)
 
-    def test_constplaceholder_with_device_npu(self):
-        register_is_npu()
-        from torchair.core import _npu_graph_executor
-        import _privateuse1_backend
-        npu_device = _privateuse1_backend.npu_device()
-        torch.utils.rename_privateuse1_backend("npu")
-
-        def get_op_num(concrete_graph):
-            num_cp, num_data = 0, 0
-            for node in concrete_graph.graph.op:
-                if node.type == "ConstPlaceHolder":
-                    num_cp += 1
-                if node.type == "Data":
-                    num_data += 1
-            assert num_cp == 1, f"check number of ConstPlaceHolder {num_cp} == 1 failed"
-            assert num_data == 3, f"check number of Data {num_data} == 3 failed"
-
-        def wrapper_call(func):
-            def wrapper(*args, **kwargs):
-                assert len(args) > 0
-                ret = func(*args, **kwargs)
-                get_op_num(args[0])
-                return ret
-
-            return wrapper
-
-        GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
-
-        class Model(torch.nn.Module):
-            def __init__(self):
-                super().__init__()
-                weight = torch.randn([3, 2]).to(npu_device)
-                self.weight = torch.nn.Parameter(weight)
-                self.bias = torch.randn([3, 2]).to(npu_device)
-                buf = torch.randn([3, 2]).to(npu_device)
-                self.register_buffer("buffer", buf, persistent=False)
-                self.scalar = 1.0
-
-            def forward(self, x):
-                return x + self.weight + self.bias + self.buffer + self.scalar
-
-        model = Model()
-        config_cp = CompilerConfig()
-        config_cp.experimental_config.frozen_parameter = True
-        npu_backend_cp = torchair.get_npu_backend(compiler_config=config_cp)
-        model = torch.compile(model, backend=npu_backend_cp, dynamic=False)
-        ins = torch.randn([3, 2]).to(npu_device)
-        with torch.no_grad():
-            model(ins)
-
     def test_topk(self):
         class Model(torch.nn.Module):
             def __init__(self):

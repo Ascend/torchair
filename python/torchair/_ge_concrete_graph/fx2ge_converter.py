@@ -27,7 +27,7 @@ from torchair._ge_concrete_graph.ge_ir_pb2 import GraphDef, TensorDescriptor, Te
 from torchair._ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
 from torchair.ge._ge_graph import Tensor as GeTensor
 from torchair.ge._ge_graph import _ValueInput, _TensorInput, _DiscontiguousTensorInput, _RngStatusInput, \
-    _ValueType, _GeInputInfo
+    _ValueType, _GeInputInfo, _SymPackInput
 from torchair.ge._ge_graph import torch_type_to_ge_type, torch_type_to_ge_proto_type, default_ge_graph, \
     GeGraph, attr_scope, compat_as_bytes, DataType, Format, TensorSpec, is_sym, sym_to_ge_dtype, assert_args_checkout
 from torchair._ge_concrete_graph.graph_pass import optimize_sym_pack, optimize_reference_op_redundant_copy, \
@@ -563,12 +563,6 @@ class GeConcreteGraph(ConcreteGraphBase):
         from torchair._ge_concrete_graph.graph_pass import explict_order_for_side_effect_nodes
         from torchair._ge_concrete_graph.graph_pass import explict_order_for_cmo
         from torchair._ge_concrete_graph.utils import get_graph_input_placements
-        if self._config.experimental_config.frozen_parameter:
-            warnings.warn(f'When enable frozen_parameter, Parameters will be considered frozen.'
-                          'Please make sure that the Parameters data address remain the same '
-                          'throughout the program runtime.')
-            frozen_flag_list = get_frozen_flag(self.graph.named_inputs_info.values())
-            frozen_data_by_constplaceholder(self.graph, frozen_flag_list, self._all_meta_tensor_input)
 
         optimize_sym_pack(self.graph)
         record_pg_to_graph(self.graph)
@@ -631,6 +625,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         head.splice('''
         import torch
         import os
+        import numpy
         from torchair.core._backend import initialize_graph_engine
         from torchair.ge._ge_graph import GeGraph
         from torchair._ge_concrete_graph.fx2ge_converter import _update_constplaceholder_attr_from_inputs
@@ -916,7 +911,13 @@ class GeConcreteGraph(ConcreteGraphBase):
         local_compile_options["ge.exec.atomicCleanPolicy"] = "1"
         local_compile_options.update(generate_dynamic_dims_option(self.graph.named_inputs_info,
                                      self.config.inference_config.dynamic_gears_merge_policy.value))
-        optimize_frozen_flag_list = get_frozen_flag(self._input_info_list)
+        if self._config.experimental_config.frozen_parameter:
+            warnings.warn(f'When enable frozen_parameter, Parameters will be considered frozen.'
+                          'Please make sure that the Parameters data address remain the same '
+                          'throughout the program runtime.')
+            optimize_frozen_flag_list = get_frozen_flag(self._input_info_list)
+        else:
+            optimize_frozen_flag_list = [0] * len(self._input_info_list)
         if len(optimize_frozen_flag_list) != 0:
             local_compile_options["frozenInput"] = ",".join(str(x) for x in optimize_frozen_flag_list)
         logger.info("local compile options:")
@@ -924,27 +925,41 @@ class GeConcreteGraph(ConcreteGraphBase):
             logger.info(f"  {k}: {v}")
 
         return local_compile_options, global_compile_options
-
+    
     @staticmethod
     def _codegen_input(all_input_names, all_sym_input, input_func_list):
         from torch._inductor.utils import IndentedBuffer
-        input_code = IndentedBuffer()
-        all_input_str = ', '.join(all_input_names)
-        if all_input_str:
-            if len(all_input_names) == 1:
-                all_input_str += ', '
+        input_code = IndentedBuffer()       
+
+        if all_sym_input:
+            # only for cache
+            all_input_str = ', '.join(all_input_names)
+            if all_input_str:
+                if len(all_input_names) == 1:
+                    all_input_str += ', '
             input_code.writeline(f'{all_input_str} = args')
-        for name, idx in all_sym_input.items():
-            if str(name).isdigit() or not isinstance(name, sympy.Symbol):
-                # skip invalid expression, such as 2=arg0_1; s0*s1=arg1_1;
-                continue
-            input_code.writeline(f'{str(name)} = {all_input_names[idx]}')
-        input_code.writeline(f'ge_inputs = [None] * {len(input_func_list)}')
+            for name, idx in all_sym_input.items():
+                if str(name).isdigit() or not isinstance(name, sympy.Symbol):
+                    continue
+                input_code.writeline(f'{str(name)} = {all_input_names[idx]}')
+
+        input_code.writeline('ge_inputs = list(args)')
+        func_idx = []
         for idx, func in enumerate(input_func_list):
-            if isinstance(func, _RngStatusInput):
-                logger.info(f"skip codegen for rng input for ge input_{idx}.")
+            fx_input_idx = getattr(func, 'fx_input_idx', None)
+            if fx_input_idx is not None:
+                func_idx.append(fx_input_idx)
+        indices_to_remove = []
+        for i in range(len(all_input_names)):
+            if i not in func_idx:
+                indices_to_remove.append(i)
+        indices_to_remove.sort(reverse=True)
+        for idx, item in enumerate(indices_to_remove):
+            input_code.writeline(f'del ge_inputs[{item}]')
+        for idx, func in enumerate(input_func_list):
+            if isinstance(func, _TensorInput):
                 continue
-            input_code.writeline(f'ge_inputs[{idx}] = {func.codegen(all_input_names)}')
+            input_code.writeline(func.codegen(idx, 'ge_inputs'))
         return input_code.getvalue()
 
     @staticmethod
@@ -952,9 +967,9 @@ class GeConcreteGraph(ConcreteGraphBase):
         from torch._inductor.utils import IndentedBuffer
         from types import ModuleType
         kernel = IndentedBuffer()
-        kernel.writelines(['import torch', f'def kernel(*args):'])
+        kernel.writelines(['import torch', 'import numpy', f'def kernel(*args):'])
         with kernel.indent():
-            ge_inputs = GeConcreteGraph._codegen_input(all_input_names, all_sym_input, input_func_list)
+            ge_inputs = GeConcreteGraph._codegen_input(all_input_names, None, input_func_list)
             kernel.splice(ge_inputs)
             kernel.writeline('return ge_inputs')
 

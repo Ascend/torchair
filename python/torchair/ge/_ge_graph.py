@@ -451,7 +451,7 @@ class _FuncBase:
     def __call__(self, *args):
         pass
 
-    def codegen(self, input_names):
+    def codegen(self, ge_idx, ge_inputs_name):
         pass
 
 
@@ -463,8 +463,8 @@ class _ValueInput(_FuncBase):
     def __call__(self, *args):
         return torch.tensor(args[self.fx_input_idx])
 
-    def codegen(self, input_names):
-        return f"torch.tensor({input_names[self.fx_input_idx]})"
+    def codegen(self, ge_idx, ge_inputs_name):
+        return f"{ge_inputs_name}[{ge_idx}] = torch.from_numpy(numpy.array([args[{self.fx_input_idx}]]))"
 
 
 class _TensorInput(_FuncBase):
@@ -475,8 +475,8 @@ class _TensorInput(_FuncBase):
     def __call__(self, *args):
         return args[self.fx_input_idx]
 
-    def codegen(self, input_names):
-        return f"{input_names[self.fx_input_idx]}"
+    def codegen(self, ge_idx, ge_inputs_name):
+        raise AssertionError("No need to codegen for tensor input")
 
 
 class _DiscontiguousTensorInput(_FuncBase):
@@ -487,8 +487,8 @@ class _DiscontiguousTensorInput(_FuncBase):
     def __call__(self, *args):
         return args[self.fx_input_idx].contiguous()
 
-    def codegen(self, input_names):
-        return f"{input_names[self.fx_input_idx]}.contiguous()"
+    def codegen(self, ge_idx, ge_inputs_name):
+        return f"{ge_inputs_name}[{ge_idx}] = args[{self.fx_input_idx}].contiguous()"
 
 
 class _RngStatusInput(_FuncBase):
@@ -500,8 +500,8 @@ class _RngStatusInput(_FuncBase):
         offset_input = self.rng_status.consume()
         return offset_input
 
-    def codegen(self, input_names):
-        raise AssertionError(f"unsupport codegen for rng status input")
+    def codegen(self, ge_idx, ge_inputs_name):
+        return f"{ge_inputs_name}.insert({ge_idx}, None)"
 
 
 class _SymPackInput(_FuncBase):
@@ -512,11 +512,11 @@ class _SymPackInput(_FuncBase):
     def __call__(self, *args):
         return torch.tensor([args[idx] for idx in self.fx_input_idx_list])
 
-    def codegen(self, input_names):
-        input_str = "torch.tensor(["
+    def codegen(self, ge_idx, ge_inputs_name):
+        input_str = f'{ge_inputs_name}.insert({ge_idx}, torch.from_numpy(numpy.array(['
         for idx in self.fx_input_idx_list:
-            input_str += f"{input_names[idx]}, "
-        input_str += "])"
+            input_str += f'args[{idx}], '
+        input_str += '])))'
         return input_str
 
 
