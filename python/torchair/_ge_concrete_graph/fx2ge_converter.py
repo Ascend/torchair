@@ -7,6 +7,7 @@ import contextlib
 from contextlib import contextmanager
 import inspect
 import sys
+import time
 import os
 import warnings
 import sympy
@@ -22,7 +23,7 @@ from torchair.configs.compiler_config import CompilerConfig
 from torchair.core import _torchair
 from torchair.core._backend import initialize_graph_engine
 from torchair.core._concrete_graph import ConcreteGraphBase, ValuePack
-from torchair.core.utils import logger
+from torchair.core.utils import logger, EVENT_LEVEL
 from torchair._ge_concrete_graph.ge_ir_pb2 import GraphDef, TensorDescriptor, TensorDef, OpDef
 from torchair._ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
 from torchair.ge._ge_graph import Tensor as GeTensor
@@ -505,12 +506,15 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._all_meta_tensor_input = {}
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        enable_event_log = logger.getEffectiveLevel() <= EVENT_LEVEL
+        t_begin = time.time() if enable_event_log else 0
         if not self._is_compiled:
             # Equivalent functionality to 'self._input_func_list[i](*args)', but better performance.
             _input_func_list = [info.func for info in self._input_info_list]
             self._input_process = self._gen_input_process(self._fx_input_names, self._all_sym_input_idx,
                                                           _input_func_list)
         inputs = self._input_process(*args)
+        t_input_process = time.time() if enable_event_log else 0
 
         self.update_graph_with_runtime(inputs, args)
 
@@ -527,7 +531,7 @@ class GeConcreteGraph(ConcreteGraphBase):
             self.auto_tune(inputs)
 
         self.compile()
-
+        t_compile = time.time() if enable_event_log else 0
         if len(self._graph_output_ref_input):
             assigned_outputs = [None] * len(self.graph.attr["_output_dtypes"].list.i)
             for output_index, input_index in self._graph_output_ref_input.items():
@@ -535,6 +539,12 @@ class GeConcreteGraph(ConcreteGraphBase):
             ge_outputs = self.graph.run(inputs, assigned_outputs)
         else:
             ge_outputs = self.graph.run(inputs)
+        t_run = time.time() if enable_event_log else 0
+        logger.event("torchair run at %s, process input: %sus, compile %sus, graph run: %sus",
+                       int(t_begin * 1e6),
+                       int((t_input_process - t_begin) * 1e6),
+                       int((t_compile - t_input_process) * 1e6),
+                       int((t_run - t_compile) * 1e6))
 
         if len(self._ref_data_idx) != 0:
             for ge_index, fx_index in self._cloned_ge_input_mapping.items():

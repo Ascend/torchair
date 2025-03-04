@@ -164,6 +164,7 @@ void TorchNpuGraphBase::AutoTune(py::object obj) {
 }
 
 py::object TorchNpuGraphBase::Run(py::object obj) {
+  auto t_begin = tng::GetTimestampForEventLog();
   RECORD_FUNCTION("TorchNpuGraphBase::Run", {});
   PyObject *inputs = nullptr;
   PyObject *assigned_outputs = nullptr;
@@ -180,8 +181,14 @@ py::object TorchNpuGraphBase::Run(py::object obj) {
   TNG_RAISE_IF_ERROR(ParseListOptionalTensors(assigned_outputs, output_optional_tensors));
 
   const pybind11::gil_scoped_release release;
+
+  auto t_param = tng::GetTimestampForEventLog();
   std::vector<at::Tensor> outputs;
   TNG_RAISE_IF_ERROR(concrete_graph_->Run(input_tensors, output_optional_tensors, outputs, nullptr));
+  auto t_run = tng::GetTimestampForEventLog();
+
+  TNG_LOG(EVENT) << "Graph run at " << t_begin << ", handle param: " << t_param - t_begin
+      << "us, input size: " << input_tensors.size() << ", graph run: " << t_run - t_param << "us";
 
   const pybind11::gil_scoped_acquire acquire;
   return py::cast(outputs);

@@ -2,6 +2,7 @@
 #define TORCH_AIR_TORCH_AIR_CONCRETE_GRAPH_LOGGER_H_
 
 #include <sys/syscall.h>
+#include <sys/time.h>
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -103,10 +104,23 @@ inline bool LogLevelEnable(const int32_t current, const int32_t configured) {
   }
   return (current >= configured);
 }
-}  // namespace tng
 
 #define TNG_LOG(L) \
   if (tng::LogLevelEnable(static_cast<int32_t>(tng::LogLevel::L), static_cast<int32_t>(tng::Logger::kLogLevel))) \
     tng::Logger(__FILE__, __LINE__, (#L))
+
+inline uint64_t GetTimestampForEventLog() {
+  if (tng::Logger::kLogLevel != static_cast<int32_t>(tng::LogLevel::EVENT)) {
+    return 0;
+  }
+  struct timeval tv{};
+  int ret = gettimeofday(&tv, nullptr);
+  if (ret != 0) {
+    TNG_LOG(ERROR) << "gettimeofday may failed, ret=" << ret;
+  }
+  auto total_use_time = tv.tv_usec + tv.tv_sec * 1000000; // 1000000: seconds to microseconds
+  return static_cast<uint64_t>(total_use_time);
+}
+}  // namespace tng
 
 #endif  // TORCH_AIR_TORCH_AIR_CONCRETE_GRAPH_LOGGER_H_

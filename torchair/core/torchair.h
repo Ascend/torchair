@@ -22,6 +22,7 @@
 #include "torch/torch.h"
 
 #include "concrete_graph.h"
+#include "logger.h"
 
 namespace tng {
 void Export(const std::string &serialized_proto, const std::map<std::string, std::string> &options);

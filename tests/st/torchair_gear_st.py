@@ -3,7 +3,7 @@ import os
 import contextlib
 import logging
 import torch
-os.environ['TNG_LOG_LEVEL'] = '0'
+os.environ['TNG_LOG_LEVEL'] = '4'
 import torchair
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core.utils import logger

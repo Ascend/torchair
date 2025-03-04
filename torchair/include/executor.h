@@ -4,10 +4,20 @@
 #include <memory>
 #include <vector>
 
+#include "logger.h"
 #include "tng_status.h"
 #include "torch/torch.h"
 
 namespace tng {
+enum ExecutorStage : int32_t {
+  kBegin,
+  kPre,
+  kAssembleInputs,
+  kAssembleOutputs,
+  kRunGraph,
+  kStageCount
+};
+
 class GraphData;
 class Executor {
  public:
@@ -22,6 +32,29 @@ class Executor {
 
  protected:
   Executor() = default;
+  std::map<ExecutorStage, uint64_t> stages;
+
+  void SetStageTime(ExecutorStage stage) {
+    auto time = tng::GetTimestampForEventLog();
+    if (time != 0) {
+      stages[stage] = time;
+    }
+  }
+
+  std::string GenEventLog() {
+    if (stages.size() != ExecutorStage::kStageCount) {
+      return "log error";
+    }
+    std::ostringstream oss;
+    oss << "ge run graph at " << stages[ExecutorStage::kAssembleOutputs]
+        << ", pre process: " << stages[ExecutorStage::kPre] - stages[ExecutorStage::kBegin]
+        << "us, assemble input: " << stages[ExecutorStage::kAssembleInputs] - stages[ExecutorStage::kPre]
+        << "us, assemble output: " << stages[ExecutorStage::kAssembleOutputs] - stages[ExecutorStage::kAssembleInputs]
+        << "us, run graph: " << stages[ExecutorStage::kRunGraph] - stages[ExecutorStage::kAssembleOutputs] << "us";
+
+    stages.clear();
+    return oss.str();
+  }
 
  private:
   static std::map<int, Executor::Creator> creators_;

@@ -495,11 +495,10 @@ class LazyCompiledModel:
                                decompositions=self.decompositions, ge_cache=self.ge_cache)
 
     def __call__(self, *args, **kwargs):
-        if self._compiled_model is not None:
+        if self._compiled_model is None:
+            self._compiled_model = self.compile(inspect.currentframe().f_back.f_globals)
+        with torch.profiler.record_function("cache_compiler inference"):
             return self._compiled_model(*args, **kwargs)
-
-        self._compiled_model = self.compile(inspect.currentframe().f_back.f_globals)
-        return self._compiled_model(*args, **kwargs)
 
 
 def cache_compile(func, *, config: Optional[CompilerConfig] = None, dynamic: bool = True,

@@ -180,6 +180,7 @@ Status DynamicNpuGraphExecutor::AssembleOutputs(const std::vector<c10::optional<
 Status DynamicNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
                                     const std::vector<c10::optional<at::Tensor>> &assigned_outputs,
                                     std::vector<at::Tensor> &outputs, void *stream) {
+  SetStageTime(ExecutorStage::kBegin);
   TNG_LOG(INFO) << "Dynamic npu graph executor start to run graph " << graph_data_->id;
   if (stream == nullptr) {
     TNG_RETURN_IF_ERROR(GetCurrentStream(&stream));
@@ -192,11 +193,13 @@ Status DynamicNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
 
   static bool enable_load_execute_graph =
       Session::GetInstance().IsFastLoadGraphSupported() && Session::GetInstance().IsFastExecuteGraphSupported();
+  SetStageTime(ExecutorStage::kPre);
+
   if (enable_load_execute_graph) {
     TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, gert_inputs_holder_, stream));
-
+    SetStageTime(ExecutorStage::kAssembleInputs);
     TNG_RETURN_IF_ERROR(AssembleOutputs(assigned_outputs, gert_outputs_holder_));
-
+    SetStageTime(ExecutorStage::kAssembleOutputs);
     if (is_first_run_) {
       std::map<ge::AscendString, ge::AscendString> load_options;
       std::string frozen_option_value;
@@ -209,7 +212,7 @@ Status DynamicNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
 
     TNG_RETURN_IF_ERROR(
         Session::GetInstance().FastExecuteGraph(graph_data_->id, gert_inputs_holder_, gert_outputs_holder_, stream));
-
+    SetStageTime(ExecutorStage::kRunGraph);
     TNG_RETURN_IF_ERROR(RefreshAtTensorFromGeTensor(gert_outputs_holder_, assigned_outputs, outputs));
   } else {
     TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, inputs_holder_, stream));
@@ -221,7 +224,8 @@ Status DynamicNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
     TNG_RETURN_IF_ERROR(RefreshAtTensorFromGeTensor(outputs_holder_, assigned_outputs, outputs));
   }
 
-  TNG_LOG(DEBUG) << "Dynamic npu graph executor run graph " << graph_data_->id << " on stream " << stream
+  TNG_LOG(EVENT) << "Dynamic executor call " << GenEventLog();
+  TNG_LOG(INFO) << "Dynamic npu graph executor run graph " << graph_data_->id << " on stream " << stream
                  << " successfully.";
   is_first_run_ = false;
   return Status::Success();

@@ -219,6 +219,7 @@ Status StaticNpuGraphExecutor::AllocAndSetFixedMemory(void *stream, std::shared_
 Status StaticNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
                                    const std::vector<c10::optional<at::Tensor>> &torch_outputs,
                                    std::vector<at::Tensor> &outputs, void *stream) {
+  SetStageTime(ExecutorStage::kBegin);
   std::vector<ge::MemBlock *> output_mem_blocks;
   if (stream == nullptr) {
     TNG_RETURN_IF_ERROR(GetCurrentStream(&stream));
@@ -232,11 +233,13 @@ Status StaticNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
 
   static bool enable_load_execute_graph =
       Session::GetInstance().IsFastLoadGraphSupported() && Session::GetInstance().IsFastExecuteGraphSupported();
+  SetStageTime(ExecutorStage::kPre);
+
   if (enable_load_execute_graph) {
     TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, gert_inputs_holder_, stream));
-
+    SetStageTime(ExecutorStage::kAssembleInputs);
     TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs, output_mem_blocks, gert_outputs_holder_, stream));
-
+    SetStageTime(ExecutorStage::kAssembleOutputs);
     if (is_first_run_) {
       std::map<ge::AscendString, ge::AscendString> load_options;
       std::string frozen_option_value;
@@ -249,12 +252,14 @@ Status StaticNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
 
     TNG_RETURN_IF_ERROR(
         Session::GetInstance().FastExecuteGraph(graph_data_->id, gert_inputs_holder_, gert_outputs_holder_, stream));
+    SetStageTime(ExecutorStage::kRunGraph);
   } else {
     TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, inputs_holder_, stream));
-
+    SetStageTime(ExecutorStage::kAssembleInputs);
     TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs, output_mem_blocks, outputs_holder_, stream));
-
+    SetStageTime(ExecutorStage::kAssembleOutputs);
     TNG_RETURN_IF_ERROR(Session::GetInstance().RunGraph(graph_data_->id, inputs_holder_, outputs_holder_, stream));
+    SetStageTime(ExecutorStage::kRunGraph);
   }
 
   outputs.clear();
@@ -270,6 +275,7 @@ Status StaticNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
     }
   }
 
+  TNG_LOG(EVENT)  << "Static executor call " << GenEventLog();
   TNG_LOG(INFO) << "Static npu graph executor run run graph " << graph_data_->id << " on stream " << stream
                 << " successfully.";
   if (fm_refreshable_) {
