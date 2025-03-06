@@ -957,7 +957,7 @@ class GeConcreteGraph(ConcreteGraphBase):
 
         input_code.writeline('ge_inputs = list(args)')
         func_idx = []
-        for idx, func in enumerate(input_func_list):
+        for _, func in enumerate(input_func_list):
             fx_input_idx = getattr(func, 'fx_input_idx', None)
             if fx_input_idx is not None:
                 func_idx.append(fx_input_idx)
@@ -966,7 +966,7 @@ class GeConcreteGraph(ConcreteGraphBase):
             if i not in func_idx:
                 indices_to_remove.append(i)
         indices_to_remove.sort(reverse=True)
-        for idx, item in enumerate(indices_to_remove):
+        for _, item in enumerate(indices_to_remove):
             input_code.writeline(f'del ge_inputs[{item}]')
         for idx, func in enumerate(input_func_list):
             if isinstance(func, _TensorInput):

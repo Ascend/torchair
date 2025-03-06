@@ -3,7 +3,7 @@ import os
 import sys
 import contextlib
 
-os.environ['TNG_LOG_LEVEL'] = '4'
+os.environ['TNG_LOG_LEVEL'] = '0'
 import torchair
 import torch
 import unittest
