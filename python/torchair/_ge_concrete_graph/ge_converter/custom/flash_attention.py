@@ -142,6 +142,7 @@ def convert_npu_npu_incre_flash_attention(
         kv_padding_size=kv_padding_size, num_heads=num_heads, scale_value=scale_value, input_layout=input_layout,
         num_key_value_heads=num_key_value_heads, block_size=block_size, inner_precise=inner_precise)
 
+
 @declare_supported(
     [
         # 支持mla int8输入,token_x:B=1, s=1, He=7168; weight_dq:He=7168, Hcq=1536; weight_uq_qr:Hcq=1536, N*(D+Dr)=(128+64)*128;

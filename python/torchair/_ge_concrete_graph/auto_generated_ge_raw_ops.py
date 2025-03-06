@@ -18553,8 +18553,12 @@ def IncreFlashAttention(query: Tensor,
     output_index += 1
 
     return attention_out
+
+
 # This api is auto-generated from IR MlaProlog
-@auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False], [False, False, False, False, False, False, False, False, False, False, False, False, True, True, True, True])
+@auto_convert_to_tensor(
+    [False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False], 
+    [False, False, False, False, False, False, False, False, False, False, False, False, True, True, True, True])
 def MlaProlog(token_x: Tensor, weight_dq: Tensor, weight_uq_qr: Tensor, weight_uk: Tensor, weight_dkv_kr: Tensor, rmsnorm_gamma_cq: Tensor, rmsnorm_gamma_ckv: Tensor, rope_sin: Tensor, rope_cos: Tensor, cache_index: Tensor, kv_cache: Tensor, kr_cache: Tensor, dequant_scale_cq: Optional[Tensor], dequant_scale_qc_qr: Optional[Tensor], dequant_scale_ckv_kr: Optional[Tensor], quant_scale_cq: Optional[Tensor], *, rmsnorm_epsilon_cq: float=0.000010, rmsnorm_epsilon_ckv: float=0.000010, cache_mode: str="BNSD", dependencies=[], node_name=None):
     """REG_OP(MlaProlog)\n
 .INPUT(token_x, TensorType({DT_INT8, DT_BF16}))\n
@@ -18648,6 +18652,7 @@ def MlaProlog(token_x: Tensor, weight_dq: Tensor, weight_uq_qr: Tensor, weight_u
         .output("kv_cache" , "DT_FLOAT16, DT_BF16") \
         .output("kr_cache" , "DT_FLOAT16, DT_BF16")
     )
+
 
 # This api is auto-generated from IR PromptFlashAttention
 @auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False, False, False], [False, False, False, True, True, True, True, True, True, True, True, True])
