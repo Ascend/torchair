@@ -28,5 +28,6 @@ class CompilerConfig(NpuBaseConfig):
         self.experimental_config = _ExperimentalConfig()
         self.inference_config = _InferenceConfig()
         self.ge_config = _GEConfig()
+        self.mode = OptionValue("max-autotune", ["max-autotune", "reduce-overhead"])
 
         super(CompilerConfig, self).__init__()

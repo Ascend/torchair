@@ -363,6 +363,18 @@ class _NpuFxCompiler:
             logger.info('  input %s: %s', i, inp)
         logger.info('  graph: %s', gm.graph)
 
+        if self.config.mode.value == "reduce-overhead":
+            from torchair._aclgraph.aclgraph_compiler import AclGraphInterpreter, AclGraphRunner
+
+            with no_dispatch():
+                mutable_gm = copy.deepcopy(gm)
+            aclgraph = AclGraphInterpreter(mutable_gm, graph=AclGraphRunner(),
+                                           garbage_collect_values=False).run(*example_inputs)
+            logger.debug(
+                'AclGraph is created successfully,\n graph:%s with mempool:%s, stream:%s, capture_error_mode:%s.',
+                id(aclgraph.graph), aclgraph.pool, aclgraph.stream, aclgraph.capture_error_mode)
+            return aclgraph
+
         #to temporarily fix weight_quant_batchmatmul bug
         if "torch_npu" in sys.modules:
             for n in gm.graph.nodes:
