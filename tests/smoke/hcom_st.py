@@ -266,6 +266,7 @@ class HcomTest(unittest.TestCase):
             with open(file_path, 'r') as f:
                 src = f.read()
             results.append(src.count("op: \"HcomAllToAllV\"") == 1)
+
         check_export_file_and_clean_env()
         dist.destroy_process_group()
 
@@ -477,7 +478,7 @@ class HcomTest(unittest.TestCase):
         init_pg(rank, world_size)
         tensor_in = torch.arange(world_size * 2, dtype=torch.int32).to("npu:" + str(rank))
         tensor_in = torch.reshape(tensor_in, (world_size, 2))
-        tensor_out = torch.zeros(2, dtype=torch.int32).to("npu:" + str(rank))
+        tensor_out = torch.zeros(1, 2, dtype=torch.int32).to("npu:" + str(rank))
         mod = ReduceScatterTensorUneven()
         mod = mod.to("npu:" + str(rank))
         ori_result = mod(tensor_out, tensor_in)
@@ -753,18 +754,28 @@ class HcomTest(unittest.TestCase):
                                                 HcomTest._init_dist_hccl_without_patch, world_size, True))
         self.assertTrue(self._test_multiprocess(HcomTest._test_broadcast,
                                                 HcomTest._init_dist_hccl_without_patch, world_size, False))
-        
-    def test_uneven(self):
-        # 不支持动态
+
+    def test_allgather_in_tensor_uneven(self):
         world_size = 2
         self.assertTrue(self._test_multiprocess(HcomTest._test_allgather_in_tensor_uneven_same_size,
                                                 HcomTest._init_dist_hccl_with_patch, world_size, False))
         self.assertTrue(self._test_multiprocess(HcomTest._test_allgather_in_tensor_uneven_different_size,
                                                 HcomTest._init_dist_hccl_with_patch, world_size, False))
+        self.assertTrue(self._test_multiprocess(HcomTest._test_allgather_in_tensor_uneven_same_size,
+                                                HcomTest._init_dist_hccl_with_patch, world_size, True))
+        self.assertTrue(self._test_multiprocess(HcomTest._test_allgather_in_tensor_uneven_different_size,
+                                                HcomTest._init_dist_hccl_with_patch, world_size, True))
+
+    def test_reducescatter_tensor_uneven(self):
+        world_size = 2
         self.assertTrue(self._test_multiprocess(HcomTest._test_reducescatter_tensor_uneven_same_size,
                                                 HcomTest._init_dist_hccl_with_patch, world_size, False))
         self.assertTrue(self._test_multiprocess(HcomTest._test_reducescatter_tensor_uneven_different_size,
                                                 HcomTest._init_dist_hccl_with_patch, world_size, False))
+        self.assertTrue(self._test_multiprocess(HcomTest._test_reducescatter_tensor_uneven_same_size,
+                                                HcomTest._init_dist_hccl_with_patch, world_size, True))
+        self.assertTrue(self._test_multiprocess(HcomTest._test_reducescatter_tensor_uneven_different_size,
+                                                HcomTest._init_dist_hccl_with_patch, world_size, True))
 
     @unittest.skipIf(torch.__version__ < '2.3.1', "patch needed for torch version < 2.3.1")
     def test_uneven_without_patch(self):
@@ -778,7 +789,7 @@ class HcomTest(unittest.TestCase):
                                                 HcomTest._init_dist_hccl_without_patch, world_size, False))
         self.assertTrue(self._test_multiprocess(HcomTest._test_reducescatter_tensor_uneven_different_size,
                                                 HcomTest._init_dist_hccl_without_patch, world_size, False))
-        
+
     def test_patch_support_allgather_uneven(self):
         # 只支持打patch
         world_size = 2
@@ -798,6 +809,7 @@ class HcomTest(unittest.TestCase):
                                                 HcomTest._init_dist_hccl_with_patch, world_size, True))
         self.assertTrue(self._test_multiprocess(HcomTest._test_allgather_in_tensor_no_same_size,
                                                 HcomTest._init_dist_hccl_with_patch, world_size, True))
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -23392,14 +23392,15 @@ def HcomAllGather(x: Tensor, *, rank_size: int, group: str, fusion: int=0, fusio
 
 
 # This api is auto-generated from IR HcomAllGatherV
-@auto_convert_to_tensor([False, False, False, False], [False, False, False, False])
-def HcomAllGatherV(x: Tensor, send_count: Tensor, recv_counts: Tensor, recv_displs: Tensor, *, group: str, dependencies=[], node_name=None):
+@auto_convert_to_tensor([False, False, False, False], [False, False, False, True])
+def HcomAllGatherV(x: Tensor, send_count: Tensor, recv_counts: Tensor, recv_displacements: Optional[Tensor], *,
+                   group: str, dependencies=[], node_name=None):
     """REG_OP(HcomAllGatherV)\n
-    .INPUT(x, TensorType({DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_INT64}))\n
+    .INPUT(x, TensorType({DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_UINT8, DT_UINT16, DT_UINT32}))\n
     .INPUT(send_count, TensorType({DT_INT64}))\n
-    .OUTPUT(y, TensorType({DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_INT64}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_UINT8, DT_UINT16, DT_UINT32}))\n
     .INPUT(recv_counts, TensorType({DT_INT64}))\n
-    .INPUT(recv_displs, TensorType({DT_INT64}))\n
+    .OPTIONAL_INPUT(recv_displacements, TensorType({DT_INT64}))\n
     .REQUIRED_ATTR(group, String)\n
     """
 
@@ -23408,7 +23409,7 @@ def HcomAllGatherV(x: Tensor, send_count: Tensor, recv_counts: Tensor, recv_disp
         "x": x,
         "send_count": send_count,
         "recv_counts": recv_counts,
-        "recv_displs": recv_displs,
+        "recv_displacements": recv_displacements,
     }
 
     # process attrs
@@ -23418,7 +23419,7 @@ def HcomAllGatherV(x: Tensor, send_count: Tensor, recv_counts: Tensor, recv_disp
 
     # process outputs
     outputs = [
-    "y",
+        "y",
     ]
 
     return ge_op(
@@ -23428,12 +23429,12 @@ def HcomAllGatherV(x: Tensor, send_count: Tensor, recv_counts: Tensor, recv_disp
         outputs=outputs,
         dependencies=dependencies,
         ir=IrDef("HcomAllGatherV") \
-        .input("x", "DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_INT64") \
+        .input("x", "DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_UINT8, DT_UINT16, DT_UINT32") \
         .input("send_count", "DT_INT64") \
         .input("recv_counts", "DT_INT64") \
-        .input("recv_displs", "DT_INT64") \
+        .optional_input("recv_displacements", "DT_INT64") \
         .required_attr("group", attr.Str) \
-        .output("y", "DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_INT64")
+        .output("y", "DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_UINT8, DT_UINT16, DT_UINT32")
     )
 
 
@@ -23611,14 +23612,15 @@ def HcomReduceScatter(x: Tensor, *, reduction: str, group: str, rank_size: int, 
 
 
 # This api is auto-generated from IR HcomReduceScatterV
-@auto_convert_to_tensor([False, False, False, False], [False, False, False, False])
-def HcomReduceScatterV(x: Tensor, send_counts: Tensor, send_displs: Tensor, recv_count: Tensor, *, reduction: str, group: str, dependencies=[], node_name=None):
+@auto_convert_to_tensor([False, False, False, False], [False, False, False, True])
+def HcomReduceScatterV(x: Tensor, recv_count: Tensor, send_counts: Tensor, send_displacements: Optional[Tensor], *,
+                       reduction: str, group: str, dependencies=[], node_name=None):
     """REG_OP(HcomReduceScatterV)\n
-    .INPUT(x, TensorType({DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_INT64}))\n
-    .INPUT(send_counts, TensorType({DT_INT64}))\n
-    .INPUT(send_displs, TensorType({DT_INT64}))\n
-    .OUTPUT(y, TensorType({DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_INT64}))\n
+    .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_INT16, DT_INT8}))\n
     .INPUT(recv_count, TensorType({DT_INT64}))\n
+    .INPUT(send_counts, TensorType({DT_INT64}))\n
+    .OPTIONAL_INPUT(send_displacements, TensorType({DT_INT64}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_INT16, DT_INT8}))\n
     .REQUIRED_ATTR(reduction, String)\n
     .REQUIRED_ATTR(group, String)\n
     """
@@ -23626,9 +23628,9 @@ def HcomReduceScatterV(x: Tensor, send_counts: Tensor, send_displs: Tensor, recv
     # process inputs
     inputs = {
         "x": x,
-        "send_counts": send_counts,
-        "send_displs": send_displs,
         "recv_count": recv_count,
+        "send_counts": send_counts,
+        "send_displacements": send_displacements,
     }
 
     # process attrs
@@ -23639,7 +23641,7 @@ def HcomReduceScatterV(x: Tensor, send_counts: Tensor, send_displs: Tensor, recv
 
     # process outputs
     outputs = [
-    "y",
+        "y",
     ]
 
     return ge_op(
@@ -23649,13 +23651,13 @@ def HcomReduceScatterV(x: Tensor, send_counts: Tensor, send_displs: Tensor, recv
         outputs=outputs,
         dependencies=dependencies,
         ir=IrDef("HcomReduceScatterV") \
-        .input("x", "DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_INT64") \
-        .input("send_counts", "DT_INT64") \
-        .input("send_displs", "DT_INT64") \
+        .input("x", "DT_FLOAT, DT_FLOAT16, DT_INT32, DT_INT16, DT_INT8") \
         .input("recv_count", "DT_INT64") \
+        .input("send_counts", "DT_INT64") \
+        .optional_input("send_displacements", "DT_INT64") \
         .required_attr("reduction", attr.Str) \
         .required_attr("group", attr.Str) \
-        .output("y", "DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_INT64")
+        .output("y", "DT_FLOAT, DT_FLOAT16, DT_INT32, DT_INT16, DT_INT8")
     )
 
 

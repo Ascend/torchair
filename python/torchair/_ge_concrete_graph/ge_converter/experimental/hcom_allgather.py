@@ -3,15 +3,14 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple, Union, Callable
 import torch
 import torch.distributed.distributed_c10d as c10d
 from torch._decomp import register_decomposition
-
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
 from torchair._ge_concrete_graph.hcom_utils import get_group_name_and_record
 from torchair._ge_concrete_graph.utils import dtype_promote
-from torchair.ge._ge_graph import Tensor, DataType, is_sym
+from torchair.ge._ge_graph import Tensor, DataType
+
 from .hcom_allreduce import npu_define_lib
 from .hcom_broadcast import op_broadcast
-
 
 op_allgather = npu_define_lib.define(
     "allgather(Tensor[] tensor_list,Tensor input, str tag, int[] ranks, int group_size) -> Tensor[]")
@@ -20,8 +19,8 @@ op_allgather_in_tensor = npu_define_lib.define(
     "allgather_in_tensor(Tensor out, Tensor input, str tag, int[] ranks, int group_size) -> Tensor")
 
 op_allgather_in_tensor_uneven = npu_define_lib.define(
-    "allgather_in_tensor_uneven(Tensor input, int send_count, int[] recv_counts, \
-    int[] recv_displacements, str tag, int[] ranks, int group_size) -> Tensor")
+    "allgather_in_tensor_uneven(Tensor input_tensor, SymInt send_count, SymInt[] recv_counts, \
+    str tag, int[] rank_list, int group_size, SymInt[] recv_displacements) -> Tensor")
 
 
 def allgather_in_tensor_meta(
@@ -121,32 +120,29 @@ def allgather_in_different_size(output_tensor_list, input_tensor, tag, ranks, gr
 
 @register_fx_node_ge_converter(torch.ops.npu_define.allgather_in_tensor_uneven.default)
 def convert_allgather_in_tensor_uneven(
-        self: Tensor,
+        input_tensor: Tensor,
         send_count: int,
         recv_counts: List[int],
-        recv_displacements: List[int],
         tag: str,
         rank_list: List,
         group_size: int,
+        recv_displacements: List[int],
         meta_outputs: Any = None,
 ):
-    for dim in self.symsize:
-        if is_sym(dim):
-            raise NotImplementedError("No support dynamic: allgather_in_tensor_uneven")
     send_count, recv_counts, recv_displacements = dtype_promote(send_count, recv_counts, recv_displacements,
                                                                 target_dtype=DataType.DT_INT64)
     group_name = get_group_name_and_record(tag, rank_list, group_size)
-    return ge.HcomAllGatherV(self, send_count=send_count, recv_counts=recv_counts,
-                             recv_displs=recv_displacements, group=group_name)
+    return ge.HcomAllGatherV(input_tensor, send_count=send_count, recv_counts=recv_counts,
+                             recv_displacements=recv_displacements, group=group_name)
 
 
 @register_decomposition(torch.ops.npu_define.allgather)
 def allgather_decomposition(output_tensor_list: List[torch.Tensor],
-               input_tensor: Tensor,
-               tag: str,
-               ranks: List[int],
-               group_size: int,
-):
+                            input_tensor: Tensor,
+                            tag: str,
+                            ranks: List[int],
+                            group_size: int,
+                            ):
     if check_same_size(output_tensor_list):
         return allgather_in_same_size(output_tensor_list, input_tensor, tag, ranks, group_size)
     else:
@@ -180,48 +176,42 @@ def allgather_in_tensor_uneven_meta(
         input_tensor: torch.Tensor,
         send_count: int,
         recv_counts: List[int],
-        recv_displacements: List[int],
         tag: str,
-        ranklist: List,
-        group_size: int
+        rank_list: List,
+        group_size: int,
+        recv_displacements: List[int]
 ):
     out_size = list(input_tensor.size())
-    out_size[0] = sum(recv_counts) // input_tensor[0].numel()
+    out_size[0] = sum(recv_counts)
     return input_tensor.new_empty(out_size)
 
 
 npu_define_lib.impl(op_allgather_in_tensor_uneven, allgather_in_tensor_uneven_meta, 'Meta')
 
 
-def npu_allgather_into_tensor_uneven_patch_dist(output, input_tensor, output_split_sizes=None, group=None,
+def npu_allgather_into_tensor_uneven_patch_dist(output_tensor, input_tensor, output_split_sizes=None, group=None,
                                                 async_op=False):
     if not torch.distributed._functional_collectives._are_we_tracing():
         from torchair import ALL_GATHER_INTO_TENSOR_UNEVEN
         if ALL_GATHER_INTO_TENSOR_UNEVEN is None:
             raise AttributeError(f'torch_npu.distributed has no attribute: all_gather_into_tensor_uneven')
-        ALL_GATHER_INTO_TENSOR_UNEVEN(output, input_tensor, output_split_sizes, group, async_op)
+        ALL_GATHER_INTO_TENSOR_UNEVEN(output_tensor, input_tensor, output_split_sizes, group, async_op)
     if async_op:
         raise AssertionError(f'When you enable torch.compile or use the cache_compile feature, '
-                       f'use the patch_for_hcom interface to ensure that collective communication functions '
-                       f'are included in the graph. However, unlike the eager mode, the compile mode '
-                       f'does not support the async_op = True parameter for collective communication APIs.')
+                             f'use the patch_for_hcom interface to ensure that collective communication functions '
+                             f'are included in the graph. However, unlike the eager mode, the compile mode '
+                             f'does not support the async_op = True parameter for collective communication APIs.')
     if group is None:
         group = c10d._world.default_pg
     rank_list = torch.distributed.get_process_group_ranks(group)
     tag = c10d._get_group_tag(group)
     group_size = len(rank_list)
     if output_split_sizes is None:
-        output_split_sizes = [output.size(0) // group_size for _ in rank_list]
-    if sum(output_split_sizes) != output.size(0):
+        output_split_sizes = [output_tensor.size(0) // group_size for _ in rank_list]
+    if sum(output_split_sizes) != output_tensor.size(0):
         raise AssertionError(f'Split sizes sum does not match total dim 0 size')
-    output_row_size = output.numel() // output.size(0) if output.size(0) != 0 else 1
-    send_count = input_tensor.numel()
-    recv_counts = []
-    recv_displacements = [0]
-    for i, output_split_size in enumerate(output_split_sizes):
-        recv_counts.append(output_split_size * output_row_size)
-        if i > 0:
-            recv_displacements.append(recv_displacements[i - 1] + recv_counts[i - 1])
-    npu_output = torch.ops.npu_define.allgather_in_tensor_uneven(input_tensor, send_count, recv_counts,
-                                                                 recv_displacements, tag, rank_list, group_size)
-    output.copy_(npu_output.reshape(output.size()))
+    npu_output = torch.ops.npu_define.allgather_in_tensor_uneven(input_tensor, send_count=input_tensor.size(0),
+                                                                 recv_counts=output_split_sizes, tag=tag,
+                                                                 rank_list=rank_list, group_size=group_size,
+                                                                 recv_displacements=[])
+    output_tensor.copy_(npu_output.reshape(output_tensor.size()))
