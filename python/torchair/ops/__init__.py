@@ -14,27 +14,27 @@ def npu_wait_tensor(self: torch.Tensor,
 
 class NpuStreamSwitch:
     def __init__(self, stream_tag: str, stream_priority: int = 0):
-        self.stream_tag = stream_tag
-        self.stream_priority = stream_priority
-
+        self.keys = ["_user_stream_label", "_user_stream_priority"]
+        self.values = [stream_tag, str(stream_priority)]
+ 
     def __enter__(self):
-        from ._stream_in import _npu_stream_in
-        return _npu_stream_in(self.stream_tag, self.stream_priority)
+        from ._scope_enter import _npu_scope_enter
+        return _npu_scope_enter(self.keys, self.values)
 
     def __exit__(self, *args):
-        from ._stream_out import _npu_stream_out
-        return _npu_stream_out(self.stream_tag, self.stream_priority)
+        from ._scope_exit import _npu_scope_exit
+        return _npu_scope_exit()
 
 
 class SuperKernelScope:
     def __init__(self, scope: str, options: str = None):
-        self.scope = scope
-        self.options = options
+        self.keys = ["_super_kernel_scope", "_super_kernel_options"]
+        self.values = [scope, options]
 
     def __enter__(self):
-        from ._kernel_scope_in import _npu_kernel_scope_in
-        return _npu_kernel_scope_in(self.scope, self.options)
+        from ._scope_enter import _npu_scope_enter
+        return _npu_scope_enter(self.keys, self.values)
 
     def __exit__(self, *args):
-        from ._kernel_scope_out import _npu_kernel_scope_out
-        return _npu_kernel_scope_out(self.scope, self.options)
+        from ._scope_exit import _npu_scope_exit
+        return _npu_scope_exit()

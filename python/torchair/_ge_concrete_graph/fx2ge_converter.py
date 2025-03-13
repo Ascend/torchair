@@ -45,8 +45,7 @@ from torchair._utils.export_utils import make_export_graph, get_export_file_name
 from torchair.inference._gear_utils import generate_dynamic_dims_option, get_dim_gears
 from torchair.ge._ge_graph import compat_as_bytes, _ge_proto_dtype_to_ge_dtype
 from . import ge_apis as ge
-from .stream_utils import set_stream_info
-from .scope_options_utils import set_kernel_scope
+from .node_attrs_utils import set_node_attrs
 
 
 def _mapping_assign_op_to_graph_output(graph: GraphDef):
@@ -206,8 +205,7 @@ def _wrap_converter(converter: Callable):
         if meta_outputs is not None:
             set_ge_outputs(ge_outputs, meta_outputs)
 
-        set_stream_info(ge_outputs, *args)
-        set_kernel_scope(ge_outputs, *args)
+        set_node_attrs(ge_outputs, *args)
         return ge_outputs
 
     return wrapped_converter

@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Tuple, Union, Callable
 import functools
@@ -612,10 +612,7 @@ class GeGraph(object):
         self._named_inputs_info = {}
         self._used_process_group = {}
         self._dont_prune_me_ops = []
-        self._stream_tag = None
-        self._stream_priority = 0
-        self._scope = None
-        self._options = None
+        self._attribute_stack = deque()
 
 
     def _python_code_init(self):
@@ -774,44 +771,22 @@ class GeGraph(object):
         return self._named_inputs_info
 
 
-    @property
-    def stream_tag(self):
-        return self._stream_tag
-
-
-    @property
-    def scope(self):
-        return self._scope
-
-
-    @property
-    def options(self):
-        return self._options
-
-
-    @property
-    def stream_priority(self):
-        return self._stream_priority
-
-
     def dont_prune_me(self, op):
         self._dont_prune_me_ops.append(op)
 
+    def push_attributes(self, keys: List[str], values: List[str]):
+        attributes = dict(zip(keys, values))
+        self._attribute_stack.append(attributes)
 
-    def set_stream_tag(self, stream_tag: str):
-        self._stream_tag = stream_tag
+    def pop_attributes(self):
+        if self._attribute_stack:
+            self._attribute_stack.pop()
 
-
-    def set_stream_priority(self, stream_priority: int):
-        self._stream_priority = stream_priority
-
-
-    def set_scope(self, scope: str):
-        self._scope = scope
-
-
-    def set_options(self, options: str):
-        self._options = options
+    def get_current_attributes(self):
+        if self._attribute_stack:
+            return list(self._attribute_stack)
+        else:
+            return {}
 
 
 class _GeGraphStack(threading.local):
