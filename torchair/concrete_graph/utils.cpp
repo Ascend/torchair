@@ -275,7 +275,7 @@ Status GeDtypeToAtDtype(const ge::DataType &ge_dtype, c10::ScalarType &dtype) {
   }
 }
 
-Status AssembleDataToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor) {
+Status AssembleDataToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor, bool refresh_size) {
   // Performance optimization:
   // When at::tensor address is not updated, there is no need to refresh the ge::tensor memory address again.
   if (ge_tensor.GetData() == static_cast<uint8_t *>(tensor.data_ptr())) {
@@ -291,7 +291,7 @@ Status AssembleDataToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor) {
   return Status::Success();
 }
 
-Status AssembleDataToGe(const at::Tensor &tensor, gert::Tensor &ge_tensor) {
+Status AssembleDataToGe(const at::Tensor &tensor, gert::Tensor &ge_tensor, bool refresh_size) {
   // Performance optimization:
   // When at::tensor address is not updated, there is no need to refresh the ge::tensor memory address again.
   if (ge_tensor.GetAddr() == tensor.data_ptr()) {
@@ -302,7 +302,9 @@ Status AssembleDataToGe(const at::Tensor &tensor, gert::Tensor &ge_tensor) {
   // Therefore, when getting data_ptr, the calculation of the data_ptr address needs to skip storage_offset,
   // and the calculation of nbytes needs to be based on the shape after view.
   ge_tensor.MutableTensorData().SetAddr(tensor.data_ptr(), nullptr);
-  ge_tensor.MutableTensorData().SetSize(static_cast<size_t>(tensor.numel() * tensor.element_size()));
+  if (refresh_size) {
+    ge_tensor.MutableTensorData().SetSize(static_cast<size_t>(tensor.numel() * tensor.element_size()));
+  }
   return Status::Success();
 }
 

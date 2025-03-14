@@ -41,7 +41,7 @@ Status StaticNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &inp
         TNG_RETURN_IF_ERROR(AtTensorToGeTensor(inputs[i], input_holders[i]));
       } else {
         // In static graph input shape remains unchanged, only data ptr need to be updated.
-        TNG_RETURN_IF_ERROR(AssembleDataToGe(inputs[i], input_holders[i]));
+        TNG_RETURN_IF_ERROR(AssembleDataToGe(inputs[i], input_holders[i], false));
       }
       TNG_LOG(DEBUG) << "Assemble aten device input " << i << " " << DebugString(inputs[i]) << " to "
                      << DebugString(input_holders[i]);

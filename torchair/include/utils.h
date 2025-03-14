@@ -53,9 +53,9 @@ Status GeTensorToAtTensor(gert::Tensor &ge_tensor, at::Tensor &tensor);
 
 Status AtDtypeToGeDtype(const c10::ScalarType &dtype, ge::DataType &ge_dtype);
 
-Status AssembleDataToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor);
+Status AssembleDataToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor, bool refresh_size = true);
 
-Status AssembleDataToGe(const at::Tensor &tensor, gert::Tensor &ge_tensor);
+Status AssembleDataToGe(const at::Tensor &tensor, gert::Tensor &ge_tensor, bool refresh_size = true);
 
 Status AssembleDimsToShape(const at::IntArrayRef &dims, ge::Tensor &ge_tensor);
 
