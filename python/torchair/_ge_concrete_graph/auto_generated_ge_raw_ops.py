@@ -15206,6 +15206,64 @@ def ApplyAdamW(var: Tensor, m: Tensor, v: Tensor, beta1_power: Tensor, beta2_pow
     return var, m, v
 
 
+@auto_convert_to_tensor([False, False, False, False, False], [False, False, False, False, True])
+def AddLora(y: Tensor, x: Tensor, weightB: Tensor, indices: Tensor, weightA: Optional[Tensor], *,
+            layer_idx: int=0, scale: float=0.001000, y_offset: int=0, y_slice_size: int=-1, dependencies=[], node_name=None):
+    """REG_OP(AddLora)\n
+    .INPUT(y, TensorType({DT_FLOAT16}))\n
+    .INPUT(x, TensorType({DT_FLOAT16}))\n
+    .INPUT(weightB, TensorType({DT_FLOAT16}))\n
+    .INPUT(indices, TensorType({DT_INT32}))\n
+    .OPTIONAL_INPUT(weightA, TensorType({DT_FLOAT16}))\n
+    .ATTR(layer_idx, Int, 0)\n
+    .ATTR(scale, Float, 1e-3)\n
+    .ATTR(y_offset, Int, 0)\n
+    .ATTR(y_slice_size, Int, -1)\n
+    .OUTPUT(y_out, TensorType({DT_FLOAT16}))\n
+    """
+
+    # process inputs
+    inputs = {
+        "y": y,
+        "x": x,
+        "weightB": weightB,
+        "indices": indices,
+        "weightA": weightA,
+    }
+
+    # process attrs
+    attrs = {
+        "layer_idx": attr.Int(layer_idx),
+        "scale": attr.Float(scale),
+        "y_offset": attr.Int(y_offset),
+        "y_slice_size": attr.Int(y_slice_size),
+    }
+
+    # process outputs
+    outputs = [
+    "y_out",
+    ]
+
+    return ge_op(
+        op_type="AddLora",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("AddLora") \
+        .input("y", "DT_FLOAT16") \
+        .input("x", "DT_FLOAT16") \
+        .input("weightB", "DT_FLOAT16") \
+        .input("indices", "DT_INT32") \
+        .optional_input("weightA", "DT_FLOAT16") \
+        .attr("layer_idx", attr.Int(0)) \
+        .attr("scale", attr.Float(0.001000)) \
+        .attr("y_offset", attr.Int(0)) \
+        .attr("y_slice_size", attr.Int(-1)) \
+        .output("y_out", "DT_FLOAT16")
+    )
+
+
 # This api is auto-generated from IR ScanSQCodes
 @auto_convert_to_tensor([False, False, False, False, False, False, False], [False, False, False, False, False, False, False], inputs_tensor_type=[TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_INDEX_NUMBER, TensorType.TT_INDEX_NUMBER, TensorType.TT_INDEX_NUMBER, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN])
 def ScanSQCodes(ivf: Tensor, query: Tensor, bucket_list: Tensor, bucket_limits: Tensor, bucket_offsets: Tensor, vmin: Tensor, vdiff: Tensor, *, total_limit: int, group_size: int=64, extreme_mode: int=0, dependencies=[], node_name=None):

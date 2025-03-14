@@ -205,6 +205,37 @@ REG_OP(DequantBias)
     .OP_END_FACTORY_REG(DequantBias)
 
 /**
+* @brief AddLora, the operation kernel for batch gather matmul.
+* @par Inputs:
+* @li y: A tensor of type float16. Supported format "ND".
+* @li x: A tensor of type float16. Supported format "ND".
+* @li weightB: A weight tensor of type float16. Supported format "ND". Represents the second weight matrix for matrix multiplication.
+* @li indices: A tensor of type int32. Supported format "ND". The shape must be the same as the first dim of x. Identifies the group index of the input x.
+* @li weightA: A optional weight tensor of type float16. Supported format "ND". Represents the first weight matrix for matrix multiplication. If empty, the first matrix multiplication will be skipped.
+
+* @par Attributes:
+* @li layer_idx: A optional int, default value is 0, indicates the layer id of weight tensors.
+* @li scale: A optional float, default value is 1e-3, scales up the multiplication results.
+* @li y_offset: A optional int, default value is 0, represents the offset of y.
+* @li y_slice_size: A optional int, default value is -1, represents the slice_size of y to be updated.
+
+* @par Outputs:
+* y_out: A tensor of type float16, the shape requirements are consistent with the shape of y.
+*/
+REG_OP(AddLora)
+    .INPUT(y, TensorType({DT_FLOAT16}))
+    .INPUT(x, TensorType({DT_FLOAT16}))
+    .INPUT(weightB, TensorType({DT_FLOAT16}))
+    .INPUT(indices, TensorType({DT_INT32}))
+    .OPTIONAL_INPUT(weightA, TensorType({DT_FLOAT16}))
+    .ATTR(layer_idx, Int, 0)
+    .ATTR(scale, Float, 1e-3)
+    .ATTR(y_offset, Int, 0)
+    .ATTR(y_slice_size, Int, -1)
+    .OUTPUT(y_out, TensorType({DT_FLOAT16}))
+    .OP_END_FACTORY_REG(AddLora)
+
+/**
 * @brief Function WeightQuantBatchMatmulV2. \n
 
 * @par Inputs:
