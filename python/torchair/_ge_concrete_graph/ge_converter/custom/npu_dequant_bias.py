@@ -32,4 +32,4 @@ def convert_npu_dequant_bias_default(
     if output_dtype is not None:
         attr_output_type = torch_type_to_ge_type(output_dtype)
     
-    return ge.DequantBias(x, weight_scale, activate_scale, bias, output_dtype=attr_output_type)
+    return ge.dequant_bias(x, weight_scale, activate_scale, bias, output_dtype=attr_output_type)
