@@ -667,6 +667,11 @@ class GeConcreteGraph(ConcreteGraphBase):
             head.writeline(f'local_compile_options["{k}"] = "{v}"')
         for k, v in extend_config.items():
             head.writeline(f'local_compile_options["{k}"] = "{v}"')
+        if extend_config.get("ge.graph_compiler_cache_dir") is not None:
+            head.splice(f'''
+            def _update_ge_cache_dir(path):
+                local_compile_options["ge.graph_compiler_cache_dir"] = path
+            ''')
         head.writelines(['', 'initialize_graph_engine(global_compile_options)',
                          'ge_graph = GeGraph(serialized_model_def=serialized_graph)'])
         if need_rebuild_pg:

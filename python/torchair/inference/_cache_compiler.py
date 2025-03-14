@@ -8,6 +8,7 @@ import fcntl
 import logging
 import time
 import types
+from types import ModuleType
 import marshal
 import os
 import hashlib
@@ -64,11 +65,10 @@ def timer(prefix: str):
     logger.info("%s took %.3f [s]", prefix, time.time() - start_time)
 
 
-def _compile_ge_kernel(py_code: str):
-    from types import ModuleType
+def _compile_py_code(py_code: str):
     ge_mod = ModuleType('ge_mod')
     exec(compile(py_code, '<string>', 'exec'), ge_mod.__dict__, ge_mod.__dict__)
-    return getattr(ge_mod, 'kernel')
+    return ge_mod
 
 
 def _patch_user_const(code: types.CodeType):
@@ -88,7 +88,7 @@ def _depatch_user_const(code: types.CodeType):
 
 
 class CompiledModel:
-    VERSION = "1.0.0"
+    VERSION = "1.0.1"
     FILE = "compiled_module"
 
     def __init__(self, meta: Union[ModelCacheMeta, types.FunctionType, types.MethodType]):
@@ -207,7 +207,7 @@ class CompiledModel:
                 parameters.append(user_buffer)
         return parameters
 
-    def rebase(self, model, global_vars=None, closure=None):
+    def rebase(self, model, global_vars=None, closure=None, cache_dir=None):
         log = logger if logger.isEnabledFor(logging.DEBUG) else None
         if log is not None:
             log.debug(f"Rebasing {self.meta} onto {type(model)}")
@@ -217,7 +217,11 @@ class CompiledModel:
             raise ValueError(f"Expected 1 compiled function, found {fn_names}")
 
         with timer(f"{self.name} compile ge graph"):
-            ge_kernel = _compile_ge_kernel(self.compiled_fx.py_code)
+            ge_mod = _compile_py_code(self.compiled_fx.py_code)
+            ge_kernel = getattr(ge_mod, 'kernel')
+            if hasattr(ge_mod, '_update_ge_cache_dir'):
+                ge_update_cache_dir = getattr(ge_mod, '_update_ge_cache_dir')
+                ge_update_cache_dir(cache_dir)
 
         parameters = self._get_used_params(model)
 
@@ -330,10 +334,14 @@ class CacheBackend:
 
         # need to create ge cache dir
         ge_cache_dir = os.path.dirname(os.path.abspath(self.saver.cache_bin))
-        py_code += "\n" + f"os.makedirs('{ge_cache_dir}', exist_ok=True)"
+        os.makedirs(ge_cache_dir, exist_ok=True)
         self.saver.save_compiled_fx(gm, example_inputs, self.config, py_code)
         with timer(f"{self.saver.name} compile ge graph"):
-            return _compile_ge_kernel(py_code)
+            ge_mod = _compile_py_code(py_code)
+            if hasattr(ge_mod, '_update_ge_cache_dir'):
+                ge_update_cache_dir = getattr(ge_mod, '_update_ge_cache_dir')
+                ge_update_cache_dir(ge_cache_dir)
+            return getattr(ge_mod, 'kernel')
 
     @staticmethod
     def bw_compiler(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
@@ -485,7 +493,8 @@ class LazyCompiledModel:
                 if compiled_model.compiled_fx is None:
                     compiled_model.recompile(self.config)
                 model = self.func.__self__ if isinstance(self.func, types.MethodType) else None
-                return compiled_model.rebase(model, global_vars, closure=self.func.__closure__)
+                return compiled_model.rebase(model, global_vars, closure=self.func.__closure__,
+                                             cache_dir=os.path.abspath(os.path.dirname(cache_bin)))
             except Exception as e:
                 logger.warning(f'Clear broken cache {cache_bin} as {e}')
                 ModelCacheSaver.remove_cache(os.path.abspath(os.path.dirname(cache_bin)))
@@ -554,7 +563,8 @@ class _NoGuardCompiled:
         self._kwargs = None
         torch._dynamo.reset()  # reset all dynamo cache for new cache
         with torch.no_grad():
-            result = ModelCacheSaver(self.func, cache_file, config=self.config, dynamic=self.dynamic)(*args, **kwargs)
+            result = ModelCacheSaver(self.func, cache_file, config=self.config,
+                                     dynamic=self.dynamic)(*args, **kwargs)
         self._reset()
         return result
 
