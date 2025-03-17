@@ -2187,6 +2187,74 @@ REG_OP(ForeachAddListInplace)
 
 
 /**
+* @brief QuantMatmulDequant operator interface implementation.
+
+* @par Inputs
+* @li x: A Tensor. Support dtype: float16, dimension must be 2, support format: ND.
+* @li quantized_weight: A Tensor. Support dtype: int8, dimension must be 2, support format: ND,NZ.
+* @li weight_scale: A Tensor. Support dtype: float32, support format: ND.
+* @li bias: A optional Tensor. Support dtype: int32, support format: ND.
+* @li x_scale: A optional Tensor. Support dtype: float32, support format: ND.
+* @li x_offset: A optional Tensor. Support dtype: float32, support format: ND.
+* @li smooth_scale: A optional Tensor. Support dtype: float16, support format: ND.
+
+* @par Attributes
+* @li x_quant_mode: dtype: String.
+* @li transpose_weight: dtype: Bool.
+
+* @par Outputs
+* @li y: A Tensor. Support dtype: float16, support format: ND.
+*/
+REG_OP(QuantMatmulDequant)
+    .INPUT(x, TensorType({DT_FLOAT16}))
+    .INPUT(quantized_weight, TensorType({DT_INT8}))
+    .INPUT(weight_scale, TensorType({DT_FLOAT}))
+    .OPTIONAL_INPUT(bias, TensorType({DT_INT32}))
+    .OPTIONAL_INPUT(x_scale, TensorType({DT_FLOAT}))
+    .OPTIONAL_INPUT(x_offset, TensorType({DT_FLOAT}))
+    .OPTIONAL_INPUT(smooth_scale, TensorType({DT_FLOAT16}))
+    .OUTPUT(y, TensorType({DT_FLOAT16}))
+    .ATTR(x_quant_mode, String, "pertoken")
+    .ATTR(transpose_weight, Bool, true)
+    .OP_END_FACTORY_REG(QuantMatmulDequant)
+
+
+/**
+* @brief QuantGroupedMatmulDequant operator interface implementation.
+
+* @par Inputs
+* @li x: A Tensor. Support dtype: float16, dimension must be 2, support format: ND.
+* @li quantized_weight: A Tensor. Support dtype: int8, dimension must be 3, support format: ND,NZ.
+* @li weight_scale: A Tensor. Support dtype: float32, support format: ND.
+* @li group_list: A Tensor. Support dtype: int64, support format: ND.
+* @li bias: A optional Tensor. Support dtype: int32, support format: ND.
+* @li x_scale: A optional Tensor. Support dtype: float32, support format: ND.
+* @li x_offset: A optional Tensor. Support dtype: float32, support format: ND.
+* @li smooth_scale: A optional Tensor. Support dtype: float16, support format: ND.
+
+* @par Attributes
+* @li x_quant_mode: dtype: String.
+* @li transpose_weight: dtype: Bool.
+
+* @par Outputs
+* @li y: A Tensor. Support dtype: float16, support format: ND.
+*/
+REG_OP(QuantGroupedMatmulDequant)
+    .INPUT(x, TensorType({DT_FLOAT16}))
+    .INPUT(quantized_weight, TensorType({DT_INT8}))
+    .INPUT(weight_scale, TensorType({DT_FLOAT}))
+    .INPUT(group_list, TensorType({DT_INT64}))
+    .OPTIONAL_INPUT(bias, TensorType({DT_INT32}))
+    .OPTIONAL_INPUT(x_scale, TensorType({DT_FLOAT}))
+    .OPTIONAL_INPUT(x_offset, TensorType({DT_FLOAT}))
+    .OPTIONAL_INPUT(smooth_scale, TensorType({DT_FLOAT16}))
+    .OUTPUT(y, TensorType({DT_FLOAT16}))
+    .ATTR(x_quant_mode, String, "pertoken")
+    .ATTR(transpose_weight, Bool, true)
+    .OP_END_FACTORY_REG(QuantGroupedMatmulDequant)
+
+
+/**
 * @brief Apply add operation for each tensor in a tensor list with each tensor in another
 * tensor list in manner of element-wise
 * @par Inputs:

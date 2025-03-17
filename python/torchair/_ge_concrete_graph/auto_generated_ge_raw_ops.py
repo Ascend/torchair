@@ -76983,6 +76983,150 @@ def dequant_bias(x: Tensor,
 
     return y
 
+# This api is auto-generated from IR QuantMatmulDequant
+
+
+@auto_convert_to_tensor([False, False, False, False, False, False, False], [False, False, False, True, True, True, True])
+def QuantMatmulDequant(x: Tensor,
+                       quantized_weight: Tensor,
+                       weight_scale: Tensor,
+                       bias: Optional[Tensor] = None,
+                       x_scale: Optional[Tensor] = None,
+                       x_offset: Optional[Tensor] = None,
+                       smooth_scale: Optional[Tensor] = None,
+                       *,
+                       x_quant_mode: str = "pertoken",
+                       transpose_weight: bool = True,
+                       dependencies = [],
+                       node_name = None):
+    """REG_OP(QuantMatmulDequant)\n
+.INPUT(x, TensorType({DT_FLOAT16}))\n
+.INPUT(quantized_weight, TensorType({DT_INT8}))\n
+.INPUT(weight_scale, TensorType({DT_FLOAT}))\n
+.OPTIONAL_INPUT(bias, TensorType({DT_INT32}))\n
+.OPTIONAL_INPUT(x_scale, TensorType({DT_FLOAT}))\n
+.OPTIONAL_INPUT(x_offset, TensorType({DT_FLOAT}))\n
+.OPTIONAL_INPUT(smooth_scale, TensorType({DT_FLOAT16}))\n
+.OUTPUT(y, TensorType({DT_FLOAT16}))\n
+.ATTR(x_quant_mode, String, "pertoken")\n
+.ATTR(transpose_weight, Bool, true)\n
+"""
+
+    # process inputs
+    inputs = {
+        "x": x,
+        "quantized_weight": quantized_weight,
+        "weight_scale": weight_scale,
+        "bias": bias,
+        "x_scale": x_scale,
+        "x_offset": x_offset,
+        "smooth_scale": smooth_scale,
+    }
+
+    # process attrs
+    attrs = {
+        "x_quant_mode": attr.Str(x_quant_mode),
+        "transpose_weight": attr.Bool(transpose_weight),
+    }
+
+    # process outputs
+    outputs = [
+    "y",
+    ]
+
+    return ge_op(
+        op_type="QuantMatmulDequant",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("QuantMatmulDequant") \
+        .input("x", "DT_FLOAT16") \
+        .input("quantized_weight", "DT_INT8") \
+        .input("weight_scale", "DT_FLOAT") \
+        .optional_input("bias", "DT_INT32") \
+        .optional_input("x_scale", "DT_FLOAT") \
+        .optional_input("x_offset", "DT_FLOAT") \
+        .optional_input("smooth_scale", "DT_FLOAT16") \
+        .attr("x_quant_mode", attr.Str("pertoken")) \
+        .attr("transpose_weight", attr.Bool(True)) \
+        .output("y", "DT_FLOAT16")
+    )
+
+# This api is auto-generated from IR QuantGroupedMatmulDequant
+
+
+@auto_convert_to_tensor([False, False, False, False, False, False, False, False], [False, False, False, False, True, True, True, True])
+def QuantGroupedMatmulDequant(x: Tensor,
+                              quantized_weight: Tensor,
+                              weight_scale: Tensor,
+                              group_list: Tensor,
+                              bias: Optional[Tensor] = None,
+                              x_scale: Optional[Tensor] = None,
+                              x_offset: Optional[Tensor] = None,
+                              smooth_scale: Optional[Tensor] = None,
+                              *,
+                              x_quant_mode: str = "pertoken",
+                              transpose_weight: bool = True,
+                              dependencies = [],
+                              node_name = None):
+    """REG_OP(QuantGroupedMatmulDequant)\n
+.INPUT(x, TensorType({DT_FLOAT16}))\n
+.INPUT(quantized_weight, TensorType({DT_INT8}))\n
+.INPUT(weight_scale, TensorType({DT_FLOAT}))\n
+.INPUT(group_list, TensorType({DT_INT64}))\n
+.OPTIONAL_INPUT(bias, TensorType({DT_INT32}))\n
+.OPTIONAL_INPUT(x_scale, TensorType({DT_FLOAT}))\n
+.OPTIONAL_INPUT(x_offset, TensorType({DT_FLOAT}))\n
+.OPTIONAL_INPUT(smooth_scale, TensorType({DT_FLOAT16}))\n
+.OUTPUT(y, TensorType({DT_FLOAT16}))\n
+.ATTR(x_quant_mode, String, "pertoken")\n
+.ATTR(transpose_weight, Bool, true)\n
+"""
+
+    # process inputs
+    inputs = {
+        "x": x,
+        "quantized_weight": quantized_weight,
+        "weight_scale": weight_scale,
+        "group_list": group_list,
+        "bias": bias,
+        "x_scale": x_scale,
+        "x_offset": x_offset,
+        "smooth_scale": smooth_scale,
+    }
+
+    # process attrs
+    attrs = {
+        "x_quant_mode": attr.Str(x_quant_mode),
+        "transpose_weight": attr.Bool(transpose_weight),
+    }
+
+    # process outputs
+    outputs = [
+    "y",
+    ]
+
+    return ge_op(
+        op_type="QuantGroupedMatmulDequant",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("QuantGroupedMatmulDequant") \
+        .input("x", "DT_FLOAT16") \
+        .input("quantized_weight", "DT_INT8") \
+        .input("weight_scale", "DT_FLOAT") \
+        .input("group_list", "DT_INT64") \
+        .optional_input("bias", "DT_INT32") \
+        .optional_input("x_scale", "DT_FLOAT") \
+        .optional_input("x_offset", "DT_FLOAT") \
+        .optional_input("smooth_scale", "DT_FLOAT16") \
+        .attr("x_quant_mode", attr.Str("pertoken")) \
+        .attr("transpose_weight", attr.Bool(True)) \
+        .output("y", "DT_FLOAT16")
+    )
+
 # This api is auto-generated from IR Sxpy
 @auto_convert_to_tensor([False, False, False], [False, False, True])
 def Sxpy(x1: Tensor, 
