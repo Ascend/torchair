@@ -15219,7 +15219,7 @@ def AddLora(y: Tensor, x: Tensor, weightB: Tensor, indices: Tensor, weightA: Opt
     .ATTR(scale, Float, 1e-3)\n
     .ATTR(y_offset, Int, 0)\n
     .ATTR(y_slice_size, Int, -1)\n
-    .OUTPUT(y_out, TensorType({DT_FLOAT16}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT16}))\n
     """
 
     # process inputs
@@ -15241,7 +15241,7 @@ def AddLora(y: Tensor, x: Tensor, weightB: Tensor, indices: Tensor, weightA: Opt
 
     # process outputs
     outputs = [
-    "y_out",
+    "y",
     ]
 
     return ge_op(
@@ -15260,7 +15260,7 @@ def AddLora(y: Tensor, x: Tensor, weightB: Tensor, indices: Tensor, weightA: Opt
         .attr("scale", attr.Float(0.001000)) \
         .attr("y_offset", attr.Int(0)) \
         .attr("y_slice_size", attr.Int(-1)) \
-        .output("y_out", "DT_FLOAT16")
+        .output("y", "DT_FLOAT16")
     )
 
 
