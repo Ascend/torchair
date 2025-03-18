@@ -33,6 +33,15 @@ def convert_npu_kronecker_quant(
     x: Tensor,
     kronecker_p1: Tensor,
     kronecker_p2: Tensor,
+    *,
+    clip_ratio: Optional[float] = 1.000000,
+    dst_dtype: Optional[int] = None,
     meta_outputs: Any = None
 ):
-    return ge.FlatQuant(x, kronecker_p1, kronecker_p2)
+    y_dtype = DataType.DT_INT32
+    if dst_dtype is not None and dst_dtype != torch.int32:
+        raise ValueError(f"dst_dtype should be int32, "
+                         f"otherwise it should be None, but got {dst_dtype}")
+    if clip_ratio is None:
+        clip_ratio = 1.0
+    return ge.FlatQuant(x, kronecker_p1, kronecker_p2, clip_ratio=clip_ratio, dst_dtype=y_dtype)

@@ -77478,11 +77478,20 @@ def TransQuantParamV2(scale: Tensor, offset: Optional[Tensor], *, dependencies=[
 
 # This api is auto-generated from IR FlatQuant
 @auto_convert_to_tensor([False, False, False], [False, False, False])
-def FlatQuant(x: Tensor, kronecker_p1: Tensor, kronecker_p2: Tensor, *, dependencies=[], node_name=None):
+def FlatQuant(
+    x: Tensor, 
+    kronecker_p1: Tensor,
+    kronecker_p2: Tensor, *,
+    clip_ratio: float = 1.000000,
+    dst_dtype: int = 2,
+    dependencies=[],
+    node_name=None):
     """REG_OP(FlatQuant)\n
     .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))\n
     .INPUT(kronecker_p1, TensorType({DT_FLOAT16, DT_BF16}))\n
     .INPUT(kronecker_p2, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .ATTR(clip_ratio, Float, 1.000000)\n
+    .ATTR(dst_dtype, Int, 2)\n
     .OUTPUT(out, TensorType({DT_INT4}))\n
     .OUTPUT(quant_scale, TensorType({DT_FLOAT32}))\n
     """
@@ -77508,7 +77517,8 @@ def FlatQuant(x: Tensor, kronecker_p1: Tensor, kronecker_p2: Tensor, *, dependen
 
 
     # process attrs
-
+    op.attr["clip_ratio"].f = clip_ratio
+    op.attr["dst_dtype"].i = dst_dtype
     # process outputs
     output_index = 0
     op.output_desc.add().name = "out"
