@@ -18614,10 +18614,10 @@ def IncreFlashAttention(query: Tensor,
 
 
 # This api is auto-generated from IR MlaProlog
-@auto_convert_to_tensor(
-    [False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False], 
-    [False, False, False, False, False, False, False, False, False, False, False, False, True, True, True, True])
-def MlaProlog(token_x: Tensor, weight_dq: Tensor, weight_uq_qr: Tensor, weight_uk: Tensor, weight_dkv_kr: Tensor, rmsnorm_gamma_cq: Tensor, rmsnorm_gamma_ckv: Tensor, rope_sin: Tensor, rope_cos: Tensor, cache_index: Tensor, kv_cache: Tensor, kr_cache: Tensor, dequant_scale_cq: Optional[Tensor], dequant_scale_qc_qr: Optional[Tensor], dequant_scale_ckv_kr: Optional[Tensor], quant_scale_cq: Optional[Tensor], *, rmsnorm_epsilon_cq: float=0.000010, rmsnorm_epsilon_ckv: float=0.000010, cache_mode: str="BNSD", dependencies=[], node_name=None):
+@auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False,
+False, False, False, False, False, False, False, False, False], [False, False, False, False,
+False, False, False, False, False, False, False, False, True, True, True, True, True, True, True])
+def MlaProlog(token_x: Tensor, weight_dq: Tensor, weight_uq_qr: Tensor, weight_uk: Tensor, weight_dkv_kr: Tensor, rmsnorm_gamma_cq: Tensor, rmsnorm_gamma_ckv: Tensor, rope_sin: Tensor, rope_cos: Tensor, cache_index: Tensor, kv_cache: Tensor, kr_cache: Tensor, dequant_scale_x: Optional[Tensor], dequant_scale_w_dq: Optional[Tensor], dequant_scale_w_uq_qr: Optional[Tensor], dequant_scale_w_dkv_kr: Optional[Tensor], quant_scale_ckv: Optional[Tensor], quant_scale_ckr: Optional[Tensor], smooth_scales_cq: Optional[Tensor], *, rmsnorm_epsilon_cq: float=0.000010, rmsnorm_epsilon_ckv: float=0.000010, cache_mode: str="BNSD", dependencies=[], node_name=None):
     """REG_OP(MlaProlog)\n
 .INPUT(token_x, TensorType({DT_INT8, DT_BF16}))\n
 .INPUT(weight_dq, TensorType({DT_INT8, DT_BF16}))\n
@@ -18629,87 +18629,165 @@ def MlaProlog(token_x: Tensor, weight_dq: Tensor, weight_uq_qr: Tensor, weight_u
 .INPUT(rope_sin, TensorType({DT_FLOAT16, DT_BF16}))\n
 .INPUT(rope_cos, TensorType({DT_FLOAT16, DT_BF16}))\n
 .INPUT(cache_index, TensorType({DT_INT64}))\n
-.INPUT(kv_cache, TensorType({DT_FLOAT16, DT_BF16}))\n
-.INPUT(kr_cache, TensorType({DT_FLOAT16, DT_BF16}))\n
-.OPTIONAL_INPUT(dequant_scale_cq, TensorType({DT_INT64}))\n
-.OPTIONAL_INPUT(dequant_scale_qc_qr, TensorType({DT_INT64}))\n
-.OPTIONAL_INPUT(dequant_scale_ckv_kr, TensorType({DT_INT64}))\n
-.OPTIONAL_INPUT(quant_scale_cq, TensorType({DT_FLOAT}))\n
+.INPUT(kv_cache, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))\n
+.INPUT(kr_cache, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))\n
+.OPTIONAL_INPUT(dequant_scale_x, TensorType({DT_FLOAT}))\n
+.OPTIONAL_INPUT(dequant_scale_w_dq, TensorType({DT_FLOAT}))\n
+.OPTIONAL_INPUT(dequant_scale_w_uq_qr, TensorType({DT_FLOAT}))\n
+.OPTIONAL_INPUT(dequant_scale_w_dkv_kr, TensorType({DT_FLOAT}))\n
+.OPTIONAL_INPUT(quant_scale_ckv, TensorType({DT_FLOAT}))\n
+.OPTIONAL_INPUT(quant_scale_ckr, TensorType({DT_FLOAT}))\n
+.OPTIONAL_INPUT(smooth_scales_cq, TensorType({DT_FLOAT}))\n
+.OUTPUT(query, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))\n
+.OUTPUT(query_rope, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))\n
+.OUTPUT(kv_cache, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))\n
+.OUTPUT(kr_cache, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))\n
 .ATTR(rmsnorm_epsilon_cq, Float, 1e-05)\n
 .ATTR(rmsnorm_epsilon_ckv, Float, 1e-05)\n
 .ATTR(cache_mode, String, "BNSD")\n
-.OUTPUT(query, TensorType({DT_FLOAT16, DT_BF16}))\n
-.OUTPUT(query_rope, TensorType({DT_FLOAT16, DT_BF16}))\n
-.OUTPUT(kv_cache, TensorType({DT_FLOAT16, DT_BF16}))\n
-.OUTPUT(kr_cache, TensorType({DT_FLOAT16, DT_BF16}))\n
 """
 
+    op = get_default_ge_graph().op.add()
+    op.type = "MlaProlog"
+    op.name = next_unique_name(node_name, "MlaProlog")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
     # process inputs
-    inputs = {
-        "token_x": token_x,
-        "weight_dq": weight_dq,
-        "weight_uq_qr": weight_uq_qr,
-        "weight_uk": weight_uk,
-        "weight_dkv_kr": weight_dkv_kr,
-        "rmsnorm_gamma_cq": rmsnorm_gamma_cq,
-        "rmsnorm_gamma_ckv": rmsnorm_gamma_ckv,
-        "rope_sin": rope_sin,
-        "rope_cos": rope_cos,
-        "cache_index": cache_index,
-        "kv_cache": kv_cache,
-        "kr_cache": kr_cache,
-        "dequant_scale_cq": dequant_scale_cq,
-        "dequant_scale_qc_qr": dequant_scale_qc_qr,
-        "dequant_scale_ckv_kr": dequant_scale_ckv_kr,
-        "quant_scale_cq": quant_scale_cq,
-    }
+    op.input.append(token_x.tensor)
+    op.input_desc.add().CopyFrom(token_x.desc)
+    op.input_desc[-1].name = "token_x"
+
+    op.input.append(weight_dq.tensor)
+    op.input_desc.add().CopyFrom(weight_dq.desc)
+    op.input_desc[-1].name = "weight_dq"
+
+    op.input.append(weight_uq_qr.tensor)
+    op.input_desc.add().CopyFrom(weight_uq_qr.desc)
+    op.input_desc[-1].name = "weight_uq_qr"
+
+    op.input.append(weight_uk.tensor)
+    op.input_desc.add().CopyFrom(weight_uk.desc)
+    op.input_desc[-1].name = "weight_uk"
+
+    op.input.append(weight_dkv_kr.tensor)
+    op.input_desc.add().CopyFrom(weight_dkv_kr.desc)
+    op.input_desc[-1].name = "weight_dkv_kr"
+
+    op.input.append(rmsnorm_gamma_cq.tensor)
+    op.input_desc.add().CopyFrom(rmsnorm_gamma_cq.desc)
+    op.input_desc[-1].name = "rmsnorm_gamma_cq"
+
+    op.input.append(rmsnorm_gamma_ckv.tensor)
+    op.input_desc.add().CopyFrom(rmsnorm_gamma_ckv.desc)
+    op.input_desc[-1].name = "rmsnorm_gamma_ckv"
+
+    op.input.append(rope_sin.tensor)
+    op.input_desc.add().CopyFrom(rope_sin.desc)
+    op.input_desc[-1].name = "rope_sin"
+
+    op.input.append(rope_cos.tensor)
+    op.input_desc.add().CopyFrom(rope_cos.desc)
+    op.input_desc[-1].name = "rope_cos"
+
+    op.input.append(cache_index.tensor)
+    op.input_desc.add().CopyFrom(cache_index.desc)
+    op.input_desc[-1].name = "cache_index"
+
+    op.input.append(kv_cache.tensor)
+    op.input_desc.add().CopyFrom(kv_cache.desc)
+    op.input_desc[-1].name = "kv_cache"
+
+    op.input.append(kr_cache.tensor)
+    op.input_desc.add().CopyFrom(kr_cache.desc)
+    op.input_desc[-1].name = "kr_cache"
+
+    if dequant_scale_x is not None:
+        op.input.append(dequant_scale_x.tensor)
+        op.input_desc.add().CopyFrom(dequant_scale_x.desc)
+        op.input_desc[-1].name = "dequant_scale_x"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "dequant_scale_x"
+
+    if dequant_scale_w_dq is not None:
+        op.input.append(dequant_scale_w_dq.tensor)
+        op.input_desc.add().CopyFrom(dequant_scale_w_dq.desc)
+        op.input_desc[-1].name = "dequant_scale_w_dq"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "dequant_scale_w_dq"
+
+    if dequant_scale_w_uq_qr is not None:
+        op.input.append(dequant_scale_w_uq_qr.tensor)
+        op.input_desc.add().CopyFrom(dequant_scale_w_uq_qr.desc)
+        op.input_desc[-1].name = "dequant_scale_w_uq_qr"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "dequant_scale_w_uq_qr"
+
+    if dequant_scale_w_dkv_kr is not None:
+        op.input.append(dequant_scale_w_dkv_kr.tensor)
+        op.input_desc.add().CopyFrom(dequant_scale_w_dkv_kr.desc)
+        op.input_desc[-1].name = "dequant_scale_w_dkv_kr"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "dequant_scale_w_dkv_kr"
+
+    if quant_scale_ckv is not None:
+        op.input.append(quant_scale_ckv.tensor)
+        op.input_desc.add().CopyFrom(quant_scale_ckv.desc)
+        op.input_desc[-1].name = "quant_scale_ckv"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "quant_scale_ckv"
+
+    if quant_scale_ckr is not None:
+        op.input.append(quant_scale_ckr.tensor)
+        op.input_desc.add().CopyFrom(quant_scale_ckr.desc)
+        op.input_desc[-1].name = "quant_scale_ckr"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "quant_scale_ckr"
+
+    if smooth_scales_cq is not None:
+        op.input.append(smooth_scales_cq.tensor)
+        op.input_desc.add().CopyFrom(smooth_scales_cq.desc)
+        op.input_desc[-1].name = "smooth_scales_cq"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "smooth_scales_cq"
 
     # process attrs
-    attrs = {
-        "rmsnorm_epsilon_cq": attr.Float(rmsnorm_epsilon_cq),
-        "rmsnorm_epsilon_ckv": attr.Float(rmsnorm_epsilon_ckv),
-        "cache_mode": attr.Str(cache_mode),
-    }
+    op.attr["rmsnorm_epsilon_cq"].f = rmsnorm_epsilon_cq
+    op.attr["rmsnorm_epsilon_ckv"].f = rmsnorm_epsilon_ckv
+    op.attr["cache_mode"].s = compat_as_bytes(cache_mode)
 
     # process outputs
-    outputs = [
-    "query",
-    "query_rope",
-    "kv_cache",
-    "kr_cache",
-    ]
+    output_index = 0
+    op.output_desc.add().name = "query"
+    query = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "query_rope"
+    query_rope = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "kv_cache"
+    kv_cache = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "kr_cache"
+    kr_cache = Tensor(op, output_index)
+    output_index += 1
 
-    return ge_op(
-        op_type="MlaProlog",
-        inputs=inputs,
-        attrs=attrs,
-        outputs=outputs,
-        dependencies=dependencies,
-        ir=IrDef("MlaProlog") \
-        .input("token_x", "DT_INT8, DT_BF16") \
-        .input("weight_dq", "DT_INT8, DT_BF16") \
-        .input("weight_uq_qr", "DT_INT8, DT_BF16") \
-        .input("weight_uk", "DT_FLOAT16, DT_BF16") \
-        .input("weight_dkv_kr", "DT_INT8, DT_BF16") \
-        .input("rmsnorm_gamma_cq", "DT_FLOAT16, DT_BF16") \
-        .input("rmsnorm_gamma_ckv", "DT_FLOAT16, DT_BF16") \
-        .input("rope_sin", "DT_FLOAT16, DT_BF16") \
-        .input("rope_cos", "DT_FLOAT16, DT_BF16") \
-        .input("cache_index", "DT_INT64") \
-        .input("kv_cache", "DT_FLOAT16, DT_BF16") \
-        .input("kr_cache", "DT_FLOAT16, DT_BF16") \
-        .optional_input("dequant_scale_cq", "DT_INT64") \
-        .optional_input("dequant_scale_qc_qr", "DT_INT64") \
-        .optional_input("dequant_scale_ckv_kr", "DT_INT64") \
-        .optional_input("quant_scale_cq", "DT_FLOAT") \
-        .attr("rmsnorm_epsilon_cq", attr.Float(0.000010)) \
-        .attr("rmsnorm_epsilon_ckv", attr.Float(0.000010)) \
-        .attr("cache_mode", attr.Str("BNSD")) \
-        .output("query" , "DT_FLOAT16, DT_BF16") \
-        .output("query_rope" , "DT_FLOAT16, DT_BF16") \
-        .output("kv_cache" , "DT_FLOAT16, DT_BF16") \
-        .output("kr_cache" , "DT_FLOAT16, DT_BF16")
-    )
+    return query, query_rope, kv_cache, kr_cache
 
 
 # This api is auto-generated from IR PromptFlashAttention

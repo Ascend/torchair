@@ -145,23 +145,142 @@ def convert_npu_npu_incre_flash_attention(
 
 @declare_supported(
     [
-        # 支持mla int8输入,token_x:B=1, s=1, He=7168; weight_dq:He=7168, Hcq=1536; weight_uq_qr:Hcq=1536, N*(D+Dr)=(128+64)*128;
-        # weight_uk:N=128, D=128, Hckv=512, weight_dkv_kr:He=7168, Hckv+Dr=512+64; rms_norm_weight:Hcq=1536; rmsnorm_gamma_ckv:Hckv=512;
-        # rope_sin:B=1, S=1, Dr=64; rope_cos:B=1, S=1, Dr=64; cache_index:B=1, S=1; kv_cache:B=1, Nkv=1, Skv=288, Hckv=512;
-        # kr_cache:B=1, Nkv=1, Skv=288, Dr=64; dequant_scale_cq:Hcq=1536; dequant_scale_qc_qr:N=128, D+Dr=128+64; dequant_scale_ckv_kr:Hckv+Dr=512+64; quant_scale_cq:Hcq=1536;
-        Support(I8(1, 1, 7168), I8(7168, 1536), I8(1536, 6144), 
-                F16(128, 128, 512), I8(7168, 576), F16(1536), F16(512), 
-                F16(1, 1, 64), F16(1, 1, 64), I64(1, 1), F16(1, 1, 288, 512), 
-                F16(1, 1, 128, 64), I64(1536), I64(128, 192), I64(576), F32(1536), 
-               rmsnorm_epsilon_cq=1e-5, rmsnorm_epsilon_ckv=1e-5),
-        # 支持mla bf16输入,token_x:B=1, s=1, He=7168; weight_dq:He=7168, Hcq=1536; weight_uq_qr:Hcq=1536, N*(D+Dr)=(128+64)*128;
-        # weight_uk:N=128, D=128, Hckv=512; weight_dkv_kr:He=7168, Hckv+Dr=512+64; rms_norm_weight:Hcq=1536; rmsnorm_gamma_ckv:Hckv=512; 
-        # rope_sin:B=1, S=1, Dr=64; rope_cos:B=1, S=1, Dr=64; cache_index:B=1, S=1; kv_cache:B=1, Nkv=1, Skv=288, Hckv=512; 
-        # kr_cache:B=1, Nkv=1, Skv=288, Dr=64;
-        Support(BF16(1, 1, 7168), BF16(7168, 1536), BF16(1536, 6144), 
-                BF16(128, 128, 512), BF16(7168, 576), BF16(1536), BF16(512), 
-                BF16(1, 1, 64), BF16(1, 1, 64), I64(1, 1), BF16(1, 1, 288, 512), 
-                BF16(1, 1, 128, 64), rmsnorm_epsilon_cq=1e-5, rmsnorm_epsilon_ckv=1e-5),
+        # 支持mla MMQcQr kvcache量化,token_x:B=1, s=1, He=7168; weight_dq:He=7168, Hcq=1536;
+        # weight_uq_qr:Hcq=1536, N*(D+Dr)=(128+64)*128; weight_uk:N=128, D=128, Hckv=512;
+        # weight_dkv_kr:He=7168, Hckv+Dr=512+64; rms_norm_weight:Hcq=1536;
+        # rmsnorm_gamma_ckv:Hckv=512; rope_sin:B=1, S=1, Dr=64; rope_cos:B=1, S=1, Dr=64;
+        # cache_index:B=1, S=1; kv_cache:B=1, Nkv=1, Skv=288, Hckv=512;
+        # kr_cache:B=1, Nkv=1, Skv=288, Dr=64; dequant_scale_w_uq_qr:1, N*(D+Dr)=(128+64)*128;
+        # quant_scale_ckv:1, Hckv=512;
+        # quant_scale_ckr:1, Dr=64; smooth_scales_cq:1, Hcq=1536;
+        Support(BF16(1, 1, 7168), BF16(7168, 1536),
+                I8(1536, 6144), BF16(128, 128, 512),
+                BF16(7168, 576), BF16(1536),
+                BF16(512), BF16(1, 1, 64), BF16(1, 1, 64),
+                I64(1, 1), I8(1, 1, 288, 512),
+                I8(1, 1, 288, 64), F32(1, 6144),
+                F32(1, 512),
+                F32(1, 64), F32(1, 1536),
+                rmsnorm_epsilon_cq=1e-5, rmsnorm_epsilon_ckv=1e-5),
+        # 支持mla MMQcQr kvcache量化,BS合轴,token_x:T=1, He=7168; weight_dq:He=7168, Hcq=1536;
+        # weight_uq_qr:Hcq=1536, N*(D+Dr)=(128+64)*128; weight_uk:N=128, D=128, Hckv=512;
+        # weight_dkv_kr:He=7168, Hckv+Dr=512+64; rms_norm_weight:Hcq=1536;
+        # rmsnorm_gamma_ckv:Hckv=512; rope_sin:T=1, Dr=64; rope_cos:T=1, Dr=64;
+        # cache_index:T=1; kv_cache:B=1, Nkv=1, Skv=288, Hckv=512;
+        # kr_cache:B=1, Nkv=1, Skv=288, Dr=64; dequant_scale_w_uq_qr:1, N*(D+Dr)=(128+64)*128;
+        # quant_scale_ckv:1, Hckv=512;
+        # quant_scale_ckr:1, Dr=64; smooth_scales_cq:1, Hcq=1536;
+        Support(BF16(1, 7168), BF16(7168, 1536),
+                I8(1536, 6144), BF16(128, 128, 512),
+                BF16(7168, 576), BF16(1536),
+                BF16(512), BF16(1, 64), BF16(1, 64),
+                I64(1), I8(1, 1, 288, 512),
+                I8(1, 1, 288, 64), F32(1, 6144),
+                F32(1, 512),
+                F32(1, 64), F32(1, 1536),
+                rmsnorm_epsilon_cq=1e-5, rmsnorm_epsilon_ckv=1e-5),
+        # 支持mla MMQcQr kvcache非量化,token_x:B=1, s=1, He=7168; weight_dq:He=7168, Hcq=1536;
+        # weight_uq_qr:Hcq=1536, N*(D+Dr)=(128+64)*128; weight_uk:N=128, D=128, Hckv=512;
+        # weight_dkv_kr:He=7168, Hckv+Dr=512+64; rms_norm_weight:Hcq=1536;
+        # rmsnorm_gamma_ckv:Hckv=512; rope_sin:B=1, S=1, Dr=64; rope_cos:B=1, S=1, Dr=64;
+        # cache_index:B=1, S=1; kv_cache:B=1, Nkv=1, Skv=288, Hckv=512;
+        # kr_cache:B=1, Nkv=1, Skv=288, Dr=64; dequant_scale_w_dkv_kr:1, Hckv+Dr=512+64;
+        # smooth_scales_cq:1, Hcq=1536;
+        Support(BF16(1, 1, 7168), BF16(7168, 1536),
+                I8(1536, 6144), BF16(128, 128, 512),
+                BF16(7168, 576), BF16(1536),
+                BF16(512), BF16(1, 1, 64), BF16(1, 1, 64),
+                I64(1, 1), BF16(1, 1, 288, 512),
+                BF16(1, 1, 288, 64), F32(1, 6144),
+                F32(1, 1536),
+                rmsnorm_epsilon_cq=1e-5, rmsnorm_epsilon_ckv=1e-5),
+        # 支持mla MMQcQr kvcache非量化,BS合轴,token_x:T=1, He=7168; weight_dq:He=7168, Hcq=1536;
+        # weight_uq_qr:Hcq=1536, N*(D+Dr)=(128+64)*128; weight_uk:N=128, D=128, Hckv=512;
+        # weight_dkv_kr:He=7168, Hckv+Dr=512+64; rms_norm_weight:Hcq=1536;
+        # rmsnorm_gamma_ckv:Hckv=512; rope_sin:T=1, Dr=64; rope_cos:T=1, Dr=64;
+        # cache_index:T=1;kv_cache:B=1, Nkv=1, Skv=288, Hckv=512;
+        # kr_cache:B=1, Nkv=1, Skv=288, Dr=64; dequant_scale_w_dkv_kr:1, Hckv+Dr=512+64;
+        # smooth_scales_cq:1, Hcq=1536;
+        Support(BF16(1, 7168), BF16(7168, 1536),
+                I8(1536, 6144), BF16(128, 128, 512),
+                BF16(7168, 576), BF16(1536),
+                BF16(512), BF16(1, 64), BF16(1, 64),
+                I64(1), BF16(1, 1, 288, 512),
+                BF16(1, 1, 128, 64), F32(1, 6144),
+                F32(1, 1536),
+                rmsnorm_epsilon_cq=1e-5, rmsnorm_epsilon_ckv=1e-5),
+        # 支持mla MMCq+MMCkvKr+MMQcQr kvcache量化,token_x:B=1, s=1, He=7168; weight_dq:He=7168, Hcq=1536;
+        # weight_uq_qr:Hcq=1536, N*(D+Dr)=(128+64)*128; weight_uk:N=128, D=128, Hckv=512;
+        # weight_dkv_kr:He=7168, Hckv+Dr=512+64; rms_norm_weight:Hcq=1536;
+        # rmsnorm_gamma_ckv:Hckv=512; rope_sin:B=1, S=1, Dr=64; rope_cos:B=1, S=1, Dr=64;
+        # cache_index:B=1, S=1; kv_cache:B=1, Nkv=1, Skv=288, Hckv=512;
+        # kr_cache:B=1, Nkv=1, Skv=288, Dr=64;dequant_scale_x:BS1=1, 1;
+        # dequant_scale_w_dq:1, Hcq=1536; dequant_scale_w_uq_qr:1, N*(D+Dr)=(128+64)*128;
+        # dequant_scale_w_dkv_kr:1, Hckv+Dr=512+64; quant_scale_ckv:1, Hckv=512;
+        # quant_scale_ckr:1, Dr=64; smooth_scales_cq:1, Hcq=1536;
+        Support(I8(1, 1, 7168), I8(7168, 1536),
+                I8(1536, 6144), BF16(128, 128, 512),
+                I8(7168, 576), BF16(1536),
+                BF16(512), BF16(1, 1, 64), BF16(1, 1, 64),
+                I64(1, 1), I8(1, 1, 288, 512),
+                I8(1, 1, 288, 64), F32(1, 1),
+                F32(1, 1536), F32(1, 6144),
+                F32(1, 576), F32(1, 512),
+                F32(1, 64), F32(1, 1536),
+                rmsnorm_epsilon_cq=1e-5, rmsnorm_epsilon_ckv=1e-5),
+        # 支持mla MMCq+MMCkvKr+MMQcQr kvcache量化,BS合轴,token_x:T=1, He=7168; weight_dq:He=7168, Hcq=1536;
+        # weight_uq_qr:Hcq=1536, N*(D+Dr)=(128+64)*128; weight_uk:N=128, D=128, Hckv=512;
+        # weight_dkv_kr:He=7168, Hckv+Dr=512+64; rms_norm_weight:Hcq=1536;
+        # rmsnorm_gamma_ckv:Hckv=512; rope_sin:T=1, Dr=64; rope_cos:T=1, Dr=64;
+        # cache_index:T=1; kv_cache:B=1, Nkv=1, Skv=288, Hckv=512;
+        # kr_cache:B=1, Nkv=1, Skv=288, Dr=64; dequant_scale_x:T=1, 1;
+        # dequant_scale_w_dq:1, Hcq=1536; dequant_scale_w_uq_qr:1, N*(D+Dr)=(128+64)*128;
+        # dequant_scale_w_dkv_kr:1, Hckv+Dr=512+64; quant_scale_ckv:1, Hckv=512;
+        # quant_scale_ckr:1, Dr=64; smooth_scales_cq:1, Hcq=1536;
+        Support(I8(1, 7168), I8(7168, 1536),
+                I8(1536, 6144), BF16(128, 128, 512),
+                I8(7168, 576), BF16(1536),
+                BF16(512), BF16(1, 64), BF16(1, 64),
+                I64(1), I8(1, 1, 288, 512),
+                I8(1, 1, 128, 64), F32(1, 1),
+                F32(1, 1536), F32(1, 6144),
+                F32(1, 576), F32(1, 512),
+                F32(1, 64), F32(1, 1536),
+                rmsnorm_epsilon_cq=1e-5, rmsnorm_epsilon_ckv=1e-5),
+        # 支持mla MMCq+MMCkvKr+MMQcQr kvcache非量化,token_x:B=1, s=1, He=7168; weight_dq:He=7168, Hcq=1536;
+        # weight_uq_qr:Hcq=1536, N*(D+Dr)=(128+64)*128; weight_uk:N=128, D=128, Hckv=512;
+        # weight_dkv_kr:He=7168, Hckv+Dr=512+64; rms_norm_weight:Hcq=1536;
+        # rmsnorm_gamma_ckv:Hckv=512; rope_sin:B=1, S=1, Dr=64; rope_cos:B=1, S=1, Dr=64;
+        # cache_index:B=1, S=1; kv_cache:B=1, Nkv=1, Skv=288, Hckv=512;
+        # kr_cache:B=1, Nkv=1, Skv=288, Dr=64;dequant_scale_x:BS1=1, 1;
+        # dequant_scale_w_dq:1, Hcq=1536; dequant_scale_w_uq_qr:1, N*(D+Dr)=(128+64)*128;
+        # dequant_scale_w_dkv_kr:1, Hckv+Dr=512+64; smooth_scales_cq:1, Hcq=1536;
+        Support(I8(1, 1, 7168), I8(7168, 1536),
+                I8(1536, 6144), BF16(128, 128, 512),
+                I8(7168, 576), BF16(1536),
+                BF16(512), BF16(1, 1, 64), BF16(1, 1, 64),
+                I64(1, 1), BF16(1, 1, 288, 512),
+                BF16(1, 1, 288, 64), F32(1, 1),
+                F32(1, 1536), F32(1, 6144),
+                F32(1, 576), F32(1, 1536),
+                rmsnorm_epsilon_cq=1e-5, rmsnorm_epsilon_ckv=1e-5),
+        # 支持mla MMCq+MMCkvKr+MMQcQr kvcache非量化,BS合轴,token_x:T=1, He=7168; weight_dq:He=7168, Hcq=1536;
+        # weight_uq_qr:Hcq=1536, N*(D+Dr)=(128+64)*128; weight_uk:N=128, D=128, Hckv=512;
+        # weight_dkv_kr:He=7168, Hckv+Dr=512+64; rms_norm_weight:Hcq=1536;
+        # rmsnorm_gamma_ckv:Hckv=512; rope_sin:T=1, Dr=64; rope_cos:T=1, Dr=64;
+        # cache_index:T=1; kv_cache:B=1, Nkv=1, Skv=288, Hckv=512;
+        # kr_cache:B=1, Nkv=1, Skv=288, Dr=64; dequant_scale_x:T=1, 1;
+        # dequant_scale_w_dq:1, Hcq=1536; dequant_scale_w_uq_qr:1, N*(D+Dr)=(128+64)*128;
+        # dequant_scale_w_dkv_kr:1, Hckv+Dr=512+64; smooth_scales_cq:1, Hcq=1536;
+        Support(BF16(1, 7168), BF16(7168, 1536),
+                I8(1536, 6144), BF16(128, 128, 512),
+                BF16(7168, 576), BF16(1536),
+                BF16(512), BF16(1, 64), BF16(1, 64),
+                I64(1), BF16(1, 1, 288, 512),
+                BF16(1, 1, 128, 64), F32(1, 1),
+                F32(1, 1536), F32(1, 6144),
+                F32(1, 576), F32(1, 1536),
+                rmsnorm_epsilon_cq=1e-5, rmsnorm_epsilon_ckv=1e-5),
     ]
 )
 @register_fx_node_ge_converter(torch.ops.npu.npu_mla_prolog.default)
@@ -179,19 +298,24 @@ def convert_npu_npu_mla_prolog(
     kv_cache: Tensor,
     kr_cache: Tensor,
     *,
-    dequant_scale_cq: Optional[Tensor] = None,
-    dequant_scale_qc_qr: Optional[Tensor] = None,
-    dequant_scale_ckv_kr: Optional[Tensor] = None,
-    quant_scale_cq: Optional[Tensor] = None,
+    dequant_scale_x: Optional[Tensor] = None,
+    dequant_scale_w_dq: Optional[Tensor] = None,
+    dequant_scale_w_uq_qr: Optional[Tensor] = None,
+    dequant_scale_w_dkv_kr: Optional[Tensor] = None,
+    quant_scale_ckv: Optional[Tensor] = None,
+    quant_scale_ckr: Optional[Tensor] = None,
+    smooth_scales_cq: Optional[Tensor] = None,
     rmsnorm_epsilon_cq: float = 1e-5,
     rmsnorm_epsilon_ckv: float = 1e-5,
     cache_mode: str = "BNSD",
     meta_outputs: TensorSpec = None
 ):
 
-    '''NB: npu_mla_prolog(Tensor token_x, Tensor weight_dq, Tensor weight_uq_qr, Tensor weight_uk, Tensor weight_dkv_kr, Tensor rmsnorm_gamma_cq, Tensor rmsnorm_gamma_ckv, Tensor rope_sin, Tensor rope_cos, Tensor cache_index, Tensor kv_cache, Tensor kr_cache, *, Tensor? dequant_scale_cq=None, Tensor? dequant_scale_qc_qr=None, Tensor? dequant_scale_ckv_kr=None, Tensor? quant_scale_cq=None, float rmsnorm_epsilon_cq=1e-05, float rmsnorm_epsilon_ckv=1e-05, str cache_mode="BNSD") -> (Tensor, Tensor, Tensor, Tensor)'''
+    '''NB: npu_mla_prolog(Tensor token_x, Tensor weight_dq, Tensor weight_uq_qr, Tensor weight_uk, Tensor weight_dkv_kr, Tensor rmsnorm_gamma_cq, Tensor rmsnorm_gamma_ckv, Tensor rope_sin, Tensor rope_cos, Tensor cache_index, Tensor kv_cache, Tensor kr_cache, *, Tensor? dequant_scale_x=None, Tensor? dequant_scale_w_dq=None, Tensor? dequant_scale_w_uq_qr=None, Tensor? dequant_scale_w_dkv_kr=None, Tensor? quant_scale_ckv=None, Tensor? quant_scale_ckr=None, Tensor? smooth_scales_cq=None, float rmsnorm_epsilon_cq=1e-05, float rmsnorm_epsilon_ckv=1e-05, str cache_mode="BNSD") -> (Tensor, Tensor, Tensor, Tensor)'''
 
-    return ge.MlaProlog(token_x, weight_dq, weight_uq_qr, weight_uk, weight_dkv_kr, rmsnorm_gamma_cq, 
-        rmsnorm_gamma_ckv, rope_sin, rope_cos, cache_index, kv_cache, kr_cache, dequant_scale_cq=dequant_scale_cq, 
-        dequant_scale_qc_qr=dequant_scale_qc_qr, dequant_scale_ckv_kr=dequant_scale_ckv_kr, quant_scale_cq=quant_scale_cq, 
+    return ge.MlaProlog(token_x, weight_dq, weight_uq_qr, weight_uk, weight_dkv_kr, rmsnorm_gamma_cq,
+        rmsnorm_gamma_ckv, rope_sin, rope_cos, cache_index, kv_cache, kr_cache, dequant_scale_x=dequant_scale_x,
+        dequant_scale_w_dq=dequant_scale_w_dq, dequant_scale_w_uq_qr=dequant_scale_w_uq_qr,
+        dequant_scale_w_dkv_kr=dequant_scale_w_dkv_kr, quant_scale_ckv=quant_scale_ckv,
+        quant_scale_ckr=quant_scale_ckr, smooth_scales_cq=smooth_scales_cq,
         rmsnorm_epsilon_cq=rmsnorm_epsilon_cq, rmsnorm_epsilon_ckv=rmsnorm_epsilon_ckv, cache_mode=cache_mode)
