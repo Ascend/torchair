@@ -78210,8 +78210,8 @@ def MoeFinalizeRoutingV2(expanded_x: Tensor, expanded_row_idx: Tensor, x1: Optio
 
 
 # This api is auto-generated from IR MoeDistributeCombine
-@auto_convert_to_tensor([False, False, False, False, False, False], [False, False, False, False, False, True])
-def MoeDistributeCombine(expand_x: Tensor, expert_ids: Tensor, expand_idx: Tensor, ep_send_counts: Tensor, expert_scales: Tensor, tp_send_counts: Optional[Tensor], *, group_ep: str, ep_world_size: int, ep_rank_id: int, moe_expert_num: int, group_tp: str="", tp_world_size: int=0, tp_rank_id: int=0, expert_shard_type: int=0, shared_expert_rank_num: int=0, global_bs: int=0, dependencies=[], node_name=None):
+@auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False], [False, False, False, False, False, True, True, True, True, True])
+def MoeDistributeCombine(expand_x: Tensor, expert_ids: Tensor, expand_idx: Tensor, ep_send_counts: Tensor, expert_scales: Tensor, tp_send_counts: Optional[Tensor], x_active_mask: Optional[Tensor], activation_scale: Optional[Tensor], weight_scale: Optional[Tensor], group_list: Optional[Tensor], *, group_ep: str, ep_world_size: int, ep_rank_id: int, moe_expert_num: int, group_tp: str="", tp_world_size: int=0, tp_rank_id: int=0, expert_shard_type: int=0, shared_expert_num: int=1, shared_expert_rank_num: int=0, global_bs: int=0, out_dtype: int=0, comm_quant_mode: int=0, group_list_type: int=0, dependencies=[], node_name=None):
     """REG_OP(MoeDistributeCombine)\n
     .INPUT(expand_x, TensorType({DT_BF16, DT_FLOAT16}))\n
     .INPUT(expert_ids, TensorType({DT_INT32}))\n
@@ -78219,6 +78219,10 @@ def MoeDistributeCombine(expand_x: Tensor, expert_ids: Tensor, expand_idx: Tenso
     .INPUT(ep_send_counts, TensorType({DT_INT32}))\n
     .INPUT(expert_scales, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(tp_send_counts, TensorType({DT_INT32}))\n
+    .OPTIONAL_INPUT(x_active_mask, TensorType({DT_BOOL}))\n
+    .OPTIONAL_INPUT(activation_scale, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(weight_scale, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(group_list, TensorType({DT_INT64}))\n
     .OUTPUT(x, TensorType({DT_BF16, DT_FLOAT16}))\n
     .REQUIRED_ATTR(group_ep, String)\n
     .REQUIRED_ATTR(ep_world_size, Int)\n
@@ -78228,8 +78232,12 @@ def MoeDistributeCombine(expand_x: Tensor, expert_ids: Tensor, expand_idx: Tenso
     .ATTR(tp_world_size, Int, 0)\n
     .ATTR(tp_rank_id, Int, 0)\n
     .ATTR(expert_shard_type, Int, 0)\n
+    .ATTR(shared_expert_num, Int, 1)\n
     .ATTR(shared_expert_rank_num, Int, 0)\n
     .ATTR(global_bs, Int, 0)\n
+    .ATTR(out_dtype, Int, 0)\n
+    .ATTR(comm_quant_mode, Int, 0)\n
+    .ATTR(group_list_type, Int, 0)\n
     """
 
     # process inputs
@@ -78240,6 +78248,10 @@ def MoeDistributeCombine(expand_x: Tensor, expert_ids: Tensor, expand_idx: Tenso
         "ep_send_counts": ep_send_counts,
         "expert_scales": expert_scales,
         "tp_send_counts": tp_send_counts,
+        "x_active_mask": x_active_mask,
+        "activation_scale": activation_scale,
+        "weight_scale": weight_scale,
+        "group_list": group_list,
     }
 
     # process attrs
@@ -78252,13 +78264,17 @@ def MoeDistributeCombine(expand_x: Tensor, expert_ids: Tensor, expand_idx: Tenso
         "tp_world_size": attr.Int(tp_world_size),
         "tp_rank_id": attr.Int(tp_rank_id),
         "expert_shard_type": attr.Int(expert_shard_type),
+        "shared_expert_num": attr.Int(shared_expert_num),
         "shared_expert_rank_num": attr.Int(shared_expert_rank_num),
         "global_bs": attr.Int(global_bs),
+        "out_dtype": attr.Int(out_dtype),
+        "comm_quant_mode": attr.Int(comm_quant_mode),
+        "group_list_type": attr.Int(group_list_type),
     }
 
     # process outputs
     outputs = [
-    "x",
+        "x",
     ]
 
     return ge_op(
@@ -78274,6 +78290,10 @@ def MoeDistributeCombine(expand_x: Tensor, expert_ids: Tensor, expand_idx: Tenso
         .input("ep_send_counts", "DT_INT32") \
         .input("expert_scales", "DT_FLOAT") \
         .optional_input("tp_send_counts", "DT_INT32") \
+        .optional_input("x_active_mask", "DT_BOOL") \
+        .optional_input("activation_scale", "DT_FLOAT") \
+        .optional_input("weight_scale", "DT_FLOAT") \
+        .optional_input("group_list", "DT_INT64") \
         .required_attr("group_ep", attr.Str) \
         .required_attr("ep_world_size", attr.Int) \
         .required_attr("ep_rank_id", attr.Int) \
@@ -78282,25 +78302,32 @@ def MoeDistributeCombine(expand_x: Tensor, expert_ids: Tensor, expand_idx: Tenso
         .attr("tp_world_size", attr.Int(0)) \
         .attr("tp_rank_id", attr.Int(0)) \
         .attr("expert_shard_type", attr.Int(0)) \
+        .attr("shared_expert_num", attr.Int(1)) \
         .attr("shared_expert_rank_num", attr.Int(0)) \
         .attr("global_bs", attr.Int(0)) \
-        .output("x", "DT_BF16, DT_FLOAT16")
+        .attr("out_dtype", attr.Int(0)) \
+        .attr("comm_quant_mode", attr.Int(0)) \
+        .attr("group_list_type", attr.Int(0)) \
+        .output("x" , "DT_BF16, DT_FLOAT16")
     )
 
 
 # This api is auto-generated from IR MoeDistributeDispatch
-@auto_convert_to_tensor([False, False, False], [False, False, True])
-def MoeDistributeDispatch(x: Tensor, expert_ids: Tensor, scales: Optional[Tensor], *, group_ep: str, ep_world_size: int, ep_rank_id: int, moe_expert_num: int, group_tp: str="", tp_world_size: int=0, tp_rank_id: int=0, expert_shard_type: int=0, shared_expert_rank_num: int=0, quant_mode: int=0, global_bs: int=0, dependencies=[], node_name=None):
+@auto_convert_to_tensor([False, False, False, False, False], [False, False, True, True, True])
+def MoeDistributeDispatch(x: Tensor, expert_ids: Tensor, scales: Optional[Tensor], x_active_mask: Optional[Tensor], expert_scales: Optional[Tensor], *, group_ep: str, ep_world_size: int, ep_rank_id: int, moe_expert_num: int, group_tp: str="", tp_world_size: int=0, tp_rank_id: int=0, expert_shard_type: int=0, shared_expert_num: int=1, shared_expert_rank_num: int=0, quant_mode: int=0, global_bs: int=0, dependencies=[], node_name=None):
     """REG_OP(MoeDistributeDispatch)\n
     .INPUT(x, TensorType({DT_BF16, DT_FLOAT16}))\n
     .INPUT(expert_ids, TensorType({DT_INT32}))\n
     .OPTIONAL_INPUT(scales, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(x_active_mask, TensorType({DT_BOOL}))\n
+    .OPTIONAL_INPUT(expert_scales, TensorType({DT_FLOAT}))\n
     .OUTPUT(expand_x, TensorType({DT_BF16, DT_INT8, DT_FLOAT16}))\n
     .OUTPUT(dynamic_scales, TensorType({DT_FLOAT}))\n
     .OUTPUT(expand_idx, TensorType({DT_INT32}))\n
     .OUTPUT(expert_token_nums, TensorType({DT_INT64}))\n
     .OUTPUT(ep_recv_count, TensorType({DT_INT32}))\n
     .OUTPUT(tp_recv_count, TensorType({DT_INT32}))\n
+    .OUTPUT(expand_scales, TensorType({DT_FLOAT}))\n
     .REQUIRED_ATTR(group_ep, String)\n
     .REQUIRED_ATTR(ep_world_size, Int)\n
     .REQUIRED_ATTR(ep_rank_id, Int)\n
@@ -78309,6 +78336,7 @@ def MoeDistributeDispatch(x: Tensor, expert_ids: Tensor, scales: Optional[Tensor
     .ATTR(tp_world_size, Int, 0)\n
     .ATTR(tp_rank_id, Int, 0)\n
     .ATTR(expert_shard_type, Int, 0)\n
+    .ATTR(shared_expert_num, Int, 1)\n
     .ATTR(shared_expert_rank_num, Int, 0)\n
     .ATTR(quant_mode, Int, 0)\n
     .ATTR(global_bs, Int, 0)\n
@@ -78319,6 +78347,8 @@ def MoeDistributeDispatch(x: Tensor, expert_ids: Tensor, scales: Optional[Tensor
         "x": x,
         "expert_ids": expert_ids,
         "scales": scales,
+        "x_active_mask": x_active_mask,
+        "expert_scales": expert_scales,
     }
 
     # process attrs
@@ -78331,6 +78361,7 @@ def MoeDistributeDispatch(x: Tensor, expert_ids: Tensor, scales: Optional[Tensor
         "tp_world_size": attr.Int(tp_world_size),
         "tp_rank_id": attr.Int(tp_rank_id),
         "expert_shard_type": attr.Int(expert_shard_type),
+        "shared_expert_num": attr.Int(shared_expert_num),
         "shared_expert_rank_num": attr.Int(shared_expert_rank_num),
         "quant_mode": attr.Int(quant_mode),
         "global_bs": attr.Int(global_bs),
@@ -78338,12 +78369,13 @@ def MoeDistributeDispatch(x: Tensor, expert_ids: Tensor, scales: Optional[Tensor
 
     # process outputs
     outputs = [
-    "expand_x",
-    "dynamic_scales",
-    "expand_idx",
-    "expert_token_nums",
-    "ep_recv_count",
-    "tp_recv_count",
+        "expand_x",
+        "dynamic_scales",
+        "expand_idx",
+        "expert_token_nums",
+        "ep_recv_count",
+        "tp_recv_count",
+        "expand_scales",
     ]
 
     return ge_op(
@@ -78356,6 +78388,8 @@ def MoeDistributeDispatch(x: Tensor, expert_ids: Tensor, scales: Optional[Tensor
         .input("x", "DT_BF16, DT_FLOAT16") \
         .input("expert_ids", "DT_INT32") \
         .optional_input("scales", "DT_FLOAT") \
+        .optional_input("x_active_mask", "DT_BOOL") \
+        .optional_input("expert_scales", "DT_FLOAT") \
         .required_attr("group_ep", attr.Str) \
         .required_attr("ep_world_size", attr.Int) \
         .required_attr("ep_rank_id", attr.Int) \
@@ -78364,6 +78398,7 @@ def MoeDistributeDispatch(x: Tensor, expert_ids: Tensor, scales: Optional[Tensor
         .attr("tp_world_size", attr.Int(0)) \
         .attr("tp_rank_id", attr.Int(0)) \
         .attr("expert_shard_type", attr.Int(0)) \
+        .attr("shared_expert_num", attr.Int(1)) \
         .attr("shared_expert_rank_num", attr.Int(0)) \
         .attr("quant_mode", attr.Int(0)) \
         .attr("global_bs", attr.Int(0)) \
@@ -78372,7 +78407,8 @@ def MoeDistributeDispatch(x: Tensor, expert_ids: Tensor, scales: Optional[Tensor
         .output("expand_idx", "DT_INT32") \
         .output("expert_token_nums", "DT_INT64") \
         .output("ep_recv_count", "DT_INT32") \
-        .output("tp_recv_count", "DT_INT32")
+        .output("tp_recv_count", "DT_INT32") \
+        .output("expand_scales", "DT_FLOAT")
     )
 
 
