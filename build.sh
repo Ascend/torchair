@@ -1,3 +1,5 @@
+#!/bin/bash
+
 set -e
 set -o pipefail
 
@@ -118,7 +120,8 @@ main() {
     echo "Building torchair with ascned-sdk in ${ASCEND_CUSTOM_PATH}"
     export ASCEND_SDK_PATH=${ASCEND_CUSTOM_PATH}/opensdk/opensdk/
   fi
-  PYTHON_BIN_PATH=${PYTHON_BIN_PATH} bash ${TORCHAIR_ROOT}/configure
+  PYTHON_BIN_PATH=${PYTHON_BIN_PATH}
+  bash ${TORCHAIR_ROOT}/configure
 
   ${GCC_PREFIX}g++ -v
 

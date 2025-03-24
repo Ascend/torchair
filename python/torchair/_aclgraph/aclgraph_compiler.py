@@ -25,10 +25,10 @@ class AclGraphRunner():
     def __init__(self, pool=None, stream=None, capture_error_mode: str = "global", num_warmup_iters=0):
         try:
             import torch_npu
-        except ImportError:
+        except ImportError as e:
             raise RuntimeError(
                 "Couldn't import torch_npu. When the CompilerConfig.mode is reduce-overhead, "
-                "it is necessary to use torch_npu.npu.NPUGraph(), so importing torch_npu is essential.")
+                "it is necessary to use torch_npu.npu.NPUGraph(), so importing torch_npu is essential.") from e
 
         self._npugraph = torch_npu.npu.NPUGraph()
         self._mempool = torch_npu.npu.graph_pool_handle() if pool is None else pool
