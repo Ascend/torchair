@@ -31,6 +31,12 @@ bool IsGraphNeedLogChannel(const ge::Graph &graph) {
 }  // namespace
 
 namespace tng {
+
+Session &Session::GetInstance() {
+  static Session instance;
+  return instance;
+}
+
 Status Session::Initialize(const std::map<std::string, std::string> &options) {
   if (initialized_) {
     return status_;
