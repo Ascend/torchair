@@ -20,6 +20,7 @@ import torchair.inference
 import torchair.llm_datadist
 import torchair.ops
 import torchair.ge
+import torchair.scope
 
 
 # Dependency library version verification

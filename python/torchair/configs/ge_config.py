@@ -13,6 +13,7 @@ class _GEConfig(NpuBaseConfig):
         self.oo_constant_folding = OptionValue(None, [True, False])
         self.oo_dead_code_elimination = OptionValue(None, [True, False])
         self.export_compile_stat = OptionValue("2", ["0", "1", "2"])
+        self.aicore_num = OptionValue(None, None)
 
         super(_GEConfig, self).__init__()
 
@@ -21,6 +22,8 @@ class _GEConfig(NpuBaseConfig):
         local_option = {}
         sorting_strategy_dict = {"BFS": "0", "DFS": "1", "RDFS": "2", "StableRDFS": "3"}
 
+        if self.aicore_num.value is not None:
+            global_option["ge.aicoreNum"] = self.aicore_num.value
         global_option["ge.enableSingleStream"] = "true" if self.enable_single_stream else "false"
         global_option["ge.oo.level"] = self.oo_level.value
         if self.oo_constant_folding.value is not None:
