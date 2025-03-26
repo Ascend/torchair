@@ -110,6 +110,10 @@ std::string GEGetErrorMsg() {
   return "[STUB] Something error";
 }
 
+std::string GEGetWarningMsg() {
+  return "[STUB] Something warn";
+}
+
 Session::Session(const std::map<AscendString, AscendString> &options) {
   std::cerr << "[STUB] Session::Session created" << std::endl;
 }

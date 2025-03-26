@@ -11,6 +11,7 @@
 #include "acl/acl_rt.h"
 #include "acl/acl_tdt.h"
 #include "ge/ge_api_types.h"
+#include "ge/ge_api.h"
 #include "hdc_channel.h"
 #include "npu_aoe.h"
 
@@ -154,6 +155,10 @@ Status Session::CompileGraph(uint32_t id, std::shared_ptr<ge::CompiledGraphSumma
   std::future<Status> future = std::async(std::launch::async, [&]() {
     auto start = std::chrono::high_resolution_clock::now();
     TNG_ASSERT_GE_OK(global_ge_session->CompileGraph(id));
+    auto warning_msg = ge::GEGetWarningMsg();
+    if (!warning_msg.empty()) {
+      TNG_LOG(WARNING) << "During Compile Graph, a warn message occurred. Please refer to the details：" << warning_msg;
+    }
     auto end = std::chrono::high_resolution_clock::now();
     TNG_LOG(EVENT) << "Compile Graph " << id << " consume: "
                    << (std::chrono::duration_cast<std::chrono::milliseconds>(end - start)).count()
