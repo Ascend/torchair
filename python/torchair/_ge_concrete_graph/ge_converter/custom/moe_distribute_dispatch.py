@@ -44,6 +44,7 @@ def convert_npu_moe_distribute_dispatch(
     shared_expert_rank_num: int = 0,
     quant_mode: int = 0,
     global_bs: int = 0,
+    expert_token_nums_type: int = 1,
     meta_outputs: TensorSpec = None
 ):
 
@@ -63,4 +64,5 @@ def convert_npu_moe_distribute_dispatch(
                                    shared_expert_num=shared_expert_num,
                                    shared_expert_rank_num=shared_expert_rank_num,
                                    quant_mode=quant_mode,
-                                   global_bs=global_bs)
+                                   global_bs=global_bs,
+                                   expert_token_nums_type=expert_token_nums_type)
