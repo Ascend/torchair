@@ -4,6 +4,7 @@
 #include "core/NPUBlockHandle.h"
 #include "core/NPUFormat.h"
 #include "core/NPUStream.h"
+#include "core/GetCANNInfo.h"
 
 namespace c10_npu {
 namespace {
@@ -95,3 +96,7 @@ at::Tensor empty_with_format(c10::IntArrayRef sizes, const c10::TensorOptions &o
 
 }  // namespace native
 }  // namespace at_npu
+
+std::string GetCANNVersion(const std::string& module) {
+  return "default_version";
+}
