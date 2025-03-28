@@ -6,6 +6,7 @@
 
 #include "logger.h"
 #include "tng_status.h"
+#include "graph_data.h"
 #include "torch/torch.h"
 
 namespace tng {
@@ -33,6 +34,7 @@ class Executor {
  protected:
   Executor() = default;
   std::map<ExecutorStage, uint64_t> stages;
+  bool is_first_run_{true};
 
   void SetStageTime(ExecutorStage stage) {
     auto time = tng::GetTimestampForEventLog();
@@ -54,6 +56,16 @@ class Executor {
 
     stages.clear();
     return oss.str();
+  }
+
+  static bool CheckPlacement(const Placement &placement, const at::Tensor &tensor) {
+    if (placement == Placement::DEVICE && !tensor.is_cpu()) {
+      return true;
+    }
+    if (placement == Placement::HOST && tensor.is_cpu()) {
+      return true;
+    }
+    return false;
   }
 
  private:

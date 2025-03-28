@@ -76,58 +76,70 @@ inline Status RefreshOutputShape(std::vector<std::vector<int64_t>> &real_output_
 }  // namespace
 
 template <typename T>
-Status MutiGearNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders,
-                                                void *stream) {
+Status MutiGearNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders) {
   RECORD_FUNCTION("AssembleInputs", std::vector<c10::IValue>({}));
   TNG_ASSERT(graph_data_->input_placements.size() == inputs.size());
-  bool is_first_run = input_holders.empty();
-  if (is_first_run) {
-    input_holders.resize(inputs.size());
-    host_input_holders_.resize(inputs.size());
-    TNG_RETURN_IF_ERROR(ParseInputGears(inputs, input_gears_, graph_data_->inputs_shape));
-    TNG_ASSERT(graph_data_->frozen_input_flag_list.size() == inputs.size());
+  if (!is_first_run_) {
+    return UpdateInputs(inputs, input_holders);
   }
+  input_holders.resize(inputs.size());
+  host_input_holders_.resize(inputs.size());
+  TNG_RETURN_IF_ERROR(ParseInputGears(inputs, input_gears_, graph_data_->inputs_shape));
+  TNG_ASSERT(graph_data_->frozen_input_flag_list.size() == inputs.size());
   for (size_t i = 0U; i < inputs.size(); ++i) {
-    if (!is_first_run && graph_data_->frozen_input_flag_list[i]) {
-      TNG_LOG(DEBUG) << "Assemble frozen input " << i << " " << DebugString(inputs[i])
-                     << ", does not need to assemble if not in first run.";
+    TNG_ASSERT(CheckPlacement(graph_data_->input_placements[i], inputs[i]),
+               "Input %zu placement is incompatible with expected %d.", i,
+               static_cast<int>(graph_data_->input_placements[i]));
+
+    if (graph_data_->input_placements[i] == Placement::DEVICE) {
+      TNG_ASSERT((input_gears_[i].empty() or IsBaseFormat(ge::Format(at_npu::native::get_npu_format(inputs[i])))),
+                 "Gear input expect format is base format not private format, but got format is %s.",
+                 ge::GetFormatName(ge::Format(at_npu::native::get_npu_format(inputs[i]))));
+      TNG_RETURN_IF_ERROR(AtNpuTensorToGeTensor(inputs[i], input_holders[i]));
+    } else {
+      TNG_ASSERT(input_gears_[i].empty(), "CPU tensor unsupport set gears");
+      auto host_input_holder = at::empty(inputs[i].sizes(), inputs[i].options().device(at::kPrivateUse1));
+      size_t dst_size = static_cast<size_t>(host_input_holder.numel() * host_input_holder.element_size());
+      size_t src_size = static_cast<size_t>(inputs[i].numel() * inputs[i].element_size());
+      auto copy_size = std::make_pair(src_size, dst_size);
+      host_input_holders_[i] = std::make_pair(host_input_holder, copy_size);
+      TNG_RETURN_IF_ERROR(AtTensorToGeTensor(host_input_holders_[i].first, input_holders[i]));
+      if (host_input_holders_[i].second.first > 0) {
+        TNG_RETURN_IF_ERROR(H2DMemcpy(host_input_holders_[i].first.data_ptr(), host_input_holders_[i].second.second,
+                                      inputs[i].data_ptr(), host_input_holders_[i].second.first, first_stream_));
+      }
+    }
+    TNG_LOG(DEBUG) << "Assemble aten input " << i << " " << DebugString(inputs[i]) << " to "
+                   << DebugString(input_holders[i]);
+  }
+  return Status::Success();
+}
+
+template <typename T>
+Status MutiGearNpuGraphExecutor::UpdateInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders) {
+  for (size_t i = 0U; i < inputs.size(); ++i) {
+    if (graph_data_->frozen_input_flag_list[i]) {
+      TNG_LOG(DEBUG) << "Frozen input " << i << " skip update";
       continue;
     }
+    TNG_ASSERT(CheckPlacement(graph_data_->input_placements[i], inputs[i]),
+               "Input %zu placement is incompatible with expected %d.", i,
+               static_cast<int>(graph_data_->input_placements[i]));
     if (graph_data_->input_placements[i] == Placement::DEVICE) {
-      if (!inputs[i].device().is_privateuseone()) {
-        return Status::Error("Input %zu placement %s is incompatible with expected PrivateUse1.", i,
-                             DebugString(inputs[i].device()).c_str());
-      }
-      if (is_first_run) {
-        if (!input_gears_[i].empty()) {
-          TNG_ASSERT(IsBaseFormat(ge::Format(at_npu::native::get_npu_format(inputs[i]))),
-                     "Gear input expect format is base format not private format, but got format is %s.",
-                     ge::GetFormatName(ge::Format(at_npu::native::get_npu_format(inputs[i]))));
-        }
-        TNG_RETURN_IF_ERROR(AtNpuTensorToGeTensor(inputs[i], input_holders[i]));
-      } else {
         if (!input_gears_[i].empty()) {
           TNG_RETURN_IF_ERROR(UpdateSpecificDims(input_holders[i], inputs[i], input_gears_[i]));
         }
         TNG_RETURN_IF_ERROR(AssembleDataToGe(inputs[i], input_holders[i]));
-      }
-      TNG_LOG(DEBUG) << "Assemble aten device input " << i << " " << DebugString(inputs[i])
-                     << " to " << DebugString(input_holders[i]);
-    } else if (graph_data_->input_placements[i] == Placement::HOST) {
-      if (!inputs[i].device().is_cpu()) {
-        return Status::Error("Input %zu placement %s is incompatible with expected CPU.", i,
-                             DebugString(inputs[i].device()).c_str());
-      }
-      TNG_ASSERT(input_gears_[i].empty(), "CPU tensor unsupport set gears");
-      TNG_LOG(DEBUG) << "Host input " << i << " " << DebugString(inputs[i]) << " need copy to device";
-      TNG_RETURN_IF_ERROR(AssembleHostInputs(inputs[i], input_holders[i], host_input_holders_[i], stream, is_first_run));
-      TNG_LOG(DEBUG) << "Assemble aten host input " << i << " " << DebugString(inputs[i]) << " to "
-                     << DebugString(input_holders[i]);
     } else {
-      TNG_ASSERT(false, "Invalid Placement::UNKNOWN of input %zu.", i);
+      TNG_ASSERT(input_gears_[i].empty(), "CPU tensor unsupport set gears");
+      if (host_input_holders_[i].second.first > 0) {
+        TNG_RETURN_IF_ERROR(H2DMemcpy(host_input_holders_[i].first.data_ptr(), host_input_holders_[i].second.second,
+                                      inputs[i].data_ptr(), host_input_holders_[i].second.first, first_stream_));
+      }
     }
+    TNG_LOG(DEBUG) << "Update aten input " << i << " " << DebugString(inputs[i]) << " to "
+                   << DebugString(input_holders[i]);
   }
-
   return Status::Success();
 }
 
@@ -143,6 +155,9 @@ Status MutiGearNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs
   if (is_first_run_) {
     TNG_ASSERT_GE_OK(graph_data_->summary->GetFeatureMemoryBaseRefreshable(fm_refreshable_));
     TNG_RETURN_IF_ERROR(AllocAndSetConstMemory(stream));
+    first_stream_ = stream;
+  } else {
+    TNG_ASSERT(first_stream_ == stream, "Unsupport run graph with different stream.");
   }
   TNG_RETURN_IF_ERROR(AllocAndUpdateFeatureMemory(stream));
 
@@ -151,7 +166,7 @@ Status MutiGearNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs
   SetStageTime(ExecutorStage::kPre);
 
   if (enable_load_execute_graph) {
-    TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, gert_inputs_holder_, stream));
+    TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, gert_inputs_holder_));
     SetStageTime(ExecutorStage::kAssembleInputs);
     TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs, data_ptrs, gert_outputs_holder_, stream));
     SetStageTime(ExecutorStage::kAssembleOutputs);
@@ -170,12 +185,12 @@ Status MutiGearNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs
 
     TNG_RETURN_IF_ERROR(RefreshOutputShape(output_shapes_, gert_outputs_holder_));
   } else {
-    TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, inputs_holder_, stream));
-
+    TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, inputs_holder_));
+    SetStageTime(ExecutorStage::kAssembleInputs);
     TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs, data_ptrs, outputs_holder_, stream));
-
+    SetStageTime(ExecutorStage::kAssembleOutputs);
     TNG_RETURN_IF_ERROR(Session::GetInstance().RunGraph(graph_data_->id, inputs_holder_, outputs_holder_, stream));
-
+    SetStageTime(ExecutorStage::kRunGraph);
     TNG_RETURN_IF_ERROR(RefreshOutputShape(output_shapes_, outputs_holder_));
   }
 

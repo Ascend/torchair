@@ -17,7 +17,7 @@ class CpuGraphExecutor : public Executor {
  public:
   explicit CpuGraphExecutor(std::shared_ptr<tng::GraphData> graph_data) : graph_data_(std::move(graph_data)){};
   Status AssembleInputs(const std::vector<at::Tensor> &inputs) {
-    if (inputs_holder_.empty()) {
+    if (is_first_run_) {
       inputs_holder_.resize(inputs.size());
       for (size_t i = 0U; i < inputs.size(); ++i) {
         TNG_RETURN_IF_ERROR(AtTensorToGeTensor(inputs[i], inputs_holder_[i]));
@@ -54,6 +54,7 @@ class CpuGraphExecutor : public Executor {
                     << DebugString(outputs[i]);
     }
     outputs_holder_.clear();
+    is_first_run_ = false;
     return Status::Success();
   }
 

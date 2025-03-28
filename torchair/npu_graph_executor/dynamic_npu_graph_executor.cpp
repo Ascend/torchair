@@ -50,81 +50,79 @@ Status RefreshAtTensorFromGeTensor(std::vector<T> &outputs_holder,
 }  // namespace
 
 template <typename T>
-Status DynamicNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders,
-                                               void *stream) {
+Status DynamicNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders) {
   RECORD_FUNCTION("AssembleInputs", {});
   TNG_ASSERT(graph_data_->input_placements.size() == inputs.size());
-  bool is_first_run = input_holders.empty();
-  if (is_first_run) {
-    input_holders.resize(inputs.size());
-    host_input_holders_.resize(inputs.size());
-    TNG_ASSERT(graph_data_->frozen_input_flag_list.size() == inputs.size());
-    first_stream = stream;
+  if (!is_first_run_) {
+    return UpdateInputs(inputs, input_holders);
   }
+  input_holders.resize(inputs.size());
+  host_input_holders_.resize(inputs.size());
+  TNG_ASSERT(graph_data_->frozen_input_flag_list.size() == inputs.size());
 
   for (size_t i = 0U; i < inputs.size(); ++i) {
-    if (!is_first_run && graph_data_->frozen_input_flag_list[i]) {
-      TNG_LOG(DEBUG) << "frozen input " << i << " " << DebugString(inputs[i])
-                     << ", does not need to assemble if not in first run.";
+    TNG_ASSERT(CheckPlacement(graph_data_->input_placements[i], inputs[i]),
+               "Input %zu placement is incompatible with expected %d.", i,
+               static_cast<int>(graph_data_->input_placements[i]));
+
+    if (graph_data_->input_placements[i] == Placement::DEVICE) {
+      TNG_RETURN_IF_ERROR(AtNpuTensorToGeTensor(inputs[i], input_holders[i]));
+    } else {
+      if (inputs[i].sizes().size() > 1U) {
+        host_input_holders_[i] = at::empty(inputs[i].sizes(), inputs[i].options().device(at::kPrivateUse1));
+      }
+      UpdateHostInput(inputs[i], input_holders[i], host_input_holders_[i]);
+    }
+    TNG_LOG(DEBUG) << "Assemble aten input " << i << " " << DebugString(inputs[i]) << " to "
+                   << DebugString(input_holders[i]);
+  }
+  return Status::Success();
+}
+
+template <typename T>
+Status DynamicNpuGraphExecutor::UpdateHostInput(const at::Tensor &input, T &input_holder,
+                                                at::Tensor &host_input_holder, bool update_shape_flag) {
+  const at::Tensor *tmp = &input;
+  if (input.sizes().size() > 1U) {  // GE只支持1维或者Scalar的Host输入
+    size_t dst_size = static_cast<size_t>(host_input_holder.numel() * host_input_holder.element_size());
+    size_t src_size = static_cast<size_t>(input.numel() * input.element_size());
+    if (src_size > 0U) {
+      TNG_RETURN_IF_ERROR(
+          H2DMemcpy(host_input_holder.data_ptr(), dst_size, input.data_ptr(), src_size, first_stream_));
+    }
+    tmp = &host_input_holder;
+  }
+  if (is_first_run_) {
+    TNG_RETURN_IF_ERROR(AtTensorToGeTensor(*tmp, input_holder));
+  } else if (update_shape_flag) {
+    TNG_RETURN_IF_ERROR(AssembleDataAndShapeToGe(*tmp, input_holder));
+  }
+  return Status::Success();
+}
+
+template <typename T>
+Status DynamicNpuGraphExecutor::UpdateInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders) {
+  for (size_t i = 0U; i < inputs.size(); ++i) {
+    if (graph_data_->frozen_input_flag_list[i]) {
+      TNG_LOG(DEBUG) << "Frozen input " << i << " skip update";
       continue;
     }
+    TNG_ASSERT(CheckPlacement(graph_data_->input_placements[i], inputs[i]),
+               "Input %zu placement is incompatible with expected %d.", i,
+               static_cast<int>(graph_data_->input_placements[i]));
     if (graph_data_->input_placements[i] == Placement::DEVICE) {
-      if (!inputs[i].device().is_privateuseone()) {
-        return Status::Error("Input %zu placement %s is incompatible with expected PrivateUse1.", i,
-                             DebugString(inputs[i].device()).c_str());
-      }
-
-      if (is_first_run) {
-        TNG_RETURN_IF_ERROR(AtNpuTensorToGeTensor(inputs[i], input_holders[i]));
-      } else {
-        TNG_RETURN_IF_ERROR(AssembleDataAndStorageShapeToGe(inputs[i], input_holders[i]));
-      }
-      TNG_LOG(DEBUG) << "Assemble aten device input " << i << " " << DebugString(inputs[i]) << " to "
-                     << DebugString(input_holders[i]);
-    } else if (graph_data_->input_placements[i] == Placement::HOST) {
-      if (!inputs[i].device().is_cpu()) {
-        return Status::Error("Input %zu placement %s is incompatible with expected CPU.", i,
-                             DebugString(inputs[i].device()).c_str());
-      }
-      const at::Tensor *input = &inputs[i];
-      bool update_shape_flag = true;
-      if (inputs[i].sizes().size() > 1U) {  // GE只支持1维或者Scalar的Host输入
-        TNG_LOG(DEBUG) << "Host input " << i << " " << DebugString(inputs[i]) << " need copy to device";
-        // if dynamo shape have change,need to update host_input_holders_
-        if (inputs[i].sizes() != host_input_holders_[i].sizes()) {
-          host_input_holders_[i] = at::empty(inputs[i].sizes(), inputs[i].options().device(at::kPrivateUse1));
-        } else {
-          update_shape_flag = false;
-        }
-        size_t dst_size = static_cast<size_t>(host_input_holders_[i].numel() * host_input_holders_[i].element_size());
-        size_t src_size = static_cast<size_t>(inputs[i].numel() * inputs[i].element_size());
-        if (src_size > 0) {
-          TNG_ASSERT(first_stream == stream,
-                     "When the Tensor input is located on the host, the backend cannot support host input. "
-                     "It is necessary to perform an H2D copy of the data before proceeding with asynchronous dispatch. "
-                     "During the H2D copy of the input data, it is a synchronous copy without a stream, "
-                     "while dispatching is an asynchronous operation with a stream. "
-                     "To prevent the data copied to the device from being erroneously refreshed due to stream switching"
-                     ", when there is host input, switching to different streams is not supported "
-                     "during each execution.");
-          auto stream_ret = aclrtSynchronizeStream(stream);
-          TNG_ASSERT(stream_ret == ACL_ERROR_NONE, "ACL sync stream failed, return %d", stream_ret);
-          auto ret = aclrtMemcpy(host_input_holders_[i].data_ptr(), dst_size, inputs[i].data_ptr(), src_size,
-                                 ACL_MEMCPY_HOST_TO_DEVICE);
-          TNG_ASSERT(ret == ACL_ERROR_NONE, "ACL memory copy failed, return %d", ret);
-        }
-        input = &host_input_holders_[i];
-      }
-      if (is_first_run) {
-        TNG_RETURN_IF_ERROR(AtTensorToGeTensor(*input, input_holders[i]));
-      } else if (update_shape_flag) {
-        TNG_RETURN_IF_ERROR(AssembleDataAndShapeToGe(*input, input_holders[i]));
-      }
-      TNG_LOG(DEBUG) << "Assemble aten host input " << i << " " << DebugString(inputs[i]) << " to "
-                     << DebugString(input_holders[i]);
+      TNG_RETURN_IF_ERROR(AssembleDataAndStorageShapeToGe(inputs[i], input_holders[i]));
     } else {
-      TNG_ASSERT(false, "Invalid Placement::UNKNOWN of input %zu.", i);
+      bool update_shape_flag = false;
+      if ((inputs[i].sizes().size() > 1U) && (inputs[i].sizes() != host_input_holders_[i].sizes())) {
+        // if dynamo shape have change, need to update host_input_holders_
+        host_input_holders_[i] = at::empty(inputs[i].sizes(), inputs[i].options().device(at::kPrivateUse1));
+        update_shape_flag = true;
+      }
+      UpdateHostInput(inputs[i], input_holders[i], host_input_holders_[i], update_shape_flag);
     }
+    TNG_LOG(DEBUG) << "Update aten input " << i << " " << DebugString(inputs[i]) << " to "
+                   << DebugString(input_holders[i]);
   }
   return Status::Success();
 }
@@ -150,8 +148,7 @@ template <typename T>
 Status DynamicNpuGraphExecutor::AssembleOutputs(const std::vector<c10::optional<at::Tensor>> &assigned_outputs,
                                                 std::vector<T> &output_holders) {
   RECORD_FUNCTION("AssembleOutputs", {});
-  bool is_first_run = output_holders.empty();
-  if (is_first_run) {
+  if (is_first_run_) {
     output_holders.resize(graph_data_->output_dtypes.size());
     TNG_LOG(INFO) << "Graph output size is " << output_holders.size();
   }
@@ -159,7 +156,7 @@ Status DynamicNpuGraphExecutor::AssembleOutputs(const std::vector<c10::optional<
   TNG_ASSERT(assigned_outputs.empty() || assigned_outputs.size() == output_holders.size());
   for (size_t i = 0U; i < output_holders.size(); ++i) {
     if (!assigned_outputs.empty() && assigned_outputs[i].has_value()) {
-      if (is_first_run) {
+      if (is_first_run_) {
         TNG_RETURN_IF_ERROR(AtTensorToGeTensor(assigned_outputs[i].value(), output_holders[i]));
       } else {
         TNG_RETURN_IF_ERROR(AssembleDataAndShapeToGe(assigned_outputs[i].value(), output_holders[i]));
@@ -187,8 +184,13 @@ Status DynamicNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
   }
   // Register allocator for GE before run, according to stream.
   AllocatorManager::GetInstance().EnsureAllocatorRegistered(stream);
-  if (is_first_run_ && fixed_mem_addr_ == nullptr) {
-    TNG_RETURN_IF_ERROR(AllocAndSetFixedMemory(stream, graph_data_));
+  if (is_first_run_) {
+    if (fixed_mem_addr_ == nullptr) {
+      TNG_RETURN_IF_ERROR(AllocAndSetFixedMemory(stream, graph_data_));
+    }
+    first_stream_ = stream;
+  } else {
+    TNG_ASSERT(first_stream_ == stream, "Unsupport run graph with different stream.");
   }
 
   static bool enable_load_execute_graph =
@@ -196,7 +198,7 @@ Status DynamicNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
   SetStageTime(ExecutorStage::kPre);
 
   if (enable_load_execute_graph) {
-    TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, gert_inputs_holder_, stream));
+    TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, gert_inputs_holder_));
     SetStageTime(ExecutorStage::kAssembleInputs);
     TNG_RETURN_IF_ERROR(AssembleOutputs(assigned_outputs, gert_outputs_holder_));
     SetStageTime(ExecutorStage::kAssembleOutputs);
@@ -215,12 +217,12 @@ Status DynamicNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
     SetStageTime(ExecutorStage::kRunGraph);
     TNG_RETURN_IF_ERROR(RefreshAtTensorFromGeTensor(gert_outputs_holder_, assigned_outputs, outputs));
   } else {
-    TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, inputs_holder_, stream));
-
+    TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, inputs_holder_));
+    SetStageTime(ExecutorStage::kAssembleInputs);
     TNG_RETURN_IF_ERROR(AssembleOutputs(assigned_outputs, outputs_holder_));
-
+    SetStageTime(ExecutorStage::kAssembleOutputs);
     TNG_RETURN_IF_ERROR(Session::GetInstance().RunGraph(graph_data_->id, inputs_holder_, outputs_holder_, stream));
-
+    SetStageTime(ExecutorStage::kRunGraph);
     TNG_RETURN_IF_ERROR(RefreshAtTensorFromGeTensor(outputs_holder_, assigned_outputs, outputs));
   }
 

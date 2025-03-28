@@ -22,17 +22,15 @@ class StaticNpuGraphExecutor : public Executor {
   Status AllocAndSetFixedMemory(void *stream, std::shared_ptr<GraphData> &graph_data);
 
   template <typename T>
-  Status AssembleInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders, void *stream);
+  Status AssembleInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders);
+
+  template <typename T>
+  Status UpdateInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders);
 
  protected:
   Status AllocAndSetConstMemory(void *stream);
 
   Status AllocAndUpdateFeatureMemory(void *stream);
-
-  template <typename T>
-  Status AssembleHostInputs(const at::Tensor &inputs, T &input_holders,
-                            std::pair<at::Tensor, std::pair<size_t, size_t>> &host_input_holder_,
-                            void *stream, bool is_first_run);
 
   template <typename T>
   Status AssembleOutputs(const std::vector<c10::optional<at::Tensor>> &assigned_outputs,
@@ -47,8 +45,7 @@ class StaticNpuGraphExecutor : public Executor {
   ge::MemBlock *fixed_mem_addr_{nullptr};
   ge::MemBlock *feature_map_block_{nullptr};
   bool fm_refreshable_{false};
-  bool is_first_run_{true};
-  void *first_stream{nullptr};
+  void *first_stream_{nullptr};
 
   std::vector<std::vector<int64_t>> output_shapes_;
   std::vector<std::pair<at::Tensor, std::pair<size_t, size_t>>> host_input_holders_;

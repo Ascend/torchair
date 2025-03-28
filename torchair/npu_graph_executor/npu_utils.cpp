@@ -39,10 +39,15 @@ bool IsBaseFormat(const ge::Format &format) {
 }
 
 Status GetCurrentStream(void **stream) {
-  int device_index = -1;
-  auto ret = aclrtGetDevice(&device_index);
-  TNG_ASSERT(ret == ACL_ERROR_NONE, "ACL get device failed, return %d", ret);
-  *stream = c10_npu::getCurrentNPUStream(device_index).stream();
+  *stream = c10_npu::getCurrentNPUStream().stream();
+  return Status::Success();
+}
+
+Status H2DMemcpy(void *dst, size_t destMax, const void *src, size_t count, void *stream) {
+  auto stream_ret = aclrtSynchronizeStream(stream);
+  TNG_ASSERT(stream_ret == ACL_ERROR_NONE, "ACL sync stream failed, return %d", stream_ret);
+  auto ret = aclrtMemcpy(dst, destMax, src, count, ACL_MEMCPY_HOST_TO_DEVICE);
+  TNG_ASSERT(ret == ACL_ERROR_NONE, "ACL memory copy failed, return %d", ret);
   return Status::Success();
 }
 

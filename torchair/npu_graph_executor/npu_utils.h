@@ -12,6 +12,8 @@
 namespace tng {
 Status GetCurrentStream(void **stream);
 
+Status H2DMemcpy(void *dst, size_t destMax, const void *src, size_t count, void *stream);
+
 Status AssembleDimsToOriginShape(const at::IntArrayRef &dims, ge::Tensor &ge_tensor);
 
 Status AssembleStorageShapeToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor);

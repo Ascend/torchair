@@ -20,7 +20,10 @@ class MutiGearNpuGraphExecutor : public StaticNpuGraphExecutor {
 
  private:
   template <typename T>
-  Status AssembleInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders, void *stream);
+  Status AssembleInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders);
+
+  template <typename T>
+  Status UpdateInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders);
 
   std::vector<std::vector<int64_t>> input_gears_;
 };

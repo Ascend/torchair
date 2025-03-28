@@ -22,7 +22,14 @@ class DynamicNpuGraphExecutor : public Executor {
   Status AllocAndSetFixedMemory(void *stream, std::shared_ptr<GraphData> &graph_data);
 
   template <typename T>
-  Status AssembleInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders, void *stream);
+  Status AssembleInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders);
+
+  template <typename T>
+  Status UpdateHostInput(const at::Tensor &input, T &input_holder,
+                         at::Tensor &host_input_holder, bool update_shape_flag = false);
+
+  template <typename T>
+  Status UpdateInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders);
 
   template <typename T>
   Status AssembleOutputs(const std::vector<c10::optional<at::Tensor>> &assigned_outputs,
@@ -34,9 +41,8 @@ class DynamicNpuGraphExecutor : public Executor {
   std::vector<gert::Tensor> gert_inputs_holder_;
   std::vector<gert::Tensor> gert_outputs_holder_;
   std::shared_ptr<GraphData> graph_data_;
-  bool is_first_run_{true};
   std::vector<at::Tensor> host_input_holders_;
-  void *first_stream{nullptr};
+  void *first_stream_{nullptr};
 };
 }  // namespace tng
 
