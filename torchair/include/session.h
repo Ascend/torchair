@@ -17,10 +17,7 @@ using GeFastExecuteGraphFunc = decltype(GeSessionExecuteGraphWithStreamAsync);
 
 class Session {
  public:
-  static Session &GetInstance() {
-    static Session instance;
-    return instance;
-  }
+  static Session &GetInstance();
 
   Status Initialize(const std::map<std::string, std::string> &options);
 
