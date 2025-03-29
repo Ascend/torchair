@@ -1,13 +1,8 @@
-import threading
-from typing import Any, Dict, List, Tuple
+from typing import List
 import torch
-from torch.fx.node import has_side_effect, Argument, Target
-from torchair.ge._ge_graph import compat_as_bytes, get_default_ge_graph
-from torchair.core.utils import logger
+from torch.fx.node import has_side_effect
 from ._lib import lib
-
-
-local = threading.local()
+from ._scope_attr import scope_enter, scope_exit
 
 
 lib.define(
@@ -60,49 +55,3 @@ torch.library.impl(lib, "scope_exit", "PrivateUse1")(kernel_impl)
 
 def _npu_scope_exit():
     return torch.ops.air.scope_exit()
-
-
-class ScopeAttrs:
-    def __init__(self):
-        self._attribute_stack: List[Dict[str, str]] = []
-
-    def push(self, attributes: Dict[str, str]):
-        self._attribute_stack.append(attributes)
-
-    def pop(self):
-        if self._attribute_stack:
-            self._attribute_stack.pop()
-
-    def apply(self, op):
-        for attrs in self._attribute_stack:
-            for key, value in attrs.items():
-                op.attr[key].s = compat_as_bytes(str(value))
-                logger.debug(f"Set attribute {key}: {value} on op: {op.name}")
-
-
-def scope_enter(keys: List[str], values: List[str]):
-    if not hasattr(local, 'scope_attr'):
-        local.scope_attr = ScopeAttrs()
-    local.scope_attr.push(dict(zip(keys, values)))
-
-
-def scope_exit():
-    if hasattr(local, 'scope_attr'):
-        local.scope_attr.pop()
-
-
-def apply_scope_attr(ops):
-    if hasattr(local, 'scope_attr'):
-        for op in ops:
-            local.scope_attr.apply(op)
-
-
-def guard_scope_attr(func):
-    def wrapper(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
-        graph = get_default_ge_graph()
-        num_ops = len(graph.op)
-        ge_outputs = func(self, target, args, kwargs, meta_outputs)
-        apply_scope_attr(graph.op[num_ops:])
-        return ge_outputs
-
-    return wrapper
