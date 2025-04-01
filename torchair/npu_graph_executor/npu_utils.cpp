@@ -222,7 +222,7 @@ void FreeMemBlock(void *data) {
 }
 
 at::Tensor MakeAtTensor(const std::vector<int64_t> &dims, c10::ScalarType &torch_dtype, size_t tensor_nbytes,
-                        at::DataPtr& data_ptr) {
+                        at::DataPtr&& data_ptr) {
   at::TensorOptions option = at::TensorOptions().dtype(torch_dtype).device(c10::DeviceType::PrivateUse1);
   at::Tensor tensor = at::empty({0}, option);
 

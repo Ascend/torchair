@@ -42,7 +42,7 @@ Status GetShapeFromGeTensor(std::vector<int64_t> &real_output_shape, const ge::T
 Status GetShapeFromGeTensor(std::vector<int64_t> &real_output_shape, const gert::Tensor &ge_tensor);
 
 at::Tensor MakeAtTensor(const std::vector<int64_t> &dims, c10::ScalarType &torch_dtype, size_t tensor_nbytes,
-                        at::DataPtr& data_ptr);
+                        at::DataPtr&& data_ptr);
 
 Status UpdateTensorInfos(ge::Tensor &ge_tensor, const std::vector<int64_t> &shape, const ge::Format format,
                          const ge::DataType data_type);

@@ -256,7 +256,8 @@ Status StaticNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
         outputs.push_back(torch_outputs[i].value());
         continue;
       }
-      outputs.push_back(MakeAtTensor(output_shapes_[i], output_torch_dtype_[i], output_size_[i], data_ptrs[i]));
+      outputs.push_back(
+          MakeAtTensor(output_shapes_[i], output_torch_dtype_[i], output_size_[i], std::move(data_ptrs[i])));
       TNG_LOG(DEBUG) << "Refresh torch output " << i << " " << DebugString(outputs[i]);
     }
   }
