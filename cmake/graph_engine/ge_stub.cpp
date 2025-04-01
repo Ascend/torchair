@@ -114,6 +114,11 @@ std::string GEGetWarningMsg() {
   return "[STUB] Something warn";
 }
 
+ge::AscendString GEGetWarningMsgV2() {
+  std::string warning_msg = "[STUB] Something warn";
+  return ge::AscendString(warning_msg.c_str(), warning_msg.length());
+}
+
 Session::Session(const std::map<AscendString, AscendString> &options) {
   std::cerr << "[STUB] Session::Session created" << std::endl;
 }
