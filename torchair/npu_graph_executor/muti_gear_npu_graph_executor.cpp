@@ -135,7 +135,7 @@ Status MutiGearNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs
                                      const std::vector<c10::optional<at::Tensor>> &torch_outputs,
                                      std::vector<at::Tensor> &outputs, void *stream) {
   SetStageTime(ExecutorStage::kBegin);
-  std::vector<ge::MemBlock *> output_mem_blocks;
+  std::vector<at::DataPtr> data_ptrs;
   if (stream == nullptr) {
     TNG_RETURN_IF_ERROR(GetCurrentStream(&stream));
   }
@@ -153,7 +153,7 @@ Status MutiGearNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs
   if (enable_load_execute_graph) {
     TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, gert_inputs_holder_, stream));
     SetStageTime(ExecutorStage::kAssembleInputs);
-    TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs, output_mem_blocks, gert_outputs_holder_, stream));
+    TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs, data_ptrs, gert_outputs_holder_, stream));
     SetStageTime(ExecutorStage::kAssembleOutputs);
     if (is_first_run_) {
       std::map<ge::AscendString, ge::AscendString> load_options;
@@ -172,7 +172,7 @@ Status MutiGearNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs
   } else {
     TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, inputs_holder_, stream));
 
-    TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs, output_mem_blocks, outputs_holder_, stream));
+    TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs, data_ptrs, outputs_holder_, stream));
 
     TNG_RETURN_IF_ERROR(Session::GetInstance().RunGraph(graph_data_->id, inputs_holder_, outputs_holder_, stream));
 
@@ -182,13 +182,13 @@ Status MutiGearNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs
   outputs.clear();
   {
     RECORD_FUNCTION("RefreshAtTensorFromGearsGeTensor", {});
-    for (size_t i = 0U; i < output_mem_blocks.size(); i++) {
+    for (size_t i = 0U; i < data_ptrs.size(); i++) {
       if (!torch_outputs.empty() && torch_outputs[i].has_value()) {
         outputs.push_back(torch_outputs[i].value());
         continue;
       }
       outputs.push_back(
-          MakeAtTensor(output_shapes_[i], output_torch_dtype_[i], output_size_[i], output_mem_blocks[i]));
+          MakeAtTensor(output_shapes_[i], output_torch_dtype_[i], output_size_[i], std::move(data_ptrs[i])));
       TNG_LOG(DEBUG) << "Refresh gears torch output " << i << " " << DebugString(outputs[i]);
     }
   }

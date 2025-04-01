@@ -36,7 +36,7 @@ class StaticNpuGraphExecutor : public Executor {
 
   template <typename T>
   Status AssembleOutputs(const std::vector<c10::optional<at::Tensor>> &assigned_outputs,
-                         std::vector<ge::MemBlock *> &output_mem_blocks, std::vector<T> &output_holders, void *stream);
+                         std::vector<at::DataPtr> &data_ptrs, std::vector<T> &output_holders, void *stream);
 
   std::vector<ge::Tensor> inputs_holder_;
   std::vector<ge::Tensor> outputs_holder_;

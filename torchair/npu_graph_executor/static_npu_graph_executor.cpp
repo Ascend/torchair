@@ -94,7 +94,7 @@ Status StaticNpuGraphExecutor::AssembleHostInputs(const at::Tensor &input, T &in
 
 template <typename T>
 Status StaticNpuGraphExecutor::AssembleOutputs(const std::vector<c10::optional<at::Tensor>> &assigned_outputs,
-                                               std::vector<ge::MemBlock *> &output_mem_blocks,
+                                               std::vector<at::DataPtr> &data_ptrs,
                                                std::vector<T> &output_holders, void *stream) {
   RECORD_FUNCTION("AssembleOutputs", std::vector<c10::IValue>({}));
   bool is_first_run = output_holders.empty();
@@ -120,9 +120,9 @@ Status StaticNpuGraphExecutor::AssembleOutputs(const std::vector<c10::optional<a
   }
 
   TNG_ASSERT(assigned_outputs.empty() || assigned_outputs.size() == output_holders.size());
-  const std::shared_ptr<ge::Allocator> &allocator = AllocatorManager::GetInstance().EnsureAllocatorRegistered(stream);
+  auto allocator = c10::GetAllocator(c10::DeviceType::PrivateUse1);
   TNG_ASSERT_NOTNULL(allocator);
-  output_mem_blocks.resize(output_holders.size());
+  data_ptrs.resize(output_holders.size());
   for (size_t i = 0U; i < output_holders.size(); ++i) {
     if (!assigned_outputs.empty() && assigned_outputs[i].has_value()) {
       if (is_first_run) {
@@ -134,11 +134,10 @@ Status StaticNpuGraphExecutor::AssembleOutputs(const std::vector<c10::optional<a
                      << " to " << DebugString(output_holders[i]);
       continue;
     }
-
-    ge::MemBlock *block = allocator->Malloc(output_size_[i]);
-    TNG_ASSERT_NOTNULL(block);
-    output_mem_blocks[i] = block;
-    TNG_RETURN_IF_ERROR(UpdateTensorData(output_holders[i], block->GetAddr(), output_size_[i]));
+    auto data_ptr = allocator->allocate(output_size_[i]);
+    TNG_ASSERT_NOTNULL(data_ptr);
+    data_ptrs[i] = std::move(data_ptr);
+    TNG_RETURN_IF_ERROR(UpdateTensorData(output_holders[i], data_ptr.get(), output_size_[i]));
     TNG_LOG(DEBUG) << "Malloc " << output_size_[i] << " for ge output tensor.";
   }
 
@@ -220,7 +219,7 @@ Status StaticNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
                                    const std::vector<c10::optional<at::Tensor>> &torch_outputs,
                                    std::vector<at::Tensor> &outputs, void *stream) {
   SetStageTime(ExecutorStage::kBegin);
-  std::vector<ge::MemBlock *> output_mem_blocks;
+  std::vector<at::DataPtr> data_ptrs;
   if (stream == nullptr) {
     TNG_RETURN_IF_ERROR(GetCurrentStream(&stream));
   }
@@ -238,7 +237,7 @@ Status StaticNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
   if (enable_load_execute_graph) {
     TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, gert_inputs_holder_, stream));
     SetStageTime(ExecutorStage::kAssembleInputs);
-    TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs, output_mem_blocks, gert_outputs_holder_, stream));
+    TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs, data_ptrs, gert_outputs_holder_, stream));
     SetStageTime(ExecutorStage::kAssembleOutputs);
     if (is_first_run_) {
       std::map<ge::AscendString, ge::AscendString> load_options;
@@ -256,7 +255,7 @@ Status StaticNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
   } else {
     TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, inputs_holder_, stream));
     SetStageTime(ExecutorStage::kAssembleInputs);
-    TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs, output_mem_blocks, outputs_holder_, stream));
+    TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs, data_ptrs, outputs_holder_, stream));
     SetStageTime(ExecutorStage::kAssembleOutputs);
     TNG_RETURN_IF_ERROR(Session::GetInstance().RunGraph(graph_data_->id, inputs_holder_, outputs_holder_, stream));
     SetStageTime(ExecutorStage::kRunGraph);
@@ -264,14 +263,15 @@ Status StaticNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
 
   outputs.clear();
   {
-    RECORD_FUNCTION("RefreshAtTensorFromGearsGeTensor", {});
-    for (size_t i = 0U; i < output_mem_blocks.size(); i++) {
+    RECORD_FUNCTION("RefreshAtTensorFromGeTensor", {});
+    for (size_t i = 0U; i < data_ptrs.size(); i++) {
       if (!torch_outputs.empty() && torch_outputs[i].has_value()) {
         outputs.push_back(torch_outputs[i].value());
         continue;
       }
-      outputs.push_back(MakeAtTensor(output_shapes_[i], output_torch_dtype_[i], output_size_[i], output_mem_blocks[i]));
-      TNG_LOG(DEBUG) << "Refresh gears torch output " << i << " " << DebugString(outputs[i]);
+      outputs.push_back(
+          MakeAtTensor(output_shapes_[i], output_torch_dtype_[i], output_size_[i], std::move(data_ptrs[i])));
+      TNG_LOG(DEBUG) << "Refresh torch output " << i << " " << DebugString(outputs[i]);
     }
   }
 

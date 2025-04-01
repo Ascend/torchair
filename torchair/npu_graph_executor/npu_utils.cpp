@@ -217,7 +217,7 @@ void FreeMemBlock(void *data) {
 }
 
 at::Tensor MakeAtTensor(const std::vector<int64_t> &dims, c10::ScalarType &torch_dtype, size_t tensor_nbytes,
-                        ge::MemBlock *block) {
+                        at::DataPtr&& data_ptr) {
   at::TensorOptions option = at::TensorOptions().dtype(torch_dtype).device(c10::DeviceType::PrivateUse1);
   at::Tensor tensor = at::empty({0}, option);
 
@@ -231,11 +231,7 @@ at::Tensor MakeAtTensor(const std::vector<int64_t> &dims, c10::ScalarType &torch
   storage = fptr(c10::StorageImpl::use_byte_size_t(), 0, allocator->allocate(0), allocator, true);
 #endif
   storage.unsafeGetStorageImpl()->set_nbytes(tensor_nbytes);
-
-  static torch::DeleterFnPtr kFreeMemBlock = &FreeMemBlock;
-  at::DataPtr c10_data_ptr(block->GetAddr(), block, kFreeMemBlock, storage.device());
-  storage.set_data_ptr(std::move(c10_data_ptr));
-
+  storage.set_data_ptr(std::move(data_ptr));
   tensor.set_(storage, 0, dims);
   return tensor;
 }
