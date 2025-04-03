@@ -77866,6 +77866,108 @@ def MoeInitRouting(x: Tensor,
     # return outputs
     return expanded_x, expanded_row_idx, expanded_expert_idx
 
+
+# This api is auto-generated from IR MoeInitRoutingV3
+@auto_convert_to_tensor([False, False, False, False], [False, False, True, True])
+def MoeInitRoutingV3(x: Tensor,
+                    expert_idx: Tensor,
+                    scale: Optional[Tensor],
+                    offset: Optional[Tensor],
+                    *,
+                    active_num: int,
+                    expert_capacity: int,
+                    expert_num: int,
+                    drop_pad_mode: int,
+                    expert_tokens_num_type: int,
+                    expert_tokens_num_flag: bool,
+                    quant_mode: int,
+                    active_expert_range: List[int],
+                    row_idx_type: int,
+                    dependencies=[],
+                    node_name=None
+                    ):
+    """ REG_OP(MoeInitRoutingV3)\n
+    .INPUT(x, TensorType({DT_INT8, DT_FLOAT16, DT_FLOAT, DT_BF16}))\n
+    .INPUT(expert_idx, TensorType({DT_INT32}))\n
+    .OPTIONAL_INPUT(scale, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))\n
+    .OUTPUT(expanded_x, TensorType({DT_INT8, DT_FLOAT16, DT_FLOAT, DT_BF16}))\n
+    .OUTPUT(expanded_row_idx, TensorType({DT_INT32}))\n
+    .OUTPUT(expert_tokens_count_or_cumsum, TensorType({DT_INT64}))\n
+    .OUTPUT(expanded_scale, TensorType({DT_FLOAT}))\n
+    .ATTR(active_num, Int, -1)\n
+    .ATTR(expert_capacity, Int, -1)\n
+    .ATTR(expert_num, Int, -1)\n
+    .ATTR(drop_pad_mode, Int, 0)\n
+    .ATTR(expert_tokens_num_type, Int, 0)\n
+    .ATTR(expert_tokens_num_flag, Bool, false)\n
+    .ATTR(quant_mode, Int, -1)\n
+    .ATTR(active_expert_range, ListInt, {})\n
+    .ATTR(row_idx_type, Int, 0)\n
+    .OP_END_FACTORY_REG(MoeInitRoutingV3)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "MoeInitRoutingV3"
+    op.name = next_unique_name(node_name, "MoeInitRoutingV3")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+    op.input.append(expert_idx.tensor)
+    op.input_desc.add().CopyFrom(expert_idx.desc)
+    op.input_desc[-1].name = "expert_idx"
+    if scale is not None:
+        op.input.append(scale.tensor)
+        op.input_desc.add().CopyFrom(scale.desc)
+        op.input_desc[-1].name = "scale"
+    else:
+        op.input.append("")
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "scale"
+    if offset is not None:
+        op.input.append(offset.tensor)
+        op.input_desc.add().CopyFrom(offset.desc)
+        op.input_desc[-1].name = "offset"
+    else:
+        op.input.append("")
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "offset"
+
+    # process attrs
+    op.attr["active_num"].i = active_num
+    op.attr["expert_capacity"].i = expert_capacity
+    op.attr["expert_num"].i = expert_num
+    op.attr["drop_pad_mode"].i = drop_pad_mode
+    op.attr["expert_tokens_num_type"].i = expert_tokens_num_type
+    op.attr["expert_tokens_num_flag"].b = expert_tokens_num_flag
+    op.attr["quant_mode"].i = quant_mode
+    op.attr["active_expert_range"].list.val_type = 2
+    op.attr["active_expert_range"].list.i.extend(active_expert_range)
+    op.attr["row_idx_type"].i = row_idx_type
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "expanded_x"
+    expanded_x = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "expanded_row_idx"
+    expanded_row_idx = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "expert_tokens_count_or_cumsum"
+    expert_tokens_count_or_cumsum = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "expanded_scale"
+    expanded_scale = Tensor(op, output_index)
+
+    return expanded_x, expanded_row_idx, expert_tokens_count_or_cumsum, expanded_scale
+
+
 # This api is auto-generated from IR MoeGatingTopKSoftmax
 @auto_convert_to_tensor([False, False], [False, True])
 def MoeGatingTopKSoftmax(x: Tensor,
