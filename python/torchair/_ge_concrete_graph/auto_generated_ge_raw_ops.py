@@ -77721,6 +77721,94 @@ def _GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], sc
     )
 
 
+# This api is auto-generated from IR GroupedMatmulFinalizeRouting
+@auto_convert_to_tensor(
+    [False, False, False, False, False, False, False, False, False],
+    [False, False, True, True, True, True, True, True, True]
+)
+def GroupedMatmulFinalizeRouting(x: Tensor, w: Tensor, scale: Optional[Tensor], bias: Optional[Tensor],
+                                pertoken_scale: Optional[Tensor], group_list: Optional[Tensor],
+                                shared_input: Optional[Tensor], logit: Optional[Tensor], row_index: Optional[Tensor],
+                                *, dtype: int=0, shared_input_weight: float=1.0, shared_input_offset: int=0,
+                                transpose_x: bool=False, transpose_w: bool=False, output_bs: int=0,
+                                group_list_type=1, dependencies=[], node_name=None):
+    """REG_OP(GroupedMatmulFinalizeRouting)\n
+    .INPUT(x, TensorType({DT_INT8}))\n
+    .INPUT(w, TensorType({DT_INT8}))\n
+    .OPTIONAL_INPUT(scale, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(pertoken_scale, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(group_list, TensorType({DT_INT64}))\n
+    .OPTIONAL_INPUT(shared_input, TensorType({DT_BF16}))\n
+    .OPTIONAL_INPUT(logit, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(row_index, TensorType({DT_INT64}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT}))\n
+    .ATTR(dtype, Int, 0)\n
+    .ATTR(shared_input_weight, Float, 1.0)\n
+    .ATTR(shared_input_offset, Int, 0)\n
+    .ATTR(transpose_x, Bool, false)\n
+    .ATTR(transpose_w, Bool, false)\n
+    .ATTR(output_bs, Int, 0)\n
+    .ATTR(group_list_type, Int, 1)\n
+    .OP_END_FACTORY_REG(GroupedMatmulFinalizeRouting)\n
+    """
+
+    inputs = {
+        "x": x,
+        "w": w,
+        "scale": scale,
+        "bias": bias,
+        "pertoken_scale": pertoken_scale,
+        "group_list": group_list,
+        "shared_input": shared_input,
+        "logit": logit,
+        "row_index": row_index,
+    }
+
+    # process attrs
+    attrs = {
+        "dtype": attr.Int(dtype),
+        "shared_input_weight": attr.Float(shared_input_weight),
+        "shared_input_offset": attr.Int(shared_input_offset),
+        "transpose_x": attr.Bool(transpose_x),
+        "transpose_w": attr.Bool(transpose_w),
+        "output_bs": attr.Int(output_bs),
+        "group_list_type": attr.Int(group_list_type),
+    }
+
+    # process outputs
+    outputs = [
+        "y",
+    ]
+
+    # process outputs
+    return ge_op(
+        op_type="GroupedMatmulFinalizeRouting",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("GroupedMatmulFinalizeRouting") \
+        .input("x", "DT_INT8") \
+        .input("w", "DT_INT8") \
+        .optional_input("scale", "DT_FLOAT") \
+        .optional_input("bias", "DT_FLOAT") \
+        .optional_input("pertoken_scale", "DT_FLOAT") \
+        .optional_input("group_list", "DT_INT64") \
+        .optional_input("shared_input", "DT_BF16") \
+        .optional_input("logit", "DT_FLOAT") \
+        .optional_input("row_index", "DT_INT64") \
+        .attr("dtype", attr.Int(0)) \
+        .attr("shared_input_weight", attr.Float(1.0)) \
+        .attr("shared_input_offset", attr.Int(0)) \
+        .attr("transpose_x", attr.Bool(False)) \
+        .attr("transpose_w", attr.Bool(False)) \
+        .attr("output_bs", attr.Int(0)) \
+        .attr("group_list_type", attr.Int(1)) \
+        .output("y", "DT_FLOAT")
+    )
+
+
 # This api is auto-generated from IR MoeInitRouting
 @auto_convert_to_tensor([False, False, False], [False, False, False])
 def MoeInitRouting(x: Tensor,

@@ -2023,33 +2023,6 @@ REG_OP(SwinAttentionScore)
     .ATTR(bmm_score_transpose_b, Bool, false)
     .ATTR(softmax_axes, ListInt, {})
     .OP_END_FACTORY_REG(SwinAttentionScore)
-
-/**
-* @brief
-   swin_transformer model specific structure.Operator only supports swin_transformer. \n
-* @par Inputs:
-* Three inputs, including:
-* @li x: A Tensor. Must be one of the following types: float16.
-* @li weight: A Tensor. Must be one of the following types: float16.
-* @li bias: A Tensor. Must be one of the following types: float16. \n
-
-* @par Attributes:
-* @li shifts: A optional attribute, the type is list int. Defaults to (). \n
-
-* @par Outputs:
-* One output, including:
-* @li y: A Tensor. Must be one of the following types: float16. \n
-
-* @par Restrictions:
-* Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use. \n
-*/
-REG_OP(SwinAttentionFFN)
-    .INPUT(x1, TensorType({DT_FLOAT16}))
-    .INPUT(x2, TensorType({DT_FLOAT16}))
-    .INPUT(bias, TensorType({DT_FLOAT16}))
-    .OUTPUT(y, TensorType({DT_FLOAT16}))
-    .ATTR(shifts, ListInt, {})
-    .OP_END_FACTORY_REG(SwinAttentionFFN)
 }  // namespace ge
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_MATRIX_CALCULATION_OPS_H_

@@ -466,5 +466,70 @@ REG_OP(TransQuantParamV2)
     .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))
     .OUTPUT(y, TensorType({DT_INT64}))
     .OP_END_FACTORY_REG(TransQuantParamV2)
+
+/**
+* @brief Function GroupedMatmulFinalizeRouting. This op mixs GroupedMatmul和MoeFinalizeRouting. After the calculation of GroupedMatmul, perform a combine operation on the output according to the index, and support the format where w is in the Ascend affinity data layout.
+
+* @par Inputs:
+* @li x: A tensor, which is the input x in the formula, supports the ND data format (refer to Data Format), and the shape supports 2 dimensions with the dimension being (m, k). The data type supports INT8.
+
+* @li w: A tensor of weight, which supports the Ascend affinity data layout format as described in Data Format. The data type supports INT8, and the shape supports 5 dimensions.
+* When transposew is false, each dimension is represented as: (e, n1, k1, k0, n0), where k0 = 16, n0 = 32. The k in the x shape and the k1 in the w shape need to satisfy the following relationship: ceilDiv(k, 16) = k1.
+* The aclnnCalculateMatmulWeightSizeV2 interface and the aclnnTransMatmulWeight interface can be used to complete the conversion of the input format from the ND format to the Ascend affinity data layout format.
+* @li scale: It represents the scaling factor in the quantization parameters. It supports the ND data format as described in Data Format. The supported data type is FLOAT32, and the shape is two-dimensional (e, n), where the values of e and n are consistent with those of e and n in w.
+* @li bias: A tensor of bias, contains all bias of inputs for matmul. For each tensor, the data type of elements supports float32; the format supports ND. Currently, input is not supported.
+* @li pertoken_scale: The dequantization parameters for matrix calculation support the ND data format (refer to Data Format). They correspond to the x matrix, with a dimension of (m). The supported data type is FLOAT32. Non - contiguous tensors are not supported.
+* @li group_list: a tensor, indicates M-axis distributation of groups of matmuls for inputs and outputs.
+* Data type of elements is int64. Format: ND.
+* @li shared_input: In the MoE (Mixture of Experts) calculation, the output of the shared experts needs to undergo a combine operation with the output of the MoE experts. The supported data types are bfloat16 and float16.
+* @li logit: In the MoE (Mixture of Experts), for the logit magnitudes of each token, the output of the matrix multiplication is multiplied by these logits, and then combined according to the indices. The supported data type is float32.
+* @li row_index: The outputs of the MoE (Mixture of Experts) are combined according to the rowIndex, where the values in rowIndex serve as the indices for the scatter add operation during the combination. The supported data types are int64 and int32.
+* @par Attributes:
+* @li dtype: The type of GroupedMatmul output:0：FLOAT32；1：FLOAT16；2：BFLOAT16.
+* @li shared_input_weight: The coefficients for combining the shared experts and the MoE experts. The shareInput is multiplied first with these coefficients, and then the result is accumulated with the output of the MoE experts. The supported data type is float32.
+* @li shared_input_offset: The offset of the output of the shared experts in the total output. The supported data type is int64.
+* @li transpose_x: Whether the left matrix is transposed. Default value: false(not transposed).
+* @li transpose_w: Whether the right matrix is transposed. Default value: false(not transposed).
+* @li output_bs: The size of the highest dimension of the output.
+* @li group_list_type: Group type of GroupedMatmul. Default value: 1。When configured as 0: It is in the cumsum mode, which means it is the prefix sum. When configured as 1: It is in the count mode. The supported data type is int64. \n
+
+* @par Outputs:
+* y: A tensor List, contains all result of groups of matmuls. For each tensor,
+* the data type of elements supports float32; the format supports ND. \n
+
+* @attention Constraints:
+* Warning: \n
+* | x   | w   | Scale      | Scale          | pertokenScale      | bias                        | out      | \n
+*  | ---- | ---- | ------------ | ---------------- | ------------- | --------------------------- | -------- | \n
+*  | INT8 | INT8 | null         | UINT64     | null          | null/INT32                  | FLOAT16  | \n
+*  | INT8 | INT8 | null         | UINT64     | null/FLOAT32  | null/INT32                  | INT8     | \n
+* Among them: \n
+* The dimension m = batch * topk, and the value range is [1, 16 * 1024 * 8]. The functionality is not guaranteed if it exceeds this range. \n
+* k only supports the value of 2048. The functionality is not guaranteed if it exceeds this range. \n
+* n only supports the value of 7168. The functionality is not guaranteed if it exceeds this range. \n
+* The value range of e is [1, 256]. The functionality is not guaranteed if it exceeds this range. \n
+* The value range of bs/p is [1, 2 * 1024], and p = [8, 16, 32, 48, 64, 96, 128, 144, 288]. \n
+* The value range of bs is [1, 16 * 1024]. The functionality is not guaranteed if it exceeds this range. \n
+* The sum of the values in grouplist is less than or equal to m. \n
+*/
+REG_OP(GroupedMatmulFinalizeRouting)
+.INPUT(x, TensorType({DT_INT8}))
+.INPUT(w, TensorType({DT_INT8}))
+.OPTIONAL_INPUT(scale, TensorType({DT_FLOAT}))
+.OPTIONAL_INPUT(bias, TensorType({DT_FLOAT}))
+.OPTIONAL_INPUT(pertoken_scale, TensorType({DT_FLOAT}))
+.OPTIONAL_INPUT(group_list, TensorType({DT_INT64}))
+.OPTIONAL_INPUT(shared_input, TensorType({DT_BF16}))
+.OPTIONAL_INPUT(logit, TensorType({DT_FLOAT}))
+.OPTIONAL_INPUT(row_index, TensorType({DT_INT64}))    
+.OUTPUT(y, TensorType({DT_FLOAT}))
+.ATTR(dtype, Int, 0)
+.ATTR(shared_input_weight, Float, 1.0)
+.ATTR(shared_input_offset, Int, 0)
+.ATTR(transpose_x, Bool, false)
+.ATTR(transpose_w, Bool, false)
+.ATTR(output_bs, Int, 0)
+.ATTR(group_list_type, Int, 1)
+.OP_END_FACTORY_REG(GroupedMatmulFinalizeRouting)
 } // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_FUSION_OPS_H_
