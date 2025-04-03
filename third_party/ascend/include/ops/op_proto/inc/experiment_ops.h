@@ -3594,7 +3594,7 @@ REG_OP(KvRmsNormRopeCache)
 
 
 /**
- * @brief The fusion operator of Single RotaryPositionEmbedding.
+ * @brief The fusion operator of Interleave RotaryPositionEmbedding.
  *
  * @par Inputs:
  * @li x: A Tensor. The type support float16. Format: ND.
@@ -3607,12 +3607,12 @@ REG_OP(KvRmsNormRopeCache)
  * @par Restrictions:
  * Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
  */
-REG_OP(SingleRope)
+REG_OP(InterleaveRope)
     .INPUT(x, TensorType({DT_FLOAT16}))
     .INPUT(cos, TensorType({DT_FLOAT16}))
     .INPUT(sin, TensorType({DT_FLOAT16}))
     .OUTPUT(y, TensorType({DT_FLOAT16}))
-    .OP_END_FACTORY_REG(SingleRope)
+    .OP_END_FACTORY_REG(InterleaveRope)
 
 
 /**

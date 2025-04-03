@@ -78931,10 +78931,10 @@ def KvRmsNormRopeCache(kv: Tensor,
     return k_cache, ckv_cache, k_rope, c_kv
 
 
-# This api is auto-generated from IR SingleRope
+# This api is auto-generated from IR InterleaveRope
 @auto_convert_to_tensor([False, False, False], [False, False, False])
-def SingleRope(x: Tensor, cos: Tensor, sin: Tensor, *, dependencies=[], node_name=None):
-    """REG_OP(SingleRope)\n
+def InterleaveRope(x: Tensor, cos: Tensor, sin: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(InterleaveRope)\n
     .INPUT(x, TensorType({DT_FLOAT16}))\n
     .INPUT(cos, TensorType({DT_FLOAT16}))\n
     .INPUT(sin, TensorType({DT_FLOAT16}))\n
@@ -78942,8 +78942,8 @@ def SingleRope(x: Tensor, cos: Tensor, sin: Tensor, *, dependencies=[], node_nam
     """
 
     op = get_default_ge_graph().op.add()
-    op.type = "SingleRope"
-    op.name = next_unique_name(node_name, "SingleRope")
+    op.type = "InterleaveRope"
+    op.name = next_unique_name(node_name, "InterleaveRope")
 
     # process dependices
     for dependency in dependencies:
