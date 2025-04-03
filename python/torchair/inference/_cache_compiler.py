@@ -2,7 +2,7 @@ import ctypes
 import importlib
 import inspect
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, is_dataclass
 from datetime import datetime, timezone
 import fcntl
 import logging
@@ -12,7 +12,7 @@ from types import ModuleType
 import marshal
 import os
 import hashlib
-from typing import List, Optional, Callable, Union, Dict, Tuple
+from typing import Any, List, Optional, Callable, Union, Dict, Tuple
 import pickle
 import shutil
 
@@ -47,6 +47,45 @@ class ModelCacheArtifact:
     meta: ModelCacheMeta
     compiled_fn: bytes
     compiled_fx: CompiledFX
+
+
+# Allowed classes for safe unpickling
+_ALLOWED_CLASSES = {
+    "torchair.inference._cache_compiler.ModelCacheMeta",
+    "torchair.inference._cache_compiler.CompiledFX",
+    "torchair.inference._cache_compiler.ModelCacheArtifact"
+}
+
+
+class _StrictModelUnpickler(pickle.Unpickler):
+    def find_class(self, module: str, name: str) -> Any:
+        full_name = f"{module}.{name}"
+
+        if full_name not in _ALLOWED_CLASSES:
+            raise pickle.UnpicklingError(f"Forbidden deserialize {full_name}")
+
+        cls = super().find_class(module, name)
+        if not is_dataclass(cls):
+            raise pickle.UnpicklingError(f"Forbidden non-dataclass {full_name}")
+
+        return cls
+
+
+def _validate_owner(filepath: str) -> None:
+    # check file owner is current user whatever the file is a link or not
+    lst = os.lstat(filepath)
+    if lst.st_uid != os.getuid():
+        raise PermissionError("File must be owned by the current user")
+    st = os.stat(filepath)
+    if st.st_uid != os.getuid():
+        raise PermissionError("File must be owned by the current user")
+
+
+def _validate_owner_and_permissions(filepath: str) -> None:
+    _validate_owner(filepath)
+    st = os.stat(filepath)
+    if (st.st_mode & 0o777) != 0o600:
+        raise PermissionError("Permissions must be 600")
 
 
 @contextmanager
@@ -88,7 +127,7 @@ def _depatch_user_const(code: types.CodeType):
 
 
 class CompiledModel:
-    VERSION = "1.0.1"
+    VERSION = "1.0.2"
     FILE = "compiled_module"
 
     def __init__(self, meta: Union[ModelCacheMeta, types.FunctionType, types.MethodType]):
@@ -120,24 +159,26 @@ class CompiledModel:
                 return
         artifacts = ModelCacheArtifact(meta=self.meta, compiled_fn=serialized_fn, compiled_fx=self.compiled_fx)
 
-        cache_bin = os.path.abspath(cache_bin)
+        cache_bin = os.path.realpath(cache_bin)
         os.makedirs(os.path.dirname(cache_bin), exist_ok=True)
         with open(cache_bin, "wb") as f:
             with file_lock(f, fcntl.LOCK_EX):
                 pickle.dump(artifacts, f)
-                os.chmod(f.fileno(), 0o644)
+                os.chmod(f.fileno(), 0o600)
 
         logger.info(f"Cache {self.meta} saved to {cache_bin}")
 
     @classmethod
     def load(cls, cache_bin: str):
-        cache_bin = os.path.abspath(cache_bin)
+        cache_bin = os.path.realpath(cache_bin)
         if not os.path.exists(cache_bin):
             raise ValueError(f"Cache file {cache_bin} is not exists")
 
+        _validate_owner_and_permissions(cache_bin)
+
         with open(cache_bin, "rb") as f, timer(f"load cache from {cache_bin}"):
             with file_lock(f, fcntl.LOCK_SH):
-                artifacts: ModelCacheArtifact = pickle.load(f)
+                artifacts: ModelCacheArtifact = _StrictModelUnpickler(f).load()
 
         model = cls(artifacts.meta)
         if model.meta.version != cls.VERSION:
@@ -179,7 +220,7 @@ class CompiledModel:
             suffixes += ['gecache']
         suffixes += [str(md5)]
         cache_bin = os.path.join(cache_dir, '_'.join(suffixes), dist_dir, func.__name__, CompiledModel.FILE)
-        return os.path.abspath(cache_bin)
+        return os.path.realpath(cache_bin)
 
     def recompile(self, config: CompilerConfig):
         raise RuntimeError(f"Recompile {self} is not supported yet")
@@ -257,14 +298,14 @@ class CompiledModel:
         if print_output:
             print('\n'.join(readable_str))
         if file:
-            abs_file = os.path.abspath(file)
+            abs_file = os.path.realpath(file)
             os.makedirs(os.path.dirname(abs_file), exist_ok=True)
             with open(file, 'w') as f:
                 comments = '\n'.join(readable_str).split('\n')
                 f.write('\n'.join([f'# {c}' for c in comments]))
                 f.write('\n')
                 f.write(self.compiled_fx.py_code)
-                os.chmod(f.fileno(), 0o755)
+                os.chmod(f.fileno(), 0o600)
         return '\n'.join(readable_str)
 
 
@@ -333,7 +374,7 @@ class CacheBackend:
             return py_code
 
         # need to create ge cache dir
-        ge_cache_dir = os.path.dirname(os.path.abspath(self.saver.cache_bin))
+        ge_cache_dir = os.path.dirname(os.path.realpath(self.saver.cache_bin))
         os.makedirs(ge_cache_dir, exist_ok=True)
         self.saver.save_compiled_fx(gm, example_inputs, self.config, py_code)
         with timer(f"{self.saver.name} compile ge graph"):
@@ -355,7 +396,7 @@ class ModelCacheSaver:
         self.func = func
         self.model: Optional[torch.nn.Module] = None if isinstance(func, types.FunctionType) else func.__self__
         self.cache_bin = cache_bin
-        self.cache_dir = os.path.abspath(os.path.dirname(cache_bin))
+        self.cache_dir = os.path.realpath(os.path.dirname(cache_bin))
         self.compiled_model = CompiledModel(func)
         self.name = self.compiled_model.name
         extend_config = {"ge.graph_compiler_cache_dir": self.cache_dir, "ge.graph_key": "ge_cache"} if ge_cache else {}
@@ -494,10 +535,10 @@ class LazyCompiledModel:
                     compiled_model.recompile(self.config)
                 model = self.func.__self__ if isinstance(self.func, types.MethodType) else None
                 return compiled_model.rebase(model, global_vars, closure=self.func.__closure__,
-                                             cache_dir=os.path.abspath(os.path.dirname(cache_bin)))
+                                             cache_dir=os.path.realpath(os.path.dirname(cache_bin)))
             except Exception as e:
                 logger.warning(f'Clear broken cache {cache_bin} as {e}')
-                ModelCacheSaver.remove_cache(os.path.abspath(os.path.dirname(cache_bin)))
+                ModelCacheSaver.remove_cache(os.path.realpath(os.path.dirname(cache_bin)))
 
         logger.info(f'Compiling cache for {self.func} to {cache_bin}')
         return ModelCacheSaver(self.func, cache_bin, config=self.config, dynamic=self.dynamic,
@@ -523,6 +564,12 @@ def cache_compile(func, *, config: Optional[CompilerConfig] = None, dynamic: boo
     if ge_cache and config is not None and config.experimental_config.frozen_parameter:
         raise ValueError("ge_cache and experimental_config.frozen_parameter cannot be enabled at the same time. "
                          "Please disable one of them.")
+
+    if cache_dir is not None:
+        try:
+            _validate_owner(cache_dir)
+        except PermissionError as e:
+            raise ValueError(f"Cache dir {cache_dir} must be owned by the current user ") from e
 
     # Lazy trigger cache load and determine the cache directory by distributed global_rank
     return LazyCompiledModel(func, config=config, dynamic=dynamic, cache_dir=cache_dir, global_rank=global_rank,
@@ -553,7 +600,7 @@ class _NoGuardCompiled:
         if not self._ready:
             raise RuntimeError("NoGuardFunctionCacheSaver must be called with for_inputs before save_to")
 
-        cache_file = os.path.abspath(cache_file)
+        cache_file = os.path.realpath(cache_file)
         if os.path.exists(cache_file):
             raise ValueError(f"Cache file {cache_file} is already exists")
 
@@ -583,7 +630,7 @@ class _NoGuardCompiledFunction(_NoGuardCompiled):
 
     @classmethod
     def load(cls, cache_bin):
-        cache_bin = os.path.abspath(cache_bin)
+        cache_bin = os.path.realpath(cache_bin)
         if not os.path.exists(cache_bin):
             raise ValueError(f"Cache file {cache_bin} is not exists")
         return CompiledModel.load(cache_bin).rebase(None, global_vars=inspect.currentframe().f_back.f_globals)
@@ -597,16 +644,28 @@ class _NoGuardCompiledMethod(_NoGuardCompiled):
 
     @classmethod
     def load(cls, cache_bin, *, self):
-        cache_bin = os.path.abspath(cache_bin)
+        cache_bin = os.path.realpath(cache_bin)
         if not os.path.exists(cache_bin):
             raise ValueError(f"Cache file {cache_bin} is not exists")
         return CompiledModel.load(cache_bin).rebase(self, global_vars=inspect.currentframe().f_back.f_globals)
 
 
 def readable_cache(cache_bin, print_output=True, file=None):
-    cache_bin = os.path.abspath(cache_bin)
     if not os.path.exists(cache_bin):
         raise ValueError(f"Cache file {cache_bin} is not exists")
 
+    if os.path.islink(cache_bin):
+        raise ValueError(f"Cache file {cache_bin} can not be a symlink")
+
     model = CompiledModel.load(cache_bin)
+
+    if file is None:
+        return model.readable(print_output)
+
+    if os.path.islink(file):
+        raise ValueError(f"Output file {file} can not be a symlink")
+
+    if os.path.exists(file):
+        _validate_owner_and_permissions(file)
+
     return model.readable(print_output, file)
