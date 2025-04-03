@@ -79071,3 +79071,67 @@ def DequantSwigluQuant(x: Tensor,
     scale = Tensor(op, output_index)
     output_index += 1
     return y, scale
+
+@auto_convert_to_tensor([False, False, False], [False, False, True])
+def MoeReRouting(tokens: Tensor,
+                expert_token_num_per_rank: Tensor,
+                *,
+                per_token_scales: Optional[Tensor],
+                expert_token_num_type: int = 1,
+                idx_type: int = 0,
+                dependencies=[], node_name=None):
+    """REG_OP(MoeReRouting)\n
+    .INPUT(tokens, TensorType({DT_FLOAT16, DT_INT8}))\n
+    .INPUT(expert_token_num_per_rank, TensorType({DT_INT32, DT_INT64}))\n
+    .OPTIONAL_INPUT(per_token_scales, TensorType({DT_FLOAT}))\n
+    .OUTPUT(permute_tokens, TensorType({DT_FLOAT16, DT_INT8}))\n
+    .OUTPUT(permute_per_token_scales, TensorType({DT_FLOAT}))\n
+    .OUTPUT(permute_token_idx, TensorType({DT_INT32}))\n
+    .OUTPUT(expert_token_num, TensorType({DT_INT32, DT_INT64}))\n
+    .ATTR(expert_token_num_type, Int, 1)\n
+    .ATTR(idx_type, Int, 0)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "MoeReRouting"
+    op.name = next_unique_name(node_name, "MoeReRouting")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(tokens.tensor)
+    op.input_desc.add().CopyFrom(tokens.desc)
+    op.input_desc[-1].name = "tokens"
+    op.input.append(expert_token_num_per_rank.tensor)
+    op.input_desc.add().CopyFrom(expert_token_num_per_rank.desc)
+    op.input_desc[-1].name = "expert_token_num_per_rank"
+    if per_token_scales is not None:
+        op.input.append(per_token_scales.tensor)
+        op.input_desc.add().CopyFrom(per_token_scales.desc)
+        op.input_desc[-1].name = "per_token_scales"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "per_token_scales"
+    
+    # process attrs
+    op.attr["expert_token_num_type"].i = expert_token_num_type
+    op.attr["idx_type"].i = idx_type
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "permute_tokens"
+    permute_tokens = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "permute_per_token_scales"
+    permute_per_token_scales = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "permute_token_idx"
+    permute_token_idx = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "expert_token_num"
+    expert_token_num = Tensor(op, output_index)
+    output_index += 1
+    return permute_tokens, permute_per_token_scales, permute_token_idx, expert_token_num
