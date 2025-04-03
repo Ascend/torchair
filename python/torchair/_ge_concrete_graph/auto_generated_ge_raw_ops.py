@@ -78802,24 +78802,36 @@ def KvRmsNormRopeCache(kv: Tensor,
                        sin: Tensor,
                        index: Tensor,
                        k_cache: Tensor,
-                       v_cache: Tensor,
+                       ckv_cache: Tensor,
                        *,
+                       k_rope_scale: Optional[Tensor] = None,
+                       c_kv_scale: Optional[Tensor] = None,
+                       k_rope_offset: Optional[Tensor] = None,
+                       c_kv_offset: Optional[Tensor] = None,
                        epsilon: float = 1e-5,
                        cache_mode: str = 'Norm',
+                       is_output_kv: bool = False,
                        dependencies=[],
                        node_name=None):
     """REG_OP(KvRmsNormRopeCache)\n
-    .INPUT(kv, TensorType({DT_FLOAT16}))\n
-    .INPUT(gamma, TensorType({DT_FLOAT16}))\n
-    .INPUT(cos, TensorType({DT_FLOAT16}))\n
-    .INPUT(sin, TensorType({DT_FLOAT16}))\n
+    .INPUT(kv, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .INPUT(gamma, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .INPUT(cos, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .INPUT(sin, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
     .INPUT(index, TensorType({DT_INT64}))\n
-    .INPUT(k_cache, TensorType({DT_FLOAT16}))\n
-    .INPUT(v_cache, TensorType({DT_FLOAT16}))\n
-    .OUTPUT(k_cache, TensorType({DT_FLOAT16}))\n
-    .OUTPUT(v_cache, TensorType({DT_FLOAT16}))\n
+    .INPUT(k_cache, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16, DT_INT8}))\n
+    .INPUT(ckv_cache, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16, DT_INT8}))\n
+    .OPTIONAL_INPUT(k_rope_scale, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(c_kv_scale, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(k_rope_offset, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(c_kv_offset, TensorType({DT_FLOAT}))\n
+    .OUTPUT(k_cache, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16, DT_INT8}))\n
+    .OUTPUT(ckv_cache, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16, DT_INT8}))\n
+    .OUTPUT(k_rope, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(c_kv, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
     .ATTR(epsilon, Float, 1e-5)\n
     .ATTR(cache_mode, String, 'Norm')\n
+    .ATTR(is_output_kv, Bool, false)\n
     .OP_END_FACTORY_REG(KvRmsNormRopeCache)\n
     """
 
@@ -78856,24 +78868,67 @@ def KvRmsNormRopeCache(kv: Tensor,
     op.input_desc.add().CopyFrom(k_cache.desc)
     op.input_desc[-1].name = "k_cache"
 
-    op.input.append(v_cache.tensor)
-    op.input_desc.add().CopyFrom(v_cache.desc)
-    op.input_desc[-1].name = "v_cache"
+    op.input.append(ckv_cache.tensor)
+    op.input_desc.add().CopyFrom(ckv_cache.desc)
+    op.input_desc[-1].name = "ckv_cache"
+
+    if k_rope_scale is not None:
+        op.input.append(k_rope_scale.tensor)
+        op.input_desc.add().CopyFrom(k_rope_scale.desc)
+        op.input_desc[-1].name = "k_rope_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "k_rope_scale"
+
+    if c_kv_scale is not None:
+        op.input.append(c_kv_scale.tensor)
+        op.input_desc.add().CopyFrom(c_kv_scale.desc)
+        op.input_desc[-1].name = "c_kv_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "c_kv_scale"
+
+    if k_rope_offset is not None:
+        op.input.append(k_rope_offset.tensor)
+        op.input_desc.add().CopyFrom(k_rope_offset.desc)
+        op.input_desc[-1].name = "k_rope_offset"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "k_rope_offset"
+
+    if c_kv_offset is not None:
+        op.input.append(c_kv_offset.tensor)
+        op.input_desc.add().CopyFrom(c_kv_offset.desc)
+        op.input_desc[-1].name = "c_kv_offset"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "c_kv_offset"
 
     # process attrs
     op.attr["epsilon"].f = epsilon
     op.attr["cache_mode"].s = compat_as_bytes(cache_mode)
+    op.attr["is_output_kv"].b = is_output_kv
 
     # process outputs
     output_index = 0
     op.output_desc.add().name = "k_cache"
     k_cache = Tensor(op, output_index)
     output_index += 1
-    op.output_desc.add().name = "v_cache"
-    v_cache = Tensor(op, output_index)
+    op.output_desc.add().name = "ckv_cache"
+    ckv_cache = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "k_rope"
+    k_rope = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "c_kv"
+    c_kv = Tensor(op, output_index)
     output_index += 1
 
-    return k_cache, v_cache
+    return k_cache, ckv_cache, k_rope, c_kv
 
 
 # This api is auto-generated from IR SingleRope
