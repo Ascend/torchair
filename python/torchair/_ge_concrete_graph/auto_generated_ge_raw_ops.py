@@ -79075,11 +79075,12 @@ def DequantSwigluQuant(x: Tensor,
 @auto_convert_to_tensor([False, False, False], [False, False, True])
 def MoeReRouting(tokens: Tensor,
                 expert_token_num_per_rank: Tensor,
-                *,
                 per_token_scales: Optional[Tensor],
+                *,
                 expert_token_num_type: int = 1,
                 idx_type: int = 0,
-                dependencies=[], node_name=None):
+                dependencies=[],
+                node_name=None):
     """REG_OP(MoeReRouting)\n
     .INPUT(tokens, TensorType({DT_FLOAT16, DT_INT8}))\n
     .INPUT(expert_token_num_per_rank, TensorType({DT_INT32, DT_INT64}))\n
