@@ -399,7 +399,7 @@ class ModelCacheSaver:
         self.cache_dir = os.path.realpath(os.path.dirname(cache_bin))
         self.compiled_model = CompiledModel(func)
         self.name = self.compiled_model.name
-        extend_config = {"ge.graph_compiler_cache_dir": self.cache_dir, "ge.graph_key": "ge_cache"} if ge_cache else {}
+        extend_config = {"ge.graph_compiler_cache_dir": self.cache_dir} if ge_cache else {}
         cache_backend = CacheBackend(config, self, decompositions=decompositions, extend_config=extend_config)
         self.compiled_func = torch.compile(func, backend=cache_backend, fullgraph=True, dynamic=dynamic)
 
