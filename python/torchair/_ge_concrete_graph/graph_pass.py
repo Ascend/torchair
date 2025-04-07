@@ -344,7 +344,7 @@ def remove_dead_data_and_reorder_data_index(graph: GraphDef):
     return saved_inputs_info
 
 
-_SIDE_EFFECT_OPS = {"PrintV2", "KvRmsNormRopeCache"}
+_SIDE_EFFECT_OPS = {"PrintV2"}
 
 
 def explict_order_for_side_effect_nodes(graph: GeGraph, graph_output_ref_input=None):

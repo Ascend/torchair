@@ -77866,6 +77866,108 @@ def MoeInitRouting(x: Tensor,
     # return outputs
     return expanded_x, expanded_row_idx, expanded_expert_idx
 
+
+# This api is auto-generated from IR MoeInitRoutingV3
+@auto_convert_to_tensor([False, False, False, False], [False, False, True, True])
+def MoeInitRoutingV3(x: Tensor,
+                    expert_idx: Tensor,
+                    scale: Optional[Tensor],
+                    offset: Optional[Tensor],
+                    *,
+                    active_num: int,
+                    expert_capacity: int,
+                    expert_num: int,
+                    drop_pad_mode: int,
+                    expert_tokens_num_type: int,
+                    expert_tokens_num_flag: bool,
+                    quant_mode: int,
+                    active_expert_range: List[int],
+                    row_idx_type: int,
+                    dependencies=[],
+                    node_name=None
+                    ):
+    """ REG_OP(MoeInitRoutingV3)\n
+    .INPUT(x, TensorType({DT_INT8, DT_FLOAT16, DT_FLOAT, DT_BF16}))\n
+    .INPUT(expert_idx, TensorType({DT_INT32}))\n
+    .OPTIONAL_INPUT(scale, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))\n
+    .OUTPUT(expanded_x, TensorType({DT_INT8, DT_FLOAT16, DT_FLOAT, DT_BF16}))\n
+    .OUTPUT(expanded_row_idx, TensorType({DT_INT32}))\n
+    .OUTPUT(expert_tokens_count_or_cumsum, TensorType({DT_INT64}))\n
+    .OUTPUT(expanded_scale, TensorType({DT_FLOAT}))\n
+    .ATTR(active_num, Int, -1)\n
+    .ATTR(expert_capacity, Int, -1)\n
+    .ATTR(expert_num, Int, -1)\n
+    .ATTR(drop_pad_mode, Int, 0)\n
+    .ATTR(expert_tokens_num_type, Int, 0)\n
+    .ATTR(expert_tokens_num_flag, Bool, false)\n
+    .ATTR(quant_mode, Int, -1)\n
+    .ATTR(active_expert_range, ListInt, {})\n
+    .ATTR(row_idx_type, Int, 0)\n
+    .OP_END_FACTORY_REG(MoeInitRoutingV3)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "MoeInitRoutingV3"
+    op.name = next_unique_name(node_name, "MoeInitRoutingV3")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+    op.input.append(expert_idx.tensor)
+    op.input_desc.add().CopyFrom(expert_idx.desc)
+    op.input_desc[-1].name = "expert_idx"
+    if scale is not None:
+        op.input.append(scale.tensor)
+        op.input_desc.add().CopyFrom(scale.desc)
+        op.input_desc[-1].name = "scale"
+    else:
+        op.input.append("")
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "scale"
+    if offset is not None:
+        op.input.append(offset.tensor)
+        op.input_desc.add().CopyFrom(offset.desc)
+        op.input_desc[-1].name = "offset"
+    else:
+        op.input.append("")
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "offset"
+
+    # process attrs
+    op.attr["active_num"].i = active_num
+    op.attr["expert_capacity"].i = expert_capacity
+    op.attr["expert_num"].i = expert_num
+    op.attr["drop_pad_mode"].i = drop_pad_mode
+    op.attr["expert_tokens_num_type"].i = expert_tokens_num_type
+    op.attr["expert_tokens_num_flag"].b = expert_tokens_num_flag
+    op.attr["quant_mode"].i = quant_mode
+    op.attr["active_expert_range"].list.val_type = 2
+    op.attr["active_expert_range"].list.i.extend(active_expert_range)
+    op.attr["row_idx_type"].i = row_idx_type
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "expanded_x"
+    expanded_x = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "expanded_row_idx"
+    expanded_row_idx = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "expert_tokens_count_or_cumsum"
+    expert_tokens_count_or_cumsum = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "expanded_scale"
+    expanded_scale = Tensor(op, output_index)
+
+    return expanded_x, expanded_row_idx, expert_tokens_count_or_cumsum, expanded_scale
+
+
 # This api is auto-generated from IR MoeGatingTopKSoftmax
 @auto_convert_to_tensor([False, False], [False, True])
 def MoeGatingTopKSoftmax(x: Tensor,
@@ -78700,24 +78802,36 @@ def KvRmsNormRopeCache(kv: Tensor,
                        sin: Tensor,
                        index: Tensor,
                        k_cache: Tensor,
-                       v_cache: Tensor,
+                       ckv_cache: Tensor,
                        *,
+                       k_rope_scale: Optional[Tensor] = None,
+                       c_kv_scale: Optional[Tensor] = None,
+                       k_rope_offset: Optional[Tensor] = None,
+                       c_kv_offset: Optional[Tensor] = None,
                        epsilon: float = 1e-5,
                        cache_mode: str = 'Norm',
+                       is_output_kv: bool = False,
                        dependencies=[],
                        node_name=None):
     """REG_OP(KvRmsNormRopeCache)\n
-    .INPUT(kv, TensorType({DT_FLOAT16}))\n
-    .INPUT(gamma, TensorType({DT_FLOAT16}))\n
-    .INPUT(cos, TensorType({DT_FLOAT16}))\n
-    .INPUT(sin, TensorType({DT_FLOAT16}))\n
+    .INPUT(kv, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .INPUT(gamma, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .INPUT(cos, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .INPUT(sin, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
     .INPUT(index, TensorType({DT_INT64}))\n
-    .INPUT(k_cache, TensorType({DT_FLOAT16}))\n
-    .INPUT(v_cache, TensorType({DT_FLOAT16}))\n
-    .OUTPUT(k_cache, TensorType({DT_FLOAT16}))\n
-    .OUTPUT(v_cache, TensorType({DT_FLOAT16}))\n
+    .INPUT(k_cache, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16, DT_INT8}))\n
+    .INPUT(ckv_cache, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16, DT_INT8}))\n
+    .OPTIONAL_INPUT(k_rope_scale, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(c_kv_scale, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(k_rope_offset, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(c_kv_offset, TensorType({DT_FLOAT}))\n
+    .OUTPUT(k_cache, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16, DT_INT8}))\n
+    .OUTPUT(ckv_cache, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16, DT_INT8}))\n
+    .OUTPUT(k_rope, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(c_kv, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
     .ATTR(epsilon, Float, 1e-5)\n
     .ATTR(cache_mode, String, 'Norm')\n
+    .ATTR(is_output_kv, Bool, false)\n
     .OP_END_FACTORY_REG(KvRmsNormRopeCache)\n
     """
 
@@ -78754,30 +78868,73 @@ def KvRmsNormRopeCache(kv: Tensor,
     op.input_desc.add().CopyFrom(k_cache.desc)
     op.input_desc[-1].name = "k_cache"
 
-    op.input.append(v_cache.tensor)
-    op.input_desc.add().CopyFrom(v_cache.desc)
-    op.input_desc[-1].name = "v_cache"
+    op.input.append(ckv_cache.tensor)
+    op.input_desc.add().CopyFrom(ckv_cache.desc)
+    op.input_desc[-1].name = "ckv_cache"
+
+    if k_rope_scale is not None:
+        op.input.append(k_rope_scale.tensor)
+        op.input_desc.add().CopyFrom(k_rope_scale.desc)
+        op.input_desc[-1].name = "k_rope_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "k_rope_scale"
+
+    if c_kv_scale is not None:
+        op.input.append(c_kv_scale.tensor)
+        op.input_desc.add().CopyFrom(c_kv_scale.desc)
+        op.input_desc[-1].name = "c_kv_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "c_kv_scale"
+
+    if k_rope_offset is not None:
+        op.input.append(k_rope_offset.tensor)
+        op.input_desc.add().CopyFrom(k_rope_offset.desc)
+        op.input_desc[-1].name = "k_rope_offset"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "k_rope_offset"
+
+    if c_kv_offset is not None:
+        op.input.append(c_kv_offset.tensor)
+        op.input_desc.add().CopyFrom(c_kv_offset.desc)
+        op.input_desc[-1].name = "c_kv_offset"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "c_kv_offset"
 
     # process attrs
     op.attr["epsilon"].f = epsilon
     op.attr["cache_mode"].s = compat_as_bytes(cache_mode)
+    op.attr["is_output_kv"].b = is_output_kv
 
     # process outputs
     output_index = 0
     op.output_desc.add().name = "k_cache"
     k_cache = Tensor(op, output_index)
     output_index += 1
-    op.output_desc.add().name = "v_cache"
-    v_cache = Tensor(op, output_index)
+    op.output_desc.add().name = "ckv_cache"
+    ckv_cache = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "k_rope"
+    k_rope = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "c_kv"
+    c_kv = Tensor(op, output_index)
     output_index += 1
 
-    return k_cache, v_cache
+    return k_cache, ckv_cache, k_rope, c_kv
 
 
-# This api is auto-generated from IR SingleRope
+# This api is auto-generated from IR InterleaveRope
 @auto_convert_to_tensor([False, False, False], [False, False, False])
-def SingleRope(x: Tensor, cos: Tensor, sin: Tensor, *, dependencies=[], node_name=None):
-    """REG_OP(SingleRope)\n
+def InterleaveRope(x: Tensor, cos: Tensor, sin: Tensor, *, dependencies=[], node_name=None):
+    """REG_OP(InterleaveRope)\n
     .INPUT(x, TensorType({DT_FLOAT16}))\n
     .INPUT(cos, TensorType({DT_FLOAT16}))\n
     .INPUT(sin, TensorType({DT_FLOAT16}))\n
@@ -78785,8 +78942,8 @@ def SingleRope(x: Tensor, cos: Tensor, sin: Tensor, *, dependencies=[], node_nam
     """
 
     op = get_default_ge_graph().op.add()
-    op.type = "SingleRope"
-    op.name = next_unique_name(node_name, "SingleRope")
+    op.type = "InterleaveRope"
+    op.name = next_unique_name(node_name, "InterleaveRope")
 
     # process dependices
     for dependency in dependencies:
@@ -78914,3 +79071,68 @@ def DequantSwigluQuant(x: Tensor,
     scale = Tensor(op, output_index)
     output_index += 1
     return y, scale
+
+@auto_convert_to_tensor([False, False, False], [False, False, True])
+def MoeReRouting(tokens: Tensor,
+                expert_token_num_per_rank: Tensor,
+                per_token_scales: Optional[Tensor],
+                *,
+                expert_token_num_type: int = 1,
+                idx_type: int = 0,
+                dependencies=[],
+                node_name=None):
+    """REG_OP(MoeReRouting)\n
+    .INPUT(tokens, TensorType({DT_FLOAT16, DT_INT8}))\n
+    .INPUT(expert_token_num_per_rank, TensorType({DT_INT32, DT_INT64}))\n
+    .OPTIONAL_INPUT(per_token_scales, TensorType({DT_FLOAT}))\n
+    .OUTPUT(permute_tokens, TensorType({DT_FLOAT16, DT_INT8}))\n
+    .OUTPUT(permute_per_token_scales, TensorType({DT_FLOAT}))\n
+    .OUTPUT(permute_token_idx, TensorType({DT_INT32}))\n
+    .OUTPUT(expert_token_num, TensorType({DT_INT32, DT_INT64}))\n
+    .ATTR(expert_token_num_type, Int, 1)\n
+    .ATTR(idx_type, Int, 0)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "MoeReRouting"
+    op.name = next_unique_name(node_name, "MoeReRouting")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(tokens.tensor)
+    op.input_desc.add().CopyFrom(tokens.desc)
+    op.input_desc[-1].name = "tokens"
+    op.input.append(expert_token_num_per_rank.tensor)
+    op.input_desc.add().CopyFrom(expert_token_num_per_rank.desc)
+    op.input_desc[-1].name = "expert_token_num_per_rank"
+    if per_token_scales is not None:
+        op.input.append(per_token_scales.tensor)
+        op.input_desc.add().CopyFrom(per_token_scales.desc)
+        op.input_desc[-1].name = "per_token_scales"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "per_token_scales"
+    
+    # process attrs
+    op.attr["expert_token_num_type"].i = expert_token_num_type
+    op.attr["idx_type"].i = idx_type
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "permute_tokens"
+    permute_tokens = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "permute_per_token_scales"
+    permute_per_token_scales = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "permute_token_idx"
+    permute_token_idx = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "expert_token_num"
+    expert_token_num = Tensor(op, output_index)
+    output_index += 1
+    return permute_tokens, permute_per_token_scales, permute_token_idx, expert_token_num

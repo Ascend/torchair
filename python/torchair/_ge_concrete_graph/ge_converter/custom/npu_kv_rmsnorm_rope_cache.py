@@ -24,8 +24,7 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
     U8, BOOL, Support
 from torchair._ge_concrete_graph.utils import dtype_promote
 
-
-@register_fx_node_ge_converter(torch.ops.npu_inference.npu_kv_rmsnorm_rope_cache.default)
+@register_fx_node_ge_converter(torch.ops.npu.npu_kv_rmsnorm_rope_cache.default)
 def conveter_npu_kv_rmsnorm_rope_cache_default(
     kv: Tensor,
     gamma: Tensor,
@@ -43,6 +42,7 @@ def conveter_npu_kv_rmsnorm_rope_cache_default(
     cache_mode: str = 'Norm',
     is_output_kv: bool = False,
     meta_outputs: List[TensorSpec] = None
+
 ):
     return ge.KvRmsNormRopeCache(kv, gamma, cos, sin, index, k_cache, ckv_cache,
                                  k_rope_scale=k_rope_scale, c_kv_scale=c_kv_scale,

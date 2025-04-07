@@ -13,8 +13,9 @@ m.define("npu_moe_gating_top_k(Tensor x, int k, *, Tensor? bias=None, int k_grou
          bool out_flag=False, float routed_scaling_factor=1.0, float eps=1e-20) \
          -> (Tensor, Tensor, Tensor)")
 m.define("npu_kv_rmsnorm_rope_cache(Tensor kv, Tensor gamma, Tensor cos, Tensor sin, \
-          Tensor index, Tensor k_cache, Tensor v_cache, float epsilon=1e-5, \
-          str cache_mode='Norm') -> (Tensor, Tensor)")
+          Tensor index, Tensor k_cache, Tensor ckv_cache, *, Tensor? k_rope_scale=None, \
+          Tensor? c_kv_scale=None, Tensor? k_rope_offset=None, Tensor? c_kv_offset=None, \
+          float epsilon=1e-5, str cache_mode='Norm', bool is_output_kv=False) -> (Tensor, Tensor, Tensor, Tensor)")
 m.define("npu_interleave_rope(Tensor x, Tensor cos, Tensor sin) -> Tensor")
 m.define("npu_dequant_swiglu_quant(Tensor x, Tensor? weight_scale, Tensor? activate_scale, \
           Tensor? bias, Tensor? quant_scale, Tensor? quant_offset, Tensor? group_index, \
@@ -72,8 +73,25 @@ def npu_moe_gating_top_k(x, k, *, bias=None, k_group=1, group_count=1, group_sel
 
 
 @impl(m, "npu_kv_rmsnorm_rope_cache", "Meta")
-def npu_kv_rmsnorm_rope_cache_meta(kv, gamma, cos, sin, index, k_cache, v_cache, epsilon=1e-5, cache_mode='Norm'):
-    return torch.empty_like(k_cache), torch.empty_like(v_cache)
+def npu_kv_rmsnorm_rope_cache_meta(kv, gamma, cos, sin, index, k_cache, ckv_cache, *, k_rope_scale=None,
+                                   c_kv_scale=None, k_rope_offset=None, c_kv_offset=None, epsilon=1e-5,
+                                   cache_mode='Norm', is_output_kv=False):
+    if kv.dim() != 4:
+        raise RuntimeError("4D tensor expected for input kv" + ops_error(ErrCode.PARAM))
+    if gamma.dim() != 1:
+        raise RuntimeError("1D tensor expected for input gamma" + ops_error(ErrCode.PARAM))
+    if cos.dim() != 4:
+        raise RuntimeError("4D tensor expected for input cos" + ops_error(ErrCode.PARAM))
+    k_rope_size = []
+    c_kv_size = []
+    for i in range(kv.dim() - 1):
+        k_rope_size.append(kv.size(i))
+        c_kv_size.append(kv.size(i))
+    k_rope_size.append(cos.size(3))
+    c_kv_size.append(gamma.size(0))
+    return (torch.empty_like(k_cache), torch.empty_like(ckv_cache),
+            torch.empty(k_rope_size, dtype=kv.dtype, device=kv.device),
+            torch.empty(c_kv_size, dtype=kv.dtype, device=kv.device))
 
 
 @impl(m, "npu_interleave_rope", "Meta")
