@@ -37,4 +37,4 @@ def conveter_npu_moe_re_routing_default(
         meta_outputs: List[TensorSpec] = None):
     return ge.MoeReRouting(tokens, expert_token_num_per_rank, per_token_scales,
                            expert_token_num_type=expert_token_num_type,
-                           meta_outputs=meta_outputs)
+                           idx_type=idx_type)
