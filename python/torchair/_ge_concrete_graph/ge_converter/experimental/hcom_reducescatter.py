@@ -6,7 +6,7 @@ from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
 from torchair._ge_concrete_graph.hcom_utils import get_group_name_and_record
 from torchair._ge_concrete_graph.utils import dtype_promote, normalize_reduceop_type
-from torchair.ge._ge_graph import Tensor, DataType
+from torchair.ge._ge_graph import Tensor, DataType, dont_prune_me
 
 from .hcom_allreduce import npu_define_lib, convert_reduce_op
 
@@ -49,9 +49,12 @@ def convert_reduce_scatter_tensor_uneven(
                                                                 send_displacements, recv_count,
                                                                 target_dtype=DataType.DT_INT64)
     group_name = get_group_name_and_record(tag, rank_list, group_size)
-    return ge.HcomReduceScatterV(input_tensor, send_counts=send_counts, send_displacements=send_displacements,
-                                 reduction=normalize_reduceop_type(reduce_type), recv_count=recv_count,
-                                 group=group_name)
+    op = ge.HcomReduceScatterV(input_tensor, send_counts=send_counts, send_displacements=send_displacements,
+                               reduction=normalize_reduceop_type(reduce_type), recv_count=recv_count,
+                               group=group_name)
+    # send_counts could be 0
+    dont_prune_me(op)
+    return op
 
 
 def npu_reduce_scatter_tensor_uneven_patch_dist(
