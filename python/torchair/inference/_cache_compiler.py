@@ -561,10 +561,6 @@ def cache_compile(func, *, config: Optional[CompilerConfig] = None, dynamic: boo
     if not isinstance(func.__self__, torch.nn.Module):
         raise ValueError(f"Only torch.nn.Module method can be cached now, got {func}")
 
-    if ge_cache and config is not None and config.experimental_config.frozen_parameter:
-        raise ValueError("ge_cache and experimental_config.frozen_parameter cannot be enabled at the same time. "
-                         "Please disable one of them.")
-
     if cache_dir is not None:
         try:
             _validate_owner(cache_dir)
