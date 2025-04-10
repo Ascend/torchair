@@ -40,6 +40,7 @@ from torchair.inference._gear_utils import get_dim_gears, set_dim_gears, guard_g
 
 
 aten = torch.ops.aten
+_not_do_make_real_tensor_like = ['npu_define.reduce_scatter_tensor_uneven.default']
 
 
 def _unpack_meta_list(args):
@@ -187,7 +188,8 @@ class _NpuGraphConverter(Interpreter):
             with fake_mode:
                 meta_outputs = func(target, args_meta, kwargs_meta)
             args_npu, kwargs_npu = self._unpack_npu(args, kwargs)
-            if all([_is_zero_element_tensor(t) for t in _flatten_meta_outputs(meta_outputs)]):
+            if all([_is_zero_element_tensor(t) for t in _flatten_meta_outputs(meta_outputs)]) \
+               and (str(target) not in _not_do_make_real_tensor_like):
                 npu_outputs = _make_real_tensor_like(meta_outputs)
             else:
                 npu_outputs = self._graph.parse_node(target, args_npu, kwargs_npu, meta_outputs)
