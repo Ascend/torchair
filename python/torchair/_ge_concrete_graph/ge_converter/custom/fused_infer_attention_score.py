@@ -67,6 +67,7 @@ def convert_npu_npu_fused_infer_attention_score(
     actual_shared_prefix_len: Optional[Union[List[int], Tensor]] = None,
     query_rope: Optional[Tensor] = None,
     key_rope: Optional[Tensor] = None,
+    key_rope_antiquant_scale: Optional[Tensor] = None,
     num_heads: int = 1,
     scale: float = 1.0,
     pre_tokens: int = 2147483647,
@@ -119,7 +120,6 @@ def convert_npu_npu_fused_infer_attention_score(
         actual_seq_lengths_kv = dtype_promote(actual_seq_lengths_kv, target_dtype=DataType.DT_INT64)
     if actual_shared_prefix_len is not None:
         actual_shared_prefix_len = dtype_promote(actual_shared_prefix_len, target_dtype=DataType.DT_INT64)
-
     return ge.FusedInferAttentionScore(query, key_list, value_list, pse_shift=pse_shift, atten_mask=atten_mask,
         actual_seq_lengths=actual_seq_lengths, actual_seq_lengths_kv=actual_seq_lengths_kv,
         dequant_scale1=dequant_scale1, quant_scale1=quant_scale1, dequant_scale2=dequant_scale2,
@@ -129,7 +129,7 @@ def convert_npu_npu_fused_infer_attention_score(
         key_antiquant_offset=key_antiquant_offset, value_antiquant_scale=value_antiquant_scale,
         value_antiquant_offset=value_antiquant_offset, key_shared_prefix=key_shared_prefix,
         value_shared_prefix=value_shared_prefix, actual_shared_prefix_len=actual_shared_prefix_len,
-        query_rope=query_rope, key_rope=key_rope,
+        query_rope=query_rope, key_rope=key_rope, key_rope_antiquant_scale=key_rope_antiquant_scale,
         num_heads=num_heads, scale=scale,
         pre_tokens=pre_tokens, next_tokens=next_tokens, input_layout=input_layout,
         num_key_value_heads=num_key_value_heads, sparse_mode=sparse_mode, inner_precise=inner_precise,
