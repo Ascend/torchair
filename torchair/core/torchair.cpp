@@ -73,6 +73,26 @@ tng::Status ParseListTensors(PyObject *obj, std::vector<at::Tensor> &tensors) {
   }
   return tng::Status::Success();
 }
+
+tng::Status ParseListTensors(PyObject *obj, std::vector<const at::Tensor*> &tensors) {
+  auto tuple = six::isTuple(obj);
+  if (!(tuple || PyList_Check(obj))) {
+    return tng::Status::Error("not a list or tuple");
+  }
+  const auto size = tuple ? PyTuple_GET_SIZE(obj) : PyList_GET_SIZE(obj);
+  tensors.reserve(size);
+  for (long idx = 0; idx < size; idx++) {
+    PyObject *iobj = tuple ? PyTuple_GET_ITEM(obj, idx) : PyList_GET_ITEM(obj, idx);
+    if (iobj == Py_None) {
+      return tng::Status::Error("element %l is None", idx);
+    }
+    if (!THPVariable_CheckExact(iobj)) {
+      return tng::Status::Error("element %l is not a Tensor", idx);
+    }
+    tensors.emplace_back(&(THPVariable_Unpack(iobj)));
+  }
+  return tng::Status::Success();
+}
 }  // namespace
 
 struct TngRuntimeError : public torch::PyTorchError {
@@ -175,8 +195,11 @@ py::object TorchNpuGraphBase::Run(py::object obj) {
       PyArg_ParseTuple(args, "OOO", &inputs, &assigned_outputs, &stream),
       "Parse arg with signature Run(TensorList inputs, c10::List<c10::optional<Tensor>> outputs, c10::Stream) failed");
 
-  std::vector<at::Tensor> input_tensors;
+  std::vector<const at::Tensor*> input_tensors;
+  // use tensor pointers to reduce movement
   TNG_RAISE_IF_ERROR(ParseListTensors(inputs, input_tensors));
+  TNG_RAISE_IF_ERROR(concrete_graph_->AssembleInputs(input_tensors));
+
   std::vector<c10::optional<at::Tensor>> output_optional_tensors;
   TNG_RAISE_IF_ERROR(ParseListOptionalTensors(assigned_outputs, output_optional_tensors));
 
@@ -184,7 +207,7 @@ py::object TorchNpuGraphBase::Run(py::object obj) {
 
   auto t_param = tng::GetTimestampForEventLog();
   std::vector<at::Tensor> outputs;
-  TNG_RAISE_IF_ERROR(concrete_graph_->Run(input_tensors, output_optional_tensors, outputs, nullptr));
+  TNG_RAISE_IF_ERROR(concrete_graph_->Run(output_optional_tensors, outputs, nullptr));
   auto t_run = tng::GetTimestampForEventLog();
 
   TNG_LOG(EVENT) << "Graph run at " << t_begin << ", handle param: " << t_param - t_begin

@@ -13,7 +13,6 @@ namespace tng {
 enum ExecutorStage : int32_t {
   kBegin,
   kPre,
-  kAssembleInputs,
   kAssembleOutputs,
   kRunGraph,
   kStageCount
@@ -24,9 +23,10 @@ class Executor {
  public:
   static Status Create(const std::shared_ptr<GraphData> &graph_data, std::unique_ptr<Executor> &executor);
   virtual ~Executor() = default;
-  virtual Status Run(const std::vector<at::Tensor> &torch_inputs,
-                     const std::vector<c10::optional<at::Tensor>> &torch_outputs, std::vector<at::Tensor> &outputs,
+  virtual Status Run(const std::vector<c10::optional<at::Tensor>> &torch_outputs, std::vector<at::Tensor> &outputs,
                      void *stream) = 0;
+
+  virtual Status AssembleInputs(const std::vector<const at::Tensor*> &inputs) = 0;
 
   using Creator = std::function<Status(const std::shared_ptr<GraphData> &, std::unique_ptr<Executor> &)>;
   static bool RegisterExecutorCreator(const Creator &creator, int32_t priority = 0);
@@ -50,8 +50,7 @@ class Executor {
     std::ostringstream oss;
     oss << "ge run graph at " << stages[ExecutorStage::kAssembleOutputs]
         << ", pre process: " << stages[ExecutorStage::kPre] - stages[ExecutorStage::kBegin]
-        << "us, assemble input: " << stages[ExecutorStage::kAssembleInputs] - stages[ExecutorStage::kPre]
-        << "us, assemble output: " << stages[ExecutorStage::kAssembleOutputs] - stages[ExecutorStage::kAssembleInputs]
+        << "us, assemble output: " << stages[ExecutorStage::kAssembleOutputs] - stages[ExecutorStage::kPre]
         << "us, run graph: " << stages[ExecutorStage::kRunGraph] - stages[ExecutorStage::kAssembleOutputs] << "us";
 
     stages.clear();

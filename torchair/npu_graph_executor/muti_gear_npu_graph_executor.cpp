@@ -16,18 +16,18 @@
 
 namespace tng {
 namespace {
-Status ParseInputGears(const std::vector<at::Tensor> &inputs, std::vector<std::vector<int64_t>> &input_gears,
+Status ParseInputGears(const std::vector<const at::Tensor*> &inputs, std::vector<std::vector<int64_t>> &input_gears,
                        const std::vector<std::vector<int64_t>> &inputs_shape) {
   if (inputs_shape.empty()) {
-    for (const auto &input : inputs) {
-      input_gears.emplace_back(input.dim(), -1);
+    for (const auto input : inputs) {
+      input_gears.emplace_back((*input).dim(), -1);
     }
     TNG_LOG(DEBUG) << "Parse input_gears but inputs_shape is empty, so construct it as " << DebugString(input_gears);
     return Status::Success();
   }
   for (size_t i = 0U; i < inputs.size(); ++i) {
     if (inputs_shape[i].size() == 1 && inputs_shape[i][0] == UNKONWN_DIM_NUM) {
-      input_gears.emplace_back(inputs[i].dim(), -1);
+      input_gears.emplace_back((*inputs[i]).dim(), -1);
       continue;
     }
     std::vector<int64_t> gear_dims;
@@ -75,76 +75,93 @@ inline Status RefreshOutputShape(std::vector<std::vector<int64_t>> &real_output_
 }
 }  // namespace
 
-template <typename T>
-Status MutiGearNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders) {
+Status MutiGearNpuGraphExecutor::AssembleInputs(const std::vector<const at::Tensor*> &inputs) {
   RECORD_FUNCTION("AssembleInputs", std::vector<c10::IValue>({}));
   TNG_ASSERT(graph_data_->input_placements.size() == inputs.size());
-  if (!is_first_run_) {
-    return UpdateInputs(inputs, input_holders);
+  static bool enable_load_execute_graph =
+      Session::GetInstance().IsFastLoadGraphSupported() && Session::GetInstance().IsFastExecuteGraphSupported();
+  if (is_first_run_) {
+    if (enable_load_execute_graph) {
+      return AssembleInputsInner(inputs, gert_inputs_holder_);
+    } else {
+      return AssembleInputsInner(inputs, inputs_holder_);
+    }
+    TNG_RETURN_IF_ERROR(AssembleFrozenOption(graph_data_->frozen_input_flag_list, inputs, frozen_option_value_));
+  } else {
+    if (enable_load_execute_graph) {
+      return UpdateInputsInner(inputs, gert_inputs_holder_);
+    } else {
+      return UpdateInputsInner(inputs, inputs_holder_);
+    }
   }
+}
+
+template <typename T>
+Status MutiGearNpuGraphExecutor::AssembleInputsInner(const std::vector<const at::Tensor*> &inputs,
+                                                     std::vector<T> &input_holders) {
   input_holders.resize(inputs.size());
   host_input_holders_.resize(inputs.size());
   TNG_RETURN_IF_ERROR(ParseInputGears(inputs, input_gears_, graph_data_->inputs_shape));
   TNG_ASSERT(graph_data_->frozen_input_flag_list.size() == inputs.size());
   for (size_t i = 0U; i < inputs.size(); ++i) {
-    TNG_ASSERT(CheckPlacement(graph_data_->input_placements[i], inputs[i]),
+    TNG_ASSERT(CheckPlacement(graph_data_->input_placements[i], *inputs[i]),
                "Input %zu placement is incompatible with expected %d.", i,
                static_cast<int>(graph_data_->input_placements[i]));
 
     if (graph_data_->input_placements[i] == Placement::DEVICE) {
-      TNG_ASSERT((input_gears_[i].empty() or IsBaseFormat(ge::Format(at_npu::native::get_npu_format(inputs[i])))),
+      TNG_ASSERT((input_gears_[i].empty() or IsBaseFormat(ge::Format(at_npu::native::get_npu_format(*inputs[i])))),
                  "Gear input expect format is base format not private format, but got format is %s.",
-                 ge::GetFormatName(ge::Format(at_npu::native::get_npu_format(inputs[i]))));
-      TNG_RETURN_IF_ERROR(AtNpuTensorToGeTensor(inputs[i], input_holders[i]));
+                 ge::GetFormatName(ge::Format(at_npu::native::get_npu_format(*inputs[i]))));
+      TNG_RETURN_IF_ERROR(AtNpuTensorToGeTensor(*inputs[i], input_holders[i]));
     } else {
       TNG_ASSERT(input_gears_[i].empty(), "CPU tensor unsupport set gears");
-      auto host_input_holder = at::empty(inputs[i].sizes(), inputs[i].options().device(at::kPrivateUse1));
+      auto host_input_holder = at::empty((*inputs[i]).sizes(), (*inputs[i]).options().device(at::kPrivateUse1));
       size_t dst_size = static_cast<size_t>(host_input_holder.numel() * host_input_holder.element_size());
-      size_t src_size = static_cast<size_t>(inputs[i].numel() * inputs[i].element_size());
+      size_t src_size = static_cast<size_t>((*inputs[i]).numel() * (*inputs[i]).element_size());
       auto copy_size = std::make_pair(src_size, dst_size);
       host_input_holders_[i] = std::make_pair(host_input_holder, copy_size);
       TNG_RETURN_IF_ERROR(AtTensorToGeTensor(host_input_holders_[i].first, input_holders[i]));
       if (host_input_holders_[i].second.first > 0) {
         TNG_RETURN_IF_ERROR(H2DMemcpy(host_input_holders_[i].first.data_ptr(), host_input_holders_[i].second.second,
-                                      inputs[i].data_ptr(), host_input_holders_[i].second.first, first_stream_));
+                                      (*inputs[i]).data_ptr(), host_input_holders_[i].second.first, first_stream_));
       }
     }
-    TNG_LOG(DEBUG) << "Assemble aten input " << i << " " << DebugString(inputs[i]) << " to "
+    TNG_LOG(DEBUG) << "Assemble aten input " << i << " " << DebugString(*inputs[i]) << " to "
                    << DebugString(input_holders[i]);
   }
   return Status::Success();
 }
 
 template <typename T>
-Status MutiGearNpuGraphExecutor::UpdateInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders) {
+Status MutiGearNpuGraphExecutor::UpdateInputsInner(const std::vector<const at::Tensor*> &inputs,
+                                                   std::vector<T> &input_holders) {
   for (size_t i = 0U; i < inputs.size(); ++i) {
     if (graph_data_->frozen_input_flag_list[i]) {
       TNG_LOG(DEBUG) << "Frozen input " << i << " skip update";
       continue;
     }
-    TNG_ASSERT(CheckPlacement(graph_data_->input_placements[i], inputs[i]),
+    TNG_ASSERT(CheckPlacement(graph_data_->input_placements[i], *inputs[i]),
                "Input %zu placement is incompatible with expected %d.", i,
                static_cast<int>(graph_data_->input_placements[i]));
     if (graph_data_->input_placements[i] == Placement::DEVICE) {
-        if (!input_gears_[i].empty()) {
-          TNG_RETURN_IF_ERROR(UpdateSpecificDims(input_holders[i], inputs[i], input_gears_[i]));
-        }
-        TNG_RETURN_IF_ERROR(AssembleDataToGe(inputs[i], input_holders[i]));
+      if (!input_gears_[i].empty()) {
+        TNG_RETURN_IF_ERROR(UpdateSpecificDims(input_holders[i], *inputs[i], input_gears_[i]));
+      }
+      TNG_RETURN_IF_ERROR(AssembleDataToGe(*inputs[i], input_holders[i]));
     } else {
       TNG_ASSERT(input_gears_[i].empty(), "CPU tensor unsupport set gears");
       if (host_input_holders_[i].second.first > 0) {
         TNG_RETURN_IF_ERROR(H2DMemcpy(host_input_holders_[i].first.data_ptr(), host_input_holders_[i].second.second,
-                                      inputs[i].data_ptr(), host_input_holders_[i].second.first, first_stream_));
+                                      (*inputs[i]).data_ptr(), host_input_holders_[i].second.first, first_stream_));
       }
     }
-    TNG_LOG(DEBUG) << "Update aten input " << i << " " << DebugString(inputs[i]) << " to "
+    TNG_LOG(DEBUG) << "Update aten input " << i << " " << DebugString(*inputs[i]) << " to "
                    << DebugString(input_holders[i]);
   }
   return Status::Success();
 }
 
-Status MutiGearNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
-                                     const std::vector<c10::optional<at::Tensor>> &torch_outputs,
+Status MutiGearNpuGraphExecutor::Run(const std::vector<c10::optional<at::Tensor>> &torch_outputs,
                                      std::vector<at::Tensor> &outputs, void *stream) {
   SetStageTime(ExecutorStage::kBegin);
   std::vector<at::DataPtr> data_ptrs;
@@ -166,16 +183,12 @@ Status MutiGearNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs
   SetStageTime(ExecutorStage::kPre);
 
   if (enable_load_execute_graph) {
-    TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, gert_inputs_holder_));
-    SetStageTime(ExecutorStage::kAssembleInputs);
     TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs, data_ptrs, gert_outputs_holder_, stream));
     SetStageTime(ExecutorStage::kAssembleOutputs);
     if (is_first_run_) {
       std::map<ge::AscendString, ge::AscendString> load_options;
-      std::string frozen_option_value;
-      TNG_RETURN_IF_ERROR(AssembleFrozenOption(graph_data_->frozen_input_flag_list, torch_inputs, frozen_option_value));
-      if (frozen_option_value != "") {
-        load_options[ge::AscendString("ge.exec.frozenInputIndexes")] = ge::AscendString(frozen_option_value.c_str());
+      if (!frozen_option_value_.empty()) {
+        load_options[ge::AscendString("ge.exec.frozenInputIndexes")] = ge::AscendString(frozen_option_value_.c_str());
       }
       TNG_RETURN_IF_ERROR(Session::GetInstance().FastLoadGraph(graph_data_->id, load_options, stream));
     }
@@ -185,8 +198,6 @@ Status MutiGearNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs
 
     TNG_RETURN_IF_ERROR(RefreshOutputShape(output_shapes_, gert_outputs_holder_));
   } else {
-    TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, inputs_holder_));
-    SetStageTime(ExecutorStage::kAssembleInputs);
     TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs, data_ptrs, outputs_holder_, stream));
     SetStageTime(ExecutorStage::kAssembleOutputs);
     TNG_RETURN_IF_ERROR(Session::GetInstance().RunGraph(graph_data_->id, inputs_holder_, outputs_holder_, stream));

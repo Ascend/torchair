@@ -13,8 +13,10 @@ class StaticNpuGraphExecutor : public Executor {
  public:
   explicit StaticNpuGraphExecutor(std::shared_ptr<tng::GraphData> graph_data) : graph_data_(std::move(graph_data)){};
 
-  Status Run(const std::vector<at::Tensor> &torch_inputs, const std::vector<c10::optional<at::Tensor>> &torch_outputs,
+  Status Run(const std::vector<c10::optional<at::Tensor>> &torch_outputs,
              std::vector<at::Tensor> &outputs, void *stream) override;
+
+  Status AssembleInputs(const std::vector<const at::Tensor*> &inputs) override;
 
   ~StaticNpuGraphExecutor() override;
 
@@ -22,10 +24,10 @@ class StaticNpuGraphExecutor : public Executor {
   Status AllocAndSetFixedMemory(void *stream, std::shared_ptr<GraphData> &graph_data);
 
   template <typename T>
-  Status AssembleInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders);
+  Status AssembleInputsInner(const std::vector<const at::Tensor*> &inputs, std::vector<T> &input_holders);
 
   template <typename T>
-  Status UpdateInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders);
+  Status UpdateInputsInner(const std::vector<const at::Tensor*> &inputs, std::vector<T> &input_holders);
 
  protected:
   Status AllocAndSetConstMemory(void *stream);
@@ -46,6 +48,7 @@ class StaticNpuGraphExecutor : public Executor {
   ge::MemBlock *feature_map_block_{nullptr};
   bool fm_refreshable_{false};
   void *first_stream_{nullptr};
+  std::string frozen_option_value_;
 
   std::vector<std::vector<int64_t>> output_shapes_;
   std::vector<std::pair<at::Tensor, std::pair<size_t, size_t>>> host_input_holders_;

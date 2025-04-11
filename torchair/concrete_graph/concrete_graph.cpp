@@ -178,15 +178,14 @@ Status NpuConcreteGraph::AutoTune(const std::vector<at::Tensor> &example_inputs,
   return Status::Success();
 }
 
-Status NpuConcreteGraph::Run(const std::vector<at::Tensor> &torch_inputs,
-                             const std::vector<c10::optional<at::Tensor>> &torch_outputs,
+Status NpuConcreteGraph::Run(const std::vector<c10::optional<at::Tensor>> &torch_outputs,
                              std::vector<at::Tensor> &outputs, void *stream) {
   TNG_LOG(INFO) << "Run concrete graph " << graph_data_->id << " with stream " << stream;
   HcclConfigValue hccl_config = {graph_data_->deterministic_value};
   TNG_ASSERT(HcclSetConfig(HcclConfig::HCCL_DETERMINISTIC, hccl_config) == HCCL_SUCCESS,
              "Failed to set HCCL_DETERMINISTIC.");
   TNG_ASSERT_NOTNULL(executor_, "Executor is not initialized.");
-  TNG_RETURN_IF_ERROR(executor_->Run(torch_inputs, torch_outputs, outputs, stream));
+  TNG_RETURN_IF_ERROR(executor_->Run(torch_outputs, outputs, stream));
   return Status::Success();
 }
 
@@ -195,6 +194,11 @@ Status NpuConcreteGraph::SetHintShape(const std::vector<std::vector<int64_t>> &i
   TNG_ASSERT(graph_data_, "After load graph, graph_data_ should not nullptr");
   graph_data_->inputs_shape = inputs_shape;
   graph_data_->outputs_shape = outputs_shape;
+  return Status::Success();
+}
+
+Status NpuConcreteGraph::AssembleInputs(const std::vector<const at::Tensor*> &tensors) {
+  TNG_RETURN_IF_ERROR(executor_->AssembleInputs(tensors));
   return Status::Success();
 }
 }  // namespace tng

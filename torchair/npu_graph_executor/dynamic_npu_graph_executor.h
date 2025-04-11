@@ -12,9 +12,10 @@ class DynamicNpuGraphExecutor : public Executor {
  public:
   explicit DynamicNpuGraphExecutor(std::shared_ptr<tng::GraphData> graph_data) : graph_data_(std::move(graph_data)){};
 
-  Status Run(const std::vector<at::Tensor> &torch_inputs,
-             const std::vector<c10::optional<at::Tensor>> &assigned_outputs, std::vector<at::Tensor> &outputs,
+  Status Run(const std::vector<c10::optional<at::Tensor>> &assigned_outputs, std::vector<at::Tensor> &outputs,
              void *stream) override;
+
+  Status AssembleInputs(const std::vector<const at::Tensor*> &inputs) override;
 
   ~DynamicNpuGraphExecutor() override;
 
@@ -22,14 +23,14 @@ class DynamicNpuGraphExecutor : public Executor {
   Status AllocAndSetFixedMemory(void *stream, std::shared_ptr<GraphData> &graph_data);
 
   template <typename T>
-  Status AssembleInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders);
+  Status AssembleInputsInner(const std::vector<const at::Tensor*> &inputs, std::vector<T> &input_holders);
 
   template <typename T>
   Status UpdateHostInput(const at::Tensor &input, T &input_holder,
                          at::Tensor &host_input_holder, bool update_shape_flag = false);
 
   template <typename T>
-  Status UpdateInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders);
+  Status UpdateInputsInner(const std::vector<const at::Tensor*> &inputs, std::vector<T> &input_holders);
 
   template <typename T>
   Status AssembleOutputs(const std::vector<c10::optional<at::Tensor>> &assigned_outputs,
@@ -43,6 +44,7 @@ class DynamicNpuGraphExecutor : public Executor {
   std::shared_ptr<GraphData> graph_data_;
   std::vector<at::Tensor> host_input_holders_;
   void *first_stream_{nullptr};
+  std::string frozen_option_value_;
 };
 }  // namespace tng
 

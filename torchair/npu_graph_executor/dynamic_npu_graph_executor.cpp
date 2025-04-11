@@ -49,31 +49,48 @@ Status RefreshAtTensorFromGeTensor(std::vector<T> &outputs_holder,
 
 }  // namespace
 
-template <typename T>
-Status DynamicNpuGraphExecutor::AssembleInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders) {
-  RECORD_FUNCTION("AssembleInputs", {});
+Status DynamicNpuGraphExecutor::AssembleInputs(const std::vector<const at::Tensor*> &inputs) {
+  RECORD_FUNCTION("AssembleInputs", std::vector<c10::IValue>({}));
   TNG_ASSERT(graph_data_->input_placements.size() == inputs.size());
-  if (!is_first_run_) {
-    return UpdateInputs(inputs, input_holders);
+  static bool enable_load_execute_graph =
+      Session::GetInstance().IsFastLoadGraphSupported() && Session::GetInstance().IsFastExecuteGraphSupported();
+  if (is_first_run_) {
+    if (enable_load_execute_graph) {
+      return AssembleInputsInner(inputs, gert_inputs_holder_);
+    } else {
+      return AssembleInputsInner(inputs, inputs_holder_);
+    }
+    TNG_RETURN_IF_ERROR(AssembleFrozenOption(graph_data_->frozen_input_flag_list, inputs, frozen_option_value_));
+  } else {
+    if (enable_load_execute_graph) {
+      return UpdateInputsInner(inputs, gert_inputs_holder_);
+    } else {
+      return UpdateInputsInner(inputs, inputs_holder_);
+    }
   }
+}
+
+template <typename T>
+Status DynamicNpuGraphExecutor::AssembleInputsInner(const std::vector<const at::Tensor*> &inputs,
+                                                    std::vector<T> &input_holders) {
   input_holders.resize(inputs.size());
   host_input_holders_.resize(inputs.size());
   TNG_ASSERT(graph_data_->frozen_input_flag_list.size() == inputs.size());
 
   for (size_t i = 0U; i < inputs.size(); ++i) {
-    TNG_ASSERT(CheckPlacement(graph_data_->input_placements[i], inputs[i]),
+    TNG_ASSERT(CheckPlacement(graph_data_->input_placements[i], *inputs[i]),
                "Input %zu placement is incompatible with expected %d.", i,
                static_cast<int>(graph_data_->input_placements[i]));
 
     if (graph_data_->input_placements[i] == Placement::DEVICE) {
-      TNG_RETURN_IF_ERROR(AtNpuTensorToGeTensor(inputs[i], input_holders[i]));
+      TNG_RETURN_IF_ERROR(AtNpuTensorToGeTensor(*inputs[i], input_holders[i]));
     } else {
-      if (inputs[i].sizes().size() > 1U) {
-        host_input_holders_[i] = at::empty(inputs[i].sizes(), inputs[i].options().device(at::kPrivateUse1));
+      if ((*inputs[i]).sizes().size() > 1U) {
+        host_input_holders_[i] = at::empty((*inputs[i]).sizes(), (*inputs[i]).options().device(at::kPrivateUse1));
       }
-      UpdateHostInput(inputs[i], input_holders[i], host_input_holders_[i]);
+      UpdateHostInput(*inputs[i], input_holders[i], host_input_holders_[i]);
     }
-    TNG_LOG(DEBUG) << "Assemble aten input " << i << " " << DebugString(inputs[i]) << " to "
+    TNG_LOG(DEBUG) << "Assemble aten input " << i << " " << DebugString(*inputs[i]) << " to "
                    << DebugString(input_holders[i]);
   }
   return Status::Success();
@@ -101,27 +118,28 @@ Status DynamicNpuGraphExecutor::UpdateHostInput(const at::Tensor &input, T &inpu
 }
 
 template <typename T>
-Status DynamicNpuGraphExecutor::UpdateInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders) {
+Status DynamicNpuGraphExecutor::UpdateInputsInner(const std::vector<const at::Tensor*> &inputs,
+                                                  std::vector<T> &input_holders) {
   for (size_t i = 0U; i < inputs.size(); ++i) {
     if (graph_data_->frozen_input_flag_list[i]) {
       TNG_LOG(DEBUG) << "Frozen input " << i << " skip update";
       continue;
     }
-    TNG_ASSERT(CheckPlacement(graph_data_->input_placements[i], inputs[i]),
+    TNG_ASSERT(CheckPlacement(graph_data_->input_placements[i], *inputs[i]),
                "Input %zu placement is incompatible with expected %d.", i,
                static_cast<int>(graph_data_->input_placements[i]));
     if (graph_data_->input_placements[i] == Placement::DEVICE) {
-      TNG_RETURN_IF_ERROR(AssembleDataAndStorageShapeToGe(inputs[i], input_holders[i]));
+      TNG_RETURN_IF_ERROR(AssembleDataAndStorageShapeToGe(*inputs[i], input_holders[i]));
     } else {
       bool update_shape_flag = false;
-      if ((inputs[i].sizes().size() > 1U) && (inputs[i].sizes() != host_input_holders_[i].sizes())) {
+      if (((*inputs[i]).sizes().size() > 1U) && ((*inputs[i]).sizes() != host_input_holders_[i].sizes())) {
         // if dynamo shape have change, need to update host_input_holders_
-        host_input_holders_[i] = at::empty(inputs[i].sizes(), inputs[i].options().device(at::kPrivateUse1));
+        host_input_holders_[i] = at::empty((*inputs[i]).sizes(), (*inputs[i]).options().device(at::kPrivateUse1));
         update_shape_flag = true;
       }
-      UpdateHostInput(inputs[i], input_holders[i], host_input_holders_[i], update_shape_flag);
+      UpdateHostInput(*inputs[i], input_holders[i], host_input_holders_[i], update_shape_flag);
     }
-    TNG_LOG(DEBUG) << "Update aten input " << i << " " << DebugString(inputs[i]) << " to "
+    TNG_LOG(DEBUG) << "Update aten input " << i << " " << DebugString(*inputs[i]) << " to "
                    << DebugString(input_holders[i]);
   }
   return Status::Success();
@@ -174,8 +192,7 @@ Status DynamicNpuGraphExecutor::AssembleOutputs(const std::vector<c10::optional<
   return Status::Success();
 }
 
-Status DynamicNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
-                                    const std::vector<c10::optional<at::Tensor>> &assigned_outputs,
+Status DynamicNpuGraphExecutor::Run(const std::vector<c10::optional<at::Tensor>> &assigned_outputs,
                                     std::vector<at::Tensor> &outputs, void *stream) {
   SetStageTime(ExecutorStage::kBegin);
   TNG_LOG(INFO) << "Dynamic npu graph executor start to run graph " << graph_data_->id;
@@ -198,16 +215,12 @@ Status DynamicNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
   SetStageTime(ExecutorStage::kPre);
 
   if (enable_load_execute_graph) {
-    TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, gert_inputs_holder_));
-    SetStageTime(ExecutorStage::kAssembleInputs);
     TNG_RETURN_IF_ERROR(AssembleOutputs(assigned_outputs, gert_outputs_holder_));
     SetStageTime(ExecutorStage::kAssembleOutputs);
     if (is_first_run_) {
       std::map<ge::AscendString, ge::AscendString> load_options;
-      std::string frozen_option_value;
-      TNG_RETURN_IF_ERROR(AssembleFrozenOption(graph_data_->frozen_input_flag_list, torch_inputs, frozen_option_value));
-      if (frozen_option_value != "") {
-        load_options[ge::AscendString("ge.exec.frozenInputIndexes")] = ge::AscendString(frozen_option_value.c_str());
+      if (!frozen_option_value_.empty()) {
+        load_options[ge::AscendString("ge.exec.frozenInputIndexes")] = ge::AscendString(frozen_option_value_.c_str());
       }
       TNG_RETURN_IF_ERROR(Session::GetInstance().FastLoadGraph(graph_data_->id, load_options, stream));
     }
@@ -217,8 +230,6 @@ Status DynamicNpuGraphExecutor::Run(const std::vector<at::Tensor> &torch_inputs,
     SetStageTime(ExecutorStage::kRunGraph);
     TNG_RETURN_IF_ERROR(RefreshAtTensorFromGeTensor(gert_outputs_holder_, assigned_outputs, outputs));
   } else {
-    TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs, inputs_holder_));
-    SetStageTime(ExecutorStage::kAssembleInputs);
     TNG_RETURN_IF_ERROR(AssembleOutputs(assigned_outputs, outputs_holder_));
     SetStageTime(ExecutorStage::kAssembleOutputs);
     TNG_RETURN_IF_ERROR(Session::GetInstance().RunGraph(graph_data_->id, inputs_holder_, outputs_holder_, stream));

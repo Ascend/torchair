@@ -16,19 +16,19 @@ namespace tng {
 class CpuGraphExecutor : public Executor {
  public:
   explicit CpuGraphExecutor(std::shared_ptr<tng::GraphData> graph_data) : graph_data_(std::move(graph_data)){};
-  Status AssembleInputs(const std::vector<at::Tensor> &inputs) {
+  Status AssembleInputs(const std::vector<const at::Tensor*> &inputs) override {
     if (is_first_run_) {
       inputs_holder_.resize(inputs.size());
       for (size_t i = 0U; i < inputs.size(); ++i) {
-        TNG_RETURN_IF_ERROR(AtTensorToGeTensor(inputs[i], inputs_holder_[i]));
-        TNG_LOG(INFO) << "Assemble aten input " << i << " " << DebugString(inputs[i]) << " to "
+        TNG_RETURN_IF_ERROR(AtTensorToGeTensor(*inputs[i], inputs_holder_[i]));
+        TNG_LOG(INFO) << "Assemble aten input " << i << " " << DebugString(*inputs[i]) << " to "
                       << DebugString(inputs_holder_[i]);
       }
     } else {
       TNG_ASSERT(inputs_holder_.size() == inputs.size());
       for (size_t i = 0U; i < inputs.size(); ++i) {
-        TNG_RETURN_IF_ERROR(AssembleDataAndShapeToGe(inputs[i], inputs_holder_[i]));
-        TNG_LOG(INFO) << "Assemble aten input " << i << " " << DebugString(inputs[i]) << " to "
+        TNG_RETURN_IF_ERROR(AssembleDataAndShapeToGe(*inputs[i], inputs_holder_[i]));
+        TNG_LOG(INFO) << "Assemble aten input " << i << " " << DebugString(*inputs[i]) << " to "
                       << DebugString(inputs_holder_[i]);
       }
     }
@@ -40,9 +40,8 @@ class CpuGraphExecutor : public Executor {
     return Status::Success();
   }
 
-  Status Run(const std::vector<at::Tensor> &torch_inputs, const std::vector<c10::optional<at::Tensor>> &torch_outputs,
+  Status Run(const std::vector<c10::optional<at::Tensor>> &torch_outputs,
              std::vector<at::Tensor> &outputs, void *stream) override {
-    TNG_RETURN_IF_ERROR(AssembleInputs(torch_inputs));
     TNG_RETURN_IF_ERROR(AssembleOutputs(torch_outputs));
     TNG_ASSERT(stream == nullptr);
     outputs_holder_.clear();

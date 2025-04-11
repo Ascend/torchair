@@ -15,15 +15,17 @@ class MutiGearNpuGraphExecutor : public StaticNpuGraphExecutor {
   explicit MutiGearNpuGraphExecutor(std::shared_ptr<tng::GraphData> graph_data)
       : StaticNpuGraphExecutor(std::move(graph_data)){};
 
-  Status Run(const std::vector<at::Tensor> &torch_inputs, const std::vector<c10::optional<at::Tensor>> &torch_outputs,
+  Status Run(const std::vector<c10::optional<at::Tensor>> &torch_outputs,
              std::vector<at::Tensor> &outputs, void *stream) override;
+
+  Status AssembleInputs(const std::vector<const at::Tensor*> &inputs) override;
 
  private:
   template <typename T>
-  Status AssembleInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders);
+  Status AssembleInputsInner(const std::vector<const at::Tensor*> &inputs, std::vector<T> &input_holders);
 
   template <typename T>
-  Status UpdateInputs(const std::vector<at::Tensor> &inputs, std::vector<T> &input_holders);
+  Status UpdateInputsInner(const std::vector<const at::Tensor*> &inputs, std::vector<T> &input_holders);
 
   std::vector<std::vector<int64_t>> input_gears_;
 };
