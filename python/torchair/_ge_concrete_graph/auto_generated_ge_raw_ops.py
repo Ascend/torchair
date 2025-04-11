@@ -23532,46 +23532,52 @@ def HcomAllGather(x: Tensor, *, rank_size: int, group: str, fusion: int=0, fusio
 def HcomAllGatherV(x: Tensor, send_count: Tensor, recv_counts: Tensor, recv_displacements: Optional[Tensor], *,
                    group: str, dependencies=[], node_name=None):
     """REG_OP(HcomAllGatherV)\n
-    .INPUT(x, TensorType({DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_UINT8, DT_UINT16, DT_UINT32}))\n
+    .INPUT(x, TensorType({DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_BFLOAT16, DT_INT64, DT_UINT64, DT_UINT8, DT_UINT16, DT_UINT32, DT_FLOAT64}))\n
     .INPUT(send_count, TensorType({DT_INT64}))\n
-    .OUTPUT(y, TensorType({DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_UINT8, DT_UINT16, DT_UINT32}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_BFLOAT16, DT_INT64, DT_UINT64, DT_UINT8, DT_UINT16, DT_UINT32, DT_FLOAT64}))\n
     .INPUT(recv_counts, TensorType({DT_INT64}))\n
     .OPTIONAL_INPUT(recv_displacements, TensorType({DT_INT64}))\n
     .REQUIRED_ATTR(group, String)\n
     """
 
+    op = get_default_ge_graph().op.add()
+    op.type = "HcomAllGatherV"
+    op.name = next_unique_name(node_name, "HcomAllGatherV")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
     # process inputs
-    inputs = {
-        "x": x,
-        "send_count": send_count,
-        "recv_counts": recv_counts,
-        "recv_displacements": recv_displacements,
-    }
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+    op.input.append(send_count.tensor)
+    op.input_desc.add().CopyFrom(send_count.desc)
+    op.input_desc[-1].name = "send_count"
+    op.input.append(recv_counts.tensor)
+    op.input_desc.add().CopyFrom(recv_counts.desc)
+    op.input_desc[-1].name = "recv_counts"
+    if recv_displacements is not None:
+        op.input.append(recv_displacements.tensor)
+        op.input_desc.add().CopyFrom(recv_displacements.desc)
+        op.input_desc[-1].name = "recv_displacements"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "recv_displacements"
 
     # process attrs
-    attrs = {
-        "group": attr.Str(group),
-    }
+    op.attr["group"].s = compat_as_bytes(group)
 
     # process outputs
-    outputs = [
-        "y",
-    ]
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
 
-    return ge_op(
-        op_type="HcomAllGatherV",
-        inputs=inputs,
-        attrs=attrs,
-        outputs=outputs,
-        dependencies=dependencies,
-        ir=IrDef("HcomAllGatherV") \
-        .input("x", "DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_UINT8, DT_UINT16, DT_UINT32") \
-        .input("send_count", "DT_INT64") \
-        .input("recv_counts", "DT_INT64") \
-        .optional_input("recv_displacements", "DT_INT64") \
-        .required_attr("group", attr.Str) \
-        .output("y", "DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_UINT8, DT_UINT16, DT_UINT32")
-    )
+    # return outputs
+    return y
 
 
 # This api is auto-generated from IR HcomAllReduce

@@ -74,9 +74,11 @@ REG_OP(HcomAllGather)
   using the RDMA.
  */
 REG_OP(HcomAllGatherV)
-    .INPUT(x, TensorType({DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_UINT8, DT_UINT16, DT_UINT32}))
+    .INPUT(x, TensorType({DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_BFLOAT16, DT_INT64, DT_UINT64,
+                          DT_UINT8, DT_UINT16, DT_UINT32, DT_FLOAT64}))
     .INPUT(send_count, TensorType({DT_INT64}))
-    .OUTPUT(y, TensorType({DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_UINT8, DT_UINT16, DT_UINT32}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_INT32, DT_INT8, DT_INT16, DT_FLOAT16, DT_BFLOAT16, DT_INT64, DT_UINT64,
+                           DT_UINT8, DT_UINT16, DT_UINT32, DT_FLOAT64}))
     .INPUT(recv_counts, TensorType({DT_INT64}))
     .OPTIONAL_INPUT(recv_displacements, TensorType({DT_INT64}))
     .REQUIRED_ATTR(group, String)
@@ -120,7 +122,7 @@ REG_OP(HcomAllReduce)
  * @par Attributes:
  * @li root_rank: A required integer identifying the root rank in the op
   input of this rank will be broadcast to other ranks.
- * @li fusion: A required integer identifying if the op need to fusion,the 
+ * @li fusion: A required integer identifying if the op need to fusion,the
   default value is none fusion
   * @li fusion_id: A required integer identifying the fusion id if para fusion
   is set.
@@ -328,7 +330,7 @@ REG_OP(HcomRemoteRefRead)
     .INPUT(remote, TensorType({DT_UINT64}))
     .INPUT(cache_var, TensorType({DT_UINT64}))
     .INPUT(local_offset, TensorType({DT_UINT64}))
-    .OUTPUT(cache_var, TensorType({DT_UINT64})) 
+    .OUTPUT(cache_var, TensorType({DT_UINT64}))
     .REQUIRED_ATTR(dtype, Type)
     .OP_END_FACTORY_REG(HcomRemoteRefRead)
 
@@ -367,7 +369,7 @@ REG_OP(HcomRemoteScatterWrite)
   send_data to send to rank i.
  * @li send_displacements: A list, where entry i specifies the displacement
   (offset from sendbuf) from which to send data to rank i.
- * @li recv_counts: A list, where entry i specifies the number of 
+ * @li recv_counts: A list, where entry i specifies the number of
   elements to receive from rank i.
  * @li recv_displacements: A list, , where entry i specifies the displacement
   (offset from recv_data) to which data from rank i should be written.
@@ -452,9 +454,9 @@ REG_OP(HcomAllToAllVC)
  * @li addrinfo: A tensor, descripting the memory info(address, length) to send.
  * @li addrinfo_count_per_rank: A list, where entry i specifies the number of
   elements in send_data to send to rank i.
- * @li recv_counts: A list, where entry i specifies the number of 
+ * @li recv_counts: A list, where entry i specifies the number of
   elements to receive from rank i.
- * @li recv_displacements: A list, , where entry i specifies the displacement 
+ * @li recv_displacements: A list, , where entry i specifies the displacement
   (offset from recv_data) to which data from rank i should be written.
  * @par Outputs:
  * Two outputs, including:
