@@ -668,6 +668,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         for k, v in extend_config.items():
             head.writeline(f'local_compile_options["{k}"] = "{v}"')
         if extend_config.get("ge.graph_compiler_cache_dir") is not None:
+            head.writeline(f'local_compile_options["ge.graph_key"] = "{self._graph.name}"')
             head.splice(f'''
             def _update_ge_cache_dir(path):
                 local_compile_options["ge.graph_compiler_cache_dir"] = path

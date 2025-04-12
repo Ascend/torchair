@@ -399,7 +399,7 @@ class ModelCacheSaver:
         self.cache_dir = os.path.realpath(os.path.dirname(cache_bin))
         self.compiled_model = CompiledModel(func)
         self.name = self.compiled_model.name
-        extend_config = {"ge.graph_compiler_cache_dir": self.cache_dir, "ge.graph_key": "ge_cache"} if ge_cache else {}
+        extend_config = {"ge.graph_compiler_cache_dir": self.cache_dir} if ge_cache else {}
         cache_backend = CacheBackend(config, self, decompositions=decompositions, extend_config=extend_config)
         self.compiled_func = torch.compile(func, backend=cache_backend, fullgraph=True, dynamic=dynamic)
 
@@ -560,10 +560,6 @@ def cache_compile(func, *, config: Optional[CompilerConfig] = None, dynamic: boo
 
     if not isinstance(func.__self__, torch.nn.Module):
         raise ValueError(f"Only torch.nn.Module method can be cached now, got {func}")
-
-    if ge_cache and config is not None and config.experimental_config.frozen_parameter:
-        raise ValueError("ge_cache and experimental_config.frozen_parameter cannot be enabled at the same time. "
-                         "Please disable one of them.")
 
     if cache_dir is not None:
         try:
