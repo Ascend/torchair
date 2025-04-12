@@ -561,7 +561,7 @@ def cache_compile(func, *, config: Optional[CompilerConfig] = None, dynamic: boo
     if not isinstance(func.__self__, torch.nn.Module):
         raise ValueError(f"Only torch.nn.Module method can be cached now, got {func}")
 
-    if cache_dir is not None:
+    if cache_dir is not None and os.path.exists(cache_dir):
         try:
             _validate_owner(cache_dir)
         except PermissionError as e:
