@@ -135,7 +135,9 @@ Status StaticNpuGraphExecutor::AssembleOutputs(const std::vector<c10::optional<a
       continue;
     }
     auto data_ptr = allocator->allocate(output_size_[i]);
-    TNG_ASSERT_NOTNULL(data_ptr);
+    if (output_size_[i] != 0) {
+        TNG_ASSERT_NOTNULL(data_ptr);
+    }
     data_ptrs[i] = std::move(data_ptr);
     TNG_RETURN_IF_ERROR(UpdateTensorData(output_holders[i], data_ptr.get(), output_size_[i]));
     TNG_LOG(DEBUG) << "Malloc " << output_size_[i] << " for ge output tensor.";
