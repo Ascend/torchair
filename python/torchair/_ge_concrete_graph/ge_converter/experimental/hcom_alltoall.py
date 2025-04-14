@@ -28,10 +28,41 @@ def _all_to_all_single(
 
     if len(input_split_sizes) != len(output_split_sizes):
         raise AssertionError
+
+    out_size = list(input_tensor.size())
+    if len(out_size) != 1:
+        raise AssertionError(f"Expected the input tensor used in all_to_all_single to have a dimensionality of 1,"
+                             f"but got {len(out_size)}")
     send_displacements = [sum(input_split_sizes[:i]) for i in range(len(input_split_sizes))]
     recv_displacements = [sum(output_split_sizes[:i]) for i in range(len(output_split_sizes))]
     return torch.ops.npu_define.all_to_all_single_npu(input_tensor,
         input_split_sizes, send_displacements, output_split_sizes, recv_displacements, tag, ranks, group_size)
+
+
+def npu_all_to_all_single_npu(
+    input_tensor: Tensor,
+    send_counts: List[int],
+    send_displacements: List[int],
+    recv_counts: List[int],
+    recv_displacements: List[int],
+    tag: str,
+    ranklist: List,
+    group_size: int,
+):
+    pg = c10d._find_or_create_pg_by_ranks_and_tag(tag, ranklist, group_size)
+
+    if recv_counts is not None:
+        if input_tensor.dim() == 0:
+            raise AssertionError(input_tensor.dim())
+        out_size = list(input_tensor.size())
+        out_size[0] = sum(recv_counts)
+        out_tensor = input_tensor.new_empty(out_size)
+    else:
+        out_tensor = input_tensor.new_empty(input_tensor.size())
+
+    work = c10d.all_to_all_single(out_tensor, input_tensor, output_split_sizes=recv_counts,
+                                  input_split_sizes=send_counts, group=pg, async_op=False)
+    return out_tensor
 
 
 def npu_all_to_all_single_npu_meta(
@@ -50,6 +81,7 @@ def npu_all_to_all_single_npu_meta(
 
 
 npu_define_lib.impl(op_all_to_all_single_npu, npu_all_to_all_single_npu_meta, 'Meta')
+npu_define_lib.impl(op_all_to_all_single_npu, npu_all_to_all_single_npu, 'PrivateUse1')
 
 
 @register_fx_node_ge_converter(torch.ops.npu_define.all_to_all_single_npu.default)
