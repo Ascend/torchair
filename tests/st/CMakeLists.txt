@@ -1,7 +1,7 @@
 add_custom_command(OUTPUT ST_TESTCASES
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_export_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_st.py ${CMAKE_BINARY_DIR}/st
-		COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_ops_st.py ${CMAKE_BINARY_DIR}/st
+		COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_scope_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_gear_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_loglevel_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_cache_compile_st.py ${CMAKE_BINARY_DIR}/st
@@ -18,7 +18,7 @@ add_custom_command(OUTPUT ST_TESTCASES
 
 add_custom_target(run_torchair_py_cases ALL
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_st
-		COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_ops_st
+		COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_scope_st
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_export_st
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_gear_st
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_loglevel_st

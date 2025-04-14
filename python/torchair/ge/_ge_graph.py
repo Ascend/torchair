@@ -612,7 +612,6 @@ class GeGraph(object):
         self._named_inputs_info = {}
         self._used_process_group = {}
         self._dont_prune_me_ops = []
-        self._attribute_stack = deque()
 
 
     def _python_code_init(self):
@@ -770,23 +769,8 @@ class GeGraph(object):
     def named_inputs_info(self):
         return self._named_inputs_info
 
-
     def dont_prune_me(self, op):
         self._dont_prune_me_ops.append(op)
-
-    def push_attributes(self, keys: List[str], values: List[str]):
-        attributes = dict(zip(keys, values))
-        self._attribute_stack.append(attributes)
-
-    def pop_attributes(self):
-        if self._attribute_stack:
-            self._attribute_stack.pop()
-
-    def get_current_attributes(self):
-        if self._attribute_stack:
-            return list(self._attribute_stack)
-        else:
-            return {}
 
 
 class _GeGraphStack(threading.local):

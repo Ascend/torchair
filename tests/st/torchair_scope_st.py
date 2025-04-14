@@ -36,8 +36,8 @@ class TorchairSt(unittest.TestCase):
 
             def forward(self, in1, in2, in3, in4):
                 add_result = torch.add(in1, in2)
-                with torchair.ops.NpuStreamSwitch('1', 3): 
-                    torchair.ops.npu_wait_tensor(in4, add_result)
+                with torchair.scope.npu_stream_switch('1', 3): 
+                    torchair.scope.npu_wait_tensor(in4, add_result)
                     mm_result = torch.mm(in3, in4)
                 return add_result, mm_result
 
@@ -48,9 +48,9 @@ class TorchairSt(unittest.TestCase):
                 mm_op = None
                 identity_op = None
                 for op in graph.op:
-                    if op.name == 'MatMul':
+                    if 'MatMul' in op.name:
                         mm_op = op
-                    if op.name == 'Identity':
+                    if 'Identity' in op.name:
                         identity_op = op
                 stream_label = mm_op.attr["_user_stream_label"].s
                 stream_priority = mm_op.attr["_user_stream_priority"].s
@@ -58,7 +58,7 @@ class TorchairSt(unittest.TestCase):
                 self.assertTrue(stream_priority == b'3')
                 has_control_side = False
                 for input_name in identity_op.input:
-                    if input_name == 'Add:-1':
+                    if 'Add' in input_name:
                         has_control_side = True
                 self.assertTrue(has_control_side == True)
                 ret = func(*args, **kwargs)
@@ -84,7 +84,7 @@ class TorchairSt(unittest.TestCase):
                 super().__init__()
 
             def forward(self, in1, in2):
-                with torchair.ops.SuperKernelScope('test_scope', 'test_option'): 
+                with torchair.scope.super_kernel('test_scope', 'test_option'): 
                     mm_result = torch.mm(in1, in2)
                 return mm_result
 
@@ -94,7 +94,7 @@ class TorchairSt(unittest.TestCase):
                 graph = args[0].graph
                 mm_op = None
                 for op in graph.op:
-                    if op.name == 'MatMul_1':
+                    if 'MatMul' in op.name:
                         mm_op = op
                 scope = mm_op.attr["_super_kernel_scope"].s
                 options = mm_op.attr["_super_kernel_options"].s

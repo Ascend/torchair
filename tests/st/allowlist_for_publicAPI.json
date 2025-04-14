@@ -40,9 +40,11 @@
       "create_npu_tensors"
     ],
     "torchair.ops": [
-        "npu_print",
+        "npu_print"
+    ],
+	"torchair.scope": [
         "npu_wait_tensor",
-        "NpuStreamSwitch",
-		"SuperKernelScope"
+        "npu_stream_switch",
+		"super_kernel"
     ]
 }
