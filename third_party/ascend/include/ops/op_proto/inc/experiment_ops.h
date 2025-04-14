@@ -1814,7 +1814,7 @@ REG_OP(MlaProlog)
     .OUTPUT(kr_cache, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))
     .ATTR(rmsnorm_epsilon_cq, Float, 1e-05)
     .ATTR(rmsnorm_epsilon_ckv, Float, 1e-05)
-    .ATTR(cache_mode, String, "BNSD")
+    .ATTR(cache_mode, String, "PA_BSND")
     .OP_END_FACTORY_REG(MlaProlog)
 
 REG_OP(PromptFlashAttention)

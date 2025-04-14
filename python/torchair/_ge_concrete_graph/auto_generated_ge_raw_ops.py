@@ -18617,7 +18617,7 @@ def IncreFlashAttention(query: Tensor,
 @auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False,
 False, False, False, False, False, False, False, False, False], [False, False, False, False,
 False, False, False, False, False, False, False, False, True, True, True, True, True, True, True])
-def MlaProlog(token_x: Tensor, weight_dq: Tensor, weight_uq_qr: Tensor, weight_uk: Tensor, weight_dkv_kr: Tensor, rmsnorm_gamma_cq: Tensor, rmsnorm_gamma_ckv: Tensor, rope_sin: Tensor, rope_cos: Tensor, cache_index: Tensor, kv_cache: Tensor, kr_cache: Tensor, dequant_scale_x: Optional[Tensor], dequant_scale_w_dq: Optional[Tensor], dequant_scale_w_uq_qr: Optional[Tensor], dequant_scale_w_dkv_kr: Optional[Tensor], quant_scale_ckv: Optional[Tensor], quant_scale_ckr: Optional[Tensor], smooth_scales_cq: Optional[Tensor], *, rmsnorm_epsilon_cq: float=0.000010, rmsnorm_epsilon_ckv: float=0.000010, cache_mode: str="BNSD", dependencies=[], node_name=None):
+def MlaProlog(token_x: Tensor, weight_dq: Tensor, weight_uq_qr: Tensor, weight_uk: Tensor, weight_dkv_kr: Tensor, rmsnorm_gamma_cq: Tensor, rmsnorm_gamma_ckv: Tensor, rope_sin: Tensor, rope_cos: Tensor, cache_index: Tensor, kv_cache: Tensor, kr_cache: Tensor, dequant_scale_x: Optional[Tensor], dequant_scale_w_dq: Optional[Tensor], dequant_scale_w_uq_qr: Optional[Tensor], dequant_scale_w_dkv_kr: Optional[Tensor], quant_scale_ckv: Optional[Tensor], quant_scale_ckr: Optional[Tensor], smooth_scales_cq: Optional[Tensor], *, rmsnorm_epsilon_cq: float=0.000010, rmsnorm_epsilon_ckv: float=0.000010, cache_mode: str="PA_BSND", dependencies=[], node_name=None):
     """REG_OP(MlaProlog)\n
 .INPUT(token_x, TensorType({DT_INT8, DT_BF16}))\n
 .INPUT(weight_dq, TensorType({DT_INT8, DT_BF16}))\n
@@ -18644,7 +18644,7 @@ def MlaProlog(token_x: Tensor, weight_dq: Tensor, weight_uq_qr: Tensor, weight_u
 .OUTPUT(kr_cache, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))\n
 .ATTR(rmsnorm_epsilon_cq, Float, 1e-05)\n
 .ATTR(rmsnorm_epsilon_ckv, Float, 1e-05)\n
-.ATTR(cache_mode, String, "BNSD")\n
+.ATTR(cache_mode, String, "PA_BSND")\n
 """
 
     op = get_default_ge_graph().op.add()
