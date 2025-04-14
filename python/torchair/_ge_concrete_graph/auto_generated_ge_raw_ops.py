@@ -77747,7 +77747,7 @@ def GroupedMatmulFinalizeRouting(x: Tensor, w: Tensor, scale: Optional[Tensor], 
     .OPTIONAL_INPUT(group_list, TensorType({DT_INT64}))\n
     .OPTIONAL_INPUT(shared_input, TensorType({DT_BF16}))\n
     .OPTIONAL_INPUT(logit, TensorType({DT_FLOAT}))\n
-    .OPTIONAL_INPUT(row_index, TensorType({DT_INT64}))\n
+    .OPTIONAL_INPUT(row_index, TensorType({DT_INT64, DT_INT32}))\n
     .OUTPUT(y, TensorType({DT_FLOAT}))\n
     .ATTR(dtype, Int, 0)\n
     .ATTR(shared_input_weight, Float, 1.0)\n
@@ -77803,7 +77803,7 @@ def GroupedMatmulFinalizeRouting(x: Tensor, w: Tensor, scale: Optional[Tensor], 
         .optional_input("group_list", "DT_INT64") \
         .optional_input("shared_input", "DT_BF16") \
         .optional_input("logit", "DT_FLOAT") \
-        .optional_input("row_index", "DT_INT64") \
+        .optional_input("row_index", "DT_INT64, DT_INT32") \
         .attr("dtype", attr.Int(0)) \
         .attr("shared_input_weight", attr.Float(1.0)) \
         .attr("shared_input_offset", attr.Int(0)) \
