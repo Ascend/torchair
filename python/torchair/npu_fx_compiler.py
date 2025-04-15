@@ -28,8 +28,6 @@ from torch._dynamo.utils import detect_fake_mode
 from torchair.core._concrete_graph import ConcreteGraphBase, ValuePack, _is_symlist
 from torchair.core.utils import logger
 from torchair.ge._ge_graph import is_sym, _torch_tensor_to_ge_const
-from torchair._ge_concrete_graph.utils import get_used_syms_in_meta
-from torchair._ge_concrete_graph.fx2ge_converter import GeConcreteGraph as ConcreteGraph
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.fx_summary import _summarize_fx_graph
 from torchair.fx_dumper import _NpuFxDumper
@@ -40,7 +38,6 @@ from torchair.inference._gear_utils import get_dim_gears, set_dim_gears, guard_g
 
 
 aten = torch.ops.aten
-_not_do_make_real_tensor_like = ['npu_define.reduce_scatter_tensor_uneven.default']
 
 
 def _unpack_meta_list(args):
@@ -79,33 +76,7 @@ def _safe_str(x):
 
 def _is_binary_operator(target: Target):
     return target in (operator.add, operator.sub, operator.mul, operator.truediv, \
-        operator.floordiv, operator.pow, math.floor, operator.mod, math.ceil)
-
-
-def _make_real_tensor_like(meta_outputs):
-    if isinstance(meta_outputs, (tuple, list)):
-        return [_make_real_tensor_like(v) for v in meta_outputs]
-    with no_dispatch():
-        empty_tensor = torch.empty(meta_outputs.size(), dtype=meta_outputs.dtype)
-        ge_empty = _torch_tensor_to_ge_const(empty_tensor)
-        ge_empty.set_meta(meta_outputs)
-        return ge_empty
-
-
-def _is_zero_element_tensor(tensor):
-    return isinstance(tensor, torch.Tensor) and 0 in tensor.size() and not get_used_syms_in_meta(tensor)
-
-
-def _flatten_meta_outputs(meta_outputs):
-    flat_outputs = []
-    if not isinstance(meta_outputs, (tuple, list)):
-        meta_outputs = [meta_outputs]
-    for i in meta_outputs:
-        if isinstance(i, (tuple, list)):
-            flat_outputs.extend(_flatten_meta_outputs(i))
-        else:
-            flat_outputs.append(i)
-    return flat_outputs
+                      operator.floordiv, operator.pow, math.floor, operator.mod, math.ceil)
 
 
 def _trace_print(f):
@@ -135,19 +106,12 @@ class _NpuGraphConverter(Interpreter):
         self._graph = graph
 
     def run_node(self, n):
-        if n.stack_trace is not None:
-            file_line = n.stack_trace.split(' File ')[-1].replace('\n', '')
-            if file_line not in self._graph.graph._python_code:
-                self._graph.graph._python_code += f'\n# File {file_line}\n'
-            self._graph.graph._python_code += \
-                f'## FX Code: ' \
-                f'{self._graph.graph.format_python_code(n.name, n._pretty_print_target(n.target), None, n.args, n.kwargs)}\n'
-
         with self._graph.converter_context(node=n):
             return super().run_node(n)
 
     def run(self, *args, **kwargs):
-        _optimize_fx(self.module)
+        optimized_fx = _optimize_fx(self.module)
+        self._graph.save_fx_graph(optimized_fx)
 
         with self._graph.context():
             super().run(*args, **kwargs)
@@ -188,11 +152,7 @@ class _NpuGraphConverter(Interpreter):
             with fake_mode:
                 meta_outputs = func(target, args_meta, kwargs_meta)
             args_npu, kwargs_npu = self._unpack_npu(args, kwargs)
-            if all([_is_zero_element_tensor(t) for t in _flatten_meta_outputs(meta_outputs)]) \
-               and (str(target) not in _not_do_make_real_tensor_like):
-                npu_outputs = _make_real_tensor_like(meta_outputs)
-            else:
-                npu_outputs = self._graph.parse_node(target, args_npu, kwargs_npu, meta_outputs)
+            npu_outputs = self._graph.parse_node(target, args_npu, kwargs_npu, meta_outputs)
             return self._get_value_pack(meta_outputs, npu_outputs)
 
         return inner
@@ -239,6 +199,7 @@ def _optimize_fx(graph_module: torch.fx.GraphModule):
     # More optimization passes here
     graph_module = _optimize_sym_input(graph_module)
     logger.debug('after sym input optimization, graph is %s', graph_module.graph)
+    return graph_module
 
 
 def _optimize_sym_input(graph_module: torch.fx.GraphModule):
@@ -365,19 +326,7 @@ class _NpuFxCompiler:
             logger.info('  input %s: %s', i, inp)
         logger.info('  graph: %s', gm.graph)
 
-        if self.config.mode.value == "reduce-overhead":
-            from torchair._aclgraph.aclgraph_compiler import AclGraphInterpreter, AclGraphRunner
-
-            with no_dispatch():
-                mutable_gm = copy.deepcopy(gm)
-            aclgraph = AclGraphInterpreter(mutable_gm, graph=AclGraphRunner(),
-                                           garbage_collect_values=False).run(*example_inputs)
-            logger.debug(
-                'AclGraph is created successfully,\n graph:%s with mempool:%s, stream:%s, capture_error_mode:%s.',
-                id(aclgraph.graph), aclgraph.pool, aclgraph.stream, aclgraph.capture_error_mode)
-            return aclgraph
-
-        #to temporarily fix weight_quant_batchmatmul bug
+        # to temporarily fix weight_quant_batchmatmul bug
         if "torch_npu" in sys.modules:
             for n in gm.graph.nodes:
                 if n.op == "call_function" and str(n.target) == "npu.npu_weight_quant_batchmatmul.default":
@@ -387,9 +336,16 @@ class _NpuFxCompiler:
 
         with no_dispatch():
             mutable_gm = copy.deepcopy(gm)
+        if self.config.mode.value == "max-autotune":
+            from torchair._ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+            graph = GeConcreteGraph(self.config, name="graph_" + str(_next_unique_graph_id()))
+        elif self.config.mode.value == "reduce-overhead":
+            from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
+            graph = AclConcreteGraph(self.config)
+        else:
+            raise ValueError(f"Unsupported npu backend mode: {self.config.mode.value}.")
         concrete_graph: ConcreteGraphBase = _NpuGraphConverter(
-            mutable_gm, graph=ConcreteGraph(self.config, name="graph_" + str(_next_unique_graph_id())),
-            garbage_collect_values=False).run(*example_inputs)
+            mutable_gm, graph=graph, garbage_collect_values=False).run(*example_inputs)
 
         if self.config.debug.graph_dump.enabled and not self.config.export.export_mode:
             concrete_graph.dump(self.config.debug.graph_dump.full_path("dynamo_original_graph"))

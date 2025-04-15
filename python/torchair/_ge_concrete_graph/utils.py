@@ -4,10 +4,11 @@ from typing import Any, Dict, List, Tuple, Union, Callable
 
 import sympy
 import torch
+from torch.utils._mode_utils import no_dispatch
 from torchair.core.utils import logger
 from torchair._ge_concrete_graph.ge_ir_pb2 import GraphDef
 from torchair.ge._ge_graph import compat_as_bytes, DataType, is_sym, Tensor, \
-    torch_type_to_ge_type, ge_type_to_torch_type
+    torch_type_to_ge_type, ge_type_to_torch_type, _torch_tensor_to_ge_const
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._utils.path_manager import PathManager
 
@@ -206,6 +207,32 @@ def dump_graph(path: str, graph):
                 f.write(str(convert_to_pbtxt(graph)))
         except Exception as e:
             print(f"dump pbtxt failed {e}", flush=True)
+
+
+def make_real_tensor_like(meta_outputs):
+    if isinstance(meta_outputs, (tuple, list)):
+        return [make_real_tensor_like(v) for v in meta_outputs]
+    with no_dispatch():
+        empty_tensor = torch.empty(meta_outputs.size(), dtype=meta_outputs.dtype)
+        ge_empty = _torch_tensor_to_ge_const(empty_tensor)
+        ge_empty.set_meta(meta_outputs)
+        return ge_empty
+
+
+def flatten_meta_outputs(meta_outputs):
+    flat_outputs = []
+    if not isinstance(meta_outputs, (tuple, list)):
+        meta_outputs = [meta_outputs]
+    for i in meta_outputs:
+        if isinstance(i, (tuple, list)):
+            flat_outputs.extend(flatten_meta_outputs(i))
+        else:
+            flat_outputs.append(i)
+    return flat_outputs
+
+
+def is_zero_element_tensor(tensor):
+    return isinstance(tensor, torch.Tensor) and 0 in tensor.size() and not get_used_syms_in_meta(tensor)
 
 
 def get_used_syms_in_meta(meta):
