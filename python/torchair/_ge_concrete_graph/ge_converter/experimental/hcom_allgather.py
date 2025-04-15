@@ -23,6 +23,17 @@ op_allgather_in_tensor_uneven = npu_define_lib.define(
     str tag, int[] rank_list, int group_size, SymInt[] recv_displacements) -> Tensor")
 
 
+def allgather_in_tensor_npu(
+        output_tensor: torch.Tensor,
+        input_tensor: torch.Tensor,
+        tag: str,
+        ranks: List[int],
+        group_size: int, ):
+    pg = c10d._find_or_create_pg_by_ranks_and_tag(tag, ranks, group_size)
+    c10d.all_gather_into_tensor(output_tensor, input_tensor, group=pg, async_op=False)
+    return output_tensor
+
+
 def allgather_in_tensor_meta(
         output_tensor: torch.Tensor,
         input_tensor: torch.Tensor,
@@ -75,6 +86,7 @@ def allgather_meta(
 
 npu_define_lib.impl(op_allgather, allgather_meta, 'Meta')
 npu_define_lib.impl(op_allgather_in_tensor, allgather_in_tensor_meta, 'Meta')
+npu_define_lib.impl(op_allgather_in_tensor, allgather_in_tensor_npu, 'PrivateUse1')
 
 
 def check_same_size(output_tensor_list):
