@@ -77735,9 +77735,7 @@ def _GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], sc
         op.input_desc.add().CopyFrom(per_token_scale.desc)
         op.input_desc[-1].name = "per_token_scale"
     else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "per_token_scale"
+        pass
 
     # process attrs
     op.attr["split_item"].i = split_item
