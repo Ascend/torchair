@@ -131,12 +131,16 @@ Status DynamicNpuGraphExecutor::UpdateInputsInner(const std::vector<const at::Te
     if (graph_data_->input_placements[i] == Placement::DEVICE) {
       TNG_RETURN_IF_ERROR(AssembleDataAndStorageShapeToGe(*inputs[i], input_holders[i]));
     } else {
-      bool update_shape_flag = false;
-      if (((*inputs[i]).sizes().size() > 1U) && ((*inputs[i]).sizes() != host_input_holders_[i].sizes())) {
+      bool update_shape_flag = true;
+      if ((*inputs[i]).sizes().size() > 1U) {
         // if dynamo shape have change, need to update host_input_holders_
-        host_input_holders_[i] = at::empty((*inputs[i]).sizes(), (*inputs[i]).options().device(at::kPrivateUse1));
-        update_shape_flag = true;
+        if ((*inputs[i]).sizes() != host_input_holders_[i].sizes()) {
+          host_input_holders_[i] = at::empty((*inputs[i]).sizes(), (*inputs[i]).options().device(at::kPrivateUse1));
+        } else {
+          update_shape_flag = false;
+        }
       }
+      TNG_LOG(DEBUG) << "Host input " << i << " need update shape " << update_shape_flag;
       UpdateHostInput(*inputs[i], input_holders[i], host_input_holders_[i], update_shape_flag);
     }
     TNG_LOG(DEBUG) << "Update aten input " << i << " " << DebugString(*inputs[i]) << " to "
