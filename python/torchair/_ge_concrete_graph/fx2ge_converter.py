@@ -35,7 +35,8 @@ from torchair._ge_concrete_graph.graph_pass import optimize_sym_pack, optimize_r
     replace_data_to_refdata, get_frozen_flag, frozen_data_by_constplaceholder
 from torchair._ge_concrete_graph.utils import convert_to_tensorboard, dump_graph, force_op_unknown_shape, \
     is_host_data_tensor, get_used_sym_value_mapping, Placement, compute_value_of_sym, \
-    generate_sym_exper, get_sym_int_value, generate_shape_from_tensor, update_op_input_name_from_mapping
+    generate_sym_exper, get_sym_int_value, generate_shape_from_tensor, update_op_input_name_from_mapping, \
+    is_zero_element_tensor, flatten_meta_outputs, make_real_tensor_like
 from torchair._ge_concrete_graph.hcom_utils import record_pg_to_graph, codegen_refresh_cache_pgname, \
     rename_cached_pgname
 from torchair._ge_concrete_graph.supported_declaration import Support
@@ -119,6 +120,9 @@ _SUPPORT_FORMAT_SET = {
     Format.FORMAT_NCDHW.value,
     Format.FORMAT_NDC1HWC0.value,
     Format.FORMAT_FRACTAL_Z_3D.value
+}
+_DONT_EMPTY_TENSOR_OPT_OPS = {
+    'npu_define.reduce_scatter_tensor_uneven.default',
 }
 
 
@@ -503,6 +507,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._is_compiled = False
         self._all_sym_input_idx = {}
         self._all_meta_tensor_input = {}
+        self._fx_graph = None
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         enable_event_log = logger.getEffectiveLevel() <= EVENT_LEVEL
@@ -540,10 +545,10 @@ class GeConcreteGraph(ConcreteGraphBase):
             ge_outputs = self.graph.run(inputs)
         t_run = time.time() if enable_event_log else 0
         logger.event("torchair run at %s, process input: %sus, compile %sus, graph run: %sus",
-                       int(t_begin * 1e6),
-                       int((t_input_process - t_begin) * 1e6),
-                       int((t_compile - t_input_process) * 1e6),
-                       int((t_run - t_compile) * 1e6))
+                     int(t_begin * 1e6),
+                     int((t_input_process - t_begin) * 1e6),
+                     int((t_compile - t_input_process) * 1e6),
+                     int((t_run - t_compile) * 1e6))
 
         if len(self._ref_data_idx) != 0:
             for ge_index, fx_index in self._cloned_ge_input_mapping.items():
@@ -836,6 +841,10 @@ class GeConcreteGraph(ConcreteGraphBase):
     def parse_node(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
         if str(target) in ['air.scope_enter.default', 'air.scope_exit.default']:
             return target(*args, **kwargs)
+        if all([is_zero_element_tensor(t) for t in flatten_meta_outputs(meta_outputs)]) and (
+                str(target) not in _DONT_EMPTY_TENSOR_OPT_OPS):
+            return make_real_tensor_like(meta_outputs)
+
         if hasattr(target, "_ge_converter"):
             converter = target._ge_converter
         else:
@@ -892,8 +901,20 @@ class GeConcreteGraph(ConcreteGraphBase):
             return False
         return self._auto_tune_times == 0
 
+    def save_fx_graph(self, graph_module: torch.fx.GraphModule):
+        self._fx_graph = graph_module
+
     @contextmanager
     def converter_context(self, *, node):
+        if node.stack_trace is not None:
+            file_line = node.stack_trace.split(' File ')[-1].replace('\n', '')
+            if file_line not in self.graph._python_code:
+                self.graph._python_code += f'\n# File {file_line}\n'
+            node_target = node._pretty_print_target(node.target)
+            self.graph._python_code += \
+                f'## FX Code: ' \
+                f'{self.graph.format_python_code(node.name, node_target, None, node.args, node.kwargs)}\n'
+
         try:
             self._converter_ctx.node = node
             attr_maps = {}
@@ -943,11 +964,11 @@ class GeConcreteGraph(ConcreteGraphBase):
             logger.info(f"  {k}: {v}")
 
         return local_compile_options, global_compile_options
-    
+
     @staticmethod
     def _codegen_input(all_input_names, all_sym_input, input_func_list):
         from torch._inductor.utils import IndentedBuffer
-        input_code = IndentedBuffer()       
+        input_code = IndentedBuffer()
 
         if all_sym_input:
             # only for cache
