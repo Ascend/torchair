@@ -55,12 +55,12 @@ Status DynamicNpuGraphExecutor::AssembleInputs(const std::vector<const at::Tenso
   static bool enable_load_execute_graph =
       Session::GetInstance().IsFastLoadGraphSupported() && Session::GetInstance().IsFastExecuteGraphSupported();
   if (is_first_run_) {
+    TNG_RETURN_IF_ERROR(AssembleFrozenOption(graph_data_->frozen_input_flag_list, inputs, frozen_option_value_));
     if (enable_load_execute_graph) {
       return AssembleInputsInner(inputs, gert_inputs_holder_);
     } else {
       return AssembleInputsInner(inputs, inputs_holder_);
     }
-    TNG_RETURN_IF_ERROR(AssembleFrozenOption(graph_data_->frozen_input_flag_list, inputs, frozen_option_value_));
   } else {
     if (enable_load_execute_graph) {
       return UpdateInputsInner(inputs, gert_inputs_holder_);
