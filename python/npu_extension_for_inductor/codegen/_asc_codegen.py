@@ -42,7 +42,7 @@ class SymArg(KernelArg):
         super().__init__(name, "int64_t")
 
 
-def codegen_kernel_def(graph: Union[ASCGraph, FusedASCGraph], var_name=None) -> str:
+def codegen_kernel_def(graph: FusedASCGraph, var_name=None) -> str:
     var_name = var_name or graph.name
     kernel_def = IndentedBuffer()
     graph_fn = graph.name
@@ -56,7 +56,7 @@ def codegen_kernel_def(graph: Union[ASCGraph, FusedASCGraph], var_name=None) -> 
     scheduled_{graph.name} = fuser.schedule({graph.name})
     op_proto, tiling_def, host_impl, device_impl = fuser.codegen({graph.name}, scheduled_{graph.name})
     ''')
-    save_asserts(graph.name, graph_py_code.getvalue(), 'asc_graph_python.py')
+    save_asserts(graph.name, graph_py_code.getvalue(), 'asc_graph.py')
 
     local_vars = dict()
     with load_autofuser(graph.name):
@@ -83,22 +83,21 @@ def codegen_kernel_def(graph: Union[ASCGraph, FusedASCGraph], var_name=None) -> 
     return kernel_def.getvalue()
 
 
-def codegen_cpp_wrapper(graph: ASCGraph):
+def codegen_cpp_wrapper(graph: FusedASCGraph):
     wrapper = IndentedBuffer()
     inputs = [TensorArg(v) for v in graph.inputs]
     outputs = [TensorArg(v) for v in graph.outputs]
     workspaces = [TensorArg("workspace")]
-    symbols = [SymArg(str(v)) for v in sorted(list(graph.size_vars))]
+    symbols = [SymArg(str(v)) for v in graph.size_vars]
     stream = StreamArg("stream")
     tiling_dtype = f"{graph.name}TilingData"
 
-    unique_outer = sorted(set(graph.inputs_outer + graph.outputs_outer))
-    all_args = [TensorArg(v) for v in unique_outer] + workspaces + symbols + [stream]
+    all_args = [TensorArg(v) for v in graph.args] + workspaces + symbols + [stream]
     signature = ', '.join([v.signature for v in all_args])
     buffer_assign = ''
     for in_name, out_name in zip(graph.inputs + graph.outputs, graph.inputs_outer + graph.outputs_outer):
-        buffer_assign += f'\nauto *{in_name} = {out_name};'
-        buffer_assign += f'\nDLOG() << "{in_name}: " << {in_name} << std::endl;'
+        buffer_assign += f'\n    auto *{in_name} = {out_name};'
+        buffer_assign += f'\n    DLOG() << "{in_name}: " << {in_name} << std::endl;'
 
     tiling_args = [v.name for v in symbols]
     launch_args = [v.name for v in itertools.chain(inputs, outputs, workspaces)]
@@ -113,28 +112,30 @@ def codegen_cpp_wrapper(graph: ASCGraph):
     launch_signature.append(f"{tiling_dtype} *tiling_data")
 
     wrapper.splice(f'''
-    typedef uint32_t (*TilingFuncType)({', '.join(tiling_signature)});
-    typedef int (*LaunchFuncType)({', '.join(launch_signature)});
-    static TilingFuncType tiling_fn = reinterpret_cast<TilingFuncType>(GetFunc("AutofuseTiling"));
-    static LaunchFuncType launch_fn = reinterpret_cast<LaunchFuncType>(GetFunc("AutofuseLaunch"));
-    extern "C" int wrapper({signature}) {{
-        {tiling_dtype} tiling_data;
-        int64_t workspace_size = 0;
-        int64_t block_dim = 0;
-        if (tiling_fn == nullptr || launch_fn == nullptr) {{
-            if (tiling_fn == nullptr) std::cerr << "{graph.name} kernel tiling func not found" << std::endl;
-            if (launch_fn == nullptr) std::cerr << "{graph.name} kernel launch func not found" << std::endl;
-            return -1;
-        }}
-        uint32_t result = tiling_fn({', '.join(tiling_args + ["&tiling_data", "&workspace_size", "&block_dim"])});
-        if (result != 0) {{
-            return -1;
-        }}
-        {buffer_assign}
-        DLOG() << "block_dim: " << block_dim << std::endl;
-        DLOG() << "stream: " << GetStream(stream) << std::endl;
-        return launch_fn({', '.join(["block_dim", "GetStream(stream)"] + launch_args + ["&tiling_data"])});
+typedef int64_t (*TilingFuncType)({', '.join(tiling_signature)});
+typedef int64_t (*LaunchFuncType)({', '.join(launch_signature)});
+static TilingFuncType tiling_fn = reinterpret_cast<TilingFuncType>(GetFunc("AutofuseTiling"));
+static LaunchFuncType launch_fn = reinterpret_cast<LaunchFuncType>(GetFunc("AutofuseLaunch"));
+
+extern "C" int wrapper({signature}) {{
+    {tiling_dtype} tiling_data;
+    int64_t workspace_size = 0;
+    int64_t block_dim = 0;
+    if (tiling_fn == nullptr || launch_fn == nullptr) {{
+        if (tiling_fn == nullptr) std::cerr << "{graph.name} kernel tiling func not found" << std::endl;
+        if (launch_fn == nullptr) std::cerr << "{graph.name} kernel launch func not found" << std::endl;
+        return -1;
     }}
+    int64_t result = tiling_fn({', '.join(tiling_args + ["&tiling_data", "&workspace_size", "&block_dim"])});
+    if (result != 0) {{
+        return -1;
+    }}
+    {buffer_assign}
+
+    DLOG() << "block_dim: " << block_dim << std::endl;
+    DLOG() << "stream: " << GetStream(stream) << std::endl;
+    return launch_fn({', '.join(["block_dim", "GetStream(stream)"] + launch_args + ["&tiling_data"])});
+}}
     ''')
 
     return wrapper.getvalue()

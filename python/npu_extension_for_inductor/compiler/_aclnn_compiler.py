@@ -29,6 +29,7 @@ def codegen_cpp_source(kernel_spec: FusedKernelSpec, kernel_path: str):
     wrapper.splice('''
     #include <iostream>
     #include <dlfcn.h>
+    #include <cstdint>
     #include "torch_npu/csrc/core/npu/NPUStream.h"
     ''')
 
@@ -199,7 +200,7 @@ def compile_ascendc(artifacts: Dict):
     lib_kernel = os.path.join(lib_dir, f"kernel.so")
 
     jit_command = setup_asc_jit_command(kernel_spec, output_file=lib_kernel)
-    save_asserts(kernel_spec.name, jit_command, 'asc_graph_build_kernel.py')
+    save_asserts(kernel_spec.name, jit_command, 'asc_kernel.py')
 
     def cache_command(cache_file, content, func, target):
         if not os.path.exists(cache_file) or not os.path.exists(target):
@@ -215,7 +216,7 @@ def compile_ascendc(artifacts: Dict):
         func(content)
 
     with load_compiler(kernel_spec.name):
-        cache_command(os.path.join(lib_dir, 'asc_graph_build_kernel.py'), jit_command, build_ascend_lib, lib_kernel)
+        cache_command(os.path.join(lib_dir, 'asc_kernel.py'), jit_command, build_ascend_lib, lib_kernel)
 
     cpp_source = codegen_cpp_source(kernel_spec, lib_kernel)
     save_asserts(kernel_spec.name, cpp_source, 'inductor_wrapper.cpp')

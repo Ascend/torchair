@@ -295,22 +295,16 @@ class NPUKernel(Kernel):
 
     def codegen(self):
         fused_graph = self.fused_graph
-        for read in fused_graph.inputs:
-            self.args.input(read)
-        for write in fused_graph.outputs:
-            self.args.output(write)
-        code = IndentedBuffer()
-        args, _, _ = self.args.python_argdefs()
-        if os.getenv("ASCIR_FORCE_CONTIGUOUS", None) != '1':
-            call_args = sorted(args)
-        else:
-            call_args = sorted(self.graph.inputs_outer + self.graph.outputs_outer)
-        args.append('workspace')
-        call_args.append('workspace')
-        kw_args = [str(v) for v in list(sorted(self.graph.size_vars))]
+        # 对于输出复用输入的场景，可能出现多个asc graph上的buffer（Data/Output）对应同一个python kernel入参的情况，
+        # outer是python kernel层的入参名，而inputs/outputs，则是asc graph上的buffer名，也对应rt层kernel的args
+        fused_graph.inputs_outer = [self.args.input(read) for read in fused_graph.inputs]
+        fused_graph.outputs_outer = [self.args.output(write) for write in fused_graph.outputs]
+        # 这里的args，对应python kernel的入参，而第二个返回，是在output code call函数中，调用python kernel时传入的参数
+        fused_graph.args, _, _ = self.args.python_argdefs()
+        used_symbols = [str(v) for v in fused_graph.size_vars]
 
-        signature_args = ', '.join(args + ["*"] + kw_args) if len(kw_args) else ', '.join(args)
-        call_args = ', '.join(call_args + [f"{v}={v}" for v in kw_args])
+        signature = ', '.join(fused_graph.args + ['workspace'] + used_symbols)
+        call_args = ', '.join(fused_graph.args + ['workspace'] + [f"{v}={v}" for v in used_symbols])
 
         self._kernel_def.clear()
         kernel_var_name = f"{self._kernel}_compiled"
@@ -318,14 +312,13 @@ class NPUKernel(Kernel):
         from npu_extension_for_inductor import codegen as npu_codegen
         self._kernel_def.splice(npu_codegen.codegen_kernel_def(fused_graph, kernel_var_name))
         self._kernel_def.writelines(self._comments)
-        self._kernel_def.writeline(f"def {self._kernel}({signature_args}):")
+        self._kernel_def.writeline(f"def {self._kernel}({signature}):")
         with self._kernel_def.indent():
             for k, v in self._torch_arg_wrappers.items():
                 self._kernel_def.writeline(f"{k} = {v}")
             self._kernel_def.writeline(f"{kernel_var_name}({call_args})")
-        code.splice(self._kernel_def)
 
-        return code.getvalue()
+        return self._kernel_def.getvalue()
 
     def record_summary(self, nodes, model_path=None):
         for i, graph in enumerate(self._subgraphs):
@@ -340,9 +333,9 @@ class NPUKernel(Kernel):
             lines = list(itertools.chain(*labels))
             lines = _left_align_lines(lines)
             dot_graph.add_node(
-                pydot.Node(f"{self.graph.name}_body", shape="plaintext", label='\n'.join(lines),
+                pydot.Node(f"{self.kernel_name}_body", shape="plaintext", label='\n'.join(lines),
                            fontname="Courier"))
-            svg_path = svg_path if svg_path else f"./{self.graph.name}.svg"
+            svg_path = svg_path if svg_path else f"./{self.kernel_name}.svg"
             dot_graph.write_svg(svg_path)
         except ImportError:
             logging.info("Unable to save dot for kernel %s as pydot not installed", self.kernel_name)
@@ -619,7 +612,7 @@ class NPUScheduling(BaseScheduling):
         device = f'{call_args[0]}.device' if len(call_args) else "'npu'"
         wrapper.writeline("# Todo: symbolic workspace size")
         wrapper.writeline(f"{workspace_var_name} = torch.empty(1024 * 1024 * 1024 // 4, device={device})")
-        used_sizes = list(sorted(kernel.graph.size_vars))
+        used_sizes = list(kernel.fused_graph.size_vars)
         call_args.append(workspace_var_name)
         call_args.extend([f"{v}={v}" for v in used_sizes])
         if os.getenv("NPU_INDUCTOR_DEBUG_SINGLE_KERNEL", None) == '1':

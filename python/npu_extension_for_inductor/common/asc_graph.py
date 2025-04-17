@@ -132,11 +132,15 @@ class FusedASCGraph:
         self._subgraphs: List[ASCGraph] = subgraphs
         buffer_writes = sum([g.outputs for g in subgraphs], [])
         buffer_reads = sum([g.inputs for g in subgraphs], [])
-        self.inputs: List[str] = list(set(buffer_reads) - set(buffer_writes))
-        self.inputs_outer: List[str] = self.inputs
-        self.outputs: List[str] = list(outputs)
-        self.outputs_outer: List[str] = self.outputs
+
+        self.inputs: List[str] = list(set(buffer_reads) - set(buffer_writes)) # kernel输入地址
+        self.outputs: List[str] = list(outputs) # kernel输出地址
+         # Tiling使用的symbols，与外部传参的顺序一致
         self.size_vars = sorted(set(sum([list(g.size_vars) for g in subgraphs], [])))
+
+        self.inputs_outer: List[str] = [] # 输入地址对应的外部fbuffer名，多个地址可能对应一个外部buffer
+        self.outputs_outer: List[str] = [] # 输出地址对应的外部fbuffer名，多个地址可能对应一个外部buffer
+        self.args: List[str] = [] # 外部buffer的传参顺序
 
     @property
     def subgraphs(self):
