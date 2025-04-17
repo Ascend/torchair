@@ -4,9 +4,9 @@ import operator
 import os
 from collections import defaultdict
 import contextlib
-from typing import Iterable, Dict, List, Set
+from typing import Iterable, Dict, List, Set, Union
 
-from npu_extension_for_inductor.common.asc_graph import ASCGraph
+from npu_extension_for_inductor.common.asc_graph import ASCGraph, FusedASCGraph
 from npu_extension_for_inductor.common.symbols import AscSymbol, AscExpr
 from npu_extension_for_inductor.common.utils import StrRep
 from npu_extension_for_inductor.ir import _Op, _Tensor
@@ -226,31 +226,28 @@ def _left_align_lines(lines: List[str]):
     return lines
 
 
-def _left_align_str(s: str):
-    lines = s.split("\n")
-    return "\n".join(_left_align_lines(lines))
+def _value_str(value):
+    if isinstance(value, (list, tuple)):
+        value = [StrRep(str(v)) for v in value]
+    return str(value)
 
 
-def make_graph_dot(asc_graph: ASCGraph):
-    try:
-        import pydot
-    except ImportError:
-        print("Please install pydot first.")
-        return
-    graph: pydot.Dot = pydot.Dot(rankdir="TB")
-    clusters: Dict[str, pydot.Cluster] = {}
+def make_graph_dot(asc_graph: ASCGraph, *, parent=None, with_priavte_attrs=False):
+    import pydot
+    graph: pydot.Dot = pydot.Dot(rankdir="TB") if parent is None else parent
     type_colors = {"Data": "AliceBlue", "Workspace": "Gray", "Output": "AliceBlue", "Broadcast": "LightBlue"}
+    cluster = pydot.Cluster(asc_graph.name, label=asc_graph.name, labeljust='c')
+    graph.add_subgraph(cluster)
     for untyped_op in asc_graph.ops:
         n: _Op = untyped_op
         style = {
             "shape": "record",
             "fillcolor": "#CAFFE3",
             "style": '"filled,rounded"',
-            "fontcolor": "#000000",
         }
 
         label = "{"
-        label += f"name={n.name}|type={n.op_type}"
+        label += f"name={asc_graph.name}/{n.name}|type={n.op_type}"
         inputs = []
         if not n.supported:
             style["fillcolor"] = "#FF0000"
@@ -262,38 +259,80 @@ def make_graph_dot(asc_graph: ASCGraph):
             else:
                 attr = attr.replace(f"{n.name}.attr.", '')
                 attr = attr.replace(f"{n.name}.", '')
-                if isinstance(value, (list, tuple)):
-                    value = [StrRep(str(v)) for v in value]
-                label += f"|{attr}={str(value)}"
+                label += f"|{attr}={_value_str(value)}"
+
         for attr, value in n.private_attrs.items():
-            if isinstance(value, (list, tuple)):
-                value = [StrRep(str(v)) for v in value]
-            label += f"|private.{attr}={str(value)}"
+            if not with_priavte_attrs:
+                continue
+            label += f"|private.{attr}={_value_str(value)}"
         label += "}"
 
         if n.op_type in type_colors:
             style["fillcolor"] = type_colors[n.op_type]
-        dot_node = pydot.Node(n.name, label=label, **style)
+        dot_node = pydot.Node(f'{asc_graph.name}/{n.name}', label=label, **style)
         for name, src in inputs:
             if isinstance(src, str):
-                graph.add_edge(pydot.Edge(src, n.name, label=str(name)))
-            else:
-                for i, s in enumerate(src):
-                    graph.add_edge(pydot.Edge(s, n.name, label=f'{name}[{i}]'))
-
-        buffer_name = n.get_private_attr("buffer_name")
-        if buffer_name not in clusters:
-            clusters[buffer_name] = pydot.Cluster(buffer_name, label=buffer_name, labeljust='c')
-            graph.add_subgraph(clusters[buffer_name])
-
-        cluster = clusters[buffer_name]
+                graph.add_edge(pydot.Edge(f'{asc_graph.name}/{src}',
+                               f'{asc_graph.name}/{n.name}', label=f'{asc_graph.name}/{name}'))
+                continue
+            for i, s in enumerate(src):
+                graph.add_edge(pydot.Edge(f'{asc_graph.name}/{s}', f'{asc_graph.name}/{n.name}',
+                                          label=f'{asc_graph.name}/{name}[{i}]'))
         cluster.add_node(dot_node)
+    return graph
+
+
+def make_fused_graph_dot(fused_graph: FusedASCGraph, *, with_priavte_attrs=False):
+    import pydot
+    graph: pydot.Dot = pydot.Dot(rankdir="TB")
+
+    buffer_readers: Dict[str, List[str]] = {}
+    buffer_writers: Dict[str, List[str]] = {}
+
+    input_cluster = pydot.Cluster("inputs", label="inputs", labeljust='c')
+    graph.add_subgraph(input_cluster)
+    for i, read in enumerate(fused_graph.inputs):
+        label = f"{{name={read}|index={i}}}"
+        input_cluster.add_node(pydot.Node(read, label=label, shape="record", fillcolor="AliceBlue",
+                                          style='"filled,rounded"'))
+        buffer_writers[read] = [read]
+
+    for asc_graph in fused_graph.subgraphs:
+        make_graph_dot(asc_graph, with_priavte_attrs=with_priavte_attrs, parent=graph)
+        for read in asc_graph.inputs:
+            buffer_readers.setdefault(read, [])
+            buffer_readers[read].append(f'{asc_graph.name}/{read}')
+        for write in asc_graph.outputs:
+            buffer_writers.setdefault(write, [])
+            buffer_writers[write].append(f'{asc_graph.name}/{write}')
+
+    output_cluster = pydot.Cluster("outputs", label="outputs", labeljust='c')
+    graph.add_subgraph(output_cluster)
+    for i, output in enumerate(fused_graph.outputs):
+        label = f"{{name={output}|index={i}}}"
+        output_cluster.add_node(pydot.Node(output, label=label, shape="record", fillcolor="AliceBlue",
+                                           style='"filled,rounded"'))
+        for writer in buffer_writers.get(output, []):
+            graph.add_edge(pydot.Edge(writer, output))
+
+    for buffer, readers in buffer_readers.items():
+        for reader in readers:
+            for writer in buffer_writers.get(buffer, []):
+                graph.add_edge(pydot.Edge(writer, reader))
 
     return graph
 
 
-def draw_asc_graph_dot(asc_graph: ASCGraph, file_path=None):
-    graph = make_graph_dot(asc_graph)
+def draw_asc_graph_dot(asc_graph: Union[ASCGraph, FusedASCGraph], file_path=None):
+    try:
+        import pydot
+    except ImportError:
+        print("Please install pydot first.")
+        return
+    if isinstance(asc_graph, FusedASCGraph):
+        graph = make_fused_graph_dot(asc_graph)
+    else:
+        graph = make_graph_dot(asc_graph)
     file_path = file_path if file_path else f"./{asc_graph.name}.svg"
     graph.write_svg(file_path)
 

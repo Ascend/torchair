@@ -12,12 +12,7 @@ class AscSymbol:
         if isinstance(sym, AscSymbol):
             sym = sym.sym
         if not isinstance(sym, (sympy.Symbol, sympy.Expr)):
-            try:
-                sym = sympy.Symbol(f"ascir.SizeExpr({int(str(sym))})")
-            except ValueError:
-                sym = sympy.Symbol(str(sym))
-        else:
-            sym = sympy.Symbol(f"ascir.SizeExpr({sym})") if str(sym).isdigit() else sym
+            sym = sympy.Symbol(str(sym))
         self.sym = sym
 
     def __mul__(self, other):
@@ -72,7 +67,7 @@ class AscSymbol:
     def _as_symbol(obj):
         if isinstance(obj, AscSymbol):
             return obj.sym
-        return sympy.Symbol(f"ascir.SizeExpr({obj})")
+        return sympy.Symbol(f"{obj}")
 
 
 class AscExpr:
@@ -187,6 +182,18 @@ class Loop:
         self.size[dim] = size
         self.stride[:dim] = [size * stride for stride in self.stride[:dim]]
         self.stride[dim] = functools.reduce(operator.mul, self.size[dim + 1:], sympy.S.One)
+
+    def debroadcast_(self, dim):
+        size = self.size[dim]
+        self.size[dim] = sympy.S.One
+        self.stride[:dim] = [stride // size for stride in self.stride[:dim]]
+        self.stride[dim] = sympy.S.Zero
+        return self
+
+    def zero_offset_(self):
+        offset = self.offset
+        self.offset = sympy.S.Zero
+        return offset
 
     def copy(self):
         return Loop(axis=self.axis.copy(), size=self.size.copy(), stride=self.stride.copy(), offset=self.offset)

@@ -135,7 +135,7 @@ def concat(*x):
 
 def constant(value: str, dtype=None):
     graph = V.kernel.graph
-    op = graph.add_op("Constant")
+    op = graph.add_op("Scalar")
     op.value = value
     return op.y
 
@@ -148,16 +148,18 @@ def reduction(x, *, reduce_type):
     return op.y
 
 
-def data(*, name, dtype):
+def data(*, name, dtype, index):
     graph = V.kernel.graph
     op = graph.add_op("Data", name=name)
+    op.attr.ir_attr.index = index
     op.y.dtype = dtype
     return op.y
 
 
-def output(*, name, src, dtype):
+def output(*, name, src, dtype, index):
     graph = V.kernel.graph
     op = graph.add_op("Output", name=name)
+    op.attr.ir_attr.index = index
     op.x = src
     op.y.dtype = dtype
     return op.y
@@ -171,10 +173,12 @@ def workspace(*, name, src, dtype):
     return op.y
 
 
-def load(data):
+def load(buffer, *, offset):
     graph = V.kernel.graph
     op = graph.add_op("Load")
-    op.x = data
+    if offset is not None:
+        op.attr.ir_attr.offset = offset
+    op.x = buffer
     return op.y
 
 

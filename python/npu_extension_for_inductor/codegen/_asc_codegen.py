@@ -2,10 +2,11 @@ import os
 import sys
 import itertools
 from types import ModuleType
+from typing import Union
 
 import torch
 from torch._inductor.codegen.common import IndentedBuffer
-from npu_extension_for_inductor.common.asc_graph import ASCGraph
+from npu_extension_for_inductor.common.asc_graph import ASCGraph, FusedASCGraph
 from npu_extension_for_inductor.common.debug import save_asserts
 from npu_extension_for_inductor.common.utils import camel_to_snake
 from npu_extension_for_inductor.common.utils import load_autofuser
@@ -41,7 +42,7 @@ class SymArg(KernelArg):
         super().__init__(name, "int64_t")
 
 
-def codegen_kernel_def(graph: ASCGraph, var_name=None) -> str:
+def codegen_kernel_def(graph: Union[ASCGraph, FusedASCGraph], var_name=None) -> str:
     var_name = var_name or graph.name
     kernel_def = IndentedBuffer()
     graph_fn = graph.name
@@ -52,14 +53,17 @@ def codegen_kernel_def(graph: ASCGraph, var_name=None) -> str:
     graph_py_code.splice(graph.codegen())
     graph_py_code.splice(f'''
     fuser = Autofuser(AutofuserOptions())
-    fused_{graph.name} = fuser.autofuse({graph.name})
-    op_proto, tiling_def, host_impl, device_impl = fuser.codegen({graph.name}, fused_{graph.name})
+    scheduled_{graph.name} = fuser.schedule({graph.name})
+    op_proto, tiling_def, host_impl, device_impl = fuser.codegen({graph.name}, scheduled_{graph.name})
     ''')
     save_asserts(graph.name, graph_py_code.getvalue(), 'asc_graph_python.py')
 
     local_vars = dict()
     with load_autofuser(graph.name):
-        exec(compile(graph_py_code.getvalue(), '<string>', 'exec'), globals(), local_vars)
+        try:
+            exec(compile(graph_py_code.getvalue(), '<string>', 'exec'), globals(), local_vars)
+        except Exception as e:
+            raise RuntimeError(f"Failed to execute graph code:{graph_py_code.getvalue()} {e}") from e
 
     artifacts = dict()
     artifacts['name'] = graph.name
@@ -111,8 +115,8 @@ def codegen_cpp_wrapper(graph: ASCGraph):
     wrapper.splice(f'''
     typedef uint32_t (*TilingFuncType)({', '.join(tiling_signature)});
     typedef int (*LaunchFuncType)({', '.join(launch_signature)});
-    static TilingFuncType tiling_fn = reinterpret_cast<TilingFuncType>(GetFunc("{graph.name}TilingFunc"));
-    static LaunchFuncType launch_fn = reinterpret_cast<LaunchFuncType>(GetFunc("aclrtlaunch_{camel_to_snake(graph.name)}"));
+    static TilingFuncType tiling_fn = reinterpret_cast<TilingFuncType>(GetFunc("AutofuseTiling"));
+    static LaunchFuncType launch_fn = reinterpret_cast<LaunchFuncType>(GetFunc("AutofuseLaunch"));
     extern "C" int wrapper({signature}) {{
         {tiling_dtype} tiling_data;
         int64_t workspace_size = 0;

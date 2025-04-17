@@ -161,6 +161,21 @@ class AscOps:
         self.graph.inputs.clear()
 
     def __getattr__(self, item):
+        if item == "AscGraph":
+            def subgraph(name, graph: ASCGraph, fused_graph):
+                class _TrackedSubgraph:
+                    def __init__(self, op: _Track):
+                        self.track = op
+                        self.y = [getattr(op, f'y{i}') for i in range(100)]
+
+                    def __getattr__(self, item):
+                        if item == "y":
+                            return self.y
+                        if item == "x":
+                            return self.track.x
+                        raise AttributeError(f"Unknown attribute {item}")
+                return _TrackedSubgraph(self.graph.add_op(item, name=name))
+            return subgraph
         return lambda name, graph: self.graph.add_op(item, name=name)
 
 
@@ -208,10 +223,10 @@ class ASCHintGraph:
         signature.append(f"int64_t *workspace_size")
         signature.append(f"int64_t *block_dim")
         debug_code = '\n'.join(
-            [f'std::cerr << "[STUB]{self.name}TilingFunc {v} = " << {v} << std::endl;' for v in self.graph.size_vars])
+            [f'std::cerr << "[STUB]Tiling for {self.name} {v} = " << {v} << std::endl;' for v in self.graph.size_vars])
         code = IndentedBuffer()
         code.splice(f"""
-        extern "C" int {self.name}TilingFunc({', '.join(signature)}) {{
+        extern "C" int AutofuseTiling({', '.join(signature)}) {{
             {debug_code}
             return 0;
         }}
@@ -226,10 +241,10 @@ class ASCHintGraph:
         signature.append(f"{self.name}TilingData *tiling_data")
         debug_names = buf_names + ['block_dim', 'stream']
         debug_code = '\n'.join(
-            [f'std::cerr << "[STUB]aclrtlaunch_{self.name} {v} = " << {v} << std::endl;' for v in debug_names])
+            [f'std::cerr << "[STUB]Launch for {self.name} {v} = " << {v} << std::endl;' for v in debug_names])
         code = IndentedBuffer()
         code.splice(f"""
-        extern "C" int aclrtlaunch_{camel_to_snake(self.name)}({', '.join(signature)}) {{
+        extern "C" int AutofuseLaunch({', '.join(signature)}) {{
             {debug_code}
             return 0;
         }}
@@ -303,6 +318,7 @@ class RevertAscir(_Track):
         self.__dict__['dtypes'] = AscDtypes()
         self.__dict__['SizeExpr'] = lambda digit: sympy.Symbol(str(digit))
         self.__dict__['HintGraph'] = self.hint_graph
+        self.__dict__['FusedGraph'] = self.hint_graph
 
     def hint_graph(self, name):
         graph = ASCGraph()
@@ -321,7 +337,7 @@ class Autofuser:
         pass
 
     @staticmethod
-    def autofuse(graph):
+    def schedule(graph):
         return graph
 
     @staticmethod

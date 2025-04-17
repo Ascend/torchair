@@ -7,7 +7,7 @@ import os
 from typing import List, Iterable, Dict, Union, Set
 from unittest.mock import patch
 
-from npu_extension_for_inductor.common.asc_graph import ASCGraph
+from npu_extension_for_inductor.common.asc_graph import ASCGraph, FusedASCGraph
 from npu_extension_for_inductor.common.symbols import Axis
 from npu_extension_for_inductor.common.debug import _left_align_lines, OP_SUMMARY
 from npu_extension_for_inductor.common.utils import camel_to_snake
@@ -21,7 +21,7 @@ from torch._inductor.codegen.triton import TritonScheduling
 from torch._inductor.codegen.wrapper import WrapperCodeGen
 from torch._inductor.ir import LoopBody
 from torch._inductor.scheduler import BaseSchedulerNode, BaseScheduling, SchedulerNode, FusedSchedulerNode
-from torch._inductor.utils import sympy_symbol, get_kernel_metadata
+from torch._inductor.utils import get_kernel_metadata
 from torch._inductor.virtualized import V
 from torch._inductor.codegen.common import (
     IndentedBuffer,
@@ -105,7 +105,8 @@ class NPUOverrides(OpOverrides):
 
 
 class ASCBuffer:
-    def __init__(self, layout):
+    def __init__(self, name, layout):
+        self.name = name
         self.dtype = layout.dtype
         self.size = [V.graph.sizevars.simplify(s) for s in layout.size]
         self.stride = [V.graph.sizevars.simplify(s) for s in layout.stride]
@@ -116,8 +117,6 @@ class ASCBuffer:
         self._hint_stride = [Loop.get_hint(s) for s in self.stride]
         self._hint_offset = Loop.get_hint(self.offset)
 
-        self.src = None
-
     @property
     def asc_size(self):
         return [AscExpr(s) for s in self.size]
@@ -127,18 +126,16 @@ class ASCBuffer:
         return TypeUtils.torch_to_asc(self.dtype)
 
     def bind(self, src):
-        self.src = src
-        self.src.op.set_private_attr(f'layout.device', self.device)
-        self.src.op.set_private_attr(f'layout.dtype', self.dtype)
-        self.src.op.set_private_attr(f'layout.size', self.size)
-        self.src.op.set_private_attr(f'layout.stride', self.stride)
-        self.src.op.set_private_attr(f'layout.offset', self.offset)
+        src.op.set_private_attr(f'layout.device', self.device)
+        src.op.set_private_attr(f'layout.dtype', self.dtype)
+        src.op.set_private_attr(f'layout.size', self.size)
+        src.op.set_private_attr(f'layout.stride', self.stride)
+        src.op.set_private_attr(f'layout.offset', self.offset)
 
-        self.src.op.set_private_attr(f'layout.hint.size', self._hint_size)
-        self.src.op.set_private_attr(f'layout.hint.stride', self._hint_stride)
-        self.src.op.set_private_attr(f'layout.hint.offset', self._hint_offset)
-
-        return self.src
+        src.op.set_private_attr(f'layout.hint.size', self._hint_size)
+        src.op.set_private_attr(f'layout.hint.stride', self._hint_stride)
+        src.op.set_private_attr(f'layout.hint.offset', self._hint_offset)
+        return src
 
 
 @dataclasses.dataclass
@@ -160,53 +157,128 @@ class NPUKernel(Kernel):
     overrides = NPUOverrides
     _index = 0
 
-    def __init__(self, nodes, *, comments=None):
+    def __init__(self, nodes: List[BaseSchedulerNode], *, comments=None):
         super().__init__()
         self._comments: List[str] = comments
         self._kernel = NPUKernel.next_kernel_name()
+        self.kernel_name = self._kernel
         self._kernel_def = IndentedBuffer()
-        self.graph = ASCGraph(name=f"{self._kernel}Graph")
+        self._subgraphs: List[ASCGraph] = []
         self._indirect_to_scalar: Dict[str, _Scalar] = dict()
         self._current_loop = None
         self._current_input_index = 0
-        self._output_buffers: Set[str] = set()
         self._asc_buffer: Dict[str:ASCBuffer] = {}
         self._torch_arg_wrappers = dict()
-
+        self._nodes = nodes
+        self._outputs = set()
         for node in nodes:
-            inner_user_num = sum([user.node in nodes for user in node.users])
-            if inner_user_num != len(node.users):
-                self._output_buffers.add(node.node.name)
+            user_nodes = set(user.node for user in node.users)
+            if not user_nodes.issubset(nodes):
+                self._outputs.add(node.node.name)
+
+    @property
+    def graph(self):
+        assert len(self._subgraphs) > 0, "Graph is not initialized"
+        return self._subgraphs[-1]
+
+    @property
+    def fused_graph(self):
+        assert len(self._subgraphs) > 0, "Graph is not initialized"
+        return FusedASCGraph(subgraphs=self._subgraphs, outputs=self._outputs, name=self._kernel)
 
     @property
     def contiguous_loop(self):
         return self._current_loop
 
     @property
-    def kernel_name(self):
-        return self._kernel
-
-    @property
     def assert_function(self):
         return "ascir.Assert"
 
+    @staticmethod
+    def _get_free_symbols(node: BaseSchedulerNode):
+        body: LoopBody = getattr(node, '_body')
+        free_symbols = set()
+        for indexing_expr in itertools.chain(body.indexing_exprs, body.var_ranges.values()):
+            indexing_expr = V.graph.sizevars.simplify(indexing_expr)
+            size_vars = [s for s in indexing_expr.free_symbols if s.name.startswith('s')]
+            for v in size_vars:
+                free_symbols.add(v.name)
+        return sorted(free_symbols)
+
+    @staticmethod
+    def _get_minimal_transpose_order(node: BaseSchedulerNode):
+        body: LoopBody = getattr(node, '_body')
+        min_score = None
+        min_transpose_order = None
+        for axis_vars in itertools.permutations(body.var_ranges.keys()):
+            input_transposed = _get_transposed_indexing(body.reads_name2expr, axis_vars)
+            for buffer, index in input_transposed:
+                logging.debug("Reading index %s of %s is transposed under %s", index, buffer, axis_vars)
+            output_transposed = _get_transposed_indexing(body.writes_name2expr, axis_vars)
+            for buffer, index in output_transposed:
+                logging.debug("Writing index %s of %s is transposed under %s", index, buffer, axis_vars)
+            score = len(input_transposed) + len(output_transposed)
+            logging.debug("Totally %s transposed indexings under %s", score, axis_vars)
+            if min_score is None or score < min_score:
+                min_score = score
+                min_transpose_order = axis_vars
+            if min_score == 0:
+                break
+        logging.debug("Finally transposed order is %s with score %s", min_transpose_order, min_score)
+        return min_transpose_order
+
     @classmethod
     def next_kernel_name(cls):
-        name = f"NpuKernel{cls._index}"
+        name = f"fused_asc_{cls._index}"
         cls._index += 1
         return name
 
     @contextlib.contextmanager
-    def set_current_loop(self, loop: DenseLoop):
-        assert isinstance(loop, DenseLoop)
+    def new_subgraph(self, free_symbols: Set[str], asc_axis: List[sympy.Symbol], asc_axis_range: List[sympy.Expr]):
+        loop = DenseLoop(axis=asc_axis, size=asc_axis_range)
+        self._subgraphs.append(ASCGraph(name=f"{V.kernel.current_node.node.name}_asc"))
         self._current_input_index = 0
         self.graph.set_current_loop(loop)
+        for axis, axis_range in zip(asc_axis, asc_axis_range):
+            self.graph.axis(axis.name, axis_range)
+        for s in free_symbols:
+            self.graph.size(s)
         prior = self._current_loop
         self._current_loop = loop
         try:
             yield
         finally:
             self._current_loop = prior
+
+    def tracing_asc(self):
+        with self:
+            for i, node in enumerate(self._nodes):
+                logging.info("Codegen [%s] %s", f"{i+1}/{len(self._nodes)}", node.debug_str())
+                body: LoopBody = getattr(node, '_body')
+
+                free_symbols = self._get_free_symbols(node)
+
+                var_to_asc_axis = {}
+                axis_indexings = []
+                for var in body.var_ranges.keys():
+                    var_to_asc_axis[var] = sympy.Symbol(var.name)
+                    axis_indexings.append([var_to_asc_axis[var]])
+
+                asc_axis = []
+                asc_axis_range = []
+                for var in self._get_minimal_transpose_order(node):
+                    asc_axis.append(var_to_asc_axis[var])
+                    asc_axis_range.append(V.graph.sizevars.simplify(body.var_ranges[var]))
+
+                with self.set_current_node(node), self.new_subgraph(sorted(free_symbols), asc_axis, asc_axis_range):
+                    node.run(*axis_indexings)
+                    logging.info(f"{self.graph.name} reads {self.graph.inputs} and writes {self.graph.outputs}")
+
+        V.graph.removed_buffers |= self.removed_buffers
+        if hasattr(self, 'inplaced_to_remove') and hasattr(V.graph, 'inplaced_to_remove'):
+            V.graph.inplaced_to_remove |= self.inplaced_to_remove
+
+        return self
 
     def get_asc_buffer(self, name):
         if name in self._asc_buffer:
@@ -218,10 +290,15 @@ class NPUKernel(Kernel):
             for v in size_vars:
                 self.graph.size(v.name)
 
-        self._asc_buffer[name] = ASCBuffer(buf.layout)
+        self._asc_buffer[name] = ASCBuffer(name, buf.layout)
         return self._asc_buffer[name]
 
     def codegen(self):
+        fused_graph = self.fused_graph
+        for read in fused_graph.inputs:
+            self.args.input(read)
+        for write in fused_graph.outputs:
+            self.args.output(write)
         code = IndentedBuffer()
         args, _, _ = self.args.python_argdefs()
         if os.getenv("ASCIR_FORCE_CONTIGUOUS", None) != '1':
@@ -239,7 +316,7 @@ class NPUKernel(Kernel):
         kernel_var_name = f"{self._kernel}_compiled"
 
         from npu_extension_for_inductor import codegen as npu_codegen
-        self._kernel_def.splice(npu_codegen.codegen_kernel_def(self.graph, kernel_var_name))
+        self._kernel_def.splice(npu_codegen.codegen_kernel_def(fused_graph, kernel_var_name))
         self._kernel_def.writelines(self._comments)
         self._kernel_def.writeline(f"def {self._kernel}({signature_args}):")
         with self._kernel_def.indent():
@@ -251,13 +328,14 @@ class NPUKernel(Kernel):
         return code.getvalue()
 
     def record_summary(self, nodes, model_path=None):
-        labels = [_node_label(node) for node in nodes]
-        OP_SUMMARY.add_graph_summary(self.graph, loop='\n'.join(itertools.chain(*labels)), model_path=model_path)
+        for i, graph in enumerate(self._subgraphs):
+            loop_body = _node_label(nodes[i]) if i < len(nodes) else ""
+            OP_SUMMARY.add_graph_summary(graph, loop=loop_body, model_path=model_path)
 
     def view_dot(self, nodes, svg_path=None):
         try:
             import pydot
-            dot_graph = self.graph.as_dot()
+            dot_graph = self.fused_graph.as_dot()
             labels = [_node_label(node) + ['-' * 20] for node in nodes]
             lines = list(itertools.chain(*labels))
             lines = _left_align_lines(lines)
@@ -267,7 +345,7 @@ class NPUKernel(Kernel):
             svg_path = svg_path if svg_path else f"./{self.graph.name}.svg"
             dot_graph.write_svg(svg_path)
         except ImportError:
-            logging.info(f"Unable to save dot for kernel {self.kernel_name} as pydot not installed")
+            logging.info("Unable to save dot for kernel %s as pydot not installed", self.kernel_name)
 
     def benchmark(self, file_path=None):
         file_path = file_path if file_path else f"./{self._kernel}_benchmark.py"
@@ -303,15 +381,16 @@ class NPUKernel(Kernel):
                                     syms=[f"{str(k)}={str(v.cse)}(\\<{v.max_value})" for k, v in scalars.items()])
 
         data, loop = self._load_buffer(name, self._index_to_loop(index, sizes=sizes))
+        offset = loop.zero_offset_()
         road = self._get_view_road(loop, DenseLoop(axis=loop.axis, size=sizes))
         if len(road) == 0:
-            logging.info(f"Road for {index} from {loop} to {self.contiguous_loop} is dense")
-            return ir.load(data, loop=loop)
+            logging.info("Road for %s from %s to %s is dense", index, loop, self.contiguous_loop)
+            return ir.load(data, offset=offset, loop=loop)
         loop = road[0].src
-        load = ir.load(data, loop=loop)
-        logging.info(f"Road for index {index} from {loop} to {self.contiguous_loop}")
+        load = ir.load(data, offset=offset, loop=loop)
+        logging.info("Road for %s from %s to %s", index, loop, self.contiguous_loop)
         for op in road:
-            logging.info(f"  {op.kind} from {op.src} to {op.dst}")
+            logging.info("  %s from %s to %s", op.kind, op.src, op.dst)
             load = getattr(ir, op.kind)(load, loop=op.dst)
         return load
 
@@ -341,7 +420,7 @@ class NPUKernel(Kernel):
         return super().rename_indexing(index)
 
     def indirect_indexing(self, index_var, size, check=False) -> sympy.Symbol:
-        indirect_sym = sympy_symbol(f"npu_scalar{len(self._indirect_to_scalar)}")
+        indirect_sym = sympy.Symbol(f"npu_scalar{len(self._indirect_to_scalar)}")
         op_name, output_name = str(index_var).split('.')
         src = self.graph.get_op(op_name)
         assert src is not None
@@ -353,53 +432,21 @@ class NPUKernel(Kernel):
 
     def _load_indirect_buffer(self, name):
         buf: ASCBuffer = self.get_asc_buffer(name)
-        if buf.src:
-            return buf.src
-
-        if os.getenv("ASCIR_FORCE_CONTIGUOUS", None) != '1':
-            self.graph.input(name, self.args.input(name))
-            return buf.bind(ir.data(name=name, dtype=buf.asc_dtype))
-
         exist_tensor = self.graph.get_tensor(name)
         if exist_tensor is not None:
             return exist_tensor
-        else:
-            self.graph.input(name, self.args.input(name))
-            return ir.data(name=name, dtype=buf.asc_dtype)
+        return buf.bind(self.graph.input(name, buf.asc_dtype))
 
     def _load_buffer(self, name, loop: Loop):
         buf: ASCBuffer = self.get_asc_buffer(name)
-        if buf.src:
-            return buf.src, loop
-
-        if os.getenv("ASCIR_FORCE_CONTIGUOUS", None) != '1':
-            self.graph.input(name, self.args.input(name))
-            return buf.bind(ir.data(name=name, dtype=buf.asc_dtype)), loop
-
-        kernel_arg = f"{name}_{loop.encode()}"
-        exist_tensor = self.graph.get_tensor(kernel_arg)
+        exist_tensor = self.graph.get_tensor(name)
         if exist_tensor is not None:
-            return exist_tensor, loop.copy().contiguous_(zero_offset=True)
-
-        # kernel arg: input of kernel call
-        # wrapper arg: input of cpp wrapper call
-        # torch arg: input of python kernel call
-        # torch arg alias with wrapper arg by name
-        # wrapper arg alias cwrapper arg by sorted name order
-        # cwrapper arg alias kernel arg by name
-        data = ir.data(name=kernel_arg, dtype=buf.asc_dtype)
-        torch_arg = self.args.input(name)
-        wrapper_arg = f"{kernel_arg}_contiguous"
-        self._torch_arg_wrappers[wrapper_arg] = loop.codegen_contiguous(torch_arg)
-        self.graph.input(kernel_arg, wrapper_arg)
-        return data, loop.copy().contiguous_(zero_offset=True)
+            return exist_tensor, loop
+        return buf.bind(self.graph.input(name, buf.asc_dtype)), loop
 
     def _store_buffer(self, name, src):
         buf: ASCBuffer = self.get_asc_buffer(name)
-        if name in self._output_buffers:
-            self.graph.output(name, self.args.output(name))
-            return buf.bind(ir.output(name=name, src=src, dtype=buf.asc_dtype))
-        return buf.bind(ir.workspace(name=name, src=src, dtype=buf.asc_dtype))
+        return buf.bind(self.graph.output(name, buf.asc_dtype, src=src))
 
     def _get_reduce_dims_and_loop(self, index: sympy.Expr):
         loop = self._index_to_loop(index)
@@ -456,18 +503,11 @@ class NPUKernel(Kernel):
                 order[i], order[j] = order[j], order[i]
 
         road_dst = road[0].src if road else dst
-        if src_loop == road_dst:
-            return road
-
-        road_src = src_loop.copy()
-        for i, (src_size, dst_size) in enumerate(zip(road_src.size, road_dst.size)):
-            if str(src_size) == '1' and str(src_size) != str(dst_size):
-                road_src.broadcast_(i, dst_size)
-
-        if road_src == road_dst:
-            road.insert(0, MoveOp(kind="broadcast", src=src_loop, dst=road_dst))
-        else:
-            road.insert(0, MoveOp(kind="reinterpret_view", src=src_loop, dst=road_dst))
+        broadcast_dims = [i for i, (src_size, dst_size) in enumerate(zip(src_loop.size, road_dst.size))
+                          if str(src_size) == '1' and str(src_size) != str(dst_size)]
+        for dim in broadcast_dims:
+            road_dst = road[0].src if road else dst
+            road.insert(0, MoveOp(kind="broadcast", src=road_dst.copy().debroadcast_(dim), dst=road_dst))
 
         return road
 
@@ -488,6 +528,16 @@ def _node_label(node: SchedulerNode):
     lines.extend(node._body.debug_str().split("\n"))
     lines = [l for l in lines if l]
     return lines
+
+
+def _get_transposed_indexing(load_index, axis_vars):
+    transposed_index = []
+    for buffer, index in load_index.items():
+        hints = V.graph.sizevars.stride_hints(index, axis_vars)
+        non_zero_hints = [hint for hint in hints if str(hint) != '0']
+        if sorted(non_zero_hints, reverse=True) != non_zero_hints:
+            transposed_index.append((buffer, index))
+    return transposed_index
 
 
 class NPUScheduling(BaseScheduling):
@@ -550,46 +600,23 @@ class NPUScheduling(BaseScheduling):
         for comment in comments:
             wrapper.writeline(comment)
 
-        kernel = NPUKernel(nodes, comments=comments)
-        for i, node in enumerate(nodes):
-            logging.info(f"Codegen [{i+1}/{len(nodes)}] {node.debug_str()}")
-
-            body = getattr(node, '_body')
-            var_ranges = body.var_ranges
-            indexing_exprs = body.indexing_exprs
-            axis_indexings = []
-            node_axis = dict()
-            for axis, axis_size in dict(var_ranges).items():
-                index = sympy.Symbol(f'{node.node.name}_{axis}') if len(nodes) > 1 else sympy.Symbol(axis.name)
-                axis_indexings.append([index])
-                node_axis[index] = V.graph.sizevars.simplify(axis_size)
-                kernel.graph.axis(index.name, node_axis[index])
-
-            for indexing_expr in itertools.chain(indexing_exprs, var_ranges.values()):
-                indexing_expr = V.graph.sizevars.simplify(indexing_expr)
-                size_vars = [s for s in indexing_expr.free_symbols if s.name.startswith('s')]
-                for v in size_vars:
-                    kernel.graph.size(v.name)
-
-            dense_loop = DenseLoop(axis=list(node_axis.keys()), size=list(node_axis.values()))
-            with kernel, kernel.set_current_node(node), kernel.set_current_loop(dense_loop):
-                node.run(*axis_indexings)
+        kernel = NPUKernel(nodes, comments=comments).tracing_asc()
 
         wrapper.header.splice("\n\n")
         wrapper.header.splice(kernel.codegen())
 
         from torch._inductor import config
         if config.trace.enabled:
-            kernel.benchmark(V.debug.filename(f"{kernel.kernel_name}_benchmark.py"))
-            kernel.view_dot(nodes, V.debug.filename(f"{kernel.graph.name}.svg"))
-            kernel.record_summary(nodes, V.debug.filename(f"Model.csv"))
+            kernel.benchmark(V.debug.filename(f"{kernel.kernel_name}/benchmark.py"))
+            kernel.view_dot(nodes, V.debug.filename(f"{kernel.kernel_name}/graph.svg"))
+            kernel.record_summary(nodes, V.debug.filename(f"{kernel.kernel_name}/fuse_summary.csv"))
 
         _, call_args, _ = kernel.args.python_argdefs()
 
         # Manual combine size vars with tensor sizes
         workspace_var_name = f"{camel_to_snake(kernel.kernel_name)}_workspace"
         # Todo: symbolic workspace size
-        device = f'{call_args[0]}.device' if len(call_args) else 'npu'
+        device = f'{call_args[0]}.device' if len(call_args) else "'npu'"
         wrapper.writeline("# Todo: symbolic workspace size")
         wrapper.writeline(f"{workspace_var_name} = torch.empty(1024 * 1024 * 1024 // 4, device={device})")
         used_sizes = list(sorted(kernel.graph.size_vars))

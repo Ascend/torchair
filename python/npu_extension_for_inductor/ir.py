@@ -118,8 +118,10 @@ class _Tensor(CSEVariable):
 
     def as_loop(self, loop: Loop):
         self._v.axis = loop.asc_axis
-        self._v.strides = loop.asc_stride
         self._v.size = loop.asc_size
+        self._v.strides = loop.asc_stride
+        if loop.offset is not None and str(loop.offset) != "0":
+            self._v.offset = loop.asc_offset
 
         private_name = self.name.replace(f'{self.op.name}.', '')
         self.op.set_private_attr(f'{private_name}.size', loop.hint_size)
@@ -153,7 +155,7 @@ class _Op(_Track):
 
     @property
     def order(self):
-        return self.attrs[f'{self.name}.attr.sched.exec_order']
+        return self.get_private_attr('order')
 
     @property
     def supported(self):
@@ -170,7 +172,7 @@ class _Op(_Track):
     def codegen(self, graph):
         from torch._inductor.utils import IndentedBuffer
         buffer = IndentedBuffer()
-        buffer.writeline(f"{self.name} = ascir.ops.{self._op}('{self.name}', {graph})")
+        buffer.writeline(f"{self.name} = ascir.ops.{self._op}('{graph}/{self.name}', {graph})")
         for k, v in self.attrs.items():
             buffer.writeline(f"{k} = {repr(v)}")
         return buffer.getvalue()

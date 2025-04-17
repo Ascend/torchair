@@ -1,11 +1,13 @@
 from collections import defaultdict
 from typing import Dict, List, Set, Any, Optional
 
+import logging
 import sympy
 import torch
 from npu_extension_for_inductor.common.symbols import Loop, AscExpr, DenseLoop
 from npu_extension_for_inductor.common.utils import StrRep, TypeUtils
 from npu_extension_for_inductor.ir import _Op, _Tensor
+from npu_extension_for_inductor.ir import IR as ir
 from torch._inductor.utils import IndentedBuffer
 from torch._inductor.virtualized import V
 
@@ -17,10 +19,10 @@ class ASCGraph:
         self._op_count: Dict[str:int] = defaultdict(lambda: 0)
         self.size_vars = set()
         self.axis_vars = dict()
-        self.inputs = []
-        self.inputs_outer = []
-        self.outputs = []
-        self.outputs_outer = []
+        self.inputs: List[str] = []
+        self.inputs_outer: List[str] = []
+        self.outputs: List[str] = []
+        self.outputs_outer: List[str] = []
         self.ops: List[_Op] = []
         self.op_cache: Dict[str, Any] = dict()
         self.unsupported_ops: Set[str] = set()
@@ -53,7 +55,7 @@ class ASCGraph:
             self._op_count[name] += 1
             name = f"{name}{'' if num == 0 else num}"
         op = _Op(type, name)
-        op.attr.sched.exec_order = len(self.ops)
+        op.set_private_attr("order", len(self.ops))
         if not ASCGraph.is_memory_op(op):
             op.attr.sched.axis = self._current_loop.axis
         self.ops.append(op)
@@ -84,25 +86,23 @@ class ASCGraph:
             return _Tensor(op.y)
         return None
 
-    def input(self, name, outer_name=None):
+    def input(self, name, dtype, *, outer_name=None):
         outer_name = outer_name or name
         self.inputs.append(name)
         self.inputs_outer.append(outer_name)
+        return ir.data(name=name, dtype=dtype, index=len(self.inputs) - 1)
 
-    def output(self, name, outer_name=None):
+    def output(self, name, dtype, *, src, outer_name=None):
         outer_name = outer_name or name
         self.outputs.append(name)
         self.outputs_outer.append(outer_name)
+        return ir.output(name=name, dtype=dtype, src=src, index=len(self.outputs) - 1)
 
     def size(self, name):
         self.size_vars.add(StrRep(name))
 
     def axis(self, name, range_expr):
         self.axis_vars[StrRep(name)] = range_expr
-
-    def view_dot(self):
-        from npu_extension_for_inductor.common.debug import draw_asc_graph_dot
-        draw_asc_graph_dot(self, f"./{self.name}.svg")
 
     def as_dot(self):
         from npu_extension_for_inductor.common.debug import make_graph_dot
@@ -123,3 +123,65 @@ class ASCGraph:
         for i, op in enumerate(self.ops):
             graph.splice(op.codegen(var_name))
         return graph
+
+
+class FusedASCGraph:
+    def __init__(self, *, subgraphs: List[ASCGraph], outputs: List[str], name=None):
+        super().__init__()
+        self.name = name or f"Fused_{'_'.join([g.name for g in subgraphs])}"
+        self._subgraphs: List[ASCGraph] = subgraphs
+        buffer_writes = sum([g.outputs for g in subgraphs], [])
+        buffer_reads = sum([g.inputs for g in subgraphs], [])
+        self.inputs: List[str] = list(set(buffer_reads) - set(buffer_writes))
+        self.inputs_outer: List[str] = self.inputs
+        self.outputs: List[str] = list(outputs)
+        self.outputs_outer: List[str] = self.outputs
+        self.size_vars = sorted(set(sum([list(g.size_vars) for g in subgraphs], [])))
+
+    @property
+    def subgraphs(self):
+        return self._subgraphs
+
+    def as_dot(self):
+        from npu_extension_for_inductor.common.debug import make_fused_graph_dot
+        return make_fused_graph_dot(self)
+
+    def codegen(self, var_name=None) -> IndentedBuffer:
+        var_name = var_name or self.name
+        fused_graph = IndentedBuffer()
+
+        for graph in self._subgraphs:
+            fused_graph.writeline(f"# {'-' * 20 + graph.name + '-' * 20}")
+            graph_def = graph.codegen(f'{graph.name}_hint')
+            fused_graph.splice(graph_def)
+
+        fused_graph.writeline(f"# {'-' * 20 + self.name + '-' * 20}")
+        fused_graph.writeline(f"{self.name} = ascir.FusedGraph('{self.name}')")
+
+        buffer_writers: Dict[str, List[tuple[ASCGraph, int]]] = {}
+        for graph in self._subgraphs:
+            fused_graph.writeline(f"{graph.name} = ascir.ops.AscGraph('{graph.name}', {graph.name}_hint, {self.name})")
+            for i, buffer in enumerate(graph.outputs):
+                buffer_writers.setdefault(buffer, [])
+                buffer_writers[buffer].append((graph, i))
+
+        for i, buffer in enumerate(self.inputs):
+            fused_graph.writeline(f"{buffer} = ascir.ops.Data('{buffer}', {self.name})")
+            fused_graph.writeline(f"{buffer}.attr.ir_attr.index = {i}")
+
+        for buffer, writers in buffer_writers.items():
+            if len(writers) > 1:
+                fused_graph.writeline(f"{buffer} = [{', '.join([f'{d[0].name}.y[{d[1]}]' for d in writers])}]")
+            elif len(writers) == 1:
+                fused_graph.writeline(f"{buffer} = {', '.join([f'{d[0].name}.y[{d[1]}]' for d in writers])}")
+
+        for graph in self._subgraphs:
+            fused_graph.writeline(f"{graph.name}.x = [{', '.join(graph.inputs)}]")
+
+        for i, buffer in enumerate(self.outputs):
+            output_name = f'{buffer}_output'
+            fused_graph.writeline(f"{output_name} = ascir.ops.Output('{buffer}', {self.name})")
+            fused_graph.writeline(f"{output_name}.attr.ir_attr.index = {i}")
+            fused_graph.writeline(f"{output_name}.x = [{buffer}]")
+
+        return fused_graph
