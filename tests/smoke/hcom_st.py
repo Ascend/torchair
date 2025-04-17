@@ -567,6 +567,21 @@ class HcomTest(unittest.TestCase):
         results.append(ori_result.equal(compile_result))
         dist.destroy_process_group()
 
+    @classmethod
+    def _test_allgather_in_tensor_check_shape(cls, rank, world_size, init_pg, dynamic, results):
+        torch.npu.set_device(rank)
+        init_pg(rank, world_size) 
+        device = "npu:" + str(rank)
+        tensor_in = torch.ones(1, 4, dtype=torch.int64).to(device)
+        tensor_out = torch.zeros(world_size, 1, 4, dtype=torch.int64).to(device)
+        mod = AllGatherInTensor()
+        mod = mod.to(device)
+        opt_mod = torch.compile(mod, dynamic=dynamic, fullgraph=True, backend=npu_backend)
+        compile_result = opt_mod(tensor_out, tensor_in)
+        given_shape = (world_size, 1, 4)
+        results.append(given_shape == compile_result.shape)
+        dist.destroy_process_group()  
+
     def _test_multiprocess(self, f, init_pg, world_size, dynamic):
         ctx = mp.get_context('spawn')
         ps = []
@@ -809,6 +824,29 @@ class HcomTest(unittest.TestCase):
                                                 HcomTest._init_dist_hccl_with_patch, world_size, True))
         self.assertTrue(self._test_multiprocess(HcomTest._test_allgather_in_tensor_no_same_size,
                                                 HcomTest._init_dist_hccl_with_patch, world_size, True))
+        
+    def test_allgather_in_tensor_check_shape(self):
+        world_size = 2
+        results_dynamic_true = self._test_multiprocess(HcomTest._test_allgather_in_tensor_check_shape,
+                                                       HcomTest._init_dist_hccl_with_patch, world_size, True)
+        for result in results_dynamic_true:
+            self.assertTrue(result)
+        results_dynamic_false = self._test_multiprocess(HcomTest._test_allgather_in_tensor_check_shape,
+                                                        HcomTest._init_dist_hccl_with_patch, world_size, False)
+        for result in results_dynamic_false:
+            self.assertTrue(result)
+
+    @unittest.skipIf(torch.__version__ < '2.3.1', "patch needed for torch version < 2.3.1")
+    def test_allgather_in_tensor_check_shape_without_patch(self):
+        world_size = 2
+        results_dynamic_true = self._test_multiprocess(HcomTest._test_allgather_in_tensor_check_shape,
+                                                       HcomTest._init_dist_hccl_without_patch, world_size, True)
+        for result in results_dynamic_true:
+            self.assertTrue(result)
+        results_dynamic_false = self._test_multiprocess(HcomTest._test_allgather_in_tensor_check_shape,
+                                                        HcomTest._init_dist_hccl_without_patch, world_size, False)
+        for result in results_dynamic_false:
+            self.assertTrue(result)  
 
 
 if __name__ == '__main__':

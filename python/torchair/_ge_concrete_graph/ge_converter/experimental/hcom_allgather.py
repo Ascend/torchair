@@ -54,7 +54,8 @@ def conveter_allgather_in_tensor(
 ):
     """allgather_in_tensor(Tensor out, Tensor input, str tag, int[] ranks, int group_size) -> Tensor"""
     group_name = get_group_name_and_record(tag, rank_list, group_size)
-    return ge.HcomAllGather(input_tensor, rank_size=group_size, group=group_name, fusion=0)
+    res = ge.HcomAllGather(input_tensor, rank_size=group_size, group=group_name, fusion=0)
+    return ge.Reshape(res, ge.Shape(output_tensor))
 
 
 def npu_allgather_in_tensor_patch_dist(output_tensor, input_tensor, group=None, async_op=False):
