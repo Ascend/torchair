@@ -77665,60 +77665,90 @@ def _GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], sc
 .ATTR(group_list_type, Int, 0)\n
 .ATTR(act_type, Int, 0)\n
 """
+    op = get_default_ge_graph().op.add()
+    op.type = "GroupedMatmul"
+    op.name = next_unique_name(node_name, "GroupedMatmul")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
     # process inputs
-    inputs = {
-        "x": x,
-        "weight": weight,
-        "bias": bias,
-        "scale": scale,
-        "offset": offset,
-        "antiquant_scale": antiquant_scale,
-        "antiquant_offset": antiquant_offset,
-        "group_list": group_list,
-        "per_token_scale": per_token_scale,
-    }
+    if not isinstance(x, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(x):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "x" + str(i)
+    if not isinstance(weight, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(weight):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "weight" + str(i)
+    if not isinstance(bias, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(bias):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "bias" + str(i)
+    if not isinstance(scale, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(scale):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "scale" + str(i)
+    if not isinstance(offset, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(offset):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "offset" + str(i)
+    if not isinstance(antiquant_scale, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(antiquant_scale):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "antiquant_scale" + str(i)
+    if not isinstance(antiquant_offset, (tuple, list)):
+        raise AssertionError
+    for i, v in enumerate(antiquant_offset):
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "antiquant_offset" + str(i)
+    if group_list is not None:
+        op.input.append(group_list.tensor)
+        op.input_desc.add().CopyFrom(group_list.desc)
+        op.input_desc[-1].name = "group_list"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "group_list"
+    if per_token_scale is not None:
+        op.input.append(per_token_scale.tensor)
+        op.input_desc.add().CopyFrom(per_token_scale.desc)
+        op.input_desc[-1].name = "per_token_scale"
+    else:
+        pass
 
     # process attrs
-    attrs = {
-        "split_item": attr.Int(split_item),
-        "dtype": attr.Int(dtype),
-        "transpose_weight": attr.Bool(transpose_weight),
-        "transpose_x": attr.Bool(transpose_x),
-        "group_type": attr.Int(group_type),
-        "group_list_type": attr.Int(group_list_type),
-        "act_type": attr.Int(act_type),
-    }
+    op.attr["split_item"].i = split_item
+    op.attr["dtype"].i = dtype
+    op.attr["transpose_weight"].b = transpose_weight
+    op.attr["transpose_x"].b = transpose_x
+    op.attr["group_type"].i = group_type
+    op.attr["group_list_type"].i = group_list_type
+    op.attr["act_type"].i = act_type
 
     # process outputs
-    outputs = [
-    ("y", size_of_y)
-    ]
+    output_index = 0
+    y = []
+    for i in range(output_index, output_index + size_of_y):
+        op.output_desc.add().name = "y" + str(i - output_index)
+        y.append(Tensor(op, i))
+    output_index += size_of_y
 
-    return ge_op(
-        op_type="GroupedMatmul",
-        inputs=inputs,
-        attrs=attrs,
-        outputs=outputs,
-        dependencies=dependencies,
-        ir=IrDef("GroupedMatmul") \
-        .dynamic_input("x", "DT_FLOAT16, DT_BF16, DT_INT8, DT_FLOAT") \
-        .dynamic_input("weight", "DT_FLOAT16, DT_BF16, DT_INT8, DT_FLOAT, DT_INT4") \
-        .dynamic_input("bias", "DT_FLOAT16, DT_FLOAT, DT_INT32") \
-        .dynamic_input("scale", "DT_UINT64, DT_BF16, DT_FLOAT32") \
-        .dynamic_input("offset", "DT_FLOAT32") \
-        .dynamic_input("antiquant_scale", "DT_FLOAT16, DT_BF16") \
-        .dynamic_input("antiquant_offset", "DT_FLOAT16, DT_BF16") \
-        .optional_input("group_list", "DT_INT64") \
-        .optional_input("per_token_scale", "DT_FLOAT") \
-        .attr("split_item", attr.Int(0)) \
-        .attr("dtype", attr.Int(0)) \
-        .attr("transpose_weight", attr.Bool(False)) \
-        .attr("transpose_x", attr.Bool(False)) \
-        .attr("group_type", attr.Int(-1)) \
-        .attr("group_list_type", attr.Int(0)) \
-        .attr("act_type", attr.Int(0)) \
-        .dynamic_output("y", "DT_FLOAT16, DT_BF16, DT_INT8, DT_FLOAT")
-    )
+    return y
 
 
 # This api is auto-generated from IR GroupedMatmulFinalizeRouting
