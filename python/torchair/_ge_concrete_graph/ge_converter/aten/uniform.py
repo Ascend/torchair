@@ -1,18 +1,7 @@
 import math
 from typing import (
-    Any,
-    Callable,
-    ContextManager,
-    Iterator,
-    List,
-    Literal,
-    NamedTuple,
-    Optional,
-    Sequence,
-    Tuple,
-    TypeVar,
-    Union,
-    overload,
+    Any, Callable, ContextManager, Iterator, List, Literal, NamedTuple, Optional, Sequence, Tuple, TypeVar,
+    Union, overload,
 )
 
 import torch

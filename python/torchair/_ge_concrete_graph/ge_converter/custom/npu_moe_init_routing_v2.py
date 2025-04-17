@@ -1,18 +1,6 @@
 from typing import (
-    Any,
-    Callable,
-    ContextManager,
-    Iterator,
-    List,
-    Literal,
-    NamedTuple,
-    Optional,
-    Sequence,
-    Tuple,
-    TypeVar,
-    Union,
-    overload,
-    Optional
+    Any, Callable, ContextManager, Iterator, List, Literal, NamedTuple, Optional, Sequence, Tuple, TypeVar,
+    Union, overload, Optional
 )
 
 import torch
