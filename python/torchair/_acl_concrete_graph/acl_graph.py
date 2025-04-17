@@ -37,7 +37,7 @@ _REPLACE_FUNC_MAP = {
         out_operator=torch.ops.npu.npu_fused_infer_attention_score.out,
         workspace_keys=["workspace"],
         output_keys=["attention_out", "softmax_lse"],
-        updated_param_keys=["actual_seq_lengths", "actual_seq_lengths_kv"],
+        updated_param_keys=["actual_seq_lengths", "actual_seq_lengths_kv", "actual_shared_prefix_len"],
     ),
 }
 
@@ -99,27 +99,42 @@ def get_update_ruler(node, updated_param_keys, placeholder_nodes):
     return update_rulers
 
 
-def check_all_sym_updated(ops_update_rulers: Dict, meta_inputs: List):
-    all_updated_index = set()
+def check_all_sym_updated(ops_update_rulers: Dict, graph_module: torch.fx.GraphModule):
+    all_updated_index = {}
 
-    all_updated_tuple = []
-    for _, rulers in ops_update_rulers.items():
+    for op_name, rulers in ops_update_rulers.items():
+        updated_index = set()
         for _, ruler in rulers.items():
-            for ruler_i in ruler:
-                all_updated_tuple.append(ruler_i)
-    for ruler_i in all_updated_tuple:
-        if ruler_i[0] == "index":
-            all_updated_index.add(ruler_i[1])
-    logger.debug("All updated input index is [%s].", all_updated_index)
+            tmp_idx = {ruler_i[1] for ruler_i in ruler if ruler_i[0] == "index"}
+            updated_index.update(tmp_idx)
+        all_updated_index[op_name] = updated_index
+    logger.debug("All updated input ops name and index is [%s].", all_updated_index)
 
-    for meta_idx, meta_value in enumerate(meta_inputs):
-        if not is_sym(meta_value):
+    data_idx = -1
+    for node in graph_module.graph.nodes:
+        if node.op != "placeholder":
+            continue
+        data_idx = data_idx + 1
+        if not is_sym(node.meta['val']):
+            continue
+        logger.debug("In graph[%s], the %s th meta input is sym[%s] with all users[%s].",
+                     id(graph_module), data_idx, node.meta['val'], node.users)
+        if len(node.users) == 0:
             continue
 
-        logger.debug("In meta inputs, the %s th input is sym[%s].", meta_idx, meta_value)
-        if meta_idx not in all_updated_index:
-            raise RuntimeError(f'The {meta_idx}th input is sym[{meta_value}], but the index[{meta_idx}] is '
-                               f'not in the updated input index list [{all_updated_index}].')
+        is_updated = False
+        for user_node in node.users:
+            if user_node.name not in all_updated_index.keys():
+                # TO DO: add check here
+                continue
+
+            if data_idx in all_updated_index[user_node.name]:
+                is_updated = True
+                break
+        if not is_updated:
+            raise RuntimeError(f"The {data_idx}th meta input is sym[{node.meta['val']}], "
+                               f"and be used by nodes [{node.users}], "
+                               f"which is not in updated index [{all_updated_index}].")
 
 
 def gen_input_update_func(ops_update_rulers: Dict):
@@ -186,7 +201,7 @@ class UpdatedNodeCaptureInterp(fx.Interpreter):
                      self._need_updated_ops.keys(), self._need_updated_ops.values(), id(self._graph_module))
 
         # check all sym input must be in updated param indexes.
-        check_all_sym_updated(ops_update_rulers, self._meta_inputs)
+        check_all_sym_updated(ops_update_rulers, self._graph_module)
 
         # updated param gen func from rulers
         return gen_input_update_func(ops_update_rulers)

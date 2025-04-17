@@ -222,7 +222,7 @@ class AclGraphSt(unittest.TestCase):
 
         torch._dynamo.mark_static(output)
         torch._dynamo.mark_static(indices)
-        with self.assertRaisesRegex(RuntimeError, r'not in the updated input index list'):
+        with self.assertRaisesRegex(RuntimeError, r'which is not in updated index'):
             model(output, indices, 2)
 
     def test_aclgraph_unsupported_dynamic_sym_in_tensor(self):
