@@ -1,3 +1,4 @@
+from typing import Union
 import unittest
 import time
 import os
@@ -6,9 +7,13 @@ import logging
 import unittest.mock
 import torch
 import torch.distributed._functional_collectives as funcol
+from torch.types import Number
 import torchair
 from torchair._ge_concrete_graph.ge_ir_pb2 import ModelDef
 from torchair.core.utils import logger
+from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
+from torchair.ge._ge_graph import Tensor, TensorSpec
+from torchair.configs.compiler_config import CompilerConfig
 
 os.environ['TNG_LOG_LEVEL'] = '0'
 logger.setLevel(logging.DEBUG)
@@ -493,6 +498,39 @@ class TorchairSt(unittest.TestCase):
         with open(file_name, 'r') as f:
             src2 = f.read()
         assert src2.count(sub_str) == 1
+
+
+    def test_lite_export(self):
+        converter_called = [False]
+    
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+    
+            def forward(self, in1, in2):
+                add_rst = torch.add(in1, in2)
+                sub_rst = torch.sub(in1, in2)
+                return add_rst, sub_rst
+    
+        @register_fx_node_ge_converter(torch.ops.aten.add.Tensor)
+        def conveter_aten_add_Tensor(
+            self: torch.Tensor,
+            other: torch.Tensor,
+            *,
+            alpha: Union[Number, torch.Tensor] = 1,
+            meta_outputs: TensorSpec = None
+        ):
+            converter_called[0] = True
+            return self
+    
+        model = Model()
+        config = CompilerConfig()
+        config.export.experimental.enable_lite_export = True
+        npu_backend = torchair.get_npu_backend(compiler_config=config)
+        in1 = torch.randn(1000, 1000, dtype=torch.float16)
+        in2 = torch.randn(1000, 1000, dtype=torch.float16)
+        torchair.dynamo_export(in1, in2, model=model, dynamic=False, export_path="lite_export", config=config)
+        assert converter_called[0], "conveter_aten_add_Tensor was not called!"
 
 
 class AllReduceSingeGroup(torch.nn.Module):

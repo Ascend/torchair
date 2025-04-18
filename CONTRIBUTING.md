@@ -408,6 +408,36 @@ print(graph_result)
     > 本段接口可以导出图的相关信息，请用户加强对相关数据的保护。
     > 请在接口的功能完成之后及时关闭相关选项。
 
+# lite导出场景下覆盖主线的converter
+  **背景：**
+    在lite导出的场景下，想使用不同于当前主线版本的算子，可以通过后注册相同的aten_op的converter来覆盖当前主线上已注册的converter。
+
+  **步骤：**
+    在python/torchair/_ge_concrete_graph/ge_converter/lite，新增需要覆盖的相同aten_op的Python文件，本次示例用add算子演示, 覆盖主线的converter，则新增add.py文件如下：
+
+```python
+    from torchair._ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
+
+    @register_fx_node_ge_converter(torch.ops.aten.add.Tensor)
+    def conveter_aten_add_Tensor(
+        self: Tensor,
+        other: Tensor,
+        *,
+        alpha: Union[Number, Tensor] = 1,
+        meta_outputs: TensorSpec = None
+    ):
+    return ge.Add(self, other)
+```
+
+  **注意：**
+    存放于该路径python/torchair/_ge_concrete_graph/ge_converter/lite下的converter，需要打开配置enable_lite_export才能生效。
+
+```python
+    from torchair.configs.compiler_config import CompilerConfig
+    config = CompilerConfig()
+    config.export.experimental.enable_lite_export = True
+```
+
 # 调整interpolate下的默认decomposition
   **动机：**
     pytorch中存在一些默认的decomposition旨在将算子decompose为更小的[算子集合](https://pytorch.org/docs/stable/torch.compiler_ir.html)，例如aten.upsample_nearest2d算子会在torch.compile的模式下被拆解为一系列小算子。

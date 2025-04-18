@@ -10,6 +10,7 @@ class _ExperimentalConfig(NpuBaseConfig):
     def __init__(self):
         self.enable_record_nn_module_stack = OptionValue(False, [True, False])
         self.auto_atc_config_generated = OptionValue(False, [True, False])
+        self.enable_lite_export = OptionValue(False, [True, False])
         super(_ExperimentalConfig, self).__init__()
 
 

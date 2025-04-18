@@ -301,6 +301,9 @@ class _NpuFxCompiler:
         return code
 
     def _get_compiled_gm(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
+        if int(self.config.export.experimental.enable_lite_export.value):
+            from torchair._ge_concrete_graph.ge_converter import lite
+
         if self.config.debug.fx_summary.enabled:
             _summarize_fx_graph(
                 gm, example_inputs, self.config.debug.fx_summary.full_path("summary"))
