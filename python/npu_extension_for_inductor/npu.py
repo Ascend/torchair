@@ -206,6 +206,18 @@ class NPUKernel(Kernel):
         return sorted(free_symbols)
 
     @staticmethod
+    def _get_free_symbols_and_hint(nodes: List[BaseSchedulerNode]):
+        symbol_to_hint = {}
+        for node in nodes:
+            body: LoopBody = getattr(node, '_body')
+            for indexing_expr in itertools.chain(body.indexing_exprs, body.var_ranges.values()):
+                indexing_expr = V.graph.sizevars.simplify(indexing_expr)
+                size_vars = [s for s in indexing_expr.free_symbols if s.name.startswith('s')]
+                for v in size_vars:
+                    symbol_to_hint[v.name] = V.graph.sizevars.size_hint(v)
+        return symbol_to_hint
+
+    @staticmethod
     def _get_minimal_transpose_order(node: BaseSchedulerNode):
         body: LoopBody = getattr(node, '_body')
         min_score = None
@@ -329,8 +341,10 @@ class NPUKernel(Kernel):
         try:
             import pydot
             dot_graph = self.fused_graph.as_dot()
+            sym_to_hint = self._get_free_symbols_and_hint(nodes)
+            symbol_to_hint = [f'{k}:(hint={sym_to_hint[k]})' for k in sorted(sym_to_hint.keys())]
             labels = [_node_label(node) + ['-' * 20] for node in nodes]
-            lines = list(itertools.chain(*labels))
+            lines = list(itertools.chain(symbol_to_hint, ['-' * 20], *labels))
             lines = _left_align_lines(lines)
             dot_graph.add_node(
                 pydot.Node(f"{self.kernel_name}_body", shape="plaintext", label='\n'.join(lines),

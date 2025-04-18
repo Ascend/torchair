@@ -164,7 +164,8 @@ class FusedASCGraph:
 
         buffer_writers: Dict[str, List[tuple[ASCGraph, int]]] = {}
         for graph in self._subgraphs:
-            fused_graph.writeline(f"{graph.name} = ascir.ops.AscGraph('{graph.name}', {graph.name}_hint, {self.name})")
+            fused_graph.writeline(
+                f"{graph.name} = ascir.ops.AscBackend('{graph.name}', {graph.name}_hint, {self.name})")
             for i, buffer in enumerate(graph.outputs):
                 buffer_writers.setdefault(buffer, [])
                 buffer_writers[buffer].append((graph, i))

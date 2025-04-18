@@ -283,10 +283,10 @@ buf3.x = store.y
 buf3.y.dtype = ascir.dtypes.float16
 # --------------------fused_graph--------------------
 fused_graph = ascir.FusedGraph('fused_graph')
-buf0_asc = ascir.ops.AscGraph('buf0_asc', buf0_asc_hint, fused_graph)
-buf1_asc = ascir.ops.AscGraph('buf1_asc', buf1_asc_hint, fused_graph)
-buf2_asc = ascir.ops.AscGraph('buf2_asc', buf2_asc_hint, fused_graph)
-buf3_asc = ascir.ops.AscGraph('buf3_asc', buf3_asc_hint, fused_graph)
+buf0_asc = ascir.ops.AscBackend('buf0_asc', buf0_asc_hint, fused_graph)
+buf1_asc = ascir.ops.AscBackend('buf1_asc', buf1_asc_hint, fused_graph)
+buf2_asc = ascir.ops.AscBackend('buf2_asc', buf2_asc_hint, fused_graph)
+buf3_asc = ascir.ops.AscBackend('buf3_asc', buf3_asc_hint, fused_graph)
 arg3_1 = ascir.ops.Data('arg3_1', fused_graph)
 arg3_1.attr.ir_attr.index = 0
 buf0 = buf0_asc.y[0]

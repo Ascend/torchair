@@ -1,6 +1,7 @@
 import contextlib
 import functools
 import hashlib
+import logging
 import os
 import re
 import tempfile
@@ -39,7 +40,7 @@ def codegen_cpp_source(kernel_spec: FusedKernelSpec, kernel_path: str):
     wrapper.splice("""
     const static bool debug = std::getenv("TORCH_COMPILE_DEBUG") != nullptr;
     #undef DLOG
-    #define DLOG() if (debug) std::cerr
+    #define DLOG() if (debug) std::cerr << "[WRAPPER] "
     static void *handle = nullptr;
     static bool initialized = false;
     namespace {
@@ -105,26 +106,13 @@ def build_ascend_lib(jit_command):
 
 
 @never_change_dir
-def _build_cpp(source_code: str, *, output_file):
-    import torch_npu
-    ascend_dir = os.path.dirname(os.getenv("ASCEND_OPP_PATH", "/usr/local/Ascend/latest/opp"))
-    torch_dir = os.path.dirname(torch.__file__)
-    torch_npu_dir = os.path.dirname(torch_npu.__file__)
-
-    ascend_include_dir = os.path.join(ascend_dir, "include")
-    torch_include_dir = os.path.join(torch_dir, "include")
-    torch_npu_include_dir = os.path.join(torch_npu_dir, "include")
-
-    extra_flags = [f"-I{v}" for v in [ascend_include_dir, torch_include_dir, torch_npu_include_dir]]
-    extra_flags.extend([f"-L{ascend_dir}/lib64", f"-lascendcl", f"-lnnopbase"])
-    extra_flags.extend([f"-L{torch_npu_dir}/lib", f"-ltorch_npu"])
-
+def _build_cpp(source_code: str, *, compile_flags, output_file):
     with tempfile.NamedTemporaryFile(suffix='.cpp', mode='w+', delete=True) as temp_file:
         temp_file.write(source_code)
         temp_file.flush()
         args = ["g++", "-shared", "-std=c++17", "-fPIC", "-Wall", "-O2", "-o", output_file,
-                temp_file.name] + extra_flags
-        print(' '.join(args), flush=True)
+                temp_file.name] + compile_flags
+        logging.debug(' '.join(args))
         subprocess.run(args, check=True)
 
 
@@ -136,24 +124,14 @@ class NpuInductorKernel:
         self.kernel = cdll.LoadLibrary(wrapper_lib_path).wrapper
 
     def __call__(self, *args: torch.Tensor, **sym_vals):
+        if logging.getLogger().isEnabledFor(logging.DEBUG):
+            log_str = f"{self.name}({','.join([self.arg_str(arg) for arg in args])}, sym_vals={sym_vals})"
+            logging.debug("%s", log_str)
+
         result = self.kernel(*[c_void_p(t.data_ptr()) for t in args], *[c_int64(s) for s in sym_vals.values()],
                              self.default_stream)
         if result != 0:
             raise RuntimeError(f"NPU kernel {self.name} execution failed({result})")
-
-
-class DummyNpuInductorKernel:
-    def __init__(self, name):
-        self.name = f"ACLNN_{name}"
-        from npu_extension_for_inductor.common.debug import OP_SUMMARY
-        self.graph_summary = OP_SUMMARY.get_graph_summary(name)
-        from torch._inductor import config
-
-    def __call__(self, *args: torch.Tensor, **sym_vals):
-        sym_vals = list(sym_vals.values())
-        if self.graph_summary:
-            self.graph_summary.record_call_args(*args, sym_vals=sym_vals)
-        print(f"{self.name}({','.join([self.arg_str(arg) for arg in args])}, sym_vals={sym_vals})")
 
     @staticmethod
     def arg_str(arg):
@@ -173,7 +151,7 @@ def setup_asc_jit_command(spec, **kwargs):
     py_code.splice(f"host_impl = '''{spec.host_impl}'''")
     py_code.splice(f"device_impl = '''{spec.device_impl}'''")
     py_code.writeline(
-        f"jit_compile('{spec.name}', tiling_def, host_impl, device_impl, {command_args})")
+        f"jit_compile(tiling_def, host_impl, device_impl, {command_args})")
     return py_code.getvalue()
 
 
@@ -199,20 +177,23 @@ def compile_ascendc(artifacts: Dict):
     lib_wrapper = os.path.join(lib_dir, f"wrapper.so")
     lib_kernel = os.path.join(lib_dir, f"kernel.so")
 
-    jit_command = setup_asc_jit_command(kernel_spec, output_file=lib_kernel)
+    jit_command = setup_asc_jit_command(kernel_spec, output_file=lib_kernel, graph_name=kernel_spec.name)
     save_asserts(kernel_spec.name, jit_command, 'asc_kernel.py')
 
     def cache_command(cache_file, content, func, target):
         if not os.path.exists(cache_file) or not os.path.exists(target):
             save_manual_asserts(cache_file, content)
+            logging.info("Compiling %s", target)
             func(content)
             return
         if is_file_content_equal(cache_file, content):
+            logging.info("Cache file %s is up to date, skip recompiling %s", cache_file, target)
             return
         if os.getenv("NPU_INDUCTOR_UNSAFE_CACHE", None) == "1":
-            print(f"[WARNING] Cache changed but skip recompiling {target} as NPU_INDUCTOR_UNSAFE_CACHE=1")
+            logging.warning("Cache changed but skip recompiling %s as NPU_INDUCTOR_UNSAFE_CACHE=1", target)
             return
         save_manual_asserts(cache_file, content)
+        logging.info("Compiling %s", target)
         func(content)
 
     with load_compiler(kernel_spec.name):
@@ -221,10 +202,38 @@ def compile_ascendc(artifacts: Dict):
     cpp_source = codegen_cpp_source(kernel_spec, lib_kernel)
     save_asserts(kernel_spec.name, cpp_source, 'inductor_wrapper.cpp')
 
-    if is_kernel_need_stub(kernel_spec.name):
-        return DummyNpuInductorKernel(kernel_spec.name)
+    class NpuContext:
+        def __init__(self):
+            self.compile_flags = []
+            self.tmp_resource = None
 
-    build_wrapper = functools.partial(_build_cpp, output_file=lib_wrapper)
-    cache_command(os.path.join(lib_dir, 'inductor_wrapper.cpp'), cpp_source, build_wrapper, lib_wrapper)
+        def __enter__(self):
+            if os.getenv("ASCIR_NOT_READY", None) != "1":
+                import torch_npu
+                torch_npu_dir = os.path.dirname(torch_npu.__file__)
+                ascend_dir = os.path.dirname(os.getenv("ASCEND_OPP_PATH", "/usr/local/Ascend/latest/opp"))
+                torch_dir = os.path.dirname(torch.__file__)
+                self.compile_flags = [f"-I{v}/include" for v in [ascend_dir, torch_dir, torch_npu_dir]]
+                self.compile_flags.extend([f"-L{ascend_dir}/lib64", f"-lascendcl", f"-lnnopbase"])
+                self.compile_flags.extend([f"-L{torch_npu_dir}/lib", f"-ltorch_npu"])
+            else:
+                self.tmp_resource = tempfile.TemporaryDirectory()
+                self.compile_flags = [f"-I{self.tmp_resource.name}/include"]
+                stub_header = os.path.join(self.tmp_resource.name, "include/torch_npu/csrc/core/npu/NPUStream.h")
+                os.makedirs(os.path.dirname(stub_header))
+                with open(stub_header, 'w') as f:
+                    f.write("namespace c10_npu {struct getCurrentNPUStream{void *stream(){ return (void*)0x123;}};}")
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            if self.tmp_resource:
+                self.tmp_resource.cleanup()
+
+    with NpuContext() as ctx:
+        compile_comments = ' '.join(["// ", "g++", "-shared", "-std=c++17", "-fPIC", "-Wall",
+                                     "-O2", "-o", lib_wrapper, f"{{this_file}}"] + ctx.compile_flags + ['\n'])
+        build_wrapper = functools.partial(_build_cpp, compile_flags=ctx.compile_flags, output_file=lib_wrapper)
+        cache_command(os.path.join(lib_dir, 'inductor_wrapper.cpp'),
+                      compile_comments + cpp_source, build_wrapper, lib_wrapper)
 
     return NpuInductorKernel(lib_wrapper, name=kernel_spec.name)

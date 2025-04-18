@@ -90,7 +90,7 @@ def codegen_cpp_wrapper(graph: FusedASCGraph):
     workspaces = [TensorArg("workspace")]
     symbols = [SymArg(str(v)) for v in graph.size_vars]
     stream = StreamArg("stream")
-    tiling_dtype = f"{graph.name}TilingData"
+    tiling_dtype = f"TilingData"
 
     all_args = [TensorArg(v) for v in graph.args] + workspaces + symbols + [stream]
     signature = ', '.join([v.signature for v in all_args])

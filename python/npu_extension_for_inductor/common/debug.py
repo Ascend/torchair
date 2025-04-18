@@ -236,7 +236,9 @@ def make_graph_dot(asc_graph: ASCGraph, *, parent=None, with_priavte_attrs=False
     import pydot
     graph: pydot.Dot = pydot.Dot(rankdir="TB") if parent is None else parent
     type_colors = {"Data": "AliceBlue", "Workspace": "Gray", "Output": "AliceBlue", "Broadcast": "LightBlue"}
-    cluster = pydot.Cluster(asc_graph.name, label=asc_graph.name, labeljust='c')
+    axis_str = ', '.join([f"{k}:{v}" for k, v in asc_graph.axis_vars.items()])
+    label = f"{asc_graph.name}({axis_str})"
+    cluster = pydot.Cluster(asc_graph.name, label=label, labeljust='c')
     graph.add_subgraph(cluster)
     for untyped_op in asc_graph.ops:
         n: _Op = untyped_op
