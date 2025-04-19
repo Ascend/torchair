@@ -1755,5 +1755,31 @@ class TorchairSt(unittest.TestCase):
             z = executor.run([copy, indices, updates])
             self.assertTrue(z[0].data_ptr() == copy.data_ptr())
 
+    def test_directory_generation(self):
+        import glob
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                return torch.add(x, y)
+
+        model = Model()
+        test_config = torchair.CompilerConfig()
+        test_config.debug.graph_dump.type = "pbtxt"
+        test_config.debug.graph_dump.path = "test_directory_generation/dir"
+        test_config.ge_config.export_compile_stat = "0"
+        test_npu_backend = torchair.get_npu_backend(compiler_config=test_config)
+        test_model = torch.compile(model, backend=test_npu_backend)
+        x = torch.randn(2, 2)
+        y = torch.randn(2, 2)
+        test_model(x, y)
+        test_type = test_config.debug.graph_dump.type.value
+        path = os.path.realpath(os.path.dirname(test_config.debug.graph_dump.path))
+        self.assertTrue(os.path.isdir(path), f"directory {path} does not exist.")
+        test_files = glob.glob(os.path.join(path, f"*.{test_type}"))
+        self.assertGreater(len(test_files), 0, f"no .{test_type} files found in {path}")
+
 if __name__ == '__main__':
     unittest.main()

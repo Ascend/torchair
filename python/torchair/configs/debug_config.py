@@ -1,7 +1,7 @@
 __all__ = []
 
 from datetime import datetime, timezone
-
+import os
 from torchair.configs._option_base import OptionValue
 from torchair.configs._option_base import NpuBaseConfig
 
@@ -36,6 +36,15 @@ class _Dump(_DebugBase):
     def __init__(self):
         self.type = OptionValue(None, ["txt", "pbtxt", "py"])
         super(_Dump, self).__init__()
+        self._fixed_attrs.append('path')
+
+    @property
+    def path(self):
+        return self._path.value
+
+    @path.setter
+    def path(self, value):
+        self._path.value = os.path.realpath(os.path.dirname(value))
 
 
 class _DataDump(_DebugBase):
