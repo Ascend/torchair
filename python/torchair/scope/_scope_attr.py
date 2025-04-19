@@ -23,6 +23,11 @@ class ScopeAttrs:
     def apply(self, op):
         for attrs in self._attribute_stack:
             for key, value in attrs.items():
+                if key in {"_user_stream_label", "_user_stream_priority"} and op.type in {"Data", "Const"}:
+                    logger.debug(f"To temporarily avoid some problem in CANN, "
+                                 f"skip setting attribute {key}: {value} on op {op.type}: {op.name}")
+                    continue
+
                 op.attr[key].s = compat_as_bytes(str(value))
                 logger.debug(f"Set attribute {key}: {value} on op: {op.name}")
 
