@@ -117,13 +117,13 @@ class AclConcreteGraph(ConcreteGraphBase):
         raise NotImplementedError("Codegen for acl graph is not implemented!")
 
     def optimize_graph_without_runtime(self):
-        logger.debug('before graph optimization, graph is %s', self.fx_graph.print_readable())
+        logger.debug('before graph optimization, graph is %s', self.fx_graph.graph)
 
         # graph optimization passes here
         from torchair._acl_concrete_graph.acl_graph import replace_dynamic_workspace_ops
         replace_dynamic_workspace_ops(self.fx_graph)
 
-        logger.debug('after graph optimization, graph is %s', self.fx_graph.print_readable())
+        logger.debug('after graph optimization, graph is %s', self.fx_graph.graph)
 
     def compile(self, *args: Any, **kwargs: Any):
         if self._captured:

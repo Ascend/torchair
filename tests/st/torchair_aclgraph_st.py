@@ -50,6 +50,7 @@ def stub_synchronize():
 
 class StubNPUGraph:
     def __init__(self):
+        logger.debug('[Stub] new stub class NPUGraph.')
         pass
 
     def replay(self):
@@ -98,7 +99,7 @@ def current_stream(device=None):
 # define stub submodule
 class StubNpu:
     def __init__(self):
-        print("hhhh npu")
+        logger.debug('[Stub] new stub module npu.')
         self.npu_fused_infer_attention_score = stub_fa
         self._npu_fused_infer_attention_score_get_max_workspace = stub_fa
         self.NPUGraph = StubNPUGraph
