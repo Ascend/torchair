@@ -113,7 +113,6 @@ cast.y.strides = [s2, 1]
 max = ascir.ops.Max('buf0_asc_hint/max', buf0_asc_hint)
 max.attr.sched.axis = [z0, z1]
 max.x = cast.y
-max.attr.hint.compute_type = 'reduce'
 max.y.axis = [z0, z1]
 max.y.size = [s0*s1, 1]
 max.y.strides = [1, 0]
@@ -127,6 +126,7 @@ buf0 = ascir.ops.Output('buf0_asc_hint/buf0', buf0_asc_hint)
 buf0.attr.ir_attr.index = 0
 buf0.x = store.y
 buf0.y.dtype = ascir.dtypes.float32
+buf0_asc_hint.infer_dtypes()
 # --------------------buf1_asc--------------------
 buf1_asc_hint = ascir.HintGraph('buf1_asc_hint')
 s0 = buf1_asc_hint.create_size("s0")
@@ -190,6 +190,7 @@ buf1 = ascir.ops.Output('buf1_asc_hint/buf1', buf1_asc_hint)
 buf1.attr.ir_attr.index = 0
 buf1.x = store.y
 buf1.y.dtype = ascir.dtypes.float32
+buf1_asc_hint.infer_dtypes()
 # --------------------buf2_asc--------------------
 buf2_asc_hint = ascir.HintGraph('buf2_asc_hint')
 s0 = buf2_asc_hint.create_size("s0")
@@ -210,7 +211,6 @@ load.y.strides = [s2, 1]
 sum = ascir.ops.Sum('buf2_asc_hint/sum', buf2_asc_hint)
 sum.attr.sched.axis = [z0, z1]
 sum.x = load.y
-sum.attr.hint.compute_type = 'reduce'
 sum.y.axis = [z0, z1]
 sum.y.size = [s0*s1, 1]
 sum.y.strides = [1, 0]
@@ -224,6 +224,7 @@ buf2 = ascir.ops.Output('buf2_asc_hint/buf2', buf2_asc_hint)
 buf2.attr.ir_attr.index = 0
 buf2.x = store.y
 buf2.y.dtype = ascir.dtypes.float32
+buf2_asc_hint.infer_dtypes()
 # --------------------buf3_asc--------------------
 buf3_asc_hint = ascir.HintGraph('buf3_asc_hint')
 s0 = buf3_asc_hint.create_size("s0")
@@ -281,6 +282,7 @@ buf3 = ascir.ops.Output('buf3_asc_hint/buf3', buf3_asc_hint)
 buf3.attr.ir_attr.index = 0
 buf3.x = store.y
 buf3.y.dtype = ascir.dtypes.float16
+buf3_asc_hint.infer_dtypes()
 # --------------------fused_graph--------------------
 fused_graph = ascir.FusedGraph('fused_graph')
 buf0_asc = ascir.ops.AscBackend('buf0_asc', buf0_asc_hint, fused_graph)

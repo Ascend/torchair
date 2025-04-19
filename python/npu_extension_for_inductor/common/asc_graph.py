@@ -122,6 +122,7 @@ class ASCGraph:
         # Ops codegen
         for i, op in enumerate(self.ops):
             graph.splice(op.codegen(var_name))
+        graph.writeline(f"{var_name}.infer_dtypes()")
         return graph
 
 

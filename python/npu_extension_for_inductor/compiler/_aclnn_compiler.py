@@ -32,6 +32,7 @@ def codegen_cpp_source(kernel_spec: FusedKernelSpec, kernel_path: str):
     #include <dlfcn.h>
     #include <cstdint>
     #include "torch_npu/csrc/core/npu/NPUStream.h"
+    #include "torch_npu/csrc/core/npu/NPUCachingAllocator.h"
     ''')
 
     wrapper.splice(kernel_spec.tiling_def)
@@ -73,6 +74,12 @@ def codegen_cpp_source(kernel_spec: FusedKernelSpec, kernel_path: str):
     }
     inline void *GetStream(void *stream) {
         return (stream == nullptr) ? c10_npu::getCurrentNPUStream().stream() : stream;
+    }
+    inline void *MallocWorkspace(int64_t size, void *stream) {
+        return c10_npu::NPUCachingAllocator::raw_alloc_with_stream(size_t(size), stream);
+    }
+    inline void FreeWorkspace(void *ptr) {
+        c10_npu::NPUCachingAllocator::raw_delete(ptr);
     }
     } // namespace
     """)
@@ -169,6 +176,45 @@ def save_manual_asserts(fn, content):
         f.write(content)
 
 
+class NpuContext:
+    def __init__(self):
+        self.compile_flags = []
+        self.tmp_resource = None
+
+    def __enter__(self):
+        if os.getenv("ASCIR_NOT_READY", None) != "1":
+            import torch_npu
+            torch_npu_dir = os.path.dirname(torch_npu.__file__)
+            ascend_dir = os.path.dirname(os.getenv("ASCEND_OPP_PATH", "/usr/local/Ascend/latest/opp"))
+            torch_dir = os.path.dirname(torch.__file__)
+            self.compile_flags = [f"-I{v}/include" for v in [ascend_dir, torch_dir, torch_npu_dir]]
+            self.compile_flags.extend([f"-L{ascend_dir}/lib64", f"-lascendcl", f"-lnnopbase"])
+            self.compile_flags.extend([f"-L{torch_npu_dir}/lib", f"-ltorch_npu"])
+        else:
+            from pathlib import Path
+            self.tmp_resource = tempfile.TemporaryDirectory()
+            self.compile_flags = [f"-I{self.tmp_resource.name}/include"]
+            stub_header_dir = os.path.join(self.tmp_resource.name, "include/torch_npu/csrc/core/npu")
+            os.makedirs(stub_header_dir)
+            Path(os.path.join(stub_header_dir, "NPUCachingAllocator.h")).touch()
+            with open(os.path.join(stub_header_dir, "NPUStream.h"), 'w') as f:
+                f.write('''
+                        namespace c10_npu {
+                            struct getCurrentNPUStream{
+                                void *stream(){ return (void*)0x123; }
+                            };
+                            namespace NPUCachingAllocator {
+                                void *raw_alloc_with_stream(size_t size, void *stream) { return (void*)0x456; }
+                                void raw_delete(void *ptr) { return; }
+                            }
+                        }''')
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.tmp_resource:
+            self.tmp_resource.cleanup()
+
+
 def compile_ascendc(artifacts: Dict):
     kernel_spec = FusedKernelSpec(**artifacts)
     lib_dir = os.path.join(os.getcwd(), ".npu_kernels", kernel_spec.name)
@@ -199,41 +245,12 @@ def compile_ascendc(artifacts: Dict):
     with load_compiler(kernel_spec.name):
         cache_command(os.path.join(lib_dir, 'asc_kernel.py'), jit_command, build_ascend_lib, lib_kernel)
 
-    cpp_source = codegen_cpp_source(kernel_spec, lib_kernel)
-    save_asserts(kernel_spec.name, cpp_source, 'inductor_wrapper.cpp')
-
-    class NpuContext:
-        def __init__(self):
-            self.compile_flags = []
-            self.tmp_resource = None
-
-        def __enter__(self):
-            if os.getenv("ASCIR_NOT_READY", None) != "1":
-                import torch_npu
-                torch_npu_dir = os.path.dirname(torch_npu.__file__)
-                ascend_dir = os.path.dirname(os.getenv("ASCEND_OPP_PATH", "/usr/local/Ascend/latest/opp"))
-                torch_dir = os.path.dirname(torch.__file__)
-                self.compile_flags = [f"-I{v}/include" for v in [ascend_dir, torch_dir, torch_npu_dir]]
-                self.compile_flags.extend([f"-L{ascend_dir}/lib64", f"-lascendcl", f"-lnnopbase"])
-                self.compile_flags.extend([f"-L{torch_npu_dir}/lib", f"-ltorch_npu"])
-            else:
-                self.tmp_resource = tempfile.TemporaryDirectory()
-                self.compile_flags = [f"-I{self.tmp_resource.name}/include"]
-                stub_header = os.path.join(self.tmp_resource.name, "include/torch_npu/csrc/core/npu/NPUStream.h")
-                os.makedirs(os.path.dirname(stub_header))
-                with open(stub_header, 'w') as f:
-                    f.write("namespace c10_npu {struct getCurrentNPUStream{void *stream(){ return (void*)0x123;}};}")
-            return self
-
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            if self.tmp_resource:
-                self.tmp_resource.cleanup()
-
     with NpuContext() as ctx:
-        compile_comments = ' '.join(["// ", "g++", "-shared", "-std=c++17", "-fPIC", "-Wall",
+        compile_comments = ' '.join(["//", "g++", "-shared", "-std=c++17", "-fPIC", "-Wall",
                                      "-O2", "-o", lib_wrapper, f"{{this_file}}"] + ctx.compile_flags + ['\n'])
+        cpp_source = compile_comments + codegen_cpp_source(kernel_spec, lib_kernel)
+        save_asserts(kernel_spec.name, cpp_source, 'inductor_wrapper.cpp')
         build_wrapper = functools.partial(_build_cpp, compile_flags=ctx.compile_flags, output_file=lib_wrapper)
-        cache_command(os.path.join(lib_dir, 'inductor_wrapper.cpp'),
-                      compile_comments + cpp_source, build_wrapper, lib_wrapper)
+        cache_command(os.path.join(lib_dir, 'inductor_wrapper.cpp'), cpp_source, build_wrapper, lib_wrapper)
 
     return NpuInductorKernel(lib_wrapper, name=kernel_spec.name)

@@ -124,6 +124,8 @@ class _Tensor(CSEVariable):
             self._v.offset = loop.asc_offset
 
         private_name = self.name.replace(f'{self.op.name}.', '')
+        if not loop.is_contiguous():
+            self.op.set_private_attr(f'not_contiguous', True)
         self.op.set_private_attr(f'{private_name}.size', loop.hint_size)
         self.op.set_private_attr(f'{private_name}.strides', loop.hint_stride)
         self.op.set_private_attr(f'{private_name}.offset', loop.hint_offset)
@@ -160,6 +162,12 @@ class _Op(_Track):
     @property
     def supported(self):
         return not self.get_private_attr('is_unsupported')
+
+    def get_attr(self, name):
+        attr_name = f'{self.name}.{name}'
+        if attr_name in self.attrs:
+            return self.attrs[attr_name]
+        return None
 
     def get_private_attr(self, name):
         if name in self.private_attrs:

@@ -87,12 +87,11 @@ def codegen_cpp_wrapper(graph: FusedASCGraph):
     wrapper = IndentedBuffer()
     inputs = [TensorArg(v) for v in graph.inputs]
     outputs = [TensorArg(v) for v in graph.outputs]
-    workspaces = [TensorArg("workspace")]
     symbols = [SymArg(str(v)) for v in graph.size_vars]
     stream = StreamArg("stream")
     tiling_dtype = f"TilingData"
 
-    all_args = [TensorArg(v) for v in graph.args] + workspaces + symbols + [stream]
+    all_args = [TensorArg(v) for v in graph.args] + symbols + [stream]
     signature = ', '.join([v.signature for v in all_args])
     buffer_assign = ''
     for in_name, out_name in zip(graph.inputs + graph.outputs, graph.inputs_outer + graph.outputs_outer):
@@ -100,13 +99,13 @@ def codegen_cpp_wrapper(graph: FusedASCGraph):
         buffer_assign += f'\n    DLOG() << "{in_name}: " << {in_name} << std::endl;'
 
     tiling_args = [v.name for v in symbols]
-    launch_args = [v.name for v in itertools.chain(inputs, outputs, workspaces)]
-
     tiling_signature = [v.signature for v in symbols]
     tiling_signature.append(f"{tiling_dtype} *tiling_data")
     tiling_signature.append(f"int64_t *workspace_size")
     tiling_signature.append(f"int64_t *block_dim")
 
+    workspaces = [TensorArg("workspace")]
+    launch_args = [v.name for v in itertools.chain(inputs, outputs, workspaces)]
     launch_signature = ["int64_t block_dim", "void *stream"]
     launch_signature.extend([v.signature for v in itertools.chain(inputs, outputs, workspaces)])
     launch_signature.append(f"{tiling_dtype} *tiling_data")
@@ -130,11 +129,36 @@ extern "C" int wrapper({signature}) {{
     if (result != 0) {{
         return -1;
     }}
-    {buffer_assign}
+
+    void *current_stream = GetStream(stream);
+    if (current_stream == nullptr) {{
+        return -1;
+    }}
 
     DLOG() << "block_dim: " << block_dim << std::endl;
-    DLOG() << "stream: " << GetStream(stream) << std::endl;
-    return launch_fn({', '.join(["block_dim", "GetStream(stream)"] + launch_args + ["&tiling_data"])});
+    DLOG() << "stream: " << current_stream << std::endl;
+    DLOG() << "workspace_size: " << workspace_size << std::endl;
+
+    void *workspace = nullptr;
+    workspace_size = workspace_size < 0 ? 0 : workspace_size;
+    if (workspace_size > 0) {{
+        workspace = MallocWorkspace(workspace_size, current_stream);
+        if (workspace == nullptr) {{
+            return -1;
+        }}
+    }}
+    DLOG() << "workspace: " << workspace << std::endl;
+
+    {buffer_assign}
+
+    result = launch_fn({', '.join(["block_dim", "current_stream"] + launch_args + ["&tiling_data"])});
+    if (workspace != nullptr) {{
+        FreeWorkspace(workspace);
+    }}
+    if (result != 0) {{
+        return -1;
+    }}
+    return 0;
 }}
     ''')
 

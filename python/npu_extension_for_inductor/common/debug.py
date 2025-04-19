@@ -7,7 +7,6 @@ import contextlib
 from typing import Iterable, Dict, List, Set, Union
 
 from npu_extension_for_inductor.common.asc_graph import ASCGraph, FusedASCGraph
-from npu_extension_for_inductor.common.symbols import AscSymbol, AscExpr
 from npu_extension_for_inductor.common.utils import StrRep
 from npu_extension_for_inductor.ir import _Op, _Tensor
 
@@ -33,9 +32,7 @@ class _OpVisitor:
 
     @property
     def compute_type(self):
-        if f'{self.op.name}.attr.hint.compute_type' not in self.op.attrs:
-            return None
-        return self.op.attrs[f'{self.op.name}.attr.hint.compute_type']
+        return self.op.get_private_attr("compute_type")
 
 
 class _GraphVisitor:
@@ -232,27 +229,38 @@ def _value_str(value):
     return str(value)
 
 
+def _get_node_style(node: _Op):
+    style = {
+        "shape": "record",
+        "fillcolor": "LightGreen",
+        "style": '"filled,rounded"',
+    }
+
+    if node.op_type in ["Data", "Output"]:
+        style["fillcolor"] = "AliceBlue"
+    elif node.get_private_attr("compute_type") == 'reduce':
+        style["fillcolor"] = "Bisque"
+    elif node.op_type == "Broadcast":
+        style["fillcolor"] = "LightBlue"
+    elif node.op_type == "Transpose":
+        style["fillcolor"] = "Yellow"
+    elif node.op_type in ["Load", "Store"] and node.get_private_attr("not_contiguous"):
+        style["fillcolor"] = "Pink"
+    return style
+
+
 def make_graph_dot(asc_graph: ASCGraph, *, parent=None, with_priavte_attrs=False):
     import pydot
     graph: pydot.Dot = pydot.Dot(rankdir="TB") if parent is None else parent
-    type_colors = {"Data": "AliceBlue", "Workspace": "Gray", "Output": "AliceBlue", "Broadcast": "LightBlue"}
     axis_str = ', '.join([f"{k}:{v}" for k, v in asc_graph.axis_vars.items()])
     label = f"{asc_graph.name}({axis_str})"
     cluster = pydot.Cluster(asc_graph.name, label=label, labeljust='c')
     graph.add_subgraph(cluster)
     for untyped_op in asc_graph.ops:
         n: _Op = untyped_op
-        style = {
-            "shape": "record",
-            "fillcolor": "#CAFFE3",
-            "style": '"filled,rounded"',
-        }
-
         label = "{"
         label += f"name={asc_graph.name}/{n.name}|type={n.op_type}"
         inputs = []
-        if not n.supported:
-            style["fillcolor"] = "#FF0000"
         for attr, value in n.attrs.items():
             if isinstance(value, _Tensor):
                 inputs.append((attr, value.op.name))
@@ -269,9 +277,7 @@ def make_graph_dot(asc_graph: ASCGraph, *, parent=None, with_priavte_attrs=False
             label += f"|private.{attr}={_value_str(value)}"
         label += "}"
 
-        if n.op_type in type_colors:
-            style["fillcolor"] = type_colors[n.op_type]
-        dot_node = pydot.Node(f'{asc_graph.name}/{n.name}', label=label, **style)
+        dot_node = pydot.Node(f'{asc_graph.name}/{n.name}', label=label, **_get_node_style(n))
         for name, src in inputs:
             if isinstance(src, str):
                 graph.add_edge(pydot.Edge(f'{asc_graph.name}/{src}',
@@ -292,11 +298,11 @@ def make_fused_graph_dot(fused_graph: FusedASCGraph, *, with_priavte_attrs=False
     buffer_writers: Dict[str, List[str]] = {}
 
     input_cluster = pydot.Cluster("inputs", label="inputs", labeljust='c')
+    cluster_node_style = {"shape": "record", "fillcolor": "AliceBlue", "style": '"filled,rounded"'}
     graph.add_subgraph(input_cluster)
     for i, read in enumerate(fused_graph.inputs):
         label = f"{{name={read}|index={i}}}"
-        input_cluster.add_node(pydot.Node(read, label=label, shape="record", fillcolor="AliceBlue",
-                                          style='"filled,rounded"'))
+        input_cluster.add_node(pydot.Node(read, label=label, **cluster_node_style))
         buffer_writers[read] = [read]
 
     for asc_graph in fused_graph.subgraphs:
@@ -312,8 +318,7 @@ def make_fused_graph_dot(fused_graph: FusedASCGraph, *, with_priavte_attrs=False
     graph.add_subgraph(output_cluster)
     for i, output in enumerate(fused_graph.outputs):
         label = f"{{name={output}|index={i}}}"
-        output_cluster.add_node(pydot.Node(output, label=label, shape="record", fillcolor="AliceBlue",
-                                           style='"filled,rounded"'))
+        output_cluster.add_node(pydot.Node(output, label=label, **cluster_node_style))
         for writer in buffer_writers.get(output, []):
             graph.add_edge(pydot.Edge(writer, output))
 

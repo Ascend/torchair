@@ -114,6 +114,10 @@ extern "C" int64_t AutofuseLaunch({', '.join(signature)}) {{
     def create_axis(name, _):
         return sympy.Symbol(name)
 
+    @staticmethod
+    def infer_dtypes():
+        pass
+
     def data(self, name, _):
         self.args.append(name)
         return self.holder.add_op("Data", name=name)

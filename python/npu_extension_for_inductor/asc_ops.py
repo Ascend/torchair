@@ -144,7 +144,7 @@ def reduction(x, *, reduce_type):
     graph = V.kernel.graph
     op = graph.add_op(reduce_type.capitalize())
     op.x = x
-    op.attr.hint.compute_type = 'reduce'
+    op.set_private_attr("compute_type", "reduce")
     return op.y
 
 

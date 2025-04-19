@@ -247,6 +247,9 @@ class NPUKernel(Kernel):
 
     @contextlib.contextmanager
     def new_subgraph(self, free_symbols: Set[str], asc_axis: List[sympy.Symbol], asc_axis_range: List[sympy.Expr]):
+        if not asc_axis:
+            asc_axis = [sympy.Symbol("z0")]
+            asc_axis_range = [1]
         loop = DenseLoop(axis=asc_axis, size=asc_axis_range)
         self._subgraphs.append(ASCGraph(name=f"{V.kernel.current_node.node.name}_asc"))
         self._current_input_index = 0
@@ -315,8 +318,8 @@ class NPUKernel(Kernel):
         fused_graph.args, _, _ = self.args.python_argdefs()
         used_symbols = [str(v) for v in fused_graph.size_vars]
 
-        signature = ', '.join(fused_graph.args + ['workspace'] + used_symbols)
-        call_args = ', '.join(fused_graph.args + ['workspace'] + [f"{v}={v}" for v in used_symbols])
+        signature = ', '.join(fused_graph.args + used_symbols)
+        call_args = ', '.join(fused_graph.args + [f"{v}={v}" for v in used_symbols])
 
         self._kernel_def.clear()
         kernel_var_name = f"{self._kernel}_compiled"
@@ -620,21 +623,10 @@ class NPUScheduling(BaseScheduling):
 
         _, call_args, _ = kernel.args.python_argdefs()
 
-        # Manual combine size vars with tensor sizes
-        workspace_var_name = f"{camel_to_snake(kernel.kernel_name)}_workspace"
-        # Todo: symbolic workspace size
-        device = f'{call_args[0]}.device' if len(call_args) else "'npu'"
-        wrapper.writeline("# Todo: symbolic workspace size")
-        wrapper.writeline(f"{workspace_var_name} = torch.empty(1024 * 1024 * 1024 // 4, device={device})")
         used_sizes = list(kernel.fused_graph.size_vars)
-        call_args.append(workspace_var_name)
         call_args.extend([f"{v}={v}" for v in used_sizes])
-        if os.getenv("NPU_INDUCTOR_DEBUG_SINGLE_KERNEL", None) == '1':
-            for arg in [str(v) for v in call_args][:len(call_args) - len(used_sizes)]:
-                wrapper.writeline(f"print({repr(kernel.kernel_name)}, {repr(arg)}, {arg}.device, {arg}.dtype, "
-                                  f"{arg}.shape, {arg}.stride(), {arg}.storage_offset(), flush=True)")
         wrapper.writeline(wrapper.wrap_kernel_call(kernel.kernel_name, [str(v) for v in call_args]))
-        wrapper.writeline(f"del {workspace_var_name}")
+
         if os.getenv("NPU_INDUCTOR_DEBUG_SINGLE_KERNEL", None) == '1':
             wrapper.writeline(f"print('Start synchronize kernel {kernel.kernel_name}', flush=True)")
             wrapper.writeline(f"torch.npu.synchronize()")
