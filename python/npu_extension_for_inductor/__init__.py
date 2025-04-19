@@ -10,10 +10,10 @@ from torch._inductor.codegen.common import register_backend_for_device
 from torch._inductor.scheduler import Scheduler
 from torch._ops import OpOverload, OpOverloadPacket
 from npu_extension_for_inductor.npu import NPUScheduling, NpuWrapperCodeGen
-from npu_extension_for_inductor import lowering as npu_lowering
 
-register_backend_for_device("cpu", NPUScheduling, NpuWrapperCodeGen)
 register_backend_for_device("npu", NPUScheduling, NpuWrapperCodeGen)
+if os.getenv("ASCIR_NOT_READY", None) == "1":
+    register_backend_for_device("cpu", NPUScheduling, NpuWrapperCodeGen)
 
 
 class LowerSummary:
@@ -43,45 +43,11 @@ LOWER_SUMMARY = LowerSummary("lower_summary.txt")
 atexit.register(lambda: LOWER_SUMMARY.save())
 
 
-def _get_box_dtypes(*boxes, **kwargs):
-    dtypes = set()
-    for box in boxes:
-        if hasattr(box, 'dtype'):
-            dtypes.add(box.dtype)
-        if hasattr(box, 'layout'):
-            dtypes |= _get_box_dtypes(box.layout)
-        if hasattr(box, 'data'):
-            dtypes |= _get_box_dtypes(box.data)
-    if 'dtype' in kwargs and isinstance(kwargs['dtype'], torch.dtype):
-        dtypes.add(kwargs['dtype'])
-    return dtypes
-
-
 def _wrap_npu(aten_fn, f):
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
-        if os.getenv("NPU_INDUCTOR_ALWAYS_FALLBACK", None) == "1" and \
-                isinstance(aten_fn, (OpOverload, OpOverloadPacket)):
-            LOWER_SUMMARY.add_fallback(aten_fn)
-            return fallback_handler(aten_fn, add_to_fallback_set=False)(*args, **kwargs)
-
-        if os.getenv("NPU_INDUCTOR_FALLBACK_INT64", "1") != "1":
-            LOWER_SUMMARY.add_lowered(aten_fn)
-            return f(*args, **kwargs)
-
-        if torch.int64 in _get_box_dtypes(*args, **kwargs):
-            LOWER_SUMMARY.add_fallback(aten_fn)
-            print(f"Fallback {aten_fn} due to input int64 box", flush=True)
-            return fallback_handler(aten_fn, add_to_fallback_set=False)(*args, **kwargs)
-
-        box = f(*args, **kwargs)
-        if torch.int64 in _get_box_dtypes(box):
-            LOWER_SUMMARY.add_fallback(aten_fn)
-            print(f"Fallback {aten_fn} due to output int64 box", flush=True)
-            return fallback_handler(aten_fn, add_to_fallback_set=False)(*args, **kwargs)
-
         LOWER_SUMMARY.add_lowered(aten_fn)
-        return box
+        return f(*args, **kwargs)
 
     return wrapper
 
@@ -94,15 +60,15 @@ def _wrap_fallback(aten_fn):
     return wrapper
 
 
-for op, lower_fn in lowerings.items():
-    lowerings[op] = _wrap_npu(op, lower_fn)
-
 NPU_SUPPORTED_OPS_PREFIX = None
-if NPU_SUPPORTED_OPS_PREFIX is not None:
-    for op, lower_fn in lowerings.items():
+
+for op, lower_fn in lowerings.items():
+    if NPU_SUPPORTED_OPS_PREFIX is not None:
         if isinstance(op, (OpOverload, OpOverloadPacket)) and \
                 all(not str(op).startswith(prefix) for prefix in NPU_SUPPORTED_OPS_PREFIX):
             lowerings[op] = _wrap_fallback(op)
+    else:
+        lowerings[op] = _wrap_npu(op, lower_fn)
 
 
 def patch_fn(model, fn):

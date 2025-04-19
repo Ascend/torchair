@@ -4,6 +4,7 @@ import hashlib
 import logging
 import os
 import re
+import sys
 import tempfile
 from ctypes import cdll, c_size_t, c_int64, c_void_p
 import subprocess
@@ -23,6 +24,10 @@ class FusedKernelSpec:
     host_impl: str
     device_impl: str
     cpp_wrapper: str
+
+    def hash_md5(self):
+        hash_str = f"{self.tiling_def}{self.host_impl}{self.device_impl}"
+        return hashlib.md5(hash_str.encode()).hexdigest()
 
 
 def codegen_cpp_source(kernel_spec: FusedKernelSpec, kernel_path: str):
@@ -182,7 +187,7 @@ class NpuContext:
         self.tmp_resource = None
 
     def __enter__(self):
-        if os.getenv("ASCIR_NOT_READY", None) != "1":
+        if os.getenv("ASCIR_NOT_READY", None) != "1" or 'torch_npu' in sys.modules:
             import torch_npu
             torch_npu_dir = os.path.dirname(torch_npu.__file__)
             ascend_dir = os.path.dirname(os.getenv("ASCEND_OPP_PATH", "/usr/local/Ascend/latest/opp"))
@@ -217,7 +222,7 @@ class NpuContext:
 
 def compile_ascendc(artifacts: Dict):
     kernel_spec = FusedKernelSpec(**artifacts)
-    lib_dir = os.path.join(os.getcwd(), ".npu_kernels", kernel_spec.name)
+    lib_dir = os.path.join(os.getcwd(), ".npu_kernels", kernel_spec.name, kernel_spec.hash_md5())
     os.makedirs(lib_dir, exist_ok=True)
 
     lib_wrapper = os.path.join(lib_dir, f"wrapper.so")
@@ -234,13 +239,8 @@ def compile_ascendc(artifacts: Dict):
             return
         if is_file_content_equal(cache_file, content):
             logging.info("Cache file %s is up to date, skip recompiling %s", cache_file, target)
-            return
-        if os.getenv("NPU_INDUCTOR_UNSAFE_CACHE", None) == "1":
-            logging.warning("Cache changed but skip recompiling %s as NPU_INDUCTOR_UNSAFE_CACHE=1", target)
-            return
-        save_manual_asserts(cache_file, content)
-        logging.info("Compiling %s", target)
-        func(content)
+        else:
+            logging.warning("Cache file %s for %s has been manual changed!", cache_file, target)
 
     with load_compiler(kernel_spec.name):
         cache_command(os.path.join(lib_dir, 'asc_kernel.py'), jit_command, build_ascend_lib, lib_kernel)

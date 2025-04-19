@@ -39,7 +39,7 @@ class KernelCapture:
         return self.origin(kernel)
 
     def kernel(self, index):
-        return sorted(self.kernels, key=lambda k: int(k.kernel_name[10:]))[index]
+        return sorted(self.kernels, key=lambda k: int(k.kernel_name.split('_')[-1]))[index]
 
     def graph(self, index):
         return self.kernel(index).fused_graph
