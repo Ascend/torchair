@@ -243,7 +243,7 @@ class NPUKernel(Kernel):
 
     @classmethod
     def next_kernel_name(cls, nodes: List[BaseSchedulerNode]):
-        name = f"asc_auto{get_fused_kernel_name(nodes, 'torch')}_{cls._index}"
+        name = f"asc_auto{get_fused_kernel_name(nodes, 'original_aten')}_{cls._index}"
         cls._index += 1
         return name
 
@@ -291,7 +291,8 @@ class NPUKernel(Kernel):
                     node.run(*axis_indexings)
                     logging.info(f"{self.graph.name} reads {self.graph.inputs} and writes {self.graph.outputs}")
 
-        V.graph.removed_buffers |= self.removed_buffers
+        if hasattr(self, 'removed_buffers') and hasattr(V.graph, 'removed_buffers'):
+            V.graph.removed_buffers |= self.removed_buffers
         if hasattr(self, 'inplaced_to_remove') and hasattr(V.graph, 'inplaced_to_remove'):
             V.graph.inplaced_to_remove |= self.inplaced_to_remove
 
