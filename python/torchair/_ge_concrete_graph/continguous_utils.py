@@ -10,6 +10,7 @@ from torch._subclasses.fake_tensor import FakeTensor
 from torchair.core.utils import logger
 from torchair.ge._ge_graph import is_sym, Tensor
 from torchair._ge_concrete_graph.continguous import gen_contiguous_storagesize, gen_contiguous_stride, optimize_view
+from torchair.scope._scope_attr import has_scope_attr
 
 view_white_list = {'aten.permute.default': 0, 'aten.view.default': 0, 'aten.transpose.int': 0, 'aten.t.default': 0}
 
@@ -140,7 +141,7 @@ def guard_view_input(func):
             # 判断经过的target是可跳过的view类操作，则刷新反推的meta信息
             # 若为不可跳过的view类操作或计算类节点，则对参数做反推的推导
             # 多流场景，为保证切流后的view算子运行在非默认流上，中断反推逻辑，走算子converter逻辑
-            if is_view_case(target, args, meta_outputs):
+            if is_view_case(target, args, meta_outputs) and (not has_scope_attr()):
                 logger.debug(f"Do view optimize, skip the operator {str(target)}")
                 ge_outputs = _get_npu_outputs_of_view_ops(target, args, kwargs, meta_outputs)
                 return ge_outputs                     
