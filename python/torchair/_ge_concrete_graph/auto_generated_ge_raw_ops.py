@@ -77520,44 +77520,42 @@ def TomeUnmerge(atten_out: Tensor,
 
 # This api is auto-generated from IR TransQuantParamV2
 @auto_convert_to_tensor([False, False], [False, True])
-def TransQuantParamV2(scale: Tensor, offset: Optional[Tensor], *, dependencies=[], node_name=None):
+def TransQuantParamV2(scale: Tensor, offset: Optional[Tensor], *, round_mode: int = 0, dependencies=[], node_name=None):
     """REG_OP(TransQuantParamV2)\n
-    .INPUT(scale, TensorType({DT_UINT64, DT_FLOAT}))\n
+    .INPUT(scale, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))\n
     .OUTPUT(y, TensorType({DT_INT64}))\n
+    .ATTR(round_mode, Int, 0)\n
     """
-  
-    op = get_default_ge_graph().op.add()
-    op.type = "TransQuantParamV2"
-    op.name = next_unique_name(node_name, "TransQuantParamV2")
 
-    # process dependices
-    for dependency in dependencies:
-        op.input.append(dependency.controller)
-  
     # process inputs
-    op.input.append(scale.tensor)
-    op.input_desc.add().CopyFrom(scale.desc)
-    op.input_desc[-1].name = "scale"
-    if offset is not None:
-        op.input.append(offset.tensor)
-        op.input_desc.add().CopyFrom(offset.desc)
-        op.input_desc[-1].name = "offset"
-    else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "offset"
+    inputs = {
+        "scale": scale,
+        "offset": offset,
+    }
 
     # process attrs
+    attrs = {
+        "round_mode": attr.Int(round_mode),
+    }
 
     # process outputs
-    output_index = 0
-    op.output_desc.add().name = "y"
-    y = Tensor(op, output_index)
-    output_index += 1
+    outputs = {
+        "y",
+    }
 
-    # return outputs
-    return y
+    return ge_op(
+        op_type="TransQuantParamV2",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("TransQuantParamV2") \
+        .input("scale", "DT_FLOAT") \
+        .optional_input("offset", "DT_FLOAT") \
+        .attr("round_mode", attr.Int(0)) \
+        .output("y", "DT_INT64")
+    )
 
 
 # This api is auto-generated from IR FlatQuant

@@ -458,6 +458,9 @@ REG_OP(QuantBatchMatmulV3)
 * @li scale: A matrix Tensor. The type support uint64, int64.
 * @li offset: A matrix Tensor. The type support float32.
 
+* @par Attributes:
+* @li round_mode: fp32 filing to fp19 mode; 0: truncation and filing; 1: r_int mode;
+
 * @par Outputs:
 * y: A matrix Tensor. The type support int64.
 */
@@ -465,6 +468,7 @@ REG_OP(TransQuantParamV2)
     .INPUT(scale, TensorType({DT_FLOAT}))
     .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))
     .OUTPUT(y, TensorType({DT_INT64}))
+    .ATTR(round_mode, Int, 0)
     .OP_END_FACTORY_REG(TransQuantParamV2)
 
 /**
