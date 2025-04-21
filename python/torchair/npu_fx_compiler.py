@@ -439,7 +439,14 @@ def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
         return aot_module_simplified_joint(gm, example_inputs,
                                            compiler=joint_compiler, decompositions=decompositions,
                                            output_loss_index=output_loss_index)
+
     keep_inference_input_mutations = bool(compiler_config.experimental_config.keep_inference_input_mutations)
+    # TO DO: fix me in master
+    if compiler_config.mode.value == "reduce-overhead":
+        keep_inference_input_mutations = False
+        logger.debug(f"To temporarily avoid some precision problem in AclGraph, "
+                     f"keep_inference_input_mutations config is set to {keep_inference_input_mutations}.")
+
     return aot_module_simplified(gm, example_inputs, fw_compiler=fw_compiler, bw_compiler=compiler,
                                  decompositions=decompositions, partition_fn=partition_fn,
                                  keep_inference_input_mutations=keep_inference_input_mutations,
