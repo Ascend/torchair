@@ -63,10 +63,6 @@ class NPUOverrides(OpOverrides):
         return ir.masked(mask, body(), other)
 
     @staticmethod
-    def reciprocal(x):
-        return ir.div(ir.constant("1"), x)
-
-    @staticmethod
     def square(x):
         return ir.mul(x, x)
 

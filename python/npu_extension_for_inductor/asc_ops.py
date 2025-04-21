@@ -133,10 +133,11 @@ def concat(*x):
     return op.y
 
 
-def constant(value: str, dtype=None):
+def constant(value: str, dtype):
     graph = V.kernel.graph
     op = graph.add_op("Scalar")
-    op.value = value
+    op.attr.ir_attr.value = value
+    op.y.dtype = dtype
     return op.y
 
 
