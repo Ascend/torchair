@@ -61,7 +61,7 @@ class HintGraph:
         code.splice(f"""
         #include <cstdint>
         #include <iostream>
-        struct TilingData {{}};
+        struct AutofuseTilingData {{}};
         """)
         return code.getvalue()
 
@@ -69,7 +69,7 @@ class HintGraph:
     def tiling(self):
         used_symbols = sorted(self.symbols)
         signature = [f"int64_t {str(v)}" for v in used_symbols]
-        signature.append(f"TilingData *tiling_data")
+        signature.append(f"AutofuseTilingData *tiling_data")
         signature.append(f"int64_t *workspace_size")
         signature.append(f"int64_t *block_dim")
         debug_code = '\n    '.join(
@@ -90,7 +90,7 @@ extern "C" int64_t AutofuseTiling({', '.join(signature)}) {{
         signature = ["int64_t block_dim", "void *stream"]
         buf_names = self.args + ['workspace']
         signature.extend([f"void *{v}" for v in buf_names])
-        signature.append(f"TilingData *tiling_data")
+        signature.append(f"AutofuseTilingData *tiling_data")
         debug_names = buf_names + ['block_dim', 'stream']
         debug_code = '\n    '.join(
             [f'std::cerr << "[STUB]Launch for {self.name} {v} = " << {v} << std::endl;' for v in debug_names])

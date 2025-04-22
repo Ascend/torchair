@@ -89,7 +89,7 @@ def codegen_cpp_wrapper(graph: FusedASCGraph):
     outputs = [TensorArg(v) for v in graph.outputs]
     symbols = [SymArg(str(v)) for v in graph.size_vars]
     stream = StreamArg("stream")
-    tiling_dtype = f"TilingData"
+    tiling_dtype = f"AutofuseTilingData"
 
     all_args = [TensorArg(v) for v in graph.args] + symbols + [stream]
     signature = ', '.join([v.signature for v in all_args])
