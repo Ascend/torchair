@@ -160,8 +160,8 @@ class Autofuser:
         return graph
 
     @staticmethod
-    def codegen(graph, fused_graph):
-        return None, *graph.codegen()
+    def codegen(fused_graph):
+        return fused_graph.codegen()
 
 
 class AutofuseStub:

@@ -52,9 +52,9 @@ def codegen_kernel_def(graph: FusedASCGraph, var_name=None) -> str:
     graph_py_code.splice(f'from pyautofuse import Autofuser, AutofuserOptions')
     graph_py_code.splice(graph.codegen())
     graph_py_code.splice(f'''
-    fuser = Autofuser(AutofuserOptions())
+    fuser = Autofuser(AutofuserOptions(graph_type=1))
     scheduled_{graph.name} = fuser.schedule({graph.name})
-    op_proto, tiling_def, host_impl, device_impl = fuser.codegen({graph.name}, scheduled_{graph.name})
+    tiling_def, host_impl, device_impl = fuser.codegen(scheduled_{graph.name})
     ''')
     save_asserts(graph.name, graph_py_code.getvalue(), 'asc_graph.py')
 
