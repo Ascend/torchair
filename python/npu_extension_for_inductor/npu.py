@@ -231,7 +231,8 @@ class NPUKernel(Kernel):
             output_transposed = _get_transposed_indexing(body.writes_name2expr, axis_vars)
             for buffer, index in output_transposed:
                 logging.debug("Writing index %s of %s is transposed under %s", index, buffer, axis_vars)
-            score = len(input_transposed) + len(output_transposed)
+            # note: we currently only support input transpose, change coeff to 1 once infer for output transpose ready
+            score = len(input_transposed) + len(output_transposed) * 10000
             logging.debug("Totally %s transposed indexings under %s", score, axis_vars)
             if min_score is None or score < min_score:
                 min_score = score
@@ -353,6 +354,8 @@ class NPUKernel(Kernel):
             dot_graph.write_svg(svg_path)
         except ImportError:
             logging.warning("Unable to save dot for kernel %s as pydot not installed", self.kernel_name)
+        except AssertionError:
+            logging.warning("Unable to save dot for kernel %s as graphviz inner error", self.kernel_name)
 
     def benchmark(self, nodes, file_path=None):
         file_path = file_path if file_path else f"./{self._kernel}_benchmark.py"

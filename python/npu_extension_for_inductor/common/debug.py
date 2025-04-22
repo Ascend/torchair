@@ -330,20 +330,6 @@ def make_fused_graph_dot(fused_graph: FusedASCGraph, *, with_priavte_attrs=False
     return graph
 
 
-def draw_asc_graph_dot(asc_graph: Union[ASCGraph, FusedASCGraph], file_path=None):
-    try:
-        import pydot
-    except ImportError:
-        print("Please install pydot first.")
-        return
-    if isinstance(asc_graph, FusedASCGraph):
-        graph = make_fused_graph_dot(asc_graph)
-    else:
-        graph = make_graph_dot(asc_graph)
-    file_path = file_path if file_path else f"./{asc_graph.name}.svg"
-    graph.write_svg(file_path)
-
-
 def save_asserts(name, context, fn):
     from torch._inductor import config
     if not config.trace.enabled:
