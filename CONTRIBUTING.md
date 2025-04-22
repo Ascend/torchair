@@ -39,7 +39,7 @@
 
     `-j[n]` : 指定编译CANN使用的线程数量为n，其中n默认为8。
 
-    `-v` : 启动make的VERBOSE=1选项，用于显示具体的编译链接吗命令。
+    `-v` : 启动make的VERBOSE=1选项，用于显示具体的编译链接命令。
 
     `-g path` : 将编译过程中使用的编译器指定为path路径下的g++编译器。
 
@@ -112,7 +112,7 @@ print(graph_result)
     torch.compile(model, backend=npu_backend)
     ```
     执行后，会生成summary_{timestamp}.csv文件，您可以通过excel等工具来查看。
-    通过导出的csv文件，您可以看打当前模型fx图中涉及的所有converter
+    通过导出的csv文件，您可以看到当前模型fx图中涉及的所有converter
     - 对于`支持状态`为`未支持`的converter，您需要在`_ge_concrete_graph/ge_converter`目录下对应文件中补齐实现
     > 当前已经为aten下的op提供了一个壳子实现（固定抛出未支持的异常），您应当在此基础上补齐实现
 
