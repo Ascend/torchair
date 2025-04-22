@@ -115,5 +115,68 @@ class TorchairSt(unittest.TestCase):
         GeConcreteGraph.optimize_graph_without_runtime = bak_optimization
 
 
+    def test_tranpose(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, in1, in2, in3):
+                abs_01 = torch.abs(in1)
+                transpose_01 = torch.transpose(abs_01, 1, 2)
+                with torchair.scope.npu_stream_switch("test", 1):
+                    matmul_01 = torch.bmm(transpose_01, in1)
+                    transpose_02 = torch.transpose(in2, 0, 1)
+                    transpose_03 = torch.transpose(in3, 0, 1)
+                    matmul_02 = torch.mm(transpose_02, transpose_03)
+
+                    transpose_04 = torch.transpose(abs_01, 1, 2)
+                transpose_05 = torch.transpose(abs_01, 1, 2)
+                matmul_03 = torch.bmm(transpose_05, in1)
+                return matmul_01, matmul_02, matmul_03, transpose_04
+
+        def wrapper_call(func):
+            def wrapper(*args, **kwargs):
+                assert len(args) > 0
+                graph = args[0].graph
+                transpose_list = []
+                for op in graph.op:
+                    if 'Transpose' in op.name:
+                        transpose_list.append(op)
+                transpose_01 = transpose_list[0]
+                transpose_01_attr1 = transpose_01.attr["_user_stream_label"].s
+                transpose_01_attr2 = transpose_01.attr["_user_stream_priority"].s
+                self.assertTrue(transpose_01_attr1 == b'')
+                self.assertTrue(transpose_01_attr2 == b'')
+                transpose_02 = transpose_list[1]
+                transpose_02_attr1 = transpose_02.attr["_user_stream_label"].s
+                transpose_02_attr2 = transpose_02.attr["_user_stream_priority"].s
+                self.assertTrue(transpose_02_attr1 == b'test')
+                self.assertTrue(transpose_02_attr2 == b'1')
+                transpose_04 = transpose_list[3]
+                transpose_04_attr1 = transpose_04.attr["_user_stream_label"].s
+                transpose_04_attr2 = transpose_04.attr["_user_stream_priority"].s
+                self.assertTrue(transpose_04_attr1 == b'test')
+                self.assertTrue(transpose_04_attr2 == b'1')
+                transpose_05 = transpose_list[4]
+                transpose_05_attr1 = transpose_05.attr["_user_stream_label"].s
+                transpose_05_attr2 = transpose_05.attr["_user_stream_priority"].s
+                self.assertTrue(transpose_05_attr1 == b'')
+                self.assertTrue(transpose_05_attr2 == b'')
+                ret = func(*args, **kwargs)
+                return ret
+            return wrapper
+        bak_optimization = GeConcreteGraph.optimize_graph_without_runtime
+        GeConcreteGraph.optimize_graph_without_runtime = wrapper_call(GeConcreteGraph.optimize_graph_without_runtime)
+        model = Model()
+        config_view = CompilerConfig()
+        npu_backend_view = torchair.get_npu_backend(compiler_config=config_view)
+        model = torch.compile(model, backend=npu_backend_view, dynamic=False)
+        in1 = torch.randn(1024, 1024, 10, dtype=torch.float32)
+        in2 = torch.randn(1024, 64, dtype=torch.float32)
+        in3 = torch.randn(1024, 1024, dtype=torch.float32)
+        model(in1, in2, in3)
+        GeConcreteGraph.optimize_graph_without_runtime = bak_optimization
+
+
 if __name__ == '__main__':
     unittest.main()

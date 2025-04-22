@@ -58,3 +58,8 @@ def guard_scope_attr(func):
         return ge_outputs
 
     return wrapper
+
+
+def has_scope_attr():
+    return hasattr(local, 'scope_attr') and len(local.scope_attr._attribute_stack) > 0
+    

@@ -836,8 +836,8 @@ class GeConcreteGraph(ConcreteGraphBase):
         # force unknown shape with ge.Pack when parse symlist
         return force_op_unknown_shape(pack_tensor)
 
-    @guard_scope_attr
     @guard_view_input
+    @guard_scope_attr
     def parse_node(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
         if str(target) in ['air.scope_enter.default', 'air.scope_exit.default']:
             return target(*args, **kwargs)
