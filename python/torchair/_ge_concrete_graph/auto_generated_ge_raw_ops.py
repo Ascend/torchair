@@ -77729,8 +77729,21 @@ def _GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], sc
         op.input_desc.add().CopyFrom(per_token_scale.desc)
         op.input_desc[-1].name = "per_token_scale"
     else:
-        pass
-
+        from torchair._ge_concrete_graph.utils import get_cann_opp_version
+        pts_version_list = ["7.2", "7.3"]
+        opp_ver = get_cann_opp_version()
+        need_pts = True
+        for ver in pts_version_list:
+            if opp_ver.startswith(ver):
+                need_pts = False
+                break
+        if need_pts:
+            op.input.append('')
+            op.input_desc.add().CopyFrom(get_invalid_desc())
+            op.input_desc[-1].name = "per_token_scale"
+        else:
+            pass
+    
     # process attrs
     op.attr["split_item"].i = split_item
     op.attr["dtype"].i = dtype
