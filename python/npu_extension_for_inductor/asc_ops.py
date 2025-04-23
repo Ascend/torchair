@@ -122,7 +122,7 @@ def cast(x, *, dst, src=None):
     graph = V.kernel.graph
     op = graph.add_op("Cast")
     op.x = x
-    op.dst_type = dst
+    op.y.dtype = dst
     return op.y
 
 
