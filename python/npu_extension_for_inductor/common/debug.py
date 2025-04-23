@@ -336,7 +336,8 @@ def save_asserts(name, context, fn):
         return
 
     from torch._inductor.virtualized import V
-
+    if not hasattr(V.debug, 'filename'):
+        return
     asserts_dir = V.debug.filename(name)
     os.makedirs(asserts_dir, exist_ok=True)
 

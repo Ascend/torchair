@@ -26,7 +26,7 @@ class FusedKernelSpec:
     cpp_wrapper: str
 
     def hash_md5(self):
-        hash_str = f"{self.tiling_def}{self.host_impl}{self.device_impl}"
+        hash_str = f"{self.tiling_def}{self.host_impl}{self.device_impl}{self.cpp_wrapper}"
         return hashlib.md5(hash_str.encode()).hexdigest()
 
 
