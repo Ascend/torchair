@@ -69,6 +69,7 @@ class _DebugConfig(NpuBaseConfig):
         self.graph_dump = _Dump()
         self.data_dump = _DataDump()
         self.fx_summary = _FxSummary()
+        self.run_eagerly = OptionValue(False, [True, False])
 
         super(_DebugConfig, self).__init__()
 

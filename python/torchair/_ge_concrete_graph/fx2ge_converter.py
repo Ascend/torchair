@@ -901,6 +901,10 @@ class GeConcreteGraph(ConcreteGraphBase):
             return False
         return self._auto_tune_times == 0
 
+    @property
+    def fx_graph(self):
+        return self._fx_graph
+
     def save_fx_graph(self, graph_module: torch.fx.GraphModule):
         self._fx_graph = graph_module
 

@@ -354,6 +354,15 @@ class _NpuFxCompiler:
             concrete_graph.dump(self.config.debug.graph_dump.full_path("dynamo_original_graph"))
 
         concrete_graph.optimize_graph_without_runtime()
+
+        if self.config.debug.run_eagerly:
+            logger.warning(f'When using debug.run_eagerly=True, npu compiler will be skipped, '
+                           'and FALLBACK to EAGER execution, once running finished, please make sure to disable '
+                           'the debug.run_eagerly=True config to ensure that the graph is compiled and executed.')
+            if not graph.fx_graph:
+                raise RuntimeError('When using debug.run_eagerly=True, the FX graph should not be None.')
+            return graph.fx_graph
+
         return concrete_graph
 
 
