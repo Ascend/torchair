@@ -268,6 +268,14 @@ def get_frozen_flag(input_infos):
     return frozen_flag_list
 
 
+def get_host_input_flag(input_infos):
+    host_input_list = []
+    for idx, input_info in enumerate(input_infos):
+        if input_info.device_type == "CPU":
+            host_input_list.append(idx)
+    return host_input_list
+
+
 def frozen_data_by_constplaceholder(graph: GraphDef, frozen_flag_list: List, meta_outputs: Dict):
     frozen_data_op_list = []
     for op in graph.op:

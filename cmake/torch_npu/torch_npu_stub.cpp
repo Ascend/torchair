@@ -98,5 +98,5 @@ at::Tensor empty_with_format(c10::IntArrayRef sizes, const c10::TensorOptions &o
 }  // namespace at_npu
 
 std::string GetCANNVersion(const std::string& module) {
-  return "default_version";
+  return "8.1.RC1.alpha1";
 }

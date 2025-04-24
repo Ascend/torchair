@@ -3,14 +3,21 @@
 #include "graph_data.h"
 #include "logger.h"
 #include "utils.h"
+#include "regex"
 
 #include "torch_npu/inc/core/NPUFormat.h"
 #include "torch_npu/inc/core/NPUStream.h"
+#include "torch_npu/inc/core/GetCANNInfo.h"
 
 #include "acl/acl_rt.h"
 #include "external/graph/types.h"
 
 namespace tng {
+constexpr size_t kVersionIndex1 = 1;
+constexpr size_t kVersionIndex2 = 2;
+constexpr size_t kVersionIndex3 = 3;
+constexpr size_t kVersionIndex4 = 4;
+
 static constexpr size_t kFormatNchwRank = 4;
 static constexpr size_t kFormatNcdhwRank = 5;
 
@@ -274,4 +281,57 @@ Status UpdateTensorData(gert::Tensor &ge_tensor, void *addr, const size_t data_s
   ge_tensor.MutableTensorData().SetSize(data_size);
   return Status::Success();
 }
+
+int64_t VersionToNum(std::string versionStr)
+{
+  std::smatch results;
+  int64_t major = -1L;
+  int64_t minor = -1L;
+  int64_t release = -1L;
+  int64_t RCVersion = -51L;
+  int64_t TVersion = -1L;
+  int64_t alphaVersion = 0L;
+  if (std::regex_match(versionStr, results, std::regex("([0-9]+).([0-9]+).RC([0-9]+)"))) {
+    major = stoll(results[kVersionIndex1]);
+    minor = stoll(results[kVersionIndex2]);
+    RCVersion = stoll(results[kVersionIndex3]);
+  } else if (std::regex_match(versionStr, results, std::regex("([0-9]+).([0-9]+).([0-9]+)"))) {
+    major = stoll(results[kVersionIndex1]);
+    minor = stoll(results[kVersionIndex2]);
+    release = stoll(results[kVersionIndex3]);
+  } else if (std::regex_match(versionStr, results, std::regex("([0-9]+).([0-9]+).T([0-9]+)"))) {
+    major = stoll(results[kVersionIndex1]);
+    minor = stoll(results[kVersionIndex2]);
+    TVersion = stoll(results[kVersionIndex3]);
+  } else if (std::regex_match(versionStr, results, std::regex("([0-9]+).([0-9]+).RC([0-9]+).alpha([0-9]+)"))) {
+    major = stoll(results[kVersionIndex1]);
+    minor = stoll(results[kVersionIndex2]);
+    RCVersion = stoll(results[kVersionIndex3]);
+    alphaVersion = stoll(results[kVersionIndex4]);
+  } else {
+    return 0L;
+  }
+
+  int64_t num = ((major + 1) * 100000000) +
+                ((minor + 1) * 1000000) +
+                ((release + 1) * 10000) +
+                ((RCVersion + 1) * 100 + 5000) +
+                ((TVersion + 1) * 100) - (100 - alphaVersion);
+  return num;
+}
+
+bool CheckCANNVersion(std::string version) {
+  std::string currentVersion = GetCANNVersion();
+  int64_t currentNum = VersionToNum(currentVersion);
+  int64_t boundaryNum = VersionToNum(version);
+  return currentNum >= boundaryNum;
+}
+
+bool CheckCANNVersion81RC2() {
+  const static bool equalOrGreater = []() {
+    return CheckCANNVersion("8.1.RC2");
+  }();
+  return equalOrGreater;
+}
+
 }  // namespace tng

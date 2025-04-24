@@ -32,7 +32,7 @@ from torchair.ge._ge_graph import _ValueInput, _TensorInput, _DiscontiguousTenso
 from torchair.ge._ge_graph import torch_type_to_ge_type, torch_type_to_ge_proto_type, default_ge_graph, \
     GeGraph, attr_scope, compat_as_bytes, DataType, Format, TensorSpec, is_sym, sym_to_ge_dtype, assert_args_checkout
 from torchair._ge_concrete_graph.graph_pass import optimize_sym_pack, optimize_reference_op_redundant_copy, \
-    replace_data_to_refdata, get_frozen_flag, frozen_data_by_constplaceholder
+    replace_data_to_refdata, get_frozen_flag, frozen_data_by_constplaceholder, get_host_input_flag
 from torchair._ge_concrete_graph.utils import convert_to_tensorboard, dump_graph, force_op_unknown_shape, \
     is_host_data_tensor, get_used_sym_value_mapping, Placement, compute_value_of_sym, \
     generate_sym_exper, get_sym_int_value, generate_shape_from_tensor, update_op_input_name_from_mapping, \
@@ -963,6 +963,8 @@ class GeConcreteGraph(ConcreteGraphBase):
             optimize_frozen_flag_list = [0] * len(self._input_info_list)
         if len(optimize_frozen_flag_list) != 0:
             local_compile_options["frozenInput"] = ",".join(str(x) for x in optimize_frozen_flag_list)
+        host_input_flag_list = get_host_input_flag(self._input_info_list)
+        local_compile_options["ge.exec.hostInputIndexes"] = ";".join(str(x) for x in host_input_flag_list)
         logger.info("local compile options:")
         for k, v in local_compile_options.items():
             logger.info(f"  {k}: {v}")
