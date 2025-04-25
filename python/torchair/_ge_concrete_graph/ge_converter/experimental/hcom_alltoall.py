@@ -1,7 +1,7 @@
 from typing import Any, Dict, Iterator, List, Optional, Tuple, Union, Callable
 import torch
 import torch.distributed.distributed_c10d as c10d
-from torchair.ge._ge_graph import Tensor, DataType
+from torchair.ge._ge_graph import Tensor, DataType, dont_prune_me
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
 from torchair._ge_concrete_graph.utils import dtype_promote
@@ -102,8 +102,10 @@ def convert_all_to_all_single_npu(
     send_counts, send_displacements, recv_counts, recv_displacements = dtype_promote(send_counts, 
         send_displacements, recv_counts, recv_displacements, target_dtype=DataType.DT_INT64)
     group_name = get_group_name_and_record(tag, rank_list, group_size)
-    return ge.HcomAllToAllV(send_data=input_tensor, send_counts=send_counts, send_displacements=send_displacements,
-                            recv_counts=recv_counts, recv_displacements=recv_displacements, group=group_name)
+    op = ge.HcomAllToAllV(send_data=input_tensor, send_counts=send_counts, send_displacements=send_displacements,
+                          recv_counts=recv_counts, recv_displacements=recv_displacements, group=group_name)
+    dont_prune_me(op)
+    return op
 
 
 def npu_all_to_all_single_patch_dist(
