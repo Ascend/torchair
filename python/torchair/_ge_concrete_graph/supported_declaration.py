@@ -7,7 +7,7 @@ class _TypedTensor:
         self.dtype = dtype
         self.value = value
         if value_range is not None and len(value_range) != 2:
-            raise AssertionError
+            raise AssertionError("The length of value_range must be equal to 2")
         self.value_range = value_range
 
     def __str__(self) -> str:
@@ -89,7 +89,7 @@ class Support:
     def __init__(self, *args, **kwargs) -> None:
         def is_tensor_assert(arg):
             if isinstance(arg, torch.Tensor):
-                raise AssertionError
+                raise AssertionError("The input arg must not be instance of torch.Tensor")
 
         for arg in args:
             if isinstance(arg, (list, tuple)):

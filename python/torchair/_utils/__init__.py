@@ -50,7 +50,7 @@ def _add_op_to_meta_table(op, fn, avoid_fallback_flag=False):
         overloads.append(op)
     else:
         if not isinstance(op, OpOverloadPacket):
-            raise AssertionError
+            raise AssertionError("op must be instance of OpOverloadPacket.")
         for ol in op.overloads():
             overloads.append(getattr(op, ol))
 
@@ -163,7 +163,7 @@ def npu_patch_meta():
     '''
     for op_overload, fn in npu_meta_table.items():
         if not isinstance(op_overload, OpOverload):
-            raise AssertionError
+            raise AssertionError("op_overload must be instance of OpOverload.")
         if op_overload not in avoid_make_fallback_table:
             decomposition_table[op_overload] = fn
         op_overload.py_kernels.pop(DispatchKey.Meta, None)

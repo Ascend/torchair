@@ -27,7 +27,7 @@ import torchair.scope
 protobuf_version = pkg_resources.get_distribution("protobuf").version
 
 if not pkg_resources.parse_version(protobuf_version) >= pkg_resources.parse_version("3.13"):
-    raise AssertionError
+    raise AssertionError("protobuf_version must satisfied >=3.13")
 
 # before patch, backup function call for torch_npu.distributed.xxx
 try:

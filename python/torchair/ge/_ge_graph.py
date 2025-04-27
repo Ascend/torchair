@@ -753,7 +753,7 @@ class GeGraph(object):
 
     def record_input(self, index, op):
         if index in self._indexed_inputs:
-            raise AssertionError
+            raise AssertionError("index can not in indexed_inputs")
         self._indexed_inputs[index] = op
 
     def record_input_info(self, name, input_info):
@@ -944,7 +944,8 @@ class Tensor(TensorBase):
                 f"{type(meta_output)}({meta_output})")
         else:
             if not is_sym(meta_output):
-                raise AssertionError
+                raise AssertionError("meta_output must be one of following instances:"
+                "[torch.SymInt, torch.SymFloat, torch.SymBool]")
             self.set_torch_dtype(sym_to_torch_dtype(meta_output))
             self._symsize = []
             self._desc.attr['_meta'].s = compat_as_bytes(
@@ -1047,7 +1048,7 @@ def _wrap_ge_tensor(v, dtype=None):
 
 def _torch_tensor_to_ge_const(v: torch.Tensor):
     if not isinstance(v, torch.Tensor):
-        raise AssertionError
+        raise AssertionError("input must be instance of torch.Tensor")
     with no_dispatch():
         if v.device.type != "cpu":
             v = v.cpu()
@@ -1185,25 +1186,25 @@ def auto_convert_to_tensor(inputs_dynamic, inputs_optional, *, inputs_tensor_typ
                     if optional:
                         raise AssertionError("Optional input cannot be dynamic")
                     if not isinstance(arg, (list, tuple)):
-                        raise AssertionError
+                        raise AssertionError("args must be a list or a tuple.")
                     if not all([isinstance(v, Tensor) for v in arg]):
-                        raise AssertionError
+                        raise AssertionError("each value of args must be a Tensor.")
                 else:
                     if arg is None:
                         if not optional:
                             raise AssertionError(f"Input {i} can not be None as it is not optional")
                     else:
                         if not isinstance(arg, Tensor):
-                            raise AssertionError
+                            raise AssertionError("arg must be a Tensor")
 
             bundle_inputs = inspect.signature(func).bind(*args, **kwargs)
             args = bundle_inputs.args
             kwargs = bundle_inputs.kwargs
 
             if len(inputs_dynamic) != len(inputs_optional):
-                raise AssertionError
+                raise AssertionError("The length of inputs_dynamic must be equal to the length of inputs_optional.")
             if len(args) < len(inputs_dynamic):
-                raise AssertionError
+                raise AssertionError("The length of args can not be less than inputs_dynamic.")
             args = _auto_type_promotion_for_const(args, inputs_dynamic,
                                                   inputs_optional, inputs_tensor_type, func.__name__)
             for i, dynamic_and_optional in enumerate(zip(inputs_dynamic, inputs_optional)):
@@ -1236,17 +1237,17 @@ def compat_as_bytes(bytes_or_text, encoding='utf-8'):
 
 def compat_as_bytes_list(bytes_or_text, encoding='utf-8'):
     if not isinstance(bytes_or_text, (list, tuple)):
-        raise AssertionError
+        raise AssertionError("bytes_or_text must be a list or a tuple.")
     return [compat_as_bytes(v) for v in bytes_or_text]
 
 
 def trans_to_list_list_int(lli):
     if not isinstance(lli, (list, tuple)):
-        raise AssertionError
+        raise AssertionError("lli must be a list or a tuple.")
     attr = AttrDef.ListListInt()
     for li in lli:
         if not isinstance(li, (list, tuple)):
-            raise AssertionError
+            raise AssertionError("li must be a list or a tuple.")
         list_list_i = attr.list_list_i.add()
         list_list_i.list_i.extend(li)
     return attr
@@ -1254,11 +1255,11 @@ def trans_to_list_list_int(lli):
 
 def trans_to_list_list_float(llf):
     if not isinstance(llf, (list, tuple)):
-        raise AssertionError
+        raise AssertionError("llf must be a list or a tuple.")
     attr = AttrDef.ListListFloat()
     for lf in llf:
         if not isinstance(lf, (list, tuple)):
-            raise AssertionError
+            raise AssertionError("lf must be a list or a tuple.")
         list_list_f = attr.list_list_f.add()
         list_list_f.list_f.extend(lf)
     return attr

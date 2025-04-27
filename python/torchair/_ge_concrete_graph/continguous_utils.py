@@ -35,7 +35,7 @@ class ViewFakeTensor:
     
     def set_mapsym(self, mapsym):
         if not isinstance(mapsym, dict):
-            raise AssertionError
+            raise AssertionError("mapsym must be a dict.")
         self._mapsym.update(mapsym)
 
     def set_meta(self, meta):
@@ -50,11 +50,11 @@ def set_ge_outputs(ge_outputs, meta_outputs):
             raise AssertionError("meta_outputs must be a torch.SymInt or an integer.")
     else:
         if not isinstance(ge_outputs, (list, tuple)):
-            raise AssertionError
+            raise AssertionError("ge_outputs must be a list or a tuple.")
         if not isinstance(meta_outputs, (list, tuple)):
-            raise AssertionError
+            raise AssertionError("meta_outputs must be a list or a tuple.")
         if len(ge_outputs) != len(meta_outputs):
-            raise AssertionError
+            raise AssertionError("The length of ge_outputs must be equal to meta_outputs.")
         for meta_output, ge_output in zip(meta_outputs, ge_outputs):
             if meta_output is None:
                 continue

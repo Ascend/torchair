@@ -186,11 +186,11 @@ def set_ge_outputs(ge_outputs, meta_outputs):
             raise AssertionError("meta_outputs must be a torch.SymInt or an integer.")
     else:
         if not isinstance(ge_outputs, (list, tuple)):
-            raise AssertionError
+            raise AssertionError("ge_outputs must be list or a tuple.")
         if not isinstance(meta_outputs, (list, tuple)):
-            raise AssertionError
+            raise AssertionError("meta_outputs must be list or a tuple.")
         if len(ge_outputs) != len(meta_outputs):
-            raise AssertionError
+            raise AssertionError("The length of ge_outputs must be equal to meta_outputs.")
         for meta_output, ge_output in zip(meta_outputs, ge_outputs):
             if meta_output is None:
                 continue
@@ -253,14 +253,14 @@ class Converter:
     def supported_cases(self, supported_cases):
         for testcase in supported_cases:
             if not isinstance(testcase, Support):
-                raise AssertionError
+                raise AssertionError("The testcase must be instance of Support")
         self._supported_cases = supported_cases
 
 
 def declare_supported(supported_cases: List[Support]):
     def add_testcase(converter):
         if not isinstance(converter, Converter):
-            raise AssertionError
+            raise AssertionError("The converter must be instance of Converter")
         converter.supported_cases = supported_cases
         _DECLARED_SUPPORTED_CONVERTERS.update({converter._aten_op: converter})
         return converter
@@ -724,7 +724,7 @@ class GeConcreteGraph(ConcreteGraphBase):
                     kernel.writeline(f'fx_outputs[{idx}] = {self._fx_outputs[idx]}')
                 else:
                     if idx not in self._fx_outputs_mapping.keys():
-                        raise AssertionError
+                        raise AssertionError("The index of _fx_outputs is not in _fx_outputs_mapping.keys()")
                     kernel.writeline(f'fx_outputs[{idx}] = ge_outputs[{self._fx_outputs_mapping[idx]}]')
             kernel.writelines(['', 'del ge_outputs', 'return tuple(fx_outputs)'])
 
@@ -762,7 +762,7 @@ class GeConcreteGraph(ConcreteGraphBase):
                                       device_type="CPU")
         else:
             if not isinstance(meta_outputs, torch.Tensor):
-                raise AssertionError
+                raise AssertionError("meta_outputs must be instance of torch.Tensor")
             self._all_meta_tensor_input[data_index] = meta_outputs
             dtype = torch_type_to_ge_type(meta_outputs.dtype)
             shape = generate_shape_from_tensor(meta_outputs)
@@ -781,7 +781,7 @@ class GeConcreteGraph(ConcreteGraphBase):
     @guard_view_input
     def parse_output(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
         if not (isinstance(args, (list, tuple)) and len(args) == 1):
-            raise AssertionError
+            raise AssertionError("The input args must be list or a tuple, and the length of args must be euqal to 1")
         args = args[0]
         for arg in args:
             arg = arg.npu if isinstance(arg, ValuePack) else arg
@@ -824,7 +824,7 @@ class GeConcreteGraph(ConcreteGraphBase):
                 npu_syms.append(sym.npu)
             else:
                 if not isinstance(sym, int):
-                    raise AssertionError
+                    raise AssertionError("sym must be an integer.")
                 npu_syms.append(sym)
         if all([isinstance(sym, int) for sym in npu_syms]):
             return npu_syms
@@ -851,7 +851,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         else:
             converter = _get_converter(target)
         if converter is None:
-            raise RuntimeError(f"Unsupported torch op {target} by ge")
+            raise RuntimeError(f"Ascend op converter is not implemented of: {target}")
         if converter.require_meta:
             ge_outputs = converter(*args, **kwargs, meta_outputs=meta_outputs)
             if meta_outputs is not None and hasattr(self._converter_ctx, 'node') and self._converter_ctx.node:

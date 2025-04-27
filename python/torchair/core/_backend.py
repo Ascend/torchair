@@ -72,7 +72,7 @@ def _try_get_global_init_compile_option(global_options: Dict = None):
         _GLOBAL_COMPILE_OPTION = global_options if global_options else {}
     else:
         if not (global_options is None or is_subset(global_options, _GLOBAL_COMPILE_OPTION)):
-            raise AssertionError
+            raise AssertionError("global_options must be subset of _GLOBAL_COMPILE_OPTION")
 
     return _GLOBAL_COMPILE_OPTION
 
