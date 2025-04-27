@@ -6,7 +6,6 @@ import os
 import re
 import sys
 import tempfile
-from ctypes import cdll, c_size_t, c_int64, c_void_p
 import subprocess
 from typing import Dict
 from dataclasses import dataclass
@@ -24,10 +23,6 @@ class FusedKernelSpec:
     host_impl: str
     device_impl: str
     cpp_wrapper: str
-
-    def hash_md5(self):
-        hash_str = f"{self.tiling_def}{self.host_impl}{self.device_impl}{self.cpp_wrapper}"
-        return hashlib.md5(hash_str.encode()).hexdigest()
 
 
 def codegen_cpp_source(kernel_spec: FusedKernelSpec, kernel_path: str):
@@ -128,36 +123,13 @@ def _build_cpp(source_code: str, *, compile_flags, output_file):
         subprocess.run(args, check=True)
 
 
-class NpuInductorKernel:
-    default_stream = c_void_p(0)
-
-    def __init__(self, wrapper_lib_path, *, name):
-        self.name = name
-        self.kernel = cdll.LoadLibrary(wrapper_lib_path).wrapper
-
-    def __call__(self, *args: torch.Tensor, **sym_vals):
-        if logging.getLogger().isEnabledFor(logging.DEBUG):
-            log_str = f"{self.name}({','.join([self.arg_str(arg) for arg in args])}, sym_vals={sym_vals})"
-            logging.debug("%s", log_str)
-
-        result = self.kernel(*[c_void_p(t.data_ptr()) for t in args], *[c_int64(s) for s in sym_vals.values()],
-                             self.default_stream)
-        if result != 0:
-            raise RuntimeError(f"NPU kernel {self.name} execution failed({result})")
-
-    @staticmethod
-    def arg_str(arg):
-        if isinstance(arg, torch.Tensor):
-            size = tuple(arg.size())
-            stride = tuple(arg.stride())
-            offset = arg.storage_offset()
-            return f"{str(arg.dtype).split('.')[-1]}({size}, {stride}, {offset})"
-        return str(arg)
-
-
-def setup_asc_jit_command(spec, **kwargs):
+def setup_asc_jit_command(npu_ctx: 'NpuContext', spec, **kwargs):
     command_args = [f'--{k}={v}' for k, v in kwargs.items()]
     py_code = IndentedBuffer()
+    if not npu_ctx.is_stub:
+        py_code.splice(f"import torch")
+        py_code.splice(f"import torch_npu")
+        py_code.splice(f"torch.npu.init()")
     py_code.splice(f"from compile_adapter import jit_compile")
     py_code.splice(f"tiling_def = '''{spec.tiling_def}'''")
     py_code.splice(f"host_impl = '''{spec.host_impl}'''")
@@ -183,6 +155,7 @@ def save_manual_asserts(fn, content):
 
 class NpuContext:
     def __init__(self):
+        self.is_stub = False
         self.compile_flags = []
         self.tmp_resource = None
 
@@ -196,6 +169,7 @@ class NpuContext:
             self.compile_flags.extend([f"-L{ascend_dir}/lib64", f"-lascendcl", f"-lnnopbase"])
             self.compile_flags.extend([f"-L{torch_npu_dir}/lib", f"-ltorch_npu"])
         else:
+            self.is_stub = True
             from pathlib import Path
             self.tmp_resource = tempfile.TemporaryDirectory()
             self.compile_flags = [f"-I{self.tmp_resource.name}/include"]
@@ -220,16 +194,12 @@ class NpuContext:
             self.tmp_resource.cleanup()
 
 
-def compile_ascendc(artifacts: Dict):
+def compile_ascendc(artifacts: Dict, lib_dir: str, asserts_base: str = None):
     kernel_spec = FusedKernelSpec(**artifacts)
-    lib_dir = os.path.join(os.getcwd(), ".npu_kernels", kernel_spec.name, kernel_spec.hash_md5())
     os.makedirs(lib_dir, exist_ok=True)
 
     lib_wrapper = os.path.join(lib_dir, f"wrapper.so")
     lib_kernel = os.path.join(lib_dir, f"kernel.so")
-
-    jit_command = setup_asc_jit_command(kernel_spec, output_file=lib_kernel, graph_name=kernel_spec.name)
-    save_asserts(kernel_spec.name, jit_command, 'asc_kernel.py')
 
     def cache_command(cache_file, content, func, target):
         if not os.path.exists(cache_file) or not os.path.exists(target):
@@ -242,15 +212,15 @@ def compile_ascendc(artifacts: Dict):
         else:
             logging.warning("Cache file %s for %s has been manual changed!", cache_file, target)
 
-    with load_compiler(kernel_spec.name):
-        cache_command(os.path.join(lib_dir, 'asc_kernel.py'), jit_command, build_ascend_lib, lib_kernel)
-
     with NpuContext() as ctx:
+        jit_command = setup_asc_jit_command(ctx, kernel_spec, output_file=lib_kernel, graph_name=kernel_spec.name)
+        save_asserts(kernel_spec.name, jit_command, 'asc_kernel.py', asserts_base)
+        with load_compiler(kernel_spec.name):
+            cache_command(os.path.join(lib_dir, 'asc_kernel.py'), jit_command, build_ascend_lib, lib_kernel)
+
         compile_comments = ' '.join(["//", "g++", "-shared", "-std=c++17", "-fPIC", "-Wall",
                                      "-O2", "-o", lib_wrapper, f"{{this_file}}"] + ctx.compile_flags + ['\n'])
         cpp_source = compile_comments + codegen_cpp_source(kernel_spec, lib_kernel)
-        save_asserts(kernel_spec.name, cpp_source, 'inductor_wrapper.cpp')
+        save_asserts(kernel_spec.name, cpp_source, 'inductor_wrapper.cpp', asserts_base)
         build_wrapper = functools.partial(_build_cpp, compile_flags=ctx.compile_flags, output_file=lib_wrapper)
         cache_command(os.path.join(lib_dir, 'inductor_wrapper.cpp'), cpp_source, build_wrapper, lib_wrapper)
-
-    return NpuInductorKernel(lib_wrapper, name=kernel_spec.name)

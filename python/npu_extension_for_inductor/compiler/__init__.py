@@ -1,6 +1,56 @@
-from typing import Dict, Callable
+import os
+import hashlib
+import logging
+from typing import Dict, Callable, Optional
+from ctypes import cdll, c_size_t, c_int64, c_void_p
+from concurrent.futures import Future
+import torch
+from torch._inductor.codecache import AsyncCompile
+from . import _aclnn_compiler
 
 
-def aclnn(artifacts: Dict) -> Callable:
-    from . import _aclnn_compiler
-    return _aclnn_compiler.compile_ascendc(artifacts)
+class _NpuInductorKernel:
+    default_stream = c_void_p(0)
+
+    def __init__(self, wrapper_lib_path):
+        self.kernel = cdll.LoadLibrary(wrapper_lib_path).wrapper
+
+    def __call__(self, *args):
+        result = self.kernel(*[c_void_p(t.data_ptr()) if isinstance(t, torch.Tensor) else c_int64(t) for t in args],
+                             self.default_stream)
+        if result != 0:
+            raise RuntimeError(f"NPU kernel {self.name} execution failed({result})")
+
+
+def _get_wrapper_lib(artifacts: Dict) -> str:
+    name = artifacts.get('name', 'default')
+    hash_str = ''.join([v for k, v in artifacts.items() if k != 'name'])
+    lib_dir = os.path.join(os.getcwd(), ".npu_kernels", name, hashlib.md5(hash_str.encode()).hexdigest())
+    return os.path.join(lib_dir, "wrapper.so")
+
+
+class _AscendcFeature(Future):
+    def __init__(self, future: Future, launcher: str):
+        super().__init__()
+        self.future = future
+        self.launcher = launcher
+
+    def result(self, timeout=None):
+        self.future.result(timeout)
+        return _NpuInductorKernel(self.launcher)
+
+
+def async_compile(executor: Optional[AsyncCompile], artifacts: Dict[str, str]):
+    from torch._inductor import config
+    from npu_extension_for_inductor.common.debug import _get_asserts_base
+    launcher = _get_wrapper_lib(artifacts)
+    asserts_base = _get_asserts_base()
+    if config.compile_threads > 1 and executor is not None:
+        logging.info("Async compile for %s", launcher)
+        future = executor.process_pool().submit(_aclnn_compiler.compile_ascendc,
+                                                artifacts, os.path.dirname(launcher), asserts_base)
+        return _AscendcFeature(future, launcher)
+    else:
+        logging.info("Sync compile for %s", launcher)
+        _aclnn_compiler.compile_ascendc(artifacts, os.path.dirname(launcher), asserts_base)
+        return _NpuInductorKernel(launcher)

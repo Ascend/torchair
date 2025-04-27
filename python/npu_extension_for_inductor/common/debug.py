@@ -330,17 +330,23 @@ def make_fused_graph_dot(fused_graph: FusedASCGraph, *, with_priavte_attrs=False
     return graph
 
 
-def save_asserts(name, context, fn):
+def _get_asserts_base():
     from torch._inductor import config
     if not config.trace.enabled:
-        return
-
+        return None
     from torch._inductor.virtualized import V
-    if not hasattr(V.debug, 'filename'):
-        return
-    asserts_dir = V.debug.filename(name)
-    os.makedirs(asserts_dir, exist_ok=True)
+    if hasattr(V.debug, 'filename'):
+        return V.debug.filename('')
+    return None
 
+
+def save_asserts(name, context, fn, asserts_base=None):
+    asserts_base = asserts_base or _get_asserts_base()
+    if asserts_base is None:
+        return
+    asserts_dir = os.path.join(asserts_base, name)
+
+    os.makedirs(asserts_dir, exist_ok=True)
     fd = os.open(os.path.join(asserts_dir, fn), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
     with os.fdopen(fd, 'w+') as f:
         f.write(context)

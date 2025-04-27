@@ -78,7 +78,8 @@ def codegen_kernel_def(graph: FusedASCGraph, var_name=None) -> str:
     kernel_def.writeline(f"{graph_fn}_artifacts = {{}}")
     for k, v in artifacts.items():
         kernel_def.splice(f"{graph_fn}_artifacts['{k}'] = '''{v}'''")
-    kernel_def.writeline(f"{var_name} = npu_compiler.aclnn({graph_fn}_artifacts)")
+    kernel_def.writeline(
+        f"{var_name} = async_compile_ascendc(globals().get('async_compile', None), {graph_fn}_artifacts)")
 
     return kernel_def.getvalue()
 

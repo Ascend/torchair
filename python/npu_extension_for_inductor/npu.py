@@ -17,7 +17,6 @@ import sympy
 
 import torch  # noqa
 from torch._inductor.codegen.triton import TritonScheduling
-
 from torch._inductor.codegen.wrapper import WrapperCodeGen
 from torch._inductor.ir import LoopBody
 from torch._inductor.scheduler import BaseSchedulerNode, BaseScheduling, SchedulerNode, FusedSchedulerNode
@@ -314,23 +313,10 @@ class NPUKernel(Kernel):
         fused_graph.outputs_outer = [self.args.output(write) for write in fused_graph.outputs]
         # 这里的args，对应python kernel的入参，而第二个返回，是在output code call函数中，调用python kernel时传入的参数
         fused_graph.args, _, _ = self.args.python_argdefs()
-        used_symbols = [str(v) for v in fused_graph.size_vars]
-
-        signature = ', '.join(fused_graph.args + used_symbols)
-        call_args = ', '.join(fused_graph.args + [f"{v}={v}" for v in used_symbols])
 
         self._kernel_def.clear()
-        kernel_var_name = f"{self._kernel}_compiled"
-
         from npu_extension_for_inductor import codegen as npu_codegen
-        self._kernel_def.splice(npu_codegen.codegen_kernel_def(fused_graph, kernel_var_name))
-        self._kernel_def.writelines(self._comments)
-        self._kernel_def.writeline(f"def {self._kernel}({signature}):")
-        with self._kernel_def.indent():
-            for k, v in self._torch_arg_wrappers.items():
-                self._kernel_def.writeline(f"{k} = {v}")
-            self._kernel_def.writeline(f"{kernel_var_name}({call_args})")
-
+        self._kernel_def.splice(npu_codegen.codegen_kernel_def(fused_graph, self._kernel))
         return self._kernel_def.getvalue()
 
     def record_summary(self, nodes, model_path=None):
@@ -373,7 +359,8 @@ class NPUKernel(Kernel):
             becnhmark_code = IndentedBuffer()
             becnhmark_code.writeline(f"import torch")
             becnhmark_code.writeline(f"import torch_npu")
-            becnhmark_code.writeline("from npu_extension_for_inductor import compiler as npu_compiler")
+            becnhmark_code.writeline(
+                "from npu_extension_for_inductor.compiler import async_compile as async_compile_ascendc")
             becnhmark_code.splice(self._kernel_def)
             becnhmark_code.writelines(["\n"] * 2)
             becnhmark_code.writeline("if __name__ == '__main__':")
@@ -387,7 +374,7 @@ class NPUKernel(Kernel):
                     becnhmark_code.writeline(
                         f"{buffer} = rand_strided({tuple(layout.size)}, {tuple(layout.stride)}, "
                         f"device='{layout.device}', dtype={layout.dtype})")
-                call_args = used_buffers + [f"{k}={k}" for k in self.fused_graph.size_vars]
+                call_args = used_buffers + [str(v) for v in self.fused_graph.size_vars]
                 becnhmark_code.writeline(f"torch.npu.synchronize()")
                 becnhmark_code.writeline(f"{self.kernel_name}({', '.join(call_args)})")
                 becnhmark_code.writeline(f"torch.npu.synchronize()")
@@ -540,6 +527,9 @@ class NPUKernel(Kernel):
             road_dst = road[0].src if road else dst
             road.insert(0, MoveOp(kind="broadcast", src=road_dst.copy().debroadcast_(dim), dst=road_dst))
 
+        if len(road) > 0:
+            road[0].src = src_loop.copy()
+
         return road
 
 
@@ -639,7 +629,7 @@ class NPUScheduling(BaseScheduling):
         _, call_args, _ = kernel.args.python_argdefs()
 
         used_sizes = list(kernel.fused_graph.size_vars)
-        call_args.extend([f"{v}={v}" for v in used_sizes])
+        call_args.extend(used_sizes)
         wrapper.writeline(wrapper.wrap_kernel_call(kernel.kernel_name, [str(v) for v in call_args]))
 
         if os.getenv("NPU_INDUCTOR_DEBUG_SINGLE_KERNEL", None) == '1':
@@ -668,6 +658,6 @@ class NpuWrapperCodeGen(WrapperCodeGen):
         super().__init__()
         self.header.splice(
             f"""
-                from npu_extension_for_inductor import compiler as npu_compiler
+                from npu_extension_for_inductor.compiler import async_compile as async_compile_ascendc
             """
         )
