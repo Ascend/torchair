@@ -57,6 +57,7 @@ class ModelRunner:
         self.execute_mode = execute_mode
         self.tokenizer_mode = kwargs.get("tokenizer_mode", "default")
         self.init_device()
+        self.enable_aclgraph = int(os.getenv("ENABLE_ACLGRAPH", "0"))
 
     @staticmethod
     def repeat_batch(tensor, repeat_num):
@@ -130,8 +131,10 @@ class ModelRunner:
         compiler_config = CompilerConfig()
         compiler_config.experimental_config.frozen_parameter = True
         compiler_config.experimental_config.tiling_schedule_optimize = True
+        if self.enable_aclgraph:
+            compiler_config.mode = "reduce-overhead"
         npu_backend = tng.get_npu_backend(compiler_config=compiler_config)
-        self.model.model = torch.compile(self.model.model, dynamic=True, fullgraph=False, backend=npu_backend)
+        self.model = torch.compile(self.model, dynamic=True, fullgraph=True, backend=npu_backend)
 
     def mark_inputs(self, model_inputs):
         if self.execute_mode == "dynamo":

@@ -28,6 +28,8 @@ import torch.nn.functional as F
 import torch.utils.checkpoint
 from torch import nn
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss
+from torch.distributed.distributed_c10d import _world
+
 import torch_npu
 from mindspeed.ops import gmm
 
@@ -2165,9 +2167,9 @@ class DeepseekV3ForCausalLM(DeepseekV3PreTrainedModel):
 
         logits = self.lm_head(hidden_states)
         if self.world_size > 1:
-            new_logits = [logits.clone().detach() for _ in range(self.world_size)]
-            dist.all_gather(new_logits, logits)
-            logits = torch.cat(new_logits, dim=-1)
+            new_logits = torch.zeros_like(logits).repeat(self.world_size, 1, 1)
+            dist.all_gather_into_tensor(new_logits, logits, group=_world._default_pg)
+            new_logits = new_logits.reshape(logits.shape[0], logits.shape[1], -1)
         logits = logits.float()
 
         return logits
