@@ -39,14 +39,17 @@ def conveter_npu_npu_grouped_matmul(
     group_type: Optional[int] = -1,
     group_list_type: Optional[int] = 0,
     act_type: Optional[int] = 0,
+    tuning_config: Optional[List[int]] = None,
     output_dtype: Optional[int] = None,
     meta_outputs: TensorSpec = None,
 ):
     """NB: npu::npu_grouped_matmul(x, weight, *, bias=None, scale=None, offset=None, antiquant_scale=None, 
             antiquant_offset=None, per_token_scale=None, group_list=None,
             activation_input=None, activation_quant_offset=None, activation_quant_offset=None, 
-            split_item=0, group_type=-1, group_list_type=0, act_type=0, output_dtype=None) -> Tensor[]
+            split_item=0, group_type=-1, group_list_type=0, act_type=0,
+            tuning_config=[0], output_dtype=None) -> Tensor[]
     """
+    tuning_config = tuning_config or [0]
     x_dtype = x[0].dtype
 
     if x_dtype == DataType.DT_BF16:
@@ -90,17 +93,17 @@ def conveter_npu_npu_grouped_matmul(
     return ge.GroupedMatmul(x, weight, bias, scale, offset, antiquant_scale, antiquant_offset, group_list,
                             per_token_scale, split_item=split_item, dtype=y_dtype, transpose_weight=False,
                             transpose_x=False, group_type=group_type, group_list_type=group_list_type,
-                            act_type=act_type)
+                            act_type=act_type, tuning_config=tuning_config)
 
 
 gmm_reg = register_fx_node_ge_converter(torch.ops.npu.npu_grouped_matmul.default)(conveter_npu_npu_grouped_matmul)
 gmm_List_reg = register_fx_node_ge_converter(torch.ops.npu.npu_grouped_matmul.List)(conveter_npu_npu_grouped_matmul)
 
 declare_supported([
-    Support([F16(8192, 320)], [F16(320, 2560)], bias=[F16(2560)], split_item=0),
+    Support([F16(8192, 320)], [F16(320, 2560)], bias=[F16(2560)], split_item=0, tuning_config=[0]),
     Support([F16(8192, 320), F16(8192, 320), F16(8192, 320)],
             [F16(320, 2560), F16(320, 2560), F16(320, 2560)],
-            bias=[F16(2560), F16(2560), F16(2560)], split_item=0),
+            bias=[F16(2560), F16(2560), F16(2560)], split_item=0, tuning_config=[0]),
 ])(gmm_reg)
 
 declare_supported([

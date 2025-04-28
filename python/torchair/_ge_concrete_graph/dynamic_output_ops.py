@@ -27,7 +27,8 @@ def GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], sca
                   antiquant_scale: List[Tensor], antiquant_offset: List[Tensor], group_list: Optional[Tensor],
                   per_token_scale: Optional[Tensor], *, split_item: int = 0, dtype: int = 0,
                   transpose_weight: bool = False, transpose_x: bool = False,
-                  group_type: int = -1, group_list_type: int = 0, act_type: int = 0):
+                  group_type: int = -1, group_list_type: int = 0, act_type: int = 0,
+                  tuning_config: Optional[List[int]] = None):
     """REG_OP(GroupedMatmul)\n
     .DYNAMIC_INPUT(x, TensorType({DT_FLOAT16, DT_BF16, DT_INT8, DT_FLOAT}))\n
     .DYNAMIC_INPUT(weight, TensorType({DT_FLOAT16, DT_BF16, DT_INT8, DT_FLOAT, DT_INT4}))\n
@@ -46,7 +47,10 @@ def GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], sca
     .ATTR(group_type, Int, -1)\n
     .ATTR(group_list_type, Int, 0)\n
     .ATTR(act_type, Int, 0)\n
+    .ATTR(tuning_config, ListInt, [0])\n
     """
+    if tuning_config is None:
+        tuning_config = [0]
 
     size_of_y = 0
     if split_item == 0 or split_item == 1:
@@ -60,7 +64,8 @@ def GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], sca
     return raw_ops._GroupedMatmul(x, weight, bias, scale, offset, antiquant_scale, antiquant_offset, group_list,
                                   per_token_scale, size_of_y=size_of_y, split_item=split_item, dtype=dtype,
                                   transpose_weight=transpose_weight, transpose_x=transpose_x,
-                                  group_type=group_type, group_list_type=group_list_type, act_type=act_type)
+                                  group_type=group_type, group_list_type=group_list_type,
+                                  act_type=act_type, tuning_config=tuning_config)
 
 
 # Auto infer num outputs for IR ShapeN

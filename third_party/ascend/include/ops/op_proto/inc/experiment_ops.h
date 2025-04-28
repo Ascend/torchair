@@ -3546,6 +3546,7 @@ REG_OP(GroupedMatmul)
     .ATTR(transpose_weight, Bool, false)
     .ATTR(transpose_x, Bool, false)
     .ATTR(group_type, Int, -1)
+    .ATTR(tuning_config, ListInt, {0})
     .OP_END_FACTORY_REG(GroupedMatmul)
 
 

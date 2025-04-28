@@ -77646,7 +77646,7 @@ def MoeComputeExpertTokens(sorted_experts: Tensor, *, num_experts: int=1, depend
 
 # This api is auto-generated from IR GroupedMatmul
 @auto_convert_to_tensor([True, True, True, True, True, True, True, False, False], [False, False, False, False, False, False, False, True, True])
-def _GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], scale: List[Tensor], offset: List[Tensor], antiquant_scale: List[Tensor], antiquant_offset: List[Tensor], group_list: Optional[Tensor], per_token_scale: Optional[Tensor], *, size_of_y: int, split_item: int=0, dtype: int=0, transpose_weight: bool=False, transpose_x: bool=False, group_type: int=-1, group_list_type: int=0, act_type: int=0, dependencies=[], node_name=None):
+def _GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], scale: List[Tensor], offset: List[Tensor], antiquant_scale: List[Tensor], antiquant_offset: List[Tensor], group_list: Optional[Tensor], per_token_scale: Optional[Tensor], *, size_of_y: int, split_item: int=0, dtype: int=0, transpose_weight: bool=False, transpose_x: bool=False, group_type: int=-1, group_list_type: int=0, act_type: int=0, tuning_config: List[int] = [0], dependencies=[], node_name=None):
     """REG_OP(GroupedMatmul)\n
 .DYNAMIC_INPUT(x, TensorType({DT_FLOAT16, DT_BF16, DT_INT8, DT_FLOAT}))\n
 .DYNAMIC_INPUT(weight, TensorType({DT_FLOAT16, DT_BF16, DT_INT8, DT_FLOAT, DT_INT4}))\n
@@ -77665,6 +77665,7 @@ def _GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], sc
 .ATTR(group_type, Int, -1)\n
 .ATTR(group_list_type, Int, 0)\n
 .ATTR(act_type, Int, 0)\n
+.ATTR(tuning_config, ListInt, [0])\n
 """
     op = get_default_ge_graph().op.add()
     op.type = "GroupedMatmul"
@@ -77753,6 +77754,7 @@ def _GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], sc
     op.attr["group_type"].i = group_type
     op.attr["group_list_type"].i = group_list_type
     op.attr["act_type"].i = act_type
+    op.attr["tuning_config"].i = tuning_config
 
     # process outputs
     output_index = 0
