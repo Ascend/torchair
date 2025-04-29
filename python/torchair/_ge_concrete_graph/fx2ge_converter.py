@@ -337,11 +337,13 @@ def _update_internal_format_from_inputs(graph: GraphDef, runtime_inputs):
             continue
 
         npu_format = torch_npu_module.get_npu_format(runtime_inputs[idx])
+        origin_shape = list(runtime_inputs[idx].shape)
         if npu_format not in _SUPPORT_FORMAT_SET:
             raise RuntimeError(f"Unsupported input tensor with format {Format(npu_format).name}.")
 
         # attr "format_for_int" in proto::TensorDescriptor will be be deserialized as TensorDesc Format in ge.
         input_index_mapping_graph_op[idx].output_desc[0].attr["format_for_int"].i = npu_format
+        input_index_mapping_graph_op[idx].input_desc[0].attr["format_for_int"].i = npu_format
         '''
            * **********************************************************************************
            *       ***********    ***********                  *************    *************
@@ -392,10 +394,26 @@ def _update_internal_format_from_inputs(graph: GraphDef, runtime_inputs):
            Therefore, to enable the internal format FZ of the filter,
            you need to specify origin_fmt NCHW of the filter node, as shown in Figure 2.
         '''
-        if npu_format == Format.FORMAT_FRACTAL_Z.value or npu_format == Format.FORMAT_NC1HWC0.value:
-            input_index_mapping_graph_op[idx].output_desc[0].attr["origin_format_for_int"].i = Format.FORMAT_NCHW.value
-        if npu_format == Format.FORMAT_FRACTAL_Z_3D.value or npu_format == Format.FORMAT_NDC1HWC0.value:
-            input_index_mapping_graph_op[idx].output_desc[0].attr["origin_format_for_int"].i = Format.FORMAT_NCDHW.value
+        origin_format = None
+        if npu_format == Format.FORMAT_FRACTAL_NZ.value:
+            origin_format = Format.FORMAT_ND.value
+        elif npu_format == Format.FORMAT_FRACTAL_Z.value or npu_format == Format.FORMAT_NC1HWC0.value:
+            origin_format = Format.FORMAT_NCHW.value
+        elif npu_format == Format.FORMAT_FRACTAL_Z_3D.value or npu_format == Format.FORMAT_NDC1HWC0.value:
+            origin_format = Format.FORMAT_NCDHW.value
+
+        if origin_format is not None:
+            input_index_mapping_graph_op[idx].output_desc[0].shape.dim[:] = []
+            input_index_mapping_graph_op[idx].output_desc[0].attr["origin_shape"].list.val_type = 2
+            input_index_mapping_graph_op[idx].output_desc[0].attr["origin_shape"].list.i.extend(origin_shape)
+            input_index_mapping_graph_op[idx].output_desc[0].attr["origin_shape_initialized"].b = True
+            input_index_mapping_graph_op[idx].output_desc[0].attr["origin_format_is_set"].b = True
+            input_index_mapping_graph_op[idx].output_desc[0].attr["origin_format_for_int"].i = origin_format
+
+            input_index_mapping_graph_op[idx].input_desc.pop(0)
+            input_index_mapping_graph_op[idx].input_desc.add().CopyFrom(
+                input_index_mapping_graph_op[idx].output_desc[0])
+
         logger.debug(f'update the Format of output TensorDesc for input_{idx} to Format {Format(npu_format).name}.')
 
 

@@ -60,7 +60,7 @@ Status StaticNpuGraphExecutor::AssembleInputsInner(const std::vector<const at::T
                                       (*inputs[i]).data_ptr(), host_input_holders_[i].second.first, first_stream_));
       }
     } else {
-      TNG_RETURN_IF_ERROR(AtTensorToGeTensor(*inputs[i], input_holders[i]));
+      TNG_RETURN_IF_ERROR(AtNpuTensorToGeTensor(*inputs[i], input_holders[i]));
     }
     TNG_LOG(DEBUG) << "Assemble aten input " << i << " " << DebugString(*inputs[i]) << " to "
                    << DebugString(input_holders[i]);
