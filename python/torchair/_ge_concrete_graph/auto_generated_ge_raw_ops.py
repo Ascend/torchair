@@ -77754,7 +77754,8 @@ def _GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], sc
     op.attr["group_type"].i = group_type
     op.attr["group_list_type"].i = group_list_type
     op.attr["act_type"].i = act_type
-    op.attr["tuning_config"].i = tuning_config
+    op.attr["tuning_config"].list.val_type = 2
+    op.attr["tuning_config"].list.i.extend(tuning_config)
 
     # process outputs
     output_index = 0
