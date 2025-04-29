@@ -77540,9 +77540,9 @@ def TransQuantParamV2(scale: Tensor, offset: Optional[Tensor], *, round_mode: in
     }
 
     # process outputs
-    outputs = {
+    outputs = [
         "y",
-    }
+    ]
 
     return ge_op(
         op_type="TransQuantParamV2",
