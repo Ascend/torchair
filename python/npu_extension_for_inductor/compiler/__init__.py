@@ -13,6 +13,7 @@ class _NpuInductorKernel:
     default_stream = c_void_p(0)
 
     def __init__(self, wrapper_lib_path):
+        self.name = self.get_kernel_name(wrapper_lib_path)
         self.kernel = cdll.LoadLibrary(wrapper_lib_path).wrapper
 
     def __call__(self, *args):
@@ -20,6 +21,12 @@ class _NpuInductorKernel:
                              self.default_stream)
         if result != 0:
             raise RuntimeError(f"NPU kernel {self.name} execution failed({result})")
+
+    @staticmethod
+    def get_kernel_name(path):
+        normalized = os.path.normpath(path)
+        folders = normalized.split(os.sep)
+        return folders[-3] if len(folders) >= 3 else path
 
 
 def _get_wrapper_lib(artifacts: Dict) -> str:

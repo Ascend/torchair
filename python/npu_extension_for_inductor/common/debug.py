@@ -232,7 +232,7 @@ def _value_str(value):
 def _get_node_style(node: _Op):
     style = {
         "shape": "record",
-        "fillcolor": "LightGreen",
+        "fillcolor": "Green",
         "style": '"filled,rounded"',
     }
 

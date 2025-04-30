@@ -126,10 +126,10 @@ def _build_cpp(source_code: str, *, compile_flags, output_file):
 def setup_asc_jit_command(npu_ctx: 'NpuContext', spec, **kwargs):
     command_args = [f'--{k}={v}' for k, v in kwargs.items()]
     py_code = IndentedBuffer()
-    if not npu_ctx.is_stub:
+    if npu_ctx.device is not None:
         py_code.splice(f"import torch")
         py_code.splice(f"import torch_npu")
-        py_code.splice(f"torch.npu.init()")
+        py_code.splice(f"torch.npu.set_device({npu_ctx.device})")
     py_code.splice(f"from compile_adapter import jit_compile")
     py_code.splice(f"tiling_def = '''{spec.tiling_def}'''")
     py_code.splice(f"host_impl = '''{spec.host_impl}'''")
@@ -155,13 +155,14 @@ def save_manual_asserts(fn, content):
 
 class NpuContext:
     def __init__(self):
-        self.is_stub = False
+        self.device = None
         self.compile_flags = []
         self.tmp_resource = None
 
     def __enter__(self):
         if os.getenv("ASCIR_NOT_READY", None) != "1" or 'torch_npu' in sys.modules:
             import torch_npu
+            self.device = torch.npu.current_device()
             torch_npu_dir = os.path.dirname(torch_npu.__file__)
             ascend_dir = os.path.dirname(os.getenv("ASCEND_OPP_PATH", "/usr/local/Ascend/latest/opp"))
             torch_dir = os.path.dirname(torch.__file__)
@@ -169,7 +170,6 @@ class NpuContext:
             self.compile_flags.extend([f"-L{ascend_dir}/lib64", f"-lascendcl", f"-lnnopbase"])
             self.compile_flags.extend([f"-L{torch_npu_dir}/lib", f"-ltorch_npu"])
         else:
-            self.is_stub = True
             from pathlib import Path
             self.tmp_resource = tempfile.TemporaryDirectory()
             self.compile_flags = [f"-I{self.tmp_resource.name}/include"]
