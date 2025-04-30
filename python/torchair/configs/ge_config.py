@@ -24,9 +24,9 @@ class _GEConfig(NpuBaseConfig):
         global_option["ge.enableSingleStream"] = "true" if self.enable_single_stream else "false"
         global_option["ge.oo.level"] = self.oo_level.value
         if self.oo_constant_folding.value is not None:
-            global_option["ge.oo.constant_folding"] = "true" if self.oo_constant_folding else "false"
+            global_option["ge.oo.constantFolding"] = "true" if self.oo_constant_folding else "false"
         if self.oo_dead_code_elimination.value is not None:
-            global_option["ge.oo.dead_code_elimination"] = "true" \
+            global_option["ge.oo.deadCodeElimination"] = "true" \
                 if self.oo_dead_code_elimination else "false"
         if self.oo_level.value == "O1":
             local_option["ge.topoSortingMode"] = sorting_strategy_dict["StableRDFS"]
