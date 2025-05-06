@@ -33,6 +33,7 @@ class GraphData {
   uint32_t id = 0U;
   ge::GraphPtr graph = nullptr;
   std::map<ge::AscendString, ge::AscendString> compile_options;
+  std::map<ge::AscendString, ge::AscendString> load_options;
   std::vector<Placement> input_placements;
   std::vector<std::vector<int64_t>> inputs_shape;
   std::vector<std::vector<int64_t>> outputs_shape;

@@ -246,7 +246,10 @@ Status Session::FastLoadGraph(uint32_t graph_id, const std::map<ge::AscendString
   RECORD_FUNCTION("LoadGraph", {});
   TNG_RETURN_IF_ERROR(EnsureInitialized());
   TNG_ASSERT_NOTNULL(fast_load_graph_, "FastLoadGraph is unsupported, please dont use it in current cann version.");
-  TNG_LOG(DEBUG) << "Start to session load graph " << graph_id;
+  TNG_LOG(DEBUG) << "Start to session load graph " << graph_id <<", load options:";
+  for (const auto &opt : option) {
+    TNG_LOG(DEBUG) << "  " << opt.first.GetString() << ": " << opt.second.GetString();
+  }
 
   TNG_ASSERT_GE_OK(fast_load_graph_(*global_ge_session, graph_id, option, stream));
   return Status::Success();

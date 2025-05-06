@@ -48,7 +48,6 @@ class StaticNpuGraphExecutor : public Executor {
   ge::MemBlock *feature_map_block_{nullptr};
   bool fm_refreshable_{false};
   void *first_stream_{nullptr};
-  std::string frozen_option_value_;
 
   std::vector<std::vector<int64_t>> output_shapes_;
   std::vector<std::pair<at::Tensor, std::pair<size_t, size_t>>> host_input_holders_;

@@ -44,7 +44,6 @@ class DynamicNpuGraphExecutor : public Executor {
   std::shared_ptr<GraphData> graph_data_;
   std::vector<at::Tensor> host_input_holders_;
   void *first_stream_{nullptr};
-  std::string frozen_option_value_;
 };
 }  // namespace tng
 

@@ -983,7 +983,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         if len(optimize_frozen_flag_list) != 0:
             local_compile_options["frozenInput"] = ",".join(str(x) for x in optimize_frozen_flag_list)
         host_input_flag_list = get_host_input_flag(self._input_info_list)
-        local_compile_options["ge.exec.hostInputIndexes"] = ";".join(str(x) for x in host_input_flag_list)
+        local_compile_options["hostInput"] = ";".join(str(x) for x in host_input_flag_list)
         logger.info("local compile options:")
         for k, v in local_compile_options.items():
             logger.info(f"  {k}: {v}")
