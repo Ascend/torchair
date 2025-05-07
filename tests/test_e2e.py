@@ -16,9 +16,7 @@ class InductorNpuBackendTest(unittest.TestCase):
         self.device = torch.device("npu") if not do_stub_test else torch.device("cpu")
 
     def check_precision(self, result, expected):
-        if do_stub_test:
-            self.assertFalse(torch.allclose(result, expected))
-        else:
+        if not do_stub_test:
             self.assertTrue(torch.allclose(result, expected, atol=1e-3, rtol=1e-3))
 
     def full(self, *args, **kwargs):

@@ -86,6 +86,7 @@ class TypeUtils:
         if dtype is None:
             return dtype
         type_str = str(dtype).split('torch.')[-1]
+        type_str = 'uint8' if type_str == 'bool' else type_str  # bool is uint8 in asc
         return StrRep(f"ascir.dtypes.{type_str}", type_str)
 
 

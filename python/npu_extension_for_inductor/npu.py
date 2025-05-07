@@ -225,14 +225,14 @@ class NPUKernel(Kernel):
         min_transpose_order = None
         for axis_vars in itertools.permutations(body.var_ranges.keys()):
             input_transposed = _get_transposed_indexing(body.reads_name2expr, axis_vars)
-            for buffer, index in input_transposed:
-                logging.debug("Reading index %s of %s is transposed under %s", index, buffer, axis_vars)
+            for buffer, index, score in input_transposed:
+                logging.debug("Reading index %s of %s is transposed score %s under %s", index, buffer, score, axis_vars)
             output_transposed = _get_transposed_indexing(body.writes_name2expr, axis_vars)
-            for buffer, index in output_transposed:
+            for buffer, index, _ in output_transposed:
                 logging.debug("Writing index %s of %s is transposed under %s", index, buffer, axis_vars)
             # note: we currently only support input transpose, change coeff to 1 once infer for output transpose ready
-            score = len(input_transposed) + len(output_transposed) * 10000
-            logging.debug("Totally %s transposed indexings under %s", score, axis_vars)
+            score = sum(score for _, _, score in input_transposed) + len(output_transposed) * 10000
+            logging.debug("Totally transposed indexings score %s under %s", score, axis_vars)
             if min_score is None or score < min_score:
                 min_score = score
                 min_transpose_order = axis_vars
@@ -557,7 +557,8 @@ def _get_transposed_indexing(load_index, axis_vars):
         hints = V.graph.sizevars.stride_hints(index, axis_vars)
         non_zero_hints = [hint for hint in hints if str(hint) != '0']
         if sorted(non_zero_hints, reverse=True) != non_zero_hints:
-            transposed_index.append((buffer, index))
+            score = 1 if non_zero_hints[-1] == 1 else 100
+            transposed_index.append((buffer, index, score))
     return transposed_index
 
 

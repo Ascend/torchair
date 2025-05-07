@@ -73,6 +73,13 @@ def sqrt(x):
     return op.y
 
 
+def log(x):
+    graph = V.kernel.graph
+    op = graph.add_op("Ln")
+    op.x = x
+    return op.y
+
+
 def rsqrt(x):
     graph = V.kernel.graph
     op = graph.add_op("Rsqrt")
@@ -102,8 +109,17 @@ def broadcast(x):
     return op.y
 
 
+def reciprocal(x):
+    graph = V.kernel.graph
+    op = graph.add_op("Reciprocal")
+    op.x = x
+    return op.y
+
+
 def truediv(x1, x2):
     graph = V.kernel.graph
+    if x1 == '1':
+        return reciprocal(x2)
     op = graph.add_op("TrueDiv")
     op.x1 = x1
     op.x2 = x2
@@ -111,11 +127,7 @@ def truediv(x1, x2):
 
 
 def div(x1, x2):
-    graph = V.kernel.graph
-    op = graph.add_op("Div")
-    op.x1 = x1
-    op.x2 = x2
-    return op.y
+    return truediv(x1, x2)
 
 
 def cast(x, *, dst, src=None):
