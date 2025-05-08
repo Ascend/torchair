@@ -728,13 +728,13 @@ class GeConcreteGraph(ConcreteGraphBase):
             if len(self._ref_data_idx) != 0:
                 for ge_index, fx_index in self._cloned_ge_input_mapping.items():
                     if ge_index in self._ref_data_idx:
-                        kernel.writeline(f'arg{fx_index}_1.copy_(ge_inputs[{ge_index}])')
+                        kernel.writeline(f'args[{fx_index}].copy_(ge_inputs[{ge_index}])')
 
             kernel.writeline(f'fx_outputs = [None] * {len(self._fx_outputs)}')
             for idx, out in enumerate(self._fx_outputs):
                 if isinstance(out, ViewOfInput):
                     kernel.writeline(
-                        f'fx_outputs[{idx}] = torch.as_strided(arg{out._fx_input_index}_1, {out._ori_meta_shape}, '
+                        f'fx_outputs[{idx}] = torch.as_strided(args[{out._fx_input_index}], {out._ori_meta_shape}, '
                         f'{out._ori_meta_stride}, {out._ori_meta_offset})')
                 elif isinstance(out, SymOutput):
                     kernel.writeline(f'fx_outputs[{idx}] = {str(out._ori_meta_sym.node.expr)}')

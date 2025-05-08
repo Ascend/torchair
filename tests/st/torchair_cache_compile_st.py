@@ -708,6 +708,117 @@ class CacheCompileSt(unittest.TestCase):
         self.assertTrue(prompt2_res.equal(prompt2_cache_res))
         self.assertTrue(decode2_res.equal(decode2_cache_res))
 
+    def test_codegen_dynamic(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.cached = torchair.inference.cache_compile(self._forward)
+
+            def forward(self, t1, t2, t3, s1, s2):
+                return self.cached(t1, t2, t3, s1, s2)
+
+            def _forward(self, t1, t2, t3, s1, s2):
+                return t1 + s1, t2 + 1, torch.split(t3, s2)
+
+        model = Model()
+        cache_dir = CompiledModel.get_cache_bin(model._forward)
+        ModelCacheSaver.remove_cache(cache_dir)
+        t1 = torch.zeros(1, 10)
+        t2 = torch.zeros(2, 5)[:, 0:1]
+        t3 = torch.zeros(5, 2)
+        s1 = 5
+        s2 = [2, 3]
+        model(t1, t2, t3, s1, s2)
+
+        code = '''
+_is_first_run = True
+def kernel(*args):
+    arg0_1, arg1_1, arg2_1, arg3_1, arg4_1, arg5_1, arg6_1, arg7_1 = args
+    s0 = arg0_1
+    s1 = arg2_1
+    s3 = arg5_1
+    s4 = arg6_1
+    s5 = arg7_1
+    ge_inputs = list(args)
+    del ge_inputs[7]
+    del ge_inputs[6]
+    del ge_inputs[2]
+    del ge_inputs[0]
+    ge_inputs[1] = args[3].contiguous()
+    ge_inputs[3] = torch.from_numpy(numpy.array([args[5]]))
+    ge_inputs.insert(4, torch.from_numpy(numpy.array([args[6], args[7], ])))
+
+    global _is_first_run
+    if _is_first_run:
+        _is_first_run = False
+        _update_constplaceholder_attr_from_inputs(ge_graph, args)
+        _update_internal_format_from_inputs(ge_graph, ge_inputs)
+        ge_graph.load(local_compile_options, create_pg=False)
+        ge_graph.compile()
+
+    ge_outputs = ge_graph.run(ge_inputs)
+    fx_outputs = [None] * 4
+    fx_outputs[0] = ge_outputs[0]
+    fx_outputs[1] = ge_outputs[1]
+    fx_outputs[2] = torch.as_strided(args[4], [s4, s1], [s1, 1], 0)
+    fx_outputs[3] = torch.as_strided(args[4], [s5, s1], [s1, 1], s1*s4)
+
+    del ge_outputs
+    return tuple(fx_outputs)
+'''
+        compile_model = CompiledModel.load(cache_dir)
+        print(compile_model.compiled_fx.py_code)
+        self.assertTrue(code in compile_model.compiled_fx.py_code)
+
+    def test_codegen_static(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.cached = torchair.inference.cache_compile(self._forward, dynamic=False)
+
+            def forward(self, t1, t2, t3, s1, s2):
+                return self.cached(t1, t2, t3, s1, s2)
+
+            def _forward(self, t1, t2, t3, s1, s2):
+                return t1 + s1, t2 + 1, torch.split(t3, s2)
+
+        model = Model()
+        cache_dir = CompiledModel.get_cache_bin(model._forward, dynamic=False)
+        ModelCacheSaver.remove_cache(cache_dir)
+        t1 = torch.zeros(1, 10)
+        t2 = torch.zeros(2, 5)[:, 0:1]
+        t3 = torch.zeros(5, 2)
+        s1 = 5
+        s2 = [2, 3]
+        model(t1, t2, t3, s1, s2)
+
+        code = '''
+_is_first_run = True
+def kernel(*args):
+    ge_inputs = list(args)
+    ge_inputs[1] = args[1].contiguous()
+
+    global _is_first_run
+    if _is_first_run:
+        _is_first_run = False
+        _update_constplaceholder_attr_from_inputs(ge_graph, args)
+        _update_internal_format_from_inputs(ge_graph, ge_inputs)
+        ge_graph.load(local_compile_options, create_pg=False)
+        ge_graph.compile()
+
+    ge_outputs = ge_graph.run(ge_inputs)
+    fx_outputs = [None] * 4
+    fx_outputs[0] = ge_outputs[0]
+    fx_outputs[1] = ge_outputs[1]
+    fx_outputs[2] = torch.as_strided(args[2], [2, 2], [2, 1], 0)
+    fx_outputs[3] = torch.as_strided(args[2], [3, 2], [2, 1], 4)
+
+    del ge_outputs
+    return tuple(fx_outputs)
+'''
+        compile_model = CompiledModel.load(cache_dir)
+        print(compile_model.compiled_fx.py_code)
+        self.assertTrue(code in compile_model.compiled_fx.py_code)
 
 if __name__ == '__main__':
     unittest.main()
