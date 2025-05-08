@@ -102,12 +102,13 @@ def codegen_cpp_wrapper(graph: FusedASCGraph):
     tiling_args = [v.name for v in symbols]
     tiling_signature = [v.signature for v in symbols]
     tiling_signature.append(f"{tiling_dtype} *tiling_data")
-    tiling_signature.append(f"int64_t *workspace_size")
-    tiling_signature.append(f"int64_t *block_dim")
+    tiling_signature.append(f"uint32_t *workspace_size")
+    tiling_signature.append(f"uint32_t *block_dim")
+    tiling_signature.append(f"void *resource_limit")
 
     workspaces = [TensorArg("workspace")]
     launch_args = [v.name for v in itertools.chain(inputs, outputs, workspaces)]
-    launch_signature = ["int64_t block_dim", "void *stream"]
+    launch_signature = ["uint32_t block_dim", "void *stream"]
     launch_signature.extend([v.signature for v in itertools.chain(inputs, outputs, workspaces)])
     launch_signature.append(f"{tiling_dtype} *tiling_data")
 
@@ -119,20 +120,22 @@ static LaunchFuncType launch_fn = reinterpret_cast<LaunchFuncType>(GetFunc("Auto
 
 extern "C" int wrapper({signature}) {{
     {tiling_dtype} tiling_data;
-    int64_t workspace_size = 0;
-    int64_t block_dim = 0;
+    uint32_t workspace_size = 0;
+    uint32_t block_dim = 0;
     if (tiling_fn == nullptr || launch_fn == nullptr) {{
         if (tiling_fn == nullptr) std::cerr << "{graph.name} kernel tiling func not found" << std::endl;
         if (launch_fn == nullptr) std::cerr << "{graph.name} kernel launch func not found" << std::endl;
         return -1;
     }}
-    int64_t result = tiling_fn({', '.join(tiling_args + ["&tiling_data", "&workspace_size", "&block_dim"])});
+    int64_t result = tiling_fn({', '.join(tiling_args + ["&tiling_data", "&workspace_size", "&block_dim", "nullptr"])});
     if (result != 0) {{
+        std::cerr << "{graph.name} kernel tiling failed" << std::endl;
         return -1;
     }}
 
     void *current_stream = GetStream(stream);
     if (current_stream == nullptr) {{
+        std::cerr << "{graph.name} kernel get stream failed" << std::endl;
         return -1;
     }}
 
@@ -141,10 +144,10 @@ extern "C" int wrapper({signature}) {{
     DLOG() << "workspace_size: " << workspace_size << std::endl;
 
     void *workspace = nullptr;
-    workspace_size = workspace_size < 0 ? 0 : workspace_size;
     if (workspace_size > 0) {{
         workspace = MallocWorkspace(workspace_size, current_stream);
         if (workspace == nullptr) {{
+            std::cerr << "{graph.name} kernel malloc workspace failed" << std::endl;
             return -1;
         }}
     }}
@@ -157,6 +160,7 @@ extern "C" int wrapper({signature}) {{
         FreeWorkspace(workspace);
     }}
     if (result != 0) {{
+        std::cerr << "{graph.name} kernel launch failed" << std::endl;
         return -1;
     }}
     return 0;

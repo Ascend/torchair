@@ -70,8 +70,9 @@ class HintGraph:
         used_symbols = sorted(self.symbols)
         signature = [f"int64_t {str(v)}" for v in used_symbols]
         signature.append(f"AutofuseTilingData *tiling_data")
-        signature.append(f"int64_t *workspace_size")
-        signature.append(f"int64_t *block_dim")
+        signature.append(f"uint32_t *workspace_size")
+        signature.append(f"uint32_t *block_dim")
+        signature.append(f"void *resource_limit")
         debug_code = '\n    '.join(
             [f'std::cerr << "[STUB]Tiling for {self.name} {v} = " << {v} << std::endl;' for v in used_symbols])
         code = IndentedBuffer()
@@ -87,7 +88,7 @@ extern "C" int64_t AutofuseTiling({', '.join(signature)}) {{
 
     @property
     def kernel(self):
-        signature = ["int64_t block_dim", "void *stream"]
+        signature = ["uint32_t block_dim", "void *stream"]
         buf_names = self.args + ['workspace']
         signature.extend([f"void *{v}" for v in buf_names])
         signature.append(f"AutofuseTilingData *tiling_data")
