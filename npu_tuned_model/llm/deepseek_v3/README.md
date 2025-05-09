@@ -178,7 +178,9 @@ CompilerConfig配置参考[torchair资料](https://www.hiascend.com/document/det
 - torchair提供了NPU的图构造/图编译/图执行能力。相关能力全部集成到NPU图的后端，在使用torch.compile接口时，指定NPU图后端来使能。同时提供了开关和config控制图的编译和执行流程。
 - 在使用NPU图后端的时候，torchair提供了静态图和动态图两种图执行的能力。根据dynamic参数决定是否走动态图。
 
-具体实现中，通过使能`EXE_MODE="dynamo"`的环境变量，可以触发`engine/model_runner.py`中的`graph_compile`函数进行图模式编译
+具体实现中
+- 通过使能`EXE_MODE="dynamo"`的环境变量，可以触发`engine/model_runner.py`中的`graph_compile`函数进行图模式编译。
+- 在此基础上，使能aclgraph需设置环境变量：export ENABLE_ACLGRAPH=1，会切换到mode="reduce-overhead"下完成静态图下沉。
 
 ### 3.2.4. HCCL使能AIV
 
@@ -209,8 +211,9 @@ export HCCL_OP_EXPANSION_MODE=AIV
   <tr><td><code>BATCH_SIZE</code></td><td>默认执行prefill-1batch, decode-nBatch模式。可通过设置该环境变量，使能decode多batch推理，默认为1</td></tr>
   <tr><td><code>TOKENIZER_MODE</code></td><td>可使用不同的tokenizer，用于生成不同的prompt进行推理。支持default与chat两种，默认为default</td></tr>
 
-  <tr><td rowspan="2">执行模式配置</td></tr>
+  <tr><td rowspan="3">执行模式配置</td></tr>
   <tr><td><code>EXE_MODE</code></td><td>用于区分图模式与单算子模式。eager表示单算子模式，dynamo表示图模式。默认为单算子模式</td></tr>
+  <tr><td><code>ENABLE_ACLGRAPH</code></td><td>用于aclgraph与GE两种图模式的使能。1表示aclgraph，0表示GE。默认为GE。</td></tr>
 
   <tr><td rowspan="3">调测配置项</td></tr>
   <tr><td><code>HCCL_DETERMINISTIC</code></td><td>可设置该环境变量为true，用于使能多卡间的确定性计算。默认为false</td></tr>
