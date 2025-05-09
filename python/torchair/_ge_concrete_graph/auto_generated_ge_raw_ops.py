@@ -78484,79 +78484,111 @@ def MoeDistributeCombine(expand_x: Tensor, expert_ids: Tensor, expand_idx: Tenso
     .ATTR(group_list_type, Int, 0)\n
     """
 
+    op = get_default_ge_graph().op.add()
+    op.type = "MoeDistributeCombine"
+    op.name = next_unique_name(node_name, "MoeDistributeCombine")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
     # process inputs
-    inputs = {
-        "expand_x": expand_x,
-        "expert_ids": expert_ids,
-        "expand_idx": expand_idx,
-        "ep_send_counts": ep_send_counts,
-        "expert_scales": expert_scales,
-        "tp_send_counts": tp_send_counts,
-        "x_active_mask": x_active_mask,
-        "activation_scale": activation_scale,
-        "weight_scale": weight_scale,
-        "group_list": group_list,
-        "expand_scales": expand_scales,
-    }
+    op.input.append(expand_x.tensor)
+    op.input_desc.add().CopyFrom(expand_x.desc)
+    op.input_desc[-1].name = "expand_x"
+
+    op.input.append(expert_ids.tensor)
+    op.input_desc.add().CopyFrom(expert_ids.desc)
+    op.input_desc[-1].name = "expert_ids"
+
+    op.input.append(expand_idx.tensor)
+    op.input_desc.add().CopyFrom(expand_idx.desc)
+    op.input_desc[-1].name = "expand_idx"
+
+    op.input.append(ep_send_counts.tensor)
+    op.input_desc.add().CopyFrom(ep_send_counts.desc)
+    op.input_desc[-1].name = "ep_send_counts"
+
+    op.input.append(expert_scales.tensor)
+    op.input_desc.add().CopyFrom(expert_scales.desc)
+    op.input_desc[-1].name = "expert_scales"
+
+    if tp_send_counts is not None:
+        op.input.append(tp_send_counts.tensor)
+        op.input_desc.add().CopyFrom(tp_send_counts.desc)
+        op.input_desc[-1].name = "tp_send_counts"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "tp_send_counts"
+
+    if x_active_mask is not None:
+        op.input.append(x_active_mask.tensor)
+        op.input_desc.add().CopyFrom(x_active_mask.desc)
+        op.input_desc[-1].name = "x_active_mask"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "x_active_mask"
+
+    if activation_scale is not None:
+        op.input.append(activation_scale.tensor)
+        op.input_desc.add().CopyFrom(activation_scale.desc)
+        op.input_desc[-1].name = "activation_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "activation_scale"
+    if weight_scale is not None:
+        op.input.append(weight_scale.tensor)
+        op.input_desc.add().CopyFrom(weight_scale.desc)
+        op.input_desc[-1].name = "weight_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "weight_scale"
+
+    if group_list is not None:
+        op.input.append(group_list.tensor)
+        op.input_desc.add().CopyFrom(group_list.desc)
+        op.input_desc[-1].name = "group_list"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "group_list"
+
+    if expand_scales is not None:
+        op.input.append(expand_scales.tensor)
+        op.input_desc.add().CopyFrom(expand_scales.desc)
+        op.input_desc[-1].name = "expand_scales"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "expand_scales"
 
     # process attrs
-    attrs = {
-        "group_ep": attr.Str(group_ep),
-        "ep_world_size": attr.Int(ep_world_size),
-        "ep_rank_id": attr.Int(ep_rank_id),
-        "moe_expert_num": attr.Int(moe_expert_num),
-        "group_tp": attr.Str(group_tp),
-        "tp_world_size": attr.Int(tp_world_size),
-        "tp_rank_id": attr.Int(tp_rank_id),
-        "expert_shard_type": attr.Int(expert_shard_type),
-        "shared_expert_num": attr.Int(shared_expert_num),
-        "shared_expert_rank_num": attr.Int(shared_expert_rank_num),
-        "global_bs": attr.Int(global_bs),
-        "out_dtype": attr.Int(out_dtype),
-        "comm_quant_mode": attr.Int(comm_quant_mode),
-        "group_list_type": attr.Int(group_list_type),
-    }
+    op.attr["group_ep"].s = compat_as_bytes(group_ep)
+    op.attr["ep_world_size"].i = ep_world_size
+    op.attr["ep_rank_id"].i = ep_rank_id
+    op.attr["moe_expert_num"].i = moe_expert_num
+    op.attr["group_tp"].s = compat_as_bytes(group_tp)
+    op.attr["tp_world_size"].i = tp_world_size
+    op.attr["tp_rank_id"].i = tp_rank_id
+    op.attr["expert_shard_type"].i = expert_shard_type
+    op.attr["shared_expert_num"].i = shared_expert_num
+    op.attr["shared_expert_rank_num"].i = shared_expert_rank_num
+    op.attr["global_bs"].i = global_bs
+    op.attr["out_dtype"].i = out_dtype
+    op.attr["comm_quant_mode"].i = comm_quant_mode
+    op.attr["group_list_type"].i = group_list_type
 
     # process outputs
-    outputs = [
-    "x",
-    ]
+    output_index = 0
+    op.output_desc.add().name = "x"
+    x = Tensor(op, output_index)
+    output_index += 1
 
-    return ge_op(
-        op_type="MoeDistributeCombine",
-        inputs=inputs,
-        attrs=attrs,
-        outputs=outputs,
-        dependencies=dependencies,
-        ir=IrDef("MoeDistributeCombine") \
-        .input("expand_x", "DT_BF16, DT_FLOAT16") \
-        .input("expert_ids", "DT_INT32") \
-        .input("expand_idx", "DT_INT32") \
-        .input("ep_send_counts", "DT_INT32") \
-        .input("expert_scales", "DT_FLOAT") \
-        .optional_input("tp_send_counts", "DT_INT32") \
-        .optional_input("x_active_mask", "DT_BOOL") \
-        .optional_input("activation_scale", "DT_FLOAT") \
-        .optional_input("weight_scale", "DT_FLOAT") \
-        .optional_input("group_list", "DT_INT64") \
-        .optional_input("expand_scales", "DT_FLOAT") \
-        .required_attr("group_ep", attr.Str) \
-        .required_attr("ep_world_size", attr.Int) \
-        .required_attr("ep_rank_id", attr.Int) \
-        .required_attr("moe_expert_num", attr.Int) \
-        .attr("group_tp", attr.Str("")) \
-        .attr("tp_world_size", attr.Int(0)) \
-        .attr("tp_rank_id", attr.Int(0)) \
-        .attr("expert_shard_type", attr.Int(0)) \
-        .attr("shared_expert_num", attr.Int(1)) \
-        .attr("shared_expert_rank_num", attr.Int(0)) \
-        .attr("global_bs", attr.Int(0)) \
-        .attr("out_dtype", attr.Int(0)) \
-        .attr("comm_quant_mode", attr.Int(0)) \
-        .attr("group_list_type", attr.Int(0)) \
-        .output("x" , "DT_BF16, DT_FLOAT16")
-    )
-
+    return x
 
 # This api is auto-generated from IR MoeDistributeDispatch
 @auto_convert_to_tensor([False, False, False, False, False], [False, False, True, True, True])
@@ -78589,76 +78621,96 @@ def MoeDistributeDispatch(x: Tensor, expert_ids: Tensor, scales: Optional[Tensor
     .ATTR(expert_token_nums_type, Int, 1)\n
     """
 
+    op = get_default_ge_graph().op.add()
+    op.type = "MoeDistributeDispatch"
+    op.name = next_unique_name(node_name, "MoeDistributeDispatch")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
     # process inputs
-    inputs = {
-        "x": x,
-        "expert_ids": expert_ids,
-        "scales": scales,
-        "x_active_mask": x_active_mask,
-        "expert_scales": expert_scales,
-    }
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+
+    op.input.append(expert_ids.tensor)
+    op.input_desc.add().CopyFrom(expert_ids.desc)
+    op.input_desc[-1].name = "expert_ids"
+
+    if scales is not None:
+        op.input.append(scales.tensor)
+        op.input_desc.add().CopyFrom(scales.desc)
+        op.input_desc[-1].name = "scales"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "scales"
+
+    if x_active_mask is not None:
+        op.input.append(x_active_mask.tensor)
+        op.input_desc.add().CopyFrom(x_active_mask.desc)
+        op.input_desc[-1].name = "x_active_mask"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "x_active_mask"
+
+    if expert_scales is not None:
+        op.input.append(expert_scales.tensor)
+        op.input_desc.add().CopyFrom(expert_scales.desc)
+        op.input_desc[-1].name = "expert_scales"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "expert_scales"
 
     # process attrs
-    attrs = {
-        "group_ep": attr.Str(group_ep),
-        "ep_world_size": attr.Int(ep_world_size),
-        "ep_rank_id": attr.Int(ep_rank_id),
-        "moe_expert_num": attr.Int(moe_expert_num),
-        "group_tp": attr.Str(group_tp),
-        "tp_world_size": attr.Int(tp_world_size),
-        "tp_rank_id": attr.Int(tp_rank_id),
-        "expert_shard_type": attr.Int(expert_shard_type),
-        "shared_expert_num": attr.Int(shared_expert_num),
-        "shared_expert_rank_num": attr.Int(shared_expert_rank_num),
-        "quant_mode": attr.Int(quant_mode),
-        "global_bs": attr.Int(global_bs),
-        "expert_token_nums_type": attr.Int(expert_token_nums_type),
-    }
+    op.attr["group_ep"].s = compat_as_bytes(group_ep)
+    op.attr["ep_world_size"].i = ep_world_size
+    op.attr["ep_rank_id"].i = ep_rank_id
+    op.attr["moe_expert_num"].i = moe_expert_num
+    op.attr["group_tp"].s = compat_as_bytes(group_tp)
+    op.attr["tp_world_size"].i = tp_world_size
+    op.attr["tp_rank_id"].i = tp_rank_id
+    op.attr["expert_shard_type"].i = expert_shard_type
+    op.attr["shared_expert_num"].i = shared_expert_num
+    op.attr["shared_expert_rank_num"].i = shared_expert_rank_num
+    op.attr["quant_mode"].i = quant_mode
+    op.attr["global_bs"].i = global_bs
+    op.attr["expert_token_nums_type"].i = expert_token_nums_type
 
     # process outputs
-    outputs = [
-    "expand_x",
-    "dynamic_scales",
-    "expand_idx",
-    "expert_token_nums",
-    "ep_recv_count",
-    "tp_recv_count",
-    "expand_scales",
-    ]
+    output_index = 0
+    op.output_desc.add().name = "expand_x"
+    expand_x = Tensor(op, output_index)
+    output_index += 1
 
-    return ge_op(
-        op_type="MoeDistributeDispatch",
-        inputs=inputs,
-        attrs=attrs,
-        outputs=outputs,
-        dependencies=dependencies,
-        ir=IrDef("MoeDistributeDispatch") \
-        .input("x", "DT_BF16, DT_FLOAT16") \
-        .input("expert_ids", "DT_INT32") \
-        .optional_input("scales", "DT_FLOAT") \
-        .optional_input("x_active_mask", "DT_BOOL") \
-        .optional_input("expert_scales", "DT_FLOAT") \
-        .required_attr("group_ep", attr.Str) \
-        .required_attr("ep_world_size", attr.Int) \
-        .required_attr("ep_rank_id", attr.Int) \
-        .required_attr("moe_expert_num", attr.Int) \
-        .attr("group_tp", attr.Str("")) \
-        .attr("tp_world_size", attr.Int(0)) \
-        .attr("tp_rank_id", attr.Int(0)) \
-        .attr("expert_shard_type", attr.Int(0)) \
-        .attr("shared_expert_num", attr.Int(1)) \
-        .attr("shared_expert_rank_num", attr.Int(0)) \
-        .attr("quant_mode", attr.Int(0)) \
-        .attr("global_bs", attr.Int(0)) \
-        .attr("expert_token_nums_type", attr.Int(1)) \
-        .output("expand_x", "DT_BF16, DT_INT8, DT_FLOAT16") \
-        .output("dynamic_scales", "DT_FLOAT") \
-        .output("expand_idx", "DT_INT32") \
-        .output("expert_token_nums", "DT_INT64") \
-        .output("ep_recv_count", "DT_INT32") \
-        .output("tp_recv_count", "DT_INT32") \
-        .output("expand_scales", "DT_FLOAT")
-    )
+    op.output_desc.add().name = "dynamic_scales"
+    dynamic_scales = Tensor(op, output_index)
+    output_index += 1
+
+    op.output_desc.add().name = "expand_idx"
+    expand_idx = Tensor(op, output_index)
+    output_index += 1
+
+    op.output_desc.add().name = "expert_token_nums"
+    expert_token_nums = Tensor(op, output_index)
+    output_index += 1
+
+    op.output_desc.add().name = "ep_recv_count"
+    ep_recv_count = Tensor(op, output_index)
+    output_index += 1
+
+    op.output_desc.add().name = "tp_recv_count"
+    tp_recv_count = Tensor(op, output_index)
+    output_index += 1
+
+    op.output_desc.add().name = "expand_scales"
+    expand_scales = Tensor(op, output_index)
+    output_index += 1
+
+    return expand_x, dynamic_scales, expand_idx, expert_token_nums, ep_recv_count, tp_recv_count, expand_scales
 
 
 # This api is auto-generated from IR Cmo
