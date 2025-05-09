@@ -15,12 +15,42 @@ class _NpuInductorKernel:
     def __init__(self, wrapper_lib_path):
         self.name = self.get_kernel_name(wrapper_lib_path)
         self.kernel = cdll.LoadLibrary(wrapper_lib_path).wrapper
+        self.debug = os.getenv("NPU_INDUCTOR_DEBUG_SINGLE_KERNEL", None) == '1'
 
     def __call__(self, *args):
+        if self.debug:
+            logging.info("Start sync previous kernel for %s", self.name)
+            self.sync()
+            logging.info("Succeed sync previous kernel for %s", self.name)
+            logging.info("Start launch kernel %s with args %s", self.name, self.args_str(args))
+
         result = self.kernel(*[c_void_p(t.data_ptr()) if isinstance(t, torch.Tensor) else c_int64(t) for t in args],
                              self.default_stream)
         if result != 0:
             raise RuntimeError(f"NPU kernel {self.name} execution failed({result})")
+
+        if self.debug:
+            logging.info("Start sync kernel %s", self.name)
+            self.sync()
+            logging.info("Succeed sync kernel %s", self.name)
+
+    @staticmethod
+    def args_str(args):
+        def _tensor_str(t):
+            if isinstance(t, torch.Tensor):
+                return (f'Tensor(dtype={t.dtype}, '
+                        f'shape={tuple(t.size())}, '
+                        f'stride={t.stride()}, '
+                        f'offset={t.storage_offset()}, '
+                        f'data={hex(t.data_ptr())}, '
+                        f'device={t.device})')
+            return str(t)
+        return ', '.join([_tensor_str(arg) for arg in args])
+
+    @staticmethod
+    def sync():
+        if os.getenv("ASCIR_NOT_READY", None) != '1':
+            torch.npu.synchronize()
 
     @staticmethod
     def get_kernel_name(path):

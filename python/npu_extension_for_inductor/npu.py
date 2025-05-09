@@ -633,11 +633,6 @@ class NPUScheduling(BaseScheduling):
         call_args.extend(used_sizes)
         wrapper.writeline(wrapper.wrap_kernel_call(kernel.kernel_name, [str(v) for v in call_args]))
 
-        if os.getenv("NPU_INDUCTOR_DEBUG_SINGLE_KERNEL", None) == '1':
-            wrapper.writeline(f"print('Start synchronize kernel {kernel.kernel_name}', flush=True)")
-            wrapper.writeline(f"torch.npu.synchronize()")
-            wrapper.writeline(f"print('Finish synchronize kernel {kernel.kernel_name}', flush=True)")
-
         from torch._inductor import config
         if config.trace.enabled:
             kernel.benchmark(nodes, V.debug.filename(f"{kernel.kernel_name}/benchmark.py"))
