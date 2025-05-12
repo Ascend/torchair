@@ -35,7 +35,10 @@ Status AssembleDimsToShape(const at::IntArrayRef &origin_dims, const at::IntArra
 
 Status AssembleFrozenOption(const std::vector<bool> &frozen_input_flag_list,
                             const std::vector<const at::Tensor*> &torch_inputs,
-                            std::string &frozen_option_value);
+                            std::map<ge::AscendString, ge::AscendString> &load_options);
+
+Status AssembleHostInputOption(const std::vector<const at::Tensor*> &torch_inputs,
+                               std::map<ge::AscendString, ge::AscendString> &load_options);
 
 Status GetShapeFromGeTensor(std::vector<int64_t> &real_output_shape, const ge::Tensor &ge_tensor);
 

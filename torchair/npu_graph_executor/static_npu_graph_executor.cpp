@@ -21,11 +21,8 @@ Status StaticNpuGraphExecutor::AssembleInputs(const std::vector<const at::Tensor
   static bool enable_load_execute_graph =
       Session::GetInstance().IsFastLoadGraphSupported() && Session::GetInstance().IsFastExecuteGraphSupported();
   if (is_first_run_) {
-    std::string frozen_option_value;
-    TNG_RETURN_IF_ERROR(AssembleFrozenOption(graph_data_->frozen_input_flag_list, inputs, frozen_option_value));
-    if (!frozen_option_value.empty()) {
-      graph_data_->load_options.insert(std::make_pair(OPTION_EXEC_FROZEN_INPUT_INDEXES, frozen_option_value.c_str()));
-    }
+    TNG_RETURN_IF_ERROR(AssembleFrozenOption(graph_data_->frozen_input_flag_list, inputs, graph_data_->load_options));
+    TNG_RETURN_IF_ERROR(AssembleHostInputOption(inputs, graph_data_->load_options));
     if (enable_load_execute_graph) {
       return AssembleInputsInner(inputs, gert_inputs_holder_);
     } else {

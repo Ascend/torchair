@@ -133,11 +133,6 @@ Status NpuConcreteGraph::Create(const void *serialized_proto, size_t proto_size,
   if (graph_data->frozen_input_flag_list.empty()) {
     graph_data->frozen_input_flag_list.resize(input_placements.size(), 0);
   }
-  const char *const host_input_option = "hostInput";
-  auto host_input_iter = graph_data->compile_options.find(ge::AscendString(host_input_option));
-  if (host_input_iter != graph_data->compile_options.end() && host_input_iter->second.GetLength() != 0) {
-    graph_data->load_options.insert(std::make_pair(OPTION_EXEC_HOST_INPUT_INDEXES, host_input_iter->second));
-  }
 
   static std::atomic_uint32_t uuid{0U};
   graph_data->id = uuid++;

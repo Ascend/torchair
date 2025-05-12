@@ -183,7 +183,7 @@ Status AssembleDimsToShape(const at::IntArrayRef &origin_dims, const at::IntArra
 
 Status AssembleFrozenOption(const std::vector <bool> &frozen_input_flag_list,
                             const std::vector<const at::Tensor*> &torch_inputs,
-                            std::string &frozen_option_value) {
+                            std::map<ge::AscendString, ge::AscendString> &load_options) {
   if (frozen_input_flag_list.empty()) {
     return Status::Success();
   }
@@ -201,8 +201,29 @@ Status AssembleFrozenOption(const std::vector <bool> &frozen_input_flag_list,
                                     << static_cast<size_t>(num * (*torch_inputs[i]).element_size());
     }
   }
-  frozen_option_value = frozen_input_flag_list_stream.str();
+
+  auto frozen_option_value = frozen_input_flag_list_stream.str();
+  if (!frozen_option_value.empty()) {
+    load_options.insert(std::make_pair(OPTION_EXEC_FROZEN_INPUT_INDEXES, frozen_option_value.c_str()));
+  }
   return Status::Success();
+}
+
+Status AssembleHostInputOption(const std::vector<const at::Tensor*> &torch_inputs,
+                               std::map<ge::AscendString, ge::AscendString> &load_options) {
+    std::stringstream ss;
+    for (size_t i = 0u; i < torch_inputs.size(); ++i) {
+        if (!torch_inputs[i]->is_cpu()) {
+            continue;
+        }
+        ss << i << ";";
+    }
+    auto option = ss.str();
+    if (!option.empty()) {
+        option.pop_back();
+        load_options.insert(std::make_pair(OPTION_EXEC_HOST_INPUT_INDEXES, option.c_str()));
+    }
+    return Status::Success();
 }
 
 Status GetShapeFromGeTensor(std::vector<int64_t> &real_output_shape, const ge::Tensor &ge_tensor) {
