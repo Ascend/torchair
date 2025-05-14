@@ -2,6 +2,7 @@
 
 __all__ = ["CompilerConfig"]
 
+from typing import Any
 from torchair.configs._option_base import OptionValue
 from torchair.configs._option_base import DeprecatedValue
 from torchair.configs._option_base import NpuBaseConfig
@@ -31,3 +32,45 @@ class CompilerConfig(NpuBaseConfig):
         self.mode = OptionValue("max-autotune", ["max-autotune", "reduce-overhead"])
 
         super(CompilerConfig, self).__init__()
+
+
+    def __eq__(self, other):
+        if not isinstance(other, CompilerConfig):
+            return False
+        self_dict = dict(_get_all_leaf_properties(self))
+        other_dict = dict(_get_all_leaf_properties(other))
+        return self_dict == other_dict
+
+
+def _get_all_leaf_properties(obj: Any, prefix: str = ""):
+    stack = [(prefix, obj)]
+    leaves = []
+
+    while stack:
+        current_prefix, current_obj = stack.pop()
+
+        try:
+            attrs = vars(current_obj).copy()
+        except TypeError:
+            leaves.append((current_prefix.rstrip("."), current_obj))
+            continue
+
+        if not attrs:
+            leaves.append((current_prefix.rstrip("."), current_obj))
+            continue
+
+        for key, value in attrs.items():
+            current_path = f"{current_prefix}{key}"
+            try:
+                child_attrs = vars(value).copy()
+            except TypeError:
+                child_attrs = {}
+
+            if child_attrs:
+                stack.append((current_path + ".", value))
+                continue
+            if value is None:
+                continue
+            leaf_value = value.value if hasattr(value, "value") else value
+            leaves.append((current_path, leaf_value))
+    return leaves

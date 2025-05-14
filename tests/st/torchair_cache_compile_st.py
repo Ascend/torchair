@@ -9,6 +9,7 @@ import unittest
 import torch
 import torchair
 from torchair.core.utils import logger
+from torchair.configs.compiler_config import CompilerConfig
 import torchair.inference
 from torchair.inference._cache_compiler import CompiledModel, ModelCacheSaver
 from torchair.inference._cache_compiler import _NoGuardCompiledFunction as NoGuardCompiledFunction
@@ -820,5 +821,119 @@ def kernel(*args):
         print(compile_model.compiled_fx.py_code)
         self.assertTrue(code in compile_model.compiled_fx.py_code)
 
+    def test_backend_params(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear1 = torch.nn.Linear(2, 1)
+                self.linear2 = torch.nn.Linear(2, 1)
+                for param in self.parameters():
+                    torch.nn.init.ones_(param)
+
+                config = CompilerConfig()
+                config.export.experimental.enable_lite_export = True
+                config.debug.data_dump._path = 'test'
+                config.dump_config.dump_layer = "Add"
+                npu_backend = torchair.get_npu_backend(compiler_config=config)
+
+                self.cached_prompt = torchair.inference.cache_compile(self.prompt, config=config,
+                                                                      backend=npu_backend)
+                self.cached_decode = torchair.inference.cache_compile(self.decode, config=config,
+                                                                      backend=npu_backend)
+
+            def forward(self, x: InputMeta, kv: List[torch.Tensor]):
+                if x.is_prompt:
+                    return self.cached_prompt(x, kv)
+                return self.cached_decode(x, kv)
+
+            def prompt(self, x, y):
+                return self._forward(x, y)
+
+            def decode(self, x, y):
+                return self._forward(x, y)
+
+            def _forward(self, x, kv):
+                return self.linear2(x.data) + self.linear2(kv[0])
+
+        model = Model()
+        prompt_cache_bin = CompiledModel.get_cache_bin(model.prompt)
+        decode_cache_bin = CompiledModel.get_cache_bin(model.decode)
+        ModelCacheSaver.remove_cache(os.path.abspath(os.path.dirname(prompt_cache_bin)))
+        ModelCacheSaver.remove_cache(os.path.abspath(os.path.dirname(decode_cache_bin)))
+        prompt_cache_dir = os.path.abspath(os.path.dirname(prompt_cache_bin))
+        decode_cache_dir = os.path.abspath(os.path.dirname(decode_cache_bin))
+
+        prompt1 = InputMeta(torch.ones(3, 2), True), [torch.ones(3, 2)]
+        prompt2 = InputMeta(torch.ones(2, 2), True), [torch.ones(2, 2)]
+        decode1 = InputMeta(torch.ones(3, 2), False), [torch.ones(3, 2)]
+        decode2 = InputMeta(torch.ones(4, 2), False), [torch.ones(4, 2)]
+
+        self.assertFalse(os.path.exists(prompt_cache_dir))
+        model(*prompt1)
+        self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
+        prompt2_res = model(*prompt2)
+        self.assertTrue(os.path.exists(prompt_cache_dir))  # not recompile
+
+        self.assertFalse(os.path.exists(decode_cache_dir))
+        model(*decode1)
+        self.assertTrue(os.path.exists(decode_cache_dir))  # cache compiled
+        decode2_res = model(*decode2)
+        self.assertTrue(os.path.exists(decode_cache_dir))  # not recompile
+
+        model_match_cache = Model()
+        with forbidden_attr(ModelCacheSaver, '__call__'):
+            model_match_cache(*prompt1)  # cache hint
+            prompt2_cache_res = model_match_cache(*prompt2)  # cache hint
+            model_match_cache(*decode1)  # cache hint
+            decode2_cache_res = model_match_cache(*decode2)  # cache hint
+        self.assertTrue(prompt2_res.equal(prompt2_cache_res))
+        self.assertTrue(decode2_res.equal(decode2_cache_res))
+
+
+    def test_backend_params_with_exception(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear1 = torch.nn.Linear(2, 1)
+                self.linear2 = torch.nn.Linear(2, 1)
+                for param in self.parameters():
+                    torch.nn.init.ones_(param)
+
+                config = CompilerConfig()
+                config.export.experimental.enable_lite_export = True
+                config1 = CompilerConfig()
+                config1.export.experimental.enable_lite_export = False
+                config1.debug.data_dump._path = 'test'
+                config1.dump_config.dump_layer = "Add"
+                backend = torchair.get_npu_backend(compiler_config=config)
+
+                self.cached_prompt = torchair.inference.cache_compile(self.prompt, backend=backend)
+                self.cached_decode = torchair.inference.cache_compile(self.decode, config=config1, 
+                                                                      backend=backend)
+
+            def forward(self, x: InputMeta, kv: List[torch.Tensor]):
+                if x.is_prompt:
+                    return self.cached_prompt(x, kv)
+                return self.cached_decode(x, kv)
+
+            def prompt(self, x, y):
+                return self._forward(x, y)
+
+            def decode(self, x, y):
+                return self._forward(x, y)
+
+            def _forward(self, x, kv):
+                return self.linear2(x.data) + self.linear2(kv[0])
+
+        x = InputMeta(data=torch.randn(2, 2), is_prompt=True)
+        kv = [torch.randn(2, 2)]
+        with self.assertRaises(ValueError) as cm:
+            model = Model()
+        exception = cm.exception
+        self.assertEqual(str(exception), 
+                         "config in current backend is different from the config during cache generation.")
+
+
 if __name__ == '__main__':
     unittest.main()
+

@@ -551,10 +551,16 @@ class LazyCompiledModel:
             return self._compiled_model(*args, **kwargs)
 
 
-def cache_compile(func, *, config: Optional[CompilerConfig] = None, dynamic: bool = True,
+def cache_compile(func, *, config: Optional[CompilerConfig] = None, backend: Optional[Any] = None, dynamic: bool = True,
                   cache_dir: Optional[str] = None, global_rank: Optional[int] = None, tp_rank: Optional[int] = None,
                   pp_rank: Optional[int] = None, custom_decompositions: Optional[dict] = None, ge_cache: bool = False,
                   **kwargs) -> Callable:
+    if config is not None and backend is not None:
+        if backend.keywords.get("compiler_config") != config:
+            raise ValueError("config in current backend is different from the config during cache generation.")
+    elif config is None and backend is not None:
+        config = backend.keywords.get("compiler_config")
+
     if not isinstance(func, types.MethodType):
         raise ValueError(f"Only method can be cached now, got {func}")
 
