@@ -75,7 +75,7 @@ def Aipp(images: Tensor, params: Optional[Tensor], *, aipp_config_path: str="./a
 
 # This api is auto-generated from IR GeluV2
 @auto_convert_to_tensor([False], [False])
-def GeluV2(x: Tensor, *, approximate: str="none", dependencies=[], node_name=None): 
+def GeluV2(x: Tensor, *, approximate: str="none", dependencies=[], node_name=None):
     """REG_OP(GeluV2)\n
     .INPUT(x, "T")\n
     .OUTPUT(y, "T")\n
@@ -98,10 +98,10 @@ def GeluV2(x: Tensor, *, approximate: str="none", dependencies=[], node_name=Non
     ]
 
     return ge_op(
-        op_type="GeluV2", 
-        inputs = inputs, 
-        attrs = attrs, 
-        outputs = outputs, 
+        op_type="GeluV2",
+        inputs = inputs,
+        attrs = attrs,
+        outputs = outputs,
         ir=IrDef("GeluV2") \
          .input("x", "") \
          .attr("approximate", attr.Str("none")) \
@@ -111,7 +111,7 @@ def GeluV2(x: Tensor, *, approximate: str="none", dependencies=[], node_name=Non
 
 # This api is auto-generated from IR GeluGradV2
 @auto_convert_to_tensor([False, False], [False, False])
-def GeluGradV2(dy: Tensor, x: Tensor, *, approximate: str="none", dependencies=[], node_name=None): 
+def GeluGradV2(dy: Tensor, x: Tensor, *, approximate: str="none", dependencies=[], node_name=None):
     """REG_OP(GeluGradV2)\n
     .INPUT(dy, "T")\n
     .INPUT(x, "T")\n
@@ -136,10 +136,10 @@ def GeluGradV2(dy: Tensor, x: Tensor, *, approximate: str="none", dependencies=[
     ]
 
     return ge_op(
-        op_type="GeluGradV2", 
-        inputs = inputs, 
-        attrs = attrs, 
-        outputs = outputs, 
+        op_type="GeluGradV2",
+        inputs = inputs,
+        attrs = attrs,
+        outputs = outputs,
         ir=IrDef("GeluGradV2") \
          .input("dy", "") \
          .input("x", "") \
@@ -15493,7 +15493,7 @@ def IndexByTensor(x: Tensor,
     # process attrs
     op.attr["indices_mask"].list.val_type = 2
     op.attr["indices_mask"].list.i.extend(indices_mask)
-    
+
     # process outputs
     output_index = 0
     op.output_desc.add().name = "y"
@@ -19882,7 +19882,7 @@ def _ForeachNorm(x1: List[Tensor], scalar: Tensor, *, size_of_y: int, dependenci
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "x" + str(i)
-    
+
     op.input.append(scalar.tensor)
     op.input_desc.add().CopyFrom(scalar.desc)
     op.input_desc[-1].name = "scalar"
@@ -43051,7 +43051,7 @@ def RotaryMulGrad(x: Tensor, r1: Tensor, r2: Tensor, dy:  Tensor, *, need_backwa
 
     # process attrs
     op.attr["need_backward"].b = need_backward
-    
+
     # process outputs
     output_index = 0
     op.output_desc.add().name = "dx"
@@ -44338,12 +44338,12 @@ def RmsNorm(x: Tensor, gamma: Tensor, *, epsilon: float=0.000001, dependencies=[
 # This api is auto-generated from IR RmsNorm
 @auto_convert_to_tensor([False, False, False, False], [False, False, False, False])
 def RmsNormGrad(
-    dy: Tensor, 
-    x: Tensor, 
-    rstd: Tensor, 
-    gamma: Tensor, 
-    *, 
-    dependencies=[], 
+    dy: Tensor,
+    x: Tensor,
+    rstd: Tensor,
+    gamma: Tensor,
+    *,
+    dependencies=[],
     node_name=None):
     """REG_OP(RmsNormGrad)\n
 .INPUT(dy, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
@@ -76108,7 +76108,7 @@ def WarpPerspective(x: Tensor, matrix: Tensor, *, out_height: int, out_width: in
     y = Tensor(op, output_index)
     output_index += 1
 
-    
+
     return y
 
 # This api is auto-generated from IR ReduceMeanWithCast
@@ -76122,15 +76122,15 @@ def ReduceMeanWithCast(x: Tensor, axes: Tensor, *, keep_dims: bool=False, noop_w
 .ATTR(noop_with_empty_axes, Bool, true)\n
 .ATTR(dtype, Type, DT_UNDEFINED)\n
 """
-  
+
   op = get_default_ge_graph().op.add()
   op.type = "ReduceMeanWithCast"
   op.name = next_unique_name(node_name, "ReduceMeanWithCast")
-  
+
   # process dependices
   for dependency in dependencies:
     op.input.append(dependency.controller)
-  
+
   # process inputs
   op.input.append(x.tensor)
   op.input_desc.add().CopyFrom(x.desc)
@@ -76138,19 +76138,19 @@ def ReduceMeanWithCast(x: Tensor, axes: Tensor, *, keep_dims: bool=False, noop_w
   op.input.append(axes.tensor)
   op.input_desc.add().CopyFrom(axes.desc)
   op.input_desc[-1].name = "axes"
-  
+
   # process attrs
   op.attr["keep_dims"].b = keep_dims
   op.attr["noop_with_empty_axes"].b = noop_with_empty_axes
   op.attr["dtype"].dt = dtype
-  
+
   # process outputs
   output_index = 0
   op.output_desc.add().name = "y"
   y = Tensor(op, output_index)
   output_index += 1
-  
-  
+
+
   return y
 
 
@@ -76496,7 +76496,7 @@ def MatmulAllReduce(x1: Tensor,
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "comm_quant_scale_2"
-        
+
     # process attrs
     op.attr["group"].s = compat_as_bytes(group)
     op.attr["reduce_op"].s = compat_as_bytes(reduce_op)
@@ -76751,13 +76751,13 @@ def WeightQuantBatchMatmulV2(x: Tensor,
 
 # This api is auto-generated from IR LayerNormV4
 @auto_convert_to_tensor([False, False, False, False], [False, False, True, True])
-def LayerNormV4(x: Tensor, 
-                normalized_shape: Tensor, 
-                gamma: Optional[Tensor], 
-                beta: Optional[Tensor], 
-                *, 
-                epsilon: float=0.000010, 
-                dependencies=[], 
+def LayerNormV4(x: Tensor,
+                normalized_shape: Tensor,
+                gamma: Optional[Tensor],
+                beta: Optional[Tensor],
+                *,
+                epsilon: float=0.000010,
+                dependencies=[],
                 node_name=None):
     """REG_OP(LayerNormV4)\n
     .INPUT(x, "T1")\n
@@ -76995,7 +76995,7 @@ def dequant_rope_quant_kvcache(x: Tensor,
     v_cache = Tensor(op, output_index)
     output_index += 1
     return q, k, v, k_cache, v_cache
-    
+
 # This api is auto-generated from IR DequantBias
 
 
@@ -77207,11 +77207,11 @@ def QuantGroupedMatmulDequant(x: Tensor,
 
 # This api is auto-generated from IR Sxpy
 @auto_convert_to_tensor([False, False, False], [False, False, True])
-def Sxpy(x1: Tensor, 
-         x2: Tensor, 
-         alpha: Optional[Tensor], 
-         *, 
-         dependencies=[], 
+def Sxpy(x1: Tensor,
+         x2: Tensor,
+         alpha: Optional[Tensor],
+         *,
+         dependencies=[],
          node_name=None):
     """REG_OP(Sxpy)\n
     .INPUT(x1, "T1")\n
@@ -77286,11 +77286,11 @@ def ConstPlaceHolder(*,
     op = get_default_ge_graph().op.add()
     op.type = "ConstPlaceHolder"
     op.name = next_unique_name(node_name, "ConstPlaceHolder")
-    
+
     # process dependices
     for dependency in dependencies:
         op.input.append(dependency.controller)
-    
+
     # process inputs
 
     # process attrs
@@ -77337,11 +77337,11 @@ def QuantBatchMatmulV3(x1: Tensor, x2: Tensor, scale: Tensor, offset: Optional[T
     op = get_default_ge_graph().op.add()
     op.type = "QuantBatchMatmulV3"
     op.name = next_unique_name(node_name, "QuantBatchMatmulV3")
-  
+
     # process dependices
     for dependency in dependencies:
         op.input.append(dependency.controller)
-  
+
     # process inputs
     op.input.append(x1.tensor)
     op.input_desc.add().CopyFrom(x1.desc)
@@ -77376,12 +77376,12 @@ def QuantBatchMatmulV3(x1: Tensor, x2: Tensor, scale: Tensor, offset: Optional[T
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "pertoken_scale"
-  
+
     # process attrs
     op.attr["dtype"].i = dtype
     op.attr["transpose_x1"].b = transpose_x1
     op.attr["transpose_x2"].b = transpose_x2
-  
+
     # process outputs
     output_index = 0
     op.output_desc.add().name = "y"
@@ -77394,12 +77394,12 @@ def QuantBatchMatmulV3(x1: Tensor, x2: Tensor, scale: Tensor, offset: Optional[T
 
 # This api is auto-generated from IR TomeMerge
 @auto_convert_to_tensor([False, False, False, False], [False, False, False, False])
-def TomeMerge(token_a: Tensor, 
-              token_b: Tensor, 
-              topk_indice: Tensor, 
-              arg_max: Tensor, 
-              topRate: float=0.500000, 
-              dependencies=[], 
+def TomeMerge(token_a: Tensor,
+              token_b: Tensor,
+              topk_indice: Tensor,
+              arg_max: Tensor,
+              topRate: float=0.500000,
+              dependencies=[],
               node_name=None):
     """    REG_OP(TomeMerge)\n
     .INPUT(token_a, TensorType({DT_FLOAT16}))\n
@@ -77456,13 +77456,13 @@ def TomeMerge(token_a: Tensor,
 
 # This api is auto-generated from IR TomeUnmerge
 @auto_convert_to_tensor([False, False, False, False, False], [False, False, False, False, False])
-def TomeUnmerge(atten_out: Tensor, 
-                Ori_IndiceA: Tensor, 
-                Ori_IndiceB: Tensor, 
-                TOPK_Indice: Tensor, 
-                Arg_Max: Tensor, *, 
-                top_r_rate: float=0.500000, 
-                dependencies=[], 
+def TomeUnmerge(atten_out: Tensor,
+                Ori_IndiceA: Tensor,
+                Ori_IndiceB: Tensor,
+                TOPK_Indice: Tensor,
+                Arg_Max: Tensor, *,
+                top_r_rate: float=0.500000,
+                dependencies=[],
                 node_name=None):
     """REG_OP(TomeUnmerge)\n
     .INPUT(atten_out, TensorType({DT_FLOAT16}))\n
@@ -77520,7 +77520,7 @@ def TransQuantParamV2(scale: Tensor, offset: Optional[Tensor], *, dependencies=[
     .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))\n
     .OUTPUT(y, TensorType({DT_INT64}))\n
     """
-  
+
     op = get_default_ge_graph().op.add()
     op.type = "TransQuantParamV2"
     op.name = next_unique_name(node_name, "TransQuantParamV2")
@@ -77528,7 +77528,7 @@ def TransQuantParamV2(scale: Tensor, offset: Optional[Tensor], *, dependencies=[
     # process dependices
     for dependency in dependencies:
         op.input.append(dependency.controller)
-  
+
     # process inputs
     op.input.append(scale.tensor)
     op.input_desc.add().CopyFrom(scale.desc)
@@ -77557,7 +77557,7 @@ def TransQuantParamV2(scale: Tensor, offset: Optional[Tensor], *, dependencies=[
 # This api is auto-generated from IR FlatQuant
 @auto_convert_to_tensor([False, False, False], [False, False, False])
 def FlatQuant(
-    x: Tensor, 
+    x: Tensor,
     kronecker_p1: Tensor,
     kronecker_p2: Tensor, *,
     clip_ratio: float = 1.000000,
@@ -77573,7 +77573,7 @@ def FlatQuant(
     .OUTPUT(out, TensorType({DT_INT4}))\n
     .OUTPUT(quant_scale, TensorType({DT_FLOAT32}))\n
     """
-  
+
     op = get_default_ge_graph().op.add()
     op.type = "FlatQuant"
     op.name = next_unique_name(node_name, "FlatQuant")
@@ -77581,7 +77581,7 @@ def FlatQuant(
     # process dependices
     for dependency in dependencies:
         op.input.append(dependency.controller)
-  
+
     # process inputs
     op.input.append(x.tensor)
     op.input_desc.add().CopyFrom(x.desc)
@@ -77743,7 +77743,7 @@ def _GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], sc
             op.input_desc[-1].name = "per_token_scale"
         else:
             pass
-    
+
     # process attrs
     op.attr["split_item"].i = split_item
     op.attr["dtype"].i = dtype
@@ -77858,8 +77858,8 @@ def MoeInitRouting(x: Tensor,
                    row_idx: Tensor,
                    expert_idx: Tensor,
                    *,
-                   active_num: int, 
-                   dependencies=[], 
+                   active_num: int,
+                   dependencies=[],
                    node_name=None):
     """REG_OP(MoeInitRouting)\n
     .INPUT(x, "T1")\n
@@ -78070,23 +78070,23 @@ def MoeGatingTopKSoftmax(x: Tensor,
 
 # This api is auto-generated from IR FusedInferAttentionScore
 @auto_convert_to_tensor(
-    [False, True, True, False, False, False, False, False, False, False, False, False, False, False, False, False, 
+    [False, True, True, False, False, False, False, False, False, False, False, False, False, False, False, False,
      False, False, False, False, False, False, False, False, False, False, False],
-    [False, False, False, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, 
+    [False, False, False, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True,
      True, True, True, True, True, True, True, True, True])
-def FusedInferAttentionScore(query: Tensor, key: List[Tensor], value: List[Tensor], pse_shift: Optional[Tensor], 
-    atten_mask: Optional[Tensor], actual_seq_lengths: Optional[Tensor], actual_seq_lengths_kv: Optional[Tensor], 
-    dequant_scale1: Optional[Tensor], quant_scale1: Optional[Tensor], dequant_scale2: Optional[Tensor], 
-    quant_scale2: Optional[Tensor], quant_offset2: Optional[Tensor], antiquant_scale: Optional[Tensor], 
-    antiquant_offset: Optional[Tensor], block_table: Optional[Tensor], query_padding_size: Optional[Tensor], 
-    kv_padding_size: Optional[Tensor], key_antiquant_scale: Optional[Tensor], key_antiquant_offset: Optional[Tensor], 
-    value_antiquant_scale: Optional[Tensor], value_antiquant_offset: Optional[Tensor], 
-    key_shared_prefix: Optional[Tensor], value_shared_prefix: Optional[Tensor], 
-    actual_shared_prefix_len: Optional[Tensor], query_rope: Optional[Tensor], key_rope: Optional[Tensor], 
-    key_rope_antiquant_scale: Optional[Tensor], *, 
-    num_heads: int, scale: float=1.000000, pre_tokens: int=2147483647, next_tokens: int=2147483647, 
-    input_layout: str="BSH", num_key_value_heads: int=0, sparse_mode: int=0, inner_precise: int=0, 
-    block_size: int=0, antiquant_mode: int=0, softmax_lse_flag: bool=False, key_antiquant_mode: int=0, 
+def FusedInferAttentionScore(query: Tensor, key: List[Tensor], value: List[Tensor], pse_shift: Optional[Tensor],
+    atten_mask: Optional[Tensor], actual_seq_lengths: Optional[Tensor], actual_seq_lengths_kv: Optional[Tensor],
+    dequant_scale1: Optional[Tensor], quant_scale1: Optional[Tensor], dequant_scale2: Optional[Tensor],
+    quant_scale2: Optional[Tensor], quant_offset2: Optional[Tensor], antiquant_scale: Optional[Tensor],
+    antiquant_offset: Optional[Tensor], block_table: Optional[Tensor], query_padding_size: Optional[Tensor],
+    kv_padding_size: Optional[Tensor], key_antiquant_scale: Optional[Tensor], key_antiquant_offset: Optional[Tensor],
+    value_antiquant_scale: Optional[Tensor], value_antiquant_offset: Optional[Tensor],
+    key_shared_prefix: Optional[Tensor], value_shared_prefix: Optional[Tensor],
+    actual_shared_prefix_len: Optional[Tensor], query_rope: Optional[Tensor], key_rope: Optional[Tensor],
+    key_rope_antiquant_scale: Optional[Tensor], *,
+    num_heads: int, scale: float=1.000000, pre_tokens: int=2147483647, next_tokens: int=2147483647,
+    input_layout: str="BSH", num_key_value_heads: int=0, sparse_mode: int=0, inner_precise: int=0,
+    block_size: int=0, antiquant_mode: int=0, softmax_lse_flag: bool=False, key_antiquant_mode: int=0,
     value_antiquant_mode: int=0, dependencies=[], node_name=None):
     """REG_OP(FusedInferAttentionScore)\n
 .INPUT(query, TensorType({DT_INT8, DT_FLOAT16, DT_BF16}))\n
@@ -78379,7 +78379,7 @@ def MoeFinalizeRoutingV2(expanded_x: Tensor, expanded_row_idx: Tensor, x1: Optio
     .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
     .ATTR(drop_pad_mode, Int, 0)\n
     """
-    
+
     op = get_default_ge_graph().op.add()
     op.type = "MoeFinalizeRoutingV2"
     op.name = next_unique_name(node_name, "MoeFinalizeRoutingV2")
@@ -78480,79 +78480,111 @@ def MoeDistributeCombine(expand_x: Tensor, expert_ids: Tensor, expand_idx: Tenso
     .ATTR(group_list_type, Int, 0)\n
     """
 
+    op = get_default_ge_graph().op.add()
+    op.type = "MoeDistributeCombine"
+    op.name = next_unique_name(node_name, "MoeDistributeCombine")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
     # process inputs
-    inputs = {
-        "expand_x": expand_x,
-        "expert_ids": expert_ids,
-        "expand_idx": expand_idx,
-        "ep_send_counts": ep_send_counts,
-        "expert_scales": expert_scales,
-        "tp_send_counts": tp_send_counts,
-        "x_active_mask": x_active_mask,
-        "activation_scale": activation_scale,
-        "weight_scale": weight_scale,
-        "group_list": group_list,
-        "expand_scales": expand_scales,
-    }
+    op.input.append(expand_x.tensor)
+    op.input_desc.add().CopyFrom(expand_x.desc)
+    op.input_desc[-1].name = "expand_x"
+
+    op.input.append(expert_ids.tensor)
+    op.input_desc.add().CopyFrom(expert_ids.desc)
+    op.input_desc[-1].name = "expert_ids"
+
+    op.input.append(expand_idx.tensor)
+    op.input_desc.add().CopyFrom(expand_idx.desc)
+    op.input_desc[-1].name = "expand_idx"
+
+    op.input.append(ep_send_counts.tensor)
+    op.input_desc.add().CopyFrom(ep_send_counts.desc)
+    op.input_desc[-1].name = "ep_send_counts"
+
+    op.input.append(expert_scales.tensor)
+    op.input_desc.add().CopyFrom(expert_scales.desc)
+    op.input_desc[-1].name = "expert_scales"
+
+    if tp_send_counts is not None:
+        op.input.append(tp_send_counts.tensor)
+        op.input_desc.add().CopyFrom(tp_send_counts.desc)
+        op.input_desc[-1].name = "tp_send_counts"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "tp_send_counts"
+
+    if x_active_mask is not None:
+        op.input.append(x_active_mask.tensor)
+        op.input_desc.add().CopyFrom(x_active_mask.desc)
+        op.input_desc[-1].name = "x_active_mask"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "x_active_mask"
+
+    if activation_scale is not None:
+        op.input.append(activation_scale.tensor)
+        op.input_desc.add().CopyFrom(activation_scale.desc)
+        op.input_desc[-1].name = "activation_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "activation_scale"
+    if weight_scale is not None:
+        op.input.append(weight_scale.tensor)
+        op.input_desc.add().CopyFrom(weight_scale.desc)
+        op.input_desc[-1].name = "weight_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "weight_scale"
+
+    if group_list is not None:
+        op.input.append(group_list.tensor)
+        op.input_desc.add().CopyFrom(group_list.desc)
+        op.input_desc[-1].name = "group_list"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "group_list"
+
+    if expand_scales is not None:
+        op.input.append(expand_scales.tensor)
+        op.input_desc.add().CopyFrom(expand_scales.desc)
+        op.input_desc[-1].name = "expand_scales"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "expand_scales"
 
     # process attrs
-    attrs = {
-        "group_ep": attr.Str(group_ep),
-        "ep_world_size": attr.Int(ep_world_size),
-        "ep_rank_id": attr.Int(ep_rank_id),
-        "moe_expert_num": attr.Int(moe_expert_num),
-        "group_tp": attr.Str(group_tp),
-        "tp_world_size": attr.Int(tp_world_size),
-        "tp_rank_id": attr.Int(tp_rank_id),
-        "expert_shard_type": attr.Int(expert_shard_type),
-        "shared_expert_num": attr.Int(shared_expert_num),
-        "shared_expert_rank_num": attr.Int(shared_expert_rank_num),
-        "global_bs": attr.Int(global_bs),
-        "out_dtype": attr.Int(out_dtype),
-        "comm_quant_mode": attr.Int(comm_quant_mode),
-        "group_list_type": attr.Int(group_list_type),
-    }
+    op.attr["group_ep"].s = compat_as_bytes(group_ep)
+    op.attr["ep_world_size"].i = ep_world_size
+    op.attr["ep_rank_id"].i = ep_rank_id
+    op.attr["moe_expert_num"].i = moe_expert_num
+    op.attr["group_tp"].s = compat_as_bytes(group_tp)
+    op.attr["tp_world_size"].i = tp_world_size
+    op.attr["tp_rank_id"].i = tp_rank_id
+    op.attr["expert_shard_type"].i = expert_shard_type
+    op.attr["shared_expert_num"].i = shared_expert_num
+    op.attr["shared_expert_rank_num"].i = shared_expert_rank_num
+    op.attr["global_bs"].i = global_bs
+    op.attr["out_dtype"].i = out_dtype
+    op.attr["comm_quant_mode"].i = comm_quant_mode
+    op.attr["group_list_type"].i = group_list_type
 
     # process outputs
-    outputs = [
-        "x",
-    ]
+    output_index = 0
+    op.output_desc.add().name = "x"
+    x = Tensor(op, output_index)
+    output_index += 1
 
-    return ge_op(
-        op_type="MoeDistributeCombine",
-        inputs=inputs,
-        attrs=attrs,
-        outputs=outputs,
-        dependencies=dependencies,
-        ir=IrDef("MoeDistributeCombine") \
-        .input("expand_x", "DT_BF16, DT_FLOAT16") \
-        .input("expert_ids", "DT_INT32") \
-        .input("expand_idx", "DT_INT32") \
-        .input("ep_send_counts", "DT_INT32") \
-        .input("expert_scales", "DT_FLOAT") \
-        .optional_input("tp_send_counts", "DT_INT32") \
-        .optional_input("x_active_mask", "DT_BOOL") \
-        .optional_input("activation_scale", "DT_FLOAT") \
-        .optional_input("weight_scale", "DT_FLOAT") \
-        .optional_input("group_list", "DT_INT64") \
-        .optional_input("expand_scales", "DT_FLOAT") \
-        .required_attr("group_ep", attr.Str) \
-        .required_attr("ep_world_size", attr.Int) \
-        .required_attr("ep_rank_id", attr.Int) \
-        .required_attr("moe_expert_num", attr.Int) \
-        .attr("group_tp", attr.Str("")) \
-        .attr("tp_world_size", attr.Int(0)) \
-        .attr("tp_rank_id", attr.Int(0)) \
-        .attr("expert_shard_type", attr.Int(0)) \
-        .attr("shared_expert_num", attr.Int(1)) \
-        .attr("shared_expert_rank_num", attr.Int(0)) \
-        .attr("global_bs", attr.Int(0)) \
-        .attr("out_dtype", attr.Int(0)) \
-        .attr("comm_quant_mode", attr.Int(0)) \
-        .attr("group_list_type", attr.Int(0)) \
-        .output("x" , "DT_BF16, DT_FLOAT16")
-    )
-
+    return x
 
 # This api is auto-generated from IR MoeDistributeDispatch
 @auto_convert_to_tensor([False, False, False, False, False], [False, False, True, True, True])
@@ -78585,76 +78617,96 @@ def MoeDistributeDispatch(x: Tensor, expert_ids: Tensor, scales: Optional[Tensor
     .ATTR(expert_token_nums_type, Int, 1)\n
     """
 
+    op = get_default_ge_graph().op.add()
+    op.type = "MoeDistributeDispatch"
+    op.name = next_unique_name(node_name, "MoeDistributeDispatch")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
     # process inputs
-    inputs = {
-        "x": x,
-        "expert_ids": expert_ids,
-        "scales": scales,
-        "x_active_mask": x_active_mask,
-        "expert_scales": expert_scales,
-    }
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+
+    op.input.append(expert_ids.tensor)
+    op.input_desc.add().CopyFrom(expert_ids.desc)
+    op.input_desc[-1].name = "expert_ids"
+
+    if scales is not None:
+        op.input.append(scales.tensor)
+        op.input_desc.add().CopyFrom(scales.desc)
+        op.input_desc[-1].name = "scales"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "scales"
+
+    if x_active_mask is not None:
+        op.input.append(x_active_mask.tensor)
+        op.input_desc.add().CopyFrom(x_active_mask.desc)
+        op.input_desc[-1].name = "x_active_mask"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "x_active_mask"
+
+    if expert_scales is not None:
+        op.input.append(expert_scales.tensor)
+        op.input_desc.add().CopyFrom(expert_scales.desc)
+        op.input_desc[-1].name = "expert_scales"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "expert_scales"
 
     # process attrs
-    attrs = {
-        "group_ep": attr.Str(group_ep),
-        "ep_world_size": attr.Int(ep_world_size),
-        "ep_rank_id": attr.Int(ep_rank_id),
-        "moe_expert_num": attr.Int(moe_expert_num),
-        "group_tp": attr.Str(group_tp),
-        "tp_world_size": attr.Int(tp_world_size),
-        "tp_rank_id": attr.Int(tp_rank_id),
-        "expert_shard_type": attr.Int(expert_shard_type),
-        "shared_expert_num": attr.Int(shared_expert_num),
-        "shared_expert_rank_num": attr.Int(shared_expert_rank_num),
-        "quant_mode": attr.Int(quant_mode),
-        "global_bs": attr.Int(global_bs),
-        "expert_token_nums_type": attr.Int(expert_token_nums_type),
-    }
+    op.attr["group_ep"].s = compat_as_bytes(group_ep)
+    op.attr["ep_world_size"].i = ep_world_size
+    op.attr["ep_rank_id"].i = ep_rank_id
+    op.attr["moe_expert_num"].i = moe_expert_num
+    op.attr["group_tp"].s = compat_as_bytes(group_tp)
+    op.attr["tp_world_size"].i = tp_world_size
+    op.attr["tp_rank_id"].i = tp_rank_id
+    op.attr["expert_shard_type"].i = expert_shard_type
+    op.attr["shared_expert_num"].i = shared_expert_num
+    op.attr["shared_expert_rank_num"].i = shared_expert_rank_num
+    op.attr["quant_mode"].i = quant_mode
+    op.attr["global_bs"].i = global_bs
+    op.attr["expert_token_nums_type"].i = expert_token_nums_type
 
     # process outputs
-    outputs = [
-        "expand_x",
-        "dynamic_scales",
-        "expand_idx",
-        "expert_token_nums",
-        "ep_recv_count",
-        "tp_recv_count",
-        "expand_scales",
-    ]
+    output_index = 0
+    op.output_desc.add().name = "expand_x"
+    expand_x = Tensor(op, output_index)
+    output_index += 1
 
-    return ge_op(
-        op_type="MoeDistributeDispatch",
-        inputs=inputs,
-        attrs=attrs,
-        outputs=outputs,
-        dependencies=dependencies,
-        ir=IrDef("MoeDistributeDispatch") \
-        .input("x", "DT_BF16, DT_FLOAT16") \
-        .input("expert_ids", "DT_INT32") \
-        .optional_input("scales", "DT_FLOAT") \
-        .optional_input("x_active_mask", "DT_BOOL") \
-        .optional_input("expert_scales", "DT_FLOAT") \
-        .required_attr("group_ep", attr.Str) \
-        .required_attr("ep_world_size", attr.Int) \
-        .required_attr("ep_rank_id", attr.Int) \
-        .required_attr("moe_expert_num", attr.Int) \
-        .attr("group_tp", attr.Str("")) \
-        .attr("tp_world_size", attr.Int(0)) \
-        .attr("tp_rank_id", attr.Int(0)) \
-        .attr("expert_shard_type", attr.Int(0)) \
-        .attr("shared_expert_num", attr.Int(1)) \
-        .attr("shared_expert_rank_num", attr.Int(0)) \
-        .attr("quant_mode", attr.Int(0)) \
-        .attr("global_bs", attr.Int(0)) \
-        .attr("expert_token_nums_type", attr.Int(1)) \
-        .output("expand_x", "DT_BF16, DT_INT8, DT_FLOAT16") \
-        .output("dynamic_scales", "DT_FLOAT") \
-        .output("expand_idx", "DT_INT32") \
-        .output("expert_token_nums", "DT_INT64") \
-        .output("ep_recv_count", "DT_INT32") \
-        .output("tp_recv_count", "DT_INT32") \
-        .output("expand_scales", "DT_FLOAT")
-    )
+    op.output_desc.add().name = "dynamic_scales"
+    dynamic_scales = Tensor(op, output_index)
+    output_index += 1
+
+    op.output_desc.add().name = "expand_idx"
+    expand_idx = Tensor(op, output_index)
+    output_index += 1
+
+    op.output_desc.add().name = "expert_token_nums"
+    expert_token_nums = Tensor(op, output_index)
+    output_index += 1
+
+    op.output_desc.add().name = "ep_recv_count"
+    ep_recv_count = Tensor(op, output_index)
+    output_index += 1
+
+    op.output_desc.add().name = "tp_recv_count"
+    tp_recv_count = Tensor(op, output_index)
+    output_index += 1
+
+    op.output_desc.add().name = "expand_scales"
+    expand_scales = Tensor(op, output_index)
+    output_index += 1
+
+    return expand_x, dynamic_scales, expand_idx, expert_token_nums, ep_recv_count, tp_recv_count, expand_scales
 
 
 # This api is auto-generated from IR Cmo
@@ -79165,7 +79217,7 @@ def MoeReRouting(tokens: Tensor,
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "per_token_scales"
-    
+
     # process attrs
     op.attr["expert_token_num_type"].i = expert_token_num_type
     op.attr["idx_type"].i = idx_type
