@@ -191,6 +191,70 @@ class AclGraphSt(unittest.TestCase):
         for i in range(2):
             model(x)
 
+    def test_aclgraph_capture_and_replay_keep_inference_input_mutations_true(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                x.mul_(2)
+                return x + 1
+
+        model = Model()
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.experimental_config.keep_inference_input_mutations = True
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(model, backend=aclgraph_backend, dynamic=False)
+        x_ = torch.randn([3, 2])
+        x = x_.clone()
+
+        # warm up
+        model(x_)
+
+        # inference
+        with self.assertLogs(logger, level="WARNING") as cm:
+            for _ in range(2):
+                output = model(x)
+
+        self.assertTrue(
+            any("data_ptr is different between capture and replay." in log for log in cm.output),
+            f"Expected WARNING 'Mutated input[arg]'s data_ptr is different between capture and replay.' "
+            f"not found in logs: {cm.output}"
+        )
+
+    def test_aclgraph_capture_and_replay_keep_inference_input_mutations_false(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                x.div_(2)
+                return x - 1
+
+        model = Model()
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.experimental_config.keep_inference_input_mutations = False
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(model, backend=aclgraph_backend, dynamic=False)
+        x_ = torch.randn([3, 2])
+        x = x_.clone()
+
+        # warm up
+        model(x_)
+
+        # expected no warning called
+        from unittest.mock import patch
+        with patch("logging.Logger.warning") as mock_warning:
+            for _ in range(2):
+                output = model(x)
+            mock_warning.assert_not_called()
+
     def test_aclgraph_update(self):
         from torchair._acl_concrete_graph.acl_graph import _REPLACE_FUNC_MAP, StaticWorkspaceReplaceFunc
         _REPLACE_FUNC_MAP[torch.ops.aten.max_unpool2d.default] = StaticWorkspaceReplaceFunc(

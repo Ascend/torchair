@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import List, Optional, Callable, Any, Dict, Tuple, Union
@@ -46,21 +47,35 @@ class AclConcreteGraph(ConcreteGraphBase):
 
         self._capture_inputs = []
         self._capture_outputs = []
-        self._user_inputs_list = []
+        self._user_inputs_mapping = OrderedDict()
         self._meta_inputs = []
         self._meta_outputs = []
+
+        self._mutated_user_inputs = []
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         self.compile(*args, **kwargs)
 
         # input process
-        for idx in self._user_inputs_list:
+        for idx in self._user_inputs_mapping.values():
             if self._capture_inputs[idx].data_ptr() != args[idx].data_ptr():
                 self._capture_inputs[idx].copy_(args[idx])
 
         # run
         with record_function("acl_graph_replay"):
             self._replay_func(*args, **kwargs)
+
+        # For in-place op, dynamo will transform it into a functionalized call and add copy_ node when setting
+        # keep_inference_input_mutations=True, which may need data copy from capture input to user input (when tensor
+        # address is different between capture and replay).
+        for arg_name in self._mutated_user_inputs:
+            if arg_name not in self._user_inputs_mapping:
+                raise RuntimeError(f"{arg_name} is not in input args: {self._user_inputs_mapping.keys()}")
+            idx = self._user_inputs_mapping[arg_name]
+            if self._capture_inputs[idx].data_ptr() != args[idx].data_ptr():
+                logger.warning_once(f"Mutated input[{arg_name}]'s data_ptr is different between capture and replay. "
+                                    f"This may call redundant copy. ")
+                args[idx].copy_(self._capture_inputs[idx])
 
         return self._capture_outputs
 
@@ -120,9 +135,12 @@ class AclConcreteGraph(ConcreteGraphBase):
         logger.debug('before graph optimization, graph is %s', self.fx_graph.graph)
 
         # graph optimization passes here
-        from torchair._acl_concrete_graph.acl_graph import replace_dynamic_workspace_ops
+        from torchair._acl_concrete_graph.acl_graph import replace_dynamic_workspace_ops, _find_mutated_user_inputs
         replace_dynamic_workspace_ops(self.fx_graph)
 
+        # find mutated inputs after graph optimization passes
+        self._mutated_user_inputs = _find_mutated_user_inputs(self.fx_graph)
+        logger.debug('find mutated user inputs: %s', self._mutated_user_inputs)
         logger.debug('after graph optimization, graph is %s', self.fx_graph.graph)
 
     def compile(self, *args: Any, **kwargs: Any):
@@ -164,7 +182,7 @@ class AclConcreteGraph(ConcreteGraphBase):
         # gen run func
         self._replay_func = CapturedGraphUpdateAndReplay(self.graph, updated_input_func, updated_node_infos)
         logger.debug('In graph {%s}, all the non parameter tensor input index list is: {%s}.',
-                     id(self.fx_graph), self._user_inputs_list)
+                     id(self.fx_graph), self._user_inputs_mapping.values())
 
     def parse_symlist(self, syms):
         npu_syms = []
@@ -192,7 +210,7 @@ class AclConcreteGraph(ConcreteGraphBase):
                 raise RuntimeError(f"Unsupported case in AclGraph: with sym in graph input tensor[{meta_outputs}].")
 
             if not isinstance(meta_outputs, torch.nn.Parameter):
-                self._user_inputs_list.append(len(self._meta_inputs) - 1)
+                self._user_inputs_mapping.setdefault(target, len(self._meta_inputs) - 1)
 
         return meta_outputs
 

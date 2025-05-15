@@ -5,6 +5,7 @@ import torch
 
 from torch import fx
 from torch import nn
+from torch.fx import Node
 from dataclasses import dataclass
 from typing import List, Optional, Callable, Any, Dict, Tuple, Union
 
@@ -366,3 +367,26 @@ def replace_dynamic_workspace_ops(graph_module: fx.GraphModule):
         graph_module.graph.erase_node(node)
     graph_module.recompile()
     logger.debug("End to replace dynamic workspace ops in graph[%s].", id(graph_module))
+
+
+def _is_inplace_node(node: Node):
+    # simple analysis of function schema to determine
+    # if this is an inplace variant, it might not
+    # be entirely correct, but it's good enough for now.
+    if isinstance(node.target, str):
+        return node.target.endswith("_")
+    elif hasattr(node.target, 'overloadpacket') and hasattr(node.target.overloadpacket, '__name__'):
+        return node.target.overloadpacket.__name__.endswith("_")
+    else:
+        return False
+
+
+def _find_mutated_user_inputs(gm: fx.GraphModule):
+    inplace_node_args_list = []
+    placeholder_args = set()
+    for node in gm.graph.nodes:
+        if node.op == "placeholder":
+            placeholder_args.add(node.target)
+        elif _is_inplace_node(node):
+            inplace_node_args_list.append(node.args[0].name)
+    return [arg for arg in inplace_node_args_list if arg in placeholder_args]
