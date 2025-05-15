@@ -15345,68 +15345,63 @@ def ScanSQCodes(ivf: Tensor, query: Tensor, bucket_list: Tensor, bucket_limits: 
 
 # This api is auto-generated from IR TransposeBatchMatMul
 @auto_convert_to_tensor([False, False, False, False], [False, False, True, True])
-def TransposeBatchMatMul(x1: Tensor, x2: Tensor, bias: Optional[Tensor], offset_w: Optional[Tensor], *, perm_x1: List[int]=[], perm_x2: List[int]=[], perm_y: List[int]=[], offset_x: int=0, dependencies=[], node_name=None):
+def TransposeBatchMatMul(x1: Tensor, x2: Tensor, bias: Optional[Tensor], scale: Optional[Tensor], *,
+                         perm_x1: List[int] = [], perm_x2: List[int] = [], perm_y: List[int] = [],
+                         enable_hf32: bool = False, batch_split_factor: int = 1,
+                         dependencies=[], node_name=None):
     """REG_OP(TransposeBatchMatMul)\n
-.INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_INT8, DT_INT4, DT_BF16}))\n
-.INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_INT8, DT_INT4, DT_BF16}))\n
-.OPTIONAL_INPUT(bias, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
-.OPTIONAL_INPUT(offset_w, TensorType({DT_INT8, DT_INT4}))\n
-.OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_INT32, DT_BF16}))\n
-.ATTR(perm_x1, ListInt, {})\n
-.ATTR(perm_x2, ListInt, {})\n
-.ATTR(perm_y, ListInt, {})\n
-.ATTR(offset_x, Int, 0)\n
-"""
-
-    op = get_default_ge_graph().op.add()
-    op.type = "TransposeBatchMatMul"
-    op.name = next_unique_name(node_name, "TransposeBatchMatMul")
-
-    # process dependices
-    for dependency in dependencies:
-        op.input.append(dependency.controller)
-
+    .INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .OPTIONAL_INPUT(scale, TensorType({DT_INT64, DT_UINT64}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16, DT_INT8}))\n
+    .ATTR(perm_x1, ListInt, {})\n
+    .ATTR(perm_x2, ListInt, {})\n
+    .ATTR(perm_y, ListInt, {})\n
+    .ATTR(enable_hf32, Bool, false)\n
+    .ATTR(batch_split_factor, Int, 1)\n
+    """
     # process inputs
-    op.input.append(x1.tensor)
-    op.input_desc.add().CopyFrom(x1.desc)
-    op.input_desc[-1].name = "x1"
-    op.input.append(x2.tensor)
-    op.input_desc.add().CopyFrom(x2.desc)
-    op.input_desc[-1].name = "x2"
-    if bias is not None:
-        op.input.append(bias.tensor)
-        op.input_desc.add().CopyFrom(bias.desc)
-        op.input_desc[-1].name = "bias"
-    else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "bias"
-    if offset_w is not None:
-        op.input.append(offset_w.tensor)
-        op.input_desc.add().CopyFrom(offset_w.desc)
-        op.input_desc[-1].name = "offset_w"
-    else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "offset_w"
-
+    inputs = {
+        "x1": x1,
+        "x2": x2,
+        "bias": bias,
+        "scale": scale,
+    }
+    
     # process attrs
-    op.attr["perm_x1"].list.val_type = 2
-    op.attr["perm_x1"].list.i.extend(perm_x1)
-    op.attr["perm_x2"].list.val_type = 2
-    op.attr["perm_x2"].list.i.extend(perm_x2)
-    op.attr["perm_y"].list.val_type = 2
-    op.attr["perm_y"].list.i.extend(perm_y)
-    op.attr["offset_x"].i = offset_x
+    attrs = {
+        "perm_x1": attr.ListInt(perm_x1),
+        "perm_x2": attr.ListInt(perm_x2),
+        "perm_y": attr.ListInt(perm_y),
+        "enable_hf32": attr.Bool(enable_hf32),
+        "batch_split_factor": attr.Int(batch_split_factor),
+    }
 
     # process outputs
-    output_index = 0
-    op.output_desc.add().name = "y"
-    y = Tensor(op, output_index)
-    output_index += 1
+    outputs = [
+        "y",
+    ]
 
-    # return outputs
-    return y
+    # process outputs
+    return ge_op(
+        op_type="TransposeBatchMatMul",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("TransposeBatchMatMul") \
+        .input("x1", "DT_FLOAT, DT_FLOAT16, DT_BF16") \
+        .input("x2", "DT_FLOAT, DT_FLOAT16, DT_BF16") \
+        .optional_input("bias", "DT_FLOAT, DT_FLOAT16, DT_BF16") \
+        .optional_input("scale", "DT_INT64, DT_UINT64") \
+        .attr("perm_x1", attr.ListInt([])) \
+        .attr("perm_x2", attr.ListInt([])) \
+        .attr("perm_y", attr.ListInt([])) \
+        .attr("enable_hf32", attr.Bool(False)) \
+        .attr("batch_split_factor", attr.Int(1)) \
+        .output("y", "DT_FLOAT, DT_FLOAT16, DT_BF16, DT_INT8")
+    )
 
 
 # This api is auto-generated from IR RotatedNMS
