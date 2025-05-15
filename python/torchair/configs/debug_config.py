@@ -2,6 +2,7 @@ __all__ = []
 
 from datetime import datetime, timezone
 import os
+import torch.distributed as dist
 from torchair.configs._option_base import OptionValue
 from torchair.configs._option_base import NpuBaseConfig
 
@@ -25,11 +26,12 @@ class _DebugBase(NpuBaseConfig):
             return None
 
         path = "." if self._path.value is None else self._path.value
+        rank_id = dist.get_rank() if dist.is_initialized() else 0
 
         if with_timestap:
-            return f"{path}/{name}_{_timestamp()}.{self.type.value}"
+            return f"{path}/{name}_rank_{rank_id}_pid_{os.getpid()}_ts_{_timestamp()}.{self.type.value}"
         else:
-            return f"{path}/{name}.{self.type.value}"
+            return f"{path}/{name}_rank_{rank_id}_pid_{os.getpid()}.{self.type.value}"
 
 
 class _Dump(_DebugBase):
@@ -44,7 +46,7 @@ class _Dump(_DebugBase):
 
     @path.setter
     def path(self, value):
-        self._path.value = os.path.realpath(os.path.dirname(value))
+        self._path.value = os.path.realpath(value)
 
 
 class _DataDump(_DebugBase):

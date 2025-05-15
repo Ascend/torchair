@@ -1756,7 +1756,7 @@ class TorchairSt(unittest.TestCase):
             self.assertTrue(z[0].data_ptr() == copy.data_ptr())
 
     def test_directory_generation(self):
-        import glob
+        import re
 
         class Model(torch.nn.Module):
             def __init__(self):
@@ -1768,7 +1768,9 @@ class TorchairSt(unittest.TestCase):
         model = Model()
         test_config = torchair.CompilerConfig()
         test_config.debug.graph_dump.type = "pbtxt"
-        test_config.debug.graph_dump.path = "test_directory_generation/dir"
+        test_config.debug.graph_dump.path = "./test_directory_generation/dir"
+        if os.path.exists(test_config.debug.graph_dump.path):
+            shutil.rmtree(test_config.debug.graph_dump.path)
         test_config.ge_config.export_compile_stat = "0"
         test_npu_backend = torchair.get_npu_backend(compiler_config=test_config)
         test_model = torch.compile(model, backend=test_npu_backend)
@@ -1777,9 +1779,20 @@ class TorchairSt(unittest.TestCase):
         test_model(x, y)
         test_type = test_config.debug.graph_dump.type.value
         path = os.path.realpath(os.path.dirname(test_config.debug.graph_dump.path))
+        path = os.path.realpath(test_config.debug.graph_dump.path)
         self.assertTrue(os.path.isdir(path), f"directory {path} does not exist.")
-        test_files = glob.glob(os.path.join(path, f"*.{test_type}"))
-        self.assertGreater(len(test_files), 0, f"no .{test_type} files found in {path}")
+        test_files = [f for f in os.listdir(path) if f.endswith(".pbtxt")]
+        self.assertEqual(len(test_files), 2, f"found {test_type} files in {path}")
+        info = []
+        for f in test_files:
+            match = re.match(r"dynamo_(optimized|original)_graph_(\d+)_rank_(\d+)_pid_(\d+)_.*", f)
+            self.assertIsNotNone(match, f"Filename {f} does not match expected pattern")
+            info.append(match.groups())
+        (type1, gid1, rankid1, pid1), (type2, gid2, rankid2, pid2) = info
+        self.assertIn({type1, type2}, [{"optimized", "original"}], "Both files must be one optimized and one original")
+        self.assertEqual(gid1, gid2, "Mismatched graph_id between files")
+        self.assertEqual(rankid1, rankid2, "Mismatched rank_id between files")
+        self.assertEqual(pid1, pid2, "Mismatched pid between files")
 
 
     def test_fx_and_ge_shape_not_same(self):

@@ -643,7 +643,7 @@ class GeConcreteGraph(ConcreteGraphBase):
             replace_data_to_refdata(self.graph, ref_data_idx, inputs)
 
         if self.config.debug.graph_dump.enabled:
-            self.dump(self.config.debug.graph_dump.full_path("dynamo_optimized_graph"))
+            self.dump(self.config.debug.graph_dump.full_path(f"dynamo_optimized_{self.graph.name}"))
 
     def compile(self) -> Any:
         if self._is_compiled:
