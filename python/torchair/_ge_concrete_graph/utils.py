@@ -357,6 +357,18 @@ def _get_input_shape(graph):
     return inputs_shape
 
 
+def _get_output_shapes(graph):
+    output_shapes = []
+    for op in graph.op:
+        if op.type != "NetOutput":
+            continue
+        for input_desc in op.input_desc:
+            if list(input_desc.shape.dim):
+                output_shapes.append(list(input_desc.shape.dim))
+
+    return output_shapes
+
+
 def _display_ge_type(ge_dtype: DataType):
     ge_datatype = {
         DataType.DT_FLOAT: 'DT_FLOAT',

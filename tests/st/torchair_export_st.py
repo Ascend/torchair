@@ -166,7 +166,7 @@ class TorchairSt(unittest.TestCase):
         file_name = get_sub_path_dynamo_pbtxt("true_export_path2", 0)
         with open(file_name, 'r') as f:
             src = f.read()
-        assert src.count(" dim: -1") == 3  # 动态图存在-1
+        assert src.count(" dim: -1") == 4  # 动态图存在-1
 
         file_name = get_model_relation_config("true_export_path2")
         # mutil group case, create atc config file too
@@ -314,7 +314,7 @@ class TorchairSt(unittest.TestCase):
         self.assertEqual(src.count("op: \"Data\""), 2)
         self.assertEqual(src.count("op: \"Shape\""), 0)
         self.assertEqual(src.count("dtype: DT_BF16"), 13)
-        self.assertEqual(src.count("  dim: 10"), 3)
+        self.assertEqual(src.count("  dim: 10"), 4)
 
     def test_export_enable_record_nn_module_stack(self):
         class Model2(torch.nn.Module):

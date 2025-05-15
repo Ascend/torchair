@@ -1,5 +1,6 @@
 from typing import Any, Dict, List, Tuple, Union, Callable, Optional
 
+import torch
 from torchair._ge_concrete_graph.ge_ir_pb2 import GraphDef, OpDef, TensorDescriptor, TensorDef
 from torchair._ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
 from torchair.ge._ge_graph import get_default_ge_graph, next_unique_name
@@ -26,5 +27,8 @@ def NetOutput(inputs: List[Tensor], name=None, *, dependencies=()) -> Tensor:
     for i, input in enumerate(inputs):
         op.input.append(input.tensor)
         op.input_desc.append(input.desc)
+        if input.meta is not None:
+            from torchair._ge_concrete_graph.utils import generate_shape_from_tensor
+            op.input_desc[-1].shape.dim.extend(generate_shape_from_tensor(input.meta))
         op.input_desc[-1].name = f"input{i}"
     return

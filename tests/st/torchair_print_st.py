@@ -223,7 +223,7 @@ add(abs(x), 1) = [[2 2]
             v.add_(1)
             return v
 
-        t = torch.ones(2, device='npu')
+        t = torch.ones((2, 2), device='npu')
         t.is_npu = True
 
         class FakeTorchNpu:

@@ -96,7 +96,7 @@ class NpuExplictOrderSt(unittest.TestCase):
 
         with npu_ctx(), capture_ge_graph() as captured:
             compiled_model = torch.compile(func, backend=torchair.get_npu_backend())
-            compiled_model(npu_tensor(2, device='npu'))
+            compiled_model(npu_tensor((2, 2), device='npu'))
 
         self.assertEqual(captured.origin_op_inputs, _get_op_inputs(captured.graph))
 
@@ -140,7 +140,7 @@ class NpuExplictOrderSt(unittest.TestCase):
 
         with npu_ctx(), capture_ge_graph() as captured:
             compiled_model = torch.compile(func, backend=torchair.get_npu_backend())
-            compiled_model(npu_tensor(2, device='npu'))
+            compiled_model(npu_tensor((2, 2), device='npu'))
 
         origin_op_inputs = captured.origin_op_inputs
         current_op_inputs = _get_op_inputs(captured.graph)
@@ -158,7 +158,7 @@ class NpuExplictOrderSt(unittest.TestCase):
 
         with npu_ctx(), capture_ge_graph() as captured:
             compiled_model = torch.compile(func, backend=torchair.get_npu_backend())
-            compiled_model(npu_tensor(2, device='npu'))
+            compiled_model(npu_tensor((2, 2), device='npu'))
 
         origin_op_inputs = captured.origin_op_inputs
         current_op_inputs = _get_op_inputs(captured.graph)
@@ -174,7 +174,7 @@ class NpuExplictOrderSt(unittest.TestCase):
 
         with npu_ctx(), capture_ge_graph() as captured:
             compiled_model = torch.compile(func, backend=torchair.get_npu_backend())
-            compiled_model(npu_tensor(2, device='npu'))
+            compiled_model(npu_tensor((2, 2), device='npu'))
 
         self.assertEqual(captured.origin_op_inputs, _get_op_inputs(captured.graph))
 

@@ -87,6 +87,58 @@ tng::ExecutorType ParseExecutorType(int64_t executor_type) {
   }
   return tng::ExecutorType::UNKNOWN;
 }
+
+tng::Status CheckNetOutputShape(const std::vector<std::vector<int64_t>> &output_shapes, std::vector<ge::Shape> &output_ge_shapes) {
+  TNG_LOG(DEBUG) << "FX output shapes is : " << tng::DebugString(output_shapes);
+  TNG_LOG(DEBUG) << "Ascend ge output shapes is : " << tng::DebugString(output_ge_shapes);
+  if (output_shapes.empty() || output_ge_shapes.empty()) {
+    TNG_LOG(WARNING) << "FX output_shapes or ge output_shapes is empty, can not check output shape";
+    return tng::Status::Success();
+  }
+  if (output_shapes.size() != output_ge_shapes.size()) {
+    return tng::Status::Error("The number of Ascend net output: [%d] is not equal to FX net outputs: [%d]", output_ge_shapes.size(), output_shapes.size());
+  }
+  for (size_t i = 0u; i < output_shapes.size(); ++i) {
+    const auto& out_dim = output_shapes[i];
+    const auto& out_ge_dim = output_ge_shapes[i].GetDims();
+    if (out_dim.size() != out_ge_dim.size()) {
+      TNG_LOG(ERROR) << "The dim size of Ascend net output: ["<< out_ge_dim <<"] is not equal to FX net output: ["<< out_dim <<"]";
+      return tng::Status::Error("The dim size of Ascend net output: [%d] is not equal to FX net output: [%d]", out_ge_dim.size(), out_dim.size());
+    }
+
+    for (size_t j = 0u; j < out_dim.size(); ++j) {
+      if (out_dim[j] == -1 || out_ge_dim[j] == -1) {
+        TNG_LOG(WARNING) << "The current dim of output_shapes is dynamic shape, can not check shape";
+        continue;
+      }
+      if (out_dim[j] != out_ge_dim[j]) {
+        TNG_LOG(ERROR) << "The dim of Ascend net output: ["<< out_ge_dim <<"] is not equal to FX net output: ["<< out_dim <<"]";
+        return tng::Status::Error("The dim of Ascend net output: [%d] is not equal to FX net output: [%d]", out_ge_dim[j], out_dim[j]);
+      }
+    }
+  }
+  return tng::Status::Success();
+}
+
+tng::Status CheckNetOutDtypes(const std::vector<ge::DataType> &output_dtypes, const std::vector<ge::DataType> &output_ge_dtypes) {
+  TNG_LOG(DEBUG) << "FX output dtypes is : " << tng::DebugString(output_dtypes);
+  TNG_LOG(DEBUG) << "Ascend ge output dtypes is : " << tng::DebugString(output_ge_dtypes);
+  if (output_dtypes.empty() || output_ge_dtypes.empty()) {
+    TNG_LOG(WARNING) << "FX output dtypes or Ascend output dtypes is empty, can not check dtype";
+    return tng::Status::Success();
+  }
+  if (output_dtypes.size() != output_ge_dtypes.size()) {
+    return tng::Status::Error("The size of Ascend net output dtype: [%d] is not equal to FX net output dtype: [%d]", output_ge_dtypes.size(), output_dtypes.size());
+  }
+  for (size_t i = 0u; i < output_dtypes.size(); ++i) {
+    if (output_dtypes[i] != output_ge_dtypes[i]) {
+      return tng::Status::Error("The dtype in num[%d] net output of Ascend output: [%d] is not equal to fx output: [%d] ", i,
+                                output_ge_dtypes[i], output_dtypes[i]);
+    }
+  }
+  return tng::Status::Success();
+}
+
 }  // namespace
 namespace tng {
 NpuConcreteGraph::NpuConcreteGraph(std::shared_ptr<GraphData> graph_data) : graph_data_(std::move(graph_data)){};
@@ -158,6 +210,14 @@ Status NpuConcreteGraph::Compile() {
   if (graph_data_->executor_type == ExecutorType::NPU) {
     // Only device input is supported for compile
     TNG_RETURN_IF_ERROR(Session::GetInstance().CompileGraph(graph_data_->id, graph_data_->summary));
+    // Check the shape and dtype of Ascend net output is same as FX net output
+    std::vector<ge::Shape> output_ge_shapes;
+    TNG_ASSERT_GE_OK(graph_data_->summary->GetOutputShapes(output_ge_shapes));
+    TNG_RETURN_IF_ERROR(CheckNetOutputShape(graph_data_->outputs_shape, output_ge_shapes));
+
+    std::vector<ge::DataType> output_ge_dtypes;
+    TNG_ASSERT_GE_OK(graph_data_->summary->GetOutputDtypes(output_ge_dtypes));
+    TNG_RETURN_IF_ERROR(CheckNetOutDtypes(graph_data_->output_dtypes, output_ge_dtypes));
   }
 
   TNG_RETURN_IF_ERROR(Executor::Create(graph_data_, executor_));

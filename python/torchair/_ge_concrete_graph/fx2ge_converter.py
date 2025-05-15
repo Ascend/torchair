@@ -52,16 +52,19 @@ from . import ge_apis as ge
 def _mapping_assign_op_to_graph_output(graph: GraphDef):
     net_output: OpDef = None  # 输出节点
     net_inputs: Dict[str, int] = {}  # 输入tensor名称到索引的映射
+    intput_ops: Dict[int, OpDef] = {}
 
     for op in graph.op:
         if op.type == "Data":
             net_inputs[GeTensor(op).tensor] = op.attr["index"].i
+            intput_ops[op.attr["index"].i] = op
         elif op.type == "NetOutput":
             net_output = op
     if not net_output:
         raise AssertionError("NetOutput not found")
 
-    def _mapping_to_graph_output(graph: GraphDef, graph_out: OpDef, assign_node_out: GeTensor, value_tensor: str):
+    def _mapping_to_graph_output(graph: GraphDef, graph_out: OpDef, assign_node_out: GeTensor, 
+                                 value_tensor: str, ref_intput_op: OpDef):
         raw_index_to_data_index = {}
         for i, name in enumerate(graph_out.input):
             if not name.endswith(":-1"):
@@ -78,6 +81,8 @@ def _mapping_assign_op_to_graph_output(graph: GraphDef):
 
         graph_out.input.append(value_tensor)
         graph_out.input_desc.add().CopyFrom(assign_node_out.desc)
+        assign_out_shape = list(ref_intput_op.output_desc[0].shape.dim)
+        graph_out.input_desc[-1].shape.dim.extend(assign_out_shape)
         graph_out.input_desc[-1].name = f"input{len(graph_out.input_desc) - 1}"
         graph.attr["_output_dtypes"].list.i.append(_ge_proto_dtype_to_ge_dtype(assign_node_out.desc.dtype))
         return [len(graph_out.input_desc) - 1]
@@ -92,7 +97,9 @@ def _mapping_assign_op_to_graph_output(graph: GraphDef):
         if op.input[0] in net_inputs.keys():  # Assign在给输入赋值
             logger.info(
                 f"Replace assign op {op.name} assign value from {op.input[1]} to input {net_inputs[op.input[0]]} {op.input[0]}")
-            output_ref_index_list = _mapping_to_graph_output(graph, net_output, assign_node_out, op.input[1])
+            ref_intput_op = intput_ops[net_inputs[op.input[0]]]
+            output_ref_index_list = _mapping_to_graph_output(graph, net_output, assign_node_out, 
+                                                             op.input[1], ref_intput_op)
             for output_ref_index in output_ref_index_list:
                 output_refto_input[output_ref_index] = net_inputs[op.input[0]]
             replaced_assign_ops.append(op)

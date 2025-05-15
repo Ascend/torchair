@@ -43,6 +43,9 @@ class CompiledGraphSummary::SummaryData {
   std::vector<ge::Shape> GetOutputShapes() {
     return netoutput_shapes_;
   }
+  std::vector<ge::DataType> GetOutputDtypes() {
+    return {};
+  }
 
   bool is_static_{false};
   bool is_feature_mem_refreshable_{false};
@@ -103,6 +106,10 @@ Status CompiledGraphSummary::GetEventNum(size_t &num) const {
 }
 Status CompiledGraphSummary::GetOutputShapes(std::vector<ge::Shape> &shapes) const {
   shapes = data_->GetOutputShapes();
+  return SUCCESS;
+}
+Status CompiledGraphSummary::GetOutputDtypes(std::vector<ge::DataType> &dtypes) const {
+  dtypes = data_->GetOutputDtypes();
   return SUCCESS;
 }
 

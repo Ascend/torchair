@@ -112,6 +112,18 @@ std::string DebugString(const std::vector<std::vector<int64_t>> &shapes) {
   return ss.str() + DebugString(shapes.back()) + "]";
 }
 
+std::string DebugString(const std::vector<ge::Shape> &shapes) {
+  if (shapes.empty()) {
+    return "[]";
+  }
+  std::stringstream ss;
+  ss << "[";
+  for (size_t i = 0U; i < shapes.size() - 1U; ++i) {
+    ss << DebugString(shapes[i].GetDims()) << ", ";
+  }
+  return ss.str() + DebugString(shapes.back()) + "]";
+}
+
 std::string DebugString(const ge::CompiledGraphSummary &summary) {
   std::stringstream ss;
   ss << "static compiled: " << (summary.IsStatic() ? "True" : "False");

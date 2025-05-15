@@ -12,6 +12,7 @@ import torch
 from torchair._utils.error_code import pretty_error_msg
 from torchair.core.utils import logger
 from torchair._ge_concrete_graph.utils import _get_input_shape
+from torchair._ge_concrete_graph.utils import _get_output_shapes
 from . import _torchair
 
 
@@ -112,10 +113,11 @@ class TorchNpuGraph(_torchair.TorchNpuGraphBase):
         output_dtypes = ge_graph.attr["_output_dtypes"].list.i
         executor_type = ge_graph.attr["_executor_type"].i
         inputs_shape = _get_input_shape(ge_graph)
+        output_shapes = _get_output_shapes(ge_graph)
         super(TorchNpuGraph, self).load(ge_graph.SerializeToString(), options, input_placements, output_dtypes,
                                         executor_type)
-        super(TorchNpuGraph, self).set_hint_shape(inputs_shape, [])
-        logger.debug('Load graph set_hint_shape input shape: %s', inputs_shape)
+        super(TorchNpuGraph, self).set_hint_shape(inputs_shape, output_shapes)
+        logger.debug('Load graph set_hint_shape input shape: %s , output shape: %s', inputs_shape, output_shapes)
 
     @pretty_error_msg
     def compile(self):

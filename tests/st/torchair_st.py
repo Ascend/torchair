@@ -1781,5 +1781,58 @@ class TorchairSt(unittest.TestCase):
         test_files = glob.glob(os.path.join(path, f"*.{test_type}"))
         self.assertGreater(len(test_files), 0, f"no .{test_type} files found in {path}")
 
+
+    def test_fx_and_ge_shape_not_same(self):
+        initialize_graph_engine()
+        from torchair.core import _npu_graph_executor
+        import _privateuse1_backend
+        npu_device = _privateuse1_backend.npu_device()
+        torch.utils.rename_privateuse1_backend("npu")
+        from torchair.ge._ge_graph import Tensor
+        from torchair._ge_concrete_graph.ge_ir_pb2 import OpDef, TensorDescriptor
+
+        with GeGraph() as graph:
+            x = ge.Data(index=0, shape=[2, 2], dtype=DataType.DT_INT32, placement='NPU')
+            y = ge.Data(index=1, shape=[2, 2], dtype=DataType.DT_INT32, placement='NPU')
+            z = ge.Add(x, y)
+            z.set_meta(torch.ones([1, 2]))
+            output = ge.NetOutput([z])            
+            set_graph_output_dtypes(graph, [DataType.DT_INT32])
+
+            node = OpDef()
+            node.name = "node1"
+            node.output_desc.append(TensorDescriptor())
+
+            executor = TorchNpuGraph()
+            executor.load(graph)
+            with self.assertRaises(RuntimeError) as context:
+                executor.compile()
+                self.assertTrue('The dim of Ascend net output: [2] '
+                'is not equal to FX net output: [1]' in context.exception)        
+
+
+    def test_fx_and_ge_shape_size_not_same(self):
+        initialize_graph_engine()
+        from torchair.core import _npu_graph_executor
+        import _privateuse1_backend
+        npu_device = _privateuse1_backend.npu_device()
+        torch.utils.rename_privateuse1_backend("npu")
+
+        with GeGraph() as graph:
+            x = ge.Data(index=0, shape=[2, 2], dtype=DataType.DT_INT32, placement='NPU')
+            y = ge.Data(index=1, shape=[2, 2], dtype=DataType.DT_INT32, placement='NPU')
+            z = ge.Add(x, y)
+            z.set_meta(torch.ones([1, 2, 3]))
+            output = ge.NetOutput([z])
+            set_graph_output_dtypes(graph, [DataType.DT_INT32])
+
+            executor = TorchNpuGraph()
+            executor.load(graph)
+            with self.assertRaises(RuntimeError) as context:
+                executor.compile()
+                self.assertTrue('The dim size of Ascend net output: [2] '
+                'is not equal to FX net output: [3]' in context.exception)
+
+                
 if __name__ == '__main__':
     unittest.main()
