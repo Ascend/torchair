@@ -120,6 +120,10 @@ def _test_converter(converter: Converter, *, backend, result_checker):
 
 
 def _test_converters(aten_ops, *, backend, result_checker):
+    try:
+        import torchair._ge_concrete_graph.ge_converter.custom
+    except Exception as e:
+        print(f"Warning EXCEPTION when try to import custom op converters, will continue execute: {e}")
     supported_converters = _declare_supported_converters()
     if aten_ops is None:
         aten_ops = supported_converters.keys()

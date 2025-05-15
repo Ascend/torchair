@@ -16,7 +16,7 @@ from torchair._ge_concrete_graph.supported_declaration import F32, Support, I32
 
 @declare_supported(
     [
-        Support(F32(3, 4), I32(3, 2), I32(3, 2), int=3),
+        Support(F32(3, 4), I32(3, 2), I32(3, 2), active_num=3),
     ]
 )
 
