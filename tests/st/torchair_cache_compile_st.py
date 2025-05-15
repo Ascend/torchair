@@ -709,6 +709,39 @@ class CacheCompileSt(unittest.TestCase):
         self.assertTrue(prompt2_res.equal(prompt2_cache_res))
         self.assertTrue(decode2_res.equal(decode2_cache_res))
 
+    def test_empty_tensor_option(self):
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.cached_forward = torchair.inference.cache_compile(self.raw_forward, dynamic=True)
+
+            def forward(self, x, y):
+                return self.cached_forward(x, y)
+
+            def raw_forward(self, x, y):
+                return torch.add(x, y)
+
+        model = Model()
+        cache_dir = CompiledModel.get_cache_bin(model.raw_forward)
+        ModelCacheSaver.remove_cache(cache_dir)
+        x1 = torch.zeros(0, 10, 10, dtype=torch.float32)
+        y1 = torch.zeros(0, 10, 10, dtype=torch.float32)
+        model(x1, y1)
+        file_path = "test_empty_tensor_option.py"
+        torchair.inference.readable_cache(cache_dir, file=file_path)
+        self.assertTrue(os.path.exists(file_path), f"File does not exist: {file_path}")
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        target = 'local_compile_options["ge.exec.allTensorNotEmpty"] = "'
+        start_idx = content.find(target)
+        self.assertNotEqual(start_idx, -1, f"Target string not found: {target}")
+        start_idx += len(target)
+        end_idx = content.find('"', start_idx)
+        self.assertNotEqual(end_idx, -1, f"Missing quotes")
+        value = content[start_idx:end_idx]
+        self.assertEqual(value, "0", f"Value should be '0', but got {value}")
+
     def test_codegen_dynamic(self):
         class Model(torch.nn.Module):
             def __init__(self):

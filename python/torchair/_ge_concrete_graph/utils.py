@@ -232,7 +232,7 @@ def flatten_meta_outputs(meta_outputs):
 
 
 def is_zero_element_tensor(tensor):
-    return isinstance(tensor, torch.Tensor) and 0 in tensor.size() and not get_used_syms_in_meta(tensor)
+    return isinstance(tensor, torch.Tensor) and 0 in tensor.size()
 
 
 def get_used_syms_in_meta(meta):

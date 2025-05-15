@@ -36,7 +36,7 @@ from torchair._ge_concrete_graph.graph_pass import optimize_sym_pack, optimize_r
 from torchair._ge_concrete_graph.utils import convert_to_tensorboard, dump_graph, force_op_unknown_shape, \
     is_host_data_tensor, get_used_sym_value_mapping, Placement, compute_value_of_sym, \
     generate_sym_exper, get_sym_int_value, generate_shape_from_tensor, update_op_input_name_from_mapping, \
-    is_zero_element_tensor, flatten_meta_outputs, make_real_tensor_like
+    is_zero_element_tensor, flatten_meta_outputs, make_real_tensor_like, get_used_syms_in_meta
 from torchair._ge_concrete_graph.hcom_utils import record_pg_to_graph, codegen_refresh_cache_pgname, \
     rename_cached_pgname
 from torchair._ge_concrete_graph.supported_declaration import Support
@@ -534,6 +534,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._all_sym_input_idx = {}
         self._all_meta_tensor_input = {}
         self._fx_graph = None
+        self._has_empty_tensor = False
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         enable_event_log = logger.getEffectiveLevel() <= EVENT_LEVEL
@@ -867,10 +868,13 @@ class GeConcreteGraph(ConcreteGraphBase):
     def parse_node(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
         if str(target) in ['air.scope_enter.default', 'air.scope_exit.default']:
             return target(*args, **kwargs)
-        if all([is_zero_element_tensor(t) for t in flatten_meta_outputs(meta_outputs)]) and (
-                str(target) not in _DONT_EMPTY_TENSOR_OPT_OPS):
+        all_zero_and_nosym = all([is_zero_element_tensor(t) and not get_used_syms_in_meta(t) 
+            for t in flatten_meta_outputs(meta_outputs)])
+        if all_zero_and_nosym and (str(target) not in _DONT_EMPTY_TENSOR_OPT_OPS):
             return make_real_tensor_like(meta_outputs)
 
+        if not self._has_empty_tensor:
+            self._has_empty_tensor = all([is_zero_element_tensor(t) for t in flatten_meta_outputs(meta_outputs)])
         if hasattr(target, "_ge_converter"):
             converter = target._ge_converter
         else:
@@ -989,6 +993,7 @@ class GeConcreteGraph(ConcreteGraphBase):
             optimize_frozen_flag_list = [0] * len(self._input_info_list)
         if len(optimize_frozen_flag_list) != 0:
             local_compile_options["frozenInput"] = ",".join(str(x) for x in optimize_frozen_flag_list)
+        local_compile_options["ge.exec.allTensorNotEmpty"] = '0' if self._has_empty_tensor else '1'
         logger.info("local compile options:")
         for k, v in local_compile_options.items():
             logger.info(f"  {k}: {v}")
