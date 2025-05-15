@@ -785,6 +785,9 @@ def kernel(*args):
     global _is_first_run
     if _is_first_run:
         _is_first_run = False
+        assert_size_stride(args[1], (1, s0), (s0, 1))
+        assert_size_stride(args[3], (s1, 1), (s4 + s5, 1))
+        assert_size_stride(args[4], (s4 + s5, s1), (s1, 1))
         _update_constplaceholder_attr_from_inputs(ge_graph, args)
         _update_internal_format_from_inputs(ge_graph, ge_inputs)
         ge_graph.load(local_compile_options, create_pg=False)
@@ -835,6 +838,9 @@ def kernel(*args):
     global _is_first_run
     if _is_first_run:
         _is_first_run = False
+        assert_size_stride(args[0], (1, 10), (10, 1))
+        assert_size_stride(args[1], (2, 1), (5, 1))
+        assert_size_stride(args[2], (5, 2), (2, 1))
         _update_constplaceholder_attr_from_inputs(ge_graph, args)
         _update_internal_format_from_inputs(ge_graph, ge_inputs)
         ge_graph.load(local_compile_options, create_pg=False)
@@ -941,7 +947,7 @@ def kernel(*args):
                 backend = torchair.get_npu_backend(compiler_config=config)
 
                 self.cached_prompt = torchair.inference.cache_compile(self.prompt, backend=backend)
-                self.cached_decode = torchair.inference.cache_compile(self.decode, config=config1, 
+                self.cached_decode = torchair.inference.cache_compile(self.decode, config=config1,
                                                                       backend=backend)
 
             def forward(self, x: InputMeta, kv: List[torch.Tensor]):
@@ -963,8 +969,123 @@ def kernel(*args):
         with self.assertRaises(ValueError) as cm:
             model = Model()
         exception = cm.exception
-        self.assertEqual(str(exception), 
+        self.assertEqual(str(exception),
                          "config in current backend is different from the config during cache generation.")
+
+
+    def test_cache_assert_size_stride(self):
+        class CacheModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear2 = torch.nn.Linear(2, 1)
+                for param in self.parameters():
+                    torch.nn.init.ones_(param)
+
+                self.cached_prompt = torchair.inference.cache_compile(self.prompt, dynamic=False)
+
+            def forward(self, x: InputMeta, y: List[torch.Tensor]):
+                return self.cached_prompt(x, y)
+
+            def _forward(self, x, y):
+                return self.linear2(x.data) + self.linear2(y[0])
+
+            def prompt(self, x, y):
+                return self._forward(x, y)
+
+
+        model = CacheModel()
+
+        prompt_cache_dir = CompiledModel.get_cache_bin(model.prompt, dynamic=False)
+        ModelCacheSaver.remove_cache(prompt_cache_dir)
+
+        prompt1 = InputMeta(torch.ones(3, 2), True), [torch.ones(3, 2)]
+        prompt2 = InputMeta(torch.ones(12, 12), True), [torch.ones(12, 12)]
+
+        self.assertFalse(os.path.exists(prompt_cache_dir))
+        model(*prompt1)
+        self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
+
+        model_match_cache = CacheModel()
+        with forbidden_attr(ModelCacheSaver, '__call__'):
+            with self.assertRaises(AssertionError) as cm:
+                model_match_cache(*prompt2)  # cache hint
+            exception = cm.exception
+            self.assertEqual(str(exception), "expected size 12==3, stride 12==2 at dim=0")
+
+
+    def test_cache_dynamic_assert_size_stride(self):
+        class CacheModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear2 = torch.nn.Linear(2, 1)
+                for param in self.parameters():
+                    torch.nn.init.ones_(param)
+
+                self.cached_prompt = torchair.inference.cache_compile(self.prompt)
+
+            def forward(self, x: InputMeta, y: List[torch.Tensor]):
+                return self.cached_prompt(x, y)
+
+            def _forward(self, x, y):
+                return self.linear2(x.data) + self.linear2(y[0])
+
+            def prompt(self, x, y):
+                return self._forward(x, y)
+
+
+        model = CacheModel()
+
+        prompt_cache_dir = CompiledModel.get_cache_bin(model.prompt)
+        ModelCacheSaver.remove_cache(prompt_cache_dir)
+
+        prompt1 = InputMeta(torch.ones(12, 2), True), [torch.ones(12, 2)]
+        prompt2 = InputMeta(torch.ones(12, 12), True), [torch.ones(12, 12)]
+
+        self.assertFalse(os.path.exists(prompt_cache_dir))
+        model(*prompt1)
+        self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
+
+        model_match_cache = CacheModel()
+        with forbidden_attr(ModelCacheSaver, '__call__'):
+            with self.assertRaises(AssertionError) as cm:
+                model_match_cache(*prompt2)  # cache hint
+            exception = cm.exception
+            self.assertEqual(str(exception), "expected size 12==12, stride 12==2 at dim=0")
+
+
+    def test_cache_assert_size_stride_remove_cache(self):
+        class CacheModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(2, 1)
+                for param in self.parameters():
+                    torch.nn.init.ones_(param)
+
+                self.cached_decode = torchair.inference.cache_compile(self.decode, dynamic=False)
+
+            def forward(self, x: InputMeta, y: List[torch.Tensor]):
+                return self.cached_decode(x, y)
+
+            def _forward(self, x, y):
+                return self.linear(x.data) + self.linear(y[0])
+
+            def decode(self, x, y):
+                return self._forward(x, y)
+
+
+        model = CacheModel()
+
+        decode_cache_dir = CompiledModel.get_cache_bin(model.decode, dynamic=False)
+        ModelCacheSaver.remove_cache(decode_cache_dir)
+
+        decode1 = InputMeta(torch.ones(3, 2), True), [torch.ones(3, 2)]
+        decode2 = InputMeta(torch.ones(2, 2), True), [torch.ones(2, 2)]
+
+        self.assertFalse(os.path.exists(decode_cache_dir))
+        model(*decode1)
+        self.assertTrue(os.path.exists(decode_cache_dir))  # cache compiled
+        model(*decode2)
+        self.assertFalse(os.path.exists(decode_cache_dir))  # recompile
 
 
 if __name__ == '__main__':

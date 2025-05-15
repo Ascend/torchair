@@ -671,6 +671,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         from torchair.ge._ge_graph import GeGraph
         from torchair._ge_concrete_graph.fx2ge_converter import _update_constplaceholder_attr_from_inputs
         from torchair._ge_concrete_graph.fx2ge_converter import _update_internal_format_from_inputs
+        assert_size_stride = torch._C._dynamo.guards.assert_size_stride
         ''')
         need_rebuild_pg = enable_cache and (len(self.graph.used_process_group) != 0)
         if need_rebuild_pg:
@@ -719,8 +720,10 @@ class GeConcreteGraph(ConcreteGraphBase):
             # for info update in first run
             kernel.writelines(['', 'global _is_first_run', 'if _is_first_run:'])
             with kernel.indent():
-                kernel.writelines(['_is_first_run = False',
-                                   '_update_constplaceholder_attr_from_inputs(ge_graph, args)',
+                kernel.writelines(['_is_first_run = False'])
+                assert_code = self._codegen_assert_size_stride(self._all_meta_tensor_input)
+                kernel.splice(assert_code)
+                kernel.writelines(['_update_constplaceholder_attr_from_inputs(ge_graph, args)',
                                    '_update_internal_format_from_inputs(ge_graph, ge_inputs)',
                                    'ge_graph.load(local_compile_options, create_pg=False)',
                                    'ge_graph.compile()'])
@@ -1067,3 +1070,13 @@ class GeConcreteGraph(ConcreteGraphBase):
             return ge_inputs
 
         return full_inputs_func
+
+    @staticmethod
+    def _codegen_assert_size_stride(all_meta_tensor_input):
+        from torch._inductor.utils import IndentedBuffer
+        input_code = IndentedBuffer()
+
+        for idx, meta in all_meta_tensor_input.items():
+            input_code.writelines([f'assert_size_stride(args[{idx}], {tuple(meta.shape)}, {meta.stride()})'])
+
+        return input_code.getvalue()
