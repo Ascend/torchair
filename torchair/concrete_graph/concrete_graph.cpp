@@ -210,14 +210,16 @@ Status NpuConcreteGraph::Compile() {
   if (graph_data_->executor_type == ExecutorType::NPU) {
     // Only device input is supported for compile
     TNG_RETURN_IF_ERROR(Session::GetInstance().CompileGraph(graph_data_->id, graph_data_->summary));
-    // Check the shape and dtype of Ascend net output is same as FX net output
-    std::vector<ge::Shape> output_ge_shapes;
-    TNG_ASSERT_GE_OK(graph_data_->summary->GetOutputShapes(output_ge_shapes));
-    TNG_RETURN_IF_ERROR(CheckNetOutputShape(graph_data_->outputs_shape, output_ge_shapes));
+    if (graph_data_->summary->IsStatic()) {      
+      // Check the shape and dtype of Ascend net output is same as FX net output
+      std::vector<ge::Shape> output_ge_shapes;
+      TNG_ASSERT_GE_OK(graph_data_->summary->GetOutputShapes(output_ge_shapes));
+      TNG_RETURN_IF_ERROR(CheckNetOutputShape(graph_data_->outputs_shape, output_ge_shapes));
 
-    std::vector<ge::DataType> output_ge_dtypes;
-    TNG_ASSERT_GE_OK(graph_data_->summary->GetOutputDtypes(output_ge_dtypes));
-    TNG_RETURN_IF_ERROR(CheckNetOutDtypes(graph_data_->output_dtypes, output_ge_dtypes));
+      std::vector<ge::DataType> output_ge_dtypes;
+      TNG_ASSERT_GE_OK(graph_data_->summary->GetOutputDtypes(output_ge_dtypes));
+      TNG_RETURN_IF_ERROR(CheckNetOutDtypes(graph_data_->output_dtypes, output_ge_dtypes));
+    }
   }
 
   TNG_RETURN_IF_ERROR(Executor::Create(graph_data_, executor_));
