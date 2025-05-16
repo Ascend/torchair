@@ -40,7 +40,11 @@
       "create_npu_tensors"
     ],
     "torchair.ops": [
-        "npu_print"
+        "npu_print",
+        "npu_create_tagged_external_event",
+        "npu_tagged_event_record",
+        "npu_tagged_event_wait",
+        "npu_tagged_event_reset"
     ],
 	"torchair.scope": [
         "npu_wait_tensor",

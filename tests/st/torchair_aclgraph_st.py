@@ -6,15 +6,14 @@ import os
 import sys
 import types
 import unittest
+from unittest.mock import Mock
 from typing import List
-
 import torch
 import torch.nn.functional as F
 from torch import nn
 import torchair
 from torchair.core.utils import logger
 from torchair.configs.compiler_config import CompilerConfig
-
 logger.setLevel(logging.DEBUG)
 
 """Start to gen some API patch for AclGraph in st."""
@@ -48,9 +47,30 @@ def stub_synchronize():
     pass
 
 
+def stub_empty_cache():
+    logger.debug('[Stub] run stub API empty_cache')
+    pass
+
+
+@contextlib.contextmanager
+def stub_stream(stream=None):
+    """Stub function for stream context manager."""
+    if stream is not None:
+        logger.debug(f"Stub: Pretending to switch to stream [%s]", stream)
+    yield
+
+
 class StubNPUGraph:
     def __init__(self):
         logger.debug('[Stub] new stub class NPUGraph.')
+        pass
+
+    def capture_begin(self, pool=None, capture_error_mode="global"):
+        logger.debug('[Stub] run stub API capture_begin with args[].')
+        pass
+
+    def capture_end(self):
+        logger.debug('[Stub] run stub API capture_end with args[].')
         pass
 
     def replay(self):
@@ -67,9 +87,20 @@ class graph:
             capture_error_mode: str = "global"):
         logger.debug('[Stub] new stub class graph with args[%s, %s, %s, %s].',
                      type(npu_graph), pool, stream, capture_error_mode)
+        self.stream_ctx = stub_stream(stream)
+        self.npu_graph = npu_graph
+        self.pool = () if pool is None else (pool,)
+        self.stream = stream
+        self.capture_error_mode = capture_error_mode
         pass
 
     def __enter__(self):
+        torch.npu.synchronize()
+        import gc
+        gc.collect()
+        torch.npu.empty_cache()
+        self.stream_ctx.__enter__()
+
         pass
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -92,8 +123,31 @@ class StubStream:
 
 
 def current_stream(device=None):
-    logger.debug('[Stub] run stub API current_stream with args[].')
+    logger.debug('[Stub] run stub API current_stream.')
     return "current_stream"
+
+
+def current_device():
+    logger.debug('[Stub] run stub API current_device.')
+    return "current_device"
+    # 无恢复操作
+
+
+class StubExternalEvent:
+    def __new__(cls):
+        return super().__new__(cls)
+
+    def record(self, stream=None):
+        logger.debug('[Stub]ExternalEvent record.')
+        return
+
+    def wait(self, stream=None):
+        logger.debug('[Stub]ExternalEvent wait.')
+        return
+
+    def reset(self, stream=None):
+        logger.debug('[Stub]ExternalEvent reset.')
+        return
 
 
 # define stub submodule
@@ -105,9 +159,13 @@ class StubNpu:
         self.NPUGraph = StubNPUGraph
         self.graph = graph
         self.Stream = StubStream
+        self.ExternalEvent = StubExternalEvent
         self.current_stream = current_stream
+        self.current_device = current_device
+        self.stream = stub_stream
         self.graph_pool_handle = stub_graph_pool_handle
         self.synchronize = stub_synchronize
+        self.empty_cache = stub_empty_cache
 
 
 def patch_ops_npu_module(stub_module):
@@ -330,6 +388,240 @@ class AclGraphSt(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, r'for acl graph is not implemented!'):
             model(x)
 
+    def test_aclgraph_capture_and_replay_with_multi_stream_external_event(self):
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.stream1 = torch.npu.Stream()
+                self.stream2 = torch.npu.Stream()
+                self.ext_event = torchair.ops.npu_create_tagged_external_event(tag="11")
+
+            def forward(self, x):
+                @torch.compile(backend=aclgraph_backend, fullgraph=True, dynamic=False)
+                def branch1(xx):
+                    y = xx + 1
+                    y = y @ y
+                    y = y * y
+                    y = y - 1
+                    torchair.ops.npu_tagged_event_record(self.ext_event)
+                    return y
+
+                @torch.compile(backend=aclgraph_backend, fullgraph=True, dynamic=False)
+                def branch2(xx):
+                    torchair.ops.npu_tagged_event_wait(self.ext_event)
+                    torchair.ops.npu_tagged_event_reset(self.ext_event)
+                    y = xx + 1
+                    y = y @ y
+                    y = y * y
+                    y = y - 1
+                    return y
+                with torch.npu.stream(self.stream1):
+                    out1 = branch1(x)
+                with torch.npu.stream(self.stream2):
+                    out2 = branch2(x)
+                return out1, out2
+
+        model = Model()
+        x = torch.randn([3, 3])
+        for _ in range(2):
+            model(x)
+
+    def test_two_aclgraph_with_multi_stream_external_event(self):
+        from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
+        event_record_count = 0
+        event_wait_count = 0
+        event_reset_count = 0
+
+        def get_graph_event_num(concrete_graph):
+            nonlocal event_record_count
+            nonlocal event_wait_count
+            nonlocal event_reset_count
+            for node in concrete_graph.fx_graph.graph.nodes:
+                print(node.target)
+                if node.name == "external_event_record":
+                    event_record_count += 1
+                if node.name == "external_event_wait":
+                    event_wait_count += 1
+                if node.name == "external_event_reset":
+                    event_reset_count += 1
+
+        def wrapper_call(func):
+            def wrapper(*args, **kwargs):
+                assert len(args) > 0, f"expect len(args) > 0, but got {len(args)}"
+                ret = func(*args, **kwargs)
+                get_graph_event_num(args[0])
+                return ret
+
+            return wrapper
+
+        AclConcreteGraph.__call__ = wrapper_call(AclConcreteGraph.__call__)
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.stream1 = torch.npu.Stream()
+                self.stream2 = torch.npu.Stream()
+                self.ext_event = torchair.ops.npu_create_tagged_external_event(tag="22")
+
+            def forward(self, x):
+                @torch.compile(backend=aclgraph_backend, fullgraph=True, dynamic=False)
+                def branch1(xx):
+                    y = xx + 1
+                    y = y @ y
+                    torchair.ops.npu_tagged_event_record(self.ext_event)
+                    return y
+
+                @torch.compile(backend=aclgraph_backend, fullgraph=True, dynamic=False)
+                def branch2(xx):
+                    torchair.ops.npu_tagged_event_wait(self.ext_event)
+                    torchair.ops.npu_tagged_event_reset(self.ext_event)
+                    y = xx + 1
+                    y = y * y
+                    y = y @ y
+                    return y
+                with torch.npu.stream(self.stream1):
+                    out1 = branch1(x)
+                with torch.npu.stream(self.stream2):
+                    out2 = branch2(x)
+                return out1, out2
+
+        model = Model()
+        x = torch.randn([3, 3])
+        model(x)
+
+        assert event_record_count == 1, f"expect event record count is 1, but got {event_record_count}"
+        assert event_wait_count == 1, f"expect event wait count is 1, but got {event_wait_count}"
+        assert event_reset_count == 1, f"expect event reset count is 1, but got {event_reset_count}"
+
+    def test_eager_with_multi_stream_external_event(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.stream1 = torch.npu.Stream()
+                self.stream2 = torch.npu.Stream()
+                self.ext_event = torchair.ops.npu_create_tagged_external_event(tag="33")
+
+            def forward(self, x):
+                def branch1(xx):
+                    y = xx + 1
+                    y = y * y
+                    y = y @ y
+                    torchair.ops.npu_tagged_event_record(self.ext_event)
+                    return y
+
+                def branch2(xx):
+                    torchair.ops.npu_tagged_event_wait(self.ext_event)
+                    torchair.ops.npu_tagged_event_reset(self.ext_event)
+                    y = xx - 1
+                    y = y @ y
+                    return y
+                with torch.npu.stream(self.stream1):
+                    out1 = branch1(x)
+                with torch.npu.stream(self.stream2):
+                    out2 = branch2(x)
+                return out1, out2
+
+        model = Model()
+        x = torch.randn([3, 3])
+        for _ in range(2):
+            model(x)
+
+    def test_ge_with_multi_stream_external_event(self):
+        from torchair._ge_concrete_graph.fx2ge_converter import GeConcreteGraph
+        # ignore event in ge mode
+        config = CompilerConfig()
+        npu_backend = torchair.get_npu_backend(compiler_config=config)
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.ext_event = torchair.ops.npu_create_tagged_external_event(tag="44")
+
+            def forward(self, xx):
+                y = xx + xx
+                y = y @ y
+                y = y * y
+                y = y + y
+                torchair.ops.npu_tagged_event_record(self.ext_event)
+                torchair.ops.npu_tagged_event_wait(self.ext_event)
+                torchair.ops.npu_tagged_event_reset(self.ext_event)
+                return y
+
+        def check_graph(concrete_graph):
+            # fx graph has npu_tagged_event_record\npu_tagged_event_wait\npu_tagged_event_reset while ge graph does not
+            # ge graph has netoutput, but fx_graph does not have
+            # so len(concrete_graph.graph.op) == 7, len(concrete_graph.fx_graph.graph.nodes) == 9
+            assert len(concrete_graph.graph.op) == 7, f"expect op count is 9, but got {len(concrete_graph.graph.op)}"
+            assert len(concrete_graph.fx_graph.graph.nodes) == 9, \
+                f"expect node count is 9, but got {len(concrete_graph.fx_graph.graph.nodes)}"
+            return
+
+        def decorator(call):
+            def wrapper(*args, **kwargs):
+                assert len(args) > 1
+                check_graph(args[0])
+                return tuple([args[1]])
+
+            return wrapper
+
+        GeConcreteGraph.__call__ = decorator(GeConcreteGraph.__call__)
+
+        model = Model()
+        opt_model = torch.compile(model, backend=npu_backend, fullgraph=True, dynamic=False)
+        x = torch.randn([3, 3])
+        for _ in range(2):
+            opt_model(x)
+
+    def test_aclgraph_with_multi_stream_external_event_no_sync_device_called(self):
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.stream1 = torch.npu.Stream()
+                self.stream2 = torch.npu.Stream()
+                self.ext_event = torchair.ops.npu_create_tagged_external_event(tag="55")
+
+            def forward(self, x):
+                @torch.compile(backend=aclgraph_backend, fullgraph=True, dynamic=False)
+                def branch1(xx):
+                    y = xx + 1
+                    y = y * y
+                    y = y - 1
+                    y = y @ y
+                    torchair.ops.npu_tagged_event_record(self.ext_event)
+                    return y
+
+                @torch.compile(backend=aclgraph_backend, fullgraph=True, dynamic=False)
+                def branch2(xx):
+                    torchair.ops.npu_tagged_event_wait(self.ext_event)
+                    torchair.ops.npu_tagged_event_reset(self.ext_event)
+                    y = xx + 1
+                    y = y @ y
+                    return y
+                with torch.npu.stream(self.stream1):
+                    out1 = branch1(x)
+                with torch.npu.stream(self.stream2):
+                    out2 = branch2(x)
+                return out1, out2
+        self.stub_module.synchronize = Mock() # mock torch.npu.synchronize, count sync call times
+        model = Model()
+        x = torch.randn([3, 3])
+        for _ in range(2):
+            model(x)
+        # no sync called
+        assert torch.npu.synchronize.call_count == 0,\
+            f"expect no torch.npu.synchonize() call time is 0, but got {torch.npu.synchronize.call_count}"
 
 if __name__ == '__main__':
     unittest.main()

@@ -151,8 +151,8 @@ class AclConcreteGraph(ConcreteGraphBase):
         import torch_npu
         # warm up before capture
         with record_function("acl_graph_warm_up"):
-            torch_npu.npu.synchronize()
             for _ in range(self.num_warmup_iters):
+                torch_npu.npu.synchronize()
                 outs = self.fx_graph(*args, **kwargs)
                 torch_npu.npu.synchronize()
 
@@ -167,14 +167,14 @@ class AclConcreteGraph(ConcreteGraphBase):
                     id(self.fx_graph), id(self.graph))
 
     def capture(self, *args: Any, **kwargs: Any):
-        from torchair._acl_concrete_graph.acl_graph import UpdatedNodeCaptureInterp, CapturedGraphUpdateAndReplay
+        from torchair._acl_concrete_graph.acl_graph import (UpdatedNodeCaptureInterp, CapturedGraphUpdateAndReplay,
+                                                            CapturedGraph)
         captured_interpreter = UpdatedNodeCaptureInterp(self.fx_graph, self._meta_inputs)
 
         updated_input_func = captured_interpreter.process_need_updated_ops()
 
-        import torch_npu
-        with torch_npu.npu.graph(self.graph, pool=self.pool, stream=self.stream,
-                                 capture_error_mode=self.capture_error_mode):
+        with CapturedGraph(self.graph, pool=self.pool, stream=self.stream,
+                           capture_error_mode=self.capture_error_mode, fx_graph=self.fx_graph):
             self._capture_outputs = captured_interpreter.run(*args, **kwargs)
         updated_node_infos = captured_interpreter.captured_node_infos
         logger.debug('In graph {%s}, the updated node num is {%s}.', id(self.fx_graph), len(updated_node_infos))
