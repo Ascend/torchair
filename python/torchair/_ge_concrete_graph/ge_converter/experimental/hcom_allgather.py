@@ -185,6 +185,26 @@ def npu_all_gather_patch_dist(output_tensor_list, tensor, group=None, async_op=F
         output_tensor_list[i].copy_(npu_out_list[i])
 
 
+def allgather_in_tensor_uneven_npu(
+        input_tensor: torch.Tensor,
+        send_count: int,
+        recv_counts: List[int],
+        tag: str,
+        rank_list: List,
+        group_size: int,
+        recv_displacements: List[int]
+):
+    from torchair import ALL_GATHER_INTO_TENSOR_UNEVEN
+    pg = c10d._find_or_create_pg_by_ranks_and_tag(tag, rank_list, group_size)
+    out_size = list(input_tensor.size())
+    out_size[0] = sum(recv_counts)
+    out_tensor = input_tensor.new_empty(out_size)
+    if ALL_GATHER_INTO_TENSOR_UNEVEN is None:
+        raise AttributeError(f'torch_npu.distributed has no attribute: all_gather_into_tensor_uneven')
+    ALL_GATHER_INTO_TENSOR_UNEVEN(out_tensor, input_tensor, recv_counts, group=pg, async_op=False)
+    return out_tensor
+
+
 def allgather_in_tensor_uneven_meta(
         input_tensor: torch.Tensor,
         send_count: int,
@@ -200,15 +220,17 @@ def allgather_in_tensor_uneven_meta(
 
 
 npu_define_lib.impl(op_allgather_in_tensor_uneven, allgather_in_tensor_uneven_meta, 'Meta')
+npu_define_lib.impl(op_allgather_in_tensor_uneven, allgather_in_tensor_uneven_npu, 'PrivateUse1')
 
 
-def npu_allgather_into_tensor_uneven_patch_dist(output_tensor, input_tensor, output_split_sizes=None, group=None,
+def npu_allgather_into_tensor_uneven_patch_dist(output, input, output_split_sizes=None, group=None,
                                                 async_op=False):
     if not torch.distributed._functional_collectives._are_we_tracing():
         from torchair import ALL_GATHER_INTO_TENSOR_UNEVEN
         if ALL_GATHER_INTO_TENSOR_UNEVEN is None:
             raise AttributeError(f'torch_npu.distributed has no attribute: all_gather_into_tensor_uneven')
-        ALL_GATHER_INTO_TENSOR_UNEVEN(output_tensor, input_tensor, output_split_sizes, group, async_op)
+        ALL_GATHER_INTO_TENSOR_UNEVEN(output, input, output_split_sizes, group, async_op)
+        return
     if async_op:
         raise AssertionError(f'When you enable torch.compile or use the cache_compile feature, '
                              f'use the patch_for_hcom interface to ensure that collective communication functions '
@@ -220,11 +242,11 @@ def npu_allgather_into_tensor_uneven_patch_dist(output_tensor, input_tensor, out
     tag = c10d._get_group_tag(group)
     group_size = len(rank_list)
     if output_split_sizes is None:
-        output_split_sizes = [output_tensor.size(0) // group_size for _ in rank_list]
-    if sum(output_split_sizes) != output_tensor.size(0):
+        output_split_sizes = [output.size(0) // group_size for _ in rank_list]
+    if sum(output_split_sizes) != output.size(0):
         raise AssertionError(f'Split sizes sum does not match total dim 0 size')
-    npu_output = torch.ops.npu_define.allgather_in_tensor_uneven(input_tensor, send_count=input_tensor.size(0),
+    npu_output = torch.ops.npu_define.allgather_in_tensor_uneven(input, send_count=input.size(0),
                                                                  recv_counts=output_split_sizes, tag=tag,
                                                                  rank_list=rank_list, group_size=group_size,
                                                                  recv_displacements=[])
-    output_tensor.copy_(npu_output.reshape(output_tensor.size()))
+    output.copy_(npu_output.reshape(output.size()))

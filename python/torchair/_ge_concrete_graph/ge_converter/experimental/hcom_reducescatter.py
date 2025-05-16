@@ -15,6 +15,51 @@ op_reduce_scatter_tensor_uneven = npu_define_lib.define(
     str reduce_type, str tag, int[] rank_list, int group_size, SymInt[] send_displacements) -> Tensor")
 
 
+def convert_reduce_type(op):
+    if isinstance(op, torch.distributed.ReduceOp):
+        return op
+    # 无法使用map类型的表驱动，因为torch2.1版本中symbolic_convert中的BUILD_MAP无法处理C++枚举类型的ReduceOp
+    if op == 'sum':
+        return torch.distributed.ReduceOp.SUM
+    elif op == 'avg':
+        return torch.distributed.ReduceOp.AVG
+    elif op == 'product':
+        return torch.distributed.ReduceOp.PRODUCT
+    elif op == 'min':
+        return torch.distributed.ReduceOp.MIN
+    elif op == 'max':
+        return torch.distributed.ReduceOp.MAX
+    elif op == 'band':
+        return torch.distributed.ReduceOp.BAND
+    elif op == 'bor':
+        return torch.distributed.ReduceOp.BOR
+    elif op == 'bxor':
+        return torch.distributed.ReduceOp.BXOR
+    else:
+        raise ValueError(f"Unsupported reduce op: {op}")
+
+
+def reduce_scatter_tensor_uneven_npu(
+        input_tensor: torch.Tensor,
+        send_counts: List[int],
+        recv_count: int,
+        reduce_type: str,
+        tag: str,
+        rank_list: List,
+        group_size: int,
+        send_displacements: List[int]
+):
+    from torchair import REDUCE_SCATTER_TENSOR_UNEVEN
+    pg = c10d._find_or_create_pg_by_ranks_and_tag(tag, rank_list, group_size)
+    out_size = list(input_tensor.size())
+    out_size[0] = recv_count
+    out_tensor = input_tensor.new_empty(out_size)
+    if REDUCE_SCATTER_TENSOR_UNEVEN is None:
+        raise AttributeError(f'torch_npu.distributed has no attribute: reduce_scatter_tensor_uneven')
+    REDUCE_SCATTER_TENSOR_UNEVEN(out_tensor, input_tensor, send_counts, convert_reduce_type(reduce_type), pg, False)
+    return out_tensor
+
+
 def reduce_scatter_tensor_uneven_meta(
         input_tensor: torch.Tensor,
         send_counts: List[int],
@@ -31,6 +76,7 @@ def reduce_scatter_tensor_uneven_meta(
 
 
 npu_define_lib.impl(op_reduce_scatter_tensor_uneven, reduce_scatter_tensor_uneven_meta, 'Meta')
+npu_define_lib.impl(op_reduce_scatter_tensor_uneven, reduce_scatter_tensor_uneven_npu, 'PrivateUse1')
 
 
 @register_fx_node_ge_converter(torch.ops.npu_define.reduce_scatter_tensor_uneven.default)
@@ -58,8 +104,8 @@ def convert_reduce_scatter_tensor_uneven(
 
 
 def npu_reduce_scatter_tensor_uneven_patch_dist(
-        output_tensor,
-        input_tensor,
+        output,
+        input,
         input_split_sizes=None,
         op=torch.distributed.ReduceOp.SUM,
         group=None,
@@ -69,7 +115,8 @@ def npu_reduce_scatter_tensor_uneven_patch_dist(
         from torchair import REDUCE_SCATTER_TENSOR_UNEVEN
         if REDUCE_SCATTER_TENSOR_UNEVEN is None:
             raise AttributeError(f'torch_npu.distributed has no attribute: reduce_scatter_tensor_uneven')
-        REDUCE_SCATTER_TENSOR_UNEVEN(output_tensor, input_tensor, input_split_sizes, op, group, async_op)
+        REDUCE_SCATTER_TENSOR_UNEVEN(output, input, input_split_sizes, op, group, async_op)
+        return
     if async_op:
         raise AssertionError(f'When you enable torch.compile or use the cache_compile feature, '
                              f'use the patch_for_hcom interface to ensure that collective communication functions '
@@ -84,14 +131,14 @@ def npu_reduce_scatter_tensor_uneven_patch_dist(
 
     # each rank get equal split from input tensor by dim 0
     if input_split_sizes is None:
-        input_split_sizes = [input_tensor.size(0) // group_size for _ in rank_list]
-    if sum(input_split_sizes) != input_tensor.size(0):
+        input_split_sizes = [input.size(0) // group_size for _ in rank_list]
+    if sum(input_split_sizes) != input.size(0):
         raise AssertionError(f'Split sizes sum does not match total dim 0 size')
 
-    npu_output = torch.ops.npu_define.reduce_scatter_tensor_uneven(input_tensor, send_counts=input_split_sizes,
-                                                                   recv_count=output_tensor.size(0),
+    npu_output = torch.ops.npu_define.reduce_scatter_tensor_uneven(input, send_counts=input_split_sizes,
+                                                                   recv_count=output.size(0),
                                                                    reduce_type=reduce_type,
                                                                    tag=tag,
                                                                    rank_list=rank_list, group_size=group_size,
                                                                    send_displacements=[])
-    output_tensor.copy_(npu_output.reshape(output_tensor.size()))
+    output.copy_(npu_output.reshape(output.size()))
