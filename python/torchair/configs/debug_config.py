@@ -55,6 +55,15 @@ class _DataDump(_DebugBase):
         self.type = OptionValue(None, ["npy"])
         super(_DataDump, self).__init__()
         self._fixed_attrs.append("filter")
+        self._fixed_attrs.append('path')
+
+    @property
+    def path(self):
+        return self._path.value
+
+    @path.setter
+    def path(self, value):
+        self._path.value = os.path.realpath(value)
 
 
 class _FxSummary(_DebugBase):

@@ -110,8 +110,7 @@ class _NpuFxDumper(Interpreter):
         return super().run(*args, **kwargs)
 
     def full_path(self, name):
-        return self._config.full_path(
-            f'{self.step_path}/{name}', with_timestap=False)
+        return os.path.join(self.step_path, name)
 
     @property
     def step_path(self):

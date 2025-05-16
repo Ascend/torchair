@@ -1,5 +1,6 @@
 import math
 import os
+import shutil
 import sys
 import contextlib
 
@@ -1794,7 +1795,6 @@ class TorchairSt(unittest.TestCase):
         self.assertEqual(rankid1, rankid2, "Mismatched rank_id between files")
         self.assertEqual(pid1, pid2, "Mismatched pid between files")
 
-
     def test_fx_and_ge_shape_not_same(self):
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
@@ -1823,7 +1823,6 @@ class TorchairSt(unittest.TestCase):
                 self.assertTrue('The dim of Ascend net output: [2] '
                 'is not equal to FX net output: [1]' in context.exception)        
 
-
     def test_fx_and_ge_shape_size_not_same(self):
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
@@ -1845,7 +1844,59 @@ class TorchairSt(unittest.TestCase):
                 executor.compile()
                 self.assertTrue('The dim size of Ascend net output: [2] '
                 'is not equal to FX net output: [3]' in context.exception)
-
                 
+    def test_data_dump_generation(self):
+        import re
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                return torch.add(x, y)
+
+        model = Model()
+        test_config = torchair.CompilerConfig()
+        test_config.debug.data_dump.type = "npy"
+        test_config.debug.data_dump.path = "./test_data_dump_generation/dir"
+        if os.path.exists(test_config.debug.data_dump.path):
+            shutil.rmtree(test_config.debug.data_dump.path)
+        test_config.ge_config.export_compile_stat = "0"
+        test_npu_backend = torchair.get_npu_backend(compiler_config=test_config)
+        test_model = torch.compile(model, backend=test_npu_backend)
+        x = torch.randn(2, 2)
+        y = torch.randn(2, 2)
+        test_model(x, y)
+        path = os.path.realpath(f'{test_config.debug.data_dump.path}/data_dump/1')
+        self.assertTrue(os.path.isdir(path), f"directory {path} does not exist.")
+        file_path = os.path.join(path, os.listdir(path)[0])
+        test_files = [f for f in os.listdir(file_path) if f.endswith(".npy")]
+        self.assertEqual(len(test_files), 3, f"found data_dump files in {file_path}")
+
+    def test_data_dump_failpath(self):
+        import re
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                return torch.add(x, y)
+
+        model = Model()
+        test_config = torchair.CompilerConfig()
+        os.mkdir("./test_data_dump_failpath")
+        with open("./test_data_dump_failpath/fail.txt", "w") as f:
+            f.write("data dump test")
+        test_config.debug.data_dump.type = "npy"
+        test_config.debug.data_dump.path = "./test_data_dump_failpath/fail.txt"
+        test_config.ge_config.export_compile_stat = "0"
+        test_npu_backend = torchair.get_npu_backend(compiler_config=test_config)
+        test_model = torch.compile(model, backend=test_npu_backend)
+        x = torch.randn(2, 2)
+        y = torch.randn(2, 2)
+        with self.assertRaises(NotADirectoryError):
+            test_model(x, y)
+
 if __name__ == '__main__':
     unittest.main()
