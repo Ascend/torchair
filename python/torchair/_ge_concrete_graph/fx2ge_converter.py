@@ -82,7 +82,7 @@ def _mapping_assign_op_to_graph_output(graph: GraphDef):
         graph_out.input.append(value_tensor)
         graph_out.input_desc.add().CopyFrom(assign_node_out.desc)
         assign_out_shape = list(ref_intput_op.output_desc[0].shape.dim)
-        graph_out.input_desc[-1].shape.dim.extend(assign_out_shape)
+        graph_out.input_desc[-1].shape.dim[:] = assign_out_shape
         graph_out.input_desc[-1].name = f"input{len(graph_out.input_desc) - 1}"
         graph.attr["_output_dtypes"].list.i.append(_ge_proto_dtype_to_ge_dtype(assign_node_out.desc.dtype))
         return [len(graph_out.input_desc) - 1]

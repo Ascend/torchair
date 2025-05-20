@@ -29,6 +29,6 @@ def NetOutput(inputs: List[Tensor], name=None, *, dependencies=()) -> Tensor:
         op.input_desc.append(input.desc)
         if input.meta is not None:
             from torchair._ge_concrete_graph.utils import generate_shape_from_tensor
-            op.input_desc[-1].shape.dim.extend(generate_shape_from_tensor(input.meta))
+            op.input_desc[-1].shape.dim[:] = generate_shape_from_tensor(input.meta)
         op.input_desc[-1].name = f"input{i}"
     return
