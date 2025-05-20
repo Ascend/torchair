@@ -79236,3 +79236,208 @@ def MoeReRouting(tokens: Tensor,
     expert_token_num = Tensor(op, output_index)
     output_index += 1
     return permute_tokens, permute_per_token_scales, permute_token_idx, expert_token_num
+
+
+# This api is auto-generated from IR GroupedMatMulAlltoAllv
+@auto_convert_to_tensor([False, False, False, False, False, False], [False, False, True, True, True, True],
+                        inputs_tensor_type=[TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_INDEX_NUMBER,
+                        TensorType.TT_INDEX_NUMBER, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN])
+def GroupedMatMulAlltoAllv(gmm_x: Tensor, gmm_weight: Tensor,
+                           send_counts_tensor: Optional[Tensor], recv_counts_tensor: Optional[Tensor],
+                           mm_x: Optional[Tensor], mm_weight: Optional[Tensor],
+                           *,
+                           group: str,
+                           ep_world_size: int,
+                           send_counts: List[int], recv_counts: List[int],
+                           trans_gmm_weight: bool = False,
+                           trans_mm_weight: bool = False,
+                           dependencies = [], node_name = None):
+    """REG_OP(GroupedMatMulAlltoAllv)\n
+.INPUT(gmm_x, TensorType({DT_FLOAT16, DT_BF16}))\n
+.INPUT(gmm_weight, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OPTIONAL_INPUT(send_counts_tensor, TensorType({DT_INT32, DT_INT64}))\n
+.OPTIONAL_INPUT(recv_counts_tensor, TensorType({DT_INT32, DT_INT64}))\n
+.OPTIONAL_INPUT(mm_x, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OPTIONAL_INPUT(mm_weight, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OUTPUT(y, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OUTPUT(mm_y, TensorType({DT_FLOAT16, DT_BF16}))\n
+.REQUIRED_ATTR(group, String)\n
+.REQUIRED_ATTR(ep_world_size, Int)\n
+.REQUIRED_ATTR(send_counts, ListInt)\n
+.REQUIRED_ATTR(recv_counts, ListInt)\n
+.ATTR(trans_gmm_weight, Bool, false)\n
+.ATTR(trans_mm_weight, Bool, false)\n
+"""
+    op = get_default_ge_graph().op.add()
+    op.type = "GroupedMatMulAlltoAllv"
+    op.name = next_unique_name(node_name, "GroupedMatMulAlltoAllv")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(gmm_x.tensor)
+    op.input_desc.add().CopyFrom(gmm_x.desc)
+    op.input_desc[-1].name = "gmm_x"
+    op.input.append(gmm_weight.tensor)
+    op.input_desc.add().CopyFrom(gmm_weight.desc)
+    op.input_desc[-1].name = "gmm_weight"
+    if send_counts_tensor is not None:
+        op.input.append(send_counts_tensor.tensor)
+        op.input_desc.add().CopyFrom(send_counts_tensor.desc)
+        op.input_desc[-1].name = "send_counts_tensor"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "send_counts_tensor"
+    if recv_counts_tensor is not None:
+        op.input.append(recv_counts_tensor.tensor)
+        op.input_desc.add().CopyFrom(recv_counts_tensor.desc)
+        op.input_desc[-1].name = "recv_counts_tensor"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "recv_counts_tensor"
+    if mm_x is not None:
+        op.input.append(mm_x.tensor)
+        op.input_desc.add().CopyFrom(mm_x.desc)
+        op.input_desc[-1].name = "mm_x"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "mm_x"
+    if mm_weight is not None:
+        op.input.append(mm_weight.tensor)
+        op.input_desc.add().CopyFrom(mm_weight.desc)
+        op.input_desc[-1].name = "mm_weight"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "mm_weight"
+
+    # process attrs
+    op.attr["group"].s = compat_as_bytes(group)
+    op.attr["ep_world_size"].i = ep_world_size
+    op.attr["send_counts"].list.val_type = 2
+    op.attr["send_counts"].list.i.extend(send_counts)
+    op.attr["recv_counts"].list.val_type = 2
+    op.attr["recv_counts"].list.i.extend(recv_counts)
+    op.attr["trans_gmm_weight"].b = trans_gmm_weight
+    op.attr["trans_mm_weight"].b = trans_mm_weight
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "mm_y"
+    mm_y = Tensor(op, output_index)
+    output_index += 1
+    return y, mm_y
+
+
+# This api is auto-generated from IR AlltoAllvGroupedMatMul
+@auto_convert_to_tensor([False, False, False, False, False, False], [False, False, True, True, True, True],
+                        inputs_tensor_type=[TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_INDEX_NUMBER,
+                        TensorType.TT_INDEX_NUMBER, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN])
+def AlltoAllvGroupedMatMul(gmm_x: Tensor, gmm_weight: Tensor,
+                           send_counts_tensor: Optional[Tensor], recv_counts_tensor: Optional[Tensor],
+                           mm_x: Optional[Tensor], mm_weight: Optional[Tensor],
+                           *,
+                           group: str,
+                           ep_world_size: int,
+                           send_counts: List[int], recv_counts: List[int],
+                           trans_gmm_weight: bool = False,
+                           trans_mm_weight: bool = False,
+                           permute_out_flag: bool = False,
+                           dependencies = [], node_name = None):
+    """REG_OP(AlltoAllvGroupedMatMul)\n
+.INPUT(gmm_x, TensorType({DT_FLOAT16, DT_BF16}))\n
+.INPUT(gmm_weight, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OPTIONAL_INPUT(send_counts_tensor, TensorType({DT_INT32, DT_INT64}))\n
+.OPTIONAL_INPUT(recv_counts_tensor, TensorType({DT_INT32, DT_INT64}))\n
+.OPTIONAL_INPUT(mm_x, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OPTIONAL_INPUT(mm_weight, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OUTPUT(gmm_y, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OUTPUT(mm_y, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OUTPUT(permute_out, TensorType({DT_FLOAT16, DT_BF16}))\n
+.REQUIRED_ATTR(group, String)\n
+.REQUIRED_ATTR(ep_world_size, Int)\n
+.REQUIRED_ATTR(send_counts, ListInt)\n
+.REQUIRED_ATTR(recv_counts, ListInt)\n
+.ATTR(trans_gmm_weight, Bool, false)\n
+.ATTR(trans_mm_weight, Bool, false)\n
+.ATTR(permute_out_flag, Bool, false)\n
+"""
+    op = get_default_ge_graph().op.add()
+    op.type = "AlltoAllvGroupedMatMul"
+    op.name = next_unique_name(node_name, "AlltoAllvGroupedMatMul")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(gmm_x.tensor)
+    op.input_desc.add().CopyFrom(gmm_x.desc)
+    op.input_desc[-1].name = "gmm_x"
+    op.input.append(gmm_weight.tensor)
+    op.input_desc.add().CopyFrom(gmm_weight.desc)
+    op.input_desc[-1].name = "gmm_weight"
+    if send_counts_tensor is not None:
+        op.input.append(send_counts_tensor.tensor)
+        op.input_desc.add().CopyFrom(send_counts_tensor.desc)
+        op.input_desc[-1].name = "send_counts_tensor"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "send_counts_tensor"
+    if recv_counts_tensor is not None:
+        op.input.append(recv_counts_tensor.tensor)
+        op.input_desc.add().CopyFrom(recv_counts_tensor.desc)
+        op.input_desc[-1].name = "recv_counts_tensor"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "recv_counts_tensor"
+    if mm_x is not None:
+        op.input.append(mm_x.tensor)
+        op.input_desc.add().CopyFrom(mm_x.desc)
+        op.input_desc[-1].name = "mm_x"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "mm_x"
+    if mm_weight is not None:
+        op.input.append(mm_weight.tensor)
+        op.input_desc.add().CopyFrom(mm_weight.desc)
+        op.input_desc[-1].name = "mm_weight"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "mm_weight"
+
+    # process attrs
+    op.attr["group"].s = compat_as_bytes(group)
+    op.attr["ep_world_size"].i = ep_world_size
+    op.attr["send_counts"].list.val_type = 2
+    op.attr["send_counts"].list.i.extend(send_counts)
+    op.attr["recv_counts"].list.val_type = 2
+    op.attr["recv_counts"].list.i.extend(recv_counts)
+    op.attr["trans_gmm_weight"].b = trans_gmm_weight
+    op.attr["trans_mm_weight"].b = trans_mm_weight
+    op.attr["permute_out_flag"].b = permute_out_flag
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "gmm_y"
+    gmm_y = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "mm_y"
+    mm_y = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "permute_out"
+    permute_out = Tensor(op, output_index)
+    output_index += 1
+    return gmm_y, mm_y, permute_out
