@@ -1,19 +1,17 @@
 import contextlib
-import dataclasses
-import functools
 import logging
-import os
 import sys
 import types
 import unittest
 from unittest.mock import Mock
-from typing import List
+
 import torch
 import torch.nn.functional as F
-from torch import nn
+
 import torchair
-from torchair.core.utils import logger
 from torchair.configs.compiler_config import CompilerConfig
+from torchair.core.utils import logger
+
 logger.setLevel(logging.DEBUG)
 
 """Start to gen some API patch for AclGraph in st."""
@@ -345,7 +343,8 @@ class AclGraphSt(unittest.TestCase):
 
         torch._dynamo.mark_static(output)
         torch._dynamo.mark_static(indices)
-        with self.assertRaisesRegex(RuntimeError, r'which is not in updated index'):
+        with self.assertRaisesRegex(RuntimeError,
+                                    r'(which is not in updated index)|(bug in torch.fx.passes.reinplace)'):
             model(output, indices, 2)
 
     def test_aclgraph_unsupported_dynamic_sym_in_tensor(self):
@@ -622,6 +621,237 @@ class AclGraphSt(unittest.TestCase):
         # no sync called
         assert torch.npu.synchronize.call_count == 0,\
             f"expect no torch.npu.synchonize() call time is 0, but got {torch.npu.synchronize.call_count}"
+
+    def test_aclgraph_capture_and_replay_keep_inference_input_mutations_true_default_enable_reinplace_pass(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                a = x.clone()
+                b = a.add(1)
+                y.mul_(2)
+                return b, y
+
+        model = Model()
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.experimental_config.keep_inference_input_mutations = True
+        backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(model, backend=backend, dynamic=False)
+        x = torch.randn([8, 8])
+        y = torch.randn([8, 8])
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            model(x, y)
+
+        self.assertTrue(
+            any("call_function[target=torch.ops.aten.add_.Tensor]" in log for log in cm.output),
+            f"Expected DEBUG log 'call_function[target=torch.ops.aten.add_.Tensor]' in logs: {cm.output}"
+        )
+
+        self.assertTrue(
+            any("call_function[target=torch.ops.aten.mul_.Tensor]" in log for log in cm.output),
+            f"Expected DEBUG log 'call_function[target=torch.ops.aten.mul_.Tensor]' in logs: {cm.output}"
+        )
+
+    def test_aclgraph_capture_and_replay_keep_inference_input_mutations_true_disable_reinplace_pass_with_slice(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                x = x[:2]
+                x.add_(5)
+                x.mul_(7)
+                return x
+
+        model = Model()
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.experimental_config.keep_inference_input_mutations = True
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(model, backend=backend, dynamic=False)
+        x = torch.randn([8, 8])
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            model(x)
+
+        self.assertTrue(
+            any("prossing reinplace_input_mutated_ops_pass" in log for log in cm.output),
+            f"Expected DEBUG log 'prossing reinplace_input_mutated_ops_pass' in logs: {cm.output}"
+        )
+
+    def test_aclgraph_keep_inference_input_mutations_true_disable_mutated_input_pass_with_slice(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                x = x[:2]
+                x.add_(1)
+                x.mul_(3)
+                return x
+
+        model = Model()
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.experimental_config.keep_inference_input_mutations = True
+        config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass = True
+        backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(model, backend=backend, dynamic=False)
+        x = torch.randn([8, 8])
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            model(x)
+
+        self.assertTrue(
+            any("prossing reinplace_inplaceable_ops_pass" in log for log in cm.output),
+            f"Expected DEBUG log 'prossing reinplace_inplaceable_ops_pass' in logs: {cm.output}"
+        )
+
+    def test_aclgraph_capture_and_replay_keep_inference_input_mutations_true_disable_reinplace_mutated_input(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                a = x.clone()
+                b = a.add(1)
+                y.mul(3)
+                return b, y
+
+        model = Model()
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.experimental_config.keep_inference_input_mutations = True
+        config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass = True
+        backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(model, backend=backend, dynamic=False)
+        x = torch.randn([8, 8])
+        y = torch.randn([8, 8])
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            model(x, y)
+
+        self.assertTrue(
+            any("call_function[target=torch.ops.aten.add_.Tensor]" in log for log in cm.output),
+            f"Expected DEBUG log 'call_function[target=torch.ops.aten.add_.Tensor]' "
+            f"not found in logs: {cm.output}"
+        )
+
+        self.assertFalse(
+            any("call_function[target=torch.ops.aten.copy_.default]" in log for log in cm.output),
+            f"Expected no DEBUG log 'call_function[target=torch.ops.aten.copy_.default]' "
+            f"not found in logs: {cm.output}"
+        )
+
+    def test_aclgraph_capture_and_replay_keep_inference_input_mutations_true_disable_reinplace_inplaceable_ops(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                x.mul_(2)
+                x.add_(1)
+                return x
+
+        model = Model()
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.experimental_config.keep_inference_input_mutations = True
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(model, backend=backend, dynamic=False)
+        x = torch.randn([5, 8])
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            model(x)
+
+        self.assertTrue(
+            any("call_function[target=torch.ops.aten.add_.Tensor]" in log for log in cm.output),
+            f"Expected DEBUG log 'call_function[target=torch.ops.aten.add_.Tensor]' "
+            f"not found in logs: {cm.output}"
+        )
+
+        self.assertTrue(
+            any("call_function[target=torch.ops.aten.mul.Tensor]" in log for log in cm.output),
+            f"Expected DEBUG log 'call_function[target=torch.ops.aten.mul.Tensor]' "
+            f"not found in logs: {cm.output}"
+        )
+
+        # cannot erase copy_ node in this case, need ".out" fx pass, should be optimize in the future.
+        self.assertTrue(
+            any("call_function[target=torch.ops.aten.copy_.default]" in log for log in cm.output),
+            f"Expected DEBUG log 'call_function[target=torch.ops.aten.copy_.default]' "
+            f"not found in logs: {cm.output}"
+        )
+
+    def test_aclgraph_capture_and_replay_keep_inference_input_mutations_false_enable_reinplace_ops(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                a = x.clone()
+                b = a.add_(1)
+                y.mul(5)
+                return b, x
+
+        model = Model()
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.experimental_config.keep_inference_input_mutations = False
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = False
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(model, backend=aclgraph_backend, dynamic=False)
+        x = torch.randn([8, 8])
+        y = torch.randn([8, 8])
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            model(x, y)
+
+        self.assertTrue(
+            any("call_function[target=torch.ops.aten.add_.Tensor]" in log for log in cm.output),
+            f"Expected DEBUG log 'call_function[target=torch.ops.aten.add_.Tensor]' in logs: {cm.output}"
+        )
+
+    def test_aclgraph_capture_and_replay_keep_inference_input_mutations_false_disable_reinplace_ops(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                a = x.clone()
+                b = x.add_(1)
+                y.mul(6)
+                return b, x
+
+        model = Model()
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.experimental_config.keep_inference_input_mutations = False
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(model, backend=backend, dynamic=False)
+        x = torch.randn([8, 8])
+        y = torch.randn([8, 8])
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            model(x, y)
+
+        self.assertFalse(
+            any("call_function[target=torch.ops.aten.add_.Tensor]" in log for log in cm.output),
+            f"Expected no DEBUG log 'call_function[target=torch.ops.aten.add_.Tensor]' in logs: {cm.output}"
+        )
 
 if __name__ == '__main__':
     unittest.main()

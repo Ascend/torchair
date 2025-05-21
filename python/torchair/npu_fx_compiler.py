@@ -353,7 +353,7 @@ class _NpuFxCompiler:
         if self.config.debug.graph_dump.enabled and not self.config.export.export_mode:
             concrete_graph.dump(self.config.debug.graph_dump.full_path(f"dynamo_original_graph_{_GLOBAL_GRAPH_ID}"))
 
-        concrete_graph.optimize_graph_without_runtime()
+        concrete_graph.optimize_graph_without_runtime(*example_inputs)
 
         if self.config.debug.run_eagerly:
             logger.warning(f'When using debug.run_eagerly=True, npu compiler will be skipped, '

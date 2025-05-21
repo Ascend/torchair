@@ -599,7 +599,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         del ge_outputs
         return tuple(fx_outputs)
 
-    def optimize_graph_without_runtime(self):
+    def optimize_graph_without_runtime(self, *sample_args):
         from torchair._ge_concrete_graph.graph_pass import remove_dead_data_and_reorder_data_index
         from torchair._ge_concrete_graph.graph_pass import explict_order_for_side_effect_nodes
         from torchair._ge_concrete_graph.graph_pass import explict_order_for_cmo

@@ -131,12 +131,16 @@ class AclConcreteGraph(ConcreteGraphBase):
     def codegen(self, extend_config, enable_cache=False):
         raise NotImplementedError("Codegen for acl graph is not implemented!")
 
-    def optimize_graph_without_runtime(self):
+    def optimize_graph_without_runtime(self, *sample_args):
         logger.debug('before graph optimization, graph is %s', self.fx_graph.graph)
 
         # graph optimization passes here
         from torchair._acl_concrete_graph.acl_graph import replace_dynamic_workspace_ops, _find_mutated_user_inputs
         replace_dynamic_workspace_ops(self.fx_graph)
+
+
+        from torchair._acl_concrete_graph.graph_pass import _reinplace
+        _reinplace(self.config, self.fx_graph, *sample_args)
 
         # find mutated inputs after graph optimization passes
         self._mutated_user_inputs = _find_mutated_user_inputs(self.fx_graph)

@@ -5,6 +5,7 @@ import os
 import torch.distributed as dist
 from torchair.configs._option_base import OptionValue
 from torchair.configs._option_base import NpuBaseConfig
+from torchair.configs.aclgraph_config import _AclgraphConfig
 
 
 def _timestamp():
@@ -81,6 +82,7 @@ class _DebugConfig(NpuBaseConfig):
         self.data_dump = _DataDump()
         self.fx_summary = _FxSummary()
         self.run_eagerly = OptionValue(False, [True, False])
+        self.aclgraph = _AclgraphConfig()
 
         super(_DebugConfig, self).__init__()
 
