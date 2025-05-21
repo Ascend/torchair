@@ -410,6 +410,7 @@ def _update_internal_format_from_inputs(graph: GraphDef, runtime_inputs):
             origin_format = Format.FORMAT_NCDHW.value
 
         if origin_format is not None:
+            input_index_mapping_graph_op[idx].attr["_enable_storage_format_spread"].b = False
             input_index_mapping_graph_op[idx].output_desc[0].shape.dim[:] = []
             input_index_mapping_graph_op[idx].output_desc[0].attr["origin_shape"].list.val_type = 2
             input_index_mapping_graph_op[idx].output_desc[0].attr["origin_shape"].list.i.extend(origin_shape)
