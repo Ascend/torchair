@@ -363,8 +363,7 @@ def _get_output_shapes(graph):
         if op.type != "NetOutput":
             continue
         for input_desc in op.input_desc:
-            if list(input_desc.shape.dim):
-                output_shapes.append(list(input_desc.shape.dim))
+            output_shapes.append(list(input_desc.shape.dim))
 
     return output_shapes
 

@@ -42,6 +42,8 @@ std::string DebugString(const std::vector<ge::Shape> &shapes);
 
 std::string DebugString(const std::vector<ge::DataType> &dtypes);
 
+std::string DebugString(const ge::DataType &dtype);
+
 std::vector<bool> Split(const std::string &str, char pattern);
 
 std::vector<int64_t> GetGeTensorShape(const ge::Tensor &tensor);

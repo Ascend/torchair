@@ -536,19 +536,19 @@ class TorchairSt(unittest.TestCase):
         import _privateuse1_backend
 
         with GeGraph() as graph:
-            x = ge.Data(index=0, shape=[1, 2], dtype=DataType.DT_INT32, placement='CPU')
-            y = ge.Data(index=1, shape=[], dtype=DataType.DT_INT32, placement='CPU')
+            x = ge.Data(index=0, shape=[1, 2], dtype=DataType.DT_FLOAT, placement='CPU')
+            y = ge.Data(index=1, shape=[], dtype=DataType.DT_FLOAT, placement='CPU')
             z = ge.Add(x, y)
             output = ge.NetOutput([z])
 
-            set_graph_output_dtypes(graph, [DataType.DT_INT32])
+            set_graph_output_dtypes(graph, [DataType.DT_FLOAT])
 
             executor = TorchNpuGraph()
             executor.load(graph)
             executor.compile()
 
-            x = torch.ones([2, 2], dtype=torch.int32, device='npu')
-            y = torch.ones([], dtype=torch.int32, device='npu')
+            x = torch.ones([2, 2], dtype=torch.float, device='npu')
+            y = torch.ones([], dtype=torch.float, device='npu')
             z = executor.run([x, y], [x])
             k = executor.run([x, y], [x])
             self.assertTrue(z[0] is x)
@@ -694,35 +694,35 @@ class TorchairSt(unittest.TestCase):
         import _privateuse1_backend
 
         with GeGraph() as graph:
-            x = ge.Data(index=0, shape=[1, 2], dtype=DataType.DT_INT32, placement='CPU')
-            y = ge.Data(index=1, shape=[100, 2], dtype=DataType.DT_INT32, placement='CPU')
+            x = ge.Data(index=0, shape=[1, 2], dtype=DataType.DT_FLOAT, placement='CPU')
+            y = ge.Data(index=1, shape=[100, 2], dtype=DataType.DT_FLOAT, placement='CPU')
             z = ge.Add(x, y)
             output = ge.NetOutput([z])
 
-        set_graph_output_dtypes(graph, [DataType.DT_INT32])
+        set_graph_output_dtypes(graph, [DataType.DT_FLOAT])
 
         executor = TorchNpuGraph()
         executor.load(graph)
         executor.compile()
 
-        x = torch.ones([1, 2], dtype=torch.int32)
-        y = torch.ones([100, 2], dtype=torch.int32)
+        x = torch.ones([1, 2], dtype=torch.float)
+        y = torch.ones([100, 2], dtype=torch.float)
         result = executor.run((x, y))
 
         with GeGraph() as graph2:
-            x = ge.Data(index=0, shape=[1, 2], dtype=DataType.DT_INT32, placement='CPU')
-            y = ge.Data(index=1, shape=[10, 2], dtype=DataType.DT_INT32, placement='CPU')
+            x = ge.Data(index=0, shape=[1, 2], dtype=DataType.DT_FLOAT, placement='CPU')
+            y = ge.Data(index=1, shape=[10, 2], dtype=DataType.DT_FLOAT, placement='CPU')
             z = ge.Add(x, y)
             output = ge.NetOutput([z])
 
-        set_graph_output_dtypes(graph2, [DataType.DT_INT32])
+        set_graph_output_dtypes(graph2, [DataType.DT_FLOAT])
 
         executor2 = TorchNpuGraph()
         executor2.load(graph2)
         executor2.compile()
 
-        x = torch.ones([1, 2], dtype=torch.int32)
-        y = torch.ones([10, 2], dtype=torch.int32)
+        x = torch.ones([1, 2], dtype=torch.float)
+        y = torch.ones([10, 2], dtype=torch.float)
         for i in range(2):
             result = executor2.run((x, y))
 
@@ -732,42 +732,42 @@ class TorchairSt(unittest.TestCase):
         import _privateuse1_backend
 
         with GeGraph() as graph1:
-            a = ge.Data(index=0, shape=[128, 128], dtype=DataType.DT_FLOAT16, placement='CPU')
-            b = ge.Data(index=1, shape=[128, 128], dtype=DataType.DT_FLOAT16, placement='CPU')
+            a = ge.Data(index=0, shape=[128, 128], dtype=DataType.DT_FLOAT, placement='CPU')
+            b = ge.Data(index=1, shape=[128, 128], dtype=DataType.DT_FLOAT, placement='CPU')
             c = ge.Add(a, b)
             d = ge.MatMulV2(a, c, bias=None, offset_w=None)
             e = ge.Mul(a, d)
             f = ge.RealDiv(a, e)
             output = ge.NetOutput([f])
 
-        set_graph_output_dtypes(graph1, [DataType.DT_FLOAT16])
+        set_graph_output_dtypes(graph1, [DataType.DT_FLOAT])
         executor = TorchNpuGraph()
         local_options = {}
         local_options["ge.featureBaseRefreshable"] = "1"
         executor.load(graph1, options=local_options)
         executor.compile()
 
-        x = torch.ones([128, 128], dtype=torch.float16)
-        y = torch.ones([128, 128], dtype=torch.float16)
+        x = torch.ones([128, 128], dtype=torch.float)
+        y = torch.ones([128, 128], dtype=torch.float)
         for i in range(3):
             result = executor.run((x, y))
 
         with GeGraph() as graph2:
-            a = ge.Data(index=0, shape=[16, 16], dtype=DataType.DT_FLOAT16, placement='CPU')
-            b = ge.Data(index=1, shape=[16, 16], dtype=DataType.DT_FLOAT16, placement='CPU')
+            a = ge.Data(index=0, shape=[16, 16], dtype=DataType.DT_FLOAT, placement='CPU')
+            b = ge.Data(index=1, shape=[16, 16], dtype=DataType.DT_FLOAT, placement='CPU')
             c = ge.Add(a, b)
             d = ge.MatMulV2(a, c, bias=None, offset_w=None)
             e = ge.Mul(a, d)
             f = ge.RealDiv(a, e)
             output = ge.NetOutput([f])
 
-        set_graph_output_dtypes(graph2, [DataType.DT_FLOAT16])
+        set_graph_output_dtypes(graph2, [DataType.DT_FLOAT])
         executor2 = TorchNpuGraph()
         executor2.load(graph2, options=local_options)
         executor2.compile()
 
-        x = torch.ones([16, 16], dtype=torch.float16)
-        y = torch.ones([16, 16], dtype=torch.float16)
+        x = torch.ones([16, 16], dtype=torch.float)
+        y = torch.ones([16, 16], dtype=torch.float)
         for i in range(3):
             result = executor2.run((x, y))
 
@@ -1658,18 +1658,18 @@ class TorchairSt(unittest.TestCase):
         import _privateuse1_backend
 
         with GeGraph() as graph1:
-            a = ge.Data(index=0, shape=[128, 128], dtype=DataType.DT_FLOAT16, placement='CPU')
-            b = ge.Data(index=1, shape=[1, 2], dtype=DataType.DT_FLOAT16, placement='CPU')
+            a = ge.Data(index=0, shape=[128, 128], dtype=DataType.DT_FLOAT, placement='CPU')
+            b = ge.Data(index=1, shape=[1, 2], dtype=DataType.DT_FLOAT, placement='CPU')
             d = ge.Add(a, b)
             output = ge.NetOutput([d])
 
-        set_graph_output_dtypes(graph1, [DataType.DT_FLOAT16])
+        set_graph_output_dtypes(graph1, [DataType.DT_FLOAT])
         executor = TorchNpuGraph()
         executor.load(graph1, options={"frozenInput": "0,1"})
         executor.compile()
 
-        x = torch.ones([128, 128], dtype=torch.float16)
-        y = torch.ones([1, 2], dtype=torch.float16)
+        x = torch.ones([128, 128], dtype=torch.float)
+        y = torch.ones([1, 2], dtype=torch.float)
         for i in range(2):
             result = executor.run((x, y))
 
@@ -1808,7 +1808,7 @@ class TorchairSt(unittest.TestCase):
             x = ge.Data(index=0, shape=[2, 2], dtype=DataType.DT_INT32, placement='NPU')
             y = ge.Data(index=1, shape=[2, 2], dtype=DataType.DT_INT32, placement='NPU')
             z = ge.Add(x, y)
-            z.set_meta(torch.ones([1, 2]))
+            z.set_meta(torch.ones([2, 2]))
             output = ge.NetOutput([z])            
             set_graph_output_dtypes(graph, [DataType.DT_INT32])
 
@@ -1818,10 +1818,40 @@ class TorchairSt(unittest.TestCase):
 
             executor = TorchNpuGraph()
             executor.load(graph)
+            executor.set_hint_shape([[2, 2], [2, 2]], [[1, 2]])
             with self.assertRaises(RuntimeError) as context:
                 executor.compile()
-                self.assertTrue('The dim of Ascend net output: [2] '
-                'is not equal to FX net output: [1]' in context.exception)        
+                self.assertTrue('The dim of Ascend net output: [2, 2] '
+                'is not equal to FX net output: [1, 2]' in context.exception)
+
+    def test_fx_and_ge_shape_num_same(self):
+        initialize_graph_engine()
+        from torchair.core import _npu_graph_executor
+        import _privateuse1_backend
+        npu_device = _privateuse1_backend.npu_device()
+        torch.utils.rename_privateuse1_backend("npu")
+        from torchair.ge._ge_graph import Tensor
+        from torchair._ge_concrete_graph.ge_ir_pb2 import OpDef, TensorDescriptor
+
+        with GeGraph() as graph:
+            x = ge.Data(index=0, shape=[2, 2], dtype=DataType.DT_INT32, placement='NPU')
+            y = ge.Data(index=1, shape=[2, 2], dtype=DataType.DT_INT32, placement='NPU')
+            z = ge.Add(x, y)
+            z.set_meta(torch.ones([2, 2]))
+            output = ge.NetOutput([z])            
+            set_graph_output_dtypes(graph, [DataType.DT_INT32])
+
+            node = OpDef()
+            node.name = "node1"
+            node.output_desc.append(TensorDescriptor())
+
+            executor = TorchNpuGraph()
+            executor.load(graph)
+            executor.set_hint_shape([[2, 2], [2, 2]], [[2, 2], [2, 2]])
+            with self.assertRaises(RuntimeError) as context:
+                executor.compile()
+                self.assertTrue('The number of Ascend net output: 1 '
+                'is not equal to FX net outputs: 2' in context.exception)  
 
     def test_fx_and_ge_shape_size_not_same(self):
         initialize_graph_engine()
@@ -1834,16 +1864,17 @@ class TorchairSt(unittest.TestCase):
             x = ge.Data(index=0, shape=[2, 2], dtype=DataType.DT_INT32, placement='NPU')
             y = ge.Data(index=1, shape=[2, 2], dtype=DataType.DT_INT32, placement='NPU')
             z = ge.Add(x, y)
-            z.set_meta(torch.ones([1, 2, 3]))
+            z.set_meta(torch.ones([2, 2]))
             output = ge.NetOutput([z])
             set_graph_output_dtypes(graph, [DataType.DT_INT32])
 
             executor = TorchNpuGraph()
             executor.load(graph)
+            executor.set_hint_shape([[2, 2], [2, 2]], [[1, 2, 3]])
             with self.assertRaises(RuntimeError) as context:
                 executor.compile()
-                self.assertTrue('The dim size of Ascend net output: [2] '
-                'is not equal to FX net output: [3]' in context.exception)
+                self.assertTrue('The dim size of Ascend net output: [2, 2] '
+                'is not equal to FX net output: [1, 2, 3]' in context.exception)
                 
     def test_data_dump_generation(self):
         import re

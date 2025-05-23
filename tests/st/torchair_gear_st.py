@@ -263,6 +263,7 @@ class TorchairSt(unittest.TestCase):
             y = ge.Data(index=1, shape=[],
                         dtype=DataType.DT_INT32, placement='CPU')
             z = ge.Mul(x, y)
+            z.set_meta(torch.ones([2, 2], dtype=torch.int32, device='npu'))            
             output = ge.NetOutput([z])
 
             set_graph_output_dtypes(graph, [DataType.DT_INT32])
@@ -296,7 +297,9 @@ class TorchairSt(unittest.TestCase):
             w = ge.Data(index=2, shape=[2, 2],
                         dtype=DataType.DT_INT32, placement='NPU')
             z1 = ge.Mul(x, y)
+            z1.set_meta(torch.ones([2, 2], dtype=torch.int32, device='npu'))            
             z2 = ge.Mul(w, y)
+            z2.set_meta(torch.ones([2, 2], dtype=torch.int32, device='npu'))            
             output = ge.NetOutput([z1, z2])
 
             set_graph_output_dtypes(graph, [DataType.DT_INT32, DataType.DT_INT32])

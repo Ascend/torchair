@@ -44,7 +44,7 @@ class CompiledGraphSummary::SummaryData {
     return netoutput_shapes_;
   }
   std::vector<ge::DataType> GetOutputDtypes() {
-    return {};
+    return output_dtypes_;
   }
 
   bool is_static_{false};
@@ -164,7 +164,7 @@ class GraphSpecManager {
         for (size_t i = 0u; i < input_size; ++i) {
           node.GetInputDesc(i, desc);
           spec.output_dtypes_.push_back(desc.GetDataType());
-          spec.netoutput_shapes_.emplace_back(ge::Shape({2, 2}));
+          spec.netoutput_shapes_.emplace_back(desc.GetShape());
         }
       }
     }
@@ -187,7 +187,7 @@ class GraphSpecManager {
   CompiledGraphSummary::SummaryData &Get(uint32_t id) {
     std::lock_guard<std::mutex> lock(mutex_);
     return specs_[id];
-  }
+  }  
 
   std::mutex mutex_;
   std::map<uint32_t, CompiledGraphSummary::SummaryData> specs_;
@@ -227,7 +227,7 @@ Status Session::RunGraph(uint32_t id, const std::vector<ge::Tensor> &inputs, std
     ge::Tensor output;
     ge::TensorDesc desc;
     desc.SetDataType(spec.output_dtypes_[i]);
-    desc.SetShape(spec.netoutput_shapes_[i]);
+    desc.SetShape(ge::Shape({2, 2}));
     output.SetTensorDesc(desc);
 
     static std::vector<float> data;

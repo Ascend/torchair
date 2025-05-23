@@ -89,21 +89,22 @@ tng::ExecutorType ParseExecutorType(int64_t executor_type) {
 }
 
 tng::Status CheckNetOutputShape(const std::vector<std::vector<int64_t>> &output_shapes, std::vector<ge::Shape> &output_ge_shapes) {
-  TNG_LOG(DEBUG) << "FX output shapes is : " << tng::DebugString(output_shapes);
-  TNG_LOG(DEBUG) << "Ascend ge output shapes is : " << tng::DebugString(output_ge_shapes);
-  if (output_shapes.empty() || output_ge_shapes.empty()) {
-    TNG_LOG(WARNING) << "FX output_shapes or ge output_shapes is empty, can not check output shape";
-    return tng::Status::Success();
-  }
+  TNG_LOG(DEBUG) << "FX graph NetOutput shapes is : " << tng::DebugString(output_shapes);
+  TNG_LOG(DEBUG) << "--------";
+  TNG_LOG(DEBUG) << "Ascend GE graph NetOutput shapes is : " << tng::DebugString(output_ge_shapes);
   if (output_shapes.size() != output_ge_shapes.size()) {
-    return tng::Status::Error("The number of Ascend net output: [%d] is not equal to FX net outputs: [%d]", output_ge_shapes.size(), output_shapes.size());
+    return tng::Status::Error("The number of Ascend GE graph NetOutput: %d is not equal to FX graph NetOutput: %d. "
+        "FX graph NetOutput shapes is : [%s], Ascend GE graph NetOutput shapes is : [%s]", output_ge_shapes.size(), output_shapes.size(),
+        tng::DebugString(output_shapes).c_str(), tng::DebugString(output_ge_shapes).c_str());
   }
   for (size_t i = 0u; i < output_shapes.size(); ++i) {
     const auto& out_dim = output_shapes[i];
     const auto& out_ge_dim = output_ge_shapes[i].GetDims();
     if (out_dim.size() != out_ge_dim.size()) {
-      TNG_LOG(ERROR) << "The dim size of Ascend net output: ["<< out_ge_dim <<"] is not equal to FX net output: ["<< out_dim <<"]";
-      return tng::Status::Error("The dim size of Ascend net output: [%d] is not equal to FX net output: [%d]", out_ge_dim.size(), out_dim.size());
+      TNG_LOG(ERROR) << "The dim size of Ascend GE graph NetOutput: ["<< out_ge_dim <<"] is not equal to FX graph NetOutput: ["<< out_dim <<"]";
+      return tng::Status::Error("The dim size of Ascend GE graph NetOutput: %s is not equal to FX graph NetOutput: %s. "
+          "FX graph NetOutput shapes is : %s, Ascend GE graph NetOutput shapes is : %s", tng::DebugString(out_ge_dim).c_str(), tng::DebugString(out_dim).c_str(),
+          tng::DebugString(output_shapes).c_str(), tng::DebugString(output_ge_shapes).c_str());
     }
 
     for (size_t j = 0u; j < out_dim.size(); ++j) {
@@ -112,8 +113,10 @@ tng::Status CheckNetOutputShape(const std::vector<std::vector<int64_t>> &output_
         continue;
       }
       if (out_dim[j] != out_ge_dim[j]) {
-        TNG_LOG(ERROR) << "The dim of Ascend net output: ["<< out_ge_dim <<"] is not equal to FX net output: ["<< out_dim <<"]";
-        return tng::Status::Error("The dim of Ascend net output: [%d] is not equal to FX net output: [%d]", out_ge_dim[j], out_dim[j]);
+        TNG_LOG(ERROR) << "The dim of Ascend GE graph NetOutput: ["<< out_ge_dim <<"] is not equal to FX graph NetOutput: ["<< out_dim <<"]";
+        return tng::Status::Error("The dim of Ascend GE graph NetOutput: %s is not equal to FX graph NetOutput: %s. "
+            "FX graph NetOutput shapes is : %s, Ascend GE graph NetOutput shapes is : %s", tng::DebugString(out_ge_dim).c_str(), tng::DebugString(out_dim).c_str(),
+            tng::DebugString(output_shapes).c_str(), tng::DebugString(output_ge_shapes).c_str());
       }
     }
   }
@@ -121,19 +124,18 @@ tng::Status CheckNetOutputShape(const std::vector<std::vector<int64_t>> &output_
 }
 
 tng::Status CheckNetOutDtypes(const std::vector<ge::DataType> &output_dtypes, const std::vector<ge::DataType> &output_ge_dtypes) {
-  TNG_LOG(DEBUG) << "FX output dtypes is : " << tng::DebugString(output_dtypes);
-  TNG_LOG(DEBUG) << "Ascend ge output dtypes is : " << tng::DebugString(output_ge_dtypes);
-  if (output_dtypes.empty() || output_ge_dtypes.empty()) {
-    TNG_LOG(WARNING) << "FX output dtypes or Ascend output dtypes is empty, can not check dtype";
-    return tng::Status::Success();
-  }
+  TNG_LOG(DEBUG) << "FX graph NetOutput dtypes is : " << tng::DebugString(output_dtypes);
+  TNG_LOG(DEBUG) << "Ascend GE graph NetOutput dtypes is : " << tng::DebugString(output_ge_dtypes);
   if (output_dtypes.size() != output_ge_dtypes.size()) {
-    return tng::Status::Error("The size of Ascend net output dtype: [%d] is not equal to FX net output dtype: [%d]", output_ge_dtypes.size(), output_dtypes.size());
+    return tng::Status::Error("The size of Ascend GE graph NetOutput dtypes: %d is not equal to FX graph NetOutput dtypes: %d. "
+        "FX graph NetOutput dtypes is : %s, Ascend GE graph NetOutput dtypes is : %s", output_ge_dtypes.size(), output_dtypes.size(),
+        tng::DebugString(output_dtypes).c_str(), tng::DebugString(output_ge_dtypes).c_str());
   }
   for (size_t i = 0u; i < output_dtypes.size(); ++i) {
     if (output_dtypes[i] != output_ge_dtypes[i]) {
-      return tng::Status::Error("The dtype in num[%d] net output of Ascend output: [%d] is not equal to fx output: [%d] ", i,
-                                output_ge_dtypes[i], output_dtypes[i]);
+      return tng::Status::Error("The dtype in num[%d] net output of Ascend output: [%s] is not equal to FX graph NetOutput: [%s]. "
+          "FX graph NetOutput dtypes is : %s, Ascend GE graph NetOutput dtypes is : %s", i, tng::DebugString(output_ge_dtypes[i]).c_str(),
+          tng::DebugString(output_dtypes[i]).c_str(), tng::DebugString(output_dtypes).c_str(), tng::DebugString(output_ge_dtypes).c_str());
     }
   }
   return tng::Status::Success();
