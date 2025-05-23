@@ -149,8 +149,8 @@ std::string DebugString(const GraphData &graph_data) {
     ss << DebugString(*graph_data.summary) << std::endl;
   }
   ss << "input placements: " << DebugString(graph_data.input_placements) << std::endl;
-  ss << "inputs shape: " << DebugString(graph_data.inputs_shape) << std::endl;
-  ss << "outputs shape: " << DebugString(graph_data.outputs_shape) << std::endl;
+  ss << "hint inputs shape: " << DebugString(graph_data.inputs_shape) << std::endl;
+  ss << "hint outputs shape: " << DebugString(graph_data.outputs_shape) << std::endl;
   ss << "output dtypes :" << DebugString(graph_data.output_dtypes) << std::endl;
   ss << "executor type :" << ((graph_data.executor_type == tng::ExecutorType::NPU) ? "NPU" : "DEFAULT");
   return ss.str();

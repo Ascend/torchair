@@ -121,6 +121,10 @@ inline uint64_t GetTimestampForEventLog() {
   auto total_use_time = tv.tv_usec + tv.tv_sec * 1000000; // 1000000: seconds to microseconds
   return static_cast<uint64_t>(total_use_time);
 }
+
+inline bool LogLevelEnable(const tng::LogLevel level) {
+    return tng::LogLevelEnable(static_cast<int32_t>(level), static_cast<int32_t>(tng::Logger::kLogLevel));
+}
 }  // namespace tng
 
 #endif  // TORCH_AIR_TORCH_AIR_CONCRETE_GRAPH_LOGGER_H_

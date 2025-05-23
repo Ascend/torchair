@@ -19,12 +19,12 @@
 char *CreateMessage(const char *format, va_list arg);
 
 namespace {
-tng::Status GetAclCompileopt(aclCompileOpt opt, std::string& val) {
+tng::Status GetAclCompileopt(aclCompileOpt opt, std::string& val, std::string optName) {
   auto opt_size = aclGetCompileoptSize(opt);
   char value[opt_size];
   auto acl_ret = aclGetCompileopt(opt, value, opt_size);
   if (acl_ret == ACL_ERROR_API_NOT_SUPPORT) {
-    TNG_LOG(WARNING) << "ACL get compile opt, " << opt << " unsupport, opt size " << opt_size;
+    TNG_LOG(WARNING) << "ACL get compile opt, " << optName << " unsupport, opt size " << opt_size;
     return tng::Status::Success();
   }
   TNG_ASSERT(acl_ret == ACL_SUCCESS, "ACL get compile opt failed, return %d", acl_ret);
@@ -42,7 +42,7 @@ tng::Status NormalizeCompileOptions(const std::map<ge::AscendString, ge::AscendS
   (void)normalized_options.insert(std::make_pair(ge::MEMORY_OPTIMIZATION_POLICY.c_str(), "MemoryPriority"));
 
   std::string val = "";
-  TNG_RETURN_IF_ERROR(GetAclCompileopt(ACL_OP_DEBUG_OPTION, val));
+  TNG_RETURN_IF_ERROR(GetAclCompileopt(ACL_OP_DEBUG_OPTION, val, "ACL_OP_DEBUG_OPTION"));
   if (!val.empty()) {
     (void)normalized_options.insert(std::make_pair("op_debug_option", val.c_str()));
   }

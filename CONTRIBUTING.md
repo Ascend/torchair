@@ -457,4 +457,3 @@ print(graph_result)
   **提醒：**
     确认替换后的算子是否具有完备的meta infershape函数。
     > 替换算子本身的meta infershape是否完整，其中若只有C++ TORCH_META_FUNC宏注册的infershape可能无法在dynamic=True时工作，需要额外注册python的infershape函数。
-    > 替换算子的backward算子的infershape是否完整，确保在训练场景能够正常工作。

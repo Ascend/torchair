@@ -156,7 +156,7 @@ Status Session::CompileGraph(uint32_t id, std::shared_ptr<ge::CompiledGraphSumma
     auto start = std::chrono::high_resolution_clock::now();
     TNG_ASSERT_GE_OK(global_ge_session->CompileGraph(id));
     auto end = std::chrono::high_resolution_clock::now();
-    auto warning_msg = ge::GEGetWarningMsgV2().GetString();
+    auto warning_msg = tng::LogLevelEnable(tng::LogLevel::WARNING) ? ge::GEGetWarningMsgV2().GetString() : nullptr;
     if (warning_msg != nullptr && strlen(warning_msg) != 0) {
       TNG_LOG(WARNING) << "During Compile Graph, a warn message occurred. Please refer to the details：" << warning_msg;
     }
