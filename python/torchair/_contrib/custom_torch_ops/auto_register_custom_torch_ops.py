@@ -69,7 +69,7 @@ def npu_moe_gating_top_k(x, k, *, bias=None, k_group=1, group_count=1, group_sel
     y2_dim_list = [x.size(0), x.size(1)]
     return (x.new_empty(tuple(y_dim_list), dtype=x.dtype),
             x.new_empty(tuple(expert_idx_dim_list), dtype=torch.int32),
-            x.new_empty(tuple(y_dim_list), dtype=torch.float32))
+            x.new_empty(tuple(y2_dim_list), dtype=torch.float32))
 
 
 @impl(m, "npu_kv_rmsnorm_rope_cache", "Meta")
