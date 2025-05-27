@@ -509,8 +509,8 @@ REG_OP(TransQuantParamV2)
 *  | INT8 | INT8 | null         | UINT64     | null/FLOAT32  | null/INT32                  | INT8     | \n
 * Among them: \n
 * The dimension m = batch * topk, and the value range is [1, 16 * 1024 * 8]. The functionality is not guaranteed if it exceeds this range. \n
-* k only supports the value of 2048. The functionality is not guaranteed if it exceeds this range. \n
-* n only supports the value of 7168. The functionality is not guaranteed if it exceeds this range. \n
+* k supports the values include of 256、512、1024、1408、2048. The functionality is not guaranteed if it exceeds this range. \n
+* n supports the values include of 2048、7168、7680. The functionality is not guaranteed if it exceeds this range. \n
 * The value range of e is [1, 256]. The functionality is not guaranteed if it exceeds this range. \n
 * The value range of bs/p is [1, 2 * 1024], and p = [8, 16, 32, 48, 64, 96, 128, 144, 288]. \n
 * The value range of bs is [1, 16 * 1024]. The functionality is not guaranteed if it exceeds this range. \n
