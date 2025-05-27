@@ -86,22 +86,36 @@ npu_define_lib.impl(op_all_to_all_single_npu, npu_all_to_all_single_npu, 'Privat
 
 @register_fx_node_ge_converter(torch.ops.npu_define.all_to_all_single_npu.default)
 def convert_all_to_all_single_npu(
-    input_tensor: Tensor,
-    send_counts: Union[Tensor, List[int]],
-    send_displacements: Union[Tensor, List[int]],
-    recv_counts: Union[Tensor, List[int]],
-    recv_displacements: Union[Tensor, List[int]],
-    tag: str,
-    rank_list: List,
-    group_size: int,
-    out: Tensor = None,
-    meta_outputs: Any = None,
+        input_tensor: Tensor,
+        send_counts: Union[Tensor, List[int]],
+        send_displacements: Union[Tensor, List[int]],
+        recv_counts: Union[Tensor, List[int]],
+        recv_displacements: Union[Tensor, List[int]],
+        tag: str,
+        rank_list: List,
+        group_size: int,
+        out: Tensor = None,
+        meta_outputs: Any = None,
 ):
     """NB: npu_define::all_to_all_single_npu(Tensor input, SymInt[] send_counts, SymInt[] send_displacements, \
         SymInt[] recv_counts, SymInt[] recv_displacements, str tag, int[] ranks, int group_size) -> Tensor"""
-    send_counts, send_displacements, recv_counts, recv_displacements = dtype_promote(send_counts, 
-        send_displacements, recv_counts, recv_displacements, target_dtype=DataType.DT_INT64)
     group_name = get_group_name_and_record(tag, rank_list, group_size)
+
+    try:
+        from torch_npu.npu.utils import _is_gte_cann_version
+        is_supported_version = _is_gte_cann_version("8.1.RC2", module="CANN")
+    except (ImportError, RuntimeError):
+        is_supported_version = False
+    check_all_to_all_supported = isinstance(send_counts, List) and isinstance(recv_counts, List) and len(
+        set(send_counts + recv_counts)) == 1
+    if is_supported_version and check_all_to_all_supported:
+        return ge.HcomAllToAll(input_tensor, group=group_name)
+
+    send_counts, send_displacements, recv_counts, recv_displacements = dtype_promote(send_counts,
+                                                                                     send_displacements,
+                                                                                     recv_counts,
+                                                                                     recv_displacements,
+                                                                                     target_dtype=DataType.DT_INT64)
     op = ge.HcomAllToAllV(send_data=input_tensor, send_counts=send_counts, send_displacements=send_displacements,
                           recv_counts=recv_counts, recv_displacements=recv_displacements, group=group_name)
     dont_prune_me(op)
