@@ -410,17 +410,20 @@ def _update_internal_format_from_inputs(graph: GraphDef, runtime_inputs):
             origin_format = Format.FORMAT_NCDHW.value
 
         if origin_format is not None:
-            input_index_mapping_graph_op[idx].attr["_enable_storage_format_spread"].b = False
-            input_index_mapping_graph_op[idx].output_desc[0].shape.dim[:] = []
-            input_index_mapping_graph_op[idx].output_desc[0].attr["origin_shape"].list.val_type = 2
-            input_index_mapping_graph_op[idx].output_desc[0].attr["origin_shape"].list.i.extend(origin_shape)
-            input_index_mapping_graph_op[idx].output_desc[0].attr["origin_shape_initialized"].b = True
-            input_index_mapping_graph_op[idx].output_desc[0].attr["origin_format_is_set"].b = True
             input_index_mapping_graph_op[idx].output_desc[0].attr["origin_format_for_int"].i = origin_format
 
-            input_index_mapping_graph_op[idx].input_desc.pop(0)
-            input_index_mapping_graph_op[idx].input_desc.add().CopyFrom(
-                input_index_mapping_graph_op[idx].output_desc[0])
+            from torch_npu.npu.utils import _is_gte_cann_version
+            if _is_gte_cann_version("8.1.RC2"):
+                input_index_mapping_graph_op[idx].attr["_enable_storage_format_spread"].b = False
+                input_index_mapping_graph_op[idx].output_desc[0].shape.dim[:] = []
+                input_index_mapping_graph_op[idx].output_desc[0].attr["origin_shape"].list.val_type = 2
+                input_index_mapping_graph_op[idx].output_desc[0].attr["origin_shape"].list.i.extend(origin_shape)
+                input_index_mapping_graph_op[idx].output_desc[0].attr["origin_shape_initialized"].b = True
+                input_index_mapping_graph_op[idx].output_desc[0].attr["origin_format_is_set"].b = True
+
+                input_index_mapping_graph_op[idx].input_desc.pop(0)
+                input_index_mapping_graph_op[idx].input_desc.add().CopyFrom(
+                    input_index_mapping_graph_op[idx].output_desc[0])
 
         logger.debug(f'update the Format of output TensorDesc for input_{idx} to Format {Format(npu_format).name}.')
 
