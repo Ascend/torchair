@@ -48,7 +48,7 @@ Status StaticNpuGraphExecutor::AssembleInputsInner(const std::vector<const at::T
     TNG_ASSERT(CheckPlacement(graph_data_->input_placements[i], *inputs[i]),
                "Input %zu placement is incompatible with expected %d.", i,
                static_cast<int>(graph_data_->input_placements[i]));
-    if ((graph_data_->input_placements[i] == Placement::HOST) && !CheckCANNVersion81RC2()) {
+    if ((graph_data_->input_placements[i] == Placement::HOST) && !IsSupportHostInput()) {
       auto host_input_holder = at::empty((*inputs[i]).sizes(), (*inputs[i]).options().device(at::kPrivateUse1));
       size_t dst_size = static_cast<size_t>(host_input_holder.numel() * host_input_holder.element_size());
       size_t src_size = static_cast<size_t>((*inputs[i]).numel() * (*inputs[i]).element_size());
@@ -79,7 +79,7 @@ Status StaticNpuGraphExecutor::UpdateInputsInner(const std::vector<const at::Ten
     TNG_ASSERT(CheckPlacement(graph_data_->input_placements[i], *inputs[i]),
                "Input %zu placement is incompatible with expected %d.", i,
                static_cast<int>(graph_data_->input_placements[i]));
-    if ((graph_data_->input_placements[i] == Placement::HOST) && !CheckCANNVersion81RC2()) {
+    if ((graph_data_->input_placements[i] == Placement::HOST) && !IsSupportHostInput()) {
       if (host_input_holders_[i].second.first > 0) {
         TNG_RETURN_IF_ERROR(H2DMemcpy(host_input_holders_[i].first.data_ptr(), host_input_holders_[i].second.second,
                                       (*inputs[i]).data_ptr(), host_input_holders_[i].second.first, first_stream_));

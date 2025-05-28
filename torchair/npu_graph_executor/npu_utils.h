@@ -58,6 +58,8 @@ Status UpdateTensorData(ge::Tensor &ge_tensor, void *addr, const size_t data_siz
 Status UpdateTensorData(gert::Tensor &ge_tensor, void *addr, const size_t data_size);
 
 bool CheckCANNVersion81RC2();
+
+bool IsSupportHostInput();
 }  // namespace tng
 
 #endif  // TORCH_AIR_TORCH_AIR_NPU_GRAPH_EXECUTOR_NPU_UTILS_H_

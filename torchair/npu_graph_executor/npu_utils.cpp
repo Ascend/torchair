@@ -211,6 +211,9 @@ Status AssembleFrozenOption(const std::vector <bool> &frozen_input_flag_list,
 
 Status AssembleHostInputOption(const std::vector<const at::Tensor*> &torch_inputs,
                                std::map<ge::AscendString, ge::AscendString> &load_options) {
+    if (!IsSupportHostInput()) {
+        return Status::Success();
+    }
     std::stringstream ss;
     for (size_t i = 0u; i < torch_inputs.size(); ++i) {
         if (!torch_inputs[i]->is_cpu()) {
@@ -353,6 +356,11 @@ bool CheckCANNVersion81RC2() {
     return CheckCANNVersion("8.1.RC2");
   }();
   return equalOrGreater;
+}
+
+bool IsSupportHostInput() {
+    // check static shape graph supports channel-associated copy of host input
+    return CheckCANNVersion81RC2();
 }
 
 }  // namespace tng
