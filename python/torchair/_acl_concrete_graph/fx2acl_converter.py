@@ -20,12 +20,13 @@ from torchair.configs.compiler_config import CompilerConfig
 from torchair.core._concrete_graph import ConcreteGraphBase, ValuePack
 from torchair.core.utils import logger
 from torchair._acl_concrete_graph.acl_graph import have_sym_in_list
+from torchair._utils.path_manager import PathManager
 
 aten = torch.ops.aten
 
 
 class AclConcreteGraph(ConcreteGraphBase):
-    def __init__(self, config: CompilerConfig, pool=None, stream=None, capture_error_mode: str = "global",
+    def __init__(self, config: CompilerConfig, name="graph", pool=None, stream=None, capture_error_mode: str = "global",
                  num_warmup_iters=0):
         try:
             import torch_npu
@@ -35,6 +36,7 @@ class AclConcreteGraph(ConcreteGraphBase):
                 "it is necessary to use torch_npu.npu.NPUGraph(), so importing torch_npu is essential.") from e
 
         self._config = config
+        self._graph_name = name
         self._npugraph = torch_npu.npu.NPUGraph()
         self._mempool = torch_npu.npu.graph_pool_handle() if pool is None else pool
         self._stream = stream
@@ -126,7 +128,17 @@ class AclConcreteGraph(ConcreteGraphBase):
             pass
 
     def dump(self, path: str):
-        raise NotImplementedError("Graph dump for acl graph is not implemented!")
+        if path is None:
+            raise RuntimeError("Path is none, please report a bug.")
+        if not path.endswith('.py'):
+            raise NotImplementedError(
+                f"Graph dump for aclGraph only support 'py' type, but got: {self.config.debug.graph_dump.type.value}."
+                f"Please check compile config setting: config.debug.graph_dump.type")
+        else:
+            PathManager.check_path_writeable_and_safety(path)
+            with open(path, "w+") as f:
+                f.write(self.fx_graph.print_readable(False))
+
 
     def codegen(self, extend_config, enable_cache=False):
         raise NotImplementedError("Codegen for acl graph is not implemented!")
@@ -155,6 +167,9 @@ class AclConcreteGraph(ConcreteGraphBase):
         self._mutated_user_inputs = _find_mutated_user_inputs(self.fx_graph)
         logger.debug('find mutated user inputs: %s', self._mutated_user_inputs)
         logger.debug('after graph optimization, graph is %s', self.fx_graph.graph)
+
+        if self.config.debug.graph_dump.enabled:
+            self.dump(self.config.debug.graph_dump.full_path(f"dynamo_optimized_{self._graph_name}"))
 
     def compile(self, *args: Any, **kwargs: Any):
         if self._captured:

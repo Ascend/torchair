@@ -1,5 +1,6 @@
 import contextlib
 import logging
+import os
 import sys
 import types
 import unittest
@@ -239,7 +240,6 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
-        # config.debug.graph_dump.type = "pbtxt"
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
         model = torch.compile(Model(), backend=aclgraph_backend, dynamic=False)
@@ -333,7 +333,6 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
-        # config.debug.graph_dump.type = "pbtxt"
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
         model = torch.compile(Model(), backend=aclgraph_backend, dynamic=True)
@@ -384,7 +383,10 @@ class AclGraphSt(unittest.TestCase):
 
         model = torch.compile(Model(), backend=aclgraph_backend, dynamic=False)
         x = torch.randn([3, 2])
-        with self.assertRaisesRegex(RuntimeError, r'for acl graph is not implemented!'):
+        with self.assertRaisesRegex(
+                RuntimeError,
+                r"Graph dump for aclGraph only support 'py' type, but got: pbtxt"
+        ):
             model(x)
 
     def test_aclgraph_capture_and_replay_with_multi_stream_external_event(self):
@@ -852,6 +854,45 @@ class AclGraphSt(unittest.TestCase):
             any("call_function[target=torch.ops.aten.add_.Tensor]" in log for log in cm.output),
             f"Expected no DEBUG log 'call_function[target=torch.ops.aten.add_.Tensor]' in logs: {cm.output}"
         )
+
+    def test_graph_dump_with_py(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                return x + 1
+
+        def get_dumped_py_file_list(dir_path, file_extension='.py'):
+            return [i for i in os.listdir(dir_path) if i.startswith('dynamo_o') and i.endswith(f'{file_extension}')]
+
+        for file_name in get_dumped_py_file_list('./'):
+            os.remove(os.path.join('./', file_name))
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.graph_dump.type = "py"
+        npu_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = Model()
+        model = torch.compile(model, backend=npu_backend)
+        x = torch.randn(2, 2)
+        model(x)
+
+        dumped_py_file_list = get_dumped_py_file_list('./')
+        dumped_py_file_list.sort(
+            key=lambda file_name: os.path.getmtime(os.path.join('./', file_name)))
+        assert dumped_py_file_list.__len__() > 0
+        file_name = os.path.join('./', dumped_py_file_list[-1])
+
+        with open(file_name, 'r') as f:
+            src = f.read()
+
+        self.assertIn("torch.ops.aten.add.Tensor(arg0_1, 1)", src)
+        self.assertIn("code: return x + 1", src)
+
+        for file_name in get_dumped_py_file_list('./'):
+            os.remove(os.path.join('./', file_name))
 
 if __name__ == '__main__':
     unittest.main()
