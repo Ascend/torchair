@@ -14,6 +14,7 @@ class _GEConfig(NpuBaseConfig):
         self.oo_dead_code_elimination = OptionValue(None, [True, False])
         self.export_compile_stat = OptionValue("2", ["0", "1", "2"])
         self.aicore_num = OptionValue(None, None)
+        self.optimization_switch = OptionValue(None, None)
 
         super(_GEConfig, self).__init__()
 
@@ -34,5 +35,8 @@ class _GEConfig(NpuBaseConfig):
         if self.oo_level.value == "O1":
             local_option["ge.topoSortingMode"] = sorting_strategy_dict["StableRDFS"]
         global_option["ge.exportCompileStat"] = self.export_compile_stat.value
+        if self.optimization_switch.value is not None:
+            local_option["ge.optimizationSwitch"] = self.optimization_switch.value
 
         return local_option, global_option
+
