@@ -308,3 +308,41 @@ def convert_npu_npu_mla_prolog(
         dequant_scale_w_dkv_kr=dequant_scale_w_dkv_kr, quant_scale_ckv=quant_scale_ckv,
         quant_scale_ckr=quant_scale_ckr, smooth_scales_cq=smooth_scales_cq,
         rmsnorm_epsilon_cq=rmsnorm_epsilon_cq, rmsnorm_epsilon_ckv=rmsnorm_epsilon_ckv, cache_mode=cache_mode)
+
+
+@register_fx_node_ge_converter(torch.ops.npu.npu_mla_prolog_v2.default)
+def convert_npu_npu_mla_prolog_v2(
+    token_x: Tensor,
+    weight_dq: Tensor,
+    weight_uq_qr: Tensor,
+    weight_uk: Tensor,
+    weight_dkv_kr: Tensor,
+    rmsnorm_gamma_cq: Tensor,
+    rmsnorm_gamma_ckv: Tensor,
+    rope_sin: Tensor,
+    rope_cos: Tensor,
+    cache_index: Tensor,
+    kv_cache: Tensor,
+    kr_cache: Tensor,
+    *,
+    dequant_scale_x: Optional[Tensor] = None,
+    dequant_scale_w_dq: Optional[Tensor] = None,
+    dequant_scale_w_uq_qr: Optional[Tensor] = None,
+    dequant_scale_w_dkv_kr: Optional[Tensor] = None,
+    quant_scale_ckv: Optional[Tensor] = None,
+    quant_scale_ckr: Optional[Tensor] = None,
+    smooth_scales_cq: Optional[Tensor] = None,
+    rmsnorm_epsilon_cq: float = 1e-5,
+    rmsnorm_epsilon_ckv: float = 1e-5,
+    cache_mode: str = "PA_BSND",
+    meta_outputs: TensorSpec = None
+):
+
+    '''NB: npu_mla_prolog_v2(Tensor token_x, Tensor weight_dq, Tensor weight_uq_qr, Tensor weight_uk, Tensor weight_dkv_kr, Tensor rmsnorm_gamma_cq, Tensor rmsnorm_gamma_ckv, Tensor rope_sin, Tensor rope_cos, Tensor cache_index, Tensor kv_cache, Tensor kr_cache, *, Tensor? dequant_scale_x=None, Tensor? dequant_scale_w_dq=None, Tensor? dequant_scale_w_uq_qr=None, Tensor? dequant_scale_w_dkv_kr=None, Tensor? quant_scale_ckv=None, Tensor? quant_scale_ckr=None, Tensor? smooth_scales_cq=None, float rmsnorm_epsilon_cq=1e-05, float rmsnorm_epsilon_ckv=1e-05, str cache_mode="PA_BSND") ->(Tensor, Tensor, Tensor, Tensor, Tensor)'''
+
+    return ge.MlaPrologV2(token_x, weight_dq, weight_uq_qr, weight_uk, weight_dkv_kr, rmsnorm_gamma_cq,
+        rmsnorm_gamma_ckv, rope_sin, rope_cos, cache_index, kv_cache, kr_cache, dequant_scale_x=dequant_scale_x,
+        dequant_scale_w_dq=dequant_scale_w_dq, dequant_scale_w_uq_qr=dequant_scale_w_uq_qr,
+        dequant_scale_w_dkv_kr=dequant_scale_w_dkv_kr, quant_scale_ckv=quant_scale_ckv,
+        quant_scale_ckr=quant_scale_ckr, smooth_scales_cq=smooth_scales_cq,
+        rmsnorm_epsilon_cq=rmsnorm_epsilon_cq, rmsnorm_epsilon_ckv=rmsnorm_epsilon_ckv, cache_mode=cache_mode)
