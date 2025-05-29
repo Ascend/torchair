@@ -424,6 +424,7 @@ def _update_internal_format_from_inputs(graph: GraphDef, runtime_inputs):
                 input_index_mapping_graph_op[idx].input_desc.pop(0)
                 input_index_mapping_graph_op[idx].input_desc.add().CopyFrom(
                     input_index_mapping_graph_op[idx].output_desc[0])
+                input_index_mapping_graph_op[idx].input_desc[0].name = 'x'
 
         logger.debug(f'update the Format of output TensorDesc for input_{idx} to Format {Format(npu_format).name}.')
 
