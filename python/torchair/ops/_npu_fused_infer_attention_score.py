@@ -1,0 +1,229 @@
+from typing import (
+    Any, Callable, ContextManager, Iterator, List, Literal, NamedTuple, Optional, Sequence, Tuple, TypeVar,
+    Union, overload,
+)
+
+import torch
+from torchair._ge_concrete_graph import ge_apis as ge
+from torchair._ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
+from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
+from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, \
+    BOOL, Support
+
+lib = torch.library.Library("air", "FRAGMENT")
+lib.define(
+    """
+    npu_fused_infer_attention_score(Tensor query, Tensor key, Tensor value, *, Tensor? pse_shift=None, \
+    Tensor? atten_mask=None, Tensor? actual_seq_lengths=None, Tensor? actual_seq_lengths_kv=None, \
+    Tensor? dequant_scale1=None, Tensor? quant_scale1=None, Tensor? dequant_scale2=None, Tensor? quant_scale2=None, \
+    Tensor? quant_offset2=None, Tensor? antiquant_scale=None, Tensor? antiquant_offset=None, \
+    Tensor? key_antiquant_scale=None, Tensor? key_antiquant_offset=None, Tensor? value_antiquant_scale=None, \
+    Tensor? value_antiquant_offset=None, Tensor? block_table=None, Tensor? query_padding_size=None, \
+    Tensor? kv_padding_size=None, Tensor? key_shared_prefix=None, Tensor? value_shared_prefix=None, \
+    Tensor? actual_shared_prefix_len=None, Tensor? query_rope=None, Tensor? key_rope=None, \
+    Tensor? key_rope_antiquant_scale=None, int num_heads=1, float scale=1.0, int pre_tokens=2147483647, \
+    int next_tokens=2147483647, str input_layout="BSH", int num_key_value_heads=0, int sparse_mode=0, \
+    int inner_precise=0, int block_size=0, int antiquant_mode=0, int key_antiquant_mode=0, int value_antiquant_mode=0, \
+    bool softmax_lse_flag=False) -> (Tensor, Tensor)
+    """
+)
+
+
+def _npu_fused_infer_attention_score(*args, **kwargs):
+    return torch.ops.air.npu_fused_infer_attention_score(*args, **kwargs)
+
+
+def npu_fused_infer_attention_score_impl(*args, **kwargs):
+    raise NotImplementedError("eager mode of torchair.ops.npu_fused_infer_attention_score is not supported, " +
+                              "use graph mode or torch_npu.npu_fused_infer_attention_score!")
+
+
+torch.library.impl(lib, "npu_fused_infer_attention_score", "CPU")(npu_fused_infer_attention_score_impl)
+torch.library.impl(lib, "npu_fused_infer_attention_score", "PrivateUse1")(npu_fused_infer_attention_score_impl)
+
+
+@declare_supported(
+    [
+        # 支持输入q、k、v，BSH三维格式, q:b=1, s=2048, h=40*128;k/v:b=1, s=2048, h=40*128;
+        Support(F16(1, 2048, 40 * 128), F16(1, 2048, 40 * 128), F16(1, 2048, 40 * 128),
+            num_heads=40, input_layout="BSH"),
+        # 支持输入q、k、v，BNSD四维格式
+        Support(F16(1, 40, 2048, 128), F16(1, 40, 2048, 128), F16(1, 40, 2048, 128),
+            num_heads=40, input_layout="BNSD"),
+        # 支持设置scale_value
+        Support(F16(1, 40, 2048, 128), F16(1, 40, 2048, 128), F16(1, 40, 2048, 128),
+            input_layout="BNSD", num_heads=40, scale=0.0884),
+    ]
+)
+@register_fx_node_ge_converter(torch.ops.air.npu_fused_infer_attention_score.default)
+def convert_npu_npu_fused_infer_attention_score_tensor(
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    *,
+    pse_shift: Optional[Tensor] = None,
+    atten_mask: Optional[Tensor] = None,
+    actual_seq_lengths: Optional[Tensor] = None,
+    actual_seq_lengths_kv: Optional[Tensor] = None,
+    dequant_scale1: Optional[Tensor] = None,
+    quant_scale1: Optional[Tensor] = None,
+    dequant_scale2: Optional[Tensor] = None,
+    quant_scale2: Optional[Tensor] = None,
+    quant_offset2: Optional[Tensor] = None,
+    antiquant_scale: Optional[Tensor] = None,
+    antiquant_offset: Optional[Tensor] = None,
+    block_table: Optional[Tensor] = None,
+    query_padding_size: Optional[Tensor] = None,
+    kv_padding_size: Optional[Tensor] = None,
+    key_antiquant_scale: Optional[Tensor] = None,
+    key_antiquant_offset: Optional[Tensor] = None,
+    value_antiquant_scale: Optional[Tensor] = None,
+    value_antiquant_offset: Optional[Tensor] = None,
+    key_shared_prefix: Optional[Tensor] = None,
+    value_shared_prefix: Optional[Tensor] = None,
+    actual_shared_prefix_len: Optional[Tensor] = None,
+    query_rope: Optional[Tensor] = None,
+    key_rope: Optional[Tensor] = None,
+    key_rope_antiquant_scale: Optional[Tensor] = None,
+    num_heads: int = 1,
+    scale: float = 1.0,
+    pre_tokens: int = 2147483647,
+    next_tokens: int = 2147483647,
+    input_layout: str = "BSH",
+    num_key_value_heads: int = 0,
+    sparse_mode: int = 0,
+    inner_precise: int = 0,
+    block_size: int = 0,
+    antiquant_mode: int = 0,
+    softmax_lse_flag: bool = False,
+    key_antiquant_mode: int = 0,
+    value_antiquant_mode: int = 0,
+    meta_outputs: TensorSpec = None,
+):
+    # 禁止单独修改此函数，请同步修改actual seq length为symint list的接口
+    if input_layout == 'BSH':
+        const = ge.Const([1, 1, 8])
+    else:
+        const = ge.Const([1, 1, 1, 8])
+    if key is not None and key.dtype == DataType.DT_INT32:
+        shape = ge.Shape(key)
+        key_shape = ge.Mul(shape, const)
+        key = ge.Bitcast(key, type=DataType.DT_INT4)
+        key = ge.Reshape(key, key_shape)
+
+    if key_shared_prefix is not None and key_shared_prefix.dtype == DataType.DT_INT32:
+        shape = ge.Shape(key_shared_prefix)
+        key_shared_prefix_shape = ge.Mul(shape, const)
+        key_shared_prefix = ge.Bitcast(key_shared_prefix, type=DataType.DT_INT4)
+        key_shared_prefix = ge.Reshape(key_shared_prefix, key_shared_prefix_shape)
+ 
+    if value is not None and value.dtype == DataType.DT_INT32:
+        shape = ge.Shape(value)
+        value_shape = ge.Mul(shape, const)
+        value = ge.Bitcast(value, type=DataType.DT_INT4)
+        value = ge.Reshape(value, value_shape)
+ 
+    if value_shared_prefix is not None and value_shared_prefix.dtype == DataType.DT_INT32:
+        shape = ge.Shape(value_shared_prefix)
+        value_shared_prefix_shape = ge.Mul(shape, const)
+        value_shared_prefix = ge.Bitcast(value_shared_prefix, type=DataType.DT_INT4)
+        value_shared_prefix = ge.Reshape(value_shared_prefix, value_shared_prefix_shape)
+
+    key_list = [key]
+    value_list = [value]
+    return ge.FusedInferAttentionScore(query, key_list, value_list, pse_shift=pse_shift, atten_mask=atten_mask,
+        actual_seq_lengths=actual_seq_lengths, actual_seq_lengths_kv=actual_seq_lengths_kv,
+        dequant_scale1=dequant_scale1, quant_scale1=quant_scale1, dequant_scale2=dequant_scale2,
+        quant_scale2=quant_scale2, quant_offset2=quant_offset2, antiquant_scale=antiquant_scale,
+        antiquant_offset=antiquant_offset, block_table=block_table,
+        query_padding_size=query_padding_size, kv_padding_size=kv_padding_size,
+        key_antiquant_scale=key_antiquant_scale, key_antiquant_offset=key_antiquant_offset,
+        value_antiquant_scale=value_antiquant_scale, value_antiquant_offset=value_antiquant_offset,
+        key_shared_prefix=key_shared_prefix, value_shared_prefix=value_shared_prefix,
+        actual_shared_prefix_len=actual_shared_prefix_len, query_rope=query_rope, key_rope=key_rope,
+        key_rope_antiquant_scale=key_rope_antiquant_scale, num_heads=num_heads, scale=scale, pre_tokens=pre_tokens,
+        next_tokens=next_tokens, input_layout=input_layout, num_key_value_heads=num_key_value_heads,
+        sparse_mode=sparse_mode, inner_precise=inner_precise, block_size=block_size, antiquant_mode=antiquant_mode,
+        softmax_lse_flag=softmax_lse_flag, key_antiquant_mode=key_antiquant_mode,
+        value_antiquant_mode=value_antiquant_mode)
+
+
+@torch.library.impl(lib, "npu_fused_infer_attention_score", "Meta")
+def npu_fused_infer_attention_score_meta_impl(query, key, value, *, pse_shift=None, atten_mask=None, actual_seq_lengths=None, actual_seq_lengths_kv=None,
+                                    dequant_scale1=None, quant_scale1=None, dequant_scale2=None, quant_scale2=None,
+                                    quant_offset2=None, antiquant_scale=None, antiquant_offset=None, block_table=None,
+                                    query_padding_size=None, kv_padding_size=None, key_antiquant_scale=None, key_antiquant_offset=None,
+                                    value_antiquant_scale=None, value_antiquant_offset=None, key_shared_prefix=None, value_shared_prefix=None,
+                                    actual_shared_prefix_len=None, query_rope=None, key_rope=None, key_rope_antiquant_scale=None, num_heads=1, scale=1.0, pre_tokens=2147483647, next_tokens=2147483647,
+                                    input_layout="BSH", num_key_value_heads=0, sparse_mode=0, inner_precise=0, block_size=0, antiquant_mode=0,
+                                    softmax_lse_flag=False, key_antiquant_mode=0, value_antiquant_mode=0):
+    # 禁止单独修改此函数，请同步修改actual seq length为symint list的接口
+    tmp_out = torch.empty_like(query, dtype=query.dtype, device='meta')
+    B = 1
+    N = 1
+    S1 = 1
+    if input_layout == "BNSD_BSND":
+        tmp_out = torch.empty([query.size(0), query.size(2), query.size(1), query.size(3)], dtype=query.dtype, device='meta')
+        B = query.size(0)
+        N = query.size(1)
+        S1 = query.size(2)
+    if input_layout == "BNSD":
+        tmp_out = torch.empty([query.size(0), query.size(1), query.size(2), query.size(3)], dtype=query.dtype, device='meta')
+        B = query.size(0)
+        N = query.size(1)
+        S1 = query.size(2)
+    if input_layout == "BSH":
+        tmp_out = torch.empty([query.size(0), query.size(1), query.size(2)], dtype=query.dtype, device='meta')
+        B = query.size(0)
+        N = num_heads
+        S1 = query.size(1)
+    if input_layout == "BSND":
+        tmp_out = torch.empty([query.size(0), query.size(1), query.size(2), query.size(3)], dtype=query.dtype, device='meta')
+        B = query.size(0)
+        N = num_heads
+        S1 = query.size(1)
+    if input_layout == "NSD":
+        tmp_out = torch.empty([query.size(0), query.size(1), query.size(2)], dtype=query.dtype, device='meta')
+        B = 1
+        N = query.size(0)
+        S1 = query.size(1)
+    if input_layout == "TND":
+        if block_table is not None: # IFA目前TND只支持PA场景，PFA目前TND只支持非PA场景
+            tmp_out = torch.empty([query.size(0), query.size(1), query.size(2)], dtype=query.dtype, device='meta')
+        else:
+            tmp_out = torch.empty([query.size(0), query.size(1), value.size(2)], dtype=query.dtype, device='meta')           
+    if input_layout == "TND_NTD":
+        tmp_out = torch.empty([query.size(1), query.size(0), query.size(2)], dtype=query.dtype, device='meta')
+    if quant_scale2 is not None:
+        if (softmax_lse_flag == True):
+            if input_layout == "TND":
+                return (torch.empty_like(tmp_out, dtype=torch.int8), torch.empty([query.size(0), num_heads, 1], dtype=torch.float32, device='meta'))
+            elif input_layout == "TND_NTD":
+                return (torch.empty_like(tmp_out, dtype=torch.int8), torch.empty([num_heads, query.size(0), 1], dtype=torch.float32, device='meta'))
+            else:
+                return (torch.empty_like(tmp_out, dtype=torch.int8), torch.empty([B, N, S1, 1], dtype=torch.float32, device='meta'))
+        else:
+            return (torch.empty_like(tmp_out, dtype=torch.int8), torch.empty([1], dtype=torch.float32, device='meta'))
+    elif query.dtype == torch.int8:
+        if (softmax_lse_flag == True):
+            if input_layout == "TND":
+                return (torch.empty_like(tmp_out, dtype=torch.half), torch.empty([query.size(0), num_heads, 1], dtype=torch.float32, device='meta'))
+            elif input_layout == "TND_NTD":
+                return (torch.empty_like(tmp_out, dtype=torch.half), torch.empty([num_heads, query.size(0), 1], dtype=torch.float32, device='meta'))
+            else:
+                return (torch.empty_like(tmp_out, dtype=torch.half), torch.empty([B, N, S1, 1], dtype=torch.float32, \
+                                                                                 device='meta'))
+        else:
+            return (torch.empty_like(tmp_out, dtype=torch.half), torch.empty([1], dtype=torch.float32, device='meta'))
+    else:
+        if (softmax_lse_flag == True):
+            if input_layout == "TND":
+                return (torch.empty_like(tmp_out), torch.empty([query.size(0), num_heads, 1], dtype=torch.float32, \
+                                                               device='meta'))
+            elif input_layout == "TND_NTD":
+                return (torch.empty_like(tmp_out), torch.empty([num_heads, query.size(0), 1], dtype=torch.float32, \
+                                                               device='meta'))            
+            else:
+                return (torch.empty_like(tmp_out), torch.empty([B, N, S1, 1], dtype=torch.float32, device='meta'))
+        else:
+            return (torch.empty_like(tmp_out), torch.empty([1], dtype=torch.float32, device='meta'))
