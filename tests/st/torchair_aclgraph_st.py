@@ -681,8 +681,8 @@ class AclGraphSt(unittest.TestCase):
             model(x)
 
         self.assertTrue(
-            any("prossing reinplace_input_mutated_ops_pass" in log for log in cm.output),
-            f"Expected DEBUG log 'prossing reinplace_input_mutated_ops_pass' in logs: {cm.output}"
+            any("processing reinplace_input_mutated_ops_pass" in log for log in cm.output),
+            f"Expected DEBUG log 'processing reinplace_input_mutated_ops_pass' in logs: {cm.output}"
         )
 
     def test_aclgraph_keep_inference_input_mutations_true_disable_mutated_input_pass_with_slice(self):
@@ -710,8 +710,8 @@ class AclGraphSt(unittest.TestCase):
             model(x)
 
         self.assertTrue(
-            any("prossing reinplace_inplaceable_ops_pass" in log for log in cm.output),
-            f"Expected DEBUG log 'prossing reinplace_inplaceable_ops_pass' in logs: {cm.output}"
+            any("processing reinplace_inplaceable_ops_pass" in log for log in cm.output),
+            f"Expected DEBUG log 'processing reinplace_inplaceable_ops_pass' in logs: {cm.output}"
         )
 
     def test_aclgraph_capture_and_replay_keep_inference_input_mutations_true_disable_reinplace_mutated_input(self):

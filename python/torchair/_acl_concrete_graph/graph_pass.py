@@ -200,27 +200,33 @@ def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
         graph.erase_node(node)
 
 
-def _reinplace(config: CompilerConfig, gm: GraphModule, *sample_args):
+def _reinplace_inplaceable_ops_pass(gm: GraphModule, *sample_args):
     """
-    Given a fx.GraphModule, modifies it to perform "reinplacing", mutating the nods of the graph.
-    We reuse torch.fx.passes.reinplace to inplace nodes which can be "safely" to reinplace. However, this pass
-        can not deal with mutated inputs. So we try to handle the mutated input reinplace by reusing inductor fx pass
-        for reinplace, which is able to replace different op names(usually, in-place op and out-place op differ only
+    Given a fx.GraphModule, modifies it to perform "reinplacing". Just call torch.fx.passes.reinplace.
+    Note: this pass can not deal with mutated inputs.
+    """
+    try:
+        logger.debug("[_reinplace_inplaceable_ops_pass]processing reinplace_inplaceable_ops_pass for graph: %s", id(gm))
+        gm = reinplace(gm, *sample_args)
+        logger.debug("End to process reinplace inplaceable ops fx pass for graph: %s", id(gm))
+    except NotImplementedError as e:
+        raise e
+    except Exception as e:
+        raise RuntimeError("There is a bug in torch.fx.passes.reinplace module when torch < 2.5.0. Two possible"
+                           " solutions: 1. upgrade torch version(>=2.5.0); 2. disable config by setting: "
+                           "config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass=True") from e
+    return gm
+
+
+def _reinplace_input_mutated_ops(gm: GraphModule):
+    """
+    Given a fx.GraphModule, modifies it to perform "reinplacing", mutating the nodes of the graph.
+        We try to handle the mutated input reinplace by reusing inductor fx pass for reinplacing input mutated ops,
+        which is able to replace different op names(usually, in-place op and out-place op differ only
         slightly in their names. Specifically, the in-place op names are appended with a "_" compared to their
         out-place version) and not-first mutated args.
     """
-    logger.debug("Start to process reinplace fx pass for graph: %s", id(gm))
-    if not config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass:
-        try:
-            logger.debug("[reinplace fx pass]prossing reinplace_inplaceable_ops_pass for graph: %s", id(gm))
-            gm = reinplace(gm, *sample_args)
-        except Exception as e:
-            raise RuntimeError("There is a bug in torch.fx.passes.reinplace module when torch < 2.5.0. Two possible "
-                               "solutions: 1. upgrade torch version(>=2.5.0); 2. disable config by changing compiler"
-                               "config: config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass=True") from e
-
-    if not config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass:
-        logger.debug("[reinplace fx pass]prossing reinplace_input_mutated_ops_pass for graph: %s", id(gm))
-        _mutated_input_reinplace(gm)
-    logger.debug("End to process reinplace fx pass for graph: %s", id(gm))
+    logger.debug("[_reinplace_input_mutated_ops]processing reinplace_input_mutated_ops_pass for graph: %s", id(gm))
+    _mutated_input_reinplace(gm)
+    logger.debug("End to process reinplace input mutated ops fx pass for graph: %s", id(gm))
     return gm

@@ -135,12 +135,21 @@ class AclConcreteGraph(ConcreteGraphBase):
         logger.debug('before graph optimization, graph is %s', self.fx_graph.graph)
 
         # graph optimization passes here
+        # Note: this pass need sample args to run in FakeTensor mode, any pass modifies ops without meta registration
+        # should run after it.
+        if not self.config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass:
+            logger.debug("Start to process reinplace inplaceable ops fx pass for graph: %s", id(self.fx_graph))
+            from torchair._acl_concrete_graph.graph_pass import _reinplace_inplaceable_ops_pass
+            _reinplace_inplaceable_ops_pass(self.fx_graph, *sample_args)
+
         from torchair._acl_concrete_graph.acl_graph import replace_dynamic_workspace_ops, _find_mutated_user_inputs
         replace_dynamic_workspace_ops(self.fx_graph)
 
-
-        from torchair._acl_concrete_graph.graph_pass import _reinplace
-        _reinplace(self.config, self.fx_graph, *sample_args)
+        # Note: this will modify mutated input ops in fx graph, should be executed LAST.
+        if not self.config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass:
+            logger.debug("Start to process reinplace input mutated ops fx pass for graph: %s", id(self.fx_graph))
+            from torchair._acl_concrete_graph.graph_pass import _reinplace_input_mutated_ops
+            _reinplace_input_mutated_ops(self.fx_graph)
 
         # find mutated inputs after graph optimization passes
         self._mutated_user_inputs = _find_mutated_user_inputs(self.fx_graph)
