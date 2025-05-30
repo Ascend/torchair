@@ -21,6 +21,50 @@ def fill_empty_tensorlist(input_data, desired_dtype):
         return input_data
 
 
+def convert_tensorlist_to_int4(input_data: List[Tensor]):
+    input_dtype = input_data[0].dtype
+    w_list = []
+    if input_dtype == DataType.DT_INT32:
+        for w_item in input_data:
+            const_w = ge.Const([1] * (w_item.rank - 1) + [8])
+            shape_w = ge.Shape(w_item)
+            shape_w = ge.Mul(shape_w, const_w)
+            new_w = ge.Bitcast(w_item, type=DataType.DT_INT4)
+            new_w = ge.Reshape(new_w, shape_w)
+            w_list.append(new_w)
+    else:
+        w_list = input_data
+    return w_list
+
+
+def convert_scale_tensorlist(scales: List[Tensor]):
+    scale_type = scales[0].dtype
+    output = []
+    if scale_type == DataType.DT_INT64:
+        for scale in scales:
+            item = ge.Cast(scale, dst_type=DataType.DT_UINT64)
+            output.append(item)
+    else:
+        output = scales
+    return output
+
+
+def convert_ydtype(output_dtype: Optional[int] = None):
+    y_dtype = -1
+    if output_dtype == torch.float16:
+        y_dtype = 0
+    elif output_dtype == torch.bfloat16:
+        y_dtype = 1
+    elif output_dtype == torch.int32:
+        y_dtype = 2
+    elif output_dtype == torch.int8:
+        raise ValueError("output_dtype not support int8 yet for graph mode")
+    else:
+        raise ValueError(f"output_dtype should be float16, bfloat16 or int32, "
+                            f"otherwise it should be None, but got {output_dtype}")
+    return y_dtype
+
+
 def conveter_npu_npu_grouped_matmul(
     x: List[Tensor],
     weight: List[Tensor],
@@ -60,6 +104,7 @@ def conveter_npu_npu_grouped_matmul(
         bias = fill_empty_tensorlist(bias, x_dtype)
 
     scale = fill_empty_tensorlist(scale, DataType.DT_UINT64)
+    scale = convert_scale_tensorlist(scale)
     offset = fill_empty_tensorlist(offset, DataType.DT_FLOAT)
 
     w_dtype = weight[0].dtype
@@ -73,24 +118,16 @@ def conveter_npu_npu_grouped_matmul(
 
     y_dtype = -1
     if output_dtype is not None and x[0].dtype == DataType.DT_INT8:
-        if output_dtype == torch.float16:
-            y_dtype = 0
-        elif output_dtype == torch.bfloat16:
-            y_dtype = 1
-        elif output_dtype == torch.int32:
-            y_dtype = 2
-        elif output_dtype == torch.int8:
-            raise ValueError("output_dtype not support int8 yet for graph mode")
-        else:
-            raise ValueError(f"output_dtype should be float16, bfloat16 or int32, "
-                             f"otherwise it should be None, but got {output_dtype}")
+        y_dtype = convert_ydtype(output_dtype)
 
     per_token_scale = per_token_scale[0] if per_token_scale is not None and len(per_token_scale) else None
 
     if group_list is not None and not isinstance(group_list, Tensor):
         group_list = dtype_promote(group_list, target_dtype=torch.int64)
 
-    return ge.GroupedMatmul(x, weight, bias, scale, offset, antiquant_scale, antiquant_offset, group_list,
+    w_list = convert_tensorlist_to_int4(weight)
+
+    return ge.GroupedMatmul(x, w_list, bias, scale, offset, antiquant_scale, antiquant_offset, group_list,
                             per_token_scale, split_item=split_item, dtype=y_dtype, transpose_weight=False,
                             transpose_x=False, group_type=group_type, group_list_type=group_list_type,
                             act_type=act_type, tuning_config=tuning_config)
