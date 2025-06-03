@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import dataclasses
 import functools
 import itertools
@@ -148,6 +149,15 @@ class Reduction:
         return self.src
 
 
+def _get_nodes_outputs(nodes: List[BaseSchedulerNode]):
+    buffers = []
+    for node in nodes:
+        user_nodes = set(user.node for user in node.users)
+        if not user_nodes.issubset(nodes):
+            buffers.append(node.node.name)
+    return list(OrderedDict.fromkeys(buffers))
+
+
 class NPUKernel(Kernel):
     overrides = NPUOverrides
     _index = 0
@@ -165,11 +175,7 @@ class NPUKernel(Kernel):
         self._asc_buffer: Dict[str:ASCBuffer] = {}
         self._torch_arg_wrappers = dict()
         self._nodes = nodes
-        self._outputs = set()
-        for node in nodes:
-            user_nodes = set(user.node for user in node.users)
-            if not user_nodes.issubset(nodes):
-                self._outputs.add(node.node.name)
+        self._outputs = _get_nodes_outputs(nodes)
 
     @property
     def graph(self):
@@ -243,7 +249,7 @@ class NPUKernel(Kernel):
 
     @classmethod
     def next_kernel_name(cls, nodes: List[BaseSchedulerNode]):
-        name = f"asc_auto{get_fused_kernel_name(nodes, 'original_aten')}_{cls._index}"
+        name = f"asc{cls._index:04d}_auto{get_fused_kernel_name(nodes, 'original_aten')}"
         cls._index += 1
         return name
 
@@ -253,7 +259,7 @@ class NPUKernel(Kernel):
             asc_axis = [sympy.Symbol("z0")]
             asc_axis_range = [1]
         loop = DenseLoop(axis=asc_axis, size=asc_axis_range)
-        self._subgraphs.append(ASCGraph(name=f"{V.kernel.current_node.node.name}_asc"))
+        self._subgraphs.append(ASCGraph(name=f"graph{len(self._subgraphs)}"))
         self._current_input_index = 0
         self.graph.set_current_loop(loop)
         for axis, axis_range in zip(asc_axis, asc_axis_range):
@@ -311,7 +317,8 @@ class NPUKernel(Kernel):
         # outer是python kernel层的入参名，而inputs/outputs，则是asc graph上的buffer名，也对应rt层kernel的args
         fused_graph.inputs_outer = [self.args.input(read) for read in fused_graph.inputs]
         fused_graph.outputs_outer = [self.args.output(write) for write in fused_graph.outputs]
-        # 这里的args，对应python kernel的入参，而第二个返回，是在output code call函数中，调用python kernel时传入的参数
+        # 这里的args，对应python kernel签名的入参名字，也是wrapper签名中的入参名字。
+        # 而第二个返回，是在output code call函数中，调用python kernel时传入的参数，也就是实际buffer的名字。
         fused_graph.args, _, _ = self.args.python_argdefs()
 
         self._kernel_def.clear()
@@ -450,14 +457,14 @@ class NPUKernel(Kernel):
 
     def _load_indirect_buffer(self, name):
         buf: ASCBuffer = self.get_asc_buffer(name)
-        exist_tensor = self.graph.get_tensor(name)
+        exist_tensor = self.graph.get_input_tensor(name)
         if exist_tensor is not None:
             return exist_tensor
         return buf.bind(self.graph.input(name, buf.asc_dtype))
 
     def _load_buffer(self, name, loop: Loop):
         buf: ASCBuffer = self.get_asc_buffer(name)
-        exist_tensor = self.graph.get_tensor(name)
+        exist_tensor = self.graph.get_input_tensor(name)
         if exist_tensor is not None:
             return exist_tensor, loop
         return buf.bind(self.graph.input(name, buf.asc_dtype)), loop

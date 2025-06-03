@@ -1,4 +1,5 @@
 from collections import defaultdict
+import itertools
 from typing import Dict, List, Set, Any, Optional
 
 import logging
@@ -86,6 +87,13 @@ class ASCGraph:
             return _Tensor(op.y)
         return None
 
+    def get_input_tensor(self, name):
+        try:
+            index = self.inputs.index(name)
+            return self.get_tensor(f'data{index if index > 0 else ""}')
+        except ValueError:
+            return None
+
     def input(self, name, dtype, *, outer_name=None):
         outer_name = outer_name or name
         self.inputs.append(name)
@@ -134,14 +142,15 @@ class FusedASCGraph:
         buffer_writes = sum([g.outputs for g in subgraphs], [])
         buffer_reads = sum([g.inputs for g in subgraphs], [])
 
-        self.inputs: List[str] = list(set(buffer_reads) - set(buffer_writes)) # kernel输入地址
-        self.outputs: List[str] = list(outputs) # kernel输出地址
-         # Tiling使用的symbols，与外部传参的顺序一致
+        self.inputs: List[str] = [buf for buf in list(dict.fromkeys(
+            buffer_reads)) if buf not in buffer_writes]  # kernel输入地址
+        self.outputs: List[str] = outputs  # kernel输出地址
+        # Tiling使用的symbols，与外部传参的顺序一致
         self.size_vars = sorted(set(sum([list(g.size_vars) for g in subgraphs], [])))
 
-        self.inputs_outer: List[str] = [] # 输入地址对应的外部fbuffer名，多个地址可能对应一个外部buffer
-        self.outputs_outer: List[str] = [] # 输出地址对应的外部fbuffer名，多个地址可能对应一个外部buffer
-        self.args: List[str] = [] # 外部buffer的传参顺序
+        self.inputs_outer: List[str] = []  # 输入地址对应的外部fbuffer名，多个地址可能对应一个外部buffer
+        self.outputs_outer: List[str] = []  # 输出地址对应的外部fbuffer名，多个地址可能对应一个外部buffer
+        self.args: List[str] = []  # 外部buffer的传参顺序
 
     @property
     def subgraphs(self):
@@ -160,19 +169,34 @@ class FusedASCGraph:
             graph_def = graph.codegen(f'{graph.name}_hint')
             fused_graph.splice(graph_def)
 
-        fused_graph.writeline(f"# {'-' * 20 + self.name + '-' * 20}")
-        fused_graph.writeline(f"{self.name} = ascir.FusedGraph('{self.name}')")
+        fused_graph.writeline(f"# {'-' * 20 + var_name + '-' * 20}")
+        fused_graph.writeline(f"{var_name} = ascir.FusedGraph('{var_name}')")
+
+        # 对FusedGraph中的所有buffer做匿名化处理，保证缓存命中率
+        anonymous_buffers = dict()
+        for i, read in enumerate(self.inputs):
+            anonymous_buffers[read] = f"input{i}"
+        for i, write in enumerate(self.outputs):
+            anonymous_buffers[write] = f"output{i}"
+        workspace_index = 0
+        for buffer in itertools.chain(*[sub.inputs + sub.outputs for sub in self.subgraphs]):
+            if buffer not in anonymous_buffers:
+                anonymous_buffers[buffer] = f"workspace{workspace_index}"
+                workspace_index += 1
+
+        def replace_buffer(buffers: List[str]) -> List[str]:
+            return [anonymous_buffers.get(buf, buf) for buf in buffers]
 
         buffer_writers: Dict[str, List[tuple[ASCGraph, int]]] = {}
         for graph in self._subgraphs:
             fused_graph.writeline(
-                f"{graph.name} = ascir.ops.AscBackend('{graph.name}', {graph.name}_hint, {self.name})")
-            for i, buffer in enumerate(graph.outputs):
+                f"{graph.name} = ascir.ops.AscBackend('{graph.name}', {graph.name}_hint, {var_name})")
+            for i, buffer in enumerate(replace_buffer(graph.outputs)):
                 buffer_writers.setdefault(buffer, [])
                 buffer_writers[buffer].append((graph, i))
 
-        for i, buffer in enumerate(self.inputs):
-            fused_graph.writeline(f"{buffer} = ascir.ops.Data('{buffer}', {self.name})")
+        for i, buffer in enumerate(replace_buffer(self.inputs)):
+            fused_graph.writeline(f"{buffer} = ascir.ops.Data('{buffer}', {var_name})")
             fused_graph.writeline(f"{buffer}.attr.ir_attr.index = {i}")
 
         for buffer, writers in buffer_writers.items():
@@ -182,12 +206,18 @@ class FusedASCGraph:
                 fused_graph.writeline(f"{buffer} = {', '.join([f'{d[0].name}.y[{d[1]}]' for d in writers])}")
 
         for graph in self._subgraphs:
-            fused_graph.writeline(f"{graph.name}.x = [{', '.join(graph.inputs)}]")
+            fused_graph.writeline(f"{graph.name}.x = [{', '.join(replace_buffer(graph.inputs))}]")
 
-        for i, buffer in enumerate(self.outputs):
-            output_name = f'{buffer}_output'
-            fused_graph.writeline(f"{output_name} = ascir.ops.Output('{buffer}', {self.name})")
+        for i, buffer in enumerate(replace_buffer(self.outputs)):
+            output_name = f'graph_output{i}'
+            fused_graph.writeline(f"{output_name} = ascir.ops.Output('{buffer}', {var_name})")
             fused_graph.writeline(f"{output_name}.attr.ir_attr.index = {i}")
             fused_graph.writeline(f"{output_name}.x = [{buffer}]")
+
+        fused_graph.splice(f'''
+        fuser = Autofuser(AutofuserOptions(graph_type=1))
+        scheduled_{var_name} = fuser.schedule({var_name})
+        tiling_def, host_impl, device_impl = fuser.codegen(scheduled_{var_name})
+        ''')
 
         return fused_graph

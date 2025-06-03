@@ -39,14 +39,14 @@ class KernelCapture:
         return self.origin(kernel)
 
     def kernel(self, index):
-        return sorted(self.kernels, key=lambda k: int(k.kernel_name.split('_')[-1]))[index]
+        return sorted(self.kernels, key=lambda k: int(k.kernel_name.split('_')[0][3:]))[index]
 
     def graph(self, index):
         return self.kernel(index).fused_graph
 
     def graph_str(self, index, replace_name):
         graph = self.graph(index)
-        return graph.codegen(graph.name).getvalue().replace(graph.name, replace_name)
+        return graph.codegen(replace_name).getvalue()
 
     def __enter__(self):
         self.kernels.clear()
@@ -86,222 +86,374 @@ class BuildGraphTest(unittest.TestCase):
 
         self.assertEqual(len(kernel_capture.kernels), 1)
         self.assert_graph_equal(kernel_capture.graph_str(0, "fused_graph"),
-                                f"""# --------------------buf0_asc--------------------
-buf0_asc_hint = ascir.HintGraph('buf0_asc_hint')
-s0 = buf0_asc_hint.create_size("s0")
-s1 = buf0_asc_hint.create_size("s1")
-s2 = buf0_asc_hint.create_size("s2")
-z0 = buf0_asc_hint.create_axis("z0", s0*s1)
-z1 = buf0_asc_hint.create_axis("z1", s2)
-arg3_1 = ascir.ops.Data('buf0_asc_hint/arg3_1', buf0_asc_hint)
-arg3_1.attr.ir_attr.index = 0
-arg3_1.y.dtype = ascir.dtypes.float16
-load = ascir.ops.Load('buf0_asc_hint/load', buf0_asc_hint)
+                                f"""# --------------------graph0--------------------
+graph0_hint = ascir.HintGraph('graph0_hint')
+s0 = graph0_hint.create_size("s0")
+s1 = graph0_hint.create_size("s1")
+s2 = graph0_hint.create_size("s2")
+z0 = graph0_hint.create_axis("z0", s0*s1)
+z1 = graph0_hint.create_axis("z1", s2)
+data = ascir.ops.Data('graph0_hint/data', graph0_hint)
+data.attr.ir_attr.index = 0
+data.y.dtype = ascir.dtypes.float16
+load = ascir.ops.Load('graph0_hint/load', graph0_hint)
 load.attr.sched.axis = [z0, z1]
 load.attr.ir_attr.offset = 0
-load.x = arg3_1.y
+load.x = data.y
 load.y.axis = [z0, z1]
 load.y.size = [s0*s1, s2]
 load.y.strides = [s2, 1]
-cast = ascir.ops.Cast('buf0_asc_hint/cast', buf0_asc_hint)
+cast = ascir.ops.Cast('graph0_hint/cast', graph0_hint)
 cast.attr.sched.axis = [z0, z1]
 cast.x = load.y
 cast.y.dtype = ascir.dtypes.float32
 cast.y.axis = [z0, z1]
 cast.y.size = [s0*s1, s2]
 cast.y.strides = [s2, 1]
-max = ascir.ops.Max('buf0_asc_hint/max', buf0_asc_hint)
+max = ascir.ops.Max('graph0_hint/max', graph0_hint)
 max.attr.sched.axis = [z0, z1]
 max.x = cast.y
 max.y.axis = [z0, z1]
 max.y.size = [s0*s1, 1]
 max.y.strides = [1, 0]
-store = ascir.ops.Store('buf0_asc_hint/store', buf0_asc_hint)
+store = ascir.ops.Store('graph0_hint/store', graph0_hint)
 store.attr.sched.axis = [z0, z1]
 store.x = max.y
 store.y.axis = [z0, z1]
 store.y.size = [s0*s1, 1]
 store.y.strides = [1, 0]
-buf0 = ascir.ops.Output('buf0_asc_hint/buf0', buf0_asc_hint)
-buf0.attr.ir_attr.index = 0
-buf0.x = store.y
-buf0.y.dtype = ascir.dtypes.float32
-buf0_asc_hint.infer_dtypes()
-# --------------------buf1_asc--------------------
-buf1_asc_hint = ascir.HintGraph('buf1_asc_hint')
-s0 = buf1_asc_hint.create_size("s0")
-s1 = buf1_asc_hint.create_size("s1")
-s2 = buf1_asc_hint.create_size("s2")
-z0 = buf1_asc_hint.create_axis("z0", s0*s1)
-z1 = buf1_asc_hint.create_axis("z1", s2)
-arg3_1 = ascir.ops.Data('buf1_asc_hint/arg3_1', buf1_asc_hint)
-arg3_1.attr.ir_attr.index = 0
-arg3_1.y.dtype = ascir.dtypes.float16
-load = ascir.ops.Load('buf1_asc_hint/load', buf1_asc_hint)
+output = ascir.ops.Output('graph0_hint/output', graph0_hint)
+output.attr.ir_attr.index = 0
+output.x = store.y
+output.y.dtype = ascir.dtypes.float32
+graph0_hint.infer_dtypes()
+# --------------------graph1--------------------
+graph1_hint = ascir.HintGraph('graph1_hint')
+s0 = graph1_hint.create_size("s0")
+s1 = graph1_hint.create_size("s1")
+s2 = graph1_hint.create_size("s2")
+z0 = graph1_hint.create_axis("z0", s0*s1)
+z1 = graph1_hint.create_axis("z1", s2)
+data = ascir.ops.Data('graph1_hint/data', graph1_hint)
+data.attr.ir_attr.index = 0
+data.y.dtype = ascir.dtypes.float16
+load = ascir.ops.Load('graph1_hint/load', graph1_hint)
 load.attr.sched.axis = [z0, z1]
 load.attr.ir_attr.offset = 0
-load.x = arg3_1.y
+load.x = data.y
 load.y.axis = [z0, z1]
 load.y.size = [s0*s1, s2]
 load.y.strides = [s2, 1]
-cast = ascir.ops.Cast('buf1_asc_hint/cast', buf1_asc_hint)
+cast = ascir.ops.Cast('graph1_hint/cast', graph1_hint)
 cast.attr.sched.axis = [z0, z1]
 cast.x = load.y
 cast.y.dtype = ascir.dtypes.float32
 cast.y.axis = [z0, z1]
 cast.y.size = [s0*s1, s2]
 cast.y.strides = [s2, 1]
-buf0 = ascir.ops.Data('buf1_asc_hint/buf0', buf1_asc_hint)
-buf0.attr.ir_attr.index = 1
-buf0.y.dtype = ascir.dtypes.float32
-load1 = ascir.ops.Load('buf1_asc_hint/load1', buf1_asc_hint)
+data1 = ascir.ops.Data('graph1_hint/data1', graph1_hint)
+data1.attr.ir_attr.index = 1
+data1.y.dtype = ascir.dtypes.float32
+load1 = ascir.ops.Load('graph1_hint/load1', graph1_hint)
 load1.attr.sched.axis = [z0, z1]
 load1.attr.ir_attr.offset = 0
-load1.x = buf0.y
+load1.x = data1.y
 load1.y.axis = [z0, z1]
 load1.y.size = [s0*s1, 1]
 load1.y.strides = [1, 0]
-broadcast = ascir.ops.Broadcast('buf1_asc_hint/broadcast', buf1_asc_hint)
+broadcast = ascir.ops.Broadcast('graph1_hint/broadcast', graph1_hint)
 broadcast.attr.sched.axis = [z0, z1]
 broadcast.x = load1.y
 broadcast.y.axis = [z0, z1]
 broadcast.y.size = [s0*s1, s2]
 broadcast.y.strides = [s2, 1]
-sub = ascir.ops.Sub('buf1_asc_hint/sub', buf1_asc_hint)
+sub = ascir.ops.Sub('graph1_hint/sub', graph1_hint)
 sub.attr.sched.axis = [z0, z1]
 sub.x1 = cast.y
 sub.x2 = broadcast.y
 sub.y.axis = [z0, z1]
 sub.y.size = [s0*s1, s2]
 sub.y.strides = [s2, 1]
-exp = ascir.ops.Exp('buf1_asc_hint/exp', buf1_asc_hint)
+exp = ascir.ops.Exp('graph1_hint/exp', graph1_hint)
 exp.attr.sched.axis = [z0, z1]
 exp.x = sub.y
 exp.y.axis = [z0, z1]
 exp.y.size = [s0*s1, s2]
 exp.y.strides = [s2, 1]
-store = ascir.ops.Store('buf1_asc_hint/store', buf1_asc_hint)
+store = ascir.ops.Store('graph1_hint/store', graph1_hint)
 store.attr.sched.axis = [z0, z1]
 store.x = exp.y
 store.y.axis = [z0, z1]
 store.y.size = [s0*s1, s2]
 store.y.strides = [s2, 1]
-buf1 = ascir.ops.Output('buf1_asc_hint/buf1', buf1_asc_hint)
-buf1.attr.ir_attr.index = 0
-buf1.x = store.y
-buf1.y.dtype = ascir.dtypes.float32
-buf1_asc_hint.infer_dtypes()
-# --------------------buf2_asc--------------------
-buf2_asc_hint = ascir.HintGraph('buf2_asc_hint')
-s0 = buf2_asc_hint.create_size("s0")
-s1 = buf2_asc_hint.create_size("s1")
-s2 = buf2_asc_hint.create_size("s2")
-z0 = buf2_asc_hint.create_axis("z0", s0*s1)
-z1 = buf2_asc_hint.create_axis("z1", s2)
-buf1 = ascir.ops.Data('buf2_asc_hint/buf1', buf2_asc_hint)
-buf1.attr.ir_attr.index = 0
-buf1.y.dtype = ascir.dtypes.float32
-load = ascir.ops.Load('buf2_asc_hint/load', buf2_asc_hint)
+output = ascir.ops.Output('graph1_hint/output', graph1_hint)
+output.attr.ir_attr.index = 0
+output.x = store.y
+output.y.dtype = ascir.dtypes.float32
+graph1_hint.infer_dtypes()
+# --------------------graph2--------------------
+graph2_hint = ascir.HintGraph('graph2_hint')
+s0 = graph2_hint.create_size("s0")
+s1 = graph2_hint.create_size("s1")
+s2 = graph2_hint.create_size("s2")
+z0 = graph2_hint.create_axis("z0", s0*s1)
+z1 = graph2_hint.create_axis("z1", s2)
+data = ascir.ops.Data('graph2_hint/data', graph2_hint)
+data.attr.ir_attr.index = 0
+data.y.dtype = ascir.dtypes.float32
+load = ascir.ops.Load('graph2_hint/load', graph2_hint)
 load.attr.sched.axis = [z0, z1]
 load.attr.ir_attr.offset = 0
-load.x = buf1.y
+load.x = data.y
 load.y.axis = [z0, z1]
 load.y.size = [s0*s1, s2]
 load.y.strides = [s2, 1]
-sum = ascir.ops.Sum('buf2_asc_hint/sum', buf2_asc_hint)
+sum = ascir.ops.Sum('graph2_hint/sum', graph2_hint)
 sum.attr.sched.axis = [z0, z1]
 sum.x = load.y
 sum.y.axis = [z0, z1]
 sum.y.size = [s0*s1, 1]
 sum.y.strides = [1, 0]
-store = ascir.ops.Store('buf2_asc_hint/store', buf2_asc_hint)
+store = ascir.ops.Store('graph2_hint/store', graph2_hint)
 store.attr.sched.axis = [z0, z1]
 store.x = sum.y
 store.y.axis = [z0, z1]
 store.y.size = [s0*s1, 1]
 store.y.strides = [1, 0]
-buf2 = ascir.ops.Output('buf2_asc_hint/buf2', buf2_asc_hint)
-buf2.attr.ir_attr.index = 0
-buf2.x = store.y
-buf2.y.dtype = ascir.dtypes.float32
-buf2_asc_hint.infer_dtypes()
-# --------------------buf3_asc--------------------
-buf3_asc_hint = ascir.HintGraph('buf3_asc_hint')
-s0 = buf3_asc_hint.create_size("s0")
-s1 = buf3_asc_hint.create_size("s1")
-s2 = buf3_asc_hint.create_size("s2")
-z0 = buf3_asc_hint.create_axis("z0", s0*s1)
-z1 = buf3_asc_hint.create_axis("z1", s2)
-buf1 = ascir.ops.Data('buf3_asc_hint/buf1', buf3_asc_hint)
-buf1.attr.ir_attr.index = 0
-buf1.y.dtype = ascir.dtypes.float32
-load = ascir.ops.Load('buf3_asc_hint/load', buf3_asc_hint)
+output = ascir.ops.Output('graph2_hint/output', graph2_hint)
+output.attr.ir_attr.index = 0
+output.x = store.y
+output.y.dtype = ascir.dtypes.float32
+graph2_hint.infer_dtypes()
+# --------------------graph3--------------------
+graph3_hint = ascir.HintGraph('graph3_hint')
+s0 = graph3_hint.create_size("s0")
+s1 = graph3_hint.create_size("s1")
+s2 = graph3_hint.create_size("s2")
+z0 = graph3_hint.create_axis("z0", s0*s1)
+z1 = graph3_hint.create_axis("z1", s2)
+data = ascir.ops.Data('graph3_hint/data', graph3_hint)
+data.attr.ir_attr.index = 0
+data.y.dtype = ascir.dtypes.float32
+load = ascir.ops.Load('graph3_hint/load', graph3_hint)
 load.attr.sched.axis = [z0, z1]
 load.attr.ir_attr.offset = 0
-load.x = buf1.y
+load.x = data.y
 load.y.axis = [z0, z1]
 load.y.size = [s0*s1, s2]
 load.y.strides = [s2, 1]
-buf2 = ascir.ops.Data('buf3_asc_hint/buf2', buf3_asc_hint)
-buf2.attr.ir_attr.index = 1
-buf2.y.dtype = ascir.dtypes.float32
-load1 = ascir.ops.Load('buf3_asc_hint/load1', buf3_asc_hint)
+data1 = ascir.ops.Data('graph3_hint/data1', graph3_hint)
+data1.attr.ir_attr.index = 1
+data1.y.dtype = ascir.dtypes.float32
+load1 = ascir.ops.Load('graph3_hint/load1', graph3_hint)
 load1.attr.sched.axis = [z0, z1]
 load1.attr.ir_attr.offset = 0
-load1.x = buf2.y
+load1.x = data1.y
 load1.y.axis = [z0, z1]
 load1.y.size = [s0*s1, 1]
 load1.y.strides = [1, 0]
-broadcast = ascir.ops.Broadcast('buf3_asc_hint/broadcast', buf3_asc_hint)
+broadcast = ascir.ops.Broadcast('graph3_hint/broadcast', graph3_hint)
 broadcast.attr.sched.axis = [z0, z1]
 broadcast.x = load1.y
 broadcast.y.axis = [z0, z1]
 broadcast.y.size = [s0*s1, s2]
 broadcast.y.strides = [s2, 1]
-truediv = ascir.ops.TrueDiv('buf3_asc_hint/truediv', buf3_asc_hint)
+truediv = ascir.ops.TrueDiv('graph3_hint/truediv', graph3_hint)
 truediv.attr.sched.axis = [z0, z1]
 truediv.x1 = load.y
 truediv.x2 = broadcast.y
 truediv.y.axis = [z0, z1]
 truediv.y.size = [s0*s1, s2]
 truediv.y.strides = [s2, 1]
-cast = ascir.ops.Cast('buf3_asc_hint/cast', buf3_asc_hint)
+cast = ascir.ops.Cast('graph3_hint/cast', graph3_hint)
 cast.attr.sched.axis = [z0, z1]
 cast.x = truediv.y
 cast.y.dtype = ascir.dtypes.float16
 cast.y.axis = [z0, z1]
 cast.y.size = [s0*s1, s2]
 cast.y.strides = [s2, 1]
-store = ascir.ops.Store('buf3_asc_hint/store', buf3_asc_hint)
+store = ascir.ops.Store('graph3_hint/store', graph3_hint)
 store.attr.sched.axis = [z0, z1]
 store.x = cast.y
 store.y.axis = [z0, z1]
 store.y.size = [s0*s1, s2]
 store.y.strides = [s2, 1]
-buf3 = ascir.ops.Output('buf3_asc_hint/buf3', buf3_asc_hint)
-buf3.attr.ir_attr.index = 0
-buf3.x = store.y
-buf3.y.dtype = ascir.dtypes.float16
-buf3_asc_hint.infer_dtypes()
+output = ascir.ops.Output('graph3_hint/output', graph3_hint)
+output.attr.ir_attr.index = 0
+output.x = store.y
+output.y.dtype = ascir.dtypes.float16
+graph3_hint.infer_dtypes()
 # --------------------fused_graph--------------------
 fused_graph = ascir.FusedGraph('fused_graph')
-buf0_asc = ascir.ops.AscBackend('buf0_asc', buf0_asc_hint, fused_graph)
-buf1_asc = ascir.ops.AscBackend('buf1_asc', buf1_asc_hint, fused_graph)
-buf2_asc = ascir.ops.AscBackend('buf2_asc', buf2_asc_hint, fused_graph)
-buf3_asc = ascir.ops.AscBackend('buf3_asc', buf3_asc_hint, fused_graph)
-arg3_1 = ascir.ops.Data('arg3_1', fused_graph)
-arg3_1.attr.ir_attr.index = 0
-buf0 = buf0_asc.y[0]
-buf1 = buf1_asc.y[0]
-buf2 = buf2_asc.y[0]
-buf3 = buf3_asc.y[0]
-buf0_asc.x = [arg3_1]
-buf1_asc.x = [arg3_1, buf0]
-buf2_asc.x = [buf1]
-buf3_asc.x = [buf1, buf2]
-buf3_output = ascir.ops.Output('buf3', fused_graph)
-buf3_output.attr.ir_attr.index = 0
-buf3_output.x = [buf3]""")
+graph0 = ascir.ops.AscBackend('graph0', graph0_hint, fused_graph)
+graph1 = ascir.ops.AscBackend('graph1', graph1_hint, fused_graph)
+graph2 = ascir.ops.AscBackend('graph2', graph2_hint, fused_graph)
+graph3 = ascir.ops.AscBackend('graph3', graph3_hint, fused_graph)
+input0 = ascir.ops.Data('input0', fused_graph)
+input0.attr.ir_attr.index = 0
+workspace0 = graph0.y[0]
+workspace1 = graph1.y[0]
+workspace2 = graph2.y[0]
+output0 = graph3.y[0]
+graph0.x = [input0]
+graph1.x = [input0, workspace0]
+graph2.x = [workspace1]
+graph3.x = [workspace1, workspace2]
+graph_output0 = ascir.ops.Output('output0', fused_graph)
+graph_output0.attr.ir_attr.index = 0
+graph_output0.x = [output0]
+
+fuser = Autofuser(AutofuserOptions(graph_type=1))
+scheduled_fused_graph = fuser.schedule(fused_graph)
+tiling_def, host_impl, device_impl = fuser.codegen(scheduled_fused_graph)
+""")
+
+    def test_stable_graph(self):
+        @torch.compile(dynamic=False)
+        def forward(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+            x1 = x.sum(dim=1, keepdim=True)
+            y1 = y.sum(dim=1, keepdim=True)
+            x2 = torch.mul(x1, y1)
+            return x1, x2
+
+        with KernelCapture() as kernel_capture:
+            x = torch.randn(4, 8, 8)
+            y = torch.randn(4, 8, 8)
+            forward(x, y)
+
+        self.assertEqual(len(kernel_capture.kernels), 1)
+        self.assert_graph_equal(kernel_capture.graph_str(0, "fused_graph"),
+                                f"""# --------------------graph0--------------------
+graph0_hint = ascir.HintGraph('graph0_hint')
+z0 = graph0_hint.create_axis("z0", 4)
+z2 = graph0_hint.create_axis("z2", 8)
+z1 = graph0_hint.create_axis("z1", 8)
+data = ascir.ops.Data('graph0_hint/data', graph0_hint)
+data.attr.ir_attr.index = 0
+data.y.dtype = ascir.dtypes.float32
+load = ascir.ops.Load('graph0_hint/load', graph0_hint)
+load.attr.sched.axis = [z0, z2, z1]
+load.attr.ir_attr.offset = 0
+load.x = data.y
+load.y.axis = [z0, z2, z1]
+load.y.size = [4, 8, 8]
+load.y.strides = [64, 8, 1]
+sum = ascir.ops.Sum('graph0_hint/sum', graph0_hint)
+sum.attr.sched.axis = [z0, z2, z1]
+sum.x = load.y
+sum.y.axis = [z0, z2, z1]
+sum.y.size = [4, 1, 8]
+sum.y.strides = [8, 0, 1]
+store = ascir.ops.Store('graph0_hint/store', graph0_hint)
+store.attr.sched.axis = [z0, z2, z1]
+store.x = sum.y
+store.y.axis = [z0, z2, z1]
+store.y.size = [4, 1, 8]
+store.y.strides = [8, 0, 1]
+output = ascir.ops.Output('graph0_hint/output', graph0_hint)
+output.attr.ir_attr.index = 0
+output.x = store.y
+output.y.dtype = ascir.dtypes.float32
+graph0_hint.infer_dtypes()
+# --------------------graph1--------------------
+graph1_hint = ascir.HintGraph('graph1_hint')
+z0 = graph1_hint.create_axis("z0", 4)
+z2 = graph1_hint.create_axis("z2", 8)
+z1 = graph1_hint.create_axis("z1", 8)
+data = ascir.ops.Data('graph1_hint/data', graph1_hint)
+data.attr.ir_attr.index = 0
+data.y.dtype = ascir.dtypes.float32
+load = ascir.ops.Load('graph1_hint/load', graph1_hint)
+load.attr.sched.axis = [z0, z2, z1]
+load.attr.ir_attr.offset = 0
+load.x = data.y
+load.y.axis = [z0, z2, z1]
+load.y.size = [4, 8, 8]
+load.y.strides = [64, 8, 1]
+sum = ascir.ops.Sum('graph1_hint/sum', graph1_hint)
+sum.attr.sched.axis = [z0, z2, z1]
+sum.x = load.y
+sum.y.axis = [z0, z2, z1]
+sum.y.size = [4, 1, 8]
+sum.y.strides = [8, 0, 1]
+store = ascir.ops.Store('graph1_hint/store', graph1_hint)
+store.attr.sched.axis = [z0, z2, z1]
+store.x = sum.y
+store.y.axis = [z0, z2, z1]
+store.y.size = [4, 1, 8]
+store.y.strides = [8, 0, 1]
+output = ascir.ops.Output('graph1_hint/output', graph1_hint)
+output.attr.ir_attr.index = 0
+output.x = store.y
+output.y.dtype = ascir.dtypes.float32
+graph1_hint.infer_dtypes()
+# --------------------graph2--------------------
+graph2_hint = ascir.HintGraph('graph2_hint')
+z0 = graph2_hint.create_axis("z0", 32)
+data = ascir.ops.Data('graph2_hint/data', graph2_hint)
+data.attr.ir_attr.index = 0
+data.y.dtype = ascir.dtypes.float32
+load = ascir.ops.Load('graph2_hint/load', graph2_hint)
+load.attr.sched.axis = [z0]
+load.attr.ir_attr.offset = 0
+load.x = data.y
+load.y.axis = [z0]
+load.y.size = [32]
+load.y.strides = [1]
+data1 = ascir.ops.Data('graph2_hint/data1', graph2_hint)
+data1.attr.ir_attr.index = 1
+data1.y.dtype = ascir.dtypes.float32
+load1 = ascir.ops.Load('graph2_hint/load1', graph2_hint)
+load1.attr.sched.axis = [z0]
+load1.attr.ir_attr.offset = 0
+load1.x = data1.y
+load1.y.axis = [z0]
+load1.y.size = [32]
+load1.y.strides = [1]
+mul = ascir.ops.Mul('graph2_hint/mul', graph2_hint)
+mul.attr.sched.axis = [z0]
+mul.x1 = load.y
+mul.x2 = load1.y
+mul.y.axis = [z0]
+mul.y.size = [32]
+mul.y.strides = [1]
+store = ascir.ops.Store('graph2_hint/store', graph2_hint)
+store.attr.sched.axis = [z0]
+store.x = mul.y
+store.y.axis = [z0]
+store.y.size = [32]
+store.y.strides = [1]
+output = ascir.ops.Output('graph2_hint/output', graph2_hint)
+output.attr.ir_attr.index = 0
+output.x = store.y
+output.y.dtype = ascir.dtypes.float32
+graph2_hint.infer_dtypes()
+# --------------------fused_graph--------------------
+fused_graph = ascir.FusedGraph('fused_graph')
+graph0 = ascir.ops.AscBackend('graph0', graph0_hint, fused_graph)
+graph1 = ascir.ops.AscBackend('graph1', graph1_hint, fused_graph)
+graph2 = ascir.ops.AscBackend('graph2', graph2_hint, fused_graph)
+input0 = ascir.ops.Data('input0', fused_graph)
+input0.attr.ir_attr.index = 0
+input1 = ascir.ops.Data('input1', fused_graph)
+input1.attr.ir_attr.index = 1
+output0 = graph0.y[0]
+workspace0 = graph1.y[0]
+output1 = graph2.y[0]
+graph0.x = [input0]
+graph1.x = [input1]
+graph2.x = [output0, workspace0]
+graph_output0 = ascir.ops.Output('output0', fused_graph)
+graph_output0.attr.ir_attr.index = 0
+graph_output0.x = [output0]
+graph_output1 = ascir.ops.Output('output1', fused_graph)
+graph_output1.attr.ir_attr.index = 1
+graph_output1.x = [output1]
+
+fuser = Autofuser(AutofuserOptions(graph_type=1))
+scheduled_fused_graph = fuser.schedule(fused_graph)
+tiling_def, host_impl, device_impl = fuser.codegen(scheduled_fused_graph)
+""")
 
 
 if __name__ == '__main__':

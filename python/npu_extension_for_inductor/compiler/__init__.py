@@ -1,4 +1,5 @@
 import os
+import sys
 import hashlib
 import logging
 from typing import Dict, Callable, Optional
@@ -49,7 +50,7 @@ class _NpuInductorKernel:
 
     @staticmethod
     def sync():
-        if os.getenv("ASCIR_NOT_READY", None) != '1':
+        if os.getenv("ASCIR_NOT_READY", None) != '1' or 'torch_npu' in sys.modules:
             torch.npu.synchronize()
 
     @staticmethod

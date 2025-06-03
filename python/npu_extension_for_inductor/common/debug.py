@@ -307,12 +307,12 @@ def make_fused_graph_dot(fused_graph: FusedASCGraph, *, with_priavte_attrs=False
 
     for asc_graph in fused_graph.subgraphs:
         make_graph_dot(asc_graph, with_priavte_attrs=with_priavte_attrs, parent=graph)
-        for read in asc_graph.inputs:
+        for i, read in enumerate(asc_graph.inputs):
             buffer_readers.setdefault(read, [])
-            buffer_readers[read].append(f'{asc_graph.name}/{read}')
-        for write in asc_graph.outputs:
+            buffer_readers[read].append(f'{asc_graph.name}/data{i if i !=0 else ""}')
+        for i, write in enumerate(asc_graph.outputs):
             buffer_writers.setdefault(write, [])
-            buffer_writers[write].append(f'{asc_graph.name}/{write}')
+            buffer_writers[write].append(f'{asc_graph.name}/output{i if i !=0 else ""}')
 
     output_cluster = pydot.Cluster("outputs", label="outputs", labeljust='c')
     graph.add_subgraph(output_cluster)

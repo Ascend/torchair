@@ -213,7 +213,7 @@ def compile_ascendc(artifacts: Dict, lib_dir: str, asserts_base: str = None):
             cache_command(os.path.join(lib_dir, 'asc_kernel.py'), jit_command, build_ascend_lib, lib_kernel)
 
         compile_comments = ' '.join(["//", "g++", "-shared", "-std=c++17", "-fPIC", "-Wall",
-                                     "-O2", "-o", lib_wrapper, f"{{this_file}}"] + ctx.compile_flags + ['\n'])
+                                     "-O2", "-o", lib_wrapper, "inductor_wrapper.cpp"] + ctx.compile_flags + ['\n'])
         cpp_source = compile_comments + codegen_cpp_source(kernel_spec, lib_kernel)
         save_asserts(kernel_spec.name, cpp_source, 'inductor_wrapper.cpp', asserts_base)
         build_wrapper = functools.partial(_build_cpp, compile_flags=ctx.compile_flags, output_file=lib_wrapper)

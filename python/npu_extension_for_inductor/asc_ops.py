@@ -162,16 +162,18 @@ def reduction(x, *, reduce_type):
 
 
 def data(*, name, dtype, index):
+    # drop name for stable cache hint
     graph = V.kernel.graph
-    op = graph.add_op("Data", name=name)
+    op = graph.add_op("Data")
     op.attr.ir_attr.index = index
     op.y.dtype = dtype
     return op.y
 
 
 def output(*, name, src, dtype, index):
+    # drop name for stable cache hint
     graph = V.kernel.graph
-    op = graph.add_op("Output", name=name)
+    op = graph.add_op("Output")
     op.attr.ir_attr.index = index
     op.x = src
     op.y.dtype = dtype
