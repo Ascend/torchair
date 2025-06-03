@@ -45,6 +45,9 @@ def conveter_npu_grouped_matmul_finalize_routing(
         dtype = DataType.DT_FLOAT
     else:
         raise RuntimeError("Not supported output dtype is " + str(dtype))
+    if shared_input is None and logit is None:
+        if output_bs != x.symsize[0]:
+            raise RuntimeError("When shared_input and logit is None, output_bs must equal to M")
     if output_bs == 0:
         output_bs = x.symsize[0]
     return ge.GroupedMatmulFinalizeRouting(x,
