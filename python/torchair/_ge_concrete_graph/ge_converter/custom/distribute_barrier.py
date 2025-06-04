@@ -24,7 +24,7 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
     BOOL, Support
 
 
-@register_fx_node_ge_converter(torch.ops.npu.npu_distribute_barrier.default)
+@register_fx_node_ge_converter(torch.ops.npu._npu_distribute_barrier.default)
 def convert_npu_distribute_barrier(
     x_ref: Tensor,
     group: str,
