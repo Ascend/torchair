@@ -55,7 +55,7 @@ def GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], sca
     size_of_y = 0
     if split_item == 0 or split_item == 1:
         if group_list is not None:
-            size_of_y = len(group_list)
+            size_of_y = group_list.symsize[0]
         else:
             size_of_y = len(x)
     elif split_item == 2 or split_item == 3:
