@@ -78796,6 +78796,45 @@ def MoeDistributeCombine(expand_x: Tensor, expert_ids: Tensor, expand_idx: Tenso
 
     return x
 
+# This api is auto-generated from IR DistributeBarrier
+@auto_convert_to_tensor([False], [False])
+def DistributeBarrier(x_ref: Tensor, *, group: str, world_size: int, dependencies=[], node_name=None):
+    """REG_OP(DistributeBarrier)\n
+    .INPUT(x_ref, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_BOOL, DT_INT8, DT_INT16, DT_INT32, DT_INT64, DT_UINT8, DT_UINT16, DT_UINT32, DT_UINT64}))\n
+    .OUTPUT(x_ref, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_BOOL, DT_INT8, DT_INT16, DT_INT32, DT_INT64, DT_UINT8, DT_UINT16, DT_UINT32, DT_UINT64}))\n
+    .REQUIRED_ATTR(group, String)\n
+    .REQUIRED_ATTR(world_size, Int)\n
+    """
+
+    # process inputs
+    inputs = {
+        "x_ref": x_ref,
+    }
+
+    # process attrs
+    attrs = {
+        "group": attr.Str(group),
+        "world_size": attr.Int(world_size),
+    }
+
+    # process outputs
+    outputs = [
+        "x_ref",
+    ]
+
+    return ge_op(
+        op_type="DistributeBarrier",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("DistributeBarrier") \
+        .input("x_ref", "DT_BF16, DT_FLOAT16, DT_FLOAT, DT_BOOL, DT_INT8, DT_INT16, DT_INT32, DT_INT64, DT_UINT8, DT_UINT16, DT_UINT32, DT_UINT64") \
+        .required_attr("group", attr.Str) \
+        .required_attr("world_size", attr.Int) \
+        .output("x_ref" , "DT_BF16, DT_FLOAT16, DT_FLOAT, DT_BOOL, DT_INT8, DT_INT16, DT_INT32, DT_INT64, DT_UINT8, DT_UINT16, DT_UINT32, DT_UINT64")
+    )
+
 # This api is auto-generated from IR MoeDistributeDispatch
 @auto_convert_to_tensor([False, False, False, False, False], [False, False, True, True, True])
 def MoeDistributeDispatch(x: Tensor, expert_ids: Tensor, scales: Optional[Tensor], x_active_mask: Optional[Tensor], expert_scales: Optional[Tensor], *, group_ep: str, ep_world_size: int, ep_rank_id: int, moe_expert_num: int, group_tp: str="", tp_world_size: int=0, tp_rank_id: int=0, expert_shard_type: int=0, shared_expert_num: int=1, shared_expert_rank_num: int=0, quant_mode: int=0, global_bs: int=0, expert_token_nums_type: int=1, dependencies=[], node_name=None):
