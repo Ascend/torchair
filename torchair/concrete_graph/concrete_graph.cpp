@@ -29,7 +29,7 @@ tng::Status GetAclCompileopt(aclCompileOpt opt, std::string& val, std::string op
       return tng::Status::Success();
     }
     TNG_ASSERT(acl_ret == ACL_SUCCESS, "ACL get compile opt failed, return %d", acl_ret);
-    val = std::string(value, opt_size);
+    val = std::string(value);
   }
   return tng::Status::Success();
 }
