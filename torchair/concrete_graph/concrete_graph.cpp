@@ -247,6 +247,11 @@ Status NpuConcreteGraph::AutoTune(const std::vector<at::Tensor> &example_inputs,
 Status NpuConcreteGraph::Run(const std::vector<c10::optional<at::Tensor>> &torch_outputs,
                              std::vector<at::Tensor> &outputs, void *stream) {
   TNG_LOG(INFO) << "Run concrete graph " << graph_data_->id << " with stream " << stream;
+  if (is_graph_unloaded_) {
+    is_graph_unloaded_ = false;
+    graph_id_.reset(new uint32_t(graph_data_->id));
+  }
+
   HcclConfigValue hccl_config = {graph_data_->deterministic_value};
   TNG_ASSERT(HcclSetConfig(HcclConfig::HCCL_DETERMINISTIC, hccl_config) == HCCL_SUCCESS,
              "Failed to set HCCL_DETERMINISTIC.");

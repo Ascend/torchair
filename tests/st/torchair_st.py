@@ -21,6 +21,7 @@ from torchair.ge._ge_graph import DataType
 from torchair._ge_concrete_graph.graph_pass import optimize_reference_op_redundant_copy
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core._backend import initialize_graph_engine
+from torchair_st_utils import capture_stdout
 
 logger.setLevel(logging.DEBUG)
 
@@ -1928,6 +1929,26 @@ class TorchairSt(unittest.TestCase):
         y = torch.randn(2, 2)
         with self.assertRaises(NotADirectoryError):
             test_model(x, y)
+
+    def test_reset_resource(self):
+        class Model(torch.nn.Module):
+            def forward(self, input):
+                return torch.add(input, 1.0)
+
+        model = torch.compile(Model(), backend=npu_backend, dynamic=True)
+        x = torch.randn(2, 2)
+        model(x)
+
+        def custom_del(self):
+            print("start to release graph")
+        GeConcreteGraph.__del__ = custom_del
+
+        with capture_stdout() as stdout:
+            torch._dynamo.reset()
+        del GeConcreteGraph.__del__
+
+        captured_output = stdout.getvalue()
+        self.assertTrue("start to release graph" in captured_output)
 
 if __name__ == '__main__':
     unittest.main()

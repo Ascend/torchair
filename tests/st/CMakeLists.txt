@@ -1,6 +1,7 @@
 add_custom_command(OUTPUT ST_TESTCASES
-        COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_export_st.py ${CMAKE_BINARY_DIR}/st
+        COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_st_utils.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_st.py ${CMAKE_BINARY_DIR}/st
+        COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_export_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_scope_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_gear_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_loglevel_st.py ${CMAKE_BINARY_DIR}/st
