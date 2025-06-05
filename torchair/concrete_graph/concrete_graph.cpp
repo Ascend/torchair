@@ -21,14 +21,16 @@ char *CreateMessage(const char *format, va_list arg);
 namespace {
 tng::Status GetAclCompileopt(aclCompileOpt opt, std::string& val, std::string optName) {
   auto opt_size = aclGetCompileoptSize(opt);
-  char value[opt_size];
-  auto acl_ret = aclGetCompileopt(opt, value, opt_size);
-  if (acl_ret == ACL_ERROR_API_NOT_SUPPORT) {
-    TNG_LOG(WARNING) << "ACL get compile opt, " << optName << " unsupport, opt size " << opt_size;
-    return tng::Status::Success();
+  if (opt_size != 0UL) {
+    char value[opt_size];
+    auto acl_ret = aclGetCompileopt(opt, value, opt_size);
+    if (acl_ret == ACL_ERROR_API_NOT_SUPPORT) {
+      TNG_LOG(WARNING) << "ACL get compile opt, " << optName << " unsupport, opt size " << opt_size;
+      return tng::Status::Success();
+    }
+    TNG_ASSERT(acl_ret == ACL_SUCCESS, "ACL get compile opt failed, return %d", acl_ret);
+    val = std::string(value, opt_size);
   }
-  TNG_ASSERT(acl_ret == ACL_SUCCESS, "ACL get compile opt failed, return %d", acl_ret);
-  val = std::string(value);
   return tng::Status::Success();
 }
 
@@ -194,7 +196,7 @@ Status NpuConcreteGraph::Create(const void *serialized_proto, size_t proto_size,
   TNG_LOG(INFO) << DebugString(*graph_data);
 
   graph.reset(new NpuConcreteGraph(std::move(graph_data)));
-  TNG_ASSERT_NOTNULL(graph, "Failed to create graph");
+  TNG_ASSERT_NOTNULL(graph, "Failed to create graph.");
 
   TNG_LOG(INFO) << "Concrete graph from proto with size " << proto_size << " created.";
 
@@ -255,7 +257,7 @@ Status NpuConcreteGraph::Run(const std::vector<c10::optional<at::Tensor>> &torch
 
 Status NpuConcreteGraph::SetHintShape(const std::vector<std::vector<int64_t>> &inputs_shape,
                                       const std::vector<std::vector<int64_t>> &outputs_shape) {
-  TNG_ASSERT(graph_data_, "After load graph, graph_data_ should not nullptr");
+  TNG_ASSERT(graph_data_, "After load graph, graph_data_ should not nullptr.");
   graph_data_->inputs_shape = inputs_shape;
   graph_data_->outputs_shape = outputs_shape;
   return Status::Success();
