@@ -10,6 +10,7 @@ from torchair.ge._ge_graph import trans_to_list_list_int, trans_to_list_list_flo
 from torchair.ge._ge_graph import get_invalid_desc
 from torchair._ge_concrete_graph.compat_ir import ge_op, IrDef
 from torchair.ge import attr
+from torchair.core import _torchair
 # IR Const skipped as Deformed prototype
 # IR Constant skipped as Deformed prototype
 # IR Data skipped as Deformed prototype
@@ -78669,15 +78670,8 @@ def MoeDistributeCombine(expand_x: Tensor, expert_ids: Tensor, expand_idx: Tenso
     """
 
     op = get_default_ge_graph().op.add()
-    from torchair._ge_concrete_graph.utils import get_cann_opp_version
-    v1_version_list = ["7.7"]
-    opp_ver = get_cann_opp_version()
-    is_v1_opp_ver = False
-    for ver in v1_version_list:
-        if opp_ver.startswith(ver):
-            is_v1_opp_ver = True
-            break
-    if is_v1_opp_ver:
+    has_v2 = _torchair.CheckAclnnAvaliable("aclnnMoeDistributeCombineV2")
+    if has_v2 == False:
         op.type = "MoeDistributeCombine"
         op.name = next_unique_name(node_name, "MoeDistributeCombine")
     else:
@@ -78762,7 +78756,7 @@ def MoeDistributeCombine(expand_x: Tensor, expert_ids: Tensor, expand_idx: Tenso
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "expand_scales"
 
-    if not is_v1_opp_ver:
+    if has_v2:
         if shared_expert_x is not None:
             op.input.append(shared_expert_x.tensor)
             op.input_desc.add().CopyFrom(shared_expert_x.desc)
@@ -78866,15 +78860,8 @@ def MoeDistributeDispatch(x: Tensor, expert_ids: Tensor, scales: Optional[Tensor
     .ATTR(expert_token_nums_type, Int, 1)\n
     """
     op = get_default_ge_graph().op.add()
-    from torchair._ge_concrete_graph.utils import get_cann_opp_version
-    v1_version_list = ["7.7"]
-    opp_ver = get_cann_opp_version()
-    is_v1_opp_ver = False
-    for ver in v1_version_list:
-        if opp_ver.startswith(ver):
-            is_v1_opp_ver = True
-            break
-    if is_v1_opp_ver:
+    has_v2 = _torchair.CheckAclnnAvaliable("aclnnMoeDistributeDispatchV2")
+    if has_v2 == False:
         op.type = "MoeDistributeDispatch"
         op.name = next_unique_name(node_name, "MoeDistributeDispatch")
     else:

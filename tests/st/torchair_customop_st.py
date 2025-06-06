@@ -458,7 +458,6 @@ class CustomOpSt(unittest.TestCase):
                          f"optype TestV1 unsupport optional input [inputname], optional attr [], "
                          f"please upgrade cann version.")
 
-
     def test_upsample_nearest2d_decomposition_adjust_dynamic(self):
         def get_dumped_py_file_list(dir_path, file_extension='.py'):
             return [i for i in os.listdir(dir_path) if i.startswith('dynamo_') and i.endswith(f'{file_extension}')]

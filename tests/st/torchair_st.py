@@ -1876,7 +1876,12 @@ class TorchairSt(unittest.TestCase):
                 executor.compile()
                 self.assertTrue('The dim size of Ascend net output: [2, 2] '
                 'is not equal to FX net output: [1, 2, 3]' in context.exception)
-                
+
+    def test_check_cann_aclnn_avaliable(self):
+        initialize_graph_engine()
+        from torchair.core import _torchair
+        check_has_v2 = _torchair.CheckAclnnAvaliable("aclnnTest")
+        
     def test_data_dump_generation(self):
         import re
 

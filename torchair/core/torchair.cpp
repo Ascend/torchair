@@ -233,6 +233,11 @@ void TorchNpuGraphBase::FinalizeGraphEngine() {
   const pybind11::gil_scoped_acquire acquire;
 }
 
+bool TorchNpuGraphBase::CheckAclnnAvaliable(const std::string &aclnn_name) {
+  const pybind11::gil_scoped_release release;
+  return tng::NpuOpUtilsTools::CheckAclnnAvaliable(aclnn_name);
+}
+
 namespace wrapper {
 void StartStdoutChannel(int32_t device) {
   const pybind11::gil_scoped_release release;

@@ -22,6 +22,7 @@
 #include "torch/torch.h"
 
 #include "concrete_graph.h"
+#include "utils_tools.h"
 #include "logger.h"
 
 namespace tng {
@@ -49,6 +50,8 @@ class TorchNpuGraphBase {
   static void InitializeGraphEngine(const std::map<std::string, std::string> &options);
 
   static void FinalizeGraphEngine();
+
+  static bool CheckAclnnAvaliable(const std::string &aclnn_name);
 
  private:
   std::string name_;

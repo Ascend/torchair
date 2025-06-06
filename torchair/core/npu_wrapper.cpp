@@ -39,6 +39,8 @@ PYBIND11_MODULE(_torchair, m) {
 
   (void)m.def("export", &tng::Export);
 
+  (void)m.def("CheckAclnnAvaliable", &tng::TorchNpuGraphBase::CheckAclnnAvaliable);
+
   py::class_<tng::TorchNpuGraphBase>(m, "TorchNpuGraphBase")
     .def(py::init<const std::string &>())
     .def("load", &tng::TorchNpuGraphBase::Load)
