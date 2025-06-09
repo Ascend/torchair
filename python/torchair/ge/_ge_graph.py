@@ -485,10 +485,10 @@ class _DiscontiguousTensorInput(_FuncBase):
         self.fx_input_idx = index
 
     def __call__(self, *args):
-        return args[self.fx_input_idx].contiguous()
+        return args[self.fx_input_idx].clone()
 
     def codegen(self, ge_idx, ge_inputs_name):
-        return f"{ge_inputs_name}[{ge_idx}] = args[{self.fx_input_idx}].contiguous()"
+        return f"{ge_inputs_name}[{ge_idx}] = args[{self.fx_input_idx}].clone()"
 
 
 class _RngStatusInput(_FuncBase):
