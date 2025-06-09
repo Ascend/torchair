@@ -78790,6 +78790,210 @@ def MoeDistributeCombine(expand_x: Tensor, expert_ids: Tensor, expand_idx: Tenso
 
     return x
 
+
+# This api is auto-generated from IR MoeDistributeCombineAddRmsNorm
+@auto_convert_to_tensor(
+        [False, False, False, False, False, False, False, False, False, False, False, False, False, False],
+        [False, False, False, False, False, False, False, True, True, True, True, True, True, True])
+def MoeDistributeCombineAddRmsNorm(expand_x: Tensor,
+                                   expert_ids: Tensor,
+                                   assist_info: Tensor,
+                                   ep_send_counts: Tensor,
+                                   expert_scales: Tensor,
+                                   residual_x: Tensor,
+                                   gamma: Tensor,
+                                   tp_send_counts: Optional[Tensor],
+                                   x_active_mask: Optional[Tensor],
+                                   activation_scale: Optional[Tensor],
+                                   weight_scale: Optional[Tensor],
+                                   group_list: Optional[Tensor],
+                                   expand_scales: Optional[Tensor],
+                                   shared_expert_x: Optional[Tensor],
+                                   *,
+                                   group_ep: str,
+                                   ep_world_size: int,
+                                   ep_rank_id: int,
+                                   moe_expert_num: int,
+                                   group_tp: str = "",
+                                   tp_world_size: int = 0,
+                                   tp_rank_id: int = 0,
+                                   expert_shard_type: int = 0,
+                                   shared_expert_num: int = 1,
+                                   shared_expert_rank_num: int = 0,
+                                   global_bs: int = 0,
+                                   out_dtype: int = 0,
+                                   comm_quant_mode: int = 0,
+                                   group_list_type: int = 0,
+                                   comm_alg: str = "",
+                                   norm_eps: float = 1e-6,
+                                   dependencies = [],
+                                   node_name = None):
+    """REG_OP(MoeDistributeCombine)\n
+    .INPUT(expand_x, TensorType({DT_BF16, DT_FLOAT16}))\n
+    .INPUT(expert_ids, TensorType({DT_INT32}))\n
+    .INPUT(assist_info, TensorType({DT_INT32}))\n
+    .INPUT(ep_send_counts, TensorType({DT_INT32}))\n
+    .INPUT(expert_scales, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(tp_send_counts, TensorType({DT_INT32}))\n
+    .OPTIONAL_INPUT(x_active_mask, TensorType({DT_BOOL}))\n
+    .OPTIONAL_INPUT(activation_scale, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(weight_scale, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(group_list, TensorType({DT_INT64}))\n
+    .OPTIONAL_INPUT(expand_scales, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(shared_expert_x, TensorType({DT_BF16}))\n
+    .OUTPUT(y, TensorType({DT_BF16}))\n
+    .OUTPUT(rstd, TensorType({DT_FLOAT}))\n
+    .OUTPUT(x, TensorType({DT_BF16}))\n
+    .REQUIRED_ATTR(group_ep, String)\n
+    .REQUIRED_ATTR(ep_world_size, Int)\n
+    .REQUIRED_ATTR(ep_rank_id, Int)\n
+    .REQUIRED_ATTR(moe_expert_num, Int)\n
+    .ATTR(group_tp, String, "")\n
+    .ATTR(tp_world_size, Int, 0)\n
+    .ATTR(tp_rank_id, Int, 0)\n
+    .ATTR(expert_shard_type, Int, 0)\n
+    .ATTR(shared_expert_num, Int, 1)\n
+    .ATTR(shared_expert_rank_num, Int, 0)\n
+    .ATTR(global_bs, Int, 0)\n
+    .ATTR(out_dtype, Int, 0)\n
+    .ATTR(comm_quant_mode, Int, 0)\n
+    .ATTR(group_list_type, Int, 0)\n
+    .ATTR(comm_alg, String, "")\n
+    .ATTR(norm_eps, Float, 1e-6)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "MoeDistributeCombineAddRmsNorm"
+    op.name = next_unique_name(node_name, "MoeDistributeCombineAddRmsNorm")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(expand_x.tensor)
+    op.input_desc.add().CopyFrom(expand_x.desc)
+    op.input_desc[-1].name = "expand_x"
+
+    op.input.append(expert_ids.tensor)
+    op.input_desc.add().CopyFrom(expert_ids.desc)
+    op.input_desc[-1].name = "expert_ids"
+
+    op.input.append(assist_info.tensor)
+    op.input_desc.add().CopyFrom(assist_info.desc)
+    op.input_desc[-1].name = "assist_info"
+
+    op.input.append(ep_send_counts.tensor)
+    op.input_desc.add().CopyFrom(ep_send_counts.desc)
+    op.input_desc[-1].name = "ep_send_counts"
+
+    op.input.append(expert_scales.tensor)
+    op.input_desc.add().CopyFrom(expert_scales.desc)
+    op.input_desc[-1].name = "expert_scales"
+
+    op.input.append(residual_x.tensor)
+    op.input_desc.add().CopyFrom(residual_x.desc)
+    op.input_desc[-1].name = "residual_x"
+
+    op.input.append(gamma.tensor)
+    op.input_desc.add().CopyFrom(gamma.desc)
+    op.input_desc[-1].name = "gamma"
+
+    if tp_send_counts is not None:
+        op.input.append(tp_send_counts.tensor)
+        op.input_desc.add().CopyFrom(tp_send_counts.desc)
+        op.input_desc[-1].name = "tp_send_counts"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "tp_send_counts"
+
+    if x_active_mask is not None:
+        op.input.append(x_active_mask.tensor)
+        op.input_desc.add().CopyFrom(x_active_mask.desc)
+        op.input_desc[-1].name = "x_active_mask"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "x_active_mask"
+
+    if activation_scale is not None:
+        op.input.append(activation_scale.tensor)
+        op.input_desc.add().CopyFrom(activation_scale.desc)
+        op.input_desc[-1].name = "activation_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "activation_scale"
+    if weight_scale is not None:
+        op.input.append(weight_scale.tensor)
+        op.input_desc.add().CopyFrom(weight_scale.desc)
+        op.input_desc[-1].name = "weight_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "weight_scale"
+
+    if group_list is not None:
+        op.input.append(group_list.tensor)
+        op.input_desc.add().CopyFrom(group_list.desc)
+        op.input_desc[-1].name = "group_list"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "group_list"
+
+    if expand_scales is not None:
+        op.input.append(expand_scales.tensor)
+        op.input_desc.add().CopyFrom(expand_scales.desc)
+        op.input_desc[-1].name = "expand_scales"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "expand_scales"
+
+    if shared_expert_x is not None:
+        op.input.append(shared_expert_x.tensor)
+        op.input_desc.add().CopyFrom(shared_expert_x.desc)
+        op.input_desc[-1].name = "shared_expert_x"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "shared_expert_x"
+
+    # process attrs
+    op.attr["group_ep"].s = compat_as_bytes(group_ep)
+    op.attr["ep_world_size"].i = ep_world_size
+    op.attr["ep_rank_id"].i = ep_rank_id
+    op.attr["moe_expert_num"].i = moe_expert_num
+    op.attr["group_tp"].s = compat_as_bytes(group_tp)
+    op.attr["tp_world_size"].i = tp_world_size
+    op.attr["tp_rank_id"].i = tp_rank_id
+    op.attr["expert_shard_type"].i = expert_shard_type
+    op.attr["shared_expert_num"].i = shared_expert_num
+    op.attr["shared_expert_rank_num"].i = shared_expert_rank_num
+    op.attr["global_bs"].i = global_bs
+    op.attr["out_dtype"].i = out_dtype
+    op.attr["comm_quant_mode"].i = comm_quant_mode
+    op.attr["group_list_type"].i = group_list_type
+
+    op.attr["comm_alg"].s = compat_as_bytes(comm_alg)
+    op.attr["norm_eps"].f = norm_eps
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "rstd"
+    rstd = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "x"
+    x = Tensor(op, output_index)
+    output_index += 1
+
+    return y, rstd, x
+
+
 # This api is auto-generated from IR DistributeBarrier
 @auto_convert_to_tensor([False], [False])
 def DistributeBarrier(x_ref: Tensor, *, group: str, world_size: int, dependencies=[], node_name=None):
