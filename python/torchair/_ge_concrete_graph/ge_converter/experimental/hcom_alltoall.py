@@ -108,6 +108,10 @@ def convert_all_to_all_single_npu(
         is_supported_version = False
     check_all_to_all_supported = isinstance(send_counts, List) and isinstance(recv_counts, List) and len(
         set(send_counts + recv_counts)) == 1
+    
+    # TO DO: fix me
+    is_supported_version = False
+
     if is_supported_version and check_all_to_all_supported:
         return ge.HcomAllToAll(input_tensor, group=group_name)
 
