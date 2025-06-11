@@ -79893,3 +79893,50 @@ def AlltoAllvGroupedMatMul(gmm_x: Tensor, gmm_weight: Tensor,
     permute_out = Tensor(op, output_index)
     output_index += 1
     return gmm_y, mm_y, permute_out
+
+
+# This api is auto-generated from IR MoeEplbUpdateExpert
+@auto_convert_to_tensor([False, False], [False, False])
+def MoeEplbUpdateExpert(expert_ids: Tensor,
+                        eplb_table: Tensor,
+                        *,
+                        local_rank_id: int,
+                        world_size: int,
+                        balance_mode: int = 0,
+                        dependencies=[],
+                        node_name=None):
+    """REG_OP(MoeEplbUpdateExpert)\n
+    .INPUT(expert_ids, TensorType({DT_INT32, DT_INT64}))\n
+    .INPUT(eplb_table, TensorType({DT_INT32}))\n
+    .REQUIRED_ATTR(local_rank_id, Int)\n
+    .REQUIRED_ATTR(world_size, Int)\n
+    .ATTR(balance_mode, Int, 0)\n
+    .OUTPUT(balanced_expert_ids, TensorType({DT_INT32, DT_INT64}))\n
+    """
+    op = get_default_ge_graph().op.add()
+    op.type = "MoeEPLBUpdateExpert"
+    op.name = next_unique_name(node_name, "MoeEPLBUpdateExpert")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(expert_ids.tensor)
+    op.input_desc.add().CopyFrom(expert_ids.desc)
+    op.input_desc[-1].name = "expert_ids"
+    op.input.append(eplb_table.tensor)
+    op.input_desc.add().CopyFrom(eplb_table.desc)
+    op.input_desc[-1].name = "eplb_table"
+
+    # process attrs
+    op.attr["local_rank_id"].i = local_rank_id
+    op.attr["world_size"].i = world_size
+    op.attr["balance_mode"].i = balance_mode
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "balanced_expert_ids"
+    balanced_expert_ids = Tensor(op, output_index)
+    output_index += 1
+    return balanced_expert_ids
