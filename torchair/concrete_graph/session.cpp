@@ -102,12 +102,12 @@ Status Session::Finalize() {
     return Status::Success();
   }
 
-  TNG_LOG(INFO) << "Start to synchronize device in Finalize.";
+  TNG_LOG(DEBUG) << "Start to synchronize device in Finalize.";
   auto sync_ret = aclrtSynchronizeDevice();
   if (sync_ret != ACL_ERROR_NONE) {
     TNG_LOG(ERROR) << "ACL synchronize device failed in Finalize, return " << sync_ret;
   } else {
-    TNG_LOG(INFO) << "ACL synchronize device success in Finalize.";
+    TNG_LOG(DEBUG) << "ACL synchronize device success in Finalize.";
   }
 
   global_ge_session.reset(nullptr);
@@ -120,6 +120,7 @@ Status Session::Finalize() {
     libge_runner_handle = nullptr;
   }
   if (!run_with_torch_npu_) {
+    TNG_LOG(DEBUG) << "Start to GEFinalize.";
     TNG_ASSERT_GE_OK(ge::GEFinalize());
   }
 
@@ -131,7 +132,11 @@ Status Session::Finalize() {
   aclrtContext detect_context = aclrtContext();
   auto ctx_ret = aclrtGetCurrentContext(&detect_context);
   auto ctx_ptr = (ctx_ret == ACL_ERROR_NONE) ? detect_context : nullptr;
-  TNG_LOG(DEBUG) << "After torchair finalize, got context pointer: " << ctx_ptr;
+
+  initialized_ = false;
+
+  TNG_LOG(DEBUG) << "After torchair finalize, got context pointer: " << ctx_ptr
+                 << ", and the initialized flag is set to " << initialized_;
 
   return result;
 }
@@ -145,6 +150,7 @@ Status Session::AddGraph(uint32_t id, const ge::Graph &graph,
   }
 
   TNG_ASSERT_GE_OK(global_ge_session->AddGraph(id, graph, options));
+  TNG_LOG(INFO) << "Success to add graph, graph id :" << id;
 
   return Status::Success();
 }
@@ -193,6 +199,7 @@ Status Session::RemoveGraph(uint32_t id) {
   TNG_RETURN_IF_ERROR(EnsureInitialized());
 
   TNG_ASSERT_GE_OK(global_ge_session->RemoveGraph(id));
+  TNG_LOG(INFO) << "Success to remove graph, graph id :" << id;
 
   return Status::Success();
 }
@@ -252,6 +259,7 @@ Status Session::FastLoadGraph(uint32_t graph_id, const std::map<ge::AscendString
   }
 
   TNG_ASSERT_GE_OK(fast_load_graph_(*global_ge_session, graph_id, option, stream));
+  TNG_LOG(INFO) << "Success to load graph, graph id :" << graph_id;
   return Status::Success();
 }
 

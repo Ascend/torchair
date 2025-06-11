@@ -211,6 +211,9 @@ Status NpuConcreteGraph::Compile() {
 
   TNG_RETURN_IF_ERROR(
       Session::GetInstance().AddGraph(graph_data_->id, *graph_data_->graph, graph_data_->compile_options));
+  is_graph_added_ = true;
+  graph_id_ = graph_data_->id;
+
   if (graph_data_->executor_type == ExecutorType::NPU) {
     // Only device input is supported for compile
     TNG_RETURN_IF_ERROR(Session::GetInstance().CompileGraph(graph_data_->id, graph_data_->summary));
@@ -247,10 +250,6 @@ Status NpuConcreteGraph::AutoTune(const std::vector<at::Tensor> &example_inputs,
 Status NpuConcreteGraph::Run(const std::vector<c10::optional<at::Tensor>> &torch_outputs,
                              std::vector<at::Tensor> &outputs, void *stream) {
   TNG_LOG(INFO) << "Run concrete graph " << graph_data_->id << " with stream " << stream;
-  if (is_graph_unloaded_) {
-    is_graph_unloaded_ = false;
-    graph_id_.reset(new uint32_t(graph_data_->id));
-  }
 
   HcclConfigValue hccl_config = {graph_data_->deterministic_value};
   TNG_ASSERT(HcclSetConfig(HcclConfig::HCCL_DETERMINISTIC, hccl_config) == HCCL_SUCCESS,

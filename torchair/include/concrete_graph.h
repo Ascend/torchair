@@ -13,13 +13,6 @@
 #include "torch/torch.h"
 
 namespace tng {
-static void remove_graph_id_deleter(uint32_t *graph_id) {
-  if (graph_id != nullptr) {
-    Session::GetInstance().RemoveGraph(*graph_id);
-    delete graph_id;
-  }
-}
-
 class GraphData;
 class NpuConcreteGraph {
  public:
@@ -27,6 +20,15 @@ class NpuConcreteGraph {
                        const std::map<ge::AscendString, ge::AscendString> &options,
                        std::vector<int64_t> input_placements, std::vector<int64_t> output_dtypes, int64_t executor_type,
                        std::unique_ptr<NpuConcreteGraph> &graph);
+
+  ~NpuConcreteGraph() {
+    // When ge session is not initialized or graph is unloaded, remove graph is forbidden.
+    if (Session::GetInstance().IsInitialized() && is_graph_added_) {
+      Session::GetInstance().RemoveGraph(graph_id_);
+      is_graph_added_ = false;
+    }
+  }
+
   Status Compile();
   Status AutoTune(const std::vector<at::Tensor> &example_inputs, void *stream = nullptr);
   Status SetHintShape(const std::vector<std::vector<int64_t>> &inputs_shape,
@@ -44,8 +46,8 @@ class NpuConcreteGraph {
   std::shared_ptr<GraphData> graph_data_ = nullptr;
   std::unique_ptr<Executor> executor_ = nullptr;
 
-  bool is_graph_unloaded_{true};
-  std::unique_ptr<uint32_t, decltype(&remove_graph_id_deleter)> graph_id_{nullptr, &remove_graph_id_deleter};
+  bool is_graph_added_{false};
+  uint32_t graph_id_{0};
 };
 }  // namespace tng
 

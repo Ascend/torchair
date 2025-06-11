@@ -60,6 +60,10 @@ class Session {
   Status FastExecuteGraph(uint32_t graph_id, const std::vector<gert::Tensor> &inputs,
                           std::vector<gert::Tensor> &outputs, void *stream);
 
+  bool IsInitialized() const {
+    return initialized_;
+  }
+
  private:
   Session() : initialized_(false), status_(Status::Success()){};
   std::mutex mu_;
