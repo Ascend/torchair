@@ -62,7 +62,7 @@ def npu_allgather_in_tensor_patch_dist(output_tensor, input_tensor, group=None, 
     if not torch.distributed._functional_collectives._are_we_tracing():
         return torch.distributed.distributed_c10d.all_gather_into_tensor(output_tensor, input_tensor, group, async_op)
     if async_op:
-        AssertionError(f'When you enable torch.compile or use the cache_compile feature, '
+        raise AssertionError(f'When you enable torch.compile or use the cache_compile feature, '
                        f'use the patch_for_hcom interface to ensure that collective communication functions '
                        f'are included in the graph. However, unlike the eager mode, the compile mode '
                        f'does not support the async_op = True parameter for collective communication APIs.')
@@ -71,8 +71,8 @@ def npu_allgather_in_tensor_patch_dist(output_tensor, input_tensor, group=None, 
     ranklist = torch.distributed.get_process_group_ranks(group)
     tag = c10d._get_group_tag(group)
     size_ = len(ranklist)
-    ops_output_tensor = output_tensor.new_empty(output_tensor.size())
-    out = torch.ops.npu_define.allgather_in_tensor(ops_output_tensor, input_tensor, tag, ranklist, size_)
+    #allgather中的output_tensor输入只是使用它的size，并不会对tensor做改变，后续版本会变更为size输入
+    out = torch.ops.npu_define.allgather_in_tensor(output_tensor, input_tensor, tag, ranklist, size_)
     output_tensor.copy_(out)
 
 
@@ -166,7 +166,7 @@ def npu_all_gather_patch_dist(output_tensor_list, tensor, group=None, async_op=F
     if not torch.distributed._functional_collectives._are_we_tracing():
         return torch.distributed.distributed_c10d.all_gather(output_tensor_list, tensor, group, async_op)
     if async_op:
-        AssertionError(f'When you enable torch.compile or use the cache_compile feature, '
+        raise AssertionError(f'When you enable torch.compile or use the cache_compile feature, '
                        f'use the patch_for_hcom interface to ensure that collective communication functions '
                        f'are included in the graph. However, unlike the eager mode, the compile mode '
                        f'does not support the async_op = True parameter for collective communication APIs.')

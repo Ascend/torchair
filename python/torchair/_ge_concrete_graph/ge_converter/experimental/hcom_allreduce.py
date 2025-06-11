@@ -34,7 +34,7 @@ def npu_allreduce_patch_dist(tensor, op=torch.distributed.ReduceOp.SUM, group=No
     if not torch.distributed._functional_collectives._are_we_tracing():
         return torch.distributed.distributed_c10d.all_reduce(tensor, op, group, async_op)
     if async_op:
-        AssertionError(f'When you enable torch.compile or use the cache_compile feature, '
+        raise AssertionError(f'When you enable torch.compile or use the cache_compile feature, '
                        f'use the patch_for_hcom interface to ensure that collective communication functions '
                        f'are included in the graph. However, unlike the eager mode, the compile mode '
                        f'does not support the async_op = True parameter for collective communication APIs.')
