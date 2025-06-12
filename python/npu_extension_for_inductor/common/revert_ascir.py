@@ -61,7 +61,7 @@ class HintGraph:
         code.splice(f"""
         #include <cstdint>
         #include <iostream>
-        struct AutofuseTilingData {{}};
+        struct AutofuseTilingData {{uint32_t block_dim;}};
         """)
         return code.getvalue()
 
@@ -78,6 +78,14 @@ class HintGraph:
         code = IndentedBuffer()
         code.splice(f"""
 extern "C" int64_t AutofuseTiling({', '.join(signature)}) {{
+    *block_dim = 24;
+    *workspace_size = 1024 * 1024;
+    {debug_code}
+    return 0;
+}}
+        """)
+        code.splice(f"""
+extern "C" int64_t PgoAutofuseTiling(char* config_file, {', '.join(signature)}) {{
     *block_dim = 24;
     *workspace_size = 1024 * 1024;
     {debug_code}

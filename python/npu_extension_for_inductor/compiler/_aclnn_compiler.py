@@ -23,9 +23,15 @@ class FusedKernelSpec:
     host_impl: str
     device_impl: str
     cpp_wrapper: str
+    pgo: str
+
+    def __init__(self, pgo=None, **kwargs):
+        self.pgo = pgo
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
 
-def codegen_cpp_source(kernel_spec: FusedKernelSpec, kernel_path: str):
+def codegen_cpp_source(kernel_spec: FusedKernelSpec, kernel_path: str, lib_dir: str):
     wrapper = IndentedBuffer()
     wrapper.splice('''
     #include <iostream>
@@ -36,7 +42,10 @@ def codegen_cpp_source(kernel_spec: FusedKernelSpec, kernel_path: str):
     ''')
 
     wrapper.splice(kernel_spec.tiling_def)
-
+    config_file = os.path.join(lib_dir, f"config.txt")
+    search_file = os.path.join(lib_dir, f"search.txt")
+    wrapper.writeline(f'const char *config_file = "{config_file}";')
+    wrapper.writeline(f'const char *search_file = "{search_file}";')
     wrapper.writeline(f'const char *kernel_file = "{kernel_path}";')
     wrapper.splice("""
     const static bool debug = std::getenv("TORCH_COMPILE_DEBUG") != nullptr;
@@ -84,6 +93,106 @@ def codegen_cpp_source(kernel_spec: FusedKernelSpec, kernel_path: str):
     } // namespace
     """)
     wrapper.splice(kernel_spec.cpp_wrapper)
+
+    return wrapper.getvalue()
+
+
+def codegen_pgo_cpp_source(kernel_spec: FusedKernelSpec, kernel_path: str, lib_dir: str):
+    wrapper = IndentedBuffer()
+    wrapper.splice('''
+    #include <iostream>
+    #include <dlfcn.h>
+    #include <cstdint>
+    #include "torch_npu/csrc/core/npu/NPUStream.h"
+    #include "torch_npu/csrc/core/npu/NPUCachingAllocator.h"
+    #include <fstream>
+    #include <sstream>
+    #include <thread>
+    #include "mspti.h"
+    #include "acl/acl.h"
+    ''')
+
+    wrapper.splice(kernel_spec.tiling_def)
+    config_file = os.path.join(lib_dir, f"config.txt")
+    search_file = os.path.join(lib_dir, f"search.txt")
+    wrapper_file = os.path.join(lib_dir, f"wrapper.so")
+    wrapper.writeline(f'const char *config_file = "{config_file}";')
+    wrapper.writeline(f'const char *search_file = "{search_file}";')
+    wrapper.writeline(f'const char *wrapper_file = "{wrapper_file}";')
+    wrapper.writeline(f'const char *kernel_file = "{kernel_path}";')
+    wrapper.splice("""
+    const static bool debug = std::getenv("TORCH_COMPILE_DEBUG") != nullptr;
+    #undef DLOG
+    #define DLOG() if (debug) std::cerr << "[PGO] "
+    static void *handle = nullptr;
+    static void *wrapper_handle = nullptr;
+    static bool initialized = false;
+    namespace {
+    __attribute__((constructor)) void Init() {
+        if (initialized) return;
+        wrapper_handle = dlopen(wrapper_file, RTLD_NOW | RTLD_LOCAL);
+        if (!wrapper_handle) {
+            std::cerr << "Failed to load " << wrapper_file << ": " << dlerror() << std::endl;
+            return;
+        }
+        DLOG() << "wrapper api lib " << wrapper_file << " load succeed" << std::endl;
+        handle = dlopen(kernel_file, RTLD_NOW | RTLD_LOCAL);
+        if (!handle) {
+            std::cerr << "Failed to load " << kernel_file << ": " << dlerror() << std::endl;
+            return;
+        }
+        DLOG() << "Kernel api lib " << kernel_file << " load succeed" << std::endl;
+        initialized = true;
+    }
+    
+    __attribute__((destructor)) void DeInit() {
+        if (wrapper_handle) {
+            dlclose(wrapper_handle);
+            wrapper_handle = nullptr;
+        }
+        if (handle) {
+            dlclose(handle);
+            handle = nullptr;
+        }
+        initialized = false;
+    }
+
+    inline void *GetWrapperFunc(const char *func_name) {
+        if (wrapper_handle == nullptr) {
+            return nullptr;
+        }
+        void *func = dlsym(wrapper_handle, func_name);
+        if (func == nullptr) {
+            DLOG() << "Failed to load wrapper api func: " << dlerror() << std::endl;
+        }
+        return func;
+    }
+    
+    inline void *GetFunc(const char *func_name) {
+        if (handle == nullptr) {
+            return nullptr;
+        }
+        void *func = dlsym(handle, func_name);
+        if (func == nullptr) {
+            DLOG() << "Failed to load api func: " << dlerror() << std::endl;
+        }
+        return func;
+    }
+    
+    inline void *MallocWorkspace(int64_t size, void *stream) {
+        return c10_npu::NPUCachingAllocator::raw_alloc_with_stream(size_t(size), stream);
+    }
+    
+    inline void *GetStream(void *stream) {
+        return (stream == nullptr) ? c10_npu::getCurrentNPUStream().stream() : stream;
+    }
+    
+    inline void FreeWorkspace(void *ptr) {
+        c10_npu::NPUCachingAllocator::raw_delete(ptr);
+    }
+    } // namespace
+    """)
+    wrapper.splice(kernel_spec.pgo)
 
     return wrapper.getvalue()
 
@@ -152,6 +261,7 @@ def save_manual_asserts(fn, content):
 class NpuContext:
     def __init__(self):
         self.compile_flags = []
+        self.pgo_compile_flags = []
         self.tmp_resource = None
 
     def __enter__(self):
@@ -163,6 +273,12 @@ class NpuContext:
             self.compile_flags = [f"-I{v}/include" for v in [ascend_dir, torch_dir, torch_npu_dir]]
             self.compile_flags.extend([f"-L{ascend_dir}/lib64", f"-lascendcl", f"-lnnopbase"])
             self.compile_flags.extend([f"-L{torch_npu_dir}/lib", f"-ltorch_npu"])
+            mspti_lib_dir = os.path.join(ascend_dir, "tools/mspti")
+            self.pgo_compile_flags.extend(self.compile_flags)
+            self.pgo_compile_flags.append(f"-I{mspti_lib_dir}/include")
+            self.pgo_compile_flags.extend([f"-L{mspti_lib_dir}/lib64", f"-lmspti"])
+
+
         else:
             from pathlib import Path
             self.tmp_resource = tempfile.TemporaryDirectory()
@@ -188,15 +304,18 @@ class NpuContext:
             self.tmp_resource.cleanup()
 
 
-def compile_ascendc(artifacts: Dict, lib_dir: str, asserts_base: str = None):
+def compile_ascendc(artifacts: Dict, lib_dir: str, asserts_base: str = None, force_unknow_arg=False,
+                    force_rebuild=False):
     kernel_spec = FusedKernelSpec(**artifacts)
     os.makedirs(lib_dir, exist_ok=True)
 
     lib_wrapper = os.path.join(lib_dir, f"wrapper.so")
     lib_kernel = os.path.join(lib_dir, f"kernel.so")
+    lib_pgo = os.path.join(lib_dir, f"pgo.so")
+    pgo_tiling_config_file = os.path.join(lib_dir, f"config.txt")
 
     def cache_command(cache_file, content, func, target):
-        if not os.path.exists(cache_file) or not os.path.exists(target):
+        if not os.path.exists(cache_file) or not os.path.exists(target) or force_rebuild:
             save_manual_asserts(cache_file, content)
             logging.info("Compiling %s", target)
             func(content)
@@ -207,14 +326,23 @@ def compile_ascendc(artifacts: Dict, lib_dir: str, asserts_base: str = None):
             logging.warning("Cache file %s for %s has been manual changed!", cache_file, target)
 
     with NpuContext() as ctx:
-        jit_command = setup_asc_jit_command(ctx, kernel_spec, output_file=lib_kernel, graph_name=kernel_spec.name)
+        jit_command = setup_asc_jit_command(ctx, kernel_spec, output_file=lib_kernel, graph_name=kernel_spec.name,
+                                            force_unknown=force_unknow_arg, config_file=pgo_tiling_config_file)
         save_asserts(kernel_spec.name, jit_command, 'asc_kernel.py', asserts_base)
         with load_compiler(kernel_spec.name):
             cache_command(os.path.join(lib_dir, 'asc_kernel.py'), jit_command, build_ascend_lib, lib_kernel)
 
         compile_comments = ' '.join(["//", "g++", "-shared", "-std=c++17", "-fPIC", "-Wall",
                                      "-O2", "-o", lib_wrapper, "inductor_wrapper.cpp"] + ctx.compile_flags + ['\n'])
-        cpp_source = compile_comments + codegen_cpp_source(kernel_spec, lib_kernel)
+        cpp_source = compile_comments + codegen_cpp_source(kernel_spec, lib_kernel, lib_dir)
         save_asserts(kernel_spec.name, cpp_source, 'inductor_wrapper.cpp', asserts_base)
         build_wrapper = functools.partial(_build_cpp, compile_flags=ctx.compile_flags, output_file=lib_wrapper)
         cache_command(os.path.join(lib_dir, 'inductor_wrapper.cpp'), cpp_source, build_wrapper, lib_wrapper)
+
+        if kernel_spec.pgo:
+            pgo_compile_comments = ' '.join(["//", "g++", "-shared", "-std=c++17", "-fPIC", "-Wall",
+                                             "-O2", "-o", lib_pgo, f"{{this_file}}"] + ctx.pgo_compile_flags + ['\n'])
+            pgo_cpp_source = pgo_compile_comments + codegen_pgo_cpp_source(kernel_spec, lib_kernel, lib_dir)
+            save_asserts(kernel_spec.name, pgo_cpp_source, 'inductor_pgo.cpp', asserts_base)
+            build_pgo = functools.partial(_build_cpp, compile_flags=ctx.pgo_compile_flags, output_file=lib_pgo)
+            cache_command(os.path.join(lib_dir, 'inductor_pgo.cpp'), pgo_cpp_source, build_pgo, lib_pgo)

@@ -168,6 +168,7 @@ class NPUKernel(Kernel):
         self._kernel = NPUKernel.next_kernel_name(nodes)
         self.kernel_name = self._kernel
         self._kernel_def = IndentedBuffer()
+        self._pgo_def = IndentedBuffer()
         self._subgraphs: List[ASCGraph] = []
         self._indirect_to_scalar: Dict[str, _Scalar] = dict()
         self._current_loop = None
@@ -325,6 +326,24 @@ class NPUKernel(Kernel):
         from npu_extension_for_inductor import codegen as npu_codegen
         self._kernel_def.splice(npu_codegen.codegen_kernel_def(fused_graph, self._kernel))
         return self._kernel_def.getvalue()
+    
+    def codegen_pgo(self):
+        fused_graph = self.fused_graph
+        # 对于输出复用输入的场景，可能出现多个asc graph上的buffer（Data/Output）对应同一个python kernel入参的情况，
+        # outer是python kernel层的入参名，而inputs/outputs，则是asc graph上的buffer名，也对应rt层kernel的args
+        fused_graph.inputs_outer = [self.args.input(read) for read in fused_graph.inputs]
+        fused_graph.outputs_outer = [self.args.output(write) for write in fused_graph.outputs]
+        # 这里的args，对应python kernel的入参，而第二个返回，是在output code call函数中，调用python kernel时传入的参数
+        fused_graph.args, _, _ = self.args.python_argdefs()
+
+        self._pgo_def.clear()
+        from npu_extension_for_inductor import codegen as npu_codegen
+        self._pgo_def.splice(f"{fused_graph.name}_artifacts['pgo'] = '''{npu_codegen.codegen_pgo_def(fused_graph)}'''")
+        self._pgo_def.splice(
+            f"{self.kernel_name}_pgo = async_compile_ascendc(globals().get('async_compile_pgo', None), "
+            f"{fused_graph.name}_artifacts)"
+        )
+        return self._pgo_def.getvalue()
 
     def record_summary(self, nodes, model_path=None):
         for i, graph in enumerate(self._subgraphs):
@@ -354,13 +373,7 @@ class NPUKernel(Kernel):
         file_path = file_path if file_path else f"./{self._kernel}_benchmark.py"
         if not self._kernel_def.getvalue():
             self.codegen()
-        seen_symbols = self._get_free_symbols(nodes)
-        _, used_buffers, _ = self.args.python_argdefs()
-        for buffer in used_buffers:
-            layout = V.graph.get_buffer(buffer).layout
-            for expr in itertools.chain(layout.stride or [], layout.size or [], [layout.offset]):
-                seen_symbols.extend(V.graph.sizevars.simplify(
-                    expr).free_symbols if isinstance(expr, sympy.Expr) else [])
+        seen_symbols, used_buffers = self._get_seen_symbols(nodes)
 
         with open(file_path, "w") as f:
             becnhmark_code = IndentedBuffer()
@@ -386,6 +399,62 @@ class NPUKernel(Kernel):
                 becnhmark_code.writeline(f"{self.kernel_name}({', '.join(call_args)})")
                 becnhmark_code.writeline(f"torch.npu.synchronize()")
             f.write(becnhmark_code.getvalue())
+    
+    def pgo(self, nodes, file_path=None):
+        file_path = file_path if file_path else f"./{self._kernel}_pgo.py"
+        if not self._kernel_def.getvalue():
+            self.codegen()
+        if not self._pgo_def.getvalue():
+            self.codegen_pgo()
+        seen_symbols, used_buffers = self._get_seen_symbols(nodes)
+
+        with open(file_path, "w") as f:
+            pgo_code = IndentedBuffer()
+            pgo_code.writeline(f"import torch")
+            pgo_code.writeline(f"import torch_npu")
+            pgo_code.writeline(
+                "from npu_extension_for_inductor.compiler import async_compile_pgo as async_compile_ascendc")
+            pgo_code.splice(self._kernel_def)
+            pgo_code.writelines(["\n"] * 2)
+            pgo_code.splice(self._pgo_def)
+            pgo_code.writelines(["\n"] * 2)
+            pgo_code.writeline("from npu_extension_for_inductor.compiler import get_lib_dir")
+            pgo_code.writeline("import os")
+            pgo_code.writelines(["\n"] * 2)
+            pgo_code.writeline("if __name__ == '__main__':")
+            with pgo_code.indent():
+                pgo_code.writeline(f"from torch._dynamo.testing import rand_strided")
+                symbols_to_init = self._get_symbols_hints(seen_symbols)
+                for k in sorted(symbols_to_init.keys()):
+                    pgo_code.writeline(f"{k} = {symbols_to_init[k]}")
+                for buffer in used_buffers:
+                    layout = V.graph.get_buffer(buffer).layout
+                    pgo_code.writeline(
+                        f"{buffer} = rand_strided({tuple(layout.size)}, {tuple(layout.stride)}, "
+                        f"device='{layout.device}', dtype={layout.dtype})")
+                call_args = used_buffers + [str(v) for v in self.fused_graph.size_vars]
+                ascend_dir = os.path.dirname(os.getenv("ASCEND_OPP_PATH", "/usr/local/Ascend/latest/opp"))
+                mspti_lib_path = os.path.join(ascend_dir, "tools/mspti/lib64/libmspti.so")
+                pgo_code.writeline(f"import os")
+                pgo_code.writeline(f"os.environ['LD_PRELOAD'] = '{mspti_lib_path}'")
+                pgo_code.writeline(f"torch.npu.synchronize()")
+                pgo_code.writeline(f"{self.kernel_name}_pgo({', '.join(call_args)})")
+                pgo_code.writeline(f"torch.npu.synchronize()")
+                pgo_code.writeline(f"del os.environ['LD_PRELOAD']")
+                pgo_code.writeline(f"print('PGO调优完成', flush = True)")
+                pgo_code.writeline(f"lib_dir = get_lib_dir({self.fused_graph.name}_artifacts)")
+                pgo_code.writeline(f"# 删除kernel.so 触发正常执行重编译")
+                pgo_code.writeline(f'os.remove(os.path.join(lib_dir, "kernel.so"))')
+            
+            content = pgo_code.getvalue()
+            import re
+            pattern = (
+                f"{self.kernel_name} = async_compile_ascendc(globals().get('async_compile', None), "
+                f"{self.fused_graph.name}_artifacts)"
+            )
+            escape_pattern = f"^{re.escape(pattern)}$"
+            content = re.sub(escape_pattern, "", content, flags=re.MULTILINE)
+            f.write(content)
 
     def load(self, name: str, index: sympy.Expr):
         ir_data = self.current_node.node.data
@@ -454,6 +523,16 @@ class NPUKernel(Kernel):
 
     def index_to_str(self, index):
         return str(index)
+
+    def _get_seen_symbols(self, nodes: Union[BaseSchedulerNode, List[BaseSchedulerNode]]):
+        seen_symbols = self._get_free_symbols(nodes)
+        _, used_buffers, _ = self.args.python_argdefs()
+        for buffer in used_buffers:
+            layout = V.graph.get_buffer(buffer).layout
+            for expr in itertools.chain(layout.stride or [], layout.size or [], [layout.offset]):
+                seen_symbols.extend(V.graph.sizevars.simplify(
+                    expr).free_symbols if isinstance(expr, sympy.Expr) else [])
+        return seen_symbols, used_buffers
 
     def _load_indirect_buffer(self, name):
         buf: ASCBuffer = self.get_asc_buffer(name)
@@ -643,6 +722,7 @@ class NPUScheduling(BaseScheduling):
         from torch._inductor import config
         if config.trace.enabled:
             kernel.benchmark(nodes, V.debug.filename(f"{kernel.kernel_name}/benchmark.py"))
+            kernel.pgo(nodes, V.debug.filename(f"{kernel.kernel_name}/pgo.py"))
             kernel.view_dot(nodes, V.debug.filename(f"{kernel.kernel_name}/graph.svg"))
             kernel.record_summary(nodes, V.debug.filename(f"{kernel.kernel_name}/fuse_summary.csv"))
 
