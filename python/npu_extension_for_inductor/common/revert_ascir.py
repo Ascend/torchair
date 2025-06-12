@@ -165,7 +165,7 @@ class Autofuser:
         return fused_graph.codegen()
 
 
-class AutofuseStub:
+class PyAutofuseStub:
     def __init__(self):
         self.ascir = RevertAscir()
         self.__dict__['Autofuser'] = Autofuser

@@ -126,7 +126,7 @@ def _build_cpp(source_code: str, *, compile_flags, output_file):
 def setup_asc_jit_command(npu_ctx: 'NpuContext', spec, **kwargs):
     command_args = [f'--{k}={v}' for k, v in kwargs.items()]
     py_code = IndentedBuffer()
-    py_code.splice(f"from compile_adapter import jit_compile")
+    py_code.splice(f"from autofuse.compile_adapter import jit_compile")
     py_code.splice(f"tiling_def = '''{spec.tiling_def}'''")
     py_code.splice(f"host_impl = '''{spec.host_impl}'''")
     py_code.splice(f"device_impl = '''{spec.device_impl}'''")

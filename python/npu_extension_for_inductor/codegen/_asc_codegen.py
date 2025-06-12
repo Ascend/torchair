@@ -48,8 +48,8 @@ def codegen_kernel_def(graph: FusedASCGraph, var_name=None) -> str:
     graph_fn = graph.name
 
     graph_py_code = IndentedBuffer()
-    graph_py_code.splice(f"from pyautofuse import ascir")
-    graph_py_code.splice(f'from pyautofuse import Autofuser, AutofuserOptions')
+    graph_py_code.splice(f"from autofuse.pyautofuse import ascir")
+    graph_py_code.splice(f'from autofuse.pyautofuse import Autofuser, AutofuserOptions')
     graph_py_code.splice(graph.codegen(graph.name))
     save_asserts(graph.name, graph_py_code.getvalue(), 'asc_graph.py')
 

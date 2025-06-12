@@ -1,6 +1,7 @@
 import re
 import sys
 import os
+import types
 from enum import Enum
 from collections import namedtuple
 from contextlib import contextmanager
@@ -104,27 +105,27 @@ def is_kernel_need_stub(graph_name):
     return not re.compile(kernel_filter).match(graph_name)
 
 
-@contextmanager
-def load_compiler(graph_name):
+def _load_stub_modules(graph_name):
     need_stub = is_kernel_need_stub(graph_name)
+    if need_stub:
+        from npu_extension_for_inductor.common.revert_ascir import PyAutofuseStub, AscCompilerStub
+        sys.modules["autofuse"] = types.ModuleType("autofuse")
+        sys.modules["autofuse.pyautofuse"] = PyAutofuseStub()
+        sys.modules["autofuse.compile_adapter"] = AscCompilerStub()
     try:
-        if need_stub:
-            from npu_extension_for_inductor.common.revert_ascir import AscCompilerStub
-            sys.modules['compile_adapter'] = AscCompilerStub()
         yield
     finally:
         if need_stub:
-            sys.modules.pop('compile_adapter', None)
+            sys.modules.pop('autofuse', None)
+            sys.modules.pop('autofuse.pyautofuse', None)
+            sys.modules.pop('autofuse.compile_adapter', None)
+
+
+@contextmanager
+def load_compiler(graph_name):
+    yield from _load_stub_modules(graph_name)
 
 
 @contextmanager
 def load_autofuser(graph_name):
-    need_stub = is_kernel_need_stub(graph_name)
-    try:
-        if need_stub:
-            from npu_extension_for_inductor.common.revert_ascir import AutofuseStub
-            sys.modules['pyautofuse'] = AutofuseStub()
-        yield
-    finally:
-        if need_stub:
-            sys.modules.pop('pyautofuse', None)
+    yield from _load_stub_modules(graph_name)
