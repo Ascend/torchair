@@ -37,7 +37,6 @@ class AclConcreteGraph(ConcreteGraphBase):
 
         self._config = config
         self._graph_name = name
-        self._npugraph = torch_npu.npu.NPUGraph()
         self._mempool = torch_npu.npu.graph_pool_handle() if pool is None else pool
         self._stream = stream
         self._capture_error_mode = capture_error_mode
@@ -45,27 +44,30 @@ class AclConcreteGraph(ConcreteGraphBase):
 
         self._captured = False
         self._fx_graph = None
-        self._replay_func: Callable = None
-
-        self._capture_inputs = []
-        self._capture_outputs = []
-        self._user_inputs_mapping = OrderedDict()
         self._meta_inputs = []
         self._meta_outputs = []
-
         self._mutated_user_inputs = []
+        self._user_inputs_mapping = OrderedDict()
+        self._unupdated_input_func = None
+        self._updated_input_func = None
+        self._updated_ops_param = None
+
+        self._npugraph: Dict[str, Any] = {}
+        self._replay_func: Dict[str, Callable] = {}
+        self._capture_inputs: Dict[str, List[torch.Tensor]] = {}
+        self._capture_outputs: Dict[str, List[torch.Tensor]] = {}
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
-        self.compile(*args, **kwargs)
+        fn_key = self.compile(*args, **kwargs)
 
         # input process
         for idx in self._user_inputs_mapping.values():
-            if self._capture_inputs[idx].data_ptr() != args[idx].data_ptr():
-                self._capture_inputs[idx].copy_(args[idx])
+            if self._capture_inputs[fn_key][idx].data_ptr() != args[idx].data_ptr():
+                self._capture_inputs[fn_key][idx].copy_(args[idx])
 
         # run
         with record_function("acl_graph_replay"):
-            self._replay_func(*args, **kwargs)
+            self._replay_func[fn_key](*args, **kwargs)
 
         # For in-place op, dynamo will transform it into a functionalized call and add copy_ node when setting
         # keep_inference_input_mutations=True, which may need data copy from capture input to user input (when tensor
@@ -74,12 +76,12 @@ class AclConcreteGraph(ConcreteGraphBase):
             if arg_name not in self._user_inputs_mapping:
                 raise RuntimeError(f"{arg_name} is not in input args: {self._user_inputs_mapping.keys()}")
             idx = self._user_inputs_mapping[arg_name]
-            if self._capture_inputs[idx].data_ptr() != args[idx].data_ptr():
+            if self._capture_inputs[fn_key][idx].data_ptr() != args[idx].data_ptr():
                 logger.warning_once(f"Mutated input[{arg_name}]'s data_ptr is different between capture and replay. "
                                     f"This may call redundant copy. ")
-                args[idx].copy_(self._capture_inputs[idx])
+                args[idx].copy_(self._capture_inputs[fn_key][idx])
 
-        return self._capture_outputs
+        return self._capture_outputs[fn_key]
 
     @property
     def config(self):
@@ -139,7 +141,6 @@ class AclConcreteGraph(ConcreteGraphBase):
             with open(path, "w+") as f:
                 f.write(self.fx_graph.print_readable(False))
 
-
     def codegen(self, extend_config, enable_cache=False):
         raise NotImplementedError("Codegen for acl graph is not implemented!")
 
@@ -155,7 +156,7 @@ class AclConcreteGraph(ConcreteGraphBase):
             _reinplace_inplaceable_ops_pass(self.fx_graph, *sample_args)
 
         from torchair._acl_concrete_graph.acl_graph import replace_dynamic_workspace_ops, _find_mutated_user_inputs
-        replace_dynamic_workspace_ops(self.fx_graph)
+        replace_dynamic_workspace_ops(self.fx_graph, self._meta_inputs)
 
         # Note: this will modify mutated input ops in fx graph, should be executed LAST.
         if not self.config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass:
@@ -172,43 +173,55 @@ class AclConcreteGraph(ConcreteGraphBase):
             self.dump(self.config.debug.graph_dump.full_path(f"dynamo_optimized_{self._graph_name}"))
 
     def compile(self, *args: Any, **kwargs: Any):
-        if self._captured:
-            # A fx graph just be captured once now.
-            return
+        if not self._captured:
+            # warm up before capture
+            with record_function("acl_graph_warm_up"):
+                for _ in range(self.num_warmup_iters):
+                    self.fx_graph(*args, **kwargs)
+                    torch.npu.synchronize()
 
-        import torch_npu
-        # warm up before capture
-        with record_function("acl_graph_warm_up"):
-            for _ in range(self.num_warmup_iters):
-                torch_npu.npu.synchronize()
-                outs = self.fx_graph(*args, **kwargs)
-                torch_npu.npu.synchronize()
+            from torchair._acl_concrete_graph.acl_graph import get_unupdated_input_fn, get_updated_ops_fn
+            self._unupdated_input_func = get_unupdated_input_fn(self.fx_graph)
+            self._updated_input_func, self._updated_ops_param = get_updated_ops_fn(self.fx_graph, self._meta_inputs)
+            self._captured = True
+
+        # get graph key based on unupdated sym input shape or value
+        graph_key = self._unupdated_input_func(*args, **kwargs)
+        if graph_key in self.graph.keys():
+            logger.debug('Find captured acl graph for graph key {%s} with graph id {%s}.',
+                         graph_key, id(self.graph[graph_key]))
+            return graph_key
 
         # start capture aclgraph
-        self._captured = True
-        self._capture_inputs.extend(args)
-
-        logger.debug('Start to capture fx graph[id: %s] for AclGraph[id: %s].', id(self.fx_graph), id(self.graph))
         with record_function("acl_graph_capture"):
-            self.capture(*args, **kwargs)
-        logger.info('Success to capture fx graph[id: %s] and start to run AclGraph[id: %s].',
-                    id(self.fx_graph), id(self.graph))
+            import torch_npu
+            self.graph[graph_key] = torch_npu.npu.NPUGraph()
+            logger.debug('No find captured acl graph for graph key {%s}, '
+                         'start to capture fx graph[id: %s] to AclGraph[id: %s].',
+                         graph_key, id(self.fx_graph), id(self.graph[graph_key]))
 
-    def capture(self, *args: Any, **kwargs: Any):
-        from torchair._acl_concrete_graph.acl_graph import (UpdatedNodeCaptureInterp, CapturedGraphUpdateAndReplay,
-                                                            CapturedGraph)
-        captured_interpreter = UpdatedNodeCaptureInterp(self.fx_graph, self._meta_inputs)
+            self._capture_inputs[graph_key] = args
+            self.capture(graph_key, *args, **kwargs)
 
-        updated_input_func = captured_interpreter.process_need_updated_ops()
+        return graph_key
 
-        with CapturedGraph(self.graph, pool=self.pool, stream=self.stream,
+    def capture(self, graph_key, *args: Any, **kwargs: Any):
+        from torchair._acl_concrete_graph.acl_graph import (UpdatedNodeCaptureInterp,
+                                                            CapturedGraphUpdateAndReplay, CapturedGraph)
+        captured_interpreter = UpdatedNodeCaptureInterp(self.fx_graph, self._updated_ops_param)
+
+        with CapturedGraph(self.graph[graph_key], pool=self.pool, stream=self.stream,
                            capture_error_mode=self.capture_error_mode, fx_graph=self.fx_graph):
-            self._capture_outputs = captured_interpreter.run(*args, **kwargs)
+            self._capture_outputs[graph_key] = captured_interpreter.run(*args, **kwargs)
         updated_node_infos = captured_interpreter.captured_node_infos
-        logger.debug('In graph {%s}, the updated node num is {%s}.', id(self.fx_graph), len(updated_node_infos))
+        logger.info('Success to capture fx graph[id: %s], and the updated node num is {%s}. '
+                    'Start to run AclGraph[id: %s] with graph key %s.',
+                    id(self.fx_graph), len(updated_node_infos), id(self.graph[graph_key]), graph_key)
 
         # gen run func
-        self._replay_func = CapturedGraphUpdateAndReplay(self.graph, updated_input_func, updated_node_infos)
+        self._replay_func[graph_key] = CapturedGraphUpdateAndReplay(self.graph[graph_key],
+                                                                    self._updated_input_func,
+                                                                    updated_node_infos)
         logger.debug('In graph {%s}, all the non parameter tensor input index list is: {%s}.',
                      id(self.fx_graph), self._user_inputs_mapping.values())
 
@@ -232,11 +245,6 @@ class AclConcreteGraph(ConcreteGraphBase):
 
         # Lazy check for int/sym inputs
         if isinstance(meta_outputs, torch.Tensor):
-            meta_shape = list(meta_outputs.shape)
-            if have_sym_in_list(meta_shape):
-                # Sym in tensor means dynamic shape, it is unsupported.
-                raise RuntimeError(f"Unsupported case in AclGraph: with sym in graph input tensor[{meta_outputs}].")
-
             if not isinstance(meta_outputs, torch.nn.Parameter):
                 self._user_inputs_mapping.setdefault(target, len(self._meta_inputs) - 1)
 
@@ -254,10 +262,5 @@ class AclConcreteGraph(ConcreteGraphBase):
         args = args[0]
         for arg in args:
             self._meta_outputs.append(arg.meta)
-
-            meta_shape = list(self._meta_outputs[-1].shape)
-            if have_sym_in_list(meta_shape):
-                raise RuntimeError(
-                    f"Unsupported case in AclGraph: with sym in output tensor: [{self._meta_outputs[-1]}].")
 
         return meta_outputs

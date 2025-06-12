@@ -12,6 +12,7 @@ import torch.nn.functional as F
 import torchair
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core.utils import logger
+from torchair_st_utils import capture_stdout
 
 logger.setLevel(logging.DEBUG)
 
@@ -333,6 +334,8 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
         model = torch.compile(Model(), backend=aclgraph_backend, dynamic=True)
@@ -342,32 +345,112 @@ class AclGraphSt(unittest.TestCase):
 
         torch._dynamo.mark_static(output)
         torch._dynamo.mark_static(indices)
-        with self.assertRaisesRegex(RuntimeError,
-                                    r'(which is not in updated index)|(bug in torch.fx.passes.reinplace)'):
-            model(output, indices, 2)
+        model(output, indices, 2)
+        model(output, indices, 2)
 
-    def test_aclgraph_unsupported_dynamic_sym_in_tensor(self):
+    def test_aclgraph_dynamic_sym_in_tensor(self):
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
-                self.linear1 = torch.nn.Linear(2, 2)
-                self.linear2 = torch.nn.Linear(2, 2)
+                self.linear1 = torch.nn.Linear(3, 3)
+                self.linear2 = torch.nn.Linear(3, 3)
 
-            def forward(self, x):
-                ln1 = self.linear1(x)
-                ln2 = self.linear2(x)
+            def forward(self, input):
+                ln1 = self.linear1(input)
+                ln2 = self.linear2(input)
                 return ln1 + ln2
 
         model = Model()
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
         model = torch.compile(Model(), backend=aclgraph_backend, dynamic=True)
-        x = torch.randn([3, 2])
-        with self.assertRaisesRegex(RuntimeError, r'with sym in graph input tensor'):
-            model(x)
+        x = torch.randn([4, 3])
+        model(x)
+        first_model_id = id(model)
+        x2 = torch.randn([5, 3])
+        model(x2)
+        second_model_id = id(model)
+        self.assertTrue(first_model_id == second_model_id)
+
+    def test_aclgraph_dynamic_sym_in_scale_and_tensor(self):
+        from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
+        def get_graph_num(concrete_graph):
+            return len(concrete_graph.graph)
+
+        def wrapper_call(func, start_func_num, add_graph_num):
+            def wrapper(*args, **kwargs):
+                assert len(args) > 0
+                graph_num = get_graph_num(args[0])
+                assert graph_num == start_func_num, \
+                    f"before call, assert graph num failed, expect {start_func_num}, get {graph_num}"
+
+                ret = func(*args, **kwargs)
+
+                graph_num = get_graph_num(args[0])
+                assert graph_num == start_func_num + add_graph_num, \
+                    f"after call, assert graph num failed, expect {start_func_num + add_graph_num}, get {graph_num}"
+                return ret
+
+            return wrapper
+
+        bak_func = AclConcreteGraph.__call__
+        AclConcreteGraph.__call__ = wrapper_call(bak_func, 0, 1)
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear1 = torch.nn.Linear(2, 2)
+                self.linear2 = torch.nn.Linear(2, 2)
+
+            def forward(self, x, s):
+                ln1 = self.linear1(x)
+                ln2 = self.linear2(x)
+                return ln1, torch.add(ln2, s)
+
+        model = Model()
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass = True
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(Model(), backend=aclgraph_backend, dynamic=True)
+        x = torch.randn([5, 2])
+        scale1 = 4
+        # torch._dynamo.reset()
+        model(x, scale1)
+
+        # no find captured graph, capture another npu graph
+        AclConcreteGraph.__call__ = wrapper_call(bak_func, 1, 1)
+        with capture_stdout() as stdout:
+            scale1 = 5
+            model(x, scale1)
+        captured_output = stdout.getvalue()
+        self.assertTrue("Find captured acl graph for graph key " not in captured_output)
+
+        # find captured graph, no need to capture another npu graph
+        AclConcreteGraph.__call__ = wrapper_call(bak_func, 2, 0)
+        scale1 = 4
+        model(x, scale1)
+
+        # original fx graph no need to find captured graph
+        AclConcreteGraph.__call__ = wrapper_call(bak_func, 2, 1)
+        scale1 = 4
+        x2 = torch.randn([6, 2])
+        model(x2, scale1)
+        AclConcreteGraph.__call__ = bak_func
+
+        # another fx graph no need to find captured graph
+        AclConcreteGraph.__call__ = wrapper_call(bak_func, 0, 1)
+        scale1 = 5.0
+        model(x2, scale1)
+        AclConcreteGraph.__call__ = bak_func
 
     def test_aclgraph_unsupported_dump(self):
         class Model(torch.nn.Module):
@@ -420,6 +503,7 @@ class AclGraphSt(unittest.TestCase):
                     y = y * y
                     y = y - 1
                     return y
+
                 with torch.npu.stream(self.stream1):
                     out1 = branch1(x)
                 with torch.npu.stream(self.stream2):
@@ -488,6 +572,7 @@ class AclGraphSt(unittest.TestCase):
                     y = y * y
                     y = y @ y
                     return y
+
                 with torch.npu.stream(self.stream1):
                     out1 = branch1(x)
                 with torch.npu.stream(self.stream2):
@@ -524,6 +609,7 @@ class AclGraphSt(unittest.TestCase):
                     y = xx - 1
                     y = y @ y
                     return y
+
                 with torch.npu.stream(self.stream1):
                     out1 = branch1(x)
                 with torch.npu.stream(self.stream2):
@@ -610,18 +696,20 @@ class AclGraphSt(unittest.TestCase):
                     y = xx + 1
                     y = y @ y
                     return y
+
                 with torch.npu.stream(self.stream1):
                     out1 = branch1(x)
                 with torch.npu.stream(self.stream2):
                     out2 = branch2(x)
                 return out1, out2
-        self.stub_module.synchronize = Mock() # mock torch.npu.synchronize, count sync call times
+
+        self.stub_module.synchronize = Mock()  # mock torch.npu.synchronize, count sync call times
         model = Model()
         x = torch.randn([3, 3])
         for _ in range(2):
             model(x)
         # no sync called
-        assert torch.npu.synchronize.call_count == 0,\
+        assert torch.npu.synchronize.call_count == 0, \
             f"expect no torch.npu.synchonize() call time is 0, but got {torch.npu.synchronize.call_count}"
 
     def test_aclgraph_capture_and_replay_keep_inference_input_mutations_true_default_enable_reinplace_pass(self):
@@ -893,6 +981,7 @@ class AclGraphSt(unittest.TestCase):
 
         for file_name in get_dumped_py_file_list('./'):
             os.remove(os.path.join('./', file_name))
+
 
 if __name__ == '__main__':
     unittest.main()

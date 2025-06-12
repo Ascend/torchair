@@ -1,14 +1,16 @@
+from collections import deque
+from typing import List, Optional, Callable, Any, Deque, Dict, Set, Tuple, Union
+from dataclasses import dataclass
 import functools
+import gc
 import os
 import sys
-import gc
-import torch
+import sympy
 
+import torch
 from torch import fx
 from torch import nn
-from torch.fx import Node
-from dataclasses import dataclass
-from typing import List, Optional, Callable, Any, Dict, Tuple, Union
+from torch.fx import Node, Proxy
 
 from torchair.core.utils import logger
 
@@ -63,13 +65,107 @@ def have_sym_in_list(arg):
     return False
 
 
-def have_sym_in_gm(graph_module: torch.fx.GraphModule):
+def have_sym_in_meta(node_meta):
+    if isinstance(node_meta, torch.Tensor):
+        return have_sym_in_list(list(node_meta.size()))
+    elif isinstance(node_meta, (list, tuple)):
+        return have_sym_in_list(node_meta)
+    else:
+        if is_sym(node_meta):
+            return True
+    return False
+
+
+def get_node_all_placeholder_inputs(node, excluded_kwargs=None):
+    if not isinstance(node, fx.Node):
+        return set()
+
+    excluded_kwargs = [] if excluded_kwargs is None else excluded_kwargs
+    placeholders = set()
+    processing_input_queue: Deque[Any] = deque()
+    processing_input_queue.extend(node.args)
+    for kwarg_name, kwarg_value in node.kwargs.items():
+        if kwarg_name not in excluded_kwargs:
+            processing_input_queue.append(kwarg_value)
+
+    while processing_input_queue:
+        cur_input = processing_input_queue.popleft()
+        if isinstance(cur_input, Node):
+            if cur_input.op == "placeholder":
+                placeholders.add(cur_input)
+        elif isinstance(cur_input, (list, tuple)):
+            processing_input_queue.extend(cur_input)
+        elif isinstance(cur_input, dict):
+            processing_input_queue.extend(cur_input.valus())
+        elif isinstance(cur_input, (int, float, bool, str, None)):
+            # constant value, must not be a placeholder
+            pass
+        else:
+            raise RuntimeError(f"Current node name[{node.name}] "
+                               f"input type {type(cur_input)} is unsupported, with value:{cur_input}.")
+
+    return placeholders
+
+
+def gen_unupdate_input_func(unupdated_input_index: List):
+    if len(unupdated_input_index) == 0:
+        def empty_input_key(*args: Any, **kwargs: Any):
+            return "no_updated_input"
+
+        return empty_input_key
+
+    def gen_unupdated_input_key(*args: Any, **kwargs: Any):
+        input_shape_list = []
+        for idx in unupdated_input_index:
+            if isinstance(args[idx], torch.Tensor):
+                input_shape_list.append(str(list(args[idx].shape)))
+            else:
+                input_shape_list.append(str(args[idx]))
+        return ",".join(input_shape_list)
+
+    return gen_unupdated_input_key
+
+
+def get_unupdated_input_fn(graph_module: torch.fx.GraphModule):
+    updated_op_params = {}
+    for func_iter in _REPLACE_FUNC_MAP.values():
+        if len(func_iter.workspace_keys) > 0:
+            updated_op_params[func_iter.get_workspace] = func_iter.updated_param_keys
+        updated_op_params[func_iter.out_operator] = func_iter.updated_param_keys
+    logger.debug("In graph[%s], all updated inputs user nodes and params: %s.", id(graph_module), updated_op_params)
+
+    unupdated_sym_input_index = []
+    data_idx = -1
     for node in graph_module.graph.nodes:
         if node.op != "placeholder":
             continue
-        if is_sym(node.meta['val']):
-            return True
-    return False
+        data_idx = data_idx + 1
+        node_meta = node.meta['val']
+        if not have_sym_in_meta(node_meta):
+            continue
+        logger.debug("In graph[%s], the %s th meta input[%s] have sym, with all users[%s].",
+                     id(graph_module), data_idx, node_meta, node.users)
+        if len(node.users) == 0:
+            continue
+
+        have_unupdated_user = False
+        for user_node in node.users:
+            if user_node.target not in updated_op_params.keys():
+                have_unupdated_user = True
+                break
+            unupdated_inputs = get_node_all_placeholder_inputs(user_node,
+                                                               excluded_kwargs=updated_op_params[user_node.target])
+            logger.debug("In graph[%s], the %s th meta input[%s] have unupdated user[user_name: %s, user_inputs:%s].",
+                         id(graph_module), data_idx, node_meta, user_node.name, unupdated_inputs)
+            if node in unupdated_inputs:
+                have_unupdated_user = True
+                break
+        if have_unupdated_user:
+            unupdated_sym_input_index.append(data_idx)
+    logger.debug("In graph[%s], all unupdated sym input index is %s.",
+                 id(graph_module), unupdated_sym_input_index)
+
+    return gen_unupdate_input_func(unupdated_sym_input_index)
 
 
 def get_update_ruler(node, updated_param_keys, placeholder_nodes):
@@ -99,6 +195,61 @@ def get_update_ruler(node, updated_param_keys, placeholder_nodes):
         if have_sym_in_param:
             update_rulers[kwarg_name] = update_ruler
     return update_rulers
+
+
+def gen_updated_input_func(ops_update_rulers: Dict):
+    if len(ops_update_rulers) == 0:
+        def func(*args: Any, **kwargs: Any):
+            return {}
+
+        return func
+
+    def func(*args: Any, **kwargs: Any):
+        all_update_dict = {}
+        for op_name, rulers in ops_update_rulers.items():
+            op_update_dict = {}
+            for param_name, ruler in rulers.items():
+                param_list = [args[iter[1]] if iter[0] == "index" else iter[1] for iter in ruler]
+                op_update_dict[param_name] = param_list
+            all_update_dict[op_name] = op_update_dict
+        return all_update_dict
+
+    return func
+
+
+def get_updated_ops_fn(graph_module: torch.fx.GraphModule, meta_inputs: List):
+    logger.debug("Start process inputs in graph[%s], with all meta inputs[%s].", id(graph_module), meta_inputs)
+
+    placeholder_nodes = [node for node in graph_module.graph.nodes if node.op == "placeholder"]
+    if len(placeholder_nodes) != len(meta_inputs):
+        raise RuntimeError(
+            f'The lengths of the the placeholder nodes {len(placeholder_nodes)} and '
+            f'the recorded meta inputs {len(meta_inputs)} do not match.')
+
+    updated_dict = {}
+    for func_iter in _REPLACE_FUNC_MAP.values():
+        updated_dict[func_iter.out_operator] = func_iter.updated_param_keys
+    logger.debug("In graph[%s], try to update node type and param: %s.", id(graph_module), updated_dict)
+
+    ops_update_rulers = {}
+    for node in graph_module.graph.nodes:
+        if node.target not in updated_dict.keys():
+            continue
+
+        update_rulers = get_update_ruler(node, updated_dict[node.target], placeholder_nodes)
+        if len(update_rulers) > 0:
+            ops_update_rulers[node.name] = update_rulers
+    logger.debug("All need to be updated param[%s] in graph[%s] .", ops_update_rulers, id(graph_module))
+
+    need_updated_ops: Dict[str, List] = {}  # k: op_name, v: updated_param_name_list
+    for op_name, update_rulers in ops_update_rulers.items():
+        updated_params = [param_name for param_name, _ in update_rulers.items()]
+        need_updated_ops[op_name] = updated_params
+    logger.debug(" In graph[%s] all need to be updated node names[%s] param names[%s].",
+                 id(graph_module), need_updated_ops.keys(), need_updated_ops.values())
+
+    # no need to check all sym input must be in updated param indexes.
+    return gen_updated_input_func(ops_update_rulers), need_updated_ops
 
 
 def check_all_sym_updated(ops_update_rulers: Dict, graph_module: torch.fx.GraphModule):
@@ -139,74 +290,16 @@ def check_all_sym_updated(ops_update_rulers: Dict, graph_module: torch.fx.GraphM
                                f"which is not in updated index [{all_updated_index}].")
 
 
-def gen_input_update_func(ops_update_rulers: Dict):
-    if len(ops_update_rulers) == 0:
-        def func(*args: Any, **kwargs: Any):
-            return {}
-
-        return func
-
-    def func(*args: Any, **kwargs: Any):
-        all_update_dict = {}
-        for op_name, rulers in ops_update_rulers.items():
-            op_update_dict = {}
-            for param_name, ruler in rulers.items():
-                param_list = [args[iter[1]] if iter[0] == "index" else iter[1] for iter in ruler]
-                op_update_dict[param_name] = param_list
-            all_update_dict[op_name] = op_update_dict
-        return all_update_dict
-
-    return func
-
-
 class UpdatedNodeCaptureInterp(fx.Interpreter):
-    def __init__(self, graph_module: fx.GraphModule, meta_inputs: List):
+    def __init__(self, graph_module: fx.GraphModule, need_updated_ops: Dict):
         super().__init__(graph_module)
         self._graph_module: fx.GraphModule = graph_module
-        self._meta_inputs: List = meta_inputs
-        self._need_updated_ops: Dict[str, List] = {}  # k: op_name, v: updated_param_name_list
+        self._need_updated_ops: Dict[str, List] = need_updated_ops  # k: op_name, v: updated_param_name_list
         self._captured_node_info: List = []
 
     @property
     def captured_node_infos(self):
         return self._captured_node_info
-
-    def process_need_updated_ops(self):
-        logger.debug("Start process inputs in graph[%s], with all meta inputs[%s].", id(self._graph_module),
-                     self._meta_inputs)
-
-        placeholder_nodes = [node for node in self._graph_module.graph.nodes if node.op == "placeholder"]
-        if len(placeholder_nodes) != len(self._meta_inputs):
-            raise RuntimeError(
-                f'The lengths of the the placeholder nodes {len(placeholder_nodes)} and '
-                f'the recorded meta inputs {len(self._meta_inputs)} do not match.')
-
-        updated_dict = {}
-        for func_iter in _REPLACE_FUNC_MAP.values():
-            updated_dict[func_iter.out_operator] = func_iter.updated_param_keys
-        logger.debug("In graph[%s], try to update node type and param: %s.", id(self._graph_module), updated_dict)
-
-        ops_update_rulers = {}
-        for node in self._graph_module.graph.nodes:
-            if node.target not in updated_dict.keys():
-                continue
-
-            update_rulers = get_update_ruler(node, updated_dict[node.target], placeholder_nodes)
-            if len(update_rulers) > 0:
-                ops_update_rulers[node.name] = update_rulers
-        logger.debug("All need to be updated param[%s] in graph[%s] .", ops_update_rulers, id(self._graph_module))
-
-        for op_name, update_rulers in ops_update_rulers.items():
-            updated_params = [param_name for param_name, _ in update_rulers.items()]
-            self._need_updated_ops[op_name] = updated_params
-        logger.debug("All need to be updated node names[%s] param names[%s] in graph[%s] .",
-                     self._need_updated_ops.keys(), self._need_updated_ops.values(), id(self._graph_module))
-
-        # check all sym input must be in updated param indexes.
-        check_all_sym_updated(ops_update_rulers, self._graph_module)
-
-        # updated param gen func from rulers
-        return gen_input_update_func(ops_update_rulers)
 
     def run_node(self, node):
         logger.debug("Try to capture node names[%s] type[%s] args[%s] kwargs[%s] in graph[%s] .",
@@ -306,7 +399,40 @@ def construct_and_add_workspace(node: fx.Node, graph_module: fx.GraphModule, kwa
     return workspace_node
 
 
-def construct_and_add_output(node: fx.Node, graph_module: fx.GraphModule, kwargs_dict: dict) -> fx.Node:
+_global_sym_expr_2_node_map = {}
+
+
+def construct_fx_node_shape(ori_shape: List, sym_inputs: dict):
+    global _global_sym_expr_2_node_map
+    empty_shape = []
+    for dim in ori_shape:
+        if is_constant(dim):
+            empty_shape.append(dim)
+        elif isinstance(dim.node.expr, sympy.Symbol):
+            if dim.node.expr not in sym_inputs.keys():
+                raise RuntimeError(f'Unexpected sym output shape {dim} which is not in graph '
+                                   f'all sym inputs dict {sym_inputs}.')
+            empty_shape.append(sym_inputs[dim.node.expr])
+        else:
+            if str(dim) in _global_sym_expr_2_node_map.keys():
+                empty_shape.append(_global_sym_expr_2_node_map[str(dim)])
+                continue
+            sym_set = dim.node.expr.free_symbols
+            proxy_nodes = {}
+            for sym_i in sym_set:
+                globals()[str(sym_i)] = Proxy(sym_inputs[sym_i])
+            expr_proxy = eval(str(dim))
+            empty_shape.append(expr_proxy.node)
+            _global_sym_expr_2_node_map[str(dim)] = expr_proxy.node
+            logger.debug("Record all created sym expr and fx node %s.", _global_sym_expr_2_node_map)
+
+    logger.debug("Construct fx node shape %s from original meta shape %s .",
+                 empty_shape, ori_shape)
+    return empty_shape
+
+
+def construct_and_add_output(node: fx.Node, graph_module: fx.GraphModule, kwargs_dict: dict,
+                             sym_inputs: dict) -> fx.Node:
     registered_outputs_len = len(_REPLACE_FUNC_MAP[node.target].output_keys)
     if registered_outputs_len == 0:
         raise RuntimeError(f"Current node[{node.target}] do not have outputs in registered info, "
@@ -322,8 +448,11 @@ def construct_and_add_output(node: fx.Node, graph_module: fx.GraphModule, kwargs
 
     output_nodes = []
     for i in range(registered_outputs_len):
+        empty_shape = construct_fx_node_shape(meta_outputs[i].shape, sym_inputs)
+        logger.debug("Construct empty out sym shape %s for fx node[name: %s][type: %s].",
+                     empty_shape, node.name, node.target)
         tmp_out = graph_module.graph.call_function(torch.empty,
-                                                   args=(meta_outputs[i].shape),
+                                                   args=(empty_shape,),
                                                    kwargs={'dtype': meta_outputs[i].dtype,
                                                            'device': meta_outputs[i].device}
                                                    )
@@ -339,9 +468,18 @@ def construct_and_add_output(node: fx.Node, graph_module: fx.GraphModule, kwargs
     return output_node
 
 
-def replace_dynamic_workspace_ops(graph_module: fx.GraphModule):
+def replace_dynamic_workspace_ops(graph_module: fx.GraphModule, meta_inputs: List):
     logger.debug("Start to replace dynamic workspace ops to static workspace for ops[%s] in graph[%s].",
                  _REPLACE_FUNC_MAP.keys(), id(graph_module))
+
+    input_node = []
+    for cur_node in graph_module.graph.nodes:
+        if cur_node.op == "placeholder":
+            input_node.append(cur_node)
+    sym_inputs_2_node = {}
+    for idx, meta in enumerate(meta_inputs):
+        if is_sym(meta):
+            sym_inputs_2_node[meta.node.expr] = input_node[idx]
 
     erase_nodes = []
     for node in graph_module.graph.nodes:
@@ -351,7 +489,7 @@ def replace_dynamic_workspace_ops(graph_module: fx.GraphModule):
         with graph_module.graph.inserting_before(node):
             node_kwargs = dict(node.kwargs)
             workspace_node = construct_and_add_workspace(node, graph_module, node_kwargs)
-            output_node = construct_and_add_output(node, graph_module, node_kwargs)
+            output_node = construct_and_add_output(node, graph_module, node_kwargs, sym_inputs_2_node)
             out_run_node = graph_module.graph.call_function(_REPLACE_FUNC_MAP[node.target].out_operator,
                                                             args=node.args, kwargs=node_kwargs)
             logger.debug("Original fx node[name: %s][type: %s] is replaced by "
@@ -391,6 +529,7 @@ def _find_mutated_user_inputs(gm: fx.GraphModule):
         elif _is_inplace_node(node):
             inplace_node_args_list.append(node.args[0].name)
     return [arg for arg in inplace_node_args_list if arg in placeholder_args]
+
 
 try:
     import torch_npu
