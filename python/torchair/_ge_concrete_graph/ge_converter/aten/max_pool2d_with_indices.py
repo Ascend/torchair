@@ -9,7 +9,7 @@ from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
 from torchair.ge._ge_graph import Tensor, TensorSpec, assert_args_checkout
-from torchair._ge_concrete_graph.utils import specific_op_input_layout, specific_op_output_layout
+from torchair._ge_concrete_graph.utils import specific_op_input_layout, specific_op_output_layout, dtype_promote
 
 
 @register_fx_node_ge_converter(torch.ops.aten.max_pool2d_with_indices.default)
@@ -58,6 +58,7 @@ def conveter_aten_max_pool2d_with_indices_default(
     specific_op_input_layout(output, indices=0, layout="NCHW")
     specific_op_output_layout(output, indices=[0, 1], layout="NCHW")
     argmax = ge.Identity(output)
+    argmax = dtype_promote(argmax, target_dtype=torch.int64)
     return output, argmax
 
 

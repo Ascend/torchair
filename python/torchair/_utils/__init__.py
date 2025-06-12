@@ -64,11 +64,9 @@ def _add_op_to_meta_table(op, fn, avoid_fallback_flag=False):
 
 def register_meta_npu(op, avoid_fallback_flag=False):
     def meta_decorator(fn: Callable):
-        @wraps(fn)
-        def wrapper(*args, **kwargs):
-            _add_op_to_meta_table(op, fn, avoid_fallback_flag)
-            return fn(*args, **kwargs)
-        return wrapper
+        _add_op_to_meta_table(op, fn, avoid_fallback_flag)
+        return fn
+
     return meta_decorator
 
 
@@ -78,11 +76,7 @@ def register_break_fn(meta_class, op_name):
     def decorator(func: Callable):
         break_fn_table[op_name] = func
         break_mapping_table[op_name] = meta_class
-
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
-        return wrapper
+        return func
 
     return decorator
 
