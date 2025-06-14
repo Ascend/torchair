@@ -14,6 +14,7 @@ from torchair.configs.fusion_config import _FusionConfig
 from torchair.configs.inference_config import _InferenceConfig
 from torchair.configs.experimental_config import _ExperimentalConfig
 from torchair.configs.ge_config import _GEConfig
+from torchair.core.utils import logger
 
 
 class CompilerConfig(NpuBaseConfig):
@@ -40,6 +41,42 @@ class CompilerConfig(NpuBaseConfig):
         self_dict = dict(_get_all_leaf_properties(self))
         other_dict = dict(_get_all_leaf_properties(other))
         return self_dict == other_dict
+
+
+aclgraph_config_list = [("debug.aclgraph.disable_reinplace_input_mutated_ops_pass", [True]), \
+    ("debug.aclgraph.disable_reinplace_inplaceable_ops_pass", [True])]
+ge_config_list = [("inference_config.dynamic_gears_merge_policy", ["zip", "product"]), \
+    ("debug.fx_summary.type", ["csv"]), ("dump_config.enable_dump", [True]), \
+    ("ge_config.export_compile_stat", ["2", "1", "0"]), \
+    ("export.experimental.auto_atc_config_generated", [True]), \
+    ("export.experimental.enable_record_nn_module_stack", [True]), \
+    ("ge_config.enable_single_stream", [True]), ("ge_config.oo_level", ["O3", "O1"]), \
+    ("ge_config.oo_constant_folding", [True, False]), ("ge_config.oo_dead_code_elimination", [True, False]), \
+    ("experimental_config.frozen_parameter", [True]), \
+    ("experimental_config.topology_sorting_strategy", ["DFS", "BFS", "RDFS", "StableRDFS"]), \
+    ("experimental_config.cc_parallel_enable", [True]), ("experimental_config.jit_compile", ["auto"]), \
+    ("experimental_config.enable_ref_data", [True]), \
+    ("experimental_config.tiling_schedule_optimize", [True]), \
+    ("experimental_config.enable_view_optimize", [False, True]), ("fusion_config.fusion_switch_file", []), \
+    ("experimental_config.static_model_ops_lower_limit", []), ("ge_config.aicore_num", [])]
+
+
+def _check_config_support(config: Any):
+    config_dict = dict(_get_all_leaf_properties(config))
+    warn_config = []
+    if config.mode.value == "max-autotune":
+        for config_arg in aclgraph_config_list:
+            if config_arg[0] + "._value" in config_dict.keys():
+                warn_config.append("config." + config_arg[0])
+        logger.warning("The following config or properties may not take effect or report error " + \
+            "in max-autotune mode: {warn_configs}".format(warn_configs=", ".join(warn_config)))
+    else:
+        for config_arg in ge_config_list:
+            if config_arg[0] + "._value" in config_dict.keys():
+                warn_config.append("config." + config_arg[0])
+        logger.warning("The following config or properties may not take effect or report error " + \
+            "in reduce-overhead mode: {warn_configs}".format(warn_configs=", ".join(warn_config) + \
+            ", cache_compile, set_dim_gears, dynamo_export, scope, npu_print"))
 
 
 def _get_all_leaf_properties(obj: Any, prefix: str = ""):

@@ -28,7 +28,7 @@ from torch._dynamo.utils import detect_fake_mode
 from torchair.core._concrete_graph import ConcreteGraphBase, ValuePack, _is_symlist
 from torchair.core.utils import logger
 from torchair.ge._ge_graph import is_sym, _torch_tensor_to_ge_const
-from torchair.configs.compiler_config import CompilerConfig
+from torchair.configs.compiler_config import CompilerConfig, _check_config_support
 from torchair.fx_summary import _summarize_fx_graph
 from torchair.fx_dumper import _NpuFxDumper
 from torchair._utils.custom_aot_functions import aot_module_simplified_joint
@@ -460,6 +460,7 @@ def get_npu_backend(*, compiler_config: CompilerConfig = None, custom_decomposit
     if compiler_config is None:
         compiler_config = CompilerConfig()
 
+    _check_config_support(compiler_config)
     decompositions = get_npu_default_decompositions()
     decompositions.update(custom_decompositions)
 
