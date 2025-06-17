@@ -18,6 +18,10 @@ op_allgather = npu_define_lib.define(
 op_allgather_in_tensor = npu_define_lib.define(
     "allgather_in_tensor(Tensor out, Tensor input, str tag, int[] ranks, int group_size) -> Tensor")
 
+_op_allgather_in_tensor_shape = npu_define_lib.define(
+    "_allgather_in_tensor_shape(Tensor out, Tensor input, SymInt[] output_shape, \
+        str tag, int[] ranks, int group_size) -> Tensor")
+
 op_allgather_in_tensor_uneven = npu_define_lib.define(
     "allgather_in_tensor_uneven(Tensor input_tensor, SymInt send_count, SymInt[] recv_counts, \
     str tag, int[] rank_list, int group_size, SymInt[] recv_displacements) -> Tensor")
@@ -58,6 +62,44 @@ def conveter_allgather_in_tensor(
     return ge.Reshape(res, ge.Shape(output_tensor))
 
 
+def _allgather_in_tensor_shape_npu(
+        output_tensor: torch.Tensor,
+        input_tensor: torch.Tensor,
+        output_shape: List[int],
+        tag: str,
+        ranks: List[int],
+        group_size: int, ):
+    pg = c10d._find_or_create_pg_by_ranks_and_tag(tag, ranks, group_size)
+    c10d.all_gather_into_tensor(output_tensor, input_tensor, group=pg, async_op=False)
+    return output_tensor
+
+
+def _allgather_in_tensor_shape_meta(
+        output_tensor: torch.Tensor,
+        input_tensor: torch.Tensor,
+        output_shape: List[int],
+        tag: str,
+        ranks: List[int],
+        group_size: int, ):
+    return torch.empty(output_shape, dtype=input_tensor.dtype, device="meta")
+
+
+@register_fx_node_ge_converter(torch.ops.npu_define._allgather_in_tensor_shape.default)
+def conveter_allgather_in_tensor_shape(
+        output_tensor: torch.Tensor,
+        input_tensor: torch.Tensor,
+        output_shape: List[int],
+        tag: str,
+        rank_list,
+        group_size: int,
+        meta_outputs: Any = None,
+):
+    """allgather_in_tensor(Tensor out, Tensor input, str tag, int[] ranks, int group_size) -> Tensor"""
+    group_name = get_group_name_and_record(tag, rank_list, group_size)
+    res = ge.HcomAllGather(input_tensor, rank_size=group_size, group=group_name, fusion=0)
+    return ge.Reshape(res, output_shape)
+
+
 def npu_allgather_in_tensor_patch_dist(output_tensor, input_tensor, group=None, async_op=False):
     if not torch.distributed._functional_collectives._are_we_tracing():
         return torch.distributed.distributed_c10d.all_gather_into_tensor(output_tensor, input_tensor, group, async_op)
@@ -72,7 +114,8 @@ def npu_allgather_in_tensor_patch_dist(output_tensor, input_tensor, group=None, 
     tag = c10d._get_group_tag(group)
     size_ = len(ranklist)
     #allgather中的output_tensor输入只是使用它的size，并不会对tensor做改变，后续版本会变更为size输入
-    out = torch.ops.npu_define.allgather_in_tensor(output_tensor, input_tensor, tag, ranklist, size_)
+    out = torch.ops.npu_define._allgather_in_tensor_shape(output_tensor, input_tensor, \
+        output_tensor.shape, tag, ranklist, size_)
     output_tensor.copy_(out)
 
 
@@ -88,6 +131,8 @@ def allgather_meta(
 npu_define_lib.impl(op_allgather, allgather_meta, 'Meta')
 npu_define_lib.impl(op_allgather_in_tensor, allgather_in_tensor_meta, 'Meta')
 npu_define_lib.impl(op_allgather_in_tensor, allgather_in_tensor_npu, 'PrivateUse1')
+npu_define_lib.impl(_op_allgather_in_tensor_shape, _allgather_in_tensor_shape_meta, 'Meta')
+npu_define_lib.impl(_op_allgather_in_tensor_shape, _allgather_in_tensor_shape_npu, 'PrivateUse1')
 
 
 def check_same_size(output_tensor_list):
