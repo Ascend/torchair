@@ -2169,7 +2169,7 @@ class DeepseekV3ForCausalLM(DeepseekV3PreTrainedModel):
         if self.world_size > 1:
             new_logits = torch.zeros_like(logits).repeat(self.world_size, 1, 1)
             dist.all_gather_into_tensor(new_logits, logits, group=_world._default_pg)
-            new_logits = new_logits.reshape(logits.shape[0], logits.shape[1], -1)
+            logits = new_logits.reshape(logits.shape[0], logits.shape[1], -1)
         logits = logits.float()
 
         return logits
