@@ -11,6 +11,7 @@
 #define METADEF_CXX_INC_EXTERNAL_UTILS_EXTERN_MATH_UTIL_H
 
 #include <iostream>
+#include <cstdint>
 #include <limits>
 
 namespace ge {
