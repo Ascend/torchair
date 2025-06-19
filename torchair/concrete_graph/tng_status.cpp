@@ -5,21 +5,25 @@
 #include <regex>
 #include <memory>
 #include <securec.h>
+#include <set>
 
 #include "logger.h"
 #include "external/graph/types.h"
 #include "external/graph/ascend_string.h"
 
 namespace tng {
+static const std::set<const char *> valid_log_levels = {"0", "1", "2", "3", "4"};
+
 int32_t Logger::kLogLevel = []() -> int32_t {
   auto env_val = std::getenv("TNG_LOG_LEVEL");
   if (env_val) {
     std::string env_tmp(env_val);
-    std::regex reg("[0-4]");
     if (env_tmp.empty()) {
       return static_cast<int32_t>(tng::LogLevel::ERROR);
     }
-    if (!std::regex_match(env_tmp, reg)) {
+
+    if (valid_log_levels.find(env_tmp.c_str()) == valid_log_levels.end()) {
+      // undefined log level env, use level ERROR.
       tng::Logger(__FILE__, __LINE__, "WARNING") << \
         "Value of TNG_LOG_LEVEL should be in {0, 1, 2, 3, 4}, but got " << env_tmp;
       return static_cast<int32_t>(tng::LogLevel::ERROR);

@@ -16,7 +16,7 @@ foreach (COMPILE_FLAG ${CUSTOM_COMPILE_FLAGS})
 endforeach (COMPILE_FLAG)
 
 set_target_properties(_npu_graph_executor PROPERTIES PREFIX "")
-set_target_properties(_npu_graph_executor PROPERTIES LINK_FLAGS "-Wl,-rpath,$ORIGIN/")
+set_target_properties(_npu_graph_executor PROPERTIES LINK_FLAGS "-Wl,-Bsymbolic -Wl,-rpath,$ORIGIN/")
 target_link_libraries(_npu_graph_executor PRIVATE
         _torchair
         _abi_compat_ge_apis
