@@ -413,7 +413,7 @@ def _update_internal_format_from_inputs(graph: GraphDef, runtime_inputs):
             input_index_mapping_graph_op[idx].output_desc[0].attr["origin_format_for_int"].i = origin_format
 
             from torch_npu.npu.utils import _is_gte_cann_version
-            if _is_gte_cann_version("8.1.RC2"):
+            if _is_gte_cann_version("8.2.RC1"):
                 input_index_mapping_graph_op[idx].attr["_enable_storage_format_spread"].b = False
                 input_index_mapping_graph_op[idx].output_desc[0].shape.dim[:] = []
                 input_index_mapping_graph_op[idx].output_desc[0].attr["origin_shape"].list.val_type = 2

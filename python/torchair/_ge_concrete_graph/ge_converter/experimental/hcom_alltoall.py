@@ -103,7 +103,7 @@ def convert_all_to_all_single_npu(
 
     try:
         from torch_npu.npu.utils import _is_gte_cann_version
-        is_supported_version = _is_gte_cann_version("8.1.RC2", module="CANN")
+        is_supported_version = _is_gte_cann_version("8.2.RC1", module="CANN")
     except (ImportError, RuntimeError):
         is_supported_version = False
     check_all_to_all_supported = isinstance(send_counts, List) and isinstance(recv_counts, List) and len(

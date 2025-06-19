@@ -351,16 +351,16 @@ bool CheckCANNVersion(std::string version) {
   return currentNum >= boundaryNum;
 }
 
-bool CheckCANNVersion81RC2() {
+bool CheckCANNVersion82RC1() {
   const static bool equalOrGreater = []() {
-    return CheckCANNVersion("8.1.RC2");
+    return CheckCANNVersion("8.2.RC1");
   }();
   return equalOrGreater;
 }
 
 bool IsSupportHostInput() {
     // check static shape graph supports channel-associated copy of host input
-    return CheckCANNVersion81RC2();
+    return CheckCANNVersion82RC1();
 }
 
 }  // namespace tng
