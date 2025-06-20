@@ -443,44 +443,53 @@ REG_OP(BatchMatMulV2)
     .OP_END_FACTORY_REG(BatchMatMulV2)
 
 /**
-* @brief Multiplies matrix "a" by matrix "b", producing "a * b". \n
+* @brief Function TransposeBatchMatMul. This op support perform the transpose operation on the input and output of batchmatmul and perform the calculation of batch matmul.
+
 * @par Inputs:
-* Four inputs, including:
-* @li x1: A matrix tensor. Must be one of the following types:
-* float32, float16, bfloat16. 3D. Has format ND.
-* @li x2: A matrix tensor. Must be one of the following types:
-* float32, float16, bfloat16. 3D. Has format ND.
-* @li bias: An optional tensor. Bias for batchmatmul. Must be one of the following types:
-* float32, float16, bfloat16. 1D. Has format ND.
-* @li scale: A matrix tensor, quantization parameter.
-             Must be one of the following types: uint64, int64. The format
-             supports ND. The shape is 1D (t,), with t equal to b*n, where b, n is the same as that of x2.
+* @li x1: A tensor, which is the input x1 in the formula, supports the ND data format (refer to Data Format), and the shape supports 3 dimensions with the dimension being (b, m, k). The data type supports float32, float16, bfloat16.
+* @li x2: A tensor, which is the input x2 in the formula, supports the ND data format (refer to Data Format), and the shape supports 3 dimensions with the dimension being (b, k, n). The data type supports float32, float16, bfloat16.
+* @li bias: A tensor of bias, contains all bias of inputs for matmul. For each tensor, the data type of elements supports float32, float16, bfloat16; the format supports ND. Currently, input is not supported.
+* @li scale: It represents the scaling factor in the quantization parameters. It supports the ND data format as described in Data Format. The supported data type is int64 or uint64, and the shape is one-dimensional (b * n), where the values of b and n are consistent with those of b and n in x2.
 
 * @par Attributes:
-* Four attributes, including:
-* @li perm_x1: A list int. "x1" is permuted to shape [B, M, K] before multiplication, the default value is no permutation.
-* @li perm_x2: A list int. "x2" is permuted to shape [B, K, N] before multiplication, the default value is no permutation.
-* @li perm_y: A list int. "y" is permuted after multiplication.
-* @li enable_hf32: An optional bool. If True, enable enable_hi_float_32_execution.
-* @li batch_split_factor: An optional int. Declares factor of output_batch. Default to be 1.
+* @li perm_x1: A list of int, represents the transpose sequence of the first matrix of batch matmul.
+* @li perm_x2: A list of int, represents the transpose sequence of the second matrix of batch matmul.
+* @li perm_y: A list of int, represents the transpose sequence of the output matrix of batch matmul.
+* @li enable_hf32: Enable reducing input accuracy to data type HFLOAT32. The supported data type is int64, default value is false.
+* @li batch_split_factor: Used to specify the N-dimensional partition size of the output matrix. The supported data type is int.
 
 * @par Outputs:
-* y: The result matrix tensor. 3D. Must be one of the following
-* types: float32, float16, int8, bfloat16. 3D. Has format ND. \n
+* y: A matrix Tensor. The type support float32, float16, bfloat16, int8.
+
+* @attention Constraints:
+* Warning: \n
+*  | x1         | x2          | bias       | scale          | perm_x1     | perm_x2      | perm_y      | enable_hf32  | batch_split_factor  |  out             |
+*  | ---------: | :---------: | :--------: | :------------: | :---------: | :----------: | :--------:  | :----------: | :--------------:    | :--------------: | 
+*  | float16    | float16     | float16    | int64/uint64   | List Int    | List Int     | List Int    | Bool         |  int                |  float16/int8    |
+*  | bfloat16   | bfloat16    | bfloat16   | int64/uint64   | List Int    | List Int     | List Int    | Bool         |  int                |  bfloat16        |
+*  | float32    | float32     | float32    | int64/uint64   | List Int    | List Int     | List Int    | Bool         |  int                |  float32         |
+
+* Among them: \n
+* The dimension of the -1 axis of x1 should be less than or equal to 65535. 
+* The dimension of the -1 axis of x2 should be less than or equal to 65535. 
+* The size of perm_x1, perm_x2, perm_y should be equal to 3. \n
+* x1 matrix and y matrix transposition only supports 0 axis and 1 axis swapping. \n
+* X2 matrix do not support transposition. \n
+* The value range of batch_split_factor is [1, N] and can be divided by N. \n
+* The dimension of 1 axis and -1 axis of x2 can be divided by 128. \n
 */
 REG_OP(TransposeBatchMatMul)
-    .INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
-    .INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
-    .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
-    .OPTIONAL_INPUT(scale, TensorType({DT_INT64, DT_UINT64}))
-    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16, DT_INT8}))
-    .ATTR(perm_x1, ListInt, {})
-    .ATTR(perm_x2, ListInt, {})
-    .ATTR(perm_y, ListInt, {})
-    .ATTR(enable_hf32, Bool, false)
-    .ATTR(batch_split_factor, Int, 1)
-    .OP_END_FACTORY_REG(TransposeBatchMatMul)
-
+.INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+.INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+.OPTIONAL_INPUT(bias, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+.OPTIONAL_INPUT(scale, TensorType({DT_INT64, DT_UINT64}))
+.OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16, DT_INT8}))
+.ATTR(perm_x1, ListInt, {})
+.ATTR(perm_x2, ListInt, {})
+.ATTR(perm_y, ListInt, {})
+.ATTR(enable_hf32, Bool, false)
+.ATTR(batch_split_factor, Int, 1)
+.OP_END_FACTORY_REG(TransposeBatchMatMul)
 
 /**
 * @brief Computes half the L2 norm of a tensor without the sqrt . \n
