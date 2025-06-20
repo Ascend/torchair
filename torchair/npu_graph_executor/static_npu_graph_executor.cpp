@@ -147,6 +147,20 @@ Status StaticNpuGraphExecutor::AssembleOutputs(const std::vector<c10::optional<a
   return Status::Success();
 }
 
+template Status StaticNpuGraphExecutor::AssembleOutputs<ge::Tensor>(
+  const std::vector<c10::optional<at::Tensor>> &assigned_outputs,
+  std::vector<at::DataPtr> &data_ptrs,
+  std::vector<ge::Tensor> &output_holders,
+  void *stream
+);
+
+template Status StaticNpuGraphExecutor::AssembleOutputs<gert::Tensor>(
+  const std::vector<c10::optional<at::Tensor>> &assigned_outputs,
+  std::vector<at::DataPtr> &data_ptrs,
+  std::vector<gert::Tensor> &output_holders,
+  void *stream
+);
+
 Status StaticNpuGraphExecutor::AllocAndSetConstMemory(void *stream) {
   // Register allocator for GE before run, according to stream.
   auto allocator = AllocatorManager::GetInstance().EnsureAllocatorRegistered(stream);
