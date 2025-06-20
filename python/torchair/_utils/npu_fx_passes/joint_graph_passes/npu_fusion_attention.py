@@ -42,7 +42,7 @@ def rotary_emb(cos_cached, sin_cached, x, seq_len=None):
 def rotate_half(x):
     """Rotates half the hidden dims of the input."""
     x1 = x[..., : x.shape[-1] // 2]
-    x2 = x[..., x.shape[-1] // 2 :]
+    x2 = x[..., x.shape[-1] // 2:]
     return torch.cat((-x2, x1), dim=-1)
 
 
@@ -166,7 +166,7 @@ def _get_npu_fusion_attention_candidates():
     k1 = functools.partial(torch.empty, (2, 32, 2048, 128), dtype=torch.bfloat16, device=device, requires_grad=True)
     v1 = functools.partial(torch.empty, (2, 32, 2048, 128), dtype=torch.bfloat16, device=device, requires_grad=True)
     am1 = functools.partial(torch.empty, (2, 1, 2048, 2048), dtype=torch.float32, device=device, requires_grad=False)
-    d1 = {"head_dim":128}
+    d1 = {"head_dim": 128}
     candidates = [
             ( 
                 _npu_fusion_attention_pattern_1,
@@ -182,7 +182,7 @@ def _get_npu_fusion_attention_candidates():
     am2 = functools.partial(torch.empty, (2, 1, 2048, 2048), device=device, requires_grad=False)
     cos_cached = functools.partial(torch.empty, (4096, 128), device=device, requires_grad=False)
     sin_cached = functools.partial(torch.empty, (4096, 128), device=device, requires_grad=False)
-    d2 = {"num_heads":32, "head_dim":128}
+    d2 = {"num_heads": 32, "head_dim": 128}
     for dtype in [torch.float32, torch.bfloat16]:
         am2_dtype = functools.partial(am2, dtype=dtype)
         cos_cached_dtype = functools.partial(cos_cached, dtype=dtype)

@@ -122,7 +122,7 @@ def _optimize_non_contiguous(npu_input, meta_input, graph):
 
     #存在transpose，则计算transpose的相关参数
     stride_index_dicts = dict(sorted(stride_index_dicts.items(), key=lambda \
-        s:(hint_int(s[1][0]), hint_int(s[1][1])), reverse=True))
+        s: (hint_int(s[1][0]), hint_int(s[1][1])), reverse=True))
     permlist, src_trans_shape, dst_trans_shape = _build_transpose_perm(stride_index_dicts)
 
     if need_transpose:
