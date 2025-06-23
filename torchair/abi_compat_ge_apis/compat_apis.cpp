@@ -44,7 +44,13 @@ const std::map<ge::DataType, std::string> kDataTypeToStringMap = {
     {ge::DataType::DT_INT4,           "DT_INT4"},                      // dt_variant type
     {ge::DataType::DT_UINT1,          "DT_UINT1"},                    // dt_variant type
     {ge::DataType::DT_INT2,           "DT_INT2"},                      // dt_variant type
-    {ge::DataType::DT_UINT2,          "DT_UINT2"}                     // dt_variant type
+    {ge::DataType::DT_UINT2,          "DT_UINT2"},          // dt_variant type
+    {ge::DataType::DT_HIFLOAT8,       "DT_HIFLOAT8"},                // hifloat8 type
+    {ge::DataType::DT_FLOAT8_E5M2,    "DT_FLOAT8_E5M2"},            // float8_e5m2 type
+    {ge::DataType::DT_FLOAT8_E4M3FN,  "DT_FLOAT8_E4M3FN"},      // float8_e4m3fn type
+    {ge::DataType::DT_FLOAT8_E8M0,    "DT_FLOAT8_E8M0"},                 // float8_e8m0 type
+    {ge::DataType::DT_FLOAT4_E2M1,    "DT_FLOAT4_E2M1"},              // float4_e2m1 type
+    {ge::DataType::DT_FLOAT4_E1M2,    "DT_FLOAT4_E1M2"}              // float4_e1m2 type
 };
 
 const std::map<ge::Format, std::string> kFormatToStringMap = {

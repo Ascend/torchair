@@ -78,6 +78,14 @@ enum DataType {
   DT_INT2 = 31,            // int2 type
   DT_UINT2 = 32,           // uint2 type
   DT_COMPLEX32 = 33,       // complex32 type
+  DT_HIFLOAT8 = 34,        // hifloat8 type
+  DT_FLOAT8_E5M2 = 35,     // float8_e5m2 type
+  DT_FLOAT8_E4M3FN = 36,   // float8_e4m3fn type
+  DT_FLOAT8_E8M0 = 37,     // float8_e8m0 type
+  DT_FLOAT6_E3M2 = 38,     // float6_e3m2 type     当前版本不支持该类型。
+  DT_FLOAT6_E2M3 = 39,     // float6_e2m3 type     当前版本不支持该类型。
+  DT_FLOAT4_E2M1 = 40,     // float4_e2m1 type
+  DT_FLOAT4_E1M2 = 41,     // float4_e1m2 type
   DT_MAX                   // Mark the boundaries of data types
 };
 

@@ -498,6 +498,41 @@ class TorchairSt(unittest.TestCase):
         with open(file_name, 'r') as f:
             src2 = f.read()
         assert src2.count(sub_str) == 1
+        
+    
+    def test_export_to_fp8(self):
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, z):
+                x_e4m3fn = x.to(torch.float8_e4m3fn)
+                x_fp = x_e4m3fn.to(torch.float)
+                x_e5m2 = x_fp.to(torch.float8_e5m2)
+                z_fp = z.to(torch.float)
+                return x_e5m2, z_fp
+
+        model = Model()
+        x = torch.randn([2, 4], dtype=torch.float)
+        y = torch.randn([2, 4], dtype=torch.float)
+        z = y.to(torch.float8_e4m3fn)
+
+        export_path1 = "test_export_file_path_fp8"
+
+        torchair.dynamo_export(x, z, model=model, export_path=export_path1, dynamic=False)
+
+        dumped_file_list = get_dumped_file_list(export_path1)
+        dumped_file_list.sort(key=lambda file_name: os.path.getmtime(os.path.join(export_path1, file_name)))
+        assert dumped_file_list.__len__() > 0
+        file_name = os.path.join(export_path1, dumped_file_list[-1])
+
+        with open(file_name, 'r') as f:
+            src = f.read()
+
+        self.assertEqual(src.count("op: \"Data\""), 2)
+        self.assertEqual(src.count("dtype: DT_FLOAT8_E4M3FN"), 5)
+        self.assertEqual(src.count("dtype: DT_FLOAT8_E5M2"), 2)
 
 
     def test_lite_export(self):
