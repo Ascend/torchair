@@ -36,7 +36,7 @@ class _GEConfig(NpuBaseConfig):
             local_option["ge.topoSortingMode"] = sorting_strategy_dict["StableRDFS"]
         global_option["ge.exportCompileStat"] = self.export_compile_stat.value
         if self.optimization_switch.value is not None:
-            local_option["ge.optimizationSwitch"] = self.optimization_switch.value
+            global_option["ge.optimizationSwitch"] = self.optimization_switch.value
 
         return local_option, global_option
 
