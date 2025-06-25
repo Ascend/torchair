@@ -12,7 +12,7 @@
 #include "external/graph/ascend_string.h"
 
 namespace tng {
-static const std::set<const char *> valid_log_levels = {"0", "1", "2", "3", "4"};
+static const std::set<char> valid_log_levels = {'0', '1', '2', '3', '4'};
 
 int32_t Logger::kLogLevel = []() -> int32_t {
   auto env_val = std::getenv("TNG_LOG_LEVEL");
@@ -22,7 +22,7 @@ int32_t Logger::kLogLevel = []() -> int32_t {
       return static_cast<int32_t>(tng::LogLevel::ERROR);
     }
 
-    if (valid_log_levels.find(env_tmp.c_str()) == valid_log_levels.end()) {
+    if ((env_tmp.size() != 1) || (valid_log_levels.find(env_tmp[0]) == valid_log_levels.end())) {
       // undefined log level env, use level ERROR.
       tng::Logger(__FILE__, __LINE__, "WARNING") << \
         "Value of TNG_LOG_LEVEL should be in {0, 1, 2, 3, 4}, but got " << env_tmp;
