@@ -24,6 +24,9 @@ def conveter_npu_grouped_matmul_finalize_routing(
     *,
     scale: Optional[Tensor] = None,
     bias: Optional[Tensor] = None,
+    offset: Optional[Tensor] = None,
+    antiquant_scale: Optional[Tensor] = None,
+    antiquant_offset: Optional[Tensor] = None,
     pertoken_scale: Optional[Tensor] = None,
     shared_input: Optional[Tensor] = None, 
     logit: Optional[Tensor] = None,
@@ -36,22 +39,31 @@ def conveter_npu_grouped_matmul_finalize_routing(
     meta_outputs: TensorSpec = None
 ):
     """NB: npu::npu_grouped_matmul_finalize_routing(Tensor x, Tensor w, Tensor group_list, *,
-                        Tensor? scale=None, Tensor? bias=None, Tensor? pertoken_scale=None,
-                        Tensor? shared_input=None, Tensor? logit=None, Tensor? row_index=None,
-                        ScalarType? dtype=None, float? shared_input_weight=1.0, int?
-                        shared_input_offset=0, int? output_bs=0, int? group_list_type=1) -> Tensor
+                        Tensor? scale=None, Tensor? bias=None, Tensor? offset=None,
+                        Tensor? antiquant_scale=None, Tensor? antiquant_offset=None,
+                        Tensor? pertoken_scale=None, Tensor? shared_input=None,
+                        Tensor? logit=None, Tensor? row_index=None, ScalarType? dtype=None,
+                        float? shared_input_weight=1.0, int? shared_input_offset=0,
+                        int? output_bs=0, int? group_list_type=1) -> Tensor
     """
     if dtype is None or dtype == torch.float32:
         dtype = DataType.DT_FLOAT
     else:
         raise RuntimeError("Not supported output dtype is " + str(dtype))
-    if shared_input is None and logit is None:
-        if output_bs != x.symsize[0]:
-            raise RuntimeError("When shared_input and logit is None, output_bs must equal to M")
+
+    if w.dtype == DataType.DT_INT32:
+        const_w = ge.Const([1] * (w.rank - 1) + [8])
+        shape_w = ge.Shape(w)
+        shape_w = ge.Mul(shape_w, const_w)
+        new_w = ge.Bitcast(w, type=DataType.DT_INT4)
+        new_w = ge.Reshape(new_w, shape_w)
+    else:
+        new_w = w
+
     if output_bs == 0:
         output_bs = x.symsize[0]
     return ge.GroupedMatmulFinalizeRouting(x,
-                                 w,
+                                 new_w,
                                  scale=scale,
                                  bias=bias,
                                  pertoken_scale=pertoken_scale,
@@ -59,6 +71,7 @@ def conveter_npu_grouped_matmul_finalize_routing(
                                  shared_input=shared_input,
                                  logit=logit,
                                  row_index=row_index,
+                                 offset=offset,
                                  dtype=dtype,
                                  shared_input_weight=shared_input_weight,
                                  shared_input_offset=shared_input_offset,
