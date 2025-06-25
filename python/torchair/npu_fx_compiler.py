@@ -303,8 +303,11 @@ class _NpuFxCompiler:
     def _get_compiled_gm(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
         if int(self.config.export.experimental.enable_lite_export.value):
             from torchair._ge_concrete_graph.ge_converter import lite
-
-        if self.config.debug.fx_summary.enabled:
+        
+        if self.config.debug.fx_summary.enabled and self.config.mode.value == "reduce-overhead":
+            logger.warning(f"The fx_summary csv files will not be generated in reduce-overhead mode.")
+        
+        if self.config.debug.fx_summary.enabled and self.config.mode.value == "max-autotune":
             _summarize_fx_graph(
                 gm, example_inputs, self.config.debug.fx_summary.full_path("summary"))
             if self.config.debug.fx_summary.skip_compile:
