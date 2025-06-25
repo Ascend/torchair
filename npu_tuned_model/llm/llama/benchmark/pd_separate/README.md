@@ -8,7 +8,7 @@
 
 模型结构使用的是已经改造后的modeling_llama.py
 
-**搭建环境**
+## 搭建环境
 
 ```shell
 # arm环境搭建示例
@@ -32,7 +32,7 @@ pip3 install transformers==4.31.0
 pip3 install transformers==4.40.0
 ```
 
-**设置环境变量**
+## 设置环境变量
 
 ```shell
 export PYTHONPATH=$PYTHONPATH:/path/to/your/torchair/npu_tuned_model/llm/llama
@@ -41,20 +41,20 @@ source ${cann_path}/latest/bin/setenv.bash
 export ASCEND_HOME_PATH=${cann_path}/latest
 ```
 
-**qkv权重融合**
+## qkv权重融合
 
 ```shell
 model_path=xxx/llama2-70b # 下载的权重和模型信息
 python3 merge_qkv_weight.py --model_path=${model_path} --tp_size=8 --output_path=xxx/llama-70b_qkv
 ```
 
-**将替换了mc2融合算子的LinearAllreduce替换deepspeed原生的LinearAllreduce**
+## 替换mc2融合算子
 
 将benchmark/deepspeed/mc2_adapter.py的LinearAllreduce整个类拷贝替换原生deepspeed的deepspeed/module_inject/layers.py中的LinearAllreduce类，并且import torch_npu
 
-**注：上述操作分别在全量和增量机器上完成后，**
+## 查询device_ip信息
 
-分别查询全量和增量机器的device_ip信息
+上述操作分别在全量和增量机器上完成后，分别查询全量和增量机器的device_ip信息
 
 ```shell
 for i in {0..7}; do hccn_tool -i $i -ip -g; done
@@ -76,7 +76,7 @@ deepspeed --num_gpus=8 benchmark/pd_separate/run_prompt.py --model_path=xxx/llam
 deepspeed --num_gpus=8 benchmark/pd_separate/run_decoder.py --model_path=xxx/llama2-70b_qkv
 ```
 
-**打点位置**
+## 打点位置
 
 在llm_inference.py的model_generate函数中start和end
 
@@ -111,9 +111,9 @@ deepspeed --num_gpus=8 benchmark/pd_separate/run_decoder.py --model_path=xxx/lla
   next_tokens = torch.argmax(outputs.logits[:, -1, :], dim=-1)
   ```
 
-- 调整成一次调用只会推理一次后，需要**保证能够和使用集成接口精度和性能一致**
+- 调整成一次调用只会推理一次后，需要**保证能够和使用集成接口的精度、性能一致**
 
-- 上述做完后，根据模型结构定义的代码如何区分全量和增量执行的，将**执行脚本拆分为全量执行脚本和增量执行脚本**。大模型脚本多以seq_length和kv cache区分全量和增量执行。
+- 上述做完后，根据模型结构定义的代码，区分出全量和增量执行部分，将**执行脚本拆分为全量执行脚本和增量执行脚本**。大模型脚本多以seq_length和kv cache区分全量和增量执行。
 
   以llama2为例，llama2中通过past_key_values这个输入是否是None，区分了全量和增量。当past_key_values为None时是全量推理，非None时是增量推理。示例代码：
 
@@ -138,11 +138,9 @@ deepspeed --num_gpus=8 benchmark/pd_separate/run_decoder.py --model_path=xxx/lla
 
   **增量的输入预处理和模型执行参考**[run_decoder.py](./run_decoder.py)的LlmDecoderRunner
 
-- 加入**分离部署功能**。
+- 加入**分离部署功能**。[分离部署接口API参考资料](https://www.hiascend.com/document/detail/zh/canncommercial/80RC2/apiref/llmdatadist/llm_python_002.html)
 
-  **注意**：下面用不同参数"kv_tensors"和"past_key_values"传递kv cache的tensor主要是区分llama2中的全量和增量执行，不同模型根据实际情况进行调整。
-
-[分离部署接口API参考资料](https://www.hiascend.com/document/detail/zh/canncommercial/80RC2/apiref/llmdatadist/llm_python_002.html)
+  **注**：下面用不同参数"kv_tensors"和"past_key_values"传递kv cache的tensor，主要是区分llama2中的全量和增量执行，不同模型根据实际情况进行调整。
 
 **全量用例执行参考**[run_prompt.py](./run_prompt.py)的main函数
 
