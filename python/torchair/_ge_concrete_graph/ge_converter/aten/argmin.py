@@ -37,7 +37,7 @@ def conveter_aten_argmin_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::argmin(Tensor self, int? dim=None, bool keepdim=False) -> Tensor"""
-    if not dim:
+    if dim is None:
         self_cp = ge.Reshape(self, dtype_promote((-1,), target_dtype=DataType.DT_INT64))
         return ge.ArgMin(self_cp, 0)
     if keepdim:
