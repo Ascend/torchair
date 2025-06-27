@@ -213,6 +213,7 @@ Status NpuConcreteGraph::Compile() {
       Session::GetInstance().AddGraph(graph_data_->id, *graph_data_->graph, graph_data_->compile_options));
   is_graph_added_ = true;
   graph_id_ = graph_data_->id;
+  created_pid_ = getpid();
 
   if (graph_data_->executor_type == ExecutorType::NPU) {
     // Only device input is supported for compile
