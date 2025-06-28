@@ -1087,6 +1087,30 @@ def kernel(*args):
         model(*decode2)
         self.assertFalse(os.path.exists(decode_cache_dir))  # recompile
 
+    def test_rng_check(self):
+        class Model(torch.nn.Module):
+            def __init__(self, dynamic):
+                super().__init__()
+                self.cached = torchair.inference.cache_compile(self._forward, dynamic=dynamic)
+
+            def forward(self, x):
+                return self.cached(x)
+
+            def _forward(self, x):
+                y = torch.randn(x.shape)
+                return x + y
+
+        x = torch.zeros(2, 2)
+
+        for dynamic in [True, False]:
+            model = Model(dynamic)
+            cache_dir = CompiledModel.get_cache_bin(model._forward, dynamic=dynamic)
+            ModelCacheSaver.remove_cache(cache_dir)
+            with self.assertRaises(torch._dynamo.exc.BackendCompilerFailed) as cm:
+                model(x)
+            self.assertTrue("Cache compile dose not support operator that depend on RNG, input index: 1." in str(
+                cm.exception.inner_exception))
+
 
 if __name__ == '__main__':
     unittest.main()

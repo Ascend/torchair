@@ -719,7 +719,8 @@ class GeConcreteGraph(ConcreteGraphBase):
         kernel.writelines(['', '_is_first_run = True', f'def kernel(*args):'])
         with kernel.indent():
             _input_func_list = [info.func for info in self._input_info_list]
-            input_code = self._codegen_input(self._fx_input_names, self._all_sym_input_idx, _input_func_list)
+            input_code = GeConcreteGraph._codegen_input(self._fx_input_names, self._all_sym_input_idx, _input_func_list,
+                                                        enable_cache)
             kernel.splice(input_code)
 
             # for info update in first run
@@ -1009,7 +1010,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         return local_compile_options, global_compile_options
 
     @staticmethod
-    def _codegen_input(all_input_names, all_sym_input, input_func_list):
+    def _codegen_input(all_input_names, all_sym_input, input_func_list, enable_cache=False):
         from torch._inductor.utils import IndentedBuffer
         input_code = IndentedBuffer()
 
@@ -1041,6 +1042,8 @@ class GeConcreteGraph(ConcreteGraphBase):
         for idx, func in enumerate(input_func_list):
             if isinstance(func, _TensorInput):
                 continue
+            if enable_cache and isinstance(func, _RngStatusInput):
+                raise AssertionError(f"Cache compile dose not support operator that depend on RNG, input index: {idx}.")
             input_code.writeline(func.codegen(idx, 'ge_inputs'))
         return input_code.getvalue()
 
