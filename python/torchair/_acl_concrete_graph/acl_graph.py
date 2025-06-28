@@ -43,6 +43,13 @@ _REPLACE_FUNC_MAP = {
         output_keys=["attention_out", "softmax_lse"],
         updated_param_keys=["actual_seq_lengths", "actual_seq_lengths_kv", "actual_shared_prefix_len"],
     ),
+    torch.ops.npu.npu_fused_infer_attention_v2.default: StaticWorkspaceReplaceFunc(
+        get_workspace=torch.ops.npu._npu_fused_infer_attention_v2_get_max_workspace.default,
+        out_operator=torch.ops.npu.npu_fused_infer_attention_v2.out,
+        workspace_keys=["workspace"],
+        output_keys=["attention_out", "softmax_lse"],
+        updated_param_keys=["actual_seq_qlen", "actual_seq_kvlen"],
+    ),
 }
 
 

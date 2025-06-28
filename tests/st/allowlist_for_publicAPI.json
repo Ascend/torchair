@@ -45,7 +45,8 @@
         "npu_tagged_event_record",
         "npu_tagged_event_wait",
         "npu_tagged_event_reset",
-        "npu_fused_infer_attention_score"
+        "npu_fused_infer_attention_score",
+        "npu_fused_infer_attention_v2"
     ],
 	"torchair.scope": [
         "npu_wait_tensor",

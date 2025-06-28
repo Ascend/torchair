@@ -9,8 +9,8 @@ from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
 from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
-from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
-    Support
+from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, \
+    BOOL, Support
 from torchair._ge_concrete_graph.utils import dtype_promote
 
 
@@ -82,25 +82,25 @@ def convert_npu_npu_fused_infer_attention_score(
         key_shape = ge.Mul(shape, const)
         key = ge.Bitcast(key, type=DataType.DT_INT4)
         key = ge.Reshape(key, key_shape)
- 
+
     if value is not None and value.dtype == DataType.DT_INT32:
         shape = ge.Shape(value)
         value_shape = ge.Mul(shape, const)
         value = ge.Bitcast(value, type=DataType.DT_INT4)
         value = ge.Reshape(value, value_shape)
- 
+
     if key_shared_prefix is not None and key_shared_prefix.dtype == DataType.DT_INT32:
         shape = ge.Shape(key_shared_prefix)
         key_shared_prefix_shape = ge.Mul(shape, const)
         key_shared_prefix = ge.Bitcast(key_shared_prefix, type=DataType.DT_INT4)
         key_shared_prefix = ge.Reshape(key_shared_prefix, key_shared_prefix_shape)
- 
+
     if value_shared_prefix is not None and value_shared_prefix.dtype == DataType.DT_INT32:
         shape = ge.Shape(value_shared_prefix)
         value_shared_prefix_shape = ge.Mul(shape, const)
         value_shared_prefix = ge.Bitcast(value_shared_prefix, type=DataType.DT_INT4)
         value_shared_prefix = ge.Reshape(value_shared_prefix, value_shared_prefix_shape)
- 
+
 
     key_list = [key]
     value_list = [value]
@@ -110,6 +110,8 @@ def convert_npu_npu_fused_infer_attention_score(
         actual_seq_lengths_kv = dtype_promote(actual_seq_lengths_kv, target_dtype=DataType.DT_INT64)
     if actual_shared_prefix_len is not None:
         actual_shared_prefix_len = dtype_promote(actual_shared_prefix_len, target_dtype=DataType.DT_INT64)
+    dequant_scale_query = None
+    query_quant_mode = 0
     return ge.FusedInferAttentionScore(query, key_list, value_list, pse_shift=pse_shift, atten_mask=atten_mask,
         actual_seq_lengths=actual_seq_lengths, actual_seq_lengths_kv=actual_seq_lengths_kv,
         dequant_scale1=dequant_scale1, quant_scale1=quant_scale1, dequant_scale2=dequant_scale2,
@@ -120,8 +122,9 @@ def convert_npu_npu_fused_infer_attention_score(
         value_antiquant_offset=value_antiquant_offset, key_shared_prefix=key_shared_prefix,
         value_shared_prefix=value_shared_prefix, actual_shared_prefix_len=actual_shared_prefix_len,
         query_rope=query_rope, key_rope=key_rope, key_rope_antiquant_scale=key_rope_antiquant_scale,
-        num_heads=num_heads, scale=scale,
+        dequant_scale_query=dequant_scale_query, num_heads=num_heads, scale=scale,
         pre_tokens=pre_tokens, next_tokens=next_tokens, input_layout=input_layout,
         num_key_value_heads=num_key_value_heads, sparse_mode=sparse_mode, inner_precise=inner_precise,
         block_size=block_size, antiquant_mode=antiquant_mode, softmax_lse_flag=softmax_lse_flag,
-        key_antiquant_mode=key_antiquant_mode, value_antiquant_mode=value_antiquant_mode)
+        key_antiquant_mode=key_antiquant_mode, value_antiquant_mode=value_antiquant_mode,
+        query_quant_mode=query_quant_mode)

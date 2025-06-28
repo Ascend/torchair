@@ -78261,24 +78261,24 @@ def MoeGatingTopKSoftmax(x: Tensor,
 
 # This api is auto-generated from IR FusedInferAttentionScore
 @auto_convert_to_tensor(
-    [False, True, True, False, False, False, False, False, False, False, False, False, False, False, False, False, 
-     False, False, False, False, False, False, False, False, False, False, False],
-    [False, False, False, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, 
-     True, True, True, True, True, True, True, True, True])
-def FusedInferAttentionScore(query: Tensor, key: List[Tensor], value: List[Tensor], pse_shift: Optional[Tensor], 
-    atten_mask: Optional[Tensor], actual_seq_lengths: Optional[Tensor], actual_seq_lengths_kv: Optional[Tensor], 
-    dequant_scale1: Optional[Tensor], quant_scale1: Optional[Tensor], dequant_scale2: Optional[Tensor], 
-    quant_scale2: Optional[Tensor], quant_offset2: Optional[Tensor], antiquant_scale: Optional[Tensor], 
-    antiquant_offset: Optional[Tensor], block_table: Optional[Tensor], query_padding_size: Optional[Tensor], 
-    kv_padding_size: Optional[Tensor], key_antiquant_scale: Optional[Tensor], key_antiquant_offset: Optional[Tensor], 
-    value_antiquant_scale: Optional[Tensor], value_antiquant_offset: Optional[Tensor], 
-    key_shared_prefix: Optional[Tensor], value_shared_prefix: Optional[Tensor], 
-    actual_shared_prefix_len: Optional[Tensor], query_rope: Optional[Tensor], key_rope: Optional[Tensor], 
-    key_rope_antiquant_scale: Optional[Tensor], *, 
-    num_heads: int, scale: float=1.000000, pre_tokens: int=2147483647, next_tokens: int=2147483647, 
-    input_layout: str="BSH", num_key_value_heads: int=0, sparse_mode: int=0, inner_precise: int=0, 
-    block_size: int=0, antiquant_mode: int=0, softmax_lse_flag: bool=False, key_antiquant_mode: int=0, 
-    value_antiquant_mode: int=0, dependencies=[], node_name=None):
+    [False, True, True, False, False, False, False, False, False, False, False, False, False, False, False, False,
+     False, False, False, False, False, False, False, False, False, False, False, False],
+    [False, False, False, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True,
+     True, True, True, True, True, True, True, True, True, True])
+def FusedInferAttentionScore(query: Tensor, key: List[Tensor], value: List[Tensor], pse_shift: Optional[Tensor],
+    atten_mask: Optional[Tensor], actual_seq_lengths: Optional[Tensor], actual_seq_lengths_kv: Optional[Tensor],
+    dequant_scale1: Optional[Tensor], quant_scale1: Optional[Tensor], dequant_scale2: Optional[Tensor],
+    quant_scale2: Optional[Tensor], quant_offset2: Optional[Tensor], antiquant_scale: Optional[Tensor],
+    antiquant_offset: Optional[Tensor], block_table: Optional[Tensor], query_padding_size: Optional[Tensor],
+    kv_padding_size: Optional[Tensor], key_antiquant_scale: Optional[Tensor], key_antiquant_offset: Optional[Tensor],
+    value_antiquant_scale: Optional[Tensor], value_antiquant_offset: Optional[Tensor],
+    key_shared_prefix: Optional[Tensor], value_shared_prefix: Optional[Tensor],
+    actual_shared_prefix_len: Optional[Tensor], query_rope: Optional[Tensor], key_rope: Optional[Tensor],
+    key_rope_antiquant_scale: Optional[Tensor], dequant_scale_query: Optional[Tensor], *,
+    num_heads: int, scale: float=1.000000, pre_tokens: int=2147483647, next_tokens: int=2147483647,
+    input_layout: str="BSH", num_key_value_heads: int=0, sparse_mode: int=0, inner_precise: int=0,
+    block_size: int=0, antiquant_mode: int=0, softmax_lse_flag: bool=False, key_antiquant_mode: int=0,
+    value_antiquant_mode: int=0, query_quant_mode: int=0, dependencies=[], node_name=None):
     """REG_OP(FusedInferAttentionScore)\n
 .INPUT(query, TensorType({DT_INT8, DT_FLOAT16, DT_BF16}))\n
 .DYNAMIC_INPUT(key, TensorType({DT_INT8, DT_FLOAT16, DT_BF16}))\n
@@ -78307,6 +78307,7 @@ def FusedInferAttentionScore(query: Tensor, key: List[Tensor], value: List[Tenso
 .OPTIONAL_INPUT(query_rope, TensorType({DT_INT8, DT_FLOAT16, DT_BF16}))\n
 .OPTIONAL_INPUT(key_rope, TensorType({DT_INT8, DT_FLOAT16, DT_BF16}))\n
 .OPTIONAL_INPUT(key_rope_antiquant_scale, TensorType({DT_INT8, DT_FLOAT16, DT_BF16}))\n
+.OPTIONAL_INPUT(dequant_scale_query, TensorType({DT_FLOAT32}))\n
 .OUTPUT(attention_out, TensorType({DT_FLOAT16, DT_FLOAT32, DT_INT8, DT_BF16}))\n
 .OUTPUT(softmax_lse, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
 .REQUIRED_ATTR(num_heads, Int)\n
@@ -78322,6 +78323,7 @@ def FusedInferAttentionScore(query: Tensor, key: List[Tensor], value: List[Tenso
 .ATTR(softmax_lse_flag, Bool, false)\n
 .ATTR(key_antiquant_mode, Int, 0)\n
 .ATTR(value_antiquant_mode, Int, 0)\n
+.ATTR(query_quant_mode, Int, 0)\n
 """
     op = get_default_ge_graph().op.add()
     op.type = "FusedInferAttentionScore"
@@ -78527,6 +78529,10 @@ def FusedInferAttentionScore(query: Tensor, key: List[Tensor], value: List[Tenso
         op.input.append(key_rope_antiquant_scale.tensor)
         op.input_desc.add().CopyFrom(key_rope_antiquant_scale.desc)
         op.input_desc[-1].name = "key_rope_antiquant_scale"
+    if dequant_scale_query is not None:
+        op.input.append(dequant_scale_query.tensor)
+        op.input_desc.add().CopyFrom(dequant_scale_query.desc)
+        op.input_desc[-1].name = "dequant_scale_query"
     # process attrs
     op.attr["num_heads"].i = num_heads
     op.attr["scale"].f = scale
@@ -78541,7 +78547,7 @@ def FusedInferAttentionScore(query: Tensor, key: List[Tensor], value: List[Tenso
     op.attr["softmax_lse_flag"].b = softmax_lse_flag
     op.attr["key_antiquant_mode"].i = key_antiquant_mode
     op.attr["value_antiquant_mode"].i = value_antiquant_mode
-
+    op.attr["query_quant_mode"].i = query_quant_mode
     # process outputs
     output_index = 0
     op.output_desc.add().name = "attention_out"
