@@ -43,7 +43,6 @@ class DynamicNpuGraphExecutor : public Executor {
   std::vector<gert::Tensor> gert_outputs_holder_;
   std::shared_ptr<GraphData> graph_data_;
   std::vector<at::Tensor> host_input_holders_;
-  void *first_stream_{nullptr};
 };
 }  // namespace tng
 

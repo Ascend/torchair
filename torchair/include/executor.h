@@ -31,10 +31,15 @@ class Executor {
   using Creator = std::function<Status(const std::shared_ptr<GraphData> &, std::unique_ptr<Executor> &)>;
   static bool RegisterExecutorCreator(const Creator &creator, int32_t priority = 0);
 
+  void *GetBindStream() const {
+    return first_stream_;
+  }
+
  protected:
   Executor() = default;
   std::map<ExecutorStage, uint64_t> stages;
   bool is_first_run_{true};
+  void *first_stream_{nullptr};
 
   void SetStageTime(ExecutorStage stage) {
     auto time = tng::GetTimestampForEventLog();
