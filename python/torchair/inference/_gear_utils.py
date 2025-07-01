@@ -80,7 +80,7 @@ def guard_gears_shape(example_inputs):
 def generate_dynamic_dims_option(named_inputs_info, config):
     if not any(len(t.dim_gears) != 0 for t in named_inputs_info.values()):
         return {}
-    ge_option = {"ge.inputShape" : None, "ge.dynamicDims": None, "ge.dynamicNodeType": "1"}
+    ge_option = {"ge.inputShape": None, "ge.dynamicDims": None, "ge.dynamicNodeType": "1"}
     sorted_named_inputs = {k: v for k, v in sorted(named_inputs_info.items(), key=lambda x: x[0])}
     str_inputshape = ''
     gear_list = []

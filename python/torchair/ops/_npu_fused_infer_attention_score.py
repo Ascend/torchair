@@ -287,7 +287,7 @@ def npu_fused_infer_attention_score_meta_impl(query, key, value, *, pse_shift=No
         )
         tmp_out = torch.empty([query.size(1), query.size(0), value.size(2)], dtype=query.dtype, device='meta')
     if quant_scale2 is not None:
-        if (softmax_lse_flag == True):
+        if (softmax_lse_flag):
             if input_layout == "TND":
                 return (torch.empty_like(tmp_out, dtype=torch.int8), torch.empty([query.size(0), num_heads, 1], dtype=torch.float32, device='meta'))
             elif input_layout == "TND_NTD":
@@ -300,7 +300,7 @@ def npu_fused_infer_attention_score_meta_impl(query, key, value, *, pse_shift=No
         out_type = torch.half
         if query_rope is not None:
             out_type = query_rope.dtype
-        if (softmax_lse_flag == True):
+        if (softmax_lse_flag):
             if input_layout == "TND":
                 return (torch.empty_like(tmp_out, dtype=out_type), torch.empty([query.size(0), num_heads, 1], \
                     dtype=torch.float32, device='meta'))
@@ -313,7 +313,7 @@ def npu_fused_infer_attention_score_meta_impl(query, key, value, *, pse_shift=No
         else:
             return (torch.empty_like(tmp_out, dtype=out_type), torch.empty([1], dtype=torch.float32, device='meta'))
     else:
-        if (softmax_lse_flag == True):
+        if (softmax_lse_flag):
             if input_layout == "TND":
                 if block_table is not None: # IFA目前TND只支持PA场景，PFA目前TND只支持非PA场景
                     return (torch.empty_like(tmp_out), torch.empty([query.size(0), num_heads, 1], dtype=torch.float32, \
