@@ -28,6 +28,7 @@ def conveter_npu_apply_rotary_pos_emb_default(
     cos: Tensor,
     sin: Tensor,
     layout: str = 'BSH',
+    rotary_mode: str = 'half',
     meta_outputs: List[TensorSpec] = None,
 ):
     """
@@ -39,8 +40,18 @@ def conveter_npu_apply_rotary_pos_emb_default(
              This current usage may cause the input to be changed unexpectedly, and the caller 
              needs to pay attention to this feature.
     """
-    if layout != 'BSH':
-        raise NotImplementedError("layout only support BSH now!")
+    support_layer = ['BSH', 'BSND', 'SBND', 'BNSD']
+    support_rotary_mode = ['half', 'quarter', 'interleave']
+    if layout not in support_layer:
+        raise NotImplementedError("layout only support BSH/BSND/SBND/BNSD now!")
+    if rotary_mode not in support_rotary_mode:
+        raise NotImplementedError("rotary_mode only support half/quarter/interleave now!")
+
+    layout_val = 1
+    if layout == "SBND":
+        layout_val = 2
+    elif layout == "BNSD":
+        layout_val = 3
 
     version_list = ["7.2", "7.3"]
     opp_ver = get_cann_opp_version()
@@ -52,6 +63,6 @@ def conveter_npu_apply_rotary_pos_emb_default(
     if insert_tensor_move:
         tm_q = ge.TensorMove(query)
         tm_k = ge.TensorMove(key)
-        return ge.ApplyRotaryPosEmb(tm_q, tm_k, cos, sin, layout=1)
+        return ge.ApplyRotaryPosEmb(tm_q, tm_k, cos, sin, layout=layout_val, rotary_mode=rotary_mode)
     else:
-        return ge.ApplyRotaryPosEmb(query, key, cos, sin, layout=1)
+        return ge.ApplyRotaryPosEmb(query, key, cos, sin, layout=layout_val, rotary_mode=rotary_mode)

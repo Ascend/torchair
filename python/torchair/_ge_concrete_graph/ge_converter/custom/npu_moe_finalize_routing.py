@@ -10,6 +10,7 @@ from torchair._ge_concrete_graph.fx2ge_converter import declare_supported, regis
 from torchair.ge._ge_graph import Tensor, TensorSpec
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F16, F32, T, Support
 from torchair._ge_concrete_graph.utils import dtype_promote
+from torchair._utils.check_platform import is_arch35
 
 
 @declare_supported([
@@ -44,7 +45,7 @@ def conveter_npu_moe_finalize_routing_default(
     '''NB: npu::npu_moe_finalize_routing(Tensor expanded_permuted_rows, Tensor? skip1, Tensor? skip2, Tensor? bias, 
     Tensor? scales, Tensor expanded_src_to_dst_row, Tensor? export_for_source_row, int? drop_pad_mode=0) -> Tensor'''
     if skip1 is not None and bias is not None and scales is not None and \
-                 expert_for_source_row is not None and drop_pad_mode == 0:
+                 expert_for_source_row is not None and drop_pad_mode == 0 and not is_arch35():
         return ge.MoeFinalizeRouting(expanded_permuted_rows, skip1, skip2_optional, bias, scales, 
                                      expanded_src_to_dst_row, expert_for_source_row)
     else:

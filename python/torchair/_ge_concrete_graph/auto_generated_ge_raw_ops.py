@@ -43309,55 +43309,150 @@ def AddRmsNorm(x1: Tensor, x2: Tensor, gamma: Tensor, *, epsilon: float=0.000001
 
 
 # This api is auto-generated from IR ApplyRotaryPosEmb
-@auto_convert_to_tensor([False, False, False, False],
-                        [False, False, False, False])
-def ApplyRotaryPosEmb(query: Tensor, key: Tensor, cos: Tensor, sin: Tensor, *, layout: int = 1, dependencies = [], node_name = None):
+@auto_convert_to_tensor([False, False, False, False], [False, False, False, False])
+def ApplyRotaryPosEmb(query: Tensor, key: Tensor, cos: Tensor, sin: Tensor, *, layout: int=1, rotary_mode: str="half", dependencies=[], node_name=None):
     """REG_OP(ApplyRotaryPosEmb)\n
 .INPUT(query, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))\n
 .INPUT(key, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))\n
 .INPUT(cos, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))\n
 .INPUT(sin, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))\n
 .ATTR(layout, Int, 1)\n
+.ATTR(rotary_mode, String, "half")\n
 .OUTPUT(query, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))\n
 .OUTPUT(key, TensorType({DT_FLOAT16, DT_BFLOAT16, DT_FLOAT}))\n
 """
 
-    op = get_default_ge_graph().op.add()
-    op.type = "ApplyRotaryPosEmb"
-    op.name = next_unique_name(node_name, "ApplyRotaryPosEmb")
-
-    # process dependices
-    for dependency in dependencies:
-        op.input.append(dependency.controller)
-
     # process inputs
-    op.input.append(query.tensor)
-    op.input_desc.add().CopyFrom(query.desc)
-    op.input_desc[-1].name = "query"
-    op.input.append(key.tensor)
-    op.input_desc.add().CopyFrom(key.desc)
-    op.input_desc[-1].name = "key"
-    op.input.append(cos.tensor)
-    op.input_desc.add().CopyFrom(cos.desc)
-    op.input_desc[-1].name = "cos"
-    op.input.append(sin.tensor)
-    op.input_desc.add().CopyFrom(sin.desc)
-    op.input_desc[-1].name = "sin"
+    inputs = {
+        "query": query,
+        "key": key,
+        "cos": cos,
+        "sin": sin,
+    }
 
     # process attrs
-    op.attr["layout"].i = layout
+    attrs = {
+        "layout": attr.Int(layout),
+        "rotary_mode": attr.Str(rotary_mode),
+    }
 
     # process outputs
-    output_index = 0
-    op.output_desc.add().name = "query"
-    query = Tensor(op, output_index)
-    output_index += 1
-    op.output_desc.add().name = "key"
-    key = Tensor(op, output_index)
-    output_index += 1
+    outputs = [
+    "query",
+    "key",
+    ]
 
-    # return outputs
-    return query, key
+    return ge_op(
+        op_type="ApplyRotaryPosEmb",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("ApplyRotaryPosEmb") \
+        .input("query", "DT_FLOAT16, DT_BFLOAT16, DT_FLOAT") \
+        .input("key", "DT_FLOAT16, DT_BFLOAT16, DT_FLOAT") \
+        .input("cos", "DT_FLOAT16, DT_BFLOAT16, DT_FLOAT") \
+        .input("sin", "DT_FLOAT16, DT_BFLOAT16, DT_FLOAT") \
+        .attr("layout", attr.Int(1)) \
+        .attr("rotary_mode", attr.Str("half")) \
+        .output("query" , "DT_FLOAT16, DT_BFLOAT16, DT_FLOAT") \
+        .output("key" , "DT_FLOAT16, DT_BFLOAT16, DT_FLOAT")
+    )
+
+
+# This api is auto-generated from IR RotaryPositionEmbedding
+@auto_convert_to_tensor([False, False, False], [False, False, False])
+def RotaryPositionEmbedding(x: Tensor, cos: Tensor, sin: Tensor, *, mode: int = 0, dependencies = [], node_name = None):
+    """REG_OP(RotaryPositionEmbedding)\n
+.INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_BFLOAT16}))\n
+.INPUT(cos, TensorType({DT_FLOAT16, DT_FLOAT, DT_BFLOAT16}))\n
+.INPUT(sin, TensorType({DT_FLOAT16, DT_FLOAT, DT_BFLOAT16}))\n
+.OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_BFLOAT16}))\n
+.ATTR(mode, Int, 0)\n
+"""
+
+    # process inputs
+    inputs = {
+        "x": x,
+        "cos": cos,
+        "sin": sin,
+    }
+
+    # process attrs
+    attrs = {
+        "mode": attr.Int(mode),
+    }
+
+    # process outputs
+    outputs = [
+    "y",
+    ]
+
+    return ge_op(
+        op_type="RotaryPositionEmbedding",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("RotaryPositionEmbedding") \
+        .input("x", "DT_FLOAT16, DT_FLOAT, DT_BFLOAT16") \
+        .input("cos", "DT_FLOAT16, DT_FLOAT, DT_BFLOAT16") \
+        .input("sin", "DT_FLOAT16, DT_FLOAT, DT_BFLOAT16") \
+        .attr("mode", attr.Int(0)) \
+        .output("y", "DT_FLOAT16, DT_FLOAT, DT_BFLOAT16")
+    )
+
+
+# This api is auto-generated from IR RotaryPositionEmbeddingGrad
+@auto_convert_to_tensor([False, False, False, False], [False, False, False, False])
+def RotaryPositionEmbeddingGrad(dy: Tensor, cos: Tensor, sin: Tensor, x: Optional[Tensor], *, mode: int=0, dependencies=[], node_name=None):
+    """REG_OP(RotaryPositionEmbeddingGrad)\n
+.INPUT(dy, TensorType({DT_FLOAT16, DT_FLOAT, DT_BFLOAT16}))\n
+.INPUT(cos, TensorType({DT_FLOAT16, DT_FLOAT, DT_BFLOAT16}))\n
+.INPUT(sin, TensorType({DT_FLOAT16, DT_FLOAT, DT_BFLOAT16}))\n
+.OPTIONAL_INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_BFLOAT16}))\n
+.OUTPUT(dx, TensorType({DT_FLOAT16, DT_FLOAT, DT_BFLOAT16}))\n
+.OUTPUT(dcos, TensorType({DT_FLOAT16, DT_FLOAT, DT_BFLOAT16}))\n
+.OUTPUT(dsin, TensorType({DT_FLOAT16, DT_FLOAT, DT_BFLOAT16}))\n
+.ATTR(mode, Int, 0)\n
+"""
+
+    # process inputs
+    inputs = {
+        "dy": dy,
+        "cos": cos,
+        "sin": sin,
+        "x": x
+    }
+
+    # process attrs
+    attrs = {
+        "mode": attr.Int(mode),
+    }
+
+    # process outputs
+    outputs = [
+    "dx",
+    "dcos",
+    "dsin"
+    ]
+
+    return ge_op(
+        op_type="RotaryPositionEmbeddingGrad",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("RotaryPositionEmbeddingGrad") \
+        .input("dy", "DT_FLOAT16, DT_FLOAT, DT_BFLOAT16") \
+        .input("cos", "DT_FLOAT16, DT_FLOAT, DT_BFLOAT16") \
+        .input("sin", "DT_FLOAT16, DT_FLOAT, DT_BFLOAT16") \
+        .optional_input("x", "DT_FLOAT16, DT_FLOAT, DT_BFLOAT16") \
+        .attr("mode", attr.Int(0)) \
+        .output("dx", "DT_FLOAT16, DT_FLOAT, DT_BFLOAT16") \
+        .output("dcos", "DT_FLOAT16, DT_FLOAT, DT_BFLOAT16") \
+        .output("dsin", "DT_FLOAT16, DT_FLOAT, DT_BFLOAT16") \
+    )
 
 
 # This api is auto-generated from IR LogSoftmaxGrad
