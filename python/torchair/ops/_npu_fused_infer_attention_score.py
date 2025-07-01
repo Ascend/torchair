@@ -162,6 +162,10 @@ def npu_fused_infer_attention_score_meta_impl(query, key, value, *, pse_shift=No
     B = 1
     N = 1
     S1 = 1
+    change_d_scale = 1
+    # int4伪装int32
+    if value is not None and value.dtype == DataType.DT_INT32:
+        change_d_scale = 8
     if input_layout == "BNSD_BSND":
         token_x_dim = query.dim()
         torch._check(
@@ -217,7 +221,7 @@ def npu_fused_infer_attention_score_meta_impl(query, key, value, *, pse_shift=No
             tmp_out = torch.empty([query.size(0), query.size(1), query.size(2), query.size(3)],
                 dtype=query.dtype, device='meta')
         else:
-            tmp_out = torch.empty([query.size(0), query.size(1), query.size(2), value.size(3)],
+            tmp_out = torch.empty([query.size(0), query.size(1), query.size(2), value.size(3) * change_d_scale],
                 dtype=query.dtype, device='meta')
         B = query.size(0)
         N = query.size(1)
