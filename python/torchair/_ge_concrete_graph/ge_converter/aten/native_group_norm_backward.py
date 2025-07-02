@@ -12,6 +12,7 @@ from torchair.ge._ge_graph import Tensor, TensorSpec
 from torchair._ge_concrete_graph.supported_declaration import F32, Support
 from torchair._ge_concrete_graph.utils import specific_op_input_layout, specific_op_output_layout
 from torchair._ge_concrete_graph.utils import dtype_promote
+from torchair._utils.check_platform import is_arch35
 
 
 def _get_numel(inputs):
@@ -83,6 +84,27 @@ def conveter_aten_native_group_norm_backward_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::native_group_norm_backward(Tensor grad_out, Tensor input, Tensor mean, Tensor rstd, Tensor? weight, SymInt N, SymInt C, SymInt HxW, int group, bool[3] output_mask) -> (Tensor, Tensor, Tensor)"""
+    if is_arch35():
+        shape_list_0 = ge.Pack([N, C, HxW], N=3, axis=0)
+        shape_list_1 = ge.Pack([N, group], N=2, axis=0)
+        shape_list_2 = ge.Pack([C], N=1, axis=0)
+        gradout_reshaped = ge.Reshape(grad_out, shape_list_0)
+        input_reshaped = ge.Reshape(input, shape_list_0)
+        mean_reshaped = ge.Reshape(mean, shape_list_1)
+        rstd_reshaped = ge.Reshape(rstd, shape_list_1)
+        if weight is None:
+            weight = ge.Fill(shape_list_2, dtype_promote(1, target_dtype=input.dtype))
+        weight_reshaped = ge.Reshape(weight, shape_list_2)
+
+        dx, dgamma, dbeta = \
+            ge.GroupNormGrad(gradout_reshaped, mean_reshaped, rstd_reshaped, input_reshaped, weight_reshaped,
+                             num_groups=group, data_format="NCHW", dx_is_require=output_mask[0],
+                             dgamma_is_require=output_mask[1], dbeta_is_require=output_mask[2])
+        specific_op_input_layout(dx, indices=list(range(5)), layout="NCHW")
+        specific_op_output_layout(dx, indices=list(range(3)), layout="NCHW")
+        dx = ge.Reshape(dx, ge.Shape(input))
+        return dx, dgamma, dbeta
+
     eps = 1e-5
     dim = input.rank
     if dim != 3:

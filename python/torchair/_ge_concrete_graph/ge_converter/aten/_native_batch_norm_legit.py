@@ -12,6 +12,7 @@ from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
 from torchair._ge_concrete_graph.utils import specific_op_input_layout, \
     specific_op_output_layout
 from torchair._ge_concrete_graph.supported_declaration import F32, F16, Support
+from torchair._utils.check_platform import is_arch35
 
 
 @declare_supported(
@@ -40,15 +41,45 @@ def conveter_aten__native_batch_norm_legit_default(
             "torch.ops.aten._native_batch_norm_legit.default ge_converter is not implemented while training is False!"
         )
     dim = input.rank
-    if dim > 5 or dim < 2:
+    if dim < 2:
         raise RuntimeError("torch.ops.aten._native_batch_norm_legit.default "
-                           "ge_converter is not implemented while input dim > 5 or input dim <2!")
+                           "ge_converter is not implemented while input dim <2!")
     input_size = ge.Shape(input, dtype=DataType.DT_INT32)
+
     if weight is None:
         weight = ge.Fill(ge.Gather(input_size, 1), ge.Cast(1., dst_type=input.dtype))
 
     if bias is None:
         bias = ge.Fill(ge.Gather(input_size, 1), ge.Cast(0., dst_type=input.dtype))
+
+    if dim > 5:
+        shape_list = ge.Pack([ge.Gather(input_size, 0), ge.Gather(input_size, 1), ge.Gather(input_size, 2),
+                              ge.Gather(input_size, 3), -1], N=5, axis=0)
+        input = ge.Reshape(input, shape_list)
+
+    if is_arch35():
+        if dim <= 4:
+            if dim == 2 or dim == 3:
+                input = ge.Unsqueeze(input, axes=list(range(dim, 4)))
+            output, mean, variance, batch_mean, batch_variance = ge.BatchNormV3(input, weight, bias, running_mean,
+                                                                                running_var, epsilon=eps,
+                                                                                momentum=momentum, is_training=training)
+            specific_op_input_layout(output, indices=0, layout="NCHW")
+            specific_op_output_layout(output, indices=0, layout="NCHW")
+            if dim == 2 or dim == 3:
+                output = ge.Squeeze(output, axis=list(range(3, dim - 1, -1)))
+        else:
+            output, mean, variance, batch_mean, batch_variance = ge.BatchNormV3(input, weight, bias, running_mean,
+                                                                                running_var, epsilon=eps,
+                                                                                momentum=momentum, is_training=training)
+            specific_op_input_layout(output, indices=0, layout="NCDHW")
+            specific_op_output_layout(output, indices=0, layout="NCDHW")
+            if dim > 5:
+                output = ge.Reshape(output, input_size)
+                specific_op_input_layout(output, indices=[0, 1], layout="ND")
+                specific_op_output_layout(output, indices=0, layout="ND")
+        result = (output, batch_mean, batch_variance, mean, variance)
+        return result
 
     if dim <= 4:
         if dim == 2 or dim == 3:
@@ -76,6 +107,10 @@ def conveter_aten__native_batch_norm_legit_default(
                                                                                epsilon=eps)
     specific_op_input_layout(output, indices=list(range(7)), layout="NCDHW")
     specific_op_output_layout(output, indices=list(range(5)), layout="NCDHW")
+    if dim > 5:
+        output = ge.Reshape(output, input_size)
+        specific_op_input_layout(output, indices=[0, 1], layout="ND")
+        specific_op_output_layout(output, indices=0, layout="ND")
     result = (output, batch_mean, batch_variance, mean, variance)
     return result
 
@@ -96,10 +131,11 @@ def conveter_aten__native_batch_norm_legit_no_stats(
             "torch.ops.aten._native_batch_norm_legit.no_stats ge_converter is not implemented while training is False!"
         )
     dim = input.rank
-    if dim > 5 or dim < 2:
+    if dim < 2:
         raise RuntimeError("torch.ops.aten._native_batch_norm_legit.no_stats "
-                           "ge_converter is not implemented while input dim > 5 or input dim <2!")
+                           "ge_converter is not implemented while input dim <2!")
     input_size = ge.Shape(input, dtype=DataType.DT_INT32)
+
     if weight is None:
         weight = ge.Fill(ge.Gather(input_size, 1), ge.Cast(1., dst_type=input.dtype))
 
@@ -108,6 +144,36 @@ def conveter_aten__native_batch_norm_legit_no_stats(
 
     running_mean = ge.Fill(ge.Gather(input_size, 1), ge.Cast(0., dst_type=input.dtype))
     running_var = ge.Fill(ge.Gather(input_size, 1), ge.Cast(1., dst_type=input.dtype))
+
+    if dim > 5:
+        shape_list = ge.Pack([ge.Gather(input_size, 0), ge.Gather(input_size, 1), ge.Gather(input_size, 2),
+                                ge.Gather(input_size, 3), -1], N=5, axis=0)
+        input = ge.Reshape(input, shape_list)
+
+    if is_arch35():
+        if dim <= 4:
+            if dim == 2 or dim == 3:
+                input = ge.Unsqueeze(input, axes=list(range(dim, 4)))
+            output, mean, variance, batch_mean, batch_variance = ge.BatchNormV3(input, weight, bias, running_mean,
+                                                                                running_var, epsilon=eps,
+                                                                                momentum=momentum, is_training=training)
+            specific_op_input_layout(output, indices=0, layout="NCHW")
+            specific_op_output_layout(output, indices=0, layout="NCHW")
+            if dim == 2 or dim == 3:
+                output = ge.Squeeze(output, axis=list(range(3, dim - 1, -1)))
+        else:
+            output, mean, variance, batch_mean, batch_variance = ge.BatchNormV3(input, weight, bias, running_mean,
+                                                                                running_var, epsilon=eps,
+                                                                                momentum=momentum, is_training=training)
+            specific_op_input_layout(output, indices=0, layout="NCDHW")
+            specific_op_output_layout(output, indices=0, layout="NCDHW")
+            if dim > 5:
+                output = ge.Reshape(output, input_size)
+                specific_op_input_layout(output, indices=[0, 1], layout="ND")
+                specific_op_output_layout(output, indices=0, layout="ND")
+        result = (output, batch_mean, batch_variance)
+        return result
+
     if dim <= 4:
         if dim == 2 or dim == 3:
             input = ge.Unsqueeze(input, axes=list(range(dim, 4)))
@@ -134,6 +200,10 @@ def conveter_aten__native_batch_norm_legit_no_stats(
                                                                                epsilon=eps)
     specific_op_input_layout(output, indices=list(range(7)), layout="NCDHW")
     specific_op_output_layout(output, indices=list(range(5)), layout="NCDHW")
+    if dim > 5:
+        output = ge.Reshape(output, input_size)
+        specific_op_input_layout(output, indices=[0, 1], layout="ND")
+        specific_op_output_layout(output, indices=0, layout="ND")
     result = (output, batch_mean, batch_variance)
     return result
 

@@ -37499,6 +37499,70 @@ def BatchNormGrad(y_backprop: Tensor, x: Tensor, scale: Tensor, reserve_space_1:
     return x_backprop, scale_backprop, offset_backprop, reserve_space_4, reserve_space_5
 
 
+# This api is auto-generated from IR BatchNormGradV3
+@auto_convert_to_tensor([False, False, False, False, False, False, False], [False, False, False, False, False, False, False])
+def BatchNormGradV3(dy: Tensor, x: Tensor, weight: Tensor, running_mean: Tensor, running_var: Tensor, save_mean: Tensor, save_rstd: Tensor, *, is_training: bool=True, epsilon: float=0.000010, dependencies=[], node_name=None):
+    """REG_OP(BatchNormGradV3)\n
+.INPUT(dy, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+.INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+.INPUT(weight, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+.INPUT(running_mean, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+.INPUT(running_var, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+.INPUT(save_mean, TensorType({DT_FLOAT}))\n
+.INPUT(save_rstd, TensorType({DT_FLOAT}))\n
+.OUTPUT(dx, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+.OUTPUT(dweight, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+.OUTPUT(dbias, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+.ATTR(is_training, Bool, true)\n
+.ATTR(epsilon, Float, 1e-5)\n
+"""
+
+    # process inputs
+    inputs = {
+        "dy": dy,
+        "x": x,
+        "weight": weight,
+        "running_mean": running_mean,
+        "running_var": running_var,
+        "save_mean": save_mean,
+        "save_rstd": save_rstd,
+    }
+
+    # process attrs
+    attrs = {
+        "is_training": attr.Bool(is_training),
+        "epsilon": attr.Float(epsilon),
+    }
+
+    # process outputs
+    outputs = [
+    "dx",
+    "dweight",
+    "dbias",
+    ]
+
+    return ge_op(
+        op_type="BatchNormGradV3",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("BatchNormGradV3") \
+        .input("dy", "DT_FLOAT, DT_FLOAT16, DT_BF16") \
+        .input("x", "DT_FLOAT, DT_FLOAT16, DT_BF16") \
+        .input("weight", "DT_FLOAT, DT_FLOAT16, DT_BF16") \
+        .input("running_mean", "DT_FLOAT, DT_FLOAT16, DT_BF16") \
+        .input("running_var", "DT_FLOAT, DT_FLOAT16, DT_BF16") \
+        .input("save_mean", "DT_FLOAT") \
+        .input("save_rstd", "DT_FLOAT") \
+        .attr("is_training", attr.Bool(True)) \
+        .attr("epsilon", attr.Float(0.000010)) \
+        .output("dx" , "DT_FLOAT, DT_FLOAT16, DT_BF16") \
+        .output("dweight" , "DT_FLOAT, DT_FLOAT16, DT_BF16") \
+        .output("dbias" , "DT_FLOAT, DT_FLOAT16, DT_BF16")
+    )
+
+
 # This api is auto-generated from IR BatchNorm3DGrad
 @auto_convert_to_tensor([False, False, False, False, False], [False, False, False, False, False])
 def BatchNorm3DGrad(y_backprop: Tensor, x: Tensor, scale: Tensor, reserve_space_1: Tensor, reserve_space_2: Tensor, *, epsilon: float=0.000100, data_format: str="NCDHW", is_training: bool=True, dependencies=[], node_name=None):
@@ -45517,6 +45581,131 @@ def GroupNorm(x: Tensor, gamma: Tensor, beta: Tensor, *, num_groups: int, data_f
 
     # return outputs
     return y, mean, variance
+
+
+# This api is auto-generated from IR GroupNormGrad
+@auto_convert_to_tensor([False, False, False, False, False], [False, False, False, False, False])
+def GroupNormGrad(dy: Tensor, mean: Tensor, rstd: Tensor, x: Tensor, gamma: Tensor, *, num_groups: int, data_format: str="NCHW", dx_is_require: bool=True, dgamma_is_require: bool=True, dbeta_is_require: bool=True, dependencies=[], node_name=None):
+    """REG_OP(GroupNormGrad)\n
+.INPUT(dy, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))\n
+.INPUT(mean, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))\n
+.INPUT(rstd, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))\n
+.INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))\n
+.INPUT(gamma, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))\n
+.OUTPUT(dx, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))\n
+.OUTPUT(dgamma, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))\n
+.OUTPUT(dbeta, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))\n
+.REQUIRED_ATTR(num_groups, Int)\n
+.ATTR(data_format, String, "NCHW")\n
+.ATTR(dx_is_require, Bool, true)\n
+.ATTR(dgamma_is_require, Bool, true)\n
+.ATTR(dbeta_is_require, Bool, true)\n
+"""
+
+    # process inputs
+    inputs = {
+        "dy": dy,
+        "mean": mean,
+        "rstd": rstd,
+        "x": x,
+        "gamma": gamma,
+    }
+
+    # process attrs
+    attrs = {
+        "num_groups": attr.Int(num_groups),
+        "data_format": attr.Str(data_format),
+        "dx_is_require": attr.Bool(dx_is_require),
+        "dgamma_is_require": attr.Bool(dgamma_is_require),
+        "dbeta_is_require": attr.Bool(dbeta_is_require),
+    }
+
+    # process outputs
+    outputs = [
+    "dx",
+    "dgamma",
+    "dbeta",
+    ]
+
+    return ge_op(
+        op_type="GroupNormGrad",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("GroupNormGrad") \
+        .input("dy", "DT_FLOAT16, DT_FLOAT, DT_BF16") \
+        .input("mean", "DT_FLOAT16, DT_FLOAT, DT_BF16") \
+        .input("rstd", "DT_FLOAT16, DT_FLOAT, DT_BF16") \
+        .input("x", "DT_FLOAT16, DT_FLOAT, DT_BF16") \
+        .input("gamma", "DT_FLOAT16, DT_FLOAT, DT_BF16") \
+        .required_attr("num_groups", attr.Int) \
+        .attr("data_format", attr.Str("NCHW")) \
+        .attr("dx_is_require", attr.Bool(True)) \
+        .attr("dgamma_is_require", attr.Bool(True)) \
+        .attr("dbeta_is_require", attr.Bool(True)) \
+        .output("dx" , "DT_FLOAT16, DT_FLOAT, DT_BF16") \
+        .output("dgamma" , "DT_FLOAT16, DT_FLOAT, DT_BF16") \
+        .output("dbeta" , "DT_FLOAT16, DT_FLOAT, DT_BF16")
+    )
+
+
+# This api is auto-generated from IR GroupNormV2
+@auto_convert_to_tensor([False, False, False], [False, False, False])
+def GroupNormV2(x: Tensor, gamma: Tensor, beta: Tensor, *, num_groups: int, data_format: str="NHWC", eps: float=0.000010, is_training: bool=True, dependencies=[], node_name=None):
+    """REG_OP(GroupNormV2)\n
+.INPUT(x, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))\n
+.INPUT(gamma, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))\n
+.INPUT(beta, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))\n
+.OUTPUT(y, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))\n
+.OUTPUT(mean, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))\n
+.OUTPUT(rstd, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))\n
+.REQUIRED_ATTR(num_groups, Int)\n
+.ATTR(data_format, String, "NHWC")\n
+.ATTR(eps, Float, 0.00001f)\n
+.ATTR(is_training, Bool, true)\n
+"""
+
+    # process inputs
+    inputs = {
+        "x": x,
+        "gamma": gamma,
+        "beta": beta,
+    }
+
+    # process attrs
+    attrs = {
+        "num_groups": attr.Int(num_groups),
+        "data_format": attr.Str(data_format),
+        "eps": attr.Float(eps),
+        "is_training": attr.Bool(is_training),
+    }
+
+    # process outputs
+    outputs = [
+    "y",
+    "mean",
+    "rstd",
+    ]
+
+    return ge_op(
+        op_type="GroupNormV2",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("GroupNormV2") \
+        .input("x", "DT_BF16, DT_FLOAT16, DT_FLOAT") \
+        .input("gamma", "DT_BF16, DT_FLOAT16, DT_FLOAT") \
+        .input("beta", "DT_BF16, DT_FLOAT16, DT_FLOAT") \
+        .required_attr("num_groups", attr.Int) \
+        .attr("data_format", attr.Str("NHWC")) \
+        .attr("eps", attr.Float(0.000010)) \
+        .attr("is_training", attr.Bool(True)) \
+        .output("y" , "DT_BF16, DT_FLOAT16, DT_FLOAT") \
+        .output("mean" , "DT_BF16, DT_FLOAT16, DT_FLOAT") \
+        .output("rstd" , "DT_BF16, DT_FLOAT16, DT_FLOAT")
+    )
 
 
 # This api is auto-generated from IR GroupNormSilu

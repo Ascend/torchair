@@ -13,6 +13,7 @@ from torchair.ge._ge_graph import Tensor, TensorSpec
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
 from torchair._ge_concrete_graph.utils import dtype_promote, specific_op_input_layout, specific_op_output_layout
+from torchair._utils.check_platform import is_arch35
 
 
 @declare_supported([
@@ -35,7 +36,11 @@ def conveter_aten_batch_norm_elemt_default(
     var = ge.Div(1.0, var)
     var = ge.Sub(var, eps)
 
-    output = ge.BNInfer(inp, weight, bias, running_mean, var, epsilon=eps)
+    if is_arch35():
+        output, _, _, _, _ = ge.BatchNormV3(inp, weight, bias, running_mean, var,
+                                            epsilon=eps, momentum=0.10, is_training=False)
+    else:
+        output = ge.BNInfer(inp, weight, bias, running_mean, var, epsilon=eps)
     specific_op_input_layout(output, indices=list(range(5)), layout="NCHW")
     specific_op_output_layout(output, indices=0, layout="NCHW")
     return output

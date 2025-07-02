@@ -412,6 +412,51 @@ REG_OP(BatchNormExt2)
     .OP_END_FACTORY_REG(BatchNormExt2)
 
 /**
+* @brief Batch normalization (also known as batch norm) is a method used to
+* make training of artificial neural networks faster and more stable
+* through normalization of the layers' inputs by re-centering and re-scaling.
+
+* @par Inputs:
+* @li x: A 4D/5D tensor of type float16/bfloat16/float, with format NCHW/NCDHW. describing the feature_map.
+* @li weight: A 1D tensor with the shape is same as dim C of input x, support dtypes are related to input x dtype,
+* the following combinations are supported: [x: float16, weight: float16/float], [x: bfloat16, weight: bfloat16/float], [x: float, weight: float].
+* describing the weight.
+* @li bias: A 1D tensor of the same dtype and shape as input weight, describing the bias.
+* @li running_mean: A 1D tensor of type float, the shape is same as dim C of input x, describing the running mean.
+* @li running_var: A 1D tensor of the same dtype and shape as input running_mean, describing the running var. \n
+
+* @par Attributes:
+* @li epsilon: An optional float32, small value added to variance to avoid dividing by zero. Defaults to "1e-5".
+* @li momentum: An optional float32, the value used for the running_mean and running_var computation. Defaults to "0.1".
+* @li is_training: An optional bool, specifying if the operation is used for training or inference. Defaults to "True", now only support "True". \n
+
+* @par Outputs:
+* @li y: A 4D/5D tensor of the same dtype, shape and format as input x, describing the result.
+* @li running_mean: A 1D tensor of the same dtype and shape as input running_mean, describing the running mean.
+* @li running_var: A 1D tensor of the same dtype and shape as input running_var, describing the running var.
+* @li save_mean: A 1D tensor of the same dtype and shape as input running_mean, describing the mean of "x".
+* @li save_rstd: A 1D tensor of the same dtype and shape as input running_mean, describing the rstd of "x". \n
+*/
+REG_OP(BatchNormV3)
+    .INPUT(x, "T1")
+    .INPUT(weight, "T2")
+    .INPUT(bias, "T2")
+    .INPUT(running_mean, "T3")
+    .INPUT(running_var, "T3")
+    .OUTPUT(y, "T1")
+    .OUTPUT(running_mean, "T3")
+    .OUTPUT(running_var, "T3")
+    .OUTPUT(save_mean, "T3")
+    .OUTPUT(save_rstd, "T3")
+    .ATTR(epsilon, Float, 1e-5f)
+    .ATTR(momentum, Float, 0.1f)
+    .ATTR(is_training, Bool, true)
+    .DATATYPE(T1, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .DATATYPE(T2, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .DATATYPE(T3, TensorType({DT_FLOAT}))
+    .OP_END_FACTORY_REG(BatchNormV3)
+
+/**
 *@brief Performs the backpropagation of BatchNorm . \n
 
 *@par Inputs:
@@ -458,6 +503,45 @@ REG_OP(BatchNormGrad)
     .ATTR(data_format, String, "NHWC")
     .ATTR(is_training, Bool, true)
     .OP_END_FACTORY_REG(BatchNormGrad)
+
+/**
+ * @brief Computes the gradients for Batch Normalization.
+ * This operation computes the gradients of the input tensor, weight, and bias during the backpropagation step
+ * of batch normalization, using the saved mean and inverse standard deviation from the forward pass. It is typically
+ * used in the context of training deep learning models with batch normalization layers.
+
+* @par Inputs:
+* @li dy: Gradient of the loss w.r.t the output, a tensor of type float16/bfloat16/float32. Supported formats: NCHW, NHWC, NDHWC, NCDHW.
+* @li x: Input feature map, a tensor of type float16/bfloat16/float32. Supported formats: NCHW, NHWC, NDHWC, NCDHW.
+* @li weight: Scale parameter, a 1D tensor of type float16/bfloat16/float32. Supported formats: ND.
+* @li running_mean: Running mean, a 1D tensor of type float16/bfloat16/float32. Supported formats: ND.
+* @li running_var: Running variance, a 1D tensor of type float16/bfloat16/float32. Supported formats: ND.
+* @li save_mean: Saved mean from the forward pass, a 1D tensor of type float32. Supported formats: ND.
+* @li save_rstd: Saved inverse standard deviation from the forward pass, a 1D tensor of type float32. Supported formats: ND.
+*
+* @par Attributes:
+* @li is_training: (Optional) A bool value. Whether the operation is in training mode. Default: true
+* @li epsilon: (Optional) A small float32 value added for numerical stability. Default: 1e-5
+
+* @par Outputs:
+* @li dx: Gradient of the loss w.r.t the input, a tensor of type float16/bfloat16/float32. Supported formats: NCHW, NHWC, NDHWC, NCDHW.
+* @li dweight: Gradient of the loss w.r.t the scale parameter, a 1D tensor of type float16/bfloat16/float32. Supported formats: ND.
+* @li dbias: Gradient of the loss w.r.t the bias, a 1D tensor of type float16/bfloat16/float32. Supported formats: ND.
+*/
+REG_OP(BatchNormGradV3)
+    .INPUT(dy, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .INPUT(weight, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .INPUT(running_mean, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .INPUT(running_var, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .INPUT(save_mean, TensorType({DT_FLOAT}))
+    .INPUT(save_rstd, TensorType({DT_FLOAT}))
+    .OUTPUT(dx, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .OUTPUT(dweight, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .OUTPUT(dbias, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .ATTR(is_training, Bool, true)
+    .ATTR(epsilon, Float, 1e-5)
+    .OP_END_FACTORY_REG(BatchNormGradV3)
 
 /**
 *@brief Performs the backpropagation of BatchNorm . \n

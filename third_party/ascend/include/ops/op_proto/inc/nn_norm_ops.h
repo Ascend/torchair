@@ -1334,6 +1334,97 @@ REG_OP(GroupNorm)
     .OP_END_FACTORY_REG(GroupNorm)
 
 /**
+ * @brief backward operator for group normalization. \n
+ * @par Inputs:
+ * Five input, including:
+ * @li dy: A Tensor. Group grad. Datatype support float32, float16, bfloat16. Format support ND.
+ * @li mean: A Tensor. Mean of each group. Datatype support float32, float16, bfloat16. Format support ND.
+ * @li rstd: A Tensor. Reciprocal standard deviation of each group. Datatype support float32, float16, bfloat16. Format support ND.
+ * @li x: A Tensor. Specifies the offset. Datatype support float32, float16, bfloat16. Format support ND.
+ * @li gamma: A Tensor. Specifies the scaling factor. Datatype support float32, float16, bfloat16. Format support ND.
+
+ * @par Attributes:
+ * @li num_groups: Int.Number specifying the number of group.
+ * @li data_format: An optional String, Defaults to NCHW.
+ * @li dx_is_require: An optional bool, controls whether to return x.grad. Defaults to true.
+ * @li dgamma_is_require: An optional bool, controls whether to return weight.grad. Defaults to true.
+ * @li dbeta_is_require: An optional bool, controls whether to return beta.grad. Defaults to true.
+
+ * @par Outputs:
+ * Three output, including:
+ * @li dx: A Tensor. x factor grad. Datatype is the same as the input Datatype. Format support ND.
+ * @li dgamma: A Tensor. scale factor grad. Datatype is the same as the input Datatype. Format support ND.
+ * @li dbeta: A Tensor. offset factor grad. Datatype is the same as the input Datatype. Format support ND.
+ * @par Third-party framework compatibility
+ * @li Compatible with the PyTorch operator GroupNorm.
+ */
+REG_OP(GroupNormGrad)
+    .INPUT(dy, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))
+    .INPUT(mean, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))
+    .INPUT(rstd, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))
+    .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))
+    .INPUT(gamma, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))
+    .OUTPUT(dx, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))
+    .OUTPUT(dgamma, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))
+    .OUTPUT(dbeta, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))
+    .REQUIRED_ATTR(num_groups, Int)
+    .ATTR(data_format, String, "NCHW")
+    .ATTR(dx_is_require, Bool, true)
+    .ATTR(dgamma_is_require, Bool, true)
+    .ATTR(dbeta_is_require, Bool, true)
+    .OP_END_FACTORY_REG(GroupNormGrad)
+
+/**
+* @brief Performs group normalization . \n
+
+* @par Inputs:
+* Three inputs
+* @li x: A ND tensor of type bfloat16, float16, float32. The input feature map will be processed by group normalization.
+* "x" supports 2-8 dimensions (N, C, *), the calculation logic only cares about the first two dimensions (N and C),
+* and the rest can all be combined into one dimension. 
+* The data type and shape of x must meet the following conditions:  
+* - When the data type of x is float32, C/num_groups must be a multiple of 8.  
+* - When the data type of x is float16 or bfloat16, C/num_groups must be a multiple of 16.
+* @li gamma: A ND tensor of type bfloat16, float16, float32. Must be 1D. Specifies the scaling factor.
+* The value of "gamma" needs to be consistent with the C-axis value of "x". Has the same dype as "x".
+* @li beta: A ND tensor of type bfloat16, float16, float32. Must be 1D. Specifies the offset.
+* The value of "beta" needs to be consistent with the C-axis value of "x". Has the same dype as "x". \n
+
+* @par Attributes:
+* @li num_groups: An required int32, specifying the number of group.
+* @li eps: An optional float32, specifying the small value added to variance to avoid dividing by zero. Defaults to "0.00001".
+* @li data_format: An optional string, specifying the format of "x". Defaults to "NHWC". This parameter is reserved and does not take effect.
+* @li is_training: An optional bool, specifying if the operation is used for training or inference. Defaults to "True".
+
+* - When set to true, it indicates training mode and uses the mean and variance of the current batch.
+* - When set to false, it indicates inference mode and uses the mean and variance saved during training. \n
+
+* @par Outputs:
+* Three outputs
+* @li y: A ND tensor of type bfloat16, float16, float32 for the normalized "x". Has the same type, format and shape as "x".  
+* @li mean: A ND tensor of type bfloat16, float16, float32. Must be 2D (N, num_groups). Specifies the mean of "x".
+* Has the same dype as "x".
+* @li rstd: A ND tensor of type bfloat16, float16, float32. Must be 2D (N, num_groups). Specifies the rstd of "x".
+* Has the same dype as "x". \n
+
+* @par Third-party framework compatibility
+* @li Compatible with the PyTorch operator GroupNorm.
+
+*/
+REG_OP(GroupNormV2)
+    .INPUT(x, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))
+    .INPUT(gamma, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))
+    .INPUT(beta, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(y, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(mean, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(rstd, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))
+    .REQUIRED_ATTR(num_groups, Int)
+    .ATTR(data_format, String, "NHWC")
+    .ATTR(eps, Float, 0.00001f)
+    .ATTR(is_training, Bool, true)
+    .OP_END_FACTORY_REG(GroupNormV2)
+
+/**
 * @brief Performs group normalization . \n
 
 * @par Inputs:

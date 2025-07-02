@@ -8,10 +8,11 @@ from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
-from torchair.ge._ge_graph import Tensor, TensorSpec
+from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
 from torchair._ge_concrete_graph.utils import dtype_promote
+from torchair._utils.check_platform import is_arch35
 
 
 @declare_supported(
@@ -57,6 +58,22 @@ def conveter_aten_rsub_Scalar(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::rsub.Scalar(Tensor self, Scalar other, Scalar alpha=1) -> Tensor"""
+    if is_arch35():
+        axpy_dtype_ist = [DataType.DT_FLOAT, DataType.DT_FLOAT16, DataType.DT_BF16]
+        axpyv2_dtype_ist = [DataType.DT_INT8, DataType.DT_INT32, DataType.DT_INT64]
+        if not isinstance(alpha, Tensor) and meta_outputs.dtype in axpy_dtype_ist:
+            self, other = dtype_promote(self, other, target_dtype=meta_outputs.dtype)
+            alpha_neg = alpha * (-1.0)
+            return ge.Axpy(other, self, alpha=alpha_neg)
+        elif meta_outputs.dtype in axpyv2_dtype_ist:
+            self, other, alpha = dtype_promote(self, other, alpha, target_dtype=meta_outputs.dtype)
+            alpha_neg = ge.Mul(alpha, ge.Cast(-1, dst_type=meta_outputs.dtype))
+            return ge.AxpyV2(other, self, alpha_neg)
+        else:
+            self, other, alpha = dtype_promote(self, other, alpha, target_dtype=meta_outputs.dtype)
+            self_mul = ge.Mul(self, alpha)
+            return ge.Sub(other, self_mul)
+
     self, other, alpha = dtype_promote(self, other, alpha, target_dtype=meta_outputs.dtype)
     return ge.Sxpy(other, self, alpha=alpha)
 

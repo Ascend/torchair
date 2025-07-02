@@ -17,8 +17,8 @@ m.define("npu_kv_rmsnorm_rope_cache(Tensor kv, Tensor gamma, Tensor cos, Tensor 
           Tensor? c_kv_scale=None, Tensor? k_rope_offset=None, Tensor? c_kv_offset=None, \
           float epsilon=1e-5, str cache_mode='Norm', bool is_output_kv=False) -> (Tensor, Tensor, Tensor, Tensor)")
 m.define("npu_interleave_rope(Tensor x, Tensor cos, Tensor sin) -> Tensor")
-m.define("npu_dequant_swiglu_quant(Tensor x, Tensor? weight_scale, Tensor? activate_scale, \
-          Tensor? bias, Tensor? quant_scale, Tensor? quant_offset, Tensor? group_index, \
+m.define("npu_dequant_swiglu_quant(Tensor x, *, Tensor? weight_scale=None, Tensor? activation_scale=None, \
+          Tensor? bias=None, Tensor? quant_scale=None, Tensor? quant_offset=None, Tensor? group_index=None, \
           bool activate_left=False, int quant_mode=0) -> (Tensor, Tensor)")
 
 
@@ -77,11 +77,11 @@ def npu_kv_rmsnorm_rope_cache_meta(kv, gamma, cos, sin, index, k_cache, ckv_cach
                                    c_kv_scale=None, k_rope_offset=None, c_kv_offset=None, epsilon=1e-5,
                                    cache_mode='Norm', is_output_kv=False):
     if kv.dim() != 4:
-        raise RuntimeError("4D tensor expected for input kv" + ops_error(ErrCode.PARAM))
+        raise RuntimeError("4D tensor expected for input kv")
     if gamma.dim() != 1:
-        raise RuntimeError("1D tensor expected for input gamma" + ops_error(ErrCode.PARAM))
+        raise RuntimeError("1D tensor expected for input gamma")
     if cos.dim() != 4:
-        raise RuntimeError("4D tensor expected for input cos" + ops_error(ErrCode.PARAM))
+        raise RuntimeError("4D tensor expected for input cos")
     k_rope_size = []
     c_kv_size = []
     for i in range(kv.dim() - 1):
@@ -100,8 +100,14 @@ def npu_interleave_rope_meta(x, cos, sin):
 
 
 @impl(m, "npu_dequant_swiglu_quant", "Meta")
-def npu_dequant_swiglu_quant_meta(x, weight_scale=None, activation_scale=None, bias=None, quant_scale=None,
+def npu_dequant_swiglu_quant_meta(x, *, weight_scale=None, activation_scale=None, bias=None, quant_scale=None,
                                   quant_offset=None, group_index=None, activate_left=False, quant_mode=0):
+    if x.dim() <= 1:
+        raise RuntimeError("x dim should larger than 1")
+    if x.size(x.dim() - 1) % 2 != 0:
+        raise RuntimeError("x last dim should be even")
+    if quant_mode != 0 and quant_mode != 1:
+        raise RuntimeError("quant_mode only support 0 or 1, but got " + str(quant_mode))
     y_size = []
     scale_size = []
     for i in range(x.dim() - 1):
