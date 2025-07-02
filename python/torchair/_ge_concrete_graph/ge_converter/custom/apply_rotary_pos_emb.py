@@ -15,12 +15,6 @@ from torchair._ge_concrete_graph.utils import dtype_promote
 from torchair._ge_concrete_graph.utils import get_cann_opp_version
 
 
-@declare_supported(
-    [
-        Support(F16(24, 1, 1, 128), F16(24, 1, 11, 128), F16(24, 1, 1, 128), F16(24, 1, 1, 128), layout='BSH'),
-        Support(F32(24, 1, 1, 128), F32(24, 1, 11, 128), F32(24, 1, 1, 128), F32(24, 1, 1, 128), layout='BSH')
-    ]
-)
 @register_fx_node_ge_converter(torch.ops.npu.npu_apply_rotary_pos_emb.default)
 def conveter_npu_apply_rotary_pos_emb_default(
     query: Tensor,

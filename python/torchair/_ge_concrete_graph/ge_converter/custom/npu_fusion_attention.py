@@ -15,15 +15,7 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, BF16
     I64, I8, U8, BOOL, Support
 from torchair._ge_concrete_graph.utils import dtype_promote, DataType
 
-    
-@declare_supported([
-    Support(BF16(4, 16, 32), BF16(4, 16, 32), BF16(4, 16, 32), head_num=32, 
-            input_layout='BSH', pse=None, padding_mask=None, atten_mask=BOOL(4, 1, 16, 16), 
-            scale_value=0.0883, keep_prob=1.0, pre_tockens=4096, next_tockens=0),
-    Support(BF16(4, 32, 2048, 128), BF16(4, 32, 2048, 128), BF16(4, 32, 2048, 128), head_num=32, 
-            input_layout='BNSD', pse=None, padding_mask=None, atten_mask=BOOL(4, 1, 2048, 2048), 
-            scale_value=0.0883, keep_prob=1.0, pre_tockens=4096, next_tockens=0),
-])
+
 @register_fx_node_ge_converter(torch.ops.npu.npu_fusion_attention.default)
 def conveter_npu_fusion_attention_default(
     query: Tensor,
@@ -93,17 +85,7 @@ def conveter_npu_fusion_attention_default(
                 f"torch.ops.npu.npu_fusion_attention.default ge_converter "
                 f"is not implemented when input_layout != BSH & BNSD or keep_prob != 1.0 !")
     
-    
-@declare_supported([
-    Support(BF16(4, 16, 32), BF16(4, 16, 32), BF16(4, 16, 32), BF16(4, 16, 32), head_num=32, 
-            input_layout='BSH', pse=None, padding_mask=None, atten_mask=BOOL(4, 1, 16, 16), 
-            softmax_max=F32(4, 32, 16, 8), softmax_sum=F32(4, 32, 16, 8), softmax_in=BF16(0), 
-            attention_in=BF16(4, 16, 32), scale_value=0.0883, keep_prob=1.0, pre_tockens=4096, next_tockens=0),
-    Support(BF16(4, 32, 2048, 128), BF16(4, 32, 2048, 128), BF16(4, 32, 2048, 128), BF16(4, 32, 2048, 128), head_num=32, 
-            input_layout='BNSD', pse=None, padding_mask=None, atten_mask=BOOL(4, 1, 2048, 2048), 
-            softmax_max=F32(4, 32, 2048, 8), softmax_sum=F32(4, 32, 2048, 8), softmax_in=BF16(0), 
-            attention_in=BF16(4, 32, 2048, 128), scale_value=0.0883, keep_prob=1.0, pre_tockens=4096, next_tockens=0),
-])
+
 @register_fx_node_ge_converter(torch.ops.npu.npu_fusion_attention_grad.default)
 def conveter_npu_fusion_attention_grad_default(
     query: Tensor,

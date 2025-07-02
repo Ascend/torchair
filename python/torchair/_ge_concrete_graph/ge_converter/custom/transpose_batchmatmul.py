@@ -24,14 +24,6 @@ from torchair._ge_concrete_graph.supported_declaration import (_TypedTensor, F32
                                                                I64, I8, U8, BOOL, Support)
 
 
-@declare_supported(
-    [
-        Support(F16(32, 32, 512), F16(32, 512, 128), bias=None, scale=None,
-                perm_x1=[1, 0, 2], perm_x2=[0, 1, 2], perm_y=[1, 0, 2]),
-        Support(F16(32, 32, 512), F16(32, 512, 128), bias=None, scale=I64(1, 1, 4096),
-                perm_x1=[1, 0, 2], perm_x2=[0, 1, 2], perm_y=[1, 0, 2]),
-    ]
-)
 @register_fx_node_ge_converter(torch.ops.npu.npu_transpose_batchmatmul.default)
 def conveter_npu_npu_transpose_batchmatmul(
     input: Tensor,

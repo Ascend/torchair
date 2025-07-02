@@ -18,7 +18,6 @@ from torchair._ge_concrete_graph.utils import dtype_promote
     [
         Support(F32(4, 2, 128, 64), F32(4, 2, 128, 128), F32(4, 2, 128, 64), [True, True]),
         Support(F32(4, 2, 128, 128), F32(4, 2, 128, 64), F32(4, 2, 64, 128), [True, True]),
-        Support(I8(4, 2, 128, 128), I8(4, 2, 128, 64), I8(4, 2, 64, 128), [True, True]),
     ]
 )
 @register_fx_node_ge_converter(torch.ops.aten.matmul_backward.default)

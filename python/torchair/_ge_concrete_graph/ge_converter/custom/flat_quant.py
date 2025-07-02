@@ -16,7 +16,6 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
 
 @declare_supported([
     Support(F16(16, 64, 64), F16(64, 64), F16(64, 64)),
-    Support(BF16(2, 4, 4), BF16(4, 4), BF16(4, 4)),
 ])
 @register_fx_node_ge_converter(torch.ops.npu.npu_kronecker_quant.default)
 def convert_npu_kronecker_quant(

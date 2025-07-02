@@ -135,17 +135,3 @@ def conveter_npu_npu_grouped_matmul(
 
 gmm_reg = register_fx_node_ge_converter(torch.ops.npu.npu_grouped_matmul.default)(conveter_npu_npu_grouped_matmul)
 gmm_List_reg = register_fx_node_ge_converter(torch.ops.npu.npu_grouped_matmul.List)(conveter_npu_npu_grouped_matmul)
-
-declare_supported([
-    Support([F16(8192, 320)], [F16(320, 2560)], bias=[F16(2560)], split_item=0, tuning_config=[0]),
-    Support([F16(8192, 320), F16(8192, 320), F16(8192, 320)],
-            [F16(320, 2560), F16(320, 2560), F16(320, 2560)],
-            bias=[F16(2560), F16(2560), F16(2560)], split_item=0, tuning_config=[0]),
-])(gmm_reg)
-
-declare_supported([
-    Support([F16(8192, 320)], [F16(320, 2560)], bias=[F16(2560)], split_item=0),
-    Support([F16(8192, 320), F16(8192, 320), F16(8192, 320)],
-            [F16(320, 2560), F16(320, 2560), F16(320, 2560)],
-            bias=[F16(2560), F16(2560), F16(2560)], split_item=0),
-])(gmm_List_reg)

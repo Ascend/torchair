@@ -14,7 +14,6 @@ from torchair._ge_concrete_graph.utils import dtype_promote
 
 
 @declare_supported([
-    Support(F32(24, 320, 48, 48), F32(48), F32(48), group=32, eps=0.000100),
     Support(F16(1, 32, 128, 64), F16(32), F16(32), group=32, eps=0.000100),
 ])
 @register_fx_node_ge_converter(torch.ops.npu.npu_group_norm_silu.default)

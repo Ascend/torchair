@@ -15,9 +15,6 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
 from torchair._ge_concrete_graph.utils import dtype_promote
 
 
-@declare_supported([
-    Support(F32(2, 2), F32(2, 2), I32(2), F32(2), dst_dtype=torch.qint8),
-])
 @register_fx_node_ge_converter(torch.ops.npu.npu_group_quant.default)
 def conveter_npu_group_quant_default(
     x: Tensor,

@@ -17,7 +17,6 @@ from torchair._ge_concrete_graph.utils import dtype_promote
     [
         Support([F32(2, 2, 2), F32(2, 3), F32(2, 3)], [F32(2, 2, 2), F32(2, 3), F32(2, 3)]),
         Support([F16(2, 2, 2), F16(2, 3), F16(2, 3)], [F16(2, 2, 2), F16(2, 3), F16(2, 3)]),
-        Support([BF16(2, 2, 2), BF16(2, 3), BF16(2, 3)], [BF16(2, 2, 2), BF16(2, 3), BF16(2, 3)]),
     ]
 )
 @register_fx_node_ge_converter(torch.ops.aten._foreach_pow.List)

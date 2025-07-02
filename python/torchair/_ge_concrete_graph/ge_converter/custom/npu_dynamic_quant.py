@@ -7,10 +7,6 @@ from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
 from torchair._ge_concrete_graph.supported_declaration import F16, BF16, Support
 
 
-@declare_supported([
-    Support(F16(64, 16384, 16384)),
-    Support(BF16(64, 16384, 16384)),
-])
 @register_fx_node_ge_converter(torch.ops.npu.npu_dynamic_quant.default)
 def conveter_npu_dynamic_quant_default(
     input_data: Tensor,
@@ -36,10 +32,6 @@ def conveter_npu_dynamic_quant_default(
     return y, scale
 
 
-@declare_supported([
-    Support(F16(64, 16384, 16384)),
-    Support(BF16(64, 16384, 16384)),
-])
 @register_fx_node_ge_converter(torch.ops.npu.npu_dynamic_quant_asymmetric.default)
 def conveter_npu_dynamic_quant_asymmetric_default(
     input_data: Tensor,

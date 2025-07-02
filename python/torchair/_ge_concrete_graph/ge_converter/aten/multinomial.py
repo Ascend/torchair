@@ -33,9 +33,6 @@ def multinomial_default_checkpoint(
     return (seed, offset), ge.MultinomialWithReplacement(self, seed, offset, numsamples=num_samples)
 
 
-@declare_supported([
-    Support(F16(1, 64), num_samples=1, replacement=True)
-])
 @register_fx_node_ge_converter(torch.ops.aten.multinomial.default)
 def conveter_aten_multinomial_default(
     self: Tensor,

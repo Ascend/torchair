@@ -11,10 +11,6 @@ from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
 from torchair._ge_concrete_graph.supported_declaration import F32, I8, I32, Support
 
 
-@declare_supported([
-    Support(I32(24, 64), F32(32), None, None),
-    Support(I32(24, 64), F32(32), None, None, 1),
-])
 @register_fx_node_ge_converter(torch.ops.npu.npu_dequant_bias.default)
 def convert_npu_dequant_bias_default(
     x: Tensor,

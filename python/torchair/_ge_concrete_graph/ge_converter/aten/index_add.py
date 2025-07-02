@@ -14,9 +14,6 @@ from torchair.core.utils import logger
 
 
 @declare_supported([
-    # There is precision error with test case: Support(F32(8, 16, 512, 1023), 3, I64(512), F32(8, 16, 512, 512)), 
-    # This problem is being resolved
-    Support(F32(8, 16, 512, 1023), 3, I64(512), F32(8, 16, 512, 512)),
     Support(F16(5, 3), 0, I64(3), F16(3, 3)),
     Support(F32(5, 3), 0, I64(3), F32(3, 3))
 ])

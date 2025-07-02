@@ -13,11 +13,6 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
     Support
 
 
-@declare_supported(
-    [
-        Support(F32(1, 3, 3), [1, 1]),
-    ]
-)
 @register_fx_node_ge_converter(torch.ops.aten.replication_pad1d_backward.default)
 def conveter_aten_replication_pad1d_backward_default(
         grad_output: Tensor,

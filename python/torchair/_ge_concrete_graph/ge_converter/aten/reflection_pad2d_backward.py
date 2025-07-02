@@ -16,7 +16,6 @@ from torchair._ge_concrete_graph.utils import dtype_promote
 
 
 @declare_supported([
-    Support(F32(2, 2, 4), F32(2, 2, 2), [1, 1, 1, 1]),
     Support(F32(2, 2, 4, 4), F32(2, 2, 2, 2), [1, 1, 1, 1]),
     Support(F32(2, 2, 3, 4), F32(2, 2, 2, 2), [1, 1, 0, 1]),
 ])

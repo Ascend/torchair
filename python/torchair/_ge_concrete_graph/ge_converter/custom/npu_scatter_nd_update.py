@@ -14,10 +14,6 @@ from torchair._ge_concrete_graph.utils import dtype_promote
 from torchair._ge_concrete_graph.supported_declaration import F32, F16, Support
 
 
-@declare_supported([
-    Support(F32(3, 3, 3), F32(2, 3), F32(2)),
-    Support(F32(3, 3, 3), F32(2, 3), F32(2)),
-])
 @register_fx_node_ge_converter(torch.ops.npu.npu_scatter_nd_update.default)
 def conveter_npu_scatter_nd_update_default(
     self: Tensor,

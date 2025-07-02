@@ -15,17 +15,6 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, T, F
 from torchair._ge_concrete_graph.utils import dtype_promote
 
 
-@declare_supported([
-    Support(F16(16, 32), I8(8, 64, 32), F32(8, 64), 
-            T(value=np.array([8, 26, 24, 32, 40, 48, 56, 64]).astype(np.int64), dtype=torch.int64), 
-            bias=None, x_scale=None, x_offset=None, smooth_scale=None, quant_mode="pertoken"),
-    Support(F16(16, 32), I8(8, 64, 32), F32(8, 64), 
-            T(value=np.array([8, 26, 24, 32, 40, 48, 56, 64]).astype(np.int64), dtype=torch.int64), 
-            bias=None, x_scale=F32(16), x_offset=None, smooth_scale=F16(32), quant_mode="pertoken"),
-    Support(F16(16, 32), I8(8, 64, 32), F32(8, 64), 
-            T(value=np.array([8, 26, 24, 32, 40, 48, 56, 64]).astype(np.int64), dtype=torch.int64), 
-            bias=None, x_scale=F32(1), x_offset=None, smooth_scale=F16(32), quant_mode="pertensor"),
-])
 @register_fx_node_ge_converter(torch.ops.npu.npu_quant_grouped_matmul_dequant.default)
 def conveter_npu_quant_grouped_matmul_dequant_default(
     x: Tensor,

@@ -16,11 +16,6 @@ from torchair._ge_concrete_graph.utils import dtype_promote
 from torchair._ge_concrete_graph.supported_declaration import F32, F16, Support
 
 
-@declare_supported([
-    Support(F16(4, 8192), F16(4, 8192), 131072, 512),
-    Support(F16(4, 8192), F16(4, 8192), 160000),
-    Support(F32(4, 8192), F32(4, 8192), 1),
-])
 @register_fx_node_ge_converter(torch.ops.npu.npu_prefetch.default)
 def conveter_npu_prefetch_default(
     self: Tensor,

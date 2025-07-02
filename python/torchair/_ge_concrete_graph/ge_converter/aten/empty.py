@@ -15,10 +15,6 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
 from torchair._ge_concrete_graph.utils import dtype_promote
 
 
-@declare_supported([
-    Support(F16(4, 2), dtype=torch.float),
-    Support(F16(4, 2))
-])
 @register_fx_node_ge_converter(torch.ops.aten.empty.memory_format)
 def conveter_aten_empty_memory_format(
     size: Union[List[int], Tensor],

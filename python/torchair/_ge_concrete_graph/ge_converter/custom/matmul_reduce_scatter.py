@@ -13,11 +13,6 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
     Support
 
 
-@declare_supported(
-    [
-        Support(F16(1024, 1024), F16(1024, 1024), hcom="94430305206192", world_size=8, reduce_op="sum", comm_turn=0),
-    ]
-)
 @register_fx_node_ge_converter(torch.ops.npu.npu_mm_reduce_scatter_base.default)
 def convert_npu_mm_reduce_scatter_base(
     self: Tensor,

@@ -13,20 +13,6 @@ from torchair.ge._ge_graph import Tensor, TensorSpec
 from torchair._ge_concrete_graph.supported_declaration import F32, I8, I32, Support
 
 
-@declare_supported(
-    [
-        Support(I8(4, 7, 4, 4), I8(4, 7, 3, 3), F32(4), None, None, stride=[1, 1],
-                padding=[1, 1], dilation=[1, 1], groups=1, offset_x=0),
-        Support(I8(4, 3, 4, 4), I8(3, 3, 1, 1), F32(3), None, None, stride=[1, 1],
-                padding=[0, 0], dilation=[1, 1], groups=1, offset_x=3),
-        Support(I8(4, 7, 2, 2), I8(4, 7, 3, 3), F32(4), I32(4), None, stride=[2, 2],
-                padding=[1, 1], dilation=[1, 1], groups=1, offset_x=0),
-        Support(I8(4, 7, 4, 4), I8(4, 7, 3, 3), F32(4), None, None, stride=[1, 1],
-                padding=[2, 2], dilation=[2, 2], groups=1, offset_x=5),
-    ]
-)
-
-
 @register_fx_node_ge_converter(torch.ops.npu.npu_quant_conv2d.default)
 def conveter_npu_npu_quant_conv2d(
     x: Tensor,

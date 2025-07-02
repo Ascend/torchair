@@ -12,18 +12,6 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
 from torchair.ge._ge_graph import DataType
 
 
-@declare_supported([
-    Support(I8(8192, 320),
-            I8(320, 2560),
-            F32(1),
-            offset=None,
-            pertoken_scale=None,
-            bias=None,
-            output_dtype=torch.int8,
-            transpose_x1=False,
-            transpose_x2=False)
-])
-
 @register_fx_node_ge_converter(torch.ops.npu.npu_quant_matmul.default)
 def conveter_npu_npu_quant_matmul(
     x1: Tensor,

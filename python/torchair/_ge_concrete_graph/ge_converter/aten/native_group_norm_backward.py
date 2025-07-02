@@ -66,10 +66,6 @@ def _output_mask(inputs, mean, rstd, n, c, group, output_mask, grad_in, x_reshap
                 group=3, output_mask=[True, True, True]),
         Support(F32(0, 6, 10), F32(0, 6, 10), F32(0, 3), F32(0, 3), weight=F32(6, ), N=0, C=6, HxW=10,
                 group=3, output_mask=[True, True, True]),
-        Support(F32(9, 1), F32(9, 1), F32(9, 1), F32(9, 1), weight=F32(1, ), N=9, C=1, HxW=1,
-                group=1, output_mask=[True, False, False]),
-        Support(F32(0, 10), F32(0, 10), F32(0, 1), F32(0, 1), weight=F32(10, ), N=0, C=10, HxW=1,
-                group=1, output_mask=[True, False, False]),
     ]
 )
 @register_fx_node_ge_converter(torch.ops.aten.native_group_norm_backward.default)

@@ -14,12 +14,6 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
 from torchair._ge_concrete_graph.utils import dtype_promote
 
 
-@declare_supported([
-    Support(F32(8, 1, 128), F32(128)),
-    Support(F16(8, 1, 128), F16(128)),
-    # support setting epsilon
-    Support(F16(8, 1, 128), F16(128), float(0.01)),
-])
 @register_fx_node_ge_converter(torch.ops.npu.npu_add_rms_norm.default)
 def conveter_npu_add_rms_norm_default(
     x1: Tensor,

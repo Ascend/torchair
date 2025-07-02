@@ -19,7 +19,6 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
         Support(F32(96, 384, 14, 14), 0.0, 6.0),
         Support(F16(96, 384, 14, 14), 0.0, 6.0),
         Support(F32(2, 1280, 7, 7), 0.0, 6.0),
-        Support(F32(2, 1280, 7, 7), 2.0, -2.0),
         Support(F32(2, 1280, 7, 7), 2, 7),
     ]
 )

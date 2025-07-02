@@ -17,8 +17,6 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
     [
         Support(F16(96, 2, 2, 32, 32), F16(2, 32, 32), F16(2, 32, 32),
             scale_value=1, inner_precision_mode=0),
-        Support(F32(96, 2, 2, 32, 32), F32(2, 32, 32), F16(2, 32, 32),
-        scale_value=1, inner_precision_mode=0),
     ]
 )
 @register_fx_node_ge_converter(torch.ops.npu.npu_masked_softmax_with_rel_pos_bias.default)

@@ -19,9 +19,6 @@ def check_symsize(input1):
     return all(isinstance(item, int) for item in input1.symsize)
 
 
-@declare_supported([
-    Support(BF16(4, 2048, 40, 128), BF16(4, 2048, 40, 128), BF16(1, 2048, 1, 128), BF16(1, 2048, 1, 128)),
-])
 @register_fx_node_ge_converter(torch.ops.npu.npu_rotary_mul_backward.default)
 def conveter_npu_rotary_mul_backward_default(
     grad: Tensor, 

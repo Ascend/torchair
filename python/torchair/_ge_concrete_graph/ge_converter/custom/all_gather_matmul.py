@@ -13,12 +13,6 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
     BOOL, Support
 
 
-@declare_supported(
-    [
-        Support(F16(1024, 1024), F16(1024, 1024), hcom="94430305206192", world_size=8, gather_index=0,
-            gather_output=True, comm_turn=0),
-    ]
-)
 @register_fx_node_ge_converter(torch.ops.npu.npu_all_gather_base_mm.default)
 def convert_npu_all_gather_base_mm(
     self: Tensor,

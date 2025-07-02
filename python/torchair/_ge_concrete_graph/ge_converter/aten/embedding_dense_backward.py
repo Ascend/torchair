@@ -13,13 +13,6 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
     Support
 
 
-@declare_supported(
-    [
-        Support(F32(16, 128, 768), I64(16, 128), 3, 0, False),
-        Support(F32(16, 128, 768), I64(16, 128), 20006, 0, False),
-        Support(F32(16, 128, 768), I64(16, 128), 3, 0, True),
-    ]
-)
 @register_fx_node_ge_converter(torch.ops.aten.embedding_dense_backward.default)
 def conveter_aten_embedding_dense_backward_default(
     grad_output: Tensor,

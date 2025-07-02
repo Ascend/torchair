@@ -214,9 +214,6 @@ def npu_conv_transpose3d_backward(x: Tensor, grad: Tensor, weight: Tensor, paddi
         Support(F32(20, 33, 26, 100), F32(20, 16, 50, 100), F32(33, 16, 3, 5), bias_sizes=[33],
                 stride=[2, 1], padding=[4, 2], dilation=[3, 1], transposed=False, output_padding=[0, 0], groups=1,
                 output_mask=[True, True, True]),
-        Support(F32(20, 33, 26, 100), F32(20, 16, 50, 100), F32(33, 16, 3, 5), bias_sizes=[33],
-                stride=[2, 1], padding=[4, 2], dilation=[3, 1], transposed=True, output_padding=[0, 0], groups=1,
-                output_mask=[True, True, True]),
     ]
 )
 @register_fx_node_ge_converter(torch.ops.aten.convolution_backward.default)

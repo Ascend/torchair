@@ -14,15 +14,6 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
 from torchair._ge_concrete_graph.utils import get_cann_opp_version
 
 
-@declare_supported(
-    [
-        # 支持Abf16W8 bf16输出 | Afp16W8 fp16输出
-        # bf16输入时，bias需为fp32 , fp16输入时，bias为fp16
-        Support(F16(32, 11264), F16(11264, 1664), F16(1, 1664), F16(1, 1664)),
-        # 支持Afp16W8, antiquantScale为int64, antiquantOffset为int32，输出为fp16
-        Support(F16(96, 11264), F16(64, 11264), I64(64, 1), I32(64, 1)),
-    ]
-)
 @register_fx_node_ge_converter(torch.ops.npu.npu_weight_quant_batchmatmul.default)
 def conveter_npu_npu_weight_quant_batchmatmul(
     x: Tensor,

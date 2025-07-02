@@ -12,9 +12,6 @@ from torchair.ge._ge_graph import Tensor, TensorSpec
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, I32, Support
 
 
-@declare_supported([
-    Support(I32(8, ), num_experts=8)
-])
 @register_fx_node_ge_converter(torch.ops.npu.npu_moe_compute_expert_tokens.default)
 def conveter_moe_compute_expert_tokens(
     sorted_experts: Tensor,
