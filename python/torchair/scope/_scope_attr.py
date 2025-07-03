@@ -11,14 +11,17 @@ local = threading.local()
  
 class ScopeAttrs:
     def __init__(self):
+        logger.debug(f"ScopeAttrs init")
         self._attribute_stack: List[Dict[str, str]] = []
 
     def push(self, attributes: Dict[str, str]):
+        logger.debug(f"ScopeAttrs push attrs: {attributes}")
         self._attribute_stack.append(attributes)
 
     def pop(self):
         if self._attribute_stack:
             self._attribute_stack.pop()
+            logger.debug(f"ScopeAttrs pop attrs, the lens of stack is: {len(self._attribute_stack)}")
 
     def apply(self, op):
         for attrs in self._attribute_stack:
