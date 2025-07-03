@@ -1,24 +1,28 @@
 from typing import List
+
 import torch
 from torch.fx.node import has_side_effect
+from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
+
 from ._lib import lib
 from ._scope_attr import scope_enter, scope_exit
 
 
 lib.define(
     """
-    scope_enter(str[] keys, str[] values) -> None
+    scope_enter(str[] keys, str[] values, bool need_excute=False) -> None
     """
 )
 has_side_effect(torch.ops.air.scope_enter.default)
 
 
 @torch.library.impl(lib, "scope_enter", "Meta")
-def kernel_meta(keys: List[str], values: List[str]):
-    scope_enter(keys, values)
+def kernel_meta(keys: List[str], values: List[str], need_excute=False):
+    if need_excute:
+        scope_enter(keys, values)
 
 
-def kernel_impl(keys: List[str], values: List[str]):
+def kernel_impl(keys: List[str], values: List[str], need_excute=False):
     scope_enter(keys, values)
 
 
@@ -34,18 +38,19 @@ def _npu_scope_enter(attrs):
 
 lib.define(
     """
-    scope_exit() -> None
+    scope_exit(bool need_excute=False) -> None
     """
 )
 has_side_effect(torch.ops.air.scope_exit.default)
 
 
 @torch.library.impl(lib, "scope_exit", "Meta")
-def kernel_meta():
-    scope_exit()
+def kernel_meta(need_excute=False):
+    if need_excute:
+        scope_exit()
 
 
-def kernel_impl():
+def kernel_impl(need_excute=False):
     scope_exit()
 
 
