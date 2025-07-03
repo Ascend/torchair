@@ -107,6 +107,7 @@ def codegen_pgo_cpp_source(kernel_spec: FusedKernelSpec, kernel_path: str, lib_d
     #include "torch_npu/csrc/core/npu/NPUCachingAllocator.h"
     #include <fstream>
     #include <sstream>
+    #include <cfloat>
     #include <thread>
     #include "mspti.h"
     #include "acl/acl.h"

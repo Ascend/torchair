@@ -241,7 +241,8 @@ def codegen_pgo_def(graph: FusedASCGraph):
     pgo_signature = [v.signature for v in itertools.chain(inputs, outputs)]
     pgo_signature.extend(["void *stream"])
     pgo_tiling_signature = (["char* search_file", "char* config_file"] + tiling_signature
-        + [v.signature for v in itertools.chain(inputs, outputs)] + ["void *stream", "void *prof_callback"])
+        + [v.signature for v in itertools.chain(inputs, outputs)]
+        + ["void *stream", "void *prof_callback", "void *prof_batch_callback"])
 
 
     pgo.splice(f'''
@@ -254,9 +255,11 @@ static WrapperOnlyLaunchFuncType wrapper_fn = reinterpret_cast<WrapperOnlyLaunch
 #define ALIGN_BUFFER(buffer, align)         \\\\
     (((uintptr_t) (buffer) & ((align)-1)) ? ((buffer) + (align) - ((uintptr_t) (buffer) & ((align)-1))) : (buffer))
 
+static size_t group_size = 1000;
 static std::map<uint64_t, msptiActivity*> g_profiling_map;
 static uint64_t loop = 10;
 static int max_flush_times = 5;
+static double best_perf = DBL_MAX;
 
 static const char* GetActivityKindString(msptiActivityKind kind) {{
     static const std::unordered_map<msptiActivityKind, const char*> STRING_MAP = {{
@@ -339,49 +342,49 @@ void TearDownMspti(msptiSubscriberHandle* subscriber) {{
     msptiActivityFlushAll(1);
 }}
 
-#include <cfloat>
-
-extern "C" long int PGOGetProfiling({', '.join(pgo_signature)}, uint32_t workspace_size, AutofuseTilingData* tilingData, double* outCostTime) {{
+int ProfilingBatchProcess({', '.join(pgo_signature)}, uint32_t workspace_size, std::vector<AutofuseTilingDataPerf>::iterator begin, std::vector<AutofuseTilingDataPerf>::iterator end) {{
+    uint64_t batch_size = end - begin;
     g_profiling_map.clear();
     msptiSubscriberHandle subscriber;
     SetUpMspti(&subscriber);
-
-    size_t batch_size = 1;
-    int64_t result = -1;
-    *outCostTime = DBL_MAX;
-
-    for (uint64_t j = 0; j < loop; ++j) {{
-        result = wrapper_fn({', '.join(pgo_launch_args + ["stream", "workspace_size", "tilingData"])});
-        if (result != 0) {{
-            // std::cerr << "[PGO] {graph.name} launch failed loop:" << j << std::endl;
-            TearDownMspti(&subscriber);
-            return -1;
+    
+    static int64_t count = 0;
+    count++;
+    
+    int64_t result = 0;
+    for (auto it = begin; it != end; ++it) {{
+        it->best_perf = DBL_MAX;
+        {tiling_dtype} tilingData = it->tiling_data;
+        for (uint64_t i = 0; i < loop; ++i) {{
+            result = wrapper_fn({', '.join(pgo_launch_args + ["stream", "workspace_size", "&tilingData"])});
+            if (result != 0) {{
+                std::cerr << "[PGO] {graph.name} ProfilingBatchProcess launch failed loop:" << i << std::endl;
+                TearDownMspti(&subscriber);
+                return -1;
+            }}
         }}
     }}
-
+    
     result = aclrtSynchronizeStream(stream);
     if (result != 0) {{
-        // std::cerr << "[PGO] {graph.name} sync stream failed, begin_index:" << begin_index << std::endl;
+        std::cerr << "[PGO] {graph.name} ProfilingBatchProcess sync stream failed" << std::endl;
         TearDownMspti(&subscriber);
         return -1;
     }}
-
+    TearDownMspti(&subscriber);
+    
     int flush_count = 0;
     while (g_profiling_map.size() < batch_size * loop && flush_count < max_flush_times) {{
-      flush_count++;
-      //DLOG() << "begin_index: " << begin_index << ", g_profiling_map size = " << g_profiling_map.size() << " < " 
-      //<< batch_size * loop << ", flush count:" << flush_count << std::endl;
-      std::this_thread::sleep_for(std::chrono::milliseconds(10 * flush_count));
-      msptiActivityFlushAll(1);
+        flush_count++;
+        std::this_thread::sleep_for(std::chrono::milliseconds(10 * flush_count));
+        msptiActivityFlushAll(1);
     }}
-    TearDownMspti(&subscriber);
-
-    DLOG() << "batch size: " << batch_size << ", g_profiling_map size: " << g_profiling_map.size() << std::endl;
-    if (g_profiling_map.size() < batch_size * loop) {{
-        std::cerr << "[PGO] {graph.name} batch_size * loop not equals to g_profiling_map size" << std::endl;
+    
+    if (g_profiling_map.size() != batch_size * loop) {{
+        std::cerr << "[PGO] {graph.name} map size " << g_profiling_map.size() << " not equals to loop * batch_size " << batch_size * loop << std::endl;
         return -1;
     }}
-
+    
     auto it = g_profiling_map.begin();
     for (uint64_t i = 0; i < batch_size; ++i) {{
         int total_duration = 0;
@@ -390,17 +393,89 @@ extern "C" long int PGOGetProfiling({', '.join(pgo_signature)}, uint32_t workspa
             total_duration += kernel->end - kernel->start;
             std::advance(it, 1);
         }}
-        //auto tiling_data = *(begin + i);
         double average_duration = static_cast<double>(total_duration) / loop;
-        *outCostTime = average_duration;
-        //result_list->push_back(std::make_pair(begin_index + i, average_duration));
-        //DLOG() << "Tiling case: " << begin_index + i << ", valid count: " << loop << ", average duration: "
-        //<< average_duration << ", tilingdata[block_dim:" << tiling_data.block_dim << ",corenum:" << tiling_data.corenum
-        //<< ",ub_size:" << tiling_data.ub_size << ",tiling_key:" << tiling_data.tiling_key << ",hbm_size:" << tiling_data.hbm_size 
-        // << ",z0t_size:" << tiling_data.z0t_size << ",z0Tb_size:" << tiling_data.z0Tb_size  << "]" << std::endl;
-        //<< "]" << std::endl;
+        (begin + i)->best_perf = average_duration;
+        if (best_perf > average_duration) {{
+            best_perf = average_duration;
+        }}
+        DLOG() << "average_duration:" << average_duration << " best_perf:" << best_perf << " count:" << count << " batch_size:" << batch_size << " flush_count:" << flush_count << std::endl;
     }}
-    DLOG() << "outCostTime:" << *outCostTime << std::endl;
+    return 0;
+}}
+
+extern "C" long int PGOGetProfilingBatch({', '.join(pgo_signature)}, uint32_t workspace_size, std::vector<AutofuseTilingDataPerf> *profiles) {{
+    int case_num = profiles->size();
+    DLOG() << "{graph.name} PGOGetProfilingBatch case_num:" << case_num << std::endl;
+    int64_t result = 0;
+    auto it = profiles->begin();
+    while (it != profiles->end()) {{
+        auto end_it = (it + group_size >= profiles->end()) ? profiles->end() : it + group_size;
+        size_t start_index = std::distance(profiles->begin(), it);
+        for (int i = 0; i < 3; i++) {{
+            result = ProfilingBatchProcess({', '.join(pgo_launch_args + ["stream", "workspace_size"])}, it, end_it);
+            if (result != 0) {{
+                std::cerr << "[PGO] {graph.name} ProfilingBatchProcess failed at start_index:" << start_index << " retry time:" << i << std::endl;
+            }} else {{
+                break;
+            }}
+        }}
+        it = end_it;
+    }}
+    return 0;
+}}
+
+
+extern "C" long int PGOGetProfiling({', '.join(pgo_signature)}, uint32_t workspace_size, {tiling_dtype}* tilingData, double* outCostTime) {{
+    g_profiling_map.clear();
+    msptiSubscriberHandle subscriber;
+    SetUpMspti(&subscriber);
+
+    int64_t result = -1;
+    *outCostTime = DBL_MAX;
+    static int64_t count = 0;
+    count++;
+
+    for (uint64_t j = 0; j < loop; ++j) {{
+        result = wrapper_fn({', '.join(pgo_launch_args + ["stream", "workspace_size", "tilingData"])});
+        if (result != 0) {{
+            std::cerr << "[PGO] {graph.name} launch failed loop:" << j << std::endl;
+            TearDownMspti(&subscriber);
+            return -1;
+        }}
+    }}
+
+    result = aclrtSynchronizeStream(stream);
+    if (result != 0) {{
+        std::cerr << "[PGO] {graph.name} sync stream failed" << std::endl;
+        TearDownMspti(&subscriber);
+        return -1;
+    }}
+    TearDownMspti(&subscriber);
+
+    int flush_count = 0;
+    while (g_profiling_map.size() < loop && flush_count < max_flush_times) {{
+      flush_count++;
+      std::this_thread::sleep_for(std::chrono::milliseconds(10 * flush_count));
+      msptiActivityFlushAll(1);
+    }}
+
+    if (g_profiling_map.size() != loop) {{
+        std::cerr << "[PGO] {graph.name} map size " << g_profiling_map.size() << " not equals to loop " << loop << std::endl;
+        return -1;
+    }}
+
+    int total_duration = 0;
+    for (const auto& pair : g_profiling_map) {{
+        msptiActivityKernel* kernel = reinterpret_cast<msptiActivityKernel*>(pair.second);
+        total_duration += kernel->end - kernel->start;
+    }}
+    double average_duration = static_cast<double>(total_duration) / loop;
+    *outCostTime = average_duration;
+
+    if (best_perf > *outCostTime) {{
+        best_perf = *outCostTime;
+    }}
+    DLOG() << "average_duration:" << *outCostTime << " best_perf:" << best_perf << " count:" << count << " flush_count:" << flush_count << std::endl;
     return 0;
 }}
 
@@ -413,10 +488,16 @@ extern "C" int pgo({signature}) {{
         if (wrapper_fn == nullptr) std::cerr << "[PGO] {graph.name} wrapper func not found" << std::endl;
         return -1;
     }}
+    
+    stream = GetStream(stream);
+    if (stream == nullptr) {{
+        std::cerr << "{graph.name} kernel get stream failed" << std::endl;
+        return -1;
+    }}
 
     {buffer_assign_pgo}
 
-    int64_t result = pgo_search_fn((char*)search_file, (char *)config_file, {', '.join(tiling_args + ["&tiling_data", "&workspace_size", "&block_dim", "nullptr"] + pgo_launch_args + ["stream", "reinterpret_cast<void*>(PGOGetProfiling)"])});
+    int64_t result = pgo_search_fn((char*)search_file, (char *)config_file, {', '.join(tiling_args + ["&tiling_data", "&workspace_size", "&block_dim", "nullptr"] + pgo_launch_args + ["stream", "reinterpret_cast<void*>(PGOGetProfiling)", "reinterpret_cast<void*>(PGOGetProfilingBatch)"])});
     if (result != 0) {{
         std::cerr << "[PGO] {graph.name} mspti profiling failed" << std::endl;
         return -1;
