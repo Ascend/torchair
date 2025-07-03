@@ -14,19 +14,10 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
 from torchair._ge_concrete_graph.utils import dtype_promote, specific_op_input_layout, specific_op_output_layout
 
 
-@declare_supported([
-    Support(F32(32, 32, 1, 12544), 1e-7),
-])
 @register_fx_node_ge_converter(torch.ops.npu.batch_norm_reduce.default)
 def conveter_npu_batch_norm_reduce_default(
     self: Tensor,
     eps: float,
     meta_outputs: TensorSpec = None
 ):  
-    if self.rank != 4:
-        raise NotImplementedError("torch.ops.npu.batch_norm_reduce.default ge_converter ", \
-            "is only implemented for 4D input!")
-    sum_output, square_sum = ge.BNTrainingReduce(self)
-    specific_op_input_layout(sum_output, indices=0, layout="NCHW")
-    specific_op_output_layout(sum_output, indices=[0, 1], layout="NCHW")
-    return sum_output, square_sum
+    raise NotImplementedError("torch.ops.npu.batch_norm_reduce.default ge_converter is not implemented!")

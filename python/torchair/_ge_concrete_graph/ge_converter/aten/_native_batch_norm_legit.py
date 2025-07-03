@@ -81,38 +81,8 @@ def conveter_aten__native_batch_norm_legit_default(
         result = (output, batch_mean, batch_variance, mean, variance)
         return result
 
-    if dim <= 4:
-        if dim == 2 or dim == 3:
-            input = ge.Unsqueeze(input, axes=list(range(dim, 4)))
-        sum_output, square_sum = ge.BNTrainingReduce(input)
-        specific_op_input_layout(sum_output, indices=0, layout="NCHW")
-        specific_op_output_layout(sum_output, indices=[0, 1], layout="NCHW")
-        output, mean, variance, batch_mean, batch_variance = ge.BNTrainingUpdate(input, sum_output, \
-                                                                                 square_sum, weight, bias, running_mean,
-                                                                                 running_var, factor=momentum,
-                                                                                 epsilon=eps)
-        specific_op_input_layout(output, indices=list(range(7)), layout="NCHW")
-        specific_op_output_layout(output, indices=list(range(5)), layout="NCHW")
-        if dim == 2 or dim == 3:
-            output = ge.Squeeze(output, axis=list(range(3, dim - 1, -1)))
-        result = (output, batch_mean, batch_variance, mean, variance)
-        return result
+    raise NotImplementedError("torch.ops.aten._native_batch_norm_legit ge_converter is not implemented!")
 
-    sum_output, square_sum = ge.BN3DTrainingReduce(input)
-    specific_op_input_layout(sum_output, indices=0, layout="NCDHW")
-    specific_op_output_layout(sum_output, indices=[0, 1], layout="NCDHW")
-    output, mean, variance, batch_mean, batch_variance = ge.BN3DTrainingUpdate(input, sum_output, \
-                                                                               square_sum, weight, bias, running_mean,
-                                                                               running_var, factor=momentum,
-                                                                               epsilon=eps)
-    specific_op_input_layout(output, indices=list(range(7)), layout="NCDHW")
-    specific_op_output_layout(output, indices=list(range(5)), layout="NCDHW")
-    if dim > 5:
-        output = ge.Reshape(output, input_size)
-        specific_op_input_layout(output, indices=[0, 1], layout="ND")
-        specific_op_output_layout(output, indices=0, layout="ND")
-    result = (output, batch_mean, batch_variance, mean, variance)
-    return result
 
 
 @register_fx_node_ge_converter(torch.ops.aten._native_batch_norm_legit.no_stats)
@@ -174,38 +144,7 @@ def conveter_aten__native_batch_norm_legit_no_stats(
         result = (output, batch_mean, batch_variance)
         return result
 
-    if dim <= 4:
-        if dim == 2 or dim == 3:
-            input = ge.Unsqueeze(input, axes=list(range(dim, 4)))
-        sum_output, square_sum = ge.BNTrainingReduce(input)
-        specific_op_input_layout(sum_output, indices=0, layout="NCHW")
-        specific_op_output_layout(sum_output, indices=[0, 1], layout="NCHW")
-        output, mean, variance, batch_mean, batch_variance = ge.BNTrainingUpdate(input, sum_output,
-                                                                                 square_sum, weight, bias, running_mean,
-                                                                                 running_var, factor=momentum,
-                                                                                 epsilon=eps)
-        specific_op_input_layout(output, indices=list(range(7)), layout="NCHW")
-        specific_op_output_layout(output, indices=list(range(5)), layout="NCHW")
-        if dim == 2 or dim == 3:
-            output = ge.Squeeze(output, axis=list(range(3, dim - 1, -1)))
-        result = (output, batch_mean, batch_variance)
-        return result
-
-    sum_output, square_sum = ge.BN3DTrainingReduce(input)
-    specific_op_input_layout(sum_output, indices=0, layout="NCDHW")
-    specific_op_output_layout(sum_output, indices=[0, 1], layout="NCDHW")
-    output, mean, variance, batch_mean, batch_variance = ge.BN3DTrainingUpdate(input, sum_output,
-                                                                               square_sum, weight, bias, running_mean,
-                                                                               running_var, factor=momentum,
-                                                                               epsilon=eps)
-    specific_op_input_layout(output, indices=list(range(7)), layout="NCDHW")
-    specific_op_output_layout(output, indices=list(range(5)), layout="NCDHW")
-    if dim > 5:
-        output = ge.Reshape(output, input_size)
-        specific_op_input_layout(output, indices=[0, 1], layout="ND")
-        specific_op_output_layout(output, indices=0, layout="ND")
-    result = (output, batch_mean, batch_variance)
-    return result
+    raise NotImplementedError("torch.ops.aten._native_batch_norm_legit.no_stats ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.aten._native_batch_norm_legit.out)
