@@ -25,8 +25,6 @@ def conveter_npu_grouped_matmul_finalize_routing(
     scale: Optional[Tensor] = None,
     bias: Optional[Tensor] = None,
     offset: Optional[Tensor] = None,
-    antiquant_scale: Optional[Tensor] = None,
-    antiquant_offset: Optional[Tensor] = None,
     pertoken_scale: Optional[Tensor] = None,
     shared_input: Optional[Tensor] = None, 
     logit: Optional[Tensor] = None,
@@ -40,7 +38,6 @@ def conveter_npu_grouped_matmul_finalize_routing(
 ):
     """NB: npu::npu_grouped_matmul_finalize_routing(Tensor x, Tensor w, Tensor group_list, *,
                         Tensor? scale=None, Tensor? bias=None, Tensor? offset=None,
-                        Tensor? antiquant_scale=None, Tensor? antiquant_offset=None,
                         Tensor? pertoken_scale=None, Tensor? shared_input=None,
                         Tensor? logit=None, Tensor? row_index=None, ScalarType? dtype=None,
                         float? shared_input_weight=1.0, int? shared_input_offset=0,
