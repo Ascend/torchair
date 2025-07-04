@@ -20,6 +20,7 @@ from torchair.ge._ge_graph import DataType, torch_dtype_value_to_ge_type
 from torchair._ge_concrete_graph.graph_pass import optimize_reference_op_redundant_copy
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core._backend import initialize_graph_engine
+from torchair.core._backend import _append_hint_input_shape
 from torchair_st_utils import capture_stdout
 
 os.environ['TNG_LOG_LEVEL'] = '0'
@@ -126,6 +127,14 @@ class TorchairSt(unittest.TestCase):
         model(x, 3)
         model(x, 2.0)
         model(x, 3.0)
+
+    def test_append_hint_shape(self):
+        x = torch.randn(2, 2)
+        y = torch.randn(4, 2)
+        z = torch.randn((2, 3, 3))
+        local_compile_options = {}
+        _append_hint_input_shape([x, y, z], local_compile_options)
+        self.assertTrue(local_compile_options.get("ge.inputHintShape", "Not exist") == "0:[2, 2];1:[4, 2];2:[2, 3, 3]")
 
     def test_auto_tune(self):
         class Model(torch.nn.Module):

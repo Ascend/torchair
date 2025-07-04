@@ -790,6 +790,7 @@ def kernel(*args):
         assert_size_stride(args[4], (s4 + s5, s1), (s1, 1))
         _update_constplaceholder_attr_from_inputs(ge_graph, args)
         _update_internal_format_from_inputs(ge_graph, ge_inputs)
+        _append_hint_input_shape(ge_inputs, local_compile_options)
         ge_graph.load(local_compile_options, create_pg=False)
         ge_graph.compile()
 
@@ -843,6 +844,7 @@ def kernel(*args):
         assert_size_stride(args[2], (5, 2), (2, 1))
         _update_constplaceholder_attr_from_inputs(ge_graph, args)
         _update_internal_format_from_inputs(ge_graph, ge_inputs)
+        _append_hint_input_shape(ge_inputs, local_compile_options)
         ge_graph.load(local_compile_options, create_pg=False)
         ge_graph.compile()
 

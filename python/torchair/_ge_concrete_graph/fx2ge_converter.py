@@ -22,6 +22,7 @@ import torch.utils._pytree as pytree
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core import _torchair
 from torchair.core._backend import initialize_graph_engine
+from torchair.core._backend import _append_hint_input_shape
 from torchair.core._concrete_graph import ConcreteGraphBase, ValuePack
 from torchair.core.utils import logger, EVENT_LEVEL
 from torchair._ge_concrete_graph.ge_ir_pb2 import GraphDef, TensorDescriptor, TensorDef, OpDef
@@ -561,6 +562,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         if not self._is_compiled:
             local_compile_options, global_compile_options = self._normalize_ge_option()
             initialize_graph_engine(global_compile_options)
+            _append_hint_input_shape(inputs, local_compile_options)
             self.graph.load(local_compile_options)
 
         if self.should_auto_tune:
@@ -673,6 +675,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         import os
         import numpy
         from torchair.core._backend import initialize_graph_engine
+        from torchair.core._backend import _append_hint_input_shape
         from torchair.ge._ge_graph import GeGraph
         from torchair._ge_concrete_graph.fx2ge_converter import _update_constplaceholder_attr_from_inputs
         from torchair._ge_concrete_graph.fx2ge_converter import _update_internal_format_from_inputs
@@ -731,6 +734,7 @@ class GeConcreteGraph(ConcreteGraphBase):
                 kernel.splice(assert_code)
                 kernel.writelines(['_update_constplaceholder_attr_from_inputs(ge_graph, args)',
                                    '_update_internal_format_from_inputs(ge_graph, ge_inputs)',
+                                   '_append_hint_input_shape(ge_inputs, local_compile_options)',
                                    'ge_graph.load(local_compile_options, create_pg=False)',
                                    'ge_graph.compile()'])
 
