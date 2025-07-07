@@ -188,7 +188,7 @@ def get_meta_outputs(meta_outputs):
 
 def set_ge_outputs(ge_outputs, meta_outputs):
     if isinstance(ge_outputs, ge.Tensor):
-        ge_outputs.set_meta(meta_outputs, ge_outputs)
+        ge_outputs.set_meta(meta_outputs)
     elif isinstance(ge_outputs, int):
         if not isinstance(meta_outputs, (torch.SymInt, int)):
             raise AssertionError("meta_outputs must be a torch.SymInt or an integer.")

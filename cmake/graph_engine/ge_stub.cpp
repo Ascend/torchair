@@ -12,13 +12,6 @@ constexpr size_t kOutptSize = 512 * 1024 * 1024;
 }
 
 namespace ge {
-std::map<std::string, ge::DataType> stubCustomTypeToGeDataTypeMap = {
-    {"DT_HIFLOAT8", ge::DataType::DT_HIFLOAT8},
-    {"DT_FLOAT8_E8M0", ge::DataType::DT_FLOAT8_E8M0},
-    {"DT_FLOAT4_E2M1", ge::DataType::DT_FLOAT4_E2M1},
-    {"DT_FLOAT4_E1M2", ge::DataType::DT_FLOAT4_E1M2},
-};
-
 class CompiledGraphSummary::SummaryData {
  public:
   SummaryData() = default;
@@ -170,17 +163,7 @@ class GraphSpecManager {
         size_t input_size = node.GetInputsSize();
         for (size_t i = 0u; i < input_size; ++i) {
           node.GetInputDesc(i, desc);
-          char *st_mxfpx_dtype_cp = std::getenv("ST_MXFPX_DTYPE_STUB");
-          std::string st_mxfpx_dtype = "";
-          if (st_mxfpx_dtype_cp != NULL) {
-            st_mxfpx_dtype = st_mxfpx_dtype_cp;
-          }
-          if (ge::stubCustomTypeToGeDataTypeMap.find(st_mxfpx_dtype) != ge::stubCustomTypeToGeDataTypeMap.end()) {
-            spec.output_dtypes_.push_back(ge::stubCustomTypeToGeDataTypeMap[st_mxfpx_dtype]);
-            std::cerr << "[STUB] Output dtype is " << ge::stubCustomTypeToGeDataTypeMap[st_mxfpx_dtype] << std::endl;
-          } else {
-            spec.output_dtypes_.push_back(desc.GetDataType());
-          }
+          spec.output_dtypes_.push_back(desc.GetDataType());
           spec.netoutput_shapes_.emplace_back(desc.GetShape());
         }
       }
@@ -391,17 +374,7 @@ ge::Status GeSessionExecuteGraphWithStreamAsync(ge::Session &session, uint32_t g
 
   for (size_t i = 0; i < spec.output_dtypes_.size(); ++i) {
     gert::Tensor &output_i = outputs[i];
-    char *st_mxfpx_dtype_cp = std::getenv("ST_MXFPX_DTYPE_STUB");
-    std::string st_mxfpx_dtype = "";
-    if (st_mxfpx_dtype_cp != NULL) {
-      st_mxfpx_dtype = st_mxfpx_dtype_cp;
-    }
-    if (ge::stubCustomTypeToGeDataTypeMap.find(st_mxfpx_dtype) != ge::stubCustomTypeToGeDataTypeMap.end()) {
-      output_i.SetDataType(ge::stubCustomTypeToGeDataTypeMap[st_mxfpx_dtype]);
-      std::cerr << "[STUB] Output dtype is " << ge::stubCustomTypeToGeDataTypeMap[st_mxfpx_dtype] << std::endl;
-    } else {
-      output_i.SetDataType(spec.output_dtypes_[i]);
-    }
+    output_i.SetDataType(spec.output_dtypes_[i]);
     output_i.SetPlacement(placement);
     output_i.SetOriginFormat(ge::FORMAT_ND);
     output_i.SetStorageFormat(ge::FORMAT_ND);
