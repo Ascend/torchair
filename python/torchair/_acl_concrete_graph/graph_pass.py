@@ -212,9 +212,14 @@ def _reinplace_inplaceable_ops_pass(gm: GraphModule, *sample_args):
     except NotImplementedError as e:
         raise e
     except Exception as e:
-        raise RuntimeError("There is a bug in torch.fx.passes.reinplace module when torch < 2.5.0. Two possible"
-                           " solutions: 1. upgrade torch version(>=2.5.0); 2. disable config by setting: "
-                           "config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass=True") from e
+        if torch.__version__ < '2.5.0':
+            raise RuntimeError("There is a bug in torch.fx.passes.reinplace module when torch < 2.5.0. Two possible"
+                               " solutions: 1. upgrade torch version(>=2.5.0); 2. disable pass config by setting: "
+                               "config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass=True") from e
+        else:
+            raise RuntimeError("Unsupported case in pass when processing torch.fx.passes.reinplace. Please disable pass"
+                               "by setting config: "
+                               "config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass=True") from e
     return gm
 
 
