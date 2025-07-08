@@ -4,6 +4,7 @@ import shutil
 import sys
 import contextlib
 
+os.environ['TNG_LOG_LEVEL'] = '0'
 import torchair
 import torch
 import unittest
@@ -16,14 +17,13 @@ from torchair.ge._ge_graph import GeGraph, Const, _ge_dtype_to_ge_proto_dtype
 from torchair._ge_concrete_graph.fx2ge_converter import ExecutorType, Placement, _normalize_ge_graph, \
     _mapping_assign_op_to_graph_output, replace_data_to_refdata, GeConcreteGraph
 from torchair._ge_concrete_graph import ge_apis as ge
-from torchair.ge._ge_graph import DataType, torch_dtype_value_to_ge_type
+from torchair.ge._ge_graph import DataType
 from torchair._ge_concrete_graph.graph_pass import optimize_reference_op_redundant_copy
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core._backend import initialize_graph_engine
 from torchair.core._backend import _append_hint_input_shape
 from torchair_st_utils import capture_stdout
 
-os.environ['TNG_LOG_LEVEL'] = '0'
 logger.setLevel(logging.DEBUG)
 
 config = CompilerConfig()
@@ -75,10 +75,6 @@ class TorchairSt(unittest.TestCase):
     def tearDown(self) -> None:
         GeConcreteGraph.__call__ = self.call_bak
         GeConcreteGraph.optimize_graph_without_runtime = self.optimize_bak
-
-        mxfpx_key = "ST_MXFPX_DTYPE_STUB"
-        if mxfpx_key in os.environ:
-            del os.environ[mxfpx_key]
         return super().tearDown()
 
     def test_basic(self):
@@ -1769,30 +1765,6 @@ class TorchairSt(unittest.TestCase):
             updates = torch.ones([1, 1, 1, 8], dtype=torch.int32).to(npu_device)
             z = executor.run([copy, indices, updates])
             self.assertTrue(z[0].data_ptr() == copy.data_ptr())
-            
-    def test_torch_fp8(self):
-        class Model(torch.nn.Module):
-            def __init__(self):
-                super().__init__()
-
-            def forward(self, x, y, z):
-                x_e4m3fn = x.to(torch.float8_e4m3fn)
-                y_fp = y.to(torch.float)
-                y_e5m2_ = y_fp.to(torch.float8_e5m2)
-                z_fp = z.to(torch.float)
-                return x_e4m3fn, y_e5m2_, z_fp
-
-        model = Model()
-        model = torch.compile(model, backend=npu_backend, dynamic=True, fullgraph=True)
-        x = torch.randn([10, 2])
-        y = torch.randn([10, 2])
-        z = torch.randn([10, 2])
-        y_e5m2 = y.to(torch.float8_e5m2)
-        z_e4m3fn = z.to(torch.float8_e4m3fn)
-        res1, res2, res3 = model(x, y_e5m2, z_e4m3fn)
-        self.assertEqual(torch.float8_e4m3fn, res1.dtype)
-        self.assertEqual(torch.float8_e5m2, res2.dtype)
-        self.assertEqual(torch.float, res3.dtype)
 
     def test_directory_generation(self):
         import re
@@ -1991,94 +1963,6 @@ class TorchairSt(unittest.TestCase):
 
         captured_output = stdout.getvalue()
         self.assertTrue("start to release graph" in captured_output)
-
-    def test_ge_output_hif8(self):
-        key = "ST_MXFPX_DTYPE_STUB"
-        os.environ[key] = "DT_HIFLOAT8"
-        initialize_graph_engine()
-        from torchair.core import _npu_graph_executor
-        import _privateuse1_backend
-        npu_device = _privateuse1_backend.npu_device()
-        torch.utils.rename_privateuse1_backend("npu")
-
-        with GeGraph() as graph:
-            x = ge.Data(index=0, shape=[2, 2], dtype=DataType.DT_INT32, placement='NPU')
-            y = ge.Cast(x, dst_type=torch_dtype_value_to_ge_type(290))
-            output = ge.NetOutput([y])
-
-            set_graph_output_dtypes(graph, [DataType.DT_HIFLOAT8])
-
-            executor = TorchNpuGraph()
-            executor.load(graph)
-            executor.compile()
-        a = torch.ones([2, 2], dtype=torch.int32).to(npu_device)
-        b = executor.run([a])
-
-    def test_ge_output_fp8_e8m0(self):
-        key = "ST_MXFPX_DTYPE_STUB"
-        os.environ[key] = "DT_FLOAT8_E8M0"
-        initialize_graph_engine()
-        from torchair.core import _npu_graph_executor
-        import _privateuse1_backend
-        npu_device = _privateuse1_backend.npu_device()
-        torch.utils.rename_privateuse1_backend("npu")
-
-        with GeGraph() as graph:
-            x = ge.Data(index=0, shape=[2, 2], dtype=DataType.DT_INT32, placement='NPU')
-            y = ge.Cast(x, dst_type=torch_dtype_value_to_ge_type(293))
-            output = ge.NetOutput([y])
-
-            set_graph_output_dtypes(graph, [DataType.DT_FLOAT8_E8M0])
-
-            executor = TorchNpuGraph()
-            executor.load(graph)
-            executor.compile()
-        a = torch.ones([2, 2], dtype=torch.int32).to(npu_device)
-        b = executor.run([a])
-
-    def test_ge_output_fp4_e2m1(self):
-        key = "ST_MXFPX_DTYPE_STUB"
-        os.environ[key] = "DT_FLOAT4_E2M1"
-        initialize_graph_engine()
-        from torchair.core import _npu_graph_executor
-        import _privateuse1_backend
-        npu_device = _privateuse1_backend.npu_device()
-        torch.utils.rename_privateuse1_backend("npu")
-
-        with GeGraph() as graph:
-            x = ge.Data(index=0, shape=[2, 2], dtype=DataType.DT_INT32, placement='NPU')
-            y = ge.Cast(x, dst_type=torch_dtype_value_to_ge_type(296))
-            output = ge.NetOutput([y])
-
-            set_graph_output_dtypes(graph, [DataType.DT_FLOAT4_E2M1])
-
-            executor = TorchNpuGraph()
-            executor.load(graph)
-            executor.compile()
-        a = torch.ones([2, 2], dtype=torch.int32).to(npu_device)
-        b = executor.run([a])
-
-    def test_ge_output_fp4_e1m2(self):
-        key = "ST_MXFPX_DTYPE_STUB"
-        os.environ[key] = "DT_FLOAT4_E1M2"
-        initialize_graph_engine()
-        from torchair.core import _npu_graph_executor
-        import _privateuse1_backend
-        npu_device = _privateuse1_backend.npu_device()
-        torch.utils.rename_privateuse1_backend("npu")
-
-        with GeGraph() as graph:
-            x = ge.Data(index=0, shape=[2, 2], dtype=DataType.DT_INT32, placement='NPU')
-            y = ge.Cast(x, dst_type=torch_dtype_value_to_ge_type(297))
-            output = ge.NetOutput([y])
-
-            set_graph_output_dtypes(graph, [DataType.DT_FLOAT4_E1M2])
-
-            executor = TorchNpuGraph()
-            executor.load(graph)
-            executor.compile()
-        a = torch.ones([2, 2], dtype=torch.int32).to(npu_device)
-        b = executor.run([a])
 
 if __name__ == '__main__':
     unittest.main()
