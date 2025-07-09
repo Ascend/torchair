@@ -8,9 +8,19 @@ from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge._ge_graph import Tensor, TensorSpec
+from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
+from torchair._ge_concrete_graph.supported_declaration import F32, F16, F64, I32, I64, Support
+from torchair.ge._ge_graph import DataType, Tensor, TensorSpec
 
 
+@declare_supported([
+    Support(I64(4), I64(3)),
+    Support(I64(4), I64(3), right=True),
+    Support(I64(4), I64(3), out_int32=True, right=True),
+    Support(I64(4), I64(3), out_int32=True, side="left"),
+    Support(I64(5), I64(3), sorter=I64(5)),
+    Support(I64(2, 4), I64(2, 3)),
+])
 @register_fx_node_ge_converter(torch.ops.aten.searchsorted.Tensor)
 def conveter_aten_searchsorted_Tensor(
     sorted_sequence: Tensor,
@@ -23,7 +33,14 @@ def conveter_aten_searchsorted_Tensor(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::searchsorted.Tensor(Tensor sorted_sequence, Tensor self, *, bool out_int32=False, bool right=False, str? side=None, Tensor? sorter=None) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.searchsorted.Tensor ge_converter is not implemented!")
+    dst_dtype = DataType.DT_INT32 if out_int32 else DataType.DT_INT64
+
+    if side is not None:
+        if side not in ("left", "right"):
+            raise ValueError(f"torch.ops.aten.searchsorted.Tensor side must be 'left' or 'right', got {side!r}")
+        right = (side == "right")
+
+    return ge.SearchSorted(sorted_sequence, self, sorter=sorter, dtype=dst_dtype, right=right)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.searchsorted.Tensor_out)
