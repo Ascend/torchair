@@ -12,7 +12,7 @@ from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
 from torchair._ge_concrete_graph.utils import dtype_promote
-from torchair._utils.check_platform import is_arch35
+from torchair._utils.check_platform import is_not_support
 
 
 @declare_supported(
@@ -58,7 +58,7 @@ def conveter_aten_rsub_Scalar(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::rsub.Scalar(Tensor self, Scalar other, Scalar alpha=1) -> Tensor"""
-    if is_arch35():
+    if is_not_support():
         axpy_dtype_ist = [DataType.DT_FLOAT, DataType.DT_FLOAT16, DataType.DT_BF16]
         axpyv2_dtype_ist = [DataType.DT_INT8, DataType.DT_INT32, DataType.DT_INT64]
         if not isinstance(alpha, Tensor) and meta_outputs.dtype in axpy_dtype_ist:

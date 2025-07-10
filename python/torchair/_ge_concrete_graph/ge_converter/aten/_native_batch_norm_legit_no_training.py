@@ -12,7 +12,7 @@ from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
 from torchair._ge_concrete_graph.utils import specific_op_input_layout, \
     specific_op_output_layout
 from torchair._ge_concrete_graph.supported_declaration import F32, Support
-from torchair._utils.check_platform import is_arch35
+from torchair._utils.check_platform import is_not_support
 
 
 @declare_supported(
@@ -47,7 +47,7 @@ def conveter_aten__native_batch_norm_legit_no_training_default(
         bias = ge.Fill(ge.Gather(input_size, 1), ge.Cast(0., dst_type=input.dtype))
     empty = ge.Fill([0], ge.Cast(0.0, dst_type=input.dtype))
 
-    if is_arch35():
+    if is_not_support():
         if dim == 2 or dim == 3:
             input = ge.Unsqueeze(input, axes=list(range(dim, 4)))
 

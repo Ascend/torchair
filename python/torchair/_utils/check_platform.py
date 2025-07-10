@@ -1,7 +1,7 @@
-def is_arch35():
+def is_not_support():
     try:
         import torch_npu
-        is_arch35_bool = "Ascend910_95" in torch_npu.npu.get_device_name()
+        is_not_support_bool = False
     except (ImportError) as e:
-        is_arch35_bool = False
-    return is_arch35_bool
+        is_not_support_bool = False
+    return is_not_support_bool

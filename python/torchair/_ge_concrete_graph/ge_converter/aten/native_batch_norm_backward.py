@@ -12,7 +12,7 @@ from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
 from torchair._ge_concrete_graph.utils import specific_op_input_layout, \
     specific_op_output_layout
 from torchair._ge_concrete_graph.supported_declaration import F32, F16, Support
-from torchair._utils.check_platform import is_arch35
+from torchair._utils.check_platform import is_not_support
 
 
 @declare_supported(
@@ -52,7 +52,7 @@ def conveter_aten_native_batch_norm_backward_default(
     if weight is None:
         weight = ge.Fill(ge.Gather(input_size, 1), ge.Cast(1., dst_type=input.dtype))
     
-    if is_arch35():
+    if is_not_support():
         if dim <= 4:
             grad_in, diff_scale, diff_offset = \
                 __native_batch_norm_backward_regbase(dim, grad_out, input, weight, running_mean, running_var,

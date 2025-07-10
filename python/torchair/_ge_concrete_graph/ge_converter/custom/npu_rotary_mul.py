@@ -12,7 +12,7 @@ from torchair.ge._ge_graph import Tensor, TensorSpec
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
 from torchair._ge_concrete_graph.utils import dtype_promote
-from torchair._utils.check_platform import is_arch35
+from torchair._utils.check_platform import is_not_support
 
 
 @declare_supported([
@@ -28,7 +28,7 @@ def conveter_npu_rotary_mul_default(
     meta_outputs: TensorSpec = None
 ):
     """NB: npu::npu_rotary_mul(Tensor self, Tensor r1, Tensor r2) -> Tensor"""
-    if is_arch35():
+    if is_not_support():
         modes = {"half": 0, "interleave": 1, "quarter": 2, "interleave-half": 3}
         if rotary_mode not in modes:
             raise NotImplementedError("rotary_mode only support half/interleave/quarter/interleave-half now!")
