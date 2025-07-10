@@ -21,7 +21,7 @@ import logging
 
 exe_mode = os.getenv("EXE_MODE", "dynamo")
 graph_mode = os.getenv("GRAPH_MODE", "max-autotune")
-dynamic_compile = True # 因为当模型结构使能了actual_seq_length
+dynamic_compile = False 
 
 if exe_mode == "dynamo":
     logging.info("Start to run model in dynamo mode, dynamic=%s, fullgraph=%s, backend=npu" % (dynamic_compile, True))
@@ -54,6 +54,44 @@ end = time.time()
 cost = end - start # 每个step的耗时统计
 ```
 
+# 使能actual_seq_length的方式
+首先设置在greedy_search函数中设置动态图
+```python
+import os
+import time
+import logging
+
+exe_mode = os.getenv("EXE_MODE", "dynamo")
+graph_mode = os.getenv("GRAPH_MODE", "max-autotune")
+dynamic_compile = True 
+
+if exe_mode == "dynamo":
+  ...
+```
+然后在reduce-overhead/modeling_llama.py的LlamaForCausalLM初始化中使能actual_seq_length
+```python
+class LlamaForCausalLM(LlamaPreTrainedModel):
+    _tied_weights_keys = ["lm_head.weight"]
+
+    def __init__(self, config, world_size=1):
+        super().__init__(config)
+        self.model = LlamaModel(config)
+        self.pretraining_tp = config.pretraining_tp
+        self.vocab_size = config.vocab_size
+        self.lm_head = nn.Linear(
+            config.hidden_size, config.vocab_size, bias=False)
+        self.world_size = world_size
+        # Initialize weights and apply final processing
+        self.post_init()
+        self.run_id = 0
+        self.device_num = int(os.getenv("DEVICE_NUM", 1))
+        self.quant_type = os.getenv("QUANT_TYPE", None)
+        self.actual_seq = os.getenv("ACTUAL_SEQ", "True") #设置为True,使能actual_seq_length
+        self.kv_quant = os.getenv("KV_QUANT", "true")
+        self.kv_layout = os.getenv("KV_LAYOUT", "BSND")
+        ...
+```
+
 - torchair提供了NPU的图构造/图编译/图执行能力。相关能力全部集成到NPU图的后端，在使用torch.compile接口时，指定NPU图后端来使能。同时提供了开关和config控制图的编译和执行流程。
 - 在使用NPU图后端的时候，torchair提供了静态图和动态图两种图执行的能力。根据dynamic参数决定是否走动态图。
 - 使用reduce-overhead模式时，如果torch为2.5以下的版本，由于原生缺陷可能在使能reinplace_inplaceable_ops_pass时抛出异常，有2种解决方法：1.pass不关闭：升级torch>2.5.0 2.pass关闭，不升级torch，需配置：config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass=True
@@ -64,7 +102,7 @@ cost = end - start # 每个step的耗时统计
 
 执行llama2-7b，加载模型时的tensor类型float16，输入padding到1024长度，输出max_new_tokens是1024的性能数据如下：
 
-**在800I A2的机器上，host是arm，4batch size性能&内存数据**
+**在800I A2的机器上，host是arm，1batch size性能&内存数据**
 
 <table class="tg">
 <thead>
@@ -82,24 +120,24 @@ cost = end - start # 每个step的耗时统计
 <tbody>
   <tr>
     <td class="tg-0pky">单算子</td>
-    <td class="tg-0pky">4</td>
-    <td class="tg-0pky">207</td>
-    <td class="tg-0pky">27.8</td>
-    <td class="tg-0pky">21625</td>
+    <td class="tg-0pky">1</td>
+    <td class="tg-0pky">62.8</td>
+    <td class="tg-0pky">28.1</td>
+    <td class="tg-0pky">16370</td>
   </tr>
   <tr>
     <td class="tg-0pky">图模式(max-autotune)</td>
-    <td class="tg-0pky">4</td>
-    <td class="tg-0pky">208</td>
-    <td class="tg-0pky">18.6</td>
-    <td class="tg-0pky">21633</td>
+    <td class="tg-0pky">1</td>
+    <td class="tg-0pky">62.9</td>
+    <td class="tg-0pky">14.2</td>
+    <td class="tg-0pky">16360</td>
   </tr>
     <tr>
     <td class="tg-0pky">图模式(reduce-overhead)</td>
-    <td class="tg-0pky">4</td>
-    <td class="tg-0pky">229</td>
-    <td class="tg-0pky">27.9</td>
-    <td class="tg-0pky">20943</td>
+    <td class="tg-0pky">1</td>
+    <td class="tg-0pky">71.1</td>
+    <td class="tg-0pky">21.6</td>
+    <td class="tg-0pky">18590</td>
   </tr>
 </tbody>
 </table>
