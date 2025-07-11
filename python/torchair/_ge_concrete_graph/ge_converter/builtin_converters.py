@@ -4,6 +4,7 @@ from typing import (
 )
 import operator
 import math
+from packaging import version
 
 import torch
 from torch import Generator, contiguous_format, inf, strided, SymInt
@@ -145,3 +146,20 @@ def conveter_math_ceil(
     if not isinstance(self, Tensor):
         return math.ceil(self)
     return dtype_promote(ge.Ceil(self), target_dtype=meta_outputs.dtype)
+
+
+if version.parse(torch.__version__) >= version.parse("2.6.0"):
+    if hasattr(torch, "sym_sum"):
+        @declare_supported([
+            Support([F32(3, 2), F32(3, 2), F16(3, 2)]),
+            Support([F32(3, 2), F32(3, 2)]),
+            Support([3, 4, 5])
+        ])
+        @register_fx_node_ge_converter(torch.sym_sum)
+        def converter_aten_sym_sum(*inputs: Union[Tensor, int, float], meta_outputs: TensorSpec = None):
+            if all(not isinstance(x, Tensor) for x in inputs):
+                return sum(inputs)
+        
+            input_list = list(inputs)
+            num_inputs = len(input_list)
+            return ge.AddN(input_list, N=num_inputs)

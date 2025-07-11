@@ -1,5 +1,7 @@
 import functools
+import types
 from typing import Callable
+
 import torch
 import torch_npu
 import sys
@@ -125,6 +127,12 @@ def _test_converters(aten_ops, *, backend, result_checker):
     except Exception as e:
         print(f"Warning EXCEPTION when try to import custom op converters, will continue execute: {e}")
     supported_converters = _declare_supported_converters()
+
+    for old_key in list(supported_converters.keys()):
+        if isinstance(old_key, types.FunctionType):
+            new_key = old_key.__name__  
+            supported_converters[new_key] = supported_converters.pop(old_key)
+
     if aten_ops is None:
         aten_ops = supported_converters.keys()
     elif isinstance(aten_ops, Callable):
