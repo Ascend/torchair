@@ -56,7 +56,6 @@ def convert_npu_moe_distribute_combine(
                                    weight_scale=weight_scale,
                                    group_list=group_list,
                                    expand_scales=expand_scales,
-                                   shared_expert_x=shared_expert_x,
                                    group_ep=group_ep,
                                    ep_world_size=ep_world_size,
                                    ep_rank_id=ep_rank_id,
