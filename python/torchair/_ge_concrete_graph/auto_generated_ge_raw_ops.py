@@ -10,7 +10,6 @@ from torchair.ge._ge_graph import trans_to_list_list_int, trans_to_list_list_flo
 from torchair.ge._ge_graph import get_invalid_desc
 from torchair._ge_concrete_graph.compat_ir import ge_op, IrDef
 from torchair.ge import attr
-from torchair.core import _torchair
 # IR Const skipped as Deformed prototype
 # IR Constant skipped as Deformed prototype
 # IR Data skipped as Deformed prototype
@@ -78930,9 +78929,8 @@ def MoeFinalizeRoutingV2(expanded_x: Tensor, expanded_row_idx: Tensor, x1: Optio
 
 
 # This api is auto-generated from IR MoeDistributeCombine
-@auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False, False, False],
-    [False, False, False, False, False, True, True, True, True, True, True, True])
-def MoeDistributeCombine(expand_x: Tensor, expert_ids: Tensor, expand_idx: Tensor, ep_send_counts: Tensor, expert_scales: Tensor, tp_send_counts: Optional[Tensor], x_active_mask: Optional[Tensor], activation_scale: Optional[Tensor], weight_scale: Optional[Tensor], group_list: Optional[Tensor], expand_scales: Optional[Tensor], shared_expert_x: Optional[Tensor], *, group_ep: str, ep_world_size: int, ep_rank_id: int, moe_expert_num: int, group_tp: str="", tp_world_size: int=0, tp_rank_id: int=0, expert_shard_type: int=0, shared_expert_num: int=1, shared_expert_rank_num: int=0, global_bs: int=0, out_dtype: int=0, comm_quant_mode: int=0, group_list_type: int=0, dependencies=[], node_name=None):
+@auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False, False], [False, False, False, False, False, True, True, True, True, True, True])
+def MoeDistributeCombine(expand_x: Tensor, expert_ids: Tensor, expand_idx: Tensor, ep_send_counts: Tensor, expert_scales: Tensor, tp_send_counts: Optional[Tensor], x_active_mask: Optional[Tensor], activation_scale: Optional[Tensor], weight_scale: Optional[Tensor], group_list: Optional[Tensor], expand_scales: Optional[Tensor], *, group_ep: str, ep_world_size: int, ep_rank_id: int, moe_expert_num: int, group_tp: str="", tp_world_size: int=0, tp_rank_id: int=0, expert_shard_type: int=0, shared_expert_num: int=1, shared_expert_rank_num: int=0, global_bs: int=0, out_dtype: int=0, comm_quant_mode: int=0, group_list_type: int=0, dependencies=[], node_name=None):
     """REG_OP(MoeDistributeCombine)\n
     .INPUT(expand_x, TensorType({DT_BF16, DT_FLOAT16}))\n
     .INPUT(expert_ids, TensorType({DT_INT32}))\n
@@ -78945,7 +78943,6 @@ def MoeDistributeCombine(expand_x: Tensor, expert_ids: Tensor, expand_idx: Tenso
     .OPTIONAL_INPUT(weight_scale, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(group_list, TensorType({DT_INT64}))\n
     .OPTIONAL_INPUT(expand_scales, TensorType({DT_FLOAT}))\n
-    .OPTIONAL_INPUT(shared_expert_x, TensorType({DT_BF16}))\n
     .OUTPUT(x, TensorType({DT_BF16, DT_FLOAT16}))\n
     .REQUIRED_ATTR(group_ep, String)\n
     .REQUIRED_ATTR(ep_world_size, Int)\n
@@ -78964,13 +78961,8 @@ def MoeDistributeCombine(expand_x: Tensor, expert_ids: Tensor, expand_idx: Tenso
     """
 
     op = get_default_ge_graph().op.add()
-    has_v2 = _torchair.CheckAclnnAvaliable("aclnnMoeDistributeCombineV2")
-    if has_v2 == False:
-        op.type = "MoeDistributeCombine"
-        op.name = next_unique_name(node_name, "MoeDistributeCombine")
-    else:
-        op.type = "MoeDistributeCombineV2"
-        op.name = next_unique_name(node_name, "MoeDistributeCombineV2")
+    op.type = "MoeDistributeCombine"
+    op.name = next_unique_name(node_name, "MoeDistributeCombine")
 
     # process dependices
     for dependency in dependencies:
@@ -79049,16 +79041,6 @@ def MoeDistributeCombine(expand_x: Tensor, expert_ids: Tensor, expand_idx: Tenso
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "expand_scales"
-
-    if has_v2:
-        if shared_expert_x is not None:
-            op.input.append(shared_expert_x.tensor)
-            op.input_desc.add().CopyFrom(shared_expert_x.desc)
-            op.input_desc[-1].name = "shared_expert_x"
-        else:
-            op.input.append('')
-            op.input_desc.add().CopyFrom(get_invalid_desc())
-            op.input_desc[-1].name = "shared_expert_x"
 
     # process attrs
     op.attr["group_ep"].s = compat_as_bytes(group_ep)
@@ -79480,14 +79462,10 @@ def MoeDistributeDispatch(x: Tensor, expert_ids: Tensor, scales: Optional[Tensor
     .ATTR(global_bs, Int, 0)\n
     .ATTR(expert_token_nums_type, Int, 1)\n
     """
+
     op = get_default_ge_graph().op.add()
-    has_v2 = _torchair.CheckAclnnAvaliable("aclnnMoeDistributeDispatchV2")
-    if has_v2 == False:
-        op.type = "MoeDistributeDispatch"
-        op.name = next_unique_name(node_name, "MoeDistributeDispatch")
-    else:
-        op.type = "MoeDistributeDispatchV2"
-        op.name = next_unique_name(node_name, "MoeDistributeDispatchV2")
+    op.type = "MoeDistributeDispatch"
+    op.name = next_unique_name(node_name, "MoeDistributeDispatch")
 
     # process dependices
     for dependency in dependencies:
