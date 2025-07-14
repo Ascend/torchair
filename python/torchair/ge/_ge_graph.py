@@ -8,6 +8,7 @@ import inspect
 from enum import Enum
 from abc import abstractmethod
 import numpy as np
+import sys
 
 import torch
 from torch.fx.node import Argument, Target
@@ -540,7 +541,7 @@ class _GraphRngState:
         self._gen = gen
         self._consumed = 0
         if self._gen is None:
-            if hasattr(torch, 'npu'):
+            if 'torch_npu' in sys.modules:
                 idx = torch.npu.current_device()
                 self._gen = torch.npu.default_generators[idx]
             else:
@@ -953,7 +954,7 @@ class Tensor(TensorBase):
 
     def __repr__(self) -> str:
         return f'Tensor({self.tensor}, dtype={_ge_proto_dtype_str(self.desc.dtype)}, size={self._symsize})'
-    
+
     def get_numel(self):
         if self._symsize is None:
             raise AssertionError(f"Tensor {self} cannot get numel")

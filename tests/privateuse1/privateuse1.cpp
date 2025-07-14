@@ -196,7 +196,11 @@ void register_generator() {
 struct FooHooksInterface : public at::PrivateUse1HooksInterface {
     ~FooHooksInterface() override = default;
 
+#if defined(TNG_TORCH_VERSION) && (TNG_TORCH_VERSION < 20500)  // v2.5.0
     const at::Generator &getDefaultGenerator(c10::DeviceIndex device_index) override {
+#else
+    const at::Generator &getDefaultGenerator(c10::DeviceIndex device_index) const override {
+#endif
       static auto device_gen = make_generator_privateuse1(device_index);
       return device_gen;
     }

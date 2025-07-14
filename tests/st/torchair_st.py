@@ -22,13 +22,19 @@ from torchair._ge_concrete_graph.graph_pass import optimize_reference_op_redunda
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core._backend import initialize_graph_engine
 from torchair.core._backend import _append_hint_input_shape
-from torchair_st_utils import capture_stdout
+from torchair_st_utils import capture_stdout, generate_faked_module
 
 logger.setLevel(logging.DEBUG)
 
 config = CompilerConfig()
 config.debug.graph_dump.type = "pbtxt"
 npu_backend = torchair.get_npu_backend(compiler_config=config)
+
+import _privateuse1_backend
+
+npu_device = _privateuse1_backend.npu_device()
+torch.utils.rename_privateuse1_backend("npu")
+torch._register_device_module('npu', generate_faked_module())
 
 
 def set_graph_output_dtypes(graph, dtypes):
@@ -338,9 +344,6 @@ class TorchairSt(unittest.TestCase):
 
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
-        import _privateuse1_backend
-        npu_device = _privateuse1_backend.npu_device()
-        torch.utils.rename_privateuse1_backend("npu")
 
         with GeGraph() as graph:
             dst = ge.Data(index=0, shape=[3, 1, 16, 8], dtype=DataType.DT_FLOAT, placement='NPU')
@@ -435,11 +438,7 @@ class TorchairSt(unittest.TestCase):
 
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
-        import _privateuse1_backend
-        npu_device = _privateuse1_backend.npu_device()
-        torch.utils.rename_privateuse1_backend("npu")
         _privateuse1_backend.register_hook()
-
 
         with GeGraph() as graph:
             x1 = ge.Data(index=0, shape=[3, 4], dtype=DataType.DT_FLOAT, placement='NPU')
@@ -484,9 +483,6 @@ class TorchairSt(unittest.TestCase):
 
             initialize_graph_engine()
             from torchair.core import _npu_graph_executor
-            import _privateuse1_backend
-            npu_device = _privateuse1_backend.npu_device()
-            torch.utils.rename_privateuse1_backend("npu")
 
             with GeGraph() as graph:
                 x1 = ge.Data(index=0, shape=[3, 4], dtype=DataType.DT_FLOAT, placement='NPU')
@@ -522,7 +518,6 @@ class TorchairSt(unittest.TestCase):
     def test_npu_executor_mix_npu_cpu_inputs(self):
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
-        import _privateuse1_backend
 
         with GeGraph() as graph:
             x = ge.Data(index=0, shape=[-1, 2], dtype=DataType.DT_INT32, placement='CPU')
@@ -543,7 +538,6 @@ class TorchairSt(unittest.TestCase):
     def test_static_npu_executor_with_assigned_inputs(self):
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
-        import _privateuse1_backend
 
         with GeGraph() as graph:
             x = ge.Data(index=0, shape=[1, 2], dtype=DataType.DT_FLOAT, placement='CPU')
@@ -567,8 +561,6 @@ class TorchairSt(unittest.TestCase):
     def test_dynamic_npu_executor_with_assigned_inputs(self):
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
-        import _privateuse1_backend
-        torch.utils.rename_privateuse1_backend("npu")
 
         with GeGraph() as graph:
             x = ge.Data(index=0, shape=[-1, 2], dtype=DataType.DT_INT32, placement='CPU')
@@ -650,9 +642,6 @@ class TorchairSt(unittest.TestCase):
     def test_output_processing_for_dynamic_graph(self):
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
-        import _privateuse1_backend
-        npu_device = _privateuse1_backend.npu_device()
-        torch.utils.rename_privateuse1_backend("npu")
 
         with GeGraph() as graph:
             x = ge.Data(index=0, shape=[-1, 2], dtype=DataType.DT_INT32, placement='NPU')
@@ -673,10 +662,6 @@ class TorchairSt(unittest.TestCase):
     def test_dynamic_npu_executor_with_internal_format(self):
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
-        import _privateuse1_backend
-        npu_device = _privateuse1_backend.npu_device()
-
-        torch.utils.rename_privateuse1_backend("npu")
 
         with GeGraph() as graph:
             x = ge.Data(index=0, shape=[-1, 2], dtype=DataType.DT_INT32, placement='NPU')
@@ -701,7 +686,6 @@ class TorchairSt(unittest.TestCase):
     def test_npu_static_executor(self):
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
-        import _privateuse1_backend
 
         with GeGraph() as graph:
             x = ge.Data(index=0, shape=[1, 2], dtype=DataType.DT_FLOAT, placement='CPU')
@@ -739,7 +723,6 @@ class TorchairSt(unittest.TestCase):
     def test_npu_static_executor_with_memory_efficient(self):
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
-        import _privateuse1_backend
 
         with GeGraph() as graph1:
             a = ge.Data(index=0, shape=[128, 128], dtype=DataType.DT_FLOAT, placement='CPU')
@@ -783,9 +766,6 @@ class TorchairSt(unittest.TestCase):
 
     def test_npu_graph_executor_func(self):
         from torchair.core import _npu_graph_executor
-        import _privateuse1_backend
-        npu_device = _privateuse1_backend.npu_device()
-        torch.utils.rename_privateuse1_backend("npu")
 
         in_shape = [2, 3, 4, 5]
         x = torch.ones(in_shape).to(npu_device)
@@ -823,7 +803,6 @@ class TorchairSt(unittest.TestCase):
 
         GeConcreteGraph.__call__ = decorator(GeConcreteGraph.__call__)
 
-        import _privateuse1_backend
         _privateuse1_backend.register_generator()
         src_gen = torch.default_generator
         torch.default_generator = _privateuse1_backend.default_generator(0)
@@ -1665,7 +1644,6 @@ class TorchairSt(unittest.TestCase):
     def test_frozen_input_static(self):
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
-        import _privateuse1_backend
 
         with GeGraph() as graph1:
             a = ge.Data(index=0, shape=[128, 128], dtype=DataType.DT_FLOAT, placement='CPU')
@@ -1686,9 +1664,6 @@ class TorchairSt(unittest.TestCase):
     def test_frozen_input_dynamic(self):
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
-        import _privateuse1_backend
-        npu_device = _privateuse1_backend.npu_device()
-        torch.utils.rename_privateuse1_backend("npu")
 
         with GeGraph() as graph:
             x = ge.Data(index=0, shape=[-1, 2], dtype=DataType.DT_INT32, placement='NPU')
@@ -1710,9 +1685,6 @@ class TorchairSt(unittest.TestCase):
     def test_frozen_input_no_used(self):
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
-        import _privateuse1_backend
-        npu_device = _privateuse1_backend.npu_device()
-        torch.utils.rename_privateuse1_backend("npu")
 
         with GeGraph() as graph:
             x = ge.Data(index=0, shape=[-1, 2], dtype=DataType.DT_INT32, placement='NPU')
@@ -1731,7 +1703,6 @@ class TorchairSt(unittest.TestCase):
             for i in range(2):
                 out = executor.run([npu_x, npu_y])
 
-
     def test_as_numpy(self):
         from torchair.fx_dumper import _as_numpy
         import numpy as np
@@ -1743,9 +1714,6 @@ class TorchairSt(unittest.TestCase):
     def test_dynamic_npu_executor_with_reuse_input_addrs(self):
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
-        import _privateuse1_backend
-        npu_device = _privateuse1_backend.npu_device()
-        torch.utils.rename_privateuse1_backend("npu")
 
         with GeGraph() as graph, set_env_var("ST_OUTPUT_REUSE_INPUT_ADDR", ""):
             copy = ge.Data(index=0, shape=[1, 1, -1, -1], dtype=DataType.DT_INT32, placement='NPU')
@@ -1808,9 +1776,6 @@ class TorchairSt(unittest.TestCase):
     def test_fx_and_ge_shape_not_same(self):
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
-        import _privateuse1_backend
-        npu_device = _privateuse1_backend.npu_device()
-        torch.utils.rename_privateuse1_backend("npu")
         from torchair.ge._ge_graph import Tensor
         from torchair._ge_concrete_graph.ge_ir_pb2 import OpDef, TensorDescriptor
 
@@ -1819,7 +1784,7 @@ class TorchairSt(unittest.TestCase):
             y = ge.Data(index=1, shape=[2, 2], dtype=DataType.DT_INT32, placement='NPU')
             z = ge.Add(x, y)
             z.set_meta(torch.ones([2, 2]))
-            output = ge.NetOutput([z])            
+            output = ge.NetOutput([z])
             set_graph_output_dtypes(graph, [DataType.DT_INT32])
 
             node = OpDef()
@@ -1832,14 +1797,11 @@ class TorchairSt(unittest.TestCase):
             with self.assertRaises(RuntimeError) as context:
                 executor.compile()
                 self.assertTrue('The dim of Ascend net output: [2, 2] '
-                'is not equal to FX net output: [1, 2]' in context.exception)
+                                'is not equal to FX net output: [1, 2]' in context.exception)
 
     def test_fx_and_ge_shape_num_same(self):
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
-        import _privateuse1_backend
-        npu_device = _privateuse1_backend.npu_device()
-        torch.utils.rename_privateuse1_backend("npu")
         from torchair.ge._ge_graph import Tensor
         from torchair._ge_concrete_graph.ge_ir_pb2 import OpDef, TensorDescriptor
 
@@ -1848,7 +1810,7 @@ class TorchairSt(unittest.TestCase):
             y = ge.Data(index=1, shape=[2, 2], dtype=DataType.DT_INT32, placement='NPU')
             z = ge.Add(x, y)
             z.set_meta(torch.ones([2, 2]))
-            output = ge.NetOutput([z])            
+            output = ge.NetOutput([z])
             set_graph_output_dtypes(graph, [DataType.DT_INT32])
 
             node = OpDef()
@@ -1861,14 +1823,11 @@ class TorchairSt(unittest.TestCase):
             with self.assertRaises(RuntimeError) as context:
                 executor.compile()
                 self.assertTrue('The number of Ascend net output: 1 '
-                'is not equal to FX net outputs: 2' in context.exception)  
+                                'is not equal to FX net outputs: 2' in context.exception)
 
     def test_fx_and_ge_shape_size_not_same(self):
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
-        import _privateuse1_backend
-        npu_device = _privateuse1_backend.npu_device()
-        torch.utils.rename_privateuse1_backend("npu")
 
         with GeGraph() as graph:
             x = ge.Data(index=0, shape=[2, 2], dtype=DataType.DT_INT32, placement='NPU')
@@ -1884,13 +1843,13 @@ class TorchairSt(unittest.TestCase):
             with self.assertRaises(RuntimeError) as context:
                 executor.compile()
                 self.assertTrue('The dim size of Ascend net output: [2, 2] '
-                'is not equal to FX net output: [1, 2, 3]' in context.exception)
+                                'is not equal to FX net output: [1, 2, 3]' in context.exception)
 
     def test_check_cann_aclnn_avaliable(self):
         initialize_graph_engine()
         from torchair.core import _torchair
         check_has_v2 = _torchair.CheckAclnnAvaliable("aclnnTest")
-        
+
     def test_data_dump_generation(self):
         import re
 
@@ -1931,7 +1890,7 @@ class TorchairSt(unittest.TestCase):
 
         model = Model()
         test_config = torchair.CompilerConfig()
-        os.mkdir("./test_data_dump_failpath")
+        os.makedirs("./test_data_dump_failpath", exist_ok=True)
         with open("./test_data_dump_failpath/fail.txt", "w") as f:
             f.write("data dump test")
         test_config.debug.data_dump.type = "npy"
@@ -1955,6 +1914,7 @@ class TorchairSt(unittest.TestCase):
 
         def custom_del(self):
             print("start to release graph")
+
         GeConcreteGraph.__del__ = custom_del
 
         with capture_stdout() as stdout:
@@ -1963,6 +1923,7 @@ class TorchairSt(unittest.TestCase):
 
         captured_output = stdout.getvalue()
         self.assertTrue("start to release graph" in captured_output)
+
 
 if __name__ == '__main__':
     unittest.main()
