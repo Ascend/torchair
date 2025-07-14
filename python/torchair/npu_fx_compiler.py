@@ -462,7 +462,6 @@ def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
 def get_npu_backend(*, compiler_config: CompilerConfig = None, custom_decompositions: Dict = {}):
     if compiler_config is None:
         compiler_config = CompilerConfig()
-
     _check_config_support(compiler_config)
     decompositions = get_npu_default_decompositions()
     decompositions.update(custom_decompositions)

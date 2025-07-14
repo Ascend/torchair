@@ -71,16 +71,18 @@ def _check_config_support(config: Any):
         for config_arg in unsupport_geconfig_list:
             if config_arg[0] + "._value" in config_dict.keys():
                 warn_config = _get_warn_config(warn_config, config_arg, config_dict)
-        warnings.warn("The following torchair config or properties may not take effect or report " + \
-            "error in max-autotune mode: {warn_configs}".format(warn_configs=", ".join(warn_config)), \
-                UserWarning)
+        if len(warn_config) > 0:
+            warnings.warn("The following torchair config or properties may not take effect or report " + \
+                "error in max-autotune mode: {warn_configs}".format(warn_configs=", ".join(warn_config)), \
+                    UserWarning)
     else:
         for config_arg in unsupport_aclgraphconfig_list:
             if config_arg[0] + "._value" in config_dict.keys():
                 warn_config = _get_warn_config(warn_config, config_arg, config_dict)
-        warnings.warn("The following torchair config or properties may not take effect or report " + \
-            "error in reduce-overhead mode: {warn_configs}".format(warn_configs=", ".join(warn_config) + \
-            ", cache_compile, set_dim_gears, dynamo_export, scope, npu_print"), UserWarning)
+        if len(warn_config) > 0:
+            warnings.warn("The following torchair config or properties may not take effect or report " + \
+                "error in reduce-overhead mode: {warn_configs}".format(warn_configs=", ".join(warn_config) + \
+                ", cache_compile, set_dim_gears, dynamo_export, scope, npu_print"), UserWarning)
 
 
 def _get_warn_config(warn_config, config_arg, config_dict):
