@@ -28,6 +28,7 @@ def kernel_impl(keys: List[str], values: List[str], need_excute=False):
 
 torch.library.impl(lib, "scope_enter", "CPU")(kernel_impl)
 torch.library.impl(lib, "scope_enter", "PrivateUse1")(kernel_impl)
+torch.library.impl(lib, "scope_enter", "BackendSelect")(kernel_impl)
 
 
 def _npu_scope_enter(attrs):
@@ -56,6 +57,7 @@ def kernel_impl(need_excute=False):
 
 torch.library.impl(lib, "scope_exit", "CPU")(kernel_impl)
 torch.library.impl(lib, "scope_exit", "PrivateUse1")(kernel_impl)
+torch.library.impl(lib, "scope_exit", "BackendSelect")(kernel_impl)
 
 
 def _npu_scope_exit():
