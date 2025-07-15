@@ -1,7 +1,9 @@
 from collections import defaultdict
 from typing import Any, Optional
+import threading
 
 import torch
+from torch import fx
 from torch.fx import GraphModule
 from torch.fx.experimental.symbolic_shapes import GuardOnDataDependentSymNode
 from torch.fx.passes.reinplace import reinplace, _maybe_get_inplace_op, _is_view_op
@@ -235,3 +237,61 @@ def _reinplace_input_mutated_ops(gm: GraphModule):
     _mutated_input_reinplace(gm)
     logger.debug("End to process reinplace input mutated ops fx pass for graph: %s", id(gm))
     return gm
+
+
+_GLOBAL_NAME_TO_EVENT = {}
+_GLOBAL_EVENT_LOCK = threading.Lock()
+
+
+def _get_or_create_event_by_name(name: str):
+    global _GLOBAL_NAME_TO_EVENT
+    with _GLOBAL_EVENT_LOCK:
+        if name not in _GLOBAL_NAME_TO_EVENT:
+            new_event = torch.npu.Event()
+            _GLOBAL_NAME_TO_EVENT[name] = new_event
+            logger.debug(f"Create new event {_GLOBAL_NAME_TO_EVENT[name]} with key {name}.")
+            return new_event
+        logger.debug(f"Get event {_GLOBAL_NAME_TO_EVENT[name]} for with key {name}.")
+        return _GLOBAL_NAME_TO_EVENT[name]
+
+
+# to keep capture multi stream in acl graph, insert event while stream switch
+def apply_event_closure_with_multi_stream(graph_module: fx.GraphModule):
+    scope_enter_nodes = []
+    scope_exit_nodes = []
+    for node in graph_module.graph.nodes:
+        if str(node.target) == "air.scope_enter.default":
+            scope_enter_nodes.append(node)
+        elif str(node.target) == "air.scope_exit.default":
+            scope_exit_nodes.append(node)
+    if len(scope_enter_nodes) != len(scope_exit_nodes):
+        raise RuntimeError(f"scope_enter node num is not equal to scope_exit node num, scope_enter node num: "
+                           f"{len(scope_enter_nodes)}, scope_exit node num: {len(scope_exit_nodes)}")
+    if len(scope_enter_nodes) == 0:
+        logger.debug("No scope_enter node found in graph[%s], no need to insert event.", id(graph_module))
+        return False
+
+    # insert event record before graph input, inset event wait after scope_enter node
+    first_node = next(iter(graph_module.graph.nodes))
+    enter_event = _get_or_create_event_by_name(first_node.name)
+    with graph_module.graph.inserting_before(first_node):
+        graph_module.graph.call_method("record", args=(enter_event,))
+    for node in scope_enter_nodes:
+        with graph_module.graph.inserting_after(node):
+            graph_module.graph.call_method("wait", args=(enter_event,))
+
+    output_node = list(graph_module.graph.nodes)[-1]
+    if output_node is None or output_node.op != "output":
+        raise RuntimeError(f"Graph must have output node as last node, but got {output_node}")
+    for node in scope_exit_nodes:
+        # insert event record after scope_exit node, insert event wait before graph output
+        exit_event = _get_or_create_event_by_name(node.name)
+        with graph_module.graph.inserting_before(node):
+            graph_module.graph.call_method("record", args=(exit_event,))
+        with graph_module.graph.inserting_before(output_node):
+            graph_module.graph.call_method("wait", args=(exit_event,))
+
+    graph_module.graph.lint()
+    logger.debug("End to insert event in graph[%s].", id(graph_module))
+    return len(scope_enter_nodes) > 0
+

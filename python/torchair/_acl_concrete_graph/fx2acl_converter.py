@@ -21,7 +21,7 @@ from torchair.core._concrete_graph import ConcreteGraphBase, ValuePack
 from torchair.core.utils import logger
 from torchair._acl_concrete_graph.acl_graph import have_sym_in_list
 from torchair._utils.path_manager import PathManager
-
+from torchair._acl_concrete_graph.graph_pass import apply_event_closure_with_multi_stream
 aten = torch.ops.aten
 
 
@@ -146,11 +146,13 @@ class AclConcreteGraph(ConcreteGraphBase):
 
     def optimize_graph_without_runtime(self, *sample_args):
         logger.debug('before graph optimization, graph is %s', self.fx_graph.graph)
-
+        multi_stream_enabled = apply_event_closure_with_multi_stream(self.fx_graph)
+        logger.debug('after apply_stream_event_closure optimization, '
+                     'multi_stream_enabled is %s, graph is %s.', multi_stream_enabled, self.fx_graph.graph)
         # graph optimization passes here
         # Note: this pass need sample args to run in FakeTensor mode, any pass modifies ops without meta registration
         # should run after it.
-        if not self.config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass:
+        if not (multi_stream_enabled or self.config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass):
             logger.debug("Start to process reinplace inplaceable ops fx pass for graph: %s", id(self.fx_graph))
             from torchair._acl_concrete_graph.graph_pass import _reinplace_inplaceable_ops_pass
             _reinplace_inplaceable_ops_pass(self.fx_graph, *sample_args)
@@ -159,7 +161,7 @@ class AclConcreteGraph(ConcreteGraphBase):
         replace_dynamic_workspace_ops(self.fx_graph, self._meta_inputs)
 
         # Note: this will modify mutated input ops in fx graph, should be executed LAST.
-        if not self.config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass:
+        if not (multi_stream_enabled or self.config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass):
             logger.debug("Start to process reinplace input mutated ops fx pass for graph: %s", id(self.fx_graph))
             from torchair._acl_concrete_graph.graph_pass import _reinplace_input_mutated_ops
             _reinplace_input_mutated_ops(self.fx_graph)
@@ -206,12 +208,12 @@ class AclConcreteGraph(ConcreteGraphBase):
         return graph_key
 
     def capture(self, graph_key, *args: Any, **kwargs: Any):
-        from torchair._acl_concrete_graph.acl_graph import (UpdatedNodeCaptureInterp,
-                                                            CapturedGraphUpdateAndReplay, CapturedGraph)
+        from torchair._acl_concrete_graph.acl_graph import (UpdatedNodeCaptureInterp, CapturedGraphUpdateAndReplay)
         captured_interpreter = UpdatedNodeCaptureInterp(self.fx_graph, self._updated_ops_param)
 
-        with CapturedGraph(self.graph[graph_key], pool=self.pool, stream=self.stream,
-                           capture_error_mode=self.capture_error_mode, fx_graph=self.fx_graph):
+        import torch_npu
+        with torch_npu.npu.graph(self.graph, pool=self.pool, stream=self.stream,
+                                 capture_error_mode=self.capture_error_mode):
             self._capture_outputs[graph_key] = captured_interpreter.run(*args, **kwargs)
         updated_node_infos = captured_interpreter.captured_node_infos
         logger.info('Success to capture fx graph[id: %s], and the updated node num is {%s}. '

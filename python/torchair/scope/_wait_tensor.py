@@ -17,7 +17,10 @@ def kernel_meta(self: torch.Tensor, dependency: torch.Tensor):
 
 
 def kernel_impl(self: torch.Tensor, dependency: torch.Tensor):
-    raise NotImplementedError("torch.ops.air.wait_tensor kernel_impl is not implemented!")
+    raise NotImplementedError(
+        "torch.ops.air.wait_tensor kernel_impl is not implemented! if you are using torch.compile"
+        "(mode=\"reduce-overhead\"), npu_wait_tensor is not support in this mode, please use "
+        "npu_create_tagged_event/tagged_event_record/tagged_event_wait/tagged_event_reset instead!")
 
 
 torch.library.impl(lib, "wait_tensor", "CPU")(kernel_impl)

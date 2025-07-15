@@ -13,6 +13,7 @@ from torch import nn
 from torch.fx import Node, Proxy
 
 from torchair.core.utils import logger
+from torchair.scope._scope_attr import guard_with_user_stream_scope
 
 
 @dataclass
@@ -308,6 +309,7 @@ class UpdatedNodeCaptureInterp(fx.Interpreter):
     def captured_node_infos(self):
         return self._captured_node_info
 
+    @guard_with_user_stream_scope
     def run_node(self, node):
         logger.debug("Try to capture node names[%s] type[%s] args[%s] kwargs[%s] in graph[%s] .",
                      node.name, node.target, node.args, node.kwargs, id(self._graph_module))
@@ -511,7 +513,7 @@ def replace_dynamic_workspace_ops(graph_module: fx.GraphModule, meta_inputs: Lis
 
     for node in erase_nodes:
         graph_module.graph.erase_node(node)
-    graph_module.recompile()
+    graph_module.graph.lint()
     logger.debug("End to replace dynamic workspace ops in graph[%s].", id(graph_module))
 
 
@@ -536,47 +538,3 @@ def _find_mutated_user_inputs(gm: fx.GraphModule):
         elif _is_inplace_node(node):
             inplace_node_args_list.append(node.args[0].name)
     return [arg for arg in inplace_node_args_list if arg in placeholder_args]
-
-
-try:
-    import torch_npu
-except ImportError as e:
-    raise RuntimeError(
-        "Couldn't import torch_npu. When the CompilerConfig.mode is reduce-overhead, "
-        "it is necessary to use torch_npu.npu.NPUGraph(), so importing torch_npu is essential.") from e
-
-
-class CapturedGraph(torch_npu.npu.graph):
-    def __init__(self, *args, **kwargs):
-        self.avoid_sync_before_capture = self._is_external_event_in_graph(kwargs["fx_graph"])
-        kwargs.pop("fx_graph", None)
-        super().__init__(*args, **kwargs)
-
-    # TODOO: Mitigation: Avoid device synchronization while there is a replay interaction between two graphs.
-    # graph A: op1 -> record1 -> op2 -> op3 -> wait2 -> op4
-    # graph B: op5 -> op6 -> wait1 -> op7 -> op8 -> record2
-    # The graph A and graph B will be executed in parallel, while capture A then replay A, then capture B and replay B.
-    # if do synchronize device before capture, graph A replay is blocking due to record2 in graph B is not executed,
-    # graph B is not launched right now, so rewrite torch.npu.graph.__enter__() to avoid synchronize.
-    def __enter__(self):
-        if not self.avoid_sync_before_capture:
-            super().__enter__()
-        else:
-            logger.debug("Do not synchronization device to avoid graph capture is blocking.")
-            gc.collect()
-            self.stream_ctx.__enter__()
-
-            self.npu_graph.capture_begin(
-                *self.pool, capture_error_mode=self.capture_error_mode
-            )
-
-    @staticmethod
-    def _is_external_event_in_graph(gm: fx.GraphModule):
-        if gm is None:
-            return False
-        for node in gm.graph.nodes:
-            if str(node.target) in ["air.external_event_record.default",
-                                    "air.external_event_wait.default",
-                                    "air.external_event_reset.default"]:
-                return True
-        return False

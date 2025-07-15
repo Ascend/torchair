@@ -41,10 +41,11 @@
     ],
     "torchair.ops": [
         "npu_print",
-        "npu_create_tagged_external_event",
+        "npu_create_tagged_event",
         "npu_tagged_event_record",
         "npu_tagged_event_wait",
         "npu_tagged_event_reset",
+        "npu_record_tagged_stream",
         "npu_fused_infer_attention_score",
         "npu_fused_infer_attention_v2"
     ],
