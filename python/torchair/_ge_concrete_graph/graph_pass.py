@@ -55,7 +55,8 @@ def optimize_sym_pack(graph: GraphDef):
                                    placement='CPU',
                                    node_name=None)
                 input_info = _GeInputInfo(value_type=_ValueType.TENSOR, func=_SymPackInput(pack_input_idx_list),
-                                          shape=[len(pack_op.input)], device_type="CPU")
+                                          shape=[len(pack_op.input)], device_type="CPU",
+                                          real_shape=[len(pack_op.input)])
                 graph.record_input_info(new_data.node.name, input_info)
             if GeTensor(pack_op).meta is not None:
                 new_data.set_meta(GeTensor(pack_op).meta)

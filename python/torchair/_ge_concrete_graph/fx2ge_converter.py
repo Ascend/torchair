@@ -23,7 +23,6 @@ import torch.utils._pytree as pytree
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core import _torchair
 from torchair.core._backend import initialize_graph_engine
-from torchair.core._backend import _append_hint_input_shape
 from torchair.core._concrete_graph import ConcreteGraphBase, ValuePack
 from torchair.core.utils import logger, EVENT_LEVEL
 from torchair._ge_concrete_graph.ge_ir_pb2 import GraphDef, TensorDescriptor, TensorDef, OpDef
@@ -37,8 +36,9 @@ from torchair._ge_concrete_graph.graph_pass import optimize_sym_pack, optimize_r
     replace_data_to_refdata, get_frozen_flag, frozen_data_by_constplaceholder
 from torchair._ge_concrete_graph.utils import convert_to_tensorboard, dump_graph, force_op_unknown_shape, \
     is_host_data_tensor, get_used_sym_value_mapping, Placement, compute_value_of_sym, \
-    generate_sym_exper, get_sym_int_value, generate_shape_from_tensor, update_op_input_name_from_mapping, \
-    is_zero_element_tensor, flatten_meta_outputs, make_real_tensor_like, get_used_syms_in_meta
+    generate_sym_exper, get_sym_int_value, generate_shape_from_tensor, generate_real_shape_from_tensor,  \
+    update_op_input_name_from_mapping, is_zero_element_tensor, flatten_meta_outputs, \
+    make_real_tensor_like, get_used_syms_in_meta, _append_real_input_shape
 from torchair._ge_concrete_graph.hcom_utils import record_pg_to_graph, codegen_refresh_cache_pgname, \
     rename_cached_pgname
 from torchair._ge_concrete_graph.supported_declaration import Support
@@ -563,7 +563,6 @@ class GeConcreteGraph(ConcreteGraphBase):
         if not self._is_compiled:
             local_compile_options, global_compile_options = self._normalize_ge_option()
             initialize_graph_engine(global_compile_options)
-            _append_hint_input_shape(inputs, local_compile_options)
             self.graph.load(local_compile_options)
 
         if self.should_auto_tune:
@@ -676,7 +675,6 @@ class GeConcreteGraph(ConcreteGraphBase):
         import os
         import numpy
         from torchair.core._backend import initialize_graph_engine
-        from torchair.core._backend import _append_hint_input_shape
         from torchair.ge._ge_graph import GeGraph
         from torchair._ge_concrete_graph.fx2ge_converter import _update_constplaceholder_attr_from_inputs
         from torchair._ge_concrete_graph.fx2ge_converter import _update_internal_format_from_inputs
@@ -735,7 +733,6 @@ class GeConcreteGraph(ConcreteGraphBase):
                 kernel.splice(assert_code)
                 kernel.writelines(['_update_constplaceholder_attr_from_inputs(ge_graph, args)',
                                    '_update_internal_format_from_inputs(ge_graph, ge_inputs)',
-                                   '_append_hint_input_shape(ge_inputs, local_compile_options)',
                                    'ge_graph.load(local_compile_options, create_pg=False)',
                                    'ge_graph.compile()'])
 
@@ -799,13 +796,14 @@ class GeConcreteGraph(ConcreteGraphBase):
             data = ge.Data(index=data_index, dtype=sym_to_ge_dtype(meta_outputs), shape=[], placement='CPU',
                            node_name=target)
             input_info = _GeInputInfo(value_type=_ValueType.TENSOR, func=_ValueInput(data_index), shape=[],
-                                      device_type="CPU")
+                                      device_type="CPU", real_shape=[])
         else:
             if not isinstance(meta_outputs, torch.Tensor):
                 raise AssertionError("meta_outputs must be instance of torch.Tensor")
             self._all_meta_tensor_input[data_index] = meta_outputs
             dtype = torch_type_to_ge_type(meta_outputs.dtype)
             shape = generate_shape_from_tensor(meta_outputs)
+            real_shape = generate_real_shape_from_tensor(meta_outputs)
             placement = 'CPU' if (meta_outputs.device is None or meta_outputs.device.type == 'cpu') else 'NPU'
             data = ge.Data(index=data_index, dtype=dtype, shape=shape, placement=placement, node_name=target)
             value_type = _ValueType.TENSOR
@@ -818,7 +816,8 @@ class GeConcreteGraph(ConcreteGraphBase):
                 value_type=value_type,
                 func=_TensorInput(data_index) if meta_outputs.is_contiguous() else _DiscontiguousTensorInput(
                     data_index),
-                shape=shape, dim_gears=get_dim_gears(meta_outputs) or {}, device_type=placement)
+                shape=shape, dim_gears=get_dim_gears(meta_outputs) or {}, device_type=placement,
+                real_shape=real_shape)
 
         data.set_meta(meta_outputs)
         self.graph.record_input_info(data.node.name, input_info)
@@ -1020,6 +1019,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         if len(optimize_frozen_flag_list) != 0:
             local_compile_options["frozenInput"] = ",".join(str(x) for x in optimize_frozen_flag_list)
         local_compile_options["ge.exec.allTensorNotEmpty"] = '0' if self._has_empty_tensor else '1'
+        local_compile_options.update(_append_real_input_shape(self._input_info_list))
         logger.info("local compile options:")
         for k, v in local_compile_options.items():
             logger.info(f"  {k}: {v}")

@@ -4,7 +4,6 @@ import shutil
 import sys
 import contextlib
 
-os.environ['TNG_LOG_LEVEL'] = '0'
 import torchair
 import torch
 import unittest
@@ -13,17 +12,17 @@ import logging
 
 from torchair.core.utils import logger
 from torchair.core._backend import TorchNpuGraph
-from torchair.ge._ge_graph import GeGraph, Const, _ge_dtype_to_ge_proto_dtype
+from torchair.ge._ge_graph import GeGraph, Const, DataType, _ValueType, _GeInputInfo, _ge_dtype_to_ge_proto_dtype
 from torchair._ge_concrete_graph.fx2ge_converter import ExecutorType, Placement, _normalize_ge_graph, \
     _mapping_assign_op_to_graph_output, replace_data_to_refdata, GeConcreteGraph
 from torchair._ge_concrete_graph import ge_apis as ge
-from torchair.ge._ge_graph import DataType
 from torchair._ge_concrete_graph.graph_pass import optimize_reference_op_redundant_copy
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core._backend import initialize_graph_engine
-from torchair.core._backend import _append_hint_input_shape
+from torchair._ge_concrete_graph.utils import _append_real_input_shape
 from torchair_st_utils import capture_stdout, generate_faked_module
 
+os.environ['TNG_LOG_LEVEL'] = '0'
 logger.setLevel(logging.DEBUG)
 
 config = CompilerConfig()
@@ -130,14 +129,6 @@ class TorchairSt(unittest.TestCase):
         model(x, 2.0)
         model(x, 3.0)
 
-    def test_append_hint_shape(self):
-        x = torch.randn(2, 2)
-        y = torch.randn(4, 2)
-        z = torch.randn((2, 3, 3))
-        local_compile_options = {}
-        _append_hint_input_shape([x, y, z], local_compile_options)
-        self.assertTrue(local_compile_options.get("ge.inputHintShape", "Not exist") == "0:[2, 2];1:[4, 2];2:[2, 3, 3]")
-
     def test_auto_tune(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -192,6 +183,27 @@ class TorchairSt(unittest.TestCase):
         x = torch.randn(2, 2)
         model(x, 2, 3)
         model(x, 3, 4)
+
+    def test_real_input_option(self):
+        input_info_0 = _GeInputInfo(
+            value_type=_ValueType.TENSOR,
+            func=None,
+            shape=[-1, -1, -1], real_shape=[2, 3, 4], device_type="CPU")
+        input_info_1 = _GeInputInfo(
+            value_type=_ValueType.TENSOR,
+            func=None,
+            shape=[], real_shape=[], device_type="CPU")
+        input_info_2 = _GeInputInfo(
+            value_type=_ValueType.TENSOR,
+            func=None,
+            shape=[2, 3], real_shape=[2, 3], device_type="CPU")
+        input_info_3 = _GeInputInfo(
+            value_type=_ValueType.TENSOR,
+            func=None,
+            shape=[2, -1], real_shape=[2, 3], device_type="CPU")
+        inputs_info = [input_info_0, input_info_1, input_info_2, input_info_3]
+        result = _append_real_input_shape(inputs_info)
+        self.assertTrue(result['ge.inputHintShape'] == '0:[2, 3, 4];1:[];2:[2, 3];3:[2, 3]')
 
     def test_ge_api_support_position_passin_by_kv(self):
         # shape is position input of ge.Empty, check not raise when pass shape by k-v

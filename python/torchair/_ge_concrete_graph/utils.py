@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Tuple, Union, Callable
 import sympy
 import torch
 from torch.utils._mode_utils import no_dispatch
+from torch.fx.experimental.symbolic_shapes import hint_int
 from torchair.core.utils import logger
 from torchair._ge_concrete_graph.ge_ir_pb2 import GraphDef
 from torchair.ge._ge_graph import compat_as_bytes, DataType, is_sym, Tensor, \
@@ -308,6 +309,26 @@ def generate_shape_from_tensor(fake: torch.Tensor) -> List[int]:
             except Exception:
                 generalized_shape.append(-1)
     return generalized_shape
+
+
+def generate_real_shape_from_tensor(fake: torch.Tensor) -> List[int]:
+    generalized_shape = []
+    for dim in fake.size():
+        if not isinstance(dim, torch.SymInt):
+            generalized_shape.append(dim)
+        else:
+            try:
+                generalized_shape.append(int(str(dim)))
+            except Exception:
+                generalized_shape.append(hint_int(dim))
+    return generalized_shape
+
+
+def _append_real_input_shape(inputs_infos):
+    real_input_option_str = ";".join(f"{idx}:{str(input.real_shape)}" for idx, input in enumerate(inputs_infos))
+    logger.info(f'Append ge.inputHintShape: {real_input_option_str} to local compile options.')
+    local_compile_options = {"ge.inputHintShape": real_input_option_str}
+    return local_compile_options
 
 
 def update_op_input_name_from_mapping(graph: GraphDef, input_name_mapping: Dict):

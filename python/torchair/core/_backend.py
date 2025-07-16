@@ -89,18 +89,6 @@ def initialize_graph_engine(global_compile_options: Dict = None):
     _torchair.InitializeGraphEngine(options)
 
 
-@pretty_error_msg
-def _append_hint_input_shape(runtime_inputs, local_compile_options):
-    hint_input_option_str = ""
-    for idx, hint_input in enumerate(runtime_inputs):
-        hint_input_option_str += str(idx) + ":"
-        hint_input_option_str += str(list(hint_input.shape))
-        if (idx < (len(runtime_inputs) - 1)):
-            hint_input_option_str += ";"
-    logger.info(f'Append ge.inputHintShape: {hint_input_option_str} to local compile options.')
-    local_compile_options["ge.inputHintShape"] = hint_input_option_str
-
-
 def init_device_stdout_channel():
     return _torchair.InitDeviceStdoutChannel(_get_device_id())
 

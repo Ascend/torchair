@@ -1,6 +1,6 @@
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Tuple, Union, Callable
+from typing import Any, Dict, List, Tuple, Union, Callable, Optional
 import functools
 import threading
 import contextlib
@@ -534,6 +534,7 @@ class _GeInputInfo:
     func: _FuncBase
     shape: List[int]
     device_type: str
+    real_shape: Optional[List[int]] = field(default=None)
     dim_gears: Dict[int, List[int]] = field(default_factory=dict)
 
 
@@ -744,6 +745,7 @@ class GeGraph(object):
         _graph_rng_state = self._generator_rng_state[gen]
         seed, offset = _graph_rng_state.next(philox_num)
         input_info = _GeInputInfo(value_type=_ValueType.TENSOR, func=_RngStatusInput(_graph_rng_state),
+                                  real_shape=[len(_graph_rng_state._offset_lists)],
                                   shape=[len(_graph_rng_state._offset_lists)], device_type="CPU")
         self.record_input_info(_graph_rng_state._offsets.node.name, input_info)
 
