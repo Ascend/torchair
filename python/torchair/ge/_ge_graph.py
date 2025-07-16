@@ -525,6 +525,7 @@ class _ValueType(Enum):
     TENSOR = 0
     PARAMETER = 1
     BUFFER = 2
+    STATIC_TENSOR = 3
 
 
 @dataclass

@@ -5,6 +5,7 @@ import logging
 from typing import List
 import os
 import unittest
+from packaging import version
 
 import torch
 import torchair
@@ -15,8 +16,15 @@ from torchair.inference._cache_compiler import CompiledModel, ModelCacheSaver
 from torchair.inference._cache_compiler import _NoGuardCompiledFunction as NoGuardCompiledFunction
 from torchair.inference._cache_compiler import _NoGuardCompiledMethod as NoGuardCompiledMethod
 from torchair.inference import set_dim_gears
+from torchair_st_utils import generate_faked_module
 
 logger.setLevel(logging.DEBUG)
+
+import _privateuse1_backend
+
+npu_device = _privateuse1_backend.npu_device()
+torch.utils.rename_privateuse1_backend("npu")
+torch._register_device_module('npu', generate_faked_module())
 
 
 class PatchAttr:
@@ -645,7 +653,6 @@ class CacheCompileSt(unittest.TestCase):
             model_match_cache(*decode1)  # cache hint
             model_match_cache(*decode2)  # cache hint
 
-
     def test_ge_cache(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -930,7 +937,6 @@ def kernel(*args):
         self.assertTrue(prompt2_res.equal(prompt2_cache_res))
         self.assertTrue(decode2_res.equal(decode2_cache_res))
 
-
     def test_backend_params_with_exception(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -974,7 +980,6 @@ def kernel(*args):
         self.assertEqual(str(exception),
                          "config in current backend is different from the config during cache generation.")
 
-
     def test_cache_assert_size_stride(self):
         class CacheModel(torch.nn.Module):
             def __init__(self):
@@ -993,7 +998,6 @@ def kernel(*args):
 
             def prompt(self, x, y):
                 return self._forward(x, y)
-
 
         model = CacheModel()
 
@@ -1014,7 +1018,6 @@ def kernel(*args):
             exception = cm.exception
             self.assertEqual(str(exception), "expected size 12==3, stride 12==2 at dim=0")
 
-
     def test_cache_dynamic_assert_size_stride(self):
         class CacheModel(torch.nn.Module):
             def __init__(self):
@@ -1033,7 +1036,6 @@ def kernel(*args):
 
             def prompt(self, x, y):
                 return self._forward(x, y)
-
 
         model = CacheModel()
 
@@ -1054,7 +1056,6 @@ def kernel(*args):
             exception = cm.exception
             self.assertEqual(str(exception), "expected size 12==12, stride 12==2 at dim=0")
 
-
     def test_cache_assert_size_stride_remove_cache(self):
         class CacheModel(torch.nn.Module):
             def __init__(self):
@@ -1073,7 +1074,6 @@ def kernel(*args):
 
             def decode(self, x, y):
                 return self._forward(x, y)
-
 
         model = CacheModel()
 
@@ -1113,7 +1113,38 @@ def kernel(*args):
             self.assertTrue("Cache compile dose not support operator that depend on RNG, input index: 1." in str(
                 cm.exception.inner_exception))
 
+    def test_frozen_param(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.weight = torch.nn.Parameter(torch.randn(2, 2).to(npu_device))
+                config = CompilerConfig()
+                config.experimental_config.frozen_parameter = True
+                self.cached = torchair.inference.cache_compile(self._forward, config=config, dynamic=False)
+
+            def forward(self, x, y):
+                return self.cached(x, y)
+
+            def _forward(self, x, y):
+                x1 = x + self.weight
+                return x1 + y
+
+        model = Model()
+
+        cache_dir = CompiledModel.get_cache_bin(model._forward, dynamic=False)
+        ModelCacheSaver.remove_cache(cache_dir)
+        x = torch.randn(2, 2).to(npu_device)
+        torch._dynamo.mark_static_address(x)
+        y = torch.randn(2, 2).to(npu_device)
+
+        model(x, y)
+
+        compile_model = CompiledModel.load(cache_dir)
+        if version.parse(torch.__version__) < version.parse("2.5.1"):
+            self.assertTrue('["frozenInput"] = "1,0,0"' in compile_model.compiled_fx.py_code)
+        else:
+            self.assertTrue('["frozenInput"] = "1,1,0"' in compile_model.compiled_fx.py_code)
+
 
 if __name__ == '__main__':
     unittest.main()
-

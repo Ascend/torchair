@@ -11,6 +11,7 @@ import time
 import os
 import warnings
 import sympy
+from packaging import version
 
 import torch
 from torch.fx.node import Argument, Target
@@ -807,8 +808,14 @@ class GeConcreteGraph(ConcreteGraphBase):
             shape = generate_shape_from_tensor(meta_outputs)
             placement = 'CPU' if (meta_outputs.device is None or meta_outputs.device.type == 'cpu') else 'NPU'
             data = ge.Data(index=data_index, dtype=dtype, shape=shape, placement=placement, node_name=target)
+            value_type = _ValueType.TENSOR
+            if isinstance(meta_outputs, torch.nn.Parameter):
+                value_type = _ValueType.PARAMETER
+            elif hasattr(meta_outputs, "_dynamo_static_input_type"):
+                value_type = _ValueType.STATIC_TENSOR
+
             input_info = _GeInputInfo(
-                value_type=_ValueType.PARAMETER if isinstance(meta_outputs, torch.nn.Parameter) else _ValueType.TENSOR,
+                value_type=value_type,
                 func=_TensorInput(data_index) if meta_outputs.is_contiguous() else _DiscontiguousTensorInput(
                     data_index),
                 shape=shape, dim_gears=get_dim_gears(meta_outputs) or {}, device_type=placement)
@@ -998,9 +1005,15 @@ class GeConcreteGraph(ConcreteGraphBase):
         local_compile_options.update(generate_dynamic_dims_option(self.graph.named_inputs_info,
                                      self.config.inference_config.dynamic_gears_merge_policy.value))
         if self._config.experimental_config.frozen_parameter:
-            warnings.warn(f'When enable frozen_parameter, Parameters will be considered frozen.'
-                          'Please make sure that the Parameters data address remain the same '
-                          'throughout the program runtime.')
+            if version.parse(torch.__version__) < version.parse("2.5.1"):
+                warnings.warn('When enable frozen_parameter, Parameters will be considered frozen. '
+                              'Please make sure that the Parameters data address remain the same '
+                              'throughout the program runtime.')
+            else:
+                warnings.warn('When enable frozen_parameter, Parameters and input tensors with immutable data_ptr '
+                              'marked by `torch._dynamo.mark_static_address()` will be considered frozen. '
+                              'Please make sure that the Parameters data address remain the same '
+                              'throughout the program runtime.')
             optimize_frozen_flag_list = get_frozen_flag(self._input_info_list)
         else:
             optimize_frozen_flag_list = [0] * len(self._input_info_list)

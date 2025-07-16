@@ -416,17 +416,39 @@ def _wrap_compiler(compiler: Callable, compiler_config: CompilerConfig):
     return fw_compiler, inference_compiler, joint_compiler
 
 
-def _set_gear_to_compiler(compiler: Callable, compiler_config: CompilerConfig, input_dim_gears: Dict[int, List[int]]):
+def _get_inputs_custom_attr(example_inputs: List[torch.Tensor]):
+    inputs_attr = {}
+    for i, t in enumerate(example_inputs):
+        attr = {}
+        dim_gears = get_dim_gears(t)
+        if dim_gears is not None:
+            attr["dim_gears"] = dim_gears
+        if hasattr(t, "_dynamo_static_input_type"):
+            attr["_dynamo_static_input_type"] = t._dynamo_static_input_type
+        if attr:
+            inputs_attr[i - len(example_inputs)] = attr
+    return inputs_attr
+
+
+def _set_inputs_custom_attr(example_inputs: List[torch.Tensor], inputs_custom_attr: Dict[int, Dict]):
+    for i, attr in inputs_custom_attr.items():
+        for k, v in attr.items():
+            if k == "dim_gears":
+                set_dim_gears(example_inputs[i], v)
+            elif k == "_dynamo_static_input_type":
+                example_inputs[i]._dynamo_static_input_type = v
+    guard_gears_shape(example_inputs)
+
+
+def _set_inputs_custom_attr_to_compiler(compiler: Callable, inputs_custom_attr: Dict[int, Dict]):
     @functools.wraps(compiler)
-    def gear_compiler(
+    def _warp_custom_attr_compiler(
             gm: torch.fx.GraphModule,
             example_inputs: List[torch.Tensor],
     ):
-        for i, dim_gears in input_dim_gears.items():
-            set_dim_gears(example_inputs[i], dim_gears)
-        guard_gears_shape(example_inputs)
+        _set_inputs_custom_attr(example_inputs, inputs_custom_attr)
         return compiler(gm, example_inputs)
-    return gear_compiler
+    return _warp_custom_attr_compiler
 
 
 def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
@@ -434,16 +456,11 @@ def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
     if compiler_config is None:
         compiler_config = CompilerConfig()
     compiler = get_compiler(compiler_config)
-
-    input_dim_gears = dict()
-    for i, t in enumerate(example_inputs):
-        dim_gears = get_dim_gears(t)
-        if dim_gears is not None:
-            input_dim_gears[i - len(example_inputs)] = dim_gears
-
     fw_compiler, inference_compiler, joint_compiler = _wrap_compiler(compiler, compiler_config)
-    fw_compiler = _set_gear_to_compiler(fw_compiler, compiler_config, input_dim_gears)
-    inference_compiler = _set_gear_to_compiler(inference_compiler, compiler_config, input_dim_gears)
+
+    inputs_custom_attr = _get_inputs_custom_attr(example_inputs)
+    fw_compiler = _set_inputs_custom_attr_to_compiler(fw_compiler, inputs_custom_attr)
+    inference_compiler = _set_inputs_custom_attr_to_compiler(inference_compiler, inputs_custom_attr)
 
     partition_fn = _get_partition_fn(compiler_config)
     if compiler_config.experimental_config.aot_config_enable_joint_graph:

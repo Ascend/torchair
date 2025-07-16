@@ -335,7 +335,7 @@ class CacheBackend:
         self.saver = saver
         self.extend_config = extend_config
         self.custom_decompositions = decompositions or {}
-        self.input_dim_gears: Dict[int, List[int]] = dict()
+        self.inputs_custom_attr: Dict[int, Dict] = dict()
         if fw_compiler is None:
             from torchair.npu_fx_compiler import get_compiler
             self.compiler = get_compiler(config)
@@ -344,11 +344,8 @@ class CacheBackend:
 
     def __call__(self, gm: torch.fx.GraphModule, inputs: List[torch.Tensor], *args):
         self.saver.save_reserved_params(gm)
-
-        for i, t in enumerate(inputs):
-            dim_gears = get_dim_gears(t)
-            if dim_gears is not None:
-                self.input_dim_gears[i - len(inputs)] = dim_gears
+        from torchair.npu_fx_compiler import _get_inputs_custom_attr
+        self.inputs_custom_attr = _get_inputs_custom_attr(inputs)
 
         decompositions = get_npu_default_decompositions()
         decompositions.update(self.custom_decompositions)
@@ -357,9 +354,8 @@ class CacheBackend:
                                      decompositions=decompositions, keep_inference_input_mutations=True)
 
     def fw_compiler(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
-        for i, dim_gears in self.input_dim_gears.items():
-            set_dim_gears(example_inputs[i], dim_gears)
-        guard_gears_shape(example_inputs)
+        from torchair.npu_fx_compiler import _set_inputs_custom_attr
+        _set_inputs_custom_attr(example_inputs, self.inputs_custom_attr)
 
         if not hasattr(self.compiler, 'codegen'):
             logger.warning(f"Skip cache as compiler {type(self.compiler)} does not support codegen")

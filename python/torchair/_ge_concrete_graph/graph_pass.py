@@ -173,8 +173,8 @@ def optimize_reference_op_redundant_copy(graph: GraphDef):
             logger.debug("Assign op: %s is not used to update ref_op output to data op.", assign_tensor)
             continue
         ref_op, ref_idx, ref_op_input = ref_op_infos[assign_op.input[1]].op_def, \
-                                        ref_op_infos[assign_op.input[1]].output_id, \
-                                        ref_op_infos[assign_op.input[1]].ref_input_name
+            ref_op_infos[assign_op.input[1]].output_id, \
+            ref_op_infos[assign_op.input[1]].ref_input_name
         if ref_op_input not in tensormove_ops.keys():
             logger.debug("ref_op input: %s type is not TensorMove, skip TensorMove optimization.", ref_op_input)
             continue
@@ -190,7 +190,7 @@ def optimize_reference_op_redundant_copy(graph: GraphDef):
             continue
 
         ref_out_count, is_net_output = ref_op_infos[assign_op.input[1]].output_ref_count, \
-                                       ref_op_infos[assign_op.input[1]].is_net_output
+            ref_op_infos[assign_op.input[1]].is_net_output
         if is_net_output or ref_out_count == 1:
             logger.debug("Assign op: %s is used to copy %s to %s, update ref_op ref_input_%s from %s to %s.",
                          assign_tensor, assign_op.input[1], assign_op.input[0], ref_idx, ref_op_input,
@@ -257,10 +257,14 @@ def replace_data_to_refdata(graph, ref_input_idx, inputs):
 def get_frozen_flag(input_infos):
     frozen_flag_list = []
     for idx, input_info in enumerate(input_infos):
-        if (input_info.value_type == _ValueType.PARAMETER) and isinstance(input_info.func, _TensorInput) and (
-                input_info.device_type == "NPU"):
+        if ((input_info.value_type in [_ValueType.PARAMETER, _ValueType.STATIC_TENSOR])
+                and isinstance(input_info.func, _TensorInput) and (input_info.device_type == "NPU")):
             frozen_flag_list.append(1)
-            logger.debug("No.%s arg is frozen data", idx)
+            if input_info.value_type == _ValueType.PARAMETER:
+                logger.debug("No.%s arg is frozen Data, type: PARAMETER", idx)
+            else:
+                logger.debug("No.%s arg is frozen Data, type: STATIC_TENSOR", idx)
+
         else:
             frozen_flag_list.append(0)
             logger.debug("No.%s arg is Data", idx)
