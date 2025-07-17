@@ -79085,6 +79085,9 @@ def MoeDistributeCombineV2(expand_x: Tensor, expert_ids: Tensor, assist_info_for
     .INPUT(expert_scales, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(tp_send_counts, TensorType({DT_INT32}))\n
     .OPTIONAL_INPUT(x_active_mask, TensorType({DT_BOOL}))\n
+    .OPTIONAL_INPUT(activation_scale, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(weight_scale, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(group_list, TensorType({DT_INT64}))\n
     .OPTIONAL_INPUT(expand_scales, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(shared_expert_x, TensorType({DT_BF16}))\n
     .OUTPUT(x, TensorType({DT_BF16, DT_FLOAT16}))\n
@@ -79148,6 +79151,21 @@ def MoeDistributeCombineV2(expand_x: Tensor, expert_ids: Tensor, assist_info_for
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "x_active_mask"
+
+    # In V2, three unused reserved parameters from V1 have been removed. However, the oprator
+    # prototype on the canndev still retains the original parameters. Additionally, when the 
+    # input to the torch layer is V2, canndev internalyy selects either the V1 or V2 version
+    # of aclnn based on the A2/A3 platform. Therefore, it is necessary to perform a placeholder
+    # operation for the parameters that exist in the V1.
+    op.input.append('')
+    op.input_desc.add().CopyFrom(get_invalid_desc())
+    op.input_desc[-1].name = "activation_scale"
+    op.input.append('')
+    op.input_desc.add().CopyFrom(get_invalid_desc())
+    op.input_desc[-1].name = "weight_scale"
+    op.input.append('')
+    op.input_desc.add().CopyFrom(get_invalid_desc())
+    op.input_desc[-1].name = "group_list"
 
     if expand_scales is not None:
         op.input.append(expand_scales.tensor)
