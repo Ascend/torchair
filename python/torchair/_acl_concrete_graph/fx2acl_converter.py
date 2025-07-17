@@ -212,7 +212,7 @@ class AclConcreteGraph(ConcreteGraphBase):
         captured_interpreter = UpdatedNodeCaptureInterp(self.fx_graph, self._updated_ops_param)
 
         import torch_npu
-        with torch_npu.npu.graph(self.graph, pool=self.pool, stream=self.stream,
+        with torch_npu.npu.graph(self.graph[graph_key], pool=self.pool, stream=self.stream,
                                  capture_error_mode=self.capture_error_mode):
             self._capture_outputs[graph_key] = captured_interpreter.run(*args, **kwargs)
         updated_node_infos = captured_interpreter.captured_node_infos
