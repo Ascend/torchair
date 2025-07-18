@@ -1,4 +1,5 @@
 #include <cstdarg>
+#include <filesystem>
 
 #include "concrete_graph.h"
 
@@ -33,6 +34,10 @@ namespace ep {
     save_air_path += iter_name->second.GetString();
 
     TNG_LOG(INFO) << "export air file path and name is : " << save_air_path;
+
+    std::filesystem::path file_path(save_air_path);
+    TNG_ASSERT(!std::filesystem::is_symlink(file_path), "Target file path should not be an symbolic link");
+    save_air_path = std::filesystem::absolute(file_path).string();
 
     ge::GraphPtr graph = nullptr;
     TNG_RETURN_IF_ERROR(compat::ParseGraphFromArray(serialized_proto, proto_size, graph));
