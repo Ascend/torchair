@@ -1,5 +1,6 @@
 import sys
 import io
+import logging
 import types
 from contextlib import contextmanager
 
@@ -15,15 +16,42 @@ def capture_stdout():
         print("Error message", file=sys.stdout)
     captured_output = stdout.getvalue()
     """
+
     old_stdout = sys.stdout
+    sys.stdout = io.StringIO()
     try:
-        sys.stdout = io.StringIO()
         yield sys.stdout
     finally:
         captured_output = sys.stdout.getvalue()
         sys.stdout = old_stdout
         # Optionally print the captured output if you want to see it
         print("Captured stdout message:\n", captured_output, file=old_stdout)
+
+
+@contextmanager
+def capture_logger():
+    """
+    Context manager to capture python logger output.
+
+    Usage:
+    with capture_logger() as stdout:
+        # code that prints to stdout by logger
+    captured_output = stdout.getvalue()
+    """
+
+    capture_logger = logging.getLogger()
+    stream_io = io.StringIO()
+    handler = logging.StreamHandler(stream_io)
+    capture_logger.addHandler(handler)
+
+    try:
+        yield stream_io
+    finally:
+        captured_output = stream_io.getvalue()
+        capture_logger.removeHandler(handler)
+
+        # Optionally print the captured output if you want to see it
+        print("Captured logger message:\n", captured_output)
 
 
 def generate_faked_module():

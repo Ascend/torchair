@@ -14,6 +14,7 @@ from torch.fx import Node, Proxy
 
 from torchair.core.utils import logger
 from torchair.scope._scope_attr import guard_with_user_stream_scope
+from torchair._acl_concrete_graph.utils import reconstruct_args_kwargs
 
 
 @dataclass
@@ -327,6 +328,7 @@ class UpdatedNodeCaptureInterp(fx.Interpreter):
         result = super().run_node(node)
         handle = torch.npu.graph_task_group_end(capture_stream)
         node_args, node_kwargs = self.fetch_args_kwargs_from_env(node)
+        node_args, node_kwargs = reconstruct_args_kwargs(node_args, node_kwargs)
 
         self._captured_node_info.append(UpdatedNodeInfo(
             node_name=node.name,
@@ -472,7 +474,7 @@ def construct_and_add_output(node: fx.Node, graph_module: fx.GraphModule, kwargs
         output_node = output_nodes[0]
         kwargs_dict["out"] = output_node
     else:
-        output_node = graph_module.graph.call_function(tuple, args=(output_nodes,))
+        output_node = output_nodes
         kwargs_dict["out"] = output_nodes
     return output_node
 
@@ -508,7 +510,7 @@ def replace_dynamic_workspace_ops(graph_module: fx.GraphModule, meta_inputs: Lis
                          workspace_node.target if workspace_node is not None else "None",
                          out_run_node.name, out_run_node.target, id(graph_module))
         # replace fx
-        node.replace_all_uses_with(output_node)
+        node.replace_all_uses_with(out_run_node)
         erase_nodes.append(node)
 
     for node in erase_nodes:

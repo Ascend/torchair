@@ -12,7 +12,8 @@ import torch.nn.functional as F
 import torchair
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core.utils import logger
-from torchair_st_utils import capture_stdout
+from torchair._acl_concrete_graph.utils import reconstruct_args_kwargs, WeakRef
+from torchair_st_utils import capture_stdout, capture_logger
 
 logger.setLevel(logging.DEBUG)
 
@@ -147,6 +148,24 @@ def current_device():
     # 无恢复操作
 
 
+def memory_snapshot():
+    segments = [
+        {'device': 0, 'address': 140366409891840, 'total_size': 1342177280, 'allocated_size': 0, 'requested_size': 0,
+         'stream': 146751312, 'segment_type': 'large', 'segment_pool_id': (0, 1), 'is_expandable': False, 'frames': [],
+         'blocks': [
+             {'address': 140366409891840, 'size': 1342177280, 'requested_size': 1342177280, 'state': 'inactive',
+              'frames': []}]
+         },
+        {'device': 0, 'address': 140370157502464, 'total_size': 2097152, 'allocated_size': 512,
+         'requested_size': 8, 'stream': 0, 'segment_type': 'small', 'segment_pool_id': (0, 0), 'is_expandable': False,
+         'frames': [], 'blocks': [
+            {'address': 140370157502464, 'size': 512, 'requested_size': 8, 'state': 'active_allocated', 'frames': []},
+            {'address': 140370157503488, 'size': 2096128, 'requested_size': 0, 'state': 'inactive', 'frames': []}]
+         }
+    ]
+    return segments
+
+
 class StubEvent:
     def __new__(cls):
         return super().__new__(cls)
@@ -162,6 +181,34 @@ class StubEvent:
     def reset(self, stream=None):
         logger.debug('[Stub]Event reset.')
         return
+
+
+class Stub_C:
+    def __init__(self):
+        logger.debug('[Stub] new stub _C Module.')
+        pass
+
+    @staticmethod
+    def _npu_getCheckpointState(device, pool):
+        logger.debug('[Stub] run stub API _npu_getCheckpointState with args[%s, %s].', device, pool)
+        return "stub_mem_state"
+
+    @staticmethod
+    def _npu_setCheckpointPoolState(device, mem_state, stale_storages_ptr, storages_to_add_deleters_to_ptr):
+        logger.debug('[Stub] run stub API _npu_setCheckpointPoolState to mem state %s.', mem_state)
+        return
+
+    @staticmethod
+    def _construct_storage_from_data_pointer(data_ptr, device, nbytes):
+        logger.debug('[Stub] run stub API _construct_storage_from_data_pointer with storage nbytes %s.', nbytes)
+        return torch.Storage(nbytes)
+
+    @staticmethod
+    def _construct_NPU_Tensor_From_Storage_And_Metadata(metadata, storage):
+        logger.debug('[Stub] run stub API _construct_NPU_Tensor_From_Storage_And_Metadata with metadata.')
+        return torch.empty_strided(metadata['size'], metadata['stride'],
+                                   dtype=metadata['dtype'],
+                                   device=metadata['device'])
 
 
 # define stub submodule
@@ -183,6 +230,8 @@ class StubNpu:
         self.graph_pool_handle = stub_graph_pool_handle
         self.synchronize = stub_synchronize
         self.empty_cache = stub_empty_cache
+        self.memory_snapshot = memory_snapshot
+        self._C = Stub_C
 
 
 def patch_ops_npu_module(stub_module):
@@ -214,6 +263,7 @@ def patch_torch_npu_module(stub_module):
 
     module = types.ModuleType('torch_npu_stub')
     module.npu = stub_module
+    module._C = stub_module._C
     module.__all__ = ['npu']
 
     sys.modules['torch_npu'] = module
@@ -449,28 +499,37 @@ class AclGraphSt(unittest.TestCase):
 
         # no find captured graph, capture another npu graph
         AclConcreteGraph.__call__ = wrapper_call(bak_func, 1, 1)
-        with capture_stdout() as stdout:
+        with capture_logger() as stdout:
             scale1 = 5
             model(x, scale1)
         captured_output = stdout.getvalue()
-        self.assertTrue("Find captured acl graph for graph key " not in captured_output)
+        self.assertTrue("No find captured AclGraph" in captured_output)
 
         # find captured graph, no need to capture another npu graph
         AclConcreteGraph.__call__ = wrapper_call(bak_func, 2, 0)
-        scale1 = 4
-        model(x, scale1)
+        with capture_logger() as stdout:
+            scale1 = 4
+            model(x, scale1)
+        captured_output = stdout.getvalue()
+        self.assertTrue("Find captured AclGraph" in captured_output)
 
-        # original fx graph no need to find captured graph
+        # original fx graph, but no this graph key, need to capture graph
         AclConcreteGraph.__call__ = wrapper_call(bak_func, 2, 1)
-        scale1 = 4
-        x2 = torch.randn([6, 2])
-        model(x2, scale1)
+        with capture_logger() as stdout:
+            scale1 = 4
+            x2 = torch.randn([6, 2])
+            model(x2, scale1)
+        captured_output = stdout.getvalue()
+        self.assertTrue("No find captured AclGraph" in captured_output)
         AclConcreteGraph.__call__ = bak_func
 
-        # another fx graph no need to find captured graph
+        # another fx graph, need to capture graph
         AclConcreteGraph.__call__ = wrapper_call(bak_func, 0, 1)
-        scale1 = 5.0
-        model(x2, scale1)
+        with capture_logger() as stdout:
+            scale1 = 5.0
+            model(x2, scale1)
+        captured_output = stdout.getvalue()
+        self.assertTrue("No find captured AclGraph" in captured_output)
         AclConcreteGraph.__call__ = bak_func
 
     def test_aclgraph_unsupported_dump(self):
@@ -618,7 +677,6 @@ class AclGraphSt(unittest.TestCase):
             any("Try to capture node names[wait_1] type[wait]" in log for log in cm.output),
             f"Expected no DEBUG log 'Try to capture node names[wait_1] type[wait]' in logs: {cm.output}")
 
-
         # mm在stream tag 1上执行
         self.assertTrue(
             any("guard with user stream scope, node = mm, user stream label = 1" in log for log in cm.output),
@@ -630,7 +688,6 @@ class AclGraphSt(unittest.TestCase):
             any("guard with user stream scope, node = mm_1, user stream label = 2" in log for log in cm.output),
             f"Expected no DEBUG log 'guard with user stream scope, node = mm_1, user stream label = 2' in logs:"
             f" {cm.output}")
-
 
         # 两条从流stream分别向主capture流发送record-wait对，以完成event闭环
         # stream tag 2
@@ -746,11 +803,12 @@ class AclGraphSt(unittest.TestCase):
 
         origin = torch.Tensor.record_stream
         torch.Tensor.record_stream = StubTensor.record_stream
+
         def func():
             A = torch.ones([100, 100])
             mm_input = torch.randn(3200, 32000)
             with torchair.scope.npu_stream_switch('1', 3):
-                for _ in range(10): # 延长secend stream执行时间，使得A.add(1)晚于主流C.add_(2)计算
+                for _ in range(10):  # 延长secend stream执行时间，使得A.add(1)晚于主流C.add_(2)计算
                     out = mm_input * mm_input
                 B = A.add(1)
                 torchair.ops.npu_record_tagged_stream(B, '1')
@@ -772,7 +830,6 @@ class AclGraphSt(unittest.TestCase):
             f"Expected DEBUG log 'call_function[target=torch.ops.air.record_tagged_stream.default]' in logs: {cm.output}"
         )
         torch.Tensor.record_stream = origin
-
 
     def test_reinplace_pass_disblabled_with_multi_stream(self):
         class Model(torch.nn.Module):
@@ -808,7 +865,6 @@ class AclGraphSt(unittest.TestCase):
             any("call_function[target=torch.ops.aten.mul_.Tensor]" in log for log in cm.output),
             f"Expected DEBUG log 'call_function[target=torch.ops.aten.mul_.Tensor]' in logs: {cm.output}"
         )
-
 
     def test_aclgraph_capture_and_replay_keep_inference_input_mutations_true_default_enable_reinplace_pass(self):
         class Model(torch.nn.Module):
@@ -1041,7 +1097,6 @@ class AclGraphSt(unittest.TestCase):
             f"Expected no DEBUG log 'call_function[target=torch.ops.aten.add_.Tensor]' in logs: {cm.output}"
         )
 
-
     def test_graph_dump_with_py(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -1080,6 +1135,97 @@ class AclGraphSt(unittest.TestCase):
 
         for file_name in get_dumped_py_file_list('./'):
             os.remove(os.path.join('./', file_name))
+
+    def test_reconstruct_args_kwargs(self):
+        def _check_same_tensor_meta(x, y):
+            if (list(x.shape) != list(y.shape)) or (
+                    x.stride() != y.stride()) or (
+                    x.device != y.device):
+                return False
+            else:
+                return True
+
+        def _check_same_list(list_x, list_y):
+            if len(list_x) != len(list_y):
+                return False
+
+            res = []
+            for idx, x_i in enumerate(list_x):
+                if isinstance(x_i, torch.Tensor):
+                    res.append(_check_same_tensor_meta(x_i, list_y[idx]))
+                else:
+                    res.append(x_i == list_y[idx])
+            return all(res)
+
+        args = [
+            torch.randn([2, 3, 4, 5], dtype=torch.float16),
+            torch.ones([2, 3, 4]).transpose(0, 1),
+            torch.zeros([3, 24])[1:],
+        ]
+
+        kwargs = {
+            "tag1": torch.randn(3, 4, 5),
+            "tag2": [torch.empty([2, 3]), torch.empty([3, 4])],
+            "tag3": "tag3_value",
+            "tag40": 4,
+            "tag41": 4.1,
+            "tag42": False,
+            "tag5": [2, 3, 4],
+            "tag6": (True, 6.0),
+            "tag7": (torch.empty([2, 3]), torch.empty([3, 4])),
+            "tag8": [[2, 3], torch.empty([3, 4])],
+        }
+
+        out_args, out_kwargs = reconstruct_args_kwargs(args, kwargs)
+        self.assertTrue(_check_same_list(args, out_args))
+        for key in {"tag2", "tag5", "tag6", "tag7", "tag8"}:
+            self.assertTrue(_check_same_list(kwargs[key], out_kwargs[key]))
+        for key in {"tag1"}:
+            self.assertTrue(_check_same_tensor_meta(kwargs[key], out_kwargs[key]))
+        for key in {"tag3", "tag40", "tag41", "tag42"}:
+            self.assertTrue(kwargs[key] == out_kwargs[key])
+
+    def test_weak_ref(self):
+        a = torch.randn(2, 3)
+        b = torch.randn(4, 5)
+        c = 1.0
+        d = ["x", "y", "z"]
+
+        ori_list = [a, b, c, d]
+        weak_ref_list = [WeakRef(itr) for itr in ori_list]
+
+        # check weak ref when all objs are alive
+        ref_out = [ref() for ref in weak_ref_list]
+        for idx, ref_i in enumerate(ref_out):
+            if isinstance(ref_i, torch.Tensor):
+                cosine_sim_val = F.cosine_similarity(ref_out[idx], ori_list[idx])
+                self.assertTrue(cosine_sim_val.min().item() >= 0.9999)
+            else:
+                self.assertTrue(ref_out[idx] == ori_list[idx])
+        del ref_out
+
+        a2 = torch.randn(3, 2)
+        ori_list[0] = a2
+        weak_ref_list[0].swap_weakref(a2)
+
+        # check weak ref when some weak obj swap
+        ref_out = [ref() for ref in weak_ref_list]
+        for idx, ref_i in enumerate(ref_out):
+            if isinstance(ref_i, torch.Tensor):
+                cosine_sim_val = F.cosine_similarity(ref_out[idx], ori_list[idx])
+                self.assertTrue(cosine_sim_val.min().item() >= 0.9999)
+            else:
+                self.assertTrue(ref_out[idx] == ori_list[idx])
+        del ref_out
+
+        del a, b, c, d, a2
+        del ori_list
+        # check weak ref when some all objs are dead
+        ref_out = [ref() for ref in weak_ref_list]
+        self.assertTrue(ref_out[0] is None)
+        self.assertTrue(ref_out[1] is None)
+        self.assertTrue(ref_out[2] == 1.0)
+        self.assertTrue(ref_out[3] == ["x", "y", "z"])
 
 
 if __name__ == '__main__':
