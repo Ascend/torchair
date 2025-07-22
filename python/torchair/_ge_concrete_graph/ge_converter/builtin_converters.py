@@ -11,7 +11,7 @@ from torch import Generator, contiguous_format, inf, strided, SymInt
 from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float, _int, _layout, _qscheme, _size
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
-from torchair.ge._ge_graph import Tensor, TensorSpec
+from torchair.ge._ge_graph import DataType, Tensor, TensorSpec
 from torchair.ge._ge_graph import is_sym
 from torchair._ge_concrete_graph.utils import dtype_promote
 from torchair._ge_concrete_graph.supported_declaration import F32, F16, I32, Support
@@ -156,10 +156,9 @@ if version.parse(torch.__version__) >= version.parse("2.6.0"):
             Support([3, 4, 5])
         ])
         @register_fx_node_ge_converter(torch.sym_sum)
-        def converter_aten_sym_sum(*inputs: Union[Tensor, int, float], meta_outputs: TensorSpec = None):
-            if all(not isinstance(x, Tensor) for x in inputs):
+        def converter_aten_sym_sum(inputs, meta_outputs: TensorSpec = None):
+            if not isinstance(inputs, Tensor):
                 return sum(inputs)
-        
-            input_list = list(inputs)
-            num_inputs = len(input_list)
-            return ge.AddN(input_list, N=num_inputs)
+
+            return ge.ReduceSum(inputs, ge.Const(0, DataType.DT_INT64))
+

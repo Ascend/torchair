@@ -1936,6 +1936,26 @@ class TorchairSt(unittest.TestCase):
         captured_output = stdout.getvalue()
         self.assertTrue("start to release graph" in captured_output)
 
+    def test_sym_sum(self):
+        class Model(torch.nn.Module):
+            def forward(self, xs):
+                send_counts = [x.size(0) for x in xs]
+                send_counts[0] = 1
+                send_displacements = [sum(send_counts[:i]) for i in range(len(send_counts))]
+                return send_displacements
+
+        model = torch.compile(Model(), backend=npu_backend, dynamic=True, fullgraph=True)
+        input_tensors = []
+        for length in [3, 5, 2, 7, 4]:
+            t = torch.ones(length, 8, dtype=torch.bool)
+            input_tensors.append(t)
+        result = model(input_tensors)
+
+        send_counts1 = [x.size(0) for x in input_tensors]
+        send_counts1[0] = 1
+        send_displacements1 = [sum(send_counts1[:i]) for i in range(len(send_counts1))]
+        self.assertEqual(send_displacements1, result)
+
 
 if __name__ == '__main__':
     unittest.main()
