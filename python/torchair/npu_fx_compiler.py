@@ -76,7 +76,7 @@ def _safe_str(x):
 
 def _is_binary_operator(target: Target):
     return target in (operator.add, operator.sub, operator.mul, operator.truediv, \
-                      operator.floordiv, operator.pow, math.floor, operator.mod, math.ceil)
+                      operator.floordiv, operator.pow, math.floor, operator.mod, math.ceil, operator.neg)
 
 
 def _trace_print(f):

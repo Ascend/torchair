@@ -162,3 +162,15 @@ if version.parse(torch.__version__) >= version.parse("2.6.0"):
 
             return ge.ReduceSum(inputs, ge.Const(0, DataType.DT_INT64))
 
+
+@declare_supported([
+    Support(F16(8)),
+    Support(I32(3)),
+    Support(4),
+])
+@register_fx_node_ge_converter(operator.neg)
+def conveter_operator_neg(
+        self: Union[Number, Tensor],
+        meta_outputs: TensorSpec = None
+):
+    return ge.Neg(self)
