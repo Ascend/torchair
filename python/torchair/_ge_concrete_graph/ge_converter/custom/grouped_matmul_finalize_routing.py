@@ -34,6 +34,7 @@ def conveter_npu_grouped_matmul_finalize_routing(
     shared_input_offset: int = 0,
     output_bs: int = 0,
     group_list_type: int = 1,
+    tuning_config: Optional[List[int]] = None,
     meta_outputs: TensorSpec = None
 ):
     """NB: npu::npu_grouped_matmul_finalize_routing(Tensor x, Tensor w, Tensor group_list, *,
@@ -41,8 +42,9 @@ def conveter_npu_grouped_matmul_finalize_routing(
                         Tensor? pertoken_scale=None, Tensor? shared_input=None,
                         Tensor? logit=None, Tensor? row_index=None, ScalarType? dtype=None,
                         float? shared_input_weight=1.0, int? shared_input_offset=0,
-                        int? output_bs=0, int? group_list_type=1) -> Tensor
+                        int? output_bs=0, int? group_list_type=1, int[] tuning_config=[]) -> Tensor
     """
+    tuning_config = tuning_config or [0]
     if dtype is None or dtype == torch.float32:
         dtype = DataType.DT_FLOAT
     else:
@@ -75,4 +77,5 @@ def conveter_npu_grouped_matmul_finalize_routing(
                                  transpose_x=False,
                                  transpose_w=False,
                                  output_bs=output_bs,
-                                 group_list_type=group_list_type)
+                                 group_list_type=group_list_type,
+                                 tuning_config=tuning_config)

@@ -78245,7 +78245,7 @@ def GroupedMatmulFinalizeRouting(x: Tensor, w: Tensor, scale: Optional[Tensor], 
                                 row_index: Optional[Tensor], offset: Optional[Tensor], *, dtype: int = 0,
                                 shared_input_weight: float = 1.0, shared_input_offset: int = 0,
                                 transpose_x: bool = False, transpose_w: bool = False, output_bs: int = 0,
-                                group_list_type=1, dependencies=[], node_name=None):
+                                group_list_type=1, tuning_config=[], dependencies=[], node_name=None):
     """REG_OP(GroupedMatmulFinalizeRouting)\n
     .INPUT(x, TensorType({DT_INT8}))\n
     .INPUT(w, TensorType({DT_INT8, DT_INT4}))\n
@@ -78265,6 +78265,7 @@ def GroupedMatmulFinalizeRouting(x: Tensor, w: Tensor, scale: Optional[Tensor], 
     .ATTR(transpose_w, Bool, false)\n
     .ATTR(output_bs, Int, 0)\n
     .ATTR(group_list_type, Int, 1)\n
+    .ATTR(tuning_config, ListInt, [])\n
     .OP_END_FACTORY_REG(GroupedMatmulFinalizeRouting)\n
     """
 
@@ -78290,6 +78291,7 @@ def GroupedMatmulFinalizeRouting(x: Tensor, w: Tensor, scale: Optional[Tensor], 
         "transpose_w": attr.Bool(transpose_w),
         "output_bs": attr.Int(output_bs),
         "group_list_type": attr.Int(group_list_type),
+        "tuning_config": attr.ListInt(tuning_config),
     }
 
     # process outputs
@@ -78322,6 +78324,7 @@ def GroupedMatmulFinalizeRouting(x: Tensor, w: Tensor, scale: Optional[Tensor], 
         .attr("transpose_w", attr.Bool(False)) \
         .attr("output_bs", attr.Int(0)) \
         .attr("group_list_type", attr.Int(1)) \
+        .attr("tuning_config", attr.ListInt([])) \
         .output("y", "DT_FLOAT")
     )
 
