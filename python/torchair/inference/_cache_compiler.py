@@ -22,7 +22,7 @@ import torch.utils._pytree as pytree
 import torch.fx
 import torch.distributed as dist
 
-from torchair.configs.compiler_config import CompilerConfig
+from torchair.configs.compiler_config import CompilerConfig, _check_config_support
 from torchair.core.utils import logger
 from torchair.inference._gear_utils import get_dim_gears, set_dim_gears, guard_gears_shape
 from torchair._utils import add_npu_patch, get_npu_default_decompositions
@@ -216,7 +216,9 @@ class CompiledModel:
         md5 = hashlib.md5(constraint.encode()).hexdigest()
 
         suffixes = [cls_name] + trace_tag
-        if ge_cache:
+        if config.mode.value == "reduce-overhead":
+            suffixes += ['aclgraphcache']
+        if config.mode.value == "max-autotune" and ge_cache:
             suffixes += ['gecache']
         suffixes += [str(md5)]
         cache_bin = os.path.join(cache_dir, '_'.join(suffixes), dist_dir, func.__name__, CompiledModel.FILE)
@@ -331,6 +333,9 @@ def _readable_inst(code):
 class CacheBackend:
     def __init__(self, config: Optional[CompilerConfig], saver: 'ModelCacheSaver', *,
                  fw_compiler: Callable = None, decompositions: dict = None, extend_config: Optional[dict] = None):
+        # check validity of config
+        if config:
+            _check_config_support(config)
         self.config = config or CompilerConfig()
         self.saver = saver
         self.extend_config = extend_config
@@ -568,6 +573,10 @@ def cache_compile(func, *, config: Optional[CompilerConfig] = None, backend: Opt
             _validate_owner(cache_dir)
         except PermissionError as e:
             raise ValueError(f"Cache dir {cache_dir} must be owned by the current user ") from e
+
+    if config is not None and ge_cache:
+        if config.mode.value == "reduce-overhead":
+            logger.warning_once(f"Ge_cache will not take effect when config.mode is set to reduce-overhead.")
 
     # Lazy trigger cache load and determine the cache directory by distributed global_rank
     return LazyCompiledModel(func, config=config, dynamic=dynamic, cache_dir=cache_dir, global_rank=global_rank,

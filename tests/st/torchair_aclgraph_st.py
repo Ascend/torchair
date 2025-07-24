@@ -1,8 +1,10 @@
 import contextlib
+import dataclasses
 import logging
 import os
 import sys
 import types
+from typing import List
 import unittest
 from unittest.mock import Mock
 
@@ -12,6 +14,7 @@ import torch.nn.functional as F
 import torchair
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core.utils import logger
+from torchair.inference._cache_compiler import CompiledModel, ModelCacheSaver
 from torchair._acl_concrete_graph.utils import reconstruct_args_kwargs, WeakRef
 from torchair_st_utils import capture_stdout, capture_logger
 
@@ -59,6 +62,41 @@ def stub_stream(stream=None):
     if stream is not None:
         logger.debug(f"Stub: Pretending to switch to stream [%s]", stream)
     yield
+
+
+class PatchAttr:
+    def __init__(self, obj, attr_name, new_value):
+        self.obj = obj
+        self.attr_name = attr_name
+        self.new_value = new_value
+        self.original_value = None
+
+    def __enter__(self):
+        if hasattr(self.obj, self.attr_name):
+            self.original_value = getattr(self.obj, self.attr_name)
+            setattr(self.obj, self.attr_name, self.new_value)
+        else:
+            raise AttributeError(f"{self.obj} does not have attribute {self.attr_name}")
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        setattr(self.obj, self.attr_name, self.original_value)
+
+
+def raise_exception(*args, **kwargs):
+    raise Exception("Should not be called")
+
+
+@contextlib.contextmanager
+def forbidden_attr(obj, attr_name):
+    with PatchAttr(obj, attr_name, raise_exception):
+        yield
+
+
+@dataclasses.dataclass
+class InputMeta:
+    data: torch.Tensor
+    is_prompt: bool
 
 
 class StubNPUGraph:
@@ -451,7 +489,7 @@ class AclGraphSt(unittest.TestCase):
     def test_aclgraph_dynamic_sym_in_scale_and_tensor(self):
         from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
         def get_graph_num(concrete_graph):
-            return len(concrete_graph.graph)
+            return len(concrete_graph.graph.graph)
 
         def wrapper_call(func, start_func_num, add_graph_num):
             def wrapper(*args, **kwargs):
@@ -1226,6 +1264,178 @@ class AclGraphSt(unittest.TestCase):
         self.assertTrue(ref_out[1] is None)
         self.assertTrue(ref_out[2] == 1.0)
         self.assertTrue(ref_out[3] == ["x", "y", "z"])
+
+    def test_aclgraph_cache(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear1 = torch.nn.Linear(2, 2)
+                self.linear2 = torch.nn.Linear(2, 2)
+                self.cached_prompt = torchair.inference.cache_compile(self.prompt, config=config)
+
+            def forward(self, x):
+                return self.cached_prompt(x)
+
+            def _forward(self, x):
+                ln1 = self.linear1(x)
+                ln2 = self.linear2(x)
+                return ln1 + ln2
+
+            def prompt(self, x):
+                return self._forward(x)
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+
+        model = Model()
+
+        prompt_cache_bin = CompiledModel.get_cache_bin(model.prompt, config=config)
+        ModelCacheSaver.remove_cache(os.path.abspath(os.path.dirname(prompt_cache_bin)))
+
+        x = torch.randn([3, 2])
+
+        prompt_cache_dir = os.path.abspath(os.path.dirname(prompt_cache_bin))
+
+        self.assertFalse(os.path.exists(prompt_cache_dir))
+        model(x)
+        self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
+        model(x)
+        self.assertTrue(os.path.exists(prompt_cache_dir))  # not recompile
+
+        model_match_cache = Model()
+        with forbidden_attr(ModelCacheSaver, '__call__'):
+            model_match_cache(x)  # cache hint
+            model_match_cache(x)  # cache hint
+            
+            
+    def test_aclgraph_cache_assert_size_stride(self):
+        class CacheModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear2 = torch.nn.Linear(2, 1)
+                for param in self.parameters():
+                    torch.nn.init.ones_(param)
+
+                self.cached_prompt = torchair.inference.cache_compile(self.prompt, config=config, dynamic=False)
+
+            def forward(self, x: InputMeta, y: List[torch.Tensor]):
+                return self.cached_prompt(x, y)
+
+            def _forward(self, x, y):
+                return self.linear2(x.data) + self.linear2(y[0])
+
+            def prompt(self, x, y):
+                return self._forward(x, y)
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        model = CacheModel()
+
+        prompt_cache_dir = CompiledModel.get_cache_bin(model.prompt, config=config, dynamic=False)
+        ModelCacheSaver.remove_cache(prompt_cache_dir)
+
+        prompt1 = InputMeta(torch.ones(3, 2), True), [torch.ones(3, 2)]
+        prompt2 = InputMeta(torch.ones(12, 12), True), [torch.ones(12, 12)]
+
+        self.assertFalse(os.path.exists(prompt_cache_dir))
+        model(*prompt1)
+        self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
+
+        model_match_cache = CacheModel()
+        with forbidden_attr(ModelCacheSaver, '__call__'):
+            with self.assertRaises(AssertionError) as cm:
+                model_match_cache(*prompt2)  # cache hint
+            exception = cm.exception
+            self.assertEqual(str(exception), "expected size 12==3, stride 12==2 at dim=0")
+
+    def test_aclgraph_cache_dynamic_assert_size_stride(self):
+        class CacheModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear2 = torch.nn.Linear(2, 1)
+                for param in self.parameters():
+                    torch.nn.init.ones_(param)
+
+                self.cached_prompt = torchair.inference.cache_compile(self.prompt, config=config)
+
+            def forward(self, x: InputMeta, y: List[torch.Tensor]):
+                return self.cached_prompt(x, y)
+
+            def _forward(self, x, y):
+                return self.linear2(x.data) + self.linear2(y[0])
+
+            def prompt(self, x, y):
+                return self._forward(x, y)
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        
+        model = CacheModel()
+
+        prompt_cache_dir = CompiledModel.get_cache_bin(model.prompt, config=config)
+        ModelCacheSaver.remove_cache(prompt_cache_dir)
+
+        prompt1 = InputMeta(torch.ones(12, 2), True), [torch.ones(12, 2)]
+        prompt2 = InputMeta(torch.ones(12, 12), True), [torch.ones(12, 12)]
+
+        self.assertFalse(os.path.exists(prompt_cache_dir))
+        model(*prompt1)
+        self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
+
+        model_match_cache = CacheModel()
+        with forbidden_attr(ModelCacheSaver, '__call__'):
+            with self.assertRaises(AssertionError) as cm:
+                model_match_cache(*prompt2)  # cache hint
+            exception = cm.exception
+            self.assertEqual(str(exception), "expected size 12==12, stride 12==2 at dim=0")
+            
+    
+    def test_aclgraph_cache_capture_and_replay_keep_inference_input_mutations_true(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.cached_prompt = torchair.inference.cache_compile(self.prompt, config=config)
+
+            def forward(self, x):
+                return self.cached_prompt(x)
+
+            def prompt(self, x):
+                return self._forward(x)
+            
+            def _forward(self, x):
+                x.mul_(2)
+                return x + 1
+
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.experimental_config.keep_inference_input_mutations = True
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        model = Model()
+
+        prompt_cache_dir = CompiledModel.get_cache_bin(model.prompt, config=config)
+        ModelCacheSaver.remove_cache(prompt_cache_dir)
+        
+        x_ = torch.randn([3, 2])
+        x = x_.clone()
+
+        self.assertFalse(os.path.exists(prompt_cache_dir))
+        model(x_)
+        self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled        
+
+        # inference
+        with self.assertLogs(logger, level="WARNING") as cm:
+            for _ in range(2):
+                output = model(x)
+
+        self.assertTrue(
+            any("data_ptr is different between capture and replay." in log for log in cm.output),
+            f"Expected WARNING 'Mutated input[arg]'s data_ptr is different between capture and replay.' "
+            f"not found in logs: {cm.output}"
+        )
 
 
 if __name__ == '__main__':

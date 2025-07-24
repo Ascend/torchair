@@ -5,7 +5,9 @@ from typing import List, Optional, Callable, Any, Dict, Tuple, Union
 import functools
 import logging
 import sys
-import weakref
+import sympy
+
+
 
 import torch
 from torch._subclasses.fake_tensor import is_fake
@@ -21,11 +23,10 @@ except ModuleNotFoundError:
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core._concrete_graph import ConcreteGraphBase, ValuePack
 from torchair.core.utils import logger
-from torchair._acl_concrete_graph.acl_graph import have_sym_in_list
+from torchair._acl_concrete_graph.acl_graph import AclGraph, AclGraphCacheInfo, is_sym
 from torchair._utils.path_manager import PathManager
 from torchair._acl_concrete_graph.graph_pass import apply_event_closure_with_multi_stream
-from torchair._acl_concrete_graph.utils import (debug_mem_state, WeakRef, GraphMeta, get_tensor_metadata,
-                                                reconstruct_from_tensor_metadata, reconstruct_args_kwargs)
+
 
 aten = torch.ops.aten
 
@@ -39,53 +40,42 @@ class AclConcreteGraph(ConcreteGraphBase):
             raise RuntimeError(
                 "Couldn't import torch_npu. When the CompilerConfig.mode is reduce-overhead, "
                 "it is necessary to use torch_npu.npu.NPUGraph(), so importing torch_npu is essential.") from e
-
+        # for AclConcreteGraph only
         self._config = config
-        self._graph_name = name
-        self._mempool = torch_npu.npu.graph_pool_handle() if pool is None else pool
-        self._stream = stream
-        self._capture_error_mode = capture_error_mode
-        self._num_warmup_iters = num_warmup_iters
-        self._device = torch_npu.npu.current_device()
-
-        self._captured = False
-        self._fx_graph = None
         self._meta_inputs = []
         self._meta_outputs = []
-        self._mutated_user_inputs = []
-        self._user_inputs_mapping = OrderedDict()
-        self._unupdated_input_func = None
-        self._updated_input_func = None
-        self._updated_ops_param = None
-
-        self._original_mem_state = None
-        self._graphs_meta: Dict[str, GraphMeta] = {}
+        self._fx_input_names = []
+        self._all_sym_input_idx = {}
+        self._all_meta_tensor_input = {}
+        self._aclgraph = None
+        # for AclGraph and AclConcreteGraph
+        self._fx_graph = None
+        self._aclgraph_cache_info = AclGraphCacheInfo(
+            pool=pool,
+            stream=stream,
+            capture_error_mode=capture_error_mode,
+            num_warmup_iters=num_warmup_iters,
+            acl_graph_name=name,
+            user_inputs_mapping=OrderedDict()
+        )
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        # get graph_key and capture
         fn_key = self.compile(*args, **kwargs)
 
         # input process
-        for idx in self._user_inputs_mapping.values():
-            if self._graphs_meta[fn_key].captured_inputs[idx].data_ptr() != args[idx].data_ptr():
-                self._graphs_meta[fn_key].captured_inputs[idx].copy_(args[idx])
+        self._aclgraph.process_input(fn_key, *args)
 
-        # run
+        # run/replay
         with record_function("acl_graph_replay"):
-            self._graphs_meta[fn_key].replay_func(*args, **kwargs)
+            self._aclgraph.run(fn_key, *args, **kwargs)
 
         # For in-place op, dynamo will transform it into a functionalized call and add copy_ node when setting
         # keep_inference_input_mutations=True, which may need data copy from capture input to user input (when tensor
         # address is different between capture and replay).
-        for arg_name in self._mutated_user_inputs:
-            if arg_name not in self._user_inputs_mapping:
-                raise RuntimeError(f"{arg_name} is not in input args: {self._user_inputs_mapping.keys()}")
-            idx = self._user_inputs_mapping[arg_name]
-            if self._graphs_meta[fn_key].captured_inputs[idx].data_ptr() != args[idx].data_ptr():
-                logger.warning_once(f"Mutated input[{arg_name}]'s data_ptr is different between capture and replay. "
-                                    f"This may call redundant copy. ")
-                args[idx].copy_(self._graphs_meta[fn_key].captured_inputs[idx])
+        self._aclgraph.process_inplace_inputs(fn_key, *args)
 
-        return self.reconstruct_outputs(fn_key)
+        return self._aclgraph.reconstruct_outputs(fn_key)
 
     @property
     def config(self):
@@ -93,27 +83,7 @@ class AclConcreteGraph(ConcreteGraphBase):
 
     @property
     def graph(self):
-        return {graph_key: graph_meta.acl_graph for graph_key, graph_meta in self._graphs_meta.items()}
-
-    @property
-    def pool(self):
-        return self._mempool
-
-    @property
-    def stream(self):
-        return self._stream
-
-    @property
-    def capture_error_mode(self):
-        return self._capture_error_mode
-
-    @property
-    def num_warmup_iters(self):
-        return self._num_warmup_iters
-
-    @property
-    def device(self):
-        return self._device
+        return self._aclgraph
 
     @property
     def fx_graph(self):
@@ -121,7 +91,7 @@ class AclConcreteGraph(ConcreteGraphBase):
 
     @property
     def fx_graph_name(self):
-        return self._graph_name
+        return self._aclgraph_cache_info.acl_graph_name
 
     def save_fx_graph(self, graph_module: torch.fx.GraphModule):
         self._fx_graph = graph_module
@@ -153,8 +123,35 @@ class AclConcreteGraph(ConcreteGraphBase):
             with open(path, "w+") as f:
                 f.write(self.fx_graph.print_readable(False))
 
+    def compile(self, *args: Any, **kwargs: Any):
+        return self._aclgraph.compile(*args, **kwargs)
+
     def codegen(self, extend_config, enable_cache=False):
-        raise NotImplementedError("Codegen for acl graph is not implemented!")
+        from torch._inductor.utils import IndentedBuffer
+        head = IndentedBuffer()
+        # DONT CHANGE class names of AclGraph and AclGraphCacheInfo
+        # DONT CHANGE import path of "AclGraph, AclGraphCacheInfo"
+        # which is "from torchair._acl_concrete_graph.acl_graph import"
+        head.splice('''
+            from collections import OrderedDict
+            from typing import List, Optional, Callable, Any, Dict, Tuple, Union
+            import torch
+            from torch.profiler import record_function
+            import torch_npu
+            from torchair._acl_concrete_graph.acl_graph import AclGraph, AclGraphCacheInfo
+            from torchair.configs.compiler_config import CompilerConfig
+            assert_size_stride = torch._C._dynamo.guards.assert_size_stride
+            ''')
+
+        # There is no need to save config.for now. Maybe needed in the future.
+        # Configs are set for AclConcreteGraph, not for AclGraph
+        init_code = self._codegen_init()
+        head.splice(init_code)
+
+        kernel_code = self._codegen_kernel()
+        head.splice(kernel_code)
+
+        return head.getvalue()
 
     def optimize_graph_without_runtime(self, *sample_args):
         logger.debug('before graph optimization, graph is %s', self.fx_graph.graph)
@@ -180,182 +177,25 @@ class AclConcreteGraph(ConcreteGraphBase):
             _reinplace_input_mutated_ops(self.fx_graph)
 
         # find mutated inputs after graph optimization passes
-        self._mutated_user_inputs = _find_mutated_user_inputs(self.fx_graph)
-        logger.debug('find mutated user inputs: %s', self._mutated_user_inputs)
+        self._aclgraph_cache_info.mutated_user_inputs = _find_mutated_user_inputs(self.fx_graph)
+        logger.debug('find mutated user inputs: %s', self._aclgraph_cache_info.mutated_user_inputs)
         logger.debug('after graph optimization, graph is %s', self.fx_graph.graph)
 
         if self.config.debug.graph_dump.enabled:
             self.dump(self.config.debug.graph_dump.full_path(f"dynamo_optimized_{self.fx_graph_name}"))
 
-    def compile(self, *args: Any, **kwargs: Any):
-        if not self._captured:
-            # warm up before capture
-            with record_function("acl_graph_warm_up"):
-                for _ in range(self.num_warmup_iters):
-                    self.fx_graph(*args, **kwargs)
-                    torch.npu.synchronize()
+        # get info for get_unupdated_input_fn and get_updated_ops_fn from fx_graph
+        from torchair._acl_concrete_graph.acl_graph import get_unupdated_sym_input_index, get_updated_ops_rulers_param
+        self._aclgraph_cache_info.unupdated_sym_input_index = get_unupdated_sym_input_index(self.fx_graph)
+        self._aclgraph_cache_info.ops_update_rulers, self._aclgraph_cache_info.updated_ops_param = \
+            get_updated_ops_rulers_param(self.fx_graph, self._meta_inputs)
 
-            from torchair._acl_concrete_graph.acl_graph import get_unupdated_input_fn, get_updated_ops_fn
-            self._unupdated_input_func = get_unupdated_input_fn(self.fx_graph)
-            self._updated_input_func, self._updated_ops_param = get_updated_ops_fn(self.fx_graph, self._meta_inputs)
-            self._captured = True
+        # Must not optimize fx_graph after this. Initialize aclgraph.
+        if self._aclgraph is None:
+            self._aclgraph = AclGraph(fx_graph=self.fx_graph)
+            self._aclgraph.load(self._aclgraph_cache_info)
 
-            # In the current version, the initialization of mem pool requires an explicit call to capture.
-            # In versions greater than 2.6, the initialization can be completed directly when creating the mem pool.
-            import torch_npu
-            s = torch_npu.npu.Stream()
-            with torch_npu.npu.stream(s):
-                g = torch_npu.npu.NPUGraph()
-                g.capture_begin(pool=self.pool)
-                g.capture_end()
-            # record the original memory state before capture,
-            # and it will be used to restore the mem state when capturing another acl graph for different shape.
-            self._original_mem_state = torch_npu._C._npu_getCheckpointState(self.device, self.pool)
 
-        # get graph key based on unupdated sym input shape or value
-        graph_key = self._unupdated_input_func(*args, **kwargs)
-        if graph_key in self._graphs_meta.keys():
-            logger.debug('Find captured AclGraph{id: %s} of fx_graph %s with graph key {%s}.',
-                         id(self.graph[graph_key]), self.fx_graph_name, graph_key)
-            return graph_key
-
-        # start capture aclgraph
-        import torch_npu
-        self._graphs_meta[graph_key] = GraphMeta(graph_key=graph_key,
-                                                 acl_graph=torch_npu.npu.NPUGraph(),
-                                                 replay_func=None,
-                                                 captured_inputs=args,
-                                                 outputs_meta=[],
-                                                 outputs_weakref=[],
-                                                 mem_state_after_capture=None,
-                                                 is_first_replay=True)
-        logger.debug('No find captured AclGraph{id: %s} of fx_graph %s with graph key {%s}, and start to capture it.',
-                     id(self.graph[graph_key]), self.fx_graph_name, graph_key)
-
-        stale_storage_set = set()
-        for key, graph_meta in self._graphs_meta.items():
-            if self._graphs_meta[key].outputs_weakref is None:
-                continue
-            for output_ref in self._graphs_meta[key].outputs_weakref:
-                ref = output_ref()
-                if ref is not None and isinstance(ref, torch.Tensor):
-                    stale_storage_set.add(ref.untyped_storage()._cdata)
-        stale_storages = list(stale_storage_set)
-        torch_npu._C._npu_setCheckpointPoolState(self.device, self._original_mem_state, stale_storages, [])
-        logger.debug('After setting to original memory state for fx_graph %s for graph key{%s}. '
-                     'The stale storage is %s, and the current memory state is {%s}.',
-                     self.fx_graph_name, graph_key, stale_storages, debug_mem_state())
-
-        with record_function("acl_graph_capture"):
-            self.capture(graph_key, *args, **kwargs)
-
-        return graph_key
-
-    def capture(self, graph_key, *args: Any, **kwargs: Any):
-        from torchair._acl_concrete_graph.acl_graph import (UpdatedNodeCaptureInterp, CapturedGraphUpdateAndReplay)
-        captured_interpreter = UpdatedNodeCaptureInterp(self.fx_graph, self._updated_ops_param)
-
-        import torch_npu
-        with torch_npu.npu.graph(self.graph[graph_key], pool=self.pool, stream=self.stream,
-                                 capture_error_mode=self.capture_error_mode):
-            captured_outputs = captured_interpreter.run(*args, **kwargs)
-
-        updated_node_infos = captured_interpreter.captured_node_infos
-        logger.info('Success to capture fx_graph %s for graph key{%s}. '
-                    'Start to run AclGraph{id: %s} with the updated node num {%s}.',
-                    self.fx_graph_name, graph_key, id(self.graph[graph_key]), len(updated_node_infos))
-
-        # The captured output tensors will not be held indefinitely,
-        # and its will be terminated after the capture ends.
-        import torch_npu
-        self._graphs_meta[graph_key].mem_state_after_capture = \
-            torch_npu._C._npu_getCheckpointState(self.device, self.pool)
-
-        for output_iter in captured_outputs:
-            if isinstance(output_iter, torch.Tensor):
-                weak_ref = WeakRef(None)
-            else:
-                weak_ref = WeakRef(output_iter)
-            self._graphs_meta[graph_key].outputs_weakref.append(weak_ref)
-            self._graphs_meta[graph_key].outputs_meta.append(get_tensor_metadata(output_iter))
-        del captured_outputs
-        logger.debug('After capturing fx_graph %s for graph key{%s} to AclGraph{id: %s}, the memory state is {%s}.',
-                     self.fx_graph_name, graph_key, id(self.graph[graph_key]), debug_mem_state())
-
-        # gen run func
-        self._graphs_meta[graph_key].replay_func = CapturedGraphUpdateAndReplay(self.graph[graph_key],
-                                                                                self._updated_input_func,
-                                                                                updated_node_infos)
-        logger.debug('In graph {%s}, all the non parameter tensor input index list is: {%s}.',
-                     self.fx_graph_name, self._user_inputs_mapping.values())
-
-    def reconstruct_outputs(self, graph_key: str) -> List:
-        """
-        Reconstruct output tensors according to their saved metadata.
-        Do not increase the reference count to the output tensors, and only weak reference is recorded.
-        """
-
-        if len(self._graphs_meta[graph_key].outputs_meta) != len(self._graphs_meta[graph_key].outputs_weakref):
-            raise RuntimeError(
-                f'The lengths of the outputs tensor meta {len(self._graphs_meta[graph_key].outputs_meta)} and '
-                f'the outputs tensor ref {len(self._graphs_meta[graph_key].outputs_weakref)} do not match.')
-
-        outputs = []
-        have_invalid_weakref = False
-
-        for idx, output_meta in enumerate(self._graphs_meta[graph_key].outputs_meta):
-            output_ref = self._graphs_meta[graph_key].outputs_weakref[idx]()
-            if output_ref is None:
-                output_i = reconstruct_from_tensor_metadata(output_meta)
-                self._graphs_meta[graph_key].outputs_weakref[idx].swap_weakref(output_i)
-                outputs.append(output_i)
-                have_invalid_weakref = True
-            else:
-                # valid tensor ref and other type obj can be returned directly.
-                outputs.append(output_ref)
-
-        if have_invalid_weakref:
-            reconstructed_outputs_to_add_deleter = []
-            for output_i in outputs:
-                if isinstance(output_i, torch.Tensor):
-                    reconstructed_outputs_to_add_deleter.append(output_i.untyped_storage()._cdata)
-
-            other_graph_stale_storages = []
-            stale_storage_set = set()
-            for key, graph_meta in self._graphs_meta.items():
-                if key == graph_key:
-                    continue
-                for output_ref in self._graphs_meta[key].outputs_weakref:
-                    ref = output_ref()
-                    if ref is not None and isinstance(ref, torch.Tensor):
-                        stale_storage_set.add(ref.untyped_storage()._cdata)
-            other_graph_stale_storages = list(stale_storage_set)
-
-            import torch_npu
-            if len(other_graph_stale_storages) > 0 and not self._graphs_meta[graph_key].is_first_replay:
-                # reset other graph live tensors to stale storages
-                torch_npu._C._npu_setCheckpointPoolState(self.device, self._original_mem_state,
-                                                         other_graph_stale_storages, [])
-
-            logger.debug('Reset fx_graph %s other graph key outputs stale storage cdata %s, '
-                         'and set to original memory state for AclGraph{id: %s} with graph key{%s}.',
-                         self.fx_graph_name, other_graph_stale_storages, id(self.graph[graph_key]), graph_key)
-
-            # currently we deallocate on instead of allowing stale recordings
-            stale_storages: List[int] = []
-            torch_npu._C._npu_setCheckpointPoolState(self.device, self._graphs_meta[graph_key].mem_state_after_capture,
-                                                     stale_storages, reconstructed_outputs_to_add_deleter)
-            logger.debug('After reconstructing fx_graph %s graph key{%s} outputs, '
-                         'the storages to add deleter are %s, the memory state is {%s}.',
-                         self.fx_graph_name, graph_key, reconstructed_outputs_to_add_deleter, debug_mem_state())
-        else:
-            logger.debug('All output tensors weak ref are valid, '
-                         'no need to reconstruct fx_graph %s for graph key{%s}.',
-                         self.fx_graph_name, graph_key)
-
-        if self._graphs_meta[graph_key].is_first_replay:
-            self._graphs_meta[graph_key].is_first_replay = False
-        return outputs
 
     def parse_symlist(self, syms):
         npu_syms = []
@@ -378,8 +218,13 @@ class AclConcreteGraph(ConcreteGraphBase):
         # Lazy check for int/sym inputs
         if isinstance(meta_outputs, torch.Tensor):
             if not isinstance(meta_outputs, torch.nn.Parameter):
-                self._user_inputs_mapping.setdefault(target, len(self._meta_inputs) - 1)
-
+                self._aclgraph_cache_info.user_inputs_mapping.setdefault(target, len(self._meta_inputs) - 1)
+        # for assert_size_stride
+        self._fx_input_names.append(target)
+        if is_sym(meta_outputs):
+            self._all_sym_input_idx[meta_outputs.node.expr] = len(self._meta_inputs) - 1
+        else:
+            self._all_meta_tensor_input[len(self._meta_inputs) - 1] = meta_outputs
         return meta_outputs
 
     def parse_node(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
@@ -396,3 +241,81 @@ class AclConcreteGraph(ConcreteGraphBase):
             self._meta_outputs.append(arg.meta)
 
         return meta_outputs
+
+    def _codegen_init(self):
+        from torch._inductor.utils import IndentedBuffer
+        init_code = IndentedBuffer()
+        # Please make sure that fx graph will not be changed/optimized after serialized_fx_graph
+        init_code.writelines(['', f'serialized_fx_graph = {AclGraph.save_graphmodule_to_str(self.fx_graph)}',
+                              f'acl_graph = AclGraph(serialized_fx_graph=serialized_fx_graph)'])
+
+        init_code.splice(f'''
+            aclgraph_cache_info = AclGraphCacheInfo(
+                pool={self._aclgraph_cache_info.pool},
+                stream={self._aclgraph_cache_info.stream},
+                capture_error_mode="{self._aclgraph_cache_info.capture_error_mode}",
+                num_warmup_iters={self._aclgraph_cache_info.num_warmup_iters},
+                acl_graph_name="{self._aclgraph_cache_info.acl_graph_name}",
+                user_inputs_mapping={self._aclgraph_cache_info.user_inputs_mapping},
+                unupdated_sym_input_index={self._aclgraph_cache_info.unupdated_sym_input_index},
+                updated_ops_param={self._aclgraph_cache_info.updated_ops_param},
+                ops_update_rulers={self._aclgraph_cache_info.ops_update_rulers},
+                mutated_user_inputs={self._aclgraph_cache_info.mutated_user_inputs}
+            )
+            acl_graph.load(aclgraph_cache_info)
+        ''')
+
+        return init_code.getvalue()
+
+    def _codegen_kernel(self):
+        from torch._inductor.utils import IndentedBuffer
+        kernel_code = IndentedBuffer()
+        kernel_code.writelines(['', '_is_first_run = True', f'def kernel(*args):'])
+        with kernel_code.indent():
+            # for assert_shape_stride in first run
+            kernel_code.writelines(['', 'global _is_first_run', 'if _is_first_run:'])
+            with kernel_code.indent():
+                kernel_code.writelines(['_is_first_run = False'])
+                input_code = self._codegen_input()
+                kernel_code.splice(input_code)
+                assert_code = self._codegen_assert_size_stride()
+                kernel_code.splice(assert_code)
+            kernel_code.splice('''
+                    fn_key = acl_graph.compile(*args)
+
+                    acl_graph.process_input(fn_key, *args)
+
+                    with record_function("acl_graph_replay"):
+                        acl_graph.run(fn_key, *args)
+
+                    acl_graph.process_inplace_inputs(fn_key, *args)
+
+                    return acl_graph.reconstruct_outputs(fn_key)
+
+                ''')
+        return kernel_code.getvalue()
+
+    def _codegen_assert_size_stride(self):
+        from torch._inductor.utils import IndentedBuffer
+        input_code = IndentedBuffer()
+
+        for idx, meta in self._all_meta_tensor_input.items():
+            input_code.writelines([f'assert_size_stride(args[{idx}], {tuple(meta.shape)}, {meta.stride()})'])
+
+        return input_code.getvalue()
+
+    def _codegen_input(self):
+        from torch._inductor.utils import IndentedBuffer
+        input_code = IndentedBuffer()
+        if self._all_sym_input_idx:
+            # only for cache with symint
+            all_input_str = ', '.join(self._fx_input_names)
+            if all_input_str:
+                if len(self._fx_input_names) == 1:
+                    all_input_str += ', '
+            input_code.writeline(f'{all_input_str} = args')
+            for name, idx in self._all_sym_input_idx.items():
+                if str(name).isdigit() or not isinstance(name, sympy.Symbol):
+                    continue
+                input_code.writeline(f'{str(name)} = {self._fx_input_names[idx]}')
+        return input_code.getvalue()
