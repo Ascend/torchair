@@ -5,7 +5,6 @@ import os
 import torch.distributed as dist
 from torchair.configs._option_base import OptionValue
 from torchair.configs._option_base import NpuBaseConfig
-from torchair.configs.aclgraph_config import _AclgraphConfig
 
 
 def _timestamp():
@@ -74,6 +73,24 @@ class _FxSummary(_DebugBase):
         super(_FxSummary, self).__init__()
 
 
+class _AclGraphDebugConfig(NpuBaseConfig):
+    """Config for aclgraph debug option"""
+
+    def __init__(self) -> None:
+        self.disable_reinplace_inplaceable_ops_pass = OptionValue(False, [True, False])
+        self.disable_reinplace_input_mutated_ops_pass = OptionValue(False, [True, False])
+        self.disable_mempool_reuse_in_same_fx = OptionValue(False, [True, False])
+
+        super(_AclGraphDebugConfig, self).__init__()
+
+    def as_dict(self):
+        local_option = {}
+        if self.disable_mempool_reuse_in_same_fx.value is not None:
+            local_option["disable_mempool_reuse_in_same_fx"] = self.disable_mempool_reuse_in_same_fx.value
+
+        return local_option
+
+
 class _DebugConfig(NpuBaseConfig):
     """Config for aoe function"""
 
@@ -82,7 +99,7 @@ class _DebugConfig(NpuBaseConfig):
         self.data_dump = _DataDump()
         self.fx_summary = _FxSummary()
         self.run_eagerly = OptionValue(False, [True, False])
-        self.aclgraph = _AclgraphConfig()
+        self.aclgraph = _AclGraphDebugConfig()
 
         super(_DebugConfig, self).__init__()
 

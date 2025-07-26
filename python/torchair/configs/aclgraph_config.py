@@ -4,12 +4,12 @@ from torchair.configs._option_base import OptionValue
 from torchair.configs._option_base import NpuBaseConfig
 
 
-class _AclgraphConfig(NpuBaseConfig):
-    """Config for aclgraph option"""
+class _AclGraphConfig:
+    """
+    Config for AclGraph option
+    """
 
-    def __init__(self):
-        self.disable_reinplace_inplaceable_ops_pass = OptionValue(False, [True, False])
-        self.disable_reinplace_input_mutated_ops_pass = OptionValue(False, [True, False])
+    def __init__(self) -> None:
+        self.use_custom_pool = None
 
-        super(_AclgraphConfig, self).__init__()
-
+        super(_AclGraphConfig, self).__init__()

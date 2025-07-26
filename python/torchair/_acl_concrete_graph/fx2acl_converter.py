@@ -7,9 +7,8 @@ import logging
 import sys
 import sympy
 
-
-
 import torch
+from torch import fx
 from torch._subclasses.fake_tensor import is_fake
 from torch.fx.node import Argument, Target
 from torch.profiler import record_function
@@ -23,17 +22,16 @@ except ModuleNotFoundError:
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core._concrete_graph import ConcreteGraphBase, ValuePack
 from torchair.core.utils import logger
-from torchair._acl_concrete_graph.acl_graph import AclGraph, AclGraphCacheInfo, is_sym
 from torchair._utils.path_manager import PathManager
+from torchair._acl_concrete_graph.acl_graph import AclGraph, AclGraphCacheInfo, is_sym
 from torchair._acl_concrete_graph.graph_pass import apply_event_closure_with_multi_stream
-
 
 aten = torch.ops.aten
 
 
 class AclConcreteGraph(ConcreteGraphBase):
-    def __init__(self, config: CompilerConfig, name="graph", pool=None, stream=None, capture_error_mode: str = "global",
-                 num_warmup_iters=0):
+    def __init__(self, config: CompilerConfig, name="graph", pool=None, stream=None,
+                 capture_error_mode: str = "global", num_warmup_iters=0):
         try:
             import torch_npu
         except ImportError as e:
@@ -47,15 +45,14 @@ class AclConcreteGraph(ConcreteGraphBase):
         self._fx_input_names = []
         self._all_sym_input_idx = {}
         self._all_meta_tensor_input = {}
-        self._aclgraph = None
-        # for AclGraph and AclConcreteGraph
-        self._fx_graph = None
+        self._fx_graph: fx.GraphModule = None
+        self._aclgraph_manager: AclGraph = None
         self._aclgraph_cache_info = AclGraphCacheInfo(
             pool=pool,
             stream=stream,
             capture_error_mode=capture_error_mode,
             num_warmup_iters=num_warmup_iters,
-            acl_graph_name=name,
+            fx_graph_name=name,
             user_inputs_mapping=OrderedDict()
         )
 
@@ -64,18 +61,18 @@ class AclConcreteGraph(ConcreteGraphBase):
         fn_key = self.compile(*args, **kwargs)
 
         # input process
-        self._aclgraph.process_input(fn_key, *args)
+        self.graph.process_input(fn_key, *args)
 
         # run/replay
         with record_function("acl_graph_replay"):
-            self._aclgraph.run(fn_key, *args, **kwargs)
+            self.graph.run(fn_key, *args, **kwargs)
 
         # For in-place op, dynamo will transform it into a functionalized call and add copy_ node when setting
         # keep_inference_input_mutations=True, which may need data copy from capture input to user input (when tensor
         # address is different between capture and replay).
-        self._aclgraph.process_inplace_inputs(fn_key, *args)
+        self.graph.process_inplace_inputs(fn_key, *args)
 
-        return self._aclgraph.reconstruct_outputs(fn_key)
+        return self.graph.reconstruct_outputs(fn_key)
 
     @property
     def config(self):
@@ -83,7 +80,7 @@ class AclConcreteGraph(ConcreteGraphBase):
 
     @property
     def graph(self):
-        return self._aclgraph
+        return self._aclgraph_manager
 
     @property
     def fx_graph(self):
@@ -91,7 +88,7 @@ class AclConcreteGraph(ConcreteGraphBase):
 
     @property
     def fx_graph_name(self):
-        return self._aclgraph_cache_info.acl_graph_name
+        return self._aclgraph_cache_info.fx_graph_name
 
     def save_fx_graph(self, graph_module: torch.fx.GraphModule):
         self._fx_graph = graph_module
@@ -123,9 +120,6 @@ class AclConcreteGraph(ConcreteGraphBase):
             with open(path, "w+") as f:
                 f.write(self.fx_graph.print_readable(False))
 
-    def compile(self, *args: Any, **kwargs: Any):
-        return self._aclgraph.compile(*args, **kwargs)
-
     def codegen(self, extend_config, enable_cache=False):
         from torch._inductor.utils import IndentedBuffer
         head = IndentedBuffer()
@@ -153,11 +147,19 @@ class AclConcreteGraph(ConcreteGraphBase):
 
         return head.getvalue()
 
+    def compile(self, *args: Any, **kwargs: Any):
+        return self.graph.compile(*args, **kwargs)
+
     def optimize_graph_without_runtime(self, *sample_args):
         logger.debug('before graph optimization, graph is %s', self.fx_graph.graph)
+        if self.config.aclgraph_config.use_custom_pool is not None:
+            # when use custom pool from user, do not enable mem pool reuse in same fx.
+            self.config.debug.aclgraph.disable_mempool_reuse_in_same_fx = True
+
         multi_stream_enabled = apply_event_closure_with_multi_stream(self.fx_graph)
         logger.debug('after apply_stream_event_closure optimization, '
                      'multi_stream_enabled is %s, graph is %s.', multi_stream_enabled, self.fx_graph.graph)
+
         # graph optimization passes here
         # Note: this pass need sample args to run in FakeTensor mode, any pass modifies ops without meta registration
         # should run after it.
@@ -191,11 +193,18 @@ class AclConcreteGraph(ConcreteGraphBase):
             get_updated_ops_rulers_param(self.fx_graph, self._meta_inputs)
 
         # Must not optimize fx_graph after this. Initialize aclgraph.
-        if self._aclgraph is None:
-            self._aclgraph = AclGraph(fx_graph=self.fx_graph)
-            self._aclgraph.load(self._aclgraph_cache_info)
+        configs = self.normalize_config()
+        self._aclgraph_manager = AclGraph(fx_graph=self.fx_graph, config=configs)
+        self.graph.load(self._aclgraph_cache_info)
 
+    def normalize_config(self):
+        aclgraph_config_options = self.config.debug.aclgraph.as_dict()
 
+        logger.debug("aclgraph compile options:")
+        for k, v in aclgraph_config_options.items():
+            logger.debug("  %s: %s", k, v)
+
+        return aclgraph_config_options
 
     def parse_symlist(self, syms):
         npu_syms = []
@@ -246,8 +255,16 @@ class AclConcreteGraph(ConcreteGraphBase):
         from torch._inductor.utils import IndentedBuffer
         init_code = IndentedBuffer()
         # Please make sure that fx graph will not be changed/optimized after serialized_fx_graph
-        init_code.writelines(['', f'serialized_fx_graph = {AclGraph.save_graphmodule_to_str(self.fx_graph)}',
-                              f'acl_graph = AclGraph(serialized_fx_graph=serialized_fx_graph)'])
+
+        init_code.writelines(['',
+                              f'serialized_fx_graph = {AclGraph.save_graphmodule_to_str(self.fx_graph)}',
+                              f'compile_configs = {{}}'])
+        configs = self.normalize_config()
+        for k, v in configs.items():
+            init_code.writeline(f'compile_configs["{k}"] = "{v}"')
+
+        init_code.writelines(['',
+                              f'acl_graph = AclGraph(serialized_fx_graph=serialized_fx_graph, config=compile_configs)'])
 
         init_code.splice(f'''
             aclgraph_cache_info = AclGraphCacheInfo(
@@ -255,7 +272,7 @@ class AclConcreteGraph(ConcreteGraphBase):
                 stream={self._aclgraph_cache_info.stream},
                 capture_error_mode="{self._aclgraph_cache_info.capture_error_mode}",
                 num_warmup_iters={self._aclgraph_cache_info.num_warmup_iters},
-                acl_graph_name="{self._aclgraph_cache_info.acl_graph_name}",
+                fx_graph_name="{self._aclgraph_cache_info.fx_graph_name}",
                 user_inputs_mapping={self._aclgraph_cache_info.user_inputs_mapping},
                 unupdated_sym_input_index={self._aclgraph_cache_info.unupdated_sym_input_index},
                 updated_ops_param={self._aclgraph_cache_info.updated_ops_param},

@@ -15,6 +15,7 @@ from torchair.configs.fusion_config import _FusionConfig
 from torchair.configs.inference_config import _InferenceConfig
 from torchair.configs.experimental_config import _ExperimentalConfig
 from torchair.configs.ge_config import _GEConfig
+from torchair.configs.aclgraph_config import _AclGraphConfig
 from torchair.core.utils import logger
 
 
@@ -31,6 +32,7 @@ class CompilerConfig(NpuBaseConfig):
         self.experimental_config = _ExperimentalConfig()
         self.inference_config = _InferenceConfig()
         self.ge_config = _GEConfig()
+        self.aclgraph_config = _AclGraphConfig()
         self.mode = OptionValue("max-autotune", ["max-autotune", "reduce-overhead"])
 
         super(CompilerConfig, self).__init__()

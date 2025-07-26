@@ -347,7 +347,9 @@ class _NpuFxCompiler:
             graph = GeConcreteGraph(self.config, name="graph_" + str(_next_unique_graph_id()))
         elif self.config.mode.value == "reduce-overhead":
             from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
-            graph = AclConcreteGraph(self.config, name="graph_" + str(_next_unique_graph_id()))
+            graph = AclConcreteGraph(self.config,
+                                     name="graph_" + str(_next_unique_graph_id()),
+                                     pool=self.config.aclgraph_config.use_custom_pool)
         else:
             raise ValueError(f"Unsupported npu backend mode: {self.config.mode.value}.")
         concrete_graph: ConcreteGraphBase = _NpuGraphConverter(

@@ -561,7 +561,7 @@ class AclGraphCacheInfo:
     stream: Any
     capture_error_mode: str
     num_warmup_iters: int
-    acl_graph_name: str
+    fx_graph_name: str
     user_inputs_mapping: Dict[str, List]
     unupdated_sym_input_index: List[int] = None
     updated_ops_param: Dict[str, List] = None
@@ -569,10 +569,8 @@ class AclGraphCacheInfo:
     mutated_user_inputs: List[str] = None
 
 
-
 class AclGraph(object):
-    def __init__(self, name="graph", pool=None, stream=None, capture_error_mode: str = "global",
-                 num_warmup_iters=0, fx_graph: torch.fx.GraphModule = None, serialized_fx_graph=None):
+    def __init__(self, fx_graph: torch.fx.GraphModule = None, serialized_fx_graph=None, config=None):
         try:
             import torch_npu
         except ImportError as e:
@@ -587,16 +585,18 @@ class AclGraph(object):
         else:
             raise AssertionError(f"Unsupported init method: "
                                  f"must provide exactly one of either fx_graph or serialized_fx_graph.")
+        self._config = config if config is not None else {}
 
         # members for npugraph
-        self._mempool = torch_npu.npu.graph_pool_handle() if pool is None else pool
-        self._stream = stream
-        self._capture_error_mode = capture_error_mode
-        self._num_warmup_iters = num_warmup_iters
+        self._fx_graph_name = None
+        self._mempool = None
+        self._stream = None
+        self._capture_error_mode = None
+        self._num_warmup_iters = None
         self._device = torch_npu.npu.current_device()
-        self._acl_graph_name = name
         self._original_mem_state = None
         self._graphs_meta: Dict[str, GraphMeta] = {}
+
         # members for capture, provided by AclConcreteGraph
         self._captured = False
         self._updated_ops_param = None
@@ -608,6 +608,10 @@ class AclGraph(object):
         self._mutated_user_inputs = None
 
     @property
+    def config(self):
+        return self._config
+
+    @property
     def graph(self):
         return {graph_key: graph_meta.acl_graph for graph_key, graph_meta in self._graphs_meta.items()}
 
@@ -617,7 +621,7 @@ class AclGraph(object):
 
     @property
     def name(self):
-        return self._acl_graph_name
+        return self._fx_graph_name
 
     @property
     def pool(self):
@@ -664,11 +668,12 @@ class AclGraph(object):
         self._updated_ops_param = aclgraph_cache_info.updated_ops_param
         self._user_inputs_mapping = aclgraph_cache_info.user_inputs_mapping
         self._mutated_user_inputs = aclgraph_cache_info.mutated_user_inputs
-        self._mempool = aclgraph_cache_info.pool if aclgraph_cache_info.pool is not None else self._mempool
-        self._stream = aclgraph_cache_info.stream if aclgraph_cache_info.stream is not None else self._stream
+        self._mempool = aclgraph_cache_info.pool if aclgraph_cache_info.pool is not None else \
+            torch.npu.graph_pool_handle()
+        self._stream = aclgraph_cache_info.stream
         self._capture_error_mode = aclgraph_cache_info.capture_error_mode
         self._num_warmup_iters = aclgraph_cache_info.num_warmup_iters
-        self._acl_graph_name = aclgraph_cache_info.acl_graph_name
+        self._fx_graph_name = aclgraph_cache_info.fx_graph_name
 
     def compile(self, *args: Any, **kwargs: Any):
         if not self._captured:
@@ -698,7 +703,7 @@ class AclGraph(object):
         graph_key = self._unupdated_input_func(*args, **kwargs)
         if graph_key in self._graphs_meta.keys():
             logger.debug('Find captured AclGraph{id: %s} of fx_graph %s with graph key {%s}.',
-                        id(self.graph[graph_key]), self.name, graph_key)
+                         id(self.graph[graph_key]), self.name, graph_key)
             return graph_key
 
         # start capture aclgraph
@@ -712,7 +717,7 @@ class AclGraph(object):
                                                  mem_state_after_capture=None,
                                                  is_first_replay=True)
         logger.debug('No find captured AclGraph{id: %s} of fx_graph %s with graph key {%s}, and start to capture it.',
-                    id(self.graph[graph_key]), self.name, graph_key)
+                     id(self.graph[graph_key]), self.name, graph_key)
 
         stale_storage_set = set()
         for key, _ in self._graphs_meta.items():
@@ -723,10 +728,14 @@ class AclGraph(object):
                 if ref is not None and isinstance(ref, torch.Tensor):
                     stale_storage_set.add(ref.untyped_storage()._cdata)
         stale_storages = list(stale_storage_set)
-        torch_npu._C._npu_setCheckpointPoolState(self.device, self._original_mem_state, stale_storages, [])
-        logger.debug('After setting to original memory state for fx_graph %s for graph key{%s}. '
-                    'The stale storage is %s, and the current memory state is {%s}.',
-                    self.name, graph_key, stale_storages, debug_mem_state())
+
+        disable_reuse = "disable_mempool_reuse_in_same_fx" in self.config.keys() \
+                        and self.config["disable_mempool_reuse_in_same_fx"] == "1"
+        if not disable_reuse:
+            torch_npu._C._npu_setCheckpointPoolState(self.device, self._original_mem_state, stale_storages, [])
+            logger.debug('After setting to original memory state for fx_graph %s for graph key{%s}. '
+                         'The stale storage is %s, and the current memory state is {%s}.',
+                         self.name, graph_key, stale_storages, debug_mem_state())
 
         # start capture
         with record_function("acl_graph_capture"):
@@ -760,16 +769,23 @@ class AclGraph(object):
                 weak_ref = WeakRef(output_iter)
             self._graphs_meta[graph_key].outputs_weakref.append(weak_ref)
             self._graphs_meta[graph_key].outputs_meta.append(get_tensor_metadata(output_iter))
-        del captured_outputs
         logger.debug('After capturing fx_graph %s for graph key{%s} to AclGraph{id: %s}, the memory state is {%s}.',
                      self.name, graph_key, id(self.graph[graph_key]), debug_mem_state())
+
+        disable_reuse = "disable_mempool_reuse_in_same_fx" in self.config.keys() \
+                        and self.config["disable_mempool_reuse_in_same_fx"] == "1"
+        if disable_reuse:
+            self._graphs_meta[graph_key].retained_outputs = captured_outputs
+        else:
+            del captured_outputs
+        logger.debug('In fx_graph %s, memory pool reuse state is %s in same fx graph, '
+                     'and all the non parameter tensor input is %s.',
+                     self.name, "disable" if disable_reuse else "enable", self._user_inputs_mapping)
 
         # gen run func
         self._graphs_meta[graph_key].replay_func = CapturedGraphUpdateAndReplay(self.graph[graph_key],
                                                                                 self._updated_input_func,
                                                                                 updated_node_infos)
-        logger.debug('In graph {%s}, all the non parameter tensor input index list is: {%s}.',
-                     self.name, self._user_inputs_mapping.values())
 
     def process_input(self, graph_key, *args: Any):
         for idx in self._user_inputs_mapping.values():
@@ -798,6 +814,15 @@ class AclGraph(object):
         Do not increase the reference count to the output tensors, and only weak reference is recorded.
         """
 
+        disable_reuse = "disable_mempool_reuse_in_same_fx" in self.config.keys() \
+                        and self.config["disable_mempool_reuse_in_same_fx"] == "1"
+        if disable_reuse:
+            # When no mempool reuse in same fx, the retained outputs no need to reconstruct.
+            logger.debug('When config.debug.aclgraph.disable_mempool_reuse_in_same_fx is True, '
+                         'no mempool reuse in fx_graph %s for graph key{%s}, all the outputs are retained.',
+                         self.name, graph_key)
+            return self._graphs_meta[graph_key].retained_outputs
+
         if len(self._graphs_meta[graph_key].outputs_meta) != len(self._graphs_meta[graph_key].outputs_weakref):
             raise RuntimeError(
                 f'The lengths of the outputs tensor meta {len(self._graphs_meta[graph_key].outputs_meta)} and '
@@ -818,34 +843,16 @@ class AclGraph(object):
                 outputs.append(output_ref)
 
         if have_invalid_weakref:
+            self.set_to_original_state_bofore_reconstruct(graph_key)
+
             reconstructed_outputs_to_add_deleter = []
             for output_i in outputs:
                 if isinstance(output_i, torch.Tensor):
                     reconstructed_outputs_to_add_deleter.append(output_i.untyped_storage()._cdata)
 
-            other_graph_stale_storages = []
-            stale_storage_set = set()
-            for key, _ in self._graphs_meta.items():
-                if key == graph_key:
-                    continue
-                for output_ref in self._graphs_meta[key].outputs_weakref:
-                    ref = output_ref()
-                    if ref is not None and isinstance(ref, torch.Tensor):
-                        stale_storage_set.add(ref.untyped_storage()._cdata)
-            other_graph_stale_storages = list(stale_storage_set)
-
-            import torch_npu
-            if len(other_graph_stale_storages) > 0 and not self._graphs_meta[graph_key].is_first_replay:
-                # reset other graph live tensors to stale storages
-                torch_npu._C._npu_setCheckpointPoolState(self.device, self._original_mem_state,
-                                                         other_graph_stale_storages, [])
-
-            logger.debug('Reset fx_graph %s other graph key outputs stale storage cdata %s, '
-                         'and set to original memory state for AclGraph{id: %s} with graph key{%s}.',
-                         self.name, other_graph_stale_storages, id(self.graph[graph_key]), graph_key)
-
             # currently we deallocate on instead of allowing stale recordings
             stale_storages: List[int] = []
+            import torch_npu
             torch_npu._C._npu_setCheckpointPoolState(self.device, self._graphs_meta[graph_key].mem_state_after_capture,
                                                      stale_storages, reconstructed_outputs_to_add_deleter)
             logger.debug('After reconstructing fx_graph %s graph key{%s} outputs, '
@@ -859,6 +866,27 @@ class AclGraph(object):
         if self._graphs_meta[graph_key].is_first_replay:
             self._graphs_meta[graph_key].is_first_replay = False
         return outputs
+
+    def set_to_original_state_bofore_reconstruct(self, graph_key: str) -> None:
+        stale_storage_set = set()
+        for key, _ in self._graphs_meta.items():
+            if key == graph_key:
+                continue
+            for output_ref in self._graphs_meta[key].outputs_weakref:
+                ref = output_ref()
+                if ref is not None and isinstance(ref, torch.Tensor):
+                    stale_storage_set.add(ref.untyped_storage()._cdata)
+        other_graph_stale_storages = list(stale_storage_set)
+
+        import torch_npu
+        if len(other_graph_stale_storages) > 0 and not self._graphs_meta[graph_key].is_first_replay:
+            # reset other graph live tensors to stale storages
+            torch_npu._C._npu_setCheckpointPoolState(self.device, self._original_mem_state,
+                                                     other_graph_stale_storages, [])
+
+        logger.debug('Reset fx_graph %s other graph key outputs stale storage cdata %s, '
+                     'and set to original memory state for AclGraph{id: %s} with graph key{%s}.',
+                     self.name, other_graph_stale_storages, id(self.graph[graph_key]), graph_key)
 
     def load_graphmodule_from_str(self, serialized_str: str):
         reduce_data, state_dict = pickle.loads(serialized_str)

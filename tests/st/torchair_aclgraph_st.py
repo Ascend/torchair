@@ -39,11 +39,16 @@ stub_fa = StubNpuFA()
 stub_fa.default = stub_npu_fa_func
 stub_fa.out = stub_npu_fa_func
 
+_GLOBAL_POOL_ID = 0
+
 
 # define stub aclgraph API
 def stub_graph_pool_handle():
-    logger.debug('[Stub] run stub API graph_pool_handle with args[].')
-    pass
+    global _GLOBAL_POOL_ID
+    _GLOBAL_POOL_ID += 1
+    pool_id = (_GLOBAL_POOL_ID, 0)
+    logger.debug('[Stub] run stub API graph_pool_handle, and return pool id is %s.', pool_id)
+    return pool_id
 
 
 def stub_synchronize():
@@ -310,6 +315,9 @@ def patch_torch_npu_module(stub_module):
     return original_module
 
 
+_get_pool_id = None
+
+
 class AclGraphSt(unittest.TestCase):
     def __init__(self, methodName='runTest'):
         super().__init__(methodName)
@@ -541,6 +549,7 @@ class AclGraphSt(unittest.TestCase):
             scale1 = 5
             model(x, scale1)
         captured_output = stdout.getvalue()
+        self.assertTrue("After setting to original memory state for fx_graph" in captured_output)
         self.assertTrue("No find captured AclGraph" in captured_output)
 
         # find captured graph, no need to capture another npu graph
@@ -1174,6 +1183,126 @@ class AclGraphSt(unittest.TestCase):
         for file_name in get_dumped_py_file_list('./'):
             os.remove(os.path.join('./', file_name))
 
+    def test_aclgraph_dynamic_disable_mempool_reuse_in_same_fx(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear1 = torch.nn.Linear(2, 2)
+                self.linear2 = torch.nn.Linear(2, 2)
+
+            def forward(self, input, bias):
+                ln1 = self.linear1(input)
+                ln2 = self.linear2(input)
+                return ln1, torch.add(ln2, bias)
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass = True
+        config.debug.aclgraph.disable_mempool_reuse_in_same_fx = True
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = Model()
+        model = torch.compile(model, backend=aclgraph_backend, dynamic=True)
+        x = torch.randn([3, 2])
+
+        torch._dynamo.reset()
+        with capture_logger() as stdout:
+            model(x, 9.9)
+        captured_output = stdout.getvalue()
+        self.assertTrue("memory pool reuse state is disable" in captured_output)
+        self.assertTrue("no mempool reuse in fx_graph" in captured_output)
+
+    def test_aclgraph_dynamic_use_custom_pool(self):
+        class Model1(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear1 = torch.nn.Linear(2, 2)
+
+            def forward(self, input):
+                ln1 = self.linear1(input)
+                return ln1
+
+        class Model2(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear2 = torch.nn.Linear(2, 2)
+
+            def forward(self, input):
+                ln2 = self.linear2(input)
+                return ln2
+
+        x = torch.randn([3, 2])
+        torch._dynamo.reset()
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass = True
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
+
+        def wrapper_call(func):
+            def wrapper(*args, **kwargs):
+                ret = func(*args, **kwargs)
+
+                assert len(args) > 0
+                concrete_graph = args[0]
+                global _get_pool_id
+                _get_pool_id = concrete_graph.graph.pool
+                return ret
+
+            return wrapper
+
+        AclConcreteGraph.__call__ = wrapper_call(AclConcreteGraph.__call__)
+
+        # test no set custom pool, check different pool, and reconstruct outputs
+        model1 = Model1()
+        model1 = torch.compile(model1, backend=aclgraph_backend, dynamic=True)
+        with capture_logger() as stdout:
+            res = model1(x)
+        captured_output = stdout.getvalue()
+        self.assertTrue("After reconstructing fx_graph" in captured_output)
+
+        with capture_logger() as stdout:
+            res = model1(x)
+        captured_output = stdout.getvalue()
+        self.assertTrue("no need to reconstruct fx_graph" in captured_output)
+        pool_id1 = _get_pool_id
+
+        model2 = Model2()
+        model2 = torch.compile(model2, backend=aclgraph_backend, dynamic=True)
+        with capture_logger() as stdout:
+            res = model2(x)
+        captured_output = stdout.getvalue()
+        self.assertTrue("After reconstructing fx_graph" in captured_output)
+        pool_id2 = _get_pool_id
+
+        self.assertTrue(pool_id1 != pool_id2)
+
+        # test set custom pool, check same pool, and no reconstruct outputs
+        config.aclgraph_config.use_custom_pool = torch.npu.graph_pool_handle()
+        aclgraph_backend2 = torchair.get_npu_backend(compiler_config=config)
+
+        model1 = Model1()
+        model1 = torch.compile(model1, backend=aclgraph_backend2, dynamic=True)
+        with capture_logger() as stdout:
+            res = model1(x)
+        captured_output = stdout.getvalue()
+        self.assertTrue("no mempool reuse in fx_graph" in captured_output)
+        pool_id1 = _get_pool_id
+
+        model2 = Model2()
+        model2 = torch.compile(model2, backend=aclgraph_backend, dynamic=True)
+        with capture_logger() as stdout:
+            res = model2(x)
+        captured_output = stdout.getvalue()
+        self.assertTrue("no mempool reuse in fx_graph" in captured_output)
+        pool_id2 = _get_pool_id
+
+        self.assertTrue(pool_id1 == pool_id2)
+
     def test_reconstruct_args_kwargs(self):
         def _check_same_tensor_meta(x, y):
             if (list(x.shape) != list(y.shape)) or (
@@ -1307,8 +1436,7 @@ class AclGraphSt(unittest.TestCase):
         with forbidden_attr(ModelCacheSaver, '__call__'):
             model_match_cache(x)  # cache hint
             model_match_cache(x)  # cache hint
-            
-            
+
     def test_aclgraph_cache_assert_size_stride(self):
         class CacheModel(torch.nn.Module):
             def __init__(self):
@@ -1372,7 +1500,7 @@ class AclGraphSt(unittest.TestCase):
         config = CompilerConfig()
         config.mode = "reduce-overhead"
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
-        
+
         model = CacheModel()
 
         prompt_cache_dir = CompiledModel.get_cache_bin(model.prompt, config=config)
@@ -1391,8 +1519,7 @@ class AclGraphSt(unittest.TestCase):
                 model_match_cache(*prompt2)  # cache hint
             exception = cm.exception
             self.assertEqual(str(exception), "expected size 12==12, stride 12==2 at dim=0")
-            
-    
+
     def test_aclgraph_cache_capture_and_replay_keep_inference_input_mutations_true(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -1404,11 +1531,10 @@ class AclGraphSt(unittest.TestCase):
 
             def prompt(self, x):
                 return self._forward(x)
-            
+
             def _forward(self, x):
                 x.mul_(2)
                 return x + 1
-
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
@@ -1418,13 +1544,13 @@ class AclGraphSt(unittest.TestCase):
 
         prompt_cache_dir = CompiledModel.get_cache_bin(model.prompt, config=config)
         ModelCacheSaver.remove_cache(prompt_cache_dir)
-        
+
         x_ = torch.randn([3, 2])
         x = x_.clone()
 
         self.assertFalse(os.path.exists(prompt_cache_dir))
         model(x_)
-        self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled        
+        self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
 
         # inference
         with self.assertLogs(logger, level="WARNING") as cm:
