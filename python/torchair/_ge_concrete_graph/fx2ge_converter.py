@@ -14,7 +14,7 @@ import sympy
 from packaging import version
 
 import torch
-from torch.fx.node import Argument, Target
+from torch.fx.node import Argument, Target, Node
 from torch import Tensor
 from torch._subclasses.fake_tensor import FakeTensor, is_fake
 from torch._ops import OpOverload, OpOverloadPacket
@@ -959,14 +959,45 @@ class GeConcreteGraph(ConcreteGraphBase):
 
     @contextmanager
     def converter_context(self, *, node):
+        def stringify_shape(shape):
+            return f"[{', '.join([str(x) for x in shape])}]"
+        
+        def format_node(node):
+            from torch.fx.experimental.proxy_tensor import py_sym_types
+            from torch.fx.passes.shape_prop import TensorMetadata
+            if not isinstance(node, Node):
+                return node
+            meta_val = node.meta.get("val", node.meta.get("tensor_meta", node.meta.get("example_value", None)))
+            # use string as annotation, to make it valid python code
+            if isinstance(meta_val, torch.Tensor):
+                node_dtype = meta_val.dtype
+                node_shape = stringify_shape(meta_val.shape)
+                node_device = meta_val.device
+                return f'{node.name}: {node_dtype}{node_shape}{node_device}'
+            elif isinstance(meta_val, py_sym_types):
+                return f'{node.name}: "Sym({meta_val})"'
+            elif isinstance(meta_val, TensorMetadata):
+                node_dtype = meta_val.dtype
+                node_shape = stringify_shape(meta_val.shape)
+                return f'{node.name}: {node_dtype}{node_shape}'
+            else:
+                return node.name
+            
         if node.stack_trace is not None:
             file_line = node.stack_trace.split(' File ')[-1].replace('\n', '')
             if file_line not in self.graph._python_code:
                 self.graph._python_code += f'\n# File {file_line}\n'
             node_target = node._pretty_print_target(node.target)
+            formatted_node = format_node(node)
+            format_args = []
+            format_kwargs = []
+            for node_arg in node.args:
+                format_args.append(format_node(node_arg))
+            for kwarg_k, kwarg_v in node.kwargs.items():
+                format_args.append(f'{kwarg_k}={format_node(kwarg_v)}')
             self.graph._python_code += \
                 f'## FX Code: ' \
-                f'{self.graph.format_python_code(node.name, node_target, None, node.args, node.kwargs)}\n'
+                f'{self.graph.format_python_code(formatted_node, node_target, None, format_args, format_kwargs)}\n'
 
         try:
             self._converter_ctx.node = node

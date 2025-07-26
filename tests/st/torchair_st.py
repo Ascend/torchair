@@ -1955,7 +1955,40 @@ class TorchairSt(unittest.TestCase):
         send_counts1[0] = 1
         send_displacements1 = [sum(send_counts1[:i]) for i in range(len(send_counts1))]
         self.assertEqual(send_displacements1, result)
+        
+    def test_dump_node_info(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
 
+            def forward(self, x, y, z):
+                return torch.add(input=x, other=y, alpha=z)
+            
+        model = Model()
+        test_config = torchair.CompilerConfig()
+        test_config.debug.graph_dump.type = "py"
+        test_config.debug.graph_dump.path = "./test_dump_node_info/graphs"
+        if os.path.exists(test_config.debug.graph_dump.path):
+            shutil.rmtree(test_config.debug.graph_dump.path)
+        os.makedirs("./test_dump_node_info/graphs")
+        
+        test_npu_backend = torchair.get_npu_backend(compiler_config=test_config)
+        test_model = torch.compile(model, backend=test_npu_backend, dynamic=True)
+        x = torch.randn(4, 4)
+        y = torch.randn(4, 4)
+        test_model(x, y, 1)
+        
+        dump_file_path = [f for f in os.listdir(test_config.debug.graph_dump.path)
+                        if f.endswith(".py") and "original" in f][0]
+        dump_line = ""
+        with open(os.path.join(test_config.debug.graph_dump.path, dump_file_path), "r") as dump_file:
+            content = dump_file.readlines()
+            dump_line = [line for line in content if line.startswith("## FX Code")][0]
+
+        self.assertTrue("add: torch.float32[s0, s0]cpu" in dump_line)
+        self.assertTrue("arg1_1: torch.float32[s0, s0]cpu" in dump_line)
+        self.assertTrue("arg2_1: torch.float32[s0, s0]cpu" in dump_line)
+        
 
 if __name__ == '__main__':
     unittest.main()
