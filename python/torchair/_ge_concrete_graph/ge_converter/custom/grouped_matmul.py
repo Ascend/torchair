@@ -49,7 +49,7 @@ def convert_scale_tensorlist(scales: List[Tensor]):
     return output
 
 
-def convert_ydtype(output_dtype: Optional[int] = None):
+def convert_ydtype_in_a8(output_dtype: Optional[int] = None):
     y_dtype = -1
     if output_dtype == torch.float16:
         y_dtype = 0
@@ -61,6 +61,18 @@ def convert_ydtype(output_dtype: Optional[int] = None):
         raise ValueError("output_dtype not support int8 yet for graph mode")
     else:
         raise ValueError(f"output_dtype should be float16, bfloat16 or int32, "
+                            f"otherwise it should be None, but got {output_dtype}")
+    return y_dtype
+
+
+def convert_ydtype_in_a4(output_dtype: Optional[int] = None):
+    y_dtype = -1
+    if output_dtype == torch.float16:
+        y_dtype = 0
+    elif output_dtype == torch.bfloat16:
+        y_dtype = 1
+    else:
+        raise ValueError(f"output_dtype should be float16, bfloat16, "
                             f"otherwise it should be None, but got {output_dtype}")
     return y_dtype
 
@@ -118,7 +130,9 @@ def conveter_npu_npu_grouped_matmul(
 
     y_dtype = -1
     if output_dtype is not None and x[0].dtype == DataType.DT_INT8:
-        y_dtype = convert_ydtype(output_dtype)
+        y_dtype = convert_ydtype_in_a8(output_dtype)
+    elif output_dtype is not None and x[0].dtype == DataType.DT_INT32:
+        y_dtype = convert_ydtype_in_a4(output_dtype)
 
     per_token_scale = per_token_scale[0] if per_token_scale is not None and len(per_token_scale) else None
 
@@ -126,8 +140,9 @@ def conveter_npu_npu_grouped_matmul(
         group_list = dtype_promote(group_list, target_dtype=torch.int64)
 
     w_list = convert_tensorlist_to_int4(weight)
+    x_list = convert_tensorlist_to_int4(x)
 
-    return ge.GroupedMatmul(x, w_list, bias, scale, offset, antiquant_scale, antiquant_offset, group_list,
+    return ge.GroupedMatmul(x_list, w_list, bias, scale, offset, antiquant_scale, antiquant_offset, group_list,
                             per_token_scale, split_item=split_item, dtype=y_dtype, transpose_weight=False,
                             transpose_x=False, group_type=group_type, group_list_type=group_list_type,
                             act_type=act_type, tuning_config=tuning_config)
