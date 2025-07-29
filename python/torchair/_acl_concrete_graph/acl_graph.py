@@ -670,7 +670,7 @@ class AclGraph(object):
         self._mutated_user_inputs = aclgraph_cache_info.mutated_user_inputs
         self._mempool = aclgraph_cache_info.pool if aclgraph_cache_info.pool is not None else \
             torch.npu.graph_pool_handle()
-        self._stream = aclgraph_cache_info.stream
+        self._stream = aclgraph_cache_info.stream if aclgraph_cache_info.stream is not None else torch.npu.Stream()
         self._capture_error_mode = aclgraph_cache_info.capture_error_mode
         self._num_warmup_iters = aclgraph_cache_info.num_warmup_iters
         self._fx_graph_name = aclgraph_cache_info.fx_graph_name
