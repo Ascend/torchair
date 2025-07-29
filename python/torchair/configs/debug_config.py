@@ -80,14 +80,16 @@ class _AclGraphDebugConfig(NpuBaseConfig):
         self.disable_reinplace_inplaceable_ops_pass = OptionValue(False, [True, False])
         self.disable_reinplace_input_mutated_ops_pass = OptionValue(False, [True, False])
         self.disable_mempool_reuse_in_same_fx = OptionValue(False, [True, False])
+        self.enable_output_clone = OptionValue(False, [True, False])
 
         super(_AclGraphDebugConfig, self).__init__()
 
     def as_dict(self):
         local_option = {}
+        local_option["enable_output_clone"] = self.enable_output_clone.value
+
         if self.disable_mempool_reuse_in_same_fx.value is not None:
             local_option["disable_mempool_reuse_in_same_fx"] = self.disable_mempool_reuse_in_same_fx.value
-
         return local_option
 
 

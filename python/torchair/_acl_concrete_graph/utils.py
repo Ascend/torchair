@@ -148,11 +148,14 @@ def debug_mem_state() -> str:
     seg = []
     for segment in segments:
         if "segment_pool_id" in segment:
+            if segment["segment_pool_id"] == (0, 0):
+                continue
+
             tmp = ({"device": segment["device"]},
                    {"stream": segment["stream"]},
                    {"pool_id": segment["segment_pool_id"]},
                    {"block_num": len(segment["blocks"])},
-                   {"activate_num": sum(int(blk["state"] == "activate_allocated") for blk in segment["blocks"])},
+                   {"activate_num": sum(int(blk["state"] == "active_allocated") for blk in segment["blocks"])},
                    {"total_size": segment["total_size"]},
                    {"allocated_size": segment["allocated_size"]},)
             seg.append(tmp)

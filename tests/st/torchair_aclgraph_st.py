@@ -485,12 +485,12 @@ class AclGraphSt(unittest.TestCase):
         config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
-        model = torch.compile(Model(), backend=aclgraph_backend, dynamic=True)
+        model = torch.compile(model, backend=aclgraph_backend, dynamic=True)
         x = torch.randn([4, 3])
-        model(x)
+        res = model(x)
         first_model_id = id(model)
         x2 = torch.randn([5, 3])
-        model(x2)
+        res = model(x2)
         second_model_id = id(model)
         self.assertTrue(first_model_id == second_model_id)
 
@@ -535,6 +535,7 @@ class AclGraphSt(unittest.TestCase):
         config.mode = "reduce-overhead"
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass = True
+        config.debug.aclgraph.enable_output_clone = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
         model = torch.compile(Model(), backend=aclgraph_backend, dynamic=True)
@@ -1239,6 +1240,7 @@ class AclGraphSt(unittest.TestCase):
         config.mode = "reduce-overhead"
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass = True
+        config.debug.aclgraph.enable_output_clone = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
         from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
@@ -1268,7 +1270,7 @@ class AclGraphSt(unittest.TestCase):
         with capture_logger() as stdout:
             res = model1(x)
         captured_output = stdout.getvalue()
-        self.assertTrue("no need to reconstruct fx_graph" in captured_output)
+        self.assertTrue("no need to reconstruct fx_graph" not in captured_output) # output always no retained
         pool_id1 = _get_pool_id
 
         model2 = Model2()
