@@ -13,6 +13,8 @@ def _weight_format_cast(model: torch.nn.Module):
     def _cast_to_internal_format(module: torch.nn.Module, class_name):
 
         def _cast_to_internal_format_for_quant_conv2d(module: torch.nn.Module, class_name):
+            if not hasattr(_TORCH_NPU_MODULE.contrib.module, "quant_conv2d"):
+                return
             if not isinstance(module, _TORCH_NPU_MODULE.contrib.module.quant_conv2d.QuantConv2d):
                 return
             if module.weight is None or module.weight.data is None:
