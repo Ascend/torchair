@@ -260,8 +260,8 @@ class StubNpu:
         logger.debug('[Stub] new stub module npu.')
         self.npu_fused_infer_attention_score = stub_fa
         self._npu_fused_infer_attention_score_get_max_workspace = stub_fa
-        self.npu_fused_infer_attention_v2 = stub_fa
-        self._npu_fused_infer_attention_v2_get_max_workspace = stub_fa
+        self.npu_fused_infer_attention_score_v2 = stub_fa
+        self._npu_fused_infer_attention_score_v2_get_max_workspace = stub_fa
         self.NPUGraph = StubNPUGraph
         self.graph = graph
         self.Stream = StubStream

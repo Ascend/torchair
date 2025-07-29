@@ -13,7 +13,7 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
 lib = torch.library.Library("air", "FRAGMENT")
 lib.define(
     """
-    npu_fused_infer_attention_v2(Tensor query, Tensor key, Tensor value, *, Tensor? query_rope=None, \
+    npu_fused_infer_attention_score_v2(Tensor query, Tensor key, Tensor value, *, Tensor? query_rope=None, \
     Tensor? key_rope=None, Tensor? pse_shift=None, Tensor? atten_mask=None, Tensor? actual_seq_qlen=None,  \
     Tensor? actual_seq_kvlen=None, Tensor? block_table=None, Tensor? dequant_scale_query=None, \
     Tensor? dequant_scale_key=None, Tensor? dequant_offset_key=None, Tensor? dequant_scale_value=None,  \
@@ -30,17 +30,17 @@ lib.define(
 )
 
 
-def _npu_fused_infer_attention_v2(*args, **kwargs):
-    return torch.ops.air.npu_fused_infer_attention_v2(*args, **kwargs)
+def _npu_fused_infer_attention_score_v2(*args, **kwargs):
+    return torch.ops.air.npu_fused_infer_attention_score_v2(*args, **kwargs)
 
 
-def npu_fused_infer_attention_v2_impl(*args, **kwargs):
-    raise NotImplementedError("eager mode of torchair.ops.npu_fused_infer_attention_v2 is not supported, " +
-                              "use graph mode or torch_npu.npu_fused_infer_attention_v2!")
+def npu_fused_infer_attention_score_v2_impl(*args, **kwargs):
+    raise NotImplementedError("eager mode of torchair.ops.npu_fused_infer_attention_score_v2 is not supported, " +
+                              "use graph mode or torch_npu.npu_fused_infer_attention_score_v2!")
 
 
-torch.library.impl(lib, "npu_fused_infer_attention_v2", "CPU")(npu_fused_infer_attention_v2_impl)
-torch.library.impl(lib, "npu_fused_infer_attention_v2", "PrivateUse1")(npu_fused_infer_attention_v2_impl)
+torch.library.impl(lib, "npu_fused_infer_attention_score_v2", "CPU")(npu_fused_infer_attention_score_v2_impl)
+torch.library.impl(lib, "npu_fused_infer_attention_score_v2", "PrivateUse1")(npu_fused_infer_attention_score_v2_impl)
 
 
 @declare_supported(
@@ -56,8 +56,8 @@ torch.library.impl(lib, "npu_fused_infer_attention_v2", "PrivateUse1")(npu_fused
             input_layout="BNSD", num_query_heads=40, softmax_scale=0.0884),
     ]
 )
-@register_fx_node_ge_converter(torch.ops.air.npu_fused_infer_attention_v2.default)
-def convert_npu_npu_fused_infer_attention_v2_tensor(
+@register_fx_node_ge_converter(torch.ops.air.npu_fused_infer_attention_score_v2.default)
+def convert_npu_npu_fused_infer_attention_score_v2_tensor(
     query: Tensor,
     key: Tensor,
     value: Tensor,
@@ -151,8 +151,8 @@ def convert_npu_npu_fused_infer_attention_v2_tensor(
         key_antiquant_mode=key_quant_mode, value_antiquant_mode=value_quant_mode, query_quant_mode=query_quant_mode)
 
 
-@torch.library.impl(lib, "npu_fused_infer_attention_v2", "Meta")
-def npu_fused_infer_attention_v2_meta_impl(query, key, value, *, query_rope=None, key_rope=None, pse_shift=None,
+@torch.library.impl(lib, "npu_fused_infer_attention_score_v2", "Meta")
+def npu_fused_infer_attention_score_v2_meta_impl(query, key, value, *, query_rope=None, key_rope=None, pse_shift=None,
     atten_mask=None, actual_seq_qlen=None, actual_seq_kvlen=None, block_table=None, dequant_scale_query=None,
     dequant_scale_key=None, dequant_offset_key=None, dequant_scale_value=None, dequant_offset_value=None,
     dequant_scale_key_rope=None, quant_scale_out=None, quant_offset_out=None, num_query_heads=1, num_key_value_heads=0,

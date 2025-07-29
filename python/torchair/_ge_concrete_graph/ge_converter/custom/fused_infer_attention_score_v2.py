@@ -27,8 +27,8 @@ from torchair._ge_concrete_graph.utils import dtype_promote
             input_layout="BNSD", num_query_heads=40, softmax_scale=0.0884),
     ]
 )
-@register_fx_node_ge_converter(torch.ops.npu.npu_fused_infer_attention_v2.default)
-def convert_npu_npu_fused_infer_attention_v2(
+@register_fx_node_ge_converter(torch.ops.npu.npu_fused_infer_attention_score_v2.default)
+def convert_npu_npu_fused_infer_attention_score_v2(
     query: Tensor,
     key: Tensor,
     value: Tensor,

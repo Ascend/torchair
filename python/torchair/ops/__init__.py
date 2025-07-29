@@ -5,9 +5,9 @@ def npu_fused_infer_attention_score(*args, **kwargs):
     from ._npu_fused_infer_attention_score import _npu_fused_infer_attention_score
     return _npu_fused_infer_attention_score(*args, **kwargs)
 
-def npu_fused_infer_attention_v2(*args, **kwargs):
-    from ._npu_fused_infer_attention_v2 import _npu_fused_infer_attention_v2
-    return _npu_fused_infer_attention_v2(*args, **kwargs)
+def npu_fused_infer_attention_score_v2(*args, **kwargs):
+    from ._npu_fused_infer_attention_score_v2 import _npu_fused_infer_attention_score_v2
+    return _npu_fused_infer_attention_score_v2(*args, **kwargs)
 
 def npu_print(*args, summarize_size=3):
     from ._print_ops import _npu_print
