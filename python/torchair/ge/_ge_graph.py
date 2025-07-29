@@ -5,7 +5,7 @@ import functools
 import threading
 import contextlib
 import inspect
-from enum import Enum, IntEnum
+from enum import Enum
 from abc import abstractmethod
 import numpy as np
 import sys
@@ -82,7 +82,7 @@ class Format(Enum):
     __module__ = "torchair.ge"
 
 
-class DataType(IntEnum):
+class DataType:
     DT_FLOAT = 0            # float type
     DT_FLOAT16 = 1          # fp16 type
     DT_INT8 = 2             # int8 type
@@ -217,7 +217,7 @@ def ge_type_to_torch_type(dtype: DataType) -> torch.dtype:
     if dtype == DataType.DT_QINT32:
         return torch.qint32
 
-    raise RuntimeError(f"Unsupported ge type {dtype.name} by torch")
+    raise RuntimeError(f"Unsupported ge type {dtype} by torch")
 
 
 def _ge_dtype_to_np_dtype(dtype: DataType) -> np.dtype:

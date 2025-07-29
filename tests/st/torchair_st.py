@@ -12,8 +12,7 @@ import logging
 
 from torchair.core.utils import logger
 from torchair.core._backend import TorchNpuGraph
-from torchair.ge._ge_graph import GeGraph, Const, DataType, _ValueType, _GeInputInfo, \
-    _ge_dtype_to_ge_proto_dtype, ge_type_to_torch_type
+from torchair.ge._ge_graph import GeGraph, Const, DataType, _ValueType, _GeInputInfo, _ge_dtype_to_ge_proto_dtype
 from torchair._ge_concrete_graph.fx2ge_converter import ExecutorType, Placement, _normalize_ge_graph, \
     _mapping_assign_op_to_graph_output, replace_data_to_refdata, GeConcreteGraph
 from torchair._ge_concrete_graph import ge_apis as ge
@@ -1936,12 +1935,7 @@ class TorchairSt(unittest.TestCase):
 
         captured_output = stdout.getvalue()
         self.assertTrue("start to release graph" in captured_output)
-    
-    def test_ge_dtype_log(self):
-        with self.assertRaises(RuntimeError) as context:
-            ge_type_to_torch_type(DataType.DT_MAX)
-        self.assertTrue("Unsupported ge type DT_MAX by torch" in str(context.exception))  
-        
+
     def test_sym_sum(self):
         class Model(torch.nn.Module):
             def forward(self, xs):
