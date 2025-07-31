@@ -65,7 +65,7 @@ def _mapping_assign_op_to_graph_output(graph: GraphDef):
     if not net_output:
         raise AssertionError("NetOutput not found")
 
-    def _mapping_to_graph_output(graph: GraphDef, graph_out: OpDef, assign_node_out: GeTensor, 
+    def _mapping_to_graph_output(graph: GraphDef, graph_out: OpDef, assign_node_out: GeTensor,
                                  value_tensor: str, ref_intput_op: OpDef):
         raw_index_to_data_index = {}
         for i, name in enumerate(graph_out.input):
@@ -100,7 +100,7 @@ def _mapping_assign_op_to_graph_output(graph: GraphDef):
             logger.info(
                 f"Replace assign op {op.name} assign value from {op.input[1]} to input {net_inputs[op.input[0]]} {op.input[0]}")
             ref_intput_op = intput_ops[net_inputs[op.input[0]]]
-            output_ref_index_list = _mapping_to_graph_output(graph, net_output, assign_node_out, 
+            output_ref_index_list = _mapping_to_graph_output(graph, net_output, assign_node_out,
                                                              op.input[1], ref_intput_op)
             for output_ref_index in output_ref_index_list:
                 output_refto_input[output_ref_index] = net_inputs[op.input[0]]
@@ -215,9 +215,6 @@ def _wrap_converter(converter: Callable):
             kwargs['meta_outputs'] = get_meta_outputs(meta_outputs)
 
         ge_outputs = converter(*args, **kwargs)
-
-        if meta_outputs is not None:
-            set_ge_outputs(ge_outputs, meta_outputs)
 
         return ge_outputs
 
@@ -687,8 +684,8 @@ class GeConcreteGraph(ConcreteGraphBase):
                 import torch_npu
                 if not torch_npu.distributed._is_support_hccl_comm_name():
                     raise AssertionError(f"During cache loading, "
-                                         f"it is not possible to create a PG with the same name in the ge cache. " 
-                                         f"This may be due to the low version of CANN you are using. " 
+                                         f"it is not possible to create a PG with the same name in the ge cache. "
+                                         f"This may be due to the low version of CANN you are using. "
                                          f"Please upgrade and try again.")
                     ''')
             cache_graph = GeGraph()
@@ -887,7 +884,7 @@ class GeConcreteGraph(ConcreteGraphBase):
     def parse_node(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
         if str(target) in ['air.scope_enter.default', 'air.scope_exit.default']:
             return target(*args, **kwargs, need_excute=True)
-        all_zero_and_nosym = all([is_zero_element_tensor(t) and not get_used_syms_in_meta(t) 
+        all_zero_and_nosym = all([is_zero_element_tensor(t) and not get_used_syms_in_meta(t)
             for t in flatten_meta_outputs(meta_outputs)])
         if all_zero_and_nosym and (str(target) not in _DONT_EMPTY_TENSOR_OPT_OPS):
             return make_real_tensor_like(meta_outputs)
@@ -901,17 +898,19 @@ class GeConcreteGraph(ConcreteGraphBase):
         if converter is None:
             raise RuntimeError(f"Ascend op converter is not implemented of: {target}")
         if converter.require_meta:
-            ge_outputs = converter(*args, **kwargs, meta_outputs=meta_outputs)
-            if meta_outputs is not None and hasattr(self._converter_ctx, 'node') and self._converter_ctx.node:
+            kwargs['meta_outputs'] = meta_outputs
+        ge_outputs = converter(*args, **kwargs)
+        if meta_outputs is not None:
+            set_ge_outputs(ge_outputs, meta_outputs)
+            if hasattr(self._converter_ctx, 'node') and self._converter_ctx.node:
                 fx_tensor_prefix = f'{self._converter_ctx.node.name}-{self._converter_ctx.node.target}.OUTPUT'
                 if isinstance(ge_outputs, ge.Tensor):
                     ge_outputs.desc.attr["_fx_tensor_name"].s = compat_as_bytes(f'{fx_tensor_prefix}.0')
                 elif isinstance(ge_outputs, (list, tuple)) and all([isinstance(v, ge.Tensor) for v in ge_outputs]):
                     for i, ge_output in enumerate(ge_outputs):
                         ge_output.desc.attr["_fx_tensor_name"].s = compat_as_bytes(f'{fx_tensor_prefix}.{i}')
-            return ge_outputs
-        else:
-            return converter(*args, **kwargs)
+        return ge_outputs
+
 
     def dump(self, path: str):
         dump_graph(path, self.graph)
@@ -961,7 +960,7 @@ class GeConcreteGraph(ConcreteGraphBase):
     def converter_context(self, *, node):
         def stringify_shape(shape):
             return f"[{', '.join([str(x) for x in shape])}]"
-        
+
         def format_node(node):
             from torch.fx.experimental.proxy_tensor import py_sym_types
             from torch.fx.passes.shape_prop import TensorMetadata
@@ -982,7 +981,7 @@ class GeConcreteGraph(ConcreteGraphBase):
                 return f'{node.name}: {node_dtype}{node_shape}'
             else:
                 return node.name
-            
+
         if node.stack_trace is not None:
             file_line = node.stack_trace.split(' File ')[-1].replace('\n', '')
             if file_line not in self.graph._python_code:

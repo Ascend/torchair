@@ -1955,7 +1955,7 @@ class TorchairSt(unittest.TestCase):
         send_counts1[0] = 1
         send_displacements1 = [sum(send_counts1[:i]) for i in range(len(send_counts1))]
         self.assertEqual(send_displacements1, result)
-        
+
     def test_dump_node_info(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -1963,7 +1963,7 @@ class TorchairSt(unittest.TestCase):
 
             def forward(self, x, y, z):
                 return torch.add(input=x, other=y, alpha=z)
-            
+
         model = Model()
         test_config = torchair.CompilerConfig()
         test_config.debug.graph_dump.type = "py"
@@ -1971,13 +1971,13 @@ class TorchairSt(unittest.TestCase):
         if os.path.exists(test_config.debug.graph_dump.path):
             shutil.rmtree(test_config.debug.graph_dump.path)
         os.makedirs("./test_dump_node_info/graphs")
-        
+
         test_npu_backend = torchair.get_npu_backend(compiler_config=test_config)
         test_model = torch.compile(model, backend=test_npu_backend, dynamic=True)
         x = torch.randn(4, 4)
         y = torch.randn(4, 4)
         test_model(x, y, 1)
-        
+
         dump_file_path = [f for f in os.listdir(test_config.debug.graph_dump.path)
                         if f.endswith(".py") and "original" in f][0]
         dump_line = ""
@@ -1988,7 +1988,30 @@ class TorchairSt(unittest.TestCase):
         self.assertTrue("add: torch.float32[s0, s0]cpu" in dump_line)
         self.assertTrue("arg1_1: torch.float32[s0, s0]cpu" in dump_line)
         self.assertTrue("arg2_1: torch.float32[s0, s0]cpu" in dump_line)
-        
+
+    def test_output_always_with_correct_dtype(self):
+        m = torch.library.Library("test", "DEF")
+        m.define("custom(Tensor x) -> Tensor")
+
+        @torch.library.impl(m, "custom", "Meta")
+        def custom_meta(x):
+            return torch.empty_like(x)
+
+        @torchair.register_fx_node_ge_converter(torch.ops.test.custom.default)
+        def custom_converter(x):
+            return torchair.ge.custom_op("Custom",
+                                         inputs={"x": x},
+                                         outputs=["y"],
+                                         attrs={})
+
+        @torch.compile(backend=torchair.get_npu_backend(), dynamic=True)
+        def custom_func(x):
+            return torch.ops.test.custom.default(x)
+
+        x = torch.randn(2, 3, dtype=torch.float32)
+        y = custom_func(x)
+        self.assertEqual(y.dtype, torch.float32)
+
 
 if __name__ == '__main__':
     unittest.main()
