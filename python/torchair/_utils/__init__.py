@@ -121,12 +121,6 @@ def meta__native_batch_norm_legit_no_training(
     return output, save_mean, save_rstd
 
 
-@register_meta_npu(aten.view_as_complex.default, True)
-def meta_view_as_complex(self: Tensor):
-    out_shape = _broadcast_shapes(self.shape)
-    return self.new_empty(out_shape, dtype=corresponding_complex_dtype(self.dtype))
-
-
 def patch_torch_decomp_decompositions():
     '''
     Because source torch_decomp_decompositions only enable the decompositions in

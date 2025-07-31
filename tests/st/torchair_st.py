@@ -1955,7 +1955,7 @@ class TorchairSt(unittest.TestCase):
         send_counts1[0] = 1
         send_displacements1 = [sum(send_counts1[:i]) for i in range(len(send_counts1))]
         self.assertEqual(send_displacements1, result)
-
+        
     def test_dump_node_info(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -1963,7 +1963,7 @@ class TorchairSt(unittest.TestCase):
 
             def forward(self, x, y, z):
                 return torch.add(input=x, other=y, alpha=z)
-
+            
         model = Model()
         test_config = torchair.CompilerConfig()
         test_config.debug.graph_dump.type = "py"
@@ -1971,13 +1971,13 @@ class TorchairSt(unittest.TestCase):
         if os.path.exists(test_config.debug.graph_dump.path):
             shutil.rmtree(test_config.debug.graph_dump.path)
         os.makedirs("./test_dump_node_info/graphs")
-
+        
         test_npu_backend = torchair.get_npu_backend(compiler_config=test_config)
         test_model = torch.compile(model, backend=test_npu_backend, dynamic=True)
         x = torch.randn(4, 4)
         y = torch.randn(4, 4)
         test_model(x, y, 1)
-
+        
         dump_file_path = [f for f in os.listdir(test_config.debug.graph_dump.path)
                         if f.endswith(".py") and "original" in f][0]
         dump_line = ""
@@ -2011,6 +2011,38 @@ class TorchairSt(unittest.TestCase):
         x = torch.randn(2, 3, dtype=torch.float32)
         y = custom_func(x)
         self.assertEqual(y.dtype, torch.float32)
+
+    def test_view_as_real_dynamic_sym(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                y = torch.view_as_real(x)
+                return y
+
+        model = torch.compile(Model(), backend=npu_backend, dynamic=True)
+
+        real = torch.randn(4, 4).float()
+        imag = torch.randn(4, 4).float()
+        input1 = torch.complex(real, imag)
+        res = model(input1)
+        self.assertEqual(torch._C._is_alias_of(res, input1), True)
+
+    def test_view_as_complex_dynamic_sym(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                y = torch.view_as_complex(x)
+                return y
+
+        model = torch.compile(Model(), backend=npu_backend, dynamic=True)
+
+        input1 = torch.randn(4, 2).float()
+        res = model(input1)
+        self.assertEqual(torch._C._is_alias_of(res, input1), True)
 
 
 if __name__ == '__main__':

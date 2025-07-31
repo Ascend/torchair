@@ -1143,6 +1143,60 @@ def kernel(*args):
         else:
             self.assertTrue('["frozenInput"] = "1,1,0"' in compile_model.compiled_fx.py_code)
 
+    def test_view_as_real_dynamic_sym_cache(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.cached = torchair.inference.cache_compile(self._forward, dynamic=True)
+
+            def forward(self, x):
+                return self.cached(x)
+
+            def _forward(self, x):
+                y = torch.view_as_real(x)
+                return y
+
+        model = Model()
+        cache_dir = CompiledModel.get_cache_bin(model._forward, dynamic=True)
+        ModelCacheSaver.remove_cache(cache_dir)
+
+        real = torch.randn(4, 4).float()
+        imag = torch.randn(4, 4).float()
+        input1 = torch.complex(real, imag)
+        res = model(input1)
+
+        code = "fx_outputs[0] = torch.view_as_real(args[1])"
+        self.assertEqual(torch._C._is_alias_of(res, input1), True)
+        compile_model = CompiledModel.load(cache_dir)
+        print(compile_model.compiled_fx.py_code)
+        self.assertIn(code, compile_model.compiled_fx.py_code)
+
+    def test_view_as_complex_dynamic_sym_cache(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.cached = torchair.inference.cache_compile(self._forward, dynamic=True)
+
+            def forward(self, x):
+                return self.cached(x)
+
+            def _forward(self, x):
+                y = torch.view_as_complex(x)
+                return y
+
+        model = Model()
+        cache_dir = CompiledModel.get_cache_bin(model._forward, dynamic=True)
+        ModelCacheSaver.remove_cache(cache_dir)
+
+        input1 = torch.randn(4, 2).float()
+        res = model(input1)
+
+        code = "fx_outputs[0] = torch.view_as_complex(args[1])"
+        self.assertEqual(torch._C._is_alias_of(res, input1), True)
+        compile_model = CompiledModel.load(cache_dir)
+        print(compile_model.compiled_fx.py_code)
+        self.assertIn(code, compile_model.compiled_fx.py_code)
+
 
 if __name__ == '__main__':
     unittest.main()

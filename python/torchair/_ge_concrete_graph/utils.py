@@ -468,3 +468,11 @@ def normalize_max_value(srcdtype: DataType):
     else:
         max_value = float("inf")
     return max_value
+
+
+def is_complex(meta):
+    if not isinstance(meta, torch.Tensor):
+        raise AssertionError("when doing is_complex, argument[meta] must be instance of torch.Tensor")
+    if meta.dtype in [torch.complex32, torch.complex64, torch.complex128]:
+        return True
+    return False

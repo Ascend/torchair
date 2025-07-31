@@ -38,7 +38,7 @@ from torchair._ge_concrete_graph.utils import convert_to_tensorboard, dump_graph
     is_host_data_tensor, get_used_sym_value_mapping, Placement, compute_value_of_sym, \
     generate_sym_exper, get_sym_int_value, generate_shape_from_tensor, generate_real_shape_from_tensor,  \
     update_op_input_name_from_mapping, is_zero_element_tensor, flatten_meta_outputs, \
-    make_real_tensor_like, get_used_syms_in_meta, _append_real_input_shape
+    make_real_tensor_like, get_used_syms_in_meta, _append_real_input_shape, is_complex
 from torchair._ge_concrete_graph.hcom_utils import record_pg_to_graph, codegen_refresh_cache_pgname, \
     rename_cached_pgname
 from torchair._ge_concrete_graph.supported_declaration import Support
@@ -490,7 +490,7 @@ class SymOutput:
 
 
 class ViewOfInput:
-    def __init__(self, index, meta_output, sym_value_mapping):
+    def __init__(self, index, meta_output, sym_value_mapping, is_view_as_real, is_view_as_complex):
         self._fx_input_index = index
         self._sym_value_mapping = sym_value_mapping
         self._ori_meta_shape = list(meta_output.size())
@@ -499,9 +499,23 @@ class ViewOfInput:
         self._meta_output_shape = generate_sym_exper(list(meta_output.size()))
         self._meta_output_stride = generate_sym_exper(list(meta_output.stride()))
         self._meta_output_offset = generate_sym_exper(meta_output.storage_offset())
+        self._is_view_as_real = is_view_as_real
+        self._is_view_as_complex = is_view_as_complex
+
+    @property
+    def is_view_as_real(self):
+        return self._is_view_as_real
+
+    @property
+    def is_view_as_complex(self):
+        return self._is_view_as_complex
 
     def compute_output(self, *args):
         real_input = args[self._fx_input_index]
+        if self._is_view_as_real:
+            return torch.view_as_real(real_input)
+        if self._is_view_as_complex:
+            return torch.view_as_complex(real_input)
         value_of_sym = compute_value_of_sym(self._sym_value_mapping, *args)
         output_shape, output_stride, output_offset \
             = self._compute_output_shape_stride_offset(value_of_sym)
@@ -749,9 +763,16 @@ class GeConcreteGraph(ConcreteGraphBase):
             kernel.writeline(f'fx_outputs = [None] * {len(self._fx_outputs)}')
             for idx, out in enumerate(self._fx_outputs):
                 if isinstance(out, ViewOfInput):
-                    kernel.writeline(
-                        f'fx_outputs[{idx}] = torch.as_strided(args[{out._fx_input_index}], {out._ori_meta_shape}, '
-                        f'{out._ori_meta_stride}, {out._ori_meta_offset})')
+                    if out.is_view_as_real:
+                        kernel.writeline(
+                            f'fx_outputs[{idx}] = torch.view_as_real(args[{out._fx_input_index}])')
+                    elif out.is_view_as_complex:
+                        kernel.writeline(
+                            f'fx_outputs[{idx}] = torch.view_as_complex(args[{out._fx_input_index}])')
+                    else:
+                        kernel.writeline(
+                            f'fx_outputs[{idx}] = torch.as_strided(args[{out._fx_input_index}], {out._ori_meta_shape}, '
+                            f'{out._ori_meta_stride}, {out._ori_meta_offset})')
                 elif isinstance(out, SymOutput):
                     kernel.writeline(f'fx_outputs[{idx}] = {str(out._ori_meta_sym.node.expr)}')
                 elif not isinstance(out, GeTensor):
@@ -839,8 +860,11 @@ class GeConcreteGraph(ConcreteGraphBase):
             is_view2output_flag = False
             for fx_input_idx, fx_input_meta in self._all_meta_tensor_input.items():
                 if torch._C._is_alias_of(fx_input_meta, arg.meta):
+                    is_view_as_complex = (is_complex(arg.meta) and not is_complex(fx_input_meta))
+                    is_view_as_real = (not is_complex(arg.meta) and is_complex(fx_input_meta))
                     self._fx_outputs[-1] = ViewOfInput(fx_input_idx, arg.meta,
-                                                       get_used_sym_value_mapping(self._all_sym_input_idx, arg.meta))
+                                                       get_used_sym_value_mapping(self._all_sym_input_idx, arg.meta),
+                                                       is_view_as_real, is_view_as_complex)
                     is_view2output_flag = True
                     break
             if is_view2output_flag:
