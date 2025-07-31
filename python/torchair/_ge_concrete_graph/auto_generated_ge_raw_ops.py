@@ -77060,10 +77060,11 @@ def AllGatherMatmul(x1: Tensor,
                     bias: Optional[Tensor],
                     *,
                     group: str,
-                    is_trans_a: bool=False,
-                    is_trans_b: bool=False,
-                    gather_index: int=0,
-                    comm_turn: int=0,
+                    is_trans_a: bool = False,
+                    is_trans_b: bool = False,
+                    gather_index: int = 0,
+                    comm_turn: int = 0,
+                    is_gather_out: bool = True,
                     dependencies=[],
                     node_name=None):
     """
@@ -77078,6 +77079,7 @@ def AllGatherMatmul(x1: Tensor,
     .ATTR(is_trans_b, Bool, false)\n
     .ATTR(gather_index, Int, 0)\n
     .ATTR(comm_turn, Int, 0)\n
+    .ATTR(is_gather_out, Bool, true)\n
     """
     op = get_default_ge_graph().op.add()
     op.type = "AllGatherMatmul"
@@ -77109,6 +77111,7 @@ def AllGatherMatmul(x1: Tensor,
     op.attr["is_trans_b"].b = is_trans_b
     op.attr["gather_index"].i = gather_index
     op.attr["comm_turn"].i = comm_turn
+    op.attr["is_gather_out"].b = is_gather_out
 
     # process outputs
     output_index = 0
