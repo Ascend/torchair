@@ -80,6 +80,7 @@ def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
             copy_args_to_copy_nodes[(dst, src)] = node
             copy_nodes[dst] = node
             to_replace_targets.add(node.args[1])
+    logger.debug(f"[_reinplace_input_mutated_ops] mutated input replace candidates: {to_replace_targets}")
 
     def any_use_of_views_after_node(node, shared_view_nodes, *, copy_node, mutated_arg):
         node_loc = node_order[node]
@@ -193,6 +194,8 @@ def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
                 if copy_node is not None:
                     replace_dict[copy_node] = copy_node.args[0]
                 node.target = inplace_op
+            else:
+                logger.debug(f"can_inplace return False, will skip reinplace for node: {node.target}")
     for node, replacement in replace_dict.items():
         while replacement in replace_dict:
             replacement = replace_dict[replacement]
@@ -207,6 +210,7 @@ def _reinplace_inplaceable_ops_pass(gm: GraphModule, *sample_args):
     Given a fx.GraphModule, modifies it to perform "reinplacing". Just call torch.fx.passes.reinplace.
     Note: this pass can not deal with mutated inputs.
     """
+    original_gm = gm
     try:
         logger.debug("[_reinplace_inplaceable_ops_pass]processing reinplace_inplaceable_ops_pass for graph: %s", id(gm))
         gm = reinplace(gm, *sample_args)
@@ -219,9 +223,8 @@ def _reinplace_inplaceable_ops_pass(gm: GraphModule, *sample_args):
                                " solutions: 1. upgrade torch version(>=2.5.0); 2. disable pass config by setting: "
                                "config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass=True") from e
         else:
-            raise RuntimeError("Unsupported case in pass when processing torch.fx.passes.reinplace. Please disable pass"
-                               "by setting config: "
-                               "config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass=True") from e
+            logger.warning_once(f"Skipped fx_pass torch.fx.passes.reinplace for unsupported fx graph {id(gm)}.")
+            return original_gm
     return gm
 
 

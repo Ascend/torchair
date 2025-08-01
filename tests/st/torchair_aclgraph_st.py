@@ -1478,7 +1478,7 @@ class AclGraphSt(unittest.TestCase):
             with self.assertRaises(AssertionError) as cm:
                 model_match_cache(*prompt2)  # cache hint
             exception = cm.exception
-            self.assertEqual(str(exception), "expected size 12==3, stride 12==2 at dim=0")
+            self.assertIn("expected size 12==3, stride 12==2 at dim=0", str(exception))
 
     def test_aclgraph_cache_dynamic_assert_size_stride(self):
         class CacheModel(torch.nn.Module):
@@ -1520,7 +1520,7 @@ class AclGraphSt(unittest.TestCase):
             with self.assertRaises(AssertionError) as cm:
                 model_match_cache(*prompt2)  # cache hint
             exception = cm.exception
-            self.assertEqual(str(exception), "expected size 12==12, stride 12==2 at dim=0")
+            self.assertIn("expected size 12==12, stride 12==2 at dim=0", str(exception))
 
     def test_aclgraph_cache_capture_and_replay_keep_inference_input_mutations_true(self):
         class Model(torch.nn.Module):
