@@ -105,8 +105,13 @@ Status MutiGearNpuGraphExecutor::AssembleInputsInner(const std::vector<const at:
   TNG_ASSERT(graph_data_->frozen_input_flag_list.size() == inputs.size());
   for (size_t i = 0U; i < inputs.size(); ++i) {
     TNG_ASSERT(CheckPlacement(graph_data_->input_placements[i], *inputs[i]),
-               "Input %zu placement is incompatible with expected %d.", i,
-               static_cast<int>(graph_data_->input_placements[i]));
+               "When executing multi gear, "
+               "expecting placement type of the %zu-th input to be [%s], but got [%s]. "
+               "Please ensure that the placement for the same input remains consistent "
+               "between graph compilation and graph execution. "
+               "If this error occurs in a cache_compile scenario, please ensure the input placements are consistent "
+               "both when generating the cache and when executing it.", i,
+               DebugString(graph_data_->input_placements[i]).c_str(), (inputs[i]->is_cpu() ? "HOST" : "DEVICE"));
 
     if (graph_data_->input_placements[i] == Placement::DEVICE) {
       TNG_ASSERT((input_gears_[i].empty() or IsBaseFormat(ge::Format(at_npu::native::get_npu_format(*inputs[i])))),
@@ -141,8 +146,13 @@ Status MutiGearNpuGraphExecutor::UpdateInputsInner(const std::vector<const at::T
       continue;
     }
     TNG_ASSERT(CheckPlacement(graph_data_->input_placements[i], *inputs[i]),
-               "Input %zu placement is incompatible with expected %d.", i,
-               static_cast<int>(graph_data_->input_placements[i]));
+               "When executing multi gear, "
+               "expecting placement type of the %zu-th input to be [%s], but got [%s]. "
+               "Please ensure that the placement for the same input remains consistent "
+               "between graph compilation and graph execution. "
+               "If this error occurs in a cache_compile scenario, please ensure the input placements are consistent "
+               "both when generating the cache and when executing it.", i,
+               DebugString(graph_data_->input_placements[i]).c_str(), (inputs[i]->is_cpu() ? "HOST" : "DEVICE"));
     if (graph_data_->input_placements[i] == Placement::DEVICE) {
       if (!input_gears_[i].empty()) {
         TNG_RETURN_IF_ERROR(UpdateSpecificDims(input_holders[i], *inputs[i], input_gears_[i]));

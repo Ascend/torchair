@@ -46,8 +46,13 @@ Status StaticNpuGraphExecutor::AssembleInputsInner(const std::vector<const at::T
 
   for (size_t i = 0U; i < inputs.size(); ++i) {
     TNG_ASSERT(CheckPlacement(graph_data_->input_placements[i], *inputs[i]),
-               "Input %zu placement is incompatible with expected %d.", i,
-               static_cast<int>(graph_data_->input_placements[i]));
+               "When executing static graph, "
+               "expecting placement type of the %zu-th input to be [%s], but got [%s]. "
+               "Please ensure that the placement for the same input remains consistent "
+               "between graph compilation and graph execution. "
+               "If this error occurs in a cache_compile scenario, please ensure the input placements are consistent "
+               "both when generating the cache and when executing it.", i,
+               DebugString(graph_data_->input_placements[i]).c_str(), (inputs[i]->is_cpu() ? "HOST" : "DEVICE"));
     if ((graph_data_->input_placements[i] == Placement::HOST) && !IsSupportHostInput()) {
       auto host_input_holder = at::empty((*inputs[i]).sizes(), (*inputs[i]).options().device(at::kPrivateUse1));
       size_t dst_size = static_cast<size_t>(host_input_holder.numel() * host_input_holder.element_size());
@@ -77,8 +82,13 @@ Status StaticNpuGraphExecutor::UpdateInputsInner(const std::vector<const at::Ten
       continue;
     }
     TNG_ASSERT(CheckPlacement(graph_data_->input_placements[i], *inputs[i]),
-               "Input %zu placement is incompatible with expected %d.", i,
-               static_cast<int>(graph_data_->input_placements[i]));
+               "When executing static graph, "
+               "expecting placement type of the %zu-th input to be [%s], but got [%s]. "
+               "Please ensure that the placement for the same input remains consistent "
+               "between graph compilation and graph execution. "
+               "If this error occurs in a cache_compile scenario, please ensure the input placements are consistent "
+               "both when generating the cache and when executing it.", i,
+               DebugString(graph_data_->input_placements[i]).c_str(), (inputs[i]->is_cpu() ? "HOST" : "DEVICE"));
     if ((graph_data_->input_placements[i] == Placement::HOST) && !IsSupportHostInput()) {
       if (host_input_holders_[i].second.first > 0) {
         TNG_RETURN_IF_ERROR(H2DMemcpy(host_input_holders_[i].first.data_ptr(), host_input_holders_[i].second.second,

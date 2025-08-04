@@ -18,6 +18,8 @@ namespace tng {
 const char *const OPTION_EXEC_FROZEN_INPUT_INDEXES = "ge.exec.frozenInputIndexes";
 const char *const OPTION_EXEC_HOST_INPUT_INDEXES = "ge.exec.hostInputIndexes";
 
+std::string DebugString(const tng::Placement &placement);
+
 std::string DebugString(const GraphData &graph_data);
 
 std::string DebugString(const at::Tensor &tensor);

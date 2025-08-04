@@ -79,8 +79,13 @@ Status DynamicNpuGraphExecutor::AssembleInputsInner(const std::vector<const at::
 
   for (size_t i = 0U; i < inputs.size(); ++i) {
     TNG_ASSERT(CheckPlacement(graph_data_->input_placements[i], *inputs[i]),
-               "Input %zu placement is incompatible with expected %d.", i,
-               static_cast<int>(graph_data_->input_placements[i]));
+               "When executing dynamic graph, "
+               "expecting placement type of the %zu-th input to be [%s], but got [%s]. "
+               "Please ensure that the placement for the same input remains consistent "
+               "between graph compilation and graph execution. "
+               "If this error occurs in a cache_compile scenario, please ensure the input placements are consistent "
+               "both when generating the cache and when executing it.", i,
+               DebugString(graph_data_->input_placements[i]).c_str(), (inputs[i]->is_cpu() ? "HOST" : "DEVICE"));
 
     if (graph_data_->input_placements[i] == Placement::DEVICE) {
       TNG_RETURN_IF_ERROR(AtNpuTensorToGeTensor(*inputs[i], input_holders[i]));
@@ -126,8 +131,13 @@ Status DynamicNpuGraphExecutor::UpdateInputsInner(const std::vector<const at::Te
       continue;
     }
     TNG_ASSERT(CheckPlacement(graph_data_->input_placements[i], *inputs[i]),
-               "Input %zu placement is incompatible with expected %d.", i,
-               static_cast<int>(graph_data_->input_placements[i]));
+               "When executing dynamic graph, "
+               "expecting placement type of the %zu-th input to be [%s], but got [%s]. "
+               "Please ensure that the placement for the same input remains consistent "
+               "between graph compilation and graph execution. "
+               "If this error occurs in a cache_compile scenario, please ensure the input placements are consistent "
+               "both when generating the cache and when executing it.", i,
+               DebugString(graph_data_->input_placements[i]).c_str(), (inputs[i]->is_cpu() ? "HOST" : "DEVICE"));
     if (graph_data_->input_placements[i] == Placement::DEVICE) {
       TNG_RETURN_IF_ERROR(AssembleDataAndStorageShapeToGe(*inputs[i], input_holders[i]));
     } else {
