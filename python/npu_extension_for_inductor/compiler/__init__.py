@@ -133,3 +133,8 @@ def async_compile_pgo(executor: Optional[AsyncCompile], artifacts: Dict[str, str
     logging.info("PGO compile for %s", launcher)
     _aclnn_compiler.compile_ascendc(artifacts, os.path.dirname(launcher), asserts_base, True, True)
     return _NpuInductorPgo(launcher)
+
+
+def get_pgo_kernel(artifacts: Dict[str, str]):
+    launcher = _get_pgo_lib(artifacts)
+    return _NpuInductorPgo(launcher)

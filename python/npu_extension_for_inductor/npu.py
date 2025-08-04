@@ -339,10 +339,6 @@ class NPUKernel(Kernel):
         self._pgo_def.clear()
         from npu_extension_for_inductor import codegen as npu_codegen
         self._pgo_def.splice(f"{fused_graph.name}_artifacts['pgo'] = '''{npu_codegen.codegen_pgo_def(fused_graph)}'''")
-        self._pgo_def.splice(
-            f"{self.kernel_name}_pgo = async_compile_ascendc(globals().get('async_compile_pgo', None), "
-            f"{fused_graph.name}_artifacts)"
-        )
         return self._pgo_def.getvalue()
 
     def record_summary(self, nodes, model_path=None):
@@ -410,20 +406,29 @@ class NPUKernel(Kernel):
 
         with open(file_path, "w") as f:
             pgo_code = IndentedBuffer()
-            pgo_code.writeline(f"import torch")
-            pgo_code.writeline(f"import torch_npu")
-            pgo_code.writeline(
-                "from npu_extension_for_inductor.compiler import async_compile_pgo as async_compile_ascendc")
             pgo_code.splice(self._kernel_def)
             pgo_code.writelines(["\n"] * 2)
             pgo_code.splice(self._pgo_def)
             pgo_code.writelines(["\n"] * 2)
-            pgo_code.writeline("from npu_extension_for_inductor.compiler import get_lib_dir")
-            pgo_code.writeline("import os")
-            pgo_code.writelines(["\n"] * 2)
-            pgo_code.writeline("if __name__ == '__main__':")
+            pgo_code.writeline("def compile():")
             with pgo_code.indent():
-                pgo_code.writeline(f"from torch._dynamo.testing import rand_strided")
+                pgo_code.writeline(
+                    "from npu_extension_for_inductor.compiler import async_compile_pgo as async_compile_ascendc")
+                pgo_code.writeline(
+                    f"{self.kernel_name}_pgo = async_compile_ascendc(globals().get('async_compile_pgo', None), "
+                    f"{self.fused_graph.name}_artifacts)"
+                )
+            pgo_code.writelines(["\n"] * 2)
+            pgo_code.writeline("def run(device_id: int = 0):")
+            with pgo_code.indent():
+                pgo_code.writeline("import torch")
+                pgo_code.writeline("import torch_npu")
+                pgo_code.writeline("from npu_extension_for_inductor.compiler import get_lib_dir")
+                pgo_code.writeline("from torch._dynamo.testing import rand_strided")
+                pgo_code.writeline("import os")
+                pgo_code.writeline("from npu_extension_for_inductor.compiler import get_pgo_kernel")
+                pgo_code.writeline(f"{self.kernel_name}_pgo = get_pgo_kernel({self.fused_graph.name}_artifacts)")
+                pgo_code.writeline("torch_npu.npu.set_device(f'npu:{device_id}')")
                 symbols_to_init = self._get_symbols_hints(seen_symbols)
                 for k in sorted(symbols_to_init.keys()):
                     pgo_code.writeline(f"{k} = {symbols_to_init[k]}")
@@ -431,7 +436,7 @@ class NPUKernel(Kernel):
                     layout = V.graph.get_buffer(buffer).layout
                     pgo_code.writeline(
                         f"{buffer} = rand_strided({tuple(layout.size)}, {tuple(layout.stride)}, "
-                        f"device='{layout.device}', dtype={layout.dtype})")
+                        f"device=f'npu:{{device_id}}', dtype={layout.dtype})")
                 call_args = used_buffers + [str(v) for v in self.fused_graph.size_vars]
                 ascend_dir = os.path.dirname(os.getenv("ASCEND_OPP_PATH", "/usr/local/Ascend/latest/opp"))
                 mspti_lib_path = os.path.join(ascend_dir, "tools/mspti/lib64/libmspti.so")
@@ -445,7 +450,37 @@ class NPUKernel(Kernel):
                 pgo_code.writeline(f"lib_dir = get_lib_dir({self.fused_graph.name}_artifacts)")
                 pgo_code.writeline(f"# 删除kernel.so 触发正常执行重编译")
                 pgo_code.writeline(f'os.remove(os.path.join(lib_dir, "kernel.so"))')
-            
+            pgo_code.writelines(["\n"] * 2)
+            pgo_code.writeline("if __name__ == '__main__':")
+            with pgo_code.indent():
+                pgo_code.writeline("import argparse")
+                pgo_code.writeline(
+                    "parser = argparse.ArgumentParser("
+                    "description='PGO code for NPU kernel, support compile and run')"
+                )
+                pgo_code.writeline(
+                    "parser.add_argument("
+                    "'action', choices=['compile', 'run'], nargs='?', "
+                    "help='Action: compile/run, omit for compile and run'"
+                    ")"
+                )
+                pgo_code.writeline(
+                    "parser.add_argument("
+                    "'-d', '--device_id', type=int, default=0, "
+                    "help='Device ID to run on'"
+                    ")"
+                )
+                pgo_code.writeline("args = parser.parse_args()")
+                pgo_code.writeline("if args.action == 'compile':")
+                with pgo_code.indent():
+                    pgo_code.writeline("compile()")
+                pgo_code.writeline("elif args.action == 'run':")
+                with pgo_code.indent():
+                    pgo_code.writeline("run(device_id=args.device_id)")
+                pgo_code.writeline("else:")
+                with pgo_code.indent():
+                    pgo_code.writeline("compile()")
+                    pgo_code.writeline("run(device_id=args.device_id)")
             content = pgo_code.getvalue()
             import re
             pattern = (
