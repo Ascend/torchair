@@ -28,6 +28,9 @@ def set_dim_gears(t: torch.Tensor, dim_gears: Dict[int, Union[List[int], Tuple[i
             if not isinstance(gear, int):
                 raise AssertionError(f"Element at index {index} of value for dim index {dim_index} in "
                                      f"dim_gears must be an integer, but got {type(gear)}.")
+            if gear == 0:
+                raise AssertionError(f"Gear value at index {index} for dim index {dim_index} must "
+                                     f"not be 0, but got {gear}.")
         if not 2 <= len(gears) <= 100:
             raise AssertionError(f"Length of gears for dim index {dim_index} in dim_gears must be in "
                                  f"range [2, 100], but got {len(gears)}.")

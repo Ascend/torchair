@@ -126,6 +126,14 @@ class TorchairSt(unittest.TestCase):
         self.assertEqual(str(exception), "Length of gears for dim index 0 in dim_gears must be in range [2, 100],"
                          " but got 101.")
 
+    def test_set_dim_gears_value(self):
+        x = torch.ones([2, 2])
+
+        with self.assertRaises(AssertionError) as cm:
+            set_dim_gears(x, {0: [0, 2]})
+        exception = cm.exception
+        self.assertEqual(str(exception), "Gear value at index 0 for dim index 0 must not be 0, but got 0.")
+
     def test_not_parse_stack_over(self):
         class Model(torch.nn.Module):
             def __init__(self):
