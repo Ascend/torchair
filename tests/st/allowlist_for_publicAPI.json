@@ -15,7 +15,8 @@
         "DataType",
         "Format",
         "Tensor",
-        "TensorSpec"
+        "TensorSpec",
+        "Clone"
       ],
     "torchair.ge.attr": [
         "Bool",

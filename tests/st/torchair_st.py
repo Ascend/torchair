@@ -2044,6 +2044,27 @@ class TorchairSt(unittest.TestCase):
         res = model(input1)
         self.assertEqual(torch._C._is_alias_of(res, input1), True)
 
+    def test_custom_tensor_clone(self):
+        m = torch.library.Library("test", "DEF")
+        m.define("custom_clone_tensor(Tensor x) -> Tensor")
+
+        @torch.library.impl(m, "custom_clone_tensor", "Meta")
+        def custom_clone_tensor_meta(x):
+            return torch.empty_like(x)
+        
+        @torchair.register_fx_node_ge_converter(torch.ops.test.custom_clone_tensor.default)
+        def converter_custom_clone_tensor(x):
+            return torchair.ge.Clone(x)
+        
+        @torch.compile(backend=torchair.get_npu_backend(), dynamic=True)
+        def custom_clone(x):
+            return torch.ops.test.custom_clone_tensor.default(x)
+
+        x = torch.randn(2, 2, dtype=torch.float32)
+        y = custom_clone(x)
+        self.assertEqual(y.dtype, x.dtype)
+        self.assertEqual(y.shape, x.shape)
+        
 
 if __name__ == '__main__':
     unittest.main()
