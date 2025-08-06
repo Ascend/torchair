@@ -14,19 +14,7 @@ from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32,
 from torchair._ge_concrete_graph.utils import dtype_promote
 
 
-@declare_supported(
-    [
-        # 支持输入q、k、v，BSH三维格式,q:b=1, s=2048, h=40*128;k/v:b=1, s=2048, h=40*128;
-        Support(F16(1, 2048, 40 * 128), F16(1, 2048, 40 * 128), F16(1, 2048, 40 * 128),
-            num_query_heads=40, input_layout="BSH"),
-        # 支持输入q、k、v，BNSD四维格式
-        Support(F16(1, 40, 2048, 128), F16(1, 40, 2048, 128), F16(1, 40, 2048, 128),
-            num_query_heads=40, input_layout="BNSD"),
-        # 支持设置scale_value
-        Support(F16(1, 40, 2048, 128), F16(1, 40, 2048, 128), F16(1, 40, 2048, 128),
-            input_layout="BNSD", num_query_heads=40, softmax_scale=0.0884),
-    ]
-)
+
 @register_fx_node_ge_converter(torch.ops.npu.npu_fused_infer_attention_score_v2.default)
 def convert_npu_npu_fused_infer_attention_score_v2(
     query: Tensor,
