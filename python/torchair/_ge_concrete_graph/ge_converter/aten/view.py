@@ -38,3 +38,16 @@ def conveter_aten_view_default(
 def conveter_aten_view_dtype(self: Tensor, dtype: int, meta_outputs: TensorSpec = None):
     """NB: aten::view.dtype(Tensor(a) self, ScalarType dtype) -> Tensor(a)"""
     raise NotImplementedError("torch.ops.aten.view.dtype ge_converter is not implemented!")
+
+
+@register_fx_node_ge_converter(torch.ops.aten.reshape.default)
+def conveter_aten_reshape_default(
+    self: Tensor, shape: Union[List[int], Tensor], meta_outputs: TensorSpec = None
+):
+    """NB: aten::reshape(Tensor(a) self, SymInt[] shape) -> Tensor(a)"""
+    # Use dtype_promote in specific case to reduce the number of Cast operators
+    if isinstance(shape, list):
+        shape = dtype_promote(shape, target_dtype=DataType.DT_INT64)
+    elif shape.dtype != DataType.DT_INT64 and shape.dtype != DataType.DT_INT32:
+        shape = dtype_promote(shape, target_dtype=DataType.DT_INT64)
+    return ge.Reshape(self, shape)

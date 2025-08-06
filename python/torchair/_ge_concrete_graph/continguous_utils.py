@@ -12,7 +12,8 @@ from torchair.ge._ge_graph import is_sym, Tensor
 from torchair._ge_concrete_graph.continguous import gen_contiguous_storagesize, gen_contiguous_stride, optimize_view
 from torchair.scope._scope_attr import has_scope_attr
 
-view_white_list = {'aten.permute.default': 0, 'aten.view.default': 0, 'aten.transpose.int': 0, 'aten.t.default': 0}
+view_white_list = {'aten.permute.default': 0, 'aten.view.default': 0, 'aten.transpose.int': 0, 'aten.t.default': 0, 
+                   'aten.reshape.default': 0}
 
 
 class ViewFakeTensor:
@@ -93,7 +94,7 @@ def is_view_case(target, args, meta_outputs):
         else:
             fake = getattr(args[input_tensor_index], "view_faketensor")
 
-        if str(target) == "aten.view.default":
+        if str(target) == "aten.view.default" or str(target) == 'aten.reshape.default':
             set_fake_mapsym(args[1], fake)
             if not all([(not is_sym(meta_dim) or str(meta_dim) in fake.mapsym.keys()) \
                 for meta_dim in meta_outputs.size()]):
