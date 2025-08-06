@@ -1,0 +1,5 @@
+{
+    "torch_npu.dynamo.torchair.ge.Clone": {
+        "signature": "(x: torchair.ge.TensorBase, *, dependencies=[], node_name=None)"
+    }
+}
