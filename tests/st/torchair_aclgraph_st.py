@@ -1265,7 +1265,7 @@ class AclGraphSt(unittest.TestCase):
         with capture_logger() as stdout:
             res = model1(x)
         captured_output = stdout.getvalue()
-        self.assertTrue("After reconstructing fx_graph" in captured_output)
+        self.assertTrue("After reconstructing fx_graph" not in captured_output)
 
         with capture_logger() as stdout:
             res = model1(x)
@@ -1278,7 +1278,7 @@ class AclGraphSt(unittest.TestCase):
         with capture_logger() as stdout:
             res = model2(x)
         captured_output = stdout.getvalue()
-        self.assertTrue("After reconstructing fx_graph" in captured_output)
+        self.assertTrue("After reconstructing fx_graph" not in captured_output)
         pool_id2 = _get_pool_id
 
         self.assertTrue(pool_id1 != pool_id2)

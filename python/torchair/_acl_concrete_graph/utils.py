@@ -69,7 +69,6 @@ class GraphMeta:
     outputs_meta: List[Union[TensorMetadata, Number]]
     outputs_weakref: List[WeakRef]
     mem_state_after_capture: Any
-    is_first_replay: bool
     retained_outputs: List[torch.Tensor] = None
 
 

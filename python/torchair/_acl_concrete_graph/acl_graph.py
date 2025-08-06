@@ -7,6 +7,7 @@ import os
 import pickle
 import sys
 import sympy
+import warnings
 
 import torch
 from torch import fx
@@ -596,6 +597,7 @@ class AclGraph(object):
         self._device = torch_npu.npu.current_device()
         self._original_mem_state = None
         self._graphs_meta: Dict[str, GraphMeta] = {}
+        self.stale_storages_ptr = set()
 
         # members for capture, provided by AclConcreteGraph
         self._captured = False
@@ -714,10 +716,9 @@ class AclGraph(object):
                                                  captured_inputs=args,
                                                  outputs_meta=[],
                                                  outputs_weakref=[],
-                                                 mem_state_after_capture=None,
-                                                 is_first_replay=True)
-        logger.debug('No find captured AclGraph{id: %s} of fx_graph %s with graph key {%s}, and start to capture it.',
-                     id(self.graph[graph_key]), self.name, graph_key)
+                                                 mem_state_after_capture=None)
+        logger.info('No find captured AclGraph{id: %s} of fx_graph %s with graph key {%s}, and start to capture it.',
+                    id(self.graph[graph_key]), self.name, graph_key)
 
         stale_storage_set = set()
         for key, _ in self._graphs_meta.items():
@@ -725,19 +726,20 @@ class AclGraph(object):
                 continue
             for output_ref in self._graphs_meta[key].outputs_weakref:
                 ref = output_ref()
-                if ref is not None and isinstance(ref, torch.Tensor):
+                if ref is not None and isinstance(ref, torch.Tensor) and \
+                        ref.untyped_storage()._cdata in self.stale_storages_ptr:
                     stale_storage_set.add(ref.untyped_storage()._cdata)
         stale_storages = list(stale_storage_set)
 
         enable_mempool_reuse = not ("disable_mempool_reuse_in_same_fx" in self.config.keys() and self.config[
             "disable_mempool_reuse_in_same_fx"] == "1")
-        enable_output_clone = "enable_output_clone" in self.config.keys() and self.config[
-            "enable_output_clone"] == "1"
-        if enable_mempool_reuse and enable_output_clone:
+        if enable_mempool_reuse:
             torch_npu._C._npu_setCheckpointPoolState(self.device, self._original_mem_state, stale_storages, [])
             logger.debug('After setting to original memory state for fx_graph %s for graph key{%s}. '
                          'The stale storage is %s, and the current memory state is {%s}.',
                          self.name, graph_key, stale_storages, debug_mem_state())
+            for ptr in stale_storages:
+                self.stale_storages_ptr.discard(ptr)
 
         # start capture
         with record_function("acl_graph_capture"):
@@ -830,71 +832,69 @@ class AclGraph(object):
                 f'The lengths of the outputs tensor meta {len(self._graphs_meta[graph_key].outputs_meta)} and '
                 f'the outputs tensor ref {len(self._graphs_meta[graph_key].outputs_weakref)} do not match.')
 
-        outputs = []
-        have_invalid_weakref = False
+        self.set_to_original_state_bofore_reconstruct(graph_key)
 
+        outputs = []
+        have_invalid_weakref = True
         for idx, output_meta in enumerate(self._graphs_meta[graph_key].outputs_meta):
             output_ref = self._graphs_meta[graph_key].outputs_weakref[idx]()
-            if output_ref is None:
+            if output_ref is None or isinstance(output_ref, torch.Tensor):
+                # Reconstruct outputs for the following case:
+                # 1. Invalid tensor ref.
+                # 2. Valid tensor ref that have been set to stale storage.
                 output_i = reconstruct_from_tensor_metadata(output_meta)
                 self._graphs_meta[graph_key].outputs_weakref[idx].swap_weakref(output_i)
                 outputs.append(output_i)
-                have_invalid_weakref = True
             else:
-                # valid tensor ref and other type obj can be returned directly.
+                # other non tensor obj can be returned directly.
                 outputs.append(output_ref)
 
         if have_invalid_weakref:
             enable_output_clone = "enable_output_clone" in self.config.keys() and self.config[
                 "enable_output_clone"] == "1"
             if enable_output_clone:
-                self.set_reconstructed_outputs_deleter(graph_key, outputs)
-                # TO DO: Add clone temporarily. Maybe no deleter in the future.
-                clone_outputs = []
-                for out in outputs:
-                    if isinstance(out, torch.Tensor):
-                        clone_outputs.append(out.clone())
-                    else:
-                        clone_outputs.append(out)
-                outputs = clone_outputs
+                outputs = [out.clone() if isinstance(out, torch.Tensor) else out for out in outputs]
             else:
-                logger.warning_once(
-                    f"When debug.aclgraph.enable_output_clone is False, output tensor should not be retained, "
-                    f"otherwise it may cause functional errors for mempool reuse in same fx graph.")
+                self.set_reconstructed_outputs_deleter(graph_key, outputs)
+
+                if len(self.graphs_meta) > 1:
+                    warn_msg = "NOTIONS: when debug.aclgraph.enable_output_clone=False, outputs cannot be retained. " \
+                               "The retained output tensors will be overwritten by subsequent run, " \
+                               "this may cause precision errors. " \
+                               "You can remove the persistence of all the output tensors in script or " \
+                               "set debug.aclgraph.enable_output_clone=True to fix this case."
+                    warnings.warn(warn_msg)
+                    warnings.filterwarnings("ignore", message=warn_msg)
         else:
             logger.debug('All output tensors weak ref are valid, '
                          'no need to reconstruct fx_graph %s for graph key{%s}.',
                          self.name, graph_key)
-
-        if self._graphs_meta[graph_key].is_first_replay:
-            self._graphs_meta[graph_key].is_first_replay = False
 
         return outputs
 
     def set_to_original_state_bofore_reconstruct(self, graph_key: str) -> None:
         stale_storage_set = set()
         for key, _ in self._graphs_meta.items():
-            if key == graph_key:
-                continue
             for output_ref in self._graphs_meta[key].outputs_weakref:
                 ref = output_ref()
-                if ref is not None and isinstance(ref, torch.Tensor):
+                if ref is not None and isinstance(ref, torch.Tensor) and \
+                        ref.untyped_storage()._cdata in self.stale_storages_ptr:
                     stale_storage_set.add(ref.untyped_storage()._cdata)
         other_graph_stale_storages = list(stale_storage_set)
 
         import torch_npu
-        if len(other_graph_stale_storages) > 0 and not self._graphs_meta[graph_key].is_first_replay:
+        if len(other_graph_stale_storages) > 0:
             # reset other graph live tensors to stale storages
             torch_npu._C._npu_setCheckpointPoolState(self.device, self._original_mem_state,
                                                      other_graph_stale_storages, [])
+            for ptr in other_graph_stale_storages:
+                self.stale_storages_ptr.discard(ptr)
 
         logger.debug('Reset fx_graph %s other graph key outputs stale storage cdata %s, '
                      'and set to original memory state for AclGraph{id: %s} with graph key{%s}.',
                      self.name, other_graph_stale_storages, id(self.graph[graph_key]), graph_key)
 
     def set_reconstructed_outputs_deleter(self, graph_key: str, reconstructed_outputs: List[torch.Tensor]) -> None:
-        self.set_to_original_state_bofore_reconstruct(graph_key)
-
         reconstructed_outputs_to_add_deleter = []
         for output_i in reconstructed_outputs:
             if isinstance(output_i, torch.Tensor):
@@ -905,6 +905,8 @@ class AclGraph(object):
         import torch_npu
         torch_npu._C._npu_setCheckpointPoolState(self.device, self._graphs_meta[graph_key].mem_state_after_capture,
                                                  stale_storages, reconstructed_outputs_to_add_deleter)
+        self.stale_storages_ptr.update(reconstructed_outputs_to_add_deleter)
+
         logger.debug('After reconstructing fx_graph %s graph key{%s} outputs, '
                      'the storages to add deleter are %s, the memory state is {%s}.',
                      self.name, graph_key, reconstructed_outputs_to_add_deleter, debug_mem_state())
