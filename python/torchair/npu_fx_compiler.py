@@ -24,7 +24,6 @@ except ModuleNotFoundError:
 from torch.profiler import record_function
 from torch.utils._mode_utils import no_dispatch
 from torch._dynamo.utils import detect_fake_mode
-from torch._inductor.fx_passes.post_grad import view_to_reshape
 
 from torchair.core._concrete_graph import ConcreteGraphBase, ValuePack, _is_symlist
 from torchair.core.utils import logger
@@ -196,11 +195,18 @@ def _summary(v):
     return f'{type(v)}({v})'
 
 
+def _view_to_reshape(graph_module: torch.fx.GraphModule):
+    # Replace view ops in the GraphModule to reshape ops.
+    for node in graph_module.graph.nodes:
+        if node.target == torch.ops.aten.view.default:
+            node.target = torch.ops.aten.reshape.default
+
+
 def _optimize_fx(graph_module: torch.fx.GraphModule):
     # More optimization passes here
     graph_module = _optimize_sym_input(graph_module)
     logger.debug('after sym input optimization, graph is %s', graph_module.graph)
-    view_to_reshape(graph_module)
+    _view_to_reshape(graph_module)
     logger.debug('after view to reshape optimization, graph is %s', graph_module.graph)
     return graph_module
 
