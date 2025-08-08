@@ -206,8 +206,6 @@ def _optimize_fx(graph_module: torch.fx.GraphModule):
     # More optimization passes here
     graph_module = _optimize_sym_input(graph_module)
     logger.debug('after sym input optimization, graph is %s', graph_module.graph)
-    _view_to_reshape(graph_module)
-    logger.debug('after view to reshape optimization, graph is %s', graph_module.graph)
     return graph_module
 
 
