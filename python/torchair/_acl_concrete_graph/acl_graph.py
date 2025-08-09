@@ -857,14 +857,16 @@ class AclGraph(object):
             else:
                 self.set_reconstructed_outputs_deleter(graph_key, outputs)
 
-                if len(self.graphs_meta) > 1:
-                    warn_msg = "NOTIONS: when debug.aclgraph.enable_output_clone=False, outputs cannot be retained. " \
-                               "The retained output tensors will be overwritten by subsequent run, " \
-                               "this may cause precision errors. " \
-                               "You can remove the persistence of all the output tensors in script or " \
-                               "set debug.aclgraph.enable_output_clone=True to fix this case."
-                    warnings.warn(warn_msg)
-                    warnings.filterwarnings("ignore", message=warn_msg)
+                warn_msg = "Because acl graph fixes memory addresses, acl graphs do not have a great way of " \
+                           "handling live tensors from a previous invocation. " \
+                           "The retained memory of acl graph output tensors will be overwritten by " \
+                           "subsequent executions, which may cause precision issues. " \
+                           "See https://docs.pytorch.org/docs/main/torch.compiler_cudagraph_trees.html#limitations " \
+                           "for more details. To resolve this, you can either: " \
+                           "1. Remove the memory retention of all the output tensors in your script; " \
+                           "2. Enable debug option by setting debug.aclgraph.enable_output_clone=True."
+                warnings.warn(warn_msg)
+                warnings.filterwarnings("ignore", message=warn_msg)
         else:
             logger.debug('All output tensors weak ref are valid, '
                          'no need to reconstruct fx_graph %s for graph key{%s}.',
