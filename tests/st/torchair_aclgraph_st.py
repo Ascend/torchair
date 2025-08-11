@@ -1565,6 +1565,37 @@ class AclGraphSt(unittest.TestCase):
             f"not found in logs: {cm.output}"
         )
 
+    def test_compile_static_kernel(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear1 = torch.nn.Linear(2, 2)
+                self.linear2 = torch.nn.Linear(2, 2)
+
+            def forward(self, x):
+                ln1 = self.linear1(x)
+                ln2 = self.linear2(x)
+                return ln1 + ln2
+
+        model = Model()
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.aclgraph_config.kernel_aot_optimization = True
+        config.aclgraph_config.kernel_aot_optimization_build_dir = ".."
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+        model = torch.compile(Model(), backend=aclgraph_backend, dynamic=False)
+        x = torch.randn([3, 2])
+
+        with self.assertLogs(logger, level="INFO") as cm:
+            try:
+                model(x)
+            except ValueError as e:
+                self.assertTrue(
+                    any("start compiler static kernel" in log for log in cm.output),
+                    f"Expected INFO 'start compiler static kernel' "
+                    f"not found in logs: {cm.output}"
+                )
+
 
 if __name__ == '__main__':
     unittest.main()

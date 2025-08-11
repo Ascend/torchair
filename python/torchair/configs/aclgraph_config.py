@@ -1,6 +1,6 @@
 __all__ = []
 
-from torchair.configs._option_base import OptionValue
+from torchair.configs._option_base import OptionValue, MustExistedPathValue
 from torchair.configs._option_base import NpuBaseConfig
 
 
@@ -11,5 +11,7 @@ class _AclGraphConfig:
 
     def __init__(self) -> None:
         self.use_custom_pool = None
+        self.kernel_aot_optimization = OptionValue(False, [True, False])
+        self.kernel_aot_optimization_build_dir = MustExistedPathValue("./")
 
         super(_AclGraphConfig, self).__init__()

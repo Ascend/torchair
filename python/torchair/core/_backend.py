@@ -9,6 +9,7 @@ from collections import defaultdict
 
 from typing import Dict, List
 import torch
+from torchair._acl_concrete_graph.static_kernel import uninstall_static_kernel
 from torchair._utils.error_code import pretty_error_msg
 from torchair.core.utils import logger
 from torchair._ge_concrete_graph.utils import _get_input_shape
@@ -96,6 +97,7 @@ def init_device_stdout_channel():
 @pretty_error_msg
 def finalize_graph_engine():
     _torchair.FinalizeGraphEngine()
+    uninstall_static_kernel()
 
 
 atexit.register(finalize_graph_engine)

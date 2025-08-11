@@ -20,6 +20,7 @@ from torchair.scope._scope_attr import guard_with_user_stream_scope
 from torchair._acl_concrete_graph.utils import reconstruct_args_kwargs
 from torchair._acl_concrete_graph.utils import (debug_mem_state, WeakRef, GraphMeta, get_tensor_metadata,
                                                 reconstruct_from_tensor_metadata, reconstruct_args_kwargs)
+from torchair._acl_concrete_graph.static_kernel import compile_static_kernel
 
 
 @dataclass
@@ -684,6 +685,10 @@ class AclGraph(object):
                 for _ in range(self.num_warmup_iters):
                     self.fx_graph(*args, **kwargs)
                     torch.npu.synchronize()
+
+            if self.config.get('kernel_aot_optimization', False):
+                path = self.config.get('kernel_aot_optimization_build_dir', None)
+                compile_static_kernel(self.fx_graph, *args, build_dir=path, **kwargs)
 
             self._unupdated_input_func = get_unupdated_input_fn(self._unupdated_sym_input_index)
             self._updated_input_func = get_updated_ops_fn(self._ops_update_rulers)
