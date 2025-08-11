@@ -1,16 +1,4 @@
-from typing import (
-    Any, Callable, ContextManager, Iterator, List, Literal, NamedTuple, Optional, Sequence, Tuple, TypeVar,
-    Union, overload,
-)
-
-import torch
-from torch.types import Number
-from torchair._ge_concrete_graph import ge_apis as ge
-from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
-from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
-from torchair._ge_concrete_graph.supported_declaration import F32, F16, I64, Support
-from torchair._ge_concrete_graph.utils import dtype_promote
-from torchair.core.utils import logger
+from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 
 
 @declare_supported([

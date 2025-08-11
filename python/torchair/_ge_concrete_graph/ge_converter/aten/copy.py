@@ -1,11 +1,4 @@
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Union, Callable
-import torch
-from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge._ge_graph import Tensor, TensorSpec
-from torchair._ge_concrete_graph import ge_apis as ge
-from torchair._ge_concrete_graph.utils import dtype_promote
-from torchair._ge_concrete_graph.fx2ge_converter import declare_supported
-from torchair._ge_concrete_graph.supported_declaration import Support, F32, F16
+from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 
 
 @declare_supported([
