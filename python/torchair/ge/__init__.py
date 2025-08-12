@@ -22,4 +22,11 @@ def Cast(x: Tensor, *, dst_type: int, dependencies=[], node_name=None):
 
 
 def Clone(x: Tensor, *, dependencies=[], node_name=None):
+    def check_input_is_tensor(target):
+        if not isinstance(target, Tensor):
+            raise AssertionError(f"input '{target}' need to be Tensor, please check your input")
+    check_input_is_tensor(x)
+    if dependencies is not None:
+        for dependency in dependencies:
+            check_input_is_tensor(dependency)
     return TensorMove(x=x, dependencies=dependencies, node_name=node_name)

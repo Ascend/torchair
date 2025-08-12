@@ -818,10 +818,35 @@ def default_ge_graph(graph):
 
 
 _g_name_dict = dict()
+_gegraph_opname_dict = dict()
+
+
+def update_cur_gegraph(gegraph):
+    if gegraph not in _gegraph_opname_dict:
+        _gegraph_opname_dict[gegraph] = []
+        for op in gegraph.op:
+            _gegraph_opname_dict[gegraph].append(op.name)
+            
+
+def remove_from_gegraph_dict(op_name):
+    gegraph = get_default_ge_graph()
+    if gegraph not in _gegraph_opname_dict:
+        return
+    if op_name in _gegraph_opname_dict[gegraph]:
+        _gegraph_opname_dict[gegraph].remove(op_name)
 
 
 def next_unique_name(name: str, op: str):
     if name is not None:
+        if name.strip() == "":
+            raise AssertionError(f"empty node name '{name}' is not allowed, "
+                                 "you can remove the node_name parameter or make sure it is not empty")
+        gegraph = get_default_ge_graph()
+        update_cur_gegraph(gegraph)
+        if name in _gegraph_opname_dict[gegraph]:
+            raise AssertionError(f"duplicated node name '{name}' is not allowed, "
+                                 "you can remove the node_name parameter or make sure it is unique")
+        _gegraph_opname_dict[gegraph].append(name)
         return name
 
     if op not in _g_name_dict:

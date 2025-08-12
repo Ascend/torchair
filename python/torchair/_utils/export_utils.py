@@ -4,7 +4,7 @@ import torch
 
 from torchair.core.utils import logger
 from torchair._ge_concrete_graph import ge_apis as ge
-from torchair.ge._ge_graph import torch_type_to_ge_type
+from torchair.ge._ge_graph import torch_type_to_ge_type, remove_from_gegraph_dict
 from torchair.ge._ge_graph import compat_as_bytes, GeGraph
 from torchair._ge_concrete_graph.utils import dump_graph
 from torchair._utils.path_manager import PathManager
@@ -98,14 +98,16 @@ def _convert_data_to_const(inputs, export_graph, file_path, weight_name):
             if not inp.is_contiguous():
                 raise AssertionError("The value of inputs must be contiguous.")
             logger.debug(f'  Weight {i} dtype: {inp.dtype} shape: {inp.shape}')
+            op_name = export_graph.op[i].name
+            export_graph.op[i].Clear()
+            remove_from_gegraph_dict(op_name)
             if weight_externalized:
                 y = ge.FileConstant(shape=list(inp.shape),
                                     dtype=torch_type_to_ge_type(inp.dtype),
                                     file_path=file_path + "/" + file_id.replace(".", "_"),
-                                    node_name=export_graph.op[i].name)
+                                    node_name=op_name)
             else:
-                y = _make_const_node(inp, export_graph.op[i].name)
-            export_graph.op[i].Clear()
+                y = _make_const_node(inp, op_name)
             export_graph.op[i].MergeFrom(y.node)
 
     _sort_graph_data_index(export_graph)
