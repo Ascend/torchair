@@ -10,6 +10,7 @@
 #include <ATen/record_function.h>
 #include "acl/acl_rt.h"
 #include "acl/acl_tdt.h"
+#include "acl/acl_mdl.h"
 #include "ge/ge_api_types.h"
 #include "ge/ge_api.h"
 #include "hdc_channel.h"
@@ -53,6 +54,11 @@ Status Session::Initialize(const std::map<std::string, std::string> &options) {
     TNG_LOG(INFO) << "  " << option.first << ": " << option.second;
     if (option.first == "ge_run_with_torch_npu") {
       run_with_torch_npu_ = option.second == "1";
+      continue;
+    }
+    if (option.first == "ge_dump_with_acl_config") {
+      TNG_RETURN_IF_ERROR(AclDumpConfigInit(option.second));
+      aclmd_initialzed_ = true;
       continue;
     }
     ge_options[option.first.c_str()] = option.second.c_str();
@@ -108,6 +114,10 @@ Status Session::Finalize() {
     TNG_LOG(ERROR) << "ACL synchronize device failed in Finalize, return " << sync_ret;
   } else {
     TNG_LOG(DEBUG) << "ACL synchronize device success in Finalize.";
+  }
+
+  if (aclmd_initialzed_) {
+    (void)AclDumpConfigFinalize();
   }
 
   global_ge_session.reset(nullptr);
@@ -272,6 +282,22 @@ Status Session::FastExecuteGraph(uint32_t graph_id, const std::vector<gert::Tens
   TNG_LOG(DEBUG) << "Start to session execute graph " << graph_id;
 
   TNG_ASSERT_GE_OK(fast_execute_graph_async_(*global_ge_session, graph_id, stream, inputs, outputs));
+  return Status::Success();
+}
+
+Status Session::AclDumpConfigInit(const std::string &dump_path) {
+  auto dump_ret = aclmdlInitDump();
+  TNG_ASSERT(dump_ret == ACL_ERROR_NONE, "Fail in acl init dump, return %d", dump_ret);
+  dump_ret = aclmdlSetDump(const_cast<char *>(dump_path.c_str()));
+  TNG_ASSERT(dump_ret == ACL_ERROR_NONE, "Fail in acl set dump, return %d", dump_ret);
+  TNG_LOG(DEBUG) << "Success to config aclmd dump";
+  return Status::Success();
+}
+
+Status Session::AclDumpConfigFinalize() {
+  auto dump_ret = aclmdlFinalizeDump();
+  TNG_ASSERT(dump_ret == ACL_ERROR_NONE, "Fail in acl finalize dump, return %d", dump_ret);
+  TNG_LOG(DEBUG) << "Success to finalize aclmd dump";
   return Status::Success();
 }
 }  // namespace tng

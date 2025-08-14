@@ -91,6 +91,19 @@ class MustExistedPathValue(OptionValue):
             raise FileNotFoundError('Please set legal dir path, '
                                     + f'{str(v)} is not found or is not a file directory!')
         self._value = v
+        
+
+class MustExistedFileAddr(OptionValue):
+    @property
+    def value(self):
+        return super().value
+
+    @value.setter
+    def value(self, v, suffix=".json"):
+        if v is None or not (os.path.exists(v) and v.endswith(suffix)):
+            raise FileNotFoundError('Please set legal file path, '
+                                    + f'{str(v)} is not found or is not in {suffix} format!')
+        self._value = v
 
 
 class RegexValue(OptionValue):

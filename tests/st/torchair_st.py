@@ -18,7 +18,7 @@ from torchair._ge_concrete_graph.fx2ge_converter import ExecutorType, Placement,
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.graph_pass import optimize_reference_op_redundant_copy
 from torchair.configs.compiler_config import CompilerConfig
-from torchair.core._backend import initialize_graph_engine
+from torchair.core._backend import initialize_graph_engine, finalize_graph_engine
 from torchair._ge_concrete_graph.utils import _append_real_input_shape
 from torchair_st_utils import capture_stdout, generate_faked_module
 
@@ -1013,6 +1013,10 @@ class TorchairSt(unittest.TestCase):
         with self.assertRaises(FileNotFoundError) as context:
             config_error.dump_config.dump_path = "./*****"
         self.assertTrue('Please set legal dir path, ./***** is not found or is not a file directory!'
+                        in str(context.exception))
+        with self.assertRaises(FileNotFoundError) as context:
+            config_error.dump_config.dump_config_path = "./*****"
+        self.assertTrue('Please set legal file path, ./***** is not found or is not in .json format!'
                         in str(context.exception))
         with self.assertRaises(FileNotFoundError) as context:
             config_error.aoe_config.work_path = "./*****"
@@ -2064,6 +2068,31 @@ class TorchairSt(unittest.TestCase):
         y = custom_clone(x)
         self.assertEqual(y.dtype, x.dtype)
         self.assertEqual(y.shape, x.shape)
+        
+    def test_fx_data_dump_data(self):
+        config.dump_config.enable_dump = True
+        config.dump_config.dump_data = "stats"
+        config.dump_config.dump_data = "tensor"
+        with self.assertRaises(ValueError):
+            config.dump_config.dump_data = "csv"
+            
+    def test_fx_dump_config_path(self):
+        finalize_graph_engine()
+        with open("./test_acl.json", "w") as file:
+            file.write("""
+                       {
+                           "dump": {
+                               "dump_list": [],
+                               "dump_path": "dump_output"
+                           }
+                       }
+                       """)
+        tmp_config = CompilerConfig()
+        tmp_config.dump_config.dump_config_path = "./test_acl.json"
+        _, global_compile_options = tmp_config.as_dict()
+        self.assertEqual(global_compile_options["ge_dump_with_acl_config"],
+                         "./test_acl.json")
+        initialize_graph_engine(global_compile_options)
         
 
 if __name__ == '__main__':

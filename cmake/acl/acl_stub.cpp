@@ -4,6 +4,7 @@
 #include "acl/acl_rt.h"
 #include "acl/acl_tdt.h"
 #include "acl/acl_op_compiler.h"
+#include "acl/acl_mdl.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -157,6 +158,18 @@ aclError acltdtReceiveTensor(const acltdtChannelHandle *handle,
 
 aclError acltdtQueryChannelSize(const acltdtChannelHandle *handle, size_t *size) {
   return ACL_ERROR_NONE;
+}
+
+aclError aclmdlInitDump() {
+  return ACL_SUCCESS;
+}
+
+aclError aclmdlSetDump(const char *dumpCfgPath) {
+  return ACL_SUCCESS;
+}
+
+aclError aclmdlFinalizeDump() {
+  return ACL_SUCCESS;
 }
 
 #ifdef __cplusplus

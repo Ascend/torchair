@@ -163,6 +163,7 @@ TorchAir项目采用C++和Python联合开发，当前正式接口只提供Python
         - *dump_path* 数据dump路径。默认为当前路径。
         - *dump_mode* 数据dump类型。可选参数为["input", "output", "all"]，分别指dump输入、输出、所有数据，默认为"all"，dump所有数据。
         - *quant_dumpable* 是否开启dump量化前的输出。默认为False，不开启。可选参数为[False, True]。
+        - *dump_data* 数据dump内容类型。默认为"tensor"，可选参数为["tensor", "stats"]。
 
     - **export** 用于配置导出air格式离线图时的选项。建议通过dynamo_export接口来进行配置，参考[export功能](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/80RC1alpha002/devguide/moddevg/torchair/torchair_01_0015.html)。
         - *export_mode* -是否开启导出离线图。默认为False，不开启。
