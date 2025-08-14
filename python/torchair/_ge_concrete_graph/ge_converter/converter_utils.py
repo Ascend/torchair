@@ -18,7 +18,7 @@ from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_conv
 from torchair.ge._ge_graph import DataType, Tensor, TensorSpec, get_ge_rng_state, is_sym, \
     _ge_dtype_to_ge_proto_dtype as ge_dtype_to_ge_proto_dtype
 from torchair._ge_concrete_graph.utils import dtype_promote, specific_op_input_layout, specific_op_output_layout, \
-    force_op_unknown_shape
+    force_op_unknown_shape, normalize_max_value, normalize_min_value
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, BF16, F64, I32, I16, I64, \
     I8, U8, BOOL, T, C64, Support
 from torchair._ge_concrete_graph.utils import get_cann_opp_version
