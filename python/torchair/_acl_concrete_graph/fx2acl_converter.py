@@ -30,6 +30,18 @@ aten = torch.ops.aten
 
 
 class AclConcreteGraph(ConcreteGraphBase):
+    """
+    AclConcreteGraph represents a concrete computation graph optimized for Ascend NPU devices.
+    It extends the base ConcreteGraphBase to provide ACL-specific compilation and execution capabilities.
+    
+    Args:
+        config (CompilerConfig): Configuration object for compiler settings.
+        name (str, optional): Name of the graph. Defaults to "graph".
+        pool (Optional[Any], optional): Memory pool handle for ACL operations. Defaults to None.
+        stream (Optional[Any], optional): Execution stream for asynchronous operations. Defaults to None.
+        capture_error_mode (str, optional): Error handling mode during graph capture. Defaults to "global".
+        num_warmup_iters (int, optional): Number of warm-up iterations before capturing the graph. Defaults to 0.
+    """    
     def __init__(self, config: CompilerConfig, name="graph", pool=None, stream=None,
                  capture_error_mode: str = "global", num_warmup_iters=0):
         try:
@@ -57,6 +69,20 @@ class AclConcreteGraph(ConcreteGraphBase):
         )
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        """
+        Executes the compiled ACL graph with the provided inputs.
+        
+        This method handles input processing, graph execution, and output retrieval.
+        It ensures proper data synchronization between captured inputs and user-provided inputs
+        for in-place operations that may modify tensor addresses.
+        
+        Args:
+            *args: Variable length argument list for graph inputs.
+            **kwargs: Arbitrary keyword arguments for graph inputs.
+        
+        Returns:
+            Any: Output tensors from the executed graph.
+        """        
         # get graph_key and capture
         fn_key = self.compile(*args, **kwargs)
 
@@ -148,9 +174,29 @@ class AclConcreteGraph(ConcreteGraphBase):
         return head.getvalue()
 
     def compile(self, *args: Any, **kwargs: Any):
+        """
+        Compiles the computation graph into an executable ACL graph.
+        
+        This method performs graph capture, optimization, and key generation for subsequent executions.
+        
+        Args:
+            *args: Input arguments for graph compilation.
+            **kwargs: Keyword arguments for graph compilation.
+            
+        Returns:
+            str: Unique identifier (graph key) for the captured ACL graph.
+        """        
         return self.graph.compile(*args, **kwargs)
 
     def optimize_graph_without_runtime(self, *sample_args):
+        """
+        Optimizes the computation graph without relying on runtime information.
+        This includes passes like re-inplacing in-place operations and dynamic workspace handling.
+        
+        Args:
+            *sample_args: Sample input arguments for tracing and optimization.
+        """
+
         logger.debug('before graph optimization, graph is %s', self.fx_graph.graph)
         if self.config.aclgraph_config.use_custom_pool is not None:
             # when use custom pool from user, do not enable mem pool reuse in same fx.
@@ -214,6 +260,15 @@ class AclConcreteGraph(ConcreteGraphBase):
         return aclgraph_config_options
 
     def parse_symlist(self, syms):
+        """
+        Parses a list of symbols (either integers or ValuePack objects) into a list of NPU-compatible symbols.
+        
+        Args:
+            syms (List[Union[int, ValuePack]]): List containing symbols to parse.
+            
+        Returns:
+            List[int]: Parsed list of integer symbols.
+        """        
         npu_syms = []
         for sym in syms:
             if isinstance(sym, ValuePack):
@@ -229,6 +284,18 @@ class AclConcreteGraph(ConcreteGraphBase):
         return npu_syms
 
     def parse_input(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
+        """
+        Parses input metadata during graph construction.
+        
+        Args:
+            target (Target): The target operation being parsed.
+            args (Tuple[Argument, ...]): Input arguments for the target operation.
+            kwargs (Dict[str, Any]): Keyword arguments for the target operation.
+            meta_outputs (Any): Metadata associated with the operation's outputs.
+            
+        Returns:
+            Any: Processed metadata for the input operation.
+        """        
         self._meta_inputs.append(meta_outputs)
 
         # Lazy check for int/sym inputs
@@ -244,11 +311,37 @@ class AclConcreteGraph(ConcreteGraphBase):
         return meta_outputs
 
     def parse_node(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
+        """
+        Parses individual nodes within the graph during compilation.
+        
+        This method can be extended to include optimizations specific to certain node types.
+        
+        Args:
+            target (Target): The target operation being parsed.
+            args (Tuple[Argument, ...]): Input arguments for the target operation.
+            kwargs (Dict[str, Any]): Keyword arguments for the target operation.
+            meta_outputs (Any): Metadata associated with the operation's outputs.
+            
+        Returns:
+            Any: Processed result of the parsed node.
+        """        
         # do some optimization in fx for some ops
 
         return target(*args, **kwargs)
 
     def parse_output(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
+        """
+        Parses output metadata during graph construction.
+        
+        Args:
+            target (Target): The target operation being parsed.
+            args (Tuple[Argument, ...]): Input arguments for the target operation.
+            kwargs (Dict[str, Any]): Keyword arguments for the target operation.
+            meta_outputs (Any): Metadata associated with the operation's outputs.
+            
+        Returns:
+            Any: Processed metadata for the output operation.
+        """        
         if not (isinstance(args, (list, tuple)) and len(args) == 1):
             raise RuntimeError(f"Unsupported case in AclGraph: for output node with args: [{args}].")
 

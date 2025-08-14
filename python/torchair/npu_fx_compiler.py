@@ -98,7 +98,9 @@ def _trace_print(f):
 class _NpuGraphConverter(Interpreter):
     """
     Interpreter for collect npu graph meta from fx graph, such as sym of output, input shape ranges, etc.
-    TODO: Add doc here
+    
+    This class extends the Torch FX Interpreter to collect metadata necessary for constructing
+    NPU computation graphs, such as symbolic shapes and input/output specifications.
     """
 
     def __init__(self, *args, graph, **kwargs):
@@ -106,10 +108,29 @@ class _NpuGraphConverter(Interpreter):
         self._graph = graph
 
     def run_node(self, n):
+        """
+        Overrides the default node execution to include graph context.
+
+        Args:
+            n (Node): The node to execute.
+
+        Returns:
+            Any: Result of node execution.
+        """        
         with self._graph.converter_context(node=n):
             return super().run_node(n)
 
     def run(self, *args, **kwargs):
+        """
+        Executes the interpreter and constructs the NPU graph.
+
+        Args:
+            *args: Positional inputs to the graph.
+            **kwargs: Keyword inputs to the graph.
+
+        Returns:
+            GeConcreteGraph: Constructed NPU computation graph.
+        """        
         optimized_fx = _optimize_fx(self.module)
         self._graph.save_fx_graph(optimized_fx)
 
@@ -159,24 +180,79 @@ class _NpuGraphConverter(Interpreter):
 
     @_trace_print
     def placeholder(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any]) -> Any:
+        """
+        Handles placeholder nodes during interpretation.
+
+        Args:
+            target (Target): The target node.
+            args (Tuple[Any, ...]): Positional arguments.
+            kwargs (Dict[str, Any]): Keyword arguments.
+
+        Returns:
+            ValuePack: Packed metadata and NPU value.
+        """        
         meta_input = super().placeholder(target, args=args, kwargs=kwargs)
         npu_input = self._graph.parse_input(target, args, kwargs, meta_input)
         return ValuePack(meta_input, npu_input)
 
     @_trace_print
     def call_function(self, target: Target, args: Tuple[Argument, ...], kwargs: Dict[str, Any]) -> Any:
+        """
+        Handles function call nodes during interpretation.
+
+        Args:
+            target (Target): The target function.
+            args (Tuple[Any, ...]): Positional arguments.
+            kwargs (Dict[str, Any]): Keyword arguments.
+
+        Returns:
+            Any: Result of the function call.
+        """        
         return self._wrap('call_function')(target, args, kwargs)
 
     @_trace_print
     def call_method(self, target: Target, args: Tuple[Argument, ...], kwargs: Dict[str, Any]) -> Any:
+        """
+        Handles method call nodes during interpretation.
+
+        Args:
+            target (Target): The target method.
+            args (Tuple[Any, ...]): Positional arguments.
+            kwargs (Dict[str, Any]): Keyword arguments.
+
+        Returns:
+            Any: Result of the method call.
+        """        
         return self._wrap('call_method')(target, args, kwargs)
 
     @_trace_print
     def call_module(self, target: Target, args: Tuple[Argument, ...], kwargs: Dict[str, Any]) -> Any:
+        """
+        Handles module call nodes during interpretation.
+
+        Args:
+            target (Target): The target module.
+            args (Tuple[Any, ...]): Positional arguments.
+            kwargs (Dict[str, Any]): Keyword arguments.
+
+        Returns:
+            Any: Result of the module call.
+        """        
         return self._wrap('call_module')(target, args, kwargs)
 
     @_trace_print
     def output(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any]) -> Any:
+        """
+        Handles output nodes during interpretation.
+
+        Args:
+            target (Target): The output target.
+            args (Tuple[Any, ...]): Positional arguments.
+            kwargs (Dict[str, Any]): Keyword arguments.
+
+        Returns:
+            Any: Output value.
+        """        
         args_meta, kwargs_meta = _unpack_meta(args, kwargs)
         meta_output = super().placeholder(target, args=args_meta, kwargs=kwargs_meta)
         npu_output = self._graph.parse_output(
@@ -252,6 +328,9 @@ def _optimize_sym_input(graph_module: torch.fx.GraphModule):
 
 
 class _GmRunner:
+    """
+    Wrapper for executing a graph module with runtime inputs.
+    """    
     def __init__(self, runner: Callable):
         self.runner = runner
 
@@ -284,11 +363,24 @@ def _next_unique_graph_id():
 
 
 class _NpuFxCompiler:
+    """
+    Main compiler class for converting FX graphs to NPU-compatible graphs.
+    """    
     def __init__(self, compiler_config: CompilerConfig) -> None:
         self.config = compiler_config
 
     @pretty_error_msg
     def __call__(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
+        """
+        Compiles the FX graph into an NPU-compatible graph.
+
+        Args:
+            gm (torch.fx.GraphModule): The FX graph module to compile.
+            example_inputs (List[torch.Tensor]): Example inputs for compilation.
+
+        Returns:
+            _GmRunner: Runner wrapping the compiled graph.
+        """        
         return self._get_compiled_gm(gm, example_inputs)
 
     @pretty_error_msg
@@ -308,6 +400,16 @@ class _NpuFxCompiler:
         return code
 
     def _get_compiled_gm(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
+        """
+        Internal method to generate the compiled graph module.
+
+        Args:
+            gm (torch.fx.GraphModule): The FX graph module.
+            example_inputs (List[torch.Tensor]): Example inputs.
+
+        Returns:
+            _GmRunner: Runner wrapping the compiled graph.
+        """        
         if int(self.config.export.experimental.enable_lite_export.value):
             from torchair._ge_concrete_graph.ge_converter import lite
         
@@ -379,6 +481,15 @@ class _NpuFxCompiler:
 
 
 def get_compiler(compiler_config: CompilerConfig = None):
+    """
+    Retrieves the NPU compiler instance.
+
+    Args:
+        compiler_config (CompilerConfig, optional): Compiler configuration. Defaults to None.
+
+    Returns:
+        _NpuFxCompiler: NPU compiler instance.
+    """    
     if compiler_config is None:
         compiler_config = CompilerConfig()
     return _NpuFxCompiler(compiler_config)
@@ -462,6 +573,18 @@ def _set_inputs_custom_attr_to_compiler(compiler: Callable, inputs_custom_attr: 
 
 def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
                  compiler_config: CompilerConfig = None, decompositions: Dict = {}):
+    """
+    Backend entry point for NPU compilation.
+
+    Args:
+        gm (torch.fx.GraphModule): The graph module to compile.
+        example_inputs (List[torch.Tensor]): Example inputs.
+        compiler_config (CompilerConfig, optional): Compiler configuration. Defaults to None.
+        decompositions (Dict, optional): Custom decomposition rules. Defaults to {}.
+
+    Returns:
+        Any: Compiled graph runner.
+    """    
     if compiler_config is None:
         compiler_config = CompilerConfig()
     compiler = get_compiler(compiler_config)
@@ -486,6 +609,16 @@ def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
 
 
 def get_npu_backend(*, compiler_config: CompilerConfig = None, custom_decompositions: Dict = {}):
+    """
+    Retrieves the NPU backend compiler with custom configurations.
+
+    Args:
+        compiler_config (CompilerConfig, optional): Compiler configuration. Defaults to None.
+        custom_decompositions (Dict, optional): Custom decomposition rules. Defaults to {}.
+
+    Returns:
+        Callable: Backend compiler function.
+    """    
     if compiler_config is None:
         compiler_config = CompilerConfig()
     _check_config_support(compiler_config)

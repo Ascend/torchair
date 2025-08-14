@@ -52,6 +52,18 @@ from . import ge_apis as ge
 
 
 def _mapping_assign_op_to_graph_output(graph: GraphDef):
+    """
+    Maps Assign operations to graph outputs by updating input references.
+
+    This function identifies Assign nodes in the graph and redirects their 
+    outputs to existing graph inputs or existing Assign outputs.
+
+    Args:
+        graph (GraphDef): The graph definition to process.
+
+    Returns:
+        Dict[int, int]: Mapping from output reference indices to input indices.
+    """    
     net_output: OpDef = None  # 输出节点
     net_inputs: Dict[str, int] = {}  # 输入tensor名称到索引的映射
     intput_ops: Dict[int, OpDef] = {}
@@ -174,6 +186,15 @@ def get_checkpoint_func(op: OpOverload):
 
 
 def _get_converter(name: Callable):
+    """
+    Retrieves the converter function for a given PyTorch operation.
+
+    Args:
+        name (Callable): The PyTorch operation.
+
+    Returns:
+        Callable: The associated converter function or None if not found.
+    """    
     if name not in _CONVERTERS:
         from torchair._ge_concrete_graph.ge_converter import custom
         if hasattr(name, "_ge_converter"):
@@ -182,12 +203,28 @@ def _get_converter(name: Callable):
 
 
 def get_meta_outputs(meta_outputs):
+    """
+    Converts high-level tensor representations to tensor specifications.
+
+    Args:
+        meta_outputs: The meta outputs to convert.
+
+    Returns:
+        List[Any]: List of tensor specifications.
+    """    
     if isinstance(meta_outputs, (list, tuple)):
         return [get_meta_outputs(meta_output) for meta_output in meta_outputs]
     return TensorSpec(meta_outputs)
 
 
 def set_ge_outputs(ge_outputs, meta_outputs):
+    """
+    Sets metadata for GE outputs based on provided meta outputs.
+
+    Args:
+        ge_outputs: The GE output(s) to update.
+        meta_outputs: The meta outputs providing metadata.
+    """    
     if isinstance(ge_outputs, ge.Tensor):
         ge_outputs.set_meta(meta_outputs)
     elif isinstance(ge_outputs, int):
@@ -207,6 +244,15 @@ def set_ge_outputs(ge_outputs, meta_outputs):
 
 
 def _wrap_converter(converter: Callable):
+    """
+    Wraps a converter function to handle metadata processing.
+
+    Args:
+        converter (Callable): The converter function to wrap.
+
+    Returns:
+        Callable: The wrapped converter function.
+    """    
     @functools.wraps(converter)
     def wrapped_converter(*args, **kwargs):
         meta_outputs = None
@@ -230,6 +276,9 @@ class ExportSuccess(Exception):
 
 
 class Converter:
+    """
+    Base class for converting PyTorch operations to GE operations.
+    """    
     compile_backend = None
     result_checker = None
 
@@ -239,6 +288,15 @@ class Converter:
         self._supported_cases = None
 
     def __call__(self, converter) -> Any:
+        """
+        Registers a converter function for the associated PyTorch operation.
+
+        Args:
+            converter (Callable): The converter function to register.
+
+        Returns:
+            Any: The registered converter.
+        """        
         wrapped_converter = _wrap_converter(converter)
         if 'meta_outputs' in inspect.signature(converter).parameters:
             wrapped_converter.require_meta = True
@@ -283,6 +341,15 @@ def empty_function(*args, **kwargs):
 
 
 def register_fx_node_ge_converter(aten_op):
+    """
+    Registers a converter for a PyTorch operation.
+
+    Args:
+        aten_op: The PyTorch operation to register.
+
+    Returns:
+        Callable: Empty function if aten_op is None, else the Converter instance.
+    """    
     if aten_op is None:
         return empty_function
     return Converter(aten_op)
@@ -534,6 +601,14 @@ class ViewOfInput:
 
 
 class GeConcreteGraph(ConcreteGraphBase):
+    """
+    GeConcreteGraph represents a concrete computation graph optimized for Ascend NPU devices.
+    It extends the base ConcreteGraphBase to provide GE-specific compilation and execution capabilities.
+    
+    Args:
+        config (CompilerConfig): Configuration object for compiler settings.
+        name (str, optional): Name of the graph. Defaults to "graph".
+    """       
     def __init__(self, config: CompilerConfig, name=None):
         self._graph = GeGraph(name=name)
         self._fx_outputs = []
@@ -555,6 +630,22 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._has_empty_tensor = False
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        """
+        Executes the graph with the provided inputs.
+        
+        This method handles input processing, graph execution, and output retrieval.
+        It supports dynamic shape handling, reference data management, and automatic tuning.
+        
+        Args:
+            *args: Variable length argument list for graph inputs.
+            **kwargs: Arbitrary keyword arguments for graph inputs.
+        
+        Returns:
+            Any: Output tensors from the executed graph.
+        
+        Raises:
+            ExportSuccess: If graph export is triggered during execution.
+        """        
         enable_event_log = logger.getEffectiveLevel() <= EVENT_LEVEL
         t_begin = time.time() if enable_event_log else 0
         if not self._is_compiled:
@@ -618,6 +709,14 @@ class GeConcreteGraph(ConcreteGraphBase):
         return tuple(fx_outputs)
 
     def optimize_graph_without_runtime(self, *sample_args):
+        """
+        Optimizes the computation graph without relying on runtime information.
+        This includes passes like dead data removal, explicit ordering for side-effect nodes,
+        and reference data optimization.
+        
+        Args:
+            *sample_args: Sample input arguments for tracing and optimization.
+        """        
         from torchair._ge_concrete_graph.graph_pass import remove_dead_data_and_reorder_data_index
         from torchair._ge_concrete_graph.graph_pass import explict_order_for_side_effect_nodes
         from torchair._ge_concrete_graph.graph_pass import explict_order_for_cmo
@@ -665,6 +764,12 @@ class GeConcreteGraph(ConcreteGraphBase):
             self.dump(self.config.debug.graph_dump.full_path(f"dynamo_optimized_{self.graph.name}"))
 
     def compile(self) -> Any:
+        """
+        Compiles the computation graph into an executable GE graph.
+        
+        This method finalizes the graph structure and prepares it for execution.
+        It ensures all nodes are properly configured and dependencies are resolved.
+        """        
         if self._is_compiled:
             return
 
@@ -674,6 +779,19 @@ class GeConcreteGraph(ConcreteGraphBase):
         logger.info(f'end compile graph: {self.graph.name} and start run graph.')
 
     def codegen(self, extend_config, enable_cache=False):
+        """
+        Generates executable code from the optimized graph.
+        
+        This method is used for code generation in JIT compilation scenarios.
+        It supports caching mechanisms to improve subsequent compilation speed.
+        
+        Args:
+            extend_config (Dict[str, Any]): Additional configuration for code generation.
+            enable_cache (bool, optional): Flag to enable caching. Defaults to False.
+        
+        Returns:
+            Optional[str]: Generated code as a string if successful, otherwise None.
+        """        
         from torch._inductor.utils import IndentedBuffer
         if self._config.experimental_config.enable_ref_data or self.config.export.export_mode \
                 or self.config.aoe_config.aoe_mode.value is not None:
@@ -807,6 +925,20 @@ class GeConcreteGraph(ConcreteGraphBase):
         return False
 
     def parse_input(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
+        """
+        Parses input metadata during graph construction.
+        
+        This method processes input tensors and their associated metadata to configure graph inputs.
+        
+        Args:
+            target (Target): The target operation being parsed.
+            args (Tuple[Argument, ...]): Input arguments for the target operation.
+            kwargs (Dict[str, Any]): Keyword arguments for the target operation.
+            meta_outputs (Any): Metadata associated with the operation's outputs.
+        
+        Returns:
+            Any: Processed input data for the graph.
+        """        
         data_index = self.graph.num_inputs
         self._fx_input_names.append(target)
         if is_sym(meta_outputs):
@@ -843,6 +975,20 @@ class GeConcreteGraph(ConcreteGraphBase):
 
     @guard_view_input
     def parse_output(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
+        """
+        Parses output metadata during graph construction.
+        
+        This method processes output tensors and their associated metadata to configure graph outputs.
+        
+        Args:
+            target (Target): The target operation being parsed.
+            args (Tuple[Argument, ...]): Input arguments for the target operation.
+            kwargs (Dict[str, Any]): Keyword arguments for the target operation.
+            meta_outputs (Any): Metadata associated with the operation's outputs.
+        
+        Returns:
+            Any: Processed output data for the graph.
+        """        
         if not (isinstance(args, (list, tuple)) and len(args) == 1):
             raise AssertionError("The input args must be list or a tuple, and the length of args must be euqal to 1")
         args = args[0]
@@ -884,6 +1030,15 @@ class GeConcreteGraph(ConcreteGraphBase):
         return args
 
     def parse_symlist(self, syms):
+        """
+        Parses a list of symbols (either integers or ValuePack objects) into a list of NPU-compatible symbols.
+        
+        Args:
+            syms (List[Union[int, ValuePack]]): List containing symbols to parse.
+        
+        Returns:
+            List[int]: Parsed list of integer symbols.
+        """        
         npu_syms = []
         for sym in syms:
             if isinstance(sym, ValuePack):
@@ -906,6 +1061,20 @@ class GeConcreteGraph(ConcreteGraphBase):
     @guard_view_input
     @guard_scope_attr
     def parse_node(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
+        """
+        Parses individual nodes within the graph during compilation.
+        
+        This method handles custom operation conversion and optimization passes.
+        
+        Args:
+            target (Target): The target operation being parsed.
+            args (Tuple[Argument, ...]): Input arguments for the target operation.
+            kwargs (Dict[str, Any]): Keyword arguments for the target operation.
+            meta_outputs (Any): Metadata associated with the operation's outputs.
+        
+        Returns:
+            Any: Processed result of the parsed node.
+        """        
         if str(target) in ['air.scope_enter.default', 'air.scope_exit.default']:
             return target(*args, **kwargs, need_excute=True)
         all_zero_and_nosym = all([is_zero_element_tensor(t) and not get_used_syms_in_meta(t)

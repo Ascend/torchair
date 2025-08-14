@@ -25,6 +25,16 @@ from torchair._acl_concrete_graph.static_kernel import compile_static_kernel
 
 @dataclass
 class StaticWorkspaceReplaceFunc:
+    """
+    Data class defining replacement functions for static workspace operations.
+    
+    Attributes:
+        get_workspace (Callable): Function to retrieve workspace size.
+        out_operator (Callable): Replacement operator for the original operation.
+        workspace_keys (List[str]): Keys for workspace parameters.
+        output_keys (List[str]): Keys for output parameters.
+        updated_param_keys (List[str]): Parameters requiring updates.
+    """    
     get_workspace: Callable
     out_operator: Callable
     workspace_keys: List[str]
@@ -34,6 +44,18 @@ class StaticWorkspaceReplaceFunc:
 
 @dataclass
 class UpdatedNodeInfo:
+    """
+    Information about updated nodes during graph capture.
+    
+    Attributes:
+        node_name (str): Name of the updated node.
+        updated_func (Callable): Function performing the update.
+        updated_param_name (List[str]): Names of parameters being updated.
+        args (Any): Arguments passed to the update function.
+        kwargs (Any): Keyword arguments passed to the update function.
+        handle (Any): Handle to the graph task group.
+        event (Any): Event signaling completion of the update.
+    """    
     node_name: str
     updated_func: Callable
     updated_param_name: List[str]
@@ -316,6 +338,9 @@ def check_all_sym_updated(ops_update_rulers: Dict, graph_module: torch.fx.GraphM
 
 
 class UpdatedNodeCaptureInterp(fx.Interpreter):
+    """
+    Custom interpreter for capturing node updates during graph execution.
+    """    
     def __init__(self, graph_module: fx.GraphModule, need_updated_ops: Dict):
         super().__init__(graph_module)
         self._graph_module: fx.GraphModule = graph_module
@@ -373,6 +398,9 @@ class UpdatedNodeCaptureInterp(fx.Interpreter):
 
 
 class CapturedGraphUpdateAndReplay(nn.Module):
+    """
+    Module for replaying captured graphs with dynamic updates.
+    """    
     def __init__(self, replay_graph: Any, updated_input_func: Callable, updated_node_infos: List):
         super().__init__()
         self._replay_graph = replay_graph
@@ -573,6 +601,11 @@ class AclGraphCacheInfo:
 
 
 class AclGraph(object):
+    """
+    Class representing an optimized graph for Ascend NPU execution.
+    It also has the capabilities of capturing and replaying graphs.
+    """
+
     def __init__(self, fx_graph: torch.fx.GraphModule = None, serialized_fx_graph=None, config=None):
         try:
             import torch_npu
@@ -754,6 +787,14 @@ class AclGraph(object):
         return graph_key
 
     def capture(self, graph_key, *args: Any, **kwargs: Any):
+        """
+        Captures the execution of the FX graph into an ACL graph instance.
+        
+        Args:
+            graph_key (str): Unique identifier for the captured graph.
+            *args: Input arguments for graph capture.
+            **kwargs: Keyword arguments for graph capture.
+        """        
         captured_interpreter = UpdatedNodeCaptureInterp(self.fx_graph, self._updated_ops_param)
 
         import torch_npu
