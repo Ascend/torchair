@@ -615,6 +615,8 @@ class GeGraph(object):
         self._named_inputs_info = {}
         self._used_process_group = {}
         self._dont_prune_me_ops = []
+        self.op_name_idx_dict = {}
+        self.op_name_list = []
 
 
     def _python_code_init(self):
@@ -775,6 +777,39 @@ class GeGraph(object):
 
     def dont_prune_me(self, op):
         self._dont_prune_me_ops.append(op)
+        
+    def next_unique_name(self, name, op):
+        def name_is_unique(op_name, counter):
+            if counter:
+                op_name = f'{op_name}_{counter}'
+            if op_name in self.op_name_list:
+                return False
+            self.op_name_list.append(op_name)
+            return True
+        
+        if not self.op_name_list:
+            for node in self._proto.op:
+                self.op_name_list.append(node.name)
+                    
+        if name is not None:
+            if name.strip() == "":
+                raise AssertionError(f"empty node name '{name}' is not allowed, "
+                                    "you can remove arg 'node_name' or make sure it is not empty")
+            if not name_is_unique(name, None):
+                raise AssertionError(f"duplicated node name '{name}' is not allowed, "
+                                    "you can remove arg 'node_name' or make sure it is unique")
+            return name
+
+        if op not in self.op_name_idx_dict:
+            self.op_name_idx_dict[op] = 0
+            if name_is_unique(op, None):
+                return op
+        counter = self.op_name_idx_dict[op]
+        counter += 1
+        while not name_is_unique(op, counter):
+            counter += 1
+        self.op_name_idx_dict[op] = counter
+        return f'{op}_{counter}'
 
 
 class _GeGraphStack(threading.local):
@@ -817,43 +852,8 @@ def default_ge_graph(graph):
     return _graph_stack.with_default(graph)
 
 
-_g_name_dict = dict()
-_gegraph_opname_dict = dict()
-
-
-def update_cur_gegraph(gegraph):
-    if gegraph not in _gegraph_opname_dict:
-        _gegraph_opname_dict[gegraph] = []
-        for op in gegraph.op:
-            _gegraph_opname_dict[gegraph].append(op.name)
-            
-
-def remove_from_gegraph_dict(op_name):
-    gegraph = get_default_ge_graph()
-    if gegraph not in _gegraph_opname_dict:
-        return
-    if op_name in _gegraph_opname_dict[gegraph]:
-        _gegraph_opname_dict[gegraph].remove(op_name)
-
-
 def next_unique_name(name: str, op: str):
-    if name is not None:
-        if name.strip() == "":
-            raise AssertionError(f"empty node name '{name}' is not allowed, "
-                                 "you can remove the node_name parameter or make sure it is not empty")
-        gegraph = get_default_ge_graph()
-        update_cur_gegraph(gegraph)
-        if name in _gegraph_opname_dict[gegraph]:
-            raise AssertionError(f"duplicated node name '{name}' is not allowed, "
-                                 "you can remove the node_name parameter or make sure it is unique")
-        _gegraph_opname_dict[gegraph].append(name)
-        return name
-
-    if op not in _g_name_dict:
-        _g_name_dict[op] = 0
-        return op
-    _g_name_dict[op] += 1
-    return f'{op}_{_g_name_dict[op]}'
+    return get_default_ge_graph().next_unique_name(name, op)
 
 
 class TensorSpec(TensorSpecBase):

@@ -32,8 +32,6 @@ def capture_func(graph, *args, **kwargs):
 @contextlib.contextmanager
 def capture_ge_graph():
     try:
-        from torchair.ge._ge_graph import _g_name_dict
-        _g_name_dict.clear()
         captured_graph.origin_op_inputs = None
         captured_graph.graph = None
         yield captured_graph
