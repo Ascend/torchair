@@ -472,6 +472,59 @@ REG_OP(TransQuantParamV2)
     .OP_END_FACTORY_REG(TransQuantParamV2)
 
 /**
+* @brief The fusion operator of QuantBatchMatmul and ReduceSum.
+
+* @par Inputs:
+* @li x1: A matrix tensor. The shape supports (batch, m, k), and the format supports ND. The data type supports int8.
+* @li x2: A matrix tensor of quantized weight. The shape supports (batch, k, n), and the format supports FRACTAL_NZ. The data type supports int8.
+* @li dims: A 1D tensor of int64. Specifies the dimensions to reduce.
+* @li bias: Reserved parameter, not supported now, please pass nullptr.
+* @li x1_scale: A tensor for x1 quantization parameters. The type supports float32, format supports ND, The shape supprts(b, m).
+* @li x2_scale: A tensor for x2 quantization parameters. The type supports bfloat16, format supports ND. The shape supprts(n,).
+* @li y_scale: Reserved parameter, not supported now, please pass nullptr.
+* @li x1_offset: Reserved parameter, not supported now, please pass nullptr.
+* @li x2_offset: Reserved parameter, not supported now, please pass nullptr.
+* @li y_offset: Reserved parameter, not supported now, please pass nullptr.
+* @li x2_table: Reserved parameter, not supported now, please pass nullptr. \n
+
+* @par Attributes:
+* @li dtype: A Int. Declare the output dtype, supports 27(bfloat16).
+* @li compute_type: Reserved attributes, not supported now. Default is -1.
+* @li transpose_x1: A bool. If true, changes the shape of "x1" from (batch, m, k) to (batch, k, m) before multiplication. Default: false. Only supports false now.
+* @li transpose_x2: A bool. If true, changes the shape of "x2" from (batch, k, n) to (batch, n, k) before multiplication. Default: false. Only supports false now.
+* @li group_size: Reverved attributes, not supported now. Default is -1.
+* @li keep_dims: A bool. If true, keeps the original input dims in the output. Default: false. Only support false now. \n
+
+* @par Outputs:
+* y: A matrix tensor. The data type is bfloat16. The format supports ND. \n
+
+* Atlas A2 Trainging Series Product/Atlas 800I A2 Inference Product or Atlas A3 Training Series Product: \n
+* | x1   | x2   | x1Scale  | x2Scale  | yScale | x1Offset | x2Offset | yOffset | bias  | out     |
+* |------|------|----------|----------|--------|----------|----------|---------|-------|---------|
+* | INT8 | INT8 | FLOAT32  | BFLOAT16 | null   | null     | null     | null    | null  |BFLOAT16 |
+*/
+REG_OP(QuantMatmulReduceSum)
+    .INPUT(x1, TensorType({DT_INT8}))
+    .INPUT(x2, TensorType({DT_INT8}))
+    .INPUT(dims, TensorType({DT_INT64}))
+    .OPTIONAL_INPUT(bias, TensorType({DT_BF16}))
+    .OPTIONAL_INPUT(x1_scale, TensorType({DT_FLOAT32}))
+    .OPTIONAL_INPUT(x2_scale, TensorType({DT_BF16}))
+    .OPTIONAL_INPUT(y_scale, TensorType({DT_UINT64}))
+    .OPTIONAL_INPUT(x1_offset, TensorType({DT_BF16}))
+    .OPTIONAL_INPUT(x2_offset, TensorType({DT_BF16}))
+    .OPTIONAL_INPUT(y_offset, TensorType({DT_BF16}))
+    .OPTIONAL_INPUT(x2_table, TensorType({DT_INT8}))
+    .OUTPUT(y, TensorType({DT_BF16}))
+    .REQUIRED_ATTR(dtype, Int)
+    .ATTR(compute_type, Int, -1)
+    .ATTR(transpose_x1, Bool, false)
+    .ATTR(transpose_x2, Bool, false)
+    .ATTR(group_size, Int, -1)
+    .ATTR(keep_dims, Bool, false)
+    .OP_END_FACTORY_REG(QuantMatmulReduceSum)
+
+/**
 * @brief Function GroupedMatmulFinalizeRouting. This op mixs GroupedMatmul和MoeFinalizeRouting. After the calculation of GroupedMatmul, perform a combine operation on the output according to the index, and support the format where w is in the Ascend affinity data layout.
  
 * @par Inputs:

@@ -78027,6 +78027,99 @@ def TransQuantParamV2(scale: Tensor, offset: Optional[Tensor], *, round_mode: in
     )
 
 
+# This api is auto-generated from IR QbmmReduceSum
+@auto_convert_to_tensor([False, False, False], [False, False, False], 
+                        inputs_tensor_type=[TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_INDEX_NUMBER])
+def QuantMatmulReduceSum(
+    x1: Tensor,
+    x2: Tensor,
+    dims: Tensor, *,
+    bias: Tensor = None,
+    x1_scale: Tensor = None,
+    x2_scale: Tensor = None,
+    y_scale: Tensor = None,
+    x1_offset: Tensor = None,
+    x2_offset: Tensor = None,
+    y_offset: Tensor = None,
+    x2_table: Tensor = None,
+    dtype: int = 27,
+    compute_type: int = -1,
+    transpose_x1: bool = False,
+    transpose_x2: bool = False,
+    group_size: int = -1,
+    keep_dims: bool = False,
+    dependencies=[],
+    node_name=None):
+    """REG_OP(QuantMatmulReduceSum)\n
+    .INPUT(x1, TensorType({DT_INT8}))\n
+    .INPUT(x2, TensorType({DT_INT8}))\n
+    .INPUT(dims, TensorType({DT_INT64}))\n
+    .OPTIONAL_INPUT(bias, TensorType({DT_BF16}))\n
+    .OPTIONAL_INPUT(x1_scale, TensorType({DT_FLOAT32}))\n
+    .OPTIONAL_INPUT(x2_scale, TensorType({DT_BF16}))\n
+    .OPTIONAL_INPUT(y_scale, TensorType({DT_UINT64}))\n
+    .OPTIONAL_INPUT(x1_offset, TensorType({DT_BF16}))\n
+    .OPTIONAL_INPUT(x2_offset, TensorType({DT_BF16}))\n
+    .OPTIONAL_INPUT(y_offset, TensorType({DT_BF16}))\n
+    .OPTIONAL_INPUT(x2_table, TensorType({DT_INT8}))\n
+    .OUTPUT(y, TensorType({DT_BF16}))\n
+    .REQUIRED_ATTR(dtype, Int)\n
+    .ATTR(compute_type, Int, -1)\n
+    .ATTR(transpose_x1, Bool, false)\n
+    .ATTR(transpose_x2, Bool, false)\n
+    .ATTR(group_size, Int, -1)\n
+    .ATTR(keep_dims, Bool, false)\n
+    .OP_END_FACTORY_REG(QuantMatmulReduceSum)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "QuantMatmulReduceSum"
+    op.name = next_unique_name(node_name, "QuantMatmulReduceSum")
+    
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+    
+    # process inputs
+    input_list = [
+        (x1, "x1"),
+        (x2, "x2"),
+        (dims, "dims"),
+        (bias, "bias"),
+        (x1_scale, "x1_scale"),
+        (x2_scale, "x2_scale"),
+        (y_scale, "y_scale"),
+        (x1_offset, "x1_offset"),
+        (x2_offset, "x2_offset"),
+        (y_offset, "y_offset"),
+        (x2_table, "x2_table")]
+    for item in input_list:
+        if item[0] is not None:
+            op.input.append(item[0].tensor)
+            op.input_desc.add().CopyFrom(item[0].desc)
+            op.input_desc[-1].name = item[1]
+        else:
+            op.input.append('')
+            op.input_desc.add().CopyFrom(get_invalid_desc())
+            op.input_desc[-1].name = item[1]
+    
+    # process attrs
+    op.attr["dtype"].i = dtype
+    op.attr["compute_type"].i = compute_type
+    op.attr["transpose_x1"].b = transpose_x1
+    op.attr["transpose_x2"].b = transpose_x2
+    op.attr["group_size"].i = group_size
+    op.attr["keep_dims"].b = keep_dims
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    out = Tensor(op, output_index)
+    output_index += 1
+
+    return out
+
+
 # This api is auto-generated from IR FlatQuant
 @auto_convert_to_tensor([False, False, False], [False, False, False])
 def FlatQuant(
