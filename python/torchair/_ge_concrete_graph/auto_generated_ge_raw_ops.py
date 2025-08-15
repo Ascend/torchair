@@ -80533,48 +80533,68 @@ def AlltoAllvGroupedMatMul(gmm_x: Tensor, gmm_weight: Tensor,
     return gmm_y, mm_y, permute_out
 
 
-# This api is auto-generated from IR MoeEplbUpdateExpert
-@auto_convert_to_tensor([False, False], [False, False])
-def MoeEplbUpdateExpert(expert_ids: Tensor,
-                        eplb_table: Tensor,
-                        *,
-                        local_rank_id: int,
-                        world_size: int,
-                        balance_mode: int = 0,
-                        dependencies=[],
-                        node_name=None):
-    """REG_OP(MoeEplbUpdateExpert)\n
+# This api is auto-generated from IR MoeUpdateExpert
+@auto_convert_to_tensor([False, False, False, False, False], [False, False, True, True, True], 
+                        inputs_tensor_type=[TensorType.TT_INDEX_NUMBER, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, 
+                        TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN])
+def MoeUpdateExpert(expert_ids: Tensor, 
+                    eplb_table: Tensor, 
+                    expert_scales: Optional[Tensor], 
+                    pruning_threshold: Optional[Tensor], 
+                    active_mask: Optional[Tensor], 
+                    *, 
+                    local_rank_id: int = -1, 
+                    world_size: int = -1, 
+                    balance_mode: int = 0, 
+                    dependencies=[], 
+                    node_name=None):
+    """REG_OP(MoeUpdateExpert)\n
     .INPUT(expert_ids, TensorType({DT_INT32, DT_INT64}))\n
     .INPUT(eplb_table, TensorType({DT_INT32}))\n
-    .REQUIRED_ATTR(local_rank_id, Int)\n
-    .REQUIRED_ATTR(world_size, Int)\n
+    .OPTIONAL_INPUT(expert_scales, TensorType({DT_BF16, DT_FP16, DT_FLOAT}))\n
+    .OPTIONAL_INPUT(pruning_threshold, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(active_mask, TensorType({DT_BOOL}))\n
+    .ATTR(local_rank_id, Int, -1)\n
+    .ATTR(world_size, Int, -1)\n
     .ATTR(balance_mode, Int, 0)\n
     .OUTPUT(balanced_expert_ids, TensorType({DT_INT32, DT_INT64}))\n
+    .OUTPUT(balanced_expert_ids, TensorType({DT_BOOL}))\n
     """
-    op = get_default_ge_graph().op.add()
-    op.type = "MoeEPLBUpdateExpert"
-    op.name = next_unique_name(node_name, "MoeEPLBUpdateExpert")
 
-    # process dependices
-    for dependency in dependencies:
-        op.input.append(dependency.controller)
+    inputs = {
+        "expert_ids": expert_ids,
+        "eplb_table": eplb_table,
+        "expert_scales": expert_scales,
+        "pruning_threshold": pruning_threshold,
+        "active_mask": active_mask,
+    }
 
-    # process inputs
-    op.input.append(expert_ids.tensor)
-    op.input_desc.add().CopyFrom(expert_ids.desc)
-    op.input_desc[-1].name = "expert_ids"
-    op.input.append(eplb_table.tensor)
-    op.input_desc.add().CopyFrom(eplb_table.desc)
-    op.input_desc[-1].name = "eplb_table"
+    attrs = {
+        "local_rank_id": attr.Int(local_rank_id),
+        "world_size": attr.Int(world_size),
+        "balance_mode": attr.Int(balance_mode),
+    }
 
-    # process attrs
-    op.attr["local_rank_id"].i = local_rank_id
-    op.attr["world_size"].i = world_size
-    op.attr["balance_mode"].i = balance_mode
+    outputs = [
+        "balanced_expert_ids",
+        "balanced_active_mask",
+    ]
 
-    # process outputs
-    output_index = 0
-    op.output_desc.add().name = "balanced_expert_ids"
-    balanced_expert_ids = Tensor(op, output_index)
-    output_index += 1
-    return balanced_expert_ids
+    return ge_op(
+        op_type="MoeUpdateExpert",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("MoeUpdateExpert")\
+        .input("expert_ids", "DT_INT32, DT_INT64")\
+        .input("eplb_table", "DT_INT32")\
+        .optional_input("expert_scales", "DT_BF16, DT_FLOAT16, DT_FLOAT")\
+        .optional_input("pruning_threshold", "DT_FLOAT")\
+        .optional_input("active_mask", "DT_BOOL")\
+        .attr("local_rank_id", attr.Int(-1))\
+        .attr("world_size", attr.Int(-1))\
+        .attr("balance_mode", attr.Int(0))\
+        .output("balanced_expert_ids", "DT_INT32, DT_INT64")\
+        .output("balanced_active_mask", "DT_BOOL")
+    )
