@@ -15,13 +15,13 @@ class _DataDumpConfig(NpuBaseConfig):
         self.dump_step = RegexValue("", r'^(((\d+)|(\d+-{0,1}\d+))\|{0,1})*$', "0|1|2-5|6")
         self.dump_layer = RegexValue("", r'^[0-9a-zA-Z_" "/\\.]*$', "Mul_1 Add1 Conv2D_1")
         self.dump_data = OptionValue('tensor', ['tensor', 'stats'])
-        self.dump_config_path = MustExistedFileAddr("")
+        self.dump_config_path = MustExistedFileAddr(None)
 
         super(_DataDumpConfig, self).__init__()
 
     def as_dict(self):
         dump_option = {}
-        if self.dump_config_path.value != "":
+        if self.dump_config_path.value is not None:
             dump_option['ge_dump_with_acl_config'] = self.dump_config_path.value
         if self.enable_dump:
             dump_option['ge.exec.enableDump'] = '1'

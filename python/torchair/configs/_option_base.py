@@ -100,9 +100,12 @@ class MustExistedFileAddr(OptionValue):
 
     @value.setter
     def value(self, v, suffix=".json"):
-        if v is None or not (os.path.exists(v) and v.endswith(suffix)):
-            raise FileNotFoundError('Please set legal file path, '
-                                    + f'{str(v)} is not found or is not in {suffix} format!')
+        if v is not None:
+            if v == "":
+                raise ValueError(f'File path cannot be empty!')
+            if not (os.path.exists(v) and v.endswith(suffix) and os.path.isfile(v)):
+                raise FileNotFoundError('Please set legal file path, '
+                                        + f'{str(v)} is not found or is not \'{suffix}\' file!')
         self._value = v
 
 

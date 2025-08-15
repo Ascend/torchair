@@ -1016,7 +1016,7 @@ class TorchairSt(unittest.TestCase):
                         in str(context.exception))
         with self.assertRaises(FileNotFoundError) as context:
             config_error.dump_config.dump_config_path = "./*****"
-        self.assertTrue('Please set legal file path, ./***** is not found or is not in .json format!'
+        self.assertTrue('Please set legal file path, ./***** is not found or is not \'.json\' file!'
                         in str(context.exception))
         with self.assertRaises(FileNotFoundError) as context:
             config_error.aoe_config.work_path = "./*****"
