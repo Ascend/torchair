@@ -545,6 +545,8 @@ def _get_inputs_custom_attr(example_inputs: List[torch.Tensor]):
             attr["dim_gears"] = dim_gears
         if hasattr(t, "_dynamo_static_input_type"):
             attr["_dynamo_static_input_type"] = t._dynamo_static_input_type
+        if isinstance(t, torch.nn.Parameter):
+            attr["_torchair_is_parameter"] = True
         if attr:
             inputs_attr[i - len(example_inputs)] = attr
     return inputs_attr
@@ -555,8 +557,8 @@ def _set_inputs_custom_attr(example_inputs: List[torch.Tensor], inputs_custom_at
         for k, v in attr.items():
             if k == "dim_gears":
                 set_dim_gears(example_inputs[i], v)
-            elif k == "_dynamo_static_input_type":
-                example_inputs[i]._dynamo_static_input_type = v
+            else:
+                setattr(example_inputs[i], k, v)
     guard_gears_shape(example_inputs)
 
 

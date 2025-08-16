@@ -46,7 +46,7 @@ from torchair._ge_concrete_graph.continguous_utils import guard_view_input
 from torchair._ge_concrete_graph.export_config_generete import generate_config
 from torchair._utils.export_utils import make_export_graph, get_export_file_name
 from torchair.inference._gear_utils import generate_dynamic_dims_option, get_dim_gears
-from torchair.ge._ge_graph import compat_as_bytes, _ge_proto_dtype_to_ge_dtype
+from torchair.ge._ge_graph import compat_as_bytes, _ge_proto_dtype_to_ge_dtype, is_sym
 from torchair.scope._scope_attr import guard_scope_attr
 from . import ge_apis as ge
 
@@ -957,9 +957,13 @@ class GeConcreteGraph(ConcreteGraphBase):
             placement = 'CPU' if (meta_outputs.device is None or meta_outputs.device.type == 'cpu') else 'NPU'
             data = ge.Data(index=data_index, dtype=dtype, shape=shape, placement=placement, node_name=target)
             value_type = _ValueType.TENSOR
-            if isinstance(meta_outputs, torch.nn.Parameter):
+            if isinstance(meta_outputs, torch.nn.Parameter) or hasattr(meta_outputs, "_torchair_is_parameter"):
                 value_type = _ValueType.PARAMETER
-            elif hasattr(meta_outputs, "_dynamo_static_input_type"):
+            elif getattr(meta_outputs, "_dynamo_static_input_type", None) == "guarded":
+                if any(is_sym(shape) for shape in meta_outputs.size()):
+                    raise AssertionError(
+                        f"The mark_static_address input tensor need be static shape, "
+                        f"input: {target}, size: {meta_outputs.shape}")
                 value_type = _ValueType.STATIC_TENSOR
 
             input_info = _GeInputInfo(
