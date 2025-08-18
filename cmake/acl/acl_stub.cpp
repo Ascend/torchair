@@ -1,6 +1,7 @@
 #include <thread>
 #include <chrono>
 #include <string>
+#include "acl/acl_base.h"
 #include "acl/acl_rt.h"
 #include "acl/acl_tdt.h"
 #include "acl/acl_op_compiler.h"
@@ -170,6 +171,10 @@ aclError aclmdlSetDump(const char *dumpCfgPath) {
 
 aclError aclmdlFinalizeDump() {
   return ACL_SUCCESS;
+}
+
+const char *aclrtGetSocName() {
+  return kMsg.c_str();
 }
 
 #ifdef __cplusplus

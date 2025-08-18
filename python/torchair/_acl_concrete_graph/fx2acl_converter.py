@@ -249,9 +249,8 @@ class AclConcreteGraph(ConcreteGraphBase):
         if kernel_aot_optimization:
             aclgraph_config_options['kernel_aot_optimization'] = kernel_aot_optimization
         build_dir = self.config.aclgraph_config.kernel_aot_optimization_build_dir
-        path_str = getattr(build_dir, 'value', build_dir)
-        if path_str != './':
-            aclgraph_config_options['kernel_aot_optimization_build_dir'] = path_str
+        if build_dir:
+            aclgraph_config_options['kernel_aot_optimization_build_dir'] = build_dir
 
         logger.debug("aclgraph compile options:")
         for k, v in aclgraph_config_options.items():

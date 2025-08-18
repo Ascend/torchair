@@ -46,7 +46,9 @@ class CompilerConfig(NpuBaseConfig):
         return self_dict == other_dict
 
 
-unsupport_geconfig_list = [("debug.aclgraph.disable_reinplace_input_mutated_ops_pass", [True]), \
+unsupport_geconfig_list = [("debug.aclgraph.disable_reinplace_input_mutated_ops_pass", [True]),
+    ("aclgraph_config.kernel_aot_optimization", [True]),
+    ("aclgraph_config.kernel_aot_optimization_build_dir", []),
     ("debug.aclgraph.disable_reinplace_inplaceable_ops_pass", [True])]
 unsupport_aclgraphconfig_list = [("inference_config.dynamic_gears_merge_policy", ["product"]), \
     ("debug.fx_summary.type", ["csv"]), ("dump_config.enable_dump", [True]), \
@@ -70,28 +72,37 @@ def _check_config_support(config: Any):
     config_dict = dict(_get_all_leaf_properties(config))
     warn_config = []
     if config.mode.value == "max-autotune":
-        for config_arg in unsupport_geconfig_list:
-            if config_arg[0] + "._value" in config_dict.keys():
-                warn_config = _get_warn_config(warn_config, config_arg, config_dict)
-        if len(warn_config) > 0:
-            warnings.warn("The following torchair config or properties may not take effect or report " + \
-                "error in max-autotune mode: {warn_configs}".format(warn_configs=", ".join(warn_config)), \
-                    UserWarning)
+        config_list = unsupport_geconfig_list
     else:
-        for config_arg in unsupport_aclgraphconfig_list:
-            if config_arg[0] + "._value" in config_dict.keys():
-                warn_config = _get_warn_config(warn_config, config_arg, config_dict)
-        if len(warn_config) > 0:
-            warnings.warn("The following torchair config or properties may not take effect or report " + \
-                "error in reduce-overhead mode: {warn_configs}".format(warn_configs=", ".join(warn_config) + \
-                ", cache_compile, set_dim_gears, dynamo_export, scope, npu_print"), UserWarning)
+        config_list = unsupport_aclgraphconfig_list
+
+    for config_arg in config_list:
+        key_raw = config_arg[0]
+        key_with_value = key_raw + "._value"
+        if key_raw in config_dict or key_with_value in config_dict:
+            warn_config = _get_warn_config(warn_config, config_arg, config_dict)
+    
+    if warn_config:
+        mode_specific = "max-autotune" if config.mode.value == "max-autotune" else "reduce-overhead"
+        additional = (
+            "" 
+            if mode_specific == "max-autotune" 
+            else ", cache_compile, set_dim_gears, dynamo_export, scope, npu_print"
+        )
+        warnings.warn(
+            f"The following torchair config or properties may not take effect or report "
+            f"error in {mode_specific} mode: {', '.join(warn_config)}{additional}",
+            UserWarning
+        )
 
 
 def _get_warn_config(warn_config, config_arg, config_dict):
-    if config_arg[1] == []:
-        warn_config.append("config." + config_arg[0] + ":" + str(config_dict[config_arg[0] + "._value"]))
-    elif config_dict[config_arg[0] + "._value"] in config_arg[1]:
-        warn_config.append("config." + config_arg[0] + ":" + str(config_dict[config_arg[0] + "._value"]))
+    key_raw = config_arg[0]
+    key_with_value = key_raw + "._value"
+    value = config_dict.get(key_raw) or config_dict.get(key_with_value)
+    if value is not None:
+        if not config_arg[1] or value in config_arg[1]:
+            warn_config.append(f"config.{key_raw}:{value}")
     return warn_config
     
 

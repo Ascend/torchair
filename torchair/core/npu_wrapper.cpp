@@ -41,6 +41,8 @@ PYBIND11_MODULE(_torchair, m) {
 
   (void)m.def("CheckAclnnAvaliable", &tng::TorchNpuGraphBase::CheckAclnnAvaliable);
 
+  (void)m.def("GetSocName", &tng::GetSocName);
+
   py::class_<tng::TorchNpuGraphBase>(m, "TorchNpuGraphBase")
     .def(py::init<const std::string &>())
     .def("load", &tng::TorchNpuGraphBase::Load)

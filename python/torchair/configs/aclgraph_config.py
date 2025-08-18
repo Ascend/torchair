@@ -12,6 +12,6 @@ class _AclGraphConfig:
     def __init__(self) -> None:
         self.use_custom_pool = None
         self.kernel_aot_optimization = OptionValue(False, [True, False])
-        self.kernel_aot_optimization_build_dir = MustExistedPathValue("./")
+        self.kernel_aot_optimization_build_dir = None
 
         super(_AclGraphConfig, self).__init__()

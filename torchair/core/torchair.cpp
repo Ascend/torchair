@@ -130,6 +130,11 @@ void Export(const std::string &serialized_proto, const std::map<std::string, std
   const pybind11::gil_scoped_acquire acquire;
 }
 
+std::string GetSocName() {
+  auto soc_name = aclrtGetSocName();
+  return std::string(soc_name);
+}
+
 TorchNpuGraphBase::TorchNpuGraphBase(const std::string &name) : name_(name), concrete_graph_(nullptr){};
 
 void TorchNpuGraphBase::Load(const std::string &serialized_proto, const std::map<std::string, std::string> &options,

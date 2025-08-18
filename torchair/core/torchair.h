@@ -21,12 +21,15 @@
 #include "torch/csrc/utils/python_arg_parser.h"
 #include "torch/torch.h"
 
+#include "acl/acl_base.h"
 #include "concrete_graph.h"
 #include "utils_tools.h"
 #include "logger.h"
 
 namespace tng {
 void Export(const std::string &serialized_proto, const std::map<std::string, std::string> &options);
+
+std::string GetSocName();
 
 class TorchNpuGraphBase {
  public:

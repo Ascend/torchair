@@ -1585,15 +1585,19 @@ class AclGraphSt(unittest.TestCase):
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
         model = torch.compile(Model(), backend=aclgraph_backend, dynamic=False)
         x = torch.randn([3, 2])
+        from torchair.core import _torchair
+        _torchair.GetSocName()
 
-        with self.assertLogs(logger, level="INFO") as cm:
+        import warnings
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
             try:
                 model(x)
             except ValueError as e:
+                messages = [str(w.message) for w in caught]
                 self.assertTrue(
-                    any("start compiler static kernel" in log for log in cm.output),
-                    f"Expected INFO 'start compiler static kernel' "
-                    f"not found in logs: {cm.output}"
+                    any("Starting static kernel compilation" in m for m in messages),
+                    f"Expected warning 'Starting static kernel compilation' not found in {messages}"
                 )
 
 

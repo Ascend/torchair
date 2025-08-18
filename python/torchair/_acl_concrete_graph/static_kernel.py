@@ -3,6 +3,7 @@ import subprocess
 import datetime
 from enum import IntEnum
 from pathlib import Path
+import warnings
 
 import torch
 from torchair.core import _torchair
@@ -13,7 +14,7 @@ _uninstall_path = None
 
 
 def compile_static_kernel(fx_graph, *args, build_dir=None, **kwargs):
-    logger.info(f"start compiler static kernel")
+    warnings.warn("Starting static kernel compilation")
 
     result_root = safe_resolve_output_dir(build_dir)
 
@@ -24,6 +25,7 @@ def compile_static_kernel(fx_graph, *args, build_dir=None, **kwargs):
         torch.fx.Interpreter(fx_graph).run(*args, **kwargs)
     finally:
         acl.op.stop_dump_args(1)
+    logger.debug("static kernel run eager success")
 
     debug_dirs = [d for d in result_root.iterdir()
                   if d.is_dir() and d.name.endswith("_debug")]
@@ -40,7 +42,7 @@ def compile_static_kernel(fx_graph, *args, build_dir=None, **kwargs):
     cmd = [
         "op_compiler",
         "-p", str(debug_dir),
-        "-v", get_soc_version_name(),
+        "-v", _torchair.GetSocName(),
         "-l", "info",
         "-j", "4",
         "-o", str(result_root),
@@ -103,46 +105,6 @@ def uninstall_static_kernel():
         _uninstall_path = None
 
 
-class SocVersion(IntEnum):
-    UnsupportedSocVersion = -1
-    Ascend910PremiumA = 100
-    Ascend910ProA = 101
-    Ascend910A = 102
-    Ascend910ProB = 103
-    Ascend910B = 104
-    Ascend310P1 = 200
-    Ascend310P2 = 201
-    Ascend310P3 = 202
-    Ascend310P4 = 203
-    Ascend310P5 = 204
-    Ascend310P7 = 206
-    Ascend910B1 = 220
-    Ascend910B2 = 221
-    Ascend910B2C = 222
-    Ascend910B3 = 223
-    Ascend910B4 = 224
-    Ascend910B4_1 = 225
-    Ascend310B1 = 240
-    Ascend310B2 = 241
-    Ascend310B3 = 242
-    Ascend310B4 = 243
-    Ascend910_9391 = 250
-    Ascend910_9392 = 251
-    Ascend910_9381 = 252
-    Ascend910_9382 = 253
-    Ascend910_9372 = 254
-    Ascend910_9362 = 255
-
-
-def get_soc_version_name():
-    import torch_npu.npu.utils as utils
-    soc_version = utils.get_soc_version()
-    try:
-        return SocVersion(soc_version).name
-    except ValueError:
-        return SocVersion(-1).name
-
-
 def safe_resolve_output_dir(build_dir: str):
     base_dir = Path.cwd().resolve()
     if build_dir is not None:
@@ -168,8 +130,14 @@ def safe_resolve_output_dir(build_dir: str):
     else:
         script_dir = base_dir  # 在同目录生成临时dump的文件夹，用于保存生成的算子信息json
 
+    base_output_dir = script_dir / "kernel_aot_optimization_outputs"
+    try:
+        base_output_dir.mkdir(exist_ok=True) 
+    except (PermissionError, OSError) as e:
+        raise RuntimeError(f"failed to create base output directory {base_output_dir}: {e}") from e
+
     timestamp = f"{datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')}_{os.getpid()}"
-    result_root = script_dir / f"{timestamp}_kernel_aot_optimization_build_outputs"
+    result_root = base_output_dir / f"{timestamp}_outputs"
 
     try:
         result_root.mkdir(exist_ok=True)
