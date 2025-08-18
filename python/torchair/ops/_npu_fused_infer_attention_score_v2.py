@@ -261,14 +261,30 @@ def npu_fused_infer_attention_score_v2_meta_impl(query, key, value, *, query_rop
         N = query.size(0)
         S1 = query.size(1)
     if input_layout == "TND":
+        if num_key_value_heads == 0:
+            num_key_value_heads = num_query_heads
+        token_kv_dim = key.dim()
+        enable_pa = block_table is not None
         token_x_dim = query.dim()
         torch._check(
             token_x_dim == 3,
             lambda: "Layout TND, queryDims must be 3!, but the actual value is "\
              + str(token_x_dim) + ops_error(ErrCode.VALUE),
         )
-        if block_table is not None: # IFA目前TND只支持PA场景，PFA目前TND只支持非PA场景
-            tmp_out = torch.empty([query.size(0), query.size(1), query.size(2)], dtype=query.dtype, device='meta')
+        if enable_pa: # IFA目前TND只支持PA场景，PFA目前TND只支持非PA场景
+            torch._check(
+                token_kv_dim == 3 or token_kv_dim == 4 or token_kv_dim == 5,
+                lambda: "Layout NTD_TND, token_kv_dim must be 3/4/5!, but the actual value is "\
+                 + str(token_kv_dim) + ops_error(ErrCode.VALUE),
+            )
+            if token_kv_dim == 3:
+                tmp_out = torch.empty([query.size(0), query.size(1), value.size(2) // num_key_value_heads], \
+                                    dtype=query.dtype, device='meta')
+            elif token_kv_dim == 4:
+                tmp_out = torch.empty([query.size(0), query.size(1), value.size(3)], dtype=query.dtype, device='meta')
+            else:
+                tmp_out = torch.empty([query.size(0), query.size(1), value.size(4) * value.size(2)], \
+                                    dtype=query.dtype, device='meta')
         else:
             tmp_out = torch.empty([query.size(0), query.size(1), value.size(2)], dtype=query.dtype, device='meta')
     if input_layout == "TND_NTD":
@@ -280,13 +296,32 @@ def npu_fused_infer_attention_score_v2_meta_impl(query, key, value, *, query_rop
         )
         tmp_out = torch.empty([query.size(1), query.size(0), query.size(2)], dtype=query.dtype, device='meta')
     if input_layout == "NTD_TND":
+        if num_key_value_heads == 0:
+            num_key_value_heads = num_query_heads
+        token_kv_dim = key.dim()
+        enable_pa = block_table is not None
         token_x_dim = query.dim()
         torch._check(
             token_x_dim == 3,
             lambda: "Layout NTD_TND, queryDims must be 3!, but the actual value is "\
              + str(token_x_dim) + ops_error(ErrCode.VALUE),
         )
-        tmp_out = torch.empty([query.size(1), query.size(0), value.size(2)], dtype=query.dtype, device='meta')
+        if enable_pa:
+            torch._check(
+                token_kv_dim == 3 or token_kv_dim == 4 or token_kv_dim == 5,
+                lambda: "Layout NTD_TND, token_kv_dim must be 3/4/5!, but the actual value is "\
+                 + str(token_kv_dim) + ops_error(ErrCode.VALUE),
+            )
+            if token_kv_dim == 3:
+                tmp_out = torch.empty([query.size(1), query.size(0), value.size(2) // num_key_value_heads], \
+                                    dtype=query.dtype, device='meta')
+            elif token_kv_dim == 4:
+                tmp_out = torch.empty([query.size(1), query.size(0), value.size(3)], dtype=query.dtype, device='meta')
+            else:
+                tmp_out = torch.empty([query.size(1), query.size(0), value.size(4) * value.size(2)], \
+                                    dtype=query.dtype, device='meta')
+        else:
+            tmp_out = torch.empty([query.size(1), query.size(0), value.size(2)], dtype=query.dtype, device='meta')
     if quant_scale_out is not None:
         if (return_softmax_lse):
             if input_layout == "TND":
@@ -320,6 +355,9 @@ def npu_fused_infer_attention_score_v2_meta_impl(query, key, value, *, query_rop
         if (return_softmax_lse):
             if input_layout == "TND":
                 if block_table is not None: # IFA目前TND只支持PA场景，PFA目前TND只支持非PA场景
+                    if query.size(2) == 0:
+                        return (torch.empty_like(tmp_out), torch.empty([query.size(0), num_query_heads, 0], \
+                                                                    dtype=torch.float32, device='meta'))
                     return (torch.empty_like(tmp_out), torch.empty([query.size(0), num_query_heads, 1], \
                                                                    dtype=torch.float32, device='meta'))
                 else:
@@ -329,6 +367,12 @@ def npu_fused_infer_attention_score_v2_meta_impl(query, key, value, *, query_rop
                 return (torch.empty_like(tmp_out), torch.empty([num_query_heads, query.size(0), 1], \
                                                                dtype=torch.float32, device='meta'))
             elif input_layout == "NTD_TND":
+                if block_table is not None: 
+                    if query.size(2) == 0:
+                        return (torch.empty_like(tmp_out), torch.empty([query.size(1), query.size(0), 0], \
+                                                                    dtype=torch.float32, device='meta'))
+                    return (torch.empty_like(tmp_out), torch.empty([query.size(1), query.size(0), 1], \
+                                                                dtype=torch.float32, device='meta'))
                 return (torch.empty_like(tmp_out), torch.empty([query.size(1), query.size(0), 1], dtype=torch.float32, \
                                                                device='meta'))
             else:
