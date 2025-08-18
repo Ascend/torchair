@@ -452,7 +452,6 @@ class AclGraphSt(unittest.TestCase):
         config = CompilerConfig()
         config.mode = "reduce-overhead"
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
-        config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
         model = torch.compile(Model(), backend=aclgraph_backend, dynamic=True)
@@ -482,7 +481,6 @@ class AclGraphSt(unittest.TestCase):
         config = CompilerConfig()
         config.mode = "reduce-overhead"
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
-        config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
         model = torch.compile(model, backend=aclgraph_backend, dynamic=True)
@@ -534,7 +532,6 @@ class AclGraphSt(unittest.TestCase):
         config = CompilerConfig()
         config.mode = "reduce-overhead"
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
-        config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass = True
         config.debug.aclgraph.enable_output_clone = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -1185,6 +1182,50 @@ class AclGraphSt(unittest.TestCase):
         for file_name in get_dumped_py_file_list('./'):
             os.remove(os.path.join('./', file_name))
 
+    def test_aclgraph_dynamic_output_construct_in_share_memory(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear1 = torch.nn.Linear(2, 2)
+
+            def forward(self, input):
+                ln1 = self.linear1(input)
+                return ln1, ln1.view(-1), ln1[2:], 2
+
+        torch._dynamo.reset()
+        x = torch.randn([4, 2])
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model1 = Model()
+        model1 = torch.compile(model1, backend=aclgraph_backend, dynamic=True)
+        with capture_logger() as stdout:
+            res1, res2, res3, res4 = model1(x)
+        self.assertTrue(res1.untyped_storage().data_ptr() == res2.untyped_storage().data_ptr())
+        self.assertTrue(res1.untyped_storage().data_ptr() == res3.untyped_storage().data_ptr())
+        captured_output = stdout.getvalue()
+        self.assertTrue("After reconstructing fx_graph" in captured_output)
+
+        # same graph with valid output ref, no need reconstruct
+        del res2, res3, res4
+        with capture_logger() as stdout:
+            res1, res2, res3, res4 = model1(x)
+        self.assertTrue(res1.untyped_storage().data_ptr() == res2.untyped_storage().data_ptr())
+        self.assertTrue(res1.untyped_storage().data_ptr() == res3.untyped_storage().data_ptr())
+        captured_output = stdout.getvalue()
+        self.assertFalse("no need to reconstruct output tensors for" in captured_output)  # should be true in real env
+
+        # same graph with invalid output ref, need reconstruct
+        del res1, res2, res3, res4
+        with capture_logger() as stdout:
+            res1, res2, res3, res4 = model1(x)
+        self.assertTrue(res1.untyped_storage().data_ptr() == res2.untyped_storage().data_ptr())
+        self.assertTrue(res1.untyped_storage().data_ptr() == res3.untyped_storage().data_ptr())
+        captured_output = stdout.getvalue()
+        self.assertTrue("After reconstructing fx_graph" in captured_output)
+
     def test_aclgraph_dynamic_disable_mempool_reuse_in_same_fx(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -1200,7 +1241,6 @@ class AclGraphSt(unittest.TestCase):
         config = CompilerConfig()
         config.mode = "reduce-overhead"
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
-        config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass = True
         config.debug.aclgraph.disable_mempool_reuse_in_same_fx = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -1212,7 +1252,7 @@ class AclGraphSt(unittest.TestCase):
         with capture_logger() as stdout:
             model(x, 9.9)
         captured_output = stdout.getvalue()
-        self.assertTrue("memory pool reuse state is disable" in captured_output)
+        self.assertTrue("memory pool reuse is disable" in captured_output)
         self.assertTrue("no mempool reuse in fx_graph" in captured_output)
 
     def test_aclgraph_dynamic_use_custom_pool(self):
@@ -1232,7 +1272,7 @@ class AclGraphSt(unittest.TestCase):
 
             def forward(self, input):
                 ln2 = self.linear2(input)
-                return ln2
+                return ln2 + 1
 
         x = torch.randn([3, 2])
         torch._dynamo.reset()
@@ -1240,8 +1280,6 @@ class AclGraphSt(unittest.TestCase):
         config = CompilerConfig()
         config.mode = "reduce-overhead"
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
-        config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass = True
-        config.debug.aclgraph.enable_output_clone = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
         from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
@@ -1266,12 +1304,13 @@ class AclGraphSt(unittest.TestCase):
         with capture_logger() as stdout:
             res = model1(x)
         captured_output = stdout.getvalue()
-        self.assertTrue("After reconstructing fx_graph" not in captured_output)
+        self.assertTrue("After reconstructing fx_graph" in captured_output)
 
+        # same graph with valid output ref, no need reconstruct
         with capture_logger() as stdout:
             res = model1(x)
         captured_output = stdout.getvalue()
-        self.assertTrue("no need to reconstruct fx_graph" not in captured_output) # output always no retained
+        self.assertTrue("no need to reconstruct output tensors for" in captured_output)
         pool_id1 = _get_pool_id
 
         model2 = Model2()
@@ -1279,7 +1318,7 @@ class AclGraphSt(unittest.TestCase):
         with capture_logger() as stdout:
             res = model2(x)
         captured_output = stdout.getvalue()
-        self.assertTrue("After reconstructing fx_graph" not in captured_output)
+        self.assertTrue("After reconstructing fx_graph" in captured_output)
         pool_id2 = _get_pool_id
 
         self.assertTrue(pool_id1 != pool_id2)
