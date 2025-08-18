@@ -135,6 +135,11 @@ at::Tensor &npu_normal_(at::Tensor &self, const double mean, const double std, c
   return self;
 }
 
+at::Tensor npu_as_strided(const at::Tensor &self, c10::IntArrayRef size, c10::IntArrayRef stride,
+                          c10::optional<int64_t> storage_offset_) {
+    return self.clone();
+}
+
 TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   m.impl("empty.memory_format", &privateuse1_empty_memory_format);
   m.impl("fill_.Scalar", &privateuse1_fill__scalar);
@@ -144,6 +149,7 @@ TORCH_LIBRARY_IMPL(aten, PrivateUse1, m) {
   m.impl("scatter_update_", &npu_scatter_update_);
   m.impl("set_.source_Storage_storage_offset", &npu_set_);
   m.impl("normal_", &npu_normal_);
+  m.impl("as_strided", &npu_as_strided);
 }
 
 // Register fallthrough for Autograd backends dispatch keys

@@ -5,7 +5,13 @@ import io
 import sys
 import torch
 import torchair
+from torchair_st_utils import generate_faked_module
 
+import _privateuse1_backend
+_privateuse1_backend.register_hook()
+npu_device = _privateuse1_backend.npu_device()
+torch.utils.rename_privateuse1_backend("npu")
+torch._register_device_module('npu', generate_faked_module())
 
 class CapturedStdout:
     def __init__(self):
@@ -214,9 +220,6 @@ add(abs(x), 1) = [[2 2]
 
     def test_npu_backend_with_inplace(self):
         from torchair.core import _npu_graph_executor
-        import _privateuse1_backend
-        npu_device = _privateuse1_backend.npu_device()
-        torch.utils.rename_privateuse1_backend("npu")
 
         def func(v):
             torchair.ops.npu_print(v)

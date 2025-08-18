@@ -580,6 +580,12 @@ class FuncolReduceScatterTensor(torch.nn.Module):
 
 def example(rank, world_size):
     torch.distributed.init_process_group("gloo", rank=rank, world_size=world_size)
+    torch.distributed.distributed_c10d._find_or_create_pg_by_ranks_and_tag(
+        "test1", [0, 1], 2)
+    torch.distributed.distributed_c10d._find_or_create_pg_by_ranks_and_tag(
+        "test2", [0, 1], 2)
+    torch.distributed.distributed_c10d._find_or_create_pg_by_ranks_and_tag(
+        "test3", [0, 1], 2)
     x = torch.ones([2, 2], dtype=torch.int32)
     y = torch.ones([2, 2], dtype=torch.int32)
     mod = AllReduceSingeGroup()

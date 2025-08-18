@@ -541,7 +541,7 @@ class AclGraphSt(unittest.TestCase):
         model = torch.compile(Model(), backend=aclgraph_backend, dynamic=True)
         x = torch.randn([5, 2])
         scale1 = 4
-        # torch._dynamo.reset()
+        torch._dynamo.reset()
         model(x, scale1)
 
         # no find captured graph, capture another npu graph
@@ -573,6 +573,7 @@ class AclGraphSt(unittest.TestCase):
 
         # another fx graph, need to capture graph
         AclConcreteGraph.__call__ = wrapper_call(bak_func, 0, 1)
+        torch._dynamo.reset()
         with capture_logger() as stdout:
             scale1 = 5.0
             model(x2, scale1)
@@ -1296,7 +1297,7 @@ class AclGraphSt(unittest.TestCase):
         pool_id1 = _get_pool_id
 
         model2 = Model2()
-        model2 = torch.compile(model2, backend=aclgraph_backend, dynamic=True)
+        model2 = torch.compile(model2, backend=aclgraph_backend2, dynamic=True)
         with capture_logger() as stdout:
             res = model2(x)
         captured_output = stdout.getvalue()

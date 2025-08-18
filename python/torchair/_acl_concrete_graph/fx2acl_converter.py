@@ -346,6 +346,8 @@ class AclConcreteGraph(ConcreteGraphBase):
 
         args = args[0]
         for arg in args:
+            if arg is None:
+                continue
             self._meta_outputs.append(arg.meta)
 
         return meta_outputs

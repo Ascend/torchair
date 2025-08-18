@@ -749,6 +749,8 @@ class CacheCompileSt(unittest.TestCase):
         value = content[start_idx:end_idx]
         self.assertEqual(value, "0", f"Value should be '0', but got {value}")
 
+
+    @unittest.skipIf(torch.__version__ > '2.1.0', "")
     def test_codegen_dynamic(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -812,6 +814,74 @@ def kernel(*args):
 '''
         compile_model = CompiledModel.load(cache_dir)
         print(compile_model.compiled_fx.py_code)
+        self.assertTrue(code in compile_model.compiled_fx.py_code)
+
+
+    @unittest.skipIf(torch.__version__ < '2.3.1', "")
+    def test_codegen_dynamic_high(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.cached = torchair.inference.cache_compile(self._forward)
+
+            def forward(self, t1, t2, t3, s1, s2):
+                return self.cached(t1, t2, t3, s1, s2)
+
+            def _forward(self, t1, t2, t3, s1, s2):
+                return t1 + s1, t2 + 1, torch.split(t3, s2)
+
+        model = Model()
+        cache_dir = CompiledModel.get_cache_bin(model._forward)
+        ModelCacheSaver.remove_cache(cache_dir)
+        t1 = torch.zeros(1, 10)
+        t2 = torch.zeros(2, 5)[:, 0:1]
+        t3 = torch.zeros(5, 2)
+        s1 = 5
+        s2 = [2, 3]
+        model(t1, t2, t3, s1, s2)
+
+        code = '''
+    _is_first_run = True
+    def kernel(*args):
+        arg0_1, arg1_1, arg2_1, arg3_1, arg4_1, arg5_1, arg6_1, arg7_1, arg8_1 = args
+        s0 = arg0_1
+        s1 = arg2_1
+        s2 = arg3_1
+        s3 = arg4_1
+        s4 = arg7_1
+        s5 = arg8_1
+        ge_inputs = list(args)
+        del ge_inputs[8]
+        del ge_inputs[7]
+        del ge_inputs[4]
+        del ge_inputs[3]
+        del ge_inputs[0]
+        ge_inputs[1] = torch.from_numpy(numpy.array([args[2]]))
+        ge_inputs[2] = args[5].clone()
+        ge_inputs.insert(4, torch.from_numpy(numpy.array([args[7], args[8], ])))
+    
+        global _is_first_run
+        if _is_first_run:
+            _is_first_run = False
+            assert_size_stride(args[1], (1, s0), (s0, 1))
+            assert_size_stride(args[5], (s2, 1), (s3, 1))
+            assert_size_stride(args[6], (s3, s2), (s2, 1))
+            _update_constplaceholder_attr_from_inputs(ge_graph, args)
+            _update_internal_format_from_inputs(ge_graph, ge_inputs)
+            ge_graph.load(local_compile_options, create_pg=False)
+            ge_graph.compile()
+    
+        ge_outputs = ge_graph.run(ge_inputs)
+        fx_outputs = [None] * 4
+        fx_outputs[0] = ge_outputs[0]
+        fx_outputs[1] = ge_outputs[1]
+        fx_outputs[2] = torch.as_strided(args[6], [s4, s2], [s2, 1], 0)
+        fx_outputs[3] = torch.as_strided(args[6], [s5, s2], [s2, 1], s2*s4)
+    
+        del ge_outputs
+        return tuple(fx_outputs)
+    '''
+        compile_model = CompiledModel.load(cache_dir)
         self.assertTrue(code in compile_model.compiled_fx.py_code)
 
     def test_codegen_static(self):
@@ -1014,7 +1084,7 @@ def kernel(*args):
             with self.assertRaises(AssertionError) as cm:
                 model_match_cache(*prompt2)  # cache hint
             exception = cm.exception
-            self.assertEqual(str(exception), "expected size 12==3, stride 12==2 at dim=0")
+            self.assertIn("expected size 12==3, stride 12==2 at dim=0", str(exception))
 
     def test_cache_dynamic_assert_size_stride(self):
         class CacheModel(torch.nn.Module):
@@ -1052,7 +1122,7 @@ def kernel(*args):
             with self.assertRaises(AssertionError) as cm:
                 model_match_cache(*prompt2)  # cache hint
             exception = cm.exception
-            self.assertEqual(str(exception), "expected size 12==12, stride 12==2 at dim=0")
+            self.assertIn("expected size 12==12, stride 12==2 at dim=0", str(exception))
 
     def test_cache_assert_size_stride_remove_cache(self):
         class CacheModel(torch.nn.Module):
