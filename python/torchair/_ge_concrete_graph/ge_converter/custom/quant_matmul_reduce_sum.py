@@ -1,11 +1,5 @@
-from typing import (
-    Optional, List
-)
+from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 
-import torch
-from torchair._ge_concrete_graph import ge_apis as ge
-from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge._ge_graph import DataType, Tensor, TensorSpec
 
 # 当前因为x2要求为NZ的格式，目前Support还不支持该种类型。
 # ND转NZ：可通过`torch_npu.npu_format_cast(x2.contiguous(), 29)`将ND格式的x2转换为NZ格式

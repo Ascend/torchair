@@ -1,7 +1,4 @@
-import torch
-from torchair._ge_concrete_graph import ge_apis as ge
-from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge._ge_graph import Tensor, TensorSpec
+from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 
 
 @register_fx_node_ge_converter(torch.ops.npu.npu_moe_update_expert.default)

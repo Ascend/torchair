@@ -1,14 +1,4 @@
-from typing import (
-    Any,
-    Optional
-)
-
-import torch
-from torchair._ge_concrete_graph import ge_apis as ge
-from torchair._ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter, \
-                                                       torch_type_to_ge_type
-from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
-from torchair._ge_concrete_graph.supported_declaration import F32, I8, Support
+from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 
 
 @declare_supported([

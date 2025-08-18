@@ -1,12 +1,4 @@
-from typing import (
-    List,
-)
-
-import torch
-from torchair._ge_concrete_graph import ge_apis as ge
-from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
-from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
-
+from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 
 @register_fx_node_ge_converter(torch.ops.npu.npu_gather_backward.default)
 def conveter_npu_gather_backward_default(
