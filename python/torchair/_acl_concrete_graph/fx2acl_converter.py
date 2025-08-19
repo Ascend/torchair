@@ -58,6 +58,7 @@ class AclConcreteGraph(ConcreteGraphBase):
         self._all_sym_input_idx = {}
         self._all_meta_tensor_input = {}
         self._fx_graph: fx.GraphModule = None
+        self._fx_forward: str = None
         self._aclgraph_manager: AclGraph = None
         self._aclgraph_cache_info = AclGraphCacheInfo(
             pool=pool,
@@ -113,6 +114,10 @@ class AclConcreteGraph(ConcreteGraphBase):
         return self._fx_graph
 
     @property
+    def fx_forward(self):
+        return self._fx_forward
+
+    @property
     def fx_graph_name(self):
         return self._aclgraph_cache_info.fx_graph_name
 
@@ -165,10 +170,19 @@ class AclConcreteGraph(ConcreteGraphBase):
 
         # There is no need to save config.for now. Maybe needed in the future.
         # Configs are set for AclConcreteGraph, not for AclGraph
+        head.writeline('')
+        forward_code = self.fx_forward
+        head.splice(forward_code)
+        head.writeline('')
         init_code = self._codegen_init()
         head.splice(init_code)
-
-        kernel_code = self._codegen_kernel()
+        need_update_tagged_event = (len(self._aclgraph_cache_info.tagged_event_names) > 0)
+        if need_update_tagged_event:
+            head.writeline('')
+            update_code = self._codegen_update_tagged_event()
+            head.splice(update_code)
+        head.writeline('')
+        kernel_code = self._codegen_kernel(need_update_tagged_event)
         head.splice(kernel_code)
 
         return head.getvalue()
@@ -202,7 +216,9 @@ class AclConcreteGraph(ConcreteGraphBase):
             # when use custom pool from user, do not enable mem pool reuse in same fx.
             self.config.debug.aclgraph.disable_mempool_reuse_in_same_fx = True
 
-        multi_stream_enabled = apply_event_closure_with_multi_stream(self.fx_graph)
+        multi_stream_enabled = apply_event_closure_with_multi_stream(self.fx_graph,
+                                                                     self.fx_graph_name,
+                                                                     self._aclgraph_cache_info.tagged_event_names)
         logger.debug('after apply_stream_event_closure optimization, '
                      'multi_stream_enabled is %s, graph is %s.', multi_stream_enabled, self.fx_graph.graph)
 
@@ -240,6 +256,11 @@ class AclConcreteGraph(ConcreteGraphBase):
 
         # Must not optimize fx_graph after this. Initialize aclgraph.
         configs = self.normalize_config()
+        # It is necessary to recompile GraphModule to make sure that changes to graph take effect.
+        self.fx_graph.recompile()
+        self._fx_forward = self._codegen_fx_forward(self.fx_graph, self.fx_graph.code,
+                                                    self._aclgraph_cache_info.updated_ops_param)
+        logger.debug('Original fx_forward is: %s', self.fx_graph.code)
         self._aclgraph_manager = AclGraph(fx_graph=self.fx_graph, config=configs)
         self.graph.load(self._aclgraph_cache_info)
 
@@ -355,17 +376,17 @@ class AclConcreteGraph(ConcreteGraphBase):
     def _codegen_init(self):
         from torch._inductor.utils import IndentedBuffer
         init_code = IndentedBuffer()
-        # Please make sure that fx graph will not be changed/optimized after serialized_fx_graph
+        # Please make sure that fx graph will not be changed/optimized after generate fx_forward
 
         init_code.writelines(['',
-                              f'serialized_fx_graph = {AclGraph.save_graphmodule_to_str(self.fx_graph)}',
                               f'compile_configs = {{}}'])
         configs = self.normalize_config()
         for k, v in configs.items():
             init_code.writeline(f'compile_configs["{k}"] = "{v}"')
 
         init_code.writelines(['',
-                              f'acl_graph = AclGraph(serialized_fx_graph=serialized_fx_graph, config=compile_configs)'])
+                              f'acl_graph = AclGraph(fx_forward=forward, '
+                              f'config=compile_configs)'])
 
         init_code.splice(f'''
             aclgraph_cache_info = AclGraphCacheInfo(
@@ -378,14 +399,28 @@ class AclConcreteGraph(ConcreteGraphBase):
                 unupdated_sym_input_index={self._aclgraph_cache_info.unupdated_sym_input_index},
                 updated_ops_param={self._aclgraph_cache_info.updated_ops_param},
                 ops_update_rulers={self._aclgraph_cache_info.ops_update_rulers},
-                mutated_user_inputs={self._aclgraph_cache_info.mutated_user_inputs}
+                mutated_user_inputs={self._aclgraph_cache_info.mutated_user_inputs},
+                tagged_event_names={self._aclgraph_cache_info.tagged_event_names}
             )
             acl_graph.load(aclgraph_cache_info)
         ''')
 
         return init_code.getvalue()
 
-    def _codegen_kernel(self):
+    def _codegen_update_tagged_event(self):
+        from torch._inductor.utils import IndentedBuffer
+        update_code = IndentedBuffer()
+        update_code.splice('''
+        def _update_tagged_event_dict():
+            from torchair.ops._tagged_event import _GLOBAL_TAG_TO_EVENT, _GLOBAL_LOCK
+            with _GLOBAL_LOCK:
+                for i, tag in enumerate(aclgraph_cache_info.tagged_event_names):
+                    tagged_event = torch.npu.Event()
+                    _GLOBAL_TAG_TO_EVENT[tag] = tagged_event
+        ''')
+        return update_code.getvalue()
+
+    def _codegen_kernel(self, need_update_tagged_event=False):
         from torch._inductor.utils import IndentedBuffer
         kernel_code = IndentedBuffer()
         kernel_code.writelines(['', '_is_first_run = True', f'def kernel(*args):'])
@@ -393,7 +428,9 @@ class AclConcreteGraph(ConcreteGraphBase):
             # for assert_shape_stride in first run
             kernel_code.writelines(['', 'global _is_first_run', 'if _is_first_run:'])
             with kernel_code.indent():
-                kernel_code.writelines(['_is_first_run = False'])
+                kernel_code.writelines(['_is_first_run = False', ''])
+                if need_update_tagged_event:
+                    kernel_code.writelines(['_update_tagged_event_dict()', ''])
                 input_code = self._codegen_input()
                 kernel_code.splice(input_code)
                 assert_code = self._codegen_assert_size_stride()
@@ -437,3 +474,85 @@ class AclConcreteGraph(ConcreteGraphBase):
                     continue
                 input_code.writeline(f'{str(name)} = {self._fx_input_names[idx]}')
         return input_code.getvalue()
+
+    def _codegen_fx_forward(self, gm: torch.fx.GraphModule, code: str, need_updated_ops: Dict):
+        import re
+        forward_def_match = re.search(r"def forward\(self[^)]*\):", code)
+        if not forward_def_match:
+            raise ValueError("Cannot find 'forward' in the code which is generated from recompile of a GraphModule.")
+
+        # get func body and split it by line
+        body_start = forward_def_match.end()
+        body = code[body_start:].splitlines()
+
+        from torch._inductor.utils import IndentedBuffer
+        forward_code = IndentedBuffer()
+        # func signiture
+        forward_code.writeline("def forward(*args, node_info=[]):")
+
+        with forward_code.indent():
+            all_input_str = ', '.join(self._fx_input_names)
+            if all_input_str:
+                if len(self._fx_input_names) == 1:
+                    all_input_str += ', '
+            forward_code.writeline(f'{all_input_str} = args')
+            need_updated_ops_dict = {}
+            has_need_updated_ops = self._codegen_fx_forward_updated_ops(gm, need_updated_ops, need_updated_ops_dict)
+            if has_need_updated_ops:
+                forward_code.writelines(["from torch import device",
+                                         "from torchair._acl_concrete_graph.utils import reconstruct_args_kwargs",
+                                         "from torchair._acl_concrete_graph.acl_graph import UpdatedNodeInfo"])
+            for line in body:
+                need_update = False
+                for k in need_updated_ops_dict.keys():
+                    if k in line:
+                        forward_code.splice(need_updated_ops_dict[k])
+                        # Frees memory that won't be used afterward.
+                        line_parts = line.split(';', 1)
+                        mem_free_part = line_parts[1].strip() if len(line_parts) > 1 else ""
+                        forward_code.writeline(mem_free_part)
+                        need_update = True
+                        break
+                if not need_update:
+                    forward_code.writeline(line.strip())
+
+        return forward_code.getvalue()
+
+    def _codegen_fx_forward_updated_ops(self, gm: torch.fx.GraphModule, need_updated_ops: Dict,
+                                        need_updated_ops_dict: Dict):
+        has_need_updated_ops = False
+        from torch._inductor.utils import IndentedBuffer
+        for node in gm.graph.nodes:
+            if node.op != "call_function":
+                continue
+            if node.name in need_updated_ops.keys():
+                need_updated_ops_code = IndentedBuffer()
+                has_need_updated_ops = True
+
+                # external event no need record before capture.
+                need_updated_ops_code.splice(f'''
+                    external_event_{node.name} = torch.npu.ExternalEvent()
+                    capture_stream_{node.name} = torch.npu.current_stream()
+                    external_event_{node.name}.wait(capture_stream_{node.name})
+                    external_event_{node.name}.reset(capture_stream_{node.name})
+
+                    torch.npu.graph_task_group_begin(capture_stream_{node.name})
+                    {node.name} = torch.ops.{node.target}(*{node.args}, **{node.kwargs})
+                    handle_{node.name} = torch.npu.graph_task_group_end(capture_stream_{node.name})
+
+                    node_args, node_kwargs = reconstruct_args_kwargs({node.args}, {node.kwargs})
+                    node_info.append(UpdatedNodeInfo(
+                        node_name="{node.name}",
+                        updated_func=torch.ops.{node.target},
+                        updated_param_name={need_updated_ops[node.name]},
+                        args=node_args,
+                        kwargs=node_kwargs,
+                        handle=handle_{node.name},
+                        event=external_event_{node.name})
+                    )
+
+                ''')
+                need_updated_ops_dict[f'{node.name} = torch.ops.{node.target}'] = \
+                    need_updated_ops_code.getvalue()
+
+        return has_need_updated_ops

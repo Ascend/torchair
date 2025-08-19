@@ -701,27 +701,36 @@ class AclGraphSt(unittest.TestCase):
         with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
             opt_model(x, x, x, x)
 
-        # 主stream上存在一个record， 两个target stream分别存在一个wait
         self.assertTrue(
-            any("Try to capture node names[record] type[record]" in log for log in cm.output),
-            f"Expected no DEBUG log 'Try to capture node names[record_1] type[record]' in logs: {cm.output}")
+            any("Try to capture node names[tagged_event_record_default] type[air.tagged_event_record.default]"
+                in log for log in cm.output),
+            f"Expected no DEBUG log 'Try to capture node names[tagged_event_record_default] "
+            f"type[air.tagged_event_record.default]' in logs: {cm.output}")
         # stream tag 1
         self.assertTrue(
-            any("guard with user stream scope, node = wait, user stream label = 1" in log for log in cm.output),
-            f"Expected no DEBUG log 'guard with user stream scope, node = wait, user stream label = 1' in logs: "
+            any("guard with user stream scope, node = tagged_event_wait_default, user stream label = 1"
+                in log for log in cm.output),
+            f"Expected no DEBUG log 'guard with user stream scope, node = tagged_event_wait_default, "
+            f"user stream label = 1' in logs: "
             f"{cm.output}")
         self.assertTrue(
-            any("Try to capture node names[wait] type[wait]" in log for log in cm.output),
-            f"Expected no DEBUG log 'Try to capture node names[wait] type[wait]' in logs: {cm.output}")
+            any("Try to capture node names[tagged_event_wait_default] type[air.tagged_event_wait.default]"
+                in log for log in cm.output),
+            f"Expected no DEBUG log 'Try to capture node names[tagged_event_wait_default] "
+            f"type[air.tagged_event_wait.default]' in logs: {cm.output}")
 
         # stream tag 2
         self.assertTrue(
-            any("guard with user stream scope, node = wait_1, user stream label = 2" in log for log in cm.output),
-            f"Expected no DEBUG log 'guard with user stream scope, node = wait_1, user stream label = 2' in logs:"
+            any("guard with user stream scope, node = tagged_event_wait_default_1, user stream label = 2"
+                in log for log in cm.output),
+            f"Expected no DEBUG log 'guard with user stream scope, node = tagged_event_wait_default_1, "
+            f"user stream label = 2' in logs:"
             f" {cm.output}")
         self.assertTrue(
-            any("Try to capture node names[wait_1] type[wait]" in log for log in cm.output),
-            f"Expected no DEBUG log 'Try to capture node names[wait_1] type[wait]' in logs: {cm.output}")
+            any("Try to capture node names[tagged_event_wait_default_1] type[air.tagged_event_wait.default]"
+                in log for log in cm.output),
+            f"Expected no DEBUG log 'Try to capture node names[tagged_event_wait_default_1] "
+            f"type[air.tagged_event_wait.default]' in logs: {cm.output}")
 
         # mm在stream tag 1上执行
         self.assertTrue(
@@ -738,49 +747,62 @@ class AclGraphSt(unittest.TestCase):
         # 两条从流stream分别向主capture流发送record-wait对，以完成event闭环
         # stream tag 2
         self.assertTrue(
-            any("guard with user stream scope, node = record_1, user stream label = 2" in log for log in cm.output),
-            f"Expected no DEBUG log 'guard with user stream scope, node = record_1, user stream label = 2' in logs:"
+            any("guard with user stream scope, node = tagged_event_record_default_1, user stream label = 2"
+                in log for log in cm.output),
+            f"Expected no DEBUG log 'guard with user stream scope, node = tagged_event_record_default_1, "
+            f"user stream label = 2' in logs:"
             f" {cm.output}")
         self.assertTrue(
-            any("Try to capture node names[record_1] type[record]" in log for log in cm.output),
-            f"Expected no DEBUG log 'Try to capture node names[record_1] type[record]' in logs: {cm.output}")
+            any("Try to capture node names[tagged_event_record_default_1] type[air.tagged_event_record.default]"
+                in log for log in cm.output),
+            f"Expected no DEBUG log 'Try to capture node names[tagged_event_record_default_1] "
+            f"type[air.tagged_event_record.default]' in logs: {cm.output}")
         self.assertTrue(
-            any("Try to capture node names[wait_2] type[wait]" in log for log in cm.output),
-            f"Expected no DEBUG log 'Try to capture node names[wait_2] type[wait]' in logs: {cm.output}")
+            any("Try to capture node names[tagged_event_wait_default_2] type[air.tagged_event_wait.default]"
+                in log for log in cm.output),
+            f"Expected no DEBUG log 'Try to capture node names[tagged_event_wait_default_2] "
+            "type[air.tagged_event_wait.default]' in logs: {cm.output}")
 
         # stream tag 1
         self.assertTrue(
-            any("guard with user stream scope, node = record_2, user stream label = 1" in log for log in cm.output),
-            f"Expected no DEBUG log 'guard with user stream scope, node = record_2, user stream label = 1' "
+            any("guard with user stream scope, node = tagged_event_record_default_2, user stream label = 1"
+                in log for log in cm.output),
+            f"Expected no DEBUG log 'guard with user stream scope, node = tagged_event_record_default_2, "
+            f"user stream label = 1' "
             f"in logs: {cm.output}")
         self.assertTrue(
-            any("Try to capture node names[record_2] type[record]" in log for log in cm.output),
-            f"Expected no DEBUG log 'Try to capture node names[record_2] type[record]' in logs: {cm.output}")
+            any("Try to capture node names[tagged_event_record_default_2] type[air.tagged_event_record.default]"
+                in log for log in cm.output),
+            f"Expected no DEBUG log 'Try to capture node names[tagged_event_record_default_2] "
+            f"type[air.tagged_event_record.default]' in logs: {cm.output}")
         self.assertTrue(
-            any("Try to capture node names[wait_3] type[wait]" in log for log in cm.output),
-            f"Expected no DEBUG log 'Try to capture node names[wait_3] type[wait]' in logs: {cm.output}")
+            any("Try to capture node names[tagged_event_wait_default_3] type[air.tagged_event_wait.default]"
+                in log for log in cm.output),
+            f"Expected no DEBUG log 'Try to capture node names[tagged_event_wait_default_3] "
+            f"type[air.tagged_event_wait.default]' in logs: {cm.output}")
+
 
     def test_npu_stream_switch_with_tagged_event(self):
         from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
         config = CompilerConfig()
         config.mode = "reduce-overhead"
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+        ext_event1 = torchair.ops.npu_create_tagged_event(tag="66")
+        ext_event2 = torchair.ops.npu_create_tagged_event(tag="77")
 
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
-                self.ext_event1 = torchair.ops.npu_create_tagged_event(tag="66")
-                self.ext_event2 = torchair.ops.npu_create_tagged_event(tag="77")
 
             def forward(self, in1, in2, in3, in4):
                 add_result = torch.add(in1, in2)
-                torchair.ops.npu_tagged_event_record(self.ext_event1)
-                torchair.ops.npu_tagged_event_record(self.ext_event2)
+                torchair.ops.npu_tagged_event_record(ext_event1)
+                torchair.ops.npu_tagged_event_record(ext_event2)
                 with torchair.scope.npu_stream_switch('1', 3):
-                    torchair.ops.npu_tagged_event_wait(self.ext_event1)
+                    torchair.ops.npu_tagged_event_wait(ext_event1)
                     mm_result1 = torch.mm(in3, in4)
                     with torchair.scope.npu_stream_switch('2', 3):
-                        torchair.ops.npu_tagged_event_wait(self.ext_event2)
+                        torchair.ops.npu_tagged_event_wait(ext_event2)
                         mm_result2 = torch.mm(in3, in4)
                 return add_result, mm_result1, mm_result2
 
@@ -791,7 +813,7 @@ class AclGraphSt(unittest.TestCase):
                     assert str(node.prev.target) == "air.tagged_event_wait.default"
                 if str(node.target) == "air.tagged_event_record.default":
                     event_record += 1
-            assert event_record == 2, f"expect event record count is 2, but got {event_record}"
+            assert event_record == 5, f"expect event record count is 5, but got {event_record}"
 
         def decorator(call):
             def wrapper(*args, **kwargs):
@@ -1639,6 +1661,50 @@ class AclGraphSt(unittest.TestCase):
                     any("Starting static kernel compilation" in m for m in messages),
                     f"Expected warning 'Starting static kernel compilation' not found in {messages}"
                 )
+
+    def test_aclgraph_cache_npu_stream_switch_with_tagged_event(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.cached_prompt = torchair.inference.cache_compile(self.prompt, config=config)
+
+            def forward(self, in1, in2, in3, in4):
+                return self.cached_prompt(in1, in2, in3, in4)
+
+            def prompt(self, in1, in2, in3, in4):
+                return self._forward(in1, in2, in3, in4)
+
+
+            def _forward(self, in1, in2, in3, in4):
+                sub_result = torch.sub(in1, in2)
+                torchair.ops.npu_tagged_event_record(ext_event1)
+                torchair.ops.npu_tagged_event_record(ext_event2)
+                with torchair.scope.npu_stream_switch('2', 3):
+                    torchair.ops.npu_tagged_event_wait(ext_event1)
+                    add_result1 = torch.add(in3, in4)
+                    with torchair.scope.npu_stream_switch('1', 3):
+                        torchair.ops.npu_tagged_event_wait(ext_event2)
+                        add_result2 = torch.add(in3, in4)
+                return sub_result, add_result1, add_result2
+
+
+        ext_event1 = torchair.ops.npu_create_tagged_event(tag="6666")
+        ext_event2 = torchair.ops.npu_create_tagged_event(tag="7777")
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        model = Model()
+
+        prompt_cache_dir = CompiledModel.get_cache_bin(model.prompt, config=config)
+        ModelCacheSaver.remove_cache(prompt_cache_dir)
+        self.assertFalse(os.path.exists(prompt_cache_dir))
+        x = torch.randn([3, 3])
+        y = torch.randn([3, 3])
+        z = torch.randn([3, 3])
+        w = torch.randn([3, 3])
+        model(x, y, z, w)
+        self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
 
 
 if __name__ == '__main__':

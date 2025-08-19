@@ -13,7 +13,7 @@ from torchair.core.utils import logger
 _uninstall_path = None
 
 
-def compile_static_kernel(fx_graph, *args, build_dir=None, **kwargs):
+def compile_static_kernel(fx_func, *args, build_dir=None, **kwargs):
     warnings.warn("Starting static kernel compilation")
 
     result_root = safe_resolve_output_dir(build_dir)
@@ -22,7 +22,10 @@ def compile_static_kernel(fx_graph, *args, build_dir=None, **kwargs):
     import acl
     acl.op.start_dump_args(1, str(result_root))
     try:
-        torch.fx.Interpreter(fx_graph).run(*args, **kwargs)
+        if isinstance(fx_func, torch.fx.GraphModule):
+            torch.fx.Interpreter(fx_func).run(*args, **kwargs)
+        else:
+            fx_func(*args, **kwargs)
     finally:
         acl.op.stop_dump_args(1)
     logger.debug("static kernel run eager success")
@@ -132,7 +135,7 @@ def safe_resolve_output_dir(build_dir: str):
 
     base_output_dir = script_dir / "kernel_aot_optimization_outputs"
     try:
-        base_output_dir.mkdir(exist_ok=True) 
+        base_output_dir.mkdir(exist_ok=True)
     except (PermissionError, OSError) as e:
         raise RuntimeError(f"failed to create base output directory {base_output_dir}: {e}") from e
 

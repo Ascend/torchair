@@ -31,6 +31,6 @@ def npu_tagged_event_wait(event):
 
 # this api is used to record tensor to tagged stream with torch.compile(mode='reduce-overhead') with npu backend,
 # it will create a new stream with tag if not exist, if you are in main stream, please use tagged_stream = 'default'
-def npu_record_tagged_stream(self: torch.Tensor, tagged_stream: str):
+def npu_record_tagged_stream(tensor: torch.Tensor, tagged_stream: str):
     from ._tagged_event import _npu_record_tagged_stream
-    return _npu_record_tagged_stream(self, tagged_stream)
+    return _npu_record_tagged_stream(tensor, tagged_stream)

@@ -1,6 +1,6 @@
 from collections import deque, OrderedDict
 from typing import List, Optional, Callable, Any, Deque, Dict, Set, Tuple, Union
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import functools
 import gc
 import os
@@ -27,7 +27,7 @@ from torchair._acl_concrete_graph.static_kernel import compile_static_kernel
 class StaticWorkspaceReplaceFunc:
     """
     Data class defining replacement functions for static workspace operations.
-    
+
     Attributes:
         get_workspace (Callable): Function to retrieve workspace size.
         out_operator (Callable): Replacement operator for the original operation.
@@ -46,7 +46,7 @@ class StaticWorkspaceReplaceFunc:
 class UpdatedNodeInfo:
     """
     Information about updated nodes during graph capture.
-    
+
     Attributes:
         node_name (str): Name of the updated node.
         updated_func (Callable): Function performing the update.
@@ -600,6 +600,7 @@ class AclGraphCacheInfo:
     updated_ops_param: Dict[str, List] = None
     ops_update_rulers: Dict[str, List] = None
     mutated_user_inputs: List[str] = None
+    tagged_event_names: List[str] = field(default_factory=list)
 
 
 class AclGraph(object):
@@ -608,7 +609,7 @@ class AclGraph(object):
     It also has the capabilities of capturing and replaying graphs.
     """
 
-    def __init__(self, fx_graph: torch.fx.GraphModule = None, serialized_fx_graph=None, config=None):
+    def __init__(self, fx_graph: torch.fx.GraphModule = None, fx_forward=None, config=None):
         try:
             import torch_npu
         except ImportError as e:
@@ -616,13 +617,11 @@ class AclGraph(object):
                 "Couldn't import torch_npu. When the CompilerConfig.mode is reduce-overhead, "
                 "it is necessary to use torch_npu.npu.NPUGraph(), so importing torch_npu is essential.") from e
 
-        if fx_graph is not None and serialized_fx_graph is None:
-            self._fx_graph = fx_graph
-        elif fx_graph is None and serialized_fx_graph is not None:
-            self._fx_graph = self.load_graphmodule_from_str(serialized_fx_graph)
-        else:
+        self._fx_forward = fx_forward
+        self._fx_graph = fx_graph
+        if (fx_forward is None) == (fx_graph is None):
             raise AssertionError(f"Unsupported init method: "
-                                 f"must provide exactly one of either fx_graph or serialized_fx_graph.")
+                                 f"must provide exactly one of either fx_forward or fx_graph.")
         self._config = config if config is not None else {}
 
         # members for npugraph
@@ -645,6 +644,8 @@ class AclGraph(object):
         self._updated_input_func = None
         self._user_inputs_mapping = OrderedDict()
         self._mutated_user_inputs = None
+        self._updated_node_infos = []
+        self._tagged_event_names = None
 
     @property
     def config(self):
@@ -652,6 +653,7 @@ class AclGraph(object):
 
     @property
     def graph(self):
+        # is a Dict:[str, obj(torch_npu.npu.NPUGraph())], which mapping graph_key to NPUGraph
         return {graph_key: graph_meta.acl_graph for graph_key, graph_meta in self._graphs_meta.items()}
 
     @property
@@ -686,19 +688,9 @@ class AclGraph(object):
     def fx_graph(self):
         return self._fx_graph
 
-    @staticmethod
-    def save_graphmodule_to_str(gm: torch.fx.GraphModule):
-        serialized_to_str = ""
-
-        if isinstance(gm, torch.fx.GraphModule):
-            reduce_data = gm.__reduce__()
-            data = (reduce_data, gm.state_dict())
-            try:
-                serialized_to_str = pickle.dumps(data)
-            except Exception as e:
-                logger.warning(f"Faild to serialize fx graph, error msg: {e}")
-
-        return serialized_to_str
+    @property
+    def fx_forward(self):
+        return self._fx_forward
 
     def load(self, aclgraph_cache_info: AclGraphCacheInfo):
         # call load before compile
@@ -713,18 +705,25 @@ class AclGraph(object):
         self._capture_error_mode = aclgraph_cache_info.capture_error_mode
         self._num_warmup_iters = aclgraph_cache_info.num_warmup_iters
         self._fx_graph_name = aclgraph_cache_info.fx_graph_name
+        self._tagged_event_names = aclgraph_cache_info.tagged_event_names
 
     def compile(self, *args: Any, **kwargs: Any):
         if not self._captured:
             # warm up before capture
             with record_function("acl_graph_warm_up"):
                 for _ in range(self.num_warmup_iters):
-                    self.fx_graph(*args, **kwargs)
+                    if self.fx_graph is not None:
+                        self.fx_graph(*args, **kwargs)
+                    else:
+                        self.fx_forward(*args, **kwargs)
                     torch.npu.synchronize()
 
             if self.config.get('kernel_aot_optimization', False):
                 path = self.config.get('kernel_aot_optimization_build_dir', None)
-                compile_static_kernel(self.fx_graph, *args, build_dir=path, **kwargs)
+                if self.fx_graph is not None:
+                    compile_static_kernel(self.fx_graph, *args, build_dir=path, **kwargs)
+                else:
+                    compile_static_kernel(self.fx_forward, *args, build_dir=path, **kwargs)
 
             self._unupdated_input_func = get_unupdated_input_fn(self._unupdated_sym_input_index)
             self._updated_input_func = get_updated_ops_fn(self._ops_update_rulers)
@@ -827,18 +826,36 @@ class AclGraph(object):
             *args: Input arguments for graph capture.
             **kwargs: Keyword arguments for graph capture.
         """
-        captured_interpreter = UpdatedNodeCaptureInterp(self.fx_graph, self._updated_ops_param)
+        if self.fx_graph is not None:
+            captured_interpreter = UpdatedNodeCaptureInterp(self.fx_graph, self._updated_ops_param)
+            import torch_npu
+            with torch_npu.npu.graph(self.graph[graph_key], pool=self.pool, stream=self.stream,
+                                     capture_error_mode=self.capture_error_mode):
+                captured_outputs = captured_interpreter.run(*args, **kwargs)
+                self._updated_node_infos = captured_interpreter.captured_node_infos
 
-        # capture torch_npu.npu.NPUGraph()
-        import torch_npu
-        with torch_npu.npu.graph(self.graph[graph_key], pool=self.pool, stream=self.stream,
-                                 capture_error_mode=self.capture_error_mode):
-            captured_outputs = captured_interpreter.run(*args, **kwargs)
+        else:
+            import torch_npu
+            with torch_npu.npu.graph(self.graph[graph_key], pool=self.pool, stream=self.stream,
+                                     capture_error_mode=self.capture_error_mode):
+                captured_outputs = self.fx_forward(*args, node_info=self._updated_node_infos, **kwargs)
+                for i, _ in enumerate(self._updated_node_infos):
+                    logger.debug("Record the %s th updated node, node name[%s], node func[%s], node args length[%s], "
+                                 "node kwargs length[%s], update param name[%s], update task handle[%s], "
+                                 "update event[%s] in graph.",
+                                 i,
+                                 self._updated_node_infos[i].node_name,
+                                 self._updated_node_infos[i].updated_func,
+                                 len(self._updated_node_infos[i].args),
+                                 len(self._updated_node_infos[i].kwargs),
+                                 self._updated_node_infos[i].updated_param_name,
+                                 self._updated_node_infos[i].handle,
+                                 self._updated_node_infos[i].event
+                                 )
 
-        updated_node_infos = captured_interpreter.captured_node_infos
-        logger.info('Success to capture fx_graph %s for graph key{%s} with {%s} updated nodes and {%s} output nodes. '
-                    'Start to run AclGraph{id: %s}.',
-                    self.name, graph_key, len(updated_node_infos), len(captured_outputs), id(self.graph[graph_key]))
+        logger.info('Success to capture fx_graph %s for graph key{%s}. '
+                    'Start to run AclGraph{id: %s} with the updated node num {%s}.',
+                    self.name, graph_key, id(self.graph[graph_key]), len(self._updated_node_infos))
 
         # save outputs meta info and weakref
         for output_iter in captured_outputs:
@@ -854,7 +871,7 @@ class AclGraph(object):
         # gen run func
         self._graphs_meta[graph_key].replay_func = CapturedGraphUpdateAndReplay(self.graph[graph_key],
                                                                                 self._updated_input_func,
-                                                                                updated_node_infos)
+                                                                                self._updated_node_infos)
 
         return captured_outputs
 
@@ -1063,12 +1080,3 @@ class AclGraph(object):
         logger.debug('After reconstructing fx_graph %s outputs for graph key{%s}, '
                      'the memory state is {%s}.',
                      self.name, graph_key, debug_mem_state())
-
-    def load_graphmodule_from_str(self, serialized_str: str):
-        reduce_data, state_dict = pickle.loads(serialized_str)
-        callable_fn, args = reduce_data
-        gm = callable_fn(*args)
-        gm.load_state_dict(state_dict)
-        gm.recompile()
-
-        return gm
