@@ -3809,5 +3809,40 @@ REG_OP(FusedInferAttentionScore)
     .ATTR(value_antiquant_mode, Int, 0)
     .ATTR(query_quant_mode, Int, 0)
     .OP_END_FACTORY_REG(FusedInferAttentionScore)
+
+
+/**
+* @brief Function FusedInferAttentionScore.
+
+* @par Inputs:
+* @li key: A matrix Tensor. The type support int8, uint8, hifloat8, float8_e5m2, float8_e4m3fn, int16, uint16, float16, bf16, int32, uint32, float.
+* @li value: A matrix Tensor. The type support int8, uint8, hifloat8, float8_e5m2, float8_e4m3fn, int16, uint16, float16, bf16, int32, uint32, float.
+* @li slot_mapping: A matrix Tensor. The type support int32, int64.
+* @li compress_lens: A matrix Tensor. The type support int32, int64.
+* @li compress_seq_offsets: A Tensor. The type support int32, int64.
+* @li seq_lens: A Tensor. The type support int32, int64.
+
+* @par Attributes
+* @li cache_mode: A string. The data format of key_cache and value_cache, "Norm" means ND.
+
+* @par Outputs:
+* @li key_cache: A matrix Tensor. The type support int8, uint8, hifloat8, float8_e5m2, float8_e4m3fn, int16, uint16, float16, bf16, int32, uint32, float.
+* @li value_cache: A matrix Tensor. The type support int8, uint8, hifloat8, float8_e5m2, float8_e4m3fn, int16, uint16, float16, bf16, int32, uint32, float.
+*/
+REG_OP(ScatterPaKvCache)
+    .INPUT(key, "T")
+    .INPUT(key_cache, "T")
+    .INPUT(slot_mapping, TensorType::IndexNumberType())
+    .INPUT(value, "T")
+    .INPUT(value_cache, "T")
+    .OPTIONAL_INPUT(compress_lens, TensorType::IndexNumberType())
+    .OPTIONAL_INPUT(compress_seq_offsets, TensorType::IndexNumberType())
+    .OPTIONAL_INPUT(seq_lens, TensorType::IndexNumberType())
+    .OUTPUT(key_cache, "T")
+    .OUTPUT(value_cache, "T")
+    .ATTR(cache_mode, String, "Norm")
+    .DATATYPE(T, TensorType({DT_INT8, DT_UINT8, DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN,
+                             DT_INT16, DT_UINT16, DT_FLOAT16, DT_BF16, DT_INT32, DT_UINT32, DT_FLOAT}))
+    .OP_END_FACTORY_REG(ScatterPaKvCache)
 }  // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_EXPERIMENT_OPS_H_
