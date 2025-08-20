@@ -79271,7 +79271,8 @@ def MoeDistributeCombineV2(expand_x: Tensor, expert_ids: Tensor, assist_info_for
                            shared_expert_x: Optional[Tensor], *, group_ep: str, ep_world_size: int, ep_rank_id: int, 
                            moe_expert_num: int, group_tp: str = "", tp_world_size: int = 0, tp_rank_id: int = 0, 
                            expert_shard_type: int = 0, shared_expert_num: int = 1, shared_expert_rank_num: int = 0, 
-                           global_bs: int = 0, comm_quant_mode: int = 0, dependencies=[], node_name=None):
+                           global_bs: int = 0, comm_quant_mode: int = 0, comm_alg: str = "", 
+                           dependencies=[], node_name=None):
     """REG_OP(MoeDistributeCombineV2)\n
     .INPUT(expand_x, TensorType({DT_BF16, DT_FLOAT16}))\n
     .INPUT(expert_ids, TensorType({DT_INT32}))\n
@@ -79298,6 +79299,7 @@ def MoeDistributeCombineV2(expand_x: Tensor, expert_ids: Tensor, assist_info_for
     .ATTR(shared_expert_rank_num, Int, 0)\n
     .ATTR(global_bs, Int, 0)\n
     .ATTR(comm_quant_mode, Int, 0)\n
+    .ATTR(comm_alg, String, "")\n
     """
 
     op = get_default_ge_graph().op.add()
@@ -79393,6 +79395,7 @@ def MoeDistributeCombineV2(expand_x: Tensor, expert_ids: Tensor, assist_info_for
     op.attr["shared_expert_rank_num"].i = shared_expert_rank_num
     op.attr["global_bs"].i = global_bs
     op.attr["comm_quant_mode"].i = comm_quant_mode
+    op.attr["comm_alg"].s = compat_as_bytes(comm_alg)
 
     # process outputs
     output_index = 0
@@ -79775,7 +79778,7 @@ def MoeDistributeDispatchV2(x: Tensor, expert_ids: Tensor, scales: Optional[Tens
                             moe_expert_num: int, group_tp: str = "", tp_world_size: int = 0, tp_rank_id: int = 0, 
                             expert_shard_type: int = 0, shared_expert_num: int = 1, shared_expert_rank_num: int = 0, 
                             quant_mode: int = 0, global_bs: int = 0, expert_token_nums_type: int = 1, 
-                            dependencies=[], node_name=None):
+                            comm_alg: str = "", dependencies=[], node_name=None):
     """REG_OP(MoeDistributeDispatchV2)\n
     .INPUT(x, TensorType({DT_BF16, DT_FLOAT16}))\n
     .INPUT(expert_ids, TensorType({DT_INT32}))\n
@@ -79802,6 +79805,7 @@ def MoeDistributeDispatchV2(x: Tensor, expert_ids: Tensor, scales: Optional[Tens
     .ATTR(quant_mode, Int, 0)\n
     .ATTR(global_bs, Int, 0)\n
     .ATTR(expert_token_nums_type, Int, 1)\n
+    .ATTR(comm_alg, String, "")\n
     """
     op = get_default_ge_graph().op.add()
     op.type = "MoeDistributeDispatchV2"
@@ -79861,6 +79865,7 @@ def MoeDistributeDispatchV2(x: Tensor, expert_ids: Tensor, scales: Optional[Tens
     op.attr["quant_mode"].i = quant_mode
     op.attr["global_bs"].i = global_bs
     op.attr["expert_token_nums_type"].i = expert_token_nums_type
+    op.attr["comm_alg"].s = compat_as_bytes(comm_alg)
 
     # process outputs
     output_index = 0

@@ -25,6 +25,7 @@ def convert_npu_moe_distribute_combine_v2(
     shared_expert_rank_num: int = 0,
     global_bs: int = 0,
     comm_quant_mode: int = 0,
+    comm_alg: str = "",
     meta_outputs: TensorSpec = None
 ):
 
@@ -48,4 +49,5 @@ def convert_npu_moe_distribute_combine_v2(
                                    shared_expert_num=shared_expert_num,
                                    shared_expert_rank_num=shared_expert_rank_num,
                                    global_bs=global_bs,
-                                   comm_quant_mode=comm_quant_mode)
+                                   comm_quant_mode=comm_quant_mode,
+                                   comm_alg=comm_alg)
