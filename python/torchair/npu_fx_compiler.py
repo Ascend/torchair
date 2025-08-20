@@ -430,7 +430,8 @@ class _NpuFxCompiler:
             logger.warning(f'When dumping data of FX Graph, npu run will be skipped, '
                            'and FALLBACK to EAGER execution, once dump finished, please make sure to disable '
                            'the data dump config to ensure that the graph is compiled and executed.')
-            data_dumper = _NpuFxDumper(gm, config=self.config.debug.data_dump)
+            data_dumper = _NpuFxDumper(gm, config=self.config.debug.data_dump,
+                                       name="graph_" + str(_next_unique_graph_id()))
             return _GmRunner(data_dumper)
 
         return _GmRunner(self._gen_compiled_gm(gm, example_inputs))

@@ -1,5 +1,7 @@
 __all__ = []
 
+import os
+import torch.distributed as dist
 from torchair.configs._option_base import OptionValue, MustExistedPathValue, RegexValue
 from torchair.configs._option_base import NpuBaseConfig, MustExistedFileAddr
 
@@ -19,13 +21,23 @@ class _DataDumpConfig(NpuBaseConfig):
 
         super(_DataDumpConfig, self).__init__()
 
+    def full_path(self):
+        path = self.dump_path.value
+        if dist.is_available() and dist.is_initialized() and dist.get_world_size() > 1:
+            global_rank = dist.get_rank()
+            path = os.path.join(self.dump_path.value, f'worldsize{dist.get_world_size()}_global_rank{global_rank}')
+        else:
+            path = os.path.join(self.dump_path.value, f'worldsize1_global_rank0')
+        os.makedirs(path, exist_ok=True)
+        return path
+
     def as_dict(self):
         dump_option = {}
         if self.dump_config_path.value is not None:
             dump_option['ge_dump_with_acl_config'] = self.dump_config_path.value
         if self.enable_dump:
             dump_option['ge.exec.enableDump'] = '1'
-            dump_option['ge.exec.dumpPath'] = self.dump_path.value
+            dump_option['ge.exec.dumpPath'] = self.full_path()
             dump_option['ge.exec.dumpMode'] = self.dump_mode.value
             dump_option["ge.quant_dumpable"] = "1" if self.quant_dumpable else "0"
             if self.dump_step.value != "":

@@ -12,6 +12,7 @@ from contextlib import contextmanager
 
 import numpy as np
 import torch
+import torch.distributed as dist
 from torch.fx import Interpreter
 from torch.fx.graph_module import GraphModule
 from torch.fx.node import Argument, Target
@@ -106,15 +107,22 @@ class _NpuFxDumper(Interpreter):
         return self.run(*args, **kwargs)
 
     def run(self, *args, **kwargs):
+        result = super().run(*args, **kwargs)
         self._step += 1
-        return super().run(*args, **kwargs)
+        return result
 
     def full_path(self, name):
         return os.path.join(self.step_path, name)
 
     @property
     def step_path(self):
-        return os.path.join(os.path.dirname(self._config.full_path(f'data_dump/{self._step}/')), self._name)
+        if dist.is_available() and dist.is_initialized() and dist.get_world_size() > 1:
+            global_rank = dist.get_rank()
+            worldsize = dist.get_world_size()
+            path = f'worldsize{worldsize}_global_rank{global_rank}/'
+            return os.path.join(os.path.dirname(self._config.full_path(path + f'{self._name}/')), f'{self._step}')
+        return os.path.join(os.path.dirname(self._config.full_path(f'worldsize1_global_rank0/{self._name}/')),
+                            f'{self._step}')
 
     def run_node(self, n):
         if self._filter and self._filter(n) is None:
