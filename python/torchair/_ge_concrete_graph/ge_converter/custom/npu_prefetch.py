@@ -1,6 +1,11 @@
 from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 
 
+@declare_supported(
+    [
+        Support(F32(4, 8), F32(4, 8), 2),
+    ]
+)
 @register_fx_node_ge_converter(torch.ops.npu.npu_prefetch.default)
 def conveter_npu_prefetch_default(
     self: Tensor,

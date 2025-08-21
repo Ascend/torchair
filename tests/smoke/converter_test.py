@@ -49,6 +49,8 @@ def _eager_aten_call(aten_op):
             return outs
         if isinstance(outs, (list, tuple)):
             return [out.clone() for out in outs]
+        if outs is None:
+            return None
         return outs.clone()
     return inner_run
 
@@ -177,6 +179,8 @@ def _check_result(compiled_rets, eager_rets):
         raise compiled_rets
     assert type(compiled_rets) == type(
         eager_rets), f"result type mismatch {type(compiled_rets)} vs. {type(eager_rets)}"
+    if compiled_rets is None and eager_rets is None:
+        return
     compiled_rets = (compiled_rets, ) if isinstance(
         compiled_rets, (torch.Tensor, int)) else compiled_rets
     eager_rets = (eager_rets, ) if isinstance(
