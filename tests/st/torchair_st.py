@@ -2016,6 +2016,52 @@ class TorchairSt(unittest.TestCase):
         y = custom_func(x)
         self.assertEqual(y.dtype, torch.float32)
 
+    def test_uncontinuous_view(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                z = x + y
+                z = z.permute(0, 2, 1)
+                z = z + 1
+                z = z.permute(0, 2, 1)
+                z = z.reshape(y.size(0), 4096, 4)
+                return z
+
+        model = Model()
+        model = torch.compile(model, backend=npu_backend, dynamic=True, fullgraph=True)
+        x = torch.randn([1, 64, 256])
+        y = torch.randn([4, 64, 256])
+        model(x, y)
+
+    def test_view_to_reshape(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                z = x + y
+                z = z + 1
+                z = z.view(y.size(0), 4096, 4)
+                return z
+
+        model = Model()
+        model = torch.compile(model, backend=npu_backend, dynamic=True, fullgraph=True)
+        x = torch.randn([1, 64, 256])
+        y = torch.randn([4, 64, 256])
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            model(x, y)
+        
+        self.assertFalse(
+            any("target: aten.view.default" in log for log in cm.output),
+            f"Expected no DEBUG log 'target: aten.view.default' in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("target: aten.reshape.default" in log for log in cm.output),
+            f"Expected DEBUG log 'target: aten.reshape.default' in logs: {cm.output}"
+        )
+
     def test_view_as_real_dynamic_sym(self):
         class Model(torch.nn.Module):
             def __init__(self):
