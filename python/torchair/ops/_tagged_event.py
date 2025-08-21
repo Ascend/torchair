@@ -17,8 +17,8 @@ except ImportError as e:
 
 lib.define("tagged_event_record(str tag) -> ()")
 lib.define("tagged_event_wait(str tag) -> ()")
-lib.define("record_tagged_stream_(Tensor(a!) tensor, str tag) -> ()")
-lib.define("record_tagged_stream(Tensor tensor, str tag) -> Tensor")
+lib.define("record_tagged_stream_(Tensor(a!) self, str tag) -> ()")
+lib.define("record_tagged_stream(Tensor self, str tag) -> Tensor")
 
 has_side_effect(torch.ops.air.tagged_event_record.default)
 has_side_effect(torch.ops.air.tagged_event_wait.default)
@@ -64,8 +64,8 @@ def _npu_tagged_event_wait(event: torch.npu.Event):
     return torch.ops.air.tagged_event_wait(tag)
 
 
-def _npu_record_tagged_stream(tensor: torch.Tensor, tagged_stream: str):
-    return torch.ops.air.record_tagged_stream_(tensor, tagged_stream)
+def _npu_record_tagged_stream(self: torch.Tensor, tagged_stream: str):
+    return torch.ops.air.record_tagged_stream_(self, tagged_stream)
 
 
 @torch.library.impl(lib, "tagged_event_record", "Meta")
@@ -79,18 +79,18 @@ def wait_meta(tag: str):
 
 
 @torch.library.impl(lib, "record_tagged_stream_", "Meta")
-def record_tagged_stream_inplace_meta(tensor: torch.Tensor, tagged_stream: str):
+def record_tagged_stream_inplace_meta(self: torch.Tensor, tagged_stream: str):
     return None
 
 
 @torch.library.impl(lib, "record_tagged_stream", "Meta")
-def record_tagged_stream_meta(tensor: torch.Tensor, tagged_stream: str):
-    return tensor
+def record_tagged_stream_meta(self: torch.Tensor, tagged_stream: str):
+    return self
 
 
 @torch.library.impl(lib, "record_tagged_stream_", "Functionalize")
-def record_tagged_stream_inplace_func(tensor: torch.Tensor, tagged_stream: str):
-    tensor.copy_(torch.ops.air.record_tagged_stream(tensor, tagged_stream))
+def record_tagged_stream_inplace_func(self: torch.Tensor, tagged_stream: str):
+    self.copy_(torch.ops.air.record_tagged_stream(self, tagged_stream))
 
 
 def record_impl(tag: str):
@@ -111,20 +111,20 @@ def wait_impl(tag: str):
     return event.wait(torch.npu.current_stream())
 
 
-def record_tagged_stream_inplace_impl(tensor: torch.Tensor, tagged_stream: str):
+def record_tagged_stream_inplace_impl(self: torch.Tensor, tagged_stream: str):
     stream = _npu_get_or_create_stream_with_tag(tagged_stream)
     if stream is None:
         raise AssertionError(f"get stream with tag = {tagged_stream} failed")
     logger.debug(f"tagged stream = {stream} recorded with tag = {tagged_stream}")
-    return tensor.record_stream(stream)
+    return self.record_stream(stream)
 
 
-def record_tagged_stream_impl(tensor: torch.Tensor, tagged_stream: str):
+def record_tagged_stream_impl(self: torch.Tensor, tagged_stream: str):
     stream = _npu_get_or_create_stream_with_tag(tagged_stream)
     if stream is None:
         raise AssertionError(f"get stream with tag = {tagged_stream} failed")
     logger.debug(f"tagged stream = {stream} recorded with tag = {tagged_stream}")
-    clone_tensor = tensor.clone()
+    clone_tensor = self.clone()
     clone_tensor.record_stream(stream)
     return clone_tensor
 
@@ -149,7 +149,7 @@ def convert_event_wait(tag: str,
 
 
 @register_fx_node_ge_converter(torch.ops.air.record_tagged_stream.default)
-def convert_record_tagged_stream(tensor: torch.Tensor,
+def convert_record_tagged_stream(self: torch.Tensor,
                                  tagged_stream: str,
                                  meta_outputs: List[TensorSpec] = None):
     raise NotImplementedError("torch.ops.air.record_tagged_stream.default ge_converter is not implemented!")
