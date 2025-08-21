@@ -150,7 +150,6 @@ def _test_converters(aten_ops, *, backend, result_checker):
                 f"Cannot find testcase match prefix '{prefix}'")
     else:
         assert isinstance(aten_ops, (list, tuple))
-
     for aten_op in aten_ops:
         if aten_op not in supported_converters.keys():
             raise RuntimeError(f"Cannot find testcase for {aten_op}")

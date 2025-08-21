@@ -10,7 +10,7 @@ def check_support_dtype(self, other):
     supported_dtype = [DataType.DT_BOOL, DataType.DT_UINT8, DataType.DT_INT8, DataType.DT_INT16, DataType.DT_INT32,
                        DataType.DT_INT64, DataType.DT_FLOAT16, DataType.DT_BF16, DataType.DT_FLOAT, DataType.DT_DOUBLE]
     if any(input_dtype not in supported_dtype for input_dtype in [self_dtype, other_dtype]):
-        ge_dtype = _display_ge_type(other_dtype) if self_dtype in supported_dtype else _display_ge_type(self_dtype)
+        ge_dtype = display_ge_type(other_dtype) if self_dtype in supported_dtype else display_ge_type(self_dtype)
         raise RuntimeError(f"torch.ops.aten.le.Tensor ge_converter expect input dtype DT_BOOL, DT_UINT8, DT_INT8,"
                            f"DT_INT16, DT_INT32, DT_INT64, DT_FLOAT16, DT_BF16, DT_FLOAT, DT_DOUBLE,"
                            f"but find input dtype {ge_dtype}")
