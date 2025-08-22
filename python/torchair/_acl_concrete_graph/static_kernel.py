@@ -10,7 +10,7 @@ from torchair.core import _torchair
 from torchair.core.utils import logger
 
 
-_uninstall_path = None
+_uninstall_paths = []
 
 
 def compile_static_kernel(fx_func, *args, build_dir=None, **kwargs):
@@ -19,21 +19,22 @@ def compile_static_kernel(fx_func, *args, build_dir=None, **kwargs):
     result_root = safe_resolve_output_dir(build_dir)
 
     # 执行单算子，用于生成算子信息json
-    import acl
-    acl.op.start_dump_args(1, str(result_root))
+    _torchair.AclopStartDumpArgs(1, str(result_root))
     try:
         if isinstance(fx_func, torch.fx.GraphModule):
             torch.fx.Interpreter(fx_func).run(*args, **kwargs)
         else:
             fx_func(*args, **kwargs)
+        import torch_npu
+        torch_npu.npu.current_stream().synchronize()
     finally:
-        acl.op.stop_dump_args(1)
+        _torchair.AclopStopDumpArgs(1)
     logger.debug("static kernel run eager success")
 
     debug_dirs = [d for d in result_root.iterdir()
                   if d.is_dir() and d.name.endswith("_debug")]
     if not debug_dirs:
-        logger.debug("Can not find json of ops, do not excute op_compiler")
+        logger.debug("Can not find json of ops, do not execute op_compiler")
         return
 
     debug_dir = max(debug_dirs, key=lambda d: d.stat().st_mtime)
@@ -52,9 +53,9 @@ def compile_static_kernel(fx_func, *args, build_dir=None, **kwargs):
     ]
     try:
         res = subprocess.run(cmd, check=True, capture_output=True, text=True)
-        logger.debug(f"excute op_compiler, msg: {res.stdout}")
+        logger.debug(f"execute op_compiler, msg: {res.stdout}")
     except subprocess.CalledProcessError as e:
-        logger.warning(f"excute op_compiler error, msg: {e.stderr}")
+        logger.warning(f"execute op_compiler error, msg: {e.stderr}")
         return
 
     for run_pkg in result_root.glob("*.run"):
@@ -76,36 +77,34 @@ def compile_static_kernel(fx_func, *args, build_dir=None, **kwargs):
 
 
 def save_uninstall_info(filename: str):
-    global _uninstall_path
+    global _uninstall_paths
     latest = Path(os.environ["ASCEND_HOME_PATH"])
     root = latest.parent
     pattern = f"*/opp/static_kernel/ai_core/{filename}/uninstall.sh"
     match = next(root.glob(pattern), None)
     if match is None:
-        _uninstall_path = None
         logger.debug(f"can not find uninstall path, pattern: {pattern}")
     else:
-        _uninstall_path = str(match)
+        _uninstall_paths.append(str(match))
+        logger.debug(f"append uninstall script path: {match}")
 
 
 def uninstall_static_kernel():
-    global _uninstall_path
-    if not _uninstall_path:
-        logger.debug(f"uninstall_path is none, skip uninstall static kernel")
+    global _uninstall_paths
+    if not _uninstall_paths:
+        logger.debug(f"no static kernel uninstall paths recorded, skip uninstall static kernels")
         return
 
-    try:
-        result = subprocess.run(
-            [_uninstall_path],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        logger.debug(f"{_uninstall_path} uninstall success")
-    except subprocess.CalledProcessError as e:
-        logger.error(f"{_uninstall_path} uninstall failed, msg: \n{e.stderr}")
-    finally:
-        _uninstall_path = None
+    for script_path in _uninstall_paths:
+        try:
+            result = subprocess.run(
+                [script_path], check=True, capture_output=True, text=True
+            )
+            logger.debug(f"{script_path} uninstall success")
+        except subprocess.CalledProcessError as e:
+            logger.error(f"{script_path} uninstall failed, msg:\n{e.stderr}")
+
+    _uninstall_paths.clear()
 
 
 def safe_resolve_output_dir(build_dir: str):

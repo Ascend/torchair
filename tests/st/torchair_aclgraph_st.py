@@ -1649,6 +1649,8 @@ class AclGraphSt(unittest.TestCase):
         x = torch.randn([3, 2])
         from torchair.core import _torchair
         _torchair.GetSocName()
+        _torchair.AclopStartDumpArgs(1, "..")
+        _torchair.AclopStopDumpArgs(1)
 
         import warnings
         with warnings.catch_warnings(record=True) as caught:

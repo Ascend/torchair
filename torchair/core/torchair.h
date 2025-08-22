@@ -22,12 +22,17 @@
 #include "torch/torch.h"
 
 #include "acl/acl_base.h"
+#include "acl/acl_op.h"
 #include "concrete_graph.h"
 #include "utils_tools.h"
 #include "logger.h"
 
 namespace tng {
 void Export(const std::string &serialized_proto, const std::map<std::string, std::string> &options);
+
+void AclopStartDumpArgs(uint32_t dumpType, const char *path);
+
+void AclopStopDumpArgs(uint32_t dumpType);
 
 std::string GetSocName();
 
