@@ -39,38 +39,7 @@ from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, declare_supported
 from torchair.ge._ge_graph import Tensor, TensorSpec, torch_type_to_ge_type
 from torchair._ge_concrete_graph.utils import dtype_promote
-from torchair._ge_concrete_graph.supported_declaration \
-import _TypedTensor, F32, F16, I32, I16, I64, I8, U8, BF16, Support
 
-
-@declare_supported(
-    [
-        Support(I8(16, 4, 32), F16(16, 4, 32), I32(16), compress_lens=I32(1), compress_seq_offsets=I32(1),
-                seq_lens=I32(1), cache_mode="PA_NZ", out=(I8(2, 8, 32, 16), F16(2, 16, 32, 16))),
-        Support(I8(16, 4, 32), BF16(16, 4, 32), I32(16), compress_lens=I32(1), compress_seq_offsets=I32(1),
-                seq_lens=I32(1), cache_mode="PA_NZ", out=(I8(2, 8, 32, 16), BF16(2, 16, 32, 16))),
-        Support(F16(16, 4, 32), F16(16, 4, 32), I32(16), compress_lens=I32(1), compress_seq_offsets=I32(1),
-                seq_lens=I32(1), cache_mode="PA_NZ", out=(F16(2, 8, 32, 16), F16(2, 16, 32, 16))),
-        Support(F16(16, 4, 32), BF16(16, 4, 32), I32(16), compress_lens=I32(1), compress_seq_offsets=I32(1),
-                seq_lens=I32(1), cache_mode="PA_NZ", out=(F16(2, 8, 32, 16), BF16(2, 16, 32, 16))),
-        Support(BF16(16, 4, 32), F16(16, 4, 32), I32(2), compress_lens=I32(1), compress_seq_offsets=I32(1),
-                seq_lens=I32(1), cache_mode="PA_NZ", out=(BF16(2, 8, 32, 16), F16(2, 16, 32, 16))),
-        Support(BF16(16, 4, 32), BF16(16, 4, 32), I32(16), compress_lens=I32(1), compress_seq_offsets=I32(1),
-                seq_lens=I32(1), cache_mode="PA_NZ", out=(BF16(2, 8, 32, 16), BF16(2, 16, 32, 16))),
-        Support(I8(16, 4, 32), F16(16, 4, 32), I64(16), compress_lens=I64(1), compress_seq_offsets=I64(1),
-                seq_lens=I64(1), cache_mode="PA_NZ", out=(I8(2, 8, 32, 16), F16(2, 16, 32, 16))),
-        Support(I8(16, 4, 32), BF16(16, 4, 32), I64(16), compress_lens=I64(1), compress_seq_offsets=I64(1),
-                seq_lens=I64(1), cache_mode="PA_NZ", out=(I8(2, 8, 32, 16), BF16(2, 16, 32, 16))),
-        Support(F16(16, 4, 32), F16(16, 4, 32), I64(16), compress_lens=I64(1), compress_seq_offsets=I64(1),
-                seq_lens=I64(1), cache_mode="PA_NZ", out=(F16(2, 8, 32, 16), F16(2, 16, 32, 16))),
-        Support(F16(16, 4, 32), BF16(16, 4, 32), I64(16), compress_lens=I64(1), compress_seq_offsets=I64(1),
-                seq_lens=I64(1), cache_mode="PA_NZ", out=(F16(2, 8, 32, 16), BF16(2, 16, 32, 16))),
-        Support(BF16(16, 4, 32), F16(16, 4, 32), I64(16), compress_lens=I64(1), compress_seq_offsets=I64(1),
-                seq_lens=I64(1), cache_mode="PA_NZ", out=(BF16(2, 8, 32, 16), F16(2, 16, 32, 16))),
-        Support(BF16(16, 4, 32), BF16(16, 4, 32), I64(16), compress_lens=I64(1), compress_seq_offsets=I64(1),
-                seq_lens=I64(1), cache_mode="PA_NZ", out=(BF16(2, 8, 32, 16), BF16(2, 16, 32, 16))),
-    ]
-)
 
 @register_fx_node_ge_converter(torch.ops.npu.npu_scatter_pa_kv_cache_functional.default)
 def conveter_npu_scatter_pa_kv_cache_functional(
