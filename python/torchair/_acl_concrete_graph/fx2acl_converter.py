@@ -499,8 +499,7 @@ class AclConcreteGraph(ConcreteGraphBase):
             need_updated_ops_dict = {}
             has_need_updated_ops = self._codegen_fx_forward_updated_ops(gm, need_updated_ops, need_updated_ops_dict)
             if has_need_updated_ops:
-                forward_code.writelines(["from torch import device",
-                                         "from torchair._acl_concrete_graph.utils import reconstruct_args_kwargs",
+                forward_code.writelines(["from torchair._acl_concrete_graph.utils import reconstruct_args_kwargs",
                                          "from torchair._acl_concrete_graph.acl_graph import UpdatedNodeInfo"])
             for line in body:
                 need_update = False

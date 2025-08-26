@@ -1708,6 +1708,49 @@ class AclGraphSt(unittest.TestCase):
         model(x, y, z, w)
         self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
 
+    def test_aclgraph_cache_closure_vars(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.cached_prompt = torchair.inference.cache_compile(self.prompt, config=config)
+
+            def forward(self, x, y):
+                return self.cached_prompt(x, y)
+
+            def _forward(self, x, y):
+                x = x + y
+                y = y + float('inf')
+                empty = torch.ops.aten.empty([2, 2])
+                return (x, y, empty)
+
+            def prompt(self, x, y):
+                return self._forward(x, y)
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+
+        model = Model()
+
+        prompt_cache_bin = CompiledModel.get_cache_bin(model.prompt, config=config)
+        ModelCacheSaver.remove_cache(os.path.abspath(os.path.dirname(prompt_cache_bin)))
+
+        x = torch.randn([2, 2])
+        y = torch.randn([2, 2])
+
+        prompt_cache_dir = os.path.abspath(os.path.dirname(prompt_cache_bin))
+
+        self.assertFalse(os.path.exists(prompt_cache_dir))
+        model(x, y)
+        self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
+        model(x, y)
+        self.assertTrue(os.path.exists(prompt_cache_dir))  # not recompile
+
+        model_match_cache = Model()
+        with forbidden_attr(ModelCacheSaver, '__call__'):
+            model_match_cache(x, y)  # cache hint
+            model_match_cache(x, y)  # cache hint
+
 
 if __name__ == '__main__':
     unittest.main()

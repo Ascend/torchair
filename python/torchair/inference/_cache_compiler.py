@@ -15,6 +15,7 @@ import hashlib
 from typing import Any, List, Optional, Callable, Union, Dict, Tuple
 import pickle
 import shutil
+from packaging import version
 
 import torch
 from torch._functorch.aot_autograd import aot_module_simplified
@@ -106,6 +107,16 @@ def timer(prefix: str):
 
 def _compile_py_code(py_code: str):
     ge_mod = ModuleType('ge_mod')
+    # get closure_vars from torch._dynamo.guards
+    _closure_vars = {}
+    if version.parse(torch.__version__) > version.parse("2.5.1"):
+        from torch._dynamo.gurads import _get_closure_vars
+        closure_vars = _get_closure_vars()
+        _closure_vars = {(k, v) for k, v in closure_vars.items()}
+    else:
+        from torch._dynamo.guards import CLOSURE_VARS
+        _closure_vars = {(k, v) for k, v in CLOSURE_VARS.items()}
+    ge_mod.__dict__.update(_closure_vars)
     exec(compile(py_code, '<string>', 'exec'), ge_mod.__dict__, ge_mod.__dict__)
     return ge_mod
 
