@@ -405,11 +405,11 @@ class AclConcreteGraph(ConcreteGraphBase):
         update_code = IndentedBuffer()
         update_code.splice('''
         def _update_tagged_event_dict():
-            from torchair.ops._tagged_event import _GLOBAL_TAG_TO_EVENT, _GLOBAL_LOCK
-            with _GLOBAL_LOCK:
+            from torchair._acl_concrete_graph.graph_pass import _GLOBAL_SCOPE_TAG_TO_EVENT, _GLOBAL_EVENT_LOCK
+            with _GLOBAL_EVENT_LOCK:
                 for i, tag in enumerate(aclgraph_cache_info.tagged_event_names):
                     tagged_event = torch.npu.Event()
-                    _GLOBAL_TAG_TO_EVENT[tag] = tagged_event
+                    _GLOBAL_SCOPE_TAG_TO_EVENT[tag] = tagged_event
         ''')
         return update_code.getvalue()
 

@@ -1751,6 +1751,47 @@ class AclGraphSt(unittest.TestCase):
             model_match_cache(x, y)  # cache hint
             model_match_cache(x, y)  # cache hint
 
+    def test_npu_multi_stream_with_multi_graph(self):
+        from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+        ext_event1 = torchair.ops.npu_create_tagged_event(tag="666666")
+        ext_event2 = torchair.ops.npu_create_tagged_event(tag="777777")
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, in1, in2, in3, in4, is_pr):
+                add_result = torch.add(in1, in2)
+                torchair.ops.npu_tagged_event_record(ext_event1)
+                torchair.ops.npu_tagged_event_record(ext_event2)
+                mm_result2 = add_result
+                with torchair.scope.npu_stream_switch('1', 3):
+                    torchair.ops.npu_tagged_event_wait(ext_event1)
+                    mm_result1 = torch.mm(in3, in4)
+                    if is_pr:
+                        with torchair.scope.npu_stream_switch('2', 3):
+                            torchair.ops.npu_tagged_event_wait(ext_event2)
+                            mm_result2 = torch.mm(in3, in4)
+                return add_result, mm_result1, mm_result2
+
+        model = Model()
+        opt_model = torch.compile(model, backend=aclgraph_backend, fullgraph=True, dynamic=False)
+        x = torch.randn([3, 3])
+        y = torch.randn([3, 3])
+        z = torch.randn([3, 3])
+        w = torch.randn([3, 3])
+        from torchair._acl_concrete_graph.graph_pass import _GLOBAL_SCOPE_TAG_TO_EVENT
+        opt_model(x, y, z, w, True)
+        len_of_tagged_event_1 = len(_GLOBAL_SCOPE_TAG_TO_EVENT)
+        opt_model(x, y, z, w, False)
+        len_of_tagged_event_2 = len(_GLOBAL_SCOPE_TAG_TO_EVENT)
+        opt_model(x, y, z, w, True)
+        len_of_tagged_event_3 = len(_GLOBAL_SCOPE_TAG_TO_EVENT)
+        assert len_of_tagged_event_2 == len_of_tagged_event_3
+
 
 if __name__ == '__main__':
     unittest.main()

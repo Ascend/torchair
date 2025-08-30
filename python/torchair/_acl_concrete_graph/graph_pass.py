@@ -242,6 +242,19 @@ def _reinplace_input_mutated_ops(gm: GraphModule):
     return gm
 
 
+_GLOBAL_SCOPE_TAG_TO_EVENT = {}
+_GLOBAL_EVENT_LOCK = threading.Lock()
+
+
+def _create_event_by_name(name: str):
+    global _GLOBAL_SCOPE_TAG_TO_EVENT
+    with _GLOBAL_EVENT_LOCK:
+        if name not in _GLOBAL_SCOPE_TAG_TO_EVENT.keys():
+            new_event = torch.npu.Event()
+            _GLOBAL_SCOPE_TAG_TO_EVENT[name] = new_event
+            logger.debug(f"[Multi-stream] Created new event {new_event} with key '{name}'.")
+
+
 def apply_event_closure_with_multi_stream(graph_module: fx.GraphModule, graph_name: str, tagged_event_names: List[str]):
     scope_enter_nodes = []
     scope_exit_nodes = []
@@ -262,13 +275,13 @@ def apply_event_closure_with_multi_stream(graph_module: fx.GraphModule, graph_na
     from torchair.ops._tagged_event import _npu_create_tagged_event
     first_node = next(iter(graph_module.graph.nodes))
     enter_tag = graph_name + '_' + first_node.name
-    enter_event = torchair.ops.npu_create_tagged_event(enter_tag)
+    _create_event_by_name(enter_tag)
     tagged_event_names.append(enter_tag)
     with graph_module.graph.inserting_before(first_node):
-        graph_module.graph.call_function(torch.ops.air.tagged_event_record.default, args=(enter_tag,))
+        graph_module.graph.call_function(torch.ops.air.tagged_event_record.default, args=(enter_tag, True))
     for node in scope_enter_nodes:
         with graph_module.graph.inserting_after(node):
-            graph_module.graph.call_function(torch.ops.air.tagged_event_wait.default, args=(enter_tag,))
+            graph_module.graph.call_function(torch.ops.air.tagged_event_wait.default, args=(enter_tag, True))
 
     output_node = list(graph_module.graph.nodes)[-1]
     if output_node is None or output_node.op != "output":
@@ -276,12 +289,12 @@ def apply_event_closure_with_multi_stream(graph_module: fx.GraphModule, graph_na
     for node in scope_exit_nodes:
         # insert event record after scope_exit node, insert event wait before graph output
         exit_tag = graph_name + '_' + node.name
-        exit_event = torchair.ops.npu_create_tagged_event(exit_tag)
+        _create_event_by_name(exit_tag)
         tagged_event_names.append(exit_tag)
         with graph_module.graph.inserting_before(node):
-            graph_module.graph.call_function(torch.ops.air.tagged_event_record.default, args=(exit_tag,))
+            graph_module.graph.call_function(torch.ops.air.tagged_event_record.default, args=(exit_tag, True))
         with graph_module.graph.inserting_before(output_node):
-            graph_module.graph.call_function(torch.ops.air.tagged_event_wait.default, args=(exit_tag,))
+            graph_module.graph.call_function(torch.ops.air.tagged_event_wait.default, args=(exit_tag, True))
 
     graph_module.graph.lint()
     logger.debug("End to insert event in graph[%s].", id(graph_module))

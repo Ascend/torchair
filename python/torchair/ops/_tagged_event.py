@@ -17,8 +17,8 @@ except ImportError as e:
         "Couldn't import torch_npu. While use tagged_event_record/wait/ api, import torch_npu is necessary"
     ) from e
 
-lib.define("tagged_event_record(str tag) -> ()")
-lib.define("tagged_event_wait(str tag) -> ()")
+lib.define("tagged_event_record(str tag, bool created_inside=False) -> ()")
+lib.define("tagged_event_wait(str tag, bool created_inside=False) -> ()")
 lib.define("record_tagged_stream_(Tensor(a!) self, str tag) -> ()")
 lib.define("record_tagged_stream(Tensor self, str tag) -> ()")
 
@@ -74,12 +74,12 @@ def _npu_record_tagged_stream(self: torch.Tensor, tagged_stream: str):
 
 
 @torch.library.impl(lib, "tagged_event_record", "Meta")
-def record_meta(tag: str):
+def record_meta(tag: str, created_inside: bool = False):
     return None
 
 
 @torch.library.impl(lib, "tagged_event_wait", "Meta")
-def wait_meta(tag: str):
+def wait_meta(tag: str, created_inside: bool = False):
     return None
 
 
@@ -100,20 +100,35 @@ def record_tagged_stream_inplace_func(self: torch.Tensor, tagged_stream: str):
     torch.ops.air.record_tagged_stream(self, tagged_stream)
 
 
-def record_impl(tag: str):
-    event = _GLOBAL_TAG_TO_EVENT.get(tag)
+def _get_event_by_tag(tag: str, created_inside: bool):
+    if not created_inside:
+        event = _GLOBAL_TAG_TO_EVENT.get(tag)
+    else:
+        from torchair._acl_concrete_graph.graph_pass import _GLOBAL_SCOPE_TAG_TO_EVENT
+        event = _GLOBAL_SCOPE_TAG_TO_EVENT.get(tag)
+    return event
+
+
+def record_impl(tag: str, created_inside: bool = False):
+    event = _get_event_by_tag(tag, created_inside)
     if event is None:
+        custom_warning = 'please report an issue to Torchair!'
+        inside_warning = f'please make sure you have created tag {tag} with npu_create_tagged_event API.'
         raise AssertionError(f"tagged event is None while tag is {tag}, "
-                             f"tagged event record failed, please check the tag!")
+                             f"tagged event record failed, "
+                             f"{inside_warning if created_inside else custom_warning}")
     logger.debug("tagged event record with tag = [%s]", tag)
     return event.record(torch.npu.current_stream())
 
 
-def wait_impl(tag: str):
-    event = _GLOBAL_TAG_TO_EVENT.get(tag)
+def wait_impl(tag: str, created_inside: bool = False):
+    event = _get_event_by_tag(tag, created_inside)
     if event is None:
+        custom_warning = 'please report an issue to Torchair!'
+        inside_warning = f'please make sure you have created tag {tag} with npu_create_tagged_event API.'
         raise AssertionError(f"tagged event is None while tag is {tag}, "
-                             f"tagged event wait failed, please check the tag!")
+                             f"tagged event wait failed, "
+                             f"{inside_warning if created_inside else custom_warning}")
     logger.debug("tagged event wait with tag = [%s]", tag)
     return event.wait(torch.npu.current_stream())
 
@@ -138,12 +153,14 @@ torch.library.impl(lib, "record_tagged_stream_", "CompositeExplicitAutograd")(re
 
 @register_fx_node_ge_converter(torch.ops.air.tagged_event_record.default)
 def convert_event_record(tag: str,
+                         created_inside: bool = False,
                          meta_outputs: List[TensorSpec] = None):
     raise NotImplementedError("torch.ops.air.tagged_event_record.default ge_converter is not implemented!")
 
 
 @register_fx_node_ge_converter(torch.ops.air.tagged_event_wait.default)
 def convert_event_wait(tag: str,
+                       created_inside: bool = False,
                        meta_outputs: List[TensorSpec] = None):
     raise NotImplementedError("torch.ops.air.tagged_event_wait.default ge_converter is not implemented!")
 
