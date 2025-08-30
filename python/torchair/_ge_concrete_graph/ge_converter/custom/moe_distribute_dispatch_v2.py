@@ -13,6 +13,7 @@ def convert_npu_moe_distribute_dispatch_v2(
     scales: Optional[Tensor] = None,
     x_active_mask: Optional[Tensor] = None,
     expert_scales: Optional[Tensor] = None,
+    elastic_info: Optional[Tensor] = None,
     group_tp: str = "",
     tp_world_size: int = 0,
     tp_rank_id: int = 0,
@@ -23,6 +24,9 @@ def convert_npu_moe_distribute_dispatch_v2(
     global_bs: int = 0,
     expert_token_nums_type: int = 1,
     comm_alg: str = "",
+    zero_expert_num: int = 0,
+    copy_expert_num: int = 0,
+    const_expert_num: int = 0,
     meta_outputs: TensorSpec = None
 ):
 
@@ -31,6 +35,7 @@ def convert_npu_moe_distribute_dispatch_v2(
                                    scales=scales,
                                    x_active_mask=x_active_mask,
                                    expert_scales=expert_scales,
+                                   elastic_info=elastic_info,
                                    group_ep=group_ep,
                                    ep_world_size=ep_world_size,
                                    ep_rank_id=ep_rank_id,
@@ -44,4 +49,7 @@ def convert_npu_moe_distribute_dispatch_v2(
                                    quant_mode=quant_mode,
                                    global_bs=global_bs,
                                    expert_token_nums_type=expert_token_nums_type,
-                                   comm_alg=comm_alg)
+                                   comm_alg=comm_alg,
+                                   zero_expert_num=zero_expert_num,
+                                   copy_expert_num=copy_expert_num,
+                                   const_expert_num=const_expert_num)

@@ -79263,15 +79263,18 @@ def MoeDistributeCombine(expand_x: Tensor, expert_ids: Tensor, expand_idx: Tenso
 
 
 # This api is auto-generated from IR MoeDistributeCombineV2
-@auto_convert_to_tensor([False, False, False, False, False, False, False, False, False],
-    [False, False, False, False, False, True, True, True, True])
+@auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False, False, False, False, False],
+    [False, False, False, False, False, True, True, True, True, True, True, True, True, True])
 def MoeDistributeCombineV2(expand_x: Tensor, expert_ids: Tensor, assist_info_for_combine: Tensor, 
                            ep_send_counts: Tensor, expert_scales: Tensor, tp_send_counts: Optional[Tensor], 
                            x_active_mask: Optional[Tensor], expand_scales: Optional[Tensor], 
-                           shared_expert_x: Optional[Tensor], *, group_ep: str, ep_world_size: int, ep_rank_id: int, 
+                           shared_expert_x: Optional[Tensor], elastic_info: Optional[Tensor], ori_x: Optional[Tensor], 
+                           const_expert_alpha_1: Optional[Tensor], const_expert_alpha_2: Optional[Tensor],  
+                           const_expert_v: Optional[Tensor], *, group_ep: str, ep_world_size: int, ep_rank_id: int, 
                            moe_expert_num: int, group_tp: str = "", tp_world_size: int = 0, tp_rank_id: int = 0, 
                            expert_shard_type: int = 0, shared_expert_num: int = 1, shared_expert_rank_num: int = 0, 
-                           global_bs: int = 0, comm_quant_mode: int = 0, comm_alg: str = "", 
+                           global_bs: int = 0, comm_quant_mode: int = 0, comm_alg: str = "", zero_expert_num: int = 0,
+                           copy_expert_num: int = 0,  const_expert_num: int = 0, 
                            dependencies=[], node_name=None):
     """REG_OP(MoeDistributeCombineV2)\n
     .INPUT(expand_x, TensorType({DT_BF16, DT_FLOAT16}))\n
@@ -79286,6 +79289,11 @@ def MoeDistributeCombineV2(expand_x: Tensor, expert_ids: Tensor, assist_info_for
     .OPTIONAL_INPUT(group_list, TensorType({DT_INT64}))\n
     .OPTIONAL_INPUT(expand_scales, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(shared_expert_x, TensorType({DT_BF16}))\n
+    .OPTIONAL_INPUT(elastic_info, TensorType({DT_INT32}))\n
+    .OPTIONAL_INPUT(ori_x, TensorType({DT_BF16, DT_FLOAT16}))\n
+    .OPTIONAL_INPUT(const_expert_alpha_1, TensorType({DT_BF16, DT_FLOAT16}))\n
+    .OPTIONAL_INPUT(const_expert_alpha_2, TensorType({DT_BF16, DT_FLOAT16}))\n
+    .OPTIONAL_INPUT(const_expert_v, TensorType({DT_BF16, DT_FLOAT16}))\n
     .OUTPUT(x, TensorType({DT_BF16, DT_FLOAT16}))\n
     .REQUIRED_ATTR(group_ep, String)\n
     .REQUIRED_ATTR(ep_world_size, Int)\n
@@ -79300,6 +79308,9 @@ def MoeDistributeCombineV2(expand_x: Tensor, expert_ids: Tensor, assist_info_for
     .ATTR(global_bs, Int, 0)\n
     .ATTR(comm_quant_mode, Int, 0)\n
     .ATTR(comm_alg, String, "")\n
+    .ATTR(zero_expert_num, Int, 0)\n
+    .ATTR(copy_expert_num, Int, 0)\n
+    .ATTR(const_expert_num, Int, 0)\n
     """
 
     op = get_default_ge_graph().op.add()
@@ -79382,6 +79393,31 @@ def MoeDistributeCombineV2(expand_x: Tensor, expert_ids: Tensor, assist_info_for
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "shared_expert_x"
 
+    if elastic_info is not None:
+        op.input.append(elastic_info.tensor)
+        op.input_desc.add().CopyFrom(elastic_info.desc)
+        op.input_desc[-1].name = "elastic_info"
+
+    if ori_x is not None:
+        op.input.append(ori_x.tensor)
+        op.input_desc.add().CopyFrom(ori_x.desc)
+        op.input_desc[-1].name = "ori_x"
+
+    if const_expert_alpha_1 is not None:
+        op.input.append(const_expert_alpha_1.tensor)
+        op.input_desc.add().CopyFrom(const_expert_alpha_1.desc)
+        op.input_desc[-1].name = "const_expert_alpha_1"
+
+    if const_expert_alpha_2 is not None:
+        op.input.append(const_expert_alpha_2.tensor)
+        op.input_desc.add().CopyFrom(const_expert_alpha_2.desc)
+        op.input_desc[-1].name = "const_expert_alpha_2"
+
+    if const_expert_v is not None:
+        op.input.append(const_expert_v.tensor)
+        op.input_desc.add().CopyFrom(const_expert_v.desc)
+        op.input_desc[-1].name = "const_expert_v"
+
     # process attrs
     op.attr["group_ep"].s = compat_as_bytes(group_ep)
     op.attr["ep_world_size"].i = ep_world_size
@@ -79396,6 +79432,9 @@ def MoeDistributeCombineV2(expand_x: Tensor, expert_ids: Tensor, assist_info_for
     op.attr["global_bs"].i = global_bs
     op.attr["comm_quant_mode"].i = comm_quant_mode
     op.attr["comm_alg"].s = compat_as_bytes(comm_alg)
+    op.attr["zero_expert_num"].i = zero_expert_num
+    op.attr["copy_expert_num"].i = copy_expert_num
+    op.attr["const_expert_num"].i = const_expert_num
 
     # process outputs
     output_index = 0
@@ -79408,8 +79447,8 @@ def MoeDistributeCombineV2(expand_x: Tensor, expert_ids: Tensor, assist_info_for
 
 # This api is auto-generated from IR MoeDistributeCombineAddRmsNorm
 @auto_convert_to_tensor(
-        [False, False, False, False, False, False, False, False, False, False, False, False, False, False],
-        [False, False, False, False, False, False, False, True, True, True, True, True, True, True])
+        [False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False],
+        [False, False, False, False, False, False, False, True, True, True, True, True, True, True, True, True, True, True, True])
 def MoeDistributeCombineAddRmsNorm(expand_x: Tensor,
                                    expert_ids: Tensor,
                                    assist_info: Tensor,
@@ -79424,6 +79463,11 @@ def MoeDistributeCombineAddRmsNorm(expand_x: Tensor,
                                    group_list: Optional[Tensor],
                                    expand_scales: Optional[Tensor],
                                    shared_expert_x: Optional[Tensor],
+                                   elastic_info: Optional[Tensor], 
+                                   ori_x: Optional[Tensor], 
+                                   const_expert_alpha_1: Optional[Tensor], 
+                                   const_expert_alpha_2: Optional[Tensor],  
+                                   const_expert_v: Optional[Tensor],
                                    *,
                                    group_ep: str,
                                    ep_world_size: int,
@@ -79441,9 +79485,12 @@ def MoeDistributeCombineAddRmsNorm(expand_x: Tensor,
                                    group_list_type: int = 0,
                                    comm_alg: str = "",
                                    norm_eps: float = 1e-6,
+                                   zero_expert_num: int = 0,
+                                   copy_expert_num: int = 0,  
+                                   const_expert_num: int = 0, 
                                    dependencies = [],
                                    node_name = None):
-    """REG_OP(MoeDistributeCombine)\n
+    """REG_OP(MoeDistributeCombineAddRmsNorm)\n
     .INPUT(expand_x, TensorType({DT_BF16, DT_FLOAT16}))\n
     .INPUT(expert_ids, TensorType({DT_INT32}))\n
     .INPUT(assist_info, TensorType({DT_INT32}))\n
@@ -79456,6 +79503,11 @@ def MoeDistributeCombineAddRmsNorm(expand_x: Tensor,
     .OPTIONAL_INPUT(group_list, TensorType({DT_INT64}))\n
     .OPTIONAL_INPUT(expand_scales, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(shared_expert_x, TensorType({DT_BF16}))\n
+    .OPTIONAL_INPUT(elastic_info, TensorType({DT_INT32}))\n
+    .OPTIONAL_INPUT(ori_x, TensorType({DT_BF16}))\n
+    .OPTIONAL_INPUT(const_expert_alpha_1, TensorType({DT_BF16}))\n
+    .OPTIONAL_INPUT(const_expert_alpha_2, TensorType({DT_BF16}))\n
+    .OPTIONAL_INPUT(const_expert_v, TensorType({DT_BF16}))\n
     .OUTPUT(y, TensorType({DT_BF16}))\n
     .OUTPUT(rstd, TensorType({DT_FLOAT}))\n
     .OUTPUT(x, TensorType({DT_BF16}))\n
@@ -79475,6 +79527,9 @@ def MoeDistributeCombineAddRmsNorm(expand_x: Tensor,
     .ATTR(group_list_type, Int, 0)\n
     .ATTR(comm_alg, String, "")\n
     .ATTR(norm_eps, Float, 1e-6)\n
+    .ATTR(zero_expert_num, Int, 0)\n
+    .ATTR(copy_expert_num, Int, 0)\n
+    .ATTR(const_expert_num, Int, 0)\n
     """
 
     op = get_default_ge_graph().op.add()
@@ -79576,6 +79631,31 @@ def MoeDistributeCombineAddRmsNorm(expand_x: Tensor,
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "shared_expert_x"
 
+    if elastic_info is not None:
+        op.input.append(elastic_info.tensor)
+        op.input_desc.add().CopyFrom(elastic_info.desc)
+        op.input_desc[-1].name = "elastic_info"
+
+    if ori_x is not None:
+        op.input.append(ori_x.tensor)
+        op.input_desc.add().CopyFrom(ori_x.desc)
+        op.input_desc[-1].name = "ori_x"
+
+    if const_expert_alpha_1 is not None:
+        op.input.append(const_expert_alpha_1.tensor)
+        op.input_desc.add().CopyFrom(const_expert_alpha_1.desc)
+        op.input_desc[-1].name = "const_expert_alpha_1"
+
+    if const_expert_alpha_2 is not None:
+        op.input.append(const_expert_alpha_2.tensor)
+        op.input_desc.add().CopyFrom(const_expert_alpha_2.desc)
+        op.input_desc[-1].name = "const_expert_alpha_2"
+
+    if const_expert_v is not None:
+        op.input.append(const_expert_v.tensor)
+        op.input_desc.add().CopyFrom(const_expert_v.desc)
+        op.input_desc[-1].name = "const_expert_v"
+
     # process attrs
     op.attr["group_ep"].s = compat_as_bytes(group_ep)
     op.attr["ep_world_size"].i = ep_world_size
@@ -79594,6 +79674,11 @@ def MoeDistributeCombineAddRmsNorm(expand_x: Tensor,
 
     op.attr["comm_alg"].s = compat_as_bytes(comm_alg)
     op.attr["norm_eps"].f = norm_eps
+
+    op.attr["zero_expert_num"].i = zero_expert_num
+    op.attr["copy_expert_num"].i = copy_expert_num
+    op.attr["const_expert_num"].i = const_expert_num
+
     # process outputs
     output_index = 0
     op.output_desc.add().name = "y"
@@ -79772,19 +79857,20 @@ def MoeDistributeDispatch(x: Tensor, expert_ids: Tensor, scales: Optional[Tensor
 
 
 # This api is auto-generated from IR MoeDistributeDispatchV2
-@auto_convert_to_tensor([False, False, False, False, False], [False, False, True, True, True])
+@auto_convert_to_tensor([False, False, False, False, False, False], [False, False, True, True, True, True])
 def MoeDistributeDispatchV2(x: Tensor, expert_ids: Tensor, scales: Optional[Tensor], x_active_mask: Optional[Tensor], 
-                            expert_scales: Optional[Tensor], *, group_ep: str, ep_world_size: int, ep_rank_id: int, 
+                            expert_scales: Optional[Tensor], elastic_info: Optional[Tensor], *, group_ep: str, ep_world_size: int, ep_rank_id: int, 
                             moe_expert_num: int, group_tp: str = "", tp_world_size: int = 0, tp_rank_id: int = 0, 
                             expert_shard_type: int = 0, shared_expert_num: int = 1, shared_expert_rank_num: int = 0, 
                             quant_mode: int = 0, global_bs: int = 0, expert_token_nums_type: int = 1, 
-                            comm_alg: str = "", dependencies=[], node_name=None):
+                            comm_alg: str = "", zero_expert_num: int = 0, copy_expert_num: int = 0, const_expert_num: int = 0, dependencies=[], node_name=None):
     """REG_OP(MoeDistributeDispatchV2)\n
     .INPUT(x, TensorType({DT_BF16, DT_FLOAT16}))\n
     .INPUT(expert_ids, TensorType({DT_INT32}))\n
     .OPTIONAL_INPUT(scales, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(x_active_mask, TensorType({DT_BOOL}))\n
     .OPTIONAL_INPUT(expert_scales, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(elastic_info, TensorType({DT_INT32}))\n
     .OUTPUT(expand_x, TensorType({DT_BF16, DT_INT8, DT_FLOAT16}))\n
     .OUTPUT(dynamic_scales, TensorType({DT_FLOAT}))\n
     .OUTPUT(expand_idx, TensorType({DT_INT32}))\n
@@ -79806,6 +79892,9 @@ def MoeDistributeDispatchV2(x: Tensor, expert_ids: Tensor, scales: Optional[Tens
     .ATTR(global_bs, Int, 0)\n
     .ATTR(expert_token_nums_type, Int, 1)\n
     .ATTR(comm_alg, String, "")\n
+    .ATTR(zero_expert_num, Int, 0)\n
+    .ATTR(copy_expert_num, Int, 0)\n
+    .ATTR(const_expert_num, Int, 0)\n
     """
     op = get_default_ge_graph().op.add()
     op.type = "MoeDistributeDispatchV2"
@@ -79851,6 +79940,11 @@ def MoeDistributeDispatchV2(x: Tensor, expert_ids: Tensor, scales: Optional[Tens
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "expert_scales"
 
+    if elastic_info is not None:
+        op.input.append(elastic_info.tensor)
+        op.input_desc.add().CopyFrom(elastic_info.desc)
+        op.input_desc[-1].name = "elastic_info"
+
     # process attrs
     op.attr["group_ep"].s = compat_as_bytes(group_ep)
     op.attr["ep_world_size"].i = ep_world_size
@@ -79866,6 +79960,9 @@ def MoeDistributeDispatchV2(x: Tensor, expert_ids: Tensor, scales: Optional[Tens
     op.attr["global_bs"].i = global_bs
     op.attr["expert_token_nums_type"].i = expert_token_nums_type
     op.attr["comm_alg"].s = compat_as_bytes(comm_alg)
+    op.attr["zero_expert_num"].i = zero_expert_num
+    op.attr["copy_expert_num"].i = copy_expert_num
+    op.attr["const_expert_num"].i = const_expert_num
 
     # process outputs
     output_index = 0

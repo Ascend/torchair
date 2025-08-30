@@ -17,6 +17,11 @@ def convert_npu_moe_distribute_combine_v2(
     x_active_mask: Tensor = None,
     expand_scales: Tensor = None,
     shared_expert_x: Tensor = None,
+    elastic_info: Tensor = None,
+    ori_x: Tensor = None,
+    const_expert_alpha_1: Tensor = None,
+    const_expert_alpha_2: Tensor = None,
+    const_expert_v: Tensor = None,
     group_tp: str = "",
     tp_world_size: int = 0,
     tp_rank_id: int = 0,
@@ -26,6 +31,9 @@ def convert_npu_moe_distribute_combine_v2(
     global_bs: int = 0,
     comm_quant_mode: int = 0,
     comm_alg: str = "",
+    zero_expert_num: int = 0,
+    copy_expert_num: int = 0,
+    const_expert_num: int = 0,
     meta_outputs: TensorSpec = None
 ):
 
@@ -38,6 +46,11 @@ def convert_npu_moe_distribute_combine_v2(
                                    x_active_mask=x_active_mask,
                                    expand_scales=expand_scales,
                                    shared_expert_x=shared_expert_x,
+                                   elastic_info=elastic_info,
+                                   ori_x=ori_x,
+                                   const_expert_alpha_1=const_expert_alpha_1,
+                                   const_expert_alpha_2=const_expert_alpha_2,
+                                   const_expert_v=const_expert_v,
                                    group_ep=group_ep,
                                    ep_world_size=ep_world_size,
                                    ep_rank_id=ep_rank_id,
@@ -50,4 +63,7 @@ def convert_npu_moe_distribute_combine_v2(
                                    shared_expert_rank_num=shared_expert_rank_num,
                                    global_bs=global_bs,
                                    comm_quant_mode=comm_quant_mode,
-                                   comm_alg=comm_alg)
+                                   comm_alg=comm_alg,
+                                   zero_expert_num=zero_expert_num,
+                                   copy_expert_num=copy_expert_num,
+                                   const_expert_num=const_expert_num)

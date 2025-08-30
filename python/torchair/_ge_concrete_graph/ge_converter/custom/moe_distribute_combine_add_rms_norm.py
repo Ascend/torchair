@@ -22,6 +22,11 @@ def convert_npu_moe_distribute_combine_add_rms_norm(
     group_list: Tensor = None,
     expand_scales: Tensor = None,
     shared_expert_x: Tensor = None,
+    elastic_info: Tensor = None,
+    ori_x: Tensor = None,
+    const_expert_alpha_1: Tensor = None,
+    const_expert_alpha_2: Tensor = None,
+    const_expert_v: Tensor = None,
     group_tp: str = "",
     tp_world_size: int = 0,
     tp_rank_id: int = 0,
@@ -34,6 +39,9 @@ def convert_npu_moe_distribute_combine_add_rms_norm(
     group_list_type: int = 0,
     comm_alg: str = "",
     norm_eps: float = 1e-6,
+    zero_expert_num: int = 0,
+    copy_expert_num: int = 0,
+    const_expert_num: int = 0,
     meta_outputs: TensorSpec = None
 ):
     return ge.MoeDistributeCombineAddRmsNorm(expand_x=expand_x, 
@@ -50,6 +58,11 @@ def convert_npu_moe_distribute_combine_add_rms_norm(
                                    group_list=group_list, 
                                    expand_scales=expand_scales, 
                                    shared_expert_x=shared_expert_x, 
+                                   elastic_info=elastic_info,
+                                   ori_x=ori_x,
+                                   const_expert_alpha_1=const_expert_alpha_1,
+                                   const_expert_alpha_2=const_expert_alpha_2,
+                                   const_expert_v=const_expert_v,
                                    group_ep=group_ep, 
                                    ep_world_size=ep_world_size, 
                                    ep_rank_id=ep_rank_id, 
@@ -65,4 +78,7 @@ def convert_npu_moe_distribute_combine_add_rms_norm(
                                    comm_quant_mode=comm_quant_mode, 
                                    group_list_type=group_list_type, 
                                    comm_alg=comm_alg, 
-                                   norm_eps=norm_eps)
+                                   norm_eps=norm_eps,
+                                   zero_expert_num=zero_expert_num,
+                                   copy_expert_num=copy_expert_num,
+                                   const_expert_num=const_expert_num)
