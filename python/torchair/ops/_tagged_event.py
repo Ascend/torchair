@@ -2,11 +2,13 @@ from typing import List
 import threading
 import torch
 from torch.fx.node import has_side_effect
+from packaging import version
 from torchair.core.utils import logger
 from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
 from torchair.scope._scope_attr import _npu_get_or_create_stream_with_tag
 from torchair.ge._ge_graph import Tensor, TensorSpec, ControlTensor, DataType
 from ._lib import lib
+from ._utils import TaggedEventBidict, TaggedEventFakeBidict
 
 try:
     import torch_npu
@@ -24,7 +26,11 @@ has_side_effect(torch.ops.air.tagged_event_record.default)
 has_side_effect(torch.ops.air.tagged_event_wait.default)
 has_side_effect(torch.ops.air.record_tagged_stream.default)
 
-_GLOBAL_TAG_TO_EVENT = {}
+# 2.5及以下版本dynamo原生不支持built-in里面的call_id操作，导致fullgraph成图时触发unsupported报错。仅在2.6及以上版本使用id实现双向字典提升event查找效率。
+if version.parse(torch.__version__) >= version.parse("2.6.0"):
+    _GLOBAL_TAG_TO_EVENT = TaggedEventBidict()
+else:
+    _GLOBAL_TAG_TO_EVENT = TaggedEventFakeBidict()
 _GLOBAL_LOCK = threading.Lock()
 
 
@@ -39,10 +45,10 @@ def _npu_create_tagged_event(tag: str):
 
 
 def _get_tag_by_event(event: torch.npu.Event) -> str:
-    for tag, tagged_event in _GLOBAL_TAG_TO_EVENT.items():
-        if tagged_event == event:
-            return tag
-    raise ValueError(f"tagged event {event} is not in use")
+    tag = _GLOBAL_TAG_TO_EVENT.get_reverse(event)
+    if tag is None:
+        raise ValueError(f"tagged event {event} is not in use")
+    return tag
 
 
 def _npu_tagged_event_record(event: torch.npu.Event):
