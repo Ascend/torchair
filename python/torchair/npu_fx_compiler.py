@@ -291,8 +291,15 @@ def _optimize_sym_input(graph_module: torch.fx.GraphModule):
     logger.debug('before sym input optimization, graph is %s', graph_module.graph)
     sym_input_list = []
     tensor_input_list = []
+    data_idx = -1
     for node in graph_module.graph.nodes:
         if node.op != "placeholder":
+            continue
+        data_idx = data_idx + 1
+        if not hasattr(node, "meta"):
+            # int placeholder does not have 'meta' attr or symbol, skip this case
+            logger.debug('Find no meta attr placeholder node, placeholder index=%s, value=%s, type=%s',
+                         data_idx, node, type(node).__name__)
             continue
         if is_sym(node.meta['val']):
             sym_input_list.append(node)

@@ -178,6 +178,11 @@ def get_unupdated_sym_input_index(graph_module: torch.fx.GraphModule):
         if node.op != "placeholder":
             continue
         data_idx = data_idx + 1
+        if not hasattr(node, "meta"):
+            # int placeholder does not have 'meta' attr or symbol, skip this case
+            logger.debug('Find no meta attr placeholder node, placeholder index=%s, value=%s, type=%s',
+                         data_idx, node, type(node).__name__)
+            continue
         node_meta = node.meta['val']
         if not have_sym_in_meta(node_meta):
             continue
@@ -601,6 +606,14 @@ class AclGraphCacheInfo:
     ops_update_rulers: Dict[str, List] = None
     mutated_user_inputs: List[str] = None
     tagged_event_names: List[str] = field(default_factory=list)
+
+    def __post_init__(self):
+        if self.pool is not None:
+            if not (isinstance(self.pool, tuple) and len(self.pool) == 2 and
+                    isinstance(self.pool[0], int) and isinstance(self.pool[1], int) and
+                    self.pool[0] * self.pool[1] == 0):
+                raise TypeError(f"Invalid graph pool handle type, "
+                                f"got value={self.pool}, type={type(self.pool).__name__}")
 
 
 class AclGraph(object):

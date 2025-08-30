@@ -53,7 +53,6 @@ class AclConcreteGraph(ConcreteGraphBase):
         # for AclConcreteGraph only
         self._config = config
         self._meta_inputs = []
-        self._meta_outputs = []
         self._fx_input_names = []
         self._all_sym_input_idx = {}
         self._all_meta_tensor_input = {}
@@ -364,12 +363,6 @@ class AclConcreteGraph(ConcreteGraphBase):
         """        
         if not (isinstance(args, (list, tuple)) and len(args) == 1):
             raise RuntimeError(f"Unsupported case in AclGraph: for output node with args: [{args}].")
-
-        args = args[0]
-        for arg in args:
-            if arg is None:
-                continue
-            self._meta_outputs.append(arg.meta)
 
         return meta_outputs
 
