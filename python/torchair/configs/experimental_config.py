@@ -1,6 +1,6 @@
 __all__ = []
 
-from torchair.configs._option_base import OptionValue, IntRangeValue
+from torchair.configs._option_base import OptionValue, IntRangeValue, StrOptionValue
 from torchair.configs._option_base import NpuBaseConfig
 
 
@@ -21,6 +21,7 @@ class _ExperimentalConfig(NpuBaseConfig):
         self.enable_ref_data = OptionValue(False, [True, False])
         self.enable_view_optimize = OptionValue(True, [True, False])
         self.tiling_schedule_optimize = OptionValue(False, [True, False])
+        self.aclgraph = _AclGraphExperimentalConfig()
 
         super(_ExperimentalConfig, self).__init__()
 
@@ -39,4 +40,12 @@ class _ExperimentalConfig(NpuBaseConfig):
             local_experiment_option["ge.exec.static_model_ops_lower_limit"] = \
                 str(self.static_model_ops_lower_limit.value)
         return local_experiment_option, global_experiment_option
-    
+
+
+class _AclGraphExperimentalConfig(NpuBaseConfig):
+    def __init__(self):
+        self._aclnn_static_shape_kernel = OptionValue(False, [True, False])
+        self._aclnn_static_shape_kernel_build_dir = StrOptionValue()
+
+        super(_AclGraphExperimentalConfig, self).__init__()
+

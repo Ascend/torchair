@@ -138,17 +138,13 @@ std::string GetSocName() {
 void AclopStartDumpArgs(uint32_t dumpType, const char *path) {
   RECORD_FUNCTION("torchair::AclopStartDumpArgs", {});
   auto ret = aclopStartDumpArgs(dumpType, path);
-  if (ret != 0) {
-    TNG_LOG(INFO) << "AclopStartDumpArgs excute failed, error code: " << ret;
-  }
+  TNG_RAISE_ASSERT(ret == 0, "AclopStartDumpArgs execute failed");
 }
 
 void AclopStopDumpArgs(uint32_t dumpType) {
   RECORD_FUNCTION("torchair::AclopStopDumpArgs", {});
   auto ret = aclopStopDumpArgs(dumpType);
-  if (ret != 0) {
-    TNG_LOG(INFO) << "AclopStopDumpArgs excute failed, error code: " << ret;
-  }
+  TNG_RAISE_ASSERT(ret == 0, "AclopStopDumpArgs execute failed");
 }
 
 TorchNpuGraphBase::TorchNpuGraphBase(const std::string &name) : name_(name), concrete_graph_(nullptr){};

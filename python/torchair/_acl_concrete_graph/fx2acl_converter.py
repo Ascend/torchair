@@ -265,12 +265,12 @@ class AclConcreteGraph(ConcreteGraphBase):
 
     def normalize_config(self):
         aclgraph_config_options = self.config.debug.aclgraph.as_dict()
-        kernel_aot_optimization = self.config.aclgraph_config.kernel_aot_optimization
-        if kernel_aot_optimization:
-            aclgraph_config_options['kernel_aot_optimization'] = kernel_aot_optimization
-        build_dir = self.config.aclgraph_config.kernel_aot_optimization_build_dir
+        aclnn_static_shape_kernel = self.config.experimental_config.aclgraph._aclnn_static_shape_kernel
+        if aclnn_static_shape_kernel:
+            aclgraph_config_options['_aclnn_static_shape_kernel'] = aclnn_static_shape_kernel.value
+        build_dir = self.config.experimental_config.aclgraph._aclnn_static_shape_kernel_build_dir.value
         if build_dir:
-            aclgraph_config_options['kernel_aot_optimization_build_dir'] = build_dir
+            aclgraph_config_options['_aclnn_static_shape_kernel_build_dir'] = build_dir
 
         logger.debug("aclgraph compile options:")
         for k, v in aclgraph_config_options.items():

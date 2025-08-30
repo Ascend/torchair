@@ -731,8 +731,8 @@ class AclGraph(object):
                         self.fx_forward(*args, **kwargs)
                     torch.npu.synchronize()
 
-            if self.config.get('kernel_aot_optimization', False) is True:
-                path = self.config.get('kernel_aot_optimization_build_dir', None)
+            if self.config.get('_aclnn_static_shape_kernel', False):
+                path = self.config.get('_aclnn_static_shape_kernel_build_dir', None)
                 if self.fx_graph is not None:
                     compile_static_kernel(self.fx_graph, *args, build_dir=path, **kwargs)
                 else:

@@ -86,7 +86,10 @@ def save_uninstall_info(filename: str):
         logger.debug(f"can not find uninstall path, pattern: {pattern}")
     else:
         _uninstall_paths.append(str(match))
-        logger.debug(f"append uninstall script path: {match}")
+        warnings.warn(
+            "Warning: If the process exits abnormally, "
+            f"you must manually uninstall the static kernel package by executing: {match}"
+        )
 
 
 def uninstall_static_kernel():
@@ -132,7 +135,7 @@ def safe_resolve_output_dir(build_dir: str):
     else:
         script_dir = base_dir  # 在同目录生成临时dump的文件夹，用于保存生成的算子信息json
 
-    base_output_dir = script_dir / "kernel_aot_optimization_outputs"
+    base_output_dir = script_dir / "aclnn_static_shape_kernel_outputs"
     try:
         base_output_dir.mkdir(exist_ok=True)
     except (PermissionError, OSError) as e:

@@ -47,8 +47,8 @@ class CompilerConfig(NpuBaseConfig):
 
 
 unsupport_geconfig_list = [("debug.aclgraph.disable_reinplace_input_mutated_ops_pass", [True]),
-    ("aclgraph_config.kernel_aot_optimization", [True]),
-    ("aclgraph_config.kernel_aot_optimization_build_dir", []),
+    ("experimental_config.aclgraph._aclnn_static_shape_kernel", [True]),
+    ("experimental_config.aclgraph._aclnn_static_shape_kernel_build_dir", []),
     ("debug.aclgraph.disable_reinplace_inplaceable_ops_pass", [True])]
 unsupport_aclgraphconfig_list = [("inference_config.dynamic_gears_merge_policy", ["product"]), \
     ("debug.fx_summary.type", ["csv"]), ("dump_config.enable_dump", [True]), \

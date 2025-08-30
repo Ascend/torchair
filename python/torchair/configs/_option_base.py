@@ -66,6 +66,23 @@ class IntRangeValue(OptionValue):
         self._value = v
 
 
+class StrOptionValue(OptionValue):
+    def __init__(self, default=None):
+        if default is not None and not isinstance(default, str):
+            raise TypeError(f"default must be str or None, got {type(default)}")
+        super().__init__(default, optional=None)
+
+    @property
+    def value(self):
+        return super().value
+
+    @value.setter
+    def value(self, v):
+        if v is not None and not isinstance(v, str):
+            raise TypeError(f"value must be str or None, got {type(v)}")
+        self._value = v
+
+
 class FileValue(OptionValue):
     @property
     def value(self):

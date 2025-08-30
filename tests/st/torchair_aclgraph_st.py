@@ -1642,8 +1642,8 @@ class AclGraphSt(unittest.TestCase):
         model = Model()
         config = CompilerConfig()
         config.mode = "reduce-overhead"
-        config.aclgraph_config.kernel_aot_optimization = True
-        config.aclgraph_config.kernel_aot_optimization_build_dir = ".."
+        config.experimental_config.aclgraph._aclnn_static_shape_kernel = True
+        config.experimental_config.aclgraph._aclnn_static_shape_kernel_build_dir = ".."
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
         model = torch.compile(Model(), backend=aclgraph_backend, dynamic=False)
         x = torch.randn([3, 2])
