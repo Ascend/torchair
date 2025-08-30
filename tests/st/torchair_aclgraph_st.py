@@ -1792,6 +1792,22 @@ class AclGraphSt(unittest.TestCase):
         len_of_tagged_event_3 = len(_GLOBAL_SCOPE_TAG_TO_EVENT)
         assert len_of_tagged_event_2 == len_of_tagged_event_3
 
+    def test_aclgraph_unsupported_blocing_env(self):
+        class Model(torch.nn.Module):
+            def forward(self, x):
+                return x + x
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+        model = torch.compile(Model(), backend=aclgraph_backend, dynamic=False)
+        inputs = torch.randn([3, 2])
+
+        os.environ['ASCEND_LAUNCH_BLOCKING'] = '1'
+        with self.assertRaisesRegex(RuntimeError, r"Stream synchronization is unsupported"):
+            model(inputs)
+        os.environ['ASCEND_LAUNCH_BLOCKING'] = '0'
+
 
 if __name__ == '__main__':
     unittest.main()

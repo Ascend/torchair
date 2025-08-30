@@ -839,6 +839,11 @@ class AclGraph(object):
             *args: Input arguments for graph capture.
             **kwargs: Keyword arguments for graph capture.
         """
+        sync_launch_env = os.getenv("ASCEND_LAUNCH_BLOCKING", "0")
+        if sync_launch_env == "1":
+            raise RuntimeError(f"Stream synchronization is unsupported when capturing task for AclGraph. "
+                               f"Please unset ASCEND_LAUNCH_BLOCKING env variable before capture.")
+
         if self.fx_graph is not None:
             captured_interpreter = UpdatedNodeCaptureInterp(self.fx_graph, self._updated_ops_param)
             import torch_npu
