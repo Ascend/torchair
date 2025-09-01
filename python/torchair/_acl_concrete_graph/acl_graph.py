@@ -649,6 +649,7 @@ class AclGraph(object):
         self.stale_storages_ptr = set()
 
         # members for capture, provided by AclConcreteGraph
+        self._fallback_to_eager = False
         self._captured = False
         self._updated_ops_param = None
         self._unupdated_sym_input_index = None
@@ -705,6 +706,18 @@ class AclGraph(object):
     def fx_forward(self):
         return self._fx_forward
 
+    @property
+    def fallback_to_eager(self):
+        return self._fallback_to_eager
+
+    def fx_run_eagerly(self, *args: Any, **kwargs: Any) -> Any:
+        # No need to confirm whether it is an online case or a cached case
+        if self.fx_graph is not None:
+            callable_fx_func = self.fx_graph
+        else:
+            callable_fx_func = self.fx_forward
+        return callable_fx_func(*args, **kwargs)
+
     def load(self, aclgraph_cache_info: AclGraphCacheInfo):
         # call load before compile
         self._unupdated_sym_input_index = aclgraph_cache_info.unupdated_sym_input_index
@@ -725,18 +738,14 @@ class AclGraph(object):
             # warm up before capture
             with record_function("acl_graph_warm_up"):
                 for _ in range(self.num_warmup_iters):
-                    if self.fx_graph is not None:
-                        self.fx_graph(*args, **kwargs)
-                    else:
-                        self.fx_forward(*args, **kwargs)
+                    self.fx_run_eagerly(*args, **kwargs)
                     torch.npu.synchronize()
 
+            # compile operator kernel based on static shape for better execution performance
             if self.config.get('_aclnn_static_shape_kernel', False):
                 path = self.config.get('_aclnn_static_shape_kernel_build_dir', None)
-                if self.fx_graph is not None:
-                    compile_static_kernel(self.fx_graph, *args, build_dir=path, **kwargs)
-                else:
-                    compile_static_kernel(self.fx_forward, *args, build_dir=path, **kwargs)
+                fx_func = self.fx_graph if self.fx_graph is not None else self.fx_forward
+                compile_static_kernel(fx_func, *args, build_dir=path, **kwargs)
 
             self._unupdated_input_func = get_unupdated_input_fn(self._unupdated_sym_input_index)
             self._updated_input_func = get_updated_ops_fn(self._ops_update_rulers)
@@ -754,17 +763,53 @@ class AclGraph(object):
             # and it will be used to restore the mem state when capturing another acl graph for different shape.
             self._original_mem_state = torch_npu._C._npu_getCheckpointState(self.device, self.pool)
 
+        if self.fallback_to_eager:
+            # when falling back to eager, no need to calculate graph key
+            return "fallback_to_eager"
+
         # get graph key based on unupdated sym input shape or value
         graph_key = self._unupdated_input_func(*args, **kwargs)
         if graph_key in self._graphs_meta.keys():
-            logger.debug('Find captured AclGraph{id: %s} of fx_graph %s with graph key {%s}.',
-                         id(self.graph[graph_key]), self.name, graph_key)
+            logger.info('Find captured AclGraph{id: %s} of fx_graph %s with graph key {%s}.',
+                        id(self.graph[graph_key]), self.name, graph_key)
             return graph_key
+
+        # Before recapture a new aclgraph for another graph key, check static capture size limit.
+        # If the number of captured aclgraphs exceeds the limit, we will fall back to eager execution.
+        if len(self._graphs_meta) == int(self.config.get("static_capture_size_limit", "-1")):
+            warn_msg = f"The static_capture_size_limit reached when capturing fx_graph {self.name} " \
+                       f"with graph key {graph_key}, we will fall back to eager for all subsequent executions. " \
+                       f"Excessive recapture can degrade performance due to the each recapture overhead, " \
+                       f"and result in unexpected resources consumption, including stream, memory, etc. " \
+                       f"This may lead to program error: The resources are insufficient. " \
+                       f"The current static_capture_size_limit " \
+                       f"is {self.config.get('static_capture_size_limit', '-1')}. If recapture are expected, " \
+                       f"consider increasing debug.aclgraph.static_capture_size_limit to an appropriate value."
+            warnings.warn(warn_msg)
+            logger.warning(warn_msg)
+            self._fallback_to_eager = True
+            self.reset_captured_graph()
+            return "fallback_to_eager"
 
         # Start capture aclgraph instance when the graph key have not been compiled.
         self.compile_for_graph_key(graph_key, *args, **kwargs)
 
         return graph_key
+
+    def reset_captured_graph(self):
+        # Do sync before we reset all captured aclgraphs, just like what was done before capture
+        torch.npu.synchronize()
+        logger.info('Current fx_graph %s memory pool is %s. Before reset, the current memory state is {%s}.',
+                    self.name, self.pool, debug_mem_state())
+
+        for _, graph_meta in self._graphs_meta.items():
+            graph_meta.acl_graph.reset()
+        self._graphs_meta = {}
+        gc.collect()
+        torch.npu.empty_cache()
+
+        logger.info('Current fx_graph %s memory pool is %s. After reset, the current memory state is {%s}.',
+                    self.name, self.pool, debug_mem_state())
 
     def compile_for_graph_key(self, graph_key, *args: Any, **kwargs: Any):
         """

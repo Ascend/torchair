@@ -121,6 +121,14 @@ class StubNPUGraph:
         logger.debug('[Stub] run stub API replay with args[].')
         pass
 
+    def reset(self):
+        logger.debug('[Stub] run stub API reset with args[].')
+        pass
+
+    def pool(self):
+        logger.debug('[Stub] run stub API pool with args[].')
+        return (0, 1)
+
 
 class graph:
     def __init__(
@@ -1792,7 +1800,7 @@ class AclGraphSt(unittest.TestCase):
         len_of_tagged_event_3 = len(_GLOBAL_SCOPE_TAG_TO_EVENT)
         assert len_of_tagged_event_2 == len_of_tagged_event_3
 
-    def test_aclgraph_unsupported_blocing_env(self):
+    def test_aclgraph_unsupported_blocking_env(self):
         class Model(torch.nn.Module):
             def forward(self, x):
                 return x + x
@@ -1808,6 +1816,91 @@ class AclGraphSt(unittest.TestCase):
             model(inputs)
         os.environ['ASCEND_LAUNCH_BLOCKING'] = '0'
 
+    def test_aclgraph_static_capture_size_limit(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(2, 2)
+
+            def forward(self, input):
+                return self.linear(input)
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        # test use default static_capture_size_limit, and do not fall back to eager
+        torch._dynamo.reset()
+        model1 = torch.compile(Model(), backend=aclgraph_backend, dynamic=True)
+        with capture_logger() as stdout:
+            model1(torch.randn([3, 2]))
+        self.assertTrue("Success to capture fx_graph" in stdout.getvalue())
+
+        with capture_logger() as stdout:
+            model1(torch.randn([4, 2]))
+        self.assertTrue("Success to capture fx_graph" in stdout.getvalue())
+
+        with capture_logger() as stdout:
+            model1(torch.randn([5, 2]))
+        self.assertTrue("Success to capture fx_graph" in stdout.getvalue())
+
+        # test set custom static_capture_size_limit, and fall back to eager
+        config.debug.aclgraph.static_capture_size_limit = 1
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+        torch._dynamo.reset()
+        model1 = torch.compile(Model(), backend=aclgraph_backend, dynamic=True)
+        with capture_logger() as stdout:
+            model1(torch.randn([3, 2]))
+        self.assertTrue("Success to capture fx_graph" in stdout.getvalue())
+
+        with capture_logger() as stdout:
+            model1(torch.randn([4, 2]))
+        self.assertTrue("static_capture_size_limit reached" in stdout.getvalue())
+
+        with capture_logger() as stdout:
+            model1(torch.randn([3, 2]))
+        # fall back to eager no aclgraph log
+        self.assertTrue("Find captured AclGraph" not in stdout.getvalue())
+        self.assertTrue("Success to capture fx_graph" not in stdout.getvalue())
+
+    def test_aclgraph_static_capture_size_limit_cache(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.cached_prompt = torchair.inference.cache_compile(self.prompt, config=config)
+
+            def forward(self, input):
+                return self.cached_prompt(input)
+
+            def prompt(self, input):
+                return input + input
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.aclgraph.static_capture_size_limit = 1
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        model1 = Model()
+
+        prompt_cache_dir = CompiledModel.get_cache_bin(model1.prompt, config=config)
+        ModelCacheSaver.remove_cache(prompt_cache_dir)
+        self.assertFalse(os.path.exists(prompt_cache_dir))
+
+        with capture_logger() as stdout:
+            model1(torch.randn([3, 2]))
+        self.assertTrue("Success to capture fx_graph" in stdout.getvalue())
+
+        with capture_logger() as stdout:
+            model1(torch.randn([4, 2]))
+        self.assertTrue("static_capture_size_limit reached" in stdout.getvalue())
+
+        with capture_logger() as stdout:
+            model1(torch.randn([3, 2]))
+        # fall back to eager no aclgraph log
+        self.assertTrue("Find captured AclGraph" not in stdout.getvalue())
+        self.assertTrue("Success to capture fx_graph" not in stdout.getvalue())
+
+        self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
 
 if __name__ == '__main__':
     unittest.main()

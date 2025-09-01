@@ -3,8 +3,9 @@ __all__ = []
 from datetime import datetime, timezone
 import os
 import torch.distributed as dist
-from torchair.configs._option_base import OptionValue
-from torchair.configs._option_base import NpuBaseConfig
+from torchair.configs._option_base import OptionValue, NpuBaseConfig, IntRangeValue
+
+INT64_MAX = 2 ** 63 - 1
 
 
 def _timestamp():
@@ -81,15 +82,17 @@ class _AclGraphDebugConfig(NpuBaseConfig):
         self.disable_reinplace_input_mutated_ops_pass = OptionValue(False, [True, False])
         self.disable_mempool_reuse_in_same_fx = OptionValue(False, [True, False])
         self.enable_output_clone = OptionValue(False, [True, False])
+        self.static_capture_size_limit = IntRangeValue(64, 1, INT64_MAX)
 
         super(_AclGraphDebugConfig, self).__init__()
 
     def as_dict(self):
         local_option = {}
+        local_option["disable_mempool_reuse_in_same_fx"] = self.disable_mempool_reuse_in_same_fx.value
         local_option["enable_output_clone"] = self.enable_output_clone.value
+        # static_capture_size_limit must be str(int), so int(static_capture_size_limit) is always safe.
+        local_option["static_capture_size_limit"] = self.static_capture_size_limit.value
 
-        if self.disable_mempool_reuse_in_same_fx.value is not None:
-            local_option["disable_mempool_reuse_in_same_fx"] = self.disable_mempool_reuse_in_same_fx.value
         return local_option
 
 

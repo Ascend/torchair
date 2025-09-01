@@ -41,7 +41,8 @@ class AclConcreteGraph(ConcreteGraphBase):
         stream (Optional[Any], optional): Execution stream for asynchronous operations. Defaults to None.
         capture_error_mode (str, optional): Error handling mode during graph capture. Defaults to "global".
         num_warmup_iters (int, optional): Number of warm-up iterations before capturing the graph. Defaults to 0.
-    """    
+    """
+
     def __init__(self, config: CompilerConfig, name="graph", pool=None, stream=None,
                  capture_error_mode: str = "global", num_warmup_iters=0):
         try:
@@ -82,9 +83,15 @@ class AclConcreteGraph(ConcreteGraphBase):
         
         Returns:
             Any: Output tensors from the executed graph.
-        """        
+        """
+
         # get graph_key and capture
         fn_key = self.compile(*args, **kwargs)
+
+        # fall back to eager when static_capture_size_limit is exceeded
+        if self.graph.fallback_to_eager:
+            with record_function("fx_run_eagerly"):
+                return self.graph.fx_run_eagerly(*args, **kwargs)
 
         # input process
         self.graph.process_input(fn_key, *args)
@@ -198,7 +205,7 @@ class AclConcreteGraph(ConcreteGraphBase):
             
         Returns:
             str: Unique identifier (graph key) for the captured ACL graph.
-        """        
+        """
         return self.graph.compile(*args, **kwargs)
 
     def optimize_graph_without_runtime(self, *sample_args):
@@ -287,7 +294,7 @@ class AclConcreteGraph(ConcreteGraphBase):
             
         Returns:
             List[int]: Parsed list of integer symbols.
-        """        
+        """
         npu_syms = []
         for sym in syms:
             if isinstance(sym, ValuePack):
@@ -314,7 +321,7 @@ class AclConcreteGraph(ConcreteGraphBase):
             
         Returns:
             Any: Processed metadata for the input operation.
-        """        
+        """
         self._meta_inputs.append(meta_outputs)
 
         # Lazy check for int/sym inputs
@@ -343,7 +350,7 @@ class AclConcreteGraph(ConcreteGraphBase):
             
         Returns:
             Any: Processed result of the parsed node.
-        """        
+        """
         # do some optimization in fx for some ops
 
         return target(*args, **kwargs)
@@ -360,7 +367,7 @@ class AclConcreteGraph(ConcreteGraphBase):
             
         Returns:
             Any: Processed metadata for the output operation.
-        """        
+        """
         if not (isinstance(args, (list, tuple)) and len(args) == 1):
             raise RuntimeError(f"Unsupported case in AclGraph: for output node with args: [{args}].")
 
@@ -416,7 +423,7 @@ class AclConcreteGraph(ConcreteGraphBase):
     def _codegen_kernel(self, need_update_tagged_event=False):
         from torch._inductor.utils import IndentedBuffer
         kernel_code = IndentedBuffer()
-        kernel_code.writelines(['', '_is_first_run = True', f'def kernel(*args):'])
+        kernel_code.writelines(['', '_is_first_run = True', f'def kernel(*args, **kwargs):'])
         with kernel_code.indent():
             # for assert_shape_stride in first run
             kernel_code.writelines(['', 'global _is_first_run', 'if _is_first_run:'])
@@ -430,6 +437,10 @@ class AclConcreteGraph(ConcreteGraphBase):
                 kernel_code.splice(assert_code)
             kernel_code.splice('''
                     fn_key = acl_graph.compile(*args)
+
+                    if acl_graph.fallback_to_eager:
+                        with record_function("fx_run_eagerly"):
+                            return acl_graph.fx_run_eagerly(*args, **kwargs)
 
                     acl_graph.process_input(fn_key, *args)
 
