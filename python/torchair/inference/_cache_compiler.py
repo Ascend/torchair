@@ -110,7 +110,7 @@ def _compile_py_code(py_code: str):
     # get closure_vars from torch._dynamo.guards
     _closure_vars = {}
     if version.parse(torch.__version__) > version.parse("2.5.1"):
-        from torch._dynamo.gurads import _get_closure_vars
+        from torch._dynamo.guards import _get_closure_vars
         closure_vars = _get_closure_vars()
         _closure_vars = {(k, v) for k, v in closure_vars.items()}
     else:
