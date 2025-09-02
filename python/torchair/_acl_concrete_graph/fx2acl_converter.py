@@ -68,6 +68,7 @@ class AclConcreteGraph(ConcreteGraphBase):
             fx_graph_name=name,
             user_inputs_mapping=OrderedDict()
         )
+        self._tensor_constant_dict = {}
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """
@@ -176,6 +177,9 @@ class AclConcreteGraph(ConcreteGraphBase):
 
         # There is no need to save config.for now. Maybe needed in the future.
         # Configs are set for AclConcreteGraph, not for AclGraph
+        if len(self._tensor_constant_dict) > 0:
+            tensor_const_code = self._codegen_tensor_constant()
+            head.splice(tensor_const_code)
         head.writeline('')
         forward_code = self.fx_forward
         head.splice(forward_code)
@@ -373,6 +377,34 @@ class AclConcreteGraph(ConcreteGraphBase):
 
         return meta_outputs
 
+    def _codegen_tensor_constant(self):
+        from torch._inductor.utils import IndentedBuffer
+        tensor_constant_code = IndentedBuffer()
+        tensor_constants_list = []
+        # We must ensure that 'self._tensor_constant_dict[k].cpu().item()' is executed
+        # outside any FakeTensorMode context.
+        with torch._C._DisableTorchDispatch():
+            for k, v in self._tensor_constant_dict.items():
+                if not isinstance(v, torch.Tensor):
+                    raise TypeError(f"When iterating self._tensor_constant_dict, "
+                                    f"Value for key '{k}' is not a tensor, got {type(v)}")
+                try:
+                    tensor_list = (v.cpu().item() if v.dim() == 0 else v.cpu().tolist())
+                    tensor_constants_list.append(f"tensor_constants['{k}'] = "
+                                                 f"torch.tensor({tensor_list}, "
+                                                 f"device='{self._tensor_constant_dict[k].device}')."
+                                                 f"reshape({self._tensor_constant_dict[k].shape})")
+                except Exception as e:
+                    raise RuntimeError(
+                        f"Failed to generate tensor constant for key '{k}'. "
+                        f"Error: {str(e)}"
+                    ) from e
+        tensor_constant_code.writelines(["", "tensor_constants = {}", "with torch._C._DisableTorchDispatch():"])
+        with tensor_constant_code.indent():
+            tensor_constant_code.writelines(tensor_constants_list)
+        tensor_constant_code.writeline("")
+        return tensor_constant_code.getvalue()
+
     def _codegen_init(self):
         from torch._inductor.utils import IndentedBuffer
         init_code = IndentedBuffer()
@@ -480,6 +512,10 @@ class AclConcreteGraph(ConcreteGraphBase):
         return input_code.getvalue()
 
     def _codegen_fx_forward(self, gm: torch.fx.GraphModule, code: str, need_updated_ops: Dict):
+        for node in gm.graph.nodes:
+            # Only record tensor_constants for now.
+            if node.op == "get_attr" and "tensor_constant" in node.name:
+                self._tensor_constant_dict[node.name] = getattr(gm, node.target)
         import re
         forward_def_match = re.search(r"def forward\(self[^)]*\):", code)
         if not forward_def_match:
@@ -514,6 +550,11 @@ class AclConcreteGraph(ConcreteGraphBase):
                         line_parts = line.split(';', 1)
                         mem_free_part = line_parts[1].strip() if len(line_parts) > 1 else ""
                         forward_code.writeline(mem_free_part)
+                        need_update = True
+                        break
+                for k in self._tensor_constant_dict.keys():
+                    if f"{k} = self" in line:
+                        forward_code.writeline(f"{k} = tensor_constants['{k}']")
                         need_update = True
                         break
                 if not need_update:
