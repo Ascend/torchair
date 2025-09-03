@@ -1,4 +1,4 @@
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from typing import List, Optional, Callable, Any, Dict, Tuple, Union
 import weakref
 
@@ -69,6 +69,7 @@ class GraphMeta:
     outputs_meta: List[Union[TensorMetadata, Number]]
     outputs_weakref: List[WeakRef]
     mem_state_after_capture: Any
+    captured_parameter: Dict[int, int] = field(default_factory=dict)
     retained_outputs: List[torch.Tensor] = None
 
 

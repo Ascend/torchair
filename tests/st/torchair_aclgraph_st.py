@@ -397,13 +397,13 @@ class AclGraphSt(unittest.TestCase):
         model(x_)
 
         # inference
-        with self.assertLogs(logger, level="WARNING") as cm:
+        with self.assertLogs(logger, level="DEBUG") as cm:
             for _ in range(2):
                 output = model(x)
 
         self.assertTrue(
-            any("data_ptr is different between capture and replay." in log for log in cm.output),
-            f"Expected WARNING 'Mutated input[arg]'s data_ptr is different between capture and replay.' "
+            any("The current AclGraph needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph needs to be recaptured'"
             f"not found in logs: {cm.output}"
         )
 
@@ -1625,13 +1625,13 @@ class AclGraphSt(unittest.TestCase):
         self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
 
         # inference
-        with self.assertLogs(logger, level="WARNING") as cm:
+        with self.assertLogs(logger, level="DEBUG") as cm:
             for _ in range(2):
                 output = model(x)
 
         self.assertTrue(
-            any("data_ptr is different between capture and replay." in log for log in cm.output),
-            f"Expected WARNING 'Mutated input[arg]'s data_ptr is different between capture and replay.' "
+            any("The current AclGraph needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph needs to be recaptured' "
             f"not found in logs: {cm.output}"
         )
 
@@ -1901,6 +1901,139 @@ class AclGraphSt(unittest.TestCase):
         self.assertTrue("Success to capture fx_graph" not in stdout.getvalue())
 
         self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
+    
+    def test_aclgraph_recapture_non_mutated_input_with_address_change_and_input_with_no_address_change(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                return x + 1
+
+        model = Model()
+        config = CompilerConfig()
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        config.mode = "reduce-overhead"
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(model, backend=aclgraph_backend, dynamic=True)
+        x_ = torch.randn([3, 2])
+        x = x_.clone()
+
+        model(x_)
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            output = model(x)
+
+        self.assertTrue(
+            any("The current AclGraph no needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph no needs to be recaptured'"
+            f"not found in logs: {cm.output}"
+        )
+
+        with capture_logger() as stdout:
+            model(x)
+        captured_output = stdout.getvalue()
+        self.assertTrue("Find captured AclGraph" in captured_output)
+        self.assertTrue("The current AclGraph no needs to be recaptured" in captured_output)
+
+    def test_aclgraph_recapture_mutated_input_with_address_change(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                x.mul_(2)
+                return x + 1
+
+        model = Model()
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(model, backend=aclgraph_backend, dynamic=True)
+        x_ = torch.randn([3, 2])
+        x = x_.clone()
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            model(x_)
+            output = model(x)
+        self.assertTrue(
+            any("The current AclGraph needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph needs to be recaptured'"
+            f"not found in logs: {cm.output}"
+        )
+    
+    def test_aclgraph_recapture_multi_graph_with_address_change(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                x.mul_(2)
+                return x + 1
+
+        model = Model()
+        config = CompilerConfig()
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        config.mode = "reduce-overhead"
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(model, backend=aclgraph_backend, dynamic=True)
+        x = torch.ones([3, 2])
+        y = torch.ones([4, 2])
+        z = torch.ones([2, 1])
+        x_ = x.clone()
+
+        with capture_logger() as stdout:
+            model(x)
+            model(y)
+            model(z)
+        captured_output = stdout.getvalue()
+        self.assertTrue("No find captured AclGraph" in captured_output)   
+        
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            model(x_)
+        self.assertTrue(
+            any("The current AclGraph needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph needs to be recaptured'"
+            f"not found in logs: {cm.output}"
+         )
+
+    def test_aclgraph_recapture_with_parameter_address_change(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(2, 2)
+
+            def forward(self, x):
+                return self.linear(x)
+
+        model = Model()
+        config = CompilerConfig()
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        config.mode = "reduce-overhead"
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(model, backend=aclgraph_backend, dynamic=True)
+        x = torch.randn([3, 2])
+        a = torch.ones(2, 2)
+        model.linear.weight.data = a
+        model(x)
+
+        b = torch.zeros(2, 2)
+        model.linear.weight.data = b
+        with capture_logger() as stdout:
+            model(x)
+        captured_output = stdout.getvalue()
+        self.assertTrue("The current AclGraph needs to be recaptured" in captured_output)   
+        
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            model(x)
+        self.assertTrue(
+            any("The current AclGraph no needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph no needs to be recaptured'"
+            f"not found in logs: {cm.output}"
+         )
 
     def test_aclgraph_cache_tensor_constant(self):
         class Model(torch.nn.Module):

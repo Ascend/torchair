@@ -600,7 +600,8 @@ class AclGraphCacheInfo:
     capture_error_mode: str
     num_warmup_iters: int
     fx_graph_name: str
-    user_inputs_mapping: Dict[str, List]
+    user_inputs_mapping: Dict[str, int]
+    parameter_user_inputs: List[int] = None
     unupdated_sym_input_index: List[int] = None
     updated_ops_param: Dict[str, List] = None
     ops_update_rulers: Dict[str, List] = None
@@ -660,6 +661,7 @@ class AclGraph(object):
         self._mutated_user_inputs = None
         self._updated_node_infos = []
         self._tagged_event_names = None
+        self._parameter_user_inputs = []
 
     @property
     def config(self):
@@ -725,6 +727,7 @@ class AclGraph(object):
         self._updated_ops_param = aclgraph_cache_info.updated_ops_param
         self._user_inputs_mapping = aclgraph_cache_info.user_inputs_mapping
         self._mutated_user_inputs = aclgraph_cache_info.mutated_user_inputs
+        self._parameter_user_inputs = aclgraph_cache_info.parameter_user_inputs
         self._mempool = aclgraph_cache_info.pool if aclgraph_cache_info.pool is not None else \
             torch.npu.graph_pool_handle()
         self._stream = aclgraph_cache_info.stream if aclgraph_cache_info.stream is not None else torch.npu.Stream()
@@ -767,12 +770,22 @@ class AclGraph(object):
             # when falling back to eager, no need to calculate graph key
             return "fallback_to_eager"
 
+        saved_graph_meta = None
         # get graph key based on unupdated sym input shape or value
         graph_key = self._unupdated_input_func(*args, **kwargs)
         if graph_key in self._graphs_meta.keys():
             logger.info('Find captured AclGraph{id: %s} of fx_graph %s with graph key {%s}.',
                         id(self.graph[graph_key]), self.name, graph_key)
-            return graph_key
+            if self.is_need_to_recapture(graph_key, *args):
+                logger.debug('The current AclGraph needs to be recaptured for fx_graph %s with graph key %s.',
+                             self.name, graph_key)
+                # save graph_meta, release resources after recapture
+                saved_graph_meta = self._graphs_meta[graph_key]
+                del self._graphs_meta[graph_key]
+            else:
+                logger.debug('The current AclGraph no needs to be recaptured for fx_graph %s with graph key %s.',
+                             self.name, graph_key)
+                return graph_key
 
         # Before recapture a new aclgraph for another graph key, check static capture size limit.
         # If the number of captured aclgraphs exceeds the limit, we will fall back to eager execution.
@@ -793,6 +806,8 @@ class AclGraph(object):
 
         # Start capture aclgraph instance when the graph key have not been compiled.
         self.compile_for_graph_key(graph_key, *args, **kwargs)
+        if saved_graph_meta is not None:
+            saved_graph_meta.acl_graph.reset()
 
         return graph_key
 
@@ -828,7 +843,11 @@ class AclGraph(object):
                                                  captured_inputs=args,
                                                  outputs_meta=[],
                                                  outputs_weakref=[],
-                                                 mem_state_after_capture=None)
+                                                 mem_state_after_capture=None,
+                                                 captured_parameter={})
+        # record the parameter address for subsequent comparison to determine if recapture is necessary
+        for parameter_idx in self._parameter_user_inputs:
+            self.graphs_meta[graph_key].captured_parameter.setdefault(parameter_idx, args[parameter_idx].data_ptr())
         logger.debug('No find captured AclGraph{id: %s} of fx_graph %s with graph key {%s}, and start to capture it.',
                      id(self.graph[graph_key]), self.name, graph_key)
 
@@ -945,19 +964,20 @@ class AclGraph(object):
 
     def run(self, graph_key, *args, **kwargs):
         self._graphs_meta[graph_key].replay_func(*args, **kwargs)
-
-    def process_inplace_inputs(self, graph_key, *args: Any):
-        # For in-place op, dynamo will transform it into a functionalized call and add copy_ node when setting
-        # keep_inference_input_mutations=True, which may need data copy from capture input to user input (when tensor
-        # address is different between capture and replay).
-        for arg_name in self._mutated_user_inputs:
-            if arg_name not in self._user_inputs_mapping:
-                raise RuntimeError(f"{arg_name} is not in input args: {self._user_inputs_mapping.keys()}")
-            idx = self._user_inputs_mapping[arg_name]
-            if self.graphs_meta[graph_key].captured_inputs[idx].data_ptr() != args[idx].data_ptr():
-                logger.warning_once(f"Mutated input[{arg_name}]'s data_ptr is different between capture and replay. "
-                                    f"This may call redundant copy. ")
-                args[idx].copy_(self.graphs_meta[graph_key].captured_inputs[idx])
+    
+    def is_need_to_recapture(self, graph_key, *args: Any):
+        # When the memory addresses of mutated_inputs and parameter type inputs change
+        # recapture the aclgraph to reduce copy time and improve performance
+        for input_name, input_idx in self._user_inputs_mapping.items():
+            if self.graphs_meta[graph_key].captured_inputs[input_idx].data_ptr() != args[input_idx].data_ptr():
+                if input_name in self._mutated_user_inputs:
+                    return True
+        
+        # Check if the parameter address has changed
+        for idx, parameter_ptr in self._graphs_meta[graph_key].captured_parameter.items():
+            if parameter_ptr != args[idx].data_ptr():
+                return True
+        return False
 
     def reconstruct_outputs(self, graph_key: str) -> List:
         """

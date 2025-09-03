@@ -66,7 +66,8 @@ class AclConcreteGraph(ConcreteGraphBase):
             capture_error_mode=capture_error_mode,
             num_warmup_iters=num_warmup_iters,
             fx_graph_name=name,
-            user_inputs_mapping=OrderedDict()
+            user_inputs_mapping=OrderedDict(),
+            parameter_user_inputs=[]
         )
         self._tensor_constant_dict = {}
 
@@ -100,11 +101,6 @@ class AclConcreteGraph(ConcreteGraphBase):
         # run/replay
         with record_function("acl_graph_replay"):
             self.graph.run(fn_key, *args, **kwargs)
-
-        # For in-place op, dynamo will transform it into a functionalized call and add copy_ node when setting
-        # keep_inference_input_mutations=True, which may need data copy from capture input to user input (when tensor
-        # address is different between capture and replay).
-        self.graph.process_inplace_inputs(fn_key, *args)
 
         return self.graph.reconstruct_outputs(fn_key)
 
@@ -330,7 +326,9 @@ class AclConcreteGraph(ConcreteGraphBase):
 
         # Lazy check for int/sym inputs
         if isinstance(meta_outputs, torch.Tensor):
-            if not isinstance(meta_outputs, torch.nn.Parameter):
+            if isinstance(meta_outputs, torch.nn.Parameter) or hasattr(meta_outputs, "_dynamo_static_input_type"):
+                self._aclgraph_cache_info.parameter_user_inputs.append(len(self._meta_inputs) - 1)
+            else:
                 self._aclgraph_cache_info.user_inputs_mapping.setdefault(target, len(self._meta_inputs) - 1)
         # for assert_size_stride
         self._fx_input_names.append(target)
@@ -432,7 +430,8 @@ class AclConcreteGraph(ConcreteGraphBase):
                 updated_ops_param={self._aclgraph_cache_info.updated_ops_param},
                 ops_update_rulers={self._aclgraph_cache_info.ops_update_rulers},
                 mutated_user_inputs={self._aclgraph_cache_info.mutated_user_inputs},
-                tagged_event_names={self._aclgraph_cache_info.tagged_event_names}
+                tagged_event_names={self._aclgraph_cache_info.tagged_event_names},
+                parameter_user_inputs={self._aclgraph_cache_info.parameter_user_inputs}
             )
             acl_graph.load(aclgraph_cache_info)
         ''')
@@ -478,8 +477,6 @@ class AclConcreteGraph(ConcreteGraphBase):
 
                     with record_function("acl_graph_replay"):
                         acl_graph.run(fn_key, *args)
-
-                    acl_graph.process_inplace_inputs(fn_key, *args)
 
                     return acl_graph.reconstruct_outputs(fn_key)
 
