@@ -78740,9 +78740,9 @@ def MoeGatingTopKSoftmax(x: Tensor,
 # This api is auto-generated from IR FusedInferAttentionScore
 @auto_convert_to_tensor(
     [False, True, True, False, False, False, False, False, False, False, False, False, False, False, False, False,
-     False, False, False, False, False, False, False, False, False, False, False, False],
+     False, False, False, False, False, False, False, False, False, False, False, False, False],
     [False, False, False, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True,
-     True, True, True, True, True, True, True, True, True, True])
+     True, True, True, True, True, True, True, True, True, True, True])
 def FusedInferAttentionScore(query: Tensor, key: List[Tensor], value: List[Tensor], pse_shift: Optional[Tensor],
     atten_mask: Optional[Tensor], actual_seq_lengths: Optional[Tensor], actual_seq_lengths_kv: Optional[Tensor],
     dequant_scale1: Optional[Tensor], quant_scale1: Optional[Tensor], dequant_scale2: Optional[Tensor],
@@ -78752,7 +78752,8 @@ def FusedInferAttentionScore(query: Tensor, key: List[Tensor], value: List[Tenso
     value_antiquant_scale: Optional[Tensor], value_antiquant_offset: Optional[Tensor],
     key_shared_prefix: Optional[Tensor], value_shared_prefix: Optional[Tensor],
     actual_shared_prefix_len: Optional[Tensor], query_rope: Optional[Tensor], key_rope: Optional[Tensor],
-    key_rope_antiquant_scale: Optional[Tensor], dequant_scale_query: Optional[Tensor], *,
+    key_rope_antiquant_scale: Optional[Tensor], dequant_scale_query: Optional[Tensor], 
+    learnable_sink: Optional[Tensor], *,
     num_heads: int, scale: float=1.000000, pre_tokens: int=2147483647, next_tokens: int=2147483647,
     input_layout: str="BSH", num_key_value_heads: int=0, sparse_mode: int=0, inner_precise: int=0,
     block_size: int=0, antiquant_mode: int=0, softmax_lse_flag: bool=False, key_antiquant_mode: int=0,
@@ -78786,6 +78787,7 @@ def FusedInferAttentionScore(query: Tensor, key: List[Tensor], value: List[Tenso
 .OPTIONAL_INPUT(key_rope, TensorType({DT_INT8, DT_FLOAT16, DT_BF16}))\n
 .OPTIONAL_INPUT(key_rope_antiquant_scale, TensorType({DT_INT8, DT_FLOAT16, DT_BF16}))\n
 .OPTIONAL_INPUT(dequant_scale_query, TensorType({DT_FLOAT32}))\n
+.OPTIONAL_INPUT(learnable_sink, TensorType({DT_BF16}))\n
 .OUTPUT(attention_out, TensorType({DT_FLOAT16, DT_FLOAT32, DT_INT8, DT_BF16}))\n
 .OUTPUT(softmax_lse, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
 .REQUIRED_ATTR(num_heads, Int)\n
@@ -79011,6 +79013,14 @@ def FusedInferAttentionScore(query: Tensor, key: List[Tensor], value: List[Tenso
         op.input.append(dequant_scale_query.tensor)
         op.input_desc.add().CopyFrom(dequant_scale_query.desc)
         op.input_desc[-1].name = "dequant_scale_query"
+    if learnable_sink is not None:
+        op.input.append(learnable_sink.tensor)
+        op.input_desc.add().CopyFrom(learnable_sink.desc)
+        op.input_desc[-1].name = "learnable_sink"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "learnable_sink"
     # process attrs
     op.attr["num_heads"].i = num_heads
     op.attr["scale"].f = scale

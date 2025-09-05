@@ -23,6 +23,7 @@ def convert_npu_npu_fused_infer_attention_score_v2(
     dequant_scale_key_rope: Optional[Tensor] = None,
     quant_scale_out: Optional[Tensor] = None,
     quant_offset_out: Optional[Tensor] = None,
+    learnable_sink: Optional[Tensor] = None,
     num_query_heads: int = 1,
     num_key_value_heads: int = 0,
     softmax_scale: float = 1.0,
@@ -95,8 +96,8 @@ def convert_npu_npu_fused_infer_attention_score_v2(
         value_antiquant_offset=dequant_offset_value, key_shared_prefix=key_shared_prefix,
         value_shared_prefix=value_shared_prefix, actual_shared_prefix_len=actual_shared_prefix_len,
         query_rope=query_rope, key_rope=key_rope, key_rope_antiquant_scale=dequant_scale_key_rope,
-        dequant_scale_query=dequant_scale_query, num_heads=num_query_heads, scale=softmax_scale,
-        pre_tokens=pre_tokens, next_tokens=next_tokens, input_layout=input_layout,
+        dequant_scale_query=dequant_scale_query, learnable_sink=learnable_sink, num_heads=num_query_heads, 
+        scale=softmax_scale, pre_tokens=pre_tokens, next_tokens=next_tokens, input_layout=input_layout,
         num_key_value_heads=num_key_value_heads, sparse_mode=sparse_mode, inner_precise=inner_precise,
         block_size=block_size, antiquant_mode=antiquant_mode, softmax_lse_flag=return_softmax_lse,
         key_antiquant_mode=key_quant_mode, value_antiquant_mode=value_quant_mode, query_quant_mode=query_quant_mode)

@@ -18,7 +18,7 @@ lib.define(
     Tensor? actual_seq_kvlen=None, Tensor? block_table=None, Tensor? dequant_scale_query=None, \
     Tensor? dequant_scale_key=None, Tensor? dequant_offset_key=None, Tensor? dequant_scale_value=None,  \
     Tensor? dequant_offset_value=None, Tensor? dequant_scale_key_rope=None,  \
-    Tensor? quant_scale_out=None, Tensor? quant_offset_out=None, int num_query_heads=1, \
+    Tensor? quant_scale_out=None, Tensor? quant_offset_out=None, Tensor? learnable_sink=None, int num_query_heads=1, \
     int num_key_value_heads=0,  float softmax_scale=1.0, int pre_tokens=2147483647, int next_tokens=2147483647, \
     str input_layout="BSH", int sparse_mode=0, int block_size=0, int query_quant_mode=0, int key_quant_mode=0, \
     int value_quant_mode=0, int inner_precise=0, bool return_softmax_lse=False, int? query_dtype=None, \
@@ -77,6 +77,7 @@ def convert_npu_npu_fused_infer_attention_score_v2_tensor(
     dequant_scale_key_rope: Optional[Tensor] = None,
     quant_scale_out: Optional[Tensor] = None,
     quant_offset_out: Optional[Tensor] = None,
+    learnable_sink: Optional[Tensor] = None,
     num_query_heads: int = 1,
     num_key_value_heads: int = 0,
     softmax_scale: float = 1.0,
@@ -144,8 +145,8 @@ def convert_npu_npu_fused_infer_attention_score_v2_tensor(
         value_antiquant_offset=dequant_offset_value, key_shared_prefix=key_shared_prefix,
         value_shared_prefix=value_shared_prefix, actual_shared_prefix_len=actual_shared_prefix_len,
         query_rope=query_rope, key_rope=key_rope, key_rope_antiquant_scale=dequant_scale_key_rope,
-        dequant_scale_query=dequant_scale_query, num_heads=num_query_heads, scale=softmax_scale,
-        pre_tokens=pre_tokens, next_tokens=next_tokens, input_layout=input_layout,
+        dequant_scale_query=dequant_scale_query, learnable_sink=learnable_sink, num_heads=num_query_heads, 
+        scale=softmax_scale, pre_tokens=pre_tokens, next_tokens=next_tokens, input_layout=input_layout,
         num_key_value_heads=num_key_value_heads, sparse_mode=sparse_mode, inner_precise=inner_precise,
         block_size=block_size, antiquant_mode=antiquant_mode, softmax_lse_flag=return_softmax_lse,
         key_antiquant_mode=key_quant_mode, value_antiquant_mode=value_quant_mode, query_quant_mode=query_quant_mode)
@@ -155,11 +156,11 @@ def convert_npu_npu_fused_infer_attention_score_v2_tensor(
 def npu_fused_infer_attention_score_v2_meta_impl(query, key, value, *, query_rope=None, key_rope=None, pse_shift=None,
     atten_mask=None, actual_seq_qlen=None, actual_seq_kvlen=None, block_table=None, dequant_scale_query=None,
     dequant_scale_key=None, dequant_offset_key=None, dequant_scale_value=None, dequant_offset_value=None,
-    dequant_scale_key_rope=None, quant_scale_out=None, quant_offset_out=None, num_query_heads=1, num_key_value_heads=0,
-    softmax_scale=1.0, pre_tokens=2147483647, next_tokens=2147483647, input_layout="BSH", sparse_mode=0, block_size=0, 
-    query_quant_mode=0, key_quant_mode=0, value_quant_mode=0, inner_precise=0, return_softmax_lse=False,
-    query_dtype=None, key_dtype=None, value_dtype=None, query_rope_dtype=None, key_rope_dtype=None, 
-    key_shared_prefix_dtype=None, value_shared_prefix_dtype=None, dequant_scale_query_dtype=None, 
+    dequant_scale_key_rope=None, quant_scale_out=None, quant_offset_out=None, learnable_sink=None, num_query_heads=1, 
+    num_key_value_heads=0, softmax_scale=1.0, pre_tokens=2147483647, next_tokens=2147483647, input_layout="BSH", 
+    sparse_mode=0, block_size=0, query_quant_mode=0, key_quant_mode=0, value_quant_mode=0, inner_precise=0, 
+    return_softmax_lse=False, query_dtype=None, key_dtype=None, value_dtype=None, query_rope_dtype=None, 
+    key_rope_dtype=None, key_shared_prefix_dtype=None, value_shared_prefix_dtype=None, dequant_scale_query_dtype=None, 
     dequant_scale_key_dtype=None, dequant_scale_value_dtype=None, dequant_scale_key_rope_dtype=None):
     # 禁止单独修改此函数，请同步修改actual seq length为symint list的接口
     tmp_out = torch.empty_like(query, dtype=query.dtype, device='meta')

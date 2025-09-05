@@ -85,6 +85,7 @@ def convert_npu_npu_fused_infer_attention_score(
     if actual_shared_prefix_len is not None:
         actual_shared_prefix_len = dtype_promote(actual_shared_prefix_len, target_dtype=DataType.DT_INT64)
     dequant_scale_query = None
+    learnable_sink = None
     query_quant_mode = 0
     return ge.FusedInferAttentionScore(query, key_list, value_list, pse_shift=pse_shift, atten_mask=atten_mask,
         actual_seq_lengths=actual_seq_lengths, actual_seq_lengths_kv=actual_seq_lengths_kv,
@@ -96,8 +97,8 @@ def convert_npu_npu_fused_infer_attention_score(
         value_antiquant_offset=value_antiquant_offset, key_shared_prefix=key_shared_prefix,
         value_shared_prefix=value_shared_prefix, actual_shared_prefix_len=actual_shared_prefix_len,
         query_rope=query_rope, key_rope=key_rope, key_rope_antiquant_scale=key_rope_antiquant_scale,
-        dequant_scale_query=dequant_scale_query, num_heads=num_heads, scale=scale,
-        pre_tokens=pre_tokens, next_tokens=next_tokens, input_layout=input_layout,
+        dequant_scale_query=dequant_scale_query, learnable_sink=learnable_sink, num_heads=num_heads, 
+        scale=scale, pre_tokens=pre_tokens, next_tokens=next_tokens, input_layout=input_layout,
         num_key_value_heads=num_key_value_heads, sparse_mode=sparse_mode, inner_precise=inner_precise,
         block_size=block_size, antiquant_mode=antiquant_mode, softmax_lse_flag=softmax_lse_flag,
         key_antiquant_mode=key_antiquant_mode, value_antiquant_mode=value_antiquant_mode,
