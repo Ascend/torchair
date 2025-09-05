@@ -85,6 +85,9 @@ def _get_output_to_input_ref_idx(op: OpDef) -> Dict[int, int]:
     elif op.type == "ScatterList":
         for i in range(len(op.output_desc)):
             ref_idx_mapping[i] = i
+    elif op.type == "ScatterPaKvCache":
+        ref_idx_mapping[0] = 1
+        ref_idx_mapping[1] = 4
 
     return ref_idx_mapping
 
@@ -108,7 +111,7 @@ def _find_ref_ops_and_io_ops(graph: GraphDef):
         else:
             ref_io_mapping = _get_output_to_input_ref_idx(op)
             for output_id, input_id in ref_io_mapping.items():
-                ref_ops[GeTensor(op, output_id).tensor] = (op, output_id, op.input[input_id])
+                ref_ops[GeTensor(op, output_id).tensor] = (op, input_id, op.input[input_id])
                 ref_output_count[GeTensor(op, output_id).tensor] = 0
     logger.info(f"Find all TensorMove ops: {tensormove_ops.keys()}, reference ops: {ref_ops.keys()} "
                 f"and Assign ops: {assign_ops.keys()}.")
