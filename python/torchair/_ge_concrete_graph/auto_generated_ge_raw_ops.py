@@ -80369,7 +80369,11 @@ def InterleaveRope(x: Tensor, cos: Tensor, sin: Tensor, *, dependencies=[], node
     return y
 
 
-@auto_convert_to_tensor([False, False, False, False, False, False, False], [False, True, True, True, True, True, True])
+# This api is auto-generated from IR DequantSwigluQuant
+@auto_convert_to_tensor([False, False, False, False, False, False, False], [False, True, True, True, True, True, True],
+                        inputs_tensor_type=[TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN,
+                                            TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN,
+                                            TensorType.TT_INDEX_NUMBER])
 def DequantSwigluQuant(x: Tensor,
                        weight_scale: Optional[Tensor],
                        activation_scale: Optional[Tensor],
@@ -80380,95 +80384,79 @@ def DequantSwigluQuant(x: Tensor,
                        *,
                        activate_left: bool = False,
                        quant_mode: str = "static",
+                       swiglu_mode: int = 0,
+                       clamp_limit: float = 7.000000,
+                       glu_alpha: float = 1.702000,
+                       glu_bias: float = 1.000000,
                        dependencies=[], node_name=None):
     """REG_OP(DequantSwigluQuant)\n
-    .INPUT(x, TensorType({DT_FLOAT16, DT_BF16, DT_INT32}))\n
+    .INPUT(x, TensorType({DT_INT32}))\n
     .OPTIONAL_INPUT(weight_scale, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(activation_scale, TensorType({DT_FLOAT}))\n
-    .OPTIONAL_INPUT(bias, TensorType({DT_BF16, DT_FLOAT16, DT_INT32, DT_FLOAT}))\n
+    .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(quant_scale, TensorType({DT_FLOAT}))\n
-    .OPTIONAL_INPUT(quant_offset, TensorType({DT_FLOATT}))\n
+    .OPTIONAL_INPUT(quant_offset, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(group_index, TensorType({DT_INT32, DT_INT64}))\n
     .OUTPUT(y, TensorType({DT_INT8}))\n
     .OUTPUT(scale, TensorType({DT_FLOAT}))\n
     .ATTR(activate_left, Bool, false)\n
-    .ATTR(quant_mode, std::string, "static")\n
+    .ATTR(quant_mode, String, "static")\n
+    .ATTR(swiglu_mode, int, 0)\n
+    .ATTR(clamp_limit, Float, 7.0)\n
+    .ATTR(glu_alpha, Float, 1.702)\n
+    .ATTR(glu_bias, Float, 1.0)\n
     """
 
-    op = get_default_ge_graph().op.add()
-    op.type = "DequantSwigluQuant"
-    op.name = next_unique_name(node_name, "DequantSwigluQuant")
-
-    # process dependices
-    for dependency in dependencies:
-        op.input.append(dependency.controller)
-
     # process inputs
-    op.input.append(x.tensor)
-    op.input_desc.add().CopyFrom(x.desc)
-    op.input_desc[-1].name = "x"
-    if weight_scale is not None:
-        op.input.append(weight_scale.tensor)
-        op.input_desc.add().CopyFrom(weight_scale.desc)
-        op.input_desc[-1].name = "weight_scale"
-    else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "weight_scale"
-    if activation_scale is not None:
-        op.input.append(activation_scale.tensor)
-        op.input_desc.add().CopyFrom(activation_scale.desc)
-        op.input_desc[-1].name = "activation_scale"
-    else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "activation_scale"
-    if bias is not None:
-        op.input.append(bias.tensor)
-        op.input_desc.add().CopyFrom(bias.desc)
-        op.input_desc[-1].name = "bias"
-    else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "bias"
-    if quant_scale is not None:
-        op.input.append(quant_scale.tensor)
-        op.input_desc.add().CopyFrom(quant_scale.desc)
-        op.input_desc[-1].name = "quant_scale"
-    else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "quant_scale"
-    if quant_offset is not None:
-        op.input.append(quant_offset.tensor)
-        op.input_desc.add().CopyFrom(quant_offset.desc)
-        op.input_desc[-1].name = "quant_offset"
-    else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "quant_offset"
-    if group_index is not None:
-        op.input.append(group_index.tensor)
-        op.input_desc.add().CopyFrom(group_index.desc)
-        op.input_desc[-1].name = "group_index"
-    else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "group_index"
+    inputs = {
+        "x": x,
+        "weight_scale": weight_scale,
+        "activation_scale": activation_scale,
+        "bias": bias,
+        "quant_scale": quant_scale,
+        "quant_offset": quant_offset,
+        "group_index": group_index,
+    }
 
     # process attrs
-    op.attr["activate_left"].b = activate_left
-    op.attr["quant_mode"].s = compat_as_bytes(quant_mode)
+    attrs = {
+        "activate_left": attr.Bool(activate_left),
+        "quant_mode": attr.Str(quant_mode),
+        "swiglu_mode": attr.Int(swiglu_mode),
+        "clamp_limit": attr.Float(clamp_limit),
+        "glu_alpha": attr.Float(glu_alpha),
+        "glu_bias": attr.Float(glu_bias),
+    }
 
     # process outputs
-    output_index = 0
-    op.output_desc.add().name = "y"
-    y = Tensor(op, output_index)
-    output_index += 1
-    op.output_desc.add().name = "scale"
-    scale = Tensor(op, output_index)
-    output_index += 1
-    return y, scale
+    outputs = [
+    "y",
+    "scale",
+    ]
+
+    return ge_op(
+        op_type="DequantSwigluQuant",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("DequantSwigluQuant") \
+        .input("x", "DT_INT32") \
+        .optional_input("weight_scale", "DT_FLOAT") \
+        .optional_input("activation_scale", "DT_FLOAT") \
+        .optional_input("bias", "DT_FLOAT") \
+        .optional_input("quant_scale", "DT_FLOAT") \
+        .optional_input("quant_offset", "DT_FLOAT") \
+        .optional_input("group_index", "DT_INT32, DT_INT64") \
+        .attr("activate_left", attr.Bool(False)) \
+        .attr("quant_mode", attr.Str("static")) \
+        .attr("swiglu_mode", attr.Int(0)) \
+        .attr("clamp_limit", attr.Float(7.000000)) \
+        .attr("glu_alpha", attr.Float(1.702000)) \
+        .attr("glu_bias", attr.Float(1.000000)) \
+        .output("y", "DT_INT8") \
+        .output("scale", "DT_FLOAT")
+    )
 
 @auto_convert_to_tensor([False, False, False], [False, False, True])
 def MoeReRouting(tokens: Tensor,

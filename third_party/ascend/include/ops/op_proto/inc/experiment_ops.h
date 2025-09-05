@@ -3710,6 +3710,11 @@ REG_OP(MoeGatingTopK)
 * The swi activate_left algorithm to use:
 *     'false'(activate right) or 'true'(activate left), defalut is 'false'(activate right).
 * @li quant_mode: Type is: String. The quant mode to use: 'static' or 'dynamic', defalut is 'static'.
+* @li swiglu_mode: Type is int. Optional parameter, default is 0. The SWIGLU computation mode to use: 
+*     '0' (default) for standard SWIGLU, '1' for a variant using odd-even blocking, which requires support for clamp_limit, activation coefficient, and bias.
+* @li clamp_limit: Type is float. Optional parameter, default is 7.0. The threshold limit for SWIGLU input.
+* @li glu_alpha: Type is float. Optional parameter, default is 1.702. The activation coefficient for the GLU activation function.
+* @li glu_bias: Type is float. Optional parameter, default is 1.0. The bias applied during SWIGLU linear computation.
 
 * @par Restrictions:
 * Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
@@ -3726,8 +3731,11 @@ REG_OP(DequantSwigluQuant)
     .OUTPUT(scale, TensorType({DT_FLOAT}))
     .ATTR(activate_left, Bool, false)
     .ATTR(quant_mode, String, "static")
+    .ATTR(swiglu_mode, int, 0)
+    .ATTR(clamp_limit, Float, 7.0)
+    .ATTR(glu_alpha, Float, 1.702)
+    .ATTR(glu_bias, Float, 1.0)
     .OP_END_FACTORY_REG(DequantSwigluQuant)
-
 
 /**
 * @brief Function FusedInferAttentionScore.
