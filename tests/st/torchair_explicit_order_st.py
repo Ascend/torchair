@@ -9,6 +9,7 @@ import _privateuse1_backend
 import torchair
 from torchair._ge_concrete_graph.graph_pass import explict_order_for_side_effect_nodes
 from torchair._ge_concrete_graph import graph_pass
+from torchair_st_utils import generate_faked_module
 
 
 captured_graph = threading.local()
@@ -43,6 +44,7 @@ graph_pass.explict_order_for_side_effect_nodes = capture_func
 
 
 class FakeTorchNpu:
+    __path__ = []
 
     def __getattr__(self, item):
         return self
@@ -65,6 +67,7 @@ def _mock_npu():
         return
     from torchair.core import _npu_graph_executor
     torch.utils.rename_privateuse1_backend("npu")
+    torch._register_device_module('npu', generate_faked_module())
     _initialized = True
 
 

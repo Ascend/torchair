@@ -1,6 +1,10 @@
 #include <cstdint>
 #include <iostream>
 #include <mutex>
+#include <cstdlib>
+#include <sstream>
+#include <string>
+#include <vector>
 
 #include "exe_graph/runtime/tensor.h"
 #include "exe_graph/runtime/tensor_data.h"
@@ -216,6 +220,34 @@ Status Session::RemoveGraph(uint32_t id) {
   return ge::SUCCESS;
 }
 
+static std::vector<int64_t> ParseEnvShape(const char* s) {
+    std::vector<int64_t> dims;
+    if (s == nullptr) {
+        return dims;
+    }
+    std::string str(s);
+    for (char& c : str) {
+        if (c == 'x' || c == 'X') {
+            c = ',';
+        }
+    }
+    std::stringstream ss(str);
+    std::string item;
+    while (std::getline(ss, item, ',')) {
+        try {
+            int64_t v = std::stoll(item);
+            if (v > 0) {
+                dims.push_back(v);
+            } else {
+                return {};
+            }
+        } catch (...) {
+            return {};
+        }
+    }
+    return dims;
+}
+
 Status Session::RunGraph(uint32_t id, const std::vector<ge::Tensor> &inputs, std::vector<ge::Tensor> &outputs) {
   std::cerr << "[STUB] Session::RunGraph graph " << id << std::endl;
   if (inputs.size() < 1U) {
@@ -223,16 +255,23 @@ Status Session::RunGraph(uint32_t id, const std::vector<ge::Tensor> &inputs, std
     return ge::SUCCESS;
   }
   auto spec = GraphSpecManager::GetSpec(id);
+
+  const char* env_shape = std::getenv("ST_RUN_STUB_OUTPUTSHAPE"); // 可以通过配置环境变量来设置执行时的输出shape
+  auto custom_dims = ParseEnvShape(env_shape);
+  if (custom_dims.empty()) {
+    custom_dims = {2, 2};
+  }
+
   for (size_t i = 0; i < spec.output_dtypes_.size(); ++i) {
     ge::Tensor output;
     ge::TensorDesc desc;
     desc.SetDataType(spec.output_dtypes_[i]);
-    desc.SetShape(ge::Shape({2, 2}));
+    desc.SetShape(ge::Shape(custom_dims));
     output.SetTensorDesc(desc);
 
-    static std::vector<float> data;
-    data.resize(1024, 1.0);
-    output.SetData(reinterpret_cast<uint8_t *>(data.data()), sizeof(float) * data.size());
+    static std::vector<double> data;
+    data.resize(1024, 3.0);
+    output.SetData(reinterpret_cast<uint8_t *>(data.data()), sizeof(double) * data.size());
     outputs.push_back(output);
   }
   return ge::SUCCESS;

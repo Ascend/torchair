@@ -16,9 +16,17 @@ from torchair.core._backend import initialize_graph_engine
 from torchair._ge_concrete_graph.fx2ge_converter import ExecutorType, Placement, _normalize_ge_graph
 from torchair.inference._gear_utils import generate_dynamic_dims_option
 from torchair.ge._ge_graph import _ValueType, _GeInputInfo
+from torchair_st_utils import generate_faked_module
 
 
 logger.setLevel(logging.DEBUG)
+
+
+import _privateuse1_backend
+_privateuse1_backend.register_hook()
+npu_device = _privateuse1_backend.npu_device()
+torch.utils.rename_privateuse1_backend("npu")
+torch._register_device_module('npu', generate_faked_module())
 
 
 class PatchAttr:
@@ -261,9 +269,6 @@ class TorchairSt(unittest.TestCase):
     def test_muti_gear_npu_executor_pre_assigned_outputs(self):
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
-        import _privateuse1_backend
-        npu_device = _privateuse1_backend.npu_device()
-        torch.utils.rename_privateuse1_backend("npu")
 
         with GeGraph() as graph:
             x = ge.Data(index=0, shape=[2, 2],
@@ -292,10 +297,6 @@ class TorchairSt(unittest.TestCase):
     def test_muti_gear_npu_executor_muti_output(self):
         initialize_graph_engine()
         from torchair.core import _npu_graph_executor
-        import _privateuse1_backend
-        _privateuse1_backend.register_hook()
-        npu_device = _privateuse1_backend.npu_device()
-        torch.utils.rename_privateuse1_backend("npu")
 
         with GeGraph() as graph, set_env_var("ST_GEARS_STUB_OUTPUTSHAPE", "output_use_input_shape"):
             x = ge.Data(index=0, shape=[2, 2],

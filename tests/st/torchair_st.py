@@ -847,11 +847,12 @@ class TorchairSt(unittest.TestCase):
                 b = 1 / math.sqrt(x.size(-1))
                 return a + b
 
-        model = Model()
-        model = torch.compile(model, backend=npu_backend, dynamic=True)
-        for i in range(10, 20):
-            x = torch.randn(10, i, i + 1)
-            model(x)
+        with set_env_var("ST_RUN_STUB_OUTPUTSHAPE", "1"):
+            model = Model()
+            model = torch.compile(model, backend=npu_backend, dynamic=True)
+            for i in range(10, 20):
+                x = torch.randn(10, i, i + 1)
+                model(x)
 
     def test_no_broadcast_when_input_output_sym_size_is_equal(self):
         class Model(torch.nn.Module):
@@ -1261,11 +1262,12 @@ class TorchairSt(unittest.TestCase):
                 c = b / b
                 return a + c
 
-        model = Model()
-        model = torch.compile(model, backend=npu_backend, dynamic=True)
-        x = torch.randn(10, 1, 2)
-        res = model(x)
-        self.assertEqual(res, 3)
+        with set_env_var("ST_RUN_STUB_OUTPUTSHAPE", "1"):
+            model = Model()
+            model = torch.compile(model, backend=npu_backend, dynamic=True)
+            x = torch.randn(10, 1, 2)
+            res = model(x)
+            self.assertEqual(res, 3)
 
     def test_ge_const(self):
         inputs = torch.randn(20, 16, 50, dtype=torch.float)
