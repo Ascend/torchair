@@ -78,7 +78,7 @@ Status StaticNpuGraphExecutor::UpdateInputsInner(const std::vector<const at::Ten
                                                  std::vector<T> &input_holders) {
   for (size_t i = 0U; i < inputs.size(); ++i) {
     if (graph_data_->frozen_input_flag_list[i]) {
-      TNG_LOG(DEBUG) << "Frozen input " << i << " skip update";
+      TNG_LOG(DEBUG) << "Frozen input " << i << " skip update, addr:" << inputs[i]->storage().data_ptr().get();
       continue;
     }
     TNG_ASSERT(CheckPlacement(graph_data_->input_placements[i], *inputs[i]),
