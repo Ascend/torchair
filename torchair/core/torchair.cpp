@@ -130,6 +130,30 @@ void Export(const std::string &serialized_proto, const std::map<std::string, std
   const pybind11::gil_scoped_acquire acquire;
 }
 
+std::tuple<std::string, tng::IrOutType, tng::IrOutType, tng::IrOutType> GetGeIrDef(const char *op_type) {
+  using GeOutType = std::vector<std::pair<ge::AscendString, ge::AscendString>>;
+  GeOutType inputs_ge, outputs_ge, attrs_ge;
+  IrOutType inputs, outputs, attrs;
+  static bool enable_get_registered_ir_def = Session::GetInstance().IsGetRegisteredIrDefSupported();
+  if (enable_get_registered_ir_def) {
+    tng::Status status = Session::GetInstance().GeGetRegisteredIrDef(op_type, inputs_ge, outputs_ge, attrs_ge);
+    for (const auto &pair : inputs_ge) {
+    inputs.emplace_back(pair.first.GetString(), pair.second.GetString());
+    }
+    for (const auto &pair : outputs_ge) {
+      outputs.emplace_back(pair.first.GetString(), pair.second.GetString());
+    }
+    for (const auto &pair : attrs_ge) {
+      attrs.emplace_back(pair.first.GetString(), pair.second.GetString());
+    }
+    if (!status.IsSuccess()) {
+      return std::make_tuple("ERROR", inputs, outputs, attrs);
+    }
+    return std::make_tuple("SUCCESS", inputs, outputs, attrs);
+  }
+  return std::make_tuple("None", inputs, outputs, attrs);
+}
+
 std::string GetSocName() {
   auto soc_name = aclrtGetSocName();
   return std::string(soc_name);

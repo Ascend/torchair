@@ -437,6 +437,10 @@ ge::Status GeSessionLoadGraph(ge::Session &session, uint32_t graph_id,
 ge::Status GeSessionExecuteGraphWithStreamAsync(ge::Session &session, uint32_t graph_id, void *stream,
                                                 const std::vector<gert::Tensor> &inputs,
                                                 std::vector<gert::Tensor> &outputs);
+
+ge::Status GetRegisteredIrDef(const char *op_type, std::vector<std::pair<ge::AscendString, ge::AscendString>> &inputs,
+                              std::vector<std::pair<ge::AscendString, ge::AscendString>> &outputs,
+                              std::vector<std::pair<ge::AscendString, ge::AscendString>> &attrs);
 } // extern "C"
 
 #endif  // INC_EXTERNAL_GE_GE_API_H_

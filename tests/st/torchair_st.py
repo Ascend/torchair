@@ -4,15 +4,17 @@ import shutil
 import sys
 import contextlib
 
-import torchair
 import torch
 import unittest
 import time
 import logging
+from torch.library import Library, impl
 
+import torchair
 from torchair.core.utils import logger
 from torchair.core._backend import TorchNpuGraph
-from torchair.ge._ge_graph import GeGraph, Const, DataType, _ValueType, _GeInputInfo, _ge_dtype_to_ge_proto_dtype
+from torchair.ge._ge_graph import GeGraph, Const, DataType, _ValueType, _GeInputInfo, _ge_dtype_to_ge_proto_dtype, \
+    torch_type_to_ge_type
 from torchair._ge_concrete_graph.fx2ge_converter import ExecutorType, Placement, _normalize_ge_graph, \
     _mapping_assign_op_to_graph_output, replace_data_to_refdata, GeConcreteGraph
 from torchair._ge_concrete_graph import ge_apis as ge
@@ -1890,7 +1892,7 @@ class TorchairSt(unittest.TestCase):
         x = torch.randn(2, 2)
         y = torch.randn(2, 2)
         test_model(x, y)
-        path = os.path.realpath(f'{test_config.debug.data_dump.path}/worldsize1_global_rank0/graph_9')
+        path = os.path.realpath(f'{test_config.debug.data_dump.path}/worldsize1_global_rank0/graph_16')
         self.assertTrue(os.path.isdir(path), f"directory {path} does not exist.")
         file_path = os.path.join(path, os.listdir(path)[0])
         test_files = [f for f in os.listdir(file_path) if f.endswith(".npy")]
@@ -2141,7 +2143,194 @@ class TorchairSt(unittest.TestCase):
         self.assertEqual(global_compile_options["ge_dump_with_acl_config"],
                          "./test_acl.json")
         initialize_graph_engine(global_compile_options)
-        
 
+    def test_auto_converter(self):
+        m = Library("custom_define", "DEF")
+        m.define("my_op_test(Tensor self, Tensor indices, Tensor updates) -> Tensor")
+
+        @impl(m, "my_op_test", "Meta")
+        def my_op_test_meta(self, indices, updates):
+            return self
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y, z):
+                x = torch.ops.custom_define.my_op_test(x, y, z)
+                add = torch.add(x, 5)
+                return add
+
+        input0 = torch.zeros(2, 2, dtype=torch.float32)
+        input1 = torch.tensor([[1, 1], [1, 1]])
+        input2 = torch.randn(2, 2, dtype=torch.float32)
+
+        model = torch.compile(Model(), backend=npu_backend, dynamic=True)
+        model(input0, input1, input2)
+    
+    def test_auto_converter_list_error(self):
+        m = Library("custom_definev1", "DEF")
+        m.define("my_op_testv1(Tensor self, Tensor[] indices, Tensor updates) -> Tensor")
+
+        @impl(m, "my_op_testv1", "Meta")
+        def my_op_testv1_meta(self, indices, updates):
+            return self
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y, z):
+                x = torch.ops.custom_definev1.my_op_testv1(x, [y], z)
+                add = torch.add(x, 5)
+                return add
+
+        input0 = torch.zeros(2, 2, dtype=torch.float32)
+        input1 = torch.tensor([[1, 1], [1, 1]])
+        input2 = torch.randn(2, 2, dtype=torch.float32)
+
+        model = torch.compile(Model(), backend=npu_backend, dynamic=True)
+        with self.assertRaises(RuntimeError) as context:
+            model(input0, input1, input2)
+        self.assertTrue("The AscendIR MyOpTestv1 input 'indices' is not dynamic but got list, " + \
+            "please check input." in str(context.exception))
+
+    def test_auto_converter_args_error(self):
+        m = Library("custom_definev2", "DEF")
+        m.define("my_op_testv2(Tensor self, Tensor indices, Tensor updates) -> Tensor")
+
+        @impl(m, "my_op_testv2", "Meta")
+        def my_op_testv2_meta(self, indices, updates):
+            return self
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y, z):
+                x = torch.ops.custom_definev2.my_op_testv2(x, y, z)
+                add = torch.add(x, 5)
+                return add
+
+        input0 = torch.zeros(2, 2, dtype=torch.float32)
+        input1 = torch.tensor([[1, 1], [1, 1]])
+        input2 = torch.randn(2, 2, dtype=torch.float32)
+
+        model = torch.compile(Model(), backend=npu_backend, dynamic=True)
+        with self.assertRaises(RuntimeError) as context:
+            model(input0, input1, input2)
+        self.assertTrue("The AscendIR MyOpTestv2 expected 4 args but got 3, " + \
+            "please check input nums." in str(context.exception))
+
+    def test_auto_converter_inputs_type_error(self):
+        m = Library("custom_definev3", "DEF")
+        m.define("my_op_testv3(Tensor self, int indices, Tensor updates) -> Tensor")
+
+        @impl(m, "my_op_testv3", "Meta")
+        def my_op_testv3_meta(self, indices, updates):
+            return self
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, z):
+                x = torch.ops.custom_definev3.my_op_testv3(x, 2, z)
+                add = torch.add(x, 5)
+                return add
+
+        input0 = torch.zeros(2, 2, dtype=torch.float32)
+        input1 = torch.randn(2, 2, dtype=torch.float32)
+        model = torch.compile(Model(), backend=npu_backend, dynamic=True)
+        with self.assertRaises(RuntimeError) as context:
+            model(input0, input1)
+        self.assertTrue("The AscendIR MyOpTestv3 input 'indices' has unsupported ascend type int." in str(
+            context.exception))
+    
+    def test_auto_converter_attrs_type_error(self):
+        m = Library("custom_definev4", "DEF")
+        m.define("my_op_testv4(Tensor self, Tensor indices, Tensor updates, int use_index) -> Tensor")
+
+        @impl(m, "my_op_testv4", "Meta")
+        def my_op_testv4_meta(self, indices, updates, use_index):
+            return self
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y, z):
+                x = torch.ops.custom_definev4.my_op_testv4(x, y, z, 1)
+                add = torch.add(x, 5)
+                return add
+
+        input0 = torch.zeros(2, 2, dtype=torch.float32)
+        input1 = torch.tensor([[1, 1], [1, 1]])
+        input2 = torch.randn(2, 2, dtype=torch.float32)
+
+        model = torch.compile(Model(), backend=npu_backend, dynamic=True)
+        with self.assertRaises(RuntimeError) as context:
+            model(input0, input1, input2)
+        self.assertTrue("The AscendIR MyOpTestv4 has unsupported " + \
+            "attr type 'VT_NAMED_ATTRS' for 'use_indices'." in str(context.exception))
+
+    def test_auto_converter_failed_get_ir(self):
+        m = Library("custom_definev5", "DEF")
+        m.define("my_op_testv5(Tensor self, Tensor indices, Tensor updates) -> Tensor")
+
+        @impl(m, "my_op_testv5", "Meta")
+        def my_op_testv5_meta(self, indices, updates):
+            return self
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y, z):
+                x = torch.ops.custom_definev5.my_op_testv5(x, y, z)
+                add = torch.add(x, 5)
+                return add
+
+        input0 = torch.zeros(2, 2, dtype=torch.float32)
+        input1 = torch.tensor([[1, 1], [1, 1]])
+        input2 = torch.randn(2, 2, dtype=torch.float32)
+
+        model = torch.compile(Model(), backend=npu_backend, dynamic=True)
+        with self.assertRaises(RuntimeError) as context:
+            model(input0, input1, input2)
+        self.assertTrue("Custom op custom_definev5.my_op_testv5.default, " + \
+            "not find Ascend ir MyOpTestv5." in str(context.exception))
+
+    def test_auto_converter_has_scalar(self):
+        m = Library("custom_definev6", "DEF")
+        m.define("my_op_testv6(Tensor self, Scalar indices, Tensor updates) -> Tensor")
+
+        @impl(m, "my_op_testv6", "Meta")
+        def my_op_testv6_meta(self, indices, updates):
+            return self
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, z):
+                x = torch.ops.custom_definev6.my_op_testv6(x, 1, z)
+                add = torch.add(x, 5)
+                return add
+
+        input0 = torch.zeros(2, 2, dtype=torch.float32)
+        input1 = torch.randn(2, 2, dtype=torch.float32)
+
+        model = torch.compile(Model(), backend=npu_backend, dynamic=True)
+        with self.assertRaises(RuntimeError) as context:
+            model(input0, input1)
+        self.assertTrue("Custom op custom_definev6.my_op_testv6.default has scalar input, " + \
+            "can not auto generate converter." in str(context.exception))
+
+    def test_torch_dtype_to_ge_dtype(self):
+        with self.assertRaises(RuntimeError) as context:
+            torch_type_to_ge_type(torch.bits4x2)
+        self.assertTrue("Unsupported convert torch type torch.bits4x2 to ge type" in str(context.exception))
+        
 if __name__ == '__main__':
     unittest.main()

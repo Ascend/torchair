@@ -23,11 +23,17 @@
 
 #include "acl/acl_base.h"
 #include "acl/acl_op.h"
+#include "ge/ge_api.h"
 #include "concrete_graph.h"
 #include "utils_tools.h"
 #include "logger.h"
+#include "session.h"
 
 namespace tng {
+using IrOutType = std::vector<std::pair<std::string, std::string>>;
+
+std::tuple<std::string, IrOutType, IrOutType, IrOutType> GetGeIrDef(const char *op_type);
+
 void Export(const std::string &serialized_proto, const std::map<std::string, std::string> &options);
 
 void AclopStartDumpArgs(uint32_t dumpType, const char *path);

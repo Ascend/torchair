@@ -10,15 +10,22 @@ import sys
 import time
 import os
 import warnings
+import textwrap
 import sympy
 from packaging import version
 
 import torch
 from torch.fx.node import Argument, Target, Node
 from torch import Tensor
-from torch._subclasses.fake_tensor import FakeTensor, is_fake
+from torch._C import NumberType
 from torch._ops import OpOverload, OpOverloadPacket
 import torch.utils._pytree as pytree
+from torch._subclasses.fake_tensor import FakeTensor, is_fake
+
+try:
+    from torch._dynamo.allowed_functions import is_builtin_callable
+except ModuleNotFoundError:
+    from torch._dynamo.trace_rules import is_builtin_callable
 
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core import _torchair
@@ -27,6 +34,8 @@ from torchair.core._concrete_graph import ConcreteGraphBase, ValuePack
 from torchair.core.utils import logger, EVENT_LEVEL
 from torchair._ge_concrete_graph.ge_ir_pb2 import GraphDef, TensorDescriptor, TensorDef, OpDef
 from torchair._ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
+from torchair.ge import Clone
+from torchair.ge.ge_custom import custom_op
 from torchair.ge._ge_graph import Tensor as GeTensor
 from torchair.ge._ge_graph import _ValueInput, _TensorInput, _DiscontiguousTensorInput, _RngStatusInput, \
     _ValueType, _GeInputInfo, _SymPackInput
@@ -1093,7 +1102,11 @@ class GeConcreteGraph(ConcreteGraphBase):
         else:
             converter = _get_converter(target)
         if converter is None:
-            raise RuntimeError(f"Ascend op converter is not implemented of: {target}")
+            if self._can_autogenerate_converter(target):
+                self._generate_converter_code(target)
+                converter = target._ge_converter
+            else:
+                raise RuntimeError(f"Ascend op converter is not implemented of: {target}")
         if converter.require_meta:
             kwargs['meta_outputs'] = meta_outputs
         ge_outputs = converter(*args, **kwargs)
@@ -1107,7 +1120,6 @@ class GeConcreteGraph(ConcreteGraphBase):
                     for i, ge_output in enumerate(ge_outputs):
                         ge_output.desc.attr["_fx_tensor_name"].s = compat_as_bytes(f'{fx_tensor_prefix}.{i}')
         return ge_outputs
-
 
     def dump(self, path: str):
         dump_graph(path, self.graph)
@@ -1332,3 +1344,96 @@ class GeConcreteGraph(ConcreteGraphBase):
             input_code.writelines([f'assert_size_stride(args[{idx}], {tuple(meta.shape)}, {meta.stride()})'])
 
         return input_code.getvalue()
+
+    def _can_autogenerate_converter(self, target):
+        if self._is_torch_custom(target):
+            if self._has_no_scalar(target):
+                target_name = str(target).split(".")[1]
+                if target_name.split("_")[-1] == "functional":
+                    target_name.pop()
+                ge_name = "".join(word.capitalize() for word in target_name.split("_")) 
+                (status, _, _, _) = _torchair.get_registered_ir_def(ge_name)
+                if status == "None":
+                    return False
+                if status != "SUCCESS":
+                    raise RuntimeError(f"Custom op {target}, not find Ascend ir {ge_name}.")
+                return True
+            else:
+                raise RuntimeError(f"Custom op {target} has scalar input, can not auto generate converter.")
+        return False
+
+    def _is_torch_custom(self, target):
+        if isinstance(target, OpOverload):
+            if any(s in str(target) for s in ["prim", "prims", "aten"]) or is_builtin_callable(target):
+                raise RuntimeError(
+                    f"The {target} is not custom op can not auto generate converter, need to be implemented.")
+            else:
+                return True
+        else:
+            return False
+    
+    def _has_no_scalar(self, target):
+        for arg in target._schema.arguments:
+            if isinstance(arg.type, NumberType):
+                return False
+        return True
+
+    def _generate_converter_code(self, target):
+        target_name = str(target).split(".")[1]
+        if target_name.split("_")[-1] == "functional":
+            target_name.pop()
+        target_args_name = [arg.name for arg in target._schema.arguments]
+        ge_name = "".join(word.capitalize() for word in target_name.split("_"))
+        (_, ge_inputs, ge_outputs, _) = _torchair.get_registered_ir_def(ge_name)
+        need_clone = False
+        clone_code = []
+        ge_inputs_dict, ge_outputs_dict = dict(ge_inputs), dict(ge_outputs)
+        for index, key in enumerate(ge_inputs_dict.keys()):
+            if key in ge_outputs_dict.keys():
+                need_clone = True
+                clone_code.append(str(target_args_name[index]) + '= Clone(' + str(target_args_name[index]) + ')')
+        
+
+        imports = textwrap.dedent('''\
+        # Auto-generated from {target}, not edit
+        from torchair._ge_concrete_graph.ge_converter.converter_utils import *
+        ''').format(target=str(target))
+        if need_clone:
+            function = textwrap.dedent('''\
+            @register_fx_node_ge_converter({op_name})
+            def {func_name}(
+                {params}
+            ):
+                {clone_arg}
+                return custom_op(
+                    {ascendir},{ascend_params}
+                    )
+            ''').format(
+                op_name='torch.ops.' + str(target),
+                func_name='converter' + '_' + target_name,
+                params=',\n   '.join(target_args_name),
+                clone_arg='\n'.join(clone_code),
+                ascendir='"' + ''.join(word.capitalize() for word in target_name.split('_')) + '"',
+                ascend_params=", ".join(target_args_name)
+            )
+        else:
+            function = textwrap.dedent('''\
+            @register_fx_node_ge_converter({op_name})
+            def {func_name}(
+                {params}
+            ):
+                return custom_op(
+                    {ascendir},{ascend_params}
+                    )
+            ''').format(
+                op_name='torch.ops.' + str(target),
+                func_name='converter' + '_' + target_name,
+                params=',\n   '.join(target_args_name),
+                ascendir='"' + ''.join(word.capitalize() for word in target_name.split('_')) + '"',
+                ascend_params=", ".join(target_args_name)
+            )
+        
+        code = f"{imports}\n\n{function}"
+
+        exec(code)
+

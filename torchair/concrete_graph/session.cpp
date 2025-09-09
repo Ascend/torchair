@@ -89,9 +89,12 @@ Status Session::Initialize(const std::map<std::string, std::string> &options) {
   fast_load_graph_ = reinterpret_cast<GeSessionLoadGraphFunc *>(dlsym(libge_runner_handle, "GeSessionLoadGraph"));
   fast_execute_graph_async_ =
       reinterpret_cast<GeFastExecuteGraphFunc *>(dlsym(libge_runner_handle, "GeSessionExecuteGraphWithStreamAsync"));
+  get_registered_ir_def_ = 
+      reinterpret_cast<GeGetRegisteredIrDefFunc *>(dlsym(libge_runner_handle, "GetRegisteredIrDef"));
   TNG_LOG(DEBUG) << "In current cann version"
                  << ", FastLoadGraph api is " << (IsFastLoadGraphSupported() ? "supported" : "unsupported")
-                 << ", FastExecuteGraph api is " << (IsFastExecuteGraphSupported() ? "supported" : "unsupported");
+                 << ", FastExecuteGraph api is " << (IsFastExecuteGraphSupported() ? "supported" : "unsupported")
+                 << ", GetRegisteredIr api is " << (IsGetRegisteredIrDefSupported() ? "supported" : "unsupported");
   initialized_ = true;
   return status_;
 }
@@ -125,6 +128,7 @@ Status Session::Finalize() {
 
   fast_load_graph_ = nullptr;
   fast_execute_graph_async_ = nullptr;
+  get_registered_ir_def_ = nullptr;
   if (libge_runner_handle) {
     dlclose(libge_runner_handle);
     libge_runner_handle = nullptr;
@@ -282,6 +286,21 @@ Status Session::FastExecuteGraph(uint32_t graph_id, const std::vector<gert::Tens
   TNG_LOG(DEBUG) << "Start to session execute graph " << graph_id;
 
   TNG_ASSERT_GE_OK(fast_execute_graph_async_(*global_ge_session, graph_id, stream, inputs, outputs));
+  return Status::Success();
+}
+
+Status Session::GeGetRegisteredIrDef(const char *op_type, 
+                              std::vector<std::pair<ge::AscendString, ge::AscendString>> &inputs,
+                              std::vector<std::pair<ge::AscendString, ge::AscendString>> &outputs,
+                              std::vector<std::pair<ge::AscendString, ge::AscendString>> &attrs) {
+  TNG_RETURN_IF_ERROR(EnsureInitialized());
+  TNG_ASSERT_NOTNULL(get_registered_ir_def_,
+                     "GetRegisteredIrDef is unsupported, please dont use it in current cann version.");
+  TNG_LOG(DEBUG) << "Start to get registeref ir " << op_type;
+  ge::Status status = get_registered_ir_def_(op_type, inputs, outputs, attrs);
+  if (status != ge::SUCCESS) {
+    return Status::Error("Can not get %c ir def", op_type);
+  }
   return Status::Success();
 }
 

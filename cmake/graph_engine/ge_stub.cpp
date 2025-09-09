@@ -455,5 +455,46 @@ ge::Status GeSessionExecuteGraphWithStreamAsync(ge::Session &session, uint32_t g
 
   return ge::SUCCESS;
 }
+
+ge::Status GetRegisteredIrDef(const char *op_type, std::vector<std::pair<ge::AscendString, ge::AscendString>> &inputs,
+                              std::vector<std::pair<ge::AscendString, ge::AscendString>> &outputs,
+                              std::vector<std::pair<ge::AscendString, ge::AscendString>> &attrs) {
+  if (std::string(op_type) == "MyOpTest"){
+    inputs.emplace_back(ge::AscendString("var"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("indices"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("updates"), ge::AscendString("required"));
+    outputs.emplace_back(ge::AscendString("y"), ge::AscendString("required"));
+  }
+  if (std::string(op_type) == "MyOpTestv1"){
+    inputs.emplace_back(ge::AscendString("var"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("indices"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("updates"), ge::AscendString("required"));
+    outputs.emplace_back(ge::AscendString("y"), ge::AscendString("required"));
+  }
+  if (std::string(op_type) == "MyOpTestv2"){
+    inputs.emplace_back(ge::AscendString("var"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("indices"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("updates"), ge::AscendString("required"));
+    attrs.emplace_back(ge::AscendString("use_indices"), ge::AscendString("VT_INT"));
+    outputs.emplace_back(ge::AscendString("y"), ge::AscendString("required"));
+  }
+  if (std::string(op_type) == "MyOpTestv3"){
+    inputs.emplace_back(ge::AscendString("var"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("indices"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("updates"), ge::AscendString("required"));
+    outputs.emplace_back(ge::AscendString("y"), ge::AscendString("required"));
+  }
+  if (std::string(op_type) == "MyOpTestv4"){
+    inputs.emplace_back(ge::AscendString("var"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("indices"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("updates"), ge::AscendString("required"));
+    attrs.emplace_back(ge::AscendString("use_indices"), ge::AscendString("VT_NAMED_ATTRS"));
+    outputs.emplace_back(ge::AscendString("y"), ge::AscendString("required"));
+  }
+  if (std::string(op_type) == "MyOpTestv5"){
+    return ge::FAILED;
+  }
+  return ge::SUCCESS;
+}
 } // extern "C"
 

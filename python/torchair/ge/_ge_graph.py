@@ -14,6 +14,7 @@ import torch
 from torch.fx.node import Argument, Target
 from torch.utils._mode_utils import no_dispatch
 
+import torchair.ge.attr as _attr
 from torchair.core.utils import logger
 from torchair._ge_concrete_graph.ge_ir_pb2 import ModelDef, GraphDef, OpDef, AttrDef, TensorDescriptor
 from torchair._ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
@@ -178,7 +179,16 @@ def torch_type_to_ge_type(dtype, m=DataType):
     if dtype == torch.quint4x2:
         return m.DT_INT4
 
-    raise RuntimeError(f"Unsupported torch type {dtype} by ge")
+    for type_name, ge_type in [
+        ("uint16", m.DT_UINT16),
+        ("uint32", m.DT_UINT32),
+        ("uint64", m.DT_UINT64),
+        ("qint16", m.DT_QINT16),
+    ]:
+        if hasattr(torch, type_name) and dtype == getattr(torch, type_name):
+            return ge_type
+
+    raise RuntimeError(f"Unsupported convert torch type {dtype} to ge type")
 
 
 def ge_type_to_torch_type(dtype: DataType) -> torch.dtype:
@@ -1422,3 +1432,60 @@ def assert_args_checkout(arg_flag, message=None):
             raise AssertionError
         else:
             raise AssertionError(message)
+
+
+def torch_args_to_ge_args(*args, ge_support_info, op_type):
+    attr_type_map = {
+        "VT_INT": _attr.Int,
+        "VT_FLOAT": _attr.Float,
+        "VT_BOOL": _attr.Bool,
+        "VT_DATA_TYPE": _attr.DataType,
+        "VT_LIST_INT": _attr.ListInt,
+        "VT_LIST_FLOAT": _attr.ListFloat,
+        "VT_LIST_BOOL": _attr.ListBool,
+        "VT_LIST_DATA_TYPE": _attr.ListDataType,
+        "VT_STRING": _attr.Str,
+        "VT_LIST_STRING": _attr.ListStr,
+        "VT_LIST_LIST_INT": _attr.ListListInt,
+        "VT_LIST_LIST_FLOAT": _attr.ListListFloat,
+    }
+
+    ge_inputs = ge_support_info.get("ge_inputs", {})
+    ge_attrs = ge_support_info.get("ge_attrs", {})
+    ge_outputs = ge_support_info.get("ge_outputs", {})
+
+    total_expected = len(ge_inputs) + len(ge_attrs)
+    if len(args) != total_expected:
+        raise IndexError(
+            f"The AscendIR {op_type} expected {total_expected} args but got {len(args)}, please check input nums.")
+
+    inputs = {}
+    for idx, (name, expected_type) in enumerate(ge_inputs.items()):
+        val = args[idx]
+        if isinstance(val, Tensor):
+            inputs[name] = val
+        elif isinstance(val, list):
+            if expected_type != "dynamic":
+                raise TypeError(
+                    f"The AscendIR {op_type} input '{name}' is not dynamic but got list, please check input.")
+            inputs[name] = val
+        else:
+            raise TypeError(f"The AscendIR {op_type} input '{name}' has unsupported ascend type {type(val).__name__}.")
+
+
+    attrs = {}
+    for j, (name, vt_tag) in enumerate(ge_attrs.items(), start=len(ge_inputs)):
+        val = args[j]
+        constructor = attr_type_map.get(vt_tag)
+        if constructor is None:
+            raise ValueError(f"The AscendIR {op_type} has unsupported attr type '{vt_tag}' for '{name}'.")
+
+        if isinstance(val, torch.dtype):
+            ge_type = torch_type_to_ge_type(val)
+            attrs[name] = constructor(ge_type)
+            continue
+        
+        attrs[name] = constructor(val)
+
+    outputs = list(ge_outputs.keys())
+    return {"inputs": inputs, "attrs": attrs, "outputs": outputs}

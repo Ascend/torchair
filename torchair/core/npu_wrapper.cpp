@@ -73,5 +73,6 @@ PYBIND11_MODULE(_torchair, m) {
       .export_values();
   (void)m.def("as_torch_tensors", &llm_datadist::AsTorchTensor);
   m.def("check_cann_compat", &cann_ir_ability::CheckCannCompat);
+  m.def("get_registered_ir_def", &tng::GetGeIrDef);
 };
 }  // namespace npu
