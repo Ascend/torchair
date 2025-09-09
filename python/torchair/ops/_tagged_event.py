@@ -19,8 +19,8 @@ except ImportError as e:
 
 lib.define("tagged_event_record(str tag, bool created_inside=False) -> ()")
 lib.define("tagged_event_wait(str tag, bool created_inside=False) -> ()")
-lib.define("record_tagged_stream_(Tensor(a!) self, str tag) -> ()")
-lib.define("record_tagged_stream(Tensor self, str tag) -> ()")
+lib.define("record_tagged_stream_(Tensor(a!) input, str tag) -> ()")
+lib.define("record_tagged_stream(Tensor input, str tag) -> ()")
 
 has_side_effect(torch.ops.air.tagged_event_record.default)
 has_side_effect(torch.ops.air.tagged_event_wait.default)
@@ -69,8 +69,8 @@ def _npu_tagged_event_wait(event: torch.npu.Event):
     return torch.ops.air.tagged_event_wait(tag)
 
 
-def _npu_record_tagged_stream(self: torch.Tensor, tagged_stream: str):
-    return torch.ops.air.record_tagged_stream_(self, tagged_stream)
+def _npu_record_tagged_stream(input: torch.Tensor, tagged_stream: str):
+    return torch.ops.air.record_tagged_stream_(input, tagged_stream)
 
 
 @torch.library.impl(lib, "tagged_event_record", "Meta")
@@ -84,20 +84,20 @@ def wait_meta(tag: str, created_inside: bool = False):
 
 
 @torch.library.impl(lib, "record_tagged_stream_", "Meta")
-def record_tagged_stream_inplace_meta(self: torch.Tensor, tagged_stream: str):
+def record_tagged_stream_inplace_meta(input: torch.Tensor, tagged_stream: str):
     return None
 
 
 @torch.library.impl(lib, "record_tagged_stream", "Meta")
-def record_tagged_stream_meta(self: torch.Tensor, tagged_stream: str):
+def record_tagged_stream_meta(input: torch.Tensor, tagged_stream: str):
     return None
 
 
 @torch.library.impl(lib, "record_tagged_stream_", "Functionalize")
-def record_tagged_stream_inplace_func(self: torch.Tensor, tagged_stream: str):
+def record_tagged_stream_inplace_func(input: torch.Tensor, tagged_stream: str):
     # The record_stream interface does not involve input mutation,
     # so there is no need to copy the output of out-of-place op to the original input.
-    torch.ops.air.record_tagged_stream(self, tagged_stream)
+    torch.ops.air.record_tagged_stream(input, tagged_stream)
 
 
 def _get_event_by_tag(tag: str, created_inside: bool):
@@ -133,7 +133,7 @@ def wait_impl(tag: str, created_inside: bool = False):
     return event.wait(torch.npu.current_stream())
 
 
-def record_tagged_stream_impl(self: torch.Tensor, tagged_stream: str):
+def record_tagged_stream_impl(input: torch.Tensor, tagged_stream: str):
     stream = _npu_get_or_create_stream_with_tag(tagged_stream)
     if stream is None:
         raise AssertionError(f"get stream with tag = {tagged_stream} failed")
@@ -142,7 +142,7 @@ def record_tagged_stream_impl(self: torch.Tensor, tagged_stream: str):
     # it obtains the data_ptr of the input and increases the stream use count.
     # Therefore, if we first add clone for input,
     # this will cause the recorded data_ptr used for multi-stream usage to become the data_ptr of the cloned tensor.
-    self.record_stream(stream)
+    input.record_stream(stream)
 
 
 torch.library.impl(lib, "tagged_event_record", "CompositeExplicitAutograd")(record_impl)
@@ -166,7 +166,7 @@ def convert_event_wait(tag: str,
 
 
 @register_fx_node_ge_converter(torch.ops.air.record_tagged_stream.default)
-def convert_record_tagged_stream(self: torch.Tensor,
+def convert_record_tagged_stream(input: torch.Tensor,
                                  tagged_stream: str,
                                  meta_outputs: List[TensorSpec] = None):
     raise NotImplementedError("torch.ops.air.record_tagged_stream.default ge_converter is not implemented!")
