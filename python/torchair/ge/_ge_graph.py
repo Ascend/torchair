@@ -14,7 +14,7 @@ import torch
 from torch.fx.node import Argument, Target
 from torch.utils._mode_utils import no_dispatch
 
-import torchair.ge.attr as _attr
+from torchair.ge import attr as _attr
 from torchair.core.utils import logger
 from torchair._ge_concrete_graph.ge_ir_pb2 import ModelDef, GraphDef, OpDef, AttrDef, TensorDescriptor
 from torchair._ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
