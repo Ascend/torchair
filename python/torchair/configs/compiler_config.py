@@ -57,7 +57,6 @@ unsupport_aclgraphconfig_list = [("inference_config.dynamic_gears_merge_policy",
     ("export.experimental.enable_record_nn_module_stack", [True]), \
     ("ge_config.enable_single_stream", [True]), ("ge_config.oo_level", ["O1"]), \
     ("ge_config.oo_constant_folding", [True, False]), ("ge_config.oo_dead_code_elimination", [True, False]), \
-    ("experimental_config.frozen_parameter", [True]), \
     ("experimental_config.topology_sorting_strategy", ["BFS", "RDFS", "StableRDFS"]), \
     ("experimental_config.cc_parallel_enable", [True]), \
     ("experimental_config.enable_ref_data", [True]), \

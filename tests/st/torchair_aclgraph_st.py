@@ -1997,7 +1997,7 @@ class AclGraphSt(unittest.TestCase):
             any("The current AclGraph needs to be recaptured" in log for log in cm.output),
             f"Expected DEBUG 'The current AclGraph needs to be recaptured'"
             f"not found in logs: {cm.output}"
-         )
+        )
 
     def test_aclgraph_recapture_with_parameter_address_change(self):
         class Model(torch.nn.Module):
@@ -2033,7 +2033,40 @@ class AclGraphSt(unittest.TestCase):
             any("The current AclGraph no needs to be recaptured" in log for log in cm.output),
             f"Expected DEBUG 'The current AclGraph no needs to be recaptured'"
             f"not found in logs: {cm.output}"
-         )
+        )
+    
+    def test_aclgraph_recapture_with_parameter_address_change_with_frozen_parameter(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(2, 2)
+
+            def forward(self, x):
+                return self.linear(x)
+
+        model = Model()
+        config = CompilerConfig()
+        config.experimental_config.frozen_parameter = True
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        config.mode = "reduce-overhead"
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(model, backend=aclgraph_backend, dynamic=True)
+        x = torch.randn([3, 2])
+        a = torch.ones(2, 2)
+        model.linear.weight.data = a
+        
+        model(x)
+        b = torch.zeros(2, 2)
+        model.linear.weight.data = b
+        
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            model(x)
+        self.assertTrue(
+            any("The current AclGraph no needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph no needs to be recaptured'"
+            f"not found in logs: {cm.output}"
+        )
 
     def test_aclgraph_cache_tensor_constant(self):
         class Model(torch.nn.Module):

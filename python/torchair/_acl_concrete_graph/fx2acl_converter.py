@@ -5,6 +5,7 @@ from typing import List, Optional, Callable, Any, Dict, Tuple, Union
 import functools
 import logging
 import sys
+import warnings
 import sympy
 
 import torch
@@ -13,6 +14,7 @@ from torch._subclasses.fake_tensor import is_fake
 from torch.fx.node import Argument, Target
 from torch.profiler import record_function
 from torch.types import Device, Number
+from packaging import version
 
 try:
     from torch._dynamo.allowed_functions import is_builtin_callable
@@ -278,6 +280,18 @@ class AclConcreteGraph(ConcreteGraphBase):
         build_dir = self.config.experimental_config.aclgraph._aclnn_static_shape_kernel_build_dir.value
         if build_dir:
             aclgraph_config_options['_aclnn_static_shape_kernel_build_dir'] = build_dir
+        frozen_parameter_enable = self.config.experimental_config.frozen_parameter
+        if frozen_parameter_enable:
+            if version.parse(torch.__version__) < version.parse("2.5.1"):
+                warnings.warn('When enable frozen_parameter, Parameters will be considered static. '
+                              'Please make sure that the Parameters data address remain the same '
+                              'throughout the program runtime.')
+            else:
+                warnings.warn('When enable frozen_parameter, Parameters and input tensors with immutable data_ptr '
+                              'marked by `torch._dynamo.mark_static_address()` will be considered static. '
+                              'Please make sure that the Parameters data address remain the same '
+                              'throughout the program runtime.')
+            aclgraph_config_options['frozen_parameter'] = frozen_parameter_enable.value
 
         logger.debug("aclgraph compile options:")
         for k, v in aclgraph_config_options.items():

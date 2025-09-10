@@ -777,13 +777,13 @@ class AclGraph(object):
             logger.info('Find captured AclGraph{id: %s} of fx_graph %s with graph key {%s}.',
                         id(self.graph[graph_key]), self.name, graph_key)
             if self.is_need_to_recapture(graph_key, *args):
-                logger.debug('The current AclGraph needs to be recaptured for fx_graph %s with graph key %s.',
+                logger.debug('The current AclGraph needs to be recaptured for fx_graph %s with graph key {%s}.',
                              self.name, graph_key)
                 # save graph_meta, release resources after recapture
                 saved_graph_meta = self._graphs_meta[graph_key]
                 del self._graphs_meta[graph_key]
             else:
-                logger.debug('The current AclGraph no needs to be recaptured for fx_graph %s with graph key %s.',
+                logger.debug('The current AclGraph no needs to be recaptured for fx_graph %s with graph key {%s}.',
                              self.name, graph_key)
                 return graph_key
 
@@ -966,6 +966,8 @@ class AclGraph(object):
         self._graphs_meta[graph_key].replay_func(*args, **kwargs)
     
     def is_need_to_recapture(self, graph_key, *args: Any):
+        enable_parameter_frozen = "frozen_parameter" in self.config.keys() \
+                                  and self.config["frozen_parameter"] == "1"
         # When the memory addresses of mutated_inputs and parameter type inputs change
         # recapture the aclgraph to reduce copy time and improve performance
         for input_name, input_idx in self._user_inputs_mapping.items():
@@ -974,9 +976,10 @@ class AclGraph(object):
                     return True
         
         # Check if the parameter address has changed
-        for idx, parameter_ptr in self._graphs_meta[graph_key].captured_parameter.items():
-            if parameter_ptr != args[idx].data_ptr():
-                return True
+        if not enable_parameter_frozen:
+            for idx, parameter_ptr in self._graphs_meta[graph_key].captured_parameter.items():
+                if parameter_ptr != args[idx].data_ptr():
+                    return True
         return False
 
     def reconstruct_outputs(self, graph_key: str) -> List:
