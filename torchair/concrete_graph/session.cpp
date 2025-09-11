@@ -169,28 +169,48 @@ Status Session::AddGraph(uint32_t id, const ge::Graph &graph,
   return Status::Success();
 }
 
+Status CompileGraphImpl(uint32_t id, std::shared_ptr<ge::CompiledGraphSummary> &summary){
+  auto start = std::chrono::high_resolution_clock::now();
+  TNG_ASSERT_GE_OK(global_ge_session->CompileGraph(id));
+  auto end = std::chrono::high_resolution_clock::now();
+  auto warning_msg = tng::LogLevelEnable(tng::LogLevel::WARNING) ? ge::GEGetWarningMsgV2().GetString() : nullptr;
+  if (warning_msg != nullptr && strlen(warning_msg) != 0) {
+    TNG_LOG(WARNING) << "During Compile Graph, a warn message occurred. Please refer to the details：" << warning_msg;
+  }
+  TNG_LOG(EVENT) << "Compile Graph " << id << " consume: "
+                  << (std::chrono::duration_cast<std::chrono::milliseconds>(end - start)).count()
+                  << " ms.";
+  if (summary == nullptr) {
+    summary = global_ge_session->GetCompiledGraphSummary(id);
+    TNG_ASSERT_NOTNULL(summary, "Failed get compiled summary of graph %d", id);
+  }
+  return Status::Success();
+}
+
 Status Session::CompileGraph(uint32_t id, std::shared_ptr<ge::CompiledGraphSummary> &summary) {
   TNG_RETURN_IF_ERROR(EnsureInitialized());
-
+  // In CANN versions < 8.3.RC1:
+  //   - GE cleaned up the default context (default ctx) after graph compilation.
+  //   - This caused functional failures when PyTorch later reused the default context.
+  //   - To work around this, an extra thread was created to manage compatibility.
+  //
+  // In CANN versions >= 8.3.RC1:
+  //   - GE no longer cleans up the default context after compilation.
+  //   - The compatibility thread is therefore removed.
+  //
+  // Implementation notes:
+  //   - This logic resides in concrete_graph (not linked by npu_graph_executor).
+  //   - PTA APIs (e.g., CheckCANNVesion82RC1()) cannot be called here.
+  //   - Instead, IsGetRegisteredIrDefSupported() is used as a version check mechanism.
+  bool version_compatibility = Session::IsGetRegisteredIrDefSupported();
+  if (version_compatibility) {
+    return CompileGraphImpl(id, summary);
+  } else {
   std::future<Status> future = std::async(std::launch::async, [&]() {
-    auto start = std::chrono::high_resolution_clock::now();
-    TNG_ASSERT_GE_OK(global_ge_session->CompileGraph(id));
-    auto end = std::chrono::high_resolution_clock::now();
-    auto warning_msg = tng::LogLevelEnable(tng::LogLevel::WARNING) ? ge::GEGetWarningMsgV2().GetString() : nullptr;
-    if (warning_msg != nullptr && strlen(warning_msg) != 0) {
-      TNG_LOG(WARNING) << "During Compile Graph, a warn message occurred. Please refer to the details：" << warning_msg;
-    }
-    TNG_LOG(EVENT) << "Compile Graph " << id << " consume: "
-                   << (std::chrono::duration_cast<std::chrono::milliseconds>(end - start)).count()
-                   << " ms.";
-    if (summary == nullptr) {
-      summary = global_ge_session->GetCompiledGraphSummary(id);
-      TNG_ASSERT_NOTNULL(summary, "Failed get compiled summary of graph %d", id);
-    }
-    return Status::Success();
+    return CompileGraphImpl(id, summary);
   });
-
   return future.get();
+  }
 }
 
 Status Session::AutoTuneGraph(const ge::Graph &graph, const std::map<ge::AscendString, ge::AscendString> &options,
