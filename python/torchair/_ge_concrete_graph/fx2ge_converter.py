@@ -1229,6 +1229,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         # Initialize based on global options
         local_compile_options, global_compile_options = self.config.as_dict()
         global_compile_options["ge.exec.staticMemoryPolicy"] = "2"
+        global_compile_options["ge.opSelectImplmode"] = "high_precision"
         logger.info("global compile options:")
         for k, v in global_compile_options.items():
             logger.info(f"  {k}: {v}")
