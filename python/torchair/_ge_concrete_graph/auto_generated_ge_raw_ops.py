@@ -80006,6 +80006,95 @@ def MoeDistributeDispatchV2(x: Tensor, expert_ids: Tensor, scales: Optional[Tens
 
     return expand_x, dynamic_scales, expand_idx, expert_token_nums, ep_recv_count, tp_recv_count, expand_scales
 
+
+# This api is auto-generated from IR FfnWorkerBatching
+@auto_convert_to_tensor([False], [False])
+def FfnWorkerBatching(
+    schedule_context: Tensor,
+    *,
+    expert_num: int,
+    max_out_shape: List[int],
+    token_dtype: int,
+    need_schedule: int,
+    layer_num: int,
+    dependencies=[],
+    node_name=None
+):
+    """REG_OP(FfnWorkerBatching)\n
+    .INPUT(schedule_context, TensorType({DT_INT8}))\n
+    .OUTPUT(y, TensorType({DT_INT8, DT_FLOAT16, DT_BFLOAT16}))\n
+    .OUTPUT(group_list, TensorType({DT_INT64}))\n
+    .OUTPUT(session_ids, TensorType({DT_INT32}))\n
+    .OUTPUT(micro_batch_ids, TensorType({DT_INT32}))\n
+    .OUTPUT(token_ids, TensorType({DT_INT32}))\n
+    .OUTPUT(expert_offsets, TensorType({DT_INT32}))\n
+    .OUTPUT(dynamic_scale, TensorType({DT_FLOAT32}))\n
+    .OUTPUT(actual_token_num, TensorType({DT_INT64}))\n
+    .REQUIRED_ATTR(expert_num, Int)\n
+    .REQUIRED_ATTR(max_out_shape, ListInt)\n
+    .ATTR(token_dtype, Int, 0)\n
+    .ATTR(need_schedule, Int, 0)\n
+    .ATTR(layer_num, Int, 0)\n
+    .OP_END_FACTORY_REG(FfnWorkerBatching)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "FfnWorkerBatching"
+    op.name = next_unique_name(node_name, "FfnWorkerBatching")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process input
+    op.input.append(schedule_context.tensor)
+    op.input_desc.add().CopyFrom(schedule_context.desc)
+    op.input_desc[-1].name = "schedule_context"
+
+    # process attr
+    op.attr["expert_num"].i = expert_num
+    op.attr["max_out_shape"].list.val_type = 2
+    op.attr["max_out_shape"].list.i.extend(max_out_shape)
+    op.attr["token_dtype"].i = token_dtype
+    op.attr["need_schedule"].i = need_schedule
+    op.attr["layer_num"].i = layer_num
+
+    # process output
+    output_index = 0
+    op.output_desc.add().name = 'y'
+    y = Tensor(op, output_index)
+
+    output_index += 1
+    op.output_desc.add().name = 'group_list'
+    group_list = Tensor(op, output_index)
+
+    output_index += 1
+    op.output_desc.add().name = 'session_ids'
+    session_ids = Tensor(op, output_index)
+
+    output_index += 1
+    op.output_desc.add().name = 'micro_batch_ids'
+    micro_batch_ids = Tensor(op, output_index)
+
+    output_index += 1
+    op.output_desc.add().name = 'token_ids'
+    token_ids = Tensor(op, output_index)
+
+    output_index += 1
+    op.output_desc.add().name = 'expert_offsets'
+    expert_offsets = Tensor(op, output_index)
+
+    output_index += 1
+    op.output_desc.add().name = 'dynamic_scale'
+    dynamic_scale = Tensor(op, output_index)
+
+    output_index += 1
+    op.output_desc.add().name = 'actual_token_num'
+    actual_token_num = Tensor(op, output_index)
+
+    return y, group_list, session_ids, micro_batch_ids, token_ids, expert_offsets, dynamic_scale, actual_token_num
+
+
 # This api is auto-generated from IR Cmo
 @auto_convert_to_tensor([False], [False], inputs_tensor_type=[TensorType.TT_NUMBER])
 def Cmo(src: Tensor, *, max_size: int, type: int=6, offset: int=0, dependencies=[], node_name=None):
