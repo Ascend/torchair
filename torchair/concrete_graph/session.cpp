@@ -169,24 +169,6 @@ Status Session::AddGraph(uint32_t id, const ge::Graph &graph,
   return Status::Success();
 }
 
-Status CompileGraphImpl(uint32_t id, std::shared_ptr<ge::CompiledGraphSummary> &summary){
-  auto start = std::chrono::high_resolution_clock::now();
-  TNG_ASSERT_GE_OK(global_ge_session->CompileGraph(id));
-  auto end = std::chrono::high_resolution_clock::now();
-  auto warning_msg = tng::LogLevelEnable(tng::LogLevel::WARNING) ? ge::GEGetWarningMsgV2().GetString() : nullptr;
-  if (warning_msg != nullptr && strlen(warning_msg) != 0) {
-    TNG_LOG(WARNING) << "During Compile Graph, a warn message occurred. Please refer to the details：" << warning_msg;
-  }
-  TNG_LOG(EVENT) << "Compile Graph " << id << " consume: "
-                  << (std::chrono::duration_cast<std::chrono::milliseconds>(end - start)).count()
-                  << " ms.";
-  if (summary == nullptr) {
-    summary = global_ge_session->GetCompiledGraphSummary(id);
-    TNG_ASSERT_NOTNULL(summary, "Failed get compiled summary of graph %d", id);
-  }
-  return Status::Success();
-}
-
 Status Session::CompileGraph(uint32_t id, std::shared_ptr<ge::CompiledGraphSummary> &summary) {
   TNG_RETURN_IF_ERROR(EnsureInitialized());
   // In CANN versions < 8.3.RC1:
@@ -202,15 +184,27 @@ Status Session::CompileGraph(uint32_t id, std::shared_ptr<ge::CompiledGraphSumma
   //   - This logic resides in concrete_graph (not linked by npu_graph_executor).
   //   - PTA APIs (e.g., CheckCANNVesion82RC1()) cannot be called here.
   //   - Instead, IsGetRegisteredIrDefSupported() is used as a version check mechanism.
-  bool version_compatibility = Session::IsGetRegisteredIrDefSupported();
-  if (version_compatibility) {
-    return CompileGraphImpl(id, summary);
-  } else {
   std::future<Status> future = std::async(std::launch::async, [&]() {
-    return CompileGraphImpl(id, summary);
+    auto start = std::chrono::high_resolution_clock::now();
+    auto ret = aclrtSetDevice(device_index_);
+    TNG_ASSERT(ret == ACL_ERROR_NONE, "ACL set device id failed, return %d", ret);
+    TNG_ASSERT_GE_OK(global_ge_session->CompileGraph(id));
+    auto end = std::chrono::high_resolution_clock::now();
+    auto warning_msg = tng::LogLevelEnable(tng::LogLevel::WARNING) ? ge::GEGetWarningMsgV2().GetString() : nullptr;
+    if (warning_msg != nullptr && strlen(warning_msg) != 0) {
+      TNG_LOG(WARNING) << "During Compile Graph, a warn message occurred. Please refer to the details：" << warning_msg;
+    }
+    TNG_LOG(EVENT) << "Compile Graph " << id << " consume: "
+                    << (std::chrono::duration_cast<std::chrono::milliseconds>(end - start)).count()
+                    << " ms.";
+    if (summary == nullptr) {
+      summary = global_ge_session->GetCompiledGraphSummary(id);
+      TNG_ASSERT_NOTNULL(summary, "Failed get compiled summary of graph %d", id);
+    }
+    return Status::Success();
   });
+
   return future.get();
-  }
 }
 
 Status Session::AutoTuneGraph(const ge::Graph &graph, const std::map<ge::AscendString, ge::AscendString> &options,
