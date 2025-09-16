@@ -80547,6 +80547,7 @@ def DequantSwigluQuant(x: Tensor,
         .output("scale", "DT_FLOAT")
     )
 
+
 @auto_convert_to_tensor([False, False, False], [False, False, True])
 def MoeReRouting(tokens: Tensor,
                 expert_token_num_per_rank: Tensor,
@@ -80710,6 +80711,62 @@ def GroupedMatMulAlltoAllv(gmm_x: Tensor, gmm_weight: Tensor,
     mm_y = Tensor(op, output_index)
     output_index += 1
     return y, mm_y
+
+
+@auto_convert_to_tensor([False, False, False], [False, False, False])
+def AttentionWorkerCombine(
+                schedule_context: Tensor,
+                expert_scales: Tensor,
+                layer_id: Tensor,
+                *,
+                hidden_size: int,
+                token_dtype: int,
+                need_schedule: int,
+                dependencies=[],
+                node_name=None):
+    """REG_OP(AttentionWorkerCombine)\n
+    .INPUT(schedule_context, TensorType({DT_INT8}))\n
+    .INPUT(expert_scales, TensorType({DT_FLOAT}))\n
+    .INPUT(layer_id, layer_id({DT_INT32}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(next_layer_id, TensorType({DT_INT32}))\n
+    .ATTR(hidden_size, Int, 0)\n
+    .ATTR(token_dtype, Int, 0)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "AttentionWorkerCombine"
+    op.name = next_unique_name(node_name, "AttentionWorkerCombine")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(schedule_context.tensor)
+    op.input_desc.add().CopyFrom(schedule_context.desc)
+    op.input_desc[-1].name = "schedule_context"
+    op.input.append(expert_scales.tensor)
+    op.input_desc.add().CopyFrom(expert_scales.desc)
+    op.input_desc[-1].name = "expert_scales"
+    op.input.append(layer_id.tensor)
+    op.input_desc.add().CopyFrom(layer_id.desc)
+    op.input_desc[-1].name = "layer_id"
+
+    # process attrs
+    op.attr["hidden_size"].i = hidden_size
+    op.attr["token_dtype"].i = token_dtype
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "next_layer_id"
+    next_layer_id = Tensor(op, output_index)
+    output_index += 1
+
+    return y, next_layer_id
 
 
 # This api is auto-generated from IR AlltoAllvGroupedMatMul
