@@ -74832,10 +74832,11 @@ def TargetCropAndResize(x: Tensor, boxes: Tensor, box_index: Tensor, *, output_h
 
 # This api is auto-generated from IR Bitcast
 @auto_convert_to_tensor([False], [False])
-def Bitcast(x: Tensor, *, type: int, dependencies=[], node_name=None):
+def Bitcast(x: Tensor, *, type: int, keep_dim: bool=False, dependencies=[], node_name=None):
     """REG_OP(Bitcast)\n
 .INPUT(x, TensorType({DT_BOOL, DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT32, DT_UINT8, DT_INT64, DT_UINT64, DT_INT16, DT_UINT16, DT_DOUBLE, DT_COMPLEX64, DT_COMPLEX128, DT_QINT8, DT_QUINT8, DT_QINT16, DT_QUINT16, DT_QINT32}))\n
 .OUTPUT(y, TensorType({DT_BOOL, DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT32, DT_UINT8, DT_INT64, DT_UINT64, DT_INT16, DT_UINT16, DT_DOUBLE, DT_COMPLEX64, DT_COMPLEX128, DT_QINT8, DT_QUINT8, DT_QINT16, DT_QUINT16, DT_QINT32}))\n
+.ATTR(keep_dim, Bool, false)\n
 .REQUIRED_ATTR(type, Type)\n
 """
 
@@ -74854,6 +74855,7 @@ def Bitcast(x: Tensor, *, type: int, dependencies=[], node_name=None):
 
     # process attrs
     op.attr["type"].dt = type
+    op.attr["keep_dim"].b = keep_dim
 
     # process outputs
     output_index = 0

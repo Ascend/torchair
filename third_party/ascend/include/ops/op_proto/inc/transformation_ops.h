@@ -51,6 +51,7 @@ REG_OP(Bitcast)
                            DT_INT64, DT_UINT64, DT_INT16, DT_UINT16, DT_DOUBLE, DT_COMPLEX64,
                            DT_COMPLEX128, DT_QINT8, DT_QUINT8, DT_QINT16, DT_QUINT16, DT_QINT32}))
     .REQUIRED_ATTR(type, Type)
+    .ATTR(keep_dim, Bool, false)
     .OP_END_FACTORY_REG(Bitcast)
 
 /**
