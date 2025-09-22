@@ -86,7 +86,7 @@ def _check_config_support(config: Any):
         additional = (
             "" 
             if mode_specific == "max-autotune" 
-            else ", cache_compile, set_dim_gears, dynamo_export, scope, npu_print"
+            else ", set_dim_gears, dynamo_export, scope, npu_print"
         )
         warnings.warn(
             f"The following torchair config or properties may not take effect or report "
