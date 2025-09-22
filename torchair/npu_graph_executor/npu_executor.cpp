@@ -36,14 +36,14 @@ Status CreateNpuGraphExecutor(const std::shared_ptr<GraphData> &graph_data, std:
   TNG_ASSERT_NOTNULL(graph_data->summary);
   if (graph_data->summary->IsStatic()) {
     if (IsGearGraph(graph_data)) {
-      TNG_LOG(INFO) << "Create muti gear npu graph executor for graph " << graph_data->id;
+      TNG_LOG(INFO) << "Create npu graph executor for muti gear graph " << graph_data->id;
       executor = std::make_unique<MutiGearNpuGraphExecutor>(graph_data);
     } else {
-      TNG_LOG(INFO) << "Create static npu graph executor for graph " << graph_data->id;
+      TNG_LOG(INFO) << "Create npu graph executor for static graph " << graph_data->id;
       executor = std::make_unique<StaticNpuGraphExecutor>(graph_data);
     }
   } else {
-    TNG_LOG(INFO) << "Create dynamic npu graph executor for graph " << graph_data->id;
+    TNG_LOG(INFO) << "Create npu graph executor for dynamic graph " << graph_data->id;
     executor = std::make_unique<DynamicNpuGraphExecutor>(graph_data);
   }
   return Status::Success();

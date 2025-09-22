@@ -90,6 +90,17 @@ tng::ExecutorType ParseExecutorType(int64_t executor_type) {
   return tng::ExecutorType::UNKNOWN;
 }
 
+bool IsInputShapeStatic(const std::vector<std::vector<int64_t>> &input_shape){
+  for (const auto& shape : input_shape) {
+    for (int64_t dim : shape) {
+      if (dim < 0) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 tng::Status CheckNetOutputShape(const std::vector<std::vector<int64_t>> &output_shapes, std::vector<ge::Shape> &output_ge_shapes) {
   TNG_LOG(DEBUG) << "FX graph NetOutput shapes is : " << tng::DebugString(output_shapes);
   TNG_LOG(DEBUG) << "--------";
@@ -227,6 +238,14 @@ Status NpuConcreteGraph::Compile() {
       std::vector<ge::DataType> output_ge_dtypes;
       TNG_ASSERT_GE_OK(graph_data_->summary->GetOutputDtypes(output_ge_dtypes));
       TNG_RETURN_IF_ERROR(CheckNetOutDtypes(graph_data_->output_dtypes, output_ge_dtypes));
+    }
+    bool is_input_shape_static = IsInputShapeStatic(graph_data_->inputs_shape);
+    if (!graph_data_->summary->IsStatic() && is_input_shape_static){
+      TNG_LOG(WARNING) << "Static FX graph compiled to dynamic Ascend GE graph, graph id: " << graph_data_->id;
+    } else {
+      TNG_LOG(INFO) << (is_input_shape_static ? "Static" : "Dynamic") << " FX graph compiled to "
+                    << (graph_data_->summary->IsStatic() ? "static" : "dynamic") << " Ascend GE graph, "
+                    << "graph id: " << graph_data_->id;
     }
   }
 
