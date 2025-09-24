@@ -134,6 +134,12 @@ std::tuple<std::string, tng::IrOutType, tng::IrOutType, tng::IrOutType> GetGeIrD
   using GeOutType = std::vector<std::pair<ge::AscendString, ge::AscendString>>;
   GeOutType inputs_ge, outputs_ge, attrs_ge;
   IrOutType inputs, outputs, attrs;
+  if (!Session::GetInstance().IsGetGeFunc()) {
+    TNG_RAISE_IF_ERROR(Session::GetInstance().GetGeFunc());
+  }
+  if (!Session::GetInstance().IsInitialized()) {
+    TNG_LOG(WARNING) << "GE has not initialized, GetRegisteredIrDef func can not get correct geir def.";
+  }
   static bool enable_get_registered_ir_def = Session::GetInstance().IsGetRegisteredIrDefSupported();
   if (enable_get_registered_ir_def) {
     tng::Status status = Session::GetInstance().GeGetRegisteredIrDef(op_type, inputs_ge, outputs_ge, attrs_ge);

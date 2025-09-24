@@ -637,6 +637,8 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._all_meta_tensor_input = {}
         self._fx_graph = None
         self._has_empty_tensor = False
+        _, global_compile_options = self._normalize_ge_option()
+        initialize_graph_engine(global_compile_options)
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """
@@ -1087,7 +1089,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         
         Returns:
             Any: Processed result of the parsed node.
-        """        
+        """
         if str(target) in ['air.scope_enter.default', 'air.scope_exit.default']:
             return target(*args, **kwargs, need_excute=True)
         all_zero_and_nosym = all([is_zero_element_tensor(t) and not get_used_syms_in_meta(t)
