@@ -337,7 +337,7 @@ def npu_fused_infer_attention_score_v2_meta_impl(query, key, value, *, query_rop
                 return (torch.empty_like(tmp_out, dtype=torch.int8), torch.empty([B, N, S1, 1], dtype=torch.float32, \
                         device='meta'))
         else:
-            return (torch.empty_like(tmp_out, dtype=torch.int8), torch.empty([1], dtype=torch.float32, device='meta'))
+            return (torch.empty_like(tmp_out, dtype=torch.int8), torch.empty([0], dtype=torch.float32, device='meta'))
     elif query.dtype == torch.int8:
         out_type = torch.half
         if query_rope is not None:
@@ -353,7 +353,7 @@ def npu_fused_infer_attention_score_v2_meta_impl(query, key, value, *, query_rop
                 return (torch.empty_like(tmp_out, dtype=out_type), torch.empty([B, N, S1, 1], dtype=torch.float32, \
                                                                                  device='meta'))
         else:
-            return (torch.empty_like(tmp_out, dtype=out_type), torch.empty([1], dtype=torch.float32, device='meta'))
+            return (torch.empty_like(tmp_out, dtype=out_type), torch.empty([0], dtype=torch.float32, device='meta'))
     else:
         if (return_softmax_lse):
             if input_layout == "TND":
@@ -381,4 +381,4 @@ def npu_fused_infer_attention_score_v2_meta_impl(query, key, value, *, query_rop
             else:
                 return (torch.empty_like(tmp_out), torch.empty([B, N, S1, 1], dtype=torch.float32, device='meta'))
         else:
-            return (torch.empty_like(tmp_out), torch.empty([1], dtype=torch.float32, device='meta'))
+            return (torch.empty_like(tmp_out), torch.empty([0], dtype=torch.float32, device='meta'))
