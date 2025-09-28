@@ -58,7 +58,7 @@ Status Session::Initialize(const std::map<std::string, std::string> &options) {
     }
     if (option.first == "ge_dump_with_acl_config") {
       TNG_RETURN_IF_ERROR(AclDumpConfigInit(option.second));
-      aclmd_initialzed_ = true;
+      aclmd_initialized_ = true;
       continue;
     }
     ge_options[option.first.c_str()] = option.second.c_str();
@@ -84,17 +84,10 @@ Status Session::Initialize(const std::map<std::string, std::string> &options) {
   auto ret = aclrtSetDevice(device_index_);
   TNG_ASSERT(ret == ACL_ERROR_NONE, "ACL set device id failed, return %d", ret);
 
-  libge_runner_handle = dlopen("libge_runner.so", RTLD_NOW);
-  TNG_ASSERT_NOTNULL(libge_runner_handle, "libge_runner.so dlopen failed, %s", dlerror());
-  fast_load_graph_ = reinterpret_cast<GeSessionLoadGraphFunc *>(dlsym(libge_runner_handle, "GeSessionLoadGraph"));
-  fast_execute_graph_async_ =
-      reinterpret_cast<GeFastExecuteGraphFunc *>(dlsym(libge_runner_handle, "GeSessionExecuteGraphWithStreamAsync"));
-  get_registered_ir_def_ = 
-      reinterpret_cast<GeGetRegisteredIrDefFunc *>(dlsym(libge_runner_handle, "GetRegisteredIrDef"));
-  TNG_LOG(DEBUG) << "In current cann version"
-                 << ", FastLoadGraph api is " << (IsFastLoadGraphSupported() ? "supported" : "unsupported")
-                 << ", FastExecuteGraph api is " << (IsFastExecuteGraphSupported() ? "supported" : "unsupported")
-                 << ", GetRegisteredIr api is " << (IsGetRegisteredIrDefSupported() ? "supported" : "unsupported");
+  if (!get_ge_func_) {
+    TNG_RETURN_IF_ERROR(GetGeFunc());
+  }
+  
   initialized_ = true;
   return status_;
 }
@@ -104,6 +97,24 @@ Status Session::EnsureInitialized() {
     return status_;
   }
   return Status::Error("Session is not initialized");
+}
+
+Status Session::GetGeFunc() {
+  libge_runner_handle = dlopen("libge_runner.so", RTLD_NOW);
+  TNG_ASSERT_NOTNULL(libge_runner_handle, "libge_runner.so dlopen failed, %s", dlerror());
+
+  fast_load_graph_ = reinterpret_cast<GeSessionLoadGraphFunc *>(dlsym(libge_runner_handle, "GeSessionLoadGraph"));
+  fast_execute_graph_async_ =
+      reinterpret_cast<GeFastExecuteGraphFunc *>(dlsym(libge_runner_handle, "GeSessionExecuteGraphWithStreamAsync"));
+  get_registered_ir_def_ = 
+      reinterpret_cast<GeGetRegisteredIrDefFunc *>(dlsym(libge_runner_handle, "GetRegisteredIrDef"));
+  
+  TNG_LOG(DEBUG) << "In current cann version"
+                 << ", FastLoadGraph api is " << (IsFastLoadGraphSupported() ? "supported" : "unsupported")
+                 << ", FastExecuteGraph api is " << (IsFastExecuteGraphSupported() ? "supported" : "unsupported")
+                 << ", GetRegisteredIr api is " << (IsGetRegisteredIrDefSupported() ? "supported" : "unsupported");
+  get_ge_func_ = true;
+  return Status::Success();
 }
 
 Status Session::Finalize() {
@@ -119,7 +130,7 @@ Status Session::Finalize() {
     TNG_LOG(DEBUG) << "ACL synchronize device success in Finalize.";
   }
 
-  if (aclmd_initialzed_) {
+  if (aclmd_initialized_) {
     (void)AclDumpConfigFinalize();
   }
 
@@ -148,6 +159,8 @@ Status Session::Finalize() {
   auto ctx_ptr = (ctx_ret == ACL_ERROR_NONE) ? detect_context : nullptr;
 
   initialized_ = false;
+  get_ge_func_ = false;
+  aclmd_initialized_ = false;
 
   TNG_LOG(DEBUG) << "After torchair finalize, got context pointer: " << ctx_ptr
                  << ", and the initialized flag is set to " << initialized_;

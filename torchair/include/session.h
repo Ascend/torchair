@@ -24,6 +24,8 @@ class Session {
 
   Status EnsureInitialized();
 
+  Status GetGeFunc();
+
   Status Finalize();
 
   Status AddGraph(uint32_t id, const ge::Graph &graph, const std::map<ge::AscendString, ge::AscendString> &options);
@@ -73,6 +75,10 @@ class Session {
     return initialized_;
   }
 
+  bool IsGetGeFunc() const {
+    return get_ge_func_;
+  }
+
   Status AclDumpConfigInit(const std::string &dump_path);
 
   Status AclDumpConfigFinalize();
@@ -81,7 +87,8 @@ class Session {
   Session() : initialized_(false), status_(Status::Success()){};
   std::mutex mu_;
   std::atomic_bool initialized_;
-  std::atomic_bool aclmd_initialzed_;
+  std::atomic_bool aclmd_initialized_ = false;
+  std::atomic_bool get_ge_func_ = false;
   std::atomic_bool run_with_torch_npu_ = false;
   Status status_;
   int32_t device_index_ = -1;

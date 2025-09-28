@@ -39,6 +39,15 @@ stub_fa = StubNpuFA()
 stub_fa.default = stub_npu_fa_func
 stub_fa.out = stub_npu_fa_func
 
+
+class StubConf:
+    def __init__(self):
+        self.allow_hf32 = 0
+        pass
+
+
+stub_conf = StubConf()
+
 _GLOBAL_POOL_ID = 0
 
 
@@ -282,6 +291,8 @@ class StubNpu:
         self.synchronize = stub_synchronize
         self.empty_cache = stub_empty_cache
         self.memory_snapshot = memory_snapshot
+        self.matmul = stub_conf
+        self.conv = stub_conf
         self._C = Stub_C
 
 
