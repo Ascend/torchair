@@ -736,7 +736,16 @@ class AclGraph(object):
         self._parameter_user_inputs = aclgraph_cache_info.parameter_user_inputs
         self._mempool = aclgraph_cache_info.pool if aclgraph_cache_info.pool is not None else \
             torch.npu.graph_pool_handle()
-        self._stream = aclgraph_cache_info.stream if aclgraph_cache_info.stream is not None else torch.npu.Stream()
+
+        '''
+        NB: Do not create additional capture streams arbitrarily
+        If the user does not explicitly specify the stream to be used for capture, all graphs use the default stream.
+        The goal is to organize the memory of all captured graphs on the same stream. Based on the above premise, 
+        when users specify the same memory pool in multiple graphs,all graphs can reuse memory. 
+        Otherwise, even within the same memory pool, memory reuse may fail
+        because those memory blocks are in different streams.
+        '''
+        self._stream = aclgraph_cache_info.stream
         self._capture_error_mode = aclgraph_cache_info.capture_error_mode
         self._num_warmup_iters = aclgraph_cache_info.num_warmup_iters
         self._fx_graph_name = aclgraph_cache_info.fx_graph_name
