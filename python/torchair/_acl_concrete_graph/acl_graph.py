@@ -461,23 +461,28 @@ def construct_and_add_workspace(node: fx.Node, graph_module: fx.GraphModule, kwa
     return workspace_node
 
 
-_global_sym_expr_2_node_map = {}
+# Record the fx nodes created based on symbolic expressions in each graph module
+# data format: {graph id : {symbolic expressions : fx node}}
+_GLOBAL_SYM_EXPR_2_NODE_MAP = {}
 
 
-def construct_fx_node_shape(ori_shape: List, sym_inputs: dict):
-    global _global_sym_expr_2_node_map
+def construct_fx_node_shape(ori_shape: List, sym_inputs: dict, graph_id: int) -> List:
+    global _GLOBAL_SYM_EXPR_2_NODE_MAP
     empty_shape = []
     for dim in ori_shape:
         if is_constant(dim):
             empty_shape.append(dim)
         elif isinstance(dim.node.expr, sympy.Symbol):
             if dim.node.expr not in sym_inputs.keys():
-                raise RuntimeError(f'Unexpected sym output shape {dim} which is not in graph '
-                                   f'all sym inputs dict {sym_inputs}.')
+                raise RuntimeError(f'Unexpected sym output shape {dim} '
+                                   f'which is not in all sym inputs dict {sym_inputs} of graph[{graph_id}].')
             empty_shape.append(sym_inputs[dim.node.expr])
         else:
-            if str(dim) in _global_sym_expr_2_node_map.keys():
-                empty_shape.append(_global_sym_expr_2_node_map[str(dim)])
+            if graph_id not in _GLOBAL_SYM_EXPR_2_NODE_MAP.keys():
+                _GLOBAL_SYM_EXPR_2_NODE_MAP[graph_id] = {}  # init node map of current graph graph id
+
+            if str(dim) in _GLOBAL_SYM_EXPR_2_NODE_MAP[graph_id].keys():
+                empty_shape.append(_GLOBAL_SYM_EXPR_2_NODE_MAP[graph_id][str(dim)])
                 continue
             sym_set = dim.node.expr.free_symbols
             proxy_nodes = {}
@@ -485,8 +490,9 @@ def construct_fx_node_shape(ori_shape: List, sym_inputs: dict):
                 globals()[str(sym_i)] = Proxy(sym_inputs[sym_i])
             expr_proxy = eval(str(dim))
             empty_shape.append(expr_proxy.node)
-            _global_sym_expr_2_node_map[str(dim)] = expr_proxy.node
-            logger.debug("Record all created sym expr and fx node %s.", _global_sym_expr_2_node_map)
+            _GLOBAL_SYM_EXPR_2_NODE_MAP[graph_id][str(dim)] = expr_proxy.node
+            logger.debug("Record all created sym expr and fx node %s in graph[%s].",
+                         _GLOBAL_SYM_EXPR_2_NODE_MAP[graph_id], graph_id)
 
     logger.debug("Construct fx node shape %s from original meta shape %s .",
                  empty_shape, ori_shape)
@@ -510,7 +516,7 @@ def construct_and_add_output(node: fx.Node, graph_module: fx.GraphModule, kwargs
 
     output_nodes = []
     for i in range(registered_outputs_len):
-        empty_shape = construct_fx_node_shape(meta_outputs[i].shape, sym_inputs)
+        empty_shape = construct_fx_node_shape(meta_outputs[i].shape, sym_inputs, id(graph_module))
         logger.debug("Construct empty out sym shape %s for fx node[name: %s][type: %s].",
                      empty_shape, node.name, node.target)
         tmp_out = graph_module.graph.call_function(torch.empty,
