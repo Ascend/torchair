@@ -337,6 +337,51 @@ def patch_torch_npu_module(stub_module):
 _get_pool_id = None
 
 
+### register npu custom ops
+def custom_infer_meta(data, other):
+    torch._check(data.dim() == 4, lambda: "data rank must be 4")
+
+    out_dim0 = (data.size(0) + 8) // 2
+    out_dim1 = (data.size(1) * data.size(1)) // data.size(0)
+    out_dim2 = data.size(2) - 1
+    out_dim3 = data.size(3)
+    tmp_out = torch.empty([out_dim0, out_dim1, out_dim2, out_dim3], dtype=data.dtype, device=data.device)
+    return tmp_out
+
+
+def custom_infer_npu(data, other):
+    torch._check(data.dim() == 4, lambda: "data rank must be 4")
+
+    out_dim0 = (data.size(0) + 8) // 2
+    out_dim1 = (data.size(1) * data.size(1)) // data.size(0)
+    out_dim2 = data.size(2) - 1
+    out_dim3 = data.size(3)
+    tmp_out = torch.randn([out_dim0, out_dim1, out_dim2, out_dim3], dtype=data.dtype, device=data.device)
+    return tmp_out
+
+
+def custom_infer_out_meta(data, other, *, out):
+    return out
+
+
+def custom_infer_out_npu(data, other, *, out):
+    out.fill_(1)
+    return out
+
+
+lib = torch.library.Library("custom", "FRAGMENT")
+
+if not hasattr(torch.ops.custom, "custom_infer"):
+    lib.define("custom_infer(Tensor data, Tensor other) -> Tensor")
+    torch.library.impl(lib, "custom_infer", "Meta")(custom_infer_meta)
+    torch.library.impl(lib, "custom_infer", "CompositeExplicitAutograd")(custom_infer_npu)
+
+if not hasattr(torch.ops.custom, "custom_infer.out"):
+    lib.define("custom_infer.out(Tensor data, Tensor other, *, Tensor(a!) out) -> Tensor(a!)")
+    torch.library.impl(lib, "custom_infer.out", "Meta")(custom_infer_out_meta)
+    torch.library.impl(lib, "custom_infer.out", "CompositeExplicitAutograd")(custom_infer_out_npu)
+
+
 class AclGraphSt(unittest.TestCase):
     def __init__(self, methodName='runTest'):
         super().__init__(methodName)
@@ -482,6 +527,46 @@ class AclGraphSt(unittest.TestCase):
         torch._dynamo.mark_static(indices)
         model(output, indices, 2)
         model(output, indices, 2)
+
+    def test_aclgraph_custom_update(self):
+        from torchair._acl_concrete_graph.acl_graph import _REPLACE_FUNC_MAP, StaticWorkspaceReplaceFunc
+        _REPLACE_FUNC_MAP[torch.ops.custom.custom_infer.default] = StaticWorkspaceReplaceFunc(
+            get_workspace=None,
+            out_operator=torch.ops.custom.custom_infer.out,
+            workspace_keys=[],
+            output_keys=["out"],
+            updated_param_keys=[],
+        )
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y, dim):
+                val = torch.ops.custom.custom_infer.default(x, y)
+                x2 = x.sqrt()
+                val2 = torch.ops.custom.custom_infer.default(x2, y)
+                res = torch.cat([val, val2], dim=dim)
+                return res
+
+        model = Model()
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(model, backend=aclgraph_backend, dynamic=True)
+        x = torch.randn([2, 3, 4, 5])
+        y = torch.randn([2, 3, 4, 5])
+
+        with capture_logger() as stdout:
+            model(x, y, 0)
+        self.assertTrue("Record all created sym expr and fx node" in stdout.getvalue())
+
+        with capture_logger() as stdout:
+            model(x, y, 1)
+        self.assertTrue("Record all created sym expr and fx node" in stdout.getvalue())
 
     def test_aclgraph_dynamic_sym_in_tensor(self):
         class Model(torch.nn.Module):
