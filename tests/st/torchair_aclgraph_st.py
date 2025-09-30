@@ -1609,84 +1609,87 @@ class AclGraphSt(unittest.TestCase):
         class CacheModel(torch.nn.Module):
             def __init__(self):
                 super().__init__()
-                self.linear2 = torch.nn.Linear(2, 1)
-                for param in self.parameters():
-                    torch.nn.init.ones_(param)
+                self.cached = torchair.inference.cache_compile(self._forward, config=config, dynamic=False)
 
-                self.cached_prompt = torchair.inference.cache_compile(self.prompt, config=config, dynamic=False)
+            def forward(self, t1, t2, t3, s1, s2):
+                return self.cached(t1, t2, t3, s1, s2)
 
-            def forward(self, x: InputMeta, y: List[torch.Tensor]):
-                return self.cached_prompt(x, y)
+            def _forward(self, t1, t2, t3, s1, s2):
+                return t1 + s1, t2 + 1, torch.split(t3, s2)
 
-            def _forward(self, x, y):
-                return self.linear2(x.data) + self.linear2(y[0])
-
-            def prompt(self, x, y):
-                return self._forward(x, y)
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         model = CacheModel()
 
-        prompt_cache_dir = CompiledModel.get_cache_bin(model.prompt, config=config, dynamic=False)
+        prompt_cache_dir = CompiledModel.get_cache_bin(model._forward, config=config, dynamic=False)
         ModelCacheSaver.remove_cache(prompt_cache_dir)
 
-        prompt1 = InputMeta(torch.ones(3, 2), True), [torch.ones(3, 2)]
-        prompt2 = InputMeta(torch.ones(12, 12), True), [torch.ones(12, 12)]
+        t1 = torch.zeros(1, 10)
+        t2 = torch.zeros(2, 5)[:, 0:1]
+        t3 = torch.zeros(5, 2)
+        s1 = 5
+        s2 = [2, 3]
 
+        t12 = torch.zeros(1, 5)
+        t22 = torch.zeros(2, 5)[:, 0:1]
+        t32 = torch.zeros(5, 2)
+        s12 = 5
+        s22 = [2, 3]
         self.assertFalse(os.path.exists(prompt_cache_dir))
-        model(*prompt1)
+        model(t1, t2, t3, s1, s2)
         self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
 
         model_match_cache = CacheModel()
         with forbidden_attr(ModelCacheSaver, '__call__'):
             with self.assertRaises(AssertionError) as cm:
-                model_match_cache(*prompt2)  # cache hint
+                model_match_cache(t12, t22, t32, s12, s22)  # cache hint
             exception = cm.exception
-            self.assertIn("expected size 12==3, stride 12==2 at dim=0", str(exception))
+            self.assertIn("expected size 5==10, stride 1==1 at dim=1", str(exception))
 
     def test_aclgraph_cache_dynamic_assert_size_stride(self):
         class CacheModel(torch.nn.Module):
             def __init__(self):
                 super().__init__()
-                self.linear2 = torch.nn.Linear(2, 1)
-                for param in self.parameters():
-                    torch.nn.init.ones_(param)
+                self.cached = torchair.inference.cache_compile(self._forward, config=config)
 
-                self.cached_prompt = torchair.inference.cache_compile(self.prompt, config=config)
+            def forward(self, t1, t2, t3, s1, s2):
+                return self.cached(t1, t2, t3, s1, s2)
 
-            def forward(self, x: InputMeta, y: List[torch.Tensor]):
-                return self.cached_prompt(x, y)
+            def _forward(self, t1, t2, t3, s1, s2):
+                return t1 + s1, t2 + 1, torch.split(t3, s2)
 
-            def _forward(self, x, y):
-                return self.linear2(x.data) + self.linear2(y[0])
-
-            def prompt(self, x, y):
-                return self._forward(x, y)
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
-
         model = CacheModel()
 
-        prompt_cache_dir = CompiledModel.get_cache_bin(model.prompt, config=config)
+        prompt_cache_dir = CompiledModel.get_cache_bin(model._forward, config=config)
         ModelCacheSaver.remove_cache(prompt_cache_dir)
 
-        prompt1 = InputMeta(torch.ones(12, 2), True), [torch.ones(12, 2)]
-        prompt2 = InputMeta(torch.ones(12, 12), True), [torch.ones(12, 12)]
+        t1 = torch.zeros(1, 10)
+        t2 = torch.zeros(2, 5)[:, 0:1]
+        t3 = torch.zeros(5, 2)
+        s1 = 5
+        s2 = [2, 3]
 
+        t12 = torch.zeros(2, 5)
+        t22 = torch.zeros(2, 5)[:, 0:1]
+        t32 = torch.zeros(5, 2)
+        s12 = 5
+        s22 = [2, 3]
         self.assertFalse(os.path.exists(prompt_cache_dir))
-        model(*prompt1)
+        model(t1, t2, t3, s1, s2)
         self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
 
         model_match_cache = CacheModel()
         with forbidden_attr(ModelCacheSaver, '__call__'):
             with self.assertRaises(AssertionError) as cm:
-                model_match_cache(*prompt2)  # cache hint
+                model_match_cache(t12, t22, t32, s12, s22)  # cache hint
             exception = cm.exception
-            self.assertIn("expected size 12==12, stride 12==2 at dim=0", str(exception))
+            self.assertIn("expected size 2==1, stride 5==5 at dim=0", str(exception))
 
     def test_aclgraph_cache_capture_and_replay_keep_inference_input_mutations_true(self):
         class Model(torch.nn.Module):
