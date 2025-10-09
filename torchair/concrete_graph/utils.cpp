@@ -471,7 +471,7 @@ Status GeTensorToAtTensor(gert::Tensor &ge_tensor, at::Tensor &tensor) {
 
   const std::vector<int64_t> &dims = GetDims(ge_tensor.GetOriginShape());
   if (GetDims(ge_tensor.GetStorageShape()) != dims) {
-    return Status::Error("Unsupported ge tensor with different origin shape and storage shape, ",
+    return Status::Error("Unsupported ge tensor with different origin shape and storage shape, %s",
                          DebugString(ge_tensor).c_str());
   }
   size_t tensor_nbytes = at::detail::computeStorageNbytesContiguous(dims, tensor.dtype().itemsize());
