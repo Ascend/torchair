@@ -96,3 +96,18 @@ ListListInt = _make_attr_builder("list_list_int", ".CopyFrom(trans_to_list_list_
                                  "[[x for x in v.list_i] for v in {}.list_list_i]", cls="ListListInt")
 ListListFloat = _make_attr_builder("list_list_float", ".CopyFrom(trans_to_list_list_float({}))",
                                    "[[x for x in v.list_f] for v in {}.list_list_f]", cls="ListListFloat")
+
+_ATTR_TYPE_MAP = {
+        "VT_INT": Int,
+        "VT_FLOAT": Float,
+        "VT_BOOL": Bool,
+        "VT_DATA_TYPE": DataType,
+        "VT_LIST_INT": ListInt,
+        "VT_LIST_FLOAT": ListFloat,
+        "VT_LIST_BOOL": ListBool,
+        "VT_LIST_DATA_TYPE": ListDataType,
+        "VT_STRING": Str,
+        "VT_LIST_STRING": ListStr,
+        "VT_LIST_LIST_INT": ListListInt,
+        "VT_LIST_LIST_FLOAT": ListListFloat,
+    }

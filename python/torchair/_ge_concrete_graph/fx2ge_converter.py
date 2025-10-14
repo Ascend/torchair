@@ -1105,7 +1105,9 @@ class GeConcreteGraph(ConcreteGraphBase):
             converter = _get_converter(target)
         if converter is None:
             if self._can_autogenerate_converter(target):
-                self._generate_converter_code(target)
+                converter_code = self._generate_converter_code(target)
+                logger.info(f"Ascend op converter has auto generated: {converter_code}")
+                exec(converter_code)
                 converter = target._ge_converter
             else:
                 raise RuntimeError(f"Ascend op converter is not implemented of: {target}")
@@ -1350,6 +1352,7 @@ class GeConcreteGraph(ConcreteGraphBase):
 
     def _can_autogenerate_converter(self, target):
         if self._is_torch_custom(target):
+            converter_code = self._generate_converter_log
             if self._has_no_scalar(target):
                 target_name = str(target).split(".")[1]
                 if target_name.split("_")[-1] == "functional":
@@ -1359,17 +1362,23 @@ class GeConcreteGraph(ConcreteGraphBase):
                 if status == "None":
                     return False
                 if status != "SUCCESS":
-                    raise RuntimeError(f"Custom op {target}, not find Ascend ir {ge_name}.")
+                    raise RuntimeError(f"Failed to converter {target} to AscendIR: can not find registered "
+                                       f"AscendIR {ge_name}, its need to meet the upper camel case format, "
+                                       f"please implement this function and ensure AscendIR "
+                                       f"has been registered correctly.{converter_code}")
                 return True
             else:
-                raise RuntimeError(f"Custom op {target} has scalar input, can not auto generate converter.")
+                raise RuntimeError(f"Failed to converter {target} to AscendIR: this op has scalar input, "
+                                   f"can not auto generate converter, "
+                                   f"please implement this function.{converter_code}")
         return False
 
     def _is_torch_custom(self, target):
         if isinstance(target, OpOverload):
             if any(s in str(target) for s in ["prim", "prims", "aten"]) or is_builtin_callable(target):
                 raise RuntimeError(
-                    f"The {target} is not custom op can not auto generate converter, need to be implemented.")
+                    f"Failed to converter {target} to AscendIR: this op is not custom op to auto generate, "
+                    f"need to be implemented in oringinal converter register or implement new converter register.")
             else:
                 return True
         else:
@@ -1380,11 +1389,29 @@ class GeConcreteGraph(ConcreteGraphBase):
             if isinstance(arg.type, NumberType):
                 return False
         return True
+    
+    def _generate_converter_log(self, target):
+        target_log_name = str(target).split(".")[1]
+        if target_log_name.split("_")[-1] == "functional":
+            target_log_name = "_".join(target_log_name.split("_")[:-1])
+        target_args_name = [arg.name for arg in target._schema.arguments]
+        function_log = textwrap.dedent('''
+            @register_fx_node_ge_converter({op_name})
+            def {func_name}(
+                {params}
+            ):
+                #inplement AscendIR converter here.
+            ''').format(
+                op_name='torch.ops.' + str(target),
+                func_name='converter' + '_' + target_log_name,
+                params=',\n   '.join(target_args_name),
+            )
+        return function_log
 
     def _generate_converter_code(self, target):
         target_name = str(target).split(".")[1]
         if target_name.split("_")[-1] == "functional":
-            target_name.pop()
+            target_name = "_".join(target_name.split("_")[:-1])
         target_args_name = [arg.name for arg in target._schema.arguments]
         ge_name = "".join(word.capitalize() for word in target_name.split("_"))
         (_, ge_inputs, ge_outputs, _) = _torchair.get_registered_ir_def(ge_name)
@@ -1397,12 +1424,12 @@ class GeConcreteGraph(ConcreteGraphBase):
                 clone_code.append(str(target_args_name[index]) + '= Clone(' + str(target_args_name[index]) + ')')
         
 
-        imports = textwrap.dedent('''\
+        imports = textwrap.dedent('''
         # Auto-generated from {target}, not edit
         from torchair._ge_concrete_graph.ge_converter.converter_utils import *
         ''').format(target=str(target))
         if need_clone:
-            function = textwrap.dedent('''\
+            function = textwrap.dedent('''
             @register_fx_node_ge_converter({op_name})
             def {func_name}(
                 {params}
@@ -1420,7 +1447,7 @@ class GeConcreteGraph(ConcreteGraphBase):
                 ascend_params=", ".join(target_args_name)
             )
         else:
-            function = textwrap.dedent('''\
+            function = textwrap.dedent('''
             @register_fx_node_ge_converter({op_name})
             def {func_name}(
                 {params}
@@ -1436,7 +1463,6 @@ class GeConcreteGraph(ConcreteGraphBase):
                 ascend_params=", ".join(target_args_name)
             )
         
-        code = f"{imports}\n\n{function}"
-
-        exec(code)
+        code = f"{imports}\n{function}"
+        return code
 

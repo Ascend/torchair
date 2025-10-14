@@ -277,7 +277,7 @@ class TorchairSt(unittest.TestCase):
         assert src != '# -*- coding: utf-8 -*-\nfrom torch import tensor\n' \
                       'from torchair._ge_concrete_graph import ge_apis as ge\n' \
                       'from torchair.ge._ge_graph import get_default_ge_graph\n\n'
-
+    
     def test_sym_pack(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -2192,8 +2192,8 @@ class TorchairSt(unittest.TestCase):
         model = torch.compile(Model(), backend=npu_backend, dynamic=True)
         with self.assertRaises(RuntimeError) as context:
             model(input0, input1, input2)
-        self.assertTrue("The AscendIR MyOpTestv1 input 'indices' is not dynamic but got list, " + \
-            "please check input." in str(context.exception))
+        self.assertTrue("Failed to parse AscendIR: The AscendIR MyOpTestv1 input 'indices' is not dynamic " + \
+            "but got list, please check converter input type" in str(context.exception))
 
     def test_auto_converter_args_error(self):
         m = Library("custom_definev2", "DEF")
@@ -2219,8 +2219,8 @@ class TorchairSt(unittest.TestCase):
         model = torch.compile(Model(), backend=npu_backend, dynamic=True)
         with self.assertRaises(RuntimeError) as context:
             model(input0, input1, input2)
-        self.assertTrue("The AscendIR MyOpTestv2 expected 4 args but got 3, " + \
-            "please check input nums." in str(context.exception))
+        self.assertTrue("Failed to parse AscendIR: The AscendIR MyOpTestv2 expected 4 args but got 3, " + \
+            "please check converter input nums and AscendIR input nums" in str(context.exception))
 
     def test_auto_converter_inputs_type_error(self):
         m = Library("custom_definev3", "DEF")
@@ -2244,8 +2244,8 @@ class TorchairSt(unittest.TestCase):
         model = torch.compile(Model(), backend=npu_backend, dynamic=True)
         with self.assertRaises(RuntimeError) as context:
             model(input0, input1)
-        self.assertTrue("The AscendIR MyOpTestv3 input 'indices' has unsupported ascend type int." in str(
-            context.exception))
+        self.assertTrue("Failed to parse AscendIR: The AscendIR MyOpTestv3 input 'indices' has unsupported ascend " + \
+            "type int, please check converter input type can match the AscendIR register" in str(context.exception))
     
     def test_auto_converter_attrs_type_error(self):
         m = Library("custom_definev4", "DEF")
@@ -2271,8 +2271,9 @@ class TorchairSt(unittest.TestCase):
         model = torch.compile(Model(), backend=npu_backend, dynamic=True)
         with self.assertRaises(RuntimeError) as context:
             model(input0, input1, input2)
-        self.assertTrue("The AscendIR MyOpTestv4 has unsupported " + \
-            "attr type 'VT_NAMED_ATTRS' for 'use_indices'." in str(context.exception))
+        self.assertTrue("Failed to parse AscendIR: The AscendIR MyOpTestv4 has unsupported " + \
+            "attr type 'VT_NAMED_ATTRS' for 'use_indices', please check converter " + \
+            "attr type can match the AscendIR register" in str(context.exception))
 
     def test_auto_converter_failed_get_ir(self):
         m = Library("custom_definev5", "DEF")
@@ -2298,8 +2299,9 @@ class TorchairSt(unittest.TestCase):
         model = torch.compile(Model(), backend=npu_backend, dynamic=True)
         with self.assertRaises(RuntimeError) as context:
             model(input0, input1, input2)
-        self.assertTrue("Custom op custom_definev5.my_op_testv5.default, " + \
-            "not find Ascend ir MyOpTestv5." in str(context.exception))
+        self.assertTrue("Failed to converter custom_definev5.my_op_testv5.default to AscendIR: " + \
+            "can not find registered AscendIR MyOpTestv5, its need to meet the " + \
+            "upper camel case format" in str(context.exception))
 
     def test_auto_converter_has_scalar(self):
         m = Library("custom_definev6", "DEF")
@@ -2324,8 +2326,9 @@ class TorchairSt(unittest.TestCase):
         model = torch.compile(Model(), backend=npu_backend, dynamic=True)
         with self.assertRaises(RuntimeError) as context:
             model(input0, input1)
-        self.assertTrue("Custom op custom_definev6.my_op_testv6.default has scalar input, " + \
-            "can not auto generate converter." in str(context.exception))
+        self.assertTrue("Failed to converter custom_definev6.my_op_testv6.default to AscendIR: " + \
+            "this op has scalar input, can not auto generate converter, " + \
+            "please implement this function" in str(context.exception))
 
     def test_torch_dtype_to_ge_dtype(self):
         with self.assertRaises(RuntimeError) as context:

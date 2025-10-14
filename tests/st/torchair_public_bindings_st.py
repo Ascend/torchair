@@ -72,6 +72,10 @@ class TestPublicBindings(unittest.TestCase):
                 return True
         return False
 
+    def test_get_registered_ir_def_without_init(self):
+        from torchair.core import _torchair
+        (status, _, _, _) = _torchair.get_registered_ir_def("Add")
+
     def test_correct_module_names(self):
         '''
         An API is considered public, if  its  `__module__` starts with `torchair.`
