@@ -14,16 +14,17 @@ from ._lib import lib
 
 lib.define(
     """
-    print(Tensor[] tensors, str msg_format, str placeholder, int summarize_size) -> None
+    print(Tensor[] tensors, str msg_format, str placeholder, int summarize_size, bool tensor_detail) -> None
     """
 )
 has_side_effect(torch.ops.air.print.default)
 
 
 def summarize_tensor(tensor: torch.Tensor, summarize_size) -> str:
+    
     def _value(v):
         v = float(v)
-        return f"{v:.0f}" if v.is_integer() else f"{v}"
+        return f"{v:.0f}" if v.is_integer() else f"{v:.9g}"
 
     def _summarize_array(array, nums):
         if not isinstance(array, np.ndarray):
@@ -61,7 +62,8 @@ def kernel_meta(
         tensors: List[torch.Tensor],
         msg_format: str,
         placeholder: str,
-        summarize_size: int
+        summarize_size: int,
+        tensor_detail: bool
 ):
     return None
 
@@ -70,11 +72,16 @@ def kernel_impl(
         tensors: List[torch.Tensor],
         msg_format: str,
         placeholder: str,
-        summarize_size: int
+        summarize_size: int,
+        tensor_detail: bool
 ):
     for t in tensors:
         tensor_str = summarize_tensor(t.detach(), summarize_size)
         msg_format = msg_format.replace(placeholder, tensor_str, 1)
+        if tensor_detail:
+            shape = list(t.shape)
+            msg_format = msg_format.replace(placeholder, str(shape), 1)
+
     print(msg_format, flush=True)
 
 
@@ -82,7 +89,7 @@ torch.library.impl(lib, "print", "CPU")(kernel_impl)
 torch.library.impl(lib, "print", "PrivateUse1")(kernel_impl)
 
 
-def _npu_print(*args, summarize_size):
+def _npu_print(*args, summarize_size, tensor_detail):
     for i, arg in enumerate(args):
         if not isinstance(arg, (torch.Tensor, str, bool, float, int)):
             raise TypeError(f"position arguments of npu_print() must be torch.Tensor or "
@@ -101,8 +108,17 @@ def _npu_print(*args, summarize_size):
     while placeholder in joint_str:
         placeholder = f'{{{i}}}'
         i += 1
-    msg_format = " ".join([placeholder if isinstance(arg, torch.Tensor) else str(arg) for arg in args])
-    torch.ops.air.print(tensors, msg_format, placeholder, summarize_size)
+        
+    if tensor_detail:
+        msg_format = " ".join([
+            f"tensor({placeholder}, shape={placeholder}), dtype={arg.dtype})"
+            if isinstance(arg, torch.Tensor) 
+            else str(arg) 
+            for arg in args
+        ])
+    else:
+        msg_format = " ".join([placeholder if isinstance(arg, torch.Tensor) else str(arg) for arg in args])
+    torch.ops.air.print(tensors, msg_format, placeholder, summarize_size, tensor_detail)
 
 
 @register_fx_node_ge_converter(torch.ops.air.print.default)
@@ -110,8 +126,19 @@ def convert_print(tensors: List[Tensor],
                   msg_format: str,
                   placeholder: str,
                   summarize_size: int,
+                  tensor_detail: bool,
                   meta_outputs: List[TensorSpec] = None):
-    printable_tensors = [ge.Cast(t, dst_type=DataType.DT_FLOAT) if t.dtype == DataType.DT_BF16 else t for t in tensors]
+    
+    if tensor_detail:
+        printable_tensors = []
+        for t in tensors:
+            converted_tensor = ge.Cast(t, dst_type=DataType.DT_FLOAT) if t.dtype == DataType.DT_BF16 else t
+            tensor_shape = ge.Shape(converted_tensor)
+            printable_tensors.extend([converted_tensor, tensor_shape])    
+    else:
+        printable_tensors = [ge.Cast(t, dst_type=DataType.DT_FLOAT) if t.dtype == DataType.DT_BF16 
+                             else t for t in tensors]
+
     msg = ge.StringFormat(printable_tensors, template=msg_format, placeholder=placeholder, summarize=summarize_size)
     ge.PrintV2(msg)
     print_op = get_default_ge_graph().op[-1]

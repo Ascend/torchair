@@ -5,13 +5,15 @@ def npu_fused_infer_attention_score(*args, **kwargs):
     from ._npu_fused_infer_attention_score import _npu_fused_infer_attention_score
     return _npu_fused_infer_attention_score(*args, **kwargs)
 
+
 def npu_fused_infer_attention_score_v2(*args, **kwargs):
     from ._npu_fused_infer_attention_score_v2 import _npu_fused_infer_attention_score_v2
     return _npu_fused_infer_attention_score_v2(*args, **kwargs)
 
-def npu_print(*args, summarize_size=3):
+
+def npu_print(*args, summarize_size=3, tensor_detail=False):
     from ._print_ops import _npu_print
-    return _npu_print(*args, summarize_size=summarize_size)
+    return _npu_print(*args, summarize_size=summarize_size, tensor_detail=tensor_detail)
 
 
 def npu_create_tagged_event(tag: str):
