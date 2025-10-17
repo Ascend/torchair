@@ -3832,11 +3832,14 @@ REG_OP(FusedInferAttentionScore)
 * @li value: A matrix Tensor. The type support int8, uint8, hifloat8, float8_e5m2, float8_e4m3fn, int16, uint16, float16, bf16, int32, uint32, float.
 * @li slot_mapping: A matrix Tensor. The type support int32, int64.
 * @li compress_lens: A matrix Tensor. The type support int32, int64.
-* @li compress_seq_offsets: A Tensor. The type support int32, int64.
+* @li compress_seq_offset: A Tensor. The type support int32, int64.
 * @li seq_lens: A Tensor. The type support int32, int64.
 
 * @par Attributes
 * @li cache_mode: A string. The data format of key_cache and value_cache, "Norm" means ND.
+* @li scatter_mode: An optional attribute. Describing the format of cache. Defaults to "None". 
+* @li strides: An optional attribute. A list of 2 integers. The stride of the key and value, its' shape is [stride_k, stride_v].
+* @li offsets: An optional attribute. A list of 2 integers. The offsets of the key and value, its' shape is [offset_k, offset_v].
 
 * @par Outputs:
 * @li key_cache: A matrix Tensor. The type support int8, uint8, hifloat8, float8_e5m2, float8_e4m3fn, int16, uint16, float16, bf16, int32, uint32, float.
@@ -3849,11 +3852,14 @@ REG_OP(ScatterPaKvCache)
     .INPUT(value, "T")
     .INPUT(value_cache, "T")
     .OPTIONAL_INPUT(compress_lens, TensorType::IndexNumberType())
-    .OPTIONAL_INPUT(compress_seq_offsets, TensorType::IndexNumberType())
+    .OPTIONAL_INPUT(compress_seq_offset, TensorType::IndexNumberType())
     .OPTIONAL_INPUT(seq_lens, TensorType::IndexNumberType())
     .OUTPUT(key_cache, "T")
     .OUTPUT(value_cache, "T")
     .ATTR(cache_mode, String, "Norm")
+    .ATTR(scatter_mode, String, "None")
+    .ATTR(strides, ListInt, {1,1})
+    .ATTR(offsets, ListInt, {0,0})
     .DATATYPE(T, TensorType({DT_INT8, DT_UINT8, DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN,
                              DT_INT16, DT_UINT16, DT_FLOAT16, DT_BF16, DT_INT32, DT_UINT32, DT_FLOAT}))
     .OP_END_FACTORY_REG(ScatterPaKvCache)
