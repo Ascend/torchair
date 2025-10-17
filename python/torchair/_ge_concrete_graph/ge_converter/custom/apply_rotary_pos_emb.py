@@ -20,10 +20,10 @@ def conveter_npu_apply_rotary_pos_emb_default(
              This current usage may cause the input to be changed unexpectedly, and the caller 
              needs to pay attention to this feature.
     """
-    support_layer = ['BSH', 'BSND', 'SBND', 'BNSD']
+    support_layer = ['BSH', 'BSND', 'SBND', 'BNSD', 'TND']
     support_rotary_mode = ['half', 'quarter', 'interleave']
     if layout not in support_layer:
-        raise NotImplementedError("layout only support BSH/BSND/SBND/BNSD now!")
+        raise NotImplementedError("layout only support BSH/BSND/SBND/BNSD/TND now!")
     if rotary_mode not in support_rotary_mode:
         raise NotImplementedError("rotary_mode only support half/quarter/interleave now!")
 
@@ -32,6 +32,8 @@ def conveter_npu_apply_rotary_pos_emb_default(
         layout_val = 2
     elif layout == "BNSD":
         layout_val = 3
+    elif layout == "TND":
+        layout_val = 4
 
     version_list = ["7.2", "7.3"]
     opp_ver = get_cann_opp_version()
