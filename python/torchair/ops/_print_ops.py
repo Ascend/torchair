@@ -111,7 +111,7 @@ def _npu_print(*args, summarize_size, tensor_detail):
         
     if tensor_detail:
         msg_format = " ".join([
-            f"tensor({placeholder}, shape={placeholder}), dtype={arg.dtype})"
+            f"tensor({placeholder}, shape={placeholder}, dtype={arg.dtype})"
             if isinstance(arg, torch.Tensor) 
             else str(arg) 
             for arg in args

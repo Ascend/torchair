@@ -40,7 +40,7 @@ class NpuPrintSt(unittest.TestCase):
 
         t = torch.tensor(2.5)
 
-        expect_lines = ["tensor(2.5, shape=[]), dtype=torch.float32)"]
+        expect_lines = ["tensor(2.5, shape=[], dtype=torch.float32)"]
         with CapturedStdout() as stdout:
             compiled_model(t)
         lines = stdout.non_empty_lines()
@@ -50,7 +50,7 @@ class NpuPrintSt(unittest.TestCase):
 
         t = torch.tensor(3)
 
-        expect_lines = ["tensor(3, shape=[]), dtype=torch.int64)"]
+        expect_lines = ["tensor(3, shape=[], dtype=torch.int64)"]
         with CapturedStdout() as stdout:
             compiled_model(t)
         lines = stdout.non_empty_lines()
@@ -60,7 +60,7 @@ class NpuPrintSt(unittest.TestCase):
 
         t = torch.tensor(True)
 
-        expect_lines = ["tensor(1, shape=[]), dtype=torch.bool)"]
+        expect_lines = ["tensor(1, shape=[], dtype=torch.bool)"]
         with CapturedStdout() as stdout:
             compiled_model(t)
         lines = stdout.non_empty_lines()
@@ -77,7 +77,7 @@ class NpuPrintSt(unittest.TestCase):
 
         t = torch.tensor([True, False])
 
-        expect_lines = ["tensor([1 0], shape=[2]), dtype=torch.bool)"]
+        expect_lines = ["tensor([1 0], shape=[2], dtype=torch.bool)"]
         with CapturedStdout() as stdout:
             compiled_model(t)
         lines = stdout.non_empty_lines()
@@ -93,7 +93,7 @@ class NpuPrintSt(unittest.TestCase):
 
         t = torch.empty((0, 3), dtype=torch.int32)
 
-        expect_lines = ["tensor([], shape=[0, 3]), dtype=torch.int32)"]
+        expect_lines = ["tensor([], shape=[0, 3], dtype=torch.int32)"]
         with CapturedStdout() as stdout:
             compiled_model(t)
         lines = stdout.non_empty_lines()
@@ -111,7 +111,7 @@ class NpuPrintSt(unittest.TestCase):
         target_op = torch.ops.air.print.default
         converter = target_op._ge_converter
         reached = False
-        expect_line = "x = tensor({}, shape={}), dtype=torch.bfloat16)"
+        expect_line = "x = tensor({}, shape={}, dtype=torch.bfloat16)"
 
         @functools.wraps(converter)
         def wrapper(*args, **kwargs):
