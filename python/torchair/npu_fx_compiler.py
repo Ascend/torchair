@@ -36,7 +36,6 @@ from torchair._utils import add_npu_patch, get_npu_default_decompositions
 from torchair._utils.error_code import pretty_error_msg
 from torchair.inference._gear_utils import get_dim_gears, set_dim_gears, guard_gears_shape
 
-
 aten = torch.ops.aten
 
 
@@ -116,7 +115,7 @@ class _NpuGraphConverter(Interpreter):
 
         Returns:
             Any: Result of node execution.
-        """        
+        """
         with self._graph.converter_context(node=n):
             return super().run_node(n)
 
@@ -130,9 +129,7 @@ class _NpuGraphConverter(Interpreter):
 
         Returns:
             GeConcreteGraph: Constructed NPU computation graph.
-        """        
-        optimized_fx = _optimize_fx(self.module)
-        self._graph.save_fx_graph(optimized_fx)
+        """
 
         with self._graph.context():
             super().run(*args, **kwargs)
@@ -190,7 +187,7 @@ class _NpuGraphConverter(Interpreter):
 
         Returns:
             ValuePack: Packed metadata and NPU value.
-        """        
+        """
         meta_input = super().placeholder(target, args=args, kwargs=kwargs)
         npu_input = self._graph.parse_input(target, args, kwargs, meta_input)
         return ValuePack(meta_input, npu_input)
@@ -207,7 +204,7 @@ class _NpuGraphConverter(Interpreter):
 
         Returns:
             Any: Result of the function call.
-        """        
+        """
         return self._wrap('call_function')(target, args, kwargs)
 
     @_trace_print
@@ -222,7 +219,7 @@ class _NpuGraphConverter(Interpreter):
 
         Returns:
             Any: Result of the method call.
-        """        
+        """
         return self._wrap('call_method')(target, args, kwargs)
 
     @_trace_print
@@ -237,7 +234,7 @@ class _NpuGraphConverter(Interpreter):
 
         Returns:
             Any: Result of the module call.
-        """        
+        """
         return self._wrap('call_module')(target, args, kwargs)
 
     @_trace_print
@@ -252,7 +249,7 @@ class _NpuGraphConverter(Interpreter):
 
         Returns:
             Any: Output value.
-        """        
+        """
         args_meta, kwargs_meta = _unpack_meta(args, kwargs)
         meta_output = super().placeholder(target, args=args_meta, kwargs=kwargs_meta)
         npu_output = self._graph.parse_output(
@@ -278,12 +275,15 @@ def _view_to_reshape(graph_module: torch.fx.GraphModule):
             node.target = torch.ops.aten.reshape.default
 
 
-def _optimize_fx(graph_module: torch.fx.GraphModule):
+def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig):
     # More optimization passes here
+    from torchair.patterns._recover_view_inplace_pattern import recover_view_inplace_pattern
+    graph_module = recover_view_inplace_pattern(graph_module, config)
+
     graph_module = _optimize_sym_input(graph_module)
-    logger.debug('after sym input optimization, graph is %s', graph_module.graph)
     _view_to_reshape(graph_module)
-    logger.debug('after view to reshape optimization, graph is %s', graph_module.graph)
+
+    logger.debug('after fx graph optimization, graph is %s', graph_module.graph)
     return graph_module
 
 
@@ -339,7 +339,8 @@ def _optimize_sym_input(graph_module: torch.fx.GraphModule):
 class _GmRunner:
     """
     Wrapper for executing a graph module with runtime inputs.
-    """    
+    """
+
     def __init__(self, runner: Callable):
         self.runner = runner
 
@@ -374,7 +375,8 @@ def _next_unique_graph_id():
 class _NpuFxCompiler:
     """
     Main compiler class for converting FX graphs to NPU-compatible graphs.
-    """    
+    """
+
     def __init__(self, compiler_config: CompilerConfig) -> None:
         self.config = compiler_config
 
@@ -389,7 +391,7 @@ class _NpuFxCompiler:
 
         Returns:
             _GmRunner: Runner wrapping the compiled graph.
-        """        
+        """
         return self._get_compiled_gm(gm, example_inputs)
 
     @pretty_error_msg
@@ -418,13 +420,13 @@ class _NpuFxCompiler:
 
         Returns:
             _GmRunner: Runner wrapping the compiled graph.
-        """        
+        """
         if int(self.config.export.experimental.enable_lite_export.value):
             from torchair._ge_concrete_graph.ge_converter import lite
-        
+
         if self.config.debug.fx_summary.enabled and self.config.mode.value == "reduce-overhead":
             logger.warning(f"The fx_summary csv files will not be generated in reduce-overhead mode.")
-        
+
         if self.config.debug.fx_summary.enabled and self.config.mode.value == "max-autotune":
             _summarize_fx_graph(
                 gm, example_inputs, self.config.debug.fx_summary.full_path("summary"))
@@ -459,6 +461,7 @@ class _NpuFxCompiler:
                     logger.warning(f'To temporarily fix weight_quant_batchmatmul bug, close enable_view_optimize.')
                     break
 
+        # generate different concrete graph based on config
         with no_dispatch():
             mutable_gm = copy.deepcopy(gm)
         if self.config.mode.value == "max-autotune":
@@ -471,12 +474,18 @@ class _NpuFxCompiler:
                                      pool=self.config.aclgraph_config.use_custom_pool)
         else:
             raise ValueError(f"Unsupported npu backend mode: {self.config.mode.value}.")
+
+        # do common optimization for fx graph based on config
+        optimized_gm = _optimize_fx(mutable_gm, self.config)
+        graph.save_fx_graph(optimized_gm)
+
         concrete_graph: ConcreteGraphBase = _NpuGraphConverter(
-            mutable_gm, graph=graph, garbage_collect_values=False).run(*example_inputs)
+            optimized_gm, graph=graph, garbage_collect_values=False).run(*example_inputs)
 
         if self.config.debug.graph_dump.enabled and not self.config.export.export_mode:
             concrete_graph.dump(self.config.debug.graph_dump.full_path(f"dynamo_original_graph_{_GLOBAL_GRAPH_ID}"))
 
+        # optimize different concrete graph for ge or acl.
         concrete_graph.optimize_graph_without_runtime(*example_inputs)
 
         if self.config.debug.run_eagerly:
@@ -499,7 +508,7 @@ def get_compiler(compiler_config: CompilerConfig = None):
 
     Returns:
         _NpuFxCompiler: NPU compiler instance.
-    """    
+    """
     if compiler_config is None:
         compiler_config = CompilerConfig()
     return _NpuFxCompiler(compiler_config)
@@ -511,7 +520,6 @@ def _npu_joint_graph_passes(graph):
 
 
 def _get_partition_fn(compiler_config: CompilerConfig):
-
     def partition_fn(graph: torch.fx.GraphModule, joint_inputs, **kwargs):
         _npu_joint_graph_passes(graph)
         return default_partition(graph, joint_inputs, **kwargs)
@@ -580,6 +588,7 @@ def _set_inputs_custom_attr_to_compiler(compiler: Callable, inputs_custom_attr: 
     ):
         _set_inputs_custom_attr(example_inputs, inputs_custom_attr)
         return compiler(gm, example_inputs)
+
     return _warp_custom_attr_compiler
 
 
@@ -596,7 +605,7 @@ def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
 
     Returns:
         Any: Compiled graph runner.
-    """    
+    """
     if compiler_config is None:
         compiler_config = CompilerConfig()
     compiler = get_compiler(compiler_config)
@@ -630,7 +639,7 @@ def get_npu_backend(*, compiler_config: CompilerConfig = None, custom_decomposit
 
     Returns:
         Callable: Backend compiler function.
-    """    
+    """
     if compiler_config is None:
         compiler_config = CompilerConfig()
     _check_config_support(compiler_config)

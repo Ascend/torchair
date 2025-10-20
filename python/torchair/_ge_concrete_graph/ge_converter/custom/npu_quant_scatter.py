@@ -9,15 +9,15 @@ from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 ])
 @register_fx_node_ge_converter(torch.ops.npu.npu_quant_scatter.default)
 def conveter_npu_quant_scatter_default(
-    self: Tensor,
-    indices: Tensor,
-    updates: Tensor,
-    quant_scales: Tensor,
-    quant_zero_points: Optional[Tensor] = None,
-    axis: int = 0,
-    quant_axis: int = 1,
-    reduce: str = 'update',
-    meta_outputs: TensorSpec = None
+        self: Tensor,
+        indices: Tensor,
+        updates: Tensor,
+        quant_scales: Tensor,
+        quant_zero_points: Optional[Tensor] = None,
+        axis: int = 0,
+        quant_axis: int = 1,
+        reduce: str = 'update',
+        meta_outputs: TensorSpec = None
 ):
     """
     NB: aten::npu_quant_scatter(Tensor self, Tensor indices, Tensor updates, Tensor quant_scales,
@@ -32,4 +32,33 @@ def conveter_npu_quant_scatter_default(
 
     copy = ge.TensorMove(self)
     return ge.QuantUpdateScatter(copy, indices, updates, quant_scales, quant_zero_points, reduce=reduce, axis=axis,
+                                 quant_axis=quant_axis)
+
+
+@register_fx_node_ge_converter(torch.ops.npu.npu_quant_scatter_.default)
+def conveter_npu_quant_scatter__default(
+        self: Tensor,
+        indices: Tensor,
+        updates: Tensor,
+        quant_scales: Tensor,
+        quant_zero_points: Optional[Tensor] = None,
+        axis: int = 0,
+        quant_axis: int = 1,
+        reduce: str = 'update',
+        meta_outputs: TensorSpec = None
+):
+    """
+    NB: func: npu_quant_scatter_(Tensor(a!) self, Tensor indices, Tensor updates, Tensor quant_scales,
+                                 Tensor? quant_zero_points=None, int axis=0, int quant_axis=1,
+                                 str reduce='update') -> Tensor(a!)
+    """
+
+    """
+    The converter for inplace operators is generally not necessary, 
+    because all inplace operators become non_inplace operators after functionalization.
+    Adding converters to those inplace operators is due to the implementation of some re-inplace pass, 
+    which pass can transfer some non_inplace operators to the original inplace operators.
+    """
+
+    return ge.QuantUpdateScatter(self, indices, updates, quant_scales, quant_zero_points, reduce=reduce, axis=axis,
                                  quant_axis=quant_axis)
