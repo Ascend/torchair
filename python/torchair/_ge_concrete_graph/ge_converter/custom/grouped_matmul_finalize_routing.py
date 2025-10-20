@@ -38,11 +38,7 @@ def conveter_npu_grouped_matmul_finalize_routing(
         raise RuntimeError("Not supported output dtype is " + str(dtype))
 
     if w.dtype == DataType.DT_INT32:
-        const_w = ge.Const([1] * (w.rank - 1) + [8])
-        shape_w = ge.Shape(w)
-        shape_w = ge.Mul(shape_w, const_w)
-        new_w = ge.Bitcast(w, type=DataType.DT_INT4)
-        new_w = ge.Reshape(new_w, shape_w)
+        new_w = ge.Bitcast(w, type=DataType.DT_INT4, keep_dim=True)
     else:
         new_w = w
 
