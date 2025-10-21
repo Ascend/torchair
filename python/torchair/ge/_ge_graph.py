@@ -14,7 +14,6 @@ import torch
 from torch.fx.node import Argument, Target
 from torch.utils._mode_utils import no_dispatch
 
-from torchair.ge import attr as _attr
 from torchair.core.utils import logger
 from torchair._ge_concrete_graph.ge_ir_pb2 import ModelDef, GraphDef, OpDef, AttrDef, TensorDescriptor
 from torchair._ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
@@ -1435,21 +1434,7 @@ def assert_args_checkout(arg_flag, message=None):
 
 
 def torch_args_to_ge_args(*args, ge_support_info, op_type):
-    attr_type_map = {
-        "VT_INT": _attr.Int,
-        "VT_FLOAT": _attr.Float,
-        "VT_BOOL": _attr.Bool,
-        "VT_DATA_TYPE": _attr.DataType,
-        "VT_LIST_INT": _attr.ListInt,
-        "VT_LIST_FLOAT": _attr.ListFloat,
-        "VT_LIST_BOOL": _attr.ListBool,
-        "VT_LIST_DATA_TYPE": _attr.ListDataType,
-        "VT_STRING": _attr.Str,
-        "VT_LIST_STRING": _attr.ListStr,
-        "VT_LIST_LIST_INT": _attr.ListListInt,
-        "VT_LIST_LIST_FLOAT": _attr.ListListFloat,
-    }
-
+    from torchair.ge.attr import _ATTR_TYPE_MAP
     ge_inputs = ge_support_info.get("ge_inputs", {})
     ge_attrs = ge_support_info.get("ge_attrs", {})
     ge_outputs = ge_support_info.get("ge_outputs", {})
@@ -1457,7 +1442,9 @@ def torch_args_to_ge_args(*args, ge_support_info, op_type):
     total_expected = len(ge_inputs) + len(ge_attrs)
     if len(args) != total_expected:
         raise IndexError(
-            f"The AscendIR {op_type} expected {total_expected} args but got {len(args)}, please check input nums.")
+            f"Failed to parse AscendIR: The AscendIR {op_type} expected {total_expected} args but got {len(args)}, " 
+            f"please check converter input nums and AscendIR input nums, "
+            f"can set torchair.logger.setLevel(logging.info) to check the auto generate converter code.")
 
     inputs = {}
     for idx, (name, expected_type) in enumerate(ge_inputs.items()):
@@ -1467,18 +1454,28 @@ def torch_args_to_ge_args(*args, ge_support_info, op_type):
         elif isinstance(val, list):
             if expected_type != "dynamic":
                 raise TypeError(
-                    f"The AscendIR {op_type} input '{name}' is not dynamic but got list, please check input.")
+                    f"Failed to parse AscendIR: The AscendIR {op_type} input '{name}' is not dynamic but got list, "
+                    f"please check converter input type, "
+                    f"can set torchair.logger.setLevel(logging.info) to check the auto generate converter code.")
             inputs[name] = val
         else:
-            raise TypeError(f"The AscendIR {op_type} input '{name}' has unsupported ascend type {type(val).__name__}.")
+            raise TypeError(
+                f"Failed to parse AscendIR: The AscendIR {op_type} input '{name}' "
+                f"has unsupported ascend type {type(val).__name__}, "
+                f"please check converter input type can match the AscendIR register, "
+                f"can set torchair.logger.setLevel(logging.info) to check the auto generate converter code.")
 
 
     attrs = {}
     for j, (name, vt_tag) in enumerate(ge_attrs.items(), start=len(ge_inputs)):
         val = args[j]
-        constructor = attr_type_map.get(vt_tag)
+        constructor = _ATTR_TYPE_MAP.get(vt_tag)
         if constructor is None:
-            raise ValueError(f"The AscendIR {op_type} has unsupported attr type '{vt_tag}' for '{name}'.")
+            raise ValueError(f"Failed to parse AscendIR: The AscendIR {op_type} "
+                             f"has unsupported attr type '{vt_tag}' for '{name}', "
+                             f"please check converter attr type can match the AscendIR register, "
+                             f"can set torchair.logger.setLevel(logging.info) to "
+                             f"check the auto generate converter code.")
 
         if isinstance(val, torch.dtype):
             ge_type = torch_type_to_ge_type(val)

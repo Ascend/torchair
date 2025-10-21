@@ -138,7 +138,7 @@ std::tuple<std::string, tng::IrOutType, tng::IrOutType, tng::IrOutType> GetGeIrD
     TNG_RAISE_IF_ERROR(Session::GetInstance().GetGeFunc());
   }
   if (!Session::GetInstance().IsInitialized()) {
-    TNG_LOG(WARNING) << "GE has not initialized, GetRegisteredIrDef func can not get correct geir def.";
+    TNG_LOG(WARNING) << "Ascend has not initialized, GetRegisteredIrDef func can not get correct AscendIR def.";
   }
   static bool enable_get_registered_ir_def = Session::GetInstance().IsGetRegisteredIrDefSupported();
   if (enable_get_registered_ir_def) {
