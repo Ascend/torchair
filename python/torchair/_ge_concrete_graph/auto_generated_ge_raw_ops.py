@@ -23892,100 +23892,74 @@ def HcomReduce(x: Tensor, *, root_rank: int, reduction: str, group: str, fusion:
     return y
 
 
-# This api is auto-generated from IR ScatterPaKvCache.
-@auto_convert_to_tensor([False, False, False, False, False, False, False, False],
-                        [False, False, False, False, False, True, True, True],
-                        inputs_tensor_type=[TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_INDEX_NUMBER,
-                                            TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_INDEX_NUMBER,
-                                            TensorType.TT_INDEX_NUMBER, TensorType.TT_INDEX_NUMBER])
-def ScatterPaKvCache(key: Tensor, key_cache: Tensor, slot_mapping: Tensor, value: Tensor, value_cache: Tensor,
-                     compress_lens: Optional[Tensor], compress_seq_offset: Optional[Tensor],
-                     seq_lens: Optional[Tensor], cache_mode: str = "Norm", *, dependencies=[], node_name=None):
-    """
-    REG_OP(ScatterPaKvCache)\n
-        .INPUT(key, "T")\n
-        .INPUT(key_cache, "T")\n
-        .INPUT(slot_mapping, TensorType::IndexNumberType())\n
-        .INPUT(value, "T")\n
-        .INPUT(value_cache, "T")\n
-        .OPTIONAL_INPUT(compress_lens, TensorType::IndexNumberType())\n
-        .OPTIONAL_INPUT(compress_seq_offset, TensorType::IndexNumberType())\n
-        .OPTIONAL_INPUT(seq_lens, TensorType::IndexNumberType())\n
-        .ATTR(cache_mode, String, "Norm")\n
-        .OUTPUT(key_cache, "T")\n
-        .OUTPUT(value_cache, "T")\n
-        .DATATYPE(T, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT, DT_INT8, DT_UINT8, DT_INT16,\n
-                                 DT_UINT16, DT_INT32, DT_UINT32, DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN}))\n
-        .OP_END_FACTORY_REG(ScatterPaKvCache)\n
-    """
+# This api is auto-generated from IR ScatterPaKvCache
+@auto_convert_to_tensor([False, False, False, False, False, False, False, False], [False, False, False, False, False, True, True, True], inputs_tensor_type=[TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_INDEX_NUMBER, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_INDEX_NUMBER, TensorType.TT_INDEX_NUMBER, TensorType.TT_INDEX_NUMBER])
+def ScatterPaKvCache(key: Tensor, key_cache: Tensor, slot_mapping: Tensor, value: Tensor, value_cache: Tensor, compress_lens: Optional[Tensor], compress_seq_offset: Optional[Tensor], seq_lens: Optional[Tensor], *, cache_mode: str="Norm", scatter_mode: str="None", strides: List[int]=[1, 1], offsets: List[int]=[0, 0], dependencies=[], node_name=None):
+    """REG_OP(ScatterPaKvCache)\n
+.INPUT(key, "T")\n
+.INPUT(key_cache, "T")\n
+.INPUT(slot_mapping, TensorType::IndexNumberType())\n
+.INPUT(value, "T")\n
+.INPUT(value_cache, "T")\n
+.OPTIONAL_INPUT(compress_lens, TensorType::IndexNumberType())\n
+.OPTIONAL_INPUT(compress_seq_offset, TensorType::IndexNumberType())\n
+.OPTIONAL_INPUT(seq_lens, TensorType::IndexNumberType())\n
+.OUTPUT(key_cache, "T")\n
+.OUTPUT(value_cache, "T")\n
+.ATTR(cache_mode, String, "Norm")\n
+.ATTR(scatter_mode, String, "None")\n
+.ATTR(strides, ListInt, {1,1})\n
+.ATTR(offsets, ListInt, {0,0})\n
+"""
 
-    op = get_default_ge_graph().op.add()
-    op.type = "ScatterPaKvCache"
-    op.name = next_unique_name(node_name, "ScatterPaKvCache")
+    # process inputs
+    inputs = {
+        "key": key,
+        "key_cache": key_cache,
+        "slot_mapping": slot_mapping,
+        "value": value,
+        "value_cache": value_cache,
+        "compress_lens": compress_lens,
+        "compress_seq_offset": compress_seq_offset,
+        "seq_lens": seq_lens,
+    }
 
-    for dependency in dependencies:
-        op.input.append(dependency.controller)
-
-    op.input.append(key.tensor)
-    op.input_desc.add().CopyFrom(key.desc)
-    op.input_desc[-1].name = "key"
-
-    op.input.append(key_cache.tensor)
-    op.input_desc.add().CopyFrom(key_cache.desc)
-    op.input_desc[-1].name = "key_cache"
-
-    op.input.append(slot_mapping.tensor)
-    op.input_desc.add().CopyFrom(slot_mapping.desc)
-    op.input_desc[-1].name = "slot_mapping"
-
-    op.input.append(value.tensor)
-    op.input_desc.add().CopyFrom(value.desc)
-    op.input_desc[-1].name = "value"
-
-    op.input.append(value_cache.tensor)
-    op.input_desc.add().CopyFrom(value_cache.desc)
-    op.input_desc[-1].name = "value_cache"
-
-    if compress_lens is not None:
-        op.input.append(compress_lens.tensor)
-        op.input_desc.add().CopyFrom(compress_lens.desc)
-        op.input_desc[-1].name = "compress_lens"
-    else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "compress_lens"
-    if compress_seq_offset is not None:
-        op.input.append(compress_seq_offset.tensor)
-        op.input_desc.add().CopyFrom(compress_seq_offset.desc)
-        op.input_desc[-1].name = "compress_seq_offset"
-    else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "compress_seq_offset"
-    if seq_lens is not None:
-        op.input.append(seq_lens.tensor)
-        op.input_desc.add().CopyFrom(seq_lens.desc)
-        op.input_desc[-1].name = "seq_lens"
-    else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "seq_lens"
-
-    # process attributes
-    if cache_mode is None or cache_mode == "":
-        cache_mode = "Norm"
-    op.attr["cache_mode"].s = compat_as_bytes(cache_mode)
+    # process attrs
+    attrs = {
+        "cache_mode": attr.Str("PA_NZ"),
+        "scatter_mode": attr.Str(scatter_mode),
+        "strides": attr.ListInt(strides),
+        "offsets": attr.ListInt(offsets),
+    }
 
     # process outputs
-    output_index = 0
-    op.output_desc.add().name = "key_cache"
-    key_cache_out = Tensor(op, output_index)
-    output_index += 1
-    op.output_desc.add().name = "value_cache"
-    value_cache_out = Tensor(op, output_index)
-    output_index += 1
+    outputs = [
+    "key_cache",
+    "value_cache",
+    ]
 
-    return key_cache_out, value_cache_out
+    return ge_op(
+        op_type="ScatterPaKvCache",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("ScatterPaKvCache") \
+        .input("key", "") \
+        .input("key_cache", "") \
+        .input("slot_mapping", "") \
+        .input("value", "") \
+        .input("value_cache", "") \
+        .optional_input("compress_lens", "") \
+        .optional_input("compress_seq_offset", "") \
+        .optional_input("seq_lens", "") \
+        .attr("cache_mode", attr.Str("Norm")) \
+        .attr("scatter_mode", attr.Str("None")) \
+        .attr("strides", attr.ListInt([1, 1])) \
+        .attr("offsets", attr.ListInt([0, 0])) \
+        .output("key_cache", "") \
+        .output("value_cache", "")
+    )
 
 
 # This api is auto-generated from IR HcomReduceScatter
