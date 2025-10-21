@@ -933,7 +933,8 @@ class AclGraph(object):
             import torch_npu
             with torch_npu.npu.graph(self.graph[graph_key], pool=self.pool, stream=self.stream,
                                      capture_error_mode=self.capture_error_mode):
-                captured_outputs = self.fx_forward(*args, node_info=self._updated_node_infos, **kwargs)
+                captured_outputs = self.fx_forward(*args, node_info=self._updated_node_infos, is_capturing=True,
+                                                   **kwargs)
                 for i, _ in enumerate(self._updated_node_infos):
                     logger.debug("Record the %s th updated node, node name[%s], node func[%s], node args length[%s], "
                                  "node kwargs length[%s], update param name[%s], update task handle[%s], "
