@@ -414,7 +414,6 @@ class CapturedGraphUpdateAndReplay(nn.Module):
         self._updated_input_func = updated_input_func
         self._updated_node_infos = updated_node_infos
         self._update_stream = torch.npu.Stream()
-        self._current_stream = torch.npu.current_stream()
 
     def forward(self, *args: Any, **kwargs: Any):
         self._replay_graph.replay()
@@ -424,16 +423,15 @@ class CapturedGraphUpdateAndReplay(nn.Module):
         if len(updated_kwargs) == 0:
             return
 
-        torch.npu.set_stream(self._update_stream)
-        for node_info in self._updated_node_infos:
-            torch.npu.graph_task_update_begin(self._update_stream, node_info.handle)
-            node_kwargs = dict(node_info.kwargs)
-            for key in node_info.updated_param_name:
-                node_kwargs[key] = updated_kwargs[node_info.node_name][key]
-            node_info.updated_func(*node_info.args, **node_kwargs)
-            torch.npu.graph_task_update_end(self._update_stream)
-            self._update_stream.record_event(node_info.event)
-        torch.npu.set_stream(self._current_stream)
+        with torch.npu.stream(self._update_stream):
+            for node_info in self._updated_node_infos:
+                torch.npu.graph_task_update_begin(self._update_stream, node_info.handle)
+                node_kwargs = dict(node_info.kwargs)
+                for key in node_info.updated_param_name:
+                    node_kwargs[key] = updated_kwargs[node_info.node_name][key]
+                node_info.updated_func(*node_info.args, **node_kwargs)
+                torch.npu.graph_task_update_end(self._update_stream)
+                self._update_stream.record_event(node_info.event)
 
         logger.info("Replay AclGraph and update input params successfully.")
         return
