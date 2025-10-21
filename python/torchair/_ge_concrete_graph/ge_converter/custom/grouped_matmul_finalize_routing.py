@@ -36,9 +36,19 @@ def conveter_npu_grouped_matmul_finalize_routing(
         dtype = DataType.DT_FLOAT
     else:
         raise RuntimeError("Not supported output dtype is " + str(dtype))
-
+    
+    opp_ver = get_cann_opp_version()
+    second_dot_index = opp_ver.find('.', opp_ver.find('.') + 1)
+    opp_ver = float(opp_ver[:second_dot_index])
     if w.dtype == DataType.DT_INT32:
-        new_w = ge.Bitcast(w, type=DataType.DT_INT4, keep_dim=True)
+        if opp_ver >= 8.5:
+            new_w = ge.Bitcast(w, type=DataType.DT_INT4, keep_dim=True)
+        else:
+            const_w = ge.Const([1] * (w.rank - 1) + [8])
+            shape_w = ge.Shape(w)
+            shape_w = ge.Mul(shape_w, const_w)
+            new_w = ge.Bitcast(w, type=DataType.DT_INT4)
+            new_w = ge.Reshape(new_w, shape_w)
     else:
         new_w = w
 

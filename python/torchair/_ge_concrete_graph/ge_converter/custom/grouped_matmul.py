@@ -11,10 +11,21 @@ def fill_empty_tensorlist(input_data, desired_dtype):
 def convert_tensorlist_to_int4(input_data: List[Tensor]):
     input_dtype = input_data[0].dtype
     w_list = []
+    opp_ver = get_cann_opp_version()
+    second_dot_index = opp_ver.find('.', opp_ver.find('.') + 1)
+    opp_ver = float(opp_ver[:second_dot_index])
     if input_dtype == DataType.DT_INT32:
         for w_item in input_data:
-            new_w = ge.Bitcast(w_item, type=DataType.DT_INT4, keep_dim=True)
-            w_list.append(new_w)
+            if opp_ver >= 8.5:
+                new_w = ge.Bitcast(w_item, type=DataType.DT_INT4, keep_dim=True)
+                w_list.append(new_w)
+            else:                
+                const_w = ge.Const([1] * (w_item.rank - 1) + [8])
+                shape_w = ge.Shape(w_item)
+                shape_w = ge.Mul(shape_w, const_w)
+                new_w = ge.Bitcast(w_item, type=DataType.DT_INT4)
+                new_w = ge.Reshape(new_w, shape_w)
+                w_list.append(new_w)
     else:
         w_list = input_data
     return w_list
