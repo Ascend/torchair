@@ -1,0 +1,39 @@
+name: 🛠️ Installation
+description: 安装过程中遇到错误时，请在此提交问题。
+title: "[Installation]: "
+labels: ["installation"]
+
+body:
+  - type: markdown
+    attributes:
+      value: >
+        #### 在提交问题之前，请通过[搜索现有和历史问题](https://gitee.com/ascend/torchair/issues)确保该问题尚未被提出并解决。
+  - type: textarea
+    attributes:
+      label: 您的环境信息
+      description: |
+        请提供以下信息
+      value: |
+        ```text
+        -- CANN 版本 (e.g., CANN 3.0.x，5.x.x):  
+        -- Pytorch/Torch_npu 版本 (e.g., v2.1.0, v2.6.0):
+        -- Python 版本 (e.g., Python 3.7.5):
+        -- 操作系统版本 (e.g., Ubuntu 18.04):
+        ```
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 您是如何编译、安装TorchAir的
+      description: |
+        请粘贴您尝试执行的完整命令。
+      value: |
+        ```sh
+        git clone https://gitee.com/ascend/torchair.git 
+        cd torchair
+        bash build.sh -i
+        ```
+  - type: markdown
+    attributes:
+      value: >
+        感谢您的贡献 🎉!

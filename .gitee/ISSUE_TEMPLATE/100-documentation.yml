@@ -1,0 +1,22 @@
+name: 📚 Documentation
+description: 如您在阅读[TorchAir资料](https://www.hiascend.com/document/detail/zh/Pytorch/710/modthirdparty/torchairuseguide)时遇到问题，请提交issue反馈。
+title: "[Doc]: "
+labels: ["documentation"]
+
+body:
+  - type: textarea
+    attributes:
+      label: 📚 资料 issue
+      description: >
+        清晰简明地描述资料中哪些内容存在问题。并附上资料连接。
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 建议一个潜在的替代/修复方案
+      description: >
+        请告诉我们在这方面应如何改进文档。
+  - type: markdown
+    attributes:
+      value: >
+        感谢您的贡献 🎉!

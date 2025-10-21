@@ -1,0 +1,31 @@
+name: 🚀 Feature request
+description: 提交新的 TorchAir 功能提案/请求
+title: "[Feature]: "
+labels: ["feature request"]
+
+body:
+  - type: markdown
+    attributes:
+      value: >
+        #### 在提交问题之前，请通过[搜索现有和历史问题](https://gitee.com/ascend/torchair/issues)确保该问题尚未被提出并解决。
+  - type: textarea
+    attributes:
+      label: 🚀 特性说明、动机阐述与价值主张
+      description: >
+        清晰、准确地描述功能提案。请阐述提出该提案的动机。此功能请求是否与某个特定问题相关？例如："我正在处理 X 问题，并希望实现 Y 功能"。如果此请求与其他 TorchAir 问题相关，也请在此处添加链接。
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 替代解决方案
+      description: >
+        描述您考虑过的任何替代解决方案或功能（若有）。
+  - type: textarea
+    attributes:
+      label: 何其他背景信息
+      description: >
+        请添加关于此功能请求的任何其他背景信息或截图。
+  - type: markdown
+    attributes:
+      value: >
+        感谢您的贡献 🎉!
