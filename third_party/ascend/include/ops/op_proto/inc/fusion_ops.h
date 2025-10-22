@@ -591,5 +591,29 @@ REG_OP(GroupedMatmulFinalizeRouting)
 .ATTR(output_bs, Int, 0)
 .ATTR(group_list_type, Int, 1)
 .OP_END_FACTORY_REG(GroupedMatmulFinalizeRouting)
+
+/**
+* @brief Function GroupedMatmulSwigluQuantV2.
+*/
+REG_OP(GroupedMatmulSwigluQuantV2)
+      .INPUT(x, TensorType({DT_INT8}))
+      .INPUT(x_scale, TensorType({DT_FLOAT}))
+      .INPUT(group_list, TensorType({DT_INT64}))
+      .DYNAMIC_INPUT(weight, TensorType({DT_INT8}))
+      .DYNAMIC_INPUT(weight_scale, TensorType({DT_FLOAT}))
+      .DYNAMIC_INPUT(weight_assist_matrix, TensorType({DT_FLOAT}))
+      .OPTIONAL_INPUT(bias, TensorType({DT_INT8}))      
+      .OPTIONAL_INPUT(smooth_scale, TensorType({DT_FLOAT}))
+      .ATTR(dequant_mode, Int, 0)
+      .ATTR(dequant_dtype, Int, 0)
+      .ATTR(quant_mode, Int, 0)
+      .ATTR(quant_dtype, Int, 0)
+      .ATTR(transpose_weight, Bool, false)
+      .ATTR(group_list_type, Int, 0)
+      .ATTR(tuning_config, ListInt, {0})
+      .OUTPUT(y, TensorType({DT_INT8}))
+      .OUTPUT(y_scale, TensorType({DT_FLOAT}))
+      .OP_END_FACTORY_REG(GroupedMatmulSwigluQuantV2)
+
 } // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_FUSION_OPS_H_

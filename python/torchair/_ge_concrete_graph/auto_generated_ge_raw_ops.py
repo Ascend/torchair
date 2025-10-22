@@ -81171,3 +81171,97 @@ def MoeUpdateExpert(expert_ids: Tensor,
         .output("balanced_expert_ids", "DT_INT32, DT_INT64")\
         .output("balanced_active_mask", "DT_BOOL")
     )
+
+
+# This api is auto-generated from IR GroupedMatmulSwigluQuant
+@auto_convert_to_tensor([False, False, False, True, True, True, False, False], 
+                        [False, False, False, False, False, False, True, True])
+def GroupedMatmulSwigluQuantV2(x: Tensor,
+                               x_scale: Tensor,
+                               group_list: Tensor,
+                               weight: List[Tensor],
+                               weight_scale: List[Tensor],
+                               weight_assist_matrix: List[Tensor],
+                               bias: Optional[Tensor],
+                               smooth_scale: Optional[Tensor],
+                               *,
+                               dequant_mode: int = 0,
+                               dequant_dtype: int = 0,
+                               quant_mode: int = 0,
+                               quant_dtype: int = 0,
+                               transpose_weight: bool = False,
+                               group_list_type: int = 0,
+                               tuning_config: List[int] = [0],
+                               dependencies=[],
+                               node_name=None):
+    """REG_OP(GroupedMatmulSwigluQuantV2)\n
+    .INPUT(x, TensorType({DT_INT8}))\n
+    .INPUT(x_scale, TensorType({DT_FLOAT}))\n
+    .INPUT(group_list, TensorType({DT_INT64}))\n    
+    .DYNAMIC_INPUT(weight, TensorType({DT_INT8}))\n
+    .DYNAMIC_INPUT(weight_scale, TensorType({DT_FLOAT}))\n
+    .DYNAMIC_INPUT(weight_assist_matrix, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(bias, TensorType({DT_INT8}))\n      
+    .DYNAMIC_INPUT(smooth_scale, TensorType({DT_FLOAT}))\n
+    .ATTR(dequant_mode, Int, 0)\n
+    .ATTR(dequant_dtype, Int, 0)\n
+    .ATTR(quant_mode, Int, 0)\n
+    .ATTR(quant_dtype, Int, 0)\n
+    .ATTR(transpose_weight, Bool, false)\n
+    .ATTR(group_list_type, Int, 0)\n
+    .ATTR(tuning_config, ListInt, {0})\n
+    .OUTPUT(y, TensorType({DT_INT8}))\n
+    .OUTPUT(y_scale, TensorType({DT_FLOAT}))\n
+    """
+
+    inputs = {
+        "x": x,
+        "x_scale": x_scale,
+        "group_list": group_list,
+        "weight": weight,
+        "weight_scale": weight_scale,
+        "weight_assist_matrix": weight_assist_matrix,
+        "bias": bias,
+        "smooth_scale": smooth_scale,
+    }
+
+    attrs = {
+        "dequant_mode": attr.Int(dequant_mode),
+        "dequant_dtype": attr.Int(dequant_dtype),
+        "quant_mode": attr.Int(quant_mode),
+        "quant_dtype": attr.Int(quant_mode),
+        "transpose_weight": attr.Bool(transpose_weight),
+        "group_list_type": attr.Int(group_list_type),
+        "tuning_config": attr.ListInt(tuning_config),
+    }
+
+    outputs = [
+        "y",
+        "y_scale",
+    ]
+
+    return ge_op(
+        op_type="GroupedMatmulSwigluQuantV2",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("GroupedMatmulSwigluQuantV2")\
+        .input("x", "DT_INT8")\
+        .input("x_scale", "DT_FLOAT")\
+        .input("group_list", "DT_INT64")\
+        .dynamic_input("weight", "DT_INT8")\
+        .dynamic_input("weight_scale", "DT_FLOAT")\
+        .dynamic_input("weight_assist_matrix", "DT_FLOAT")\
+        .optional_input("bias", "DT_FLOAT")\
+        .optional_input("smooth_scale", "DT_FLOAT")\
+        .attr("dequant_mode", attr.Int(0))\
+        .attr("dequant_dtype", attr.Int(0))\
+        .attr("quant_mode", attr.Int(0))\
+        .attr("quant_dtype", attr.Int(0))\
+        .attr("transpose_weight", attr.Bool(False))\
+        .attr("group_list_type", attr.Int(0))\
+        .attr("tuning_config", attr.ListInt([0]))\
+        .output("y", "DT_INT8")\
+        .output("y_scale", "DT_FLOAT")
+    )
