@@ -89,8 +89,8 @@ def _get_output_to_input_ref_idx(op: OpDef) -> Dict[int, int]:
         ref_idx_mapping[0] = 1
         ref_idx_mapping[1] = 4
     elif op.type == "MlaPrologV3":
-        ref_idx_mapping[2] = 10
-        ref_idx_mapping[3] = 11
+        ref_idx_mapping[2] = 9
+        ref_idx_mapping[3] = 10
     elif op.type == "KvRmsNormRopeCache":
         ref_idx_mapping[0] = 5
         ref_idx_mapping[1] = 6
