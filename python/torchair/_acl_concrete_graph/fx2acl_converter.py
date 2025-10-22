@@ -539,7 +539,7 @@ class AclConcreteGraph(ConcreteGraphBase):
         from torch._inductor.utils import IndentedBuffer
         forward_code = IndentedBuffer()
         # func signiture
-        forward_code.writeline("def forward(*args, node_info=[]):")
+        forward_code.writeline("def forward(*args, node_info=[], is_capturing: bool = False):")
 
         with forward_code.indent():
             all_input_str = ', '.join(self._fx_input_names)
@@ -586,15 +586,17 @@ class AclConcreteGraph(ConcreteGraphBase):
 
                 # external event no need record before capture.
                 need_updated_ops_code.splice(f'''
+                if is_capturing:
                     external_event_{node.name} = torch.npu.ExternalEvent()
                     capture_stream_{node.name} = torch.npu.current_stream()
                     external_event_{node.name}.wait(capture_stream_{node.name})
                     external_event_{node.name}.reset(capture_stream_{node.name})
-
                     torch.npu.graph_task_group_begin(capture_stream_{node.name})
-                    {node.name} = torch.ops.{node.target}(*{node.args}, **{node.kwargs})
-                    handle_{node.name} = torch.npu.graph_task_group_end(capture_stream_{node.name})
 
+                {node.name} = torch.ops.{node.target}(*{node.args}, **{node.kwargs})
+
+                if is_capturing:
+                    handle_{node.name} = torch.npu.graph_task_group_end(capture_stream_{node.name})
                     node_args, node_kwargs = reconstruct_args_kwargs({node.args}, {node.kwargs})
                     node_info.append(UpdatedNodeInfo(
                         node_name="{node.name}",
@@ -611,3 +613,4 @@ class AclConcreteGraph(ConcreteGraphBase):
                     need_updated_ops_code.getvalue()
 
         return has_need_updated_ops
+

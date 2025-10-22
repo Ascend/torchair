@@ -2206,6 +2206,52 @@ class AclGraphSt(unittest.TestCase):
             model_match_cache(x, y)  # cache hint
             model_match_cache(x, y)  # cache hint
 
+    def test_aclgraph_cache_compile_with_static_kernel(self):
+        class StaticKernelModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear1 = torch.nn.Linear(2, 2)
+                self.linear2 = torch.nn.Linear(2, 2)
+                self.cached_prompt = torchair.inference.cache_compile(self.prompt, config=config)
+
+            def forward(self, x):
+                return self.cached_prompt(x)
+
+            def _forward(self, x):
+                ln1 = self.linear1(x)
+                ln2 = self.linear2(x)
+                return ln1 + ln2
+
+            def prompt(self, x):
+                return self._forward(x)
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        config.experimental_config.aclgraph._aclnn_static_shape_kernel = True
+        config.experimental_config.aclgraph._aclnn_static_shape_kernel_build_dir = ".."
+        model = StaticKernelModel()
+
+        prompt_cache_bin = CompiledModel.get_cache_bin(model.prompt, config=config)
+        ModelCacheSaver.remove_cache(os.path.abspath(os.path.dirname(prompt_cache_bin)))
+        prompt_cache_dir = os.path.abspath(os.path.dirname(prompt_cache_bin))
+
+        config.experimental_config.aclgraph._aclnn_static_shape_kernel = False
+        model2 = StaticKernelModel()
+        prompt2_cache_bin = CompiledModel.get_cache_bin(model2.prompt, config=config)
+        ModelCacheSaver.remove_cache(os.path.abspath(os.path.dirname(prompt2_cache_bin)))
+        prompt2_cache_dir = os.path.abspath(os.path.dirname(prompt2_cache_bin))
+        self.assertNotEqual(prompt2_cache_dir, prompt_cache_dir,
+                            "Cache bin dir with different config should not be the same.")
+
+        config.experimental_config.aclgraph._aclnn_static_shape_kernel = True
+        model3 = StaticKernelModel()
+        prompt3_cache_bin = CompiledModel.get_cache_bin(model3.prompt, config=config)
+        ModelCacheSaver.remove_cache(os.path.abspath(os.path.dirname(prompt3_cache_bin)))
+        prompt3_cache_dir = os.path.abspath(os.path.dirname(prompt3_cache_bin))
+        self.assertEqual(prompt3_cache_dir, prompt_cache_dir,
+                            "Cache bin dir with same config and same model should be the same.")
+
 
 if __name__ == '__main__':
     unittest.main()

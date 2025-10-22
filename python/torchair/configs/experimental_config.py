@@ -39,6 +39,9 @@ class _ExperimentalConfig(NpuBaseConfig):
         if self.static_model_ops_lower_limit.value is not None:
             local_experiment_option["ge.exec.static_model_ops_lower_limit"] = \
                 str(self.static_model_ops_lower_limit.value)
+        local_aclgraph_experimental_options, global_aclgraph_experimental_options = self.aclgraph.as_dict()
+        local_experiment_option.update(local_aclgraph_experimental_options)
+        global_experiment_option.update(global_aclgraph_experimental_options)
         return local_experiment_option, global_experiment_option
 
 
@@ -48,4 +51,23 @@ class _AclGraphExperimentalConfig(NpuBaseConfig):
         self._aclnn_static_shape_kernel_build_dir = StrOptionValue()
 
         super(_AclGraphExperimentalConfig, self).__init__()
+
+    def as_dict(self):
+        global_aclgraph_experimental_options = {}
+        local_aclgraph_experimental_options = {}
+
+        # The parameters "_aclnn_static_shape_kernel"and "_aclnn_static_shape_kernel_build_dir" will be ignored
+        # if the "_aclnn_static_shape_kernel" parameter is set to False("0").
+        # The value of _aclnn_static_shape_kernel.value will be "0" by default.
+        if self._aclnn_static_shape_kernel.value == "1":
+            local_aclgraph_experimental_options["_aclnn_static_shape_kernel"] = self._aclnn_static_shape_kernel.value
+            # Explicitly setting "_aclnn_static_shape_kernel_build_dir" to None will cause runtime errors
+            # because the underlying ge::AscendString type cannot handle None values.
+            # Since "_aclnn_static_shape_kernel_build_dir" is used directly,
+            # setting its default value to an empty string ("") in the as_dict function will not cause any issues.
+            local_aclgraph_experimental_options["_aclnn_static_shape_kernel_build_dir"] = \
+                self._aclnn_static_shape_kernel_build_dir.value if self._aclnn_static_shape_kernel_build_dir.value\
+                                                                   is not None else ""
+
+        return local_aclgraph_experimental_options, global_aclgraph_experimental_options
 
