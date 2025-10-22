@@ -141,6 +141,7 @@ public:
       return tng::Status::Error("Failed to create device stdout channel");
     }
     worker_ = std::make_unique<std::thread>([this]() {
+      static_cast<void>(aclrtSetDevice(device_));
       size_t index = 0u;
       while (running_) {
         TNG_LOG(DEBUG) << "Start to receive npu device stdout index " << index;
@@ -156,6 +157,7 @@ public:
           std::cerr << std::string(static_cast<char *>(item.data), item.data_len) << std::endl;
         }
       }
+      static_cast<void>(aclrtResetDevice(device_));
     });
     return tng::Status::Success();
   }
