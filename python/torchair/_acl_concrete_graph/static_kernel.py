@@ -1,11 +1,11 @@
 import os
-import subprocess
-import datetime
-from enum import IntEnum
-from pathlib import Path
 import warnings
+import subprocess
+from pathlib import Path
+import datetime
 
 import torch
+import torch.distributed as dist
 from torchair.core import _torchair
 from torchair.core.utils import logger
 
@@ -14,11 +14,19 @@ _uninstall_paths = []
 
 
 def compile_static_kernel(fx_func, *args, build_dir=None, **kwargs):
-    warnings.warn("Starting static kernel compilation")
+    if not _is_single_card() and "LOCAL_WORLD_SIZE" not in os.environ:
+        warnings.warn(
+        "Environment variables 'LOCAL_WORLD_SIZE' is not set in a multi-card context. "
+        "As a result, the static kernel feature will be disabled. "
+        "To resolve this, please either launch the process via torchrun,"
+        "or manually configure the 'LOCAL_WORLD_SIZE' environment variables. "
+        )
+        return
 
+    warnings.warn("Starting static kernel compilation")
     result_root = safe_resolve_output_dir(build_dir)
 
-    # 执行单算子，用于生成算子信息json
+    # 1.执行单算子，用于生成算子信息json
     _torchair.AclopStartDumpArgs(1, str(result_root))
     try:
         if isinstance(fx_func, torch.fx.GraphModule):
@@ -31,8 +39,7 @@ def compile_static_kernel(fx_func, *args, build_dir=None, **kwargs):
         _torchair.AclopStopDumpArgs(1)
     logger.debug("static kernel run eager success")
 
-    debug_dirs = [d for d in result_root.iterdir()
-                  if d.is_dir() and d.name.endswith("_debug")]
+    debug_dirs = [d for d in result_root.iterdir() if d.is_dir() and d.name.endswith("_debug")]
     if not debug_dirs:
         logger.debug("Can not find json of ops, do not execute op_compiler")
         return
@@ -43,6 +50,7 @@ def compile_static_kernel(fx_func, *args, build_dir=None, **kwargs):
         logger.debug(f"No JSON files in {debug_dir}, skip op_compiler")
         return
 
+    # 2.开始静态编译
     cmd = [
         "op_compiler",
         "-p", str(debug_dir),
@@ -58,22 +66,114 @@ def compile_static_kernel(fx_func, *args, build_dir=None, **kwargs):
         logger.warning(f"execute op_compiler error, msg: {e.stderr}")
         return
 
-    for run_pkg in result_root.glob("*.run"):
-        filepath = run_pkg
+    # 3.安装静态kernel run包
+    install_and_sync_run_pkgs(result_root)
+
+
+def _is_single_card() -> bool:
+    if not dist.is_available() or not dist.is_initialized():
+        return True
+
+    try:
+        return dist.get_world_size() <= 1
+    except Exception:
+        return True
+
+
+def _install_run_packages(result_root: Path, rank: int = None):
+    run_pkgs = list(result_root.glob("*.run"))
+    prefix = f"Rank {rank}: " if rank is not None else ""
+    if not run_pkgs:
+        logger.debug(f"{prefix}no static kernel run packages to install")
+        return
+
+    for run_pkg in run_pkgs:
         filename = run_pkg.name
         try:
-            result = subprocess.run(
-                [str(filepath)],
-                check=True,
-                capture_output=True,
-                text=True
-            )
-            logger.debug(f"{filename} static kernel run pkg install success, msg: {result.stdout}")
+            res = subprocess.run([str(run_pkg)], check=True, capture_output=True, text=True)
+            logger.debug(f"{prefix}{filename} install success, msg: {res.stdout}")
             save_uninstall_info(filename[:-4])
-            import torch_npu
-            torch_npu.npu._aclnn_reselect_static_kernel()
         except subprocess.CalledProcessError as e:
-            logger.warning(f"{filename} static kernel run pkg install failed, msg: {e.stderr}")
+            logger.warning(f"{prefix}{filename} install failed, msg: {e.stderr}")
+
+
+def _reselect_static_kernel(rank: int = None):
+    prefix = f"Rank {rank}: " if rank is not None else ""
+    try:
+        import torch_npu
+        torch_npu.npu._aclnn_reselect_static_kernel()
+        logger.debug(f"{prefix}reselect_static_kernel executed successfully")
+    except Exception as e:
+        logger.warning(f"{prefix}reselect_static_kernel failed: {e}")
+
+
+# Example calculations:
+# Nodes: 3 (Node A, Node B, Node C)
+# GPUs per node: 4
+# LOCAL_WORLD_SIZE = 4
+# +---------------------+-------------+-------------+-------------------+----------------------+
+# | Example Process     | node_idx    | global_rank | start = node_idx * | group_ranks         |
+# |                     |             |             | local_world_size   |                     |
+# +---------------------+-------------+-------------+--------------------+---------------------+
+# | Node A GPU 2        | 0           | 2           | 0 * 4 = 0          | [0, 1, 2, 3]        |
+# | Node B GPU 1        | 1           | 5           | 1 * 4 = 4          | [4, 5, 6, 7]        |
+# | Node C GPU 3        | 2           | 11          | 2 * 4 = 8         | [8, 9, 10, 11]      |
+# +---------------------+-------------+-------------+--------------------+---------------------+
+def _get_local_gloo_group():
+    try:
+        local_world_size = int(os.environ['LOCAL_WORLD_SIZE'])
+    except KeyError as e:
+        raise RuntimeError(f"missing environment variable {e.args[0]}, cannot create local Gloo process group") from e
+    except ValueError as e:
+        raise RuntimeError("environment variables LOCAL_WORLD_SIZE must be integers") from e
+    except Exception as e:
+        logger.warning(f"get LOCAL_WORLD_SIZE failed: {e}")
+
+    if local_world_size <= 0:
+        raise RuntimeError("LOCAL_WORLD_SIZE must be > 0")
+
+    world_size = dist.get_world_size()
+    if world_size % local_world_size != 0:
+        raise RuntimeError(f"world_size ({world_size}) is not divisible by LOCAL_WORLD_SIZE ({local_world_size}); ")
+
+    global_rank = dist.get_rank()
+    node_count = world_size // local_world_size
+    local_gloo_groups = [None] * node_count
+
+    for node_idx in range(node_count):
+        start = node_idx * local_world_size
+        ranks = list(range(start, start + local_world_size))
+        local_gloo_groups[node_idx] = dist.new_group(ranks=ranks, backend="gloo")
+
+    return local_gloo_groups[global_rank // local_world_size]
+
+
+def install_and_sync_run_pkgs(result_root: Path):
+    # 1. 检查是多卡还是单卡
+    if _is_single_card():
+        logger.debug("single card")
+        _install_run_packages(result_root)
+        _reselect_static_kernel()
+        return
+
+    # 2. 进入多卡流程
+    rank = dist.get_rank()
+    gloo_group = _get_local_gloo_group()
+
+    logger.debug(f"Rank {rank}: start installing static kernel .run packages")
+    _install_run_packages(result_root, rank)
+
+    # 3. barrier 等待所有安装完
+    logger.debug(f"Rank {rank}: barrier after install (Gloo)")
+    dist.barrier(group=gloo_group)
+
+    # 4. 所有 rank 执行 reselect
+    logger.debug(f"Rank {rank}: start reselecting static kernel")
+    _reselect_static_kernel(rank)
+
+    # 5. barrier 等待所有 reselect 完
+    logger.debug(f"Rank {rank}: barrier after reselect (Gloo)")
+    dist.barrier(group=gloo_group)
 
 
 def save_uninstall_info(filename: str):
