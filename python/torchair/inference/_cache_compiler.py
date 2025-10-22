@@ -112,10 +112,10 @@ def _compile_py_code(py_code: str):
     if version.parse(torch.__version__) > version.parse("2.5.1"):
         from torch._dynamo.guards import _get_closure_vars
         closure_vars = _get_closure_vars()
-        _closure_vars = {(k, v) for k, v in closure_vars.items()}
+        _closure_vars = {k: v for k, v in closure_vars.items()}
     else:
         from torch._dynamo.guards import CLOSURE_VARS
-        _closure_vars = {(k, v) for k, v in CLOSURE_VARS.items()}
+        _closure_vars = {k: v for k, v in CLOSURE_VARS.items()}
     ge_mod.__dict__.update(_closure_vars)
     exec(compile(py_code, '<string>', 'exec'), ge_mod.__dict__, ge_mod.__dict__)
     return ge_mod
