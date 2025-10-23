@@ -103,7 +103,7 @@ public:
 
   void Destroy() {
     if (handle_ != nullptr) {
-      (void) acltdtDestroyChannel(handle_);
+      (void)acltdtDestroyChannel(handle_);
     }
     handle_ = nullptr;
   }
@@ -141,12 +141,13 @@ public:
       return tng::Status::Error("Failed to create device stdout channel");
     }
     worker_ = std::make_unique<std::thread>([this]() {
+      static_cast<void>(aclrtSetDevice(device_));
       size_t index = 0u;
       while (running_) {
         TNG_LOG(DEBUG) << "Start to receive npu device stdout index " << index;
         ChannelData data = channel_->Receive();
         TNG_LOG(DEBUG) << "Received npu device stdout " << index++;
-        for (auto &item: data.items) {
+        for (auto &item : data.items) {
           if (item.dtype != aclDataType::ACL_STRING) {
             continue;
           }
@@ -156,6 +157,7 @@ public:
           std::cerr << std::string(static_cast<char *>(item.data), item.data_len) << std::endl;
         }
       }
+      static_cast<void>(aclrtResetDevice(device_));
     });
     return tng::Status::Success();
   }
@@ -190,4 +192,4 @@ Status StartStdoutChannel(int32_t device) {
 void StopStdoutChannel(int32_t device) {
   (void)DeviceStdout::GetInstance(device).Stop();
 }
-}  // namespace tng
+} // namespace tng
