@@ -79936,10 +79936,13 @@ def MoeDistributeCombineAddRmsNorm(expand_x: Tensor,
 
 
 # This api is auto-generated from IR DistributeBarrier
-@auto_convert_to_tensor([False], [False])
-def DistributeBarrier(x_ref: Tensor, *, group: str, world_size: int, dependencies=[], node_name=None):
+@auto_convert_to_tensor([False, False, False], [False, True, True])
+def DistributeBarrier(x_ref: Tensor, time_out: Optional[Tensor], elastic_info: Optional[Tensor], 
+    *, group: str, world_size: int, dependencies=[], node_name=None):
     """REG_OP(DistributeBarrier)\n
     .INPUT(x_ref, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_BOOL, DT_INT8, DT_INT16, DT_INT32, DT_INT64, DT_UINT8, DT_UINT16, DT_UINT32, DT_UINT64}))\n
+    .OPTIONAL_INPUT(time_out, TensorType({DT_INT32}))\n
+    .OPTIONAL_INPUT(elastic_info, TensorType({DT_INT32}))\n
     .OUTPUT(x_ref, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_BOOL, DT_INT8, DT_INT16, DT_INT32, DT_INT64, DT_UINT8, DT_UINT16, DT_UINT32, DT_UINT64}))\n
     .REQUIRED_ATTR(group, String)\n
     .REQUIRED_ATTR(world_size, Int)\n
@@ -79948,6 +79951,8 @@ def DistributeBarrier(x_ref: Tensor, *, group: str, world_size: int, dependencie
     # process inputs
     inputs = {
         "x_ref": x_ref,
+        "time_out": time_out,
+        "elastic_info": elastic_info,
     }
 
     # process attrs
@@ -79969,6 +79974,8 @@ def DistributeBarrier(x_ref: Tensor, *, group: str, world_size: int, dependencie
         dependencies=dependencies,
         ir=IrDef("DistributeBarrier") \
         .input("x_ref", "DT_BF16, DT_FLOAT16, DT_FLOAT, DT_BOOL, DT_INT8, DT_INT16, DT_INT32, DT_INT64, DT_UINT8, DT_UINT16, DT_UINT32, DT_UINT64") \
+        .optional_input("time_out", "DT_INT32") \
+        .optional_input("elastic_info", "DT_INT32") \
         .required_attr("group", attr.Str) \
         .required_attr("world_size", attr.Int) \
         .output("x_ref" , "DT_BF16, DT_FLOAT16, DT_FLOAT, DT_BOOL, DT_INT8, DT_INT16, DT_INT32, DT_INT64, DT_UINT8, DT_UINT16, DT_UINT32, DT_UINT64")
