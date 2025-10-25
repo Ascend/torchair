@@ -931,6 +931,10 @@ class AclGraph(object):
 
         else:
             import torch_npu
+            # Clear _updated_node_infos(list of UpdatedNodeInfo objects) before capture.
+            # Each object stores graph task group handles/events for the current capture,
+            # and must be updated on recapture.
+            self._updated_node_infos.clear()
             with torch_npu.npu.graph(self.graph[graph_key], pool=self.pool, stream=self.stream,
                                      capture_error_mode=self.capture_error_mode):
                 captured_outputs = self.fx_forward(*args, node_info=self._updated_node_infos, is_capturing=True,
