@@ -126,5 +126,53 @@ class NpuPrintSt(unittest.TestCase):
 
         self.assertTrue(reached)
 
+    def test_tensor_detail_invalid_int(self):
+        def func(v):
+            torchair.ops.npu_print(v, summarize_size=-1, tensor_detail=1)
+
+        t = torch.empty((0, 3), dtype=torch.int32)
+        compiled_model = torch.compile(func, backend='aot_eager')
+
+        with self.assertRaises(TypeError) as cm:
+            compiled_model(t)
+
+        self.assertEqual("tensor_detail must be bool, got int", str(cm.exception))
+
+    def test_tensor_detail_invalid_str(self):
+        def func(v):
+            torchair.ops.npu_print(v, summarize_size=-1, tensor_detail="True")
+
+        t = torch.empty((0, 3), dtype=torch.int32)
+        compiled_model = torch.compile(func, backend='aot_eager')
+
+        with self.assertRaises(TypeError) as cm:
+            compiled_model(t)
+        self.assertEqual("tensor_detail must be bool, got str", str(cm.exception))
+
+    def test_npu_backend_detail_invalid_str(self):
+        def func(v):
+            torchair.ops.npu_print("x =", v, tensor_detail="True")
+            return torch.abs(v)
+
+        t = torch.neg(torch.ones(10, 10, dtype=torch.bfloat16))
+
+        target_op = torch.ops.air.print.default
+        converter = target_op._ge_converter
+        reached = False
+
+        @functools.wraps(converter)
+        def wrapper(*args, **kwargs):
+            nonlocal reached
+            reached = True
+            return converter(*args, **kwargs)
+
+        target_op._ge_converter = wrapper
+        compiled_model = torch.compile(func, backend=torchair.get_npu_backend())
+        with self.assertRaises(TypeError) as cm:
+            compiled_model(t)
+        self.assertEqual("tensor_detail must be bool, got str", str(cm.exception))
+
+        self.assertFalse(reached)
+
 if __name__ == '__main__':
     unittest.main()

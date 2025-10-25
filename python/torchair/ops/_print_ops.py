@@ -101,6 +101,8 @@ def _npu_print(*args, summarize_size, tensor_detail):
         raise TypeError(f"summarize_size must be int, got {type(summarize_size).__name__}")
     if summarize_size < -1 or summarize_size == 0:
         raise ValueError(f"summarize_size must be positive or -1 for all elements, got {summarize_size}")
+    if not isinstance(tensor_detail, bool):
+        raise TypeError(f"tensor_detail must be bool, got {type(tensor_detail).__name__}")
 
     joint_str = " ".join(["[]" if isinstance(arg, torch.Tensor) else str(arg) for arg in args])
     i = 0
