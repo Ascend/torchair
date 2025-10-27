@@ -794,7 +794,6 @@ class AclGraph(object):
                              self.name, graph_key)
                 # save graph_meta, release resources after recapture
                 saved_graph_meta = self._graphs_meta[graph_key]
-                del self._graphs_meta[graph_key]
             else:
                 logger.debug('The current AclGraph no needs to be recaptured for fx_graph %s with graph key {%s}.',
                              self.name, graph_key)
@@ -850,6 +849,18 @@ class AclGraph(object):
         """
 
         import torch_npu
+        # get stale storages from last run for current fx graph
+        stale_storage_set = set()
+        for key, _ in self._graphs_meta.items():
+            if self._graphs_meta[key].outputs_weakref is None:
+                continue
+            for output_ref in self._graphs_meta[key].outputs_weakref:
+                ref = output_ref()
+                if ref is not None and isinstance(ref, torch.Tensor) and \
+                        ref.untyped_storage()._cdata in self.stale_storages_ptr:
+                    stale_storage_set.add(ref.untyped_storage()._cdata)
+        stale_storages = list(stale_storage_set)
+
         self._graphs_meta[graph_key] = GraphMeta(graph_key=graph_key,
                                                  acl_graph=torch_npu.npu.NPUGraph(),
                                                  replay_func=None,
@@ -863,18 +874,6 @@ class AclGraph(object):
             self.graphs_meta[graph_key].captured_parameter.setdefault(parameter_idx, args[parameter_idx].data_ptr())
         logger.debug('No find captured AclGraph{id: %s} of fx_graph %s with graph key {%s}, and start to capture it.',
                      id(self.graph[graph_key]), self.name, graph_key)
-
-        # get stale storages from last run for current fx graph
-        stale_storage_set = set()
-        for key, _ in self._graphs_meta.items():
-            if self._graphs_meta[key].outputs_weakref is None:
-                continue
-            for output_ref in self._graphs_meta[key].outputs_weakref:
-                ref = output_ref()
-                if ref is not None and isinstance(ref, torch.Tensor) and \
-                        ref.untyped_storage()._cdata in self.stale_storages_ptr:
-                    stale_storage_set.add(ref.untyped_storage()._cdata)
-        stale_storages = list(stale_storage_set)
 
         # set to common original memory state before capture
         enable_mempool_reuse = not ("disable_mempool_reuse_in_same_fx" in self.config.keys() and self.config[
