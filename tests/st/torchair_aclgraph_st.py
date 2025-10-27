@@ -15,7 +15,7 @@ import torchair
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core.utils import logger
 from torchair.inference._cache_compiler import CompiledModel, ModelCacheSaver
-from torchair._acl_concrete_graph.utils import reconstruct_args_kwargs, WeakRef
+from torchair._acl_concrete_graph.utils import reconstruct_args_kwargs, WeakRef, LazyMessage
 from torchair_st_utils import capture_stdout, capture_logger
 
 logger.setLevel(logging.DEBUG)
@@ -1561,6 +1561,20 @@ class AclGraphSt(unittest.TestCase):
         self.assertTrue(ref_out[1] is None)
         self.assertTrue(ref_out[2] == 1.0)
         self.assertTrue(ref_out[3] == ["x", "y", "z"])
+
+    def test_lazy_message(self):
+        mock_func1 = Mock(return_value="test_func1")
+        lazy_message = LazyMessage(mock_func1, "arg1", "arg2")
+        logger.debug("Debug message : %s", lazy_message)
+        mock_func1.assert_called_once_with("arg1", "arg2")
+
+        mock_func2 = Mock(return_value="test_func2")
+        logger.setLevel(logging.INFO)
+        lazy_message = LazyMessage(mock_func2, "arg1", "arg2")
+        logger.debug("Debug message : %s", lazy_message)
+        mock_func2.assert_not_called()
+
+        logger.setLevel(logging.DEBUG)
 
     def test_aclgraph_cache(self):
         class Model(torch.nn.Module):

@@ -18,7 +18,7 @@ from torch.profiler import record_function
 from torchair.core.utils import logger
 from torchair.scope._scope_attr import guard_with_user_stream_scope
 from torchair._acl_concrete_graph.utils import reconstruct_args_kwargs
-from torchair._acl_concrete_graph.utils import (debug_mem_state, WeakRef, GraphMeta, get_tensor_metadata,
+from torchair._acl_concrete_graph.utils import (debug_mem_state, LazyMessage, WeakRef, GraphMeta, get_tensor_metadata,
                                                 reconstruct_from_tensor_metadata, reconstruct_args_kwargs)
 from torchair._acl_concrete_graph.static_kernel import compile_static_kernel
 
@@ -828,7 +828,7 @@ class AclGraph(object):
         # Do sync before we reset all captured aclgraphs, just like what was done before capture
         torch.npu.synchronize()
         logger.info('Current fx_graph %s memory pool is %s. Before reset, the current memory state is {%s}.',
-                    self.name, self.pool, debug_mem_state())
+                    self.name, self.pool, LazyMessage(debug_mem_state))
 
         for _, graph_meta in self._graphs_meta.items():
             graph_meta.acl_graph.reset()
@@ -837,7 +837,7 @@ class AclGraph(object):
         torch.npu.empty_cache()
 
         logger.info('Current fx_graph %s memory pool is %s. After reset, the current memory state is {%s}.',
-                    self.name, self.pool, debug_mem_state())
+                    self.name, self.pool, LazyMessage(debug_mem_state))
 
     def compile_for_graph_key(self, graph_key, *args: Any, **kwargs: Any):
         """
@@ -882,11 +882,11 @@ class AclGraph(object):
         if enable_mempool_reuse:
             logger.debug('Start setting to original memory state for fx_graph %s with graph key{%s}. '
                          'The stale storage is %s, and the current memory state is {%s}.',
-                         self.name, graph_key, stale_storages, debug_mem_state())
+                         self.name, graph_key, stale_storages, LazyMessage(debug_mem_state))
             torch_npu._C._npu_setCheckpointPoolState(self.device, self._original_mem_state, stale_storages, [])
             logger.debug('After setting to original memory state for fx_graph %s with graph key{%s}. '
                          'The current memory state is {%s}.',
-                         self.name, graph_key, debug_mem_state())
+                         self.name, graph_key, LazyMessage(debug_mem_state))
             for ptr in stale_storages:
                 self.stale_storages_ptr.discard(ptr)
 
@@ -900,7 +900,7 @@ class AclGraph(object):
         logger.debug('After capturing fx_graph %s for graph key{%s} to AclGraph{id: %s}, '
                      'memory pool reuse is %s, the memory state is {%s}.',
                      self.name, graph_key, id(self.graph[graph_key]),
-                     "enable" if enable_mempool_reuse else "disable", debug_mem_state())
+                     "enable" if enable_mempool_reuse else "disable", LazyMessage(debug_mem_state))
 
         if enable_mempool_reuse:
             del captured_outputs
@@ -1127,7 +1127,8 @@ class AclGraph(object):
         if len(other_graph_stale_storages) > 0:
             logger.debug('Before reset fx_graph %s outputs stale storages cdata %s to original memory state '
                          'for AclGraph{id: %s} with the current graph key{%s}, and the current memory state is {%s}.',
-                         self.name, other_graph_stale_storages, id(self.graph[graph_key]), graph_key, debug_mem_state())
+                         self.name, other_graph_stale_storages, id(self.graph[graph_key]), graph_key, 
+                         LazyMessage(debug_mem_state))
             # Reset other graph live tensors to stale storages
             torch_npu._C._npu_setCheckpointPoolState(self.device, self._original_mem_state,
                                                      other_graph_stale_storages, [])
@@ -1135,7 +1136,7 @@ class AclGraph(object):
 
         logger.debug('After reset fx_graph %s outputs stale storages, '
                      'for AclGraph{id: %s} with the current graph key{%s}, and the current memory state is {%s}.',
-                     self.name, id(self.graph[graph_key]), graph_key, debug_mem_state())
+                     self.name, id(self.graph[graph_key]), graph_key, LazyMessage(debug_mem_state))
 
     def set_reconstructed_outputs_deleter(self, graph_key: str, reconstructed_outputs: List[torch.Tensor]) -> None:
         """
@@ -1168,7 +1169,7 @@ class AclGraph(object):
         import torch_npu
         logger.debug('Before reconstructing fx_graph %s outputs for graph key{%s}, '
                      'the storages to add deleter are %s, the memory state is {%s}.',
-                     self.name, graph_key, reconstructed_outputs_to_add_deleter, debug_mem_state())
+                     self.name, graph_key, reconstructed_outputs_to_add_deleter, LazyMessage(debug_mem_state))
         # Set reconstructed outputs deleter fn
         torch_npu._C._npu_setCheckpointPoolState(self.device, self._graphs_meta[graph_key].mem_state_after_capture,
                                                  stale_storages, reconstructed_outputs_to_add_deleter)
@@ -1183,4 +1184,4 @@ class AclGraph(object):
         self.stale_storages_ptr.update(reconstructed_outputs_to_add_deleter)
         logger.debug('After reconstructing fx_graph %s outputs for graph key{%s}, '
                      'the memory state is {%s}.',
-                     self.name, graph_key, debug_mem_state())
+                     self.name, graph_key, LazyMessage(debug_mem_state))

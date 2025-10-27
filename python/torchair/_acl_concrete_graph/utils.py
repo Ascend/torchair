@@ -36,6 +36,20 @@ class WeakRef:
             self._is_tensor = False
 
 
+class LazyMessage:
+    """
+    The LazyMessage class is designed to delay the execution of a function
+    and obtain its string representation when needed.
+    """
+    def __init__(self, func, *args, **kwargs):
+        self.func = func
+        self.args = args
+        self.kwargs = kwargs
+
+    def __str__(self):
+        return str(self.func(*self.args, **self.kwargs))            
+
+
 @dataclass
 class TensorMetadata:
     """
