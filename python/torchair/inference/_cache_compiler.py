@@ -238,7 +238,22 @@ class CompiledModel:
     def recompile(self, config: CompilerConfig):
         raise RuntimeError(f"Recompile {self} is not supported yet")
 
-    def _get_used_params(self, model):
+    def parse_buff_holder(self, attr_road_str):
+        """Parse L['...'] format string and extract content inside single quotes.
+
+        Only matches: L['quoted'] format
+        Examples:
+        - "L['self']"            -> "self"
+        - "L['attr.sub_attr']"    -> "attr.sub_attr"
+        """
+        if not isinstance(attr_road_str, str):
+            return None
+        import re
+        pattern = r"^L\s*\[\s*'([^']+)'\s*\]$"
+        match = re.match(pattern, attr_road_str.strip())
+        return match.group(1).strip() if match else None
+
+    def _get_used_params(self, model, func=None):
         log = logger if logger.isEnabledFor(logging.DEBUG) else None
 
         model_params = {
@@ -255,13 +270,20 @@ class CompiledModel:
                 parameters.append(model_params[name])
             else:
                 attr_road = name.split('.')
-                if attr_road[0] != "L['self']":
+                buff_holder = self.parse_buff_holder(attr_road[0])
+                if log is not None:
+                    log.debug(f"Parse  buff_holder {buff_holder} from {attr_road[0]}")
+                if buff_holder == "self":
+                    user_buffer = eval(f"obj.{'.'.join(attr_road[1:])}", globals(), {'obj': model})
+                elif func and buff_holder and buff_holder in func.__code__.co_freevars:
+                    vars_map = dict(zip(func.__code__.co_freevars, [cell.cell_contents for cell in func.__closure__]))
+                    user_buffer = eval(f"obj.{'.'.join(attr_road[1:])}", globals(), {'obj': vars_map[buff_holder]})
+                else:
                     raise ValueError(f"{type_str} {name} not supported now")
-                user_buffer = eval(f"obj.{'.'.join(attr_road[1:])}", globals(), {'obj': model})
                 parameters.append(user_buffer)
         return parameters
 
-    def rebase(self, model, global_vars=None, closure=None, cache_dir=None):
+    def rebase(self, model, global_vars=None, func=None, cache_dir=None):
         log = logger if logger.isEnabledFor(logging.DEBUG) else None
         if log is not None:
             log.debug(f"Rebasing {self.meta} onto {type(model)}")
@@ -277,7 +299,7 @@ class CompiledModel:
                 ge_update_cache_dir = getattr(ge_mod, '_update_ge_cache_dir')
                 ge_update_cache_dir(cache_dir)
 
-        parameters = self._get_used_params(model)
+        parameters = self._get_used_params(model, func)
 
         def compiled_fn(*args):
             full_args = []
@@ -296,7 +318,7 @@ class CompiledModel:
                 log.debug("Importing module %s for %s", module_name, var_name)
             module = importlib.import_module(module_name)
             g.update({var_name: module})
-        compiled_fn = types.FunctionType(self.compiled_fn, g, closure=closure)
+        compiled_fn = types.FunctionType(self.compiled_fn, g, closure=getattr(func, '__closure__', None))
 
         if model is None:
             return compiled_fn
@@ -547,7 +569,7 @@ class LazyCompiledModel:
                 if compiled_model.compiled_fx is None:
                     compiled_model.recompile(self.config)
                 model = self.func.__self__ if isinstance(self.func, types.MethodType) else None
-                return compiled_model.rebase(model, global_vars, closure=self.func.__closure__,
+                return compiled_model.rebase(model, global_vars, func=self.func,
                                              cache_dir=os.path.realpath(os.path.dirname(cache_bin)))
             except Exception as e:
                 logger.warning(f'Clear broken cache {cache_bin} as {e}')
