@@ -34,7 +34,8 @@
 ## 框架对接
 
 - [ ] SGLang，SGLang框架支持Torchair-Aclgraph。
-- [ ] Vllm，Vllm框架配合CANN Recipe实现0 Day支持 torch.compile。
+- [ ] Vllm，Vllm框架支持 torch.compile。
+- [ ] CANN Recipe实现0 Day支持 torch.compile。
 
 ---
 
