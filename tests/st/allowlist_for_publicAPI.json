@@ -49,10 +49,11 @@
         "npu_fused_infer_attention_score",
         "npu_fused_infer_attention_score_v2"
     ],
-	"torchair.scope": [
+    "torchair.scope": [
         "npu_wait_tensor",
         "npu_stream_switch",
-		"super_kernel",
-		"limit_core_num"
+        "super_kernel",
+        "limit_core_num",
+        "op_never_timeout"
     ]
 }
