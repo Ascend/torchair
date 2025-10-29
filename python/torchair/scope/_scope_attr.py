@@ -31,7 +31,10 @@ class ScopeAttrs:
     def apply(self, op):
         for attrs in self._attribute_stack:
             for key, value in attrs.items():
-                op.attr[key].s = compat_as_bytes(str(value))
+                if key == "_op_exec_never_timeout":
+                    op.attr[key].b = (value == "True")
+                else:
+                    op.attr[key].s = compat_as_bytes(str(value))
                 logger.debug(f"Set attribute {key}: {value} on op: {op.name}")
 
 
