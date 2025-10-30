@@ -1093,7 +1093,7 @@ class GeConcreteGraph(ConcreteGraphBase):
             Any: Processed result of the parsed node.
         """
         if str(target) in ['air.scope_enter.default', 'air.scope_exit.default']:
-            return target(*args, **kwargs, need_excute=True)
+            return target(*args, **kwargs, need_execute=True)
         all_zero_and_nosym = all([is_zero_element_tensor(t) and not get_used_syms_in_meta(t)
             for t in flatten_meta_outputs(meta_outputs)])
         if all_zero_and_nosym and (str(target) not in _DONT_EMPTY_TENSOR_OPT_OPS):

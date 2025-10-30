@@ -300,8 +300,10 @@ def apply_event_closure_with_multi_stream(graph_module: fx.GraphModule, graph_na
     scope_exit_nodes = []
     for node in graph_module.graph.nodes:
         if str(node.target) == "air.scope_enter.default":
+            node.kwargs = {**node.kwargs, 'need_execute': True}
             scope_enter_nodes.append(node)
         elif str(node.target) == "air.scope_exit.default":
+            node.kwargs = {**node.kwargs, 'need_execute': True}
             scope_exit_nodes.append(node)
     if len(scope_enter_nodes) != len(scope_exit_nodes):
         raise RuntimeError(f"scope_enter node num is not equal to scope_exit node num, scope_enter node num: "

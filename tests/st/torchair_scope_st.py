@@ -368,5 +368,130 @@ class TorchairSt(unittest.TestCase):
         )
 
 
+    def test_profiler_trace(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, in1, in2, in3, in4):
+                with torchair.scope.profiler_trace('index1', 'begin'):
+                    add1 = torch.add(in3, in4)
+                    cat1 = torch.cat([in1, in4], dim=1)
+                with torchair.scope.profiler_trace('index1', 'end'):
+                    cat2 = torch.cat([in1, in4], dim=1)
+                    mm1 = torch.mm(in3, in4)
+                return add1, cat1, cat2, mm1
+
+        def wrapper_call(func):
+            def wrapper(*args, **kwargs):
+                assert len(args) > 0
+                graph = args[0].graph
+                mm_op = None
+                add_op = None
+                for op in graph.op:
+                    if 'Add' in op.name:
+                        add_op = op
+                    if 'MatMul' in op.name:
+                        mm_op = op
+                add_attr1 = add_op.attr["_profiler_trace_index"].s
+                add_attr2 = add_op.attr["_profiler_trace_pos"].s
+                self.assertEqual(add_attr1, b'index1')
+                self.assertEqual(add_attr2, b'begin')
+                mm_attr1 = mm_op.attr["_profiler_trace_index"].s
+                mm_attr2 = mm_op.attr["_profiler_trace_pos"].s
+                self.assertEqual(mm_attr1, b'index1')
+                self.assertEqual(mm_attr2, b'end')
+                ret = func(*args, **kwargs)
+                return ret
+            return wrapper
+        bak_optimization = GeConcreteGraph.optimize_graph_without_runtime
+        GeConcreteGraph.optimize_graph_without_runtime = wrapper_call(GeConcreteGraph.optimize_graph_without_runtime)
+        model = Model()
+        config_view = CompilerConfig()
+        npu_backend_view = torchair.get_npu_backend(compiler_config=config_view)
+        model = torch.compile(model, backend=npu_backend_view, dynamic=False)
+        in1 = torch.randn(2, 2)
+        in2 = torch.randn(2, 2)
+        in3 = torch.randn(2, 2)
+        in4 = torch.randn(2, 2)
+        model(in1, in2, in3, in4)
+        GeConcreteGraph.optimize_graph_without_runtime = bak_optimization
+
+
+    def test_profiler_trace_both(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, in1, in2, in3, in4):
+                with torchair.scope.profiler_trace('index1', 'both'):
+                    add1 = torch.add(in3, in4)
+                    cat1 = torch.cat([in1, in4], dim=1)
+                    mm1 = torch.mm(in3, in4)
+                with torchair.scope.profiler_trace('index1', 'both'):
+                    sub1 = torch.sub(in3, in4)
+                return add1, cat1, mm1, sub1
+
+        def wrapper_call(func):
+            def wrapper(*args, **kwargs):
+                assert len(args) > 0
+                graph = args[0].graph
+                mm_op = None
+                add_op = None
+                sub_op = None
+                for op in graph.op:
+                    if 'Add' in op.name:
+                        add_op = op
+                    if 'MatMul' in op.name:
+                        mm_op = op
+                    if 'Sub' in op.name:
+                        sub_op = op
+                add_attr1 = add_op.attr["_profiler_trace_index"].s
+                add_attr2 = add_op.attr["_profiler_trace_pos"].s
+                self.assertEqual(add_attr1, b'index1')
+                self.assertEqual(add_attr2, b'begin')
+                mm_attr1 = mm_op.attr["_profiler_trace_index"].s
+                mm_attr2 = mm_op.attr["_profiler_trace_pos"].s
+                self.assertEqual(mm_attr1, b'index1')
+                self.assertEqual(mm_attr2, b'end')
+                sub_attr1 = sub_op.attr["_profiler_trace_index"].s
+                sub_attr2 = sub_op.attr["_profiler_trace_pos"].s
+                self.assertEqual(sub_attr1, b'index1')
+                self.assertEqual(sub_attr2, b'both')
+                ret = func(*args, **kwargs)
+                return ret
+            return wrapper
+        bak_optimization = GeConcreteGraph.optimize_graph_without_runtime
+        GeConcreteGraph.optimize_graph_without_runtime = wrapper_call(GeConcreteGraph.optimize_graph_without_runtime)
+        model = Model()
+        config_view = CompilerConfig()
+        npu_backend_view = torchair.get_npu_backend(compiler_config=config_view)
+        model = torch.compile(model, backend=npu_backend_view, dynamic=False)
+        in1 = torch.randn(2, 2)
+        in2 = torch.randn(2, 2)
+        in3 = torch.randn(2, 2)
+        in4 = torch.randn(2, 2)
+        model(in1, in2, in3, in4)
+        GeConcreteGraph.optimize_graph_without_runtime = bak_optimization
+
+
+    def test_profiler_trace_nested(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, in1, in2, in3, in4):
+                with torchair.scope.profiler_trace('index1', 'end'):
+                    add1 = torch.add(in1, in2)
+                    with torchair.scope.profiler_trace('index1', 'begin'):
+                        add2 = torch.add(in3, in4)
+                return add1, add2
+
+        try:
+            model = Model()
+        except ValueError as e:
+            self.assertIn("Nested profiler_trace is not allowed", str(e))
+
+
 if __name__ == '__main__':
     unittest.main()

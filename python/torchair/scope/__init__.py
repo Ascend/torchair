@@ -67,3 +67,82 @@ def op_never_timeout(enable: bool = True):
     return _Scope([
         ("_op_exec_never_timeout", str(enable))
     ])
+
+
+def profiler_trace(index: str, mode: str):
+    """
+    Context manager that tags ops in its scope with profiling attributes.
+    
+    Behavior summary:
+    - If the scope contains exactly one op:
+        that op is tagged with the attribute that matches the mode ("begin", "end", or "both").
+    - If the scope contains more than one op:
+        mode == "both": the first op is tagged "begin" and the last op is tagged "end".
+        mode == "begin": the first op is tagged "begin".
+        mode == "end": the last op is tagged "end".
+    
+    Args:
+        index (str): Unique profiling ID.
+        mode (str): Tagging mode — "begin", "end", or "both".
+    
+    Supported scenarios and semantics:
+    1. mode == "begin"
+        Example:
+            sub1 = torch.sub(in3, in4)
+            with torchair.scope.profiler_trace('index1', 'begin'):
+                add1 = torch.add(in3, in4)
+                cat1 = torch.cat([in1, in4], dim=1)
+                mm1 = torch.mm(in3, in4)
+            add2 = torch.add(in3, in4)
+            mm2 = torch.mm(in3, in4)
+        Result:
+            add1 is tagged "begin", a timestamp will be marked begin add1.
+    
+    2. mode == "end"
+        Example:
+            sub1 = torch.sub(in3, in4)
+            with torchair.scope.profiler_trace('index1', 'end'):
+                add1 = torch.add(in3, in4)
+                cat1 = torch.cat([in1, in4], dim=1)
+                mm1 = torch.mm(in3, in4)
+            add2 = torch.add(in3, in4)
+            mm2 = torch.mm(in3, in4)
+        Result:
+            mm1 is tagged "end", a timestamp will be marked end mm1.
+    
+    3. mode == "both" with a single op in scope
+        Example:
+            sub1 = torch.sub(in3, in4)
+            with torchair.scope.profiler_trace('index1', 'both'):
+                add1 = torch.add(in3, in4)
+            add2 = torch.add(in3, in4)
+            mm2 = torch.mm(in3, in4)
+        Result:
+            add1 is tagged "both", a timestamp will be marked begin add1 and another end add1
+    
+    4. mode == "both" with multiple ops in scope
+        Example:
+            sub1 = torch.sub(in3, in4)
+            with torchair.scope.profiler_trace('index1', 'both'):
+                add1 = torch.add(in3, in4)
+                cat1 = torch.cat([in1, in4], dim=1)
+                mm1 = torch.mm(in3, in4)
+            add2 = torch.add(in3, in4)
+            mm2 = torch.mm(in3, in4)
+        Result:
+            add1 is tagged "begin" and mm1 is tagged "end", a timestamp will be marked begin add1,
+            and another timestamp will be marked end mm1.
+    
+    Unsupported scenarios:
+    - Nested profiler_trace contexts are not supported. Example of unsupported nesting:
+          with torchair.scope.profiler_trace('index1', 'end'):
+              add1 = torch.add(in3, in4)
+              with torchair.scope.profiler_trace('index1', 'begin'):
+                  mm1 = torch.mm(in3, in4)
+    - If nested contexts are detected, a ValueError is raised:
+          raise ValueError(f"Nested profiler_trace is not allowed")
+    """
+    return _Scope([
+        ("_profiler_trace_index", index),
+        ("_profiler_trace_pos", mode)
+    ])

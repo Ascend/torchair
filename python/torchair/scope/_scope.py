@@ -10,20 +10,21 @@ from ._scope_attr import scope_enter, scope_exit
 
 lib.define(
     """
-    scope_enter(str[] keys, str[] values, bool need_excute=False) -> None
+    scope_enter(str[] keys, str[] values, bool need_execute=False) -> None
     """
 )
 has_side_effect(torch.ops.air.scope_enter.default)
 
 
 @torch.library.impl(lib, "scope_enter", "Meta")
-def kernel_meta(keys: List[str], values: List[str], need_excute=False):
-    if need_excute:
+def kernel_meta(keys: List[str], values: List[str], need_execute=False):
+    if need_execute:
         scope_enter(keys, values)
 
 
-def kernel_impl(keys: List[str], values: List[str], need_excute=False):
-    scope_enter(keys, values)
+def kernel_impl(keys: List[str], values: List[str], need_execute=False):
+    if need_execute:
+        scope_enter(keys, values)
 
 
 torch.library.impl(lib, "scope_enter", "CPU")(kernel_impl)
@@ -39,20 +40,21 @@ def _npu_scope_enter(attrs):
 
 lib.define(
     """
-    scope_exit(bool need_excute=False) -> None
+    scope_exit(bool need_execute=False) -> None
     """
 )
 has_side_effect(torch.ops.air.scope_exit.default)
 
 
 @torch.library.impl(lib, "scope_exit", "Meta")
-def kernel_meta(need_excute=False):
-    if need_excute:
+def kernel_meta(need_execute=False):
+    if need_execute:
         scope_exit()
 
 
-def kernel_impl(need_excute=False):
-    scope_exit()
+def kernel_impl(need_execute=False):
+    if need_execute:
+        scope_exit()
 
 
 torch.library.impl(lib, "scope_exit", "CPU")(kernel_impl)
