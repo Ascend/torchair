@@ -1,4 +1,5 @@
 from torchair._ge_concrete_graph.ge_converter.converter_utils import *
+from torchair.ge._ge_graph import dont_prune_me
 
 
 @register_fx_node_ge_converter(torch.ops.npu.npu_scatter_nd_update.default)
@@ -32,4 +33,6 @@ def conveter_npu_scatter_nd_update__default(
     which pass can transfer some non_inplace operators to the original inplace operators.
     """
 
-    return ge.ScatterNdUpdate(self, indices, updates)
+    op = ge.ScatterNdUpdate(self, indices, updates)
+    dont_prune_me(op)
+    return op

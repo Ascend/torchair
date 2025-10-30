@@ -1,4 +1,5 @@
 from torchair._ge_concrete_graph.ge_converter.converter_utils import *
+from torchair.ge._ge_graph import dont_prune_me
 
 
 @declare_supported([
@@ -60,5 +61,7 @@ def conveter_npu_quant_scatter__default(
     which pass can transfer some non_inplace operators to the original inplace operators.
     """
 
-    return ge.QuantUpdateScatter(self, indices, updates, quant_scales, quant_zero_points, reduce=reduce, axis=axis,
-                                 quant_axis=quant_axis)
+    op = ge.QuantUpdateScatter(self, indices, updates, quant_scales, quant_zero_points, reduce=reduce, axis=axis,
+                               quant_axis=quant_axis)
+    dont_prune_me(op)
+    return op
