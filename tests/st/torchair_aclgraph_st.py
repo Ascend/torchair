@@ -1130,6 +1130,7 @@ class AclGraphSt(unittest.TestCase):
         config = CompilerConfig()
         config.mode = "reduce-overhead"
         config.experimental_config.keep_inference_input_mutations = True
+        config.experimental_config.remove_noop_ops = False
         backend = torchair.get_npu_backend(compiler_config=config)
 
         model = torch.compile(model, backend=backend, dynamic=False)
@@ -1223,6 +1224,7 @@ class AclGraphSt(unittest.TestCase):
         config.mode = "reduce-overhead"
         config.experimental_config.keep_inference_input_mutations = True
         config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass = True
+        config.experimental_config.remove_noop_ops = False
         backend = torchair.get_npu_backend(compiler_config=config)
 
         model = torch.compile(model, backend=backend, dynamic=False)
@@ -1302,6 +1304,7 @@ class AclGraphSt(unittest.TestCase):
         config.mode = "reduce-overhead"
         config.experimental_config.keep_inference_input_mutations = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = False
+        config.experimental_config.remove_noop_ops = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
         model = torch.compile(model, backend=aclgraph_backend, dynamic=False)
@@ -2421,6 +2424,46 @@ class AclGraphSt(unittest.TestCase):
             any("call_function[target=torch.ops.custom.sin_cos_inplace.default]" in log for log in cm.output),
             f"Expected DEBUG log 'call_function[target=torch.ops.custom.sin_cos_inplace.default]' in logs: {cm.output}"
         )
+
+    @unittest.skipIf(torch.__version__ < '2.2.0', "")
+    def test_enable_remove_noop_ops_slice_acl(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                slice_x = x[:]
+                slice_y = y[:]
+                return slice_x + slice_y
+
+        def assert_func(concrete_graph):
+            graph_ = concrete_graph.fx_graph.graph
+            nodes = graph_.nodes
+            has_slice_node = any(node.op == "call_function"
+                                 and node.target.overloadpacket == torch.ops.aten.slice for node in nodes)
+            assert not has_slice_node
+
+        def wrapper_call(call):
+            def wrapper(*args, **kwargs):
+                ret = call(*args, **kwargs)
+                assert_func(args[0])
+                return ret
+
+            return wrapper
+
+        from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
+        call_bak = AclConcreteGraph.__call__
+        AclConcreteGraph.__call__ = wrapper_call(AclConcreteGraph.__call__)
+
+        try:
+            config_ = CompilerConfig()
+            config_.mode = "reduce-overhead"
+            config_.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+            backend = torchair.get_npu_backend(compiler_config=config_)
+            compiled_model = torch.compile(Model(), backend=backend, dynamic=True)
+            _ = compiled_model(x=torch.randn([2, 2]), y=torch.randn([2, 2]))
+        finally:
+            AclConcreteGraph.__call__ = call_bak
 
 if __name__ == '__main__':
     unittest.main()
