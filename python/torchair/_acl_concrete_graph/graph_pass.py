@@ -1,6 +1,8 @@
 from collections import defaultdict
-from typing import Any, Optional, List
+from dataclasses import dataclass
+from typing import Any, Optional, List, Callable, Dict
 import threading
+import operator
 
 import torch
 from torch import fx
@@ -8,7 +10,6 @@ from torch.fx import GraphModule
 from torch.fx.experimental.symbolic_shapes import GuardOnDataDependentSymNode
 from torch.fx.passes.reinplace import reinplace, _maybe_get_inplace_op, _is_view_op
 
-from torchair.configs.compiler_config import CompilerConfig
 from torchair.core.utils import logger
 
 try:
@@ -19,6 +20,14 @@ except ImportError:
 
 aten = torch.ops.aten
 
+
+@dataclass(frozen=True)
+class InplaceableNpuOp:
+    inplace_op: Callable[..., Any]
+    mutated_arg: List[int]
+    extra_check: Callable[[torch.fx.Node], bool] = lambda node: True
+
+
 # Operators that don't depend on the tensor data
 META_ONLY_OPS = {
     aten.sym_size.int,
@@ -26,6 +35,18 @@ META_ONLY_OPS = {
     aten.sym_numel.default,
     aten.sym_storage_offset.default,
 }
+
+inplaceable_npu_ops: Dict[Callable[..., Any], InplaceableNpuOp] = {}
+try:
+    npu = torch.ops.npu
+    inplaceable_npu_functional_ops = {
+        npu.npu_kv_rmsnorm_rope_cache_v2_functional.default: InplaceableNpuOp(
+            npu.npu_kv_rmsnorm_rope_cache_v2.default, [5, 6]
+        ),
+    }
+    inplaceable_npu_ops.update(inplaceable_npu_functional_ops)
+except AttributeError as e:
+    logger.debug(f"cannot update npu ops with AttributeError: {e}")
 
 
 def get_storage(t: torch.Tensor) -> int:
@@ -72,15 +93,20 @@ def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
         node_order[node] = len(graph.nodes) - i - 1
         storage_to_nodes[get_node_storage(node)].append(node)
         if node.target == aten.copy_.default and node.args[0].op in (
-                "placeholder",
-                "get_attr",
+            "placeholder",
+            "get_attr",
         ):
             dst = node.args[0]
             src = node.args[1]
+            if src.target == operator.getitem and (
+                src.args[0].target in inplaceable_npu_ops
+            ):
+                src = src.args[0]
             copy_args_to_copy_nodes[(dst, src)] = node
             copy_nodes[dst] = node
             to_replace_targets.add(node.args[1])
-    logger.debug(f"[_reinplace_input_mutated_ops] mutated input replace candidates: {to_replace_targets}")
+    logger.debug(f"[_reinplace_input_mutated_ops] mutated input replace candidates: {to_replace_targets=}, "
+                 f"{copy_args_to_copy_nodes=}")
 
     def any_use_of_views_after_node(node, shared_view_nodes, *, copy_node, mutated_arg):
         node_loc = node_order[node]
@@ -110,8 +136,8 @@ def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
                 # then it's safe for us to reinplace foo because mutated_arg
                 # will get overwritten anyways.
                 if (
-                        user.target is torch.ops.aten.copy_.default
-                        and mutated_arg is user.args[0]
+                    user.target is torch.ops.aten.copy_.default
+                    and mutated_arg is user.args[0]
                 ):
                     continue
                 return True
@@ -180,22 +206,36 @@ def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
 
     replace_dict: dict[torch.fx.Node, torch.fx.Node] = {}
     for node in graph.nodes:
-        if node in to_replace_targets:
+        inplaceable_op = inplaceable_npu_ops.get(node.target, None)
+        if inplaceable_op is not None:
+            # Here we properly remove copy epilogues for
+            # ops that mutate multiple inputs.
+            mutated_args = [node.args[arg_index] for arg_index in inplaceable_op.mutated_arg]
+            if not all((arg, node) in copy_args_to_copy_nodes for arg in mutated_args):
+                logger.debug(f"reinplace failed, all mutated args(get_item) must have copy epilogues: {node.target}")
+                continue
+            if can_inplace(node, mutated_args):
+                for arg in mutated_args:
+                    copy_node = copy_args_to_copy_nodes[(arg, node)]
+                    replace_dict[copy_node] = copy_node.args[0]
+                    if copy_node.args[1].target == operator.getitem:
+                        replace_dict[copy_node.args[1]] = copy_node.args[0]
+                node.target = inplaceable_op.inplace_op
+            else:
+                logger.debug(f"can_inplace return False, will skip reinplacing for node: {node.target}")
+        elif node in to_replace_targets:
             mutated_arg = node.args[0]
             inplace_op = _maybe_get_inplace_op(node.target)
             if inplace_op is None:
                 logger.debug("cannot find an inplace op for node %s", node.target)
                 continue
             if can_inplace(node, mutated_arg):
-                # TODO: this doesn't properly remove copy epilogues for
-                # ops that mutate multiple inputs. Need to revise the copy
-                # node tracking logic to support the case.
                 copy_node = copy_args_to_copy_nodes.get((mutated_arg, node))
                 if copy_node is not None:
                     replace_dict[copy_node] = copy_node.args[0]
                 node.target = inplace_op
             else:
-                logger.debug(f"can_inplace return False, will skip reinplace for node: {node.target}")
+                logger.debug(f"can_inplace return False, will skip reinplacing for node: {node.target}")
     for node, replacement in replace_dict.items():
         while replacement in replace_dict:
             replacement = replace_dict[replacement]
@@ -215,13 +255,13 @@ def _reinplace_inplaceable_ops_pass(gm: GraphModule, *sample_args):
         logger.debug("[_reinplace_inplaceable_ops_pass]processing reinplace_inplaceable_ops_pass for graph: %s", id(gm))
         gm = reinplace(gm, *sample_args)
         logger.debug("End to process reinplace inplaceable ops fx pass for graph: %s", id(gm))
-    except NotImplementedError as e:
-        raise e
-    except Exception as e:
+    except NotImplementedError:
+        raise
+    except Exception as exception:
         if torch.__version__ < '2.5.0':
             raise RuntimeError("There is a bug in torch.fx.passes.reinplace module when torch < 2.5.0. Two possible"
                                " solutions: 1. upgrade torch version(>=2.5.0); 2. disable pass config by setting: "
-                               "config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass=True") from e
+                               "config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass=True") from exception
         else:
             logger.warning_once(f"Skipped fx_pass torch.fx.passes.reinplace for unsupported fx graph {id(gm)}.")
             return original_gm
@@ -300,5 +340,4 @@ def apply_event_closure_with_multi_stream(graph_module: fx.GraphModule, graph_na
     logger.debug("End to insert event in graph[%s].", id(graph_module))
     logger.debug("Tagged event names are: [%s]", tagged_event_names)
     return len(scope_enter_nodes) > 0
-
 
