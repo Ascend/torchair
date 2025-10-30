@@ -2334,6 +2334,83 @@ class TorchairSt(unittest.TestCase):
         with self.assertRaises(RuntimeError) as context:
             torch_type_to_ge_type(torch.bits4x2)
         self.assertTrue("Unsupported convert torch type torch.bits4x2 to ge type" in str(context.exception))
+
+
+    def test_infer_symbol(self):
+        m = Library("npu", "FRAGMENT")
+        m.define("my_op_infer(Tensor input1, Tensor input2) -> (Tensor, Tensor)")
+
+        @impl(m, "my_op_infer", "Meta")
+        def my_op_meta(x, y):
+            size_x_0 = list(x.shape)[0] + 2
+            size_x_1 = list(x.shape)[1] - 2
+            size_y_0 = list(y.shape)[0] * 2
+            size_y_1 = list(y.shape)[1] // 2
+            out1 = torch.empty((size_x_0, size_x_1), dtype=x.dtype, device=x.device)
+            out2 = torch.empty((size_y_0, size_y_1), dtype=y.dtype, device=y.device)
+            return out1, out2
+
+        from typing import Any
+        
+        @torchair.register_fx_node_ge_converter(torch.ops.npu.my_op_infer.default)
+        def conveter_custom_demo_add_out(
+                x,
+                y,
+                meta_outputs: Any = None):
+            return torchair.ge.custom_op(  # 根据算子定义设置变量名，顺序保持一致
+                "MyOpInfer", # 使用原地算子的Ascend IR
+                inputs={
+                    "x": x,
+                    "y": y,
+                },
+                outputs=['o1', 'o2'] # 返回被原地修改的入参
+            )
+
+        def cus_func(x, y):
+            return torch.ops.npu.my_op_infer(x, y)
+
+        def warp_concrete_graph():
+            def wrapper_call(func):
+                def wrapper(*args, **kwargs):
+                    assert len(args) > 0
+                    geGraph: GeGraph = args[0]._graph
+                    import json
+                    import ast
+                    for op in geGraph.op:
+                        if op.name == "MyOpInfer":                    
+                            inference_rule = json.loads(op.attr["_inference_rule"].s)
+                            self.assertEqual(inference_rule["shape"]["inputs"][0][0], "s0")
+                            self.assertEqual(inference_rule["shape"]["inputs"][0][1], "s1")
+                            self.assertEqual(inference_rule["shape"]["inputs"][1][0], "s2")
+                            self.assertEqual(inference_rule["shape"]["inputs"][1][1], "s3")
+                            
+                            is_high_python_version = hasattr(ast, 'unparse')
+                            s0_out = "s0 + 2" if is_high_python_version else "(s0+2)"
+                            self.assertEqual(inference_rule["shape"]["outputs"][0][0], s0_out)
+                            s1_out = "s1 - 2" if is_high_python_version else "(s1-2)"
+                            self.assertEqual(inference_rule["shape"]["outputs"][0][1], s1_out)
+                            s2_out = "2 * s2" if is_high_python_version else "(2*s2)"
+                            self.assertEqual(inference_rule["shape"]["outputs"][1][0], s2_out)
+                            self.assertEqual(inference_rule["shape"]["outputs"][1][1], "Floor(Div(s3, 2))")
+
+                            self.assertEqual(inference_rule["dtype"][0], 3)
+                            self.assertEqual(inference_rule["dtype"][1], 0)
+                       
+
+                    ret = func(*args, **kwargs)
+                    return ret
+               
+                return wrapper    
+
+
+            GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
+
+        warp_concrete_graph()
+        compile_func = torch.compile(cus_func, backend=npu_backend, fullgraph=True, dynamic=True)  
+        input1 = torch.ones((4, 4), dtype=torch.int32)
+        input2 = torch.ones((4, 4), dtype=torch.float)
+
+        out = compile_func(input1, input2)        
         
 if __name__ == '__main__':
     unittest.main()
