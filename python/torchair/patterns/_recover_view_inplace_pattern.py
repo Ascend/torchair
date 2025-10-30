@@ -206,7 +206,7 @@ def recover_view_inplace_pattern(graph_module: torch.fx.GraphModule, config: Com
         # update non_inplace op users
         non_inplace_op.replace_all_uses_with(inplace_op, propagate_meta=True)
         logger.debug('In %s, success to replace non_inplace node %s by inserting new inplace node %s[target: %s].',
-                     "GE graph" if config.mode.value == "reduce-overhead" else "ACL graph",
+                     "ACL graph" if config.mode.value == "reduce-overhead" else "GE graph",
                      non_inplace_op, inplace_op, inplace_op.target)
 
         # delete old copy node and non_inplace node
