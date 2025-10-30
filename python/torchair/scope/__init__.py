@@ -65,5 +65,5 @@ def op_never_timeout(enable: bool = True):
         )
 
     return _Scope([
-        ("_op_exec_never_timeout", "enable" if enable else "disable")
+        ("_op_exec_never_timeout", str(enable))
     ])
