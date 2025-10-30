@@ -277,6 +277,9 @@ def _view_to_reshape(graph_module: torch.fx.GraphModule):
 
 def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig):
     # More optimization passes here
+    if config.experimental_config.remove_noop_ops:
+        _optimize_noop_ops(graph_module)
+
     from torchair.patterns._recover_view_inplace_pattern import recover_view_inplace_pattern
     graph_module = recover_view_inplace_pattern(graph_module, config)
 
@@ -285,6 +288,16 @@ def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig):
 
     logger.debug('after fx graph optimization, graph is %s', graph_module.graph)
     return graph_module
+
+
+def _optimize_noop_ops(graph_module: torch.fx.GraphModule):
+    try:
+        from torch._inductor.fx_passes.post_grad import remove_noop_ops
+        remove_noop_ops(graph_module.graph)
+        logger.debug("After removing noop ops, graph is %s", graph_module.graph)
+    except ImportError:
+        logger.warning(("Skip removing noop ops; check if your PyTorch version is above 2.2.0 and ensure",
+                        " the module torch._inductor.fx_passes.post_grad.remove_noop_ops exists"))
 
 
 def _optimize_sym_input(graph_module: torch.fx.GraphModule):

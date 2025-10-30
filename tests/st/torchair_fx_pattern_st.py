@@ -66,6 +66,26 @@ def stub_is_gte_cann_version(version, module="CANN"):
     return True
 
 
+def enable_remove_noop_ops_pattern(model, assert_func):
+    def wrapper(*args, **kwargs):
+        def wrapper_call(call):
+            def wrapper(*args, **kwargs):
+                ret = call(*args, **kwargs)
+                assert_func(args[0])
+                return ret
+
+            return wrapper
+
+        GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
+
+        config_ = torchair.CompilerConfig()
+        backend = torchair.get_npu_backend(compiler_config=config_)
+        compiled_model = torch.compile(model, backend=backend, dynamic=True)
+        _ = compiled_model(*args, **kwargs)
+
+    return wrapper
+
+
 # define stub utils submodule
 class StubUtils:
     def __init__(self):
@@ -132,6 +152,7 @@ class TorchairFXPatternSt(unittest.TestCase):
                 return add_1
 
         npu_config = torchair.CompilerConfig()
+        npu_config.experimental_config.remove_noop_ops = False
         npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
         model = Model()
         model_dynamic = torch.compile(model, backend=npu_backend, dynamic=True)
@@ -188,6 +209,268 @@ class TorchairFXPatternSt(unittest.TestCase):
         captured_output = stdout.getvalue()
         self.assertTrue("success to replace non_inplace node add by inserting new inplace node add_" in captured_output)
 
+    @unittest.skipIf(torch.__version__ < '2.2.0', "")
+    def test_disable_remove_noop_ops(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                slice_x = x[:]
+                slice_y = y[:]
+                return slice_x + slice_y
+
+        def with_slice(concrete_graph):
+            graph_ = concrete_graph.fx_graph.graph
+            nodes = graph_.nodes
+            has_slice_node = any(node.op == "call_function"
+                                 and node.target.overloadpacket == torch.ops.aten.slice for node in nodes)
+            self.assertTrue(has_slice_node)
+
+        def wrapper_call(call, assert_):
+            def wrapper(*args, **kwargs):
+                ret = call(*args, **kwargs)
+                self.assertGreater(len(args), 0)
+                assert_(args[0])
+                return ret
+
+            return wrapper
+
+        call_bak = GeConcreteGraph.__call__
+        GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__, with_slice)
+        try:
+            model = Model()
+            config_ = torchair.CompilerConfig()
+            config_.experimental_config.remove_noop_ops = False
+            backend = torchair.get_npu_backend(compiler_config=config_)
+            compiled_model = torch.compile(model, backend=backend, dynamic=True)
+
+            _ = compiled_model(torch.randn([2, 2]), torch.randn([2, 2]))
+        finally:
+            GeConcreteGraph.__call__ = call_bak
+
+    @unittest.skipIf(torch.__version__ < '2.2.0', "")
+    def test_enable_remove_noop_ops_slice(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                x_ = x[:]
+                y_ = y[:]
+                return x_ + y_
+
+        def assert_func(concrete_graph):
+            graph_ = concrete_graph.fx_graph.graph
+            nodes = graph_.nodes
+            has_slice_node = any(node.op == "call_function"
+                                 and node.target.overloadpacket == torch.ops.aten.slice for node in nodes)
+            self.assertFalse(has_slice_node)
+
+        wrapped = enable_remove_noop_ops_pattern(Model(), assert_func)
+        wrapped(x=torch.randn([2, 2]), y=torch.randn([2, 2]))
+
+    @unittest.skipIf(torch.__version__ < '2.2.0', "")
+    def test_enable_remove_noop_ops_slice_scatter(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                slice_x = x.slice_scatter(y)
+                return slice_x + y
+
+        def assert_func(concrete_graph):
+            graph_ = concrete_graph.fx_graph.graph
+            nodes = graph_.nodes
+            has_slice_node = any(node.op == "call_function"
+                                 and node.target.overloadpacket == torch.ops.aten.slice_scatter for node in nodes)
+            self.assertFalse(has_slice_node)
+
+        wrapped = enable_remove_noop_ops_pattern(Model(), assert_func)
+        wrapped(x=torch.randn([2, 2]), y=torch.randn([2, 2]))
+
+    @unittest.skipIf(torch.__version__ < '2.2.0', "")
+    def test_enable_remove_noop_ops_repeat(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                repeat_x = x.repeat(1, 1)
+                return repeat_x + y
+
+        def assert_func(concrete_graph):
+            graph_ = concrete_graph.fx_graph.graph
+            nodes = graph_.nodes
+            has_repeat_node = any(node.op == "call_function"
+                                  and node.target.overloadpacket == torch.ops.aten.repeat for node in nodes)
+            self.assertFalse(has_repeat_node)
+
+        wrapped = enable_remove_noop_ops_pattern(Model(), assert_func)
+        wrapped(x=torch.randn([2, 2]), y=torch.randn([2, 2]))
+
+    @unittest.skipIf(torch.__version__ < '2.2.0', "")
+    def test_enable_remove_noop_ops_pad(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                import torch.nn.functional as func
+                pad_x = func.pad(x, pad=[0, 0, 0, 0], value=3.5)
+                return pad_x + y
+
+        def assert_func(concrete_graph):
+            graph_ = concrete_graph.fx_graph.graph
+            nodes = graph_.nodes
+            has_pad_node = any(node.op == "call_function"
+                               and node.target.overloadpacket == torch.ops.aten.constant_pad_nd for node in nodes)
+            self.assertFalse(has_pad_node)
+
+        wrapped = enable_remove_noop_ops_pattern(Model(), assert_func)
+        wrapped(x=torch.randn([2, 2]), y=torch.randn([2, 2]))
+
+    @unittest.skipIf(torch.__version__ < '2.2.0', "")
+    def test_enable_remove_noop_ops_convert(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                convert_x = torch.ops.prims.convert_element_type(x, torch.float32)
+                return convert_x + y
+
+        def assert_func(concrete_graph):
+            graph_ = concrete_graph.fx_graph.graph
+            nodes = graph_.nodes
+            has_convert_node = any(node.op == "call_function" and
+                node.target.overloadpacket == torch.ops.prims.convert_element_type for node in nodes)
+            self.assertFalse(has_convert_node)
+
+        wrapped = enable_remove_noop_ops_pattern(Model(), assert_func)
+        wrapped(x=torch.randn([2, 2]), y=torch.randn([2, 2]))
+
+    @unittest.skipIf(torch.__version__ < '2.2.0', "")
+    def test_enable_remove_noop_ops_ceil(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                x_ = torch.ceil(x)
+                return x_ + y
+
+        def assert_func(concrete_graph):
+            graph_ = concrete_graph.fx_graph.graph
+            nodes = graph_.nodes
+            has_op_node = any(node.op == "call_function"
+                              and node.target.overloadpacket == torch.ops.aten.ceil for node in nodes)
+            self.assertFalse(has_op_node)
+
+        wrapped = enable_remove_noop_ops_pattern(Model(), assert_func)
+        wrapped(x=torch.tensor([2, 2]), y=torch.tensor([2, 2]))
+
+    @unittest.skipIf(torch.__version__ < '2.2.0', "")
+    def test_enable_remove_noop_ops_pow(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                x_ = torch.pow(x, 1)
+                return x_ + y
+
+        def assert_func(concrete_graph):
+            graph_ = concrete_graph.fx_graph.graph
+            nodes = graph_.nodes
+            has_op_node = any(node.op == "call_function"
+                              and node.target.overloadpacket == torch.ops.aten.pow for node in nodes)
+            self.assertFalse(has_op_node)
+
+        wrapped = enable_remove_noop_ops_pattern(Model(), assert_func)
+        wrapped(x=torch.randn([2, 2]), y=torch.randn([2, 2]))
+
+    @unittest.skipIf(torch.__version__ < '2.2.0', "")
+    def test_enable_remove_noop_ops_cat(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                x_ = torch.cat([x], dim=0)
+                return x_ + y
+
+        def assert_func(concrete_graph):
+            graph_ = concrete_graph.fx_graph.graph
+            nodes = graph_.nodes
+            has_op_node = any(node.op == "call_function"
+                              and node.target.overloadpacket == torch.ops.aten.cat for node in nodes)
+            self.assertFalse(has_op_node)
+
+        wrapped = enable_remove_noop_ops_pattern(Model(), assert_func)
+        wrapped(x=torch.randn([2, 2]), y=torch.randn([2, 2]))
+
+    @unittest.skipIf(torch.__version__ < '2.2.0', "")
+    def test_enable_remove_noop_ops_clone(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                x_ = x.clone()
+                return x_ + y
+
+        def assert_func(concrete_graph):
+            graph_ = concrete_graph.fx_graph.graph
+            nodes = graph_.nodes
+            has_op_node = any(node.op == "call_function"
+                              and node.target.overloadpacket == torch.ops.aten.clone for node in nodes)
+            self.assertFalse(has_op_node)
+
+        wrapped = enable_remove_noop_ops_pattern(Model(), assert_func)
+        wrapped(x=torch.randn([2, 2]), y=torch.randn([2, 2]))
+
+    @unittest.skipIf(torch.__version__ < '2.2.0', "")
+    def test_enable_remove_noop_ops_clone_skipped(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                x_ = x.clone()
+                return x_
+
+        def assert_func(concrete_graph):
+            graph_ = concrete_graph.fx_graph.graph
+            nodes = graph_.nodes
+            has_op_node = any(node.op == "call_function"
+                              and node.target.overloadpacket == torch.ops.aten.clone for node in nodes)
+            self.assertTrue(has_op_node)
+
+        wrapped = enable_remove_noop_ops_pattern(Model(), assert_func)
+        wrapped(x=torch.randn([2, 2]), y=torch.randn([2, 2]))
+
+    @unittest.skipIf(torch.__version__ < '2.2.0', "")
+    def test_enable_remove_noop_ops_clone_inplace(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                x_ = x.clone()
+                x_.add_(1)
+                return y + x_
+
+        def assert_func(concrete_graph):
+            graph_ = concrete_graph.fx_graph.graph
+            nodes = graph_.nodes
+            has_op_node = any(node.op == "call_function"
+                              and node.target.overloadpacket == torch.ops.aten.clone for node in nodes)
+            self.assertFalse(has_op_node)
+
+        wrapped = enable_remove_noop_ops_pattern(Model(), assert_func)
+        wrapped(x=torch.randn([2, 2]), y=torch.randn([2, 2]))
 
 if __name__ == '__main__':
     unittest.main()
