@@ -37,6 +37,7 @@ from torchair._ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
 from torchair.ge import Clone
 from torchair.ge.ge_custom import custom_op
 from torchair.ge._ge_graph import Tensor as GeTensor
+from torchair.ge._ge_graph import get_default_ge_graph
 from torchair.ge._ge_graph import _ValueInput, _TensorInput, _DiscontiguousTensorInput, _RngStatusInput, \
     _ValueType, _GeInputInfo, _SymPackInput
 from torchair.ge._ge_graph import torch_type_to_ge_type, torch_type_to_ge_proto_type, default_ge_graph, \
@@ -53,6 +54,7 @@ from torchair._ge_concrete_graph.hcom_utils import record_pg_to_graph, codegen_r
 from torchair._ge_concrete_graph.supported_declaration import Support
 from torchair._ge_concrete_graph.continguous_utils import guard_view_input
 from torchair._ge_concrete_graph.export_config_generete import generate_config
+from torchair._ge_concrete_graph.infer_symbol_shape import infer_and_gen_sym_shape
 from torchair._utils.export_utils import make_export_graph, get_export_file_name
 from torchair.inference._gear_utils import generate_dynamic_dims_option, get_dim_gears
 from torchair.ge._ge_graph import compat_as_bytes, _ge_proto_dtype_to_ge_dtype, is_sym
@@ -1111,9 +1113,13 @@ class GeConcreteGraph(ConcreteGraphBase):
                 converter = target._ge_converter
             else:
                 raise RuntimeError(f"Ascend op converter is not implemented of: {target}")
+        graph = get_default_ge_graph()
+        num_ops = len(graph.op)
+
         if converter.require_meta:
             kwargs['meta_outputs'] = meta_outputs
         ge_outputs = converter(*args, **kwargs)
+        infer_and_gen_sym_shape(target, args, kwargs, ge_outputs, graph.op[num_ops:])
         if meta_outputs is not None:
             set_ge_outputs(ge_outputs, meta_outputs)
             if hasattr(self._converter_ctx, 'node') and self._converter_ctx.node:
