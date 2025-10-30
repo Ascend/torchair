@@ -80786,6 +80786,87 @@ def DequantSwigluQuant(x: Tensor,
     )
 
 
+@auto_convert_to_tensor([False], [False], inputs_tensor_type=[TensorType.TT_ALL])
+def FfnWorkerScheduler(schedule_context: Tensor,
+                       *,
+                       sync_group_size: int = 1,
+                       execute_mode: int = 0,
+                       dependencies=[],
+                       node_name=None):
+    """REG_OP(FfnWorkerScheduler)\n
+    .INPUT(schedule_context, TensorType({DT_INT8}))\n
+
+    .OUTPUT(schedule_context, TensorType({DT_INT8}))\n
+    .ATTR(sync_group_size, Int, 1)\n
+    .ATTR(execute_mode, Int, 0)\n
+    """
+
+    # process inputs
+    inputs = {
+        "schedule_context": schedule_context,
+    }
+
+    # process attrs
+    attrs = {
+        "sync_group_size": attr.Int(sync_group_size),
+        "execute_mode": attr.Int(execute_mode),
+    }
+
+    # process outputs
+    outputs = [
+        "schedule_context",
+    ]
+
+    return ge_op(
+        op_type="FfnWorkerScheduler",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("FfnWorkerScheduler") \
+        .input("schedule_context", "") \
+        .attr("sync_group_size", attr.Int(1)) \
+        .attr("execute_mode", attr.Int(0)) \
+        .output("schedule_context", "")
+    )
+
+
+@auto_convert_to_tensor([False], [False], inputs_tensor_type=[TensorType.TT_ALL])
+def AttentionWorkerScheduler(schedule_context: Tensor,
+                             *,
+                             dependencies=[],
+                             node_name=None):
+    """REG_OP(AttentionWorkerScheduler)\n
+    .INPUT(schedule_context, TensorType({DT_INT8}))\n
+    .OUTPUT(schedule_context, TensorType({DT_INT8}))\n
+    """
+
+    # process inputs
+    inputs = {
+        "schedule_context": schedule_context,
+    }
+
+    # process attrs
+    attrs = {
+    }
+
+    # process outputs
+    outputs = [
+        "schedule_context",
+    ]
+
+    return ge_op(
+        op_type="AttentionWorkerScheduler",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("AttentionWorkerScheduler") \
+        .input("schedule_context", "") \
+        .output("schedule_context", "")
+    )
+
+
 @auto_convert_to_tensor([False, False, False], [False, False, True])
 def MoeReRouting(tokens: Tensor,
                 expert_token_num_per_rank: Tensor,
