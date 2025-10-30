@@ -4,7 +4,7 @@ import logging
 import os
 import sys
 import types
-from typing import List
+from typing import List, Tuple
 import unittest
 from unittest.mock import Mock
 
@@ -187,6 +187,12 @@ class StubStream:
         pass
 
 
+class StubStreams:
+
+    def Stream(self, event):
+        return StubStream()
+
+
 def current_stream(device=None):
     logger.debug('[Stub] run stub API current_stream.')
     return "current_stream"
@@ -243,6 +249,24 @@ class StubEvent:
         return
 
 
+class _AutocastModule(types.ModuleType):
+    autocast = lambda *_, **__: lambda f: f
+
+
+class StubAmp:
+    def __init__(self):
+        logger.debug('[Stub] stub amp module.')
+
+    def __new__(cls):
+        return super().__new__(cls)
+
+    def autocast(self):
+        logger.debug('[Stub]Amp autocast')
+        return
+
+StubAmp.autocast_mode = _AutocastModule
+
+
 class Stub_C:
     def __init__(self):
         logger.debug('[Stub] new stub _C Module.')
@@ -282,6 +306,7 @@ class StubNpu:
         self.NPUGraph = StubNPUGraph
         self.graph = graph
         self.Stream = StubStream
+        self.streams = StubStreams
         self.Event = StubEvent
         self.current_stream = current_stream
         self.set_stream = set_stream
@@ -294,6 +319,7 @@ class StubNpu:
         self.matmul = stub_conf
         self.conv = stub_conf
         self._C = Stub_C
+        self.amp = StubAmp
 
 
 def patch_ops_npu_module(stub_module):
@@ -364,6 +390,28 @@ def custom_infer_out_meta(data, other, *, out):
     return out
 
 
+### register npu custom ops for testing reinplace fx pass with multiple inplace args
+def sin_cos_inplace_meta(x, out_sin, out_cos):
+    return torch.empty_like(x)
+
+
+def sin_cos_inplace(x: torch.Tensor, out_sin: torch.Tensor, out_cos: torch.Tensor) -> torch.Tensor:
+    out_sin.sin_()
+    out_cos.cos_()
+    return x + 1
+
+
+def sin_cos_functional_meta(x, out_sin, out_cos):
+    return torch.empty_like(x), torch.empty_like(x), torch.empty_like(x)
+
+
+def sin_cos_functional(x: torch.Tensor, sin: torch.Tensor, cos: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    sin_clone = sin.clone()
+    cos_clone = cos.clone()
+    res = torch.ops.custom.sin_cos_inplace(x, sin_clone, cos_clone)
+    return res, sin_clone, cos_clone
+
+
 def custom_infer_out_npu(data, other, *, out):
     out.fill_(1)
     return out
@@ -380,6 +428,34 @@ if not hasattr(torch.ops.custom, "custom_infer.out"):
     lib.define("custom_infer.out(Tensor data, Tensor other, *, Tensor(a!) out) -> Tensor(a!)")
     torch.library.impl(lib, "custom_infer.out", "Meta")(custom_infer_out_meta)
     torch.library.impl(lib, "custom_infer.out", "CompositeExplicitAutograd")(custom_infer_out_npu)
+
+if not hasattr(torch.ops.custom, "sin_cos_inplace"):
+    lib.define("sin_cos_inplace(Tensor x, Tensor(a!) out_sin, Tensor(b!) out_cos) -> Tensor")
+    torch.library.impl(lib, "sin_cos_inplace", "Meta")(sin_cos_inplace_meta)
+    torch.library.impl(lib, "sin_cos_inplace", "CompositeExplicitAutograd")(sin_cos_inplace)
+    lib.define("sin_cos_functional(Tensor x, Tensor out_sin, Tensor out_cos) -> (Tensor, Tensor, Tensor)")
+    torch.library.impl(lib, "sin_cos_functional", "Meta")(sin_cos_functional_meta)
+    torch.library.impl(lib, "sin_cos_functional", "CompositeExplicitAutograd")(sin_cos_functional)
+
+    @torch.library.impl(lib, "sin_cos_inplace", "Functionalize")
+    def sin_cos_inplace_(x, sin, cos):
+        torch._sync(x)
+        torch._sync(sin)
+        torch._sync(cos)
+        x_wrap = torch._from_functional_tensor(x)
+        sin_wrap = torch._from_functional_tensor(sin)
+        cos_wrap = torch._from_functional_tensor(cos)
+        with torch._C._ExcludeDispatchKeyGuard(
+                torch._C.DispatchKeySet(torch._C.DispatchKey.Functionalize)
+        ):
+            res, sin_out, cos_out = torch.ops.custom.sin_cos_functional(x_wrap, sin_wrap, cos_wrap)
+        torch._functionalize_replace(sin, sin_out)
+        torch._functionalize_replace(cos, cos_out)
+        torch._functionalize_commit_update(sin)
+        torch._functionalize_commit_update(cos)
+        torch._sync(sin)
+        torch._sync(cos)
+        return res
 
 
 class AclGraphSt(unittest.TestCase):
@@ -2269,6 +2345,82 @@ class AclGraphSt(unittest.TestCase):
         self.assertEqual(prompt3_cache_dir, prompt_cache_dir,
                             "Cache bin dir with same config and same model should be the same.")
 
+    def update_inplaceable_npu_ops(self):
+        from torchair._acl_concrete_graph.graph_pass import inplaceable_npu_ops, InplaceableNpuOp
+        inplaceable_npu_ops.update({
+            torch.ops.custom.sin_cos_functional.default: InplaceableNpuOp(
+                torch.ops.custom.sin_cos_inplace.default, [1, 2]
+            ),
+        })
+
+    @unittest.skipIf(torch.__version__ < "2.2", "torch._functionalize_replace is unsupported when torch < 2.2")
+    def test_multi_mutated_input(self):
+        self.update_inplaceable_npu_ops()
+
+        def f(x, out_sin, out_cos):
+            return torch.ops.custom.sin_cos_inplace.default(x, out_sin, out_cos)
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+        x = torch.randn(3)
+        sin = torch.randn(3)
+        cos = torch.randn(3)
+        model = torch.compile(f, backend=aclgraph_backend)
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            res = model(x, sin, cos)
+        self.assertTrue(
+            any("call_function[target=torch.ops.custom.sin_cos_inplace.default]" in log for log in cm.output),
+            f"Expected DEBUG log 'call_function[target=torch.ops.custom.sin_cos_inplace.default]' in logs: {cm.output}"
+        )
+
+    @unittest.skipIf(torch.__version__ < "2.2", "torch._functionalize_replace is unsupported when torch < 2.2")
+    def test_multi_mutated_input_with_view_before(self):
+        self.update_inplaceable_npu_ops()
+
+        def f(x, out_sin, out_cos):
+            sin_view = out_sin.view(-1, 1)
+            y = torch.ops.custom.sin_cos_inplace.default(x, sin_view, out_cos)
+            res = out_cos + 1
+            return y, res
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+        x = torch.ones(3)
+        sin = torch.ones(3)
+        cos = torch.ones(3)
+        model = torch.compile(f, backend=aclgraph_backend)
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            res = model(x, sin, cos)
+        self.assertTrue(
+            any("reinplace failed" in log for log in cm.output),
+            f"Expected DEBUG log 'reinplace failed' in logs: {cm.output}"
+        )
+
+    @unittest.skipIf(torch.__version__ < "2.2", "torch._functionalize_replace is unsupported when torch < 2.2")
+    def test_multi_mutated_input_with_view_after(self):
+        self.update_inplaceable_npu_ops()
+
+        def f(x, out_sin, out_cos):
+            y = torch.ops.custom.sin_cos_inplace.default(x, out_sin, out_cos)
+            sin_view = out_sin.view(-1, 1)
+            res = sin_view + 1
+            return y, res
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+        x = torch.ones(3)
+        sin = torch.ones(3)
+        cos = torch.ones(3)
+        model = torch.compile(f, backend=aclgraph_backend)
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            res = model(x, sin, cos)
+        self.assertTrue(
+            any("call_function[target=torch.ops.custom.sin_cos_inplace.default]" in log for log in cm.output),
+            f"Expected DEBUG log 'call_function[target=torch.ops.custom.sin_cos_inplace.default]' in logs: {cm.output}"
+        )
 
 if __name__ == '__main__':
     unittest.main()
