@@ -34,6 +34,7 @@ from torchair.fx_dumper import _NpuFxDumper
 from torchair._utils.custom_aot_functions import aot_module_simplified_joint
 from torchair._utils import add_npu_patch, get_npu_default_decompositions
 from torchair._utils.error_code import pretty_error_msg
+from torchair._utils.graph_transform_observer import GraphTransformObserver
 from torchair.inference._gear_utils import get_dim_gears, set_dim_gears, guard_gears_shape
 
 aten = torch.ops.aten
@@ -275,17 +276,25 @@ def _view_to_reshape(graph_module: torch.fx.GraphModule):
             node.target = torch.ops.aten.reshape.default
 
 
-def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig):
+def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, example_inputs):
     # More optimization passes here
+    Observer = functools.partial(GraphTransformObserver, phase="post_grad_passes")
+    if config.post_grad_custom_pre_pass:
+        with Observer(graph_module, config.post_grad_custom_pre_pass.__name__) as graph_observe:
+            graph_observe.apply_gm_pass(config.post_grad_custom_pre_pass, example_inputs, config)
+
     if config.experimental_config.remove_noop_ops:
         _optimize_noop_ops(graph_module)
-
+        
     from torchair.patterns._recover_view_inplace_pattern import recover_view_inplace_pattern
     graph_module = recover_view_inplace_pattern(graph_module, config)
 
     graph_module = _optimize_sym_input(graph_module)
     _view_to_reshape(graph_module)
 
+    if config.post_grad_custom_post_pass:
+        with Observer(graph_module, config.post_grad_custom_post_pass.__name__) as graph_observe:
+            graph_observe.apply_gm_pass(config.post_grad_custom_post_pass, example_inputs, config)
     logger.debug('after fx graph optimization, graph is %s', graph_module.graph)
     return graph_module
 
@@ -489,7 +498,7 @@ class _NpuFxCompiler:
             raise ValueError(f"Unsupported npu backend mode: {self.config.mode.value}.")
 
         # do common optimization for fx graph based on config
-        optimized_gm = _optimize_fx(mutable_gm, self.config)
+        optimized_gm = _optimize_fx(mutable_gm, self.config, example_inputs)
         graph.save_fx_graph(optimized_gm)
 
         concrete_graph: ConcreteGraphBase = _NpuGraphConverter(

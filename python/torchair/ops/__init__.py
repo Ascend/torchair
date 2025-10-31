@@ -36,3 +36,13 @@ def npu_tagged_event_wait(event):
 def npu_record_tagged_stream(input: torch.Tensor, tagged_stream: str):
     from ._tagged_event import _npu_record_tagged_stream
     return _npu_record_tagged_stream(input, tagged_stream)
+
+
+def wait(tensors: list):
+    from ._record_wait import _wait
+    return _wait(tensors)
+
+
+def record():
+    from ._record_wait import _record
+    return _record()

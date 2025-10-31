@@ -13,6 +13,7 @@ import torch
 from torch import fx
 from torch import nn
 from torch.fx import Node, Proxy
+from torch.fx.node import Argument, Target
 from torch.profiler import record_function
 
 from torchair.core.utils import logger
@@ -401,6 +402,22 @@ class UpdatedNodeCaptureInterp(fx.Interpreter):
                      )
 
         return result
+
+    def call_function(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any]) -> Any:
+        if str(target) == "air.record.default":
+            event = torch.npu.Event()
+            stream = torch.npu.current_stream()
+            event.record(stream)
+            logger.debug("Record successfully,stream:%s", stream)
+            return event
+        elif str(target) == "air.wait.default":
+            for event in args[0]:
+                stream = torch.npu.current_stream()
+                event.wait(stream)
+                logger.debug("Wait successfully,stream:%s", stream)
+            return None
+        else:
+            return super().call_function(target, args, kwargs)
 
 
 class CapturedGraphUpdateAndReplay(nn.Module):
