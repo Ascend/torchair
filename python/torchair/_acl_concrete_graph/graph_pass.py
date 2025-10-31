@@ -343,3 +343,27 @@ def apply_event_closure_with_multi_stream(graph_module: fx.GraphModule, graph_na
     logger.debug("Tagged event names are: [%s]", tagged_event_names)
     return len(scope_enter_nodes) > 0
 
+
+def apply_event_record(graph_module: fx.GraphModule):
+    wait_record_dic = {}
+    for node in graph_module.graph.nodes:
+        if str(node.target) == "air.wait.default":
+            new_args = _insert_record_nodes(graph_module, node, wait_record_dic)
+            node.args = (new_args,)
+    graph_module.graph.lint()
+    logger.debug("End insert record node in graph:[%s]", id(graph_module))
+
+
+def _insert_record_nodes(graph_module, node, wait_record_dic):
+    new_args = []
+    for wait_node in node.args[0]:
+        if str(wait_node.target) == "air.record.default":
+            new_args.append(wait_node)
+        elif wait_node in wait_record_dic:
+            new_args.append(wait_record_dic[wait_node])
+        else:
+            with graph_module.graph.inserting_after(wait_node):
+                node = graph_module.graph.call_function(torch.ops.air.record.default, args=())
+                new_args.append(node)
+                wait_record_dic[wait_node] = node
+    return new_args

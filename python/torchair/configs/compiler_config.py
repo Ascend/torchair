@@ -34,9 +34,12 @@ class CompilerConfig(NpuBaseConfig):
         self.ge_config = _GEConfig()
         self.aclgraph_config = _AclGraphConfig()
         self.mode = OptionValue("max-autotune", ["max-autotune", "reduce-overhead"])
+        self.post_grad_custom_pre_pass = None
+        self.post_grad_custom_post_pass = None
 
         super(CompilerConfig, self).__init__()
-
+        self._fixed_attrs.append("post_grad_custom_pre_pass")
+        self._fixed_attrs.append("post_grad_custom_post_pass")
 
     def __eq__(self, other):
         if not isinstance(other, CompilerConfig):
@@ -44,6 +47,22 @@ class CompilerConfig(NpuBaseConfig):
         self_dict = dict(_get_all_leaf_properties(self))
         other_dict = dict(_get_all_leaf_properties(other))
         return self_dict == other_dict
+
+    def as_dict(self):
+        local_options, global_options = super().as_dict()
+        if self.post_grad_custom_pre_pass:
+            local_options["post_grad_custom_pre_pass"] = self._get_func_code_md5(self.post_grad_custom_pre_pass)
+        if self.post_grad_custom_post_pass:
+            local_options["post_grad_custom_post_pass"] = self._get_func_code_md5(self.post_grad_custom_post_pass)
+        return local_options, global_options
+        
+    def _get_func_code_md5(self, func):
+        import dis
+        import io
+        import hashlib
+        output = io.StringIO()
+        dis.dis(func, file=output)
+        return hashlib.md5(output.getvalue().encode()).hexdigest()
 
 
 unsupport_geconfig_list = [("debug.aclgraph.disable_reinplace_input_mutated_ops_pass", [True]),

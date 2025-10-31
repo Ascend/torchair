@@ -2411,6 +2411,82 @@ class TorchairSt(unittest.TestCase):
         input2 = torch.ones((4, 4), dtype=torch.float)
 
         out = compile_func(input1, input2)        
+
+    def test_post_grad_no_custom_fn(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                mm = torch.mm(x, x)
+                abs1 = torch.abs(x)
+                add = torch.add(x, 1)
+                sub = torch.sub(abs1, add)
+                return torch.add(mm, sub)
+        model = Model()
+        opt_model = torch.compile(model, backend=npu_backend, dynamic=True)
+        x = torch.randn(2, 2)
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            opt_model(x)
         
+        self.assertFalse(
+            any("[post_grad_passes] before" in log for log in cm.output),
+            f"Expected no DEBUG log '[post_grad_passes] before' in logs: {cm.output}")
+        
+        self.assertFalse(
+            any("[post_grad_passes] after" in log for log in cm.output),
+            f"Expected no DEBUG log '[post_grad_passes] after' in logs: {cm.output}")
+
+    def test_post_grad_custom_fn(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                mm = torch.mm(x, x)
+                abs1 = torch.abs(x)
+                add = torch.add(x, 1)
+                sub = torch.sub(abs1, add)
+                return torch.add(mm, sub)
+
+
+        def _custom_pre_fn(gm, example_inputs, compile_config: torchair.CompilerConfig):
+            return None
+
+        
+        def _custom_post_fn(gm, example_inputs, compile_config: torchair.CompilerConfig):
+            return None
+        
+        custom_config = CompilerConfig()
+        custom_config.post_grad_custom_pre_pass = _custom_pre_fn
+        custom_config.post_grad_custom_post_pass = _custom_post_fn
+        npu_custom_backend = torchair.get_npu_backend(compiler_config=custom_config)
+        model = Model()
+        opt_model = torch.compile(model, backend=npu_custom_backend, dynamic=True)
+        x = torch.randn(2, 2)
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            opt_model(x)
+        
+        self.assertTrue(
+            any("[post_grad_passes] before [_custom_pre_fn] execution" 
+                in log for log in cm.output),
+            f"Expected DEBUG log '[post_grad_passes] before [_custom_pre_fn] execution' in logs: {cm.output}")
+        
+        self.assertTrue(
+            any("[post_grad_passes] after [_custom_pre_fn] execution" 
+                in log for log in cm.output),
+            f"Expected DEBUG log '[post_grad_passes] after [_custom_pre_fn] execution' in logs: {cm.output}")
+
+        self.assertTrue(
+            any("[post_grad_passes] before [_custom_post_fn] execution" 
+                in log for log in cm.output),
+            f"Expected DEBUG log '[post_grad_passes] before [_custom_post_fn] execution' in logs: {cm.output}")
+        
+        self.assertTrue(
+            any("[post_grad_passes] after [_custom_post_fn] execution" 
+                in log for log in cm.output),
+            f"Expected DEBUG log '[post_grad_passes] after [_custom_post_fn] execution' in logs: {cm.output}")
+
+
 if __name__ == '__main__':
     unittest.main()

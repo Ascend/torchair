@@ -27,6 +27,7 @@ from torchair.core.utils import logger
 from torchair._utils.path_manager import PathManager
 from torchair._acl_concrete_graph.acl_graph import AclGraph, AclGraphCacheInfo, is_sym
 from torchair._acl_concrete_graph.graph_pass import apply_event_closure_with_multi_stream
+from torchair._acl_concrete_graph.graph_pass import apply_event_record
 
 aten = torch.ops.aten
 
@@ -229,6 +230,8 @@ class AclConcreteGraph(ConcreteGraphBase):
                                                                      self._aclgraph_cache_info.tagged_event_names)
         logger.debug('after apply_stream_event_closure optimization, '
                      'multi_stream_enabled is %s, graph is %s.', multi_stream_enabled, self.fx_graph.graph)
+
+        apply_event_record(self.fx_graph)
 
         # graph optimization passes here
         # Note: this pass need sample args to run in FakeTensor mode, any pass modifies ops without meta registration
@@ -552,6 +555,7 @@ class AclConcreteGraph(ConcreteGraphBase):
             if has_need_updated_ops:
                 forward_code.writelines(["from torchair._acl_concrete_graph.utils import reconstruct_args_kwargs",
                                          "from torchair._acl_concrete_graph.acl_graph import UpdatedNodeInfo"])
+            record_wait_ops_dic = self._codegen_fx_forward_record_wait(gm)
             for line in body:
                 need_update = False
                 for k in need_updated_ops_dict.keys():
@@ -566,6 +570,11 @@ class AclConcreteGraph(ConcreteGraphBase):
                 for k in self._tensor_constant_dict.keys():
                     if f"{k} = self" in line:
                         forward_code.writeline(f"{k} = tensor_constants['{k}']")
+                        need_update = True
+                        break
+                for k_ops in record_wait_ops_dic.keys():
+                    if k_ops in line:
+                        forward_code.splice(record_wait_ops_dic[k_ops])
                         need_update = True
                         break
                 if not need_update:
@@ -613,3 +622,23 @@ class AclConcreteGraph(ConcreteGraphBase):
                     need_updated_ops_code.getvalue()
 
         return has_need_updated_ops
+    
+    def _codegen_fx_forward_record_wait(self, gm: torch.fx.GraphModule):
+        from torch._inductor.utils import IndentedBuffer
+        ops_code_dic = {}
+        for node in gm.graph.nodes:
+            if str(node.target) == "air.record.default":
+                record_ops_code = IndentedBuffer()
+                record_ops_code.splice(f'''
+                    event_{node.name} = torch.npu.Event()
+                    event_{node.name}.record(torch.npu.current_stream())
+                ''')
+                ops_code_dic[f'{node.name} = torch.ops.{node.target}'] = record_ops_code.getvalue()
+            if str(node.target) == "air.wait.default":
+                wait_ops_code = IndentedBuffer()
+                for wait_node in node.args[0]:
+                    wait_ops_code.splice(f'''
+                        event_{wait_node.name}.wait(torch.npu.current_stream())
+                    ''')
+                ops_code_dic[f'{node.name} = torch.ops.{node.target}'] = wait_ops_code.getvalue()
+        return ops_code_dic

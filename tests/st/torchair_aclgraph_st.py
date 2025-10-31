@@ -2347,6 +2347,189 @@ class AclGraphSt(unittest.TestCase):
         prompt3_cache_dir = os.path.abspath(os.path.dirname(prompt3_cache_bin))
         self.assertEqual(prompt3_cache_dir, prompt_cache_dir,
                             "Cache bin dir with same config and same model should be the same.")
+    
+    def test_npu_stream_record_wait_with_wait(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+            
+            def forward(self, x):
+                mm = torch.mm(x, x)
+                with torchair.scope.npu_stream_switch('1', 3):
+                    torchair.ops.wait([mm])
+                    abs1 = torch.abs(mm)
+                    add1 = torch.add(abs1, 1)
+                with torchair.scope.npu_stream_switch('2', 3):
+                    torchair.ops.wait([mm, abs1])
+                    sub = torch.sub(add1, mm)
+                return sub
+
+        config = torchair.CompilerConfig()
+        config.mode = "reduce-overhead"
+        npu_backend = torchair.get_npu_backend(compiler_config=config)
+        model = Model()
+        opt_model = torch.compile(model, backend=npu_backend, dynamic=False)
+        x = torch.randn([3, 3])
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            opt_model(x)
+    
+        self.assertTrue(
+            any("record_default = torch.ops.air.record.default()"
+                    in log for log in cm.output),
+        f"Expected DEBUG log 'record_default = torch.ops.air.record.default()' in logs: {cm.output}")
+        self.assertTrue(
+            any("wait = torch.ops.air.wait.default([record_default])"
+                    in log for log in cm.output),
+        f"Expected DEBUG log 'wait = torch.ops.air.wait.default([record_default])' in logs: {cm.output}")
+        self.assertTrue(
+            any("End insert record node in graph"
+                    in log for log in cm.output),
+        f"Expected DEBUG log 'End insert record node in graph' in logs: {cm.output}")
+        self.assertTrue(
+            any("Record successfully,stream:"
+                    in log for log in cm.output),
+        f"Expected DEBUG log 'Record successfully,stream:' in logs: {cm.output}")
+        self.assertTrue(
+            any("Wait successfully,stream:"
+                    in log for log in cm.output),
+        f"Expected DEBUG log 'Wait successfully,stream:' in logs: {cm.output}")
+    
+    def test_npu_stream_record_wait_with_record(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+            
+            def forward(self, x):
+                mm = torch.mm(x, x)
+                result1 = torchair.ops.record()
+                with torchair.scope.npu_stream_switch('1', 3):
+                    torchair.ops.wait([result1])
+                    abs1 = torch.abs(mm)
+                    result2 = torchair.ops.record()
+                with torchair.scope.npu_stream_switch('2', 3):
+                    torchair.ops.wait([result2])
+                    add1 = torch.add(abs1, 1)
+                    result3 = torchair.ops.record()
+                with torchair.scope.npu_stream_switch('3', 3):
+                    torchair.ops.wait([result2, result3])
+                    sub = torch.sub(abs1, add1)
+                return sub
+
+        config = torchair.CompilerConfig()
+        config.mode = "reduce-overhead"
+        npu_backend = torchair.get_npu_backend(compiler_config=config)
+        model = Model()
+        opt_model = torch.compile(model, backend=npu_backend, dynamic=False)
+        x = torch.randn([3, 3])
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            opt_model(x)
+    
+        self.assertTrue(
+            any("record = torch.ops.air.record.default()"
+                    in log for log in cm.output),
+        f"Expected DEBUG log 'record = torch.ops.air.record.default()' in logs: {cm.output}")
+        self.assertTrue(
+            any("wait = torch.ops.air.wait.default([record])"
+                    in log for log in cm.output),
+        f"Expected DEBUG log 'wait = torch.ops.air.wait.default([record])' in logs: {cm.output}")
+        self.assertTrue(
+            any("End insert record node in graph"
+                    in log for log in cm.output),
+        f"Expected DEBUG log 'End insert record node in graph' in logs: {cm.output}")
+        self.assertTrue(
+            any("Record successfully,stream:"
+                    in log for log in cm.output),
+        f"Expected DEBUG log 'Record successfully,stream:' in logs: {cm.output}")
+        self.assertTrue(
+            any("Wait successfully,stream:"
+                    in log for log in cm.output),
+        f"Expected DEBUG log 'Wait successfully,stream:' in logs: {cm.output}")
+    
+    def test_npu_stream_record_wait_with_record_wait(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+            
+            def forward(self, x):
+                mm = torch.mm(x, x)
+                result1 = torchair.ops.record()
+                with torchair.scope.npu_stream_switch('1', 3):
+                    torchair.ops.wait([result1])
+                    abs1 = torch.abs(mm)
+                with torchair.scope.npu_stream_switch('2', 3):
+                    torchair.ops.wait([abs1])
+                    add1 = torch.add(abs1, 1)
+                    result3 = torchair.ops.record()
+                with torchair.scope.npu_stream_switch('3', 3):
+                    torchair.ops.wait([abs1, result3])
+                    sub = torch.sub(abs1, add1)
+                return sub
+
+        config = torchair.CompilerConfig()
+        config.mode = "reduce-overhead"
+        npu_backend = torchair.get_npu_backend(compiler_config=config)
+        model = Model()
+        opt_model = torch.compile(model, backend=npu_backend, dynamic=False)
+        x = torch.randn([3, 3])
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            opt_model(x)
+    
+        self.assertTrue(
+            any("record_default = torch.ops.air.record.default()"
+                    in log for log in cm.output),
+        f"Expected DEBUG log 'record_default = torch.ops.air.record.default()' in logs: {cm.output}")
+        self.assertTrue(
+            any("wait_1 = torch.ops.air.wait.default([record_default])"
+                    in log for log in cm.output),
+        f"Expected DEBUG log 'wait_1 = torch.ops.air.wait.default([record_default])' in logs: {cm.output}")
+        self.assertTrue(
+            any("End insert record node in graph"
+                    in log for log in cm.output),
+        f"Expected DEBUG log 'End insert record node in graph' in logs: {cm.output}")
+        self.assertTrue(
+            any("Record successfully,stream:"
+                    in log for log in cm.output),
+        f"Expected DEBUG log 'Record successfully,stream:' in logs: {cm.output}")
+        self.assertTrue(
+            any("Wait successfully,stream:"
+                    in log for log in cm.output),
+        f"Expected DEBUG log 'Wait successfully,stream:' in logs: {cm.output}")
+
+    def test_aclgraph_cache_with_record_wait(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.cached_prompt = torchair.inference.cache_compile(self.prompt, config=config)
+
+            def forward(self, x):
+                return self.cached_prompt(x)
+
+            def prompt(self, x):
+                return self._forward(x)
+
+            def _forward(self, x):
+                mm = torch.mm(x, x)
+                with torchair.scope.npu_stream_switch('1', 3):
+                    torchair.ops.wait([mm])
+                    abs1 = torch.abs(mm)
+                    add1 = torch.add(abs1, 1)
+                with torchair.scope.npu_stream_switch('2', 3):
+                    torchair.ops.wait([mm, abs1])
+                    sub = torch.sub(add1, mm)
+                return sub    
+
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        model = Model()
+
+        prompt_cache_dir = CompiledModel.get_cache_bin(model.prompt, config=config)
+        ModelCacheSaver.remove_cache(prompt_cache_dir)
+        self.assertFalse(os.path.exists(prompt_cache_dir))
+        x = torch.randn([3, 3])
+        model(x)
+        self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
 
     def update_inplaceable_npu_ops(self):
         from torchair._acl_concrete_graph.graph_pass import inplaceable_npu_ops, InplaceableNpuOp
