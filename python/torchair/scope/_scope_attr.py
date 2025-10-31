@@ -49,6 +49,9 @@ class ScopeAttrs:
                     op.attr[key].s = compat_as_bytes(str(value))
                 logger.debug(f"Set attribute {key}: {value} on op: {op.name}")
 
+    def scope_attr_info(self):
+        return self._attribute_stack                  
+
 
 def scope_enter(keys: List[str], values: List[str]):
     if not hasattr(local, 'scope_attr'):
@@ -71,8 +74,9 @@ def guard_scope_attr(func):
     def wrapper(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
         graph = get_default_ge_graph()
         num_ops = len(graph.op)
-        ge_outputs = func(self, target, args, kwargs, meta_outputs)
-        apply_scope_attr(graph.op[num_ops:])
+        with self.scope_attr_ctx(local.scope_attr.scope_attr_info() if hasattr(local, 'scope_attr') else []):        
+            ge_outputs = func(self, target, args, kwargs, meta_outputs)
+        apply_scope_attr(graph.op[num_ops:]) 
         return ge_outputs
 
     return wrapper

@@ -2144,6 +2144,107 @@ class TorchairSt(unittest.TestCase):
                          "./test_acl.json")
         initialize_graph_engine(global_compile_options)
 
+    def test_ge_wait_pass(self):
+        def cus_func(x, y):
+            add = torch.add(x, y)
+            mm = torch.mm(add, x)
+            with torchair.scope.npu_stream_switch('1'):
+                torchair.ops.wait([add])
+                add1 = torch.add(x, y)
+            return mm, add1
+
+        def warp_concrete_graph():
+            def wrapper_call(func):
+                def wrapper(*args, **kwargs):
+                    assert len(args) > 0
+                    geGraph: GeGraph = args[0]._graph
+                    for op in geGraph.op:
+                        if op.name == "Add_1":
+                            self.assertIn("Add:-1", op.input)
+
+                    ret = func(*args, **kwargs)
+                    return ret
+               
+                return wrapper      
+            GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
+
+        warp_concrete_graph()
+        torch.npu.Event = None  
+        compile_func = torch.compile(cus_func, backend=npu_backend, fullgraph=True)
+        input1 = torch.ones((4, 4))
+        input2 = torch.ones((4, 4))
+        out = compile_func(input1, input2)
+
+    def test_ge_wait_and_record_pass(self):
+        def cus_func(x, y):
+            add = torch.add(x, y)
+            mm = torch.mm(add, x)
+            record = torchair.ops.record()
+            with torchair.scope.npu_stream_switch('1'):
+                torchair.ops.wait([record])
+                add1 = torch.add(x, y)
+            return mm, add1
+
+        def warp_concrete_graph():
+            def wrapper_call(func):
+                def wrapper(*args, **kwargs):
+                    assert len(args) > 0
+                    geGraph: GeGraph = args[0]._graph
+                    for op in geGraph.op:
+                        if op.name == "Add_1":
+                            self.assertIn("MatMul:-1", op.input)
+
+                    ret = func(*args, **kwargs)
+                    return ret
+               
+                return wrapper      
+            GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
+
+        warp_concrete_graph()
+        torch.npu.Event = None  
+        compile_func = torch.compile(cus_func, backend=npu_backend, fullgraph=True)
+        input1 = torch.ones((4, 4))
+        input2 = torch.ones((4, 4))
+        out = compile_func(input1, input2)  
+
+    def test_ge_wait_and_record_pass_muti_pass(self):
+        def cus_func(x, y):
+            with torchair.scope.npu_stream_switch('1'):
+                add = torch.add(x, y)
+                record = torchair.ops.record()
+                mm1 = torch.mm(x, y)
+                mul = torch.mul(x, add)
+            with torchair.scope.npu_stream_switch('2'):            
+                add2 = torch.add(x, mul)
+                torchair.ops.wait([record, mul])
+            add3 = torch.add(x, mul)
+            with torchair.scope.npu_stream_switch('2'):
+                mm2 = torch.mm(x, add2)    
+            return add3, mm2, mm1
+
+        def warp_concrete_graph():
+            def wrapper_call(func):
+                def wrapper(*args, **kwargs):
+                    assert len(args) > 0
+                    geGraph: GeGraph = args[0]._graph
+                    for op in geGraph.op:
+                        if op.name == "MatMul_1":
+                            self.assertIn("Cast:-1", op.input)
+                            self.assertIn("Add:-1", op.input)
+
+                    ret = func(*args, **kwargs)
+                    return ret
+               
+                return wrapper      
+            GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
+
+        warp_concrete_graph()
+        torch.npu.Event = None  
+        compile_func = torch.compile(cus_func, backend=npu_backend, fullgraph=True)
+        input1 = torch.ones((4, 4))
+        input2 = torch.ones((4, 4))
+        out = compile_func(input1, input2)        
+
     def test_auto_converter(self):
         m = Library("custom_define", "DEF")
         m.define("my_op_test(Tensor self, Tensor indices, Tensor updates) -> Tensor")
