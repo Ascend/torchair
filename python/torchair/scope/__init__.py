@@ -1,4 +1,5 @@
 import torch
+from ._scope import _npu_scope_enter, _npu_scope_exit
 
 
 def npu_wait_tensor(self: torch.Tensor,
@@ -12,11 +13,9 @@ class _Scope:
         self.attrs = attrs
 
     def __enter__(self):
-        from ._scope import _npu_scope_enter
         return _npu_scope_enter(self.attrs)
 
     def __exit__(self, *args):
-        from ._scope import _npu_scope_exit
         return _npu_scope_exit()
 
 
