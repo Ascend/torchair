@@ -36,6 +36,11 @@ def wait_meta(tensors):
 
 
 def _wait(tensors: List[torch.Tensor]):
+    if tensors is None or len(tensors) == 0:
+        raise ValueError("torchair.ops.wait() requires at least one tensor input")
+    for tensor in tensors:
+        if not isinstance(tensor, torch.Tensor):
+            raise ValueError("arguments of torchair.ops.wait() must be torch.Tensor")
     return torch.ops.air.wait(tensors)
 
 
