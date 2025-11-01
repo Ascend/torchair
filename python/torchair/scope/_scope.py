@@ -2,7 +2,6 @@ from typing import List
 
 import torch
 from torch.fx.node import has_side_effect
-from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
 
 from ._lib import lib
 from ._scope_attr import scope_enter, scope_exit

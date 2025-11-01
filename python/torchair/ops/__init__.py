@@ -1,4 +1,5 @@
 import torch
+from ._record_wait import _wait, _record
 
 
 def npu_fused_infer_attention_score(*args, **kwargs):
@@ -39,10 +40,8 @@ def npu_record_tagged_stream(input: torch.Tensor, tagged_stream: str):
 
 
 def wait(tensors: list):
-    from ._record_wait import _wait
     return _wait(tensors)
 
 
 def record():
-    from ._record_wait import _record
     return _record()
