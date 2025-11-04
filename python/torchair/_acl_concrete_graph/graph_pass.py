@@ -1,6 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, Optional, List, Callable, Dict
+from typing import Any, Optional, List, Callable, Dict, Set
 import threading
 import operator
 
@@ -295,40 +295,60 @@ def _create_event_by_name(name: str):
             logger.debug(f"[Multi-stream] Created new event {new_event} with key '{name}'.")
 
 
-def apply_event_closure_with_multi_stream(graph_module: fx.GraphModule, graph_name: str, tagged_event_names: List[str]):
-    scope_enter_nodes = []
-    scope_exit_nodes = []
+def apply_event_closure_with_multi_stream(graph_module: fx.GraphModule, graph_name: str, tagged_event_names: List[str],
+                                          user_stream_label: Set[str]):
+    stream_scope_enter_nodes = []
+    stream_scope_exit_nodes = []
+    stream_scope_enter_nodes_dict = {}
+    stream_scope_exit_nodes_list = []
+    scope_enter_nodes_stack: List[fx.Node] = []
     for node in graph_module.graph.nodes:
         if str(node.target) == "air.scope_enter.default":
             node.kwargs = {**node.kwargs, 'need_execute': True}
-            scope_enter_nodes.append(node)
+            if len(node.args) > 0 and '_user_stream_label' in node.args[0]:
+                stream_scope_enter_nodes.append(node)
+                # When 'args[0]' of air.scope_enter.default includes the string '_user_stream_label',
+                # there must be an 'args[1]' to store value associated with that key.
+                # We store that value for later stream switch.
+                # Use a set for storage to eliminate duplicate values.
+                user_stream_label.add(node.args[1][0])
+                stream_scope_enter_nodes_dict[node.name] = node.args[1][0]
+            scope_enter_nodes_stack.append(node)
         elif str(node.target) == "air.scope_exit.default":
             node.kwargs = {**node.kwargs, 'need_execute': True}
-            scope_exit_nodes.append(node)
-    if len(scope_enter_nodes) != len(scope_exit_nodes):
+            if (len(scope_enter_nodes_stack) > 0 and len(scope_enter_nodes_stack[-1].args) > 0 and
+                    '_user_stream_label' in scope_enter_nodes_stack[-1].args[0]):
+                stream_scope_exit_nodes.append(node)
+                stream_scope_exit_nodes_list.append(node.name)
+            scope_enter_nodes_stack.pop()
+    if len(scope_enter_nodes_stack) != 0:
+        raise RuntimeError(f"scope_enter node num is not equal to scope_exit node num, "
+                           f"after match, scope enter node num is {len(scope_enter_nodes_stack)}")
+    if len(stream_scope_enter_nodes) != len(stream_scope_exit_nodes):
         raise RuntimeError(f"scope_enter node num is not equal to scope_exit node num, scope_enter node num: "
-                           f"{len(scope_enter_nodes)}, scope_exit node num: {len(scope_exit_nodes)}")
-    if len(scope_enter_nodes) == 0:
+                           f"{len(stream_scope_enter_nodes)}, scope_exit node num: {len(stream_scope_exit_nodes)}")
+    if len(stream_scope_enter_nodes) == 0:
         logger.debug("No scope_enter node found in graph[%s], no need to insert event.", id(graph_module))
-        return False
+        return False, stream_scope_enter_nodes_dict, stream_scope_exit_nodes_list
 
-    # insert event record before graph input, inset event wait after scope_enter node
+    # These imports are needed for torch.ops.air.tagged_event_record/wait.default to work.
     import torchair
     from torchair.ops._tagged_event import _npu_create_tagged_event
     first_node = next(iter(graph_module.graph.nodes))
     enter_tag = graph_name + '_' + first_node.name
     _create_event_by_name(enter_tag)
     tagged_event_names.append(enter_tag)
+    # Insert event record before graph input, insert event wait after scope_enter node
     with graph_module.graph.inserting_before(first_node):
         graph_module.graph.call_function(torch.ops.air.tagged_event_record.default, args=(enter_tag, True))
-    for node in scope_enter_nodes:
+    for node in stream_scope_enter_nodes:
         with graph_module.graph.inserting_after(node):
             graph_module.graph.call_function(torch.ops.air.tagged_event_wait.default, args=(enter_tag, True))
 
     output_node = list(graph_module.graph.nodes)[-1]
     if output_node is None or output_node.op != "output":
         raise RuntimeError(f"Graph must have output node as last node, but got {output_node}")
-    for node in scope_exit_nodes:
+    for node in stream_scope_exit_nodes:
         # insert event record after scope_exit node, insert event wait before graph output
         exit_tag = graph_name + '_' + node.name
         _create_event_by_name(exit_tag)
@@ -341,7 +361,8 @@ def apply_event_closure_with_multi_stream(graph_module: fx.GraphModule, graph_na
     graph_module.graph.lint()
     logger.debug("End to insert event in graph[%s].", id(graph_module))
     logger.debug("Tagged event names are: [%s]", tagged_event_names)
-    return len(scope_enter_nodes) > 0
+    logger.debug("user_stream_label names are: [%s]", user_stream_label)
+    return len(stream_scope_enter_nodes) > 0, stream_scope_enter_nodes_dict, stream_scope_exit_nodes_list
 
 
 def apply_event_record(graph_module: fx.GraphModule):

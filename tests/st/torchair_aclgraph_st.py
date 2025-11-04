@@ -1013,6 +1013,108 @@ class AclGraphSt(unittest.TestCase):
         w = torch.randn([3, 3])
         opt_model(x, y, z, w)
 
+    def test_npu_stream_switch_with_super_kernel_scope(self):
+        from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, in1, in2, in3, in4):
+                add_result = torch.add(in1, in2)
+                # superkernel scope no need to insert event wait
+                with torchair.scope.super_kernel('1', "2"):
+                    mm_result1 = torch.add(in3, in4)
+                    # stream switch scope need to insert event wait
+                    with torchair.scope.npu_stream_switch('2', 3):
+                        mm_result2 = torch.mm(in3, in4)
+                # limit core num scope no need to insert event wait
+                with torchair.scope.limit_core_num(1, 2):
+                    mm_result3 = torch.add(in3, in4)
+                return add_result, mm_result1, mm_result2, mm_result3
+
+        def check_graph(concrete_graph):
+            event_record = 0
+            for node in concrete_graph.fx_graph.graph.nodes:
+                if str(node.target) == "aten.mm.default":
+                    assert str(node.prev.target) == "air.tagged_event_wait.default"
+                if str(node.target) == "air.tagged_event_record.default":
+                    event_record += 1
+            assert event_record == 2, f"expect event record count is 2, but got {event_record}"
+
+        def decorator(call):
+            def wrapper(*args, **kwargs):
+                assert len(args) >= 3
+                check_graph(args[0])
+                return tuple([args[0], args[1], args[2], args[3]])
+
+            return wrapper
+
+        AclConcreteGraph.__call__ = decorator(AclConcreteGraph.__call__)
+
+        model = Model()
+        opt_model = torch.compile(model, backend=aclgraph_backend, fullgraph=True, dynamic=False)
+        x = torch.randn([3, 3])
+        y = torch.randn([3, 3])
+        z = torch.randn([3, 3])
+        w = torch.randn([3, 3])
+        opt_model(x, y, z, w)
+
+    def test_npu_stream_switch_with_super_kernel_scope_with_nest_scope(self):
+        from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, in1, in2, in3, in4):
+                add_result = torch.add(in1, in2)
+                # superkernel scope no need to insert event wait
+                with torchair.scope.super_kernel('1', "2"):
+                    mm_result1 = torch.add(in3, in4)
+                    # stream switch scope need to insert event wait
+                    with torchair.scope.npu_stream_switch('2', 3):
+                        mm_result2 = torch.mm(in3, in4)
+                        # limit core num scope no need to insert event wait
+                        with torchair.scope.limit_core_num(1, 2):
+                            mm_result3 = torch.add(in3, in4)
+                            with torchair.scope.super_kernel('1', "2"):
+                                mm_result4 = torch.add(in3, in4)
+                return add_result, mm_result1, mm_result2, mm_result3, mm_result4
+
+        def check_graph(concrete_graph):
+            event_record = 0
+            for node in concrete_graph.fx_graph.graph.nodes:
+                if str(node.target) == "aten.mm.default":
+                    assert str(node.prev.target) == "air.tagged_event_wait.default"
+                if str(node.target) == "air.tagged_event_record.default":
+                    event_record += 1
+            assert event_record == 2, f"expect event record count is 2, but got {event_record}"
+
+        def decorator(call):
+            def wrapper(*args, **kwargs):
+                assert len(args) >= 3
+                check_graph(args[0])
+                return tuple([args[0], args[1], args[2], args[3], args[4]])
+
+            return wrapper
+
+        AclConcreteGraph.__call__ = decorator(AclConcreteGraph.__call__)
+
+        model = Model()
+        opt_model = torch.compile(model, backend=aclgraph_backend, fullgraph=True, dynamic=False)
+        x = torch.randn([3, 3])
+        y = torch.randn([3, 3])
+        z = torch.randn([3, 3])
+        w = torch.randn([3, 3])
+        opt_model(x, y, z, w)
+
     def test_npu_stream_switch_no_support_npu_wait_tensor_with_reduce_over_head(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -1905,8 +2007,21 @@ class AclGraphSt(unittest.TestCase):
         y = torch.randn([3, 3])
         z = torch.randn([3, 3])
         w = torch.randn([3, 3])
-        model(x, y, z, w)
+
+        model = Model()
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            model(x, y, z, w)
         self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
+        self.assertTrue(
+            any("with torch.npu.stream" in log for log in cm.output),
+            f"Expected fx_forward DEBUG log 'with torch.npu.stream'"
+            f"not found in logs: {cm.output}"
+        )
+        model2 = Model()
+        model2(x, y, z, w)
+        self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
+
+
 
     def test_aclgraph_cache_closure_vars(self):
         class Model(torch.nn.Module):
@@ -1984,13 +2099,18 @@ class AclGraphSt(unittest.TestCase):
         z = torch.randn([3, 3])
         w = torch.randn([3, 3])
         from torchair._acl_concrete_graph.graph_pass import _GLOBAL_SCOPE_TAG_TO_EVENT
+        from torchair.scope._scope_attr import _GLOBAL_TAG_TO_STREAM
         opt_model(x, y, z, w, True)
         len_of_tagged_event_1 = len(_GLOBAL_SCOPE_TAG_TO_EVENT)
+        len_of_stream_1 = len(_GLOBAL_TAG_TO_STREAM)
         opt_model(x, y, z, w, False)
         len_of_tagged_event_2 = len(_GLOBAL_SCOPE_TAG_TO_EVENT)
+        len_of_stream_2 = len(_GLOBAL_TAG_TO_STREAM)
         opt_model(x, y, z, w, True)
         len_of_tagged_event_3 = len(_GLOBAL_SCOPE_TAG_TO_EVENT)
+        len_of_stream_3 = len(_GLOBAL_TAG_TO_STREAM)
         assert len_of_tagged_event_2 == len_of_tagged_event_3
+        assert len_of_stream_2 == len_of_stream_3
 
     def test_aclgraph_unsupported_blocking_env(self):
         class Model(torch.nn.Module):

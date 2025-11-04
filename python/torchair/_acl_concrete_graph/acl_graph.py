@@ -628,6 +628,8 @@ class AclGraphCacheInfo:
     ops_update_rulers: Dict[str, List] = None
     mutated_user_inputs: List[str] = None
     tagged_event_names: List[str] = field(default_factory=list)
+    # To ensure that npu_stream_switch obtains the correct stream in a cache_compile scenario
+    user_stream_label: Set[str] = field(default_factory=set)
 
     def __post_init__(self):
         if self.pool is not None:
@@ -683,6 +685,7 @@ class AclGraph(object):
         self._updated_node_infos = []
         self._tagged_event_names = None
         self._parameter_user_inputs = []
+        self._user_stream_label = None
 
     @property
     def config(self):
@@ -765,6 +768,7 @@ class AclGraph(object):
         self._num_warmup_iters = aclgraph_cache_info.num_warmup_iters
         self._fx_graph_name = aclgraph_cache_info.fx_graph_name
         self._tagged_event_names = aclgraph_cache_info.tagged_event_names
+        self._user_stream_label = aclgraph_cache_info.user_stream_label
 
     def compile(self, *args: Any, **kwargs: Any):
         if not self._captured:
