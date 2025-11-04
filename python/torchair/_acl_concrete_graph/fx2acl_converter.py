@@ -36,7 +36,7 @@ class AclConcreteGraph(ConcreteGraphBase):
     """
     AclConcreteGraph represents a concrete computation graph optimized for Ascend NPU devices.
     It extends the base ConcreteGraphBase to provide ACL-specific compilation and execution capabilities.
-    
+
     Args:
         config (CompilerConfig): Configuration object for compiler settings.
         name (str, optional): Name of the graph. Defaults to "graph".
@@ -77,15 +77,15 @@ class AclConcreteGraph(ConcreteGraphBase):
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """
         Executes the compiled ACL graph with the provided inputs.
-        
+
         This method handles input processing, graph execution, and output retrieval.
         It ensures proper data synchronization between captured inputs and user-provided inputs
         for in-place operations that may modify tensor addresses.
-        
+
         Args:
             *args: Variable length argument list for graph inputs.
             **kwargs: Arbitrary keyword arguments for graph inputs.
-        
+
         Returns:
             Any: Output tensors from the executed graph.
         """
@@ -165,6 +165,7 @@ class AclConcreteGraph(ConcreteGraphBase):
         # which is "from torchair._acl_concrete_graph.acl_graph import"
         head.splice('''
             from collections import OrderedDict
+            import threading
             from typing import List, Optional, Callable, Any, Dict, Tuple, Union
             import torch
             from torch.profiler import record_function
@@ -185,13 +186,18 @@ class AclConcreteGraph(ConcreteGraphBase):
         head.writeline('')
         init_code = self._codegen_init()
         head.splice(init_code)
+        need_update_user_stream_label = (len(self._aclgraph_cache_info.user_stream_label) > 0)
+        if need_update_user_stream_label:
+            head.writeline('')
+            update_code_stream = self._codegen_user_stream_label_dict()
+            head.splice(update_code_stream)
         need_update_tagged_event = (len(self._aclgraph_cache_info.tagged_event_names) > 0)
         if need_update_tagged_event:
             head.writeline('')
             update_code = self._codegen_update_tagged_event()
             head.splice(update_code)
         head.writeline('')
-        kernel_code = self._codegen_kernel(need_update_tagged_event)
+        kernel_code = self._codegen_kernel(need_update_tagged_event, need_update_user_stream_label)
         head.splice(kernel_code)
 
         return head.getvalue()
@@ -199,13 +205,13 @@ class AclConcreteGraph(ConcreteGraphBase):
     def compile(self, *args: Any, **kwargs: Any):
         """
         Compiles the computation graph into an executable ACL graph.
-        
+
         This method performs graph capture, optimization, and key generation for subsequent executions.
-        
+
         Args:
             *args: Input arguments for graph compilation.
             **kwargs: Keyword arguments for graph compilation.
-            
+
         Returns:
             str: Unique identifier (graph key) for the captured ACL graph.
         """
@@ -215,7 +221,7 @@ class AclConcreteGraph(ConcreteGraphBase):
         """
         Optimizes the computation graph without relying on runtime information.
         This includes passes like re-inplacing in-place operations and dynamic workspace handling.
-        
+
         Args:
             *sample_args: Sample input arguments for tracing and optimization.
         """
@@ -225,9 +231,12 @@ class AclConcreteGraph(ConcreteGraphBase):
             # when use custom pool from user, do not enable mem pool reuse in same fx.
             self.config.debug.aclgraph.disable_mempool_reuse_in_same_fx = True
 
-        multi_stream_enabled = apply_event_closure_with_multi_stream(self.fx_graph,
-                                                                     self.fx_graph_name,
-                                                                     self._aclgraph_cache_info.tagged_event_names)
+        # _stream_scope_enter_nodes_dict is initilized as an empty dict,
+        # _stream_scope_exit_nodes_list is initialized as an empty list. Both of them will not be None.
+        multi_stream_enabled, _stream_scope_enter_nodes_dict, _stream_scope_exit_nodes_list = \
+        apply_event_closure_with_multi_stream(self.fx_graph, self.fx_graph_name,
+                                              self._aclgraph_cache_info.tagged_event_names,
+                                              self._aclgraph_cache_info.user_stream_label)
         logger.debug('after apply_stream_event_closure optimization, '
                      'multi_stream_enabled is %s, graph is %s.', multi_stream_enabled, self.fx_graph.graph)
 
@@ -270,7 +279,9 @@ class AclConcreteGraph(ConcreteGraphBase):
         # It is necessary to recompile GraphModule to make sure that changes to graph take effect.
         self.fx_graph.recompile()
         self._fx_forward = self._codegen_fx_forward(self.fx_graph, self.fx_graph.code,
-                                                    self._aclgraph_cache_info.updated_ops_param)
+                                                    self._aclgraph_cache_info.updated_ops_param,
+                                                    _stream_scope_enter_nodes_dict,
+                                                    _stream_scope_exit_nodes_list)
         logger.debug('Original fx_forward is: %s', self.fx_graph.code)
         self._aclgraph_manager = AclGraph(fx_graph=self.fx_graph, config=configs)
         self.graph.load(self._aclgraph_cache_info)
@@ -305,10 +316,10 @@ class AclConcreteGraph(ConcreteGraphBase):
     def parse_symlist(self, syms):
         """
         Parses a list of symbols (either integers or ValuePack objects) into a list of NPU-compatible symbols.
-        
+
         Args:
             syms (List[Union[int, ValuePack]]): List containing symbols to parse.
-            
+
         Returns:
             List[int]: Parsed list of integer symbols.
         """
@@ -329,13 +340,13 @@ class AclConcreteGraph(ConcreteGraphBase):
     def parse_input(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
         """
         Parses input metadata during graph construction.
-        
+
         Args:
             target (Target): The target operation being parsed.
             args (Tuple[Argument, ...]): Input arguments for the target operation.
             kwargs (Dict[str, Any]): Keyword arguments for the target operation.
             meta_outputs (Any): Metadata associated with the operation's outputs.
-            
+
         Returns:
             Any: Processed metadata for the input operation.
         """
@@ -358,15 +369,15 @@ class AclConcreteGraph(ConcreteGraphBase):
     def parse_node(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
         """
         Parses individual nodes within the graph during compilation.
-        
+
         This method can be extended to include optimizations specific to certain node types.
-        
+
         Args:
             target (Target): The target operation being parsed.
             args (Tuple[Argument, ...]): Input arguments for the target operation.
             kwargs (Dict[str, Any]): Keyword arguments for the target operation.
             meta_outputs (Any): Metadata associated with the operation's outputs.
-            
+
         Returns:
             Any: Processed result of the parsed node.
         """
@@ -377,13 +388,13 @@ class AclConcreteGraph(ConcreteGraphBase):
     def parse_output(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
         """
         Parses output metadata during graph construction.
-        
+
         Args:
             target (Target): The target operation being parsed.
             args (Tuple[Argument, ...]): Input arguments for the target operation.
             kwargs (Dict[str, Any]): Keyword arguments for the target operation.
             meta_outputs (Any): Metadata associated with the operation's outputs.
-            
+
         Returns:
             Any: Processed metadata for the output operation.
         """
@@ -448,12 +459,27 @@ class AclConcreteGraph(ConcreteGraphBase):
                 ops_update_rulers={self._aclgraph_cache_info.ops_update_rulers},
                 mutated_user_inputs={self._aclgraph_cache_info.mutated_user_inputs},
                 tagged_event_names={self._aclgraph_cache_info.tagged_event_names},
-                parameter_user_inputs={self._aclgraph_cache_info.parameter_user_inputs}
+                parameter_user_inputs={self._aclgraph_cache_info.parameter_user_inputs},
+                user_stream_label={self._aclgraph_cache_info.user_stream_label}
             )
             acl_graph.load(aclgraph_cache_info)
         ''')
 
         return init_code.getvalue()
+
+    def _codegen_user_stream_label_dict(self):
+        from torch._inductor.utils import IndentedBuffer
+        update_code = IndentedBuffer()
+        update_code.writelines(["_GLOBAL_USER_TAG_TO_STREAM = {}", "_GLOBAL_USER_TAGGED_STREAM_LOCK = threading.Lock()"])
+        update_code.writeline("")
+        update_code.splice('''
+        def _update_user_stream_label_dict():
+            with _GLOBAL_USER_TAGGED_STREAM_LOCK:
+                for i, tag in enumerate(aclgraph_cache_info.user_stream_label):
+                    stream = torch_npu.npu.Stream()
+                    _GLOBAL_USER_TAG_TO_STREAM[tag] = stream
+        ''')
+        return update_code.getvalue()
 
     def _codegen_update_tagged_event(self):
         from torch._inductor.utils import IndentedBuffer
@@ -468,7 +494,7 @@ class AclConcreteGraph(ConcreteGraphBase):
         ''')
         return update_code.getvalue()
 
-    def _codegen_kernel(self, need_update_tagged_event=False):
+    def _codegen_kernel(self, need_update_tagged_event=False, need_update_user_stream_label=False):
         from torch._inductor.utils import IndentedBuffer
         kernel_code = IndentedBuffer()
         kernel_code.writelines(['', '_is_first_run = True', f'def kernel(*args, **kwargs):'])
@@ -479,6 +505,8 @@ class AclConcreteGraph(ConcreteGraphBase):
                 kernel_code.writelines(['_is_first_run = False', ''])
                 if need_update_tagged_event:
                     kernel_code.writelines(['_update_tagged_event_dict()', ''])
+                if need_update_user_stream_label:
+                    kernel_code.writelines(['_update_user_stream_label_dict()', ''])
                 input_code = self._codegen_input()
                 kernel_code.splice(input_code)
                 assert_code = self._codegen_assert_size_stride()
@@ -525,7 +553,9 @@ class AclConcreteGraph(ConcreteGraphBase):
                 input_code.writeline(f'{str(name)} = {self._fx_input_names[idx]}')
         return input_code.getvalue()
 
-    def _codegen_fx_forward(self, gm: torch.fx.GraphModule, code: str, need_updated_ops: Dict):
+    def _codegen_fx_forward(self, gm: torch.fx.GraphModule, code: str, need_updated_ops: Dict,
+                            stream_scope_enter_nodes_dict: Dict[str, str],
+                            stream_scope_exit_nodes_list: List[str]):
         for node in gm.graph.nodes:
             # Only record tensor_constants for now.
             if node.op == "get_attr" and "tensor_constant" in node.name:
@@ -556,6 +586,8 @@ class AclConcreteGraph(ConcreteGraphBase):
                 forward_code.writelines(["from torchair._acl_concrete_graph.utils import reconstruct_args_kwargs",
                                          "from torchair._acl_concrete_graph.acl_graph import UpdatedNodeInfo"])
             record_wait_ops_dic = self._codegen_fx_forward_record_wait(gm)
+            if len(self._aclgraph_cache_info.user_stream_label) > 0:
+                forward_code.writeline("global _GLOBAL_USER_TAG_TO_STREAM")
             for line in body:
                 need_update = False
                 for k in need_updated_ops_dict.keys():
@@ -575,6 +607,27 @@ class AclConcreteGraph(ConcreteGraphBase):
                 for k_ops in record_wait_ops_dic.keys():
                     if k_ops in line:
                         forward_code.splice(record_wait_ops_dic[k_ops])
+                for k, v in stream_scope_enter_nodes_dict.items():
+                    if k in line:
+                        forward_code.writeline(line.strip())
+                        forward_code.writeline(f"with torch.npu.stream(_GLOBAL_USER_TAG_TO_STREAM['{v}']):")
+                        # To make forward_code indent
+                        if hasattr(forward_code, "do_indent"):
+                            forward_code.do_indent()
+                        else:
+                            forward_code._indent += 1
+                        stream_scope_enter_nodes_dict.pop(k)
+                        need_update = True
+                        break
+                for k in stream_scope_exit_nodes_list:
+                    if k in line:
+                        forward_code.writeline(line.strip())
+                        # To make forward_code dedent
+                        if hasattr(forward_code, "do_unindent"):
+                            forward_code.do_unindent()
+                        else:
+                            forward_code._indent -= 1
+                        stream_scope_exit_nodes_list.remove(k)
                         need_update = True
                         break
                 if not need_update:
@@ -622,7 +675,7 @@ class AclConcreteGraph(ConcreteGraphBase):
                     need_updated_ops_code.getvalue()
 
         return has_need_updated_ops
-    
+
     def _codegen_fx_forward_record_wait(self, gm: torch.fx.GraphModule):
         from torch._inductor.utils import IndentedBuffer
         ops_code_dic = {}
