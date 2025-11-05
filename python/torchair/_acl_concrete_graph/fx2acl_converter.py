@@ -607,6 +607,8 @@ class AclConcreteGraph(ConcreteGraphBase):
                 for k_ops in record_wait_ops_dic.keys():
                     if k_ops in line:
                         forward_code.splice(record_wait_ops_dic[k_ops])
+                        need_update = True
+                        break
                 for k, v in stream_scope_enter_nodes_dict.items():
                     if k in line:
                         forward_code.writeline(line.strip())
