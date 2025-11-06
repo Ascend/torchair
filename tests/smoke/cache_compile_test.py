@@ -2,6 +2,7 @@ import os
 import logging
 import types
 import unittest
+import pickle
 from pathlib import Path
 from typing import List, Optional
 from unittest.mock import Mock, patch
@@ -205,5 +206,33 @@ class CacheCompileTest(unittest.TestCase):
             any("not supported now" in log for log in cm.output),
             f"cache rebase failed, log: {cm.output}"
         )
+
+    def test_compiled_fx_artifacts(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                z = x + y
+                return z
+
+        compiler_config = CompilerConfig()
+        npu_backend = torchair.get_npu_backend(compiler_config=compiler_config)
+        model = torch.compile(Model().npu(), backend=npu_backend, dynamic=False, fullgraph=True)
+
+        x = torch.tensor([1.0]).npu()
+        y = torch.tensor([2.0]).npu()
+        z = model(x, y)
+
+        # The artifact is dumped from "npu:0"
+        artifact = b'\x80\x04\x95I\x0c\x00\x00\x00\x00\x00\x00\x8c\x18torchair.npu_fx_compiler\x94\x8c\x14_CompiledFxArtifacts\x94\x93\x94)\x81\x94}\x94(\x8c\x07version\x94\x8c\x030.1\x94\x8c\x07py_code\x94X\xec\x0b\x00\x00\nfrom collections import OrderedDict\nfrom typing import List, Optional, Callable, Any, Dict, Tuple, Union\nimport torch\nfrom torch.profiler import record_function\nimport torch_npu\nfrom torchair._acl_concrete_graph.acl_graph import AclGraph, AclGraphCacheInfo\nfrom torchair.configs.compiler_config import CompilerConfig\nassert_size_stride = torch._C._dynamo.guards.assert_size_stride\n\nserialized_fx_graph = b\'\\x80\\x04\\x95\\x0c\\x04\\x00\\x00\\x00\\x00\\x00\\x00\\x8c\\x15torch.fx.graph_module\\x94\\x8c\\x13reduce_graph_module\\x94\\x93\\x94}\\x94(\\x8c\\x08training\\x94\\x88\\x8c\\x0b_parameters\\x94}\\x94\\x8c\\x08_buffers\\x94}\\x94\\x8c\\x1b_non_persistent_buffers_set\\x94\\x8f\\x94\\x8c\\x13_backward_pre_hooks\\x94\\x8c\\x0bcollections\\x94\\x8c\\x0bOrderedDict\\x94\\x93\\x94)R\\x94\\x8c\\x0f_backward_hooks\\x94h\\x0e)R\\x94\\x8c\\x16_is_full_backward_hook\\x94N\\x8c\\x0e_forward_hooks\\x94h\\x0e)R\\x94\\x8c\\x1a_forward_hooks_with_kwargs\\x94h\\x0e)R\\x94\\x8c\\x1c_forward_hooks_always_called\\x94h\\x0e)R\\x94\\x8c\\x12_forward_pre_hooks\\x94h\\x0e)R\\x94\\x8c\\x1e_forward_pre_hooks_with_kwargs\\x94h\\x0e)R\\x94\\x8c\\x11_state_dict_hooks\\x94h\\x0e)R\\x94\\x8c\\x15_state_dict_pre_hooks\\x94h\\x0e)R\\x94\\x8c\\x1a_load_state_dict_pre_hooks\\x94h\\x0e)R\\x94\\x8c\\x1b_load_state_dict_post_hooks\\x94h\\x0e)R\\x94\\x8c\\x08_modules\\x94}\\x94\\x8c\\x0b_tracer_cls\\x94N\\x8c\\x0e_tracer_extras\\x94}\\x94\\x8c\\x04meta\\x94}\\x94\\x8c\\x0e_replace_hooks\\x94]\\x94\\x8c\\x12_create_node_hooks\\x94]\\x94\\x8c\\x11_erase_node_hooks\\x94]\\x94\\x8c\\x05_code\\x94\\x8c\\x89\\n\\n\\ndef forward(self, arg0_1, arg1_1):\\n    add = torch.ops.aten.add.Tensor(arg0_1, arg1_1);  arg0_1 = arg1_1 = None\\n    return (add,)\\n    \\x94\\x8c\\x0b_lineno_map\\x94}\\x94(K\\x01K\\x02K\\x02K\\x03K\\x03K\\x03uu\\x8c\\xafNoneType = type(None)\\nfrom math import inf\\nfrom math import nan\\nfrom torch import device\\nimport torch\\nimport torch.fx._pytree as fx_pytree\\nimport torch.utils._pytree as pytree\\x94\\x86\\x94\\x86\\x94h\\x0e)R\\x94}\\x94\\x8c\\t_metadata\\x94h\\x0e)R\\x94\\x8c\\x00\\x94}\\x94\\x8c\\x07version\\x94K\\x01sssb\\x86\\x94.\'\ncompile_configs = {}\ncompile_configs["enable_output_clone"] = "0"\ncompile_configs["disable_mempool_reuse_in_same_fx"] = "0"\n\nacl_graph = AclGraph(serialized_fx_graph=serialized_fx_graph, config=compile_configs)\n\naclgraph_cache_info = AclGraphCacheInfo(\n    pool=None,\n    stream=None,\n    capture_error_mode="global",\n    num_warmup_iters=0,\n    fx_graph_name="graph_2",\n    user_inputs_mapping=OrderedDict([(\'arg0_1\', 0), (\'arg1_1\', 1)]),\n    unupdated_sym_input_index=[],\n    updated_ops_param={},\n    ops_update_rulers={},\n    mutated_user_inputs=[]\n)\nacl_graph.load(aclgraph_cache_info)\n\n_is_first_run = True\ndef kernel(*args):\n\n    global _is_first_run\n    if _is_first_run:\n        _is_first_run = False\n        assert_size_stride(args[0], (1,), (1,))\n        assert_size_stride(args[1], (1,), (1,))\n\n    fn_key = acl_graph.compile(*args)\n\n    acl_graph.process_input(fn_key, *args)\n\n    with record_function("acl_graph_replay"):\n        acl_graph.run(fn_key, *args)\n\n    acl_graph.process_inplace_inputs(fn_key, *args)\n\n    return acl_graph.reconstruct_outputs(fn_key)\n\x94ub.'
+        loaded_artifact = pickle.loads(artifact)
+
+        loaded_model = torchair.npu_fx_compiler._CompiledFxGraph.load_artifacts(loaded_artifact)
+        another_z = loaded_model(x, y)
+
+        self.assertEqual(z.item(), another_z[0].item())
+
+
 if __name__ == '__main__':
     unittest.main()
