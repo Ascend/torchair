@@ -279,9 +279,10 @@ def _view_to_reshape(graph_module: torch.fx.GraphModule):
 def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, example_inputs):
     # More optimization passes here
     Observer = functools.partial(GraphTransformObserver, phase="post_grad_passes")
-    if config.post_grad_custom_pre_pass:
-        with Observer(graph_module, config.post_grad_custom_pre_pass.__name__) as graph_observe:
-            graph_observe.apply_gm_pass(config.post_grad_custom_pre_pass, example_inputs, config)
+    pre_func = config.post_grad_custom_pre_pass.value
+    if pre_func is not None:
+        with Observer(graph_module, pre_func.__name__) as graph_observe:
+            graph_observe.apply_gm_pass(pre_func, example_inputs, config)
 
     if config.experimental_config.remove_noop_ops:
         _optimize_noop_ops(graph_module)
@@ -292,9 +293,10 @@ def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, exa
     graph_module = _optimize_sym_input(graph_module)
     _view_to_reshape(graph_module)
 
-    if config.post_grad_custom_post_pass:
-        with Observer(graph_module, config.post_grad_custom_post_pass.__name__) as graph_observe:
-            graph_observe.apply_gm_pass(config.post_grad_custom_post_pass, example_inputs, config)
+    post_func = config.post_grad_custom_post_pass.value
+    if post_func is not None:
+        with Observer(graph_module, post_func.__name__) as graph_observe:
+            graph_observe.apply_gm_pass(post_func, example_inputs, config)
     logger.debug('after fx graph optimization, graph is %s', graph_module.graph)
     return graph_module
 

@@ -348,7 +348,20 @@ class CompiledModel:
 def _get_str_options(options: CompilerConfig, sep=","):
     g_opts, l_opts = options.as_dict()
     g_opts.update(l_opts)
+    pre_func = options.post_grad_custom_pre_pass.value
+    if pre_func is not None:
+        g_opts["post_grad_custom_pre_pass"] = _get_code_digest(pre_func)
+    post_func = options.post_grad_custom_post_pass.value
+    if post_func is not None:
+        g_opts["post_grad_custom_post_pass"] = _get_code_digest(post_func)
     return sep.join([f"{k}={v}" for k, v in g_opts.items()])
+
+
+def _get_code_digest(value):
+    try:
+        return hashlib.md5(_readable_inst(value).encode()).hexdigest()
+    except TypeError:
+        return hashlib.md5("custom_pass".encode()).hexdigest()
 
 
 def _pretty_title(title, length=100):
