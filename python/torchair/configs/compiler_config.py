@@ -5,6 +5,7 @@ __all__ = ["CompilerConfig"]
 import warnings
 from typing import Any
 from torchair.configs._option_base import OptionValue
+from torchair.configs._option_base import CallableValue
 from torchair.configs._option_base import DeprecatedValue
 from torchair.configs._option_base import NpuBaseConfig
 from torchair.configs.aoe_config import _AoeConfig
@@ -34,8 +35,8 @@ class CompilerConfig(NpuBaseConfig):
         self.ge_config = _GEConfig()
         self.aclgraph_config = _AclGraphConfig()
         self.mode = OptionValue("max-autotune", ["max-autotune", "reduce-overhead"])
-        self.post_grad_custom_pre_pass = None
-        self.post_grad_custom_post_pass = None
+        self.post_grad_custom_pre_pass = CallableValue(None)
+        self.post_grad_custom_post_pass = CallableValue(None)
 
         super(CompilerConfig, self).__init__()
         self._fixed_attrs.append("post_grad_custom_pre_pass")
@@ -50,19 +51,11 @@ class CompilerConfig(NpuBaseConfig):
 
     def as_dict(self):
         local_options, global_options = super().as_dict()
-        if self.post_grad_custom_pre_pass:
-            local_options["post_grad_custom_pre_pass"] = self._get_func_code_md5(self.post_grad_custom_pre_pass)
-        if self.post_grad_custom_post_pass:
-            local_options["post_grad_custom_post_pass"] = self._get_func_code_md5(self.post_grad_custom_post_pass)
+        if "post_grad_custom_pre_pass" in local_options.keys():
+            local_options.pop("post_grad_custom_pre_pass")
+        if "post_grad_custom_post_pass" in local_options.keys():
+            local_options.pop("post_grad_custom_post_pass")
         return local_options, global_options
-        
-    def _get_func_code_md5(self, func):
-        import dis
-        import io
-        import hashlib
-        output = io.StringIO()
-        dis.dis(func, file=output)
-        return hashlib.md5(output.getvalue().encode()).hexdigest()
 
 
 unsupport_geconfig_list = [("debug.aclgraph.disable_reinplace_input_mutated_ops_pass", [True]),

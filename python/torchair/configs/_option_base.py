@@ -2,6 +2,8 @@
 import os
 import re
 
+from typing import Callable
+
 from torchair._utils.error_code import pretty_error_msg
 
 
@@ -148,6 +150,23 @@ class DeprecatedValue(OptionValue):
     def __init__(self, optional, *, replacement):
         super().__init__(None, optional)
         self.replacement = replacement
+
+
+class CallableValue(OptionValue):
+    def __init__(self, default=None):
+        if default is not None and not isinstance(default, Callable):
+            raise TypeError(f"default must be Callable or None, got {type(default)}")
+        super().__init__(default, optional=None)
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, v):
+        if v is not None and not isinstance(v, Callable):
+            raise TypeError(f"value must be Callable or None, got {type(v)}")
+        self._value = v    
 
 
 class NpuBaseConfig:
