@@ -7,6 +7,7 @@ import copy
 from typing import List, Optional, Callable, Any, Dict, Tuple, Union
 import logging
 import sys
+import dataclasses
 
 import torch
 from torch._subclasses.fake_tensor import is_fake
@@ -360,7 +361,16 @@ def _optimize_sym_input(graph_module: torch.fx.GraphModule):
     return graph_module
 
 
-class _GmRunner:
+@dataclasses.dataclass
+class _CompiledFxArtifacts:
+    """
+    Artifacts for torchair compiled fx graph.
+    """
+    version: str = "0.1"
+    py_code: str = None
+
+
+class _CompiledFxGraph:
     """
     Wrapper for executing a graph module with runtime inputs.
     """
@@ -385,6 +395,21 @@ class _GmRunner:
                     logger.debug('  output %s: %s', i, _summary(inp))
 
             return gm_result
+
+    @classmethod
+    def load_artifacts(cls, artifacts: _CompiledFxArtifacts):
+        if artifacts.version != _CompiledFxArtifacts.version:
+            raise RuntimeError(f'Unsupported artifacts version: {artifacts.version}, '
+                               f'expected: {_CompiledFxArtifacts.version}.')
+        from torchair.inference._cache_compiler import _compile_py_code
+        compiled_mod = _compile_py_code(artifacts.py_code)
+        return _CompiledFxGraph(getattr(compiled_mod, 'kernel'))
+
+    def dump_artifacts(self):
+        if not hasattr(self.runner, 'codegen'):
+            raise RuntimeError(f'Compiled fx type {self.runner} does not support serialize.')
+        code = self.runner.codegen(extend_config={})
+        return _CompiledFxArtifacts(py_code=code)
 
 
 _GLOBAL_GRAPH_ID = 0
@@ -414,7 +439,7 @@ class _NpuFxCompiler:
             example_inputs (List[torch.Tensor]): Example inputs for compilation.
 
         Returns:
-            _GmRunner: Runner wrapping the compiled graph.
+            _CompiledFxGraph: Runner wrapping the compiled graph.
         """
         return self._get_compiled_gm(gm, example_inputs)
 
@@ -443,7 +468,7 @@ class _NpuFxCompiler:
             example_inputs (List[torch.Tensor]): Example inputs.
 
         Returns:
-            _GmRunner: Runner wrapping the compiled graph.
+            _CompiledFxGraph: Runner wrapping the compiled graph.
         """
         if int(self.config.export.experimental.enable_lite_export.value):
             from torchair._ge_concrete_graph.ge_converter import lite
@@ -459,7 +484,7 @@ class _NpuFxCompiler:
                                'and FALLBACK to EAGER execution to ensure the integrity of the analysis data. '
                                'Once the analysis is complete, please make sure to disable the summary config '
                                'to ensure that the graph is compiled and executed.')
-                return _GmRunner(gm)
+                return _CompiledFxGraph(gm)
 
         if self.config.debug.data_dump.enabled:
             logger.warning(f'When dumping data of FX Graph, npu run will be skipped, '
@@ -467,9 +492,9 @@ class _NpuFxCompiler:
                            'the data dump config to ensure that the graph is compiled and executed.')
             data_dumper = _NpuFxDumper(gm, config=self.config.debug.data_dump,
                                        name="graph_" + str(_next_unique_graph_id()))
-            return _GmRunner(data_dumper)
+            return _CompiledFxGraph(data_dumper)
 
-        return _GmRunner(self._gen_compiled_gm(gm, example_inputs))
+        return _CompiledFxGraph(self._gen_compiled_gm(gm, example_inputs))
 
     def _gen_compiled_gm(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
         logger.info(f'compiler inputs')
