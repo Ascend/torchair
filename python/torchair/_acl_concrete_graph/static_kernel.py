@@ -11,6 +11,7 @@ from torchair.core.utils import logger
 
 
 _uninstall_paths = []
+_local_gloo_groups = None
 
 
 def compile_static_kernel(fx_func, *args, build_dir=None, **kwargs):
@@ -138,14 +139,31 @@ def _get_local_gloo_group():
 
     global_rank = dist.get_rank()
     node_count = world_size // local_world_size
-    local_gloo_groups = [None] * node_count
+    global _local_gloo_groups
+    _local_gloo_groups = [None] * node_count
 
     for node_idx in range(node_count):
         start = node_idx * local_world_size
         ranks = list(range(start, start + local_world_size))
-        local_gloo_groups[node_idx] = dist.new_group(ranks=ranks, backend="gloo")
+        _local_gloo_groups[node_idx] = dist.new_group(ranks=ranks, backend="gloo")
 
-    return local_gloo_groups[global_rank // local_world_size]
+    return _local_gloo_groups[global_rank // local_world_size]
+
+
+def destroy_local_gloo_groups():
+    global _local_gloo_groups
+    if not _local_gloo_groups:
+        return
+
+    for idx, pg in enumerate(_local_gloo_groups):
+        if pg is None:
+            continue
+        try:
+            dist.destroy_process_group(pg)
+        except Exception as e:
+            logger.warning(f"destroy_process_group failed for local group idx {idx}: {e}")
+    _local_gloo_groups = None
+    logger.debug("cleared _local_gloo_groups")
 
 
 def install_and_sync_run_pkgs(result_root: Path):
@@ -174,6 +192,12 @@ def install_and_sync_run_pkgs(result_root: Path):
     # 5. barrier 等待所有 reselect 完
     logger.debug(f"Rank {rank}: barrier after reselect (Gloo)")
     dist.barrier(group=gloo_group)
+
+    # 6. 通信完成后销毁本地 gloo 分组，释放资源，防止重复创建
+    try:
+        destroy_local_gloo_groups()
+    except Exception as e:
+        logger.warning(f"failed to destroy local gloo groups after install_and_sync_run_pkgs: {e}")
 
 
 def save_uninstall_info(filename: str):
