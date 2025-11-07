@@ -37,6 +37,7 @@ from torchair._utils import add_npu_patch, get_npu_default_decompositions
 from torchair._utils.error_code import pretty_error_msg
 from torchair._utils.graph_transform_observer import GraphTransformObserver
 from torchair.inference._gear_utils import get_dim_gears, set_dim_gears, guard_gears_shape
+from torchair.patterns.pattern_pass_manager import _apply_pattern_passes
 
 aten = torch.ops.aten
 
@@ -287,11 +288,14 @@ def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, exa
 
     if config.experimental_config.remove_noop_ops:
         _optimize_noop_ops(graph_module)
-        
+
     from torchair.patterns._recover_view_inplace_pattern import recover_view_inplace_pattern
     graph_module = recover_view_inplace_pattern(graph_module, config)
 
     graph_module = _optimize_sym_input(graph_module)
+
+    _apply_pattern_passes(graph_module)
+
     _view_to_reshape(graph_module)
 
     post_func = config.post_grad_custom_post_pass.value
