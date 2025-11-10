@@ -500,6 +500,7 @@ class TorchairFXPatternSt(unittest.TestCase):
         wrapped = enable_remove_noop_ops_pattern(Model(), assert_func)
         wrapped(x=torch.randn([2, 2]), y=torch.randn([2, 2]))
 
+    @unittest.skipIf(torch.__version__ < '2.2.0', "")
     def test_pattern_pass_for_aclgraph(self):
         npu_config = torchair.CompilerConfig()
         npu_config.mode = "reduce-overhead"
@@ -524,6 +525,7 @@ class TorchairFXPatternSt(unittest.TestCase):
             f"Expected DEBUG log 'target: npu.npu_add_rms_norm_cast.default' in logs: {cm.output}"
         )
 
+    @unittest.skipIf(torch.__version__ < '2.2.0', "")
     def test_pattern_pass_for_ge(self):
         npu_config = torchair.CompilerConfig()
         npu_config.mode = "max-autotune"
@@ -548,6 +550,7 @@ class TorchairFXPatternSt(unittest.TestCase):
             f"Expected DEBUG log 'target: npu.npu_add_rms_norm_cast.default' in logs: {cm.output}"
         )
 
+    @unittest.skipIf(torch.__version__ < '2.2.0', "")
     def test_close_pattern_pass_for_aclgraph(self):
         npu_config = torchair.CompilerConfig()
         npu_config.mode = "reduce-overhead"
@@ -573,6 +576,7 @@ class TorchairFXPatternSt(unittest.TestCase):
             f"Expected no DEBUG log 'target: npu.npu_add_rms_norm_cast.default' in logs: {cm.output}"
         )
 
+    @unittest.skipIf(torch.__version__ < '2.2.0', "")
     def test_close_pattern_pass_for_ge(self):
         npu_config = torchair.CompilerConfig()
         npu_config.mode = "max-autotune"
@@ -598,6 +602,7 @@ class TorchairFXPatternSt(unittest.TestCase):
             f"Expected no DEBUG log 'target: npu.npu_add_rms_norm_cast.default' in logs: {cm.output}"
         )
 
+    @unittest.skipIf(torch.__version__ < '2.2.0', "")
     def test_pattern_pass_for_aclgraph_with_multistream(self):
         class DsModel2(torch.nn.Module):
             def __init__(self):

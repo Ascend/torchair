@@ -6,7 +6,11 @@ try:
 except ImportError:
     pass
 
-from torch._inductor.pattern_matcher import register_replacement, fwd_only, PatternMatcherPass
+from torch._inductor.pattern_matcher import register_replacement, PatternMatcherPass
+try:
+    from torch._inductor.pattern_matcher import fwd_only
+except ImportError:
+    from torch._inductor.pattern_matcher import inference_graph as fwd_only
 from torch._subclasses.fake_tensor import FakeTensorMode
 
 
@@ -14,7 +18,7 @@ class PatternPassManager:
     def __init__(self):
         self.pass_dict = PatternMatcherPass(pass_name="torchair_generic_pattern_pass")
 
-    def _return_true(self, match):
+    def _return_true(self):
         return True
     
     def register_pattern(self, search_fn, replace_fn, example_inputs, trace_fn=fwd_only, extra_check=_return_true, search_fn_pattern=None):
