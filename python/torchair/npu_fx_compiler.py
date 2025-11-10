@@ -294,7 +294,8 @@ def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, exa
 
     graph_module = _optimize_sym_input(graph_module)
 
-    _apply_pattern_passes(graph_module)
+    if config.debug.aclgraph.enable_pattern_pass:
+        _apply_pattern_passes(graph_module)
 
     _view_to_reshape(graph_module)
 
