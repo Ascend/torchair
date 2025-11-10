@@ -620,7 +620,7 @@ class TorchairFXPatternSt(unittest.TestCase):
                     y1 = y1.view(-1, h2).to(torch.float32)
 
                     y3, _, xOut3 = torch_npu.npu_add_rms_norm(x1, x2, weight)
-                    yOut3, scale1Out3 = torch_npu.npu_dynamic_quant(y3.flatten(0,1))
+                    yOut3, scale1Out3 = torch_npu.npu_dynamic_quant(y3.flatten(0, 1))
                     scale1Out3_view = scale1Out3.view(-1, 1)
                     return xOut3, yOut3, scale1Out3_view, y1
                 
