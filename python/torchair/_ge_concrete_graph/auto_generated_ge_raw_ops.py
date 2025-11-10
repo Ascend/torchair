@@ -81485,7 +81485,6 @@ def AddRmsNormCast(x1: Tensor,
         .input("x2", "DT_FLOAT16, DT_BF16")\
         .input("gamma", "DT_FLOAT16, DT_BF16")\
         .attr("epsilon", attr.Float(0.000001))\
-        .attr("output_mask", attr.ListBool([]))\
         .output("y1", "DT_FLOAT")\
         .output("y2", "DT_FLOAT16, DT_BF16")\
         .output("rstd", "DT_FLOAT")\

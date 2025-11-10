@@ -546,6 +546,7 @@ class TorchairFXPatternSt(unittest.TestCase):
     def test_close_pattern_pass_for_aclgraph(self):
         npu_config = torchair.CompilerConfig()
         npu_config.mode = "reduce-overhead"
+        npu_config.debug.aclgraph.enable_pattern_pass = False
         npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
         model = DsModel()
         model_compile = torch.compile(model, backend=npu_backend)
@@ -570,6 +571,7 @@ class TorchairFXPatternSt(unittest.TestCase):
     def test_close_pattern_pass_for_ge(self):
         npu_config = torchair.CompilerConfig()
         npu_config.mode = "max-autotune"
+        npu_config.debug.aclgraph.enable_pattern_pass = False
         npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
         model = DsModel()
         model_compile = torch.compile(model, backend=npu_backend)
