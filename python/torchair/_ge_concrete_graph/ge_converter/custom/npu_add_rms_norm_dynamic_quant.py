@@ -1,5 +1,6 @@
 from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 
+
 @register_fx_node_ge_converter(torch.ops.npu.npu_add_rms_norm_dynamic_quant.default)
 def convert_npu_add_rms_norm_dynamic_quant_default(
     x1: Tensor,

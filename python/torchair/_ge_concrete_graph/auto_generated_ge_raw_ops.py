@@ -81354,6 +81354,7 @@ def GroupedMatmulSwigluQuantV2(x: Tensor,
         .output("y_scale", "DT_FLOAT")
     )
 
+
 # This api is auto-generated from IR AddRmsNormDynamicQuant
 @auto_convert_to_tensor([False, False, False, False, False, False], 
                         [False, False, False, True, True, True])
@@ -81430,6 +81431,7 @@ def AddRmsNormDynamicQuant(x1: Tensor,
         .output("scale1", "DT_FLOAT")\
         .output("scale2", "DT_FLOAT")
     )
+
 
 # This api is auto-generated from IR AddRmsNormCast
 @auto_convert_to_tensor([False, False, False], 

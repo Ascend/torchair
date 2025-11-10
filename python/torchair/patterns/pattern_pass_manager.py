@@ -5,11 +5,12 @@ import torch_npu
 from torch._inductor.pattern_matcher import register_replacement, fwd_only, PatternMatcherPass
 from torch._subclasses.fake_tensor import FakeTensorMode
 
+
 class PatternPassManager:
     def __init__(self):
         self.pass_dict = PatternMatcherPass(pass_name="torchair_generic_pattern_pass")
 
-    def _return_true(match):
+    def _return_true(self, match):
         return True
     
     def register_pattern(self, search_fn, replace_fn, example_inputs, trace_fn=fwd_only, extra_check=_return_true, search_fn_pattern=None):
@@ -45,6 +46,7 @@ class PatternPassManager:
 
 pattern_pass_manager = PatternPassManager()
 
+
 def _apply_pattern_passes(graph_module: torch.fx.GraphModule):
     # Register pattern replacement rules
     _register_addrmsnormdynamicquant_pattern()
@@ -53,6 +55,7 @@ def _apply_pattern_passes(graph_module: torch.fx.GraphModule):
 
     # Apply all registered pattern replacements
     pattern_pass_manager.apply_pass(graph_module)
+
 
 @functools.lru_cache(None)
 def _register_addrmsnormdynamicquant_pattern():
@@ -81,11 +84,12 @@ def _register_addrmsnormdynamicquant_pattern():
             example_inputs=(input_tensor(), input_tensor(), kwargs_tensor(), kwargs_tensor())
         )
 
+
 @functools.lru_cache(None)
 def _register_addrmsnormdynamicquant_pattern2():
     def search_fn(x1, x2, gamma):
         y, _, xOut = torch_npu.npu_add_rms_norm(x1, x2, gamma)
-        yOut, scale1Out = torch_npu.npu_dynamic_quant(y.flatten(0,1))
+        yOut, scale1Out = torch_npu.npu_dynamic_quant(y.flatten(0, 1))
         scale1Out_view = scale1Out.view(-1, 1)
         return yOut, xOut, scale1Out_view
     
@@ -109,6 +113,7 @@ def _register_addrmsnormdynamicquant_pattern2():
             replace_fn=replace_fn,
             example_inputs=(input_tensor(), input_tensor(), kwargs_tensor())
         )
+
 
 @functools.lru_cache(None)
 def _register_addrmsnormcast_pattern():

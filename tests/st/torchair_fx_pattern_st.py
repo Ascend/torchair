@@ -119,6 +119,7 @@ def stub_is_supported_cann_version(target_version):
     logger.debug('[Stub] run stub cann version check of %s.', target_version)
     return True
 
+
 class DsModel(torch.nn.Module):
     def __init__(self):
         super().__init__()
@@ -136,7 +137,7 @@ class DsModel(torch.nn.Module):
         y1 = y1.view(-1, h2).to(torch.float32)
 
         y3, _, xOut3 = torch_npu.npu_add_rms_norm(x1, x2, weight)
-        yOut3, scale1Out3 = torch_npu.npu_dynamic_quant(y3.flatten(0,1))
+        yOut3, scale1Out3 = torch_npu.npu_dynamic_quant(y3.flatten(0, 1))
         scale1Out3_view = scale1Out3.view(-1, 1)
         return yOut, xOut, scale1Out, y1, xOut1, yOut2, scale1Out2, xOut3, yOut3, scale1Out3_view
 
