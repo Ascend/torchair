@@ -8,7 +8,12 @@ import logging
 import unittest
 
 import torch
-import torch_npu
+
+try:
+    import torch_npu
+except ImportError:
+    pass
+
 import torchair
 import logging
 from torchair._ge_concrete_graph.fx2ge_converter import GeConcreteGraph

@@ -1,7 +1,11 @@
 import functools
 import torch
 
-import torch_npu
+try:
+    import torch_npu
+except ImportError:
+    pass
+
 from torch._inductor.pattern_matcher import register_replacement, fwd_only, PatternMatcherPass
 from torch._subclasses.fake_tensor import FakeTensorMode
 
