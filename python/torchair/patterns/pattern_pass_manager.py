@@ -1,5 +1,3 @@
-__all__ = []
-
 import functools
 import torch
 
@@ -16,7 +14,7 @@ except ImportError:
 from torch._subclasses.fake_tensor import FakeTensorMode
 
 
-class PatternPassManager:
+class _PatternPassManager:
     def __init__(self):
         if 'pass_name' in PatternMatcherPass.__init__.__code__.co_varnames:
             self.pass_dict = PatternMatcherPass(pass_name="torchair_generic_pattern_pass")
@@ -67,7 +65,7 @@ class PatternPassManager:
         """
         self.pass_dict.apply(fx_graph)
 
-pattern_pass_manager = PatternPassManager()
+pattern_pass_manager = _PatternPassManager()
 
 
 def _apply_pattern_passes(graph_module: torch.fx.GraphModule):
