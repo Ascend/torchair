@@ -242,6 +242,13 @@ class SymTensor:
 
 
 def infer_and_gen_sym_shape(target, args, kwargs, ge_outputs, ops):
+
+    def is_builtin_ge_op(op):
+        return hasattr(ge, op.type)  
+
+    if all(is_builtin_ge_op(op) for op in ops):
+        return
+      
     kwargs = dict(kwargs)
     kwargs.pop('meta_outputs', None)
     syms_ctx = defaultdict(lambda: SymTensor())
@@ -302,9 +309,6 @@ def infer_and_gen_sym_shape(target, args, kwargs, ge_outputs, ops):
         'Cast': lambda op, inputs: inputs[0].to(op.attr["dst_type"].i),
         'Const': lambda op, inputs: SymTensor().to(_ge_proto_dtype_to_ge_dtype(op.attr["value"].t.desc.dtype)),
     }
-
-    def is_builtin_ge_op(op):
-        return hasattr(ge, op.type)
 
     def infer_sym_shape(op, ctx):
         if op.type in infer_funcs:
