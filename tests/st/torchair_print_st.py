@@ -6,6 +6,7 @@ import sys
 import torch
 import torchair
 from torchair_st_utils import generate_faked_module
+from torchair.configs.compiler_config import CompilerConfig
 
 import _privateuse1_backend
 _privateuse1_backend.register_hook()
