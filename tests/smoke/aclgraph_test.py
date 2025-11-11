@@ -208,6 +208,300 @@ class AclgraphTest(unittest.TestCase):
             f"found in logs: {cm.output}"
         )
 
+    def test_pattern_pass_for_aclgraph(self):
+        class DsModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x1, x2, weight, smooth_scales):
+                y, _, xOut = torch_npu.npu_add_rms_norm(x1, x2, weight)
+                yOut, scale1Out = torch_npu.npu_dynamic_quant(y, smooth_scales=smooth_scales)
+
+                y1, _, xOut1 = torch_npu.npu_add_rms_norm(x1, x2, weight)
+                h1 = y1.size(-1)
+                y2 = y1.view(-1, h1)
+                yOut2, scale1Out2 = torch_npu.npu_dynamic_quant(y2, smooth_scales=smooth_scales)
+
+                _, _, h2 = y1.shape
+                y1 = y1.view(-1, h2).to(torch.float32)
+
+                y3, _, xOut3 = torch_npu.npu_add_rms_norm(x1, x2, weight)
+                yOut3, scale1Out3 = torch_npu.npu_dynamic_quant(y3.flatten(0, 1))
+                scale1Out3_view = scale1Out3.view(-1, 1)
+                return yOut, xOut, scale1Out, y1, xOut1, yOut2, scale1Out2, xOut3, yOut3, scale1Out3_view
+
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "reduce-overhead"
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = DsModel()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x1 = torch.randn(1, 2, 3, dtype=torch.float16, device='npu')
+        x2 = torch.randn(1, 2, 3, dtype=torch.float16, device='npu')
+        gamma = torch.ones(3, dtype=torch.float16, device='npu')
+        smooth_scale1 = torch.ones(3, dtype=torch.float16, device='npu')
+
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            model_compile(x1, x2, gamma, smooth_scale1)
+
+        self.assertTrue(
+            any("target: npu.npu_add_rms_norm_dynamic_quant.default" in log for log in cm.output),
+            f"Expected DEBUG log 'target: npu.npu_add_rms_norm_dynamic_quant.default' in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("target: npu.npu_add_rms_norm_cast.default" in log for log in cm.output),
+            f"Expected DEBUG log 'target: npu.npu_add_rms_norm_cast.default' in logs: {cm.output}"
+        )
+
+    def test_pattern_pass_for_ge(self):
+        class DsModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x1, x2, weight, smooth_scales):
+                y, _, xOut = torch_npu.npu_add_rms_norm(x1, x2, weight)
+                yOut, scale1Out = torch_npu.npu_dynamic_quant(y, smooth_scales=smooth_scales)
+
+                y1, _, xOut1 = torch_npu.npu_add_rms_norm(x1, x2, weight)
+                h1 = y1.size(-1)
+                y2 = y1.view(-1, h1)
+                yOut2, scale1Out2 = torch_npu.npu_dynamic_quant(y2, smooth_scales=smooth_scales)
+
+                _, _, h2 = y1.shape
+                y1 = y1.view(-1, h2).to(torch.float32)
+
+                y3, _, xOut3 = torch_npu.npu_add_rms_norm(x1, x2, weight)
+                yOut3, scale1Out3 = torch_npu.npu_dynamic_quant(y3.flatten(0, 1))
+                scale1Out3_view = scale1Out3.view(-1, 1)
+                return yOut, xOut, scale1Out, y1, xOut1, yOut2, scale1Out2, xOut3, yOut3, scale1Out3_view
+
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "max-autotune"
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = DsModel()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x1 = torch.randn(1, 2, 3, dtype=torch.float16, device='npu')
+        x2 = torch.randn(1, 2, 3, dtype=torch.float16, device='npu')
+        gamma = torch.ones(3, dtype=torch.float16, device='npu')
+        smooth_scale1 = torch.ones(3, dtype=torch.float16, device='npu')
+
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            model_compile(x1, x2, gamma, smooth_scale1)
+
+        self.assertTrue(
+            any("target: npu.npu_add_rms_norm_dynamic_quant.default" in log for log in cm.output),
+            f"Expected DEBUG log 'target: npu.npu_add_rms_norm_dynamic_quant.default' in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("target: npu.npu_add_rms_norm_cast.default" in log for log in cm.output),
+            f"Expected DEBUG log 'target: npu.npu_add_rms_norm_cast.default' in logs: {cm.output}"
+        )
+
+    def test_close_pattern_pass_for_aclgraph(self):
+        class DsModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x1, x2, weight, smooth_scales):
+                y, _, xOut = torch_npu.npu_add_rms_norm(x1, x2, weight)
+                yOut, scale1Out = torch_npu.npu_dynamic_quant(y, smooth_scales=smooth_scales)
+
+                y1, _, xOut1 = torch_npu.npu_add_rms_norm(x1, x2, weight)
+                h1 = y1.size(-1)
+                y2 = y1.view(-1, h1)
+                yOut2, scale1Out2 = torch_npu.npu_dynamic_quant(y2, smooth_scales=smooth_scales)
+
+                _, _, h2 = y1.shape
+                y1 = y1.view(-1, h2).to(torch.float32)
+
+                y3, _, xOut3 = torch_npu.npu_add_rms_norm(x1, x2, weight)
+                yOut3, scale1Out3 = torch_npu.npu_dynamic_quant(y3.flatten(0, 1))
+                scale1Out3_view = scale1Out3.view(-1, 1)
+                return yOut, xOut, scale1Out, y1, xOut1, yOut2, scale1Out2, xOut3, yOut3, scale1Out3_view
+
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "reduce-overhead"
+        npu_config.debug.aclgraph.enable_pattern_pass = False
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = DsModel()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x1 = torch.randn(1, 2, 3, dtype=torch.float16, device='npu')
+        x2 = torch.randn(1, 2, 3, dtype=torch.float16, device='npu')
+        gamma = torch.ones(3, dtype=torch.float16, device='npu')
+        smooth_scale1 = torch.ones(3, dtype=torch.float16, device='npu')
+
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            model_compile(x1, x2, gamma, smooth_scale1)
+
+        self.assertFalse(
+            any("target: npu.npu_add_rms_norm_dynamic_quant.default" in log for log in cm.output),
+            f"Expected no DEBUG log 'target: npu.npu_add_rms_norm_dynamic_quant.default' in logs: {cm.output}"
+        )
+        self.assertFalse(
+            any("target: npu.npu_add_rms_norm_cast.default" in log for log in cm.output),
+            f"Expected no DEBUG log 'target: npu.npu_add_rms_norm_cast.default' in logs: {cm.output}"
+        )
+
+    def test_close_pattern_pass_for_ge(self):
+        class DsModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x1, x2, weight, smooth_scales):
+                y, _, xOut = torch_npu.npu_add_rms_norm(x1, x2, weight)
+                yOut, scale1Out = torch_npu.npu_dynamic_quant(y, smooth_scales=smooth_scales)
+
+                y1, _, xOut1 = torch_npu.npu_add_rms_norm(x1, x2, weight)
+                h1 = y1.size(-1)
+                y2 = y1.view(-1, h1)
+                yOut2, scale1Out2 = torch_npu.npu_dynamic_quant(y2, smooth_scales=smooth_scales)
+
+                _, _, h2 = y1.shape
+                y1 = y1.view(-1, h2).to(torch.float32)
+
+                y3, _, xOut3 = torch_npu.npu_add_rms_norm(x1, x2, weight)
+                yOut3, scale1Out3 = torch_npu.npu_dynamic_quant(y3.flatten(0, 1))
+                scale1Out3_view = scale1Out3.view(-1, 1)
+                return yOut, xOut, scale1Out, y1, xOut1, yOut2, scale1Out2, xOut3, yOut3, scale1Out3_view
+
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "max-autotune"
+        npu_config.debug.aclgraph.enable_pattern_pass = False
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = DsModel()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x1 = torch.randn(1, 2, 3, dtype=torch.float16, device='npu')
+        x2 = torch.randn(1, 2, 3, dtype=torch.float16, device='npu')
+        gamma = torch.ones(3, dtype=torch.float16, device='npu')
+        smooth_scale1 = torch.ones(3, dtype=torch.float16, device='npu')
+
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            model_compile(x1, x2, gamma, smooth_scale1)
+
+        self.assertFalse(
+            any("target: npu.npu_add_rms_norm_dynamic_quant.default" in log for log in cm.output),
+            f"Expected no DEBUG log 'target: npu.npu_add_rms_norm_dynamic_quant.default' in logs: {cm.output}"
+        )
+        self.assertFalse(
+            any("target: npu.npu_add_rms_norm_cast.default" in log for log in cm.output),
+            f"Expected no DEBUG log 'target: npu.npu_add_rms_norm_cast.default' in logs: {cm.output}"
+        )
+
+    def test_pattern_pass_for_aclgraph_with_multistream(self):
+        class DsModel2(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x1, x2, weight, smooth_scales):
+                y, _, xOut = torch_npu.npu_add_rms_norm(x1, x2, weight)
+                with torchair.scope.npu_stream_switch('2', 3):
+                    y1, _, xOut1 = torch_npu.npu_add_rms_norm(x1, x2, weight)
+                    _, _, h2 = y1.shape
+                    y1 = y1.view(-1, h2).to(torch.float32)
+
+                yOut2, scale1Out2 = torch_npu.npu_dynamic_quant(y, smooth_scales=smooth_scales)
+
+                return xOut, yOut2, scale1Out2, y1, xOut1
+
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "reduce-overhead"
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = DsModel2()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x1 = torch.randn(1, 2, 3, dtype=torch.float16, device='npu')
+        x2 = torch.randn(1, 2, 3, dtype=torch.float16, device='npu')
+        gamma = torch.ones(3, dtype=torch.float16, device='npu')
+        smooth_scale1 = torch.ones(3, dtype=torch.float16, device='npu')
+
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            model_compile(x1, x2, gamma, smooth_scale1)
+
+        self.assertTrue(
+            any("target: npu.npu_add_rms_norm_dynamic_quant.default" in log for log in cm.output),
+            f"Expected DEBUG log 'target: npu.npu_add_rms_norm_dynamic_quant.default' in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("target: npu.npu_add_rms_norm_cast.default" in log for log in cm.output),
+            f"Expected DEBUG log 'target: npu.npu_add_rms_norm_cast.default' in logs: {cm.output}"
+        )
+
+    def test_pattern_pass_for_cast_with_subgraph_in_diff_stream(self):
+        class DsModel2(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x1, x2, weight, smooth_scales):
+                y, _, xOut = torch_npu.npu_add_rms_norm(x1, x2, weight)
+                
+                with torchair.scope.npu_stream_switch('2', 3):
+                    torchair.ops.wait([y])
+                    _, _, h2 = y.shape
+                    y = y.view(-1, h2).to(torch.float32)
+
+                return y, xOut
+
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "reduce-overhead"
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = DsModel2()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x1 = torch.randn(1, 2, 3, dtype=torch.float16, device='npu')
+        x2 = torch.randn(1, 2, 3, dtype=torch.float16, device='npu')
+        gamma = torch.ones(3, dtype=torch.float16, device='npu')
+        smooth_scale1 = torch.ones(3, dtype=torch.float16, device='npu')
+
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            model_compile(x1, x2, gamma, smooth_scale1)
+
+        self.assertTrue(
+            any("target: npu.npu_add_rms_norm_cast.default" in log for log in cm.output),
+            f"Expected DEBUG log 'target: npu.npu_add_rms_norm_cast.default' in logs: {cm.output}"
+        )
+
+    def test_pattern_pass_for_dynamicquant_with_subgraph_in_diff_stream(self):
+        class DsModel2(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x1, x2, weight, smooth_scales):
+                y, _, xOut = torch_npu.npu_add_rms_norm(x1, x2, weight)
+                
+                with torchair.scope.npu_stream_switch('2', 3):
+                    torchair.ops.wait([y])
+                    yOut2, scale1Out2 = torch_npu.npu_dynamic_quant(y, smooth_scales=smooth_scales)
+
+                return yOut2, xOut, scale1Out2
+
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "reduce-overhead"
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = DsModel2()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x1 = torch.randn(1, 2, 3, dtype=torch.float16, device='npu')
+        x2 = torch.randn(1, 2, 3, dtype=torch.float16, device='npu')
+        gamma = torch.ones(3, dtype=torch.float16, device='npu')
+        smooth_scale1 = torch.ones(3, dtype=torch.float16, device='npu')
+
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            model_compile(x1, x2, gamma, smooth_scale1)
+
+        self.assertFalse(
+            any("target: npu.npu_add_rms_norm_dynamic_quant.default" in log for log in cm.output),
+            f"Expected no DEBUG log 'target: npu.npu_add_rms_norm_dynamic_quant.default' in logs: {cm.output}"
+        )
 
 if __name__ == '__main__':
     unittest.main()
