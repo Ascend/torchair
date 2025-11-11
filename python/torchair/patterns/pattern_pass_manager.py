@@ -16,7 +16,10 @@ from torch._subclasses.fake_tensor import FakeTensorMode
 
 class PatternPassManager:
     def __init__(self):
-        self.pass_dict = PatternMatcherPass(pass_name="torchair_generic_pattern_pass")
+        if 'pass_name' in PatternMatcherPass.__init__.__code__.co_varnames:
+            self.pass_dict = PatternMatcherPass(pass_name="torchair_generic_pattern_pass")
+        else:
+            self.pass_dict = PatternMatcherPass()
 
     def _return_true(self):
         return True
@@ -33,15 +36,25 @@ class PatternPassManager:
             pass_dict: Dict of passes to register to.
             extra_check: Additional check condition (default is _return_true).
         """
-        register_replacement(
-            search_fn=search_fn,
-            replace_fn=replace_fn,
-            example_inputs=example_inputs,
-            trace_fn=trace_fn,
-            pass_dicts=self.pass_dict,
-            extra_check=extra_check,
-            search_fn_pattern=search_fn_pattern
-        )
+        if hasattr(register_replacement, '__code__') and 'pass_dicts' in register_replacement.__code__.co_varnames:
+            register_replacement(
+                search_fn=search_fn,
+                replace_fn=replace_fn,
+                example_inputs=example_inputs,
+                trace_fn=trace_fn,
+                pass_dicts=self.pass_dict,
+                extra_check=extra_check,
+                search_fn_pattern=search_fn_pattern
+            )
+        else:
+            register_replacement(
+                search_fn=search_fn,
+                replace_fn=replace_fn,
+                example_inputs=example_inputs,
+                trace_fn=trace_fn,
+                pass_dict=self.pass_dict,
+                extra_check=extra_check,
+            )
 
     def apply_pass(self, fx_graph):
         """
