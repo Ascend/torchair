@@ -29,7 +29,6 @@ logger.setLevel(logging.DEBUG)
 
 config = CompilerConfig()
 config.debug.graph_dump.type = "pbtxt"
-config.debug.aclgraph.enable_pattern_pass = False
 npu_backend = torchair.get_npu_backend(compiler_config=config)
 
 import _privateuse1_backend
@@ -143,7 +142,6 @@ class TorchairSt(unittest.TestCase):
         config_auto_tune = CompilerConfig()
         config_auto_tune.aoe_config.aoe_mode = "2"
         config_auto_tune.debug.graph_dump.type = "pbtxt"
-        config_auto_tune.debug.aclgraph.enable_pattern_pass = False
         npu_backend_auto_tune = torchair.get_npu_backend(compiler_config=config_auto_tune)
 
         model = torch.compile(Model(), backend=npu_backend_auto_tune, dynamic=False)
@@ -160,7 +158,6 @@ class TorchairSt(unittest.TestCase):
 
         dumper_config = CompilerConfig()
         dumper_config.debug.data_dump.type = "npy"
-        dumper_config.debug.aclgraph.enable_pattern_pass = False
         dumper_backend = torchair.get_npu_backend(compiler_config=dumper_config)
 
         model = torch.compile(Model(), backend=dumper_backend)
@@ -261,7 +258,6 @@ class TorchairSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.debug.graph_dump.type = "py"
-        config.debug.aclgraph.enable_pattern_pass = False
         npu_backend = torchair.get_npu_backend(compiler_config=config)
 
         model = Model()
@@ -1077,7 +1073,6 @@ class TorchairSt(unittest.TestCase):
     def test_npu_fx_pass(self):
         fx_pass_config = CompilerConfig()
         fx_pass_config.experimental_config.npu_fx_pass = True
-        fx_pass_config.debug.aclgraph.enable_pattern_pass = False
         fx_pass_npu_backend = torchair.get_npu_backend(compiler_config=fx_pass_config)
 
         def rotate_half(x):
@@ -1386,7 +1381,6 @@ class TorchairSt(unittest.TestCase):
 
         model = Model()
         config_view = CompilerConfig()
-        config_view.debug.aclgraph.enable_pattern_pass = False
         config_view.experimental_config.enable_view_optimize = True
         npu_backend_view = torchair.get_npu_backend(compiler_config=config_view)
         model = torch.compile(model, backend=npu_backend_view, dynamic=False)
@@ -1432,7 +1426,6 @@ class TorchairSt(unittest.TestCase):
 
         model = Model()
         config_view = CompilerConfig()
-        config_view.debug.aclgraph.enable_pattern_pass = False
         config_view.experimental_config.enable_view_optimize = True
         npu_backend_view = torchair.get_npu_backend(compiler_config=config_view)
         model = torch.compile(model, backend=npu_backend_view, dynamic=True)
@@ -1480,7 +1473,6 @@ class TorchairSt(unittest.TestCase):
 
         model = Model()
         config_view = CompilerConfig()
-        config_view.debug.aclgraph.enable_pattern_pass = False
         config_view.experimental_config.enable_view_optimize = True
         npu_backend_view = torchair.get_npu_backend(compiler_config=config_view)
         model = torch.compile(model, backend=npu_backend_view, dynamic=True)
@@ -1529,7 +1521,6 @@ class TorchairSt(unittest.TestCase):
 
         model = Model()
         config_view = CompilerConfig()
-        config_view.debug.aclgraph.enable_pattern_pass = False
         config_view.experimental_config.enable_view_optimize = True
         npu_backend_view = torchair.get_npu_backend(compiler_config=config_view)
         model = torch.compile(model, backend=npu_backend_view, dynamic=True)
@@ -1775,7 +1766,6 @@ class TorchairSt(unittest.TestCase):
 
         model = Model()
         test_config = torchair.CompilerConfig()
-        test_config.debug.aclgraph.enable_pattern_pass = False
         test_config.debug.graph_dump.type = "pbtxt"
         test_config.debug.graph_dump.path = "./test_directory_generation/dir"
         if os.path.exists(test_config.debug.graph_dump.path):
@@ -1892,7 +1882,6 @@ class TorchairSt(unittest.TestCase):
 
         model = Model()
         test_config = torchair.CompilerConfig()
-        test_config.debug.aclgraph.enable_pattern_pass = False
         test_config.debug.data_dump.type = "npy"
         test_config.debug.data_dump.path = "./test_data_dump_generation/dir"
         if os.path.exists(test_config.debug.data_dump.path):
@@ -1924,7 +1913,6 @@ class TorchairSt(unittest.TestCase):
         os.makedirs("./test_data_dump_failpath", exist_ok=True)
         with open("./test_data_dump_failpath/fail.txt", "w") as f:
             f.write("data dump test")
-        test_config.debug.aclgraph.enable_pattern_pass = False
         test_config.debug.data_dump.type = "npy"
         test_config.debug.data_dump.path = "./test_data_dump_failpath/fail.txt"
         test_config.ge_config.export_compile_stat = "0"
@@ -1986,7 +1974,6 @@ class TorchairSt(unittest.TestCase):
             
         model = Model()
         test_config = torchair.CompilerConfig()
-        test_config.debug.aclgraph.enable_pattern_pass = False
         test_config.debug.graph_dump.type = "py"
         test_config.debug.graph_dump.path = "./test_dump_node_info/graphs"
         if os.path.exists(test_config.debug.graph_dump.path):
@@ -2025,7 +2012,7 @@ class TorchairSt(unittest.TestCase):
                                          outputs=["y"],
                                          attrs={})
 
-        @torch.compile(backend=npu_backend, dynamic=True)
+        @torch.compile(backend=torchair.get_npu_backend(), dynamic=True)
         def custom_func(x):
             return torch.ops.test.custom.default(x)
 
@@ -2123,7 +2110,7 @@ class TorchairSt(unittest.TestCase):
         def converter_custom_clone_tensor(x):
             return torchair.ge.Clone(x)
         
-        @torch.compile(backend=npu_backend, dynamic=True)
+        @torch.compile(backend=torchair.get_npu_backend(), dynamic=True)
         def custom_clone(x):
             return torch.ops.test.custom_clone_tensor.default(x)
 
@@ -2151,7 +2138,6 @@ class TorchairSt(unittest.TestCase):
                        }
                        """)
         tmp_config = CompilerConfig()
-        tmp_config.debug.aclgraph.enable_pattern_pass = False
         tmp_config.dump_config.dump_config_path = "./test_acl.json"
         _, global_compile_options = tmp_config.as_dict()
         self.assertEqual(global_compile_options["ge_dump_with_acl_config"],
@@ -2573,7 +2559,6 @@ class TorchairSt(unittest.TestCase):
             return None
         
         custom_config = CompilerConfig()
-        custom_config.debug.aclgraph.enable_pattern_pass = False
         custom_config.post_grad_custom_pre_pass = _custom_pre_fn
         custom_config.post_grad_custom_post_pass = _custom_post_fn
         npu_custom_backend = torchair.get_npu_backend(compiler_config=custom_config)

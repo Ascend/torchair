@@ -466,7 +466,6 @@ class CustomOpSt(unittest.TestCase):
             os.remove(os.path.join('./', file_name))
         config = CompilerConfig()
         config.debug.graph_dump.type = "py"
-        config.debug.aclgraph.enable_pattern_pass = False
         npu_backend = torchair.get_npu_backend(compiler_config=config)
 
         class Model(torch.nn.Module):

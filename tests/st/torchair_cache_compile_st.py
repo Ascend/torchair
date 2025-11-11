@@ -947,7 +947,6 @@ def kernel(*args):
                     torch.nn.init.ones_(param)
 
                 config = CompilerConfig()
-                config.debug.aclgraph.enable_pattern_pass = False
                 config.export.experimental.enable_lite_export = True
                 config.debug.data_dump._path = 'test'
                 config.dump_config.dump_layer = "Add"
@@ -1017,10 +1016,8 @@ def kernel(*args):
 
                 config = CompilerConfig()
                 config.export.experimental.enable_lite_export = True
-                config.debug.aclgraph.enable_pattern_pass = False
                 config1 = CompilerConfig()
                 config1.export.experimental.enable_lite_export = False
-                config1.debug.aclgraph.enable_pattern_pass = False
                 config1.debug.data_dump._path = 'test'
                 config1.dump_config.dump_layer = "Add"
                 backend = torchair.get_npu_backend(compiler_config=config)
@@ -1190,7 +1187,6 @@ def kernel(*args):
                 super().__init__()
                 self.weight = torch.nn.Parameter(torch.randn(2, 2).to(npu_device))
                 config = CompilerConfig()
-                config.debug.aclgraph.enable_pattern_pass = False
                 config.experimental_config.frozen_parameter = True
                 self.cached = torchair.inference.cache_compile(self._forward, config=config, dynamic=False)
 

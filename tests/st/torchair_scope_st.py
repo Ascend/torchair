@@ -68,7 +68,6 @@ class TorchairSt(unittest.TestCase):
         GeConcreteGraph.optimize_graph_without_runtime = wrapper_call(GeConcreteGraph.optimize_graph_without_runtime)
         model = Model()
         config_view = CompilerConfig()
-        config_view.debug.aclgraph.enable_pattern_pass = False
         npu_backend_view = torchair.get_npu_backend(compiler_config=config_view)
         model = torch.compile(model, backend=npu_backend_view, dynamic=False)
         in1 = torch.randn(2, 2)
@@ -108,7 +107,6 @@ class TorchairSt(unittest.TestCase):
         GeConcreteGraph.optimize_graph_without_runtime = wrapper_call(GeConcreteGraph.optimize_graph_without_runtime)
         model = Model()
         config_view = CompilerConfig()
-        config_view.debug.aclgraph.enable_pattern_pass = False
         npu_backend_view = torchair.get_npu_backend(compiler_config=config_view)
         model = torch.compile(model, backend=npu_backend_view, dynamic=False)
         in1 = torch.randn(2, 2)
@@ -146,7 +144,6 @@ class TorchairSt(unittest.TestCase):
         GeConcreteGraph.optimize_graph_without_runtime = wrapper_call(GeConcreteGraph.optimize_graph_without_runtime)
         model = Model()
         config_view = CompilerConfig()
-        config_view.debug.aclgraph.enable_pattern_pass = False
         npu_backend_view = torchair.get_npu_backend(compiler_config=config_view)
         model = torch.compile(model, backend=npu_backend_view, dynamic=False)
         in1 = torch.randn(2, 2)
@@ -197,7 +194,6 @@ class TorchairSt(unittest.TestCase):
         GeConcreteGraph.optimize_graph_without_runtime = wrapper_call(GeConcreteGraph.optimize_graph_without_runtime)
         model = Model()
         config_view = CompilerConfig()
-        config_view.debug.aclgraph.enable_pattern_pass = False
         npu_backend_view = torchair.get_npu_backend(compiler_config=config_view)
         model = torch.compile(model, backend=npu_backend_view, dynamic=False)
         in1 = torch.randn(2, 2)
@@ -246,7 +242,6 @@ class TorchairSt(unittest.TestCase):
         GeConcreteGraph.optimize_graph_without_runtime = wrapper_call(GeConcreteGraph.optimize_graph_without_runtime)
         model = Model()
         config_view = CompilerConfig()
-        config_view.debug.aclgraph.enable_pattern_pass = False
         npu_backend_view = torchair.get_npu_backend(compiler_config=config_view)
         model = torch.compile(model, backend=npu_backend_view, dynamic=False)
         in1 = torch.randn(2, 2)
@@ -310,7 +305,6 @@ class TorchairSt(unittest.TestCase):
         GeConcreteGraph.optimize_graph_without_runtime = wrapper_call(GeConcreteGraph.optimize_graph_without_runtime)
         model = Model()
         config_view = CompilerConfig()
-        config_view.debug.aclgraph.enable_pattern_pass = False
         npu_backend_view = torchair.get_npu_backend(compiler_config=config_view)
         model = torch.compile(model, backend=npu_backend_view, dynamic=False)
         in1 = torch.randn(1024, 1024, 10, dtype=torch.float32)
@@ -354,7 +348,6 @@ class TorchairSt(unittest.TestCase):
         GeConcreteGraph.optimize_graph_without_runtime = wrapper_call(GeConcreteGraph.optimize_graph_without_runtime)
         model = Model()
         config_view = CompilerConfig()
-        config_view.debug.aclgraph.enable_pattern_pass = False
         npu_backend_view = torchair.get_npu_backend(compiler_config=config_view)
         model = torch.compile(model, backend=npu_backend_view, dynamic=False)
         in1 = torch.randn(2, 2)
@@ -415,7 +408,6 @@ class TorchairSt(unittest.TestCase):
         GeConcreteGraph.optimize_graph_without_runtime = wrapper_call(GeConcreteGraph.optimize_graph_without_runtime)
         model = Model()
         config_view = CompilerConfig()
-        config_view.debug.aclgraph.enable_pattern_pass = False
         npu_backend_view = torchair.get_npu_backend(compiler_config=config_view)
         model = torch.compile(model, backend=npu_backend_view, dynamic=False)
         in1 = torch.randn(2, 2)
@@ -473,7 +465,6 @@ class TorchairSt(unittest.TestCase):
         GeConcreteGraph.optimize_graph_without_runtime = wrapper_call(GeConcreteGraph.optimize_graph_without_runtime)
         model = Model()
         config_view = CompilerConfig()
-        config_view.debug.aclgraph.enable_pattern_pass = False
         npu_backend_view = torchair.get_npu_backend(compiler_config=config_view)
         model = torch.compile(model, backend=npu_backend_view, dynamic=False)
         in1 = torch.randn(2, 2)

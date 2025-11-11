@@ -11,7 +11,6 @@ logger.setLevel(logging.DEBUG)
 
 config = CompilerConfig()
 config.debug.graph_dump.type = "pbtxt"
-config.debug.aclgraph.enable_pattern_pass = False
 npu_backend = torchair.get_npu_backend(compiler_config=config)
 
 
