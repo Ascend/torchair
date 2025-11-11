@@ -20,6 +20,7 @@ config = CompilerConfig()
 config.debug.aclgraph.enable_pattern_pass = False
 npu_backend = torchair.get_npu_backend(compiler_config=config)
 
+
 def _get_op_inputs(graph):
     op_inputs = dict()
     for op in graph.op:
