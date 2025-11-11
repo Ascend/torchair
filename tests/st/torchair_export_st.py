@@ -340,6 +340,7 @@ class TorchairSt(unittest.TestCase):
         from torchair.configs.compiler_config import CompilerConfig
         export_path1 = "test_export_file_path"
         config = CompilerConfig()
+        config.debug.aclgraph.enable_pattern_pass = False
         config.export.experimental.enable_record_nn_module_stack = True
         torchair.dynamo_export(x, y, model=model, export_path=export_path1, dynamic=False, config=config)
 
@@ -525,6 +526,7 @@ class TorchairSt(unittest.TestCase):
     
         model = Model()
         config = CompilerConfig()
+        config.debug.aclgraph.enable_pattern_pass = False
         config.export.experimental.enable_lite_export = True
         npu_backend = torchair.get_npu_backend(compiler_config=config)
         in1 = torch.randn(1000, 1000, dtype=torch.float16)
@@ -596,6 +598,7 @@ def example(rank, world_size):
     torchair.dynamo_export(xx2, model=mod2, dynamic=False, export_path="false_export_path2")
     from torchair.configs.compiler_config import CompilerConfig
     config = CompilerConfig()
+    config.debug.aclgraph.enable_pattern_pass = False
     config.export.experimental.auto_atc_config_generated = True
     torchair.dynamo_export(xx2, model=mod2, dynamic=True, export_path="true_export_path2",
                            config=config)
@@ -613,6 +616,7 @@ def example_atc_config_generated(rank, world_size):
     mod = AllReduceSingeGroup()
     from torchair.configs.compiler_config import CompilerConfig
     config = CompilerConfig()
+    config.debug.aclgraph.enable_pattern_pass = False
     config.export.experimental.auto_atc_config_generated = True
     torchair.dynamo_export(x, y, model=mod, config=config)
 

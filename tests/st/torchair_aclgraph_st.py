@@ -498,6 +498,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
         model = torch.compile(Model(), backend=aclgraph_backend, dynamic=False)
@@ -518,6 +519,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.experimental_config.keep_inference_input_mutations = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -552,6 +554,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.experimental_config.keep_inference_input_mutations = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -591,6 +594,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -629,6 +633,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -660,6 +665,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -711,6 +717,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         config.debug.aclgraph.enable_output_clone = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
@@ -766,6 +773,7 @@ class AclGraphSt(unittest.TestCase):
         model = Model()
 
         config = CompilerConfig()
+        config.debug.aclgraph.enable_pattern_pass = False
         config.mode = "reduce-overhead"
         config.debug.graph_dump.type = "pbtxt"
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
@@ -815,6 +823,7 @@ class AclGraphSt(unittest.TestCase):
         from torchair._ge_concrete_graph.fx2ge_converter import GeConcreteGraph
         # ignore event in ge mode
         config = CompilerConfig()
+        config.debug.aclgraph.enable_pattern_pass = False
         npu_backend = torchair.get_npu_backend(compiler_config=config)
 
         class Model(torch.nn.Module):
@@ -874,6 +883,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
         model = Model()
         opt_model = torch.compile(model, backend=aclgraph_backend, fullgraph=True, dynamic=False)
@@ -965,6 +975,7 @@ class AclGraphSt(unittest.TestCase):
     def test_npu_stream_switch_with_tagged_event(self):
         from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
         config = CompilerConfig()
+        config.debug.aclgraph.enable_pattern_pass = False
         config.mode = "reduce-overhead"
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
         ext_event1 = torchair.ops.npu_create_tagged_event(tag="66")
@@ -1017,6 +1028,7 @@ class AclGraphSt(unittest.TestCase):
         from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
         class Model(torch.nn.Module):
@@ -1067,6 +1079,7 @@ class AclGraphSt(unittest.TestCase):
         from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
         class Model(torch.nn.Module):
@@ -1133,6 +1146,7 @@ class AclGraphSt(unittest.TestCase):
         model = Model()
         config_view = CompilerConfig()
         config_view.mode = "reduce-overhead"
+        config_view.debug.aclgraph.enable_pattern_pass = False
         npu_backend_view = torchair.get_npu_backend(compiler_config=config_view)
         model = torch.compile(model, backend=npu_backend_view, dynamic=False)
         in1 = torch.randn(2, 2)
@@ -1169,6 +1183,7 @@ class AclGraphSt(unittest.TestCase):
 
         config_view = CompilerConfig()
         config_view.mode = "reduce-overhead"
+        config_view.debug.aclgraph.enable_pattern_pass = False
         npu_backend_view = torchair.get_npu_backend(compiler_config=config_view)
         model = torch.compile(func, backend=npu_backend_view, dynamic=False)
 
@@ -1197,6 +1212,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.experimental_config.keep_inference_input_mutations = True
         backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -1231,6 +1247,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.experimental_config.keep_inference_input_mutations = True
         config.experimental_config.remove_noop_ops = False
         backend = torchair.get_npu_backend(compiler_config=config)
@@ -1266,6 +1283,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.experimental_config.keep_inference_input_mutations = True
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         backend = torchair.get_npu_backend(compiler_config=config)
@@ -1295,6 +1313,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.experimental_config.keep_inference_input_mutations = True
         config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass = True
         backend = torchair.get_npu_backend(compiler_config=config)
@@ -1324,6 +1343,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.experimental_config.keep_inference_input_mutations = True
         config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass = True
         config.experimental_config.remove_noop_ops = False
@@ -1361,6 +1381,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.experimental_config.keep_inference_input_mutations = True
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         backend = torchair.get_npu_backend(compiler_config=config)
@@ -1404,6 +1425,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.experimental_config.keep_inference_input_mutations = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = False
         config.experimental_config.remove_noop_ops = False
@@ -1435,6 +1457,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.experimental_config.keep_inference_input_mutations = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         backend = torchair.get_npu_backend(compiler_config=config)
@@ -1466,6 +1489,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.debug.graph_dump.type = "py"
         npu_backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -1503,6 +1527,7 @@ class AclGraphSt(unittest.TestCase):
         x = torch.randn([4, 2])
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -1547,6 +1572,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         config.debug.aclgraph.disable_mempool_reuse_in_same_fx = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
@@ -1586,6 +1612,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -1778,6 +1805,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
 
         model = Model()
@@ -1815,6 +1843,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         model = CacheModel()
 
@@ -1858,6 +1887,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         model = CacheModel()
 
@@ -1904,6 +1934,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.experimental_config.keep_inference_input_mutations = True
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         model = Model()
@@ -1944,6 +1975,7 @@ class AclGraphSt(unittest.TestCase):
         model = Model()
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.experimental_config.aclgraph._aclnn_static_shape_kernel = True
         config.experimental_config.aclgraph._aclnn_static_shape_kernel_build_dir = ".."
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
@@ -1997,6 +2029,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         model = Model()
 
@@ -2043,6 +2076,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
 
         model = Model()
@@ -2070,6 +2104,7 @@ class AclGraphSt(unittest.TestCase):
         from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
         ext_event1 = torchair.ops.npu_create_tagged_event(tag="666666")
         ext_event2 = torchair.ops.npu_create_tagged_event(tag="777777")
@@ -2119,6 +2154,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
         model = torch.compile(Model(), backend=aclgraph_backend, dynamic=False)
         inputs = torch.randn([3, 2])
@@ -2139,6 +2175,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -2190,6 +2227,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.debug.aclgraph.static_capture_size_limit = 1
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         model1 = Model()
@@ -2224,6 +2262,7 @@ class AclGraphSt(unittest.TestCase):
 
         model = Model()
         config = CompilerConfig()
+        config.debug.aclgraph.enable_pattern_pass = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         config.mode = "reduce-overhead"
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
@@ -2260,6 +2299,7 @@ class AclGraphSt(unittest.TestCase):
         model = Model()
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -2286,6 +2326,7 @@ class AclGraphSt(unittest.TestCase):
 
         model = Model()
         config = CompilerConfig()
+        config.debug.aclgraph.enable_pattern_pass = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         config.mode = "reduce-overhead"
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
@@ -2322,6 +2363,7 @@ class AclGraphSt(unittest.TestCase):
 
         model = Model()
         config = CompilerConfig()
+        config.debug.aclgraph.enable_pattern_pass = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         config.mode = "reduce-overhead"
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
@@ -2358,6 +2400,7 @@ class AclGraphSt(unittest.TestCase):
 
         model = Model()
         config = CompilerConfig()
+        config.debug.aclgraph.enable_pattern_pass = False
         config.experimental_config.frozen_parameter = True
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         config.mode = "reduce-overhead"
@@ -2399,6 +2442,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
 
         model = Model()
@@ -2443,6 +2487,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         config.experimental_config.aclgraph._aclnn_static_shape_kernel = True
         config.experimental_config.aclgraph._aclnn_static_shape_kernel_build_dir = ".."
@@ -2486,6 +2531,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = torchair.CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         npu_backend = torchair.get_npu_backend(compiler_config=config)
         model = Model()
         opt_model = torch.compile(model, backend=npu_backend, dynamic=False)
@@ -2537,6 +2583,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = torchair.CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         npu_backend = torchair.get_npu_backend(compiler_config=config)
         model = Model()
         opt_model = torch.compile(model, backend=npu_backend, dynamic=False)
@@ -2587,6 +2634,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = torchair.CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         npu_backend = torchair.get_npu_backend(compiler_config=config)
         model = Model()
         opt_model = torch.compile(model, backend=npu_backend, dynamic=False)
@@ -2641,6 +2689,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         model = Model()
 
@@ -2668,6 +2717,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
         x = torch.randn(3)
         sin = torch.randn(3)
@@ -2692,6 +2742,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
         x = torch.ones(3)
         sin = torch.ones(3)
@@ -2716,6 +2767,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_pattern_pass = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
         x = torch.ones(3)
         sin = torch.ones(3)
@@ -2761,6 +2813,7 @@ class AclGraphSt(unittest.TestCase):
         try:
             config_ = CompilerConfig()
             config_.mode = "reduce-overhead"
+            config_.debug.aclgraph.enable_pattern_pass = False
             config_.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
             backend = torchair.get_npu_backend(compiler_config=config_)
             compiled_model = torch.compile(Model(), backend=backend, dynamic=True)

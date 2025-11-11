@@ -150,6 +150,7 @@ class TorchairSt(unittest.TestCase):
             def forward(self, x):
                 return x * 2
         config = CompilerConfig()
+        config.debug.aclgraph.enable_pattern_pass = False
         npu_backend = torchair.get_npu_backend(compiler_config=config)
         model = torch.compile(Model(), backend=npu_backend, dynamic=True)
         y = torch.ones([8, 8, 8])
@@ -165,6 +166,7 @@ class TorchairSt(unittest.TestCase):
             def forward(self, x):
                 return x * 2
         config = CompilerConfig()
+        config.debug.aclgraph.enable_pattern_pass = False
         npu_backend = torchair.get_npu_backend(compiler_config=config)
         model = torch.compile(Model(), backend=npu_backend, dynamic=True)
         x = torch.ones([8, 8])

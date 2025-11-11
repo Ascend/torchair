@@ -38,6 +38,7 @@ class EagerModeSt(unittest.TestCase):
         model = Model()
         config = CompilerConfig()
         config.debug.run_eagerly = True
+        config.debug.aclgraph.enable_pattern_pass = False
         npu_backend = torchair.get_npu_backend(compiler_config=config)
 
         x = torch.randn([3, 2])
@@ -53,6 +54,7 @@ class EagerModeSt(unittest.TestCase):
         model = Model()
         config = CompilerConfig()
         config.debug.run_eagerly = True
+        config.debug.aclgraph.enable_pattern_pass = False
         npu_backend = torchair.get_npu_backend(compiler_config=config)
 
         x = torch.randn([3, 2])
@@ -67,6 +69,7 @@ class EagerModeSt(unittest.TestCase):
     def test_acl_graph_eager_mode_dynamic_false(self):
         model = Model()
         config = CompilerConfig()
+        config.debug.aclgraph.enable_pattern_pass = False
         config.mode = "reduce-overhead"
         config.debug.run_eagerly = True
 

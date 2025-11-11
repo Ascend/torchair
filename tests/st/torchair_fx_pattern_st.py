@@ -17,6 +17,7 @@ torchair.logger.setLevel(logging.DEBUG)
 
 config = torchair.CompilerConfig()
 config.debug.graph_dump.type = "pbtxt"
+config.debug.aclgraph.enable_pattern_pass = False
 npu_backend = torchair.get_npu_backend(compiler_config=config)
 
 ### register npu device
@@ -79,6 +80,7 @@ def enable_remove_noop_ops_pattern(model, assert_func):
         GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
 
         config_ = torchair.CompilerConfig()
+        config_.debug.aclgraph.enable_pattern_pass = False
         backend = torchair.get_npu_backend(compiler_config=config_)
         compiled_model = torch.compile(model, backend=backend, dynamic=True)
         _ = compiled_model(*args, **kwargs)
@@ -152,6 +154,7 @@ class TorchairFXPatternSt(unittest.TestCase):
                 return add_1
 
         npu_config = torchair.CompilerConfig()
+        npu_config.debug.aclgraph.enable_pattern_pass = False
         npu_config.experimental_config.remove_noop_ops = False
         npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
         model = Model()
@@ -194,6 +197,7 @@ class TorchairFXPatternSt(unittest.TestCase):
                 return add_1
 
         npu_config = torchair.CompilerConfig()
+        npu_config.debug.aclgraph.enable_pattern_pass = False
         npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
         model = Model()
         model_dynamic = torch.compile(model, backend=npu_backend, dynamic=True)
@@ -241,6 +245,7 @@ class TorchairFXPatternSt(unittest.TestCase):
         try:
             model = Model()
             config_ = torchair.CompilerConfig()
+            config_.debug.aclgraph.enable_pattern_pass = False
             config_.experimental_config.remove_noop_ops = False
             backend = torchair.get_npu_backend(compiler_config=config_)
             compiled_model = torch.compile(model, backend=backend, dynamic=True)
