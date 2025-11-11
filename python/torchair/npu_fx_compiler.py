@@ -295,7 +295,11 @@ def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, exa
     graph_module = _optimize_sym_input(graph_module)
 
     if config.debug.aclgraph.enable_pattern_pass:
-        _apply_pattern_passes(graph_module)
+        if 'torch_npu' in sys.modules:
+            _apply_pattern_passes(graph_module)
+        else:
+            logger.info(f'The pattern pass will only be enabled in a torch npu env.'
+                        'When there is no torch_npu in the env, skip pattern pass.')      
 
     _view_to_reshape(graph_module)
 
