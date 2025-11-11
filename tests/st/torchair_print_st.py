@@ -238,10 +238,13 @@ add(abs(x), 1) = [[2 2]
             def get_npu_format(*args, **kwargs):
                 return 0
 
+        config = CompilerConfig()
+        config.debug.aclgraph.enable_pattern_pass = False
+        npu_backend = torchair.get_npu_backend(compiler_config=config)
         try:
             origin_torch_npu = sys.modules.get('torch_npu', None)
             sys.modules['torch_npu'] = FakeTorchNpu()
-            compiled_model = torch.compile(func, backend=torchair.get_npu_backend())
+            compiled_model = torch.compile(func, backend=npu_backend)
             compiled_model(t)
         finally:
             if origin_torch_npu:
