@@ -2025,7 +2025,7 @@ class TorchairSt(unittest.TestCase):
                                          outputs=["y"],
                                          attrs={})
 
-        @torch.compile(backend=torchair.get_npu_backend(), dynamic=True)
+        @torch.compile(backend=npu_backend, dynamic=True)
         def custom_func(x):
             return torch.ops.test.custom.default(x)
 
@@ -2123,7 +2123,7 @@ class TorchairSt(unittest.TestCase):
         def converter_custom_clone_tensor(x):
             return torchair.ge.Clone(x)
         
-        @torch.compile(backend=torchair.get_npu_backend(), dynamic=True)
+        @torch.compile(backend=npu_backend, dynamic=True)
         def custom_clone(x):
             return torch.ops.test.custom_clone_tensor.default(x)
 
