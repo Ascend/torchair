@@ -996,9 +996,19 @@ class AclGraph(object):
         return captured_outputs
 
     def process_input(self, graph_key, *args: Any):
+        dst_tensors = []
+        src_tensors = []
         for idx in self._user_inputs_mapping.values():
-            if self.graphs_meta[graph_key].captured_inputs[idx].data_ptr() != args[idx].data_ptr():
-                self.graphs_meta[graph_key].captured_inputs[idx].copy_(args[idx])
+            capture_input = self.graphs_meta[graph_key].captured_inputs[idx]
+            replay_arg = args[idx]
+            if capture_input.data_ptr() != replay_arg.data_ptr():
+                dst_tensors.append(capture_input)
+                src_tensors.append(replay_arg)
+        if len(dst_tensors) > 1:
+            torch._foreach_copy_(dst_tensors, src_tensors, non_blocking=True)
+        elif len(dst_tensors) == 1:
+            dst_tensors[0].copy_(src_tensors[0])
+
 
     def run(self, graph_key, *args, **kwargs):
         self._graphs_meta[graph_key].replay_func(*args, **kwargs)

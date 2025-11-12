@@ -99,7 +99,8 @@ class AclConcreteGraph(ConcreteGraphBase):
                 return self.graph.fx_run_eagerly(*args, **kwargs)
 
         # input process
-        self.graph.process_input(fn_key, *args)
+        with record_function("process_input"):
+            self.graph.process_input(fn_key, *args)
 
         # run/replay
         with record_function("acl_graph_replay"):
