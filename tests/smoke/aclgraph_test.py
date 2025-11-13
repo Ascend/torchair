@@ -464,9 +464,9 @@ class AclgraphTest(unittest.TestCase):
         with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
             model_compile(x1, x2, gamma, smooth_scale1)
 
-        self.assertTrue(
+        self.assertFalse(
             any("target: npu.npu_add_rms_norm_cast.default" in log for log in cm.output),
-            f"Expected DEBUG log 'target: npu.npu_add_rms_norm_cast.default' in logs: {cm.output}"
+            f"Expected no DEBUG log 'target: npu.npu_add_rms_norm_cast.default' in logs: {cm.output}"
         )
 
     def test_pattern_pass_for_dynamicquant_with_subgraph_in_diff_stream(self):

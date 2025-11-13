@@ -8,12 +8,13 @@ try:
 except ImportError:
     pass
 
-from torch._inductor.pattern_matcher import register_replacement, PatternMatcherPass
+from torch._inductor.pattern_matcher import register_replacement, PatternMatcherPass, Match
 try:
     from torch._inductor.pattern_matcher import fwd_only
 except ImportError:
     from torch._inductor.pattern_matcher import inference_graph as fwd_only
 from torch._subclasses.fake_tensor import FakeTensorMode
+from typing import Optional
 
 
 class _PatternPassManager:
@@ -80,6 +81,70 @@ def _apply_pattern_passes(graph_module: torch.fx.GraphModule):
     pattern_pass_manager.apply_pass(graph_module)
 
 
+def addrmsnormdynamicquant_pattern_extra_check(match: Match) -> bool:
+    """
+    Checks if the npu_add_rms_norm and npu_dynamic_quant nodes in the addrmsnormdynamicquant pattern
+    are operating in the same stream.
+
+    The function performs the following steps:
+    1. Locates the npu_add_rms_norm and npu_dynamic_quant nodes within the pattern.
+    2. Retrieves their stream labels from the node metadata.
+    3. Verifies if the stream labels are consistent (including the default stream where both are None).
+    """
+    add_rms_node: Optional[torch.fx.Node] = None
+    dynamic_quant_node: Optional[torch.fx.Node] = None
+
+    for node in match.nodes:
+        if node.op == "call_function":
+            if str(node.target) == "npu.npu_add_rms_norm.default":
+                add_rms_node = node
+            elif str(node.target) == "npu.npu_dynamic_quant.default":
+                dynamic_quant_node = node
+        
+        if add_rms_node is not None and dynamic_quant_node is not None:
+            break
+
+    if add_rms_node is None or dynamic_quant_node is None:
+        return False
+
+    add_rms_stream = add_rms_node.meta.get("stream_label")
+    dynamic_quant_stream = dynamic_quant_node.meta.get("stream_label")
+
+    return add_rms_stream == dynamic_quant_stream
+
+
+def addrmsnormcast_pattern_extra_check(match: Match) -> bool:
+    """
+    Checks if the npu_add_rms_norm and _npu_dtype_cast nodes in the addrmsnormcast pattern
+    are operating in the same stream.
+
+    The function performs the following steps:
+    1. Locates the npu_add_rms_norm and _npu_dtype_cast nodes within the pattern.
+    2. Retrieves their stream labels from the node metadata.
+    3. Verifies if the stream labels are consistent (including the default stream where both are None).
+    """
+    add_rms_node: Optional[torch.fx.Node] = None
+    cast_node: Optional[torch.fx.Node] = None
+
+    for node in match.nodes:
+        if node.op == "call_function":
+            if str(node.target) == "npu.npu_add_rms_norm.default":
+                add_rms_node = node
+            elif str(node.target) == "npu._npu_dtype_cast.default":
+                cast_node = node
+        
+        if add_rms_node is not None and cast_node is not None:
+            break
+
+    if add_rms_node is None or cast_node is None:
+        return False
+
+    add_rms_stream = add_rms_node.meta.get("stream_label")
+    cast_stream = cast_node.meta.get("stream_label")
+
+    return add_rms_stream == cast_stream
+
+
 @functools.lru_cache(None)
 def _register_addrmsnormdynamicquant_pattern():
     def search_fn(x1, x2, gamma, smooth_scales):
@@ -104,7 +169,8 @@ def _register_addrmsnormdynamicquant_pattern():
         pattern_pass_manager.register_pattern(
             search_fn=search_fn,
             replace_fn=replace_fn,
-            example_inputs=(input_tensor(), input_tensor(), kwargs_tensor(), kwargs_tensor())
+            example_inputs=(input_tensor(), input_tensor(), kwargs_tensor(), kwargs_tensor()),
+            extra_check=addrmsnormdynamicquant_pattern_extra_check
         )
 
 
@@ -134,7 +200,8 @@ def _register_addrmsnormdynamicquant_pattern2():
         pattern_pass_manager.register_pattern(
             search_fn=search_fn,
             replace_fn=replace_fn,
-            example_inputs=(input_tensor(), input_tensor(), kwargs_tensor())
+            example_inputs=(input_tensor(), input_tensor(), kwargs_tensor()),
+            extra_check=addrmsnormdynamicquant_pattern_extra_check
         )
 
 
@@ -163,5 +230,6 @@ def _register_addrmsnormcast_pattern():
         pattern_pass_manager.register_pattern(
             search_fn=search_fn,
             replace_fn=replace_fn,
-            example_inputs=(input_tensor(), input_tensor(), kwargs_tensor())
+            example_inputs=(input_tensor(), input_tensor(), kwargs_tensor()),
+            extra_check=addrmsnormcast_pattern_extra_check
         )
