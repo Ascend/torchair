@@ -81,7 +81,7 @@ def _apply_pattern_passes(graph_module: torch.fx.GraphModule):
     pattern_pass_manager.apply_pass(graph_module)
 
 
-def addrmsnormdynamicquant_pattern_extra_check(match: Match) -> bool:
+def _addrmsnormdynamicquant_pattern_extra_check(match: Match) -> bool:
     """
     Checks if the npu_add_rms_norm and npu_dynamic_quant nodes in the addrmsnormdynamicquant pattern
     are operating in the same stream.
@@ -113,7 +113,7 @@ def addrmsnormdynamicquant_pattern_extra_check(match: Match) -> bool:
     return add_rms_stream == dynamic_quant_stream
 
 
-def addrmsnormcast_pattern_extra_check(match: Match) -> bool:
+def _addrmsnormcast_pattern_extra_check(match: Match) -> bool:
     """
     Checks if the npu_add_rms_norm and _npu_dtype_cast nodes in the addrmsnormcast pattern
     are operating in the same stream.
@@ -170,7 +170,7 @@ def _register_addrmsnormdynamicquant_pattern():
             search_fn=search_fn,
             replace_fn=replace_fn,
             example_inputs=(input_tensor(), input_tensor(), kwargs_tensor(), kwargs_tensor()),
-            extra_check=addrmsnormdynamicquant_pattern_extra_check
+            extra_check=_addrmsnormdynamicquant_pattern_extra_check
         )
 
 
@@ -201,7 +201,7 @@ def _register_addrmsnormdynamicquant_pattern2():
             search_fn=search_fn,
             replace_fn=replace_fn,
             example_inputs=(input_tensor(), input_tensor(), kwargs_tensor()),
-            extra_check=addrmsnormdynamicquant_pattern_extra_check
+            extra_check=_addrmsnormdynamicquant_pattern_extra_check
         )
 
 
@@ -231,5 +231,5 @@ def _register_addrmsnormcast_pattern():
             search_fn=search_fn,
             replace_fn=replace_fn,
             example_inputs=(input_tensor(), input_tensor(), kwargs_tensor()),
-            extra_check=addrmsnormcast_pattern_extra_check
+            extra_check=_addrmsnormcast_pattern_extra_check
         )
