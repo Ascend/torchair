@@ -1,6 +1,10 @@
 from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 
 
+@declare_supported([
+    Support(F16(1, 2, 3), F16(1, 2, 3), F16(3), output_mask=[True, True]),
+    Support(F16(1, 2, 3), F16(1, 2, 3), F16(3), smooth_scale1=F16(3), output_mask=[True, True]),
+])
 @register_fx_node_ge_converter(torch.ops.npu.npu_add_rms_norm_dynamic_quant.default)
 def convert_npu_add_rms_norm_dynamic_quant_default(
     x1: Tensor,

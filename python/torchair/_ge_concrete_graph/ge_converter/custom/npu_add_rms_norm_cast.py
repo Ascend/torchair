@@ -1,6 +1,10 @@
 from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 
 
+@declare_supported([
+    Support(F16(1, 2, 3), F16(1, 2, 3), F16(3)),
+    Support(F16(1, 2, 3), F16(1, 2, 3), F16(3), epsilon=1e-6),
+])
 @register_fx_node_ge_converter(torch.ops.npu.npu_add_rms_norm_cast.default)
 def convert_npu_add_rms_norm_cast_default(
     x1: Tensor,
