@@ -1,6 +1,7 @@
 __all__ = []
 
 import functools
+from typing import Optional
 import torch
 
 try:
@@ -14,7 +15,6 @@ try:
 except ImportError:
     from torch._inductor.pattern_matcher import inference_graph as fwd_only
 from torch._subclasses.fake_tensor import FakeTensorMode
-from typing import Optional
 
 
 class _PatternPassManager:
