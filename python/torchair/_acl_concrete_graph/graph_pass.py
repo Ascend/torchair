@@ -321,12 +321,6 @@ def apply_event_closure_with_multi_stream(graph_module: fx.GraphModule, graph_na
                 stream_scope_exit_nodes.append(node)
                 stream_scope_exit_nodes_list.append(node.name)
             scope_enter_nodes_stack.pop()
-    if len(scope_enter_nodes_stack) != 0:
-        raise RuntimeError(f"scope_enter node num is not equal to scope_exit node num, "
-                           f"after match, scope enter node num is {len(scope_enter_nodes_stack)}")
-    if len(stream_scope_enter_nodes) != len(stream_scope_exit_nodes):
-        raise RuntimeError(f"scope_enter node num is not equal to scope_exit node num, scope_enter node num: "
-                           f"{len(stream_scope_enter_nodes)}, scope_exit node num: {len(stream_scope_exit_nodes)}")
     if len(stream_scope_enter_nodes) == 0:
         logger.debug("No scope_enter node found in graph[%s], no need to insert event.", id(graph_module))
         return False, stream_scope_enter_nodes_dict, stream_scope_exit_nodes_list

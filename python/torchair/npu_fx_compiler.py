@@ -361,6 +361,33 @@ def _optimize_sym_input(graph_module: torch.fx.GraphModule):
     return graph_module
 
 
+def _valid_graph(graph_module):
+    """
+    After enabling users custom pass, it is necessary to perform checks here 
+    to prevent users from introducing illegal graph modifications through these custom passes.
+    """
+    def _check_scope_enter_exit(graph_module):
+        scope_enter_stack = []
+        for node in graph_module.graph.nodes:
+            if str(node.target) == "air.scope_enter.default":
+                scope_enter_stack.append(node)
+            elif str(node.target) == "air.scope_exit.default":
+                if not scope_enter_stack:
+                    raise RuntimeError(f"When you call the torch.ops.air.scope_exit operator: {node.name}, "
+                                         f"you must first call the torch.ops.air.scope_enter operator, as they must be called in pairs. "
+                                         f"Please check your code or your post_grad_custom_pre_pass post_grad_custom_post_pass!")
+                scope_enter_stack.pop()
+
+        if scope_enter_stack:
+            args_list = [node.args for node in scope_enter_stack]
+            raise RuntimeError(f"After you call the torch.ops.air.scope_enter operator, "
+                                 f"there is no paired call to the torch.ops.air.scope_exit operator. "
+                                 f"The parameters for these torch.ops.air.scope_enter calls are:{args_list}. "
+                                 f"Please check your code or your post_grad_custom_pre_pass post_grad_custom_post_pass!")
+
+    _check_scope_enter_exit(graph_module) 
+
+
 @dataclasses.dataclass
 class _CompiledFxArtifacts:
     """
@@ -526,6 +553,7 @@ class _NpuFxCompiler:
 
         # do common optimization for fx graph based on config
         optimized_gm = _optimize_fx(mutable_gm, self.config, example_inputs)
+        _valid_graph(optimized_gm)
         graph.save_fx_graph(optimized_gm)
 
         concrete_graph: ConcreteGraphBase = _NpuGraphConverter(

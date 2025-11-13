@@ -2243,7 +2243,56 @@ class TorchairSt(unittest.TestCase):
         compile_func = torch.compile(cus_func, backend=npu_backend, fullgraph=True)
         input1 = torch.ones((4, 4))
         input2 = torch.ones((4, 4))
-        out = compile_func(input1, input2)        
+        out = compile_func(input1, input2)
+
+    def test_miss_scope_exit(self):
+        def cus_func(x, y):
+            add = torch.add(x, y)
+            mm = torch.mm(add, x)
+            abs = torch.abs(mm)
+            return abs
+
+        def custom_pass(gm, example_inputs, config: torchair.CompilerConfig):
+            fx_graph = gm.graph
+            for node in fx_graph.nodes:
+                if node.op == "call_function" and node.target == torch.ops.aten.mm.default:
+                    with fx_graph.inserting_before(node):
+                        fx_graph.call_function(torch.ops.air.scope_enter.default, args=(
+                            ["_user_stream_label"], ["stream_1"]))
+  
+        config = CompilerConfig()
+        config.post_grad_custom_pre_pass = custom_pass
+        compile_func = torch.compile(cus_func, backend=torchair.get_npu_backend(compiler_config=config), fullgraph=True)
+        input1 = torch.ones((4, 4))
+        input2 = torch.ones((4, 4))
+        with self.assertRaises(RuntimeError) as context:
+            out = compile_func(input1, input2)
+        self.assertTrue('there is no paired call to the torch.ops.air.scope_exit operator'
+                        in str(context.exception)) 
+
+    def test_miss_scope_enter(self):
+        def cus_func(x, y):
+            add = torch.add(x, y)
+            mm = torch.mm(add, x)
+            abs = torch.abs(mm)
+            return abs
+
+        def custom_pass(gm, example_inputs, config: torchair.CompilerConfig):
+            fx_graph = gm.graph
+            for node in fx_graph.nodes:
+                if node.op == "call_function" and node.target == torch.ops.aten.mm.default:
+                    with fx_graph.inserting_before(node):
+                        fx_graph.call_function(torch.ops.air.scope_exit.default, args=())
+  
+        config = CompilerConfig()
+        config.post_grad_custom_pre_pass = custom_pass
+        compile_func = torch.compile(cus_func, backend=torchair.get_npu_backend(compiler_config=config), fullgraph=True)
+        input1 = torch.ones((4, 4))
+        input2 = torch.ones((4, 4))
+        with self.assertRaises(RuntimeError) as context:
+            out = compile_func(input1, input2)
+        self.assertTrue('you must first call the torch.ops.air.scope_enter operator'
+                        in str(context.exception))                   
 
     def test_auto_converter(self):
         m = Library("custom_define", "DEF")
