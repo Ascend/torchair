@@ -240,7 +240,7 @@ add(abs(x), 1) = [[2 2]
                 return 0
 
         config = CompilerConfig()
-        config.debug.aclgraph.enable_pattern_pass = False
+        config.experimental_config.enable_pattern_pass = False
         npu_backend = torchair.get_npu_backend(compiler_config=config)
         try:
             origin_torch_npu = sys.modules.get('torch_npu', None)

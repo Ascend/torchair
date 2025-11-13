@@ -325,7 +325,7 @@ class AclgraphTest(unittest.TestCase):
 
         npu_config = torchair.CompilerConfig()
         npu_config.mode = "reduce-overhead"
-        npu_config.debug.aclgraph.enable_pattern_pass = False
+        npu_config.experimental_config.enable_pattern_pass = False
         npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
         model = DsModel()
         model_compile = torch.compile(model, backend=npu_backend)
@@ -372,7 +372,7 @@ class AclgraphTest(unittest.TestCase):
 
         npu_config = torchair.CompilerConfig()
         npu_config.mode = "max-autotune"
-        npu_config.debug.aclgraph.enable_pattern_pass = False
+        npu_config.experimental_config.enable_pattern_pass = False
         npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
         model = DsModel()
         model_compile = torch.compile(model, backend=npu_backend)

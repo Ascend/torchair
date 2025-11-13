@@ -294,7 +294,7 @@ def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, exa
 
     graph_module = _optimize_sym_input(graph_module)
 
-    if config.debug.aclgraph.enable_pattern_pass:
+    if config.experimental_config.enable_pattern_pass:
         if 'torch_npu' in sys.modules:
             _add_stream_label_to_node_meta(graph_module)
             _apply_pattern_passes(graph_module)

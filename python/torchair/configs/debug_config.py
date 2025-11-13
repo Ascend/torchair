@@ -83,7 +83,6 @@ class _AclGraphDebugConfig(NpuBaseConfig):
         self.disable_mempool_reuse_in_same_fx = OptionValue(False, [True, False])
         self.enable_output_clone = OptionValue(False, [True, False])
         self.static_capture_size_limit = IntRangeValue(64, 1, INT64_MAX)
-        self.enable_pattern_pass = OptionValue(True, [True, False])
 
         super(_AclGraphDebugConfig, self).__init__()
 
@@ -93,7 +92,6 @@ class _AclGraphDebugConfig(NpuBaseConfig):
         local_option["enable_output_clone"] = self.enable_output_clone.value
         # static_capture_size_limit must be str(int), so int(static_capture_size_limit) is always safe.
         local_option["static_capture_size_limit"] = self.static_capture_size_limit.value
-        local_option["enable_pattern_pass"] = self.enable_pattern_pass.value
 
         return local_option
 

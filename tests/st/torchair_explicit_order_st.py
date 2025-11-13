@@ -17,7 +17,7 @@ captured_graph = threading.local()
 _privateuse1_backend.register_hook()
 
 config = CompilerConfig()
-config.debug.aclgraph.enable_pattern_pass = False
+config.experimental_config.enable_pattern_pass = False
 npu_backend = torchair.get_npu_backend(compiler_config=config)
 
 
