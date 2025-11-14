@@ -378,8 +378,8 @@ def _add_stream_label_to_node_meta(graph_module: torch.fx.GraphModule):
     - Nodes within a stream scope: meta["stream_label"] = corresponding stream label
     - Nodes outside a stream scope: meta["stream_label"] = None (default stream)
     """
-    scope_enter_nodes_stack = [] # Stack to maintain active scope_enter nodes
-    current_stream = None # Current stream label for nodes
+    scope_enter_nodes_stack = []
+    current_stream = None
 
     for node in graph_module.graph.nodes:
         if str(node.target) == "air.scope_enter.default":
