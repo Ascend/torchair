@@ -371,7 +371,6 @@ def _optimize_sym_input(graph_module: torch.fx.GraphModule):
     return graph_module
 
 
-<<<<<<< HEAD
 def _add_stream_label_to_node_meta(graph_module: torch.fx.GraphModule):
     """
     Add stream labels to nodes in the FX graph based on their scope.
@@ -398,7 +397,8 @@ def _add_stream_label_to_node_meta(graph_module: torch.fx.GraphModule):
             node.meta["stream_label"] = current_stream
 
     graph_module.graph.lint()
-=======
+
+    
 def _valid_graph(graph_module):
     """
     After enabling users custom pass, it is necessary to perform checks here 
@@ -424,7 +424,6 @@ def _valid_graph(graph_module):
                                  f"Please check your code or your post_grad_custom_pre_pass post_grad_custom_post_pass!")
 
     _check_scope_enter_exit(graph_module) 
->>>>>>> 149ea390... [bugfix]添加scope_enter和exit节点正确性校验
 
 
 @dataclasses.dataclass
