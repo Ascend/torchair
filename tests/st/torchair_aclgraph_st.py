@@ -2768,5 +2768,78 @@ class AclGraphSt(unittest.TestCase):
         finally:
             AclConcreteGraph.__call__ = call_bak
 
+    @unittest.skipIf(torch.__version__ < '2.2.0', "")
+    def test_enable_remove_noop_ops_and_eliminate_dead_code_acl(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                zeros_tensor = torch.zeros_like(x)
+                zeros_copy = zeros_tensor.copy_(x)
+                res = zeros_copy + 1
+                return res
+
+        def assert_func(concrete_graph):
+            graph_ = concrete_graph.fx_graph.graph
+            nodes = graph_.nodes
+            has_zeros_like_node = any(node.op == "call_function"
+                                 and node.target.overloadpacket == torch.ops.aten.zeros_like for node in nodes)
+            assert not has_zeros_like_node
+
+        def wrapper_call(call):
+            def wrapper(*args, **kwargs):
+                ret = call(*args, **kwargs)
+                assert_func(args[0])
+                return ret
+
+            return wrapper
+
+        from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
+        AclConcreteGraph.__call__ = wrapper_call(AclConcreteGraph.__call__)
+
+        compiler_config = CompilerConfig()
+        compiler_config.mode = "reduce-overhead"
+        backend = torchair.get_npu_backend(compiler_config=compiler_config)
+        compiled_model = torch.compile(Model(), backend=backend, dynamic=True)
+        compiled_model(x=torch.randn([2, 2]))
+
+    @unittest.skipIf(torch.__version__ < '2.2.0', "")
+    def test_disable_remove_noop_ops_and_eliminate_dead_code_acl(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                zeros_tensor = torch.zeros_like(x)
+                zeros_copy = zeros_tensor.copy_(x)
+                res = zeros_copy + 2
+                return res
+
+        def assert_func(concrete_graph):
+            graph_ = concrete_graph.fx_graph.graph
+            nodes = graph_.nodes
+            has_zeros_like_node = any(node.op == "call_function"
+                                and node.target.overloadpacket == torch.ops.aten.zeros_like for node in nodes)
+            assert has_zeros_like_node
+
+        def wrapper_call(call):
+            def wrapper(*args, **kwargs):
+                ret = call(*args, **kwargs)
+                assert_func(args[0])
+                return ret
+
+            return wrapper
+
+        from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
+        AclConcreteGraph.__call__ = wrapper_call(AclConcreteGraph.__call__)
+
+        compiler_config = CompilerConfig()
+        compiler_config.mode = "reduce-overhead"
+        compiler_config.experimental_config.remove_noop_ops = False
+        backend = torchair.get_npu_backend(compiler_config=compiler_config)
+        compiled_model = torch.compile(Model(), backend=backend, dynamic=True)
+        compiled_model(x=torch.randn([2, 2]))
+
 if __name__ == '__main__':
     unittest.main()

@@ -247,6 +247,9 @@ class AclConcreteGraph(ConcreteGraphBase):
         # Note: this pass need sample args to run in FakeTensor mode, any pass modifies ops without meta registration
         # should run after it.
 
+        self.fx_graph.graph.eliminate_dead_code()
+        logger.debug('after graph eliminate_dead_code, graph is %s', self.fx_graph.graph)
+
         if not (multi_stream_enabled or self.config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass):
             logger.debug("Start to process reinplace inplaceable ops fx pass for graph: %s", self.fx_graph_name)
             from torchair._acl_concrete_graph.graph_pass import _reinplace_inplaceable_ops_pass
