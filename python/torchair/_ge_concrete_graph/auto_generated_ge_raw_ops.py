@@ -80795,6 +80795,65 @@ def DequantSwigluQuant(x: Tensor,
     )
 
 
+@auto_convert_to_tensor([False, False], [False, True])
+def ClippedSwiglu(x: Tensor,
+                group_index: Optional[Tensor],
+                *, 
+                dim: int = -1, 
+                alpha: float = 1.702, 
+                limit: float = 7.0, 
+                bias: float = 1.0, 
+                interleaved: bool = True, 
+                dependencies=[], 
+                node_name=None):
+    """REG_OP(ClippedSwiglu)\n
+    .INPUT(x, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))\n
+    .OPTIONAL_INPUT(group_index, TensorType({DT_INT64}))\n
+    .OUTPUT(y, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))\n
+    .ATTR(dim, Int, -1)\n
+    .ATTR(alpha, Float, 1.702)\n
+    .ATTR(limit, Float, 7.0)\n
+    .ATTR(bias, Float, 1.0)\n
+    .ATTR(interleaved, Bool, true)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "ClippedSwiglu"
+    op.name = next_unique_name(node_name, "ClippedSwiglu")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+    if group_index is not None:
+        op.input.append(group_index.tensor)
+        op.input_desc.add().CopyFrom(group_index.desc)
+        op.input_desc[-1].name = "group_index"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "group_index"
+
+    # process attrs
+    op.attr["dim"].i = dim
+    op.attr["alpha"].f = float(alpha)      
+    op.attr["limit"].f = float(limit)  
+    op.attr["bias"].f = float(bias)
+    op.attr["interleaved"].b = interleaved
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+
+    return y
+
+
 @auto_convert_to_tensor([False], [False], inputs_tensor_type=[TensorType.TT_ALL])
 def FfnWorkerScheduler(schedule_context: Tensor,
                        *,
