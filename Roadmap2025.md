@@ -21,7 +21,7 @@
 
 ## Pass增强
 
-- [ ] [***October***]提供Stream间Kernel执行时序控制能力&支持自定义注册fx pass[#ICW9JJ](https://gitee.com/ascend/Torchair/issues/ICW9JJ?from=project-issue)。
+- [ ] [***October***]提供Stream间Kernel执行时序控制能力&支持自定义注册fx pass。
 
 ## DFX
 

@@ -61,7 +61,7 @@
 
 ## 公网地址声明
 
-代码涉及公网地址参考[public_address_statement.md](https://gitee.com/ascend/torchair/blob/master/public_address_statement.md)
+代码涉及公网地址参考[public_address_statement.md](https://gitcode.com/Ascend/torchair/blob/master/public_address_statement.md)
 
 
 ## 公开接口声明
@@ -78,7 +78,7 @@ TorchAir项目采用C++和Python联合开发，当前正式接口只提供Python
     
     `torchair.get_npu_backend(*, compiler_config=None, custom_decompositions={})`
     
-    获取能够在NPU上运行的图编译后端npu_backend，可以作为backend参数传入torch.compile，参考[图模式使能示例](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/80RC1alpha002/devguide/moddevg/torchair/torchair_01_0007.html)。
+    获取能够在NPU上运行的图编译后端npu_backend，可以作为backend参数传入torch.compile，参考[图模式使能示例](https://www.hiascend.com/document/detail/zh/Pytorch/720/modthirdparty/torchairuseguide/torchair_00005.html)。
     
     - Keyword Arguments
     - **compiler_config**(*CompilerConfig, optional*)- 配置项，具体可见torchair.CompilerConfig条目。
@@ -121,7 +121,7 @@ TorchAir项目采用C++和Python联合开发，当前正式接口只提供Python
     
     `torchair.logger`
     
-    TorchAir python层日志借助python的logging模块来实现，存在DEBUG、INFO、WARNING、ERROR四个级别。用法参照[TorchAir python层日志级别控制](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/80RC1alpha002/devguide/moddevg/torchair/torchair_01_0013.html)。
+    TorchAir python层日志借助python的logging模块来实现，存在DEBUG、INFO、WARNING、ERROR四个级别。用法参照[TorchAir python层日志级别控制](https://www.hiascend.com/document/detail/zh/Pytorch/720/modthirdparty/torchairuseguide/torchair_00008.html)。
     
     logger用到的函数继承了logging模块的函数，下面仅列出常用的函数和TorchAir新增的函数，其他函数用户可参考[logging模块文档](https://docs.python.org/3.8/library/logging.html)。
     1. **Functions**
@@ -157,7 +157,7 @@ TorchAir项目采用C++和Python联合开发，当前正式接口只提供Python
         - *work_path* -AOE调优工作目录，默认为当前目录。
         - *aoe_config_file* -AOE配置文件路径。
 
-    - **dump_config** 用于配置数据dump接口。可参考[data dump功能](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/80RC1alpha002/devguide/moddevg/torchair/torchair_01_0016.html)。
+    - **dump_config** 用于配置数据dump接口。可参考[data dump功能](https://www.hiascend.com/document/detail/zh/Pytorch/720/modthirdparty/torchairuseguide/torchair_00012.html)。
 
         - *enable_dump* 是否开启数据dump功能。默认为False，不开启。可选参数为[False, True]。
         - *dump_path* 数据dump路径。默认为当前路径。
@@ -165,7 +165,7 @@ TorchAir项目采用C++和Python联合开发，当前正式接口只提供Python
         - *quant_dumpable* 是否开启dump量化前的输出。默认为False，不开启。可选参数为[False, True]。
         - *dump_data* 数据dump内容类型。默认为"tensor"，可选参数为["tensor", "stats"]。
 
-    - **export** 用于配置导出air格式离线图时的选项。建议通过dynamo_export接口来进行配置，参考[export功能](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/80RC1alpha002/devguide/moddevg/torchair/torchair_01_0015.html)。
+    - **export** 用于配置导出air格式离线图时的选项。建议通过dynamo_export接口来进行配置，参考[export功能](https://www.hiascend.com/document/detail/zh/Pytorch/720/modthirdparty/torchairuseguide/torchair_00023.html)。
         - *export_mode* -是否开启导出离线图。默认为False，不开启。
         - *export_path_dir* -导出离线图路径，默认为None，不导出。
         - *export_name* -导出离线图的名字，默认为None，不导出。
@@ -222,12 +222,12 @@ TorchAir项目采用C++和Python联合开发，当前正式接口只提供Python
 
 ## 通信安全加固
 
-TorchAir在运行时依赖PyTorch及torch_npu，用户需关注通信安全加固，具体方式可参考torch_npu[通信安全加固](https://gitee.com/ascend/pytorch/blob/master/SECURITYNOTE.md#%E9%80%9A%E4%BF%A1%E5%AE%89%E5%85%A8%E5%8A%A0%E5%9B%BA)。
+TorchAir在运行时依赖PyTorch及torch_npu，用户需关注通信安全加固，具体方式可参考torch_npu[通信安全加固](https://gitcode.com/ascend/pytorch/blob/master/SECURITYNOTE.md#%E9%80%9A%E4%BF%A1%E5%AE%89%E5%85%A8%E5%8A%A0%E5%9B%BA)。
 
 
 ## 通信矩阵
 
-TorchAir在运行时依赖PyTorch及torch_npu，涉及通信矩阵，具体方式可参考torch_npu[通信矩阵](https://gitee.com/ascend/pytorch/blob/master/SECURITYNOTE.md#%E9%80%9A%E4%BF%A1%E7%9F%A9%E9%98%B5)。
+TorchAir在运行时依赖PyTorch及torch_npu，涉及通信矩阵，具体方式可参考torch_npu[通信矩阵](https://gitcode.com/ascend/pytorch/blob/master/SECURITYNOTE.md#%E9%80%9A%E4%BF%A1%E7%9F%A9%E9%98%B5)。
 
 ### 特殊场景
 

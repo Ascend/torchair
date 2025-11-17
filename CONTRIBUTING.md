@@ -60,7 +60,7 @@
 
 # 基于昇腾NPU和torch_npu使用TorchAir示例
 
-> 使能图模式之前，请先将模型迁移至昇腾NPU，确保模型能够在单算子模式下正确执行，具体请参考[PyTorch模型迁移和训练指南](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/80RC1alpha003/devguide/moddevg/ptmigr/AImpug_0001.html)。
+> 使能图模式之前，请先将模型迁移至昇腾NPU，确保模型能够在单算子模式下正确执行，具体请参考[PyTorch模型迁移和训练指南](https://www.hiascend.com/document/detail/zh/Pytorch/720/ptmoddevg/trainingmigrguide/PT_LMTMOG_0002.html)。
 
 ```python
 # 导入torchair框架
@@ -97,7 +97,7 @@ graph_result = model(in1, in2, in3)
 # 打印执行结果
 print(graph_result)
 ```
-> TorchAir在更多不同场景下的应用，请参考[示例代码](https://gitee.com/ascend/torchair/tree/master/examples).
+> TorchAir在更多不同场景下的应用，请参考[示例代码](https://gitcode.com/ascend/torchair/tree/master/examples).
 
 
 # converter补齐
