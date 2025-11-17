@@ -33,7 +33,7 @@ def conveter_aten__native_batch_norm_legit_no_training_default(
         bias = ge.Fill(ge.Gather(input_size, 1), ge.Cast(0., dst_type=input.dtype))
     empty = ge.Fill([0], ge.Cast(0.0, dst_type=input.dtype))
 
-    if is_not_support():
+    if is_arch35():
         if dim == 2 or dim == 3:
             input = ge.Unsqueeze(input, axes=list(range(dim, 4)))
 

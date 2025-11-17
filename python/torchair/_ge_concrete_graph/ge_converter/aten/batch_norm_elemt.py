@@ -21,7 +21,7 @@ def conveter_aten_batch_norm_elemt_default(
     var = ge.Div(1.0, var)
     var = ge.Sub(var, eps)
 
-    if is_not_support():
+    if is_arch35():
         output, _, _, _, _ = ge.BatchNormV3(inp, weight, bias, running_mean, var,
                                             epsilon=eps, momentum=0.10, is_training=False)
     else:

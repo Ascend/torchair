@@ -8,12 +8,14 @@ from google.protobuf import descriptor_pool as _descriptor_pool
 from google.protobuf import message as _message
 from google.protobuf import reflection as _reflection
 from google.protobuf import symbol_database as _symbol_database
-
 # @@protoc_insertion_point(imports)
 
 _sym_db = _symbol_database.Default()
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0bge_ir.proto\x12\x08ge.proto\"\xf3\x08\n\x07\x41ttrDef\x12\x0b\n\x01s\x18\x02 \x01(\x0cH\x00\x12\x0b\n\x01i\x18\x03 \x01(\x03H\x00\x12\x0b\n\x01\x66\x18\x04 \x01(\x02H\x00\x12\x0b\n\x01\x62\x18\x05 \x01(\x08H\x00\x12\x0c\n\x02\x62t\x18\x07 \x01(\x0cH\x00\x12+\n\x04list\x18\x01 \x01(\x0b\x32\x1b.ge.proto.AttrDef.ListValueH\x00\x12$\n\x04\x66unc\x18\n \x01(\x0b\x32\x14.ge.proto.NamedAttrsH\x00\x12(\n\x02td\x18\x0b \x01(\x0b\x32\x1a.ge.proto.TensorDescriptorH\x00\x12 \n\x01t\x18\x0c \x01(\x0b\x32\x13.ge.proto.TensorDefH\x00\x12\x1f\n\x01g\x18\r \x01(\x0b\x32\x12.ge.proto.GraphDefH\x00\x12\x36\n\rlist_list_int\x18\x0e \x01(\x0b\x32\x1d.ge.proto.AttrDef.ListListIntH\x00\x12\x0c\n\x02\x64t\x18\x0f \x01(\x03H\x00\x12:\n\x0flist_list_float\x18\x10 \x01(\x0b\x32\x1f.ge.proto.AttrDef.ListListFloatH\x00\x1a\x86\x04\n\tListValue\x12\t\n\x01s\x18\x02 \x03(\x0c\x12\t\n\x01i\x18\x03 \x03(\x03\x12\t\n\x01\x66\x18\x04 \x03(\x02\x12\t\n\x01\x62\x18\x05 \x03(\x08\x12\n\n\x02\x62t\x18\x07 \x03(\x0c\x12&\n\x02td\x18\x08 \x03(\x0b\x32\x1a.ge.proto.TensorDescriptor\x12\x1e\n\x01t\x18\t \x03(\x0b\x32\x13.ge.proto.TensorDef\x12\x1d\n\x01g\x18\n \x03(\x0b\x32\x12.ge.proto.GraphDef\x12 \n\x02na\x18\x0b \x03(\x0b\x32\x14.ge.proto.NamedAttrs\x12\n\n\x02\x64t\x18\x0c \x03(\x03\x12;\n\x08val_type\x18\x14 \x01(\x0e\x32).ge.proto.AttrDef.ListValue.ListValueType\"\xee\x01\n\rListValueType\x12\x10\n\x0cVT_LIST_NONE\x10\x00\x12\x12\n\x0eVT_LIST_STRING\x10\x01\x12\x0f\n\x0bVT_LIST_INT\x10\x02\x12\x11\n\rVT_LIST_FLOAT\x10\x03\x12\x10\n\x0cVT_LIST_BOOL\x10\x04\x12\x11\n\rVT_LIST_BYTES\x10\x05\x12\x17\n\x13VT_LIST_TENSOR_DESC\x10\x06\x12\x12\n\x0eVT_LIST_TENSOR\x10\x07\x12\x11\n\rVT_LIST_GRAPH\x10\x08\x12\x17\n\x13VT_LIST_NAMED_ATTRS\x10\t\x12\x15\n\x11VT_LIST_DATA_TYPE\x10\n\x1a\x64\n\x0bListListInt\x12:\n\x0blist_list_i\x18\x01 \x03(\x0b\x32%.ge.proto.AttrDef.ListListInt.ListInt\x1a\x19\n\x07ListInt\x12\x0e\n\x06list_i\x18\x01 \x03(\x03\x1al\n\rListListFloat\x12>\n\x0blist_list_f\x18\x01 \x03(\x0b\x32).ge.proto.AttrDef.ListListFloat.ListFloat\x1a\x1b\n\tListFloat\x12\x0e\n\x06list_f\x18\x01 \x03(\x02\x42\x07\n\x05value\"\x88\x01\n\nNamedAttrs\x12\x0c\n\x04name\x18\x01 \x01(\t\x12,\n\x04\x61ttr\x18\x02 \x03(\x0b\x32\x1e.ge.proto.NamedAttrs.AttrEntry\x1a>\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.ge.proto.AttrDef:\x02\x38\x01\"\x17\n\x08ShapeDef\x12\x0b\n\x03\x64im\x18\x01 \x03(\x03\"\xfe\x03\n\x10TensorDescriptor\x12\x0c\n\x04name\x18\x01 \x01(\t\x12!\n\x05\x64type\x18\x02 \x01(\x0e\x32\x12.ge.proto.DataType\x12!\n\x05shape\x18\x03 \x01(\x0b\x32\x12.ge.proto.ShapeDef\x12\x0e\n\x06layout\x18\x04 \x01(\t\x12\x14\n\x0chas_out_attr\x18\t \x01(\x08\x12\x0c\n\x04size\x18\n \x01(\x03\x12\x13\n\x0bweight_size\x18\x0b \x01(\x03\x12\x13\n\x0breuse_input\x18\x0c \x01(\x08\x12\x15\n\routput_tensor\x18\r \x01(\x08\x12\x13\n\x0b\x64\x65vice_type\x18\x0e \x01(\t\x12\x14\n\x0cinput_tensor\x18\x0f \x01(\x08\x12\x14\n\x0creal_dim_cnt\x18\x10 \x01(\x03\x12\x19\n\x11reuse_input_index\x18\x11 \x01(\x03\x12\x13\n\x0b\x64\x61ta_offset\x18\x12 \x01(\x03\x12\x11\n\tcmps_size\x18\x13 \x01(\x03\x12\x10\n\x08\x63mps_tab\x18\x14 \x01(\t\x12\x17\n\x0f\x63mps_tab_offset\x18\x15 \x01(\x03\x12\x32\n\x04\x61ttr\x18\x05 \x03(\x0b\x32$.ge.proto.TensorDescriptor.AttrEntry\x1a>\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.ge.proto.AttrDef:\x02\x38\x01\"C\n\tTensorDef\x12(\n\x04\x64\x65sc\x18\x01 \x01(\x0b\x32\x1a.ge.proto.TensorDescriptor\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\x0c\"\x8d\x04\n\x05OpDef\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\x12\r\n\x05input\x18\x05 \x03(\t\x12\'\n\x04\x61ttr\x18\n \x03(\x0b\x32\x19.ge.proto.OpDef.AttrEntry\x12\x14\n\x0chas_out_attr\x18\x14 \x01(\x08\x12\n\n\x02id\x18\x15 \x01(\x03\x12\x11\n\tstream_id\x18\x16 \x01(\x03\x12\x12\n\ninput_name\x18\x17 \x03(\t\x12\x10\n\x08src_name\x18\x18 \x03(\t\x12\x11\n\tsrc_index\x18\x19 \x03(\x03\x12\x10\n\x08\x64st_name\x18\x1a \x03(\t\x12\x11\n\tdst_index\x18\x1b \x03(\x03\x12\x0f\n\x07input_i\x18\x1c \x03(\x03\x12\x10\n\x08output_i\x18\x1d \x03(\x03\x12\x11\n\tworkspace\x18\x1e \x03(\x03\x12\x17\n\x0fworkspace_bytes\x18\x1f \x03(\x03\x12\x16\n\x0eis_input_const\x18  \x03(\x08\x12.\n\ninput_desc\x18! \x03(\x0b\x32\x1a.ge.proto.TensorDescriptor\x12/\n\x0boutput_desc\x18\" \x03(\x0b\x32\x1a.ge.proto.TensorDescriptor\x12\x15\n\rsubgraph_name\x18# \x03(\t\x1a>\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.ge.proto.AttrDef:\x02\x38\x01\"\xc0\x01\n\x08GraphDef\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05input\x18\x04 \x03(\t\x12\x0e\n\x06output\x18\x05 \x03(\t\x12\x1b\n\x02op\x18\x06 \x03(\x0b\x32\x0f.ge.proto.OpDef\x12*\n\x04\x61ttr\x18\x0b \x03(\x0b\x32\x1c.ge.proto.GraphDef.AttrEntry\x1a>\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.ge.proto.AttrDef:\x02\x38\x01\"\xd0\x01\n\x08ModelDef\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\r\x12\x16\n\x0e\x63ustom_version\x18\x03 \x01(\t\x12!\n\x05graph\x18\x07 \x03(\x0b\x32\x12.ge.proto.GraphDef\x12*\n\x04\x61ttr\x18\x0b \x03(\x0b\x32\x1c.ge.proto.ModelDef.AttrEntry\x1a>\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.ge.proto.AttrDef:\x02\x38\x01*\x8a\x04\n\x08\x44\x61taType\x12\x10\n\x0c\x44T_UNDEFINED\x10\x00\x12\x0c\n\x08\x44T_FLOAT\x10\x01\x12\x0e\n\nDT_FLOAT16\x10\x02\x12\x0b\n\x07\x44T_INT8\x10\x03\x12\x0c\n\x08\x44T_UINT8\x10\x04\x12\x0c\n\x08\x44T_INT16\x10\x05\x12\r\n\tDT_UINT16\x10\x06\x12\x0c\n\x08\x44T_INT32\x10\x07\x12\x0c\n\x08\x44T_INT64\x10\x08\x12\r\n\tDT_UINT32\x10\t\x12\r\n\tDT_UINT64\x10\n\x12\x0b\n\x07\x44T_BOOL\x10\x0b\x12\r\n\tDT_DOUBLE\x10\x0c\x12\r\n\tDT_STRING\x10\r\x12\x14\n\x10\x44T_DUAL_SUB_INT8\x10\x0e\x12\x15\n\x11\x44T_DUAL_SUB_UINT8\x10\x0f\x12\x10\n\x0c\x44T_COMPLEX64\x10\x10\x12\x11\n\rDT_COMPLEX128\x10\x11\x12\x0c\n\x08\x44T_QINT8\x10\x12\x12\r\n\tDT_QINT16\x10\x13\x12\r\n\tDT_QINT32\x10\x14\x12\r\n\tDT_QUINT8\x10\x15\x12\x0e\n\nDT_QUINT16\x10\x16\x12\x0f\n\x0b\x44T_RESOURCE\x10\x17\x12\x11\n\rDT_STRING_REF\x10\x18\x12\x0b\n\x07\x44T_DUAL\x10\x19\x12\x0e\n\nDT_VARIANT\x10\x1a\x12\x0b\n\x07\x44T_BF16\x10\x1b\x12\x0b\n\x07\x44T_INT4\x10\x1c\x12\x0c\n\x08\x44T_UINT1\x10\x1d\x12\x0b\n\x07\x44T_INT2\x10\x1e\x12\x0c\n\x08\x44T_UINT2\x10\x1f\x12\x10\n\x0c\x44T_COMPLEX32\x10 b\x06proto3')
+
+
+
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0bge_ir.proto\x12\x08ge.proto\"\x89\t\n\x07\x41ttrDef\x12\x0b\n\x01s\x18\x02 \x01(\x0cH\x00\x12\x0b\n\x01i\x18\x03 \x01(\x03H\x00\x12\x0b\n\x01\x66\x18\x04 \x01(\x02H\x00\x12\x0b\n\x01\x62\x18\x05 \x01(\x08H\x00\x12\x0c\n\x02\x62t\x18\x07 \x01(\x0cH\x00\x12+\n\x04list\x18\x01 \x01(\x0b\x32\x1b.ge.proto.AttrDef.ListValueH\x00\x12$\n\x04\x66unc\x18\n \x01(\x0b\x32\x14.ge.proto.NamedAttrsH\x00\x12(\n\x02td\x18\x0b \x01(\x0b\x32\x1a.ge.proto.TensorDescriptorH\x00\x12 \n\x01t\x18\x0c \x01(\x0b\x32\x13.ge.proto.TensorDefH\x00\x12\x1f\n\x01g\x18\r \x01(\x0b\x32\x12.ge.proto.GraphDefH\x00\x12\x36\n\rlist_list_int\x18\x0e \x01(\x0b\x32\x1d.ge.proto.AttrDef.ListListIntH\x00\x12\x0c\n\x02\x64t\x18\x0f \x01(\x03H\x00\x12:\n\x0flist_list_float\x18\x10 \x01(\x0b\x32\x1f.ge.proto.AttrDef.ListListFloatH\x00\x12\x14\n\nexpression\x18\x11 \x01(\x0cH\x00\x1a\x86\x04\n\tListValue\x12\t\n\x01s\x18\x02 \x03(\x0c\x12\t\n\x01i\x18\x03 \x03(\x03\x12\t\n\x01\x66\x18\x04 \x03(\x02\x12\t\n\x01\x62\x18\x05 \x03(\x08\x12\n\n\x02\x62t\x18\x07 \x03(\x0c\x12&\n\x02td\x18\x08 \x03(\x0b\x32\x1a.ge.proto.TensorDescriptor\x12\x1e\n\x01t\x18\t \x03(\x0b\x32\x13.ge.proto.TensorDef\x12\x1d\n\x01g\x18\n \x03(\x0b\x32\x12.ge.proto.GraphDef\x12 \n\x02na\x18\x0b \x03(\x0b\x32\x14.ge.proto.NamedAttrs\x12\n\n\x02\x64t\x18\x0c \x03(\x03\x12;\n\x08val_type\x18\x14 \x01(\x0e\x32).ge.proto.AttrDef.ListValue.ListValueType\"\xee\x01\n\rListValueType\x12\x10\n\x0cVT_LIST_NONE\x10\x00\x12\x12\n\x0eVT_LIST_STRING\x10\x01\x12\x0f\n\x0bVT_LIST_INT\x10\x02\x12\x11\n\rVT_LIST_FLOAT\x10\x03\x12\x10\n\x0cVT_LIST_BOOL\x10\x04\x12\x11\n\rVT_LIST_BYTES\x10\x05\x12\x17\n\x13VT_LIST_TENSOR_DESC\x10\x06\x12\x12\n\x0eVT_LIST_TENSOR\x10\x07\x12\x11\n\rVT_LIST_GRAPH\x10\x08\x12\x17\n\x13VT_LIST_NAMED_ATTRS\x10\t\x12\x15\n\x11VT_LIST_DATA_TYPE\x10\n\x1a\x64\n\x0bListListInt\x12:\n\x0blist_list_i\x18\x01 \x03(\x0b\x32%.ge.proto.AttrDef.ListListInt.ListInt\x1a\x19\n\x07ListInt\x12\x0e\n\x06list_i\x18\x01 \x03(\x03\x1al\n\rListListFloat\x12>\n\x0blist_list_f\x18\x01 \x03(\x0b\x32).ge.proto.AttrDef.ListListFloat.ListFloat\x1a\x1b\n\tListFloat\x12\x0e\n\x06list_f\x18\x01 \x03(\x02\x42\x07\n\x05value\"Y\n\x0c\x41ttributeDef\x12\x0b\n\x01s\x18\x01 \x01(\x0cH\x00\x12\x0b\n\x01i\x18\x02 \x01(\x03H\x00\x12\x0b\n\x01\x66\x18\x03 \x01(\x02H\x00\x12\x0b\n\x01\x62\x18\x04 \x01(\x08H\x00\x12\x0c\n\x02\x62t\x18\x05 \x01(\x0cH\x00\x42\x07\n\x05value\"\x85\x01\n\rOtherGroupDef\x12/\n\x04\x61ttr\x18\x01 \x03(\x0b\x32!.ge.proto.OtherGroupDef.AttrEntry\x1a\x43\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12%\n\x05value\x18\x02 \x01(\x0b\x32\x16.ge.proto.AttributeDef:\x02\x38\x01\"N\n\x17TensorDescAttrGroupsDef\x12\x1b\n\x13origin_symbol_shape\x18\x01 \x03(\t\x12\x16\n\x0esymbolic_value\x18\x02 \x03(\t\"9\n\x0eInputSourceDef\x12\x16\n\x0einput_data_idx\x18\x01 \x01(\x05\x12\x0f\n\x07\x64im_idx\x18\x02 \x01(\x03\"4\n\x0eReplacementDef\x12\x14\n\x0creplace_expr\x18\x01 \x01(\t\x12\x0c\n\x04rank\x18\x02 \x01(\x05\"K\n\x12SymbolCheckInfoDef\x12\x0c\n\x04\x65xpr\x18\x01 \x01(\t\x12\x0c\n\x04\x66ile\x18\x02 \x01(\t\x12\x0c\n\x04line\x18\x03 \x01(\x03\x12\x0b\n\x03\x64\x66x\x18\x04 \x01(\t\"G\n\x12ShapeEnvSettingDef\x12\x1b\n\x13specialize_zero_one\x18\x01 \x01(\x08\x12\x14\n\x0c\x64ynamic_mode\x18\x02 \x01(\x05\" \n\rSymbolInfoDef\x12\x0f\n\x07symbols\x18\x01 \x03(\t\"\xaf\x06\n\x15ShapeEnvAttrGroupsDef\x12K\n\x0fsymbol_to_value\x18\x01 \x03(\x0b\x32\x32.ge.proto.ShapeEnvAttrGroupsDef.SymbolToValueEntry\x12K\n\x0fvalue_to_symbol\x18\x02 \x03(\x0b\x32\x32.ge.proto.ShapeEnvAttrGroupsDef.ValueToSymbolEntry\x12M\n\x10symbol_to_source\x18\x03 \x03(\x0b\x32\x33.ge.proto.ShapeEnvAttrGroupsDef.SymbolToSourceEntry\x12G\n\x0creplacements\x18\x04 \x03(\x0b\x32\x31.ge.proto.ShapeEnvAttrGroupsDef.ReplacementsEntry\x12\x38\n\x12symbol_check_infos\x18\x05 \x03(\x0b\x32\x1c.ge.proto.SymbolCheckInfoDef\x12\x39\n\x13symbol_assert_infos\x18\x06 \x03(\x0b\x32\x1c.ge.proto.SymbolCheckInfoDef\x12\x33\n\rshape_setting\x18\x07 \x01(\x0b\x32\x1c.ge.proto.ShapeEnvSettingDef\x12\x15\n\runique_sym_id\x18\x08 \x01(\x04\x1a\x34\n\x12SymbolToValueEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x03:\x02\x38\x01\x1aM\n\x12ValueToSymbolEntry\x12\x0b\n\x03key\x18\x01 \x01(\x03\x12&\n\x05value\x18\x02 \x01(\x0b\x32\x17.ge.proto.SymbolInfoDef:\x02\x38\x01\x1aO\n\x13SymbolToSourceEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\'\n\x05value\x18\x02 \x01(\x0b\x32\x18.ge.proto.InputSourceDef:\x02\x38\x01\x1aM\n\x11ReplacementsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\'\n\x05value\x18\x02 \x01(\x0b\x32\x18.ge.proto.ReplacementDef:\x02\x38\x01\"[\n\x0cSchedInfoDef\x12\x12\n\nexec_order\x18\x01 \x01(\x03\x12\x0c\n\x04\x61xis\x18\x02 \x03(\x03\x12\x11\n\tloop_axis\x18\x03 \x01(\x03\x12\x16\n\x0e\x65xec_condition\x18\x04 \x01(\x05\">\n\nApiInfoDef\x12\x0c\n\x04type\x18\x01 \x01(\x05\x12\x14\n\x0c\x63ompute_type\x18\x02 \x01(\x05\x12\x0c\n\x04unit\x18\x03 \x01(\x05\"\x88\x01\n\nMemAttrDef\x12\x11\n\ttensor_id\x18\x01 \x01(\x03\x12\x12\n\nalloc_type\x18\x02 \x01(\x05\x12\x10\n\x08position\x18\x03 \x01(\x05\x12\x10\n\x08hardware\x18\x04 \x01(\x05\x12\x0f\n\x07\x62uf_ids\x18\x05 \x03(\x03\x12\x0c\n\x04name\x18\x06 \x01(\t\x12\x10\n\x08reuse_id\x18\x07 \x01(\x03\"K\n\x0fMemQueueAttrDef\x12\n\n\x02id\x18\x01 \x01(\x03\x12\r\n\x05\x64\x65pth\x18\x02 \x01(\x03\x12\x0f\n\x07\x62uf_num\x18\x03 \x01(\x03\x12\x0c\n\x04name\x18\x04 \x01(\t\")\n\rMemBufAttrDef\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04name\x18\x02 \x01(\t\"J\n\rMemOptAttrDef\x12\x10\n\x08reuse_id\x18\x01 \x01(\x03\x12\x12\n\nref_tensor\x18\x02 \x01(\x03\x12\x13\n\x0bmerge_scope\x18\x03 \x01(\x03\"\xcd\x01\n\x07\x41xisDef\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x11\n\taxis_type\x18\x03 \x01(\x05\x12\x12\n\nbind_block\x18\x04 \x01(\x08\x12\x0c\n\x04size\x18\x05 \x01(\t\x12\r\n\x05\x61lign\x18\x06 \x01(\x05\x12\x0c\n\x04\x66rom\x18\x07 \x03(\x03\x12\x1b\n\x13split_pair_other_id\x18\x08 \x01(\x03\x12\x1b\n\x13\x61llow_oversize_axis\x18\t \x01(\x08\x12\x1c\n\x14\x61llow_unaligned_tail\x18\n \x01(\x08\"6\n\x18\x41scendCIROpAttrGroupsDef\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\"\xa7\x02\n\x16\x41scTensorAttrGroupsDef\x12\r\n\x05\x64type\x18\x01 \x01(\x03\x12\x10\n\x08\x61xis_ids\x18\x02 \x03(\x03\x12\x0f\n\x07repeats\x18\x03 \x03(\t\x12\x0f\n\x07strides\x18\x04 \x03(\t\x12\x17\n\x0fvectorized_axis\x18\x05 \x03(\x03\x12\x1a\n\x12vectorized_strides\x18\x06 \x03(\t\x12!\n\x03mem\x18\x07 \x01(\x0b\x32\x14.ge.proto.MemAttrDef\x12&\n\x03que\x18\x08 \x01(\x0b\x32\x19.ge.proto.MemQueueAttrDef\x12$\n\x03\x62uf\x18\t \x01(\x0b\x32\x17.ge.proto.MemBufAttrDef\x12$\n\x03opt\x18\n \x01(\x0b\x32\x17.ge.proto.MemOptAttrDef\"l\n\x15\x41scGraphAttrGroupsDef\x12\x12\n\ntiling_key\x18\x01 \x01(\x03\x12\x1f\n\x04\x61xis\x18\x02 \x03(\x0b\x32\x11.ge.proto.AxisDef\x12\x0c\n\x04type\x18\x03 \x01(\x03\x12\x10\n\x08size_var\x18\x04 \x03(\t\"~\n\x0c\x41scIrAttrDef\x12.\n\x04\x61ttr\x18\x01 \x03(\x0b\x32 .ge.proto.AscIrAttrDef.AttrEntry\x1a>\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.ge.proto.AttrDef:\x02\x38\x01\"8\n\rTmpBufDescDef\x12\x0c\n\x04size\x18\x01 \x01(\t\x12\x19\n\x11life_time_axis_id\x18\x02 \x01(\x03\"a\n\x11TmpBufferGroupDef\x12)\n\x08\x62uf_desc\x18\x01 \x01(\x0b\x32\x17.ge.proto.TmpBufDescDef\x12!\n\x03mem\x18\x02 \x01(\x0b\x32\x14.ge.proto.MemAttrDef\"\xdb\x01\n\x14\x41scNodeAttrGroupsDef\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\x12%\n\x05sched\x18\x03 \x01(\x0b\x32\x16.ge.proto.SchedInfoDef\x12!\n\x03\x61pi\x18\x04 \x01(\x0b\x32\x14.ge.proto.ApiInfoDef\x12+\n\x0bir_attr_def\x18\x05 \x01(\x0b\x32\x16.ge.proto.AscIrAttrDef\x12\x30\n\x0btmp_buffers\x18\x06 \x03(\x0b\x32\x1b.ge.proto.TmpBufferGroupDef\"\x9d\x03\n\x0c\x41ttrGroupDef\x12;\n\rop_attr_group\x18\x02 \x01(\x0b\x32\".ge.proto.AscendCIROpAttrGroupsDefH\x00\x12>\n\x11tensor_attr_group\x18\x03 \x01(\x0b\x32!.ge.proto.TensorDescAttrGroupsDefH\x00\x12?\n\x14shape_env_attr_group\x18\x04 \x01(\x0b\x32\x1f.ge.proto.ShapeEnvAttrGroupsDefH\x00\x12?\n\x14\x61sc_graph_attr_group\x18\x05 \x01(\x0b\x32\x1f.ge.proto.AscGraphAttrGroupsDefH\x00\x12=\n\x13\x61sc_node_attr_group\x18\x06 \x01(\x0b\x32\x1e.ge.proto.AscNodeAttrGroupsDefH\x00\x12\x41\n\x15\x61sc_tensor_attr_group\x18\x07 \x01(\x0b\x32 .ge.proto.AscTensorAttrGroupsDefH\x00\x42\x0c\n\nattr_group\"n\n\nAttrGroups\x12\x30\n\x0fother_group_def\x18\x01 \x01(\x0b\x32\x17.ge.proto.OtherGroupDef\x12.\n\x0e\x61ttr_group_def\x18\x02 \x03(\x0b\x32\x16.ge.proto.AttrGroupDef\"\x88\x01\n\nNamedAttrs\x12\x0c\n\x04name\x18\x01 \x01(\t\x12,\n\x04\x61ttr\x18\x02 \x03(\x0b\x32\x1e.ge.proto.NamedAttrs.AttrEntry\x1a>\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.ge.proto.AttrDef:\x02\x38\x01\"\x17\n\x08ShapeDef\x12\x0b\n\x03\x64im\x18\x01 \x03(\x03\"\xa9\x04\n\x10TensorDescriptor\x12\x0c\n\x04name\x18\x01 \x01(\t\x12!\n\x05\x64type\x18\x02 \x01(\x0e\x32\x12.ge.proto.DataType\x12!\n\x05shape\x18\x03 \x01(\x0b\x32\x12.ge.proto.ShapeDef\x12\x0e\n\x06layout\x18\x04 \x01(\t\x12\x14\n\x0chas_out_attr\x18\t \x01(\x08\x12\x0c\n\x04size\x18\n \x01(\x03\x12\x13\n\x0bweight_size\x18\x0b \x01(\x03\x12\x13\n\x0breuse_input\x18\x0c \x01(\x08\x12\x15\n\routput_tensor\x18\r \x01(\x08\x12\x13\n\x0b\x64\x65vice_type\x18\x0e \x01(\t\x12\x14\n\x0cinput_tensor\x18\x0f \x01(\x08\x12\x14\n\x0creal_dim_cnt\x18\x10 \x01(\x03\x12\x19\n\x11reuse_input_index\x18\x11 \x01(\x03\x12\x13\n\x0b\x64\x61ta_offset\x18\x12 \x01(\x03\x12\x11\n\tcmps_size\x18\x13 \x01(\x03\x12\x10\n\x08\x63mps_tab\x18\x14 \x01(\t\x12\x17\n\x0f\x63mps_tab_offset\x18\x15 \x01(\x03\x12\x32\n\x04\x61ttr\x18\x05 \x03(\x0b\x32$.ge.proto.TensorDescriptor.AttrEntry\x12)\n\x0b\x61ttr_groups\x18\x06 \x01(\x0b\x32\x14.ge.proto.AttrGroups\x1a>\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.ge.proto.AttrDef:\x02\x38\x01\"C\n\tTensorDef\x12(\n\x04\x64\x65sc\x18\x01 \x01(\x0b\x32\x1a.ge.proto.TensorDescriptor\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\x0c\"\xb8\x04\n\x05OpDef\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\x12\r\n\x05input\x18\x05 \x03(\t\x12\'\n\x04\x61ttr\x18\n \x03(\x0b\x32\x19.ge.proto.OpDef.AttrEntry\x12)\n\x0b\x61ttr_groups\x18\x0b \x01(\x0b\x32\x14.ge.proto.AttrGroups\x12\x14\n\x0chas_out_attr\x18\x14 \x01(\x08\x12\n\n\x02id\x18\x15 \x01(\x03\x12\x11\n\tstream_id\x18\x16 \x01(\x03\x12\x12\n\ninput_name\x18\x17 \x03(\t\x12\x10\n\x08src_name\x18\x18 \x03(\t\x12\x11\n\tsrc_index\x18\x19 \x03(\x03\x12\x10\n\x08\x64st_name\x18\x1a \x03(\t\x12\x11\n\tdst_index\x18\x1b \x03(\x03\x12\x0f\n\x07input_i\x18\x1c \x03(\x03\x12\x10\n\x08output_i\x18\x1d \x03(\x03\x12\x11\n\tworkspace\x18\x1e \x03(\x03\x12\x17\n\x0fworkspace_bytes\x18\x1f \x03(\x03\x12\x16\n\x0eis_input_const\x18  \x03(\x08\x12.\n\ninput_desc\x18! \x03(\x0b\x32\x1a.ge.proto.TensorDescriptor\x12/\n\x0boutput_desc\x18\" \x03(\x0b\x32\x1a.ge.proto.TensorDescriptor\x12\x15\n\rsubgraph_name\x18# \x03(\t\x1a>\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.ge.proto.AttrDef:\x02\x38\x01\"\xeb\x01\n\x08GraphDef\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05input\x18\x04 \x03(\t\x12\x0e\n\x06output\x18\x05 \x03(\t\x12\x1b\n\x02op\x18\x06 \x03(\x0b\x32\x0f.ge.proto.OpDef\x12*\n\x04\x61ttr\x18\x0b \x03(\x0b\x32\x1c.ge.proto.GraphDef.AttrEntry\x12)\n\x0b\x61ttr_groups\x18\x0c \x01(\x0b\x32\x14.ge.proto.AttrGroups\x1a>\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.ge.proto.AttrDef:\x02\x38\x01\"\xfb\x01\n\x08ModelDef\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\r\x12\x16\n\x0e\x63ustom_version\x18\x03 \x01(\t\x12!\n\x05graph\x18\x07 \x03(\x0b\x32\x12.ge.proto.GraphDef\x12*\n\x04\x61ttr\x18\x0b \x03(\x0b\x32\x1c.ge.proto.ModelDef.AttrEntry\x12)\n\x0b\x61ttr_groups\x18\x0c \x01(\x0b\x32\x14.ge.proto.AttrGroups\x1a>\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.ge.proto.AttrDef:\x02\x38\x01*\xa9\x05\n\x08\x44\x61taType\x12\x10\n\x0c\x44T_UNDEFINED\x10\x00\x12\x0c\n\x08\x44T_FLOAT\x10\x01\x12\x0e\n\nDT_FLOAT16\x10\x02\x12\x0b\n\x07\x44T_INT8\x10\x03\x12\x0c\n\x08\x44T_UINT8\x10\x04\x12\x0c\n\x08\x44T_INT16\x10\x05\x12\r\n\tDT_UINT16\x10\x06\x12\x0c\n\x08\x44T_INT32\x10\x07\x12\x0c\n\x08\x44T_INT64\x10\x08\x12\r\n\tDT_UINT32\x10\t\x12\r\n\tDT_UINT64\x10\n\x12\x0b\n\x07\x44T_BOOL\x10\x0b\x12\r\n\tDT_DOUBLE\x10\x0c\x12\r\n\tDT_STRING\x10\r\x12\x14\n\x10\x44T_DUAL_SUB_INT8\x10\x0e\x12\x15\n\x11\x44T_DUAL_SUB_UINT8\x10\x0f\x12\x10\n\x0c\x44T_COMPLEX64\x10\x10\x12\x11\n\rDT_COMPLEX128\x10\x11\x12\x0c\n\x08\x44T_QINT8\x10\x12\x12\r\n\tDT_QINT16\x10\x13\x12\r\n\tDT_QINT32\x10\x14\x12\r\n\tDT_QUINT8\x10\x15\x12\x0e\n\nDT_QUINT16\x10\x16\x12\x0f\n\x0b\x44T_RESOURCE\x10\x17\x12\x11\n\rDT_STRING_REF\x10\x18\x12\x0b\n\x07\x44T_DUAL\x10\x19\x12\x0e\n\nDT_VARIANT\x10\x1a\x12\x0b\n\x07\x44T_BF16\x10\x1b\x12\x0b\n\x07\x44T_INT4\x10\x1c\x12\x0c\n\x08\x44T_UINT1\x10\x1d\x12\x0b\n\x07\x44T_INT2\x10\x1e\x12\x0c\n\x08\x44T_UINT2\x10\x1f\x12\x10\n\x0c\x44T_COMPLEX32\x10 \x12\x0f\n\x0b\x44T_HIFLOAT8\x10!\x12\x12\n\x0e\x44T_FLOAT8_E5M2\x10\"\x12\x14\n\x10\x44T_FLOAT8_E4M3FN\x10#\x12\x12\n\x0e\x44T_FLOAT8_E8M0\x10$\x12\x12\n\x0e\x44T_FLOAT6_E3M2\x10%\x12\x12\n\x0e\x44T_FLOAT6_E2M3\x10&\x12\x12\n\x0e\x44T_FLOAT4_E2M1\x10\'\x12\x12\n\x0e\x44T_FLOAT4_E1M2\x10(b\x06proto3')
 
 _DATATYPE = DESCRIPTOR.enum_types_by_name['DataType']
 DataType = enum_type_wrapper.EnumTypeWrapper(_DATATYPE)
@@ -50,6 +52,15 @@ DT_UINT1 = 29
 DT_INT2 = 30
 DT_UINT2 = 31
 DT_COMPLEX32 = 32
+DT_HIFLOAT8 = 33
+DT_FLOAT8_E5M2 = 34
+DT_FLOAT8_E4M3FN = 35
+DT_FLOAT8_E8M0 = 36
+DT_FLOAT6_E3M2 = 37
+DT_FLOAT6_E2M3 = 38
+DT_FLOAT4_E2M1 = 39
+DT_FLOAT4_E1M2 = 40
+
 
 _ATTRDEF = DESCRIPTOR.message_types_by_name['AttrDef']
 _ATTRDEF_LISTVALUE = _ATTRDEF.nested_types_by_name['ListValue']
@@ -57,6 +68,37 @@ _ATTRDEF_LISTLISTINT = _ATTRDEF.nested_types_by_name['ListListInt']
 _ATTRDEF_LISTLISTINT_LISTINT = _ATTRDEF_LISTLISTINT.nested_types_by_name['ListInt']
 _ATTRDEF_LISTLISTFLOAT = _ATTRDEF.nested_types_by_name['ListListFloat']
 _ATTRDEF_LISTLISTFLOAT_LISTFLOAT = _ATTRDEF_LISTLISTFLOAT.nested_types_by_name['ListFloat']
+_ATTRIBUTEDEF = DESCRIPTOR.message_types_by_name['AttributeDef']
+_OTHERGROUPDEF = DESCRIPTOR.message_types_by_name['OtherGroupDef']
+_OTHERGROUPDEF_ATTRENTRY = _OTHERGROUPDEF.nested_types_by_name['AttrEntry']
+_TENSORDESCATTRGROUPSDEF = DESCRIPTOR.message_types_by_name['TensorDescAttrGroupsDef']
+_INPUTSOURCEDEF = DESCRIPTOR.message_types_by_name['InputSourceDef']
+_REPLACEMENTDEF = DESCRIPTOR.message_types_by_name['ReplacementDef']
+_SYMBOLCHECKINFODEF = DESCRIPTOR.message_types_by_name['SymbolCheckInfoDef']
+_SHAPEENVSETTINGDEF = DESCRIPTOR.message_types_by_name['ShapeEnvSettingDef']
+_SYMBOLINFODEF = DESCRIPTOR.message_types_by_name['SymbolInfoDef']
+_SHAPEENVATTRGROUPSDEF = DESCRIPTOR.message_types_by_name['ShapeEnvAttrGroupsDef']
+_SHAPEENVATTRGROUPSDEF_SYMBOLTOVALUEENTRY = _SHAPEENVATTRGROUPSDEF.nested_types_by_name['SymbolToValueEntry']
+_SHAPEENVATTRGROUPSDEF_VALUETOSYMBOLENTRY = _SHAPEENVATTRGROUPSDEF.nested_types_by_name['ValueToSymbolEntry']
+_SHAPEENVATTRGROUPSDEF_SYMBOLTOSOURCEENTRY = _SHAPEENVATTRGROUPSDEF.nested_types_by_name['SymbolToSourceEntry']
+_SHAPEENVATTRGROUPSDEF_REPLACEMENTSENTRY = _SHAPEENVATTRGROUPSDEF.nested_types_by_name['ReplacementsEntry']
+_SCHEDINFODEF = DESCRIPTOR.message_types_by_name['SchedInfoDef']
+_APIINFODEF = DESCRIPTOR.message_types_by_name['ApiInfoDef']
+_MEMATTRDEF = DESCRIPTOR.message_types_by_name['MemAttrDef']
+_MEMQUEUEATTRDEF = DESCRIPTOR.message_types_by_name['MemQueueAttrDef']
+_MEMBUFATTRDEF = DESCRIPTOR.message_types_by_name['MemBufAttrDef']
+_MEMOPTATTRDEF = DESCRIPTOR.message_types_by_name['MemOptAttrDef']
+_AXISDEF = DESCRIPTOR.message_types_by_name['AxisDef']
+_ASCENDCIROPATTRGROUPSDEF = DESCRIPTOR.message_types_by_name['AscendCIROpAttrGroupsDef']
+_ASCTENSORATTRGROUPSDEF = DESCRIPTOR.message_types_by_name['AscTensorAttrGroupsDef']
+_ASCGRAPHATTRGROUPSDEF = DESCRIPTOR.message_types_by_name['AscGraphAttrGroupsDef']
+_ASCIRATTRDEF = DESCRIPTOR.message_types_by_name['AscIrAttrDef']
+_ASCIRATTRDEF_ATTRENTRY = _ASCIRATTRDEF.nested_types_by_name['AttrEntry']
+_TMPBUFDESCDEF = DESCRIPTOR.message_types_by_name['TmpBufDescDef']
+_TMPBUFFERGROUPDEF = DESCRIPTOR.message_types_by_name['TmpBufferGroupDef']
+_ASCNODEATTRGROUPSDEF = DESCRIPTOR.message_types_by_name['AscNodeAttrGroupsDef']
+_ATTRGROUPDEF = DESCRIPTOR.message_types_by_name['AttrGroupDef']
+_ATTRGROUPS = DESCRIPTOR.message_types_by_name['AttrGroups']
 _NAMEDATTRS = DESCRIPTOR.message_types_by_name['NamedAttrs']
 _NAMEDATTRS_ATTRENTRY = _NAMEDATTRS.nested_types_by_name['AttrEntry']
 _SHAPEDEF = DESCRIPTOR.message_types_by_name['ShapeDef']
@@ -72,39 +114,44 @@ _MODELDEF_ATTRENTRY = _MODELDEF.nested_types_by_name['AttrEntry']
 _ATTRDEF_LISTVALUE_LISTVALUETYPE = _ATTRDEF_LISTVALUE.enum_types_by_name['ListValueType']
 AttrDef = _reflection.GeneratedProtocolMessageType('AttrDef', (_message.Message,), {
 
-    'ListValue': _reflection.GeneratedProtocolMessageType('ListValue', (_message.Message,), {
-        'DESCRIPTOR': _ATTRDEF_LISTVALUE,
-        '__module__': 'ge_ir_pb2'
-        # @@protoc_insertion_point(class_scope:ge.proto.AttrDef.ListValue)
-    }),
+  'ListValue' : _reflection.GeneratedProtocolMessageType('ListValue', (_message.Message,), {
+    'DESCRIPTOR' : _ATTRDEF_LISTVALUE,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.AttrDef.ListValue)
+    })
+  ,
 
-    'ListListInt': _reflection.GeneratedProtocolMessageType('ListListInt', (_message.Message,), {
+  'ListListInt' : _reflection.GeneratedProtocolMessageType('ListListInt', (_message.Message,), {
 
-        'ListInt': _reflection.GeneratedProtocolMessageType('ListInt', (_message.Message,), {
-            'DESCRIPTOR': _ATTRDEF_LISTLISTINT_LISTINT,
-            '__module__': 'ge_ir_pb2'
-            # @@protoc_insertion_point(class_scope:ge.proto.AttrDef.ListListInt.ListInt)
-        }),
-        'DESCRIPTOR': _ATTRDEF_LISTLISTINT,
-        '__module__': 'ge_ir_pb2'
-        # @@protoc_insertion_point(class_scope:ge.proto.AttrDef.ListListInt)
-    }),
+    'ListInt' : _reflection.GeneratedProtocolMessageType('ListInt', (_message.Message,), {
+      'DESCRIPTOR' : _ATTRDEF_LISTLISTINT_LISTINT,
+      '__module__' : 'ge_ir_pb2'
+      # @@protoc_insertion_point(class_scope:ge.proto.AttrDef.ListListInt.ListInt)
+      })
+    ,
+    'DESCRIPTOR' : _ATTRDEF_LISTLISTINT,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.AttrDef.ListListInt)
+    })
+  ,
 
-    'ListListFloat': _reflection.GeneratedProtocolMessageType('ListListFloat', (_message.Message,), {
+  'ListListFloat' : _reflection.GeneratedProtocolMessageType('ListListFloat', (_message.Message,), {
 
-        'ListFloat': _reflection.GeneratedProtocolMessageType('ListFloat', (_message.Message,), {
-            'DESCRIPTOR': _ATTRDEF_LISTLISTFLOAT_LISTFLOAT,
-            '__module__': 'ge_ir_pb2'
-            # @@protoc_insertion_point(class_scope:ge.proto.AttrDef.ListListFloat.ListFloat)
-        }),
-        'DESCRIPTOR': _ATTRDEF_LISTLISTFLOAT,
-        '__module__': 'ge_ir_pb2'
-        # @@protoc_insertion_point(class_scope:ge.proto.AttrDef.ListListFloat)
-    }),
-    'DESCRIPTOR': _ATTRDEF,
-    '__module__': 'ge_ir_pb2'
-    # @@protoc_insertion_point(class_scope:ge.proto.AttrDef)
-})
+    'ListFloat' : _reflection.GeneratedProtocolMessageType('ListFloat', (_message.Message,), {
+      'DESCRIPTOR' : _ATTRDEF_LISTLISTFLOAT_LISTFLOAT,
+      '__module__' : 'ge_ir_pb2'
+      # @@protoc_insertion_point(class_scope:ge.proto.AttrDef.ListListFloat.ListFloat)
+      })
+    ,
+    'DESCRIPTOR' : _ATTRDEF_LISTLISTFLOAT,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.AttrDef.ListListFloat)
+    })
+  ,
+  'DESCRIPTOR' : _ATTRDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.AttrDef)
+  })
 _sym_db.RegisterMessage(AttrDef)
 _sym_db.RegisterMessage(AttrDef.ListValue)
 _sym_db.RegisterMessage(AttrDef.ListListInt)
@@ -112,140 +159,443 @@ _sym_db.RegisterMessage(AttrDef.ListListInt.ListInt)
 _sym_db.RegisterMessage(AttrDef.ListListFloat)
 _sym_db.RegisterMessage(AttrDef.ListListFloat.ListFloat)
 
+AttributeDef = _reflection.GeneratedProtocolMessageType('AttributeDef', (_message.Message,), {
+  'DESCRIPTOR' : _ATTRIBUTEDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.AttributeDef)
+  })
+_sym_db.RegisterMessage(AttributeDef)
+
+OtherGroupDef = _reflection.GeneratedProtocolMessageType('OtherGroupDef', (_message.Message,), {
+
+  'AttrEntry' : _reflection.GeneratedProtocolMessageType('AttrEntry', (_message.Message,), {
+    'DESCRIPTOR' : _OTHERGROUPDEF_ATTRENTRY,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.OtherGroupDef.AttrEntry)
+    })
+  ,
+  'DESCRIPTOR' : _OTHERGROUPDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.OtherGroupDef)
+  })
+_sym_db.RegisterMessage(OtherGroupDef)
+_sym_db.RegisterMessage(OtherGroupDef.AttrEntry)
+
+TensorDescAttrGroupsDef = _reflection.GeneratedProtocolMessageType('TensorDescAttrGroupsDef', (_message.Message,), {
+  'DESCRIPTOR' : _TENSORDESCATTRGROUPSDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.TensorDescAttrGroupsDef)
+  })
+_sym_db.RegisterMessage(TensorDescAttrGroupsDef)
+
+InputSourceDef = _reflection.GeneratedProtocolMessageType('InputSourceDef', (_message.Message,), {
+  'DESCRIPTOR' : _INPUTSOURCEDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.InputSourceDef)
+  })
+_sym_db.RegisterMessage(InputSourceDef)
+
+ReplacementDef = _reflection.GeneratedProtocolMessageType('ReplacementDef', (_message.Message,), {
+  'DESCRIPTOR' : _REPLACEMENTDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.ReplacementDef)
+  })
+_sym_db.RegisterMessage(ReplacementDef)
+
+SymbolCheckInfoDef = _reflection.GeneratedProtocolMessageType('SymbolCheckInfoDef', (_message.Message,), {
+  'DESCRIPTOR' : _SYMBOLCHECKINFODEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.SymbolCheckInfoDef)
+  })
+_sym_db.RegisterMessage(SymbolCheckInfoDef)
+
+ShapeEnvSettingDef = _reflection.GeneratedProtocolMessageType('ShapeEnvSettingDef', (_message.Message,), {
+  'DESCRIPTOR' : _SHAPEENVSETTINGDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.ShapeEnvSettingDef)
+  })
+_sym_db.RegisterMessage(ShapeEnvSettingDef)
+
+SymbolInfoDef = _reflection.GeneratedProtocolMessageType('SymbolInfoDef', (_message.Message,), {
+  'DESCRIPTOR' : _SYMBOLINFODEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.SymbolInfoDef)
+  })
+_sym_db.RegisterMessage(SymbolInfoDef)
+
+ShapeEnvAttrGroupsDef = _reflection.GeneratedProtocolMessageType('ShapeEnvAttrGroupsDef', (_message.Message,), {
+
+  'SymbolToValueEntry' : _reflection.GeneratedProtocolMessageType('SymbolToValueEntry', (_message.Message,), {
+    'DESCRIPTOR' : _SHAPEENVATTRGROUPSDEF_SYMBOLTOVALUEENTRY,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.ShapeEnvAttrGroupsDef.SymbolToValueEntry)
+    })
+  ,
+
+  'ValueToSymbolEntry' : _reflection.GeneratedProtocolMessageType('ValueToSymbolEntry', (_message.Message,), {
+    'DESCRIPTOR' : _SHAPEENVATTRGROUPSDEF_VALUETOSYMBOLENTRY,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.ShapeEnvAttrGroupsDef.ValueToSymbolEntry)
+    })
+  ,
+
+  'SymbolToSourceEntry' : _reflection.GeneratedProtocolMessageType('SymbolToSourceEntry', (_message.Message,), {
+    'DESCRIPTOR' : _SHAPEENVATTRGROUPSDEF_SYMBOLTOSOURCEENTRY,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.ShapeEnvAttrGroupsDef.SymbolToSourceEntry)
+    })
+  ,
+
+  'ReplacementsEntry' : _reflection.GeneratedProtocolMessageType('ReplacementsEntry', (_message.Message,), {
+    'DESCRIPTOR' : _SHAPEENVATTRGROUPSDEF_REPLACEMENTSENTRY,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.ShapeEnvAttrGroupsDef.ReplacementsEntry)
+    })
+  ,
+  'DESCRIPTOR' : _SHAPEENVATTRGROUPSDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.ShapeEnvAttrGroupsDef)
+  })
+_sym_db.RegisterMessage(ShapeEnvAttrGroupsDef)
+_sym_db.RegisterMessage(ShapeEnvAttrGroupsDef.SymbolToValueEntry)
+_sym_db.RegisterMessage(ShapeEnvAttrGroupsDef.ValueToSymbolEntry)
+_sym_db.RegisterMessage(ShapeEnvAttrGroupsDef.SymbolToSourceEntry)
+_sym_db.RegisterMessage(ShapeEnvAttrGroupsDef.ReplacementsEntry)
+
+SchedInfoDef = _reflection.GeneratedProtocolMessageType('SchedInfoDef', (_message.Message,), {
+  'DESCRIPTOR' : _SCHEDINFODEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.SchedInfoDef)
+  })
+_sym_db.RegisterMessage(SchedInfoDef)
+
+ApiInfoDef = _reflection.GeneratedProtocolMessageType('ApiInfoDef', (_message.Message,), {
+  'DESCRIPTOR' : _APIINFODEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.ApiInfoDef)
+  })
+_sym_db.RegisterMessage(ApiInfoDef)
+
+MemAttrDef = _reflection.GeneratedProtocolMessageType('MemAttrDef', (_message.Message,), {
+  'DESCRIPTOR' : _MEMATTRDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.MemAttrDef)
+  })
+_sym_db.RegisterMessage(MemAttrDef)
+
+MemQueueAttrDef = _reflection.GeneratedProtocolMessageType('MemQueueAttrDef', (_message.Message,), {
+  'DESCRIPTOR' : _MEMQUEUEATTRDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.MemQueueAttrDef)
+  })
+_sym_db.RegisterMessage(MemQueueAttrDef)
+
+MemBufAttrDef = _reflection.GeneratedProtocolMessageType('MemBufAttrDef', (_message.Message,), {
+  'DESCRIPTOR' : _MEMBUFATTRDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.MemBufAttrDef)
+  })
+_sym_db.RegisterMessage(MemBufAttrDef)
+
+MemOptAttrDef = _reflection.GeneratedProtocolMessageType('MemOptAttrDef', (_message.Message,), {
+  'DESCRIPTOR' : _MEMOPTATTRDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.MemOptAttrDef)
+  })
+_sym_db.RegisterMessage(MemOptAttrDef)
+
+AxisDef = _reflection.GeneratedProtocolMessageType('AxisDef', (_message.Message,), {
+  'DESCRIPTOR' : _AXISDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.AxisDef)
+  })
+_sym_db.RegisterMessage(AxisDef)
+
+AscendCIROpAttrGroupsDef = _reflection.GeneratedProtocolMessageType('AscendCIROpAttrGroupsDef', (_message.Message,), {
+  'DESCRIPTOR' : _ASCENDCIROPATTRGROUPSDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.AscendCIROpAttrGroupsDef)
+  })
+_sym_db.RegisterMessage(AscendCIROpAttrGroupsDef)
+
+AscTensorAttrGroupsDef = _reflection.GeneratedProtocolMessageType('AscTensorAttrGroupsDef', (_message.Message,), {
+  'DESCRIPTOR' : _ASCTENSORATTRGROUPSDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.AscTensorAttrGroupsDef)
+  })
+_sym_db.RegisterMessage(AscTensorAttrGroupsDef)
+
+AscGraphAttrGroupsDef = _reflection.GeneratedProtocolMessageType('AscGraphAttrGroupsDef', (_message.Message,), {
+  'DESCRIPTOR' : _ASCGRAPHATTRGROUPSDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.AscGraphAttrGroupsDef)
+  })
+_sym_db.RegisterMessage(AscGraphAttrGroupsDef)
+
+AscIrAttrDef = _reflection.GeneratedProtocolMessageType('AscIrAttrDef', (_message.Message,), {
+
+  'AttrEntry' : _reflection.GeneratedProtocolMessageType('AttrEntry', (_message.Message,), {
+    'DESCRIPTOR' : _ASCIRATTRDEF_ATTRENTRY,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.AscIrAttrDef.AttrEntry)
+    })
+  ,
+  'DESCRIPTOR' : _ASCIRATTRDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.AscIrAttrDef)
+  })
+_sym_db.RegisterMessage(AscIrAttrDef)
+_sym_db.RegisterMessage(AscIrAttrDef.AttrEntry)
+
+TmpBufDescDef = _reflection.GeneratedProtocolMessageType('TmpBufDescDef', (_message.Message,), {
+  'DESCRIPTOR' : _TMPBUFDESCDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.TmpBufDescDef)
+  })
+_sym_db.RegisterMessage(TmpBufDescDef)
+
+TmpBufferGroupDef = _reflection.GeneratedProtocolMessageType('TmpBufferGroupDef', (_message.Message,), {
+  'DESCRIPTOR' : _TMPBUFFERGROUPDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.TmpBufferGroupDef)
+  })
+_sym_db.RegisterMessage(TmpBufferGroupDef)
+
+AscNodeAttrGroupsDef = _reflection.GeneratedProtocolMessageType('AscNodeAttrGroupsDef', (_message.Message,), {
+  'DESCRIPTOR' : _ASCNODEATTRGROUPSDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.AscNodeAttrGroupsDef)
+  })
+_sym_db.RegisterMessage(AscNodeAttrGroupsDef)
+
+AttrGroupDef = _reflection.GeneratedProtocolMessageType('AttrGroupDef', (_message.Message,), {
+  'DESCRIPTOR' : _ATTRGROUPDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.AttrGroupDef)
+  })
+_sym_db.RegisterMessage(AttrGroupDef)
+
+AttrGroups = _reflection.GeneratedProtocolMessageType('AttrGroups', (_message.Message,), {
+  'DESCRIPTOR' : _ATTRGROUPS,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.AttrGroups)
+  })
+_sym_db.RegisterMessage(AttrGroups)
+
 NamedAttrs = _reflection.GeneratedProtocolMessageType('NamedAttrs', (_message.Message,), {
 
-    'AttrEntry': _reflection.GeneratedProtocolMessageType('AttrEntry', (_message.Message,), {
-        'DESCRIPTOR': _NAMEDATTRS_ATTRENTRY,
-        '__module__': 'ge_ir_pb2'
-        # @@protoc_insertion_point(class_scope:ge.proto.NamedAttrs.AttrEntry)
-    }),
-    'DESCRIPTOR': _NAMEDATTRS,
-    '__module__': 'ge_ir_pb2'
-    # @@protoc_insertion_point(class_scope:ge.proto.NamedAttrs)
-})
+  'AttrEntry' : _reflection.GeneratedProtocolMessageType('AttrEntry', (_message.Message,), {
+    'DESCRIPTOR' : _NAMEDATTRS_ATTRENTRY,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.NamedAttrs.AttrEntry)
+    })
+  ,
+  'DESCRIPTOR' : _NAMEDATTRS,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.NamedAttrs)
+  })
 _sym_db.RegisterMessage(NamedAttrs)
 _sym_db.RegisterMessage(NamedAttrs.AttrEntry)
 
 ShapeDef = _reflection.GeneratedProtocolMessageType('ShapeDef', (_message.Message,), {
-    'DESCRIPTOR': _SHAPEDEF,
-    '__module__': 'ge_ir_pb2'
-    # @@protoc_insertion_point(class_scope:ge.proto.ShapeDef)
-})
+  'DESCRIPTOR' : _SHAPEDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.ShapeDef)
+  })
 _sym_db.RegisterMessage(ShapeDef)
 
 TensorDescriptor = _reflection.GeneratedProtocolMessageType('TensorDescriptor', (_message.Message,), {
 
-    'AttrEntry': _reflection.GeneratedProtocolMessageType('AttrEntry', (_message.Message,), {
-        'DESCRIPTOR': _TENSORDESCRIPTOR_ATTRENTRY,
-        '__module__': 'ge_ir_pb2'
-        # @@protoc_insertion_point(class_scope:ge.proto.TensorDescriptor.AttrEntry)
-    }),
-    'DESCRIPTOR': _TENSORDESCRIPTOR,
-    '__module__': 'ge_ir_pb2'
-    # @@protoc_insertion_point(class_scope:ge.proto.TensorDescriptor)
-})
+  'AttrEntry' : _reflection.GeneratedProtocolMessageType('AttrEntry', (_message.Message,), {
+    'DESCRIPTOR' : _TENSORDESCRIPTOR_ATTRENTRY,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.TensorDescriptor.AttrEntry)
+    })
+  ,
+  'DESCRIPTOR' : _TENSORDESCRIPTOR,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.TensorDescriptor)
+  })
 _sym_db.RegisterMessage(TensorDescriptor)
 _sym_db.RegisterMessage(TensorDescriptor.AttrEntry)
 
 TensorDef = _reflection.GeneratedProtocolMessageType('TensorDef', (_message.Message,), {
-    'DESCRIPTOR': _TENSORDEF,
-    '__module__': 'ge_ir_pb2'
-    # @@protoc_insertion_point(class_scope:ge.proto.TensorDef)
-})
+  'DESCRIPTOR' : _TENSORDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.TensorDef)
+  })
 _sym_db.RegisterMessage(TensorDef)
 
 OpDef = _reflection.GeneratedProtocolMessageType('OpDef', (_message.Message,), {
 
-    'AttrEntry': _reflection.GeneratedProtocolMessageType('AttrEntry', (_message.Message,), {
-        'DESCRIPTOR': _OPDEF_ATTRENTRY,
-        '__module__': 'ge_ir_pb2'
-        # @@protoc_insertion_point(class_scope:ge.proto.OpDef.AttrEntry)
-    }),
-    'DESCRIPTOR': _OPDEF,
-    '__module__': 'ge_ir_pb2'
-    # @@protoc_insertion_point(class_scope:ge.proto.OpDef)
-})
+  'AttrEntry' : _reflection.GeneratedProtocolMessageType('AttrEntry', (_message.Message,), {
+    'DESCRIPTOR' : _OPDEF_ATTRENTRY,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.OpDef.AttrEntry)
+    })
+  ,
+  'DESCRIPTOR' : _OPDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.OpDef)
+  })
 _sym_db.RegisterMessage(OpDef)
 _sym_db.RegisterMessage(OpDef.AttrEntry)
 
 GraphDef = _reflection.GeneratedProtocolMessageType('GraphDef', (_message.Message,), {
 
-    'AttrEntry': _reflection.GeneratedProtocolMessageType('AttrEntry', (_message.Message,), {
-        'DESCRIPTOR': _GRAPHDEF_ATTRENTRY,
-        '__module__': 'ge_ir_pb2'
-        # @@protoc_insertion_point(class_scope:ge.proto.GraphDef.AttrEntry)
-    }),
-    'DESCRIPTOR': _GRAPHDEF,
-    '__module__': 'ge_ir_pb2'
-    # @@protoc_insertion_point(class_scope:ge.proto.GraphDef)
-})
+  'AttrEntry' : _reflection.GeneratedProtocolMessageType('AttrEntry', (_message.Message,), {
+    'DESCRIPTOR' : _GRAPHDEF_ATTRENTRY,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.GraphDef.AttrEntry)
+    })
+  ,
+  'DESCRIPTOR' : _GRAPHDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.GraphDef)
+  })
 _sym_db.RegisterMessage(GraphDef)
 _sym_db.RegisterMessage(GraphDef.AttrEntry)
 
 ModelDef = _reflection.GeneratedProtocolMessageType('ModelDef', (_message.Message,), {
 
-    'AttrEntry': _reflection.GeneratedProtocolMessageType('AttrEntry', (_message.Message,), {
-        'DESCRIPTOR': _MODELDEF_ATTRENTRY,
-        '__module__': 'ge_ir_pb2'
-        # @@protoc_insertion_point(class_scope:ge.proto.ModelDef.AttrEntry)
-    }),
-    'DESCRIPTOR': _MODELDEF,
-    '__module__': 'ge_ir_pb2'
-    # @@protoc_insertion_point(class_scope:ge.proto.ModelDef)
-})
+  'AttrEntry' : _reflection.GeneratedProtocolMessageType('AttrEntry', (_message.Message,), {
+    'DESCRIPTOR' : _MODELDEF_ATTRENTRY,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.ModelDef.AttrEntry)
+    })
+  ,
+  'DESCRIPTOR' : _MODELDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.ModelDef)
+  })
 _sym_db.RegisterMessage(ModelDef)
 _sym_db.RegisterMessage(ModelDef.AttrEntry)
 
-if _descriptor._USE_C_DESCRIPTORS is False:
-    DESCRIPTOR._options = None
-    _NAMEDATTRS_ATTRENTRY._options = None
-    _NAMEDATTRS_ATTRENTRY._serialized_options = b'8\001'
-    _TENSORDESCRIPTOR_ATTRENTRY._options = None
-    _TENSORDESCRIPTOR_ATTRENTRY._serialized_options = b'8\001'
-    _OPDEF_ATTRENTRY._options = None
-    _OPDEF_ATTRENTRY._serialized_options = b'8\001'
-    _GRAPHDEF_ATTRENTRY._options = None
-    _GRAPHDEF_ATTRENTRY._serialized_options = b'8\001'
-    _MODELDEF_ATTRENTRY._options = None
-    _MODELDEF_ATTRENTRY._serialized_options = b'8\001'
-    _DATATYPE._serialized_start = 2848
-    _DATATYPE._serialized_end = 3370
-    _ATTRDEF._serialized_start = 26
-    _ATTRDEF._serialized_end = 1165
-    _ATTRDEF_LISTVALUE._serialized_start = 426
-    _ATTRDEF_LISTVALUE._serialized_end = 944
-    _ATTRDEF_LISTVALUE_LISTVALUETYPE._serialized_start = 706
-    _ATTRDEF_LISTVALUE_LISTVALUETYPE._serialized_end = 944
-    _ATTRDEF_LISTLISTINT._serialized_start = 946
-    _ATTRDEF_LISTLISTINT._serialized_end = 1046
-    _ATTRDEF_LISTLISTINT_LISTINT._serialized_start = 1021
-    _ATTRDEF_LISTLISTINT_LISTINT._serialized_end = 1046
-    _ATTRDEF_LISTLISTFLOAT._serialized_start = 1048
-    _ATTRDEF_LISTLISTFLOAT._serialized_end = 1156
-    _ATTRDEF_LISTLISTFLOAT_LISTFLOAT._serialized_start = 1129
-    _ATTRDEF_LISTLISTFLOAT_LISTFLOAT._serialized_end = 1156
-    _NAMEDATTRS._serialized_start = 1168
-    _NAMEDATTRS._serialized_end = 1304
-    _NAMEDATTRS_ATTRENTRY._serialized_start = 1242
-    _NAMEDATTRS_ATTRENTRY._serialized_end = 1304
-    _SHAPEDEF._serialized_start = 1306
-    _SHAPEDEF._serialized_end = 1329
-    _TENSORDESCRIPTOR._serialized_start = 1332
-    _TENSORDESCRIPTOR._serialized_end = 1842
-    _TENSORDESCRIPTOR_ATTRENTRY._serialized_start = 1242
-    _TENSORDESCRIPTOR_ATTRENTRY._serialized_end = 1304
-    _TENSORDEF._serialized_start = 1844
-    _TENSORDEF._serialized_end = 1911
-    _OPDEF._serialized_start = 1914
-    _OPDEF._serialized_end = 2439
-    _OPDEF_ATTRENTRY._serialized_start = 1242
-    _OPDEF_ATTRENTRY._serialized_end = 1304
-    _GRAPHDEF._serialized_start = 2442
-    _GRAPHDEF._serialized_end = 2634
-    _GRAPHDEF_ATTRENTRY._serialized_start = 1242
-    _GRAPHDEF_ATTRENTRY._serialized_end = 1304
-    _MODELDEF._serialized_start = 2637
-    _MODELDEF._serialized_end = 2845
-    _MODELDEF_ATTRENTRY._serialized_start = 1242
-    _MODELDEF_ATTRENTRY._serialized_end = 1304
+if _descriptor._USE_C_DESCRIPTORS == False:
+
+  DESCRIPTOR._options = None
+  _OTHERGROUPDEF_ATTRENTRY._options = None
+  _OTHERGROUPDEF_ATTRENTRY._serialized_options = b'8\001'
+  _SHAPEENVATTRGROUPSDEF_SYMBOLTOVALUEENTRY._options = None
+  _SHAPEENVATTRGROUPSDEF_SYMBOLTOVALUEENTRY._serialized_options = b'8\001'
+  _SHAPEENVATTRGROUPSDEF_VALUETOSYMBOLENTRY._options = None
+  _SHAPEENVATTRGROUPSDEF_VALUETOSYMBOLENTRY._serialized_options = b'8\001'
+  _SHAPEENVATTRGROUPSDEF_SYMBOLTOSOURCEENTRY._options = None
+  _SHAPEENVATTRGROUPSDEF_SYMBOLTOSOURCEENTRY._serialized_options = b'8\001'
+  _SHAPEENVATTRGROUPSDEF_REPLACEMENTSENTRY._options = None
+  _SHAPEENVATTRGROUPSDEF_REPLACEMENTSENTRY._serialized_options = b'8\001'
+  _ASCIRATTRDEF_ATTRENTRY._options = None
+  _ASCIRATTRDEF_ATTRENTRY._serialized_options = b'8\001'
+  _NAMEDATTRS_ATTRENTRY._options = None
+  _NAMEDATTRS_ATTRENTRY._serialized_options = b'8\001'
+  _TENSORDESCRIPTOR_ATTRENTRY._options = None
+  _TENSORDESCRIPTOR_ATTRENTRY._serialized_options = b'8\001'
+  _OPDEF_ATTRENTRY._options = None
+  _OPDEF_ATTRENTRY._serialized_options = b'8\001'
+  _GRAPHDEF_ATTRENTRY._options = None
+  _GRAPHDEF_ATTRENTRY._serialized_options = b'8\001'
+  _MODELDEF_ATTRENTRY._options = None
+  _MODELDEF_ATTRENTRY._serialized_options = b'8\001'
+  _DATATYPE._serialized_start=6663
+  _DATATYPE._serialized_end=7344
+  _ATTRDEF._serialized_start=26
+  _ATTRDEF._serialized_end=1187
+  _ATTRDEF_LISTVALUE._serialized_start=448
+  _ATTRDEF_LISTVALUE._serialized_end=966
+  _ATTRDEF_LISTVALUE_LISTVALUETYPE._serialized_start=728
+  _ATTRDEF_LISTVALUE_LISTVALUETYPE._serialized_end=966
+  _ATTRDEF_LISTLISTINT._serialized_start=968
+  _ATTRDEF_LISTLISTINT._serialized_end=1068
+  _ATTRDEF_LISTLISTINT_LISTINT._serialized_start=1043
+  _ATTRDEF_LISTLISTINT_LISTINT._serialized_end=1068
+  _ATTRDEF_LISTLISTFLOAT._serialized_start=1070
+  _ATTRDEF_LISTLISTFLOAT._serialized_end=1178
+  _ATTRDEF_LISTLISTFLOAT_LISTFLOAT._serialized_start=1151
+  _ATTRDEF_LISTLISTFLOAT_LISTFLOAT._serialized_end=1178
+  _ATTRIBUTEDEF._serialized_start=1189
+  _ATTRIBUTEDEF._serialized_end=1278
+  _OTHERGROUPDEF._serialized_start=1281
+  _OTHERGROUPDEF._serialized_end=1414
+  _OTHERGROUPDEF_ATTRENTRY._serialized_start=1347
+  _OTHERGROUPDEF_ATTRENTRY._serialized_end=1414
+  _TENSORDESCATTRGROUPSDEF._serialized_start=1416
+  _TENSORDESCATTRGROUPSDEF._serialized_end=1494
+  _INPUTSOURCEDEF._serialized_start=1496
+  _INPUTSOURCEDEF._serialized_end=1553
+  _REPLACEMENTDEF._serialized_start=1555
+  _REPLACEMENTDEF._serialized_end=1607
+  _SYMBOLCHECKINFODEF._serialized_start=1609
+  _SYMBOLCHECKINFODEF._serialized_end=1684
+  _SHAPEENVSETTINGDEF._serialized_start=1686
+  _SHAPEENVSETTINGDEF._serialized_end=1757
+  _SYMBOLINFODEF._serialized_start=1759
+  _SYMBOLINFODEF._serialized_end=1791
+  _SHAPEENVATTRGROUPSDEF._serialized_start=1794
+  _SHAPEENVATTRGROUPSDEF._serialized_end=2609
+  _SHAPEENVATTRGROUPSDEF_SYMBOLTOVALUEENTRY._serialized_start=2318
+  _SHAPEENVATTRGROUPSDEF_SYMBOLTOVALUEENTRY._serialized_end=2370
+  _SHAPEENVATTRGROUPSDEF_VALUETOSYMBOLENTRY._serialized_start=2372
+  _SHAPEENVATTRGROUPSDEF_VALUETOSYMBOLENTRY._serialized_end=2449
+  _SHAPEENVATTRGROUPSDEF_SYMBOLTOSOURCEENTRY._serialized_start=2451
+  _SHAPEENVATTRGROUPSDEF_SYMBOLTOSOURCEENTRY._serialized_end=2530
+  _SHAPEENVATTRGROUPSDEF_REPLACEMENTSENTRY._serialized_start=2532
+  _SHAPEENVATTRGROUPSDEF_REPLACEMENTSENTRY._serialized_end=2609
+  _SCHEDINFODEF._serialized_start=2611
+  _SCHEDINFODEF._serialized_end=2702
+  _APIINFODEF._serialized_start=2704
+  _APIINFODEF._serialized_end=2766
+  _MEMATTRDEF._serialized_start=2769
+  _MEMATTRDEF._serialized_end=2905
+  _MEMQUEUEATTRDEF._serialized_start=2907
+  _MEMQUEUEATTRDEF._serialized_end=2982
+  _MEMBUFATTRDEF._serialized_start=2984
+  _MEMBUFATTRDEF._serialized_end=3025
+  _MEMOPTATTRDEF._serialized_start=3027
+  _MEMOPTATTRDEF._serialized_end=3101
+  _AXISDEF._serialized_start=3104
+  _AXISDEF._serialized_end=3309
+  _ASCENDCIROPATTRGROUPSDEF._serialized_start=3311
+  _ASCENDCIROPATTRGROUPSDEF._serialized_end=3365
+  _ASCTENSORATTRGROUPSDEF._serialized_start=3368
+  _ASCTENSORATTRGROUPSDEF._serialized_end=3663
+  _ASCGRAPHATTRGROUPSDEF._serialized_start=3665
+  _ASCGRAPHATTRGROUPSDEF._serialized_end=3773
+  _ASCIRATTRDEF._serialized_start=3775
+  _ASCIRATTRDEF._serialized_end=3901
+  _ASCIRATTRDEF_ATTRENTRY._serialized_start=3839
+  _ASCIRATTRDEF_ATTRENTRY._serialized_end=3901
+  _TMPBUFDESCDEF._serialized_start=3903
+  _TMPBUFDESCDEF._serialized_end=3959
+  _TMPBUFFERGROUPDEF._serialized_start=3961
+  _TMPBUFFERGROUPDEF._serialized_end=4058
+  _ASCNODEATTRGROUPSDEF._serialized_start=4061
+  _ASCNODEATTRGROUPSDEF._serialized_end=4280
+  _ATTRGROUPDEF._serialized_start=4283
+  _ATTRGROUPDEF._serialized_end=4696
+  _ATTRGROUPS._serialized_start=4698
+  _ATTRGROUPS._serialized_end=4808
+  _NAMEDATTRS._serialized_start=4811
+  _NAMEDATTRS._serialized_end=4947
+  _NAMEDATTRS_ATTRENTRY._serialized_start=3839
+  _NAMEDATTRS_ATTRENTRY._serialized_end=3901
+  _SHAPEDEF._serialized_start=4949
+  _SHAPEDEF._serialized_end=4972
+  _TENSORDESCRIPTOR._serialized_start=4975
+  _TENSORDESCRIPTOR._serialized_end=5528
+  _TENSORDESCRIPTOR_ATTRENTRY._serialized_start=3839
+  _TENSORDESCRIPTOR_ATTRENTRY._serialized_end=3901
+  _TENSORDEF._serialized_start=5530
+  _TENSORDEF._serialized_end=5597
+  _OPDEF._serialized_start=5600
+  _OPDEF._serialized_end=6168
+  _OPDEF_ATTRENTRY._serialized_start=3839
+  _OPDEF_ATTRENTRY._serialized_end=3901
+  _GRAPHDEF._serialized_start=6171
+  _GRAPHDEF._serialized_end=6406
+  _GRAPHDEF_ATTRENTRY._serialized_start=3839
+  _GRAPHDEF_ATTRENTRY._serialized_end=3901
+  _MODELDEF._serialized_start=6409
+  _MODELDEF._serialized_end=6660
+  _MODELDEF_ATTRENTRY._serialized_start=3839
+  _MODELDEF_ATTRENTRY._serialized_end=3901
 # @@protoc_insertion_point(module_scope)

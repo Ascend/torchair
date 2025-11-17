@@ -38,7 +38,7 @@ def conveter_aten_native_batch_norm_backward_default(
     if weight is None:
         weight = ge.Fill(ge.Gather(input_size, 1), ge.Cast(1., dst_type=input.dtype))
     
-    if is_not_support():
+    if is_arch35():
         if dim <= 4:
             grad_in, diff_scale, diff_offset = \
                 __native_batch_norm_backward_regbase(dim, grad_out, input, weight, running_mean, running_var,

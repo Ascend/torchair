@@ -117,7 +117,15 @@ class DataType:
     DT_INT2 = 31            # int2 type
     DT_UINT2 = 32           # uint2 type
     DT_COMPLEX32 = 33       # complex64 type
-    DT_MAX = 34             # Mark the boundaries of data types
+    DT_HIFLOAT8 = 34        # hifloat8 type
+    DT_FLOAT8_E5M2 = 35     # float8_e5m2 type
+    DT_FLOAT8_E4M3FN = 36   # float8_e4m3fn type
+    DT_FLOAT8_E8M0 = 37    # float8_e8m0 type
+    DT_FLOAT6_E3M2 = 38    # float6_e3m2 type     当前版本不支持该类型。
+    DT_FLOAT6_E2M3 = 39    # float6_e2m3 type     当前版本不支持该类型。
+    DT_FLOAT4_E2M1 = 40    # float4_e2m1 type
+    DT_FLOAT4_E1M2 = 41    # float4_e1m2 type
+    DT_MAX = 42             # Mark the boundaries of data types
 
     __module__ = "torchair.ge"
 
@@ -177,6 +185,10 @@ def torch_type_to_ge_type(dtype, m=DataType):
         return m.DT_QINT32
     if dtype == torch.quint4x2:
         return m.DT_INT4
+    if dtype == torch.float8_e5m2:
+        return m.DT_FLOAT8_E5M2
+    if dtype == torch.float8_e4m3fn:
+        return m.DT_FLOAT8_E4M3FN    
 
     for type_name, ge_type in [
         ("uint16", m.DT_UINT16),
@@ -188,6 +200,64 @@ def torch_type_to_ge_type(dtype, m=DataType):
             return ge_type
 
     raise RuntimeError(f"Unsupported convert torch type {dtype} to ge type")
+
+
+def torch_dtype_value_to_ge_proto_type(dtype_value):
+    return torch_dtype_value_to_ge_type(dtype_value, ProtoDataType)
+
+
+def torch_dtype_value_to_ge_type(dtype_value, m=DataType):
+    if dtype_value == 0:    # torch.uint8
+        return m.DT_UINT8
+    if dtype_value == 1:    # torch.int8
+        return m.DT_INT8
+    if dtype_value == 2:    # torch.int16
+        return m.DT_INT16
+    if dtype_value == 3:    # torch.int32
+        return m.DT_INT32
+    if dtype_value == 4:    # torch.int64
+        return m.DT_INT64
+    if dtype_value == 5:    # torch.float16
+        return m.DT_FLOAT16
+    if dtype_value == 6:    # torch.float32、torch.float
+        return m.DT_FLOAT
+    if dtype_value == 7:    # torch.float64、torch.double
+        return m.DT_DOUBLE
+    if dtype_value == 8:    # torch.complex32
+        return m.DT_COMPLEX32
+    if dtype_value == 9:   # torch.complex64
+        return m.DT_COMPLEX64
+    if dtype_value == 10:   # torch.complex64128
+        return m.DT_COMPLEX128
+    if dtype_value == 11:   # torch.bool
+        return m.DT_BOOL
+    if dtype_value == 12:   # torch.qint8
+        return m.DT_QINT8
+    if dtype_value == 13:   # torch.quint8
+        return m.DT_QUINT8
+    if dtype_value == 14:   # torch.qint32
+        return m.DT_QINT32
+    if dtype_value == 15:   # torch.bfloat16
+        return m.DT_BF16
+    if dtype_value == 16:   # torch.quint4x2
+        return m.DT_INT4
+    if dtype_value == 23:   # torch.float8_e5m2
+        return m.DT_FLOAT8_E5M2
+    if dtype_value == 24:   # torch.float8_e4m3fn
+        return m.DT_FLOAT8_E4M3FN
+    if dtype_value == 290:
+        return m.DT_HIFLOAT8
+    if dtype_value == 291:
+        return m.DT_FLOAT8_E5M2
+    if dtype_value == 292:
+        return m.DT_FLOAT8_E4M3FN
+    if dtype_value == 293:
+        return m.DT_FLOAT8_E8M0
+    if dtype_value == 296:
+        return m.DT_FLOAT4_E2M1
+    if dtype_value == 297:
+        return m.DT_FLOAT4_E1M2
+    raise RuntimeError(f"Unsupported torch dtype value {dtype_value} by ge")
 
 
 def ge_type_to_torch_type(dtype: DataType) -> torch.dtype:
@@ -225,6 +295,20 @@ def ge_type_to_torch_type(dtype: DataType) -> torch.dtype:
         return torch.quint8
     if dtype == DataType.DT_QINT32:
         return torch.qint32
+    if dtype == DataType.DT_HIFLOAT8:
+        return torch.uint8
+    if dtype == DataType.DT_FLOAT8_E5M2:
+        return torch.float8_e5m2
+    if dtype == DataType.DT_FLOAT8_E4M3FN:
+        return torch.float8_e4m3fn
+    if dtype == DataType.DT_FLOAT4_E2M1:
+        return torch.uint8
+    if dtype == DataType.DT_FLOAT4_E1M2:
+        return torch.uint8
+    if dtype == DataType.DT_FLOAT8_E8M0:
+        return torch.uint8
+    if dtype == DataType.DT_INT4:
+        return torch.quint4x2
 
     raise RuntimeError(f"Unsupported ge type {dtype} by torch")
 
@@ -306,6 +390,18 @@ def _ge_dtype_to_ge_proto_dtype(dtype: DataType) -> np.dtype:
         return ProtoDataType.DT_QUINT8
     if dtype == DataType.DT_QINT32:
         return ProtoDataType.DT_QINT32
+    if dtype == DataType.DT_HIFLOAT8:
+        return ProtoDataType.DT_HIFLOAT8
+    if dtype == DataType.DT_FLOAT8_E5M2:
+        return ProtoDataType.DT_FLOAT8_E5M2
+    if dtype == DataType.DT_FLOAT8_E4M3FN:
+        return ProtoDataType.DT_FLOAT8_E4M3FN
+    if dtype == DataType.DT_FLOAT8_E8M0:
+        return ProtoDataType.DT_FLOAT8_E8M0
+    if dtype == DataType.DT_FLOAT4_E2M1:
+        return ProtoDataType.DT_FLOAT4_E2M1
+    if dtype == DataType.DT_FLOAT4_E1M2:
+        return ProtoDataType.DT_FLOAT4_E1M2
 
     raise ValueError(f"Unsupported ge dtype {dtype}")
 
@@ -345,6 +441,18 @@ def _ge_proto_dtype_to_ge_dtype(dtype: ProtoDataType):
         return DataType.DT_QUINT8
     if dtype == ProtoDataType.DT_QINT32:
         return DataType.DT_QINT32
+    if dtype == ProtoDataType.DT_HIFLOAT8:
+        return DataType.DT_HIFLOAT8
+    if dtype == ProtoDataType.DT_FLOAT8_E5M2:
+        return DataType.DT_FLOAT8_E5M2
+    if dtype == ProtoDataType.DT_FLOAT8_E4M3FN:
+        return DataType.DT_FLOAT8_E4M3FN
+    if dtype == ProtoDataType.DT_FLOAT8_E8M0:
+        return DataType.DT_FLOAT8_E8M0
+    if dtype == ProtoDataType.DT_FLOAT4_E2M1:
+        return DataType.DT_FLOAT4_E2M1
+    if dtype == ProtoDataType.DT_FLOAT4_E1M2:
+        return DataType.DT_FLOAT4_E1M2
 
     raise ValueError(f"Unsupported ge proto dtype {dtype}")
 
@@ -370,6 +478,18 @@ def _ge_proto_dtype_str(dtype: ProtoDataType) -> str:
         return "DT_BOOL"
     if dtype == ProtoDataType.DT_BF16:
         return "DT_BF16"
+    if dtype == ProtoDataType.DT_HIFLOAT8:
+        return "DT_HIFLOAT8"
+    if dtype == ProtoDataType.DT_FLOAT8_E5M2:
+        return "DT_FLOAT8_E5M2"
+    if dtype == ProtoDataType.DT_FLOAT8_E4M3FN:
+        return "DT_FLOAT8_E4M3FN"
+    if dtype == ProtoDataType.DT_FLOAT8_E8M0:
+        return "DT_FLOAT8_E8M0"
+    if dtype == ProtoDataType.DT_FLOAT4_E2M1:
+        return "DT_FLOAT4_E2M1"
+    if dtype == ProtoDataType.DT_FLOAT4_E1M2:
+        return "DT_FLOAT4_E1M2"
 
     return "Unknown"
 
@@ -963,15 +1083,18 @@ class Tensor(TensorBase):
     def symsize(self):
         return self._symsize
 
-    def set_torch_dtype(self, dtype):
+    def set_torch_dtype(self, dtype, ge_outputs=None):
         self._torch_dtype = dtype
+        if ge_outputs is not None and self._is_quant_dtype(ge_outputs.desc.dtype):
+            self._ge_dtype = _ge_proto_dtype_to_ge_dtype(ge_outputs.desc.dtype)
+            return
         self._ge_dtype = torch_type_to_ge_type(dtype)
         self._desc.dtype = torch_type_to_ge_proto_type(dtype)
 
-    def set_meta(self, meta_output):
+    def set_meta(self, meta_output, ge_outputs=None):
         self._meta = meta_output
         if isinstance(meta_output, torch.Tensor):
-            self.set_torch_dtype(meta_output.dtype)
+            self.set_torch_dtype(meta_output.dtype, ge_outputs)
             self._symsize = list(meta_output.size())
             self._desc.attr['_meta'].s = compat_as_bytes(
                 f"Tensor(dtype={meta_output.dtype}, shape={meta_output.size()}")
@@ -999,6 +1122,10 @@ class Tensor(TensorBase):
         for sz in self._symsize:
             numel *= sz
         return numel
+
+    def _is_quant_dtype(self, target: Target):
+        return target in (ProtoDataType.DT_HIFLOAT8, ProtoDataType.DT_FLOAT8_E8M0, ProtoDataType.DT_FLOAT4_E2M1, \
+                          ProtoDataType.DT_FLOAT4_E1M2)
 
 
 def get_ge_rng_state(philox_num: int = -1, gen: torch.Generator = None) -> Tuple[int, Tensor]:

@@ -44,7 +44,7 @@ def conveter_aten_rsub_Scalar(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::rsub.Scalar(Tensor self, Scalar other, Scalar alpha=1) -> Tensor"""
-    if is_not_support():
+    if is_arch35():
         axpy_dtype_ist = [DataType.DT_FLOAT, DataType.DT_FLOAT16, DataType.DT_BF16]
         axpyv2_dtype_ist = [DataType.DT_INT8, DataType.DT_INT32, DataType.DT_INT64]
         if not isinstance(alpha, Tensor) and meta_outputs.dtype in axpy_dtype_ist:

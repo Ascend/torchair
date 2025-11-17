@@ -25,7 +25,7 @@ def conveter_aten_native_group_norm_default(
     if bias is None:
         zero_value = dtype_promote(0, target_dtype=meta_outputs[0].dtype)
         bias = ge.Fill([C], zero_value)
-    if is_not_support():
+    if is_arch35():
         y, mean, rstd = ge.GroupNormV2(input, weight, bias, num_groups=group, eps=eps, is_training=True)
         specific_op_input_layout(y, indices=[0, 1, 2], layout="NCHW")
         specific_op_output_layout(y, indices=[0, 1, 2], layout="NCHW")

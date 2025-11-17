@@ -1,7 +1,6 @@
 syntax = "proto3";
 
 package ge.proto;
-
 enum DataType
 {
     DT_UNDEFINED = 0;  // Used to indicate a DataType field has not been set.
@@ -37,6 +36,14 @@ enum DataType
     DT_INT2 = 30;              // int2 type
     DT_UINT2 = 31;             // uint2 type
     DT_COMPLEX32 = 32;         // complex32 type
+    DT_HIFLOAT8 = 33;          // hifloat8 type
+    DT_FLOAT8_E5M2 = 34;       // float8_e5m2 type
+    DT_FLOAT8_E4M3FN = 35;     // float8_e4m3fn type
+    DT_FLOAT8_E8M0 = 36;       // float8_e8m0 type
+    DT_FLOAT6_E3M2 = 37;       // float6_e3m2 type
+    DT_FLOAT6_E2M3 = 38;       // float6_e2m3 type
+    DT_FLOAT4_E2M1 = 39;       // float4_e2m1 type
+    DT_FLOAT4_E1M2 = 40;       // float4_e1m2 type
 }
 
 message AttrDef
@@ -99,7 +106,186 @@ message AttrDef
         ListListInt      list_list_int  = 14;  // List List Int type
         int64            dt   = 15; // ge::DataType
         ListListFloat    list_list_float  = 16;  // List List Float type
+        bytes            expression = 17;
     }
+}
+
+// replace AttrDef in ge_ir.proto in the future
+// do not use this, only stub currently
+message AttributeDef
+{
+  oneof value
+  {
+    bytes            s    = 1;  // "string"
+    int64            i    = 2;  // "int"
+    float            f    = 3;  // "float"
+    bool             b    = 4;  // "bool"
+    bytes            bt   = 5;  // "bytes";
+  }
+}
+
+message OtherGroupDef {
+  map<string, AttributeDef> attr = 1;
+}
+
+message TensorDescAttrGroupsDef {
+  repeated string origin_symbol_shape = 1; // symbolic origin shape
+  repeated string symbolic_value = 2; // symbolic value
+}
+
+message InputSourceDef {
+  int32 input_data_idx = 1;
+  int64 dim_idx = 2;
+}
+
+message ReplacementDef {
+  string replace_expr = 1;
+  int32 rank = 2;
+}
+
+message SymbolCheckInfoDef {
+  string expr = 1;
+  string file = 2;
+  int64 line = 3;
+  string dfx = 4;
+}
+
+message ShapeEnvSettingDef {
+  bool specialize_zero_one = 1;
+  int32 dynamic_mode = 2;
+}
+
+message SymbolInfoDef {
+  repeated string symbols = 1;
+}
+
+message ShapeEnvAttrGroupsDef {
+  map<string, int64> symbol_to_value = 1;
+  map<int64, SymbolInfoDef> value_to_symbol = 2;
+  map<string, InputSourceDef> symbol_to_source = 3;
+  map<string, ReplacementDef> replacements = 4;
+  repeated SymbolCheckInfoDef symbol_check_infos = 5;
+  repeated SymbolCheckInfoDef symbol_assert_infos = 6;
+  ShapeEnvSettingDef shape_setting = 7;
+  uint64 unique_sym_id = 8;
+}
+
+message SchedInfoDef {
+  int64 exec_order = 1;
+  repeated int64 axis = 2;
+  int64 loop_axis = 3;
+  int32 exec_condition = 4;
+}
+message ApiInfoDef {
+  int32 type = 1;
+  int32 compute_type = 2;
+  int32 unit = 3;
+}
+
+message MemAttrDef {
+  int64 tensor_id = 1;
+  int32 alloc_type = 2;
+  int32 position = 3;
+  int32 hardware = 4;
+  repeated int64 buf_ids = 5;
+  string name = 6;
+  int64 reuse_id = 7;
+}
+
+message MemQueueAttrDef {
+  int64 id = 1;
+  int64 depth = 2;
+  int64 buf_num = 3;
+  string name = 4;
+}
+
+message MemBufAttrDef {
+  int64 id = 1;
+  string name = 2;
+}
+
+message MemOptAttrDef {
+  int64 reuse_id = 1;
+  int64 ref_tensor = 2;
+  int64 merge_scope = 3;
+}
+
+message AxisDef {
+  int64 id = 1;
+  string name = 2;
+  int32 axis_type = 3;
+  bool bind_block = 4;
+  string size = 5; // expression
+  int32 align = 6;
+  repeated int64 from = 7;
+  int64 split_pair_other_id = 8;
+  bool allow_oversize_axis = 9;
+  bool allow_unaligned_tail = 10;
+}
+
+message AscendCIROpAttrGroupsDef {
+  string name = 1;
+  string type = 2;
+}
+
+message AscTensorAttrGroupsDef {
+  int64 dtype = 1;
+  repeated int64 axis_ids = 2;
+  repeated string repeats = 3; // expression
+  repeated string strides = 4; // expression
+  repeated int64 vectorized_axis = 5;
+  repeated string vectorized_strides = 6;
+  MemAttrDef mem = 7;
+  MemQueueAttrDef que = 8;
+  MemBufAttrDef buf = 9;
+  MemOptAttrDef opt = 10;
+}
+
+message AscGraphAttrGroupsDef {
+  int64 tiling_key = 1;
+  repeated AxisDef axis = 2;
+  int64 type = 3;
+  repeated string size_var = 4;
+}
+
+message AscIrAttrDef {
+  map<string, AttrDef> attr = 1;
+}
+
+
+message TmpBufDescDef {
+  string size = 1; // expression
+  int64 life_time_axis_id = 2;
+}
+
+message TmpBufferGroupDef {
+  TmpBufDescDef buf_desc = 1;
+  MemAttrDef mem = 2;
+}
+
+message AscNodeAttrGroupsDef {
+  string name = 1;
+  string type = 2;
+  SchedInfoDef sched = 3;
+  ApiInfoDef api = 4;
+  AscIrAttrDef ir_attr_def = 5;
+  repeated TmpBufferGroupDef tmp_buffers = 6;
+}
+
+message AttrGroupDef {
+  oneof attr_group {
+    AscendCIROpAttrGroupsDef op_attr_group = 2;
+    TensorDescAttrGroupsDef tensor_attr_group = 3;
+    ShapeEnvAttrGroupsDef shape_env_attr_group = 4;
+    AscGraphAttrGroupsDef asc_graph_attr_group = 5;
+    AscNodeAttrGroupsDef asc_node_attr_group = 6;
+    AscTensorAttrGroupsDef asc_tensor_attr_group = 7;
+  }
+}
+
+message AttrGroups {
+  OtherGroupDef other_group_def = 1;
+  repeated AttrGroupDef attr_group_def = 2;
 }
 
 // A list of attr names and their values. The whole list is attached
@@ -140,6 +326,7 @@ message TensorDescriptor
     int64 cmps_tab_offset = 21;
 
 	map<string, AttrDef> attr = 5;  // Set of extra parameter fields
+	AttrGroups attr_groups = 6;  // Set of attr groups
 }
 
 // GeTensor definition
@@ -159,6 +346,7 @@ message OpDef
     repeated string input = 5;  // input original op name + outgoing index. op_name：index
 
     map<string, AttrDef> attr = 10;  // Set of operator parameter fields
+    AttrGroups attr_groups = 11;  // Set of attr groups
 
     bool has_out_attr = 20;
     int64 id = 21;
@@ -189,6 +377,7 @@ message GraphDef
     repeated OpDef op      = 6;  // List of operators
 
 	map<string, AttrDef> attr = 11;  // Extended field
+	AttrGroups attr_groups = 12;  // Set of attr groups
 }
 
 // model definition
@@ -201,5 +390,5 @@ message ModelDef
     repeated GraphDef graph = 7;  // Graph definition，graph[0] represents the main diagram in modeldef
 
     map<string, AttrDef> attr = 11;  // Extended field
+    AttrGroups attr_groups = 12;  // Set of attr groups
 }
-

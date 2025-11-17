@@ -7,197 +7,239 @@ from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from google.protobuf import reflection as _reflection
 from google.protobuf import symbol_database as _symbol_database
-
 # @@protoc_insertion_point(imports)
 
 _sym_db = _symbol_database.Default()
 
+
+
+
 DESCRIPTOR = _descriptor.FileDescriptor(
-    name='ge_ir.proto',
-    package='ge.proto',
-    syntax='proto3',
-    serialized_options=None,
-    create_key=_descriptor._internal_create_key,
-    serialized_pb=b'\n\x0bge_ir.proto\x12\x08ge.proto\"\xf3\x08\n\x07\x41ttrDef\x12\x0b\n\x01s\x18\x02 \x01(\x0cH\x00\x12\x0b\n\x01i\x18\x03 \x01(\x03H\x00\x12\x0b\n\x01\x66\x18\x04 \x01(\x02H\x00\x12\x0b\n\x01\x62\x18\x05 \x01(\x08H\x00\x12\x0c\n\x02\x62t\x18\x07 \x01(\x0cH\x00\x12+\n\x04list\x18\x01 \x01(\x0b\x32\x1b.ge.proto.AttrDef.ListValueH\x00\x12$\n\x04\x66unc\x18\n \x01(\x0b\x32\x14.ge.proto.NamedAttrsH\x00\x12(\n\x02td\x18\x0b \x01(\x0b\x32\x1a.ge.proto.TensorDescriptorH\x00\x12 \n\x01t\x18\x0c \x01(\x0b\x32\x13.ge.proto.TensorDefH\x00\x12\x1f\n\x01g\x18\r \x01(\x0b\x32\x12.ge.proto.GraphDefH\x00\x12\x36\n\rlist_list_int\x18\x0e \x01(\x0b\x32\x1d.ge.proto.AttrDef.ListListIntH\x00\x12\x0c\n\x02\x64t\x18\x0f \x01(\x03H\x00\x12:\n\x0flist_list_float\x18\x10 \x01(\x0b\x32\x1f.ge.proto.AttrDef.ListListFloatH\x00\x1a\x86\x04\n\tListValue\x12\t\n\x01s\x18\x02 \x03(\x0c\x12\t\n\x01i\x18\x03 \x03(\x03\x12\t\n\x01\x66\x18\x04 \x03(\x02\x12\t\n\x01\x62\x18\x05 \x03(\x08\x12\n\n\x02\x62t\x18\x07 \x03(\x0c\x12&\n\x02td\x18\x08 \x03(\x0b\x32\x1a.ge.proto.TensorDescriptor\x12\x1e\n\x01t\x18\t \x03(\x0b\x32\x13.ge.proto.TensorDef\x12\x1d\n\x01g\x18\n \x03(\x0b\x32\x12.ge.proto.GraphDef\x12 \n\x02na\x18\x0b \x03(\x0b\x32\x14.ge.proto.NamedAttrs\x12\n\n\x02\x64t\x18\x0c \x03(\x03\x12;\n\x08val_type\x18\x14 \x01(\x0e\x32).ge.proto.AttrDef.ListValue.ListValueType\"\xee\x01\n\rListValueType\x12\x10\n\x0cVT_LIST_NONE\x10\x00\x12\x12\n\x0eVT_LIST_STRING\x10\x01\x12\x0f\n\x0bVT_LIST_INT\x10\x02\x12\x11\n\rVT_LIST_FLOAT\x10\x03\x12\x10\n\x0cVT_LIST_BOOL\x10\x04\x12\x11\n\rVT_LIST_BYTES\x10\x05\x12\x17\n\x13VT_LIST_TENSOR_DESC\x10\x06\x12\x12\n\x0eVT_LIST_TENSOR\x10\x07\x12\x11\n\rVT_LIST_GRAPH\x10\x08\x12\x17\n\x13VT_LIST_NAMED_ATTRS\x10\t\x12\x15\n\x11VT_LIST_DATA_TYPE\x10\n\x1a\x64\n\x0bListListInt\x12:\n\x0blist_list_i\x18\x01 \x03(\x0b\x32%.ge.proto.AttrDef.ListListInt.ListInt\x1a\x19\n\x07ListInt\x12\x0e\n\x06list_i\x18\x01 \x03(\x03\x1al\n\rListListFloat\x12>\n\x0blist_list_f\x18\x01 \x03(\x0b\x32).ge.proto.AttrDef.ListListFloat.ListFloat\x1a\x1b\n\tListFloat\x12\x0e\n\x06list_f\x18\x01 \x03(\x02\x42\x07\n\x05value\"\x88\x01\n\nNamedAttrs\x12\x0c\n\x04name\x18\x01 \x01(\t\x12,\n\x04\x61ttr\x18\x02 \x03(\x0b\x32\x1e.ge.proto.NamedAttrs.AttrEntry\x1a>\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.ge.proto.AttrDef:\x02\x38\x01\"\x17\n\x08ShapeDef\x12\x0b\n\x03\x64im\x18\x01 \x03(\x03\"\xfe\x03\n\x10TensorDescriptor\x12\x0c\n\x04name\x18\x01 \x01(\t\x12!\n\x05\x64type\x18\x02 \x01(\x0e\x32\x12.ge.proto.DataType\x12!\n\x05shape\x18\x03 \x01(\x0b\x32\x12.ge.proto.ShapeDef\x12\x0e\n\x06layout\x18\x04 \x01(\t\x12\x14\n\x0chas_out_attr\x18\t \x01(\x08\x12\x0c\n\x04size\x18\n \x01(\x03\x12\x13\n\x0bweight_size\x18\x0b \x01(\x03\x12\x13\n\x0breuse_input\x18\x0c \x01(\x08\x12\x15\n\routput_tensor\x18\r \x01(\x08\x12\x13\n\x0b\x64\x65vice_type\x18\x0e \x01(\t\x12\x14\n\x0cinput_tensor\x18\x0f \x01(\x08\x12\x14\n\x0creal_dim_cnt\x18\x10 \x01(\x03\x12\x19\n\x11reuse_input_index\x18\x11 \x01(\x03\x12\x13\n\x0b\x64\x61ta_offset\x18\x12 \x01(\x03\x12\x11\n\tcmps_size\x18\x13 \x01(\x03\x12\x10\n\x08\x63mps_tab\x18\x14 \x01(\t\x12\x17\n\x0f\x63mps_tab_offset\x18\x15 \x01(\x03\x12\x32\n\x04\x61ttr\x18\x05 \x03(\x0b\x32$.ge.proto.TensorDescriptor.AttrEntry\x1a>\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.ge.proto.AttrDef:\x02\x38\x01\"C\n\tTensorDef\x12(\n\x04\x64\x65sc\x18\x01 \x01(\x0b\x32\x1a.ge.proto.TensorDescriptor\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\x0c\"\x8d\x04\n\x05OpDef\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\x12\r\n\x05input\x18\x05 \x03(\t\x12\'\n\x04\x61ttr\x18\n \x03(\x0b\x32\x19.ge.proto.OpDef.AttrEntry\x12\x14\n\x0chas_out_attr\x18\x14 \x01(\x08\x12\n\n\x02id\x18\x15 \x01(\x03\x12\x11\n\tstream_id\x18\x16 \x01(\x03\x12\x12\n\ninput_name\x18\x17 \x03(\t\x12\x10\n\x08src_name\x18\x18 \x03(\t\x12\x11\n\tsrc_index\x18\x19 \x03(\x03\x12\x10\n\x08\x64st_name\x18\x1a \x03(\t\x12\x11\n\tdst_index\x18\x1b \x03(\x03\x12\x0f\n\x07input_i\x18\x1c \x03(\x03\x12\x10\n\x08output_i\x18\x1d \x03(\x03\x12\x11\n\tworkspace\x18\x1e \x03(\x03\x12\x17\n\x0fworkspace_bytes\x18\x1f \x03(\x03\x12\x16\n\x0eis_input_const\x18  \x03(\x08\x12.\n\ninput_desc\x18! \x03(\x0b\x32\x1a.ge.proto.TensorDescriptor\x12/\n\x0boutput_desc\x18\" \x03(\x0b\x32\x1a.ge.proto.TensorDescriptor\x12\x15\n\rsubgraph_name\x18# \x03(\t\x1a>\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.ge.proto.AttrDef:\x02\x38\x01\"\xc0\x01\n\x08GraphDef\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05input\x18\x04 \x03(\t\x12\x0e\n\x06output\x18\x05 \x03(\t\x12\x1b\n\x02op\x18\x06 \x03(\x0b\x32\x0f.ge.proto.OpDef\x12*\n\x04\x61ttr\x18\x0b \x03(\x0b\x32\x1c.ge.proto.GraphDef.AttrEntry\x1a>\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.ge.proto.AttrDef:\x02\x38\x01\"\xd0\x01\n\x08ModelDef\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\r\x12\x16\n\x0e\x63ustom_version\x18\x03 \x01(\t\x12!\n\x05graph\x18\x07 \x03(\x0b\x32\x12.ge.proto.GraphDef\x12*\n\x04\x61ttr\x18\x0b \x03(\x0b\x32\x1c.ge.proto.ModelDef.AttrEntry\x1a>\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.ge.proto.AttrDef:\x02\x38\x01*\x8a\x04\n\x08\x44\x61taType\x12\x10\n\x0c\x44T_UNDEFINED\x10\x00\x12\x0c\n\x08\x44T_FLOAT\x10\x01\x12\x0e\n\nDT_FLOAT16\x10\x02\x12\x0b\n\x07\x44T_INT8\x10\x03\x12\x0c\n\x08\x44T_UINT8\x10\x04\x12\x0c\n\x08\x44T_INT16\x10\x05\x12\r\n\tDT_UINT16\x10\x06\x12\x0c\n\x08\x44T_INT32\x10\x07\x12\x0c\n\x08\x44T_INT64\x10\x08\x12\r\n\tDT_UINT32\x10\t\x12\r\n\tDT_UINT64\x10\n\x12\x0b\n\x07\x44T_BOOL\x10\x0b\x12\r\n\tDT_DOUBLE\x10\x0c\x12\r\n\tDT_STRING\x10\r\x12\x14\n\x10\x44T_DUAL_SUB_INT8\x10\x0e\x12\x15\n\x11\x44T_DUAL_SUB_UINT8\x10\x0f\x12\x10\n\x0c\x44T_COMPLEX64\x10\x10\x12\x11\n\rDT_COMPLEX128\x10\x11\x12\x0c\n\x08\x44T_QINT8\x10\x12\x12\r\n\tDT_QINT16\x10\x13\x12\r\n\tDT_QINT32\x10\x14\x12\r\n\tDT_QUINT8\x10\x15\x12\x0e\n\nDT_QUINT16\x10\x16\x12\x0f\n\x0b\x44T_RESOURCE\x10\x17\x12\x11\n\rDT_STRING_REF\x10\x18\x12\x0b\n\x07\x44T_DUAL\x10\x19\x12\x0e\n\nDT_VARIANT\x10\x1a\x12\x0b\n\x07\x44T_BF16\x10\x1b\x12\x0b\n\x07\x44T_INT4\x10\x1c\x12\x0c\n\x08\x44T_UINT1\x10\x1d\x12\x0b\n\x07\x44T_INT2\x10\x1e\x12\x0c\n\x08\x44T_UINT2\x10\x1f\x12\x10\n\x0c\x44T_COMPLEX32\x10 b\x06proto3'
+  name='ge_ir.proto',
+  package='ge.proto',
+  syntax='proto3',
+  serialized_options=None,
+  create_key=_descriptor._internal_create_key,
+  serialized_pb=b'\n\x0bge_ir.proto\x12\x08ge.proto\"\x89\t\n\x07\x41ttrDef\x12\x0b\n\x01s\x18\x02 \x01(\x0cH\x00\x12\x0b\n\x01i\x18\x03 \x01(\x03H\x00\x12\x0b\n\x01\x66\x18\x04 \x01(\x02H\x00\x12\x0b\n\x01\x62\x18\x05 \x01(\x08H\x00\x12\x0c\n\x02\x62t\x18\x07 \x01(\x0cH\x00\x12+\n\x04list\x18\x01 \x01(\x0b\x32\x1b.ge.proto.AttrDef.ListValueH\x00\x12$\n\x04\x66unc\x18\n \x01(\x0b\x32\x14.ge.proto.NamedAttrsH\x00\x12(\n\x02td\x18\x0b \x01(\x0b\x32\x1a.ge.proto.TensorDescriptorH\x00\x12 \n\x01t\x18\x0c \x01(\x0b\x32\x13.ge.proto.TensorDefH\x00\x12\x1f\n\x01g\x18\r \x01(\x0b\x32\x12.ge.proto.GraphDefH\x00\x12\x36\n\rlist_list_int\x18\x0e \x01(\x0b\x32\x1d.ge.proto.AttrDef.ListListIntH\x00\x12\x0c\n\x02\x64t\x18\x0f \x01(\x03H\x00\x12:\n\x0flist_list_float\x18\x10 \x01(\x0b\x32\x1f.ge.proto.AttrDef.ListListFloatH\x00\x12\x14\n\nexpression\x18\x11 \x01(\x0cH\x00\x1a\x86\x04\n\tListValue\x12\t\n\x01s\x18\x02 \x03(\x0c\x12\t\n\x01i\x18\x03 \x03(\x03\x12\t\n\x01\x66\x18\x04 \x03(\x02\x12\t\n\x01\x62\x18\x05 \x03(\x08\x12\n\n\x02\x62t\x18\x07 \x03(\x0c\x12&\n\x02td\x18\x08 \x03(\x0b\x32\x1a.ge.proto.TensorDescriptor\x12\x1e\n\x01t\x18\t \x03(\x0b\x32\x13.ge.proto.TensorDef\x12\x1d\n\x01g\x18\n \x03(\x0b\x32\x12.ge.proto.GraphDef\x12 \n\x02na\x18\x0b \x03(\x0b\x32\x14.ge.proto.NamedAttrs\x12\n\n\x02\x64t\x18\x0c \x03(\x03\x12;\n\x08val_type\x18\x14 \x01(\x0e\x32).ge.proto.AttrDef.ListValue.ListValueType\"\xee\x01\n\rListValueType\x12\x10\n\x0cVT_LIST_NONE\x10\x00\x12\x12\n\x0eVT_LIST_STRING\x10\x01\x12\x0f\n\x0bVT_LIST_INT\x10\x02\x12\x11\n\rVT_LIST_FLOAT\x10\x03\x12\x10\n\x0cVT_LIST_BOOL\x10\x04\x12\x11\n\rVT_LIST_BYTES\x10\x05\x12\x17\n\x13VT_LIST_TENSOR_DESC\x10\x06\x12\x12\n\x0eVT_LIST_TENSOR\x10\x07\x12\x11\n\rVT_LIST_GRAPH\x10\x08\x12\x17\n\x13VT_LIST_NAMED_ATTRS\x10\t\x12\x15\n\x11VT_LIST_DATA_TYPE\x10\n\x1a\x64\n\x0bListListInt\x12:\n\x0blist_list_i\x18\x01 \x03(\x0b\x32%.ge.proto.AttrDef.ListListInt.ListInt\x1a\x19\n\x07ListInt\x12\x0e\n\x06list_i\x18\x01 \x03(\x03\x1al\n\rListListFloat\x12>\n\x0blist_list_f\x18\x01 \x03(\x0b\x32).ge.proto.AttrDef.ListListFloat.ListFloat\x1a\x1b\n\tListFloat\x12\x0e\n\x06list_f\x18\x01 \x03(\x02\x42\x07\n\x05value\"Y\n\x0c\x41ttributeDef\x12\x0b\n\x01s\x18\x01 \x01(\x0cH\x00\x12\x0b\n\x01i\x18\x02 \x01(\x03H\x00\x12\x0b\n\x01\x66\x18\x03 \x01(\x02H\x00\x12\x0b\n\x01\x62\x18\x04 \x01(\x08H\x00\x12\x0c\n\x02\x62t\x18\x05 \x01(\x0cH\x00\x42\x07\n\x05value\"\x85\x01\n\rOtherGroupDef\x12/\n\x04\x61ttr\x18\x01 \x03(\x0b\x32!.ge.proto.OtherGroupDef.AttrEntry\x1a\x43\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12%\n\x05value\x18\x02 \x01(\x0b\x32\x16.ge.proto.AttributeDef:\x02\x38\x01\"N\n\x17TensorDescAttrGroupsDef\x12\x1b\n\x13origin_symbol_shape\x18\x01 \x03(\t\x12\x16\n\x0esymbolic_value\x18\x02 \x03(\t\"9\n\x0eInputSourceDef\x12\x16\n\x0einput_data_idx\x18\x01 \x01(\x05\x12\x0f\n\x07\x64im_idx\x18\x02 \x01(\x03\"4\n\x0eReplacementDef\x12\x14\n\x0creplace_expr\x18\x01 \x01(\t\x12\x0c\n\x04rank\x18\x02 \x01(\x05\"K\n\x12SymbolCheckInfoDef\x12\x0c\n\x04\x65xpr\x18\x01 \x01(\t\x12\x0c\n\x04\x66ile\x18\x02 \x01(\t\x12\x0c\n\x04line\x18\x03 \x01(\x03\x12\x0b\n\x03\x64\x66x\x18\x04 \x01(\t\"G\n\x12ShapeEnvSettingDef\x12\x1b\n\x13specialize_zero_one\x18\x01 \x01(\x08\x12\x14\n\x0c\x64ynamic_mode\x18\x02 \x01(\x05\" \n\rSymbolInfoDef\x12\x0f\n\x07symbols\x18\x01 \x03(\t\"\xaf\x06\n\x15ShapeEnvAttrGroupsDef\x12K\n\x0fsymbol_to_value\x18\x01 \x03(\x0b\x32\x32.ge.proto.ShapeEnvAttrGroupsDef.SymbolToValueEntry\x12K\n\x0fvalue_to_symbol\x18\x02 \x03(\x0b\x32\x32.ge.proto.ShapeEnvAttrGroupsDef.ValueToSymbolEntry\x12M\n\x10symbol_to_source\x18\x03 \x03(\x0b\x32\x33.ge.proto.ShapeEnvAttrGroupsDef.SymbolToSourceEntry\x12G\n\x0creplacements\x18\x04 \x03(\x0b\x32\x31.ge.proto.ShapeEnvAttrGroupsDef.ReplacementsEntry\x12\x38\n\x12symbol_check_infos\x18\x05 \x03(\x0b\x32\x1c.ge.proto.SymbolCheckInfoDef\x12\x39\n\x13symbol_assert_infos\x18\x06 \x03(\x0b\x32\x1c.ge.proto.SymbolCheckInfoDef\x12\x33\n\rshape_setting\x18\x07 \x01(\x0b\x32\x1c.ge.proto.ShapeEnvSettingDef\x12\x15\n\runique_sym_id\x18\x08 \x01(\x04\x1a\x34\n\x12SymbolToValueEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x03:\x02\x38\x01\x1aM\n\x12ValueToSymbolEntry\x12\x0b\n\x03key\x18\x01 \x01(\x03\x12&\n\x05value\x18\x02 \x01(\x0b\x32\x17.ge.proto.SymbolInfoDef:\x02\x38\x01\x1aO\n\x13SymbolToSourceEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\'\n\x05value\x18\x02 \x01(\x0b\x32\x18.ge.proto.InputSourceDef:\x02\x38\x01\x1aM\n\x11ReplacementsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\'\n\x05value\x18\x02 \x01(\x0b\x32\x18.ge.proto.ReplacementDef:\x02\x38\x01\"[\n\x0cSchedInfoDef\x12\x12\n\nexec_order\x18\x01 \x01(\x03\x12\x0c\n\x04\x61xis\x18\x02 \x03(\x03\x12\x11\n\tloop_axis\x18\x03 \x01(\x03\x12\x16\n\x0e\x65xec_condition\x18\x04 \x01(\x05\">\n\nApiInfoDef\x12\x0c\n\x04type\x18\x01 \x01(\x05\x12\x14\n\x0c\x63ompute_type\x18\x02 \x01(\x05\x12\x0c\n\x04unit\x18\x03 \x01(\x05\"\x88\x01\n\nMemAttrDef\x12\x11\n\ttensor_id\x18\x01 \x01(\x03\x12\x12\n\nalloc_type\x18\x02 \x01(\x05\x12\x10\n\x08position\x18\x03 \x01(\x05\x12\x10\n\x08hardware\x18\x04 \x01(\x05\x12\x0f\n\x07\x62uf_ids\x18\x05 \x03(\x03\x12\x0c\n\x04name\x18\x06 \x01(\t\x12\x10\n\x08reuse_id\x18\x07 \x01(\x03\"K\n\x0fMemQueueAttrDef\x12\n\n\x02id\x18\x01 \x01(\x03\x12\r\n\x05\x64\x65pth\x18\x02 \x01(\x03\x12\x0f\n\x07\x62uf_num\x18\x03 \x01(\x03\x12\x0c\n\x04name\x18\x04 \x01(\t\")\n\rMemBufAttrDef\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04name\x18\x02 \x01(\t\"J\n\rMemOptAttrDef\x12\x10\n\x08reuse_id\x18\x01 \x01(\x03\x12\x12\n\nref_tensor\x18\x02 \x01(\x03\x12\x13\n\x0bmerge_scope\x18\x03 \x01(\x03\"\xcd\x01\n\x07\x41xisDef\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x11\n\taxis_type\x18\x03 \x01(\x05\x12\x12\n\nbind_block\x18\x04 \x01(\x08\x12\x0c\n\x04size\x18\x05 \x01(\t\x12\r\n\x05\x61lign\x18\x06 \x01(\x05\x12\x0c\n\x04\x66rom\x18\x07 \x03(\x03\x12\x1b\n\x13split_pair_other_id\x18\x08 \x01(\x03\x12\x1b\n\x13\x61llow_oversize_axis\x18\t \x01(\x08\x12\x1c\n\x14\x61llow_unaligned_tail\x18\n \x01(\x08\"6\n\x18\x41scendCIROpAttrGroupsDef\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\"\xa7\x02\n\x16\x41scTensorAttrGroupsDef\x12\r\n\x05\x64type\x18\x01 \x01(\x03\x12\x10\n\x08\x61xis_ids\x18\x02 \x03(\x03\x12\x0f\n\x07repeats\x18\x03 \x03(\t\x12\x0f\n\x07strides\x18\x04 \x03(\t\x12\x17\n\x0fvectorized_axis\x18\x05 \x03(\x03\x12\x1a\n\x12vectorized_strides\x18\x06 \x03(\t\x12!\n\x03mem\x18\x07 \x01(\x0b\x32\x14.ge.proto.MemAttrDef\x12&\n\x03que\x18\x08 \x01(\x0b\x32\x19.ge.proto.MemQueueAttrDef\x12$\n\x03\x62uf\x18\t \x01(\x0b\x32\x17.ge.proto.MemBufAttrDef\x12$\n\x03opt\x18\n \x01(\x0b\x32\x17.ge.proto.MemOptAttrDef\"l\n\x15\x41scGraphAttrGroupsDef\x12\x12\n\ntiling_key\x18\x01 \x01(\x03\x12\x1f\n\x04\x61xis\x18\x02 \x03(\x0b\x32\x11.ge.proto.AxisDef\x12\x0c\n\x04type\x18\x03 \x01(\x03\x12\x10\n\x08size_var\x18\x04 \x03(\t\"~\n\x0c\x41scIrAttrDef\x12.\n\x04\x61ttr\x18\x01 \x03(\x0b\x32 .ge.proto.AscIrAttrDef.AttrEntry\x1a>\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.ge.proto.AttrDef:\x02\x38\x01\"8\n\rTmpBufDescDef\x12\x0c\n\x04size\x18\x01 \x01(\t\x12\x19\n\x11life_time_axis_id\x18\x02 \x01(\x03\"a\n\x11TmpBufferGroupDef\x12)\n\x08\x62uf_desc\x18\x01 \x01(\x0b\x32\x17.ge.proto.TmpBufDescDef\x12!\n\x03mem\x18\x02 \x01(\x0b\x32\x14.ge.proto.MemAttrDef\"\xdb\x01\n\x14\x41scNodeAttrGroupsDef\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\x12%\n\x05sched\x18\x03 \x01(\x0b\x32\x16.ge.proto.SchedInfoDef\x12!\n\x03\x61pi\x18\x04 \x01(\x0b\x32\x14.ge.proto.ApiInfoDef\x12+\n\x0bir_attr_def\x18\x05 \x01(\x0b\x32\x16.ge.proto.AscIrAttrDef\x12\x30\n\x0btmp_buffers\x18\x06 \x03(\x0b\x32\x1b.ge.proto.TmpBufferGroupDef\"\x9d\x03\n\x0c\x41ttrGroupDef\x12;\n\rop_attr_group\x18\x02 \x01(\x0b\x32\".ge.proto.AscendCIROpAttrGroupsDefH\x00\x12>\n\x11tensor_attr_group\x18\x03 \x01(\x0b\x32!.ge.proto.TensorDescAttrGroupsDefH\x00\x12?\n\x14shape_env_attr_group\x18\x04 \x01(\x0b\x32\x1f.ge.proto.ShapeEnvAttrGroupsDefH\x00\x12?\n\x14\x61sc_graph_attr_group\x18\x05 \x01(\x0b\x32\x1f.ge.proto.AscGraphAttrGroupsDefH\x00\x12=\n\x13\x61sc_node_attr_group\x18\x06 \x01(\x0b\x32\x1e.ge.proto.AscNodeAttrGroupsDefH\x00\x12\x41\n\x15\x61sc_tensor_attr_group\x18\x07 \x01(\x0b\x32 .ge.proto.AscTensorAttrGroupsDefH\x00\x42\x0c\n\nattr_group\"n\n\nAttrGroups\x12\x30\n\x0fother_group_def\x18\x01 \x01(\x0b\x32\x17.ge.proto.OtherGroupDef\x12.\n\x0e\x61ttr_group_def\x18\x02 \x03(\x0b\x32\x16.ge.proto.AttrGroupDef\"\x88\x01\n\nNamedAttrs\x12\x0c\n\x04name\x18\x01 \x01(\t\x12,\n\x04\x61ttr\x18\x02 \x03(\x0b\x32\x1e.ge.proto.NamedAttrs.AttrEntry\x1a>\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.ge.proto.AttrDef:\x02\x38\x01\"\x17\n\x08ShapeDef\x12\x0b\n\x03\x64im\x18\x01 \x03(\x03\"\xa9\x04\n\x10TensorDescriptor\x12\x0c\n\x04name\x18\x01 \x01(\t\x12!\n\x05\x64type\x18\x02 \x01(\x0e\x32\x12.ge.proto.DataType\x12!\n\x05shape\x18\x03 \x01(\x0b\x32\x12.ge.proto.ShapeDef\x12\x0e\n\x06layout\x18\x04 \x01(\t\x12\x14\n\x0chas_out_attr\x18\t \x01(\x08\x12\x0c\n\x04size\x18\n \x01(\x03\x12\x13\n\x0bweight_size\x18\x0b \x01(\x03\x12\x13\n\x0breuse_input\x18\x0c \x01(\x08\x12\x15\n\routput_tensor\x18\r \x01(\x08\x12\x13\n\x0b\x64\x65vice_type\x18\x0e \x01(\t\x12\x14\n\x0cinput_tensor\x18\x0f \x01(\x08\x12\x14\n\x0creal_dim_cnt\x18\x10 \x01(\x03\x12\x19\n\x11reuse_input_index\x18\x11 \x01(\x03\x12\x13\n\x0b\x64\x61ta_offset\x18\x12 \x01(\x03\x12\x11\n\tcmps_size\x18\x13 \x01(\x03\x12\x10\n\x08\x63mps_tab\x18\x14 \x01(\t\x12\x17\n\x0f\x63mps_tab_offset\x18\x15 \x01(\x03\x12\x32\n\x04\x61ttr\x18\x05 \x03(\x0b\x32$.ge.proto.TensorDescriptor.AttrEntry\x12)\n\x0b\x61ttr_groups\x18\x06 \x01(\x0b\x32\x14.ge.proto.AttrGroups\x1a>\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.ge.proto.AttrDef:\x02\x38\x01\"C\n\tTensorDef\x12(\n\x04\x64\x65sc\x18\x01 \x01(\x0b\x32\x1a.ge.proto.TensorDescriptor\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\x0c\"\xb8\x04\n\x05OpDef\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\x12\r\n\x05input\x18\x05 \x03(\t\x12\'\n\x04\x61ttr\x18\n \x03(\x0b\x32\x19.ge.proto.OpDef.AttrEntry\x12)\n\x0b\x61ttr_groups\x18\x0b \x01(\x0b\x32\x14.ge.proto.AttrGroups\x12\x14\n\x0chas_out_attr\x18\x14 \x01(\x08\x12\n\n\x02id\x18\x15 \x01(\x03\x12\x11\n\tstream_id\x18\x16 \x01(\x03\x12\x12\n\ninput_name\x18\x17 \x03(\t\x12\x10\n\x08src_name\x18\x18 \x03(\t\x12\x11\n\tsrc_index\x18\x19 \x03(\x03\x12\x10\n\x08\x64st_name\x18\x1a \x03(\t\x12\x11\n\tdst_index\x18\x1b \x03(\x03\x12\x0f\n\x07input_i\x18\x1c \x03(\x03\x12\x10\n\x08output_i\x18\x1d \x03(\x03\x12\x11\n\tworkspace\x18\x1e \x03(\x03\x12\x17\n\x0fworkspace_bytes\x18\x1f \x03(\x03\x12\x16\n\x0eis_input_const\x18  \x03(\x08\x12.\n\ninput_desc\x18! \x03(\x0b\x32\x1a.ge.proto.TensorDescriptor\x12/\n\x0boutput_desc\x18\" \x03(\x0b\x32\x1a.ge.proto.TensorDescriptor\x12\x15\n\rsubgraph_name\x18# \x03(\t\x1a>\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.ge.proto.AttrDef:\x02\x38\x01\"\xeb\x01\n\x08GraphDef\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05input\x18\x04 \x03(\t\x12\x0e\n\x06output\x18\x05 \x03(\t\x12\x1b\n\x02op\x18\x06 \x03(\x0b\x32\x0f.ge.proto.OpDef\x12*\n\x04\x61ttr\x18\x0b \x03(\x0b\x32\x1c.ge.proto.GraphDef.AttrEntry\x12)\n\x0b\x61ttr_groups\x18\x0c \x01(\x0b\x32\x14.ge.proto.AttrGroups\x1a>\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.ge.proto.AttrDef:\x02\x38\x01\"\xfb\x01\n\x08ModelDef\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07version\x18\x02 \x01(\r\x12\x16\n\x0e\x63ustom_version\x18\x03 \x01(\t\x12!\n\x05graph\x18\x07 \x03(\x0b\x32\x12.ge.proto.GraphDef\x12*\n\x04\x61ttr\x18\x0b \x03(\x0b\x32\x1c.ge.proto.ModelDef.AttrEntry\x12)\n\x0b\x61ttr_groups\x18\x0c \x01(\x0b\x32\x14.ge.proto.AttrGroups\x1a>\n\tAttrEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.ge.proto.AttrDef:\x02\x38\x01*\xa9\x05\n\x08\x44\x61taType\x12\x10\n\x0c\x44T_UNDEFINED\x10\x00\x12\x0c\n\x08\x44T_FLOAT\x10\x01\x12\x0e\n\nDT_FLOAT16\x10\x02\x12\x0b\n\x07\x44T_INT8\x10\x03\x12\x0c\n\x08\x44T_UINT8\x10\x04\x12\x0c\n\x08\x44T_INT16\x10\x05\x12\r\n\tDT_UINT16\x10\x06\x12\x0c\n\x08\x44T_INT32\x10\x07\x12\x0c\n\x08\x44T_INT64\x10\x08\x12\r\n\tDT_UINT32\x10\t\x12\r\n\tDT_UINT64\x10\n\x12\x0b\n\x07\x44T_BOOL\x10\x0b\x12\r\n\tDT_DOUBLE\x10\x0c\x12\r\n\tDT_STRING\x10\r\x12\x14\n\x10\x44T_DUAL_SUB_INT8\x10\x0e\x12\x15\n\x11\x44T_DUAL_SUB_UINT8\x10\x0f\x12\x10\n\x0c\x44T_COMPLEX64\x10\x10\x12\x11\n\rDT_COMPLEX128\x10\x11\x12\x0c\n\x08\x44T_QINT8\x10\x12\x12\r\n\tDT_QINT16\x10\x13\x12\r\n\tDT_QINT32\x10\x14\x12\r\n\tDT_QUINT8\x10\x15\x12\x0e\n\nDT_QUINT16\x10\x16\x12\x0f\n\x0b\x44T_RESOURCE\x10\x17\x12\x11\n\rDT_STRING_REF\x10\x18\x12\x0b\n\x07\x44T_DUAL\x10\x19\x12\x0e\n\nDT_VARIANT\x10\x1a\x12\x0b\n\x07\x44T_BF16\x10\x1b\x12\x0b\n\x07\x44T_INT4\x10\x1c\x12\x0c\n\x08\x44T_UINT1\x10\x1d\x12\x0b\n\x07\x44T_INT2\x10\x1e\x12\x0c\n\x08\x44T_UINT2\x10\x1f\x12\x10\n\x0c\x44T_COMPLEX32\x10 \x12\x0f\n\x0b\x44T_HIFLOAT8\x10!\x12\x12\n\x0e\x44T_FLOAT8_E5M2\x10\"\x12\x14\n\x10\x44T_FLOAT8_E4M3FN\x10#\x12\x12\n\x0e\x44T_FLOAT8_E8M0\x10$\x12\x12\n\x0e\x44T_FLOAT6_E3M2\x10%\x12\x12\n\x0e\x44T_FLOAT6_E2M3\x10&\x12\x12\n\x0e\x44T_FLOAT4_E2M1\x10\'\x12\x12\n\x0e\x44T_FLOAT4_E1M2\x10(b\x06proto3'
 )
 
 _DATATYPE = _descriptor.EnumDescriptor(
-    name='DataType',
-    full_name='ge.proto.DataType',
-    filename=None,
-    file=DESCRIPTOR,
-    create_key=_descriptor._internal_create_key,
-    values=[
-        _descriptor.EnumValueDescriptor(
-            name='DT_UNDEFINED', index=0, number=0,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_FLOAT', index=1, number=1,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_FLOAT16', index=2, number=2,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_INT8', index=3, number=3,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_UINT8', index=4, number=4,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_INT16', index=5, number=5,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_UINT16', index=6, number=6,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_INT32', index=7, number=7,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_INT64', index=8, number=8,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_UINT32', index=9, number=9,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_UINT64', index=10, number=10,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_BOOL', index=11, number=11,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_DOUBLE', index=12, number=12,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_STRING', index=13, number=13,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_DUAL_SUB_INT8', index=14, number=14,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_DUAL_SUB_UINT8', index=15, number=15,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_COMPLEX64', index=16, number=16,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_COMPLEX128', index=17, number=17,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_QINT8', index=18, number=18,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_QINT16', index=19, number=19,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_QINT32', index=20, number=20,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_QUINT8', index=21, number=21,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_QUINT16', index=22, number=22,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_RESOURCE', index=23, number=23,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_STRING_REF', index=24, number=24,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_DUAL', index=25, number=25,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_VARIANT', index=26, number=26,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_BF16', index=27, number=27,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_INT4', index=28, number=28,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_UINT1', index=29, number=29,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_INT2', index=30, number=30,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_UINT2', index=31, number=31,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='DT_COMPLEX32', index=32, number=32,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-    ],
-    containing_type=None,
-    serialized_options=None,
-    serialized_start=2848,
-    serialized_end=3370,
+  name='DataType',
+  full_name='ge.proto.DataType',
+  filename=None,
+  file=DESCRIPTOR,
+  create_key=_descriptor._internal_create_key,
+  values=[
+    _descriptor.EnumValueDescriptor(
+      name='DT_UNDEFINED', index=0, number=0,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_FLOAT', index=1, number=1,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_FLOAT16', index=2, number=2,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_INT8', index=3, number=3,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_UINT8', index=4, number=4,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_INT16', index=5, number=5,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_UINT16', index=6, number=6,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_INT32', index=7, number=7,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_INT64', index=8, number=8,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_UINT32', index=9, number=9,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_UINT64', index=10, number=10,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_BOOL', index=11, number=11,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_DOUBLE', index=12, number=12,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_STRING', index=13, number=13,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_DUAL_SUB_INT8', index=14, number=14,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_DUAL_SUB_UINT8', index=15, number=15,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_COMPLEX64', index=16, number=16,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_COMPLEX128', index=17, number=17,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_QINT8', index=18, number=18,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_QINT16', index=19, number=19,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_QINT32', index=20, number=20,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_QUINT8', index=21, number=21,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_QUINT16', index=22, number=22,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_RESOURCE', index=23, number=23,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_STRING_REF', index=24, number=24,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_DUAL', index=25, number=25,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_VARIANT', index=26, number=26,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_BF16', index=27, number=27,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_INT4', index=28, number=28,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_UINT1', index=29, number=29,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_INT2', index=30, number=30,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_UINT2', index=31, number=31,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_COMPLEX32', index=32, number=32,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_HIFLOAT8', index=33, number=33,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_FLOAT8_E5M2', index=34, number=34,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_FLOAT8_E4M3FN', index=35, number=35,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_FLOAT8_E8M0', index=36, number=36,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_FLOAT6_E3M2', index=37, number=37,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_FLOAT6_E2M3', index=38, number=38,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_FLOAT4_E2M1', index=39, number=39,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='DT_FLOAT4_E1M2', index=40, number=40,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+  ],
+  containing_type=None,
+  serialized_options=None,
+  serialized_start=6663,
+  serialized_end=7344,
 )
 _sym_db.RegisterEnumDescriptor(_DATATYPE)
 
@@ -235,1150 +277,2730 @@ DT_UINT1 = 29
 DT_INT2 = 30
 DT_UINT2 = 31
 DT_COMPLEX32 = 32
+DT_HIFLOAT8 = 33
+DT_FLOAT8_E5M2 = 34
+DT_FLOAT8_E4M3FN = 35
+DT_FLOAT8_E8M0 = 36
+DT_FLOAT6_E3M2 = 37
+DT_FLOAT6_E2M3 = 38
+DT_FLOAT4_E2M1 = 39
+DT_FLOAT4_E1M2 = 40
+
 
 _ATTRDEF_LISTVALUE_LISTVALUETYPE = _descriptor.EnumDescriptor(
-    name='ListValueType',
-    full_name='ge.proto.AttrDef.ListValue.ListValueType',
-    filename=None,
-    file=DESCRIPTOR,
-    create_key=_descriptor._internal_create_key,
-    values=[
-        _descriptor.EnumValueDescriptor(
-            name='VT_LIST_NONE', index=0, number=0,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='VT_LIST_STRING', index=1, number=1,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='VT_LIST_INT', index=2, number=2,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='VT_LIST_FLOAT', index=3, number=3,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='VT_LIST_BOOL', index=4, number=4,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='VT_LIST_BYTES', index=5, number=5,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='VT_LIST_TENSOR_DESC', index=6, number=6,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='VT_LIST_TENSOR', index=7, number=7,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='VT_LIST_GRAPH', index=8, number=8,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='VT_LIST_NAMED_ATTRS', index=9, number=9,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-        _descriptor.EnumValueDescriptor(
-            name='VT_LIST_DATA_TYPE', index=10, number=10,
-            serialized_options=None,
-            type=None,
-            create_key=_descriptor._internal_create_key),
-    ],
-    containing_type=None,
-    serialized_options=None,
-    serialized_start=706,
-    serialized_end=944,
+  name='ListValueType',
+  full_name='ge.proto.AttrDef.ListValue.ListValueType',
+  filename=None,
+  file=DESCRIPTOR,
+  create_key=_descriptor._internal_create_key,
+  values=[
+    _descriptor.EnumValueDescriptor(
+      name='VT_LIST_NONE', index=0, number=0,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='VT_LIST_STRING', index=1, number=1,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='VT_LIST_INT', index=2, number=2,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='VT_LIST_FLOAT', index=3, number=3,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='VT_LIST_BOOL', index=4, number=4,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='VT_LIST_BYTES', index=5, number=5,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='VT_LIST_TENSOR_DESC', index=6, number=6,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='VT_LIST_TENSOR', index=7, number=7,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='VT_LIST_GRAPH', index=8, number=8,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='VT_LIST_NAMED_ATTRS', index=9, number=9,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='VT_LIST_DATA_TYPE', index=10, number=10,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+  ],
+  containing_type=None,
+  serialized_options=None,
+  serialized_start=728,
+  serialized_end=966,
 )
 _sym_db.RegisterEnumDescriptor(_ATTRDEF_LISTVALUE_LISTVALUETYPE)
 
+
 _ATTRDEF_LISTVALUE = _descriptor.Descriptor(
-    name='ListValue',
-    full_name='ge.proto.AttrDef.ListValue',
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    create_key=_descriptor._internal_create_key,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name='s', full_name='ge.proto.AttrDef.ListValue.s', index=0,
-            number=2, type=12, cpp_type=9, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='i', full_name='ge.proto.AttrDef.ListValue.i', index=1,
-            number=3, type=3, cpp_type=2, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='f', full_name='ge.proto.AttrDef.ListValue.f', index=2,
-            number=4, type=2, cpp_type=6, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='b', full_name='ge.proto.AttrDef.ListValue.b', index=3,
-            number=5, type=8, cpp_type=7, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='bt', full_name='ge.proto.AttrDef.ListValue.bt', index=4,
-            number=7, type=12, cpp_type=9, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='td', full_name='ge.proto.AttrDef.ListValue.td', index=5,
-            number=8, type=11, cpp_type=10, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='t', full_name='ge.proto.AttrDef.ListValue.t', index=6,
-            number=9, type=11, cpp_type=10, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='g', full_name='ge.proto.AttrDef.ListValue.g', index=7,
-            number=10, type=11, cpp_type=10, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='na', full_name='ge.proto.AttrDef.ListValue.na', index=8,
-            number=11, type=11, cpp_type=10, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='dt', full_name='ge.proto.AttrDef.ListValue.dt', index=9,
-            number=12, type=3, cpp_type=2, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='val_type', full_name='ge.proto.AttrDef.ListValue.val_type', index=10,
-            number=20, type=14, cpp_type=8, label=1,
-            has_default_value=False, default_value=0,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-    ],
-    extensions=[
-    ],
-    nested_types=[],
-    enum_types=[
-        _ATTRDEF_LISTVALUE_LISTVALUETYPE,
-    ],
-    serialized_options=None,
-    is_extendable=False,
-    syntax='proto3',
-    extension_ranges=[],
-    oneofs=[
-    ],
-    serialized_start=426,
-    serialized_end=944,
+  name='ListValue',
+  full_name='ge.proto.AttrDef.ListValue',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='s', full_name='ge.proto.AttrDef.ListValue.s', index=0,
+      number=2, type=12, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='i', full_name='ge.proto.AttrDef.ListValue.i', index=1,
+      number=3, type=3, cpp_type=2, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='f', full_name='ge.proto.AttrDef.ListValue.f', index=2,
+      number=4, type=2, cpp_type=6, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='b', full_name='ge.proto.AttrDef.ListValue.b', index=3,
+      number=5, type=8, cpp_type=7, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='bt', full_name='ge.proto.AttrDef.ListValue.bt', index=4,
+      number=7, type=12, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='td', full_name='ge.proto.AttrDef.ListValue.td', index=5,
+      number=8, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='t', full_name='ge.proto.AttrDef.ListValue.t', index=6,
+      number=9, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='g', full_name='ge.proto.AttrDef.ListValue.g', index=7,
+      number=10, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='na', full_name='ge.proto.AttrDef.ListValue.na', index=8,
+      number=11, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='dt', full_name='ge.proto.AttrDef.ListValue.dt', index=9,
+      number=12, type=3, cpp_type=2, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='val_type', full_name='ge.proto.AttrDef.ListValue.val_type', index=10,
+      number=20, type=14, cpp_type=8, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+    _ATTRDEF_LISTVALUE_LISTVALUETYPE,
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=448,
+  serialized_end=966,
 )
 
 _ATTRDEF_LISTLISTINT_LISTINT = _descriptor.Descriptor(
-    name='ListInt',
-    full_name='ge.proto.AttrDef.ListListInt.ListInt',
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    create_key=_descriptor._internal_create_key,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name='list_i', full_name='ge.proto.AttrDef.ListListInt.ListInt.list_i', index=0,
-            number=1, type=3, cpp_type=2, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-    ],
-    extensions=[
-    ],
-    nested_types=[],
-    enum_types=[
-    ],
-    serialized_options=None,
-    is_extendable=False,
-    syntax='proto3',
-    extension_ranges=[],
-    oneofs=[
-    ],
-    serialized_start=1021,
-    serialized_end=1046,
+  name='ListInt',
+  full_name='ge.proto.AttrDef.ListListInt.ListInt',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='list_i', full_name='ge.proto.AttrDef.ListListInt.ListInt.list_i', index=0,
+      number=1, type=3, cpp_type=2, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1043,
+  serialized_end=1068,
 )
 
 _ATTRDEF_LISTLISTINT = _descriptor.Descriptor(
-    name='ListListInt',
-    full_name='ge.proto.AttrDef.ListListInt',
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    create_key=_descriptor._internal_create_key,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name='list_list_i', full_name='ge.proto.AttrDef.ListListInt.list_list_i', index=0,
-            number=1, type=11, cpp_type=10, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-    ],
-    extensions=[
-    ],
-    nested_types=[_ATTRDEF_LISTLISTINT_LISTINT, ],
-    enum_types=[
-    ],
-    serialized_options=None,
-    is_extendable=False,
-    syntax='proto3',
-    extension_ranges=[],
-    oneofs=[
-    ],
-    serialized_start=946,
-    serialized_end=1046,
+  name='ListListInt',
+  full_name='ge.proto.AttrDef.ListListInt',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='list_list_i', full_name='ge.proto.AttrDef.ListListInt.list_list_i', index=0,
+      number=1, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[_ATTRDEF_LISTLISTINT_LISTINT, ],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=968,
+  serialized_end=1068,
 )
 
 _ATTRDEF_LISTLISTFLOAT_LISTFLOAT = _descriptor.Descriptor(
-    name='ListFloat',
-    full_name='ge.proto.AttrDef.ListListFloat.ListFloat',
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    create_key=_descriptor._internal_create_key,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name='list_f', full_name='ge.proto.AttrDef.ListListFloat.ListFloat.list_f', index=0,
-            number=1, type=2, cpp_type=6, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-    ],
-    extensions=[
-    ],
-    nested_types=[],
-    enum_types=[
-    ],
-    serialized_options=None,
-    is_extendable=False,
-    syntax='proto3',
-    extension_ranges=[],
-    oneofs=[
-    ],
-    serialized_start=1129,
-    serialized_end=1156,
+  name='ListFloat',
+  full_name='ge.proto.AttrDef.ListListFloat.ListFloat',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='list_f', full_name='ge.proto.AttrDef.ListListFloat.ListFloat.list_f', index=0,
+      number=1, type=2, cpp_type=6, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1151,
+  serialized_end=1178,
 )
 
 _ATTRDEF_LISTLISTFLOAT = _descriptor.Descriptor(
-    name='ListListFloat',
-    full_name='ge.proto.AttrDef.ListListFloat',
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    create_key=_descriptor._internal_create_key,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name='list_list_f', full_name='ge.proto.AttrDef.ListListFloat.list_list_f', index=0,
-            number=1, type=11, cpp_type=10, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-    ],
-    extensions=[
-    ],
-    nested_types=[_ATTRDEF_LISTLISTFLOAT_LISTFLOAT, ],
-    enum_types=[
-    ],
-    serialized_options=None,
-    is_extendable=False,
-    syntax='proto3',
-    extension_ranges=[],
-    oneofs=[
-    ],
-    serialized_start=1048,
-    serialized_end=1156,
+  name='ListListFloat',
+  full_name='ge.proto.AttrDef.ListListFloat',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='list_list_f', full_name='ge.proto.AttrDef.ListListFloat.list_list_f', index=0,
+      number=1, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[_ATTRDEF_LISTLISTFLOAT_LISTFLOAT, ],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1070,
+  serialized_end=1178,
 )
 
 _ATTRDEF = _descriptor.Descriptor(
-    name='AttrDef',
-    full_name='ge.proto.AttrDef',
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    create_key=_descriptor._internal_create_key,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name='s', full_name='ge.proto.AttrDef.s', index=0,
-            number=2, type=12, cpp_type=9, label=1,
-            has_default_value=False, default_value=b"",
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='i', full_name='ge.proto.AttrDef.i', index=1,
-            number=3, type=3, cpp_type=2, label=1,
-            has_default_value=False, default_value=0,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='f', full_name='ge.proto.AttrDef.f', index=2,
-            number=4, type=2, cpp_type=6, label=1,
-            has_default_value=False, default_value=float(0),
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='b', full_name='ge.proto.AttrDef.b', index=3,
-            number=5, type=8, cpp_type=7, label=1,
-            has_default_value=False, default_value=False,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='bt', full_name='ge.proto.AttrDef.bt', index=4,
-            number=7, type=12, cpp_type=9, label=1,
-            has_default_value=False, default_value=b"",
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='list', full_name='ge.proto.AttrDef.list', index=5,
-            number=1, type=11, cpp_type=10, label=1,
-            has_default_value=False, default_value=None,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='func', full_name='ge.proto.AttrDef.func', index=6,
-            number=10, type=11, cpp_type=10, label=1,
-            has_default_value=False, default_value=None,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='td', full_name='ge.proto.AttrDef.td', index=7,
-            number=11, type=11, cpp_type=10, label=1,
-            has_default_value=False, default_value=None,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='t', full_name='ge.proto.AttrDef.t', index=8,
-            number=12, type=11, cpp_type=10, label=1,
-            has_default_value=False, default_value=None,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='g', full_name='ge.proto.AttrDef.g', index=9,
-            number=13, type=11, cpp_type=10, label=1,
-            has_default_value=False, default_value=None,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='list_list_int', full_name='ge.proto.AttrDef.list_list_int', index=10,
-            number=14, type=11, cpp_type=10, label=1,
-            has_default_value=False, default_value=None,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='dt', full_name='ge.proto.AttrDef.dt', index=11,
-            number=15, type=3, cpp_type=2, label=1,
-            has_default_value=False, default_value=0,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='list_list_float', full_name='ge.proto.AttrDef.list_list_float', index=12,
-            number=16, type=11, cpp_type=10, label=1,
-            has_default_value=False, default_value=None,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-    ],
-    extensions=[
-    ],
-    nested_types=[_ATTRDEF_LISTVALUE, _ATTRDEF_LISTLISTINT, _ATTRDEF_LISTLISTFLOAT, ],
-    enum_types=[
-    ],
-    serialized_options=None,
-    is_extendable=False,
-    syntax='proto3',
-    extension_ranges=[],
-    oneofs=[
-        _descriptor.OneofDescriptor(
-            name='value', full_name='ge.proto.AttrDef.value',
-            index=0, containing_type=None,
-            create_key=_descriptor._internal_create_key,
-            fields=[]),
-    ],
-    serialized_start=26,
-    serialized_end=1165,
+  name='AttrDef',
+  full_name='ge.proto.AttrDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='s', full_name='ge.proto.AttrDef.s', index=0,
+      number=2, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"",
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='i', full_name='ge.proto.AttrDef.i', index=1,
+      number=3, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='f', full_name='ge.proto.AttrDef.f', index=2,
+      number=4, type=2, cpp_type=6, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='b', full_name='ge.proto.AttrDef.b', index=3,
+      number=5, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='bt', full_name='ge.proto.AttrDef.bt', index=4,
+      number=7, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"",
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='list', full_name='ge.proto.AttrDef.list', index=5,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='func', full_name='ge.proto.AttrDef.func', index=6,
+      number=10, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='td', full_name='ge.proto.AttrDef.td', index=7,
+      number=11, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='t', full_name='ge.proto.AttrDef.t', index=8,
+      number=12, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='g', full_name='ge.proto.AttrDef.g', index=9,
+      number=13, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='list_list_int', full_name='ge.proto.AttrDef.list_list_int', index=10,
+      number=14, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='dt', full_name='ge.proto.AttrDef.dt', index=11,
+      number=15, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='list_list_float', full_name='ge.proto.AttrDef.list_list_float', index=12,
+      number=16, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='expression', full_name='ge.proto.AttrDef.expression', index=13,
+      number=17, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"",
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[_ATTRDEF_LISTVALUE, _ATTRDEF_LISTLISTINT, _ATTRDEF_LISTLISTFLOAT, ],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+    _descriptor.OneofDescriptor(
+      name='value', full_name='ge.proto.AttrDef.value',
+      index=0, containing_type=None,
+      create_key=_descriptor._internal_create_key,
+    fields=[]),
+  ],
+  serialized_start=26,
+  serialized_end=1187,
 )
 
+
+_ATTRIBUTEDEF = _descriptor.Descriptor(
+  name='AttributeDef',
+  full_name='ge.proto.AttributeDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='s', full_name='ge.proto.AttributeDef.s', index=0,
+      number=1, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"",
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='i', full_name='ge.proto.AttributeDef.i', index=1,
+      number=2, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='f', full_name='ge.proto.AttributeDef.f', index=2,
+      number=3, type=2, cpp_type=6, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='b', full_name='ge.proto.AttributeDef.b', index=3,
+      number=4, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='bt', full_name='ge.proto.AttributeDef.bt', index=4,
+      number=5, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"",
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+    _descriptor.OneofDescriptor(
+      name='value', full_name='ge.proto.AttributeDef.value',
+      index=0, containing_type=None,
+      create_key=_descriptor._internal_create_key,
+    fields=[]),
+  ],
+  serialized_start=1189,
+  serialized_end=1278,
+)
+
+
+_OTHERGROUPDEF_ATTRENTRY = _descriptor.Descriptor(
+  name='AttrEntry',
+  full_name='ge.proto.OtherGroupDef.AttrEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='ge.proto.OtherGroupDef.AttrEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='ge.proto.OtherGroupDef.AttrEntry.value', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=b'8\001',
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1347,
+  serialized_end=1414,
+)
+
+_OTHERGROUPDEF = _descriptor.Descriptor(
+  name='OtherGroupDef',
+  full_name='ge.proto.OtherGroupDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='attr', full_name='ge.proto.OtherGroupDef.attr', index=0,
+      number=1, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[_OTHERGROUPDEF_ATTRENTRY, ],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1281,
+  serialized_end=1414,
+)
+
+
+_TENSORDESCATTRGROUPSDEF = _descriptor.Descriptor(
+  name='TensorDescAttrGroupsDef',
+  full_name='ge.proto.TensorDescAttrGroupsDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='origin_symbol_shape', full_name='ge.proto.TensorDescAttrGroupsDef.origin_symbol_shape', index=0,
+      number=1, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='symbolic_value', full_name='ge.proto.TensorDescAttrGroupsDef.symbolic_value', index=1,
+      number=2, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1416,
+  serialized_end=1494,
+)
+
+
+_INPUTSOURCEDEF = _descriptor.Descriptor(
+  name='InputSourceDef',
+  full_name='ge.proto.InputSourceDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='input_data_idx', full_name='ge.proto.InputSourceDef.input_data_idx', index=0,
+      number=1, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='dim_idx', full_name='ge.proto.InputSourceDef.dim_idx', index=1,
+      number=2, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1496,
+  serialized_end=1553,
+)
+
+
+_REPLACEMENTDEF = _descriptor.Descriptor(
+  name='ReplacementDef',
+  full_name='ge.proto.ReplacementDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='replace_expr', full_name='ge.proto.ReplacementDef.replace_expr', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='rank', full_name='ge.proto.ReplacementDef.rank', index=1,
+      number=2, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1555,
+  serialized_end=1607,
+)
+
+
+_SYMBOLCHECKINFODEF = _descriptor.Descriptor(
+  name='SymbolCheckInfoDef',
+  full_name='ge.proto.SymbolCheckInfoDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='expr', full_name='ge.proto.SymbolCheckInfoDef.expr', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='file', full_name='ge.proto.SymbolCheckInfoDef.file', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='line', full_name='ge.proto.SymbolCheckInfoDef.line', index=2,
+      number=3, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='dfx', full_name='ge.proto.SymbolCheckInfoDef.dfx', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1609,
+  serialized_end=1684,
+)
+
+
+_SHAPEENVSETTINGDEF = _descriptor.Descriptor(
+  name='ShapeEnvSettingDef',
+  full_name='ge.proto.ShapeEnvSettingDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='specialize_zero_one', full_name='ge.proto.ShapeEnvSettingDef.specialize_zero_one', index=0,
+      number=1, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='dynamic_mode', full_name='ge.proto.ShapeEnvSettingDef.dynamic_mode', index=1,
+      number=2, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1686,
+  serialized_end=1757,
+)
+
+
+_SYMBOLINFODEF = _descriptor.Descriptor(
+  name='SymbolInfoDef',
+  full_name='ge.proto.SymbolInfoDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='symbols', full_name='ge.proto.SymbolInfoDef.symbols', index=0,
+      number=1, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1759,
+  serialized_end=1791,
+)
+
+
+_SHAPEENVATTRGROUPSDEF_SYMBOLTOVALUEENTRY = _descriptor.Descriptor(
+  name='SymbolToValueEntry',
+  full_name='ge.proto.ShapeEnvAttrGroupsDef.SymbolToValueEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='ge.proto.ShapeEnvAttrGroupsDef.SymbolToValueEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='ge.proto.ShapeEnvAttrGroupsDef.SymbolToValueEntry.value', index=1,
+      number=2, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=b'8\001',
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2318,
+  serialized_end=2370,
+)
+
+_SHAPEENVATTRGROUPSDEF_VALUETOSYMBOLENTRY = _descriptor.Descriptor(
+  name='ValueToSymbolEntry',
+  full_name='ge.proto.ShapeEnvAttrGroupsDef.ValueToSymbolEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='ge.proto.ShapeEnvAttrGroupsDef.ValueToSymbolEntry.key', index=0,
+      number=1, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='ge.proto.ShapeEnvAttrGroupsDef.ValueToSymbolEntry.value', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=b'8\001',
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2372,
+  serialized_end=2449,
+)
+
+_SHAPEENVATTRGROUPSDEF_SYMBOLTOSOURCEENTRY = _descriptor.Descriptor(
+  name='SymbolToSourceEntry',
+  full_name='ge.proto.ShapeEnvAttrGroupsDef.SymbolToSourceEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='ge.proto.ShapeEnvAttrGroupsDef.SymbolToSourceEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='ge.proto.ShapeEnvAttrGroupsDef.SymbolToSourceEntry.value', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=b'8\001',
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2451,
+  serialized_end=2530,
+)
+
+_SHAPEENVATTRGROUPSDEF_REPLACEMENTSENTRY = _descriptor.Descriptor(
+  name='ReplacementsEntry',
+  full_name='ge.proto.ShapeEnvAttrGroupsDef.ReplacementsEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='ge.proto.ShapeEnvAttrGroupsDef.ReplacementsEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='ge.proto.ShapeEnvAttrGroupsDef.ReplacementsEntry.value', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=b'8\001',
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2532,
+  serialized_end=2609,
+)
+
+_SHAPEENVATTRGROUPSDEF = _descriptor.Descriptor(
+  name='ShapeEnvAttrGroupsDef',
+  full_name='ge.proto.ShapeEnvAttrGroupsDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='symbol_to_value', full_name='ge.proto.ShapeEnvAttrGroupsDef.symbol_to_value', index=0,
+      number=1, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='value_to_symbol', full_name='ge.proto.ShapeEnvAttrGroupsDef.value_to_symbol', index=1,
+      number=2, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='symbol_to_source', full_name='ge.proto.ShapeEnvAttrGroupsDef.symbol_to_source', index=2,
+      number=3, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='replacements', full_name='ge.proto.ShapeEnvAttrGroupsDef.replacements', index=3,
+      number=4, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='symbol_check_infos', full_name='ge.proto.ShapeEnvAttrGroupsDef.symbol_check_infos', index=4,
+      number=5, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='symbol_assert_infos', full_name='ge.proto.ShapeEnvAttrGroupsDef.symbol_assert_infos', index=5,
+      number=6, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='shape_setting', full_name='ge.proto.ShapeEnvAttrGroupsDef.shape_setting', index=6,
+      number=7, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='unique_sym_id', full_name='ge.proto.ShapeEnvAttrGroupsDef.unique_sym_id', index=7,
+      number=8, type=4, cpp_type=4, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[_SHAPEENVATTRGROUPSDEF_SYMBOLTOVALUEENTRY, _SHAPEENVATTRGROUPSDEF_VALUETOSYMBOLENTRY, _SHAPEENVATTRGROUPSDEF_SYMBOLTOSOURCEENTRY, _SHAPEENVATTRGROUPSDEF_REPLACEMENTSENTRY, ],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1794,
+  serialized_end=2609,
+)
+
+
+_SCHEDINFODEF = _descriptor.Descriptor(
+  name='SchedInfoDef',
+  full_name='ge.proto.SchedInfoDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='exec_order', full_name='ge.proto.SchedInfoDef.exec_order', index=0,
+      number=1, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='axis', full_name='ge.proto.SchedInfoDef.axis', index=1,
+      number=2, type=3, cpp_type=2, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='loop_axis', full_name='ge.proto.SchedInfoDef.loop_axis', index=2,
+      number=3, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='exec_condition', full_name='ge.proto.SchedInfoDef.exec_condition', index=3,
+      number=4, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2611,
+  serialized_end=2702,
+)
+
+
+_APIINFODEF = _descriptor.Descriptor(
+  name='ApiInfoDef',
+  full_name='ge.proto.ApiInfoDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='type', full_name='ge.proto.ApiInfoDef.type', index=0,
+      number=1, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='compute_type', full_name='ge.proto.ApiInfoDef.compute_type', index=1,
+      number=2, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='unit', full_name='ge.proto.ApiInfoDef.unit', index=2,
+      number=3, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2704,
+  serialized_end=2766,
+)
+
+
+_MEMATTRDEF = _descriptor.Descriptor(
+  name='MemAttrDef',
+  full_name='ge.proto.MemAttrDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='tensor_id', full_name='ge.proto.MemAttrDef.tensor_id', index=0,
+      number=1, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='alloc_type', full_name='ge.proto.MemAttrDef.alloc_type', index=1,
+      number=2, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='position', full_name='ge.proto.MemAttrDef.position', index=2,
+      number=3, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='hardware', full_name='ge.proto.MemAttrDef.hardware', index=3,
+      number=4, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='buf_ids', full_name='ge.proto.MemAttrDef.buf_ids', index=4,
+      number=5, type=3, cpp_type=2, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='name', full_name='ge.proto.MemAttrDef.name', index=5,
+      number=6, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='reuse_id', full_name='ge.proto.MemAttrDef.reuse_id', index=6,
+      number=7, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2769,
+  serialized_end=2905,
+)
+
+
+_MEMQUEUEATTRDEF = _descriptor.Descriptor(
+  name='MemQueueAttrDef',
+  full_name='ge.proto.MemQueueAttrDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='id', full_name='ge.proto.MemQueueAttrDef.id', index=0,
+      number=1, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='depth', full_name='ge.proto.MemQueueAttrDef.depth', index=1,
+      number=2, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='buf_num', full_name='ge.proto.MemQueueAttrDef.buf_num', index=2,
+      number=3, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='name', full_name='ge.proto.MemQueueAttrDef.name', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2907,
+  serialized_end=2982,
+)
+
+
+_MEMBUFATTRDEF = _descriptor.Descriptor(
+  name='MemBufAttrDef',
+  full_name='ge.proto.MemBufAttrDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='id', full_name='ge.proto.MemBufAttrDef.id', index=0,
+      number=1, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='name', full_name='ge.proto.MemBufAttrDef.name', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2984,
+  serialized_end=3025,
+)
+
+
+_MEMOPTATTRDEF = _descriptor.Descriptor(
+  name='MemOptAttrDef',
+  full_name='ge.proto.MemOptAttrDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='reuse_id', full_name='ge.proto.MemOptAttrDef.reuse_id', index=0,
+      number=1, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='ref_tensor', full_name='ge.proto.MemOptAttrDef.ref_tensor', index=1,
+      number=2, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='merge_scope', full_name='ge.proto.MemOptAttrDef.merge_scope', index=2,
+      number=3, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3027,
+  serialized_end=3101,
+)
+
+
+_AXISDEF = _descriptor.Descriptor(
+  name='AxisDef',
+  full_name='ge.proto.AxisDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='id', full_name='ge.proto.AxisDef.id', index=0,
+      number=1, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='name', full_name='ge.proto.AxisDef.name', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='axis_type', full_name='ge.proto.AxisDef.axis_type', index=2,
+      number=3, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='bind_block', full_name='ge.proto.AxisDef.bind_block', index=3,
+      number=4, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='size', full_name='ge.proto.AxisDef.size', index=4,
+      number=5, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='align', full_name='ge.proto.AxisDef.align', index=5,
+      number=6, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='from', full_name='ge.proto.AxisDef.from', index=6,
+      number=7, type=3, cpp_type=2, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='split_pair_other_id', full_name='ge.proto.AxisDef.split_pair_other_id', index=7,
+      number=8, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='allow_oversize_axis', full_name='ge.proto.AxisDef.allow_oversize_axis', index=8,
+      number=9, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='allow_unaligned_tail', full_name='ge.proto.AxisDef.allow_unaligned_tail', index=9,
+      number=10, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3104,
+  serialized_end=3309,
+)
+
+
+_ASCENDCIROPATTRGROUPSDEF = _descriptor.Descriptor(
+  name='AscendCIROpAttrGroupsDef',
+  full_name='ge.proto.AscendCIROpAttrGroupsDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='name', full_name='ge.proto.AscendCIROpAttrGroupsDef.name', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='type', full_name='ge.proto.AscendCIROpAttrGroupsDef.type', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3311,
+  serialized_end=3365,
+)
+
+
+_ASCTENSORATTRGROUPSDEF = _descriptor.Descriptor(
+  name='AscTensorAttrGroupsDef',
+  full_name='ge.proto.AscTensorAttrGroupsDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='dtype', full_name='ge.proto.AscTensorAttrGroupsDef.dtype', index=0,
+      number=1, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='axis_ids', full_name='ge.proto.AscTensorAttrGroupsDef.axis_ids', index=1,
+      number=2, type=3, cpp_type=2, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='repeats', full_name='ge.proto.AscTensorAttrGroupsDef.repeats', index=2,
+      number=3, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='strides', full_name='ge.proto.AscTensorAttrGroupsDef.strides', index=3,
+      number=4, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='vectorized_axis', full_name='ge.proto.AscTensorAttrGroupsDef.vectorized_axis', index=4,
+      number=5, type=3, cpp_type=2, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='vectorized_strides', full_name='ge.proto.AscTensorAttrGroupsDef.vectorized_strides', index=5,
+      number=6, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='mem', full_name='ge.proto.AscTensorAttrGroupsDef.mem', index=6,
+      number=7, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='que', full_name='ge.proto.AscTensorAttrGroupsDef.que', index=7,
+      number=8, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='buf', full_name='ge.proto.AscTensorAttrGroupsDef.buf', index=8,
+      number=9, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='opt', full_name='ge.proto.AscTensorAttrGroupsDef.opt', index=9,
+      number=10, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3368,
+  serialized_end=3663,
+)
+
+
+_ASCGRAPHATTRGROUPSDEF = _descriptor.Descriptor(
+  name='AscGraphAttrGroupsDef',
+  full_name='ge.proto.AscGraphAttrGroupsDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='tiling_key', full_name='ge.proto.AscGraphAttrGroupsDef.tiling_key', index=0,
+      number=1, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='axis', full_name='ge.proto.AscGraphAttrGroupsDef.axis', index=1,
+      number=2, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='type', full_name='ge.proto.AscGraphAttrGroupsDef.type', index=2,
+      number=3, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='size_var', full_name='ge.proto.AscGraphAttrGroupsDef.size_var', index=3,
+      number=4, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3665,
+  serialized_end=3773,
+)
+
+
+_ASCIRATTRDEF_ATTRENTRY = _descriptor.Descriptor(
+  name='AttrEntry',
+  full_name='ge.proto.AscIrAttrDef.AttrEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='ge.proto.AscIrAttrDef.AttrEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='ge.proto.AscIrAttrDef.AttrEntry.value', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=b'8\001',
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3839,
+  serialized_end=3901,
+)
+
+_ASCIRATTRDEF = _descriptor.Descriptor(
+  name='AscIrAttrDef',
+  full_name='ge.proto.AscIrAttrDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='attr', full_name='ge.proto.AscIrAttrDef.attr', index=0,
+      number=1, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[_ASCIRATTRDEF_ATTRENTRY, ],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3775,
+  serialized_end=3901,
+)
+
+
+_TMPBUFDESCDEF = _descriptor.Descriptor(
+  name='TmpBufDescDef',
+  full_name='ge.proto.TmpBufDescDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='size', full_name='ge.proto.TmpBufDescDef.size', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='life_time_axis_id', full_name='ge.proto.TmpBufDescDef.life_time_axis_id', index=1,
+      number=2, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3903,
+  serialized_end=3959,
+)
+
+
+_TMPBUFFERGROUPDEF = _descriptor.Descriptor(
+  name='TmpBufferGroupDef',
+  full_name='ge.proto.TmpBufferGroupDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='buf_desc', full_name='ge.proto.TmpBufferGroupDef.buf_desc', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='mem', full_name='ge.proto.TmpBufferGroupDef.mem', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3961,
+  serialized_end=4058,
+)
+
+
+_ASCNODEATTRGROUPSDEF = _descriptor.Descriptor(
+  name='AscNodeAttrGroupsDef',
+  full_name='ge.proto.AscNodeAttrGroupsDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='name', full_name='ge.proto.AscNodeAttrGroupsDef.name', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='type', full_name='ge.proto.AscNodeAttrGroupsDef.type', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='sched', full_name='ge.proto.AscNodeAttrGroupsDef.sched', index=2,
+      number=3, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='api', full_name='ge.proto.AscNodeAttrGroupsDef.api', index=3,
+      number=4, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='ir_attr_def', full_name='ge.proto.AscNodeAttrGroupsDef.ir_attr_def', index=4,
+      number=5, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='tmp_buffers', full_name='ge.proto.AscNodeAttrGroupsDef.tmp_buffers', index=5,
+      number=6, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=4061,
+  serialized_end=4280,
+)
+
+
+_ATTRGROUPDEF = _descriptor.Descriptor(
+  name='AttrGroupDef',
+  full_name='ge.proto.AttrGroupDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='op_attr_group', full_name='ge.proto.AttrGroupDef.op_attr_group', index=0,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='tensor_attr_group', full_name='ge.proto.AttrGroupDef.tensor_attr_group', index=1,
+      number=3, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='shape_env_attr_group', full_name='ge.proto.AttrGroupDef.shape_env_attr_group', index=2,
+      number=4, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='asc_graph_attr_group', full_name='ge.proto.AttrGroupDef.asc_graph_attr_group', index=3,
+      number=5, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='asc_node_attr_group', full_name='ge.proto.AttrGroupDef.asc_node_attr_group', index=4,
+      number=6, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='asc_tensor_attr_group', full_name='ge.proto.AttrGroupDef.asc_tensor_attr_group', index=5,
+      number=7, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+    _descriptor.OneofDescriptor(
+      name='attr_group', full_name='ge.proto.AttrGroupDef.attr_group',
+      index=0, containing_type=None,
+      create_key=_descriptor._internal_create_key,
+    fields=[]),
+  ],
+  serialized_start=4283,
+  serialized_end=4696,
+)
+
+
+_ATTRGROUPS = _descriptor.Descriptor(
+  name='AttrGroups',
+  full_name='ge.proto.AttrGroups',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='other_group_def', full_name='ge.proto.AttrGroups.other_group_def', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='attr_group_def', full_name='ge.proto.AttrGroups.attr_group_def', index=1,
+      number=2, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=4698,
+  serialized_end=4808,
+)
+
+
 _NAMEDATTRS_ATTRENTRY = _descriptor.Descriptor(
-    name='AttrEntry',
-    full_name='ge.proto.NamedAttrs.AttrEntry',
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    create_key=_descriptor._internal_create_key,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name='key', full_name='ge.proto.NamedAttrs.AttrEntry.key', index=0,
-            number=1, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=b"".decode('utf-8'),
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='value', full_name='ge.proto.NamedAttrs.AttrEntry.value', index=1,
-            number=2, type=11, cpp_type=10, label=1,
-            has_default_value=False, default_value=None,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-    ],
-    extensions=[
-    ],
-    nested_types=[],
-    enum_types=[
-    ],
-    serialized_options=b'8\001',
-    is_extendable=False,
-    syntax='proto3',
-    extension_ranges=[],
-    oneofs=[
-    ],
-    serialized_start=1242,
-    serialized_end=1304,
+  name='AttrEntry',
+  full_name='ge.proto.NamedAttrs.AttrEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='ge.proto.NamedAttrs.AttrEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='ge.proto.NamedAttrs.AttrEntry.value', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=b'8\001',
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3839,
+  serialized_end=3901,
 )
 
 _NAMEDATTRS = _descriptor.Descriptor(
-    name='NamedAttrs',
-    full_name='ge.proto.NamedAttrs',
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    create_key=_descriptor._internal_create_key,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name='name', full_name='ge.proto.NamedAttrs.name', index=0,
-            number=1, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=b"".decode('utf-8'),
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='attr', full_name='ge.proto.NamedAttrs.attr', index=1,
-            number=2, type=11, cpp_type=10, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-    ],
-    extensions=[
-    ],
-    nested_types=[_NAMEDATTRS_ATTRENTRY, ],
-    enum_types=[
-    ],
-    serialized_options=None,
-    is_extendable=False,
-    syntax='proto3',
-    extension_ranges=[],
-    oneofs=[
-    ],
-    serialized_start=1168,
-    serialized_end=1304,
+  name='NamedAttrs',
+  full_name='ge.proto.NamedAttrs',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='name', full_name='ge.proto.NamedAttrs.name', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='attr', full_name='ge.proto.NamedAttrs.attr', index=1,
+      number=2, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[_NAMEDATTRS_ATTRENTRY, ],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=4811,
+  serialized_end=4947,
 )
+
 
 _SHAPEDEF = _descriptor.Descriptor(
-    name='ShapeDef',
-    full_name='ge.proto.ShapeDef',
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    create_key=_descriptor._internal_create_key,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name='dim', full_name='ge.proto.ShapeDef.dim', index=0,
-            number=1, type=3, cpp_type=2, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-    ],
-    extensions=[
-    ],
-    nested_types=[],
-    enum_types=[
-    ],
-    serialized_options=None,
-    is_extendable=False,
-    syntax='proto3',
-    extension_ranges=[],
-    oneofs=[
-    ],
-    serialized_start=1306,
-    serialized_end=1329,
+  name='ShapeDef',
+  full_name='ge.proto.ShapeDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='dim', full_name='ge.proto.ShapeDef.dim', index=0,
+      number=1, type=3, cpp_type=2, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=4949,
+  serialized_end=4972,
 )
 
+
 _TENSORDESCRIPTOR_ATTRENTRY = _descriptor.Descriptor(
-    name='AttrEntry',
-    full_name='ge.proto.TensorDescriptor.AttrEntry',
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    create_key=_descriptor._internal_create_key,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name='key', full_name='ge.proto.TensorDescriptor.AttrEntry.key', index=0,
-            number=1, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=b"".decode('utf-8'),
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='value', full_name='ge.proto.TensorDescriptor.AttrEntry.value', index=1,
-            number=2, type=11, cpp_type=10, label=1,
-            has_default_value=False, default_value=None,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-    ],
-    extensions=[
-    ],
-    nested_types=[],
-    enum_types=[
-    ],
-    serialized_options=b'8\001',
-    is_extendable=False,
-    syntax='proto3',
-    extension_ranges=[],
-    oneofs=[
-    ],
-    serialized_start=1242,
-    serialized_end=1304,
+  name='AttrEntry',
+  full_name='ge.proto.TensorDescriptor.AttrEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='ge.proto.TensorDescriptor.AttrEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='ge.proto.TensorDescriptor.AttrEntry.value', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=b'8\001',
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3839,
+  serialized_end=3901,
 )
 
 _TENSORDESCRIPTOR = _descriptor.Descriptor(
-    name='TensorDescriptor',
-    full_name='ge.proto.TensorDescriptor',
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    create_key=_descriptor._internal_create_key,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name='name', full_name='ge.proto.TensorDescriptor.name', index=0,
-            number=1, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=b"".decode('utf-8'),
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='dtype', full_name='ge.proto.TensorDescriptor.dtype', index=1,
-            number=2, type=14, cpp_type=8, label=1,
-            has_default_value=False, default_value=0,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='shape', full_name='ge.proto.TensorDescriptor.shape', index=2,
-            number=3, type=11, cpp_type=10, label=1,
-            has_default_value=False, default_value=None,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='layout', full_name='ge.proto.TensorDescriptor.layout', index=3,
-            number=4, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=b"".decode('utf-8'),
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='has_out_attr', full_name='ge.proto.TensorDescriptor.has_out_attr', index=4,
-            number=9, type=8, cpp_type=7, label=1,
-            has_default_value=False, default_value=False,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='size', full_name='ge.proto.TensorDescriptor.size', index=5,
-            number=10, type=3, cpp_type=2, label=1,
-            has_default_value=False, default_value=0,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='weight_size', full_name='ge.proto.TensorDescriptor.weight_size', index=6,
-            number=11, type=3, cpp_type=2, label=1,
-            has_default_value=False, default_value=0,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='reuse_input', full_name='ge.proto.TensorDescriptor.reuse_input', index=7,
-            number=12, type=8, cpp_type=7, label=1,
-            has_default_value=False, default_value=False,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='output_tensor', full_name='ge.proto.TensorDescriptor.output_tensor', index=8,
-            number=13, type=8, cpp_type=7, label=1,
-            has_default_value=False, default_value=False,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='device_type', full_name='ge.proto.TensorDescriptor.device_type', index=9,
-            number=14, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=b"".decode('utf-8'),
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='input_tensor', full_name='ge.proto.TensorDescriptor.input_tensor', index=10,
-            number=15, type=8, cpp_type=7, label=1,
-            has_default_value=False, default_value=False,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='real_dim_cnt', full_name='ge.proto.TensorDescriptor.real_dim_cnt', index=11,
-            number=16, type=3, cpp_type=2, label=1,
-            has_default_value=False, default_value=0,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='reuse_input_index', full_name='ge.proto.TensorDescriptor.reuse_input_index', index=12,
-            number=17, type=3, cpp_type=2, label=1,
-            has_default_value=False, default_value=0,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='data_offset', full_name='ge.proto.TensorDescriptor.data_offset', index=13,
-            number=18, type=3, cpp_type=2, label=1,
-            has_default_value=False, default_value=0,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='cmps_size', full_name='ge.proto.TensorDescriptor.cmps_size', index=14,
-            number=19, type=3, cpp_type=2, label=1,
-            has_default_value=False, default_value=0,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='cmps_tab', full_name='ge.proto.TensorDescriptor.cmps_tab', index=15,
-            number=20, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=b"".decode('utf-8'),
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='cmps_tab_offset', full_name='ge.proto.TensorDescriptor.cmps_tab_offset', index=16,
-            number=21, type=3, cpp_type=2, label=1,
-            has_default_value=False, default_value=0,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='attr', full_name='ge.proto.TensorDescriptor.attr', index=17,
-            number=5, type=11, cpp_type=10, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-    ],
-    extensions=[
-    ],
-    nested_types=[_TENSORDESCRIPTOR_ATTRENTRY, ],
-    enum_types=[
-    ],
-    serialized_options=None,
-    is_extendable=False,
-    syntax='proto3',
-    extension_ranges=[],
-    oneofs=[
-    ],
-    serialized_start=1332,
-    serialized_end=1842,
+  name='TensorDescriptor',
+  full_name='ge.proto.TensorDescriptor',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='name', full_name='ge.proto.TensorDescriptor.name', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='dtype', full_name='ge.proto.TensorDescriptor.dtype', index=1,
+      number=2, type=14, cpp_type=8, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='shape', full_name='ge.proto.TensorDescriptor.shape', index=2,
+      number=3, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='layout', full_name='ge.proto.TensorDescriptor.layout', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='has_out_attr', full_name='ge.proto.TensorDescriptor.has_out_attr', index=4,
+      number=9, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='size', full_name='ge.proto.TensorDescriptor.size', index=5,
+      number=10, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='weight_size', full_name='ge.proto.TensorDescriptor.weight_size', index=6,
+      number=11, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='reuse_input', full_name='ge.proto.TensorDescriptor.reuse_input', index=7,
+      number=12, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='output_tensor', full_name='ge.proto.TensorDescriptor.output_tensor', index=8,
+      number=13, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='device_type', full_name='ge.proto.TensorDescriptor.device_type', index=9,
+      number=14, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='input_tensor', full_name='ge.proto.TensorDescriptor.input_tensor', index=10,
+      number=15, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='real_dim_cnt', full_name='ge.proto.TensorDescriptor.real_dim_cnt', index=11,
+      number=16, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='reuse_input_index', full_name='ge.proto.TensorDescriptor.reuse_input_index', index=12,
+      number=17, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='data_offset', full_name='ge.proto.TensorDescriptor.data_offset', index=13,
+      number=18, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='cmps_size', full_name='ge.proto.TensorDescriptor.cmps_size', index=14,
+      number=19, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='cmps_tab', full_name='ge.proto.TensorDescriptor.cmps_tab', index=15,
+      number=20, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='cmps_tab_offset', full_name='ge.proto.TensorDescriptor.cmps_tab_offset', index=16,
+      number=21, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='attr', full_name='ge.proto.TensorDescriptor.attr', index=17,
+      number=5, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='attr_groups', full_name='ge.proto.TensorDescriptor.attr_groups', index=18,
+      number=6, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[_TENSORDESCRIPTOR_ATTRENTRY, ],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=4975,
+  serialized_end=5528,
 )
+
 
 _TENSORDEF = _descriptor.Descriptor(
-    name='TensorDef',
-    full_name='ge.proto.TensorDef',
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    create_key=_descriptor._internal_create_key,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name='desc', full_name='ge.proto.TensorDef.desc', index=0,
-            number=1, type=11, cpp_type=10, label=1,
-            has_default_value=False, default_value=None,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='data', full_name='ge.proto.TensorDef.data', index=1,
-            number=2, type=12, cpp_type=9, label=1,
-            has_default_value=False, default_value=b"",
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-    ],
-    extensions=[
-    ],
-    nested_types=[],
-    enum_types=[
-    ],
-    serialized_options=None,
-    is_extendable=False,
-    syntax='proto3',
-    extension_ranges=[],
-    oneofs=[
-    ],
-    serialized_start=1844,
-    serialized_end=1911,
+  name='TensorDef',
+  full_name='ge.proto.TensorDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='desc', full_name='ge.proto.TensorDef.desc', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='data', full_name='ge.proto.TensorDef.data', index=1,
+      number=2, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"",
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=5530,
+  serialized_end=5597,
 )
 
+
 _OPDEF_ATTRENTRY = _descriptor.Descriptor(
-    name='AttrEntry',
-    full_name='ge.proto.OpDef.AttrEntry',
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    create_key=_descriptor._internal_create_key,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name='key', full_name='ge.proto.OpDef.AttrEntry.key', index=0,
-            number=1, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=b"".decode('utf-8'),
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='value', full_name='ge.proto.OpDef.AttrEntry.value', index=1,
-            number=2, type=11, cpp_type=10, label=1,
-            has_default_value=False, default_value=None,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-    ],
-    extensions=[
-    ],
-    nested_types=[],
-    enum_types=[
-    ],
-    serialized_options=b'8\001',
-    is_extendable=False,
-    syntax='proto3',
-    extension_ranges=[],
-    oneofs=[
-    ],
-    serialized_start=1242,
-    serialized_end=1304,
+  name='AttrEntry',
+  full_name='ge.proto.OpDef.AttrEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='ge.proto.OpDef.AttrEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='ge.proto.OpDef.AttrEntry.value', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=b'8\001',
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3839,
+  serialized_end=3901,
 )
 
 _OPDEF = _descriptor.Descriptor(
-    name='OpDef',
-    full_name='ge.proto.OpDef',
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    create_key=_descriptor._internal_create_key,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name='name', full_name='ge.proto.OpDef.name', index=0,
-            number=1, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=b"".decode('utf-8'),
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='type', full_name='ge.proto.OpDef.type', index=1,
-            number=2, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=b"".decode('utf-8'),
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='input', full_name='ge.proto.OpDef.input', index=2,
-            number=5, type=9, cpp_type=9, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='attr', full_name='ge.proto.OpDef.attr', index=3,
-            number=10, type=11, cpp_type=10, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='has_out_attr', full_name='ge.proto.OpDef.has_out_attr', index=4,
-            number=20, type=8, cpp_type=7, label=1,
-            has_default_value=False, default_value=False,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='id', full_name='ge.proto.OpDef.id', index=5,
-            number=21, type=3, cpp_type=2, label=1,
-            has_default_value=False, default_value=0,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='stream_id', full_name='ge.proto.OpDef.stream_id', index=6,
-            number=22, type=3, cpp_type=2, label=1,
-            has_default_value=False, default_value=0,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='input_name', full_name='ge.proto.OpDef.input_name', index=7,
-            number=23, type=9, cpp_type=9, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='src_name', full_name='ge.proto.OpDef.src_name', index=8,
-            number=24, type=9, cpp_type=9, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='src_index', full_name='ge.proto.OpDef.src_index', index=9,
-            number=25, type=3, cpp_type=2, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='dst_name', full_name='ge.proto.OpDef.dst_name', index=10,
-            number=26, type=9, cpp_type=9, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='dst_index', full_name='ge.proto.OpDef.dst_index', index=11,
-            number=27, type=3, cpp_type=2, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='input_i', full_name='ge.proto.OpDef.input_i', index=12,
-            number=28, type=3, cpp_type=2, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='output_i', full_name='ge.proto.OpDef.output_i', index=13,
-            number=29, type=3, cpp_type=2, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='workspace', full_name='ge.proto.OpDef.workspace', index=14,
-            number=30, type=3, cpp_type=2, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='workspace_bytes', full_name='ge.proto.OpDef.workspace_bytes', index=15,
-            number=31, type=3, cpp_type=2, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='is_input_const', full_name='ge.proto.OpDef.is_input_const', index=16,
-            number=32, type=8, cpp_type=7, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='input_desc', full_name='ge.proto.OpDef.input_desc', index=17,
-            number=33, type=11, cpp_type=10, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='output_desc', full_name='ge.proto.OpDef.output_desc', index=18,
-            number=34, type=11, cpp_type=10, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='subgraph_name', full_name='ge.proto.OpDef.subgraph_name', index=19,
-            number=35, type=9, cpp_type=9, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-    ],
-    extensions=[
-    ],
-    nested_types=[_OPDEF_ATTRENTRY, ],
-    enum_types=[
-    ],
-    serialized_options=None,
-    is_extendable=False,
-    syntax='proto3',
-    extension_ranges=[],
-    oneofs=[
-    ],
-    serialized_start=1914,
-    serialized_end=2439,
+  name='OpDef',
+  full_name='ge.proto.OpDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='name', full_name='ge.proto.OpDef.name', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='type', full_name='ge.proto.OpDef.type', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='input', full_name='ge.proto.OpDef.input', index=2,
+      number=5, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='attr', full_name='ge.proto.OpDef.attr', index=3,
+      number=10, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='attr_groups', full_name='ge.proto.OpDef.attr_groups', index=4,
+      number=11, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='has_out_attr', full_name='ge.proto.OpDef.has_out_attr', index=5,
+      number=20, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='id', full_name='ge.proto.OpDef.id', index=6,
+      number=21, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='stream_id', full_name='ge.proto.OpDef.stream_id', index=7,
+      number=22, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='input_name', full_name='ge.proto.OpDef.input_name', index=8,
+      number=23, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='src_name', full_name='ge.proto.OpDef.src_name', index=9,
+      number=24, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='src_index', full_name='ge.proto.OpDef.src_index', index=10,
+      number=25, type=3, cpp_type=2, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='dst_name', full_name='ge.proto.OpDef.dst_name', index=11,
+      number=26, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='dst_index', full_name='ge.proto.OpDef.dst_index', index=12,
+      number=27, type=3, cpp_type=2, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='input_i', full_name='ge.proto.OpDef.input_i', index=13,
+      number=28, type=3, cpp_type=2, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='output_i', full_name='ge.proto.OpDef.output_i', index=14,
+      number=29, type=3, cpp_type=2, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='workspace', full_name='ge.proto.OpDef.workspace', index=15,
+      number=30, type=3, cpp_type=2, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='workspace_bytes', full_name='ge.proto.OpDef.workspace_bytes', index=16,
+      number=31, type=3, cpp_type=2, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='is_input_const', full_name='ge.proto.OpDef.is_input_const', index=17,
+      number=32, type=8, cpp_type=7, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='input_desc', full_name='ge.proto.OpDef.input_desc', index=18,
+      number=33, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='output_desc', full_name='ge.proto.OpDef.output_desc', index=19,
+      number=34, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='subgraph_name', full_name='ge.proto.OpDef.subgraph_name', index=20,
+      number=35, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[_OPDEF_ATTRENTRY, ],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=5600,
+  serialized_end=6168,
 )
 
+
 _GRAPHDEF_ATTRENTRY = _descriptor.Descriptor(
-    name='AttrEntry',
-    full_name='ge.proto.GraphDef.AttrEntry',
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    create_key=_descriptor._internal_create_key,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name='key', full_name='ge.proto.GraphDef.AttrEntry.key', index=0,
-            number=1, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=b"".decode('utf-8'),
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='value', full_name='ge.proto.GraphDef.AttrEntry.value', index=1,
-            number=2, type=11, cpp_type=10, label=1,
-            has_default_value=False, default_value=None,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-    ],
-    extensions=[
-    ],
-    nested_types=[],
-    enum_types=[
-    ],
-    serialized_options=b'8\001',
-    is_extendable=False,
-    syntax='proto3',
-    extension_ranges=[],
-    oneofs=[
-    ],
-    serialized_start=1242,
-    serialized_end=1304,
+  name='AttrEntry',
+  full_name='ge.proto.GraphDef.AttrEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='ge.proto.GraphDef.AttrEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='ge.proto.GraphDef.AttrEntry.value', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=b'8\001',
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3839,
+  serialized_end=3901,
 )
 
 _GRAPHDEF = _descriptor.Descriptor(
-    name='GraphDef',
-    full_name='ge.proto.GraphDef',
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    create_key=_descriptor._internal_create_key,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name='name', full_name='ge.proto.GraphDef.name', index=0,
-            number=1, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=b"".decode('utf-8'),
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='input', full_name='ge.proto.GraphDef.input', index=1,
-            number=4, type=9, cpp_type=9, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='output', full_name='ge.proto.GraphDef.output', index=2,
-            number=5, type=9, cpp_type=9, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='op', full_name='ge.proto.GraphDef.op', index=3,
-            number=6, type=11, cpp_type=10, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='attr', full_name='ge.proto.GraphDef.attr', index=4,
-            number=11, type=11, cpp_type=10, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-    ],
-    extensions=[
-    ],
-    nested_types=[_GRAPHDEF_ATTRENTRY, ],
-    enum_types=[
-    ],
-    serialized_options=None,
-    is_extendable=False,
-    syntax='proto3',
-    extension_ranges=[],
-    oneofs=[
-    ],
-    serialized_start=2442,
-    serialized_end=2634,
+  name='GraphDef',
+  full_name='ge.proto.GraphDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='name', full_name='ge.proto.GraphDef.name', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='input', full_name='ge.proto.GraphDef.input', index=1,
+      number=4, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='output', full_name='ge.proto.GraphDef.output', index=2,
+      number=5, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='op', full_name='ge.proto.GraphDef.op', index=3,
+      number=6, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='attr', full_name='ge.proto.GraphDef.attr', index=4,
+      number=11, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='attr_groups', full_name='ge.proto.GraphDef.attr_groups', index=5,
+      number=12, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[_GRAPHDEF_ATTRENTRY, ],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=6171,
+  serialized_end=6406,
 )
 
+
 _MODELDEF_ATTRENTRY = _descriptor.Descriptor(
-    name='AttrEntry',
-    full_name='ge.proto.ModelDef.AttrEntry',
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    create_key=_descriptor._internal_create_key,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name='key', full_name='ge.proto.ModelDef.AttrEntry.key', index=0,
-            number=1, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=b"".decode('utf-8'),
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='value', full_name='ge.proto.ModelDef.AttrEntry.value', index=1,
-            number=2, type=11, cpp_type=10, label=1,
-            has_default_value=False, default_value=None,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-    ],
-    extensions=[
-    ],
-    nested_types=[],
-    enum_types=[
-    ],
-    serialized_options=b'8\001',
-    is_extendable=False,
-    syntax='proto3',
-    extension_ranges=[],
-    oneofs=[
-    ],
-    serialized_start=1242,
-    serialized_end=1304,
+  name='AttrEntry',
+  full_name='ge.proto.ModelDef.AttrEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='ge.proto.ModelDef.AttrEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='ge.proto.ModelDef.AttrEntry.value', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=b'8\001',
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3839,
+  serialized_end=3901,
 )
 
 _MODELDEF = _descriptor.Descriptor(
-    name='ModelDef',
-    full_name='ge.proto.ModelDef',
-    filename=None,
-    file=DESCRIPTOR,
-    containing_type=None,
-    create_key=_descriptor._internal_create_key,
-    fields=[
-        _descriptor.FieldDescriptor(
-            name='name', full_name='ge.proto.ModelDef.name', index=0,
-            number=1, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=b"".decode('utf-8'),
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='version', full_name='ge.proto.ModelDef.version', index=1,
-            number=2, type=13, cpp_type=3, label=1,
-            has_default_value=False, default_value=0,
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='custom_version', full_name='ge.proto.ModelDef.custom_version', index=2,
-            number=3, type=9, cpp_type=9, label=1,
-            has_default_value=False, default_value=b"".decode('utf-8'),
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='graph', full_name='ge.proto.ModelDef.graph', index=3,
-            number=7, type=11, cpp_type=10, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-        _descriptor.FieldDescriptor(
-            name='attr', full_name='ge.proto.ModelDef.attr', index=4,
-            number=11, type=11, cpp_type=10, label=3,
-            has_default_value=False, default_value=[],
-            message_type=None, enum_type=None, containing_type=None,
-            is_extension=False, extension_scope=None,
-            serialized_options=None, file=DESCRIPTOR, create_key=_descriptor._internal_create_key),
-    ],
-    extensions=[
-    ],
-    nested_types=[_MODELDEF_ATTRENTRY, ],
-    enum_types=[
-    ],
-    serialized_options=None,
-    is_extendable=False,
-    syntax='proto3',
-    extension_ranges=[],
-    oneofs=[
-    ],
-    serialized_start=2637,
-    serialized_end=2845,
+  name='ModelDef',
+  full_name='ge.proto.ModelDef',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='name', full_name='ge.proto.ModelDef.name', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='version', full_name='ge.proto.ModelDef.version', index=1,
+      number=2, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='custom_version', full_name='ge.proto.ModelDef.custom_version', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='graph', full_name='ge.proto.ModelDef.graph', index=3,
+      number=7, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='attr', full_name='ge.proto.ModelDef.attr', index=4,
+      number=11, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='attr_groups', full_name='ge.proto.ModelDef.attr_groups', index=5,
+      number=12, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[_MODELDEF_ATTRENTRY, ],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=6409,
+  serialized_end=6660,
 )
 
 _ATTRDEF_LISTVALUE.fields_by_name['td'].message_type = _TENSORDESCRIPTOR
@@ -1402,44 +3024,119 @@ _ATTRDEF.fields_by_name['g'].message_type = _GRAPHDEF
 _ATTRDEF.fields_by_name['list_list_int'].message_type = _ATTRDEF_LISTLISTINT
 _ATTRDEF.fields_by_name['list_list_float'].message_type = _ATTRDEF_LISTLISTFLOAT
 _ATTRDEF.oneofs_by_name['value'].fields.append(
-    _ATTRDEF.fields_by_name['s'])
+  _ATTRDEF.fields_by_name['s'])
 _ATTRDEF.fields_by_name['s'].containing_oneof = _ATTRDEF.oneofs_by_name['value']
 _ATTRDEF.oneofs_by_name['value'].fields.append(
-    _ATTRDEF.fields_by_name['i'])
+  _ATTRDEF.fields_by_name['i'])
 _ATTRDEF.fields_by_name['i'].containing_oneof = _ATTRDEF.oneofs_by_name['value']
 _ATTRDEF.oneofs_by_name['value'].fields.append(
-    _ATTRDEF.fields_by_name['f'])
+  _ATTRDEF.fields_by_name['f'])
 _ATTRDEF.fields_by_name['f'].containing_oneof = _ATTRDEF.oneofs_by_name['value']
 _ATTRDEF.oneofs_by_name['value'].fields.append(
-    _ATTRDEF.fields_by_name['b'])
+  _ATTRDEF.fields_by_name['b'])
 _ATTRDEF.fields_by_name['b'].containing_oneof = _ATTRDEF.oneofs_by_name['value']
 _ATTRDEF.oneofs_by_name['value'].fields.append(
-    _ATTRDEF.fields_by_name['bt'])
+  _ATTRDEF.fields_by_name['bt'])
 _ATTRDEF.fields_by_name['bt'].containing_oneof = _ATTRDEF.oneofs_by_name['value']
 _ATTRDEF.oneofs_by_name['value'].fields.append(
-    _ATTRDEF.fields_by_name['list'])
+  _ATTRDEF.fields_by_name['list'])
 _ATTRDEF.fields_by_name['list'].containing_oneof = _ATTRDEF.oneofs_by_name['value']
 _ATTRDEF.oneofs_by_name['value'].fields.append(
-    _ATTRDEF.fields_by_name['func'])
+  _ATTRDEF.fields_by_name['func'])
 _ATTRDEF.fields_by_name['func'].containing_oneof = _ATTRDEF.oneofs_by_name['value']
 _ATTRDEF.oneofs_by_name['value'].fields.append(
-    _ATTRDEF.fields_by_name['td'])
+  _ATTRDEF.fields_by_name['td'])
 _ATTRDEF.fields_by_name['td'].containing_oneof = _ATTRDEF.oneofs_by_name['value']
 _ATTRDEF.oneofs_by_name['value'].fields.append(
-    _ATTRDEF.fields_by_name['t'])
+  _ATTRDEF.fields_by_name['t'])
 _ATTRDEF.fields_by_name['t'].containing_oneof = _ATTRDEF.oneofs_by_name['value']
 _ATTRDEF.oneofs_by_name['value'].fields.append(
-    _ATTRDEF.fields_by_name['g'])
+  _ATTRDEF.fields_by_name['g'])
 _ATTRDEF.fields_by_name['g'].containing_oneof = _ATTRDEF.oneofs_by_name['value']
 _ATTRDEF.oneofs_by_name['value'].fields.append(
-    _ATTRDEF.fields_by_name['list_list_int'])
+  _ATTRDEF.fields_by_name['list_list_int'])
 _ATTRDEF.fields_by_name['list_list_int'].containing_oneof = _ATTRDEF.oneofs_by_name['value']
 _ATTRDEF.oneofs_by_name['value'].fields.append(
-    _ATTRDEF.fields_by_name['dt'])
+  _ATTRDEF.fields_by_name['dt'])
 _ATTRDEF.fields_by_name['dt'].containing_oneof = _ATTRDEF.oneofs_by_name['value']
 _ATTRDEF.oneofs_by_name['value'].fields.append(
-    _ATTRDEF.fields_by_name['list_list_float'])
+  _ATTRDEF.fields_by_name['list_list_float'])
 _ATTRDEF.fields_by_name['list_list_float'].containing_oneof = _ATTRDEF.oneofs_by_name['value']
+_ATTRDEF.oneofs_by_name['value'].fields.append(
+  _ATTRDEF.fields_by_name['expression'])
+_ATTRDEF.fields_by_name['expression'].containing_oneof = _ATTRDEF.oneofs_by_name['value']
+_ATTRIBUTEDEF.oneofs_by_name['value'].fields.append(
+  _ATTRIBUTEDEF.fields_by_name['s'])
+_ATTRIBUTEDEF.fields_by_name['s'].containing_oneof = _ATTRIBUTEDEF.oneofs_by_name['value']
+_ATTRIBUTEDEF.oneofs_by_name['value'].fields.append(
+  _ATTRIBUTEDEF.fields_by_name['i'])
+_ATTRIBUTEDEF.fields_by_name['i'].containing_oneof = _ATTRIBUTEDEF.oneofs_by_name['value']
+_ATTRIBUTEDEF.oneofs_by_name['value'].fields.append(
+  _ATTRIBUTEDEF.fields_by_name['f'])
+_ATTRIBUTEDEF.fields_by_name['f'].containing_oneof = _ATTRIBUTEDEF.oneofs_by_name['value']
+_ATTRIBUTEDEF.oneofs_by_name['value'].fields.append(
+  _ATTRIBUTEDEF.fields_by_name['b'])
+_ATTRIBUTEDEF.fields_by_name['b'].containing_oneof = _ATTRIBUTEDEF.oneofs_by_name['value']
+_ATTRIBUTEDEF.oneofs_by_name['value'].fields.append(
+  _ATTRIBUTEDEF.fields_by_name['bt'])
+_ATTRIBUTEDEF.fields_by_name['bt'].containing_oneof = _ATTRIBUTEDEF.oneofs_by_name['value']
+_OTHERGROUPDEF_ATTRENTRY.fields_by_name['value'].message_type = _ATTRIBUTEDEF
+_OTHERGROUPDEF_ATTRENTRY.containing_type = _OTHERGROUPDEF
+_OTHERGROUPDEF.fields_by_name['attr'].message_type = _OTHERGROUPDEF_ATTRENTRY
+_SHAPEENVATTRGROUPSDEF_SYMBOLTOVALUEENTRY.containing_type = _SHAPEENVATTRGROUPSDEF
+_SHAPEENVATTRGROUPSDEF_VALUETOSYMBOLENTRY.fields_by_name['value'].message_type = _SYMBOLINFODEF
+_SHAPEENVATTRGROUPSDEF_VALUETOSYMBOLENTRY.containing_type = _SHAPEENVATTRGROUPSDEF
+_SHAPEENVATTRGROUPSDEF_SYMBOLTOSOURCEENTRY.fields_by_name['value'].message_type = _INPUTSOURCEDEF
+_SHAPEENVATTRGROUPSDEF_SYMBOLTOSOURCEENTRY.containing_type = _SHAPEENVATTRGROUPSDEF
+_SHAPEENVATTRGROUPSDEF_REPLACEMENTSENTRY.fields_by_name['value'].message_type = _REPLACEMENTDEF
+_SHAPEENVATTRGROUPSDEF_REPLACEMENTSENTRY.containing_type = _SHAPEENVATTRGROUPSDEF
+_SHAPEENVATTRGROUPSDEF.fields_by_name['symbol_to_value'].message_type = _SHAPEENVATTRGROUPSDEF_SYMBOLTOVALUEENTRY
+_SHAPEENVATTRGROUPSDEF.fields_by_name['value_to_symbol'].message_type = _SHAPEENVATTRGROUPSDEF_VALUETOSYMBOLENTRY
+_SHAPEENVATTRGROUPSDEF.fields_by_name['symbol_to_source'].message_type = _SHAPEENVATTRGROUPSDEF_SYMBOLTOSOURCEENTRY
+_SHAPEENVATTRGROUPSDEF.fields_by_name['replacements'].message_type = _SHAPEENVATTRGROUPSDEF_REPLACEMENTSENTRY
+_SHAPEENVATTRGROUPSDEF.fields_by_name['symbol_check_infos'].message_type = _SYMBOLCHECKINFODEF
+_SHAPEENVATTRGROUPSDEF.fields_by_name['symbol_assert_infos'].message_type = _SYMBOLCHECKINFODEF
+_SHAPEENVATTRGROUPSDEF.fields_by_name['shape_setting'].message_type = _SHAPEENVSETTINGDEF
+_ASCTENSORATTRGROUPSDEF.fields_by_name['mem'].message_type = _MEMATTRDEF
+_ASCTENSORATTRGROUPSDEF.fields_by_name['que'].message_type = _MEMQUEUEATTRDEF
+_ASCTENSORATTRGROUPSDEF.fields_by_name['buf'].message_type = _MEMBUFATTRDEF
+_ASCTENSORATTRGROUPSDEF.fields_by_name['opt'].message_type = _MEMOPTATTRDEF
+_ASCGRAPHATTRGROUPSDEF.fields_by_name['axis'].message_type = _AXISDEF
+_ASCIRATTRDEF_ATTRENTRY.fields_by_name['value'].message_type = _ATTRDEF
+_ASCIRATTRDEF_ATTRENTRY.containing_type = _ASCIRATTRDEF
+_ASCIRATTRDEF.fields_by_name['attr'].message_type = _ASCIRATTRDEF_ATTRENTRY
+_TMPBUFFERGROUPDEF.fields_by_name['buf_desc'].message_type = _TMPBUFDESCDEF
+_TMPBUFFERGROUPDEF.fields_by_name['mem'].message_type = _MEMATTRDEF
+_ASCNODEATTRGROUPSDEF.fields_by_name['sched'].message_type = _SCHEDINFODEF
+_ASCNODEATTRGROUPSDEF.fields_by_name['api'].message_type = _APIINFODEF
+_ASCNODEATTRGROUPSDEF.fields_by_name['ir_attr_def'].message_type = _ASCIRATTRDEF
+_ASCNODEATTRGROUPSDEF.fields_by_name['tmp_buffers'].message_type = _TMPBUFFERGROUPDEF
+_ATTRGROUPDEF.fields_by_name['op_attr_group'].message_type = _ASCENDCIROPATTRGROUPSDEF
+_ATTRGROUPDEF.fields_by_name['tensor_attr_group'].message_type = _TENSORDESCATTRGROUPSDEF
+_ATTRGROUPDEF.fields_by_name['shape_env_attr_group'].message_type = _SHAPEENVATTRGROUPSDEF
+_ATTRGROUPDEF.fields_by_name['asc_graph_attr_group'].message_type = _ASCGRAPHATTRGROUPSDEF
+_ATTRGROUPDEF.fields_by_name['asc_node_attr_group'].message_type = _ASCNODEATTRGROUPSDEF
+_ATTRGROUPDEF.fields_by_name['asc_tensor_attr_group'].message_type = _ASCTENSORATTRGROUPSDEF
+_ATTRGROUPDEF.oneofs_by_name['attr_group'].fields.append(
+  _ATTRGROUPDEF.fields_by_name['op_attr_group'])
+_ATTRGROUPDEF.fields_by_name['op_attr_group'].containing_oneof = _ATTRGROUPDEF.oneofs_by_name['attr_group']
+_ATTRGROUPDEF.oneofs_by_name['attr_group'].fields.append(
+  _ATTRGROUPDEF.fields_by_name['tensor_attr_group'])
+_ATTRGROUPDEF.fields_by_name['tensor_attr_group'].containing_oneof = _ATTRGROUPDEF.oneofs_by_name['attr_group']
+_ATTRGROUPDEF.oneofs_by_name['attr_group'].fields.append(
+  _ATTRGROUPDEF.fields_by_name['shape_env_attr_group'])
+_ATTRGROUPDEF.fields_by_name['shape_env_attr_group'].containing_oneof = _ATTRGROUPDEF.oneofs_by_name['attr_group']
+_ATTRGROUPDEF.oneofs_by_name['attr_group'].fields.append(
+  _ATTRGROUPDEF.fields_by_name['asc_graph_attr_group'])
+_ATTRGROUPDEF.fields_by_name['asc_graph_attr_group'].containing_oneof = _ATTRGROUPDEF.oneofs_by_name['attr_group']
+_ATTRGROUPDEF.oneofs_by_name['attr_group'].fields.append(
+  _ATTRGROUPDEF.fields_by_name['asc_node_attr_group'])
+_ATTRGROUPDEF.fields_by_name['asc_node_attr_group'].containing_oneof = _ATTRGROUPDEF.oneofs_by_name['attr_group']
+_ATTRGROUPDEF.oneofs_by_name['attr_group'].fields.append(
+  _ATTRGROUPDEF.fields_by_name['asc_tensor_attr_group'])
+_ATTRGROUPDEF.fields_by_name['asc_tensor_attr_group'].containing_oneof = _ATTRGROUPDEF.oneofs_by_name['attr_group']
+_ATTRGROUPS.fields_by_name['other_group_def'].message_type = _OTHERGROUPDEF
+_ATTRGROUPS.fields_by_name['attr_group_def'].message_type = _ATTRGROUPDEF
 _NAMEDATTRS_ATTRENTRY.fields_by_name['value'].message_type = _ATTRDEF
 _NAMEDATTRS_ATTRENTRY.containing_type = _NAMEDATTRS
 _NAMEDATTRS.fields_by_name['attr'].message_type = _NAMEDATTRS_ATTRENTRY
@@ -1448,21 +3145,50 @@ _TENSORDESCRIPTOR_ATTRENTRY.containing_type = _TENSORDESCRIPTOR
 _TENSORDESCRIPTOR.fields_by_name['dtype'].enum_type = _DATATYPE
 _TENSORDESCRIPTOR.fields_by_name['shape'].message_type = _SHAPEDEF
 _TENSORDESCRIPTOR.fields_by_name['attr'].message_type = _TENSORDESCRIPTOR_ATTRENTRY
+_TENSORDESCRIPTOR.fields_by_name['attr_groups'].message_type = _ATTRGROUPS
 _TENSORDEF.fields_by_name['desc'].message_type = _TENSORDESCRIPTOR
 _OPDEF_ATTRENTRY.fields_by_name['value'].message_type = _ATTRDEF
 _OPDEF_ATTRENTRY.containing_type = _OPDEF
 _OPDEF.fields_by_name['attr'].message_type = _OPDEF_ATTRENTRY
+_OPDEF.fields_by_name['attr_groups'].message_type = _ATTRGROUPS
 _OPDEF.fields_by_name['input_desc'].message_type = _TENSORDESCRIPTOR
 _OPDEF.fields_by_name['output_desc'].message_type = _TENSORDESCRIPTOR
 _GRAPHDEF_ATTRENTRY.fields_by_name['value'].message_type = _ATTRDEF
 _GRAPHDEF_ATTRENTRY.containing_type = _GRAPHDEF
 _GRAPHDEF.fields_by_name['op'].message_type = _OPDEF
 _GRAPHDEF.fields_by_name['attr'].message_type = _GRAPHDEF_ATTRENTRY
+_GRAPHDEF.fields_by_name['attr_groups'].message_type = _ATTRGROUPS
 _MODELDEF_ATTRENTRY.fields_by_name['value'].message_type = _ATTRDEF
 _MODELDEF_ATTRENTRY.containing_type = _MODELDEF
 _MODELDEF.fields_by_name['graph'].message_type = _GRAPHDEF
 _MODELDEF.fields_by_name['attr'].message_type = _MODELDEF_ATTRENTRY
+_MODELDEF.fields_by_name['attr_groups'].message_type = _ATTRGROUPS
 DESCRIPTOR.message_types_by_name['AttrDef'] = _ATTRDEF
+DESCRIPTOR.message_types_by_name['AttributeDef'] = _ATTRIBUTEDEF
+DESCRIPTOR.message_types_by_name['OtherGroupDef'] = _OTHERGROUPDEF
+DESCRIPTOR.message_types_by_name['TensorDescAttrGroupsDef'] = _TENSORDESCATTRGROUPSDEF
+DESCRIPTOR.message_types_by_name['InputSourceDef'] = _INPUTSOURCEDEF
+DESCRIPTOR.message_types_by_name['ReplacementDef'] = _REPLACEMENTDEF
+DESCRIPTOR.message_types_by_name['SymbolCheckInfoDef'] = _SYMBOLCHECKINFODEF
+DESCRIPTOR.message_types_by_name['ShapeEnvSettingDef'] = _SHAPEENVSETTINGDEF
+DESCRIPTOR.message_types_by_name['SymbolInfoDef'] = _SYMBOLINFODEF
+DESCRIPTOR.message_types_by_name['ShapeEnvAttrGroupsDef'] = _SHAPEENVATTRGROUPSDEF
+DESCRIPTOR.message_types_by_name['SchedInfoDef'] = _SCHEDINFODEF
+DESCRIPTOR.message_types_by_name['ApiInfoDef'] = _APIINFODEF
+DESCRIPTOR.message_types_by_name['MemAttrDef'] = _MEMATTRDEF
+DESCRIPTOR.message_types_by_name['MemQueueAttrDef'] = _MEMQUEUEATTRDEF
+DESCRIPTOR.message_types_by_name['MemBufAttrDef'] = _MEMBUFATTRDEF
+DESCRIPTOR.message_types_by_name['MemOptAttrDef'] = _MEMOPTATTRDEF
+DESCRIPTOR.message_types_by_name['AxisDef'] = _AXISDEF
+DESCRIPTOR.message_types_by_name['AscendCIROpAttrGroupsDef'] = _ASCENDCIROPATTRGROUPSDEF
+DESCRIPTOR.message_types_by_name['AscTensorAttrGroupsDef'] = _ASCTENSORATTRGROUPSDEF
+DESCRIPTOR.message_types_by_name['AscGraphAttrGroupsDef'] = _ASCGRAPHATTRGROUPSDEF
+DESCRIPTOR.message_types_by_name['AscIrAttrDef'] = _ASCIRATTRDEF
+DESCRIPTOR.message_types_by_name['TmpBufDescDef'] = _TMPBUFDESCDEF
+DESCRIPTOR.message_types_by_name['TmpBufferGroupDef'] = _TMPBUFFERGROUPDEF
+DESCRIPTOR.message_types_by_name['AscNodeAttrGroupsDef'] = _ASCNODEATTRGROUPSDEF
+DESCRIPTOR.message_types_by_name['AttrGroupDef'] = _ATTRGROUPDEF
+DESCRIPTOR.message_types_by_name['AttrGroups'] = _ATTRGROUPS
 DESCRIPTOR.message_types_by_name['NamedAttrs'] = _NAMEDATTRS
 DESCRIPTOR.message_types_by_name['ShapeDef'] = _SHAPEDEF
 DESCRIPTOR.message_types_by_name['TensorDescriptor'] = _TENSORDESCRIPTOR
@@ -1475,39 +3201,44 @@ _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 AttrDef = _reflection.GeneratedProtocolMessageType('AttrDef', (_message.Message,), {
 
-    'ListValue': _reflection.GeneratedProtocolMessageType('ListValue', (_message.Message,), {
-        'DESCRIPTOR': _ATTRDEF_LISTVALUE,
-        '__module__': 'ge_ir_pb2'
-        # @@protoc_insertion_point(class_scope:ge.proto.AttrDef.ListValue)
-    }),
+  'ListValue' : _reflection.GeneratedProtocolMessageType('ListValue', (_message.Message,), {
+    'DESCRIPTOR' : _ATTRDEF_LISTVALUE,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.AttrDef.ListValue)
+    })
+  ,
 
-    'ListListInt': _reflection.GeneratedProtocolMessageType('ListListInt', (_message.Message,), {
+  'ListListInt' : _reflection.GeneratedProtocolMessageType('ListListInt', (_message.Message,), {
 
-        'ListInt': _reflection.GeneratedProtocolMessageType('ListInt', (_message.Message,), {
-            'DESCRIPTOR': _ATTRDEF_LISTLISTINT_LISTINT,
-            '__module__': 'ge_ir_pb2'
-            # @@protoc_insertion_point(class_scope:ge.proto.AttrDef.ListListInt.ListInt)
-        }),
-        'DESCRIPTOR': _ATTRDEF_LISTLISTINT,
-        '__module__': 'ge_ir_pb2'
-        # @@protoc_insertion_point(class_scope:ge.proto.AttrDef.ListListInt)
-    }),
+    'ListInt' : _reflection.GeneratedProtocolMessageType('ListInt', (_message.Message,), {
+      'DESCRIPTOR' : _ATTRDEF_LISTLISTINT_LISTINT,
+      '__module__' : 'ge_ir_pb2'
+      # @@protoc_insertion_point(class_scope:ge.proto.AttrDef.ListListInt.ListInt)
+      })
+    ,
+    'DESCRIPTOR' : _ATTRDEF_LISTLISTINT,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.AttrDef.ListListInt)
+    })
+  ,
 
-    'ListListFloat': _reflection.GeneratedProtocolMessageType('ListListFloat', (_message.Message,), {
+  'ListListFloat' : _reflection.GeneratedProtocolMessageType('ListListFloat', (_message.Message,), {
 
-        'ListFloat': _reflection.GeneratedProtocolMessageType('ListFloat', (_message.Message,), {
-            'DESCRIPTOR': _ATTRDEF_LISTLISTFLOAT_LISTFLOAT,
-            '__module__': 'ge_ir_pb2'
-            # @@protoc_insertion_point(class_scope:ge.proto.AttrDef.ListListFloat.ListFloat)
-        }),
-        'DESCRIPTOR': _ATTRDEF_LISTLISTFLOAT,
-        '__module__': 'ge_ir_pb2'
-        # @@protoc_insertion_point(class_scope:ge.proto.AttrDef.ListListFloat)
-    }),
-    'DESCRIPTOR': _ATTRDEF,
-    '__module__': 'ge_ir_pb2'
-    # @@protoc_insertion_point(class_scope:ge.proto.AttrDef)
-})
+    'ListFloat' : _reflection.GeneratedProtocolMessageType('ListFloat', (_message.Message,), {
+      'DESCRIPTOR' : _ATTRDEF_LISTLISTFLOAT_LISTFLOAT,
+      '__module__' : 'ge_ir_pb2'
+      # @@protoc_insertion_point(class_scope:ge.proto.AttrDef.ListListFloat.ListFloat)
+      })
+    ,
+    'DESCRIPTOR' : _ATTRDEF_LISTLISTFLOAT,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.AttrDef.ListListFloat)
+    })
+  ,
+  'DESCRIPTOR' : _ATTRDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.AttrDef)
+  })
 _sym_db.RegisterMessage(AttrDef)
 _sym_db.RegisterMessage(AttrDef.ListValue)
 _sym_db.RegisterMessage(AttrDef.ListListInt)
@@ -1515,90 +3246,325 @@ _sym_db.RegisterMessage(AttrDef.ListListInt.ListInt)
 _sym_db.RegisterMessage(AttrDef.ListListFloat)
 _sym_db.RegisterMessage(AttrDef.ListListFloat.ListFloat)
 
+AttributeDef = _reflection.GeneratedProtocolMessageType('AttributeDef', (_message.Message,), {
+  'DESCRIPTOR' : _ATTRIBUTEDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.AttributeDef)
+  })
+_sym_db.RegisterMessage(AttributeDef)
+
+OtherGroupDef = _reflection.GeneratedProtocolMessageType('OtherGroupDef', (_message.Message,), {
+
+  'AttrEntry' : _reflection.GeneratedProtocolMessageType('AttrEntry', (_message.Message,), {
+    'DESCRIPTOR' : _OTHERGROUPDEF_ATTRENTRY,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.OtherGroupDef.AttrEntry)
+    })
+  ,
+  'DESCRIPTOR' : _OTHERGROUPDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.OtherGroupDef)
+  })
+_sym_db.RegisterMessage(OtherGroupDef)
+_sym_db.RegisterMessage(OtherGroupDef.AttrEntry)
+
+TensorDescAttrGroupsDef = _reflection.GeneratedProtocolMessageType('TensorDescAttrGroupsDef', (_message.Message,), {
+  'DESCRIPTOR' : _TENSORDESCATTRGROUPSDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.TensorDescAttrGroupsDef)
+  })
+_sym_db.RegisterMessage(TensorDescAttrGroupsDef)
+
+InputSourceDef = _reflection.GeneratedProtocolMessageType('InputSourceDef', (_message.Message,), {
+  'DESCRIPTOR' : _INPUTSOURCEDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.InputSourceDef)
+  })
+_sym_db.RegisterMessage(InputSourceDef)
+
+ReplacementDef = _reflection.GeneratedProtocolMessageType('ReplacementDef', (_message.Message,), {
+  'DESCRIPTOR' : _REPLACEMENTDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.ReplacementDef)
+  })
+_sym_db.RegisterMessage(ReplacementDef)
+
+SymbolCheckInfoDef = _reflection.GeneratedProtocolMessageType('SymbolCheckInfoDef', (_message.Message,), {
+  'DESCRIPTOR' : _SYMBOLCHECKINFODEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.SymbolCheckInfoDef)
+  })
+_sym_db.RegisterMessage(SymbolCheckInfoDef)
+
+ShapeEnvSettingDef = _reflection.GeneratedProtocolMessageType('ShapeEnvSettingDef', (_message.Message,), {
+  'DESCRIPTOR' : _SHAPEENVSETTINGDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.ShapeEnvSettingDef)
+  })
+_sym_db.RegisterMessage(ShapeEnvSettingDef)
+
+SymbolInfoDef = _reflection.GeneratedProtocolMessageType('SymbolInfoDef', (_message.Message,), {
+  'DESCRIPTOR' : _SYMBOLINFODEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.SymbolInfoDef)
+  })
+_sym_db.RegisterMessage(SymbolInfoDef)
+
+ShapeEnvAttrGroupsDef = _reflection.GeneratedProtocolMessageType('ShapeEnvAttrGroupsDef', (_message.Message,), {
+
+  'SymbolToValueEntry' : _reflection.GeneratedProtocolMessageType('SymbolToValueEntry', (_message.Message,), {
+    'DESCRIPTOR' : _SHAPEENVATTRGROUPSDEF_SYMBOLTOVALUEENTRY,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.ShapeEnvAttrGroupsDef.SymbolToValueEntry)
+    })
+  ,
+
+  'ValueToSymbolEntry' : _reflection.GeneratedProtocolMessageType('ValueToSymbolEntry', (_message.Message,), {
+    'DESCRIPTOR' : _SHAPEENVATTRGROUPSDEF_VALUETOSYMBOLENTRY,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.ShapeEnvAttrGroupsDef.ValueToSymbolEntry)
+    })
+  ,
+
+  'SymbolToSourceEntry' : _reflection.GeneratedProtocolMessageType('SymbolToSourceEntry', (_message.Message,), {
+    'DESCRIPTOR' : _SHAPEENVATTRGROUPSDEF_SYMBOLTOSOURCEENTRY,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.ShapeEnvAttrGroupsDef.SymbolToSourceEntry)
+    })
+  ,
+
+  'ReplacementsEntry' : _reflection.GeneratedProtocolMessageType('ReplacementsEntry', (_message.Message,), {
+    'DESCRIPTOR' : _SHAPEENVATTRGROUPSDEF_REPLACEMENTSENTRY,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.ShapeEnvAttrGroupsDef.ReplacementsEntry)
+    })
+  ,
+  'DESCRIPTOR' : _SHAPEENVATTRGROUPSDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.ShapeEnvAttrGroupsDef)
+  })
+_sym_db.RegisterMessage(ShapeEnvAttrGroupsDef)
+_sym_db.RegisterMessage(ShapeEnvAttrGroupsDef.SymbolToValueEntry)
+_sym_db.RegisterMessage(ShapeEnvAttrGroupsDef.ValueToSymbolEntry)
+_sym_db.RegisterMessage(ShapeEnvAttrGroupsDef.SymbolToSourceEntry)
+_sym_db.RegisterMessage(ShapeEnvAttrGroupsDef.ReplacementsEntry)
+
+SchedInfoDef = _reflection.GeneratedProtocolMessageType('SchedInfoDef', (_message.Message,), {
+  'DESCRIPTOR' : _SCHEDINFODEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.SchedInfoDef)
+  })
+_sym_db.RegisterMessage(SchedInfoDef)
+
+ApiInfoDef = _reflection.GeneratedProtocolMessageType('ApiInfoDef', (_message.Message,), {
+  'DESCRIPTOR' : _APIINFODEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.ApiInfoDef)
+  })
+_sym_db.RegisterMessage(ApiInfoDef)
+
+MemAttrDef = _reflection.GeneratedProtocolMessageType('MemAttrDef', (_message.Message,), {
+  'DESCRIPTOR' : _MEMATTRDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.MemAttrDef)
+  })
+_sym_db.RegisterMessage(MemAttrDef)
+
+MemQueueAttrDef = _reflection.GeneratedProtocolMessageType('MemQueueAttrDef', (_message.Message,), {
+  'DESCRIPTOR' : _MEMQUEUEATTRDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.MemQueueAttrDef)
+  })
+_sym_db.RegisterMessage(MemQueueAttrDef)
+
+MemBufAttrDef = _reflection.GeneratedProtocolMessageType('MemBufAttrDef', (_message.Message,), {
+  'DESCRIPTOR' : _MEMBUFATTRDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.MemBufAttrDef)
+  })
+_sym_db.RegisterMessage(MemBufAttrDef)
+
+MemOptAttrDef = _reflection.GeneratedProtocolMessageType('MemOptAttrDef', (_message.Message,), {
+  'DESCRIPTOR' : _MEMOPTATTRDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.MemOptAttrDef)
+  })
+_sym_db.RegisterMessage(MemOptAttrDef)
+
+AxisDef = _reflection.GeneratedProtocolMessageType('AxisDef', (_message.Message,), {
+  'DESCRIPTOR' : _AXISDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.AxisDef)
+  })
+_sym_db.RegisterMessage(AxisDef)
+
+AscendCIROpAttrGroupsDef = _reflection.GeneratedProtocolMessageType('AscendCIROpAttrGroupsDef', (_message.Message,), {
+  'DESCRIPTOR' : _ASCENDCIROPATTRGROUPSDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.AscendCIROpAttrGroupsDef)
+  })
+_sym_db.RegisterMessage(AscendCIROpAttrGroupsDef)
+
+AscTensorAttrGroupsDef = _reflection.GeneratedProtocolMessageType('AscTensorAttrGroupsDef', (_message.Message,), {
+  'DESCRIPTOR' : _ASCTENSORATTRGROUPSDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.AscTensorAttrGroupsDef)
+  })
+_sym_db.RegisterMessage(AscTensorAttrGroupsDef)
+
+AscGraphAttrGroupsDef = _reflection.GeneratedProtocolMessageType('AscGraphAttrGroupsDef', (_message.Message,), {
+  'DESCRIPTOR' : _ASCGRAPHATTRGROUPSDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.AscGraphAttrGroupsDef)
+  })
+_sym_db.RegisterMessage(AscGraphAttrGroupsDef)
+
+AscIrAttrDef = _reflection.GeneratedProtocolMessageType('AscIrAttrDef', (_message.Message,), {
+
+  'AttrEntry' : _reflection.GeneratedProtocolMessageType('AttrEntry', (_message.Message,), {
+    'DESCRIPTOR' : _ASCIRATTRDEF_ATTRENTRY,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.AscIrAttrDef.AttrEntry)
+    })
+  ,
+  'DESCRIPTOR' : _ASCIRATTRDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.AscIrAttrDef)
+  })
+_sym_db.RegisterMessage(AscIrAttrDef)
+_sym_db.RegisterMessage(AscIrAttrDef.AttrEntry)
+
+TmpBufDescDef = _reflection.GeneratedProtocolMessageType('TmpBufDescDef', (_message.Message,), {
+  'DESCRIPTOR' : _TMPBUFDESCDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.TmpBufDescDef)
+  })
+_sym_db.RegisterMessage(TmpBufDescDef)
+
+TmpBufferGroupDef = _reflection.GeneratedProtocolMessageType('TmpBufferGroupDef', (_message.Message,), {
+  'DESCRIPTOR' : _TMPBUFFERGROUPDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.TmpBufferGroupDef)
+  })
+_sym_db.RegisterMessage(TmpBufferGroupDef)
+
+AscNodeAttrGroupsDef = _reflection.GeneratedProtocolMessageType('AscNodeAttrGroupsDef', (_message.Message,), {
+  'DESCRIPTOR' : _ASCNODEATTRGROUPSDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.AscNodeAttrGroupsDef)
+  })
+_sym_db.RegisterMessage(AscNodeAttrGroupsDef)
+
+AttrGroupDef = _reflection.GeneratedProtocolMessageType('AttrGroupDef', (_message.Message,), {
+  'DESCRIPTOR' : _ATTRGROUPDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.AttrGroupDef)
+  })
+_sym_db.RegisterMessage(AttrGroupDef)
+
+AttrGroups = _reflection.GeneratedProtocolMessageType('AttrGroups', (_message.Message,), {
+  'DESCRIPTOR' : _ATTRGROUPS,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.AttrGroups)
+  })
+_sym_db.RegisterMessage(AttrGroups)
+
 NamedAttrs = _reflection.GeneratedProtocolMessageType('NamedAttrs', (_message.Message,), {
 
-    'AttrEntry': _reflection.GeneratedProtocolMessageType('AttrEntry', (_message.Message,), {
-        'DESCRIPTOR': _NAMEDATTRS_ATTRENTRY,
-        '__module__': 'ge_ir_pb2'
-        # @@protoc_insertion_point(class_scope:ge.proto.NamedAttrs.AttrEntry)
-    }),
-    'DESCRIPTOR': _NAMEDATTRS,
-    '__module__': 'ge_ir_pb2'
-    # @@protoc_insertion_point(class_scope:ge.proto.NamedAttrs)
-})
+  'AttrEntry' : _reflection.GeneratedProtocolMessageType('AttrEntry', (_message.Message,), {
+    'DESCRIPTOR' : _NAMEDATTRS_ATTRENTRY,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.NamedAttrs.AttrEntry)
+    })
+  ,
+  'DESCRIPTOR' : _NAMEDATTRS,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.NamedAttrs)
+  })
 _sym_db.RegisterMessage(NamedAttrs)
 _sym_db.RegisterMessage(NamedAttrs.AttrEntry)
 
 ShapeDef = _reflection.GeneratedProtocolMessageType('ShapeDef', (_message.Message,), {
-    'DESCRIPTOR': _SHAPEDEF,
-    '__module__': 'ge_ir_pb2'
-    # @@protoc_insertion_point(class_scope:ge.proto.ShapeDef)
-})
+  'DESCRIPTOR' : _SHAPEDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.ShapeDef)
+  })
 _sym_db.RegisterMessage(ShapeDef)
 
 TensorDescriptor = _reflection.GeneratedProtocolMessageType('TensorDescriptor', (_message.Message,), {
 
-    'AttrEntry': _reflection.GeneratedProtocolMessageType('AttrEntry', (_message.Message,), {
-        'DESCRIPTOR': _TENSORDESCRIPTOR_ATTRENTRY,
-        '__module__': 'ge_ir_pb2'
-        # @@protoc_insertion_point(class_scope:ge.proto.TensorDescriptor.AttrEntry)
-    }),
-    'DESCRIPTOR': _TENSORDESCRIPTOR,
-    '__module__': 'ge_ir_pb2'
-    # @@protoc_insertion_point(class_scope:ge.proto.TensorDescriptor)
-})
+  'AttrEntry' : _reflection.GeneratedProtocolMessageType('AttrEntry', (_message.Message,), {
+    'DESCRIPTOR' : _TENSORDESCRIPTOR_ATTRENTRY,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.TensorDescriptor.AttrEntry)
+    })
+  ,
+  'DESCRIPTOR' : _TENSORDESCRIPTOR,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.TensorDescriptor)
+  })
 _sym_db.RegisterMessage(TensorDescriptor)
 _sym_db.RegisterMessage(TensorDescriptor.AttrEntry)
 
 TensorDef = _reflection.GeneratedProtocolMessageType('TensorDef', (_message.Message,), {
-    'DESCRIPTOR': _TENSORDEF,
-    '__module__': 'ge_ir_pb2'
-    # @@protoc_insertion_point(class_scope:ge.proto.TensorDef)
-})
+  'DESCRIPTOR' : _TENSORDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.TensorDef)
+  })
 _sym_db.RegisterMessage(TensorDef)
 
 OpDef = _reflection.GeneratedProtocolMessageType('OpDef', (_message.Message,), {
 
-    'AttrEntry': _reflection.GeneratedProtocolMessageType('AttrEntry', (_message.Message,), {
-        'DESCRIPTOR': _OPDEF_ATTRENTRY,
-        '__module__': 'ge_ir_pb2'
-        # @@protoc_insertion_point(class_scope:ge.proto.OpDef.AttrEntry)
-    }),
-    'DESCRIPTOR': _OPDEF,
-    '__module__': 'ge_ir_pb2'
-    # @@protoc_insertion_point(class_scope:ge.proto.OpDef)
-})
+  'AttrEntry' : _reflection.GeneratedProtocolMessageType('AttrEntry', (_message.Message,), {
+    'DESCRIPTOR' : _OPDEF_ATTRENTRY,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.OpDef.AttrEntry)
+    })
+  ,
+  'DESCRIPTOR' : _OPDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.OpDef)
+  })
 _sym_db.RegisterMessage(OpDef)
 _sym_db.RegisterMessage(OpDef.AttrEntry)
 
 GraphDef = _reflection.GeneratedProtocolMessageType('GraphDef', (_message.Message,), {
 
-    'AttrEntry': _reflection.GeneratedProtocolMessageType('AttrEntry', (_message.Message,), {
-        'DESCRIPTOR': _GRAPHDEF_ATTRENTRY,
-        '__module__': 'ge_ir_pb2'
-        # @@protoc_insertion_point(class_scope:ge.proto.GraphDef.AttrEntry)
-    }),
-    'DESCRIPTOR': _GRAPHDEF,
-    '__module__': 'ge_ir_pb2'
-    # @@protoc_insertion_point(class_scope:ge.proto.GraphDef)
-})
+  'AttrEntry' : _reflection.GeneratedProtocolMessageType('AttrEntry', (_message.Message,), {
+    'DESCRIPTOR' : _GRAPHDEF_ATTRENTRY,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.GraphDef.AttrEntry)
+    })
+  ,
+  'DESCRIPTOR' : _GRAPHDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.GraphDef)
+  })
 _sym_db.RegisterMessage(GraphDef)
 _sym_db.RegisterMessage(GraphDef.AttrEntry)
 
 ModelDef = _reflection.GeneratedProtocolMessageType('ModelDef', (_message.Message,), {
 
-    'AttrEntry': _reflection.GeneratedProtocolMessageType('AttrEntry', (_message.Message,), {
-        'DESCRIPTOR': _MODELDEF_ATTRENTRY,
-        '__module__': 'ge_ir_pb2'
-        # @@protoc_insertion_point(class_scope:ge.proto.ModelDef.AttrEntry)
-    }),
-    'DESCRIPTOR': _MODELDEF,
-    '__module__': 'ge_ir_pb2'
-    # @@protoc_insertion_point(class_scope:ge.proto.ModelDef)
-})
+  'AttrEntry' : _reflection.GeneratedProtocolMessageType('AttrEntry', (_message.Message,), {
+    'DESCRIPTOR' : _MODELDEF_ATTRENTRY,
+    '__module__' : 'ge_ir_pb2'
+    # @@protoc_insertion_point(class_scope:ge.proto.ModelDef.AttrEntry)
+    })
+  ,
+  'DESCRIPTOR' : _MODELDEF,
+  '__module__' : 'ge_ir_pb2'
+  # @@protoc_insertion_point(class_scope:ge.proto.ModelDef)
+  })
 _sym_db.RegisterMessage(ModelDef)
 _sym_db.RegisterMessage(ModelDef.AttrEntry)
 
+
+_OTHERGROUPDEF_ATTRENTRY._options = None
+_SHAPEENVATTRGROUPSDEF_SYMBOLTOVALUEENTRY._options = None
+_SHAPEENVATTRGROUPSDEF_VALUETOSYMBOLENTRY._options = None
+_SHAPEENVATTRGROUPSDEF_SYMBOLTOSOURCEENTRY._options = None
+_SHAPEENVATTRGROUPSDEF_REPLACEMENTSENTRY._options = None
+_ASCIRATTRDEF_ATTRENTRY._options = None
 _NAMEDATTRS_ATTRENTRY._options = None
 _TENSORDESCRIPTOR_ATTRENTRY._options = None
 _OPDEF_ATTRENTRY._options = None

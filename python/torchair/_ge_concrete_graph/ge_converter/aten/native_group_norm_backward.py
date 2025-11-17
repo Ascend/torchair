@@ -70,7 +70,7 @@ def conveter_aten_native_group_norm_backward_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::native_group_norm_backward(Tensor grad_out, Tensor input, Tensor mean, Tensor rstd, Tensor? weight, SymInt N, SymInt C, SymInt HxW, int group, bool[3] output_mask) -> (Tensor, Tensor, Tensor)"""
-    if is_not_support():
+    if is_arch35():
         shape_list_0 = ge.Pack([N, C, HxW], N=3, axis=0)
         shape_list_1 = ge.Pack([N, group], N=2, axis=0)
         shape_list_2 = ge.Pack([C], N=1, axis=0)

@@ -33,7 +33,7 @@ def conveter_npu_moe_finalize_routing_default(
     '''NB: npu::npu_moe_finalize_routing(Tensor expanded_permuted_rows, Tensor? skip1, Tensor? skip2, Tensor? bias, 
     Tensor? scales, Tensor expanded_src_to_dst_row, Tensor? export_for_source_row, int? drop_pad_mode=0) -> Tensor'''
     if skip1 is not None and bias is not None and scales is not None and \
-                 expert_for_source_row is not None and drop_pad_mode == 0 and not is_not_support():
+                 expert_for_source_row is not None and drop_pad_mode == 0 and not is_arch35():
         return ge.MoeFinalizeRouting(expanded_permuted_rows, skip1, skip2_optional, bias, scales, 
                                      expanded_src_to_dst_row, expert_for_source_row)
     else:

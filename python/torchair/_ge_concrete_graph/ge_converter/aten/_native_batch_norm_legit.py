@@ -43,7 +43,7 @@ def conveter_aten__native_batch_norm_legit_default(
                               ge.Gather(input_size, 3), -1], N=5, axis=0)
         input = ge.Reshape(input, shape_list)
 
-    if is_not_support():
+    if is_arch35():
         if dim <= 4:
             if dim == 2 or dim == 3:
                 input = ge.Unsqueeze(input, axes=list(range(dim, 4)))
@@ -106,7 +106,7 @@ def conveter_aten__native_batch_norm_legit_no_stats(
                                 ge.Gather(input_size, 3), -1], N=5, axis=0)
         input = ge.Reshape(input, shape_list)
 
-    if is_not_support():
+    if is_arch35():
         if dim <= 4:
             if dim == 2 or dim == 3:
                 input = ge.Unsqueeze(input, axes=list(range(dim, 4)))
