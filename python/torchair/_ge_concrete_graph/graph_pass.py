@@ -101,6 +101,11 @@ def _get_output_to_input_ref_idx(op: OpDef) -> Dict[int, int]:
     elif op.type == "KvRmsNormRopeCache":
         ref_idx_mapping[0] = 5
         ref_idx_mapping[1] = 6
+    elif op.type == "GatherSelectionKvCache":
+        ref_idx_mapping[0] = 0
+        ref_idx_mapping[1] = 1
+        ref_idx_mapping[2] = 2
+        ref_idx_mapping[3] = 3
 
     return ref_idx_mapping
 
