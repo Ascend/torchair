@@ -373,7 +373,7 @@ def remove_dead_data_and_reorder_data_index(graph: GraphDef):
 _SIDE_EFFECT_OPS = {"PrintV2"}
 
 
-def explict_order_for_side_effect_nodes(graph: GeGraph, graph_output_ref_input=None):
+def explicit_order_for_side_effect_nodes(graph: GeGraph, graph_output_ref_input=None):
     """
     For nodes with side effects, such as nodes that write Data (allocate the same memory for its output as
     the graph input), and ge operators like Print with side effects (the order of screen printing needs to
@@ -454,7 +454,7 @@ def explict_order_for_side_effect_nodes(graph: GeGraph, graph_output_ref_input=N
                 dst.input.append(control)
 
 
-def explict_order_for_cmo(graph: GeGraph):
+def explicit_order_for_cmo(graph: GeGraph):
     """
     Cmo nodes need be in strict order in graph.
     Cmo can be parallel to RefOp, system ensures that memory r/w are correct.

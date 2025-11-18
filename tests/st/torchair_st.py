@@ -2580,12 +2580,20 @@ class TorchairSt(unittest.TestCase):
             opt_model(x)
         
         self.assertFalse(
-            any("[post_grad_passes] before" in log for log in cm.output),
-            f"Expected no DEBUG log '[post_grad_passes] before' in logs: {cm.output}")
+            any("before [post_grad_custom_pre_pass]" in log for log in cm.output),
+            f"Expected no DEBUG log '[post_grad_custom_pre_pass] before' in logs: {cm.output}")
+
+        self.assertFalse(
+            any("after [post_grad_custom_pre_pass]" in log for log in cm.output),
+            f"Expected no DEBUG log '[post_grad_custom_pre_pass] after' in logs: {cm.output}")
         
         self.assertFalse(
-            any("[post_grad_passes] after" in log for log in cm.output),
-            f"Expected no DEBUG log '[post_grad_passes] after' in logs: {cm.output}")
+            any("before [post_grad_custom_post_pass]" in log for log in cm.output),
+            f"Expected no DEBUG log '[post_grad_custom_post_pass] before' in logs: {cm.output}")
+
+        self.assertFalse(
+            any("after [post_grad_custom_post_pass]" in log for log in cm.output),
+            f"Expected no DEBUG log '[post_grad_custom_post_pass] after' in logs: {cm.output}")
 
     def test_post_grad_custom_fn(self):
         class Model(torch.nn.Module):
@@ -2618,24 +2626,24 @@ class TorchairSt(unittest.TestCase):
             opt_model(x)
         
         self.assertTrue(
-            any("[post_grad_passes] before [_custom_pre_fn] execution" 
+            any("[inference] before [post_grad_custom_pre_pass] execution" 
                 in log for log in cm.output),
-            f"Expected DEBUG log '[post_grad_passes] before [_custom_pre_fn] execution' in logs: {cm.output}")
-        
-        self.assertTrue(
-            any("[post_grad_passes] after [_custom_pre_fn] execution" 
-                in log for log in cm.output),
-            f"Expected DEBUG log '[post_grad_passes] after [_custom_pre_fn] execution' in logs: {cm.output}")
+            f"Expected DEBUG log '[inference] before [post_grad_custom_pre_pass] execution' in logs: {cm.output}")
 
         self.assertTrue(
-            any("[post_grad_passes] before [_custom_post_fn] execution" 
+            any("[inference] after [post_grad_custom_pre_pass] execution" 
                 in log for log in cm.output),
-            f"Expected DEBUG log '[post_grad_passes] before [_custom_post_fn] execution' in logs: {cm.output}")
-        
+            f"Expected DEBUG log '[inference] after [post_grad_custom_pre_pass] execution' in logs: {cm.output}")
+
         self.assertTrue(
-            any("[post_grad_passes] after [_custom_post_fn] execution" 
+            any("[inference] before [post_grad_custom_post_pass] execution" 
                 in log for log in cm.output),
-            f"Expected DEBUG log '[post_grad_passes] after [_custom_post_fn] execution' in logs: {cm.output}")
+            f"Expected DEBUG log '[inference] before [post_grad_custom_post_pass] execution' in logs: {cm.output}")
+
+        self.assertTrue(
+            any("[inference] after [post_grad_custom_post_pass] execution" 
+                in log for log in cm.output),
+            f"Expected DEBUG log '[inference] after [post_grad_custom_post_pass] execution' in logs: {cm.output}")
 
 
 if __name__ == '__main__':

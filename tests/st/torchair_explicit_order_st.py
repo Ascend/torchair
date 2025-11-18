@@ -7,7 +7,7 @@ import sys
 import torch
 import _privateuse1_backend
 import torchair
-from torchair._ge_concrete_graph.graph_pass import explict_order_for_side_effect_nodes
+from torchair._ge_concrete_graph.graph_pass import explicit_order_for_side_effect_nodes
 from torchair._ge_concrete_graph import graph_pass
 from torchair_st_utils import generate_faked_module
 
@@ -23,11 +23,11 @@ def _get_op_inputs(graph):
     return op_inputs
 
 
-@functools.wraps(explict_order_for_side_effect_nodes)
+@functools.wraps(explicit_order_for_side_effect_nodes)
 def capture_func(graph, *args, **kwargs):
     captured_graph.origin_op_inputs = _get_op_inputs(graph)
     captured_graph.graph = graph
-    return explict_order_for_side_effect_nodes(graph, *args, **kwargs)
+    return explicit_order_for_side_effect_nodes(graph, *args, **kwargs)
 
 
 @contextlib.contextmanager
@@ -40,7 +40,7 @@ def capture_ge_graph():
         pass
 
 
-graph_pass.explict_order_for_side_effect_nodes = capture_func
+graph_pass.explicit_order_for_side_effect_nodes = capture_func
 
 
 class FakeTorchNpu:
@@ -90,7 +90,7 @@ def npu_tensor(*args, **kwargs):
     return t
 
 
-class NpuExplictOrderSt(unittest.TestCase):
+class NpuexplicitOrderSt(unittest.TestCase):
     def test_unchanged(self):
         def func(v):
             return torch.add(v, 1)

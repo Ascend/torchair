@@ -152,7 +152,7 @@ def _is_supported_cann_version(target_version):
     return is_supported_cann_version
 
 
-def recover_view_inplace_pattern(graph_module: torch.fx.GraphModule, config: CompilerConfig) -> GraphModule:
+def recover_view_inplace_pattern(graph_module: torch.fx.GraphModule, example_inputs=None, config: CompilerConfig = None) -> GraphModule:
     """
     This function identifies specific computational patterns
     and replaces non-inplace operations enerated during the functionalization with

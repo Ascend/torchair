@@ -27,6 +27,7 @@ from torchair.configs.compiler_config import CompilerConfig, _check_config_suppo
 from torchair.core.utils import logger
 from torchair.inference._gear_utils import get_dim_gears, set_dim_gears, guard_gears_shape
 from torchair._utils import add_npu_patch, get_npu_default_decompositions
+from torchair._utils.graph_transform_observer import wrap_compiler_phase, DebugContext, dump_fx_safety
 
 
 @dataclass
@@ -402,6 +403,10 @@ class CacheBackend:
         decompositions = get_npu_default_decompositions()
         decompositions.update(self.custom_decompositions)
         add_npu_patch(decompositions, self.config)
+        if os.getenv("TORCH_COMPILE_DEBUG", "0") == "1":
+            folder_path = DebugContext.next_path()
+            dump_fx_safety(gm, os.path.join(folder_path, "dynamo_out_graph.txt"))
+        self.fw_compiler = wrap_compiler_phase(self.fw_compiler, "forward")
         return aot_module_simplified(gm, inputs, self.fw_compiler, self.bw_compiler,
                                      decompositions=decompositions, keep_inference_input_mutations=True)
 
