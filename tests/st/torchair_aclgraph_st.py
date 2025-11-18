@@ -2112,7 +2112,7 @@ class AclGraphSt(unittest.TestCase):
         assert len_of_tagged_event_2 == len_of_tagged_event_3
         assert len_of_stream_2 == len_of_stream_3
 
-    def test_aclgraph_unsupported_blocking_env(self):
+    def test_aclgraph_supported_blocking_env(self):
         class Model(torch.nn.Module):
             def forward(self, x):
                 return x + x
@@ -2121,11 +2121,15 @@ class AclGraphSt(unittest.TestCase):
         config.mode = "reduce-overhead"
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
         model = torch.compile(Model(), backend=aclgraph_backend, dynamic=False)
-        inputs = torch.randn([3, 2])
 
         os.environ['ASCEND_LAUNCH_BLOCKING'] = '1'
-        with self.assertRaisesRegex(RuntimeError, r"Stream synchronization is unsupported"):
-            model(inputs)
+        with capture_logger() as stdout:
+            model(torch.randn([4, 2]))
+        self.assertIn("Success to capture fx_graph", stdout.getvalue())
+
+        with capture_logger() as stdout:
+            model(torch.randn([5, 2]))
+        self.assertIn("Success to capture fx_graph", stdout.getvalue())
         os.environ['ASCEND_LAUNCH_BLOCKING'] = '0'
 
     def test_aclgraph_static_capture_size_limit(self):
