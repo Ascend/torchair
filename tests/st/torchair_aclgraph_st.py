@@ -2853,5 +2853,106 @@ class AclGraphSt(unittest.TestCase):
         compiled_model = torch.compile(Model(), backend=backend, dynamic=True)
         compiled_model(x=torch.randn([2, 2]))
 
+    def test_torch_compile_acl_debug_dump(self):
+
+        EXPECTED_FILE_PATTERNS_ACL = [
+            "model__{id}/dynamo_out_graph.txt",
+            # forward
+            "model__{id}/forward/000_aot_forward_graph.txt",
+            "model__{id}/forward/001_aot_forward_graph_after_post_grad_custom_pre_pass.txt",
+            "model__{id}/forward/002_aot_forward_graph_after_optimize_noop_ops.txt",
+            "model__{id}/forward/003_aot_forward_graph_after_recover_view_inplace_pattern.txt",
+            "model__{id}/forward/004_aot_forward_graph_after_optimize_sym_input.txt",
+            "model__{id}/forward/005_aot_forward_graph_after_view_to_reshape.txt",
+            "model__{id}/forward/006_aot_forward_graph_after_post_grad_custom_post_pass.txt",
+            "model__{id}/forward/007_aot_forward_graph_after_apply_event_closure_with_multi_stream.txt",
+            "model__{id}/forward/008_aot_forward_graph_after_apply_event_record.txt",
+            "model__{id}/forward/009_aot_forward_graph_after_reinplace_inplaceable_ops_pass.txt",
+            "model__{id}/forward/010_aot_forward_graph_after_replace_dynamic_workspace_ops.txt",
+            "model__{id}/forward/011_aot_forward_graph_after_reinplace_input_mutated_ops.txt",
+            # backward
+            "model__{id}/backward/000_aot_backward_graph.txt",
+            "model__{id}/backward/001_aot_backward_graph_after_post_grad_custom_pre_pass.txt",
+            "model__{id}/backward/002_aot_backward_graph_after_optimize_noop_ops.txt",
+            "model__{id}/backward/003_aot_backward_graph_after_recover_view_inplace_pattern.txt",
+            "model__{id}/backward/004_aot_backward_graph_after_optimize_sym_input.txt",
+            "model__{id}/backward/005_aot_backward_graph_after_view_to_reshape.txt",
+            "model__{id}/backward/006_aot_backward_graph_after_post_grad_custom_post_pass.txt",
+            "model__{id}/backward/007_aot_backward_graph_after_apply_event_closure_with_multi_stream.txt",
+            "model__{id}/backward/008_aot_backward_graph_after_apply_event_record.txt",
+            "model__{id}/backward/009_aot_backward_graph_after_reinplace_inplaceable_ops_pass.txt",
+            "model__{id}/backward/010_aot_backward_graph_after_replace_dynamic_workspace_ops.txt",
+            "model__{id}/backward/011_aot_backward_graph_after_reinplace_input_mutated_ops.txt",
+        ]
+       
+        from torch._dynamo.utils import get_debug_dir
+        import tempfile
+
+        with tempfile.TemporaryDirectory(prefix="torchair_debug_") as tmpdir:
+            DEBUG_DIR = tmpdir  
+            torch._dynamo.config.patch(debug_dir_root=DEBUG_DIR)
+            self.assertIsNotNone(DEBUG_DIR)
+            os.environ['TORCH_COMPILE_DEBUG'] = '1'
+
+            config = torchair.CompilerConfig()
+            config.experimental_config.remove_noop_ops = True
+            config.mode.value = "reduce-overhead"
+            
+            def _custom_pre_fn(gm, example_inputs, compile_config: torchair.CompilerConfig):
+                return None
+
+            def _custom_post_fn(gm, example_inputs, compile_config: torchair.CompilerConfig):
+                return None
+            
+            config.post_grad_custom_pre_pass = _custom_pre_fn
+            config.post_grad_custom_post_pass = _custom_post_fn
+            npu_backend = torchair.get_npu_backend(compiler_config=config)
+
+            class Model(torch.nn.Module):
+                def forward(self, x):
+                    return 2 * x
+
+            model = Model()
+            compiled_model = torch.compile(model, backend=npu_backend, dynamic=False)
+            x = torch.randn(10, 10, requires_grad=True)
+            out = compiled_model(x)
+            loss_fn = torch.nn.MSELoss()
+            target = torch.randn(10, 10)
+            loss = loss_fn(out, target)
+            loss.backward()
+            
+            debug_dir_output = get_debug_dir()
+            # 1. Verify the existence of the torchair directory
+            torchair_root = os.path.join(debug_dir_output, "torchair")
+            self.assertTrue(os.path.exists(torchair_root), msg=f"torchair directory does not exist: {torchair_root}")
+
+            # 2. Verify all expected files exist
+            expected_files = []
+            for template in EXPECTED_FILE_PATTERNS_ACL:
+                rel_path = template.format(id=0)
+                expected_files.append(rel_path)
+
+            def check_torchair_directory_structure(base_dir: str, file_list: list) -> list:
+                missing_files = []
+                for rel_path in file_list:
+                    abs_path = os.path.join(base_dir, rel_path)
+                    if not os.path.exists(abs_path):
+                        missing_files.append(abs_path)
+                return missing_files
+            missing_files = check_torchair_directory_structure(torchair_root, expected_files)
+            self.assertFalse(missing_files, msg=f"Missing files: {', '.join(missing_files)}")
+
+            # Check file count to ensure no extra files
+            expected_count = len(EXPECTED_FILE_PATTERNS_ACL)
+            actual_count = 0
+            for root, _, files in os.walk(torchair_root):
+                actual_count += len(files)
+            self.assertEqual(
+                actual_count,
+                expected_count,
+                msg=f"File count mismatch: expected {expected_count} files, got {actual_count} files"
+            )
+      
+
 if __name__ == '__main__':
     unittest.main()

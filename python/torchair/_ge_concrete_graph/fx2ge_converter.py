@@ -56,6 +56,7 @@ from torchair._ge_concrete_graph.continguous_utils import guard_view_input
 from torchair._ge_concrete_graph.export_config_generete import generate_config
 from torchair._ge_concrete_graph.infer_symbol_shape import infer_and_gen_sym_shape
 from torchair._utils.export_utils import make_export_graph, get_export_file_name
+from torchair._utils.graph_transform_observer import GraphTransformObserver
 from torchair.inference._gear_utils import generate_dynamic_dims_option, get_dim_gears
 from torchair.ge._ge_graph import compat_as_bytes, _ge_proto_dtype_to_ge_dtype, is_sym
 from torchair.scope._scope_attr import guard_scope_attr
@@ -724,7 +725,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         del ge_outputs
         return tuple(fx_outputs)
 
-    def optimize_graph_without_runtime(self, *sample_args):
+    def optimize_graph_without_runtime(self, *sample_args, observer=None):
         """
         Optimizes the computation graph without relying on runtime information.
         This includes passes like dead data removal, explicit ordering for side-effect nodes,
@@ -734,30 +735,42 @@ class GeConcreteGraph(ConcreteGraphBase):
             *sample_args: Sample input arguments for tracing and optimization.
         """        
         from torchair._ge_concrete_graph.graph_pass import remove_dead_data_and_reorder_data_index
-        from torchair._ge_concrete_graph.graph_pass import explict_order_for_side_effect_nodes
-        from torchair._ge_concrete_graph.graph_pass import explict_order_for_cmo
+        from torchair._ge_concrete_graph.graph_pass import explicit_order_for_side_effect_nodes
+        from torchair._ge_concrete_graph.graph_pass import explicit_order_for_cmo
         from torchair._ge_concrete_graph.utils import get_graph_input_placements
+        observer.dump_gegraph(self.graph, "original_ge_graph")
 
-        optimize_sym_pack(self.graph)
+        observer.apply_gegraph_pass(optimize_sym_pack, self.graph, "optimize_sym_pack")
         record_pg_to_graph(self.graph)
 
         # Note:
         # Please do not take any actions to add or delete data nodes, or change the index of data nodes after this.
-        self._input_info_list = remove_dead_data_and_reorder_data_index(self.graph)
+        self._input_info_list = observer.apply_gegraph_pass(
+            remove_dead_data_and_reorder_data_index, self.graph, "remove_dead_data_and_reorder_data_index")
 
         self.graph.attr["_input_placements"].list.i.extend(get_graph_input_placements(self.graph))
         self.graph.attr["_output_dtypes"].list.i.extend([output.dtype for output in self.outputs])
         self.graph.attr["_executor_type"].i = _get_executor_type()
-        self._ref_data_idx = optimize_reference_op_redundant_copy(self.graph)
-        self._graph_output_ref_input = _mapping_assign_op_to_graph_output(self.graph)
+
+        self._ref_data_idx = observer.apply_gegraph_pass(
+            optimize_reference_op_redundant_copy, self.graph, "optimize_reference_op_redundant_copy")
+        self._graph_output_ref_input = observer.apply_gegraph_pass(
+            _mapping_assign_op_to_graph_output, self.graph, "mapping_assign_op_to_graph_output")
+
         for ge_index, input_info in enumerate(self._input_info_list):
             if isinstance(input_info.func, _DiscontiguousTensorInput):
                 self._cloned_ge_input_mapping[ge_index] = input_info.func.fx_input_idx
 
         # Note: The following two passes must be executed after the above pass.
-        explict_order_for_side_effect_nodes(self.graph, self._graph_output_ref_input)
-        explict_order_for_cmo(self.graph)
+        explicit_order_for_side_effect_nodes_partial = functools.partial(
+            explicit_order_for_side_effect_nodes, graph_output_ref_input=self._graph_output_ref_input)
+        observer.apply_gegraph_pass(
+            explicit_order_for_side_effect_nodes_partial, self.graph, "explicit_order_for_side_effect_nodes")
+        observer.apply_gegraph_pass(
+            explicit_order_for_cmo, self.graph, "explicit_order_for_cmo")
+        
         _normalize_ge_graph(self.graph)
+        observer.dump_gegraph(self.graph, "optimized_ge_graph")
 
     def update_graph_with_runtime(self, inputs, fx_inputs):
         if self._is_compiled:

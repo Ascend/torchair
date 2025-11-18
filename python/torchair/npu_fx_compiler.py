@@ -8,6 +8,7 @@ from typing import List, Optional, Callable, Any, Dict, Tuple, Union
 import logging
 import sys
 import dataclasses
+import os
 
 import torch
 from torch._subclasses.fake_tensor import is_fake
@@ -35,7 +36,8 @@ from torchair.fx_dumper import _NpuFxDumper
 from torchair._utils.custom_aot_functions import aot_module_simplified_joint
 from torchair._utils import add_npu_patch, get_npu_default_decompositions
 from torchair._utils.error_code import pretty_error_msg
-from torchair._utils.graph_transform_observer import GraphTransformObserver
+from torchair._utils.graph_transform_observer import GraphTransformObserver, dump_fx_safety
+from torchair._utils.graph_transform_observer import wrap_debug_compilers, DebugContext
 from torchair.inference._gear_utils import get_dim_gears, set_dim_gears, guard_gears_shape
 
 aten = torch.ops.aten
@@ -270,39 +272,38 @@ def _summary(v):
     return f'{type(v)}({v})'
 
 
-def _view_to_reshape(graph_module: torch.fx.GraphModule):
+def _view_to_reshape(graph_module: torch.fx.GraphModule, example_inputs=None, config=None):
     # Replace view ops in the GraphModule to reshape ops.
     for node in graph_module.graph.nodes:
         if node.target == torch.ops.aten.view.default:
             node.target = torch.ops.aten.reshape.default
 
 
-def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, example_inputs):
+def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, observer: GraphTransformObserver):
     # More optimization passes here
-    Observer = functools.partial(GraphTransformObserver, phase="post_grad_passes")
+    observer.gm = graph_module
     pre_func = config.post_grad_custom_pre_pass.value
     if pre_func is not None:
-        with Observer(graph_module, pre_func.__name__) as graph_observe:
-            graph_observe.apply_gm_pass(pre_func, example_inputs, config)
+        observer.apply_gm_pass(pre_func, "post_grad_custom_pre_pass")
 
     if config.experimental_config.remove_noop_ops:
-        _optimize_noop_ops(graph_module)
-        
-    from torchair.patterns._recover_view_inplace_pattern import recover_view_inplace_pattern
-    graph_module = recover_view_inplace_pattern(graph_module, config)
+        observer.apply_gm_pass(_optimize_noop_ops, "optimize_noop_ops")
 
-    graph_module = _optimize_sym_input(graph_module)
-    _view_to_reshape(graph_module)
+    from torchair.patterns._recover_view_inplace_pattern import recover_view_inplace_pattern
+    observer.apply_gm_pass(recover_view_inplace_pattern, "recover_view_inplace_pattern")
+
+    observer.apply_gm_pass(_optimize_sym_input, "optimize_sym_input")
+
+    observer.apply_gm_pass(_view_to_reshape, "view_to_reshape")
 
     post_func = config.post_grad_custom_post_pass.value
     if post_func is not None:
-        with Observer(graph_module, post_func.__name__) as graph_observe:
-            graph_observe.apply_gm_pass(post_func, example_inputs, config)
+        observer.apply_gm_pass(post_func, "post_grad_custom_post_pass")
     logger.debug('after fx graph optimization, graph is %s', graph_module.graph)
     return graph_module
 
 
-def _optimize_noop_ops(graph_module: torch.fx.GraphModule):
+def _optimize_noop_ops(graph_module: torch.fx.GraphModule, example_inputs=None, config=None):
     try:
         from torch._inductor.fx_passes.post_grad import remove_noop_ops
         remove_noop_ops(graph_module.graph)
@@ -312,7 +313,7 @@ def _optimize_noop_ops(graph_module: torch.fx.GraphModule):
                         " the module torch._inductor.fx_passes.post_grad.remove_noop_ops exists"))
 
 
-def _optimize_sym_input(graph_module: torch.fx.GraphModule):
+def _optimize_sym_input(graph_module: torch.fx.GraphModule, example_inputs=None, config=None):
     logger.debug('before sym input optimization, graph is %s', graph_module.graph)
     sym_input_list = []
     tensor_input_list = []
@@ -503,6 +504,9 @@ class _NpuFxCompiler:
         if self.config.debug.fx_summary.enabled and self.config.mode.value == "reduce-overhead":
             logger.warning(f"The fx_summary csv files will not be generated in reduce-overhead mode.")
 
+        observer = GraphTransformObserver(gm, example_inputs, self.config)
+        observer.dump_gm(gm, "graph")
+
         if self.config.debug.fx_summary.enabled and self.config.mode.value == "max-autotune":
             _summarize_fx_graph(
                 gm, example_inputs, self.config.debug.fx_summary.full_path("summary"))
@@ -521,9 +525,9 @@ class _NpuFxCompiler:
                                        name="graph_" + str(_next_unique_graph_id()))
             return _CompiledFxGraph(data_dumper)
 
-        return _CompiledFxGraph(self._gen_compiled_gm(gm, example_inputs))
+        return _CompiledFxGraph(self._gen_compiled_gm(gm, example_inputs, observer))
 
-    def _gen_compiled_gm(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
+    def _gen_compiled_gm(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor], observer: GraphTransformObserver):
         logger.info(f'compiler inputs')
         for i, inp in enumerate(example_inputs):
             logger.info('  input %s: %s', i, inp)
@@ -552,7 +556,7 @@ class _NpuFxCompiler:
             raise ValueError(f"Unsupported npu backend mode: {self.config.mode.value}.")
 
         # do common optimization for fx graph based on config
-        optimized_gm = _optimize_fx(mutable_gm, self.config, example_inputs)
+        optimized_gm = _optimize_fx(mutable_gm, self.config, observer)
         _valid_graph(optimized_gm)
         graph.save_fx_graph(optimized_gm)
 
@@ -561,9 +565,9 @@ class _NpuFxCompiler:
 
         if self.config.debug.graph_dump.enabled and not self.config.export.export_mode:
             concrete_graph.dump(self.config.debug.graph_dump.full_path(f"dynamo_original_graph_{_GLOBAL_GRAPH_ID}"))
-
+        
         # optimize different concrete graph for ge or acl.
-        concrete_graph.optimize_graph_without_runtime(*example_inputs)
+        concrete_graph.optimize_graph_without_runtime(*example_inputs, observer=observer)
 
         if self.config.debug.run_eagerly:
             logger.warning(f'When using debug.run_eagerly=True, npu compiler will be skipped, '
@@ -683,9 +687,15 @@ def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
     Returns:
         Any: Compiled graph runner.
     """
+    
     if compiler_config is None:
         compiler_config = CompilerConfig()
     compiler = get_compiler(compiler_config)
+
+    if os.getenv("TORCH_COMPILE_DEBUG", "0") == "1":
+        folder_path = DebugContext.next_path()
+        dump_fx_safety(gm, os.path.join(folder_path, "dynamo_out_graph.txt"))
+
     fw_compiler, inference_compiler, joint_compiler = _wrap_compiler(compiler, compiler_config)
 
     inputs_custom_attr = _get_inputs_custom_attr(example_inputs)
@@ -693,6 +703,10 @@ def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
     inference_compiler = _set_inputs_custom_attr_to_compiler(inference_compiler, inputs_custom_attr)
 
     partition_fn = _get_partition_fn(compiler_config)
+
+    fw_compiler, compiler, inference_compiler, joint_compiler = wrap_debug_compilers(
+        fw_compiler, compiler, inference_compiler, joint_compiler)
+
     if compiler_config.experimental_config.aot_config_enable_joint_graph:
         output_loss_index = int(compiler_config.experimental_config.aot_config_output_loss_index.value)
         return aot_module_simplified_joint(gm, example_inputs,

@@ -25,6 +25,7 @@ from torchair.configs.compiler_config import CompilerConfig
 from torchair.core._concrete_graph import ConcreteGraphBase, ValuePack
 from torchair.core.utils import logger
 from torchair._utils.path_manager import PathManager
+from torchair._utils.graph_transform_observer import GraphTransformObserver
 from torchair._acl_concrete_graph.acl_graph import AclGraph, AclGraphCacheInfo, is_sym
 from torchair._acl_concrete_graph.graph_pass import apply_event_closure_with_multi_stream
 from torchair._acl_concrete_graph.graph_pass import apply_event_record
@@ -218,7 +219,7 @@ class AclConcreteGraph(ConcreteGraphBase):
         """
         return self.graph.compile(*args, **kwargs)
 
-    def optimize_graph_without_runtime(self, *sample_args):
+    def optimize_graph_without_runtime(self, *sample_args, observer=None):
         """
         Optimizes the computation graph without relying on runtime information.
         This includes passes like re-inplacing in-place operations and dynamic workspace handling.
@@ -238,10 +239,13 @@ class AclConcreteGraph(ConcreteGraphBase):
         apply_event_closure_with_multi_stream(self.fx_graph, self.fx_graph_name,
                                               self._aclgraph_cache_info.tagged_event_names,
                                               self._aclgraph_cache_info.user_stream_label)
+        observer.dump_gm(self.fx_graph, "graph_after_apply_event_closure_with_multi_stream")
+
         logger.debug('after apply_stream_event_closure optimization, '
                      'multi_stream_enabled is %s, graph is %s.', multi_stream_enabled, self.fx_graph.graph)
 
         apply_event_record(self.fx_graph)
+        observer.dump_gm(self.fx_graph, "graph_after_apply_event_record")
 
         # graph optimization passes here
         # Note: this pass need sample args to run in FakeTensor mode, any pass modifies ops without meta registration
@@ -254,15 +258,18 @@ class AclConcreteGraph(ConcreteGraphBase):
             logger.debug("Start to process reinplace inplaceable ops fx pass for graph: %s", self.fx_graph_name)
             from torchair._acl_concrete_graph.graph_pass import _reinplace_inplaceable_ops_pass
             _reinplace_inplaceable_ops_pass(self.fx_graph, *sample_args)
+            observer.dump_gm(self.fx_graph, "graph_after_reinplace_inplaceable_ops_pass")
 
         from torchair._acl_concrete_graph.acl_graph import replace_dynamic_workspace_ops, _find_mutated_user_inputs
         replace_dynamic_workspace_ops(self.fx_graph, self._meta_inputs)
+        observer.dump_gm(self.fx_graph, "graph_after_replace_dynamic_workspace_ops")
 
         # Note: this will modify mutated input ops in fx graph, should be executed LAST.
         if not (multi_stream_enabled or self.config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass):
             logger.debug("Start to process reinplace input mutated ops fx pass for graph: %s", self.fx_graph_name)
             from torchair._acl_concrete_graph.graph_pass import _reinplace_input_mutated_ops
             _reinplace_input_mutated_ops(self.fx_graph)
+            observer.dump_gm(self.fx_graph, "graph_after_reinplace_input_mutated_ops")
 
         # find mutated inputs after graph optimization passes
         self._aclgraph_cache_info.mutated_user_inputs = _find_mutated_user_inputs(self.fx_graph)
