@@ -19,7 +19,9 @@ m.define("npu_kv_rmsnorm_rope_cache(Tensor kv, Tensor gamma, Tensor cos, Tensor 
 m.define("npu_interleave_rope(Tensor x, Tensor cos, Tensor sin) -> Tensor")
 m.define("npu_dequant_swiglu_quant(Tensor x, *, Tensor? weight_scale=None, Tensor? activation_scale=None, \
           Tensor? bias=None, Tensor? quant_scale=None, Tensor? quant_offset=None, Tensor? group_index=None, \
-          bool activate_left=False, int quant_mode=0) -> (Tensor, Tensor)")
+          bool activate_left=False, int quant_mode=0, int? dst_type=None, int? round_mode=None, \
+          int? activate_dim=None, int swiglu_mode=0, float clamp_limit=7.0, float glu_alpha=1.702, \
+          float glu_bias=1.0) -> (Tensor, Tensor)")
 
 
 @impl(m, "npu_tome_merge", "PrivateUse1")
@@ -101,18 +103,38 @@ def npu_interleave_rope_meta(x, cos, sin):
 
 @impl(m, "npu_dequant_swiglu_quant", "Meta")
 def npu_dequant_swiglu_quant_meta(x, *, weight_scale=None, activation_scale=None, bias=None, quant_scale=None,
-                                  quant_offset=None, group_index=None, activate_left=False, quant_mode=0):
+                                  quant_offset=None, group_index=None, activate_left=False, quant_mode=0,
+                                  dst_type=None, round_mode=None, activate_dim=None, swiglu_mode=0,
+                                  clamp_limit=7.0, glu_alpha=1.702, glu_bias=1.0):
+    dst_type = dst_type if dst_type is not None else 1
+    round_mode = round_mode if round_mode is not None else 0
+    activate_dim = activate_dim if activate_dim is not None else -1
+    select_dim = activate_dim if activate_dim >= 0 else activate_dim + x.dim()
     if x.dim() <= 1:
         raise RuntimeError("x dim should larger than 1")
-    if x.size(x.dim() - 1) % 2 != 0:
+    if select_dim < 0 or select_dim >= x.dim():
+        raise RuntimeError("activate dim should less than x dim")
+    if x.size(select_dim) % 2 != 0:
         raise RuntimeError("x last dim should be even")
     if quant_mode != 0 and quant_mode != 1:
         raise RuntimeError("quant_mode only support 0 or 1, but got " + str(quant_mode))
+    
     y_size = []
-    scale_size = []
-    for i in range(x.dim() - 1):
-        y_size.append(x.size(i))
-        scale_size.append(x.size(i))
-    y_size.append(math.floor(x.size(x.dim() - 1) / 2))
-    return (torch.empty(y_size, dtype=torch.int8, device=x.device),
+    for i in range(x.dim()):
+        if i == select_dim:
+            y_size.append(math.floor(x.size(i) / 2))
+        else:
+            y_size.append(x.size(i))
+    
+    scale_size = y_size[:-1]
+    
+    output_dtype = torch.int8
+    if dst_type == 23:
+        output_dtype = torch.float8_e5m2
+    elif dst_type == 24:
+        output_dtype = torch.float8_e4m3fn
+    elif dst_type == 296 or dst_type == 297:
+        output_dtype = torch.uint8
+    
+    return (torch.empty(y_size, dtype=output_dtype, device=x.device),
             torch.empty(scale_size, dtype=torch.float32, device=x.device))

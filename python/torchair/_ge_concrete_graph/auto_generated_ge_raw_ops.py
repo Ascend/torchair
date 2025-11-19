@@ -80720,23 +80720,29 @@ def DequantSwigluQuant(x: Tensor,
                        *,
                        activate_left: bool = False,
                        quant_mode: str = "static",
+                       dst_type: int = 2,
+                       round_mode: str = "rint",
+                       activate_dim: int = -1,
                        swiglu_mode: int = 0,
                        clamp_limit: float = 7.000000,
                        glu_alpha: float = 1.702000,
                        glu_bias: float = 1.000000,
                        dependencies=[], node_name=None):
     """REG_OP(DequantSwigluQuant)\n
-    .INPUT(x, TensorType({DT_INT32}))\n
+    .INPUT(x, TensorType({DT_FLOAT16, DT_BF16, DT_INT32}))\n
     .OPTIONAL_INPUT(weight_scale, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(activation_scale, TensorType({DT_FLOAT}))\n
-    .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(bias, TensorType({DT_BF16, DT_FLOAT16, DT_INT32, DT_FLOAT}))\n
     .OPTIONAL_INPUT(quant_scale, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(quant_offset, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(group_index, TensorType({DT_INT32, DT_INT64}))\n
-    .OUTPUT(y, TensorType({DT_INT8}))\n
+    .OUTPUT(y, TensorType({DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2}))\n
     .OUTPUT(scale, TensorType({DT_FLOAT}))\n
     .ATTR(activate_left, Bool, false)\n
     .ATTR(quant_mode, String, "static")\n
+    .ATTR(dst_type, int, DT_INT8)\n
+    .ATTR(round_mode, String, "rint")\n
+    .ATTR(activate_dim, int, -1)\n
     .ATTR(swiglu_mode, int, 0)\n
     .ATTR(clamp_limit, Float, 7.0)\n
     .ATTR(glu_alpha, Float, 1.702)\n
@@ -80758,6 +80764,9 @@ def DequantSwigluQuant(x: Tensor,
     attrs = {
         "activate_left": attr.Bool(activate_left),
         "quant_mode": attr.Str(quant_mode),
+        "dst_type": attr.Int(dst_type),
+        "round_mode": attr.Str(round_mode),
+        "activate_dim": attr.Int(activate_dim),
         "swiglu_mode": attr.Int(swiglu_mode),
         "clamp_limit": attr.Float(clamp_limit),
         "glu_alpha": attr.Float(glu_alpha),
