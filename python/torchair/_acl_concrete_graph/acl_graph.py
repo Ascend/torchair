@@ -18,6 +18,7 @@ from torch.profiler import record_function
 
 from torchair.core.utils import logger
 from torchair.scope._scope_attr import guard_with_user_stream_scope
+from torchair._utils.graph_transform_observer import DebugContext
 from torchair._acl_concrete_graph.utils import reconstruct_args_kwargs
 from torchair._acl_concrete_graph.utils import (debug_mem_state, LazyMessage, WeakRef, GraphMeta, get_tensor_metadata,
                                                 reconstruct_from_tensor_metadata, reconstruct_args_kwargs)
@@ -1000,6 +1001,15 @@ class AclGraph(object):
         logger.info('Success to capture fx_graph %s for graph key{%s}. '
                     'Start to run AclGraph{id: %s} with the updated node num {%s}.',
                     self.name, graph_key, id(self.graph[graph_key]), len(self._updated_node_infos))
+
+        if os.getenv("TORCH_COMPILE_DEBUG", "0") == "1":
+            try:
+                dir_path = DebugContext.current_path()
+                os.makedirs(dir_path, exist_ok=True)
+                file_name = f"{self.name}_{id(self.graph[graph_key])}.json"
+                self.graph[graph_key].debug_dump(os.path.join(dir_path, file_name))
+            except Exception:
+                logger.exception("Aclgraph for fx_graph %s json debug dump failed", self.name)
 
         # save outputs meta info and weakref
         for output_iter in captured_outputs:
