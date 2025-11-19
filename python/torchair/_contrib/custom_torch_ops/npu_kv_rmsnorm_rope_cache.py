@@ -28,6 +28,7 @@ def conveter_npu_kv_rmsnorm_rope_cache_default(
     c_kv_scale: Optional[Tensor] = None,
     k_rope_offset: Optional[Tensor] = None,
     c_kv_offset: Optional[Tensor] = None,
+    v: Optional[Tensor] = None,
     epsilon: float = 1e-5,
     cache_mode: str = 'Norm',
     is_output_kv: bool = False,
@@ -35,5 +36,5 @@ def conveter_npu_kv_rmsnorm_rope_cache_default(
 ):
     return ge.KvRmsNormRopeCache(kv, gamma, cos, sin, index, k_cache, ckv_cache,
                                  k_rope_scale=k_rope_scale, c_kv_scale=c_kv_scale,
-                                 k_rope_offset=k_rope_offset, c_kv_offset=c_kv_offset,
+                                 k_rope_offset=k_rope_offset, c_kv_offset=c_kv_offset, v=v,
                                  epsilon=epsilon, cache_mode=cache_mode, is_output_kv=is_output_kv)

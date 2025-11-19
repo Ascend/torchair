@@ -80529,7 +80529,7 @@ def MoeGatingTopK(x: Tensor,
 
 
 # This api is auto-generated from IR KvRmsNormRopeCache
-@auto_convert_to_tensor([False, False, False, False, False, False, False], [False, False, False, False, False, False, False])
+@auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False, False, False], [False, False, False, False, False, False, False, True, True, True, True, True])
 def KvRmsNormRopeCache(kv: Tensor,
                        gamma: Tensor,
                        cos: Tensor,
@@ -80537,11 +80537,12 @@ def KvRmsNormRopeCache(kv: Tensor,
                        index: Tensor,
                        k_cache: Tensor,
                        ckv_cache: Tensor,
+                       k_rope_scale: Optional[Tensor],
+                       c_kv_scale: Optional[Tensor],
+                       k_rope_offset: Optional[Tensor],
+                       c_kv_offset: Optional[Tensor],
+                       v: Optional[Tensor],
                        *,
-                       k_rope_scale: Optional[Tensor] = None,
-                       c_kv_scale: Optional[Tensor] = None,
-                       k_rope_offset: Optional[Tensor] = None,
-                       c_kv_offset: Optional[Tensor] = None,
                        epsilon: float = 1e-5,
                        cache_mode: str = 'Norm',
                        is_output_kv: bool = False,
@@ -80559,6 +80560,7 @@ def KvRmsNormRopeCache(kv: Tensor,
     .OPTIONAL_INPUT(c_kv_scale, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(k_rope_offset, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(c_kv_offset, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(v, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
     .OUTPUT(k_cache, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16, DT_INT8}))\n
     .OUTPUT(ckv_cache, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16, DT_INT8}))\n
     .OUTPUT(k_rope, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
@@ -80578,6 +80580,7 @@ def KvRmsNormRopeCache(kv: Tensor,
         op.input.append(dependency.controller)
 
     # process inputs
+    # REQUIRED 
     op.input.append(kv.tensor)
     op.input_desc.add().CopyFrom(kv.desc)
     op.input_desc[-1].name = "kv"
@@ -80606,6 +80609,7 @@ def KvRmsNormRopeCache(kv: Tensor,
     op.input_desc.add().CopyFrom(ckv_cache.desc)
     op.input_desc[-1].name = "ckv_cache"
 
+    # OPTIONAL
     if k_rope_scale is not None:
         op.input.append(k_rope_scale.tensor)
         op.input_desc.add().CopyFrom(k_rope_scale.desc)
@@ -80642,6 +80646,15 @@ def KvRmsNormRopeCache(kv: Tensor,
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "c_kv_offset"
 
+    if v is not None:
+        op.input.append(v.tensor)
+        op.input_desc.add().CopyFrom(v.desc)
+        op.input_desc[-1].name = "v"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "v"
+        
     # process attrs
     op.attr["epsilon"].f = epsilon
     op.attr["cache_mode"].s = compat_as_bytes(cache_mode)
