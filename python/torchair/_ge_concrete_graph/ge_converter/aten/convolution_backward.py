@@ -1,5 +1,15 @@
 from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 from torchair.core.utils import logger
+from torchair.ge._ge_graph import DataType
+
+
+def check_input_dtype(x, grad_output, weight):
+    if x is not None and x.dtype == DataType.DT_FLOAT8_E4M3FN:
+        raise TypeError("x dtype does not support 8-bit data types.")
+    if grad_output is not None and grad_output.dtype == DataType.DT_FLOAT8_E4M3FN:
+        raise TypeError("grad_output dtype does not support 8-bit data types.")
+    if weight is not None and weight.dtype == DataType.DT_FLOAT8_E4M3FN:
+        raise TypeError("weight dtype does not support 8-bit data types.")
 
 
 def conv3d_backward_input_nocheck(x: Tensor, grad: Tensor, weight: Tensor, stride: List[int], padding: List[int],
@@ -7,6 +17,8 @@ def conv3d_backward_input_nocheck(x: Tensor, grad: Tensor, weight: Tensor, strid
     strides = [1, 1, stride[0], stride[1], stride[2]]
     pads = [padding[0], padding[0], padding[1], padding[1], padding[2], padding[2]]
     dilation = [1, 1, dilation[0], dilation[1], dilation[2]]
+
+    check_input_dtype(x, grad, weight)
 
     output = ge.Conv3DBackpropInput(input_size=ge.Shape(x), filter=weight, out_backprop=grad,
                                     strides=strides, pads=pads, dilations=dilation, groups=groups, data_format="NCDHW")
@@ -22,12 +34,15 @@ def conv3d_backward_weight_nocheck(x: Tensor, grad: Tensor, weight: Tensor, stri
     strides = [1, 1, stride[0], stride[1], stride[2]]
     pads = [padding[0], padding[0], padding[1], padding[1], padding[2], padding[2]]
     dilation = [1, 1, dilation[0], dilation[1], dilation[2]]
+    check_input_dtype(x, grad, weight)
     output = ge.Conv3DBackpropFilter(x=x, filter_size=ge.Shape(weight), out_backprop=grad,
                                      strides=strides, pads=pads, dilations=dilation, groups=groups, data_format="NCDHW")
 
     specific_op_input_layout(output, indices=0, layout="ND")
     specific_op_input_layout(output, indices=[1, 2], layout="NCDHW")
     specific_op_output_layout(output, indices=0, layout="NCDHW")
+    if x.dtype is not DataType.DT_FLOAT:
+        output = ge.Cast(output, dst_type=x.dtype)
     return output
 
 
@@ -56,6 +71,7 @@ def conv2d_backward_input_out_nocheck(x: Tensor, grad: Tensor, weight: Tensor, s
         input_size = x._symsize
     else:
         input_size = ge.Shape(x)
+    check_input_dtype(None, grad, weight)
     output = ge.Conv2DBackpropInput(input_size=input_size, filter=weight, out_backprop=grad, strides=strides,
                                     pads=pads, dilations=dilation, groups=groups, data_format="NCHW")
     specific_op_input_layout(output, indices=0, layout="ND")
@@ -69,11 +85,14 @@ def conv2d_backward_weight_out_nocheck(x: Tensor, grad: Tensor, weight: Tensor, 
     strides = [1, 1, stride[0], stride[1]]
     pads = [padding[0], padding[0], padding[1], padding[1]]
     dilation = [1, 1, dilation[0], dilation[1]]
+    check_input_dtype(x, grad, weight)
     output = ge.Conv2DBackpropFilter(x=x, filter_size=ge.Shape(weight), out_backprop=grad, strides=strides, pads=pads,
                                      dilations=dilation, groups=groups, data_format="NCHW")
     specific_op_input_layout(output, indices=1, layout="ND")
     specific_op_input_layout(output, indices=[0, 2], layout="NCHW")
     specific_op_output_layout(output, indices=0, layout="NCHW")
+    if x.dtype is not DataType.DT_FLOAT:
+        output = ge.Cast(output, dst_type=x.dtype)
     return output
 
 
@@ -113,11 +132,14 @@ def conv_transpose2d_backward_weight_out_nocheck(x, grad, weight, padding, outpu
     strides = [1, 1, stride[0], stride[1]]
     pads = [padding[0], padding[0], padding[1], padding[1]]
     dilation = [1, 1, dilation[0], dilation[1]]
+    check_input_dtype(x, grad, weight)
     output = ge.Conv2DBackpropFilter(x=grad, filter_size=ge.Shape(weight), out_backprop=x, strides=strides, pads=pads,
                                      dilations=dilation, groups=groups, data_format="NCHW")
     specific_op_input_layout(output, indices=1, layout="ND")
     specific_op_input_layout(output, indices=[0, 2], layout="NCHW")
     specific_op_output_layout(output, indices=0, layout="NCHW")
+    if grad.dtype is not DataType.DT_FLOAT:
+        output = ge.Cast(output, dst_type=grad.dtype)
     return output
 
 
@@ -173,10 +195,13 @@ def conv_transpose3d_backward_weight_out_nocheck(x: Tensor, grad: Tensor, weight
         filter_size = weight._symsize
     else:
         filter_size = ge.Shape(weight)
+    check_input_dtype(x, grad, weight)
     output = ge.Conv3DBackpropFilter(x=grad, out_backprop=x, filter_size=filter_size, strides=strides, pads=pads,
                                      dilations=dilation, groups=groups, data_format="NCDHW")
     specific_op_input_layout(output, indices=[0, 1, 2], layout="NCDHW")
     specific_op_output_layout(output, indices=0, layout="NCDHW")
+    if grad.dtype is not DataType.DT_FLOAT:
+        output = ge.Cast(output, dst_type=grad.dtype)
     return output
 
 
@@ -213,11 +238,15 @@ def conveter_aten_convolution_backward_default(
 ):
     """NB: aten::convolution_backward(Tensor grad_output, Tensor input, Tensor weight, SymInt[]? bias_sizes, int[] stride, SymInt[] padding, int[] dilation, bool transposed, SymInt[] output_padding, int groups, bool[3] output_mask) -> (Tensor, Tensor, Tensor)"""
     if isinstance(padding, Tensor):
-        raise NotImplementedError("torch.ops.aten.convolution.default ge converter is not implement "
-                                  "when padding is tensor.")
+        logger.error("torch.ops.aten.convolution_backward does not support dynamic graph scenarios where the padding"
+            " of a certain dimension is greater than 0 or padding is of Tensor type.")
+        raise NotImplementedError("torch.ops.aten.convolution_backward.default ge converter is not implement "
+                                "when padding is tensor.")
     if isinstance(output_padding, Tensor):
-        raise NotImplementedError("torch.ops.aten.convolution.default ge converter is not implement "
-                                  "when output_padding is tensor.")
+        logger.error("torch.ops.aten.convolution_backward does not support dynamic graph scenarios where the "
+            "output_padding of a certain dimension is greater than 0 or output_padding is of Tensor type.")
+        raise NotImplementedError("torch.ops.aten.convolution_backward.default ge converter is not implement "
+                                "when output_padding is tensor.")
     grad, weight = dtype_promote(grad_output, weight, target_dtype=x.dtype)
 
     dim = x.rank
@@ -235,17 +264,11 @@ def conveter_aten_convolution_backward_default(
         if dim == 4 or dim == 3:
             return npu_conv2d_backward(x, grad, weight, stride, padding, dilation, groups, output_mask, input_is_3d)
         elif dim == 5:
-            logger.warning_once("conv3d only support non-generalized scenarios before 2024.02: "
-                                "padding must be less than weight/filter/kernel."
-                                "might be support generalized scenarios in future vision.")
             return npu_conv3d_backward(x, grad, weight, stride, padding, dilation, groups, output_mask)
 
     if dim == 4 or dim == 3:
         return npu_conv_transpose2d_backward(x, grad, weight, padding, output_padding, stride, dilation,
                                              groups, output_mask, input_is_3d)
-    logger.warning_once("conv3d only support non-generalized scenarios before 2024.02: "
-                        "padding must be less than weight/filter/kernel."
-                        "might be support generalized scenarios in future vision.")
     return npu_conv_transpose3d_backward(x, grad, weight, padding, output_padding, stride, dilation, groups,
                                          output_mask)
 

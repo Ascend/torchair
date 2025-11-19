@@ -2,6 +2,13 @@ from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 from torchair.core.utils import logger
 
 
+def check_input_dtype(x, weight):
+    if x.dtype == DataType.DT_FLOAT8_E4M3FN:
+        raise TypeError("x dtype does not support 8-bit data types.")
+    if weight.dtype == DataType.DT_FLOAT8_E4M3FN:
+        raise TypeError("weight dtype does not support 8-bit data types.")
+        
+
 def _cal_length(x, dilation, kernel_size, output_padding, padding, stride, index):
     x0 = ge.Mul(ge.Sub(x, 1), stride[index])
     x1 = ge.Mul(dilation[index], ge.Sub(kernel_size, 1))
@@ -69,7 +76,7 @@ def _npu_conv_transpose2d(x, weight, bias, padding, output_padding, stride, dila
     pads = [padding[0], padding[0], padding[1], padding[1]]
     dilation = [1, 1, dilation[0], dilation[1]]
     output_padding = [0, 0, output_padding[0], output_padding[1]]
-
+    check_input_dtype(x, weight)
     output = ge.Conv2DTranspose(input_size=input_size, x=x, filter=weight, bias=bias, offset_w=None,
                                 strides=strides, pads=pads, dilations=dilation, groups=groups, data_format="NCHW",
                                 output_padding=output_padding)
@@ -117,8 +124,12 @@ def _conv_transpose3d_npu_output_size_const(x: Tensor, weight: Tensor, padding: 
     return ge.Pack([n, c, d, h, w], N=5, axis=0)
 
 
+def is_const_tensor(input_tensor):
+    return input_tensor.symsize is not None and all([not isinstance(s, torch.SymInt) for s in input_tensor.symsize])
+
+
 def _convolution_transpose3d_nocheck(x, weight, bias, padding, output_padding, stride, dilation, groups):
-    if x._symsize is not None and all([not isinstance(s, torch.SymInt) for s in x._symsize]):
+    if is_const_tensor(x) and is_const_tensor(weight):
         input_size = _conv_transpose3d_npu_output_size_const(x, weight, padding, output_padding, stride, dilation,
                                                              groups)
     else:
@@ -127,6 +138,7 @@ def _convolution_transpose3d_nocheck(x, weight, bias, padding, output_padding, s
     output_padding = [0, 0, 0, 0, 0]
     strides = [1, 1, stride[0], stride[1], stride[2]]
     dilation = [1, 1, dilation[0], dilation[1], dilation[2]]
+    check_input_dtype(x, weight)
     output = ge.Conv3DTranspose(input_size=input_size, x=x, filter=weight, bias=bias, offset_w=None,
                                 strides=strides, pads=pads, dilations=dilation, groups=groups, data_format="NCDHW",
                                 output_padding=output_padding)
@@ -143,9 +155,6 @@ def _npu_convolution_transpose(x, weight, bias, padding, output_padding, stride,
     if dim == 4 or dim == 3:
         return _npu_conv_transpose2d(x, weight, bias, padding, output_padding, stride, dilation, groups)
     else:
-        logger.warning_once("conv3d only support non-generalized scenarios before 2024.02: "
-                            "padding must be less than weight/filter/kernel."
-                            "might be support generalized scenarios in future vision.")
         return _convolution_transpose3d_nocheck(x, weight, bias, padding, output_padding, stride, dilation, groups)
 
 
@@ -183,12 +192,16 @@ def conveter_aten_convolution_default(
 ):
     """NB: aten::convolution(Tensor input, Tensor weight, Tensor? bias, int[] stride, SymInt[] padding, int[] dilation, bool transposed, SymInt[] output_padding, int groups) -> Tensor"""
     if isinstance(padding, Tensor):
+        logger.error("torch.ops.aten.convolution does not support dynamic graph scenarios where the padding"
+            " of a certain dimension is greater than 0 or padding is of Tensor type.")
         raise NotImplementedError("torch.ops.aten.convolution.default ge converter is not implement "
                                   "when padding is tensor.")
     if isinstance(output_padding, Tensor):
+        logger.error("torch.ops.aten.convolution does not support dynamic graph scenarios where the output_padding"
+            " of a certain dimension is greater than 0 or output_padding is of Tensor type.")
         raise NotImplementedError("torch.ops.aten.convolution.default ge converter is not implement "
                                   "when output_padding is tensor.")
-    if bias is not None:
+    if bias is not None and x.dtype != DataType.DT_HIFLOAT8:
         bias = dtype_promote(bias, target_dtype=meta_outputs.dtype)
     x, weight = dtype_promote(x, weight, target_dtype=meta_outputs.dtype)
     if len(padding) == 1:
