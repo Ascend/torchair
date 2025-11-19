@@ -8,6 +8,22 @@ import threading
 from datetime import datetime
 
 
+def _create_debug_log_paths():
+    if os.getenv("TORCH_COMPILE_DEBUG") != "1":
+        return None
+
+    from torch._dynamo.utils import get_debug_dir
+    base_dir = os.path.join(get_debug_dir(), "torchair")
+    os.makedirs(base_dir, exist_ok=True)
+    debug_log_path = os.path.join(base_dir, "debug.log")
+
+    from torchair.core import _torchair
+    _torchair.SetDebugLogPath(debug_log_path)
+
+    return debug_log_path
+
+_torchair_debug_log_path = _create_debug_log_paths()
+
 EVENT_LEVEL = 35
 logging.addLevelName(EVENT_LEVEL, 'EVENT')
 
@@ -44,7 +60,7 @@ def _get_logger(*, level=logging.ERROR, output=sys.stdout, file=None, name=None)
         torchair_logger.addHandler(console_handler)
 
     if file:
-        file_handler = logging.FileHandler(file)
+        file_handler = logging.FileHandler(file, encoding='utf-8', delay=False)
         file_handler.setFormatter(formatter)
         torchair_logger.addHandler(file_handler)
 
@@ -56,5 +72,8 @@ def _get_logger(*, level=logging.ERROR, output=sys.stdout, file=None, name=None)
 
     return torchair_logger
 
-
-logger = _get_logger(name="torchair")
+logger = _get_logger(
+    name="torchair",
+    file=_torchair_debug_log_path,
+    level=logging.DEBUG if os.getenv("TORCH_COMPILE_DEBUG") == "1" else logging.ERROR
+)

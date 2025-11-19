@@ -2774,35 +2774,55 @@ class AclGraphSt(unittest.TestCase):
 
     def test_torch_compile_acl_debug_dump(self):
 
-        EXPECTED_FILE_PATTERNS_ACL = [
-            "model__{id}/dynamo_out_graph.txt",
-            # forward
-            "model__{id}/forward/000_aot_forward_graph.txt",
-            "model__{id}/forward/001_aot_forward_graph_after_post_grad_custom_pre_pass.txt",
-            "model__{id}/forward/002_aot_forward_graph_after_optimize_noop_ops.txt",
-            "model__{id}/forward/003_aot_forward_graph_after_recover_view_inplace_pattern.txt",
-            "model__{id}/forward/004_aot_forward_graph_after_optimize_sym_input.txt",
-            "model__{id}/forward/005_aot_forward_graph_after_view_to_reshape.txt",
-            "model__{id}/forward/006_aot_forward_graph_after_post_grad_custom_post_pass.txt",
-            "model__{id}/forward/007_aot_forward_graph_after_apply_event_closure_with_multi_stream.txt",
-            "model__{id}/forward/008_aot_forward_graph_after_apply_event_record.txt",
-            "model__{id}/forward/009_aot_forward_graph_after_reinplace_inplaceable_ops_pass.txt",
-            "model__{id}/forward/010_aot_forward_graph_after_replace_dynamic_workspace_ops.txt",
-            "model__{id}/forward/011_aot_forward_graph_after_reinplace_input_mutated_ops.txt",
-            # backward
-            "model__{id}/backward/000_aot_backward_graph.txt",
-            "model__{id}/backward/001_aot_backward_graph_after_post_grad_custom_pre_pass.txt",
-            "model__{id}/backward/002_aot_backward_graph_after_optimize_noop_ops.txt",
-            "model__{id}/backward/003_aot_backward_graph_after_recover_view_inplace_pattern.txt",
-            "model__{id}/backward/004_aot_backward_graph_after_optimize_sym_input.txt",
-            "model__{id}/backward/005_aot_backward_graph_after_view_to_reshape.txt",
-            "model__{id}/backward/006_aot_backward_graph_after_post_grad_custom_post_pass.txt",
-            "model__{id}/backward/007_aot_backward_graph_after_apply_event_closure_with_multi_stream.txt",
-            "model__{id}/backward/008_aot_backward_graph_after_apply_event_record.txt",
-            "model__{id}/backward/009_aot_backward_graph_after_reinplace_inplaceable_ops_pass.txt",
-            "model__{id}/backward/010_aot_backward_graph_after_replace_dynamic_workspace_ops.txt",
-            "model__{id}/backward/011_aot_backward_graph_after_reinplace_input_mutated_ops.txt",
+        # Define templates for ACL mode (without hardcoded indices)
+        ACL_COMMON_FILES = [
+            "dynamo_out_graph.txt",
         ]
+
+        ACL_FORWARD_STEP_TEMPLATS = [
+            "aot_forward_graph.txt",
+            "aot_forward_graph_after_post_grad_custom_pre_pass.txt",
+            "aot_forward_graph_after_optimize_noop_ops.txt",
+            "aot_forward_graph_after_recover_view_inplace_pattern.txt",
+            "aot_forward_graph_after_optimize_sym_input.txt",
+            "aot_forward_graph_after_view_to_reshape.txt",
+            "aot_forward_graph_after_post_grad_custom_post_pass.txt",
+            "aot_forward_graph_after_apply_event_closure_with_multi_stream.txt",
+            "aot_forward_graph_after_apply_event_record.txt",
+            "aot_forward_graph_after_reinplace_inplaceable_ops_pass.txt",
+            "aot_forward_graph_after_replace_dynamic_workspace_ops.txt",
+            "aot_forward_graph_after_reinplace_input_mutated_ops.txt",
+        ]
+
+        ACL_BACKWARD_STEP_TEMPLATES = [
+            "aot_backward_graph.txt",
+            "aot_backward_graph_after_post_grad_custom_pre_pass.txt",
+            "aot_backward_graph_after_optimize_noop_ops.txt",
+            "aot_backward_graph_after_recover_view_inplace_pattern.txt",
+            "aot_backward_graph_after_optimize_sym_input.txt",
+            "aot_backward_graph_after_view_to_reshape.txt",
+            "aot_backward_graph_after_post_grad_custom_post_pass.txt",
+            "aot_backward_graph_after_apply_event_closure_with_multi_stream.txt",
+            "aot_backward_graph_after_apply_event_record.txt",
+            "aot_backward_graph_after_reinplace_inplaceable_ops_pass.txt",
+            "aot_backward_graph_after_replace_dynamic_workspace_ops.txt",
+            "aot_backward_graph_after_reinplace_input_mutated_ops.txt",
+        ]
+
+        # Generate patterns with auto-incremented indics
+        def generate_acl_patterns():
+            patterns = []
+            # Add common files
+            for file in ACL_COMMON_FILES:
+                patterns.append(f"model__{{id}}/{file}")
+            # Add forward files with auto indices
+            for idx, template in enumerate(ACL_FORWARD_STEP_TEMPLATS):
+                patterns.append(f"model__{{id}}/forward/{idx:03d}_{template}")
+            for idx, template in enumerate(ACL_BACKWARD_STEP_TEMPLATES):
+                patterns.append(f"model__{{id}}/backward/{idx:03d}_{template}")
+            return patterns
+
+        EXPECTED_FILE_PATTERNS_ACL = generate_acl_patterns()
        
         from torch._dynamo.utils import get_debug_dir
         import tempfile
