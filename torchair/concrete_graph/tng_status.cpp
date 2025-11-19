@@ -30,7 +30,12 @@ int32_t Logger::kLogLevel = []() -> int32_t {
     }
     return atoi(env_val);
   }
-  return static_cast<int32_t>(tng::LogLevel::ERROR);
+  auto torch_env_val = std::getenv("TORCH_COMPILE_DEBUG");
+  if (torch_env_val != nullptr && std::string(torch_env_val) == "1") {
+      return static_cast<int32_t>(tng::LogLevel::DEBUG);
+  } else {
+      return static_cast<int32_t>(tng::LogLevel::ERROR);
+  }
 }();
 
 ge::char_t *CreateMessage(const ge::char_t *format, va_list arg) {

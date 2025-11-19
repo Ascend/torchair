@@ -11,9 +11,12 @@
 #include <iomanip>
 #include <chrono>
 #include <ctime>
+#include <mutex>
 
 namespace tng {
 constexpr int32_t time_width = 3;
+
+void SetDebugLogPath(const std::string& path);
 
 inline std::string GetCurrentTimeStamp() {
   auto now = std::chrono::high_resolution_clock::now();
@@ -67,24 +70,13 @@ class Logger : public std::basic_ostringstream<char> {
           << GetCurrentTimeStamp() << " [" << f << ":" << line << "]" << syscall(SYS_gettid) << " ";
     prefix_len = str().length();
   }
-  ~Logger() override {
-    size_t prev_pos = 0U;
-    size_t cur_pos = 0U;
-    size_t original_str_len = str().length();
-
-    while ((cur_pos = str().find('\n', cur_pos)) != std::string::npos) {
-      std::cerr << str().substr(prev_pos, cur_pos - prev_pos) << std::endl;
-      if (cur_pos == original_str_len - 1U) {
-        break;
-      }
-      std::cerr << str().substr(0U, prefix_len);
-      cur_pos++;
-      prev_pos = cur_pos;
-    }
-    if (cur_pos != original_str_len - 1U) {
-      std::cerr << str().substr(prev_pos, original_str_len - prev_pos) << std::endl;
-    }
-  }
+  ~Logger() override; 
+  static void SetDebugLogPath(const std::string& path);
+  static const std::string& GetDebugLogPath();
+ private:
+  void WriteLine(const std::string& line, const std::string& log_path) const;
+  static std::mutex g_log_mutex;
+  static std::string g_torchairDebugLogPath;
 };
 
 enum class LogLevel {
