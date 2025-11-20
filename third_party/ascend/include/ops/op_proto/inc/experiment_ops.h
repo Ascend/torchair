@@ -3627,20 +3627,48 @@ REG_OP(GroupedMatmul)
  * @brief The fusion operator of RMSNorm, RotaryPositionEmbedding and Update KVCache.
  *
  * @par Inputs:
- * @li kv: A Tensor. The type support float16. Format: ND.
- * @li gamma: A Tensor, used in RMS Norm. The type support float16. Format: ND.
- * @li cos: A Tensor, from position embedding. The type support float16. Format: ND.
- * @li sin: A Tensor, from position embedding. The type support float16. Format: ND.
- * @li index: A Tensor. The type support int64. Format: ND.
- * @li k_cache: A Tensor. The type support float16. Format: ND.
- * @li v_cache: A Tensor. The type support float16. Format: ND.
+ * @li kv: A tensor. The type support float16 and bfloat16 .Its shape is [Bkv,N,Skv,D] or [Bkv,N,Skv,Dk] when v is not None. Format: ND.
+ * @li gamma: A tensor, used in RMS Norm. Its type is consistent with kv. Its shape is [Dv,]. Format: ND.
+ * @li cos: A tensor, from position embedding. Its type is consistent with kv. Its shape is [Bkv,1,Skv,Dk] or
+ * [Bkv,1,1,Dk]. Format: ND.
+ * @li sin: A tensor, from position embedding. Its type is consistent with kv. Its shape is [Bkv,1,Skv,Dk] or
+ * [Bkv,1,1,Dk]. The shape of sin should be consistent with that of cos. Format: ND.
+ * @li index: A tensor. The type support int64. When the cache_mode is Norm, its shape is [Bkv,Skv]. When the cache_mode
+ * is PA_BNSD or PA_NZ, its shape is [Bkv*Skv]. When the cache_mode is PA_BLK_BNSD or PA_BLK_NZ, its shape is
+ * [Bkv*ceil_div(Skv,BlockSize)]. Format: ND.
+ * @li k_cache: A tensor. Its type is consistent with kv or int8. When the cache_mode is in PA scenario(cahce_mode is
+ * PA_BNSD, PA_NZ, PA_BLK_BNSD or PA_BLK_NZ), its shape is [BlockNum,BlockSize,N,Dk]. When the cache_mode is Norm, its
+ * shape is [Bcache,N,Scache,Dk]. Format: ND.
+ * @li ckv_cache: A tensor. Its type is consistent with kv or int8. When the cache_mode is in PA scenario, its shape is
+ * [BlockNum,BlockSize,N,Dv]. When the cache_mode is Norm, its shape is [Bcache,N,Scache,Dv]. Format: ND.
+ * @li k_rope_scale: A tensor. The type support float32. This input parameter is required when the data type of k_cache
+ * is int8. Its shape can be [N,Dk], [Dk,] or [1,]. Format: ND.
+ * @li c_kv_scale: A tensor. The type support float32. This input parameter is required when the data type of ckv_cache
+ * is int8. Its shape can be [N,Dv], [Dv,] or [1,]. Format: ND.
+ * @li k_rope_offset: A tensor. The type support float32. When the data type of k_cache is int8 and the corresponding
+ * input exists with the quantization scenario being asymmetric quantization, this parameter input is required. Its
+ * shape can be [N,Dk], [Dk,] or [1,]. Format: ND.
+ * @li c_kv_offset: A tensor. The type support float32. When the data type of ckv_cache is int8 and the corresponding
+ * input exists with the quantization scenario being asymmetric quantization, this parameter input is required. Its
+ * shape can be [N,Dk], [Dk,] or [1,]. Format: ND.
+ * @li v: A tensor. The type support float16 and bfloat16. Its shape is [Bkv,N,Skv,Dv]. Format: ND.
  *
  * @par Outputs:
- * @li k_cache: A Tensor. The type support float16. Format: ND.
- * @li v_cache: A Tensor. The type support float16. Format: ND.
+ * @li k_cache: A tensor. Its type is consistent with kv or int8. When the cache_mode is in PA scenario, its shape is
+ * [BlockNum,BlockSize,N,Dk]. When the cache_mode is Norm, its shape is [Bcache,N,Scache,Dk]. Format: ND.
+ * @li ckv_cache: A tensor. Its type is consistent with kv or int8. When the cache_mode is in PA scenario, its shape is
+ * [BlockNum,BlockSize,N,Dv]. When the cache_mode is Norm, its shape is [Bcache,N,Scache,Dv]. Format: ND.
+ * @li k_rope: A tensor. Its type is consistent with kv. If is_output_kv is true, this parameter output is required.
+ * Its shape is [Bkv,N,Skv,Dk]. Format: ND.
+ * @li c_kv: A tensor. Its type is consistent with kv. If is_output_kv is true, this parameter output is required.
+ * Its shape is [Bkv,N,Skv,Dv]. Format: ND.
  *
  * @par Attributes:
- * epsilon: A float32. The epsilon value for RMSNorm. Default: 1e-5.
+ * @li epsilon: A float32. The epsilon value for RMSNorm. Default: 1e-5.
+ * @li cache_mode: A string. The cache dtype. There are five types：Norm, PA_BNSD, PA_NZ, PA_BLK_BNSD and PA_BLK_NZ.
+ * Default: Norm.
+ * @li is_output_kv: A bool. Control whether k_rope and c_kv are output. If it is true, then k_rope and c_kv need to be
+ * output. If it is false, then k_rope and c_kv do not need to be output. Default: false.
  *
  * @par Restrictions:
  * Warning: THIS FUNCTION IS EXPERIMENTAL. Please do not use.
@@ -3657,6 +3685,7 @@ REG_OP(KvRmsNormRopeCache)
     .OPTIONAL_INPUT(c_kv_scale, TensorType({DT_FLOAT}))
     .OPTIONAL_INPUT(k_rope_offset, TensorType({DT_FLOAT}))
     .OPTIONAL_INPUT(c_kv_offset, TensorType({DT_FLOAT}))
+    .OPTIONAL_INPUT(v, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
     .OUTPUT(k_cache, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16, DT_INT8}))
     .OUTPUT(ckv_cache, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16, DT_INT8}))
     .OUTPUT(k_rope, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
