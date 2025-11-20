@@ -3809,6 +3809,42 @@ REG_OP(DequantSwigluQuant)
     .ATTR(glu_bias, Float, 1.0)
     .OP_END_FACTORY_REG(DequantSwigluQuant)
 
+
+/**
+* @brief Activation function of SwiGlu with clipping.
+
+* @par Inputs:
+* Two inputs, including:
+* @li x: A tensor. Type is bfloat16, float16, float32.
+* @li group_index: An optional tensor. Shape is (N,). Type is int64. 
+
+* @par Outputs:
+* one output, including:
+* y: A tensor. Type is bfloat16, float16, float32.
+
+* @par Attributes:
+* Five attributes, including:
+* @li dim: An optional int. The dimension to be split, value in [-xDim, xDim-1], default is -1.
+* @li alpha: An optional float. The activation coefficient for the GLU activation function, default is 1.702.
+* @li limit: An optional float. The threshold limit for SWIGLU input, default is 7.0.
+* @li bias: An optional float. The bias applied during SWIGLU linear computation, default is 1.0.
+* @li interleaved: An optional bool. The way of splitting x: true for interleaved splitting, false for front-back splitting, default is true.
+
+* @attention Constraints:
+* The dim dimension of x must be divisible by 2, and the dim dimension of y must be equal to the dim dimension of x divided by 2.
+*/
+REG_OP(ClippedSwiglu)
+    .INPUT(x, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))
+    .OPTIONAL_INPUT(group_index, TensorType({DT_INT64}))
+    .OUTPUT(y, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))
+    .ATTR(dim, Int, -1)
+    .ATTR(alpha, Float, 1.702)
+    .ATTR(limit, Float, 7.0)
+    .ATTR(bias, Float, 1.0)
+    .ATTR(interleaved, Bool, true)
+    .OP_END_FACTORY_REG(ClippedSwiglu)
+
+
 /**
 * @brief Function FusedInferAttentionScore.
 
