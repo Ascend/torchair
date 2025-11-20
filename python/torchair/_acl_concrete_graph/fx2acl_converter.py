@@ -253,6 +253,7 @@ class AclConcreteGraph(ConcreteGraphBase):
 
         self.fx_graph.graph.eliminate_dead_code()
         logger.debug('after graph eliminate_dead_code, graph is %s', self.fx_graph.graph)
+        observer.dump_gm(self.fx_graph, "graph_after_eliminate_dead_code")
 
         if not (multi_stream_enabled or self.config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass):
             logger.debug("Start to process reinplace inplaceable ops fx pass for graph: %s", self.fx_graph_name)
