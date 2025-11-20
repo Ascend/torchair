@@ -66,8 +66,10 @@ def _get_other_to_args_copy_nodes(graph_module: GraphModule) -> List[Node]:
                          "copy_ node from %s to %s.", node, node.args[1].op, node.args[0].op)
             continue
         if hasattr(node.args[0], "meta") and hasattr(node.args[1], "meta"):
-            dst_shape = node.meta['val'].size()
-            src_shape = node.meta['val'].size()
+            if not ('val' in node.args[0].meta and 'val' in node.args[1].meta):
+                continue
+            dst_shape = node.args[0].meta['val'].size()
+            src_shape = node.args[1].meta['val'].size()
             if dst_shape != src_shape:
                 # copy for inplace op must be of the same shape，broadcasting is unexpected.
                 logger.debug("Skip copy_ node: %s, expect the shape of src and dst to be the same, but src shape "

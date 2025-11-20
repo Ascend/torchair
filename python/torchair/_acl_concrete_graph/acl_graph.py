@@ -186,6 +186,10 @@ def get_unupdated_sym_input_index(graph_module: torch.fx.GraphModule):
             logger.debug('Find no meta attr placeholder node, placeholder index=%s, value=%s, type=%s',
                          data_idx, node, type(node).__name__)
             continue
+        if 'val' not in node.meta:
+            logger.debug('Find placeholder node with no val in meta, placeholder index=%s, value=%s, type=%s',
+                         data_idx, node, type(node).__name__)
+            continue
         node_meta = node.meta['val']
         if not have_sym_in_meta(node_meta):
             continue
@@ -522,7 +526,7 @@ def construct_and_add_output(node: fx.Node, graph_module: fx.GraphModule, kwargs
     if registered_outputs_len == 0:
         raise RuntimeError(f"Current node[{node.target}] do not have outputs in registered info, "
                            f"skip construct and add outputs.", )
-
+        
     meta_outputs = node.meta['val']
     if not isinstance(meta_outputs, (tuple, list)):
         meta_outputs = (meta_outputs,)
@@ -569,6 +573,9 @@ def replace_dynamic_workspace_ops(graph_module: fx.GraphModule, meta_inputs: Lis
     erase_nodes = []
     for node in graph_module.graph.nodes:
         if node.target not in _REPLACE_FUNC_MAP.keys():
+            continue
+
+        if not hasattr(node, "meta") or 'val' not in node.meta:
             continue
 
         with graph_module.graph.inserting_before(node):
