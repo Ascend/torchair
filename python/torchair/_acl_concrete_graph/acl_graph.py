@@ -1,6 +1,7 @@
 from collections import deque, OrderedDict
 from typing import List, Optional, Callable, Any, Deque, Dict, Set, Tuple, Union
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 import functools
 import gc
 import os
@@ -1006,7 +1007,8 @@ class AclGraph(object):
             try:
                 dir_path = DebugContext.current_path()
                 os.makedirs(dir_path, exist_ok=True)
-                file_name = f"{self.name}_{id(self.graph[graph_key])}.json"
+                timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d%H%M%S%f")
+                file_name = f"{self.name}_id_{id(self.graph[graph_key])}_rank_{self._device}_pid_{os.getpid()}_ts_{timestamp}.json"
                 self.graph[graph_key].debug_dump(os.path.join(dir_path, file_name))
             except Exception:
                 logger.exception("Aclgraph for fx_graph %s json debug dump failed", self.name)
