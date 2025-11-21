@@ -5,6 +5,8 @@ from torch._dynamo.utils import get_debug_dir
 from torch.fx.graph_module import GraphModule
 from torchair._ge_concrete_graph.utils import dump_graph
 from torchair.ge._ge_graph import GeGraph
+from torchair._utils.path_manager import PathManager
+from torchair.core.utils import logger
 
 debug_ctx = threading.local()
 
@@ -22,8 +24,6 @@ class GraphTransformObserver:
         self._phase = getattr(debug_ctx, 'phase', 'default')
         self._path = os.path.join(DebugContext.current_path(), f"{self._phase}")
         self.dump_enabled = os.getenv("TORCH_COMPILE_DEBUG", "0") == "1"
-    
-        from torchair import logger
         self._logger = logger
        
     @classmethod
@@ -139,9 +139,10 @@ def dump_fx_safety(gm, file_path: str = None):
     """
     Save the FX graph txt.
     """
-    dir_path = os.path.dirname(file_path)
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path) 
+    if file_path is None:
+        logger.warning("dump file_path is None, skip dump graph.")
+        return
+    PathManager.check_path_writeable_and_safety(file_path)
 
     graph_str = gm.print_readable(False)
     with open(file_path, "w", encoding="utf-8") as f:
