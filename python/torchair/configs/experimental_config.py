@@ -22,6 +22,7 @@ class _ExperimentalConfig(NpuBaseConfig):
         self.enable_view_optimize = OptionValue(True, [True, False])
         self.remove_noop_ops = OptionValue(True, [True, False])
         self.tiling_schedule_optimize = OptionValue(False, [True, False])
+        self.pattern_fusion_pass = OptionValue(True, [True, False])
         self.aclgraph = _AclGraphExperimentalConfig()
 
         super(_ExperimentalConfig, self).__init__()
@@ -36,6 +37,7 @@ class _ExperimentalConfig(NpuBaseConfig):
         local_experiment_option["remove_noop_ops"] = self.remove_noop_ops.value
         local_experiment_option["ge.featureBaseRefreshable"] = "1" if self.memory_efficiency else "0"
         local_experiment_option["ge.topoSortingMode"] = sorting_strategy_dict[self.topology_sorting_strategy.value]
+        local_experiment_option["pattern_fusion_pass"] = self.pattern_fusion_pass.value
         if self.jit_compile.value == "auto":
             local_experiment_option["ge.jit_compile"] = "2"
         if self.static_model_ops_lower_limit.value is not None:

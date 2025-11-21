@@ -81496,3 +81496,140 @@ def GroupedMatmulSwigluQuantV2(x: Tensor,
         .output("y", "DT_INT8")\
         .output("y_scale", "DT_FLOAT")
     )
+
+
+# This api is auto-generated from IR AddRmsNormDynamicQuant
+@auto_convert_to_tensor([False, False, False, False, False, False], 
+                        [False, False, False, True, True, True])
+def AddRmsNormDynamicQuant(x1: Tensor,
+                           x2: Tensor,
+                           gamma: Tensor,
+                           smooth_scale1: Optional[Tensor],
+                           smooth_scale2: Optional[Tensor],
+                           beta: Optional[Tensor],
+                           *,
+                           epsilon: float = 0.000001,
+                           output_mask: List[bool] = [],
+                           dependencies=[],
+                           node_name=None):
+    """REG_OP(AddRmsNormDynamicQuant)\n
+        .INPUT(x1, TensorType({DT_FLOAT16, DT_BF16}))\n
+        .INPUT(x2, TensorType({DT_FLOAT16, DT_BF16}))\n
+        .INPUT(gamma, TensorType({DT_FLOAT16, DT_BF16}))\n
+        .OPTIONAL_INPUT(smooth_scale1, TensorType({DT_FLOAT16, DT_BF16}))\n
+        .OPTIONAL_INPUT(smooth_scale2, TensorType({DT_FLOAT16, DT_BF16}))\n
+        .OPTIONAL_INPUT(beta, TensorType({DT_FLOAT16, DT_BF16}))\n
+        .OUTPUT(y1, TensorType({DT_INT8}))\n
+        .OUTPUT(y2, TensorType({DT_INT8}))\n
+        .OUTPUT(x_out, TensorType({DT_FLOAT16, DT_BF16}))\n
+        .OUTPUT(scale1, TensorType({DT_FLOAT}))\n
+        .OUTPUT(scale2, TensorType({DT_FLOAT}))\n
+        .ATTR(epsilon, Float, 1e-6)\n
+        .ATTR(output_mask, ListBool,)\n
+    """
+
+    # process inputs
+    inputs = {
+        "x1": x1,
+        "x2": x2,
+        "gamma": gamma,
+        "smooth_scale1": smooth_scale1,
+        "smooth_scale2": smooth_scale2,
+        "beta": beta,
+    }
+
+    # process attrs
+    attrs = {
+        "epsilon": attr.Float(epsilon),
+        "output_mask": attr.ListBool(output_mask),
+    }
+
+    # process outputs
+    outputs = [
+        "y1",
+        "y2",
+        "x_out",
+        "scale1",
+        "scale2",
+    ]
+
+    return ge_op(
+        op_type="AddRmsNormDynamicQuant",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("AddRmsNormDynamicQuant")\
+        .input("x1", "DT_FLOAT16, DT_BF16")\
+        .input("x2", "DT_FLOAT16, DT_BF16")\
+        .input("gamma", "DT_FLOAT16, DT_BF16")\
+        .optional_input("smooth_scale1", "DT_FLOAT16, DT_BF16")\
+        .optional_input("smooth_scale2", "DT_FLOAT16, DT_BF16")\
+        .optional_input("beta", "DT_FLOAT16, DT_BF16")\
+        .attr("epsilon", attr.Float(0.000001))\
+        .attr("output_mask", attr.ListBool([]))\
+        .output("y1", "DT_INT8")\
+        .output("y2", "DT_INT8")\
+        .output("x_out", "DT_FLOAT16, DT_BF16")\
+        .output("scale1", "DT_FLOAT")\
+        .output("scale2", "DT_FLOAT")
+    )
+
+
+# This api is auto-generated from IR AddRmsNormCast
+@auto_convert_to_tensor([False, False, False], 
+                        [False, False, False])
+def AddRmsNormCast(x1: Tensor,
+                   x2: Tensor,
+                   gamma: Tensor,
+                   *,
+                   epsilon: float = 0.000001,
+                   dependencies=[],
+                   node_name=None):
+    """REG_OP(AddRmsNormCast)\n
+        .INPUT(x1, TensorType({DT_FLOAT16, DT_BF16}))\n
+        .INPUT(x2, TensorType({DT_FLOAT16, DT_BF16}))\n
+        .INPUT(gamma, TensorType({DT_FLOAT16, DT_BF16}))\n
+        .OUTPUT(y1, TensorType({DT_FLOAT}))\n
+        .OUTPUT(y2, TensorType({DT_FLOAT16, DT_BF16}))\n
+        .OUTPUT(rstd, TensorType({DT_FLOAT}))\n
+        .OUTPUT(x, TensorType({DT_FLOAT16, DT_BF16}))\n
+        .ATTR(epsilon, Float, 1e-6)\n
+    """
+
+    # process inputs
+    inputs = {
+        "x1": x1,
+        "x2": x2,
+        "gamma": gamma,
+    }
+
+    # process attrs
+    attrs = {
+        "epsilon": attr.Float(epsilon),
+    }
+
+    # process outputs
+    outputs = [
+        "y1",
+        "y2",
+        "rstd",
+        "x",
+    ]
+
+    return ge_op(
+        op_type="AddRmsNormCast",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("AddRmsNormCast")\
+        .input("x1", "DT_FLOAT16, DT_BF16")\
+        .input("x2", "DT_FLOAT16, DT_BF16")\
+        .input("gamma", "DT_FLOAT16, DT_BF16")\
+        .attr("epsilon", attr.Float(0.000001))\
+        .output("y1", "DT_FLOAT")\
+        .output("y2", "DT_FLOAT16, DT_BF16")\
+        .output("rstd", "DT_FLOAT")\
+        .output("x", "DT_FLOAT16, DT_BF16")
+    )

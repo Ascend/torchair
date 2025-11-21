@@ -39,6 +39,7 @@ from torchair._utils.error_code import pretty_error_msg
 from torchair._utils.graph_transform_observer import GraphTransformObserver, dump_fx_safety
 from torchair._utils.graph_transform_observer import wrap_debug_compilers, DebugContext
 from torchair.inference._gear_utils import get_dim_gears, set_dim_gears, guard_gears_shape
+from torchair.patterns.pattern_util import _apply_pattern_passes
 
 aten = torch.ops.aten
 
@@ -294,6 +295,10 @@ def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, obs
 
     observer.apply_gm_pass(_optimize_sym_input, "optimize_sym_input")
 
+    _add_stream_label_to_node_meta(graph_module)
+    if config.experimental_config.pattern_fusion_pass:
+        observer.apply_gm_pass(_apply_pattern_passes, "apply_pattern_passes")   
+
     observer.apply_gm_pass(_view_to_reshape, "view_to_reshape")
 
     post_func = config.post_grad_custom_post_pass.value
@@ -364,6 +369,34 @@ def _optimize_sym_input(graph_module: torch.fx.GraphModule, example_inputs=None,
     graph_module.graph.lint()
     graph_module.recompile()
     return graph_module
+
+
+def _add_stream_label_to_node_meta(graph_module: torch.fx.GraphModule):
+    """
+    Add stream labels to nodes in the FX graph based on their scope.
+    - Nodes within a stream scope: meta["stream_label"] = corresponding stream label
+    - Nodes outside a stream scope: meta["stream_label"] = None (default stream)
+    """
+    scope_enter_nodes_stack = []
+    current_stream = None
+
+    for node in graph_module.graph.nodes:
+        if str(node.target) == "air.scope_enter.default":
+            is_user_stream = len(node.args) > 0 and '_user_stream_label' in node.args[0]
+            current_stream = node.args[1][0] if is_user_stream and len(node.args) > 1 else None
+            node.meta["stream_label"] = current_stream
+            scope_enter_nodes_stack.append(node)
+        
+        elif str(node.target) == "air.scope_exit.default":
+            node.meta["stream_label"] = current_stream
+            if scope_enter_nodes_stack:
+                scope_enter_nodes_stack.pop()
+                current_stream = scope_enter_nodes_stack[-1].args[1][0] if scope_enter_nodes_stack and len(scope_enter_nodes_stack[-1].args) > 1 else None
+
+        else:
+            node.meta["stream_label"] = current_stream
+
+    graph_module.graph.lint()
 
 
 def _valid_graph(graph_module):

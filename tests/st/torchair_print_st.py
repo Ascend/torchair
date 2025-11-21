@@ -6,6 +6,7 @@ import sys
 import torch
 import torchair
 from torchair_st_utils import generate_faked_module
+from torchair.configs.compiler_config import CompilerConfig
 
 import _privateuse1_backend
 _privateuse1_backend.register_hook()
@@ -238,10 +239,13 @@ add(abs(x), 1) = [[2 2]
             def get_npu_format(*args, **kwargs):
                 return 0
 
+        config = CompilerConfig()
+        config.experimental_config.pattern_fusion_pass = False
+        npu_backend = torchair.get_npu_backend(compiler_config=config)
         try:
             origin_torch_npu = sys.modules.get('torch_npu', None)
             sys.modules['torch_npu'] = FakeTorchNpu()
-            compiled_model = torch.compile(func, backend=torchair.get_npu_backend())
+            compiled_model = torch.compile(func, backend=npu_backend)
             compiled_model(t)
         finally:
             if origin_torch_npu:

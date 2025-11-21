@@ -7,13 +7,13 @@ from unittest.mock import Mock
 
 import torch
 import torch.nn.functional as F
+import _privateuse1_backend
 
 import torchair
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core.utils import logger
 from torchair.inference._cache_compiler import CompiledModel, ModelCacheSaver
 from torchair._acl_concrete_graph.utils import reconstruct_args_kwargs, WeakRef, LazyMessage
-from torchair_st_utils import capture_logger
 from torchair_st_stub_aclgraph_utils import (
     StubNpu,
     patch_ops_npu_module,
@@ -21,12 +21,17 @@ from torchair_st_stub_aclgraph_utils import (
     patch_torch_npu_module,
     forbidden_attr,
 )
+from torchair_st_utils import capture_logger, generate_faked_module
 
 
 logger.setLevel(logging.DEBUG)
 
 
 _get_pool_id = None
+
+npu_device = _privateuse1_backend.npu_device()
+torch.utils.rename_privateuse1_backend("npu")
+torch._register_device_module('npu', generate_faked_module())
 
 
 ### register npu custom ops
@@ -2533,6 +2538,7 @@ class AclGraphSt(unittest.TestCase):
             "aot_forward_graph_after_optimize_noop_ops.txt",
             "aot_forward_graph_after_recover_view_inplace_pattern.txt",
             "aot_forward_graph_after_optimize_sym_input.txt",
+            "aot_forward_graph_after_apply_pattern_passes.txt",
             "aot_forward_graph_after_view_to_reshape.txt",
             "aot_forward_graph_after_post_grad_custom_post_pass.txt",
             "aot_forward_graph_after_apply_event_closure_with_multi_stream.txt",
@@ -2550,6 +2556,7 @@ class AclGraphSt(unittest.TestCase):
             "aot_backward_graph_after_optimize_noop_ops.txt",
             "aot_backward_graph_after_recover_view_inplace_pattern.txt",
             "aot_backward_graph_after_optimize_sym_input.txt",
+            "aot_backward_graph_after_apply_pattern_passes.txt",
             "aot_backward_graph_after_view_to_reshape.txt",
             "aot_backward_graph_after_post_grad_custom_post_pass.txt",
             "aot_backward_graph_after_apply_event_closure_with_multi_stream.txt",
@@ -2659,6 +2666,7 @@ class AclGraphSt(unittest.TestCase):
             "aot_forward_graph_after_optimize_noop_ops.txt",
             "aot_forward_graph_after_recover_view_inplace_pattern.txt",
             "aot_forward_graph_after_optimize_sym_input.txt",
+            "aot_forward_graph_after_apply_pattern_passes.txt",
             "aot_forward_graph_after_view_to_reshape.txt",
             "aot_forward_graph_after_post_grad_custom_post_pass.txt",
             "aot_forward_graph_after_apply_event_closure_with_multi_stream.txt",
@@ -2674,6 +2682,7 @@ class AclGraphSt(unittest.TestCase):
             "aot_backward_graph_after_optimize_noop_ops.txt",
             "aot_backward_graph_after_recover_view_inplace_pattern.txt",
             "aot_backward_graph_after_optimize_sym_input.txt",
+            "aot_backward_graph_after_apply_pattern_passes.txt",
             "aot_backward_graph_after_view_to_reshape.txt",
             "aot_backward_graph_after_post_grad_custom_post_pass.txt",
             "aot_backward_graph_after_apply_event_closure_with_multi_stream.txt",
