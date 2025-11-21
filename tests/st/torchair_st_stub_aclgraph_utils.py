@@ -206,6 +206,16 @@ def current_device():
     # 无恢复操作
 
 
+def get_stream_limit(stream):
+    logger.debug('[Stub] run stub API get_stream_limit.')
+    return {"cube_core_num": 24, 'vector_core_num': 48}
+
+
+def set_stream_limit(stream, aicore_num, vectorcore_num):
+    logger.debug('[Stub] run stub API set_stream_limit.')
+    return "set_stream_limit"
+
+
 def memory_snapshot():
     segments = [
         {'device': 0, 'address': 140366409891840, 'total_size': 1342177280, 'allocated_size': 0, 'requested_size': 0,
@@ -309,6 +319,8 @@ class StubNpu:
         self.streams = StubStreams
         self.Event = StubEvent
         self.current_stream = current_stream
+        self.set_stream_limit = set_stream_limit
+        self.get_stream_limit = get_stream_limit
         self.set_stream = set_stream
         self.current_device = current_device
         self.stream = stub_stream

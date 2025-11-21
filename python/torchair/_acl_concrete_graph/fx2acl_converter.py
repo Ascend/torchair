@@ -28,7 +28,7 @@ from torchair._utils.path_manager import PathManager
 from torchair._utils.graph_transform_observer import GraphTransformObserver
 from torchair._acl_concrete_graph.acl_graph import AclGraph, AclGraphCacheInfo, is_sym
 from torchair._acl_concrete_graph.graph_pass import apply_event_closure_with_multi_stream
-from torchair._acl_concrete_graph.graph_pass import apply_event_record
+from torchair._acl_concrete_graph.graph_pass import apply_event_record, replace_core_limit_nodes
 
 try:
     from torch._inductor.fx_passes.post_grad import decompose_auto_functionalized
@@ -282,6 +282,10 @@ class AclConcreteGraph(ConcreteGraphBase):
                 decompose_auto_functionalized(self.fx_graph.graph)
                 observer.dump_gm(self.fx_graph, "graph_after_decompose_auto_functionalized")
 
+        # replace core limit call function nodes with torch_npu api
+        replace_core_limit_nodes(self.fx_graph)
+        observer.dump_gm(self.fx_graph, "graph_after_replace_core_limit_nodes")
+        
         # find mutated inputs after graph optimization passes
         self._aclgraph_cache_info.mutated_user_inputs = _find_mutated_user_inputs(self.fx_graph)
         logger.debug('find mutated user inputs: %s', self._aclgraph_cache_info.mutated_user_inputs)
@@ -608,6 +612,7 @@ class AclConcreteGraph(ConcreteGraphBase):
                 forward_code.writelines(["from torchair._acl_concrete_graph.utils import reconstruct_args_kwargs",
                                          "from torchair._acl_concrete_graph.acl_graph import UpdatedNodeInfo"])
             record_wait_ops_dic = self._codegen_fx_forward_record_wait(gm)
+            core_limit_func_dic = self._codegen_fx_forward_core_limit(gm)
             if len(self._aclgraph_cache_info.user_stream_label) > 0:
                 forward_code.writeline("global _GLOBAL_USER_TAG_TO_STREAM")
             for line in body:
@@ -652,6 +657,11 @@ class AclConcreteGraph(ConcreteGraphBase):
                         else:
                             forward_code._indent -= 1
                         stream_scope_exit_nodes_list.remove(k)
+                        need_update = True
+                        break
+                for k in core_limit_func_dic.keys():
+                    if k in line:
+                        forward_code.splice(core_limit_func_dic[k])
                         need_update = True
                         break
                 if not need_update:
@@ -719,3 +729,23 @@ class AclConcreteGraph(ConcreteGraphBase):
                     ''')
                 ops_code_dic[f'{node.name} = torch.ops.{node.target}'] = wait_ops_code.getvalue()
         return ops_code_dic
+
+    def _codegen_fx_forward_core_limit(self, gm: torch.fx.GraphModule):
+        from torch._inductor.utils import IndentedBuffer
+        npu_func_code_dic = {}
+        for node in gm.graph.nodes:
+            if node.op != "call_function":
+                continue
+            if "function current_stream" in str(node.target):
+                cur_stream_code = IndentedBuffer()
+                cur_stream_code.splice(f'{node.name} = torch.npu.current_stream()')
+                npu_func_code_dic[f'{node.name} = torch_npu_npu_utils_current_stream'] = cur_stream_code.getvalue()
+            if "function get_stream_limit" in str(node.target):
+                get_stream_code = IndentedBuffer()
+                get_stream_code.splice(f'{node.name} = torch.npu.get_stream_limit(*{node.args})')
+                npu_func_code_dic[f'{node.name} = torch_npu_npu_npu_config_get_stream_limit'] = get_stream_code.getvalue()
+            if "function set_stream_limit" in str(node.target):
+                set_stream_code = IndentedBuffer()
+                set_stream_code.splice(f'{node.name} = torch.npu.set_stream_limit(*{node.args})')
+                npu_func_code_dic[f'{node.name} = torch_npu_npu_npu_config_set_stream_limit'] = set_stream_code.getvalue()
+        return npu_func_code_dic

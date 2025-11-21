@@ -2548,6 +2548,7 @@ class AclGraphSt(unittest.TestCase):
             "aot_forward_graph_after_replace_dynamic_workspace_ops.txt",
             "aot_forward_graph_after_reinplace_input_mutated_ops.txt",
             "aot_forward_graph_after_decompose_auto_functionalized.txt",
+            "aot_forward_graph_after_replace_core_limit_nodes.txt",
         ]
 
         ACL_BACKWARD_STEP_TEMPLATES = [
@@ -2566,6 +2567,7 @@ class AclGraphSt(unittest.TestCase):
             "aot_backward_graph_after_replace_dynamic_workspace_ops.txt",
             "aot_backward_graph_after_reinplace_input_mutated_ops.txt",
             "aot_backward_graph_after_decompose_auto_functionalized.txt",
+            "aot_backward_graph_after_replace_core_limit_nodes.txt",
         ]
 
         # Generate patterns with auto-incremented indics
@@ -2674,6 +2676,7 @@ class AclGraphSt(unittest.TestCase):
             "aot_forward_graph_after_eliminate_dead_code.txt",
             "aot_forward_graph_after_replace_dynamic_workspace_ops.txt",
             "aot_forward_graph_after_reinplace_input_mutated_ops.txt",
+            "aot_forward_graph_after_replace_core_limit_nodes.txt",
         ]
 
         ACL_BACKWARD_STEP_TEMPLATES = [
@@ -2690,6 +2693,7 @@ class AclGraphSt(unittest.TestCase):
             "aot_backward_graph_after_eliminate_dead_code.txt",
             "aot_backward_graph_after_replace_dynamic_workspace_ops.txt",
             "aot_backward_graph_after_reinplace_input_mutated_ops.txt",
+            "aot_backward_graph_after_replace_core_limit_nodes.txt",
         ]
 
         # Generate patterns with auto-incremented indics
@@ -2776,7 +2780,97 @@ class AclGraphSt(unittest.TestCase):
                 expected_count,
                 msg=f"File count mismatch: expected {expected_count} files, got {actual_count} files"
             )
-      
+
+    def test_limit_core_num_in_aclgraph(self):
+        from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        class Model1(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, in1, in2, in3, in4):
+                add_result = torch.add(in1, in2)
+                with torchair.scope.limit_core_num(2, 4):
+                    mm_result1 = torch.mm(in3, in4)
+                    with torchair.scope.limit_core_num(12, 24):
+                        mm_result2 = torch.mm(in3, in4)
+                return add_result, mm_result1, mm_result2
+            
+        class Model2(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, in1, in2, in3, in4):
+                add_result = torch.add(in1, in2)
+                with torchair.scope.limit_core_num(2, 4):
+                    mm_result1 = torch.mm(in3, in4)
+                    with torchair.scope.npu_stream_switch('1', 3):
+                        mm_result2 = torch.mm(in3, in4)
+                return add_result, mm_result1, mm_result2
+            
+        class Model3(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, in1, in2, in3, in4):
+                add_result = torch.add(in1, in2)
+                with torchair.scope.limit_core_num(2, 4):
+                    mm_result1 = torch.mm(in3, in4)
+                    with torchair.scope.super_kernel('1', '2'):
+                        mm_result2 = torch.mm(in3, in4)
+                return add_result, mm_result1, mm_result2
+
+        def check_graph(concrete_graph):
+            scope_enter_count = 0
+            set_stream_count = 0
+            get_stream_count = 0
+            for node in concrete_graph.fx_graph.graph.nodes:
+                if str(node.target) == "air.scope_enter.default":
+                    scope_enter_count += 1
+                    
+                if str(node.target) == "air.scope_exit.default":
+                    scope_enter_count -= 1
+                if "function get_stream_limit" in str(node.target):
+                    assert "function current_stream" in str(node.prev.target)
+                    assert str(node.next.target) == str(node.next.next.target)
+                    assert "function set_stream_limit" in str(node.next.next.next.target)
+                    get_stream_count += 1
+                if "function set_stream_limit" in str(node.target):
+                    set_stream_count += 1
+                    
+            assert scope_enter_count == 0, f"expect scope enter should match with scope exit, but got unmatched"
+            assert set_stream_count == 2 * get_stream_count
+
+        def wrapper_call(call):
+            def wrapper(*args, **kwargs):
+                assert len(args) >= 3
+                ret = call(*args, **kwargs)
+                check_graph(args[0])
+                return ret
+
+            return wrapper
+
+        AclConcreteGraph.__call__ = wrapper_call(AclConcreteGraph.__call__)
+
+        x = torch.randn([3, 3])
+        y = torch.randn([3, 3])
+        z = torch.randn([3, 3])
+        w = torch.randn([3, 3])
+
+        model1 = Model1()
+        model1 = torch.compile(model1, backend=aclgraph_backend, fullgraph=True, dynamic=False)
+        model1(x, y, z, w)
+        
+        model2 = Model2()
+        model2 = torch.compile(model2, backend=aclgraph_backend, fullgraph=True, dynamic=False)
+        model2(x, y, z, w)
+        
+        model3 = Model3()
+        model3 = torch.compile(model3, backend=aclgraph_backend, fullgraph=True, dynamic=False)
+        model3(x, y, z, w)
 
 if __name__ == '__main__':
     unittest.main()
