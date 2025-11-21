@@ -30,6 +30,13 @@ from torchair._acl_concrete_graph.acl_graph import AclGraph, AclGraphCacheInfo, 
 from torchair._acl_concrete_graph.graph_pass import apply_event_closure_with_multi_stream
 from torchair._acl_concrete_graph.graph_pass import apply_event_record
 
+try:
+    from torch._inductor.fx_passes.post_grad import decompose_auto_functionalized
+except ImportError:
+    decompose_auto_functionalized = None
+    logger.debug("function[decompose_auto_functionalized] is not support on torch < 2.6")
+
+
 aten = torch.ops.aten
 
 
@@ -271,6 +278,9 @@ class AclConcreteGraph(ConcreteGraphBase):
             from torchair._acl_concrete_graph.graph_pass import _reinplace_input_mutated_ops
             _reinplace_input_mutated_ops(self.fx_graph)
             observer.dump_gm(self.fx_graph, "graph_after_reinplace_input_mutated_ops")
+            if decompose_auto_functionalized is not None:
+                decompose_auto_functionalized(self.fx_graph.graph)
+                observer.dump_gm(self.fx_graph, "graph_after_decompose_auto_functionalized")
 
         # find mutated inputs after graph optimization passes
         self._aclgraph_cache_info.mutated_user_inputs = _find_mutated_user_inputs(self.fx_graph)

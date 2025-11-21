@@ -1,10 +1,7 @@
-import contextlib
-import dataclasses
 import logging
 import os
 import sys
-import types
-from typing import List, Tuple
+from typing import Tuple
 import unittest
 from unittest.mock import Mock
 
@@ -16,348 +13,17 @@ from torchair.configs.compiler_config import CompilerConfig
 from torchair.core.utils import logger
 from torchair.inference._cache_compiler import CompiledModel, ModelCacheSaver
 from torchair._acl_concrete_graph.utils import reconstruct_args_kwargs, WeakRef, LazyMessage
-from torchair_st_utils import capture_stdout, capture_logger
+from torchair_st_utils import capture_logger
+from torchair_st_stub_aclgraph_utils import (
+    StubNpu,
+    patch_ops_npu_module,
+    patch_torch_point_npu_module,
+    patch_torch_npu_module,
+    forbidden_attr,
+)
+
 
 logger.setLevel(logging.DEBUG)
-
-"""Start to gen some API patch for AclGraph in st."""
-
-
-# define stub FA API
-def stub_npu_fa_func(*args, **kwargs):
-    logger.debug('[Stub] using stub implementation of NPU FA with args: %s and kwargs: %s', args, kwargs)
-    return torch.randn([3, 2])
-    return torch.empty_like(args[0])  # 示例实现
-
-
-class StubNpuFA:
-    def __init__(self):
-        pass
-
-
-stub_fa = StubNpuFA()
-stub_fa.default = stub_npu_fa_func
-stub_fa.out = stub_npu_fa_func
-
-
-class StubConf:
-    def __init__(self):
-        self.allow_hf32 = 0
-        pass
-
-
-stub_conf = StubConf()
-
-_GLOBAL_POOL_ID = 0
-
-
-# define stub aclgraph API
-def stub_graph_pool_handle():
-    global _GLOBAL_POOL_ID
-    _GLOBAL_POOL_ID += 1
-    pool_id = (_GLOBAL_POOL_ID, 0)
-    logger.debug('[Stub] run stub API graph_pool_handle, and return pool id is %s.', pool_id)
-    return pool_id
-
-
-def stub_synchronize():
-    logger.debug('[Stub] run stub API stream synchronize with args[].')
-    pass
-
-
-def stub_empty_cache():
-    logger.debug('[Stub] run stub API empty_cache')
-    pass
-
-
-@contextlib.contextmanager
-def stub_stream(stream=None):
-    """Stub function for stream context manager."""
-    if stream is not None:
-        logger.debug(f"Stub: Pretending to switch to stream [%s]", stream)
-    yield
-
-
-class PatchAttr:
-    def __init__(self, obj, attr_name, new_value):
-        self.obj = obj
-        self.attr_name = attr_name
-        self.new_value = new_value
-        self.original_value = None
-
-    def __enter__(self):
-        if hasattr(self.obj, self.attr_name):
-            self.original_value = getattr(self.obj, self.attr_name)
-            setattr(self.obj, self.attr_name, self.new_value)
-        else:
-            raise AttributeError(f"{self.obj} does not have attribute {self.attr_name}")
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        setattr(self.obj, self.attr_name, self.original_value)
-
-
-def raise_exception(*args, **kwargs):
-    raise Exception("Should not be called")
-
-
-@contextlib.contextmanager
-def forbidden_attr(obj, attr_name):
-    with PatchAttr(obj, attr_name, raise_exception):
-        yield
-
-
-@dataclasses.dataclass
-class InputMeta:
-    data: torch.Tensor
-    is_prompt: bool
-
-
-class StubNPUGraph:
-    def __init__(self):
-        logger.debug('[Stub] new stub class NPUGraph.')
-        pass
-
-    def capture_begin(self, pool=None, capture_error_mode="global"):
-        logger.debug('[Stub] run stub API capture_begin with args[].')
-        pass
-
-    def capture_end(self):
-        logger.debug('[Stub] run stub API capture_end with args[].')
-        pass
-
-    def replay(self):
-        logger.debug('[Stub] run stub API replay with args[].')
-        pass
-
-    def reset(self):
-        logger.debug('[Stub] run stub API reset with args[].')
-        pass
-
-    def pool(self):
-        logger.debug('[Stub] run stub API pool with args[].')
-        return (0, 1)
-
-
-class graph:
-    def __init__(
-            self,
-            npu_graph,
-            pool=None,
-            stream=None,
-            capture_error_mode: str = "global"):
-        logger.debug('[Stub] new stub class graph with args[%s, %s, %s, %s].',
-                     type(npu_graph), pool, stream, capture_error_mode)
-        self.stream_ctx = stub_stream(stream)
-        self.npu_graph = npu_graph
-        self.pool = () if pool is None else (pool,)
-        self.stream = stream
-        self.capture_error_mode = capture_error_mode
-        pass
-
-    def __enter__(self):
-        torch.npu.synchronize()
-        import gc
-        gc.collect()
-        torch.npu.empty_cache()
-        self.stream_ctx.__enter__()
-
-        pass
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        pass
-
-
-class StubStream:
-    _counter = 0
-
-    def __new__(cls, device=None, priority=0, **kwargs):
-        stream_id = f"stream{cls._counter}"
-        cls._counter += 1
-        logger.debug('[Stub] new stub class Stream %s.', stream_id)
-        return stream_id
-
-    def wait_event(self, event):
-        pass
-
-    def wait_stream(self, stream):
-        pass
-
-    def record_event(self, event=None):
-        pass
-
-
-class StubStreams:
-
-    def Stream(self, event):
-        return StubStream()
-
-
-def current_stream(device=None):
-    logger.debug('[Stub] run stub API current_stream.')
-    return "current_stream"
-
-
-def set_stream(stream):
-    logger.debug('[Stub] run stub API set_stream.')
-    return "set_stream"
-
-
-def record_stream():
-    logger.debug('[Stub] run stub API record_stream.')
-    return "record_stream"
-
-
-def current_device():
-    logger.debug('[Stub] run stub API current_device.')
-    return "current_device"
-    # 无恢复操作
-
-
-def memory_snapshot():
-    segments = [
-        {'device': 0, 'address': 140366409891840, 'total_size': 1342177280, 'allocated_size': 0, 'requested_size': 0,
-         'stream': 146751312, 'segment_type': 'large', 'segment_pool_id': (0, 1), 'is_expandable': False, 'frames': [],
-         'blocks': [
-             {'address': 140366409891840, 'size': 1342177280, 'requested_size': 1342177280, 'state': 'inactive',
-              'frames': []}]
-         },
-        {'device': 0, 'address': 140370157502464, 'total_size': 2097152, 'allocated_size': 512,
-         'requested_size': 8, 'stream': 0, 'segment_type': 'small', 'segment_pool_id': (0, 0), 'is_expandable': False,
-         'frames': [], 'blocks': [
-            {'address': 140370157502464, 'size': 512, 'requested_size': 8, 'state': 'active_allocated', 'frames': []},
-            {'address': 140370157503488, 'size': 2096128, 'requested_size': 0, 'state': 'inactive', 'frames': []}]
-         }
-    ]
-    return segments
-
-
-class StubEvent:
-    def __new__(cls):
-        return super().__new__(cls)
-
-    def record(self, stream=None):
-        logger.debug('[Stub]Event record.')
-        return
-
-    def wait(self, stream=None):
-        logger.debug('[Stub]Event wait.')
-        return
-
-    def reset(self, stream=None):
-        logger.debug('[Stub]Event reset.')
-        return
-
-
-class _AutocastModule(types.ModuleType):
-    autocast = lambda *_, **__: lambda f: f
-
-
-class StubAmp:
-    def __init__(self):
-        logger.debug('[Stub] stub amp module.')
-
-    def __new__(cls):
-        return super().__new__(cls)
-
-    def autocast(self):
-        logger.debug('[Stub]Amp autocast')
-        return
-
-StubAmp.autocast_mode = _AutocastModule
-
-
-class Stub_C:
-    def __init__(self):
-        logger.debug('[Stub] new stub _C Module.')
-        pass
-
-    @staticmethod
-    def _npu_getCheckpointState(device, pool):
-        logger.debug('[Stub] run stub API _npu_getCheckpointState with args[%s, %s].', device, pool)
-        return "stub_mem_state"
-
-    @staticmethod
-    def _npu_setCheckpointPoolState(device, mem_state, stale_storages_ptr, storages_to_add_deleters_to_ptr):
-        logger.debug('[Stub] run stub API _npu_setCheckpointPoolState to mem state %s.', mem_state)
-        return
-
-    @staticmethod
-    def _construct_storage_from_data_pointer(data_ptr, device, nbytes):
-        logger.debug('[Stub] run stub API _construct_storage_from_data_pointer with storage nbytes %s.', nbytes)
-        return torch.Storage(nbytes)
-
-    @staticmethod
-    def _construct_NPU_Tensor_From_Storage_And_Metadata(metadata, storage):
-        logger.debug('[Stub] run stub API _construct_NPU_Tensor_From_Storage_And_Metadata with metadata.')
-        return torch.empty_strided(metadata['size'], metadata['stride'],
-                                   dtype=metadata['dtype'],
-                                   device=metadata['device'])
-
-
-# define stub submodule
-class StubNpu:
-    def __init__(self):
-        logger.debug('[Stub] new stub module npu.')
-        self.npu_fused_infer_attention_score = stub_fa
-        self._npu_fused_infer_attention_score_get_max_workspace = stub_fa
-        self.npu_fused_infer_attention_score_v2 = stub_fa
-        self._npu_fused_infer_attention_score_v2_get_max_workspace = stub_fa
-        self.NPUGraph = StubNPUGraph
-        self.graph = graph
-        self.Stream = StubStream
-        self.streams = StubStreams
-        self.Event = StubEvent
-        self.current_stream = current_stream
-        self.set_stream = set_stream
-        self.current_device = current_device
-        self.stream = stub_stream
-        self.graph_pool_handle = stub_graph_pool_handle
-        self.synchronize = stub_synchronize
-        self.empty_cache = stub_empty_cache
-        self.memory_snapshot = memory_snapshot
-        self.matmul = stub_conf
-        self.conv = stub_conf
-        self._C = Stub_C
-        self.amp = StubAmp
-
-
-def patch_ops_npu_module(stub_module):
-    original_module = None
-    original_exists = hasattr(torch.ops, 'npu')
-    if original_exists:
-        original_module = torch.ops.npu
-
-    torch.ops.npu = stub_module
-    logger.debug('[Stub] Original torch.ops.npu module is replaced by stub implementation: %s', torch.ops.npu)
-    return original_module
-
-
-def patch_torch_point_npu_module(stub_module):
-    original_module = None
-    original_exists = hasattr(torch, 'npu')
-    if original_exists:
-        original_module = torch.npu
-
-    torch.npu = stub_module
-    logger.debug('[Stub] Original torch.npu module is replaced by stub implementation: %s', torch.npu)
-    return original_module
-
-
-def patch_torch_npu_module(stub_module):
-    original_module = None
-    if 'torch_npu' in sys.modules:
-        original_module = sys.modules['torch_npu']
-
-    module = types.ModuleType('torch_npu_stub')
-    module.npu = stub_module
-    module._C = stub_module._C
-    module.__all__ = ['npu']
-
-    sys.modules['torch_npu'] = module
-    logger.debug('[Stub] Original torch_npu.npu module is replaced by stub implementation: %s',
-                 sys.modules['torch_npu'])
-    return original_module
 
 
 _get_pool_id = None
@@ -2853,6 +2519,7 @@ class AclGraphSt(unittest.TestCase):
         compiled_model = torch.compile(Model(), backend=backend, dynamic=True)
         compiled_model(x=torch.randn([2, 2]))
 
+    @unittest.skipIf(torch.__version__ < "2.6", "")
     def test_torch_compile_acl_debug_dump(self):
 
         # Define templates for ACL mode (without hardcoded indices)
@@ -2874,6 +2541,7 @@ class AclGraphSt(unittest.TestCase):
             "aot_forward_graph_after_reinplace_inplaceable_ops_pass.txt",
             "aot_forward_graph_after_replace_dynamic_workspace_ops.txt",
             "aot_forward_graph_after_reinplace_input_mutated_ops.txt",
+            "aot_forward_graph_after_decompose_auto_functionalized.txt",
         ]
 
         ACL_BACKWARD_STEP_TEMPLATES = [
@@ -2888,6 +2556,129 @@ class AclGraphSt(unittest.TestCase):
             "aot_backward_graph_after_apply_event_record.txt",
             "aot_backward_graph_after_eliminate_dead_code.txt",
             "aot_backward_graph_after_reinplace_inplaceable_ops_pass.txt",
+            "aot_backward_graph_after_replace_dynamic_workspace_ops.txt",
+            "aot_backward_graph_after_reinplace_input_mutated_ops.txt",
+            "aot_backward_graph_after_decompose_auto_functionalized.txt",
+        ]
+
+        # Generate patterns with auto-incremented indics
+        def generate_acl_patterns():
+            patterns = []
+            # Add common files
+            for file in ACL_COMMON_FILES:
+                patterns.append(f"model__{{id}}/{file}")
+            # Add forward files with auto indices
+            for idx, template in enumerate(ACL_FORWARD_STEP_TEMPLATS):
+                patterns.append(f"model__{{id}}/forward/{idx:03d}_{template}")
+            for idx, template in enumerate(ACL_BACKWARD_STEP_TEMPLATES):
+                patterns.append(f"model__{{id}}/backward/{idx:03d}_{template}")
+            return patterns
+
+        EXPECTED_FILE_PATTERNS_ACL = generate_acl_patterns()
+       
+
+        from torch._dynamo.utils import get_debug_dir
+        import tempfile
+
+        with tempfile.TemporaryDirectory(prefix="torchair_debug_") as tmpdir:
+            DEBUG_DIR = tmpdir  
+            torch._dynamo.config.patch(debug_dir_root=DEBUG_DIR)
+            self.assertIsNotNone(DEBUG_DIR)
+            os.environ['TORCH_COMPILE_DEBUG'] = '1'
+
+            config = torchair.CompilerConfig()
+            config.experimental_config.remove_noop_ops = True
+            config.mode.value = "reduce-overhead"
+            
+            def _custom_pre_fn(gm, example_inputs, compile_config: torchair.CompilerConfig):
+                return None
+
+            def _custom_post_fn(gm, example_inputs, compile_config: torchair.CompilerConfig):
+                return None
+            
+            config.post_grad_custom_pre_pass = _custom_pre_fn
+            config.post_grad_custom_post_pass = _custom_post_fn
+            npu_backend = torchair.get_npu_backend(compiler_config=config)
+
+            class Model(torch.nn.Module):
+                def forward(self, x):
+                    return 2 * x
+
+            model = Model()
+            compiled_model = torch.compile(model, backend=npu_backend, dynamic=False)
+            x = torch.randn(10, 10, requires_grad=True)
+            out = compiled_model(x)
+            loss_fn = torch.nn.MSELoss()
+            target = torch.randn(10, 10)
+            loss = loss_fn(out, target)
+            loss.backward()
+            
+            debug_dir_output = get_debug_dir()
+            # 1. Verify the existence of the torchair directory
+            torchair_root = os.path.join(debug_dir_output, "torchair")
+            self.assertTrue(os.path.exists(torchair_root), msg=f"torchair directory does not exist: {torchair_root}")
+
+            # 2. Verify all expected files exist
+            expected_files = []
+            for template in EXPECTED_FILE_PATTERNS_ACL:
+                rel_path = template.format(id=0)
+                expected_files.append(rel_path)
+
+            def check_torchair_directory_structure(base_dir: str, file_list: list) -> list:
+                missing_files = []
+                for rel_path in file_list:
+                    abs_path = os.path.join(base_dir, rel_path)
+                    if not os.path.exists(abs_path):
+                        missing_files.append(abs_path)
+                return missing_files
+            missing_files = check_torchair_directory_structure(torchair_root, expected_files)
+            self.assertFalse(missing_files, msg=f"Missing files: {', '.join(missing_files)}")
+
+            # Check file count to ensure no extra files
+            expected_count = len(EXPECTED_FILE_PATTERNS_ACL)
+            actual_count = 0
+            for root, _, files in os.walk(torchair_root):
+                actual_count += len(files)
+            self.assertEqual(
+                actual_count,
+                expected_count,
+                msg=f"File count mismatch: expected {expected_count} files, got {actual_count} files"
+            )
+    
+    @unittest.skipIf(torch.__version__ > "2.2", "")
+    def test_torch_compile_acl_debug_dump_low_version(self):
+
+        # Define templates for ACL mode (without hardcoded indices)
+        ACL_COMMON_FILES = [
+            "dynamo_out_graph.txt",
+        ]
+
+        ACL_FORWARD_STEP_TEMPLATS = [
+            "aot_forward_graph.txt",
+            "aot_forward_graph_after_post_grad_custom_pre_pass.txt",
+            "aot_forward_graph_after_optimize_noop_ops.txt",
+            "aot_forward_graph_after_recover_view_inplace_pattern.txt",
+            "aot_forward_graph_after_optimize_sym_input.txt",
+            "aot_forward_graph_after_view_to_reshape.txt",
+            "aot_forward_graph_after_post_grad_custom_post_pass.txt",
+            "aot_forward_graph_after_apply_event_closure_with_multi_stream.txt",
+            "aot_forward_graph_after_apply_event_record.txt",
+            "aot_forward_graph_after_eliminate_dead_code.txt",
+            "aot_forward_graph_after_replace_dynamic_workspace_ops.txt",
+            "aot_forward_graph_after_reinplace_input_mutated_ops.txt",
+        ]
+
+        ACL_BACKWARD_STEP_TEMPLATES = [
+            "aot_backward_graph.txt",
+            "aot_backward_graph_after_post_grad_custom_pre_pass.txt",
+            "aot_backward_graph_after_optimize_noop_ops.txt",
+            "aot_backward_graph_after_recover_view_inplace_pattern.txt",
+            "aot_backward_graph_after_optimize_sym_input.txt",
+            "aot_backward_graph_after_view_to_reshape.txt",
+            "aot_backward_graph_after_post_grad_custom_post_pass.txt",
+            "aot_backward_graph_after_apply_event_closure_with_multi_stream.txt",
+            "aot_backward_graph_after_apply_event_record.txt",
+            "aot_backward_graph_after_eliminate_dead_code.txt",
             "aot_backward_graph_after_replace_dynamic_workspace_ops.txt",
             "aot_backward_graph_after_reinplace_input_mutated_ops.txt",
         ]
@@ -2929,6 +2720,7 @@ class AclGraphSt(unittest.TestCase):
             
             config.post_grad_custom_pre_pass = _custom_pre_fn
             config.post_grad_custom_post_pass = _custom_post_fn
+            config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
             npu_backend = torchair.get_npu_backend(compiler_config=config)
 
             class Model(torch.nn.Module):

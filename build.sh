@@ -105,19 +105,19 @@ main() {
   fi
   if [[ "X$ASCEND_CUSTOM_PATH" = "X" ]]; then
     if [[ "X$ENABLE_CI_BUILD" = "Xon" || "X$ENABLE_CI_BUILD_AND_INSTALL" = "Xon" ]]; then
-      echo "Building torchair with no ascned-sdk specified"
+      echo "Building torchair with no ascend-sdk specified"
       export NO_ASCEND_SDK=1
     else
       if [[ "X$ASCEND_HOME_PATH" = "X" ]]; then
         echo "ASCEND_CUSTOM_PATH or ASCEND_HOME_PATH must be set when running ut or st"
         exit 1
       else
-        echo "Building torchair with ascned-sdk in ${ASCEND_HOME_PATH}"
+        echo "Building torchair with ascend-sdk in ${ASCEND_HOME_PATH}"
         export ASCEND_SDK_PATH=${ASCEND_HOME_PATH}
       fi
     fi
   else
-    echo "Building torchair with ascned-sdk in ${ASCEND_CUSTOM_PATH}"
+    echo "Building torchair with ascend-sdk in ${ASCEND_CUSTOM_PATH}"
     export ASCEND_SDK_PATH=${ASCEND_CUSTOM_PATH}/opensdk/opensdk/
   fi
   PYTHON_BIN_PATH=${PYTHON_BIN_PATH}

@@ -18,6 +18,19 @@ except ImportError:
     compute_overlapping_tensors = None
     logger.debug("function[compute_overlapping_tensors] is not support on torch < 2.6")
 
+try:
+    from torch._dynamo.utils import ReinplaceCounters, ReInplaceTrigger
+except ImportError:
+    ReinplaceCounters = None
+    ReInplaceTrigger = None
+    logger.debug("function[ReinplaceCounters] and function[ReInplaceTrigger] is not support on torch < 2.6")
+
+try:
+    from torch.utils._ordered_set import OrderedSet
+except Exception:
+    logger.debug("function[OrderedSet] is not support on torch < 2.6")
+
+
 aten = torch.ops.aten
 
 
@@ -156,7 +169,6 @@ def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
                 return True
 
         if isinstance(mutated_arg, (list, tuple)):
-            # TODO Using _overlap here causes a several issues.
             unique_storages = set(get_node_storage(arg) for arg in mutated_arg)
             if len(unique_storages) != len(mutated_arg):
                 # At least two Tensors in mutated_arg alias each other, so we can't reinplace it.
@@ -203,8 +215,125 @@ def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
             return not any_use_of_views_after_node(
                 node, shared_view_nodes, copy_node=None, mutated_arg=mutated_arg
             )
+    
+    def log_inplace_results(
+        node_name,
+        old_tensors_to_clone,
+        tensors_to_clone,
+        missed_args,
+        missed_nodes,
+        trigger,
+    ):
+        # Total size of possibly_missed_reinplacing_opportunities for tensors with static shapes.
+        missed_bytes = 0
+
+        def node_bytes(node):
+            t = node.meta.get("val", None)
+            if (
+                t is not None
+                and isinstance(t.element_size(), int)
+                and isinstance(t.numel(), int)
+            ):
+                return t.element_size() * t.numel()
+            else:
+                return 0
+
+        for node in missed_nodes:
+            if isinstance(node, (list, tuple)):
+                for n in node:
+                    missed_bytes += node_bytes(n)
+            else:
+                missed_bytes += node_bytes(node)
+
+        logger.info(
+            "For node %s, attempted to reinplace %s. We were unable to reinplace %s; "
+            "%s (if non-empty) are possible missed reinplacing opportunities that may be bad for "
+            "memory usage and performance. Total size of missed opportunities with static shapes is"
+            " : %s bytes.",
+            node_name,
+            old_tensors_to_clone,
+            tensors_to_clone,
+            missed_args,
+            missed_bytes,
+        )
+
+        ReinplaceCounters.add_missed_opportunities(trigger, len(missed_args))
+        ReinplaceCounters.add_missed_bytes(trigger, missed_bytes)
 
     replace_dict: dict[torch.fx.Node, torch.fx.Node] = {}
+
+    def reinplace_and_refine_tensors_to_clone(
+        old_tensors_to_clone, kwargs, node_name, trigger
+    ):
+        tensors_to_clone: list[str] = []
+        storage_of_reinplaced_args = OrderedSet[int | None]()
+
+        # Those used to count possibly_missed_reinplacing_opportunities
+        missed_nodes = []
+        missed_args = []
+
+        def tensor_with_same_storage_already_reinplaced(arg):
+            if isinstance(arg, (list, tuple)):
+                return any(
+                    get_node_storage(a) in storage_of_reinplaced_args for a in arg
+                )
+            return get_node_storage(mutated_arg) in storage_of_reinplaced_args
+
+        for arg in old_tensors_to_clone:
+            if arg not in kwargs:
+                raise KeyError(f"Missing required key {arg} in kwargs")
+
+            mutated_arg = kwargs[arg]
+
+            # Let's say we have:
+            # - op(x, y) that mutates both x and y
+            # - new_x, new_y = functional_op(x, y) is the functional variant
+            # If we are presented with functional_op(x, x), we must not reinplace
+            # this into op(x, x), because then it would be writing to the same Tensor.
+            # Instead, it's OK to reinplace one of them and to clone the other:
+            # >>> y = x.clone()
+            # >>> op(x, y)
+            # This also applies if we have views: functional_op(x, x[0])
+            # should not reinplace into op(x, x[0]).
+            should_attempt_reinplace = not tensor_with_same_storage_already_reinplaced(
+                mutated_arg
+            )
+            if should_attempt_reinplace and can_inplace(node, mutated_arg):
+                # In general, we probably do not need those optimizations.
+                copy_node = copy_args_to_copy_nodes.get((mutated_arg, node))
+                if copy_node is not None:
+                    replace_dict[copy_node] = copy_node.args[0]
+                if trigger != ReInplaceTrigger.AUTO_FUNC_V2:
+                    for user in node.users:
+                        # For auto_functionalize_v2, arg is the index of the base, where base at index i corresponds to
+                        # output atindex size(out)+i.
+                        # This used to compare string with integers before for auto_functionalize_v2. Not sure
+                        # if it was needed for inplaceable_triton_ops?
+                        if user.target is operator.getitem and user.args[1] == arg:
+                            replace_dict[user] = mutated_arg
+
+                if isinstance(mutated_arg, (list, tuple)):
+                    for a in mutated_arg:
+                        storage_of_reinplaced_args.add(get_node_storage(a))
+                else:
+                    storage_of_reinplaced_args.add(get_node_storage(mutated_arg))
+            else:
+                if should_attempt_reinplace:
+                    missed_args.append(arg)
+                    missed_nodes.append(mutated_arg)
+
+                tensors_to_clone.append(arg)
+
+        log_inplace_results(
+            node_name,
+            old_tensors_to_clone,
+            tensors_to_clone,
+            missed_args,
+            missed_nodes,
+            trigger,
+        )
+        return tensors_to_clone
+
     for node in graph.nodes:
         inplaceable_op = inplaceable_npu_ops.get(node.target, None)
         if inplaceable_op is not None:
@@ -236,6 +365,43 @@ def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
                 node.target = inplace_op
             else:
                 logger.debug(f"can_inplace return False, will skip reinplacing for node: {node.target}")
+        elif hasattr(torch.ops.higher_order, "auto_functionalized_v2") and node.target is torch.ops.higher_order.auto_functionalized_v2:
+            _mutable_op = node.args[0]
+            kwargs = node.kwargs
+
+            all_bases = kwargs["_all_bases"]
+            bases_to_clone = range(len(all_bases))
+            base_tensors_dct = dict(enumerate(all_bases))
+            new_bases_to_clone: list[int] = reinplace_and_refine_tensors_to_clone(
+                bases_to_clone,
+                base_tensors_dct,
+                node.target,
+                ReInplaceTrigger.AUTO_FUNC_V2,
+            )
+            # Stash the metadata. There is a pass later on where we decompose
+            # auto_functionalized into clones + a mutable op; this metadata
+            # tells the decomp to only clone the following inputs
+            node.meta["only_clone_these_tensors"] = new_bases_to_clone
+        elif hasattr(torch.ops.higher_order, "auto_functionalized") and node.target is torch.ops.higher_order.auto_functionalized:
+            _mutable_op = node.args[0]
+            from torch._higher_order_ops.auto_functionalize import get_mutable_args
+
+            tensors_to_clone, _ = get_mutable_args(_mutable_op)
+            # Don't try to reinplace Tensor | None args that are None.
+            tensors_to_clone = [
+                t for t in tensors_to_clone if node.kwargs[t] is not None
+            ]
+            tensors_to_clone = reinplace_and_refine_tensors_to_clone(
+                tensors_to_clone,
+                node.kwargs,
+                _mutable_op._name,
+                ReInplaceTrigger.AUTO_FUNC_V1,
+            )
+
+            # Stash the metadata. There is a pass later on where we decompose
+            # auto_functionalized into clones + a mutable op; this metadata
+            # tells the decomp to only clone the following inputs
+            node.meta["only_clone_these_tensors"] = tensors_to_clone
     for node, replacement in replace_dict.items():
         while replacement in replace_dict:
             replacement = replace_dict[replacement]
