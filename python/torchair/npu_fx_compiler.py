@@ -36,8 +36,8 @@ from torchair.fx_dumper import _NpuFxDumper
 from torchair._utils.custom_aot_functions import aot_module_simplified_joint
 from torchair._utils import add_npu_patch, get_npu_default_decompositions
 from torchair._utils.error_code import pretty_error_msg
-from torchair._utils.graph_transform_observer import GraphTransformObserver, dump_fx_safety
-from torchair._utils.graph_transform_observer import wrap_debug_compilers, DebugContext
+from torchair._utils.graph_transform_observer import GraphTransformObserver, dump_fx_safety, \
+    wrap_debug_compilers, DebugContext
 from torchair.inference._gear_utils import get_dim_gears, set_dim_gears, guard_gears_shape
 from torchair.patterns.pattern_util import _apply_pattern_passes
 
