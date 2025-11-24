@@ -15,6 +15,7 @@ namespace tng {
 using GeSessionLoadGraphFunc = decltype(GeSessionLoadGraph);
 using GeFastExecuteGraphFunc = decltype(GeSessionExecuteGraphWithStreamAsync);
 using GeGetRegisteredIrDefFunc = decltype(GetRegisteredIrDef);
+using GeGetStringInfosFunc = decltype(ge::GEStreamAllocationSummaryGetStringInfos);
 
 class Session {
  public:
@@ -62,6 +63,10 @@ class Session {
     return get_registered_ir_def_ != nullptr;
   }
 
+  bool IsGetStringInfosSupported() const {
+    return get_string_infos_ != nullptr;
+  }
+
   Status FastLoadGraph(uint32_t graph_id, const std::map<ge::AscendString, ge::AscendString> &option, void *stream);
 
   Status FastExecuteGraph(uint32_t graph_id, const std::vector<gert::Tensor> &inputs,
@@ -96,6 +101,7 @@ class Session {
   GeSessionLoadGraphFunc *fast_load_graph_ = nullptr;
   GeFastExecuteGraphFunc *fast_execute_graph_async_ = nullptr;
   GeGetRegisteredIrDefFunc *get_registered_ir_def_ = nullptr;
+  GeGetStringInfosFunc *get_string_infos_ = nullptr;
 };
 }  // namespace tng
 

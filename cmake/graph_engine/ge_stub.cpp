@@ -381,8 +381,20 @@ Status GEInitialize(const std::map<ge::AscendString, ge::AscendString> &options)
   std::cerr << "[STUB] GEInitialize" << std::endl;
   return ge::SUCCESS;
 }
+
 Status GEFinalize() {
   std::cerr << "[STUB] GEFinalize" << std::endl;
+  return ge::SUCCESS;
+}
+
+Status GEStreamAllocationSummaryGetStringInfos(const ge::CompiledGraphSummary &compiled_graph_summary, std::map<ge::AscendString, std::vector<ge::AscendString>> &graph_to_string_infos) {
+  ge::AscendString graph_name("Stub graph_1");
+  ge::AscendString logical_stream_info("logic_stream_id: 0, user_stream_label: 1, is_assigned_by_user_stream_pass: false, attached_stream_ids: , physical_model_stream_num: 1, hccl_followed_stream_num: 0.");
+
+  std::vector<ge::AscendString> infos;
+  infos.push_back(logical_stream_info);
+
+  graph_to_string_infos.emplace(graph_name, infos);
   return ge::SUCCESS;
 }
 }  // namespace ge

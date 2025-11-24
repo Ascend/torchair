@@ -108,11 +108,14 @@ Status Session::GetGeFunc() {
       reinterpret_cast<GeFastExecuteGraphFunc *>(dlsym(libge_runner_handle, "GeSessionExecuteGraphWithStreamAsync"));
   get_registered_ir_def_ = 
       reinterpret_cast<GeGetRegisteredIrDefFunc *>(dlsym(libge_runner_handle, "GetRegisteredIrDef"));
+  get_string_infos_ = 
+      reinterpret_cast<GeGetStringInfosFunc *>(dlsym(libge_runner_handle, "GEStreamAllocationSummaryGetStringInfos"));   
   
   TNG_LOG(DEBUG) << "In current cann version"
                  << ", FastLoadGraph api is " << (IsFastLoadGraphSupported() ? "supported" : "unsupported")
                  << ", FastExecuteGraph api is " << (IsFastExecuteGraphSupported() ? "supported" : "unsupported")
-                 << ", GetRegisteredIr api is " << (IsGetRegisteredIrDefSupported() ? "supported" : "unsupported");
+                 << ", GetRegisteredIr api is " << (IsGetRegisteredIrDefSupported() ? "supported" : "unsupported")
+                 << ", GetStringInfos api is " << (IsGetStringInfosSupported() ? "supported" : "unsupported");
   get_ge_func_ = true;
   return Status::Success();
 }
@@ -184,19 +187,7 @@ Status Session::AddGraph(uint32_t id, const ge::Graph &graph,
 
 Status Session::CompileGraph(uint32_t id, std::shared_ptr<ge::CompiledGraphSummary> &summary) {
   TNG_RETURN_IF_ERROR(EnsureInitialized());
-  // In CANN versions < 8.3.RC1:
-  //   - GE cleaned up the default context (default ctx) after graph compilation.
-  //   - This caused functional failures when PyTorch later reused the default context.
-  //   - To work around this, an extra thread was created to manage compatibility.
-  //
-  // In CANN versions >= 8.3.RC1:
-  //   - GE no longer cleans up the default context after compilation.
-  //   - The compatibility thread is therefore removed.
-  //
-  // Implementation notes:
-  //   - This logic resides in concrete_graph (not linked by npu_graph_executor).
-  //   - PTA APIs (e.g., CheckCANNVesion82RC1()) cannot be called here.
-  //   - Instead, IsGetRegisteredIrDefSupported() is used as a version check mechanism.
+  
   std::future<Status> future = std::async(std::launch::async, [&]() {
     auto start = std::chrono::high_resolution_clock::now();
     auto ret = aclrtSetDevice(device_index_);
@@ -213,6 +204,23 @@ Status Session::CompileGraph(uint32_t id, std::shared_ptr<ge::CompiledGraphSumma
     if (summary == nullptr) {
       summary = global_ge_session->GetCompiledGraphSummary(id);
       TNG_ASSERT_NOTNULL(summary, "Failed get compiled summary of graph %d", id);
+    }
+    if(IsGetStringInfosSupported()) {
+      std::map<ge::AscendString, std::vector<ge::AscendString>> graph_to_string_infos;
+      ge::Status status = get_string_infos_(*summary, graph_to_string_infos);
+      if (status != ge::SUCCESS) {
+        TNG_LOG(DEBUG) << "Get stream allocation summary failed! This situation happens rarely but not never!";
+      } else {
+        TNG_LOG(INFO) << "---------- Stream Allocation Summary ----------";
+        for(const auto& kv : graph_to_string_infos) {
+          const char* graph_label = kv.first.GetString();
+          const std::vector<ge::AscendString> logical_streams_info = kv.second;
+          for (const auto& logical_stream_info : logical_streams_info) {
+            TNG_LOG(INFO) << "Graph Label: " << graph_label << "  Logical Stream Information: " << logical_stream_info.GetString();
+          }
+        TNG_LOG(INFO) << "-----------------------------------------------"; 
+        }
+      }
     }
     return Status::Success();
   });
