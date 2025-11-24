@@ -208,6 +208,7 @@ class AclgraphTest(unittest.TestCase):
             f"found in logs: {cm.output}"
         )
 
+    @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
     def test_pattern_pass_for_aclgraph(self):
         class DsModel(torch.nn.Module):
             def __init__(self):
@@ -254,6 +255,7 @@ class AclgraphTest(unittest.TestCase):
             f"Expected DEBUG log 'target: npu.npu_add_rms_norm_cast.default' in logs: {cm.output}"
         )
 
+    @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
     def test_pattern_pass_for_ge(self):
         class DsModel(torch.nn.Module):
             def __init__(self):
@@ -300,6 +302,7 @@ class AclgraphTest(unittest.TestCase):
             f"Expected DEBUG log 'target: npu.npu_add_rms_norm_cast.default' in logs: {cm.output}"
         )
 
+    @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
     def test_close_pattern_pass_for_aclgraph(self):
         class DsModel(torch.nn.Module):
             def __init__(self):
@@ -347,6 +350,7 @@ class AclgraphTest(unittest.TestCase):
             f"Expected no DEBUG log 'target: npu.npu_add_rms_norm_cast.default' in logs: {cm.output}"
         )
 
+    @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
     def test_close_pattern_pass_for_ge(self):
         class DsModel(torch.nn.Module):
             def __init__(self):
@@ -394,6 +398,7 @@ class AclgraphTest(unittest.TestCase):
             f"Expected no DEBUG log 'target: npu.npu_add_rms_norm_cast.default' in logs: {cm.output}"
         )
 
+    @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
     def test_pattern_pass_for_aclgraph_with_multistream(self):
         class DsModel2(torch.nn.Module):
             def __init__(self):
@@ -434,6 +439,7 @@ class AclgraphTest(unittest.TestCase):
             f"Expected DEBUG log 'target: npu.npu_add_rms_norm_cast.default' in logs: {cm.output}"
         )
 
+    @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
     def test_pattern_pass_for_cast_with_subgraph_in_diff_stream(self):
         class DsModel2(torch.nn.Module):
             def __init__(self):
@@ -469,6 +475,7 @@ class AclgraphTest(unittest.TestCase):
             f"Expected no DEBUG log 'target: npu.npu_add_rms_norm_cast.default' in logs: {cm.output}"
         )
 
+    @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
     def test_pattern_pass_for_dynamicquant_with_subgraph_in_diff_stream(self):
         class DsModel2(torch.nn.Module):
             def __init__(self):
