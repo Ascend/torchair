@@ -20,7 +20,7 @@ from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_conv
     register_checkpoint_func, torch_type_to_ge_type
 from torchair.ge._ge_graph import DataType, Tensor, TensorSpec, get_ge_rng_state, is_sym, \
     _ge_dtype_to_ge_proto_dtype as ge_dtype_to_ge_proto_dtype, ge_type_to_torch_type, torch_type_to_ge_type, \
-    assert_args_checkout, torch_dtype_value_to_ge_type, torch_dtype_value_to_ge_proto_type
+    assert_args_checkout
 from torchair._ge_concrete_graph.utils import dtype_promote, specific_op_input_layout, specific_op_output_layout, \
     force_op_unknown_shape, normalize_max_value, normalize_min_value, _display_ge_type as display_ge_type
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, BF16, F64, I32, I16, I64, \

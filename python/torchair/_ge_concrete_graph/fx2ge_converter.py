@@ -152,10 +152,7 @@ _SUPPORT_FORMAT_SET = {
     Format.FORMAT_FRACTAL_NZ.value,
     Format.FORMAT_NCDHW.value,
     Format.FORMAT_NDC1HWC0.value,
-    Format.FORMAT_FRACTAL_Z_3D.value,
-    Format.FORMAT_FRACTAL_NZ_C0_2.value,
-    Format.FORMAT_FRACTAL_NZ_C0_4.value,
-    Format.FORMAT_FRACTAL_NZ_C0_8.value
+    Format.FORMAT_FRACTAL_Z_3D.value
 }
 _DONT_EMPTY_TENSOR_OPT_OPS = {
     'npu_define.reduce_scatter_tensor_uneven.default',
@@ -483,10 +480,7 @@ def _update_internal_format_from_inputs(graph: GraphDef, runtime_inputs):
            you need to specify origin_fmt NCHW of the filter node, as shown in Figure 2.
         '''
         origin_format = None
-        is_fractal_nz_c0 = npu_format in [Format.FORMAT_FRACTAL_NZ_C0_2.value, 
-                                          Format.FORMAT_FRACTAL_NZ_C0_4.value, 
-                                          Format.FORMAT_FRACTAL_NZ_C0_8.value]
-        if npu_format == Format.FORMAT_FRACTAL_NZ.value or is_fractal_nz_c0:
+        if npu_format == Format.FORMAT_FRACTAL_NZ.value:
             origin_format = Format.FORMAT_ND.value
         elif npu_format == Format.FORMAT_FRACTAL_Z.value or npu_format == Format.FORMAT_NC1HWC0.value:
             origin_format = Format.FORMAT_NCHW.value

@@ -2237,32 +2237,6 @@ REG_OP(MoeGatingTopKSoftmax)
 
 
 /**
-* @brief compute softmax and topk for moe input v2.
-* @par Inputs:
-* @li x: A Tensor. Type is: BFloat16, Float16 or Float32.
-* @li finished: A Tensor. Type is: Bool.
-* @par Outputs:
-* @li y: A Tensor. Type is:BFloat16, Float16 or Float32.
-* @li expert_idx: A Tensor. Type is:Int32.
-* @li softmax_result: A Tensor. Type is: Float32.
-* @par Attributes:
-* @li k: Required parameter. Type is:Int32.
-* @li renorm: Optional parameter. Type is:Int32.
-* @li output_softmax: Optional parameter. Type is: Bool.
- */
- REG_OP(MoeGatingTopKSoftmaxV2)
-    .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
-    .OPTIONAL_INPUT(finished, TensorType({DT_BOOL}))
-    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
-    .OUTPUT(expert_idx, TensorType({DT_INT32}))
-    .OUTPUT(softmax_result, TensorType({DT_FLOAT}))
-    .REQUIRED_ATTR(k, Int)
-    .ATTR(renorm, Int)
-    .ATTR(output_softmax, Bool)
-    .OP_END_FACTORY_REG(MoeGatingTopKSoftmaxV2)
-    
-
-/**
 * @brief Apply add operation for each tensor in tensor list with a scalar in manner of element-wise
 * @par Inputs:
  * Two inputs:

@@ -78,9 +78,6 @@ class Format(Enum):
     FORMAT_FRACTAL_Z_3D = 33
     FORMAT_NC = 35
     FORMAT_NCL = 47
-    FORMAT_FRACTAL_NZ_C0_2 = 52
-    FORMAT_FRACTAL_NZ_C0_4 = 53
-    FORMAT_FRACTAL_NZ_C0_8 = 54
 
     __module__ = "torchair.ge"
 
