@@ -97,24 +97,7 @@ class AclConcreteGraph(ConcreteGraphBase):
         Returns:
             Any: Output tensors from the executed graph.
         """
-
-        # get graph_key and capture
-        fn_key = self.compile(*args, **kwargs)
-
-        # fall back to eager when static_capture_size_limit is exceeded
-        if self.graph.fallback_to_eager:
-            with record_function("fx_run_eagerly"):
-                return self.graph.fx_run_eagerly(*args, **kwargs)
-
-        # input process
-        with record_function("process_input"):
-            self.graph.process_input(fn_key, *args)
-
-        # run/replay
-        with record_function("acl_graph_replay"):
-            self.graph.run(fn_key, *args, **kwargs)
-
-        return self.graph.reconstruct_outputs(fn_key)
+        return self.graph(*args, **kwargs)
 
     @property
     def config(self):
@@ -177,15 +160,19 @@ class AclConcreteGraph(ConcreteGraphBase):
             import threading
             from typing import List, Optional, Callable, Any, Dict, Tuple, Union
             import torch
+            from torch._dynamo.testing import rand_strided
             from torch.profiler import record_function
             import torch_npu
             from torchair._acl_concrete_graph.acl_graph import AclGraph, AclGraphCacheInfo
             from torchair.configs.compiler_config import CompilerConfig
+            from torchair.ops._tagged_event import _npu_create_tagged_event
             assert_size_stride = torch._C._dynamo.guards.assert_size_stride
             ''')
 
         # There is no need to save config.for now. Maybe needed in the future.
         # Configs are set for AclConcreteGraph, not for AclGraph
+        global_dict_code = self._codegen_update_global_dict()
+        head.splice(global_dict_code)
         if len(self._tensor_constant_dict) > 0:
             tensor_const_code = self._codegen_tensor_constant()
             head.splice(tensor_const_code)
@@ -208,6 +195,8 @@ class AclConcreteGraph(ConcreteGraphBase):
         head.writeline('')
         kernel_code = self._codegen_kernel(need_update_tagged_event, need_update_user_stream_label)
         head.splice(kernel_code)
+        example_inputs_code = self._codegen_example_input_run()
+        head.splice(example_inputs_code)
 
         return head.getvalue()
 
@@ -298,7 +287,6 @@ class AclConcreteGraph(ConcreteGraphBase):
 
         if self.config.debug.graph_dump.enabled:
             self.dump(self.config.debug.graph_dump.full_path(f"dynamo_optimized_{self.fx_graph_name}"))
-
         # get info for get_unupdated_input_fn and get_updated_ops_fn from fx_graph
         from torchair._acl_concrete_graph.acl_graph import get_unupdated_sym_input_index, get_updated_ops_rulers_param
         self._aclgraph_cache_info.unupdated_sym_input_index = get_unupdated_sym_input_index(self.fx_graph)
@@ -541,21 +529,7 @@ class AclConcreteGraph(ConcreteGraphBase):
                 kernel_code.splice(input_code)
                 assert_code = self._codegen_assert_size_stride()
                 kernel_code.splice(assert_code)
-            kernel_code.splice('''
-                    fn_key = acl_graph.compile(*args)
-
-                    if acl_graph.fallback_to_eager:
-                        with record_function("fx_run_eagerly"):
-                            return acl_graph.fx_run_eagerly(*args, **kwargs)
-
-                    acl_graph.process_input(fn_key, *args)
-
-                    with record_function("acl_graph_replay"):
-                        acl_graph.run(fn_key, *args)
-
-                    return acl_graph.reconstruct_outputs(fn_key)
-
-                ''')
+            kernel_code.writeline('''return acl_graph(*args, **kwargs)''')
         return kernel_code.getvalue()
 
     def _codegen_assert_size_stride(self):
@@ -609,7 +583,7 @@ class AclConcreteGraph(ConcreteGraphBase):
             if all_input_str:
                 if len(self._fx_input_names) == 1:
                     all_input_str += ', '
-            forward_code.writeline(f'{all_input_str} = args')
+                forward_code.writeline(f'{all_input_str} = args')
             need_updated_ops_dict = {}
             has_need_updated_ops = self._codegen_fx_forward_updated_ops(gm, need_updated_ops, need_updated_ops_dict)
             if has_need_updated_ops:
@@ -753,3 +727,47 @@ class AclConcreteGraph(ConcreteGraphBase):
                 set_stream_code.splice(f'{node.name} = torch.npu.set_stream_limit(*{node.args})')
                 npu_func_code_dic[f'{node.name} = torch_npu_npu_npu_config_set_stream_limit'] = set_stream_code.getvalue()
         return npu_func_code_dic
+
+    def _codegen_example_input_run(self):
+        from torch._inductor.utils import IndentedBuffer
+        input_code = IndentedBuffer()
+        input_code.writelines(["", 'def main():'])
+        with input_code.indent():
+
+            # 全入参args的名称拼接
+            all_input_str = ', '.join(self._fx_input_names)
+
+            # 动态场景下符号的处理
+            if self._all_sym_input_idx:
+
+                # 动态符号指范围[2,intMax],我们使用2+符号index来赋值给这个符号,构造一个泛化后的真值
+                rand_int_sym = 2
+                for name, idx in self._all_sym_input_idx.items():
+                    if isinstance(name, sympy.Symbol):
+                        input_code.writeline(f'{self._fx_input_names[idx]} = {rand_int_sym + idx}')
+                        input_code.writeline(f'{str(name)} = {self._fx_input_names[idx]}')
+                    else:
+                        # 符号表达式
+                        input_code.writeline(f'{self._fx_input_names[idx]} = {str(name)}')
+
+            # tensor对象的构建(包含parameter和用户入参)
+            for idx, meta in self._all_meta_tensor_input.items():
+                input_code.writeline(
+                    f"{self._fx_input_names[idx]} = rand_strided("
+                    f"{tuple(meta.shape)},"
+                    f"{meta.stride()},"
+                    f"device ='{meta.device}',dtype ={meta.dtype})"
+                )
+            input_code.writeline(f"return kernel({all_input_str})")
+        return input_code.getvalue()
+
+    def _codegen_update_global_dict(self):
+        from torch._inductor.utils import IndentedBuffer
+        input_code = IndentedBuffer()
+        if version.parse(torch.__version__) > version.parse("2.5.1"):
+            input_code.writelines(["", 'from torch._dynamo.guards import _get_closure_vars'])
+            input_code.writeline('globals().update(_get_closure_vars())')
+        else:
+            input_code.writelines(["", 'from torch._dynamo.guards import CLOSURE_VARS'])
+            input_code.writeline('globals().update(CLOSURE_VARS)')
+        return input_code.getvalue()

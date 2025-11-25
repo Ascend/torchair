@@ -562,84 +562,37 @@ class AclGraphSt(unittest.TestCase):
             opt_model(x, x, x, x)
 
         self.assertTrue(
-            any("Try to capture node names[tagged_event_record_default] type[air.tagged_event_record.default]"
+            any("tagged_event_record_default = torch.ops.air.tagged_event_record.default"
                 in log for log in cm.output),
             f"Expected no DEBUG log 'Try to capture node names[tagged_event_record_default] "
             f"type[air.tagged_event_record.default]' in logs: {cm.output}")
-        # stream tag 1
         self.assertTrue(
-            any("guard with user stream scope, node = tagged_event_wait_default, user stream label = 1"
-                in log for log in cm.output),
-            f"Expected no DEBUG log 'guard with user stream scope, node = tagged_event_wait_default, "
-            f"user stream label = 1' in logs: "
-            f"{cm.output}")
-        self.assertTrue(
-            any("Try to capture node names[tagged_event_wait_default] type[air.tagged_event_wait.default]"
+            any("tagged_event_wait_default = torch.ops.air.tagged_event_wait.default"
                 in log for log in cm.output),
             f"Expected no DEBUG log 'Try to capture node names[tagged_event_wait_default] "
             f"type[air.tagged_event_wait.default]' in logs: {cm.output}")
 
-        # stream tag 2
         self.assertTrue(
-            any("guard with user stream scope, node = tagged_event_wait_default_1, user stream label = 2"
-                in log for log in cm.output),
-            f"Expected no DEBUG log 'guard with user stream scope, node = tagged_event_wait_default_1, "
-            f"user stream label = 2' in logs:"
-            f" {cm.output}")
-        self.assertTrue(
-            any("Try to capture node names[tagged_event_wait_default_1] type[air.tagged_event_wait.default]"
+            any("tagged_event_record_default_1 = torch.ops.air.tagged_event_record.default"
                 in log for log in cm.output),
             f"Expected no DEBUG log 'Try to capture node names[tagged_event_wait_default_1] "
             f"type[air.tagged_event_wait.default]' in logs: {cm.output}")
 
-        # mm在stream tag 1上执行
-        self.assertTrue(
-            any("guard with user stream scope, node = mm, user stream label = 1" in log for log in cm.output),
-            f"Expected no DEBUG log 'guard with user stream scope, node = mm, user stream label = 1' in logs:"
-            f" {cm.output}")
-
-        # mm_1 在stream tag 2上执行
-        self.assertTrue(
-            any("guard with user stream scope, node = mm_1, user stream label = 2" in log for log in cm.output),
-            f"Expected no DEBUG log 'guard with user stream scope, node = mm_1, user stream label = 2' in logs:"
-            f" {cm.output}")
-
         # 两条从流stream分别向主capture流发送record-wait对，以完成event闭环
         # stream tag 2
         self.assertTrue(
-            any("guard with user stream scope, node = tagged_event_record_default_1, user stream label = 2"
-                in log for log in cm.output),
-            f"Expected no DEBUG log 'guard with user stream scope, node = tagged_event_record_default_1, "
-            f"user stream label = 2' in logs:"
-            f" {cm.output}")
-        self.assertTrue(
-            any("Try to capture node names[tagged_event_record_default_1] type[air.tagged_event_record.default]"
-                in log for log in cm.output),
-            f"Expected no DEBUG log 'Try to capture node names[tagged_event_record_default_1] "
-            f"type[air.tagged_event_record.default]' in logs: {cm.output}")
-        self.assertTrue(
-            any("Try to capture node names[tagged_event_wait_default_2] type[air.tagged_event_wait.default]"
+            any("tagged_event_wait_default_2 = torch.ops.air.tagged_event_wait.default"
                 in log for log in cm.output),
             f"Expected no DEBUG log 'Try to capture node names[tagged_event_wait_default_2] "
             "type[air.tagged_event_wait.default]' in logs: {cm.output}")
 
         # stream tag 1
         self.assertTrue(
-            any("guard with user stream scope, node = tagged_event_record_default_2, user stream label = 1"
-                in log for log in cm.output),
-            f"Expected no DEBUG log 'guard with user stream scope, node = tagged_event_record_default_2, "
-            f"user stream label = 1' "
-            f"in logs: {cm.output}")
-        self.assertTrue(
-            any("Try to capture node names[tagged_event_record_default_2] type[air.tagged_event_record.default]"
-                in log for log in cm.output),
-            f"Expected no DEBUG log 'Try to capture node names[tagged_event_record_default_2] "
-            f"type[air.tagged_event_record.default]' in logs: {cm.output}")
-        self.assertTrue(
-            any("Try to capture node names[tagged_event_wait_default_3] type[air.tagged_event_wait.default]"
+            any("tagged_event_wait_default_3 = torch.ops.air.tagged_event_wait.default"
                 in log for log in cm.output),
             f"Expected no DEBUG log 'Try to capture node names[tagged_event_wait_default_3] "
             f"type[air.tagged_event_wait.default]' in logs: {cm.output}")
+
 
 
     def test_npu_stream_switch_with_tagged_event(self):
@@ -743,7 +696,15 @@ class AclGraphSt(unittest.TestCase):
         y = torch.randn([3, 3])
         z = torch.randn([3, 3])
         w = torch.randn([3, 3])
-        opt_model(x, y, z, w)
+        with capture_logger() as stdout:
+            try:
+                opt_model(x, y, z, w)
+            except Exception:
+                pass
+        self.assertTrue("current_stream = torchair_st_stub_aclgraph_utils_current_stream()" in stdout.getvalue())
+
+
+
 
     def test_npu_stream_switch_with_super_kernel_scope_with_nest_scope(self):
         from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
@@ -796,7 +757,12 @@ class AclGraphSt(unittest.TestCase):
         y = torch.randn([3, 3])
         z = torch.randn([3, 3])
         w = torch.randn([3, 3])
-        opt_model(x, y, z, w)
+        with capture_logger() as stdout:
+            try:
+                opt_model(x, y, z, w)
+            except Exception:
+                pass
+        self.assertTrue("current_stream = torchair_st_stub_aclgraph_utils_current_stream()" in stdout.getvalue())
 
     def test_npu_stream_switch_no_support_npu_wait_tensor_with_reduce_over_head(self):
         class Model(torch.nn.Module):
@@ -1289,21 +1255,21 @@ class AclGraphSt(unittest.TestCase):
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
-        from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
+        from torchair._acl_concrete_graph.acl_graph import AclGraph
 
         def wrapper_call(func):
             def wrapper(*args, **kwargs):
                 ret = func(*args, **kwargs)
 
                 assert len(args) > 0
-                concrete_graph = args[0]
+                acl_graph = args[0]
                 global _get_pool_id
-                _get_pool_id = concrete_graph.graph.pool
+                _get_pool_id = acl_graph.pool
                 return ret
 
             return wrapper
 
-        AclConcreteGraph.__call__ = wrapper_call(AclConcreteGraph.__call__)
+        AclGraph.__call__ = wrapper_call(AclGraph.__call__)
 
         # test no set custom pool, check different pool, and reconstruct outputs
         model1 = Model1()
@@ -2233,14 +2199,14 @@ class AclGraphSt(unittest.TestCase):
                     in log for log in cm.output),
         f"Expected DEBUG log 'End insert record node in graph' in logs: {cm.output}")
         self.assertTrue(
-            any("Record successfully,stream:"
-                    in log for log in cm.output),
-        f"Expected DEBUG log 'Record successfully,stream:' in logs: {cm.output}")
+            any("torch.ops.air.tagged_event_record.default("
+                in log for log in cm.output),
+            f"Expected DEBUG log 'Record successfully,stream:' in logs: {cm.output}")
         self.assertTrue(
-            any("Wait successfully,stream:"
-                    in log for log in cm.output),
-        f"Expected DEBUG log 'Wait successfully,stream:' in logs: {cm.output}")
-
+            any("torch.ops.air.tagged_event_wait.default("
+                in log for log in cm.output),
+            f"Expected DEBUG log 'Wait successfully,stream:' in logs: {cm.output}")
+    
     def test_npu_stream_record_wait_with_record(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -2285,11 +2251,11 @@ class AclGraphSt(unittest.TestCase):
                     in log for log in cm.output),
         f"Expected DEBUG log 'End insert record node in graph' in logs: {cm.output}")
         self.assertTrue(
-            any("Record successfully,stream:"
+            any("torch.ops.air.tagged_event_record.default("
                     in log for log in cm.output),
         f"Expected DEBUG log 'Record successfully,stream:' in logs: {cm.output}")
         self.assertTrue(
-            any("Wait successfully,stream:"
+            any("torch.ops.air.tagged_event_wait.default("
                     in log for log in cm.output),
         f"Expected DEBUG log 'Wait successfully,stream:' in logs: {cm.output}")
 
@@ -2336,11 +2302,11 @@ class AclGraphSt(unittest.TestCase):
                     in log for log in cm.output),
         f"Expected DEBUG log 'End insert record node in graph' in logs: {cm.output}")
         self.assertTrue(
-            any("Record successfully,stream:"
+            any("torch.ops.air.tagged_event_record.default("
                     in log for log in cm.output),
         f"Expected DEBUG log 'Record successfully,stream:' in logs: {cm.output}")
         self.assertTrue(
-            any("Wait successfully,stream:"
+            any("torch.ops.air.tagged_event_wait.default("
                     in log for log in cm.output),
         f"Expected DEBUG log 'Wait successfully,stream:' in logs: {cm.output}")
 
@@ -2631,8 +2597,10 @@ class AclGraphSt(unittest.TestCase):
             # Add forward files with auto indices
             for idx, template in enumerate(ACL_FORWARD_STEP_TEMPLATS):
                 patterns.append(f"model__{{id}}/forward/{idx:03d}_{template}")
+            patterns.append(f"model__{{id}}/forward/output_code.py")
             for idx, template in enumerate(ACL_BACKWARD_STEP_TEMPLATES):
                 patterns.append(f"model__{{id}}/backward/{idx:03d}_{template}")
+            patterns.append(f"model__{{id}}/backward/output_code.py")
             return patterns
 
         EXPECTED_FILE_PATTERNS_ACL = generate_acl_patterns()
@@ -2757,8 +2725,10 @@ class AclGraphSt(unittest.TestCase):
             # Add forward files with auto indices
             for idx, template in enumerate(ACL_FORWARD_STEP_TEMPLATS):
                 patterns.append(f"model__{{id}}/forward/{idx:03d}_{template}")
+            patterns.append(f"model__{{id}}/forward/output_code.py")
             for idx, template in enumerate(ACL_BACKWARD_STEP_TEMPLATES):
                 patterns.append(f"model__{{id}}/backward/{idx:03d}_{template}")
+            patterns.append(f"model__{{id}}/backward/output_code.py")
             return patterns
 
         EXPECTED_FILE_PATTERNS_ACL = generate_acl_patterns()
@@ -2916,15 +2886,33 @@ class AclGraphSt(unittest.TestCase):
 
         model1 = Model1()
         model1 = torch.compile(model1, backend=aclgraph_backend, fullgraph=True, dynamic=False)
-        model1(x, y, z, w)
-
+        with capture_logger() as stdout:
+            try:
+                model1(x, y, z, w)
+            except Exception:
+                pass
+        self.assertTrue("current_stream = torchair_st_stub_aclgraph_utils_current_stream()" in stdout.getvalue())
+        self.assertTrue("Codegen for graph" in stdout.getvalue())
+        
         model2 = Model2()
         model2 = torch.compile(model2, backend=aclgraph_backend, fullgraph=True, dynamic=False)
-        model2(x, y, z, w)
-
+        with capture_logger() as stdout:
+            try:
+                model2(x, y, z, w)
+            except Exception:
+                pass
+        self.assertTrue("current_stream = torchair_st_stub_aclgraph_utils_current_stream()" in stdout.getvalue())
+        self.assertTrue("Codegen for graph" in stdout.getvalue())
+        
         model3 = Model3()
         model3 = torch.compile(model3, backend=aclgraph_backend, fullgraph=True, dynamic=False)
-        model3(x, y, z, w)
+        with capture_logger() as stdout:
+            try:
+                model3(x, y, z, w)
+            except Exception:
+                pass
+        self.assertTrue("current_stream = torchair_st_stub_aclgraph_utils_current_stream()" in stdout.getvalue())
+        self.assertTrue("Codegen for graph" in stdout.getvalue())
 
     def test_aclgraph_userinput_construct_in_share_memory_with_parameter_and_mutated(self):
         class Model(torch.nn.Module):

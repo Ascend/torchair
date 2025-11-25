@@ -106,22 +106,6 @@ def timer(prefix: str):
     logger.info("%s took %.3f [s]", prefix, time.time() - start_time)
 
 
-def _compile_py_code(py_code: str):
-    ge_mod = ModuleType('ge_mod')
-    # get closure_vars from torch._dynamo.guards
-    _closure_vars = {}
-    if version.parse(torch.__version__) > version.parse("2.5.1"):
-        from torch._dynamo.guards import _get_closure_vars
-        closure_vars = _get_closure_vars()
-        _closure_vars = {k: v for k, v in closure_vars.items()}
-    else:
-        from torch._dynamo.guards import CLOSURE_VARS
-        _closure_vars = {k: v for k, v in CLOSURE_VARS.items()}
-    ge_mod.__dict__.update(_closure_vars)
-    exec(compile(py_code, '<string>', 'exec'), ge_mod.__dict__, ge_mod.__dict__)
-    return ge_mod
-
-
 def _patch_user_const(code: types.CodeType):
     consts = tuple(f'<user_class>{c.__module__}|{c.__name__}' if isinstance(c, type) else c for c in code.co_consts)
     return code.replace(co_consts=consts)
@@ -294,6 +278,7 @@ class CompiledModel:
             raise ValueError(f"Expected 1 compiled function, found {fn_names}")
 
         with timer(f"{self.name} compile graph"):
+            from torchair.npu_fx_compiler import _compile_py_code
             ge_mod = _compile_py_code(self.compiled_fx.py_code)
             ge_kernel = getattr(ge_mod, 'kernel')
             if hasattr(ge_mod, '_update_ge_cache_dir'):
@@ -414,13 +399,9 @@ class CacheBackend:
         from torchair.npu_fx_compiler import _set_inputs_custom_attr
         _set_inputs_custom_attr(example_inputs, self.inputs_custom_attr)
 
-        if not hasattr(self.compiler, 'codegen'):
-            logger.warning(f"Skip cache as compiler {type(self.compiler)} does not support codegen")
-            return self.compiler(gm, example_inputs)
-
         # Codegen return compiled fx directly if not support codegen
         with timer(f"{self.saver.name} codegen"):
-            py_code = getattr(self.compiler, 'codegen')(gm, example_inputs, extend_config=self.extend_config)
+            py_code = self.compiler(gm, example_inputs).get_code(self.extend_config)
 
         if not isinstance(py_code, str):
             logger.warning(f"Skip cache as compiler {type(self.compiler)} codegen return non-str {type(py_code)}")
@@ -431,6 +412,7 @@ class CacheBackend:
         os.makedirs(ge_cache_dir, exist_ok=True)
         self.saver.save_compiled_fx(gm, example_inputs, self.config, py_code)
         with timer(f"{self.saver.name} compile graph"):
+            from torchair.npu_fx_compiler import _compile_py_code
             ge_mod = _compile_py_code(py_code)
             if hasattr(ge_mod, '_update_ge_cache_dir'):
                 ge_update_cache_dir = getattr(ge_mod, '_update_ge_cache_dir')

@@ -7,8 +7,12 @@ import copy
 from typing import List, Optional, Callable, Any, Dict, Tuple, Union
 import logging
 import sys
-import dataclasses
 import os
+import fcntl
+import dataclasses
+import types
+from types import ModuleType
+from packaging import version
 
 import torch
 from torch._subclasses.fake_tensor import is_fake
@@ -37,7 +41,7 @@ from torchair._utils.custom_aot_functions import aot_module_simplified_joint
 from torchair._utils import add_npu_patch, get_npu_default_decompositions
 from torchair._utils.error_code import pretty_error_msg
 from torchair._utils.graph_transform_observer import GraphTransformObserver, dump_fx_safety, \
-    wrap_debug_compilers, DebugContext
+    wrap_debug_compilers, DebugContext, get_phase_path
 from torchair.inference._gear_utils import get_dim_gears, set_dim_gears, guard_gears_shape
 from torchair.patterns.pattern_util import _apply_pattern_passes
 
@@ -440,10 +444,23 @@ class _CompiledFxGraph:
     Wrapper for executing a graph module with runtime inputs.
     """
 
-    def __init__(self, runner: Callable):
+    def __init__(self, runner: Callable, config):
+        self.config = config
         self.runner = runner
+        self.run_kernel = None
 
     def __call__(self, *args, **kwargs):
+
+        if self.run_kernel is None:
+            if self.config.mode.value == "reduce-overhead":
+                py_code = self.get_code()
+                if not isinstance(py_code, str):
+                    return py_code
+                ge_mod = _compile_py_code(py_code)
+                self.run_kernel = getattr(ge_mod, 'kernel')
+            else:
+                self.run_kernel = self.runner
+
         with record_function("npu_fx_compiler inference"):
             if logger.isEnabledFor(logging.DEBUG):
                 logger.debug('runtime inputs')
@@ -452,7 +469,7 @@ class _CompiledFxGraph:
                 for k, v in kwargs.items():
                     logger.debug('  input %s: %s', k, _summary(v))
 
-            gm_result = self.runner(*args, **kwargs)
+            gm_result = self.run_kernel(*args, **kwargs)
 
             if logger.isEnabledFor(logging.DEBUG):
                 logger.debug('runtime outputs')
@@ -466,7 +483,6 @@ class _CompiledFxGraph:
         if artifacts.version != _CompiledFxArtifacts.version:
             raise RuntimeError(f'Unsupported artifacts version: {artifacts.version}, '
                                f'expected: {_CompiledFxArtifacts.version}.')
-        from torchair.inference._cache_compiler import _compile_py_code
         compiled_mod = _compile_py_code(artifacts.py_code)
         return _CompiledFxGraph(getattr(compiled_mod, 'kernel'))
 
@@ -475,6 +491,21 @@ class _CompiledFxGraph:
             raise RuntimeError(f'Compiled fx type {self.runner} does not support serialize.')
         code = self.runner.codegen(extend_config={})
         return _CompiledFxArtifacts(py_code=code)
+
+    @pretty_error_msg
+    def get_code(self, extend_config=None):
+        if not hasattr(self.runner, 'codegen'):
+            logger.warning(f'When enable FX Graph summarizing or dumping, codegen is unsupported.')
+            return self.runner
+
+        py_code = self.runner.codegen(extend_config=extend_config, enable_cache=True)
+        if py_code is None:
+            logger.warning(f'There are some configurations that cannot be supported by codegen, skipping codegen.')
+            return self.runner
+        logger.debug('Codegen for %s successfully, code:\n%s.', self.runner.graph.name, py_code)
+        if self.config.mode.value == "reduce-overhead":
+            _dump_run_codegen(py_code)
+        return py_code
 
 
 _GLOBAL_GRAPH_ID = 0
@@ -506,23 +537,9 @@ class _NpuFxCompiler:
         Returns:
             _CompiledFxGraph: Runner wrapping the compiled graph.
         """
+
         return self._get_compiled_gm(gm, example_inputs)
 
-    @pretty_error_msg
-    def codegen(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor], *,
-                extend_config: Optional[dict] = None):
-        gm_runner = self._get_compiled_gm(gm, example_inputs)
-        if not hasattr(gm_runner.runner, 'codegen'):
-            logger.warning(f'When enable FX Graph summarizing or dumping, codegen is unsupported.')
-            return gm_runner
-
-        code = gm_runner.runner.codegen(extend_config, enable_cache=True)
-        if code is None:
-            logger.warning(f'There are some configurations that cannot be supported by codegen, skipping codegen.')
-            return gm_runner
-
-        logger.debug('Codegen for %s successfully, code:\n%s.', gm_runner.runner.graph.name, code)
-        return code
 
     def _get_compiled_gm(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
         """
@@ -552,7 +569,7 @@ class _NpuFxCompiler:
                                'and FALLBACK to EAGER execution to ensure the integrity of the analysis data. '
                                'Once the analysis is complete, please make sure to disable the summary config '
                                'to ensure that the graph is compiled and executed.')
-                return _CompiledFxGraph(gm)
+                return _CompiledFxGraph(gm, self.config)
 
         if self.config.debug.data_dump.enabled:
             logger.warning(f'When dumping data of FX Graph, npu run will be skipped, '
@@ -560,9 +577,9 @@ class _NpuFxCompiler:
                            'the data dump config to ensure that the graph is compiled and executed.')
             data_dumper = _NpuFxDumper(gm, config=self.config.debug.data_dump,
                                        name="graph_" + str(_next_unique_graph_id()))
-            return _CompiledFxGraph(data_dumper)
+            return _CompiledFxGraph(data_dumper, self.config)
 
-        return _CompiledFxGraph(self._gen_compiled_gm(gm, example_inputs, observer))
+        return _CompiledFxGraph(self._gen_compiled_gm(gm, example_inputs, observer), self.config)
 
     def _gen_compiled_gm(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor], observer: GraphTransformObserver):
         logger.info(f'compiler inputs')
@@ -775,5 +792,31 @@ def get_npu_backend(*, compiler_config: CompilerConfig = None, custom_decomposit
     decompositions.update(custom_decompositions)
 
     add_npu_patch(decompositions, compiler_config)
-
     return functools.partial(_npu_backend, compiler_config=compiler_config, decompositions=decompositions)
+
+
+def _dump_run_codegen(py_code: str):
+    if os.getenv("TORCH_COMPILE_DEBUG", "0") == "1":
+
+        from torch._inductor.utils import IndentedBuffer
+        input_code = IndentedBuffer()
+        input_code.writelines(["", "", 'if __name__ == "__main__":'])
+        with input_code.indent():
+            input_code.writeline("main()")
+            py_codegen_dump = py_code + input_code.getvalue()
+
+        # 进行生成dump文件，保存codegen内容
+        file_name = os.path.join(get_phase_path(), "output_code.py")
+        output_code_path = os.path.realpath(file_name)
+        os.makedirs(os.path.dirname(output_code_path), exist_ok=True)
+        with open(output_code_path, "w") as f:
+            from torchair.inference._cache_compiler import file_lock
+            with file_lock(f, fcntl.LOCK_EX):
+                f.write(py_codegen_dump)
+                os.chmod(f.fileno(), 0o600)
+
+
+def _compile_py_code(py_code: str):
+    ge_mod = ModuleType('ge_mod')
+    exec(compile(py_code, '<string>', 'exec'), ge_mod.__dict__, ge_mod.__dict__)
+    return ge_mod

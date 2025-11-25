@@ -795,10 +795,10 @@ class GeConcreteGraph(ConcreteGraphBase):
     def compile(self) -> Any:
         """
         Compiles the computation graph into an executable GE graph.
-        
+
         This method finalizes the graph structure and prepares it for execution.
         It ensures all nodes are properly configured and dependencies are resolved.
-        """        
+        """
         if self._is_compiled:
             return
 

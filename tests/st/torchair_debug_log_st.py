@@ -56,15 +56,19 @@ BACKWARD_STEP_TEMPLATES = [
 ]
 
 
-def generate_file_patterns(include_backward=True):
+def generate_file_patterns(include_backward=True, codegen=False):
     patterns = []
     for file in COMMON_FILES:
         patterns.append(f"model__{{id}}/{file}")
     for idx, template in enumerate(FORWARD_STEP_TEMPLATES):
         patterns.append(f"model__{{id}}/forward/{idx:03d}_{template}")
+    if codegen:
+        patterns.append(f"model__{{id}}/forward/output_code.py")
     if include_backward:
         for idx, template in enumerate(BACKWARD_STEP_TEMPLATES):
             patterns.append(f"model__{{id}}/backward/{idx:03d}_{template}")
+        if codegen:
+            patterns.append(f"model__{{id}}/backward/output_code.py")
     return patterns
 
 
