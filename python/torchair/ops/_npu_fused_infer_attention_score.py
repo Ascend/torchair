@@ -1,6 +1,6 @@
 from typing import (
     Any, Callable, ContextManager, Iterator, List, Literal, NamedTuple, Optional, Sequence, Tuple, TypeVar,
-    Union, overload,
+    Union, overload, Dict,
 )
 
 import torch
@@ -9,6 +9,7 @@ from torchair._ge_concrete_graph.fx2ge_converter import declare_supported, regis
 from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, \
     BOOL, Support
+from torchair._utils.error_code import pretty_error_msg
 
 lib = torch.library.Library("air", "FRAGMENT")
 lib.define(
@@ -183,19 +184,12 @@ def get_query_and_attention_out_layout(query, input_layout):
         attention_out_layout = layout_entry.outLayout
         query_dim = layout_entry.qDim
 
-        torch._check(
-            query.dim() == query_dim,
-            lambda: (
-                f"Layout {query_layout}, queryDims({query.dim()}) must be {query_dim}!" + ops_error(ErrCode.VALUE)
-            ),
-        )
+        if query.dim() != query_dim:
+            raise ValueError(
+                f'Layout {query_layout}, queryDims({query.dim()}) must be {query_dim}!')
     else:
-        torch._check(
-            False,
-            lambda: (
-                f"Layout {input_layout} is not supported!" + ops_error(ErrCode.VALUE)
-            ),
-        )
+        raise ValueError(
+            f'Layout {input_layout} is not supported!')
     return query_layout, attention_out_layout
 
 
@@ -217,12 +211,8 @@ def get_query_b_n_s(query, query_layout, num_heads):
         s1 = query.size(1)
         n1 = query.size(0)
     else:
-        torch._check(
-            False,
-            lambda: (
-                f"Layout {query_layout} is not supported in get_query_b_n_s function!" + ops_error(ErrCode.VALUE)
-            ),
-        )
+        raise ValueError(
+            f'Layout {query_layout} is not supported in get_query_b_n_s function!')
     return b, s1, n1
 
 
@@ -234,12 +224,8 @@ def get_query_t_n(query, query_layout):
         t = query.size(1)
         n1 = query.size(0)
     else:
-        torch._check(
-            False,
-            lambda: (
-                f"Layout {query_layout} is not supported in get_query_t_n function!" + ops_error(ErrCode.VALUE)
-            ),
-        )
+        raise ValueError(
+            f'Layout {query_layout} is not supported in get_query_t_n function!')
     return t, n1
 
 
@@ -252,19 +238,13 @@ def get_value_d(block_table, value, query, query_layout, num_kv_heads):
         elif value.dim() == 5:
             value_d = value.size(2) * value.size(4)
         else:
-            torch._check(
-                False,
-                lambda: "when Page Attention enabled, value's dim should be 3/4/5, but got " + str(value.dim()) + \
-                ops_error(ErrCode.VALUE),
-            )
+            raise ValueError(
+                f'when Page Attention enabled, value dim should be 3/4/5, but got {value.dim()}!')
+
     else:
-        torch._check(
-            value.dim() == query.dim(),
-            lambda: (
-                f"when Page Attention not enabled, value'dim{value.dim()} should equal to query's dim{query.dim()}!" + \
-                ops_error(ErrCode.VALUE)
-            ),
-        )
+        if value.dim() != query.dim():
+            raise ValueError(
+                f'when Page Attention not enabled, value dim{value.dim()} should equal to query dim{query.dim()}!')
         if query_layout == "BSH":
             value_d = value.size(2) // num_kv_heads
         if query_layout == "BNSD" or query_layout == "BSND":
@@ -324,11 +304,25 @@ def npu_fused_infer_attention_score_meta_impl(query, key, value, *, pse_shift=No
     inner_precise=0, block_size=0, antiquant_mode=0, softmax_lse_flag=False, key_antiquant_mode=0,
     value_antiquant_mode=0):
     # 禁止单独修改此函数，请同步修改actual seq length为symint list的接口
+    if num_heads <= 0:
+        raise ValueError(
+            f'numHeads should be greater than 0, but got {num_heads}!')
+    if num_key_value_heads == 0:
+        num_key_value_heads = num_heads
+
     query_layout, attention_out_layout = get_query_and_attention_out_layout(query, input_layout)
 
     value_d = get_value_d(block_table, value, query, query_layout, num_key_value_heads)
 
     tmp_out = infer_attention_out_shape(attention_out_layout, query, query_layout, num_heads, value_d)
+
+    # special:IFA legacy feature
+    change_d_scale = 1
+    if value is not None and value.dtype == DataType.DT_INT32: # treat int4 as int32
+        change_d_scale = 8
+    if input_layout == "BNSD" and block_table is None:
+        tmp_out = torch.empty([query.size(0), query.size(1), query.size(2), value.size(3) * change_d_scale],
+            dtype=query.dtype, device='meta')
 
     if quant_scale2 is not None:
         attention_out = torch.empty_like(tmp_out, dtype=torch.int8)
