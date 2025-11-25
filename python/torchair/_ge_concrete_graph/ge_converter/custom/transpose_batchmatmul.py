@@ -20,4 +20,4 @@ def conveter_npu_npu_transpose_batchmatmul(
 
     return ge.TransposeBatchMatMul(input, weight, bias=bias, scale=scale,
                                    perm_x1=perm_x1, perm_x2=perm_x2, perm_y=perm_y,
-                                   enable_hf32=False, batch_split_factor=batch_split_factor)
+                                   enable_hf32=torch.npu.matmul.allow_hf32, batch_split_factor=batch_split_factor)

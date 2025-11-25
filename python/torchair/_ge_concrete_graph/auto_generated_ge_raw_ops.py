@@ -347,6 +347,61 @@ def UniqueWithCounts(x: Tensor, *, out_idx: int, dependencies=[], node_name=None
     return y, idx, count
 
 
+# This api is auto - generated from IR FusedMatMul
+@auto_convert_to_tensor([False, False, False, False], [False, False, True, True])
+def FusedMatMul(x1: Tensor, x2: Tensor, bias: Optional[Tensor], x3: Optional[Tensor], *, transpose_x1: bool = False, transpose_x2: bool = False, enable_hf32: bool = False, fused_op_type: str = "", dependencies=[], node_name=None):
+    """REG_OP(FusedMatMul)\n
+    .INPUT(x1, TensorType({ DT_FLOAT, DT_FLOAT16, DT_BF16 }))\n
+    .INPUT(x2, TensorType({ DT_FLOAT, DT_FLOAT16, DT_BF16 }))\n
+    .OPTIONAL_INPUT(bias, TensorType({ DT_FLOAT, DT_FLOAT16, DT_BF16 }))\n
+    .OPTIONAL_INPUT(x3, TensorType({ DT_FLOAT, DT_FLOAT16, DT_BF16 }))\n
+    .OUTPUT(y, TensorType({ DT_FLOAT, DT_FLOAT16, DT_BF16 }))\n
+    .ATTR(transpose_x1, Bool, false)\n
+    .ATTR(transpose_x2, Bool, false)\n
+    .ATTR(enable_hf32, Bool, false)\n
+    .ATTR(fused_op_type, String, "")\n
+    """
+
+    # process inputs
+    inputs = {
+        "x1": x1,
+        "x2": x2,
+        "bias": bias,
+        "x3": x3,
+    }
+
+    # process attrs
+    attrs = {
+        "transpose_x1": attr.Bool(transpose_x1),
+        "transpose_x2": attr.Bool(transpose_x2),
+        "enable_hf32": attr.Bool(enable_hf32),
+        "fused_op_type": attr.Str(fused_op_type),
+    }
+
+    # process outputs
+    outputs = [
+        "y",
+    ]
+
+    return ge_op(
+        op_type="FusedMatMul",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("FusedMatMul") \
+        .input("x1", "DT_FLOAT, DT_FLOAT16, DT_BF16") \
+        .input("x2", "DT_FLOAT, DT_FLOAT16, DT_BF16") \
+        .optional_input("bias", "DT_FLOAT, DT_FLOAT16, DT_BF16") \
+        .optional_input("x3", "DT_FLOAT, DT_FLOAT16, DT_BF16") \
+        .attr("transpose_x1", attr.Bool(False)) \
+        .attr("transpose_x2", attr.Bool(False)) \
+        .attr("enable_hf32", attr.Bool(False)) \
+        .attr("fused_op_type", attr.Str("")) \
+        .output("y", "DT_FLOAT, DT_FLOAT16, DT_BF16") \
+    )
+
+
 # This api is auto-generated from IR Unique
 @auto_convert_to_tensor([False], [False])
 def Unique(x: Tensor, *, out_idx: int=DataType.DT_INT32, dependencies=[], node_name=None):

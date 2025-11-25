@@ -234,6 +234,43 @@ REG_OP(MatMul)
     .OP_END_FACTORY_REG(MatMul)
 
 /**
+* @brief Multiplies matrix "a" by matrix "b", producing "a * b".
+* @par Inputs:
+* Four inputs, including:
+* @li x1: A matrix tensor. Must be one of the following types: float16,
+* bfloat16. The type of float32 is not supported right now.
+* @li x2: A matrix tensor. Must be one of the following types: float16,
+* bfloat16. The type of float32 is not supported right now.
+* @li bias: An optional tensor. 1D. Must be one of the following types: float32,
+* bfloat16, float16.
+* @li x3: An Optional tensor. Must be one of the following types: float32,
+* bfloat16, float16. The type of float32 is not supported right now.
+*
+* @par Attributes:
+* @li transpose_x1: A bool. If True, changes the shape of "x1" from [M, K] to
+* [K, M] before multiplication.
+* @li transpose_x2: A bool. If True, changes the shape of "x2" from [N, K] to
+* [K, N] before multiplication.
+* @li enable_hf32: A bool. This input is not support right now.
+* @li fused_op_type: A string. The fused_op_type include "add","mul","gelu_erf","gelu_tanh".
+* Default type is defined as "".
+* @par Outputs:
+* y: The result matrix tensor. Must be one of the following types: float16,
+* bfloat16. The type of float32 is not supported right now.
+*/
+REG_OP(FusedMatMul)
+    .INPUT(x1, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .INPUT(x2, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .OPTIONAL_INPUT(x3, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .ATTR(transpose_x1, Bool, false)
+    .ATTR(transpose_x2, Bool, false)
+    .ATTR(enable_hf32, Bool, false)
+    .ATTR(fused_op_type, String, "")
+    .OP_END_FACTORY_REG(FusedMatMul)
+
+/**
 * @brief Multiplies matrix "a" by matrix "b", producing "a * b". \n
 * @par Inputs:
 * Four inputs, including:
