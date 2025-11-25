@@ -81914,3 +81914,70 @@ def AddRmsNormCast(x1: Tensor,
         .output("rstd", "DT_FLOAT")\
         .output("x", "DT_FLOAT16, DT_BF16")
     )
+
+
+# This api is auto-generated from IR QuantGroupedMatmulInplaceAdd
+@auto_convert_to_tensor([False, False, False, False, False, False], [False, False, False, False, False, True])
+def QuantGroupedMatmulInplaceAdd(x1: Tensor, x2: Tensor, scale2: Tensor, group_list: Tensor, y: Tensor, scale1: Optional[Tensor], *, group_list_type: int=0, group_size: int=0, dependencies=[], node_name=None):
+    """REG_OP(QuantGroupedMatmulInplaceAdd)\n
+    .INPUT(x1, TensorType({DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN}))\n
+    .INPUT(x2, TensorType({DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN}))\n
+    .INPUT(scale2, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))\n
+    .INPUT(group_list, TensorType({DT_INT64}))\n
+    .INPUT(y, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(scale1, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT}))\n
+    .ATTR(group_list_type, Int, 0)\n
+    .ATTR(group_size, Int, 0)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "QuantGroupedMatmulInplaceAdd"
+    op.name = next_unique_name(node_name, "QuantGroupedMatmulInplaceAdd")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x1.tensor)
+    op.input_desc.add().CopyFrom(x1.desc)
+    op.input_desc[-1].name = "x1"
+
+    op.input.append(x2.tensor)
+    op.input_desc.add().CopyFrom(x2.desc)
+    op.input_desc[-1].name = "x2"
+
+    op.input.append(scale2.tensor)
+    op.input_desc.add().CopyFrom(scale2.desc)
+    op.input_desc[-1].name = "scale2"
+
+    op.input.append(group_list.tensor)
+    op.input_desc.add().CopyFrom(group_list.desc)
+    op.input_desc[-1].name = "group_list"
+
+    op.input.append(y.tensor)
+    op.input_desc.add().CopyFrom(y.desc)
+    op.input_desc[-1].name = "y"
+
+    if scale1 is not None:
+        op.input.append(scale1.tensor)
+        op.input_desc.add().CopyFrom(scale1.desc)
+        op.input_desc[-1].name = "scale1"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "scale1"
+
+    # process attrs
+    op.attr["group_list_type"].i = group_list_type
+    op.attr["group_size"].i = group_size
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+
+    # return outputs
+    return y
