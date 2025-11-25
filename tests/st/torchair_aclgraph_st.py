@@ -169,6 +169,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
         model = torch.compile(Model(), backend=aclgraph_backend, dynamic=False)
@@ -189,6 +190,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.experimental_config.keep_inference_input_mutations = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -223,6 +225,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.experimental_config.keep_inference_input_mutations = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -262,6 +265,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -300,6 +304,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -331,6 +336,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -382,6 +388,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         config.debug.aclgraph.enable_output_clone = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
@@ -438,6 +445,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.debug.graph_dump.type = "pbtxt"
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -545,6 +553,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
         model = Model()
         opt_model = torch.compile(model, backend=aclgraph_backend, fullgraph=True, dynamic=False)
@@ -637,6 +646,7 @@ class AclGraphSt(unittest.TestCase):
         from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
         ext_event1 = torchair.ops.npu_create_tagged_event(tag="66")
         ext_event2 = torchair.ops.npu_create_tagged_event(tag="77")
@@ -688,6 +698,7 @@ class AclGraphSt(unittest.TestCase):
         from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
         class Model(torch.nn.Module):
@@ -738,6 +749,7 @@ class AclGraphSt(unittest.TestCase):
         from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
         class Model(torch.nn.Module):
@@ -804,6 +816,7 @@ class AclGraphSt(unittest.TestCase):
         model = Model()
         config_view = CompilerConfig()
         config_view.mode = "reduce-overhead"
+        config_view.debug.aclgraph.clone_input = False
         npu_backend_view = torchair.get_npu_backend(compiler_config=config_view)
         model = torch.compile(model, backend=npu_backend_view, dynamic=False)
         in1 = torch.randn(2, 2)
@@ -868,6 +881,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.experimental_config.keep_inference_input_mutations = True
         backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -902,6 +916,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.experimental_config.keep_inference_input_mutations = True
         config.experimental_config.remove_noop_ops = False
         backend = torchair.get_npu_backend(compiler_config=config)
@@ -937,6 +952,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.experimental_config.keep_inference_input_mutations = True
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         backend = torchair.get_npu_backend(compiler_config=config)
@@ -966,6 +982,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.experimental_config.keep_inference_input_mutations = True
         config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass = True
         backend = torchair.get_npu_backend(compiler_config=config)
@@ -995,6 +1012,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.experimental_config.keep_inference_input_mutations = True
         config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass = True
         config.experimental_config.remove_noop_ops = False
@@ -1032,6 +1050,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.experimental_config.keep_inference_input_mutations = True
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         backend = torchair.get_npu_backend(compiler_config=config)
@@ -1075,6 +1094,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.experimental_config.keep_inference_input_mutations = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = False
         config.experimental_config.remove_noop_ops = False
@@ -1106,6 +1126,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.experimental_config.keep_inference_input_mutations = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         backend = torchair.get_npu_backend(compiler_config=config)
@@ -1137,6 +1158,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.debug.graph_dump.type = "py"
         npu_backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -1176,6 +1198,7 @@ class AclGraphSt(unittest.TestCase):
         x = torch.randn([4, 2])
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -1186,7 +1209,7 @@ class AclGraphSt(unittest.TestCase):
             res1 = model1(x)
         captured_output = stdout.getvalue()
         self.assertTrue("When mempool reuse is enabled in fx_graph" in captured_output)
-        
+
         # second graph with valid output ref, need reconstruct
         y = torch.randn([5, 2])
         with capture_logger() as stdout:
@@ -1199,7 +1222,7 @@ class AclGraphSt(unittest.TestCase):
             res1 = model1(y)
         captured_output = stdout.getvalue()
         self.assertTrue("no need to reconstruct output tensors for" in captured_output)  # should be true in real env
-        
+
         # same graph with invalid output ref, need reconstruct
         del res1
         with capture_logger() as stdout:
@@ -1221,6 +1244,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         config.debug.aclgraph.disable_mempool_reuse_in_same_fx = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
@@ -1261,6 +1285,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -1287,7 +1312,7 @@ class AclGraphSt(unittest.TestCase):
             res = model1(x)
         captured_output = stdout.getvalue()
         self.assertTrue("When mempool reuse is enabled in" in captured_output)
-        
+
         with capture_logger() as stdout:
             res = model1(y)
         captured_output = stdout.getvalue()
@@ -1300,7 +1325,7 @@ class AclGraphSt(unittest.TestCase):
             res = model2(x)
         captured_output = stdout.getvalue()
         self.assertTrue("When mempool reuse is enabled in" in captured_output)
-        
+
         with capture_logger() as stdout:
             res = model2(y)
         captured_output = stdout.getvalue()
@@ -1457,6 +1482,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
 
         model = Model()
@@ -1494,6 +1520,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         model = CacheModel()
 
@@ -1537,6 +1564,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         model = CacheModel()
 
@@ -1583,6 +1611,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.experimental_config.keep_inference_input_mutations = True
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         model = Model()
@@ -1623,6 +1652,7 @@ class AclGraphSt(unittest.TestCase):
         model = Model()
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.experimental_config.aclgraph._aclnn_static_shape_kernel = True
         config.experimental_config.aclgraph._aclnn_static_shape_kernel_build_dir = ".."
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
@@ -1676,6 +1706,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         model = Model()
 
@@ -1722,6 +1753,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
 
         model = Model()
@@ -1749,6 +1781,7 @@ class AclGraphSt(unittest.TestCase):
         from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
         ext_event1 = torchair.ops.npu_create_tagged_event(tag="666666")
         ext_event2 = torchair.ops.npu_create_tagged_event(tag="777777")
@@ -1798,6 +1831,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
         model = torch.compile(Model(), backend=aclgraph_backend, dynamic=False)
 
@@ -1822,6 +1856,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -1873,6 +1908,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.debug.aclgraph.static_capture_size_limit = 1
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         model1 = Model()
@@ -1896,7 +1932,7 @@ class AclGraphSt(unittest.TestCase):
         self.assertTrue("Success to capture fx_graph" not in stdout.getvalue())
 
         self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
-    
+
     def test_aclgraph_recapture_non_mutated_input_with_address_change_and_input_with_no_address_change(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -1909,6 +1945,7 @@ class AclGraphSt(unittest.TestCase):
         config = CompilerConfig()
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
         model = torch.compile(model, backend=aclgraph_backend, dynamic=True)
@@ -1943,6 +1980,7 @@ class AclGraphSt(unittest.TestCase):
         model = Model()
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -1957,7 +1995,7 @@ class AclGraphSt(unittest.TestCase):
             f"Expected DEBUG 'The current AclGraph needs to be recaptured'"
             f"not found in logs: {cm.output}"
         )
-    
+
     def test_aclgraph_recapture_multi_graph_with_address_change(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -1971,6 +2009,7 @@ class AclGraphSt(unittest.TestCase):
         config = CompilerConfig()
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
         model = torch.compile(model, backend=aclgraph_backend, dynamic=True)
@@ -1984,8 +2023,8 @@ class AclGraphSt(unittest.TestCase):
             model(y)
             model(z)
         captured_output = stdout.getvalue()
-        self.assertTrue("No find captured AclGraph" in captured_output)   
-        
+        self.assertTrue("No find captured AclGraph" in captured_output)
+
         with self.assertLogs(logger, level="DEBUG") as cm:
             model(x_)
         self.assertTrue(
@@ -2007,6 +2046,7 @@ class AclGraphSt(unittest.TestCase):
         config = CompilerConfig()
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
         model = torch.compile(model, backend=aclgraph_backend, dynamic=True)
@@ -2020,8 +2060,8 @@ class AclGraphSt(unittest.TestCase):
         with capture_logger() as stdout:
             model(x)
         captured_output = stdout.getvalue()
-        self.assertTrue("The current AclGraph needs to be recaptured" in captured_output)   
-        
+        self.assertTrue("The current AclGraph needs to be recaptured" in captured_output)
+
         with self.assertLogs(logger, level="DEBUG") as cm:
             model(x)
         self.assertTrue(
@@ -2029,7 +2069,7 @@ class AclGraphSt(unittest.TestCase):
             f"Expected DEBUG 'The current AclGraph no needs to be recaptured'"
             f"not found in logs: {cm.output}"
         )
-    
+
     def test_aclgraph_recapture_with_parameter_address_change_with_frozen_parameter(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -2044,17 +2084,18 @@ class AclGraphSt(unittest.TestCase):
         config.experimental_config.frozen_parameter = True
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
         model = torch.compile(model, backend=aclgraph_backend, dynamic=True)
         x = torch.randn([3, 2])
         a = torch.ones(2, 2)
         model.linear.weight.data = a
-        
+
         model(x)
         b = torch.zeros(2, 2)
         model.linear.weight.data = b
-        
+
         with self.assertLogs(logger, level="DEBUG") as cm:
             model(x)
         self.assertTrue(
@@ -2082,6 +2123,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
 
         model = Model()
@@ -2126,6 +2168,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         config.experimental_config.aclgraph._aclnn_static_shape_kernel = True
         config.experimental_config.aclgraph._aclnn_static_shape_kernel_build_dir = ".."
@@ -2150,12 +2193,12 @@ class AclGraphSt(unittest.TestCase):
         prompt3_cache_dir = os.path.abspath(os.path.dirname(prompt3_cache_bin))
         self.assertEqual(prompt3_cache_dir, prompt_cache_dir,
                             "Cache bin dir with same config and same model should be the same.")
-    
+
     def test_npu_stream_record_wait_with_wait(self):
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
-            
+
             def forward(self, x):
                 mm = torch.mm(x, x)
                 with torchair.scope.npu_stream_switch('1', 3):
@@ -2169,13 +2212,14 @@ class AclGraphSt(unittest.TestCase):
 
         config = torchair.CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         npu_backend = torchair.get_npu_backend(compiler_config=config)
         model = Model()
         opt_model = torch.compile(model, backend=npu_backend, dynamic=False)
         x = torch.randn([3, 3])
         with self.assertLogs(logger, level="DEBUG") as cm:
             opt_model(x)
-    
+
         self.assertTrue(
             any("record_default = torch.ops.air.record.default()"
                     in log for log in cm.output),
@@ -2196,12 +2240,12 @@ class AclGraphSt(unittest.TestCase):
             any("Wait successfully,stream:"
                     in log for log in cm.output),
         f"Expected DEBUG log 'Wait successfully,stream:' in logs: {cm.output}")
-    
+
     def test_npu_stream_record_wait_with_record(self):
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
-            
+
             def forward(self, x):
                 mm = torch.mm(x, x)
                 result1 = torchair.ops.record()
@@ -2220,13 +2264,14 @@ class AclGraphSt(unittest.TestCase):
 
         config = torchair.CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         npu_backend = torchair.get_npu_backend(compiler_config=config)
         model = Model()
         opt_model = torch.compile(model, backend=npu_backend, dynamic=False)
         x = torch.randn([3, 3])
         with self.assertLogs(logger, level="DEBUG") as cm:
             opt_model(x)
-    
+
         self.assertTrue(
             any("record = torch.ops.air.record.default()"
                     in log for log in cm.output),
@@ -2247,12 +2292,12 @@ class AclGraphSt(unittest.TestCase):
             any("Wait successfully,stream:"
                     in log for log in cm.output),
         f"Expected DEBUG log 'Wait successfully,stream:' in logs: {cm.output}")
-    
+
     def test_npu_stream_record_wait_with_record_wait(self):
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
-            
+
             def forward(self, x):
                 mm = torch.mm(x, x)
                 result1 = torchair.ops.record()
@@ -2270,13 +2315,14 @@ class AclGraphSt(unittest.TestCase):
 
         config = torchair.CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         npu_backend = torchair.get_npu_backend(compiler_config=config)
         model = Model()
         opt_model = torch.compile(model, backend=npu_backend, dynamic=False)
         x = torch.randn([3, 3])
         with self.assertLogs(logger, level="DEBUG") as cm:
             opt_model(x)
-    
+
         self.assertTrue(
             any("record_default = torch.ops.air.record.default()"
                     in log for log in cm.output),
@@ -2319,11 +2365,12 @@ class AclGraphSt(unittest.TestCase):
                 with torchair.scope.npu_stream_switch('2', 3):
                     torchair.ops.wait([mm, abs1])
                     sub = torch.sub(add1, mm)
-                return sub    
+                return sub
 
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         model = Model()
 
@@ -2351,6 +2398,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
         x = torch.randn(3)
         sin = torch.randn(3)
@@ -2375,6 +2423,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
         x = torch.ones(3)
         sin = torch.ones(3)
@@ -2399,6 +2448,7 @@ class AclGraphSt(unittest.TestCase):
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
         x = torch.ones(3)
         sin = torch.ones(3)
@@ -2483,6 +2533,7 @@ class AclGraphSt(unittest.TestCase):
 
         compiler_config = CompilerConfig()
         compiler_config.mode = "reduce-overhead"
+        compiler_config.debug.aclgraph.clone_input = False
         backend = torchair.get_npu_backend(compiler_config=compiler_config)
         compiled_model = torch.compile(Model(), backend=backend, dynamic=True)
         compiled_model(x=torch.randn([2, 2]))
@@ -2519,6 +2570,7 @@ class AclGraphSt(unittest.TestCase):
 
         compiler_config = CompilerConfig()
         compiler_config.mode = "reduce-overhead"
+        compiler_config.debug.aclgraph.clone_input = False
         compiler_config.experimental_config.remove_noop_ops = False
         backend = torchair.get_npu_backend(compiler_config=compiler_config)
         compiled_model = torch.compile(Model(), backend=backend, dynamic=True)
@@ -2584,13 +2636,13 @@ class AclGraphSt(unittest.TestCase):
             return patterns
 
         EXPECTED_FILE_PATTERNS_ACL = generate_acl_patterns()
-       
+
 
         from torch._dynamo.utils import get_debug_dir
         import tempfile
 
         with tempfile.TemporaryDirectory(prefix="torchair_debug_") as tmpdir:
-            DEBUG_DIR = tmpdir  
+            DEBUG_DIR = tmpdir
             torch._dynamo.config.patch(debug_dir_root=DEBUG_DIR)
             self.assertIsNotNone(DEBUG_DIR)
             os.environ['TORCH_COMPILE_DEBUG'] = '1'
@@ -2598,13 +2650,13 @@ class AclGraphSt(unittest.TestCase):
             config = torchair.CompilerConfig()
             config.experimental_config.remove_noop_ops = True
             config.mode.value = "reduce-overhead"
-            
+
             def _custom_pre_fn(gm, example_inputs, compile_config: torchair.CompilerConfig):
                 return None
 
             def _custom_post_fn(gm, example_inputs, compile_config: torchair.CompilerConfig):
                 return None
-            
+
             config.post_grad_custom_pre_pass = _custom_pre_fn
             config.post_grad_custom_post_pass = _custom_post_fn
             npu_backend = torchair.get_npu_backend(compiler_config=config)
@@ -2621,7 +2673,7 @@ class AclGraphSt(unittest.TestCase):
             target = torch.randn(10, 10)
             loss = loss_fn(out, target)
             loss.backward()
-            
+
             debug_dir_output = get_debug_dir()
             # 1. Verify the existence of the torchair directory
             torchair_root = os.path.join(debug_dir_output, "torchair")
@@ -2653,7 +2705,7 @@ class AclGraphSt(unittest.TestCase):
                 expected_count,
                 msg=f"File count mismatch: expected {expected_count} files, got {actual_count} files"
             )
-    
+
     @unittest.skipIf(torch.__version__ > "2.2", "")
     def test_torch_compile_acl_debug_dump_low_version(self):
 
@@ -2710,13 +2762,13 @@ class AclGraphSt(unittest.TestCase):
             return patterns
 
         EXPECTED_FILE_PATTERNS_ACL = generate_acl_patterns()
-       
+
 
         from torch._dynamo.utils import get_debug_dir
         import tempfile
 
         with tempfile.TemporaryDirectory(prefix="torchair_debug_") as tmpdir:
-            DEBUG_DIR = tmpdir  
+            DEBUG_DIR = tmpdir
             torch._dynamo.config.patch(debug_dir_root=DEBUG_DIR)
             self.assertIsNotNone(DEBUG_DIR)
             os.environ['TORCH_COMPILE_DEBUG'] = '1'
@@ -2724,13 +2776,14 @@ class AclGraphSt(unittest.TestCase):
             config = torchair.CompilerConfig()
             config.experimental_config.remove_noop_ops = True
             config.mode.value = "reduce-overhead"
-            
+            config.debug.aclgraph.clone_input = False
+
             def _custom_pre_fn(gm, example_inputs, compile_config: torchair.CompilerConfig):
                 return None
 
             def _custom_post_fn(gm, example_inputs, compile_config: torchair.CompilerConfig):
                 return None
-            
+
             config.post_grad_custom_pre_pass = _custom_pre_fn
             config.post_grad_custom_post_pass = _custom_post_fn
             config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
@@ -2748,7 +2801,7 @@ class AclGraphSt(unittest.TestCase):
             target = torch.randn(10, 10)
             loss = loss_fn(out, target)
             loss.backward()
-            
+
             debug_dir_output = get_debug_dir()
             # 1. Verify the existence of the torchair directory
             torchair_root = os.path.join(debug_dir_output, "torchair")
@@ -2785,6 +2838,7 @@ class AclGraphSt(unittest.TestCase):
         from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
         config = CompilerConfig()
         config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
         class Model1(torch.nn.Module):
@@ -2798,7 +2852,7 @@ class AclGraphSt(unittest.TestCase):
                     with torchair.scope.limit_core_num(12, 24):
                         mm_result2 = torch.mm(in3, in4)
                 return add_result, mm_result1, mm_result2
-            
+
         class Model2(torch.nn.Module):
             def __init__(self):
                 super().__init__()
@@ -2810,7 +2864,7 @@ class AclGraphSt(unittest.TestCase):
                     with torchair.scope.npu_stream_switch('1', 3):
                         mm_result2 = torch.mm(in3, in4)
                 return add_result, mm_result1, mm_result2
-            
+
         class Model3(torch.nn.Module):
             def __init__(self):
                 super().__init__()
@@ -2830,7 +2884,7 @@ class AclGraphSt(unittest.TestCase):
             for node in concrete_graph.fx_graph.graph.nodes:
                 if str(node.target) == "air.scope_enter.default":
                     scope_enter_count += 1
-                    
+
                 if str(node.target) == "air.scope_exit.default":
                     scope_enter_count -= 1
                 if "function get_stream_limit" in str(node.target):
@@ -2840,7 +2894,7 @@ class AclGraphSt(unittest.TestCase):
                     get_stream_count += 1
                 if "function set_stream_limit" in str(node.target):
                     set_stream_count += 1
-                    
+
             assert scope_enter_count == 0, f"expect scope enter should match with scope exit, but got unmatched"
             assert set_stream_count == 2 * get_stream_count
 
@@ -2863,14 +2917,143 @@ class AclGraphSt(unittest.TestCase):
         model1 = Model1()
         model1 = torch.compile(model1, backend=aclgraph_backend, fullgraph=True, dynamic=False)
         model1(x, y, z, w)
-        
+
         model2 = Model2()
         model2 = torch.compile(model2, backend=aclgraph_backend, fullgraph=True, dynamic=False)
         model2(x, y, z, w)
-        
+
         model3 = Model3()
         model3 = torch.compile(model3, backend=aclgraph_backend, fullgraph=True, dynamic=False)
         model3(x, y, z, w)
+
+    def test_aclgraph_userinput_construct_in_share_memory_with_parameter_and_mutated(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(2, 2)
+
+            def forward(self, x, y):
+                x.mul_(2)
+                x = x @ self.linear(y)
+                return x + 1
+
+        torch._dynamo.reset()
+        x = torch.ones([3, 2])
+        y = torch.ones([4, 2])
+        a = torch.ones(2, 2)
+        b = torch.zeros(2, 2)
+        c = torch.ones([2, 2])
+        x_ = x.clone()
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        config.experimental_config.keep_inference_input_mutations = True
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        # when only one graph, no need reconstruct
+        model = Model()
+        model = torch.compile(model, backend=aclgraph_backend, dynamic=True)
+        with capture_logger() as stdout:
+            model.linear.weight.data = a
+            res1 = model(x, c)
+        captured_output = stdout.getvalue()
+        self.assertTrue("When mempool reuse is enabled in fx_graph" in captured_output)
+
+        # second aclgraph with valid output ref, need reconstruct
+        y = torch.randn([5, 2])
+        with capture_logger() as stdout:
+            res2 = model(y, c)
+        captured_output = stdout.getvalue()
+        self.assertTrue("After reconstructing fx_graph" in captured_output)
+
+        # same graph with mutated_inputs changed, need to rerecapture
+        with capture_logger() as stdout:
+            res4 = model(x_, c)
+        captured_output = stdout.getvalue()
+        self.assertTrue("needs to be recaptured" in captured_output)
+
+        # same graph with parameters changed, need to rerecapture
+        with capture_logger() as stdout:
+            model.linear.weight.data = b
+            res5 = model(x_, c)
+        captured_output = stdout.getvalue()
+        self.assertTrue("needs to be recaptured" in captured_output)
+
+        # deleter res5 to make weakref None
+        del res5
+        with capture_logger() as stdout:
+            res1 = model(x, c)
+        captured_output = stdout.getvalue()
+        self.assertTrue("needs to be recaptured" in captured_output)
+
+    def test_aclgraph_userinput_construct_in_share_memory_with_frozen_parameter(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(2, 2)
+
+            def forward(self, x):
+                return self.linear(x)
+
+        model = Model()
+        config = CompilerConfig()
+        config.experimental_config.frozen_parameter = True
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(model, backend=aclgraph_backend, dynamic=True)
+        x = torch.randn([3, 2])
+        a = torch.ones(2, 2)
+        model.linear.weight.data = a
+
+        model(x)
+        b = torch.zeros(2, 2)
+        model.linear.weight.data = b
+
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            model(x)
+        self.assertTrue(
+            any("The current AclGraph no needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph no needs to be recaptured'"
+            f"not found in logs: {cm.output}"
+        )
+
+    def test_aclgraph_userinput_construct_in_share_memory_with_no_frozen_parameter(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(2, 2)
+
+            def forward(self, x):
+                return self.linear(x)
+
+        model = Model()
+        config = CompilerConfig()
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(model, backend=aclgraph_backend, dynamic=True)
+        x = torch.randn([3, 2])
+        a = torch.ones(2, 2)
+        model.linear.weight.data = a
+
+        model(x)
+        b = torch.zeros(2, 2)
+        model.linear.weight.data = b
+
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            model(x)
+        self.assertTrue(
+            any("The current AclGraph needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph needs to be recaptured'"
+            f"not found in logs: {cm.output}"
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

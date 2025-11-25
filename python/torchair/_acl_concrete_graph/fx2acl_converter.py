@@ -237,7 +237,12 @@ class AclConcreteGraph(ConcreteGraphBase):
 
         logger.debug('before graph optimization, graph is %s', self.fx_graph.graph)
         if self.config.aclgraph_config.use_custom_pool is not None:
-            # when use custom pool from user, do not enable mem pool reuse in same fx.
+            # When a custom memory pool is provided by the user, avoid reusing it within the same FX graph
+            # or across multiple FX graphs. Enabling reuse would lead to stale storage persisting across
+            # different FX graphs, creating a maintenance nightmare. Specifically, outputs that remain alive
+            # after a graph replay can be passed to a user via an aclgraph captured from another FX context,
+            # which will cause unpredictable errors. Reusing inputs is safe because they are no longer alive
+            # by the time a subsequent aclgraph executes.
             self.config.debug.aclgraph.disable_mempool_reuse_in_same_fx = True
 
         # _stream_scope_enter_nodes_dict is initilized as an empty dict,
@@ -332,7 +337,6 @@ class AclConcreteGraph(ConcreteGraphBase):
                               'Please make sure that the Parameters data address remain the same '
                               'throughout the program runtime.')
             aclgraph_config_options['frozen_parameter'] = frozen_parameter_enable.value
-
         logger.debug("aclgraph compile options:")
         for k, v in aclgraph_config_options.items():
             logger.debug("  %s: %s", k, v)

@@ -61,6 +61,7 @@ class CompilerConfig(NpuBaseConfig):
 unsupport_geconfig_list = [("debug.aclgraph.disable_reinplace_input_mutated_ops_pass", [True]),
     ("experimental_config.aclgraph._aclnn_static_shape_kernel", [True]),
     ("experimental_config.aclgraph._aclnn_static_shape_kernel_build_dir", []),
+    ("debug.aclgraph.clone_input", [True]),
     ("debug.aclgraph.disable_reinplace_inplaceable_ops_pass", [True])]
 unsupport_aclgraphconfig_list = [("inference_config.dynamic_gears_merge_policy", ["product"]), \
     ("debug.fx_summary.type", ["csv"]), ("dump_config.enable_dump", [True]), \
@@ -92,12 +93,12 @@ def _check_config_support(config: Any):
         key_with_value = key_raw + "._value"
         if key_raw in config_dict or key_with_value in config_dict:
             warn_config = _get_warn_config(warn_config, config_arg, config_dict)
-    
+
     if warn_config:
         mode_specific = "max-autotune" if config.mode.value == "max-autotune" else "reduce-overhead"
         additional = (
-            "" 
-            if mode_specific == "max-autotune" 
+            ""
+            if mode_specific == "max-autotune"
             else ", set_dim_gears, dynamo_export, scope, npu_print"
         )
         warnings.warn(
@@ -115,7 +116,7 @@ def _get_warn_config(warn_config, config_arg, config_dict):
         if not config_arg[1] or value in config_arg[1]:
             warn_config.append(f"config.{key_raw}:{value}")
     return warn_config
-    
+
 
 def _get_all_leaf_properties(obj: Any, prefix: str = ""):
     stack = [(prefix, obj)]

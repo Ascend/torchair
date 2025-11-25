@@ -447,7 +447,7 @@ class AclgraphTest(unittest.TestCase):
 
             def forward(self, x1, x2, weight, smooth_scales):
                 y, _, xOut = torch_npu.npu_add_rms_norm(x1, x2, weight)
-                
+
                 with torchair.scope.npu_stream_switch('2', 3):
                     torchair.ops.wait([y])
                     _, _, h2 = y.shape
@@ -483,7 +483,7 @@ class AclgraphTest(unittest.TestCase):
 
             def forward(self, x1, x2, weight, smooth_scales):
                 y, _, xOut = torch_npu.npu_add_rms_norm(x1, x2, weight)
-                
+
                 with torchair.scope.npu_stream_switch('2', 3):
                     torchair.ops.wait([y])
                     yOut2, scale1Out2 = torch_npu.npu_dynamic_quant(y, smooth_scales=smooth_scales)
@@ -509,6 +509,774 @@ class AclgraphTest(unittest.TestCase):
             any("target: npu.npu_add_rms_norm_dynamic_quant.default" in log for log in cm.output),
             f"Expected no DEBUG log 'target: npu.npu_add_rms_norm_dynamic_quant.default' in logs: {cm.output}"
         )
+
+    def test_aclgraph_userinput_construct_in_share_memory_with_parameter_and_mutated(self):
+        class RecaptureModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(32, 32)
+
+            def forward(self, qp, q, k, v, scale, actual_seq_lenq, actual_seq_len, actual_seq_len2, narrow_start, x):
+                pfa0, _ = torch_npu.npu_fused_infer_attention_score(qp, k, v, num_heads=32, input_layout="BNSD",
+                                                                    scale=scale, softmax_lse_flag=False,
+                                                                    actual_seq_lengths=actual_seq_lenq,
+                                                                    actual_seq_lengths_kv=actual_seq_len)
+                q = q * scale
+                ifa1, _ = torch_npu.npu_fused_infer_attention_score(q, k, v, num_heads=32, input_layout="BNSD",
+                                                                    scale=scale, softmax_lse_flag=False,
+                                                                    actual_seq_lengths_kv=actual_seq_len)
+                mm1 = ifa1.view([ifa1.shape[-1], -1]).clone()
+                q = q + 0.01
+                ifa2, _ = torch_npu.npu_fused_infer_attention_score(q, k, v, num_heads=32, input_layout="BNSD",
+                                                                    scale=scale, softmax_lse_flag=False,
+                                                                    actual_seq_lengths_kv=[66, 166, 266])
+                mm2 = ifa2.view([-1, ifa2.shape[-1]]).clone()
+                mmm = torch.mm(mm1, mm2) + pfa0.mean()
+                k.mul_(1.1)
+                v = v / 1.1
+                ifa3 = torch_npu.npu_fused_infer_attention_score(q, k, v, num_heads=32, input_layout="BNSD",
+                                                                scale=scale, softmax_lse_flag=False,
+                                                                actual_seq_lengths_kv=actual_seq_len2)
+                add3 = ifa3[0]
+                add3 = torch.narrow(add3, -1, 32, 32)
+                add3 = add3 @ self.linear(x)
+                res = add3 * mmm.mean()
+                return res
+
+        tng_config = torchair.CompilerConfig()
+        tng_config.mode = 'reduce-overhead'
+        tng_config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        tng_config.experimental_config.keep_inference_input_mutations = True
+        npu_backend = torchair.get_npu_backend(compiler_config=tng_config)
+
+        model1 = RecaptureModel().npu()
+        length_new = [88, 99, 1]
+        length2_new = [40, 50, 60]
+        lengthq_new = [99, 50, 10]
+        scale = 1 / 0.0078125
+        narrow_start = 32
+        query_prefill_ = torch.randn(3, 32, 512, 128, dtype=torch.float16).npu()
+        query_ = torch.randn(3, 32, 1, 128, dtype=torch.float16).npu()
+        key_ = torch.randn(3, 32, 512, 128, dtype=torch.float16).npu()
+        value_ = torch.randn(3, 32, 512, 128, dtype=torch.float16).npu()
+        key = key_.clone()
+        torch._dynamo.mark_static(query_prefill_)
+        torch._dynamo.mark_static(query_)
+        torch._dynamo.mark_static(key_)
+        torch._dynamo.mark_static(value_)
+        x = torch.randn([32, 32]).npu()
+        a = torch.ones(32, 32).npu()
+        b = torch.zeros(32, 32).npu()
+
+        compiled_model1 = torch.compile(model1, backend=npu_backend, fullgraph=True, dynamic=True)
+
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            compiled_model1.linear.weight.data = a
+            graph_res1 = compiled_model1(query_prefill_, query_, key_, value_, scale, length_new, length2_new,
+                                         lengthq_new, narrow_start, x)
+        self.assertTrue(
+            any("No find captured AclGraph" in log for log in cm.output),
+            f"Expected DEBUG 'No find captured AclGraph'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("After capturing fx_graph" in log for log in cm.output),
+            f"Expected DEBUG 'After capturing fx_graph'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("'activate_num': 5" in log for log in cm.output),
+            f"Expected DEBUG ''activate_num': 5'"
+            f"not found in logs: {cm.output}"
+        )
+
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            graph_res2 = compiled_model1(query_prefill_, query_, key_, value_, scale, length_new, length2_new,
+                                         lengthq_new, narrow_start, x)
+        self.assertTrue(
+            any("The current AclGraph no needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph no needs to be recaptured'"
+            f"not found in logs: {cm.output}"
+        )
+
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            # recapture
+            graph_res3 = compiled_model1(query_prefill_, query_, key, value_, scale, length_new, length2_new,
+                                         lengthq_new, narrow_start, x)
+        self.assertTrue(
+            any("The current AclGraph needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph needs to be recaptured'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("After capturing fx_graph" in log for log in cm.output),
+            f"Expected DEBUG 'After capturing fx_graph'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("'activate_num': 9" in log for log in cm.output),
+            f"Expected DEBUG ''activate_num': 9'"
+            f"not found in logs: {cm.output}"
+        )
+        del graph_res2
+        del graph_res3
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            compiled_model1.linear.weight.data = b
+            # recapture
+            graph_res4 = compiled_model1(query_prefill_, query_, key, value_, scale, length_new, length2_new,
+                                         lengthq_new, narrow_start, x)
+        self.assertTrue(
+            any("The current AclGraph needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph needs to be recaptured'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("After capturing fx_graph" in log for log in cm.output),
+            f"Expected DEBUG 'After capturing fx_graph'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("'activate_num': 9" in log for log in cm.output),
+            f"Expected DEBUG ''activate_num': 9'"
+            f"not found in logs: {cm.output}"
+        )
+
+    def test_aclgraph_userinput_construct_in_share_memory_with_parameter_and_mutated_clone_input_false(self):
+        class RecaptureModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(32, 32)
+
+            def forward(self, qp, q, k, v, scale, actual_seq_lenq, actual_seq_len, actual_seq_len2, narrow_start, x):
+                pfa0, _ = torch_npu.npu_fused_infer_attention_score(qp, k, v, num_heads=32, input_layout="BNSD",
+                                                                    scale=scale, softmax_lse_flag=False,
+                                                                    actual_seq_lengths=actual_seq_lenq,
+                                                                    actual_seq_lengths_kv=actual_seq_len)
+                q = q * scale
+                ifa1, _ = torch_npu.npu_fused_infer_attention_score(q, k, v, num_heads=32, input_layout="BNSD",
+                                                                    scale=scale, softmax_lse_flag=False,
+                                                                    actual_seq_lengths_kv=actual_seq_len)
+                mm1 = ifa1.view([ifa1.shape[-1], -1]).clone()
+                q = q + 0.01
+                ifa2, _ = torch_npu.npu_fused_infer_attention_score(q, k, v, num_heads=32, input_layout="BNSD",
+                                                                    scale=scale, softmax_lse_flag=False,
+                                                                    actual_seq_lengths_kv=[66, 166, 266])
+                mm2 = ifa2.view([-1, ifa2.shape[-1]]).clone()
+                mmm = torch.mm(mm1, mm2) + pfa0.mean()
+                k.mul_(1.1)
+                v = v / 1.1
+                ifa3 = torch_npu.npu_fused_infer_attention_score(q, k, v, num_heads=32, input_layout="BNSD",
+                                                                scale=scale, softmax_lse_flag=False,
+                                                                actual_seq_lengths_kv=actual_seq_len2)
+                add3 = ifa3[0]
+                add3 = torch.narrow(add3, -1, 32, 32)
+                add3 = add3 @ self.linear(x)
+                res = add3 * mmm.mean()
+                return res
+
+        tng_config = torchair.CompilerConfig()
+        tng_config.mode = 'reduce-overhead'
+        tng_config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        tng_config.debug.aclgraph.clone_input = False
+        tng_config.experimental_config.keep_inference_input_mutations = True
+        npu_backend = torchair.get_npu_backend(compiler_config=tng_config)
+
+        model1 = RecaptureModel().npu()
+        length_new = [88, 99, 1]
+        length2_new = [40, 50, 60]
+        lengthq_new = [99, 50, 10]
+        scale = 1 / 0.0078125
+        narrow_start = 32
+        query_prefill_ = torch.randn(3, 32, 512, 128, dtype=torch.float16).npu()
+        query_ = torch.randn(3, 32, 1, 128, dtype=torch.float16).npu()
+        key_ = torch.randn(3, 32, 512, 128, dtype=torch.float16).npu()
+        value_ = torch.randn(3, 32, 512, 128, dtype=torch.float16).npu()
+        key = key_.clone()
+        torch._dynamo.mark_static(query_prefill_)
+        torch._dynamo.mark_static(query_)
+        torch._dynamo.mark_static(key_)
+        torch._dynamo.mark_static(value_)
+        x = torch.randn([32, 32]).npu()
+        a = torch.ones(32, 32).npu()
+        b = torch.zeros(32, 32).npu()
+
+        compiled_model1 = torch.compile(model1, backend=npu_backend, fullgraph=True, dynamic=True)
+
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            compiled_model1.linear.weight.data = a
+            graph_res1 = compiled_model1(query_prefill_, query_, key_, value_, scale, length_new, length2_new,
+                                         lengthq_new, narrow_start, x)
+        self.assertTrue(
+            any("No find captured AclGraph" in log for log in cm.output),
+            f"Expected DEBUG 'No find captured AclGraph'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("After capturing fx_graph" in log for log in cm.output),
+            f"Expected DEBUG 'After capturing fx_graph'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("'activate_num': 3" in log for log in cm.output),
+            f"Expected DEBUG ''activate_num': 3'"
+            f"not found in logs: {cm.output}"
+        )
+
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            graph_res2 = compiled_model1(query_prefill_, query_, key_, value_, scale, length_new, length2_new,
+                                         lengthq_new, narrow_start, x)
+        self.assertTrue(
+            any("The current AclGraph no needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph no needs to be recaptured'"
+            f"not found in logs: {cm.output}"
+        )
+
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            # recapture
+            graph_res3 = compiled_model1(query_prefill_, query_, key, value_, scale, length_new, length2_new,
+                                         lengthq_new, narrow_start, x)
+        self.assertTrue(
+            any("The current AclGraph needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph needs to be recaptured'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("After capturing fx_graph" in log for log in cm.output),
+            f"Expected DEBUG 'After capturing fx_graph'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("'activate_num': 6" in log for log in cm.output),
+            f"Expected DEBUG ''activate_num': 6'"
+            f"not found in logs: {cm.output}"
+        )
+        del graph_res2
+        del graph_res3
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            compiled_model1.linear.weight.data = b
+            # recapture
+            graph_res4 = compiled_model1(query_prefill_, query_, key, value_, scale, length_new, length2_new,
+                                         lengthq_new, narrow_start, x)
+        self.assertTrue(
+            any("The current AclGraph needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph needs to be recaptured'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("After capturing fx_graph" in log for log in cm.output),
+            f"Expected DEBUG 'After capturing fx_graph'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("'activate_num': 6" in log for log in cm.output),
+            f"Expected DEBUG ''activate_num': 6'"
+            f"not found in logs: {cm.output}"
+        )
+
+    def test_aclgraph_userinput_construct_in_share_memory_with_parameter_and_mutated_dynamic_false(self):
+        class RecaptureModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(32, 32)
+
+            def forward(self, qp, q, k, v, scale, actual_seq_lenq, actual_seq_len, actual_seq_len2, narrow_start, x):
+                pfa0, _ = torch_npu.npu_fused_infer_attention_score(qp, k, v, num_heads=32, input_layout="BNSD",
+                                                                    scale=scale, softmax_lse_flag=False,
+                                                                    actual_seq_lengths=actual_seq_lenq,
+                                                                    actual_seq_lengths_kv=actual_seq_len)
+                q = q * scale
+                ifa1, _ = torch_npu.npu_fused_infer_attention_score(q, k, v, num_heads=32, input_layout="BNSD",
+                                                                    scale=scale, softmax_lse_flag=False,
+                                                                    actual_seq_lengths_kv=actual_seq_len)
+                mm1 = ifa1.view([ifa1.shape[-1], -1]).clone()
+                q = q + 0.01
+                ifa2, _ = torch_npu.npu_fused_infer_attention_score(q, k, v, num_heads=32, input_layout="BNSD",
+                                                                    scale=scale, softmax_lse_flag=False,
+                                                                    actual_seq_lengths_kv=[66, 166, 266])
+                mm2 = ifa2.view([-1, ifa2.shape[-1]]).clone()
+                mmm = torch.mm(mm1, mm2) + pfa0.mean()
+                k.mul_(1.1)
+                v = v / 1.1
+                ifa3 = torch_npu.npu_fused_infer_attention_score(q, k, v, num_heads=32, input_layout="BNSD",
+                                                                scale=scale, softmax_lse_flag=False,
+                                                                actual_seq_lengths_kv=actual_seq_len2)
+                add3 = ifa3[0]
+                add3 = torch.narrow(add3, -1, 32, 32)
+                add3 = add3 @ self.linear(x)
+                res = add3 * mmm.mean()
+                return res
+
+        tng_config = torchair.CompilerConfig()
+        tng_config.mode = 'reduce-overhead'
+        tng_config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        tng_config.experimental_config.keep_inference_input_mutations = True
+        npu_backend = torchair.get_npu_backend(compiler_config=tng_config)
+
+        model1 = RecaptureModel().npu()
+        length_new = [88, 99, 1]
+        length2_new = [40, 50, 60]
+        lengthq_new = [99, 50, 10]
+        scale = 1 / 0.0078125
+        narrow_start = 32
+        query_prefill_ = torch.randn(3, 32, 512, 128, dtype=torch.float16).npu()
+        query_ = torch.randn(3, 32, 1, 128, dtype=torch.float16).npu()
+        key_ = torch.randn(3, 32, 512, 128, dtype=torch.float16).npu()
+        value_ = torch.randn(3, 32, 512, 128, dtype=torch.float16).npu()
+        key = key_.clone()
+        torch._dynamo.mark_static(query_prefill_)
+        torch._dynamo.mark_static(query_)
+        torch._dynamo.mark_static(key_)
+        torch._dynamo.mark_static(value_)
+        x = torch.randn([32, 32]).npu()
+        a = torch.ones(32, 32).npu()
+        b = torch.zeros(32, 32).npu()
+
+        compiled_model1 = torch.compile(model1, backend=npu_backend, fullgraph=True, dynamic=False)
+
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            compiled_model1.linear.weight.data = a
+            graph_res1 = compiled_model1(query_prefill_, query_, key_, value_, scale, length_new, length2_new,
+                                         lengthq_new, narrow_start, x)
+        self.assertTrue(
+            any("No find captured AclGraph" in log for log in cm.output),
+            f"Expected DEBUG 'No find captured AclGraph'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("After capturing fx_graph" in log for log in cm.output),
+            f"Expected DEBUG 'After capturing fx_graph'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("'activate_num': 5" in log for log in cm.output),
+            f"Expected DEBUG ''activate_num': 5'"
+            f"not found in logs: {cm.output}"
+        )
+
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            graph_res2 = compiled_model1(query_prefill_, query_, key_, value_, scale, length_new, length2_new,
+                                         lengthq_new, narrow_start, x)
+        self.assertTrue(
+            any("The current AclGraph no needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph no needs to be recaptured'"
+            f"not found in logs: {cm.output}"
+        )
+
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            # recapture
+            graph_res3 = compiled_model1(query_prefill_, query_, key, value_, scale, length_new, length2_new,
+                                         lengthq_new, narrow_start, x)
+        self.assertTrue(
+            any("The current AclGraph needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph needs to be recaptured'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("After capturing fx_graph" in log for log in cm.output),
+            f"Expected DEBUG 'After capturing fx_graph'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("'activate_num': 9" in log for log in cm.output),
+            f"Expected DEBUG ''activate_num': 9'"
+            f"not found in logs: {cm.output}"
+        )
+        del graph_res2
+        del graph_res3
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            compiled_model1.linear.weight.data = b
+            # recapture
+            graph_res4 = compiled_model1(query_prefill_, query_, key, value_, scale, length_new, length2_new,
+                                         lengthq_new, narrow_start, x)
+        self.assertTrue(
+            any("The current AclGraph needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph needs to be recaptured'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("After capturing fx_graph" in log for log in cm.output),
+            f"Expected DEBUG 'After capturing fx_graph'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("'activate_num': 9" in log for log in cm.output),
+            f"Expected DEBUG ''activate_num': 9'"
+            f"not found in logs: {cm.output}"
+        )
+
+    def test_aclgraph_userinput_construct_in_share_memory_with_parameter_and_mutated_clone_input_false_static(self):
+        class RecaptureModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(32, 32)
+
+            def forward(self, qp, q, k, v, scale, actual_seq_lenq, actual_seq_len, actual_seq_len2, narrow_start, x):
+                pfa0, _ = torch_npu.npu_fused_infer_attention_score(qp, k, v, num_heads=32, input_layout="BNSD",
+                                                                    scale=scale, softmax_lse_flag=False,
+                                                                    actual_seq_lengths=actual_seq_lenq,
+                                                                    actual_seq_lengths_kv=actual_seq_len)
+                q = q * scale
+                ifa1, _ = torch_npu.npu_fused_infer_attention_score(q, k, v, num_heads=32, input_layout="BNSD",
+                                                                    scale=scale, softmax_lse_flag=False,
+                                                                    actual_seq_lengths_kv=actual_seq_len)
+                mm1 = ifa1.view([ifa1.shape[-1], -1]).clone()
+                q = q + 0.01
+                ifa2, _ = torch_npu.npu_fused_infer_attention_score(q, k, v, num_heads=32, input_layout="BNSD",
+                                                                    scale=scale, softmax_lse_flag=False,
+                                                                    actual_seq_lengths_kv=[66, 166, 266])
+                mm2 = ifa2.view([-1, ifa2.shape[-1]]).clone()
+                mmm = torch.mm(mm1, mm2) + pfa0.mean()
+                k.mul_(1.1)
+                v = v / 1.1
+                ifa3 = torch_npu.npu_fused_infer_attention_score(q, k, v, num_heads=32, input_layout="BNSD",
+                                                                scale=scale, softmax_lse_flag=False,
+                                                                actual_seq_lengths_kv=actual_seq_len2)
+                add3 = ifa3[0]
+                add3 = torch.narrow(add3, -1, 32, 32)
+                add3 = add3 @ self.linear(x)
+                res = add3 * mmm.mean()
+                return res
+
+        tng_config = torchair.CompilerConfig()
+        tng_config.mode = 'reduce-overhead'
+        tng_config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        tng_config.debug.aclgraph.clone_input = False
+        tng_config.experimental_config.keep_inference_input_mutations = True
+        npu_backend = torchair.get_npu_backend(compiler_config=tng_config)
+
+        model1 = RecaptureModel().npu()
+        length_new = [88, 99, 1]
+        length2_new = [40, 50, 60]
+        lengthq_new = [99, 50, 10]
+        scale = 1 / 0.0078125
+        narrow_start = 32
+        query_prefill_ = torch.randn(3, 32, 512, 128, dtype=torch.float16).npu()
+        query_ = torch.randn(3, 32, 1, 128, dtype=torch.float16).npu()
+        key_ = torch.randn(3, 32, 512, 128, dtype=torch.float16).npu()
+        value_ = torch.randn(3, 32, 512, 128, dtype=torch.float16).npu()
+        key = key_.clone()
+        torch._dynamo.mark_static(query_prefill_)
+        torch._dynamo.mark_static(query_)
+        torch._dynamo.mark_static(key_)
+        torch._dynamo.mark_static(value_)
+        x = torch.randn([32, 32]).npu()
+        a = torch.ones(32, 32).npu()
+        b = torch.zeros(32, 32).npu()
+
+        compiled_model1 = torch.compile(model1, backend=npu_backend, fullgraph=True, dynamic=False)
+
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            compiled_model1.linear.weight.data = a
+            graph_res1 = compiled_model1(query_prefill_, query_, key_, value_, scale, length_new, length2_new,
+                                         lengthq_new, narrow_start, x)
+        self.assertTrue(
+            any("No find captured AclGraph" in log for log in cm.output),
+            f"Expected DEBUG 'No find captured AclGraph'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("After capturing fx_graph" in log for log in cm.output),
+            f"Expected DEBUG 'After capturing fx_graph'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("'activate_num': 3" in log for log in cm.output),
+            f"Expected DEBUG ''activate_num': 3'"
+            f"not found in logs: {cm.output}"
+        )
+
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            graph_res2 = compiled_model1(query_prefill_, query_, key_, value_, scale, length_new, length2_new,
+                                         lengthq_new, narrow_start, x)
+        self.assertTrue(
+            any("The current AclGraph no needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph no needs to be recaptured'"
+            f"not found in logs: {cm.output}"
+        )
+
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            # recapture
+            graph_res3 = compiled_model1(query_prefill_, query_, key, value_, scale, length_new, length2_new,
+                                         lengthq_new, narrow_start, x)
+        self.assertTrue(
+            any("The current AclGraph needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph needs to be recaptured'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("After capturing fx_graph" in log for log in cm.output),
+            f"Expected DEBUG 'After capturing fx_graph'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("'activate_num': 6" in log for log in cm.output),
+            f"Expected DEBUG ''activate_num': 6'"
+            f"not found in logs: {cm.output}"
+        )
+        del graph_res2
+        del graph_res3
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            compiled_model1.linear.weight.data = b
+            # recapture
+            graph_res4 = compiled_model1(query_prefill_, query_, key, value_, scale, length_new, length2_new,
+                                         lengthq_new, narrow_start, x)
+        self.assertTrue(
+            any("The current AclGraph needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph needs to be recaptured'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("After capturing fx_graph" in log for log in cm.output),
+            f"Expected DEBUG 'After capturing fx_graph'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("'activate_num': 6" in log for log in cm.output),
+            f"Expected DEBUG ''activate_num': 6'"
+            f"not found in logs: {cm.output}"
+        )
+
+    def test_aclgraph_userinput_construct_in_share_memory_with_multiple_fx(self):
+        class RecaptureModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(32, 32)
+
+            def forward(self, qp, q, k, v, scale, actual_seq_lenq, actual_seq_len, actual_seq_len2, narrow_start, x,
+                        is_prompt=True):
+                pfa0, _ = torch_npu.npu_fused_infer_attention_score(qp, k, v, num_heads=32, input_layout="BNSD",
+                                                                    scale=scale, softmax_lse_flag=False,
+                                                                    actual_seq_lengths=actual_seq_lenq,
+                                                                    actual_seq_lengths_kv=actual_seq_len)
+                q = q * scale
+                ifa1, _ = torch_npu.npu_fused_infer_attention_score(q, k, v, num_heads=32, input_layout="BNSD",
+                                                                    scale=scale, softmax_lse_flag=False,
+                                                                    actual_seq_lengths_kv=actual_seq_len)
+                mm1 = ifa1.view([ifa1.shape[-1], -1]).clone()
+                q = q + 0.01
+                ifa2, _ = torch_npu.npu_fused_infer_attention_score(q, k, v, num_heads=32, input_layout="BNSD",
+                                                                    scale=scale, softmax_lse_flag=False,
+                                                                    actual_seq_lengths_kv=[66, 166, 266])
+                mm2 = ifa2.view([-1, ifa2.shape[-1]]).clone()
+                mmm = torch.mm(mm1, mm2) + pfa0.mean()
+                k.mul_(1.1)
+                v = v / 1.1
+                ifa3 = torch_npu.npu_fused_infer_attention_score(q, k, v, num_heads=32, input_layout="BNSD",
+                                                                scale=scale, softmax_lse_flag=False,
+                                                                actual_seq_lengths_kv=actual_seq_len2)
+                if is_prompt:
+                    add3 = ifa3[0]
+                    add3 = torch.narrow(add3, -1, 32, 32)
+                    add3 = add3 @ self.linear(x)
+                    res = add3 * mmm.mean()
+                else:
+                    res = ifa3[0]
+                return res
+
+        tng_config = torchair.CompilerConfig()
+        tng_config.mode = 'reduce-overhead'
+        tng_config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        tng_config.experimental_config.keep_inference_input_mutations = True
+        npu_backend = torchair.get_npu_backend(compiler_config=tng_config)
+
+        model1 = RecaptureModel().npu()
+        length_new = [88, 99, 1]
+        length2_new = [40, 50, 60]
+        lengthq_new = [99, 50, 10]
+        scale = 1 / 0.0078125
+        narrow_start = 32
+        query_prefill_ = torch.randn(3, 32, 512, 128, dtype=torch.float16).npu()
+        query_ = torch.randn(3, 32, 1, 128, dtype=torch.float16).npu()
+        key_ = torch.randn(3, 32, 512, 128, dtype=torch.float16).npu()
+        value_ = torch.randn(3, 32, 512, 128, dtype=torch.float16).npu()
+        key = key_.clone()
+        torch._dynamo.mark_static(query_prefill_)
+        torch._dynamo.mark_static(query_)
+        torch._dynamo.mark_static(key_)
+        torch._dynamo.mark_static(value_)
+        x = torch.randn([32, 32]).npu()
+        a = torch.ones(32, 32).npu()
+        b = torch.zeros(32, 32).npu()
+
+        compiled_model1 = torch.compile(model1, backend=npu_backend, fullgraph=True, dynamic=True)
+
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            compiled_model1.linear.weight.data = a
+            graph_res1 = compiled_model1(query_prefill_, query_, key_, value_, scale, length_new, length2_new,
+                                         lengthq_new, narrow_start, x, True)
+        self.assertTrue(
+            any("No find captured AclGraph" in log for log in cm.output),
+            f"Expected DEBUG 'No find captured AclGraph'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("After capturing fx_graph" in log for log in cm.output),
+            f"Expected DEBUG 'After capturing fx_graph'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("'activate_num': 5" in log for log in cm.output),
+            f"Expected DEBUG ''activate_num': 5'"
+            f"not found in logs: {cm.output}"
+        )
+
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            compiled_model1.linear.weight.data = a
+            graph_res2 = compiled_model1(query_prefill_, query_, key_, value_, scale, length_new, length2_new,
+                                         lengthq_new, narrow_start, x, False)
+        self.assertTrue(
+            any("No find captured AclGraph" in log for log in cm.output),
+            f"Expected DEBUG 'No find captured AclGraph'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("After capturing fx_graph" in log for log in cm.output),
+            f"Expected DEBUG 'After capturing fx_graph'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("'activate_num': 2" in log for log in cm.output),
+            f"Expected DEBUG ''activate_num': 2'"
+            f"not found in logs: {cm.output}"
+        )
+
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            compiled_model1.linear.weight.data = a
+            graph_res3 = compiled_model1(query_prefill_, query_, key_, value_, scale, length_new, length2_new,
+                                         lengthq_new, narrow_start, x, True)
+        self.assertTrue(
+            any("The current AclGraph no needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph no needs to be recaptured'"
+            f"not found in logs: {cm.output}"
+        )
+
+
+    def test_aclgraph_userinput_construct_in_share_memory_with_cache_compile(self):
+        class RecaptureModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(32, 32)
+                self.cached_prompt = torchair.inference.cache_compile(self.prompt, config=tng_config)
+                self.cached_decode = torchair.inference.cache_compile(self.decode, config=tng_config)
+
+            def forward(self, qp, q, k, v, scale, actual_seq_lenq, actual_seq_len, actual_seq_len2, narrow_start, x,
+                        is_prompt=True):
+                if is_prompt:
+                    return self.cached_prompt(qp, q, k, v, scale, actual_seq_lenq, actual_seq_len, actual_seq_len2, narrow_start, x,
+                                              is_prompt)
+                else:
+                    return self.cached_decode(qp, q, k, v, scale, actual_seq_lenq, actual_seq_len, actual_seq_len2, narrow_start, x,
+                                              is_prompt)
+
+            def prompt(self, qp, q, k, v, scale, actual_seq_lenq, actual_seq_len, actual_seq_len2, narrow_start, x,
+                       is_prompt):
+                return self._forward(qp, q, k, v, scale, actual_seq_lenq, actual_seq_len, actual_seq_len2, narrow_start, x,
+                                     is_prompt)
+
+            def decode(self, qp, q, k, v, scale, actual_seq_lenq, actual_seq_len, actual_seq_len2, narrow_start, x,
+                       is_prompt):
+                return self._forward(qp, q, k, v, scale, actual_seq_lenq, actual_seq_len, actual_seq_len2, narrow_start, x,
+                                     is_prompt)
+
+            def _forward(self, qp, q, k, v, scale, actual_seq_lenq, actual_seq_len, actual_seq_len2, narrow_start, x,
+                        is_prompt=True):
+                pfa0, _ = torch_npu.npu_fused_infer_attention_score(qp, k, v, num_heads=32, input_layout="BNSD",
+                                                                    scale=scale, softmax_lse_flag=False,
+                                                                    actual_seq_lengths=actual_seq_lenq,
+                                                                    actual_seq_lengths_kv=actual_seq_len)
+                q = q * scale
+                ifa1, _ = torch_npu.npu_fused_infer_attention_score(q, k, v, num_heads=32, input_layout="BNSD",
+                                                                    scale=scale, softmax_lse_flag=False,
+                                                                    actual_seq_lengths_kv=actual_seq_len)
+                mm1 = ifa1.view([ifa1.shape[-1], -1]).clone()
+                q = q + 0.01
+                ifa2, _ = torch_npu.npu_fused_infer_attention_score(q, k, v, num_heads=32, input_layout="BNSD",
+                                                                    scale=scale, softmax_lse_flag=False,
+                                                                    actual_seq_lengths_kv=[66, 166, 266])
+                mm2 = ifa2.view([-1, ifa2.shape[-1]]).clone()
+                mmm = torch.mm(mm1, mm2) + pfa0.mean()
+                k.mul_(1.1)
+                v = v / 1.1
+                ifa3 = torch_npu.npu_fused_infer_attention_score(q, k, v, num_heads=32, input_layout="BNSD",
+                                                                scale=scale, softmax_lse_flag=False,
+                                                                actual_seq_lengths_kv=actual_seq_len2)
+                if is_prompt:
+                    add3 = ifa3[0]
+                    add3 = torch.narrow(add3, -1, 32, 32)
+                    add3 = add3 @ self.linear(x)
+                    res = add3 * mmm.mean()
+                else:
+                    res = ifa3[0]
+                return res
+
+        tng_config = torchair.CompilerConfig()
+        tng_config.mode = 'reduce-overhead'
+        tng_config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        tng_config.experimental_config.keep_inference_input_mutations = True
+
+        length_new = [88, 99, 1]
+        length2_new = [40, 50, 60]
+        lengthq_new = [99, 50, 10]
+        scale = 1 / 0.0078125
+        narrow_start = 32
+        query_prefill_ = torch.randn(3, 32, 512, 128, dtype=torch.float16).npu()
+        query_ = torch.randn(3, 32, 1, 128, dtype=torch.float16).npu()
+        key_ = torch.randn(3, 32, 512, 128, dtype=torch.float16).npu()
+        value_ = torch.randn(3, 32, 512, 128, dtype=torch.float16).npu()
+        key = key_.clone()
+        torch._dynamo.mark_static(query_prefill_)
+        torch._dynamo.mark_static(query_)
+        torch._dynamo.mark_static(key_)
+        torch._dynamo.mark_static(value_)
+        x = torch.randn([32, 32]).npu()
+        a = torch.ones(32, 32).npu()
+        b = torch.zeros(32, 32).npu()
+
+        model1 = RecaptureModel().npu()
+        model1.linear.weight.data = a
+
+        from torchair.inference._cache_compiler import CompiledModel, ModelCacheSaver
+        prompt_cache_bin = CompiledModel.get_cache_bin(model1.prompt, config=tng_config)
+        ModelCacheSaver.remove_cache(os.path.abspath(os.path.dirname(prompt_cache_bin)))
+        prompt_cache_dir = os.path.abspath(os.path.dirname(prompt_cache_bin))
+        decode_cache_bin = CompiledModel.get_cache_bin(model1.decode, config=tng_config)
+        ModelCacheSaver.remove_cache(os.path.abspath(os.path.dirname(decode_cache_bin)))
+        decode_cache_dir = os.path.abspath(os.path.dirname(decode_cache_bin))
+
+        self.assertFalse(os.path.exists(prompt_cache_dir))
+        graph_res1 = model1(query_prefill_, query_, key_, value_, scale, length_new, length2_new,
+                            lengthq_new, narrow_start, x, True)
+        self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
+
+        self.assertFalse(os.path.exists(decode_cache_dir))
+        graph_res2 = model1(query_prefill_, query_, key_, value_, scale, length_new, length2_new,
+                            lengthq_new, narrow_start, x, False)
+        self.assertTrue(os.path.exists(decode_cache_dir))  # cache compiled
+
+        torch._dynamo.reset()
+        model2 = RecaptureModel().npu()
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            model2.linear.weight.data = a
+            graph_res3 = model2(query_prefill_, query_, key_, value_, scale, length_new, length2_new,
+                                lengthq_new, narrow_start, x, True)
+            graph_res4 = model2(query_prefill_, query_, key_, value_, scale, length_new, length2_new,
+                                lengthq_new, narrow_start, x, False)
+        self.assertTrue(
+            any("Rebasing" in log for log in cm.output),
+            f"Expected DEBUG cache_compile 'Rebasing'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("No find captured AclGraph" in log for log in cm.output),
+            f"Expected DEBUG 'No find captured AclGraph'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("After capturing fx_graph" in log for log in cm.output),
+            f"Expected DEBUG 'After capturing fx_graph'"
+            f"not found in logs: {cm.output}"
+        )
+
 
 if __name__ == '__main__':
     unittest.main()
