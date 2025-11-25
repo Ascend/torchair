@@ -1,6 +1,24 @@
 from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 
 
+def ge_type_to_torch_str(acl_type: int) -> str:
+    if acl_type == DataType.DT_INT8 or acl_type == DataType.DT_QINT8:
+        return "torch.qint8"
+    if acl_type == DataType.DT_UINT8 or acl_type == DataType.DT_QUINT8:
+        return "torch.quint8"
+    if acl_type == DataType.DT_INT32 or acl_type == DataType.DT_QINT32:
+        return "torch.qint32"
+    if acl_type == DataType.DT_HIFLOAT8:
+        return "torch.hifloat8"
+    if acl_type == DataType.DT_FLOAT8_E5M2:
+        return "torch.float8_e5m2"
+    if acl_type == DataType.DT_FLOAT8_E4M3FN:
+        return "torch.float8_e4m3fn"
+
+    raise RuntimeError("Unsupported dst_type, only support torch.float8_e5m2, torch.float8_e4m3fn, torch_npu.hifloat8, "
+                       "torch.int8, torch.qint8, torch.uint8, torch.quint8, torch.int32, torch.qint32 when div_mode=True")
+
+
 @declare_supported([
     Support(F32(2, 2), F32(2), I32(2), dtype=torch.quint8, axis=1),
     Support(F16(2, 2), F32(2), I32(2), dtype=torch.qint32, axis=0),
@@ -10,24 +28,28 @@ from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 def conveter_npu_quantize_default(
     self: Tensor,
     scales: Tensor,
-    zero_points: Optional[Tensor] = None,
-    dtype: int = torch.uint8,
+    zero_points: Optional[Tensor],
+    dtype: int,
     axis: int = 1,
     div_mode: bool = True,
     meta_outputs: TensorSpec = None
 ):
     """
-    NB: aten::quantize_per_channel(Tensor self, Tensor scales, Tensor zero_points,
-                                      int axis, ScalarType dtype) -> Tensor
+    NB: aten::npu_quantize(Tensor self, Tensor scales, 
+                           Tensor? zero_points, int dtype, 
+                           int axis=1, bool div_mode=True) -> Tensor
     """
+    ge_dtype = torch_dtype_value_to_ge_type(dtype)
+
     if not div_mode:
-        if dtype == torch.qint8:
-            dtype = torch.int8
         if axis > -1:
             axis = -1
+        if ge_dtype == DataType.DT_QINT8:
+            ge_dtype = DataType.DT_INT8
         y = ge.AscendQuantV2(self, scales, zero_points, sqrt_mode=False, round_mode="round",
-                             dst_type=torch_type_to_ge_type(dtype), axis=axis)
-        if dtype == torch.quint4x2:
+                             dst_type=ge_dtype, axis=axis)
+        y.desc.dtype = torch_dtype_value_to_ge_proto_type(dtype)
+        if dtype == 16: # torch.quint4x2
             dim_num = self.rank
             bit_shape = []
             for _ in range(dim_num - 1):
@@ -47,17 +69,11 @@ def conveter_npu_quantize_default(
         raise RuntimeError("Scales' dim should be equal to 1.")
     if axis < 0:
         axis += self.rank
-    dtype_str = "torch.qint8"
-    if dtype == torch.quint8:
-        dtype_str = "torch.quint8"
-    elif dtype == torch.qint8:
-        dtype_str = "torch.qint8"
-    elif dtype == torch.qint32:
-        dtype_str = "torch.qint32"
-    elif dtype == torch.int16:
-        dtype_str = "torch.qint16"
-    else:
-        raise RuntimeError("Not supportted output dtype.")
+
+    dtype_str = ge_type_to_torch_str(ge_dtype)
+
+    if axis < 0 or axis >= self.rank:
+        raise RuntimeError("Axis should be in range [-rank(x), rank(x) - 1].")
     insert_dims = []
     for i in range(self.rank):
         if i != axis:
@@ -67,4 +83,6 @@ def conveter_npu_quantize_default(
             raise RuntimeError("Zero points' dim should be equal to 1.")
         zero_points = ge.Unsqueeze(zero_points, axes=insert_dims)
     scales = ge.Unsqueeze(scales, axes=insert_dims)
-    return ge.Quantize(self, scales, zero_points, axis=axis, dtype=dtype_str)
+    y = ge.Quantize(self, scales=scales, zero_points=zero_points, dtype=dtype_str, axis=axis)
+    y.desc.dtype = torch_dtype_value_to_ge_proto_type(dtype)
+    return y

@@ -36010,20 +36010,22 @@ def QuantUpdateScatter(var: Tensor,
                        quant_zero_points: Optional[Tensor],
                        *,
                        reduce: str,
-                       axis: int = 0,
-                       quant_axis: int = 1,
+                       axis: int = -2,
+                       quant_axis: int = -1,
+                       round_mode: str = 'rint',
                        dependencies=[],
                        node_name=None):
     """REG_OP(QuantUpdateScatter)\n
-.INPUT(var, TensorType({DT_INT32, DT_INT8, DT_UINT8}))\n
+.INPUT(var, TensorType({DT_INT8, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_HIFLOAT8}))\n
 .INPUT(indices, TensorType::IndexNumberType())\n
 .INPUT(updates, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))\n
 .INPUT(quant_scales, TensorType({DT_FLOAT, DT_BF16}))\n
 .OPTIONAL_INPUT(quant_zero_points, TensorType({DT_INT8, DT_UINT8, DT_INT32, DT_BF16}))\n
-.OUTPUT(var, TensorType({DT_INT32, DT_INT8, DT_UINT8}))\n
+.OUTPUT(var, TensorType({DT_INT8, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_HIFLOAT8}))\n
 .REQUIRED_ATTR(reduce, String)\n
-.ATTR(axis, Int, 0)\n
-.ATTR(quant_axis, Int, 1)\n
+.ATTR(axis, Int, -2)\n
+.ATTR(quant_axis, Int, -1)\n
+.ATTR(round_mode, String, "rint")\n
 """
 
     op = get_default_ge_graph().op.add()
@@ -36060,6 +36062,7 @@ def QuantUpdateScatter(var: Tensor,
     op.attr["reduce"].s = compat_as_bytes(reduce)
     op.attr["axis"].i = axis
     op.attr["quant_axis"].i = quant_axis
+    op.attr["round_mode"].s = compat_as_bytes(round_mode)
 
     # process outputs
     output_index = 0
@@ -44239,7 +44242,7 @@ def DynamicQuant(x: Tensor, smooth_scales: Optional[Tensor], group_index: Option
 .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))\n
 .OPTIONAL_INPUT(smooth_scales, TensorType({DT_FLOAT16, DT_BF16}))\n
 .OPTIONAL_INPUT(group_index, TensorType({DT_INT32}))\n
-.OUTPUT(y, TensorType({DT_INT8}))\n
+.OUTPUT(y, TensorType({DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_HIFLOAT8}))\n
 .OUTPUT(scale, TensorType({DT_FLOAT}))\n
 .ATTR(dst_type, Int, DT_INT8)\n
 """
@@ -44272,14 +44275,15 @@ def DynamicQuant(x: Tensor, smooth_scales: Optional[Tensor], group_index: Option
         .optional_input("smooth_scales", "DT_FLOAT16, DT_BF16") \
         .optional_input("group_index", "DT_INT32") \
         .attr("dst_type", attr.Int(2)) \
-        .output("y" , "DT_INT8, DT_INT4") \
+        .output("y", "DT_INT8, DT_INT4, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_HIFLOAT8") \
         .output("scale" , "DT_FLOAT")
     )
 
 
 # This api is auto-generated from IR DynamicQuantV2
 @auto_convert_to_tensor([False, False, False], [False, True, True])
-def DynamicQuantV2(x: Tensor, smooth_scales: Optional[Tensor], group_index: Optional[Tensor], *, dst_type: int=2, dependencies=[], node_name=None):
+def DynamicQuantV2(x: Tensor, smooth_scales: Optional[Tensor], group_index: Optional[Tensor], *, dst_type: int = 2,
+    is_symmetrical: bool = False, quant_mode: str = "pertoken", dependencies=[], node_name=None):
     """REG_OP(DynamicQuantV2)\n
 .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))\n
 .OPTIONAL_INPUT(smooth_scales, TensorType({DT_FLOAT16, DT_BF16}))\n
@@ -44321,6 +44325,8 @@ def DynamicQuantV2(x: Tensor, smooth_scales: Optional[Tensor], group_index: Opti
 
     # process attrs
     op.attr["dst_type"].i = dst_type
+    op.attr["is_symmetrical"].b = is_symmetrical
+    op.attr["quant_mode"].s = compat_as_bytes(quant_mode)
 
     # process outputs
     output_index = 0
@@ -54017,6 +54023,63 @@ def Gelu(x: Tensor, *, dependencies=[], node_name=None):
     return y
 
 
+# This api is auto-generated from IR GeluQuant
+@auto_convert_to_tensor([False], [False])
+def GeluQuant(self: Tensor, *, input_scale: Optional[Tensor] = None, input_offset: Optional[Tensor] = None,
+              approximate: str = "none", quant_mode: str = 'dynamic', 
+              dst_type: int = 2, round_mode: str = "rint", dependencies=[], node_name=None):
+    """REG_OP(GeluQuant)\n
+    .INPUT(x, TensorType({DT_FLOAT32, DT_FLOAT16, DT_BF16}))\n
+    .OPTIONAL_INPUT(input_scale, TensorType({DT_FLOAT32, DT_FLOAT16, DT_BF16}))\n
+    .OPTIONAL_INPUT(input_offset, TensorType({DT_FLOAT32, DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(y, TensorType({DT_INT8, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_HIFLOAT8}))\n
+    .OUTPUT(out_scale, TensorType({DT_FLOAT32}))\n
+    .ATTR(approximate, String, "none")\n
+    .ATTR(quant_mode, String, "dynamic")\n
+    .ATTR(dst_type, int, DT_INT8)\n
+    .ATTR(round_mode, String, "rint")\n
+    """
+
+    # process inputs
+    inputs = {
+        "x": self,
+        "input_scale": input_scale,
+        "input_offset": input_offset,
+    }
+
+    # process attrs
+    attrs = {
+        "approximate": attr.Str(approximate),
+        "quant_mode": attr.Str(quant_mode),
+        "dst_type": attr.Int(dst_type),
+        "round_mode": attr.Str(round_mode),
+    }
+
+    # process outputs
+    outputs = [
+        "y",
+        "out_scale"
+    ]
+
+    return ge_op(
+        op_type="GeluQuant",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("GeluQuant") \
+         .input("x", "DT_FLOAT32, DT_FLOAT16, DT_BF16") \
+         .optional_input("x", "DT_FLOAT32, DT_FLOAT16, DT_BF16") \
+         .optional_input("x", "DT_FLOAT32, DT_FLOAT16, DT_BF16") \
+         .attr("approximate", attr.Str("none")) \
+         .attr("quant_mode", attr.Str("dynamic")) \
+         .attr("dst_type", attr.Int(2)) \
+         .attr("round_mode", attr.Str("rint")) \
+         .output("y", "DT_INT8, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_HIFLOAT8") \
+         .output("out_scale", "DT_FLOAT32")
+    )
+
+
 # This api is auto-generated from IR HardSwish
 @auto_convert_to_tensor([False], [False])
 def HardSwish(x: Tensor, *, dependencies=[], node_name=None):
@@ -56023,11 +56086,11 @@ def GLU(x: Tensor, *, dim: int=-1, dependencies=[], node_name=None):
 @auto_convert_to_tensor([False, False], [False, False], inputs_tensor_type=[TensorType.TT_FLOATING, TensorType.TT_FLOATING])
 def GLUGrad(y_grad: Tensor, x: Tensor, *, dim: int=-1, dependencies=[], node_name=None):
     """REG_OP(GLUGrad)\n
-.INPUT(y_grad, TensorType::FloatingDataType())\n
-.INPUT(x, TensorType::FloatingDataType())\n
-.OUTPUT(x_grad, TensorType::FloatingDataType())\n
-.ATTR(dim, Int, -1)\n
-"""
+    .INPUT(y_grad, TensorType::FloatingDataType())\n
+    .INPUT(x, TensorType::FloatingDataType())\n
+    .OUTPUT(x_grad, TensorType::FloatingDataType())\n
+    .ATTR(dim, Int, -1)\n
+    """
 
     op = get_default_ge_graph().op.add()
     op.type = "GLUGrad"
@@ -56056,6 +56119,52 @@ def GLUGrad(y_grad: Tensor, x: Tensor, *, dim: int=-1, dependencies=[], node_nam
 
     # return outputs
     return x_grad
+
+
+# This api is auto-generated from IR GeGluV2
+@auto_convert_to_tensor([False], [False])
+def GeGluV2(x: Tensor, *, dim: int = -1, approximate: int = 1, activate_left: bool = False, dependencies=[], node_name=None):
+    """REG_OP(GeGluV2)\n
+    .INPUT(x, "T")\n
+    .OUTPUT(y, "T")\n
+    .OUTPUT(gelu, "T")\n
+    .ATTR(dim, Int, -1)\n
+    .ATTR(approximate, Int, 1)\n
+    .ATTR(activate_left, Bool, false)\n
+    """
+
+    # process inputs
+    inputs = {
+        "x": x,
+    }
+
+    # process attrs
+    attrs = {
+        "dim": attr.Int(dim),
+        "approximate": attr.Int(approximate),
+        "activate_left": attr.Bool(activate_left),
+    }
+
+    # process outputs
+    outputs = [
+    "y",
+    "gelu",
+    ]
+
+    return ge_op(
+        op_type="GeGluV2",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("GeGluV2") \
+        .input("x", "") \
+        .attr("dim", attr.Int(-1)) \
+        .attr("approximate", attr.Int(1)) \
+        .attr("activate_left", attr.Bool(False)) \
+        .output("y", "") \
+        .output("gelu", "")
+    )
 
 
 # This api is auto-generated from IR NoOp
@@ -58032,8 +58141,8 @@ def Quantize(x: Tensor, scales: Tensor, zero_points: Optional[Tensor], *, dtype:
     """REG_OP(Quantize)\n
 .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_BF16}))\n
 .INPUT(scales, TensorType({DT_FLOAT, DT_BF16}))\n
-.OPTIONAL_INPUT(zero_points, TensorType({DT_INT8, DT_UINT8, DT_INT32, DT_BF16}))\n
-.OUTPUT(y, TensorType({DT_INT8, DT_UINT8, DT_INT32}))\n
+.OPTIONAL_INPUT(zero_points, TensorType({DT_INT8, DT_UINT8, DT_INT32, DT_FLOAT, DT_BF16}))\n
+.OUTPUT(y, TensorType({DT_INT8, DT_UINT8, DT_INT32, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_HIFLOAT8}))\n
 .REQUIRED_ATTR(dtype, String)\n
 .ATTR(axis, Int, 1)\n
 """
@@ -58237,6 +58346,164 @@ def GroupQuant(x: Tensor,
     output_index += 1
 
     return y
+
+
+# This api is auto-generated from IR DynamicBlockQuant
+@auto_convert_to_tensor([False], [False])
+def DynamicBlockQuant(x: Tensor,
+                      *,
+                      min_scale: float = 0.0,
+                      round_mode: str = "rint",
+                      dst_type: int = 34,
+                      row_block_size: int = 1,
+                      col_block_size: int = 128,
+                      dependencies=[],
+                      node_name=None):
+    """REG_OP(DynamicBlockQuant)\n
+    .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(y, TensorType({DT_HIFLOAT8, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2}))\n
+    .OUTPUT(scale, TensorType({DT_FLOAT}))\n
+    .ATTR(min_scale, Float, 0.0)\n
+    .ATTR(round_mode, String, "rint")\n
+    .ATTR(dst_type, Int, DT_FLOAT8_E5M2)\n
+    .ATTR(row_block_size, Int, 1)\n
+    .ATTR(col_block_size, Int, 128)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "DynamicBlockQuant"
+    op.name = next_unique_name(node_name, "DynamicBlockQuant")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+
+    # process attrs
+    op.attr["min_scale"].f = min_scale
+    op.attr["round_mode"].s = compat_as_bytes(round_mode)
+    op.attr["dst_type"].i = dst_type
+    op.attr["row_block_size"].i = row_block_size
+    op.attr["col_block_size"].i = col_block_size
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "scale"
+    scale = Tensor(op, output_index)
+    output_index += 1
+
+    return y, scale
+
+
+# This api is auto-generated from IR DynamicMxQuant
+@auto_convert_to_tensor([False], [False])
+def DynamicMxQuant(x: Tensor,
+                      *,
+                      axis: int = -1,
+                      round_mode: str = "rint",
+                      dst_type: int = 40,
+                      block_size: int = 32,
+                      dependencies=[],
+                      node_name=None):
+    """REG_OP(DynamicMxQuant)\n
+    .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT4_E2M1, DT_FLOAT4_E1M2, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2}))\n
+    .OUTPUT(mxscale, TensorType({DT_FLOAT8_E8M0}))\n
+    .ATTR(axis, Int, -1)\n
+    .ATTR(round_mode, String, "rint")\n
+    .ATTR(dst_type, Int, DT_FLOAT4_E2M1)\n
+    .ATTR(block_size, Int, 32)\n
+    """
+    op = get_default_ge_graph().op.add()
+    op.type = "DynamicMxQuant"
+    op.name = next_unique_name(node_name, "DynamicMxQuant")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+
+    # process attrs
+    op.attr["axis"].i = axis
+    op.attr["round_mode"].s = compat_as_bytes(round_mode)
+    op.attr["dst_type"].i = dst_type
+    op.attr["blocksize"].i = block_size
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "mxscale"
+    mxscale = Tensor(op, output_index)
+    output_index += 1
+
+    return y, mxscale
+
+
+# This api is auto-generated from IR GroupedDynamicMxQuant
+@auto_convert_to_tensor([False, False], [False, False])
+def GroupedDynamicMxQuant(x: Tensor,
+                        group_index: Tensor,
+                        *,
+                        round_mode: str = "rint",
+                        dst_type: int = 35,
+                        blocksize: int = 32,
+                        dependencies=[],
+                        node_name=None):
+    """REG_OP(GroupedDynamicMxQuant)\n
+    .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .INPUT(group_index, TensorType({DT_INT32}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2}))\n
+    .OUTPUT(mxscale, TensorType({DT_FLOAT8_E8M0}))\n
+    .ATTR(round_mode, String, "rint")\n
+    .ATTR(dst_type, Int, DT_FLOAT8_E5M2)\n
+    .ATTR(blocksize, Int, 32)\n
+    """
+    # process inputs
+    inputs = {
+        "x": x,
+        "group_index": group_index,
+    }
+
+    # process attrs
+    attrs = {
+        "round_mode": attr.Str(round_mode),
+        "dst_type": attr.Int(dst_type),
+        "blocksize": attr.Int(blocksize),
+    }
+
+    #process outputs
+    outputs = [
+        "y",
+        "mxscale"
+    ]
+    return ge_op(
+        op_type="GroupedDynamicMxQuant",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("GroupedDynamicMxQuant") \
+            .input("x", "DT_FLOAT16, DT_BF16") \
+            .input("group_index", "DT_INT32") \
+            .attr("round_mode", attr.Str("rint")) \
+            .attr("dst_type", attr.Int(35)) \
+            .attr("blocksize", attr.Int(32)) \
+            .output("y", "DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN") \
+            .output("mxscale", "DT_FLOAT8_E8M0")
+    )
 
 
 # This api is auto-generated from IR AscendDequant
