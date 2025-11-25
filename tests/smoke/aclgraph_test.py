@@ -510,50 +510,5 @@ class AclgraphTest(unittest.TestCase):
             f"Expected no DEBUG log 'target: npu.npu_add_rms_norm_dynamic_quant.default' in logs: {cm.output}"
         )
 
-    def test_replay_update_stream_same(self):
-        class MM(torch.nn.Module):
-            def forward(self, q, k, v, scale, actual_seq_len):
-                ifa, _ = torch_npu.npu_fused_infer_attention_score(
-                    q, k, v, num_heads=32,
-                    input_layout="BNSD", scale=scale, softmax_lse_flag=False,
-                    actual_seq_lengths_kv=actual_seq_len
-                )
-                return ifa
-
-        length = [28, 29, 1]
-        scale = 1 / 0.0078125
-        query = torch.randn(3, 32, 1, 128, dtype=torch.float16).npu()
-        key = torch.randn(3, 32, 512, 128, dtype=torch.float16).npu()
-        value = torch.randn(3, 32, 512, 128, dtype=torch.float16).npu()
-
-        torch._dynamo.mark_static(query)
-        torch._dynamo.mark_static(key)
-        torch._dynamo.mark_static(value)
-
-        mm = MM()
-        compiler_config = torchair.CompilerConfig()
-        compiler_config.mode = 'reduce-overhead'
-        npu_backend = torchair.get_npu_backend(compiler_config=compiler_config)
-        
-        mmc = torch.compile(mm, backend=npu_backend, dynamic=True)
-
-        replay_stream = torch.npu.Stream(priority=-1)
-        print(f"replay stream: {replay_stream.stream_id}")
-        with torch.npu.stream(replay_stream):
-            _ = mmc(query, key, value, scale, length)
-        torch.npu.synchronize()
-
-        update_stream = torchair._acl_concrete_graph.acl_graph.CapturedGraphUpdateAndReplay._update_stream
-        with self.assertLogs(logger, level="INFO") as cm:
-            with torch.npu.stream(update_stream):
-                _ = mmc(query, key, value, scale, length)
-            torch.npu.synchronize()
-        self.assertTrue(
-            any("Update the stream for parameter" in log for log in cm.output),
-            f"Expected DEBUG 'The current AclGraph needs to be recaptured'"
-            f"not found in logs: {cm.output}"
-        )
-
-
 if __name__ == '__main__':
     unittest.main()

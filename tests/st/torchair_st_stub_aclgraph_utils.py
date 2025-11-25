@@ -167,11 +167,7 @@ class StubStream:
         stream_id = f"stream{cls._counter}"
         cls._counter += 1
         logger.debug('[Stub] new stub class Stream %s.', stream_id)
-        return super().__new__(cls)
-    
-    def __init__(self, device=None, priority=0, **kwargs) -> None:
-        self.stream_id = StubStream._counter
-
+        return stream_id
 
     def wait_event(self, event):
         pass
@@ -191,7 +187,7 @@ class StubStreams:
 
 def current_stream(device=None):
     logger.debug('[Stub] run stub API current_stream.')
-    return StubStream()
+    return "current_stream"
 
 
 def set_stream(stream):
