@@ -618,6 +618,144 @@ class ViewOfInput:
         return output_shape, output_stride, output_offset
 
 
+def get_or_auto_gen_converter(target):
+    if hasattr(target, "_ge_converter"):
+        converter = target._ge_converter
+    else:
+        converter = _get_converter(target)
+    if converter is not None:
+        return converter    
+    
+    if _can_autogenerate_converter(target):
+        converter_code = _generate_converter_code(target)
+        logger.info(f"Ascend op converter has auto generated: {converter_code}")
+        exec(converter_code)
+        converter = target._ge_converter
+        return converter
+    else:
+        raise RuntimeError(f"Ascend op converter is not implemented of: {target}")
+        
+
+def _can_autogenerate_converter(target):
+    if _is_torch_custom(target):
+        converter_code = _generate_converter_log
+        if _has_no_scalar(target):
+            target_name = str(target).split(".")[1]
+            if target_name.split("_")[-1] == "functional":
+                target_name.pop()
+            ge_name = "".join(word.capitalize() for word in target_name.split("_"))
+            (status, _, _, _) = _torchair.get_registered_ir_def(ge_name)
+            if status == "None":
+                return False
+            if status != "SUCCESS":
+                raise RuntimeError(f"Failed to converter {target} to AscendIR: can not find registered "
+                                   f"AscendIR {ge_name}, its need to meet the upper camel case format, "
+                                   f"please implement this function and ensure AscendIR "
+                                   f"has been registered correctly.{converter_code}")
+            return True
+        else:
+            raise RuntimeError(f"Failed to converter {target} to AscendIR: this op has scalar input, "
+                               f"can not auto generate converter, "
+                               f"please implement this function.{converter_code}")
+    return False
+
+
+def _is_torch_custom(target):
+    if isinstance(target, OpOverload):
+        if any(s in str(target) for s in ["prim", "prims", "aten"]) or is_builtin_callable(target):
+            raise RuntimeError(
+                f"Failed to converter {target} to AscendIR: this op is not custom op to auto generate, "
+                f"need to be implemented in oringinal converter register or implement new converter register.")
+        else:
+            return True
+    else:
+        return False
+    
+
+def _generate_converter_log(target):
+    target_log_name = str(target).split(".")[1]
+    if target_log_name.split("_")[-1] == "functional":
+        target_log_name = "_".join(target_log_name.split("_")[:-1])
+    target_args_name = [arg.name for arg in target._schema.arguments]
+    function_log = textwrap.dedent('''
+        @register_fx_node_ge_converter({op_name})
+        def {func_name}(
+            {params}
+        ):
+            #inplement AscendIR converter here.
+        ''').format(
+        op_name='torch.ops.' + str(target),
+        func_name='converter' + '_' + target_log_name,
+        params=',\n   '.join(target_args_name),
+    )
+    return function_log
+
+
+def _has_no_scalar(target):
+    for arg in target._schema.arguments:
+        if isinstance(arg.type, NumberType):
+            return False
+    return True
+
+
+def _generate_converter_code(target):
+    target_name = str(target).split(".")[1]
+    if target_name.split("_")[-1] == "functional":
+        target_name = "_".join(target_name.split("_")[:-1])
+    target_args_name = [arg.name for arg in target._schema.arguments]
+    ge_name = "".join(word.capitalize() for word in target_name.split("_"))
+    (_, ge_inputs, ge_outputs, _) = _torchair.get_registered_ir_def(ge_name)
+    need_clone = False
+    clone_code = []
+    ge_inputs_dict, ge_outputs_dict = dict(ge_inputs), dict(ge_outputs)
+    for index, key in enumerate(ge_inputs_dict.keys()):
+        if key in ge_outputs_dict.keys():
+            need_clone = True
+            clone_code.append(str(target_args_name[index]) + '= Clone(' + str(target_args_name[index]) + ')')
+
+    imports = textwrap.dedent('''
+    # Auto-generated from {target}, not edit
+    from torchair._ge_concrete_graph.ge_converter.converter_utils import *
+    ''').format(target=str(target))
+    if need_clone:
+        function = textwrap.dedent('''
+        @register_fx_node_ge_converter({op_name})
+        def {func_name}(
+            {params}
+        ):
+            {clone_arg}
+            return custom_op(
+                {ascendir},{ascend_params}
+                )
+        ''').format(
+            op_name='torch.ops.' + str(target),
+            func_name='converter' + '_' + target_name,
+            params=',\n   '.join(target_args_name),
+            clone_arg='\n'.join(clone_code),
+            ascendir='"' + ''.join(word.capitalize() for word in target_name.split('_')) + '"',
+            ascend_params=", ".join(target_args_name)
+        )
+    else:
+        function = textwrap.dedent('''
+        @register_fx_node_ge_converter({op_name})
+        def {func_name}(
+            {params}
+        ):
+            return custom_op(
+                {ascendir},{ascend_params}
+                )
+        ''').format(
+            op_name='torch.ops.' + str(target),
+            func_name='converter' + '_' + target_name,
+            params=',\n   '.join(target_args_name),
+            ascendir='"' + ''.join(word.capitalize() for word in target_name.split('_')) + '"',
+            ascend_params=", ".join(target_args_name)
+        )
+
+    code = f"{imports}\n{function}"
+    return code
+
+
 class GeConcreteGraph(ConcreteGraphBase):
     """
     GeConcreteGraph represents a concrete computation graph optimized for Ascend NPU devices.
@@ -643,6 +781,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._converter_ctx = threading.local()
         self._is_compiled = False
         self._all_sym_input_idx = {}
+        self._all_sym_input_data = {}
         self._all_meta_tensor_input = {}
         self._fx_graph = None
         self._has_empty_tensor = False
@@ -980,6 +1119,8 @@ class GeConcreteGraph(ConcreteGraphBase):
             self._all_sym_input_idx[(meta_outputs).node.expr] = data_index
             data = ge.Data(index=data_index, dtype=sym_to_ge_dtype(meta_outputs), shape=[], placement='CPU',
                            node_name=target)
+            data.set_meta(meta_outputs)
+            self._all_sym_input_data[str((meta_outputs).node.expr)] = data
             input_info = _GeInputInfo(value_type=_ValueType.TENSOR, func=_ValueInput(data_index), shape=[],
                                       device_type="CPU", real_shape=[])
         else:
@@ -991,6 +1132,7 @@ class GeConcreteGraph(ConcreteGraphBase):
             real_shape = generate_real_shape_from_tensor(meta_outputs)
             placement = 'CPU' if (meta_outputs.device is None or meta_outputs.device.type == 'cpu') else 'NPU'
             data = ge.Data(index=data_index, dtype=dtype, shape=shape, placement=placement, node_name=target)
+            data.set_meta(meta_outputs)
             value_type = _ValueType.TENSOR
             if isinstance(meta_outputs, torch.nn.Parameter) or hasattr(meta_outputs, "_torchair_is_parameter"):
                 value_type = _ValueType.PARAMETER
@@ -1007,8 +1149,7 @@ class GeConcreteGraph(ConcreteGraphBase):
                     data_index),
                 shape=shape, dim_gears=get_dim_gears(meta_outputs) or {}, device_type=placement,
                 real_shape=real_shape)
-
-        data.set_meta(meta_outputs)
+       
         self.graph.record_input_info(data.node.name, input_info)
         return data
 
@@ -1129,25 +1270,24 @@ class GeConcreteGraph(ConcreteGraphBase):
 
         if not self._has_empty_tensor:
             self._has_empty_tensor = all([is_zero_element_tensor(t) for t in flatten_meta_outputs(meta_outputs)])
-        if hasattr(target, "_ge_converter"):
-            converter = target._ge_converter
-        else:
-            converter = _get_converter(target)
-        if converter is None:
-            if self._can_autogenerate_converter(target):
-                converter_code = self._generate_converter_code(target)
-                logger.info(f"Ascend op converter has auto generated: {converter_code}")
-                exec(converter_code)
-                converter = target._ge_converter
-            else:
-                raise RuntimeError(f"Ascend op converter is not implemented of: {target}")
+
         graph = get_default_ge_graph()
         num_ops = len(graph.op)
 
-        if converter.require_meta:
-            kwargs['meta_outputs'] = meta_outputs
-        ge_outputs = converter(*args, **kwargs)
-        infer_and_gen_sym_shape(target, args, kwargs, ge_outputs, graph.op[num_ops:])
+        if str(target) in ('aten.sym_stride.int', 'aten.sym_storage_offset.default'):
+            from .infer_symbol_calculate import infer_ge_output_by_symbol_calculate
+            ge_outputs = infer_ge_output_by_symbol_calculate(self._all_sym_input_data, meta_outputs)
+        elif str(target) == 'auto_functionalized_v2':
+            from .auto_functionalized_v2 import conveter_auto_functionalize_v2
+            kwargs['symbol_input_map'] = self._all_sym_input_data
+            ge_outputs = conveter_auto_functionalize_v2(*args, **kwargs)
+        else:
+            converter = get_or_auto_gen_converter(target)
+            if converter.require_meta:
+                kwargs['meta_outputs'] = meta_outputs
+            ge_outputs = converter(*args, **kwargs)
+            infer_and_gen_sym_shape(target, args, kwargs, ge_outputs, graph.op[num_ops:])        
+
         self._handle_wait_control_edge(graph.op[num_ops:])        
         if meta_outputs is not None:
             set_ge_outputs(ge_outputs, meta_outputs)
@@ -1392,122 +1532,6 @@ class GeConcreteGraph(ConcreteGraphBase):
             input_code.writelines([f'assert_size_stride(args[{idx}], {tuple(meta.shape)}, {meta.stride()})'])
 
         return input_code.getvalue()
-
-    def _can_autogenerate_converter(self, target):
-        if self._is_torch_custom(target):
-            converter_code = self._generate_converter_log
-            if self._has_no_scalar(target):
-                target_name = str(target).split(".")[1]
-                if target_name.split("_")[-1] == "functional":
-                    target_name.pop()
-                ge_name = "".join(word.capitalize() for word in target_name.split("_")) 
-                (status, _, _, _) = _torchair.get_registered_ir_def(ge_name)
-                if status == "None":
-                    return False
-                if status != "SUCCESS":
-                    raise RuntimeError(f"Failed to converter {target} to AscendIR: can not find registered "
-                                       f"AscendIR {ge_name}, its need to meet the upper camel case format, "
-                                       f"please implement this function and ensure AscendIR "
-                                       f"has been registered correctly.{converter_code}")
-                return True
-            else:
-                raise RuntimeError(f"Failed to converter {target} to AscendIR: this op has scalar input, "
-                                   f"can not auto generate converter, "
-                                   f"please implement this function.{converter_code}")
-        return False
-
-    def _is_torch_custom(self, target):
-        if isinstance(target, OpOverload):
-            if any(s in str(target) for s in ["prim", "prims", "aten"]) or is_builtin_callable(target):
-                raise RuntimeError(
-                    f"Failed to converter {target} to AscendIR: this op is not custom op to auto generate, "
-                    f"need to be implemented in oringinal converter register or implement new converter register.")
-            else:
-                return True
-        else:
-            return False
-    
-    def _has_no_scalar(self, target):
-        for arg in target._schema.arguments:
-            if isinstance(arg.type, NumberType):
-                return False
-        return True
-    
-    def _generate_converter_log(self, target):
-        target_log_name = str(target).split(".")[1]
-        if target_log_name.split("_")[-1] == "functional":
-            target_log_name = "_".join(target_log_name.split("_")[:-1])
-        target_args_name = [arg.name for arg in target._schema.arguments]
-        function_log = textwrap.dedent('''
-            @register_fx_node_ge_converter({op_name})
-            def {func_name}(
-                {params}
-            ):
-                #inplement AscendIR converter here.
-            ''').format(
-                op_name='torch.ops.' + str(target),
-                func_name='converter' + '_' + target_log_name,
-                params=',\n   '.join(target_args_name),
-            )
-        return function_log
-
-    def _generate_converter_code(self, target):
-        target_name = str(target).split(".")[1]
-        if target_name.split("_")[-1] == "functional":
-            target_name = "_".join(target_name.split("_")[:-1])
-        target_args_name = [arg.name for arg in target._schema.arguments]
-        ge_name = "".join(word.capitalize() for word in target_name.split("_"))
-        (_, ge_inputs, ge_outputs, _) = _torchair.get_registered_ir_def(ge_name)
-        need_clone = False
-        clone_code = []
-        ge_inputs_dict, ge_outputs_dict = dict(ge_inputs), dict(ge_outputs)
-        for index, key in enumerate(ge_inputs_dict.keys()):
-            if key in ge_outputs_dict.keys():
-                need_clone = True
-                clone_code.append(str(target_args_name[index]) + '= Clone(' + str(target_args_name[index]) + ')')
-        
-
-        imports = textwrap.dedent('''
-        # Auto-generated from {target}, not edit
-        from torchair._ge_concrete_graph.ge_converter.converter_utils import *
-        ''').format(target=str(target))
-        if need_clone:
-            function = textwrap.dedent('''
-            @register_fx_node_ge_converter({op_name})
-            def {func_name}(
-                {params}
-            ):
-                {clone_arg}
-                return custom_op(
-                    {ascendir},{ascend_params}
-                    )
-            ''').format(
-                op_name='torch.ops.' + str(target),
-                func_name='converter' + '_' + target_name,
-                params=',\n   '.join(target_args_name),
-                clone_arg='\n'.join(clone_code),
-                ascendir='"' + ''.join(word.capitalize() for word in target_name.split('_')) + '"',
-                ascend_params=", ".join(target_args_name)
-            )
-        else:
-            function = textwrap.dedent('''
-            @register_fx_node_ge_converter({op_name})
-            def {func_name}(
-                {params}
-            ):
-                return custom_op(
-                    {ascendir},{ascend_params}
-                    )
-            ''').format(
-                op_name='torch.ops.' + str(target),
-                func_name='converter' + '_' + target_name,
-                params=',\n   '.join(target_args_name),
-                ascendir='"' + ''.join(word.capitalize() for word in target_name.split('_')) + '"',
-                ascend_params=", ".join(target_args_name)
-            )
-        
-        code = f"{imports}\n{function}"
-        return code
     
 
     def _get_current_stream(self):
