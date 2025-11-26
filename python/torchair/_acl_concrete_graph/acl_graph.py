@@ -806,7 +806,7 @@ class AclGraph(object):
             # when falling back to eager, no need to calculate graph key
             return "fallback_to_eager"
 
-        saved_graph_meta = None
+        saved_acl_graph = None
         # get graph key based on unupdated sym input shape or value
         graph_key = self._unupdated_input_func(*args, **kwargs)
         if graph_key in self._graphs_meta.keys():
@@ -816,11 +816,24 @@ class AclGraph(object):
                 logger.debug('The current AclGraph needs to be recaptured for fx_graph %s with graph key {%s}.',
                              self.name, graph_key)
                 # save graph_meta, release resources after recapture
-                saved_graph_meta = self._graphs_meta[graph_key]
+                saved_acl_graph = self._graphs_meta[graph_key].acl_graph
             else:
                 logger.debug('The current AclGraph no needs to be recaptured for fx_graph %s with graph key {%s}.',
                              self.name, graph_key)
                 return graph_key
+
+        # handle retained outputs from last capture when only one graph key and mempool reuse enabled
+        enable_mempool_reuse = not ("disable_mempool_reuse_in_same_fx" in self.config.keys() and self.config[
+            "disable_mempool_reuse_in_same_fx"] == "1")
+        if enable_mempool_reuse and len(self._graphs_meta) == 1:
+            (last_graph_key,) = self._graphs_meta.keys()
+            if graph_key != last_graph_key:
+                # reset output weakref from last capture to retained outputs
+                for idx, retained_output in enumerate(self._graphs_meta[last_graph_key].retained_outputs):
+                    output_ref = self._graphs_meta[last_graph_key].outputs_weakref[idx]()
+                    if output_ref is None or isinstance(output_ref, torch.Tensor):
+                        self._graphs_meta[last_graph_key].outputs_weakref[idx].swap_weakref(retained_output)
+            self._graphs_meta[last_graph_key].retained_outputs = None
 
         # Before recapture a new aclgraph for another graph key, check static capture size limit.
         # If the number of captured aclgraphs exceeds the limit, we will fall back to eager execution.
@@ -841,8 +854,8 @@ class AclGraph(object):
 
         # Start capture aclgraph instance when the graph key have not been compiled.
         self.compile_for_graph_key(graph_key, *args, **kwargs)
-        if saved_graph_meta is not None:
-            saved_graph_meta.acl_graph.reset()
+        if saved_acl_graph is not None:
+            saved_acl_graph.reset()
 
         return graph_key
 
@@ -861,6 +874,28 @@ class AclGraph(object):
         logger.info('Current fx_graph %s memory pool is %s. After reset, the current memory state is {%s}.',
                     self.name, self.pool, LazyMessage(debug_mem_state))
 
+    def get_stale_list_from_weakref(self):
+        # get alive stale outputs depending on num of graph key
+        stale_storage_set = set()
+        if len(self._graphs_meta) == 1:
+            (last_graph_key,) = self._graphs_meta.keys()
+            for output_ref in self._graphs_meta[last_graph_key].outputs_weakref:
+                ref = output_ref()
+                if ref is None or not isinstance(ref, torch.Tensor):
+                    continue
+                stale_storage_set.add(ref.untyped_storage()._cdata)
+            return list(stale_storage_set)
+            
+        for key, _ in self._graphs_meta.items():
+            if self._graphs_meta[key].outputs_weakref is None:
+                continue
+            for output_ref in self._graphs_meta[key].outputs_weakref:
+                ref = output_ref()
+                if ref is not None and isinstance(ref, torch.Tensor) and \
+                        ref.untyped_storage()._cdata in self.stale_storages_ptr:
+                    stale_storage_set.add(ref.untyped_storage()._cdata)
+        return list(stale_storage_set)
+
     def compile_for_graph_key(self, graph_key, *args: Any, **kwargs: Any):
         """
         Compile the FX graph into another new ACL graph instance with specific graph key.
@@ -871,19 +906,10 @@ class AclGraph(object):
             **kwargs: Keyword arguments for FX graph.
         """
 
-        import torch_npu
         # get stale storages from last run for current fx graph
-        stale_storage_set = set()
-        for key, _ in self._graphs_meta.items():
-            if self._graphs_meta[key].outputs_weakref is None:
-                continue
-            for output_ref in self._graphs_meta[key].outputs_weakref:
-                ref = output_ref()
-                if ref is not None and isinstance(ref, torch.Tensor) and \
-                        ref.untyped_storage()._cdata in self.stale_storages_ptr:
-                    stale_storage_set.add(ref.untyped_storage()._cdata)
-        stale_storages = list(stale_storage_set)
+        stale_storages = self.get_stale_list_from_weakref()
 
+        import torch_npu
         self._graphs_meta[graph_key] = GraphMeta(graph_key=graph_key,
                                                  acl_graph=torch_npu.npu.NPUGraph(),
                                                  replay_func=None,
@@ -899,9 +925,10 @@ class AclGraph(object):
                      id(self.graph[graph_key]), self.name, graph_key)
 
         # set to common original memory state before capture
+        # only enable mempool reuse when graph key exceeds 1
         enable_mempool_reuse = not ("disable_mempool_reuse_in_same_fx" in self.config.keys() and self.config[
             "disable_mempool_reuse_in_same_fx"] == "1")
-        if enable_mempool_reuse:
+        if enable_mempool_reuse and len(self._graphs_meta) > 1:
             logger.debug('Start setting to original memory state for fx_graph %s with graph key{%s}. '
                          'The stale storage is %s, and the current memory state is {%s}.',
                          self.name, graph_key, stale_storages, LazyMessage(debug_mem_state))
@@ -924,9 +951,11 @@ class AclGraph(object):
                      self.name, graph_key, id(self.graph[graph_key]),
                      "enable" if enable_mempool_reuse else "disable", LazyMessage(debug_mem_state))
 
-        if enable_mempool_reuse:
+        if enable_mempool_reuse and len(self._graphs_meta) > 1:
+            # delete outputs when mempool reuse enabled
             del captured_outputs
         else:
+            # retain graph output when only one graph key or mempool reuse disabled
             self._graphs_meta[graph_key].retained_outputs = captured_outputs
 
     def capture(self, graph_key, *args: Any, **kwargs: Any):
@@ -1049,6 +1078,13 @@ class AclGraph(object):
             # When no mempool reuse in same fx, the retained outputs no need to reconstruct.
             logger.debug('When config.debug.aclgraph.disable_mempool_reuse_in_same_fx is True, '
                          'no mempool reuse in fx_graph %s for graph key{%s}, all the outputs are retained.',
+                         self.name, graph_key)
+            return self._graphs_meta[graph_key].retained_outputs
+
+        if len(self.graphs_meta) == 1:
+            # no need to reconstruct output when only one graph key
+            logger.debug('When mempool reuse is enabled in fx_graph %s for graph key{%s} '
+                         'and there is only one graph meta captured, all the outputs are retained.',
                          self.name, graph_key)
             return self._graphs_meta[graph_key].retained_outputs
 
