@@ -354,30 +354,39 @@ class CapturedGraphUpdateAndReplay(nn.Module):
     Module for replaying captured graphs with dynamic updates.
     """
 
+    _update_stream: Optional["torch.npu.Stream"] = None
+
     def __init__(self, replay_graph: Any, updated_input_func: Callable, updated_node_infos: List):
         super().__init__()
         self._replay_graph = replay_graph
         self._updated_input_func = updated_input_func
         self._updated_node_infos = updated_node_infos
-        self._update_stream = torch.npu.Stream()
+        if self.__class__._update_stream is None:
+            self.__class__._update_stream = torch.npu.Stream(priority=-1)
 
     def forward(self, *args: Any, **kwargs: Any):
         self._replay_graph.replay()
+
+        replay_stream_id = torch.npu.current_stream().stream_id
+        while self.__class__._update_stream.stream_id == replay_stream_id:
+            self.__class__._update_stream = torch.npu.Stream(priority=-1)
+            logger.info(f"Update the stream for parameter, replay stream id: {replay_stream_id}, "
+                        f"update stream id: {self.__class__._update_stream.stream_id}.")
 
         updated_kwargs = self._updated_input_func(*args, **kwargs)
         logger.debug("In AclGraph running, all updated op_name and param: %s.", updated_kwargs)
         if len(updated_kwargs) == 0:
             return
 
-        with torch.npu.stream(self._update_stream):
+        with torch.npu.stream(self.__class__._update_stream):
             for node_info in self._updated_node_infos:
-                torch.npu.graph_task_update_begin(self._update_stream, node_info.handle)
+                torch.npu.graph_task_update_begin(self.__class__._update_stream, node_info.handle)
                 node_kwargs = dict(node_info.kwargs)
                 for key in node_info.updated_param_name:
                     node_kwargs[key] = updated_kwargs[node_info.node_name][key]
                 node_info.updated_func(*node_info.args, **node_kwargs)
-                torch.npu.graph_task_update_end(self._update_stream)
-                self._update_stream.record_event(node_info.event)
+                torch.npu.graph_task_update_end(self.__class__._update_stream)
+                self.__class__._update_stream.record_event(node_info.event)
 
         logger.info("Replay AclGraph and update input params successfully.")
         return
@@ -738,11 +747,9 @@ class AclGraph(object):
             # In the current version, the initialization of mem pool requires an explicit call to capture.
             # In versions greater than 2.6, the initialization can be completed directly when creating the mem pool.
             import torch_npu
-            s = torch_npu.npu.Stream()
-            with torch_npu.npu.stream(s):
-                g = torch_npu.npu.NPUGraph()
-                g.capture_begin(pool=self.pool)
-                g.capture_end()
+            g = torch_npu.npu.NPUGraph()
+            with torch_npu.npu.graph(g, pool=self.pool, stream=self.stream):
+                pass
             # record the original memory state before capture,
             # and it will be used to restore the mem state when capturing another acl graph for different shape.
             self._original_mem_state = torch_npu._C._npu_getCheckpointState(self.device, self.pool)
