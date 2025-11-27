@@ -83,6 +83,8 @@ class _AclGraphDebugConfig(NpuBaseConfig):
         self.disable_mempool_reuse_in_same_fx = OptionValue(False, [True, False])
         self.enable_output_clone = OptionValue(False, [True, False])
         self.static_capture_size_limit = IntRangeValue(64, 1, INT64_MAX)
+        # clone_input will not change fx graph, will not recorded by as dict
+        self.clone_input = OptionValue(True, [True, False])
 
         super(_AclGraphDebugConfig, self).__init__()
 
@@ -92,6 +94,7 @@ class _AclGraphDebugConfig(NpuBaseConfig):
         local_option["enable_output_clone"] = self.enable_output_clone.value
         # static_capture_size_limit must be str(int), so int(static_capture_size_limit) is always safe.
         local_option["static_capture_size_limit"] = self.static_capture_size_limit.value
+        local_option["clone_input"] = self.clone_input.value
 
         return local_option
 
@@ -109,4 +112,5 @@ class _DebugConfig(NpuBaseConfig):
         super(_DebugConfig, self).__init__()
 
     def as_dict(self):
-        return {}, {}
+        local_option = self.aclgraph.as_dict()
+        return local_option, {}

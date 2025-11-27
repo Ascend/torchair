@@ -767,8 +767,8 @@ class AclGraph(object):
         '''
         NB: Do not create additional capture streams arbitrarily
         If the user does not explicitly specify the stream to be used for capture, all graphs use the default stream.
-        The goal is to organize the memory of all captured graphs on the same stream. Based on the above premise, 
-        when users specify the same memory pool in multiple graphs,all graphs can reuse memory. 
+        The goal is to organize the memory of all captured graphs on the same stream. Based on the above premise,
+        when users specify the same memory pool in multiple graphs,all graphs can reuse memory.
         Otherwise, even within the same memory pool, memory reuse may fail
         because those memory blocks are in different streams.
         '''
@@ -892,7 +892,7 @@ class AclGraph(object):
                     continue
                 stale_storage_set.add(ref.untyped_storage()._cdata)
             return list(stale_storage_set)
-            
+
         for key, _ in self._graphs_meta.items():
             if self._graphs_meta[key].outputs_weakref is None:
                 continue
@@ -920,14 +920,23 @@ class AclGraph(object):
         self._graphs_meta[graph_key] = GraphMeta(graph_key=graph_key,
                                                  acl_graph=torch_npu.npu.NPUGraph(),
                                                  replay_func=None,
-                                                 captured_inputs=args,
+                                                 userinputs_meta={},
+                                                 userinputs_weakref={},
                                                  outputs_meta=[],
                                                  outputs_weakref=[],
                                                  mem_state_after_capture=None,
-                                                 captured_parameter={})
+                                                 captured_parameter={},
+                                                 captured_mutated_inputs={},
+                                                 )
         # record the parameter address for subsequent comparison to determine if recapture is necessary
         for parameter_idx in self._parameter_user_inputs:
             self.graphs_meta[graph_key].captured_parameter.setdefault(parameter_idx, args[parameter_idx].data_ptr())
+
+        for input_name, input_idx in self._user_inputs_mapping.items():
+            # record the mutated_inputs address for subsequent comparison to determine if recapture is necessary
+            if input_name in self._mutated_user_inputs:
+                self.graphs_meta[graph_key].captured_mutated_inputs.setdefault(input_idx, args[input_idx].data_ptr())
+
         logger.debug('No find captured AclGraph{id: %s} of fx_graph %s with graph key {%s}, and start to capture it.',
                      id(self.graph[graph_key]), self.name, graph_key)
 
@@ -950,16 +959,18 @@ class AclGraph(object):
         with record_function("acl_graph_capture"):
             captured_outputs = self.capture(graph_key, *args, **kwargs)
 
-        # The captured output tensors will not be held indefinitely and its will be terminated after this capture.
+        # The captured output and input tensors will not be held indefinitely
+        # and they will be terminated after this capture.
         self._graphs_meta[graph_key].mem_state_after_capture = torch_npu._C._npu_getCheckpointState(self.device,
                                                                                                     self.pool)
         logger.debug('After capturing fx_graph %s for graph key{%s} to AclGraph{id: %s}, '
                      'memory pool reuse is %s, the memory state is {%s}.',
                      self.name, graph_key, id(self.graph[graph_key]),
                      "enable" if enable_mempool_reuse else "disable", LazyMessage(debug_mem_state))
-
+        if self.config.get('clone_input', "1") == "1":
+            # Note that userinputs are not kept alive; they are reconstructed for process_input if clone_input is True.
+            self._graphs_meta[graph_key].retained_userinputs.clear()
         if enable_mempool_reuse and len(self._graphs_meta) > 1:
-            # delete outputs when mempool reuse enabled
             del captured_outputs
         else:
             # retain graph output when only one graph key or mempool reuse disabled
@@ -968,18 +979,41 @@ class AclGraph(object):
     def capture(self, graph_key, *args: Any, **kwargs: Any):
         """
         Captures the execution of the FX graph into an ACL graph instance.
-        
+
         Args:
             graph_key (str): Unique identifier for the captured graph.
             *args: Input arguments for graph capture.
             **kwargs: Keyword arguments for graph capture.
         """
+        args_list = list(args)
+
         if self.fx_graph is not None:
             captured_interpreter = UpdatedNodeCaptureInterp(self.fx_graph, self._updated_ops_param)
             import torch_npu
             with torch_npu.npu.graph(self.graph[graph_key], pool=self.pool, stream=self.stream,
                                      capture_error_mode=self.capture_error_mode):
-                captured_outputs = captured_interpreter.run(*args, **kwargs)
+                for input_name, input_idx in self._user_inputs_mapping.items():
+                    if input_name in self._mutated_user_inputs:
+                        continue
+                    # save userinputs meta info and weakref
+                    if isinstance(args_list[input_idx], torch.Tensor):
+                        weak_ref = WeakRef(None)
+                        # If clone_input is set to True, each user input will have a unique data pointer, preventing
+                        # sharing between inputs. For capture, the original data_ptr in args_list[input_idx] is swapped
+                        # with a new one generated by torch.empty_like. This ensures the aclgraph records the new data
+                        # pointer for later reuse. Finally, the weak reference to each user input is set to None,
+                        # as the inputs will be reconstructed during processing.
+                        # If clone_input is set to False, records the original data_ptr in args_list[input_idx].
+                        if self.config.get('clone_input', "1") == "1" and args_list[input_idx].is_npu:
+                            args_list[input_idx] = torch.empty_like(args_list[input_idx])
+                        # Uses retained_userinputs to ensure capture of the args_list.
+                        self._graphs_meta[graph_key].retained_userinputs.setdefault(input_idx, args_list[input_idx])
+                    else:
+                        weak_ref = WeakRef(args_list[input_idx])
+                    self._graphs_meta[graph_key].userinputs_weakref.setdefault(input_idx, weak_ref)
+                    self._graphs_meta[graph_key].userinputs_meta.setdefault(input_idx,
+                                                                            get_tensor_metadata(args_list[input_idx]))
+                captured_outputs = captured_interpreter.run(*args_list, **kwargs)
                 self._updated_node_infos = captured_interpreter.captured_node_infos
 
         else:
@@ -990,7 +1024,27 @@ class AclGraph(object):
             self._updated_node_infos.clear()
             with torch_npu.npu.graph(self.graph[graph_key], pool=self.pool, stream=self.stream,
                                      capture_error_mode=self.capture_error_mode):
-                captured_outputs = self.fx_forward(*args, node_info=self._updated_node_infos, is_capturing=True,
+                for input_name, input_idx in self._user_inputs_mapping.items():
+                    if input_name in self._mutated_user_inputs:
+                        continue
+                    if isinstance(args_list[input_idx], torch.Tensor):
+                        weak_ref = WeakRef(None)
+                        # If clone_input is set to True, each user input will have a unique data pointer, preventing
+                        # sharing between inputs. For capture, the original data_ptr in args_list[input_idx] is swapped
+                        # with a new one generated by torch.empty_like. This ensures the aclgraph records the new data
+                        # pointer for later reuse. Finally, the weak reference to each user input is set to None,
+                        # as the inputs will be reconstructed during processing.
+                        # If clone_input is set to False, records the original data_ptr in args_list[input_idx].
+                        if self.config.get('clone_input', "1") == "1" and args_list[input_idx].is_npu:
+                            args_list[input_idx] = torch.empty_like(args_list[input_idx])
+                        # Uses retained_userinputs to ensure capture of the args_list.
+                        self._graphs_meta[graph_key].retained_userinputs.setdefault(input_idx, args_list[input_idx])
+                    else:
+                        weak_ref = WeakRef(args_list[input_idx])
+                    self._graphs_meta[graph_key].userinputs_weakref.setdefault(input_idx, weak_ref)
+                    self._graphs_meta[graph_key].userinputs_meta.setdefault(input_idx,
+                                                                            get_tensor_metadata(args_list[input_idx]))
+                captured_outputs = self.fx_forward(*args_list, node_info=self._updated_node_infos, is_capturing=True,
                                                    **kwargs)
                 for i, _ in enumerate(self._updated_node_infos):
                     logger.debug("Record the %s th updated node, node name[%s], node func[%s], node args length[%s], "
@@ -1006,6 +1060,12 @@ class AclGraph(object):
                                  self._updated_node_infos[i].event
                                  )
 
+        logger.debug('AclGraph{id: %s} of fx_graph %s with graph key {%s}, has {%s} parameters and {%s} mutated_inputs,'
+                     'all the input meta info are %s.',
+                     id(self.graph[graph_key]), self.name, graph_key,
+                     len(self.graphs_meta[graph_key].captured_parameter.keys()),
+                     len(self.graphs_meta[graph_key].captured_mutated_inputs.keys()),
+                     self._graphs_meta[graph_key].userinputs_meta)
         logger.info('Success to capture fx_graph %s for graph key{%s}. '
                     'Start to run AclGraph{id: %s} with the updated node num {%s}.',
                     self.name, graph_key, id(self.graph[graph_key]), len(self._updated_node_infos))
@@ -1039,11 +1099,36 @@ class AclGraph(object):
         return captured_outputs
 
     def process_input(self, graph_key, *args: Any):
+        # reconstruct inputs
+        # Does it has to enable_mempool_reuse when reuse inputs? - No
+        # 1. If the memory pool is not user-specified (i.e., one pool per FX graph), in scenarios with multiple ACL graphs,
+        # input memory might occupy the output memory of other ACL graphs. In this case, if input_retainedis required
+        # to prevent conflicts with outputs captured by other ACL graphs, it defeats the purpose of memory reuse.
+        # It would be simpler to use the original user inputs directly. Therefore, there is no need to call
+        # set_to_original_state_before_reconstruct(graph_key)to mark alive outputs as stale, since the inputs and
+        # outputs of the sameACL graph will not occupy the same memory block.
+        # 2. If the memory pool is user-specified and output memory reuse is disabled, output memory is retained.
+        # This ensures that input memory allocation does not claim memory blocks occupied by outputs (from the same
+        # or other graphs). Thus, reconstructing input memory will not corrupt the outputs of the current or
+        # other graphs.
+        if self.config.get('clone_input', "1") == "1":
+            # When a memory pool is shared among aclgraph instances (from the same or different FX graphs),
+            # resetting the memory state before input reconstruction is unnecessary. Safety is guaranteed
+            # by the runtime constraint that only one aclgraph executes at a time. Since inputs are reconstructed
+            # and assigned before each replay and destroyed afterwards, there is no risk of state conflict.
+            reconstructed_inputs = self.reconstruct_inputs(graph_key)
+        else:
+            # Use retained_userinputs if clone_input is set to False.
+            reconstructed_inputs = self._graphs_meta[graph_key].retained_userinputs
+
+        # foreach copy
         dst_tensors = []
         src_tensors = []
-        for idx in self._user_inputs_mapping.values():
-            capture_input = self.graphs_meta[graph_key].captured_inputs[idx]
-            replay_arg = args[idx]
+        for input_name, input_idx in self._user_inputs_mapping.items():
+            if input_name in self._mutated_user_inputs:
+                continue
+            capture_input = reconstructed_inputs[input_idx]
+            replay_arg = args[input_idx]
             if capture_input.data_ptr() != replay_arg.data_ptr():
                 dst_tensors.append(capture_input)
                 src_tensors.append(replay_arg)
@@ -1055,17 +1140,16 @@ class AclGraph(object):
 
     def run(self, graph_key, *args, **kwargs):
         self._graphs_meta[graph_key].replay_func(*args, **kwargs)
-    
+
     def is_need_to_recapture(self, graph_key, *args: Any):
         enable_parameter_frozen = "frozen_parameter" in self.config.keys() \
                                   and self.config["frozen_parameter"] == "1"
         # When the memory addresses of mutated_inputs and parameter type inputs change
         # recapture the aclgraph to reduce copy time and improve performance
-        for input_name, input_idx in self._user_inputs_mapping.items():
-            if self.graphs_meta[graph_key].captured_inputs[input_idx].data_ptr() != args[input_idx].data_ptr():
-                if input_name in self._mutated_user_inputs:
-                    return True
-        
+        for idx, mutated_ptr in self._graphs_meta[graph_key].captured_mutated_inputs.items():
+            if mutated_ptr != args[idx].data_ptr():
+                return True
+
         # Check if the parameter address has changed
         if not enable_parameter_frozen:
             for idx, parameter_ptr in self._graphs_meta[graph_key].captured_parameter.items():
@@ -1192,7 +1276,7 @@ class AclGraph(object):
         Args:
             graph_key (str): Unique identifier for the captured ACL graph.
         """
-
+        # Graph inputs should be freed immediately after replay, thus there will be no alive inputs.
         # Graph outputs may be freed by user, we just get tensor that still alive after last execution.
         stale_storage_set = set()
         for key, _ in self._graphs_meta.items():
@@ -1207,7 +1291,7 @@ class AclGraph(object):
         if len(other_graph_stale_storages) > 0:
             logger.debug('Before reset fx_graph %s outputs stale storages cdata %s to original memory state '
                          'for AclGraph{id: %s} with the current graph key{%s}, and the current memory state is {%s}.',
-                         self.name, other_graph_stale_storages, id(self.graph[graph_key]), graph_key, 
+                         self.name, other_graph_stale_storages, id(self.graph[graph_key]), graph_key,
                          LazyMessage(debug_mem_state))
             # Reset other graph live tensors to stale storages
             torch_npu._C._npu_setCheckpointPoolState(self.device, self._original_mem_state,
@@ -1243,6 +1327,12 @@ class AclGraph(object):
                     all_reconstructed_storages_ptr[output_i.untyped_storage().data_ptr()] = [output_i]
                 else:
                     all_reconstructed_storages_ptr[output_i.untyped_storage().data_ptr()].append(output_i)
+        # add reconstruct inputs to deleter
+        if self.config.get('clone_input', "1") == "1":
+            reconstructed_inputs = self.reconstruct_inputs(graph_key)
+            for idx, input_i in reconstructed_inputs.items():
+                if isinstance(input_i, torch.Tensor):
+                    reconstructed_outputs_to_add_deleter.append(input_i.untyped_storage()._cdata)
 
         # Currently we deallocate on instead of allowing stale recordings
         stale_storages: List[int] = []
@@ -1265,3 +1355,19 @@ class AclGraph(object):
         logger.debug('After reconstructing fx_graph %s outputs for graph key{%s}, '
                      'the memory state is {%s}.',
                      self.name, graph_key, LazyMessage(debug_mem_state))
+
+    def reconstruct_inputs(self, graph_key):
+        reconstructed_inputs = {}
+        # reconstruct input tensor based on tensor meta info.
+        for idx, input_meta in self._graphs_meta[graph_key].userinputs_meta.items():
+            input_ref = self._graphs_meta[graph_key].userinputs_weakref[idx]()
+            if input_ref is None or isinstance(input_ref, torch.Tensor):
+                input_i = reconstruct_from_tensor_metadata(input_meta)
+                # weakref of input_i will be None once replay is finished.
+                # No inputs will be alive cause no one will keep them.
+                self._graphs_meta[graph_key].userinputs_weakref[idx].swap_weakref(input_i)
+                reconstructed_inputs[idx] = input_i
+            else:
+                # other non tensor obj can be returned directly.
+                reconstructed_inputs[idx] = input_ref
+        return reconstructed_inputs

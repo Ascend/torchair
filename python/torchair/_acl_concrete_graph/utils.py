@@ -47,7 +47,7 @@ class LazyMessage:
         self.kwargs = kwargs
 
     def __str__(self):
-        return str(self.func(*self.args, **self.kwargs))            
+        return str(self.func(*self.args, **self.kwargs))
 
 
 @dataclass
@@ -79,11 +79,14 @@ class GraphMeta:
     graph_key: str
     acl_graph: Any
     replay_func: Callable
-    captured_inputs: List[torch.Tensor]
     outputs_meta: List[Union[TensorMetadata, Number]]
     outputs_weakref: List[WeakRef]
     mem_state_after_capture: Any
+    userinputs_meta: Dict[int, Union[TensorMetadata, Number]] = field(default_factory=dict)
+    userinputs_weakref: Dict[int, WeakRef] = field(default_factory=dict)
     captured_parameter: Dict[int, int] = field(default_factory=dict)
+    captured_mutated_inputs: Dict[int, int] = field(default_factory=dict)
+    retained_userinputs: Dict[int, Any] = field(default_factory=dict)
     retained_outputs: List[torch.Tensor] = None
 
 
