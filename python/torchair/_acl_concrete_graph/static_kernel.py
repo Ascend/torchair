@@ -40,21 +40,26 @@ def compile_static_kernel(fx_func, *args, build_dir=None, **kwargs):
         _torchair.AclopStopDumpArgs(1)
     logger.debug("static kernel run eager success")
 
-    debug_dirs = [d for d in result_root.iterdir() if d.is_dir() and d.name.endswith("_debug")]
-    if not debug_dirs:
-        logger.debug("Can not find json of ops, do not execute op_compiler")
-        return
-
-    debug_dir = max(debug_dirs, key=lambda d: d.stat().st_mtime)
-    json_files = list(debug_dir.glob("*.json"))
+    opcompile_dirs = [d for d in result_root.iterdir() if d.is_dir() and d.name.endswith("_opcompile")]
+    if opcompile_dirs:
+        chosen_dir = opcompile_dirs[0]
+        logger.debug(f"Using opcompile directory: {chosen_dir}")
+    else:
+        debug_dirs = [d for d in result_root.iterdir() if d.is_dir() and d.name.endswith("_debug")]
+        if not debug_dirs:
+            logger.debug("Can not find json of ops, do not execute op_compiler")
+            return
+        chosen_dir = debug_dirs[0]
+        logger.debug(f"Using debug directory: {chosen_dir}")
+    json_files = list(chosen_dir.glob("*.json"))
     if not json_files:
-        logger.debug(f"No JSON files in {debug_dir}, skip op_compiler")
+        logger.debug(f"No JSON files in {chosen_dir}, skip op_compiler")
         return
 
     # 2.开始静态编译
     cmd = [
         "op_compiler",
-        "-p", str(debug_dir),
+        "-p", str(chosen_dir),
         "-v", _torchair.GetSocName(),
         "-l", "info",
         "-j", "4",
