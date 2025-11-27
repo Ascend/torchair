@@ -349,83 +349,6 @@ def check_all_sym_updated(ops_update_rulers: Dict, graph_module: torch.fx.GraphM
                                f"which is not in updated index [{all_updated_index}].")
 
 
-class UpdatedNodeCaptureInterp(fx.Interpreter):
-    """
-    Custom interpreter for capturing node updates during graph execution.
-    """
-
-    def __init__(self, graph_module: fx.GraphModule, need_updated_ops: Dict):
-        super().__init__(graph_module)
-        self._graph_module: fx.GraphModule = graph_module
-        self._need_updated_ops: Dict[str, List] = need_updated_ops  # k: op_name, v: updated_param_name_list
-        self._captured_node_info: List = []
-
-    @property
-    def captured_node_infos(self):
-        return self._captured_node_info
-
-    @guard_with_user_stream_scope
-    def run_node(self, node):
-        logger.debug("Try to capture node names[%s] type[%s] args[%s] kwargs[%s] in graph[%s] .",
-                     node.name, node.target, node.args, node.kwargs, id(self._graph_module))
-
-        if node.name not in self._need_updated_ops.keys():
-            return super().run_node(node)
-
-        # external event no need record before capture.
-        external_event = torch.npu.ExternalEvent()
-        capture_stream = torch.npu.current_stream()
-        external_event.wait(capture_stream)
-        external_event.reset(capture_stream)
-
-        torch.npu.graph_task_group_begin(capture_stream)
-        result = super().run_node(node)
-        handle = torch.npu.graph_task_group_end(capture_stream)
-        node_args, node_kwargs = self.fetch_args_kwargs_from_env(node)
-        node_args, node_kwargs = reconstruct_args_kwargs(node_args, node_kwargs)
-
-        self._captured_node_info.append(UpdatedNodeInfo(
-            node_name=node.name,
-            updated_func=node.target,
-            updated_param_name=self._need_updated_ops[node.name],
-            args=node_args,
-            kwargs=node_kwargs,
-            handle=handle,
-            event=external_event)
-        )
-        logger.debug("Record the %s th updated node, node name[%s], node func[%s], node args length[%s], "
-                     "node kwargs length[%s], update param name[%s], update task handle[%s], "
-                     "update event[%s] in graph[%s].",
-                     len(self._captured_node_info),
-                     self._captured_node_info[-1].node_name,
-                     self._captured_node_info[-1].updated_func,
-                     len(self._captured_node_info[-1].args),
-                     len(self._captured_node_info[-1].kwargs),
-                     self._captured_node_info[-1].updated_param_name,
-                     self._captured_node_info[-1].handle,
-                     self._captured_node_info[-1].event,
-                     id(self._graph_module)
-                     )
-
-        return result
-
-    def call_function(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any]) -> Any:
-        if str(target) == "air.record.default":
-            event = torch.npu.Event()
-            stream = torch.npu.current_stream()
-            event.record(stream)
-            logger.debug("Record successfully,stream:%s", stream)
-            return event
-        elif str(target) == "air.wait.default":
-            for event in args[0]:
-                stream = torch.npu.current_stream()
-                event.wait(stream)
-                logger.debug("Wait successfully,stream:%s", stream)
-            return None
-        else:
-            return super().call_function(target, args, kwargs)
-
-
 class CapturedGraphUpdateAndReplay(nn.Module):
     """
     Module for replaying captured graphs with dynamic updates.
@@ -696,6 +619,26 @@ class AclGraph(object):
         self._parameter_user_inputs = []
         self._user_stream_label = None
 
+    def __call__(self, *args, **kwargs):
+        # get graph_key and capture
+        fn_key = self.compile(*args, **kwargs)
+
+        # fall back to eager when static_capture_size_limit is exceeded
+        if self.fallback_to_eager:
+            with record_function("fx_run_eagerly"):
+                return self.fx_run_eagerly(*args, **kwargs)
+
+        # input process
+        with record_function("process_input"):
+            self.process_input(fn_key, *args)
+
+        # run/replay
+        with record_function("acl_graph_replay"):
+            self.run(fn_key, *args, **kwargs)
+
+        return self.reconstruct_outputs(fn_key)
+
+
     @property
     def config(self):
         return self._config
@@ -747,11 +690,7 @@ class AclGraph(object):
 
     def fx_run_eagerly(self, *args: Any, **kwargs: Any) -> Any:
         # No need to confirm whether it is an online case or a cached case
-        if self.fx_graph is not None:
-            callable_fx_func = self.fx_graph
-        else:
-            callable_fx_func = self.fx_forward
-        return callable_fx_func(*args, **kwargs)
+        return self.fx_forward(*args, **kwargs)
 
     def load(self, aclgraph_cache_info: AclGraphCacheInfo):
         # call load before compile
@@ -790,8 +729,7 @@ class AclGraph(object):
             # compile operator kernel based on static shape for better execution performance
             if self.config.get('_aclnn_static_shape_kernel', False):
                 path = self.config.get('_aclnn_static_shape_kernel_build_dir', None)
-                fx_func = self.fx_graph if self.fx_graph is not None else self.fx_forward
-                compile_static_kernel(fx_func, *args, build_dir=path, **kwargs)
+                compile_static_kernel(self.fx_forward, *args, build_dir=path, **kwargs)
 
             self._unupdated_input_func = get_unupdated_input_fn(self._unupdated_sym_input_index)
             self._updated_input_func = get_updated_ops_fn(self._ops_update_rulers)
@@ -986,79 +924,48 @@ class AclGraph(object):
             **kwargs: Keyword arguments for graph capture.
         """
         args_list = list(args)
-
-        if self.fx_graph is not None:
-            captured_interpreter = UpdatedNodeCaptureInterp(self.fx_graph, self._updated_ops_param)
-            import torch_npu
-            with torch_npu.npu.graph(self.graph[graph_key], pool=self.pool, stream=self.stream,
-                                     capture_error_mode=self.capture_error_mode):
-                for input_name, input_idx in self._user_inputs_mapping.items():
-                    if input_name in self._mutated_user_inputs:
-                        continue
-                    # save userinputs meta info and weakref
-                    if isinstance(args_list[input_idx], torch.Tensor):
-                        weak_ref = WeakRef(None)
-                        # If clone_input is set to True, each user input will have a unique data pointer, preventing
-                        # sharing between inputs. For capture, the original data_ptr in args_list[input_idx] is swapped
-                        # with a new one generated by torch.empty_like. This ensures the aclgraph records the new data
-                        # pointer for later reuse. Finally, the weak reference to each user input is set to None,
-                        # as the inputs will be reconstructed during processing.
-                        # If clone_input is set to False, records the original data_ptr in args_list[input_idx].
-                        if self.config.get('clone_input', "1") == "1" and args_list[input_idx].is_npu:
-                            args_list[input_idx] = torch.empty_like(args_list[input_idx])
-                        # Uses retained_userinputs to ensure capture of the args_list.
-                        self._graphs_meta[graph_key].retained_userinputs.setdefault(input_idx, args_list[input_idx])
-                    else:
-                        weak_ref = WeakRef(args_list[input_idx])
-                    self._graphs_meta[graph_key].userinputs_weakref.setdefault(input_idx, weak_ref)
-                    self._graphs_meta[graph_key].userinputs_meta.setdefault(input_idx,
-                                                                            get_tensor_metadata(args_list[input_idx]))
-                captured_outputs = captured_interpreter.run(*args_list, **kwargs)
-                self._updated_node_infos = captured_interpreter.captured_node_infos
-
-        else:
-            import torch_npu
-            # Clear _updated_node_infos(list of UpdatedNodeInfo objects) before capture.
-            # Each object stores graph task group handles/events for the current capture,
-            # and must be updated on recapture.
-            self._updated_node_infos.clear()
-            with torch_npu.npu.graph(self.graph[graph_key], pool=self.pool, stream=self.stream,
-                                     capture_error_mode=self.capture_error_mode):
-                for input_name, input_idx in self._user_inputs_mapping.items():
-                    if input_name in self._mutated_user_inputs:
-                        continue
-                    if isinstance(args_list[input_idx], torch.Tensor):
-                        weak_ref = WeakRef(None)
-                        # If clone_input is set to True, each user input will have a unique data pointer, preventing
-                        # sharing between inputs. For capture, the original data_ptr in args_list[input_idx] is swapped
-                        # with a new one generated by torch.empty_like. This ensures the aclgraph records the new data
-                        # pointer for later reuse. Finally, the weak reference to each user input is set to None,
-                        # as the inputs will be reconstructed during processing.
-                        # If clone_input is set to False, records the original data_ptr in args_list[input_idx].
-                        if self.config.get('clone_input', "1") == "1" and args_list[input_idx].is_npu:
-                            args_list[input_idx] = torch.empty_like(args_list[input_idx])
-                        # Uses retained_userinputs to ensure capture of the args_list.
-                        self._graphs_meta[graph_key].retained_userinputs.setdefault(input_idx, args_list[input_idx])
-                    else:
-                        weak_ref = WeakRef(args_list[input_idx])
-                    self._graphs_meta[graph_key].userinputs_weakref.setdefault(input_idx, weak_ref)
-                    self._graphs_meta[graph_key].userinputs_meta.setdefault(input_idx,
-                                                                            get_tensor_metadata(args_list[input_idx]))
-                captured_outputs = self.fx_forward(*args_list, node_info=self._updated_node_infos, is_capturing=True,
-                                                   **kwargs)
-                for i, _ in enumerate(self._updated_node_infos):
-                    logger.debug("Record the %s th updated node, node name[%s], node func[%s], node args length[%s], "
-                                 "node kwargs length[%s], update param name[%s], update task handle[%s], "
-                                 "update event[%s] in graph.",
-                                 i,
-                                 self._updated_node_infos[i].node_name,
-                                 self._updated_node_infos[i].updated_func,
-                                 len(self._updated_node_infos[i].args),
-                                 len(self._updated_node_infos[i].kwargs),
-                                 self._updated_node_infos[i].updated_param_name,
-                                 self._updated_node_infos[i].handle,
-                                 self._updated_node_infos[i].event
-                                 )
+        import torch_npu
+        # Clear _updated_node_infos(list of UpdatedNodeInfo objects) before capture.
+        # Each object stores graph task group handles/events for the current capture,
+        # and must be updated on recapture.
+        self._updated_node_infos.clear()
+        with torch_npu.npu.graph(self.graph[graph_key], pool=self.pool, stream=self.stream,
+                                 capture_error_mode=self.capture_error_mode):
+            for input_name, input_idx in self._user_inputs_mapping.items():
+                if input_name in self._mutated_user_inputs:
+                    continue
+                if isinstance(args_list[input_idx], torch.Tensor):
+                    weak_ref = WeakRef(None)
+                    # If clone_input is set to True, each user input will have a unique data pointer, preventing
+                    # sharing between inputs. For capture, the original data_ptr in args_list[input_idx] is swapped
+                    # with a new one generated by torch.empty_like. This ensures the aclgraph records the new data
+                    # pointer for later reuse. Finally, the weak reference to each user input is set to None,
+                    # as the inputs will be reconstructed during processing.
+                    # If clone_input is set to False, records the original data_ptr in args_list[input_idx].
+                    if self.config.get('clone_input', "1") == "1" and args_list[input_idx].is_npu:
+                        args_list[input_idx] = torch.empty_like(args_list[input_idx])
+                    # Uses retained_userinputs to ensure capture of the args_list.
+                    self._graphs_meta[graph_key].retained_userinputs.setdefault(input_idx, args_list[input_idx])
+                else:
+                    weak_ref = WeakRef(args_list[input_idx])
+                self._graphs_meta[graph_key].userinputs_weakref.setdefault(input_idx, weak_ref)
+                self._graphs_meta[graph_key].userinputs_meta.setdefault(input_idx,
+                                                                        get_tensor_metadata(args_list[input_idx]))
+            captured_outputs = self.fx_forward(*args_list, node_info=self._updated_node_infos, is_capturing=True,
+                                               **kwargs)
+            for i, _ in enumerate(self._updated_node_infos):
+                logger.debug("Record the %s th updated node, node name[%s], node func[%s], node args length[%s], "
+                             "node kwargs length[%s], update param name[%s], update task handle[%s], "
+                             "update event[%s] in graph.",
+                             i,
+                             self._updated_node_infos[i].node_name,
+                             self._updated_node_infos[i].updated_func,
+                             len(self._updated_node_infos[i].args),
+                             len(self._updated_node_infos[i].kwargs),
+                             self._updated_node_infos[i].updated_param_name,
+                             self._updated_node_infos[i].handle,
+                             self._updated_node_infos[i].event
+                             )
 
         logger.debug('AclGraph{id: %s} of fx_graph %s with graph key {%s}, has {%s} parameters and {%s} mutated_inputs,'
                      'all the input meta info are %s.',

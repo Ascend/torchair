@@ -112,6 +112,10 @@ class DebugContext():
     def next_path(cls) -> str:
         cls.COUNT += 1
         return cls.current_path()
+
+
+def get_phase_path():
+    return os.path.join(DebugContext.current_path(), getattr(debug_ctx, 'phase', 'default'))
     
 
 def wrap_compiler_phase(compiler: Callable, phase: str) -> Callable:
