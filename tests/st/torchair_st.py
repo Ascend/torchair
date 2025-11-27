@@ -2645,6 +2645,38 @@ class TorchairSt(unittest.TestCase):
                 in log for log in cm.output),
             f"Expected DEBUG log '[inference] after [post_grad_custom_post_pass] execution' in logs: {cm.output}")
 
+    def test_print_ge_stream_allocation_summary(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+            
+            def forward(self, in1, in2, in3):
+                s0_add1 = torch.add(in1, in2)
+                with torchair.scope.npu_stream_switch("1"):
+                    s1_mm = torch.mm(in1, in2)
+                s0_mm1 = torch.mm(in3, s0_add1)
+                with torchair.scope.npu_stream_switch("2"):
+                    s2_add = torch.add(in3, s1_mm)
+                return s0_mm1, s2_add
+            
+        _config = CompilerConfig()
+        _npu_backend = torchair.get_npu_backend(compiler_config=_config)
+        model = torch.compile(Model(), backend=_npu_backend, dynamic=False, fullgraph=True)
+
+        in1 = torch.randn(2, 2, dtype=torch.float16)
+        in2 = torch.randn(2, 2, dtype=torch.float16)
+        in3 = torch.randn(2, 2, dtype=torch.float16)
+        with self.assertLogs(logger, level="INFO") as cm:
+            result = model(in1, in2, in3)
+        """
+        ---------- Stream Allocation Summary ----------
+        Graph Label: graph_1  Logical Stream Information: logic_stream_id: 0, user_stream_label: 1, is_assigned_by_user_stream_pass: false, attached_stream_ids: , physical_model_stream_num: 1, hccl_followed_stream_num: 0.
+        Graph Label: graph_1  Logical Stream Information: logic_stream_id: 1, user_stream_label: 2, is_assigned_by_user_stream_pass: false, attached_stream_ids: , physical_model_stream_num: 1, hccl_followed_stream_num: 0.
+        Graph Label: graph_1  Logical Stream Information: logic_stream_id: 2, user_stream_label: , is_assigned_by_user_stream_pass: false, attached_stream_ids: , physical_model_stream_num: 1, hccl_followed_stream_num: 0.
+        -----------------------------------------------
+        """
+        self.assertTrue(all("Stream Allocation Summary" not in log for log in cm.output))
+
 
 if __name__ == '__main__':
     unittest.main()
