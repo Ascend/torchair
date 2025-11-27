@@ -186,6 +186,10 @@ def get_unupdated_sym_input_index(graph_module: torch.fx.GraphModule):
             logger.debug('Find no meta attr placeholder node, placeholder index=%s, value=%s, type=%s',
                          data_idx, node, type(node).__name__)
             continue
+        if 'val' not in node.meta:
+            logger.debug('Find placeholder node with no val in meta, placeholder index=%s, value=%s, type=%s',
+                         data_idx, node, type(node).__name__)
+            continue
         node_meta = node.meta['val']
         if not have_sym_in_meta(node_meta):
             continue
@@ -571,6 +575,9 @@ def replace_dynamic_workspace_ops(graph_module: fx.GraphModule, meta_inputs: Lis
         if node.target not in _REPLACE_FUNC_MAP.keys():
             continue
 
+        if not hasattr(node, "meta") or 'val' not in node.meta:
+            continue
+ 
         with graph_module.graph.inserting_before(node):
             node_kwargs = dict(node.kwargs)
             workspace_node = construct_and_add_workspace(node, graph_module, node_kwargs)

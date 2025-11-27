@@ -327,6 +327,10 @@ def _optimize_sym_input(graph_module: torch.fx.GraphModule, example_inputs=None,
             logger.debug('Find no meta attr placeholder node, placeholder index=%s, value=%s, type=%s',
                          data_idx, node, type(node).__name__)
             continue
+        if 'val' not in node.meta:
+            logger.debug('Find placeholder node with no val in meta, placeholder index=%s, value=%s, type=%s',
+                         data_idx, node, type(node).__name__)
+            continue
         if is_sym(node.meta['val']):
             sym_input_list.append(node)
         elif is_fake(node.meta['val']):
