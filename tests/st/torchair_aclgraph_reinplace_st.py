@@ -5,17 +5,20 @@ import unittest
 import torch
 import torch._inductor.config as inductor_config
 from functorch import make_fx
+import _privateuse1_backend
 
 import torchair
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core.utils import logger
 from torchair._acl_concrete_graph.graph_pass import _mutated_input_reinplace
+
 from torchair_st_stub_aclgraph_utils import (
     StubNpu,
     patch_ops_npu_module,
     patch_torch_point_npu_module,
     patch_torch_npu_module,
 )
+from torchair_st_utils import generate_faked_module
 
 logger.setLevel(logging.DEBUG)
 
@@ -42,6 +45,11 @@ try:
 except ImportError:
     decompose_auto_functionalized = None
     logger.debug("function[decompose_auto_functionalized] is not support on torch < 2.6")
+
+
+npu_device = _privateuse1_backend.npu_device()
+torch.utils.rename_privateuse1_backend("npu")
+torch._register_device_module('npu', generate_faked_module())
 
 
 def num_reinplacing_failures():

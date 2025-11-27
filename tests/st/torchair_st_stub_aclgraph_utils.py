@@ -202,7 +202,7 @@ def record_stream():
 
 def current_device():
     logger.debug('[Stub] run stub API current_device.')
-    return "current_device"
+    return 0
     # 无恢复操作
 
 
@@ -287,6 +287,14 @@ class Stub_C:
                                    device=metadata['device'])
 
 
+def _stub_npu_add_rms_norm_default(self, *args, **kwargs):
+    return torch.randn([3, 2]), None, torch.randn([3, 2])
+
+
+def _stub_npu_dynamic_quant_default(self, *args, **kwargs):
+    return torch.randn([3, 2]), torch.randn([3, 2])
+
+
 # define stub submodule
 class StubNpu:
     def __init__(self):
@@ -312,6 +320,12 @@ class StubNpu:
         self.conv = stub_conf
         self._C = Stub_C
         self.amp = StubAmp
+        self.npu_add_rms_norm = types.SimpleNamespace(
+            default=_stub_npu_add_rms_norm_default
+        )
+        self.npu_dynamic_quant = types.SimpleNamespace(
+            default=_stub_npu_dynamic_quant_default
+        )
 
 
 def patch_ops_npu_module(stub_module):
