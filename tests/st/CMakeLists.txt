@@ -1,5 +1,6 @@
 add_custom_command(OUTPUT ST_TESTCASES
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_st_utils.py ${CMAKE_BINARY_DIR}/st
+        COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_st_stub_aclgraph_utils.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_export_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_scope_st.py ${CMAKE_BINARY_DIR}/st
@@ -14,6 +15,7 @@ add_custom_command(OUTPUT ST_TESTCASES
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_explicit_order_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_fx_pattern_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_aclgraph_st.py ${CMAKE_BINARY_DIR}/st
+        COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_aclgraph_reinplace_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_BINARY_DIR}/stubs/_privateuse1_backend.so ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_BINARY_DIR}/stubs/libaoe_tuning.so ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_BINARY_DIR}/stubs/libopapi.so ${CMAKE_BINARY_DIR}/st
@@ -38,6 +40,7 @@ add_custom_target(run_torchair_py_cases ALL
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_aclgraph_st
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_print_detail_st
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_debug_log_st
+        COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_aclgraph_reinplace_st
         DEPENDS install_torchair ST_TESTCASES
         VERBATIM)
 
