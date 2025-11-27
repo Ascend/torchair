@@ -548,3 +548,71 @@ def _insert_record_nodes(graph_module, node, wait_record_dic):
                 new_args.append(node)
                 wait_record_dic[wait_node] = node
     return new_args
+
+
+def replace_core_limit_nodes(gm: torch.fx.GraphModule):
+    # use stack to handle nested scope declarations
+    scope_enter_stack = []
+    # record original state of current stream, revert when exit core limit scope
+    core_limit_stack = []
+    
+    for node in gm.graph.nodes:
+        if str(node.target) == "air.scope_enter.default":
+            _core_limit_handle_scope_enter(node, gm, core_limit_stack, scope_enter_stack)
+        elif str(node.target) == "air.scope_exit.default":
+            _core_limit_handle_scope_exit(node, gm, core_limit_stack, scope_enter_stack)
+
+
+def _core_limit_handle_scope_enter(node: torch.fx.Node, gm: torch.fx.GraphModule, core_limit_stack: List, scope_enter_stack: List):
+    core_limit_label = ["_op_aicore_num", "_op_vectorcore_num"]
+    stream_switch_label = ["_user_stream_label", "_user_stream_priority"]
+    if node.args[0] == core_limit_label:
+        # get current user configuration for core limit
+        aicore_num, vectorcore_num = node.args[1]
+        with gm.graph.inserting_before(node):
+            stream_node = gm.graph.call_function(torch.npu.current_stream)
+            core_get_node = gm.graph.call_function(torch.npu.get_stream_limit, args=(stream_node,))
+            aicore_num_node = gm.graph.call_function(operator.getitem, args=(core_get_node, 'cube_core_num'))
+            vectorcore_num_node = gm.graph.call_function(operator.getitem, args=(core_get_node, 'vector_core_num'))
+            core_set_node = gm.graph.call_function(torch.npu.set_stream_limit, args=((stream_node, int(aicore_num), 
+                                                                                    int(vectorcore_num))))
+        # core limit scope enter node can be replaced by set stream limit node
+        node.replace_all_uses_with(core_set_node)
+        gm.graph.erase_node(node)
+        # record current stream, original core states for rolling back
+        core_limit_stack.append([stream_node, aicore_num_node, vectorcore_num_node, aicore_num, vectorcore_num])
+        scope_enter_stack.append("core_limit")
+    elif node.args[0] == stream_switch_label:
+        # do nothing if current stream switch is not within a core limit scope
+        if not core_limit_stack:
+            scope_enter_stack.append("other")
+            return
+        # use core configuration from last core limit scope
+        _, _, _, last_aicore_num, last_vectorcore_num = core_limit_stack[-1]
+        # stream switch scope enter node need to be retained
+        with gm.graph.inserting_after(node):
+            stream_node = gm.graph.call_function(torch.npu.current_stream)
+        with gm.graph.inserting_after(stream_node):
+            core_get_node = gm.graph.call_function(torch.npu.get_stream_limit, args=(stream_node,))
+        with gm.graph.inserting_after(core_get_node):
+            gm.graph.call_function(torch.npu.set_stream_limit, args=((stream_node, int(last_aicore_num), int(last_vectorcore_num))))
+            vectorcore_num_node = gm.graph.call_function(operator.getitem, args=(core_get_node, 'vector_core_num'))
+            aicore_num_node = gm.graph.call_function(operator.getitem, args=(core_get_node, 'cube_core_num'))
+        core_limit_stack.append([stream_node, aicore_num_node, vectorcore_num_node, last_aicore_num, last_vectorcore_num])
+        scope_enter_stack.append("stream_switch")
+    else:
+        # still push current scope enter into stack to match forward scope exits
+        scope_enter_stack.append("other")
+
+
+def _core_limit_handle_scope_exit(node: torch.fx.Node, gm: torch.fx.GraphModule, core_limit_stack: List, scope_enter_stack: List):
+    last_scope_enter_op = scope_enter_stack.pop()
+    if last_scope_enter_op == "other":
+        return
+    # retrieve current stream, original core states when exit scope
+    cur_stream, original_aicore_num, original_vectorcore_num, _, _ = core_limit_stack.pop()
+    with gm.graph.inserting_after(node):
+        core_set_node = gm.graph.call_function(torch.npu.set_stream_limit, args=(cur_stream, original_aicore_num, original_vectorcore_num))
+    if last_scope_enter_op == "core_limit":
+        node.replace_all_uses_with(core_set_node)
+        gm.graph.erase_node(node)

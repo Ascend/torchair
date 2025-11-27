@@ -190,6 +190,16 @@ def current_stream(device=None):
     return "current_stream"
 
 
+def get_stream_limit(stream):
+    logger.debug('[Stub] run stub API get_stream_limit.')
+    return {"cube_core_num": 24, 'vector_core_num': 48}
+
+
+def set_stream_limit(stream, aicore_num, vectorcore_num):
+    logger.debug('[Stub] run stub API set_stream_limit.')
+    return "set_stream_limit"
+
+
 def set_stream(stream):
     logger.debug('[Stub] run stub API set_stream.')
     return "set_stream"
@@ -309,6 +319,8 @@ class StubNpu:
         self.streams = StubStreams
         self.Event = StubEvent
         self.current_stream = current_stream
+        self.set_stream_limit = set_stream_limit
+        self.get_stream_limit = get_stream_limit
         self.set_stream = set_stream
         self.current_device = current_device
         self.stream = stub_stream
