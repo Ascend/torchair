@@ -96,6 +96,7 @@ def init_device_stdout_channel():
 
 @pretty_error_msg
 def finalize_graph_engine():
+    torch._dynamo.reset()
     _torchair.FinalizeGraphEngine()
     uninstall_static_kernel()
 
