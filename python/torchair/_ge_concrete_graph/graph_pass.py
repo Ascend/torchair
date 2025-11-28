@@ -106,6 +106,8 @@ def _get_output_to_input_ref_idx(op: OpDef) -> Dict[int, int]:
         ref_idx_mapping[1] = 1
         ref_idx_mapping[2] = 2
         ref_idx_mapping[3] = 3
+    elif op.type == "RecurrentGatedDeltaRule":
+        ref_idx_mapping[1] = 4
 
     return ref_idx_mapping
 

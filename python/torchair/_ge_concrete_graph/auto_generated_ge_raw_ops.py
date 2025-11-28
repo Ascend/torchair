@@ -81331,6 +81331,89 @@ def MoeUpdateExpert(expert_ids: Tensor,
     )
 
 
+# This api is auto-generated from IR RecurrentGatedDeltaRule
+@auto_convert_to_tensor([False, False, False, False, False, False, False], [False, False, False, False, False, False, False])
+def RecurrentGatedDeltaRule(
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    beta: Tensor,
+    state: Tensor,
+    actual_seq_lengths: Tensor,
+    ssm_state_indices: Tensor,
+    *,
+    g: Optional[Tensor] = None,
+    gk: Optional[Tensor] = None,
+    num_accepted_tokens: Optional[Tensor] = None,
+    scale: float = 1.0,
+    dependencies=[],
+    node_name=None):
+    """
+    REG_OP(RecurrentGatedDeltaRule)\n
+    .INPUT(query, "T1")\n
+    .INPUT(key, "T1")\n
+    .INPUT(value, "T1")\n
+    .INPUT(beta, "T1")\n
+    .INPUT(state, "T1")\n
+    .INPUT(actual_seq_lengths, "T2")\n
+    .INPUT(ssm_state_indices, "T2")\n
+    .OPTIONAL_INPUT(g, "T3")\n
+    .OPTIONAL_INPUT(gk, "T3")\n
+    .OPTIONAL_INPUT(num_accepted_tokens, "T2")\n
+    .OUTPUT(out, "T1")\n
+    .OUTPUT(state, "T1")\n
+    .ATTR(scale_value, Float, 1.0)\n
+    .DATATYPE(T1, TensorType({DT_BF16}))\n
+    .DATATYPE(T2, TensorType({DT_INT32}))\n
+    .DATATYPE(T3, TensorType({DT_FLOAT}))\n
+    .OP_END_FACTORY_REG(RecurrentGatedDeltaRule)
+    """
+    
+    op = get_default_ge_graph().op.add()
+    op.type = "RecurrentGatedDeltaRule"
+    op.name = next_unique_name(node_name, "RecurrentGatedDeltaRule")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    input_list = [
+        (query, "query"),
+        (key, "key"),
+        (value, "value"),
+        (beta, "beta"),
+        (state, "state"),
+        (actual_seq_lengths, "actual_seq_lengths"),
+        (ssm_state_indices, "ssm_state_indices"),
+        (g, "g"),
+        (gk, "gk"),
+        (num_accepted_tokens, "num_accepted_tokens")
+        ]
+
+    for item in input_list:
+        if item[0] is not None:
+            op.input.append(item[0].tensor)
+            op.input_desc.add().CopyFrom(item[0].desc)
+            op.input_desc[-1].name = item[1]
+        else:
+            op.input.append('')
+            op.input_desc.add().CopyFrom(get_invalid_desc())
+            op.input_desc[-1].name = item[1]
+
+    op.attr["scale_value"].f = scale
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "out"
+    out = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "state"
+    stateOut = Tensor(op, output_index)
+    output_index += 1
+
+    return out, stateOut
+
+
 # This api is auto-generated from IR GroupedMatmulSwigluQuant
 @auto_convert_to_tensor([False, False, False, True, True, True, False, False], 
                         [False, False, False, False, False, False, True, True])
