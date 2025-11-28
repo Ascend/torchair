@@ -289,7 +289,7 @@ def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, obs
     observer.gm = graph_module
     pre_func = config.post_grad_custom_pre_pass.value
     if pre_func is not None:
-        observer.apply_gm_pass(pre_func, "post_grad_custom_pre_pass")
+        observer.apply_gm_pass(pre_func, "post_grad_custom_pre_pass", enable_log=True)
 
     if config.experimental_config.remove_noop_ops:
         observer.apply_gm_pass(_optimize_noop_ops, "optimize_noop_ops")
@@ -307,7 +307,7 @@ def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, obs
 
     post_func = config.post_grad_custom_post_pass.value
     if post_func is not None:
-        observer.apply_gm_pass(post_func, "post_grad_custom_post_pass")
+        observer.apply_gm_pass(post_func, "post_grad_custom_post_pass", enable_log=True)
     logger.debug('after fx graph optimization, graph is %s', graph_module.graph)
     return graph_module
 
