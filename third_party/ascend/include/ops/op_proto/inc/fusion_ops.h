@@ -593,6 +593,47 @@ REG_OP(GroupedMatmulFinalizeRouting)
 .OP_END_FACTORY_REG(GroupedMatmulFinalizeRouting)
 
 /**
+ * @brief Recurrent Gated Delta Rule operator interface implementation.
+ *
+ * @par Inputs:
+ * @li query: queries of shape [T, Nk, Dk]. Support dtype: bfloat16. Support format: ND.
+ * @li key: keys of shape [T, Nk, Dk]. Support dtype: bfloat16. Support format: ND.
+ * @li value: values of shape [T, Nv, Dv]. Support dtype: bfloat16. Support format: ND.
+ * @li beta: betas of shape [T, Nv]. Support dtype: bfloat16. Support format: ND.
+ * @li state: initial states of shape [BlockNum, Nv, Dv, Dk]. Support dtype: bfloat16. Support format: ND.
+ * @li actual_seq_lengths: actual sequence length of shape [B,] used for variable-length training. Support dtype: int32. Support format: ND.
+ * @li ssm_state_indices: indices to map the input sequences to the states of shape [T,]. Support dtype: int32. Support format: ND.
+ * @li g: decays of shape [T, Nv], alpha = e^g. Support dtype: float32. Support format: ND.
+ * @li gk: key decays of shape [T, Nv, Dk], alpha = e^g. Support dtype: float32. Support format: ND.
+ * @li num_accepted_tokens: number of accepted tokens for each sequence during decoding of shape (B,). Support dtype: int32. Support format: ND.
+ *
+ * @par Attributes:
+ * scale_value: scale factor for the RetNet attention scores, usually 1/sqrt(Dk), the default value is 1.0. dtype: float32. 
+ *
+ * @par Output:
+ * @li out: outputs of shape [T, Nv,Dv]. Support dtype: bfloat16. Support format: ND.
+ * @li state: final states of shape [BlockNum, Nv, Dv, Dk]. Support dtype: bfloat16. Support format: ND.
+ */
+REG_OP(RecurrentGatedDeltaRule)
+.INPUT(query, "T1")
+.INPUT(key, "T1")
+.INPUT(value, "T1")
+.INPUT(beta, "T1")
+.INPUT(state, "T1")
+.INPUT(actual_seq_lengths, "T2")
+.INPUT(ssm_state_indices, "T2")
+.OPTIONAL_INPUT(g, "T3")
+.OPTIONAL_INPUT(gk, "T3")
+.OPTIONAL_INPUT(num_accepted_tokens, "T2")
+.OUTPUT(out, "T1")
+.OUTPUT(state, "T1")
+.ATTR(scale_value, Float, 1.0)
+.DATATYPE(T1, TensorType({DT_BF16}))
+.DATATYPE(T2, TensorType({DT_INT32}))
+.DATATYPE(T3, TensorType({DT_FLOAT}))
+.OP_END_FACTORY_REG(RecurrentGatedDeltaRule)
+
+/**
 * @brief Function GroupedMatmulSwigluQuantV2.
 */
 REG_OP(GroupedMatmulSwigluQuantV2)
