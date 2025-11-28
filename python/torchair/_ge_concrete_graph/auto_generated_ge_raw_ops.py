@@ -79275,6 +79275,59 @@ def MoeGatingTopKSoftmax(x: Tensor,
     return y, expert_idx, row_idx
 
 
+# This api is auto-generated from IR MoeGatingTopKSoftmaxV2
+@auto_convert_to_tensor([False, False], [False, True])
+def MoeGatingTopKSoftmaxV2(x: Tensor, *, k: int, finished: Optional[Tensor], renorm: int = 0, output_softmax: bool = False, dependencies = [], node_name = None):
+    """REG_OP(MoeGatingTopKSoftmaxV2)\n
+    .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .OPTIONAL_INPUT(finished, TensorType({DT_BOOL}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(expert_idx, TensorType({DT_INT32}))\n
+    .OUTPUT(softmax_result, TensorType({DT_FLOAT}))\n
+    .REQUIRED_ATTR(k, Int)\n
+    .ATTR(renorm, Int)\n
+    .ATTR(output_softmax, Bool)\n
+    .OP_END_FACTORY_REG(MoeGatingTopKSoftmaxV2)\n
+    """
+
+    # process inputs
+    inputs = {
+        "x": x,
+        "finished": finished,
+    }
+
+    # process attrs
+    attrs = {
+        "k": attr.Int(k),
+        "renorm": attr.Int(renorm),
+        "output_softmax": attr.Bool(output_softmax),
+    }
+
+    # process outputs
+    outputs = [
+        "y",
+        "expert_idx",
+        "softmax_result",
+    ]
+
+    return ge_op(
+        op_type="MoeGatingTopKSoftmaxV2",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("MoeGatingTopKSoftmaxV2") \
+        .input("x", "DT_FLOAT, DT_FLOAT16, DT_BF16") \
+        .optional_input("finished", "DT_BOOL") \
+        .required_attr("k", attr.Int) \
+        .attr("renorm", attr.Int(0)) \
+        .attr("output_softmax", attr.Bool(False)) \
+        .output("y", "DT_FLOAT, DT_FLOAT16, DT_BF16") \
+        .output("expert_idx", "DT_INT32") \
+        .output("softmax_result", "DT_FLOAT")
+    )
+
+
 # This api is auto-generated from IR FusedInferAttentionScore
 @auto_convert_to_tensor(
     [False, True, True, False, False, False, False, False, False, False, False, False, False, False, False, False,
