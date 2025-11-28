@@ -77501,26 +77501,32 @@ def MatmulAllReduce(x1: Tensor,
                     is_trans_b: bool=False,
                     comm_turn: int=0,
                     antiquant_group_size: int=0,
+                    group_size: int = 0,
+                    y_dtype: int = 28, 
+                    comm_quant_mode: int = 0,
                     dependencies=[],
                     node_name=None):
     """REG_OP(MatmulAllReduce)
-    .INPUT(x1, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))\n
-    .INPUT(x2, TensorType({DT_FLOAT16, DT_BF16, DT_INT8, DT_INT4}))\n
-    .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT16, DT_BF16, DT_INT32}))\n
-    .OPTIONAL_INPUT(x3, TensorType({DT_FLOAT16, DT_BF16}))\n
-    .OPTIONAL_INPUT(antiquant_scale, TensorType({DT_FLOAT16, DT_BF16}))\n
-    .OPTIONAL_INPUT(antiquant_offset, TensorType({DT_FLOAT16, DT_BF16}))\n
-    .OPTIONAL_INPUT(dequant_scale, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16, DT_UINT64, DT_INT64}))\n
-    .OPTIONAL_INPUT(pertoken_scale, TensorType({DT_FLOAT}))\n
-    .OPTIONAL_INPUT(comm_quant_scale_1, TensorType({DT_FLOAT16, DT_BF16}))\n
-    .OPTIONAL_INPUT(comm_quant_scale_2, TensorType({DT_FLOAT16, DT_BF16}))\n
-    .OUTPUT(y, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .INPUT(x1, TensorType({DT_FLOAT16, DT_BF16, DT_INT8, DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2}))\n
+    .INPUT(x2, TensorType({DT_FLOAT16, DT_BF16, DT_INT8, DT_INT4, DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2}))\n
+    .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT16, DT_BF16, DT_INT32, DT_FLOAT}))\n
+    .OPTIONAL_INPUT(x3, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT}))\n
+    .OPTIONAL_INPUT(antiquant_scale, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT}))\n
+    .OPTIONAL_INPUT(antiquant_offset, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT}))\n
+    .OPTIONAL_INPUT(dequant_scale, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16, DT_UINT64, DT_INT64, DT_FLOAT8_E8M0}))\n
+    .OPTIONAL_INPUT(pertoken_scale, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16, DT_FLOAT}))\n
+    .OPTIONAL_INPUT(comm_quant_scale_1, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT}))\n
+    .OPTIONAL_INPUT(comm_quant_scale_2, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT}))\n
     .REQUIRED_ATTR(group, String)\n
     .ATTR(reduce_op, String, "sum")\n
     .ATTR(is_trans_a, Bool, false)\n
     .ATTR(is_trans_b, Bool, false)\n
     .ATTR(comm_turn, Int, 0)\n
     .ATTR(antiquant_group_size, Int, 0)\n
+    .ATTR(group_size, Int, 0)\n
+    .ATTR(y_dtype, Int, 28)\n
+    .ATTR(comm_quant_mode, Int, 0)\n
     """
 
     op = get_default_ge_graph().op.add()
@@ -77610,6 +77616,9 @@ def MatmulAllReduce(x1: Tensor,
     op.attr["is_trans_b"].b = is_trans_b
     op.attr["comm_turn"].i = comm_turn
     op.attr["antiquant_group_size"].i = antiquant_group_size
+    op.attr["group_size"].i = group_size
+    op.attr["y_dtype"].i = y_dtype
+    op.attr["comm_quant_mode"].i = comm_quant_mode
 
     # process outputs
     output_index = 0
@@ -77628,10 +77637,11 @@ def MatmulReduceScatter(x1: Tensor,
                         bias: Optional[Tensor],
                         *,
                         group: str,
-                        reduce_op: str="sum",
-                        is_trans_a: bool=False,
-                        is_trans_b: bool=False,
-                        comm_turn: int=0,
+                        reduce_op: str = "sum",
+                        is_trans_a: bool = False,
+                        is_trans_b: bool = False,
+                        comm_turn: int = 0,
+                        rank_size: int = 0,
                         dependencies=[],
                         node_name=None):
     """
@@ -77645,6 +77655,7 @@ def MatmulReduceScatter(x1: Tensor,
     .ATTR(is_trans_a, Bool, false)\n
     .ATTR(is_trans_b, Bool, false)\n
     .ATTR(comm_turn, Int, 0)\n
+    .ATTR(rank_size, Int, 0)\n
     """
     op = get_default_ge_graph().op.add()
     op.type = "MatmulReduceScatter"
@@ -77676,6 +77687,7 @@ def MatmulReduceScatter(x1: Tensor,
     op.attr["is_trans_a"].b = is_trans_a
     op.attr["is_trans_b"].b = is_trans_b
     op.attr["comm_turn"].i = comm_turn
+    op.attr["rank_size"].i = rank_size
 
     # process outputs
     output_index = 0
@@ -77685,6 +77697,110 @@ def MatmulReduceScatter(x1: Tensor,
 
 
     return y
+
+
+# This api is auto-generated from IR MatmulReduceScatterV2
+@auto_convert_to_tensor([False, False, False, False, False, False], [False, False, True, True, True, True])
+def MatmulReduceScatterV2(x1: Tensor, x2: Tensor, bias: Optional[Tensor], x1_scale: Optional[Tensor], 
+    x2_scale: Optional[Tensor], quant_scale: Optional[Tensor], *, group: str, reduce_op: str = "sum", 
+    is_trans_a: bool = False, is_trans_b: bool = False, comm_turn: int = 0, rank_size: int = 0, block_size: int = 0, 
+    group_size: int = 0, is_amax_out: bool = False, y_dtype: int = 0, dependencies=[], node_name=None):
+    """
+    REG_OP(MatmulReduceScatterV2)\n
+    .INPUT(x1, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_HIFLOAT8}))\n
+    .INPUT(x2, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_HIFLOAT8}))\n
+    .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT}))\n
+    .OPTIONAL_INPUT(x1_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))\n
+    .OPTIONAL_INPUT(x2_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))\n
+    .OPTIONAL_INPUT(quant_scale, TensorType({DT_FLOAT}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT}))\n
+    .OUTPUT(amax_out, TensorType({DT_FLOAT}))\n
+    .REQUIRED_ATTR(group, String)\n
+    .ATTR(reduce_op, String, "sum")\n
+    .ATTR(is_trans_a, Bool, false)\n
+    .ATTR(is_trans_b, Bool, false)\n
+    .ATTR(comm_turn, Int, 0)\n
+    .ATTR(rank_size, Int, 0)\n
+    .ATTR(block_size, Int, 0)\n
+    .ATTR(group_size, Int, 0)\n
+    .ATTR(is_amax_out, Bool, false)\n
+    .ATTR(y_dtype, Int, 28)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "MatmulReduceScatterV2"
+    op.name = next_unique_name(node_name, "MatmulReduceScatterV2")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x1.tensor)
+    op.input_desc.add().CopyFrom(x1.desc)
+    op.input_desc[-1].name = "x1"
+    op.input.append(x2.tensor)
+    op.input_desc.add().CopyFrom(x2.desc)
+    op.input_desc[-1].name = "x2"
+    if bias is not None:
+        op.input.append(bias.tensor)
+        op.input_desc.add().CopyFrom(bias.desc)
+        op.input_desc[-1].name = "bias"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "bias"
+
+    if x1_scale is not None:
+        op.input.append(x1_scale.tensor)
+        op.input_desc.add().CopyFrom(x1_scale.desc)
+        op.input_desc[-1].name = "x1_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "x1_scale"
+    
+    if x2_scale is not None:
+        op.input.append(x2_scale.tensor)
+        op.input_desc.add().CopyFrom(x2_scale.desc)
+        op.input_desc[-1].name = "x2_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "x2_scale"
+
+    if quant_scale is not None:
+        op.input.append(quant_scale.tensor)
+        op.input_desc.add().CopyFrom(quant_scale.desc)
+        op.input_desc[-1].name = "quant_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "quant_scale"
+
+    # process attrs
+    op.attr["group"].s = compat_as_bytes(group)
+    op.attr["reduce_op"].s = compat_as_bytes(reduce_op)
+    op.attr["is_trans_a"].b = is_trans_a
+    op.attr["is_trans_b"].b = is_trans_b
+    op.attr["comm_turn"].i = comm_turn
+    op.attr["rank_size"].i = rank_size
+    op.attr["block_size"].i = block_size
+    op.attr["group_size"].i = group_size
+    op.attr["is_amax_out"].b = is_amax_out
+    op.attr["y_dtype"].i = y_dtype
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "amax_out"
+    amax_out = Tensor(op, output_index)
+    output_index += 1
+
+
+    return y, amax_out
 
 
 # This api is auto-generated from IR AllGatherMatmul
@@ -77698,6 +77814,7 @@ def AllGatherMatmul(x1: Tensor,
                     is_trans_b: bool = False,
                     gather_index: int = 0,
                     comm_turn: int = 0,
+                    rank_size: int = 0,
                     is_gather_out: bool = True,
                     dependencies=[],
                     node_name=None):
@@ -77713,6 +77830,7 @@ def AllGatherMatmul(x1: Tensor,
     .ATTR(is_trans_b, Bool, false)\n
     .ATTR(gather_index, Int, 0)\n
     .ATTR(comm_turn, Int, 0)\n
+    .ATTR(rank_size, Int, 0)\n
     .ATTR(is_gather_out, Bool, true)\n
     """
     op = get_default_ge_graph().op.add()
@@ -77745,6 +77863,7 @@ def AllGatherMatmul(x1: Tensor,
     op.attr["is_trans_b"].b = is_trans_b
     op.attr["gather_index"].i = gather_index
     op.attr["comm_turn"].i = comm_turn
+    op.attr["rank_size"].i = rank_size
     op.attr["is_gather_out"].b = is_gather_out
 
     # process outputs
@@ -77758,6 +77877,116 @@ def AllGatherMatmul(x1: Tensor,
 
 
     return y, gather_out
+
+
+# This api is auto-generated from IR AllGatherMatmulV2
+@auto_convert_to_tensor([False, False, False, False, False, False], [False, False, True, True, True, True])
+def AllGatherMatmulV2(x1: Tensor, x2: Tensor, bias: Optional[Tensor], x1_scale: Optional[Tensor],
+    x2_scale: Optional[Tensor], quant_scale: Optional[Tensor], *, group: str, is_trans_a: bool = False,
+    is_trans_b: bool = False, gather_index: int = 0, comm_turn: int = 0, rank_size: int = 0, block_size: int = 0,
+    group_size: int = 0, is_gather_out: bool = True, is_amax_out: bool = False, y_dtype: int = 0, 
+    dependencies=[], node_name=None):
+    """
+    REG_OP(AllGatherMatmulV2)\n
+    .INPUT(x1, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_HIFLOAT8}))\n
+    .INPUT(x2, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_HIFLOAT8}))\n
+    .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT}))\n
+    .OPTIONAL_INPUT(x1_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))\n
+    .OPTIONAL_INPUT(x2_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))\n
+    .OPTIONAL_INPUT(quant_scale, TensorType({DT_FLOAT}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT}))\n
+    .OUTPUT(gather_out, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_HIFLOAT8}))\n
+    .OUTPUT(amax_out, TensorType({DT_FLOAT}))\n
+    .REQUIRED_ATTR(group, String)\n
+    .ATTR(is_trans_a, Bool, false)\n
+    .ATTR(is_trans_b, Bool, false)\n
+    .ATTR(gather_index, Int, 0)\n
+    .ATTR(comm_turn, Int, 0)\n
+    .ATTR(rank_size, Int, 0)\n
+    .ATTR(block_size, Int, 0)\n
+    .ATTR(group_size, Int, 0)\n
+    .ATTR(is_gather_out, Bool, true)\n
+    .ATTR(is_amax_out, Bool, false)\n
+    .ATTR(y_dtype, Int, 0)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "AllGatherMatmulV2"
+    op.name = next_unique_name(node_name, "AllGatherMatmulV2")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x1.tensor)
+    op.input_desc.add().CopyFrom(x1.desc)
+    op.input_desc[-1].name = "x1"
+    op.input.append(x2.tensor)
+    op.input_desc.add().CopyFrom(x2.desc)
+    op.input_desc[-1].name = "x2"
+    if bias is not None:
+        op.input.append(bias.tensor)
+        op.input_desc.add().CopyFrom(bias.desc)
+        op.input_desc[-1].name = "bias"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "bias"
+
+    if x1_scale is not None:
+        op.input.append(x1_scale.tensor)
+        op.input_desc.add().CopyFrom(x1_scale.desc)
+        op.input_desc[-1].name = "x1_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "x1_scale"
+    
+    if x2_scale is not None:
+        op.input.append(x2_scale.tensor)
+        op.input_desc.add().CopyFrom(x2_scale.desc)
+        op.input_desc[-1].name = "x2_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "x2_scale"
+
+    if quant_scale is not None:
+        op.input.append(quant_scale.tensor)
+        op.input_desc.add().CopyFrom(quant_scale.desc)
+        op.input_desc[-1].name = "quant_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "quant_scale"
+    # process attrs
+    op.attr["group"].s = compat_as_bytes(group)
+    op.attr["is_trans_a"].b = is_trans_a
+    op.attr["is_trans_b"].b = is_trans_b
+    op.attr["gather_index"].i = gather_index
+    op.attr["comm_turn"].i = comm_turn
+    op.attr["rank_size"].i = rank_size
+    op.attr["block_size"].i = block_size
+    op.attr["group_size"].i = group_size
+    op.attr["is_gather_out"].b = is_gather_out
+    op.attr["is_amax_out"].b = is_amax_out
+    op.attr["y_dtype"].i = y_dtype
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "gather_out"
+    gather_out = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "amax_out"
+    amax_out = Tensor(op, output_index)
+    output_index += 1
+
+
+    return y, gather_out, amax_out
 
 
 # This api is auto-generated from IR WeightQuantBatchMatmulV2

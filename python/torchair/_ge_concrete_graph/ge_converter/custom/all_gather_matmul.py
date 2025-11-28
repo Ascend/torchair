@@ -25,8 +25,9 @@ def convert_npu_all_gather_base_mm(
                               gather_index=gather_index,
                               is_trans_a=transpose_x1,
                               is_trans_b=transpose_x2,
-                              is_gather_out=gather_output,
-                              comm_turn=comm_turn)
+                              comm_turn=comm_turn,
+                              rank_size=world_size,
+                              is_gather_out=gather_output)
 
 
 def check_dtype(x1: Tensor, x2: Tensor, bias: Optional[Tensor]):

@@ -24,7 +24,8 @@ def convert_npu_mm_reduce_scatter_base(
                                   reduce_op=reduce_op,
                                   is_trans_a=transpose_x1,
                                   is_trans_b=transpose_x2,
-                                  comm_turn=comm_turn)
+                                  comm_turn=comm_turn,
+                                  rank_size=world_size)
 
 
 def check_dtype(x1: Tensor, x2: Tensor, bias: Optional[Tensor]):
