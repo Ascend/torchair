@@ -82052,6 +82052,124 @@ def AddRmsNormCast(x1: Tensor,
     )
 
 
+# This api is auto-generated from IR QuantBatchMatmulV4
+@auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False], [False, False, True, True, True, True, True, True, True, True])
+def QuantBatchMatmulV4(x1: Tensor, x2: Tensor, bias: Optional[Tensor], x1_scale: Optional[Tensor], x2_scale: Optional[Tensor], y_scale: Optional[Tensor], x1_offset: Optional[Tensor], x2_offset: Optional[Tensor], y_offset: Optional[Tensor], x2_table: Optional[Tensor], *, dtype: int, compute_type: int = -1, transpose_x1: bool = False, transpose_x2: bool = False, group_size: int = 0, dependencies=[], node_name=None):
+    """REG_OP(QuantBatchMatmulV4)\n
+    .INPUT(x1, TensorType({DT_FLOAT8_E4M3FN}))\n
+    .INPUT(x2, TensorType({DT_FLOAT4_E2M1}))\n
+    .OPTIONAL_INPUT(bias, TensorType({DT_BF16}))\n
+    .OPTIONAL_INPUT(x1_scale, TensorType({DT_BF16}))\n
+    .OPTIONAL_INPUT(x2_scale, TensorType({DT_BF16}))\n
+    .OPTIONAL_INPUT(y_scale, TensorType({DT_UINT64}))\n
+    .OPTIONAL_INPUT(x1_offset, TensorType({DT_BF16}))\n
+    .OPTIONAL_INPUT(x2_offset, TensorType({DT_BF16}))\n
+    .OPTIONAL_INPUT(y_offset, TensorType({DT_BF16}))\n
+    .OPTIONAL_INPUT(x2_table, TensorType({DT_INT8}))\n
+    .OUTPUT(y, TensorType({DT_BF16}))\n
+    .REQUIRED_ATTR(dtype, Int)\n
+    .ATTR(compute_type, Int, -1)\n
+    .ATTR(transpose_x1, Bool, false)\n
+    .ATTR(transpose_x2, Bool, false)\n
+    .ATTR(group_size, Int, -1)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "QuantBatchMatmulV4"
+    op.name = next_unique_name(node_name, "QuantBatchMatmulV4")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x1.tensor)
+    op.input_desc.add().CopyFrom(x1.desc)
+    op.input_desc[-1].name = "x1"
+    op.input.append(x2.tensor)
+    op.input_desc.add().CopyFrom(x2.desc)
+    op.input_desc[-1].name = "x2"
+    if bias is not None:
+        op.input.append(bias.tensor)
+        op.input_desc.add().CopyFrom(bias.desc)
+        op.input_desc[-1].name = "bias"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "bias"
+    if x1_scale is not None:
+        op.input.append(x1_scale.tensor)
+        op.input_desc.add().CopyFrom(x1_scale.desc)
+        op.input_desc[-1].name = "x1_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "x1_scale"
+    if x2_scale is not None:
+        op.input.append(x2_scale.tensor)
+        op.input_desc.add().CopyFrom(x2_scale.desc)
+        op.input_desc[-1].name = "x2_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "x2_scale"
+    if y_scale is not None:
+        op.input.append(y_scale.tensor)
+        op.input_desc.add().CopyFrom(y_scale.desc)
+        op.input_desc[-1].name = "y_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "y_scale"
+    if x1_offset is not None:
+        op.input.append(x1_offset.tensor)
+        op.input_desc.add().CopyFrom(x1_offset.desc)
+        op.input_desc[-1].name = "x1_offset"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "x1_offset"
+    if x2_offset is not None:
+        op.input.append(x2_offset.tensor)
+        op.input_desc.add().CopyFrom(x2_offset.desc)
+        op.input_desc[-1].name = "x2_offset"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "x2_offset"
+    if y_offset is not None:
+        op.input.append(y_offset.tensor)
+        op.input_desc.add().CopyFrom(y_offset.desc)
+        op.input_desc[-1].name = "y_offset"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "y_offset"
+    if x2_table is not None:
+        op.input.append(x2_table.tensor)
+        op.input_desc.add().CopyFrom(x2_table.desc)
+        op.input_desc[-1].name = "x2_table"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "x2_table"
+
+    # process attrs
+    op.attr["dtype"].i = dtype
+    op.attr["compute_type"].i = compute_type
+    op.attr["transpose_x1"].b = transpose_x1
+    op.attr["transpose_x2"].b = transpose_x2
+    op.attr["group_size"].i = group_size
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+
+    return y
+
+
 # This api is auto-generated from IR QuantGroupedMatmulInplaceAdd
 @auto_convert_to_tensor([False, False, False, False, False, False], [False, False, False, False, False, True])
 def QuantGroupedMatmulInplaceAdd(x1: Tensor, x2: Tensor, scale2: Tensor, group_list: Tensor, y: Tensor, scale1: Optional[Tensor], *, group_list_type: int=0, group_size: int=0, dependencies=[], node_name=None):

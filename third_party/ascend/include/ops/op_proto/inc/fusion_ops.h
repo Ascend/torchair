@@ -451,6 +451,57 @@ REG_OP(QuantBatchMatmulV3)
     .OP_END_FACTORY_REG(QuantBatchMatmulV3)
 
 /**
+* @brief The fusion operator of antiquant and matmul for A8W4.
+
+* @par Inputs:
+* @li x1: A matrix Tensor. The shape supports (m,k), and the format supports ND.
+* The data type supports float8_e4m3fn. The k value
+* must be a multiple of 64.
+* @li x2: A matrix Tensor of quantized weight. The shape supports (n，k), and the format supports ND and Fractal-NZ.
+* The data type supports float4_e2m1fn_x2.
+* The k value must be a multiple of 64.
+* @li bias: An Optional Tensor. It's not supported yet.
+* @li x1_scale: An Optional Tensor for quantization parameters.It's not supported yet.
+* @li x2_scale: An Optional Tensor for quantization parameters.The type support bfloat16.
+* The shape supprts(n, k/antiquant_group_size),format supports ND.
+* @li y_scale: An Optional Tensor for quantization parameters. The type support uint64.
+* @li x1_offset: An Optional Tensor for quantization parameters.It's not supported yet.
+* @li x2_offset: An Optional Tensor for quantization parameters.It's not supported yet.
+* @li y_offset: An Optional Tensor for quantization parameters.It's not supported yet.
+* @li x2_table: An Optional Tensor for quantization parameters.It's not supported yet.
+*
+* @par Attributes:
+* @li dtype: A int32. The data type of y. It's support bfloat16.
+* @li compute_type: A int32. It's compute type. The value must be -1 or 4.
+* @li transpose_x1: A bool. x1 is transposed if true. Default: false.
+* When transpose_x1 is true, x1's shape is (k, m). Currently, it should always be false.
+* @li transpose_x2: A bool. x2 is transposed if true. Default: false.
+* When transpose_x2 is true, x2's shape is (n, k), antiquant_scale's shape should be (n,k/group_size).
+* @li group_size: A int32. The value must be 32.
+
+* @par Outputs:
+* y: A matrix Tensor. The data type support bfloat16. The format supports ND.
+*/
+REG_OP(QuantBatchMatmulV4)
+    .INPUT(x1, TensorType({DT_INT8, DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_FLOAT4_E1M2, DT_FLOAT4_E2M1}))
+    .INPUT(x2, TensorType({DT_INT8, DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_FLOAT4_E1M2, DT_FLOAT4_E2M1}))
+    .OPTIONAL_INPUT(bias, TensorType({DT_INT32, DT_BF16, DT_FLOAT, DT_FLOAT16}))
+    .OPTIONAL_INPUT(x1_scale, TensorType({DT_UINT64, DT_FLOAT, DT_INT64, DT_BF16, DT_FLOAT8_E8M0}))
+    .OPTIONAL_INPUT(x2_scale, TensorType({DT_UINT64, DT_FLOAT, DT_INT64, DT_BF16, DT_FLOAT8_E8M0}))
+    .OPTIONAL_INPUT(y_scale, TensorType({DT_UINT64, DT_FLOAT, DT_INT64, DT_BF16}))
+    .OPTIONAL_INPUT(x1_offset, TensorType({DT_FLOAT, DT_BF16}))
+    .OPTIONAL_INPUT(x2_offset, TensorType({DT_FLOAT, DT_BF16}))
+    .OPTIONAL_INPUT(y_offset, TensorType({DT_FLOAT, DT_BF16}))
+    .OPTIONAL_INPUT(x2_table, TensorType({DT_INT8}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_INT8, DT_BF16, DT_FLOAT, DT_HIFLOAT8, DT_FLOAT8_E4M3FN}))
+    .REQUIRED_ATTR(dtype, Int)
+    .ATTR(compute_type, Int, -1)
+    .ATTR(transpose_x1, Bool, false)
+    .ATTR(transpose_x2, Bool, false)
+    .ATTR(group_size, Int, 0)
+    .OP_END_FACTORY_REG(QuantBatchMatmulV4)
+
+/**
 * @brief Function TransQuantParamV2.
 
 * @par Inputs:
@@ -526,7 +577,7 @@ REG_OP(QuantMatmulReduceSum)
 
 /**
 * @brief Function GroupedMatmulFinalizeRouting. This op mixs GroupedMatmul和MoeFinalizeRouting. After the calculation of GroupedMatmul, perform a combine operation on the output according to the index, and support the format where w is in the Ascend affinity data layout.
- 
+
 * @par Inputs:
 * @li x: A tensor, which is the input x in the formula, supports the ND data format (refer to Data Format), and the shape supports 2 dimensions with the dimension being (m, k). The data type supports INT8.
 
@@ -643,7 +694,7 @@ REG_OP(GroupedMatmulSwigluQuantV2)
       .DYNAMIC_INPUT(weight, TensorType({DT_INT8}))
       .DYNAMIC_INPUT(weight_scale, TensorType({DT_FLOAT}))
       .DYNAMIC_INPUT(weight_assist_matrix, TensorType({DT_FLOAT}))
-      .OPTIONAL_INPUT(bias, TensorType({DT_INT8}))      
+      .OPTIONAL_INPUT(bias, TensorType({DT_INT8}))
       .OPTIONAL_INPUT(smooth_scale, TensorType({DT_FLOAT}))
       .ATTR(dequant_mode, Int, 0)
       .ATTR(dequant_dtype, Int, 0)
