@@ -1,6 +1,6 @@
 __all__ = ['get_compiler', 'get_npu_backend', 'dynamo_export', 'CompilerConfig',
            'use_internal_format_weight', 'logger', 'register_fx_node_ge_converter',
-           'patch_for_hcom']
+           'patch_for_hcom', 'register_replacement']
 
 import os
 import sys
@@ -15,6 +15,7 @@ from torchair._ge_concrete_graph import ge_converter
 from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter as _register_fx_node_ge_converter
 from torchair.experimental.inference import use_internal_format_weight
 from torchair.core.utils import logger
+from torchair.patterns.pattern_pass_manager import register_replacement
 
 import torchair.inference
 import torchair.llm_datadist

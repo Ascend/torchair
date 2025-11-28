@@ -6,7 +6,8 @@
         "get_npu_backend",
         "use_internal_format_weight",
         "register_fx_node_ge_converter",
-        "patch_for_hcom"
+        "patch_for_hcom",
+        "register_replacement"
       ],
     "torchair.ge": [
         "custom_op",
