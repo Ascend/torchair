@@ -6,7 +6,7 @@ from typing import (
 import torch
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
-from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
+from torchair.ge._ge_graph import Tensor, TensorSpec, DataType, torch_dtype_value_to_ge_type
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, \
     BOOL, Support
 from torchair._utils.error_code import pretty_error_msg
@@ -106,21 +106,47 @@ def convert_npu_npu_fused_infer_attention_score_v2_tensor(
     meta_outputs: TensorSpec = None,
 ):
     # 禁止单独修改此函数，请同步修改actual seq length为symint list的接口
-    if input_layout == 'BSH':
-        const = ge.Const([1, 1, 8])
-    else:
-        const = ge.Const([1, 1, 1, 8])
-    if key is not None and key.dtype == DataType.DT_INT32:
-        shape = ge.Shape(key)
-        key_shape = ge.Mul(shape, const)
-        key = ge.Bitcast(key, type=DataType.DT_INT4)
-        key = ge.Reshape(key, key_shape)
+    import torch_npu
+    is_int4 = (key is not None and key.dtype == DataType.DT_INT32) or (value is not None and value.dtype == DataType.DT_INT32)
+    is_fp4 = key_dtype == torch_npu.float4_e2m1fn_x2 or value_dtype == torch_npu.float4_e2m1fn_x2 or key_dtype == torch_npu.float4_e1m2fn_x2 or value_dtype == torch_npu.float4_e1m2fn_x2
+    if is_int4 or is_fp4:
+        shape_multiples = 1
+        key_ge_dtype = 0
+        value_ge_dtype = 0
+        if is_int4:
+            shape_multiples = 8
+            key_ge_dtype = DataType.DT_INT4
+            value_ge_dtype = DataType.DT_INT4
+        elif is_fp4:
+            shape_multiples = 2
+            key_ge_dtype = torch_dtype_value_to_ge_type(key_dtype)
+            value_ge_dtype = torch_dtype_value_to_ge_type(value_dtype)
+        if input_layout == 'BSH' or key.rank == 3 or value.rank == 3:
+            const = ge.Const([1, 1, shape_multiples])
+        else:
+            const = ge.Const([1, 1, 1, shape_multiples])
+        if key is not None:
+            shape = ge.Shape(key)
+            key_shape = ge.Mul(shape, const)
+            key = ge.Bitcast(key, type=key_ge_dtype)
+            key = ge.Reshape(key, key_shape)
+        if value is not None:
+            shape = ge.Shape(value)
+            value_shape = ge.Mul(shape, const)
+            value = ge.Bitcast(value, type=value_ge_dtype)
+            value = ge.Reshape(value, value_shape)
 
-    if value is not None and value.dtype == DataType.DT_INT32:
-        shape = ge.Shape(value)
-        value_shape = ge.Mul(shape, const)
-        value = ge.Bitcast(value, type=DataType.DT_INT4)
-        value = ge.Reshape(value, value_shape)
+        if dequant_scale_key is not None and dequant_scale_key_dtype == torch_npu.float8_e8m0:
+            dequant_scale_key_ge_dtype = torch_dtype_value_to_ge_type(dequant_scale_key_dtype)
+            dequant_scale_key = ge.Bitcast(dequant_scale_key, type=dequant_scale_key_ge_dtype)
+        if dequant_scale_value is not None and dequant_scale_value_dtype == torch_npu.float8_e8m0:
+            dequant_scale_value_ge_dtype = torch_dtype_value_to_ge_type(dequant_scale_value_dtype)
+            dequant_scale_value = ge.Bitcast(dequant_scale_value, type=dequant_scale_value_ge_dtype)
+
+    if key is not None and key_dtype == torch_npu.hifloat8:
+        key = ge.Bitcast(key, type=DataType.DT_HIFLOAT8)
+    if value is not None and value_dtype == torch_npu.hifloat8:
+        value = ge.Bitcast(value, type=DataType.DT_HIFLOAT8)
 
     key_list = [key]
     value_list = [value]
@@ -255,6 +281,24 @@ def get_value_d(block_table, value, query, query_layout, num_kv_heads):
     return value_d
 
 
+def get_change_d_scale_v2(value, value_dtype):
+    change_d_scale = 1
+
+    if value is None:
+        return change_d_scale
+    #int4伪装int32
+    if value.dtype == torch.int32:
+        change_d_scale = 8
+    # value_dtype float4_e2m1fn_x2 伪装 uint8
+    if (hasattr(torch, 'float4_e2m1fn_x2') and value.dtype == torch.float4_e2m1fn_x2) or value_dtype == torch_npu.float4_e2m1fn_x2:
+        change_d_scale = 2
+    # value_dtype float4_e1m2fn_x2 伪装 uint8
+    if (hasattr(torch, 'float4_e1m2fn_x2') and value.dtype == torch.float4_e1m2fn_x2) or value_dtype == torch_npu.float4_e1m2fn_x2:
+        change_d_scale = 2
+    
+    return change_d_scale
+
+
 def infer_attention_out_shape(attention_out_layout, query, query_layout, num_heads, value_d):
     attention_out = torch.empty_like(query, dtype=query.dtype, device='meta')
     if attention_out_layout == "BSH":
@@ -314,6 +358,9 @@ def npu_fused_infer_attention_score_v2_meta_impl(query, key, value, *, query_rop
     query_layout, attention_out_layout = get_query_and_attention_out_layout(query, input_layout)
 
     value_d = get_value_d(block_table, value, query, query_layout, num_key_value_heads)
+
+    change_d_scale = get_change_d_scale_v2(value, value_dtype)
+    value_d = value_d * change_d_scale
 
     tmp_out = infer_attention_out_shape(attention_out_layout, query, query_layout, num_query_heads, value_d)
 

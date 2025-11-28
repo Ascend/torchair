@@ -47,7 +47,7 @@ def convert_npu_npu_fused_infer_attention_score(
     meta_outputs: TensorSpec = None,
 ):
     # 禁止单独修改此函数，请同步修改传device tensor的actual seq length接口
-    if input_layout == 'BSH':
+    if input_layout == 'BSH' or key.rank == 3 or value.rank == 3:
         const = ge.Const([1, 1, 8])
     else:
         const = ge.Const([1, 1, 1, 8])

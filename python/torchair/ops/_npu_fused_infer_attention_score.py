@@ -102,7 +102,7 @@ def convert_npu_npu_fused_infer_attention_score_tensor(
     meta_outputs: TensorSpec = None,
 ):
     # 禁止单独修改此函数，请同步修改actual seq length为symint list的接口
-    if input_layout == 'BSH':
+    if input_layout == 'BSH' or key.rank == 3 or value.rank == 3:
         const = ge.Const([1, 1, 8])
     else:
         const = ge.Const([1, 1, 1, 8])
@@ -254,6 +254,15 @@ def get_value_d(block_table, value, query, query_layout, num_kv_heads):
     return value_d
 
 
+def get_change_d_scale(value):
+    change_d_scale = 1
+    #int4伪装int32
+    if value is not None and value.dtype == torch.int32:
+        change_d_scale = 8
+    
+    return change_d_scale
+
+
 def infer_attention_out_shape(attention_out_layout, query, query_layout, num_heads, value_d):
     attention_out = torch.empty_like(query, dtype=query.dtype, device='meta')
     if attention_out_layout == "BSH":
@@ -313,6 +322,9 @@ def npu_fused_infer_attention_score_meta_impl(query, key, value, *, pse_shift=No
     query_layout, attention_out_layout = get_query_and_attention_out_layout(query, input_layout)
 
     value_d = get_value_d(block_table, value, query, query_layout, num_key_value_heads)
+
+    change_d_scale = get_change_d_scale(value)
+    value_d = value_d * change_d_scale
 
     tmp_out = infer_attention_out_shape(attention_out_layout, query, query_layout, num_heads, value_d)
 
