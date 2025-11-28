@@ -137,6 +137,8 @@ Status Session::Finalize() {
     (void)AclDumpConfigFinalize();
   }
 
+  initialized_ = false;
+
   global_ge_session.reset(nullptr);
   StopStdoutChannel(device_index_);  // Stopped after all graph run finished
 
@@ -161,7 +163,6 @@ Status Session::Finalize() {
   auto ctx_ret = aclrtGetCurrentContext(&detect_context);
   auto ctx_ptr = (ctx_ret == ACL_ERROR_NONE) ? detect_context : nullptr;
 
-  initialized_ = false;
   get_ge_func_ = false;
   aclmd_initialized_ = false;
 
