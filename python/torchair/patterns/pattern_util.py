@@ -2,11 +2,11 @@ __all__ = []
 
 import torch
 from torchair.core.utils import logger
-from torchair.patterns.pattern_pass_manager import _PatternPassManager
+from torchair.patterns.pattern_pass_manager import _pattern_manager
 from torchair.patterns.add_rms_norm_cast import _register_addrmsnormcast_pattern
 from torchair.patterns.add_rms_norm_dynamic_quant import _register_addrmsnormdynamicquant_pattern, _register_addrmsnormdynamicquant_pattern2
 
-pattern_pass_manager = _PatternPassManager()
+pattern_pass_manager = _pattern_manager()
 
 
 def _apply_pattern_passes(graph_module: torch.fx.GraphModule, example_inputs=None, config=None):
