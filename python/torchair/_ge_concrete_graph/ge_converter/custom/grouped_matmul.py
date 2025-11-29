@@ -14,6 +14,8 @@ TORCH_DTYPE_MAP = {
     torch.int32: 3,
 }
 
+INT4_NUMS_IN_INT32 = 8
+
 
 def fill_empty_tensorlist(input_data, desired_dtype):
     if input_data is None:
@@ -44,6 +46,16 @@ def fp4_quant_mode(x_dtype, weight_dtype, scale):
     return False
 
 
+def a16_weight_quant_mode(x_dtype, weight_dtype):
+    return (x_dtype == DataType.DT_FLOAT16 or x_dtype == DataType.DT_BF16) and \
+        (weight_dtype == DataType.DT_INT8 or weight_dtype == DataType.DT_FLOAT or weight_dtype == DataType.DT_INT32)
+
+
+def arch35_a16w4_weight_quant_mode(x_dtype, weight_dtype):
+    return is_arch35() and weight_dtype == DataType.DT_INT32 and \
+        (x_dtype == DataType.DT_FLOAT16 or x_dtype == DataType.DT_BF16)
+
+
 def convert_tensorlist_to_int4(input_data: List[Tensor]):
     input_dtype = input_data[0].dtype
     w_list = []
@@ -64,6 +76,24 @@ def convert_tensorlist_to_int4(input_data: List[Tensor]):
                 w_list.append(new_w)
     else:
         w_list = input_data
+    return w_list
+
+
+def convert_tensorlist_to_int4_arch35(input_data: List[Tensor], trans: bool):
+    w_list = []
+    for w_item in input_data:
+        const_w = ge.Const([1] * (w_item.rank - 1) + [INT4_NUMS_IN_INT32])
+        perm = [i for i in range(w_item.rank)]
+        perm[-1], perm[-2] = perm[-2], perm[-1]
+        if trans:
+            w_item = ge.Transpose(w_item, perm)
+        shape_w = ge.Shape(w_item)
+        shape_w = ge.Mul(shape_w, const_w)
+        new_w = ge.Bitcast(w_item, type=DataType.DT_INT4)
+        new_w = ge.Reshape(new_w, shape_w)
+        if trans:
+            new_w = ge.Transpose(new_w, perm)
+        w_list.append(new_w)
     return w_list
 
 
@@ -208,8 +238,7 @@ def conveter_npu_npu_grouped_matmul(
     scale = convert_scale_tensorlist(scale)
     offset = fill_empty_tensorlist(offset, DataType.DT_FLOAT)
 
-    if (input_x_dtype == DataType.DT_FLOAT16 or input_x_dtype == DataType.DT_BF16) and (w_dtype == DataType.DT_INT8 or
-                                                                                        w_dtype == DataType.DT_FLOAT):
+    if a16_weight_quant_mode(input_x_dtype, w_dtype):
         antiquant_scale = fill_empty_tensorlist(antiquant_scale, input_x_dtype)
         antiquant_offset = fill_empty_tensorlist(antiquant_offset, input_x_dtype)
     elif input_x_dtype == DataType.DT_FLOAT8_E4M3FN and w_dtype == DataType.DT_FLOAT:
@@ -244,6 +273,10 @@ def conveter_npu_npu_grouped_matmul(
     if weight[0].dtype == DataType.DT_INT32 and not is_arch35():
         x_list = x
         w_list = convert_tensorlist_to_int4(weight)
+    elif arch35_a16w4_weight_quant_mode(input_x_dtype, w_dtype):
+        x_list = x
+        w_list = convert_tensorlist_to_int4_arch35(weight, 
+                                                   x[0].symsize[-1] == weight[0].symsize[-2] * INT4_NUMS_IN_INT32)
     elif x_dtype is not None and weight_dtype is not None and \
          (x_dtype == torch_npu.float4_e2m1fn_x2 or x_dtype == torch_npu.float4_e1m2fn_x2) and \
          (weight_dtype == torch_npu.float4_e2m1fn_x2 or weight_dtype == torch_npu.float4_e1m2fn_x2):
