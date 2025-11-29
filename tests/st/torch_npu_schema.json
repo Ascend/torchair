@@ -1,5 +1,8 @@
 {
     "torch_npu.dynamo.torchair.ge.Clone": {
         "signature": "(x: torchair.ge.TensorBase, *, dependencies=[], node_name=None)"
+    },
+    "torch_npu.dynamo.torchair.register_replacement": {
+        "signature": "(search_fn, replace_fn, example_inputs, trace_fn=fwd_only, extra_check=_return_true, search_fn_pattern=None)"
     }
 }
