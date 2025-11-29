@@ -444,7 +444,7 @@ class _CompiledFxGraph:
     Wrapper for executing a graph module with runtime inputs.
     """
 
-    def __init__(self, runner: Callable, config):
+    def __init__(self, runner: Callable, config=None):
         self.config = config
         self.runner = runner
         self.run_kernel = None
@@ -452,12 +452,13 @@ class _CompiledFxGraph:
     def __call__(self, *args, **kwargs):
 
         if self.run_kernel is None:
-            if self.config.mode.value == "reduce-overhead":
+            if self.config is not None and self.config.mode.value == "reduce-overhead":
                 py_code = self.get_code()
                 if not isinstance(py_code, str):
-                    return py_code
-                ge_mod = _compile_py_code(py_code)
-                self.run_kernel = getattr(ge_mod, 'kernel')
+                    self.run_kernel = py_code
+                else:
+                    ge_mod = _compile_py_code(py_code)
+                    self.run_kernel = getattr(ge_mod, 'kernel')
             else:
                 self.run_kernel = self.runner
 
