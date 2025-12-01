@@ -115,6 +115,61 @@ class TorchairSt(unittest.TestCase):
         GeConcreteGraph.optimize_graph_without_runtime = bak_optimization
 
 
+    def test_super_kernel_scope_none(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, in1, in2):
+                with torchair.scope.super_kernel('test_scope', 'test_option'): 
+                    mm_result = torch.mm(in1, in2)
+                    with torchair.scope.super_kernel(None):
+                        add_result = torch.add(in1, in2)
+                with torchair.scope.super_kernel(None):
+                    sub_result = torch.sub(in1, in2)
+                return mm_result, add_result, sub_result
+
+        def wrapper_call(func):
+            def wrapper(*args, **kwargs):
+                assert len(args) > 0
+                graph = args[0].graph
+                mm_op = None
+                add_op = None
+                sub_op = None
+                for op in graph.op:
+                    if 'MatMul' in op.name:
+                        mm_op = op
+                    if 'Add' in op.name:
+                        add_op = op
+                    if 'Sub' in op.name:
+                        sub_op = op
+                mm_scope = mm_op.attr["_super_kernel_scope"].s
+                mm_options = mm_op.attr["_super_kernel_options"].s
+                self.assertEqual(mm_scope, b'test_scope')
+                self.assertEqual(mm_options, b'test_option')
+                add_scope = add_op.attr["_super_kernel_scope"].s
+                add_options = add_op.attr["_super_kernel_options"].s
+                self.assertEqual(add_scope, b'')
+                self.assertEqual(add_options, b'')
+                sub_scope = sub_op.attr["_super_kernel_scope"].s
+                sub_options = sub_op.attr["_super_kernel_options"].s
+                self.assertEqual(sub_scope, b'')
+                self.assertEqual(sub_options, b'')
+                ret = func(*args, **kwargs)
+                return ret
+            return wrapper
+        bak_optimization = GeConcreteGraph.optimize_graph_without_runtime
+        GeConcreteGraph.optimize_graph_without_runtime = wrapper_call(GeConcreteGraph.optimize_graph_without_runtime)
+        model = Model()
+        config_view = CompilerConfig()
+        npu_backend_view = torchair.get_npu_backend(compiler_config=config_view)
+        model = torch.compile(model, backend=npu_backend_view, dynamic=False)
+        in1 = torch.randn(2, 2)
+        in2 = torch.randn(2, 2)
+        model(in1, in2)
+        GeConcreteGraph.optimize_graph_without_runtime = bak_optimization
+
+
     def test_super_core_num(self):
         class Model(torch.nn.Module):
             def __init__(self):

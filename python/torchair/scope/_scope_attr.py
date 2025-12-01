@@ -43,6 +43,11 @@ class ScopeAttrs:
                 continue # 其他算子不需要打profiler属性
 
             for key, value in attrs.items():
+                if key == "_super_kernel_scope" and value == '':
+                    _safe_remove_attr(op, "_super_kernel_scope")
+                    _safe_remove_attr(op, "_super_kernel_options")
+                    break
+
                 if key == "_op_exec_never_timeout":
                     op.attr[key].b = (value == "True")
                 else:
@@ -144,3 +149,9 @@ def _process_on_pop(pop_attribute_stack):
         target_op = last_op if not single else first_op
         target_op.attr["_profiler_trace_index"].s = compat_as_bytes(idx)
         target_op.attr["_profiler_trace_pos"].s = compat_as_bytes("end")
+
+
+def _safe_remove_attr(op, key):
+    if key in op.attr:
+        del op.attr[key]
+        logger.debug(f"Removed attribute {key} on op: {op.name}")

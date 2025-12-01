@@ -27,6 +27,9 @@ def npu_stream_switch(stream_tag: str, stream_priority: int = 0):
 
 
 def super_kernel(scope: str, options: str = ''):
+    if scope is None:
+        scope = ''
+
     return _Scope([
         ("_super_kernel_scope", scope),
         ("_super_kernel_options", options)
