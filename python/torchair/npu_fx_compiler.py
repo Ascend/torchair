@@ -27,6 +27,15 @@ try:
 except ModuleNotFoundError:
     from torch._dynamo.trace_rules import is_builtin_callable
 
+compile_threads = torch._inductor.config.compile_threads
+try:
+    torch._inductor.config.compile_threads = 1 # 关闭 inductor AsyncCompile pool 的 warm up
+    from torch._inductor.fx_passes.post_grad import remove_noop_ops
+except ImportError:
+    remove_noop_ops = None
+finally:
+    torch._inductor.config.compile_threads = compile_threads
+
 from torch.profiler import record_function
 from torch.utils._mode_utils import no_dispatch
 from torch._dynamo.utils import detect_fake_mode
@@ -313,13 +322,12 @@ def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, obs
 
 
 def _optimize_noop_ops(graph_module: torch.fx.GraphModule, example_inputs=None, config=None):
-    try:
-        from torch._inductor.fx_passes.post_grad import remove_noop_ops
+    if remove_noop_ops is None:
+        logger.warning("Skip removing noop ops; check if your PyTorch version is above 2.2.0 and ensure"
+                       " the module torch._inductor.fx_passes.post_grad.remove_noop_ops exists")
+    else:
         remove_noop_ops(graph_module.graph)
         logger.debug("After removing noop ops, graph is %s", graph_module.graph)
-    except ImportError:
-        logger.warning(("Skip removing noop ops; check if your PyTorch version is above 2.2.0 and ensure",
-                        " the module torch._inductor.fx_passes.post_grad.remove_noop_ops exists"))
 
 
 def _optimize_sym_input(graph_module: torch.fx.GraphModule, example_inputs=None, config=None):
