@@ -103,7 +103,7 @@ def file_lock(file_descriptor, lock_type):
 def timer(prefix: str):
     start_time = time.time()
     yield
-    logger.info("%s took %.3f [s]", prefix, time.time() - start_time)
+    logger.info("%s took %.6f [s]", prefix, time.time() - start_time)
 
 
 def _patch_user_const(code: types.CodeType):

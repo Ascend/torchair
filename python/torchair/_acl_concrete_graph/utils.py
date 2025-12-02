@@ -83,6 +83,7 @@ class GraphMeta:
     outputs_weakref: List[WeakRef]
     mem_state_after_capture: Any
     userinputs_meta: Dict[int, Union[TensorMetadata, Number]] = field(default_factory=dict)
+    userinputs_metatensor: Dict[int, Union[TensorMetadata, torch.Tensor]] = field(default_factory=dict)
     userinputs_weakref: Dict[int, WeakRef] = field(default_factory=dict)
     captured_parameter: Dict[int, int] = field(default_factory=dict)
     captured_mutated_inputs: Dict[int, int] = field(default_factory=dict)

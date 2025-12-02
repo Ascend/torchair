@@ -18,6 +18,7 @@ from torch.fx.node import Argument, Target
 from torch.profiler import record_function
 
 from torchair.core.utils import logger
+from torchair.inference._cache_compiler import timer
 from torchair.scope._scope_attr import guard_with_user_stream_scope
 from torchair._utils.graph_transform_observer import DebugContext
 from torchair._acl_concrete_graph.utils import reconstruct_args_kwargs
@@ -866,6 +867,7 @@ class AclGraph(object):
                                                  acl_graph=torch_npu.npu.NPUGraph(),
                                                  replay_func=None,
                                                  userinputs_meta={},
+                                                 userinputs_metatensor={},
                                                  userinputs_weakref={},
                                                  outputs_meta=[],
                                                  outputs_weakref=[],
@@ -958,6 +960,8 @@ class AclGraph(object):
                 self._graphs_meta[graph_key].userinputs_weakref.setdefault(input_idx, weak_ref)
                 self._graphs_meta[graph_key].userinputs_meta.setdefault(input_idx,
                                                                         get_tensor_metadata(args_list[input_idx]))
+                self._graphs_meta[graph_key].userinputs_metatensor.setdefault(input_idx,
+                    reconstruct_from_tensor_metadata(self._graphs_meta[graph_key].userinputs_meta[input_idx]))
             captured_outputs = self.fx_forward(*args_list, node_info=self._updated_node_infos, is_capturing=True,
                                                **kwargs)
             for i, _ in enumerate(self._updated_node_infos):
@@ -1025,31 +1029,33 @@ class AclGraph(object):
         # This ensures that input memory allocation does not claim memory blocks occupied by outputs (from the same
         # or other graphs). Thus, reconstructing input memory will not corrupt the outputs of the current or
         # other graphs.
-        if self.config.get('clone_input', "1") == "1":
-            # When a memory pool is shared among aclgraph instances (from the same or different FX graphs),
-            # resetting the memory state before input reconstruction is unnecessary. Safety is guaranteed
-            # by the runtime constraint that only one aclgraph executes at a time. Since inputs are reconstructed
-            # and assigned before each replay and destroyed afterwards, there is no risk of state conflict.
-            reconstructed_inputs = self.reconstruct_inputs(graph_key)
-        else:
-            # Use retained_userinputs if clone_input is set to False.
-            reconstructed_inputs = self._graphs_meta[graph_key].retained_userinputs
+        with timer(f"{self.name} process inputs reconstruct inputs"):
+            if self.config.get('clone_input', "1") == "1":
+                # When a memory pool is shared among aclgraph instances (from the same or different FX graphs),
+                # resetting the memory state before input reconstruction is unnecessary. Safety is guaranteed
+                # by the runtime constraint that only one aclgraph executes at a time. Since inputs are reconstructed
+                # and assigned before each replay and destroyed afterwards, there is no risk of state conflict.
+                reconstructed_inputs = self._graphs_meta[graph_key].userinputs_metatensor
+            else:
+                # Use retained_userinputs if clone_input is set to False.
+                reconstructed_inputs = self._graphs_meta[graph_key].retained_userinputs
 
         # foreach copy
         dst_tensors = []
         src_tensors = []
-        for input_name, input_idx in self._user_inputs_mapping.items():
-            if input_name in self._mutated_user_inputs:
-                continue
-            capture_input = reconstructed_inputs[input_idx]
-            replay_arg = args[input_idx]
-            if capture_input.data_ptr() != replay_arg.data_ptr():
-                dst_tensors.append(capture_input)
-                src_tensors.append(replay_arg)
-        if len(dst_tensors) > 1:
-            torch._foreach_copy_(dst_tensors, src_tensors, non_blocking=True)
-        elif len(dst_tensors) == 1:
-            dst_tensors[0].copy_(src_tensors[0])
+        with timer(f"{self.name} process inputs foreach copy"):
+            for input_name, input_idx in self._user_inputs_mapping.items():
+                if input_name in self._mutated_user_inputs:
+                    continue
+                capture_input = reconstructed_inputs[input_idx]
+                replay_arg = args[input_idx]
+                if capture_input.data_ptr() != replay_arg.data_ptr():
+                    dst_tensors.append(capture_input)
+                    src_tensors.append(replay_arg)
+            if len(dst_tensors) > 1:
+                torch._foreach_copy_(dst_tensors, src_tensors, non_blocking=True)
+            elif len(dst_tensors) == 1:
+                dst_tensors[0].copy_(src_tensors[0])
 
 
     def run(self, graph_key, *args, **kwargs):
