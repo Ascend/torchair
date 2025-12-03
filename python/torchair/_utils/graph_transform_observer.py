@@ -142,7 +142,7 @@ def wrap_debug_compilers(
 ):
     fw_compiler = wrap_compiler_phase(fw_compiler, "forward")
     backward_compiler = wrap_compiler_phase(backward_compiler, "backward")
-    inference_compiler = wrap_compiler_phase(inference_compiler, "inference")
+    inference_compiler = wrap_compiler_phase(inference_compiler, "forward")
     joint_compiler = wrap_compiler_phase(joint_compiler, "joint")
     
     return fw_compiler, backward_compiler, inference_compiler, joint_compiler
