@@ -328,14 +328,6 @@ def npu_fused_infer_attention_score_meta_impl(query, key, value, *, pse_shift=No
 
     tmp_out = infer_attention_out_shape(attention_out_layout, query, query_layout, num_heads, value_d)
 
-    # special:IFA legacy feature
-    change_d_scale = 1
-    if value is not None and value.dtype == DataType.DT_INT32: # treat int4 as int32
-        change_d_scale = 8
-    if input_layout == "BNSD" and block_table is None:
-        tmp_out = torch.empty([query.size(0), query.size(1), query.size(2), value.size(3) * change_d_scale],
-            dtype=query.dtype, device='meta')
-
     if quant_scale2 is not None:
         attention_out = torch.empty_like(tmp_out, dtype=torch.int8)
     elif query.dtype == torch.int8:

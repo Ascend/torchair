@@ -91,10 +91,10 @@ def convert_npu_npu_fused_infer_attention_score_v2(
             value = ge.Bitcast(value, type=value_ge_dtype)
             value = ge.Reshape(value, value_shape)
 
-        if dequant_scale_key is not None and dequant_scale_key_dtype == torch_npu.float8_e8m0:
+        if dequant_scale_key is not None and dequant_scale_key_dtype == torch_npu.float8_e8m0fnu:
             dequant_scale_key_ge_dtype = torch_dtype_value_to_ge_type(dequant_scale_key_dtype)
             dequant_scale_key = ge.Bitcast(dequant_scale_key, type=dequant_scale_key_ge_dtype)
-        if dequant_scale_value is not None and dequant_scale_value_dtype == torch_npu.float8_e8m0:
+        if dequant_scale_value is not None and dequant_scale_value_dtype == torch_npu.float8_e8m0fnu:
             dequant_scale_value_ge_dtype = torch_dtype_value_to_ge_type(dequant_scale_value_dtype)
             dequant_scale_value = ge.Bitcast(dequant_scale_value, type=dequant_scale_value_ge_dtype)
 

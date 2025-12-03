@@ -25,7 +25,8 @@ lib.define(
     int value_quant_mode=0, int inner_precise=0, bool return_softmax_lse=False, int? query_dtype=None, \
     int? key_dtype=None, int? value_dtype=None, int? query_rope_dtype=None, int? key_rope_dtype=None, \
     int? key_shared_prefix_dtype=None, int? value_shared_prefix_dtype=None, int? dequant_scale_query_dtype=None, \
-    int? dequant_scale_key_dtype=None, int? dequant_scale_value_dtype=None, int? dequant_scale_key_rope_dtype=None) \
+    int? dequant_scale_key_dtype=None, int? dequant_scale_value_dtype=None, int? dequant_scale_key_rope_dtype=None, \
+    int? out_dtype=None) \
     -> (Tensor, Tensor)
     """
 )
@@ -103,6 +104,7 @@ def convert_npu_npu_fused_infer_attention_score_v2_tensor(
     dequant_scale_key_dtype: Optional[int] = None,
     dequant_scale_value_dtype: Optional[int] = None,
     dequant_scale_key_rope_dtype: Optional[int] = None,
+    out_dtype: Optional[int] = None,
     meta_outputs: TensorSpec = None,
 ):
     # 禁止单独修改此函数，请同步修改actual seq length为symint list的接口
@@ -136,10 +138,10 @@ def convert_npu_npu_fused_infer_attention_score_v2_tensor(
             value = ge.Bitcast(value, type=value_ge_dtype)
             value = ge.Reshape(value, value_shape)
 
-        if dequant_scale_key is not None and dequant_scale_key_dtype == torch_npu.float8_e8m0:
+        if dequant_scale_key is not None and dequant_scale_key_dtype == torch_npu.float8_e8m0fnu:
             dequant_scale_key_ge_dtype = torch_dtype_value_to_ge_type(dequant_scale_key_dtype)
             dequant_scale_key = ge.Bitcast(dequant_scale_key, type=dequant_scale_key_ge_dtype)
-        if dequant_scale_value is not None and dequant_scale_value_dtype == torch_npu.float8_e8m0:
+        if dequant_scale_value is not None and dequant_scale_value_dtype == torch_npu.float8_e8m0fnu:
             dequant_scale_value_ge_dtype = torch_dtype_value_to_ge_type(dequant_scale_value_dtype)
             dequant_scale_value = ge.Bitcast(dequant_scale_value, type=dequant_scale_value_ge_dtype)
 
@@ -178,7 +180,7 @@ def convert_npu_npu_fused_infer_attention_score_v2_tensor(
         num_key_value_heads=num_key_value_heads, sparse_mode=sparse_mode, inner_precise=inner_precise,
         block_size=block_size, antiquant_mode=antiquant_mode, softmax_lse_flag=return_softmax_lse,
         key_antiquant_mode=key_quant_mode, value_antiquant_mode=value_quant_mode, query_quant_mode=query_quant_mode,
-        pse_type=0, out_dtype=0)
+        pse_type=0, out_dtype=out_dtype)
 
 
 def get_query_and_attention_out_layout(query, input_layout):
@@ -347,7 +349,7 @@ def npu_fused_infer_attention_score_v2_meta_impl(query, key, value, *, query_rop
     sparse_mode=0, block_size=0, query_quant_mode=0, key_quant_mode=0, value_quant_mode=0, inner_precise=0, 
     return_softmax_lse=False, query_dtype=None, key_dtype=None, value_dtype=None, query_rope_dtype=None, 
     key_rope_dtype=None, key_shared_prefix_dtype=None, value_shared_prefix_dtype=None, dequant_scale_query_dtype=None, 
-    dequant_scale_key_dtype=None, dequant_scale_value_dtype=None, dequant_scale_key_rope_dtype=None):
+    dequant_scale_key_dtype=None, dequant_scale_value_dtype=None, dequant_scale_key_rope_dtype=None, out_dtype=None):
     # 禁止单独修改此函数，请同步修改actual seq length为symint list的接口
     if num_query_heads <= 0:
         raise ValueError(
@@ -365,8 +367,11 @@ def npu_fused_infer_attention_score_v2_meta_impl(query, key, value, *, query_rop
     tmp_out = infer_attention_out_shape(attention_out_layout, query, query_layout, num_query_heads, value_d)
 
     if quant_scale_out is not None:
-        attention_out = torch.empty_like(tmp_out, dtype=torch.int8)
-    elif query.dtype == torch.int8:
+        output_type = torch.int8
+        if out_dtype is not None:
+            output_type = ge_type_to_torch_type(torch_dtype_value_to_ge_type(out_dtype))
+        attention_out = torch.empty_like(tmp_out, dtype=output_type)
+    elif query.dtype == torch.int8 or query.dtype == torch.float8_e4m3fn:
         if query_rope is not None:
             attention_out = torch.empty_like(tmp_out, dtype=query_rope.dtype)
         else:
