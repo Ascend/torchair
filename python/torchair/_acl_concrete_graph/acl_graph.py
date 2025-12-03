@@ -1183,7 +1183,8 @@ class AclGraph(object):
                 return None
             for tensor_i in tensor_list:
                 # set output storage for those shared memory output
-                tensor_i.set_(alive_outputs[ptr].untyped_storage())
+                tensor_i.set_(alive_outputs[ptr].untyped_storage(),
+                              tensor_i.storage_offset(), tensor_i.shape, tensor_i.stride())
         return returned_outputs
 
     def set_to_original_state_bofore_reconstruct(self, graph_key: str) -> None:
@@ -1269,7 +1270,8 @@ class AclGraph(object):
             if len(tensor_list) < 2:
                 continue
             for tensor_i in tensor_list[1:]:
-                tensor_i.set_(tensor_list[0].untyped_storage())
+                tensor_i.set_(tensor_list[0].untyped_storage(),
+                              tensor_i.storage_offset(), tensor_i.shape, tensor_i.stride())
 
         self.stale_storages_ptr.update(reconstructed_outputs_to_add_deleter)
         logger.debug('After reconstructing fx_graph %s outputs for graph key{%s}, '
