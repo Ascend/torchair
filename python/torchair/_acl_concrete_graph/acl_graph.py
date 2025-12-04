@@ -18,10 +18,9 @@ from torch.fx.node import Argument, Target
 from torch.profiler import record_function
 
 from torchair.core.utils import logger
-from torchair.inference._cache_compiler import timer
 from torchair.scope._scope_attr import guard_with_user_stream_scope
 from torchair._utils.graph_transform_observer import DebugContext
-from torchair._acl_concrete_graph.utils import reconstruct_args_kwargs
+from torchair._acl_concrete_graph.utils import reconstruct_args_kwargs, timer
 from torchair._acl_concrete_graph.utils import (debug_mem_state, LazyMessage, WeakRef, GraphMeta, get_tensor_metadata,
                                                 reconstruct_from_tensor_metadata, reconstruct_args_kwargs)
 from torchair._acl_concrete_graph.static_kernel import compile_static_kernel

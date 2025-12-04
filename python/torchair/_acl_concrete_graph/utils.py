@@ -1,9 +1,12 @@
+from contextlib import contextmanager
 from dataclasses import dataclass, asdict, field
+import time
 from typing import List, Optional, Callable, Any, Dict, Tuple, Union
 import weakref
 
 import torch
 from torch.types import Device, Number
+from torchair.core.utils import logger
 
 
 class WeakRef:
@@ -179,3 +182,10 @@ def debug_mem_state() -> str:
             seg.append(tmp)
     seg_str = "\n".join([str(seg_iter) for seg_iter in seg])
     return "\n" + seg_str
+
+
+@contextmanager
+def timer(prefix: str):
+    start_time = time.time()
+    yield
+    logger.info("%s took %.6f [s]", prefix, time.time() - start_time)
