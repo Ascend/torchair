@@ -4,7 +4,7 @@ from torchair._ge_concrete_graph.infer_symbol_calculate import infer_ge_output_b
 from torchair._ge_concrete_graph.utils import is_host_data_tensor
 
 
-def _view_copy(self, bases_list, dependencies):
+def _view_copy(self, bases_list, *, dependencies = [], out_op = None):
     dst = bases_list[self.base_index]
     src = self._as_strided
     size = self.size
@@ -28,8 +28,32 @@ def _view_copy(self, bases_list, dependencies):
     return ge.ViewCopy(dst, size, stride, storage_offset, src, size, src_stride, 0, dependencies=dependencies)
 
 
-def _not_view_copy(self, bases_list, dependencies):
-    return ge.Identity(bases_list[self.base_index], dependencies=dependencies)
+def _not_view_copy(self, bases_list, *, dependencies = [], out_op = None):
+    """
+    auto_functionalize_v2会将TensorMove返回给后续节点作为输入,
+    本函数通过in-place op上TensorMove输入的input_desc name找到同名的输出(即ref输出),将该ref输出返回给后续节点,
+    从而使后续pass能够消除TensorMove
+
+    * ******************************************
+    *        Data                     Data     
+    *          |                        |       
+    *      TensorMove ---|          TensorMove  
+    *          |         |              |       
+    *     in-place op    |   --->   in-place op 
+    *                   /               |          
+    *                  /                |       
+    *              output             output    
+    * ******************************************   
+    """    
+    for i, input_tensor in enumerate(out_op.input):
+        if (input_tensor == bases_list[self.base_index].tensor):
+            input_name = out_op.input_desc[i].name
+        if input_name is None:
+            raise RuntimeError(f'Can not find input: {bases_list[self.base_index].tensor} in in-place op of auto_functionalize_v2')    
+        for out_index, output_name in enumerate(out_op.output_desc):
+            if (output_name.name == input_name):
+                return Tensor(out_op, out_index)
+    raise RuntimeError(f'Can not find output: {bases_list[self.base_index].tensor} in in-place op of auto_functionalize_v2')   
 
 
 def _get_meta_attr(input_value):
@@ -152,9 +176,9 @@ def conveter_auto_functionalize_v2(*args, **kwargs):
     all_bases_new_update = []
     for view_info in args_view_info.values():
         if isinstance(out, (list, tuple)):
-            all_bases_new_update.append(view_info.view_copy(all_bases_new, dependencies=out))
+            all_bases_new_update.append(view_info.view_copy(all_bases_new, dependencies=out, out_op=out[0].node))
         else:
-            all_bases_new_update.append(view_info.view_copy(all_bases_new, dependencies=[out]))          
+            all_bases_new_update.append(view_info.view_copy(all_bases_new, dependencies=[out], out_op=out.node))        
 
     if isinstance(out, tuple):
         return (*out, *all_bases_new_update)
