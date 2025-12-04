@@ -2677,24 +2677,24 @@ class TorchairSt(unittest.TestCase):
             opt_model(x)
         
         self.assertTrue(
-            any("[inference] before [post_grad_custom_pre_pass] execution" 
+            any("[forward] before [post_grad_custom_pre_pass] execution" 
                 in log for log in cm.output),
-            f"Expected DEBUG log '[inference] before [post_grad_custom_pre_pass] execution' in logs: {cm.output}")
+            f"Expected DEBUG log '[forward] before [post_grad_custom_pre_pass] execution' in logs: {cm.output}")
 
         self.assertTrue(
-            any("[inference] after [post_grad_custom_pre_pass] execution" 
+            any("[forward] after [post_grad_custom_pre_pass] execution" 
                 in log for log in cm.output),
-            f"Expected DEBUG log '[inference] after [post_grad_custom_pre_pass] execution' in logs: {cm.output}")
+            f"Expected DEBUG log '[forward] after [post_grad_custom_pre_pass] execution' in logs: {cm.output}")
 
         self.assertTrue(
-            any("[inference] before [post_grad_custom_post_pass] execution" 
+            any("[forward] before [post_grad_custom_post_pass] execution" 
                 in log for log in cm.output),
-            f"Expected DEBUG log '[inference] before [post_grad_custom_post_pass] execution' in logs: {cm.output}")
+            f"Expected DEBUG log '[forward] before [post_grad_custom_post_pass] execution' in logs: {cm.output}")
 
         self.assertTrue(
-            any("[inference] after [post_grad_custom_post_pass] execution" 
+            any("[forward] after [post_grad_custom_post_pass] execution" 
                 in log for log in cm.output),
-            f"Expected DEBUG log '[inference] after [post_grad_custom_post_pass] execution' in logs: {cm.output}")
+            f"Expected DEBUG log '[forward] after [post_grad_custom_post_pass] execution' in logs: {cm.output}")
 
     def test_print_ge_stream_allocation_summary(self):
         class Model(torch.nn.Module):
