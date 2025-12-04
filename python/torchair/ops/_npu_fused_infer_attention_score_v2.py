@@ -108,7 +108,10 @@ def convert_npu_npu_fused_infer_attention_score_v2_tensor(
     meta_outputs: TensorSpec = None,
 ):
     # 禁止单独修改此函数，请同步修改actual seq length为symint list的接口
-    import torch_npu
+    try:
+        import torch_npu
+    except Exception as e:
+        raise RuntimeError(f"{e} while checking value data type") from e
     is_int4 = (key is not None and key.dtype == DataType.DT_INT32) or (value is not None and value.dtype == DataType.DT_INT32)
     is_fp4 = key_dtype == torch_npu.float4_e2m1fn_x2 or value_dtype == torch_npu.float4_e2m1fn_x2 or key_dtype == torch_npu.float4_e1m2fn_x2 or value_dtype == torch_npu.float4_e1m2fn_x2
     if is_int4 or is_fp4:
@@ -284,6 +287,10 @@ def get_value_d(block_table, value, query, query_layout, num_kv_heads):
 
 
 def get_change_d_scale_v2(value, value_dtype):
+    try:
+        import torch_npu
+    except Exception as e:
+        raise RuntimeError(f"{e} while checking value data type") from e
     change_d_scale = 1
 
     if value is None:
