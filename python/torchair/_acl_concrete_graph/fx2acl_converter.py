@@ -436,6 +436,7 @@ class AclConcreteGraph(ConcreteGraphBase):
                     tensor_list = (v.cpu().item() if v.dim() == 0 else v.cpu().tolist())
                     tensor_constants_list.append(f"tensor_constants['{k}'] = "
                                                  f"torch.tensor({tensor_list}, "
+                                                 f"dtype={self._tensor_constant_dict[k].dtype}, "
                                                  f"device='{self._tensor_constant_dict[k].device}')."
                                                  f"reshape({self._tensor_constant_dict[k].shape})")
                 except Exception as e:
