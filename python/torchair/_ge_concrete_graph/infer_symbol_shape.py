@@ -239,6 +239,14 @@ class SymTensor:
         elif self.ge_dtype:
             return f"TypeTensor({self.dtype_str})"
         return f"UndefinedTensor()"
+    
+    
+def infer_and_gen_sym_shape_silent(target, args, kwargs, ge_outputs, ops):
+    try:
+        infer_and_gen_sym_shape(target, args, kwargs, ge_outputs, ops)
+    except RuntimeError as ignore_err:
+        logger.warning(f'infer_and_gen_sym_shape failed, can not generate op: {target} infer rule, '
+                       f'exception is : {ignore_err}')
 
 
 def infer_and_gen_sym_shape(target, args, kwargs, ge_outputs, ops):
