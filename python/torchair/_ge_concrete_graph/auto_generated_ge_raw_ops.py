@@ -18974,17 +18974,17 @@ dependencies=[], node_name=None):
 
 # This api is auto-generated from IR MlaPrologV3
 @auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False,
-False, False, False, False, False, False, False, False, False, False], [False, False, False, False,
-False, False, False, False, False, False, False, True, True, True, True, True, True, True, True, True])
+False, False, False, False, False, False, False, False, False, False, False], [False, False, False, False,
+False, False, False, False, False, False, False, True, True, True, True, True, True, True, True, True, True])
 def MlaPrologV3(token_x: Tensor, weight_dq: Tensor, weight_uq_qr: Tensor, weight_uk: Tensor,
 weight_dkv_kr: Tensor, rmsnorm_gamma_cq: Tensor, rmsnorm_gamma_ckv: Tensor, rope_sin: Tensor,
 rope_cos: Tensor, kv_cache: Tensor, kr_cache: Tensor, cache_index: Optional[Tensor], dequant_scale_x: Optional[Tensor],
 dequant_scale_w_dq: Optional[Tensor], dequant_scale_w_uq_qr: Optional[Tensor], dequant_scale_w_dkv_kr: Optional[Tensor],
 quant_scale_ckv: Optional[Tensor], quant_scale_ckr: Optional[Tensor], smooth_scales_cq: Optional[Tensor],
-actual_seq_len: Optional[Tensor], *, rmsnorm_epsilon_cq: float = 0.000010, rmsnorm_epsilon_ckv: float = 0.000010,
+actual_seq_len: Optional[Tensor], k_nope_clip_alpha: Optional[Tensor], *, rmsnorm_epsilon_cq: float = 0.000010, rmsnorm_epsilon_ckv: float = 0.000010,
 cache_mode: str = "PA_BSND", query_norm_flag: bool = False, weight_quant_mode: int = 0, kv_cache_quant_mode: int = 0,
 query_quant_mode: int = 0, ckvkr_repo_mode: int = 0, quant_scale_repo_mode: int = 0, tile_size: int = 128,
-k_nope_clip_alpha: float = 1.0, qc_qr_scale: float = 1.0, kc_scale: float = 1.0, dependencies=[], node_name=None):
+qc_qr_scale: float = 1.0, kc_scale: float = 1.0, dependencies=[], node_name=None):
     """REG_OP(MlaPrologV3)\n
 .INPUT(token_x, TensorType({DT_INT8, DT_BF16}))\n
 .INPUT(weight_dq, TensorType({DT_INT8, DT_BF16}))\n
@@ -19006,6 +19006,7 @@ k_nope_clip_alpha: float = 1.0, qc_qr_scale: float = 1.0, kc_scale: float = 1.0,
 .OPTIONAL_INPUT(quant_scale_ckr, TensorType({DT_FLOAT}))\n
 .OPTIONAL_INPUT(smooth_scales_cq, TensorType({DT_FLOAT}))\n
 .OPTIONAL_INPUT(actual_seq_len, TensorType({DT_INT32}))\n
+.OPTIONAL_INPUT(k_nope_clip_alpha, TensorType({DT_FLOAT}))\n
 .OUTPUT(query, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))\n
 .OUTPUT(query_rope, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))\n
 .OUTPUT(kv_cache, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))\n
@@ -19023,7 +19024,6 @@ k_nope_clip_alpha: float = 1.0, qc_qr_scale: float = 1.0, kc_scale: float = 1.0,
 .ATTR(ckvkr_repo_mode, Int, 0)\n
 .ATTR(quant_scale_repo_mode, Int, 0)\n
 .ATTR(tile_size, Int, 128)\n
-.ATTR(k_nope_clip_alpha, Float, 1.0)\n
 .ATTR(qc_qr_scale, Float, 1.0)\n
 .ATTR(kc_scale, Float, 1.0)\n
 """
@@ -19161,6 +19161,15 @@ k_nope_clip_alpha: float = 1.0, qc_qr_scale: float = 1.0, kc_scale: float = 1.0,
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "actual_seq_len"
+    
+    if k_nope_clip_alpha is not None:
+        op.input.append(k_nope_clip_alpha.tensor)
+        op.input_desc.add().CopyFrom(k_nope_clip_alpha.desc)
+        op.input_desc[-1].name = "k_nope_clip_alpha"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "k_nope_clip_alpha"
 
     # process attrs
     op.attr["rmsnorm_epsilon_cq"].f = rmsnorm_epsilon_cq
@@ -19173,7 +19182,6 @@ k_nope_clip_alpha: float = 1.0, qc_qr_scale: float = 1.0, kc_scale: float = 1.0,
     op.attr["ckvkr_repo_mode"].i = ckvkr_repo_mode
     op.attr["quant_scale_repo_mode"].i = quant_scale_repo_mode
     op.attr["tile_size"].i = tile_size
-    op.attr["k_nope_clip_alpha"].f = k_nope_clip_alpha
     op.attr["qc_qr_scale"].f = qc_qr_scale
     op.attr["kc_scale"].f = kc_scale
 
