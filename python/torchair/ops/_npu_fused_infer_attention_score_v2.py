@@ -6,7 +6,7 @@ from typing import (
 import torch
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
-from torchair.ge._ge_graph import Tensor, TensorSpec, DataType, torch_dtype_value_to_ge_type
+from torchair.ge._ge_graph import Tensor, TensorSpec, DataType, torch_dtype_value_to_ge_type, ge_type_to_torch_type
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, \
     BOOL, Support
 from torchair._utils.error_code import pretty_error_msg
