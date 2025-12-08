@@ -1,4 +1,5 @@
 from torchair._ge_concrete_graph.ge_converter.converter_utils import *
+from torchair.ge._ge_graph import torch_dtype_value_to_ge_type
 
 
 @declare_supported(
@@ -234,7 +235,15 @@ def convert_npu_npu_mla_prolog_v3(
     meta_outputs: TensorSpec = None,
 ):
     """NB: npu_mla_prolog_v3(Tensor token_x, Tensor weight_dq, Tensor weight_uq_qr, Tensor weight_uk, Tensor weight_dkv_kr, Tensor rmsnorm_gamma_cq, Tensor rmsnorm_gamma_ckv, Tensor rope_sin, Tensor rope_cos, Tensor(a!) kv_cache, Tensor(b!) kr_cache, *, Tensor cache_index, Tensor? dequant_scale_x=None, Tensor? dequant_scale_w_dq=None, Tensor? dequant_scale_w_uq_qr=None, Tensor? dequant_scale_w_dkv_kr=None, Tensor? quant_scale_ckv=None, Tensor? quant_scale_ckr=None, Tensor? smooth_scales_cq=None, Tensor? actual_seq_len=None, Tensor? k_nope_clip_alpha=None, float rmsnorm_epsilon_cq=1e-05, float rmsnorm_epsilon_ckv=1e-05, str cache_mode="PA_BSND", bool query_norm_flag=false, int weight_quant_mode=0, int kv_quant_mode=0, int query_quant_mode=0, int ckvkr_repo_mode=0, int quant_scale_repo_mode=0, int tile_size=128, float qc_qr_scale=1.0, float kc_scale=1.0) -> (Tensor, Tensor, Tensor, Tensor, Tensor)"""
-    
+    # mxfp8全量化场景 输入int8数据类型伪装成float8_e8m0
+    if dequant_scale_x is not None and weight_quant_mode == 3:
+        dequant_scale_x = ge.Bitcast(dequant_scale_x, type=DataType.DT_FLOAT8_E8M0)
+    if dequant_scale_w_dq is not None and weight_quant_mode == 3:
+        dequant_scale_w_dq = ge.Bitcast(dequant_scale_w_dq, type=DataType.DT_FLOAT8_E8M0)
+    if dequant_scale_w_uq_qr is not None and weight_quant_mode == 3:
+        dequant_scale_w_uq_qr = ge.Bitcast(dequant_scale_w_uq_qr, type=DataType.DT_FLOAT8_E8M0)
+    if dequant_scale_w_dkv_kr is not None and weight_quant_mode == 3:
+        dequant_scale_w_dkv_kr = ge.Bitcast(dequant_scale_w_dkv_kr, type=DataType.DT_FLOAT8_E8M0)
     return ge.MlaPrologV3(
         token_x,
         weight_dq,
@@ -310,6 +319,15 @@ def conveter_npu_mla_prolog_v3_functional(
     kc_scale: float = 1.0,
     meta_outputs: List[TensorSpec] = None,
 ):
+    # mxfp8全量化场景 输入int8数据类型伪装成float8_e8m0
+    if dequant_scale_x is not None and weight_quant_mode == 3:
+        dequant_scale_x = ge.Bitcast(dequant_scale_x, type=DataType.DT_FLOAT8_E8M0)
+    if dequant_scale_w_dq is not None and weight_quant_mode == 3:
+        dequant_scale_w_dq = ge.Bitcast(dequant_scale_w_dq, type=DataType.DT_FLOAT8_E8M0)
+    if dequant_scale_w_uq_qr is not None and weight_quant_mode == 3:
+        dequant_scale_w_uq_qr = ge.Bitcast(dequant_scale_w_uq_qr, type=DataType.DT_FLOAT8_E8M0)
+    if dequant_scale_w_dkv_kr is not None and weight_quant_mode == 3:
+        dequant_scale_w_dkv_kr = ge.Bitcast(dequant_scale_w_dkv_kr, type=DataType.DT_FLOAT8_E8M0)
     # 保证非原地算子的输入不会被修改
     kv_cache_copy = ge.TensorMove(kv_cache)
     kr_cache_copy = ge.TensorMove(kr_cache)
