@@ -57,7 +57,6 @@
         "npu_stream_switch",
         "super_kernel",
         "limit_core_num",
-        "op_never_timeout",
-		"profiler_trace"
+        "op_never_timeout"
     ]
 }
