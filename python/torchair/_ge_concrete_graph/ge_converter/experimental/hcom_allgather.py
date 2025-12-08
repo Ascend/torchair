@@ -7,7 +7,7 @@ from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
 from torchair._ge_concrete_graph.hcom_utils import get_group_name_and_record
 from torchair._ge_concrete_graph.utils import dtype_promote
-from torchair.ge._ge_graph import Tensor, DataType
+from torchair.ge._ge_graph import Tensor, DataType, dont_prune_me
 
 from .hcom_allreduce import npu_define_lib
 from .hcom_broadcast import op_broadcast
@@ -190,8 +190,11 @@ def convert_allgather_in_tensor_uneven(
     send_count, recv_counts, recv_displacements = dtype_promote(send_count, recv_counts, recv_displacements,
                                                                 target_dtype=DataType.DT_INT64)
     group_name = get_group_name_and_record(tag, rank_list, group_size)
-    return ge.HcomAllGatherV(input_tensor, send_count=send_count, recv_counts=recv_counts,
-                             recv_displacements=recv_displacements, group=group_name)
+    op = ge.HcomAllGatherV(input_tensor, send_count=send_count, recv_counts=recv_counts,
+                           recv_displacements=recv_displacements, group=group_name)
+    # send_counts could be 0
+    dont_prune_me(op)
+    return op
 
 
 @register_decomposition(torch.ops.npu_define.allgather)
