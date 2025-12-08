@@ -54,7 +54,7 @@ from torchair._ge_concrete_graph.hcom_utils import record_pg_to_graph, codegen_r
 from torchair._ge_concrete_graph.supported_declaration import Support
 from torchair._ge_concrete_graph.continguous_utils import guard_view_input
 from torchair._ge_concrete_graph.export_config_generete import generate_config
-from torchair._ge_concrete_graph.infer_symbol_shape import infer_and_gen_sym_shape
+from torchair._ge_concrete_graph.infer_symbol_shape import infer_and_gen_sym_shape_silent
 from torchair._utils.export_utils import make_export_graph, get_export_file_name
 from torchair._utils.graph_transform_observer import GraphTransformObserver
 from torchair.inference._gear_utils import generate_dynamic_dims_option, get_dim_gears
@@ -1281,7 +1281,7 @@ class GeConcreteGraph(ConcreteGraphBase):
             if converter.require_meta:
                 kwargs['meta_outputs'] = meta_outputs
             ge_outputs = converter(*args, **kwargs)
-            infer_and_gen_sym_shape(target, args, kwargs, ge_outputs, graph.op[num_ops:])        
+            infer_and_gen_sym_shape_silent(target, args, kwargs, ge_outputs, graph.op[num_ops:])        
 
         self._handle_wait_control_edge(graph.op[num_ops:])        
         if meta_outputs is not None:
