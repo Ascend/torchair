@@ -245,7 +245,7 @@ def infer_and_gen_sym_shape_silent(target, args, kwargs, ge_outputs, ops):
     try:
         infer_and_gen_sym_shape(target, args, kwargs, ge_outputs, ops)
     except RuntimeError as ignore_err:
-        logger.warning(f'infer_and_gen_sym_shape failed, can not generate op: {target} infer rule, '
+        logger.warning(f'infer and generate sym shape failed, can not automatically generate InferShape and InferDtype for op: {target}, '
                        f'exception is : {ignore_err}')
 
 
