@@ -160,6 +160,7 @@ _SUPPORT_FORMAT_SET = {
 _DONT_EMPTY_TENSOR_OPT_OPS = {
     'npu_define.reduce_scatter_tensor_uneven.default',
     'npu_define.all_to_all_single_npu.default',
+    'npu_define.allgather_in_tensor_uneven.default',
 }
 
 
