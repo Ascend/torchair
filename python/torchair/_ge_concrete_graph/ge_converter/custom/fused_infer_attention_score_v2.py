@@ -78,8 +78,12 @@ def convert_npu_npu_fused_infer_attention_score_v2(
             value_ge_dtype = torch_dtype_value_to_ge_type(value_dtype)
         if input_layout == 'BSH' or key.rank == 3 or value.rank == 3:
             const = ge.Const([1, 1, shape_multiples])
+            if key.rank == 5 or value.rank == 5:
+                const = ge.Const([1, 1, 1, 1, shape_multiples])
         else:
             const = ge.Const([1, 1, 1, shape_multiples])
+            if key.rank == 5 or value.rank == 5:
+                const = ge.Const([1, 1, 1, 1, shape_multiples])
         if key is not None:
             shape = ge.Shape(key)
             key_shape = ge.Mul(shape, const)

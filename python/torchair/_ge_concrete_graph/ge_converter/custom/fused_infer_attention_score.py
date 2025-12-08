@@ -49,8 +49,12 @@ def convert_npu_npu_fused_infer_attention_score(
     # 禁止单独修改此函数，请同步修改传device tensor的actual seq length接口
     if input_layout == 'BSH' or key.rank == 3 or value.rank == 3:
         const = ge.Const([1, 1, 8])
+        if key.rank == 5 or value.rank == 5:
+            const = ge.Const([1, 1, 1, 1, 8])
     else:
         const = ge.Const([1, 1, 1, 8])
+        if key.rank == 5 or value.rank == 5:
+            const = ge.Const([1, 1, 1, 1, 8])
     if key is not None and key.dtype == DataType.DT_INT32:
         shape = ge.Shape(key)
         key_shape = ge.Mul(shape, const)
