@@ -96,8 +96,9 @@ def convert_npu_all_gather_quant_mm(
         group_size = (group_m << 32) + (group_n << 16) + group_k
     output_dtype = self.dtype if y_dtype is None else torch_dtype_value_to_ge_type(y_dtype)
     if(self.dtype == DataType.DT_FLOAT16 or self.dtype == DataType.DT_BF16):
-        if(y_dtype != self.dtype):
-            raise RuntimeError(f"When input is float16 or bfloat16, output should be the same as input dtype.")
+        if(output_dtype != self.dtype):
+            raise RuntimeError(f"When input is float16 or bfloat16, output should be the same as input dtype."
+            f"Expected out type is {self.dtype} , but got {output_dtype}")
     if y_dtype is None:
         y_dtype = 1
     if x1_dtype is not None:
