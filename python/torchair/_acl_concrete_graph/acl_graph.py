@@ -1032,8 +1032,8 @@ class AclGraph(object):
             if self.config.get('clone_input', "1") == "1":
                 # When a memory pool is shared among aclgraph instances (from the same or different FX graphs),
                 # resetting the memory state before input reconstruction is unnecessary. Safety is guaranteed
-                # by the runtime constraint that only one aclgraph executes at a time. Since inputs are reconstructed
-                # and assigned before each replay and destroyed afterwards, there is no risk of state conflict.
+                # by the runtime constraint that only one aclgraph executes at a time. Since inputs are
+                # assigned before each replay and destroyed afterwards, there is no risk of state conflict.
                 reconstructed_inputs = self._graphs_meta[graph_key].userinputs_metatensor
             else:
                 # Use retained_userinputs if clone_input is set to False.
