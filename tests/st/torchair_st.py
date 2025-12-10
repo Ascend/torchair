@@ -2249,6 +2249,63 @@ class TorchairSt(unittest.TestCase):
     @unittest.skipIf(torch.__version__ < "2.2", "torch._auto_functionalize is unsupported when torch < 2.2")
     def test_auto_functionalize_as_stride(self):
         m = Library("npu", "FRAGMENT")
+        m.define("my_inplace_auto2(Tensor(a!) x, Tensor y) -> Tensor")
+
+        @impl(m, "my_inplace_auto2", "Meta")
+        def my_inplace_meta(x, y):
+            return torch.empty_like(y)        
+
+        @torchair.register_fx_node_ge_converter(torch.ops.npu.my_inplace_auto2.default)        
+        def converter_npu_add_custom(x, y, meta_outputs = None):
+            out = torchair.ge.custom_op(                  
+                "MyInpalceAuto2",
+                inputs={
+                    "x": x,
+                    "y": y,
+                },
+                outputs=['x', 'z']
+            )
+            return out[1]
+
+        def cus_func(x, y):
+            add0 = torch.add(x, 1)
+            slice = add0[:, 1:]
+            o2 = torch.ops.npu.my_inplace_auto2(slice, y)
+            add1 = torch.add(slice, 1)
+            return add1, o2
+
+        def warp_concrete_graph():
+            def wrapper_call(func):
+                def wrapper(*args, **kwargs):
+                    assert len(args) > 0
+                    geGraph: GeGraph = args[0]._graph
+                    op_name_dict = {op_node.name : op_node.input for op_node in geGraph.op}
+                    self.assertIn("TensorMove", op_name_dict)
+                    self.assertIn("AsStrided", op_name_dict)
+                    self.assertIn("TensorMove:0", op_name_dict["AsStrided"])
+                    self.assertIn("MyInpalceAuto2", op_name_dict)
+                    self.assertIn("ViewCopy", op_name_dict)
+                    self.assertIn("MyInpalceAuto2:-1", op_name_dict["ViewCopy"])
+                    self.assertIn("TensorMove:0", op_name_dict["ViewCopy"])
+                    self.assertIn("StridedSliceV2", op_name_dict)
+                    self.assertIn("ViewCopy:0", op_name_dict["StridedSliceV2"])
+
+                    ret = func(*args, **kwargs)
+                    return ret
+               
+                return wrapper      
+            GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
+
+        warp_concrete_graph()
+        compile_func = torch.compile(cus_func, backend=npu_backend, fullgraph=True, dynamic=False)
+        input1 = torch.ones(2, 2)
+        input2 = torch.ones(2, 1)
+        out = compile_func(input1, input2) 
+
+
+    @unittest.skipIf(torch.__version__ < "2.2", "torch._auto_functionalize is unsupported when torch < 2.2")
+    def test_auto_functionalize_not_view(self):
+        m = Library("npu", "FRAGMENT")
         m.define("my_inplace_auto1(Tensor(a!) x, Tensor y) -> Tensor")
 
         @impl(m, "my_inplace_auto1", "Meta")
@@ -2268,9 +2325,9 @@ class TorchairSt(unittest.TestCase):
             return out[1]
 
         def cus_func(x, y):
-            slice = x[:, :, 3:] 
-            o2 = torch.ops.npu.my_inplace_auto1(slice, y)
-            add1 = torch.add(x, 1)
+            add0 = torch.add(x, 1)
+            o2 = torch.ops.npu.my_inplace_auto1(add0, y)
+            add1 = torch.add(add0, 1)
             return add1, o2
 
         def warp_concrete_graph():
@@ -2279,9 +2336,9 @@ class TorchairSt(unittest.TestCase):
                     assert len(args) > 0
                     geGraph: GeGraph = args[0]._graph
                     op_name_dict = {op_node.name : op_node.input for op_node in geGraph.op}
-                    print(f'-------->op_name_dict is :{op_name_dict}')
-                    self.assertIn("ViewCopy", op_name_dict)
-                    self.assertIn("MyInpalceAuto1:-1", op_name_dict["ViewCopy"])
+                    self.assertIn("TensorMove", op_name_dict)
+                    self.assertIn("MyInpalceAuto1", op_name_dict)
+                    self.assertIn("MyInpalceAuto1:0", op_name_dict["Add_1"])
 
                     ret = func(*args, **kwargs)
                     return ret
@@ -2290,10 +2347,10 @@ class TorchairSt(unittest.TestCase):
             GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
 
         warp_concrete_graph()
-        compile_func = torch.compile(cus_func, backend=npu_backend, fullgraph=True, dynamic=True)
-        input1 = torch.ones((10, 20, 30))
-        input2 = torch.ones((10, 20, 30))
-        out = compile_func(input1, input2)        
+        compile_func = torch.compile(cus_func, backend=npu_backend, fullgraph=True, dynamic=False)
+        input1 = torch.ones(2, 2)
+        input2 = torch.ones(2, 1)
+        out = compile_func(input1, input2)           
                 
 
     def test_miss_scope_exit(self):
