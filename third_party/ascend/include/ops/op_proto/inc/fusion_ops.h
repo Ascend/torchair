@@ -748,7 +748,7 @@ REG_OP(GeGluV2)
     .ATTR(activate_left, Bool, false)
     .OP_END_FACTORY_REG(GeGluV2)
 
-* @brief Function QuantGroupedMatmulInplaceAdd. This op fuse GroupedMatmul with InplaceAdd.
+/* @brief Function QuantGroupedMatmulInplaceAdd. This op fuse GroupedMatmul with InplaceAdd.
 
 * @par Inputs:
 * @li x1: A tensor. Format supports ND. Data type supports hifloat8, float8_e5m2, float8_e4m3fn.
