@@ -27,6 +27,7 @@ from torchair.core.utils import logger
 from torchair._utils.path_manager import PathManager
 from torchair._utils.graph_transform_observer import GraphTransformObserver
 from torchair._acl_concrete_graph.acl_graph import AclGraph, AclGraphCacheInfo, is_sym
+from torchair._acl_concrete_graph.acl_graph_cache_utils import SerializableGraphModule
 from torchair._acl_concrete_graph.graph_pass import apply_event_closure_with_multi_stream
 from torchair._acl_concrete_graph.graph_pass import apply_event_record, replace_core_limit_nodes
 
@@ -81,6 +82,7 @@ class AclConcreteGraph(ConcreteGraphBase):
             parameter_user_inputs=[]
         )
         self._tensor_constant_dict = {}
+        self._serialized_gm = None
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """
@@ -164,6 +166,7 @@ class AclConcreteGraph(ConcreteGraphBase):
             from torch.profiler import record_function
             import torch_npu
             from torchair._acl_concrete_graph.acl_graph import AclGraph, AclGraphCacheInfo
+            from torchair._acl_concrete_graph.acl_graph_cache_utils import SerializableGraphModule
             from torchair.configs.compiler_config import CompilerConfig
             from torchair.ops._tagged_event import _npu_create_tagged_event
             assert_size_stride = torch._C._dynamo.guards.assert_size_stride
@@ -297,6 +300,8 @@ class AclConcreteGraph(ConcreteGraphBase):
         configs = self.normalize_config()
         # It is necessary to recompile GraphModule to make sure that changes to graph take effect.
         self.fx_graph.recompile()
+        sgm = SerializableGraphModule(self.fx_graph)
+        self._serialized_gm = sgm.convert_to_bytes()
         self._fx_forward = self._codegen_fx_forward(self.fx_graph, self.fx_graph.code,
                                                     self._aclgraph_cache_info.updated_ops_param,
                                                     _stream_scope_enter_nodes_dict,
@@ -425,26 +430,21 @@ class AclConcreteGraph(ConcreteGraphBase):
         from torch._inductor.utils import IndentedBuffer
         tensor_constant_code = IndentedBuffer()
         tensor_constants_list = []
-        # We must ensure that 'self._tensor_constant_dict[k].cpu().item()' is executed
-        # outside any FakeTensorMode context.
-        with torch._C._DisableTorchDispatch():
-            for k, v in self._tensor_constant_dict.items():
-                if not isinstance(v, torch.Tensor):
-                    raise TypeError(f"When iterating self._tensor_constant_dict, "
-                                    f"Value for key '{k}' is not a tensor, got {type(v)}")
-                try:
-                    tensor_list = (v.cpu().item() if v.dim() == 0 else v.cpu().tolist())
-                    tensor_constants_list.append(f"tensor_constants['{k}'] = "
-                                                 f"torch.tensor({tensor_list}, "
-                                                 f"dtype={self._tensor_constant_dict[k].dtype}, "
-                                                 f"device='{self._tensor_constant_dict[k].device}')."
-                                                 f"reshape({self._tensor_constant_dict[k].shape})")
-                except Exception as e:
-                    raise RuntimeError(
-                        f"Failed to generate tensor constant for key '{k}'. "
-                        f"Error: {str(e)}"
-                    ) from e
-        tensor_constant_code.writelines(["", "tensor_constants = {}", "with torch._C._DisableTorchDispatch():"])
+        for k, v in self._tensor_constant_dict.items():
+            try:
+                tensor_constants_list.append(f"tensor_constants['{k}'] = "
+                                             f"getattr(fx_graph, '{v}')")
+            except Exception as e:
+                raise RuntimeError(
+                    f"Failed to generate tensor constant for key {k}. "
+                    f"Error: {str(e)}"
+                ) from e
+        tensor_constant_code.writelines(["",
+                                         f"serialized_gm = {self._serialized_gm}",
+                                         f"rebuild_gm = SerializableGraphModule.rebuild_from_bytes(serialized_gm)",
+                                         f"fx_graph = rebuild_gm._artifact",
+                                         "",
+                                         "tensor_constants = {}", "with torch._C._DisableTorchDispatch():"])
         with tensor_constant_code.indent():
             tensor_constant_code.writelines(tensor_constants_list)
         tensor_constant_code.writeline("")
@@ -563,8 +563,8 @@ class AclConcreteGraph(ConcreteGraphBase):
                             stream_scope_exit_nodes_list: List[str]):
         for node in gm.graph.nodes:
             # Only record tensor_constants for now.
-            if node.op == "get_attr" and "tensor_constant" in node.name:
-                self._tensor_constant_dict[node.name] = getattr(gm, node.target)
+            if node.op == "get_attr" and "_constant" in node.name:
+                self._tensor_constant_dict[node.name] = node.target
         import re
         forward_def_match = re.search(r"def forward\(self[^)]*\):", code)
         if not forward_def_match:
