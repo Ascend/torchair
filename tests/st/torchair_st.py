@@ -1920,8 +1920,11 @@ class TorchairSt(unittest.TestCase):
         x = torch.randn(2, 2)
         y = torch.randn(2, 2)
         test_model(x, y)
-        path = os.path.realpath(f'{test_config.debug.data_dump.path}/worldsize1_global_rank0/graph_16')
+        path = os.path.realpath(f'{test_config.debug.data_dump.path}/worldsize1_global_rank0')
         self.assertTrue(os.path.isdir(path), f"directory {path} does not exist.")
+        graph_folder = os.listdir(path)[0]
+        self.assertTrue(graph_folder.startswith('graph_'))
+        path = os.path.join(path, graph_folder)
         file_path = os.path.join(path, os.listdir(path)[0])
         test_files = [f for f in os.listdir(file_path) if f.endswith(".npy")]
         self.assertEqual(len(test_files), 3, f"found data_dump files in {file_path}")
