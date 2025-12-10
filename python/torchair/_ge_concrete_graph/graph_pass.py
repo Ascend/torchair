@@ -78,6 +78,32 @@ def _get_output_to_input_ref_idx(op: OpDef) -> Dict[int, int]:
     """
     If there are more inplace op that need to be optimized similarly, it is necessary to
     add a mapping relationship between output and references input in this function.
+
+    当前需要在该函数配置算子原型中被原地修改的输入输出对应关系，以消除原地算子函数化过程中引入的TensorMove
+
+    以ScatterPaKvCache的算子原型为例：
+    REG_OP(ScatterPaKvCache)\n
+    .INPUT(key, "T")\n
+    .INPUT(key_cache, "T")\n
+    .INPUT(slot_mapping, TensorType::IndexNumberType())\n
+    .INPUT(value, "T")\n
+    .INPUT(value_cache, "T")\n
+    .OPTIONAL_INPUT(compress_lens, TensorType::IndexNumberType())\n
+    .OPTIONAL_INPUT(compress_seq_offset, TensorType::IndexNumberType())\n
+    .OPTIONAL_INPUT(seq_lens, TensorType::IndexNumberType())\n
+    .OUTPUT(key_cache, "T")\n
+    .OUTPUT(value_cache, "T")\n
+    .ATTR(cache_mode, String, "Norm")\n
+    .ATTR(scatter_mode, String, "None")\n
+    .ATTR(strides, ListInt, {1,1})\n
+    .ATTR(offsets, ListInt, {0,0})\n
+
+    被原地修改的参数为key_cache、value_cache
+    第一个输出OUTPUT(key_cache)对应第二个输入INPUT(key_cache)
+    第二个输出OUTPUT(value_cache)对应第五个输入INPUT(value_cache)
+    故在函数中配置：
+    ref_idx_mapping[0] = 1
+    ref_idx_mapping[1] = 4
     """
     ref_idx_mapping: Dict[int, int] = {}
     op_set = {
