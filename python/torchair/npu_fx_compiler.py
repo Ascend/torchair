@@ -638,6 +638,40 @@ class _NpuFxCompiler:
                            'the debug.run_eagerly=True config to ensure that the graph is compiled and executed.')
             if not graph.fx_graph:
                 raise RuntimeError('When using debug.run_eagerly=True, the FX graph should not be None.')
+
+            class _StaticKernelRunner:
+                def __init__(self, graph_module: torch.fx.GraphModule, kernel_path: str,
+                             sym_input_index: List[int]) -> None:
+                    self.runner = graph_module
+                    self.kernel_path = kernel_path
+                    self.sym_input_index = sym_input_index
+                    self.sym_input_name = [f"input_{idx}" for idx in sym_input_index]
+                    self.compiled_shape = []
+
+                def __call__(self, *args: Any, **kwargs: Any) -> Any:
+                    cur_sym_value = [args[idx] for idx in self.sym_input_index]
+                    # Even if there are no symbols in the current FX graph, the following judgment can still work.
+                    # [] in [[]] is still valid, no need to add special processing for static fx graph.
+                    if cur_sym_value not in self.compiled_shape:
+                        # try to compile static shape kernel
+                        self.compiled_shape.append(cur_sym_value)
+                        logger.info('Start to compile static shape kernel for fx graph %s, '
+                                    'all symbol input indices and values are %s.',
+                                    id(self.runner), dict(zip(self.sym_input_name, cur_sym_value)))
+                        from torchair._acl_concrete_graph.static_kernel import compile_static_kernel
+                        compile_static_kernel(self.runner, *args, build_dir=self.kernel_path, **kwargs)
+
+                    return self.runner(*args, **kwargs)
+
+            if self.config.experimental_config.aclgraph._aclnn_static_shape_kernel:
+                all_sym_index = list(set(concrete_graph._all_sym_input_idx.values()))
+                all_sym_index.sort()
+                return _StaticKernelRunner(
+                    graph.fx_graph,
+                    self.config.experimental_config.aclgraph._aclnn_static_shape_kernel_build_dir.value,
+                    all_sym_index
+                )
+
             return graph.fx_graph
 
         return concrete_graph
