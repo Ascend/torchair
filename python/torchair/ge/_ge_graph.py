@@ -248,6 +248,8 @@ def torch_dtype_value_to_ge_type(dtype_value, m=DataType):
         return m.DT_FLOAT8_E5M2
     if dtype_value == 24:   # torch.float8_e4m3fn
         return m.DT_FLOAT8_E4M3FN
+    if dtype_value == 285:
+        return m.DT_INT4
     if dtype_value == 290:
         return m.DT_HIFLOAT8
     if dtype_value == 291:

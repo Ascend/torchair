@@ -33,7 +33,7 @@ def converter_npu_dtype_cast_default(
 
     out = ge.Cast(self, dst_type=torch_dtype_value_to_ge_type(dtype))
     out.desc.dtype = torch_dtype_value_to_ge_proto_type(dtype)
-    if dtype == 296 or dtype == 297:
+    if dtype == 285 or dtype == 296 or dtype == 297:
         dim_num = self.rank
         bit_shape = []
         for _ in range(dim_num - 1):
