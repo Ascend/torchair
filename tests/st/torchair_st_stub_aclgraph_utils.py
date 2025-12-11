@@ -168,18 +168,21 @@ class StubStream:
         cls._counter += 1
         logger.debug('[Stub] new stub class Stream %s.', stream_id)
         return super().__new__(cls)
-    
+
     def __init__(self, device=None, priority=0, **kwargs) -> None:
         self.stream_id = StubStream._counter
 
     def wait_event(self, event):
-        pass
+        logger.debug('[Stub] run stub API Stream::wait_event.')
 
     def wait_stream(self, stream):
-        pass
+        logger.debug('[Stub] run stub API Stream::wait_stream.')
 
     def record_event(self, event=None):
-        pass
+        logger.debug('[Stub] run stub API Stream::record_event.')
+
+    def synchronize(self, event=None):
+        logger.debug('[Stub] run stub API Stream::synchronize.')
 
 
 class StubStreams:

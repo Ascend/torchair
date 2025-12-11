@@ -1,11 +1,20 @@
 import unittest
+import sys
+from packaging import version
 
 import torch
 
 import torchair
 from torchair.configs.compiler_config import CompilerConfig
-
 from torchair_st_utils import capture_logger
+
+from torchair_st_stub_aclgraph_utils import (
+    StubNpu,
+    patch_ops_npu_module,
+    patch_torch_point_npu_module,
+    patch_torch_npu_module,
+    forbidden_attr,
+)
 
 
 class Model(torch.nn.Module):
@@ -29,17 +38,31 @@ class EagerModeSt(unittest.TestCase):
         self.original_npu_module = None
         self.original_torch_point_npu_module = None
         self.original_torch_npu_module = None
+        self.stub_module = StubNpu()
 
     def setUp(self) -> None:
+        self.original_npu_module = patch_ops_npu_module(self.stub_module)
+        self.original_torch_point_npu_module = patch_torch_point_npu_module(self.stub_module)
+        self.original_torch_npu_module = patch_torch_npu_module(self.stub_module)
+        from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
+        self.call_bak = AclConcreteGraph.__call__
         return super().setUp()
 
     def tearDown(self) -> None:
+        torch.ops.npu = self.original_npu_module
+        torch.npu = self.original_torch_point_npu_module
+        sys.modules['torch_npu'] = self.original_torch_npu_module
+        from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
+        AclConcreteGraph.__call__ = self.call_bak
         return super().tearDown()
 
     def test_ge_eager_mode_dynamic_false(self):
         model = Model()
         config = CompilerConfig()
         config.debug.run_eagerly = True
+        if version.parse(torch.__version__) < version.parse("2.5.1"):
+            config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+
         npu_backend = torchair.get_npu_backend(compiler_config=config)
 
         x = torch.randn([3, 2])
@@ -55,6 +78,9 @@ class EagerModeSt(unittest.TestCase):
         model = Model()
         config = CompilerConfig()
         config.debug.run_eagerly = True
+        if version.parse(torch.__version__) < version.parse("2.5.1"):
+            config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+
         npu_backend = torchair.get_npu_backend(compiler_config=config)
 
         x = torch.randn([3, 2])
@@ -71,6 +97,8 @@ class EagerModeSt(unittest.TestCase):
         config = CompilerConfig()
         config.mode = "reduce-overhead"
         config.debug.run_eagerly = True
+        if version.parse(torch.__version__) < version.parse("2.5.1"):
+            config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
 
         # Acl graph do not support graph dump: config.debug.graph_dump.type = "py"
         npu_backend = torchair.get_npu_backend(compiler_config=config)
@@ -97,6 +125,8 @@ class EagerModeSt(unittest.TestCase):
         config = CompilerConfig()
         config.mode = "reduce-overhead"
         config.debug.run_eagerly = True
+        if version.parse(torch.__version__) < version.parse("2.5.1"):
+            config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         config.experimental_config.aclgraph._aclnn_static_shape_kernel = True
         config.experimental_config.aclgraph._aclnn_static_shape_kernel_build_dir = "."
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)

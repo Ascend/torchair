@@ -30,8 +30,14 @@ try:
 except Exception:
     logger.debug("function[OrderedSet] is not support on torch < 2.6")
 
-
 aten = torch.ops.aten
+# Operators that don't depend on the tensor data
+META_ONLY_OPS = {
+    aten.sym_size.int,
+    aten.sym_stride.int,
+    aten.sym_numel.default,
+    aten.sym_storage_offset.default,
+}
 
 
 @dataclass(frozen=True)
@@ -41,25 +47,25 @@ class InplaceableNpuOp:
     extra_check: Callable[[torch.fx.Node], bool] = lambda node: True
 
 
-# Operators that don't depend on the tensor data
-META_ONLY_OPS = {
-    aten.sym_size.int,
-    aten.sym_stride.int,
-    aten.sym_numel.default,
-    aten.sym_storage_offset.default,
-}
-
 inplaceable_npu_ops: Dict[Callable[..., Any], InplaceableNpuOp] = {}
-try:
-    npu = torch.ops.npu
-    inplaceable_npu_functional_ops = {
-        npu.npu_kv_rmsnorm_rope_cache_v2_functional.default: InplaceableNpuOp(
-            npu.npu_kv_rmsnorm_rope_cache_v2.default, [5, 6]
-        ),
-    }
-    inplaceable_npu_ops.update(inplaceable_npu_functional_ops)
-except AttributeError as e:
-    logger.debug(f"cannot update npu ops with AttributeError: {e}")
+
+if hasattr(torch.ops.npu, "npu_kv_rmsnorm_rope_cache_v2"):
+    inplaceable_npu_ops.update({
+        torch.ops.npu.npu_kv_rmsnorm_rope_cache_v2_functional.default:
+            InplaceableNpuOp(
+                inplace_op=torch.ops.npu.npu_kv_rmsnorm_rope_cache_v2.default,
+                mutated_arg=[5, 6],
+            )
+    })
+
+if hasattr(torch.ops.npu, "npu_mla_prolog_v3"):
+    inplaceable_npu_ops.update({
+        torch.ops.npu.npu_mla_prolog_v3_functional.default:
+            InplaceableNpuOp(
+                inplace_op=torch.ops.npu.npu_mla_prolog_v3.default,
+                mutated_arg=[9, 10],
+            )
+    })
 
 
 def get_storage(t: torch.Tensor) -> int:
