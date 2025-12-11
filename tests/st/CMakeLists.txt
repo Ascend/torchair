@@ -14,6 +14,7 @@ add_custom_command(OUTPUT ST_TESTCASES
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_print_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_explicit_order_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_fx_pattern_st.py ${CMAKE_BINARY_DIR}/st
+        COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_eager_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_aclgraph_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_aclgraph_reinplace_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_BINARY_DIR}/stubs/_privateuse1_backend.so ${CMAKE_BINARY_DIR}/st
@@ -37,6 +38,7 @@ add_custom_target(run_torchair_py_cases ALL
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_print_st
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_explicit_order_st
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_fx_pattern_st
+        COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_eager_st
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_aclgraph_st
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_print_detail_st
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_debug_log_st
