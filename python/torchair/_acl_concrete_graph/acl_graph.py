@@ -20,7 +20,7 @@ from torch.profiler import record_function
 from torchair.core.utils import logger
 from torchair.scope._scope_attr import guard_with_user_stream_scope
 from torchair._utils.graph_transform_observer import DebugContext
-from torchair._acl_concrete_graph.utils import reconstruct_args_kwargs, timer
+from torchair._acl_concrete_graph.utils import reconstruct_args_kwargs, timer, is_inputs_base_format
 from torchair._acl_concrete_graph.utils import (debug_mem_state, LazyMessage, WeakRef, GraphMeta, get_tensor_metadata,
                                                 reconstruct_from_tensor_metadata, reconstruct_args_kwargs)
 from torchair._acl_concrete_graph.static_kernel import compile_static_kernel
@@ -627,6 +627,7 @@ class AclGraph(object):
         self._tagged_event_names = None
         self._parameter_user_inputs = []
         self._user_stream_label = None
+        self._input_base_format = None
 
     def __call__(self, *args, **kwargs):
         # get graph_key and capture
@@ -1052,7 +1053,17 @@ class AclGraph(object):
                     dst_tensors.append(capture_input)
                     src_tensors.append(replay_arg)
             if len(dst_tensors) > 1:
-                torch._foreach_copy_(dst_tensors, src_tensors, non_blocking=True)
+                if self._input_base_format is None:
+                    if is_inputs_base_format(dst_tensors) and is_inputs_base_format(src_tensors):
+                        self._input_base_format = True
+                    else:
+                        self._input_base_format = False
+                if self._input_base_format:
+                    torch._foreach_copy_(dst_tensors, src_tensors, non_blocking=True)
+                else:
+                    for i, dst_tensors in enumerate(dst_tensors):
+                        dst_tensors.copy_(src_tensors[i])
+
             elif len(dst_tensors) == 1:
                 dst_tensors[0].copy_(src_tensors[0])
 

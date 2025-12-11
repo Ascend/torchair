@@ -3,10 +3,13 @@ from dataclasses import dataclass, asdict, field
 import time
 from typing import List, Optional, Callable, Any, Dict, Tuple, Union
 import weakref
+import sys
 
 import torch
 from torch.types import Device, Number
 from torchair.core.utils import logger
+from torchair.ge._ge_graph import Format
+
 
 
 class WeakRef:
@@ -189,3 +192,30 @@ def timer(prefix: str):
     start_time = time.time()
     yield
     logger.info("%s took %.6f [s]", prefix, time.time() - start_time)
+
+
+_BASE_FORMAT_GET = {
+    Format.FORMAT_NCHW.value,
+    Format.FORMAT_NHWC.value,
+    Format.FORMAT_ND.value,
+    Format.FORMAT_NCDHW.value
+}
+
+
+def is_inputs_base_format(tensor_list: List[torch.Tensor]) -> bool:
+    for tensor_i in tensor_list:
+        if not is_op_input_base_format(tensor_i):
+            return False
+    return True
+
+
+def is_op_input_base_format(tensor) -> bool:
+    if 'torch_npu' not in sys.modules:
+        logger.info(f'The internal format will only be enabled in a torch npu env.'
+                    'When there is no torch_npu in the env, skip internal format check.')
+        return False
+    torch_npu_module = sys.modules['torch_npu']
+    npu_format = torch_npu_module.get_npu_format(tensor)
+    if npu_format not in _BASE_FORMAT_GET:
+        return False
+    return True
