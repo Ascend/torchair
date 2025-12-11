@@ -36,8 +36,8 @@ def _npu_fused_infer_attention_score_v2(*args, **kwargs):
 
 
 def npu_fused_infer_attention_score_v2_impl(*args, **kwargs):
-    raise NotImplementedError("eager mode of torchair.ops.npu_fused_infer_attention_score_v2 is not supported, " +
-                              "use graph mode or torch_npu.npu_fused_infer_attention_score_v2!")
+    raise NotImplementedError("torchair.ops.npu_fused_infer_attention_score_v2 does not support eager mode or reduce-overhead mode, " +
+                              "support using max-autotune mode or torch_npu.npu_fused_infer_attention_score_v2!")
 
 
 torch.library.impl(lib, "npu_fused_infer_attention_score_v2", "CPU")(npu_fused_infer_attention_score_v2_impl)
