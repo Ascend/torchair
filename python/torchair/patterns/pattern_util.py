@@ -4,7 +4,8 @@ import torch
 from torchair.core.utils import logger
 from torchair.patterns.pattern_pass_manager import _pattern_manager
 from torchair.patterns.add_rms_norm_cast import _register_addrmsnormcast_pattern
-from torchair.patterns.add_rms_norm_dynamic_quant import _register_addrmsnormdynamicquant_pattern, _register_addrmsnormdynamicquant_pattern2
+from torchair.patterns.add_rms_norm_dynamic_quant import _register_addrmsnormdynamicquant_pattern, \
+    _register_addrmsnormdynamicquant_pattern2
 
 pattern_pass_manager = _pattern_manager()
 
@@ -18,6 +19,10 @@ def _apply_pattern_passes(graph_module: torch.fx.GraphModule, example_inputs=Non
     _register_addrmsnormdynamicquant_pattern(pattern_pass_manager)
     _register_addrmsnormdynamicquant_pattern2(pattern_pass_manager)
     _register_addrmsnormcast_pattern(pattern_pass_manager)
+
+    # Set stream labels for all nodes before pattern pass
+    from torchair._utils.graph_utils import add_stream_label_to_node_meta
+    add_stream_label_to_node_meta(graph_module)
 
     # Apply all registered pattern replacements
     pattern_pass_manager.apply_pass(graph_module)

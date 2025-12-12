@@ -3,14 +3,13 @@ import dataclasses
 import logging
 import sys
 import types
+from typing import Any, Callable, Mapping, NamedTuple, Optional, Tuple, Type
 
 import torch
 
 from torchair.core.utils import logger
 
-
 logger.setLevel(logging.DEBUG)
-
 
 """Start to gen some API patch for AclGraph in st."""
 
@@ -277,6 +276,7 @@ class StubAmp:
         logger.debug('[Stub]Amp autocast')
         return
 
+
 StubAmp.autocast_mode = _AutocastModule
 
 
@@ -388,3 +388,126 @@ def patch_torch_npu_module(stub_module):
     logger.debug('[Stub] Original torch_npu.npu module is replaced by stub implementation: %s',
                  sys.modules['torch_npu'])
     return original_module
+
+
+### register npu custom ops
+def custom_infer_meta(data, other):
+    torch._check(data.dim() == 4, lambda: "data rank must be 4")
+
+    out_dim0 = (data.size(0) + 8) // 2
+    out_dim1 = (data.size(1) * data.size(1)) // data.size(0)
+    out_dim2 = data.size(2) - 1
+    out_dim3 = data.size(3)
+    tmp_out = torch.empty([out_dim0, out_dim1, out_dim2, out_dim3], dtype=data.dtype, device=data.device)
+    return tmp_out
+
+
+def custom_infer_npu(data, other):
+    torch._check(data.dim() == 4, lambda: "data rank must be 4")
+
+    out_dim0 = (data.size(0) + 8) // 2
+    out_dim1 = (data.size(1) * data.size(1)) // data.size(0)
+    out_dim2 = data.size(2) - 1
+    out_dim3 = data.size(3)
+    tmp_out = torch.randn([out_dim0, out_dim1, out_dim2, out_dim3], dtype=data.dtype, device=data.device)
+    return tmp_out
+
+
+def custom_infer_out_meta(data, other, *, out):
+    return out
+
+
+def custom_infer_out_npu(data, other, *, out):
+    out.fill_(1)
+    return out
+
+
+### register npu custom inplace ops for testing reinplace fx pass with multiple inplace args
+def sin_cos_inplace_meta(x, out_sin, out_cos):
+    return torch.empty_like(x)
+
+
+def sin_cos_inplace(x: torch.Tensor, out_sin: torch.Tensor, out_cos: torch.Tensor) -> torch.Tensor:
+    out_sin.sin_()
+    out_cos.cos_()
+    return x + 1
+
+
+def sin_cos_functional_meta(x, out_sin, out_cos):
+    return torch.empty_like(x), torch.empty_like(x), torch.empty_like(x)
+
+
+def sin_cos_functional(x: torch.Tensor,
+                       sin: torch.Tensor,
+                       cos: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    sin_clone = sin.clone()
+    cos_clone = cos.clone()
+    res = torch.ops.custom.sin_cos_inplace(x, sin_clone, cos_clone)
+    return res, sin_clone, cos_clone
+
+
+lib = torch.library.Library("custom", "FRAGMENT")
+
+_custom_ops_registered = False
+
+
+def register_custom_ops():
+    global _custom_ops_registered
+    if _custom_ops_registered:
+        return
+
+    _custom_ops_registered = True
+
+    if not hasattr(torch.ops.custom, "custom_infer"):
+        lib.define("custom_infer(Tensor data, Tensor other) -> Tensor")
+        torch.library.impl(lib, "custom_infer", "Meta")(custom_infer_meta)
+        torch.library.impl(lib, "custom_infer", "CompositeExplicitAutograd")(custom_infer_npu)
+
+    if not hasattr(torch.ops.custom, "custom_infer.out"):
+        lib.define("custom_infer.out(Tensor data, Tensor other, *, Tensor(a!) out) -> Tensor(a!)")
+        torch.library.impl(lib, "custom_infer.out", "Meta")(custom_infer_out_meta)
+        torch.library.impl(lib, "custom_infer.out", "CompositeExplicitAutograd")(custom_infer_out_npu)
+
+    if not hasattr(torch.ops.custom, "sin_cos_inplace"):
+        lib.define("sin_cos_inplace(Tensor x, Tensor(a!) out_sin, Tensor(b!) out_cos) -> Tensor")
+        torch.library.impl(lib, "sin_cos_inplace", "Meta")(sin_cos_inplace_meta)
+        torch.library.impl(lib, "sin_cos_inplace", "CompositeExplicitAutograd")(sin_cos_inplace)
+
+    if not hasattr(torch.ops.custom, "sin_cos_functional"):
+        lib.define("sin_cos_functional(Tensor x, Tensor out_sin, Tensor out_cos) -> (Tensor, Tensor, Tensor)")
+        torch.library.impl(lib, "sin_cos_functional", "Meta")(sin_cos_functional_meta)
+        torch.library.impl(lib, "sin_cos_functional", "CompositeExplicitAutograd")(sin_cos_functional)
+
+        @torch.library.impl(lib, "sin_cos_inplace", "Functionalize")
+        def sin_cos_inplace_functionalize(x, sin, cos):
+            torch._sync(x)
+            torch._sync(sin)
+            torch._sync(cos)
+            x_wrap = torch._from_functional_tensor(x)
+            sin_wrap = torch._from_functional_tensor(sin)
+            cos_wrap = torch._from_functional_tensor(cos)
+            with torch._C._ExcludeDispatchKeyGuard(
+                    torch._C.DispatchKeySet(torch._C.DispatchKey.Functionalize)
+            ):
+                res, sin_out, cos_out = torch.ops.custom.sin_cos_functional(x_wrap, sin_wrap, cos_wrap)
+            torch._functionalize_replace(sin, sin_out)
+            torch._functionalize_replace(cos, cos_out)
+            torch._functionalize_commit_update(sin)
+            torch._functionalize_commit_update(cos)
+            torch._sync(sin)
+            torch._sync(cos)
+            return res
+
+    from torchair._acl_concrete_graph.graph_pass import (
+        inplaceable_npu_ops,
+        InplaceableNpuOp,
+        check_multi_stream_for_multi_reinplace
+    )
+    inplaceable_npu_ops.update({
+        torch.ops.custom.sin_cos_functional.default:
+            InplaceableNpuOp(
+                inplace_op=torch.ops.custom.sin_cos_inplace.default,
+                mutated_arg=[1, 2],
+                extra_check=check_multi_stream_for_multi_reinplace,
+            ),
+    })

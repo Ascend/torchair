@@ -4,12 +4,14 @@ import time
 from typing import List, Optional, Callable, Any, Dict, Tuple, Union
 import weakref
 import sys
+import operator
 
 import torch
 from torch.types import Device, Number
+from torch.fx import Graph, GraphModule, Node
+
 from torchair.core.utils import logger
 from torchair.ge._ge_graph import Format
-
 
 
 class WeakRef:
@@ -47,6 +49,7 @@ class LazyMessage:
     The LazyMessage class is designed to delay the execution of a function
     and obtain its string representation when needed.
     """
+
     def __init__(self, func, *args, **kwargs):
         self.func = func
         self.args = args
@@ -228,3 +231,65 @@ def is_op_input_base_format(tensor) -> bool:
     if npu_format not in _BASE_FORMAT_GET:
         return False
     return True
+
+
+def get_inplace_op_mutated_input_users(original_node: Node,
+                                       mutated_input_indices: List[int]) -> List[List[Node]]:
+    """
+    Returns all downstream users of the mutated input nodes from an in-place operation.
+
+    For each specified input index that is mutated by the in-place operation,
+    collects all subsequent nodes in the graph that consume the mutated value
+    (including indirect users through intermediate nodes).
+
+    Args:
+        original_node: The original functionalized node that will be reinplaced.
+        mutated_input_indices: List of indices pointing to which inputs will be mutated.
+
+    Returns:
+        List of user node lists.
+    """
+
+    all_inputs = [original_node.args[idx] for idx in mutated_input_indices]
+
+    all_inputs_users = []
+    for input_node in all_inputs:
+        cur_input_users = []
+        to_be_replaced_copy_nodes = None
+        # part 1: all users of input node
+        for user_node in input_node.users:
+            if user_node.op == "call_function" and user_node.target == torch.ops.aten.copy_.default:
+                # user copy_ will be replace by input
+                to_be_replaced_copy_nodes = user_node
+                continue
+
+            cur_input_users.append(user_node)
+
+        if to_be_replaced_copy_nodes is None:
+            logger.debug("All the users of placeholder node[%s] are nodes: %s.",
+                         input_node.name, cur_input_users)
+            all_inputs_users.append(cur_input_users)
+            continue
+
+        # part 2: all users of functionalized op output
+        # Only when multi reinplace is need,
+        # because functionalized op output(get_item) will be replace by input only in multi reinplace case.
+        candidates = []
+        if to_be_replaced_copy_nodes.args[1].target == operator.getitem:
+            candidates = to_be_replaced_copy_nodes.args[1].users
+
+        for user_node in candidates:
+            if user_node == to_be_replaced_copy_nodes:
+                # user copy_ will be replace by input
+                continue
+            cur_input_users.append(user_node)
+
+        # part 3: all users of copy_
+        for user_node in to_be_replaced_copy_nodes.users:
+            cur_input_users.append(user_node)
+
+        logger.debug("All the users of placeholder node[%s] are nodes: %s.",
+                     input_node.name, cur_input_users)
+        all_inputs_users.append(cur_input_users)
+
+    return all_inputs_users
