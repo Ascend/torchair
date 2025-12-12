@@ -82124,11 +82124,11 @@ def GroupedMatmulSwigluQuantV2(x: Tensor,
         outputs=outputs,
         dependencies=dependencies,
         ir=IrDef("GroupedMatmulSwigluQuantV2")\
-        .input("x", "DT_INT8")\
-        .input("x_scale", "DT_FLOAT")\
+        .input("x", "DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN")\
+        .input("x_scale", "DT_FLOAT, DT_FLOAT8_E8M0")\
         .input("group_list", "DT_INT64")\
-        .dynamic_input("weight", "DT_INT8")\
-        .dynamic_input("weight_scale", "DT_FLOAT")\
+        .dynamic_input("weight", "DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN")\
+        .dynamic_input("weight_scale", "DT_FLOAT, DT_FLOAT8_E8M0")\
         .dynamic_input("weight_assist_matrix", "DT_FLOAT")\
         .optional_input("bias", "DT_FLOAT")\
         .optional_input("smooth_scale", "DT_FLOAT")\
@@ -82139,8 +82139,8 @@ def GroupedMatmulSwigluQuantV2(x: Tensor,
         .attr("transpose_weight", attr.Bool(False))\
         .attr("group_list_type", attr.Int(0))\
         .attr("tuning_config", attr.ListInt([0]))\
-        .output("y", "DT_INT8")\
-        .output("y_scale", "DT_FLOAT")
+        .output("y", "DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN")\
+        .output("y_scale", "DT_FLOAT, DT_FLOAT8_E8M0")
     )
 
 
