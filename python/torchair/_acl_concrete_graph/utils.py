@@ -71,6 +71,7 @@ class TensorMetadata:
     data_ptr: Any
     storage_offset: int
     device: Device
+    npu_format: int
     layout: Optional[torch.layout] = torch.strided
     memory_format: Optional[torch.memory_format] = torch.contiguous_format
     requires_grad: Optional[bool] = False
@@ -103,6 +104,13 @@ def get_tensor_metadata(x):
     """
 
     if isinstance(x, torch.Tensor):
+        if 'torch_npu' not in sys.modules:
+            logger.info(f'The internal format will only be enabled in a torch npu env.'
+                        'When there is no torch_npu in the env, set format tensormetadata to FORMAT_ND.')
+            npu_format = Format.FORMAT_ND.value
+        else:
+            torch_npu_module = sys.modules['torch_npu']
+            npu_format = torch_npu_module.get_npu_format(x)
         return TensorMetadata(
             size=x.shape,
             stride=x.stride(),
@@ -111,6 +119,7 @@ def get_tensor_metadata(x):
             data_ptr=x.untyped_storage().data_ptr(),
             storage_offset=x.storage_offset(),
             device=x.device,
+            npu_format=npu_format,
             layout=x.layout,
             requires_grad=x.requires_grad,
         )

@@ -62,6 +62,11 @@ def stub_empty_cache():
     pass
 
 
+def stub_get_npu_format(*args):
+    logger.debug('[Stub] run stub API get_npu_format')
+    return 2
+
+
 @contextlib.contextmanager
 def stub_stream(stream=None):
     """Stub function for stream context manager."""
@@ -376,6 +381,7 @@ def patch_torch_npu_module(stub_module):
     module = types.ModuleType('torch_npu_stub')
     module.npu = stub_module
     module._C = stub_module._C
+    module.get_npu_format = stub_get_npu_format
     module.__all__ = ['npu']
 
     sys.modules['torch_npu'] = module
