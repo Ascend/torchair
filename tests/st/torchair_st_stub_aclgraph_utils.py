@@ -189,7 +189,7 @@ class StubStream:
     def synchronize(self, event=None):
         logger.debug('[Stub] run stub API Stream::synchronize.')
 
-
+        
 class StubStreams:
 
     def Stream(self, event):

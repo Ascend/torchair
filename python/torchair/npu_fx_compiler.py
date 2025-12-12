@@ -44,6 +44,7 @@ from torchair.core._concrete_graph import ConcreteGraphBase, ValuePack, _is_syml
 from torchair.core.utils import logger
 from torchair.ge._ge_graph import is_sym, _torch_tensor_to_ge_const
 from torchair.configs.compiler_config import CompilerConfig, _check_config_support
+from torchair.configs.npugraphex_config import _process_kwargs_options
 from torchair.fx_summary import _summarize_fx_graph
 from torchair.fx_dumper import _NpuFxDumper
 from torchair._utils.custom_aot_functions import aot_module_simplified_joint
@@ -771,7 +772,7 @@ def _set_inputs_custom_attr_to_compiler(compiler: Callable, inputs_custom_attr: 
 
 
 def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
-                 compiler_config: CompilerConfig = None, decompositions: Dict = {}):
+                 compiler_config: CompilerConfig = None, decompositions: Dict = {}, **kwargs):
     """
     Backend entry point for NPU compilation.
 
@@ -787,6 +788,7 @@ def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
     
     if compiler_config is None:
         compiler_config = CompilerConfig()
+    _process_kwargs_options(compiler_config, kwargs)
     compiler = get_compiler(compiler_config)
 
     if os.getenv("TORCH_COMPILE_DEBUG", "0") == "1":

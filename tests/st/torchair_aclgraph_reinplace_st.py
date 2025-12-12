@@ -572,7 +572,7 @@ class AclGraphSt(unittest.TestCase):
             
             self.assertEqual(num_reinplacing_failures(), 0)
             self.assertEqual(miss_inplaced_bytes(), 0)
-    
+
 
 if __name__ == '__main__':
     unittest.main()
