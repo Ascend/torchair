@@ -309,7 +309,6 @@ def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, obs
 
     observer.apply_gm_pass(_optimize_sym_input, "optimize_sym_input")
 
-    _add_stream_label_to_node_meta(graph_module)
     if config.experimental_config.pattern_fusion_pass:
         observer.apply_gm_pass(_apply_pattern_passes, "apply_pattern_passes")        
 
@@ -384,39 +383,12 @@ def _optimize_sym_input(graph_module: torch.fx.GraphModule, example_inputs=None,
     return graph_module
 
 
-def _add_stream_label_to_node_meta(graph_module: torch.fx.GraphModule):
-    """
-    Add stream labels to nodes in the FX graph based on their scope.
-    - Nodes within a stream scope: meta["stream_label"] = corresponding stream label
-    - Nodes outside a stream scope: meta["stream_label"] = None (default stream)
-    """
-    scope_enter_nodes_stack = []
-    current_stream = None
-
-    for node in graph_module.graph.nodes:
-        if str(node.target) == "air.scope_enter.default":
-            is_user_stream = len(node.args) > 0 and '_user_stream_label' in node.args[0]
-            current_stream = node.args[1][0] if is_user_stream and len(node.args) > 1 else None
-            node.meta["stream_label"] = current_stream
-            scope_enter_nodes_stack.append(node)
-        
-        elif str(node.target) == "air.scope_exit.default":
-            node.meta["stream_label"] = current_stream
-            if scope_enter_nodes_stack:
-                scope_enter_nodes_stack.pop()
-                current_stream = scope_enter_nodes_stack[-1].args[1][0] if scope_enter_nodes_stack and len(scope_enter_nodes_stack[-1].args) > 1 else None
-
-        else:
-            node.meta["stream_label"] = current_stream
-
-    graph_module.graph.lint()
-
-
 def _valid_graph(graph_module):
     """
     After enabling users custom pass, it is necessary to perform checks here 
     to prevent users from introducing illegal graph modifications through these custom passes.
     """
+
     def _check_scope_enter_exit(graph_module):
         scope_enter_stack = []
         for node in graph_module.graph.nodes:
@@ -425,16 +397,16 @@ def _valid_graph(graph_module):
             elif str(node.target) == "air.scope_exit.default":
                 if not scope_enter_stack:
                     raise RuntimeError(f"When you call the torch.ops.air.scope_exit operator: {node.name}, "
-                                         f"you must first call the torch.ops.air.scope_enter operator, as they must be called in pairs. "
-                                         f"Please check your code or your post_grad_custom_pre_pass post_grad_custom_post_pass!")
+                                       f"you must first call the torch.ops.air.scope_enter operator, as they must be called in pairs. "
+                                       f"Please check your code or your post_grad_custom_pre_pass post_grad_custom_post_pass!")
                 scope_enter_stack.pop()
 
         if scope_enter_stack:
             args_list = [node.args for node in scope_enter_stack]
             raise RuntimeError(f"After you call the torch.ops.air.scope_enter operator, "
-                                 f"there is no paired call to the torch.ops.air.scope_exit operator. "
-                                 f"The parameters for these torch.ops.air.scope_enter calls are:{args_list}. "
-                                 f"Please check your code or your post_grad_custom_pre_pass post_grad_custom_post_pass!")
+                               f"there is no paired call to the torch.ops.air.scope_exit operator. "
+                               f"The parameters for these torch.ops.air.scope_enter calls are:{args_list}. "
+                               f"Please check your code or your post_grad_custom_pre_pass post_grad_custom_post_pass!")
 
     _check_scope_enter_exit(graph_module) 
 

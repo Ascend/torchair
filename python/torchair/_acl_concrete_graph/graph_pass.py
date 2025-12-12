@@ -40,6 +40,62 @@ META_ONLY_OPS = {
 }
 
 
+def check_multi_stream_for_single_reinplace(node: torch.fx.Node) -> bool:
+    """
+    Check whether there are multiple streams in the current node when reinplacing.
+
+
+    Note: For single reinplace operators,
+          we just need to verify the 0th input support reinplaces under multiple streams
+    """
+
+    from torchair._acl_concrete_graph.utils import get_inplace_op_mutated_input_users
+    all_inputs_users = get_inplace_op_mutated_input_users(node, [0])
+
+    from torchair._utils.graph_utils import verify_nodes_on_same_stream
+    for cur_input_usrs in all_inputs_users:
+        if not verify_nodes_on_same_stream(cur_input_usrs):
+            logger.debug("Current node: %s, type: %s check no multi stream users failed for reinplace. "
+                         "The users of the mutated input node have multiple streams. All the users are %s.",
+                         node.name, node.target, cur_input_usrs)
+            return False
+
+        logger.debug("Current node: %s, type: %s check no multi stream users success for reinplace. "
+                     "The users of the mutated input node did not have multiple streams.",
+                     node.name, node.target)
+    return True
+
+
+def check_multi_stream_for_multi_reinplace(node: torch.fx.Node) -> bool:
+    """
+    Check whether there are multiple streams in the current node when reinplacing.
+
+    Note: For operators with multi_reinplace,
+          we need to verify that all inputs support reinplaces under multiple streams
+    """
+
+    from torchair._acl_concrete_graph.utils import get_inplace_op_mutated_input_users
+    inplace_op = inplaceable_npu_ops.get(node.target, None)
+    if inplace_op is None:
+        return False
+
+    inplace_op_mutated_indices = inplace_op.mutated_arg
+    all_inputs_users = get_inplace_op_mutated_input_users(node, inplace_op_mutated_indices)
+
+    from torchair._utils.graph_utils import verify_nodes_on_same_stream
+    for cur_input_usrs in all_inputs_users:
+        if not verify_nodes_on_same_stream(cur_input_usrs):
+            logger.debug("Current node: %s, type: %s check no multi stream users failed for reinplace. "
+                         "The users of the mutated input node have multiple streams. All the users are %s.",
+                         node.name, node.target, cur_input_usrs)
+            return False
+
+        logger.debug("Current node: %s, type: %s check no multi stream users success for reinplace. "
+                     "The users of the mutated input node did not have multiple streams.",
+                     node.name, node.target)
+    return True
+
+
 @dataclass(frozen=True)
 class InplaceableNpuOp:
     inplace_op: Callable[..., Any]
@@ -55,6 +111,7 @@ if hasattr(torch.ops.npu, "npu_kv_rmsnorm_rope_cache_v2"):
             InplaceableNpuOp(
                 inplace_op=torch.ops.npu.npu_kv_rmsnorm_rope_cache_v2.default,
                 mutated_arg=[5, 6],
+                extra_check=check_multi_stream_for_multi_reinplace,
             )
     })
 
@@ -64,6 +121,7 @@ if hasattr(torch.ops.npu, "npu_mla_prolog_v3"):
             InplaceableNpuOp(
                 inplace_op=torch.ops.npu.npu_mla_prolog_v3.default,
                 mutated_arg=[9, 10],
+                extra_check=check_multi_stream_for_multi_reinplace,
             )
     })
 
@@ -82,7 +140,7 @@ def get_node_storage(node: torch.fx.Node) -> Optional[int]:
     return get_storage(node.meta["val"])
 
 
-def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
+def _mutated_input_reinplace(gm: GraphModule, multi_stream_enabled: bool) -> GraphModule:
     """
     Reinplaces in-placeable operations.
     If there are no uses of a view of the mutated arg after the current node,
@@ -349,7 +407,7 @@ def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
             if not all((arg, node) in copy_args_to_copy_nodes for arg in mutated_args):
                 logger.debug(f"reinplace failed, all mutated args(get_item) must have copy epilogues: {node.target}")
                 continue
-            if can_inplace(node, mutated_args):
+            if can_inplace(node, mutated_args) and inplaceable_op.extra_check(node):
                 for arg in mutated_args:
                     copy_node = copy_args_to_copy_nodes[(arg, node)]
                     replace_dict[copy_node] = copy_node.args[0]
@@ -364,14 +422,21 @@ def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
             if inplace_op is None:
                 logger.debug("cannot find an inplace op for node %s", node.target)
                 continue
-            if can_inplace(node, mutated_arg):
+            if can_inplace(node, mutated_arg) and check_multi_stream_for_single_reinplace(node):
                 copy_node = copy_args_to_copy_nodes.get((mutated_arg, node))
                 if copy_node is not None:
                     replace_dict[copy_node] = copy_node.args[0]
                 node.target = inplace_op
             else:
                 logger.debug(f"can_inplace return False, will skip reinplacing for node: {node.target}")
-        elif hasattr(torch.ops.higher_order, "auto_functionalized_v2") and node.target is torch.ops.higher_order.auto_functionalized_v2:
+        elif hasattr(torch.ops.higher_order, "auto_functionalized_v2"
+                     ) and node.target is torch.ops.higher_order.auto_functionalized_v2:
+            if multi_stream_enabled:
+                # TO DO: support this case
+                logger.debug(f"auto_functionalized_v2 operator reinplacing is not supported in multi stream case, "
+                             f"skip node: {node.target}")
+                continue
+
             _mutable_op = node.args[0]
             kwargs = node.kwargs
 
@@ -388,7 +453,14 @@ def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
             # auto_functionalized into clones + a mutable op; this metadata
             # tells the decomp to only clone the following inputs
             node.meta["only_clone_these_tensors"] = new_bases_to_clone
-        elif hasattr(torch.ops.higher_order, "auto_functionalized") and node.target is torch.ops.higher_order.auto_functionalized:
+        elif hasattr(torch.ops.higher_order, "auto_functionalized"
+                     ) and node.target is torch.ops.higher_order.auto_functionalized:
+            if multi_stream_enabled:
+                # TO DO: support this case
+                logger.debug(f"auto_functionalized operator reinplacing is not supported in multi stream case, "
+                             f"skip node: {node.target}")
+                continue
+
             _mutable_op = node.args[0]
             from torch._higher_order_ops.auto_functionalize import get_mutable_args
 
@@ -440,7 +512,7 @@ def _reinplace_inplaceable_ops_pass(gm: GraphModule, *sample_args):
     return gm
 
 
-def _reinplace_input_mutated_ops(gm: GraphModule):
+def _reinplace_input_mutated_ops(gm: GraphModule, multi_stream_enabled: bool):
     """
     Given a fx.GraphModule, modifies it to perform "reinplacing", mutating the nodes of the graph.
         We try to handle the mutated input reinplace by reusing inductor fx pass for reinplacing input mutated ops,
@@ -449,7 +521,12 @@ def _reinplace_input_mutated_ops(gm: GraphModule):
         out-place version) and not-first mutated args.
     """
     logger.debug("[_reinplace_input_mutated_ops]processing reinplace_input_mutated_ops_pass for graph: %s", id(gm))
-    _mutated_input_reinplace(gm)
+
+    # Set stream labels for all nodes before pattern pass
+    from torchair._utils.graph_utils import add_stream_label_to_node_meta
+    add_stream_label_to_node_meta(gm)
+
+    _mutated_input_reinplace(gm, multi_stream_enabled)
     logger.debug("End to process reinplace input mutated ops fx pass for graph: %s", id(gm))
     return gm
 

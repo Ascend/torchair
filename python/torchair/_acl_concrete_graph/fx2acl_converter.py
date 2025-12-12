@@ -270,10 +270,10 @@ class AclConcreteGraph(ConcreteGraphBase):
         observer.dump_gm(self.fx_graph, "graph_after_replace_dynamic_workspace_ops")
 
         # Note: this will modify mutated input ops in fx graph, should be executed LAST.
-        if not (multi_stream_enabled or self.config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass):
+        if not self.config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass:
             logger.debug("Start to process reinplace input mutated ops fx pass for graph: %s", self.fx_graph_name)
             from torchair._acl_concrete_graph.graph_pass import _reinplace_input_mutated_ops
-            _reinplace_input_mutated_ops(self.fx_graph)
+            _reinplace_input_mutated_ops(self.fx_graph, multi_stream_enabled)
             observer.dump_gm(self.fx_graph, "graph_after_reinplace_input_mutated_ops")
             if decompose_auto_functionalized is not None:
                 decompose_auto_functionalized(self.fx_graph.graph)
