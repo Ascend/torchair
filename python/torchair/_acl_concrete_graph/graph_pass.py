@@ -330,7 +330,7 @@ def _mutated_input_reinplace(gm: GraphModule, multi_stream_enabled: bool) -> Gra
         old_tensors_to_clone, kwargs, node_name, trigger
     ):
         tensors_to_clone: list[str] = []
-        storage_of_reinplaced_args = OrderedSet[int | None]()
+        storage_of_reinplaced_args = set()
 
         # Those used to count possibly_missed_reinplacing_opportunities
         missed_nodes = []
