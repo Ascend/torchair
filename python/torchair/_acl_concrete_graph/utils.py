@@ -97,6 +97,7 @@ class GraphMeta:
     userinputs_weakref: Dict[int, WeakRef] = field(default_factory=dict)
     captured_parameter: Dict[int, int] = field(default_factory=dict)
     captured_mutated_inputs: Dict[int, int] = field(default_factory=dict)
+    captured_userinput_ref_with_output: Dict[int, int] = field(default_factory=dict)
     retained_userinputs: Dict[int, Any] = field(default_factory=dict)
     retained_outputs: List[torch.Tensor] = None
 

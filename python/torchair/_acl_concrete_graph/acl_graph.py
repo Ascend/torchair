@@ -587,6 +587,8 @@ class AclGraphCacheInfo:
     tagged_event_names: List[str] = field(default_factory=list)
     # To ensure that npu_stream_switch obtains the correct stream in a cache_compile scenario
     user_stream_label: Set[str] = field(default_factory=set)
+    # dict for inputs and outputs which are same tensor.
+    userinput_ref_with_output: Dict[int, List] = field(default_factory=dict)
 
     def __post_init__(self):
         if self.pool is not None:
@@ -628,6 +630,7 @@ class AclGraph(object):
         self._original_mem_state = None
         self._graphs_meta: Dict[str, GraphMeta] = {}
         self.stale_storages_ptr = set()
+        self.userinput_ref_with_output_storages_ptr = set()
 
         # members for capture, provided by AclConcreteGraph
         self._fallback_to_eager = False
@@ -644,6 +647,7 @@ class AclGraph(object):
         self._parameter_user_inputs = []
         self._user_stream_label = None
         self._input_base_format = None
+        self._userinput_ref_with_output: Dict[int, List] = {}
 
     def __call__(self, *args, **kwargs):
         # get graph_key and capture
@@ -743,6 +747,7 @@ class AclGraph(object):
         self._fx_graph_name = aclgraph_cache_info.fx_graph_name
         self._tagged_event_names = aclgraph_cache_info.tagged_event_names
         self._user_stream_label = aclgraph_cache_info.user_stream_label
+        self._userinput_ref_with_output = aclgraph_cache_info.userinput_ref_with_output
 
     def compile(self, *args: Any, **kwargs: Any):
         if not self._captured:
@@ -837,6 +842,8 @@ class AclGraph(object):
                 ref = output_ref()
                 if ref is None or not isinstance(ref, torch.Tensor):
                     continue
+                if ref.untyped_storage()._cdata in self.userinput_ref_with_output_storages_ptr:
+                    continue
                 stale_storage_set.add(ref.untyped_storage()._cdata)
             return list(stale_storage_set)
 
@@ -890,6 +897,7 @@ class AclGraph(object):
                                                  mem_state_after_capture=None,
                                                  captured_parameter={},
                                                  captured_mutated_inputs={},
+                                                 captured_userinput_ref_with_output={},
                                                  )
         # record the parameter address for subsequent comparison to determine if recapture is necessary
         for parameter_idx in self._parameter_user_inputs:
@@ -899,6 +907,10 @@ class AclGraph(object):
             # record the mutated_inputs address for subsequent comparison to determine if recapture is necessary
             if input_name in self._mutated_user_inputs:
                 self.graphs_meta[graph_key].captured_mutated_inputs.setdefault(input_idx, args[input_idx].data_ptr())
+        
+        for ref_idx in self._userinput_ref_with_output.keys():
+            self.graphs_meta[graph_key].captured_userinput_ref_with_output.setdefault(ref_idx, args[ref_idx])
+            self.userinput_ref_with_output_storages_ptr.add(args[ref_idx].untyped_storage()._cdata)
 
         logger.debug('No find captured AclGraph{id: %s} of fx_graph %s with graph key {%s}, and start to capture it.',
                      id(self.graph[graph_key]), self.name, graph_key)
@@ -959,6 +971,9 @@ class AclGraph(object):
             for input_name, input_idx in self._user_inputs_mapping.items():
                 if input_name in self._mutated_user_inputs:
                     continue
+                # if input is an alias of output, its metatensor will not be create.(it will be retained).
+                if input_idx in self._userinput_ref_with_output.keys():
+                    continue
                 if isinstance(args_list[input_idx], torch.Tensor):
                     weak_ref = WeakRef(None)
                     # If clone_input is set to True, each user input will have a unique data pointer, preventing
@@ -995,10 +1010,12 @@ class AclGraph(object):
                              )
 
         logger.debug('AclGraph{id: %s} of fx_graph %s with graph key {%s}, has {%s} parameters and {%s} mutated_inputs,'
+                     ' and {%s} input alias, '
                      'all the input meta info are %s.',
                      id(self.graph[graph_key]), self.name, graph_key,
                      len(self.graphs_meta[graph_key].captured_parameter.keys()),
                      len(self.graphs_meta[graph_key].captured_mutated_inputs.keys()),
+                     len(self.graphs_meta[graph_key].captured_userinput_ref_with_output.keys()),
                      self._graphs_meta[graph_key].userinputs_meta)
         logger.info('Success to capture fx_graph %s for graph key{%s}. '
                     'Start to run AclGraph{id: %s} with the updated node num {%s}.',
@@ -1053,9 +1070,10 @@ class AclGraph(object):
                 # assigned before each replay and destroyed afterwards, there is no risk of state conflict.
                 reconstructed_inputs = self._graphs_meta[graph_key].userinputs_metatensor
             else:
-                # Use retained_userinputs if clone_input is set to False.
+                # Use retained_userinputs and userinput_ref_with_output if clone_input is set to False.
                 reconstructed_inputs = self._graphs_meta[graph_key].retained_userinputs
-
+            reconstructed_inputs.update(self._graphs_meta[graph_key].captured_userinput_ref_with_output or {})
+                 
         # foreach copy
         dst_tensors = []
         src_tensors = []
@@ -1090,12 +1108,14 @@ class AclGraph(object):
     def is_need_to_recapture(self, graph_key, *args: Any):
         enable_parameter_frozen = "frozen_parameter" in self.config.keys() \
                                   and self.config["frozen_parameter"] == "1"
+        # There is no need to recapture the ACLGraph when the data addresses of user inputs
+        # (which are aliases to outputs) change.
         # When the memory addresses of mutated_inputs and parameter type inputs change
         # recapture the aclgraph to reduce copy time and improve performance
         for idx, mutated_ptr in self._graphs_meta[graph_key].captured_mutated_inputs.items():
             if mutated_ptr != args[idx].data_ptr():
                 return True
-
+        
         # Check if the parameter address has changed
         if not enable_parameter_frozen:
             for idx, parameter_ptr in self._graphs_meta[graph_key].captured_parameter.items():
@@ -1160,7 +1180,9 @@ class AclGraph(object):
         enable_output_clone = "enable_output_clone" in self.config.keys() and self.config[
             "enable_output_clone"] == "1"
         if enable_output_clone:
-            outputs = [out.clone() if isinstance(out, torch.Tensor) else out for out in outputs]
+            outputs = [out.clone() if (isinstance(out, torch.Tensor) and \
+                out.untyped_storage()._cdata not in self.userinput_ref_with_output_storages_ptr)\
+                    else out for out in outputs]
         else:
             self.set_reconstructed_outputs_deleter(graph_key, outputs)
             warn_msg = "Because acl graph fixes memory addresses, acl graphs do not have a great way of " \
@@ -1268,7 +1290,8 @@ class AclGraph(object):
         all_reconstructed_storages_ptr = {}
         reconstructed_outputs_to_add_deleter = []
         for output_i in reconstructed_outputs:
-            if isinstance(output_i, torch.Tensor):
+            if isinstance(output_i, torch.Tensor) and \
+                output_i.untyped_storage()._cdata not in self.userinput_ref_with_output_storages_ptr:
                 if output_i.untyped_storage().data_ptr() not in all_reconstructed_storages_ptr.keys():
                     reconstructed_outputs_to_add_deleter.append(output_i.untyped_storage()._cdata)
                     all_reconstructed_storages_ptr[output_i.untyped_storage().data_ptr()] = [output_i]
