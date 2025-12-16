@@ -4,6 +4,8 @@ import logging
 import types
 from contextlib import contextmanager
 
+import torch
+
 
 @contextmanager
 def capture_stdout():
@@ -64,3 +66,11 @@ def generate_faked_module():
     npu.is_available = is_available
 
     return npu
+
+
+def register_is_npu():
+    @property
+    def _is_npu(self):
+        return not self.is_cpu
+
+    torch.Tensor.is_npu = _is_npu

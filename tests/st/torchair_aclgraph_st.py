@@ -23,7 +23,7 @@ from torchair_st_stub_aclgraph_utils import (
     forbidden_attr,
     register_custom_ops,
 )
-from torchair_st_utils import capture_logger, generate_faked_module
+from torchair_st_utils import capture_logger, generate_faked_module, register_is_npu
 
 
 logger.setLevel(logging.DEBUG)
@@ -44,6 +44,7 @@ class AclGraphSt(unittest.TestCase):
         self.original_torch_npu_module = None
         self.stub_module = StubNpu()
         register_custom_ops()
+        register_is_npu()
 
     def setUp(self) -> None:
         self.original_npu_module = patch_ops_npu_module(self.stub_module)

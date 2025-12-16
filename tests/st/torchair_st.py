@@ -51,14 +51,6 @@ def set_graph_output_dtypes(graph, dtypes):
         graph.attr["_input_placements"].list.i.append(v)
 
 
-def register_is_npu():
-    @property
-    def _is_npu(self):
-        return not self.is_cpu
-
-    torch.Tensor.is_npu = _is_npu
-
-
 @contextlib.contextmanager
 def set_env_var(key, value):
     original_value = os.environ.get(key)
