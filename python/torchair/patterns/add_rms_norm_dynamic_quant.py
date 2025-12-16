@@ -56,11 +56,15 @@ def _register_addrmsnormdynamicquant_pattern(pattern_pass_manager: _PatternPassM
         yOut, scale1Out = torch.ops.npu.npu_dynamic_quant.default(y, smooth_scales=smooth_scales)
         return yOut, xOut, scale1Out
     
+    # For scenarios in DS networks, replace the operator combination of npu_add_rms_norm and npu_dynamic_quant 
+    # with the npu_add_rms_norm_dynamic_quant operator. 
+    # Since only the first path is quantized, pass [True, False] to the fusion operator's input parameter output_mask, 
+    # indicating that only the first path is used for quantization.
     def replace_fn(x1, x2, gamma, smooth_scales):
         yOut, _, xOut, scale1Out, _ = torch.ops.npu.npu_add_rms_norm_dynamic_quant.default(
             x1, x2, gamma,
             smooth_scale1=smooth_scales,
-            output_mask=[True, True],
+            output_mask=[True, False],
         )
         return yOut, xOut, scale1Out
     
@@ -94,7 +98,7 @@ def _register_addrmsnormdynamicquant_pattern2(pattern_pass_manager: _PatternPass
     def replace_fn(x1, x2, gamma):
         yOut, _, xOut, scale1Out, _ = torch.ops.npu.npu_add_rms_norm_dynamic_quant.default(
             x1, x2, gamma,
-            output_mask=[True, True],
+            output_mask=[True, False],
         )
         yOut_flatten = yOut.flatten(0, 1)
         scale1Out_view = scale1Out.view(-1, 1)
