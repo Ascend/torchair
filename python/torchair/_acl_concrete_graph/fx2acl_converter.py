@@ -422,8 +422,24 @@ class AclConcreteGraph(ConcreteGraphBase):
             Any: Processed metadata for the output operation.
         """
         if not (isinstance(args, (list, tuple)) and len(args) == 1):
-            raise RuntimeError(f"Unsupported case in AclGraph: for output node with args: [{args}].")
-
+            raise RuntimeError(f"Unsupported case in AclGraph: for output node with args: [{args}]. "
+                               f"Args must be list or a tuple, and the length of args must be euqal to 1.")
+        args = args[0]
+        # args is tuple or list
+        output_idx = 0
+        for arg in args:
+            if not hasattr(arg, 'meta') or arg.meta is None:
+                output_idx += 1
+                continue
+            for fx_input_idx, fx_input_meta in self._all_meta_tensor_input.items():
+                if torch._C._is_alias_of(fx_input_meta, arg.meta):
+                    if fx_input_idx in self._aclgraph_cache_info.userinput_ref_with_output.keys():
+                        self._aclgraph_cache_info.userinput_ref_with_output[fx_input_idx].append(output_idx)
+                    else:
+                        self._aclgraph_cache_info.userinput_ref_with_output[fx_input_idx] = [output_idx]
+            output_idx += 1
+        for input_idx, output_idxs in self._aclgraph_cache_info.userinput_ref_with_output.items():
+            logger.debug('After parse output, outputs index [%s] are alias of input index [%s]', output_idxs, input_idx)
         return meta_outputs
 
     def _codegen_tensor_constant(self):
@@ -479,7 +495,8 @@ class AclConcreteGraph(ConcreteGraphBase):
                 mutated_user_inputs={self._aclgraph_cache_info.mutated_user_inputs},
                 tagged_event_names={self._aclgraph_cache_info.tagged_event_names},
                 parameter_user_inputs={self._aclgraph_cache_info.parameter_user_inputs},
-                user_stream_label={self._aclgraph_cache_info.user_stream_label}
+                user_stream_label={self._aclgraph_cache_info.user_stream_label},
+                userinput_ref_with_output={self._aclgraph_cache_info.userinput_ref_with_output}
             )
             acl_graph.load(aclgraph_cache_info)
         ''')

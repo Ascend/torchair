@@ -585,8 +585,8 @@ class AclgraphTest(unittest.TestCase):
             f"not found in logs: {cm.output}"
         )
         self.assertTrue(
-            any("'activate_num': 5" in log for log in cm.output),
-            f"Expected DEBUG ''activate_num': 5'"
+            any("'activate_num': 4" in log for log in cm.output),
+            f"Expected DEBUG ''activate_num': 4'"
             f"not found in logs: {cm.output}"
         )
 
@@ -614,8 +614,8 @@ class AclgraphTest(unittest.TestCase):
             f"not found in logs: {cm.output}"
         )
         self.assertTrue(
-            any("'activate_num': 9" in log for log in cm.output),
-            f"Expected DEBUG ''activate_num': 9'"
+            any("'activate_num': 7" in log for log in cm.output),
+            f"Expected DEBUG ''activate_num': 7'"
             f"not found in logs: {cm.output}"
         )
         del graph_res2
@@ -636,8 +636,8 @@ class AclgraphTest(unittest.TestCase):
             f"not found in logs: {cm.output}"
         )
         self.assertTrue(
-            any("'activate_num': 9" in log for log in cm.output),
-            f"Expected DEBUG ''activate_num': 9'"
+            any("'activate_num': 7" in log for log in cm.output),
+            f"Expected DEBUG ''activate_num': 7'"
             f"not found in logs: {cm.output}"
         )
 
@@ -848,8 +848,8 @@ class AclgraphTest(unittest.TestCase):
             f"not found in logs: {cm.output}"
         )
         self.assertTrue(
-            any("'activate_num': 5" in log for log in cm.output),
-            f"Expected DEBUG ''activate_num': 5'"
+            any("'activate_num': 4" in log for log in cm.output),
+            f"Expected DEBUG ''activate_num': 4'"
             f"not found in logs: {cm.output}"
         )
 
@@ -877,8 +877,8 @@ class AclgraphTest(unittest.TestCase):
             f"not found in logs: {cm.output}"
         )
         self.assertTrue(
-            any("'activate_num': 9" in log for log in cm.output),
-            f"Expected DEBUG ''activate_num': 9'"
+            any("'activate_num': 7" in log for log in cm.output),
+            f"Expected DEBUG ''activate_num': 7'"
             f"not found in logs: {cm.output}"
         )
         del graph_res2
@@ -899,8 +899,8 @@ class AclgraphTest(unittest.TestCase):
             f"not found in logs: {cm.output}"
         )
         self.assertTrue(
-            any("'activate_num': 9" in log for log in cm.output),
-            f"Expected DEBUG ''activate_num': 9'"
+            any("'activate_num': 7" in log for log in cm.output),
+            f"Expected DEBUG ''activate_num': 7'"
             f"not found in logs: {cm.output}"
         )
 
@@ -1115,8 +1115,8 @@ class AclgraphTest(unittest.TestCase):
             f"not found in logs: {cm.output}"
         )
         self.assertTrue(
-            any("'activate_num': 5" in log for log in cm.output),
-            f"Expected DEBUG ''activate_num': 5'"
+            any("'activate_num': 4" in log for log in cm.output),
+            f"Expected DEBUG ''activate_num': 4'"
             f"not found in logs: {cm.output}"
         )
 

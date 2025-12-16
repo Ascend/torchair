@@ -97,6 +97,7 @@ class GraphMeta:
     userinputs_weakref: Dict[int, WeakRef] = field(default_factory=dict)
     captured_parameter: Dict[int, int] = field(default_factory=dict)
     captured_mutated_inputs: Dict[int, int] = field(default_factory=dict)
+    captured_userinput_ref_with_output: Dict[int, int] = field(default_factory=dict)
     retained_userinputs: Dict[int, Any] = field(default_factory=dict)
     retained_outputs: List[torch.Tensor] = None
 
@@ -105,15 +106,16 @@ def get_tensor_metadata(x):
     """
     Just record meta data for a pytorch tensor object.
     """
-
     if isinstance(x, torch.Tensor):
-        if 'torch_npu' not in sys.modules:
+        npu_format = Format.FORMAT_ND.value
+        torch_npu_module = sys.modules.get('torch_npu', None)
+        if torch_npu_module is None:
             logger.info(f'The internal format will only be enabled in a torch npu env.'
                         'When there is no torch_npu in the env, set format tensormetadata to FORMAT_ND.')
-            npu_format = Format.FORMAT_ND.value
         else:
-            torch_npu_module = sys.modules['torch_npu']
-            npu_format = torch_npu_module.get_npu_format(x)
+            if x.is_npu:
+                npu_format = torch_npu_module.get_npu_format(x)
+
         return TensorMetadata(
             size=x.shape,
             stride=x.stride(),
