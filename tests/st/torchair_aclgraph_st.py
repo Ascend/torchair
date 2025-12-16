@@ -1932,7 +1932,7 @@ class AclGraphSt(unittest.TestCase):
         with capture_logger() as stdout:
             model(x)
         captured_output = stdout.getvalue()
-        self.assertTrue("The current AclGraph needs to be recaptured" in captured_output)
+        self.assertFalse("The current AclGraph needs to be recaptured" in captured_output)
 
         with self.assertLogs(logger, level="DEBUG") as cm:
             model(x)
@@ -2852,12 +2852,12 @@ class AclGraphSt(unittest.TestCase):
         captured_output = stdout.getvalue()
         self.assertTrue("needs to be recaptured" in captured_output)
 
-        # same graph with parameters changed, need to rerecapture
+        # same graph with parameters changed, do not need to rerecapture
         with capture_logger() as stdout:
             model.linear.weight.data = b
             res5 = model(x_, c)
         captured_output = stdout.getvalue()
-        self.assertTrue("needs to be recaptured" in captured_output)
+        self.assertFalse("needs to be recaptured" in captured_output)
 
         # deleter res5 to make weakref None
         del res5
@@ -2927,10 +2927,10 @@ class AclGraphSt(unittest.TestCase):
 
         with self.assertLogs(logger, level="DEBUG") as cm:
             model(x)
-        self.assertTrue(
+        self.assertFalse(
             any("The current AclGraph needs to be recaptured" in log for log in cm.output),
-            f"Expected DEBUG 'The current AclGraph needs to be recaptured'"
-            f"not found in logs: {cm.output}"
+            f"Not Expected DEBUG 'The current AclGraph needs to be recaptured'"
+            f"found in logs: {cm.output}"
         )
 
 

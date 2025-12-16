@@ -224,8 +224,19 @@ def get_unupdated_sym_input_index(graph_module: torch.fx.GraphModule):
     return unupdated_sym_input_index
 
 
-def get_unupdated_input_fn(unupdated_sym_input_index):
-    return gen_unupdate_input_func(unupdated_sym_input_index)
+def get_unupdated_input_fn(unupdated_sym_input_index, parameter_user_inputs, config):
+    enable_parameter_frozen = "frozen_parameter" in config.keys() \
+                              and config["frozen_parameter"] == "1"
+    if enable_parameter_frozen or parameter_user_inputs is None or len(parameter_user_inputs) == 0:
+        return gen_unupdate_input_func(unupdated_sym_input_index)
+    else:
+        def gen_unupdated_input_fn_with_parameter_addr(*args: Any, **kwargs: Any):
+            input_key = gen_unupdate_input_func(unupdated_sym_input_index)(*args, **kwargs)
+            addr_list = []
+            for idx in parameter_user_inputs:
+                addr_list.append(str(args[idx].data_ptr()))
+            return input_key + "#" + str(hash(",".join(addr_list)))
+        return gen_unupdated_input_fn_with_parameter_addr
 
 
 def get_update_ruler(node, updated_param_keys, placeholder_nodes):
@@ -762,7 +773,7 @@ class AclGraph(object):
                 path = self.config.get('_aclnn_static_shape_kernel_build_dir', None)
                 compile_static_kernel(self.fx_forward, *args, build_dir=path, **kwargs)
 
-            self._unupdated_input_func = get_unupdated_input_fn(self._unupdated_sym_input_index)
+            self._unupdated_input_func = get_unupdated_input_fn(self._unupdated_sym_input_index, self._parameter_user_inputs, self.config)
             self._updated_input_func = get_updated_ops_fn(self._ops_update_rulers)
             self._captured = True
 
@@ -899,7 +910,7 @@ class AclGraph(object):
                                                  captured_mutated_inputs={},
                                                  captured_userinput_ref_with_output={},
                                                  )
-        # record the parameter address for subsequent comparison to determine if recapture is necessary
+        # record the parameter address
         for parameter_idx in self._parameter_user_inputs:
             self.graphs_meta[graph_key].captured_parameter.setdefault(parameter_idx, args[parameter_idx].data_ptr())
 
@@ -1106,8 +1117,6 @@ class AclGraph(object):
         self._graphs_meta[graph_key].replay_func(*args, **kwargs)
 
     def is_need_to_recapture(self, graph_key, *args: Any):
-        enable_parameter_frozen = "frozen_parameter" in self.config.keys() \
-                                  and self.config["frozen_parameter"] == "1"
         # There is no need to recapture the ACLGraph when the data addresses of user inputs
         # (which are aliases to outputs) change.
         # When the memory addresses of mutated_inputs and parameter type inputs change
@@ -1115,12 +1124,6 @@ class AclGraph(object):
         for idx, mutated_ptr in self._graphs_meta[graph_key].captured_mutated_inputs.items():
             if mutated_ptr != args[idx].data_ptr():
                 return True
-        
-        # Check if the parameter address has changed
-        if not enable_parameter_frozen:
-            for idx, parameter_ptr in self._graphs_meta[graph_key].captured_parameter.items():
-                if parameter_ptr != args[idx].data_ptr():
-                    return True
         return False
 
     def reconstruct_outputs(self, graph_key: str) -> List:
