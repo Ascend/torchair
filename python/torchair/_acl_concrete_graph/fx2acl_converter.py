@@ -292,7 +292,8 @@ class AclConcreteGraph(ConcreteGraphBase):
             self.dump(self.config.debug.graph_dump.full_path(f"dynamo_optimized_{self.fx_graph_name}"))
         # get info for get_unupdated_input_fn and get_updated_ops_fn from fx_graph
         from torchair._acl_concrete_graph.acl_graph import get_unupdated_sym_input_index, get_updated_ops_rulers_param
-        self._aclgraph_cache_info.unupdated_sym_input_index = get_unupdated_sym_input_index(self.fx_graph)
+        self._aclgraph_cache_info.unupdated_sym_input_index = \
+            get_unupdated_sym_input_index(self.fx_graph, self._all_sym_input_idx)
         self._aclgraph_cache_info.ops_update_rulers, self._aclgraph_cache_info.updated_ops_param = \
             get_updated_ops_rulers_param(self.fx_graph, self._meta_inputs)
 

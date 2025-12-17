@@ -156,24 +156,58 @@ def get_node_all_placeholder_inputs(node, excluded_kwargs=None):
 
 def gen_unupdate_input_func(unupdated_input_index: List):
     if len(unupdated_input_index) == 0:
+        static_key = "no_updated_input"
+
         def empty_input_key(*args: Any, **kwargs: Any):
-            return "no_updated_input"
+            return static_key
 
         return empty_input_key
 
+    if all(idx[1] for idx in unupdated_input_index):
+        # all the sym input are symbol
+        def gen_unupdated_sym_input_key(*args: Any, **kwargs: Any):
+            input_sym_list = []
+            for idx in unupdated_input_index:
+                input_sym_list.append(args[idx[0]])
+            return str(input_sym_list)
+
+        return gen_unupdated_sym_input_key
+
+    # input is mix case for symbol and tensor
     def gen_unupdated_input_key(*args: Any, **kwargs: Any):
         input_shape_list = []
         for idx in unupdated_input_index:
-            if isinstance(args[idx], torch.Tensor):
-                input_shape_list.append(str(list(args[idx].shape)))
+            if idx[1]:
+                # symbol input
+                input_shape_list.append(args[idx[0]])
             else:
-                input_shape_list.append(str(args[idx]))
-        return ",".join(input_shape_list)
+                # tensor input
+                input_shape_list.append(list(args[idx[0]].shape))
+
+        return str(input_shape_list)
 
     return gen_unupdated_input_key
 
 
-def get_unupdated_sym_input_index(graph_module: torch.fx.GraphModule):
+def get_unupdated_input_fn(unupdated_sym_input_index, parameter_user_inputs, config):
+    enable_parameter_frozen = "frozen_parameter" in config.keys() and config["frozen_parameter"] == "1"
+    if enable_parameter_frozen or parameter_user_inputs is None or len(parameter_user_inputs) == 0:
+        return gen_unupdate_input_func(unupdated_sym_input_index)
+    else:
+        # Normally, we can enable frozen_parameter to optimize over head time, so this branch is generally not used.
+        unupdated_input_fn = gen_unupdate_input_func(unupdated_sym_input_index)
+
+        def gen_input_key_with_parameter_addr(*args: Any, **kwargs: Any):
+            input_key = unupdated_input_fn(*args, **kwargs)
+            addr_list = []
+            for idx in parameter_user_inputs:
+                addr_list.append(args[idx].data_ptr())
+            return input_key + str(hash(tuple(addr_list)))
+
+        return gen_input_key_with_parameter_addr
+
+
+def get_unupdated_sym_input_index(graph_module: torch.fx.GraphModule, all_sym_input_idx):
     updated_op_params = {}
     for func_iter in _REPLACE_FUNC_MAP.values():
         if len(func_iter.workspace_keys) > 0:
@@ -181,7 +215,7 @@ def get_unupdated_sym_input_index(graph_module: torch.fx.GraphModule):
         updated_op_params[func_iter.out_operator] = func_iter.updated_param_keys
     logger.debug("In graph[%s], all updated inputs user nodes and params: %s.", id(graph_module), updated_op_params)
 
-    unupdated_sym_input_index = []
+    unupdated_sym_input_index = set()
     data_idx = -1
     for node in graph_module.graph.nodes:
         if node.op != "placeholder":
@@ -204,39 +238,38 @@ def get_unupdated_sym_input_index(graph_module: torch.fx.GraphModule):
         if len(node.users) == 0:
             continue
 
-        have_unupdated_user = False
+        the_unupdated_user = None
         for user_node in node.users:
             if user_node.target not in updated_op_params.keys():
-                have_unupdated_user = True
+                the_unupdated_user = user_node
                 break
             unupdated_inputs = get_node_all_placeholder_inputs(user_node,
                                                                excluded_kwargs=updated_op_params[user_node.target])
-            logger.debug("In graph[%s], the %s th meta input[%s] have unupdated user[user_name: %s, user_inputs:%s].",
-                         id(graph_module), data_idx, node_meta, user_node.name, unupdated_inputs)
             if node in unupdated_inputs:
-                have_unupdated_user = True
+                the_unupdated_user = user_node
                 break
-        if have_unupdated_user:
-            unupdated_sym_input_index.append(data_idx)
-    logger.debug("In graph[%s], all unupdated sym input index is %s.",
+        if the_unupdated_user is None:
+            continue
+
+        logger.debug("In graph[%s], the %s th meta input[%s: %s] have unupdated user[%s].",
+                     id(graph_module), data_idx, node.name, node_meta, the_unupdated_user.name)
+        if is_sym(node_meta):
+            unupdated_sym_input_index.add((data_idx, True))
+            continue
+        for dim in node_meta.size():
+            if not is_sym(dim):
+                continue
+            idx = all_sym_input_idx.get(dim.node.expr, None)
+            if idx is not None:
+                unupdated_sym_input_index.add((idx, True))
+            else:
+                unupdated_sym_input_index.add((data_idx, False))
+
+    unupdated_sym_input_index = list(unupdated_sym_input_index)
+    unupdated_sym_input_index.sort()
+    logger.debug("In graph[%s], all unupdated symbol input index is %s.",
                  id(graph_module), unupdated_sym_input_index)
-
     return unupdated_sym_input_index
-
-
-def get_unupdated_input_fn(unupdated_sym_input_index, parameter_user_inputs, config):
-    enable_parameter_frozen = "frozen_parameter" in config.keys() \
-                              and config["frozen_parameter"] == "1"
-    if enable_parameter_frozen or parameter_user_inputs is None or len(parameter_user_inputs) == 0:
-        return gen_unupdate_input_func(unupdated_sym_input_index)
-    else:
-        def gen_unupdated_input_fn_with_parameter_addr(*args: Any, **kwargs: Any):
-            input_key = gen_unupdate_input_func(unupdated_sym_input_index)(*args, **kwargs)
-            addr_list = []
-            for idx in parameter_user_inputs:
-                addr_list.append(str(args[idx].data_ptr()))
-            return input_key + "#" + str(hash(",".join(addr_list)))
-        return gen_unupdated_input_fn_with_parameter_addr
 
 
 def get_update_ruler(node, updated_param_keys, placeholder_nodes):
