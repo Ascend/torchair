@@ -618,6 +618,7 @@ class AclgraphTest(unittest.TestCase):
             f"Expected DEBUG ''activate_num': 7'"
             f"not found in logs: {cm.output}"
         )
+        del graph_res1
         del graph_res2
         del graph_res3
         with self.assertLogs(logger, level="DEBUG") as cm:
@@ -625,10 +626,10 @@ class AclgraphTest(unittest.TestCase):
             # recapture
             graph_res4 = compiled_model1(query_prefill_, query_, key, value_, scale, length_new, length2_new,
                                          lengthq_new, narrow_start, x)
-        self.assertTrue(
+        self.assertFalse(
             any("The current AclGraph needs to be recaptured" in log for log in cm.output),
-            f"Expected DEBUG 'The current AclGraph needs to be recaptured'"
-            f"not found in logs: {cm.output}"
+            f"Not Expected DEBUG 'The current AclGraph needs to be recaptured'"
+            f"found in logs: {cm.output}"
         )
         self.assertTrue(
             any("After capturing fx_graph" in log for log in cm.output),
@@ -636,8 +637,8 @@ class AclgraphTest(unittest.TestCase):
             f"not found in logs: {cm.output}"
         )
         self.assertTrue(
-            any("'activate_num': 7" in log for log in cm.output),
-            f"Expected DEBUG ''activate_num': 7'"
+            any("'activate_num': 4" in log for log in cm.output),
+            f"Expected DEBUG ''activate_num': 4'"
             f"not found in logs: {cm.output}"
         )
 
@@ -750,6 +751,7 @@ class AclgraphTest(unittest.TestCase):
             f"Expected DEBUG ''activate_num': 6'"
             f"not found in logs: {cm.output}"
         )
+        del graph_res1
         del graph_res2
         del graph_res3
         with self.assertLogs(logger, level="DEBUG") as cm:
@@ -757,10 +759,10 @@ class AclgraphTest(unittest.TestCase):
             # recapture
             graph_res4 = compiled_model1(query_prefill_, query_, key, value_, scale, length_new, length2_new,
                                          lengthq_new, narrow_start, x)
-        self.assertTrue(
+        self.assertFalse(
             any("The current AclGraph needs to be recaptured" in log for log in cm.output),
-            f"Expected DEBUG 'The current AclGraph needs to be recaptured'"
-            f"not found in logs: {cm.output}"
+            f"Not Expected DEBUG 'The current AclGraph needs to be recaptured'"
+            f"found in logs: {cm.output}"
         )
         self.assertTrue(
             any("After capturing fx_graph" in log for log in cm.output),
@@ -768,8 +770,8 @@ class AclgraphTest(unittest.TestCase):
             f"not found in logs: {cm.output}"
         )
         self.assertTrue(
-            any("'activate_num': 6" in log for log in cm.output),
-            f"Expected DEBUG ''activate_num': 6'"
+            any("'activate_num': 3" in log for log in cm.output),
+            f"Expected DEBUG ''activate_num': 3'"
             f"not found in logs: {cm.output}"
         )
 
@@ -881,6 +883,7 @@ class AclgraphTest(unittest.TestCase):
             f"Expected DEBUG ''activate_num': 7'"
             f"not found in logs: {cm.output}"
         )
+        del graph_res1
         del graph_res2
         del graph_res3
         with self.assertLogs(logger, level="DEBUG") as cm:
@@ -888,19 +891,19 @@ class AclgraphTest(unittest.TestCase):
             # recapture
             graph_res4 = compiled_model1(query_prefill_, query_, key, value_, scale, length_new, length2_new,
                                          lengthq_new, narrow_start, x)
-        self.assertTrue(
+        self.assertFalse(
             any("The current AclGraph needs to be recaptured" in log for log in cm.output),
             f"Expected DEBUG 'The current AclGraph needs to be recaptured'"
             f"not found in logs: {cm.output}"
         )
         self.assertTrue(
             any("After capturing fx_graph" in log for log in cm.output),
-            f"Expected DEBUG 'After capturing fx_graph'"
-            f"not found in logs: {cm.output}"
+            f"Not Expected DEBUG 'After capturing fx_graph'"
+            f"found in logs: {cm.output}"
         )
         self.assertTrue(
-            any("'activate_num': 7" in log for log in cm.output),
-            f"Expected DEBUG ''activate_num': 7'"
+            any("'activate_num': 4" in log for log in cm.output),
+            f"Expected DEBUG ''activate_num': 4'"
             f"not found in logs: {cm.output}"
         )
 
@@ -1013,6 +1016,7 @@ class AclgraphTest(unittest.TestCase):
             f"Expected DEBUG ''activate_num': 6'"
             f"not found in logs: {cm.output}"
         )
+        del graph_res1
         del graph_res2
         del graph_res3
         with self.assertLogs(logger, level="DEBUG") as cm:
@@ -1020,10 +1024,10 @@ class AclgraphTest(unittest.TestCase):
             # recapture
             graph_res4 = compiled_model1(query_prefill_, query_, key, value_, scale, length_new, length2_new,
                                          lengthq_new, narrow_start, x)
-        self.assertTrue(
+        self.assertFalse(
             any("The current AclGraph needs to be recaptured" in log for log in cm.output),
-            f"Expected DEBUG 'The current AclGraph needs to be recaptured'"
-            f"not found in logs: {cm.output}"
+            f"Not Expected DEBUG 'The current AclGraph needs to be recaptured'"
+            f"found in logs: {cm.output}"
         )
         self.assertTrue(
             any("After capturing fx_graph" in log for log in cm.output),
@@ -1031,8 +1035,8 @@ class AclgraphTest(unittest.TestCase):
             f"not found in logs: {cm.output}"
         )
         self.assertTrue(
-            any("'activate_num': 6" in log for log in cm.output),
-            f"Expected DEBUG ''activate_num': 6'"
+            any("'activate_num': 3" in log for log in cm.output),
+            f"Expected DEBUG ''activate_num': 3'"
             f"not found in logs: {cm.output}"
         )
 
