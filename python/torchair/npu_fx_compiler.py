@@ -307,7 +307,14 @@ def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, obs
     from torchair.patterns._recover_view_inplace_pattern import recover_view_inplace_pattern
     observer.apply_gm_pass(recover_view_inplace_pattern, "recover_view_inplace_pattern")
 
-    observer.apply_gm_pass(_optimize_sym_input, "optimize_sym_input")
+    if config.mode.value == "max-autotune":
+        # Converting the symbol inputs in FX graph into the shape index of tensor inputs
+        # can effectively reduce the number of inputs in the compiled model and
+        # simplify the difficulty of manually constructing inputs in export cases.
+        # Therefore, this pass is very meaningful for GE graph cases.
+        # However, in ACL graph cases, those more symbol inputs do not have any negative impact.
+        # So we will skip this optimization pass in the ACL graph cases.
+        observer.apply_gm_pass(_optimize_sym_input, "optimize_sym_input")
 
     if config.experimental_config.pattern_fusion_pass:
         observer.apply_gm_pass(_apply_pattern_passes, "apply_pattern_passes")        
@@ -637,8 +644,9 @@ class _NpuFxCompiler:
                     return self.runner(*args, **kwargs)
 
             if self.config.experimental_config.aclgraph._aclnn_static_shape_kernel:
-                all_sym_index = list(set(concrete_graph._all_sym_input_idx.values()))
-                all_sym_index.sort()
+                # Only trigger static shape kernel compilation
+                # when some symbol changed that have not been used for updates, not all symbol.
+                all_sym_index = [x[0] for x in concrete_graph._aclgraph_cache_info.unupdated_sym_input_index if x[1]]
                 return _StaticKernelRunner(
                     graph.fx_graph,
                     self.config.experimental_config.aclgraph._aclnn_static_shape_kernel_build_dir.value,
