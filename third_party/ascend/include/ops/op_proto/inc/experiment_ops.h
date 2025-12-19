@@ -3844,6 +3844,34 @@ REG_OP(ClippedSwiglu)
 
 
 /**
+* @brief  Function AttentionUpdate.
+
+* @par Inputs:
+* Two inputs, including:
+* @li lse: Tensor list. Type is float32. The input of lse.
+* @li go: Tensor list. Type is float32, float16, bfloat16. The input of attentionout.
+
+* @par Outputs:
+* Two outputs, including:
+* @li output: A tensor. Type is float32, float16, bfloat16.
+* @li lse_m: A tensor. Type is float32.  
+
+* @par Attributes:
+* Two attributes, including:
+* @li update_type: An int. The update type, value is 0 or 1. 0 means the output of lse_m is invalid, 1 means valid.
+* @li sp: An int. The sp num, value is [1..16].
+*/
+REG_OP(AttentionUpdate)
+    .DYNAMIC_INPUT(lse, TensorType({DT_FLOAT}))
+    .DYNAMIC_INPUT(go, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .OUTPUT(output, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .OUTPUT(lse_m, TensorType({DT_FLOAT}))
+    .REQUIRED_ATTR(update_type, Int)
+    .REQUIRED_ATTR(sp, Int)
+    .OP_END_FACTORY_REG(AttentionUpdate)
+
+
+/**
 * @brief Function FusedInferAttentionScore.
 
 * @par Inputs:

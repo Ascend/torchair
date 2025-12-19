@@ -81492,6 +81492,51 @@ def ClippedSwiglu(x: Tensor,
     return y
 
 
+@auto_convert_to_tensor([True, True], [False, False])
+def AttentionUpdate(lse: List[Tensor], go: List[Tensor], *, update_type: int, sp: int, dependencies=[], node_name=None):
+    """REG_OP(AttentionUpdate)\n
+    .DYNAMIC_INPUT(lse, TensorType({DT_FLOAT}))\n
+    .DYNAMIC_INPUT(go, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(output, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(lse_m, TensorType({DT_FLOAT}))\n
+    .REQUIRED_ATTR(update_type, Int)\n
+    .REQUIRED_ATTR(sp, Int)\n
+    """
+
+    # process inputs
+    inputs = {
+        "lse": lse,
+        "go": go,
+    }
+
+    # process attrs
+    attrs = {
+        "update_type": attr.Int(update_type),
+        "sp": attr.Int(sp),
+    }
+
+    # process outputs
+    outputs = [
+    "output",
+    "lse_m",
+    ]
+
+    return ge_op(
+        op_type="AttentionUpdate",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("AttentionUpdate") \
+        .dynamic_input("lse", "DT_FLOAT") \
+        .dynamic_input("go", "DT_FLOAT, DT_FLOAT16, DT_BF16") \
+        .required_attr("update_type", attr.Int) \
+        .required_attr("sp", attr.Int) \
+        .output("output" , "DT_FLOAT, DT_FLOAT16, DT_BF16") \
+        .output("lse_m" , "DT_FLOAT")
+    )
+
+
 @auto_convert_to_tensor([False], [False], inputs_tensor_type=[TensorType.TT_ALL])
 def FfnWorkerScheduler(schedule_context: Tensor,
                        *,
