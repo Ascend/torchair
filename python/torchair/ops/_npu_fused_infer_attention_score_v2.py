@@ -152,6 +152,8 @@ def convert_npu_npu_fused_infer_attention_score_v2_tensor(
             dequant_scale_value_ge_dtype = torch_dtype_value_to_ge_type(dequant_scale_value_dtype)
             dequant_scale_value = ge.Bitcast(dequant_scale_value, type=dequant_scale_value_ge_dtype)
 
+    if query is not None and query_dtype == torch_npu.hifloat8:
+        query = ge.Bitcast(query, type=DataType.DT_HIFLOAT8)
     if key is not None and key_dtype == torch_npu.hifloat8:
         key = ge.Bitcast(key, type=DataType.DT_HIFLOAT8)
     if value is not None and value_dtype == torch_npu.hifloat8:
