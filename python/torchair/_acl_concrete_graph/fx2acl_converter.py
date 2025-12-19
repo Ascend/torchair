@@ -556,6 +556,8 @@ class AclConcreteGraph(ConcreteGraphBase):
         input_code = IndentedBuffer()
 
         for idx, meta in self._all_meta_tensor_input.items():
+            if meta.numel() == 0:
+                continue
             input_code.writelines([f'assert_size_stride(args[{idx}], {tuple(meta.shape)}, {meta.stride()})'])
 
         return input_code.getvalue()
