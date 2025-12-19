@@ -2927,6 +2927,32 @@ class AclGraphSt(unittest.TestCase):
             f"found in logs: {cm.output}"
         )
 
+    def test_aclgraph_not_assert_size_stride_empty_tensor(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                x = x + x
+                return x
+
+        model = Model()
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(model, backend=aclgraph_backend, dynamic=True)
+        x = torch.randn([0, 512, 1, 64])
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            model(x)
+        self.assertFalse(
+            any("assert_size_stride(args[" in log for log in cm.output),
+            f"Expect that DEBUG 'assert_size_stride(args['"
+            f"not found in logs: {cm.output}"
+        )
+
 
 if __name__ == '__main__':
     unittest.main()
