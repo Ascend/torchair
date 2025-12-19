@@ -1,17 +1,18 @@
 __all__ = []
 
 import functools
+import operator
 import sys
 import torch
 
-from torch._inductor.pattern_matcher import Match
+from torch._inductor.pattern_matcher import Match, MultiOutputPattern, CallFunction, KeywordArg, Ignored
 from torch._subclasses.fake_tensor import FakeTensorMode
 
 from torchair.core.utils import logger
 from torchair.patterns.pattern_pass_manager import _PatternPassManager
 
 
-def _pattern_extra_check(match: Match) -> bool:
+def _pattern_extra_check_stream(match: Match) -> bool:
     """
     Checks if all nodes in the same stream.
     """
@@ -42,6 +43,53 @@ def _pattern_extra_check(match: Match) -> bool:
         return False
 
     return True
+
+
+def _check_view_shape_and_stream(match: Match) -> bool:
+    """
+    Check if the aten.view.default operator applied to the target tensor is equivalent 
+    to y.flatten(0, 1) (merging the first two dimensions of tensor y).
+    """
+    view_node = None
+    x1_node = None
+    y_node = None
+
+    for node in match.nodes:
+        if node.target == torch.ops.npu.npu_add_rms_norm.default and len(node.args) >= 1:
+            x1_node = node.args[0]
+        elif (node.target == operator.getitem and len(node.args) >= 2):
+            if (node.args[0].target == torch.ops.npu.npu_add_rms_norm.default and
+              node.args[1] == 0):
+                y_node = node
+        elif (node.target == torch.ops.aten.view.default and len(node.args) >= 2 and
+              node.args[0] == y_node):
+            view_node = node
+
+    if not view_node or not x1_node or not y_node:
+        return False
+
+    x1_dim = 0
+    y_dim = 0
+    y_shape = None
+    if hasattr(x1_node, 'meta') and 'tensor_meta' in x1_node.meta:
+        x1_dim = len(x1_node.meta['tensor_meta'].shape)
+    if hasattr(y_node, 'meta') and 'tensor_meta' in y_node.meta:
+        y_shape = y_node.meta['tensor_meta'].shape
+        y_dim = len(y_shape)
+
+    if x1_dim != y_dim:
+        return False
+
+    view_size = view_node.args[1]
+    if not isinstance(view_size, (list, tuple)):
+        return False
+    
+    isShapeMatch = len(view_size) == x1_dim - 1
+    if hasattr(view_size[0], 'name'):
+        isShapeMatch = view_size[0].name.startswith('mul') and isShapeMatch
+    elif y_dim >= 2:
+        isShapeMatch = (view_size[0] == y_shape[0] * y_shape[1]) and isShapeMatch
+    return isShapeMatch and _pattern_extra_check_stream(match)
 
 
 @functools.lru_cache(None)
@@ -78,8 +126,76 @@ def _register_addrmsnormdynamicquant_pattern(pattern_pass_manager: _PatternPassM
             search_fn=search_fn,
             replace_fn=replace_fn,
             example_inputs=(input_tensor(), input_tensor(), kwargs_tensor(), kwargs_tensor()),
-            extra_check=_pattern_extra_check
+            extra_check=_pattern_extra_check_stream
         )
+
+
+def _build_search_pattern() -> MultiOutputPattern:
+    """
+    Multi-output matching pattern equivalent to the operator combination in search_fn:
+    
+    def search_fn(x1, x2, gamma):
+        y, _, xOut = torch.ops.npu.npu_add_rms_norm.default(x1, x2, gamma)
+        yOut, scale1Out = torch.ops.npu.npu_dynamic_quant.default(y.flatten(0, 1))
+        scale1Out_view = scale1Out.view(-1, 1)
+        return yOut, scale1Out_view, xOut
+    
+    - dynamic_quant_output0: 1st output of npu_dynamic_quant.default (corresponds to yOut in search_fn)
+    - CallFunction(torch.ops.aten.view.default, dynamic_quant_output1, [-1, 1]): output of scale1Out.view(-1, 1) 
+      (corresponds to scale1Out_view in search_fn)
+    - add_rms_norm_output2: 3rd output of npu_add_rms_norm.default (corresponds to xOut in search_fn)
+    """
+    npu_add_rms_norm_func = CallFunction(
+        torch.ops.npu.npu_add_rms_norm.default, 
+        KeywordArg('x1'), 
+        KeywordArg('x2'), 
+        KeywordArg('gamma'), 
+        _users=2
+    )
+
+    add_rms_norm_output0 = CallFunction(
+        operator.getitem,
+        npu_add_rms_norm_func,
+        0
+    )
+
+    add_rms_norm_output2 = CallFunction(
+        operator.getitem,
+        npu_add_rms_norm_func,
+        2
+    )
+
+    npu_dynamic_quant_func = CallFunction(
+        torch.ops.npu.npu_dynamic_quant.default, 
+        CallFunction(
+            torch.ops.aten.view.default,
+            add_rms_norm_output0,
+            Ignored()
+        ),
+        _users=2
+    )
+
+    dynamic_quant_output0 = CallFunction(
+        operator.getitem,
+        npu_dynamic_quant_func,
+        0
+    )
+
+    dynamic_quant_output1 = CallFunction(
+        operator.getitem,
+        npu_dynamic_quant_func,
+        1
+    )
+
+    return MultiOutputPattern([
+            dynamic_quant_output0,
+            CallFunction(
+                torch.ops.aten.view.default,
+                dynamic_quant_output1,
+                [-1, 1]
+            ),
+            add_rms_norm_output2
+        ])
 
 
 @functools.lru_cache(None)
@@ -90,10 +206,7 @@ def _register_addrmsnormdynamicquant_pattern2(pattern_pass_manager: _PatternPass
         return
 
     def search_fn(x1, x2, gamma):
-        y, _, xOut = torch.ops.npu.npu_add_rms_norm.default(x1, x2, gamma)
-        yOut, scale1Out = torch.ops.npu.npu_dynamic_quant.default(y.flatten(0, 1))
-        scale1Out_view = scale1Out.view(-1, 1)
-        return yOut, scale1Out_view, xOut
+        pass
     
     def replace_fn(x1, x2, gamma):
         yOut, _, xOut, scale1Out, _ = torch.ops.npu.npu_add_rms_norm_dynamic_quant.default(
@@ -103,7 +216,7 @@ def _register_addrmsnormdynamicquant_pattern2(pattern_pass_manager: _PatternPass
         yOut_flatten = yOut.flatten(0, 1)
         scale1Out_view = scale1Out.view(-1, 1)
         return yOut_flatten, scale1Out_view, xOut
-    
+
     fake_mode = FakeTensorMode()
     with fake_mode:
         # sizes/values don't actually matter for initial trace
@@ -114,5 +227,6 @@ def _register_addrmsnormdynamicquant_pattern2(pattern_pass_manager: _PatternPass
             search_fn=search_fn,
             replace_fn=replace_fn,
             example_inputs=(input_tensor(), input_tensor(), kwargs_tensor()),
-            extra_check=_pattern_extra_check
+            extra_check=_check_view_shape_and_stream,
+            search_fn_pattern=_build_search_pattern()
         )
