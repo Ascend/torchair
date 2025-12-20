@@ -144,6 +144,8 @@ TorchAir常用特性介绍
 # 贡献
 如果您计划为TorchAir做出贡献，请参考[CONTRIBUTING](https://gitcode.com/Ascend/torchair/blob/master/CONTRIBUTING.md)。
 
+# 联系我们
+<img src="docs/TorchAir_contact.jpg" style="zoom:20%">
 
 # 安全声明
 TorchAir安全声明参考[SECURITY_README](https://gitcode.com/Ascend/torchair/blob/master/SECURITY_README.md)文件。
