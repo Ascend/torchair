@@ -82509,3 +82509,153 @@ def QuantGroupedMatmulInplaceAdd(x1: Tensor, x2: Tensor, scale2: Tensor, group_l
 
     # return outputs
     return y
+
+
+# This api is auto-generated from IR AttentionToFFN
+@auto_convert_to_tensor([False, False, False, False, False, False, False, False], [False, False, False, False, False, False, True, True])
+def AttentionToFFN(x: Tensor, session_id: Tensor, micro_batch_id: Tensor, layer_id: Tensor,
+                   expert_ids: Tensor, expert_rank_table: Tensor, scales: Optional[Tensor], active_mask: Optional[Tensor],
+                   *,
+                   group: str, world_size: int, ffn_token_info_table_shape: List[int], ffn_token_data_shape: List[int],
+                   attn_token_info_table_shape: List[int], moe_expert_num: int, quant_mode: int = 0,
+                   sync_flag: int = 0, ffn_start_rank_id: int = 0,
+                   dependencies=[], node_name=None):
+    """REG_OP(AttentionToFFN)\n
+    .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .INPUT(session_id, TensorType({DT_INT32}))\n
+    .INPUT(micro_batch_id, TensorType({DT_INT32}))\n
+    .INPUT(layer_id, TensorType({DT_INT32}))\n
+    .INPUT(expert_ids, TensorType({DT_INT32}))\n
+    .INPUT(expert_rank_table, TensorType({DT_INT32}))\n
+    .OPTIONAL_INPUT(scales, TensorType({DT_FLOAT32}))\n
+    .OPTIONAL_INPUT(active_mask, TensorType({DT_BOOL}))\n
+    .REQUIRED_ATTR(group, String)\n
+    .REQUIRED_ATTR(world_size, Int)\n
+    .REQUIRED_ATTR(ffn_token_info_table_shape, ListInt)\n
+    .REQUIRED_ATTR(ffn_token_data_shape, ListInt)\n
+    .REQUIRED_ATTR(attn_token_info_table_shape, ListInt)\n
+    .REQUIRED_ATTR(moe_expert_num, Int)\n
+    .ATTR(quant_mode, Int, 0)\n
+    .ATTR(sync_flag, Int, 0)\n
+    .ATTR(ffn_start_rank_id, Int, 0)\n
+    """
+
+    # process inputs
+    inputs = {
+        "x": x,
+        "session_id": session_id,
+        "micro_batch_id": micro_batch_id,
+        "layer_id": layer_id,
+        "expert_ids": expert_ids,
+        "expert_rank_table": expert_rank_table,
+        "scales": scales,
+        "active_mask": active_mask,
+    }
+
+    # process attrs
+    attrs = {
+        "group": attr.Str(group),
+        "world_size": attr.Int(world_size),
+        "ffn_token_info_table_shape": attr.ListInt(ffn_token_info_table_shape),
+        "ffn_token_data_shape": attr.ListInt(ffn_token_data_shape),
+        "attn_token_info_table_shape": attr.ListInt(attn_token_info_table_shape),
+        "moe_expert_num": attr.Int(moe_expert_num),
+        "quant_mode": attr.Int(quant_mode),
+        "sync_flag": attr.Int(sync_flag),
+        "ffn_start_rank_id": attr.Int(ffn_start_rank_id),
+    }
+
+    # process outputs
+    outputs = [
+    ]
+
+    return ge_op(
+        op_type="AttentionToFFN",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("AttentionToFFN") \
+        .input("x", "DT_FLOAT16, DT_BF16") \
+        .input("session_id", "DT_INT32") \
+        .input("micro_batch_id", "DT_INT32") \
+        .input("layer_id", "DT_INT32") \
+        .input("expert_ids", "DT_INT32") \
+        .input("expert_rank_table", "DT_INT32") \
+        .optional_input("scales", "DT_FLOAT32") \
+        .optional_input("active_mask", "DT_BOOL") \
+        .required_attr("group", attr.Str) \
+        .required_attr("world_size", attr.Int) \
+        .required_attr("ffn_token_info_table_shape", attr.ListInt) \
+        .required_attr("ffn_token_data_shape", attr.ListInt) \
+        .required_attr("attn_token_info_table_shape", attr.ListInt) \
+        .required_attr("moe_expert_num", attr.Int) \
+        .attr("quant_mode", attr.Int(0)) \
+        .attr("sync_flag", attr.Int(0)) \
+        .attr("ffn_start_rank_id", attr.Int(0))
+    )
+
+
+# This api is auto-generated from IR FFNToAttention
+@auto_convert_to_tensor([False, False, False, False, False, False, False], [False, False, False, False, False, False, True])
+def FFNToAttention(x: Tensor, session_ids: Tensor, micro_batch_ids: Tensor, token_ids: Tensor,
+                   expert_offsets: Tensor, actual_token_num: Tensor, attn_rank_table: Optional[Tensor],
+                   *,
+                   group: str, world_size: int, token_info_table_shape: List[int], token_data_shape: List[int],
+                   dependencies=[], node_name=None):
+    """REG_OP(FFNToAttention)\n
+    .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .INPUT(session_ids, TensorType({DT_INT32}))\n
+    .INPUT(micro_batch_ids, TensorType({DT_INT32}))\n
+    .INPUT(token_ids, TensorType({DT_INT32}))\n
+    .INPUT(expert_offsets, TensorType({DT_INT32}))\n
+    .INPUT(actual_token_num, TensorType({DT_INT64}))\n
+    .OPTIONAL_INPUT(attn_rank_table, TensorType({DT_INT32}))\n
+    .REQUIRED_ATTR(group, String)\n
+    .REQUIRED_ATTR(world_size, Int)\n
+    .REQUIRED_ATTR(token_info_table_shape, ListInt)\n
+    .REQUIRED_ATTR(token_data_shape, ListInt)\n
+    """
+
+    # process inputs
+    inputs = {
+        "x": x,
+        "session_ids": session_ids,
+        "micro_batch_ids": micro_batch_ids,
+        "token_ids": token_ids,
+        "expert_offsets": expert_offsets,
+        "actual_token_num": actual_token_num,
+        "attn_rank_table": attn_rank_table,
+    }
+
+    # process attrs
+    attrs = {
+        "group": attr.Str(group),
+        "world_size": attr.Int(world_size),
+        "token_info_table_shape": attr.ListInt(token_info_table_shape),
+        "token_data_shape": attr.ListInt(token_data_shape),
+    }
+
+    # process outputs
+    outputs = [
+    ]
+
+    return ge_op(
+        op_type="FFNToAttention",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("FFNToAttention") \
+        .input("x", "DT_FLOAT16, DT_BF16") \
+        .input("session_ids", "DT_INT32") \
+        .input("micro_batch_ids", "DT_INT32") \
+        .input("token_ids", "DT_INT32") \
+        .input("expert_offsets", "DT_INT32") \
+        .input("actual_token_num", "DT_INT64") \
+        .optional_input("attn_rank_table", "DT_INT32") \
+        .required_attr("group", attr.Str) \
+        .required_attr("world_size", attr.Int) \
+        .required_attr("token_info_table_shape", attr.ListInt) \
+        .required_attr("token_data_shape", attr.ListInt)
+    )
