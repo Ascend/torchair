@@ -59,12 +59,10 @@ def arch35_a16w4_weight_quant_mode(x_dtype, weight_dtype):
 def convert_tensorlist_to_int4(input_data: List[Tensor]):
     input_dtype = input_data[0].dtype
     w_list = []
-    opp_ver = get_cann_opp_version()
-    second_dot_index = opp_ver.find('.', opp_ver.find('.') + 1)
-    opp_ver = float(opp_ver[:second_dot_index])
     if input_dtype == DataType.DT_INT32:
         for w_item in input_data:
-            if opp_ver >= 8.5:
+            from torch_npu.npu.utils import _is_gte_cann_version
+            if _is_gte_cann_version("8.5.0"):
                 new_w = ge.Bitcast(w_item, type=DataType.DT_INT4, keep_dim=True)
                 w_list.append(new_w)
             else:

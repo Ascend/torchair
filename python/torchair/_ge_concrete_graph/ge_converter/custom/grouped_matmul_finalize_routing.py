@@ -37,11 +37,9 @@ def conveter_npu_grouped_matmul_finalize_routing(
     else:
         raise RuntimeError("Not supported output dtype is " + str(dtype))
     
-    opp_ver = get_cann_opp_version()
-    second_dot_index = opp_ver.find('.', opp_ver.find('.') + 1)
-    opp_ver = float(opp_ver[:second_dot_index])
     if w.dtype == DataType.DT_INT32:
-        if opp_ver >= 8.5:
+        from torch_npu.npu.utils import _is_gte_cann_version
+        if _is_gte_cann_version("8.5.0"):
             new_w = ge.Bitcast(w, type=DataType.DT_INT4, keep_dim=True)
         else:
             const_w = ge.Const([1] * (w.rank - 1) + [8])

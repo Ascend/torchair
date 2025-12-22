@@ -26,7 +26,6 @@ from torchair._ge_concrete_graph.utils import dtype_promote, specific_op_input_l
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, BF16, F64, I32, I16, I64, \
     I8, U8, BOOL, T, C64, Support
 from torchair._ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
-from torchair._ge_concrete_graph.utils import get_cann_opp_version
 from torchair._utils.check_platform import is_arch35
 from torchair.core.utils import logger
 from torchair.ge.ge_custom import custom_op

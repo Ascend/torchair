@@ -35,16 +35,6 @@ def conveter_npu_apply_rotary_pos_emb_default(
     elif layout == "TND":
         layout_val = 4
 
-    version_list = ["7.2", "7.3"]
-    opp_ver = get_cann_opp_version()
-    insert_tensor_move = True
-    for ver in version_list:
-        if opp_ver.startswith(ver):
-            insert_tensor_move = False
-            break
-    if insert_tensor_move:
-        tm_q = ge.TensorMove(query)
-        tm_k = ge.TensorMove(key)
-        return ge.ApplyRotaryPosEmb(tm_q, tm_k, cos, sin, layout=layout_val, rotary_mode=rotary_mode)
-    else:
-        return ge.ApplyRotaryPosEmb(query, key, cos, sin, layout=layout_val, rotary_mode=rotary_mode)
+    tm_q = ge.TensorMove(query)
+    tm_k = ge.TensorMove(key)
+    return ge.ApplyRotaryPosEmb(tm_q, tm_k, cos, sin, layout=layout_val, rotary_mode=rotary_mode)
