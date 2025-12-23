@@ -443,7 +443,7 @@ def get_updated_ops_rulers_param(graph_module: torch.fx.GraphModule, meta_inputs
         arg_index_params = []
         kwarg_params = []
         for param_name, _ in update_rulers.items():
-            if param_name in ops_update_index_map[node.name].keys():
+            if param_name in ops_update_index_map.get(op_name, {}).keys():
                 arg_index_params.append(param_name)
             else:
                 kwarg_params.append(param_name)
