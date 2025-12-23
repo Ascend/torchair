@@ -265,10 +265,6 @@ class AclConcreteGraph(ConcreteGraphBase):
             _reinplace_inplaceable_ops_pass(self.fx_graph, *sample_args)
             observer.dump_gm(self.fx_graph, "graph_after_reinplace_inplaceable_ops_pass")
 
-        from torchair._acl_concrete_graph.acl_graph import replace_dynamic_workspace_ops, _find_mutated_user_inputs
-        replace_dynamic_workspace_ops(self.fx_graph, self._meta_inputs)
-        observer.dump_gm(self.fx_graph, "graph_after_replace_dynamic_workspace_ops")
-
         # Note: this will modify mutated input ops in fx graph, should be executed LAST.
         if not self.config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass:
             logger.debug("Start to process reinplace input mutated ops fx pass for graph: %s", self.fx_graph_name)
@@ -278,6 +274,10 @@ class AclConcreteGraph(ConcreteGraphBase):
             if decompose_auto_functionalized is not None:
                 decompose_auto_functionalized(self.fx_graph.graph)
                 observer.dump_gm(self.fx_graph, "graph_after_decompose_auto_functionalized")
+
+        from torchair._acl_concrete_graph.acl_graph import replace_dynamic_workspace_ops, _find_mutated_user_inputs
+        replace_dynamic_workspace_ops(self.fx_graph, self._meta_inputs)
+        observer.dump_gm(self.fx_graph, "graph_after_replace_dynamic_workspace_ops")
 
         # replace core limit call function nodes with torch_npu api
         replace_core_limit_nodes(self.fx_graph)
@@ -697,6 +697,7 @@ class AclConcreteGraph(ConcreteGraphBase):
                         node_name="{node.name}",
                         updated_func=torch.ops.{node.target},
                         updated_param_name={need_updated_ops[node.name]},
+                        updated_param_index={need_updated_ops[f"arg_index_{node.name}"]},
                         args=node_args,
                         kwargs=node_kwargs,
                         handle=handle_{node.name},

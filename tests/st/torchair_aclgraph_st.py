@@ -2454,9 +2454,9 @@ class AclGraphSt(unittest.TestCase):
             "aot_forward_graph_after_apply_event_record.txt",
             "aot_forward_graph_after_eliminate_dead_code.txt",
             "aot_forward_graph_after_reinplace_inplaceable_ops_pass.txt",
-            "aot_forward_graph_after_replace_dynamic_workspace_ops.txt",
             "aot_forward_graph_after_reinplace_input_mutated_ops.txt",
             "aot_forward_graph_after_decompose_auto_functionalized.txt",
+            "aot_forward_graph_after_replace_dynamic_workspace_ops.txt",
             "aot_forward_graph_after_replace_core_limit_nodes.txt",
         ]
 
@@ -2472,9 +2472,9 @@ class AclGraphSt(unittest.TestCase):
             "aot_backward_graph_after_apply_event_record.txt",
             "aot_backward_graph_after_eliminate_dead_code.txt",
             "aot_backward_graph_after_reinplace_inplaceable_ops_pass.txt",
-            "aot_backward_graph_after_replace_dynamic_workspace_ops.txt",
             "aot_backward_graph_after_reinplace_input_mutated_ops.txt",
             "aot_backward_graph_after_decompose_auto_functionalized.txt",
+            "aot_backward_graph_after_replace_dynamic_workspace_ops.txt",
             "aot_backward_graph_after_replace_core_limit_nodes.txt",
         ]
 
@@ -2583,8 +2583,8 @@ class AclGraphSt(unittest.TestCase):
             "aot_forward_graph_after_apply_event_closure_with_multi_stream.txt",
             "aot_forward_graph_after_apply_event_record.txt",
             "aot_forward_graph_after_eliminate_dead_code.txt",
-            "aot_forward_graph_after_replace_dynamic_workspace_ops.txt",
             "aot_forward_graph_after_reinplace_input_mutated_ops.txt",
+            "aot_forward_graph_after_replace_dynamic_workspace_ops.txt",
             "aot_forward_graph_after_replace_core_limit_nodes.txt",
         ]
 
@@ -2599,8 +2599,8 @@ class AclGraphSt(unittest.TestCase):
             "aot_backward_graph_after_apply_event_closure_with_multi_stream.txt",
             "aot_backward_graph_after_apply_event_record.txt",
             "aot_backward_graph_after_eliminate_dead_code.txt",
-            "aot_backward_graph_after_replace_dynamic_workspace_ops.txt",
             "aot_backward_graph_after_reinplace_input_mutated_ops.txt",
+            "aot_backward_graph_after_replace_dynamic_workspace_ops.txt",
             "aot_backward_graph_after_replace_core_limit_nodes.txt",
         ]
 

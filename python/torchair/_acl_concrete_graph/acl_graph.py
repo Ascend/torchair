@@ -37,12 +37,14 @@ class StaticWorkspaceReplaceFunc:
         workspace_keys (List[str]): Keys for workspace parameters.
         output_keys (List[str]): Keys for output parameters.
         updated_param_keys (List[str]): Parameters requiring updates.
+        updated_param_indices (Optional[List[int]]): Parameters indices requiring updates.
     """
     get_workspace: Callable
     out_operator: Callable
     workspace_keys: List[str]
     output_keys: List[str]
     updated_param_keys: List[str]
+    updated_param_indices: Optional[List[int]] = None
 
 
 @dataclass
@@ -58,6 +60,7 @@ class UpdatedNodeInfo:
         kwargs (Any): Keyword arguments passed to the update function.
         handle (Any): Handle to the graph task group.
         event (Any): Event signaling completion of the update.
+        updated_param_index (Optional[List[str]]): Indices of parameters being updated.
     """
     node_name: str
     updated_func: Callable
@@ -66,6 +69,24 @@ class UpdatedNodeInfo:
     kwargs: Any
     handle: Any
     event: Any
+    updated_param_index: Optional[List[str]] = None
+
+
+def is_arg_param_match_index_by_operator_schema(op, param_index_map):
+    from torch.fx.operator_schemas import get_signature_for_torch_op
+    sig = get_signature_for_torch_op(op)
+    if isinstance(sig, list) and len(sig) > 0:
+        sig = sig[0]
+    matched_count = 0
+    for sig_index, (sig_param_name, sig_param) in enumerate(sig.parameters.items()):
+        if sig_param_name in param_index_map.keys():
+            if sig_index != param_index_map[sig_param_name]:
+                return False
+            matched_count += 1
+
+    if matched_count != len(param_index_map):
+        return False
+    return True  
 
 
 _REPLACE_FUNC_MAP = {}
@@ -91,6 +112,47 @@ if hasattr(torch.ops.npu, "npu_fused_infer_attention_score_v2"):
             updated_param_keys=["actual_seq_qlen", "actual_seq_kvlen"],
         )
     })
+
+if hasattr(torch.ops.atb, "_npu_paged_attention"):
+    arg_index_map = {"context_lens": 7}
+    is_match = is_arg_param_match_index_by_operator_schema(torch.ops.atb._npu_paged_attention.default, arg_index_map)
+    if is_match:
+        _REPLACE_FUNC_MAP.update({torch.ops.atb._npu_paged_attention.default:
+            StaticWorkspaceReplaceFunc(
+                get_workspace=None,
+                out_operator=torch.ops.atb._npu_paged_attention.default,
+                workspace_keys=[],
+                output_keys=[],
+                updated_param_keys=[],
+                updated_param_indices=[7],
+            )
+        })
+    else:
+        msg = f"The index of context_lens arg parameter in the operator _npu_paged_attention" \
+                   f"prototype does not match the predefined order. " \
+                   f"Please check the arg parameter list in the corresponding operator prototype."
+        warning.warn(msg)
+
+if hasattr(torch.ops.atb, "_npu_paged_attention_splitfuse"):
+    arg_index_map = {"context_lens": 4, "seq_len": 6}
+    is_match = is_arg_param_match_index_by_operator_schema(torch.ops.atb._npu_paged_attention_splitfuse.default, 
+                                                           arg_index_map)
+    if is_match:
+        _REPLACE_FUNC_MAP.update({torch.ops.atb._npu_paged_attention_splitfuse.default:
+            StaticWorkspaceReplaceFunc(
+                get_workspace=None,
+                out_operator=torch.ops.atb._npu_paged_attention_splitfuse.default,
+                workspace_keys=[],
+                output_keys=[],
+                updated_param_keys=[],
+                updated_param_indices=[4, 6],
+            )
+        })
+    else:
+        msg = f"The index of context_lens and seq_len arg parameter in the operator _npu_paged_attention_splitfuse" \
+                   f"prototype does not match the predefined order. " \
+                   f"Please check the arg parameter list in the corresponding operator prototype."
+        warning.warn(msg)
 
 
 def is_constant(arg):
@@ -123,14 +185,19 @@ def have_sym_in_meta(node_meta):
     return False
 
 
-def get_node_all_placeholder_inputs(node, excluded_kwargs=None):
+def get_node_all_placeholder_inputs(node, excluded_kwargs=None, excluded_arg_indices=None):
     if not isinstance(node, fx.Node):
         return set()
 
     excluded_kwargs = [] if excluded_kwargs is None else excluded_kwargs
+    excluded_arg_indices = [] if excluded_arg_indices is None else excluded_arg_indices
     placeholders = set()
     processing_input_queue: Deque[Any] = deque()
-    processing_input_queue.extend(node.args)
+
+    for arg_index, arg in enumerate(node.args):
+        if arg_index not in excluded_arg_indices:
+            processing_input_queue.append(arg)
+
     for kwarg_name, kwarg_value in node.kwargs.items():
         if kwarg_name not in excluded_kwargs:
             processing_input_queue.append(kwarg_value)
@@ -209,11 +276,14 @@ def get_unupdated_input_fn(unupdated_sym_input_index, parameter_user_inputs, con
 
 def get_unupdated_sym_input_index(graph_module: torch.fx.GraphModule, all_sym_input_idx):
     updated_op_params = {}
+    updated_op_indices = {}
     for func_iter in _REPLACE_FUNC_MAP.values():
         if len(func_iter.workspace_keys) > 0:
             updated_op_params[func_iter.get_workspace] = func_iter.updated_param_keys
         updated_op_params[func_iter.out_operator] = func_iter.updated_param_keys
-    logger.debug("In graph[%s], all updated inputs user nodes and params: %s.", id(graph_module), updated_op_params)
+        updated_op_indices[func_iter.out_operator] = func_iter.updated_param_indices
+    logger.debug("In graph[%s], all updated inputs user nodes params: %s, arg indices: %s", id(graph_module), 
+                 updated_op_params, updated_op_indices)
 
     unupdated_sym_input_index = set()
     data_idx = -1
@@ -244,7 +314,9 @@ def get_unupdated_sym_input_index(graph_module: torch.fx.GraphModule, all_sym_in
                 the_unupdated_user = user_node
                 break
             unupdated_inputs = get_node_all_placeholder_inputs(user_node,
-                                                               excluded_kwargs=updated_op_params[user_node.target])
+                                                               excluded_kwargs=updated_op_params[user_node.target],
+                                                               excluded_arg_indices=updated_op_indices.get(
+                                                                user_node.target, None))
             if node in unupdated_inputs:
                 the_unupdated_user = user_node
                 break
@@ -272,7 +344,7 @@ def get_unupdated_sym_input_index(graph_module: torch.fx.GraphModule, all_sym_in
     return unupdated_sym_input_index
 
 
-def get_update_ruler(node, updated_param_keys, placeholder_nodes):
+def get_update_ruler(node, updated_param_keys, updated_arg_indices, placeholder_nodes):
     update_rulers = {}
     for kwarg_name, kwarg_value in node.kwargs.items():
         if kwarg_name not in updated_param_keys:
@@ -298,7 +370,22 @@ def get_update_ruler(node, updated_param_keys, placeholder_nodes):
 
         if have_sym_in_param:
             update_rulers[kwarg_name] = update_ruler
-    return update_rulers
+
+    updated_arg_indices = [] if updated_arg_indices is None else updated_arg_indices
+    update_arg_index_map = {}
+    for arg_index, arg in enumerate(node.args):
+        if arg_index not in updated_arg_indices:
+            continue
+        update_ruler = []
+        if arg in placeholder_nodes:
+            input_index = placeholder_nodes.index(arg)
+            update_ruler.append(("index", input_index))
+            update_rulers[arg_index] = update_ruler
+            update_arg_index_map[arg_index] = input_index
+            logger.debug("Current node name[%s] need to update args, args name[%s] gen value ruler[%s].",
+                     node.name, arg.name, update_ruler)
+
+    return update_rulers, update_arg_index_map
 
 
 def gen_updated_input_func(ops_update_rulers: Dict):
@@ -331,24 +418,37 @@ def get_updated_ops_rulers_param(graph_module: torch.fx.GraphModule, meta_inputs
             f'the recorded meta inputs {len(meta_inputs)} do not match.')
 
     updated_dict = {}
+    updated_arg_indices = {}
     for func_iter in _REPLACE_FUNC_MAP.values():
         updated_dict[func_iter.out_operator] = func_iter.updated_param_keys
-    logger.debug("In graph[%s], try to update node type and param: %s.", id(graph_module), updated_dict)
+        updated_arg_indices[func_iter.out_operator] = func_iter.updated_param_indices
+    logger.debug("In graph[%s], try to update node type param: %s, arg indices: %s", id(graph_module), updated_dict,
+                 updated_arg_indices)
 
     ops_update_rulers = {}
+    ops_update_index_map = {}
     for node in graph_module.graph.nodes:
-        if node.target not in updated_dict.keys():
+        if node.target not in updated_dict.keys() or node.target not in updated_arg_indices.keys():
             continue
 
-        update_rulers = get_update_ruler(node, updated_dict[node.target], placeholder_nodes)
+        update_rulers, update_arg_index_map = get_update_ruler(node, updated_dict[node.target], updated_arg_indices[node.target], 
+                                        placeholder_nodes)
         if len(update_rulers) > 0:
             ops_update_rulers[node.name] = update_rulers
+            ops_update_index_map[node.name] = update_arg_index_map
     logger.debug("All need to be updated param[%s] in graph[%s] .", ops_update_rulers, id(graph_module))
 
     need_updated_ops: Dict[str, List] = {}  # k: op_name, v: updated_param_name_list
     for op_name, update_rulers in ops_update_rulers.items():
-        updated_params = [param_name for param_name, _ in update_rulers.items()]
-        need_updated_ops[op_name] = updated_params
+        arg_index_params = []
+        kwarg_params = []
+        for param_name, _ in update_rulers.items():
+            if param_name in ops_update_index_map[node.name].keys():
+                arg_index_params.append(param_name)
+            else:
+                kwarg_params.append(param_name)
+        need_updated_ops[op_name] = kwarg_params
+        need_updated_ops[f"arg_index_{op_name}"] = arg_index_params
     logger.debug(" In graph[%s] all need to be updated node names[%s] param names[%s].",
                  id(graph_module), need_updated_ops.keys(), need_updated_ops.values())
 
@@ -423,9 +523,9 @@ class CapturedGraphUpdateAndReplay(nn.Module):
             logger.info(f"Update the stream for parameter, replay stream id: {replay_stream_id}, "
                         f"update stream id: {self.__class__._update_stream.stream_id}.")
 
-        updated_kwargs = self._updated_input_func(*args, **kwargs)
-        logger.debug("In AclGraph running, all updated op_name and param: %s.", updated_kwargs)
-        if len(updated_kwargs) == 0:
+        updated_params = self._updated_input_func(*args, **kwargs)
+        logger.debug("In AclGraph running, all updated op_name and param: %s.", updated_params)
+        if len(updated_params) == 0:
             return
 
         with torch.npu.stream(self.__class__._update_stream):
@@ -433,7 +533,9 @@ class CapturedGraphUpdateAndReplay(nn.Module):
                 torch.npu.graph_task_update_begin(self.__class__._update_stream, node_info.handle)
                 node_kwargs = dict(node_info.kwargs)
                 for key in node_info.updated_param_name:
-                    node_kwargs[key] = updated_kwargs[node_info.node_name][key]
+                    node_kwargs[key] = updated_params[node_info.node_name][key]
+                for key in node_info.updated_param_index:
+                    node_info.args[key] = updated_params[node_info.node_name][key][0]
                 node_info.updated_func(*node_info.args, **node_kwargs)
                 torch.npu.graph_task_update_end(self.__class__._update_stream)
                 self.__class__._update_stream.record_event(node_info.event)
@@ -506,8 +608,9 @@ def construct_and_add_output(node: fx.Node, graph_module: fx.GraphModule, kwargs
                              sym_inputs: dict) -> fx.Node:
     registered_outputs_len = len(_REPLACE_FUNC_MAP[node.target].output_keys)
     if registered_outputs_len == 0:
-        raise RuntimeError(f"Current node[{node.target}] do not have outputs in registered info, "
-                           f"skip construct and add outputs.", )
+        logger.debug("Current node[%s] do not have outputs in registered info, no need to construct and add outputs.",
+                     node.target)
+        return None
 
     meta_outputs = node.meta['val']
     if not isinstance(meta_outputs, (tuple, list)):
@@ -555,6 +658,9 @@ def replace_dynamic_workspace_ops(graph_module: fx.GraphModule, meta_inputs: Lis
     erase_nodes = []
     for node in graph_module.graph.nodes:
         if node.target not in _REPLACE_FUNC_MAP.keys():
+            continue
+
+        if len(_REPLACE_FUNC_MAP[node.target].output_keys) == 0:
             continue
 
         if not hasattr(node, "meta") or 'val' not in node.meta:

@@ -1325,6 +1325,83 @@ class AclgraphTest(unittest.TestCase):
             f"not found in logs: {cm.output}"
         )
 
+    def test_aclgraph_update_param_with__npu_paged_attention(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, query, key_cache, value_cache, block_table, context_lens):
+                output = torch.zeros_like(query[:, :, :96])
+                torch_npu._npu_paged_attention(
+                    query=query, 
+                    key_cache=key_cache, 
+                    value_cache=value_cache,
+                    num_kv_heads=16,
+                    num_heads=32, 
+                    scale_value=0.38888,
+                    block_table=block_table,
+                    context_lens=context_lens,
+                    out=output,
+                )
+                return output + 1
+
+        from torch._dynamo import allow_in_graph
+        allow_in_graph(torch_npu._npu_paged_attention)
+        model = Model()
+
+        config = CompilerConfig()
+        config.mode = 'reduce-overhead'
+        npu_backend = torchair.get_npu_backend(compiler_config=config)
+        compiled_model = torch.compile(model, fullgraph=True, backend=npu_backend, dynamic=True)
+
+        num_blocks = 64
+        num_tokens = 2
+        block_size = 128
+        kv_heads = 16
+        head_size = 288
+        num_heads = 32
+        head_size_v = 96
+
+        import random
+        import numpy as np
+        query_np = np.random.uniform(-1, 1, (num_tokens, num_heads, head_size)).astype(np.float16)
+        key_cache_np = np.random.uniform(-1, 1, (num_blocks, block_size, kv_heads, head_size)).astype(np.float16)
+        value_cache_np = np.random.uniform(-1, 1, (num_blocks, block_size, kv_heads, head_size_v)).astype(np.float16)
+        max_blocks_per_seq = (1024 + block_size - 1) // block_size
+        block_table_np = np.array([
+            [random.randint(0, num_blocks - 1) for _ in range(max_blocks_per_seq)]
+            for _ in range(num_tokens)
+        ], dtype=np.int32)
+        context_lens_np = np.full(num_tokens, 128, dtype=np.int32)
+        context_lens_np_new = np.full(num_tokens, 512, dtype=np.int32)
+
+        query = torch.from_numpy(query_np).npu()
+        key_cache = torch.from_numpy(key_cache_np).npu()
+        value_cache = torch.from_numpy(value_cache_np).npu()
+        block_table = torch.from_numpy(block_table_np).npu()
+        context_lens = torch.from_numpy(context_lens_np)
+        context_lens_new = torch.from_numpy(context_lens_np_new)        
+
+        torch._dynamo.mark_static(query)
+        torch._dynamo.mark_static(key_cache)
+        torch._dynamo.mark_static(value_cache)
+        torch._dynamo.mark_static(block_table)
+
+        eager_res1 = model(query, key_cache, value_cache, block_table, context_lens)
+        eager_res2 = model(query, key_cache, value_cache, block_table, context_lens_new)
+
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            graph_res1 = compiled_model(query, key_cache, value_cache, block_table, context_lens)
+            self.assertTrue(torch.allclose(eager_res1, graph_res1))
+
+            graph_res2 = compiled_model(query, key_cache, value_cache, block_table, context_lens_new)
+            self.assertTrue(torch.allclose(eager_res2, graph_res2))
+
+        self.assertTrue(
+            any("Replay AclGraph and update input params successfully" in log for log in cm.output),
+            f"Expected DEBUG 'Replay AclGraph and update input params successfully'"
+            f"not found in logs: {cm.output}"
+        )
 
 if __name__ == '__main__':
     unittest.main()
