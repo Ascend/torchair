@@ -212,7 +212,9 @@ def recover_view_inplace_pattern(graph_module: torch.fx.GraphModule, example_inp
                      non_inplace_op, inplace_op, inplace_op.target)
 
         # delete old copy node and non_inplace node
-        graph.erase_node(copy_)
+        if len(copy_.users) == 0:
+            # Try to replace copy_ node by dst input of copy_ in future to optimize performance.
+            graph.erase_node(copy_)
         graph.erase_node(non_inplace_op)
 
     # lint and recompile for graph
