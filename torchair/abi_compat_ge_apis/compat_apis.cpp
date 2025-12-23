@@ -2,7 +2,6 @@
 
 #include "checker.h"
 #include "tng_status.h"
-#include "utils.h"
 
 #include "ge/ge_api.h"
 #include "graph/tensor.h"
@@ -105,6 +104,16 @@ const std::map<ge::Format, std::string> kFormatToStringMap = {
     {ge::Format::FORMAT_END,                             "END"},
     {ge::Format::FORMAT_MAX,                             "MAX"}
 };
+
+std::vector<int64_t> GertShapeToVector(const gert::Shape &shape) {
+  std::vector<int64_t> dims;
+  size_t dim_num = shape.GetDimNum();
+  dims.reserve(dim_num);
+  for (size_t i = 0U; i < dim_num; ++i) {
+    dims.push_back(shape.GetDim(i));
+  }
+  return dims;
+}
 }  // namespace
 
 using Name2Index = std::map<std::string, uint32_t>;
@@ -146,7 +155,7 @@ Status DebugString(const ge::Shape &shape) {
 }
 
 Status DebugString(const gert::Shape &shape) {
-  auto dims = GetDims(shape);
+  auto dims = GertShapeToVector(shape);
   if (dims.empty()) {
     return Status::Error("[]");
   }
