@@ -495,8 +495,12 @@ class ModelCacheSaver:
         if self._code_id == code_id:
             return
         if self._code_id is not None:
-            logger.warning_once(
-                f"Skip cache as {self.name} recompiled, set torch._logging.set_logs(recompiles=True) for details")
+            import warnings
+            warnings.filterwarnings("once", category=UserWarning)
+            warnings.warn(
+                f"Skip cache as {self.name} recompiled, set torch._logging.set_logs(recompiles=True) for details",
+                UserWarning
+            )
             self.__class__.remove_cache(self.cache_dir)
             return
         if len(self.errors) > 0:

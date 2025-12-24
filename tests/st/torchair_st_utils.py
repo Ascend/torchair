@@ -2,6 +2,7 @@ import sys
 import io
 import logging
 import types
+import warnings
 from contextlib import contextmanager
 
 import torch
@@ -54,6 +55,31 @@ def capture_logger():
 
         # Optionally print the captured output if you want to see it
         print("Captured logger message:\n", captured_output)
+
+
+@contextmanager
+def capture_warnings():
+    """
+    Context manager to capture warnings using warnings.catch_warnings.
+
+    Usage:
+    with capture_warnings() as stdout:
+        # code that prints to stdout
+        print("Error message", file=sys.stdout)
+    captured_output = stdout.getvalue()
+    """
+    with warnings.catch_warnings(record=True) as warning_list:
+        warnings.simplefilter("always")  # 捕获所有警告
+        
+        # 创建 StringIO 来存储格式化输出
+        warnings_io = io.StringIO()
+        
+        yield warnings_io
+        
+        # 将捕获的警告列表格式化为字符串
+        for warning in warning_list:
+            warning_msg = f"{warning.category.__name__}: {warning.message}\n"
+            warnings_io.write(warning_msg)
 
 
 def generate_faked_module():
