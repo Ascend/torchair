@@ -1325,6 +1325,8 @@ class AclgraphTest(unittest.TestCase):
             f"not found in logs: {cm.output}"
         )
 
+    @unittest.skipIf('ATB_HOME_PATH' not in os.environ, 
+                    "_npu_paged_attention is unsupported without ATB_HOME_PATH environment variable")
     def test_aclgraph_update_param_with__npu_paged_attention(self):
         class Model(torch.nn.Module):
             def __init__(self):
