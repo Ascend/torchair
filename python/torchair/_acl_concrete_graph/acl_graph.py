@@ -224,10 +224,8 @@ def get_node_all_placeholder_inputs(node, excluded_kwargs=None, excluded_arg_ind
 
 def gen_unupdate_input_func(unupdated_input_index: List):
     if len(unupdated_input_index) == 0:
-        static_key = "no_updated_input"
-
         def empty_input_key(*args: Any, **kwargs: Any):
-            return static_key
+            return "no_updated_input"
 
         return empty_input_key
 
