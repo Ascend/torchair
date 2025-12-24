@@ -23,7 +23,7 @@ from torchair_st_stub_aclgraph_utils import (
     forbidden_attr,
     register_custom_ops,
 )
-from torchair_st_utils import capture_logger, generate_faked_module, register_is_npu
+from torchair_st_utils import capture_logger, capture_warnings, generate_faked_module, register_is_npu
 
 
 logger.setLevel(logging.DEBUG)
@@ -2954,6 +2954,58 @@ class AclGraphSt(unittest.TestCase):
             any("assert_size_stride(args[" in log for log in cm.output),
             f"Expect that DEBUG 'assert_size_stride(args['"
             f"not found in logs: {cm.output}"
+        )
+
+    def test_aclgraph_cache_recompile_with_warning(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear1 = torch.nn.Linear(2, 2)
+                self.linear2 = torch.nn.Linear(2, 2)
+                self.cached_prompt = torchair.inference.cache_compile(self.prompt, config=config)
+
+            def forward(self, x, is_prompt):
+                return self.cached_prompt(x, is_prompt)
+
+            def _forward(self, x, is_prompt):
+                ln1 = self.linear1(x)
+                ln2 = ln1
+                if is_prompt:
+                    ln2 = self.linear2(x)
+                return ln1 + ln2
+
+            def prompt(self, x, is_prompt):
+                return self._forward(x, is_prompt)
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+
+        model = Model()
+
+        prompt_cache_bin = CompiledModel.get_cache_bin(model.prompt, config=config)
+        ModelCacheSaver.remove_cache(os.path.abspath(os.path.dirname(prompt_cache_bin)))
+
+        x = torch.randn([3, 2])
+
+        prompt_cache_dir = os.path.abspath(os.path.dirname(prompt_cache_bin))
+
+        self.assertFalse(os.path.exists(prompt_cache_dir))
+        model(x, True)
+        self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
+        with capture_warnings() as stdout:
+            model(x, False)
+        self.assertFalse(os.path.exists(prompt_cache_dir))  # recompile
+        self.assertTrue(
+            "UserWarning: Skip cache as" in stdout.getvalue(),
+            f"Expect that UserWarning 'UserWarning: Skip cache as'"
+            f"not found in logs: {stdout.getvalue()}"
+        )
+        self.assertTrue(
+            "recompiled, set torch._logging.set_logs(recompiles=True) for details" in stdout.getvalue(),
+            f"Expect that warning 'recompiled, set torch._logging.set_logs(recompiles=True) for details'"
+            f"not found in logs: {stdout.getvalue()}"
         )
 
 
