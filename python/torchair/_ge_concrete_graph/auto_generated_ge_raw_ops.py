@@ -79195,11 +79195,11 @@ def GroupedMatmulFinalizeRouting(x: Tensor, w: Tensor, scale: Optional[Tensor], 
                                 transpose_x: bool = False, transpose_w: bool = False, output_bs: int = 0,
                                 group_list_type=1, tuning_config=[], dependencies=[], node_name=None):
     """REG_OP(GroupedMatmulFinalizeRouting)\n
-    .INPUT(x, TensorType({DT_INT8}))\n
-    .INPUT(w, TensorType({DT_INT8, DT_INT4}))\n
-    .OPTIONAL_INPUT(scale, TensorType({DT_FLOAT, DT_INT64}))\n
-    .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT}))\n
-    .OPTIONAL_INPUT(pertoken_scale, TensorType({DT_FLOAT}))\n
+    .INPUT(x, TensorType({DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2}))\n
+    .INPUT(w, TensorType({DT_INT8, DT_INT4, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2}))\n
+    .OPTIONAL_INPUT(scale, TensorType({DT_FLOAT, DT_INT64, DT_FLOAT8_E8M0}))\n
+    .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT, DT_BF16}))\n
+    .OPTIONAL_INPUT(pertoken_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))\n
     .OPTIONAL_INPUT(group_list, TensorType({DT_INT64}))\n
     .OPTIONAL_INPUT(shared_input, TensorType({DT_BF16}))\n
     .OPTIONAL_INPUT(logit, TensorType({DT_FLOAT}))\n
@@ -79255,11 +79255,11 @@ def GroupedMatmulFinalizeRouting(x: Tensor, w: Tensor, scale: Optional[Tensor], 
         outputs=outputs,
         dependencies=dependencies,
         ir=IrDef("GroupedMatmulFinalizeRouting") \
-        .input("x", "DT_INT8") \
-        .input("w", "DT_INT8, DT_INT4") \
-        .optional_input("scale", "DT_FLOAT, DT_INT64") \
-        .optional_input("bias", "DT_FLOAT") \
-        .optional_input("pertoken_scale", "DT_FLOAT") \
+        .input("x", "DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2") \
+        .input("w", "DT_INT8, DT_INT4, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2") \
+        .optional_input("scale", "DT_FLOAT, DT_INT64, DT_FLOAT8_E8M0") \
+        .optional_input("bias", "DT_FLOAT, DT_BF16") \
+        .optional_input("pertoken_scale", "DT_FLOAT, DT_FLOAT8_E8M0") \
         .optional_input("group_list", "DT_INT64") \
         .optional_input("shared_input", "DT_BF16") \
         .optional_input("logit", "DT_FLOAT") \

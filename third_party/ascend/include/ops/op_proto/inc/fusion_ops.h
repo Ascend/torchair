@@ -579,16 +579,16 @@ REG_OP(QuantMatmulReduceSum)
 * @brief Function GroupedMatmulFinalizeRouting. This op mixs GroupedMatmul和MoeFinalizeRouting. After the calculation of GroupedMatmul, perform a combine operation on the output according to the index, and support the format where w is in the Ascend affinity data layout.
 
 * @par Inputs:
-* @li x: A tensor, which is the input x in the formula, supports the ND data format (refer to Data Format), and the shape supports 2 dimensions with the dimension being (m, k). The data type supports INT8.
+* @li x: A tensor, which is the input x in the formula, supports the ND data format (refer to Data Format), and the shape supports 2 dimensions with the dimension being (m, k). The data type supports INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2.
 
-* @li w: A tensor of weight, which supports the Ascend affinity data layout format as described in Data Format. The data type supports INT8, INT4, and the shape supports 5 dimensions.
+* @li w: A tensor of weight, which supports the Ascend affinity data layout format as described in Data Format. The data type supports INT8, INT4, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2, and the shape supports 5 dimensions.
 * When transposew is false, each dimension is represented as: (e, n1, k1, k0, n0), where k0 = 16, n0 = 32. The k in the x shape and the k1 in the w shape need to satisfy the following relationship: ceilDiv(k, 16) = k1.
 * The aclnnCalculateMatmulWeightSizeV2 interface and the aclnnTransMatmulWeight interface can be used to complete the conversion of the input format from the ND format to the Ascend affinity data layout format.
-* @li scale: It represents the scaling factor in the quantization parameters. It supports the ND data format as described in Data Format. The supported data type is FLOAT32, INT64
+* @li scale: It represents the scaling factor in the quantization parameters. It supports the ND data format as described in Data Format. The supported data type is FLOAT32, INT64, DT_FLOAT8_E8M0
 * and if w is INT4, the shape is three-dimensional (e, 1, n), others scenarios is two-dimensional (e, n), where the values of e and n are consistent with those of e and n in w.
-* @li bias: A tensor of bias, contains all bias of inputs for matmul. For each tensor, the data type of elements supports float32; the format supports ND. Currently, input is not supported.
+* @li bias: A tensor of bias, contains all bias of inputs for matmul. For each tensor, the data type of elements supports float32, DT_BF16; the format supports ND. Currently, input is not supported.
 * @li offset: A tensor of offset, only supported when w is INT4, the shape is three-dimensional (e, 1, n), the format supports ND. The supported data types is FLOAT32.
-* @li pertoken_scale: The dequantization parameters for matrix calculation support the ND data format (refer to Data Format). They correspond to the x matrix, with a dimension of (m). The supported data type is FLOAT32. Non - contiguous tensors are not supported.
+* @li pertoken_scale: The dequantization parameters for matrix calculation support the ND data format (refer to Data Format). They correspond to the x matrix, with a dimension of (m). The supported data type is FLOAT32, DT_FLOAT8_E8M0. Non - contiguous tensors are not supported.
 * @li group_list: a tensor, indicates M-axis distributation of groups of matmuls for inputs and outputs.
 * Data type of elements is int64. Format: ND.
 * @li shared_input: In the MoE (Mixture of Experts) calculation, the output of the shared experts needs to undergo a combine operation with the output of the MoE experts. The supported data types are bfloat16.
@@ -623,11 +623,11 @@ REG_OP(QuantMatmulReduceSum)
 * The sum of the values in grouplist is less than or equal to m. \n
 */
 REG_OP(GroupedMatmulFinalizeRouting)
-.INPUT(x, TensorType({DT_INT8}))
-.INPUT(w, TensorType({DT_INT8, DT_INT4}))
-.OPTIONAL_INPUT(scale, TensorType({DT_FLOAT, DT_INT64}))
-.OPTIONAL_INPUT(bias, TensorType({DT_FLOAT}))
-.OPTIONAL_INPUT(pertoken_scale, TensorType({DT_FLOAT}))
+.INPUT(x, TensorType({DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2}))
+.INPUT(w, TensorType({DT_INT8, DT_INT4, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2}))
+.OPTIONAL_INPUT(scale, TensorType({DT_FLOAT, DT_INT64, DT_FLOAT8_E8M0}))
+.OPTIONAL_INPUT(bias, TensorType({DT_FLOAT, DT_BF16}))
+.OPTIONAL_INPUT(pertoken_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))
 .OPTIONAL_INPUT(group_list, TensorType({DT_INT64}))
 .OPTIONAL_INPUT(shared_input, TensorType({DT_BF16}))
 .OPTIONAL_INPUT(logit, TensorType({DT_FLOAT}))
