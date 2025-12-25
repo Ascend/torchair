@@ -96,6 +96,8 @@ def conveter_npu_npu_quant_matmul(
         if (group_m < 0 or group_n < 0 or group_k < 0):
             raise RuntimeError("group_size can't small than 0, actual group_sizes is " + str(group_sizes))
         group_size = (group_m << 32) + (group_n << 16) + group_k
+        if is_a8w4:
+            group_size = group_k
     if x1_dtype is not None:
         if x1_dtype != torch_npu.float4_e2m1fn_x2 and x1_dtype != torch_npu.float4_e1m2fn_x2:
             x1 = ge.Bitcast(x1, type=torch_dtype_value_to_ge_type(x1_dtype))
