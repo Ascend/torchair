@@ -394,17 +394,37 @@ def gen_updated_input_func(ops_update_rulers: Dict):
 
         return func
 
+    resolve_op_rulers, index_op_rulers = classify_update_rulers(ops_update_rulers)
+
     def func(*args: Any, **kwargs: Any):
         all_update_dict = {}
-        for op_name, rulers in ops_update_rulers.items():
+        for op_name, rulers in resolve_op_rulers.items():
             op_update_dict = {}
             for param_name, ruler in rulers.items():
                 param_list = [args[iter[1]] if iter[0] == "index" else iter[1] for iter in ruler]
                 op_update_dict[param_name] = param_list
             all_update_dict[op_name] = op_update_dict
+
+        for op_name, index in index_op_rulers.items():
+            all_update_dict[op_name] = all_update_dict.get(index)
         return all_update_dict
 
     return func
+
+
+def classify_update_rulers(ops_update_rulers):
+    resolve_op_rulers = {}
+    index_op_rulers = {}
+    sig_op_dict = {}
+    for op_name, ops_rulers in ops_update_rulers.items():
+        ruler_sig = str(ops_rulers)
+        if ruler_sig not in sig_op_dict:
+            resolve_op_rulers[op_name] = ops_rulers
+            sig_op_dict[ruler_sig] = op_name
+        else:
+            index_op_rulers[op_name] = sig_op_dict[ruler_sig]
+
+    return resolve_op_rulers, index_op_rulers
 
 
 def get_updated_ops_rulers_param(graph_module: torch.fx.GraphModule, meta_inputs: List):
@@ -801,6 +821,8 @@ class AclGraph(object):
         self._input_base_format = None
         self._userinput_ref_with_output: Dict[int, List] = {}
 
+        self._userinput_ref_data_ptr = {}
+
     def __call__(self, *args, **kwargs):
         # get graph_key and capture
         fn_key = self.compile(*args, **kwargs)
@@ -811,8 +833,7 @@ class AclGraph(object):
                 return self.fx_run_eagerly(*args, **kwargs)
 
         # input process
-        with record_function("process_input"):
-            self.process_input(fn_key, *args)
+        self.process_input(fn_key, *args)
 
         # run/replay
         with record_function("acl_graph_replay"):
@@ -1051,6 +1072,7 @@ class AclGraph(object):
         
         for ref_idx in self._userinput_ref_with_output.keys():
             self.graphs_meta[graph_key].captured_userinput_ref_with_output.setdefault(ref_idx, args[ref_idx])
+            self._userinput_ref_data_ptr.setdefault(ref_idx, args[ref_idx].data_ptr())
             self.userinput_ref_with_output_storages_ptr.add(args[ref_idx].untyped_storage()._cdata)
         self.graphs_meta[graph_key].captured_output_idx_ref_with_userinput = set(itertools.chain(*self._userinput_ref_with_output.values()))
 
@@ -1204,30 +1226,49 @@ class AclGraph(object):
         # This ensures that input memory allocation does not claim memory blocks occupied by outputs (from the same
         # or other graphs). Thus, reconstructing input memory will not corrupt the outputs of the current or
         # other graphs.
-        with timer(f"{self.name} process inputs reconstruct inputs"):
-            if self.config.get('clone_input', "1") == "1":
-                # When a memory pool is shared among aclgraph instances (from the same or different FX graphs),
-                # resetting the memory state before input reconstruction is unnecessary. Safety is guaranteed
-                # by the runtime constraint that only one aclgraph executes at a time. Since inputs are
-                # assigned before each replay and destroyed afterwards, there is no risk of state conflict.
-                reconstructed_inputs = self._graphs_meta[graph_key].userinputs_metatensor
-            else:
-                # Use retained_userinputs and userinput_ref_with_output if clone_input is set to False.
-                reconstructed_inputs = self._graphs_meta[graph_key].retained_userinputs
-            reconstructed_inputs.update(self._graphs_meta[graph_key].captured_userinput_ref_with_output or {})
-                 
-        # foreach copy
+
         dst_tensors = []
         src_tensors = []
-        with timer(f"{self.name} process inputs foreach copy"):
-            for input_name, input_idx in self._user_inputs_mapping.items():
-                if input_name in self._mutated_user_inputs:
-                    continue
-                capture_input = reconstructed_inputs[input_idx]
+        graph_meta = self._graphs_meta[graph_key]
+
+        if self.config.get('clone_input', "1") == "1":
+            # When a memory pool is shared among aclgraph instances (from the same or different FX graphs),
+            # resetting the memory state before input reconstruction is unnecessary. Safety is guaranteed
+            # by the runtime constraint that only one aclgraph executes at a time. Since inputs are
+            # assigned before each replay and destroyed afterwards, there is no risk of state conflict.
+            reconstructed_inputs = self._graphs_meta[graph_key].userinputs_metatensor
+
+            # [mark need_to_copy] if clone input no need to compare data_ptr, mark as need_to_copy
+            for input_idx, capture_input in reconstructed_inputs.items():
                 replay_arg = args[input_idx]
-                if capture_input.data_ptr() != replay_arg.data_ptr():
+                dst_tensors.append(capture_input)
+                src_tensors.append(replay_arg)
+        else:
+            # Use retained_userinputs and userinput_ref_with_output if clone_input is set to False.
+            reconstructed_inputs = self._graphs_meta[graph_key].retained_userinputs
+
+            # [mark need_to_copy] if dont clone input, compare inputs-no-ref(neither parameter, mutated nor alias)
+            for input_idx in graph_meta.userinputs_meta.keys():
+                capture_input_data_ptr = graph_meta.userinputs_meta[input_idx].data_ptr
+                replay_arg = args[input_idx]
+                if capture_input_data_ptr != replay_arg.data_ptr():
+                    capture_input = reconstructed_inputs[input_idx]
                     dst_tensors.append(capture_input)
                     src_tensors.append(replay_arg)
+
+        reconstructed_inputs.update(self._graphs_meta[graph_key].captured_userinput_ref_with_output or {})
+
+        # [mark need_to_copy] if input is an alias of output, always compare data_ptr
+        for input_idx in self._userinput_ref_with_output.keys():
+            capture_input_data_ptr = self._userinput_ref_data_ptr[input_idx]
+            replay_arg = args[input_idx]
+            if capture_input_data_ptr != replay_arg.data_ptr():
+                capture_input = reconstructed_inputs[input_idx]
+                dst_tensors.append(capture_input)
+                src_tensors.append(replay_arg)
+                 
+        # foreach copy
+        with timer(f"{self.name} process inputs foreach copy"):
             if len(dst_tensors) > 1:
                 if self._input_base_format is None:
                     if is_inputs_base_format(dst_tensors) and is_inputs_base_format(src_tensors):
