@@ -259,17 +259,17 @@ class AclConcreteGraph(ConcreteGraphBase):
         logger.debug('after graph eliminate_dead_code, graph is %s', self.fx_graph.graph)
         observer.dump_gm(self.fx_graph, "graph_after_eliminate_dead_code")
 
-        if not (multi_stream_enabled or self.config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass):
+        if not self.config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass:
             logger.debug("Start to process reinplace inplaceable ops fx pass for graph: %s", self.fx_graph_name)
             from torchair._acl_concrete_graph.graph_pass import _reinplace_inplaceable_ops_pass
-            _reinplace_inplaceable_ops_pass(self.fx_graph, *sample_args)
+            _reinplace_inplaceable_ops_pass(self.fx_graph, multi_stream_enabled, *sample_args)
             observer.dump_gm(self.fx_graph, "graph_after_reinplace_inplaceable_ops_pass")
 
         # Note: this will modify mutated input ops in fx graph, should be executed LAST.
         if not self.config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass:
             logger.debug("Start to process reinplace input mutated ops fx pass for graph: %s", self.fx_graph_name)
             from torchair._acl_concrete_graph.graph_pass import _reinplace_input_mutated_ops
-            _reinplace_input_mutated_ops(self.fx_graph, multi_stream_enabled)
+            _reinplace_input_mutated_ops(self.fx_graph)
             observer.dump_gm(self.fx_graph, "graph_after_reinplace_input_mutated_ops")
             if decompose_auto_functionalized is not None:
                 decompose_auto_functionalized(self.fx_graph.graph)

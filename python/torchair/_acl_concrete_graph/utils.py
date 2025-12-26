@@ -236,8 +236,18 @@ def is_op_input_base_format(tensor) -> bool:
     return True
 
 
-def get_inplace_op_mutated_input_users(original_node: Node,
-                                       mutated_input_indices: List[int]) -> List[List[Node]]:
+def _is_copy_node(node: Node) -> bool:
+    """Check if a node is a copy_ node."""
+    return (
+        node.op == "call_function" 
+        and node.target == torch.ops.aten.copy_.default
+    )
+
+
+def get_inplace_op_mutated_input_users(
+    original_node: Union[Node, List[Node]],
+    mutated_input_indices: Union[Node, List[int]],
+) -> Union[List[Node], List[List[Node]]]:
     """
     Returns all downstream users of the mutated input nodes from an in-place operation.
 
@@ -246,53 +256,114 @@ def get_inplace_op_mutated_input_users(original_node: Node,
     (including indirect users through intermediate nodes).
 
     Args:
-        original_node: The original functionalized node that will be reinplaced.
+        original_node: The original functionalized node that will be reinplaced,
+                              or the mutated argument node for auto_functionalize.
         mutated_input_indices: List of indices pointing to which inputs will be mutated.
+                               If None, original_node is treated as a single node
+                               and its users are returned.
 
     Returns:
-        List of user node lists.
+        List of user node lists if mutated_input_indices is provided,
+        otherwise returns a single list of user nodes.
     """
-
-    all_inputs = [original_node.args[idx] for idx in mutated_input_indices]
-
+    # Handle single node case (for auto_functionalize)
+    if isinstance(mutated_input_indices, Node):
+        return _collect_single_node_users(mutated_input_indices)
+    
+    # Handle multiple nodes case (for regular reinplace checks)
     all_inputs_users = []
-    for input_node in all_inputs:
-        cur_input_users = []
-        to_be_replaced_copy_nodes = None
-        # part 1: all users of input node
-        for user_node in input_node.users:
-            if user_node.op == "call_function" and user_node.target == torch.ops.aten.copy_.default:
-                # user copy_ will be replace by input
-                to_be_replaced_copy_nodes = user_node
-                continue
-
-            cur_input_users.append(user_node)
-
-        if to_be_replaced_copy_nodes is None:
-            logger.debug("All the users of placeholder node[%s] are nodes: %s.",
-                         input_node.name, cur_input_users)
-            all_inputs_users.append(cur_input_users)
+    
+    for idx in mutated_input_indices:
+        if idx >= len(original_node.args):
+            logger.warning("Input index %d out of range for node %s", idx, original_node.name)
             continue
-
-        # part 2: all users of functionalized op output
-        # Only when multi reinplace is need,
-        # because functionalized op output(get_item) will be replace by input only in multi reinplace case.
-        candidates = []
-        if to_be_replaced_copy_nodes.args[1].target == operator.getitem:
-            candidates = to_be_replaced_copy_nodes.args[1].users
-
-        for user_node in candidates:
-            if user_node == to_be_replaced_copy_nodes:
-                # user copy_ will be replace by input
-                continue
-            cur_input_users.append(user_node)
-
-        # part 3: all users of copy_
-        for user_node in to_be_replaced_copy_nodes.users:
-            cur_input_users.append(user_node)
-
-        logger.debug("All the users of placeholder node[%s] are nodes: %s.",
-                     input_node.name, cur_input_users)
-        all_inputs_users.append(cur_input_users)
-
+            
+        input_node = original_node.args[idx]
+        users = _collect_single_node_users(input_node)
+        all_inputs_users.append(users)
+    
     return all_inputs_users
+
+
+def _collect_single_node_users(input_node: Node) -> List[Node]:
+    """
+    Collects all subsequent nodes in the graph that consume the mutated value
+    (including indirect users through intermediate nodes).
+    """
+    users = []
+    copy_node = None
+    
+    # part 1: all users of input node
+    # Collect non-copy users of the input node
+    for user in input_node.users:
+        if _is_copy_node(user):
+            # user copy_ will be replace by input
+            copy_node = user
+            continue
+        users.append(user)
+    
+    # part 2: all users of functionalized op output
+    # Only when multi reinplace is need,
+    # because functionalized op output(get_item) will be replace by input only in multi reinplace case.
+    if copy_node is not None:
+        # Collect non-copy users of the functionalized output
+        if len(copy_node.args) > 1 and copy_node.args[1].target == operator.getitem:
+            getitem_node = copy_node.args[1]
+            for candidate in getitem_node.users:
+                if candidate != copy_node:
+                    # user copy_ will be replace by input
+                    users.append(candidate)
+        
+        # part 3: all users of copy_. Collect users of the copy node itself
+        users.extend(copy_node.users)
+    
+    return users
+
+
+class ReinplaceStreamChecker:
+    """Unified handler for reinplace operation stream checking."""
+    
+    def __init__(self):
+        pass
+
+    def check_single_reinplace(self, node: torch.fx.Node) -> bool:
+        """Check stream consistency for single-input reinplace operations."""
+        return self._check_reinplace_streams(node, [0])
+    
+    def check_multi_reinplace(self, node: torch.fx.Node) -> bool:
+        """Check stream consistency for multi-input reinplace operations."""
+        from torchair._acl_concrete_graph.graph_pass import inplaceable_npu_ops
+        inplace_op = inplaceable_npu_ops.get(node.target)
+        if inplace_op is None:
+            return False
+        return self._check_reinplace_streams(node, inplace_op.mutated_arg)
+    
+    def check_auto_functionalize(self, node: torch.fx.Node, mutated_arg: torch.fx.Node) -> bool:
+        """Check stream consistency for auto_functionalize scenarios."""
+        # Use unified user collection interface
+        users = get_inplace_op_mutated_input_users(node, mutated_arg)
+        return self._verify_and_log(node, users, "multi_stream_auto_functionalize")
+    
+    def _check_reinplace_streams(self, node: torch.fx.Node, input_indices: List[int]) -> bool:
+        """Internal method: Check stream consistency for specified input indices."""
+        all_inputs_users = get_inplace_op_mutated_input_users(node, input_indices)
+        check_name = "multi_stream_single_reinplace" if len(input_indices) == 1 else "multi_stream_multi_reinplace"
+        for users in all_inputs_users:
+            if not self._verify_and_log(node, users, check_name):
+                return False
+        return True
+    
+    def _verify_and_log(self, node: Node, users: List[Node], check_name: str) -> bool:
+        """Verify if user nodes are on the same stream and log the result."""
+        from torchair._utils.graph_utils import verify_nodes_on_same_stream
+        
+        if verify_nodes_on_same_stream(users):
+            logger.debug("[%s]Current node: %s, type: %s check no multi stream users success for reinplace. "
+                 "The users of the mutated input node did not have multiple streams.", check_name,
+                 node.name, node.target)
+            return True
+        else:
+            logger.debug("[%s]Current node: %s, type: %s check no multi stream users failed for reinplace. "
+                     "The users of the mutated input node have multiple streams. All the users are %s.", check_name,
+                     node.name, node.target, users)
+            return False

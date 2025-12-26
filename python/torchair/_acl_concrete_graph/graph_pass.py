@@ -1,5 +1,7 @@
 from collections import defaultdict
+import copy
 from dataclasses import dataclass
+import itertools
 from typing import Any, Optional, List, Callable, Dict, Set
 import threading
 import operator
@@ -8,7 +10,6 @@ import torch
 from torch import fx
 from torch.fx import GraphModule
 from torch.fx.experimental.symbolic_shapes import GuardOnDataDependentSymNode
-from torch.fx.passes.reinplace import reinplace, _maybe_get_inplace_op, _is_view_op
 
 from torchair.core.utils import logger
 
@@ -30,6 +31,44 @@ try:
 except Exception:
     logger.debug("function[OrderedSet] is not support on torch < 2.6")
 
+# try to import necessary tools from pytorch for reinplace
+(
+    _FunctionalizationMetadataProp,
+    _get_view_inverse_node_usages,
+    _get_all_later_node_usages,
+    _maybe_get_inplace_op,
+    _is_view_op,
+    _VIEW_INVERSE_MAP,
+    StorageWeakRef,
+    FakeTensor,
+    pytree,
+    tree_map_only,
+) = (None,) * 10
+
+# flag which indicates whether torchair reinplace_with_multi_stream_check with multi-stream is available
+_HAS_INTERNAL_REINPLACE_TOOL = False
+
+try:
+    from torch.multiprocessing.reductions import StorageWeakRef
+    from torch._subclasses.fake_tensor import FakeTensor
+    from torch.utils import _pytree as pytree
+    from torch.utils._pytree import tree_map_only
+    from torch.fx.passes.reinplace import (
+        _FunctionalizationMetadataProp,
+        _get_view_inverse_node_usages,
+        _get_all_later_node_usages,
+        _maybe_get_inplace_op,
+        _is_view_op,
+        _VIEW_INVERSE_MAP,
+    )
+    _HAS_INTERNAL_REINPLACE_TOOL = True
+except ImportError as e:
+    logger.debug(
+        f"Can not import tool functions from torch.fx.passes.reinplace (Torch {torch.__version__}), "
+        f"reinplace_with_multi_stream_check is not available, with error: {e}"
+    )
+        
+
 aten = torch.ops.aten
 # Operators that don't depend on the tensor data
 META_ONLY_OPS = {
@@ -40,6 +79,7 @@ META_ONLY_OPS = {
 }
 
 
+# multi-stream checker for reinplace
 def check_multi_stream_for_single_reinplace(node: torch.fx.Node) -> bool:
     """
     Check whether there are multiple streams in the current node when reinplacing.
@@ -48,22 +88,9 @@ def check_multi_stream_for_single_reinplace(node: torch.fx.Node) -> bool:
     Note: For single reinplace operators,
           we just need to verify the 0th input support reinplaces under multiple streams
     """
-
-    from torchair._acl_concrete_graph.utils import get_inplace_op_mutated_input_users
-    all_inputs_users = get_inplace_op_mutated_input_users(node, [0])
-
-    from torchair._utils.graph_utils import verify_nodes_on_same_stream
-    for cur_input_usrs in all_inputs_users:
-        if not verify_nodes_on_same_stream(cur_input_usrs):
-            logger.debug("Current node: %s, type: %s check no multi stream users failed for reinplace. "
-                         "The users of the mutated input node have multiple streams. All the users are %s.",
-                         node.name, node.target, cur_input_usrs)
-            return False
-
-        logger.debug("Current node: %s, type: %s check no multi stream users success for reinplace. "
-                     "The users of the mutated input node did not have multiple streams.",
-                     node.name, node.target)
-    return True
+    from torchair._acl_concrete_graph.utils import ReinplaceStreamChecker
+    checker = ReinplaceStreamChecker()
+    return checker.check_single_reinplace(node)
 
 
 def check_multi_stream_for_multi_reinplace(node: torch.fx.Node) -> bool:
@@ -73,27 +100,21 @@ def check_multi_stream_for_multi_reinplace(node: torch.fx.Node) -> bool:
     Note: For operators with multi_reinplace,
           we need to verify that all inputs support reinplaces under multiple streams
     """
+    from torchair._acl_concrete_graph.utils import ReinplaceStreamChecker
+    checker = ReinplaceStreamChecker()
+    return checker.check_multi_reinplace(node)
 
-    from torchair._acl_concrete_graph.utils import get_inplace_op_mutated_input_users
-    inplace_op = inplaceable_npu_ops.get(node.target, None)
-    if inplace_op is None:
-        return False
 
-    inplace_op_mutated_indices = inplace_op.mutated_arg
-    all_inputs_users = get_inplace_op_mutated_input_users(node, inplace_op_mutated_indices)
+def check_multi_stream_for_auto_functionalize(node: torch.fx.Node, mutated_arg: torch.fx.Node) -> bool:
+    """
+    Check whether there are multiple streams in the current node when reinplacing.
 
-    from torchair._utils.graph_utils import verify_nodes_on_same_stream
-    for cur_input_usrs in all_inputs_users:
-        if not verify_nodes_on_same_stream(cur_input_usrs):
-            logger.debug("Current node: %s, type: %s check no multi stream users failed for reinplace. "
-                         "The users of the mutated input node have multiple streams. All the users are %s.",
-                         node.name, node.target, cur_input_usrs)
-            return False
-
-        logger.debug("Current node: %s, type: %s check no multi stream users success for reinplace. "
-                     "The users of the mutated input node did not have multiple streams.",
-                     node.name, node.target)
-    return True
+    Note: For operators with auto_functionalize scenarios.
+          we need to verify that all inputs support reinplaces under multiple streams
+    """
+    from torchair._acl_concrete_graph.utils import ReinplaceStreamChecker
+    checker = ReinplaceStreamChecker()
+    return checker.check_auto_functionalize(node, mutated_arg)
 
 
 @dataclass(frozen=True)
@@ -140,7 +161,7 @@ def get_node_storage(node: torch.fx.Node) -> Optional[int]:
     return get_storage(node.meta["val"])
 
 
-def _mutated_input_reinplace(gm: GraphModule, multi_stream_enabled: bool) -> GraphModule:
+def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
     """
     Reinplaces in-placeable operations.
     If there are no uses of a view of the mutated arg after the current node,
@@ -362,7 +383,8 @@ def _mutated_input_reinplace(gm: GraphModule, multi_stream_enabled: bool) -> Gra
             should_attempt_reinplace = not tensor_with_same_storage_already_reinplaced(
                 mutated_arg
             )
-            if should_attempt_reinplace and can_inplace(node, mutated_arg):
+            if should_attempt_reinplace and can_inplace(node, mutated_arg) and \
+                check_multi_stream_for_auto_functionalize(node, mutated_arg):
                 # In general, we probably do not need those optimizations.
                 copy_node = copy_args_to_copy_nodes.get((mutated_arg, node))
                 if copy_node is not None:
@@ -431,12 +453,6 @@ def _mutated_input_reinplace(gm: GraphModule, multi_stream_enabled: bool) -> Gra
                 logger.debug(f"can_inplace return False, will skip reinplacing for node: {node.target}")
         elif hasattr(torch.ops.higher_order, "auto_functionalized_v2"
                      ) and node.target is torch.ops.higher_order.auto_functionalized_v2:
-            if multi_stream_enabled:
-                # TO DO: support this case
-                logger.debug(f"auto_functionalized_v2 operator reinplacing is not supported in multi stream case, "
-                             f"skip node: {node.target}")
-                continue
-
             _mutable_op = node.args[0]
             kwargs = node.kwargs
 
@@ -455,12 +471,6 @@ def _mutated_input_reinplace(gm: GraphModule, multi_stream_enabled: bool) -> Gra
             node.meta["only_clone_these_tensors"] = new_bases_to_clone
         elif hasattr(torch.ops.higher_order, "auto_functionalized"
                      ) and node.target is torch.ops.higher_order.auto_functionalized:
-            if multi_stream_enabled:
-                # TO DO: support this case
-                logger.debug(f"auto_functionalized operator reinplacing is not supported in multi stream case, "
-                             f"skip node: {node.target}")
-                continue
-
             _mutable_op = node.args[0]
             from torch._higher_order_ops.auto_functionalize import get_mutable_args
 
@@ -489,16 +499,21 @@ def _mutated_input_reinplace(gm: GraphModule, multi_stream_enabled: bool) -> Gra
         graph.erase_node(node)
 
 
-def _reinplace_inplaceable_ops_pass(gm: GraphModule, *sample_args):
+def _reinplace_inplaceable_ops_pass(gm: GraphModule, multi_stream_enabled: bool, *sample_args):
     """
     Given a fx.GraphModule, modifies it to perform "reinplacing". Just call torch.fx.passes.reinplace.
     Note: this pass can not deal with mutated inputs.
     """
-    original_gm = gm
+    original_gm = copy.deepcopy(gm)
     try:
         logger.debug("[_reinplace_inplaceable_ops_pass]processing reinplace_inplaceable_ops_pass for graph: %s", id(gm))
-        gm = reinplace(gm, *sample_args)
-        logger.debug("End to process reinplace inplaceable ops fx pass for graph: %s", id(gm))
+        if _HAS_INTERNAL_REINPLACE_TOOL:
+            gm = reinplace_with_multi_stream_check(gm, *sample_args)
+        else:
+            logger.warning_once(f"Skipped fx_pass _reinplace_inplaceable_ops_pass for unsupported fx graph {id(gm)}."
+                                f"Reinplace_with_multi_stream_check is not supported.")
+            return original_gm
+        logger.debug("[_reinplace_inplaceable_ops_pass]End to process reinplace pass for graph: %s", id(gm))
     except NotImplementedError:
         raise
     except Exception as exception:
@@ -507,12 +522,12 @@ def _reinplace_inplaceable_ops_pass(gm: GraphModule, *sample_args):
                                " solutions: 1. upgrade torch version(>=2.5.0); 2. disable pass config by setting: "
                                "config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass=True") from exception
         else:
-            logger.warning_once(f"Skipped fx_pass torch.fx.passes.reinplace for unsupported fx graph {id(gm)}.")
+            logger.warning_once(f"Skipped fx_pass _reinplace_inplaceable_ops_pass for unsupported fx graph {id(gm)}.")
             return original_gm
     return gm
 
 
-def _reinplace_input_mutated_ops(gm: GraphModule, multi_stream_enabled: bool):
+def _reinplace_input_mutated_ops(gm: GraphModule):
     """
     Given a fx.GraphModule, modifies it to perform "reinplacing", mutating the nodes of the graph.
         We try to handle the mutated input reinplace by reusing inductor fx pass for reinplacing input mutated ops,
@@ -526,7 +541,7 @@ def _reinplace_input_mutated_ops(gm: GraphModule, multi_stream_enabled: bool):
     from torchair._utils.graph_utils import add_stream_label_to_node_meta
     add_stream_label_to_node_meta(gm)
 
-    _mutated_input_reinplace(gm, multi_stream_enabled)
+    _mutated_input_reinplace(gm)
     logger.debug("End to process reinplace input mutated ops fx pass for graph: %s", id(gm))
     return gm
 
@@ -699,3 +714,483 @@ def _core_limit_handle_scope_exit(node: torch.fx.Node, gm: torch.fx.GraphModule,
     if last_scope_enter_op == "core_limit":
         node.replace_all_uses_with(core_set_node)
         gm.graph.erase_node(node)
+
+
+def reinplace_with_multi_stream_check(gm, *sample_args):
+    """
+    Stream-aware reinplace pass.
+
+    This is identical to the original reinplace implementation, except that
+    inplace transformations are conservatively disallowed when aliasing uses
+    occur across different streams.
+    
+    Given an fx.GraphModule, modifies it to perform "reinplacing",
+    mutating the nodes of the graph.
+    We look for out-of-place op call sites like `b = a.add(...)`,
+    and convert them to be inplace (`b = a.add_(...)`),
+    as long as the input to the current operator ("a") isn't re-used
+    anywhere later in the graph.
+
+    This pass currently expects to operate on a **functional, ATen** graph.
+    This can be obtained by running `make_fx(functionalize(f))`.
+
+    Sample inputs are needed to determine aliasing relationships of the inputs.
+    In general, we can't reinplace node `b = a.add(...)` if "a" aliases any of the
+    inputs to the program.
+
+    Given a node "b = foo(a, args...) the algorithm for re-inplacing is as follows:
+
+    (1) Perform some initial checks on the metadata of "a" and "args..."
+        that can disqualify them from being reinplaced.
+
+      (1a) Check that the self argument we're attempting to reinplace
+           has acceptable dtype/size metadata to reinplace with.
+
+           For example, if we have:
+             a = torch.ones(1)
+             b = torch.ones(10)
+             out = torch.add(a, b)
+           We can't turn that into
+             a.add_(b)
+           Because that would require resizing "a".
+
+           Similarly, we can't convert torch.ge(a, b) into a.ge_(b),
+           because that would require changing a's dtype (from e.g. float32 to bool).
+           Note that in this specific example, we could technically do better..
+
+           If we see the pattern:
+             a_1 = a.ge(b)
+             a_2 = aten._to_copy(a_1, a.dtype)
+           Then we this should be valid to completely re-inplace
+           (this is exactly what functionalization will emit when it sees a.ge_(b)).
+
+           This optimization is only really important for user programs
+           that directly use inplace comparison ops though.
+
+           We also cannot re-inplace on tensors that have overlapping memory,
+           e.g. torch.ones(1).expand(4, 4).add_(1)
+
+      (1b) Check if "a" is an alias of any of the program inputs.
+
+          If it is, skip and move to the next node.
+          Inplace'ing an op that would cause it to mutate a program is not sound,
+          because that would be a side effect visible to the user.
+
+          NOTE: there's a future optimization that we should make:
+          if "a" is a (alias of a)  program input, but later in the program
+          there is a node that looks like "a.copy_(...)",
+          Then re-inplacing is ok to do - we are temporarily re-using a's buffer,
+          which will later be overwritten by the copy_() call.
+
+          This will be an important optimization to have for programs that mutate
+          their inputs. It currently isn't implemented though.
+
+      (1c) Check if "a" and "args..." alias
+
+          For example, re-inplacing to create code like the below
+          isn't guaranteed to be sound:
+
+            aten.mul_(a, a)
+
+    (2) Check that "a" and all of its outstanding aliases are not used anywhere
+        later in the graph. If this is the case, then it's safe to re-inplace
+        to "b = foo_(a)".
+
+        There are a few caveats to this, explained in more detail below:
+        (a) If "a" is used later as an argument to a view op, that is okay.
+            It's only a problem if "a" (or that view) is later passed
+            into a normal operator, or if it is returned as the program output.
+        (b) If "a" is a repeat argument in `foo()`, then don't reinplace.
+            Most ATen kernels don't make any guarantees that this is sound,
+            e.g. if you do aten.mul_(a, a).
+            So we'll just ban re-inplacing in this case.
+            It's only a problem if "a" (or that view) is later passed
+        (c) If "a" is used as an input into a view "inverse" / "scatter"
+            operator, it is potentially fine to re-inplace
+            (and remove that scatter operator from the graph).
+            See below for a more detailed example.
+
+        NOTE: there is an optimization in this step that is crucial
+        to fully recovering performance from functionalization.
+
+        Given this program:
+        def f(x):
+            a = torch.ops.aten.add(x, x)
+            b = torch.ops.aten.diagonal(a)
+            torch.ops.aten.fill_(b, 0)
+            return d
+
+        Functionalization will emit the following:
+        def f(x):
+            a = torch.ops.aten.add(x, x)
+            b = torch.ops.aten.diagonal(a, 0, 1)
+            b_updated = torch.ops.aten.fill(b, 0)
+            a_updated = torch.ops.aten.diagonal_scatter(a, b_updated, 0, 1)
+            return a_updated
+
+        Ordinarily, we would not be able to reinplace the fill,
+        because "b" aliases with "a" which is used by the diagonal_scatter call.
+
+        "re-inplacing" is on the hook for figuring out that it is ok to
+        completely, the expensive diagonal_scatter call, if we re-inplace the add().
+
+        So, for every `alias in alias_set(a)`, instead of checking
+        that "alias" is not used anywhere later in the graph,
+        we check that
+            EITHER:
+          (a) alias is not used anywhere later in the graph
+            OR:
+          (b) alias is used exactly once later on in the graph,
+              in the following op:
+
+                out = foo_scatter(alias, x, args...)
+
+              where the following must hold:
+                (i) "foo_scatter" is the "inverse" operator for foo.
+                    This only applies to "foo" ops that are view operators,
+                    which view into a subset of the original tensor's memory.
+                    In practice, there are ~4 operators where this applies:
+                      diagonal -> diagonal_scatter
+                      slice -> slice_scatter
+                      select -> select_scatter
+                      as_strided -> as_strided_scatter
+                (ii) "args..." are the same between the foo() and foo_scatter() calls.
+
+    (3) Perform the actual re-inplacing on foo!
+
+      (3b) is the common case, but special care is needed for {view}_scatter (3a)
+
+      (3a) {view}_scatter ops.
+
+        Consider this program:
+          a = torch.zeros(2, 2)
+          b = torch.ones(2)
+          a[0] = b
+
+        Post functionalization, that will look like:
+          a = torch.zeros(2)
+          b = torch.ones(1)
+          a_updated = torch.select_scatter(a, b, 0, 0)
+
+        In this case though, there is no "functional" op to re-inplace!
+        Instead, we'd like to directly remove toe select_scatter call.
+        We already know from (3) that this is valid,
+        because "a" has no later usages in the graph.
+
+        We perform the re-inplacing on the {view}_scatter op like so
+        Before:
+          a_updated = torch.select_scatter(a, b, args...)
+        After:
+          a_slice = a.select(a, args...)
+          a_slice.copy_(b)
+
+      (3b) Otherwise, replace the functional op with its inplace variant.
+        Before:
+          b = foo(a, args...)
+        After:
+          a.foo_(args...)
+
+    (4) Finally, after converting either:
+          Before:
+            b = foo(a)
+          After:
+            foo_(a)
+        or
+          Before:
+            b = {slice}_scatter(a, mutated_slice, args...)
+          After:
+            slice = {slice}(a, args...)
+            slice.copy_(mutated_slice)
+
+        We now need to find all later nodes that use "b" as an argument
+        and update them to take in "a" instead.
+
+        Note that for the majority of inplace ops, this isn't actually necessary
+        (because most inplace ops return "self" as their output).
+        This isn't generally true for all mutable ops though, which is why
+        we need to actually replace all of the arguments.
+
+        We also need to update our metadata of Dict[StorageWeakRef, Set[Node]],
+        That maps a given tensor storage to the set of all nodes that take in that storage
+        as an input.
+        Specifically, re-inplacing `b = foo(a)` causes "a" and "b"'s sets to get fused
+        together.
+
+    (5) Any "view_inverse/scatter" nodes that were identified as "it's ok to ignore them"
+        during step (3) get manually deleted from the graph.
+        Their outputs are no longer used, so technically standard DCE would be able
+        to do this, but we can no longer run FX's DCE pass now that we have mutable
+        ops in the graph.
+    """
+    _FunctionalizationMetadataProp(gm).propagate(*sample_args)
+
+    """
+    Useful debug printing
+    def _print(x):
+    if isinstance(x, FakeTensor):
+    print(f'fake_result: {StorageWeakRef(x._typed_storage()).cdata}')
+
+    for n in gm.graph.nodes:
+    print(n.format_node())
+    if hasattr(n, 'meta'):
+    print(f'node_idx: {n.meta["node_idx"]}')
+    if 'fake_result' in n.meta:
+    tree_map(_print, n.meta['fake_result'])
+    if 'view_of' in n.meta:
+    print(f'view_of: {str(n.meta["view_of"])}')
+    print()
+    """
+
+    # We need to know which nodes correspond to inputs (or their aliases)
+    # so we know not to re-inplace them.
+    # NOTE: later, we'll need to add an optimization for fully recovering performance
+    # on programs that mutate inputs.
+    input_storages = {
+        StorageWeakRef(node.meta["fake_result"]._typed_storage())
+        for node in gm.graph.nodes
+        if (
+            node.op == "placeholder"
+            and isinstance(node.meta["fake_result"], torch.Tensor)
+        )
+    }
+
+    # We also need to know for a given node, what are all of its aliasing nodes.
+    storage_to_nodes: dict[StorageWeakRef, set[torch.fx.Node]] = defaultdict(set)
+    for n in gm.graph.nodes:
+        if "fake_result" in n.meta:
+            # Tree-mapping because some ops can return lists of tensors.
+            def _add_to_map(x):
+                if isinstance(x, FakeTensor):
+                    storage_to_nodes[StorageWeakRef(x._typed_storage())].add(n)
+
+            pytree.tree_map_(_add_to_map, n.meta["fake_result"])
+    
+    # inplace-ify functional ops, subject to the constraints written below.
+    all_later_view_inverse_nodes_to_delete = set()
+    for node in gm.graph.nodes:
+        if node.op == "call_function":
+            # Today, the re-inplace pass on directly acts on:
+            # - functional ops with an inplace variant
+            # - {view}_scatter ops that can be potentially removed from the graph.
+            # Both of these ops take in tensor first args, so filtering on this condition
+            # makes the later code simpler.
+            # We should revisit this at some point though, particularly when we also want
+            # the reinplacer to be able to handle out= and mutable operators
+            # and tensorlist first args (like `_foreach_` ops).
+            if not isinstance(node.target, torch._ops.OpOverload):
+                continue
+            if len(node.target._schema.arguments) < 1:
+                continue
+            if type(node.target._schema.arguments[0].type) != torch.TensorType:
+                continue
+            # ---- Step 1a: metadata checks ----
+            # Step 1a: Check that the self argument we're attempting to reinplace
+            # has the same size/stride as the output.
+            # For example, we shouldn't try to reinplace torch.add(scalar_tensor, larger_tensor)
+            # As it would require resizing scalar_tensor.
+            # (We could potentially swizzle this into larger_tensor.add_(scalar_tensor),
+            # this is probably an optimization to revisit later).
+            self_arg = node.args[0]
+            self_flattened = pytree.tree_leaves(self_arg.meta["fake_result"])
+            node_flattened = pytree.tree_leaves(node.meta["fake_result"])    
+            self_has_wrong_metadata = False
+            if len(self_flattened) == len(node_flattened):
+                for self_meta, node_meta in zip(self_flattened, node_flattened):
+                    if self_meta.numel() != node_meta.numel():
+                        self_has_wrong_metadata = True
+                    if self_meta.dtype != node_meta.dtype:
+                        self_has_wrong_metadata = True
+                    # We also cannot re-inplace on tensors that have internal memory overlap.
+                    # e.g. torch.ones(1).expand(4, 4).add_(1)
+                    if torch._debug_has_internal_overlap(self_meta) == 1:
+                        self_has_wrong_metadata = True
+            # Here, we (optimistically) assume that a.resize(b) is valid to re-inplace,
+            # Since users should never really be calling the functional "torch.ops.aten.resize"
+            # op directly in their programs.
+            if self_has_wrong_metadata and node.target != torch.ops.aten.resize.default:
+                continue
+            # ---- Step 1b: do not mutate program inputs ----
+            # Step 1b: ensure that the op we're trying to re-inplace isn't a program input
+            self_arg_storage = StorageWeakRef(
+                self_arg.meta["fake_result"]._typed_storage()
+            )
+            if self_arg_storage in input_storages:
+                # TODO: later, add the optimization for handling `copy_()` calls in the graph.
+                continue
+            # ---- Step 1c: repeated self argument ----
+            if len([x for x in node.args if x is self_arg]) > 1:
+                # Step 1c:
+                # Calling stuff like aten.mul_(a, a) isn't guaranteed to be sound,
+                # so we prevent re-inplacing in this case.
+                continue
+            self_arg_storage = StorageWeakRef(
+                self_arg.meta["fake_result"]._typed_storage()
+            )
+            self_aliases = storage_to_nodes[self_arg_storage]
+            # ---- Step 2: find later aliasing usages (stream-aware) ----
+            # First, we find all later usages of any of the aliases of self_arg.
+            later_node_usages = _get_all_later_node_usages(
+                self_aliases, node.meta["node_idx"]
+            )
+    
+            later_view_inverse_node_usages = _get_view_inverse_node_usages(
+                later_node_usages, self_aliases
+            )
+    
+            can_reinplace = (
+                len(later_node_usages - later_view_inverse_node_usages) == 0
+            )
+            # [TORCHAIR] Do multi-stream check.
+            check_stream = check_multi_stream_for_single_reinplace(node)
+            if not can_reinplace or not check_stream:
+                continue
+    
+            # ---- Step 3a: handle view_scatter ----
+            # Step 3a: Special handling for when we see *_scatter operators.
+            # When we see an operator like `b = torch.slice_scatter(a, ...)`,
+            # instead of trying to "inplace" it into a.slice_scatter_(..._),
+            # we would prefer to remove it from the graph entirely,
+            # and instead copy_() the slice directly into the larger tensor.
+            # See the description of the algorithm for a full example.
+            if (
+                node.target in _VIEW_INVERSE_MAP
+                and node not in all_later_view_inverse_nodes_to_delete
+            ):
+                view_op = _VIEW_INVERSE_MAP[node.target]
+                # Before:
+                #   base_updated = torch.ops.aten.slice_scatter.default(base, mutated_slice, args...)
+                # After:
+                #   slice = torch.ops.aten.slice.default(base, args...)
+                #   slice.copy_(mutated_slice)
+                with gm.graph.inserting_before(node):
+                    mutated_slice_node = node.args[1]
+                    remaining_slice_args = node.args[2:]
+                    slice_node = gm.graph.create_node(
+                        "call_function",
+                        view_op,
+                        (self_arg,) + tuple(remaining_slice_args),
+                        node.kwargs,
+                    )
+                    gm.graph.create_node(
+                        "call_function",
+                        torch.ops.aten.copy_.default,
+                        (
+                            slice_node,
+                            mutated_slice_node,
+                        ),
+                        {},
+                    )
+                # Add the slice_scatter node to our "nodes to delete" list.
+                all_later_view_inverse_nodes_to_delete.add(node)
+            
+            else:
+                # Step 3b: Check to see if this operator has an inplace variant.
+                maybe_inplace_op = _maybe_get_inplace_op(node.target)
+                if maybe_inplace_op is None:
+                    continue
+                # And if so, replace it with its inplace variant.
+                node.target = maybe_inplace_op
+            # ---- Step 4: update alias maps ----
+            # At this point, 'storage_to_nodes' will be stale.
+            # Now that we're inplacing `b = foo(a)`, we need to effectively
+            # union together the dict values for b and a's storage.
+            # Hmm... morally I think we also want to keep the `fake_result` metadata
+            # up to date here, but I'm not sure how easy it is to do.
+            # Maybe it's fine to wait until the end of the pass to update it.
+            curr_node_storage = StorageWeakRef(
+                node.meta["fake_result"]._typed_storage()
+            )
+            storage_to_nodes[self_arg_storage].update(
+                storage_to_nodes[curr_node_storage]
+            )
+            storage_to_nodes[curr_node_storage].update(
+                storage_to_nodes[self_arg_storage]
+            )
+            
+            # Need to remember the view_scatter view nodes we found so we can remove them alter.
+            all_later_view_inverse_nodes_to_delete.update(
+                later_view_inverse_node_usages
+            )
+    
+            # Step 4:
+            # Now that we've replaced b = a.foo() with a.foo_(),
+            # We need to replace any later usages of "b" with "a"
+            for old in itertools.chain([node], later_view_inverse_node_usages):
+                new = old.args[0]
+                nodes_to_update = [
+                    n for n in old.users if n.meta["node_idx"] > node.meta["node_idx"]
+                ]
+                for node_to_update in nodes_to_update:
+    
+                    def replace_arg(a):
+                        if a == old:
+                            return new
+                        return a
+                    
+                    # First, replace usages of "b" with "a"
+                    node_to_update.args = tree_map_only(
+                        torch.fx.Node, replace_arg, node_to_update.args
+                    )
+                    node_to_update.kwargs = tree_map_only(
+                        torch.fx.Node, replace_arg, node_to_update.kwargs
+                    )
+                    
+                    # Second, update our storage_to_nodes data structure.
+                    old_flattened_res = pytree.tree_leaves(old.meta["fake_result"])
+                    node_flattened_res = pytree.tree_leaves(
+                        node_to_update.meta["fake_result"]
+                    )
+    
+                    old_res_storage = {
+                        StorageWeakRef(x._typed_storage())
+                        for x in old_flattened_res
+                        if isinstance(x, FakeTensor)
+                    }
+                    node_res_storage = {
+                        StorageWeakRef(x._typed_storage())
+                        for x in node_flattened_res
+                        if isinstance(x, FakeTensor)
+                    }
+                    
+                    # This will happen if we're updating a view op, e.g.
+                    # e.g. replacing
+                    #     x = view(old)
+                    #     x = view(new)
+                    # When that happens, we need to make sure to keep our
+                    # storage mapping up to date.
+                    #
+                    # We're checking for len(...) == 1 here because all view ops are guaranteed to return either a single tensor,
+                    # or multiple tensors that all share the same storage.
+                    # We can't just check equality because we might encounter FX nodes that return zero tensor outputs.
+                    if (
+                        len(old_res_storage) == 1
+                        and len(node_res_storage) == 1
+                        and old_res_storage == node_res_storage
+                    ):
+                        new_flattened_res = pytree.tree_leaves(new.meta["fake_result"])
+                        new_res_storage = {
+                            StorageWeakRef(x._typed_storage())
+                            for x in new_flattened_res
+                            if isinstance(x, FakeTensor)
+                        }
+                        (new_ref,) = new_res_storage
+                        (node_ref,) = node_res_storage
+                        # Technically, "old_ref" and all its aliases will remain
+                        # in our mapping.
+                        # That should be fine though, since we deleted "old"
+                        # from the graph at this point.
+                        storage_to_nodes[node_ref].update(
+                            storage_to_nodes[new_ref]
+                        )
+                        storage_to_nodes[new_ref].update(
+                            storage_to_nodes[node_ref]
+                        )
+
+    # ---- Step 5: delete eliminated view_scatter nodes ----
+    # Need to take care not to delete any of these nodes until after *all* modifications
+    # to the graph are finished.
+    for to_delete in all_later_view_inverse_nodes_to_delete:
+        gm.graph.erase_node(to_delete)
+
+    gm.recompile()
+    return gm

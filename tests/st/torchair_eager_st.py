@@ -247,6 +247,105 @@ class EagerModeSt(unittest.TestCase):
         self.assertTrue("failed for reinplace. The users of the mutated input node have multiple streams."
                         in stdout.getvalue())
 
+    def test_aclgraph_single_reinplace_within_mix_stream_scope_success(self):
+        def test_func_same_stream(x, y, z):
+            with torchair.scope.npu_stream_switch('0', 3):
+                x.sub_(1.0)
+            with torchair.scope.npu_stream_switch('1', 3):
+                y.add_(1.0)
+                y2 = y - 1.0
+            with torchair.scope.npu_stream_switch('2', 3):
+                z.mul_(1.0)
+            x.add_(3)
+            return x + y2 + z
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.run_eagerly = True
+        if version.parse(torch.__version__) < version.parse("2.5.1"):
+            config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model1 = torch.compile(test_func_same_stream, backend=aclgraph_backend, dynamic=True)
+
+        # first run
+        x0 = torch.randn([3])
+        y0 = torch.randn([3])
+        z0 = torch.randn([3])
+        with capture_logger() as stdout:
+            model1(x0, y0, z0)
+        self.assertFalse("failed for reinplace. The users of the mutated input node have multiple streams."
+                        in stdout.getvalue())
+        self.assertTrue("success for reinplace. The users of the mutated input node did not have multiple streams."
+                        in stdout.getvalue())
+        
+    @unittest.skipIf(torch.__version__ < "2.2", "torch._functionalize_replace is unsupported when torch < 2.2")
+    def test_aclgraph_multi_reinplace_within_mix_stream_scope_success(self):
+        def test_func_same_stream(x, cos, sin):
+            x.mul_(2)
+            with torchair.scope.npu_stream_switch('o', 3):
+                ret = torch.ops.custom.sin_cos_inplace.default(x, cos, sin)  # 'o' stream
+                ret = ret * cos
+            res = ret.sqrt()
+            return res
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.run_eagerly = True
+        if version.parse(torch.__version__) < version.parse("2.5.1"):
+            config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model1 = torch.compile(test_func_same_stream, backend=aclgraph_backend, dynamic=True)
+
+        # first run
+        x0 = torch.randn([3])
+        y0 = torch.randn([3])
+        z0 = torch.randn([3])
+        with capture_logger() as stdout:
+            model1(x0, y0, z0)
+        self.assertFalse("failed for reinplace. The users of the mutated input node have multiple streams."
+                        in stdout.getvalue())
+        self.assertTrue("success for reinplace. The users of the mutated input node did not have multiple streams."
+                        in stdout.getvalue())
+        
+    @unittest.skipIf(torch.__version__ < "2.2", "torch._functionalize_replace is unsupported when torch < 2.2")
+    def test_aclgraph_multi_reinplace_within_mix_stream_scope_fail(self):
+        def test_func_same_stream(x, cos, sin):
+            x.mul_(2)
+            with torchair.scope.npu_stream_switch('o', 3):
+                ret = torch.ops.custom.sin_cos_inplace.default(x, cos, sin)  # 'o' stream
+                ret = ret * cos
+            res = ret.sqrt()
+            sin = cos + 1
+            return res, sin
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.run_eagerly = True
+        if version.parse(torch.__version__) < version.parse("2.5.1"):
+            config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model1 = torch.compile(test_func_same_stream, backend=aclgraph_backend, dynamic=True)
+
+        # first run
+        x0 = torch.randn([3])
+        y0 = torch.randn([3])
+        z0 = torch.randn([3])
+        with capture_logger() as stdout:
+            model1(x0, y0, z0)
+        # multi_reinplace failed & single_reinplace success.
+        self.assertTrue("[multi_stream_single_reinplace] Current node: sin_cos_functional, "
+                        "type: custom.sin_cos_functional.default "
+                        "check no multi stream users success for reinplace. "
+                        "The users of the mutated input node did not have multiple streams."
+                        in stdout.getvalue())
+        self.assertTrue("[multi_stream_multi_reinplace]Current node: sin_cos_functional, "
+                        "type: custom.sin_cos_functional.default check no multi stream users failed for reinplace. "
+                        "The users of the mutated input node have multiple streams. "
+                        "All the users are [sin_cos_functional, add]."
+                        in stdout.getvalue())
 
 if __name__ == '__main__':
     unittest.main()
