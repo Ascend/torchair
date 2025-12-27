@@ -80116,11 +80116,11 @@ def MoeDistributeCombineV2(expand_x: Tensor, expert_ids: Tensor, assist_info_for
                            const_expert_v: Optional[Tensor], performance_info: Optional[Tensor], *, group_ep: str, ep_world_size: int, ep_rank_id: int, 
                            moe_expert_num: int, group_tp: str = "", tp_world_size: int = 0, tp_rank_id: int = 0, 
                            expert_shard_type: int = 0, shared_expert_num: int = 1, shared_expert_rank_num: int = 0, 
-                           global_bs: int = 0, comm_quant_mode: int = 0, comm_alg: str = "", zero_expert_num: int = 0,
-                           copy_expert_num: int = 0,  const_expert_num: int = 0, 
+                           global_bs: int = 0, out_dtype: int = 0, comm_quant_mode: int = 0, group_list_type: int = 0,
+                           comm_alg: str = "", zero_expert_num: int = 0, copy_expert_num: int = 0, const_expert_num: int = 0, 
                            dependencies=[], node_name=None):
     """REG_OP(MoeDistributeCombineV2)\n
-    .INPUT(expand_x, TensorType({DT_BF16, DT_FLOAT16}))\n
+    .INPUT(expand_x, TensorType({DT_BF16, DT_FLOAT16, DT_INT32}))\n
     .INPUT(expert_ids, TensorType({DT_INT32}))\n
     .INPUT(assist_info_for_combine, TensorType({DT_INT32}))\n
     .INPUT(ep_send_counts, TensorType({DT_INT32}))\n
@@ -80131,12 +80131,12 @@ def MoeDistributeCombineV2(expand_x: Tensor, expert_ids: Tensor, assist_info_for
     .OPTIONAL_INPUT(weight_scale, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(group_list, TensorType({DT_INT64}))\n
     .OPTIONAL_INPUT(expand_scales, TensorType({DT_FLOAT}))\n
-    .OPTIONAL_INPUT(shared_expert_x, TensorType({DT_BF16}))\n
+    .OPTIONAL_INPUT(shared_expert_x, TensorType({DT_BF16, DT_FLOAT16, DT_INT32}))\n
     .OPTIONAL_INPUT(elastic_info, TensorType({DT_INT32}))\n
-    .OPTIONAL_INPUT(ori_x, TensorType({DT_BF16, DT_FLOAT16}))\n
-    .OPTIONAL_INPUT(const_expert_alpha_1, TensorType({DT_BF16, DT_FLOAT16}))\n
-    .OPTIONAL_INPUT(const_expert_alpha_2, TensorType({DT_BF16, DT_FLOAT16}))\n
-    .OPTIONAL_INPUT(const_expert_v, TensorType({DT_BF16, DT_FLOAT16}))\n
+    .OPTIONAL_INPUT(ori_x, TensorType({DT_BF16, DT_FLOAT16, DT_INT32}))\n
+    .OPTIONAL_INPUT(const_expert_alpha_1, TensorType({DT_BF16, DT_FLOAT16, DT_INT32}))\n
+    .OPTIONAL_INPUT(const_expert_alpha_2, TensorType({DT_BF16, DT_FLOAT16, DT_INT32}))\n
+    .OPTIONAL_INPUT(const_expert_v, TensorType({DT_BF16, DT_FLOAT16, DT_INT32}))\n
     .OPTIONAL_INPUT(performance_info, TensorType({DT_INT64}))\n
     .OUTPUT(x, TensorType({DT_BF16, DT_FLOAT16}))\n
     .REQUIRED_ATTR(group_ep, String)\n
@@ -80150,7 +80150,9 @@ def MoeDistributeCombineV2(expand_x: Tensor, expert_ids: Tensor, assist_info_for
     .ATTR(shared_expert_num, Int, 1)\n
     .ATTR(shared_expert_rank_num, Int, 0)\n
     .ATTR(global_bs, Int, 0)\n
+    .ATTR(out_dtype, Int, 0)\n
     .ATTR(comm_quant_mode, Int, 0)\n
+    .ATTR(group_list_type, Int, 0)\n
     .ATTR(comm_alg, String, "")\n
     .ATTR(zero_expert_num, Int, 0)\n
     .ATTR(copy_expert_num, Int, 0)\n
@@ -80279,7 +80281,9 @@ def MoeDistributeCombineV2(expand_x: Tensor, expert_ids: Tensor, assist_info_for
     op.attr["shared_expert_num"].i = shared_expert_num
     op.attr["shared_expert_rank_num"].i = shared_expert_rank_num
     op.attr["global_bs"].i = global_bs
+    op.attr["out_dtype"].i = out_dtype
     op.attr["comm_quant_mode"].i = comm_quant_mode
+    op.attr["group_list_type"].i = group_list_type
     op.attr["comm_alg"].s = compat_as_bytes(comm_alg)
     op.attr["zero_expert_num"].i = zero_expert_num
     op.attr["copy_expert_num"].i = copy_expert_num
@@ -80719,7 +80723,8 @@ def MoeDistributeDispatchV2(x: Tensor, expert_ids: Tensor, scales: Optional[Tens
                             moe_expert_num: int, group_tp: str = "", tp_world_size: int = 0, tp_rank_id: int = 0, 
                             expert_shard_type: int = 0, shared_expert_num: int = 1, shared_expert_rank_num: int = 0, 
                             quant_mode: int = 0, global_bs: int = 0, expert_token_nums_type: int = 1, 
-                            comm_alg: str = "", zero_expert_num: int = 0, copy_expert_num: int = 0, const_expert_num: int = 0, dependencies=[], node_name=None):
+                            comm_alg: str = "", zero_expert_num: int = 0, copy_expert_num: int = 0, const_expert_num: int = 0, y_dtype: int = 0,
+                            dependencies=[], node_name=None):
     """REG_OP(MoeDistributeDispatchV2)\n
     .INPUT(x, TensorType({DT_BF16, DT_FLOAT16}))\n
     .INPUT(expert_ids, TensorType({DT_INT32}))\n
@@ -80728,8 +80733,8 @@ def MoeDistributeDispatchV2(x: Tensor, expert_ids: Tensor, scales: Optional[Tens
     .OPTIONAL_INPUT(expert_scales, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(elastic_info, TensorType({DT_INT32}))\n
     .OPTIONAL_INPUT(performance_info, TensorType({DT_INT64}))\n
-    .OUTPUT(expand_x, TensorType({DT_BF16, DT_INT8, DT_FLOAT16}))\n
-    .OUTPUT(dynamic_scales, TensorType({DT_FLOAT}))\n
+    .OUTPUT(expand_x, TensorType({DT_BF16, DT_INT8, DT_FLOAT16, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_HIFLOAT8}))\n
+    .OUTPUT(dynamic_scales, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))\n
     .OUTPUT(expand_idx, TensorType({DT_INT32}))\n
     .OUTPUT(expert_token_nums, TensorType({DT_INT64}))\n
     .OUTPUT(ep_recv_count, TensorType({DT_INT32}))\n
@@ -80752,6 +80757,7 @@ def MoeDistributeDispatchV2(x: Tensor, expert_ids: Tensor, scales: Optional[Tens
     .ATTR(zero_expert_num, Int, 0)\n
     .ATTR(copy_expert_num, Int, 0)\n
     .ATTR(const_expert_num, Int, 0)\n
+    .ATTR(y_dtype, Int, 0)\n
     """
     op = get_default_ge_graph().op.add()
     op.type = "MoeDistributeDispatchV2"
@@ -80825,6 +80831,7 @@ def MoeDistributeDispatchV2(x: Tensor, expert_ids: Tensor, scales: Optional[Tens
     op.attr["zero_expert_num"].i = zero_expert_num
     op.attr["copy_expert_num"].i = copy_expert_num
     op.attr["const_expert_num"].i = const_expert_num
+    op.attr["y_dtype"].i = y_dtype
 
     # process outputs
     output_index = 0
