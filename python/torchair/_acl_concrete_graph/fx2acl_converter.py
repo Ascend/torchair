@@ -1,20 +1,13 @@
+import warnings
 from collections import OrderedDict
 from contextlib import contextmanager
-from dataclasses import dataclass, asdict
-from typing import List, Optional, Callable, Any, Dict, Tuple, Union
-import functools
-import logging
-import sys
-import warnings
-import sympy
+from typing import List, Any, Dict, Tuple, Union
 
+import sympy
 import torch
-from torch import fx
-from torch._subclasses.fake_tensor import is_fake
-from torch.fx.node import Argument, Target
-from torch.profiler import record_function
-from torch.types import Device, Number
 from packaging import version
+from torch import fx
+from torch.fx.node import Argument, Target
 
 try:
     from torch._dynamo.allowed_functions import is_builtin_callable
@@ -25,7 +18,6 @@ from torchair.configs.compiler_config import CompilerConfig
 from torchair.core._concrete_graph import ConcreteGraphBase, ValuePack
 from torchair.core.utils import logger
 from torchair._utils.path_manager import PathManager
-from torchair._utils.graph_transform_observer import GraphTransformObserver
 from torchair._acl_concrete_graph.acl_graph import AclGraph, AclGraphCacheInfo, is_sym
 from torchair._acl_concrete_graph.acl_graph_cache_utils import SerializableGraphModule
 from torchair._acl_concrete_graph.graph_pass import apply_event_closure_with_multi_stream
@@ -282,7 +274,7 @@ class AclConcreteGraph(ConcreteGraphBase):
         # replace core limit call function nodes with torch_npu api
         replace_core_limit_nodes(self.fx_graph)
         observer.dump_gm(self.fx_graph, "graph_after_replace_core_limit_nodes")
-        
+
         # find mutated inputs after graph optimization passes
         self._aclgraph_cache_info.mutated_user_inputs = _find_mutated_user_inputs(self.fx_graph)
         logger.debug('find mutated user inputs: %s', self._aclgraph_cache_info.mutated_user_inputs)
@@ -378,7 +370,11 @@ class AclConcreteGraph(ConcreteGraphBase):
 
         # Lazy check for int/sym inputs
         if isinstance(meta_outputs, torch.Tensor):
-            if isinstance(meta_outputs, torch.nn.Parameter) or hasattr(meta_outputs, "_dynamo_static_input_type"):
+            if (
+                hasattr(meta_outputs, "_dynamo_static_input_type")
+                or hasattr(meta_outputs, "_torchair_is_parameter")
+                or isinstance(meta_outputs, torch.nn.Parameter)
+            ):
                 self._aclgraph_cache_info.parameter_user_inputs.append(len(self._meta_inputs) - 1)
             else:
                 self._aclgraph_cache_info.user_inputs_mapping.setdefault(target, len(self._meta_inputs) - 1)
