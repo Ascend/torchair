@@ -116,7 +116,7 @@ def _trace_print(f):
 class _NpuGraphConverter(Interpreter):
     """
     Interpreter for collect npu graph meta from fx graph, such as sym of output, input shape ranges, etc.
-    
+
     This class extends the Torch FX Interpreter to collect metadata necessary for constructing
     NPU computation graphs, such as symbolic shapes and input/output specifications.
     """
@@ -317,7 +317,7 @@ def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, obs
         observer.apply_gm_pass(_optimize_sym_input, "optimize_sym_input")
 
     if config.experimental_config.pattern_fusion_pass:
-        observer.apply_gm_pass(_apply_pattern_passes, "apply_pattern_passes")        
+        observer.apply_gm_pass(_apply_pattern_passes, "apply_pattern_passes")
 
     observer.apply_gm_pass(_view_to_reshape, "view_to_reshape")
 
@@ -392,7 +392,7 @@ def _optimize_sym_input(graph_module: torch.fx.GraphModule, example_inputs=None,
 
 def _valid_graph(graph_module):
     """
-    After enabling users custom pass, it is necessary to perform checks here 
+    After enabling users custom pass, it is necessary to perform checks here
     to prevent users from introducing illegal graph modifications through these custom passes.
     """
 
@@ -415,7 +415,7 @@ def _valid_graph(graph_module):
                                f"The parameters for these torch.ops.air.scope_enter calls are:{args_list}. "
                                f"Please check your code or your post_grad_custom_pre_pass post_grad_custom_post_pass!")
 
-    _check_scope_enter_exit(graph_module) 
+    _check_scope_enter_exit(graph_module)
 
 
 @dataclasses.dataclass
@@ -614,7 +614,7 @@ class _NpuFxCompiler:
 
         if self.config.debug.graph_dump.enabled and not self.config.export.export_mode:
             concrete_graph.dump(self.config.debug.graph_dump.full_path(f"dynamo_original_graph_{_GLOBAL_GRAPH_ID}"))
-        
+
         # optimize different concrete graph for ge or acl.
         concrete_graph.optimize_graph_without_runtime(*example_inputs, observer=observer)
 
@@ -708,7 +708,27 @@ def _get_partition_fn(compiler_config: CompilerConfig):
     return default_partition
 
 
-def _wrap_compiler(compiler: Callable, compiler_config: CompilerConfig):
+def _mark_static_inputs_attr(example_inputs, num_example_inputs):
+    if torch.__version__ >= '2.4.0':
+        # Length of example_inputs may differ between Dynamo and AOT compilation stages.
+        aot_num_example_inputs = len(example_inputs)
+        fixed = torch._inductor.utils.num_fw_fixed_arguments(
+            num_example_inputs, aot_num_example_inputs
+        )
+        from torch._inductor.compile_fx import get_static_input_idxs
+        static_input_idxs = get_static_input_idxs(fixed)
+        for i in static_input_idxs:
+            if i < aot_num_example_inputs and isinstance(example_inputs[i], torch.Tensor):
+                setattr(example_inputs[i], "_torchair_is_parameter", True)
+            else:
+                logger.debug("The [%s] input is not a tensor/out of index, cannot set static attr.", i)
+        logger.debug("After AOT, mark %s parameters as static inputs.", len(static_input_idxs))
+    else:
+        logger.warning_once(f"Mark torch.nn.Parameters as static inputs can avoid extra copying, "
+                            f"however it may not work in torch < 2.4.0, please upgrade torch version.")
+
+
+def _wrap_compiler(compiler: Callable, compiler_config: CompilerConfig, num_example_inputs):
     @functools.wraps(compiler)
     def wrapped_compiler(
             gm: torch.fx.GraphModule,
@@ -717,6 +737,7 @@ def _wrap_compiler(compiler: Callable, compiler_config: CompilerConfig):
     ):
         if is_inference and compiler_config.experimental_config.npu_fx_pass:
             _npu_joint_graph_passes(gm)
+        _mark_static_inputs_attr(example_inputs, num_example_inputs=num_example_inputs)
         return compiler(gm, example_inputs)
 
     @functools.wraps(compiler)
@@ -726,6 +747,7 @@ def _wrap_compiler(compiler: Callable, compiler_config: CompilerConfig):
     ):
         if compiler_config.experimental_config.npu_fx_pass:
             _npu_joint_graph_passes(gm)
+        _mark_static_inputs_attr(example_inputs, num_example_inputs=num_example_inputs)
         return compiler(gm, example_inputs)
 
     fw_compiler = functools.partial(wrapped_compiler, is_inference=False)
@@ -785,7 +807,7 @@ def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
     Returns:
         Any: Compiled graph runner.
     """
-    
+
     if compiler_config is None:
         compiler_config = CompilerConfig()
     _process_kwargs_options(compiler_config, kwargs)
@@ -795,7 +817,9 @@ def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
         folder_path = DebugContext.next_path()
         dump_fx_safety(gm, os.path.join(folder_path, "dynamo_out_graph.txt"))
 
-    fw_compiler, inference_compiler, joint_compiler = _wrap_compiler(compiler, compiler_config)
+    num_example_inputs = len(example_inputs)
+
+    fw_compiler, inference_compiler, joint_compiler = _wrap_compiler(compiler, compiler_config, num_example_inputs)
 
     inputs_custom_attr = _get_inputs_custom_attr(example_inputs)
     fw_compiler = _set_inputs_custom_attr_to_compiler(fw_compiler, inputs_custom_attr)
