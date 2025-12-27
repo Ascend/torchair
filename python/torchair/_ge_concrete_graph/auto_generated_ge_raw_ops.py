@@ -82106,7 +82106,7 @@ def GroupedMatmulSwigluQuantV2(x: Tensor,
                                dequant_mode: int = 0,
                                dequant_dtype: int = 0,
                                quant_mode: int = 0,
-                               quant_dtype: int = 0,
+                               quant_dtype: int = 1,
                                transpose_weight: bool = False,
                                group_list_type: int = 0,
                                tuning_config: List[int] = [0],
@@ -82124,7 +82124,7 @@ def GroupedMatmulSwigluQuantV2(x: Tensor,
     .ATTR(dequant_mode, Int, 0)\n
     .ATTR(dequant_dtype, Int, 0)\n
     .ATTR(quant_mode, Int, 0)\n
-    .ATTR(quant_dtype, Int, 0)\n
+    .ATTR(quant_dtype, Int, 1)\n
     .ATTR(transpose_weight, Bool, false)\n
     .ATTR(group_list_type, Int, 0)\n
     .ATTR(tuning_config, ListInt, {0})\n
@@ -82165,10 +82165,10 @@ def GroupedMatmulSwigluQuantV2(x: Tensor,
         outputs=outputs,
         dependencies=dependencies,
         ir=IrDef("GroupedMatmulSwigluQuantV2")\
-        .input("x", "DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN")\
+        .input("x", "DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2")\
         .input("x_scale", "DT_FLOAT, DT_FLOAT8_E8M0")\
         .input("group_list", "DT_INT64")\
-        .dynamic_input("weight", "DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN")\
+        .dynamic_input("weight", "DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2")\
         .dynamic_input("weight_scale", "DT_FLOAT, DT_FLOAT8_E8M0")\
         .dynamic_input("weight_assist_matrix", "DT_FLOAT")\
         .optional_input("bias", "DT_FLOAT")\
@@ -82176,11 +82176,11 @@ def GroupedMatmulSwigluQuantV2(x: Tensor,
         .attr("dequant_mode", attr.Int(0))\
         .attr("dequant_dtype", attr.Int(0))\
         .attr("quant_mode", attr.Int(0))\
-        .attr("quant_dtype", attr.Int(0))\
+        .attr("quant_dtype", attr.Int(1))\
         .attr("transpose_weight", attr.Bool(False))\
         .attr("group_list_type", attr.Int(0))\
         .attr("tuning_config", attr.ListInt([0]))\
-        .output("y", "DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN")\
+        .output("y", "DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2")\
         .output("y_scale", "DT_FLOAT, DT_FLOAT8_E8M0")
     )
 
