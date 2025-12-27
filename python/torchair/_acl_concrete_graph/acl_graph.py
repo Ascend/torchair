@@ -19,7 +19,6 @@ from torch.fx.node import Argument, Target
 from torch.profiler import record_function
 
 from torchair.core.utils import logger
-from torchair.inference._cache_compiler import timer
 from torchair.scope._scope_attr import guard_with_user_stream_scope
 from torchair._utils.graph_transform_observer import DebugContext
 from torchair._acl_concrete_graph.utils import reconstruct_args_kwargs, timer, is_inputs_base_format
