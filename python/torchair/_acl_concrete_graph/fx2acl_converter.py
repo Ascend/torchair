@@ -632,7 +632,7 @@ class AclConcreteGraph(ConcreteGraphBase):
                         need_update = True
                         break
                 for k, v in stream_scope_enter_nodes_dict.items():
-                    if k in line:
+                    if f"{k} = " in line:
                         forward_code.writeline(line.strip())
                         forward_code.writeline(f"with torch.npu.stream(_GLOBAL_USER_TAG_TO_STREAM['{v}']):")
                         # To make forward_code indent
@@ -644,7 +644,7 @@ class AclConcreteGraph(ConcreteGraphBase):
                         need_update = True
                         break
                 for k in stream_scope_exit_nodes_list:
-                    if k in line:
+                    if f"{k} = " in line:
                         forward_code.writeline(line.strip())
                         # To make forward_code dedent
                         if hasattr(forward_code, "do_unindent"):
