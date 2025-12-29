@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from dataclasses import dataclass, asdict, field
 import time
-from typing import List, Optional, Callable, Any, Dict, Tuple, Union
+from typing import List, Optional, Callable, Any, Dict, Tuple, Union, Set
 import weakref
 import sys
 import operator
@@ -99,6 +99,7 @@ class GraphMeta:
     captured_mutated_inputs: Dict[int, int] = field(default_factory=dict)
     captured_userinput_ref_with_output: Dict[int, int] = field(default_factory=dict)
     retained_userinputs: Dict[int, Any] = field(default_factory=dict)
+    captured_output_idx_ref_with_userinput: Set[int] = field(default_factory=set)
     retained_outputs: List[torch.Tensor] = None
 
 

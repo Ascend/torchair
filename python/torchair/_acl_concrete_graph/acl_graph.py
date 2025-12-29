@@ -3,6 +3,7 @@ from typing import List, Optional, Callable, Any, Deque, Dict, Set, Tuple, Union
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import functools
+import itertools
 import gc
 import os
 import pickle
@@ -896,17 +897,6 @@ class AclGraph(object):
     def get_stale_list_from_weakref(self):
         # get alive stale outputs depending on num of graph key
         stale_storage_set = set()
-        if len(self._graphs_meta) == 1:
-            (last_graph_key,) = self._graphs_meta.keys()
-            for output_ref in self._graphs_meta[last_graph_key].outputs_weakref:
-                ref = output_ref()
-                if ref is None or not isinstance(ref, torch.Tensor):
-                    continue
-                if ref.untyped_storage()._cdata in self.userinput_ref_with_output_storages_ptr:
-                    continue
-                stale_storage_set.add(ref.untyped_storage()._cdata)
-            return list(stale_storage_set)
-
         for key, _ in self._graphs_meta.items():
             if self._graphs_meta[key].outputs_weakref is None:
                 continue
@@ -956,6 +946,7 @@ class AclGraph(object):
         for ref_idx in self._userinput_ref_with_output.keys():
             self.graphs_meta[graph_key].captured_userinput_ref_with_output.setdefault(ref_idx, args[ref_idx])
             self.userinput_ref_with_output_storages_ptr.add(args[ref_idx].untyped_storage()._cdata)
+        self.graphs_meta[graph_key].captured_output_idx_ref_with_userinput = set(itertools.chain(*self._userinput_ref_with_output.values()))
 
         logger.debug('No find captured AclGraph{id: %s} of fx_graph %s with graph key {%s}, and start to capture it.',
                      id(self.graph[graph_key]), self.name, graph_key)
@@ -1160,6 +1151,14 @@ class AclGraph(object):
                 return True
         return False
 
+    def set_stale_storages_ptr_exclude_ref_userinputs(self, retained_outputs: List, graph_key: str):
+        self.stale_storages_ptr = set()
+        output_idx_ref_with_userinput = self._graphs_meta[graph_key].captured_output_idx_ref_with_userinput
+        for idx, retained_output in enumerate(retained_outputs):
+            if idx not in output_idx_ref_with_userinput and \
+                    isinstance(retained_output, torch.Tensor):
+                self.stale_storages_ptr.add(retained_output.untyped_storage()._cdata)
+
     def reconstruct_outputs(self, graph_key: str) -> List:
         """
         Reconstruct output tensors according to their saved metadata.
@@ -1173,6 +1172,7 @@ class AclGraph(object):
             logger.debug('When config.debug.aclgraph.disable_mempool_reuse_in_same_fx is True, '
                          'no mempool reuse in fx_graph %s for graph key{%s}, all the outputs are retained.',
                          self.name, graph_key)
+            self.set_stale_storages_ptr_exclude_ref_userinputs(self._graphs_meta[graph_key].retained_outputs, graph_key)
             return self._graphs_meta[graph_key].retained_outputs
 
         if len(self.graphs_meta) == 1:
@@ -1180,6 +1180,7 @@ class AclGraph(object):
             logger.debug('When mempool reuse is enabled in fx_graph %s for graph key{%s} '
                          'and there is only one graph meta captured, all the outputs are retained.',
                          self.name, graph_key)
+            self.set_stale_storages_ptr_exclude_ref_userinputs(self._graphs_meta[graph_key].retained_outputs, graph_key)
             return self._graphs_meta[graph_key].retained_outputs
 
         if len(self._graphs_meta[graph_key].outputs_meta) != len(self._graphs_meta[graph_key].outputs_weakref):
@@ -1193,6 +1194,7 @@ class AclGraph(object):
             logger.debug('All output tensors weak ref are valid, '
                          'no need to reconstruct output tensors for fx_graph %s with graph key{%s}.',
                          self.name, graph_key)
+            self.set_stale_storages_ptr_exclude_ref_userinputs(ret, graph_key)
             return ret
 
         # reconstructing step 1: set alive output of last execution to stale storage.
@@ -1286,10 +1288,12 @@ class AclGraph(object):
         # Graph outputs may be freed by user, we just get tensor that still alive after last execution.
         stale_storage_set = set()
         for key, _ in self._graphs_meta.items():
-            for output_ref in self._graphs_meta[key].outputs_weakref:
+            idx_ref_with_userinput = self._graphs_meta[key].captured_output_idx_ref_with_userinput
+            for idx, output_ref in enumerate(self._graphs_meta[key].outputs_weakref):
                 ref = output_ref()
                 if ref is not None and isinstance(ref, torch.Tensor) and \
-                        ref.untyped_storage()._cdata in self.stale_storages_ptr:
+                        ref.untyped_storage()._cdata in self.stale_storages_ptr and \
+                        idx not in idx_ref_with_userinput:
                     stale_storage_set.add(ref.untyped_storage()._cdata)
         other_graph_stale_storages = list(stale_storage_set)
 
