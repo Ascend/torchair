@@ -82655,3 +82655,58 @@ def FFNToAttention(x: Tensor, session_ids: Tensor, micro_batch_ids: Tensor, toke
         .required_attr("token_info_table_shape", attr.ListInt) \
         .required_attr("token_data_shape", attr.ListInt)
     )
+
+
+# This api is auto-generated from IR DynamicMxQuantWithDualAxis
+@auto_convert_to_tensor([False], [False])
+def DynamicMxQuantWithDualAxis(x: Tensor,
+                               *,
+                               round_mode: str = "rint",
+                               dst_type: int = 40,
+                               scale_alg: int = 0,
+                               dependencies=[],
+                               node_name=None):
+    """REG_OP(DynamicMxQuantWithDualAxis)\n
+    .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(y1, TensorType({DT_FLOAT4_E2M1, DT_FLOAT4_E1M2, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2}))\n
+    .OUTPUT(mxscale1, TensorType({DT_FLOAT8_E8M0}))\n
+    .OUTPUT(y2, TensorType({DT_FLOAT4_E2M1, DT_FLOAT4_E1M2, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2}))\n
+    .OUTPUT(mxscale2, TensorType({DT_FLOAT8_E8M0}))\n
+    .ATTR(round_mode, String, "rint")\n
+    .ATTR(dst_type, Int, DT_FLOAT4_E2M1)\n
+    .ATTR(scale_alg, Int, 0)\n
+    """
+    op = get_default_ge_graph().op.add()
+    op.type = "DynamicMxQuantWithDualAxis"
+    op.name = next_unique_name(node_name, "DynamicMxQuantWithDualAxis")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+
+    # process attrs
+    op.attr["round_mode"].s = compat_as_bytes(round_mode)
+    op.attr["dst_type"].i = dst_type
+    op.attr["scale_alg"].i = scale_alg
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y1"
+    y1 = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "mxscale1"
+    mxscale1 = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "y2"
+    y2 = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "mxscale2"
+    mxscale2 = Tensor(op, output_index)
+    output_index += 1
+
+    return y1, mxscale1, y2, mxscale2
