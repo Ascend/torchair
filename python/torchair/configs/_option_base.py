@@ -53,7 +53,7 @@ class IntRangeValue(OptionValue):
         super().__init__(default)
         self.__min = value_min
         self.__max = value_max
-    
+
     @property
     def value(self):
         return super().value
@@ -65,6 +65,29 @@ class IntRangeValue(OptionValue):
         if v < self.__min or v > self.__max:
             raise ValueError(f'Please set value in [{self.__min}' + ', '
                              + f'{self.__max}], {str(v)} is out of range.')
+        self._value = v
+
+
+class IntListValue(OptionValue):
+    def __init__(self, default=None):
+        if default is not None and not isinstance(default, (list, tuple)):
+            raise TypeError(f"default must be None or list, got {type(default)}")
+
+        super().__init__(default, optional=None)
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, v):
+        if v is not None and not isinstance(v, (list, tuple)):
+            raise TypeError(f"the set value must be None or list, got {type(v)}")
+
+        v = [] if v is None else v
+        if not all(isinstance(val, int) for val in v):
+            raise TypeError(f"the set value must be int list, got list type: {[type(val) for val in v]}")
+
         self._value = v
 
 

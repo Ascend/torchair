@@ -627,25 +627,36 @@ class _NpuFxCompiler:
 
             class _StaticKernelRunner:
                 def __init__(self, graph_module: torch.fx.GraphModule, kernel_path: str,
-                             sym_input_index: List[int]) -> None:
+                             sym_index: List[int], sym_value_range: int, sym_input_index: List[int]) -> None:
                     self.runner = graph_module
                     self.kernel_path = kernel_path
+                    self.checked_sym_index = sym_index
+                    self.checked_sym_value_range = sym_value_range
                     self.sym_input_index = sym_input_index
                     self.sym_input_name = [f"input_{idx}" for idx in sym_input_index]
-                    self.compiled_shape = []
+                    self.compiled_shape = set()
 
                 def __call__(self, *args: Any, **kwargs: Any) -> Any:
-                    cur_sym_value = [args[idx] for idx in self.sym_input_index]
+                    cur_sym_value = tuple([args[idx] for idx in self.sym_input_index])
                     # Even if there are no symbols in the current FX graph, the following judgment can still work.
                     # [] in [[]] is still valid, no need to add special processing for static fx graph.
                     if cur_sym_value not in self.compiled_shape:
-                        # try to compile static shape kernel
-                        self.compiled_shape.append(cur_sym_value)
-                        logger.info('Start to compile static shape kernel for fx graph %s, '
-                                    'all symbol input indices and values are %s.',
-                                    id(self.runner), dict(zip(self.sym_input_name, cur_sym_value)))
-                        from torchair._acl_concrete_graph.static_kernel import compile_static_kernel
-                        compile_static_kernel(self.runner, *args, build_dir=self.kernel_path, **kwargs)
+                        if self.checked_sym_value_range is None or \
+                                (self.checked_sym_index < len(self.sym_input_index) and cur_sym_value[
+                                    self.checked_sym_index] in self.checked_sym_value_range):
+                            # try to compile static shape kernel
+                            self.compiled_shape.add(cur_sym_value)
+                            logger.info('Start to compile static shape kernel for fx graph %s, '
+                                        'all symbol input indices and values are %s.',
+                                        id(self.runner), dict(zip(self.sym_input_name, cur_sym_value)))
+                            from torchair._acl_concrete_graph.static_kernel import compile_static_kernel
+                            compile_static_kernel(self.runner, *args, build_dir=self.kernel_path, **kwargs)
+                        else:
+                            logger.info('Skip compile static shape kernel for fx graph %s, '
+                                        'all symbol input indices and values are %s. '
+                                        'The specified sym index is %s and the specified sym value range is %s.',
+                                        id(self.runner), dict(zip(self.sym_input_name, cur_sym_value)),
+                                        self.checked_sym_index, self.checked_sym_value_range)
 
                     return self.runner(*args, **kwargs)
 
@@ -656,6 +667,8 @@ class _NpuFxCompiler:
                 return _StaticKernelRunner(
                     graph.fx_graph,
                     self.config.experimental_config.aclgraph._aclnn_static_shape_kernel_build_dir.value,
+                    int(self.config.experimental_config.aclgraph._aclnn_static_shape_kernel_sym_index.value),
+                    self.config.experimental_config.aclgraph._aclnn_static_shape_kernel_sym_value_range.value,
                     all_sym_index
                 )
 

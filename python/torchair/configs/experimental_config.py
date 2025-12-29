@@ -1,7 +1,9 @@
 __all__ = []
 
-from torchair.configs._option_base import OptionValue, IntRangeValue, StrOptionValue
+from torchair.configs._option_base import OptionValue, IntRangeValue, StrOptionValue, IntListValue
 from torchair.configs._option_base import NpuBaseConfig
+
+INT64_MAX = 2 ** 63 - 1
 
 
 class _ExperimentalConfig(NpuBaseConfig):
@@ -53,6 +55,8 @@ class _AclGraphExperimentalConfig(NpuBaseConfig):
     def __init__(self):
         self._aclnn_static_shape_kernel = OptionValue(False, [True, False])
         self._aclnn_static_shape_kernel_build_dir = StrOptionValue()
+        self._aclnn_static_shape_kernel_sym_value_range = IntListValue(None)
+        self._aclnn_static_shape_kernel_sym_index = IntRangeValue(0, 0, INT64_MAX)
 
         super(_AclGraphExperimentalConfig, self).__init__()
 
@@ -72,6 +76,19 @@ class _AclGraphExperimentalConfig(NpuBaseConfig):
             local_aclgraph_experimental_options["_aclnn_static_shape_kernel_build_dir"] = \
                 self._aclnn_static_shape_kernel_build_dir.value if self._aclnn_static_shape_kernel_build_dir.value\
                                                                    is not None else ""
+
+            # "_aclnn_static_shape_kernel_sym_value_range" is used to specify the range of symbols
+            # that need to compile static shape kernel for the current FX graph.
+            # The default value is None, which means that all symbol values need to trigger static compilation.
+            local_aclgraph_experimental_options["_aclnn_static_shape_kernel_sym_value_range"] = \
+                self._aclnn_static_shape_kernel_sym_value_range.value
+
+            # "_aclnn_static_shape_kernel_sym_index" is used to specify the index of symbols
+            # that need to compile static shape kernel for the current FX graph.
+            # The default value is 0, which means that the first symbol needs to be checked
+            # whether the value is within the specified range by "_aclnn_static_shape_kernel_sym_value_range".
+            local_aclgraph_experimental_options["_aclnn_static_shape_kernel_sym_index"] = \
+                self._aclnn_static_shape_kernel_sym_index.value
 
         return local_aclgraph_experimental_options, global_aclgraph_experimental_options
 
