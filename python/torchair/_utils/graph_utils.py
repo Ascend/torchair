@@ -7,6 +7,7 @@ import warnings
 from typing import List, Optional, Callable, Any, Dict, Tuple, Union
 
 import torch
+from torch import fx
 from torch.fx import Graph, GraphModule, Node
 
 from torchair.core.utils import logger
@@ -78,3 +79,34 @@ def verify_nodes_on_same_stream(nodes: List[torch.fx.Node]) -> bool:
         return False
 
     return True
+
+
+def _is_inplace_node(node: Node):
+    # simple analysis of function schema to determine
+    # if this is an inplace variant, it might not
+    # be entirely correct, but it's good enough for now.
+    if isinstance(node.target, str):
+        return node.target.endswith("_")
+    elif hasattr(node.target, 'overloadpacket') and hasattr(node.target.overloadpacket, '__name__'):
+        return node.target.overloadpacket.__name__.endswith("_")
+    else:
+        return False
+
+
+def _find_mutated_user_inputs(gm: fx.GraphModule):
+    from torchair._acl_concrete_graph.graph_pass import inplaceable_npu_ops
+    inplace_ops_mutated_indices = {inplaceable_op.inplace_op: inplaceable_op.mutated_arg
+                                   for _, inplaceable_op in inplaceable_npu_ops.items()}
+
+    inplace_node_args_list = []
+    placeholder_args = set()
+    for node in gm.graph.nodes:
+        if node.op == "placeholder":
+            placeholder_args.add(node.target)
+        elif _is_inplace_node(node):
+            inplace_node_args_list.append(node.args[0].name)
+        elif node.target in inplace_ops_mutated_indices:
+            for idx in inplace_ops_mutated_indices[node.target]:
+                inplace_node_args_list.append(node.args[idx].name)
+
+    return [arg for arg in inplace_node_args_list if arg in placeholder_args]

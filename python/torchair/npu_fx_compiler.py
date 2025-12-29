@@ -587,6 +587,11 @@ class _NpuFxCompiler:
         # generate different concrete graph based on config
         with no_dispatch():
             mutable_gm = copy.deepcopy(gm)
+
+        from torchair._utils.graph_utils import _find_mutated_user_inputs
+        mutated_user_inputs = _find_mutated_user_inputs(mutable_gm)
+        logger.debug('find mutated user inputs: %s', mutated_user_inputs)
+
         if self.config.mode.value == "max-autotune":
             from torchair._ge_concrete_graph.fx2ge_converter import GeConcreteGraph
             graph = GeConcreteGraph(self.config, name="graph_" + str(_next_unique_graph_id()))
@@ -594,7 +599,8 @@ class _NpuFxCompiler:
             from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
             graph = AclConcreteGraph(self.config,
                                      name="graph_" + str(_next_unique_graph_id()),
-                                     pool=self.config.aclgraph_config.use_custom_pool)
+                                     pool=self.config.aclgraph_config.use_custom_pool,
+                                     mutated_user_inputs=mutated_user_inputs)
         else:
             raise ValueError(f"Unsupported npu backend mode: {self.config.mode.value}.")
 
