@@ -56,7 +56,7 @@ class AclConcreteGraph(ConcreteGraphBase):
     """
 
     def __init__(self, config: CompilerConfig, name="graph", pool=None, stream=None,
-                 capture_error_mode: str = "global", num_warmup_iters=0):
+                 capture_error_mode: str = "global", num_warmup_iters=0, mutated_user_inputs=None):
         try:
             import torch_npu
         except ImportError as e:
@@ -79,7 +79,8 @@ class AclConcreteGraph(ConcreteGraphBase):
             num_warmup_iters=num_warmup_iters,
             fx_graph_name=name,
             user_inputs_mapping=OrderedDict(),
-            parameter_user_inputs=[]
+            parameter_user_inputs=[],
+            mutated_user_inputs=mutated_user_inputs
         )
         self._tensor_constant_dict = {}
         self._serialized_gm = None
@@ -265,7 +266,7 @@ class AclConcreteGraph(ConcreteGraphBase):
             _reinplace_inplaceable_ops_pass(self.fx_graph, *sample_args)
             observer.dump_gm(self.fx_graph, "graph_after_reinplace_inplaceable_ops_pass")
 
-        from torchair._acl_concrete_graph.acl_graph import replace_dynamic_workspace_ops, _find_mutated_user_inputs
+        from torchair._acl_concrete_graph.acl_graph import replace_dynamic_workspace_ops
         replace_dynamic_workspace_ops(self.fx_graph, self._meta_inputs)
         observer.dump_gm(self.fx_graph, "graph_after_replace_dynamic_workspace_ops")
 
@@ -283,9 +284,6 @@ class AclConcreteGraph(ConcreteGraphBase):
         replace_core_limit_nodes(self.fx_graph)
         observer.dump_gm(self.fx_graph, "graph_after_replace_core_limit_nodes")
 
-        # find mutated inputs after graph optimization passes
-        self._aclgraph_cache_info.mutated_user_inputs = _find_mutated_user_inputs(self.fx_graph)
-        logger.debug('find mutated user inputs: %s', self._aclgraph_cache_info.mutated_user_inputs)
         logger.debug('after graph optimization, graph is %s', self.fx_graph.graph)
 
         if self.config.debug.graph_dump.enabled:
