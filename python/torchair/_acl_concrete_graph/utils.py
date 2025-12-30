@@ -348,6 +348,9 @@ class ReinplaceStreamChecker:
         """Internal method: Check stream consistency for specified input indices."""
         all_inputs_users = get_inplace_op_mutated_input_users(node, input_indices)
         check_name = "multi_stream_single_reinplace" if len(input_indices) == 1 else "multi_stream_multi_reinplace"
+        logger.debug(f"[Reinplace check_reinplace_streams]Check Node:{node.name} "
+                     f"with inplace args indices:{input_indices}, which are {[node.args[i] for i in input_indices]} "
+                     f"has all_inputs_users:{all_inputs_users} respectively.")
         for users in all_inputs_users:
             if not self._verify_and_log(node, users, check_name):
                 return False

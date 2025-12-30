@@ -63,6 +63,9 @@ def verify_nodes_on_same_stream(nodes: List[torch.fx.Node]) -> bool:
     """
 
     all_streams = []
+    # No need to check nodes_on_same_stream if there is only one node.
+    if len(nodes) < 2:
+        return True
 
     for node in nodes:
         if not hasattr(node, 'meta') or 'stream_label' not in node.meta:

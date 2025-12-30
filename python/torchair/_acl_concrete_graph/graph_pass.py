@@ -1041,7 +1041,12 @@ def reinplace_with_multi_stream_check(gm, *sample_args):
                 len(later_node_usages - later_view_inverse_node_usages) == 0
             )
             # [TORCHAIR] Do multi-stream check.
-            check_stream = check_multi_stream_for_single_reinplace(node)
+            if not can_reinplace:
+                check_stream = False
+            else:
+                check_stream = check_multi_stream_for_single_reinplace(node)
+            logger.debug("Node[%s] check reinplace is %s, check multi-stream is %s",
+                         node.name, can_reinplace, check_stream)
             if not can_reinplace or not check_stream:
                 continue
     

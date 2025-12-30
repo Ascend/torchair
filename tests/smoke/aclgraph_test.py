@@ -1405,5 +1405,66 @@ class AclgraphTest(unittest.TestCase):
             f"not found in logs: {cm.output}"
         )
 
+    def test_aclgraph_scope_with_post_pass(self):
+        class Network(torch.nn.Module):
+            def __init__(self):
+                super(Network, self).__init__()
+                self.relu = torch.nn.ReLU()
+
+            def forward(self, x, y, z):
+                sqrt_01 = torch.sqrt(x)
+                softmax_01 = torch.softmax(sqrt_01, dim=-1)
+                abs_01 = torch.abs(softmax_01)
+                split_01, split_02 = torch.split(abs_01, split_size_or_sections=[6, 6], dim=0)
+                matmul_01 = torch.matmul(split_01, y)
+                add_01 = torch.add(split_02, matmul_01)
+                concat_01 = torch.cat([add_01, z], dim=0)
+                relu_01 = self.relu(concat_01)
+                transpose_01 = torch.transpose(relu_01, 0, 1)
+                return transpose_01
+
+        def parallel_abs_sub_1(gm, example_inputs, config: torchair.CompilerConfig):
+            fx_graph = gm.graph
+            for node in fx_graph.nodes:
+                if node.op == "call_function" and node.target == torch.ops.aten.sqrt.default:
+                    with fx_graph.inserting_before(node):
+                        fx_graph.call_function(torch.ops.air.scope_enter.default, args=(
+                            ["_user_stream_label"], ["stream0"]))
+
+                if node.op == "call_function" and node.target == torch.ops.aten.add.Tensor:
+                    with fx_graph.inserting_after(node):
+                        fx_graph.call_function(
+                            torch.ops.air.scope_exit.default, args=())
+
+        def parallel_abs_sub_2(gm, example_inputs, config: torchair.CompilerConfig):
+            fx_graph = gm.graph
+            for node in fx_graph.nodes:
+                if node.op == "call_function" and node.target == torch.ops.aten._softmax.default:
+                    with fx_graph.inserting_before(node):
+                        fx_graph.call_function(torch.ops.air.scope_enter.default, args=(
+                            ["_user_stream_label"], ["stream1"]))
+
+                if node.op == "call_function" and node.target == torch.ops.aten.split_with_sizes.default:
+                    with fx_graph.inserting_after(node):
+                        fx_graph.call_function(torch.ops.air.scope_exit.default, args=())
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        config.post_grad_custom_pre_pass = parallel_abs_sub_1  # parallel_abs_sub将在torchair优化原生fx图前执行
+        config.post_grad_custom_post_pass = parallel_abs_sub_2 # parallel_abs_sub将在torchair优化原生fx图后执
+        npu_backend = torchair.get_npu_backend(compiler_config=config)
+
+        # 以下结果为大模型推理结果
+        input0 = torch.randn(12, 6, dtype=torch.float32).npu()
+        input1 = torch.randn(6, 6, dtype=torch.float32).npu()
+        input2 = torch.randn(12, 6, dtype=torch.float32).npu()
+
+        npu_mode = Network()
+        npu_mode = torch.compile(npu_mode, fullgraph=True, backend=npu_backend, dynamic=False)
+        npu_mode(input0, input1, input2)
+
+
 if __name__ == '__main__':
     unittest.main()
