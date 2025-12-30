@@ -1,5 +1,4 @@
 from torchair._ge_concrete_graph.ge_converter.converter_utils import *
-from torchair.ge._ge_graph import Tensor, DataType, torch_dtype_value_to_ge_type, torch_dtype_value_to_ge_proto_type
 
 
 @declare_supported([
@@ -14,19 +13,12 @@ def convert_npu_kronecker_quant(
     dst_dtype: Optional[int] = torch.int32,
     meta_outputs: Any = None
 ):
-    import torch_npu
     y_dtype = DataType.DT_INT32
-    if dst_dtype is not None and (dst_dtype != torch.int32 and dst_dtype != torch_npu.float4_e2m1fn_x2):
-        raise ValueError(f"dst_dtype should be int32 or float4_e2m1"
+    if dst_dtype is not None and dst_dtype != torch.int32:
+        raise ValueError(f"dst_dtype should be int32, "
                          f"otherwise it should be None, but got {dst_dtype}")
     if clip_ratio is None:
         clip_ratio = 1.0
-    if dst_dtype == torch_npu.float4_e2m1fn_x2:
-        dst_ge_dtype = torch_dtype_value_to_ge_type(dst_dtype)
-        y, quant_scale = ge.FlatQuant(x, kronecker_p1, kronecker_p2, clip_ratio=clip_ratio, dst_dtype=dst_ge_dtype)
-        y.desc.dtype = torch_dtype_value_to_ge_proto_type(torch_npu.float4_e2m1fn_x2)
-        quant_scale.desc.dtype = torch_dtype_value_to_ge_proto_type(torch_npu.float8_e8m0fnu)
-        return y, quant_scale
     y, quant_scale = ge.FlatQuant(x, kronecker_p1, kronecker_p2, clip_ratio=clip_ratio)
     dim_num = x.rank
     bit_shape = []
