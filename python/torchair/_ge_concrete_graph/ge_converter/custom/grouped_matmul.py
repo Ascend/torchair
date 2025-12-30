@@ -18,7 +18,7 @@ INT4_NUMS_IN_INT32 = 8
 
 
 def fill_empty_tensorlist(input_data, desired_dtype):
-    if input_data is None:
+    if not input_data:
         return [ge.Fill([0], ge.Cast(0., dst_type=desired_dtype))]
     else:
         return input_data
@@ -56,22 +56,28 @@ def arch35_a16w4_weight_quant_mode(x_dtype, weight_dtype):
         (x_dtype == DataType.DT_FLOAT16 or x_dtype == DataType.DT_BF16)
 
 
-def convert_tensorlist_to_int4(input_data: List[Tensor]):
+def convert_tensorlist_to_int4(input_data: List[Tensor], trans: bool):
     input_dtype = input_data[0].dtype
     w_list = []
     if input_dtype == DataType.DT_INT32:
         for w_item in input_data:
+            perm = [i for i in range(w_item.rank)]
+            perm[-1], perm[-2] = perm[-2], perm[-1]
+            if trans:
+                w_item = ge.Transpose(w_item, perm)
             from torch_npu.npu.utils import _is_gte_cann_version
             if _is_gte_cann_version("8.5.0"):
                 new_w = ge.Bitcast(w_item, type=DataType.DT_INT4, keep_dim=True)
-                w_list.append(new_w)
             else:
                 const_w = ge.Const([1] * (w_item.rank - 1) + [8])
                 shape_w = ge.Shape(w_item)
                 shape_w = ge.Mul(shape_w, const_w)
                 new_w = ge.Bitcast(w_item, type=DataType.DT_INT4)
                 new_w = ge.Reshape(new_w, shape_w)
-                w_list.append(new_w)
+
+            if trans:
+                new_w = ge.Transpose(new_w, perm)
+            w_list.append(new_w)
     else:
         w_list = input_data
     return w_list
@@ -270,7 +276,7 @@ def conveter_npu_npu_grouped_matmul(
     w_list = []
     if weight[0].dtype == DataType.DT_INT32 and not is_arch35():
         x_list = x
-        w_list = convert_tensorlist_to_int4(weight)
+        w_list = convert_tensorlist_to_int4(weight, x[0].symsize[-1] == weight[0].symsize[-2] * INT4_NUMS_IN_INT32)
     elif arch35_a16w4_weight_quant_mode(input_x_dtype, w_dtype):
         x_list = x
         w_list = convert_tensorlist_to_int4_arch35(weight, 
