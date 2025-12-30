@@ -271,6 +271,39 @@ REG_OP(FusedMatMul)
     .OP_END_FACTORY_REG(FusedMatMul)
 
 /**
+ * @brief Flatness matters for LLM quantization. \n
+ *
+ * @par Inputs:
+ * @li x: A tensor. The original data input. 3-D with shape [K, M, N]. Must be one of the following types:
+ * float16, bfloat16. The format support ND.
+ * @li kronecker_p1: A tensor. Input calculation matrix 1. 2-D with shape [M, M]. The value of M is same as input "x".
+ * Must be one of the following types: float16, bfloat16. Has the same type as input "x".
+ * The format support ND.
+ * @li kronecker_p2: A tensor. Input calculation matrix 2. 2-D with shape [N, N]. The value of N is same as input "x".
+ * Must be one of the following types: float16, bfloat16. Has the same type as input "x".
+ * The format support ND. \n
+ *
+ * @par Outputs:
+ * @li out: A 3-D tensor of type int4. Output result data. Shape is same as input "x". The format support ND.
+ * @li quant_scale: A tensor of type float32. Output quantization factor. 1-D with shape [K].
+ * The value of K is same as input "x". The format support ND. \n
+
+ * @par Attributes:
+ * clip_ratio: An optional float. Used to control the quantization cropping ratio. Defaults to 1. \n
+ * dst_dtype: An optional int. Used to control the quantization dst_type. Defaults to DT_INT32, which is 3. \n
+ */
+REG_OP(FlatQuant)
+    .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))
+    .INPUT(kronecker_p1, TensorType({DT_FLOAT16, DT_BF16}))
+    .INPUT(kronecker_p2, TensorType({DT_FLOAT16, DT_BF16}))
+    .OUTPUT(out, TensorType({DT_INT4, DT_FLOAT4_E2M1}))
+    .OUTPUT(quant_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))
+    .ATTR(clip_ratio, Float, 1)
+    .ATTR(dst_dtype, Int, DT_INT32)
+    .OP_END_FACTORY_REG(FlatQuant)
+} // namespace ge
+
+/**
 * @brief Multiplies matrix "a" by matrix "b", producing "a * b". \n
 * @par Inputs:
 * Four inputs, including:
@@ -501,14 +534,14 @@ REG_OP(BatchMatMulV2)
 * @attention Constraints:
 * Warning: \n
 *  | x1         | x2          | bias       | scale          | perm_x1     | perm_x2      | perm_y      | enable_hf32  | batch_split_factor  |  out             |
-*  | ---------: | :---------: | :--------: | :------------: | :---------: | :----------: | :--------:  | :----------: | :--------------:    | :--------------: | 
+*  | ---------: | :---------: | :--------: | :------------: | :---------: | :----------: | :--------:  | :----------: | :--------------:    | :--------------: |
 *  | float16    | float16     | float16    | int64/uint64   | List Int    | List Int     | List Int    | Bool         |  int                |  float16/int8    |
 *  | bfloat16   | bfloat16    | bfloat16   | int64/uint64   | List Int    | List Int     | List Int    | Bool         |  int                |  bfloat16        |
 *  | float32    | float32     | float32    | int64/uint64   | List Int    | List Int     | List Int    | Bool         |  int                |  float32         |
 
 * Among them: \n
-* The dimension of the -1 axis of x1 should be less than or equal to 65535. 
-* The dimension of the -1 axis of x2 should be less than or equal to 65535. 
+* The dimension of the -1 axis of x1 should be less than or equal to 65535.
+* The dimension of the -1 axis of x2 should be less than or equal to 65535.
 * The size of perm_x1, perm_x2, perm_y should be equal to 3. \n
 * x1 matrix and y matrix transposition only supports 0 axis and 1 axis swapping. \n
 * X2 matrix do not support transposition. \n
@@ -1397,15 +1430,15 @@ REG_OP(Scatter)
 * Must be one of the following types: int32 or int64
 * @li updates: An ND Tensor .
 * Must be one of the following types: float16, float, bfloat16
-* @li quant_scales: An ND Tensor . 
+* @li quant_scales: An ND Tensor .
 * Must be one of the following types: float, bfloat16
-* @li quant_zero_points: An ND optional Tensor . 
+* @li quant_zero_points: An ND optional Tensor .
 * Must be one of the following types: int8, uint8, int32, bfloat16 \n
 
 * @par Attributes:
 * @li axis: An optional attribute. Defaults to 0.
 * @li reduction: An optional attribute. Defaults to string "none" and can be
-* "update". 
+* "update".
 * @li quant_axis: An optional attribute. Defaults to -1. \n
 
 * @par Outputs:

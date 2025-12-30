@@ -75,7 +75,7 @@ def Aipp(images: Tensor, params: Optional[Tensor], *, aipp_config_path: str="./a
 
 # This api is auto-generated from IR GeluV2
 @auto_convert_to_tensor([False], [False])
-def GeluV2(x: Tensor, *, approximate: str="none", dependencies=[], node_name=None): 
+def GeluV2(x: Tensor, *, approximate: str="none", dependencies=[], node_name=None):
     """REG_OP(GeluV2)\n
     .INPUT(x, "T")\n
     .OUTPUT(y, "T")\n
@@ -98,10 +98,10 @@ def GeluV2(x: Tensor, *, approximate: str="none", dependencies=[], node_name=Non
     ]
 
     return ge_op(
-        op_type="GeluV2", 
-        inputs = inputs, 
-        attrs = attrs, 
-        outputs = outputs, 
+        op_type="GeluV2",
+        inputs = inputs,
+        attrs = attrs,
+        outputs = outputs,
         ir=IrDef("GeluV2") \
          .input("x", "") \
          .attr("approximate", attr.Str("none")) \
@@ -111,7 +111,7 @@ def GeluV2(x: Tensor, *, approximate: str="none", dependencies=[], node_name=Non
 
 # This api is auto-generated from IR GeluGradV2
 @auto_convert_to_tensor([False, False], [False, False])
-def GeluGradV2(dy: Tensor, x: Tensor, *, approximate: str="none", dependencies=[], node_name=None): 
+def GeluGradV2(dy: Tensor, x: Tensor, *, approximate: str="none", dependencies=[], node_name=None):
     """REG_OP(GeluGradV2)\n
     .INPUT(dy, "T")\n
     .INPUT(x, "T")\n
@@ -136,10 +136,10 @@ def GeluGradV2(dy: Tensor, x: Tensor, *, approximate: str="none", dependencies=[
     ]
 
     return ge_op(
-        op_type="GeluGradV2", 
-        inputs = inputs, 
-        attrs = attrs, 
-        outputs = outputs, 
+        op_type="GeluGradV2",
+        inputs = inputs,
+        attrs = attrs,
+        outputs = outputs,
         ir=IrDef("GeluGradV2") \
          .input("dy", "") \
          .input("x", "") \
@@ -15423,7 +15423,7 @@ def TransposeBatchMatMul(x1: Tensor, x2: Tensor, bias: Optional[Tensor], scale: 
         "bias": bias,
         "scale": scale,
     }
-    
+
     # process attrs
     attrs = {
         "perm_x1": attr.ListInt(perm_x1),
@@ -15543,7 +15543,7 @@ def IndexByTensor(x: Tensor,
     # process attrs
     op.attr["indices_mask"].list.val_type = 2
     op.attr["indices_mask"].list.i.extend(indices_mask)
-    
+
     # process outputs
     output_index = 0
     op.output_desc.add().name = "y"
@@ -19216,7 +19216,7 @@ qc_qr_scale: float = 1.0, kc_scale: float = 1.0, dependencies=[], node_name=None
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "actual_seq_len"
-    
+
     if k_nope_clip_alpha is not None:
         op.input.append(k_nope_clip_alpha.tensor)
         op.input_desc.add().CopyFrom(k_nope_clip_alpha.desc)
@@ -20359,7 +20359,7 @@ def _ForeachNorm(x1: List[Tensor], scalar: Tensor, *, size_of_y: int, dependenci
         op.input.append(v.tensor)
         op.input_desc.add().CopyFrom(v.desc)
         op.input_desc[-1].name = "x" + str(i)
-    
+
     op.input.append(scalar.tensor)
     op.input_desc.add().CopyFrom(scalar.desc)
     op.input_desc[-1].name = "scalar"
@@ -43671,7 +43671,7 @@ def RotaryMulGrad(x: Tensor, r1: Tensor, r2: Tensor, dy:  Tensor, *, need_backwa
 
     # process attrs
     op.attr["need_backward"].b = need_backward
-    
+
     # process outputs
     output_index = 0
     op.output_desc.add().name = "dx"
@@ -45056,12 +45056,12 @@ def RmsNorm(x: Tensor, gamma: Tensor, *, epsilon: float=0.000001, dependencies=[
 # This api is auto-generated from IR RmsNorm
 @auto_convert_to_tensor([False, False, False, False], [False, False, False, False])
 def RmsNormGrad(
-    dy: Tensor, 
-    x: Tensor, 
-    rstd: Tensor, 
-    gamma: Tensor, 
-    *, 
-    dependencies=[], 
+    dy: Tensor,
+    x: Tensor,
+    rstd: Tensor,
+    gamma: Tensor,
+    *,
+    dependencies=[],
     node_name=None):
     """REG_OP(RmsNormGrad)\n
 .INPUT(dy, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
@@ -54026,7 +54026,7 @@ def Gelu(x: Tensor, *, dependencies=[], node_name=None):
 # This api is auto-generated from IR GeluQuant
 @auto_convert_to_tensor([False], [False])
 def GeluQuant(self: Tensor, *, input_scale: Optional[Tensor] = None, input_offset: Optional[Tensor] = None,
-              approximate: str = "none", quant_mode: str = 'dynamic', 
+              approximate: str = "none", quant_mode: str = 'dynamic',
               dst_type: int = 2, round_mode: str = "rint", dependencies=[], node_name=None):
     """REG_OP(GeluQuant)\n
     .INPUT(x, TensorType({DT_FLOAT32, DT_FLOAT16, DT_BF16}))\n
@@ -77214,7 +77214,7 @@ def WarpPerspective(x: Tensor, matrix: Tensor, *, out_height: int, out_width: in
     y = Tensor(op, output_index)
     output_index += 1
 
-    
+
     return y
 
 # This api is auto-generated from IR ReduceMeanWithCast
@@ -77228,15 +77228,15 @@ def ReduceMeanWithCast(x: Tensor, axes: Tensor, *, keep_dims: bool=False, noop_w
 .ATTR(noop_with_empty_axes, Bool, true)\n
 .ATTR(dtype, Type, DT_UNDEFINED)\n
 """
-  
+
   op = get_default_ge_graph().op.add()
   op.type = "ReduceMeanWithCast"
   op.name = next_unique_name(node_name, "ReduceMeanWithCast")
-  
+
   # process dependices
   for dependency in dependencies:
     op.input.append(dependency.controller)
-  
+
   # process inputs
   op.input.append(x.tensor)
   op.input_desc.add().CopyFrom(x.desc)
@@ -77244,19 +77244,19 @@ def ReduceMeanWithCast(x: Tensor, axes: Tensor, *, keep_dims: bool=False, noop_w
   op.input.append(axes.tensor)
   op.input_desc.add().CopyFrom(axes.desc)
   op.input_desc[-1].name = "axes"
-  
+
   # process attrs
   op.attr["keep_dims"].b = keep_dims
   op.attr["noop_with_empty_axes"].b = noop_with_empty_axes
   op.attr["dtype"].dt = dtype
-  
+
   # process outputs
   output_index = 0
   op.output_desc.add().name = "y"
   y = Tensor(op, output_index)
   output_index += 1
-  
-  
+
+
   return y
 
 
@@ -77502,7 +77502,7 @@ def MatmulAllReduce(x1: Tensor,
                     comm_turn: int=0,
                     antiquant_group_size: int=0,
                     group_size: int = 0,
-                    y_dtype: int = 28, 
+                    y_dtype: int = 28,
                     comm_quant_mode: int = 0,
                     dependencies=[],
                     node_name=None):
@@ -77608,7 +77608,7 @@ def MatmulAllReduce(x1: Tensor,
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "comm_quant_scale_2"
-        
+
     # process attrs
     op.attr["group"].s = compat_as_bytes(group)
     op.attr["reduce_op"].s = compat_as_bytes(reduce_op)
@@ -77701,9 +77701,9 @@ def MatmulReduceScatter(x1: Tensor,
 
 # This api is auto-generated from IR MatmulReduceScatterV2
 @auto_convert_to_tensor([False, False, False, False, False, False], [False, False, True, True, True, True])
-def MatmulReduceScatterV2(x1: Tensor, x2: Tensor, bias: Optional[Tensor], x1_scale: Optional[Tensor], 
-    x2_scale: Optional[Tensor], quant_scale: Optional[Tensor], *, group: str, reduce_op: str = "sum", 
-    is_trans_a: bool = False, is_trans_b: bool = False, comm_turn: int = 0, rank_size: int = 0, block_size: int = 0, 
+def MatmulReduceScatterV2(x1: Tensor, x2: Tensor, bias: Optional[Tensor], x1_scale: Optional[Tensor],
+    x2_scale: Optional[Tensor], quant_scale: Optional[Tensor], *, group: str, reduce_op: str = "sum",
+    is_trans_a: bool = False, is_trans_b: bool = False, comm_turn: int = 0, rank_size: int = 0, block_size: int = 0,
     group_size: int = 0, is_amax_out: bool = False, y_dtype: int = 0, dependencies=[], node_name=None):
     """
     REG_OP(MatmulReduceScatterV2)\n
@@ -77759,7 +77759,7 @@ def MatmulReduceScatterV2(x1: Tensor, x2: Tensor, bias: Optional[Tensor], x1_sca
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "x1_scale"
-    
+
     if x2_scale is not None:
         op.input.append(x2_scale.tensor)
         op.input_desc.add().CopyFrom(x2_scale.desc)
@@ -77884,7 +77884,7 @@ def AllGatherMatmul(x1: Tensor,
 def AllGatherMatmulV2(x1: Tensor, x2: Tensor, bias: Optional[Tensor], x1_scale: Optional[Tensor],
     x2_scale: Optional[Tensor], quant_scale: Optional[Tensor], *, group: str, is_trans_a: bool = False,
     is_trans_b: bool = False, gather_index: int = 0, comm_turn: int = 0, rank_size: int = 0, block_size: int = 0,
-    group_size: int = 0, is_gather_out: bool = True, is_amax_out: bool = False, y_dtype: int = 0, 
+    group_size: int = 0, is_gather_out: bool = True, is_amax_out: bool = False, y_dtype: int = 0,
     dependencies=[], node_name=None):
     """
     REG_OP(AllGatherMatmulV2)\n
@@ -77942,7 +77942,7 @@ def AllGatherMatmulV2(x1: Tensor, x2: Tensor, bias: Optional[Tensor], x1_scale: 
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "x1_scale"
-    
+
     if x2_scale is not None:
         op.input.append(x2_scale.tensor)
         op.input_desc.add().CopyFrom(x2_scale.desc)
@@ -78089,13 +78089,13 @@ def WeightQuantBatchMatmulV2(x: Tensor,
 
 # This api is auto-generated from IR LayerNormV4
 @auto_convert_to_tensor([False, False, False, False], [False, False, True, True])
-def LayerNormV4(x: Tensor, 
-                normalized_shape: Tensor, 
-                gamma: Optional[Tensor], 
-                beta: Optional[Tensor], 
-                *, 
-                epsilon: float=0.000010, 
-                dependencies=[], 
+def LayerNormV4(x: Tensor,
+                normalized_shape: Tensor,
+                gamma: Optional[Tensor],
+                beta: Optional[Tensor],
+                *,
+                epsilon: float=0.000010,
+                dependencies=[],
                 node_name=None):
     """REG_OP(LayerNormV4)\n
     .INPUT(x, "T1")\n
@@ -78333,7 +78333,7 @@ def dequant_rope_quant_kvcache(x: Tensor,
     v_cache = Tensor(op, output_index)
     output_index += 1
     return q, k, v, k_cache, v_cache
-    
+
 # This api is auto-generated from IR DequantBias
 
 
@@ -78545,11 +78545,11 @@ def QuantGroupedMatmulDequant(x: Tensor,
 
 # This api is auto-generated from IR Sxpy
 @auto_convert_to_tensor([False, False, False], [False, False, True])
-def Sxpy(x1: Tensor, 
-         x2: Tensor, 
-         alpha: Optional[Tensor], 
-         *, 
-         dependencies=[], 
+def Sxpy(x1: Tensor,
+         x2: Tensor,
+         alpha: Optional[Tensor],
+         *,
+         dependencies=[],
          node_name=None):
     """REG_OP(Sxpy)\n
     .INPUT(x1, "T1")\n
@@ -78624,11 +78624,11 @@ def ConstPlaceHolder(*,
     op = get_default_ge_graph().op.add()
     op.type = "ConstPlaceHolder"
     op.name = next_unique_name(node_name, "ConstPlaceHolder")
-    
+
     # process dependices
     for dependency in dependencies:
         op.input.append(dependency.controller)
-    
+
     # process inputs
 
     # process attrs
@@ -78675,11 +78675,11 @@ def QuantBatchMatmulV3(x1: Tensor, x2: Tensor, scale: Tensor, offset: Optional[T
     op = get_default_ge_graph().op.add()
     op.type = "QuantBatchMatmulV3"
     op.name = next_unique_name(node_name, "QuantBatchMatmulV3")
-  
+
     # process dependices
     for dependency in dependencies:
         op.input.append(dependency.controller)
-  
+
     # process inputs
     op.input.append(x1.tensor)
     op.input_desc.add().CopyFrom(x1.desc)
@@ -78714,12 +78714,12 @@ def QuantBatchMatmulV3(x1: Tensor, x2: Tensor, scale: Tensor, offset: Optional[T
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "pertoken_scale"
-  
+
     # process attrs
     op.attr["dtype"].i = dtype
     op.attr["transpose_x1"].b = transpose_x1
     op.attr["transpose_x2"].b = transpose_x2
-  
+
     # process outputs
     output_index = 0
     op.output_desc.add().name = "y"
@@ -78732,12 +78732,12 @@ def QuantBatchMatmulV3(x1: Tensor, x2: Tensor, scale: Tensor, offset: Optional[T
 
 # This api is auto-generated from IR TomeMerge
 @auto_convert_to_tensor([False, False, False, False], [False, False, False, False])
-def TomeMerge(token_a: Tensor, 
-              token_b: Tensor, 
-              topk_indice: Tensor, 
-              arg_max: Tensor, 
-              topRate: float=0.500000, 
-              dependencies=[], 
+def TomeMerge(token_a: Tensor,
+              token_b: Tensor,
+              topk_indice: Tensor,
+              arg_max: Tensor,
+              topRate: float=0.500000,
+              dependencies=[],
               node_name=None):
     """    REG_OP(TomeMerge)\n
     .INPUT(token_a, TensorType({DT_FLOAT16}))\n
@@ -78794,13 +78794,13 @@ def TomeMerge(token_a: Tensor,
 
 # This api is auto-generated from IR TomeUnmerge
 @auto_convert_to_tensor([False, False, False, False, False], [False, False, False, False, False])
-def TomeUnmerge(atten_out: Tensor, 
-                Ori_IndiceA: Tensor, 
-                Ori_IndiceB: Tensor, 
-                TOPK_Indice: Tensor, 
-                Arg_Max: Tensor, *, 
-                top_r_rate: float=0.500000, 
-                dependencies=[], 
+def TomeUnmerge(atten_out: Tensor,
+                Ori_IndiceA: Tensor,
+                Ori_IndiceB: Tensor,
+                TOPK_Indice: Tensor,
+                Arg_Max: Tensor, *,
+                top_r_rate: float=0.500000,
+                dependencies=[],
                 node_name=None):
     """REG_OP(TomeUnmerge)\n
     .INPUT(atten_out, TensorType({DT_FLOAT16}))\n
@@ -78891,7 +78891,7 @@ def TransQuantParamV2(scale: Tensor, offset: Optional[Tensor], *, round_mode: in
 
 
 # This api is auto-generated from IR QbmmReduceSum
-@auto_convert_to_tensor([False, False, False], [False, False, False], 
+@auto_convert_to_tensor([False, False, False], [False, False, False],
                         inputs_tensor_type=[TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_INDEX_NUMBER])
 def QuantMatmulReduceSum(
     x1: Tensor,
@@ -78938,11 +78938,11 @@ def QuantMatmulReduceSum(
     op = get_default_ge_graph().op.add()
     op.type = "QuantMatmulReduceSum"
     op.name = next_unique_name(node_name, "QuantMatmulReduceSum")
-    
+
     # process dependices
     for dependency in dependencies:
         op.input.append(dependency.controller)
-    
+
     # process inputs
     input_list = [
         (x1, "x1"),
@@ -78965,7 +78965,7 @@ def QuantMatmulReduceSum(
             op.input.append('')
             op.input_desc.add().CopyFrom(get_invalid_desc())
             op.input_desc[-1].name = item[1]
-    
+
     # process attrs
     op.attr["dtype"].i = dtype
     op.attr["compute_type"].i = compute_type
@@ -78986,10 +78986,11 @@ def QuantMatmulReduceSum(
 # This api is auto-generated from IR FlatQuant
 @auto_convert_to_tensor([False, False, False], [False, False, False])
 def FlatQuant(
-    x: Tensor, 
+    x: Tensor,
     kronecker_p1: Tensor,
     kronecker_p2: Tensor, *,
     clip_ratio: float = 1.000000,
+    dst_dtype: int = 3,
     dependencies=[],
     node_name=None):
     """REG_OP(FlatQuant)\n
@@ -78997,10 +78998,11 @@ def FlatQuant(
     .INPUT(kronecker_p1, TensorType({DT_FLOAT16, DT_BF16}))\n
     .INPUT(kronecker_p2, TensorType({DT_FLOAT16, DT_BF16}))\n
     .ATTR(clip_ratio, Float, 1.000000)\n
+    .ATTR(dst_type, int, DT_INT32)\n
     .OUTPUT(out, TensorType({DT_INT4}))\n
     .OUTPUT(quant_scale, TensorType({DT_FLOAT32}))\n
     """
-  
+
     op = get_default_ge_graph().op.add()
     op.type = "FlatQuant"
     op.name = next_unique_name(node_name, "FlatQuant")
@@ -79008,7 +79010,7 @@ def FlatQuant(
     # process dependices
     for dependency in dependencies:
         op.input.append(dependency.controller)
-  
+
     # process inputs
     op.input.append(x.tensor)
     op.input_desc.add().CopyFrom(x.desc)
@@ -79020,9 +79022,9 @@ def FlatQuant(
     op.input_desc.add().CopyFrom(kronecker_p2.desc)
     op.input_desc[-1].name = "kronecker_p2"
 
-
     # process attrs
     op.attr["clip_ratio"].f = clip_ratio
+    op.attr["dst_dtype"].i = dst_dtype
     # process outputs
     output_index = 0
     op.output_desc.add().name = "out"
@@ -79159,7 +79161,7 @@ def _GroupedMatmul(x: List[Tensor], weight: List[Tensor], bias: List[Tensor], sc
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "per_token_scale"
-    
+
     # process attrs
     op.attr["split_item"].i = split_item
     op.attr["dtype"].i = dtype
@@ -79283,8 +79285,8 @@ def MoeInitRouting(x: Tensor,
                    row_idx: Tensor,
                    expert_idx: Tensor,
                    *,
-                   active_num: int, 
-                   dependencies=[], 
+                   active_num: int,
+                   dependencies=[],
                    node_name=None):
     """REG_OP(MoeInitRouting)\n
     .INPUT(x, "T1")\n
@@ -79561,12 +79563,12 @@ def FusedInferAttentionScore(query: Tensor, key: List[Tensor], value: List[Tenso
     value_antiquant_scale: Optional[Tensor], value_antiquant_offset: Optional[Tensor],
     key_shared_prefix: Optional[Tensor], value_shared_prefix: Optional[Tensor],
     actual_shared_prefix_len: Optional[Tensor], query_rope: Optional[Tensor], key_rope: Optional[Tensor],
-    key_rope_antiquant_scale: Optional[Tensor], dequant_scale_query: Optional[Tensor], 
+    key_rope_antiquant_scale: Optional[Tensor], dequant_scale_query: Optional[Tensor],
     learnable_sink: Optional[Tensor], q_start_idx: Optional[Tensor], kv_start_idx: Optional[Tensor], *,
     num_heads: int, scale: float=1.000000, pre_tokens: int=2147483647, next_tokens: int=2147483647,
     input_layout: str="BSH", num_key_value_heads: int=0, sparse_mode: int=0, inner_precise: int=0,
     block_size: int=0, antiquant_mode: int=0, softmax_lse_flag: bool=False, key_antiquant_mode: int=0,
-    value_antiquant_mode: int=0, query_quant_mode: int=0, pse_type: int=0, out_dtype: int=0, 
+    value_antiquant_mode: int=0, query_quant_mode: int=0, pse_type: int=0, out_dtype: int=0,
     dependencies=[], node_name=None):
     """REG_OP(FusedInferAttentionScore)\n
 .INPUT(query, TensorType({DT_INT8, DT_FLOAT16, DT_BF16}))\n
@@ -79897,7 +79899,7 @@ def MoeFinalizeRoutingV2(expanded_x: Tensor, expanded_row_idx: Tensor, x1: Optio
     .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
     .ATTR(drop_pad_mode, Int, 0)\n
     """
-    
+
     op = get_default_ge_graph().op.add()
     op.type = "MoeFinalizeRoutingV2"
     op.name = next_unique_name(node_name, "MoeFinalizeRoutingV2")
@@ -80108,16 +80110,16 @@ def MoeDistributeCombine(expand_x: Tensor, expert_ids: Tensor, expand_idx: Tenso
 # This api is auto-generated from IR MoeDistributeCombineV2
 @auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False, False, False, False, False, False],
     [False, False, False, False, False, True, True, True, True, True, True, True, True, True, True])
-def MoeDistributeCombineV2(expand_x: Tensor, expert_ids: Tensor, assist_info_for_combine: Tensor, 
-                           ep_send_counts: Tensor, expert_scales: Tensor, tp_send_counts: Optional[Tensor], 
-                           x_active_mask: Optional[Tensor], expand_scales: Optional[Tensor], 
-                           shared_expert_x: Optional[Tensor], elastic_info: Optional[Tensor], ori_x: Optional[Tensor], 
-                           const_expert_alpha_1: Optional[Tensor], const_expert_alpha_2: Optional[Tensor],  
-                           const_expert_v: Optional[Tensor], performance_info: Optional[Tensor], *, group_ep: str, ep_world_size: int, ep_rank_id: int, 
-                           moe_expert_num: int, group_tp: str = "", tp_world_size: int = 0, tp_rank_id: int = 0, 
-                           expert_shard_type: int = 0, shared_expert_num: int = 1, shared_expert_rank_num: int = 0, 
+def MoeDistributeCombineV2(expand_x: Tensor, expert_ids: Tensor, assist_info_for_combine: Tensor,
+                           ep_send_counts: Tensor, expert_scales: Tensor, tp_send_counts: Optional[Tensor],
+                           x_active_mask: Optional[Tensor], expand_scales: Optional[Tensor],
+                           shared_expert_x: Optional[Tensor], elastic_info: Optional[Tensor], ori_x: Optional[Tensor],
+                           const_expert_alpha_1: Optional[Tensor], const_expert_alpha_2: Optional[Tensor],
+                           const_expert_v: Optional[Tensor], performance_info: Optional[Tensor], *, group_ep: str, ep_world_size: int, ep_rank_id: int,
+                           moe_expert_num: int, group_tp: str = "", tp_world_size: int = 0, tp_rank_id: int = 0,
+                           expert_shard_type: int = 0, shared_expert_num: int = 1, shared_expert_rank_num: int = 0,
                            global_bs: int = 0, out_dtype: int = 0, comm_quant_mode: int = 0, group_list_type: int = 0,
-                           comm_alg: str = "", zero_expert_num: int = 0, copy_expert_num: int = 0, const_expert_num: int = 0, 
+                           comm_alg: str = "", zero_expert_num: int = 0, copy_expert_num: int = 0, const_expert_num: int = 0,
                            dependencies=[], node_name=None):
     """REG_OP(MoeDistributeCombineV2)\n
     .INPUT(expand_x, TensorType({DT_BF16, DT_FLOAT16, DT_INT32}))\n
@@ -80207,7 +80209,7 @@ def MoeDistributeCombineV2(expand_x: Tensor, expert_ids: Tensor, assist_info_for
         op.input_desc[-1].name = "x_active_mask"
 
     # In V2, three unused reserved parameters from V1 have been removed. However, the oprator
-    # prototype on the canndev still retains the original parameters. Additionally, when the 
+    # prototype on the canndev still retains the original parameters. Additionally, when the
     # input to the torch layer is V2, canndev internalyy selects either the V1 or V2 version
     # of aclnn based on the A2/A3 platform. Therefore, it is necessary to perform a placeholder
     # operation for the parameters that exist in the V1.
@@ -80263,7 +80265,7 @@ def MoeDistributeCombineV2(expand_x: Tensor, expert_ids: Tensor, assist_info_for
         op.input.append(const_expert_v.tensor)
         op.input_desc.add().CopyFrom(const_expert_v.desc)
         op.input_desc[-1].name = "const_expert_v"
-    
+
     if performance_info is not None:
         op.input.append(performance_info.tensor)
         op.input_desc.add().CopyFrom(performance_info.desc)
@@ -80316,10 +80318,10 @@ def MoeDistributeCombineAddRmsNorm(expand_x: Tensor,
                                    group_list: Optional[Tensor],
                                    expand_scales: Optional[Tensor],
                                    shared_expert_x: Optional[Tensor],
-                                   elastic_info: Optional[Tensor], 
-                                   ori_x: Optional[Tensor], 
-                                   const_expert_alpha_1: Optional[Tensor], 
-                                   const_expert_alpha_2: Optional[Tensor],  
+                                   elastic_info: Optional[Tensor],
+                                   ori_x: Optional[Tensor],
+                                   const_expert_alpha_1: Optional[Tensor],
+                                   const_expert_alpha_2: Optional[Tensor],
                                    const_expert_v: Optional[Tensor],
                                    *,
                                    group_ep: str,
@@ -80339,8 +80341,8 @@ def MoeDistributeCombineAddRmsNorm(expand_x: Tensor,
                                    comm_alg: str = "",
                                    norm_eps: float = 1e-6,
                                    zero_expert_num: int = 0,
-                                   copy_expert_num: int = 0,  
-                                   const_expert_num: int = 0, 
+                                   copy_expert_num: int = 0,
+                                   const_expert_num: int = 0,
                                    dependencies = [],
                                    node_name = None):
     """REG_OP(MoeDistributeCombineAddRmsNorm)\n
@@ -80549,7 +80551,7 @@ def MoeDistributeCombineAddRmsNorm(expand_x: Tensor,
 
 # This api is auto-generated from IR DistributeBarrier
 @auto_convert_to_tensor([False, False, False], [False, True, True])
-def DistributeBarrier(x_ref: Tensor, time_out: Optional[Tensor], elastic_info: Optional[Tensor], 
+def DistributeBarrier(x_ref: Tensor, time_out: Optional[Tensor], elastic_info: Optional[Tensor],
     *, group: str, world_size: int, dependencies=[], node_name=None):
     """REG_OP(DistributeBarrier)\n
     .INPUT(x_ref, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT, DT_BOOL, DT_INT8, DT_INT16, DT_INT32, DT_INT64, DT_UINT8, DT_UINT16, DT_UINT32, DT_UINT64}))\n
@@ -80718,13 +80720,12 @@ def MoeDistributeDispatch(x: Tensor, expert_ids: Tensor, scales: Optional[Tensor
 
 # This api is auto-generated from IR MoeDistributeDispatchV2
 @auto_convert_to_tensor([False, False, False, False, False, False, False], [False, False, True, True, True, True, True])
-def MoeDistributeDispatchV2(x: Tensor, expert_ids: Tensor, scales: Optional[Tensor], x_active_mask: Optional[Tensor], 
-                            expert_scales: Optional[Tensor], elastic_info: Optional[Tensor], performance_info: Optional[Tensor], *, group_ep: str, ep_world_size: int, ep_rank_id: int, 
-                            moe_expert_num: int, group_tp: str = "", tp_world_size: int = 0, tp_rank_id: int = 0, 
-                            expert_shard_type: int = 0, shared_expert_num: int = 1, shared_expert_rank_num: int = 0, 
-                            quant_mode: int = 0, global_bs: int = 0, expert_token_nums_type: int = 1, 
-                            comm_alg: str = "", zero_expert_num: int = 0, copy_expert_num: int = 0, const_expert_num: int = 0, y_dtype: int = 0,
-                            dependencies=[], node_name=None):
+def MoeDistributeDispatchV2(x: Tensor, expert_ids: Tensor, scales: Optional[Tensor], x_active_mask: Optional[Tensor],
+                            expert_scales: Optional[Tensor], elastic_info: Optional[Tensor], performance_info: Optional[Tensor], *, group_ep: str, ep_world_size: int, ep_rank_id: int,
+                            moe_expert_num: int, group_tp: str = "", tp_world_size: int = 0, tp_rank_id: int = 0,
+                            expert_shard_type: int = 0, shared_expert_num: int = 1, shared_expert_rank_num: int = 0,
+                            quant_mode: int = 0, global_bs: int = 0, expert_token_nums_type: int = 1,
+                            comm_alg: str = "", zero_expert_num: int = 0, copy_expert_num: int = 0, const_expert_num: int = 0, y_dtype: int = 0, dependencies=[], node_name=None):
     """REG_OP(MoeDistributeDispatchV2)\n
     .INPUT(x, TensorType({DT_BF16, DT_FLOAT16}))\n
     .INPUT(expert_ids, TensorType({DT_INT32}))\n
@@ -80812,7 +80813,7 @@ def MoeDistributeDispatchV2(x: Tensor, expert_ids: Tensor, scales: Optional[Tens
         op.input.append(performance_info.tensor)
         op.input_desc.add().CopyFrom(performance_info.desc)
         op.input_desc[-1].name = "performance_info"
-        
+
     # process attrs
     op.attr["group_ep"].s = compat_as_bytes(group_ep)
     op.attr["ep_world_size"].i = ep_world_size
@@ -81192,7 +81193,7 @@ def KvRmsNormRopeCache(kv: Tensor,
         op.input.append(dependency.controller)
 
     # process inputs
-    # REQUIRED 
+    # REQUIRED
     op.input.append(kv.tensor)
     op.input_desc.add().CopyFrom(kv.desc)
     op.input_desc[-1].name = "kv"
@@ -81266,7 +81267,7 @@ def KvRmsNormRopeCache(kv: Tensor,
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "v"
-        
+
     # process attrs
     op.attr["epsilon"].f = epsilon
     op.attr["cache_mode"].s = compat_as_bytes(cache_mode)
@@ -81432,13 +81433,13 @@ def DequantSwigluQuant(x: Tensor,
 @auto_convert_to_tensor([False, False], [False, True])
 def ClippedSwiglu(x: Tensor,
                 group_index: Optional[Tensor],
-                *, 
-                dim: int = -1, 
-                alpha: float = 1.702, 
-                limit: float = 7.0, 
-                bias: float = 1.0, 
-                interleaved: bool = True, 
-                dependencies=[], 
+                *,
+                dim: int = -1,
+                alpha: float = 1.702,
+                limit: float = 7.0,
+                bias: float = 1.0,
+                interleaved: bool = True,
+                dependencies=[],
                 node_name=None):
     """REG_OP(ClippedSwiglu)\n
     .INPUT(x, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))\n
@@ -81474,8 +81475,8 @@ def ClippedSwiglu(x: Tensor,
 
     # process attrs
     op.attr["dim"].i = dim
-    op.attr["alpha"].f = float(alpha)      
-    op.attr["limit"].f = float(limit)  
+    op.attr["alpha"].f = float(alpha)
+    op.attr["limit"].f = float(limit)
     op.attr["bias"].f = float(bias)
     op.attr["interleaved"].b = interleaved
 
@@ -81658,7 +81659,7 @@ def MoeReRouting(tokens: Tensor,
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "per_token_scales"
-    
+
     # process attrs
     op.attr["expert_token_num_type"].i = expert_token_num_type
     op.attr["idx_type"].i = idx_type
@@ -81942,19 +81943,19 @@ def AlltoAllvGroupedMatMul(gmm_x: Tensor, gmm_weight: Tensor,
 
 
 # This api is auto-generated from IR MoeUpdateExpert
-@auto_convert_to_tensor([False, False, False, False, False], [False, False, True, True, True], 
-                        inputs_tensor_type=[TensorType.TT_INDEX_NUMBER, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, 
+@auto_convert_to_tensor([False, False, False, False, False], [False, False, True, True, True],
+                        inputs_tensor_type=[TensorType.TT_INDEX_NUMBER, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN,
                         TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN])
-def MoeUpdateExpert(expert_ids: Tensor, 
-                    eplb_table: Tensor, 
-                    expert_scales: Optional[Tensor], 
-                    pruning_threshold: Optional[Tensor], 
-                    active_mask: Optional[Tensor], 
-                    *, 
-                    local_rank_id: int = -1, 
-                    world_size: int = -1, 
-                    balance_mode: int = 0, 
-                    dependencies=[], 
+def MoeUpdateExpert(expert_ids: Tensor,
+                    eplb_table: Tensor,
+                    expert_scales: Optional[Tensor],
+                    pruning_threshold: Optional[Tensor],
+                    active_mask: Optional[Tensor],
+                    *,
+                    local_rank_id: int = -1,
+                    world_size: int = -1,
+                    balance_mode: int = 0,
+                    dependencies=[],
                     node_name=None):
     """REG_OP(MoeUpdateExpert)\n
     .INPUT(expert_ids, TensorType({DT_INT32, DT_INT64}))\n
@@ -82045,7 +82046,7 @@ def RecurrentGatedDeltaRule(
     .DATATYPE(T3, TensorType({DT_FLOAT}))\n
     .OP_END_FACTORY_REG(RecurrentGatedDeltaRule)
     """
-    
+
     op = get_default_ge_graph().op.add()
     op.type = "RecurrentGatedDeltaRule"
     op.name = next_unique_name(node_name, "RecurrentGatedDeltaRule")
@@ -82092,7 +82093,7 @@ def RecurrentGatedDeltaRule(
 
 
 # This api is auto-generated from IR GroupedMatmulSwigluQuant
-@auto_convert_to_tensor([False, False, False, True, True, True, False, False], 
+@auto_convert_to_tensor([False, False, False, True, True, True, False, False],
                         [False, False, False, False, False, False, True, True])
 def GroupedMatmulSwigluQuantV2(x: Tensor,
                                x_scale: Tensor,
@@ -82115,11 +82116,11 @@ def GroupedMatmulSwigluQuantV2(x: Tensor,
     """REG_OP(GroupedMatmulSwigluQuantV2)\n
     .INPUT(x, TensorType({DT_INT8}))\n
     .INPUT(x_scale, TensorType({DT_FLOAT}))\n
-    .INPUT(group_list, TensorType({DT_INT64}))\n    
+    .INPUT(group_list, TensorType({DT_INT64}))\n
     .DYNAMIC_INPUT(weight, TensorType({DT_INT8}))\n
     .DYNAMIC_INPUT(weight_scale, TensorType({DT_FLOAT}))\n
     .DYNAMIC_INPUT(weight_assist_matrix, TensorType({DT_FLOAT}))\n
-    .OPTIONAL_INPUT(bias, TensorType({DT_INT8}))\n      
+    .OPTIONAL_INPUT(bias, TensorType({DT_INT8}))\n
     .DYNAMIC_INPUT(smooth_scale, TensorType({DT_FLOAT}))\n
     .ATTR(dequant_mode, Int, 0)\n
     .ATTR(dequant_dtype, Int, 0)\n
@@ -82186,7 +82187,7 @@ def GroupedMatmulSwigluQuantV2(x: Tensor,
 
 
 # This api is auto-generated from IR AddRmsNormDynamicQuant
-@auto_convert_to_tensor([False, False, False, False, False, False], 
+@auto_convert_to_tensor([False, False, False, False, False, False],
                         [False, False, False, True, True, True])
 def AddRmsNormDynamicQuant(x1: Tensor,
                            x2: Tensor,
@@ -82264,7 +82265,7 @@ def AddRmsNormDynamicQuant(x1: Tensor,
 
 
 # This api is auto-generated from IR AddRmsNormCast
-@auto_convert_to_tensor([False, False, False], 
+@auto_convert_to_tensor([False, False, False],
                         [False, False, False])
 def AddRmsNormCast(x1: Tensor,
                    x2: Tensor,
