@@ -225,6 +225,8 @@ def is_inputs_base_format(tensor_list: List[torch.Tensor]) -> bool:
 
 
 def is_op_input_base_format(tensor) -> bool:
+    if tensor.is_cpu:
+        return True
     if 'torch_npu' not in sys.modules:
         logger.info(f'The internal format will only be enabled in a torch npu env.'
                     'When there is no torch_npu in the env, skip internal format check.')
