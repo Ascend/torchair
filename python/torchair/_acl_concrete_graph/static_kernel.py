@@ -62,7 +62,7 @@ def compile_static_kernel(fx_func, *args, build_dir=None, **kwargs):
         "-p", str(chosen_dir),
         "-v", _torchair.GetSocName(),
         "-l", "info",
-        "-j", "4",
+        "-j", _compute_opc_compile_jobs(),
         "-o", str(result_root),
     ]
     try:
@@ -279,3 +279,20 @@ def safe_resolve_output_dir(build_dir: str):
         raise RuntimeError(f"failed to create output directory {result_root}: {e}") from e
 
     return result_root
+
+
+def _compute_opc_compile_jobs():
+    default = 16
+    try:
+        num_cpus = os.cpu_count() or 1
+        number_of_devices = 1 if _is_single_card() else int(os.environ.get("LOCAL_WORLD_SIZE", 0))
+        if number_of_devices <= 0:
+            logger.warning("LOCAL_WORLD_SIZE invalid or missing, using default jobs")
+            return str(default)
+        jobs = num_cpus // number_of_devices
+        if jobs < 1 or jobs > num_cpus:
+            return str(default)
+        return str(jobs)
+    except Exception as e:
+        logger.warning("compute jobs failed, using default: %s", e)
+        return str(default)
