@@ -3,11 +3,11 @@ import sys
 from packaging import version
 
 import torch
+import _privateuse1_backend
 
 import torchair
 from torchair.configs.compiler_config import CompilerConfig
-from torchair_st_utils import capture_logger
-
+from torchair_st_utils import capture_logger, generate_faked_module
 from torchair_st_stub_aclgraph_utils import (
     StubNpu,
     patch_ops_npu_module,
@@ -16,6 +16,12 @@ from torchair_st_stub_aclgraph_utils import (
     forbidden_attr,
     register_custom_ops,
 )
+
+
+_privateuse1_backend.register_hook()
+npu_device = _privateuse1_backend.npu_device()
+torch.utils.rename_privateuse1_backend("npu")
+torch._register_device_module('npu', generate_faked_module())
 
 
 class Model(torch.nn.Module):

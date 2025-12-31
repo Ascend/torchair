@@ -22,6 +22,7 @@ logger.setLevel(logging.DEBUG)
 
 import _privateuse1_backend
 
+_privateuse1_backend.register_hook()
 npu_device = _privateuse1_backend.npu_device()
 torch.utils.rename_privateuse1_backend("npu")
 torch._register_device_module('npu', generate_faked_module())

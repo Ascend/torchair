@@ -66,6 +66,11 @@ def stub_get_npu_format(*args):
     return 2
 
 
+def stub_is_initialized(*args):
+    logger.debug('[Stub] run stub API _is_initialized')
+    pass
+
+
 @contextlib.contextmanager
 def stub_stream(stream=None):
     """Stub function for stream context manager."""
@@ -316,6 +321,10 @@ def _stub_npu_dynamic_quant_default(self, *args, **kwargs):
     return torch.randn([3, 2]), torch.randn([3, 2])
 
 
+def _stub_npu_dtype_cast_default(self, *args, **kwargs):
+    return torch.randn([3, 2]), torch.randn([3, 2])
+
+
 # define stub submodule
 class StubNpu:
     def __init__(self):
@@ -343,11 +352,15 @@ class StubNpu:
         self.conv = stub_conf
         self._C = Stub_C
         self.amp = StubAmp
+        self.is_initialized = stub_is_initialized
         self.npu_add_rms_norm = types.SimpleNamespace(
             default=_stub_npu_add_rms_norm_default
         )
         self.npu_dynamic_quant = types.SimpleNamespace(
             default=_stub_npu_dynamic_quant_default
+        )
+        self._npu_dtype_cast = types.SimpleNamespace(
+            default=_stub_npu_dtype_cast_default
         )
 
 
