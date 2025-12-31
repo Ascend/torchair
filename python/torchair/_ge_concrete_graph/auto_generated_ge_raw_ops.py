@@ -47995,6 +47995,60 @@ def MaxPool3DWithArgmax(x: Tensor, *, ksize: List[int], strides: List[int], pads
     return y, argmax
 
 
+# This api is auto-generated from IR MaxPool3DWithArgmaxV2
+@auto_convert_to_tensor([False], [False])
+def MaxPool3DWithArgmaxV2(x: Tensor, *, ksize: List[int], strides: List[int], pads: List[int], dilation: List[int]=[1, 1, 1], ceil_mode: bool=False, data_format: str="NCDHW", dtype: int=3, dependencies=[], node_name=None):
+    """REG_OP(MaxPool3DWithArgmaxV2)\n
+.INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
+.OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT32, DT_BF16}))\n
+.OUTPUT(argmax, TensorType({DT_INT32, DT_INT64}))\n
+.REQUIRED_ATTR(ksize, ListInt)\n
+.REQUIRED_ATTR(strides, ListInt)\n
+.REQUIRED_ATTR(pads, ListInt)\n
+.ATTR(dilation, ListInt, {1, 1, 1})\n
+.ATTR(ceil_mode, Bool, false)\n
+.ATTR(data_format, String, "NCDHW")\n
+.ATTR(dtype, Int, 3)\n
+"""
+
+    op = get_default_ge_graph().op.add()
+    op.type = "MaxPool3DWithArgmaxV2"
+    op.name = next_unique_name(node_name, "MaxPool3DWithArgmaxV2")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+
+    # process attrs
+    op.attr["ksize"].list.val_type = 2
+    op.attr["ksize"].list.i.extend(ksize)
+    op.attr["strides"].list.val_type = 2
+    op.attr["strides"].list.i.extend(strides)
+    op.attr["pads"].list.val_type = 2
+    op.attr["pads"].list.i.extend(pads)
+    op.attr["dilation"].list.val_type = 2
+    op.attr["dilation"].list.i.extend(dilation)
+    op.attr["ceil_mode"].b = ceil_mode
+    op.attr["data_format"].s = compat_as_bytes(data_format)
+    op.attr["dtype"].i = dtype
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "argmax"
+    argmax = Tensor(op, output_index)
+    output_index += 1
+
+    return y, argmax
+
+
 # This api is auto-generated from IR AdaptiveMaxPool2d
 @auto_convert_to_tensor([False], [False])
 def AdaptiveMaxPool2d(x: Tensor, *, output_size: List[int], dependencies=[], node_name=None):
