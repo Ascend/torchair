@@ -623,6 +623,37 @@ class EagerModeSt(unittest.TestCase):
                         in stdout.getvalue())
         
     @unittest.skipIf(torch.__version__ < "2.2", "torch._functionalize_replace is unsupported when torch < 2.2")
+    def test_aclgraph_single_mutated_reinplace_with_multi_stream_scope_has_stream_label(self):
+        # single_reinplace mutated_input，单流跨流不能够替换
+        def test_func_same_stream(x, y, z):
+            with torchair.scope.npu_stream_switch('1', 3):
+                # x2 has user afterward
+                x.add_(1.0)
+
+            x5 = x.mul_(2.0)
+            x6 = x5 + 1
+            return x6
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.run_eagerly = True
+        # need add_stream_label_to_node_meta before reinplace
+        config.experimental_config.pattern_fusion_pass = False
+        if version.parse(torch.__version__) < version.parse("2.5.1"):
+            config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model1 = torch.compile(test_func_same_stream, backend=aclgraph_backend, dynamic=True)
+
+        # first run
+        x0 = torch.randn([3, 3])
+        y0 = torch.randn([3, 3])
+        z0 = torch.randn([3, 3])
+        with capture_logger() as stdout:
+            model1(x0, y0, z0)
+        self.assertTrue("Node[mul_6] check reinplace is True, check multi-stream is True" in stdout.getvalue())
+
+    @unittest.skipIf(torch.__version__ < "2.2", "torch._functionalize_replace is unsupported when torch < 2.2")
     def test_aclgraph_single_mutated_reinplace_with_multi_streams_scope_success(self):
         # single_reinplace mutated_input，多流跨流能够替换
         def test_func_same_stream(x, y, z):

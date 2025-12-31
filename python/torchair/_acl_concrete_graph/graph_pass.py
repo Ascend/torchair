@@ -505,6 +505,11 @@ def _reinplace_inplaceable_ops_pass(gm: GraphModule, multi_stream_enabled: bool,
     Note: this pass can not deal with mutated inputs.
     """
     original_gm = copy.deepcopy(gm)
+
+    # Set stream labels for all nodes before pattern pass
+    from torchair._utils.graph_utils import add_stream_label_to_node_meta
+    add_stream_label_to_node_meta(gm)
+
     try:
         logger.debug("[_reinplace_inplaceable_ops_pass]processing reinplace_inplaceable_ops_pass for graph: %s", id(gm))
         if _HAS_INTERNAL_REINPLACE_TOOL:
