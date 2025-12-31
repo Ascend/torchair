@@ -43793,11 +43793,12 @@ def ApplyRotaryPosEmb(query: Tensor, key: Tensor, cos: Tensor, sin: Tensor, *, l
 
 # This api is auto-generated from IR RotaryPositionEmbedding
 @auto_convert_to_tensor([False, False, False], [False, False, False])
-def RotaryPositionEmbedding(x: Tensor, cos: Tensor, sin: Tensor, *, mode: int = 0, dependencies = [], node_name = None):
+def RotaryPositionEmbedding(x: Tensor, cos: Tensor, sin: Tensor, *, mode: int = 0, rotate: Optional[Tensor] = None, dependencies = [], node_name = None):
     """REG_OP(RotaryPositionEmbedding)\n
 .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_BFLOAT16}))\n
 .INPUT(cos, TensorType({DT_FLOAT16, DT_FLOAT, DT_BFLOAT16}))\n
 .INPUT(sin, TensorType({DT_FLOAT16, DT_FLOAT, DT_BFLOAT16}))\n
+.OPTIONAL_INPUT(rotate, TensorType({DT_FLOAT16, DT_FLOAT, DT_BFLOAT16}))\n
 .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_BFLOAT16}))\n
 .ATTR(mode, Int, 0)\n
 """
@@ -43807,6 +43808,7 @@ def RotaryPositionEmbedding(x: Tensor, cos: Tensor, sin: Tensor, *, mode: int = 
         "x": x,
         "cos": cos,
         "sin": sin,
+        "rotate": rotate,
     }
 
     # process attrs
@@ -43829,6 +43831,7 @@ def RotaryPositionEmbedding(x: Tensor, cos: Tensor, sin: Tensor, *, mode: int = 
         .input("x", "DT_FLOAT16, DT_FLOAT, DT_BFLOAT16") \
         .input("cos", "DT_FLOAT16, DT_FLOAT, DT_BFLOAT16") \
         .input("sin", "DT_FLOAT16, DT_FLOAT, DT_BFLOAT16") \
+        .optional_input("rotate", "DT_FLOAT16, DT_FLOAT, DT_BFLOAT16") \
         .attr("mode", attr.Int(0)) \
         .output("y", "DT_FLOAT16, DT_FLOAT, DT_BFLOAT16")
     )
