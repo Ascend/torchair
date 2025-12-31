@@ -49,6 +49,8 @@ def convert_npu_mm_all_reduce_base(
                                        int? antiquant_group_size=0, int? comm_turn=0, 
                                        int[]? group_sizes=None, int? y_dtype=None, int? x1_dtype=None, int? x2_dtype=None, 
                                        int? dequant_scale_dtype=None, int? pertoken_scale_dtype=None, int? comm_quant_mode=0) -> Tensor'''
+    import torch_npu
+    
     check_dtype(x1, x2, bias=bias, x3=x3, antiquant_scale=antiquant_scale,
                 antiquant_offset=antiquant_offset, dequant_scale=dequant_scale, y_dtype=y_dtype)
 
@@ -75,11 +77,39 @@ def convert_npu_mm_all_reduce_base(
             raise RuntimeError("group_size can't small than 0, actual group_sizes is " + str(group_sizes))
         group_size = (group_m << 32) + (group_n << 16) + group_k
 
+    shape_multiples = 2
+    if (x1.rank < 2):
+        raise RuntimeError("Input x1 dimension can't be less than 2, actual x1 dimension is " + str(x1.rank) + ".")
+    if (x2.rank < 2):
+        raise RuntimeError("Input x2 dimension can't be less than 2, actual x2 dimension is " + str(x2.rank) + ".")
+    trans_x2 = x1.symsize[-1] == x2.symsize[-2]
     if x1_dtype is not None:
-        x1 = ge.Bitcast(x1, type=torch_dtype_value_to_ge_type(x1_dtype))
+        x1_ge_dtype = torch_dtype_value_to_ge_type(x1_dtype)
+        if x1_dtype == torch_npu.float4_e2m1fn_x2 or x1_dtype == torch_npu.float4_e1m2fn_x2:
+            const_x1 = ge.Const([1] * (x1.rank - 1) + [shape_multiples])
+            shape_x1 = ge.Shape(x1)
+            shape_x1 = ge.Mul(shape_x1, const_x1)
+            x1 = ge.Bitcast(x1, type=x1_ge_dtype)
+            x1 = ge.Reshape(x1, shape_x1)
+        else:
+            x1 = ge.Bitcast(x1, type=x1_ge_dtype)
         x1.desc.dtype = torch_dtype_value_to_ge_proto_type(x1_dtype)
     if x2_dtype is not None:
-        x2 = ge.Bitcast(x2, type=torch_dtype_value_to_ge_type(x2_dtype))
+        x2_ge_dtype = torch_dtype_value_to_ge_type(x2_dtype)
+        if x2_dtype == torch_npu.float4_e2m1fn_x2 or x2_dtype == torch_npu.float4_e1m2fn_x2:
+            perm = [i for i in range(x2.rank)]
+            perm[-2], perm[-1] = perm[-1], perm[-2]
+            const_x2 = ge.Const([1] * (x2.rank - 1) + [shape_multiples])
+            if trans_x2:
+                x2 = ge.Transpose(x2, perm)
+            shape_x2 = ge.Shape(x2)
+            shape_x2 = ge.Mul(shape_x2, const_x2)
+            x2 = ge.Bitcast(x2, type=x2_ge_dtype)
+            x2 = ge.Reshape(x2, shape_x2)
+            if trans_x2:
+                x2 = ge.Transpose(x2, perm)
+        else:
+            x2 = ge.Bitcast(x2, type=x2_ge_dtype)
         x2.desc.dtype = torch_dtype_value_to_ge_proto_type(x2_dtype)
     if dequant_scale_dtype is not None:
         dequant_scale = ge.Bitcast(dequant_scale, type=torch_dtype_value_to_ge_type(dequant_scale_dtype))
