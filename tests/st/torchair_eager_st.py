@@ -157,6 +157,60 @@ class EagerModeSt(unittest.TestCase):
             model1(x1, y1, z1)
         self.assertTrue("Start to compile static shape kernel for fx graph" in stdout.getvalue())
 
+    def test_aclgraph_run_eagerly_with_static_kernel_compilation_range_check(self):
+        class TestModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(2, 2)
+
+            def forward(self, x):
+                ln = self.linear(x)
+                return ln.mean()
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.run_eagerly = True
+        if version.parse(torch.__version__) < version.parse("2.5.1"):
+            config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        config.experimental_config.aclgraph._aclnn_static_shape_kernel = True
+        config.experimental_config.aclgraph._aclnn_static_shape_kernel_build_dir = "."
+        config.experimental_config.aclgraph._aclnn_static_shape_kernel_sym_value_range = [5, 6]
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model1 = TestModel()
+        model1 = torch.compile(model1, backend=aclgraph_backend, dynamic=True)
+
+        # first run, in valid range
+        x0 = torch.randn([5, 2])
+        with capture_logger() as stdout:
+            model1(x0)
+        self.assertTrue("Start to compile static shape kernel for fx graph" in stdout.getvalue())
+
+        # run other shape, in valid range
+        x1 = torch.randn([6, 2])
+        with capture_logger() as stdout:
+            model1(x1)
+        self.assertTrue("Start to compile static shape kernel for fx graph" in stdout.getvalue())
+
+        # run other shape, not in valid range
+        x2 = torch.randn([7, 2])
+        with capture_logger() as stdout:
+            model1(x2)
+        self.assertTrue("Skip compile static shape kernel for fx graph" in stdout.getvalue())
+
+        # change the checked sym index
+        config.experimental_config.aclgraph._aclnn_static_shape_kernel_sym_index = 2
+        aclgraph_backend2 = torchair.get_npu_backend(compiler_config=config)
+
+        model2 = TestModel()
+        model2 = torch.compile(model2, backend=aclgraph_backend2, dynamic=True)
+
+        # run second model, not in valid range
+        x0 = torch.randn([5, 2])
+        with capture_logger() as stdout:
+            model2(x0)
+        self.assertTrue("Skip compile static shape kernel for fx graph" in stdout.getvalue())
+
     def test_aclgraph_single_reinplace_within_mix_stream_scope(self):
         def test_func_same_stream(x, y, z):
             x2 = x - 1.0
