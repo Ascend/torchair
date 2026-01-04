@@ -1,7 +1,9 @@
 from torch._dynamo.utils import detect_fake_mode
+from torchair.ge._ge_graph import get_default_ge_graph
 from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 from torchair._ge_concrete_graph.infer_symbol_calculate import infer_ge_output_by_symbol_calculate
 from torchair._ge_concrete_graph.utils import is_host_data_tensor
+from torchair._ge_concrete_graph.infer_symbol_shape import infer_and_gen_sym_shape_silent
 
 
 def _view_copy(self, bases_list, *, dependencies = [], out_op = None):
@@ -171,7 +173,13 @@ def conveter_auto_functionalize_v2(*args, **kwargs):
 
     from .fx2ge_converter import get_or_auto_gen_converter 
     _mutable_op_converter = get_or_auto_gen_converter(_mutable_op)
+
+    graph = get_default_ge_graph()
+    num_ops = len(graph.op)
+
     out = _mutable_op_converter(**new_kwargs)
+    
+    infer_and_gen_sym_shape_silent(_mutable_op, [], new_kwargs, out, graph.op[num_ops:])  
 
     all_bases_new_update = []
     for view_info in args_view_info.values():
