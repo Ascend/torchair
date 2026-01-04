@@ -327,6 +327,17 @@ def infer_and_gen_sym_shape(target, args, kwargs, ge_outputs, ops):
             for i, _ in enumerate(op.output_desc):
                 syms_ctx[ge.Tensor(op, i).tensor] = output[i]
 
+    def get_output_sym_tensor(op, index, ctx):
+        if ge.Tensor(op, index).tensor in ctx:
+            return ctx[ge.Tensor(op, index).tensor]
+        elif op.output_desc[index].name in [input_desc.name for input_desc in op.input_desc]:
+            # 如果output_desc和input_desc同名，则输入输出是ref(原地修改)关系，直接获取输入的shape、dtype
+            ref_input_index = [input_desc.name for input_desc in op.input_desc].index(op.output_desc[index].name)
+            return ctx[op.input[ref_input_index]]
+        else:
+            logger.debug(f"Can't find output:{op.output_desc[index].name} of op:{op.name} in syms_ctx or ref_input")
+            return SymTensor()                                
+
     logger.debug(f"Start infer ge sym for {target}")
     for k, v in syms_ctx.items():
         logger.debug(f"Tensor {k}: {v}")
@@ -335,7 +346,7 @@ def infer_and_gen_sym_shape(target, args, kwargs, ge_outputs, ops):
         infer_sym_shape(op, syms_ctx)
 
         inputs_str = ', '.join([str(syms_ctx[input_name]) for input_name in op.input])
-        outputs_str = ', '.join([str(syms_ctx[ge.Tensor(op, i).tensor]) for i in range(len(op.output_desc))])
+        outputs_str = ', '.join([str(get_output_sym_tensor(op, i, syms_ctx)) for i in range(len(op.output_desc))])
 
         logger.debug(f"Infer {op.name}({op.type}): {inputs_str} -> {outputs_str}")
 
@@ -358,7 +369,7 @@ def infer_and_gen_sym_shape(target, args, kwargs, ge_outputs, ops):
         if is_builtin_ge_op(op):
             continue
         inputs = [syms_ctx[input_name] for input_name in op.input]
-        output_sym_tensors = [syms_ctx[ge.Tensor(op, i).tensor] for i in range(len(op.output_desc))]
+        output_sym_tensors = [get_output_sym_tensor(op, i, syms_ctx) for i in range(len(op.output_desc))]
 
         if not all([t.is_defined_sym_tensor() for t in output_sym_tensors]):
             continue
