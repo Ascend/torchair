@@ -79418,10 +79418,10 @@ def MoeInitRoutingV3(x: Tensor,
     .INPUT(expert_idx, TensorType({DT_INT32}))\n
     .OPTIONAL_INPUT(scale, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))\n
-    .OUTPUT(expanded_x, TensorType({DT_INT8, DT_FLOAT16, DT_FLOAT, DT_BF16}))\n
+    .OUTPUT(expanded_x, TensorType({DT_INT8, DT_FLOAT16, DT_FLOAT, DT_BF16, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN}))\n
     .OUTPUT(expanded_row_idx, TensorType({DT_INT32}))\n
     .OUTPUT(expert_tokens_count_or_cumsum, TensorType({DT_INT64}))\n
-    .OUTPUT(expanded_scale, TensorType({DT_FLOAT}))\n
+    .OUTPUT(expanded_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))\n
     .ATTR(active_num, Int, -1)\n
     .ATTR(expert_capacity, Int, -1)\n
     .ATTR(expert_num, Int, -1)\n

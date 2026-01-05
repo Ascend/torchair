@@ -198,6 +198,7 @@ def torch_type_to_ge_type(dtype, m=DataType):
         ("uint32", m.DT_UINT32),
         ("uint64", m.DT_UINT64),
         ("qint16", m.DT_QINT16),
+        ("float8_e8m0fnu", m.DT_FLOAT8_E8M0)
     ]:
         if hasattr(torch, type_name) and dtype == getattr(torch, type_name):
             return ge_type
@@ -311,6 +312,8 @@ def ge_type_to_torch_type(dtype: DataType) -> torch.dtype:
     if dtype == DataType.DT_FLOAT4_E1M2:
         return torch.uint8
     if dtype == DataType.DT_FLOAT8_E8M0:
+        if hasattr(torch, "float8_e8m0fnu"):
+            return torch.float8_e8m0fnu
         return torch.uint8
     if dtype == DataType.DT_INT4:
         return torch.quint4x2

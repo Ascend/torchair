@@ -2162,7 +2162,7 @@ REG_OP(MoeInitRouting)
                                1(compute tokens count), which in dropPad scenario. Default: false.
  * @li expert_tokens_num_flag: Optional parameter. Type is:Bool. The value is true (compute tokens) or
                                false(do not compute tokens), which in dropPad scenario. Default: false.
- * @li quant_mode: Optional parameter. Type is:Int. The value is -1(no quant) or 0(static quant) or 1(dynamic quant). Default: 0.
+ * @li quant_mode: Optional parameter. Type is:Int. The value is in [-1(unquant), 0(static), 1(dynamic), 2(fp8_e5m2), 3(fp8_e4m3fn)] of quant mode. Default: -1.
  * @li active_expert_range: Optional parameter. Type is:ListInt. Like [expert_start, expert_end].
                             expert_start must be greater than or equal to 0, expert_end must be less than or equal to 10240,
                             expert_start must be less than expert_end.
@@ -2173,10 +2173,10 @@ REG_OP(MoeInitRoutingV3)
     .INPUT(expert_idx, TensorType({DT_INT32}))
     .OPTIONAL_INPUT(scale, TensorType({DT_FLOAT}))
     .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))
-    .OUTPUT(expanded_x, TensorType({DT_INT8, DT_FLOAT16, DT_FLOAT, DT_BF16}))
+    .OUTPUT(expanded_x, TensorType({DT_INT8, DT_FLOAT16, DT_FLOAT, DT_BF16, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN}))
     .OUTPUT(expanded_row_idx, TensorType({DT_INT32}))
     .OUTPUT(expert_tokens_count_or_cumsum, TensorType({DT_INT64}))
-    .OUTPUT(expanded_scale, TensorType({DT_FLOAT}))
+    .OUTPUT(expanded_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))
     .ATTR(active_num, Int, -1)
     .ATTR(expert_capacity, Int, -1)
     .ATTR(expert_num, Int, -1)
