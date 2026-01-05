@@ -2,7 +2,7 @@
 import os
 import re
 
-from typing import Callable
+from typing import Callable, Optional
 
 from torchair._utils.error_code import pretty_error_msg
 
@@ -214,7 +214,7 @@ class NpuBaseConfig:
         else:
             super().__setattr__(key, value)
 
-    def as_dict(self):
+    def as_dict(self, mode: Optional[str] = "max-autotune"):
         """Return updated local options and global options in dictionary format"""
         local_options = {}
         global_options = {}
@@ -231,7 +231,7 @@ class NpuBaseConfig:
                 elif isinstance(v, OptionValue) and v.value is not None:
                     local_options.update({k: v.value})
                 elif isinstance(v, NpuBaseConfig):
-                    local_option, global_option = v.as_dict()
+                    local_option, global_option = v.as_dict(mode)
                     local_options.update(local_option)
                     global_options.update(global_option)
         return local_options, global_options

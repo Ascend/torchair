@@ -1,5 +1,7 @@
 __all__ = []
 
+from typing import Optional
+
 from torchair.configs._option_base import OptionValue
 from torchair.configs._option_base import NpuBaseConfig
 
@@ -18,7 +20,7 @@ class _GEConfig(NpuBaseConfig):
 
         super(_GEConfig, self).__init__()
 
-    def as_dict(self):
+    def as_dict(self, mode: Optional[str] = "max-autotune"):
         global_option = {}
         local_option = {}
         sorting_strategy_dict = {"BFS": "0", "DFS": "1", "RDFS": "2", "StableRDFS": "3"}

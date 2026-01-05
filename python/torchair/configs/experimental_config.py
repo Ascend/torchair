@@ -1,5 +1,7 @@
 __all__ = []
 
+from typing import Optional
+
 from torchair.configs._option_base import OptionValue, IntRangeValue, StrOptionValue, IntListValue
 from torchair.configs._option_base import NpuBaseConfig
 
@@ -29,7 +31,7 @@ class _ExperimentalConfig(NpuBaseConfig):
 
         super(_ExperimentalConfig, self).__init__()
 
-    def as_dict(self):
+    def as_dict(self, mode: Optional[str] = "max-autotune"):
         global_experiment_option = {}
         local_experiment_option = {}
         sorting_strategy_dict = {"BFS": "0", "DFS": "1", "RDFS": "2", "StableRDFS": "3"}
@@ -45,7 +47,7 @@ class _ExperimentalConfig(NpuBaseConfig):
         if self.static_model_ops_lower_limit.value is not None:
             local_experiment_option["ge.exec.static_model_ops_lower_limit"] = \
                 str(self.static_model_ops_lower_limit.value)
-        local_aclgraph_experimental_options, global_aclgraph_experimental_options = self.aclgraph.as_dict()
+        local_aclgraph_experimental_options, global_aclgraph_experimental_options = self.aclgraph.as_dict(mode)
         local_experiment_option.update(local_aclgraph_experimental_options)
         global_experiment_option.update(global_aclgraph_experimental_options)
         return local_experiment_option, global_experiment_option
@@ -60,9 +62,11 @@ class _AclGraphExperimentalConfig(NpuBaseConfig):
 
         super(_AclGraphExperimentalConfig, self).__init__()
 
-    def as_dict(self):
+    def as_dict(self, mode: Optional[str] = "max-autotune"):
         global_aclgraph_experimental_options = {}
         local_aclgraph_experimental_options = {}
+        if mode == "max-autotune":
+            return local_aclgraph_experimental_options, global_aclgraph_experimental_options
 
         # The parameters "_aclnn_static_shape_kernel"and "_aclnn_static_shape_kernel_build_dir" will be ignored
         # if the "_aclnn_static_shape_kernel" parameter is set to False("0").

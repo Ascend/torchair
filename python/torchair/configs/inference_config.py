@@ -1,5 +1,7 @@
 __all__ = []
 
+from typing import Optional
+
 from torchair.configs._option_base import OptionValue
 from torchair.configs._option_base import NpuBaseConfig
 
@@ -12,6 +14,6 @@ class _InferenceConfig(NpuBaseConfig):
 
         super(_InferenceConfig, self).__init__()
 
-    def as_dict(self):
+    def as_dict(self, mode: Optional[str] = "max-autotune"):
         return {}, {}
 

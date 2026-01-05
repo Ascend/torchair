@@ -2,6 +2,7 @@ __all__ = []
 
 from datetime import datetime, timezone
 import os
+from typing import Optional
 import torch.distributed as dist
 from torchair.configs._option_base import OptionValue, NpuBaseConfig, IntRangeValue
 
@@ -87,7 +88,7 @@ class _AclGraphDebugConfig(NpuBaseConfig):
 
         super(_AclGraphDebugConfig, self).__init__()
 
-    def as_dict(self):
+    def as_dict(self, mode: Optional[str] = "max-autotune"):
         local_option = {}
         local_option["disable_mempool_reuse_in_same_fx"] = self.disable_mempool_reuse_in_same_fx.value
         local_option["enable_output_clone"] = self.enable_output_clone.value
@@ -110,6 +111,6 @@ class _DebugConfig(NpuBaseConfig):
 
         super(_DebugConfig, self).__init__()
 
-    def as_dict(self):
-        local_option = self.aclgraph.as_dict()
+    def as_dict(self, mode: Optional[str] = "max-autotune"):
+        local_option = self.aclgraph.as_dict(mode)
         return local_option, {}

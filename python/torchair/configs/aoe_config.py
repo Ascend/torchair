@@ -1,5 +1,7 @@
 __all__ = []
 
+from typing import Optional
+
 from torchair.configs._option_base import OptionValue, MustExistedPathValue, FileValue
 from torchair.configs._option_base import NpuBaseConfig
 
@@ -14,7 +16,7 @@ class _AoeConfig(NpuBaseConfig):
 
         super(_AoeConfig, self).__init__()
 
-    def as_dict(self):
+    def as_dict(self, mode: Optional[str] = "max-autotune"):
         if self.aoe_mode.value is None:
             return {}, {}
         return super().as_dict()
