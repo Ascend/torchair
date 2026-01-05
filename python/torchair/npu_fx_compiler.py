@@ -660,7 +660,8 @@ class _NpuFxCompiler:
 
                     return self.runner(*args, **kwargs)
 
-            if self.config.experimental_config.aclgraph._aclnn_static_shape_kernel:
+            if self.config.experimental_config.aclgraph._aclnn_static_shape_kernel and \
+                self.config.mode.value == "reduce-overhead":
                 # Only trigger static shape kernel compilation
                 # when some symbol changed that have not been used for updates, not all symbol.
                 all_sym_index = [x[0] for x in concrete_graph._aclgraph_cache_info.unupdated_sym_input_index if x[1]]

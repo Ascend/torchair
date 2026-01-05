@@ -1,6 +1,7 @@
 __all__ = []
 
 import os
+from typing import Optional
 import torch.distributed as dist
 from torchair.configs._option_base import OptionValue, MustExistedPathValue, RegexValue
 from torchair.configs._option_base import NpuBaseConfig, MustExistedFileAddr
@@ -31,7 +32,7 @@ class _DataDumpConfig(NpuBaseConfig):
         os.makedirs(path, exist_ok=True)
         return path
 
-    def as_dict(self):
+    def as_dict(self, mode: Optional[str] = "max-autotune"):
         dump_option = {}
         if self.dump_config_path.value is not None:
             dump_option['ge_dump_with_acl_config'] = self.dump_config_path.value

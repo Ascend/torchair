@@ -1,5 +1,7 @@
 __all__ = []
 
+from typing import Optional
+
 from torchair.configs._option_base import OptionValue, MustExistedPathValue
 from torchair.configs._option_base import NpuBaseConfig
 
@@ -25,7 +27,7 @@ class _ExportConfig(NpuBaseConfig):
         self.inputs_name = None
         self.experimental = _ExperimentalConfig()
 
-    def as_dict(self):
+    def as_dict(self, mode: Optional[str] = "max-autotune"):
         if self.export_mode:
             export_option = {'export_path_dir': self.export_path_dir, 'export_name': self.export_name}
             return export_option, {}

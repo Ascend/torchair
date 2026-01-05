@@ -3,7 +3,7 @@
 __all__ = ["CompilerConfig"]
 
 import warnings
-from typing import Any
+from typing import Any, Optional
 from torchair.configs._option_base import OptionValue
 from torchair.configs._option_base import CallableValue
 from torchair.configs._option_base import DeprecatedValue
@@ -52,7 +52,7 @@ class CompilerConfig(NpuBaseConfig):
         return self_dict == other_dict
 
     def as_dict(self):
-        local_options, global_options = super().as_dict()
+        local_options, global_options = super().as_dict(self.mode.value)
         if "post_grad_custom_pre_pass" in local_options.keys():
             local_options.pop("post_grad_custom_pre_pass")
         if "post_grad_custom_post_pass" in local_options.keys():
