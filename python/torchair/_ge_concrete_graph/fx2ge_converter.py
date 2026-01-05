@@ -699,6 +699,24 @@ def _has_no_scalar(target):
     return True
 
 
+def _alias_is_write(target):
+    alias_list = []
+    for i, arg in enumerate(target._schema.arguments):
+        if arg.alias_info is not None:
+            if arg.alias_info.is_write:
+                alias_list.append(i)
+    return alias_list
+
+
+def _ge_inplace(inputs, outputs):
+    inplace_inputs_index = []
+    ge_inputs_dict, ge_outputs_dict = dict(inputs), dict(outputs)
+    for index, key in enumerate(ge_inputs_dict.keys()):
+        if key in ge_outputs_dict.keys():
+            inplace_inputs_index.append(index)
+    return inplace_inputs_index
+
+
 def _generate_converter_code(target):
     target_name = str(target).split(".")[1]
     if target_name.split("_")[-1] == "functional":
@@ -706,19 +724,50 @@ def _generate_converter_code(target):
     target_args_name = [arg.name for arg in target._schema.arguments]
     ge_name = "".join(word.capitalize() for word in target_name.split("_"))
     (_, ge_inputs, ge_outputs, _) = _torchair.get_registered_ir_def(ge_name)
+
     need_clone = False
-    clone_code = []
-    ge_inputs_dict, ge_outputs_dict = dict(ge_inputs), dict(ge_outputs)
-    for index, key in enumerate(ge_inputs_dict.keys()):
-        if key in ge_outputs_dict.keys():
-            need_clone = True
+    need_reduce_output = False
+    alias_list = _alias_is_write(target)
+    inplace_inputs_index = _ge_inplace(ge_inputs, ge_outputs)
+    real_output = [i for i in range(len(ge_outputs))]
+    if len(alias_list) != 0 and len(alias_list) != len(inplace_inputs_index):
+        raise RuntimeError(
+            f"Failed to converter {target} to AscendIR: the number of inplace inputs for torch does not "
+            f"match the AscendIR {ge_name}, please check your torch and AscendIR registration.")
+    if len(alias_list) == 0 and len(inplace_inputs_index) != 0:
+        need_clone = True
+        clone_code = []
+        for index in inplace_inputs_index:
             clone_code.append(str(target_args_name[index]) + '= Clone(' + str(target_args_name[index]) + ')')
+    if len(alias_list) != 0 and len(alias_list) == len(inplace_inputs_index):
+        need_reduce_output = True
+        for index, _ in enumerate(alias_list):
+            real_output.remove(inplace_inputs_index[index])
+        reduce_code = "return (" + ", ".join([f"out[{n}]" for n in real_output]) + ")"
 
     imports = textwrap.dedent('''
     # Auto-generated from {target}, not edit
     from torchair._ge_concrete_graph.ge_converter.converter_utils import *
     ''').format(target=str(target))
-    if need_clone:
+    if need_reduce_output:
+        function = textwrap.dedent('''
+        @register_fx_node_ge_converter({op_name})
+        def {func_name}(
+            {params}
+        ):
+            out = custom_op(
+                {ascendir},{ascend_params}
+                )
+            {output}
+        ''').format(
+            op_name='torch.ops.' + str(target),
+            func_name='converter' + '_' + target_name,
+            params=',\n   '.join(target_args_name),
+            ascendir='"' + ''.join(word.capitalize() for word in target_name.split('_')) + '"',
+            ascend_params=", ".join(target_args_name),
+            output=reduce_code
+        )
+    elif need_clone:
         function = textwrap.dedent('''
         @register_fx_node_ge_converter({op_name})
         def {func_name}(
