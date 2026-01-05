@@ -2775,7 +2775,66 @@ class TorchairSt(unittest.TestCase):
         input1 = torch.ones((4, 4), dtype=torch.int32)
         input2 = torch.ones((4, 4), dtype=torch.float)
 
-        out = compile_func(input1, input2)        
+        out = compile_func(input1, input2)  
+
+    @unittest.skipIf(torch.__version__ < "2.2", "torch._auto_functionalize is unsupported when torch < 2.2")
+    def test_infer_symbol_with_auto_functionalize(self):
+        m = Library("npu", "FRAGMENT")
+        m.define("my_op_inplace_z(Tensor(a!) x, Tensor y) -> Tensor z")
+
+        @impl(m, "my_op_inplace_z", "Meta")
+        def my_op_meta(x, y):
+            size_y_0 = list(y.shape)[0] * 2
+            size_y_1 = list(y.shape)[1] // 2
+            out = torch.empty((size_y_0, size_y_1), dtype=y.dtype, device=y.device)
+            return out
+
+        def cus_func(x, y):
+            return torch.ops.npu.my_op_inplace_z(x, y)
+
+        def warp_concrete_graph():
+            def wrapper_call(func):
+                def wrapper(*args, **kwargs):
+                    assert len(args) > 0
+                    geGraph: GeGraph = args[0]._graph
+                    import json
+                    import ast
+                    self.assertTrue("MyOpInplaceZ" in [op.name for op in geGraph.op])
+                    for op in geGraph.op:
+                        if op.name == "MyOpInplaceZ":                                               
+                            inference_rule = json.loads(op.attr["_inference_rule"].s)
+                            self.assertEqual(inference_rule["shape"]["inputs"][0][0], "s2")
+                            self.assertEqual(inference_rule["shape"]["inputs"][0][1], "s3")
+                            self.assertEqual(inference_rule["shape"]["inputs"][1][0], "s0")
+                            self.assertEqual(inference_rule["shape"]["inputs"][1][1], "s1")
+                            
+                            is_high_python_version = hasattr(ast, 'unparse')
+                            self.assertEqual(inference_rule["shape"]["outputs"][0][0], "s2")
+                            self.assertEqual(inference_rule["shape"]["outputs"][0][1], "s3")
+                            s2_out = "2 * s0" if is_high_python_version else "(2*s0)"
+                            self.assertEqual(inference_rule["shape"]["outputs"][1][0], s2_out)
+                            self.assertEqual(inference_rule["shape"]["outputs"][1][1], "Floor(Div(s1, 2))")
+
+                            self.assertEqual(inference_rule["dtype"][0], 3)
+                            self.assertEqual(inference_rule["dtype"][1], 0)
+                       
+
+                    ret = func(*args, **kwargs)
+                    return ret
+               
+                return wrapper    
+
+
+            GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
+
+        warp_concrete_graph()
+        compile_func = torch.compile(cus_func, backend=npu_backend, fullgraph=True, dynamic=True)  
+        input1 = torch.ones((4, 4), dtype=torch.int32)
+        input2 = torch.ones((4, 4), dtype=torch.float)
+
+        with self.assertRaises(RuntimeError) as context:
+            out = compile_func(input1, input2)
+        self.assertTrue("Assert outputs.empty()" in str(context.exception))                 
 
     def test_post_grad_no_custom_fn(self):
         class Model(torch.nn.Module):
