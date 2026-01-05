@@ -11,6 +11,7 @@ import torchair
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core.utils import logger
 from torchair._acl_concrete_graph.graph_pass import _mutated_input_reinplace
+from torchair._utils.graph_utils import add_stream_label_to_node_meta
 from torchair_st_stub_aclgraph_utils import (
     StubNpu,
     patch_ops_npu_module,
@@ -139,6 +140,7 @@ class AclGraphSt(unittest.TestCase):
 
         x = torch.randn(3)
         gm = make_fx(f, tracing_mode="fake")(x)
+        add_stream_label_to_node_meta(gm)
         _mutated_input_reinplace(gm)
 
         # We shouldn't have been able to reinplace `out` because it was used after
@@ -168,6 +170,7 @@ class AclGraphSt(unittest.TestCase):
 
         x = torch.randn(3)
         gm = make_fx(f, tracing_mode="fake")(x)
+        add_stream_label_to_node_meta(gm)
         _mutated_input_reinplace(gm)
 
         # We shouldn't have been able to reinplace `out` because it was used after
@@ -207,6 +210,7 @@ class AclGraphSt(unittest.TestCase):
 
         x1 = torch.randn(3)
         gm = make_fx(f, tracing_mode="fake")(x1)
+        add_stream_label_to_node_meta(gm)
         _mutated_input_reinplace(gm)
         self.assertEqual(self.get_not_inplaced_count(gm.graph), 0)
 
@@ -257,6 +261,7 @@ class AclGraphSt(unittest.TestCase):
 
         x1 = torch.randn(3)
         gm = make_fx(f, tracing_mode="fake")(x1)
+        add_stream_label_to_node_meta(gm)
         _mutated_input_reinplace(gm)
         self.assertEqual(self.get_not_inplaced_count(gm.graph), 0)
 
@@ -310,6 +315,7 @@ class AclGraphSt(unittest.TestCase):
 
         x1 = torch.randn(3)
         gm = make_fx(f, tracing_mode="fake")(x1)
+        add_stream_label_to_node_meta(gm)
         _mutated_input_reinplace(gm)
         self.assertEqual(self.get_not_inplaced_count(gm.graph), 1)
 
@@ -366,6 +372,7 @@ class AclGraphSt(unittest.TestCase):
 
         x1 = torch.randn(3)
         gm = make_fx(f, tracing_mode="fake")(x1)
+        add_stream_label_to_node_meta(gm)
         _mutated_input_reinplace(gm)
         self.assertEqual(self.get_not_inplaced_count(gm.graph), 1)
 
@@ -418,6 +425,7 @@ class AclGraphSt(unittest.TestCase):
          
         x1 = torch.randn(3)
         gm = make_fx(f, tracing_mode="fake")(x1)
+        add_stream_label_to_node_meta(gm)
         _mutated_input_reinplace(gm)
         self.assertEqual(self.get_not_inplaced_count(gm.graph), 1)
 
