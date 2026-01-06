@@ -1,5 +1,4 @@
 from collections import defaultdict
-import copy
 from dataclasses import dataclass
 import itertools
 from typing import Any, Optional, List, Callable, Dict, Set
@@ -504,7 +503,7 @@ def _reinplace_inplaceable_ops_pass(gm: GraphModule, multi_stream_enabled: bool,
     Given a fx.GraphModule, modifies it to perform "reinplacing". Just call torch.fx.passes.reinplace.
     Note: this pass can not deal with mutated inputs.
     """
-    original_gm = copy.deepcopy(gm)
+    original_gm = gm
 
     # Set stream labels for all nodes before pattern pass
     from torchair._utils.graph_utils import add_stream_label_to_node_meta
