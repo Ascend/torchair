@@ -78307,7 +78307,7 @@ def dequant_rope_quant_kvcache_process_inputs(op: any,
                                             TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN,
                                             TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN,
                                             TensorType.TT_UNKNOWN])
-def dequant_rope_quant_kvcache(x: Tensor,
+def DequantRopeQuantKvcache(x: Tensor,
                                cos: Tensor,
                                sin: Tensor,
                                k_cache: Tensor,

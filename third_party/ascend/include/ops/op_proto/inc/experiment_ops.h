@@ -3689,7 +3689,7 @@ REG_OP(KvRmsNormRopeCache)
     .OUTPUT(k_rope, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
     .OUTPUT(c_kv, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
     .ATTR(epsilon, Float, 1e-5)
-    .ATTR(cache_mode, String, 'Norm')
+    .ATTR(cache_mode, String, "Norm")
     .ATTR(is_output_kv, Bool, false)
     .OP_END_FACTORY_REG(KvRmsNormRopeCache)
 
