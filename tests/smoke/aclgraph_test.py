@@ -1154,6 +1154,59 @@ class AclgraphTest(unittest.TestCase):
             f"not found in logs: {cm.output}"
         )
 
+    def test_aclgraph_static_kernel(self):
+        class Model1(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear1 = torch.nn.Linear(2, 2)
+                self.linear2 = torch.nn.Linear(2, 2)
+
+            def forward(self, x):
+                ln1 = self.linear1(x)
+                ln2 = self.linear2(x)
+                return ln1 + ln2
+
+        class Model2(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear1 = torch.nn.Linear(2, 2)
+                self.linear2 = torch.nn.Linear(2, 2)
+
+            def forward(self, x):
+                ln1 = self.linear1(x)
+                ln2 = self.linear2(x)
+                return ln1 + ln2
+
+        x = torch.randn(2,2).npu()
+        config = torchair.CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.experimental_config.aclgraph._aclnn_static_shape_kernel = True
+
+        npu_mode1 = Model1().npu()
+        npu_backend1 = torchair.get_npu_backend(compiler_config=config)
+        npu_mode1 = torch.compile(npu_mode1, fullgraph=True, backend=npu_backend1, dynamic=False)
+        with self.assertLogs(logger, level="DEBUG") as cm1:
+            _ = npu_mode1(x)
+        self.assertTrue(
+            any("reselect_static_kernel executed successfully" in log for log in cm1.output),
+            f"Expected DEBUG 'reselect_static_kernel executed successfully' "
+            f"not found in logs: {cm1.output}"
+        )
+
+        npu_mode2 = Model2().npu()
+        npu_backend2 = torchair.get_npu_backend(compiler_config=config)
+        npu_mode2 = torch.compile(npu_mode2, fullgraph=True, backend=npu_backend2, dynamic=False)
+        with self.assertLogs(logger, level="DEBUG") as cm2:
+            _ = npu_mode2(x)
+        self.assertTrue(
+            any(
+                "Static compilation skipped" in log
+                or "Using debug directory" in log
+                for log in cm2.output
+            ),
+            f"Expected DEBUG 'Static compilation skipped' or 'Using debug directory' "
+            f"not found in logs: {cm2.output}"
+        )
 
     def test_aclgraph_userinput_construct_in_share_memory_with_cache_compile(self):
         class RecaptureModel(torch.nn.Module):

@@ -3,6 +3,8 @@ import warnings
 import subprocess
 from pathlib import Path
 import datetime
+import hashlib 
+import shutil 
 
 import torch
 import torch.distributed as dist
@@ -12,6 +14,7 @@ from torchair.core.utils import logger
 
 _uninstall_paths = []
 _local_gloo_groups = None
+_compiled_op_set = set()
 
 
 def compile_static_kernel(fx_func, *args, build_dir=None, **kwargs):
@@ -42,8 +45,12 @@ def compile_static_kernel(fx_func, *args, build_dir=None, **kwargs):
 
     opcompile_dirs = [d for d in result_root.iterdir() if d.is_dir() and d.name.endswith("_opcompile")]
     if opcompile_dirs:
-        chosen_dir = opcompile_dirs[0]
-        logger.debug(f"Using opcompile directory: {chosen_dir}")
+        compile_dir = get_compile_dir(opcompile_dirs[0])
+        if not any(compile_dir.iterdir()):
+            logger.debug(f"Static compilation skipped: no operators in {compile_dir}")
+            return
+        chosen_dir = compile_dir
+        logger.debug(f"Using compile directory: {chosen_dir}")
     else:
         debug_dirs = [d for d in result_root.iterdir() if d.is_dir() and d.name.endswith("_debug")]
         if not debug_dirs:
@@ -270,8 +277,8 @@ def safe_resolve_output_dir(build_dir: str):
     except (PermissionError, OSError) as e:
         raise RuntimeError(f"failed to create base output directory {base_output_dir}: {e}") from e
 
-    timestamp = f"{datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')}_{os.getpid()}"
-    result_root = base_output_dir / f"{timestamp}_outputs"
+    timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S%f')
+    result_root = base_output_dir / f"ts{timestamp}_pid{os.getpid()}_outputs"
 
     try:
         result_root.mkdir(exist_ok=True)
@@ -296,3 +303,54 @@ def _compute_opc_compile_jobs():
     except Exception as e:
         logger.warning("compute jobs failed, using default: %s", e)
         return str(default)
+
+
+def get_compile_dir(opcompile_dir: Path) -> Path:
+    """
+    Get the directory used for static compilation.
+
+    Args:
+        opcompile_dir (Path): Directory of compilable operator JSON files.
+
+    Returns:
+        Path to the selected operator JSON files directory.
+    """
+
+    result_root = opcompile_dir.parent
+    opcompile_selected_dir = result_root / f"{os.getpid()}_opcompile_selected"
+    try:
+        opcompile_selected_dir.mkdir(exist_ok=True)
+    except Exception as e:
+        logger.warning(f"Failed to create directory {opcompile_selected_dir}: {e}")
+        logger.warning(f"Fallback to opcompile directory {opcompile_dir}")
+        return opcompile_dir
+    
+    op_files = [f for f in opcompile_dir.iterdir() if f.is_file() and f.suffix == ".json"]
+    for op_json in op_files:
+        op_hash = get_op_hash(op_json)
+        if op_hash not in _compiled_op_set:
+            try:
+                shutil.copy2(op_json, opcompile_selected_dir / op_json.name)
+            except Exception as e:
+                logger.warning(f"Failed to copy {op_json} to {opcompile_selected_dir}: {e}")
+                logger.warning(f"Fallback to opcompile directory {opcompile_dir}")
+                return opcompile_dir
+            _compiled_op_set.add(op_hash)
+        else:
+            logger.debug(f"Operator described in {op_json.name} was already compiled, skipping static compilation.")
+    return opcompile_selected_dir
+
+
+def get_op_hash(op_json: Path, algo: str = "sha256") -> str:
+    """
+    Compute a content hash for an operator JSON file.
+
+    Args:
+        op_json (Path): Path to the operator JSON file.
+        algo (str): Hash algorithm name supported by hashlib (default: sha256).
+
+    Returns:
+        Hexadecimal digest string.
+    """
+    data = op_json.read_bytes()
+    return hashlib.new(algo, data).hexdigest()
