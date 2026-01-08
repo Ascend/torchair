@@ -50,11 +50,11 @@ def _not_view_copy(self, bases_list, *, dependencies = [], out_op = None):
     for i, input_tensor in enumerate(out_op.input):
         if (input_tensor == bases_list[self.base_index].tensor):
             input_name = out_op.input_desc[i].name
-        if input_name is None:
-            raise RuntimeError(f'Can not find input: {bases_list[self.base_index].tensor} in in-place op of auto_functionalize_v2')    
-        for out_index, output_name in enumerate(out_op.output_desc):
-            if (output_name.name == input_name):
-                return Tensor(out_op, out_index)
+            if input_name is None:
+                raise RuntimeError(f'Can not find input: {bases_list[self.base_index].tensor} in in-place op of auto_functionalize_v2')    
+            for out_index, output_name in enumerate(out_op.output_desc):
+                if (output_name.name == input_name):
+                    return Tensor(out_op, out_index)
     raise RuntimeError(f'Can not find output: {bases_list[self.base_index].tensor} in in-place op of auto_functionalize_v2')   
 
 
@@ -77,15 +77,25 @@ def _regenerate_slice_view(self, bases_list, symbol_input_map):
                               self.size,
                               self.stride,
                               self.storage_offset)
+    as_strided.set_meta(meta_out)
     self._as_strided = as_strided
     return as_strided
 
 
 def _regenerate_as_strided_view(self, bases_list, symbol_input_map=None):
+    fake_mode = detect_fake_mode(None)
+    with fake_mode:
+        meta_out = torch.as_strided(
+            _get_meta_attr(bases_list[self.base_index]),
+            _get_meta_attr(self.size),
+            _get_meta_attr(self.stride),
+            _get_meta_attr(self.storage_offset),
+        )
     as_strided = ge.AsStrided(bases_list[self.base_index],
                               self.size,
                               self.stride,
                               self.storage_offset)
+    as_strided.set_meta(meta_out)
     self._as_strided = as_strided
     return as_strided
 

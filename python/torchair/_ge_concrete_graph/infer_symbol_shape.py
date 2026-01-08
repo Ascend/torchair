@@ -3,6 +3,7 @@ import itertools
 import json
 from collections import defaultdict
 from typing import Any, List, Optional, Set
+import warnings
 
 import torch
 from torch._subclasses.fake_tensor import FakeTensorMode
@@ -244,9 +245,9 @@ class SymTensor:
 def infer_and_gen_sym_shape_silent(target, args, kwargs, ge_outputs, ops):
     try:
         infer_and_gen_sym_shape(target, args, kwargs, ge_outputs, ops)
-    except RuntimeError as ignore_err:
-        logger.warning(f'infer and generate sym shape failed, can not automatically generate InferShape and InferDtype for op: {target}, '
-                       f'exception is : {ignore_err}')    
+    except Exception as ignore_err:
+        warnings.warn(f'infer and generate sym shape failed, can not automatically generate InferShape and InferDtype for op: {target}, '
+                       f'exception is : {ignore_err}')   
 
 
 def infer_and_gen_sym_shape(target, args, kwargs, ge_outputs, ops):
