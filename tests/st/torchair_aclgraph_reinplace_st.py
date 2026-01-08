@@ -140,7 +140,7 @@ class AclGraphSt(unittest.TestCase):
 
         x = torch.randn(3)
         gm = make_fx(f, tracing_mode="fake")(x)
-        _mutated_input_reinplace(gm)
+        _mutated_input_reinplace(gm, False)
 
         # We shouldn't have been able to reinplace `out` because it was used after
         # auto_functionalized. Note that this usually doesn't happen in practice;
@@ -169,7 +169,7 @@ class AclGraphSt(unittest.TestCase):
 
         x = torch.randn(3)
         gm = make_fx(f, tracing_mode="fake")(x)
-        _mutated_input_reinplace(gm)
+        _mutated_input_reinplace(gm, False)
 
         # We shouldn't have been able to reinplace `out` because it was used after
         # auto_functionalized. Note that this usually doesn't happen in practice;
@@ -208,7 +208,7 @@ class AclGraphSt(unittest.TestCase):
 
         x1 = torch.randn(3)
         gm = make_fx(f, tracing_mode="fake")(x1)
-        _mutated_input_reinplace(gm)
+        _mutated_input_reinplace(gm, False)
         self.assertEqual(self.get_not_inplaced_count(gm.graph), 0)
 
         actual = gm.print_readable(print_output=False)
@@ -258,7 +258,7 @@ class AclGraphSt(unittest.TestCase):
 
         x1 = torch.randn(3)
         gm = make_fx(f, tracing_mode="fake")(x1)
-        _mutated_input_reinplace(gm)
+        _mutated_input_reinplace(gm, False)
         self.assertEqual(self.get_not_inplaced_count(gm.graph), 0)
 
         actual = gm.print_readable(print_output=False)
@@ -311,7 +311,7 @@ class AclGraphSt(unittest.TestCase):
 
         x1 = torch.randn(3)
         gm = make_fx(f, tracing_mode="fake")(x1)
-        _mutated_input_reinplace(gm)
+        _mutated_input_reinplace(gm, False)
         self.assertEqual(self.get_not_inplaced_count(gm.graph), 1)
 
         actual = gm.print_readable(print_output=False)
@@ -367,7 +367,7 @@ class AclGraphSt(unittest.TestCase):
 
         x1 = torch.randn(3)
         gm = make_fx(f, tracing_mode="fake")(x1)
-        _mutated_input_reinplace(gm)
+        _mutated_input_reinplace(gm, False)
         self.assertEqual(self.get_not_inplaced_count(gm.graph), 1)
 
         actual = gm.print_readable(print_output=False)
@@ -419,7 +419,7 @@ class AclGraphSt(unittest.TestCase):
          
         x1 = torch.randn(3)
         gm = make_fx(f, tracing_mode="fake")(x1)
-        _mutated_input_reinplace(gm)
+        _mutated_input_reinplace(gm, False)
         self.assertEqual(self.get_not_inplaced_count(gm.graph), 1)
 
         actual = gm.print_readable(print_output=False)

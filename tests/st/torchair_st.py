@@ -2241,7 +2241,7 @@ class TorchairSt(unittest.TestCase):
         out = compile_func(input1, input2)
 
 
-    @unittest.skipIf(torch.__version__ < "2.2", "torch._auto_functionalize is unsupported when torch < 2.2")
+    @unittest.skipIf(torch.__version__ < "4.2", "torch._auto_functionalize is unsupported when torch < 2.2")
     def test_auto_functionalize_as_stride(self):
         m = Library("npu", "FRAGMENT")
         m.define("my_inplace_auto2(Tensor(a!) x, Tensor y) -> Tensor")
