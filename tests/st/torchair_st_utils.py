@@ -1,4 +1,5 @@
 import sys
+import copy
 import io
 import logging
 import types
@@ -100,3 +101,36 @@ def register_is_npu():
         return not self.is_cpu
 
     torch.Tensor.is_npu = _is_npu
+
+
+def create_reinplace_pass_wrapper(assert_func):
+    """
+    Create a wrapper for _reinplace_inplaceable_ops_pass to capture FX graphs before and after.
+    
+    Args:
+        assert_func: Function that takes (graph_before, graph_after) and performs assertions.
+                     graph_before and graph_after are torch.fx.GraphModule instances.
+    
+    Returns:
+        A wrapper function that can be used to replace _reinplace_inplaceable_ops_pass.
+    """
+    # Import and save reference to original function at wrapper creation time
+    from torchair._acl_concrete_graph.graph_pass import _reinplace_inplaceable_ops_pass
+    original_func = _reinplace_inplaceable_ops_pass
+    
+    def wrapper(gm, multi_stream_enabled, *sample_args):
+        # Save graph before reinplace
+        graph_before = copy.deepcopy(gm)
+        
+        # Call original function
+        ret = original_func(gm, multi_stream_enabled, *sample_args)
+        
+        # Save graph after reinplace
+        graph_after = copy.deepcopy(gm)
+        
+        # Call assertion function
+        assert_func(graph_before, graph_after)
+        
+        return ret
+    
+    return wrapper

@@ -246,6 +246,35 @@ def _is_copy_node(node: Node) -> bool:
     )
 
 
+def _get_getitem_users_for_output(node: Node, output_idx: int, min_node_idx: Optional[int] = None) -> List[Node]:
+    """
+    Get all users of getitem nodes that extract a specific output index from a node.
+    
+    For multi-reinplace intermediate nodes, functionalized ops use getitem to access outputs.
+    This function finds all getitem(node, output_idx) nodes and returns their users.
+    
+    Args:
+        node: The functionalized node whose outputs are accessed via getitem
+        output_idx: The output index to find getitem nodes for
+        min_node_idx: Optional minimum node index to filter users (only include users with node_idx > min_node_idx)
+    
+    Returns:
+        List of user nodes of the getitem nodes
+    """
+    users = []
+    for user in node.users:
+        if user.target == operator.getitem and len(user.args) > 1:
+            getitem_output_idx = user.args[1]
+            if getitem_output_idx == output_idx:
+                # This getitem extracts the output corresponding to output_idx
+                for getitem_user in user.users:
+                    if getitem_user.target == torch.ops.aten.copy_.default:
+                        continue
+                    if min_node_idx is None or getitem_user.meta.get("node_idx", -1) > min_node_idx:
+                        users.append(getitem_user)
+    return users
+
+
 def get_inplace_op_mutated_input_users(
     original_node: Union[Node, List[Node]],
     mutated_input_indices: Union[Node, List[int]],
@@ -275,13 +304,37 @@ def get_inplace_op_mutated_input_users(
     # Handle multiple nodes case (for regular reinplace checks)
     all_inputs_users = []
     
+    # For multi-reinplace intermediate nodes, we need to find users of getitem nodes
+    # because functionalized ops output getitem(functional_op, output_index) instead of using inputs directly
+    # For intermediate nodes (not graph inputs), the actual usage is through getitem(functional_op, output_index)
+    # We need to calculate output indices and find corresponding getitem nodes
+    try:
+        from torch.utils import _pytree as pytree
+        node_flattened = pytree.tree_leaves(original_node.meta.get("fake_result", []))
+        total_outputs = len(node_flattened)
+        n_inplace = len(mutated_input_indices)
+        output_indices = list(range(total_outputs - n_inplace, total_outputs))
+        input_output_map = dict(zip(mutated_input_indices, output_indices))
+    except Exception:
+        # Fallback: use original logic if we can't calculate output indices
+        input_output_map = {}
+    
     for idx in mutated_input_indices:
         if idx >= len(original_node.args):
             logger.warning("Input index %d out of range for node %s", idx, original_node.name)
             continue
-            
+        
         input_node = original_node.args[idx]
         users = _collect_single_node_users(input_node)
+
+        # For intermediate nodes, find getitem nodes that extract the corresponding output
+        # This is the key fix: functionalized multi-reinplace ops use getitem to access outputs
+        if idx in input_output_map:
+            output_idx = input_output_map[idx]
+            # Find getitem(original_node, output_idx) nodes and collect their users
+            getitem_users = _get_getitem_users_for_output(original_node, output_idx)
+            users.extend(getitem_users)
+        
         all_inputs_users.append(users)
     
     return all_inputs_users

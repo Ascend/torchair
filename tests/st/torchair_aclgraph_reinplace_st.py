@@ -1,6 +1,7 @@
 import sys
 import logging
 import unittest
+from packaging import version
 
 import torch
 import torch._inductor.config as inductor_config
@@ -17,8 +18,9 @@ from torchair_st_stub_aclgraph_utils import (
     patch_ops_npu_module,
     patch_torch_point_npu_module,
     patch_torch_npu_module,
+    register_custom_ops
 )
-from torchair_st_utils import generate_faked_module
+from torchair_st_utils import create_reinplace_pass_wrapper, generate_faked_module
 
 logger.setLevel(logging.DEBUG)
 
@@ -109,6 +111,7 @@ class AclGraphSt(unittest.TestCase):
         self.original_torch_point_npu_module = None
         self.original_torch_npu_module = None
         self.stub_module = StubNpu()
+        self.reinplace_pass_bak = None
 
     def setUp(self) -> None:
         self.original_npu_module = patch_ops_npu_module(self.stub_module)
@@ -116,6 +119,10 @@ class AclGraphSt(unittest.TestCase):
         self.original_torch_npu_module = patch_torch_npu_module(self.stub_module)
         from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
         self.call_bak = AclConcreteGraph.__call__
+        
+        # Save original _reinplace_inplaceable_ops_pass
+        from torchair._acl_concrete_graph import graph_pass
+        self.reinplace_pass_bak = graph_pass._reinplace_inplaceable_ops_pass
 
         return super().setUp()
 
@@ -125,6 +132,11 @@ class AclGraphSt(unittest.TestCase):
         sys.modules['torch_npu'] = self.original_torch_npu_module
         from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
         AclConcreteGraph.__call__ = self.call_bak
+        
+        # Restore original _reinplace_inplaceable_ops_pass
+        if self.reinplace_pass_bak is not None:
+            from torchair._acl_concrete_graph import graph_pass
+            graph_pass._reinplace_inplaceable_ops_pass = self.reinplace_pass_bak
 
         return super().tearDown()
     
@@ -580,6 +592,175 @@ class AclGraphSt(unittest.TestCase):
             
             self.assertEqual(num_reinplacing_failures(), 0)
             self.assertEqual(miss_inplaced_bytes(), 0)
+
+    @unittest.skipIf(torch.__version__ < "2.2", "torch._functionalize_replace is unsupported when torch < 2.2")
+    def test_multi_reinplace_intermediate_no_later_usage(self):
+        register_custom_ops()
+
+        def f(x):
+            a = torch.empty_like(x)
+            b = torch.empty_like(x)
+            ret = torch.ops.custom.sin_cos_inplace(x, a, b)
+            return ret  # a and b have no later usage
+
+        def assert_reinplace_success(graph_before, graph_after):
+            """Verify that sin_cos_functional was replaced with sin_cos_inplace"""
+            functional_op_found_before = False
+            functional_op_found_after = False
+            inplace_op_found_after = False
+            
+            # Check graph before reinplace
+            for node in graph_before.graph.nodes:
+                if node.op == "call_function":
+                    if hasattr(torch.ops.custom, "sin_cos_functional"):
+                        if node.target == torch.ops.custom.sin_cos_functional.default:
+                            functional_op_found_before = True
+                            break
+            
+            # Check graph after reinplace
+            for node in graph_after.graph.nodes:
+                if node.op == "call_function":
+                    if hasattr(torch.ops.custom, "sin_cos_functional"):
+                        if node.target == torch.ops.custom.sin_cos_functional.default:
+                            functional_op_found_after = True
+                    if node.target == torch.ops.custom.sin_cos_inplace.default:
+                        inplace_op_found_after = True
+            
+            # Verify reinplace happened
+            if functional_op_found_before:
+                self.assertFalse(
+                    functional_op_found_after,
+                    "sin_cos_functional should be replaced with inplace version"
+                )
+                self.assertTrue(
+                    inplace_op_found_after,
+                    "sin_cos_inplace should exist in the graph after reinplace"
+                )
+
+        # Setup wrapper
+        from torchair._acl_concrete_graph import graph_pass
+        graph_pass._reinplace_inplaceable_ops_pass = create_reinplace_pass_wrapper(assert_reinplace_success)
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.run_eagerly = True
+        if version.parse(torch.__version__) < version.parse("2.5.1"):
+            config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(f, backend=aclgraph_backend, dynamic=True)
+        x = torch.randn([3])
+        model(x)
+
+    @unittest.skipIf(torch.__version__ < "2.2", "torch._functionalize_replace is unsupported when torch < 2.2")
+    def test_multi_reinplace_intermediate_has_later_usage(self):
+        register_custom_ops()
+
+        def f(x):
+            a = torch.empty_like(x)
+            b = torch.empty_like(x)
+            ret = torch.ops.custom.sin_cos_inplace(x, a, b)
+            b_use = b + 1.0
+            return ret, b_use  # a have no later usage, b has later usage
+
+        def assert_partial_reinplace(graph_before, graph_after):
+            """Verify that only arg_index[1] (a) was reinplaced, arg_index[2] (b) was not"""
+            functional_op_found_before = False
+            functional_op_found_after = False
+            inplace_op_found_after = False
+            
+            # Check graph before reinplace
+            for node in graph_before.graph.nodes:
+                if node.op == "call_function":
+                    if hasattr(torch.ops.custom, "sin_cos_functional"):
+                        if node.target == torch.ops.custom.sin_cos_functional.default:
+                            functional_op_found_before = True
+                            break
+            
+            # Check graph after reinplace
+            for node in graph_after.graph.nodes:
+                if node.op == "call_function":
+                    if hasattr(torch.ops.custom, "sin_cos_functional"):
+                        if node.target == torch.ops.custom.sin_cos_functional.default:
+                            functional_op_found_after = True
+                    if node.target == torch.ops.custom.sin_cos_inplace.default:
+                        inplace_op_found_after = True
+            
+            # Since b has later usage, functional op should still exist
+            if functional_op_found_before:
+                self.assertTrue(
+                    functional_op_found_after,
+                    "sin_cos_functional should still exist because b has later usage"
+                )
+
+        # Setup wrapper
+        from torchair._acl_concrete_graph import graph_pass
+        graph_pass._reinplace_inplaceable_ops_pass = create_reinplace_pass_wrapper(assert_partial_reinplace)
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.run_eagerly = True
+        if version.parse(torch.__version__) < version.parse("2.5.1"):
+            config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(f, backend=aclgraph_backend, dynamic=True)
+        x = torch.randn([3])
+        model(x)
+
+    @unittest.skipIf(torch.__version__ < "2.2", "torch._functionalize_replace is unsupported when torch < 2.2")
+    def test_multi_reinplace_intermediate_cross_stream_fail(self):
+        register_custom_ops()
+        def f(x):
+            a = torch.empty_like(x)
+            b = torch.empty_like(x)
+            ret = torch.ops.custom.sin_cos_inplace(x, a, b)
+            with torchair.scope.npu_stream_switch('1', 3):
+                a_use = a + 1.0  # a used in stream1
+            return ret, a_use
+
+        def assert_reinplace_failed(graph_before, graph_after):
+            """Verify that reinplace failed due to cross-stream usage"""
+            functional_op_found_before = False
+            functional_op_found_after = False
+            
+            # Check graph before reinplace
+            for node in graph_before.graph.nodes:
+                if node.op == "call_function":
+                    if hasattr(torch.ops.custom, "sin_cos_functional"):
+                        if node.target == torch.ops.custom.sin_cos_functional.default:
+                            functional_op_found_before = True
+                            break
+            
+            # Check graph after reinplace
+            for node in graph_after.graph.nodes:
+                if node.op == "call_function":
+                    if hasattr(torch.ops.custom, "sin_cos_functional"):
+                        if node.target == torch.ops.custom.sin_cos_functional.default:
+                            functional_op_found_after = True
+                            break
+            
+            # Since reinplace failed due to cross-stream usage, functional op should still exist
+            if functional_op_found_before:
+                self.assertTrue(
+                    functional_op_found_after,
+                    "sin_cos_functional should still exist because reinplace failed due to cross-stream usage"
+                )
+
+        # Setup wrapper
+        from torchair._acl_concrete_graph import graph_pass
+        graph_pass._reinplace_inplaceable_ops_pass = create_reinplace_pass_wrapper(assert_reinplace_failed)
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.run_eagerly = True
+        if version.parse(torch.__version__) < version.parse("2.5.1"):
+            config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(f, backend=aclgraph_backend, dynamic=True)
+        x = torch.randn([3])
+        model(x)
 
 
 if __name__ == '__main__':

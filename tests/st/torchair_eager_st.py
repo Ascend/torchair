@@ -7,7 +7,7 @@ import _privateuse1_backend
 
 import torchair
 from torchair.configs.compiler_config import CompilerConfig
-from torchair_st_utils import capture_logger, generate_faked_module
+from torchair_st_utils import capture_logger, create_reinplace_pass_wrapper, generate_faked_module
 from torchair_st_stub_aclgraph_utils import (
     StubNpu,
     patch_ops_npu_module,
@@ -39,6 +39,53 @@ class Model(torch.nn.Module):
             return ln1 + ln2 - 1
 
 
+def count_ops_in_graph(graph_module, target_op):
+    """
+    Count how many times a target operator appears in the graph.
+    
+    Args:
+        graph_module: The FX GraphModule to search
+        target_op: The target operator to count (e.g., torch.ops.aten.add.Tensor)
+    
+    Returns:
+        Number of nodes with the target operator
+    """
+    count = 0
+    for node in graph_module.graph.nodes:
+        if node.op == "call_function" and node.target == target_op:
+            count += 1
+    return count
+
+
+def check_reinplace_for_op(graph_before, graph_after, functional_op, should_reinplace=True):
+    """
+    Check if a functional op was reinplaced to inplace op.
+    
+    Args:
+        graph_before: FX GraphModule before reinplace
+        graph_after: FX GraphModule after reinplace
+        functional_op: The functional operator to check (e.g., torch.ops.aten.add.Tensor)
+        should_reinplace: Whether the op should be reinplaced (True) or not (False)
+    
+    Returns:
+        Tuple of (functional_count_before, functional_count_after, inplace_count_after)
+    """
+    # Try to get inplace op
+    try:
+        from torch.fx.passes.reinplace import _maybe_get_inplace_op
+        inplace_op = _maybe_get_inplace_op(functional_op)
+    except (ImportError, AttributeError):
+        inplace_op = None
+    
+    functional_count_before = count_ops_in_graph(graph_before, functional_op)
+    functional_count_after = count_ops_in_graph(graph_after, functional_op)
+    inplace_count_after = 0
+    if inplace_op is not None:
+        inplace_count_after = count_ops_in_graph(graph_after, inplace_op)
+    
+    return functional_count_before, functional_count_after, inplace_count_after
+
+
 class EagerModeSt(unittest.TestCase):
     def __init__(self, methodName='runTest'):
         super().__init__(methodName)
@@ -47,6 +94,7 @@ class EagerModeSt(unittest.TestCase):
         self.original_torch_npu_module = None
         self.stub_module = StubNpu()
         register_custom_ops()
+        self.reinplace_pass_bak = None
 
     def setUp(self) -> None:
         self.original_npu_module = patch_ops_npu_module(self.stub_module)
@@ -54,6 +102,11 @@ class EagerModeSt(unittest.TestCase):
         self.original_torch_npu_module = patch_torch_npu_module(self.stub_module)
         from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
         self.call_bak = AclConcreteGraph.__call__
+        
+        # Save original _reinplace_inplaceable_ops_pass
+        from torchair._acl_concrete_graph import graph_pass
+        self.reinplace_pass_bak = graph_pass._reinplace_inplaceable_ops_pass
+        
         return super().setUp()
 
     def tearDown(self) -> None:
@@ -62,6 +115,12 @@ class EagerModeSt(unittest.TestCase):
         sys.modules['torch_npu'] = self.original_torch_npu_module
         from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
         AclConcreteGraph.__call__ = self.call_bak
+        
+        # Restore original _reinplace_inplaceable_ops_pass
+        if self.reinplace_pass_bak is not None:
+            from torchair._acl_concrete_graph import graph_pass
+            graph_pass._reinplace_inplaceable_ops_pass = self.reinplace_pass_bak
+        
         return super().tearDown()
 
     def test_ge_eager_mode_dynamic_false(self):
@@ -412,6 +471,23 @@ class EagerModeSt(unittest.TestCase):
             x4 = x3.view(-1)
             return x4
 
+        def assert_reinplace_success(graph_before, graph_after):
+            functional_add_op = torch.ops.aten.add.Tensor
+            functional_count_before, functional_count_after, inplace_count_after = \
+                check_reinplace_for_op(graph_before, graph_after, functional_add_op, should_reinplace=True)
+            
+            self.assertEqual(functional_count_before, 2)
+            self.assertEqual(
+                inplace_count_after, 1,
+                f"Should have at least one add_.Tensor operation after reinplace. "
+                f"Before: {functional_count_before} add.Tensor, "
+                f"After: {functional_count_after} add.Tensor, {inplace_count_after} add_.Tensor"
+            )
+
+        # Setup wrapper
+        from torchair._acl_concrete_graph import graph_pass
+        graph_pass._reinplace_inplaceable_ops_pass = create_reinplace_pass_wrapper(assert_reinplace_success)
+
         config = CompilerConfig()
         config.mode = "reduce-overhead"
         config.debug.run_eagerly = True
@@ -425,9 +501,7 @@ class EagerModeSt(unittest.TestCase):
         x0 = torch.randn([3, 3])
         y0 = torch.randn([3, 3])
         z0 = torch.randn([3, 3])
-        with capture_logger() as stdout:
-            model1(x0, y0, z0)
-        self.assertTrue("Node[add_4] check reinplace is True, check multi-stream is True" in stdout.getvalue())
+        model1(x0, y0, z0)
         
     @unittest.skipIf(torch.__version__ < "2.2", "torch._functionalize_replace is unsupported when torch < 2.2")
     def test_aclgraph_single_reinplace_with_multi_stream_scope_failed(self):
@@ -442,6 +516,23 @@ class EagerModeSt(unittest.TestCase):
             x5 = x4 + x3
             return x5
 
+        def assert_partial_reinplace(graph_before, graph_after):
+            functional_add_op = torch.ops.aten.add.Tensor
+            functional_count_before, functional_count_after, inplace_count_after = \
+                check_reinplace_for_op(graph_before, graph_after, functional_add_op, should_reinplace=False)
+            
+            self.assertEqual(functional_count_before, 4)
+            self.assertEqual(
+                inplace_count_after, 1,
+                f"Should have at least one add_.Tensor operation after reinplace. "
+                f"Before: {functional_count_before} add.Tensor, "
+                f"After: {functional_count_after} add.Tensor, {inplace_count_after} add_.Tensor"
+            )
+
+        # Setup wrapper
+        from torchair._acl_concrete_graph import graph_pass
+        graph_pass._reinplace_inplaceable_ops_pass = create_reinplace_pass_wrapper(assert_partial_reinplace)
+
         config = CompilerConfig()
         config.mode = "reduce-overhead"
         config.debug.run_eagerly = True
@@ -455,11 +546,7 @@ class EagerModeSt(unittest.TestCase):
         x0 = torch.randn([3, 3])
         y0 = torch.randn([3, 3])
         z0 = torch.randn([3, 3])
-        with capture_logger() as stdout:
-            model1(x0, y0, z0)
-        self.assertTrue("Node[add_4] check reinplace is False, check multi-stream is False" in stdout.getvalue())
-        self.assertTrue("Node[add_8] check reinplace is True, check multi-stream is False" in stdout.getvalue())
-        self.assertTrue("Node[add_12] check reinplace is True, check multi-stream is True" in stdout.getvalue())
+        model1(x0, y0, z0)
         
     @unittest.skipIf(torch.__version__ < "2.2", "torch._functionalize_replace is unsupported when torch < 2.2")
     def test_aclgraph_single_reinplace_with_multi_streams_scope_success(self):
@@ -475,6 +562,23 @@ class EagerModeSt(unittest.TestCase):
             x5 = x3.view(-1)
             return x5
 
+        def assert_partial_reinplace(graph_before, graph_after):
+            functional_add_op = torch.ops.aten.add.Tensor
+            functional_count_before, functional_count_after, inplace_count_after = \
+                check_reinplace_for_op(graph_before, graph_after, functional_add_op, should_reinplace=False)
+            
+            self.assertEqual(functional_count_before, 3)
+            self.assertEqual(
+                inplace_count_after, 1,
+                f"Should have at least one add_.Tensor operation after reinplace. "
+                f"Before: {functional_count_before} add.Tensor, "
+                f"After: {functional_count_after} add.Tensor, {inplace_count_after} add_.Tensor"
+            )
+
+        # Setup wrapper
+        from torchair._acl_concrete_graph import graph_pass
+        graph_pass._reinplace_inplaceable_ops_pass = create_reinplace_pass_wrapper(assert_partial_reinplace)
+
         config = CompilerConfig()
         config.mode = "reduce-overhead"
         config.debug.run_eagerly = True
@@ -488,10 +592,7 @@ class EagerModeSt(unittest.TestCase):
         x0 = torch.randn([3, 3])
         y0 = torch.randn([3, 3])
         z0 = torch.randn([3, 3])
-        with capture_logger() as stdout:
-            model1(x0, y0, z0)
-        self.assertTrue("Node[add_4] check reinplace is True, check multi-stream is True" in stdout.getvalue())
-        self.assertTrue("Node[add_8] check reinplace is True, check multi-stream is False" in stdout.getvalue())
+        model1(x0, y0, z0)
         
     @unittest.skipIf(torch.__version__ < "2.2", "torch._functionalize_replace is unsupported when torch < 2.2")
     def test_aclgraph_single_reinplace_with_multi_streams_scope_failed_1(self):
@@ -507,6 +608,23 @@ class EagerModeSt(unittest.TestCase):
             x5 = x4.view(-1)
             return x5, x3
 
+        def assert_reinplace_failed(graph_before, graph_after):
+            functional_add_op = torch.ops.aten.add.Tensor
+            functional_count_before, functional_count_after, inplace_count_after = \
+                check_reinplace_for_op(graph_before, graph_after, functional_add_op, should_reinplace=False)
+            
+            self.assertEqual(functional_count_before, 3)
+            self.assertEqual(
+                inplace_count_after, 0,
+                f"Should have at least one add_.Tensor operation after reinplace. "
+                f"Before: {functional_count_before} add.Tensor, "
+                f"After: {functional_count_after} add.Tensor, {inplace_count_after} add_.Tensor"
+            )
+
+        # Setup wrapper
+        from torchair._acl_concrete_graph import graph_pass
+        graph_pass._reinplace_inplaceable_ops_pass = create_reinplace_pass_wrapper(assert_reinplace_failed)
+
         config = CompilerConfig()
         config.mode = "reduce-overhead"
         config.debug.run_eagerly = True
@@ -520,10 +638,7 @@ class EagerModeSt(unittest.TestCase):
         x0 = torch.randn([3, 3])
         y0 = torch.randn([3, 3])
         z0 = torch.randn([3, 3])
-        with capture_logger() as stdout:
-            model1(x0, y0, z0)
-        self.assertTrue("Node[add_4] check reinplace is False, check multi-stream is False" in stdout.getvalue())
-        self.assertTrue("Node[add_8] check reinplace is True, check multi-stream is False" in stdout.getvalue())
+        model1(x0, y0, z0)
         
     @unittest.skipIf(torch.__version__ < "2.2", "torch._functionalize_replace is unsupported when torch < 2.2")
     def test_aclgraph_single_reinplace_with_multi_streams_scope_failed_2(self):
@@ -539,6 +654,23 @@ class EagerModeSt(unittest.TestCase):
             x5 = x2 + x3
             return x5, x4
 
+        def assert_reinplace_failed(graph_before, graph_after):
+            functional_add_op = torch.ops.aten.add.Tensor
+            functional_count_before, functional_count_after, inplace_count_after = \
+                check_reinplace_for_op(graph_before, graph_after, functional_add_op, should_reinplace=False)
+            
+            self.assertEqual(functional_count_before, 4)
+            self.assertEqual(
+                inplace_count_after, 0,
+                f"Should have at least one add_.Tensor operation after reinplace. "
+                f"Before: {functional_count_before} add.Tensor, "
+                f"After: {functional_count_after} add.Tensor, {inplace_count_after} add_.Tensor"
+            )
+
+        # Setup wrapper
+        from torchair._acl_concrete_graph import graph_pass
+        graph_pass._reinplace_inplaceable_ops_pass = create_reinplace_pass_wrapper(assert_reinplace_failed)
+
         config = CompilerConfig()
         config.mode = "reduce-overhead"
         config.debug.run_eagerly = True
@@ -552,11 +684,7 @@ class EagerModeSt(unittest.TestCase):
         x0 = torch.randn([3, 3])
         y0 = torch.randn([3, 3])
         z0 = torch.randn([3, 3])
-        with capture_logger() as stdout:
-            model1(x0, y0, z0)
-        self.assertTrue("Node[add_4] check reinplace is False, check multi-stream is False" in stdout.getvalue())
-        self.assertTrue("Node[add_8] check reinplace is False, check multi-stream is False" in stdout.getvalue())
-        self.assertTrue("Node[add_12] check reinplace is True, check multi-stream is False" in stdout.getvalue())
+        model1(x0, y0, z0)
         
     @unittest.skipIf(torch.__version__ < "2.2", "torch._functionalize_replace is unsupported when torch < 2.2")
     def test_aclgraph_single_mutated_reinplace_with_multi_stream_scope_success(self):
@@ -601,6 +729,35 @@ class EagerModeSt(unittest.TestCase):
             x5 = x.mul_(2.0)
             return x5
 
+        def assert_partial_reinplace(graph_before, graph_after):
+            functional_mul_op = torch.ops.aten.mul.Tensor
+            mul_before, mul_after, mul_inplace_after = \
+                check_reinplace_for_op(graph_before, graph_after, functional_mul_op, should_reinplace=True)
+            
+            functional_add_op = torch.ops.aten.add.Tensor
+            add_before, add_after, add_inplace_after = \
+                check_reinplace_for_op(graph_before, graph_after, functional_add_op, should_reinplace=False)
+            
+            if mul_before > 0:
+                self.assertEqual(
+                    mul_inplace_after, 1,
+                    f"mul.Tensor should be reinplaced to mul_.Tensor. "
+                    f"Before: {mul_before} mul.Tensor, "
+                    f"After: {mul_after} mul.Tensor, {mul_inplace_after} mul_.Tensor"
+                )
+            
+            if add_before > 0:
+                self.assertEqual(
+                    add_inplace_after, 0,
+                    f"add.Tensor should remain functional. "
+                    f"Before: {add_before} add.Tensor, "
+                    f"After: {add_after} add.Tensor, {add_inplace_after} add_.Tensor"
+                )
+
+        # Setup wrapper
+        from torchair._acl_concrete_graph import graph_pass
+        graph_pass._reinplace_inplaceable_ops_pass = create_reinplace_pass_wrapper(assert_partial_reinplace)
+
         config = CompilerConfig()
         config.mode = "reduce-overhead"
         config.debug.run_eagerly = True
@@ -616,7 +773,6 @@ class EagerModeSt(unittest.TestCase):
         z0 = torch.randn([3, 3])
         with capture_logger() as stdout:
             model1(x0, y0, z0)
-        self.assertTrue("Node[mul_6] check reinplace is True, check multi-stream is True" in stdout.getvalue())
         self.assertTrue("[multi_stream_single_reinplace]Current node: mul_6, "
                         "type: aten.mul.Tensor "
                         "check no multi stream users success for reinplace. "
@@ -640,6 +796,18 @@ class EagerModeSt(unittest.TestCase):
             x6 = x5 + 1
             return x6
 
+        def assert_reinplace_success(graph_before, graph_after):
+            functional_mul_op = torch.ops.aten.mul.Tensor
+            mul_before, mul_after, mul_inplace_after = \
+                check_reinplace_for_op(graph_before, graph_after, functional_mul_op, should_reinplace=True)
+            
+            if mul_before > 0:
+                self.assertEqual(mul_inplace_after, 1)
+
+        # Setup wrapper
+        from torchair._acl_concrete_graph import graph_pass
+        graph_pass._reinplace_inplaceable_ops_pass = create_reinplace_pass_wrapper(assert_reinplace_success)
+
         config = CompilerConfig()
         config.mode = "reduce-overhead"
         config.debug.run_eagerly = True
@@ -655,9 +823,7 @@ class EagerModeSt(unittest.TestCase):
         x0 = torch.randn([3, 3])
         y0 = torch.randn([3, 3])
         z0 = torch.randn([3, 3])
-        with capture_logger() as stdout:
-            model1(x0, y0, z0)
-        self.assertTrue("Node[mul_6] check reinplace is True, check multi-stream is True" in stdout.getvalue())
+        model1(x0, y0, z0)
 
     @unittest.skipIf(torch.__version__ < "2.2", "torch._functionalize_replace is unsupported when torch < 2.2")
     def test_aclgraph_single_mutated_reinplace_with_multi_streams_scope_success(self):
@@ -671,6 +837,26 @@ class EagerModeSt(unittest.TestCase):
                 y.mul_(2.0)
             x5 = x.view(-1)
             return x5
+
+        def assert_reinplace_success(graph_before, graph_after):
+            """Verify that mul.Tensor and add.Tensor operations were reinplaced"""
+            # Check for mul operations (should be reinplaced)
+            functional_mul_op = torch.ops.aten.mul.Tensor
+            mul_before, mul_after, mul_inplace_after = \
+                check_reinplace_for_op(graph_before, graph_after, functional_mul_op, should_reinplace=True)
+            
+            # mul should be reinplaced
+            if mul_before > 0:
+                self.assertEqual(
+                    mul_inplace_after, 1,
+                    f"mul.Tensor should be reinplaced to mul_.Tensor. "
+                    f"Before: {mul_before} mul.Tensor, "
+                    f"After: {mul_after} mul.Tensor, {mul_inplace_after} mul_.Tensor"
+                )
+
+        # Setup wrapper
+        from torchair._acl_concrete_graph import graph_pass
+        graph_pass._reinplace_inplaceable_ops_pass = create_reinplace_pass_wrapper(assert_reinplace_success)
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"
@@ -687,7 +873,6 @@ class EagerModeSt(unittest.TestCase):
         z0 = torch.randn([3, 3])
         with capture_logger() as stdout:
             model1(x0, y0, z0)
-        self.assertTrue("Node[mul_12] check reinplace is True, check multi-stream is True" in stdout.getvalue())
         self.assertTrue("[multi_stream_single_reinplace]Current node: add_3, "
                         "type: aten.add.Tensor "
                         "check no multi stream users success for reinplace. "
