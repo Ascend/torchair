@@ -38,8 +38,8 @@ def conv3d_backward_weight_nocheck(x: Tensor, grad: Tensor, weight: Tensor, stri
     output = ge.Conv3DBackpropFilter(x=x, filter_size=ge.Shape(weight), out_backprop=grad,
                                      strides=strides, pads=pads, dilations=dilation, groups=groups, data_format="NCDHW")
 
-    specific_op_input_layout(output, indices=0, layout="ND")
-    specific_op_input_layout(output, indices=[1, 2], layout="NCDHW")
+    specific_op_input_layout(output, indices=1, layout="ND")
+    specific_op_input_layout(output, indices=[0, 2], layout="NCDHW")
     specific_op_output_layout(output, indices=0, layout="NCDHW")
     if x.dtype is not DataType.DT_FLOAT:
         output = ge.Cast(output, dst_type=x.dtype)
@@ -198,7 +198,8 @@ def conv_transpose3d_backward_weight_out_nocheck(x: Tensor, grad: Tensor, weight
     check_input_dtype(x, grad, weight)
     output = ge.Conv3DBackpropFilter(x=grad, out_backprop=x, filter_size=filter_size, strides=strides, pads=pads,
                                      dilations=dilation, groups=groups, data_format="NCDHW")
-    specific_op_input_layout(output, indices=[0, 1, 2], layout="NCDHW")
+    specific_op_input_layout(output, indices=1, layout="ND")
+    specific_op_input_layout(output, indices=[0, 2], layout="NCDHW")
     specific_op_output_layout(output, indices=0, layout="NCDHW")
     if grad.dtype is not DataType.DT_FLOAT:
         output = ge.Cast(output, dst_type=grad.dtype)
