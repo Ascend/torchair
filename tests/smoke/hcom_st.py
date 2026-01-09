@@ -138,6 +138,22 @@ class Broadcast(torch.nn.Module):
         return x
 
 
+class SendAndRecv(torch.nn.Module):
+    def __init__(self, rank, group):
+        super().__init__()
+        self.rank = rank
+        self.group = group
+
+    def forward(self, x, y):
+        out = x
+        if self.rank == 0:
+            torch.distributed.send(x, dst = 1, group = self.group)
+        elif self.rank == 1:
+            torch.distributed.recv(y, src = 0, group = self.group)
+            out = y
+        return out
+
+
 class HcomTest(unittest.TestCase):
     @classmethod
     def _init_dist_hccl_without_patch(cls, rank, world_size):
@@ -582,6 +598,63 @@ class HcomTest(unittest.TestCase):
         results.append(given_shape == compile_result.shape)
         dist.destroy_process_group()  
 
+    @classmethod
+    def _test_send_recv(cls, rank, world_size, init_pg, dynamic, results):
+        torch.npu.set_device(rank)
+        init_pg(rank, world_size)
+        group = torch.distributed.new_group(ranks=[0, 1])
+        x = torch.ones(2, 2, dtype=torch.int64).to(
+            "npu:" + str(rank)) + 1 + 2 * rank
+        tensor_list = torch.zeros(
+            2, 2, dtype=torch.int64).to("npu:" + str(rank))
+        mod = SendAndRecv(rank, group)
+        mod = mod.to("npu:" + str(rank))
+        ori_result = mod(x, tensor_list)
+        opt_mod = torch.compile(mod, dynamic=dynamic,
+                                fullgraph=True, backend=npu_backend)
+        compile_result = opt_mod(x, tensor_list)
+        results.append(ori_result.equal(compile_result))
+        dist.destroy_process_group()
+
+    @classmethod
+    def _test_send_recv_no_same_size(cls, rank, world_size, init_pg, dynamic, results):
+        torch.npu.set_device(rank)
+        init_pg(rank, world_size)
+        group = torch.distributed.new_group(ranks=[0, 1])
+        x = torch.ones(2, 2, dtype=torch.int64).to(
+            "npu:" + str(rank)) + 1 + 2 * rank
+        tensor_list = torch.zeros(
+            4, 1, dtype=torch.int64).to("npu:" + str(rank))
+        mod = SendAndRecv(rank, group)
+        mod = mod.to("npu:" + str(rank))
+        ori_result = mod(x, tensor_list)
+        opt_mod = torch.compile(mod, dynamic=dynamic,
+                                fullgraph=True, backend=npu_backend)
+        compile_result = opt_mod(x, tensor_list)
+        results.append(ori_result.equal(compile_result))
+        dist.destroy_process_group()
+
+    @classmethod
+    def _test_send_recv_aclgraph(cls, rank, world_size, init_pg, dynamic, results):
+        torch.npu.set_device(rank)
+        init_pg(rank, world_size)
+        group = torch.distributed.new_group(ranks=[0, 1])
+        x = torch.ones(2, 2, dtype=torch.int64).to(
+            "npu:" + str(rank)) + 1 + 2 * rank
+        tensor_list = torch.zeros(
+            2, 2, dtype=torch.int64).to("npu:" + str(rank))
+        mod = SendAndRecv(rank, group)
+        mod = mod.to("npu:" + str(rank))
+        ori_result = mod(x, tensor_list)
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        npu_backend = torchair.get_npu_backend(compiler_config=config)  
+        opt_mod = torch.compile(mod, dynamic=dynamic,
+                                fullgraph=True, backend=npu_backend)
+        compile_result = opt_mod(x, tensor_list)
+        results.append(ori_result.equal(compile_result))
+        dist.destroy_process_group()
+    
     def _test_multiprocess(self, f, init_pg, world_size, dynamic):
         ctx = mp.get_context('spawn')
         ps = []
@@ -847,6 +920,45 @@ class HcomTest(unittest.TestCase):
                                                         HcomTest._init_dist_hccl_without_patch, world_size, False)
         for result in results_dynamic_false:
             self.assertTrue(result)  
+
+
+    def test_patch_support_send_recv(self):
+        from torch_npu.npu.utils import _is_gte_cann_version
+        is_supported_version = _is_gte_cann_version("8.6.0", module="CANN")
+        if not is_supported_version:
+            return
+
+        # 只支持打patch
+        world_size = 2
+        results_dynamic_true = self._test_multiprocess(HcomTest._test_send_recv,
+                                                       HcomTest._init_dist_hccl_without_patch, world_size, False)
+        for result in results_dynamic_true:
+            self.assertTrue(result)
+
+        results_dynamic_true = self._test_multiprocess(HcomTest._test_send_recv_no_same_size,
+                                                       HcomTest._init_dist_hccl_without_patch, world_size, False)
+        for result in results_dynamic_true:
+            self.assertTrue(result)
+
+        results_dynamic_true = self._test_multiprocess(HcomTest._test_send_recv_aclgraph,
+                                                       HcomTest._init_dist_hccl_without_patch, world_size, False)
+        for result in results_dynamic_true:
+            self.assertTrue(result)
+
+        results_dynamic_false = self._test_multiprocess(HcomTest._test_send_recv,
+                                                       HcomTest._init_dist_hccl_without_patch, world_size, True)
+        for result in results_dynamic_false:
+            self.assertTrue(result)
+
+        results_dynamic_false = self._test_multiprocess(HcomTest._test_send_recv_no_same_size,
+                                                       HcomTest._init_dist_hccl_without_patch, world_size, True)
+        for result in results_dynamic_false:
+            self.assertTrue(result)
+
+        results_dynamic_false = self._test_multiprocess(HcomTest._test_send_recv_aclgraph,
+                                                       HcomTest._init_dist_hccl_without_patch, world_size, True)
+        for result in results_dynamic_false:
+            self.assertTrue(result)
 
 
 if __name__ == '__main__':

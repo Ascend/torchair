@@ -24377,6 +24377,7 @@ def HcomSend(x: Tensor, *, group: str, sr_tag: int, dest_rank: int, dependencies
     op.attr["group"].s = compat_as_bytes(group)
     op.attr["sr_tag"].i = sr_tag
     op.attr["dest_rank"].i = dest_rank
+    op.attr["_force_skip_prune"].b = True # manually add to prevent pruning
 
     # process outputs
     output_index = 0

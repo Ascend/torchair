@@ -793,6 +793,39 @@ def _set_inputs_custom_attr_to_compiler(compiler: Callable, inputs_custom_attr: 
     return _warp_custom_attr_compiler
 
 
+def _process_send_recv(gm, compiler_config):
+    if (
+        not hasattr(torch.ops.npu_define, "_send")
+        or not hasattr(torch.ops.npu_define, "_recv")
+       ):
+        return
+
+    count = sum(1 for node in gm.graph.nodes \
+        if node.target == torch.ops.npu_define._send or node.target == torch.ops.npu_define._recv)
+    if count == 0:
+        return
+    
+    from torch_npu.npu.utils import _is_gte_cann_version
+    # depends on hccl version
+    is_supported_version = _is_gte_cann_version("8.6.0", module="CANN")
+    if not is_supported_version:
+        # current only logs
+        logger.error("torch.distributed.send and torch.distributed.recv are not supported in graph,"
+                    " you need upgrade cann version.")
+    
+    if compiler_config.mode.value != "max-autotune":
+        return
+    if count > 1 and compiler_config.experimental_config.topology_sorting_strategy.value != "StableRDFS":
+        compiler_config.experimental_config.topology_sorting_strategy = "StableRDFS"
+        import warnings
+        warnings.filterwarnings("once", category=UserWarning)
+        warnings.warn(
+            "when using max-autotune mode and including torch.distributed.send and torch.distributed.recv,"
+            " topology_sorting_strategy will be set to StableRDFS",
+            UserWarning
+        )
+
+
 def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
                  compiler_config: CompilerConfig = None, decompositions: Dict = {}, **kwargs):
     """
@@ -810,6 +843,7 @@ def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
 
     if compiler_config is None:
         compiler_config = CompilerConfig()
+    _process_send_recv(gm, compiler_config)
     _process_kwargs_options(compiler_config, kwargs)
     compiler = get_compiler(compiler_config)
 

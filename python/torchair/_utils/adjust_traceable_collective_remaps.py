@@ -6,6 +6,8 @@ from torch.distributed.distributed_c10d import (
     all_gather_into_tensor as legacy_allgather,
     all_to_all as legacy_all_to_all,
     broadcast as legacy_broadcast,
+    send as legacy_send,
+    recv as legacy_recv,
 )
 
 
@@ -33,11 +35,17 @@ def adjust_traceable_collective_remaps():
     if torch.__version__ >= '2.3.1':
         from torchair._ge_concrete_graph.ge_converter.experimental.hcom_alltoall import npu_all_to_all_patch_dist
         from torchair._ge_concrete_graph.ge_converter.experimental.hcom_broadcast import npu_broadcast_patch_dist
+        from torchair._ge_concrete_graph.ge_converter.experimental.hcom_send_recv import (
+            npu_send_patch_dist, 
+            npu_recv_patch_dist
+        )
         traceable_collective_remaps.update({
             legacy_all_gather_base: all_gather_tensor_inplace_fixed,
             legacy_allgather: all_gather_tensor_inplace_fixed,
             legacy_all_to_all: npu_all_to_all_patch_dist,
             legacy_broadcast: npu_broadcast_patch_dist,
+            legacy_send: npu_send_patch_dist,
+            legacy_recv: npu_recv_patch_dist,
         })
         setattr(torch.distributed._functional_collectives,
                 'all_gather_tensor_inplace_fixed', all_gather_tensor_inplace_fixed)
@@ -45,6 +53,10 @@ def adjust_traceable_collective_remaps():
                 'npu_all_to_all_patch_dist', npu_all_to_all_patch_dist)
         setattr(torch.distributed._functional_collectives,
                 'npu_broadcast_patch_dist', npu_broadcast_patch_dist)
+        setattr(torch.distributed._functional_collectives,
+                'npu_send_patch_dist', npu_send_patch_dist)
+        setattr(torch.distributed._functional_collectives,
+                'npu_recv_patch_dist', npu_recv_patch_dist)
         try:
             from torch_npu.distributed import all_gather_into_tensor_uneven, reduce_scatter_tensor_uneven
             from torchair._ge_concrete_graph.ge_converter.experimental.hcom_allgather import (
