@@ -1,13 +1,124 @@
-import pkgutil
 import importlib
-from typing import Callable
 import inspect
-import os
 import json
-import unittest
+import os
+import re
+import warnings
+from typing import Callable
+from itertools import chain
 from pathlib import Path
+import pkgutil
+import unittest
+
+from torch._utils_internal import get_file_path_2
 
 import torchair
+
+NOT_IMPORT_LIST = [
+    "torchair.ge.attr.Bool",
+    "torchair.ge.attr.DataType",
+    "torchair.ge.attr.Float",
+    "torchair.ge.attr.Int",
+    "torchair.ge.attr.ListBool",
+    "torchair.ge.attr.ListDataType",
+    "torchair.ge.attr.ListFloat",
+    "torchair.ge.attr.ListInt",
+    "torchair.ge.attr.ListListFloat",
+    "torchair.ge.attr.ListListInt",
+    "torchair.ge.attr.ListStr",
+    "torchair.ge.attr.Str",
+]
+
+
+def set_failure_list(api_str, value, signature, failure_list):
+    failure_list.append(f"# {api_str}:")
+    failure_list.append(f"  - function signature is different: ")
+    failure_list.append(f"    - the base signature is {value}.")
+    failure_list.append(f"    - now it is {signature}.")
+
+
+def is_not_compatibility(base_str, new_str, api_str=None):
+    base_io_params = base_str.split("->")
+    new_io_params = new_str.split("->")
+    base_input_params = base_io_params[0].strip()
+    new_input_params = new_io_params[0].strip()
+    base_out_params = "" if len(base_io_params) == 1 else base_io_params[1].strip()
+    new_out_params = "" if len(new_io_params) == 1 else new_io_params[1].strip()
+
+    # output params
+    if base_out_params != new_out_params:
+        return True
+
+    base_params = base_input_params[1:-1].split(",")
+    new_params = new_input_params[1:-1].split(",")
+    base_diff_params = set(base_params) - set(new_params)
+    # special case
+    if api_str == "torch_npu.profiler.profiler.analyse" and base_diff_params:
+        delete_special = [elem for elem in base_diff_params if "max_process_number" not in elem]
+        base_diff_params = delete_special
+
+    # case: delete/different default value/different parameter name/different parameter dtype
+    if base_diff_params:
+        return True
+
+    new_diff_params = set(new_params) - set(base_params)
+    for elem in new_diff_params:
+        # case: add params
+        if "=" not in elem:
+            return True
+
+    # case: position parameters
+    base_arr = [elem for elem in base_params if "=" not in elem]
+    new_arr = [elem for elem in new_params if "=" not in elem]
+    i = 0
+    while i < len(base_arr):
+        if base_arr[i] != new_arr[i]:
+            return True
+        i += 1
+
+    return False
+
+
+def api_signature(obj, api_str, content, base_schema, failure_list):
+    signature = inspect.signature(obj)
+    signature = str(signature)
+    if re.search("Any = <module 'pickle' from .+.py'>", signature):
+        signature = re.sub("Any = <module 'pickle' from .+\\.py'>", "Any = <module 'pickle'>", signature)
+    if re.search(" at 0x[\\da-zA-Z]+>", signature):
+        signature = re.sub(" at 0x[\\da-zA-Z]+>", ">", signature)
+    if api_str in base_schema.keys():
+        value = base_schema[api_str]["signature"]
+        if is_not_compatibility(value, signature, api_str=api_str):
+            set_failure_list(api_str, value, signature, failure_list)
+    content[api_str] = {"signature": signature}
+
+
+def func_in_class(obj, content, modname, elem, base_schema, failure_list):
+    class_variables = []
+    for attribute in obj.__dict__.keys():
+        if not attribute.startswith("_") and callable(getattr(obj, attribute)):
+            class_variables.append(attribute)
+    for variable in class_variables:
+        if variable in ["_backward_cls", "_new_member_"]:
+            continue
+        func = getattr(obj, variable)
+        api_str = f"{modname}.{elem}.{variable}"
+        api_signature(func, api_str, content, base_schema, failure_list)
+
+
+def _find_all_importables(pkg):
+    """Find all importables in the project.
+
+    Return them in order.
+    """
+    return sorted(
+        set(
+            chain.from_iterable(
+                _discover_path_importables(Path(p), pkg.__name__)
+                for p in pkg.__path__
+            ),
+        ),
+    )
 
 
 def _discover_path_importables(pkg_pth, pkg_name):
@@ -45,10 +156,26 @@ def _read_allow_api_json():
 
 
 def _is_alias(public_api_fun_name, public_api):
-
     if public_api.split('.')[-1] in public_api_fun_name:
         return True
     return False
+
+
+def check_public_func_signature(base_schema, content):
+    failure_list = []
+    base_funcs = base_schema.keys()
+    now_funcs = content.keys()
+    deleted_apis = set(base_funcs) - set(now_funcs)
+    for func in deleted_apis:
+        failure_list.append(f"# {func}:")
+        failure_list.append(f"  - {func} has been deleted.")
+    newly_apis = set(now_funcs) - set(base_funcs)
+    for func in newly_apis:
+        failure_list.append(f"# {func}:")
+        failure_list.append(f"  - {func} is new. Please add it to the torch_npu_schema.json")
+        signature = content[func]["signature"]
+        failure_list.append(f"  - it's signature is {signature}.")
+    return failure_list
 
 
 SKIP_CHECK_MODULES = [
@@ -93,6 +220,40 @@ class TestPublicBindings(unittest.TestCase):
         for api in allow_api:
             public_api_fun_name.add(api.split('.')[-1])
 
+        # 1、定义在allowlist_for_publicAPI.json的接口，为对外接口，无论尼如何在代码中定义，放不放__all__,还是_等，用来判断对外接口集合
+        allow_dict = {}
+        try:
+            file_abspath = os.path.abspath(__file__)
+            air_path = 'st/allowlist_for_publicAPI.json'
+            with open(
+                    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(file_abspath))),
+                                 air_path)) as json_file_torchair:
+                allow_dict_torchair = json.load(json_file_torchair)
+                allow_dict = {f"{key}": value for key, value in
+                              allow_dict_torchair.items()}
+        except Exception:
+            warnings.warn(
+                "if you are debugging UT file in clone repo, please recursively update the torchair submodule")
+
+        # load torchair torch_npu_schema.json
+        base_schema = {}
+        torchair_schema = {}
+        try:
+            air_path = 'st/torch_npu_schema.json'
+            with open(get_file_path_2(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), air_path)) as fp:
+                torchair_schema = json.load(fp)
+        except Exception:
+            warnings.warn(
+                "if you are debugging UT file in clone repo, please recursively update the torchair submodule")
+
+        # schema.json获取的时torch.dynamo开头，需要处理
+        json_str = json.dumps(torchair_schema)
+        modified_json_str = json_str.replace("torch_npu.dynamo.", "")
+        modified_torchair_schema = json.loads(modified_json_str)
+        base_schema.update(modified_torchair_schema)
+
+        content = {}
+
         def test_module(modname):
             try:
                 if "__main__" in modname:
@@ -109,6 +270,8 @@ class TestPublicBindings(unittest.TestCase):
                 # verifies that each public API has the correct module name and naming semantics
 
             def check_one_element(elem, modname, mod, *, is_public, is_all):
+                if f"{modname}.{elem}" in NOT_IMPORT_LIST:
+                    return
                 if self._is_legacy_public(f'{modname}.{elem}'):
                     return
                 obj = getattr(mod, elem)
@@ -172,6 +335,21 @@ class TestPublicBindings(unittest.TestCase):
                         failure_list.append(f"# {public_api} is public api, "
                                             f"please add it to allowlist_for_publicAPI.json.")
 
+                # 扫描代码，把代码中定义为对外的接口遍历出来
+                is_public_api = False
+                if is_public != looks_public:
+                    if modname in allow_dict and elem in allow_dict[modname]:
+                        is_public_api = True
+                elif is_public and looks_public:
+                    is_public_api = True
+                if is_public_api:
+                    api_str = f"{modname}.{elem}"
+                    api_signature(obj, api_str, content, base_schema, failure_list)
+
+                    # function in class
+                    if inspect.isclass(obj):
+                        func_in_class(obj, content, modname, elem, base_schema, failure_list)
+
             if hasattr(mod, '__all__'):
                 public_api = mod.__all__
                 all_api = dir(mod)
@@ -199,6 +377,12 @@ class TestPublicBindings(unittest.TestCase):
         # empty lists are considered false in python
         self.assertTrue(not failure_list, msg)
 
+        failure_list = check_public_func_signature(base_schema, content)
+        msg = "All the APIs below do not meet the compatibility guidelines. "
+        msg += "If the change timeline has been reached, you can modify the torch_npu_schema.json to make it OK."
+        msg += "\n\nFull list:\n"
+        msg += "\n".join(map(str, failure_list))
+        self.assertTrue(not failure_list, msg)
 
     def test_compatible_api(self):
         # 以下接口均为N+4版本保留兼容性的接口，将在一年之后删除(自2024/7/27始)
