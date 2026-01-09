@@ -14,6 +14,41 @@ def _return_true(match: Match):
     return True
 
 
+def _check_pattern_stream(match: Match, operator_name) -> bool:
+    """
+    Checks if all nodes in the same stream.
+    """
+    from torchair.core.utils import logger
+
+    non_default_streams = set()
+    has_default = False
+
+    for node in match.nodes:
+        if node.op == "call_function":
+            current_stream = node.meta.get("stream_label")
+            if current_stream is None:
+                has_default = True
+            else:
+                non_default_streams.add(current_stream)
+                if len(non_default_streams) > 1:
+                    logger.debug(
+                        f"Cross-stream operation detected in pattern match for {operator_name}. "
+                        f"Multiple streams found: {non_default_streams}. "
+                        f"Fusion is not supported for cross-stream operations."
+                    )
+                    return False
+
+    if has_default and len(non_default_streams) > 0:
+        logger.debug(
+            f"Cross-stream operation detected in pattern match for {operator_name}. "
+            f"Multiple streams found: {non_default_streams}. "
+            f"Fusion is not supported for cross-stream operations."
+        )
+        return False
+
+    return True
+
+
 class _PatternPassManager:
     def __init__(self):
         if 'pass_name' in PatternMatcherPass.__init__.__code__.co_varnames:
