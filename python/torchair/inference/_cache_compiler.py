@@ -212,7 +212,7 @@ class CompiledModel:
         md5 = hashlib.md5(constraint.encode()).hexdigest()
 
         suffixes = [cls_name] + trace_tag
-        if config.mode.value == "reduce-overhead":
+        if config.mode.value in ["reduce-overhead", "npugraph_ex"]:
             suffixes += ['aclgraphcache']
         if config.mode.value == "max-autotune" and ge_cache:
             suffixes += ['gecache']
@@ -613,8 +613,8 @@ def cache_compile(func, *, config: Optional[CompilerConfig] = None, backend: Opt
             raise ValueError(f"Cache dir {cache_dir} must be owned by the current user ") from e
 
     if config is not None and ge_cache:
-        if config.mode.value == "reduce-overhead":
-            logger.warning_once(f"Ge_cache will not take effect when config.mode is set to reduce-overhead.")
+        if config.mode.value in ["reduce-overhead", "npugraph_ex"]:
+            logger.warning_once(f"Ge_cache will not take effect when config.mode is set to {config.mode.value}.")
 
     # Lazy trigger cache load and determine the cache directory by distributed global_rank
     return LazyCompiledModel(func, config=config, dynamic=dynamic, cache_dir=cache_dir, global_rank=global_rank,

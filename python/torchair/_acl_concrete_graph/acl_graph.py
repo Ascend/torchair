@@ -749,7 +749,7 @@ class AclGraph(object):
             import torch_npu
         except ImportError as e:
             raise RuntimeError(
-                "Couldn't import torch_npu. When the CompilerConfig.mode is reduce-overhead, "
+                f"Couldn't import torch_npu. When the CompilerConfig.mode is {config.mode.value}, "
                 "it is necessary to use torch_npu.npu.NPUGraph(), so importing torch_npu is essential.") from e
 
         self._fx_forward = fx_forward

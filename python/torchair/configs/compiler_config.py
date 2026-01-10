@@ -36,7 +36,7 @@ class CompilerConfig(NpuBaseConfig):
         self.ge_config = _GEConfig()
         self.aclgraph_config = _AclGraphConfig()
         self.npugraphex_config = _NpuGraphExConfig()
-        self.mode = OptionValue("max-autotune", ["max-autotune", "reduce-overhead"])
+        self.mode = OptionValue("max-autotune", ["max-autotune", "reduce-overhead", "npugraph_ex"])
         self.post_grad_custom_pre_pass = CallableValue(None)
         self.post_grad_custom_post_pass = CallableValue(None)
 
@@ -98,6 +98,7 @@ def _check_config_support(config: Any):
 
     if warn_config:
         mode_specific = "max-autotune" if config.mode.value == "max-autotune" else "reduce-overhead"
+        mode = "backend" if config.mode.value == "npugraph_ex" else "mode"
         additional = (
             ""
             if mode_specific == "max-autotune"
@@ -105,9 +106,14 @@ def _check_config_support(config: Any):
         )
         warnings.warn(
             f"The following torchair config or properties may not take effect or report "
-            f"error in {mode_specific} mode: {', '.join(warn_config)}{additional}",
+            f"error in {mode_specific} {mode}: {', '.join(warn_config)}{additional}",
             UserWarning
         )
+        if mode_specific == "reduce-overhead":
+            warnings.filterwarnings("once", category=DeprecationWarning)
+            warnings.warn("The \"reduce-overhead\" mode configuration will be deprecated. "
+                          "Please use the \"npugraph_ex\" backend.",
+                          DeprecationWarning)
 
 
 def _get_warn_config(warn_config, config_arg, config_dict):

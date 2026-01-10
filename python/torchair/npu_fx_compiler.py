@@ -440,7 +440,7 @@ class _CompiledFxGraph:
     def __call__(self, *args, **kwargs):
 
         if self.run_kernel is None:
-            if self.config is not None and self.config.mode.value == "reduce-overhead":
+            if self.config is not None and self.config.mode.value in ["reduce-overhead", "npugraph_ex"]:
                 py_code = self.get_code()
                 if not isinstance(py_code, str):
                     self.run_kernel = py_code
@@ -492,7 +492,7 @@ class _CompiledFxGraph:
             logger.warning(f'There are some configurations that cannot be supported by codegen, skipping codegen.')
             return self.runner
         logger.debug('Codegen for %s successfully, code:\n%s.', self.runner.graph.name, py_code)
-        if self.config.mode.value == "reduce-overhead":
+        if self.config.mode.value in ["reduce-overhead", "npugraph_ex"]:
             _dump_run_codegen(py_code)
         return py_code
 
@@ -544,7 +544,7 @@ class _NpuFxCompiler:
         if int(self.config.export.experimental.enable_lite_export.value):
             from torchair._ge_concrete_graph.ge_converter import lite
 
-        if self.config.debug.fx_summary.enabled and self.config.mode.value == "reduce-overhead":
+        if self.config.debug.fx_summary.enabled and self.config.mode.value in ["reduce-overhead", "npugraph_ex"]:
             logger.warning(f"The fx_summary csv files will not be generated in reduce-overhead mode.")
 
         observer = GraphTransformObserver(gm, example_inputs, self.config)
@@ -595,7 +595,7 @@ class _NpuFxCompiler:
         if self.config.mode.value == "max-autotune":
             from torchair._ge_concrete_graph.fx2ge_converter import GeConcreteGraph
             graph = GeConcreteGraph(self.config, name="graph_" + str(_next_unique_graph_id()))
-        elif self.config.mode.value == "reduce-overhead":
+        elif self.config.mode.value in ["reduce-overhead", "npugraph_ex"]:
             from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
             graph = AclConcreteGraph(self.config,
                                      name="graph_" + str(_next_unique_graph_id()),
@@ -661,7 +661,7 @@ class _NpuFxCompiler:
                     return self.runner(*args, **kwargs)
 
             if self.config.experimental_config.aclgraph._aclnn_static_shape_kernel and \
-                self.config.mode.value == "reduce-overhead":
+                    self.config.mode.value in ["reduce-overhead", "npugraph_ex"]:
                 # Only trigger static shape kernel compilation
                 # when some symbol changed that have not been used for updates, not all symbol.
                 all_sym_index = [x[0] for x in concrete_graph._aclgraph_cache_info.unupdated_sym_input_index if x[1]]
