@@ -27,7 +27,7 @@
         "signature": "(*, compiler_config: torchair.configs.compiler_config.CompilerConfig = None, custom_decompositions: Dict = {})"
     },
     "torch_npu.dynamo.torchair.ops.npu_print": {
-        "signature": "(*args, summarize_size=3)"
+        "signature": "(*args, summarize_size=3, tensor_detail=False)"
     },
     "torch_npu.dynamo.torchair.patch_for_hcom": {
         "signature": "()"
