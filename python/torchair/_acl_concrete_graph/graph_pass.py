@@ -4,6 +4,7 @@ import itertools
 from typing import Any, Optional, List, Callable, Dict, Set
 import threading
 import operator
+import warnings
 
 import torch
 from torch import fx
@@ -11,6 +12,7 @@ from torch.fx import GraphModule
 from torch.fx.experimental.symbolic_shapes import GuardOnDataDependentSymNode
 
 from torchair.core.utils import logger
+from torchair.configs.compiler_config import CompilerConfig
 
 try:
     from torch._C._dynamo.guards import compute_overlapping_tensors
@@ -673,17 +675,26 @@ def _insert_record_nodes(graph_module, node, wait_record_dic):
     return new_args
 
 
-def replace_core_limit_nodes(gm: torch.fx.GraphModule):
+def replace_core_limit_nodes(gm: torch.fx.GraphModule, config: CompilerConfig):
     # use stack to handle nested scope declarations
     scope_enter_stack = []
     # record original state of current stream, revert when exit core limit scope
     core_limit_stack = []
+    enable_core_limit = False
     
     for node in gm.graph.nodes:
         if str(node.target) == "air.scope_enter.default":
             _core_limit_handle_scope_enter(node, gm, core_limit_stack, scope_enter_stack)
         elif str(node.target) == "air.scope_exit.default":
             _core_limit_handle_scope_exit(node, gm, core_limit_stack, scope_enter_stack)
+        if not enable_core_limit and core_limit_stack:
+            enable_core_limit = True
+    
+    enable_static_shape_kernel = config.experimental_config.aclgraph._aclnn_static_shape_kernel
+    if enable_core_limit and enable_static_shape_kernel:
+        config.experimental_config.aclgraph._aclnn_static_shape_kernel = False
+        warnings.warn('When both static shape kernel and core limit are enabled, '
+                            'only core limit will take effect, static shape kernel will be disabled.')
 
 
 def _core_limit_handle_scope_enter(node: torch.fx.Node, gm: torch.fx.GraphModule, core_limit_stack: List, scope_enter_stack: List):

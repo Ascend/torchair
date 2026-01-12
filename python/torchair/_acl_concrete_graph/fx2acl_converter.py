@@ -273,7 +273,7 @@ class AclConcreteGraph(ConcreteGraphBase):
         observer.dump_gm(self.fx_graph, "graph_after_replace_dynamic_workspace_ops")
 
         # replace core limit call function nodes with torch_npu api
-        replace_core_limit_nodes(self.fx_graph)
+        replace_core_limit_nodes(self.fx_graph, self.config)
         observer.dump_gm(self.fx_graph, "graph_after_replace_core_limit_nodes")
 
         logger.debug('after graph optimization, graph is %s', self.fx_graph.graph)
