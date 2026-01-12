@@ -7,7 +7,7 @@
 ## 函数原型
 
 ```python
-cache_compile(func, *, config: Optional[CompilerConfig] = None, backend: Optional[Any] = None, dynamic: bool = True, cache_dir: Optional[str] = None, global_rank: Optional[int] = None, tp_rank: Optional[int] = None, pp_rank: Optional[int] = None, ge_cache: bool = False, **kwargs) -> Callable
+cache_compile(func, *, config: Optional[CompilerConfig] = None, backend: Optional[Any] = None, dynamic: bool = True, cache_dir: Optional[str] = None, global_rank: Optional[int] = None, tp_rank: Optional[int] = None, pp_rank: Optional[int] = None, custom_decompositions: Optional[dict] = None, ge_cache: bool = False, **kwargs) -> Callable
 ```
 
 ## 参数说明
