@@ -73,7 +73,8 @@ make install_torchair
 ```
 
 2. 卸载
-    
+   
+
 torchair的卸载只需要执行命令：
 
 ```
@@ -115,34 +116,34 @@ model(x, y)
 
 
 # 特性介绍
-TorchAir常用特性介绍
+TorchAir常用特性如下，全量特性介绍请访问[docs](docs/README.md)获取详细教程。
 
-| 特性功能               | 功能介绍       | 参考资料            |
-| -----------           | ---------------------------------   | -----------        |
-| 日志功能               |  日志功能             | [参考链接](https://www.hiascend.com/document/detail/zh/Pytorch/60RC1/modthirdparty/torchairuseguide/torchair_0012.html)       |
-| graph dump功能         |  图dump功能      | [参考链接](https://www.hiascend.com/document/detail/zh/Pytorch/60RC1/modthirdparty/torchairuseguide/torchair_0014.html)        |
-| dynamo export功能      | air格式图导出功能         | [参考链接](https://www.hiascend.com/document/detail/zh/Pytorch/60RC1/modthirdparty/torchairuseguide/torchair_0015.html)        |
-| data dump功能          |  精度数据dump功能           | [参考链接](https://www.hiascend.com/document/detail/zh/Pytorch/60RC1/modthirdparty/torchairuseguide/torchair_0016.html)        |
-| graph fusion功能       |  用户自定义关闭/开启部分融合算子功能           | [参考链接](https://www.hiascend.com/document/detail/zh/Pytorch/60RC1/modthirdparty/torchairuseguide/torchair_0017.html)        |
-| experimental性能提升功能 |  试验性质功能，不同功能适用于特定场景，详见参考资料             | [参考链接](https://www.hiascend.com/document/detail/zh/Pytorch/60RC1/modthirdparty/torchairuseguide/torchair_0019.html)        |
-| converter功能拓展       |  用户自行扩展模型中缺失的converter功能             | [参考链接](https://www.hiascend.com/document/detail/zh/Pytorch/60RC1/modthirdparty/torchairuseguide/torchair_0026.html)        |
-| 支持的aten API清单      |  支持的aten API清单               | [参考链接](https://www.hiascend.com/document/detail/zh/Pytorch/60RC1/modthirdparty/torchairuseguide/torchair_0042.html)        |
+| 特性功能               | 功能介绍       |
+| -----------           | ---------------------------------   |
+| 日志功能               |  日志功能             |
+| graph dump功能         |  图dump功能      |
+| dynamo export功能      | air格式图导出功能         |
+| data dump功能          |  精度数据dump功能           |
+| graph fusion功能       |  用户自定义关闭/开启部分融合算子功能           |
+| experimental性能提升功能 |  试验性质功能，不同功能适用于特定场景，详见参考资料             |
+| converter功能拓展       |  用户自行扩展模型中缺失的converter功能             |
+| 支持的aten API清单      |  支持的aten API清单               |
 
 <a id="version_match"></a>
 # 版本配套表
 本项目与PyTorch、[torch_npu](https://gitcode.com/Ascend/pytorch/blob/master/README.zh.md)、CANN以及Python的版本匹配详情如下：
 
-| TorchAir版本 | PyTorch版本               | torch_npu版本 | CANN版本  | Python版本                                                 
+| TorchAir版本 |  PyTorch版本      | torch_npu版本 | CANN版本  | Python版本             |
 |------------|-------------------------| ----------------- |---------|----------------------------------------------------------|
-| master（主线） | 2.6.0 +                 | 在研版本 | 在研版本    | Python3.9.x / Python3.10.x / Python3.11.x / Python3.12.x | 
+| master（主线） | 2.6.0 +                 | 在研版本 | 在研版本    | Python3.9.x / Python3.10.x / Python3.11.x / Python3.12.x |
 | 7.3.0      | 2.6.0 / 2.7.1 / 2.8.0   | 7.3.0   | 8.5.0   | Python3.9.x / Python3.10.x / Python3.11.x                |
-| 7.3.0      | 2.9.0                   | 7.3.0   | 8.5.0   | Python3.9.x / Python3.10.x / Python3.11.x / Python3.12.x | 
-| 7.2.0      | 2.1.0                   | 7.2.0  | 8.3.RC1 | Python3.8.x / Python3.9.x / Python3.10.x / Python3.11.x  | 
+| 7.3.0      | 2.9.0                   | 7.3.0   | 8.5.0   | Python3.9.x / Python3.10.x / Python3.11.x / Python3.12.x |
+| 7.2.0      | 2.1.0                   | 7.2.0  | 8.3.RC1 | Python3.8.x / Python3.9.x / Python3.10.x / Python3.11.x  |
 | 7.2.0      | 2.6.0 / 2.7.1 / 2.8.0   | 7.2.0  |8.3.RC1 | Python3.9.x / Python3.10.x / Python3.11.x                |
-| 7.1.0      | 2.1.0                   | 7.1.0 | 8.2.RC1 | Python3.8.x / Python3.9.x / Python3.10.x / Python3.11.x  | 
+| 7.1.0      | 2.1.0                   | 7.1.0 | 8.2.RC1 | Python3.8.x / Python3.9.x / Python3.10.x / Python3.11.x  |
 | 7.1.0      | 2.5.1 / 2.6.0           | 7.1.0 | 8.2.RC1 | Python3.9.x / Python3.10.x / Python3.11.x                |
 | 7.0.0      | 2.1.0 / 2.3.1 / 2.4.0  | 7.0.0 | 8.1.RC1 | Python3.8.x / Python3.9.x / Python3.10.x / Python3.11.x  |
-| 7.0.0      | 2.5.1                   | 7.0.0 | 8.1.RC1 | Python3.9.x / Python3.10.x / Python3.11.x                | 
+| 7.0.0      | 2.5.1                   | 7.0.0 | 8.1.RC1 | Python3.9.x / Python3.10.x / Python3.11.x                |
 
 <a id="hardware_support"></a>
 # 支持的型号
@@ -158,10 +159,6 @@ TorchAir常用特性介绍
 
 # 安全声明
 TorchAir安全声明参考[SECURITY_README](https://gitcode.com/Ascend/torchair/blob/master/SECURITY_README.md)文件。
-
-
-# 参考文档
-有关TorchAir的更多详细信息,请参考[TorchAir图模式使用](https://www.hiascend.com/document/detail/zh/Pytorch/720/modthirdparty/torchairuseguide/torchair_00003.html)。
 
 
 # 许可证
