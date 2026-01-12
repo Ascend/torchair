@@ -52,20 +52,15 @@ def is_not_compatibility(base_str, new_str, api_str=None):
     base_params = base_input_params[1:-1].split(",")
     new_params = new_input_params[1:-1].split(",")
     base_diff_params = set(base_params) - set(new_params)
-    # special case
-    if api_str == "torch_npu.profiler.profiler.analyse" and base_diff_params:
-        delete_special = [elem for elem in base_diff_params if "max_process_number" not in elem]
-        base_diff_params = delete_special
 
     # case: delete/different default value/different parameter name/different parameter dtype
     if base_diff_params:
         return True
 
+    # case: add params
     new_diff_params = set(new_params) - set(base_params)
-    for elem in new_diff_params:
-        # case: add params
-        if "=" not in elem:
-            return True
+    if new_diff_params:
+        return True
 
     # case: position parameters
     base_arr = [elem for elem in base_params if "=" not in elem]
