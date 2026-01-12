@@ -29,10 +29,6 @@ def _all_to_all_single(
     if len(input_split_sizes) != len(output_split_sizes):
         raise AssertionError
 
-    out_size = list(input_tensor.size())
-    if len(out_size) != 1:
-        raise AssertionError(f"Expected the input tensor used in all_to_all_single to have a dimensionality of 1,"
-                             f"but got {len(out_size)}")
     send_displacements = [sum(input_split_sizes[:i]) for i in range(len(input_split_sizes))]
     recv_displacements = [sum(output_split_sizes[:i]) for i in range(len(output_split_sizes))]
     return torch.ops.npu_define.all_to_all_single_npu(input_tensor,

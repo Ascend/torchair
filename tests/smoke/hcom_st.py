@@ -709,7 +709,6 @@ class HcomTest(unittest.TestCase):
         self.assertTrue(self._test_multiprocess(HcomTest._test_all_to_all_single_dims_compile,
                                                 HcomTest._init_dist_hccl_with_patch, world_size, False))
 
-    @unittest.skipIf(True, "unsupported until cann support")
     @unittest.skipIf(torch.__version__ < '2.3.1', "patch needed for torch version < 2.3.1")
     def test_all_to_all_single_dims_compile_without_patch(self):
         world_size = 4
