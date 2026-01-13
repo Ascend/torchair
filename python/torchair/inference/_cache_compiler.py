@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, is_dataclass
 from datetime import datetime, timezone
 import fcntl
+import functools
 import logging
 import time
 import types
@@ -120,6 +121,21 @@ def _depatch_user_const(code: types.CodeType):
         else:
             consts.append(c)
     return code.replace(co_consts=tuple(consts))
+
+
+def _wrap_compiler(compiler: Callable, num_example_inputs):
+    from torchair.npu_fx_compiler import _mark_static_inputs_attr
+
+    @functools.wraps(compiler)
+    def wrapped_compiler(
+        gm: torch.fx.GraphModule,
+        example_inputs: List[torch.Tensor],
+    ):
+        # Length of example_inputs may differ between Dynamo and AOT compilation stages.
+        _mark_static_inputs_attr(example_inputs, num_example_inputs=num_example_inputs)
+        return compiler(gm, example_inputs)
+
+    return wrapped_compiler
 
 
 class CompiledModel:
@@ -382,7 +398,9 @@ class CacheBackend:
 
     def __call__(self, gm: torch.fx.GraphModule, inputs: List[torch.Tensor], *args):
         self.saver.save_reserved_params(gm)
-        from torchair.npu_fx_compiler import _get_inputs_custom_attr
+        from torchair.npu_fx_compiler import _get_inputs_custom_attr, _set_inputs_custom_attr_to_compiler
+        num_example_inputs = len(inputs)
+        self.fw_compiler = _wrap_compiler(self.fw_compiler, num_example_inputs)
         self.inputs_custom_attr = _get_inputs_custom_attr(inputs)
 
         decompositions = get_npu_default_decompositions()
@@ -391,6 +409,7 @@ class CacheBackend:
         if os.getenv("TORCH_COMPILE_DEBUG", "0") == "1":
             folder_path = DebugContext.next_path()
             dump_fx_safety(gm, os.path.join(folder_path, "dynamo_out_graph.txt"))
+        _set_inputs_custom_attr_to_compiler(self.fw_compiler, self.inputs_custom_attr)
         self.fw_compiler = wrap_compiler_phase(self.fw_compiler, "forward")
         return aot_module_simplified(gm, inputs, self.fw_compiler, self.bw_compiler,
                                      decompositions=decompositions, keep_inference_input_mutations=True)

@@ -1,7 +1,7 @@
 import logging
 import os
 import sys
-from typing import Tuple
+from typing import Tuple, List
 import unittest
 from unittest.mock import Mock
 
@@ -52,6 +52,8 @@ class AclGraphSt(unittest.TestCase):
         self.original_torch_npu_module = patch_torch_npu_module(self.stub_module)
         from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
         self.call_bak = AclConcreteGraph.__call__
+        from torchair.inference._cache_compiler import CacheBackend
+        self.cachebackend_call = CacheBackend.__call__
         return super().setUp()
 
     def tearDown(self) -> None:
@@ -60,6 +62,8 @@ class AclGraphSt(unittest.TestCase):
         sys.modules['torch_npu'] = self.original_torch_npu_module
         from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
         AclConcreteGraph.__call__ = self.call_bak
+        from torchair.inference._cache_compiler import CacheBackend
+        CacheBackend.__call__ = self.cachebackend_call
         return super().tearDown()
 
     def test_aclgraph_capture_and_replay(self):
@@ -3004,6 +3008,61 @@ class AclGraphSt(unittest.TestCase):
             f"Expect that warning 'recompiled, set torch._logging.set_logs(recompiles=True) for details'"
             f"not found in logs: {stdout.getvalue()}"
         )
+
+    @unittest.skipIf(torch.__version__ < "2.4.0", "_mark_static_inputs_attr is unsupported when torch < 2.4")
+    def test_aclgraph_cache_compile_with_parameters_in_high_version_of_torch(self):
+        from torchair.inference._cache_compiler import CacheBackend
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
+        config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear1 = torch.nn.Linear(2, 2)
+                self.cached_prompt = torchair.inference.cache_compile(self.prompt, config=config)
+
+            def forward(self, x):
+                return self.cached_prompt(x)
+
+            def _forward(self, x):
+                ln1 = self.linear1(x)
+                ln2 = ln1
+                return ln1 + ln2
+
+            def prompt(self, x):
+                return self._forward(x)
+
+        def check_inputs(inputs_custom_attr):
+            has_parameter = False
+            for i, attr in inputs_custom_attr.items():
+                for k, _ in attr.items():
+                    if k == "_torchair_is_parameter":
+                        has_parameter = True
+            assert has_parameter == True, f"expect cachebackend set '_torchair_is_parameter' attr to inputs, but None."
+
+        def decorator(call):
+            def wrapper(self, gm: torch.fx.GraphModule, inputs: List[torch.Tensor], *args):
+                ret = call(self, gm, inputs, args)
+                check_inputs(self.inputs_custom_attr)
+                return ret
+
+            return wrapper
+
+        CacheBackend.__call__ = decorator(CacheBackend.__call__)
+
+        model = Model()
+        prompt_cache_bin = CompiledModel.get_cache_bin(model.prompt, config=config)
+        ModelCacheSaver.remove_cache(os.path.abspath(os.path.dirname(prompt_cache_bin)))
+
+        x = torch.randn([3, 2])
+
+        prompt_cache_dir = os.path.abspath(os.path.dirname(prompt_cache_bin))
+
+        self.assertFalse(os.path.exists(prompt_cache_dir))
+        model(x)
+        self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
 
 
 if __name__ == '__main__':
