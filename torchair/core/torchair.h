@@ -23,6 +23,7 @@
 
 #include "acl/acl_base.h"
 #include "acl/acl_op.h"
+#include "acl/acl_mdl.h"
 #include "ge/ge_api.h"
 #include "concrete_graph.h"
 #include "utils_tools.h"
@@ -39,6 +40,8 @@ void Export(const std::string &serialized_proto, const std::map<std::string, std
 void AclopStartDumpArgs(uint32_t dumpType, const char *path);
 
 void AclopStopDumpArgs(uint32_t dumpType);
+
+void AclmdlSetDump(const std::string &dump_path);
 
 std::string GetSocName();
 

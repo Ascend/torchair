@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, Dict, List, Tuple, Union, Callable, Optional
+from typing import Any, Dict, List, Tuple, Union, Callable, Optional, Set
 from datetime import datetime
 import functools
 import threading
@@ -11,6 +11,8 @@ import time
 import os
 import warnings
 import textwrap
+import json
+from pathlib import Path
 import sympy
 from packaging import version
 
@@ -162,6 +164,17 @@ _DONT_EMPTY_TENSOR_OPT_OPS = {
     'npu_define.all_to_all_single_npu.default',
     'npu_define.allgather_in_tensor_uneven.default',
 }
+
+g_cached_dump_root: Optional[Dict[str, Any]] = None
+
+DUMP_MAPPINGS = [
+    ("ge.exec.dumpPath", "dump_path"),
+    ("ge.exec.dumpMode", "dump_mode"),
+    ("ge.exec.dumpData", "dump_data"),
+    ("ge.exec.dumpLayer", "layer"),
+    ("ge.exec.dumpStep", "dump_step"),
+    ("ge.quant_dumpable", "quant_dumpable"),
+]
 
 
 def _add_op_to_checkpoint_map(op, fn):
@@ -876,7 +889,9 @@ class GeConcreteGraph(ConcreteGraphBase):
 
         if not self._is_compiled:
             local_compile_options, global_compile_options = self._normalize_ge_option()
+            ge_data_dump_options = _get_ge_dump_options(global_compile_options) # _get_ge_dump_options must execute before initialize_graph_engine
             initialize_graph_engine(global_compile_options)
+            _set_dump_options_json(ge_data_dump_options, self._graph)
             self.graph.load(local_compile_options)
 
         if self.should_auto_tune:
@@ -1625,4 +1640,106 @@ class GeConcreteGraph(ConcreteGraphBase):
             op.input.extend(control_edges)
             logger.info(f"Add record-wait generated control edges: {control_edges} to op: {op.name}")
             self._wait_control_edges[stream] = []     
+
+
+def _set_dump_options_json(ge_options: Dict[str, Any], ge_graph) -> None:
+    """
+    Generate dump_options_*.json based on ge_options and torchair.scope.data_dump.
+    """
+    global g_cached_dump_root
+
+    graph_nodes: List[str] = []
+    for op in getattr(ge_graph, "op", []):
+        attr_map = getattr(op, "attr", {})
+        if "torchair_enable_data_dump" in attr_map:
+            val = attr_map["torchair_enable_data_dump"]
+            s = getattr(val, "s", val)
+            if isinstance(s, (bytes, bytearray)):
+                s = s.decode(errors="ignore")
+            op_type = getattr(op, "type", None) or getattr(op, "name", None)
+            if op_type is not None:
+                graph_nodes.append(str(op_type))
+
+    logger.info("Collected graph_nodes for ge data dump: %s", graph_nodes)
+
+    any_present = False
+    for key, _ in DUMP_MAPPINGS:
+        v = ge_options.get(key)
+        if v is not None and str(v).strip():
+            any_present = True
+            break
+    if not any_present:
+        logger.info("No dump options found in ge_options; skip writing dump_options.json")
+        return
+
+    model_name = getattr(ge_graph, "name", "") or ""
+    model_entry: Dict[str, Any] = {"model_name": model_name}
+
+    uniq_layers: Set[str] = set()
+    dump_layer_val = ge_options.get("ge.exec.dumpLayer")
+    if dump_layer_val:
+        for part in (p.strip() for p in str(dump_layer_val).split(" ") if p.strip()):
+            uniq_layers.add(part)
+    for n in graph_nodes:
+        uniq_layers.add(n)
+    if uniq_layers:
+        model_entry["layer"] = list(uniq_layers)
+
+    if g_cached_dump_root is not None:
+        cached = g_cached_dump_root
+        if "dump" not in cached or not isinstance(cached["dump"], dict):
+            cached["dump"] = {}
+        dump_obj = cached["dump"]
+        if "dump_list" not in dump_obj or not isinstance(dump_obj["dump_list"], list):
+            dump_obj["dump_list"] = []
+        dump_obj["dump_list"].append(model_entry)
+    else:
+        dump_obj: Dict[str, Any] = {}
+        for key, mapped in DUMP_MAPPINGS:
+            if key == "ge.exec.dumpLayer":
+                continue
+            value = ge_options.get(key)
+            if value is not None and str(value).strip():
+                dump_obj[mapped] = str(value)
+        dump_obj["dump_list"] = [model_entry]
+        g_cached_dump_root = {"dump": dump_obj}
+
+    dir_path = Path.cwd() / "ge_dump_data_json"
+    dir_path.mkdir(parents=True, exist_ok=True)
+
+    world_size = 1
+    global_rank = 0
+    import torch.distributed as dist
+    if dist.is_available() and dist.is_initialized():
+        world_size = dist.get_world_size()
+        global_rank = dist.get_rank()
+
+    out_path = dir_path / f"dump_options_worldsize{world_size}_rank{global_rank}_pid{os.getpid()}.json"
+    with out_path.open("w", encoding="utf-8") as ofs:
+        json.dump(g_cached_dump_root, ofs, indent=4, ensure_ascii=False)
+    logger.info("Dump options written to %s", str(out_path))
+
+    try:
+        from torchair.core import _torchair
+        _torchair.AclmdlSetDump(str(out_path))
+    except Exception as e:
+        logger.error("AclmdlSetDump failed for %s: %s", out_path, e)
+
+
+def _get_ge_dump_options(global_compile_options):
+    dump_keys = [
+        "ge.exec.enableDump",
+        "ge.exec.dumpPath",
+        "ge.exec.dumpMode",
+        "ge.quant_dumpable",
+        "ge.exec.dumpStep",
+        "ge.exec.dumpLayer",
+        "ge.exec.dumpData",
+    ]
+    ge_data_dump_options = {
+        k: global_compile_options.pop(k)
+        for k in dump_keys
+        if k in global_compile_options
+    }
+    return ge_data_dump_options
 

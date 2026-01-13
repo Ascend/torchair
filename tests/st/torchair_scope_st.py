@@ -1,6 +1,8 @@
 import os
 import time
 import logging
+import json
+from pathlib import Path
 
 import torch
 import torchair
@@ -421,6 +423,57 @@ class TorchairSt(unittest.TestCase):
             str(cm.exception).startswith("op_never_timeout() argument 'enable' must be bool"),
             f"Unexpected error message: {cm.exception}"
         )
+
+
+    def test_ge_data_dump(self):
+        class Network(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+            
+            def forward(self, data0):
+                add_01 = torch.add(data0, data0)
+                with torchair.scope.data_dump():
+                    add_02 = torch.add(data0, data0)
+                return add_01, add_02
+            
+        input0 = torch.randn(2, 2)
+        config = torchair.CompilerConfig()
+        config.dump_config.enable_dump = True
+        config.dump_config.dump_layer = " Test1 Test2 Test3 "
+        npu_backend = torchair.get_npu_backend(compiler_config=config)
+        npu_mode = Network()
+        npu_mode = torch.compile(npu_mode, backend=npu_backend, dynamic=False)
+        npu_mode(input0)
+
+        dump_dir = Path.cwd() / "ge_dump_data_json"
+        matched_files = []
+
+        if dump_dir.exists():
+            matched_files = sorted(
+                dump_dir.glob("dump_options_*.json"),
+                key=lambda p: p.stat().st_mtime,
+            )
+
+        assert matched_files, f"No dump_options_*.json found in {dump_dir}"
+        
+        latest = matched_files[-1]
+        with latest.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+        
+        found_layers = set()
+        dump_obj = data.get("dump", {})
+        dump_list = dump_obj.get("dump_list", [])
+        for entry in dump_list:
+            layers = entry.get("layer")
+            if isinstance(layers, list):
+                for l in layers:
+                    if isinstance(l, str):
+                        found_layers.add(l)
+        
+        expected = {"Test1", "Test2", "Test3"}
+        
+        missing = expected - found_layers
+        assert not missing, f"Missing expected dump layers in {latest}: {missing}. Found layers: {sorted(found_layers)}"
 
 
 if __name__ == '__main__':

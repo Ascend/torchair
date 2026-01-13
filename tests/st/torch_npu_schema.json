@@ -145,5 +145,8 @@
     },
     "torch_npu.dynamo.torchair.scope.op_never_timeout": {
         "signature": "(enable: bool = True)"
+    },
+    "torch_npu.dynamo.torchair.scope.data_dump": {
+        "signature": "()"
     }
 }

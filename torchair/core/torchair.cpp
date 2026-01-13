@@ -177,6 +177,12 @@ void AclopStopDumpArgs(uint32_t dumpType) {
   TNG_RAISE_ASSERT(ret == 0, "AclopStopDumpArgs execute failed");
 }
 
+void AclmdlSetDump(const std::string &dump_path) {
+  RECORD_FUNCTION("torchair::AclDumpConfigInit", {});
+  auto dump_ret = aclmdlSetDump(const_cast<char *>(dump_path.c_str()));
+  TNG_RAISE_ASSERT(dump_ret == 0, "AclmdlSetDump execute failed");
+}
+
 TorchNpuGraphBase::TorchNpuGraphBase(const std::string &name) : name_(name), concrete_graph_(nullptr){};
 
 void TorchNpuGraphBase::Load(const std::string &serialized_proto, const std::map<std::string, std::string> &options,

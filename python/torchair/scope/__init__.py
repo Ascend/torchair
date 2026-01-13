@@ -69,3 +69,9 @@ def op_never_timeout(enable: bool = True):
     return _Scope([
         ("_op_exec_never_timeout", str(enable))
     ])
+
+
+def data_dump():
+    return _Scope([
+        ("torchair_enable_data_dump", 'True')
+    ])
