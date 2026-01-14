@@ -708,7 +708,9 @@ def _get_partition_fn(compiler_config: CompilerConfig):
     return default_partition
 
 
-def _mark_static_inputs_attr(example_inputs, num_example_inputs):
+def _mark_static_inputs_attr(example_inputs, num_example_inputs, compiler_config):
+    if compiler_config.mode.value == "max-autotune":
+        return
     if torch.__version__ >= '2.4.0':
         # Length of example_inputs may differ between Dynamo and AOT compilation stages.
         aot_num_example_inputs = len(example_inputs)
@@ -737,7 +739,7 @@ def _wrap_compiler(compiler: Callable, compiler_config: CompilerConfig, num_exam
     ):
         if is_inference and compiler_config.experimental_config.npu_fx_pass:
             _npu_joint_graph_passes(gm)
-        _mark_static_inputs_attr(example_inputs, num_example_inputs=num_example_inputs)
+        _mark_static_inputs_attr(example_inputs, num_example_inputs=num_example_inputs, compiler_config=compiler_config)
         return compiler(gm, example_inputs)
 
     @functools.wraps(compiler)
@@ -747,7 +749,7 @@ def _wrap_compiler(compiler: Callable, compiler_config: CompilerConfig, num_exam
     ):
         if compiler_config.experimental_config.npu_fx_pass:
             _npu_joint_graph_passes(gm)
-        _mark_static_inputs_attr(example_inputs, num_example_inputs=num_example_inputs)
+        _mark_static_inputs_attr(example_inputs, num_example_inputs=num_example_inputs, compiler_config=compiler_config)
         return compiler(gm, example_inputs)
 
     fw_compiler = functools.partial(wrapped_compiler, is_inference=False)
