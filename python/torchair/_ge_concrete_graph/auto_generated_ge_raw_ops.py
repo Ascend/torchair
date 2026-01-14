@@ -81349,6 +81349,126 @@ def KvRmsNormRopeCache(kv: Tensor,
     return k_cache, ckv_cache, k_rope, c_kv
 
 
+# This api is auto-generated from IR QkvRmsNormRopeCache
+@auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False, False, False, False], [False, False, False, False, False, False, False, False, False, True, True, True, True])
+def QkvRmsNormRopeCache(qkv: Tensor,
+                        q_gamma: Tensor,
+                        k_gamma: Tensor,
+                        cos: Tensor,
+                        sin: Tensor,
+                        index: Tensor,
+                        q_out: Tensor,
+                        k_cache: Tensor,
+                        v_cache: Tensor,
+                        k_scale: Optional[Tensor],
+                        v_scale: Optional[Tensor],
+                        k_offset: Optional[Tensor],
+                        v_offset: Optional[Tensor],
+                        *,
+                        qkv_size: List[int],
+                        head_nums: List[int],
+                        epsilon: float = 0.000001,
+                        cache_mode: str = 'PA_NZ',
+                        is_output_qkv: bool = False,
+                        dependencies=[],
+                        node_name=None):
+    """REG_OP(QkvRmsNormRopeCache)\n
+    .INPUT(qkv, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .INPUT(q_gamma, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .INPUT(k_gamma, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .INPUT(cos, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .INPUT(sin, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .INPUT(index, TensorType({DT_INT64}))\n
+    .INPUT(q_out, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .INPUT(k_cache, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))\n
+    .INPUT(v_cache, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))\n
+    .OPTIONAL_INPUT(k_scale, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(v_scale, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(k_offset, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(v_offset, TensorType({DT_FLOAT}))\n
+    .OUTPUT(q_out, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(k_cache, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))\n
+    .OUTPUT(v_cache, TensorType({DT_FLOAT16, DT_BF16, DT_INT8}))\n
+    .OUTPUT(q_out_before_quant, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(k_out_before_quant, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(v_out_before_quant, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .REQUIRED_ATTR(qkv_size, ListInt)\n
+    .REQUIRED_ATTR(head_nums, ListInt)\n
+    .ATTR(epsilon, Float, 1e-6)\n
+    .ATTR(cache_mode, String, "PA_NZ")\n
+    .ATTR(is_output_qkv, Bool, false)\n
+    """
+
+    # process inputs
+    inputs = {
+        "qkv": qkv,
+        "q_gamma": q_gamma,
+        "k_gamma": k_gamma,
+        "cos": cos,
+        "sin": sin,
+        "index": index,
+        "q_out": q_out,
+        "k_cache": k_cache,
+        "v_cache": v_cache,
+        "k_scale": k_scale,
+        "v_scale": v_scale,
+        "k_offset": k_offset,
+        "v_offset": v_offset,
+    }
+
+    # process attrs
+    attrs = {
+        "qkv_size": attr.ListInt(qkv_size),
+        "head_nums": attr.ListInt(head_nums),
+        "epsilon": attr.Float(epsilon),
+        "cache_mode": attr.Str(cache_mode),
+        "is_output_qkv": attr.Bool(is_output_qkv),
+    }
+
+    # process outputs
+    outputs = [
+    "q_out",
+    "k_cache",
+    "v_cache",
+    "q_out_before_quant",
+    "k_out_before_quant",
+    "v_out_before_quant",
+    ]
+
+    return ge_op(
+        op_type="QkvRmsNormRopeCache",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("QkvRmsNormRopeCache") \
+        .input("qkv", "DT_FLOAT16, DT_BF16") \
+        .input("q_gamma", "DT_FLOAT16, DT_BF16") \
+        .input("k_gamma", "DT_FLOAT16, DT_BF16") \
+        .input("cos", "DT_FLOAT16, DT_BF16") \
+        .input("sin", "DT_FLOAT16, DT_BF16") \
+        .input("index", "DT_INT64") \
+        .input("q_out", "DT_FLOAT16, DT_BF16") \
+        .input("k_cache", "DT_FLOAT16, DT_BF16, DT_INT8") \
+        .input("v_cache", "DT_FLOAT16, DT_BF16, DT_INT8") \
+        .optional_input("k_scale", "DT_FLOAT") \
+        .optional_input("v_scale", "DT_FLOAT") \
+        .optional_input("k_offset", "DT_FLOAT") \
+        .optional_input("v_offset", "DT_FLOAT") \
+        .required_attr("qkv_size", attr.ListInt) \
+        .required_attr("head_nums", attr.ListInt) \
+        .attr("epsilon", attr.Float(0.000001)) \
+        .attr("cache_mode", attr.Str("PA_NZ")) \
+        .attr("is_output_qkv", attr.Bool(False)) \
+        .output("q_out", "DT_FLOAT16, DT_BF16") \
+        .output("k_cache", "DT_FLOAT16, DT_BF16, DT_INT8") \
+        .output("v_cache", "DT_FLOAT16, DT_BF16, DT_INT8") \
+        .output("q_out_before_quant", "DT_FLOAT16, DT_BF16") \
+        .output("k_out_before_quant", "DT_FLOAT16, DT_BF16") \
+        .output("v_out_before_quant", "DT_FLOAT16, DT_BF16")
+    )
+
+
 # This api is auto-generated from IR InterleaveRope
 @auto_convert_to_tensor([False, False, False], [False, False, False])
 def InterleaveRope(x: Tensor, cos: Tensor, sin: Tensor, *, dependencies=[], node_name=None):
