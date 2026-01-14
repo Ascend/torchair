@@ -123,7 +123,7 @@ def _depatch_user_const(code: types.CodeType):
     return code.replace(co_consts=tuple(consts))
 
 
-def _wrap_compiler(compiler: Callable, num_example_inputs):
+def _wrap_compiler(compiler: Callable, num_example_inputs, compiler_config):
     from torchair.npu_fx_compiler import _mark_static_inputs_attr
 
     @functools.wraps(compiler)
@@ -132,7 +132,7 @@ def _wrap_compiler(compiler: Callable, num_example_inputs):
         example_inputs: List[torch.Tensor],
     ):
         # Length of example_inputs may differ between Dynamo and AOT compilation stages.
-        _mark_static_inputs_attr(example_inputs, num_example_inputs=num_example_inputs)
+        _mark_static_inputs_attr(example_inputs, num_example_inputs=num_example_inputs, compiler_config=compiler_config)
         return compiler(gm, example_inputs)
 
     return wrapped_compiler
@@ -400,7 +400,7 @@ class CacheBackend:
         self.saver.save_reserved_params(gm)
         from torchair.npu_fx_compiler import _get_inputs_custom_attr, _set_inputs_custom_attr_to_compiler
         num_example_inputs = len(inputs)
-        self.fw_compiler = _wrap_compiler(self.fw_compiler, num_example_inputs)
+        self.fw_compiler = _wrap_compiler(self.fw_compiler, num_example_inputs, self.config)
         self.inputs_custom_attr = _get_inputs_custom_attr(inputs)
 
         decompositions = get_npu_default_decompositions()
