@@ -178,9 +178,13 @@ void AclopStopDumpArgs(uint32_t dumpType) {
 }
 
 void AclmdlSetDump(const std::string &dump_path) {
-  RECORD_FUNCTION("torchair::AclDumpConfigInit", {});
+  RECORD_FUNCTION("torchair::AclmdlSetDump", {});
+  auto init_ret = aclmdlInitDump();
   auto dump_ret = aclmdlSetDump(const_cast<char *>(dump_path.c_str()));
   TNG_RAISE_ASSERT(dump_ret == 0, "AclmdlSetDump execute failed");
+  if (init_ret == 0) {
+    aclmdlFinalizeDump();
+  }
 }
 
 TorchNpuGraphBase::TorchNpuGraphBase(const std::string &name) : name_(name), concrete_graph_(nullptr){};
