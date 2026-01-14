@@ -9,8 +9,6 @@ import torchair
 from torch.fx import Node
 from torchair.core.utils import logger
 
-logger.setLevel(logging.DEBUG)
-
 
 def _optimize_dlrm_pattern(gm: torch.fx.GraphModule, example_inputs, 
     config: torchair.CompilerConfig):
@@ -136,7 +134,7 @@ def _optimize_predict_layers_pattern(fx_graph):
                     )
                     weight_act_node = fx_graph.call_function(
                         torch.ops.aten.slice.Tensor,
-                        args=(weight_node, 1, embedding_size, 9223372036854775807)  # To the end
+                        args=(weight_node, 1, embedding_size, 9223372036854775807)  # 9223372036854775807 is the end
                     )
                     if is_addmm:
                         weight_emb_t_node = fx_graph.call_function(
@@ -293,7 +291,7 @@ def _optimize_embedding_layer_pattern(fx_graph):
     if len(slice_nodes) < 2 or len(embedding_nodes) < 2 or len(sum_nodes) < 2 or not cat_node:
         logger.debug("Pattern incomplete: slice_nodes=%s, " + 
          "embedding_nodes=%s, sum_nodes=%s, " +
-         "cat_node=%s", len(slice_nodes), len(embedding_nodes), len(sum_nodes), len(cat_node))
+         "cat_node=%s", len(slice_nodes), len(embedding_nodes), len(sum_nodes), cat_node)
         return 
     logger.debug("Found optimization pattern: %s slices, " + 
     "%s embeddings, %s sums, 1 cat", len(slice_nodes), len(embedding_nodes), len(sum_nodes))
