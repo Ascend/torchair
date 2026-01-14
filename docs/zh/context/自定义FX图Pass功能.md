@@ -158,9 +158,9 @@ class Model(torch.nn.Module):
 
     
     | 参数名 | 说明 |
-| --- | --- |
-| post_grad_custom_pre_pass | TorchAir本身内置了部分FX图优化Pass，该配置控制自定义Pass在内置Pass执行前生效。<br>传入自定义Pass函数。 |
-| post_grad_custom_post_pass | TorchAir本身内置了部分FX图优化Pass，该配置控制自定义Pass在内置Pass执行后生效。<br>传入自定义Pass函数。 |
+	| --- | --- |
+	| post_grad_custom_pre_pass | TorchAir本身内置了部分FX图优化Pass，该配置控制自定义Pass在内置Pass执行前生效。<br>传入自定义Pass函数。 |
+	| post_grad_custom_post_pass | TorchAir本身内置了部分FX图优化Pass，该配置控制自定义Pass在内置Pass执行后生效。<br>传入自定义Pass函数。 |
 
 3.  检查Pass是否生效。
     -   打开Debug日志（参考[TorchAir Python层日志](TorchAir-Python层日志.md)），查看修改后的FX图是否有插入torch.ops.air.scope\_enter.default和torch.ops.air.scope\_exit.default、torch.ops.air.record.default、torch.ops.air.wait.default新节点，以及插入的位置是否正确。

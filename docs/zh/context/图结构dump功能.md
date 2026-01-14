@@ -5,6 +5,7 @@
 图模式场景下，如果模型执行出现异常（如模型精度不准确），可通过导出图结构来查看图执行节点信息，从而进行模型问题的分析和排查。
 
 **图 1**  图结构dump  <a name="fig1"></a>
+
 ![](figures/图结构dump.png)
 
 ## 使用方法
@@ -44,46 +45,30 @@
 
     **表 1**  参数说明
     
-    <table><thead>
-    <tr>
-    <th>参数名</th>
-    <th>参数说明</th>
-    </tr></thead>
-    <tbody>
-    <tr>
-      <td>graph_dump.type</td>
-      <td>设置导出图结构文件的格式，字符串型。默认为“None”，表示不导出图结构信息。支持导出的格式：<br>  
-        <li>py：dump ATen IR转换为Ascend IR后的构图信息，即<a href="#fig1">图1</a>中阶段2构图信息，可通过Vscode等工具查看。</li>
-        <li>txt：dump最终接收到的TorchAir构图结果，可通过Vscode等工具查看。</li> 
-        <li>pbtxt：dump最终接收到的TorchAir构图结果，为Protobuf格式，可通过TensorBoard、Netron等工具查看。 </li>
-      </td>
-    </tr>
-    <tr>
-      <td>graph_dump.path</td>
-      <td>设置图结构文件生成的路径，字符串型。可选配置，如果不设置，默认路径为当前执行路径。</td>
-    </tr>
-    </tbody>
-    </table>
-    **说明：** 
+    |  参数名 |  参数说明  |
+    |------|-------|
+    |graph_dump.type|设置导出图结构文件的格式，字符串型。默认为“None”，表示不导出图结构信息。支持导出的格式：<br> - py：dump ATen IR转换为Ascend IR后的构图信息，即[图1](#fig1)中阶段2构图信息，可通过Vscode等工具查看。<br> - txt：dump最终接收到的TorchAir构图结果，可通过Vscode等工具查看。<br> - pbtxt：dump最终接收到的TorchAir构图结果，为Protobuf格式，可通过TensorBoard、Netron等工具查看。 |
+    |graph_dump.path|设置图结构文件生成的路径，字符串型。可选配置，如果不设置，默认路径为当前执行路径。|
     
-    - 当[config.mode](reduce-overhead模式配置.md)为reduce-overhead模式，上述dump文件格式仅支持*.py。  
+
+    **说明**： 
     
-    - 当[config.mode](reduce-overhead模式配置.md)为max-autotune模式，上述dump文件格式均支持。 
-    
-    - 多次定义导出格式时，以最后一次定义的格式为准。 
-    
+    - 当[config.mode](reduce-overhead模式配置.md)为reduce-overhead模式，上述dump文件格式仅支持*.py。      
+    - 当[config.mode](reduce-overhead模式配置.md)为max-autotune模式，上述dump文件格式均支持。     
+    - 多次定义导出格式时，以最后一次定义的格式为准。     
     - 不支持txt、pbtxt、py三种格式同时导出。
     
-3.  （可选）当[config.mode](reduce-overhead模式配置.md)为max-autotune模式，如需查看GE图编译和执行后的图结构信息，请参考《CANN 环境变量参考》中的“DUMP\_GE\_GRAPH”章节开启GE的dump图信息。
+
+3.（可选）当[config.mode](reduce-overhead模式配置.md)为max-autotune模式，如需查看GE图编译和执行后的图结构信息，请参考《CANN 环境变量参考》中的“DUMP\_GE\_GRAPH”章节开启GE的dump图信息。
 
 ## 产物说明
 
 图结构dump的结果文件如下
 
--   dynamo\_original\_graph\_$\{graph\_id\}\_rank\_$\{rank\_id\}\_pid\_$\{pid\}\_ts\_$\{timestamp\}.$\{graph\_dump\_type\}：模型原始图结构文件，例如dynamo\_original\_graph\_1\_rank\_15\_pid\_421214\_ts\_20251010083825327878.py。
--   dynamo\_optimized\_graph\_$\{graph\_id\}\_rank\_\{rank\_id\}\_pid\_\{pid\}\_ts\_\{timestamp\}.$\{graph\_dump\_type\}：优化后的模型图结构文件，例如dynamo\_optimized\_graph\_1\_rank\_15\_pid\_421214\_ts\_20251010083827311204.py。
+-   `dynamo_original_graph_${graph_id}_rank_${rank_id}_pid_${pid}_ts_${timestamp}.${graph_dump_type}`：模型原始图结构文件，例如dynamo\_original\_graph\_1\_rank\_15\_pid\_421214\_ts\_20251010083825327878.py。
+-   `dynamo_optimized_graph_${graph_id}_rank_{rank_id}_pid_{pid}_ts_{timestamp}.${graph_dump_type}`：优化后的模型图结构文件，例如dynamo\_optimized\_graph\_1\_rank\_15\_pid\_421214\_ts\_20251010083827311204.py。
 
-其中$\{graph\_id\}表示第几张图，$\{rank\_id\}表示图执行的通信卡id，$\{pid\}表示图执行的进程号，$\{timestamp\}表示时间戳，$\{graph\_dump\_type\}表示导图文件格式，不同格式的样例如下：
+其中\$\{graph\_id\}表示第几张图，\$\{rank\_id\}表示图执行的通信卡id，\$\{pid\}表示图执行的进程号，\$\{timestamp\}表示时间戳，\$\{graph\_dump\_type\}表示导图文件格式，不同格式的样例如下：
 
 -   **py文件样例**
 

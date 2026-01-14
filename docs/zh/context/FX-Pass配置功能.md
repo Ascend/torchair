@@ -37,5 +37,5 @@ opt_model = torch.compile(model, backend=npu_backend)
 
 | 参数名 | 说明 |
 | --- | --- |
-| aclgraph.disable_reinplace_inplaceable_ops_pass | 布尔类型，是否关闭Pass。该Pass针对模型的中间节点，将节点中包含的[Out-of-place算子](简介.md#section643113494714)（非原地算子）替换为[In-place算子](简介.md#section643113494714)（原地算子），以减少计算过程中的内存搬运，从而提升性能。<br> - False（默认值）：默认打开此Pass。<br> - True：关闭此Pass。<br> **说明**： 多原地算子（修改了多个输入的算子）中，当前仅支持torch_npu.npu_kv_rmsnorm_rope_cache_v2（试验接口，后续版本可能存在变更，暂不支持应用于商用产品中），torch_npu.npu_mla_prolog_v3，torch_npu.npu_add_rms_norm_v2三个算子开启本pass。 |
+| aclgraph.disable_reinplace_inplaceable_ops_pass | 布尔类型，是否关闭Pass。该Pass针对模型的中间节点，将节点中包含的[Out-of-place算子](简介.md#常用概念)（非原地算子）替换为[In-place算子](简介.md#常用概念)（原地算子），以减少计算过程中的内存搬运，从而提升性能。<br> - False（默认值）：默认打开此Pass。<br> - True：关闭此Pass。<br> **说明**： 多原地算子（修改了多个输入的算子）中，当前仅支持torch_npu.npu_kv_rmsnorm_rope_cache_v2（试验接口，后续版本可能存在变更，暂不支持应用于商用产品中），torch_npu.npu_mla_prolog_v3，torch_npu.npu_add_rms_norm_v2三个算子开启本pass。 |
 | aclgraph.disable_reinplace_input_mutated_ops_pass | 布尔类型，是否关闭Pass。该Pass针对模型的原始输入参数，若包含原地操作算子（如KV Cache），Dynamo的Functionalize流程会将原地算子替换为“Out-of-place算子+copy\_算子”，本Pass是该操作的逆向过程，将“Out-of-place算子+copy\_算子”替换为In-place算子，以减少计算过程中的内存搬运，从而提升性能。<br>- False（默认值）：默认打开此Pass。<br>- True：关闭此Pass。<br> **说明**： 多原地算子中，当前仅支持torch_npu.npu_kv_rmsnorm_rope_cache_v2（试验接口，后续版本可能存在变更，暂不支持应用于商用产品中），torch_npu.npu_mla_prolog_v3，torch_npu.npu_add_rms_norm_v2三个算子开启本pass。 |
