@@ -27,9 +27,9 @@ class _NpuGraphExConfig:
     }
     OPTIONS_TO_CONFIG_TRANSFORMATIONS = {
 
-        "inplace_pass": lambda x: not x,
-        "input_inplace_pass": lambda x: not x,
-        "reuse_graph_pool_in_same_fx": lambda x: not x,        # More mapping relationships transformmations can be extended here
+        "inplace_pass": lambda x: not x if isinstance(x, bool) else x,
+        "input_inplace_pass": lambda x: not x if isinstance(x, bool) else x,
+        "reuse_graph_pool_in_same_fx": lambda x: not x if isinstance(x, bool) else x,
     }
     ALLOWED_OPTIONS = set(OPTIONS_TO_CONFIG_MAP.keys())
 
