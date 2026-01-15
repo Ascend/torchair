@@ -132,7 +132,7 @@ if hasattr(torch.ops.atb, "_npu_paged_attention"):
         msg = f"The index of context_lens arg parameter in the operator _npu_paged_attention" \
                    f"prototype does not match the predefined order. " \
                    f"Please check the arg parameter list in the corresponding operator prototype."
-        warning.warn(msg)
+        warnings.warn(msg)
 
 if hasattr(torch.ops.atb, "_npu_paged_attention_splitfuse"):
     arg_index_map = {"context_lens": 4, "seq_len": 6}
@@ -153,7 +153,7 @@ if hasattr(torch.ops.atb, "_npu_paged_attention_splitfuse"):
         msg = f"The index of context_lens and seq_len arg parameter in the operator _npu_paged_attention_splitfuse" \
                    f"prototype does not match the predefined order. " \
                    f"Please check the arg parameter list in the corresponding operator prototype."
-        warning.warn(msg)
+        warnings.warn(msg)
 
 
 def is_constant(arg):
