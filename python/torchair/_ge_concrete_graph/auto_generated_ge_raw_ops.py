@@ -75430,35 +75430,38 @@ def Bitcast(x: Tensor, *, type: int, keep_dim: bool=False, dependencies=[], node
     """REG_OP(Bitcast)\n
 .INPUT(x, TensorType({DT_BOOL, DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT32, DT_UINT8, DT_INT64, DT_UINT64, DT_INT16, DT_UINT16, DT_DOUBLE, DT_COMPLEX64, DT_COMPLEX128, DT_QINT8, DT_QUINT8, DT_QINT16, DT_QUINT16, DT_QINT32}))\n
 .OUTPUT(y, TensorType({DT_BOOL, DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT32, DT_UINT8, DT_INT64, DT_UINT64, DT_INT16, DT_UINT16, DT_DOUBLE, DT_COMPLEX64, DT_COMPLEX128, DT_QINT8, DT_QUINT8, DT_QINT16, DT_QUINT16, DT_QINT32}))\n
-.ATTR(keep_dim, Bool, false)\n
 .REQUIRED_ATTR(type, Type)\n
+.ATTR(keep_dim, Bool, false)\n
 """
 
-    op = get_default_ge_graph().op.add()
-    op.type = "Bitcast"
-    op.name = next_unique_name(node_name, "Bitcast")
-
-    # process dependices
-    for dependency in dependencies:
-        op.input.append(dependency.controller)
-
     # process inputs
-    op.input.append(x.tensor)
-    op.input_desc.add().CopyFrom(x.desc)
-    op.input_desc[-1].name = "x"
+    inputs = {
+        "x": x,
+    }
 
     # process attrs
-    op.attr["type"].dt = type
-    op.attr["keep_dim"].b = keep_dim
+    attrs = {
+        "type": attr.DataType(type),
+        "keep_dim": attr.Bool(keep_dim),
+    }
 
     # process outputs
-    output_index = 0
-    op.output_desc.add().name = "y"
-    y = Tensor(op, output_index)
-    output_index += 1
+    outputs = [
+    "y",
+    ]
 
-    # return outputs
-    return y
+    return ge_op(
+        op_type="Bitcast",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("Bitcast") \
+        .input("x", "DT_BOOL, DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT32, DT_UINT8, DT_INT64, DT_UINT64, DT_INT16, DT_UINT16, DT_DOUBLE, DT_COMPLEX64, DT_COMPLEX128, DT_QINT8, DT_QUINT8, DT_QINT16, DT_QUINT16, DT_QINT32") \
+        .required_attr("type", attr.DataType) \
+        .attr("keep_dim", attr.Bool(False)) \
+        .output("y" , "DT_BOOL, DT_FLOAT16, DT_FLOAT, DT_INT8, DT_INT32, DT_UINT32, DT_UINT8, DT_INT64, DT_UINT64, DT_INT16, DT_UINT16, DT_DOUBLE, DT_COMPLEX64, DT_COMPLEX128, DT_QINT8, DT_QUINT8, DT_QINT16, DT_QUINT16, DT_QINT32")
+    )
 
 
 # This api is auto-generated from IR DepthwiseWeight4DTo6D
