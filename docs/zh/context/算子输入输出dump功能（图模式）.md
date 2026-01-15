@@ -55,7 +55,7 @@ opt_model = torch.compile(model, backend=npu_backend)
 | dump_data | 指定算子dump内容类型，字符串类型。<br>- tensor（默认值）：dump算子数据。<br>- stats：dump算子统计数据，保存结果为csv格式，文件中包含算子名称、输入/输出的数据类型、最大值、最小值等。<br>**说明**：通常dump数据量太大并且耗时长，可以先dump算子统计数据，根据统计数据识别可能异常的算子，再dump算子数据。 |
 | dump_config_path（推荐） | 指定dump配置json文件路径，通过json文件使能dump，字符串类型，无默认值。支持配置绝对路径或相对路径（相对执行命令行时的当前路径）。目前支持模型Dump/单算子Dump、溢出算子Dump、算子Dump Watch模式等功能，使用方法参见[dump_config_path配置项说明](#dump_config_path配置项说明)。<br>推荐本方式配置dump，上述功能（除了enable_dump）均能通过json文件配置，并且后续将不再演进。<br> 说明： <br>  - 同时配置dump_config_path和其余dump options时，dump options有较高的配置优先级。不建议同时使用。<br>  - 请确保该参数指定的路径确实存在，且为json格式，并且运行用户具有读、写操作权限。<br>  - 注意torch_npu默认已开启exception类信息的dump功能（即dump_scene参数，异常算子Dump配置） ，通过本功能配置的exception dump不会生效。<br>  - 对于大模型场景，通常dump数据量太大并且耗时长，建议dump_data配置为“stats”，开启算子统计功能，根据统计数据识别可能异常的算子后，再dump可能异常的算子。 |
 
-## dump_layer配置项说明
+### dump_layer配置项说明
 
 通过表中“dump\_layer”参数dump指定算子信息，算子名获取方法如下：
 
@@ -94,7 +94,7 @@ opt_model = torch.compile(model, backend=npu_backend)
     }
     ```
 
-## dump\_config\_path配置项说明
+### dump\_config\_path配置项说明
 
 通过表中“dump\_config\_path”参数指定dump配置json文件路径，基于json里的配置使能各种场景dump功能。
 
@@ -225,7 +225,7 @@ opt_model = torch.compile(model, backend=npu_backend)
 
     -   通过dump\_mode参数控制导出watcher\_nodes中所配置算子的哪部分数据，当前仅支持配置为output。
 
-## 非dump\_config\_path配置项说明
+### 非dump\_config\_path配置项说明
 
 通过表中“非dump\_config\_path”参数使能各种场景dump功能。dump结果文件存储在dump\_path参数指定的目录$\{dump\_path\}/$\(worldsize\_global\_rank\)/$\{time\}/$\{device\_id\}/$\{model\_name\}/$\{model\_id\}/$\{data\_index\}。若$\{dump\_path\}配置为/home/dump，结果目录样例为“/home/dump/worldsize1\_global\_rank0/2024112145738/0/ge\_default\_20200808163719\_121/1/0”。
 
@@ -237,6 +237,42 @@ opt_model = torch.compile(model, backend=npu_backend)
 -   $\{model\_id\}：子图ID号。
 -   $\{data\_index\}：迭代数，用于保存对应迭代的dump数据。如果指定了dump\_step，则data\_index和dump\_step一致；如果不指定dump\_step，则data\_index一般从0开始计数，每dump一个迭代的数据，序号递增1。
 
-## 解析dump数据文件
+### 解析dump数据文件
 
 dump文件无法通过文本工具直接查看其内容，建议先将dump文件转换为numpy格式文件，再通过numpy官方提供的能力转为txt文档进行查看。详细操作指导请参考《CANN 精度调试工具用户指南》中“查看dump数据文件”章节。
+
+## 更多功能
+对于上述[使用方法](#使用方法)提供的dump options，TorchAir提供了更灵活的dump算子范围。通过torchair.scope.data_dump接口实现，支持与上述所有dump options配套使用。
+
+> **说明**：
+> - 使用本接口时必须以with语句块形式调用，语句块内的算子信息均能被dump，具体参见下方调用示例。
+> - 本接口与dump layer配置项指定的算子范围均能生效，dump算子范围为两者并集，产物目录与dump layer一致。
+> - 本接口支持与上述所有dump配置项配合使用，产物目录基本一致。
+
+```python
+import torch
+import torchair
+import logging
+from torchair import logger
+logger.setLevel(logging.DEBUG)
+
+class Network(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, data0, data1):
+        add_01 = torch.add(data0, data1)
+        with torchair.scope.data_dump():
+            sub_01 = torch.sub(data0, data1)
+        return add_01, sub_01
+
+input0 = torch.randn(2, 2, dtype=torch.float16).npu()
+input1 = torch.randn(2, 2, dtype=torch.float16).npu()
+config = torchair.CompilerConfig()
+config.dump_config.enable_dump = True
+config.dump_config.dump_layer = " Add "
+npu_backend = torchair.get_npu_backend(compiler_config=config)
+npu_mode = Network().npu()
+npu_mode = torch.compile(npu_mode, fullgraph=True, backend=npu_backend, dynamic=False)
+npu_out = npu_mode(input0, input1)
+```
