@@ -398,15 +398,49 @@ class HcomTest(unittest.TestCase):
         init_pg(rank, world_size)
         x = torch.ones(2, 2, dtype=torch.int64).to(
             "npu:" + str(rank)) + 1 + 2 * rank
-        tensor_list = torch.zeros(
+        tensor_list_concat = torch.zeros(
             4, 2, dtype=torch.int64).to("npu:" + str(rank))
+        tensor_list_stack = torch.zeros(
+            [2, 2, 2], dtype=torch.int64).to("npu:" + str(rank))
+
         mod = AllGatherInTensor()
         mod = mod.to("npu:" + str(rank))
-        ori_result = mod(tensor_list, x)
+        ori_result_concat = mod(tensor_list_concat, x)
         opt_mod = torch.compile(mod, dynamic=dynamic,
                                 fullgraph=True, backend=npu_backend)
-        compile_result = opt_mod(tensor_list, x)
-        results.append(ori_result.equal(compile_result))
+        compile_result_concat = opt_mod(tensor_list_concat, x)
+        results.append(ori_result_concat.equal(compile_result_concat))
+
+        ori_result_stack = mod(tensor_list_stack, x)
+        compile_result_stack = opt_mod(tensor_list_stack, x)
+        results.append(ori_result_stack.equal(compile_result_stack))
+        dist.destroy_process_group()
+
+    @classmethod
+    def _test_aclgraph_allgather_into_tensor(cls, rank, world_size, init_pg, dynamic, results):
+        aclgraph_config = CompilerConfig()
+        aclgraph_config.mode = "reduce-overhead"
+        acl_backend = torchair.get_npu_backend(compiler_config=aclgraph_config)
+        torch.npu.set_device(rank)
+        init_pg(rank, world_size)
+        x = torch.ones(2, 2, dtype=torch.int64).to(
+            "npu:" + str(rank)) + 1 + 2 * rank
+        tensor_list_concat = torch.zeros(
+            4, 2, dtype=torch.int64).to("npu:" + str(rank))
+        tensor_list_stack = torch.zeros(
+            [2, 2, 2], dtype=torch.int64).to("npu:" + str(rank))
+
+        mod = AllGatherInTensor()
+        mod = mod.to("npu:" + str(rank))
+        ori_result_concat = mod(tensor_list_concat, x)
+        opt_mod = torch.compile(mod, dynamic=dynamic,
+                                fullgraph=True, backend=acl_backend)
+        compile_result_concat = opt_mod(tensor_list_concat, x)
+        results.append(ori_result_concat.equal(compile_result_concat))
+
+        ori_result_stack = mod(tensor_list_stack, x)
+        compile_result_stack = opt_mod(tensor_list_stack, x)
+        results.append(ori_result_stack.equal(compile_result_stack))
         dist.destroy_process_group()
 
     @classmethod
@@ -810,6 +844,21 @@ class HcomTest(unittest.TestCase):
         self.assertTrue(self._test_multiprocess(HcomTest._test_allgather_into_tensor,
                                                 HcomTest._init_dist_hccl_without_patch, world_size, True))
         self.assertTrue(self._test_multiprocess(HcomTest._test_allgather_into_tensor,
+                                                HcomTest._init_dist_hccl_without_patch, world_size, False))
+
+    def test_aclgraph_allgather_into_tensor(self):
+        world_size = 2
+        self.assertTrue(self._test_multiprocess(HcomTest._test_aclgraph_allgather_into_tensor,
+                                                HcomTest._init_dist_hccl_with_patch, world_size, True))
+        self.assertTrue(self._test_multiprocess(HcomTest._test_aclgraph_allgather_into_tensor,
+                                                HcomTest._init_dist_hccl_with_patch, world_size, False))
+
+    @unittest.skipIf(torch.__version__ < '2.3.1', "patch needed for torch version < 2.3.1")
+    def test_aclgraph_allgather_into_tensor_without_patch(self):
+        world_size = 2
+        self.assertTrue(self._test_multiprocess(HcomTest._test_aclgraph_allgather_into_tensor,
+                                                HcomTest._init_dist_hccl_without_patch, world_size, True))
+        self.assertTrue(self._test_multiprocess(HcomTest._test_aclgraph_allgather_into_tensor,
                                                 HcomTest._init_dist_hccl_without_patch, world_size, False))
 
     def test_reduce_scatter_tensor(self):

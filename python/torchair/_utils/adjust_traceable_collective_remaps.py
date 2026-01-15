@@ -28,7 +28,17 @@ def all_gather_tensor_inplace_fixed(
     if group is None:
         raise ValueError("Group is not set")
 
-    return output_tensor.copy_(all_gather_tensor(input_tensor, gather_dim, group, tag))
+    # fix stack case mentioned in issue: https://github.com/pytorch/pytorch/issues/155632
+    result = all_gather_tensor(input_tensor, gather_dim, group, tag)
+    if result.shape == output_tensor.shape:
+        return output_tensor.copy_(result)
+
+    stacked_result = torch.stack(torch.split(result, input_tensor.shape[0], dim=0), dim=0)
+    if stacked_result.shape == output_tensor.shape:
+        return output_tensor.copy_(stacked_result)
+
+    msg = f"Input shape {input_tensor.shape} and output shape {output_tensor.shape} are not compatible for all_gather_into_tensor. Input must be stacked or concatenated to create output."
+    raise ValueError(msg)
 
 
 def adjust_traceable_collective_remaps():
@@ -36,7 +46,7 @@ def adjust_traceable_collective_remaps():
         from torchair._ge_concrete_graph.ge_converter.experimental.hcom_alltoall import npu_all_to_all_patch_dist
         from torchair._ge_concrete_graph.ge_converter.experimental.hcom_broadcast import npu_broadcast_patch_dist
         from torchair._ge_concrete_graph.ge_converter.experimental.hcom_send_recv import (
-            npu_send_patch_dist, 
+            npu_send_patch_dist,
             npu_recv_patch_dist
         )
         traceable_collective_remaps.update({
