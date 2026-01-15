@@ -134,7 +134,11 @@ def _get_output_to_input_ref_idx(op: OpDef) -> Dict[int, int]:
         ref_idx_mapping[3] = 3
     elif op.type == "RecurrentGatedDeltaRule":
         ref_idx_mapping[1] = 4
-
+    elif op.type == "QkvRmsNormRopeCache":
+        ref_idx_mapping[0] = 6
+        ref_idx_mapping[1] = 7
+        ref_idx_mapping[2] = 8
+        
     return ref_idx_mapping
 
 
