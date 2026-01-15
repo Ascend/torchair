@@ -14,6 +14,8 @@ from torchair.configs.compiler_config import CompilerConfig
 from torchair.core.utils import logger
 from torchair.inference._cache_compiler import CompiledModel, ModelCacheSaver
 from torchair._acl_concrete_graph.utils import reconstruct_args_kwargs, WeakRef, LazyMessage
+from torchair.configs.npugraphex_config import _process_kwargs_options
+from torchair.configs._option_base import CallableValue
 
 from torchair_st_stub_aclgraph_utils import (
     StubNpu,
@@ -3086,6 +3088,69 @@ class AclGraphSt(unittest.TestCase):
         model(x)
         self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
 
+    def test_npugraph_ex_process_kwargs_options(self):
+        config = CompilerConfig()
 
+        def _custom_pre_fn(gm, example_inputs, compile_config: torchair.CompilerConfig):
+            return None
+
+        def _custom_post_fn(gm, example_inputs, compile_config: torchair.CompilerConfig):
+            return None
+
+        test_kwargs = {
+            "options": {
+                "static_kernel_compile": False,
+                "inplace_pass": False,
+                "input_inplace_pass": False,
+                "remove_noop_ops": False,
+                "graph_dump_type": "pbtxt",
+                "graph_dump_path": "/test",
+                "force_eager": False,
+                "pattern_fusion_pass": False,
+                "clone_input": False,
+                "frozen_parameter": False,
+                "post_grad_custom_pre_pass": _custom_pre_fn,
+                "post_grad_custom_post_pass": _custom_post_fn,
+                "use_graph_pool": torch.npu.graph_pool_handle(),
+                "reuse_graph_pool_in_same_fx": False,
+                "capture_limit": 64,
+                "clone_output": False
+            }
+        }
+
+        _process_kwargs_options(config, test_kwargs)
+
+        assert config.experimental_config.aclgraph._aclnn_static_shape_kernel.value == '0'
+        assert config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass.value == '1'
+        assert config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass.value == '1'
+        assert config.experimental_config.remove_noop_ops.value == '0'
+        assert config.debug.graph_dump.type.value == 'pbtxt'
+        assert config.debug.graph_dump.path == '/test'
+        assert config.debug.run_eagerly.value == '0'
+        assert config.experimental_config.pattern_fusion_pass.value == '0'
+        assert config.experimental_config.frozen_parameter.value == '0'
+        assert isinstance(config.post_grad_custom_pre_pass, CallableValue)
+        assert isinstance(config.post_grad_custom_post_pass, CallableValue)
+        assert config.aclgraph_config.use_custom_pool is not None
+        assert config.debug.aclgraph.disable_mempool_reuse_in_same_fx.value == '1'
+        assert config.debug.aclgraph.static_capture_size_limit.value == '64'
+        assert config.debug.aclgraph.enable_output_clone.value == '0'
+
+    def test_npugraph_ex_process_kwargs_options_invalid_option(self):
+        config = CompilerConfig()
+
+        test_kwargs = {
+            "options": {
+                "inplace_pass": 'test',
+                "input_inplace_pass": 'test',
+                "reuse_graph_pool_in_same_fx": 'test'
+            }
+        }
+
+        try:
+            _process_kwargs_options(config, test_kwargs)
+        except Exception as e:
+            assert str(e).__contains__(
+                "(type: <class 'str'>) not in optional list [True, False] (type: <class 'bool'>)")
 if __name__ == '__main__':
     unittest.main()
