@@ -3152,5 +3152,38 @@ class AclGraphSt(unittest.TestCase):
         except Exception as e:
             assert str(e).__contains__(
                 "(type: <class 'str'>) not in optional list [True, False] (type: <class 'bool'>)")
+    
+    def test_aclgraph_core_limit_with_static_kernel(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                with torchair.scope.limit_core_num(12, 24):
+                    output = torch.square(x)
+                return output
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.experimental_config.aclgraph._aclnn_static_shape_kernel = True
+
+        model = Model()
+
+        x = torch.randn([5, 5])
+
+        import warnings
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            try:
+                model(x)
+            except ValueError as e:
+                target_warning = "When both static shape kernel and core limit are enabled"
+                messages = [str(w.message) for w in caught]
+                self.assertTrue(
+                    any(target_warning in m for m in messages),
+                    f"Expected warning '{target_warning}' not found in {messages}"
+                )        
+    
+    
 if __name__ == '__main__':
     unittest.main()
