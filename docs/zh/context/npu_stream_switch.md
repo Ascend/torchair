@@ -29,5 +29,5 @@ npu_stream_switch(stream_tag: str, stream_priority: int = 0)
 ## 调用示例
 
 -   模式1：参考[图内多流表达功能（aclgraph）> 使用示例](图内多流表达功能（aclgraph）.md#使用示例)。
--   模式2：参考[图内多流表达功能（Ascend-IR）> 使用示例](图内多流表达功能（Ascend-IR）.md#使用示例)。
+-   模式2：参考[图内多流表达功能（Ascend IR）> 使用示例](图内多流表达功能（Ascend-IR）.md#使用示例)。
 

@@ -21,12 +21,12 @@
     
 -   本功能仅支持reduce-overhead模式。
 
--   需要注意的是，当Ascend PyTorch Profiler中**“experimental\_config”参数**开启算子信息统计功能（即record\_op\_args=True），且“**schedule**”**参数**设置的预先跳过的step轮数为0时（即skip\_first=0），不支持同时使用本功能。
+-   需要注意的是，当Ascend PyTorch Profiler中“**experimental\_config参数**”开启算子信息统计功能（即record\_op\_args=True），且“**schedule参数**”设置的预先跳过step轮数为0时（即skip\_first=0），不支持同时使用本功能。
 
     > **说明：** 
     >**Ascend PyTorch Profiler**是CANN针对PyTorch框架开发的性能分析工具，通过在PyTorch脚本中添加**Ascend PyTorch Profiler接口**（推荐torch\_npu.profiler.profile接口）采集指定指标和性能数据，详细的使用方法请参考《CANN 性能调优工具用户指南》中的“Ascend PyTorch Profiler”章节。
 
--   多卡场景使用限制：必须配置环境变量**[LOCAL\_WORLD\_SIZE](https://docs.pytorch.org/docs/stable/elastic/run.html#definitions)**（指单个物理节点（一台机器）上启动的并行进程数，常见于PyTorch多节点场景），其每个节点的LOCAL\_WORLD\_SIZE必须一致。
+-   多卡场景使用限制：必须配置环境变量[LOCAL\_WORLD\_SIZE](https://docs.pytorch.org/docs/stable/elastic/run.html#definitions)（指单个物理节点（一台机器）上启动的并行进程数，常见于PyTorch多节点场景），其每个节点的LOCAL\_WORLD\_SIZE必须一致。
 
     > **说明：** 
     >由于多卡场景在安装静态kernel run包时，会更新算子库公共文件，若没有环境变量LOCAL\_WORLD\_SIZE的协同，可能会读取到过程态的内容，从而导致未定义行为（undefined behavior）。因此，在多卡场景使用该功能时，必须配置LOCAL\_WORLD\_SIZE。
@@ -39,9 +39,9 @@
     export LOCAL_WORLD_SIZE=${local_world_size}
     ```
 
-    $\{local\_world\_size\}表示单机上实际运行的进程数，取值是自然数。
+    \$\{local\_world\_size\}表示单机上实际运行的进程数，取值是自然数。
 
-2.  通过[torchair.get\_npu\_backend](get_npu_backend.md)中compiler\_config配置本功能，示例如下，仅供参考不支持直接拷贝运行，参数介绍参见下表。
+2.  通过[torchair.get\_npu\_backend](get_npu_backend.md)中compiler\_config配置本功能，示例如下，仅供参考不支持直接拷贝运行，参数说明如下表。
 
     ```python
     import torch_npu, torchair
@@ -61,11 +61,11 @@
     | 参数名 | 说明 |
     | --- | --- |
     | _aclnn_static_shape_kernel | 布尔类型，是否开启静态Kernel编译 。<br>- False（默认值）：默认关闭。<br>- True：开启静态Kernel编译 。 |
-    | _aclnn_static_shape_kernel_build_dir | 字符串类型，配置编译产物路径，默认为当前执行脚本的同级目录。<br>说明： 请确保该参数指定的路径确实存在，并且运行用户具有读、写操作权限。 |
+    | _aclnn_static_shape_kernel_build_dir | 字符串类型，配置编译产物路径，默认为当前执行脚本的同级目录。<br>**说明**： 请确保该参数指定的路径确实存在，并且运行用户具有读、写操作权限。 |
 
 ## 产物说明
 
-假设产物路径为“/path/test”，目录结构如下，其中$\{timestamp\}为时间戳、$\{pid\}表示运行的进程号。
+假设产物路径为“/path/test”，目录结构如下，其中\$\{timestamp\}为时间戳、\$\{pid\}表示运行的进程号。
 
 ```
 aclnn_static_shape_kernel_outputs               // 固定的产物文件名

@@ -36,7 +36,7 @@ opt_model = torch.compile(model, backend=npu_backend)
 
 ## 产物说明
 
-功能开启后，默认在当前执行路径下生成summary\_$\{timestamp\}.csv文件，文件样例如[表2](#table2)所示。
+功能开启后，默认在当前执行路径下生成summary\_\$\{timestamp\}.csv文件，文件样例如[表2](#table2)所示。
 
 **表 2**  fx\_summary信息 <a name="table2"></a>
 

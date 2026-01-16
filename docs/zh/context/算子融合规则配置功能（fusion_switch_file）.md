@@ -74,7 +74,7 @@
 
 2.  使能算子融合规则配置文件。
 
-    该配置文件通过[torchair.get\_npu\_backend](get_npu_backend.md)中compiler\_config参数配置生效，示例如下，参数介绍参见下表。
+    该配置文件通过[torchair.get\_npu\_backend](get_npu_backend.md)中compiler\_config参数配置生效，示例如下，参数说明如下表。
 
     ```python
     import torch_npu, torchair
@@ -98,7 +98,7 @@
     export TNG_LOG_LEVEL=0
     ```
 
-    若配置正确，在日志信息中搜索“ge.fusionSwitchFile**:**”关键字，可以看见类似的打印信息。
+    若配置正确，在日志信息中搜索“ge.fusionSwitchFile”关键字，可以看见类似的打印信息。
 
     ```bash
     concrete_graph/session.cpp:28   ge.fusionSwitchFile: /home/test/fusion_switch.cfg

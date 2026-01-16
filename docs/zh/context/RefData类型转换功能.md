@@ -16,7 +16,7 @@
 
 -   **对于在线推理场景**
 
-    先使用torch.compile进行图编译，再进行图执行。此场景下需通过[torchair.get\_npu\_backend](get_npu_backend.md)中compiler\_config配置，示例如下，仅供参考不支持直接拷贝运行，参数介绍参见下表。
+    先使用torch.compile进行图编译，再进行图执行。此场景下需通过[torchair.get\_npu\_backend](get_npu_backend.md)中compiler\_config配置，示例如下，仅供参考不支持直接拷贝运行，参数说明如下表。
 
     ```python
     import torch_npu
@@ -29,11 +29,10 @@
     ```
 
     **表 1**  参数说明
-
     
     | 参数名 | 说明 |
-| --- | --- |
-| enable_ref_data | 构图过程中是否将输入数据类型转换为RefData类型。<br>- False（默认值）：不转换为RefData类型。<br>- True：转换为RefData类型。 |
+	| --- | --- |
+	| enable_ref_data | 构图过程中是否将输入数据类型转换为RefData类型。<br>- False（默认值）：不转换为RefData类型。<br>- True：转换为RefData类型。 |
 
 ## 使用示例
 

@@ -28,7 +28,7 @@ set_dim_gears(t: torch.Tensor, dim_gears: Dict[int, Union[List[int], Tuple[int]]
 
 - 本功能仅适用于整图优化场景。
 
-- [set\_dim\_gears](set_dim_gears.md)需和torch.compile中的dynamic=True搭配使用。因为set\_dim\_gears只会符号化入参指定的Tensor及维度，其他scalar值的符号化会在dynamic=True时由Dynamo自动完成。
+- set\_dim\_gears需和torch.compile中的dynamic=True搭配使用。因为set\_dim\_gears只会符号化入参指定的Tensor及维度，其他scalar值的符号化会在dynamic=True时由Dynamo自动完成。
 
 - 本功能要求网络中参与分档的Tensor不能传入私有格式，如FRACTAL\_NZ、NC1HWC0等。
 

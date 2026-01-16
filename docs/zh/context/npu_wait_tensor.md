@@ -29,4 +29,4 @@ npu_wait_tensor(self: torch.Tensor, dependency: torch.Tensor)
 
 ## 调用示例
 
-参考[图内多流表达功能（Ascend-IR）> 使用示例](图内多流表达功能（Ascend-IR）.md#使用示例)。
+参考[图内多流表达功能（Ascend IR）> 使用示例](图内多流表达功能（Ascend-IR）.md#使用示例)。

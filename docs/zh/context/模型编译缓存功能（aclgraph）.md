@@ -127,6 +127,8 @@ torch.compile是一种即时编译器（Just-In-Time compiler），成图首次�
         from torchair.configs.compiler_config import CompilerConfig
         
         config = CompilerConfig()
+        # 需配置reduce-overhead模式
+        config.mode = "reduce-overhead"
         
         logger.setLevel(logging.INFO)
         
@@ -175,9 +177,9 @@ torch.compile是一种即时编译器（Just-In-Time compiler），成图首次�
         res_prompt = model(x, kv)
         x.is_prompt = False
         # 执行decode
-        res_decode = model(x, kv)
+    res_decode = model(x, kv)
         ```
-
+    
 3.  模型脚本改造后，运行并生成封装func函数的缓存文件。
     1.  进入test.py所在目录，执行如下命令：
 
@@ -195,13 +197,13 @@ torch.compile是一种即时编译器（Just-In-Time compiler），成图首次�
 
         生成的各个func函数缓存文件路径由[cache\_compile](cache_compile.md)中cache\_dir参数指定，支持相对路径和绝对路径。
 
-        -   若cache\_dir指定路径，且为绝对路径，则缓存文件路径为$\{cache\_dir\}/$\{model\_info\}/$\{func\}。
-        -   若cache\_dir指定路径，且为相对路径，则缓存文件路径为$\{work\_dir\}/$\{cache\_dir\}/$\{model\_info\}/$\{func\}。
+        -   若cache\_dir指定路径，且为绝对路径，则缓存文件路径为\$\{cache\_dir\}/$\{model\_info\}/$\{func\}。
+        -   若cache\_dir指定路径，且为相对路径，则缓存文件路径为\$\{work\_dir\}/$\{cache\_dir\}/$\{model\_info\}/$\{func\}。
 
-        $\{cache\_dir\}默认为“.torchair\_cache”（若无会新建，请确保有读写权限），$\{work\_dir\}为当前工作目录，$\{model\_info\}为模型信息，$\{func\}为封装的func函数。reduce-overhead模式下，$\{model\_info\}里会自动增加**"aclgraphcache**"关键词。
+        \$\{cache\_dir\}默认为“.torchair\_cache”（若无会新建，请确保有读写权限），\$\{work\_dir\}为当前工作目录，\$\{model\_info\}为模型信息，\$\{func\}为封装的func函数。reduce-overhead模式下，\$\{model\_info\}里会自动增加"**aclgraphcache**"关键词。
 
         > **说明：** 
-        >若编译缓存的模型涉及多机多卡，缓存路径包含集合通信相关的world\_size以及global\_rank信息，路径为$\{work\_dir\}/$\{cache\_dir\}/$\{model\_info\}/world$\{world\_size\}global\_rank$\{global\_rank\}/$\{func\}/。
+        >若编译缓存的模型涉及多机多卡，缓存路径包含集合通信相关的world\_size以及global\_rank信息，路径为\$\{work\_dir\}/\$\{cache\_dir\}/\$\{model\_info\}/world\$\{world\_size\}global\_rank\$\{global\_rank\}/\$\{func\}/。
 
 4.  再次执行脚本，验证模型启动时间。
 

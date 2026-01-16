@@ -11,7 +11,7 @@ RuntimeError: E19025: [PID: 44349] 2024-12-05-16:19:12.399.912 Input tensor is i
        Assert ((ConstructZeroCopyIoActiveBaseAddrs(zero copy_output_indexes_,output_index_to_allocation_ids_, output_data.blobs,output_tensor,false,output_in_dex_to_active_mem_base_addrs )) == ge::SUCCESS) failed[FUNC:UpdateAllNodeArgs][FILE:davinci_model.cc][LINE:5797]
        Assert ((UpdateAllNodeArgs(input_data, output_data,input_tensor, output_tensor)) == ge::SUCCESS) failed[FUNC:CopyModelData][FILE:davinci_model.cc][LINE:487]
        Assert (((ExecuteModelAsync(model_id, stream, async_mode, input_tensor, output_tensor))) == ge::SUCCESS) failed[FUNC:ExecuteModel][FILE:model_manager.cc][LINE:1923]
-       GraphManager ExecuteGrapWithStreamhAsync failed,session id = 0, graph id = 16, stream = 0xaaab012b740.[FUNC:ExecuteGraphWithStreamAsync][FILE:inner_session.cc][LINE:625]
+       GraphManager ExecuteGraphWithStreamAsync failed,session id = 0, graph id = 16, stream = 0xaaab012b740.[FUNC:ExecuteGraphWithStreamAsync][FILE:inner_session.cc][LINE:625]
        Execute graph with stream async failed, error code:1343225857, session_id:0, graph_id:16, stream:0xaaab012b740 .[FUNC:ExecuteGraphWithStreamAsync][FILE:ge_api.cc][LINE:851]
 ```
 

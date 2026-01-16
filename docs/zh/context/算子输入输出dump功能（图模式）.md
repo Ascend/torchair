@@ -5,14 +5,16 @@
 Graph模式下，dump Ascend IR计算图上算子执行时的输入、输出数据，用于后续问题定位和分析，如算子运行性能或精度问题。
 
 > **说明：** 
->本功能与[图结构dump功能](图结构dump功能.md)是不同的功能，二者可以单独使用，也可共同用于用户定位精度问题。
+> 本功能与[图结构dump功能](图结构dump功能.md)是不同的功能，二者可以单独使用，也可共同用于用户定位精度问题。
 
-**图 1**  算子图模式dump功能介绍  
+**图 1**  算子图模式dump功能介绍 
+
 ![](figures/算子图模式dump功能介绍.png)
 
 ## 使用约束
 
-本功能仅支持max-autotune模式。
+- 本功能仅支持max-autotune模式。
+- 参数配置过程中若涉及文件路径，请确保路径确实存在，并且运行用户具有读、写操作权限。
 
 ## 使用方法
 
@@ -48,12 +50,12 @@ opt_model = torch.compile(model, backend=npu_backend)
 | --- | --- |
 | enable_dump | 是否开启数据dump功能，bool类型。<br>- False（默认值）：不开启数据dump。<br>- True：开启数据dump。 |
 | dump_mode | dump数据模式，用于指定dump算子的输入还是输出数据，字符串类型。<br>- input：仅dump算子输入数据。<br>- output：仅dump算子输出数据。<br>- all（默认值）：同时dump算子输入和输出数据。 |
-| dump_path | dump数据的存放路径，字符串类型，默认值为当前执行路径。支持配置绝对路径或相对路径（相对执行命令行时的当前路径）。<br>- 绝对路径配置以“/”开头，例如：/home/HwHiAiUser/output。<br>- 相对路径配置直接以目录名开始，例如：output。<br>**说明**： 请确保该参数指定的路径确实存在，并且运行用户具有读、写操作权限。 |
+| dump_path | dump数据的存放路径，字符串类型，默认值为当前执行路径。支持配置绝对路径或相对路径（相对执行命令行时的当前路径）。<br>- 绝对路径配置以“/”开头，例如：/home/HwHiAiUser/output。<br>- 相对路径配置直接以目录名开始，例如：output。 |
 | quant_dumpable | 如果是量化后的网络，可通过此参数控制是否采集量化前的dump数据，bool类型。<br>- False（默认值）：不采集量化前的dump数据。因为图编译过程中可能优化量化前的输入/输出，此时无法获取量化前的dump数据。<br>- True：开启此配置后，可确保能够采集量化前的dump数据。 |
 | dump_step | 指定采集哪些迭代的dump数据。<br>字符串类型，默认值None，表示所有迭代都会产生dump数据。<br>多个迭代用“\|”分割，例如："0\|5\|10"；也可以用"\-"指定迭代范围，例如："0\|3\-5\|10"。 |
 | dump_layer | 指定需要dump的算子名，多个算子名之间使用空格分隔，形如"Add1_in_0 Add2 Mul2"。算子名获取方法参见[dump_layer配置项说明](#dump_layer配置项说明)。<br>**说明**： 若指定的算子其输入涉及data算子，会同时将data算子信息dump出来。 |
 | dump_data | 指定算子dump内容类型，字符串类型。<br>- tensor（默认值）：dump算子数据。<br>- stats：dump算子统计数据，保存结果为csv格式，文件中包含算子名称、输入/输出的数据类型、最大值、最小值等。<br>**说明**：通常dump数据量太大并且耗时长，可以先dump算子统计数据，根据统计数据识别可能异常的算子，再dump算子数据。 |
-| dump_config_path（推荐） | 指定dump配置json文件路径，通过json文件使能dump，字符串类型，无默认值。支持配置绝对路径或相对路径（相对执行命令行时的当前路径）。目前支持模型Dump/单算子Dump、溢出算子Dump、算子Dump Watch模式等功能，使用方法参见[dump_config_path配置项说明](#dump_config_path配置项说明)。<br>推荐本方式配置dump，上述功能（除了enable_dump）均能通过json文件配置，并且后续将不再演进。<br> 说明： <br>  - 同时配置dump_config_path和其余dump options时，dump options有较高的配置优先级。不建议同时使用。<br>  - 请确保该参数指定的路径确实存在，且为json格式，并且运行用户具有读、写操作权限。<br>  - 注意torch_npu默认已开启exception类信息的dump功能（即dump_scene参数，异常算子Dump配置） ，通过本功能配置的exception dump不会生效。<br>  - 对于大模型场景，通常dump数据量太大并且耗时长，建议dump_data配置为“stats”，开启算子统计功能，根据统计数据识别可能异常的算子后，再dump可能异常的算子。 |
+| dump_config_path（**推荐**） | 指定dump配置文件路径（json格式），字符串类型，无默认值。支持绝对/相对路径（即相对执行命令时的当前路径）。<br>上述dump options（除了enable_dump）均能通过json文件配置，功能模式支持模型Dump/单算子Dump、溢出算子Dump、算子Dump Watch模式等，具体使用方法和约束参见[dump_config_path配置项说明](#dump_config_path配置项说明)。 |
 
 ### dump_layer配置项说明
 
@@ -97,6 +99,13 @@ opt_model = torch.compile(model, backend=npu_backend)
 ### dump\_config\_path配置项说明
 
 通过表中“dump\_config\_path”参数指定dump配置json文件路径，基于json里的配置使能各种场景dump功能。
+
+-   **使用说明**：   
+    - 推荐本方式dump，上述dump options（除了enable_dump）均能通过json文件配置，并且dump options后续不再演进。
+    - 当dump_config_path和上述dump options一起配置时，dump options优先级更高。一般不建议同时使用。
+    - 注意：torch_npu默认已开启exception类信息的dump功能（即dump_scene参数，异常算子Dump配置） ，通过本功能配置的exception dump不会生效。
+    - 对于大模型场景，通常dump数据量太大并且耗时长，建议dump_data配置为“stats”，开启算子统计功能，根据统计数据识别可能异常的算子后，再dump可能异常的算子。
+
 
 -   **模型Dump**/**单算子Dump配置**：
 
@@ -227,15 +236,15 @@ opt_model = torch.compile(model, backend=npu_backend)
 
 ### 非dump\_config\_path配置项说明
 
-通过表中“非dump\_config\_path”参数使能各种场景dump功能。dump结果文件存储在dump\_path参数指定的目录$\{dump\_path\}/$\(worldsize\_global\_rank\)/$\{time\}/$\{device\_id\}/$\{model\_name\}/$\{model\_id\}/$\{data\_index\}。若$\{dump\_path\}配置为/home/dump，结果目录样例为“/home/dump/worldsize1\_global\_rank0/2024112145738/0/ge\_default\_20200808163719\_121/1/0”。
+通过表中“非dump\_config\_path”参数使能各种场景dump功能。dump结果文件存储在dump\_path参数指定的目录、\$\{dump\_path\}/\$\(worldsize\_global\_rank\)/\$\{time\}/\$\{device\_id\}/\$\{model\_name\}/\$\{model\_id\}/\$\{data\_index\}。若\$\{dump\_path\}配置为/home/dump，结果目录样例为“/home/dump/worldsize1\_global\_rank0/2024112145738/0/ge\_default\_20200808163719\_121/1/0”。
 
--   $\{dump\_path\}：由dump\_path参数指定，默认为脚本所在路径。
--   $\{worldsize\_global\_rank\}：表示集合通信相关的world\_size以及global\_rank信息，若只涉及单卡则表示为“worldsize1\_global\_rank0”。
--   $\{time\}：dump数据文件保存的时间，格式为YYYYMMDDHHMMSS。
--   $\{device\_id\}：设备ID。
--   $\{model\_name\}：子图名称。可能存在多个文件夹，dump数据为计算图名称对应目录下的数据。如果$\{model\_name\}出现了“.“、“/“、“\\“、空格时，转换为下划线表示。
--   $\{model\_id\}：子图ID号。
--   $\{data\_index\}：迭代数，用于保存对应迭代的dump数据。如果指定了dump\_step，则data\_index和dump\_step一致；如果不指定dump\_step，则data\_index一般从0开始计数，每dump一个迭代的数据，序号递增1。
+-   \$\{dump\_path\}：由dump\_path参数指定，默认为脚本所在路径。
+-   \$\{worldsize\_global\_rank\}：表示集合通信相关的world\_size以及global\_rank信息，若只涉及单卡则表示为“worldsize1\_global\_rank0”。
+-   \$\{time\}：dump数据文件保存的时间，格式为YYYYMMDDHHMMSS。
+-   \$\{device\_id\}：设备ID。
+-   \$\{model\_name\}：子图名称。可能存在多个文件夹，dump数据为计算图名称对应目录下的数据。如果\$\{model\_name\}出现了“.“、“/“、“\\“、空格时，转换为下划线表示。
+-   \$\{model\_id\}：子图ID号。
+-   \$\{data\_index\}：迭代数，用于保存对应迭代的dump数据。如果指定了dump\_step，则data\_index和dump\_step一致；如果不指定dump\_step，则data\_index一般从0开始计数，每dump一个迭代的数据，序号递增1。
 
 ### 解析dump数据文件
 

@@ -13,7 +13,7 @@ TorchAir提供了昇腾NPU图编译后端，对接到不同的图模式执行器
 
 ## 开启run-eagerly
 
-该功能通过[torchair.get\_npu\_backend](get_npu_backend.md)中compiler\_config配置，示例如下，仅供参考不支持直接拷贝运行，参数介绍参见下表，完整的示例参考[性能分析案例](性能分析案例.md)。
+该功能通过[torchair.get\_npu\_backend](get_npu_backend.md)中compiler\_config配置，示例如下，仅供参考不支持直接拷贝运行，参数说明如下表，完整的示例参考[性能分析案例](性能分析案例.md)。
 
 -   对接到**max-autotune**（Ascend IR）模式的示例如下：
 

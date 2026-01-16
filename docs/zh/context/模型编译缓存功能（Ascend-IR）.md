@@ -188,13 +188,13 @@ torch.compile是一种即时编译器（Just-In-Time compiler），成图首次�
 
         生成的各个func函数缓存文件路径由[cache\_compile](cache_compile.md)中cache\_dir参数指定，支持相对路径和绝对路径。
 
-        -   若cache\_dir指定路径，且为绝对路径，则缓存文件路径为$\{cache\_dir\}/$\{model\_info\}/$\{func\}。
-        -   若cache\_dir指定路径，且为相对路径，则缓存文件路径为$\{work\_dir\}/$\{cache\_dir\}/$\{model\_info\}/$\{func\}。
+        -   若cache\_dir指定路径，且为绝对路径，则缓存文件路径为\$\{cache\_dir\}/\$\{model\_info\}/\$\{func\}。
+        -   若cache\_dir指定路径，且为相对路径，则缓存文件路径为\$\{work\_dir\}/\$\{cache\_dir\}/\$\{model\_info\}/\$\{func\}。
 
-        $\{cache\_dir\}默认为“.torchair\_cache”（若无会新建，请确保有读写权限），$\{work\_dir\}为当前工作目录，$\{model\_info\}为模型信息，$\{func\}为封装的func函数。
+        \$\{cache\_dir\}默认为“.torchair\_cache”（若无会新建，请确保有读写权限），\$\{work\_dir\}为当前工作目录，\$\{model\_info\}为模型信息，\$\{func\}为封装的func函数。
 
         > **说明：** 
-        >若编译缓存的模型涉及多机多卡，缓存路径包含集合通信相关的world\_size以及global\_rank信息，路径为$\{work\_dir\}/$\{cache\_dir\}/$\{model\_info\}/world$\{world\_size\}global\_rank$\{global\_rank\}/$\{func\}/。
+        >若编译缓存的模型涉及多机多卡，缓存路径包含集合通信相关的world\_size以及global\_rank信息，路径为\$\{work\_dir\}/\$\{cache\_dir\}/\$\{model\_info\}/world\$\{world\_size\}global\_rank\$\{global\_rank\}/\$\{func\}/。
 
 4.  再次执行脚本，验证模型启动时间。
 
@@ -221,7 +221,7 @@ torch.compile是一种即时编译器（Just-In-Time compiler），成图首次�
 
 ## Ascend IR编译缓存
 
-max-autotune模式下**，**除了优化Dynamo编译耗时，还支持优化Ascend IR图编译耗时，主要通过[cache\_compile](cache_compile.md)中ge\_cache参数实现，以进一步加快图模式启动时间。具体参见下方示例代码：
+max-autotune模式下，除了优化Dynamo编译耗时，还支持优化Ascend IR图编译耗时，主要通过[cache\_compile](cache_compile.md)中ge\_cache参数实现，以进一步加快图模式启动时间。具体参见下方示例代码：
 
 > **说明：** 
 >-   max-autotune模式**支持ge\_cache**，reduce-overhead模式**不支持ge\_cache**，配置ge\_cache=True不生效。
@@ -289,16 +289,16 @@ x.is_prompt = False
 res_decode = model(x, kv)
 ```
 
-配置ge\_cache=True后，缓存编译结果路径与封装的func函数缓存文件路径一致，即$\{work\_dir\}/$\{cache\_dir\}/$\{model\_info\}/$\{func\}，注意此时缓存路径中的模型信息$\{model\_info\}里会自动增加“**ge\_cache**”关键词。  
+配置ge\_cache=True后，缓存编译结果路径与封装的func函数缓存文件路径一致，即\$\{work\_dir\}/\$\{cache\_dir\}/\$\{model\_info\}/\$\{func\}，注意此时缓存路径中的模型信息\$\{model\_info\}里会自动增加“**ge\_cache**”关键词。  
 
 缓存的编译结果文件包括：
 
 > **说明：** 
 >-   如果未生成“.om”和“.idx”文件，需要清理缓存目录并重新生成缓存。
->-   文件名中的$\{key\}表示graph的编号，$\{timestamp\}表示文件保存的时间戳。
+>-   文件名中的\$\{key\}表示graph的编号，\$\{timestamp\}表示文件保存的时间戳。
 
--   graph\_$\{key\}\_$\{timestamp\}.om：模型缓存文件。
--   graph\_$\{key\}.idx：索引文件，用户可通过graph\_key快速找到对应的缓存文件。索引文件内容示例如下：
+-   graph\_\$\{key\}\_\$\{timestamp\}.om：模型缓存文件。
+-   graph\_\$\{key\}.idx：索引文件，用户可通过graph\_key快速找到对应的缓存文件。索引文件内容示例如下：
 
     ```
     {
@@ -317,4 +317,4 @@ res_decode = model(x, kv)
     }
     ```
 
--   （可选）graph\_$\{key\}\_$\{timestamp\}.rdcpkt：变量格式文件，仅在图中存在变量时生成。用于框架匹配模型缓存文件，如果graph\_key对应的图内变量格式发生变更，则之前缓存的文件将无法直接恢复使用，该场景下会重新触发编译流程重新生成缓存文件。
+-   （可选）graph\_\$\{key\}\_\$\{timestamp\}.rdcpkt：变量格式文件，仅在图中存在变量时生成。用于框架匹配模型缓存文件，如果graph\_key对应的图内变量格式发生变更，则之前缓存的文件将无法直接恢复使用，该场景下会重新触发编译流程重新生成缓存文件。

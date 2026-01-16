@@ -12,7 +12,7 @@
 
 1.  [创建自定义算子工程与原型](#创建自定义算子工程与原型)
 2.  [实现Kernel与Tiling](#实现Kernel与Tiling)
-3.  [实现InferShape与InferDataType（可选）](#实现InferShape与InferDataType（可选）)
+3.  [实现InferShape与InferDataType（可选）](#sec3)
 4.  [自定义算子包编译部署](#自定义算子包编译部署)
 
 ## 创建自定义算子工程与原型
@@ -80,7 +80,7 @@
 
     -   \$\{INSTALL\_DIR\}为CANN软件安装后文件存储路径，请根据实际环境进行替换。
     -   -i：指定算子原型定义的json文件所在路径，请根据实际情况修改。
-    -   -c：ai\_core-_<soc\_version\>_代表算子在AI Core上执行，_<soc\_version\>_为昇腾AI处理器的型号，请与实际环境保持一致。
+    -   -c：ai\_core-_\<soc\_version\>_代表算子在AI Core上执行，_\<soc\_version\>_为昇腾AI处理器的型号，请与实际环境保持一致。
     -   -lan：参数cpp代表算子基于Ascend C编程框架，使用C/C++编程语言开发。
     -   -out：生成文件所在路径，可配置为绝对路径或者相对路径，并且工具执行用户对路径具有可读写权限。若不配置，则默认生成在执行命令的当前路径。
 
@@ -103,7 +103,7 @@
 
 实际业务场景下，您可以参考[《CANN Ascend C算子开发指南》](https://hiascend.com/document/redirect/CannCommunityOpdevAscendC)中的“算子实现\>工程化算子开发”章节下“**Kernel侧算子实现**”和“**Host侧Tiling实现**”，进行核心代码开发。
 
-## 实现InferShape与InferDataType（可选）
+## 实现InferShape与InferDataType（可选）<a name="sec3"></a>
 
 本步骤为可选操作，仅当需要使用TorchAir max-autotune模式（Ascend IR）提供的能力时，才需要实现InferShape与InferDataType。
 

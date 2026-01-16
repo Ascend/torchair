@@ -9,9 +9,7 @@
 -   说明1：运行过程中实际使用的核数可能少于配置的最大核数。
 -   说明2：配置的最大核数不能超过AI处理器本身允许的最大AI Core数与最大Vector Core数。
 
-更多关于Eager模式和图模式下控核的背景介绍和使用约束请参考[Eager和图模式下控核介绍](Eager和图模式下控核介绍.md)
-
-更多关于AI Core和Vector Core的介绍请参考[AI Core/Cube Core/Vector Core简介](AI-Core-Cube-Core-Vector-Core简介.md)。
+关于AI Core和Vector Core详细介绍请参考[AI Core/Cube Core/Vector Core简介](AI-Core-Cube-Core-Vector-Core简介.md)，如需了解关于Eager和图模式下的控核差异和使用说明请参考[Eager和图模式下控核介绍](Eager和图模式下控核介绍.md)。
 
 ## 使用约束
 

@@ -18,7 +18,7 @@ TorchAir提供了一些[FX Pass](简介.md#常用概念)配置项，可以将变
 
 ## 使用方法
 
-该功能通过[torchair.get\_npu\_backend](get_npu_backend.md)中compiler\_config配置，示例如下，仅供参考不支持直接拷贝运行，参数介绍参见下表。
+该功能通过[torchair.get\_npu\_backend](get_npu_backend.md)中compiler\_config配置，示例如下，仅供参考不支持直接拷贝运行，参数说明如下表。
 
 ```python
 import torch_npu, torchair

@@ -174,4 +174,5 @@
 
 -   [附录](context/附录.md)
     -   [AI Core/Cube Core/Vector Core简介](context/AI-Core-Cube-Core-Vector-Core简介.md)
+    -   [Eager和图模式下控核介绍](context/Eager和图模式下控核介绍.md)
 

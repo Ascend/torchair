@@ -21,7 +21,7 @@
 
 -   动态Shape场景下，默认单流模式，用户通过如下CANN环境变量开启多流。一旦开启了多流，其功能**优先级低于**本功能。
 
-    ```
+    ```bash
     export ENABLE_DYNAMIC_SHAPE_MULTI_STREAM=1
     ```
 

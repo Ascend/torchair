@@ -19,7 +19,7 @@ reduce-overhead模式下，由于aclgraph本身不支持动态shape，因此执�
 
 ## 使用方法
 
-该功能配置示例如下，仅供参考不支持直接拷贝运行，参数介绍参见下表。
+该功能配置示例如下，仅供参考不支持直接拷贝运行，参数说明如下表。
 
 ```python
 import torch_npu, torchair

@@ -10,6 +10,7 @@
 此处以[图1](#fig1)为例，阐述三种图执行方式的差异。假设用户图只有Add算子，存在input1、input2、output三个Tensor。编译该图时传入的input1与input2的shape都为\(2, 2\)，而用户实际输入时input1与input2的shape有\(2, 2\)、\(2, 2\)与\(4, 2\)、\(4, 2\)两种。
 
 **图 1**  Add算子示意图  <a name="fig1"></a>
+
 ![](figures/Add算子示意图.png "Add算子示意图")
 
 -   静态图执行：
@@ -62,7 +63,7 @@
 
 2.  （可选）在模型脚本中设置动态分档的组合模式。<a name="li2"></a>
 
-    通过[torchair.get\_npu\_backend](get_npu_backend.md)中compiler\_config配置，示例如下，仅供参考不支持直接拷贝运行，参数介绍参见下表。
+    通过[torchair.get\_npu\_backend](get_npu_backend.md)中compiler\_config配置，示例如下，仅供参考不支持直接拷贝运行，参数说明如下表。
 
     ```
     import torch_npu, torchair

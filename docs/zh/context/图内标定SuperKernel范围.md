@@ -39,13 +39,12 @@ TorchAir提供标定SuperKernel范围的能力，支持用户根据实际业务�
         同时支持用户自定义组合编译选项，配置格式形如"<option1\>=<value1\>:<option2\>=<value2\>:<option3\>=......"，多个选项时用英文冒号分割。
 
     **表 1**  编译选项说明  <a name="table1"></a>
-
     
-    | 选项参数 | 说明 |
-| --- | --- |
-| feed-sync-all | 当子算子启动核数小于SuperKernel启动核数且使用了SyncAll全核同步指令，若出现算子执行卡住或超时，可尝试开启本功能解决此问题。<br>- 0：关闭本功能（默认值），若子算子使用SyncAll全核同步指令，用户需自行保证子算子与SuperKernel启动核数相同。<br>- 1：开启本功能，系统自动识别SuperKernel内算子是否调用SyncAll全核同步指令，同时判断子算子启动核数是否小于SuperKernel启动核数。若小于SuperKernel启动核数，会在SuperKernel内子算子的其余核中插入SyncAll指令，保证与子算子内调用SyncAll次数匹配，防止卡住超时。<br>**说明**： <br>   - SuperKernel启动核数为子算子的最大启动核数。假设SuperKernel包括算子a（启动核数为4）和算子b（启动核数为2），此时SuperKernel启动核数为4。<br>   - 启动核数可通过Profiling采集的性能数据获取，即“kernel_details.csv”文件中“Block Dim”字段，采集操作请参考[性能分析案例](性能分析案例.md)。子算子启动核数：非SuperKernel场景下开启Profiling，“Block Dim”字段表示每个算子的启动核数。SuperKernel启动核数：SuperKernel场景下开启Profiling，“Block Dim”字段表示SuperKernel的启动核数。<br>     - 子算子启动核数：非SuperKernel场景下开启Profiling，“Block Dim”字段表示每个算子的启动核数。<br>     - SuperKernel启动核数：SuperKernel场景下开启Profiling，“Block Dim”字段表示SuperKernel的启动核数。 |
-| stream-fusion | 开启本功能后，可在SuperKernel内配置多流以提升算子运行效率，取值如下：<br>- 0（默认值）：表示SuperKernel内算子在单条流上执行。<br>- 1：表示SuperKernel内算子可在多条流上执行。<br>SuperKernel场景下标定的范围内算子资源共用，即不同流上的Cube和Vector算子并行执行，提高了运行效率。<br>**说明**： <br>   MicroBatch场景下，stream与核绑定且资源完全独立，建议用户使用[图内多流表达功能（Ascend IR）](图内多流表达功能（Ascend-IR）.md)（max-autotune模式）配置多流，此时不推荐同时配置stream-fusion=1。 |
-| strict-scope-check | 用于检查SuperKernel融合的范围是否符合预期。对于断开的SuperKernel、不支持融合的算子可通过本功能查询：<br>- bypass：打印C++侧Warning级别日志，忽略该范围的SuperKernel生成。<br>- abort：打印C++侧Error级别日志，对该范围的SuperKernel直接报错退出。<br>**说明**： <br>  - Warning或Error级别日志信息可在plog文件中查看，搜索关键字“super_kernel_scope”即可。<br>  - plog文件一般在`$HOME/ascend/log/[run|debug]/plog`路径下，日志文件名为plog\-pid\_\*.log，\$HOME是Linux操作系统中定义的环境变量，指向当前用户的主目录路径。<br>  - 本功能暂不支持检查SuperKernel融合范围内的集合通信算子，如AllGather、AlltoAll等。 |
+    | 选项名 | 说明 |
+	| --- | --- |
+	| feed-sync-all | 当子算子启动核数小于SuperKernel启动核数且使用了SyncAll全核同步指令，若出现算子执行卡住或超时，可尝试开启本功能解决此问题。<br>- 0：关闭本功能（默认值），若子算子使用SyncAll全核同步指令，用户需自行保证子算子与SuperKernel启动核数相同。<br>- 1：开启本功能，系统自动识别SuperKernel内算子是否调用SyncAll全核同步指令，同时判断子算子启动核数是否小于SuperKernel启动核数。若小于SuperKernel启动核数，会在SuperKernel内子算子的其余核中插入SyncAll指令，保证与子算子内调用SyncAll次数匹配，防止卡住超时。<br>**说明**： <br>   - SuperKernel启动核数为子算子的最大启动核数。假设SuperKernel包括算子a（启动核数为4）和算子b（启动核数为2），此时SuperKernel启动核数为4。<br>   - 启动核数可通过Profiling采集的性能数据获取，即“kernel_details.csv”文件中“Block Dim”字段，采集操作请参考[性能分析案例](性能分析案例.md)。子算子启动核数：非SuperKernel场景下开启Profiling，“Block Dim”字段表示每个算子的启动核数。SuperKernel启动核数：SuperKernel场景下开启Profiling，“Block Dim”字段表示SuperKernel的启动核数。<br>     - 子算子启动核数：非SuperKernel场景下开启Profiling，“Block Dim”字段表示每个算子的启动核数。<br>     - SuperKernel启动核数：SuperKernel场景下开启Profiling，“Block Dim”字段表示SuperKernel的启动核数。 |
+	| stream-fusion | 开启本功能后，可在SuperKernel内配置多流以提升算子运行效率，取值如下：<br>- 0（默认值）：表示SuperKernel内算子在单条流上执行。<br>- 1：表示SuperKernel内算子可在多条流上执行。<br>SuperKernel场景下标定的范围内算子资源共用，即不同流上的Cube和Vector算子并行执行，提高了运行效率。<br>**说明**： <br>   MicroBatch场景下，stream与核绑定且资源完全独立，建议用户使用[图内多流表达功能（Ascend IR）](图内多流表达功能（Ascend-IR）.md)（max-autotune模式）配置多流，此时不推荐同时配置stream-fusion=1。 |
+	| strict-scope-check | 用于检查SuperKernel融合的范围是否符合预期。对于断开的SuperKernel、不支持融合的算子可通过本功能查询：<br>- bypass：打印C++侧Warning级别日志，忽略该范围的SuperKernel生成。<br>- abort：打印C++侧Error级别日志，对该范围的SuperKernel直接报错退出。<br>**说明**： <br>  - Warning或Error级别日志信息可在plog文件中查看，搜索关键字“super_kernel_scope”即可。<br>  - plog文件一般在`$HOME/ascend/log/[run|debug]/plog`路径下，日志文件名为plog\-pid\_\*.log，\$HOME是Linux操作系统中定义的环境变量，指向当前用户的主目录路径。<br>  - 本功能暂不支持检查SuperKernel融合范围内的集合通信算子，如AllGather、AlltoAll等。 |
 
 ## 使用示例
 

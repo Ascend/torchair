@@ -31,7 +31,7 @@
 
 2. 图执行完成后，支持dump TorchAir构图信息。
 
-    该功能通过[torchair.get\_npu\_backend](get_npu_backend.md)中compiler\_config配置，示例如下，仅供参考不支持直接拷贝运行，参数介绍参见下表。
+    该功能通过[torchair.get\_npu\_backend](get_npu_backend.md)中compiler\_config配置，示例如下，仅供参考不支持直接拷贝运行，参数说明如下表。
 
     ```python
     import torch_npu, torchair
@@ -47,7 +47,7 @@
     
     |  参数名 |  参数说明  |
     |------|-------|
-    |graph_dump.type|设置导出图结构文件的格式，字符串型。默认为“None”，表示不导出图结构信息。支持导出的格式：<br> - py：dump ATen IR转换为Ascend IR后的构图信息，即[图1](#fig1)中阶段2构图信息，可通过Vscode等工具查看。<br> - txt：dump最终接收到的TorchAir构图结果，可通过Vscode等工具查看。<br> - pbtxt：dump最终接收到的TorchAir构图结果，为Protobuf格式，可通过TensorBoard、Netron等工具查看。 |
+    |graph_dump.type|设置导出图结构文件的格式，字符串型。默认为“None”，表示不导出图结构信息。支持导出的格式：<br> ①py：dump ATen IR转换为Ascend IR后的构图信息，即[图1](#fig1)中阶段2构图信息，可通过Vscode等工具查看。<br> ②txt：dump最终接收到的TorchAir构图结果，可通过Vscode等工具查看。<br> ③pbtxt：dump最终接收到的TorchAir构图结果，为Protobuf格式，可通过TensorBoard、Netron等工具查看。 |
     |graph_dump.path|设置图结构文件生成的路径，字符串型。可选配置，如果不设置，默认路径为当前执行路径。|
     
 

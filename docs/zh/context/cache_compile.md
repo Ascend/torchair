@@ -23,7 +23,7 @@ cache_compile(func, *, config: Optional[CompilerConfig] = None, backend: Optiona
 | global_rank | 输入 | 分布式训练时的rank，int类型。取值范围为[0, world\_size-1]，其中world\_size是参与分布式训练的总进程数。<br>一般情况下TorchAir会自动通过torch.distributed.get_rank()获取默认值。 | 否 |
 | tp_rank | 输入 | 指张量模型并行rank，int类型，取值是global\_rank中划分为TP域的rank id。 | 否 |
 | pp_rank | 输入 | 指流水线并行rank，int类型，取值是global\_rank中划分为PP域的rank id。 | 否 |
-| custom_decompositions | 输入 | 手动指定模型运行时使用的decomposition（将较大算子操作分解为小算子实现）。<br>用户根据实际情况配置，具体请参见[Add算子示例](#调用示例)。 | 否 |
+| custom_decompositions | 输入 | 手动指定模型运行时使用的decomposition（将较大算子操作分解为小算子实现）。<br>用户根据实际情况配置，具体请参见下方[Add算子示例](#调用示例)。 | 否 |
 | ge_cache | 输入 | 是否缓存Ascend IR图编译结果，bool类型。除了优化Dynamo编译耗时，还支持优化Ascend IR图编译耗时。<br>-  True：开启缓存Ascend IR编译结果。生成的缓存路径是cache\_dir指定的目录。如/home/workspace/.torchair\_cache/\${model\_info}/prompt/ge\_cache\_\${时间戳}.om。<br>-  False（默认值）：关闭缓存Ascend IR图编译结果。该功能受CANN包版本变更影响，用户根据实际情况手动开启。 | 否 |
 | * | 输入 | 预留参数项，用于后续功能扩展。 | 否 |
 

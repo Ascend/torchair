@@ -50,7 +50,7 @@ npu_print(*args, summarize_size=3, tensor_detail=False)
 
 ## 调用示例
 
-```pyhon
+```python
 import torch
 import torch_npu, torchair
 

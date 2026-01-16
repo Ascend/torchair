@@ -54,7 +54,7 @@
 | self.new_ones(...) | 支持bf16，fp16，fp32，fp64，uint8，int8，int16，int32，int64，bool |
 | torch.nn.functional.embedding | 支持int32，int64<br>参数约束max_norm=False，sparse=False，scale_grad_by_freq=False前向不支持，_freeze=False |
 | torch.nn.functional.sigmoid | 支持bf16，fp16，fp32，fp64 |
-| torch.nn.functional.hardtanh | - 正向：<br>   - min_val和max_val为浮点型，input支持bf16，fp16，fp32，fp64<br>   - min_val和max_val为整型时，input支持int32，int64<br>- 反向：支持bf16，fp16，fp32 |
+| torch.nn.functional.hardtanh | - 正向：<br>   当min_val和max_val为浮点型时，input支持bf16，fp16，fp32，fp64<br>   当min_val和max_val为整型时，input支持int32，int64<br>- 反向：支持bf16，fp16，fp32 |
 | torch.stack | 支持bf16，fp16，fp32，fp64，uint8，int8，int16，int32，int64 |
 | torch.unbind | 支持bf16，fp16，fp32，fp64，uint8，int8，int16，int32，int64，bool |
 | torch.nn.functional.pad | 支持bf16，fp16，fp32，int16，int32，int64 |

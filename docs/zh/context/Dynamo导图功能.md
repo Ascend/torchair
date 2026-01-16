@@ -24,7 +24,7 @@ def dynamo_export(*args, model: torch.nn.Module, export_path: str = "export_file
 
 关键参数说明如下：
 
--   **export\_path取值：**支持相对路径或绝对路径。
+-   **export\_path取值**：支持相对路径或绝对路径。
 
     > **说明：** 
     >请确保该参数指定的路径确实存在，并且运行用户具有读、写操作权限。
@@ -32,7 +32,7 @@ def dynamo_export(*args, model: torch.nn.Module, export_path: str = "export_file
     -   若采用相对路径：在ATC（Ascend Tensor Compiler，昇腾张量编译器）编译、执行离线模型时，需要在相对路径的父路径中执行。
     -   若采用绝对路径：在ATC编译、执行离线模型时无路径限制，但是当编译好的模型拷贝至其他服务器环境时需要保证绝对路径相同，否则会找不到权重文件。
 
--   **config取值：**导离线图时支持配置config，具体参见下表。
+-   **config取值**：导离线图时支持配置config，具体参见下表。
 
     **表 1**  导图功能配置说明
 
@@ -40,7 +40,7 @@ def dynamo_export(*args, model: torch.nn.Module, export_path: str = "export_file
     | 支持的功能 | 功能说明 | 配置说明 |
     | --- | --- | --- |
     | auto_atc_config_generated | 前端切分场景下（PyTorch模型导出时包含集合通信逻辑），是否开启自动生成ATC的json配置文件样例模板。 | - False（默认值）：不开启自动生成json模板，用户自行手动配置通信域信息。<br>- True：开启自动生成json模板。 |
-    | enable_record_nn_module_stack | 导出的图是否携带nn_module_stack信息，方便后端切分（PyTorch模型导出时不含集合通信逻辑，而由GE添加集合通信逻辑）运用模板。<br> 说明： <br>  - 前端脚本定义layer时，需要以数组的形式，即类似layer[0] = xxx，layer[1] = xxx。若不以数组形式表示变量名，相同模型结构被重复执行，从栈信息中将无法看出模型的layer结构，后端也无法切分。<br>  - record_nn_module_stack只有在model结构深度两层及以上才能获取到。 | - False（默认值）：导出图不带nn_module_stack信息。<br>  - True：导出图带nn_module_stack信息。 |
+    | enable_record_nn_module_stack | 导出的图是否携带nn_module_stack信息，方便后端切分（PyTorch模型导出时不含集合通信逻辑，而由GE添加集合通信逻辑）运用模板。<br> **说明**： <br>  - 前端脚本定义layer时，需要以数组的形式，即类似layer[0] = xxx，layer[1] = xxx。若不以数组形式表示变量名，相同模型结构被重复执行，从栈信息中将无法看出模型的layer结构，后端也无法切分。<br>  - record_nn_module_stack只有在model结构深度两层及以上才能获取到。 | - False（默认值）：导出图不带nn_module_stack信息。<br>  - True：导出图带nn_module_stack信息。 |
 
     config的配置示例如下：
 
@@ -72,7 +72,7 @@ dynamo\_export导图结果文件名默认为"export\_file"，支持用户自定�
 > **说明：** 
 >对于导出的权重文件，其可能直接存入export.air，也可能单独存在weight\_xx文件中。
 >-   当模型权重参数量不超过（2G-200MB）时，直接保存在export.air文件中，而权重存储路径、dtype等信息会被记录在dynamo.pbtxt的Const节点中。
->-   当模型权重参数量超过（2G-200MB）时，不存入export.air文件，会在export\_path路径中自动生成权重文件，（如[多卡场景下dynamo export示例](#li554812312515)中p1、p2文件，文件个数取决于网络中权重的定义）。同时权重存储路径、dtype等信息会被记录在dynamo.pbtxt的FileConstant节点中。
+>-   当模型权重参数量超过（2G-200MB）时，不存入export.air文件，会在export\_path路径中自动生成权重文件，（如[多卡场景下dynamo export示例](#demo2)中p1、p2文件，文件个数取决于网络中权重的定义）。同时权重存储路径、dtype等信息会被记录在dynamo.pbtxt的FileConstant节点中。
 
 -   dynamo.pbtxt ：导出的图文件，文件名固定，支持用户直接查看。该文件记录了图节点、参数数据类型/数据维度等信息。
 -   export.air：导出的图文件，不支持用户直接查看。该文件记录了图节点、参数数据类型/数据维度等信息，某些场景下还包含模型权重信息。
@@ -95,7 +95,7 @@ atc --model=./export_file/export.air --framework=1 --output=./export_file/offlin
 
 ## 使用示例
 
--   **单卡场景下dynamo export示例**：
+-   **单卡场景下dynamo export示例**：<a name="demo1"></a>
 
     ```python
     import torch, torch_npu, torchair
@@ -127,7 +127,7 @@ atc --model=./export_file/export.air --framework=1 --output=./export_file/offlin
 
     由于权重文件小于2G，因此权重并未外置而是转为Const节点记录在图中。可以打开dynamo.pbtxt文件查看图接口信息。
 
--   **多卡场景下dynamo export示例**：
+-   **多卡场景下dynamo export示例**：<a name="demo2"></a>
 
     ```python
     import torch, os, torch_npu, torchair
@@ -190,6 +190,6 @@ atc --model=./export_file/export.air --framework=1 --output=./export_file/offlin
     -   mp\_rank0/1：由指定的export\_name加上rank id拼接而成。
     -   model\_relation\_config.json、numa\_config.json：前端切分场景下，自动生成ATC编译的json配置文件模板。
 
-        json中相关字段用户需根据实际情况修改，字段参数含义请参考《CANN ATC离线模型编译工具用户指南》中的“--model\_relation\_config”章节与《CANN ATC离线模型编译工具用户指南》中的“--cluster\_config”章节。针对多卡场景，item节点被生成在node\_id为0的表中，需要用户根据自己的需求手动划分至不同的node下。
+        json中相关字段用户需根据实际情况修改，字段参数含义请参考[《CANN ATC离线模型编译工具》](https://hiascend.com/document/redirect/CannCommunityAtc)中的“--model\_relation\_config”章节与[《CANN ATC离线模型编译工具》](https://hiascend.com/document/redirect/CannCommunityAtc)中的“--cluster\_config”章节。针对多卡场景，item节点被生成在node\_id为0的表中，需要用户根据自己的需求手动划分至不同的node下。
 
     -   mp/rank\_0和mp/rank\_1：生成的子目录，里面存放着每张卡的dynamo.pbtxt图信息、权重文件（若权重没有被保存在air文件中）。
