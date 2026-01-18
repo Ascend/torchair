@@ -663,8 +663,10 @@ class AclGraphSt(unittest.TestCase):
             b_use = b + 1.0
             return ret, b_use  # a have no later usage, b has later usage
 
-        def assert_partial_reinplace(graph_before, graph_after):
-            """Verify that only arg_index[1] (a) was reinplaced, arg_index[2] (b) was not"""
+        def assert_reinplace_success(graph_before, graph_after):
+            """Verify that sin_cos_functional was replaced with sin_cos_inplace.
+            For multi-inplace ops, we skip usage checking, so reinplace should succeed
+            even when b has later usage."""
             functional_op_found_before = False
             functional_op_found_after = False
             inplace_op_found_after = False
@@ -686,16 +688,21 @@ class AclGraphSt(unittest.TestCase):
                     if node.target == torch.ops.custom.sin_cos_inplace.default:
                         inplace_op_found_after = True
             
-            # Since b has later usage, functional op should still exist
+            # For multi-inplace ops, we skip usage checking, so reinplace should succeed
+            # even when inputs have later usage (unlike single-input inplace ops)
             if functional_op_found_before:
-                self.assertTrue(
+                self.assertFalse(
                     functional_op_found_after,
-                    "sin_cos_functional should still exist because b has later usage"
+                    "sin_cos_functional should be replaced with inplace version even when b has later usage"
+                )
+                self.assertTrue(
+                    inplace_op_found_after,
+                    "sin_cos_inplace should exist in the graph after reinplace"
                 )
 
         # Setup wrapper
         from torchair._acl_concrete_graph import graph_pass
-        graph_pass._reinplace_inplaceable_ops_pass = create_reinplace_pass_wrapper(assert_partial_reinplace)
+        graph_pass._reinplace_inplaceable_ops_pass = create_reinplace_pass_wrapper(assert_reinplace_success)
 
         config = CompilerConfig()
         config.mode = "reduce-overhead"

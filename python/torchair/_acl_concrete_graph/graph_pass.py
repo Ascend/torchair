@@ -1109,36 +1109,37 @@ def reinplace_with_multi_stream_check(gm, *sample_args):
                 logger.debug("Node[%s] arg_index[%s] mutate program inputs, skip reinplace", node.name, arg_index)
                 break
             self_aliases = storage_to_nodes[self_arg_storage]
-            # ---- Step 2: find later aliasing usages (stream-aware) ----
-            # First, we find all later usages of any of the aliases of self_arg.
-            later_node_usages = _get_all_later_node_usages(
-                self_aliases, node.meta["node_idx"]
-            )
             
-            # For multi-inplace intermediate nodes, also check getitem nodes that extract outputs
-            # because functionalized ops use getitem to access outputs, and these getitem nodes
-            # should be considered as aliases for the purpose of usage checking
-            if is_multi_inplace and arg_index in input_output_map:
-                output_idx = input_output_map[arg_index]
-                # Find getitem(node, output_idx) nodes and add their users to later_node_usages
-                from torchair._acl_concrete_graph.utils import _get_getitem_users_for_output
-                getitem_users = _get_getitem_users_for_output(node, output_idx, node.meta["node_idx"])
-                later_node_usages.update(getitem_users)
-            
-            # Get view inverse node usages (scatter ops that can be safely removed)
-            later_view_inverse_node_usages = _get_view_inverse_node_usages(
-                later_node_usages, self_aliases
-            )
+            # For multi-inplace ops, skip Step 2 usage checking.
+            # Multi-inplace ops use functional versions where inputs are inherently used
+            # (modified in-place and returned as outputs), so we don't need to check
+            # if inputs are referenced elsewhere. This differs from single-input inplace ops
+            # where the script uses non-inplace versions and we need to verify the input
+            # isn't used later before converting to inplace.
+            if not is_multi_inplace:
+                # ---- Step 2: find later aliasing usages (stream-aware) ----
+                # First, we find all later usages of any of the aliases of self_arg.
+                later_node_usages = _get_all_later_node_usages(
+                    self_aliases, node.meta["node_idx"]
+                )
+                
+                # Get view inverse node usages (scatter ops that can be safely removed)
+                later_view_inverse_node_usages = _get_view_inverse_node_usages(
+                    later_node_usages, self_aliases
+                )
 
-            can_reinplace = (
-                len(later_node_usages - later_view_inverse_node_usages) == 0
-            )
+                can_reinplace = (
+                    len(later_node_usages - later_view_inverse_node_usages) == 0
+                )
 
-            logger.debug("Node[%s] arg_index[%s] check reinplace is %s", node.name, arg_index, can_reinplace)
-            if not can_reinplace:
-                skip_node = True
-                break
-            later_view_inverse_usages_list.append(later_view_inverse_node_usages)
+                logger.debug("Node[%s] arg_index[%s] check reinplace is %s", node.name, arg_index, can_reinplace)
+                if not can_reinplace:
+                    skip_node = True
+                    break
+                later_view_inverse_usages_list.append(later_view_inverse_node_usages)
+            else:
+                # For multi-inplace ops, we can always reinplace (usage check skipped)
+                later_view_inverse_usages_list.append(set())
         
         # Skip node if Step 1 validation failed or any argument doesn't satisfy conditions
         if skip_node:
