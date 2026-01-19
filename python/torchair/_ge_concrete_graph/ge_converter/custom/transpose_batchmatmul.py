@@ -9,7 +9,7 @@ def conveter_npu_npu_transpose_batchmatmul(
     scale: Optional[Tensor] = None,
     perm_x1: Optional[List[int]] = [0, 1, 2],
     perm_x2: Optional[List[int]] = [0, 1, 2],
-    perm_y: Optional[List[int]] = [0, 1, 2],
+    perm_y: Optional[List[int]] = [1, 0, 2],
     batch_split_factor: Optional[int] = 1,
     meta_outputs: TensorSpec = None,
 ):

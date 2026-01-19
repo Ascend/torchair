@@ -144,5 +144,29 @@ class GeTest(unittest.TestCase):
 
         self.assertTrue(torch.allclose(eager_output, compile_output))
 
+    def test_transpose_batchmatmul_convertor_default_perm_y(self):
+        class DsModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x1, x2, perm_y, batch_split_factor=1):
+                out1 = torch_npu.npu_transpose_batchmatmul(x1, x2, batch_split_factor=batch_split_factor)
+                out2 = torch_npu.npu_transpose_batchmatmul(x1, x2, perm_y=perm_y, batch_split_factor=batch_split_factor)
+
+                return out1, out2
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "max-autotune"
+        npu_config.experimental_config.remove_noop_ops = False
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = DsModel()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x1 = torch.randn(4, 16, 128, dtype=torch.float16, device='npu')
+        x2 = torch.randn(4, 128, 128, dtype=torch.float16, device='npu')
+
+        compile_output1, compile_output2 = model_compile(x1, x2, (1, 0, 2))
+        self.assertTrue(torch.allclose(compile_output1, compile_output2))
+
 if __name__ == '__main__':
     unittest.main()
