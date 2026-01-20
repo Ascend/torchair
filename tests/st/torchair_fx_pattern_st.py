@@ -472,5 +472,25 @@ class TorchairFXPatternSt(unittest.TestCase):
         wrapped = enable_remove_noop_ops_pattern(Model(), assert_func)
         wrapped(x=torch.randn([2, 2]), y=torch.randn([2, 2]))
 
+    @unittest.skipIf(torch.__version__ < '2.6.0', "")
+    def test_pattern_pass_batchmatmul_transpose_for_ge(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x1, x2):
+                out = torch.matmul(x1, x2).transpose(1, 0)
+                return out
+
+        def assert_func(concrete_graph):
+            graph_ = concrete_graph.fx_graph.graph
+            nodes = graph_.nodes
+            has_op_node = any(node.op == "call_function"
+                              and node.target == torch.ops.aten.bmm.default for node in nodes)
+            self.assertTrue(has_op_node)
+
+        wrapped = enable_remove_noop_ops_pattern(Model(), assert_func)
+        wrapped(x1=torch.randn(64, 4, 512, dtype=torch.float16, device='npu'), x2=torch.randn(64, 512, 128, dtype=torch.float16, device='npu'))
+
 if __name__ == '__main__':
     unittest.main()

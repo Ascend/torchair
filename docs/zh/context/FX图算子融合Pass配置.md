@@ -22,7 +22,7 @@
 
 -   本功能依赖PyTorch 2.6.0或更高版本。
 -   无论是默认支持的算子融合Pass还是自定义的算子融合Pass，均可由pattern\_fusion\_pass配置。
--   表1中matmul输入必须是三维。
+-   表1中matmul输入必须是三维，npu_transpose_batchmatmul算子融合仅max-autotune模式不生效。
 
 ## 使用方法
 
