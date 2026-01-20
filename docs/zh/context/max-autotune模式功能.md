@@ -42,7 +42,7 @@
 
 -   **[图内标定SuperKernel范围](图内标定SuperKernel范围.md)**  
 
--   **[图内AI Core和Vector Core全局核数配置](图内AI-Core和Vector-Core全局核数配置.md)**  
+-   **[图内设置AI Core和Vector Core核数（Ascend IR）](图内设置AI-Core和Vector-Core核数（Ascend-IR）.md)**  
 
 -   **[图内算子不超时配置功能](图内算子不超时配置功能.md)**  
 

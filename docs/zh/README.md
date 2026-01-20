@@ -16,7 +16,6 @@
     -   [冗余算子消除功能](context/冗余算子消除功能.md)
     -   [FX图算子融合Pass配置](context/FX图算子融合Pass配置.md)
     -   [自定义FX图Pass功能](context/自定义FX图Pass功能.md)
-    -   [图内AI Core和Vector Core算子级核数配置](context/图内AI-Core和Vector-Core算子级核数配置.md)
 
 -   [reduce-overhead模式功能](context/reduce-overhead模式功能.md)
     -   [reduce-overhead模式配置](context/reduce-overhead模式配置.md)
@@ -27,6 +26,7 @@
     -   [静态Kernel编译配置](context/静态Kernel编译配置.md)
     -   [固定权重类输入地址功能（aclgraph）](context/固定权重类输入地址功能（aclgraph）.md)
     -   [重捕获次数限制功能（aclgraph）](context/重捕获次数限制功能（aclgraph）.md)
+    -   [图内设置AI Core和Vector Core核数（aclgraph）](context/图内设置AI-Core和Vector-Core核数（aclgraph）.md)
 
 -   [max-autotune模式功能](context/max-autotune模式功能.md)
     -   [Dynamo导图功能](context/Dynamo导图功能.md)
@@ -50,7 +50,7 @@
     -   [View类算子优化功能](context/View类算子优化功能.md)
     -   [动静子图拆分场景性能优化](context/动静子图拆分场景性能优化.md)
     -   [图内标定SuperKernel范围](context/图内标定SuperKernel范围.md)
-    -   [图内AI Core和Vector Core全局核数配置](context/图内AI-Core和Vector-Core全局核数配置.md)
+    -   [图内设置AI Core和Vector Core核数（Ascend IR）](context/图内设置AI-Core和Vector-Core核数（Ascend-IR）.md)
     -   [图内算子不超时配置功能](context/图内算子不超时配置功能.md)
 
 -   [支持的ATen API清单](context/支持的ATen-API清单.md)

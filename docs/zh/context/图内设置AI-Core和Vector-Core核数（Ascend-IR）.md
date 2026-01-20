@@ -1,25 +1,25 @@
-# 图内AI Core和Vector Core全局核数配置
+# 图内设置AI Core和Vector Core核数（Ascend IR）
 
 ## 功能简介
 
 多流场景下，会出现所有核（Core）都被一个流占用的情况，导致算子执行并行度降低，因此需要把核分给不同的流使用，从而保证算子并行执行收益。
 
-本章提供了**全局核数（session）配置**，适用于max-autotune模式，请根据实际情况配置使用的最大AI Core数和Vector Core数。
+目前提供了两种指定核数的方法，算子级核数和全局核数（session）配置，其中算子级优先级高于全局核数的配置。请根据实际情况配置使用的最大AI Core和Vector Core数。
 
--   说明1：运行过程中实际使用的核数可能少于配置的最大核数。
--   说明2：配置的最大核数不能超过AI处理器本身允许的最大AI Core数与最大Vector Core数。
+- 说明1：运行过程中实际使用的核数可能少于配置的最大核数。
+- 说明2：配置的最大核数不能超过AI处理器本身允许的最大AI Core数与最大Vector Core数。
 
 关于AI Core和Vector Core详细介绍请参考[AI Core/Cube Core/Vector Core简介](AI-Core-Cube-Core-Vector-Core简介.md)，如需了解关于Eager和图模式下的控核差异和使用说明请参考[Eager和图模式下控核介绍](Eager和图模式下控核介绍.md)。
 
 ## 使用约束
 
--   本功能支持如下产品：
-    -   <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>
-    -   <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>
-    -   <term>Atlas 训练系列产品</term>
-    -   <term>Atlas 推理系列产品</term>
-    
--   配置核数不能超过AI处理器本身允许的最大核数，假设最大AI Core数为max\_aicore、最大Vector Core数量为max\_vectorcore，系统默认采用最大核数作为实际运行核数。
+- 本功能支持如下产品：
+  - <term>Atlas A3 训练系列产品/Atlas A3 推理系列产品</term>
+  - <term>Atlas A2 训练系列产品/Atlas A2 推理系列产品</term>
+  - <term>Atlas 训练系列产品</term>
+  - <term>Atlas 推理系列产品</term>
+
+- 配置核数不能超过AI处理器本身允许的最大核数，假设最大AI Core数为max\_aicore、最大Vector Core数量为max\_vectorcore，系统默认采用最大核数作为实际运行核数。
 
     您可通过“CANN软件安装目录/_<arch\>_-linux/data/platform\_config/_<soc\_version\>_.ini”文件查看，如下所示，说明AI处理器上存在24个Cube Core，存在48个Vector Core。
 
@@ -32,8 +32,22 @@
 
 ## 使用方法
 
-1.  用户自行分析模型脚本中需要指定核数的算子。
-2. 配置全局核数。
+1. 用户自行分析模型脚本中需要指定核数的算子。
+2. （可选）配置算子级核数。
+
+    使用如下with语句块（[limit\_core\_num](limit_core_num.md)），语句块内的算子均按照入参指定核数。
+
+    ```python
+    with torchair.scope.limit_core_num (op_aicore_num: int, op_vectorcore_num: int)
+    ```
+
+    - op\_aicore\_num：表示该算子运行时的最大AI Core数，取值范围为\[1, max\_aicore\]。
+    - op\_vectorcore\_num：表示该算子运行时的最大Vector Core数，取值范围为\[1, max\_vectorcore\]。当AI处理器上仅存在AI Core不存在Vector Core时，此时仅支持取值为0。
+
+    配置结果可以通过如下操作查看：
+    参考（[图结构dump功能](图结构dump功能.md)）获取完整的图结构信息，如 config.debug.graph_dump.type="txt" ，再查看生效的算子级核数，一般在 "attr" 属性中，key名分别为 "_op_aicore_num" 和 "_op_vectorcore_num" 。
+
+3. （可选）配置全局核数。
 
    该功能通过[torchair.get\_npu\_backend](get_npu_backend.md)中compiler\_config配置来指定全局核数，示例如下，参数说明如下表。
 
@@ -48,12 +62,9 @@
 
    **表 1**  参数说明
 
-
    | 参数名 | 说明 |
    | --- | --- |
    | aicore_num | 指定全局AI Core和Vector Core数，字符串类型，形如“\$\{aicore\_num\}\|\$\{vectorcore\_num\}”，必须用“\|”来分隔。<br>- \$\{aicore\_num\}：表示全局AI Core数，整数类型，取值范围为[1, max_aicore]。<br>- \$\{vectorcore\_num\}：表示全局Vector Core数，整数类型，取值范围为[1, max_vectorcore]。<br>在如下产品中，仅存在AI Core不存在Vector Core，参数配置形如config.ge_config.aicore_num = "24\|"或"24"，若配置其它数值不会生效。<br>- <term>Atlas 训练系列产品</term><br>- <term>Atlas 推理系列产品</term> |
-
-3.  查看配置结果。
 
     配置结果可通过开启Python侧日志获取，假设config.ge\_config.aicore\_num="24|100"，日志信息如下：
 

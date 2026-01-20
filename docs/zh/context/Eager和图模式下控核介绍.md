@@ -39,6 +39,17 @@
     torch.npu.set_device_limit(device, cube_num=-1, vector_num=-1) -> None
     ```
 
+    使用示例：
+
+    ```python
+    import torch
+    import torch_npu
+
+    torch.npu.set_device(0)
+    torch.npu.set_device_limit(0, 12, 20)
+    print(torch.npu.get_device_limit(0))
+    ```
+
 - Stream级控核
 
     ```python
@@ -52,25 +63,97 @@
     torch.npu.reset_stream_limit(stream) -> None
     ```
 
-以Stream级控核为例，示例代码如下：
+    使用示例：
 
-```python
-import torch
-import torch_npu
+    ```python
+    import torch
+    import torch_npu
 
-batch_size = 2
-hidden_size = 16
-x = torch.randn(batch_size, hidden_size).npu()
-stream = torch.npu.current_stream()
+    batch_size = 2
+    hidden_size = 16
+    x = torch.randn(batch_size, hidden_size).npu()
+    stream = torch.npu.current_stream()
 
-torch.npu.set_stream_limit(stream, 3, 8)
-with torch.npu.stream(stream):
-    output = torch_npu.npu_swiglu(x, dim=-1)
-```
+    torch.npu.set_stream_limit(stream, 3, 8)
+    with torch.npu.stream(stream):
+        output = torch_npu.npu_swiglu(x, dim=-1)
+    ```
 
 ### 图模式
 
-在reduce-overhead模式和GE图模式下，可以使用同一套接口进行算子的Stream级控核。接口如下：
+#### max-autotune模式：
+
+提供了两种指定核数的方法，算子级核数和全局核数（session）配置，其中算子级优先级高于全局核数的配置。功能介绍参见[图内设置AI Core和Vector Core核数（Ascend IR）](图内设置AI-Core和Vector-Core核数（Ascend-IR）.md)
+
+- 算子级控核：
+    ```python
+    with torchair.scope.limit_core_num(op_aicore_num: int, op_vector_num: int )
+    ```
+
+    使用如上with语句块，语句块内的算子均使用入参指定核数。
+
+    - op_aicore_num：表示算子运行时的最大AI Core数，取值范围为[1, max_aicore]。
+    - op_vectorcore_num：表示算子运行时的最大Vector Core数，取值范围为[1, max_vectorcore]。
+
+- 全局核数配置：
+    
+    该功能通过[torchair.get\_npu\_backend](get_npu_backend.md)中compiler\_config配置来指定全局核数，示例如下:
+
+    ```python
+    import torch_npu, torchair
+    config = torchair.CompilerConfig()
+    # 全局核数配置项
+    config.ge_config.aicore_num = "24|100"
+    npu_backend = torchair.get_npu_backend(compiler_config=config)
+    opt_model = torch.compile(model, backend=npu_backend)
+    ```
+
+    其中aicore_num配置项用于指定全局AI Core和Vector Core数，输入为字符串类型，必须用“|”来分隔。分隔符左边参数表示全局最大AI Core数，整数类型，取值范围为[1, max_aicore]。分隔符右边参数表示全局最大Vector Core数，整数类型，取值范围为[1, max_vectorcore]。
+
+
+max-autotune模式调用示例：
+
+```python
+import torch, os
+import torch_npu
+import torchair
+from torchair.configs.compiler_config import CompilerConfig
+from torchair.core.utils import logger
+import logging
+logger.setLevel(logging.DEBUG)
+
+# 定义模型model
+class Model(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+    def forward(self, in1, in2, in3, in4):
+        # 指定算子级核数
+        with torchair.scope.limit_core_num(4, 5): 
+            mm_result = torch.mm(in3, in4)
+            add_result = torch.add(in1, in2)
+        mm1_result = torch.mm(in3, in4)
+        return add_result, mm_result,mm1_result
+
+model = Model()
+config = CompilerConfig()
+config.debug.graph_dump.type = "pbtxt"
+# 指定全局核数
+config.ge_config.aicore_num = "24|48"     
+npu_backend = torchair.get_npu_backend(compiler_config=config)
+model = torch.compile(model, backend=npu_backend, dynamic=False, fullgraph=True)
+in1 = torch.randn(1000, 1000, dtype = torch.float16).npu()
+in2 = torch.randn(1000, 1000, dtype = torch.float16).npu()
+in3 = torch.randn(1000, 1000, dtype = torch.float16).npu()
+in4 = torch.randn(1000, 1000, dtype = torch.float16).npu()
+result = model(in1, in2, in3, in4)
+print(f"Result:\n{result}\n")
+```
+
+#### reduce-overhead模式
+    
+reduce-overhead模式提供了**Stream级核数配置**，使用的接口与[max-autotune模式](Eager和图模式下控核介绍.md#max-autotune模式)下的算子级控核一致。两种模式的底层实现并不一样，max-autotune模式实现了算子级核数配置，reduce-overhead模式实现了Stream级核数配置。详细功能介绍参见[图内设置AI Core和Vector Core核数（aclgraph）](图内设置AI-Core和Vector-Core核数（aclgraph）.md)。
+
+接口如下：
 
 ```python
 with torchair.scope.limit_core_num(op_aicore_num: int, op_vector_num: int )
@@ -81,7 +164,7 @@ with torchair.scope.limit_core_num(op_aicore_num: int, op_vector_num: int )
 - op_aicore_num：表示算子运行时的最大AI Core数，取值范围为[1, max_aicore]。
 - op_vectorcore_num：表示算子运行时的最大Vector Core数，取值范围为[1, max_vectorcore]。
 
-其中max_aicore和max_vectorcore表示设备的实际AI Core、Vector Core数，具体示例如下：
+其中max_aicore和max_vectorcore表示设备的实际AI Core、Vector Core数。reduce-overhead模式具体示例如下：
 
 ```python
 import torch
@@ -103,30 +186,28 @@ config.mode = "reduce-overhead"
 aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 model = Model()
 opt_model = torch.compile(model, backend=aclgraph_backend, fullgraph=True, dynamic=False)
-x = torch.randn([3, 3])
+x = torch.randn([500, 500])
 model(x)
 ```
-
-GE图模式在Stream级控核的基础上还提供了全局级别控核（Session级），请参考[图内AI Core和Vector Core全局核数配置](图内AI-Core和Vector-Core全局核数配置.md)。
 
 ## 使用说明
 
 ### 不同算子控核说明
 
 
-- **计算算子**：
+**计算算子**：
 - Ascend C算子：AI Core、AI Vector算子控核生效，AI CPU算子不生效。
   
 - TBE算子：AI Vector算子控核生效。
   
 - ATB算子：控核不生效。
   
-- **通信算子**：
+**通信算子**：
 - HCCL算子：AI Vector算子控核生效，AI CPU算子不生效。
   
 - MC2算子：AI Vector算子控核生效。
 
-### aclgraph与静态Kernel共同使能
+### reduce-overhead模式下控核与静态Kernel共同使能
 
 在当前处理逻辑中，支持静态编译的计算算子在静态编译后失去了Tiling的行为。这意味着除非在编译态能够传递算子的核数，否则无法对此类算子进行控核。
 

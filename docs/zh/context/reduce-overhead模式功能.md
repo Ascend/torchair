@@ -16,3 +16,5 @@
 
 -   **[重捕获次数限制功能（aclgraph）](重捕获次数限制功能（aclgraph）.md)**  
 
+-   **[图内设置AI Core和Vector Core核数（aclgraph）](图内设置AI-Core和Vector-Core核数（aclgraph）.md)**
+
