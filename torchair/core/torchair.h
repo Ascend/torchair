@@ -41,8 +41,6 @@ void AclopStartDumpArgs(uint32_t dumpType, const char *path);
 
 void AclopStopDumpArgs(uint32_t dumpType);
 
-void AclmdlSetDump(const std::string &dump_path);
-
 std::string GetSocName();
 
 class TorchNpuGraphBase {

@@ -19,6 +19,7 @@
 #include "torch/csrc/autograd/utils/wrap_outputs.h"
 
 #include "torchair.h"
+#include "session.h"
 #include "llm_datadist/llm_datadist.h"
 #include "cann_ir_ability.h"
 
@@ -46,8 +47,6 @@ PYBIND11_MODULE(_torchair, m) {
   (void)m.def("AclopStartDumpArgs", &tng::AclopStartDumpArgs);
 
   (void)m.def("AclopStopDumpArgs", &tng::AclopStopDumpArgs);
-
-  (void)m.def("AclmdlSetDump", &tng::AclmdlSetDump);
 
   (void)m.def("SetDebugLogPath", &tng::SetDebugLogPath);
 
@@ -78,5 +77,9 @@ PYBIND11_MODULE(_torchair, m) {
   (void)m.def("as_torch_tensors", &llm_datadist::AsTorchTensor);
   m.def("check_cann_compat", &cann_ir_ability::CheckCannCompat);
   m.def("get_registered_ir_def", &tng::GetGeIrDef);
+
+  m.def("AclmdlSetDump", [](const std::string &path) {
+    tng::Session::GetInstance().AclDumpConfigInit(path);
+  });
 };
 }  // namespace npu

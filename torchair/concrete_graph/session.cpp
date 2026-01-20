@@ -58,7 +58,6 @@ Status Session::Initialize(const std::map<std::string, std::string> &options) {
     }
     if (option.first == "ge_dump_with_acl_config") {
       TNG_RETURN_IF_ERROR(AclDumpConfigInit(option.second));
-      aclmd_initialized_ = true;
       continue;
     }
     ge_options[option.first.c_str()] = option.second.c_str();
@@ -341,9 +340,12 @@ Status Session::GeGetRegisteredIrDef(const char *op_type,
 }
 
 Status Session::AclDumpConfigInit(const std::string &dump_path) {
-  auto dump_ret = aclmdlInitDump();
-  TNG_ASSERT(dump_ret == ACL_ERROR_NONE, "Fail in acl init dump, return %d", dump_ret);
-  dump_ret = aclmdlSetDump(const_cast<char *>(dump_path.c_str()));
+  if (!aclmd_initialized_) {
+    auto init_ret = aclmdlInitDump();
+    TNG_ASSERT(init_ret == ACL_ERROR_NONE, "Fail in acl init dump, return %d", init_ret);
+    aclmd_initialized_ = true;
+  }
+  auto dump_ret = aclmdlSetDump(const_cast<char *>(dump_path.c_str()));
   TNG_ASSERT(dump_ret == ACL_ERROR_NONE, "Fail in acl set dump, return %d", dump_ret);
   TNG_LOG(DEBUG) << "Success to config aclmd dump";
   return Status::Success();
