@@ -1,6 +1,7 @@
 from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 from torchair.core.utils import logger
 from torchair.ge._ge_graph import DataType
+from torchair._ge_concrete_graph.utils import convert_tensor_to_list
 
 
 def check_input_dtype(x, grad_output, weight):
@@ -239,15 +240,15 @@ def conveter_aten_convolution_backward_default(
 ):
     """NB: aten::convolution_backward(Tensor grad_output, Tensor input, Tensor weight, SymInt[]? bias_sizes, int[] stride, SymInt[] padding, int[] dilation, bool transposed, SymInt[] output_padding, int groups, bool[3] output_mask) -> (Tensor, Tensor, Tensor)"""
     if isinstance(padding, Tensor):
-        logger.error("torch.ops.aten.convolution_backward does not support dynamic graph scenarios where the padding"
-            " of a certain dimension is greater than 0 or padding is of Tensor type.")
-        raise NotImplementedError("torch.ops.aten.convolution_backward.default ge converter is not implement "
-                                "when padding is tensor.")
+        logger.warning_once("torch.ops.aten.convolution_backward does not support dynamic graph scenarios where "
+        "attributes [stride/dilation/padding/output_padding] is of Tensor type, instead attributes is converted to List type.")
+        padding = convert_tensor_to_list(padding)
+    if isinstance(dilation, Tensor):
+        dilation = convert_tensor_to_list(dilation)
+    if isinstance(stride, Tensor):
+        stride = convert_tensor_to_list(stride)
     if isinstance(output_padding, Tensor):
-        logger.error("torch.ops.aten.convolution_backward does not support dynamic graph scenarios where the "
-            "output_padding of a certain dimension is greater than 0 or output_padding is of Tensor type.")
-        raise NotImplementedError("torch.ops.aten.convolution_backward.default ge converter is not implement "
-                                "when output_padding is tensor.")
+        output_padding = convert_tensor_to_list(output_padding)
     grad, weight = dtype_promote(grad_output, weight, target_dtype=x.dtype)
 
     dim = x.rank

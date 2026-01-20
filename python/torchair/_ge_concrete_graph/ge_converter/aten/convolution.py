@@ -1,5 +1,6 @@
 from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 from torchair.core.utils import logger
+from torchair._ge_concrete_graph.utils import convert_tensor_to_list
 
 
 def check_input_dtype(x, weight):
@@ -7,7 +8,7 @@ def check_input_dtype(x, weight):
         raise TypeError("x dtype does not support 8-bit data types.")
     if weight.dtype == DataType.DT_FLOAT8_E4M3FN:
         raise TypeError("weight dtype does not support 8-bit data types.")
-        
+
 
 def _cal_length(x, dilation, kernel_size, output_padding, padding, stride, index):
     x0 = ge.Mul(ge.Sub(x, 1), stride[index])
@@ -192,15 +193,15 @@ def conveter_aten_convolution_default(
 ):
     """NB: aten::convolution(Tensor input, Tensor weight, Tensor? bias, int[] stride, SymInt[] padding, int[] dilation, bool transposed, SymInt[] output_padding, int groups) -> Tensor"""
     if isinstance(padding, Tensor):
-        logger.error("torch.ops.aten.convolution does not support dynamic graph scenarios where the padding"
-            " of a certain dimension is greater than 0 or padding is of Tensor type.")
-        raise NotImplementedError("torch.ops.aten.convolution.default ge converter is not implement "
-                                  "when padding is tensor.")
+        logger.warning_once("torch.ops.aten.convolution does not support dynamic graph scenarios where "
+        "attributes [stride/dilation/padding/output_padding] is of Tensor type, instead attributes is converted to List type.")
+        padding = convert_tensor_to_list(padding)
+    if isinstance(dilation, Tensor):
+        dilation = convert_tensor_to_list(dilation)
+    if isinstance(stride, Tensor):
+        stride = convert_tensor_to_list(stride)
     if isinstance(output_padding, Tensor):
-        logger.error("torch.ops.aten.convolution does not support dynamic graph scenarios where the output_padding"
-            " of a certain dimension is greater than 0 or output_padding is of Tensor type.")
-        raise NotImplementedError("torch.ops.aten.convolution.default ge converter is not implement "
-                                  "when output_padding is tensor.")
+        output_padding = convert_tensor_to_list(output_padding)
     if bias is not None and x.dtype != DataType.DT_HIFLOAT8:
         bias = dtype_promote(bias, target_dtype=meta_outputs.dtype)
     x, weight = dtype_promote(x, weight, target_dtype=meta_outputs.dtype)

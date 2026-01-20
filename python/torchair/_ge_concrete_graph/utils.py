@@ -458,3 +458,9 @@ def is_complex(meta):
     if meta.dtype in [torch.complex32, torch.complex64, torch.complex128]:
         return True
     return False
+
+
+def convert_tensor_to_list(attr_tensor):
+    attr_tensor = attr_tensor._meta
+    attr_list = [int(t) for t in attr_tensor]
+    return attr_list
