@@ -52,6 +52,10 @@ def convert_npu_npu_prompt_flash_attention(
     if actual_seq_lengths_kv is not None:
         actual_seq_lengths_kv = dtype_promote(actual_seq_lengths_kv, target_dtype=DataType.DT_INT64)
 
+    if atten_mask is not None:
+        if atten_mask.dtype == DataType.DT_FLOAT16:
+            atten_mask = dtype_promote(atten_mask, target_dtype=DataType.DT_UINT8)
+
     if sparse_mode >= 10 and sparse_mode <= 14:
         inner_precise = 0
         sparse_mode -= 10
