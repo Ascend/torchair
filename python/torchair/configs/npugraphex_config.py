@@ -35,9 +35,9 @@ class _NpuGraphExConfig:
         return x
 
     OPTIONS_TO_CONFIG_TRANSFORMATIONS = {
-        "inplace_pass": invert_bool,
-        "input_inplace_pass": invert_bool,
-        "reuse_graph_pool_in_same_fx": invert_bool,
+        "inplace_pass": invert_bool.__func__,
+        "input_inplace_pass": invert_bool.__func__,
+        "reuse_graph_pool_in_same_fx": invert_bool.__func__,
     }
     ALLOWED_OPTIONS = set(OPTIONS_TO_CONFIG_MAP.keys())
 
