@@ -58,6 +58,14 @@ Status H2DMemcpy(void *dst, size_t destMax, const void *src, size_t count, void 
   return Status::Success();
 }
 
+Status D2HMemcpy(void *dst, size_t destMax, const void *src, size_t count, void *stream) {
+  auto stream_ret = aclrtSynchronizeStream(stream);
+  TNG_ASSERT(stream_ret == ACL_ERROR_NONE, "ACL sync stream failed, return %d", stream_ret);
+  auto ret = aclrtMemcpy(dst, destMax, src, count, ACL_MEMCPY_DEVICE_TO_HOST);
+  TNG_ASSERT(ret == ACL_ERROR_NONE, "ACL memory copy failed, return %d", ret);
+  return Status::Success();
+}
+
 Status AssembleDimsToOriginShape(const at::IntArrayRef &dims, ge::Tensor &ge_tensor) {
   if (ge_tensor.GetOriginShapeDimNum() != dims.size()) {
     TNG_ASSERT_GE_OK(ge_tensor.SetOriginShapeDimNum(dims.size()));

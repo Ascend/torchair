@@ -95,6 +95,14 @@ class AllReduce(torch.nn.Module):
         return x
 
 
+class AllReduce_Sum(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
+        torch.distributed.all_reduce(x, op=torch.distributed.ReduceOp.SUM)
+        return x
+
 class ReduceScatterTensor(torch.nn.Module):
     def __init__(self):
         super().__init__()
@@ -390,6 +398,20 @@ class HcomTest(unittest.TestCase):
         out = torch.ones([2, 2], dtype=torch.int32).npu() * 2 * world_size
         ret = model(x, y)
         results.append(out.equal(ret))
+        dist.destroy_process_group()
+
+    @classmethod
+    def _test_allreduce_host_input(cls, rank, world_size, init_pg, dynamic, results):
+        torch.npu.set_device(rank)
+        init_pg(rank, world_size)
+        x = torch.randn([3, 4])
+        x_npu = x.clone().to("npu:" + str(rank))
+        model = AllReduce_Sum()
+        ge_out = model(x_npu)
+        model_run_by_host_input = torch.compile(model,
+                                                backend=npu_backend, dynamic=dynamic, fullgraph=True)
+        ret = model_run_by_host_input(x)
+        results.append(ge_out.cpu().equal(ret))
         dist.destroy_process_group()
 
     @classmethod
@@ -814,6 +836,8 @@ class HcomTest(unittest.TestCase):
         self.assertTrue(self._test_multiprocess(HcomTest._test_allreduce,
                                                 HcomTest._init_dist_hccl_without_patch, world_size, True))
         self.assertTrue(self._test_multiprocess(HcomTest._test_allreduce,
+                                                HcomTest._init_dist_hccl_without_patch, world_size, False))
+        self.assertTrue(self._test_multiprocess(HcomTest._test_allreduce_host_input,
                                                 HcomTest._init_dist_hccl_without_patch, world_size, False))
 
     def test_allgather(self):

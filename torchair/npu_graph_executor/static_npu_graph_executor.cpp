@@ -135,7 +135,8 @@ Status StaticNpuGraphExecutor::AssembleOutputs(const std::vector<c10::optional<a
   TNG_ASSERT_NOTNULL(allocator);
   data_ptrs.resize(output_holders.size());
   for (size_t i = 0U; i < output_holders.size(); ++i) {
-    if (!assigned_outputs.empty() && assigned_outputs[i].has_value()) {
+    if (!assigned_outputs.empty() && assigned_outputs[i].has_value() &&
+        (output_size_[i] == 0 || assigned_outputs[i].value().is_privateuseone())) {
       if (is_first_run_) {
         TNG_RETURN_IF_ERROR(AtNpuTensorToGeTensor(assigned_outputs[i].value(), output_holders[i]));
       } else {
@@ -285,6 +286,12 @@ Status StaticNpuGraphExecutor::Run(const std::vector<c10::optional<at::Tensor>> 
     RECORD_FUNCTION("RefreshAtTensorFromGeTensor", {});
     for (size_t i = 0U; i < data_ptrs.size(); i++) {
       if (!torch_outputs.empty() && torch_outputs[i].has_value()) {
+        if (!torch_outputs[i].value().is_privateuseone() && output_size_[i] > 0U) {
+          size_t dst_size =
+              static_cast<size_t>(torch_outputs[i].value().numel() * torch_outputs[i].value().element_size());
+          TNG_RETURN_IF_ERROR(D2HMemcpy(torch_outputs[i]->data_ptr(), dst_size, data_ptrs[i].get(),
+                                        output_size_[i], first_stream_));
+        }
         outputs.push_back(torch_outputs[i].value());
         continue;
       }
