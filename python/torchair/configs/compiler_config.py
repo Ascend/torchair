@@ -65,19 +65,19 @@ unsupport_geconfig_list = [("debug.aclgraph.disable_reinplace_input_mutated_ops_
     ("experimental_config.aclgraph._aclnn_static_shape_kernel_build_dir", []),
     ("debug.aclgraph.clone_input", [False]),
     ("debug.aclgraph.disable_reinplace_inplaceable_ops_pass", [True])]
-unsupport_aclgraphconfig_list = [("inference_config.dynamic_gears_merge_policy", ["product"]), \
-    ("debug.fx_summary.type", ["csv"]), ("dump_config.enable_dump", [True]), \
-    ("ge_config.export_compile_stat", ["1", "0"]), \
-    ("export.experimental.auto_atc_config_generated", [True]), \
-    ("export.experimental.enable_record_nn_module_stack", [True]), \
-    ("ge_config.enable_single_stream", [True]), ("ge_config.oo_level", ["O1"]), \
-    ("ge_config.oo_constant_folding", [True, False]), ("ge_config.oo_dead_code_elimination", [True, False]), \
-    ("experimental_config.topology_sorting_strategy", ["BFS", "RDFS", "StableRDFS"]), \
-    ("experimental_config.cc_parallel_enable", [True]), \
-    ("experimental_config.enable_ref_data", [True]), \
-    ("experimental_config.tiling_schedule_optimize", [True]), \
-    ("experimental_config.enable_view_optimize", [False, True]), ("fusion_config.fusion_switch_file", []), \
-    ("experimental_config.static_model_ops_lower_limit", []), ("ge_config.aicore_num", []), \
+unsupport_aclgraphconfig_list = [("inference_config.dynamic_gears_merge_policy", ["product"]),
+    ("debug.fx_summary.type", ["csv"]), ("dump_config.enable_dump", [True]),
+    ("ge_config.export_compile_stat", ["1", "0"]),
+    ("export.experimental.auto_atc_config_generated", [True]),
+    ("export.experimental.enable_record_nn_module_stack", [True]),
+    ("ge_config.enable_single_stream", [True]), ("ge_config.oo_level", ["O1"]),
+    ("ge_config.oo_constant_folding", [True, False]), ("ge_config.oo_dead_code_elimination", [True, False]),
+    ("experimental_config.topology_sorting_strategy", ["BFS", "RDFS", "StableRDFS"]),
+    ("experimental_config.cc_parallel_enable", [True]),
+    ("experimental_config.enable_ref_data", [True]),
+    ("experimental_config.tiling_schedule_optimize", [True]),
+    ("experimental_config.enable_view_optimize", [False, True]), ("fusion_config.fusion_switch_file", []),
+    ("experimental_config.static_model_ops_lower_limit", []), ("ge_config.aicore_num", []),
     ("ge_config.optimization_switch", [])]
 
 
@@ -96,24 +96,22 @@ def _check_config_support(config: Any):
         if key_raw in config_dict or key_with_value in config_dict:
             warn_config = _get_warn_config(warn_config, config_arg, config_dict)
 
-    if warn_config:
-        mode_specific = "max-autotune" if config.mode.value == "max-autotune" else "reduce-overhead"
-        mode = "backend" if config.mode.value == "npugraph_ex" else "mode"
+    if warn_config and config.mode.value in ["max-autotune", "reduce-overhead"]:
         additional = (
             ""
-            if mode_specific == "max-autotune"
+            if config.mode.value == "max-autotune"
             else ", set_dim_gears, dynamo_export, scope, npu_print"
         )
         warnings.warn(
             f"The following torchair config or properties may not take effect or report "
-            f"error in {mode_specific} {mode}: {', '.join(warn_config)}{additional}",
+            f"error in {config.mode.value} mode: {', '.join(warn_config)}{additional}",
             UserWarning
         )
-        if mode_specific == "reduce-overhead":
-            warnings.filterwarnings("once", category=DeprecationWarning)
-            warnings.warn("The \"reduce-overhead\" mode configuration will be deprecated. "
-                          "Please use the \"npugraph_ex\" backend.",
-                          DeprecationWarning)
+    if config.mode.value == "reduce-overhead":
+        warnings.filterwarnings("once", category=DeprecationWarning)
+        warnings.warn("The \"reduce-overhead\" mode configuration will be deprecated. "
+                      "Please use the \"npugraph_ex\" backend.",
+                      DeprecationWarning)
 
 
 def _get_warn_config(warn_config, config_arg, config_dict):

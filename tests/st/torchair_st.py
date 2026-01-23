@@ -22,7 +22,7 @@ from torchair._ge_concrete_graph.graph_pass import optimize_reference_op_redunda
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core._backend import initialize_graph_engine, finalize_graph_engine
 from torchair._ge_concrete_graph.utils import _append_real_input_shape
-from torchair_st_utils import capture_stdout, generate_faked_module
+from torchair_st_utils import capture_stdout, capture_warnings, generate_faked_module
 
 os.environ['TNG_LOG_LEVEL'] = '0'
 logger.setLevel(logging.DEBUG)
@@ -93,6 +93,22 @@ class TorchairSt(unittest.TestCase):
         y = torch.randn(2, 2, 2)
         for i in range(2):
             model(x, y)
+
+    def test_check_config_support(self):
+        from torchair.configs.compiler_config import _check_config_support
+        compiler_config = CompilerConfig()
+        with capture_warnings() as stdio:
+            compiler_config.mode = "reduce-overhead"
+            _check_config_support(compiler_config)
+        captured_output = stdio.getvalue()
+        self.assertTrue("The following torchair config or properties may not take effect or report error"
+                        " in reduce-overhead mode" in captured_output)
+        self.assertTrue("The \"reduce-overhead\" mode configuration will be deprecated" in captured_output)
+        with capture_warnings() as stdio:
+            compiler_config.mode = "npugraph_ex"
+            _check_config_support(compiler_config)
+        captured_output = stdio.getvalue()
+        self.assertFalse("reduce-overhead" in captured_output)
 
     def test_multiple_input_types(self):
         class Model(torch.nn.Module):
