@@ -1,6 +1,6 @@
 from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 from torchair.core.utils import logger
-from torchair._ge_concrete_graph.utils import convert_tensor_to_list
+from torchair._ge_concrete_graph.utils import convert_tensor_to_list, convert_tensor_to_dtype
 
 
 def check_input_dtype(x, weight):
@@ -194,14 +194,18 @@ def conveter_aten_convolution_default(
     """NB: aten::convolution(Tensor input, Tensor weight, Tensor? bias, int[] stride, SymInt[] padding, int[] dilation, bool transposed, SymInt[] output_padding, int groups) -> Tensor"""
     if isinstance(padding, Tensor):
         logger.warning_once("torch.ops.aten.convolution does not support dynamic graph scenarios where "
-        "attributes [stride/dilation/padding/output_padding] is of Tensor type, instead attributes is converted to List type.")
-        padding = convert_tensor_to_list(padding)
+        "attributes [stride/dilation/padding/output_padding/groups] is of Tensor type, instead attributes is converted to List type.")
+        padding = convert_tensor_to_list(padding, int)
     if isinstance(dilation, Tensor):
-        dilation = convert_tensor_to_list(dilation)
+        dilation = convert_tensor_to_list(dilation, int)
     if isinstance(stride, Tensor):
-        stride = convert_tensor_to_list(stride)
+        stride = convert_tensor_to_list(stride, int)
     if isinstance(output_padding, Tensor):
-        output_padding = convert_tensor_to_list(output_padding)
+        output_padding = convert_tensor_to_list(output_padding, int)
+    if isinstance(groups, Tensor):
+        groups = convert_tensor_to_dtype(groups, int)
+    if isinstance(transposed, Tensor):
+        transposed = convert_tensor_to_dtype(transposed, bool)
     if bias is not None and x.dtype != DataType.DT_HIFLOAT8:
         bias = dtype_promote(bias, target_dtype=meta_outputs.dtype)
     x, weight = dtype_promote(x, weight, target_dtype=meta_outputs.dtype)

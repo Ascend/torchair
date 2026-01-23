@@ -460,7 +460,12 @@ def is_complex(meta):
     return False
 
 
-def convert_tensor_to_list(attr_tensor):
+def convert_tensor_to_list(attr_tensor, target_dtype):
     attr_tensor = attr_tensor._meta
-    attr_list = [int(t) for t in attr_tensor]
+    attr_list = [target_dtype(t) for t in attr_tensor]
     return attr_list
+
+
+def convert_tensor_to_dtype(attr_tensor, target_dtype):
+    attr_dtype = target_dtype(attr_tensor._meta)
+    return attr_dtype
