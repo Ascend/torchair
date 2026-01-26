@@ -82892,3 +82892,64 @@ def DynamicMxQuantWithDualAxis(x: Tensor,
     output_index += 1
 
     return y1, mxscale1, y2, mxscale2
+
+
+# This api is auto-generated from IR DynamicDualLevelMxQuant
+@auto_convert_to_tensor([False, False], [False, True])
+def DynamicDualLevelMxQuant(x: Tensor,
+                            smooth_scale: Optional[Tensor] = None,
+                            *,
+                            round_mode: str = "rint",
+                            level0_block_size: int = 512,
+                            level1_block_size: int = 32,
+                            dependencies=[],
+                            node_name=None):
+    """REG_OP(DynamicDualLevelMxQuant)\n
+    .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OPTIONAL_INPUT(smooth_scale, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT4_E2M1}))\n
+    .OUTPUT(level0_scale, TensorType({DT_FLOAT32}))\n
+    .OUTPUT(level1_scale, TensorType({DT_FLOAT8_E8M0}))\n
+    .ATTR(round_mode, String, "rint")\n
+    .ATTR(level0_block_size, Int, 512)\n
+    .ATTR(level1_block_size, Int, 32)\n
+    """
+    op = get_default_ge_graph().op.add()
+    op.type = "DynamicDualLevelMxQuant"
+    op.name = next_unique_name(node_name, "DynamicDualLevelMxQuant")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+    if smooth_scale is not None:
+        op.input.append(smooth_scale.tensor)
+        op.input_desc.add().CopyFrom(smooth_scale.desc)
+        op.input_desc[-1].name = "smooth_scale"
+    else:
+        op.input.append('')
+        op.input_desc.add().CopyFrom(get_invalid_desc())
+        op.input_desc[-1].name = "smooth_scale"
+
+    # process attrs
+    op.attr["round_mode"].s = compat_as_bytes(round_mode)
+    op.attr["level0_block_size"].i = level0_block_size
+    op.attr["level1_block_size"].i = level1_block_size
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "level0_scale"
+    level0_scale = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "level1_scale"
+    level1_scale = Tensor(op, output_index)
+    output_index += 1
+
+    return y, level0_scale, level1_scale
