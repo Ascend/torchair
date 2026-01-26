@@ -39,7 +39,7 @@ def conveter_npu_npu_add_quant_gmm(
                             int? x2_scale_dtype=None) -> Tensor(a!)
     """
     if not is_arch35():
-        raise RuntimeError("This operator currently only supports Ascend910_95 chips.")
+        raise RuntimeError("This operator currently only supports Ascend950 chips.")
     group_size = 0
     if x1_dtype is not None:
         x1 = ge.Bitcast(x1, type=torch_dtype_value_to_ge_type(x1_dtype))
@@ -93,7 +93,7 @@ def conveter_npu_npu_add_quant_gmm(
                             int? x2_scale_dtype=None) -> Tensor(a!)
     """
     if not is_arch35():
-        raise RuntimeError("This operator currently only supports Ascend910_95 chips.")
+        raise RuntimeError("This operator currently only supports Ascend950 chips.")
     group_size = 0
     if x1_dtype is not None:
         x1 = ge.Bitcast(x1, type=torch_dtype_value_to_ge_type(x1_dtype))
