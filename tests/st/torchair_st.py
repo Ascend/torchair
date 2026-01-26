@@ -2369,7 +2369,7 @@ class TorchairSt(unittest.TestCase):
         out = compile_func(input1, input2)
 
 
-    @unittest.skipIf(torch.__version__ < "4.2", "torch._auto_functionalize is unsupported when torch < 2.2")
+    @unittest.skipIf(torch.__version__ < "2.2", "torch._auto_functionalize is unsupported when torch < 2.2")
     def test_auto_functionalize_as_stride(self):
         m = Library("npu", "FRAGMENT")
         m.define("my_inplace_auto2(Tensor(a!) x, Tensor y) -> Tensor")
@@ -2473,7 +2473,91 @@ class TorchairSt(unittest.TestCase):
         compile_func = torch.compile(cus_func, backend=npu_backend, fullgraph=True, dynamic=False)
         input1 = torch.ones(2, 2)
         input2 = torch.ones(2, 1)
-        out = compile_func(input1, input2)           
+        out = compile_func(input1, input2)
+
+
+    @unittest.skipIf(torch.__version__ < "2.2", "torch._auto_functionalize is unsupported when torch < 2.2")
+    def test_auto_functionalize_no_output(self):
+        m = Library("npu", "FRAGMENT")
+        m.define("my_inplace_auto_no_output(Tensor(a!) x, Tensor y) -> ()")
+
+        @impl(m, "my_inplace_auto_no_output", "Meta")
+        def my_inplace_meta(x, y):
+            pass
+
+        def cus_func(x, y):
+            add0 = torch.add(x, 1)
+            o2 = torch.ops.npu.my_inplace_auto_no_output(add0, y)
+            add1 = torch.add(add0, 1)
+            return add1, o2
+
+        def warp_concrete_graph():
+            def wrapper_call(func):
+                def wrapper(*args, **kwargs):
+                    assert len(args) > 0
+                    geGraph: GeGraph = args[0]._graph
+                    op_name_dict = {op_node.name: op_node.input for op_node in geGraph.op}
+                    self.assertIn("TensorMove", op_name_dict)
+                    self.assertIn("MyInplaceAutoNoOutput", op_name_dict)
+                    self.assertIn("TensorMove:0", op_name_dict["MyInplaceAutoNoOutput"])
+
+                    ret = func(*args, **kwargs)
+                    return ret
+
+                return wrapper
+
+            GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
+
+        warp_concrete_graph()
+        compile_func = torch.compile(cus_func, backend=npu_backend, fullgraph=True, dynamic=False)
+        input1 = torch.ones(2, 2)
+        input2 = torch.ones(2, 1)
+        out = compile_func(input1, input2)
+
+    @unittest.skipIf(torch.__version__ < "2.2", "torch._auto_functionalize is unsupported when torch < 2.2")
+    def test_auto_functionalize_two_inplace(self):
+        m = Library("npu", "FRAGMENT")
+        m.define("my_two_inplace(Tensor x, Tensor wkv, Tensor wgate, Tensor(a!) kv_state, Tensor(b!) score_state,"
+        "Tensor ape, Tensor norm_weight, Tensor rope_sin, Tensor rope_cos) -> (Tensor)")
+
+        @impl(m, "my_two_inplace", "Meta")
+        def my_inplace_meta(x, wkv, wgate, kv_state, score_state, ape, norm_weight, rope_sin, rope_cos):
+            return torch.empty_like(x)
+
+        def cus_func(x, wkv, wgate, kv_state, score_state, ape, norm_weight, rope_sin, rope_cos):
+            add0 = torch.add(x, 1)
+            o2 = torch.ops.npu.my_two_inplace(x, wkv, wgate, kv_state, score_state, ape, norm_weight, rope_sin, rope_cos)
+            add1 = torch.add(add0, 1)
+            return add1, o2
+
+        def warp_concrete_graph():
+            def wrapper_call(func):
+                def wrapper(*args, **kwargs):
+                    assert len(args) > 0
+                    geGraph: GeGraph = args[0]._graph
+                    op_name_dict = {op_node.name: op_node.input for op_node in geGraph.op}
+                    print(f"---> op_name_dict: {op_name_dict}")
+                    self.assertIn("TensorMove", op_name_dict)
+                    self.assertIn("TensorMove_1", op_name_dict)
+                    self.assertIn("MyTwoInplace", op_name_dict)
+                    self.assertIn("TensorMove:0", op_name_dict["MyTwoInplace"])
+                    self.assertIn("TensorMove_1:0", op_name_dict["MyTwoInplace"])
+
+                    ret = func(*args, **kwargs)
+                    return ret
+
+                return wrapper
+
+            GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
+
+        warp_concrete_graph()
+        compile_func = torch.compile(cus_func, backend=npu_backend, fullgraph=True, dynamic=False)
+        input1 = torch.ones(2, 2)
+        input2 = torch.ones(2, 1)
+        input3 = torch.ones(2, 1)
+        with self.assertRaises(RuntimeError) as context:
+            out = compile_func(input1, input1, input1, input2, input3, input1, input1, input1, input1) 
+        self.assertTrue("Assert outputs.empty()" in str(context.exception))                    
                 
 
     def test_miss_scope_exit(self):

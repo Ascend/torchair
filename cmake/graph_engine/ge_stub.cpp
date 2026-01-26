@@ -535,7 +535,26 @@ ge::Status GetRegisteredIrDef(const char *op_type, std::vector<std::pair<ge::Asc
     inputs.emplace_back(ge::AscendString("y"), ge::AscendString("required"));
     outputs.emplace_back(ge::AscendString("x"), ge::AscendString("required"));
     outputs.emplace_back(ge::AscendString("z"), ge::AscendString("required"));
-  }          
+  }
+  if (std::string(op_type) == "MyInplaceAutoNoOutput"){
+    inputs.emplace_back(ge::AscendString("x"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("y"), ge::AscendString("required"));
+    outputs.emplace_back(ge::AscendString("x"), ge::AscendString("required"));
+  } 
+  if (std::string(op_type) == "MyTwoInplace"){
+    inputs.emplace_back(ge::AscendString("x"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("wkv"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("wgate"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("kv_state"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("score_state"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("ape"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("norm_weight"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("rope_sin"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("rope_cos"), ge::AscendString("required"));
+    outputs.emplace_back(ge::AscendString("cmp_kv"), ge::AscendString("required"));
+    outputs.emplace_back(ge::AscendString("kv_state"), ge::AscendString("required"));
+    outputs.emplace_back(ge::AscendString("score_state"), ge::AscendString("required"));
+  }
   if (std::string(op_type) == "MyOpTestv5"){
     return ge::FAILED;
   }

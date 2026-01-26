@@ -722,12 +722,16 @@ def _alias_is_write(target):
 
 
 def _ge_inplace(inputs, outputs):
+    inplace_outputs_index = []
     inplace_inputs_index = []
     ge_inputs_dict, ge_outputs_dict = dict(inputs), dict(outputs)
+    for index, key in enumerate(ge_outputs_dict.keys()):
+        if key in ge_inputs_dict.keys():
+            inplace_outputs_index.append(index)
     for index, key in enumerate(ge_inputs_dict.keys()):
         if key in ge_outputs_dict.keys():
             inplace_inputs_index.append(index)
-    return inplace_inputs_index
+    return inplace_outputs_index, inplace_inputs_index
 
 
 def _generate_converter_code(target):
@@ -740,23 +744,26 @@ def _generate_converter_code(target):
 
     need_clone = False
     need_reduce_output = False
-    alias_list = _alias_is_write(target)
-    inplace_inputs_index = _ge_inplace(ge_inputs, ge_outputs)
-    real_output = [i for i in range(len(ge_outputs))]
-    if len(alias_list) != 0 and len(alias_list) != len(inplace_inputs_index):
+    alias_list = _alias_is_write(target) #[3, 4] target上的inplace的位置
+    inplace_outputs_index, inplace_inputs_index = _ge_inplace(ge_inputs, ge_outputs) #[1, 2] ge上的inplace的位置
+    real_output = [i for i in range(len(ge_outputs))] #[0, 1, 2] 所有输出的位置
+    if len(alias_list) != 0 and len(alias_list) != len(inplace_outputs_index):
         raise RuntimeError(
             f"Failed to converter {target} to AscendIR: the number of inplace inputs for torch does not "
             f"match the AscendIR {ge_name}, please check your torch and AscendIR registration.")
-    if len(alias_list) == 0 and len(inplace_inputs_index) != 0:
+    if len(alias_list) == 0 and len(inplace_outputs_index) != 0:
         need_clone = True
         clone_code = []
         for index in inplace_inputs_index:
             clone_code.append(str(target_args_name[index]) + '= Clone(' + str(target_args_name[index]) + ')')
-    if len(alias_list) != 0 and len(alias_list) == len(inplace_inputs_index):
+    if len(alias_list) != 0 and len(alias_list) == len(inplace_outputs_index):
         need_reduce_output = True
-        for index, _ in enumerate(alias_list):
-            real_output.remove(inplace_inputs_index[index])
-        reduce_code = "return (" + ", ".join([f"out[{n}]" for n in real_output]) + ")"
+        for index in inplace_outputs_index:
+            real_output.remove(index)
+        if len(real_output) == 0 :
+            reduce_code = ""
+        else:
+            reduce_code = "return (" + ", ".join([f"out[{n}]" for n in real_output]) + ")"
 
     imports = textwrap.dedent('''
     # Auto-generated from {target}, not edit

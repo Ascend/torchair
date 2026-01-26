@@ -1604,6 +1604,8 @@ def torch_args_to_ge_args(*args, ge_support_info, op_type):
     attrs = {}
     for j, (name, vt_tag) in enumerate(ge_attrs.items(), start=len(ge_inputs)):
         val = args[j]
+        if val is None:
+            continue
         constructor = _ATTR_TYPE_MAP.get(vt_tag)
         if constructor is None:
             raise ValueError(f"Failed to parse AscendIR: The AscendIR {op_type} "
