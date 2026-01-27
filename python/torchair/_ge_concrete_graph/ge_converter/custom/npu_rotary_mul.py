@@ -12,7 +12,6 @@ def conveter_npu_rotary_mul_default(
     r1: Tensor,
     r2: Tensor,
     rotary_mode: str = 'half',
-    rotate: Optional[Tensor] = None,
     meta_outputs: TensorSpec = None
 ):
     """NB: npu::npu_rotary_mul(Tensor self, Tensor r1, Tensor r2) -> Tensor"""
@@ -22,11 +21,5 @@ def conveter_npu_rotary_mul_default(
             raise NotImplementedError("rotary_mode only support half/interleave/quarter/interleave-half now!")
         mode = modes[rotary_mode]
         return ge.RotaryPositionEmbedding(self, r1, r2, mode=mode)
-    elif rotate is not None:
-        modes = {"half": 0, "interleave": 1}
-        if rotary_mode not in modes:
-            raise NotImplementedError("rotary_mode in A2/A3 only support half/interleave now!")
-        mode = modes[rotary_mode]
-        return ge.RotaryPositionEmbedding(self, r1, r2, mode=mode, rotate=rotate)
     else:
         return ge.RotaryMul(self, r1, r2)

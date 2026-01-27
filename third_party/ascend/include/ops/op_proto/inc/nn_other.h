@@ -69,7 +69,6 @@ REG_OP(RotaryMulGrad)
  * @li x: A 4D tensor which rotary position embedding is applied, format supports ND, and data type must be float16, float or bfloat16.
  * @li cos: A 4D tensor which is "cos" in rotary position embedding, format supports ND, data type must be the same as "x", and shape must be the same as "sin".
  * @li sin: A 4D tensor which is "sin" in rotary position embedding, format supports ND, data type must be the same as "x", and shape must be the same as "cos".
- * @li rotate: An optional 2D tensor which is the transformation matrix for position transformation of the "x" in rotary position embedding, format supports ND, data type must be the same as "x", both dimensions are the same and equal to the last dimension of "x".
  * @par Outputs:
  * y: A 4D tensor which is the result of rotary position embedding, format supports ND, data type must be the same as "x", and shape must be the same as "x".
  * @par Attributes:
@@ -77,7 +76,7 @@ REG_OP(RotaryMulGrad)
  * Atlas A2 Training Series Product/ Atlas 800I A2 Inference Product and Atlas A3 Training Series Product only support 0-"half" and 1-"interleave".
  * @attention Constraints:
  * Let (B, S, N, D) represents the shape of the 4-D input "x". Under this representation, the shape constraints of each parameter can be described as follows:
- * @li The D of "x", "cos", "sin", "rotate" and "y" must be equal. For Ascend 910_95 AI Processor, D should be less or equal to 1024. 
+ * @li The D of "x", "cos", "sin" and "y" must be equal. For Ascend 910_95 AI Processor, D should be less or equal to 1024. 
  * For Atlas A2 Training Series Product/ Atlas 800I A2 Inference Product and Atlas A3 Training Series Product, D should be less or equal to 896.
  * @li In half, interleave and interleave-half mode, D must be a multiple of 2. In quarter mode, D must be a multiple of 4.
  * @li B, S, N of "cos" and "sin" must meet one of the following four conditions:
@@ -85,14 +84,11 @@ REG_OP(RotaryMulGrad)
  *  - B, S, N are the same as that of "x", means the shape is (B, S, N, D).
  *  - One of S and N is 1, the remaining one dimension and B are the same as that of "x", means the shape is (B, 1, N, D) or (B, S, 1, D).
  *  - Two of B, S and N are 1, the remaining one dimension is the same as that of "x", means the shape is (1, 1, N, D), (1, S, 1, D) or (B, 1, 1, D).
- * @li The shape for rotate should be (D, D).
- * Rotate does not support back propagation.
  */
 REG_OP(RotaryPositionEmbedding)
     .INPUT(x, TensorType({DT_FLOAT16, DT_FLOAT, DT_BFLOAT16}))
     .INPUT(cos, TensorType({DT_FLOAT16, DT_FLOAT, DT_BFLOAT16}))
     .INPUT(sin, TensorType({DT_FLOAT16, DT_FLOAT, DT_BFLOAT16}))
-    .OPTIONAL_INPUT(rotate, TensorType({DT_FLOAT16, DT_FLOAT, DT_BFLOAT16}))
     .OUTPUT(y, TensorType({DT_FLOAT16, DT_FLOAT, DT_BFLOAT16}))
     .ATTR(mode, Int, 0)
     .OP_END_FACTORY_REG(RotaryPositionEmbedding)
