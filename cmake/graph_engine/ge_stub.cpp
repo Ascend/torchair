@@ -555,6 +555,18 @@ ge::Status GetRegisteredIrDef(const char *op_type, std::vector<std::pair<ge::Asc
     outputs.emplace_back(ge::AscendString("kv_state"), ge::AscendString("required"));
     outputs.emplace_back(ge::AscendString("score_state"), ge::AscendString("required"));
   }
+  if (std::string(op_type) == "MyInplaceAutoKwargsInt"){
+    inputs.emplace_back(ge::AscendString("x"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("y"), ge::AscendString("required"));
+    attrs.emplace_back(ge::AscendString("alpha"), ge::AscendString("VT_INT"));
+    outputs.emplace_back(ge::AscendString("x"), ge::AscendString("required"));
+  }
+  if (std::string(op_type) == "MyInplaceAutoKwargsStr"){
+    inputs.emplace_back(ge::AscendString("x"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("y"), ge::AscendString("required"));
+    attrs.emplace_back(ge::AscendString("alpha"), ge::AscendString("VT_STRING"));
+    outputs.emplace_back(ge::AscendString("x"), ge::AscendString("required"));
+  }
   if (std::string(op_type) == "MyOpTestv5"){
     return ge::FAILED;
   }

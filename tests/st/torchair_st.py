@@ -2795,6 +2795,117 @@ class TorchairSt(unittest.TestCase):
             "this op has scalar input, can not auto generate converter, " + \
             "please implement this function" in str(context.exception))
 
+    def test_auto_functionalize_kwargs_int_with_input(self):
+        m = Library("npu", "FRAGMENT")
+        m.define("my_inplace_auto_kwargs_int(Tensor(a!) x, Tensor y, *, int alpha=1) -> ()")
+
+        @impl(m, "my_inplace_auto_kwargs_int", "Meta")
+        def my_inplace_meta(x, y, alpha=1):
+            pass
+
+        def cus_func(x, y):
+            add0 = torch.add(x, 1)
+            o2 = torch.ops.npu.my_inplace_auto_kwargs_int(add0, y, alpha=2)
+            add1 = torch.add(add0, 1)
+            return add1, o2
+
+        def warp_concrete_graph():
+            def wrapper_call(func):
+                def wrapper(*args, **kwargs):
+                    assert len(args) > 0
+                    geGraph: GeGraph = args[0]._graph
+                    op_name_dict = {op_node.name: op_node.input for op_node in geGraph.op}
+                    self.assertIn("TensorMove", op_name_dict)
+                    self.assertIn("MyInplaceAutoKwargsInt", op_name_dict)
+                    self.assertIn("TensorMove:0", op_name_dict["MyInplaceAutoKwargsInt"])
+
+                    ret = func(*args, **kwargs)
+                    return ret
+
+                return wrapper
+
+            GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
+
+        warp_concrete_graph()
+        compile_func = torch.compile(cus_func, backend=npu_backend, fullgraph=True, dynamic=False)
+        input1 = torch.ones(2, 2)
+        input2 = torch.ones(2, 1)
+        out = compile_func(input1, input2)
+
+    def test_auto_functionalize_kwargs_str(self):
+        m = Library("npu", "FRAGMENT")
+        m.define("my_inplace_auto_kwargs_str(Tensor(a!) x, Tensor y, *, str alpha='alpha') -> ()")
+
+        @impl(m, "my_inplace_auto_kwargs_str", "Meta")
+        def my_inplace_meta(x, y, alpha='alpha'):
+            pass
+
+        def cus_func(x, y):
+            add0 = torch.add(x, 1)
+            o2 = torch.ops.npu.my_inplace_auto_kwargs_str(add0, y, alpha='beta')
+            add1 = torch.add(add0, 1)
+            return add1, o2
+
+        def warp_concrete_graph():
+            def wrapper_call(func):
+                def wrapper(*args, **kwargs):
+                    assert len(args) > 0
+                    geGraph: GeGraph = args[0]._graph
+                    op_name_dict = {op_node.name: op_node.input for op_node in geGraph.op}
+                    self.assertIn("TensorMove", op_name_dict)
+                    self.assertIn("MyInplaceAutoKwargsStr", op_name_dict)
+                    self.assertIn("TensorMove:0", op_name_dict["MyInplaceAutoKwargsStr"])
+
+                    ret = func(*args, **kwargs)
+                    return ret
+
+                return wrapper
+
+            GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
+
+        warp_concrete_graph()
+        compile_func = torch.compile(cus_func, backend=npu_backend, fullgraph=True, dynamic=False)
+        input1 = torch.ones(2, 2)
+        input2 = torch.ones(2, 1)
+        out = compile_func(input1, input2)
+    
+    def test_auto_functionalize_kwargs_str_without_input(self):
+        m = Library("npu", "FRAGMENT")
+        m.define("my_inplace_auto_kwargs_str(Tensor(a!) x, Tensor y, *, str alpha='alpha') -> ()")
+
+        @impl(m, "my_inplace_auto_kwargs_str", "Meta")
+        def my_inplace_meta(x, y, alpha='alpha'):
+            pass
+
+        def cus_func(x, y):
+            add0 = torch.add(x, 1)
+            o2 = torch.ops.npu.my_inplace_auto_kwargs_str(add0, y)
+            add1 = torch.add(add0, 1)
+            return add1, o2
+
+        def warp_concrete_graph():
+            def wrapper_call(func):
+                def wrapper(*args, **kwargs):
+                    assert len(args) > 0
+                    geGraph: GeGraph = args[0]._graph
+                    op_name_dict = {op_node.name: op_node.input for op_node in geGraph.op}
+                    self.assertIn("TensorMove", op_name_dict)
+                    self.assertIn("MyInplaceAutoKwargsStr", op_name_dict)
+                    self.assertIn("TensorMove:0", op_name_dict["MyInplaceAutoKwargsStr"])
+
+                    ret = func(*args, **kwargs)
+                    return ret
+
+                return wrapper
+
+            GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
+
+        warp_concrete_graph()
+        compile_func = torch.compile(cus_func, backend=npu_backend, fullgraph=True, dynamic=False)
+        input1 = torch.ones(2, 2)
+        input2 = torch.ones(2, 1)
+        out = compile_func(input1, input2)
+    
     def test_torch_dtype_to_ge_dtype(self):
         with self.assertRaises(RuntimeError) as context:
             torch_type_to_ge_type(torch.bits4x2)

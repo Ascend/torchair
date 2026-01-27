@@ -690,7 +690,11 @@ def _generate_converter_log(target):
     target_log_name = str(target).split(".")[1]
     if target_log_name.split("_")[-1] == "functional":
         target_log_name = "_".join(target_log_name.split("_")[:-1])
-    target_args_name = [arg.name for arg in target._schema.arguments]
+    target_args_params, target_kwargs_name = _get_target_params(target)
+    if len(target_kwargs_name) > 0:
+        params_code = ',\n    '.join(target_args_params) + ",\n    *,\n    " + ',\n    '.join(target_kwargs_name)
+    else:
+        params_code = ',\n    '.join(target_args_params)
     function_log = textwrap.dedent('''
         @register_fx_node_ge_converter({op_name})
         def {func_name}(
@@ -700,7 +704,7 @@ def _generate_converter_log(target):
         ''').format(
         op_name='torch.ops.' + str(target),
         func_name='converter' + '_' + target_log_name,
-        params=',\n   '.join(target_args_name),
+        params=params_code
     )
     return function_log
 
@@ -734,28 +738,56 @@ def _ge_inplace(inputs, outputs):
     return inplace_outputs_index, inplace_inputs_index
 
 
+def _get_target_params(target):
+    #构造args的参数列表和kwargs的参数列表
+    target_args_params = []
+    target_kwargs_name = []
+    for arg in target._schema.arguments:
+        if not arg.kwarg_only:
+            if arg.has_default_value():
+                target_args_params.append(arg.name + "=" + repr(arg.default_value))
+            else:
+                target_args_params.append(arg.name)
+        else:
+            if arg.has_default_value():
+                target_kwargs_name.append(arg.name + "=" + repr(arg.default_value))
+            else:
+                target_kwargs_name.append(arg.name)
+    return target_args_params, target_kwargs_name
+
+
 def _generate_converter_code(target):
     target_name = str(target).split(".")[1]
     if target_name.split("_")[-1] == "functional":
         target_name = "_".join(target_name.split("_")[:-1])
-    target_args_name = [arg.name for arg in target._schema.arguments]
     ge_name = "".join(word.capitalize() for word in target_name.split("_"))
     (_, ge_inputs, ge_outputs, _) = _torchair.get_registered_ir_def(ge_name)
 
+    #处理参数
+    all_args_name = [arg.name for arg in target._schema.arguments]
+    target_args_params, target_kwargs_name = _get_target_params(target)
+    if len(target_kwargs_name) > 0:
+        params_code = ',\n    '.join(target_args_params) + ",\n    *,\n    " + ',\n    '.join(target_kwargs_name)
+    else:
+        params_code = ',\n    '.join(target_args_params)
+
+    #处理inpalce
     need_clone = False
     need_reduce_output = False
-    alias_list = _alias_is_write(target) #[3, 4] target上的inplace的位置
-    inplace_outputs_index, inplace_inputs_index = _ge_inplace(ge_inputs, ge_outputs) #[1, 2] ge上的inplace的位置
-    real_output = [i for i in range(len(ge_outputs))] #[0, 1, 2] 所有输出的位置
+    alias_list = _alias_is_write(target) # target上的inplace的位置
+    inplace_outputs_index, inplace_inputs_index = _ge_inplace(ge_inputs, ge_outputs) # ge上的inplace的位置
+    real_output = [i for i in range(len(ge_outputs))] # 所有输出的位置
     if len(alias_list) != 0 and len(alias_list) != len(inplace_outputs_index):
         raise RuntimeError(
             f"Failed to converter {target} to AscendIR: the number of inplace inputs for torch does not "
             f"match the AscendIR {ge_name}, please check your torch and AscendIR registration.")
+    #如果target未定义成inpalce的输入，则处理ge中需要做clone的参数
     if len(alias_list) == 0 and len(inplace_outputs_index) != 0:
         need_clone = True
         clone_code = []
         for index in inplace_inputs_index:
-            clone_code.append(str(target_args_name[index]) + '= Clone(' + str(target_args_name[index]) + ')')
+            clone_code.append(str(all_args_name[index]) + '= Clone(' + str(all_args_name[index]) + ')')
+    #如果target定义成inpalce的输入，则走functional的逻辑，删除inplace的输出只返回非inplace
     if len(alias_list) != 0 and len(alias_list) == len(inplace_outputs_index):
         need_reduce_output = True
         for index in inplace_outputs_index:
@@ -782,9 +814,9 @@ def _generate_converter_code(target):
         ''').format(
             op_name='torch.ops.' + str(target),
             func_name='converter' + '_' + target_name,
-            params=',\n   '.join(target_args_name),
+            params=params_code,
             ascendir='"' + ''.join(word.capitalize() for word in target_name.split('_')) + '"',
-            ascend_params=", ".join(target_args_name),
+            ascend_params=", ".join(all_args_name),
             output=reduce_code
         )
     elif need_clone:
@@ -800,10 +832,10 @@ def _generate_converter_code(target):
         ''').format(
             op_name='torch.ops.' + str(target),
             func_name='converter' + '_' + target_name,
-            params=',\n   '.join(target_args_name),
+            params=params_code,
             clone_arg='\n'.join(clone_code),
             ascendir='"' + ''.join(word.capitalize() for word in target_name.split('_')) + '"',
-            ascend_params=", ".join(target_args_name)
+            ascend_params=", ".join(all_args_name)
         )
     else:
         function = textwrap.dedent('''
@@ -817,9 +849,9 @@ def _generate_converter_code(target):
         ''').format(
             op_name='torch.ops.' + str(target),
             func_name='converter' + '_' + target_name,
-            params=',\n   '.join(target_args_name),
+            params=params_code,
             ascendir='"' + ''.join(word.capitalize() for word in target_name.split('_')) + '"',
-            ascend_params=", ".join(target_args_name)
+            ascend_params=", ".join(all_args_name)
         )
 
     code = f"{imports}\n{function}"
