@@ -52,11 +52,13 @@ def _not_view_copy(self, bases_list, *, dependencies = [], out_op = None):
         if (input_tensor == bases_list[self.base_index].tensor):
             input_name = out_op.input_desc[i].name
             if input_name is None:
-                raise RuntimeError(f'Can not find input: {bases_list[self.base_index].tensor} in in-place op of auto_functionalize_v2')    
+                raise RuntimeError(f'Can not find input desc name of: {bases_list[self.base_index].tensor} in op {out_op.name} of auto_functionalize_v2')
             for out_index, output_name in enumerate(out_op.output_desc):
                 if (output_name.name == input_name):
                     return Tensor(out_op, out_index)
-    raise RuntimeError(f'Can not find output: {bases_list[self.base_index].tensor} in in-place op of auto_functionalize_v2')   
+    logger.warning(f'Can not find ref relation of : {bases_list[self.base_index].tensor} in op {out_op.name} of auto_functionalize_v2.'
+                ' Maybe there is more than one op was created by converter in auto_functionalize_v2.')
+    return ge.Identity(bases_list[self.base_index], dependencies=dependencies)
 
 
 def _get_meta_attr(input_value):
