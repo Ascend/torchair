@@ -33,16 +33,16 @@ class GraphTransformObserver:
     @classmethod
     def reset_file_count(cls):
         cls.__file_count = 0
-    
+
     def apply_gm_pass(self, pass_fn: Callable, pass_name: str, enable_log=False):
         if enable_log:
             self._logger.debug('[%s] before [%s] execution, graph is %s', self._phase, pass_name, self.gm.graph)
-            
+
         res = pass_fn(self.gm, self.example_inputs, self.config)
 
         if enable_log:
             self._logger.debug('[%s] after [%s] execution, graph is %s', self._phase, pass_name, self.gm.graph)
-            
+
         if not self._dump_enabled:
             return res
         self.dump_gm(self.gm, "graph_after_" + pass_name)

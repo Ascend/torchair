@@ -981,7 +981,7 @@ class GeConcreteGraph(ConcreteGraphBase):
         del ge_outputs
         return tuple(fx_outputs)
 
-    def optimize_graph_without_runtime(self, *sample_args, observer=None):
+    def optimize_graph_without_runtime(self, *sample_args, observer=None, aot_gm=None):
         """
         Optimizes the computation graph without relying on runtime information.
         This includes passes like dead data removal, explicit ordering for side-effect nodes,

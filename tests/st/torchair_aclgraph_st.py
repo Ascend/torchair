@@ -3152,7 +3152,7 @@ class AclGraphSt(unittest.TestCase):
         except Exception as e:
             assert str(e).__contains__(
                 "(type: <class 'str'>) not in optional list [True, False] (type: <class 'bool'>)")
-    
+
     def test_aclgraph_core_limit_with_static_kernel(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -3182,8 +3182,218 @@ class AclGraphSt(unittest.TestCase):
                 self.assertTrue(
                     any(target_warning in m for m in messages),
                     f"Expected warning '{target_warning}' not found in {messages}"
-                )        
-    
-    
+                )
+
+    def test_capture_and_recapture_cnt(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(32, 32)
+
+            @torch.no_grad()
+            def forward(self, x, y):
+                z = self.linear(x)
+                y.add_(1)
+                return z
+
+        from torch._dynamo.utils import counters
+        config = CompilerConfig()
+        config.debug.aclgraph.static_capture_size_limit = 3
+        config.mode = "reduce-overhead"
+        npu_bankend = torchair.get_npu_backend(compiler_config=config)
+
+        model = Model()
+        opt_model = torch.compile(model, backend=npu_bankend, dynamic=False)
+
+        # capture graph1
+        x1 = torch.randn([10, 32])
+        y1 = torch.randn([10, 32])
+        with self.assertLogs(logger, level="INFO") as cm:
+            opt_model(x1, y1)
+        from torchair.npu_fx_compiler import _GLOBAL_GRAPH_ID as graph_1_id
+        self.assertEqual(counters["npugraph_ex"][f"captured_graph_{graph_1_id}"], 1)
+        self.assertFalse(
+            any(f"For graph graph_{graph_1_id} : the count of captures is" in log for log in cm.output),
+            f"Not Expect that DEBUG 'For graph graph_{graph_1_id} : the count of captures is'"
+            f"found in logs: {cm.output}"
+        )
+        self.assertFalse(
+            any("[npugraph_ex overhead]" in log for log in cm.output),
+            f"Not Expect that DEBUG '[npugraph_ex overhead]'"
+            f"found in logs: {cm.output}"
+        )
+
+        # dtype changed, capture graph2 with graph_key1
+        x2 = torch.randn([20, 32])
+        y2 = torch.randn([20, 32])
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            opt_model(x2, y2)
+        from torchair.npu_fx_compiler import _GLOBAL_GRAPH_ID as graph_2_id
+        self.assertEqual(counters["npugraph_ex"][f"captured_graph_{graph_1_id}"], 1)
+        self.assertEqual(counters["npugraph_ex"][f"captured_graph_{graph_2_id}"], 1)
+
+        # weigth data change, capture graph2 with graph_key2
+        b = torch.zeros([32,32])
+        x3 = torch.randn([20, 32])
+        y3 = torch.randn([20, 32])
+        opt_model.linear.weight.data = b
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            opt_model(x3, y3)
+        self.assertEqual(counters["npugraph_ex"][f"captured_graph_{graph_1_id}"], 1)
+        self.assertEqual(counters["npugraph_ex"][f"captured_graph_{graph_2_id}"], 2)
+
+        # mutated input change, recapture graph2 with graph_key2
+        x4 = torch.randn([20, 32])
+        y4 = torch.randn([20, 32])
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            opt_model(x4, y4)
+        self.assertEqual(counters["npugraph_ex"][f"captured_graph_{graph_1_id}"], 1)
+        self.assertEqual(counters["npugraph_ex"][f"captured_graph_{graph_2_id}"], 2)
+        self.assertEqual(counters["npugraph_ex"][f"recapture_due_to_mutated_input_change_graph_{graph_2_id}"], 1)
+
+        # mutated input change, recapture graph2 with graph_key2 again
+        x5 = torch.randn([20, 32])
+        y5 = torch.randn([20, 32])
+        with self.assertLogs(logger, level="DEBUG") as cm5:
+            opt_model(x5, y5)
+        self.assertEqual(counters["npugraph_ex"][f"captured_graph_{graph_1_id}"], 1)
+        self.assertEqual(counters["npugraph_ex"][f"captured_graph_{graph_2_id}"], 2)
+        self.assertEqual(counters["npugraph_ex"][f"recapture_due_to_mutated_input_change_graph_{graph_2_id}"], 2)
+        self.assertTrue(
+            any(f"For graph graph_{graph_2_id} : the count of captures is 2" in log for log in cm5.output),
+            f"Expect that DEBUG 'For graph graph_2 : the count of captures is 2'"
+            f"not found in logs: {cm5.output}"
+        )
+        self.assertTrue(
+            any("and count of recaptures caused by mutated inputs changed is 2" in log for log in cm5.output),
+            f"Expect that DEBUG 'and count of recaptures caused by mutated inputs changed is 2'"
+            f"not found in logs: {cm5.output}"
+        )
+        expected_sequence = [
+            "[npugraph_ex overhead] generate graph_key",
+            "[npugraph_ex overhead] process input",
+            "[npugraph_ex overhead] get updated params"
+        ]
+        last_pos = -1
+        for phrase in expected_sequence:
+            found = False
+            for i in range(last_pos + 1, len(cm5.output)):
+                if phrase in cm.output[i]:
+                    last_pos = i
+                    found = True
+                    break
+            self.assertTrue(
+                found,
+                f"Expected log phrase '{phrase}' not found in correct order. Full logs: {cm5.output}"
+            )
+
+        # weigth data change and mutated change, capture graph2 with graph_key3 and recapture, then reach static_capture_size_limit(3)
+        b1 = torch.zeros([32, 32])
+        x6 = torch.randn([20, 32])
+        y6 = torch.randn([20, 32])
+        y7 = torch.randn([20, 32])
+        opt_model.linear.weight.data = b1
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            opt_model(x6, y6)
+            opt_model(x6, y7)
+        self.assertEqual(counters["npugraph_ex"][f"captured_graph_{graph_1_id}"], 1)
+        self.assertEqual(counters["npugraph_ex"][f"captured_graph_{graph_2_id}"], 0)
+        self.assertEqual(counters["npugraph_ex"][f"recapture_due_to_mutated_input_change_graph_{graph_2_id}"], 0)
+
+    def test_debug_compare_fx_graphs(self):
+        class Network(torch.nn.Module):
+            def __init__(self):
+                super(Network, self).__init__()
+                self.relu = torch.nn.ReLU()
+
+            def forward(self, x, y, z):
+                sqrt_01 = torch.sqrt(x)
+                softmax_01 = torch.softmax(sqrt_01, dim=-1)
+                abs_01 = torch.abs(softmax_01)
+                split_01, split_02 = torch.split(abs_01, split_size_or_sections=[6, 6], dim=0)
+                matmul_01 = torch.matmul(split_01, y)
+                add_01 = torch.add(split_02, matmul_01)
+                concat_01 = torch.cat([add_01, z], dim=0)
+                relu_01 = self.relu(concat_01)
+                transpose_01 = torch.transpose(relu_01, 0, 1)
+                return transpose_01
+
+        def parallel_abs_sub_1(gm, example_inputs, config: torchair.CompilerConfig):
+            fx_graph = gm.graph
+            for node in fx_graph.nodes:
+                if node.op == "call_function" and node.target == torch.ops.aten.sqrt.default:
+                    with fx_graph.inserting_before(node):
+                        fx_graph.call_function(torch.ops.air.scope_enter.default, args=(
+                            ["_user_stream_label"], ["stream0"]))
+
+                if node.op == "call_function" and node.target == torch.ops.aten.add.Tensor:
+                    with fx_graph.inserting_after(node):
+                        fx_graph.call_function(
+                            torch.ops.air.scope_exit.default, args=())
+
+        def parallel_abs_sub_2(gm, example_inputs, config: torchair.CompilerConfig):
+            fx_graph = gm.graph
+            for node in fx_graph.nodes:
+                if node.op == "call_function" and node.target == torch.ops.aten._softmax.default:
+                    with fx_graph.inserting_before(node):
+                        fx_graph.call_function(torch.ops.air.scope_enter.default, args=(
+                            ["_user_stream_label"], ["stream1"]))
+
+                if node.op == "call_function" and node.target == torch.ops.aten.split_with_sizes.default:
+                    with fx_graph.inserting_after(node):
+                        fx_graph.call_function(torch.ops.air.scope_exit.default, args=())
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.aclgraph.clone_input = False
+        config.post_grad_custom_pre_pass = parallel_abs_sub_1
+        config.post_grad_custom_post_pass = parallel_abs_sub_2
+        npu_backend = torchair.get_npu_backend(compiler_config=config)
+
+        input0 = torch.randn(12, 6, dtype=torch.float32)
+        input1 = torch.randn(6, 6, dtype=torch.float32)
+        input2 = torch.randn(12, 6, dtype=torch.float32)
+
+        npu_mode = Network()
+        npu_mode = torch.compile(npu_mode, fullgraph=True, backend=npu_backend, dynamic=False)
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            npu_mode(input0, input1, input2)
+
+        expected_phrases = [
+            "After fx graph pass(view_to_reshape) optimization",
+            "After fx graph pass(post_grad_custom_pre_pass) optimization",
+            "After fx graph pass(recover_view_inplace_pattern) optimization",
+            "After fx graph pass(post_grad_custom_post_pass) optimization",
+            "After fx graph pass(optimize_noop_ops) optimization",
+            "After fx graph pass(apply_pattern_passes) optimization",
+            "After fx graph pass(replace_dynamic_workspace_ops) optimization",
+            "After fx graph pass(decompose_auto_functionalized) optimization",
+            "After fx graph pass(reinplace_inplaceable_ops_pass) optimization",
+            "After fx graph pass(reinplace_input_mutated_ops) optimization",
+            "After fx graph pass(apply_event_closure_with_multi_stream) optimization",
+            "After fx graph pass(apply_event_record) optimization",
+            "After fx graph pass(replace_core_limit_nodes) optimization",
+            "After fx graph pass(eliminate_dead_code) optimization",
+            "After fx graph pass(all npugraph_ex pass) optimization"
+        ]
+
+        for phrase in expected_phrases:
+            self.assertTrue(any(phrase in log for log in cm.output),
+                            f"Expect that DEBUG '{phrase}' not found in logs: {cm.output}"
+                            )
+
+        self.assertTrue(any("before 15 nodes, after 26 nodes" in log for log in cm.output),
+                        f"Expect that DEBUG 'before 15 nodes, after 26 nodes' not found in logs: {cm.output}"
+                        )
+
+        torch._dynamo.reset()
+        with self.assertLogs(logger, level="INFO") as cm:
+            npu_mode(input0, input1, input2)
+
+        self.assertFalse(any("After fx graph pass(" in log for log in cm.output),
+                        f"Not Expect that DEBUG 'After fx graph pass(' found in logs: {cm.output}"
+                        )
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -12,6 +12,7 @@ from torch.fx import GraphModule
 from torch.fx.experimental.symbolic_shapes import GuardOnDataDependentSymNode
 
 from torchair.core.utils import logger
+from torchair._utils.graph_utils import debug_compare_fx_graphs
 from torchair.configs.compiler_config import CompilerConfig
 
 try:
@@ -521,6 +522,7 @@ def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
         graph.erase_node(node)
 
 
+@debug_compare_fx_graphs(pass_name="reinplace_inplaceable_ops_pass")
 def _reinplace_inplaceable_ops_pass(gm: GraphModule, multi_stream_enabled: bool, *sample_args):
     """
     Given a fx.GraphModule, modifies it to perform "reinplacing". Just call torch.fx.passes.reinplace.
@@ -554,6 +556,7 @@ def _reinplace_inplaceable_ops_pass(gm: GraphModule, multi_stream_enabled: bool,
     return gm
 
 
+@debug_compare_fx_graphs(pass_name="reinplace_input_mutated_ops")
 def _reinplace_input_mutated_ops(gm: GraphModule):
     """
     Given a fx.GraphModule, modifies it to perform "reinplacing", mutating the nodes of the graph.
@@ -586,6 +589,7 @@ def _create_event_by_name(name: str):
             logger.debug(f"[Multi-stream] Created new event {new_event} with key '{name}'.")
 
 
+@debug_compare_fx_graphs(pass_name="apply_event_closure_with_multi_stream")
 def apply_event_closure_with_multi_stream(graph_module: fx.GraphModule, graph_name: str, tagged_event_names: List[str],
                                           user_stream_label: Set[str]):
     stream_scope_enter_nodes = []
@@ -650,6 +654,7 @@ def apply_event_closure_with_multi_stream(graph_module: fx.GraphModule, graph_na
     return len(stream_scope_enter_nodes) > 0, stream_scope_enter_nodes_dict, stream_scope_exit_nodes_list
 
 
+@debug_compare_fx_graphs(pass_name="apply_event_record")
 def apply_event_record(graph_module: fx.GraphModule):
     wait_record_dic = {}
     for node in graph_module.graph.nodes:
@@ -675,13 +680,14 @@ def _insert_record_nodes(graph_module, node, wait_record_dic):
     return new_args
 
 
+@debug_compare_fx_graphs(pass_name="replace_core_limit_nodes")
 def replace_core_limit_nodes(gm: torch.fx.GraphModule, config: CompilerConfig):
     # use stack to handle nested scope declarations
     scope_enter_stack = []
     # record original state of current stream, revert when exit core limit scope
     core_limit_stack = []
     enable_core_limit = False
-    
+
     for node in gm.graph.nodes:
         if str(node.target) == "air.scope_enter.default":
             _core_limit_handle_scope_enter(node, gm, core_limit_stack, scope_enter_stack)

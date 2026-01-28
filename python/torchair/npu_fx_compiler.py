@@ -52,6 +52,7 @@ from torchair._utils import add_npu_patch, get_npu_default_decompositions
 from torchair._utils.error_code import pretty_error_msg
 from torchair._utils.graph_transform_observer import GraphTransformObserver, dump_fx_safety, \
     wrap_debug_compilers, DebugContext, get_phase_path
+from torchair._utils.graph_utils import debug_compare_fx_graphs
 from torchair.inference._gear_utils import get_dim_gears, set_dim_gears, guard_gears_shape
 from torchair.patterns.pattern_util import _apply_pattern_passes
 
@@ -287,6 +288,7 @@ def _summary(v):
     return f'{type(v)}({v})'
 
 
+@debug_compare_fx_graphs(pass_name="view_to_reshape")
 def _view_to_reshape(graph_module: torch.fx.GraphModule, example_inputs=None, config=None):
     # Replace view ops in the GraphModule to reshape ops.
     for node in graph_module.graph.nodes:
@@ -299,13 +301,16 @@ def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, obs
     observer.gm = graph_module
     pre_func = config.post_grad_custom_pre_pass.value
     if pre_func is not None:
-        observer.apply_gm_pass(pre_func, "post_grad_custom_pre_pass", enable_log=True)
+        observer.apply_gm_pass(debug_compare_fx_graphs(pre_func, pass_name="post_grad_custom_pre_pass"),
+                     "post_grad_custom_pre_pass",
+                               enable_log=True)
 
     if config.experimental_config.remove_noop_ops:
         observer.apply_gm_pass(_optimize_noop_ops, "optimize_noop_ops")
 
     from torchair.patterns._recover_view_inplace_pattern import recover_view_inplace_pattern
-    observer.apply_gm_pass(recover_view_inplace_pattern, "recover_view_inplace_pattern")
+    observer.apply_gm_pass(debug_compare_fx_graphs(recover_view_inplace_pattern, pass_name="recover_view_inplace_pattern"),
+                 "recover_view_inplace_pattern")
 
     if config.mode.value == "max-autotune":
         # Converting the symbol inputs in FX graph into the shape index of tensor inputs
@@ -323,22 +328,24 @@ def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, obs
 
     post_func = config.post_grad_custom_post_pass.value
     if post_func is not None:
-        observer.apply_gm_pass(post_func, "post_grad_custom_post_pass", enable_log=True)
+        observer.apply_gm_pass(debug_compare_fx_graphs(post_func, pass_name="post_grad_custom_post_pass"),
+                               "post_grad_custom_post_pass", enable_log=True)
     logger.debug('after fx graph optimization, graph is %s', graph_module.graph)
     return graph_module
 
 
+@debug_compare_fx_graphs(pass_name="optimize_noop_ops")
 def _optimize_noop_ops(graph_module: torch.fx.GraphModule, example_inputs=None, config=None):
     if remove_noop_ops is None:
         logger.warning("Skip removing noop ops; check if your PyTorch version is above 2.2.0 and ensure"
                        " the module torch._inductor.fx_passes.post_grad.remove_noop_ops exists")
     else:
         remove_noop_ops(graph_module.graph)
-        logger.debug("After removing noop ops, graph is %s", graph_module.graph)
 
 
+@debug_compare_fx_graphs(pass_name="optimize_sym_input")
 def _optimize_sym_input(graph_module: torch.fx.GraphModule, example_inputs=None, config=None):
-    logger.debug('before sym input optimization, graph is %s', graph_module.graph)
+    logger.debug('begin sym input optimization for graph: %s', id(graph_module.graph))
     sym_input_list = []
     tensor_input_list = []
     data_idx = -1
@@ -616,7 +623,7 @@ class _NpuFxCompiler:
             concrete_graph.dump(self.config.debug.graph_dump.full_path(f"dynamo_original_graph_{_GLOBAL_GRAPH_ID}"))
 
         # optimize different concrete graph for ge or acl.
-        concrete_graph.optimize_graph_without_runtime(*example_inputs, observer=observer)
+        concrete_graph.optimize_graph_without_runtime(*example_inputs, observer=observer, aot_gm=gm)
 
         if self.config.debug.run_eagerly:
             logger.warning(f'When using debug.run_eagerly=True, npu compiler will be skipped, '

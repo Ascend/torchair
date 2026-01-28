@@ -1208,6 +1208,53 @@ class AclgraphTest(unittest.TestCase):
             f"not found in logs: {cm2.output}"
         )
 
+    def test_aclgraph_static_kernel_debug_time(self):
+        class Model1(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear1 = torch.nn.Linear(2, 2)
+                self.linear2 = torch.nn.Linear(2, 2)
+
+            def forward(self, x):
+                ln1 = self.linear1(x)
+                ln2 = self.linear2(x)
+                return ln1 + ln2
+
+        x = torch.randn([2,2], dtype=torch.float16).npu()
+        config = torchair.CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.experimental_config.aclgraph._aclnn_static_shape_kernel = True
+        npu_mode1 = Model1().npu()
+        npu_backend1 = torchair.get_npu_backend(compiler_config=config)
+        npu_mode1 = torch.compile(npu_mode1, fullgraph=True, backend=npu_backend1, dynamic=True)
+
+        with self.assertLogs(logger, level="DEBUG") as cm1:
+            _ = npu_mode1(x)
+        self.assertTrue(
+            any("The operation of [static kernel] execute single operator phase" in log for log in cm1.output),
+            f"Expected DEBUG 'The operation of [static kernel] execute single operator phase' "
+            f"not found in logs: {cm1.output}"
+        )
+        self.assertTrue(
+            any("The operation of [static kernel] static compile phase" in log for log in cm1.output),
+            f"Expected DEBUG 'The operation of [static kernel] static compile phase' "
+            f"not found in logs: {cm1.output}"
+        )
+        self.assertTrue(
+            any("The operation of [static kernel] install static kernel run pkgs phase" in log for log in cm1.output),
+            f"Expected DEBUG 'The operation of [static kernel] install static kernel run pkgs phase' "
+            f"not found in logs: {cm1.output}"
+        )
+
+        x = torch.randn([2, 2], dtype=torch.float32).npu()
+        with self.assertLogs(logger, level="INFO") as cm2:
+            _ = npu_mode1(x)
+        self.assertFalse(
+            any("The operation of [static kernel]" in log for log in cm2.output),
+            f"Not Expected DEBUG 'The operation of [static kernel] execute single operator phase' "
+            f"found in logs: {cm2.output}"
+        )
+
     def test_aclgraph_userinput_construct_in_share_memory_with_cache_compile(self):
         class RecaptureModel(torch.nn.Module):
             def __init__(self):

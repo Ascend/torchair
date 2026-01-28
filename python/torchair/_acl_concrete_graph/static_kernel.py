@@ -10,6 +10,7 @@ import torch
 import torch.distributed as dist
 from torchair.core import _torchair
 from torchair.core.utils import logger
+from torchair._utils.graph_utils import debug_time
 
 
 _uninstall_paths = []
@@ -31,17 +32,7 @@ def compile_static_kernel(fx_func, *args, build_dir=None, **kwargs):
     result_root = safe_resolve_output_dir(build_dir)
 
     # 1.执行单算子，用于生成算子信息json
-    _torchair.AclopStartDumpArgs(1, str(result_root))
-    try:
-        if isinstance(fx_func, torch.fx.GraphModule):
-            torch.fx.Interpreter(fx_func).run(*args, **kwargs)
-        else:
-            fx_func(*args, **kwargs)
-        import torch_npu
-        torch_npu.npu.current_stream().synchronize()
-    finally:
-        _torchair.AclopStopDumpArgs(1)
-    logger.debug("static kernel run eager success")
+    _fx_func_run(args, fx_func, kwargs, result_root)
 
     opcompile_dirs = [d for d in result_root.iterdir() if d.is_dir() and d.name.endswith("_opcompile")]
     if opcompile_dirs:
@@ -73,7 +64,7 @@ def compile_static_kernel(fx_func, *args, build_dir=None, **kwargs):
         "-o", str(result_root),
     ]
     try:
-        res = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        res = static_compile(cmd)
         logger.debug(f"execute op_compiler, msg: {res.stdout}")
     except subprocess.CalledProcessError as e:
         logger.warning(f"execute op_compiler error, msg: {e.stderr}")
@@ -81,6 +72,27 @@ def compile_static_kernel(fx_func, *args, build_dir=None, **kwargs):
 
     # 3.安装静态kernel run包
     install_and_sync_run_pkgs(result_root)
+
+
+@debug_time(phase_name="[static kernel] static compile")
+def static_compile(cmd):
+    res = subprocess.run(cmd, check=True, capture_output=True, text=True)
+    return res
+
+
+@debug_time(phase_name="[static kernel] execute single operator")
+def _fx_func_run(args, fx_func, kwargs, result_root):
+    _torchair.AclopStartDumpArgs(1, str(result_root))
+    try:
+        if isinstance(fx_func, torch.fx.GraphModule):
+            torch.fx.Interpreter(fx_func).run(*args, **kwargs)
+        else:
+            fx_func(*args, **kwargs)
+        import torch_npu
+        torch_npu.npu.current_stream().synchronize()
+    finally:
+        _torchair.AclopStopDumpArgs(1)
+    logger.debug("static kernel run eager success")
 
 
 def _is_single_card() -> bool:
@@ -178,6 +190,7 @@ def destroy_local_gloo_groups():
     logger.debug("cleared _local_gloo_groups")
 
 
+@debug_time(phase_name="[static kernel] install static kernel run pkgs")
 def install_and_sync_run_pkgs(result_root: Path):
     # 1. 检查是多卡还是单卡
     if _is_single_card():

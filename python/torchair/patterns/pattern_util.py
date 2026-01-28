@@ -7,10 +7,12 @@ from torchair.patterns.add_rms_norm_cast import _register_addrmsnormcast_pattern
 from torchair.patterns.add_rms_norm_dynamic_quant import _register_addrmsnormdynamicquant_pattern, \
     _register_addrmsnormdynamicquant_pattern2
 from torchair.patterns.batch_matmul_transpose import _register_batchmatmultranspose_patterns
+from torchair._utils.graph_utils import debug_compare_fx_graphs
 
 pattern_pass_manager = _pattern_manager()
 
 
+@debug_compare_fx_graphs(pass_name="apply_pattern_passes")
 def _apply_pattern_passes(graph_module: torch.fx.GraphModule, example_inputs=None, config=None):
     if torch.__version__ < "2.6":
         logger.warning(f'The pattern_fusion_pass is unsupported when torch < 2.6 .')

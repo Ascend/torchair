@@ -17,10 +17,12 @@ from torch import nn
 from torch.fx import Node, Proxy
 from torch.fx.node import Argument, Target
 from torch.profiler import record_function
+from torch._dynamo.utils import counters
 
 from torchair.core.utils import logger
 from torchair.scope._scope_attr import guard_with_user_stream_scope
 from torchair._utils.graph_transform_observer import DebugContext
+from torchair._utils.graph_utils import debug_time, debug_compare_fx_graphs
 from torchair._acl_concrete_graph.utils import reconstruct_args_kwargs, timer, is_inputs_base_format
 from torchair._acl_concrete_graph.utils import (debug_mem_state, LazyMessage, WeakRef, GraphMeta, get_tensor_metadata,
                                                 reconstruct_from_tensor_metadata, reconstruct_args_kwargs)
@@ -664,6 +666,7 @@ def construct_and_add_output(node: fx.Node, graph_module: fx.GraphModule, kwargs
     return output_node
 
 
+@debug_compare_fx_graphs(pass_name="replace_dynamic_workspace_ops")
 def replace_dynamic_workspace_ops(graph_module: fx.GraphModule, meta_inputs: List):
     logger.debug("Start to replace dynamic workspace ops to static workspace for ops[%s] in graph[%s].",
                  _REPLACE_FUNC_MAP.keys(), id(graph_module))
@@ -902,8 +905,9 @@ class AclGraph(object):
                 path = self.config.get('_aclnn_static_shape_kernel_build_dir', None)
                 compile_static_kernel(self.fx_forward, *args, build_dir=path, **kwargs)
 
-            self._unupdated_input_func = get_unupdated_input_fn(self._unupdated_sym_input_index, self._parameter_user_inputs, self.config)
-            self._updated_input_func = get_updated_ops_fn(self._ops_update_rulers)
+            self._unupdated_input_func = debug_time(get_unupdated_input_fn(self._unupdated_sym_input_index, self._parameter_user_inputs, self.config),
+                                                    phase_name="[npugraph_ex overhead] generate graph_key")
+            self._updated_input_func = debug_time(get_updated_ops_fn(self._ops_update_rulers), phase_name="[npugraph_ex overhead] get updated params")
             self._captured = True
 
             # In the current version, the initialization of mem pool requires an explicit call to capture.
@@ -927,6 +931,7 @@ class AclGraph(object):
             logger.info('Find captured AclGraph{id: %s} of fx_graph %s with graph key {%s}.',
                         id(self.graph[graph_key]), self.name, graph_key)
             if self.is_need_to_recapture(graph_key, *args):
+                counters["npugraph_ex"]["recapture_due_to_mutated_input_change_" + self.name] += 1
                 logger.debug('The current AclGraph needs to be recaptured for fx_graph %s with graph key {%s}.',
                              self.name, graph_key)
                 # save graph_meta, release resources after recapture
@@ -968,6 +973,8 @@ class AclGraph(object):
 
         # Start capture aclgraph instance when the graph key have not been compiled.
         self.compile_for_graph_key(graph_key, *args, **kwargs)
+        logger.debug(f'For graph {self.name} : the count of captures is {counters["npugraph_ex"]["captured_" + self.name]}, '
+                     f'and count of recaptures caused by mutated inputs changed is {counters["npugraph_ex"]["recapture_due_to_mutated_input_change_" + self.name]}')
         if saved_acl_graph is not None:
             saved_acl_graph.reset()
 
@@ -992,6 +999,8 @@ class AclGraph(object):
         logger.info('Current fx_graph %s memory pool is %s. Before reset, the current memory state is {%s}.',
                     self.name, self.pool, LazyMessage(debug_mem_state))
 
+        counters["npugraph_ex"].pop("captured_" + self.name, None)
+        counters["npugraph_ex"].pop("recapture_due_to_mutated_input_change_" + self.name, None)
         for _, graph_meta in self._graphs_meta.items():
             graph_meta.acl_graph.reset()
         self._graphs_meta = {}
@@ -1028,6 +1037,8 @@ class AclGraph(object):
                                                  captured_mutated_inputs={},
                                                  captured_userinput_ref_with_output={},
                                                  )
+        # record the captured cnt
+        counters["npugraph_ex"]["captured_" + self.name] = len(self._graphs_meta)
         # record the parameter address
         for parameter_idx in self._parameter_user_inputs:
             self.graphs_meta[graph_key].captured_parameter.setdefault(parameter_idx, args[parameter_idx].data_ptr())
@@ -1180,6 +1191,7 @@ class AclGraph(object):
 
         return captured_outputs
 
+    @debug_time(phase_name="[npugraph_ex overhead] process input")
     def process_input(self, graph_key, *args: Any):
         # reconstruct inputs
         # Does it has to enable_mempool_reuse when reuse inputs? - No

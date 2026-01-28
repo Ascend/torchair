@@ -1,3 +1,4 @@
+import logging
 import warnings
 from collections import OrderedDict
 from contextlib import contextmanager
@@ -25,6 +26,11 @@ from torchair._acl_concrete_graph.graph_pass import apply_event_record, replace_
 
 try:
     from torch._inductor.fx_passes.post_grad import decompose_auto_functionalized
+    from torchair._utils.graph_utils import debug_compare_fx_graphs
+
+    @debug_compare_fx_graphs(pass_name="decompose_auto_functionalized")
+    def _optimize_decompose_auto_functionalized(fx_graph: fx.GraphModule):
+        return decompose_auto_functionalized(fx_graph.graph)
 except ImportError:
     decompose_auto_functionalized = None
     logger.debug("function[decompose_auto_functionalized] is not support on torch < 2.6")
@@ -211,7 +217,7 @@ class AclConcreteGraph(ConcreteGraphBase):
         """
         return self.graph.compile(*args, **kwargs)
 
-    def optimize_graph_without_runtime(self, *sample_args, observer=None):
+    def optimize_graph_without_runtime(self, *sample_args, observer=None, aot_gm=None):
         """
         Optimizes the computation graph without relying on runtime information.
         This includes passes like re-inplacing in-place operations and dynamic workspace handling.
@@ -219,8 +225,8 @@ class AclConcreteGraph(ConcreteGraphBase):
         Args:
             *sample_args: Sample input arguments for tracing and optimization.
         """
-
-        logger.debug('before graph optimization, graph is %s', self.fx_graph.graph)
+        from torchair._utils.graph_utils import _compare_fx_graphs
+        logger.debug('begin graph optimization for graph: %s', id(self.fx_graph.graph))
         if self.config.aclgraph_config.use_custom_pool is not None:
             # When a custom memory pool is provided by the user, avoid reusing it within the same FX graph
             # or across multiple FX graphs. Enabling reuse would lead to stale storage persisting across
@@ -239,7 +245,7 @@ class AclConcreteGraph(ConcreteGraphBase):
         observer.dump_gm(self.fx_graph, "graph_after_apply_event_closure_with_multi_stream")
 
         logger.debug('after apply_stream_event_closure optimization, '
-                     'multi_stream_enabled is %s, graph is %s.', multi_stream_enabled, self.fx_graph.graph)
+                     'multi_stream_enabled is %s.', multi_stream_enabled)
 
         apply_event_record(self.fx_graph)
         observer.dump_gm(self.fx_graph, "graph_after_apply_event_record")
@@ -247,9 +253,8 @@ class AclConcreteGraph(ConcreteGraphBase):
         # graph optimization passes here
         # Note: this pass need sample args to run in FakeTensor mode, any pass modifies ops without meta registration
         # should run after it.
-
-        self.fx_graph.graph.eliminate_dead_code()
-        logger.debug('after graph eliminate_dead_code, graph is %s', self.fx_graph.graph)
+        _wrap_eliminate_dead_code = debug_compare_fx_graphs(self.fx_graph.graph.eliminate_dead_code, pass_name="eliminate_dead_code")
+        _wrap_eliminate_dead_code()
         observer.dump_gm(self.fx_graph, "graph_after_eliminate_dead_code")
 
         if not self.config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass:
@@ -265,7 +270,7 @@ class AclConcreteGraph(ConcreteGraphBase):
             _reinplace_input_mutated_ops(self.fx_graph)
             observer.dump_gm(self.fx_graph, "graph_after_reinplace_input_mutated_ops")
             if decompose_auto_functionalized is not None:
-                decompose_auto_functionalized(self.fx_graph.graph)
+                _optimize_decompose_auto_functionalized(self.fx_graph)
                 observer.dump_gm(self.fx_graph, "graph_after_decompose_auto_functionalized")
 
         from torchair._acl_concrete_graph.acl_graph import replace_dynamic_workspace_ops
@@ -277,6 +282,11 @@ class AclConcreteGraph(ConcreteGraphBase):
         observer.dump_gm(self.fx_graph, "graph_after_replace_core_limit_nodes")
 
         logger.debug('after graph optimization, graph is %s', self.fx_graph.graph)
+        if logger.isEnabledFor(logging.DEBUG):
+            from torchair._utils.graph_utils import _get_node_info
+            before_node_info = _get_node_info(aot_gm.graph.nodes)
+            after_node_info = _get_node_info(self.fx_graph.graph.nodes)
+            _compare_fx_graphs(before_node_info, after_node_info, "all npugraph_ex pass")
 
         if self.config.debug.graph_dump.enabled:
             self.dump(self.config.debug.graph_dump.full_path(f"dynamo_optimized_{self.fx_graph_name}"))
