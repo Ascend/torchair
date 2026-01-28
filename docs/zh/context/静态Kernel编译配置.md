@@ -24,7 +24,7 @@
 -   需要注意的是，当Ascend PyTorch Profiler中“**experimental\_config参数**”开启算子信息统计功能（即record\_op\_args=True），且“**schedule参数**”设置的预先跳过step轮数为0时（即skip\_first=0），不支持同时使用本功能。
 
     > **说明：** 
-    >**Ascend PyTorch Profiler**是CANN针对PyTorch框架开发的性能分析工具，通过在PyTorch脚本中添加**Ascend PyTorch Profiler接口**（推荐torch\_npu.profiler.profile接口）采集指定指标和性能数据，详细的使用方法请参考《CANN 性能调优工具用户指南》中的“Ascend PyTorch Profiler”章节。
+    >**Ascend PyTorch Profiler**是CANN针对PyTorch框架开发的性能分析工具，通过在PyTorch脚本中添加**Ascend PyTorch Profiler接口**（推荐torch\_npu.profiler.profile接口）采集指定指标和性能数据，详细的使用方法请参考[《CANN 性能调优工具用户指南》](https://hiascend.com/document/redirect/CannCommunityToolProfiling)中的“Ascend PyTorch调优工具”章节。
 
 -   多卡场景使用限制：必须配置环境变量[LOCAL\_WORLD\_SIZE](https://docs.pytorch.org/docs/stable/elastic/run.html#definitions)（指单个物理节点（一台机器）上启动的并行进程数，常见于PyTorch多节点场景），其每个节点的LOCAL\_WORLD\_SIZE必须一致。
 

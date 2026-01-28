@@ -34,7 +34,7 @@ opt_model = torch.compile(model, backend=npu_backend)
 
 ## 融合规则列表
 
->**须知：** 注意如下融合规则关闭后，可能会对功能使用有影响，请谨慎操作。更多融合规则的介绍请参见《CANN 图融合和UB融合规则参考》。
+>**须知：** 注意如下融合规则关闭后，可能会对功能使用有影响，请谨慎操作。更多融合规则的介绍请参见[《CANN 图融合和UB融合规则参考》](https://hiascend.com/document/redirect/CannCommunitygraphubfusionref)。
 
 -   AABiasaddConvFusion
 -   AddNFusionPass

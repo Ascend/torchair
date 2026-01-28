@@ -51,9 +51,9 @@
 
 3. 查看配置结果。
 
-    配置结果可以通过profiling采集性能数据查看，采集流程可参考《CANN 性能调优工具用户指南》中的“Ascend PyTorch Profiler”章节。
+    配置结果可以通过profiling采集性能数据查看，采集流程可参考[《CANN 性能调优工具用户指南》](https://hiascend.com/document/redirect/CannCommunityToolProfiling)中的“Ascend PyTorch调优工具”章节。
 
-    配置结果可通过**Ascend PyTorch Profiler**（推荐torch\_npu.profiler.profile接口）采集性能数据查看，详细的使用方法和结果文件介绍请参考《CANN 性能调优工具用户指南》中的“Ascend PyTorch Profiler”章节，具体操作样例可参考[性能分析案例](性能分析案例.md)。
+    配置结果可通过**Ascend PyTorch Profiler**（推荐torch\_npu.profiler.profile接口）采集性能数据查看，详细的使用方法和结果文件介绍请参考[《CANN 性能调优工具用户指南》](https://hiascend.com/document/redirect/CannCommunityToolProfiling)中的“Ascend PyTorch调优工具”章节，具体操作样例可参考[性能分析案例](性能分析案例.md)。
 
     算子核配置结果位于kernel\_details.csv中，如果是AI Core或AI Vector算子，对应的核使用的核数位于"Block Dim"列。如果是Mix Core算子，主加速器使用的核数位于"Block Dim"列，从加速器的核数位于"Mix Block Dim"列。
 

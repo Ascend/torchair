@@ -51,7 +51,7 @@ custom_op(op_type: str, *args, inputs: Optional[Dict[str, Optional[Union['Tensor
     "ListStr",
     "Str"]
     ```
-- 关于算子原型介绍，请参考《CANN 图模式开发指南》中“什么是算子原型”章节。
+- 关于算子原型介绍，请参考[《CANN 图模式开发指南》](https://hiascend.com/document/redirect/CannCommunityGraphguide)中“构建Graph>使用图开发接口全新构建Graph>什么是算子原型”章节。
 
 ## 调用示例
 

@@ -1,6 +1,6 @@
 # GE动/静态图概念
 
-GE提供了两种模型图调度的方式，Host调度和下沉调度，详细介绍参见《CANN 图模式开发指南》中“概念和原理介绍\>模型下沉调度”。
+GE提供了两种模型图调度的方式，Host调度和下沉调度，详细介绍参见[《CANN 图模式开发指南》](https://hiascend.com/document/redirect/CannCommunityGraphguide)中“概念和原理介绍\>模型下沉调度”。
 
 -   Host调度：Host CPU将模型中的每个算子依次进行InferShape、Tiling计算、下发到Device执行操作。
 -   下沉调度：在加载阶段，模型中的算子以整图形式提前下发到Device上。执行时，只需在Host侧下发一个模型执行的Task即可触发Device上模型调度执行。在下沉调度模型中，算子可以在加载阶段完成Tiling计算或静态Kernel编译，因此在执行态时无需再次计算Tiling。相比于Host调度模式，下沉调度模式可大大降低Host侧调度开销，有效减少Host和Device之间的交互，同时也可以解决Host调度的Host Bound。

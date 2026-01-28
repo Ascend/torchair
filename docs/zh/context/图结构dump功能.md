@@ -59,14 +59,14 @@
     - 不支持txt、pbtxt、py三种格式同时导出。
     
 
-3.（可选）当[config.mode](reduce-overhead模式配置.md)为max-autotune模式，如需查看GE图编译和执行后的图结构信息，请参考《CANN 环境变量参考》中的“DUMP\_GE\_GRAPH”章节开启GE的dump图信息。
+3.（可选）当[config.mode](reduce-overhead模式配置.md)为max-autotune模式，如需查看GE图编译和执行后的图结构信息，请参考[《CANN 环境变量参考》](https://hiascend.com/document/redirect/CannCommunityEnvRef)中的“DUMP\_GE\_GRAPH”章节开启GE的dump图信息。
 
 ## 产物说明
 
 图结构dump的结果文件如下
 
 -   `dynamo_original_graph_${graph_id}_rank_${rank_id}_pid_${pid}_ts_${timestamp}.${graph_dump_type}`：模型原始图结构文件，例如dynamo\_original\_graph\_1\_rank\_15\_pid\_421214\_ts\_20251010083825327878.py。
--   `dynamo_optimized_graph_${graph_id}_rank_{rank_id}_pid_{pid}_ts_{timestamp}.${graph_dump_type}`：优化后的模型图结构文件，例如dynamo\_optimized\_graph\_1\_rank\_15\_pid\_421214\_ts\_20251010083827311204.py。
+-   `dynamo_optimized_graph_${graph_id}_rank_${rank_id}_pid_${pid}_ts_${timestamp}.${graph_dump_type}`：优化后的模型图结构文件，例如dynamo\_optimized\_graph\_1\_rank\_15\_pid\_421214\_ts\_20251010083827311204.py。
 
 其中\$\{graph\_id\}表示第几张图，\$\{rank\_id\}表示图执行的通信卡id，\$\{pid\}表示图执行的进程号，\$\{timestamp\}表示时间戳，\$\{graph\_dump\_type\}表示导图文件格式，不同格式的样例如下：
 

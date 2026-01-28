@@ -61,7 +61,7 @@ opt_model = torch.compile(model, backend=npu_backend)
 
 通过表中“dump\_layer”参数dump指定算子信息，算子名获取方法如下：
 
-1. 通过DUMP_GE_GRAPH环境变量dump整个流程各阶段的图描述信息，建议取3（精简版dump，即只打印节点关系），详细介绍参见《CANN 环境变量参考》中的“DUMP_GE_GRAPH”章节。
+1. 通过DUMP_GE_GRAPH环境变量dump整个流程各阶段的图描述信息，建议取3（精简版dump，即只打印节点关系），详细介绍参见[《CANN 环境变量参考》](https://hiascend.com/document/redirect/CannCommunityEnvRef)中的“DUMP_GE_GRAPH”章节。
 
     ```bash
     export DUMP_GE_GRAPH=3
@@ -152,8 +152,8 @@ opt_model = torch.compile(model, backend=npu_backend)
 
     配置说明如下：
 
-    -   json文件支持配置的参数介绍请参考《CANN 精度调试工具用户指南》中“准备离线模型dump数据文件”章节下**acl.json文件格式说明表**。
-    -   若开启模型Dump/单算子Dump配置，则dump\_path必须配置，表示导出dump文件的存储路径。关于dump结果文件介绍请参考《CANN 精度调试工具用户指南》中“准备离线模型dump数据文件”章节下**dump数据文件路径说明表**。
+    -   json文件支持配置的参数介绍请参考[《CANN 精度调试工具用户指南》](https://hiascend.com/document/redirect/CannCommunityToolAccucacy)中“准备离线模型dump数据文件”章节下**acl.json文件格式说明表**。
+    -   若开启模型Dump/单算子Dump配置，则dump\_path必须配置，表示导出dump文件的存储路径。关于dump结果文件介绍请参考[《CANN 精度调试工具用户指南》](https://hiascend.com/document/redirect/CannCommunityToolAccucacy)中“准备离线模型dump数据文件”章节下**dump数据文件路径说明表**。
 
 -   **溢出算子Dump配置**：
 
@@ -175,7 +175,7 @@ opt_model = torch.compile(model, backend=npu_backend)
     -   不配置dump\_debug或将dump\_debug配置为off表示不开启溢出算子配置。
     -   若开启溢出算子配置，则dump\_path必须配置，表示导出dump文件的存储路径。
 
-        获取导出的数据文件后，文件的解析请参见《CANN 精度调试工具用户指南》中“扩展功能 \> 溢出算子数据采集与解析”章节。
+        获取导出的数据文件后，文件的解析请参见[《CANN 精度调试工具用户指南》](https://hiascend.com/document/redirect/CannCommunityToolAccucacy)中“扩展功能>溢出算子数据采集与解析”章节。
 
         dump\_path支持配置绝对路径或相对路径：
 
@@ -225,7 +225,7 @@ opt_model = torch.compile(model, backend=npu_backend)
 
     -   开启算子Dump Watch模式，则dump\_path必须配置，表示导出dump文件的存储路径。
 
-        此处收集的dump文件无法通过文本工具直接查看其内容，若需查看dump文件内容，先将dump文件转换为numpy格式文件后，再通过Python查看numpy格式文件，详细转换步骤请参见《CANN 精度调试工具用户指南》中“扩展功能 \> 查看dump数据文件”章节。
+        此处收集的dump文件无法通过文本工具直接查看其内容，若需查看dump文件内容，先将dump文件转换为numpy格式文件后，再通过Python查看numpy格式文件，详细转换步骤请参见[《CANN 精度调试工具用户指南》](https://hiascend.com/document/redirect/CannCommunityToolAccucacy)中“扩展功能>查看dump数据文件”章节。
 
         dump\_path支持配置绝对路径或相对路径：
 
@@ -248,7 +248,7 @@ opt_model = torch.compile(model, backend=npu_backend)
 
 ### 解析dump数据文件
 
-dump文件无法通过文本工具直接查看其内容，建议先将dump文件转换为numpy格式文件，再通过numpy官方提供的能力转为txt文档进行查看。详细操作指导请参考《CANN 精度调试工具用户指南》中“查看dump数据文件”章节。
+dump文件无法通过文本工具直接查看其内容，建议先将dump文件转换为numpy格式文件，再通过numpy官方提供的能力转为txt文档进行查看。详细操作指导请参考[《CANN 精度调试工具用户指南》](https://hiascend.com/document/redirect/CannCommunityToolAccucacy)中“扩展功能>查看dump数据文件”章节。
 
 ## 更多功能
 对于上述[使用方法](#使用方法)提供的dump options，TorchAir提供了更灵活的dump算子范围。通过torchair.scope.data_dump接口实现，支持与上述所有dump options配套使用。

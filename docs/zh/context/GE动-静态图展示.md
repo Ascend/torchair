@@ -2,7 +2,7 @@
 
 本章沿用[Dynamo动/静态图展示](Dynamo动-静态图展示.md)提供的样例脚本test\_compile.py。运行该脚本，通过TorchAir的编译日志或Dump的GE build图来判断编译后的图是否完全静态下沉调度。
 
-Dump GE图参见《CANN 环境变量参考》中的“DUMP\_GE\_GRAPH”章节，dump的图文件一般为txt、pbtxt两种格式，txt文件比pbtxt文件多保存了一些属性信息，pbtxt文件可使用Netron等可视化软件打开。
+Dump GE图参见[《CANN 环境变量参考》](https://hiascend.com/document/redirect/CannCommunityEnvRef)中的“DUMP\_GE\_GRAPH”章节，dump的图文件一般为txt、pbtxt两种格式，txt文件比pbtxt文件多保存了一些属性信息，pbtxt文件可使用Netron等可视化软件打开。
 
 -   txt格式判断：build图中**如果存在graph的\_graph\_unknown\_flag属性值，且取值为true**则为非完全静态下沉调度，否则为完全静态下沉调度。
 -   pbtxt：下面分别提供不同场景下的图信息展示，其中GE build图通过可视化的pbtxt格式展示。
