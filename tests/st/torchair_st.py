@@ -2657,8 +2657,8 @@ class TorchairSt(unittest.TestCase):
         model = torch.compile(Model(), backend=npu_backend, dynamic=True)
         with self.assertRaises(RuntimeError) as context:
             model(input0, input1, input2)
-        self.assertTrue("Failed to parse AscendIR: The AscendIR MyOpTestv1 input 'indices' is not dynamic " + \
-            "but got list, please check converter input type" in str(context.exception))
+        self.assertTrue("Failed to parse AscendIR: The AscendIR MyOpTestv1 input 'indices' expected_type is " + \
+            "required, the input must be Tensor please check converter input type" in str(context.exception))
 
     def test_auto_converter_args_error(self):
         m = Library("custom_definev2", "DEF")
@@ -2709,8 +2709,8 @@ class TorchairSt(unittest.TestCase):
         model = torch.compile(Model(), backend=npu_backend, dynamic=True)
         with self.assertRaises(RuntimeError) as context:
             model(input0, input1)
-        self.assertTrue("Failed to parse AscendIR: The AscendIR MyOpTestv3 input 'indices' has unsupported ascend " + \
-            "type int, please check converter input type can match the AscendIR register" in str(context.exception))
+        self.assertTrue("Failed to parse AscendIR: The AscendIR MyOpTestv3 input 'indices' expected_type is " + \
+            "required, the input must be Tensor please check converter input type" in str(context.exception))
     
     def test_auto_converter_attrs_type_error(self):
         m = Library("custom_definev4", "DEF")
@@ -2892,6 +2892,43 @@ class TorchairSt(unittest.TestCase):
                     self.assertIn("TensorMove", op_name_dict)
                     self.assertIn("MyInplaceAutoKwargsStr", op_name_dict)
                     self.assertIn("TensorMove:0", op_name_dict["MyInplaceAutoKwargsStr"])
+
+                    ret = func(*args, **kwargs)
+                    return ret
+
+                return wrapper
+
+            GeConcreteGraph.__call__ = wrapper_call(GeConcreteGraph.__call__)
+
+        warp_concrete_graph()
+        compile_func = torch.compile(cus_func, backend=npu_backend, fullgraph=True, dynamic=False)
+        input1 = torch.ones(2, 2)
+        input2 = torch.ones(2, 1)
+        out = compile_func(input1, input2)
+    
+    def test_auto_functionalize_optional_input(self):
+        m = Library("npu", "FRAGMENT")
+        m.define("my_inplace_auto_option_input(Tensor(a!) x, Tensor y, *, Tensor?z=None, str alpha='alpha') -> ()")
+
+        @impl(m, "my_inplace_auto_option_input", "Meta")
+        def my_inplace_meta(x, y, z=None, alpha='alpha'):
+            pass
+
+        def cus_func(x, y):
+            add0 = torch.add(x, 1)
+            o2 = torch.ops.npu.my_inplace_auto_option_input(add0, y)
+            add1 = torch.add(add0, 1)
+            return add1, o2
+
+        def warp_concrete_graph():
+            def wrapper_call(func):
+                def wrapper(*args, **kwargs):
+                    assert len(args) > 0
+                    geGraph: GeGraph = args[0]._graph
+                    op_name_dict = {op_node.name: op_node.input for op_node in geGraph.op}
+                    self.assertIn("TensorMove", op_name_dict)
+                    self.assertIn("MyInplaceAutoOptionInput", op_name_dict)
+                    self.assertIn("TensorMove:0", op_name_dict["MyInplaceAutoOptionInput"])
 
                     ret = func(*args, **kwargs)
                     return ret

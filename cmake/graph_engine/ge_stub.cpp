@@ -506,8 +506,8 @@ ge::Status GetRegisteredIrDef(const char *op_type, std::vector<std::pair<ge::Asc
   }
   if (std::string(op_type) == "MyOpTestv1"){
     inputs.emplace_back(ge::AscendString("var"), ge::AscendString("required"));
-    inputs.emplace_back(ge::AscendString("indices"), ge::AscendString("required"));
     inputs.emplace_back(ge::AscendString("updates"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("indices"), ge::AscendString("required"));
     outputs.emplace_back(ge::AscendString("y"), ge::AscendString("required"));
   }
   if (std::string(op_type) == "MyOpTestv2"){
@@ -519,8 +519,8 @@ ge::Status GetRegisteredIrDef(const char *op_type, std::vector<std::pair<ge::Asc
   }
   if (std::string(op_type) == "MyOpTestv3"){
     inputs.emplace_back(ge::AscendString("var"), ge::AscendString("required"));
-    inputs.emplace_back(ge::AscendString("indices"), ge::AscendString("required"));
     inputs.emplace_back(ge::AscendString("updates"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("indices"), ge::AscendString("required"));
     outputs.emplace_back(ge::AscendString("y"), ge::AscendString("required"));
   }
   if (std::string(op_type) == "MyOpTestv4"){
@@ -564,6 +564,13 @@ ge::Status GetRegisteredIrDef(const char *op_type, std::vector<std::pair<ge::Asc
   if (std::string(op_type) == "MyInplaceAutoKwargsStr"){
     inputs.emplace_back(ge::AscendString("x"), ge::AscendString("required"));
     inputs.emplace_back(ge::AscendString("y"), ge::AscendString("required"));
+    attrs.emplace_back(ge::AscendString("alpha"), ge::AscendString("VT_STRING"));
+    outputs.emplace_back(ge::AscendString("x"), ge::AscendString("required"));
+  }
+  if (std::string(op_type) == "MyInplaceAutoOptionInput"){
+    inputs.emplace_back(ge::AscendString("x"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("y"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("z"), ge::AscendString("optional"));
     attrs.emplace_back(ge::AscendString("alpha"), ge::AscendString("VT_STRING"));
     outputs.emplace_back(ge::AscendString("x"), ge::AscendString("required"));
   }

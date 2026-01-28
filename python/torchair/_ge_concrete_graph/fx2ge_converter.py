@@ -690,7 +690,7 @@ def _generate_converter_log(target):
     target_log_name = str(target).split(".")[1]
     if target_log_name.split("_")[-1] == "functional":
         target_log_name = "_".join(target_log_name.split("_")[:-1])
-    target_args_params, target_kwargs_name = _get_target_params(target)
+    target_args_params, target_kwargs_name, _ = _get_target_params(target)
     if len(target_kwargs_name) > 0:
         params_code = ',\n    '.join(target_args_params) + ",\n    *,\n    " + ',\n    '.join(target_kwargs_name)
     else:
@@ -742,6 +742,9 @@ def _get_target_params(target):
     #构造args的参数列表和kwargs的参数列表
     target_args_params = []
     target_kwargs_name = []
+    #根据tensor和其它类型分类排序
+    args_tensor_name = []
+    args_notensor_name = []
     for arg in target._schema.arguments:
         if not arg.kwarg_only:
             if arg.has_default_value():
@@ -753,7 +756,12 @@ def _get_target_params(target):
                 target_kwargs_name.append(arg.name + "=" + repr(arg.default_value))
             else:
                 target_kwargs_name.append(arg.name)
-    return target_args_params, target_kwargs_name
+        if str(arg.type) == "Tensor" or str(arg.type) == "Optional[Tensor]":
+            args_tensor_name.append(arg.name)
+        else:
+            args_notensor_name.append(arg.name)
+    args_all_name = args_tensor_name + args_notensor_name
+    return target_args_params, target_kwargs_name, args_all_name
 
 
 def _generate_converter_code(target):
@@ -764,8 +772,7 @@ def _generate_converter_code(target):
     (_, ge_inputs, ge_outputs, _) = _torchair.get_registered_ir_def(ge_name)
 
     #处理参数
-    all_args_name = [arg.name for arg in target._schema.arguments]
-    target_args_params, target_kwargs_name = _get_target_params(target)
+    target_args_params, target_kwargs_name, args_all_name = _get_target_params(target)
     if len(target_kwargs_name) > 0:
         params_code = ',\n    '.join(target_args_params) + ",\n    *,\n    " + ',\n    '.join(target_kwargs_name)
     else:
@@ -786,7 +793,7 @@ def _generate_converter_code(target):
         need_clone = True
         clone_code = []
         for index in inplace_inputs_index:
-            clone_code.append(str(all_args_name[index]) + '= Clone(' + str(all_args_name[index]) + ')')
+            clone_code.append(str(args_all_name[index]) + '= Clone(' + str(args_all_name[index]) + ')')
     #如果target定义成inpalce的输入，则走functional的逻辑，删除inplace的输出只返回非inplace
     if len(alias_list) != 0 and len(alias_list) == len(inplace_outputs_index):
         need_reduce_output = True
@@ -816,7 +823,7 @@ def _generate_converter_code(target):
             func_name='converter' + '_' + target_name,
             params=params_code,
             ascendir='"' + ''.join(word.capitalize() for word in target_name.split('_')) + '"',
-            ascend_params=", ".join(all_args_name),
+            ascend_params=", ".join(args_all_name),
             output=reduce_code
         )
     elif need_clone:
@@ -835,7 +842,7 @@ def _generate_converter_code(target):
             params=params_code,
             clone_arg='\n'.join(clone_code),
             ascendir='"' + ''.join(word.capitalize() for word in target_name.split('_')) + '"',
-            ascend_params=", ".join(all_args_name)
+            ascend_params=", ".join(args_all_name)
         )
     else:
         function = textwrap.dedent('''
@@ -851,7 +858,7 @@ def _generate_converter_code(target):
             func_name='converter' + '_' + target_name,
             params=params_code,
             ascendir='"' + ''.join(word.capitalize() for word in target_name.split('_')) + '"',
-            ascend_params=", ".join(all_args_name)
+            ascend_params=", ".join(args_all_name)
         )
 
     code = f"{imports}\n{function}"
