@@ -1,12 +1,15 @@
 import logging
 import os
 import unittest
+import dataclasses
+from typing import List
 
 import torch
 import torch_npu
 import torchair
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core.utils import logger
+import torchair.inference
 
 torch._logging.set_logs(dynamo=logging.INFO)
 torch.manual_seed(7)
@@ -167,6 +170,132 @@ class GeTest(unittest.TestCase):
 
         compile_output1, compile_output2 = model_compile(x1, x2, (1, 0, 2))
         self.assertTrue(torch.allclose(compile_output1, compile_output2))
+
+    def test_inplace_input_output_option_for_remove_tensormove(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x1, x2, x3, x4, x5):
+                add = torch.add(x1, 10, out=x1)
+                mul = torch.mul(x2, 10, out=x2)
+                res1 = torch.add(add, mul)
+                res2 = x3 * 100
+                res3 = x4 + 10
+                res4 = x5 + 100
+                return res1, res2, res3, res4
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "max-autotune"
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = Model()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x1 = torch.randn(10, 21, dtype=torch.float16, device='npu')
+        x2 = torch.randn(10, 21, dtype=torch.float16, device='npu')
+        x3 = torch.randn(10, 23, dtype=torch.float16, device='npu')
+        x4 = torch.randn(10, 24, dtype=torch.float16, device='npu')
+        x5 = torch.randn(10, 25, dtype=torch.float16, device='npu')
+
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            compile_output1, compile_output2, compile_output3, compile_output4 = model_compile(x1, x2, x3, x4, x5)
+
+        self.assertTrue(
+            any("ge.exec.outputReuseInputMemIndexes:" in log for log in cm.output),
+            f"not found in logs: {cm.output}"
+        )
+
+    def test_inplace_input_output_option_for_remove_tensormove1(self):
+        bs = 16
+        num_head = 4
+        k_head_size = 32
+        v_head_size = 64
+        num_blocks = 2
+        lastDim_k = 16
+        block_size = 32
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, key, value, slot_mapping, key_cache, value_cache):
+                torch_npu.npu_scatter_pa_kv_cache(key, value, key_cache, value_cache, slot_mapping)
+
+        import numpy as np
+        key = np.random.randn(bs, num_head, k_head_size).astype(np.float16)
+        value = np.random.randn(bs, num_head, v_head_size).astype(np.float16)
+        key_cache = np.random.randn(num_blocks, num_head*k_head_size // lastDim_k, block_size, lastDim_k).astype(np.float16)
+        value_cache = np.zeros((num_blocks, num_head*v_head_size // lastDim_k, block_size, lastDim_k)).astype(np.float16)
+        slot_mapping = np.random.choice(num_blocks * block_size, bs, replace=False).astype(np.int32)
+
+        key_npu = torch.from_numpy(key).npu()
+        value_npu = torch.from_numpy(value).npu()
+        key_cache_npu = torch.from_numpy(key_cache).npu()
+        value_cache_npu = torch.from_numpy(value_cache).npu()
+        slot_mapping_npu = torch.from_numpy(slot_mapping).npu()
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "max-autotune"
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = Model()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            model_compile(key_npu, value_npu, slot_mapping_npu, key_cache_npu, value_cache_npu)
+
+        self.assertTrue(
+            any("ge.exec.outputReuseInputMemIndexes:" in log for log in cm.output),
+            f"not found in logs: {cm.output}"
+        )
+
+    def test_inplace_input_output_option_for_cache_compile(self):
+        config = CompilerConfig()
+
+        @dataclasses.dataclass
+        class InputMeta:
+            data: torch.Tensor
+            is_prompt: bool
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear1 = torch.nn.Linear(2, 1)
+                self.linear2 = torch.nn.Linear(2, 1)
+                for param in self.parameters():
+                    torch.nn.init.ones_(param)
+
+                self.cached_prompt = torchair.inference.cache_compile(self.prompt, config=config)
+                self.cached_decode = torchair.inference.cache_compile(self.decode, config=config)
+
+            def forward(self, x: InputMeta, kv: List[torch.Tensor]):
+                if x.is_prompt:
+                    return self.cached_prompt(x, kv)
+                return self.cached_decode(x, kv)
+
+            def _forward(self, x, kv):
+                return self.linear2(x.data) + self.linear2(kv[0])
+
+            def prompt(self, x, y):
+                return self._forward(x, y)
+
+            def decode(self, x, y):
+                return self._forward(x, y)
+
+        x = InputMeta(data=torch.randn(2, 2).npu(), is_prompt=True)
+        kv = [torch.randn(2, 2).npu()]
+        model = Model().npu()
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            res_prompt = model(x, kv)
+        self.assertFalse(
+            any("ge.exec.outputReuseInputMemIndexes:" in log for log in cm.output),
+            f"not found in logs: {cm.output}"
+        )
+        x.is_prompt = False
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            res_decode = model(x, kv)
+        self.assertFalse(
+            any("ge.exec.outputReuseInputMemIndexes:" in log for log in cm.output),
+            f"not found in logs: {cm.output}"
+        )
 
 if __name__ == '__main__':
     unittest.main()

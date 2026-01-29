@@ -1537,6 +1537,11 @@ class GeConcreteGraph(ConcreteGraphBase):
         if len(output_reuse_indexes) != 0:
             # support output memory reuse while output is not ref to input
             local_compile_options["ge.exec.outputReuseMemIndexes"] = ",".join(str(x) for x in output_reuse_indexes)
+        if self._graph_output_ref_input:
+            # supports memory reuse options between input and output of the muted inplace operator
+            local_compile_options["ge.exec.outputReuseInputMemIndexes"] = (
+                "|".join(f"{input_},{output_}" for output_, input_ in self._graph_output_ref_input.items())
+            )
         local_compile_options["ge.deterministic"] = "1" if torch.are_deterministic_algorithms_enabled() else "0"
         local_compile_options["ge.exec.atomicCleanPolicy"] = "1"
         local_compile_options.update(generate_dynamic_dims_option(self.graph.named_inputs_info,
