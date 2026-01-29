@@ -82619,6 +82619,61 @@ def QuantBatchMatmulV4(x1: Tensor, x2: Tensor, bias: Optional[Tensor], x1_scale:
     return y
 
 
+# This api is auto-generated from IR QuantBatchMatmulInplaceAdd
+@auto_convert_to_tensor([False, False, False, False, False], [False, False, False, False, True])
+def QuantBatchMatmulInplaceAdd(x1: Tensor, x2: Tensor, x2_scale: Tensor, y: Tensor, x1_scale: Optional[Tensor], *, transpose_x1: bool=False, transpose_x2: bool=False, group_size: int=0, dependencies=[], node_name=None):
+    """REG_OP(QuantBatchMatmulInplaceAdd)\n
+    .INPUT(x1, TensorType({DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN}))\n
+    .INPUT(x2, TensorType({DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN}))\n
+    .INPUT(x2_scale, TensorType({DT_FLOAT8_E8M0}))\n
+    .INPUT(y, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(x1_scale, TensorType({DT_FLOAT8_E8M0}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT}))\n
+    .ATTR(transpose_x1, Bool, false)\n
+    .ATTR(transpose_x2, Bool, false)\n
+    .ATTR(group_size, Int, 0)\n
+    """
+
+    # process inputs
+    inputs = {
+        "x1": x1,
+        "x2": x2,
+        "x2_scale": x2_scale,
+        "y": y,
+        "x1_scale": x1_scale,
+    }
+
+    # process attrs
+    attrs = {
+        "transpose_x1": attr.Bool(transpose_x1),
+        "transpose_x2": attr.Bool(transpose_x2),
+        "group_size": attr.Int(group_size),
+    }
+
+    # process outputs
+    outputs = [
+    "y",
+    ]
+
+    return ge_op(
+        op_type="QuantBatchMatmulInplaceAdd",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("QuantBatchMatmulInplaceAdd") \
+        .input("x1", "DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN") \
+        .input("x2", "DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN") \
+        .input("x2_scale", "DT_FLOAT8_E8M0") \
+        .input("y", "DT_FLOAT") \
+        .optional_input("x1_scale", "DT_FLOAT8_E8M0") \
+        .attr("transpose_x1", attr.Bool(False)) \
+        .attr("transpose_x2", attr.Bool(False)) \
+        .attr("group_size", attr.Int(0)) \
+        .output("y" , "DT_FLOAT")
+    ) 
+
+
 # This api is auto-generated from IR QuantGroupedMatmulInplaceAdd
 @auto_convert_to_tensor([False, False, False, False, False, False], [False, False, False, False, False, True])
 def QuantGroupedMatmulInplaceAdd(x1: Tensor, x2: Tensor, scale2: Tensor, group_list: Tensor, y: Tensor, scale1: Optional[Tensor], *, group_list_type: int=0, group_size: int=0, dependencies=[], node_name=None):
