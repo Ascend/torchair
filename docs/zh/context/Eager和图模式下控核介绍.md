@@ -15,19 +15,19 @@
 
 对此，可通过对阻塞算子（NonZero）进行控核来解决。
 
-**图 1**  多Stream并发场景卡死场景 
+**图 1**  多Stream并发场景卡死场景
 
 ![](figures/core_limit_case.png)
 
 ## 使用方法
 
-为解决上述问题，torch_npu提供了单算子（Eager）模式、GE图模式、aclgraph模式下的控核能力。
+为解决上述问题，torch_npu框架提供了单算子（Eager）模式、GE图模式、aclgraph模式下的控核能力。
 
-注意，需要用户自行分析模型脚本中需要指定核数的算子。在使用控核解决多流场景下算子卡死的问题时，互相卡住的算子使用的核总数不能超过当前设备物理核的总数。
+注意，控核是一个非强制性行为，由框架侧启用，其实际效果取决于算子侧的支持情况（使用限制参考：[使用说明 > 不同算子控核说明](Eager和图模式下控核介绍.md#不同算子控核说明)），且需要用户自行分析模型脚本中需要指定核数的算子。在使用控核解决多流场景下算子卡死的问题时，互相卡住的算子使用的核总数不能超过当前设备物理核的总数。
 
 ### Eager模式
 
-单算子使用场景下，支持对算子进行进程级和Stream级的控核。
+单算子场景下，支持对算子进行进程级和Stream级的控核。
 
 - 进程级控核
 
@@ -81,22 +81,23 @@
 
 ### 图模式
 
-#### max-autotune模式：
+#### max-autotune模式
 
 提供了两种指定核数的方法，算子级核数和全局核数（session）配置，其中算子级优先级高于全局核数的配置。功能介绍参见[图内设置AI Core和Vector Core核数（Ascend IR）](图内设置AI-Core和Vector-Core核数（Ascend-IR）.md)
 
 - 算子级控核：
+
     ```python
     with torchair.scope.limit_core_num(op_aicore_num: int, op_vector_num: int )
     ```
 
     使用如上with语句块，语句块内的算子均使用入参指定核数。
 
-    - op_aicore_num：表示算子运行时的最大AI Core数，取值范围为[1, max_aicore]。
-    - op_vectorcore_num：表示算子运行时的最大Vector Core数，取值范围为[1, max_vectorcore]。
+  - op_aicore_num：表示算子运行时的最大AI Core数，取值范围为[1, max_aicore]。
+  - op_vectorcore_num：表示算子运行时的最大Vector Core数，取值范围为[1, max_vectorcore]。
 
 - 全局核数配置：
-    
+
     该功能通过[torchair.get\_npu\_backend](get_npu_backend.md)中compiler\_config配置来指定全局核数，示例如下:
 
     ```python
@@ -109,7 +110,6 @@
     ```
 
     其中aicore_num配置项用于指定全局AI Core和Vector Core数，输入为字符串类型，必须用“|”来分隔。分隔符左边参数表示全局最大AI Core数，整数类型，取值范围为[1, max_aicore]。分隔符右边参数表示全局最大Vector Core数，整数类型，取值范围为[1, max_vectorcore]。
-
 
 max-autotune模式调用示例：
 
@@ -150,8 +150,8 @@ print(f"Result:\n{result}\n")
 ```
 
 #### reduce-overhead模式
-    
-reduce-overhead模式提供了**Stream级核数配置**，使用的接口与[max-autotune模式](Eager和图模式下控核介绍.md#max-autotune模式)下的算子级控核一致。两种模式的底层实现并不一样，max-autotune模式实现了算子级核数配置，reduce-overhead模式实现了Stream级核数配置。详细功能介绍参见[图内设置AI Core和Vector Core核数（aclgraph）](图内设置AI-Core和Vector-Core核数（aclgraph）.md)。
+
+reduce-overhead模式提供了**Stream级核数配置**，使用的接口与[图模式 > max-autotune模式](Eager和图模式下控核介绍.md#max-autotune模式)下的算子级控核一致。两种模式的底层实现并不一样，max-autotune模式实现了算子级核数配置，reduce-overhead模式实现了Stream级核数配置。详细功能介绍参见[图内设置AI Core和Vector Core核数（aclgraph）](图内设置AI-Core和Vector-Core核数（aclgraph）.md)。
 
 接口如下：
 
@@ -194,18 +194,17 @@ model(x)
 
 ### 不同算子控核说明
 
-
 **计算算子**：
-- Ascend C算子：AI Core、AI Vector算子控核生效，AI CPU算子不生效。
+
+- Ascend C算子：AI Core、AI Vector类算子控核生效，AI CPU类算子不生效。
   
-- TBE算子：AI Vector算子控核生效。
-  
-- ATB算子：控核不生效。
+- 其他算子（TBE、ATB等算子）：无法保证控核生效。
   
 **通信算子**：
-- HCCL算子：AI Vector算子控核生效，AI CPU算子不生效。
+
+- HCCL算子：AIV模式控核生效，AI CPU模式不生效。
   
-- MC2算子：AI Vector算子控核生效。
+- MC2算子：控核生效。
 
 ### reduce-overhead模式下控核与静态Kernel共同使能
 
