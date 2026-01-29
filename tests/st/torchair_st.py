@@ -2445,8 +2445,8 @@ class TorchairSt(unittest.TestCase):
         model = torch.compile(Model(), backend=npu_backend, dynamic=True)
         with self.assertRaises(RuntimeError) as context:
             model(input0, input1, input2)
-        self.assertTrue("Failed to parse AscendIR: The AscendIR MyOpTestv1 input 'indices' is not dynamic " + \
-            "but got list, please check converter input type" in str(context.exception))
+        self.assertTrue("Failed to parse AscendIR: The AscendIR MyOpTestv1 input 'indices' expected_type is " + \
+            "required, the input must be Tensor please check converter input type" in str(context.exception))
 
     def test_auto_converter_args_error(self):
         m = Library("custom_definev2", "DEF")
@@ -2497,8 +2497,8 @@ class TorchairSt(unittest.TestCase):
         model = torch.compile(Model(), backend=npu_backend, dynamic=True)
         with self.assertRaises(RuntimeError) as context:
             model(input0, input1)
-        self.assertTrue("Failed to parse AscendIR: The AscendIR MyOpTestv3 input 'indices' has unsupported ascend " + \
-            "type int, please check converter input type can match the AscendIR register" in str(context.exception))
+        self.assertTrue("Failed to parse AscendIR: The AscendIR MyOpTestv3 input 'indices' expected_type is " + \
+                    "required, the input must be Tensor please check converter input type" in str(context.exception))
     
     def test_auto_converter_attrs_type_error(self):
         m = Library("custom_definev4", "DEF")
