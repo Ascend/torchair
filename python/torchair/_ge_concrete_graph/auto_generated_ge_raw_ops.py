@@ -82950,3 +82950,62 @@ def DynamicDualLevelMxQuant(x: Tensor,
     output_index += 1
 
     return y, level0_scale, level1_scale
+
+
+# This api is auto-generated from IR GroupedDynamicBlockQuant
+@auto_convert_to_tensor([False], [False])
+def GroupedDynamicBlockQuant(x: Tensor,
+                             group_list: Tensor,
+                             *,
+                             min_scale: float = 0.0,
+                             round_mode: str = "rint",
+                             dst_type: int = 291,
+                             row_block_size: int = 1,
+                             col_block_size: int = 128,
+                             group_list_type: int = 0,
+                             dependencies=[],
+                             node_name=None):
+    """REG_OP(GroupedDynamicBlockQuant)\n
+    .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .INPUT(group_list, TensorType({DT_INT32})\n
+    .OUTPUT(y, TensorType({DT_HIFLOAT8, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2}))\n
+    .OUTPUT(scale, TensorType({DT_FLOAT}))\n
+    .ATTR(min_scale, Float, 0.0)\n
+    .ATTR(round_mode, String, "rint")\n
+    .ATTR(dst_type, Int, DT_FLOAT8_E5M2)\n
+    .ATTR(row_block_size, Int, 1)\n
+    .ATTR(col_block_size, Int, 128)\n
+    .ATTR(group_list_type, Int, 0)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "GroupedDynamicBlockQuant"
+    op.name = next_unique_name(node_name, "GroupedDynamicBlockQuant")
+
+    # process dependencies
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+
+    # process attrs
+    op.attr["min_scale"].f = min_scale
+    op.attr["round_mode"].s = compat_as_bytes(round_mode)
+    op.attr["dst_type"].i = dst_type
+    op.attr["row_block_size"].i = row_block_size
+    op.attr["col_block_size"].i = col_block_size
+    op.attr["group_list_type"].i = group_list_type
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "scale"
+    scale = Tensor(op, output_index)
+    output_index += 1
+
+    return y, scale
