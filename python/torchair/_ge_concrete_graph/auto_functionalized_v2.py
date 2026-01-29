@@ -1,5 +1,6 @@
 from torch._dynamo.utils import detect_fake_mode
 from torchair.ge._ge_graph import get_default_ge_graph
+from torchair.ge._ge_graph import ControlTensor
 from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 from torchair._ge_concrete_graph.infer_symbol_calculate import infer_ge_output_by_symbol_calculate
 from torchair._ge_concrete_graph.utils import is_host_data_tensor
@@ -51,11 +52,13 @@ def _not_view_copy(self, bases_list, *, dependencies = [], out_op = None):
         if (input_tensor == bases_list[self.base_index].tensor):
             input_name = out_op.input_desc[i].name
             if input_name is None:
-                raise RuntimeError(f'Can not find input: {bases_list[self.base_index].tensor} in in-place op of auto_functionalize_v2')    
+                raise RuntimeError(f'Can not find input desc name of: {bases_list[self.base_index].tensor} in op {out_op.name} of auto_functionalize_v2')
             for out_index, output_name in enumerate(out_op.output_desc):
                 if (output_name.name == input_name):
                     return Tensor(out_op, out_index)
-    raise RuntimeError(f'Can not find output: {bases_list[self.base_index].tensor} in in-place op of auto_functionalize_v2')   
+    logger.warning(f'Can not find ref relation of : {bases_list[self.base_index].tensor} in op {out_op.name} of auto_functionalize_v2.'
+                ' Maybe there is more than one op was created by converter in auto_functionalize_v2.')
+    return ge.Identity(bases_list[self.base_index], dependencies=dependencies)
 
 
 def _get_meta_attr(input_value):
@@ -191,12 +194,14 @@ def conveter_auto_functionalize_v2(*args, **kwargs):
     
     infer_and_gen_sym_shape_silent(_mutable_op, [], new_kwargs, out, graph.op[num_ops:]) 
 
+    control_node = graph.op[-1]
+    control_tensor_list = [ControlTensor(control_node)]
     all_bases_new_update = []
     for view_info in args_view_info.values():
         if isinstance(out, (list, tuple)):
-            all_bases_new_update.append(view_info.view_copy(all_bases_new, dependencies=out, out_op=out[0].node))
+            all_bases_new_update.append(view_info.view_copy(all_bases_new, dependencies=control_tensor_list, out_op=control_node))
         else:
-            all_bases_new_update.append(view_info.view_copy(all_bases_new, dependencies=[out], out_op=out.node))        
+            all_bases_new_update.append(view_info.view_copy(all_bases_new, dependencies=control_tensor_list, out_op=control_node))
 
     if isinstance(out, tuple):
         return (*out, *all_bases_new_update)
