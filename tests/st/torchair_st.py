@@ -2465,7 +2465,7 @@ class TorchairSt(unittest.TestCase):
         model = torch.compile(Model(), backend=npu_backend, dynamic=True)
         with self.assertRaises(RuntimeError) as context:
             model(input0, input1, input2)
-        self.assertTrue("Failed to parse AscendIR: The AscendIR MyOpTestv1 input 'indices' expected_type is " + \
+        self.assertTrue("Failed to parse AscendIR: The AscendIR MyOpTestv1 input 'updates' expected_type is " + \
             "required, the input must be Tensor please check converter input type" in str(context.exception))
 
     def test_auto_converter_args_error(self):
@@ -2517,8 +2517,10 @@ class TorchairSt(unittest.TestCase):
         model = torch.compile(Model(), backend=npu_backend, dynamic=True)
         with self.assertRaises(RuntimeError) as context:
             model(input0, input1)
-        self.assertTrue("Failed to parse AscendIR: The AscendIR MyOpTestv3 input 'indices' expected_type is " + \
-            "required, the input must be Tensor please check converter input type" in str(context.exception))
+        self.assertTrue("Failed to auto converter custom_definev3.my_op_testv3.default to AscendIR: " + \
+            "the number of torch tensor inputs does not match the AscendIR MyOpTestv3 inputs, " + \
+            "you can check your torch and AscendIR registration or try to implement " + \
+            "the converter manually according to the following code." in str(context.exception))
     
     def test_auto_converter_attrs_type_error(self):
         m = Library("custom_definev4", "DEF")

@@ -574,6 +574,23 @@ ge::Status GetRegisteredIrDef(const char *op_type, std::vector<std::pair<ge::Asc
     attrs.emplace_back(ge::AscendString("alpha"), ge::AscendString("VT_STRING"));
     outputs.emplace_back(ge::AscendString("x"), ge::AscendString("required"));
   }
+  if (std::string(op_type) == "MyOpNoMatchInputs"){
+    inputs.emplace_back(ge::AscendString("x"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("updates"), ge::AscendString("required"));
+    outputs.emplace_back(ge::AscendString("y"), ge::AscendString("required"));
+  }
+  if (std::string(op_type) == "MyOpNoMatchAttrs"){
+    inputs.emplace_back(ge::AscendString("x"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("updates"), ge::AscendString("required"));
+    attrs.emplace_back(ge::AscendString("indices"), ge::AscendString("VT_INT"));
+    outputs.emplace_back(ge::AscendString("y"), ge::AscendString("required"));
+  }
+  if (std::string(op_type) == "MyOpNoMatchOutputs"){
+    inputs.emplace_back(ge::AscendString("x"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("updates"), ge::AscendString("required"));
+    attrs.emplace_back(ge::AscendString("indices"), ge::AscendString("VT_INT"));
+    outputs.emplace_back(ge::AscendString("x"), ge::AscendString("required"));
+  }
   if (std::string(op_type) == "MyOpTestv5"){
     return ge::FAILED;
   }

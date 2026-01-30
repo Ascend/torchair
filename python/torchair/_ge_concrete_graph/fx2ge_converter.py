@@ -652,7 +652,7 @@ def get_or_auto_gen_converter(target):
 
 def _can_autogenerate_converter(target):
     if _is_torch_custom(target):
-        converter_code = _generate_converter_log
+        converter_code = _generate_converter_log(target)
         if _has_no_scalar(target):
             target_name = str(target).split(".")[1]
             if target_name.split("_")[-1] == "functional":
@@ -690,7 +690,7 @@ def _generate_converter_log(target):
     target_log_name = str(target).split(".")[1]
     if target_log_name.split("_")[-1] == "functional":
         target_log_name = "_".join(target_log_name.split("_")[:-1])
-    target_args_params, target_kwargs_name, _ = _get_target_params(target)
+    target_args_params, target_kwargs_name, _, _ = _get_target_params(target)
     if len(target_kwargs_name) > 0:
         params_code = ',\n    '.join(target_args_params) + ",\n    *,\n    " + ',\n    '.join(target_kwargs_name)
     else:
@@ -700,7 +700,7 @@ def _generate_converter_log(target):
         def {func_name}(
             {params}
         ):
-            #inplement AscendIR converter here.
+            # inplement AscendIR converter here.
         ''').format(
         op_name='torch.ops.' + str(target),
         func_name='converter' + '_' + target_log_name,
@@ -756,12 +756,11 @@ def _get_target_params(target):
                 target_kwargs_name.append(arg.name + "=" + repr(arg.default_value))
             else:
                 target_kwargs_name.append(arg.name)
-        if str(arg.type) == "Tensor" or str(arg.type) == "Optional[Tensor]":
+        if str(arg.type) == "Tensor" or str(arg.type) == "Optional[Tensor]" or str(arg.type) == "List[Tensor]":
             args_tensor_name.append(arg.name)
         else:
             args_notensor_name.append(arg.name)
-    args_all_name = args_tensor_name + args_notensor_name
-    return target_args_params, target_kwargs_name, args_all_name
+    return target_args_params, target_kwargs_name, args_tensor_name, args_notensor_name
 
 
 def _generate_converter_code(target):
@@ -769,10 +768,12 @@ def _generate_converter_code(target):
     if target_name.split("_")[-1] == "functional":
         target_name = "_".join(target_name.split("_")[:-1])
     ge_name = "".join(word.capitalize() for word in target_name.split("_"))
-    (_, ge_inputs, ge_outputs, _) = _torchair.get_registered_ir_def(ge_name)
+    (_, ge_inputs, ge_outputs, ge_attrs) = _torchair.get_registered_ir_def(ge_name)
+    converter_log_code = _generate_converter_log(target)
 
     #处理参数
-    target_args_params, target_kwargs_name, args_all_name = _get_target_params(target)
+    target_args_params, target_kwargs_name, args_tensor_name, args_notensor_name = _get_target_params(target)
+    args_all_name = args_tensor_name + args_notensor_name
     if len(target_kwargs_name) > 0:
         params_code = ',\n    '.join(target_args_params) + ",\n    *,\n    " + ',\n    '.join(target_kwargs_name)
     else:
@@ -784,10 +785,43 @@ def _generate_converter_code(target):
     alias_list = _alias_is_write(target) # target上的inplace的位置
     inplace_outputs_index, inplace_inputs_index = _ge_inplace(ge_inputs, ge_outputs) # ge上的inplace的位置
     real_output = [i for i in range(len(ge_outputs))] # 所有输出的位置
+
+    #输入输出数量校验，不满足则无法自动生成converter
+    target_tensor_nums = len(args_tensor_name)
+    target_notensor_nums = len(args_notensor_name)
+    target_outputs_nums = len(alias_list) + len(target._schema.returns)
+    ge_outputs_nums = len(ge_outputs)
+    ge_inputs_nums = len(ge_inputs)
+    ge_attrs_nums = len(ge_attrs)
+    #tensor输入数量和ascendir的输入数量不匹配
+    if target_tensor_nums != ge_inputs_nums:
+        raise RuntimeError(
+            f"Failed to auto converter {target} to AscendIR: the number of torch tensor inputs does not "
+            f"match the AscendIR {ge_name} inputs, you can check your torch and AscendIR registration "
+            f"or try to implement the converter manually according to the following code."
+            f"{converter_log_code}")
+    #非tensor输入数量和超过ascendir的属性数量
+    if target_notensor_nums > ge_attrs_nums:
+        raise RuntimeError(
+            f"Failed to auto converter {target} to AscendIR: the number of torch non-tensor inputs greater "
+            f"than the AscendIR {ge_name} attrs, you can check your torch and AscendIR registration "
+            f"or try to implement the converter manually according to the following code."
+            f"{converter_log_code}")
+    #torch的输出数量和ascendir的输出数量不匹配
+    if target_outputs_nums != ge_outputs_nums:
+        raise RuntimeError(
+            f"Failed to auto converter {target} to AscendIR: the number of torch outputs does not "
+            f"match the AscendIR {ge_name} outputs, you can check your torch and AscendIR registration "
+            f"or try to implement the converter manually according to the following code."
+            f"{converter_log_code}")
+    #torch的inplace输入数量和ascendir的inplace输入数量不匹配
     if len(alias_list) != 0 and len(alias_list) != len(inplace_outputs_index):
         raise RuntimeError(
-            f"Failed to converter {target} to AscendIR: the number of inplace inputs for torch does not "
-            f"match the AscendIR {ge_name}, please check your torch and AscendIR registration.")
+            f"Failed to auto converter {target} to AscendIR: the number of inplace inputs for torch does not "
+            f"match the AscendIR {ge_name} inplace, you can check your torch and AscendIR registration "
+            f"or try to implement the converter manually according to the following code."
+            f"{converter_log_code}")
+
     #如果target未定义成inpalce的输入，则处理ge中需要做clone的参数
     if len(alias_list) == 0 and len(inplace_outputs_index) != 0:
         need_clone = True
