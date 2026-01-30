@@ -4,9 +4,10 @@ from typing import (
 )
 
 import torch
+import torch_npu
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
-from torchair.ge._ge_graph import Tensor, TensorSpec, DataType, torch_dtype_value_to_ge_type, ge_type_to_torch_type
+from torchair.ge._ge_graph import Tensor, TensorSpec, DataType, torch_dtype_value_to_ge_type, ge_type_to_torch_type, torch_dtype_value_to_ge_proto_type
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, \
     BOOL, Support
 from torchair._utils.error_code import pretty_error_msg
@@ -108,10 +109,6 @@ def convert_npu_npu_fused_infer_attention_score_v2_tensor(
     meta_outputs: TensorSpec = None,
 ):
     # 禁止单独修改此函数，请同步修改actual seq length为symint list的接口
-    try:
-        import torch_npu
-    except Exception as e:
-        raise RuntimeError(f"{e} while checking value data type") from e
     is_int4 = (key is not None and key.dtype == DataType.DT_INT32) or (value is not None and value.dtype == DataType.DT_INT32)
     is_fp4 = key_dtype == torch_npu.float4_e2m1fn_x2 or value_dtype == torch_npu.float4_e2m1fn_x2 or key_dtype == torch_npu.float4_e1m2fn_x2 or value_dtype == torch_npu.float4_e1m2fn_x2
     if is_int4 or is_fp4:
@@ -173,7 +170,7 @@ def convert_npu_npu_fused_infer_attention_score_v2_tensor(
     value_shared_prefix = None
     actual_shared_prefix_len = None
     antiquant_mode = 0
-    return ge.FusedInferAttentionScore(query, key_list, value_list, pse_shift=pse_shift, atten_mask=atten_mask,
+    out, lse = ge.FusedInferAttentionScore(query, key_list, value_list, pse_shift=pse_shift, atten_mask=atten_mask,
         actual_seq_lengths=actual_seq_qlen, actual_seq_lengths_kv=actual_seq_kvlen,
         dequant_scale1=dequant_scale1, quant_scale1=quant_scale1, dequant_scale2=dequant_scale2,
         quant_scale2=quant_scale_out, quant_offset2=quant_offset_out, antiquant_scale=antiquant_scale,
@@ -190,6 +187,9 @@ def convert_npu_npu_fused_infer_attention_score_v2_tensor(
         block_size=block_size, antiquant_mode=antiquant_mode, softmax_lse_flag=return_softmax_lse,
         key_antiquant_mode=key_quant_mode, value_antiquant_mode=value_quant_mode, query_quant_mode=query_quant_mode,
         pse_type=0, out_dtype=out_dtype)
+    if out_dtype == torch_npu.hifloat8:
+        out.desc.dtype = torch_dtype_value_to_ge_proto_type(torch_npu.hifloat8)
+    return out, lse
 
 
 def get_query_and_attention_out_layout(query, input_layout):
@@ -299,10 +299,6 @@ def get_value_d(block_table, value, query, query_layout, num_kv_heads):
 
 
 def get_change_d_scale_v2(value, value_dtype):
-    try:
-        import torch_npu
-    except Exception as e:
-        raise RuntimeError(f"{e} while checking value data type") from e
     change_d_scale = 1
 
     if value is None:
