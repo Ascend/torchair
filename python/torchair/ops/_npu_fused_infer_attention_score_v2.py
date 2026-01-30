@@ -232,40 +232,46 @@ def get_query_and_attention_out_layout(query, input_layout):
     return query_layout, attention_out_layout
 
 
-def get_query_b_n_s(query, query_layout, num_heads):
+def get_query_b_s_n_d(query, query_layout, num_heads):
     if query_layout == "BSH":
         b = query.size(0)
         s1 = query.size(1)
         n1 = num_heads
+        d1 = query.size(2) // num_heads
     elif query_layout == "BSND":
         b = query.size(0)
         s1 = query.size(1)
         n1 = query.size(2)
+        d1 = query.size(3)
     elif query_layout == "BNSD":
         b = query.size(0)
         s1 = query.size(2)
         n1 = query.size(1)
+        d1 = query.size(3)
     elif query_layout == "NSD":
         b = 1
         s1 = query.size(1)
         n1 = query.size(0)
+        d1 = query.size(2)
     else:
         raise ValueError(
-            f'Layout {query_layout} is not supported in get_query_b_n_s function!')
-    return b, s1, n1
+            f'Layout {query_layout} is not supported in get_query_b_s_n_d function!')
+    return b, s1, n1, d1
 
 
-def get_query_t_n(query, query_layout):
+def get_query_t_n_d(query, query_layout):
     if query_layout == "TND":
         t = query.size(0)
         n1 = query.size(1)
+        d1 = query.size(2)
     elif query_layout == "NTD":
         t = query.size(1)
         n1 = query.size(0)
+        d1 = query.size(2)
     else:
         raise ValueError(
-            f'Layout {query_layout} is not supported in get_query_t_n function!')
-    return t, n1
+            f'Layout {query_layout} is not supported in get_query_t_n_d function!')
+    return t, n1, d1
 
 
 def get_value_d(block_table, value, query, query_layout, num_kv_heads):
@@ -314,29 +320,45 @@ def get_change_d_scale_v2(value, value_dtype):
     return change_d_scale
 
 
+def get_infer_attention_out_d(query_d, value_d):
+    out_d = value_d
+    if out_d == 0 or query_d == 0:
+        out_d = query_d
+    return out_d
+
+
 def infer_attention_out_shape(attention_out_layout, query, query_layout, num_heads, value_d):
     attention_out = torch.empty_like(query, dtype=query.dtype, device='meta')
     if attention_out_layout == "BSH":
-        b, s1, n1 = get_query_b_n_s(query, query_layout, num_heads)
-        attention_out = torch.empty([b, s1, n1 * value_d], dtype=query.dtype, device='meta')
+        b, s1, n1, _ = get_query_b_s_n_d(query, query_layout, num_heads)
+        out_h = n1 * value_d
+        if out_h == 0 or query.size(2) == 0:
+            out_h = query.size(2)
+        attention_out = torch.empty([b, s1, out_h], dtype=query.dtype, device='meta')
     elif attention_out_layout == "BSND":
-        b, s1, n1 = get_query_b_n_s(query, query_layout, num_heads)
-        attention_out = torch.empty([b, s1, n1, value_d], dtype=query.dtype, device='meta')
+        b, s1, n1, d1 = get_query_b_s_n_d(query, query_layout, num_heads)
+        out_d = get_infer_attention_out_d(d1, value_d)
+        attention_out = torch.empty([b, s1, n1, out_d], dtype=query.dtype, device='meta')
     elif attention_out_layout == "BNSD":
-        b, s1, n1 = get_query_b_n_s(query, query_layout, num_heads)
-        attention_out = torch.empty([b, n1, s1, value_d], dtype=query.dtype, device='meta')
+        b, s1, n1, d1 = get_query_b_s_n_d(query, query_layout, num_heads)
+        out_d = get_infer_attention_out_d(d1, value_d)
+        attention_out = torch.empty([b, n1, s1, out_d], dtype=query.dtype, device='meta')
     elif attention_out_layout == "NBSD":
-        b, s1, n1 = get_query_b_n_s(query, query_layout, num_heads)
-        attention_out = torch.empty([n1, b, s1, value_d], dtype=query.dtype, device='meta')
+        b, s1, n1, d1 = get_query_b_s_n_d(query, query_layout, num_heads)
+        out_d = get_infer_attention_out_d(d1, value_d)
+        attention_out = torch.empty([n1, b, s1, out_d], dtype=query.dtype, device='meta')
     elif attention_out_layout == "TND":
-        t, n1 = get_query_t_n(query, query_layout)
-        attention_out = torch.empty([t, n1, value_d], dtype=query.dtype, device='meta')
+        t, n1, d1 = get_query_t_n_d(query, query_layout)
+        out_d = get_infer_attention_out_d(d1, value_d)
+        attention_out = torch.empty([t, n1, out_d], dtype=query.dtype, device='meta')
     elif attention_out_layout == "NTD":
-        t, n1 = get_query_t_n(query, query_layout)
-        attention_out = torch.empty([n1, t, value_d], dtype=query.dtype, device='meta')
+        t, n1, d1 = get_query_t_n_d(query, query_layout)
+        out_d = get_infer_attention_out_d(d1, value_d)
+        attention_out = torch.empty([n1, t, out_d], dtype=query.dtype, device='meta')
     elif attention_out_layout == "NSD":
-        b, s1, n1 = get_query_b_n_s(query, query_layout, num_heads)
-        attention_out = torch.empty([n1, s1, value_d], dtype=query.dtype, device='meta')
+        _, s1, n1, d1 = get_query_b_s_n_d(query, query_layout, num_heads)
+        out_d = get_infer_attention_out_d(d1, value_d)
+        attention_out = torch.empty([n1, s1, out_d], dtype=query.dtype, device='meta')
     return attention_out
 
 
@@ -345,10 +367,10 @@ def infer_lse_out_shape(query, input_layout, query_layout, num_heads):
 
     tnd_like_layouts = {"TND", "NTD", "TND_NTD", "NTD_TND"}
     if input_layout in tnd_like_layouts:
-        t, n1 = get_query_t_n(query, query_layout)
+        t, n1, _ = get_query_t_n_d(query, query_layout)
         lse_out = torch.empty([t, n1, 1], dtype=torch.float32, device='meta')
     else:
-        b, s1, n1 = get_query_b_n_s(query, query_layout, num_heads)
+        b, s1, n1, _ = get_query_b_s_n_d(query, query_layout, num_heads)
         lse_out = torch.empty([b, n1, s1, 1], dtype=torch.float32, device='meta')
     return lse_out
 
