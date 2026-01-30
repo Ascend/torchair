@@ -270,6 +270,16 @@ Status GeDtypeToAtDtype(const ge::DataType &ge_dtype, c10::ScalarType &dtype) {
   case T1:                       \
     dtype = T2;                  \
     return Status::Success()
+#define GE2ATEN_MAP_TYPE_BY_NUM(T1, NUM)                            \
+  case T1: {                                                        \
+    c10::ScalarType scalarType = static_cast<c10::ScalarType>(NUM); \
+    if (c10::toString(scalarType) == "UNKNOWN_SCALAR") {            \
+      dtype = c10::ScalarType::Byte;                                  \
+    } else {                                                        \
+      dtype = scalarType;                                           \
+    }                                                               \
+    return Status::Success();                                       \
+  }
   switch (ge_dtype) {
     GE2ATEN_MAP_TYPE(ge::DataType::DT_BOOL, c10::ScalarType::Bool);
     GE2ATEN_MAP_TYPE(ge::DataType::DT_UINT8, c10::ScalarType::Byte);
@@ -285,8 +295,8 @@ Status GeDtypeToAtDtype(const ge::DataType &ge_dtype, c10::ScalarType &dtype) {
     GE2ATEN_MAP_TYPE(ge::DataType::DT_COMPLEX64, c10::ScalarType::ComplexFloat);
     GE2ATEN_MAP_TYPE(ge::DataType::DT_COMPLEX128, c10::ScalarType::ComplexDouble);
     GE2ATEN_MAP_TYPE(ge::DataType::DT_HIFLOAT8, c10::ScalarType::Byte);
-    GE2ATEN_MAP_TYPE(ge::DataType::DT_FLOAT8_E8M0, c10::ScalarType::Byte);
-    GE2ATEN_MAP_TYPE(ge::DataType::DT_FLOAT4_E2M1, c10::ScalarType::Byte);
+    GE2ATEN_MAP_TYPE_BY_NUM(ge::DataType::DT_FLOAT8_E8M0, 44);
+    GE2ATEN_MAP_TYPE_BY_NUM(ge::DataType::DT_FLOAT4_E2M1, 45);
     GE2ATEN_MAP_TYPE(ge::DataType::DT_FLOAT4_E1M2, c10::ScalarType::Byte);
     GE2ATEN_MAP_TYPE(ge::DataType::DT_INT4, c10::ScalarType::QUInt4x2);
     GE2ATEN_MAP_TYPE(ge::DataType::DT_FLOAT8_E5M2, c10::ScalarType::Float8_e5m2);
