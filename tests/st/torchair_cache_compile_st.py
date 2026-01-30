@@ -69,6 +69,16 @@ class CustomData:
 
 
 class CacheCompileSt(unittest.TestCase):
+    def setUp(self) -> None:
+        from torchair.inference._cache_compiler import CacheBackend
+        self.cachebackend_fw_compiler = CacheBackend.fw_compiler
+        return super().setUp()
+
+    def tearDown(self) -> None:
+        from torchair.inference._cache_compiler import CacheBackend
+        CacheBackend.fw_compiler = self.cachebackend_fw_compiler
+        return super().tearDown()
+
     def test_cache_hint(self):
         class Model(torch.nn.Module):
             def __init__(self):
@@ -594,6 +604,7 @@ class CacheCompileSt(unittest.TestCase):
         decom_model(t)  # cache hint
 
     def test_cache_hint_gears(self):
+        from torchair.inference._cache_compiler import CacheBackend
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
@@ -618,6 +629,24 @@ class CacheCompileSt(unittest.TestCase):
 
             def decode(self, x, y):
                 return self._forward(x, y)
+
+
+        def check_inputs(inputs):
+            has_dim_gears = False
+            for _, input in enumerate(inputs):
+                if hasattr(input, "dim_gears"):
+                    has_dim_gears = True
+            assert has_dim_gears == True, f"expect cachebackend set 'dim_gears' attr to inputs, but None."
+
+        def decorator(fw_compiler):
+            def wrapper(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
+                ret = fw_compiler(self, gm, example_inputs)
+                check_inputs(example_inputs)
+                return ret
+
+            return wrapper
+
+        CacheBackend.fw_compiler = decorator(CacheBackend.fw_compiler)
 
         model = Model()
 

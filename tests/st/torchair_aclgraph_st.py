@@ -55,7 +55,7 @@ class AclGraphSt(unittest.TestCase):
         from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
         self.call_bak = AclConcreteGraph.__call__
         from torchair.inference._cache_compiler import CacheBackend
-        self.cachebackend_call = CacheBackend.__call__
+        self.cachebackend_fw_compiler = CacheBackend.fw_compiler
         return super().setUp()
 
     def tearDown(self) -> None:
@@ -65,7 +65,7 @@ class AclGraphSt(unittest.TestCase):
         from torchair._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
         AclConcreteGraph.__call__ = self.call_bak
         from torchair.inference._cache_compiler import CacheBackend
-        CacheBackend.__call__ = self.cachebackend_call
+        CacheBackend.fw_compiler = self.cachebackend_fw_compiler
         return super().tearDown()
 
     def test_aclgraph_capture_and_replay(self):
@@ -3102,23 +3102,22 @@ class AclGraphSt(unittest.TestCase):
             def prompt(self, x):
                 return self._forward(x)
 
-        def check_inputs(inputs_custom_attr):
+        def check_inputs(inputs):
             has_parameter = False
-            for i, attr in inputs_custom_attr.items():
-                for k, _ in attr.items():
-                    if k == "_torchair_is_parameter":
-                        has_parameter = True
+            for _, input in enumerate(inputs):
+                if hasattr(input, "_torchair_is_parameter"):
+                    has_parameter = True
             assert has_parameter == True, f"expect cachebackend set '_torchair_is_parameter' attr to inputs, but None."
 
-        def decorator(call):
-            def wrapper(self, gm: torch.fx.GraphModule, inputs: List[torch.Tensor], *args):
-                ret = call(self, gm, inputs, args)
-                check_inputs(self.inputs_custom_attr)
+        def decorator(fw_compiler):
+            def wrapper(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
+                ret = fw_compiler(self, gm, example_inputs)
+                check_inputs(example_inputs)
                 return ret
 
             return wrapper
 
-        CacheBackend.__call__ = decorator(CacheBackend.__call__)
+        CacheBackend.fw_compiler = decorator(CacheBackend.fw_compiler)
 
         model = Model()
         prompt_cache_bin = CompiledModel.get_cache_bin(model.prompt, config=config)

@@ -123,21 +123,6 @@ def _depatch_user_const(code: types.CodeType):
     return code.replace(co_consts=tuple(consts))
 
 
-def _wrap_compiler(compiler: Callable, num_example_inputs, compiler_config):
-    from torchair.npu_fx_compiler import _mark_static_inputs_attr
-
-    @functools.wraps(compiler)
-    def wrapped_compiler(
-        gm: torch.fx.GraphModule,
-        example_inputs: List[torch.Tensor],
-    ):
-        # Length of example_inputs may differ between Dynamo and AOT compilation stages.
-        _mark_static_inputs_attr(example_inputs, num_example_inputs=num_example_inputs, compiler_config=compiler_config)
-        return compiler(gm, example_inputs)
-
-    return wrapped_compiler
-
-
 class CompiledModel:
     VERSION = "1.0.3"
     FILE = "compiled_module"
@@ -382,14 +367,14 @@ def _readable_inst(code):
 class CacheBackend:
     def __init__(self, config: Optional[CompilerConfig], saver: 'ModelCacheSaver', *,
                  fw_compiler: Callable = None, decompositions: dict = None, extend_config: Optional[dict] = None):
-        # check validity of config
         if config:
             _check_config_support(config)
         self.config = config or CompilerConfig()
         self.saver = saver
         self.extend_config = extend_config
-        self.custom_decompositions = decompositions or {}
-        self.inputs_custom_attr: Dict[int, Dict] = dict()
+        # get decompositions before __call__ for distributed cases
+        from torchair.npu_fx_compiler import _get_merged_decompositions
+        self.custom_decompositions = _get_merged_decompositions(self.config, decompositions)
         if fw_compiler is None:
             from torchair.npu_fx_compiler import get_compiler
             self.compiler = get_compiler(config)
@@ -398,26 +383,19 @@ class CacheBackend:
 
     def __call__(self, gm: torch.fx.GraphModule, inputs: List[torch.Tensor], *args):
         self.saver.save_reserved_params(gm)
-        from torchair.npu_fx_compiler import _get_inputs_custom_attr, _set_inputs_custom_attr_to_compiler
-        num_example_inputs = len(inputs)
-        self.fw_compiler = _wrap_compiler(self.fw_compiler, num_example_inputs, self.config)
-        self.inputs_custom_attr = _get_inputs_custom_attr(inputs)
+        from torchair.npu_fx_compiler import (
+            _compile_graph_with_aot,
+            _process_send_recv
+        )
+        _process_send_recv(gm, self.config)
 
-        decompositions = get_npu_default_decompositions()
-        decompositions.update(self.custom_decompositions)
-        add_npu_patch(decompositions, self.config)
-        if os.getenv("TORCH_COMPILE_DEBUG", "0") == "1":
-            folder_path = DebugContext.next_path()
-            dump_fx_safety(gm, os.path.join(folder_path, "dynamo_out_graph.txt"))
-        _set_inputs_custom_attr_to_compiler(self.fw_compiler, self.inputs_custom_attr)
-        self.fw_compiler = wrap_compiler_phase(self.fw_compiler, "forward")
-        return aot_module_simplified(gm, inputs, self.fw_compiler, self.bw_compiler,
-                                     decompositions=decompositions, keep_inference_input_mutations=True)
+        if hasattr(self.compiler, '_update_config'):
+            self.compiler._update_config(self.config)
+
+        return _compile_graph_with_aot(gm, self.fw_compiler, inputs, self.config, self.custom_decompositions,
+                                       is_cache=True, bw_compiler=self.bw_compiler)
 
     def fw_compiler(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
-        from torchair.npu_fx_compiler import _set_inputs_custom_attr
-        _set_inputs_custom_attr(example_inputs, self.inputs_custom_attr)
-
         # Codegen return compiled fx directly if not support codegen
         with timer(f"{self.saver.name} codegen"):
             py_code = self.compiler(gm, example_inputs).get_code(self.extend_config)

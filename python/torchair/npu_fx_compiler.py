@@ -51,7 +51,7 @@ from torchair._utils.custom_aot_functions import aot_module_simplified_joint
 from torchair._utils import add_npu_patch, get_npu_default_decompositions
 from torchair._utils.error_code import pretty_error_msg
 from torchair._utils.graph_transform_observer import GraphTransformObserver, dump_fx_safety, \
-    wrap_debug_compilers, DebugContext, get_phase_path
+    wrap_compiler_phase, DebugContext, get_phase_path
 from torchair._utils.graph_utils import debug_compare_fx_graphs
 from torchair.inference._gear_utils import get_dim_gears, set_dim_gears, guard_gears_shape
 from torchair.patterns.pattern_util import _apply_pattern_passes
@@ -684,6 +684,9 @@ class _NpuFxCompiler:
 
         return concrete_graph
 
+    def _update_config(self, compiler_config: CompilerConfig):
+        self.config = compiler_config
+
 
 def get_compiler(compiler_config: CompilerConfig = None):
     """
@@ -737,7 +740,8 @@ def _mark_static_inputs_attr(example_inputs, num_example_inputs, compiler_config
                             f"however it may not work in torch < 2.4.0, please upgrade torch version.")
 
 
-def _wrap_compiler(compiler: Callable, compiler_config: CompilerConfig, num_example_inputs):
+def _wrap_compiler(compiler: Callable, compiler_config: CompilerConfig, num_example_inputs,
+                   compiler_type: str = "forward"):
     @functools.wraps(compiler)
     def wrapped_compiler(
             gm: torch.fx.GraphModule,
@@ -759,9 +763,13 @@ def _wrap_compiler(compiler: Callable, compiler_config: CompilerConfig, num_exam
         _mark_static_inputs_attr(example_inputs, num_example_inputs=num_example_inputs, compiler_config=compiler_config)
         return compiler(gm, example_inputs)
 
-    fw_compiler = functools.partial(wrapped_compiler, is_inference=False)
-    inference_compiler = functools.partial(wrapped_compiler, is_inference=True)
-    return fw_compiler, inference_compiler, joint_compiler
+    if compiler_type == "forward":
+        _wrapped_compiler = functools.partial(wrapped_compiler, is_inference=False)
+    elif compiler_type == "inference":
+        _wrapped_compiler = functools.partial(wrapped_compiler, is_inference=True)
+    else:
+        _wrapped_compiler = joint_compiler
+    return _wrapped_compiler
 
 
 def _get_inputs_custom_attr(example_inputs: List[torch.Tensor]):
@@ -792,14 +800,14 @@ def _set_inputs_custom_attr(example_inputs: List[torch.Tensor], inputs_custom_at
 
 def _set_inputs_custom_attr_to_compiler(compiler: Callable, inputs_custom_attr: Dict[int, Dict]):
     @functools.wraps(compiler)
-    def _warp_custom_attr_compiler(
+    def _wrap_custom_attr_compiler(
             gm: torch.fx.GraphModule,
             example_inputs: List[torch.Tensor],
     ):
         _set_inputs_custom_attr(example_inputs, inputs_custom_attr)
         return compiler(gm, example_inputs)
 
-    return _warp_custom_attr_compiler
+    return _wrap_custom_attr_compiler
 
 
 def _process_send_recv(gm, compiler_config):
@@ -856,34 +864,8 @@ def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
     _process_kwargs_options(compiler_config, kwargs)
     compiler = get_compiler(compiler_config)
 
-    if os.getenv("TORCH_COMPILE_DEBUG", "0") == "1":
-        folder_path = DebugContext.next_path()
-        dump_fx_safety(gm, os.path.join(folder_path, "dynamo_out_graph.txt"))
-
-    num_example_inputs = len(example_inputs)
-
-    fw_compiler, inference_compiler, joint_compiler = _wrap_compiler(compiler, compiler_config, num_example_inputs)
-
-    inputs_custom_attr = _get_inputs_custom_attr(example_inputs)
-    fw_compiler = _set_inputs_custom_attr_to_compiler(fw_compiler, inputs_custom_attr)
-    inference_compiler = _set_inputs_custom_attr_to_compiler(inference_compiler, inputs_custom_attr)
-
-    partition_fn = _get_partition_fn(compiler_config)
-
-    fw_compiler, compiler, inference_compiler, joint_compiler = wrap_debug_compilers(
-        fw_compiler, compiler, inference_compiler, joint_compiler)
-
-    if compiler_config.experimental_config.aot_config_enable_joint_graph:
-        output_loss_index = int(compiler_config.experimental_config.aot_config_output_loss_index.value)
-        return aot_module_simplified_joint(gm, example_inputs,
-                                           compiler=joint_compiler, decompositions=decompositions,
-                                           output_loss_index=output_loss_index)
-
-    keep_inference_input_mutations = bool(compiler_config.experimental_config.keep_inference_input_mutations)
-    return aot_module_simplified(gm, example_inputs, fw_compiler=fw_compiler, bw_compiler=compiler,
-                                 decompositions=decompositions, partition_fn=partition_fn,
-                                 keep_inference_input_mutations=keep_inference_input_mutations,
-                                 inference_compiler=inference_compiler)
+    # 调用公共方法
+    return _compile_graph_with_aot(gm, compiler, example_inputs, compiler_config, decompositions, is_cache=False)
 
 
 def get_npu_backend(*, compiler_config: CompilerConfig = None, custom_decompositions: Dict = {}):
@@ -900,11 +882,103 @@ def get_npu_backend(*, compiler_config: CompilerConfig = None, custom_decomposit
     if compiler_config is None:
         compiler_config = CompilerConfig()
     _check_config_support(compiler_config)
+
+    # 使用公共的 Decompose 合并逻辑
+    decompositions = _get_merged_decompositions(compiler_config, custom_decompositions)
+
+    return functools.partial(_npu_backend, compiler_config=compiler_config, decompositions=decompositions)
+
+
+def _get_merged_decompositions(compiler_config: CompilerConfig, custom_decompositions: Dict = None):
+    """
+    Common util to merge default decompositions, patch and custom decompositions.
+    """
+    if custom_decompositions is None:
+        custom_decompositions = {}
     decompositions = get_npu_default_decompositions()
     decompositions.update(custom_decompositions)
-
     add_npu_patch(decompositions, compiler_config)
-    return functools.partial(_npu_backend, compiler_config=compiler_config, decompositions=decompositions)
+    return decompositions
+
+
+def _compile_graph_with_aot(gm: torch.fx.GraphModule,
+                            compiler: _NpuFxCompiler,
+                            example_inputs: List[torch.Tensor],
+                            compiler_config: CompilerConfig = None,
+                            decompositions: Dict = None,
+                            is_cache: bool = False,
+                            bw_compiler: Callable = None):
+    """
+    Unified entry point for AOT Autograd compilation (Normal & Cache modes).
+    """
+    if decompositions is None:
+        decompositions = {}
+    # 1. Debug: Dump Dynamo output graph if enabled
+    if os.getenv("TORCH_COMPILE_DEBUG", "0") == "1":
+        folder_path = DebugContext.next_path()
+        dump_fx_safety(gm, os.path.join(folder_path, "dynamo_out_graph.txt"))
+
+    # 2. Prepare common attributes
+    num_example_inputs = len(example_inputs)
+    inputs_custom_attr = _get_inputs_custom_attr(example_inputs)
+
+    # -------------------------------------------------------------------------
+    # Helper: 封装通用的编译器构建流程
+    # (Wrap Static Inputs -> Inject Custom Attrs -> Wrap Debug Phase)
+    # -------------------------------------------------------------------------
+    def _create_stage_compiler(base_compiler, phase_name):
+        # Layer 1: Handle static input attributes & basic wrapping
+        c = _wrap_compiler(base_compiler, compiler_config, num_example_inputs, phase_name)
+
+        # Layer 2: Inject custom attributes (Gears, etc.)
+        c = _set_inputs_custom_attr_to_compiler(c, inputs_custom_attr)
+
+        # Layer 3: Wrap for debug logging
+        return wrap_compiler_phase(c, phase_name)
+
+    # 3. Construct Forward Compiler (Common for both)
+    # Note: Even if 'compiler' is a bound method (in Cache mode), this wrapping applies correctly.
+    fw_compiler = _create_stage_compiler(compiler, "forward")
+
+    # 4. Setup AOT Arguments (Defaults for Cache Mode)
+    # 默认为 Cache 模式的配置，如果是 Normal 模式则在下面覆盖
+    aot_kwargs = {
+        "fw_compiler": fw_compiler,
+        "bw_compiler": bw_compiler, # Cache 模式下通常传入 raising error 的函数或 None
+        "inference_compiler": None, # Cache 模式下通常不单独处理 inference graph
+        "partition_fn": default_partition, # Cache 模式默认不使用特殊 Partition
+        "keep_inference_input_mutations": True, # Cache 模式默认保持
+        "decompositions": decompositions
+    }
+
+    # 5. Handle Normal Mode (Non-Cache) Specifics
+    if not is_cache:
+        # 5.1 Joint Graph Strategy (Early Return)
+        if compiler_config.experimental_config.aot_config_enable_joint_graph:
+            joint_compiler = _create_stage_compiler(compiler, "joint")
+            output_loss_index = int(compiler_config.experimental_config.aot_config_output_loss_index.value)
+            return aot_module_simplified_joint(
+                gm, example_inputs,
+                compiler=joint_compiler,
+                decompositions=decompositions,
+                output_loss_index=output_loss_index
+            )
+
+        # 5.2 Setup Backward Compiler
+        # Normal 模式下，Backward Compiler 基于同一个 NPU Compiler 实例，但标记为 backward phase
+        aot_kwargs["bw_compiler"] = wrap_compiler_phase(compiler, "backward")
+
+        # 5.3 Setup Inference Compiler
+        aot_kwargs["inference_compiler"] = _create_stage_compiler(compiler, "inference")
+
+        # 5.4 Setup Partition Function & Mutations
+        aot_kwargs["partition_fn"] = _get_partition_fn(compiler_config)
+        aot_kwargs["keep_inference_input_mutations"] = bool(
+            compiler_config.experimental_config.keep_inference_input_mutations
+        )
+
+    # 6. Unified AOT Call
+    return aot_module_simplified(gm, example_inputs, **aot_kwargs)
 
 
 def _dump_run_codegen(py_code: str):

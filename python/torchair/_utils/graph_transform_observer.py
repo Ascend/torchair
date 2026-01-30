@@ -128,6 +128,9 @@ def get_phase_path():
     
 
 def wrap_compiler_phase(compiler: Callable, phase: str) -> Callable:
+    if phase == "inference":
+        phase = "forward"
+
     def wrapped(*args, **kwargs):
         with DebugContext(phase):
             return compiler(*args, **kwargs)

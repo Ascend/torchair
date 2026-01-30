@@ -10,6 +10,8 @@ import torch.multiprocessing as mp
 import torch_npu
 import torchair
 
+from torchair.configs.compiler_config import CompilerConfig
+
 
 class CacheHcomModel(torch.nn.Module):
     def __init__(self):
@@ -23,6 +25,29 @@ class CacheHcomModel(torch.nn.Module):
 
     def forward(self, x, y):
         return self.cached_module(x, y)
+
+    def prompt(self, x, y):
+        return self.inner_forward(x, y)
+
+
+class CacheSendRecvModel(torch.nn.Module):
+    def __init__(self, rank, group, config):
+        super().__init__()
+        self.rank = rank
+        self.group = group
+        self.cached_module = torchair.inference.cache_compile(self.prompt, config=config)
+
+    def forward(self, x, y):
+        return self.cached_module(x, y)
+
+    def inner_forward(self, x, y):
+        out = x
+        if self.rank == 0:
+            torch.distributed.send(x, dst = 1, group = self.group)
+        elif self.rank == 1:
+            torch.distributed.recv(y, src = 0, group = self.group)
+            out = y
+        return out
 
     def prompt(self, x, y):
         return self.inner_forward(x, y)
@@ -107,6 +132,18 @@ class HcomCacheTest(unittest.TestCase):
         dist.destroy_process_group()
 
     @classmethod
+    def _test_send_recv_cache(cls, rank, world_size, init_pg):
+        torch.npu.set_device(rank)
+        init_pg(rank, world_size)
+        group = torch.distributed.new_group(ranks=[0, 1])
+        config = CompilerConfig()
+        model = CacheSendRecvModel(rank, group, config).npu()
+        x = torch.ones(2, 2).npu()
+        y = torch.ones(2, 2).npu()
+        model(x, y)
+        torch.distributed.destroy_process_group()
+
+    @classmethod
     def check_cache_file_and_clean_env(cls, path: str = ''):
         if not path:
             path = ".torchair_cache"
@@ -152,6 +189,17 @@ class HcomCacheTest(unittest.TestCase):
         for world_size in ranks:
             self._test_multiprocess(HcomCacheTest._test_hccl_use_cache_get_hccl_comm_name,
                                     HcomCacheTest._init_dist_hccl_without_patch, world_size)
+        HcomCacheTest.check_cache_file_and_clean_env()
+
+    def test_cache_with_send_recv(self):
+        from torch_npu.npu.utils import _is_gte_cann_version
+        is_supported_version = _is_gte_cann_version("8.6.0", module="CANN")
+        if not is_supported_version:
+            return
+
+        world_size = 2
+        self._test_multiprocess(HcomCacheTest._test_send_recv_cache,
+                                HcomCacheTest._init_dist_hccl_without_patch, world_size)
         HcomCacheTest.check_cache_file_and_clean_env()
 
 if __name__ == '__main__':
