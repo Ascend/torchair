@@ -796,4 +796,5 @@ class AclConcreteGraph(ConcreteGraphBase):
         else:
             input_code.writelines(["", 'from torch._dynamo.guards import CLOSURE_VARS'])
             input_code.writeline('globals().update(CLOSURE_VARS)')
+        input_code.writeline('globals().update({"nan": float("nan")})')
         return input_code.getvalue()
