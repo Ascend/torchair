@@ -24,6 +24,11 @@ class ValuePack:
     def npu(self):
         return self._npu_meta
 
+    def __getitem__(self, key):
+        if isinstance(self._meta, dict):
+            return self._meta.get(key)
+        raise ValueError(f"Unsupported meta type for ValuePack __getitem__, key:{key}, type: {type(self._meta)}")
+
     def __repr__(self) -> str:
         if isinstance(self._meta, FakeTensor):
             meta_str = f"FakeTensor(dtype={self._meta.dtype}, size={list(self._meta.size())}"

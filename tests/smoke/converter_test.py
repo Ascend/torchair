@@ -1,16 +1,22 @@
+import contextlib
 import functools
+import sys
 import types
 from typing import Callable
 
 import torch
 import torch_npu
-import sys
-import contextlib
-import torchair as tng
 from torchair._ge_concrete_graph.fx2ge_converter import Converter
+from torchair._ge_concrete_graph.fx2ge_converter import GeConcreteGraph
 from torchair._ge_concrete_graph.fx2ge_converter import _declare_supported_converters
-from torchair import CompilerConfig
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor
+from torchair.core._concrete_graph import ValuePack
+from torchair.npu_fx_compiler import _NpuGraphConverter
+from torchair.npu_fx_compiler import _unpack_meta
+
+import torchair as tng
+from torchair import CompilerConfig
+
 aten = torch.ops.aten
 
 _torch_npu_module = torch_npu
@@ -132,7 +138,7 @@ def _test_converters(aten_ops, *, backend, result_checker):
 
     for old_key in list(supported_converters.keys()):
         if isinstance(old_key, types.FunctionType):
-            new_key = old_key.__name__  
+            new_key = old_key.__name__
             supported_converters[new_key] = supported_converters.pop(old_key)
 
     if aten_ops is None:
@@ -239,8 +245,65 @@ def test_converter(aten_ops=None, *, stop_when_error=False):
             f"Test result: {len(_FAILED_CASES)} testcases failed", flush=True)
 
 
+def test__unpack_meta_with_triton_input():
+    args = []
+    kwargs = {"kernel_idx": 0, "constant_args_idx": 0, "grid": [(97, 1, 1)], "tma_descriptor_metadata": {},
+              "tensor_to_clone": ["output_ptr"]}
+    x_meta_input = torch.rand([2, 2])
+    x_npu_input = torch.rand([2, 2])
+    y_meta_input = torch.rand([2, 2])
+    y_npu_input = torch.rand([2, 2])
+    out_meta_input = torch.rand([2, 2])
+    out_npu_input = torch.rand([2, 2])
+    kwargs["kwargs"] = {}
+    kwargs["kwargs"]["x_ptr"] = ValuePack(x_meta_input, x_npu_input)
+    kwargs["kwargs"]["y_ptr"] = ValuePack(y_meta_input, y_npu_input)
+    kwargs["kwargs"]["output_ptr"] = ValuePack(out_meta_input, out_npu_input)
+
+    out_unpack = _unpack_meta(args, kwargs)
+    assert torch.equal(out_unpack[1]["kwargs"]["x_ptr"], x_meta_input)
+    assert torch.equal(out_unpack[1]["kwargs"]["y_ptr"], y_meta_input)
+    assert torch.equal(out_unpack[1]["kwargs"]["output_ptr"], out_meta_input)
+
+
+def test__unpack_npu_with_triton_input():
+    args = []
+    kwargs = {"kernel_idx": 0, "constant_args_idx": 0, "grid": [(97, 1, 1)], "tma_descriptor_metadata": {},
+              "tensor_to_clone": ["output_ptr"]}
+    x_meta_input = torch.rand([2, 2])
+    x_npu_input = torch.rand([2, 2])
+    y_meta_input = torch.rand([2, 2])
+    y_npu_input = torch.rand([2, 2])
+    out_meta_input = torch.rand([2, 2])
+    out_npu_input = torch.rand([2, 2])
+    kwargs["kwargs"] = {}
+    kwargs["kwargs"]["x_ptr"] = ValuePack(x_meta_input, x_npu_input)
+    kwargs["kwargs"]["y_ptr"] = ValuePack(y_meta_input, y_npu_input)
+    kwargs["kwargs"]["output_ptr"] = ValuePack(out_meta_input, out_npu_input)
+
+    graph = GeConcreteGraph(CompilerConfig(), name="graph_1")
+    graph_converter = _NpuGraphConverter(torch.fx.GraphModule({}, torch.fx.Graph()), graph=graph)
+    out_unpack = graph_converter._unpack_npu(args, kwargs)
+    assert torch.equal(out_unpack[1]["kwargs"]["x_ptr"], x_npu_input)
+    assert torch.equal(out_unpack[1]["kwargs"]["y_ptr"], y_npu_input)
+    assert torch.equal(out_unpack[1]["kwargs"]["output_ptr"], out_npu_input)
+
+
+def test_getitem_for_valuepack():
+    meta_input = torch.rand([2, 2])
+    npu_input = torch.rand([2, 2])
+    meta_dict = {"output_ptr": meta_input}
+    npu_dict = {"output_ptr": npu_input}
+    vp = ValuePack(meta_dict, npu_dict)
+
+    assert torch.equal(vp["output_ptr"], meta_input)
+
+
 if __name__ == "__main__":
     case_pattern = None
     if len(sys.argv) == 2:
         case_pattern = sys.argv[1]
     test_converter(case_pattern)
+    test__unpack_meta_with_triton_input()
+    test__unpack_npu_with_triton_input()
+    test_getitem_for_valuepack()
