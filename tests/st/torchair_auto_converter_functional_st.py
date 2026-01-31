@@ -471,6 +471,84 @@ class TestCustomOps(unittest.TestCase):
         input2 = torch.ones(2, 1)
         out = compile_func(input1, input2)        
 
+    def test_auto_converter_no_match_inputs(self):
+        m.define("my_op_no_match_inputs(Tensor self, Tensor updates, Tensor indices) -> Tensor")
+
+        @torch.library.impl(m, "my_op_no_match_inputs", "Meta")
+        def my_op_no_match_inputs_meta(self, updates, indices):
+            return self
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y, z):
+                x = torch.ops.npu.my_op_no_match_inputs(x, y, z)
+                add = torch.add(x, 5)
+                return add
+
+        input0 = torch.zeros(2, 2, dtype=torch.float32)
+        input1 = torch.randn(2, 2, dtype=torch.float32)
+        input2 = torch.randn(2, 2, dtype=torch.float32)
+        model = torch.compile(Model(), backend=npu_backend, dynamic=True)
+        with self.assertRaises(RuntimeError) as context:
+            model(input0, input1, input2)
+        self.assertTrue("Failed to auto converter npu.my_op_no_match_inputs.default to AscendIR: " + \
+            "the number of torch tensor inputs does not match the AscendIR MyOpNoMatchInputs inputs, " + \
+            "you can check your torch and AscendIR registration or try to implement " + \
+            "the converter manually according to the following code." in str(context.exception))
+
+    def test_auto_converter_no_match_attrs(self):
+        m.define("my_op_no_match_attrs(Tensor self, Tensor updates, *, int indices=2, int dim=2) -> Tensor")
+
+        @torch.library.impl(m, "my_op_no_match_attrs", "Meta")
+        def my_op_no_match_attrs_meta(self, updates, indices=2, dim=2):
+            return self
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                x = torch.ops.npu.my_op_no_match_attrs(x, y)
+                add = torch.add(x, 5)
+                return add
+
+        input0 = torch.zeros(2, 2, dtype=torch.float32)
+        input1 = torch.randn(2, 2, dtype=torch.float32)
+        model = torch.compile(Model(), backend=npu_backend, dynamic=True)
+        with self.assertRaises(RuntimeError) as context:
+            model(input0, input1)
+        self.assertTrue("Failed to auto converter npu.my_op_no_match_attrs.default to AscendIR: " + \
+            "the number of torch non-tensor inputs greater than the AscendIR MyOpNoMatchAttrs attrs, " + \
+            "you can check your torch and AscendIR registration or try to implement " + \
+            "the converter manually according to the following code." in str(context.exception))
+
+    def test_auto_converter_no_match_outputs(self):
+        m.define("my_op_no_match_outputs(Tensor(a!) self, Tensor updates, *, int indices=2) -> Tensor")
+
+        @torch.library.impl(m, "my_op_no_match_outputs", "Meta")
+        def my_op_no_match_outputs_meta(self, updates, indices=2):
+            return self
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                x = torch.ops.npu.my_op_no_match_outputs(x, y)
+                add = torch.add(x, 5)
+                return add
+
+        input0 = torch.zeros(2, 2, dtype=torch.float32)
+        input1 = torch.randn(2, 2, dtype=torch.float32)
+        model = torch.compile(Model(), backend=npu_backend, dynamic=True)
+        with self.assertRaises(RuntimeError) as context:
+            model(input0, input1)
+        self.assertTrue("Failed to auto converter npu.my_op_no_match_outputs.default to AscendIR: " + \
+            "the number of torch outputs does not match the AscendIR MyOpNoMatchOutputs outputs, " + \
+            "you can check your torch and AscendIR registration or try to implement " + \
+            "the converter manually according to the following code." in str(context.exception))
 
 if __name__ == "__main__":
     unittest.main()
