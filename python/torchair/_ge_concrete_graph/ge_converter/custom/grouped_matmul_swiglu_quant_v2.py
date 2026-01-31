@@ -18,6 +18,9 @@ Y_RANK = 2
 TORCH_INT8 = 1
 FLOAT4_E2M1 = 296
 FLOAT4_E1M2 = 297
+TORCH_HIFLOAT8 = 290
+TORCH_FLOAT8E4M3 = 23
+TORCH_FLOAT8E5M2 = 24
 
 
 def fill_empty_tensorlist(input_data, desired_dtype):
@@ -153,6 +156,8 @@ def conveter_npu_grouped_matmul_swiglu_quant_v2(
     y.desc.dtype = torch_dtype_value_to_ge_proto_type(quant_dtype)
     if quant_dtype != TORCH_INT8: # not torch.int8
         y_scale.desc.dtype = ProtoDataType.DT_FLOAT8_E8M0
+    if quant_dtype in (TORCH_INT8, TORCH_HIFLOAT8, TORCH_FLOAT8E4M3, TORCH_FLOAT8E5M2) and quant_mode == 0: 
+        y_scale.desc.dtype = ProtoDataType.DT_FLOAT
     if quant_dtype in (FLOAT4_E2M1, FLOAT4_E1M2): # torch_npu.float4_e2m1fn_x2 or torch_npu.float4_e1m2fn_x2
         y = pack_mxfp4_tensor_to_uint8(y)
     return y, y_scale
