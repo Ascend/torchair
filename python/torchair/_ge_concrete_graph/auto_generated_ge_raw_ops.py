@@ -83008,7 +83008,7 @@ def DynamicDualLevelMxQuant(x: Tensor,
 
 
 # This api is auto-generated from IR GroupedDynamicBlockQuant
-@auto_convert_to_tensor([False], [False])
+@auto_convert_to_tensor([False, False], [False, False])
 def GroupedDynamicBlockQuant(x: Tensor,
                              group_list: Tensor,
                              *,
@@ -83045,6 +83045,9 @@ def GroupedDynamicBlockQuant(x: Tensor,
     op.input.append(x.tensor)
     op.input_desc.add().CopyFrom(x.desc)
     op.input_desc[-1].name = "x"
+    op.input.append(group_list.tensor)
+    op.input_desc.add().CopyFrom(group_list.desc)
+    op.input_desc[-1].name = "group_list"
 
     # process attrs
     op.attr["min_scale"].f = min_scale
