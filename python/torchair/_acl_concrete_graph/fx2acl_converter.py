@@ -157,17 +157,16 @@ class AclConcreteGraph(ConcreteGraphBase):
         # DONT CHANGE import path of "AclGraph, AclGraphCacheInfo"
         # which is "from torchair._acl_concrete_graph.acl_graph import"
         head.splice('''
-            from collections import OrderedDict
             import threading
-            from typing import List, Optional, Callable, Any, Dict, Tuple, Union
+            from collections import OrderedDict
+
             import torch
             from torch._dynamo.testing import rand_strided
-            from torch.profiler import record_function
+
             import torch_npu
             from torchair._acl_concrete_graph.acl_graph import AclGraph, AclGraphCacheInfo
             from torchair._acl_concrete_graph.acl_graph_cache_utils import SerializableGraphModule
-            from torchair.configs.compiler_config import CompilerConfig
-            from torchair.ops._tagged_event import _npu_create_tagged_event
+
             assert_size_stride = torch._C._dynamo.guards.assert_size_stride
             ''')
 
@@ -552,7 +551,10 @@ class AclConcreteGraph(ConcreteGraphBase):
                 kernel_code.splice(input_code)
                 assert_code = self._codegen_assert_size_stride()
                 kernel_code.splice(assert_code)
-            kernel_code.writeline('''return acl_graph(*args, **kwargs)''')
+            if self.config.debug.run_eagerly:
+                kernel_code.writeline('''return forward(*args, **kwargs)''')
+            else:
+                kernel_code.writeline('''return acl_graph(*args, **kwargs)''')
         return kernel_code.getvalue()
 
     def _codegen_assert_size_stride(self):

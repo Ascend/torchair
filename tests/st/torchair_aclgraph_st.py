@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import sys
 from typing import Tuple, List
 import unittest
@@ -3436,6 +3437,122 @@ class AclGraphSt(unittest.TestCase):
         self.assertFalse(any("After fx graph pass(" in log for log in cm.output),
                         f"Not Expect that DEBUG 'After fx graph pass(' found in logs: {cm.output}"
                         )
+
+    def test_force_eager_with_multi_stream_and_static_kernel(self):
+        tagged_event1 = torchair.ops.npu_create_tagged_event(tag="event1")
+        tagged_event2 = torchair.ops.npu_create_tagged_event(tag="event2")
+
+        class StubTensor:
+            def record_stream(self, stream):
+                return 
+
+        origin = torch.Tensor.record_stream
+        torch.Tensor.record_stream = StubTensor.record_stream
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+            
+            def forward(self, in1, in2, in3, in4):
+                add_result = torch.add(in1, in2)
+                torchair.ops.npu_tagged_event_record(tagged_event1)
+                with torchair.scope.npu_stream_switch('1'):
+                    torchair.ops.npu_tagged_event_wait(tagged_event1)
+                    mm_result = torch.mm(in3, in4)
+                    torchair.ops.npu_tagged_event_record(tagged_event2)
+                    B = in3 + in4
+                    torchair.ops.npu_record_tagged_stream(B, '1')
+                mm1 = torch.mm(in3, in4)
+                del B
+                C = torch.ones(1000, 1000, dtype = torch.float16)
+                C.add_(2)
+                with torchair.scope.npu_stream_switch('2'):
+                    torchair.ops.npu_tagged_event_wait(tagged_event2)
+                    add2 = torch.add(in3, in4)
+                return add_result, mm_result, mm1, add2, C
+        
+        model = Model()
+        config = CompilerConfig()
+        config.mode = "npugraph_ex"
+        config.experimental_config.aclgraph._aclnn_static_shape_kernel = True
+        npu_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(model, backend=npu_backend, dynamic=False, fullgraph=True, options={"force_eager": True})
+        in1 = torch.randn(1000, 1000, dtype = torch.float16)
+        in2 = torch.randn(1000, 1000, dtype = torch.float16)
+        in3 = torch.randn(1000, 1000, dtype = torch.float16)
+        in4 = torch.randn(1000, 1000, dtype = torch.float16)
+        with capture_logger() as stdout:
+            try:
+                result = model(in1, in2, in3, in4)
+            except Exception:
+                pass
+        
+        expected_pattern = re.compile(
+            r'def forward\(\*args,\s*node_info=\[\],\s*is_capturing:\s*bool\s*=\s*False\):'
+            r'.*?'
+            r'arg0_1,\s*arg1_1,\s*arg2_1,\s*arg3_1\s*=\s*args'
+            r'.*?'
+            r'global\s+_GLOBAL_USER_TAG_TO_STREAM'
+            r'.*?'
+            r'with torch\.npu\.stream\(_GLOBAL_USER_TAG_TO_STREAM\[\'1\'\]\):'
+            r'.*?'
+            r'ones = torch\.ops\.aten\.ones.*?\(.*?device\(type=\'cpu\'\).*?\)'
+            r'.*?'
+            r'with torch\.npu\.stream\(_GLOBAL_USER_TAG_TO_STREAM\[\'2\'\]\):'
+            r'.*?'
+            r'return\s+\(add,\s+mm,\s+mm_1,\s+add_3,\s+add_2\)',
+            re.DOTALL
+        )
+        self.assertIsNotNone(expected_pattern.search(stdout.getvalue()))
+    
+    def test_force_eager_with_multi_stream(self):
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+            
+            def forward(self, in1, in2, in3, in4):
+                add_result = torch.add(in1, in2)
+                with torchair.scope.npu_stream_switch('2', 3):
+                    torchair.scope.npu_wait_tensor(in4, add_result)
+                    mm_result1 = torch.mm(in3, in4)
+                    with torchair.scope.npu_stream_switch('3', 3):
+                        torchair.scope.npu_wait_tensor(in3, add_result)
+                        mm_result2 = torch.mm(in3, in4)
+                return add_result, mm_result1, mm_result2
+        
+        model = Model()
+        config = CompilerConfig()
+        config.mode = "npugraph_ex"
+        npu_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(model, backend=npu_backend, dynamic=False, fullgraph=True, options={"force_eager": True})
+        in1 = torch.randn(1000, 1000, dtype = torch.float16)
+        in2 = torch.randn(1000, 1000, dtype = torch.float16)
+        in3 = torch.randn(1000, 1000, dtype = torch.float16)
+        in4 = torch.randn(1000, 1000, dtype = torch.float16)
+        with capture_logger() as stdout:
+            try:
+                result = model(in1, in2, in3, in4)
+            except Exception:
+                pass
+        
+        expected_pattern = re.compile(
+            r'def forward\(\*args,\s*node_info=\[\],\s*is_capturing:\s*bool\s*=\s*False\):'
+            r'.*?'
+            r'arg0_1,\s*arg1_1,\s*arg2_1,\s*arg3_1\s*=\s*args'
+            r'.*?'
+            r'global\s+_GLOBAL_USER_TAG_TO_STREAM'
+            r'.*?'
+            r'with torch\.npu\.stream\(_GLOBAL_USER_TAG_TO_STREAM\[\'2\'\]\):'
+            r'.*?'
+            r'with torch\.npu\.stream\(_GLOBAL_USER_TAG_TO_STREAM\[\'3\'\]\):'
+            r'.*?'
+            r'return\s+\(add,\s+mm,\s+mm_1\)',
+            re.DOTALL
+        )
+        self.assertIsNotNone(expected_pattern.search(stdout.getvalue()))
 
 
 if __name__ == '__main__':
