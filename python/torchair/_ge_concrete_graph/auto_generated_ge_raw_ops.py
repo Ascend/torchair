@@ -83067,3 +83067,60 @@ def GroupedDynamicBlockQuant(x: Tensor,
     output_index += 1
 
     return y, scale
+
+
+# This api is auto-generated from IR QuantAllReduce
+@auto_convert_to_tensor([False, False], [False, False])
+def QuantAllReduce(x: Tensor,
+                   scales: Tensor,
+                   *,
+                   group: str,
+                   world_size: int,
+                   reduce_op: str = "sum",
+                   output_dtype: int = 27,
+                   dependencies=[],
+                   node_name=None):
+    """REG_OP(QuantAllReduce)\n
+    .INPUT(x, TensorType({DT_INT8, DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_FLOAT4_E1M2, DT_FLOAT4_E2M1}))\n
+    .INPUT(scales, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))\n
+    .OUTPUT(out_put, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT}))\n
+    .REQUIRED_ATTR(group, String)\n
+    .ATTR(reduce_op, String, "sum")\n
+    .ATTR(output_dtype, Int, 27)\n
+    .REQUIRED_ATTR(world_size, Int)\n
+    .OP_END_FACTORY_REG(QuantAllReduce)\n
+    """
+    # process inputs
+    inputs = {
+        "x": x,
+        "scales": scales,
+    }
+
+    # process attrs
+    attrs = {
+        "group": attr.Str(group),
+        "reduce_op": attr.Str(reduce_op),
+        "output_dtype": attr.Int(output_dtype),
+        "world_size": attr.Int(world_size),
+    }
+
+    # process outputs
+    outputs = [
+        "out_put",
+    ]
+
+    return ge_op(
+        op_type="QuantAllReduce",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("QuantAllReduce") \
+         .input("x", "DT_INT8, DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_FLOAT4_E1M2, DT_FLOAT4_E2M1") \
+         .input("scales", "DT_FLOAT, DT_FLOAT8_E8M0") \
+         .required_attr("group", attr.Str) \
+         .attr("reduce_op", attr.Str("sum")) \
+         .attr("output_dtype", attr.Int(27)) \
+         .required_attr("world_size", attr.Int) \
+         .output("out_put", "DT_FLOAT16, DT_BF16, DT_FLOAT")
+    )
