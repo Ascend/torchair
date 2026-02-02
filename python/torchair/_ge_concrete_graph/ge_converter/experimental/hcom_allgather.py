@@ -8,6 +8,7 @@ from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_conv
 from torchair._ge_concrete_graph.hcom_utils import get_group_name_and_record
 from torchair._ge_concrete_graph.utils import dtype_promote
 from torchair.ge._ge_graph import Tensor, DataType, dont_prune_me
+from torchair._utils.adjust_traceable_collective_remaps import all_gather_tensor_inplace_fixed
 
 from .hcom_allreduce import npu_define_lib
 from .hcom_broadcast import op_broadcast
@@ -19,7 +20,7 @@ op_allgather_in_tensor = npu_define_lib.define(
     "allgather_in_tensor(Tensor out, Tensor input, str tag, int[] ranks, int group_size) -> Tensor")
 
 _op_allgather_in_tensor_shape = npu_define_lib.define(
-    "_allgather_in_tensor_shape(Tensor out, Tensor input, SymInt[] output_shape, \
+    "_allgather_in_tensor_shape(Tensor input, SymInt[] output_shape, \
         str tag, int[] ranks, int group_size) -> Tensor")
 
 op_allgather_in_tensor_uneven = npu_define_lib.define(
@@ -63,19 +64,18 @@ def conveter_allgather_in_tensor(
 
 
 def _allgather_in_tensor_shape_npu(
-        output_tensor: torch.Tensor,
         input_tensor: torch.Tensor,
         output_shape: List[int],
         tag: str,
         ranks: List[int],
         group_size: int, ):
     pg = c10d._find_or_create_pg_by_ranks_and_tag(tag, ranks, group_size)
+    output_tensor = input_tensor.new_empty(output_shape)
     c10d.all_gather_into_tensor(output_tensor, input_tensor, group=pg, async_op=False)
     return output_tensor
 
 
 def _allgather_in_tensor_shape_meta(
-        output_tensor: torch.Tensor,
         input_tensor: torch.Tensor,
         output_shape: List[int],
         tag: str,
@@ -86,7 +86,6 @@ def _allgather_in_tensor_shape_meta(
 
 @register_fx_node_ge_converter(torch.ops.npu_define._allgather_in_tensor_shape.default)
 def conveter_allgather_in_tensor_shape(
-        output_tensor: torch.Tensor,
         input_tensor: torch.Tensor,
         output_shape: List[int],
         tag: str,
@@ -110,12 +109,15 @@ def npu_allgather_in_tensor_patch_dist(output_tensor, input_tensor, group=None, 
                        f'does not support the async_op = True parameter for collective communication APIs.')
     if group is None:
         group = c10d._world.default_pg
+
+    if torch.__version__ >= '2.1.0':
+        return all_gather_tensor_inplace_fixed(output_tensor, input_tensor, group, async_op)
+
     ranklist = torch.distributed.get_process_group_ranks(group)
     tag = c10d._get_group_tag(group)
     size_ = len(ranklist)
     #allgather中的output_tensor输入只是使用它的size，并不会对tensor做改变，后续版本会变更为size输入
-    out = torch.ops.npu_define._allgather_in_tensor_shape(output_tensor, input_tensor, \
-        output_tensor.shape, tag, ranklist, size_)
+    out = torch.ops.npu_define._allgather_in_tensor_shape(input_tensor, output_tensor.shape, tag, ranklist, size_)
     output_tensor.copy_(out)
 
 

@@ -6,9 +6,11 @@ import shutil
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
+from torch.fx.graph_module import GraphModule
 import torch_npu
 import torchair
 from torchair.configs.compiler_config import CompilerConfig
+from torchair._utils.graph_transform_observer import GraphTransformObserver
 
 
 config = CompilerConfig()
@@ -83,6 +85,17 @@ class AllGatherInTensor(torch.nn.Module):
             out_tensor, x, dist.group.WORLD)
         torch.distributed.all_gather_into_tensor(out_tensor, x)
         return out_tensor
+
+
+class AllGatherInTensorNotAlias(torch.nn.Module):
+    def __init__(self, world_size):
+        super().__init__()
+        self.world_size = world_size
+
+    def forward(self, x):
+        out_tensor = torch.zeros_like(x).repeat(self.world_size, 1)
+        torch.distributed.all_gather_into_tensor(out_tensor, x)
+        return out_tensor + 1
 
 
 class AllReduce(torch.nn.Module):
@@ -711,6 +724,36 @@ class HcomTest(unittest.TestCase):
         results.append(ori_result.equal(compile_result))
         dist.destroy_process_group()
     
+    @classmethod
+    def _test_allgather_into_tensor_inplace(cls, rank, world_size, init_pg, dynamic, results):
+        torch.npu.set_device(rank)
+        init_pg(rank, world_size)
+
+        x = torch.randn(2).to("npu:" + str(rank))
+        mod = AllGatherInTensorNotAlias(world_size).to("npu:" + str(rank))
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        npu_backend = torchair.get_npu_backend(compiler_config=config)  
+        opt_mod = torch.compile(mod, dynamic=dynamic,fullgraph=True, backend=npu_backend)
+
+        ori = GraphTransformObserver.dump_gm
+        def dump_gm_patch(self, gm: GraphModule, file_name: str):
+            if file_name == 'graph_after_eliminate_dead_code':
+                if any(node.op == 'call_function' and node.target == torch.ops.aten.zeros_like.default
+                        for node in gm.graph.nodes):
+                    raise AssertionError("Except no zeros_like node in fx graph")
+        GraphTransformObserver.dump_gm = dump_gm_patch
+        try:
+            compile_result = opt_mod(x)
+            results.append(True)
+        except AssertionError as _:
+            results.append(False)
+        finally:
+            GraphTransformObserver.dump_gm = ori
+        
+        dist.destroy_process_group()
+    
     def _test_multiprocess(self, f, init_pg, world_size, dynamic):
         ctx = mp.get_context('spawn')
         ps = []
@@ -860,6 +903,10 @@ class HcomTest(unittest.TestCase):
         self.assertTrue(self._test_multiprocess(HcomTest._test_allgather_into_tensor,
                                                 HcomTest._init_dist_hccl_with_patch, world_size, True))
         self.assertTrue(self._test_multiprocess(HcomTest._test_allgather_into_tensor,
+                                                HcomTest._init_dist_hccl_with_patch, world_size, False))
+        self.assertTrue(self._test_multiprocess(HcomTest._test_allgather_into_tensor_inplace,
+                                                HcomTest._init_dist_hccl_with_patch, world_size, True))
+        self.assertTrue(self._test_multiprocess(HcomTest._test_allgather_into_tensor_inplace,
                                                 HcomTest._init_dist_hccl_with_patch, world_size, False))
 
     @unittest.skipIf(torch.__version__ < '2.3.1', "patch needed for torch version < 2.3.1")
