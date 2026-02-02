@@ -3998,6 +3998,7 @@ REG_OP(ScatterPaKvCache)
                              DT_INT16, DT_UINT16, DT_FLOAT16, DT_BF16, DT_INT32, DT_UINT32, DT_FLOAT}))
     .OP_END_FACTORY_REG(ScatterPaKvCache)
 
+
 /**
  * @brief Fusion op of quant all reduce.
  * @par Inputs:
@@ -4023,6 +4024,35 @@ REG_OP(QuantAllReduce)
     .ATTR(output_dtype, Int, 27)
     .REQUIRED_ATTR(world_size, Int)
     .OP_END_FACTORY_REG(QuantAllReduce)
+
+
+/**
+ * @brief Fusion op of quant and reduce scatter.
+ * @par Inputs:
+ * two inputs, including:
+ * @li x: A matrix Tensor. The type support int8, hifloat8, float8_e4m3fn, float8_e5m2, float4_e1m2, float4_e2m1. The
+ * format supports ND.
+ * @li scale: A matrix Tensor. The type support float, float8_e8m0. The format supports ND.
+ *
+ * @par Outputs:
+ * out_put: A matrix Tensor. The type support float16, bfloat16, float. The format supports ND.
+ *
+ * @par Attributes:
+ * @li group: A required string identifying the group of ranks participating in the op.
+ * @li reduce_op: An optional string identifying the reduction operation to perform. Default: "sum".
+ * @li output_dtype: An optional int identifying the data type of output. The type support 0(float), 1(float16),
+ * 27(bfloat16). Default: 27(bfloat16).
+ * @li world_size: A required int identifying the rank size.
+ */
+REG_OP(QuantReduceScatter)
+    .INPUT(x, TensorType({DT_INT8, DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_FLOAT4_E1M2, DT_FLOAT4_E2M1}))
+    .INPUT(scales, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))
+    .OUTPUT(out_put, TensorType({DT_FLOAT16, DT_BF16, DT_FLOAT}))
+    .REQUIRED_ATTR(group, String)
+    .ATTR(reduce_op, String, "sum")
+    .ATTR(output_dtype, Int, 27)
+    .REQUIRED_ATTR(world_size, Int)
+    .OP_END_FACTORY_REG(QuantReduceScatter)
 
 }  // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_EXPERIMENT_OPS_H_
