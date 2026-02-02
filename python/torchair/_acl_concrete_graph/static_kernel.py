@@ -59,10 +59,14 @@ def compile_static_kernel(fx_func, *args, build_dir=None, **kwargs):
         "op_compiler",
         "-p", str(chosen_dir),
         "-v", _torchair.GetSocName(),
-        "-l", "info",
         "-j", _compute_opc_compile_jobs(),
         "-o", str(result_root),
     ]
+    
+    log_level = _get_compiler_log_level()
+    if log_level is not None:
+        cmd.extend(["-l", log_level])
+
     try:
         res = static_compile(cmd)
         logger.debug(f"execute op_compiler, msg: {res.stdout}")
@@ -367,3 +371,16 @@ def get_op_hash(op_json: Path, algo: str = "sha256") -> str:
     """
     data = op_json.read_bytes()
     return hashlib.new(algo, data).hexdigest()
+
+
+def _get_compiler_log_level():
+    log_level_map = {
+        "0": "debug",
+        "1": "info",
+        "2": "warning",
+        "3": "error",
+        "4": None
+    }
+    
+    env_level = os.getenv("ASCEND_GLOBAL_LOG_LEVEL", "3")
+    return log_level_map.get(env_level, "error")
