@@ -4054,5 +4054,114 @@ REG_OP(QuantReduceScatter)
     .REQUIRED_ATTR(world_size, Int)
     .OP_END_FACTORY_REG(QuantReduceScatter)
 
+
+/**
+ * @brief Fusion op of matmul allto all.
+ * @par Inputs:
+ * two inputs, including:
+ * @li x1: A matrix Tensor. The type support bfloat16, float16, float8_e4m3fn, float8_e5m2. The format supports ND.
+ * @li x2: A matrix Tensor. The type support bfloat16, float16, float8_e4m3fn, float8_e5m2. The format supports ND.
+ * @li bias: A matrix Tensor. The type support bfloat16, float16, float. The format supports ND.
+ * @li x1_scale: A matrix Tensor. The type support float. The format supports ND.
+ * @li x2_scale: A matrix Tensor. The type support float. The format supports ND.
+ * @li comm_scale: A matrix Tensor. The type support float. The format supports ND.
+ * @li x1_offset: A matrix Tensor. The type support float. The format supports ND.
+ * @li x2_offset: A matrix Tensor. The type support float, float16. The format supports ND.
+ * @par Outputs:
+ * @li y: A matrix Tensor. The type support bfloat16, float16, float. The format supports ND.
+ * @par Attributes:
+ * @li group: A string. Communication domain identifier.
+ * @li world_size: An int. Default: -1.
+ * @li all2all_axes: An ListInt. Indicate the data direction for All2All communication. Default: {-1, -2}.
+ * @li y_dtype: An int. Declare the output dtype. Default: static_cast<int64_t>(ge::DT_UNDEFINED) 为28.
+ * @li x1_quant_mode: An int. Quantization mode of x1. Default: 0.
+ * @li x2_quant_mode: An int. Quantization mode of x2. Default: 0.
+ * @li comm_quant_mode: An int. Quantitative types for communication. Default: 0.
+ * @li comm_quant_dtype: An int. Communication accuracy. Default: static_cast<int64_t>(ge::DT_UNDEFINED) 为28.
+ * @li transpose_x1: A bool. Whether x1 is transposed. Default: false.
+ * @li transpose_x2: A bool. Whether x2 is transposed. Default: false.
+ * @li group_size: An int. Default: 0.
+ */
+REG_OP(MatmulAlltoAll)
+    .INPUT(x1, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2}))
+    .INPUT(x2, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2}))
+    .OPTIONAL_INPUT(bias, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))
+    .OPTIONAL_INPUT(x1_scale, TensorType({DT_FLOAT}))
+    .OPTIONAL_INPUT(x2_scale, TensorType({DT_FLOAT}))
+    .OPTIONAL_INPUT(comm_scale, TensorType({DT_FLOAT}))
+    .OPTIONAL_INPUT(x1_offset, TensorType({DT_FLOAT}))
+    .OPTIONAL_INPUT(x2_offset, TensorType({DT_FLOAT}))
+    .OUTPUT(y, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))
+    .REQUIRED_ATTR(group, String)
+    .REQUIRED_ATTR(world_size, Int)
+    .ATTR(all2all_axes, ListInt, {-1, -2})
+    .ATTR(y_dtype, Int, 28)
+    .ATTR(x1_quant_mode, Int, 0)
+    .ATTR(x2_quant_mode, Int, 0)
+    .ATTR(comm_quant_mode, Int, 0)
+    .ATTR(comm_quant_dtype, Int, 28)
+    .ATTR(transpose_x1, Bool, false)
+    .ATTR(transpose_x2, Bool, false)
+    .ATTR(group_size, Int, 0)
+    .OP_END_FACTORY_REG(MatmulAlltoAll)
+
+
+/**
+ * @brief Fusion op of allto all matmul.
+ * @par Inputs:
+ * two inputs, including:
+ * @li x1: A matrix Tensor. The type support bfloat16, float16. The format supports ND.
+ * @li x2: A matrix Tensor. The type support bfloat16, float16. The format supports ND.
+ * @li bias: A matrix Tensor. The type support bfloat16, float16, float. The format supports ND.
+ * @li x1_scale: A matrix Tensor. The type support float. The format supports ND.
+ * @li x2_scale: A matrix Tensor. The type support float. The format supports ND.
+ * @li comm_scale: A matrix Tensor. The type support float. The format supports ND.
+ * @li x1_offset: A matrix Tensor. The type support float. The format supports ND.
+ * @li x2_offset: A matrix Tensor. The type support float, float16. The format supports ND.
+ *
+ * @par Outputs:
+ * @li y: A matrix Tensor. The type support bfloat16, float16. The format supports ND.
+ * @li all2all_out: A matrix Tensor. The type support bfloat16, float16. The format supports ND.
+ *
+ * @par Attributes:
+ * @li group: A string. Communication domain identifier.
+ * @li world_size: An int. Default: -1.
+ * @li all2all_axes: An ListInt. Indicate the data direction for All2All communication. Default: {-2, -1}.
+ * @li y_dtype: An int. Declare the output dtype. Default: static_cast<int64_t>(ge::DT_UNDEFINED) 为28.
+ * @li x1_quant_mode: An int. Quantization mode of x1. Default: 0.
+ * @li x2_quant_mode: An int. Quantization mode of x2. Default: 0.
+ * @li comm_quant_mode: An int. Quantitative types for communication. Default: 0.
+ * @li x1_quant_dtype: An int. Quantization type of the left matrix input to Matmul after communication. Default: static_cast<int64_t>(ge::DT_UNDEFINED) 为28.
+ * @li comm_quant_dtype: An int. Quantization type of x1 input before communication. Default: static_cast<int64_t>(ge::DT_UNDEFINED) 为28.
+ * @li transpose_x1: A bool. Whether x1 is transposed. Default: false.
+ * @li transpose_x2: A bool. Whether x2 is transposed. Default: false.
+ * @li group_size: An int. Default: 0.
+ * @li alltoall_out_flag: A bool. Default: true.
+ */
+REG_OP(AlltoAllMatmul)
+    .INPUT(x1, TensorType({DT_BF16, DT_FLOAT16}))
+    .INPUT(x2, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2}))
+    .OPTIONAL_INPUT(bias, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))
+    .OPTIONAL_INPUT(x1_scale, TensorType({DT_FLOAT, DT_BF16, DT_FLOAT16}))
+    .OPTIONAL_INPUT(x2_scale, TensorType({DT_FLOAT}))
+    .OPTIONAL_INPUT(comm_scale, TensorType({DT_FLOAT}))
+    .OPTIONAL_INPUT(x1_offset, TensorType({DT_FLOAT}))
+    .OPTIONAL_INPUT(x2_offset, TensorType({DT_FLOAT}))
+    .OUTPUT(y, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))
+    .OUTPUT(all2all_out, TensorType({DT_BF16, DT_FLOAT16}))
+    .REQUIRED_ATTR(group, String)
+    .REQUIRED_ATTR(world_size, Int)
+    .ATTR(all2all_axes, ListInt, {-2, -1})
+    .ATTR(y_dtype, Int, 28)
+    .ATTR(x1_quant_mode, Int, 0)
+    .ATTR(x2_quant_mode, Int, 0)
+    .ATTR(comm_quant_mode, Int, 0)
+    .ATTR(x1_quant_dtype, Int, 28)
+    .ATTR(comm_quant_dtype, Int, 28)
+    .ATTR(transpose_x1, Bool, false)
+    .ATTR(transpose_x2, Bool, false)
+    .ATTR(group_size, Int, 0)
+    .ATTR(alltoall_out_flag, Bool, true)
+    .OP_END_FACTORY_REG(AlltoAllMatmul)
 }  // namespace ge
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_EXPERIMENT_OPS_H_
