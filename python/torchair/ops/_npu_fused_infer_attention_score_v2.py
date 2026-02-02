@@ -397,13 +397,18 @@ def npu_fused_infer_attention_score_v2_meta_impl(query, key, value, *, query_rop
 
     tmp_out = infer_attention_out_shape(attention_out_layout, query, query_layout, num_query_heads, value_d)
 
+    is_hifloat8_input = query.dtype == torch.uint8 and query_dtype is not None and query_dtype == torch_npu.hifloat8
+
     if quant_scale_out is not None:
         output_type = torch.int8
         if out_dtype is not None:
             output_type = ge_type_to_torch_type(torch_dtype_value_to_ge_type(out_dtype))
         attention_out = torch.empty_like(tmp_out, dtype=output_type)
-    elif query.dtype == torch.int8 or query.dtype == torch.float8_e4m3fn:
-        if query_rope is not None:
+    elif query.dtype == torch.int8 or query.dtype == torch.float8_e4m3fn or is_hifloat8_input:
+        if out_dtype is not None:
+            output_type = ge_type_to_torch_type(torch_dtype_value_to_ge_type(out_dtype))
+            attention_out = torch.empty_like(tmp_out, dtype=output_type)
+        elif query_rope is not None:
             attention_out = torch.empty_like(tmp_out, dtype=query_rope.dtype)
         else:
             attention_out = torch.empty_like(tmp_out, dtype=torch.half)
