@@ -158,6 +158,12 @@ def conveter_npu_grouped_matmul_swiglu_quant_v2(
         y_scale.desc.dtype = ProtoDataType.DT_FLOAT8_E8M0
     if quant_dtype in (TORCH_INT8, TORCH_HIFLOAT8, TORCH_FLOAT8E4M3, TORCH_FLOAT8E5M2) and quant_mode == 0: 
         y_scale.desc.dtype = ProtoDataType.DT_FLOAT
-    if quant_dtype in (FLOAT4_E2M1, FLOAT4_E1M2): # torch_npu.float4_e2m1fn_x2 or torch_npu.float4_e1m2fn_x2
-        y = pack_mxfp4_tensor_to_uint8(y)
+    if hasattr(torch, "float4_e2m1fn_x2"): # torch2.8.0 support torch.float4_e2m1fn_x2
+        if quant_dtype == FLOAT4_E1M2:
+            y = pack_mxfp4_tensor_to_uint8(y)
+        if quant_dtype == FLOAT4_E2M1:
+            y.desc.dtype = torch_dtype_value_to_ge_proto_type(quant_dtype)
+    else:
+        if quant_dtype in (FLOAT4_E2M1, FLOAT4_E1M2): # torch_npu.float4_e2m1fn_x2 or torch_npu.float4_e1m2fn_x2
+            y = pack_mxfp4_tensor_to_uint8(y)
     return y, y_scale
