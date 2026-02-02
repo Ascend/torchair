@@ -28,6 +28,7 @@ inductor-npu-ext 当前基于 AscendC 生成融合Kernel。
 ```bash
 pip3 install torch_npu==2.8 # 通过pip安装torch_npu时会自动安装依赖的torch版本
 pip3 install numpy # torch依赖numpy
+pip3 install importlib-metadata # 解决部分环境下缺少importlib-metadata包的问题
 ```
 
 ### 安装CANN-8.5.0
@@ -41,9 +42,24 @@ pip3 install numpy # torch依赖numpy
 > inductor-npu-ext仍处于实验阶段，代码位置可能变动。
 
 ```bash
-git clone git@gitcode.com:Ascend/torchair.git
+git clone https://gitcode.com/Ascend/torchair.git
 cd torchair/experimental/_inductor_npu_ext/
-pip3 install -e .
+pip3 install -e ./python/
+```
+
+### 其他环境依赖
+
+- CMake >= 3.16.0
+- GCC >= 7.3.0
+
+在 openEuler 系统上，您可以通过以下命令安装：
+```
+sudo yum install cmake gcc
+```
+
+在 Ubuntu 系统上，您可以通过以下命令安装：
+```
+sudo apt-get install cmake gcc
 ```
 
 ---

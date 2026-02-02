@@ -186,10 +186,10 @@ _LoweringGuard.support(aten._to_copy, float_dtypes())
 _LoweringGuard.support(aten.bitwise_and, byte_dtypes())
 
 # reduction ops
-_LoweringGuard.support(aten.sum.dim_IntList, float_dtypes())
-_LoweringGuard.support(aten.mean.dim, float_dtypes())
-_LoweringGuard.support(aten.max.dim, float_dtypes())
-_LoweringGuard.support(aten.min.dim, float_dtypes())
+_LoweringGuard.support(aten.sum, float_dtypes())
+_LoweringGuard.support(aten.mean, float_dtypes())
+_LoweringGuard.support(aten.max, float_dtypes())
+_LoweringGuard.support(aten.min, float_dtypes())
 
 # view/shape ops
 _LoweringGuard.support(aten.unsqueeze, float_dtypes())

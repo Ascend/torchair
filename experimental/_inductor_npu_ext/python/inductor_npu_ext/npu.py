@@ -250,7 +250,7 @@ class NPUKernel(Kernel):
 
         self._kernel_def.writeline(f"{self.kernel_name}_artifacts = {{}}")
         for k, v in artifacts.items():
-            self._kernel_def.splice(f"{self.kernel_name}_artifacts['{k}'] = '''{v}'''")
+            self._kernel_def.splice(f"{self.kernel_name}_artifacts['{k}'] = r'''{v}'''")
         self._kernel_def.writeline(
             f"{self.kernel_name} = async_compile_ascendc(globals().get('async_compile', None), {self.kernel_name}_artifacts)")
 
@@ -322,14 +322,14 @@ class NPUKernel(Kernel):
         if len(road) == 0:
             logger.debug("Road for %s from %s to %s is dense", index, loop, self.contiguous_loop)
             load = ir.load(data, offset=offset, loop=loop)
-            if dtype == torch.bfloat16:
-                load = ir.cast(load, dst=torch.float32)
+            if dtype in {torch.bfloat16, torch.float16}:
+                load = ir.cast(load, dst=torch.float32, loop=loop)
             return load
 
         loop = road[0].src
         load = ir.load(data, offset=offset, loop=loop)
-        if dtype == torch.bfloat16:
-            load = ir.cast(load, dst=torch.float32)
+        if dtype in {torch.bfloat16, torch.float16}:
+            load = ir.cast(load, dst=torch.float32, loop=loop)
 
         logger.debug("Road for %s from %s to %s", index, loop, self.contiguous_loop)
         for op in road:
@@ -338,10 +338,12 @@ class NPUKernel(Kernel):
         return load
 
     def store(self, name, index, value, mode=None):
-        if self.get_asc_buffer(name).dtype == torch.bfloat16:
-            value = ir.cast(value, dst=torch.float32)
-            value = ir.cast(value, dst=torch.bfloat16)
-        store = ir.store(value, loop=self._index_to_loop(index))
+        dtype = self.get_asc_buffer(name).dtype
+        loop = self._index_to_loop(index)
+        if dtype in {torch.bfloat16, torch.float16}:
+            value = ir.cast(value, dst=torch.float32, loop=loop)
+            value = ir.cast(value, dst=dtype, loop=loop)
+        store = ir.store(value, loop=loop)
         self._store_buffer(name, store)
         self.cse.store_cache.pop(name)  # Inductor cse always cache value, but we don't want to cache it
         return store
@@ -354,9 +356,10 @@ class NPUKernel(Kernel):
     def store_reduction(self, name, index, reduction: _Tensor):
         reduce_dims, loop = self._get_reduce_dims_and_loop(index)
         reduction.as_loop(loop)
-        if self.get_asc_buffer(name).dtype == torch.bfloat16:
-            reduction = ir.cast(reduction, dst=torch.float32)
-            reduction = ir.cast(reduction, dst=torch.bfloat16)
+        dtype = self.get_asc_buffer(name).dtype
+        if dtype in {torch.bfloat16, torch.float16}:
+            reduction = ir.cast(reduction, dst=torch.float32, loop=loop)
+            reduction = ir.cast(reduction, dst=dtype, loop=loop)
         store = ir.store(reduction, loop=loop)
         self._store_buffer(name, store)
         self.cse.store_cache.pop(name)  # Inductor cse always cache value, but we don't want to cache it

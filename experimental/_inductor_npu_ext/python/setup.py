@@ -6,4 +6,5 @@ setup(name='inductor-npu-ext',
     include_package_data=True,
     install_requires=[
         'torch>=2.8.0',
+        'importlib-metadata',
     ])
