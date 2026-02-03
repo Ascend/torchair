@@ -13,7 +13,7 @@ X_DTYPE_SUPPORT_LIST = {
 
 # scales valid dtype list
 SCALES_DTYPE_SUPPORT_LIST = {
-    DataType.DT_FLOAT32,
+    DataType.DT_FLOAT,
     DataType.DT_FLOAT8_E8M0
 }
 
@@ -30,8 +30,6 @@ SCALES_DTYPE_SUPPORT_LIST = {
         scales_dtype=None  
     ),
 ])
-
-
 @register_fx_node_ge_converter(torch.ops.npu.npu_quant_all_reduce.default)
 def convert_npu_quant_all_reduce(
     x: Tensor,
