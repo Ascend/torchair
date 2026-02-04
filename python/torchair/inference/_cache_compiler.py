@@ -372,9 +372,7 @@ class CacheBackend:
         self.config = config or CompilerConfig()
         self.saver = saver
         self.extend_config = extend_config
-        # get decompositions before __call__ for distributed cases
-        from torchair.npu_fx_compiler import _get_merged_decompositions
-        self.custom_decompositions = _get_merged_decompositions(self.config, decompositions)
+        self.custom_decompositions = decompositions or {}
         if fw_compiler is None:
             from torchair.npu_fx_compiler import get_compiler
             self.compiler = get_compiler(config)
@@ -385,14 +383,16 @@ class CacheBackend:
         self.saver.save_reserved_params(gm)
         from torchair.npu_fx_compiler import (
             _compile_graph_with_aot,
+            _get_merged_decompositions,
             _process_send_recv
         )
+        decompositions = _get_merged_decompositions(self.config, self.custom_decompositions)
         _process_send_recv(gm, self.config)
 
         if hasattr(self.compiler, '_update_config'):
             self.compiler._update_config(self.config)
 
-        return _compile_graph_with_aot(gm, self.fw_compiler, inputs, self.config, self.custom_decompositions,
+        return _compile_graph_with_aot(gm, self.fw_compiler, inputs, self.config, decompositions,
                                        is_cache=True, bw_compiler=self.bw_compiler)
 
     def fw_compiler(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):

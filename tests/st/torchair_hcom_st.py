@@ -348,6 +348,11 @@ class TorchairSt(unittest.TestCase):
         pg_name_map.clear()
         self.assertEqual(len(PatchWorld.pg_map), 1)
 
+    def test_patch_for_traceable_collective_remaps(self):
+        from torch.distributed._functional_collectives import traceable_collective_remaps
+        self.assertTrue(torch.distributed.send in traceable_collective_remaps)
+        self.assertTrue(torch.distributed.recv in traceable_collective_remaps)
+
 
 if __name__ == '__main__':
     unittest.main()

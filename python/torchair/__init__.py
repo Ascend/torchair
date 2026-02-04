@@ -16,6 +16,7 @@ from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_conv
 from torchair.experimental.inference import use_internal_format_weight
 from torchair.core.utils import logger
 from torchair.patterns.pattern_pass_manager import register_replacement
+from torchair._utils.adjust_traceable_collective_remaps import adjust_traceable_collective_remaps
 
 import torchair.inference
 import torchair.llm_datadist
@@ -38,6 +39,8 @@ try:
 except (ImportError, AttributeError) as e:
     ALL_GATHER_INTO_TENSOR_UNEVEN = None
     REDUCE_SCATTER_TENSOR_UNEVEN = None
+
+adjust_traceable_collective_remaps()
 
 
 def register_fx_node_ge_converter(aten_op):
