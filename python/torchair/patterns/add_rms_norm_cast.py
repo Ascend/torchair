@@ -9,20 +9,10 @@ from torch._inductor.pattern_matcher import Match, MultiOutputPattern, CallFunct
 from torch._subclasses.fake_tensor import FakeTensorMode
 
 from torchair.core.utils import logger
-from torchair.patterns.pattern_pass_manager import _PatternPassManager, _check_pattern_stream
+from torchair.patterns.pattern_pass_manager import _PatternPassManager
 
 
 def _pattern_extra_check(match: Match) -> bool:
-    """
-    Checks if all nodes in the same stream.
-    """
-    if not _check_pattern_stream(match, "Addrmsnormcast"):
-        return False
-
-    return _check_view_shape(match)
-
-
-def _check_view_shape(match: Match) -> bool:
     """
     Check if the dimension argument in y.size(-1) is exactly -1 (last dimension of tensor y).
     """
@@ -36,10 +26,12 @@ def _check_view_shape(match: Match) -> bool:
             x1_node = node.args[0]
 
     if not view_node or not x1_node:
+        logger.debug("Extra check failed for addrmsnormcast, view_node or x1_node is none.")
         return False
 
     view_args = view_node.args[1]
     if not isinstance(view_args, (list, tuple)):
+        logger.debug("Extra check failed for addrmsnormcast, view_node args is not list or tuple.")
         return False
 
     x1_last_dim = None
@@ -134,8 +126,8 @@ def _register_addrmsnormcast_pattern(pattern_pass_manager: _PatternPassManager):
     with fake_mode:
         # sizes/values don't actually matter for initial trace
         # once we get a possible match we re-trace with the actual values and verify the match still holds
-        input_tensor = functools.partial(torch.empty, (1, 1, 2), device="npu", dtype=torch.float16)
-        kwargs_tensor = functools.partial(torch.empty, 2, device="npu", dtype=torch.float16)
+        input_tensor = functools.partial(torch.empty, (1, 1, 2), dtype=torch.float16)
+        kwargs_tensor = functools.partial(torch.empty, 2, dtype=torch.float16)
         pattern_pass_manager.register_pattern(
             search_fn=search_fn,
             replace_fn=replace_fn,

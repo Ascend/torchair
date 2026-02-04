@@ -7,6 +7,8 @@ try:
 except ImportError:
     from torch._inductor.pattern_matcher import inference_graph as fwd_only
 
+from torchair.core.utils import logger
+
 _global_pattern_pass_manager = None
 
 
@@ -14,34 +16,43 @@ def _return_true(match: Match):
     return True
 
 
-def _check_pattern_stream(match: Match, operator_name) -> bool:
+def _check_pattern_stream(match: Match) -> bool:
     """
     Checks if all nodes in the same stream.
     """
-    from torchair.core.utils import logger
-
     non_default_streams = set()
     has_default = False
+    node_info = []
+    stream_info = {}
 
     for node in match.nodes:
         if node.op == "call_function":
+            node_str = f"{node.name}({node.target})"
+            node_info.append(node_str)
             current_stream = node.meta.get("stream_label")
+            stream_label = current_stream if current_stream is not None else "default"
+            if stream_label not in stream_info:
+                stream_info[stream_label] = []
+            stream_info[stream_label].append(node.name)
+            
             if current_stream is None:
                 has_default = True
             else:
                 non_default_streams.add(current_stream)
                 if len(non_default_streams) > 1:
                     logger.debug(
-                        f"Cross-stream operation detected in pattern match for {operator_name}. "
-                        f"Multiple streams found: {non_default_streams}. "
+                        f"Cross-stream operation detected in pattern match. "
+                        f"Match nodes: {node_info}. "
+                        f"Stream distribution: {stream_info}. "
                         f"Fusion is not supported for cross-stream operations."
                     )
                     return False
 
     if has_default and len(non_default_streams) > 0:
         logger.debug(
-            f"Cross-stream operation detected in pattern match for {operator_name}. "
-            f"Multiple streams found: {non_default_streams}. "
+            f"Cross-stream operation detected in pattern match. "
+            f"Match nodes: {node_info}. "
+            f"Stream distribution: {stream_info}. "
             f"Fusion is not supported for cross-stream operations."
         )
         return False
@@ -68,6 +79,13 @@ class _PatternPassManager:
             pass_dict: Dict of passes to register to.
             extra_check: Additional check condition (default is _return_true).
         """
+        def add_stream_check(match: Match) -> bool:
+            # First check stream consistency
+            if not _check_pattern_stream(match):
+                return False
+            # Then run the user-provided extra_check
+            return extra_check(match)
+        
         if hasattr(register, '__code__') and 'pass_dicts' in register.__code__.co_varnames:
             register(
                 search_fn=search_fn,
@@ -75,7 +93,7 @@ class _PatternPassManager:
                 example_inputs=example_inputs,
                 trace_fn=trace_fn,
                 pass_dicts=self.pass_dict,
-                extra_check=extra_check,
+                extra_check=add_stream_check,
                 search_fn_pattern=search_fn_pattern
             )
         else:
@@ -85,7 +103,7 @@ class _PatternPassManager:
                 example_inputs=example_inputs,
                 trace_fn=trace_fn,
                 pass_dict=self.pass_dict,
-                extra_check=extra_check,
+                extra_check=add_stream_check,
             )
 
     def apply_pass(self, fx_graph):

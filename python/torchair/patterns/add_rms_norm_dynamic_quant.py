@@ -9,17 +9,10 @@ from torch._inductor.pattern_matcher import Match, MultiOutputPattern, CallFunct
 from torch._subclasses.fake_tensor import FakeTensorMode
 
 from torchair.core.utils import logger
-from torchair.patterns.pattern_pass_manager import _PatternPassManager, _check_pattern_stream
+from torchair.patterns.pattern_pass_manager import _PatternPassManager
 
 
-def _pattern_extra_check_stream(match: Match) -> bool:
-    if not _check_pattern_stream(match, "Addrmsnormdynamicquant"):
-        return False
-
-    return True
-
-
-def _check_view_shape_and_stream(match: Match) -> bool:
+def _check_view_shape(match: Match) -> bool:
     """
     Check if the aten.view.default operator applied to the target tensor is equivalent 
     to y.flatten(0, 1) (merging the first two dimensions of tensor y).
@@ -40,6 +33,7 @@ def _check_view_shape_and_stream(match: Match) -> bool:
             view_node = node
 
     if not view_node or not x1_node or not y_node:
+        logger.debug("Extra check failed for addrmsnormdynamicquant, view_node or x1_node or y_node is none.")
         return False
 
     x1_dim = 0
@@ -52,10 +46,12 @@ def _check_view_shape_and_stream(match: Match) -> bool:
         y_dim = len(y_shape)
 
     if x1_dim != y_dim:
+        logger.debug("Extra check failed for addrmsnormdynamicquant, x1_dim is not equals to y_dim.")
         return False
 
     view_size = view_node.args[1]
     if not isinstance(view_size, (list, tuple)):
+        logger.debug("Extra check failed for addrmsnormdynamicquant, view_node args is not list or tuple.")
         return False
     
     isShapeMatch = len(view_size) == x1_dim - 1
@@ -63,7 +59,11 @@ def _check_view_shape_and_stream(match: Match) -> bool:
         isShapeMatch = view_size[0].name.startswith('mul') and isShapeMatch
     elif y_dim >= 2:
         isShapeMatch = (view_size[0] == y_shape[0] * y_shape[1]) and isShapeMatch
-    return isShapeMatch and _pattern_extra_check_stream(match)
+
+    logger.debug(
+        f"End extra check for addrmsnormdynamicquant: {isShapeMatch}. "
+    )
+    return isShapeMatch
 
 
 @functools.lru_cache(None)
@@ -94,13 +94,12 @@ def _register_addrmsnormdynamicquant_pattern(pattern_pass_manager: _PatternPassM
     with fake_mode:
         # sizes/values don't actually matter for initial trace
         # once we get a possible match we re-trace with the actual values and verify the match still holds
-        input_tensor = functools.partial(torch.empty, (1, 1, 2), device="npu", dtype=torch.float16)
-        kwargs_tensor = functools.partial(torch.empty, 2, device="npu", dtype=torch.float16)
+        input_tensor = functools.partial(torch.empty, (1, 1, 2), dtype=torch.float16)
+        kwargs_tensor = functools.partial(torch.empty, 2, dtype=torch.float16)
         pattern_pass_manager.register_pattern(
             search_fn=search_fn,
             replace_fn=replace_fn,
-            example_inputs=(input_tensor(), input_tensor(), kwargs_tensor(), kwargs_tensor()),
-            extra_check=_pattern_extra_check_stream
+            example_inputs=(input_tensor(), input_tensor(), kwargs_tensor(), kwargs_tensor())
         )
 
 
@@ -195,12 +194,12 @@ def _register_addrmsnormdynamicquant_pattern2(pattern_pass_manager: _PatternPass
     with fake_mode:
         # sizes/values don't actually matter for initial trace
         # once we get a possible match we re-trace with the actual values and verify the match still holds
-        input_tensor = functools.partial(torch.empty, (1, 1, 2), device="npu", dtype=torch.float16)
-        kwargs_tensor = functools.partial(torch.empty, 2, device="npu", dtype=torch.float16)
+        input_tensor = functools.partial(torch.empty, (1, 1, 2), dtype=torch.float16)
+        kwargs_tensor = functools.partial(torch.empty, 2, dtype=torch.float16)
         pattern_pass_manager.register_pattern(
             search_fn=search_fn,
             replace_fn=replace_fn,
             example_inputs=(input_tensor(), input_tensor(), kwargs_tensor()),
-            extra_check=_check_view_shape_and_stream,
+            extra_check=_check_view_shape,
             search_fn_pattern=_build_search_pattern()
         )

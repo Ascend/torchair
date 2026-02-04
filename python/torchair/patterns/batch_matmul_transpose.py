@@ -8,12 +8,11 @@ from torch._inductor.pattern_matcher import Match, CallFunction, KeywordArg, Ign
 from torch._subclasses.fake_tensor import FakeTensorMode
 
 from torchair.core.utils import logger
-from torchair.patterns.pattern_pass_manager import _PatternPassManager, _check_pattern_stream
+from torchair.patterns.pattern_pass_manager import _PatternPassManager
 
 
 def _pattern_extra_check(match: Match) -> bool:
     """
-    Checks if all nodes in the same stream.
     Checks whether the K/N size of the npu_transpose_batchmatmul operation is divisible by 128
     """
     from torch._inductor.fx_passes.post_grad import same_meta
@@ -42,9 +41,6 @@ def _pattern_extra_check(match: Match) -> bool:
                 return False
 
         return True
-
-    if not _check_pattern_stream(match, "npu_transpose_batchmatmul"):
-        return False
 
     for node in match.nodes:
         if node.target == torch.ops.aten.bmm.default:
