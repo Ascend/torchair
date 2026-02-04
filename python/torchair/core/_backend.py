@@ -44,6 +44,7 @@ def _get_global_op_compile_config():
     if 'torch_npu' not in sys.modules:
         op_compile_config['ge.exec.allow_hf32'] = '10'  # enable conv hf32 as default
         op_compile_config['ge.deterministic'] = '1'
+        op_compile_config['ge.deterministicLevel'] = '0'
         return op_compile_config
 
     torch_npu_module = sys.modules['torch_npu']
@@ -51,6 +52,7 @@ def _get_global_op_compile_config():
     conv_hf32 = '1' if torch_npu_module.npu.conv.allow_hf32 else '0'
     op_compile_config['ge.exec.allow_hf32'] = conv_hf32 + mm_hf32
     op_compile_config['ge.deterministic'] = '1' if torch.are_deterministic_algorithms_enabled() else '0'
+    op_compile_config['ge.deterministicLevel'] = str(torch_npu_module.npu._get_deterministic_level())
     return op_compile_config
 
 

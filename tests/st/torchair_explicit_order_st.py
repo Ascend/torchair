@@ -62,6 +62,10 @@ class FakeTorchNpu:
     def current_device():
         return 0
 
+    @staticmethod
+    def _get_deterministic_level():
+        return 0
+
 
 _initialized = False
 
