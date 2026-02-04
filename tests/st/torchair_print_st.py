@@ -239,6 +239,10 @@ add(abs(x), 1) = [[2 2]
             def get_npu_format(*args, **kwargs):
                 return 0
 
+            @staticmethod
+            def _get_deterministic_level():
+                return 0
+
         config = CompilerConfig()
         config.experimental_config.pattern_fusion_pass = False
         npu_backend = torchair.get_npu_backend(compiler_config=config)

@@ -1577,6 +1577,11 @@ class GeConcreteGraph(ConcreteGraphBase):
                 "|".join(f"{input_},{output_}" for output_, input_ in self._graph_output_ref_input.items())
             )
         local_compile_options["ge.deterministic"] = "1" if torch.are_deterministic_algorithms_enabled() else "0"
+        if 'torch_npu' not in sys.modules:
+            local_compile_options["ge.deterministicLevel"] = "0"
+        else:
+            local_compile_options["ge.deterministicLevel"] = str(sys.modules['torch_npu'].npu._get_deterministic_level())
+
         local_compile_options["ge.exec.atomicCleanPolicy"] = "1"
         local_compile_options.update(generate_dynamic_dims_option(self.graph.named_inputs_info,
                                      self.config.inference_config.dynamic_gears_merge_policy.value))

@@ -66,6 +66,11 @@ def stub_get_npu_format(*args):
     return 2
 
 
+def stub_get_deterministic_level():
+    logger.debug('[Stub] run stub API get_deterministic_level')
+    return 0
+
+
 def stub_is_initialized(*args):
     logger.debug('[Stub] run stub API _is_initialized')
     pass
@@ -353,6 +358,7 @@ class StubNpu:
         self._C = Stub_C
         self.amp = StubAmp
         self.is_initialized = stub_is_initialized
+        self._get_deterministic_level = stub_get_deterministic_level
         self.npu_add_rms_norm = types.SimpleNamespace(
             default=_stub_npu_add_rms_norm_default
         )
