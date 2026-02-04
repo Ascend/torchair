@@ -16,10 +16,10 @@ body:
         请提供以下信息
       value: |
         ```text
-        -- CANN 版本 (e.g., CANN 3.0.x，5.x.x):  
-        -- Pytorch/Torch_npu 版本 (e.g., v2.1.0, v2.6.0):
-        -- Python 版本 (e.g., Python 3.7.5):
-        -- 操作系统版本 (e.g., Ubuntu 18.04):
+        -- CANN 版本 (e.g., 5.x.x, 8.x.x):  
+        -- Pytorch/Torch_npu 版本 (e.g., v2.6.0, v2.9.0):
+        -- Python 版本 (e.g., Python3.9.x, Python3.11.x):
+        -- 操作系统版本 (e.g., Ubuntu 18.04, EulerOs 2.0):
         ```
     validations:
       required: true

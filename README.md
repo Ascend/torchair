@@ -20,6 +20,7 @@ git clone https://gitcode.com/ascend/torchair.git
 
 下载依赖三方库
 ```shell
+cd torchair
 git submodule update --init --recursive
 ```
 
