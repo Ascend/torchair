@@ -55,6 +55,9 @@ def convert_npu_quant_reduce_scatter(
         scales.desc.dtype = torch_dtype_value_to_ge_proto_type(scales_dtype)
     if output_dtype is not None:
         output_dtype = torch_dtype_value_to_ge_type(output_dtype)
+    else:
+        # default value is bfloat16
+        output_dtype = DataType.DT_BF16
     check_dtype(x, scales)
     return ge.QuantReduceScatter(x=x,
                                  scales=scales,
