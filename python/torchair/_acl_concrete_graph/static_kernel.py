@@ -84,7 +84,7 @@ def static_compile(cmd):
     return res
 
 
-@debug_time(phase_name="[static kernel] execute single operator")
+@debug_time(phase_name="[static kernel] execute dump json")
 def _fx_func_run(args, fx_func, kwargs, result_root):
     _torchair.AclopStartDumpArgs(1, str(result_root))
     try:

@@ -1231,8 +1231,8 @@ class AclgraphTest(unittest.TestCase):
         with self.assertLogs(logger, level="DEBUG") as cm1:
             _ = npu_mode1(x)
         self.assertTrue(
-            any("The operation of [static kernel] execute single operator phase" in log for log in cm1.output),
-            f"Expected DEBUG 'The operation of [static kernel] execute single operator phase' "
+            any("The operation of [static kernel] execute dump json phase" in log for log in cm1.output),
+            f"Expected DEBUG 'The operation of [static kernel] execute dump json phase' "
             f"not found in logs: {cm1.output}"
         )
         self.assertTrue(
@@ -1251,7 +1251,7 @@ class AclgraphTest(unittest.TestCase):
             _ = npu_mode1(x)
         self.assertFalse(
             any("The operation of [static kernel]" in log for log in cm2.output),
-            f"Not Expected DEBUG 'The operation of [static kernel] execute single operator phase' "
+            f"Not Expected DEBUG 'The operation of [static kernel]' "
             f"found in logs: {cm2.output}"
         )
 
