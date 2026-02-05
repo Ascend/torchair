@@ -2,8 +2,12 @@ from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 from torchair.ge._ge_graph import Tensor, TensorSpec, DataType, torch_dtype_value_to_ge_type, \
 torch_dtype_value_to_ge_proto_type, _ge_dtype_to_ge_proto_dtype
 
-DTYPE_SUPPORT_LIST_QUANT_FP4 = {DataType.DT_FLOAT4_E1M2, DataType.DT_FLOAT4_E2M1}
-DTYPE_SUPPORT_LIST_QUANT_FP8 = {DataType.DT_FLOAT8_E4M3FN, DataType.DT_FLOAT8_E5M2, DataType.DT_HIFLOAT8}
+DTYPE_SUPPORT_LIST_QUANT = {DataType.DT_FLOAT8_E4M3FN, DataType.DT_FLOAT8_E5M2, DataType.DT_HIFLOAT8,
+                            DataType.DT_UINT8, DataType.DT_INT8}
+DTYPE_SUPPORT_LIST_WEIGHT_QUANT_X2 = {DataType.DT_FLOAT8_E4M3FN, DataType.DT_HIFLOAT8, DataType.DT_INT8}
+# A16W16/A16W8/A16w4: x1/bias only support bf16/fp16, and 2 types must be same
+DTYPE_SUPPORT_BIAS = {DataType.DT_BF16, DataType.DT_FLOAT16}
+DTYPE_SUPPORT_X1 = {DataType.DT_BF16, DataType.DT_FLOAT16}
 
 
 @declare_supported(
@@ -50,9 +54,14 @@ def convert_npu_mm_all_reduce_base(
                                        int[]? group_sizes=None, int? y_dtype=None, int? x1_dtype=None, int? x2_dtype=None, 
                                        int? dequant_scale_dtype=None, int? pertoken_scale_dtype=None, int? comm_quant_mode=0) -> Tensor'''
     import torch_npu
-    
-    check_dtype(x1, x2, bias=bias, x3=x3, antiquant_scale=antiquant_scale,
-                antiquant_offset=antiquant_offset, dequant_scale=dequant_scale, y_dtype=y_dtype)
+
+    if dequant_scale is not None:
+        check_dtype_full_quant(x1, x2, bias=bias, x3=x3, dequant_scale=dequant_scale,
+                               x1_dtype=x1_dtype, x2_dtype=x2_dtype)
+    if antiquant_scale is not None:
+        check_dtype_weight_quant(x1, x2, bias=bias, x3=x3, x2_dtype=x2_dtype)
+    if dequant_scale is None and antiquant_scale is None:
+        check_dtype_non_quant(x1, x2, bias, x3)
 
     if y_dtype is None:
         if dequant_scale is not None:
@@ -85,7 +94,7 @@ def convert_npu_mm_all_reduce_base(
     trans_x2 = x1.symsize[-1] == x2.symsize[-2]
     if x1_dtype is not None:
         x1_ge_dtype = torch_dtype_value_to_ge_type(x1_dtype)
-        if x1_dtype == torch_npu.float4_e2m1fn_x2 or x1_dtype == torch_npu.float4_e1m2fn_x2:
+        if x1_dtype == torch_npu.float4_e2m1fn_x2:
             const_x1 = ge.Const([1] * (x1.rank - 1) + [shape_multiples])
             shape_x1 = ge.Shape(x1)
             shape_x1 = ge.Mul(shape_x1, const_x1)
@@ -96,7 +105,7 @@ def convert_npu_mm_all_reduce_base(
         x1.desc.dtype = torch_dtype_value_to_ge_proto_type(x1_dtype)
     if x2_dtype is not None:
         x2_ge_dtype = torch_dtype_value_to_ge_type(x2_dtype)
-        if x2_dtype == torch_npu.float4_e2m1fn_x2 or x2_dtype == torch_npu.float4_e1m2fn_x2:
+        if x2_dtype == torch_npu.float4_e2m1fn_x2:
             perm = [i for i in range(x2.rank)]
             perm[-2], perm[-1] = perm[-1], perm[-2]
             const_x2 = ge.Const([1] * (x2.rank - 1) + [shape_multiples])
@@ -141,16 +150,60 @@ def convert_npu_mm_all_reduce_base(
     return out
 
 
-def check_dtype(x1: Tensor, x2: Tensor, bias: Optional[Tensor], x3: Optional[Tensor],
-                antiquant_scale: Optional[Tensor], antiquant_offset: Optional[Tensor],
-                dequant_scale: Optional[Tensor], y_dtype: int = None):
-    if (x1.dtype in DTYPE_SUPPORT_LIST_QUANT_FP8 or x1.dtype in DTYPE_SUPPORT_LIST_QUANT_FP4) and y_dtype is None:
-        raise AssertionError(f"When type of x1 is:{x1.dtype} , should input y_dtype.")
-    if (x1.dtype == DataType.DT_FLOAT16 or x1.dtype == DataType.DT_BF16) and \
-        (x2.dtype == DataType.DT_FLOAT16 or x2.dtype == DataType.DT_BF16):
-        if x2.dtype != x1.dtype:
-            raise AssertionError(f"type of x1:{x1.dtype} and x2:{x2.dtype} must be same.")
-        if bias is not None and bias.dtype != x1.dtype:
-            raise AssertionError(f"type of x1:{x1.dtype} and bias:{bias.dtype} must be same.")
-        if x3 is not None and x3.dtype != x1.dtype:
-            raise AssertionError(f"type of x1:{x1.dtype} and x3:{x3.dtype} must be same.")
+def check_dtype_non_quant(x1: Tensor, x2: Tensor, bias: Optional[Tensor], x3: Optional[Tensor]):
+    if x1.dtype not in DTYPE_SUPPORT_X1:
+        raise AssertionError(
+            f"Non-quant scene: x1 dtype {ge_type_to_torch_type(x1.dtype)} not supported, only support "
+            f"{[ge_type_to_torch_type(d) for d in DTYPE_SUPPORT_X1]}.")
+    if x2.dtype != x1.dtype:
+        raise AssertionError(
+            f"Non-quant scene: x1 dtype {ge_type_to_torch_type(x1.dtype)} != x2 dtype "
+            f"{ge_type_to_torch_type(x2.dtype)}, must be same.")
+    if bias is not None and bias.dtype != x1.dtype:
+        raise AssertionError(
+            f"Non-quant scene: x1 dtype {ge_type_to_torch_type(x1.dtype)} != bias dtype "
+            f"{ge_type_to_torch_type(bias.dtype)}, must be same.")
+    if x3 is not None and x3.dtype != x1.dtype:
+        raise AssertionError(
+            f"Non-quant scene: x1 dtype {ge_type_to_torch_type(x1.dtype)} != x3 dtype "
+            f"{ge_type_to_torch_type(x3.dtype)}, must be same.")
+
+
+def check_dtype_weight_quant(x1: Tensor, x2: Tensor, bias: Optional[Tensor], x3: Optional[Tensor], x2_dtype: int):
+    if x1.dtype not in DTYPE_SUPPORT_X1:
+        raise AssertionError(
+            f"Weight quant scene: x1 dtype {ge_type_to_torch_type(x1.dtype)} not supported, "
+            f"only support {[ge_type_to_torch_type(d) for d in DTYPE_SUPPORT_X1]}.")
+    if bias is not None and bias.dtype != x1.dtype:
+        raise AssertionError(
+            f"Weight quant scene: x1 dtype {ge_type_to_torch_type(x1.dtype)} != bias dtype "
+            f"{ge_type_to_torch_type(bias.dtype)}, must be same.")
+    if x3 is not None and x3.dtype != x1.dtype:
+        raise AssertionError(
+            f"Weight quant scene: x1 dtype {ge_type_to_torch_type(x1.dtype)} != x3 dtype "
+            f"{ge_type_to_torch_type(x3.dtype)}, must be same.")
+    if x2.dtype not in DTYPE_SUPPORT_LIST_WEIGHT_QUANT_X2:
+        raise AssertionError(
+            f"Weight quant scene: x2 dtype {ge_type_to_torch_type(x2.dtype)} not supported, "
+            f"support list: {[ge_type_to_torch_type(d) for d in DTYPE_SUPPORT_LIST_WEIGHT_QUANT_X2]}.")
+
+
+def check_dtype_full_quant(x1: Tensor, x2: Tensor, bias: Optional[Tensor], x3: Optional[Tensor],
+                           dequant_scale: Optional[Tensor], x1_dtype: int, x2_dtype: int):
+    if x1.dtype not in DTYPE_SUPPORT_LIST_QUANT:
+        raise AssertionError(
+            f"Full quant scene: x1 dtype {ge_type_to_torch_type(x1.dtype)} not supported, "
+            f"support list: {[ge_type_to_torch_type(d) for d in DTYPE_SUPPORT_LIST_QUANT]}.")
+    if x2.dtype not in DTYPE_SUPPORT_LIST_QUANT:
+        raise AssertionError(
+            f"Full quant scene: x2 dtype {ge_type_to_torch_type(x2.dtype)} not supported, "
+            f"support list: {[ge_type_to_torch_type(d) for d in DTYPE_SUPPORT_LIST_QUANT]}.")
+
+    if x1.dtype == DataType.DT_UINT8 and x2.dtype == DataType.DT_UINT8:
+        x1_gedtype = torch_dtype_value_to_ge_type(x1_dtype) if x1_dtype is not None else None
+        x2_gedtype = torch_dtype_value_to_ge_type(x2_dtype) if x2_dtype is not None else None
+        if not ((x1_gedtype == DataType.DT_FLOAT4_E2M1 and x2_gedtype == DataType.DT_FLOAT4_E2M1) or \
+                (x1_gedtype == DataType.DT_HIFLOAT8 and x2_gedtype == DataType.DT_HIFLOAT8)):
+            raise AssertionError(
+                f"Full quant scene: x1/x2 dtype are both uint8, x1_dtype/x2_dtype must be "
+                f"float4_e2m1fn_x2/hifloat8, actual x1_dtype={x1_dtype}, x2_dtype={x2_dtype}.")
