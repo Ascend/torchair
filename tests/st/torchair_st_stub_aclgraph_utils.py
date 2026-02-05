@@ -325,6 +325,8 @@ def _stub_npu_add_rms_norm_default(self, *args, **kwargs):
 def _stub_npu_dynamic_quant_default(self, *args, **kwargs):
     return torch.randn([3, 2]), torch.randn([3, 2])
 
+def _stub_npu_quantize_default(self, *args, **kwargs):
+    return torch.randn([3, 2])
 
 def _stub_npu_dtype_cast_default(self, *args, **kwargs):
     return torch.randn([3, 2]), torch.randn([3, 2])
@@ -364,6 +366,9 @@ class StubNpu:
         )
         self.npu_dynamic_quant = types.SimpleNamespace(
             default=_stub_npu_dynamic_quant_default
+        )
+        self.npu_quantize = types.SimpleNamespace(
+            default=_stub_npu_quantize_default
         )
         self._npu_dtype_cast = types.SimpleNamespace(
             default=_stub_npu_dtype_cast_default

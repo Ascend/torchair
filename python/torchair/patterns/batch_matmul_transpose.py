@@ -77,7 +77,7 @@ def _register_pattern_for_bmm_transpose(pattern_pass_manager: _PatternPassManage
     with fake_mode:
         # sizes/values don't actually matter for initial trace
         # once we get a possible match we re-trace with the actual values and verify the match still holds
-        input_tensor = functools.partial(torch.empty, (1, 1, 1), device="npu", dtype=torch.float16)
+        input_tensor = functools.partial(torch.empty, (1, 1, 1), dtype=torch.float16)
         pattern_pass_manager.register_pattern(
             search_fn=search_fn,
             replace_fn=replace_fn,

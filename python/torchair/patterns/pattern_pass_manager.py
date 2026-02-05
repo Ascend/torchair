@@ -1,5 +1,6 @@
 __all__ = ["register_replacement"]
 
+import torch
 from torch._inductor.pattern_matcher import Match, PatternMatcherPass
 from torch._inductor.pattern_matcher import register_replacement as register
 try:
@@ -67,7 +68,8 @@ class _PatternPassManager:
         else:
             self.pass_dict = PatternMatcherPass()
 
-    def register_pattern(self, search_fn, replace_fn, example_inputs, trace_fn=fwd_only, extra_check=_return_true, search_fn_pattern=None):
+    def register_pattern(self, search_fn, replace_fn, example_inputs, trace_fn=fwd_only, extra_check=_return_true, 
+                         search_fn_pattern=None, scalar_workaround=None, skip_duplicates=False):
         """
         Register a new pattern for matching and replacement.
 
@@ -86,7 +88,7 @@ class _PatternPassManager:
             # Then run the user-provided extra_check
             return extra_check(match)
         
-        if hasattr(register, '__code__') and 'pass_dicts' in register.__code__.co_varnames:
+        if torch.__version__ >= "2.7.0":
             register(
                 search_fn=search_fn,
                 replace_fn=replace_fn,
@@ -94,7 +96,9 @@ class _PatternPassManager:
                 trace_fn=trace_fn,
                 pass_dicts=self.pass_dict,
                 extra_check=add_stream_check,
-                search_fn_pattern=search_fn_pattern
+                search_fn_pattern=search_fn_pattern,
+                scalar_workaround=scalar_workaround,
+                skip_duplicates=skip_duplicates
             )
         else:
             register(
@@ -102,9 +106,12 @@ class _PatternPassManager:
                 replace_fn=replace_fn,
                 example_inputs=example_inputs,
                 trace_fn=trace_fn,
-                pass_dict=self.pass_dict,
+                pass_dicts=self.pass_dict,
                 extra_check=add_stream_check,
+                search_fn_pattern=search_fn_pattern,
+                scalar_workaround=scalar_workaround
             )
+
 
     def apply_pass(self, fx_graph):
         """
@@ -123,11 +130,14 @@ def _pattern_manager():
     return _global_pattern_pass_manager
 
 
-def register_replacement(search_fn, replace_fn, example_inputs, trace_fn=fwd_only, extra_check=_return_true, search_fn_pattern=None):
+def register_replacement(search_fn, replace_fn, example_inputs, trace_fn=fwd_only, extra_check=_return_true,
+                         search_fn_pattern=None, scalar_workaround=None, skip_duplicates=False):
     _global_pattern_pass_manager = _pattern_manager()
     _global_pattern_pass_manager.register_pattern(search_fn=search_fn,
                 replace_fn=replace_fn,
                 example_inputs=example_inputs,
                 trace_fn=trace_fn,
                 extra_check=extra_check,
-                search_fn_pattern=search_fn_pattern)
+                search_fn_pattern=search_fn_pattern,
+                scalar_workaround=scalar_workaround,
+                skip_duplicates=skip_duplicates)

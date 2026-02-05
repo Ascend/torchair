@@ -7,7 +7,7 @@
 ## 函数原型
 
 ```python
-register_replacement(search_fn, replace_fn, example_inputs, trace_fn=fwd_only, extra_check=_return_true, search_fn_pattern=None)
+register_replacement(search_fn, replace_fn, example_inputs, trace_fn=fwd_only, extra_check=_return_true, search_fn_pattern=None, scalar_workaround=None, skip_duplicates=False)
 ```
 
 ## 参数说明
@@ -15,12 +15,14 @@ register_replacement(search_fn, replace_fn, example_inputs, trace_fn=fwd_only, e
 
 | 参数名 | 输入/输出 | 说明 | 是否必选 |
 | --- | --- | --- | --- |
-| search_fn | 输入 | 该函数是希望在FX图中识别的算子组合或计算逻辑，如需要融合的算子组合 | 是 |
-| replace_fn | 输入 | 在目标图中找到search_fn对应的组合时，会用这个函数的计算逻辑替换原有子图，实现算子融合或优化 | 是 |
+| search_fn | 输入 | 该函数是希望在FX图中识别的算子组合或计算逻辑，如需要融合的算子组合。 | 是 |
+| replace_fn | 输入 | 在目标图中找到search_fn对应的组合时，会用这个函数的计算逻辑替换原有子图，实现算子融合或优化。 | 是 |
 | example_inputs | 输入 | 用于追踪search_fn和replace_fn的示例输入张量。输入的形状和dtype需与实际场景匹配。 | 是 |
 | trace_fn | 输入 | 默认仅追踪前向计算图，适用于推理阶段的优化；若需支持训练场景，可传入支持反向追踪的函数。 | 否 |
-| extra_check | 输入 | 找到算子组合后的额外校验函数，函数的入参必须为torch._inductor.pattern_matcher中的Match对象，用于对匹配结果进行更多自定义的判断，如判断算子组合是否在同一条流上/判断设备类型/判断入参形状等 | 否 |
+| extra_check | 输入 | 找到算子组合后的额外校验函数，函数的入参必须为torch._inductor.pattern_matcher中的Match对象，用于对匹配结果进行更多自定义的判断，如判断算子组合是否在同一条流上/判断设备类型/判断入参形状等。 | 否 |
 | search_fn_pattern | 输入 | 自定义的pattern对象，一般无需传入。定义参考PyTorch原生MultiOutputPattern对象的定义规则。传入该参数后，将不再使用search_fn来匹配算子组合，而是直接使用该参数作为匹配规则。 | 否 |
+| scalar_workaround | 输入 | 用于显示绑定search_fn中标量参数值，用于匹配FX图追踪时固化的标量。 | 否 |
+| skip_duplicates | 输入 | 用于控制注册阶段的重复检测行为，设为True时，若检测到重复的匹配模式，会跳过该重复模式的注册；设为False时，若检测到重复模式则直接抛出错误，禁止该重复模式完成注册, 该参数仅在PyTorch版本≥2.7.0时生效。 | 否 |
 
 ## 返回值说明
 

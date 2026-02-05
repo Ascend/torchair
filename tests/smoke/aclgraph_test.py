@@ -7,6 +7,7 @@ import shutil
 import torch
 import torch_npu
 import torchair
+from torch._subclasses.fake_tensor import FakeTensorMode
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core.utils import logger
 
@@ -16,8 +17,36 @@ torch.npu.manual_seed_all(7)
 logger.setLevel(logging.DEBUG)
 
 
+def find_op(gm, op_default):
+    for node in gm.graph.nodes:
+        if node.op == "call_function" and node.target == op_default:
+            return True
+
+    return False
+
+
+def create_optimize_wrapper(assert_func):
+    original_func = torchair.npu_fx_compiler._optimize_fx
+
+    def wrapper(gm, config, observer):
+        ret = original_func(gm, config, observer)
+        assert_func(gm)
+        return ret
+
+    return wrapper
+
+
 class AclgraphTest(unittest.TestCase):
 
+    def setUp(self) -> None:
+        self.optimize_fx_bak = torchair.npu_fx_compiler._optimize_fx
+        return super().setUp()
+
+    def tearDown(self) -> None:
+        if self.optimize_fx_bak is not None:
+            torchair.npu_fx_compiler._optimize_fx = self.optimize_fx_bak
+        return super().tearDown()
+        
     def test_aclgraph_cache_with_static_kernel(self):
         class CachedAclGraphModel(torch.nn.Module):
             def __init__(self):
@@ -1723,6 +1752,196 @@ class AclgraphTest(unittest.TestCase):
             compile_output = model_compile(x1, x2)
 
         self.assertTrue(torch.allclose(eager_output, compile_output))
+
+    def assert_addrmsnorm_quant(self, after_gm, expect_fused=True):
+        """
+        Check whether the pattern fusion of add_rms_norm + quantize is successful.
+        """
+        check_rules = [
+        (torch.ops.npu.npu_add_rms_norm_quant.default, expect_fused),
+        (torch.ops.npu.npu_add_rms_norm.default, not expect_fused),
+        (torch.ops.npu.npu_quantize.default, not expect_fused),
+        ]
+
+        for torch_op, expect_exist in check_rules:
+            found = find_op(after_gm, torch_op)
+            if expect_exist:
+                self.assertTrue(found, f"Expected operator '{torch_op}' but not find")
+            else:
+                self.assertFalse(found, f"Not expected operator '{torch_op}' but find")
+
+    def get_quant_input(self, last_axis, dtype1, dtype2, dtype3):
+        """
+        Get the input of the add_rms_norm + quantize pattern.
+        """
+        x1 = torch.randn(1, 2, last_axis, dtype=dtype1, device='npu')
+        x2 = torch.randn(1, 2, last_axis, dtype=dtype1, device='npu')
+        gamma = torch.ones(last_axis, dtype=dtype1, device='npu')
+        scales = torch.ones(last_axis, dtype=dtype2, device='npu')
+        zero_points = torch.zeros(last_axis, dtype=dtype3, device='npu')
+        return x1, x2, gamma, scales, zero_points
+
+    @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
+    def test_pattern_pass_addrmsnorm_quant(self):
+
+        def f(x1, x2, gamma, scales, zero_points, div_mode=True):
+            x1 = x1.reshape([1, -1, 16])
+            x2 = x2.reshape([1, -1, 16])
+            y, _, xOut = torch_npu.npu_add_rms_norm(x1, x2, gamma, 4e-6)
+            yOut = torch_npu.npu_quantize(y, scales, zero_points, torch.qint8, axis=-1, div_mode=div_mode)
+            return yOut, xOut
+        
+        def f_static(x1, x2, gamma, scales, zero_points):
+            y, _, xOut = torch_npu.npu_add_rms_norm(x1, x2, gamma, 1e-6)
+            yOut = torch_npu.npu_quantize(y, scales, zero_points=zero_points, dtype=torch.int8, axis=-1)
+            return yOut, xOut
+
+        torchair.npu_fx_compiler._optimize_fx = create_optimize_wrapper(lambda gm: self.assert_addrmsnorm_quant(gm, True))
+        compile_model = torch.compile(f, backend="npugraph_ex", fullgraph=True, dynamic=True)
+
+        # test divmode=True
+        x1, x2, gamma, scales, zero_points = self.get_quant_input(16, torch.float16, torch.float, torch.int32)
+        y1, y2 = f(x1, x2, gamma, scales, zero_points)
+        y3, y4 = compile_model(x1, x2, gamma, scales, zero_points)
+        self.assertTrue(torch.equal(y1, y3))
+        self.assertTrue(torch.equal(y2, y4))
+
+        x1, x2, gamma, scales, zero_points = self.get_quant_input(16, torch.bfloat16, torch.bfloat16, torch.bfloat16)
+        y1, y2 = f(x1, x2, gamma, scales, zero_points)
+        y3, y4 = compile_model(x1, x2, gamma, scales, zero_points)
+        self.assertTrue(torch.equal(y1, y3))
+        self.assertTrue(torch.equal(y2, y4))
+
+        # test divmode=False
+        y1, y2 = f(x1, x2, gamma, scales, zero_points, False)
+        y3, y4 = compile_model(x1, x2, gamma, scales, zero_points)
+        self.assertTrue(torch.equal(y1, y3))
+        self.assertTrue(torch.equal(y2, y4))
+
+        # test static
+        compile_model = torch.compile(f_static, backend="npugraph_ex", fullgraph=True, dynamic=False)
+        y1, y2 = f_static(x1, x2, gamma, scales, zero_points)
+        y3, y4 = compile_model(x1, x2, gamma, scales, zero_points)
+        self.assertTrue(torch.equal(y1, y3))
+        self.assertTrue(torch.equal(y2, y4))
+
+
+    @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
+    def test_pattern_pass_addrmsnorm_quant_mismatched(self):
+    
+        def f(x1, x2, gamma, scales, zero_points, out_dtype=torch.qint8, div_mode=True):
+            x1 = x1.reshape([1, -1, 16])
+            x2 = x2.reshape([1, -1, 16])
+            y, _, xOut = torch_npu.npu_add_rms_norm(x1, x2, gamma)
+            yOut = torch_npu.npu_quantize(y, scales, zero_points, out_dtype, axis=-1, div_mode = div_mode)
+            return yOut, xOut
+
+        def f_use(x1, x2, gamma, scales, zero_points):
+            x1 = x1.reshape([1, -1, 16])
+            x2 = x2.reshape([1, -1, 16])
+            y, _, xOut = torch_npu.npu_add_rms_norm(x1, x2, gamma)
+            yOut = torch_npu.npu_quantize(y, scales, zero_points=zero_points, dtype=torch.qint8, axis=-1)
+            yOut = y + yOut
+            return yOut, xOut
+
+        def f_noreshape(x1, x2, gamma, scales, zero_points):
+            y, _, xOut = torch_npu.npu_add_rms_norm(x1, x2, gamma)
+            yOut = torch_npu.npu_quantize(y, scales, zero_points=zero_points, dtype=torch.qint8, axis=-1, div_mode=True)
+            return yOut, xOut
+
+        torchair.npu_fx_compiler._optimize_fx = create_optimize_wrapper(lambda gm: self.assert_addrmsnorm_quant(gm, False))
+        compile_model = torch.compile(f, backend="npugraph_ex", fullgraph=True, dynamic=True)
+
+        # test uint8 zero_poin
+        x1, x2, gamma, scales, zero_points = self.get_quant_input(16, torch.float16, torch.float16, torch.uint8)
+        f(x1, x2, gamma, scales, zero_points)
+        compile_model(x1, x2, gamma, scales, zero_points)
+
+        # test int8 zero_point
+        zero_points = torch.zeros(16, dtype=torch.int8, device='npu')
+        f(x1, x2, gamma, scales, zero_points)
+        compile_model(x1, x2, gamma, scales, zero_points)
+        
+        # test out_dtype=int32
+        x1, x2, gamma, scales, zero_points = self.get_quant_input(16, torch.bfloat16, torch.bfloat16, torch.bfloat16)
+        f(x1, x2, gamma, scales, zero_points, torch.int32)
+        compile_model(x1, x2, gamma, scales, zero_points, torch.int32)
+
+        # test use value npu_add_rms_norm output
+        compile_model = torch.compile(f_use, backend="npugraph_ex", fullgraph=True, dynamic=True)
+        f_use(x1, x2, gamma, scales, zero_points)
+        compile_model(x1, x2, gamma, scales, zero_points)
+        
+        # test div_mode=False type mismatch
+        x1, x2, gamma, scales, zero_points = self.get_quant_input(16, torch.float16, torch.float16, torch.float16)
+        compile_model = torch.compile(f, backend="npugraph_ex", fullgraph=True, dynamic=True)
+        f(x1, x2, gamma, scales, zero_points, div_mode=False)
+        compile_model(x1, x2, gamma, scales, zero_points, div_mode=False)
+
+        # # test last axis not aligned 32byte
+        compile_model = torch.compile(f_noreshape, backend="npugraph_ex", fullgraph=True, dynamic=False)
+        x1, x2, gamma, scales, zero_points = self.get_quant_input(3, torch.bfloat16, torch.bfloat16, torch.bfloat16)
+        f_noreshape(x1, x2, gamma, scales, zero_points)
+        compile_model(x1, x2, gamma, scales, zero_points)
+
+        # test symint
+        compile_model = torch.compile(f_noreshape, backend="npugraph_ex", fullgraph=True, dynamic=True)
+        f_noreshape(x1, x2, gamma, scales, zero_points)
+        compile_model(x1, x2, gamma, scales, zero_points)
+
+    @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
+    def test_pattern_pass_addrmsnorm_quant_with_diff_stream(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.event1 = torchair.ops.npu_create_tagged_event(tag="22")
+                self.event2 = torchair.ops.npu_create_tagged_event(tag="33")
+    
+            def forward(self, x1, x2, gamma, scales, zero_points):
+                y, _, xOut = torch_npu.npu_add_rms_norm(x1, x2, gamma)
+                torchair.ops.npu_tagged_event_record(self.event1)
+                with torchair.scope.npu_stream_switch('2', 3):
+                    torchair.ops.npu_tagged_event_wait(self.event1)
+                    yOut = torch_npu.npu_quantize(y, scales, zero_points=zero_points, dtype=torch.qint8, axis=-1)
+                    torchair.ops.npu_tagged_event_record(self.event2)
+                    torchair.ops.npu_record_tagged_stream(yOut, '2')
+                torchair.ops.npu_tagged_event_wait(self.event2)
+                return yOut, xOut
+
+        torchair.npu_fx_compiler._optimize_fx = create_optimize_wrapper(lambda gm: self.assert_addrmsnorm_quant(gm, False))
+
+        model = Model()
+        compile_model = torch.compile(model, backend="npugraph_ex", fullgraph=True, dynamic=True)
+
+        x1, x2, gamma, scales, zero_points = self.get_quant_input(16, torch.bfloat16, torch.bfloat16, torch.bfloat16)
+        compile_model(x1, x2, gamma, scales, zero_points)
+
+    @unittest.skipIf(torch.__version__ < "2.7", "pattern_fusion_pass skip_duplicates is unsupported when torch < 2.7")
+    def test_pattern_pass_addrmsnorm_quant_skip_duplicates(self):
+        def f(x1, x2):
+            return x1 + x2
+        def search_fn(x1, x2, gamma, scales, zero_points, epsilon, dtype):
+            y, _, x_out = torch.ops.npu.npu_add_rms_norm.default(x1, x2, gamma, epsilon)
+            y_out = torch.ops.npu.npu_quantize.default(y, scales, zero_points=zero_points, dtype=dtype, axis=-1)
+            return y_out, x_out
+
+        def replace_fn(x1, x2, gamma, scales, zero_points, epsilon, _):
+            y1, _, x_out = torch.ops.npu.npu_add_rms_norm_quant.default(x1, x2, gamma, scales, zero_points, axis=-1, epsilon=epsilon)
+            return y1, x_out
+
+        fake_mode = FakeTensorMode()
+        with fake_mode:
+            # sizes/values don't actually matter for initial trace
+            # once we get a possible match we re-trace with the actual values and verify the match still holds
+            torchair.register_replacement(
+                search_fn=search_fn,
+                replace_fn=replace_fn,
+                example_inputs=self.get_quant_input(16, torch.bfloat16, torch.bfloat16, torch.bfloat16),
+                scalar_workaround={"epsilon": 2e-6, "dtype": 1},
+                skip_duplicates=True
+        )
+        torch.compile(f, backend="npugraph_ex", fullgraph=True, dynamic=True)
+
 
 if __name__ == '__main__':
     unittest.main()

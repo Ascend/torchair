@@ -15,6 +15,7 @@
 | npu_add_rms_norm输出经flatten(0,1) 后作为npu_dynamic_quant（不含smooth_scales参数）输入，且npu_dynamic_quant输出的scaleOut执行view(-1,1) | npu_add_rms_norm_dynamic_quant（自动处理flatten与view操作） |
 | npu_add_rms_norm输出先获取最后一维尺寸h，再经view(-1, h)变形及to(torch.float32)类型转换 | npu_add_rms_norm_cast（自动处理view） |
 | matmul输出作为transpose输入，transpose参数仅支持(0,1)或者(1,0) | npu_transpose_batchmatmul |
+| npu_add_rms_norm输出作为npu_quantize输入，npu_add_rms_norm输入尾轴需32B对齐，并满足融合算子npu_add_rms_norm_quant约束条件 | npu_add_rms_norm_quant |
 
 另外，用户可通过[register\_replacement](register_replacement.md)接口**实现自定义算子融合Pass注册**（参见接口调用示例），注意需自行保证融合规则的正确性。
 
@@ -22,7 +23,7 @@
 
 -   本功能依赖PyTorch 2.6.0或更高版本。
 -   无论是默认支持的算子融合Pass还是自定义的算子融合Pass，均可由pattern\_fusion\_pass配置。
--   表1中matmul输入必须是三维，npu_transpose_batchmatmul算子融合仅max-autotune模式不生效。
+-   表1中matmul输入必须是三维，npu_transpose_batchmatmul及npu_add_rms_norm_quant算子融合max-autotune模式不生效。
 
 ## 使用方法
 
