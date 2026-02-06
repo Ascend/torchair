@@ -5,6 +5,7 @@ from typing import List, Optional, Callable, Any, Dict, Tuple, Union, Set
 import weakref
 import sys
 import operator
+import os
 
 import torch
 from torch.types import Device, Number
@@ -425,3 +426,51 @@ class ReinplaceStreamChecker:
                      "The users of the mutated input node have multiple streams. All the users are %s.", check_name,
                      node.name, node.target, users)
             return False
+
+
+def insert_save_npugraph_tensor(gm: torch.fx.GraphModule, configs):
+    if configs.get('aclgraph.enableDump', '0') != '1':
+        logger.debug('The data dump function is not enabled, skip insert save_npugraph_tensor')
+        return gm
+
+    dump_path = configs.get('aclgraph.dumpPath')
+    base_dir = dump_path if dump_path is not None else "./"
+
+    logger.debug('The FX graph before inserting save_npugraph_tensor is: %s', gm.code)
+    g = gm.graph
+    save_op = torch.ops.npu.save_npugraph_tensor.default
+
+    nodes = list(g.nodes)
+
+    def _is_tensor_type(node: torch.fx.node.Node) -> bool:
+        meta = getattr(node, "meta", None)
+        if isinstance(meta, dict) and "tensor_meta" in meta:
+            return True
+        return False
+
+    def _is_save_op(n: torch.fx.node.Node) -> bool:
+        return n.op == "call_function" and getattr(n, "target", None) is save_op
+
+    for n in nodes:
+        # 处理是否是需要跳过的节点，如输入输出，save算子本身
+        if n.op == "output":
+            continue
+
+        # save本身不插入
+        if _is_save_op(n):
+            continue
+
+        # 处理已经插入过save算子的节点
+        if any(_is_save_op(u) for u in n.users):
+            logger.debug("Skip inserting save for node %s: it has been already saved", n.name)
+            continue
+
+        # 不是tensor类型的节点不支持插入save
+        if not _is_tensor_type(n):
+            continue
+
+        with g.inserting_after(n):
+            g.call_function(save_op, args=(n,), kwargs={"save_path": os.path.join(base_dir, f"{n.name}.pt")})
+
+    gm.recompile()
+    return gm

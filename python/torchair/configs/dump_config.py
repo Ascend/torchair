@@ -19,6 +19,7 @@ class _DataDumpConfig(NpuBaseConfig):
         self.dump_layer = RegexValue("", r'^[0-9a-zA-Z_" "/\\.]*$', "Mul_1 Add1 Conv2D_1")
         self.dump_data = OptionValue('tensor', ['tensor', 'stats'])
         self.dump_config_path = MustExistedFileAddr(None)
+        self.data_dump_stage = OptionValue('optimized', ['original', 'optimized'])
 
         super(_DataDumpConfig, self).__init__()
 
@@ -36,7 +37,7 @@ class _DataDumpConfig(NpuBaseConfig):
         dump_option = {}
         if self.dump_config_path.value is not None:
             dump_option['ge_dump_with_acl_config'] = self.dump_config_path.value
-        if self.enable_dump:
+        if self.enable_dump and mode == "max-autotune":
             dump_option['ge.exec.enableDump'] = '1'
             dump_option['ge.exec.dumpPath'] = self.full_path()
             dump_option['ge.exec.dumpMode'] = self.dump_mode.value
@@ -46,4 +47,9 @@ class _DataDumpConfig(NpuBaseConfig):
             if self.dump_layer.value != "":
                 dump_option['ge.exec.dumpLayer'] = self.dump_layer.value
             dump_option['ge.exec.dumpData'] = self.dump_data.value
+
+        if self.enable_dump and mode in ("reduce-overhead", "npugraph_ex"):
+            dump_option['aclgraph.enableDump'] = '1'
+            dump_option['aclgraph.dumpPath'] = self.full_path()
+            dump_option['aclgraph.dumpStage'] = self.data_dump_stage.value
         return {}, dump_option

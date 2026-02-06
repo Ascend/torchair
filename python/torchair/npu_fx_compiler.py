@@ -459,13 +459,16 @@ class _CompiledFxGraph:
         if self.run_kernel is None:
             if self.config is not None and self.config.mode.value in ["reduce-overhead", "npugraph_ex"]:
                 py_code = self.get_code()
-                ge_mod = _compile_py_code(py_code)
-                kernel = getattr(ge_mod, 'kernel')
-                if hasattr(self.runner, 'execution_kernel'):
-                    self.runner.execution_kernel = kernel
-                    self.run_kernel = self.runner
-                else:
-                    self.run_kernel = kernel
+                if not isinstance(py_code, str):	 
+                    self.run_kernel = py_code	 
+                else:	 
+                    ge_mod = _compile_py_code(py_code)
+                    kernel = getattr(ge_mod, 'kernel')
+                    if hasattr(self.runner, 'execution_kernel'):
+                        self.runner.execution_kernel = kernel
+                        self.run_kernel = self.runner
+                    else:
+                        self.run_kernel = kernel
             else:
                 self.run_kernel = self.runner
 
@@ -502,6 +505,9 @@ class _CompiledFxGraph:
 
     @pretty_error_msg
     def get_code(self, extend_config=None):
+        if not hasattr(self.runner, 'codegen'): 
+            logger.warning(f'When enable FX Graph summarizing or dumping, codegen is unsupported.') 
+            return self.runner
         py_code = self.runner.codegen(extend_config=extend_config, enable_cache=True)
         if py_code is None:
             logger.warning(f'There are some configurations that cannot be supported by codegen, skipping codegen.')
@@ -598,6 +604,13 @@ class _NpuFxCompiler:
                     self.config.experimental_config.enable_view_optimize = False
                     logger.warning(f'To temporarily fix weight_quant_batchmatmul bug, close enable_view_optimize.')
                     break
+
+        if self.config.dump_config.enable_dump.value == '1' and \
+            self.config.dump_config.data_dump_stage.value == "original" and \
+            self.config.mode.value in ["reduce-overhead", "npugraph_ex"]:
+            _, dump_options = self.config.dump_config.as_dict(self.config.mode.value)
+            from torchair._acl_concrete_graph.utils import insert_save_npugraph_tensor
+            return insert_save_npugraph_tensor((gm), dump_options)
 
         # generate different concrete graph based on config
         with no_dispatch():

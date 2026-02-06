@@ -22,6 +22,9 @@ class _NpuGraphExConfig:
         "reuse_graph_pool_in_same_fx": "debug.aclgraph.disable_mempool_reuse_in_same_fx",
         "capture_limit": "debug.aclgraph.static_capture_size_limit",
         "clone_output": "debug.aclgraph.enable_output_clone",
+        "dump_tensor_data": "dump_config.enable_dump",
+        "data_dump_stage": "dump_config.data_dump_stage",
+        "data_dump_dir": "dump_config.dump_path",
         
         # More mapping relationships can be extended here
     }

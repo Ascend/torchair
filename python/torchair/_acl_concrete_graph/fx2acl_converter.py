@@ -23,6 +23,7 @@ from torchair._acl_concrete_graph.acl_graph import AclGraph, AclGraphCacheInfo, 
 from torchair._acl_concrete_graph.acl_graph_cache_utils import SerializableGraphModule
 from torchair._acl_concrete_graph.graph_pass import apply_event_closure_with_multi_stream
 from torchair._acl_concrete_graph.graph_pass import apply_event_record, replace_core_limit_nodes
+from torchair._acl_concrete_graph.utils import insert_save_npugraph_tensor
 
 try:
     from torch._inductor.fx_passes.post_grad import decompose_auto_functionalized
@@ -302,6 +303,11 @@ class AclConcreteGraph(ConcreteGraphBase):
         self.fx_graph.recompile()
         sgm = SerializableGraphModule(self.fx_graph)
         self._serialized_gm = sgm.convert_to_bytes()
+
+        if self.config.dump_config.enable_dump.value == '1' and \
+            self.config.dump_config.data_dump_stage.value == "optimized":
+            insert_save_npugraph_tensor(self.fx_graph, configs)
+
         self._fx_forward = self._codegen_fx_forward(self.fx_graph, self.fx_graph.code,
                                                     self._aclgraph_cache_info.updated_ops_param,
                                                     _stream_scope_enter_nodes_dict,
@@ -312,6 +318,8 @@ class AclConcreteGraph(ConcreteGraphBase):
 
     def normalize_config(self):
         aclgraph_config_options = self.config.debug.aclgraph.as_dict()
+        _, dump_options = self.config.dump_config.as_dict(self.config.mode.value)
+        aclgraph_config_options.update(dump_options)
         aclnn_static_shape_kernel = self.config.experimental_config.aclgraph._aclnn_static_shape_kernel
         if aclnn_static_shape_kernel:
             aclgraph_config_options['_aclnn_static_shape_kernel'] = aclnn_static_shape_kernel.value
