@@ -3170,7 +3170,9 @@ class AclGraphSt(unittest.TestCase):
         self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
 
     def test_npugraph_ex_process_kwargs_options(self):
+        from torchair.configs.npugraphex_config import _NpuGraphExConfig
         config = CompilerConfig()
+        graph_pool = torch.npu.graph_pool_handle()
 
         def _custom_pre_fn(gm, example_inputs, compile_config: torchair.CompilerConfig):
             return None
@@ -3192,10 +3194,13 @@ class AclGraphSt(unittest.TestCase):
                 "frozen_parameter": False,
                 "post_grad_custom_pre_pass": _custom_pre_fn,
                 "post_grad_custom_post_pass": _custom_post_fn,
-                "use_graph_pool": torch.npu.graph_pool_handle(),
+                "use_graph_pool": graph_pool,
                 "reuse_graph_pool_in_same_fx": False,
                 "capture_limit": 64,
-                "clone_output": False
+                "clone_output": False,
+                "dump_tensor_data": False,
+                "data_dump_stage": "optimized",
+                "data_dump_dir": "./"
             }
         }
 
@@ -3216,6 +3221,43 @@ class AclGraphSt(unittest.TestCase):
         assert config.debug.aclgraph.disable_mempool_reuse_in_same_fx.value == '1'
         assert config.debug.aclgraph.static_capture_size_limit.value == '64'
         assert config.debug.aclgraph.enable_output_clone.value == '0'
+
+        assert _NpuGraphExConfig.static_kernel_compile is False
+        assert _NpuGraphExConfig.inplace_pass is False
+        assert _NpuGraphExConfig.input_inplace_pass is False
+        assert _NpuGraphExConfig.remove_noop_ops is False
+        assert _NpuGraphExConfig.force_eager is False
+        assert _NpuGraphExConfig.pattern_fusion_pass is False
+        assert _NpuGraphExConfig.clone_input is False
+        assert _NpuGraphExConfig.frozen_parameter is False
+        assert _NpuGraphExConfig.post_grad_custom_pre_pass is _custom_pre_fn
+        assert _NpuGraphExConfig.post_grad_custom_post_pass is _custom_post_fn
+        assert _NpuGraphExConfig.use_graph_pool is graph_pool
+        assert _NpuGraphExConfig.reuse_graph_pool_in_same_fx is False
+        assert _NpuGraphExConfig.capture_limit == 64
+        assert _NpuGraphExConfig.clone_output is False
+        assert _NpuGraphExConfig.dump_tensor_data is False
+        assert _NpuGraphExConfig.data_dump_stage == 'optimized'
+        assert _NpuGraphExConfig.data_dump_dir == './'
+
+        options_dict = _NpuGraphExConfig.as_dict()
+        assert options_dict["static_kernel_compile"] is False
+        assert options_dict["inplace_pass"] is False
+        assert options_dict["input_inplace_pass"] is False
+        assert options_dict["remove_noop_ops"] is False
+        assert options_dict["force_eager"] is False
+        assert options_dict["clone_input"] is False
+        assert options_dict["frozen_parameter"] is False
+        assert options_dict["post_grad_custom_pre_pass"] is _custom_pre_fn
+        assert options_dict["post_grad_custom_post_pass"] is _custom_post_fn
+        assert options_dict["use_graph_pool"] is graph_pool
+        assert options_dict["reuse_graph_pool_in_same_fx"] is False
+        assert options_dict["capture_limit"] == 64
+        assert options_dict["clone_output"] is False
+        assert options_dict["dump_tensor_data"] is False
+        assert options_dict["data_dump_stage"] == 'optimized'
+        assert options_dict["data_dump_dir"] == './'
+
 
     def test_npugraph_ex_process_kwargs_options_invalid_option(self):
         config = CompilerConfig()

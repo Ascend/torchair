@@ -1,7 +1,29 @@
 __all__ = []
 
+from typing import Callable
+
 
 class _NpuGraphExConfig:
+    force_eager: bool = False
+    use_graph_pool = None
+    reuse_graph_pool_in_same_fx: bool = True
+    capture_limit: int = 64
+    clone_input: bool = True
+    clone_output: bool = False
+    static_kernel_compile: bool = False
+    frozen_parameter: bool = False
+    remove_noop_ops: bool = True
+    inplace_pass: bool = True
+    input_inplace_pass: bool = True
+    pattern_fusion_pass: bool = True
+    post_grad_custom_pre_pass: Callable = None
+    post_grad_custom_post_pass: Callable = None
+    graph_dump_type: str = "py"
+    graph_dump_path: str = "./"
+    dump_tensor_data: bool = False
+    data_dump_stage: str = "optimized"
+    data_dump_dir: str = "./"
+
     """
     Config for NpuGraphEx option
     """
@@ -46,6 +68,14 @@ class _NpuGraphExConfig:
 
     def __init__(self) -> None:
         super(_NpuGraphExConfig, self).__init__()
+
+    @classmethod
+    def as_dict(cls):
+        options = {}
+        for k, v in cls.__dict__.items():
+            if k in cls.OPTIONS_TO_CONFIG_MAP:
+                options[k] = v
+        return options
         
 
 def _process_kwargs_options(config, kwargs):
@@ -69,6 +99,7 @@ def _process_kwargs_options(config, kwargs):
                 raise ValueError(f"Invalid option '{option}', allowed options: {sorted(_NpuGraphExConfig.ALLOWED_OPTIONS)}")
 
             option_value = options[option]
+            setattr(_NpuGraphExConfig, option, option_value)
             if option in _NpuGraphExConfig.OPTIONS_TO_CONFIG_TRANSFORMATIONS:
                 transform_func = _NpuGraphExConfig.OPTIONS_TO_CONFIG_TRANSFORMATIONS[option]
                 processed_value = transform_func(option_value)
