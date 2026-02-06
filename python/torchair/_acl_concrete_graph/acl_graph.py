@@ -603,8 +603,11 @@ def construct_fx_node_shape(ori_shape: List, sym_inputs: dict, graph_id: int) ->
         if is_constant(dim):
             # only for real constant value
             empty_shape.append(dim)
-        elif isinstance(dim.node.expr, sympy.Symbol) or str(dim.node.expr).isdigit():
-            # for single symbol or number symbol, such as: s0, sym(5)
+        elif str(dim.node.expr).isdigit():
+            # for number symbol, such as: sym(5)
+            empty_shape.append(int(dim.node.expr))
+        elif isinstance(dim.node.expr, sympy.Symbol):
+            # for single symbol, such as: s0
             if dim.node.expr not in sym_inputs.keys():
                 raise RuntimeError(f'Unexpected sym output shape {dim} '
                                    f'which is not in all sym inputs dict {sym_inputs} of graph[{graph_id}].')

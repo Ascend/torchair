@@ -9,6 +9,10 @@ from unittest.mock import Mock
 import torch
 import torch.nn.functional as F
 import _privateuse1_backend
+from torch import fx
+from torch import nn
+from torch.fx import Node, Proxy
+import sympy
 
 import torchair
 from torchair.configs.compiler_config import CompilerConfig
@@ -93,6 +97,41 @@ class AclGraphSt(unittest.TestCase):
         x = torch.randn([3, 2])
         for i in range(2):
             model(x)
+
+    def test_fx_node_shape_analysis(self):
+        class Dim:
+            def __init__(self, node: fx.Node):
+                self.node = node
+
+            def __repr__(self):
+                return str(self.node.expr)
+
+        def create_placeholder_node(graph, name, expr) -> fx.Node:
+            node = graph.placeholder(name)
+            node.expr = expr
+            dim = Dim(node)
+            return dim
+
+        graph = fx.Graph()
+        sym_nodes = {}
+        sym_int3 = sympy.Integer(3)
+        sym_nodes[sym_int3] = create_placeholder_node(graph, "arg0_1", sym_int3)
+        sym_str1 = sympy.symbols('s1')
+        sym_nodes[sym_str1] = create_placeholder_node(graph, "arg1_1", sym_str1)
+        sym_str2 = sympy.symbols('s2')
+        sym_nodes[sym_str2] = create_placeholder_node(graph, "arg2_1", sym_str2)
+        sym_float3 = sympy.Float(3.14)
+        sym_nodes[sym_float3] = create_placeholder_node(graph, "arg3_1", sym_float3)
+        sym_bool1 = sympy.true
+        sym_nodes[sym_bool1] = create_placeholder_node(graph, "arg4_1", sym_bool1)
+
+        from torchair._acl_concrete_graph.acl_graph import construct_fx_node_shape
+        ori_shape_list = [1, 2, sym_nodes[sym_int3], sym_nodes[sym_str1], sym_nodes[sym_str2]]
+        out_shape = construct_fx_node_shape(ori_shape_list, sym_nodes, 0)
+        out_shape = [str(ss) for ss in out_shape]
+        target_shape = [1, 2, 3, sym_str1, sym_str2]
+        target_shape = [str(ss) for ss in target_shape]
+        self.assertTrue(target_shape == out_shape)
 
     @unittest.skipIf(torch.__version__ < "2.5", "reinplace is unsupported when torch < 2.5")
     def test_aclgraph_capture_and_replay_keep_inference_input_mutations_true(self):
@@ -1623,8 +1662,6 @@ class AclGraphSt(unittest.TestCase):
         model2 = Model()
         model2(x, y, z, w)
         self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
-
-
 
     def test_aclgraph_cache_closure_vars(self):
         class Model(torch.nn.Module):
