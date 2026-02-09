@@ -765,12 +765,15 @@ class AclGraphSt(unittest.TestCase):
         def func():
             A = torch.ones([100, 100])
             mm_input = torch.randn(3200, 32000)
-            with torchair.scope.npu_stream_switch('1', 3):
+            with torchair.scope.npu_stream_switch('second_stream', 3):
                 for _ in range(10):  # 延长secend stream执行时间，使得A.add(1)晚于主流C.add_(2)计算
                     out = mm_input * mm_input
                 B = A.add(1)
-                torchair.ops.npu_record_tagged_stream(B, '1')
-            del A
+                # A在secend_stream参与计算，同时主流对A所在内存进行释放，此时，需要插入record_stream延长A所在内存的生命周期，
+                # 避免被提前释放, 导致出现A在secend stream计算时数据错误改写的问题
+                torchair.ops.npu_record_tagged_stream(A, 'second_stream')
+            del A # 在主流上释放A内存，如果在second_stream流上没有插入record_stream，则可能导致A内存被提前释放，
+                  # 而正好C又恰好申请到了A相同的内存地址，如果C.add_(2)在B = A.Add(1)之前执行完，则B的结果将是错误的
             C = torch.ones([100, 100])
             C.add_(2)
             return B, C

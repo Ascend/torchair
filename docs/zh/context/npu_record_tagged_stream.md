@@ -49,29 +49,36 @@ npu_record_tagged_stream(input: torch.Tensor, tagged_stream: str)
 import torch, os
 import torch_npu
 import torchair
+
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core.utils import logger
+device_npu = 'npu:0'
+mm_input = torch.randn(3200, 3200, device=device_npu)
 
 def func(input):
-    mm_input = torch.randn(3200, 32000)
-    with torchair.scope.npu_stream_switch('1'):
-        # 延长second stream执行时间，使得B = input + input晚于主流C.add_(2)计算
-        for _ in range(100):                
-            out = mm_input * mm_input
-        B = input + input
-        # 调用npu_record_tagged_stream，表明Tensor B在stream'1'上使用，延长Tensor B对应内存的生命周期
-        torchair.ops.npu_record_tagged_stream(B, '1')
-    del B
-    C = torch.ones([100, 100], device="npu")
-    C.add_(2)
-    return C
+    global mm_input
+    A = torch.zeros([100, 100], device=device_npu) # A在主流上申请内存, 全0
+    with torchair.scope.npu_stream_switch('second_stream', 3):
+        for _ in range(2000):  # 延长secend stream执行时间，使得A.add(1)晚于主流C.add_(2)计算
+            mm_input = mm_input @ mm_input
+        B = A.add(1)
+        # A在secend_stream参与计算，同时主流对A所在内存进行释放，此时，需要插入record_stream延长A所在内存的生命周期，
+        # 避免被提前释放, 导致出现A在secend stream计算时数据错误改写的问题
+        torchair.ops.npu_record_tagged_stream(A, 'second_stream') # 延长A内存生命周期, 不加这一行，B的输出结果可能不是1, 加了这一行，B的输出结果一定是1
+    del A # 在主流上释放A内存，如果在second_stream流上没有插入record_stream，则可能导致A内存被提前释放，
+    # 而正好C又恰好申请到了A相同的内存地址，并改写了数据，导致B的结果错误
+    C = torch.ones([100, 100], device=device_npu) # A在主流上申请内存, 全1
+    C.add_(100)
+    return B, C, mm_input
 config = CompilerConfig()
 config.mode = "reduce-overhead"
 npu_backend = torchair.get_npu_backend(compiler_config=config)
 
 # 调用compile编译
 func = torch.compile(func, backend=npu_backend, dynamic=False, fullgraph=True)
-in1 = torch.ones([100, 100], device="npu")
+in1 = torch.ones([100, 100], device=device_npu)
+
 result = func(in1)
-print(f"Result:\n{result}\n")
+print(result[0])
+print(result[1])
 ```

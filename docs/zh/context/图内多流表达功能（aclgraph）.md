@@ -56,20 +56,22 @@ from torchair.core.utils import logger
 class Model(torch.nn.Module):
     def __init__(self):
         super().__init__()
-        # 创建两个tag="66"，tag="77"的event
-        self.tagged_event1 = tng.ops.npu_create_tagged_event(tag="66")
-        self.tagged_event2 = tng.ops.npu_create_tagged_event(tag="77")
+        # 创建两个tag="event_1"，tag="event_2"的event
+        self.tagged_event1 = tng.ops.npu_create_tagged_event(tag="event_1")
+        self.tagged_event2 = tng.ops.npu_create_tagged_event(tag="event_2")
     def forward(self, in1, in2, in3, in4):
         add_result = torch.add(in1, in2)
+        # B在默认流上创建
+        B = in3 + in4
         # 插入一个event_record用于同步，对于self.tagged_event1.wait后的任务需要等record执行完毕才能执行
         tng.ops.npu_tagged_event_record(self.tagged_event1)
         with tng.scope.npu_stream_switch('1'):
-            # torch.mm算子(mm_result)等待torch.add算子(add_result)执行完再执行
+            # torch.mm算子(mm_result)等待torch.add算子(add_result)以及B计算执行完再执行
             tng.ops.npu_tagged_event_wait(self.tagged_event1)
-            mm_result = torch.mm(in3, in4)
+            # B在stream'1'上使用
+            mm_result = torch.mm(B, in4)
             # 插入一个event_record用于同步，对于self.tagged_event2.wait后的任务需要等record执行完毕才能执行
             tng.ops.npu_tagged_event_record(self.tagged_event2)
-            B = in3 + in4
             # 调用npu_record_tagged_stream，表明Tensor B在stream'1'上使用，延长Tensor B对应内存的生命周期
             tng.ops.npu_record_tagged_stream(B, '1')
         mm1 = torch.mm(in3, in4)
