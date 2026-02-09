@@ -39,8 +39,7 @@ def conveter_npu_npu_quant_matmul(
     is_a8w4 = x1.dtype == DataType.DT_FLOAT8_E4M3FN and \
                           (x2_dtype == torch_npu.float4_e2m1fn_x2 or x2.dtype == DataType.DT_FLOAT)
     need_reshape = (x1.dtype == DataType.DT_INT32 and x2.dtype == DataType.DT_INT32) or \
-                   (x1_dtype is not None and x2_dtype is not None and \
-                    (x1_dtype == torch_npu.float4_e2m1fn_x2 or x1_dtype == torch_npu.float4_e1m2fn_x2)) or \
+                   (x1_dtype is not None and x2_dtype is not None and x1_dtype == torch_npu.float4_e2m1fn_x2) or \
                    (is_a8w4 and x2.dtype != DataType.DT_FLOAT)
     if need_reshape:
         shape_multiples = 2
@@ -99,11 +98,11 @@ def conveter_npu_npu_quant_matmul(
         if is_a8w4:
             group_size = group_k
     if x1_dtype is not None:
-        if x1_dtype != torch_npu.float4_e2m1fn_x2 and x1_dtype != torch_npu.float4_e1m2fn_x2:
+        if x1_dtype != torch_npu.float4_e2m1fn_x2:
             x1 = ge.Bitcast(x1, type=torch_dtype_value_to_ge_type(x1_dtype))
         x1.desc.dtype = torch_dtype_value_to_ge_proto_type(x1_dtype)
     if x2_dtype is not None:
-        if x2_dtype != torch_npu.float4_e2m1fn_x2 and x2_dtype != torch_npu.float4_e1m2fn_x2:
+        if x2_dtype != torch_npu.float4_e2m1fn_x2:
             x2 = ge.Bitcast(x2, type=torch_dtype_value_to_ge_type(x2_dtype))
         x2.desc.dtype = torch_dtype_value_to_ge_proto_type(x2_dtype)
     if pertoken_scale_dtype is not None:

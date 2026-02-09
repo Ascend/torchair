@@ -72,8 +72,7 @@ def conveter_npu_grouped_matmul_finalize_routing(
         dtype = DataType.DT_FLOAT
     else:
         raise RuntimeError("Not supported output dtype is " + str(dtype))
-    if_mxfp4 = (x_dtype == torch_npu.float4_e2m1fn_x2 or x_dtype == torch_npu.float4_e1m2fn_x2) and \
-        (w_dtype == torch_npu.float4_e2m1fn_x2 or w_dtype == torch_npu.float4_e1m2fn_x2)
+    if_mxfp4 = x_dtype == torch_npu.float4_e2m1fn_x2 and w_dtype == torch_npu.float4_e2m1fn_x2
     if w.dtype == DataType.DT_INT32:
         from torch_npu.npu.utils import _is_gte_cann_version
         if _is_gte_cann_version("8.5.0"):
@@ -91,11 +90,11 @@ def conveter_npu_grouped_matmul_finalize_routing(
         new_w = w
 
     if x_dtype is not None:
-        if x_dtype != torch_npu.float4_e2m1fn_x2 and x_dtype != torch_npu.float4_e1m2fn_x2:
+        if x_dtype != torch_npu.float4_e2m1fn_x2:
             x = ge.Bitcast(x, type=torch_dtype_value_to_ge_type(x_dtype))
         x.desc.dtype = torch_dtype_value_to_ge_proto_type(x_dtype)
     if w_dtype is not None:
-        if w_dtype != torch_npu.float4_e2m1fn_x2 and w_dtype != torch_npu.float4_e1m2fn_x2:
+        if w_dtype != torch_npu.float4_e2m1fn_x2:
             new_w = ge.Bitcast(w, type=torch_dtype_value_to_ge_type(w_dtype))
         new_w.desc.dtype = torch_dtype_value_to_ge_proto_type(w_dtype)
     if scale_dtype is not None:

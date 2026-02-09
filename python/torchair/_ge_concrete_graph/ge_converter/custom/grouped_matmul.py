@@ -39,9 +39,7 @@ def fp4_quant_mode(x_dtype, weight_dtype, scale):
     if scale is None:
         return False
     if ((x_dtype is not None and torch_dtype_value_to_ge_type(x_dtype) == DataType.DT_FLOAT4_E2M1) and \
-       (weight_dtype is not None and torch_dtype_value_to_ge_type(weight_dtype) == DataType.DT_FLOAT4_E2M1)) or \
-       ((x_dtype is not None and torch_dtype_value_to_ge_type(x_dtype) == DataType.DT_FLOAT4_E1M2) and \
-       (weight_dtype is not None and torch_dtype_value_to_ge_type(weight_dtype) == DataType.DT_FLOAT4_E1M2)):
+       (weight_dtype is not None and torch_dtype_value_to_ge_type(weight_dtype) == DataType.DT_FLOAT4_E2M1)):
         return True
     return False
 
@@ -282,20 +280,19 @@ def conveter_npu_npu_grouped_matmul(
         w_list = convert_tensorlist_to_int4_arch35(weight, 
                                                    x[0].symsize[-1] == weight[0].symsize[-2] * INT4_NUMS_IN_INT32)
     elif x_dtype is not None and weight_dtype is not None and \
-         (x_dtype == torch_npu.float4_e2m1fn_x2 or x_dtype == torch_npu.float4_e1m2fn_x2) and \
-         (weight_dtype == torch_npu.float4_e2m1fn_x2 or weight_dtype == torch_npu.float4_e1m2fn_x2):
+         x_dtype == torch_npu.float4_e2m1fn_x2 and weight_dtype == torch_npu.float4_e2m1fn_x2:
         x_list, w_list = convert_tensorlist_to_mxfp4(x, weight, x_dtype, weight_dtype)
     else:
         x_list = x
         w_list = weight
 
     if x_dtype is not None:
-        if x_dtype != torch_npu.float4_e2m1fn_x2 and x_dtype != torch_npu.float4_e1m2fn_x2:
+        if x_dtype != torch_npu.float4_e2m1fn_x2:
             x_list[0] = ge.Bitcast(x_list[0], type=torch_dtype_value_to_ge_type(x_dtype))
         x_list[0].desc.dtype = torch_dtype_value_to_ge_proto_type(x_dtype)
 
     if weight_dtype is not None:
-        if weight_dtype != torch_npu.float4_e2m1fn_x2 and weight_dtype != torch_npu.float4_e1m2fn_x2:
+        if weight_dtype != torch_npu.float4_e2m1fn_x2:
             w_list[0] = ge.Bitcast(w_list[0], type=torch_dtype_value_to_ge_type(weight_dtype))
         w_list[0].desc.dtype = torch_dtype_value_to_ge_proto_type(weight_dtype)
 

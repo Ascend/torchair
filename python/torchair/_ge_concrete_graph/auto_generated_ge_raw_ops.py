@@ -79255,8 +79255,8 @@ def GroupedMatmulFinalizeRouting(x: Tensor, w: Tensor, scale: Optional[Tensor], 
                                 transpose_x: bool = False, transpose_w: bool = False, output_bs: int = 0,
                                 group_list_type=1, tuning_config=[], dependencies=[], node_name=None):
     """REG_OP(GroupedMatmulFinalizeRouting)\n
-    .INPUT(x, TensorType({DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2}))\n
-    .INPUT(w, TensorType({DT_INT8, DT_INT4, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2}))\n
+    .INPUT(x, TensorType({DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3, DT_FLOAT4_E2M1}))\n
+    .INPUT(w, TensorType({DT_INT8, DT_INT4, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3, DT_FLOAT4_E2M1}))\n
     .OPTIONAL_INPUT(scale, TensorType({DT_FLOAT, DT_INT64, DT_FLOAT8_E8M0}))\n
     .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT, DT_BF16}))\n
     .OPTIONAL_INPUT(pertoken_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))\n
@@ -79315,8 +79315,8 @@ def GroupedMatmulFinalizeRouting(x: Tensor, w: Tensor, scale: Optional[Tensor], 
         outputs=outputs,
         dependencies=dependencies,
         ir=IrDef("GroupedMatmulFinalizeRouting") \
-        .input("x", "DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2") \
-        .input("w", "DT_INT8, DT_INT4, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2") \
+        .input("x", "DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3, DT_FLOAT4_E2M1") \
+        .input("w", "DT_INT8, DT_INT4, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3, DT_FLOAT4_E2M1") \
         .optional_input("scale", "DT_FLOAT, DT_INT64, DT_FLOAT8_E8M0") \
         .optional_input("bias", "DT_FLOAT, DT_BF16") \
         .optional_input("pertoken_scale", "DT_FLOAT, DT_FLOAT8_E8M0") \
@@ -82344,10 +82344,10 @@ def GroupedMatmulSwigluQuantV2(x: Tensor,
         outputs=outputs,
         dependencies=dependencies,
         ir=IrDef("GroupedMatmulSwigluQuantV2")\
-        .input("x", "DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2, DT_HIFLOAT8")\
+        .input("x", "DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_FLOAT4_E2M1, DT_HIFLOAT8")\
         .input("x_scale", "DT_FLOAT, DT_FLOAT8_E8M0")\
         .input("group_list", "DT_INT64")\
-        .dynamic_input("weight", "DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2, DT_HIFLOAT8")\
+        .dynamic_input("weight", "DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_FLOAT4_E2M1, DT_HIFLOAT8")\
         .dynamic_input("weight_scale", "DT_FLOAT, DT_FLOAT8_E8M0, DT_BFLOAT16, DT_FLOAT16")\
         .dynamic_input("weight_assist_matrix", "DT_FLOAT")\
         .optional_input("bias", "DT_FLOAT")\
@@ -82359,7 +82359,7 @@ def GroupedMatmulSwigluQuantV2(x: Tensor,
         .attr("transpose_weight", attr.Bool(False))\
         .attr("group_list_type", attr.Int(0))\
         .attr("tuning_config", attr.ListInt([0]))\
-        .output("y", "DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2, DT_HIFLOAT8")\
+        .output("y", "DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_FLOAT4_E2M1, DT_HIFLOAT8")\
         .output("y_scale", "DT_FLOAT, DT_FLOAT8_E8M0")
     )
 

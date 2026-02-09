@@ -544,8 +544,8 @@ REG_OP(QuantBatchMatmulInplaceAdd)
 * y: A matrix Tensor. The data type support bfloat16. The format supports ND.
 */
 REG_OP(QuantBatchMatmulV4)
-    .INPUT(x1, TensorType({DT_INT8, DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_FLOAT4_E1M2, DT_FLOAT4_E2M1}))
-    .INPUT(x2, TensorType({DT_INT8, DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_FLOAT4_E1M2, DT_FLOAT4_E2M1}))
+    .INPUT(x1, TensorType({DT_INT8, DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_FLOAT4_E2M1}))
+    .INPUT(x2, TensorType({DT_INT8, DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_FLOAT4_E2M1}))
     .OPTIONAL_INPUT(bias, TensorType({DT_INT32, DT_BF16, DT_FLOAT, DT_FLOAT16}))
     .OPTIONAL_INPUT(x1_scale, TensorType({DT_UINT64, DT_FLOAT, DT_INT64, DT_BF16, DT_FLOAT8_E8M0}))
     .OPTIONAL_INPUT(x2_scale, TensorType({DT_UINT64, DT_FLOAT, DT_INT64, DT_BF16, DT_FLOAT8_E8M0}))
@@ -554,7 +554,7 @@ REG_OP(QuantBatchMatmulV4)
     .OPTIONAL_INPUT(x2_offset, TensorType({DT_FLOAT, DT_BF16}))
     .OPTIONAL_INPUT(y_offset, TensorType({DT_FLOAT, DT_BF16}))
     .OPTIONAL_INPUT(x2_table, TensorType({DT_INT8}))
-    .OUTPUT(y, TensorType({DT_FLOAT16, DT_INT8, DT_BF16, DT_FLOAT, DT_HIFLOAT8, DT_FLOAT8_E4M3FN}))
+    .OUTPUT(y, TensorType({DT_FLOAT16, DT_INT8, DT_BF16, DT_FLOAT}))
     .REQUIRED_ATTR(dtype, Int)
     .ATTR(compute_type, Int, -1)
     .ATTR(transpose_x1, Bool, false)
@@ -640,9 +640,9 @@ REG_OP(QuantMatmulReduceSum)
 * @brief Function GroupedMatmulFinalizeRouting. This op mixs GroupedMatmul和MoeFinalizeRouting. After the calculation of GroupedMatmul, perform a combine operation on the output according to the index, and support the format where w is in the Ascend affinity data layout.
 
 * @par Inputs:
-* @li x: A tensor, which is the input x in the formula, supports the ND data format (refer to Data Format), and the shape supports 2 dimensions with the dimension being (m, k). The data type supports INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2.
+* @li x: A tensor, which is the input x in the formula, supports the ND data format (refer to Data Format), and the shape supports 2 dimensions with the dimension being (m, k). The data type supports INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3, DT_FLOAT4_E2M1.
 
-* @li w: A tensor of weight, which supports the Ascend affinity data layout format as described in Data Format. The data type supports INT8, INT4, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2, and the shape supports 5 dimensions.
+* @li w: A tensor of weight, which supports the Ascend affinity data layout format as described in Data Format. The data type supports INT8, INT4, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3, DT_FLOAT4_E2M1, and the shape supports 5 dimensions.
 * When transposew is false, each dimension is represented as: (e, n1, k1, k0, n0), where k0 = 16, n0 = 32. The k in the x shape and the k1 in the w shape need to satisfy the following relationship: ceilDiv(k, 16) = k1.
 * The aclnnCalculateMatmulWeightSizeV2 interface and the aclnnTransMatmulWeight interface can be used to complete the conversion of the input format from the ND format to the Ascend affinity data layout format.
 * @li scale: It represents the scaling factor in the quantization parameters. It supports the ND data format as described in Data Format. The supported data type is FLOAT32, INT64, DT_FLOAT8_E8M0
@@ -684,8 +684,8 @@ REG_OP(QuantMatmulReduceSum)
 * The sum of the values in grouplist is less than or equal to m. \n
 */
 REG_OP(GroupedMatmulFinalizeRouting)
-.INPUT(x, TensorType({DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2}))
-.INPUT(w, TensorType({DT_INT8, DT_INT4, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2}))
+.INPUT(x, TensorType({DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3, DT_FLOAT4_E2M1}))
+.INPUT(w, TensorType({DT_INT8, DT_INT4, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3, DT_FLOAT4_E2M1}))
 .OPTIONAL_INPUT(scale, TensorType({DT_FLOAT, DT_INT64, DT_FLOAT8_E8M0}))
 .OPTIONAL_INPUT(bias, TensorType({DT_FLOAT, DT_BF16}))
 .OPTIONAL_INPUT(pertoken_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))

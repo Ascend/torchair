@@ -17,7 +17,6 @@ from torchair._ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
 Y_RANK = 2
 TORCH_INT8 = 1
 FLOAT4_E2M1 = 296
-FLOAT4_E1M2 = 297
 TORCH_HIFLOAT8 = 290
 TORCH_FLOAT8E4M3 = 23
 TORCH_FLOAT8E5M2 = 24
@@ -79,7 +78,7 @@ def is_mxfp4(dtype):
     except ImportError as e:
         raise RuntimeError("Couldn't import torch_npu. When the CompilerConfig.mode is reduce-overhead, "
                            "it is necessary to use torch_npu.npu.NPUGraph(), so importing torch_npu is essential. ") from e
-    return dtype == torch_npu.float4_e2m1fn_x2 or dtype == torch_npu.float4_e1m2fn_x2
+    return dtype == torch_npu.float4_e2m1fn_x2
 
 
 @declare_supported([
@@ -127,11 +126,11 @@ def conveter_npu_grouped_matmul_swiglu_quant_v2(
         x_scale = ge.Bitcast(x_scale, type=torch_dtype_value_to_ge_type(x_scale_dtype))
         x_scale.desc.dtype = torch_dtype_value_to_ge_proto_type(x_scale_dtype)
     if x_dtype is not None:
-        if x_dtype != torch_npu.float4_e2m1fn_x2 and x_dtype != torch_npu.float4_e1m2fn_x2:
+        if x_dtype != torch_npu.float4_e2m1fn_x2:
             x = ge.Bitcast(x, type=torch_dtype_value_to_ge_type(x_dtype))
         x.desc.dtype = torch_dtype_value_to_ge_proto_type(x_dtype)
     if weight_dtype is not None:
-        if weight_dtype != torch_npu.float4_e2m1fn_x2 and weight_dtype != torch_npu.float4_e1m2fn_x2:
+        if weight_dtype != torch_npu.float4_e2m1fn_x2:
             weight[0] = ge.Bitcast(weight[0], type=torch_dtype_value_to_ge_type(weight_dtype))
         weight[0].desc.dtype = torch_dtype_value_to_ge_proto_type(weight_dtype)
 
@@ -159,11 +158,9 @@ def conveter_npu_grouped_matmul_swiglu_quant_v2(
     if quant_dtype in (TORCH_INT8, TORCH_HIFLOAT8, TORCH_FLOAT8E4M3, TORCH_FLOAT8E5M2) and quant_mode == 0: 
         y_scale.desc.dtype = ProtoDataType.DT_FLOAT
     if hasattr(torch, "float4_e2m1fn_x2"): # torch2.8.0 support torch.float4_e2m1fn_x2
-        if quant_dtype == FLOAT4_E1M2:
-            y = pack_mxfp4_tensor_to_uint8(y)
         if quant_dtype == FLOAT4_E2M1:
             y.desc.dtype = torch_dtype_value_to_ge_proto_type(quant_dtype)
     else:
-        if quant_dtype in (FLOAT4_E2M1, FLOAT4_E1M2): # torch_npu.float4_e2m1fn_x2 or torch_npu.float4_e1m2fn_x2
+        if quant_dtype == FLOAT4_E2M1: # torch_npu.float4_e2m1fn_x2
             y = pack_mxfp4_tensor_to_uint8(y)
     return y, y_scale
