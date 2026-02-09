@@ -4,6 +4,7 @@ import time
 from pathlib import Path
 
 import torch
+import torch_npu
 import torchair
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core.utils import logger
