@@ -55,6 +55,7 @@ from torchair._utils.graph_transform_observer import GraphTransformObserver, dum
 from torchair._utils.graph_utils import debug_compare_fx_graphs
 from torchair.inference._gear_utils import get_dim_gears, set_dim_gears, guard_gears_shape
 from torchair.patterns.pattern_util import _apply_pattern_passes
+from torchair._acl_concrete_graph.replace_stream_event import replace_stream_event_pass
 
 aten = torch.ops.aten
 
@@ -942,6 +943,10 @@ def _compile_graph_with_aot(gm: torch.fx.GraphModule,
     if os.getenv("TORCH_COMPILE_DEBUG", "0") == "1":
         folder_path = DebugContext.next_path()
         dump_fx_safety(gm, os.path.join(folder_path, "dynamo_out_graph.txt"))
+
+    # 1.1 replace torch.npu.Event and stream if need
+    if compiler_config.mode.value in ("reduce-overhead", "npugraph_ex"):
+        gm = replace_stream_event_pass(gm)
 
     # 2. Prepare common attributes
     num_example_inputs = len(example_inputs)

@@ -40,6 +40,8 @@ class AclgraphTest(unittest.TestCase):
 
     def setUp(self) -> None:
         self.optimize_fx_bak = torchair.npu_fx_compiler._optimize_fx
+        if not hasattr(torch.npu, "fake_record_stream"):
+            patch_dynamo()        
         return super().setUp()
 
     def tearDown(self) -> None:
@@ -1941,6 +1943,205 @@ class AclgraphTest(unittest.TestCase):
                 skip_duplicates=True
         )
         torch.compile(f, backend="npugraph_ex", fullgraph=True, dynamic=True)
+
+
+    @unittest.skipIf(torch.__version__ < "2.6", "torch_npu stream api is unsupported when torch < 2.6")
+    def test_stream_event_replace_in_fx(self):
+        def cus_func(t):
+            s = torch.npu.Stream()
+            tmp = torch.add(t, 2)
+            event = torch.npu.Event()        
+            event.record()
+            with torch.npu.stream(s):
+                event.wait(s)
+                r = torch.relu(tmp)
+                r.record_stream(s)
+            return r
+
+        def my_backend(gm: torch.fx.GraphModule, example_inputs):
+            from torchair._acl_concrete_graph.replace_stream_event import replace_stream_event_pass
+            gm = replace_stream_event_pass(gm)
+            fx_target_list = []
+            for node in gm.graph.nodes:
+                if hasattr(node.target, "__name__"):
+                    fx_target_list.append(node.target.__name__)
+                else:
+                    fx_target_list.append(node.target)   
+
+                if node.name == "record":
+                    self.assertEqual(node.args[0], "event")
+                if node.name == "wait":
+                    self.assertEqual(node.args[0], "event")
+                if node.name == "set_stream":
+                    self.assertIn("stream", node.args[1])
+                
+
+            print(f"fx_target_list is :{fx_target_list}")
+            torchair_ir_list = ('tagged_event_record',
+                                'tagged_event_wait',
+                                'record_tagged_stream_',
+                                'scope_enter',
+                                'scope_exit')
+            
+            for torchair_ir in torchair_ir_list:
+                self.assertIn(torchair_ir, fx_target_list)             
+            return gm
+
+        opt_m = torch.compile(cus_func, backend=my_backend, fullgraph=True, dynamic=False)
+        i = torch.randn([3, 3]).to('npu')
+        r = opt_m(i)  
+
+
+    @unittest.skipIf(torch.__version__ < "2.6", "torch_npu stream api is unsupported when torch < 2.6")
+    def test_stream_event_replace_with_set_stream(self):
+        def cus_func(t):
+            default_stream = torch.npu.current_stream()
+            s1 = torch.npu.Stream()
+            s2 = torch.npu.Stream()
+            s3 = torch.npu.Stream()
+            tmp = torch.add(t, 0)
+            torch.npu.set_stream(s1)
+            tmp = torch.add(tmp, 1)
+            current_s1 = torch.npu.current_stream()
+            torch.npu.set_stream(s2)
+            tmp = torch.add(tmp, 2)
+            torch.npu.set_stream(s3)
+            tmp = torch.add(tmp, 3)
+            torch.npu.set_stream(current_s1)
+            r = torch.add(tmp, 4)
+            torch.npu.set_stream(default_stream)
+            return r
+
+        def my_backend(gm: torch.fx.GraphModule, example_inputs):
+            from torchair._acl_concrete_graph.replace_stream_event import replace_stream_event_pass
+            gm = replace_stream_event_pass(gm)
+            print(f'after replace graph is : {gm.graph}')
+            fx_target_list = []
+            fx_node_name_list = []
+            for node in gm.graph.nodes:
+                fx_node_name_list.append(node.name)
+                fx_target_list
+                if hasattr(node.target, "__name__"):
+                    fx_target_list.append(node.target.__name__)
+                else:
+                    fx_target_list.append(node.target)   
+
+            self.assertEqual(fx_target_list.count('scope_enter'), fx_target_list.count('scope_exit'))
+            self.assertEqual(fx_node_name_list[13], 'set_stream_3')
+            self.assertEqual(fx_target_list[13], 'set_stream')
+            self.assertEqual(fx_target_list[14], 'scope_exit')
+            self.assertEqual(fx_node_name_list[14], 'scope_exit_1')
+            self.assertEqual(fx_target_list[15], 'scope_exit')
+            self.assertEqual(fx_node_name_list[15], 'scope_exit')
+            self.assertEqual(fx_node_name_list[-2], 'scope_exit_2')
+            self.assertEqual(fx_target_list[-2], 'scope_exit')
+
+            return gm
+
+        opt_m = torch.compile(cus_func, backend=my_backend, fullgraph=True, dynamic=False)
+        i = torch.randn([3, 3]).to('npu')
+        r = opt_m(i) 
+
+
+    @unittest.skipIf(torch.__version__ < "2.6", "torch_npu stream api is unsupported when torch < 2.6")
+    def test_stream_event_replace_without_set_default(self):
+        def cus_func(t):
+            s1 = torch.npu.Stream()
+            tmp = torch.add(t, 0)
+            torch.npu.set_stream(s1)
+            r = torch.add(tmp, 1)
+            return r
+
+        def my_backend(gm: torch.fx.GraphModule, example_inputs):
+            from torchair._acl_concrete_graph.replace_stream_event import replace_stream_event_pass
+            gm = replace_stream_event_pass(gm)
+            return gm
+
+        opt_m = torch.compile(cus_func, backend=my_backend, fullgraph=True, dynamic=False)
+        i = torch.randn([3, 3]).to('npu')
+        with self.assertRaises(RuntimeError) as context:
+            r = opt_m(i)   
+        self.assertIn("When use npugraph_ex, you must make sure at the end of your code set stream to the same stream "
+                        "as the begin of your code", str(context.exception))                           
+
+
+def patch_dynamo():
+    from torch._dynamo.variables.user_defined import UserDefinedClassVariable
+
+    def patch_user_defined_class_variable():
+        import functools
+        original_method = UserDefinedClassVariable._in_graph_classes
+        
+        @staticmethod
+        @functools.lru_cache(None)
+        def patched_in_graph_classes():
+            result = original_method()
+            result.add(torch.npu.Event)  
+            result.add(torch.npu.Stream) 
+            return result
+        UserDefinedClassVariable._in_graph_classes = patched_in_graph_classes
+
+
+    def fake_record_stream(self, s):
+        """
+        let dynamo trace Tensor.record_stream as this emtpy function,
+        and you can replace it later in your compile backend to an actual function
+        """
+        if isinstance(self, torch._subclasses.fake_tensor.FakeTensor):
+            return
+        raise RuntimeError("tensor.record_stream is not supported on torch.compile! "
+                        "You should write a pass to replace torch.npu.fake_record_stream to an actual function in FX graph "
+                        "before aot_autograd.")
+
+    def patch_record_stream():
+        torch.npu.fake_record_stream = fake_record_stream
+
+        def method_record_stream(self, s):
+            tx = torch._dynamo.symbolic_convert.InstructionTranslator.current_tx()
+            return torch._dynamo.variables.TorchInGraphFunctionVariable(
+                torch.npu.fake_record_stream
+            ).call_function(tx, [self, s], {})
+        
+        torch._dynamo.variables.tensor.TensorVariable.method_record_stream = method_record_stream
+
+    def patch_variable_builder():
+        original_warp = torch._dynamo.variables.builder.VariableBuilder._wrap
+        def _patch_wrapper(self, value):
+            if isinstance(value, torch.npu.Event):
+                self.install_guards(torch._dynamo.guards.GuardBuilder.ID_MATCH)
+                torch._dynamo.utils.store_user_object_weakref(value)
+                event_proxy = self.tx.output.create_proxy(
+                    "call_function",
+                    torch._dynamo.utils.get_user_object_from_id,
+                    (id(value),),
+                    {},
+                )
+                torch._dynamo.utils.set_example_value(event_proxy.node, value)
+                out = torch._dynamo.variables.ctx_manager.EventVariable(
+                    event_proxy,
+                    value,
+                    source=self.source,
+                )
+                return out
+            return original_warp(self, value)
+
+        torch._dynamo.variables.builder.VariableBuilder._wrap = _patch_wrapper
+
+
+    def patch_builtin_variable():
+        origin_call_id = torch._dynamo.variables.builtin.BuiltinVariable.call_id
+
+        def _wrap_call_id(self, tx, *args):
+            if torch._dynamo.variables.builtin.istype(args[0], torch._dynamo.variables.ctx_manager.EventVariable):
+                return torch._dynamo.variables.ConstantVariable.create(id(args[0].value))
+            return origin_call_id(self, tx, *args)
+
+        torch._dynamo.variables.builtin.BuiltinVariable.call_id = _wrap_call_id
+
+    patch_user_defined_class_variable()
+    patch_record_stream()
+    patch_variable_builder()
+    patch_builtin_variable()
 
 
 if __name__ == '__main__':
