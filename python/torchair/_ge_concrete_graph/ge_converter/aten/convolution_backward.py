@@ -82,7 +82,7 @@ def conv2d_backward_input_out_nocheck(x: Tensor, grad: Tensor, weight: Tensor, s
 
 
 def conv2d_backward_weight_out_nocheck(x: Tensor, grad: Tensor, weight: Tensor, stride: List[int], padding: List[int],
-                                       dilation: List[int], groups: int):
+                                       dilation: List[int], groups: int, target_dtype: int):
     strides = [1, 1, stride[0], stride[1]]
     pads = [padding[0], padding[0], padding[1], padding[1]]
     dilation = [1, 1, dilation[0], dilation[1]]
@@ -92,8 +92,8 @@ def conv2d_backward_weight_out_nocheck(x: Tensor, grad: Tensor, weight: Tensor, 
     specific_op_input_layout(output, indices=1, layout="ND")
     specific_op_input_layout(output, indices=[0, 2], layout="NCHW")
     specific_op_output_layout(output, indices=0, layout="NCHW")
-    if x.dtype is not DataType.DT_FLOAT:
-        output = ge.Cast(output, dst_type=x.dtype)
+    if target_dtype is not DataType.DT_FLOAT:
+        output = ge.Cast(output, dst_type=target_dtype)
     return output
 
 
@@ -102,12 +102,12 @@ def conv2d_backward_bias_out_nocheck(grad: Tensor):
 
 
 def npu_conv2d_backward(x: Tensor, grad: Tensor, weight: Tensor, stride: List[int], padding: List[int],
-                        dilation: List[int], groups: int, output_mask: List[bool], input_is_3d: bool):
+                        dilation: List[int], groups: int, output_mask: List[bool], input_is_3d: bool, target_dtype: int):
     grad_x = grad_weight = grad_bias = None
     if output_mask[0]:
         grad_x = conv2d_backward_input_out_nocheck(x, grad, weight, stride, padding, dilation, groups)
     if output_mask[1]:
-        grad_weight = conv2d_backward_weight_out_nocheck(x, grad, weight, stride, padding, dilation, groups)
+        grad_weight = conv2d_backward_weight_out_nocheck(x, grad, weight, stride, padding, dilation, groups, target_dtype)
     if output_mask[2]:
         grad_bias = conv2d_backward_bias_out_nocheck(grad)
     if input_is_3d:
@@ -129,7 +129,7 @@ def conv_transpose2d_backward_input_out_nocheck(x, grad, weight, padding, output
     return output
 
 
-def conv_transpose2d_backward_weight_out_nocheck(x, grad, weight, padding, output_padding, stride, dilation, groups):
+def conv_transpose2d_backward_weight_out_nocheck(x, grad, weight, padding, output_padding, stride, dilation, groups, target_dtype):
     strides = [1, 1, stride[0], stride[1]]
     pads = [padding[0], padding[0], padding[1], padding[1]]
     dilation = [1, 1, dilation[0], dilation[1]]
@@ -139,8 +139,8 @@ def conv_transpose2d_backward_weight_out_nocheck(x, grad, weight, padding, outpu
     specific_op_input_layout(output, indices=1, layout="ND")
     specific_op_input_layout(output, indices=[0, 2], layout="NCHW")
     specific_op_output_layout(output, indices=0, layout="NCHW")
-    if grad.dtype is not DataType.DT_FLOAT:
-        output = ge.Cast(output, dst_type=grad.dtype)
+    if target_dtype is not DataType.DT_FLOAT:
+        output = ge.Cast(output, dst_type=target_dtype)
     return output
 
 
@@ -150,7 +150,7 @@ def conv_transpose2d_backward_bias_out_nocheck(grad: Tensor):
 
 def npu_conv_transpose2d_backward(x: Tensor, grad: Tensor, weight: Tensor, padding: List[int],
                                   output_padding: List[int], stride: List[int], dilation: List[int], groups: int,
-                                  output_mask: List[bool], input_is_3d: bool):
+                                  output_mask: List[bool], input_is_3d: bool, target_dtype: int):
     grad_x = grad_weight = grad_bias = None
     if output_mask[0]:
         grad_x = conv_transpose2d_backward_input_out_nocheck(x, grad, weight, padding, output_padding, stride, dilation,
@@ -159,7 +159,7 @@ def npu_conv_transpose2d_backward(x: Tensor, grad: Tensor, weight: Tensor, paddi
     if output_mask[1]:
         grad_weight = conv_transpose2d_backward_weight_out_nocheck(x, grad, weight, padding,
                                                                    output_padding,
-                                                                   stride, dilation, groups)
+                                                                   stride, dilation, groups, target_dtype)
     if output_mask[2]:
         grad_bias = conv_transpose2d_backward_bias_out_nocheck(grad)
 
@@ -259,6 +259,8 @@ def conveter_aten_convolution_backward_default(
         output_mask = convert_tensor_to_list(output_mask, bool)
 
     grad, weight = dtype_promote(grad_output, weight, target_dtype=x.dtype)
+    x_dtype = x.dtype
+    grad_dtype = grad.dtype
 
     dim = x.rank
     input_is_3d = False
@@ -273,13 +275,13 @@ def conveter_aten_convolution_backward_default(
         grad = ge.Unsqueeze(grad, axes=[2])
     if not transposed:
         if dim == 4 or dim == 3:
-            return npu_conv2d_backward(x, grad, weight, stride, padding, dilation, groups, output_mask, input_is_3d)
+            return npu_conv2d_backward(x, grad, weight, stride, padding, dilation, groups, output_mask, input_is_3d, x_dtype)
         elif dim == 5:
             return npu_conv3d_backward(x, grad, weight, stride, padding, dilation, groups, output_mask)
 
     if dim == 4 or dim == 3:
         return npu_conv_transpose2d_backward(x, grad, weight, padding, output_padding, stride, dilation,
-                                             groups, output_mask, input_is_3d)
+                                             groups, output_mask, input_is_3d, grad_dtype)
     return npu_conv_transpose3d_backward(x, grad, weight, padding, output_padding, stride, dilation, groups,
                                          output_mask)
 

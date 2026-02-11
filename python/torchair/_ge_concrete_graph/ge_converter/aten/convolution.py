@@ -136,7 +136,7 @@ def _convolution_transpose3d_nocheck(x, weight, bias, padding, output_padding, s
     else:
         input_size = _conv_transpose3d_npu_output_size(x, weight, padding, output_padding, stride, dilation, groups)
     pads = [padding[0], padding[0], padding[1], padding[1], padding[2], padding[2]]
-    output_padding = [0, 0, 0, 0, 0]
+    output_padding = [0, 0, output_padding[0], output_padding[1], output_padding[2]]
     strides = [1, 1, stride[0], stride[1], stride[2]]
     dilation = [1, 1, dilation[0], dilation[1], dilation[2]]
     check_input_dtype(x, weight)
