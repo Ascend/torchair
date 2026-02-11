@@ -28,7 +28,8 @@
         >    这部分输入tensor通常不与模型本身绑定，大部分是单独申请一组tensor，例如VLLM类推理框架会根据可用内存分配kv-cache。特点是占用内存较高，一般不会在单次推理任务中被释放或发生地址变化。
         >-   user\_inputs（剩余模型输入）：
         >    这部分输入tensor通常指从模型参数传入的tensor，是FX graph所有输入排除上述两类输入之外的部分。特点是占用内存相对较小，单次推理任务中每次推新的token时都是上一个token推理后的输出tensor，因此这部分tensor地址会持续变化。
-        >   **模式三针对user\_inputs类输入进行内存拷贝（clone）**，并对clone后的输入进行内存复用；而parameter/buffer类和mutated\_inputs类不进行clone，不做显式持有以延长生命周期，而是直接使用，如果此类输入地址发生变化，将触发Recapture（重新进行aclgraph的Capture，重新捕获/记录输入地址）。
+        >   
+        >   **模式三针对user\_inputs类输入进行内存拷贝（clone）**，并对clone后的输入进行内存复用。若user\_inputs类输入本身占用内存较大，拷贝后可能导致内存不足。此时需要考虑将clone_input设置为False；而parameter/buffer类和mutated\_inputs类不进行clone，不做显式持有以延长生命周期，而是直接使用，如果此类输入地址发生变化，将触发Recapture（重新进行aclgraph的Capture，重新捕获/记录输入地址）。
 
 -   **场景2：**
 
@@ -70,6 +71,6 @@ opt_model = torch.compile(model, backend=npu_backend)
 | --- | --- |
 | aclgraph_config.use_custom_pool（模式一） | tuple类型，用于传入需要使用的内存池。一般通过torch.npu.graph_pool_handle主动创建一个pool。<br> None（默认值）：默认不传入指定内存池。<br>**说明**： torch.npu.graph_pool_handle是PyTorch原生cuda接口torch.cuda.graph_pool_handle的NPU形式。 |
 | debug.aclgraph.disable_mempool_reuse_in_same_fx（模式二） | 布尔类型，是否关闭FX graph的内存池复用模式。该模式实现同一张FX graph捕获出来的不同shape的aclgraph之间的内存复用 。<br>- False（默认值）：默认打开模式。<br>- True：关闭模式。 |
-| debug.aclgraph.clone_input（模式三） | 布尔类型，是否对aclgraph的user_inputs类输入做内存拷贝（clone）。该模式实现多aclgraph间（同一张FX graph内多张aclgraph间，或者多张FX graph的aclgraph间）的输入内存复用。<br>- True（默认值）：默认对输入clone。<br>- False：关闭对输入的clone。 |
+| debug.aclgraph.clone_input（模式三） | 布尔类型，是否对aclgraph的user_inputs类输入做内存拷贝（clone）。该模式实现多aclgraph间（同一张FX graph内多张aclgraph间，或者多张FX graph的aclgraph间）的输入内存复用。<br>- True（默认值）：默认对输入clone。<br>- False：关闭对输入的clone。 <br>**说明**：当设置为False时，若运行期间输入Tensor地址发生变化（例如传入新Tensor），框架会使用新数据覆盖到第一次运行时的旧Tensor内存中，以避免图重捕获。如果代码中其他地方引用了该旧Tensor，可能会导致数据不一致。|
 | debug.aclgraph.enable_output_clone | 布尔类型，是否对aclgraph的输出做内存拷贝（clone）。当开启内存池复用时，若输出长时间持有的情况下可开启本功能，对aclgraph的输出全部做clone再返回，以解决长时间持有的输出被覆写而导致的精度问题。<br>- False（默认值）：默认不对输出clone。<br>- True：开启对输出的clone。 |
 
