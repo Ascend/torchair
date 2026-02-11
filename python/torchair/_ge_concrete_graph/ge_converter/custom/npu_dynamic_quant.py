@@ -22,6 +22,7 @@ def conveter_npu_dynamic_quant_default(
         y, scale, offset = ge.DynamicQuantV2(input_data, smooth_scales,
                                              group_index, dst_type=acl_dst_type,
                                              is_symmetrical=True, quant_mode=quant_mode)
+    y.desc.dtype = torch_dtype_value_to_ge_proto_type(dst_type)
     if dst_type == 16: # torch.quint4x2
         dim_num = input_data.rank
         bit_shape = []
@@ -55,6 +56,7 @@ def conveter_npu_dynamic_quant_asymmetric_default(
     y, scale, offset = ge.DynamicQuantV2(input_data, smooth_scales,
                                          group_index, dst_type=acl_dst_type,
                                          is_symmetrical=False, quant_mode=quant_mode)
+    y.desc.dtype = torch_dtype_value_to_ge_proto_type(dst_type)
     if dst_type == 16:
         dim_num = input_data.rank
         bit_shape = []

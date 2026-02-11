@@ -37,4 +37,5 @@ def conveter_npu_dynamic_block_quant_default(
         acl_dst_type = torch_dtype_value_to_ge_type(dst_type)
     y, scale = ge.DynamicBlockQuant(x, min_scale=min_scale, round_mode=round_mode, dst_type=acl_dst_type,
                                 row_block_size=row_block_size, col_block_size=col_block_size)
+    y.desc.dtype = torch_dtype_value_to_ge_proto_type(dst_type)
     return y, scale
