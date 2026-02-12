@@ -110,9 +110,6 @@ def npu_allgather_in_tensor_patch_dist(output_tensor, input_tensor, group=None, 
     if group is None:
         group = c10d._world.default_pg
 
-    if torch.__version__ >= '2.1.0':
-        return all_gather_tensor_inplace_fixed(output_tensor, input_tensor, group, async_op)
-
     ranklist = torch.distributed.get_process_group_ranks(group)
     tag = c10d._get_group_tag(group)
     size_ = len(ranklist)
