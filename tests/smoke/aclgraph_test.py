@@ -41,7 +41,8 @@ class AclgraphTest(unittest.TestCase):
     def setUp(self) -> None:
         self.optimize_fx_bak = torchair.npu_fx_compiler._optimize_fx
         if not hasattr(torch.npu, "fake_record_stream"):
-            patch_dynamo()        
+            patch_dynamo()
+        torchair._acl_concrete_graph.replace_stream_event.GraphCounter.set_graph_id(-1)
         return super().setUp()
 
     def tearDown(self) -> None:
@@ -1969,11 +1970,11 @@ class AclgraphTest(unittest.TestCase):
                     fx_target_list.append(node.target)   
 
                 if node.name == "record":
-                    self.assertEqual(node.args[0], "event")
+                    self.assertEqual(node.args[0], "graph_0_event")
                 if node.name == "wait":
-                    self.assertEqual(node.args[0], "event")
+                    self.assertEqual(node.args[0], "graph_0_event")
                 if node.name == "set_stream":
-                    self.assertIn("stream", node.args[1])
+                    self.assertIn("graph_0_stream", node.args[1])
                 
 
             print(f"fx_target_list is :{fx_target_list}")

@@ -1,8 +1,21 @@
 import torch
 import torchair
-from torchair.ops import (npu_create_tagged_event, npu_tagged_event_record, 
-                          npu_tagged_event_wait, npu_record_tagged_stream)
 from torchair.core.utils import logger
+from torchair._acl_concrete_graph.graph_pass import _create_event_by_name
+
+
+class GraphCounter:
+
+    COUNT = -1
+
+    @classmethod
+    def graph_id(cls):
+        cls.COUNT += 1
+        return "graph_" + str(cls.COUNT) + "_"
+    
+    @classmethod
+    def set_graph_id(cls, value):
+        cls.COUNT = value
 
 
 def replace_stream_event_pass(gm: torch.fx.GraphModule):
@@ -10,25 +23,30 @@ def replace_stream_event_pass(gm: torch.fx.GraphModule):
         logger.warning("torch has no attr npu or npu.fake_record_stream, skip replace_stream_event_pass")
         return gm
     
+    from torchair.ops._tagged_event import (_npu_create_tagged_event, _npu_tagged_event_record, 
+                          _npu_tagged_event_wait, _npu_record_tagged_stream)
+    
     logger.debug(f'after dynamo out, graph is: {gm.graph}')
     stream_stack = []
     new_stream_list = []
     current_stream_map = {}
     current_stream = "default_stream"
 
+    graph_id = GraphCounter.graph_id()
+    logger.debug(f"replace_stream_event: graph_id is: {graph_id}")
     graph = gm.graph
     for node in graph.nodes:
         if node.op == "call_function" and (node.target == torch.npu.Event
                                            or node.target == torch._dynamo.utils.get_user_object_from_id):
-            torchair.ops.npu_create_tagged_event(node.name)
+            _create_event_by_name(graph_id + node.name)
         if node.op == "call_method" and node.target == "record":
             node.target = torch.ops.air.tagged_event_record
             node.op = "call_function"
-            node.args = (node.args[0].name,)
+            node.args = (graph_id + node.args[0].name, True)
         if node.op == "call_method" and node.target == "wait":
             node.target = torch.ops.air.tagged_event_wait
             node.op = "call_function"
-            node.args = (node.args[0].name,)
+            node.args = (graph_id + node.args[0].name, True)
         if node.op == "call_function" and node.target == torch.npu.fake_record_stream:
             node.target = torch.ops.air.record_tagged_stream_
             node.args = (node.args[0], node.args[1].name,)
@@ -45,31 +63,32 @@ def replace_stream_event_pass(gm: torch.fx.GraphModule):
         # 下次调用current_stream时，实际获取的就是这个set_stream的传入的流。
         # 通过该方式后续能统一把current_stream当作set_stream来处理
         if node.op == "call_function" and node.target == torch.npu.set_stream:
-            # 将current_stream设置为set_stream的传入的流
-            current_stream = node
             _to_set_stream = node.args[0]
             if node.args[0] in current_stream_map:
                 # 如果传入的是通过current_stream创建的流，从字典里获取它对应的是哪个set_stream创建的流
                 _to_set_stream = current_stream_map[node.args[0]]
 
+            # 将current_stream设置为set_stream的传入的流
+            current_stream = _to_set_stream  
+
             if _to_set_stream not in stream_stack and _to_set_stream in new_stream_list:
                 # 如果是set_stream创建的流，且不在栈里，则入栈，并创建scope_enter节点
-                logger.debug(f"replace_stream_event_pass: push stream: {node.name} to stack")
-                stream_stack.append(node)
+                logger.debug(f"replace_stream_event: push stream: {graph_id + node.name} to stack")
+                stream_stack.append(_to_set_stream)
                 node.target = torch.ops.air.scope_enter
-                node.args = (["_user_stream_label", "_user_stream_priority"], [_to_set_stream.name, "0"])
+                node.args = (["_user_stream_label", "_user_stream_priority"], [graph_id + _to_set_stream.name, "0"])
             elif _to_set_stream in stream_stack:
                 # 如果是已经栈里，则出栈，并创建scope_exit节点
                 while(_to_set_stream != stream_stack[-1]):
                     pop_node = stream_stack.pop()
-                    logger.debug(f"replace_stream_event_pass: pop stream: {pop_node.name} of stack")
+                    logger.debug(f"replace_stream_event: pop stream: {graph_id + pop_node.name} of stack")
                     with graph.inserting_after(node):
                         graph.call_function(torch.ops.air.scope_exit, args=())
             elif _to_set_stream == "default_stream":
                 # 如果是切到初始流，则把栈里元素全部出栈
                 while(stream_stack):
                     pop_node = stream_stack.pop()
-                    logger.debug(f"replace_stream_event_pass: pop stream: {pop_node.name} of stack")
+                    logger.debug(f"replace_stream_event: pop stream: {graph_id + pop_node.name} of stack")
                     with graph.inserting_after(node):
                         graph.call_function(torch.ops.air.scope_exit, args=())
             else:
