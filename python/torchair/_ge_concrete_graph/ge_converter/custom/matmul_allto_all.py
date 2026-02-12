@@ -30,11 +30,12 @@ def convert_npu_matmul_all_to_all(
     transpose_x1 = False
     transpose_x2 = False
     group_size = 0
-    all2all_axes = [-1, -2]
     y_dtype_value = x1.dtype
+    if all2all_axes is None:
+        all2all_axes = [-1, -2]
 
     '''NB: npu::npu_matmul_all_to_all(Tensor x1, Tensor x2, str hcom, int world_size, Tensor? bias=None, int[]? all2all_axes=[-1, -2]) -> Tensor'''
-    check_dtype(x1, x2)
+    check_dtype(x1, x2, bias)
 
     out = ge.MatmulAlltoAll(x1=x1,
                             x2=x2,
@@ -58,8 +59,13 @@ def convert_npu_matmul_all_to_all(
     return out
 
 
-def check_dtype(x1: Tensor, x2: Tensor):
+def check_dtype(x1: Tensor, x2: Tensor, bias: Tensor):
     if x1.dtype not in X_DTYPE_SUPPORT_LIST:
-        raise AssertionError(f"Type of x1:{x1.dtype} is error, x1 should be [DT_FLOAT16/DT_BF16].")
+        raise AssertionError(f"Type of x1:{ge_type_to_torch_type(x1.dtype)} is error, x1 should be float16/bf16.")
     if x2.dtype not in X_DTYPE_SUPPORT_LIST:
-        raise AssertionError(f"Type of x2:{x2.dtype} is error, x2 should be [DT_FLOAT16/DT_BF16].")
+        raise AssertionError(f"Type of x2:{ge_type_to_torch_type(x2.dtype)} is error, x2 should be float16/bf16.")
+    if x1.dtype != x2.dtype:
+        raise AssertionError(f"Type of x1:{ge_type_to_torch_type(x1.dtype)} and x2:{ge_type_to_torch_type(x2.dtype)} must be same.")
+    if bias is not None:
+        if bias.dtype != DataType.DT_FLOAT and bias.dtype != x1.dtype:
+            raise AssertionError(f"Type of bias:{ge_type_to_torch_type(bias.dtype)} is error, bias should be {ge_type_to_torch_type(x1.dtype)} or float.")
