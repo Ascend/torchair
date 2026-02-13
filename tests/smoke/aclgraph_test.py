@@ -240,6 +240,36 @@ class AclgraphTest(unittest.TestCase):
             f"found in logs: {cm.output}"
         )
 
+    def assert_pattern_pass(self, graph_after, check_exist):
+        fusion_cast_op_found_after = False
+        fusion_dq_op_found_after = False
+        
+        for node in graph_after.graph.nodes:
+            if node.op == "call_function":
+                if node.target == torch.ops.npu.npu_add_rms_norm_dynamic_quant.default:
+                    fusion_dq_op_found_after = True
+                if node.target == torch.ops.npu.npu_add_rms_norm_cast.default:
+                    fusion_cast_op_found_after = True
+
+        if check_exist:
+            self.assertTrue(
+                fusion_cast_op_found_after,
+                "npu_add_rms_norm_cast should exist in the graph after fusion"
+            )
+            self.assertTrue(
+                fusion_dq_op_found_after,
+                "npu_add_rms_norm_dynamic_quant should exist in the graph after fusion"
+            )
+        else:
+            self.assertFalse(
+                fusion_cast_op_found_after,
+                "npu_add_rms_norm_cast should not exist in the graph after fusion"
+            )
+            self.assertFalse(
+                fusion_dq_op_found_after,
+                "npu_add_rms_norm_dynamic_quant should not exist in the graph after fusion"
+            )
+  
     @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
     def test_pattern_pass_for_aclgraph(self):
         class DsModel(torch.nn.Module):
@@ -264,6 +294,7 @@ class AclgraphTest(unittest.TestCase):
                 return yOut, xOut, scale1Out, y1, xOut1, yOut2, scale1Out2, xOut3, yOut3, scale1Out3_view
 
 
+        torchair.npu_fx_compiler._optimize_fx = create_optimize_wrapper(lambda gm: self.assert_pattern_pass(gm, True))
         npu_config = torchair.CompilerConfig()
         npu_config.mode = "reduce-overhead"
         npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
@@ -275,17 +306,11 @@ class AclgraphTest(unittest.TestCase):
         gamma = torch.ones(3, dtype=torch.float16, device='npu')
         smooth_scale1 = torch.ones(3, dtype=torch.float16, device='npu')
 
-        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
-            model_compile(x1, x2, gamma, smooth_scale1)
-
-        self.assertTrue(
-            any("target: npu.npu_add_rms_norm_dynamic_quant.default" in log for log in cm.output),
-            f"Expected DEBUG log 'target: npu.npu_add_rms_norm_dynamic_quant.default' in logs: {cm.output}"
-        )
-        self.assertTrue(
-            any("target: npu.npu_add_rms_norm_cast.default" in log for log in cm.output),
-            f"Expected DEBUG log 'target: npu.npu_add_rms_norm_cast.default' in logs: {cm.output}"
-        )
+        compile_res = model_compile(x1, x2, gamma, smooth_scale1)
+        expected = model(x1, x2, gamma, smooth_scale1)
+        self.assertEqual(len(compile_res), len(expected))
+        for comp, exp in zip(compile_res, expected):
+            self.assertTrue(torch.allclose(comp, exp, atol=1e-5))
 
     @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
     def test_pattern_pass_for_ge(self):
@@ -311,6 +336,7 @@ class AclgraphTest(unittest.TestCase):
                 return yOut, xOut, scale1Out, y1, xOut1, yOut2, scale1Out2, xOut3, yOut3, scale1Out3_view
 
 
+        torchair.npu_fx_compiler._optimize_fx = create_optimize_wrapper(lambda gm: self.assert_pattern_pass(gm, True))
         npu_config = torchair.CompilerConfig()
         npu_config.mode = "max-autotune"
         npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
@@ -322,17 +348,11 @@ class AclgraphTest(unittest.TestCase):
         gamma = torch.ones(3, dtype=torch.float16, device='npu')
         smooth_scale1 = torch.ones(3, dtype=torch.float16, device='npu')
 
-        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
-            model_compile(x1, x2, gamma, smooth_scale1)
-
-        self.assertTrue(
-            any("target: npu.npu_add_rms_norm_dynamic_quant.default" in log for log in cm.output),
-            f"Expected DEBUG log 'target: npu.npu_add_rms_norm_dynamic_quant.default' in logs: {cm.output}"
-        )
-        self.assertTrue(
-            any("target: npu.npu_add_rms_norm_cast.default" in log for log in cm.output),
-            f"Expected DEBUG log 'target: npu.npu_add_rms_norm_cast.default' in logs: {cm.output}"
-        )
+        compile_res = model_compile(x1, x2, gamma, smooth_scale1)
+        expected = model(x1, x2, gamma, smooth_scale1)
+        self.assertEqual(len(compile_res), len(expected))
+        for comp, exp in zip(compile_res, expected):
+            self.assertTrue(torch.allclose(comp, exp, atol=1e-5))
 
     @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
     def test_close_pattern_pass_for_aclgraph(self):
@@ -358,6 +378,7 @@ class AclgraphTest(unittest.TestCase):
                 return yOut, xOut, scale1Out, y1, xOut1, yOut2, scale1Out2, xOut3, yOut3, scale1Out3_view
 
 
+        torchair.npu_fx_compiler._optimize_fx = create_optimize_wrapper(lambda gm: self.assert_pattern_pass(gm, False))
         npu_config = torchair.CompilerConfig()
         npu_config.mode = "reduce-overhead"
         npu_config.experimental_config.pattern_fusion_pass = False
@@ -370,17 +391,7 @@ class AclgraphTest(unittest.TestCase):
         gamma = torch.ones(3, dtype=torch.float16, device='npu')
         smooth_scale1 = torch.ones(3, dtype=torch.float16, device='npu')
 
-        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
-            model_compile(x1, x2, gamma, smooth_scale1)
-
-        self.assertFalse(
-            any("target: npu.npu_add_rms_norm_dynamic_quant.default" in log for log in cm.output),
-            f"Expected no DEBUG log 'target: npu.npu_add_rms_norm_dynamic_quant.default' in logs: {cm.output}"
-        )
-        self.assertFalse(
-            any("target: npu.npu_add_rms_norm_cast.default" in log for log in cm.output),
-            f"Expected no DEBUG log 'target: npu.npu_add_rms_norm_cast.default' in logs: {cm.output}"
-        )
+        compile_res = model_compile(x1, x2, gamma, smooth_scale1)
 
     @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
     def test_close_pattern_pass_for_ge(self):
@@ -406,6 +417,7 @@ class AclgraphTest(unittest.TestCase):
                 return yOut, xOut, scale1Out, y1, xOut1, yOut2, scale1Out2, xOut3, yOut3, scale1Out3_view
 
 
+        torchair.npu_fx_compiler._optimize_fx = create_optimize_wrapper(lambda gm: self.assert_pattern_pass(gm, False))
         npu_config = torchair.CompilerConfig()
         npu_config.mode = "max-autotune"
         npu_config.experimental_config.pattern_fusion_pass = False
@@ -418,17 +430,7 @@ class AclgraphTest(unittest.TestCase):
         gamma = torch.ones(3, dtype=torch.float16, device='npu')
         smooth_scale1 = torch.ones(3, dtype=torch.float16, device='npu')
 
-        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
-            model_compile(x1, x2, gamma, smooth_scale1)
-
-        self.assertFalse(
-            any("target: npu.npu_add_rms_norm_dynamic_quant.default" in log for log in cm.output),
-            f"Expected no DEBUG log 'target: npu.npu_add_rms_norm_dynamic_quant.default' in logs: {cm.output}"
-        )
-        self.assertFalse(
-            any("target: npu.npu_add_rms_norm_cast.default" in log for log in cm.output),
-            f"Expected no DEBUG log 'target: npu.npu_add_rms_norm_cast.default' in logs: {cm.output}"
-        )
+        compile_res = model_compile(x1, x2, gamma, smooth_scale1)
 
     @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
     def test_pattern_pass_for_aclgraph_with_multistream(self):
@@ -448,6 +450,7 @@ class AclgraphTest(unittest.TestCase):
                 return xOut, yOut2, scale1Out2, y1, xOut1
 
 
+        torchair.npu_fx_compiler._optimize_fx = create_optimize_wrapper(lambda gm: self.assert_pattern_pass(gm, True))
         npu_config = torchair.CompilerConfig()
         npu_config.mode = "reduce-overhead"
         npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
@@ -459,17 +462,11 @@ class AclgraphTest(unittest.TestCase):
         gamma = torch.ones(3, dtype=torch.float16, device='npu')
         smooth_scale1 = torch.ones(3, dtype=torch.float16, device='npu')
 
-        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
-            model_compile(x1, x2, gamma, smooth_scale1)
-
-        self.assertTrue(
-            any("target: npu.npu_add_rms_norm_dynamic_quant.default" in log for log in cm.output),
-            f"Expected DEBUG log 'target: npu.npu_add_rms_norm_dynamic_quant.default' in logs: {cm.output}"
-        )
-        self.assertTrue(
-            any("target: npu.npu_add_rms_norm_cast.default" in log for log in cm.output),
-            f"Expected DEBUG log 'target: npu.npu_add_rms_norm_cast.default' in logs: {cm.output}"
-        )
+        compile_res = model_compile(x1, x2, gamma, smooth_scale1)
+        expected = model(x1, x2, gamma, smooth_scale1)
+        self.assertEqual(len(compile_res), len(expected))
+        for comp, exp in zip(compile_res, expected):
+            self.assertTrue(torch.allclose(comp, exp, atol=1e-5))
 
     @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
     def test_pattern_pass_for_cast_with_subgraph_in_diff_stream(self):
@@ -488,6 +485,7 @@ class AclgraphTest(unittest.TestCase):
                 return y, xOut
 
 
+        torchair.npu_fx_compiler._optimize_fx = create_optimize_wrapper(lambda gm: self.assert_pattern_pass(gm, False))
         npu_config = torchair.CompilerConfig()
         npu_config.mode = "reduce-overhead"
         npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
@@ -499,13 +497,7 @@ class AclgraphTest(unittest.TestCase):
         gamma = torch.ones(3, dtype=torch.float16, device='npu')
         smooth_scale1 = torch.ones(3, dtype=torch.float16, device='npu')
 
-        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
-            model_compile(x1, x2, gamma, smooth_scale1)
-
-        self.assertFalse(
-            any("target: npu.npu_add_rms_norm_cast.default" in log for log in cm.output),
-            f"Expected no DEBUG log 'target: npu.npu_add_rms_norm_cast.default' in logs: {cm.output}"
-        )
+        compile_res = model_compile(x1, x2, gamma, smooth_scale1)
 
     @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
     def test_pattern_pass_for_dynamicquant_with_subgraph_in_diff_stream(self):
@@ -523,6 +515,7 @@ class AclgraphTest(unittest.TestCase):
                 return yOut2, xOut, scale1Out2
 
 
+        torchair.npu_fx_compiler._optimize_fx = create_optimize_wrapper(lambda gm: self.assert_pattern_pass(gm, False))
         npu_config = torchair.CompilerConfig()
         npu_config.mode = "reduce-overhead"
         npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
@@ -534,13 +527,7 @@ class AclgraphTest(unittest.TestCase):
         gamma = torch.ones(3, dtype=torch.float16, device='npu')
         smooth_scale1 = torch.ones(3, dtype=torch.float16, device='npu')
 
-        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
-            model_compile(x1, x2, gamma, smooth_scale1)
-
-        self.assertFalse(
-            any("target: npu.npu_add_rms_norm_dynamic_quant.default" in log for log in cm.output),
-            f"Expected no DEBUG log 'target: npu.npu_add_rms_norm_dynamic_quant.default' in logs: {cm.output}"
-        )
+        compile_res = model_compile(x1, x2, gamma, smooth_scale1)
 
     def test_aclgraph_userinput_construct_in_share_memory_with_parameter_and_mutated(self):
         class RecaptureModel(torch.nn.Module):

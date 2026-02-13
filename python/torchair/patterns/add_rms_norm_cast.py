@@ -50,7 +50,7 @@ def _pattern_extra_check(match: Match) -> bool:
     return view_arg_val and str(view_arg_val) == str(x1_last_dim)
 
 
-def _build_search_pattern() -> MultiOutputPattern:
+def _build_search_pattern(is_use_aten_copy: bool) -> MultiOutputPattern:
     """
     Multi-output matching pattern equivalent to the operator combination in search_fn:
     
@@ -95,6 +95,17 @@ def _build_search_pattern() -> MultiOutputPattern:
         torch.float32
     )
 
+    if is_use_aten_copy:
+        cast_output = CallFunction(
+            torch.ops.aten._to_copy.default,
+            CallFunction(
+                torch.ops.aten.view.default,
+                add_rms_norm_output0,
+                [-1, Ignored()]
+            ),
+            dtype=torch.float32
+        )
+
     return MultiOutputPattern(
         [
             add_rms_norm_output0,
@@ -133,5 +144,12 @@ def _register_addrmsnormcast_pattern(pattern_pass_manager: _PatternPassManager):
             replace_fn=replace_fn,
             example_inputs=(input_tensor(), input_tensor(), kwargs_tensor()),
             extra_check=_pattern_extra_check,
-            search_fn_pattern=_build_search_pattern()
+            search_fn_pattern=_build_search_pattern(True)
+        )
+        pattern_pass_manager.register_pattern(
+            search_fn=search_fn,
+            replace_fn=replace_fn,
+            example_inputs=(input_tensor(), input_tensor(), kwargs_tensor()),
+            extra_check=_pattern_extra_check,
+            search_fn_pattern=_build_search_pattern(False)
         )
