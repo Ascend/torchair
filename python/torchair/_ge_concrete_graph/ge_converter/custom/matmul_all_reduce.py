@@ -4,7 +4,8 @@ torch_dtype_value_to_ge_proto_type, _ge_dtype_to_ge_proto_dtype
 
 DTYPE_SUPPORT_LIST_QUANT = {DataType.DT_FLOAT8_E4M3FN, DataType.DT_FLOAT8_E5M2, DataType.DT_HIFLOAT8,
                             DataType.DT_UINT8, DataType.DT_INT8}
-DTYPE_SUPPORT_LIST_WEIGHT_QUANT_X2 = {DataType.DT_FLOAT8_E4M3FN, DataType.DT_HIFLOAT8, DataType.DT_INT8}
+DTYPE_SUPPORT_LIST_WEIGHT_QUANT_X2 = {DataType.DT_FLOAT8_E4M3FN, DataType.DT_HIFLOAT8, 
+                            DataType.DT_UINT8, DataType.DT_INT8}
 # A16W16/A16W8/A16w4: x1/bias only support bf16/fp16, and 2 types must be same
 DTYPE_SUPPORT_BIAS = {DataType.DT_BF16, DataType.DT_FLOAT16}
 DTYPE_SUPPORT_X1 = {DataType.DT_BF16, DataType.DT_FLOAT16}
