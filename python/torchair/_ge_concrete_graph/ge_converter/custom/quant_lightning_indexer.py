@@ -20,7 +20,7 @@ from torch.types import Device, Number, _bool, _complex, _device, _dtype, _float
 import torchair
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
-from torchair.ge._ge_graph import Tensor, TensorSpec
+from torchair.ge._ge_graph import Tensor, TensorSpec, DataType
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, BF16, F64, I32, I16, I64, \
     I8, U8, BOOL, Support
 from torchair.ge import attr
@@ -45,8 +45,15 @@ def convert_npu_quant_lightning_indexer(
     sparse_mode: int = 3,
     pre_tokens: int = 9223372036854775807,
     next_tokens: int = 9223372036854775807,
+    query_dtype: Optional[int] = None,
+    key_dtype: Optional[int] = None,
     meta_outputs: TensorSpec = None,
 ):
+    import torch_npu
+    if query is not None and query_dtype == torch_npu.hifloat8:
+        query = ge.Bitcast(query, type=DataType.DT_HIFLOAT8)
+    if key is not None and key_dtype == torch_npu.hifloat8:
+        key = ge.Bitcast(key, type=DataType.DT_HIFLOAT8)
     return torchair.ge.custom_op(
         "QuantLightningIndexer",
         inputs={"query": query,

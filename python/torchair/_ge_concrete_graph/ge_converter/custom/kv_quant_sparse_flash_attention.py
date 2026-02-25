@@ -40,8 +40,15 @@ def convert_npu_kv_quant_sparse_flash_attention(
     quant_scale_repo_mode: int = 1,
     tile_size: int = 128,
     rope_head_dim: int = 64,
+    key_dtype: Optional[int] = None,
+    value_dtype: Optional[int] = None,
     meta_outputs: TensorSpec = None,
 ):
+    import torch_npu
+    if key is not None and key_dtype == torch_npu.hifloat8:
+        key = ge.Bitcast(key, type=DataType.DT_HIFLOAT8)
+    if value is not None and value_dtype == torch_npu.hifloat8:
+        value = ge.Bitcast(value, type=DataType.DT_HIFLOAT8)
     return torchair.ge.custom_op(
         "KvQuantSparseFlashAttention",
         inputs={"query": query, 
