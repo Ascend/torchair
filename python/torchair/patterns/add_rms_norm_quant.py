@@ -13,29 +13,30 @@ from torchair.patterns.pattern_pass_manager import _PatternPassManager, _check_p
 
 def _pattern_extra_check(match: Match) -> bool:
 
+    gamma_val = None
+    zero_points_val = None
+
     for node in match.nodes:
         if node.target == torch.ops.npu.npu_quantize.default:
-            dtype_x0 = node.args[0].meta['val'].dtype
-            # zero_points dtype only supports INT8 UINT8
-            if node.args[2].meta['val'].dtype in [torch.uint8, torch.int8]:
-                logger.debug("Parameter type mismatch in pattern match for npu_add_rms_norm_quant fusion pass.")
+            # zero_points dtype only supports INT32 BFLOAT16
+            zero_points_val = node.args[2].meta['val']
+            if zero_points_val.dtype in [torch.uint8, torch.int8]:
+                logger.debug("Zero_points dtype mismatch in pattern match for npu_add_rms_norm_quant fusion pass.")
                 return False
-            # div_mode=False zero_points not supports FLOAT16
-            if(len(node.args) == 6 and not node.args[5] and not (dtype_x0 == torch.bfloat16)):
-                logger.debug("Parameter type mismatch in pattern match for npu_add_rms_norm_quant fusion pass.")
-                return False
+                
             # output dtype only supports INT8, QINT8
             if node.args[3] not in [1, 12]:  # 1: INT8, 12: QINT8
-                logger.debug("Output type mismatch in pattern match for npu_add_rms_norm_quant fusion pass.")
+                logger.debug("Output dtype mismatch in pattern match for npu_add_rms_norm_quant fusion pass.")
                 return False
 
         elif node.target == torch.ops.npu.npu_add_rms_norm.default:
             # div_mode=True only supports BFLOAT16 and FLOAT16
             x0_val = node.args[0].meta['val']
             x1_val = node.args[1].meta['val']
+            gamma_val = node.args[2].meta['val']
             if not ((x0_val.dtype == torch.float16 and x1_val.dtype == torch.float16) or
                     (x0_val.dtype == torch.bfloat16 and x1_val.dtype == torch.bfloat16)):
-                logger.debug("Parameter type mismatch in pattern match for npu_add_rms_norm_quant fusion pass.")
+                logger.debug("Input x dtype mismatch in pattern match for npu_add_rms_norm_quant fusion pass.")
                 return False
             
             # last dim size should be multiple of 32 bytes
@@ -46,11 +47,15 @@ def _pattern_extra_check(match: Match) -> bool:
             last_dim_total_bytes = last_dim_elem * elem_bytes
             if not isinstance(last_dim_total_bytes, int) or last_dim_total_bytes % 32 != 0:
                 logger.debug(
-                    f"Input size detected in pattern match for npu_add_rms_norm_quant fusion pass."
+                    f"Input size detected in pattern match for npu_add_rms_norm_quant fusion pass. "
                     f"Fusion is not supported because the input of the npu_add_rms_norm_quant must be divisible by 32 bytes."
                 )
                 return False
 
+    if gamma_val.shape != zero_points_val.shape:
+        logger.debug(f"Gamma, zero_points or scales shape mismatch in pattern match for npu_add_rms_norm_quant fusion pass.")
+        return False
+    
     return True
 
 
@@ -141,5 +146,3 @@ def _register_addrmsnormquant_pattern_default(pattern_pass_manager, div_mode):
 def _register_addrmsnormquant_patterns(pattern_pass_manager: _PatternPassManager):
     _register_addrmsnormquant_pattern_default(pattern_pass_manager, div_mode=True)
     _register_addrmsnormquant_pattern(pattern_pass_manager, div_mode=True)
-    _register_addrmsnormquant_pattern_default(pattern_pass_manager, div_mode=False)
-    _register_addrmsnormquant_pattern(pattern_pass_manager, div_mode=False)

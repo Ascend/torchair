@@ -1802,12 +1802,6 @@ class AclgraphTest(unittest.TestCase):
         self.assertTrue(torch.equal(y1, y3))
         self.assertTrue(torch.equal(y2, y4))
 
-        # test divmode=False
-        y1, y2 = f(x1, x2, gamma, scales, zero_points, False)
-        y3, y4 = compile_model(x1, x2, gamma, scales, zero_points)
-        self.assertTrue(torch.equal(y1, y3))
-        self.assertTrue(torch.equal(y2, y4))
-
         # test static
         compile_model = torch.compile(f_static, backend="npugraph_ex", fullgraph=True, dynamic=False)
         y1, y2 = f_static(x1, x2, gamma, scales, zero_points)
@@ -1862,13 +1856,24 @@ class AclgraphTest(unittest.TestCase):
         f_use(x1, x2, gamma, scales, zero_points)
         compile_model(x1, x2, gamma, scales, zero_points)
         
-        # test div_mode=False type mismatch
-        x1, x2, gamma, scales, zero_points = self.get_quant_input(16, torch.float16, torch.float16, torch.float16)
+        # test div_mode=False
         compile_model = torch.compile(f, backend="npugraph_ex", fullgraph=True, dynamic=True)
         f(x1, x2, gamma, scales, zero_points, div_mode=False)
         compile_model(x1, x2, gamma, scales, zero_points, div_mode=False)
 
-        # # test last axis not aligned 32byte
+        # test mismatch shape
+        gamma = torch.ones(1, 2, 16, dtype=torch.bfloat16, device='npu')
+        scales = torch.ones(16, dtype=torch.bfloat16, device='npu')
+        zero_points = torch.zeros(16, dtype=torch.bfloat16, device='npu')
+        f(x1, x2, gamma, scales, zero_points)
+        compile_model(x1, x2, gamma, scales, zero_points)
+        
+        scales = torch.ones(1, dtype=torch.bfloat16, device='npu')
+        zero_points = torch.zeros(1, dtype=torch.bfloat16, device='npu')
+        f(x1, x2, gamma, scales, zero_points)
+        compile_model(x1, x2, gamma, scales, zero_points)
+        
+        # test last axis not aligned 32byte
         compile_model = torch.compile(f_noreshape, backend="npugraph_ex", fullgraph=True, dynamic=False)
         x1, x2, gamma, scales, zero_points = self.get_quant_input(3, torch.bfloat16, torch.bfloat16, torch.bfloat16)
         f_noreshape(x1, x2, gamma, scales, zero_points)
