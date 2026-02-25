@@ -412,6 +412,7 @@ class CapturedGraphUpdateAndReplay(nn.Module):
         self._updated_node_infos = updated_node_infos
         if self.__class__._update_stream is None:
             self.__class__._update_stream = torch.npu.Stream(priority=-1)
+        self._event_for_update_replay = torch.npu.Event()
 
     def forward(self, *args: Any, **kwargs: Any):
         self._replay_graph.replay()
@@ -428,6 +429,7 @@ class CapturedGraphUpdateAndReplay(nn.Module):
             return
 
         with torch.npu.stream(self.__class__._update_stream):
+            self.__class__._update_stream.wait_event(self._event_for_update_replay)
             for node_info in self._updated_node_infos:
                 torch.npu.graph_task_update_begin(self.__class__._update_stream, node_info.handle)
                 node_kwargs = dict(node_info.kwargs)
@@ -437,6 +439,8 @@ class CapturedGraphUpdateAndReplay(nn.Module):
                 torch.npu.graph_task_update_end(self.__class__._update_stream)
                 self.__class__._update_stream.record_event(node_info.event)
 
+        # Ensure the execution of the update func in subsequent steps after the current step is completed.
+        self._event_for_update_replay.record(torch.npu.current_stream())
         logger.info("Replay AclGraph and update input params successfully.")
         return
 
@@ -475,8 +479,11 @@ def construct_fx_node_shape(ori_shape: List, sym_inputs: dict, graph_id: int) ->
         if is_constant(dim):
             # only for real constant value
             empty_shape.append(dim)
-        elif isinstance(dim.node.expr, sympy.Symbol) or str(dim.node.expr).isdigit():
-            # for single symbol or number symbol, such as: s0, sym(5)
+        elif str(dim.node.expr).isdigit():
+            # for number symbol, such as: sym(5)
+            empty_shape.append(int(dim.node.expr))
+        elif isinstance(dim.node.expr, sympy.Symbol):
+            # for single symbol, such as: s0
             if dim.node.expr not in sym_inputs.keys():
                 raise RuntimeError(f'Unexpected sym output shape {dim} '
                                    f'which is not in all sym inputs dict {sym_inputs} of graph[{graph_id}].')
