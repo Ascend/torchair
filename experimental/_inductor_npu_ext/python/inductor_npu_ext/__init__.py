@@ -11,6 +11,8 @@ import torch.utils._pytree as pytree
 from torch._inductor.codegen.common import register_backend_for_device
 from torch._inductor import graph as torch__inductor_graph
 from torch._ops import OpOverload, OpOverloadPacket
+
+import torch_npu
 from inductor_npu_ext.npu import NPUScheduling, NpuWrapperCodeGen
 from inductor_npu_ext.common import logger
 
@@ -27,8 +29,10 @@ def _finetune_inductor_config():
     from torch._inductor.codegen import cpu_device_op_overrides
     from torch._dynamo import config as dynamo_config
     dynamo_config.recompile_limit = 16  # default 8 is always not enough for per-layer compile
+    dynamo_config.specialize_float = True  # enable float specialization until launch with scalar supported
     from torch._inductor import config as inductor_config
     inductor_config.unroll_reductions_threshold = 1  # disable unroll reductions
+    inductor_config.size_asserts = False  # npu ops always return contiguous tensors which maybe different from meta outputs
     from torch._inductor.runtime.hints import DeviceProperties
     DeviceProperties.multi_processor_count = 0  # disable multi processor count
     from torch._inductor.decomposition import decompositions
@@ -164,6 +168,11 @@ _LoweringGuard.support(aten.floor_divide, float_dtypes())
 _LoweringGuard.support(prims.convert_element_type, float_dtypes())
 _LoweringGuard.support(aten.sigmoid, float_dtypes())
 _LoweringGuard.support(aten.remainder, float_dtypes())
+_LoweringGuard.support(aten.silu, float_dtypes())
+
+# npu ops
+_LoweringGuard.support(torch.ops.npu._npu_dtype_cast, float_dtypes())
+_LoweringGuard.support(torch.ops.npu.npu_dtype_cast, float_dtypes())
 
 # basic compare ops, support int32 as well
 _LoweringGuard.support(aten.ge, float_dtypes() + (torch.int32,))
@@ -176,10 +185,11 @@ _LoweringGuard.support(aten.ne, float_dtypes() + (torch.int32,))
 # fill and create tensor ops
 _LoweringGuard.support(aten.new_empty, float_dtypes())
 _LoweringGuard.support(aten.detach, float_dtypes())
-_LoweringGuard.support(aten.clone, float_dtypes())
 _LoweringGuard.support(aten.arange, float_dtypes())
+_LoweringGuard.support(aten.copy_, float_dtypes())
 _LoweringGuard.support(aten.copy, float_dtypes())
 _LoweringGuard.support(aten.zeros_like, float_dtypes())
+_LoweringGuard.support(aten.zeros, float_dtypes())
 _LoweringGuard.support(aten._to_copy, float_dtypes())
 
 # bitwise ops
@@ -202,6 +212,9 @@ _LoweringGuard.support(aten._unsafe_view, float_dtypes())
 _LoweringGuard.support(aten.t, float_dtypes())
 _LoweringGuard.support(aten.transpose, float_dtypes())
 _LoweringGuard.support(aten.expand, float_dtypes())
+_LoweringGuard.support(aten.alias, float_dtypes())
+_LoweringGuard.support(aten.repeat, float_dtypes())
+_LoweringGuard.support(aten.sym_size, float_dtypes())
 
 
 @patch_fn(torch__inductor_graph, "fallback_node_due_to_unsupported_type")

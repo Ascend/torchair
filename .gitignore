@@ -14,3 +14,5 @@ custom_reg_op.h
 __pycache__
 .torchair_cache
 *.egg-info/
+**/.npu_kernels*
+**/torch_compile_debug*
