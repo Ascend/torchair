@@ -648,63 +648,11 @@ class _NpuFxCompiler:
         concrete_graph.optimize_graph_without_runtime(*example_inputs, observer=observer, aot_gm=gm)
 
         if self.config.debug.run_eagerly:
-            logger.warning(f'When using debug.run_eagerly=True, npu compiler will be skipped, '
-                           'and FALLBACK to EAGER execution, once running finished, please make sure to disable '
+            logger.warning(f'When debug.run_eagerly=True is enabled, '
+                           'the graph FALLS BACK to EAGER execution. Once running finished, please make sure to disable '
                            'the debug.run_eagerly=True config to ensure that the graph is compiled and executed.')
             if not graph.fx_graph:
                 raise RuntimeError('When using debug.run_eagerly=True, the FX graph should not be None.')
-
-            if self.config.experimental_config.aclgraph._aclnn_static_shape_kernel and \
-                    self.config.mode.value in ["reduce-overhead", "npugraph_ex"]:
-
-                class _StaticKernelRunner(AclConcreteGraph):
-                    def __init__(self, config: CompilerConfig, concrete_graph: AclConcreteGraph, kernel_path: str,
-                                 sym_index: List[int], sym_value_range: int, sym_input_index: List[int]) -> None:
-                        super().__init__(config)
-                        self.__dict__.update(concrete_graph.__dict__)
-                        self.kernel_path = kernel_path
-                        self.checked_sym_index = sym_index
-                        self.checked_sym_value_range = sym_value_range
-                        self.sym_input_index = sym_input_index
-                        self.sym_input_name = [f"input_{idx}" for idx in sym_input_index]
-                        self.compiled_shape = set()
-                        self.execution_kernel = None
-
-                    def __call__(self, *args: Any, **kwargs: Any) -> Any:
-                        cur_sym_value = tuple([args[idx] for idx in self.sym_input_index])
-                        # Even if there are no symbols in the current FX graph, the following judgment can still work.
-                        # [] in [[]] is still valid, no need to add special processing for static fx graph.
-                        if cur_sym_value not in self.compiled_shape:
-                            if self.checked_sym_value_range is None or \
-                                    (self.checked_sym_index < len(self.sym_input_index) and cur_sym_value[
-                                        self.checked_sym_index] in self.checked_sym_value_range):
-                                # try to compile static shape kernel
-                                self.compiled_shape.add(cur_sym_value)
-                                logger.info('Start to compile static shape kernel for fx graph %s, '
-                                            'all symbol input indices and values are %s.',
-                                            id(self.fx_graph), dict(zip(self.sym_input_name, cur_sym_value)))
-                                from torchair._acl_concrete_graph.static_kernel import compile_static_kernel
-                                compile_static_kernel(self.fx_graph, *args, build_dir=self.kernel_path, **kwargs)
-                            else:
-                                logger.info('Skip compile static shape kernel for fx graph %s, '
-                                            'all symbol input indices and values are %s. '
-                                            'The specified sym index is %s and the specified sym value range is %s.',
-                                            id(self.fx_graph), dict(zip(self.sym_input_name, cur_sym_value)),
-                                            self.checked_sym_index, self.checked_sym_value_range)
-                        return self.execution_kernel(*args, **kwargs)
-
-                # Only trigger static shape kernel compilation
-                # when some symbol changed that have not been used for updates, not all symbol.
-                all_sym_index = [x[0] for x in concrete_graph._aclgraph_cache_info.unupdated_sym_input_index if x[1]]
-                return _StaticKernelRunner(
-                    self.config,
-                    concrete_graph,
-                    self.config.experimental_config.aclgraph._aclnn_static_shape_kernel_build_dir.value,
-                    int(self.config.experimental_config.aclgraph._aclnn_static_shape_kernel_sym_index.value),
-                    self.config.experimental_config.aclgraph._aclnn_static_shape_kernel_sym_value_range.value,
-                    all_sym_index
-                )
-            
             if self.config.mode.value == "max-autotune":
                 return graph.fx_graph
 

@@ -333,7 +333,7 @@ class CompiledModel:
 
 
 def _get_str_options(options: CompilerConfig, sep=","):
-    g_opts, l_opts = options.as_dict()
+    l_opts, g_opts = options.as_dict()
     g_opts.update(l_opts)
     pre_func = options.post_grad_custom_pre_pass.value
     if pre_func is not None:

@@ -317,17 +317,18 @@ class AclConcreteGraph(ConcreteGraphBase):
         self.graph.load(self._aclgraph_cache_info)
 
     def normalize_config(self):
-        aclgraph_config_options = self.config.debug.aclgraph.as_dict()
-        _, dump_options = self.config.dump_config.as_dict(self.config.mode.value)
-        aclgraph_config_options.update(dump_options)
-        aclnn_static_shape_kernel = self.config.experimental_config.aclgraph._aclnn_static_shape_kernel
-        if aclnn_static_shape_kernel:
-            aclgraph_config_options['_aclnn_static_shape_kernel'] = aclnn_static_shape_kernel.value
-        build_dir = self.config.experimental_config.aclgraph._aclnn_static_shape_kernel_build_dir.value
-        if build_dir:
-            aclgraph_config_options['_aclnn_static_shape_kernel_build_dir'] = build_dir
-        frozen_parameter_enable = self.config.experimental_config.frozen_parameter
-        if frozen_parameter_enable:
+        aclgraph_config_options, debug_global_options = self.config.debug.as_dict(self.config.mode.value)
+        dump_local_options, dump_global_options = self.config.dump_config.as_dict(self.config.mode.value)
+        exp_local_options, exp_global_options = self.config.experimental_config.as_dict(self.config.mode.value)
+        aclgraph_config_options.update(dump_global_options)
+        aclgraph_config_options.update(exp_local_options)
+        # Although the dump_local_options, debug_global_options and exp_global_options are currently empty ({}).
+        # We still merge them into aclgraph_config_options to ensure future compatibility.
+        aclgraph_config_options.update(dump_local_options)
+        aclgraph_config_options.update(debug_global_options)
+        aclgraph_config_options.update(exp_global_options)
+
+        if aclgraph_config_options.get('frozen_parameter', '0') == '1':
             if version.parse(torch.__version__) < version.parse("2.5.1"):
                 warnings.warn('When enable frozen_parameter, Parameters will be considered static. '
                               'Please make sure that the Parameters data address remain the same '
@@ -337,7 +338,14 @@ class AclConcreteGraph(ConcreteGraphBase):
                               'marked by `torch._dynamo.mark_static_address()` will be considered static. '
                               'Please make sure that the Parameters data address remain the same '
                               'throughout the program runtime.')
-            aclgraph_config_options['frozen_parameter'] = frozen_parameter_enable.value
+
+        if aclgraph_config_options.get('run_eagerly', '0') == '1':
+            sym_input_index = [x[0] for x in self._aclgraph_cache_info.unupdated_sym_input_index if x[1]]
+            aclgraph_config_options['sym_input_index'] = str(sym_input_index)
+        
+        # All values within aclgraph_config_options must be strings.
+        aclgraph_config_options = {k: str(v) for k, v in aclgraph_config_options.items()}
+
         logger.debug("aclgraph compile options:")
         for k, v in aclgraph_config_options.items():
             logger.debug("  %s: %s", k, v)
@@ -559,10 +567,7 @@ class AclConcreteGraph(ConcreteGraphBase):
                 kernel_code.splice(input_code)
                 assert_code = self._codegen_assert_size_stride()
                 kernel_code.splice(assert_code)
-            if self.config.debug.run_eagerly:
-                kernel_code.writeline('''return forward(*args, **kwargs)''')
-            else:
-                kernel_code.writeline('''return acl_graph(*args, **kwargs)''')
+            kernel_code.writeline('''return acl_graph(*args, **kwargs)''')
         return kernel_code.getvalue()
 
     def _codegen_assert_size_stride(self):

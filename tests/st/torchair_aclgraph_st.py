@@ -3635,6 +3635,49 @@ class AclGraphSt(unittest.TestCase):
             re.DOTALL
         )
         self.assertIsNotNone(expected_pattern.search(stdout.getvalue()))
+    
+    def test_aclgraph_cache_compile_static_kernel_run_eagerly(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear1 = torch.nn.Linear(2, 2)
+                self.linear2 = torch.nn.Linear(2, 2)
+                self.cached_prompt = torchair.inference.cache_compile(self.prompt, config=config)
+
+            def forward(self, x):
+                return self.cached_prompt(x)
+
+            def _forward(self, x):
+                ln1 = self.linear1(x)
+                ln2 = self.linear2(x)
+                return ln1 + ln2
+
+            def prompt(self, x):
+                return self._forward(x)
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.run_eagerly = True
+        config.experimental_config.aclgraph._aclnn_static_shape_kernel = True
+
+        model = Model()
+
+        prompt_cache_bin = CompiledModel.get_cache_bin(model.prompt, config=config)
+        ModelCacheSaver.remove_cache(os.path.abspath(os.path.dirname(prompt_cache_bin)))
+
+        x = torch.randn([3, 2])
+
+        prompt_cache_dir = os.path.abspath(os.path.dirname(prompt_cache_bin))
+
+        self.assertFalse(os.path.exists(prompt_cache_dir))
+        with capture_logger() as stdout:
+            try:
+                result = model(x)
+            except Exception:
+                pass
+        self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
+        self.assertTrue("compile_configs[\"run_eagerly\"] = \"1\"" in stdout.getvalue())
+        self.assertTrue("compile_configs[\"_aclnn_static_shape_kernel\"] = \"1\"" in stdout.getvalue())
 
 
 if __name__ == '__main__':

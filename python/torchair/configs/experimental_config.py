@@ -34,19 +34,21 @@ class _ExperimentalConfig(NpuBaseConfig):
     def as_dict(self, mode: Optional[str] = "max-autotune"):
         global_experiment_option = {}
         local_experiment_option = {}
-        sorting_strategy_dict = {"BFS": "0", "DFS": "1", "RDFS": "2", "StableRDFS": "3"}
-
-        global_experiment_option["ge.exec.enableEngineParallel"] = "1" if self.cc_parallel_enable else "0"
-        global_experiment_option["ge.tiling_schedule_optimize"] = "1" if self.tiling_schedule_optimize else "0"
         local_experiment_option["remove_noop_ops"] = self.remove_noop_ops.value
-        local_experiment_option["ge.featureBaseRefreshable"] = "1" if self.memory_efficiency else "0"
-        local_experiment_option["ge.topoSortingMode"] = sorting_strategy_dict[self.topology_sorting_strategy.value]
         local_experiment_option["pattern_fusion_pass"] = self.pattern_fusion_pass.value
-        if self.jit_compile.value == "auto":
-            local_experiment_option["ge.jit_compile"] = "2"
-        if self.static_model_ops_lower_limit.value is not None:
-            local_experiment_option["ge.exec.static_model_ops_lower_limit"] = \
-                str(self.static_model_ops_lower_limit.value)
+        local_experiment_option["frozen_parameter"] = self.frozen_parameter.value
+        if mode == "max-autotune":
+            sorting_strategy_dict = {"BFS": "0", "DFS": "1", "RDFS": "2", "StableRDFS": "3"}
+            global_experiment_option["ge.exec.enableEngineParallel"] = "1" if self.cc_parallel_enable else "0"
+            global_experiment_option["ge.tiling_schedule_optimize"] = "1" if self.tiling_schedule_optimize else "0"
+            local_experiment_option["ge.featureBaseRefreshable"] = "1" if self.memory_efficiency else "0"
+            local_experiment_option["ge.topoSortingMode"] = sorting_strategy_dict[self.topology_sorting_strategy.value]
+            if self.jit_compile.value == "auto":
+                local_experiment_option["ge.jit_compile"] = "2"
+            if self.static_model_ops_lower_limit.value is not None:
+                local_experiment_option["ge.exec.static_model_ops_lower_limit"] = \
+                    str(self.static_model_ops_lower_limit.value)
+            return local_experiment_option, global_experiment_option
         local_aclgraph_experimental_options, global_aclgraph_experimental_options = self.aclgraph.as_dict(mode)
         local_experiment_option.update(local_aclgraph_experimental_options)
         global_experiment_option.update(global_aclgraph_experimental_options)

@@ -8,6 +8,7 @@ import gc
 import os
 import pickle
 import sys
+import ast
 import sympy
 import warnings
 
@@ -800,7 +801,21 @@ class AclGraph(object):
 
         self._userinput_ref_data_ptr = {}
 
+        # members for run eagerly X static kernel
+        if self.config.get('run_eagerly', '0') == '1' and self.config.get('_aclnn_static_shape_kernel', '0') == '1':
+            self.compiled_shape = set()
+            self.checked_sym_index = ast.literal_eval(self.config.get('_aclnn_static_shape_kernel_sym_index', '0'))
+            self.checked_sym_value_range = ast.literal_eval(self.config.get('_aclnn_static_shape_kernel_sym_value_range', 'None'))
+            self.sym_input_index = ast.literal_eval(self.config.get('sym_input_index', '[]'))
+            self.sym_input_name = [f"input_{idx}" for idx in self.sym_input_index]
+
     def __call__(self, *args, **kwargs):
+        # run eagerly / force eager
+        if self.config.get('run_eagerly', '0') == '1':
+            if self.config.get('_aclnn_static_shape_kernel', '0') == '1':
+                self.run_eagerly_compile(*args, **kwargs)
+            return self.fx_run_eagerly(*args, **kwargs)
+
         # get graph_key and capture
         fn_key = self.compile(*args, **kwargs)
 
@@ -1516,3 +1531,24 @@ class AclGraph(object):
                 # other non tensor obj can be returned directly.
                 reconstructed_inputs[idx] = input_ref
         return reconstructed_inputs
+
+    def run_eagerly_compile(self, *args: Any, **kwargs: Any):
+        cur_sym_value = tuple([args[idx] for idx in self.sym_input_index])
+        
+        if cur_sym_value not in self.compiled_shape:
+            if self.checked_sym_value_range is None or \
+                    (self.checked_sym_index < len(self.sym_input_index) and cur_sym_value[
+                        self.checked_sym_index] in self.checked_sym_value_range):
+                # try to compile static shape kernel
+                self.compiled_shape.add(cur_sym_value)
+                logger.info('Start to compile static shape kernel for fx graph %s, '
+                            'all symbol input indices and values are %s.',
+                            id(self.fx_forward), dict(zip(self.sym_input_name, cur_sym_value)))
+                path = self.config.get('_aclnn_static_shape_kernel_build_dir', None)
+                compile_static_kernel(self.fx_forward, *args, build_dir=path, **kwargs)
+            else:
+                logger.info('Skip compile static shape kernel for fx graph %s, '
+                            'all symbol input indices and values are %s. '
+                            'The specified sym index is %s and the specified sym value range is %s.',
+                            id(self.fx_forward), dict(zip(self.sym_input_name, cur_sym_value)),
+                            self.checked_sym_index, self.checked_sym_value_range)

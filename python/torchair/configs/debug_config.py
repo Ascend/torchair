@@ -113,4 +113,5 @@ class _DebugConfig(NpuBaseConfig):
 
     def as_dict(self, mode: Optional[str] = "max-autotune"):
         local_option = self.aclgraph.as_dict(mode)
+        local_option["run_eagerly"] = self.run_eagerly.value
         return local_option, {}
