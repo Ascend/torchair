@@ -1010,8 +1010,9 @@ class AclGraph(object):
                 continue
             for output_ref in self._graphs_meta[key].outputs_weakref:
                 ref = output_ref()
-                if ref is not None and isinstance(ref, torch.Tensor) and \
-                        ref.untyped_storage()._cdata in self.stale_storages_ptr:
+                if ref is None or not isinstance(ref, torch.Tensor) or ref.device != self.device:
+                    continue
+                if ref.untyped_storage()._cdata in self.stale_storages_ptr:
                     stale_storage_set.add(ref.untyped_storage()._cdata)
         return list(stale_storage_set)
 
@@ -1439,9 +1440,9 @@ class AclGraph(object):
             idx_ref_with_userinput = self._graphs_meta[key].captured_output_idx_ref_with_userinput
             for idx, output_ref in enumerate(self._graphs_meta[key].outputs_weakref):
                 ref = output_ref()
-                if ref is not None and isinstance(ref, torch.Tensor) and \
-                        ref.untyped_storage()._cdata in self.stale_storages_ptr and \
-                        idx not in idx_ref_with_userinput:
+                if ref is None or not isinstance(ref, torch.Tensor) or ref.device != self.device:
+                    continue
+                if ref.untyped_storage()._cdata in self.stale_storages_ptr and idx not in idx_ref_with_userinput:
                     stale_storage_set.add(ref.untyped_storage()._cdata)
         other_graph_stale_storages = list(stale_storage_set)
 
@@ -1490,7 +1491,7 @@ class AclGraph(object):
         if self.config.get('clone_input', "1") == "1":
             reconstructed_inputs = self.reconstruct_inputs(graph_key)
             for idx, input_i in reconstructed_inputs.items():
-                if isinstance(input_i, torch.Tensor):
+                if isinstance(input_i, torch.Tensor) and input_i.device == self.device:
                     reconstructed_outputs_to_add_deleter.append(input_i.untyped_storage()._cdata)
 
         # Currently we deallocate on instead of allowing stale recordings

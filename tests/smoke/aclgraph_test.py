@@ -49,7 +49,25 @@ class AclgraphTest(unittest.TestCase):
         if self.optimize_fx_bak is not None:
             torchair.npu_fx_compiler._optimize_fx = self.optimize_fx_bak
         return super().tearDown()
-        
+
+    def test_a_aclgraph_memory_state_setting(self):
+        def test_func(x):
+            return x + x
+
+        config = torchair.CompilerConfig()
+        config.mode = "reduce-overhead"
+        backend = torchair.get_npu_backend(compiler_config=config)
+
+        test_func = torch.compile(test_func, backend=backend, dynamic=True)
+
+        a = torch.randn(2, 3, device="npu:1")
+        res = test_func(a)
+        self.assertTrue(res.device == torch.device("npu:1"))
+
+        b = torch.randn(4, 3, device="npu:1")
+        res = test_func(b)
+        self.assertTrue(res.device == torch.device("npu:1"))
+
     def test_aclgraph_cache_with_static_kernel(self):
         class CachedAclGraphModel(torch.nn.Module):
             def __init__(self):
@@ -88,7 +106,6 @@ class AclgraphTest(unittest.TestCase):
                 add3 = torch.narrow(add3, -1, 32, 32) # narrow_start
                 res = add3 * mmm.mean()
                 return res
-
 
         static_kernel_config = CompilerConfig()
         static_kernel_config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
