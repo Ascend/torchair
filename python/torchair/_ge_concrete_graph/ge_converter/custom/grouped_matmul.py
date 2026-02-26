@@ -250,9 +250,17 @@ def conveter_npu_npu_grouped_matmul(
     else:
         antiquant_scale = fill_empty_tensorlist(antiquant_scale, DataType.DT_FLOAT16)
         antiquant_offset = fill_empty_tensorlist(antiquant_offset, DataType.DT_FLOAT16)
-
+    
     if antiquant_scale[0].dtype == DataType.DT_UINT8:
+        perm_mx = [0, 2, 1, 3]
+        trans = x[0].symsize[-1] == weight[0].symsize[-2] * INT4_NUMS_IN_INT32
+        # gmm MxA8W4场景下，k==64场景下，图融合会存在，单reshape的pattern，没有匹配的已支持pattern的
+        # 在bitCast前后插入，transpose节点，使得图能正确融合
+        if trans:
+            antiquant_scale[0] = ge.Transpose(antiquant_scale[0], perm_mx)
         antiquant_scale[0] = ge.Bitcast(antiquant_scale[0], type=DataType.DT_FLOAT8_E8M0)
+        if trans:
+            antiquant_scale[0] = ge.Transpose(antiquant_scale[0], perm_mx)
         antiquant_scale[0].desc.dtype = DataType.DT_FLOAT8_E8M0
 
     y_dtype = -1

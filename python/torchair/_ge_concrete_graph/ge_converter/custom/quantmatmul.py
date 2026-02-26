@@ -114,10 +114,13 @@ def conveter_npu_npu_quant_matmul(
         if is_a8w4 and x2.dtype == DataType.DT_FLOAT:
             trans_x2_scale = x1.symsize[-1] == (x2.symsize[-2] * 8)
             if trans_x2_scale:
-                perm = [i for i in range(x2.rank)]
-                if(x2.rank < 2):
-                    raise RuntimeError("Input x2 dimension can't be less than 2, actual x2 dimension is " + str(x2.rank) + ".")
-                perm[-1], perm[-2] = perm[-2], perm[-1]
+                if scale.rank < 2:
+                    raise RuntimeError("Input scale dimension should be 2 or 3, actual scale dimension is " + str(scale.rank) + ".")
+                elif scale.rank == 3:
+                    perm = [1, 0, 2]
+                else:
+                    perm = [i for i in range(scale.rank)]   
+                    perm[-1], perm[-2] = perm[-2], perm[-1]
 
         if trans_x2_scale:
             scale = ge.Transpose(scale, perm)
