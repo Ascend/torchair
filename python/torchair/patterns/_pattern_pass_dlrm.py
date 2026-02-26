@@ -207,12 +207,15 @@ def _optimize_triangular_matrix_pattern(fx_graph):
                 true_value_node = node.args[1] 
                 false_value_node = node.args[2]
                 # Check if condition is triu(ones_like(...)).to(bool)
+                # replacing aten::_to_copy with npu::_npu_dtype_cast requires adding new compatibility
                 if (isinstance(condition_node, Node) and
                     condition_node.op == "call_function" and
                     hasattr(condition_node.target, '_name') and
-                    condition_node.target._name == 'npu::_npu_dtype_cast' and
+                    ((condition_node.target._name == 'npu::_npu_dtype_cast' and
                     len(condition_node.args) >= 2 and
-                    condition_node.args[1] == torch.bool):
+                    condition_node.args[1] == torch.bool) or
+                    (condition_node.target._name == 'aten::_to_copy' and
+                    condition_node.kwargs['dtype'] == torch.bool))):
                     triu_node = condition_node.args[0]
                     if (isinstance(triu_node, Node) and
                         triu_node.op == "call_function" and
@@ -230,7 +233,7 @@ def _optimize_triangular_matrix_pattern(fx_graph):
                                 ones_like_input = ones_like_node.args[0]
                                 zeros_like_input = true_value_node.args[0]
                                 # Ensure ones_like and zeros_like inputs are the same, and same as xactions
-                                if (ones_like_input == zeros_like_input and 
+                                if (ones_like_input == zeros_like_input and
                                     ones_like_input == xactions_node):
                                     logger.debug("Found triangular matrix optimization pattern")
                                     # Replace entire pattern with tril
