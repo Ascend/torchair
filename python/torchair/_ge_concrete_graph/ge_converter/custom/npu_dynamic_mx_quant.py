@@ -11,16 +11,18 @@ def conveter_npu_dynamic_mx_quant_default(
     round_mode: str = "rint",
     dst_type: int = 296,
     block_size: int = 32,
+    scale_alg: int = 0,
     meta_outputs: List[TensorSpec] = None
 ):
     """
     NB: aten::npu_dynamic_mx_quant(Tensor x, *, 
                                    int axis=-1, str round_mode="rint",
                                    int dst_type=torch_npu.float4_e2m1,
-                                   int block_size=32) -> (Tensor y, Tensor mxscale)
+                                   int block_size=32,
+                                   int scale_alg=0) -> (Tensor y, Tensor mxscale)
     """
     acl_dst_type = torch_dtype_value_to_ge_type(dst_type)
-    y, mxscale = ge.DynamicMxQuant(x, axis=axis, round_mode=round_mode, dst_type=acl_dst_type, block_size=block_size)
+    y, mxscale = ge.DynamicMxQuant(x, axis=axis, round_mode=round_mode, dst_type=acl_dst_type, block_size=block_size, scale_alg=scale_alg)
     y.desc.dtype = torch_dtype_value_to_ge_proto_type(dst_type)
     mxscale.desc.dtype = ProtoDataType.DT_FLOAT8_E8M0
     if dst_type == 296 or dst_type == 297:

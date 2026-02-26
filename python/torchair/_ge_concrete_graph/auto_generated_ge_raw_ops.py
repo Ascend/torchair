@@ -58465,6 +58465,7 @@ def DynamicMxQuant(x: Tensor,
                       round_mode: str = "rint",
                       dst_type: int = 40,
                       block_size: int = 32,
+                      scale_alg: int = 0,
                       dependencies=[],
                       node_name=None):
     """REG_OP(DynamicMxQuant)\n
@@ -58475,6 +58476,7 @@ def DynamicMxQuant(x: Tensor,
     .ATTR(round_mode, String, "rint")\n
     .ATTR(dst_type, Int, DT_FLOAT4_E2M1)\n
     .ATTR(block_size, Int, 32)\n
+    .ATTR(scale_alg, Int, 0)\n
     """
     op = get_default_ge_graph().op.add()
     op.type = "DynamicMxQuant"
@@ -58494,6 +58496,7 @@ def DynamicMxQuant(x: Tensor,
     op.attr["round_mode"].s = compat_as_bytes(round_mode)
     op.attr["dst_type"].i = dst_type
     op.attr["blocksize"].i = block_size
+    op.attr["scale_alg"].i = scale_alg
 
     # process outputs
     output_index = 0
