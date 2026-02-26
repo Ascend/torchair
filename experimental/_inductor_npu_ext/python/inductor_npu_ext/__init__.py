@@ -42,6 +42,9 @@ def _finetune_inductor_config():
     decompositions.clear()
     decompositions.update(decompositions_whitelist)
 
+    from inductor_npu_ext.passes.auto_functionalize_legacy_ops import auto_functionalize_legacy_ops
+    inductor_config.pre_grad_custom_pass = auto_functionalize_legacy_ops
+
 
 _finetune_inductor_config()
 

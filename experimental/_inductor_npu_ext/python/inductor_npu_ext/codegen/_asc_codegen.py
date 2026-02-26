@@ -69,19 +69,31 @@ def codegen_cpp_wrapper(graph: FusedASCGraph):
     wrapper = IndentedBuffer()
     inputs = [TensorArg(f"asc_input{v}") for v in range(len(graph.inputs))]
     outputs = [TensorArg(f"asc_output{v}") for v in range(len(graph.outputs))]
-    symbols = [SymArg(str(v)) for v in graph.size_vars]
     stream = StreamArg("stream")
     tiling_dtype = f"AutofuseTilingData"
 
-    all_args = [TensorArg(v) for v in graph.args] + symbols + [stream]
+    from torch._inductor.codegen.common import TensorArg as InductorTensorArg
+    from torch._inductor.codegen.common import SizeArg as InductorSizeArg
+
+    tensor_args = []
+    symbol_args = []
+    for v in graph.args:
+        if isinstance(v, InductorTensorArg):
+            tensor_args.append(TensorArg(v.name))
+        elif isinstance(v, InductorSizeArg):
+            symbol_args.append(SymArg(v.name))
+        else:
+            raise NotImplementedError(f"Unsupported arg type: {type(v)}")
+
+    all_args = tensor_args + symbol_args + [stream]
     signature = ', '.join([v.signature for v in all_args])
     buffer_assign = ''
     for in_arg, out_name in zip(inputs + outputs, graph.inputs_outer + graph.outputs_outer):
         buffer_assign += f'\n    auto *{in_arg.name} = {out_name};'
         buffer_assign += f'\n    DLOG() << "{in_arg.name}: " << {in_arg.name} << std::endl;'
 
-    tiling_args = [v.name for v in symbols]
-    tiling_signature = [v.signature for v in symbols]
+    tiling_args = [v.name for v in symbol_args]
+    tiling_signature = [v.signature for v in symbol_args]
     tiling_signature.append(f"{tiling_dtype} *tiling_data")
     tiling_signature.append(f"uint32_t *workspace_size")
     tiling_signature.append(f"uint32_t *block_dim")

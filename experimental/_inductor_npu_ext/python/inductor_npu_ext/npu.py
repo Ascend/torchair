@@ -15,6 +15,7 @@ from torch._inductor.codegen.common import BackendFeature
 from torch._inductor.ir import LoopBody
 from torch._inductor.scheduler import BaseSchedulerNode, BaseScheduling, SchedulerNode, FusedSchedulerNode
 from torch._inductor.utils import get_kernel_metadata, get_fused_kernel_name
+from torch._inductor.utils import sympy_subs
 from torch._inductor.virtualized import V
 from torch._inductor.codegen.common import IndentedBuffer, Kernel
 
@@ -117,34 +118,15 @@ class NPUKernel(Kernel):
     def assert_function(self):
         return "ascir.Assert"
 
-    @staticmethod
-    def _get_free_symbols(nodes: Union[BaseSchedulerNode, List[BaseSchedulerNode]]):
-        nodes = nodes if isinstance(nodes, (list, tuple)) else [nodes]
-        free_symbols = list()
-        for node in nodes:
-            body: LoopBody = getattr(node, '_body')
-            for indexing_expr in itertools.chain(body.indexing_exprs.values(), body.var_ranges.values()):
-                indexing_expr = V.graph.sizevars.simplify(indexing_expr)
-                size_vars = [s for s in indexing_expr.free_symbols if s.name.startswith('s')]
-                for v in size_vars:
-                    free_symbols.append(v)
-        return free_symbols
-
-    @staticmethod
-    def _get_ordered_symbol_names(node: BaseSchedulerNode):
-        free_symbols = set()
-        for sym in NPUKernel._get_free_symbols(node):
-            free_symbols.add(sym.name)
-        return sorted(free_symbols)
-
-    @staticmethod
-    def _get_symbols_hints(syms: List[sympy.Symbol]):
-        symbol_to_hint = {}
-        for sym in syms:
-            symbol_to_hint[sym.name] = V.graph.sizevars.size_hint(sym, fallback=-1)
-            if symbol_to_hint[sym.name] == -1:
-                logger.warning("Symbol %s has no hint", sym.name)
-        return symbol_to_hint
+    def size_hint(self, expr: Union[sympy.Expr, int]):
+        if isinstance(expr, sympy.Expr):
+            replacements = {}
+            for s, ks in self.args.sizevars.items():
+                for sym in expr.free_symbols:
+                    if sym.name == ks:
+                        replacements[sym] = s
+            expr = sympy_subs(expr, replacements)
+        return V.graph.sizevars.size_hint(expr, fallback=-1)
 
     @staticmethod
     def _get_minimal_transpose_order(node: BaseSchedulerNode):
@@ -166,7 +148,7 @@ class NPUKernel(Kernel):
         return min_transpose_order
 
     @contextlib.contextmanager
-    def new_subgraph(self, free_symbols: Set[str], asc_axis: List[sympy.Symbol], asc_axis_range: List[sympy.Expr], *,
+    def new_subgraph(self, asc_axis: List[sympy.Symbol], asc_axis_range: List[sympy.Expr], *,
                      hint_str=None):
         if not asc_axis:
             asc_axis = [sympy.Symbol("z0")]
@@ -176,8 +158,6 @@ class NPUKernel(Kernel):
         self.graph.set_current_loop(loop)
         for axis, axis_range in zip(asc_axis, asc_axis_range):
             self.graph.axis(axis.name, axis_range)
-        for s in free_symbols:
-            self.graph.size(s)
         prior = self._current_loop
         self._current_loop = loop
         try:
@@ -191,8 +171,6 @@ class NPUKernel(Kernel):
                 logger.debug("Codegen [%s] %s", f"{i+1}/{len(self._nodes)}", node.debug_str())
                 body: LoopBody = getattr(node, '_body')
 
-                free_symbols = self._get_ordered_symbol_names(node)
-
                 var_to_asc_axis = {}
                 axis_indexings = []
                 for var in body.var_ranges.keys():
@@ -203,9 +181,9 @@ class NPUKernel(Kernel):
                 asc_axis_range = []
                 for var in self._get_minimal_transpose_order(node):
                     asc_axis.append(var_to_asc_axis[var])
-                    asc_axis_range.append(V.graph.sizevars.simplify(body.var_ranges[var]))
+                    asc_axis_range.append(self.rename_indexing(body.var_ranges[var]))
 
-                with self.set_current_node(node), self.new_subgraph(sorted(free_symbols), asc_axis, asc_axis_range,
+                with self.set_current_node(node), self.new_subgraph(asc_axis, asc_axis_range,
                                                                     hint_str='\n'.join(_node_label(node))):
                     node.run(*axis_indexings)
                     logger.debug(f"{self.graph.name} reads {self.graph.inputs} and writes {self.graph.outputs}")
@@ -215,6 +193,10 @@ class NPUKernel(Kernel):
         if hasattr(self, 'inplaced_to_remove') and hasattr(V.graph, 'inplaced_to_remove'):
             V.graph.inplaced_to_remove |= self.inplaced_to_remove
 
+        for subgraph in self._subgraphs:
+            for sym, sym_renamed in self.args.sizevars.items():
+                subgraph.size(sym_renamed)
+
         self._fused_graph = FusedASCGraph(subgraphs=self._subgraphs, outputs=self._outputs)
         # 对于输出复用输入的场景，可能出现多个asc graph上的buffer（Data/Output）对应同一个python kernel入参的情况，
         # outer是python kernel层的入参名，而inputs/outputs，则是asc graph上的buffer名，也对应rt层kernel的args
@@ -223,7 +205,7 @@ class NPUKernel(Kernel):
         # 这里的args，对应python kernel签名的入参名字，也是wrapper签名中的入参名字。
         # 而第二个返回，是在output code call函数中，调用python kernel时传入的参数，也就是实际buffer的名字。
         arg_defs, call_args, precompile_args, arg_types = self.args.python_argdefs()
-        self._fused_graph.args = [arg.name for arg in precompile_args]
+        self._fused_graph.args = precompile_args
 
         from inductor_npu_ext import codegen as npu_codegen
         self._fused_graph.cpp_wrapper = npu_codegen.codegen_cpp_wrapper(self._fused_graph)
@@ -265,8 +247,9 @@ class NPUKernel(Kernel):
         try:
             import pydot
             dot_graph = self.fused_graph.as_dot()
-            sym_to_hint = self._get_symbols_hints(self._get_free_symbols(nodes))
-            symbol_to_hint = [f'{k}:(hint={sym_to_hint[k]})' for k in sorted(sym_to_hint.keys())]
+            symbol_to_hint = []
+            for s, ks in self.args.sizevars.items():
+                symbol_to_hint.append(f'{s.name}:(={ks}, hint={self.size_hint(s)})')
             labels = [_node_label(node) + ['-' * 20] for node in nodes]
             lines = list(itertools.chain(symbol_to_hint, ['-' * 20], *labels))
             lines = _left_align_lines(lines)
@@ -284,7 +267,19 @@ class NPUKernel(Kernel):
         file_path = file_path if file_path else f"./{self.kernel_name}_benchmark.py"
         if not self._kernel_def.getvalue():
             self.codegen()
-        seen_symbols, used_buffers = self._get_seen_symbols(nodes)
+
+        arg_defs, call_args, precompile_args, arg_types = self.args.python_argdefs()
+        used_buffers = []
+        seen_symbols = []
+        for buffer, buffer_type in zip(call_args, precompile_args):
+            from torch._inductor.codegen.common import TensorArg
+            if not isinstance(buffer_type, TensorArg):
+                continue
+            used_buffers.append(buffer)
+            layout = V.graph.get_buffer(buffer).layout
+            for expr in itertools.chain(layout.stride or [], layout.size or [], [layout.offset]):
+                seen_symbols.extend(V.graph.sizevars.simplify(
+                    expr).free_symbols if isinstance(expr, sympy.Expr) else [])
 
         with open(file_path, "w") as f:
             becnhmark_code = IndentedBuffer()
@@ -297,21 +292,23 @@ class NPUKernel(Kernel):
             becnhmark_code.writeline("if __name__ == '__main__':")
             with becnhmark_code.indent():
                 becnhmark_code.writeline(f"from torch._dynamo.testing import rand_strided")
-                symbols_to_init = self._get_symbols_hints(seen_symbols)
-                for k in sorted(symbols_to_init.keys()):
-                    becnhmark_code.writeline(f"{k} = {symbols_to_init[k]}")
+                for s, ks in self.args.sizevars.items():
+                    becnhmark_code.writeline(f"{ks} = {s} = {self.size_hint(s)}")
+                for k in seen_symbols:
+                    if k not in self.args.sizevars.keys():
+                        becnhmark_code.writeline(f"{k} = {self.size_hint(k)} # buffer size hint")
                 for buffer in used_buffers:
                     layout = V.graph.get_buffer(buffer).layout
                     becnhmark_code.writeline(
                         f"{buffer} = rand_strided({tuple(layout.size)}, {tuple(layout.stride)}, "
                         f"device='{layout.device}', dtype={layout.dtype})")
-                call_args = used_buffers + [str(v) for v in self.fused_graph.size_vars]
                 becnhmark_code.writeline(f"torch.npu.synchronize()")
-                becnhmark_code.writeline(f"{self.kernel_name}({', '.join(call_args)})")
+                becnhmark_code.writeline(f"{self.kernel_name}({', '.join([str(v) for v in call_args])})")
                 becnhmark_code.writeline(f"torch.npu.synchronize()")
             f.write(becnhmark_code.getvalue())
 
     def load(self, name: str, index: sympy.Expr):
+        index = self.rename_indexing(index)
         sizes = self.contiguous_loop.size
 
         data, loop = self._load_buffer(name, self._index_to_loop(index, sizes=sizes))
@@ -338,6 +335,7 @@ class NPUKernel(Kernel):
         return load
 
     def store(self, name, index, value, mode=None):
+        index = self.rename_indexing(index)
         dtype = self.get_asc_buffer(name).dtype
         loop = self._index_to_loop(index)
         if dtype in {torch.bfloat16, torch.float16}:
@@ -354,6 +352,7 @@ class NPUKernel(Kernel):
         return reduction
 
     def store_reduction(self, name, index, reduction: _Tensor):
+        index = self.rename_indexing(index)
         reduce_dims, loop = self._get_reduce_dims_and_loop(index)
         reduction.as_loop(loop)
         dtype = self.get_asc_buffer(name).dtype
@@ -366,9 +365,6 @@ class NPUKernel(Kernel):
         return store
 
     def rename_indexing(self, index) -> sympy.Expr:
-        if isinstance(index, sympy.Symbol) and index.name.startswith("s"):
-            self.graph.size(index.name)
-            return index
         return super().rename_indexing(index)
 
     def indirect_indexing(self, index_var, size, check=False) -> sympy.Symbol:
@@ -380,17 +376,6 @@ class NPUKernel(Kernel):
 
     def index_to_str(self, index):
         return str(index)
-
-    def _get_seen_symbols(self, nodes: Union[BaseSchedulerNode, List[BaseSchedulerNode]]):
-        seen_symbols = self._get_free_symbols(nodes)
-        arg_defs, call_args, precompile_args, arg_types = self.args.python_argdefs()
-        used_buffers = call_args
-        for buffer in used_buffers:
-            layout = V.graph.get_buffer(buffer).layout
-            for expr in itertools.chain(layout.stride or [], layout.size or [], [layout.offset]):
-                seen_symbols.extend(V.graph.sizevars.simplify(
-                    expr).free_symbols if isinstance(expr, sympy.Expr) else [])
-        return seen_symbols, used_buffers
 
     def _load_indirect_buffer(self, name):
         buf: ASCBuffer = self.get_asc_buffer(name)
@@ -545,8 +530,6 @@ class NPUScheduling(BaseScheduling):
         kernel = NPUKernel(nodes, comments=comments).tracing_asc()
 
         arg_defs, call_args, precompile_args, arg_types = kernel.args.python_argdefs()
-        used_sizes = list(kernel.fused_graph.size_vars)
-        call_args.extend(used_sizes)
 
         kernel.kernel_name = kernel.fused_graph.name
         cache_hint = kernel.kernel_name

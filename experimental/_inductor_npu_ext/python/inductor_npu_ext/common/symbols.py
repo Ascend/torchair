@@ -38,7 +38,7 @@ class Loop:
     @staticmethod
     def get_hint(sym):
         try:
-            return V.graph.sizevars.size_hint(sym)
+            return V.kernel.size_hint(sym)
         except Exception:
             return sym
 
