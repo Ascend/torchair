@@ -35,7 +35,7 @@ def convert_npu_all_to_all_quant_matmul(
     common_quant_mode: int = 0,
     group_sizes: Optional[List[int]] = None,
     all2all_axes: Optional[List[int]] = None,
-    comm_quant_dtype: int = 28,
+    comm_quant_dtype: int = -1,
     x1_quant_dtype: int = None,
     x1_dtype: int = None,
     x2_dtype: int = None,
@@ -49,6 +49,9 @@ def convert_npu_all_to_all_quant_matmul(
     # transpose_x1 is set to False by default
     transpose_x1 = False
     transpose_x2 = False
+    common_quant_mode = 0
+    comm_quant_dtype = -1
+
     if all2all_axes is None:
         all2all_axes = [-2, -1]
     if world_size not in [2, 4, 8, 16]:
@@ -74,11 +77,13 @@ def convert_npu_all_to_all_quant_matmul(
     if x2_scale_dtype is not None:
         x2_scale = ge.Bitcast(x2_scale, type=torch_dtype_value_to_ge_type(x2_scale_dtype))
         x2_scale.desc.dtype = torch_dtype_value_to_ge_proto_type(x2_scale_dtype)
+    output_dtype = None
     if y_dtype is None:
-        raise RuntimeError(f"per-token per-channel quantization need y_dtype, but got None.")    
-    output_dtype = torch_dtype_value_to_ge_type(y_dtype)
-    if output_dtype not in Y_DTYPE_SUPPORT_LIST:
-        raise RuntimeError(f"y_dtype should be {[ge_type_to_torch_type(d) for d in Y_DTYPE_SUPPORT_LIST]}, but got {y_dtype}.")
+        output_dtype = DataType.DT_FLOAT
+    else:
+        output_dtype = torch_dtype_value_to_ge_type(y_dtype)
+        if output_dtype not in Y_DTYPE_SUPPORT_LIST:
+            raise RuntimeError(f"y_dtype should be {[ge_type_to_torch_type(d) for d in Y_DTYPE_SUPPORT_LIST]}, but got {y_dtype}.")
     if x1_quant_dtype not in X2_DTYPE_SUPPORT_LIST:
         raise RuntimeError(f"x1_quant_dtype should be {[d for d in X2_DTYPE_SUPPORT_LIST]}, but got {x1_quant_dtype}.")
 
