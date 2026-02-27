@@ -4,8 +4,9 @@ __all__ = ['get_compiler', 'get_npu_backend', 'dynamo_export', 'CompilerConfig',
 
 import os
 import sys
+from importlib.metadata import version
+from packaging import version as packaging_version
 import torch
-import pkg_resources
 
 from torchair.npu_fx_compiler import get_compiler
 from torchair.npu_fx_compiler import get_npu_backend
@@ -26,9 +27,9 @@ import torchair.scope
 
 
 # Dependency library version verification
-protobuf_version = pkg_resources.get_distribution("protobuf").version
+protobuf_version = version("protobuf")
 
-if not pkg_resources.parse_version(protobuf_version) >= pkg_resources.parse_version("3.13"):
+if not packaging_version.parse(protobuf_version) >= packaging_version.parse("3.13"):
     raise AssertionError("protobuf_version must satisfied >=3.13")
 
 # before patch, backup function call for torch_npu.distributed.xxx
