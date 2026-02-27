@@ -54,3 +54,12 @@ def convert_aten_sym_numel(
     """NB: aten::sym_size.sym_numel(Tensor self) -> SymInt"""
     return ge.Cast(ge.ReduceProdD(ge.Shape(self), axes=[0]), dst_type=DataType.DT_INT64)
 
+
+@register_fx_node_ge_converter(torch.ops.aten.sym_numel.default)
+def convert_aten_sym_numel_default(
+    self,
+    out: Tensor = None,
+    meta_outputs: TensorSpec = None,
+):
+    """NB: aten::sym_size.sym_numel.default(Tensor self) -> SymInt"""
+    return ge.Cast(ge.ReduceProdD(ge.Shape(self), axes=[0]), dst_type=DataType.DT_INT64)

@@ -209,6 +209,23 @@ class HcomTest(unittest.TestCase):
         dist.destroy_process_group()
 
     @classmethod
+    def _test_all_to_all_single_mulit_dims(cls, rank, world_size, init_pg, dynamic, results):
+        torch.npu.set_device(rank)
+        init_pg(rank, world_size)
+        tensor_input = torch.ones((4, 2)) + rank * 4
+        tensor_input = tensor_input.npu()
+        tensor_output = torch.empty([4, 2]).npu()
+        tensor_output_single = torch.empty([4, 2]).npu()
+        model = All2allsinge().npu()
+        dist.all_to_all_single(tensor_output_single, tensor_input)
+        model = torch.compile(model, backend=npu_backend,
+                              dynamic=dynamic, fullgraph=True)
+        with torch.no_grad():
+            tensor_output = model(tensor_input, tensor_output)
+        results.append(tensor_output.equal(tensor_output_single))
+        dist.destroy_process_group()
+
+    @classmethod
     def _test_all_to_all_single_split_size_compile(cls, rank, world_size, init_pg, dynamic, results):
         torch.npu.set_device(rank)
         init_pg(rank, world_size)
@@ -783,6 +800,10 @@ class HcomTest(unittest.TestCase):
                                                 HcomTest._init_dist_hccl_with_patch, world_size, True))
         self.assertTrue(self._test_multiprocess(HcomTest._test_all_to_all_single_fuse_add_compile,
                                                 HcomTest._init_dist_hccl_with_patch, world_size, False))
+        self.assertTrue(self._test_multiprocess(HcomTest._test_all_to_all_single_mulit_dims,
+                                                HcomTest._init_dist_hccl_with_patch, world_size, True))
+        self.assertTrue(self._test_multiprocess(HcomTest._test_all_to_all_single_mulit_dims,
+                                                HcomTest._init_dist_hccl_with_patch, world_size, False))
 
     @unittest.skipIf(torch.__version__ < '2.3.1', "patch needed for torch version < 2.3.1")
     def test_all_to_all_single_compile_without_patch(self):
@@ -798,6 +819,10 @@ class HcomTest(unittest.TestCase):
         self.assertTrue(self._test_multiprocess(HcomTest._test_all_to_all_single_fuse_add_compile,
                                                 HcomTest._init_dist_hccl_without_patch, world_size, True))
         self.assertTrue(self._test_multiprocess(HcomTest._test_all_to_all_single_fuse_add_compile,
+                                                HcomTest._init_dist_hccl_without_patch, world_size, False))
+        self.assertTrue(self._test_multiprocess(HcomTest._test_all_to_all_single_mulit_dims,
+                                                HcomTest._init_dist_hccl_without_patch, world_size, True))
+        self.assertTrue(self._test_multiprocess(HcomTest._test_all_to_all_single_mulit_dims,
                                                 HcomTest._init_dist_hccl_without_patch, world_size, False))
 
     @unittest.skipIf(True, "unsupported until cann support")

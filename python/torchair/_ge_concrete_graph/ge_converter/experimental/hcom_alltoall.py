@@ -22,17 +22,27 @@ def _all_to_all_single(
     ranks: List[int],
     group_size: int,
 ):
-    if input_split_sizes is None and output_split_sizes is None:
-        input_split_sizes = [input_tensor.numel() // group_size] * group_size
-        output_split_sizes = [input_tensor.numel() // group_size] * group_size
+    out_size = list(input_tensor.size())
+    if len(out_size) <= 0:
+        raise AssertionError
+    input_non_0_dim_size = input_tensor.numel() if out_size[0] == 0 else (input_tensor.numel() // out_size[0])
+    if input_split_sizes is None:
+        send_counts = [input_tensor.numel() // group_size] * group_size
+    else:
+        send_counts = [input_split_sizes[i] * input_non_0_dim_size for i in range(len(input_split_sizes))]
 
-    if len(input_split_sizes) != len(output_split_sizes):
+    if output_split_sizes is None:
+        recv_counts = [input_tensor.numel() // group_size] * group_size
+    else:
+        recv_counts = [output_split_sizes[i] * input_non_0_dim_size for i in range(len(output_split_sizes))]
+
+    if len(send_counts) != len(recv_counts):
         raise AssertionError
 
-    send_displacements = [sum(input_split_sizes[:i]) for i in range(len(input_split_sizes))]
-    recv_displacements = [sum(output_split_sizes[:i]) for i in range(len(output_split_sizes))]
+    send_displacements = [sum(send_counts[:i]) for i in range(len(send_counts))]
+    recv_displacements = [sum(recv_counts[:i]) for i in range(len(recv_counts))]
     return torch.ops.npu_define.all_to_all_single_npu(input_tensor,
-        input_split_sizes, send_displacements, output_split_sizes, recv_displacements, tag, ranks, group_size)
+        send_counts, send_displacements, recv_counts, recv_displacements, tag, ranks, group_size)
 
 
 def npu_all_to_all_single_npu(
@@ -72,7 +82,11 @@ def npu_all_to_all_single_npu_meta(
     group_size: int,
 ):
     out_size = list(input_tensor.size())
-    out_size[0] = sum(recv_counts)
+    input_non_0_dim_size = (input_tensor.numel() // out_size[0])
+    if len(recv_counts) == 0:
+        recv_counts = [out_size[0] * input_non_0_dim_size // group_size] * group_size
+
+    out_size[0] = sum(recv_counts) // input_non_0_dim_size
     return input_tensor.new_empty(out_size)
 
 
