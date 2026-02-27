@@ -8,6 +8,8 @@ from torchair._ge_concrete_graph.infer_symbol_shape import infer_and_gen_sym_sha
 
 
 def _view_copy(self, bases_list, *, dependencies = [], out_op = None):
+    if hasattr(self, '_layout_equal') and self._layout_equal:
+        return _not_view_copy(self, bases_list, dependencies=dependencies, out_op=out_op)    
     dst = bases_list[self.base_index]
     src = self._as_strided
     size = self.size
@@ -73,6 +75,12 @@ def _regenerate_slice_view(self, bases_list, symbol_input_map):
         meta_out = torch.ops.aten.slice.Tensor(
             _get_meta_attr(bases_list[self.base_index]), _get_meta_attr(self.dim), _get_meta_attr(self.start), _get_meta_attr(self.end)
         )
+    if _tensors_layout_equal(bases_list[self.base_index].meta, meta_out):
+        logger.debug(f"layout in SliceViewInfo is equal to baseTensor, base_index={self.base_index}, "
+                     f"size={meta_out.size()}, stride={meta_out.stride()}, storage_offset={meta_out.storage_offset()}, "
+                     f"it is no need to call torch.slice")
+        self._layout_equal = True
+        return _regenerate_not_view(self, bases_list)        
     self.size = _sym_list_to_ge_tensor(list(meta_out.size()), symbol_input_map)
     self.stride = _sym_list_to_ge_tensor(list(meta_out.stride()), symbol_input_map)
     self.storage_offset = infer_ge_output_by_symbol_calculate(symbol_input_map, meta_out.storage_offset())
@@ -94,6 +102,12 @@ def _regenerate_as_strided_view(self, bases_list, symbol_input_map=None):
             _get_meta_attr(self.stride),
             _get_meta_attr(self.storage_offset),
         )
+    if _tensors_layout_equal(bases_list[self.base_index].meta, meta_out):
+        logger.debug(f"layout in AsStridedViewInfo is equal to baseTensor, base_index={self.base_index}, "
+                        f"size={meta_out.size()}, stride={meta_out.stride()}, storage_offset={meta_out.storage_offset()}, "
+                        f"it is no need to call torch.as_strided")
+        self._layout_equal = True
+        return _regenerate_not_view(self, bases_list)        
     as_strided = ge.AsStrided(bases_list[self.base_index],
                               self.size,
                               self.stride,
@@ -107,6 +121,12 @@ def _regenerate_alias_view(self, bases_list, symbol_input_map=None):
     fake_mode = detect_fake_mode(None)
     with fake_mode:
         meta_out = torch.ops.aten.alias.default(_get_meta_attr(bases_list[self.base_index]))
+    if _tensors_layout_equal(bases_list[self.base_index].meta, meta_out):
+        logger.debug(f"layout in AliasViewInfo is equal to baseTensor, base_index={self.base_index}, "
+                     f"size={meta_out.size()}, stride={meta_out.stride()}, storage_offset={meta_out.storage_offset()}, "
+                     f"it is no need to call torch.alias")
+        self._layout_equal = True
+        return _regenerate_not_view(self, bases_list)          
     self.size = _sym_list_to_ge_tensor(list(meta_out.size()), symbol_input_map)
     self.stride = _sym_list_to_ge_tensor(list(meta_out.stride()), symbol_input_map)
     self.storage_offset = infer_ge_output_by_symbol_calculate(symbol_input_map, meta_out.storage_offset())
@@ -116,6 +136,14 @@ def _regenerate_alias_view(self, bases_list, symbol_input_map=None):
                               self.storage_offset)
     self._as_strided = as_strided
     return as_strided
+
+
+def _tensors_layout_equal(t1: torch.Tensor, t2: torch.Tensor) -> bool:
+    return (
+        t1.size() == t2.size()
+        and t1.stride() == t2.stride()
+        and t1.storage_offset() == t2.storage_offset()
+    )
 
 
 def _sym_list_to_ge_tensor(sym_list, symbol_input_map):
