@@ -423,7 +423,8 @@ def _valid_graph(graph_module):
                 if not scope_enter_stack:
                     raise RuntimeError(f"When you call the torch.ops.air.scope_exit operator: {node.name}, "
                                        f"you must first call the torch.ops.air.scope_enter operator, as they must be called in pairs. "
-                                       f"Please check your code or your post_grad_custom_pre_pass post_grad_custom_post_pass!")
+                                       f"Please check your code or your post_grad_custom_pre_pass post_grad_custom_post_pass!"
+                                       f"This error may also occur in a Dynamo graph break scenario.")
                 scope_enter_stack.pop()
 
         if scope_enter_stack:
@@ -431,7 +432,8 @@ def _valid_graph(graph_module):
             raise RuntimeError(f"After you call the torch.ops.air.scope_enter operator, "
                                f"there is no paired call to the torch.ops.air.scope_exit operator. "
                                f"The parameters for these torch.ops.air.scope_enter calls are:{args_list}. "
-                               f"Please check your code or your post_grad_custom_pre_pass post_grad_custom_post_pass!")
+                               f"Please check your code or your post_grad_custom_pre_pass post_grad_custom_post_pass!"
+                               f"This error may also occur in a Dynamo graph break scenario.")
 
     _check_scope_enter_exit(graph_module)
 
