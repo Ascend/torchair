@@ -79,8 +79,8 @@ def convert_npu_all_to_all_quant_matmul(
     output_dtype = torch_dtype_value_to_ge_type(y_dtype)
     if output_dtype not in Y_DTYPE_SUPPORT_LIST:
         raise RuntimeError(f"y_dtype should be {[ge_type_to_torch_type(d) for d in Y_DTYPE_SUPPORT_LIST]}, but got {y_dtype}.")
-    if torch_dtype_value_to_ge_type(x1_quant_dtype) not in X2_DTYPE_SUPPORT_LIST:
-        raise RuntimeError(f"x1_quant_dtype should be {[ge_type_to_torch_type(d) for d in X2_DTYPE_SUPPORT_LIST]}, but got {x1_quant_dtype}.")
+    if x1_quant_dtype not in X2_DTYPE_SUPPORT_LIST:
+        raise RuntimeError(f"x1_quant_dtype should be {[d for d in X2_DTYPE_SUPPORT_LIST]}, but got {x1_quant_dtype}.")
 
     '''NB: npu::npu_quant_all_to_all_matmul(Tensor x1, Tensor x2, str hcom, int world_size, bool all2all_out_flag=True, Tensor? bias=None, Tensor? x1_scale=None,
     Tensor? x2_scale=None, Tensor? common_scale=None, Tensor? x1_offset=None, Tensor? x2_offset=None, int? x1_quant_mode=0, int? x2_quant_mode=0, int? common_quant_mode=0,
