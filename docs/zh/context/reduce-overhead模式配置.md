@@ -6,9 +6,7 @@
 
 PyTorch原生框架默认以Eager模式运行，即单算子下发后立即执行，每个算子都需要经历如下流程：Host侧Python API-\>Host侧C++层算子下发-\>Device侧算子Kernel执行，每次Kernel执行之前都要等待Host侧下发逻辑完成。因此在单个算子计算量过小或Host性能不佳场景下，容易产生Device空闲时间，每个Kernel执行完后都需要一段时间去等待下一个Kernel下发完成。
 
-为了优化Host调度性能，昇腾提供了NPU场景的Device调度方案，称为**aclgraph**（又称为Graph Capture，图捕获模式），将算子任务下沉到Device执行，以实现性能提升。
-
-reduce-overhead模式是TorchAir提供的aclgraph模式开关，当用户网络存在Host侧调度问题时，建议开启此模式。
+为了优化Host调度性能，昇腾提供了NPU场景的Device调度方案，称为**aclgraph**图捕获模式（通过配置mode=reduce-overhead实现），将算子任务下沉到Device执行，以实现性能提升。
 
 > **说明：** 
 >reduce-overhead模式（aclgraph）采用Capture&Replay方式实现任务一次捕获多次执行，Capture阶段捕获Stream任务到Device侧，暂不执行；Replay阶段从Host侧发出执行指令，Device侧再执行已经捕获的任务，从而减少Host调度开销。该方案通过Runtime提供的aclmdlRICaptureXxx系列接口实现，其原理和接口介绍请参考《CANN 应用开发 \(C&C++\)》中“运行时资源管理\>基于捕获方式构建模型运行实例”章节。

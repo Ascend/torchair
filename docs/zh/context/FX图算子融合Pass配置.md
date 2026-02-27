@@ -21,9 +21,8 @@
 
 ## 使用约束
 
--   本功能依赖PyTorch 2.6.0或更高版本。
 -   无论是默认支持的算子融合Pass还是自定义的算子融合Pass，均可由pattern\_fusion\_pass配置。
--   表1中matmul输入必须是三维，npu_transpose_batchmatmul及npu_add_rms_norm_quant算子融合max-autotune模式不生效。
+-   表1中matmul输入必须是三维，npu_transpose_batchmatmul及npu_add_rms_norm_quant算子融合**max-autotune模式不生效**。
 
 ## 使用方法
 
@@ -60,230 +59,22 @@ return (view_default, view_default_1, getitem_6)
 ```
 
 ## 融合规则
--   npu_add_rms_norm_dynamic_quant
-```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'primaryBorderColor': '#0066cc', 'lineColor': '#000000'}}}%%
+- npu_add_rms_norm_dynamic_quant
 
-flowchart LR
-    subgraph Before["融合前"]
-        direction TB
-        X1["x1"] & X2["x2"] & Gamma["gamma"] --> AddRMS["npu_add_rms_norm"]
-        AddRMS --> y["y"]
-        y["y"] --> DynQuant["npu_dynamic_quant"]
-        Smooth["smooth_scales"] --> DynQuant
-        DynQuant --> YOut["yOut"] & Scale1["scale1Out"]
-        AddRMS --> XOut["xOut"]
-    end
+  ![](figures/addRmsNormDynamicQuant.png)
 
-    subgraph After["融合后"]
-        direction TB
-        X1_2["x1"] & X2_2["x2"] & Gamma2["gamma"] & Smooth2["smooth_scale"] --> Fused["npu_add_rms_norm_dynamic_quant"]
-        Fused --> YOut2["yOut"] & Scale2["scale1Out"] & XOut2["xOut"]
-    end
+- npu_add_rms_norm_dynamic_quant（自动处理flatten与view操作）
 
-    Before ==> After
+  ![](figures/addRmsNormDynamicQuant_flatten_view.png)
 
-    linkStyle default stroke:#000000,stroke-width:2px,fill:none
+- npu_add_rms_norm_cast（自动处理view） 
 
-    style Before fill:#ffffff,stroke:none
-    style After fill:#ffffff,stroke:none
-    style X1 fill:#cce0ff,stroke:none
-    style X2 fill:#cce0ff,stroke:none
-    style Gamma fill:#cce0ff,stroke:none
-    style y fill:#cce0ff,stroke:none
-    style Smooth fill:#cce0ff,stroke:none
-    style AddRMS fill:#cce0ff,stroke:none
-    style DynQuant fill:#cce0ff,stroke:none
-    style YOut fill:#cce0ff,stroke:none
-    style Scale1 fill:#cce0ff,stroke:none
-    style XOut fill:#cce0ff,stroke:none
-    style X1_2 fill:#cce0ff,stroke:none
-    style X2_2 fill:#cce0ff,stroke:none
-    style Gamma2 fill:#cce0ff,stroke:none
-    style Smooth2 fill:#cce0ff,stroke:none
-    style Fused fill:#cce0ff,stroke:none
-    style YOut2 fill:#cce0ff,stroke:none
-    style Scale2 fill:#cce0ff,stroke:none
-    style XOut2 fill:#cce0ff,stroke:none
+  ![](figures/addRmsNormCast.png)
 
-```
+- npu_transpose_batchmatmul
 
--   npu_add_rms_norm_dynamic_quant（并处理flatten与view操作）
-```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'primaryBorderColor': '#0066cc', 'lineColor': '#000000'}}}%%
+  ![](figures/transposeBatchmatmul.png)
+  
+- npu_add_rms_norm_quant
 
-flowchart LR
-    subgraph Before2["融合前"]
-        direction TB
-        X1_3["x1"] & X2_3["x2"] & Gamma3["gamma"] --> AddRMS2["npu_add_rms_norm"]
-        AddRMS2 --> ViewY["y.flatten(0,1)"] --> DynQuant2["npu_dynamic_quant"]
-        DynQuant2 --> YOut3["yOut"] & ScaleRaw["scale1Out"]
-        ScaleRaw --> ViewScale["View(-1,1)"]
-        AddRMS2 --> XOut3["xOut"]
-    end
-
-    subgraph After2["融合后"]
-        direction TB
-        X1_4["x1"] & X2_4["x2"] & Gamma4["gamma"] --> Fused2["npu_add_rms_norm_dynamic_quant"]
-        Fused2 --> YOut4["yOut"] --> FlattenAuto["flatten(0,1)"]
-        Fused2 --> Scale3["scale1Out"] --> ViewAuto["view(-1,1)"]
-        Fused2 --> XOut4["xOut"]
-    end
-
-    Before2 ==> After2
-
-    linkStyle default stroke:#000000,stroke-width:2px,fill:none
-
-    style Before2 fill:#ffffff,stroke:none
-    style After2 fill:#ffffff,stroke:none
-    style X1_3 fill:#cce0ff,stroke:none
-    style X2_3 fill:#cce0ff,stroke:none
-    style Gamma3 fill:#cce0ff,stroke:none
-    style AddRMS2 fill:#cce0ff,stroke:none
-    style ViewY fill:#cce0ff,stroke:none
-    style DynQuant2 fill:#cce0ff,stroke:none
-    style YOut3 fill:#cce0ff,stroke:none
-    style ScaleRaw fill:#cce0ff,stroke:none
-    style ViewScale fill:#cce0ff,stroke:none
-    style XOut3 fill:#cce0ff,stroke:none
-    style X1_4 fill:#cce0ff,stroke:none
-    style X2_4 fill:#cce0ff,stroke:none
-    style Gamma4 fill:#cce0ff,stroke:none
-    style Fused2 fill:#cce0ff,stroke:none
-    style YOut4 fill:#cce0ff,stroke:none
-    style FlattenAuto fill:#cce0ff,stroke:none
-    style Scale3 fill:#cce0ff,stroke:none
-    style ViewAuto fill:#cce0ff,stroke:none
-    style XOut4 fill:#cce0ff,stroke:none
-```
--   npu_add_rms_norm_cast（并处理view） 
-
-```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'primaryBorderColor': '#0066cc', 'lineColor': '#000000'}}}%%
-
-flowchart LR
-    subgraph Before["融合前"]
-        direction TB
-        X1["x1"] & X2["x2"] & Gamma["gamma"] --> AddRMS["npu_add_rms_norm"]
-        AddRMS --> Y["y"]
-        AddRMS --> XOut["xOut"]
-        Y --> Size["size(-1)"] --> H["h"]
-        Y --> View["View(-1, h)"] --> Cast["_npu_dtype_cast<br/>to float32"]
-    end
-
-    subgraph After["融合后"]
-        direction TB
-        X1_2["x1"] & X2_2["x2"] & Gamma2["gamma"] --> Fused["npu_add_rms_norm_cast"]
-        Fused --> Y2["y"]
-        Fused --> XOut2["xOut"]
-        Fused --> YCast["y_cast"]
-        YCast --> View2["View(-1, h)"]
-    end
-
-    Before ==> After
-
-    linkStyle default stroke:#000000,stroke-width:2px,fill:none
-
-    style Before fill:#ffffff,stroke:none
-    style After fill:#ffffff,stroke:none
-    style X1 fill:#cce0ff,stroke:none
-    style X2 fill:#cce0ff,stroke:none
-    style Gamma fill:#cce0ff,stroke:none
-    style AddRMS fill:#cce0ff,stroke:none
-    style Y fill:#cce0ff,stroke:none
-    style XOut fill:#cce0ff,stroke:none
-    style Size fill:#cce0ff,stroke:none
-    style H fill:#cce0ff,stroke:none
-    style View fill:#cce0ff,stroke:none
-    style Cast fill:#cce0ff,stroke:none
-    style X1_2 fill:#cce0ff,stroke:none
-    style X2_2 fill:#cce0ff,stroke:none
-    style Gamma2 fill:#cce0ff,stroke:none
-    style Fused fill:#cce0ff,stroke:none
-    style Y2 fill:#cce0ff,stroke:none
-    style XOut2 fill:#cce0ff,stroke:none
-    style YCast fill:#cce0ff,stroke:none
-    style View2 fill:#cce0ff,stroke:none
-```
--   npu_transpose_batchmatmul
-```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'primaryBorderColor': '#0066cc', 'lineColor': '#000000'}}}%%
-
-flowchart LR
-    subgraph Before["融合前"]
-        direction TB
-        X1["x1"] & X2["x2"]  --> batchmatmul["matmul"]
-        batchmatmul --> transpose["transpose"]
-        transpose["transpose"]--> Out["Out"]
-    end
-
-    subgraph After["融合后"]
-        direction TB
-        X1_2["x1"] & X2_2["x2"] --> Fused["npu_transpose_batchmatmul"]
-        Fused --> out["Out"]
-    end
-
-    Before ==> After
-
-    linkStyle default stroke:#000000,stroke-width:2px,fill:none
-
-    style Before fill:#ffffff,stroke:none
-    style After fill:#ffffff,stroke:none
-    style X1 fill:#cce0ff,stroke:none
-    style X2 fill:#cce0ff,stroke:none
-    style batchmatmul fill:#cce0ff,stroke:none
-    style transpose fill:#cce0ff,stroke:none
-    style Out fill:#cce0ff,stroke:none
-    style Fused fill:#cce0ff,stroke:none
-    style out fill:#cce0ff,stroke:none
-    style X1_2 fill:#cce0ff,stroke:none
-    style X2_2 fill:#cce0ff,stroke:none
-
-```
--   npu_add_rms_norm_quant
-```mermaid
-%%{init: {'theme': 'base', 'themeVariables': { 'primaryBorderColor': '#0066cc', 'lineColor': '#000000'}}}%%
-
-flowchart LR
-    subgraph Before["融合前"]
-        direction TB
-        X1["x1"] & X2["x2"] & Gamma["gamma"] --> AddRMS["npu_add_rms_norm"]
-        AddRMS --> y["y"]
-        y["y"] --> Quant["npu_quantize"]
-        Scales["scales"] --> Quant
-	ZeroPoints["zero_points"] --> Quant
-        Quant --> YOut["yOut"] 
-        AddRMS --> XOut["xOut"]
-    end
-
-    subgraph After["融合后"]
-        direction TB
-        X1_2["x1"] & X2_2["x2"] & Gamma2["gamma"] & Scales2["scales"] & ZeroPoints2["zero_points"] --> Fused["npu_add_rms_norm_quant"]
-        Fused --> YOut2["yOut"]  & XOut2["xOut"]
-    end
-
-    Before ==> After
-
-    linkStyle default stroke:#000000,stroke-width:2px,fill:none
-
-    style Before fill:#ffffff,stroke:none
-    style After fill:#ffffff,stroke:none
-    style X1 fill:#cce0ff,stroke:none
-    style X2 fill:#cce0ff,stroke:none
-    style Gamma fill:#cce0ff,stroke:none
-    style y fill:#cce0ff,stroke:none
-    style Scales fill:#cce0ff,stroke:none
-    style AddRMS fill:#cce0ff,stroke:none
-    style Quant fill:#cce0ff,stroke:none
-    style YOut fill:#cce0ff,stroke:none
-    style ZeroPoints fill:#cce0ff,stroke:none
-    style XOut fill:#cce0ff,stroke:none
-    style X1_2 fill:#cce0ff,stroke:none
-    style X2_2 fill:#cce0ff,stroke:none
-    style Gamma2 fill:#cce0ff,stroke:none
-    style Scales2 fill:#cce0ff,stroke:none
-    style ZeroPoints2 fill:#cce0ff,stroke:none
-    style Fused fill:#cce0ff,stroke:none
-    style YOut2 fill:#cce0ff,stroke:none
-    style XOut2 fill:#cce0ff,stroke:none
-```
+  ![](figures/addRmsNormQuant.png)

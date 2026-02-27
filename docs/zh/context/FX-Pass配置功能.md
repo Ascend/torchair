@@ -6,7 +6,7 @@
 
 reduce-overhead执行模式（aclgraph）下，可基于torch.compile生成的[ATen IR](简介.md#常用概念) 表示FX Graph或GraphModule，通过对图中的ATen IR变换和分析，可以在不修改原始模型代码的情况下对模型进行灵活修改，例如应用各种图优化Pass操作（算子融合、精度转换、量化等）。
 
-TorchAir提供了一些[FX Pass](简介.md#常用概念)配置项，可以将变换后的ATen IR下沉到aclgraph执行器上，提升算子的执行效率。
+TorchAir提供了一些FX Pass配置项，可以将变换后的ATen IR下沉到aclgraph执行器上，提升算子的执行效率。
 
 ## 使用约束
 
