@@ -2143,7 +2143,7 @@ REG_OP(MoeInitRouting)
  * @li offset: A 2D Tensor. Shape is: (expert_end - expert_start, 1) or (expert_end - expert_start, H).
                Type is:Float32. Format support ND.
  * @par Outputs:
- * @li expanded_x: A 2D Tensor. Shape is: (B*S*K, H). Type is: Int8, BFloat16, Float16 or Float32. 
+ * @li expanded_x: A 2D Tensor. Shape is: (B*S*K, H). Type is: Int8, BFloat16, Float16 or Float32 or DT_HIFLOAT8. 
                    The data type must be the same as that of x. Format support ND.
  * @li expanded_row_idx: A 1D Tensor. Shape is: (B*S*K). Type is: Int32. Format support ND.
  * @li expert_tokens_count_or_cumsum: A 1D Tensor. represents the number of tokens processed by each expert and the
@@ -2162,7 +2162,7 @@ REG_OP(MoeInitRouting)
                                1(compute tokens count), which in dropPad scenario. Default: false.
  * @li expert_tokens_num_flag: Optional parameter. Type is:Bool. The value is true (compute tokens) or
                                false(do not compute tokens), which in dropPad scenario. Default: false.
- * @li quant_mode: Optional parameter. Type is:Int. The value is in [-1(unquant), 0(static), 1(dynamic), 2(fp8_e5m2), 3(fp8_e4m3fn)] of quant mode. Default: -1.
+ * @li quant_mode: Optional parameter. Type is:Int. The value is in [-1(unquant), 0(static), 1(dynamic), 2(fp8_e5m2), 3(fp8_e4m3fn), 7(hif8_pertensor), 8(hif8_pertoken)] of quant mode. Default: -1.
  * @li active_expert_range: Optional parameter. Type is:ListInt. Like [expert_start, expert_end].
                             expert_start must be greater than or equal to 0, expert_end must be less than or equal to 10240,
                             expert_start must be less than expert_end.
@@ -2173,7 +2173,7 @@ REG_OP(MoeInitRoutingV3)
     .INPUT(expert_idx, TensorType({DT_INT32}))
     .OPTIONAL_INPUT(scale, TensorType({DT_FLOAT}))
     .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))
-    .OUTPUT(expanded_x, TensorType({DT_INT8, DT_FLOAT16, DT_FLOAT, DT_BF16, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN}))
+    .OUTPUT(expanded_x, TensorType({DT_INT8, DT_FLOAT16, DT_FLOAT, DT_BF16, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_HIFLOAT8}))
     .OUTPUT(expanded_row_idx, TensorType({DT_INT32}))
     .OUTPUT(expert_tokens_count_or_cumsum, TensorType({DT_INT64}))
     .OUTPUT(expanded_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))
