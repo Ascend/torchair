@@ -165,6 +165,13 @@ def rsqrt(x):
 
 
 @asc_ops
+def neg(x):
+    op = Op("Neg")
+    op.x = x
+    return op.y
+
+
+@asc_ops
 def maximum(x1, x2):
     op = Op("Maximum")
     op.x1 = x1

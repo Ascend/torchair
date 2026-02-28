@@ -26,6 +26,14 @@ aten = torch.ops.aten
 
 
 def _finetune_inductor_config():
+    """
+    Fine-tunes TorchInductor and TorchDynamo configuration for NPU extension.
+
+    This function adjusts several internal TorchInductor and TorchDynamo settings to optimize
+    compilation and execution for NPU devices. It modifies recompilation limits, float specialization,
+    reduction unrolling, size assertions, and device properties. It also restricts operator decompositions
+    to a whitelist and sets a custom pre-gradient pass if not already set.
+    """
     from torch._inductor.codegen import cpu_device_op_overrides
     from torch._dynamo import config as dynamo_config
     dynamo_config.recompile_limit = 16  # default 8 is always not enough for per-layer compile
@@ -42,8 +50,18 @@ def _finetune_inductor_config():
     decompositions.clear()
     decompositions.update(decompositions_whitelist)
 
+    import inductor_npu_ext.lowering  # noqa: F401, make sure lowering rules for npu opps are registered
+
     from inductor_npu_ext.passes.auto_functionalize_legacy_ops import auto_functionalize_legacy_ops
-    inductor_config.pre_grad_custom_pass = auto_functionalize_legacy_ops
+    if inductor_config.pre_grad_custom_pass is None:
+        inductor_config.pre_grad_custom_pass = auto_functionalize_legacy_ops
+    else:
+        if inductor_config.pre_grad_custom_pass != auto_functionalize_legacy_ops:
+            logger.warning(f"`pre_grad_custom_pass` has already been registered as {inductor_config.pre_grad_custom_pass}, "
+                           f"registration of `auto_functionalize_legacy_ops` will be skipped. "
+                           f"Note that this may introduce extra tensormove operations. "
+                           f"You can import `auto_functionalize_legacy_ops` and call it within your custom pass: "
+                           f"`from inductor_npu_ext.passes.auto_functionalize_legacy_ops import auto_functionalize_legacy_ops`")
 
 
 _finetune_inductor_config()
@@ -172,6 +190,7 @@ _LoweringGuard.support(prims.convert_element_type, float_dtypes())
 _LoweringGuard.support(aten.sigmoid, float_dtypes())
 _LoweringGuard.support(aten.remainder, float_dtypes())
 _LoweringGuard.support(aten.silu, float_dtypes())
+_LoweringGuard.support(aten.neg, float_dtypes() + (torch.int32,))
 
 # npu ops
 _LoweringGuard.support(torch.ops.npu._npu_dtype_cast, float_dtypes())

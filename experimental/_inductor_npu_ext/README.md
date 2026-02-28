@@ -26,20 +26,17 @@ inductor-npu-ext 当前基于 AscendC 生成融合Kernel。
 > inductor-npu-ext 依赖 torch 2.8+ 版本
 
 ```bash
+pip3 install numpy
+pip3 install pyyaml
+pip3 install setuptools
 pip3 install torch_npu==2.8 # 通过pip安装torch_npu时会自动安装依赖的torch版本
-pip3 install numpy # torch依赖numpy
-pip3 install importlib-metadata # 解决部分环境下缺少importlib-metadata包的问题
 ```
 
-### 安装CANN-8.5.0
+### 安装CANN主线版本
 
-- [CANN快速安装指南（不含驱动和固件）](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/850/quickstart/instg_quick.html) -- 推荐离线安装方式
-- [CANN安装指南（含驱动和固件）](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/850/softwareinst/instg/instg_0000.html?Mode=PmIns&InstallType=netconda&OS=openEuler)
-- [CANN与torch_npu配套关系说明](https://gitcode.com/Ascend/pytorch#%E6%98%87%E8%85%BE%E8%BE%85%E5%8A%A9%E8%BD%AF%E4%BB%B6)
+inductor-npu-ext 依赖 CANN 主线版本。如果您是外部用户，可以联系对应的支撑团队获取安装包。
 
 ### 安装inductor-npu-ext
-
-> inductor-npu-ext仍处于实验阶段，代码位置可能变动。
 
 ```bash
 git clone https://gitcode.com/Ascend/torchair.git
