@@ -190,7 +190,6 @@ _LoweringGuard.support(prims.convert_element_type, float_dtypes())
 _LoweringGuard.support(aten.sigmoid, float_dtypes())
 _LoweringGuard.support(aten.remainder, float_dtypes())
 _LoweringGuard.support(aten.silu, float_dtypes())
-_LoweringGuard.support(aten.neg, float_dtypes() + (torch.int32,))
 
 # npu ops
 _LoweringGuard.support(torch.ops.npu._npu_dtype_cast, float_dtypes())
