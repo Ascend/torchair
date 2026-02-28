@@ -54,6 +54,16 @@ def arch35_a16w4_weight_quant_mode(x_dtype, weight_dtype):
         (x_dtype == DataType.DT_FLOAT16 or x_dtype == DataType.DT_BF16)
 
 
+def arch35_mxa8w4_weight_zip_mode(x_tensor_dtype, weight_tensor_dtype, weight_dtype):
+    return is_arch35() and x_tensor_dtype in (DataType.DT_FLOAT8_E4M3FN,) and weight_tensor_dtype in (DataType.DT_UINT8,
+        DataType.DT_INT8) and torch_dtype_value_to_ge_type(weight_dtype) in (DataType.DT_FLOAT4_E2M1,)
+
+
+def arch35_mxa8w4(x_tensor_dtype, weight_tensor_dtype, weight_dtype):
+    return (x_tensor_dtype == DataType.DT_FLOAT8_E4M3FN and weight_tensor_dtype ==
+            DataType.DT_FLOAT) or arch35_mxa8w4_weight_zip_mode(x_tensor_dtype, weight_tensor_dtype, weight_dtype)
+
+
 def convert_tensorlist_to_int4(input_data: List[Tensor], trans: bool):
     input_dtype = input_data[0].dtype
     w_list = []
@@ -230,7 +240,7 @@ def conveter_npu_npu_grouped_matmul(
                 bias = fill_empty_tensorlist(bias, DataType.DT_FLOAT)
             else:
                 bias = fill_empty_tensorlist(bias, DataType.DT_INT32)
-        elif input_x_dtype == DataType.DT_FLOAT8_E4M3FN and w_dtype == DataType.DT_FLOAT:
+        elif arch35_mxa8w4(input_x_dtype, w_dtype, weight_dtype):
             ge_out_type = torch_dtype_value_to_ge_type(output_dtype)
             bias = fill_empty_tensorlist(bias, ge_out_type)
         else:
@@ -243,7 +253,7 @@ def conveter_npu_npu_grouped_matmul(
     if a16_weight_quant_mode(input_x_dtype, w_dtype):
         antiquant_scale = fill_empty_tensorlist(antiquant_scale, input_x_dtype)
         antiquant_offset = fill_empty_tensorlist(antiquant_offset, input_x_dtype)
-    elif input_x_dtype == DataType.DT_FLOAT8_E4M3FN and w_dtype == DataType.DT_FLOAT:
+    elif arch35_mxa8w4(input_x_dtype, w_dtype, weight_dtype):
         ge_out_type = torch_dtype_value_to_ge_type(output_dtype)
         antiquant_scale = fill_empty_tensorlist(antiquant_scale, ge_out_type)
         antiquant_offset = fill_empty_tensorlist(antiquant_offset, ge_out_type)
@@ -285,8 +295,12 @@ def conveter_npu_npu_grouped_matmul(
         w_list = convert_tensorlist_to_int4(weight, x[0].symsize[-1] == weight[0].symsize[-2] * INT4_NUMS_IN_INT32)
     elif arch35_a16w4_weight_quant_mode(input_x_dtype, w_dtype):
         x_list = x
-        w_list = convert_tensorlist_to_int4_arch35(weight, 
+        w_list = convert_tensorlist_to_int4_arch35(weight,
                                                    x[0].symsize[-1] == weight[0].symsize[-2] * INT4_NUMS_IN_INT32)
+    elif arch35_mxa8w4_weight_zip_mode(input_x_dtype, w_dtype, weight_dtype):
+        x_list = x
+        for w_item in weight:
+            w_list.append(ge.Bitcast(w_item, type=torch_dtype_value_to_ge_type(weight_dtype), keep_dim=True))
     elif x_dtype is not None and weight_dtype is not None and \
          x_dtype == torch_npu.float4_e2m1fn_x2 and weight_dtype == torch_npu.float4_e2m1fn_x2:
         x_list, w_list = convert_tensorlist_to_mxfp4(x, weight, x_dtype, weight_dtype)

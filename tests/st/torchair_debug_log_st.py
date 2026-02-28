@@ -33,6 +33,7 @@ FORWARD_STEP_TEMPLATES = [
     "aot_forward_graph_after_mapping_assign_op_to_graph_output.pbtxt",
     "aot_forward_graph_after_explicit_order_for_side_effect_nodes.pbtxt",
     "aot_forward_graph_after_explicit_order_for_cmo.pbtxt",
+    "aot_forward_graph_after_move_transpose_into_mm.pbtxt",
     "aot_forward_optimized_ge_graph.pbtxt",
 ]
 
@@ -52,6 +53,7 @@ BACKWARD_STEP_TEMPLATES = [
     "aot_backward_graph_after_mapping_assign_op_to_graph_output.pbtxt",
     "aot_backward_graph_after_explicit_order_for_side_effect_nodes.pbtxt",
     "aot_backward_graph_after_explicit_order_for_cmo.pbtxt",
+    "aot_backward_graph_after_move_transpose_into_mm.pbtxt",
     "aot_backward_optimized_ge_graph.pbtxt",
 ]
 

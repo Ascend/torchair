@@ -517,3 +517,34 @@ def explicit_order_for_cmo(graph: GeGraph):
     sink_controller = ControlTensor(ordered_nodes[-1]).controller
     if ordered_nodes[-1].name not in [v.split(":")[0] for v in net_output.input]:
         net_output.input.append(sink_controller)
+
+
+def move_transpose_into_mm(graph: GeGraph):
+    name_to_op: Dict[str, OpDef] = {op.name: op for op in graph.op}
+
+    def find_nodes(node, patterns):
+        res = []
+        for pattern in patterns:
+            op_type, idx = pattern
+            next_node = name_to_op[node.input[idx].split(":")[0]]
+            if next_node.type != op_type:
+                return []
+            res.append(next_node)
+            node = next_node
+        return res
+
+    def remove_transpose_node(bitcast_node, transpose_node, const_node):
+        bitcast_node.input[0] = transpose_node.input[0]
+        graph.op.remove(transpose_node)
+        graph.op.remove(const_node)
+        logger.debug('remove %s and %s', transpose_node.name, const_node.name)
+
+    gmm_nodes = [node for node in graph.op if node.type == "GroupedMatmul"]
+    for gmm_node in gmm_nodes:
+        weight_relate_nodes = find_nodes(gmm_node, (('Bitcast', 1), ('Transpose', 0), ('Const', 1)))
+        antiquant_scale_relate_nodes = find_nodes(gmm_node, (('Bitcast', 5), ('Transpose', 0), ('Const', 1)))
+        if weight_relate_nodes and antiquant_scale_relate_nodes:
+            gmm_node.attr['transpose_weight'].b = True
+            remove_transpose_node(*weight_relate_nodes)
+            remove_transpose_node(*antiquant_scale_relate_nodes)
+            logger.debug('set attr transpose_weight to True in %s.', gmm_node.name)
