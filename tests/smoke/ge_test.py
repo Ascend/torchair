@@ -213,6 +213,7 @@ class GeTest(unittest.TestCase):
         num_blocks = 2
         lastDim_k = 16
         block_size = 32
+
         class Model(torch.nn.Module):
             def __init__(self):
                 super().__init__()
@@ -223,8 +224,10 @@ class GeTest(unittest.TestCase):
         import numpy as np
         key = np.random.randn(bs, num_head, k_head_size).astype(np.float16)
         value = np.random.randn(bs, num_head, v_head_size).astype(np.float16)
-        key_cache = np.random.randn(num_blocks, num_head*k_head_size // lastDim_k, block_size, lastDim_k).astype(np.float16)
-        value_cache = np.zeros((num_blocks, num_head*v_head_size // lastDim_k, block_size, lastDim_k)).astype(np.float16)
+        key_cache = np.random.randn(num_blocks, num_head * k_head_size // lastDim_k, block_size, lastDim_k).astype(
+            np.float16)
+        value_cache = np.zeros((num_blocks, num_head * v_head_size // lastDim_k, block_size, lastDim_k)).astype(
+            np.float16)
         slot_mapping = np.random.choice(num_blocks * block_size, bs, replace=False).astype(np.int32)
 
         key_npu = torch.from_numpy(key).npu()
@@ -296,6 +299,404 @@ class GeTest(unittest.TestCase):
             any("ge.exec.outputReuseInputMemIndexes:" in log for log in cm.output),
             f"not found in logs: {cm.output}"
         )
+
+    def test_view_optimize_without_scope(self):
+        """测试无scope时view优化正常工作"""
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                v1 = x.view(2, 4, 8)
+                t1 = v1.transpose(1, 2)
+                v2 = t1.reshape(2, 32)
+                result = v2 + 1
+                return result
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "max-autotune"
+        npu_config.experimental_config.enable_view_optimize = True
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = Model()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x = torch.randn(64, dtype=torch.float32, device='npu')
+
+        eager_output = model(x)
+        with torch.no_grad():
+            compile_output = model_compile(x)
+
+        self.assertTrue(torch.allclose(eager_output, compile_output))
+
+    def test_view_optimize_with_scope_boundary(self):
+        """测试scope边界处view反推正确触发"""
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                v1 = x.view(2, 4, 8)
+                t1 = v1.transpose(1, 2)
+
+                with torchair.scope.super_kernel("test_scope", ""):
+                    v2 = t1.reshape(2, 32)
+                    result = v2 + 1
+                return result
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "max-autotune"
+        npu_config.experimental_config.enable_view_optimize = True
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = Model()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x = torch.randn(64, dtype=torch.float32, device='npu')
+
+        eager_output = model(x)
+        with torch.no_grad():
+            compile_output = model_compile(x)
+
+        self.assertTrue(torch.allclose(eager_output, compile_output))
+
+    def test_view_optimize_scope_exit_boundary(self):
+        """测试退出scope时view反推正确触发"""
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                with torchair.scope.super_kernel("test_scope", ""):
+                    v1 = x.view(2, 4, 8)
+                    t1 = v1.transpose(1, 2)
+                v2 = t1.reshape(2, 32)
+                result = v2 + 1
+
+                return result
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "max-autotune"
+        npu_config.experimental_config.enable_view_optimize = True
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = Model()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x = torch.randn(64, dtype=torch.float32, device='npu')
+
+        eager_output = model(x)
+        with torch.no_grad():
+            compile_output = model_compile(x)
+
+        self.assertTrue(torch.allclose(eager_output, compile_output))
+
+    def test_view_optimize_multiple_scope_regions(self):
+        """测试多个scope区域的view优化独立性"""
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                # 第一个scope区域
+                with torchair.scope.super_kernel("scope1", ""):
+                    v1 = x.view(2, 32)
+                    r1 = v1 + 1
+                t1 = r1.transpose(0, 1)
+
+                # 第二个scope区域
+                with torchair.scope.super_kernel("scope2", ""):
+                    v2 = t1.reshape(64)
+                    r2 = v2 * 2
+
+                return r2
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "max-autotune"
+        npu_config.experimental_config.enable_view_optimize = True
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = Model()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x = torch.randn(64, dtype=torch.float32, device='npu')
+
+        eager_output = model(x)
+        with torch.no_grad():
+            compile_output = model_compile(x)
+
+        self.assertTrue(torch.allclose(eager_output, compile_output))
+
+    def test_view_optimize_disabled_with_scope(self):
+        """测试关闭view优化时scope仍正常工作"""
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                with torchair.scope.super_kernel("test_scope", ""):
+                    v1 = x.view(2, 4, 8)
+                    t1 = v1.transpose(1, 2)
+                    result = t1 + 1
+                return result
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "max-autotune"
+        npu_config.experimental_config.enable_view_optimize = False
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = Model()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x = torch.randn(64, dtype=torch.float32, device='npu')
+
+        eager_output = model(x)
+        with torch.no_grad():
+            compile_output = model_compile(x)
+
+        self.assertTrue(torch.allclose(eager_output, compile_output))
+
+    def test_view_optimize_nested_scope(self):
+        """测试嵌套scope场景的view优化"""
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                v1 = x.view(2, 32)
+
+                with torchair.scope.super_kernel("outer_scope", ""):
+                    t1 = v1.transpose(0, 1)
+                    # 内层嵌套scope - 进入时触发外层累积的view反推
+                    with torchair.scope.super_kernel("inner_scope", ""):
+                        v2 = t1.reshape(64)
+                        r1 = v2 + 1
+                    t2 = r1.view(8, 8)
+                    r2 = t2 * 2
+                return r2
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "max-autotune"
+        npu_config.experimental_config.enable_view_optimize = True
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = Model()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x = torch.randn(64, dtype=torch.float32, device='npu')
+
+        eager_output = model(x)
+        with torch.no_grad():
+            compile_output = model_compile(x)
+
+        self.assertTrue(torch.allclose(eager_output, compile_output))
+
+    def test_view_optimize_stream_scope(self):
+        """测试stream类型scope的view优化"""
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                v1 = x.view(2, 32)
+                with torchair.scope.npu_stream_switch("stream_0"):
+                    t1 = v1.transpose(0, 1)
+                    r1 = t1 + 1
+                return r1
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "max-autotune"
+        npu_config.experimental_config.enable_view_optimize = True
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = Model()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x = torch.randn(64, dtype=torch.float32, device='npu')
+
+        eager_output = model(x)
+        with torch.no_grad():
+            compile_output = model_compile(x)
+
+        self.assertTrue(torch.allclose(eager_output, compile_output))
+
+    def test_view_optimize_mixed_scope_types(self):
+        """测试不同类型scope混合使用的view优化"""
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                v1 = x.view(2, 32)
+
+                # super_kernel scope
+                with torchair.scope.super_kernel("sk_scope", ""):
+                    t1 = v1.transpose(0, 1)
+                    r1 = t1 + 1
+                # stream scope
+                with torchair.scope.npu_stream_switch("stream_0"):
+                    v2 = r1.reshape(64)
+                    r2 = v2 * 2
+                return r2
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "max-autotune"
+        npu_config.experimental_config.enable_view_optimize = True
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = Model()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x = torch.randn(64, dtype=torch.float32, device='npu')
+
+        eager_output = model(x)
+        with torch.no_grad():
+            compile_output = model_compile(x)
+
+        self.assertTrue(torch.allclose(eager_output, compile_output))
+
+    def test_view_optimize_nested_mixed_scope_types(self):
+        """测试不同类型scope嵌套的view优化"""
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                v1 = x.view(2, 32)
+
+                # 外层 super_kernel scope
+                with torchair.scope.super_kernel("outer_sk", ""):
+                    t1 = v1.transpose(0, 1)
+                    # 内层 stream scope
+                    with torchair.scope.npu_stream_switch("inner_stream"):
+                        v2 = t1.reshape(64)
+                        r1 = v2 + 1
+
+                    t2 = r1.view(8, 8)
+                    r2 = t2 * 2
+
+                return r2
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "max-autotune"
+        npu_config.experimental_config.enable_view_optimize = True
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = Model()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x = torch.randn(64, dtype=torch.float32, device='npu')
+
+        eager_output = model(x)
+        with torch.no_grad():
+            compile_output = model_compile(x)
+
+        self.assertTrue(torch.allclose(eager_output, compile_output))
+
+    def test_view_optimize_deep_nested_scope(self):
+        """测试深层嵌套SK scope的view优化"""
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                v1 = x.view(2, 32)
+                # 第一层scope
+                with torchair.scope.super_kernel("level_1", ""):
+                    t1 = v1.transpose(0, 1)
+                    # 第二层scope
+                    with torchair.scope.super_kernel("level_2", ""):
+                        v2 = t1.reshape(64)
+                        # 第三层scope
+                        with torchair.scope.super_kernel("level_3", ""):
+                            t2 = v2.view(8, 8)
+                            r1 = t2 + 1
+                        r2 = r1 * 2
+                    r3 = r2 - 1
+                return r3
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "max-autotune"
+        npu_config.experimental_config.enable_view_optimize = True
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = Model()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x = torch.randn(64, dtype=torch.float32, device='npu')
+
+        eager_output = model(x)
+        with torch.no_grad():
+            compile_output = model_compile(x)
+
+        self.assertTrue(torch.allclose(eager_output, compile_output))
+
+    def test_view_optimize_multiple_attr_scope(self):
+        """测试带多个属性的scope的view优化"""
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                v1 = x.view(2, 32)
+
+                # 带多个属性的scope
+                with torchair.scope.super_kernel("sk_name", ""):
+                    with torchair.scope.npu_stream_switch("stream_0"):
+                        t1 = v1.transpose(0, 1)
+                        r1 = t1 + 1
+                    v2 = r1.reshape(64)
+                    r2 = v2 * 2
+                return r2
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "max-autotune"
+        npu_config.experimental_config.enable_view_optimize = True
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = Model()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x = torch.randn(64, dtype=torch.float32, device='npu')
+
+        eager_output = model(x)
+        with torch.no_grad():
+            compile_output = model_compile(x)
+
+        self.assertTrue(torch.allclose(eager_output, compile_output))
+
+    def test_view_optimize_scope_only_view_ops(self):
+        """测试scope内只有view操作的场景"""
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                # scope内只有连续view操作，没有计算节点
+                with torchair.scope.super_kernel("view_only_scope", ""):
+                    v1 = x.view(2, 32)
+                    t1 = v1.transpose(0, 1)
+                    v2 = t1.reshape(64)
+                result = v2 + 1
+
+                return result
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "max-autotune"
+        npu_config.experimental_config.enable_view_optimize = True
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = Model()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x = torch.randn(64, dtype=torch.float32, device='npu')
+
+        eager_output = model(x)
+        with torch.no_grad():
+            compile_output = model_compile(x)
+
+        self.assertTrue(torch.allclose(eager_output, compile_output))
+
 
 if __name__ == '__main__':
     unittest.main()

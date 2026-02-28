@@ -80,6 +80,18 @@ def has_scope_attr():
     return hasattr(local, 'scope_attr') and len(local.scope_attr._attribute_stack) > 0
 
 
+def has_only_super_kernel_scope_attr():
+    if not has_scope_attr():
+        return False
+    found_super_kernel = False
+    for attrs in local.scope_attr._attribute_stack:
+        for key in attrs:
+            if key not in ("_super_kernel_scope", "_super_kernel_options"):
+                return False
+            found_super_kernel = True
+    return found_super_kernel
+
+
 _GLOBAL_TAG_TO_STREAM = {}
 _GLOBAL_TAGGED_STREAM_LOCK = threading.Lock()
 

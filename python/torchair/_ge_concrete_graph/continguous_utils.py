@@ -8,9 +8,14 @@ from torch._dynamo.utils import detect_fake_mode
 from torch._subclasses.fake_tensor import FakeTensor
 
 from torchair.core.utils import logger
-from torchair.ge._ge_graph import is_sym, Tensor
+from torchair.ge._ge_graph import is_sym, Tensor, get_default_ge_graph
 from torchair._ge_concrete_graph.continguous import gen_contiguous_storagesize, gen_contiguous_stride, optimize_view
-from torchair.scope._scope_attr import has_scope_attr
+from torchair.scope._scope_attr import (
+    has_scope_attr,
+    has_only_super_kernel_scope_attr,
+    apply_scope_attr,
+    local as scope_local
+)
 
 view_white_list = {'aten.permute.default': 0, 'aten.view.default': 0, 'aten.transpose.int': 0, 'aten.t.default': 0, 
                    'aten.reshape.default': 0}
@@ -136,19 +141,37 @@ def _get_npu_outputs_of_view_ops(target, args, kwargs, meta_outputs):
     return view_npu_outputs
 
 
+def optimize_view_args_and_kwargs(self, args: Tuple[Argument, ...], kwargs: Dict[str, Any]):
+    if not has_only_super_kernel_scope_attr():
+        args_new = [optimize_view(arg, self.graph) for arg in args]
+        kwargs_new = {key: optimize_view(val, self.graph) for key, val in kwargs.items()}
+        return args_new, kwargs_new
+
+    # 仅存在superkernel scope场景，新增GE节点会打上superkernel scope标签
+    # 如果后续为其他类型scope，scope内的所有算子会当成计算算子立即反推
+    # 如果后续在scope范围外，则按照正常反推流程处理，不涉及scope标签处理
+    graph = get_default_ge_graph()
+    num_ops = len(graph.op)
+    with self.scope_attr_ctx(scope_local.scope_attr.scope_attr_info()
+                             if hasattr(scope_local, 'scope_attr') else []):
+        args_new = [optimize_view(arg, self.graph) for arg in args]
+        kwargs_new = {key: optimize_view(val, self.graph) for key, val in kwargs.items()}
+    apply_scope_attr(graph.op[num_ops:])
+    return args_new, kwargs_new
+
+
 def guard_view_input(func):
     def wrapper(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
         if self.config.experimental_config.enable_view_optimize:
             # 判断经过的target是可跳过的view类操作，则刷新反推的meta信息
             # 若为不可跳过的view类操作或计算类节点，则对参数做反推的推导
-            # 多流场景，为保证切流后的view算子运行在非默认流上，中断反推逻辑，走算子converter逻辑
-            if is_view_case(target, args, meta_outputs) and (not has_scope_attr()):
+            # 多流等场景为保证切流后 view 在正确流上中断反推走 converter；无 scope 或仅 super_kernel 时执行 view 反推
+            if is_view_case(target, args, meta_outputs) and (not has_scope_attr() or has_only_super_kernel_scope_attr()):
                 logger.debug(f"Do view optimize, skip the operator {str(target)}")
                 ge_outputs = _get_npu_outputs_of_view_ops(target, args, kwargs, meta_outputs)
                 return ge_outputs                     
             else:
-                args_new = [optimize_view(arg, self.graph) for arg in args]
-                kwargs_new = {key: optimize_view(val, self.graph) for key, val in kwargs.items()}
+                args_new, kwargs_new = optimize_view_args_and_kwargs(self, args, kwargs)
             return func(self, target, args_new, kwargs_new, meta_outputs)
         else:
             return func(self, target, args, kwargs, meta_outputs)

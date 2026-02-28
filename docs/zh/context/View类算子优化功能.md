@@ -14,7 +14,8 @@
 
 ## 使用约束
 
-本功能仅支持max-autotune模式。
+-   本功能仅支持max-autotune模式。
+-   在[图内多流表达](图内多流表达功能（Ascend-IR）.md)、[图内设置AI Core和Vector Core核数](图内设置AI-Core和Vector-Core核数（Ascend-IR）.md)、[图内算子不超时配置](图内算子不超时配置功能.md)以及[指定算子dump](算子输入输出dump功能（图模式）.md)范围时，本特性不生效。
 
 ## 使用方法
 
