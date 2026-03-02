@@ -30,7 +30,7 @@ from torchair_st_stub_aclgraph_utils import (
     forbidden_attr,
     register_custom_ops,
 )
-from torchair_st_utils import capture_logger, capture_warnings, generate_faked_module, register_is_npu
+from torchair_st_utils import capture_logger, capture_warnings, generate_faked_module, register_is_npu, create_cat_optimization_pass_wrapper
 
 
 logger.setLevel(logging.DEBUG)
@@ -61,6 +61,8 @@ class AclGraphSt(unittest.TestCase):
         self.call_bak = AclConcreteGraph.__call__
         from torchair.inference._cache_compiler import CacheBackend
         self.cachebackend_fw_compiler = CacheBackend.fw_compiler
+        from torchair._acl_concrete_graph import cat_optimization
+        self.optimize_cat_with_out_tensor = cat_optimization.optimize_cat_with_out_tensor
         return super().setUp()
 
     def tearDown(self) -> None:
@@ -71,6 +73,8 @@ class AclGraphSt(unittest.TestCase):
         AclConcreteGraph.__call__ = self.call_bak
         from torchair.inference._cache_compiler import CacheBackend
         CacheBackend.fw_compiler = self.cachebackend_fw_compiler
+        from torchair._acl_concrete_graph import cat_optimization
+        cat_optimization.optimize_cat_with_out_tensor = self.optimize_cat_with_out_tensor
         return super().tearDown()
 
     def test_aclgraph_capture_and_replay(self):
@@ -263,6 +267,7 @@ class AclGraphSt(unittest.TestCase):
         config = CompilerConfig()
         config.mode = "reduce-overhead"
         config.debug.aclgraph.clone_input = False
+        config.debug.aclgraph.remove_cat_ops = False
         config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
 
@@ -2559,6 +2564,7 @@ class AclGraphSt(unittest.TestCase):
             "aot_forward_graph_after_apply_pattern_passes.txt",
             "aot_forward_graph_after_view_to_reshape.txt",
             "aot_forward_graph_after_post_grad_custom_post_pass.txt",
+            "aot_forward_graph_after_remove_cat_ops.txt",
             "aot_forward_graph_after_apply_event_closure_with_multi_stream.txt",
             "aot_forward_graph_after_apply_event_record.txt",
             "aot_forward_graph_after_eliminate_dead_code.txt",
@@ -2577,6 +2583,7 @@ class AclGraphSt(unittest.TestCase):
             "aot_backward_graph_after_apply_pattern_passes.txt",
             "aot_backward_graph_after_view_to_reshape.txt",
             "aot_backward_graph_after_post_grad_custom_post_pass.txt",
+            "aot_backward_graph_after_remove_cat_ops.txt",
             "aot_backward_graph_after_apply_event_closure_with_multi_stream.txt",
             "aot_backward_graph_after_apply_event_record.txt",
             "aot_backward_graph_after_eliminate_dead_code.txt",
@@ -2689,6 +2696,7 @@ class AclGraphSt(unittest.TestCase):
             "aot_forward_graph_after_apply_pattern_passes.txt",
             "aot_forward_graph_after_view_to_reshape.txt",
             "aot_forward_graph_after_post_grad_custom_post_pass.txt",
+            "aot_forward_graph_after_remove_cat_ops.txt",
             "aot_forward_graph_after_apply_event_closure_with_multi_stream.txt",
             "aot_forward_graph_after_apply_event_record.txt",
             "aot_forward_graph_after_eliminate_dead_code.txt",
@@ -2705,6 +2713,7 @@ class AclGraphSt(unittest.TestCase):
             "aot_backward_graph_after_apply_pattern_passes.txt",
             "aot_backward_graph_after_view_to_reshape.txt",
             "aot_backward_graph_after_post_grad_custom_post_pass.txt",
+            "aot_backward_graph_after_remove_cat_ops.txt",
             "aot_backward_graph_after_apply_event_closure_with_multi_stream.txt",
             "aot_backward_graph_after_apply_event_record.txt",
             "aot_backward_graph_after_eliminate_dead_code.txt",
@@ -3496,6 +3505,7 @@ class AclGraphSt(unittest.TestCase):
             "After fx graph pass(decompose_auto_functionalized) optimization",
             "After fx graph pass(reinplace_inplaceable_ops_pass) optimization",
             "After fx graph pass(reinplace_input_mutated_ops) optimization",
+            "After fx graph pass(remove_cat_ops) optimization",
             "After fx graph pass(apply_event_closure_with_multi_stream) optimization",
             "After fx graph pass(apply_event_record) optimization",
             "After fx graph pass(replace_core_limit_nodes) optimization",
@@ -3679,6 +3689,167 @@ class AclGraphSt(unittest.TestCase):
         self.assertTrue("compile_configs[\"run_eagerly\"] = \"1\"" in stdout.getvalue())
         self.assertTrue("compile_configs[\"_aclnn_static_shape_kernel\"] = \"1\"" in stdout.getvalue())
 
+    def assert_cat_optimization_success(self, graph_before, graph_after):
+        """Verify that cat was replaced with empty + slice + out operations."""
+        cat_found_after = False
+        empty_found_after = False
+        slice_found_after = False
+        out_ops_found_after = False
+        
+        # Check graph after optimization
+        for node in graph_after.graph.nodes:
+            if node.op == "call_function":
+                if node.target == torch.ops.aten.cat.default:
+                    cat_found_after = True
+                if node.target == torch.ops.aten.empty.memory_format:
+                    empty_found_after = True
+                if node.target == torch.ops.aten.slice.Tensor:
+                    slice_found_after = True
+                # Check for operations with 'out' in kwargs
+                if node.kwargs and 'out' in node.kwargs:
+                    out_ops_found_after = True
+        
+        # Cat optimization should succeed: cat removed, empty+slice+out ops added
+        self.assertFalse(
+            cat_found_after,
+            "cat node should be removed after optimization"
+        )
+        self.assertTrue(
+            empty_found_after,
+            "empty.memory_format node should be created after optimization"
+        )
+        self.assertTrue(
+            slice_found_after,
+            "slice.Tensor node should be created after optimization"
+        )
+        self.assertTrue(
+            out_ops_found_after,
+            "operations with .out parameter should be created after optimization"
+        )
+
+    def assert_optimization_skipped(self, graph_before, graph_after):
+        """Verify that optimization was skipped."""
+        cat_nodes_before = [n for n in graph_before.graph.nodes 
+                            if n.op == "call_function" and n.target == torch.ops.aten.cat.default]
+        cat_nodes_after = [n for n in graph_after.graph.nodes 
+                            if n.op == "call_function" and n.target == torch.ops.aten.cat.default]
+        
+        # Cat node should still exist (optimization skipped)
+        self.assertEqual(len(cat_nodes_before), len(cat_nodes_after),
+                           "Cat node should still exist when optimization is skipped")
+
+    def test_cat_optimization_basic(self):
+        """Test basic cat optimization: cat replaced with empty + slice + out operations."""
+        def f(x):
+            output1 = x.exp()
+            output2 = x.exp()
+            result = torch.cat([output1, output2], dim=0)
+            return result
+
+        x = torch.randn(8, dtype=torch.float32)
+        
+        from torchair._acl_concrete_graph import cat_optimization
+        cat_optimization.optimize_cat_with_out_tensor = create_cat_optimization_pass_wrapper(self.assert_cat_optimization_success)
+        
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(f, backend=aclgraph_backend, dynamic=True)
+        x = torch.randn(8, dtype=torch.float32)
+        result = model(x)
+        
+        expected = torch.cat([x.exp(), x.exp()], dim=0)
+        self.assertTrue(torch.allclose(result, expected, atol=1e-5))
+
+    def test_cat_optimization_wrong_order_success(self):
+        """Test cat optimization with wrong order: now succeeds (no order check)."""
+        def f(x):
+            output2 = x.exp()
+            output1 = x.exp()
+            result = torch.cat([output1, output2], dim=0)
+            return result
+
+        from torchair._acl_concrete_graph import cat_optimization
+        cat_optimization.optimize_cat_with_out_tensor = create_cat_optimization_pass_wrapper(self.assert_cat_optimization_success)
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(f, backend=aclgraph_backend, dynamic=True)
+        x = torch.randn(8, dtype=torch.float32)
+        result = model(x)
+
+        expected = torch.cat([x.exp(), x.exp()], dim=0)
+        self.assertTrue(torch.allclose(result, expected, atol=1e-5))
+
+    def test_cat_optimization_skip_non_first_dim(self):
+        """Test that cat optimization is skipped for non-first dimension concatenation."""
+        def f(x):
+            output1 = x.exp()
+            output2 = x.exp()
+            result = torch.cat([output1, output2], dim=1)
+            return result
+
+        x = torch.randn(2, 8, dtype=torch.float32)
+        
+        from torchair._acl_concrete_graph import cat_optimization
+        cat_optimization.optimize_cat_with_out_tensor = create_cat_optimization_pass_wrapper(self.assert_optimization_skipped)
+        
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(f, backend=aclgraph_backend, dynamic=True)
+        result = model(x)
+
+    def test_cat_optimization_skip_no_out_variant(self):
+        """Test that cat optimization is skipped when upstream ops don't support .out variant."""
+        def f(x):
+            # view doesn't support .out variant
+            output1 = x.view(-1)
+            output2 = x.view(-1)
+            result = torch.cat([output1, output2], dim=0)
+            return result
+
+        x = torch.randn(8, dtype=torch.float32)
+        
+        from torchair._acl_concrete_graph import cat_optimization
+        cat_optimization.optimize_cat_with_out_tensor = create_cat_optimization_pass_wrapper(self.assert_optimization_skipped)
+        
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(f, backend=aclgraph_backend, dynamic=True)
+        result = model(x)
+
+    def test_cat_optimization_different_ops(self):
+        """Test cat optimization with different upstream operations."""
+        def f(x, y):
+            output1 = x.exp()
+            output2 = x.sin()
+            output3 = x.clone()
+            output3.add_(y)
+            result = torch.cat([output1, output2, output3], dim=0)
+            return result
+        
+        from torchair._acl_concrete_graph import cat_optimization
+        cat_optimization.optimize_cat_with_out_tensor = create_cat_optimization_pass_wrapper(self.assert_cat_optimization_success)
+        
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(f, backend=aclgraph_backend, dynamic=True)
+        x = torch.randn(8, 3, dtype=torch.float32)
+        y = torch.randn(8, 3, dtype=torch.float32)
+        result = model(x, y)
+
+        expected = torch.cat([x.exp(), x.sin(), x + y], dim=0)
+        self.assertTrue(torch.allclose(result, expected, atol=1e-5))
+   
 
 if __name__ == '__main__':
     unittest.main()

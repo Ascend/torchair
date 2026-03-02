@@ -134,3 +134,36 @@ def create_reinplace_pass_wrapper(assert_func):
         return ret
     
     return wrapper
+
+
+def create_cat_optimization_pass_wrapper(assert_func):
+    """
+    Create a wrapper for optimize_cat_with_out_tensor to capture FX graphs before and after.
+    
+    Args:
+        assert_func: Function that takes (graph_before, graph_after) and performs assertions.
+                     graph_before and graph_after are torch.fx.GraphModule instances.
+    
+    Returns:
+        A wrapper function that can be used to replace optimize_cat_with_out_tensor.
+    """
+    # Import and save reference to original function at wrapper creation time
+    from torchair._acl_concrete_graph.cat_optimization import optimize_cat_with_out_tensor
+    original_func = optimize_cat_with_out_tensor
+    
+    def wrapper(gm, config=None):
+        # Save graph before optimization
+        graph_before = copy.deepcopy(gm)
+        
+        # Call original function
+        ret = original_func(gm, config)
+        
+        # Save graph after optimization
+        graph_after = copy.deepcopy(gm)
+        
+        # Call assertion function
+        assert_func(graph_before, graph_after)
+        
+        return ret
+    
+    return wrapper

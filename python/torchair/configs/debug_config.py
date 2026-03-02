@@ -85,6 +85,7 @@ class _AclGraphDebugConfig(NpuBaseConfig):
         self.enable_output_clone = OptionValue(False, [True, False])
         self.static_capture_size_limit = IntRangeValue(64, 1, INT64_MAX)
         self.clone_input = OptionValue(True, [True, False])
+        self.remove_cat_ops = OptionValue(True, [True, False])
 
         super(_AclGraphDebugConfig, self).__init__()
 
