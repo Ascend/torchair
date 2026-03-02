@@ -41,7 +41,9 @@ def conveter_broadcast(
 ):
     """broadcast(Tensor self, int src, str tag, int[] ranks, int group_size) -> Tensor"""
     group_name = get_group_name_and_record(tag, rank_list, group_size)
-    return ge.HcomBroadcast([input_tensor], root_rank=src, group=group_name, fusion=0)[0]
+    group = c10d._find_or_create_pg_by_ranks_and_tag(tag, rank_list, group_size)
+    src_rank = c10d._canonicalize_group_rank(group, src, None)
+    return ge.HcomBroadcast([input_tensor], root_rank=src_rank, group=group_name, fusion=0)[0]
 
 
 # The parameter names must be consistent with the original function, otherwise an error will occur.
