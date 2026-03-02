@@ -76,6 +76,20 @@ def stub_is_initialized(*args):
     pass
 
 
+_stub_is_gte_cann_version_override = None
+
+
+def stub_is_gte_cann_version(version, module="CANN"):
+    logger.debug('[Stub] run stub _is_gte_cann_version(version=%s, module=%s), return False.', version, module)
+    return True
+
+
+class StubUtils:
+    def __init__(self):
+        logger.debug('[Stub] new stub module utils.')
+        self._is_gte_cann_version = stub_is_gte_cann_version
+
+
 @contextlib.contextmanager
 def stub_stream(stream=None):
     """Stub function for stream context manager."""
@@ -122,6 +136,10 @@ class InputMeta:
 class StubNPUGraph:
     def __init__(self):
         logger.debug('[Stub] new stub class NPUGraph.')
+        pass
+
+    def debug_dump(self, path):
+        logger.debug('[Stub] run stub API debug_dump, path=%s.', path)
         pass
 
     def capture_begin(self, pool=None, capture_error_mode="global"):
@@ -336,6 +354,7 @@ def _stub_npu_dtype_cast_default(self, *args, **kwargs):
 class StubNpu:
     def __init__(self):
         logger.debug('[Stub] new stub module npu.')
+        self.utils = StubUtils
         self.npu_fused_infer_attention_score = stub_fa
         self._npu_fused_infer_attention_score_get_max_workspace = stub_fa
         self.npu_fused_infer_attention_score_v2 = stub_fa

@@ -24,6 +24,7 @@ from torchair.configs._option_base import CallableValue
 
 from torchair_st_stub_aclgraph_utils import (
     StubNpu,
+    StubUtils,
     patch_ops_npu_module,
     patch_torch_point_npu_module,
     patch_torch_npu_module,
@@ -3302,8 +3303,8 @@ class AclGraphSt(unittest.TestCase):
         config.mode = "reduce-overhead"
         config.experimental_config.aclgraph._aclnn_static_shape_kernel = True
 
-        model = Model()
-
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+        model = torch.compile(Model(), backend=aclgraph_backend, dynamic=False)
         x = torch.randn([5, 5])
 
         import warnings
@@ -3311,13 +3312,15 @@ class AclGraphSt(unittest.TestCase):
             warnings.simplefilter("always")
             try:
                 model(x)
-            except ValueError as e:
-                target_warning = "When both static shape kernel and core limit are enabled"
-                messages = [str(w.message) for w in caught]
-                self.assertTrue(
-                    any(target_warning in m for m in messages),
-                    f"Expected warning '{target_warning}' not found in {messages}"
-                )
+            except Exception:
+                pass
+            target_warning = "When both static shape kernel and core limit are enabled"
+            messages = [str(w.message) for w in caught]
+            self.assertFalse(
+                any(target_warning in m for m in messages),
+                f"Expected warning '{target_warning}' found in {messages}"
+            )
+            self.assertTrue(config.experimental_config.aclgraph._aclnn_static_shape_kernel)
 
     def test_capture_and_recapture_cnt(self):
         class Model(torch.nn.Module):

@@ -697,9 +697,13 @@ def replace_core_limit_nodes(gm: torch.fx.GraphModule, config: CompilerConfig):
             enable_core_limit = True
     enable_static_shape_kernel = config.experimental_config.aclgraph._aclnn_static_shape_kernel
     if enable_core_limit and enable_static_shape_kernel:
-        config.experimental_config.aclgraph._aclnn_static_shape_kernel = False
-        warnings.warn('When both static shape kernel and core limit are enabled, '
-                      'only core limit will take effect, static shape kernel will be disabled.')
+        from torch_npu.npu.utils import _is_gte_cann_version
+        cann_supports_both = _is_gte_cann_version("9.0.0", module="CANN")
+        if not cann_supports_both:
+            config.experimental_config.aclgraph._aclnn_static_shape_kernel = False
+            warnings.warn('When both static shape kernel and core limit are enabled, '
+                          'only core limit will take effect, static shape kernel will be disabled. '
+                          'CANN 9.0.0 or later supports enabling both features.')
 
 
 def _core_limit_handle_scope_enter(node: torch.fx.Node, gm: torch.fx.GraphModule, core_limit_stack: List, scope_enter_stack: List):
