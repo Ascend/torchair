@@ -130,11 +130,12 @@ class ReduceScatterTensorUneven(torch.nn.Module):
 
 
 class Broadcast(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, group=None):
         super().__init__()
+        self.group = group
 
     def forward(self, x, src):
-        dist.broadcast(x, src)
+        dist.broadcast(x, src, group=self.group)
         return x
 
 
@@ -411,9 +412,10 @@ class HcomTest(unittest.TestCase):
         dist.destroy_process_group()
 
     @classmethod
-    def _test_broadcast(cls, rank, world_size, init_pg, dynamic, results):
+    def _test_broadcast(cls, rank, world_size, init_pg, dynamic, results, use_group=False):
         torch.npu.set_device(rank)
         init_pg(rank, world_size)
+        group = torch.distributed.new_group(ranks=[0, 1]) if use_group else None
         if rank == 0:
             x = torch.ones(2, 2, dtype=torch.int64).to("npu:" + str(rank)) + 1 + 2 * rank
         else:
@@ -423,7 +425,7 @@ class HcomTest(unittest.TestCase):
         y1 = torch.zeros(1, 4, dtype=torch.int64).to("npu:" + str(rank))
         tensor_list.append(y)
         tensor_list.append(y1)
-        mod = Broadcast()
+        mod = Broadcast(group=group)
         model = mod.to("npu:" + str(rank))
         ori_result_list = []
         compile_result_list = []
@@ -439,6 +441,10 @@ class HcomTest(unittest.TestCase):
         for j, t in enumerate(compile_result_list):
             results.append(t.equal(ori_result_list[j]))
         dist.destroy_process_group()
+
+    @classmethod
+    def _test_with_group(cls, rank, world_size, init_pg, dynamic, results):
+        HcomTest._test_broadcast(rank, world_size, init_pg, dynamic, results, use_group=True)
 
     @classmethod
     def _test_allgather_in_tensor_uneven_same_size(cls, rank, world_size, init_pg, dynamic, results):
@@ -769,6 +775,13 @@ class HcomTest(unittest.TestCase):
                                                 HcomTest._init_dist_hccl_without_patch, world_size, True))
         self.assertTrue(self._test_multiprocess(HcomTest._test_broadcast,
                                                 HcomTest._init_dist_hccl_without_patch, world_size, False))
+
+    def test_broadcast_with_group(self):
+        world_size = 2
+        self.assertTrue(self._test_multiprocess(HcomTest._test_with_group,
+                                                HcomTest._init_dist_hccl_with_patch, world_size, True))
+        self.assertTrue(self._test_multiprocess(HcomTest._test_with_group,
+                                                HcomTest._init_dist_hccl_with_patch, world_size, False))
 
     def test_allgather_in_tensor_uneven(self):
         world_size = 2
