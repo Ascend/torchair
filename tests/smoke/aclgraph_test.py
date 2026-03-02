@@ -1954,6 +1954,227 @@ class AclgraphTest(unittest.TestCase):
         )
         torch.compile(f, backend="npugraph_ex", fullgraph=True, dynamic=True)
 
+    @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
+    def test_pattern_pass_transpose_batch_matmul_transpose_for_aclgraph(self):
+        """Test transpose+bmm+transpose pattern fusion (perm_x1=[1,0,2])."""
+        class DsModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x1, x2):
+                output = torch.matmul(x1.transpose(0, 1), x2).transpose(0, 1)
+                return output
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "reduce-overhead"
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = DsModel()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        # x1 (M, B, K) -> transpose(0,1) -> (B, M, K)，与 x2 (B, K, N) batch 对齐
+        x1 = torch.randn(4, 64, 512, dtype=torch.float16, device='npu')
+        x2 = torch.randn(64, 512, 128, dtype=torch.float16, device='npu')
+
+        eager_output = model(x1, x2)
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            compile_output = model_compile(x1, x2)
+
+        self.assertTrue(torch.allclose(eager_output, compile_output))
+
+    @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
+    def test_close_pattern_pass_transpose_batch_matmul_transpose_for_aclgraph(self):
+        """Test transpose+bmm+transpose with pattern_fusion_pass disabled."""
+        class DsModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x1, x2):
+                output = torch.matmul(x1.transpose(0, 1), x2).transpose(0, 1)
+                return output
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "reduce-overhead"
+        npu_config.experimental_config.pattern_fusion_pass = False
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = DsModel()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x1 = torch.randn(4, 64, 512, dtype=torch.float16, device='npu')
+        x2 = torch.randn(64, 512, 128, dtype=torch.float16, device='npu')
+
+        eager_output = model(x1, x2)
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            compile_output = model_compile(x1, x2)
+
+        self.assertTrue(torch.allclose(eager_output, compile_output))
+
+    @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
+    def test_pattern_pass_transpose_batch_matmul_transpose_for_aclgraph_with_multistream(self):
+        """Test transpose+bmm+transpose with multistream (event record/wait)."""
+        class DsModel2(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.event1 = torchair.ops.npu_create_tagged_event(tag="88")
+                self.event2 = torchair.ops.npu_create_tagged_event(tag="99")
+
+            def forward(self, x1, x2):
+                y = torch.matmul(x1.transpose(0, 1), x2)
+                torchair.ops.npu_tagged_event_record(self.event1)
+                with torchair.scope.npu_stream_switch('2', 3):
+                    torchair.ops.npu_tagged_event_wait(self.event1)
+                    output = torch.transpose(y, 0, 1)
+                    torchair.ops.npu_tagged_event_record(self.event2)
+                    torchair.ops.npu_record_tagged_stream(output, '2')
+                torchair.ops.npu_tagged_event_wait(self.event2)
+                return output
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "reduce-overhead"
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = DsModel2()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x1 = torch.randn(4, 64, 512, dtype=torch.float16, device='npu')
+        x2 = torch.randn(64, 512, 128, dtype=torch.float16, device='npu')
+
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            compile_output = model_compile(x1, x2)
+
+    @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
+    def test_close_pattern_pass_transpose_batch_matmul_transpose_for_aclgraph_KN(self):
+        """Test transpose+bmm+transpose when K/N not aligned (no fusion)."""
+        class DsModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x1, x2):
+                output = torch.matmul(x1.transpose(0, 1), x2).transpose(0, 1)
+                return output
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "reduce-overhead"
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = DsModel()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x1 = torch.randn(4, 64, 511, dtype=torch.float16, device='npu')
+        x2 = torch.randn(64, 511, 128, dtype=torch.float16, device='npu')
+
+        eager_output = model(x1, x2)
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            compile_output = model_compile(x1, x2)
+
+        self.assertTrue(torch.allclose(eager_output, compile_output))
+
+    @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
+    def test_close_pattern_pass_transpose_batch_matmul_transpose_for_aclgraph_view(self):
+        """Test transpose+bmm+transpose with transpose(1, 0) on output (no-op view case)."""
+        class DsModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x1, x2):
+                output = torch.matmul(x1.transpose(0, 1), x2).transpose(1, 0)
+                return output
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "reduce-overhead"
+        npu_config.experimental_config.remove_noop_ops = False
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = DsModel()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x1 = torch.randn(4, 64, 512, dtype=torch.float16, device='npu')
+        x2 = torch.randn(64, 512, 128, dtype=torch.float16, device='npu')
+
+        eager_output = model(x1, x2)
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            compile_output = model_compile(x1, x2)
+
+        self.assertTrue(torch.allclose(eager_output, compile_output))
+
+    @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
+    def test_close_pattern_pass_transpose_batch_matmul_transpose_for_aclgraph_view1(self):
+        """Test transpose+bmm+transpose with transpose(0, 2) on output (unsupported dims, no fusion)."""
+        class DsModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x1, x2):
+                output = torch.matmul(x1.transpose(0, 1), x2).transpose(0, 2)
+                return output
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "reduce-overhead"
+        npu_config.experimental_config.remove_noop_ops = False
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = DsModel()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x1 = torch.randn(4, 64, 512, dtype=torch.float16, device='npu')
+        x2 = torch.randn(64, 512, 128, dtype=torch.float16, device='npu')
+
+        eager_output = model(x1, x2)
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            compile_output = model_compile(x1, x2)
+
+        self.assertTrue(torch.allclose(eager_output, compile_output))
+
+    @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
+    def test_close_pattern_pass_transpose_batch_matmul_transpose_for_aclgraph_view2(self):
+        """Test matmul(x1.transpose(0,2), x2).transpose(0, 1); input transpose(0,2) unsupported (dims>1), no fusion."""
+        class DsModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x1, x2):
+                output = torch.matmul(x1.transpose(0, 2), x2).transpose(0, 1)
+                return output
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "reduce-overhead"
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = DsModel()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        # x1 按 transpose(0,2) 反向：输入为 (K, M, B)，transpose(0,2) 后得 (B, M, K)，再与 x2 matmul
+        x1 = torch.randn(512, 4, 64, dtype=torch.float16, device='npu')
+        x2 = torch.randn(64, 512, 128, dtype=torch.float16, device='npu')
+
+        eager_output = model(x1, x2)
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            compile_output = model_compile(x1, x2)
+
+        self.assertTrue(torch.allclose(eager_output, compile_output))
+
+    @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
+    def test_close_pattern_pass_transpose_batch_matmul_transpose_for_aclgraph_KB_constraint(self):
+        """Test perm_x1=[1,0,2] constraint K*B < 65536: when K*M >= 65536 fusion is skipped, result still correct."""
+        class DsModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x1, x2):
+                output = torch.matmul(x1.transpose(0, 1), x2).transpose(0, 1)
+                return output
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "reduce-overhead"
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = DsModel()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        # x1 (M, B, K) -> transpose(0,1) -> (B, M, K)；bmm 左输入 (B, M, K) 约束取 b=B,k=K 则 K*B
+        # 要 K*B>65536 且 128 倍数：B=64, K=1152 -> K*B=73728，fusion rejected
+        x1 = torch.randn(4, 64, 1152, dtype=torch.float16, device='npu')
+        x2 = torch.randn(64, 1152, 128, dtype=torch.float16, device='npu')
+
+        eager_output = model(x1, x2)
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            compile_output = model_compile(x1, x2)
+
+        self.assertTrue(torch.allclose(eager_output, compile_output))
+
 
     @unittest.skipIf(torch.__version__ < "2.6", "torch_npu stream api is unsupported when torch < 2.6")
     def test_stream_event_replace_in_fx(self):
