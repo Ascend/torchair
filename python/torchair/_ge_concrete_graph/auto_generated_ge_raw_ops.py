@@ -48585,11 +48585,11 @@ def AvgPoolGradD(input_grad: Tensor, mean_matrix: Tensor, kernel_matrix: Tensor,
 
 # This api is auto-generated from IR AvgPoolV2Grad
 @auto_convert_to_tensor([False, False], [False, False])
-def AvgPoolV2Grad(orig_input_shape: Tensor, input_grad: Tensor, *, ksize: List[int], strides: List[int], padding_mode: str="CALCULATED", pads: List[int]=[0, 0, 0, 0], data_format: str="NCHW", global_pooling: bool=False, ceil_mode: bool=False, exclusive: bool=True, dependencies=[], node_name=None):
+def AvgPoolV2Grad(orig_input_shape: Tensor, input_grad: Tensor, *, ksize: List[int], strides: List[int], padding_mode: str="CALCULATED", pads: List[int]=[0, 0, 0, 0], data_format: str="NCHW", global_pooling: bool=False, ceil_mode: bool=False, exclusive: bool=True, divisor_override: int=0, dependencies=[], node_name=None):
     """REG_OP(AvgPoolV2Grad)\n
 .INPUT(orig_input_shape, TensorType({DT_INT32}))\n
-.INPUT(input_grad, TensorType({DT_FLOAT16, DT_FLOAT32, DT_DOUBLE}))\n
-.OUTPUT(out_grad, TensorType({DT_FLOAT16, DT_FLOAT32, DT_DOUBLE}))\n
+.INPUT(input_grad, TensorType({DT_FLOAT16, DT_FLOAT32, DT_DOUBLE, DT_BF16}))\n
+.OUTPUT(out_grad, TensorType({DT_FLOAT16, DT_FLOAT32, DT_DOUBLE, DT_BF16}))\n
 .REQUIRED_ATTR(ksize, ListInt)\n
 .REQUIRED_ATTR(strides, ListInt)\n
 .ATTR(padding_mode, String, "CALCULATED")\n
@@ -48598,6 +48598,7 @@ def AvgPoolV2Grad(orig_input_shape: Tensor, input_grad: Tensor, *, ksize: List[i
 .ATTR(global_pooling, Bool, false)\n
 .ATTR(ceil_mode, Bool, false)\n
 .ATTR(exclusive, Bool, true)\n
+.ATTR(divisor_override, Int, 0)\n
 """
 
     op = get_default_ge_graph().op.add()
@@ -48628,6 +48629,7 @@ def AvgPoolV2Grad(orig_input_shape: Tensor, input_grad: Tensor, *, ksize: List[i
     op.attr["global_pooling"].b = global_pooling
     op.attr["ceil_mode"].b = ceil_mode
     op.attr["exclusive"].b = exclusive
+    op.attr["divisor_override"].i = divisor_override
 
     # process outputs
     output_index = 0

@@ -15,7 +15,7 @@ def conveter_aten_avg_pool2d_backward_default(
     padding: List[int],
     ceil_mode: bool,
     count_include_pad: bool,
-    divisor_override: Optional[int],
+    divisor_override: Optional[int] = None,
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::avg_pool2d_backward(Tensor grad_output, Tensor self, int[2] kernel_size, int[2] stride, int[2] padding, bool ceil_mode, bool count_include_pad, int? divisor_override) -> Tensor"""
@@ -32,10 +32,12 @@ def conveter_aten_avg_pool2d_backward_default(
     strides_size = [1, 1, strides[0], strides[1]]
     pads = [paddings[0], paddings[0], paddings[1], paddings[1]]
     exclusive = False if count_include_pad else True
-
+    divisor_override_value = 0
+    if divisor_override:
+        divisor_override_value = divisor_override
     output = ge.AvgPoolV2Grad(ge.Shape(self), grad_output, ksize=kernel_size, strides=strides_size,
                               padding_mode="CALCULATED", pads=pads, data_format="NCHW",
-                              global_pooling=False, ceil_mode=ceil_mode, exclusive=exclusive)
+                              global_pooling=False, ceil_mode=ceil_mode, exclusive=exclusive, divisor_override=divisor_override_value)
     output._node.input_desc[1].layout = "NCHW"
     output._node.output_desc[0].layout = "NCHW"
     return output
