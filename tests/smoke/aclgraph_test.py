@@ -1,9 +1,12 @@
+import dataclasses
 import copy
 import logging
 import os
 import unittest
+from typing import List
 from unittest.mock import Mock, patch
 import shutil
+from pathlib import Path
 
 import torch
 import torch_npu
@@ -11,6 +14,7 @@ import torchair
 from torch._subclasses.fake_tensor import FakeTensorMode
 from torchair.configs.compiler_config import CompilerConfig
 from torchair.core.utils import logger
+from torchair._acl_concrete_graph.static_kernel import static_compile
 
 torch._logging.set_logs(dynamo=logging.INFO)
 torch.manual_seed(7)
@@ -108,6 +112,17 @@ class AclgraphTest(unittest.TestCase):
                 res = add3 * mmm.mean()
                 return res
 
+        static_compile_call_count = 0
+        def wrapped_static_compile(func):
+            def wrapper(*args, **kwargs):
+                nonlocal static_compile_call_count
+                static_compile_call_count += 1
+                return func(*args, **kwargs)
+            return wrapper
+
+        static_compile_bak = torchair._acl_concrete_graph.static_kernel.static_compile
+        torchair._acl_concrete_graph.static_kernel.static_compile = wrapped_static_compile(static_compile_bak)
+
         static_kernel_config = CompilerConfig()
         static_kernel_config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
         static_kernel_config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass = True
@@ -144,6 +159,18 @@ class AclgraphTest(unittest.TestCase):
         self.assertFalse(os.path.exists(prompt_cache_dir))
         graph_res1 = mmc(query_prefill, query, key, value, scale, lengthq, length, length2, narrow_start)
         self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
+        prompt_cache_dir_path = Path(prompt_cache_dir)
+        outputs_dirs = [d for d in prompt_cache_dir_path.iterdir() if d.is_dir() and d.name == "aclnn_static_shape_kernel_outputs"]
+        self.assertEqual(len(outputs_dirs), 1)
+        ts_outputs_dirs = [d for d in outputs_dirs[0].iterdir() if
+                        d.is_dir() and d.name.endswith("_outputs") and d.name.startswith("ts")]
+        self.assertEqual(len(ts_outputs_dirs), 1)
+        run_pkgs = list(ts_outputs_dirs[0].glob("*.run"))
+        self.assertTrue(len(run_pkgs) >= 1)
+        self.assertTrue(static_compile_call_count, 1)
+        static_kernel_path = Path("./static_kernel")
+        static_kernel_path_dirs = [d for d in static_kernel_path.iterdir()]
+        self.assertEqual(len(static_kernel_path_dirs), 0)
 
         mm2 = CachedAclGraphModel().npu()
         with self.assertLogs(logger, level="DEBUG") as cm:
@@ -153,12 +180,101 @@ class AclgraphTest(unittest.TestCase):
             f"Expected DEBUG cache_compile 'Rebasing'"
             f"not found in logs: {cm.output}"
         )
-        self.assertTrue(
+        self.assertFalse(
             any("static kernel run eager success" in log for log in cm.output),
-            f"Expected DEBUG 'static kernel run eager success'"
-            f"not found in logs: {cm.output}"
+            f"Not Expected DEBUG 'static kernel run eager success'"
+            f"found in logs: {cm.output}"
         )
+        self.assertTrue(static_compile_call_count, 1) # no static compile
         self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
+
+
+    def test_aclgraph_cache_with_static_kernel_multi_model(self):
+        @dataclasses.dataclass
+        class InputMeta:
+            data: torch.Tensor
+            is_prompt: bool
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear1 = torch.nn.Linear(2, 1)
+                self.linear2 = torch.nn.Linear(2, 1)
+                for param in self.parameters():
+                    torch.nn.init.ones_(param)
+
+                # 通过torchair.inference.cache_compile实现编译缓存
+                self.cached_prompt = torchair.inference.cache_compile(self.prompt, config=static_kernel_config)
+                self.cached_decode = torchair.inference.cache_compile(self.decode, config=static_kernel_config)
+
+            def forward(self, x: InputMeta, kv: List[torch.Tensor]):
+                # 添加调用新函数的判断逻辑
+                if x.is_prompt:
+                    return self.cached_prompt(x, kv)
+                return self.cached_decode(x, kv)
+
+            def _forward(self, x, kv):
+                return self.linear2(x.data) + self.linear2(kv[0])
+
+            # 重新封装为prompt函数
+            def prompt(self, x, y):
+                return self._forward(x, y)
+
+            # 重新封装为decode函数
+            def decode(self, x, y):
+                return self._forward(x, y)
+
+        static_kernel_config = CompilerConfig()
+        static_kernel_config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass = True
+        static_kernel_config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass = True
+        static_kernel_config.mode = "reduce-overhead"
+        static_kernel_config.experimental_config.aclgraph._aclnn_static_shape_kernel = True
+        static_kernel_config.experimental_config.aclgraph._aclnn_static_shape_kernel_build_dir = "./static_kernel_2"
+
+        model = Model().npu()
+        from torchair.inference._cache_compiler import CompiledModel, ModelCacheSaver
+        prompt_cache_bin = CompiledModel.get_cache_bin(model.prompt, config=static_kernel_config)
+        ModelCacheSaver.remove_cache(os.path.abspath(os.path.dirname(prompt_cache_bin)))
+
+        decode_cache_bin = CompiledModel.get_cache_bin(model.decode, config=static_kernel_config)
+        ModelCacheSaver.remove_cache(os.path.abspath(os.path.dirname(decode_cache_bin)))
+
+        x = InputMeta(data=torch.randn(2, 2).npu(), is_prompt=True)
+        kv = [torch.randn(2, 2).npu()]
+
+        res_prompt = model(x, kv)
+        x.is_prompt = False
+        res_decode = model(x, kv)
+
+        pid = os.getpid()
+        prompt_cache_dir = os.path.abspath(os.path.dirname(prompt_cache_bin))
+        prompt_cache_dir_path = Path(prompt_cache_dir)
+        prompt_out_path = [d for d in prompt_cache_dir_path.iterdir() if d.is_dir() and d.name.endswith("_outputs")]
+        self.assertEqual(len(prompt_out_path), 1)
+        prompt_ts_path = [d for d in prompt_out_path[0].iterdir() if d.is_dir() and str(pid) in d.name]
+        self.assertEqual(len(prompt_ts_path), 1)
+
+        decode_cache_dir = os.path.abspath(os.path.dirname(decode_cache_bin))
+        decode_cache_dir_path = Path(decode_cache_dir)
+        decode_out_path = [d for d in decode_cache_dir_path.iterdir() if d.is_dir() and d.name.endswith("_outputs")]
+        self.assertEqual(len(decode_out_path), 1)
+        decode_ts_path = [d for d in decode_out_path[0].iterdir() if d.is_dir() and str(pid) in d.name]
+        self.assertEqual(len(decode_ts_path), 1)
+
+        first_opcompile_path = [d for d in prompt_ts_path[0].iterdir() if d.is_dir() and d.name.endswith("_opcompile")]
+        second_opcompile_path = [d for d in decode_ts_path[0].iterdir() if d.is_dir() and d.name.endswith("_opcompile")]
+        self.assertEqual(len(first_opcompile_path), 1)
+        self.assertEqual(len(second_opcompile_path), 1)
+        first_opcompile_selected_path = [d for d in prompt_ts_path[0].iterdir() if d.is_dir() and d.name.endswith("_opcompile_selected")]
+        second_opcompile_selected_path = [d for d in decode_ts_path[0].iterdir() if d.is_dir() and d.name.endswith("_opcompile_selected")]
+        self.assertEqual(len(first_opcompile_selected_path), 0)
+        self.assertEqual(len(second_opcompile_selected_path), 0)
+        first_json = [d for d in first_opcompile_path[0].iterdir() if d.is_dir() and d.name.endswith(".json")]
+        second_json = [d for d in second_opcompile_path[0].iterdir() if d.is_dir() and d.name.endswith(".json")]
+        self.assertEqual(len(first_json), len(second_json))
+        from collections import Counter
+        self.assertEqual(Counter(first_json), Counter(second_json))
+
 
     def test_aclgraph_cache_recapture_with_ops_update(self):
         class RecaptureModel(torch.nn.Module):
@@ -2378,33 +2494,33 @@ def patch_dynamo():
     def create_cat_optimization_pass_wrapper(self, assert_func):
         """
         Create a wrapper for optimize_cat_with_out_tensor to capture FX graphs before and after.
-        
+
         Args:
             assert_func: Function that takes (graph_before, graph_after) and performs assertions.
                         graph_before and graph_after are torch.fx.GraphModule instances.
-        
+
         Returns:
             A wrapper function that can be used to replace optimize_cat_with_out_tensor.
         """
         # Import and save reference to original function at wrapper creation time
         from torchair._acl_concrete_graph.cat_optimization import optimize_cat_with_out_tensor
         original_func = optimize_cat_with_out_tensor
-        
+
         def wrapper(gm, config=None):
             # Save graph before optimization
             graph_before = copy.deepcopy(gm)
-            
+
             # Call original function
             ret = original_func(gm, config)
-            
+
             # Save graph after optimization
             graph_after = copy.deepcopy(gm)
-            
+
             # Call assertion function
             assert_func(graph_before, graph_after)
-            
+
             return ret
-        
+
         return wrapper
 
     def assert_cat_optimization_success(self, graph_before, graph_after):
@@ -2413,7 +2529,7 @@ def patch_dynamo():
         empty_found_after = False
         slice_found_after = False
         out_ops_found_after = False
-        
+
         # Check graph after optimization
         for node in graph_after.graph.nodes:
             if node.op == "call_function":
@@ -2426,7 +2542,7 @@ def patch_dynamo():
                 # Check for operations with 'out' in kwargs
                 if node.kwargs and 'out' in node.kwargs:
                     out_ops_found_after = True
-        
+
         # Cat optimization should succeed: cat removed, empty+slice+out ops added
         self.assertFalse(
             cat_found_after,
@@ -2459,13 +2575,13 @@ def patch_dynamo():
             return result
 
         x = torch.randn(8, dtype=torch.float32)
-        
+
         from torchair._acl_concrete_graph import cat_optimization
         cat_optimization.optimize_cat_with_out_tensor = self.create_cat_optimization_pass_wrapper(self.assert_cat_optimization_success)
 
         model = torch.compile(f, backend="npugraph_ex", dynamic=True)
         result = model(x, stream1, stream2)
-        
+
         expected = torch.cat([x.exp(), x.exp(), x.exp()], dim=0)
         self.assertTrue(torch.allclose(result, expected, atol=1e-5))
 

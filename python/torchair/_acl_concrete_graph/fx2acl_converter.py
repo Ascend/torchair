@@ -182,7 +182,7 @@ class AclConcreteGraph(ConcreteGraphBase):
         forward_code = self.fx_forward
         head.splice(forward_code)
         head.writeline('')
-        init_code = self._codegen_init()
+        init_code = self._codegen_init(extend_config)
         head.splice(init_code)
         need_update_user_stream_label = (len(self._aclgraph_cache_info.user_stream_label) > 0)
         if need_update_user_stream_label:
@@ -491,7 +491,7 @@ class AclConcreteGraph(ConcreteGraphBase):
         tensor_constant_code.writeline("")
         return tensor_constant_code.getvalue()
 
-    def _codegen_init(self):
+    def _codegen_init(self, extend_config):
         from torch._inductor.utils import IndentedBuffer
         init_code = IndentedBuffer()
         # Please make sure that fx graph will not be changed/optimized after generate fx_forward
@@ -501,6 +501,14 @@ class AclConcreteGraph(ConcreteGraphBase):
         configs = self.normalize_config()
         for k, v in configs.items():
             init_code.writeline(f'compile_configs["{k}"] = "{v}"')
+
+        if self.config.experimental_config.aclgraph._aclnn_static_shape_kernel and extend_config:
+            for k, v in extend_config.items():
+                init_code.writeline(f'compile_configs["{k}"] = "{v}"')
+            init_code.splice(f'''
+                        def _update_static_kernel_cache_dir(path):
+                            compile_configs["_aclnn_static_shape_kernel.compile_cache_dir"] = path
+                        ''')
 
         init_code.writelines(['',
                               f'acl_graph = AclGraph(fx_forward=forward, '

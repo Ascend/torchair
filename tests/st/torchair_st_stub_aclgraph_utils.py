@@ -76,20 +76,6 @@ def stub_is_initialized(*args):
     pass
 
 
-_stub_is_gte_cann_version_override = None
-
-
-def stub_is_gte_cann_version(version, module="CANN"):
-    logger.debug('[Stub] run stub _is_gte_cann_version(version=%s, module=%s), return False.', version, module)
-    return True
-
-
-class StubUtils:
-    def __init__(self):
-        logger.debug('[Stub] new stub module utils.')
-        self._is_gte_cann_version = stub_is_gte_cann_version
-
-
 @contextlib.contextmanager
 def stub_stream(stream=None):
     """Stub function for stream context manager."""
@@ -334,6 +320,21 @@ class Stub_C:
         return torch.empty_strided(metadata['size'], metadata['stride'],
                                    dtype=metadata['dtype'],
                                    device=metadata['device'])
+
+
+class StubUtils:
+    def __init__(self):
+        logger.debug('[Stub] new stub module utils.')
+
+    @staticmethod
+    def _is_gte_cann_version(version, module="CANN"):
+        logger.debug('[Stub] run stub _is_gte_cann_version(version=%s, module=%s), return True.', version, module)
+        return True
+
+    @staticmethod
+    def get_cann_version():
+        logger.debug('[Stub] run stub func get_cann_version, and return 0.')
+        return "0"
 
 
 def _stub_npu_add_rms_norm_default(self, *args, **kwargs):

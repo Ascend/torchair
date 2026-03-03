@@ -1612,8 +1612,8 @@ class AclGraphSt(unittest.TestCase):
             except ValueError as e:
                 messages = [str(w.message) for w in caught]
                 self.assertTrue(
-                    any("Starting static kernel compilation" in m for m in messages),
-                    f"Expected warning 'Starting static kernel compilation' not found in {messages}"
+                    any("The current version now supports caching run packages from static kernel compilation" in m for m in messages),
+                    f"Expected warning 'The current version now supports caching run packages from static kernel compilation' not found in {messages}"
                 )
 
     def test_aclgraph_cache_npu_stream_switch_with_tagged_event(self):
