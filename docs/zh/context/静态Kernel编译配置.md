@@ -57,11 +57,10 @@
 
     **表 1**  参数说明
 
-    
-    | 参数名 | 说明 |
-    | --- | --- |
-    | _aclnn_static_shape_kernel | 布尔类型，是否开启静态Kernel编译 。<br>- False（默认值）：默认关闭。<br>- True：开启静态Kernel编译 。 |
-    | _aclnn_static_shape_kernel_build_dir | 字符串类型，配置编译产物路径，默认为当前执行脚本的同级目录。<br>**说明**： 请确保该参数指定的路径确实存在，并且运行用户具有读、写操作权限。 |
+    | 参数名 | 说明                                                                                                                                                                                          |
+    | --- |---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+    | _aclnn_static_shape_kernel | 布尔类型，是否开启静态Kernel编译 。<br>- False（默认值）：默认关闭。<br>- True：开启静态Kernel编译 。                                                                                                                        |
+    | _aclnn_static_shape_kernel_build_dir | 字符串类型，配置编译产物路径，默认为当前执行脚本的同级目录。<br>**说明**： <br>- 请确保该参数指定的路径确实存在，并且运行用户具有读、写操作权限。<br>- 当同时启用了[模型编译缓存功能](模型编译缓存功能（aclgraph）.md)但未启用[run-eagerly](run-eagerly功能.md)功能时，此配置不生效，此时将使用模型缓存文件所在目录。 |
 
 ## 产物说明
 
@@ -79,10 +78,13 @@ aclnn_static_shape_kernel_outputs               // 固定的产物文件名
 |    |—— ${pid_1}_opcompile                      // 模型中支持静态编译的算子信息导出目录
 |        |—— MatMulV2_float_ND_1_2048_0.json     
 |        |—— ......json
-|    |—— ${pid_1}_opcompile_selected             // 模型中实际用于静态编译的算子信息导出目录
+|    |—— ${pid_1}_opcompile_selected             // 模型中实际用于静态编译的算子信息导出目录；若同时启用了模型编译缓存功能，则不会生成该目录，实际使用的目录为${pid_1}_opcompile
 |        |—— MatMulV2_float_ND_1_2048_0.json     
 |        |—— ......json
-|    |—— static_kernel_${datetime}.run         // 编译好的静态Kernel文件
+|    |—— ${pid_1}_opcompile_gathered             // 多卡场景时模型中实际用于静态编译的算子信息导出目录，汇聚所有卡实际用于静态编译的算子信息目录，仅在rank 0生成
+|        |—— MatMulV2_float_ND_1_2048_0.json     
+|        |—— ......json  
+|    |—— static_kernel_${datetime}.run         // 编译好的静态Kernel文件；当使用多卡场景时，单次编译仅生成一份。
 |—— ts${timestamp_2}_pid${pid_2}_outputs 
 |—— ......
 ```
