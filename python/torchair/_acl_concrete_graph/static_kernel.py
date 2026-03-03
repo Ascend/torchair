@@ -27,10 +27,25 @@ class RunPackageStatus(Enum):
     INSTALLED = "installed"
 
 
-def install_or_compile_static_kernel(fx_func, *args, cached_cann_version=None, compile_cache_dir=None, cached_deterministic=None, **kwargs):
+def compile_static_kernel(fx_func, *args, use_cache_compile=None, cached_cann_version=None, compile_cache_dir=None,
+                          cached_deterministic=None, build_dir=None, **kwargs):
     if not _is_multicard_env_valid():
         return
 
+    if use_cache_compile == "1":
+        _install_or_compile_static_kernel(fx_func, *args, cached_cann_version=cached_cann_version,
+                                          compile_cache_dir=compile_cache_dir, cached_deterministic=cached_deterministic,
+                                          **kwargs)
+    else:
+        warn_msg = ("The current version now supports caching run packages from static kernel compilation, "
+                    "it is recommended to delete the compilation cache and recompile "
+                    "when you use `torchair.inference.cache_compile` and do not use debug.run_eagerly=True.")
+        warnings.warn(warn_msg)
+        warnings.filterwarnings("ignore", message=warn_msg)
+        _compile_static_kernel(fx_func, *args, build_dir=build_dir, **kwargs)
+
+
+def _install_or_compile_static_kernel(fx_func, *args, cached_cann_version=None, compile_cache_dir=None, cached_deterministic=None, **kwargs):
     if _is_single_card():
         _install_or_compile_for_single(fx_func, *args, cached_cann_version=cached_cann_version,
                                        compile_cache_dir=compile_cache_dir,
@@ -88,10 +103,7 @@ def _install_or_compile_for_multi(fx_func, *args, cached_cann_version=None, comp
         _compile_static_kernel_for_multi_card(fx_func, *args, gloo_group=gloo_group, is_cache_compile=True, build_dir=compile_cache_dir, **kwargs)
 
 
-def compile_static_kernel(fx_func, *args, is_cache_compile=False, build_dir=None, **kwargs):
-    if not _is_multicard_env_valid():
-        return
-
+def _compile_static_kernel(fx_func, *args, is_cache_compile=False, build_dir=None, **kwargs):
     if _is_single_card():
         _compile_static_kernel_for_single_card(fx_func, *args, is_cache_compile=is_cache_compile,
                                                build_dir=build_dir, **kwargs)

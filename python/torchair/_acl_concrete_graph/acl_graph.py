@@ -27,7 +27,7 @@ from torchair._utils.graph_utils import debug_time, debug_compare_fx_graphs
 from torchair._acl_concrete_graph.utils import reconstruct_args_kwargs, timer, is_inputs_base_format
 from torchair._acl_concrete_graph.utils import (debug_mem_state, LazyMessage, WeakRef, GraphMeta, get_tensor_metadata,
                                                 reconstruct_from_tensor_metadata, reconstruct_args_kwargs)
-from torchair._acl_concrete_graph.static_kernel import compile_static_kernel, install_or_compile_static_kernel
+from torchair._acl_concrete_graph.static_kernel import compile_static_kernel
 
 
 @dataclass
@@ -925,20 +925,13 @@ class AclGraph(object):
             # compile operator kernel based on static shape for better execution performance
             if self.config.get('_aclnn_static_shape_kernel', False):
                 path = self.config.get('_aclnn_static_shape_kernel_build_dir', None)
-                if self.config.get('_aclnn_static_shape_kernel.use_cache_compile', None) == "1":
-                    cann_version = self.config.get('_aclnn_static_shape_kernel.cann_version', None)
-                    compile_cache_dir = self.config.get('_aclnn_static_shape_kernel.compile_cache_dir', None)
-                    deterministic = self.config.get('_aclnn_static_shape_kernel.deterministic', "0")
-                    install_or_compile_static_kernel(self.fx_forward, *args, cached_cann_version=cann_version,
-                                                     compile_cache_dir=compile_cache_dir, cached_deterministic=deterministic,
-                                                     **kwargs)
-                else:
-                    warn_msg = ("The current version now supports caching run packages from static kernel compilation, "
-                                "it is recommended to delete the compilation cache and recompile "
-                                "when you use `torchair.inference.cache_compile` and do not use debug.run_eagerly=True.")
-                    warnings.warn(warn_msg)
-                    warnings.filterwarnings("ignore", message=warn_msg)
-                    compile_static_kernel(self.fx_forward, *args, build_dir=path, **kwargs)
+                use_cache_compile = self.config.get('_aclnn_static_shape_kernel.use_cache_compile', None)
+                cann_version = self.config.get('_aclnn_static_shape_kernel.cann_version', None)
+                compile_cache_dir = self.config.get('_aclnn_static_shape_kernel.compile_cache_dir', None)
+                deterministic = self.config.get('_aclnn_static_shape_kernel.deterministic', "0")
+                compile_static_kernel(self.fx_forward, *args, use_cache_compile=use_cache_compile, cached_cann_version=cann_version,
+                                      compile_cache_dir=compile_cache_dir, cached_deterministic=deterministic,
+                                      build_dir=path, **kwargs)
 
             self._unupdated_input_func = debug_time(get_unupdated_input_fn(self._unupdated_sym_input_index, self._parameter_user_inputs, self.config),
                                                     phase_name="[npugraph_ex overhead] generate graph_key")
