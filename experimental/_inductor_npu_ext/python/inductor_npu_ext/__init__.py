@@ -190,6 +190,7 @@ _LoweringGuard.support(prims.convert_element_type, float_dtypes())
 _LoweringGuard.support(aten.sigmoid, float_dtypes())
 _LoweringGuard.support(aten.remainder, float_dtypes())
 _LoweringGuard.support(aten.silu, float_dtypes())
+_LoweringGuard.support(aten.neg, float_dtypes() + (torch.int32,))
 
 # npu ops
 _LoweringGuard.support(torch.ops.npu._npu_dtype_cast, float_dtypes())
@@ -240,42 +241,47 @@ _LoweringGuard.support(aten.sym_size, float_dtypes())
 
 @patch_fn(torch__inductor_graph, "fallback_node_due_to_unsupported_type")
 def _fallback_node_due_to_unsupported_type(node: torch.fx.Node, allow_cpu_inputs=True, *, orig_fn=None):
-    if isinstance(node.target, (torch._ops.OpOverload, torch._ops.HigherOrderOperator)):
-        if not _LoweringGuard.has(node.target):
-            _summary.fallback(node, "not in lowering whitelist")
+    if orig_fn(node, allow_cpu_inputs=allow_cpu_inputs):
+        _summary.fallback(node, "torch._inductor.lowering.fallback_node_due_to_unsupported_type")
+        return True
+
+    if not isinstance(node.target, (torch._ops.OpOverload, torch._ops.HigherOrderOperator)):
+        return False
+
+    if not _LoweringGuard.has(node.target):
+        _summary.fallback(node, "not in lowering whitelist")
+        return True
+
+    in_nodes = [n for n in pytree.arg_tree_leaves(*node.args, **node.kwargs) if isinstance(n, torch.fx.Node)]
+    in_metas = get_node_meta(in_nodes)
+    out_metas = get_node_meta([node])
+
+    for meta in itertools.chain(in_metas, out_metas):
+        if not isinstance(meta, torch._subclasses.FakeTensor):
+            continue
+
+        for expr in itertools.chain(meta.shape, meta.stride()):
+            if any([v in str(expr) for v in ('ModularIndex', 'Max', 'Min')]):
+                _summary.fallback(node, f"unsupported shape/stride expr {expr} with ['ModularIndex', 'Max', 'Min']")
+                return True
+
+        if all([str(v) != "1" for v in meta.stride()]):
+            _summary.fallback(node, f"performance of non-contiguous stride {meta.stride()} maybe worse than eager")
             return True
 
-        in_nodes = [n for n in pytree.arg_tree_leaves(*node.args, **node.kwargs) if isinstance(n, torch.fx.Node)]
-        in_metas = get_node_meta(in_nodes)
-        out_metas = get_node_meta([node])
+    support_input_dtypes, support_output_dtypes = _LoweringGuard.dtypes_support(node.target)
+    for meta in in_metas:
+        if isinstance(meta, torch._subclasses.FakeTensor) and meta.dtype not in support_input_dtypes:
+            _summary.fallback(node, f"input dtype {meta.dtype} not in {support_input_dtypes}")
+            return True
 
-        for meta in itertools.chain(in_metas, out_metas):
-            if not isinstance(meta, torch._subclasses.FakeTensor):
-                continue
-            for expr in itertools.chain(meta.shape, meta.stride()):
-                if any([v in str(expr) for v in ('ModularIndex', 'Max', 'Min')]):
-                    _summary.fallback(node, f"unsupported shape/stride expr {expr} with ['ModularIndex', 'Max', 'Min']")
-                    return True
+    for meta in out_metas:
+        if isinstance(meta, torch._subclasses.FakeTensor) and meta.dtype not in support_output_dtypes:
+            _summary.fallback(node, f"output dtype {meta.dtype} not in {support_output_dtypes}")
+            return True
 
-        support_input_dtypes, support_output_dtypes = _LoweringGuard.dtypes_support(node.target)
-        for meta in in_metas:
-            if isinstance(meta, torch._subclasses.FakeTensor) and meta.dtype not in support_input_dtypes:
-                _summary.fallback(node, f"input dtype {meta.dtype} not in {support_input_dtypes}")
-                return True
-
-        for meta in out_metas:
-            if isinstance(meta, torch._subclasses.FakeTensor) and meta.dtype not in support_output_dtypes:
-                _summary.fallback(node, f"output dtype {meta.dtype} not in {support_output_dtypes}")
-                return True
-
-        fallback = orig_fn(node, allow_cpu_inputs=allow_cpu_inputs)
-        if fallback:
-            _summary.fallback(node, "torch._inductor.lowering.fallback_node_due_to_unsupported_type")
-        else:
-            _summary.lowered(node)
-        return fallback
-
-    return orig_fn(node, allow_cpu_inputs=allow_cpu_inputs)
+    _summary.lowered(node)
+    return False
 
 
 def _stub_debugging_host_only():
