@@ -3199,6 +3199,7 @@ class AclGraphSt(unittest.TestCase):
                 "inplace_pass": False,
                 "input_inplace_pass": False,
                 "remove_noop_ops": False,
+                "remove_cat_ops": False,
                 "force_eager": False,
                 "pattern_fusion_pass": False,
                 "clone_input": False,
@@ -3221,6 +3222,7 @@ class AclGraphSt(unittest.TestCase):
         assert config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass.value == '1'
         assert config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass.value == '1'
         assert config.experimental_config.remove_noop_ops.value == '0'
+        assert config.debug.aclgraph.remove_cat_ops.value == '0'
         assert config.debug.run_eagerly.value == '0'
         assert config.experimental_config.pattern_fusion_pass.value == '0'
         assert config.experimental_config.frozen_parameter.value == '0'
@@ -3235,6 +3237,7 @@ class AclGraphSt(unittest.TestCase):
         assert _NpuGraphExConfig.inplace_pass is False
         assert _NpuGraphExConfig.input_inplace_pass is False
         assert _NpuGraphExConfig.remove_noop_ops is False
+        assert _NpuGraphExConfig.remove_cat_ops is False
         assert _NpuGraphExConfig.force_eager is False
         assert _NpuGraphExConfig.pattern_fusion_pass is False
         assert _NpuGraphExConfig.clone_input is False
@@ -3254,6 +3257,7 @@ class AclGraphSt(unittest.TestCase):
         assert options_dict["inplace_pass"] is False
         assert options_dict["input_inplace_pass"] is False
         assert options_dict["remove_noop_ops"] is False
+        assert options_dict["remove_cat_ops"] is False
         assert options_dict["force_eager"] is False
         assert options_dict["clone_input"] is False
         assert options_dict["frozen_parameter"] is False

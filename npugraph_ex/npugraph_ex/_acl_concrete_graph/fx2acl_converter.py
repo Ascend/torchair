@@ -235,6 +235,11 @@ class AclConcreteGraph(ConcreteGraphBase):
             # by the time a subsequent aclgraph executes.
             self.config.debug.aclgraph.disable_mempool_reuse_in_same_fx = True
 
+        if self.config.debug.aclgraph.remove_cat_ops:
+            from torchair._acl_concrete_graph.cat_optimization import optimize_cat_with_out_tensor
+            optimize_cat_with_out_tensor(self.fx_graph)
+            observer.dump_gm(self.fx_graph, "graph_after_remove_cat_ops")
+
         # _stream_scope_enter_nodes_dict is initilized as an empty dict,
         # _stream_scope_exit_nodes_list is initialized as an empty list. Both of them will not be None.
         multi_stream_enabled, _stream_scope_enter_nodes_dict, _stream_scope_exit_nodes_list = \

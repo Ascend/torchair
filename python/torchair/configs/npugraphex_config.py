@@ -13,6 +13,7 @@ class _NpuGraphExConfig:
     static_kernel_compile: bool = False
     frozen_parameter: bool = False
     remove_noop_ops: bool = True
+    remove_cat_ops: bool = True
     inplace_pass: bool = True
     input_inplace_pass: bool = True
     pattern_fusion_pass: bool = True
@@ -30,6 +31,7 @@ class _NpuGraphExConfig:
         "inplace_pass": "debug.aclgraph.disable_reinplace_inplaceable_ops_pass",
         "input_inplace_pass": "debug.aclgraph.disable_reinplace_input_mutated_ops_pass",
         "remove_noop_ops": "experimental_config.remove_noop_ops",
+        "remove_cat_ops": "debug.aclgraph.remove_cat_ops",
         "force_eager": "debug.run_eagerly",
         "pattern_fusion_pass": "experimental_config.pattern_fusion_pass",
         "clone_input": "debug.aclgraph.clone_input",
