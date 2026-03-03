@@ -1,0 +1,55 @@
+from typing import List
+
+import torch
+import torch.distributed.distributed_c10d as c10d
+
+from ._npu_define_lib import npu_define_lib
+
+
+if not hasattr(getattr(torch.ops, "npu_define"), "broadcast"):
+    op_broadcast = npu_define_lib.define(
+        "broadcast(Tensor self, int src, str tag, int[] ranks, int group_size) -> Tensor")
+
+
+def broadcast_npu(
+        input_tensor: torch.Tensor,
+        src: int,
+        tag: str,
+        ranks: List[int],
+        group_size: int, ):
+    pg = c10d._find_or_create_pg_by_ranks_and_tag(tag, ranks, group_size)
+    c10d.broadcast(input_tensor, src, group=pg, async_op=False)
+    return input_tensor
+
+
+def broadcast_meta(
+        input_tensor: torch.Tensor,
+        src: int,
+        tag: str,
+        ranks: List[int],
+        group_size: int, ):
+    return torch.empty_like(input_tensor)
+
+
+# The parameter names must be consistent with the original function, otherwise an error will occur.
+def npu_broadcast_patch_dist(tensor, src, group=None, async_op=False):
+    if not torch.distributed._functional_collectives._are_we_tracing():
+        return torch.distributed.distributed_c10d.broadcast(tensor, src, group, async_op)
+    if async_op:
+        raise AssertionError(f'When you enable torch.compile or use the cache_compile feature, '
+                       f'use the patch_for_hcom interface to ensure that collective communication functions '
+                       f'are included in the graph. However, unlike the eager mode, the compile mode '
+                       f'does not support the async_op = True parameter for collective communication APIs.')
+
+    if group is None:
+        group = c10d._world.default_pg
+    ranks = torch.distributed.get_process_group_ranks(group)
+    tag = c10d._get_group_tag(group)
+    out = torch.ops.npu_define.broadcast(tensor, src, tag, ranks, len(ranks))
+    tensor.copy_(out)
+    return None
+
+
+if not hasattr(getattr(torch.ops, "npu_define"), "broadcast"):
+    npu_define_lib.impl(op_broadcast, broadcast_meta, 'Meta')
+    npu_define_lib.impl(op_broadcast, broadcast_npu, 'PrivateUse1')

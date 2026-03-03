@@ -84,8 +84,9 @@ add_custom_target(generate_ge_raw_custom_ops ALL
         VERBATIM)
 
 add_custom_target(copy_pyfiles ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/npugraph_ex/npugraph_ex ${CMAKE_BINARY_DIR}/dist/npugraph_ex/npugraph_ex
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_LIST_DIR}/python ${CMAKE_BINARY_DIR}/dist
-        COMMENT "Copy pthon files"
+        COMMENT "Copy python files"
         VERBATIM)
 
 set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/stubs)
@@ -99,6 +100,7 @@ add_custom_target(torchair ALL
 
 if (DEFINED TORCHAIR_INSTALL_DST)
     add_custom_target(install_torchair ALL
+            COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_BINARY_DIR}/dist/npugraph_ex ${TORCHAIR_INSTALL_DST}/..
             COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_BINARY_DIR}/dist/torchair ${TORCHAIR_INSTALL_DST}
             DEPENDS _torchair _npu_graph_executor copy_pyfiles
             VERBATIM)

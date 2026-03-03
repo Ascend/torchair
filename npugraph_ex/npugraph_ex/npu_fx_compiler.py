@@ -1,0 +1,929 @@
+__all__ = ["get_npu_backend", "compile_fx"]
+
+import functools
+import operator
+import math
+import copy
+from typing import List, Callable, Any, Dict, Tuple
+import logging
+import sys
+import os
+import fcntl
+import dataclasses
+from types import ModuleType
+
+import torch
+from torch._subclasses.fake_tensor import is_fake
+from torch.fx import Interpreter
+from torch.fx.node import Argument, Target
+from torch._functorch.aot_autograd import aot_module_simplified
+from torch._functorch.partitioners import default_partition
+
+try:
+    from torch._dynamo.allowed_functions import is_builtin_callable
+except ModuleNotFoundError:
+    from torch._dynamo.trace_rules import is_builtin_callable
+
+compile_threads = torch._inductor.config.compile_threads
+try:
+    torch._inductor.config.compile_threads = 1 # 关闭 inductor AsyncCompile pool 的 warm up
+    from torch._inductor.fx_passes.post_grad import remove_noop_ops
+except ImportError:
+    remove_noop_ops = None
+finally:
+    torch._inductor.config.compile_threads = compile_threads
+
+from torch.profiler import record_function
+from torch.utils._mode_utils import no_dispatch
+from torch._dynamo.utils import detect_fake_mode
+
+from .core._concrete_graph import ConcreteGraphBase, ValuePack, _is_sym, _is_symlist
+from .core.utils import logger
+from .configs.compiler_config import CompilerConfig
+from .configs.npugraphex_config import _process_kwargs_options
+from .fx_dumper import _NpuFxDumper
+from ._utils.custom_aot_functions import aot_module_simplified_joint
+from ._utils import add_npu_patch, get_npu_default_decompositions
+from ._utils.error_code import pretty_error_msg
+from ._utils.graph_transform_observer import (GraphTransformObserver, dump_fx_safety, wrap_compiler_phase, DebugContext,
+                                              get_phase_path)
+from ._utils.graph_utils import debug_compare_fx_graphs
+from .patterns.pattern_util import _apply_pattern_passes
+from ._acl_concrete_graph.replace_stream_event import replace_stream_event_pass
+
+aten = torch.ops.aten
+
+
+def _unpack_meta_list(args):
+    return [(arg.meta if (isinstance(arg, ValuePack)) else arg) for arg in args]
+
+
+def _unpack_meta(args, kwargs):
+    unpacked_args = []
+    unpacked_kwargs = {}
+
+    def _get_meta_part(arg):
+        if isinstance(arg, (list, tuple)) and any(isinstance(v, ValuePack) for v in arg):
+            return _unpack_meta_list(arg)
+        elif isinstance(arg, dict):
+            return {
+                k: v.meta if isinstance(v, ValuePack) else v
+                for k, v in arg.items()
+            }
+        elif isinstance(arg, ValuePack):
+            return arg.meta
+        else:
+            return arg
+
+    for arg in args:
+        unpacked_args.append(_get_meta_part(arg))
+
+    for key, value in kwargs.items():
+        unpacked_kwargs[key] = _get_meta_part(value)
+
+    return list(unpacked_args), unpacked_kwargs
+
+
+def _safe_str(x):
+    try:
+        if isinstance(x, torch.Tensor):
+            return f"torch.Tensor(dtype={x.dtype}, size={list(x.size())}"
+        return f"{x}"
+    except Exception:
+        return f"{type(x)}"
+
+
+def _is_binary_operator(target: Target):
+    return target in (operator.add, operator.sub, operator.mul, operator.truediv, \
+                      operator.floordiv, operator.pow, math.floor, operator.mod, math.ceil, operator.neg)
+
+
+def _trace_print(f):
+    @functools.wraps(f)
+    def inner(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any]):
+        logger.debug(f'-------------------')
+        logger.debug('target: %s', target)
+        for i, inp in enumerate(args):
+            logger.debug('input %s: %s', i, _safe_str(inp))
+        for k, v in kwargs.items():
+            logger.debug('input %s: %s', k, _safe_str(v))
+        result = f(self, target, args, kwargs)
+        logger.debug('output %s', result)
+        return result
+
+    return inner
+
+
+class _NpuGraphConverter(Interpreter):
+    """
+    Interpreter for collect npu graph meta from fx graph, such as sym of output, input shape ranges, etc.
+
+    This class extends the Torch FX Interpreter to collect metadata necessary for constructing
+    NPU computation graphs, such as symbolic shapes and input/output specifications.
+    """
+
+    def __init__(self, *args, graph, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._graph = graph
+
+    def run_node(self, n):
+        """
+        Overrides the default node execution to include graph context.
+
+        Args:
+            n (Node): The node to execute.
+
+        Returns:
+            Any: Result of node execution.
+        """
+        with self._graph.converter_context(node=n):
+            return super().run_node(n)
+
+    def run(self, *args, **kwargs):
+        """
+        Executes the interpreter and constructs the NPU graph.
+
+        Args:
+            *args: Positional inputs to the graph.
+            **kwargs: Keyword inputs to the graph.
+
+        Returns:
+            GeConcreteGraph: Constructed NPU computation graph.
+        """
+
+        with self._graph.context():
+            super().run(*args, **kwargs)
+            return self._graph
+
+    def _unpack_npu(self, args, kwargs):
+        unpacked = []
+        unpacked_kwargs = {}
+
+        def _get_npu_part(arg):
+            if isinstance(arg, (list, tuple)) and len(arg):
+                if _is_symlist(arg):
+                    arg = self._graph.parse_symlist(arg)
+                else:
+                    arg = [(v.npu if isinstance(v, ValuePack) else v)
+                           for v in arg]
+                return arg
+            elif isinstance(arg, dict):
+                return {
+                    k: v.npu if isinstance(v, ValuePack) else v
+                    for k, v in arg.items()
+                }
+            elif isinstance(arg, ValuePack):
+                return arg.npu
+            else:
+                return arg
+
+        for arg in args:
+            unpacked.append(_get_npu_part(arg))
+
+        for key, value in kwargs.items():
+            unpacked_kwargs[key] = _get_npu_part(value)
+
+        return unpacked, unpacked_kwargs
+
+    def _wrap(self, fn):
+        def inner(target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any]):
+            func = getattr(super(_NpuGraphConverter, self), fn)
+            if is_builtin_callable(target) and not _is_binary_operator(target):
+                return func(target, args, kwargs)
+            args_meta, kwargs_meta = _unpack_meta(args, kwargs)
+            fake_mode = detect_fake_mode(None)
+            with fake_mode:
+                meta_outputs = func(target, args_meta, kwargs_meta)
+            args_npu, kwargs_npu = self._unpack_npu(args, kwargs)
+            npu_outputs = self._graph.parse_node(target, args_npu, kwargs_npu, meta_outputs)
+            return self._get_value_pack(meta_outputs, npu_outputs)
+
+        return inner
+
+    @_trace_print
+    def placeholder(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any]) -> Any:
+        """
+        Handles placeholder nodes during interpretation.
+
+        Args:
+            target (Target): The target node.
+            args (Tuple[Any, ...]): Positional arguments.
+            kwargs (Dict[str, Any]): Keyword arguments.
+
+        Returns:
+            ValuePack: Packed metadata and NPU value.
+        """
+        meta_input = super().placeholder(target, args=args, kwargs=kwargs)
+        npu_input = self._graph.parse_input(target, args, kwargs, meta_input)
+        return ValuePack(meta_input, npu_input)
+
+    @_trace_print
+    def call_function(self, target: Target, args: Tuple[Argument, ...], kwargs: Dict[str, Any]) -> Any:
+        """
+        Handles function call nodes during interpretation.
+
+        Args:
+            target (Target): The target function.
+            args (Tuple[Any, ...]): Positional arguments.
+            kwargs (Dict[str, Any]): Keyword arguments.
+
+        Returns:
+            Any: Result of the function call.
+        """
+        return self._wrap('call_function')(target, args, kwargs)
+
+    @_trace_print
+    def call_method(self, target: Target, args: Tuple[Argument, ...], kwargs: Dict[str, Any]) -> Any:
+        """
+        Handles method call nodes during interpretation.
+
+        Args:
+            target (Target): The target method.
+            args (Tuple[Any, ...]): Positional arguments.
+            kwargs (Dict[str, Any]): Keyword arguments.
+
+        Returns:
+            Any: Result of the method call.
+        """
+        return self._wrap('call_method')(target, args, kwargs)
+
+    @_trace_print
+    def call_module(self, target: Target, args: Tuple[Argument, ...], kwargs: Dict[str, Any]) -> Any:
+        """
+        Handles module call nodes during interpretation.
+
+        Args:
+            target (Target): The target module.
+            args (Tuple[Any, ...]): Positional arguments.
+            kwargs (Dict[str, Any]): Keyword arguments.
+
+        Returns:
+            Any: Result of the module call.
+        """
+        return self._wrap('call_module')(target, args, kwargs)
+
+    @_trace_print
+    def output(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any]) -> Any:
+        """
+        Handles output nodes during interpretation.
+
+        Args:
+            target (Target): The output target.
+            args (Tuple[Any, ...]): Positional arguments.
+            kwargs (Dict[str, Any]): Keyword arguments.
+
+        Returns:
+            Any: Output value.
+        """
+        args_meta, kwargs_meta = _unpack_meta(args, kwargs)
+        meta_output = super().placeholder(target, args=args_meta, kwargs=kwargs_meta)
+        npu_output = self._graph.parse_output(
+            target, args, kwargs, meta_output)
+        return npu_output
+
+    def _get_value_pack(self, meta_outputs, npu_outputs):
+        if isinstance(npu_outputs, (tuple, list)):
+            return [self._get_value_pack(k, v) for k, v in zip(meta_outputs, npu_outputs)]
+        return ValuePack(meta_outputs, npu_outputs)
+
+
+def _summary(v):
+    if isinstance(v, torch.Tensor):
+        return f'{type(v)}({v.size()}, {v.dtype}, contiguous={v.is_contiguous()})'
+    return f'{type(v)}({v})'
+
+
+@debug_compare_fx_graphs(pass_name="view_to_reshape")
+def _view_to_reshape(graph_module: torch.fx.GraphModule, example_inputs=None, config=None):
+    # Replace view ops in the GraphModule to reshape ops.
+    for node in graph_module.graph.nodes:
+        if node.target == torch.ops.aten.view.default:
+            node.target = torch.ops.aten.reshape.default
+
+
+def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, observer: GraphTransformObserver):
+    # More optimization passes here
+    observer.gm = graph_module
+    pre_func = config.post_grad_custom_pre_pass.value
+    if pre_func is not None:
+        observer.apply_gm_pass(debug_compare_fx_graphs(pre_func, pass_name="post_grad_custom_pre_pass"),
+                     "post_grad_custom_pre_pass",
+                               enable_log=True)
+
+    if config.experimental_config.remove_noop_ops:
+        observer.apply_gm_pass(_optimize_noop_ops, "optimize_noop_ops")
+
+    from .patterns._recover_view_inplace_pattern import recover_view_inplace_pattern
+    observer.apply_gm_pass(debug_compare_fx_graphs(recover_view_inplace_pattern, pass_name="recover_view_inplace_pattern"),
+                 "recover_view_inplace_pattern")
+
+    if config.experimental_config.pattern_fusion_pass:
+        observer.apply_gm_pass(_apply_pattern_passes, "apply_pattern_passes")
+
+    observer.apply_gm_pass(_view_to_reshape, "view_to_reshape")
+
+    post_func = config.post_grad_custom_post_pass.value
+    if post_func is not None:
+        observer.apply_gm_pass(debug_compare_fx_graphs(post_func, pass_name="post_grad_custom_post_pass"),
+                               "post_grad_custom_post_pass", enable_log=True)
+    logger.debug('after fx graph optimization, graph is %s', graph_module.graph)
+    return graph_module
+
+
+@debug_compare_fx_graphs(pass_name="optimize_noop_ops")
+def _optimize_noop_ops(graph_module: torch.fx.GraphModule, example_inputs=None, config=None):
+    if remove_noop_ops is None:
+        logger.warning("Skip removing noop ops; check if your PyTorch version is above 2.2.0 and ensure"
+                       " the module torch._inductor.fx_passes.post_grad.remove_noop_ops exists")
+    else:
+        remove_noop_ops(graph_module.graph)
+
+
+@debug_compare_fx_graphs(pass_name="optimize_sym_input")
+def _optimize_sym_input(graph_module: torch.fx.GraphModule, example_inputs=None, config=None):
+    logger.debug('begin sym input optimization for graph: %s', id(graph_module.graph))
+    sym_input_list = []
+    tensor_input_list = []
+    data_idx = -1
+    for node in graph_module.graph.nodes:
+        if node.op != "placeholder":
+            continue
+        data_idx = data_idx + 1
+        if not hasattr(node, "meta"):
+            # int placeholder does not have 'meta' attr or symbol, skip this case
+            logger.debug('Find no meta attr placeholder node, placeholder index=%s, value=%s, type=%s',
+                         data_idx, node, type(node).__name__)
+            continue
+        if 'val' not in node.meta:
+            logger.debug('Find placeholder node with no val in meta, placeholder index=%s, value=%s, type=%s',
+                         data_idx, node, type(node).__name__)
+            continue
+        if _is_sym(node.meta['val']):
+            sym_input_list.append(node)
+        elif is_fake(node.meta['val']):
+            tensor_input_list.append(node)
+        else:
+            # maybe int input, no need to process.
+            pass
+
+    for sym_node in sym_input_list:
+        if sym_node.users == {}:
+            continue
+        for tensor_node in tensor_input_list:
+            find_sym_in_tensor = False
+            for i in range(len(tensor_node.meta['val'].size())):
+                if str(sym_node.meta['val']) != str(tensor_node.meta['val'].size()[i]):
+                    continue
+
+                # find sym node is a dim of other fake tensor, replace it.
+                with graph_module.graph.inserting_after(tensor_node):
+                    sym_size_node = graph_module.graph.create_node(op="call_function", target=torch.ops.aten.sym_size,
+                                                                   args=(tensor_node, i))
+                    sym_node.replace_all_uses_with(sym_size_node, propagate_meta=True)
+                    logger.debug('Replace node %s by inserting new node %s[op: %s'
+                                 ', target: %s, meta: %s].', sym_node, sym_size_node, sym_size_node.op,
+                                 sym_size_node.target, sym_size_node.meta)
+                find_sym_in_tensor = True
+                break
+            if find_sym_in_tensor:
+                break
+
+    graph_module.graph.lint()
+    graph_module.recompile()
+    return graph_module
+
+
+def _valid_graph(graph_module):
+    """
+    After enabling users custom pass, it is necessary to perform checks here
+    to prevent users from introducing illegal graph modifications through these custom passes.
+    """
+
+    def _check_scope_enter_exit(graph_module):
+        scope_enter_stack = []
+        for node in graph_module.graph.nodes:
+            if str(node.target) == "air.scope_enter.default":
+                scope_enter_stack.append(node)
+            elif str(node.target) == "air.scope_exit.default":
+                if not scope_enter_stack:
+                    raise RuntimeError(f"When you call the torch.ops.air.scope_exit operator: {node.name}, "
+                                       f"you must first call the torch.ops.air.scope_enter operator, as they must be called in pairs. "
+                                       f"Please check your code or your post_grad_custom_pre_pass post_grad_custom_post_pass!"
+                                       f"This error may also occur in a Dynamo graph break scenario.")
+                scope_enter_stack.pop()
+
+        if scope_enter_stack:
+            args_list = [node.args for node in scope_enter_stack]
+            raise RuntimeError(f"After you call the torch.ops.air.scope_enter operator, "
+                               f"there is no paired call to the torch.ops.air.scope_exit operator. "
+                               f"The parameters for these torch.ops.air.scope_enter calls are:{args_list}. "
+                               f"Please check your code or your post_grad_custom_pre_pass post_grad_custom_post_pass!"
+                               f"This error may also occur in a Dynamo graph break scenario.")
+
+    _check_scope_enter_exit(graph_module)
+
+
+@dataclasses.dataclass
+class _CompiledFxArtifacts:
+    """
+    Artifacts for compiled fx graph.
+    """
+    version: str = "0.1"
+    py_code: str = None
+
+
+class _CompiledFxGraph:
+    """
+    Wrapper for executing a graph module with runtime inputs.
+    """
+
+    def __init__(self, runner: Callable, config=None):
+        self.config = config
+        self.runner = runner
+        self.run_kernel = None
+
+    def __call__(self, *args, **kwargs):
+
+        if self.run_kernel is None:
+            if self.config is not None:
+                py_code = self.get_code()
+                if not isinstance(py_code, str):	 
+                    self.run_kernel = py_code	 
+                else:	 
+                    ge_mod = _compile_py_code(py_code)
+                    kernel = getattr(ge_mod, 'kernel')
+                    if hasattr(self.runner, 'execution_kernel'):
+                        self.runner.execution_kernel = kernel
+                        self.run_kernel = self.runner
+                    else:
+                        self.run_kernel = kernel
+            else:
+                self.run_kernel = self.runner
+
+        with record_function("npu_fx_compiler inference"):
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug('runtime inputs')
+                for i, inp in enumerate(args):
+                    logger.debug('  input %s: %s', i, _summary(inp))
+                for k, v in kwargs.items():
+                    logger.debug('  input %s: %s', k, _summary(v))
+
+            gm_result = self.run_kernel(*args, **kwargs)
+
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug('runtime outputs')
+                for i, inp in enumerate(gm_result):
+                    logger.debug('  output %s: %s', i, _summary(inp))
+
+            return gm_result
+
+    @classmethod
+    def load_artifacts(cls, artifacts: _CompiledFxArtifacts):
+        if artifacts.version != _CompiledFxArtifacts.version:
+            raise RuntimeError(f'Unsupported artifacts version: {artifacts.version}, '
+                               f'expected: {_CompiledFxArtifacts.version}.')
+        compiled_mod = _compile_py_code(artifacts.py_code)
+        return _CompiledFxGraph(getattr(compiled_mod, 'kernel'))
+
+    def dump_artifacts(self):
+        if not hasattr(self.runner, 'codegen'):
+            raise RuntimeError(f'Compiled fx type {self.runner} does not support serialize.')
+        code = self.runner.codegen(extend_config={})
+        return _CompiledFxArtifacts(py_code=code)
+
+    @pretty_error_msg
+    def get_code(self, extend_config=None):
+        if not hasattr(self.runner, 'codegen'): 
+            logger.warning(f'When enable FX Graph summarizing or dumping, codegen is unsupported.') 
+            return self.runner
+        py_code = self.runner.codegen(extend_config=extend_config, enable_cache=True)
+        if py_code is None:
+            logger.warning(f'There are some configurations that cannot be supported by codegen, skipping codegen.')
+            return self.runner
+        logger.debug('Codegen for %s successfully, code:\n%s.', self.runner.graph.name, py_code)
+        _dump_run_codegen(py_code)
+        return py_code
+
+
+_GLOBAL_GRAPH_ID = 0
+
+
+def _next_unique_graph_id():
+    global _GLOBAL_GRAPH_ID
+    _GLOBAL_GRAPH_ID += 1
+    return _GLOBAL_GRAPH_ID
+
+
+class _NpuFxCompiler:
+    """
+    Main compiler class for converting FX graphs to NPU-compatible graphs.
+    """
+
+    def __init__(self, compiler_config: CompilerConfig) -> None:
+        self.config = compiler_config
+
+    @pretty_error_msg
+    def __call__(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
+        """
+        Compiles the FX graph into an NPU-compatible graph.
+
+        Args:
+            gm (torch.fx.GraphModule): The FX graph module to compile.
+            example_inputs (List[torch.Tensor]): Example inputs for compilation.
+
+        Returns:
+            _CompiledFxGraph: Runner wrapping the compiled graph.
+        """
+
+        return self._get_compiled_gm(gm, example_inputs)
+
+    def _get_compiled_gm(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor]):
+        """
+        Internal method to generate the compiled graph module.
+
+        Args:
+            gm (torch.fx.GraphModule): The FX graph module.
+            example_inputs (List[torch.Tensor]): Example inputs.
+
+        Returns:
+            _CompiledFxGraph: Runner wrapping the compiled graph.
+        """
+        observer = GraphTransformObserver(gm, example_inputs, self.config)
+        observer.dump_gm(gm, "graph")
+
+        if self.config.debug.data_dump.enabled:
+            logger.warning(f'When dumping data of FX Graph, npu run will be skipped, '
+                           'and FALLBACK to EAGER execution, once dump finished, please make sure to disable '
+                           'the data dump config to ensure that the graph is compiled and executed.')
+            data_dumper = _NpuFxDumper(gm, config=self.config.debug.data_dump,
+                                       name="graph_" + str(_next_unique_graph_id()))
+            return _CompiledFxGraph(data_dumper, self.config)
+
+        return _CompiledFxGraph(self._gen_compiled_gm(gm, example_inputs, observer), self.config)
+
+    def _gen_compiled_gm(self, gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor], observer: GraphTransformObserver):
+        logger.info(f'compiler inputs')
+        for i, inp in enumerate(example_inputs):
+            logger.info('  input %s: %s', i, inp)
+        logger.info('  graph: %s', gm.graph)
+
+        # to temporarily fix weight_quant_batchmatmul bug
+        if "torch_npu" in sys.modules:
+            for n in gm.graph.nodes:
+                if n.op == "call_function" and str(n.target) == "npu.npu_weight_quant_batchmatmul.default":
+                    self.config.experimental_config.enable_view_optimize = False
+                    logger.warning(f'To temporarily fix weight_quant_batchmatmul bug, close enable_view_optimize.')
+                    break
+
+        if (self.config.dump_config.enable_dump.value == '1'
+                and self.config.dump_config.data_dump_stage.value == "original"):
+            _, dump_options = self.config.dump_config.as_dict(self.config.mode.value)
+            from ._acl_concrete_graph.utils import insert_save_npugraph_tensor
+            return insert_save_npugraph_tensor(gm, dump_options)
+
+        # generate different concrete graph based on config
+        with no_dispatch():
+            mutable_gm = copy.deepcopy(gm)
+
+        from ._utils.graph_utils import _find_mutated_user_inputs
+        mutated_user_inputs = _find_mutated_user_inputs(mutable_gm)
+        logger.debug('find mutated user inputs: %s', mutated_user_inputs)
+
+        from ._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
+        graph = AclConcreteGraph(self.config,
+                                 name="graph_" + str(_next_unique_graph_id()),
+                                 pool=self.config.aclgraph_config.use_custom_pool,
+                                 mutated_user_inputs=mutated_user_inputs)
+
+        # do common optimization for fx graph based on config
+        optimized_gm = _optimize_fx(mutable_gm, self.config, observer)
+        _valid_graph(optimized_gm)
+        graph.save_fx_graph(optimized_gm)
+
+        concrete_graph: ConcreteGraphBase = _NpuGraphConverter(
+            optimized_gm, graph=graph, garbage_collect_values=False).run(*example_inputs)
+
+        if self.config.debug.graph_dump.enabled and not self.config.export.export_mode:
+            concrete_graph.dump(self.config.debug.graph_dump.full_path(f"dynamo_original_graph_{_GLOBAL_GRAPH_ID}"))
+
+        # optimize different concrete graph for ge or acl.
+        concrete_graph.optimize_graph_without_runtime(*example_inputs, observer=observer, aot_gm=gm)
+
+        if self.config.debug.run_eagerly:
+            logger.warning(f'When debug.run_eagerly=True is enabled, '
+                           'the graph FALLS BACK to EAGER execution. Once running finished, please make sure to disable '
+                           'the debug.run_eagerly=True config to ensure that the graph is compiled and executed.')
+            if not graph.fx_graph:
+                raise RuntimeError('When using debug.run_eagerly=True, the FX graph should not be None.')
+
+        return concrete_graph
+
+    def _update_config(self, compiler_config: CompilerConfig):
+        self.config = compiler_config
+
+
+def compile_fx(options: dict = None):
+    """
+    Retrieves the NPU compiler instance.
+
+    Args:
+        options (dict, optional): torch.compile options. Defaults to None.
+
+    Returns:
+        _NpuFxCompiler: NPU compiler instance.
+    """
+    compiler_config = CompilerConfig()
+    _process_kwargs_options(compiler_config, options)
+    return _NpuFxCompiler(compiler_config)
+
+
+def get_compiler(compiler_config: CompilerConfig = None):
+    """
+    Retrieves the NPU compiler instance.
+
+    Args:
+        compiler_config (CompilerConfig, optional): Compiler configuration. Defaults to None.
+
+    Returns:
+        _NpuFxCompiler: NPU compiler instance.
+    """
+    if compiler_config is None:
+        compiler_config = CompilerConfig()
+    return _NpuFxCompiler(compiler_config)
+
+
+def _npu_joint_graph_passes(graph):
+    from torch._inductor.fx_passes.joint_graph import joint_graph_passes
+    joint_graph_passes(graph)
+
+
+def _get_partition_fn(compiler_config: CompilerConfig):
+    def partition_fn(graph: torch.fx.GraphModule, joint_inputs, **kwargs):
+        _npu_joint_graph_passes(graph)
+        return default_partition(graph, joint_inputs, **kwargs)
+
+    if compiler_config.experimental_config.npu_fx_pass:
+        return partition_fn
+    return default_partition
+
+
+def _mark_static_inputs_attr(example_inputs, num_example_inputs, compiler_config):
+    if torch.__version__ >= '2.4.0':
+        # Length of example_inputs may differ between Dynamo and AOT compilation stages.
+        aot_num_example_inputs = len(example_inputs)
+        fixed = torch._inductor.utils.num_fw_fixed_arguments(
+            num_example_inputs, aot_num_example_inputs
+        )
+        from torch._inductor.compile_fx import get_static_input_idxs
+        static_input_idxs = get_static_input_idxs(fixed)
+        for i in static_input_idxs:
+            if i < aot_num_example_inputs and isinstance(example_inputs[i], torch.Tensor):
+                setattr(example_inputs[i], "_torchair_is_parameter", True)
+            else:
+                logger.debug("The [%s] input is not a tensor/out of index, cannot set static attr.", i)
+        logger.debug("After AOT, mark %s parameters as static inputs.", len(static_input_idxs))
+    else:
+        logger.warning_once(f"Mark torch.nn.Parameters as static inputs can avoid extra copying, "
+                            f"however it may not work in torch < 2.4.0, please upgrade torch version.")
+
+
+def _wrap_compiler(compiler: Callable, compiler_config: CompilerConfig, num_example_inputs,
+                   compiler_type: str = "forward"):
+    @functools.wraps(compiler)
+    def wrapped_compiler(
+            gm: torch.fx.GraphModule,
+            example_inputs: List[torch.Tensor],
+            is_inference: bool
+    ):
+        if is_inference and compiler_config.experimental_config.npu_fx_pass:
+            _npu_joint_graph_passes(gm)
+        _mark_static_inputs_attr(example_inputs, num_example_inputs=num_example_inputs, compiler_config=compiler_config)
+        return compiler(gm, example_inputs)
+
+    @functools.wraps(compiler)
+    def joint_compiler(
+            gm: torch.fx.GraphModule,
+            example_inputs: List[torch.Tensor]
+    ):
+        if compiler_config.experimental_config.npu_fx_pass:
+            _npu_joint_graph_passes(gm)
+        _mark_static_inputs_attr(example_inputs, num_example_inputs=num_example_inputs, compiler_config=compiler_config)
+        return compiler(gm, example_inputs)
+
+    if compiler_type == "forward":
+        _wrapped_compiler = functools.partial(wrapped_compiler, is_inference=False)
+    elif compiler_type == "inference":
+        _wrapped_compiler = functools.partial(wrapped_compiler, is_inference=True)
+    else:
+        _wrapped_compiler = joint_compiler
+    return _wrapped_compiler
+
+
+def _get_inputs_custom_attr(example_inputs: List[torch.Tensor]):
+    inputs_attr = {}
+    for i, t in enumerate(example_inputs):
+        attr = {}
+        if hasattr(t, "_dynamo_static_input_type"):
+            attr["_dynamo_static_input_type"] = t._dynamo_static_input_type
+        if isinstance(t, torch.nn.Parameter):
+            attr["_torchair_is_parameter"] = True
+        if attr:
+            inputs_attr[i - len(example_inputs)] = attr
+    return inputs_attr
+
+
+def _set_inputs_custom_attr(example_inputs: List[torch.Tensor], inputs_custom_attr: Dict[int, Dict]):
+    for i, attr in inputs_custom_attr.items():
+        for k, v in attr.items():
+            setattr(example_inputs[i], k, v)
+
+
+def _set_inputs_custom_attr_to_compiler(compiler: Callable, inputs_custom_attr: Dict[int, Dict]):
+    @functools.wraps(compiler)
+    def _wrap_custom_attr_compiler(
+            gm: torch.fx.GraphModule,
+            example_inputs: List[torch.Tensor],
+    ):
+        _set_inputs_custom_attr(example_inputs, inputs_custom_attr)
+        return compiler(gm, example_inputs)
+
+    return _wrap_custom_attr_compiler
+
+
+def _process_send_recv(gm, compiler_config):
+    if (
+        not hasattr(torch.ops.npu_define, "_send")
+        or not hasattr(torch.ops.npu_define, "_recv")
+       ):
+        return
+
+    count = sum(1 for node in gm.graph.nodes \
+        if node.target == torch.ops.npu_define._send or node.target == torch.ops.npu_define._recv)
+    if count == 0:
+        return
+
+    from torch_npu.npu.utils import _is_gte_cann_version
+    # depends on hccl version
+    is_supported_version = _is_gte_cann_version("8.6.0", module="CANN")
+    if not is_supported_version:
+        # current only logs
+        logger.error("torch.distributed.send and torch.distributed.recv are not supported in graph,"
+                    " you need upgrade cann version.")
+
+
+def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
+                 compiler_config: CompilerConfig = None, decompositions: Dict = {}, **kwargs):
+    """
+    Backend entry point for NPU compilation.
+
+    Args:
+        gm (torch.fx.GraphModule): The graph module to compile.
+        example_inputs (List[torch.Tensor]): Example inputs.
+        compiler_config (CompilerConfig, optional): Compiler configuration. Defaults to None.
+        decompositions (Dict, optional): Custom decomposition rules. Defaults to {}.
+
+    Returns:
+        Any: Compiled graph runner.
+    """
+
+    if compiler_config is None:
+        compiler_config = CompilerConfig()
+    _process_kwargs_options(compiler_config, kwargs)
+    _process_send_recv(gm, compiler_config)
+    compiler = compile_fx(kwargs)
+
+    # 调用公共方法
+    return _compile_graph_with_aot(gm, compiler, example_inputs, compiler_config, decompositions, is_cache=False)
+
+
+def get_npu_backend(*, compiler_config: CompilerConfig = None, custom_decompositions: Dict = {}):
+    """
+    Retrieves the NPU backend compiler with custom configurations.
+
+    Args:
+        compiler_config (CompilerConfig, optional): Compiler configuration. Defaults to None.
+        custom_decompositions (Dict, optional): Custom decomposition rules. Defaults to {}.
+
+    Returns:
+        Callable: Backend compiler function.
+    """
+    if compiler_config is None:
+        compiler_config = CompilerConfig()
+
+    # 使用公共的 Decompose 合并逻辑
+    decompositions = _get_merged_decompositions(compiler_config, custom_decompositions)
+
+    return functools.partial(_npu_backend, compiler_config=compiler_config, decompositions=decompositions)
+
+
+def _get_merged_decompositions(compiler_config: CompilerConfig, custom_decompositions: Dict = None):
+    """
+    Common util to merge default decompositions, patch and custom decompositions.
+    """
+    if custom_decompositions is None:
+        custom_decompositions = {}
+    decompositions = get_npu_default_decompositions()
+    decompositions.update(custom_decompositions)
+    add_npu_patch(decompositions, compiler_config)
+    return decompositions
+
+
+def _compile_graph_with_aot(gm: torch.fx.GraphModule,
+                            compiler: _NpuFxCompiler,
+                            example_inputs: List[torch.Tensor],
+                            compiler_config: CompilerConfig = None,
+                            decompositions: Dict = None,
+                            is_cache: bool = False,
+                            bw_compiler: Callable = None):
+    """
+    Unified entry point for AOT Autograd compilation (Normal & Cache modes).
+    """
+    if decompositions is None:
+        decompositions = {}
+    # 1. Debug: Dump Dynamo output graph if enabled
+    if os.getenv("TORCH_COMPILE_DEBUG", "0") == "1":
+        folder_path = DebugContext.next_path()
+        dump_fx_safety(gm, os.path.join(folder_path, "dynamo_out_graph.txt"))
+
+    # 1.1 replace torch.npu.Event and stream if need
+    gm = replace_stream_event_pass(gm)
+
+    # 2. Prepare common attributes
+    num_example_inputs = len(example_inputs)
+    inputs_custom_attr = _get_inputs_custom_attr(example_inputs)
+
+    # -------------------------------------------------------------------------
+    # Helper: 封装通用的编译器构建流程
+    # (Wrap Static Inputs -> Inject Custom Attrs -> Wrap Debug Phase)
+    # -------------------------------------------------------------------------
+    def _create_stage_compiler(base_compiler, phase_name):
+        # Layer 1: Handle static input attributes & basic wrapping
+        c = _wrap_compiler(base_compiler, compiler_config, num_example_inputs, phase_name)
+
+        # Layer 2: Inject custom attributes (Gears, etc.)
+        c = _set_inputs_custom_attr_to_compiler(c, inputs_custom_attr)
+
+        # Layer 3: Wrap for debug logging
+        return wrap_compiler_phase(c, phase_name)
+
+    # 3. Construct Forward Compiler (Common for both)
+    # Note: Even if 'compiler' is a bound method (in Cache mode), this wrapping applies correctly.
+    fw_compiler = _create_stage_compiler(compiler, "forward")
+
+    # 4. Setup AOT Arguments (Defaults for Cache Mode)
+    # 默认为 Cache 模式的配置，如果是 Normal 模式则在下面覆盖
+    aot_kwargs = {
+        "fw_compiler": fw_compiler,
+        "bw_compiler": bw_compiler, # Cache 模式下通常传入 raising error 的函数或 None
+        "inference_compiler": None, # Cache 模式下通常不单独处理 inference graph
+        "partition_fn": default_partition, # Cache 模式默认不使用特殊 Partition
+        "keep_inference_input_mutations": True, # Cache 模式默认保持
+        "decompositions": decompositions
+    }
+
+    # 5. Handle Normal Mode (Non-Cache) Specifics
+    if not is_cache:
+        # 5.1 Joint Graph Strategy (Early Return)
+
+        # 5.2 Setup Backward Compiler
+        # Normal 模式下，Backward Compiler 基于同一个 NPU Compiler 实例，但标记为 backward phase
+        aot_kwargs["bw_compiler"] = wrap_compiler_phase(compiler, "backward")
+
+        # 5.3 Setup Inference Compiler
+        aot_kwargs["inference_compiler"] = _create_stage_compiler(compiler, "inference")
+
+        # 5.4 Setup Partition Function & Mutations
+        aot_kwargs["partition_fn"] = _get_partition_fn(compiler_config)
+        aot_kwargs["keep_inference_input_mutations"] = bool(
+            compiler_config.experimental_config.keep_inference_input_mutations
+        )
+
+    # 6. Unified AOT Call
+    return aot_module_simplified(gm, example_inputs, **aot_kwargs)
+
+
+def _dump_run_codegen(py_code: str):
+    if os.getenv("TORCH_COMPILE_DEBUG", "0") == "1":
+
+        from torch._inductor.utils import IndentedBuffer
+        input_code = IndentedBuffer()
+        input_code.writelines(["", "", 'if __name__ == "__main__":'])
+        with input_code.indent():
+            input_code.writeline("main()")
+            py_codegen_dump = py_code + input_code.getvalue()
+
+        # 进行生成dump文件，保存codegen内容
+        file_name = os.path.join(get_phase_path(), "output_code.py")
+        output_code_path = os.path.realpath(file_name)
+        os.makedirs(os.path.dirname(output_code_path), exist_ok=True)
+        with open(output_code_path, "w") as f:
+            from .inference._cache_compiler import file_lock
+            with file_lock(f, fcntl.LOCK_EX):
+                f.write(py_codegen_dump)
+                os.chmod(f.fileno(), 0o600)
+
+
+def _compile_py_code(py_code: str):
+    ge_mod = ModuleType('ge_mod')
+    exec(compile(py_code, '<string>', 'exec'), ge_mod.__dict__, ge_mod.__dict__)
+    return ge_mod

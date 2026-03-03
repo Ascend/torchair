@@ -3199,8 +3199,6 @@ class AclGraphSt(unittest.TestCase):
                 "inplace_pass": False,
                 "input_inplace_pass": False,
                 "remove_noop_ops": False,
-                "graph_dump_type": "pbtxt",
-                "graph_dump_path": "/test",
                 "force_eager": False,
                 "pattern_fusion_pass": False,
                 "clone_input": False,
@@ -3223,8 +3221,6 @@ class AclGraphSt(unittest.TestCase):
         assert config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass.value == '1'
         assert config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass.value == '1'
         assert config.experimental_config.remove_noop_ops.value == '0'
-        assert config.debug.graph_dump.type.value == 'pbtxt'
-        assert config.debug.graph_dump.path == '/test'
         assert config.debug.run_eagerly.value == '0'
         assert config.experimental_config.pattern_fusion_pass.value == '0'
         assert config.experimental_config.frozen_parameter.value == '0'

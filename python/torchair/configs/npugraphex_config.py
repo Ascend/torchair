@@ -18,8 +18,6 @@ class _NpuGraphExConfig:
     pattern_fusion_pass: bool = True
     post_grad_custom_pre_pass: Callable = None
     post_grad_custom_post_pass: Callable = None
-    graph_dump_type: str = "py"
-    graph_dump_path: str = "./"
     dump_tensor_data: bool = False
     data_dump_stage: str = "optimized"
     data_dump_dir: str = "./"
@@ -32,8 +30,6 @@ class _NpuGraphExConfig:
         "inplace_pass": "debug.aclgraph.disable_reinplace_inplaceable_ops_pass",
         "input_inplace_pass": "debug.aclgraph.disable_reinplace_input_mutated_ops_pass",
         "remove_noop_ops": "experimental_config.remove_noop_ops",
-        "graph_dump_type": "debug.graph_dump.type",
-        "graph_dump_path": "debug.graph_dump.path",
         "force_eager": "debug.run_eagerly",
         "pattern_fusion_pass": "experimental_config.pattern_fusion_pass",
         "clone_input": "debug.aclgraph.clone_input",
