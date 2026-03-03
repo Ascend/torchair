@@ -1,6 +1,9 @@
+import dataclasses
 import logging
 import os
 import unittest
+from typing import List
+from pathlib import Path
 
 import torch
 import torch_npu
@@ -12,6 +15,7 @@ from npugraph_ex._acl_concrete_graph import replace_stream_event
 from npugraph_ex.configs.compiler_config import CompilerConfig
 from npugraph_ex.configs.npugraphex_config import _process_kwargs_options
 from npugraph_ex.core.utils import logger
+from npugraph_ex._acl_concrete_graph.static_kernel import static_compile
 
 torch._logging.set_logs(dynamo=logging.INFO)
 torch.manual_seed(7)
@@ -95,6 +99,196 @@ class AclgraphTest(unittest.TestCase):
                 fusion_dq_op_found_after,
                 "npu_add_rms_norm_dynamic_quant should not exist in the graph after fusion"
             )
+
+    def test_aclgraph_cache_with_static_kernel(self):
+        class CachedAclGraphModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.cached_prompt = torch.npu.npugraph_ex.inference.cache_compile(self.prompt, options=options)
+
+            def forward(self, qp, q, k, v, scale, actual_seq_lenq, actual_seq_len, actual_seq_len2, narrow_start):
+                return self.cached_prompt(qp, q, k, v, scale, actual_seq_lenq, actual_seq_len, actual_seq_len2,
+                                          narrow_start)
+
+            def prompt(self, qp, q, k, v, scale, actual_seq_lenq, actual_seq_len, actual_seq_len2, narrow_start):
+                return self._forward(qp, q, k, v, scale, actual_seq_lenq, actual_seq_len, actual_seq_len2, narrow_start)
+
+            def _forward(self, qp, q, k, v, scale, actual_seq_lenq, actual_seq_len, actual_seq_len2, narrow_start):
+                pfa0, _ = torch_npu.npu_fused_infer_attention_score(qp, k, v, num_heads=32, input_layout="BNSD",
+                                                                    scale=scale, softmax_lse_flag=False,
+                                                                    actual_seq_lengths=actual_seq_lenq,
+                                                                    actual_seq_lengths_kv=actual_seq_len)
+                q = q * scale
+                ifa1, _ = torch_npu.npu_fused_infer_attention_score(q, k, v, num_heads=32, input_layout="BNSD",
+                                                                    scale=scale, softmax_lse_flag=False,
+                                                                    actual_seq_lengths_kv=actual_seq_len)
+                mm1 = ifa1.view([ifa1.shape[-1], -1]).clone()
+                q = q + 0.01
+                ifa2, _ = torch_npu.npu_fused_infer_attention_score(q, k, v, num_heads=32, input_layout="BNSD",
+                                                                    scale=scale, softmax_lse_flag=False,
+                                                                    actual_seq_lengths_kv=[66, 166, 266])
+                mm2 = ifa2.view([-1, ifa2.shape[-1]]).clone()
+                mmm = torch.mm(mm1, mm2) + pfa0.mean()
+                k = k * 1.1
+                v = v / 1.1
+                ifa3 = torch_npu.npu_fused_infer_attention_score(q, k, v, num_heads=32, input_layout="BNSD",
+                                                                 scale=scale, softmax_lse_flag=False,
+                                                                 actual_seq_lengths_kv=actual_seq_len2)
+                add3 = ifa3[0]
+                add3 = torch.narrow(add3, -1, 32, 32) # narrow_start
+                res = add3 * mmm.mean()
+                return res
+
+        static_compile_call_count = 0
+        def wrapped_static_compile(func):
+            def wrapper(*args, **kwargs):
+                nonlocal static_compile_call_count
+                static_compile_call_count += 1
+                return func(*args, **kwargs)
+            return wrapper
+
+        static_compile_bak = npugraph_ex._acl_concrete_graph.static_kernel.static_compile
+        npugraph_ex._acl_concrete_graph.static_kernel.static_compile = wrapped_static_compile(static_compile_bak)
+
+        options = {"static_kernel_compile": True, "inplace_pass": False, "input_inplace_pass": False}
+        mm = CachedAclGraphModel()
+
+        length = [28, 29, 1]
+        length2 = [66, 88, 55]
+        lengthq = [33, 44, 55]
+        scale = 1 / 0.0078125
+        narrow_start = 32
+        query_prefill = torch.randn(3, 32, 512, 128, dtype=torch.float16).npu()
+        query = torch.randn(3, 32, 1, 128, dtype=torch.float16).npu()
+        key = torch.randn(3, 32, 512, 128, dtype=torch.float16).npu()
+        value = torch.randn(3, 32, 512, 128, dtype=torch.float16).npu()
+
+        torch._dynamo.mark_static(query_prefill)
+        torch._dynamo.mark_static(query)
+        torch._dynamo.mark_static(key)
+        torch._dynamo.mark_static(value)
+        mmc = mm.npu()
+        from npugraph_ex.inference._cache_compiler import CompiledModel, ModelCacheSaver
+        from npugraph_ex.configs.npugraphex_config import _process_kwargs_options
+        static_kernel_config = npugraph_ex.CompilerConfig()
+        _process_kwargs_options(static_kernel_config, {"options":options})
+        prompt_cache_bin = CompiledModel.get_cache_bin(mm.prompt, config=static_kernel_config)
+        ModelCacheSaver.remove_cache(os.path.abspath(os.path.dirname(prompt_cache_bin)))
+        prompt_cache_dir = os.path.abspath(os.path.dirname(prompt_cache_bin))
+
+        self.assertFalse(os.path.exists(prompt_cache_dir))
+        graph_res1 = mmc(query_prefill, query, key, value, scale, lengthq, length, length2, narrow_start)
+        self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
+        prompt_cache_dir_path = Path(prompt_cache_dir)
+        outputs_dirs = [d for d in prompt_cache_dir_path.iterdir() if d.is_dir() and d.name == "aclnn_static_shape_kernel_outputs"]
+        self.assertEqual(len(outputs_dirs), 1)
+        ts_outputs_dirs = [d for d in outputs_dirs[0].iterdir() if
+                        d.is_dir() and d.name.endswith("_outputs") and d.name.startswith("ts")]
+        self.assertEqual(len(ts_outputs_dirs), 1)
+        run_pkgs = list(ts_outputs_dirs[0].glob("*.run"))
+        self.assertTrue(len(run_pkgs) >= 1)
+        self.assertTrue(static_compile_call_count, 1)
+
+        mm2 = CachedAclGraphModel().npu()
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            graph_res2 = mm2(query_prefill, query, key, value, scale, lengthq, length, length2, narrow_start)
+        self.assertTrue(
+            any("Rebasing" in log for log in cm.output),
+            f"Expected DEBUG cache_compile 'Rebasing'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertFalse(
+            any("static kernel run eager success" in log for log in cm.output),
+            f"Not Expected DEBUG 'static kernel run eager success'"
+            f"found in logs: {cm.output}"
+        )
+        self.assertTrue(static_compile_call_count, 1) # no static compile
+        self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
+
+
+    def test_aclgraph_cache_with_static_kernel_multi_model(self):
+        @dataclasses.dataclass
+        class InputMeta:
+            data: torch.Tensor
+            is_prompt: bool
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear1 = torch.nn.Linear(2, 1)
+                self.linear2 = torch.nn.Linear(2, 1)
+                for param in self.parameters():
+                    torch.nn.init.ones_(param)
+
+                # 通过torchair.inference.cache_compile实现编译缓存
+                self.cached_prompt = torch.npu.npugraph_ex.inference.cache_compile(self.prompt, options=options)
+                self.cached_decode = torch.npu.npugraph_ex.inference.cache_compile(self.decode, options=options)
+
+            def forward(self, x: InputMeta, kv: List[torch.Tensor]):
+                # 添加调用新函数的判断逻辑
+                if x.is_prompt:
+                    return self.cached_prompt(x, kv)
+                return self.cached_decode(x, kv)
+
+            def _forward(self, x, kv):
+                return self.linear2(x.data) + self.linear2(kv[0])
+
+            # 重新封装为prompt函数
+            def prompt(self, x, y):
+                return self._forward(x, y)
+
+            # 重新封装为decode函数
+            def decode(self, x, y):
+                return self._forward(x, y)
+
+        options = {"static_kernel_compile": True, "inplace_pass": False, "input_inplace_pass": False}
+        from npugraph_ex.configs.npugraphex_config import _process_kwargs_options
+        static_kernel_config = npugraph_ex.CompilerConfig()
+        _process_kwargs_options(static_kernel_config, {"options":options})
+
+        model = Model().npu()
+        from npugraph_ex.inference._cache_compiler import CompiledModel, ModelCacheSaver
+        prompt_cache_bin = CompiledModel.get_cache_bin(model.prompt, config=static_kernel_config)
+        ModelCacheSaver.remove_cache(os.path.abspath(os.path.dirname(prompt_cache_bin)))
+
+        decode_cache_bin = CompiledModel.get_cache_bin(model.decode, config=static_kernel_config)
+        ModelCacheSaver.remove_cache(os.path.abspath(os.path.dirname(decode_cache_bin)))
+
+        x = InputMeta(data=torch.randn(2, 2).npu(), is_prompt=True)
+        kv = [torch.randn(2, 2).npu()]
+
+        res_prompt = model(x, kv)
+        x.is_prompt = False
+        res_decode = model(x, kv)
+
+        pid = os.getpid()
+        prompt_cache_dir = os.path.abspath(os.path.dirname(prompt_cache_bin))
+        prompt_cache_dir_path = Path(prompt_cache_dir)
+        prompt_out_path = [d for d in prompt_cache_dir_path.iterdir() if d.is_dir() and d.name.endswith("_outputs")]
+        self.assertEqual(len(prompt_out_path), 1)
+        prompt_ts_path = [d for d in prompt_out_path[0].iterdir() if d.is_dir() and str(pid) in d.name]
+        self.assertEqual(len(prompt_ts_path), 1)
+
+        decode_cache_dir = os.path.abspath(os.path.dirname(decode_cache_bin))
+        decode_cache_dir_path = Path(decode_cache_dir)
+        decode_out_path = [d for d in decode_cache_dir_path.iterdir() if d.is_dir() and d.name.endswith("_outputs")]
+        self.assertEqual(len(decode_out_path), 1)
+        decode_ts_path = [d for d in decode_out_path[0].iterdir() if d.is_dir() and str(pid) in d.name]
+        self.assertEqual(len(decode_ts_path), 1)
+
+        first_opcompile_path = [d for d in prompt_ts_path[0].iterdir() if d.is_dir() and d.name.endswith("_opcompile")]
+        second_opcompile_path = [d for d in decode_ts_path[0].iterdir() if d.is_dir() and d.name.endswith("_opcompile")]
+        self.assertEqual(len(first_opcompile_path), 1)
+        self.assertEqual(len(second_opcompile_path), 1)
+        first_opcompile_selected_path = [d for d in prompt_ts_path[0].iterdir() if d.is_dir() and d.name.endswith("_opcompile_selected")]
+        second_opcompile_selected_path = [d for d in decode_ts_path[0].iterdir() if d.is_dir() and d.name.endswith("_opcompile_selected")]
+        self.assertEqual(len(first_opcompile_selected_path), 0)
+        self.assertEqual(len(second_opcompile_selected_path), 0)
+        first_json = [d for d in first_opcompile_path[0].iterdir() if d.is_dir() and d.name.endswith(".json")]
+        second_json = [d for d in second_opcompile_path[0].iterdir() if d.is_dir() and d.name.endswith(".json")]
+        self.assertEqual(len(first_json), len(second_json))
+        from collections import Counter
+        self.assertEqual(Counter(first_json), Counter(second_json))
 
     @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
     def test_pattern_pass_for_aclgraph(self):

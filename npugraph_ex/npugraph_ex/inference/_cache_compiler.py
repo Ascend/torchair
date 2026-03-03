@@ -270,6 +270,10 @@ class CompiledModel:
             ge_mod = _compile_py_code(self.compiled_fx.py_code)
             ge_kernel = getattr(ge_mod, 'kernel')
 
+            if hasattr(ge_mod, '_update_static_kernel_cache_dir'):
+                update_static_kernel_cache_dir = getattr(ge_mod, '_update_static_kernel_cache_dir')
+                update_static_kernel_cache_dir(cache_dir)
+
         parameters = self._get_used_params(model, func)
 
         def compiled_fn(*args):
@@ -386,6 +390,9 @@ class CacheBackend:
             logger.warning(f"Skip cache as compiler {type(self.compiler)} codegen return non-str {type(py_code)}")
             return py_code
 
+        # need to create static_shape_kernel cache dir
+        static_shape_kernel_cache_dir = os.path.dirname(os.path.realpath(self.saver.cache_bin))
+        os.makedirs(static_shape_kernel_cache_dir, exist_ok=True)
         self.saver.save_compiled_fx(gm, example_inputs, self.config, py_code)
         with timer(f"{self.saver.name} compile graph"):
             from npugraph_ex.npu_fx_compiler import _compile_py_code
@@ -407,7 +414,16 @@ class ModelCacheSaver:
         self.cache_dir = os.path.realpath(os.path.dirname(cache_bin))
         self.compiled_model = CompiledModel(func)
         self.name = self.compiled_model.name
-        cache_backend = CacheBackend(config, self, decompositions=decompositions, extend_config={})
+        extend_config = {}
+
+        if config.experimental_config.aclgraph._aclnn_static_shape_kernel:
+            import torch_npu
+            extend_config["_aclnn_static_shape_kernel.use_cache_compile"] = "1"
+            extend_config["_aclnn_static_shape_kernel.cann_version"] = torch_npu.npu.utils.get_cann_version()
+            extend_config["_aclnn_static_shape_kernel.compile_cache_dir"] = self.cache_dir
+            extend_config["_aclnn_static_shape_kernel.deterministic"] = "1" if torch.are_deterministic_algorithms_enabled() else "0"
+
+        cache_backend = CacheBackend(config, self, decompositions=decompositions, extend_config=extend_config)
         self.compiled_func = torch.compile(func, backend=cache_backend, fullgraph=True, dynamic=dynamic)
 
         self._code_id = None

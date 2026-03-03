@@ -1,5 +1,7 @@
 __all__ = ['compile_fx', 'get_npu_backend', 'CompilerConfig', 'logger', 'register_replacement']
 
+import atexit
+
 from .npu_fx_compiler import compile_fx, get_npu_backend
 from .configs.compiler_config import CompilerConfig
 from .core.utils import logger
@@ -19,3 +21,14 @@ except (ImportError, AttributeError) as e:
     REDUCE_SCATTER_TENSOR_UNEVEN = None
 
 adjust_traceable_collective_remaps()
+
+
+def finalize_graph_engine():
+    import torch
+    import npugraph_ex
+
+    torch._dynamo.reset()
+    npugraph_ex._acl_concrete_graph.static_kernel.uninstall_static_kernel()
+
+
+atexit.register(finalize_graph_engine)

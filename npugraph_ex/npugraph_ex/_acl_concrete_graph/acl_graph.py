@@ -921,7 +921,14 @@ class AclGraph(object):
             # compile operator kernel based on static shape for better execution performance
             if self.config.get('_aclnn_static_shape_kernel', False):
                 path = self.config.get('_aclnn_static_shape_kernel_build_dir', None)
-                compile_static_kernel(self.fx_forward, *args, build_dir=path, **kwargs)
+                use_cache_compile = self.config.get('_aclnn_static_shape_kernel.use_cache_compile', None)
+                cann_version = self.config.get('_aclnn_static_shape_kernel.cann_version', None)
+                compile_cache_dir = self.config.get('_aclnn_static_shape_kernel.compile_cache_dir', None)
+                deterministic = self.config.get('_aclnn_static_shape_kernel.deterministic', "0")
+                compile_static_kernel(self.fx_forward, *args, use_cache_compile=use_cache_compile,
+                                      cached_cann_version=cann_version,
+                                      compile_cache_dir=compile_cache_dir, cached_deterministic=deterministic,
+                                      build_dir=path, **kwargs)
 
             self._unupdated_input_func = debug_time(get_unupdated_input_fn(self._unupdated_sym_input_index, self._parameter_user_inputs, self.config),
                                                     phase_name="[npugraph_ex overhead] generate graph_key")
