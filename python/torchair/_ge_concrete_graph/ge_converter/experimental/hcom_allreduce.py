@@ -5,7 +5,7 @@ from torch.library import Library
 from torchair.core.utils import logger
 
 
-npu_define_lib = Library("npu_define", "DEF")
+npu_define_lib = Library("npu_define", "FRAGMENT")
 
 
 def convert_reduce_op(op):

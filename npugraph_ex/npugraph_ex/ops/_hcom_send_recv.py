@@ -64,7 +64,6 @@ def npu_send_patch_dist(
     # used for static shape
     shape = tensor.shape
     torch.ops.npu_define._send(tensor, dst, rank_list, pg_tag, tag, group_dst, shape)
-    return None
 
 
 has_side_effect(torch.ops.npu_define._send.default)
@@ -128,7 +127,6 @@ def npu_recv_patch_dist(
     shape = tensor.shape
     out = torch.ops.npu_define._recv(tensor, src, rank_list, pg_tag, tag, group_src, shape)
     tensor.copy_(out)
-    return None
 
 
 has_side_effect(torch.ops.npu_define._recv.default)

@@ -1,21 +1,21 @@
 import os
-import sys
 import operator
 from functools import wraps, reduce, lru_cache
 from typing import Callable, Optional, Tuple
+
 import torch
 from torch import Tensor
 from torch._ops import OpOverload, OpOverloadPacket
 from torch._subclasses import fake_tensor as _subclasses_fake_tensor
 from torch._C import DispatchKey
-from torch._refs import div as refs_div, _broadcast_shapes
-from torch._prims_common import corresponding_real_dtype, corresponding_complex_dtype
+from torch._refs import div as refs_div
 from torch._prims_common.wrappers import out_wrapper
-from torch._decomp import decomposition_table, decompositions_for_rng, get_decompositions
+from torch._decomp import decomposition_table, decompositions_for_rng, register_decomposition
 from torch._dynamo.symbolic_convert import break_graph_if_unsupported, InstructionTranslatorBase, stack_op
 from torch._dynamo.exc import Unsupported
 from torch._dynamo.variables.lists import TupleVariable
 from torch._dynamo.variables.nn_module import NNModuleVariable
+
 from .adjust_implicit_decomposition import adjust_implicit_decomposition
 
 
@@ -136,7 +136,7 @@ def patch_torch_decomp_decompositions():
 
 def npu_patch_meta():
     """
-    Torch official register decompostions and meta func for some aten ops,
+    Torch official register decompositions and meta func for some aten ops,
     which will raise conflict when npu outputs' dtype and shape are different
     from native impl. Delete decompositions and meta func of these ops and add
     npu decompositions and meta func.
@@ -207,9 +207,9 @@ def add_break_graph(op_table):
         call_function: nn.Conv3d
         store_subscr: scatter_add/index_put
     How to customize your own graph breaking function:
-        1、Figure out which function to be patched.
-        2、Register your own break_fn.
-        3、Implement new patch functions.
+        1. Figure out which function to be patched.
+        2. Register your own break_fn.
+        3. Implement new patch functions.
     """
     @break_graph_if_unsupported(push=1)
     def binary_subscr(self, inst):
@@ -279,11 +279,10 @@ def npu_patch_break_graph():
     add_break_graph(op_table)
 
 
-
 def register_matmul_backward_decomp():
     """
     Torch_npu currently dispatch linear to matmul and matmul_backward
-    instead of mm and mm_backwrd. This will lead to some bug in npu_backend
+    instead of mm and mm_backward. This will lead to some bug in npu_backend
     and the decomposition can fix it.
     """
     @aten.to.other.py_impl(DispatchKey.AutogradPrivateUse1)
@@ -456,5 +455,13 @@ def add_npu_patch(decompositions, compiler_config):
 
 def get_npu_default_decompositions():
     default_decompositions = {}
+    from npugraph_ex.ops._hcom_allgather import allgather_decomposition
 
+    if torch.ops.npu_define.allgather not in decomposition_table:
+        register_decomposition(torch.ops.npu_define.allgather)
+        default_decompositions.update({torch.ops.npu_define.allgather.default: allgather_decomposition})
+    if torch.__version__ >= "2.3.1":
+        from npugraph_ex.ops.c10d_functional import decomp_c10d_functional_all_to_all_single
+        default_decompositions.update(
+            {torch.ops._c10d_functional.all_to_all_single.default: decomp_c10d_functional_all_to_all_single})
     return default_decompositions

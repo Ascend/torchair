@@ -2,7 +2,6 @@ from typing import List
 
 import torch
 import torch.distributed.distributed_c10d as c10d
-from torch._decomp import register_decomposition
 
 from ._npu_define_lib import npu_define_lib
 
@@ -84,7 +83,6 @@ def npu_allgather_in_tensor_patch_dist(output_tensor, input_tensor, group=None, 
     #allgather中的output_tensor输入只是使用它的size，并不会对tensor做改变，后续版本会变更为size输入
     out = torch.ops.npu_define._allgather_in_tensor_shape(input_tensor, output_tensor.shape, tag, ranklist, size_)
     output_tensor.copy_(out)
-    return None
 
 
 def allgather_meta(
@@ -148,18 +146,17 @@ def allgather_in_different_size(output_tensor_list, input_tensor, tag, ranks, gr
         npu_output_tensor_list.append(out.reshape(output_tensor.size()))
     return npu_output_tensor_list
 
-if not hasattr(getattr(torch.ops, "npu_define"), "allgather"):
-    @register_decomposition(torch.ops.npu_define.allgather)
-    def allgather_decomposition(output_tensor_list: List[torch.Tensor],
-                                input_tensor: torch.Tensor,
-                                tag: str,
-                                ranks: List[int],
-                                group_size: int,
-                                ):
-        if check_same_size(output_tensor_list):
-            return allgather_in_same_size(output_tensor_list, input_tensor, tag, ranks, group_size)
-        else:
-            return allgather_in_different_size(output_tensor_list, input_tensor, tag, ranks, group_size)
+
+def allgather_decomposition(output_tensor_list: List[torch.Tensor],
+                            input_tensor: torch.Tensor,
+                            tag: str,
+                            ranks: List[int],
+                            group_size: int,
+                            ):
+    if check_same_size(output_tensor_list):
+        return allgather_in_same_size(output_tensor_list, input_tensor, tag, ranks, group_size)
+    else:
+        return allgather_in_different_size(output_tensor_list, input_tensor, tag, ranks, group_size)
 
 
 def npu_all_gather_patch_dist(output_tensor_list, tensor, group=None, async_op=False):
@@ -183,7 +180,6 @@ def npu_all_gather_patch_dist(output_tensor_list, tensor, group=None, async_op=F
     npu_out_list = torch.ops.npu_define.allgather(output_tensor_list, tensor, tag, ranklist, size_)
     for i, _ in enumerate(output_tensor_list):
         output_tensor_list[i].copy_(npu_out_list[i])
-    return None
 
 
 def allgather_in_tensor_uneven_npu(

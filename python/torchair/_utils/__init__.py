@@ -80,7 +80,6 @@ def register_break_fn(meta_class, op_name):
     return decorator
 
 
-
 @register_meta_npu(aten.native_dropout)
 def meta_native_dropout(tensor_input: Tensor, p: float, train: Optional[bool]):
     if train and p != 0:
@@ -121,10 +120,10 @@ def meta__native_batch_norm_legit_no_training(
 
 
 def patch_torch_decomp_decompositions():
-    '''
+    """
     Because source torch_decomp_decompositions only enable the decompositions in
     torch/_decomp/decompositions.py. Patch it to make decompositions in this file work.
-    '''
+    """
     src_func = _subclasses_fake_tensor.torch_decomp_decompositions
 
     @lru_cache(None)
@@ -136,12 +135,12 @@ def patch_torch_decomp_decompositions():
 
 
 def npu_patch_meta():
-    '''
-    Torch official register decompostions and meta func for some aten ops,
+    """
+    Torch official register decompositions and meta func for some aten ops,
     which will raise conflict when npu outputs' dtype and shape are different
     from native impl. Delete decompositions and meta func of these ops and add
     npu decompositions and meta func.
-    '''
+    """
     for op_overload, fn in npu_meta_table.items():
         if not isinstance(op_overload, OpOverload):
             raise AssertionError("op_overload must be instance of OpOverload.")
@@ -208,9 +207,9 @@ def add_break_graph(op_table):
         call_function: nn.Conv3d
         store_subscr: scatter_add/index_put
     How to customize your own graph breaking function:
-        1、Figure out which function to be patched.
-        2、Register your own break_fn.
-        3、Implement new patch functions.
+        1. Figure out which function to be patched.
+        2. Register your own break_fn.
+        3. Implement new patch functions.
     """
     @break_graph_if_unsupported(push=1)
     def binary_subscr(self, inst):
@@ -281,21 +280,21 @@ def npu_patch_break_graph():
 
 
 def register_matmul_backward_decomp():
-    '''
+    """
     Torch_npu currently dispatch linear to matmul and matmul_backward
-    instead of mm and mm_backwrd. This will lead to some bug in npu_backend
+    instead of mm and mm_backward. This will lead to some bug in npu_backend
     and the decomposition can fix it.
-    '''
+    """
     @aten.to.other.py_impl(DispatchKey.AutogradPrivateUse1)
     def to_other_decomposition(self, other, non_blocking=False, copy=False, memory_format=None):
         output = self.to(other.dtype)
         return output
 
-    @aten.type_as.default.py_impl(DispatchKey.AutogradPrivateUse1) 
+    @aten.type_as.default.py_impl(DispatchKey.AutogradPrivateUse1)
     def type_as_decomposition(self, other):
         output = self.to(other.dtype)
         return output
-    
+
     @aten.matmul_backward.default.py_impl(DispatchKey.CompositeImplicitAutograd)
     @out_wrapper("grad_self", "grad_other")
     def matmul_backward_decomposition(grad, self, other, mask):
@@ -307,13 +306,13 @@ def register_matmul_backward_decomp():
         size_other = other.size()
         grad_self = None
         grad_other = None
-        
+
         def matmul_backward_1d_1d():
             nonlocal grad_self, grad_other
             grad_self = other.mul(grad) if mask[0] else grad_self
             grad_other = self.mul(grad) if mask[1] else grad_other
             return grad_self, grad_other
-        
+
         def matmul_backward_2d_1d():
             nonlocal grad_self, grad_other
             grad_self = grad.unsqueeze(1).mm(other.unsqueeze(0)) if mask[0] else grad_self
@@ -339,7 +338,7 @@ def register_matmul_backward_decomp():
                 unfolded_self = self.contiguous().view(-1, size_self[-1])
                 grad_other = unfolded_self.transpose(-1, -2).mm(unfolded_grad).view(size_other)
             return grad_self, grad_other
-        
+
         def matmul_backward_lt3d_nd():
             nonlocal grad_self, grad_other
             view_size = 1 if dim_self == 1 else size_grad[-2]
@@ -357,7 +356,7 @@ def register_matmul_backward_decomp():
                 unfolded_self = self.unsqueeze(0) if dim_self == 1 else self
                 grad_other = unfolded_grad_t.mm(unfolded_self).view(size_other_t).transpose(-1, -2)
             return grad_self, grad_other
-                
+
         if dim_self == 1 and dim_other == 1:
             grad_self, grad_other = matmul_backward_1d_1d()
         elif dim_self == 2 and dim_other == 1:

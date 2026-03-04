@@ -13,9 +13,10 @@ from torchair.ge._ge_graph import Tensor, dont_prune_me
 from .hcom_allreduce import npu_define_lib
 
 # added the 'shape' parameter because dynamic shape is not supported
-op_send = npu_define_lib.define(
-    "_send(Tensor input_tensor, int? dst, int[] ranks, str pg_tag,"
-    "int tag, int? group_dst=None, int[]? shape=None) -> None")
+if not hasattr(getattr(torch.ops, "npu_define"), "_send"):
+    op_send = npu_define_lib.define(
+        "_send(Tensor input_tensor, int? dst, int[] ranks, str pg_tag,"
+        "int tag, int? group_dst=None, int[]? shape=None) -> None")
 
 
 def send_npu(
@@ -44,8 +45,9 @@ def send_meta(
     return None
 
 
-npu_define_lib.impl(op_send, send_meta, 'Meta')
-npu_define_lib.impl(op_send, send_npu, 'PrivateUse1')
+if not hasattr(getattr(torch.ops, "npu_define"), "_send"):
+    npu_define_lib.impl(op_send, send_meta, 'Meta')
+    npu_define_lib.impl(op_send, send_npu, 'PrivateUse1')
 
 
 @register_fx_node_ge_converter(torch.ops.npu_define._send.default)
@@ -89,9 +91,10 @@ has_side_effect(torch.ops.npu_define._send.default)
 
 
 # added the 'shape' parameter because dynamic shape is not supported
-op_recv = npu_define_lib.define(
-    "_recv(Tensor out_tensor, int? src, int[] ranks, str pg_tag,"
-    "int tag, int? group_src=None, int[]? shape=None) -> Tensor")
+if not hasattr(getattr(torch.ops, "npu_define"), "_recv"):
+    op_recv = npu_define_lib.define(
+        "_recv(Tensor out_tensor, int? src, int[] ranks, str pg_tag,"
+        "int tag, int? group_src=None, int[]? shape=None) -> Tensor")
 
 
 def recv_npu(
@@ -121,8 +124,9 @@ def recv_meta(
     return tensor.new_empty(out_size)
 
 
-npu_define_lib.impl(op_recv, recv_meta, 'Meta')
-npu_define_lib.impl(op_recv, recv_npu, 'PrivateUse1')
+if not hasattr(getattr(torch.ops, "npu_define"), "_recv"):
+    npu_define_lib.impl(op_recv, recv_meta, 'Meta')
+    npu_define_lib.impl(op_recv, recv_npu, 'PrivateUse1')
 
 
 @register_fx_node_ge_converter(torch.ops.npu_define._recv.default)

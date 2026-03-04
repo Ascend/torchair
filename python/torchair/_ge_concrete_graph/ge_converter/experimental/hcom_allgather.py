@@ -13,19 +13,23 @@ from torchair._utils.adjust_traceable_collective_remaps import all_gather_tensor
 from .hcom_allreduce import npu_define_lib
 from .hcom_broadcast import op_broadcast
 
-op_allgather = npu_define_lib.define(
-    "allgather(Tensor[] tensor_list,Tensor input, str tag, int[] ranks, int group_size) -> Tensor[]")
+if not hasattr(getattr(torch.ops, "npu_define"), "allgather"):
+    op_allgather = npu_define_lib.define(
+        "allgather(Tensor[] tensor_list,Tensor input, str tag, int[] ranks, int group_size) -> Tensor[]")
 
-op_allgather_in_tensor = npu_define_lib.define(
-    "allgather_in_tensor(Tensor out, Tensor input, str tag, int[] ranks, int group_size) -> Tensor")
+if not hasattr(getattr(torch.ops, "npu_define"), "allgather_in_tensor"):
+    op_allgather_in_tensor = npu_define_lib.define(
+        "allgather_in_tensor(Tensor out, Tensor input, str tag, int[] ranks, int group_size) -> Tensor")
 
-_op_allgather_in_tensor_shape = npu_define_lib.define(
-    "_allgather_in_tensor_shape(Tensor input, SymInt[] output_shape, \
+if not hasattr(getattr(torch.ops, "npu_define"), "_allgather_in_tensor_shape"):
+    _op_allgather_in_tensor_shape = npu_define_lib.define(
+        "_allgather_in_tensor_shape(Tensor input, SymInt[] output_shape, \
         str tag, int[] ranks, int group_size) -> Tensor")
 
-op_allgather_in_tensor_uneven = npu_define_lib.define(
-    "allgather_in_tensor_uneven(Tensor input_tensor, SymInt send_count, SymInt[] recv_counts, \
-    str tag, int[] rank_list, int group_size, SymInt[] recv_displacements) -> Tensor")
+if not hasattr(getattr(torch.ops, "npu_define"), "allgather_in_tensor_uneven"):
+    op_allgather_in_tensor_uneven = npu_define_lib.define(
+        "allgather_in_tensor_uneven(Tensor input_tensor, SymInt send_count, SymInt[] recv_counts, \
+        str tag, int[] rank_list, int group_size, SymInt[] recv_displacements) -> Tensor")
 
 
 def allgather_in_tensor_npu(
@@ -127,11 +131,16 @@ def allgather_meta(
     return output_tensor_list
 
 
-npu_define_lib.impl(op_allgather, allgather_meta, 'Meta')
-npu_define_lib.impl(op_allgather_in_tensor, allgather_in_tensor_meta, 'Meta')
-npu_define_lib.impl(op_allgather_in_tensor, allgather_in_tensor_npu, 'PrivateUse1')
-npu_define_lib.impl(_op_allgather_in_tensor_shape, _allgather_in_tensor_shape_meta, 'Meta')
-npu_define_lib.impl(_op_allgather_in_tensor_shape, _allgather_in_tensor_shape_npu, 'PrivateUse1')
+if not hasattr(getattr(torch.ops, "npu_define"), "allgather"):
+    npu_define_lib.impl(op_allgather, allgather_meta, 'Meta')
+
+if not hasattr(getattr(torch.ops, "npu_define"), "allgather_in_tensor"):
+    npu_define_lib.impl(op_allgather_in_tensor, allgather_in_tensor_meta, 'Meta')
+    npu_define_lib.impl(op_allgather_in_tensor, allgather_in_tensor_npu, 'PrivateUse1')
+
+if not hasattr(getattr(torch.ops, "npu_define"), "_allgather_in_tensor_shape"):
+    npu_define_lib.impl(_op_allgather_in_tensor_shape, _allgather_in_tensor_shape_meta, 'Meta')
+    npu_define_lib.impl(_op_allgather_in_tensor_shape, _allgather_in_tensor_shape_npu, 'PrivateUse1')
 
 
 def check_same_size(output_tensor_list):
@@ -266,8 +275,9 @@ def allgather_in_tensor_uneven_meta(
     return input_tensor.new_empty(out_size)
 
 
-npu_define_lib.impl(op_allgather_in_tensor_uneven, allgather_in_tensor_uneven_meta, 'Meta')
-npu_define_lib.impl(op_allgather_in_tensor_uneven, allgather_in_tensor_uneven_npu, 'PrivateUse1')
+if not hasattr(getattr(torch.ops, "npu_define"), "allgather_in_tensor_uneven"):
+    npu_define_lib.impl(op_allgather_in_tensor_uneven, allgather_in_tensor_uneven_meta, 'Meta')
+    npu_define_lib.impl(op_allgather_in_tensor_uneven, allgather_in_tensor_uneven_npu, 'PrivateUse1')
 
 
 def npu_allgather_into_tensor_uneven_patch_dist(output, input, output_split_sizes=None, group=None,

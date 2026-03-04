@@ -124,7 +124,6 @@ def npu_all_to_all_single_patch_dist(
     npu_out = _all_to_all_single(input_tensor, output_split_sizes, input_split_sizes,
                                  tag, ranklist, len(ranklist))
     output_tensor.copy_(npu_out)
-    return None
 
 
 def all_to_all_decomposition(
@@ -183,4 +182,3 @@ def npu_all_to_all_patch_dist(
 
     for i, _ in enumerate(output_tensor_list):
         output_tensor_list[i].copy_(npu_out_list[i])
-    return None

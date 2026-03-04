@@ -6,8 +6,10 @@ from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_conv
 from torchair._ge_concrete_graph.hcom_utils import get_group_name_and_record
 from .hcom_allreduce import npu_define_lib
 
-op_broadcast = npu_define_lib.define(
-    "broadcast(Tensor self, int src, str tag, int[] ranks, int group_size) -> Tensor")
+
+if not hasattr(getattr(torch.ops, "npu_define"), "broadcast"):
+    op_broadcast = npu_define_lib.define(
+        "broadcast(Tensor self, int src, str tag, int[] ranks, int group_size) -> Tensor")
 
 
 def broadcast_npu(
@@ -64,5 +66,7 @@ def npu_broadcast_patch_dist(tensor, src, group=None, async_op=False):
     tensor.copy_(out)
     return
 
-npu_define_lib.impl(op_broadcast, broadcast_meta, 'Meta')
-npu_define_lib.impl(op_broadcast, broadcast_npu, 'PrivateUse1')
+
+if not hasattr(getattr(torch.ops, "npu_define"), "broadcast"):
+    npu_define_lib.impl(op_broadcast, broadcast_meta, 'Meta')
+    npu_define_lib.impl(op_broadcast, broadcast_npu, 'PrivateUse1')

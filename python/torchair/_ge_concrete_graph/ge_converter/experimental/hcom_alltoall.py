@@ -9,9 +9,10 @@ from torchair._ge_concrete_graph.hcom_utils import get_group_name_and_record
 from .hcom_allreduce import npu_define_lib
 
 
-op_all_to_all_single_npu = npu_define_lib.define(
-    "all_to_all_single_npu(Tensor input, SymInt[] send_counts, SymInt[] send_displacements, \
-     SymInt[] recv_counts, SymInt[] recv_displacements, str tag, int[] ranks, int group_size) -> Tensor")
+if not hasattr(getattr(torch.ops, "npu_define"), "all_to_all_single_npu"):
+    op_all_to_all_single_npu = npu_define_lib.define(
+        "all_to_all_single_npu(Tensor input, SymInt[] send_counts, SymInt[] send_displacements, \
+         SymInt[] recv_counts, SymInt[] recv_displacements, str tag, int[] ranks, int group_size) -> Tensor")
 
 
 def _all_to_all_single(
@@ -89,9 +90,9 @@ def npu_all_to_all_single_npu_meta(
     out_size[0] = sum(recv_counts) // input_non_0_dim_size
     return input_tensor.new_empty(out_size)
 
-
-npu_define_lib.impl(op_all_to_all_single_npu, npu_all_to_all_single_npu_meta, 'Meta')
-npu_define_lib.impl(op_all_to_all_single_npu, npu_all_to_all_single_npu, 'PrivateUse1')
+if not hasattr(getattr(torch.ops, "npu_define"), "all_to_all_single_npu"):
+    npu_define_lib.impl(op_all_to_all_single_npu, npu_all_to_all_single_npu_meta, 'Meta')
+    npu_define_lib.impl(op_all_to_all_single_npu, npu_all_to_all_single_npu, 'PrivateUse1')
 
 
 @register_fx_node_ge_converter(torch.ops.npu_define.all_to_all_single_npu.default)

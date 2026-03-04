@@ -10,9 +10,11 @@ from torchair.ge._ge_graph import Tensor, DataType, dont_prune_me
 
 from .hcom_allreduce import npu_define_lib, convert_reduce_op
 
-op_reduce_scatter_tensor_uneven = npu_define_lib.define(
-    "reduce_scatter_tensor_uneven(Tensor input_tensor, SymInt[] send_counts, SymInt recv_count, \
-    str reduce_type, str tag, int[] rank_list, int group_size, SymInt[] send_displacements) -> Tensor")
+
+if not hasattr(getattr(torch.ops, "npu_define"), "reduce_scatter_tensor_uneven"):
+    op_reduce_scatter_tensor_uneven = npu_define_lib.define(
+        "reduce_scatter_tensor_uneven(Tensor input_tensor, SymInt[] send_counts, SymInt recv_count, \
+        str reduce_type, str tag, int[] rank_list, int group_size, SymInt[] send_displacements) -> Tensor")
 
 
 def convert_reduce_type(op):
@@ -75,8 +77,9 @@ def reduce_scatter_tensor_uneven_meta(
     return input_tensor.new_empty(out_size)
 
 
-npu_define_lib.impl(op_reduce_scatter_tensor_uneven, reduce_scatter_tensor_uneven_meta, 'Meta')
-npu_define_lib.impl(op_reduce_scatter_tensor_uneven, reduce_scatter_tensor_uneven_npu, 'PrivateUse1')
+if not hasattr(getattr(torch.ops, "npu_define"), "reduce_scatter_tensor_uneven"):
+    npu_define_lib.impl(op_reduce_scatter_tensor_uneven, reduce_scatter_tensor_uneven_meta, 'Meta')
+    npu_define_lib.impl(op_reduce_scatter_tensor_uneven, reduce_scatter_tensor_uneven_npu, 'PrivateUse1')
 
 
 @register_fx_node_ge_converter(torch.ops.npu_define.reduce_scatter_tensor_uneven.default)
