@@ -43,6 +43,8 @@ def convert_npu_npu_prompt_flash_attention(
 ):
 
     '''NB: npu::npu_prompt_flash_attention(Tensor query, Tensor key, Tensor value, *, Tensor? padding_mask=None, Tensor? atten_mask=None, Tensor? pse_shift=None, int[]? actual_seq_lengths=None, int num_heads=1, float scale_value=1.0, int pre_tokens=2147473647, int next_tokens=0, str input_layout="BSH", int num_key_value_heads=0, int[]? actual_seq_lengths_kv=None, int sparse_mode=0, int inner_precise=1) -> Tensor'''
+    if (is_arch35()):
+        raise RuntimeError("Interface npu_prompt_flash_attention is no longer supported on Ascend950.")
     if actual_seq_lengths is not None and isinstance(actual_seq_lengths, Tensor):
         raise NotImplementedError("PromptFlashAttention is not implemented while actual_seq_lengths is Tensor!")
     if actual_seq_lengths_kv is not None and isinstance(actual_seq_lengths_kv, Tensor):
@@ -111,6 +113,8 @@ def convert_npu_npu_incre_flash_attention(
 ):
 
     '''NB: npu_incre_flash_attention(Tensor query, Tensor key, Tensor value, *, Tensor? padding_mask=None, Tensor? atten_mask=None, Tensor? pse_shift=None, SymInt[]? actual_seq_lengths=None, Tensor? antiquant_scale=None, Tensor? antiquant_offset=None, Tensor? block_table=None, Tensor? dequant_scale1=None, Tensor? quant_scale1=None, Tensor? dequant_scale2=None, Tensor? quant_scale2=None, Tensor? quant_offset2=None, Tensor? kv_padding_size=None, int num_heads=1, float scale_value=1.0, str input_layout="BSH", int num_key_value_heads=0, int block_size=0, int inner_precise=1) -> Tensor'''
+    if (is_arch35()):
+        raise RuntimeError("Interface npu_incre_flash_attention is no longer supported on Ascend950.")
     key_list = [key]
     value_list = [value]
     if actual_seq_lengths is not None:
