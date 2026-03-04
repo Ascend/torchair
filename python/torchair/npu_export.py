@@ -26,7 +26,7 @@ def _get_model_weight_names(model: torch.nn.Module):
     return weight_name
 
 
-def _get_export_config(model, export_path: str, export_name: str, config=CompilerConfig()):
+def _get_export_config(model, export_path: str, export_name: str, config: CompilerConfig):
     config.export.export_mode = True
     config.export.export_path_dir = export_path
     config.export.export_name = export_name
