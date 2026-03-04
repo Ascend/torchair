@@ -4,9 +4,9 @@ import operator as op_mod
 
 import torch
 from torch.fx import GraphModule
-from torchair.core.utils import logger
-from torchair._utils.graph_utils import debug_compare_fx_graphs
-from torchair._acl_concrete_graph.acl_graph import (
+from npugraph_ex.core.utils import logger
+from npugraph_ex._utils.graph_utils import debug_compare_fx_graphs
+from npugraph_ex._acl_concrete_graph.acl_graph import (
     is_constant,
     is_sym,
     have_sym_in_meta,
@@ -121,7 +121,7 @@ def optimize_cat_with_out_tensor(gm: GraphModule, config=None) -> GraphModule:
     if not cat_nodes:
         return gm
 
-    from torchair._utils.graph_utils import add_stream_label_to_node_meta
+    from npugraph_ex._utils.graph_utils import add_stream_label_to_node_meta
     add_stream_label_to_node_meta(gm)
 
     logger.debug(f"[remove_cat_ops] Found {len(cat_nodes)} cat node(s)")
