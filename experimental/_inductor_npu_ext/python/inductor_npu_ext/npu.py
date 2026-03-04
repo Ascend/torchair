@@ -2,6 +2,7 @@ import dataclasses
 import itertools
 import contextlib
 import hashlib
+import os
 from typing import List, Dict, Union, Set
 from collections import OrderedDict
 
@@ -90,14 +91,22 @@ class NPUKernel(Kernel):
     overrides = NPUOverrides
     _index = 0
 
+    class Artifacts:
+        def __init__(self, *, name, tiling_def, host_impl, device_impl, cpp_wrapper):
+            self.name = name
+            self.tiling_def = tiling_def
+            self.host_impl = host_impl
+            self.device_impl = device_impl
+            self.cpp_wrapper = cpp_wrapper
+
     def __init__(self, nodes: List[BaseSchedulerNode], *, comments=None):
         super().__init__()
         self._comments: List[str] = comments
-        self._kernel_def = IndentedBuffer()
+        self._artifacts: NPUKernel.Artifacts = None
         self._subgraphs: List[ASCGraph] = []
         self._indirect_to_scalar: Dict[str, _Scalar] = dict()
         self._current_loop = None
-        self._asc_buffer: Dict[str:ASCBuffer] = {}
+        self._asc_buffer: Dict[str, ASCBuffer] = {}
         self._torch_arg_wrappers = dict()
         self._nodes = nodes
         self._outputs = _get_nodes_outputs(nodes)
@@ -223,20 +232,26 @@ class NPUKernel(Kernel):
         return self._asc_buffer[name]
 
     def codegen(self):
-        self._kernel_def.clear()
         from inductor_npu_ext import codegen as npu_codegen
         artifacts = npu_codegen.codegen_kernel_def(self.fused_graph)
         artifacts['cpp_wrapper'] = npu_codegen.codegen_cpp_wrapper(self.fused_graph)
         if not all(v.strip() for v in artifacts.values()):
             raise RuntimeError(f"Failed to generate artifacts for kernel {self.kernel_name}: {artifacts}")
 
-        self._kernel_def.writeline(f"{self.kernel_name}_artifacts = {{}}")
-        for k, v in artifacts.items():
-            self._kernel_def.splice(f"{self.kernel_name}_artifacts['{k}'] = r'''{v}'''")
-        self._kernel_def.writeline(
-            f"{self.kernel_name} = async_compile_ascendc(globals().get('async_compile', None), {self.kernel_name}_artifacts)")
+        self._artifacts = NPUKernel.Artifacts(**artifacts)
 
-        return self._kernel_def.getvalue()
+        kernel_def = IndentedBuffer()
+        kernel_obj = f"{self._artifacts.name}_artifacts"
+        kernel_def.writeline(f"{kernel_obj} = {{}}")
+        kernel_def.splice(f"{kernel_obj}['name'] = r'''{self._artifacts.name}'''")
+        kernel_def.splice(f"{kernel_obj}['tiling_def'] = r'''{self._artifacts.tiling_def}'''")
+        kernel_def.splice(f"{kernel_obj}['host_impl'] = r'''{self._artifacts.host_impl}'''")
+        kernel_def.splice(f"{kernel_obj}['device_impl'] = r'''{self._artifacts.device_impl}'''")
+        kernel_def.splice(f"{kernel_obj}['cpp_wrapper'] = r'''{self._artifacts.cpp_wrapper}'''")
+        kernel_def.writeline(
+            f"{self.kernel_name} = async_compile_ascendc(globals().get('async_compile', None), {kernel_obj})")
+
+        return kernel_def.getvalue()
 
     def record_summary(self, nodes, model_path=None):
         for i, graph in enumerate(self._subgraphs):
@@ -265,8 +280,6 @@ class NPUKernel(Kernel):
 
     def benchmark(self, nodes, file_path=None):
         file_path = file_path if file_path else f"./{self.kernel_name}_benchmark.py"
-        if not self._kernel_def.getvalue():
-            self.codegen()
 
         arg_defs, call_args, precompile_args, arg_types = self.args.python_argdefs()
         used_buffers = []
@@ -282,30 +295,84 @@ class NPUKernel(Kernel):
                     expr).free_symbols if isinstance(expr, sympy.Expr) else [])
 
         with open(file_path, "w") as f:
-            becnhmark_code = IndentedBuffer()
-            becnhmark_code.writeline(f"import torch")
-            becnhmark_code.writeline(f"import torch_npu")
-            becnhmark_code.writeline(
+            benchmark_code = IndentedBuffer()
+            benchmark_code.writeline(f"import sys")
+            benchmark_code.writeline(f"import torch")
+            benchmark_code.writeline(f"import torch_npu")
+            benchmark_code.writeline(
                 "from inductor_npu_ext.compiler import async_compile as async_compile_ascendc")
-            becnhmark_code.splice(self._kernel_def)
-            becnhmark_code.writelines(["\n"] * 2)
-            becnhmark_code.writeline("if __name__ == '__main__':")
-            with becnhmark_code.indent():
-                becnhmark_code.writeline(f"from torch._dynamo.testing import rand_strided")
+            kernel_obj = f"{self._artifacts.name}_artifacts"
+            benchmark_code.writeline(f"{kernel_obj} = {{}}")
+            benchmark_code.splice(f"{kernel_obj}['name'] = r'''{self._artifacts.name}'''")
+            benchmark_code.splice(f"{kernel_obj}['cpp_wrapper'] = r'''{self._artifacts.cpp_wrapper}'''")
+
+            benchmark_code.writelines(["\n"] * 2)
+            benchmark_code.writeline("if __name__ == '__main__':")
+            with benchmark_code.indent():
+                benchmark_code.writeline(
+                    f"assert len(sys.argv) == 1 or sys.argv[-1] == 'e2e', 'Usage: python {file_path} [e2e]'")
+                benchmark_code.writeline(f"if sys.argv[-1] == 'e2e':")
+                with benchmark_code.indent():
+                    with open(os.path.join(os.path.dirname(file_path), "asc_graph.py"), "r") as asc_graph:
+                        benchmark_code.splice(asc_graph.read())
+                    benchmark_code.splice(f"{kernel_obj}['tiling_def'] = tiling_def")
+                    benchmark_code.splice(f"{kernel_obj}['host_impl'] = host_impl")
+                    benchmark_code.splice(f"{kernel_obj}['device_impl'] = device_impl")
+                benchmark_code.writeline(f"else:")
+                with benchmark_code.indent():
+                    benchmark_code.splice(f"{kernel_obj}['tiling_def'] = r'''{self._artifacts.tiling_def}'''")
+                    benchmark_code.splice(f"{kernel_obj}['host_impl'] = r'''{self._artifacts.host_impl}'''")
+                    benchmark_code.splice(f"{kernel_obj}['device_impl'] = r'''{self._artifacts.device_impl}'''")
+
+                benchmark_code.writeline(f"{self.kernel_name} = async_compile_ascendc(None, {kernel_obj})")
+                benchmark_code.writeline(f"from torch._dynamo.testing import rand_strided")
                 for s, ks in self.args.sizevars.items():
-                    becnhmark_code.writeline(f"{ks} = {s} = {self.size_hint(s)}")
+                    benchmark_code.writeline(f"{ks} = {s} = {self.size_hint(s)}")
                 for k in seen_symbols:
                     if k not in self.args.sizevars.keys():
-                        becnhmark_code.writeline(f"{k} = {self.size_hint(k)} # buffer size hint")
+                        benchmark_code.writeline(f"{k} = {self.size_hint(k)} # buffer size hint")
                 for buffer in used_buffers:
                     layout = V.graph.get_buffer(buffer).layout
-                    becnhmark_code.writeline(
+                    benchmark_code.writeline(
                         f"{buffer} = rand_strided({tuple(layout.size)}, {tuple(layout.stride)}, "
-                        f"device='{layout.device}', dtype={layout.dtype})")
-                becnhmark_code.writeline(f"torch.npu.synchronize()")
-                becnhmark_code.writeline(f"{self.kernel_name}({', '.join([str(v) for v in call_args])})")
-                becnhmark_code.writeline(f"torch.npu.synchronize()")
-            f.write(becnhmark_code.getvalue())
+                        f"device='{layout.device if layout.device.type != 'npu' else 'npu'}', dtype={layout.dtype})")
+
+                benchmark_code.splice("""
+                    experimental_config = torch_npu.profiler._ExperimentalConfig(
+                        export_type=[
+                            torch_npu.profiler.ExportType.Text,
+                            torch_npu.profiler.ExportType.Db
+                            ],
+                        profiler_level=torch_npu.profiler.ProfilerLevel.Level2,
+                        msprof_tx=False,
+                        aic_metrics=torch_npu.profiler.AiCMetrics.AiCoreNone,
+                        l2_cache=False,
+                        op_attr=False,
+                        data_simplification=False,
+                        record_op_args=False,
+                        gc_detect_threshold=None
+                    )
+
+                    with torch_npu.profiler.profile(
+                        activities=[
+                            torch_npu.profiler.ProfilerActivity.CPU,
+                            torch_npu.profiler.ProfilerActivity.NPU
+                            ],
+                        schedule=torch_npu.profiler.schedule(wait=0, warmup=0, active=10, repeat=1, skip_first=1),
+                        on_trace_ready=torch_npu.profiler.tensorboard_trace_handler("./profiling"),
+                        record_shapes=False,
+                        profile_memory=False,
+                        with_stack=False,
+                        with_modules=False,
+                        with_flops=False,
+                        experimental_config=experimental_config) as prof:
+                """)
+                with benchmark_code.indent():
+                    benchmark_code.splice("for _ in range(11):")
+                    with benchmark_code.indent():
+                        benchmark_code.writeline(f"{self.kernel_name}({', '.join([str(v) for v in call_args])})")
+                        benchmark_code.writeline(f"prof.step()")
+            f.write(benchmark_code.getvalue())
 
     def load(self, name: str, index: sympy.Expr):
         index = self.rename_indexing(index)
