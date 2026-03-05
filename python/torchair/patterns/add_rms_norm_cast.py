@@ -50,25 +50,36 @@ def _pattern_extra_check(match: Match) -> bool:
     return view_arg_val and str(view_arg_val) == str(x1_last_dim)
 
 
-def _build_search_pattern(is_use_aten_copy: bool) -> MultiOutputPattern:
+def _build_search_pattern(is_use_aten_copy: bool, is_use_view: bool, with_epsilon=False) -> MultiOutputPattern:
     """
     Multi-output matching pattern equivalent to the operator combination in search_fn:
     
-    def search_fn(x1, x2, gamma):
+    def search_fn(x1, x2, gamma, epsilon(optional)):
         y, _, xOut = torch.ops.npu.npu_add_rms_norm.default(x1, x2, gamma)
         h = y.size(-1)
         y_cast = y.view(-1, h).to(torch.float32)
+        return y, xOut, y_cast
+    
+    def search_fn(x1, x2, gamma, epsilon(optional)):
+        y, _, xOut = torch.ops.npu.npu_add_rms_norm.default(x1, x2, gamma)
+        y_cast = y.to(torch.float32)
         return y, xOut, y_cast
     
     - add_rms_norm_output0: 1st output of npu_add_rms_norm.default (corresponds to y in search_fn)
     - add_rms_norm_output2: 3rd output of npu_add_rms_norm.default (corresponds to xOut in search_fn)
     - cast_output: Output of y.view(-1, h).to(torch.float32) (h = y.size(-1), corresponds to y_cast in search_fn)
     """
+    norm_args = [
+        torch.ops.npu.npu_add_rms_norm.default,
+        KeywordArg('x1'),
+        KeywordArg('x2'),
+        KeywordArg('gamma'),
+    ]
+    if with_epsilon:
+        norm_args.append(KeywordArg('epsilon'))
+
     npu_add_rms_norm_func = CallFunction(
-        torch.ops.npu.npu_add_rms_norm.default, 
-        KeywordArg('x1'), 
-        KeywordArg('x2'), 
-        KeywordArg('gamma'), 
+        *norm_args,
         _users=2
     )
 
@@ -85,26 +96,40 @@ def _build_search_pattern(is_use_aten_copy: bool) -> MultiOutputPattern:
         2
     )
 
-    cast_output = CallFunction(
-        torch.ops.npu._npu_dtype_cast.default,
-        CallFunction(
-            torch.ops.aten.view.default,
-            add_rms_norm_output0,
-            [-1, Ignored()]
-        ),
-        torch.float32
-    )
-
-    if is_use_aten_copy:
+    if is_use_view:
         cast_output = CallFunction(
-            torch.ops.aten._to_copy.default,
+            torch.ops.npu._npu_dtype_cast.default,
             CallFunction(
                 torch.ops.aten.view.default,
                 add_rms_norm_output0,
                 [-1, Ignored()]
             ),
-            dtype=torch.float32
+            torch.float32
         )
+    else:
+        cast_output = CallFunction(
+            torch.ops.npu._npu_dtype_cast.default,
+            add_rms_norm_output0,
+            torch.float32
+        )
+
+    if is_use_aten_copy:
+        if is_use_view:
+            cast_output = CallFunction(
+                torch.ops.aten._to_copy.default,
+                CallFunction(
+                    torch.ops.aten.view.default,
+                    add_rms_norm_output0,
+                    [-1, Ignored()]
+                ),
+                dtype=torch.float32
+            )
+        else:
+            cast_output = CallFunction(
+                torch.ops.aten._to_copy.default,
+                add_rms_norm_output0,
+                dtype=torch.float32
+            )
 
     return MultiOutputPattern(
         [
@@ -122,10 +147,10 @@ def _register_addrmsnormcast_pattern(pattern_pass_manager: _PatternPassManager):
                         'When there is no torch_npu in the env, skip fusion.')
         return
 
-    def search_fn(x1, x2, gamma):
+    def search_fn_with_view(x1, x2, gamma):
         pass
-    
-    def replace_fn(x1, x2, gamma):
+
+    def replace_fn_with_view(x1, x2, gamma):
         y_cast, y, _, xOut = torch.ops.npu.npu_add_rms_norm_cast.default(
             x1, x2, gamma
         )
@@ -133,23 +158,68 @@ def _register_addrmsnormcast_pattern(pattern_pass_manager: _PatternPassManager):
         y_cast1 = y_cast.view(-1, h)
         return y, xOut, y_cast1
 
+    def search_fn_with_epsilon_and_view(x1, x2, gamma, epsilon):
+        pass
+
+    def replace_fn_with_epsilon_and_view(x1, x2, gamma, epsilon):
+        y_cast, y, _, xOut = torch.ops.npu.npu_add_rms_norm_cast.default(
+            x1, x2, gamma, epsilon
+        )
+        h = y.size(-1)
+        y_cast1 = y_cast.view(-1, h)
+        return y, xOut, y_cast1
+
+    def search_fn(x1, x2, gamma):
+        pass
+
+    def replace_fn(x1, x2, gamma):
+        y_cast, y, _, xOut = torch.ops.npu.npu_add_rms_norm_cast.default(
+            x1, x2, gamma
+        )
+        return y, xOut, y_cast
+
+    def search_fn_with_epsilon(x1, x2, gamma, epsilon):
+        pass
+
+    def replace_fn_with_epsilon(x1, x2, gamma, epsilon):
+        y_cast, y, _, xOut = torch.ops.npu.npu_add_rms_norm_cast.default(
+            x1, x2, gamma, epsilon
+        )
+        return y, xOut, y_cast
+
     fake_mode = FakeTensorMode()
     with fake_mode:
         # sizes/values don't actually matter for initial trace
         # once we get a possible match we re-trace with the actual values and verify the match still holds
         input_tensor = functools.partial(torch.empty, (1, 1, 2), dtype=torch.float16)
         kwargs_tensor = functools.partial(torch.empty, 2, dtype=torch.float16)
-        pattern_pass_manager.register_pattern(
-            search_fn=search_fn,
-            replace_fn=replace_fn,
-            example_inputs=(input_tensor(), input_tensor(), kwargs_tensor()),
-            extra_check=_pattern_extra_check,
-            search_fn_pattern=_build_search_pattern(True)
-        )
-        pattern_pass_manager.register_pattern(
-            search_fn=search_fn,
-            replace_fn=replace_fn,
-            example_inputs=(input_tensor(), input_tensor(), kwargs_tensor()),
-            extra_check=_pattern_extra_check,
-            search_fn_pattern=_build_search_pattern(False)
-        )
+        example_inputs = (input_tensor(), input_tensor(), kwargs_tensor())
+        for is_use_aten_copy in [True, False]:
+            pattern_pass_manager.register_pattern(
+                search_fn=search_fn_with_view,
+                replace_fn=replace_fn_with_view,
+                example_inputs=example_inputs,
+                extra_check=_pattern_extra_check,
+                search_fn_pattern=_build_search_pattern(is_use_aten_copy, True)
+            )
+            pattern_pass_manager.register_pattern(
+                search_fn=search_fn_with_epsilon_and_view,
+                replace_fn=replace_fn_with_epsilon_and_view,
+                example_inputs=example_inputs,
+                extra_check=_pattern_extra_check,
+                search_fn_pattern=_build_search_pattern(is_use_aten_copy, True, with_epsilon=True),
+                scalar_workaround={"epsilon": 2e-6}
+            )
+            pattern_pass_manager.register_pattern(
+                search_fn=search_fn,
+                replace_fn=replace_fn,
+                example_inputs=example_inputs,
+                search_fn_pattern=_build_search_pattern(is_use_aten_copy, False),
+            )
+            pattern_pass_manager.register_pattern(
+                search_fn=search_fn_with_epsilon,
+                replace_fn=replace_fn_with_epsilon,
+                example_inputs=example_inputs,
+                search_fn_pattern=_build_search_pattern(is_use_aten_copy, False, with_epsilon=True),
+                scalar_workaround={"epsilon": 2e-6}
+            )

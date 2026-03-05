@@ -447,6 +447,46 @@ class AclgraphTest(unittest.TestCase):
             self.assertTrue(torch.allclose(comp, exp, atol=1e-5))
 
     @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
+    def test_pattern_pass_for_aclgraph_with_epsilon(self):
+        class DsModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x1, x2, weight, smooth_scales, epilson1, epilson2):
+                y, _, _ = torch_npu.npu_add_rms_norm(x1, x2, weight, epilson1)
+                yOut, scale1Out = torch_npu.npu_dynamic_quant(y, smooth_scales=smooth_scales)
+
+                y1, _, xOut1 = torch_npu.npu_add_rms_norm(x1, x2, weight, epilson2)
+                h1 = y1.size(-1)
+                y2 = y1.view(-1, h1)
+                yOut2, scale1Out2 = torch_npu.npu_dynamic_quant(y2, smooth_scales=smooth_scales)
+
+                y1 = y1.to(torch.float32)
+
+                y3, _, xOut3 = torch_npu.npu_add_rms_norm(x1, x2, weight, epilson1)
+                yOut3, scale1Out3 = torch_npu.npu_dynamic_quant(y3.flatten(0, 1))
+                scale1Out3_view = scale1Out3.view(-1, 1)
+                return yOut, scale1Out, y1, xOut1, yOut2, scale1Out2, xOut3, yOut3, scale1Out3_view
+
+        torchair.npu_fx_compiler._optimize_fx = create_optimize_wrapper(lambda gm: self.assert_pattern_pass(gm, True))
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "reduce-overhead"
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = DsModel()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x1 = torch.randn(1, 2, 3, dtype=torch.float16, device='npu')
+        x2 = torch.randn(1, 2, 3, dtype=torch.float16, device='npu')
+        gamma = torch.ones(3, dtype=torch.float16, device='npu')
+        smooth_scale1 = torch.ones(3, dtype=torch.float16, device='npu')
+
+        compile_res = model_compile(x1, x2, gamma, smooth_scale1, 1e-05, 1e-06)
+        expected = model(x1, x2, gamma, smooth_scale1, 1e-05, 1e-06)
+        self.assertEqual(len(compile_res), len(expected))
+        for comp, exp in zip(compile_res, expected):
+            self.assertTrue(torch.allclose(comp, exp, atol=1e-5))
+
+    @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
     def test_pattern_pass_for_ge(self):
         class DsModel(torch.nn.Module):
             def __init__(self):

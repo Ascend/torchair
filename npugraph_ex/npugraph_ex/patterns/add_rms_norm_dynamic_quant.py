@@ -77,7 +77,7 @@ def _register_addrmsnormdynamicquant_pattern(pattern_pass_manager: _PatternPassM
         y, _, xOut = torch.ops.npu.npu_add_rms_norm.default(x1, x2, gamma)
         yOut, scale1Out = torch.ops.npu.npu_dynamic_quant.default(y, smooth_scales=smooth_scales)
         return yOut, xOut, scale1Out
-    
+
     # For scenarios in DS networks, replace the operator combination of npu_add_rms_norm and npu_dynamic_quant 
     # with the npu_add_rms_norm_dynamic_quant operator. 
     # Since only the first path is quantized, pass [True, False] to the fusion operator's input parameter output_mask, 
@@ -89,21 +89,80 @@ def _register_addrmsnormdynamicquant_pattern(pattern_pass_manager: _PatternPassM
             output_mask=[True, False],
         )
         return yOut, xOut, scale1Out
-    
+
+    def search_fn_with_epsilon(x1, x2, gamma, smooth_scales, epsilon):
+        y, _, xOut = torch.ops.npu.npu_add_rms_norm.default(x1, x2, gamma, epsilon)
+        yOut, scale1Out = torch.ops.npu.npu_dynamic_quant.default(y, smooth_scales=smooth_scales)
+        return yOut, xOut, scale1Out
+
+    def replace_fn_with_epsilon(x1, x2, gamma, smooth_scales, epsilon):
+        yOut, _, xOut, scale1Out, _ = torch.ops.npu.npu_add_rms_norm_dynamic_quant.default(
+            x1, x2, gamma,
+            smooth_scale1=smooth_scales,
+            epsilon=epsilon,
+            output_mask=[True, False],
+        )
+        return yOut, xOut, scale1Out
+
+    def search_fn_no_xout(x1, x2, gamma, smooth_scales):
+        y, _, _ = torch.ops.npu.npu_add_rms_norm.default(x1, x2, gamma)
+        yOut, scale1Out = torch.ops.npu.npu_dynamic_quant.default(y, smooth_scales=smooth_scales)
+        return yOut, scale1Out
+
+    def replace_fn_no_xout(x1, x2, gamma, smooth_scales):
+        yOut, _, _, scale1Out, _ = torch.ops.npu.npu_add_rms_norm_dynamic_quant.default(
+            x1, x2, gamma,
+            smooth_scale1=smooth_scales,
+            output_mask=[True, False],
+        )
+        return yOut, scale1Out
+
+    def search_fn_no_xout_with_epsilon(x1, x2, gamma, smooth_scales, epsilon):
+        y, _, _ = torch.ops.npu.npu_add_rms_norm.default(x1, x2, gamma, epsilon)
+        yOut, scale1Out = torch.ops.npu.npu_dynamic_quant.default(y, smooth_scales=smooth_scales)
+        return yOut, scale1Out
+
+    def replace_fn_no_xout_with_epsilon(x1, x2, gamma, smooth_scales, epsilon):
+        yOut, _, _, scale1Out, _ = torch.ops.npu.npu_add_rms_norm_dynamic_quant.default(
+            x1, x2, gamma,
+            smooth_scale1=smooth_scales,
+            epsilon=epsilon,
+            output_mask=[True, False],
+        )
+        return yOut, scale1Out
+
     fake_mode = FakeTensorMode()
     with fake_mode:
         # sizes/values don't actually matter for initial trace
         # once we get a possible match we re-trace with the actual values and verify the match still holds
         input_tensor = functools.partial(torch.empty, (1, 1, 2), dtype=torch.float16)
         kwargs_tensor = functools.partial(torch.empty, 2, dtype=torch.float16)
+        example_inputs = (input_tensor(), input_tensor(), kwargs_tensor(), kwargs_tensor())
         pattern_pass_manager.register_pattern(
             search_fn=search_fn,
             replace_fn=replace_fn,
-            example_inputs=(input_tensor(), input_tensor(), kwargs_tensor(), kwargs_tensor())
+            example_inputs=example_inputs
+        )
+        pattern_pass_manager.register_pattern(
+            search_fn=search_fn_with_epsilon,
+            replace_fn=replace_fn_with_epsilon,
+            example_inputs=example_inputs,
+            scalar_workaround={"epsilon": 2e-6}
+        )
+        pattern_pass_manager.register_pattern(
+            search_fn=search_fn_no_xout,
+            replace_fn=replace_fn_no_xout,
+            example_inputs=example_inputs
+        )
+        pattern_pass_manager.register_pattern(
+            search_fn=search_fn_no_xout_with_epsilon,
+            replace_fn=replace_fn_no_xout_with_epsilon,
+            example_inputs=example_inputs,
+            scalar_workaround={"epsilon": 2e-6}
         )
 
 
-def _build_search_pattern() -> MultiOutputPattern:
+def _build_search_pattern(with_epsilon=False) -> MultiOutputPattern:
     """
     Multi-output matching pattern equivalent to the operator combination in search_fn:
     
@@ -118,11 +177,17 @@ def _build_search_pattern() -> MultiOutputPattern:
       (corresponds to scale1Out_view in search_fn)
     - add_rms_norm_output2: 3rd output of npu_add_rms_norm.default (corresponds to xOut in search_fn)
     """
+    norm_args = [
+        torch.ops.npu.npu_add_rms_norm.default,
+        KeywordArg('x1'),
+        KeywordArg('x2'),
+        KeywordArg('gamma'),
+    ]
+    if with_epsilon:
+        norm_args.append(KeywordArg('epsilon'))
+
     npu_add_rms_norm_func = CallFunction(
-        torch.ops.npu.npu_add_rms_norm.default, 
-        KeywordArg('x1'), 
-        KeywordArg('x2'), 
-        KeywordArg('gamma'), 
+        *norm_args,
         _users=2
     )
 
@@ -180,10 +245,23 @@ def _register_addrmsnormdynamicquant_pattern2(pattern_pass_manager: _PatternPass
 
     def search_fn(x1, x2, gamma):
         pass
-    
+
     def replace_fn(x1, x2, gamma):
         yOut, _, xOut, scale1Out, _ = torch.ops.npu.npu_add_rms_norm_dynamic_quant.default(
             x1, x2, gamma,
+            output_mask=[True, False],
+        )
+        yOut_flatten = yOut.flatten(0, 1)
+        scale1Out_view = scale1Out.view(-1, 1)
+        return yOut_flatten, scale1Out_view, xOut
+
+    def search_fn_with_epsilon(x1, x2, gamma, epsilon):
+        pass
+
+    def replace_fn_with_epsilon(x1, x2, gamma, epsilon):
+        yOut, _, xOut, scale1Out, _ = torch.ops.npu.npu_add_rms_norm_dynamic_quant.default(
+            x1, x2, gamma,
+            epsilon=epsilon,
             output_mask=[True, False],
         )
         yOut_flatten = yOut.flatten(0, 1)
@@ -196,10 +274,19 @@ def _register_addrmsnormdynamicquant_pattern2(pattern_pass_manager: _PatternPass
         # once we get a possible match we re-trace with the actual values and verify the match still holds
         input_tensor = functools.partial(torch.empty, (1, 1, 2), dtype=torch.float16)
         kwargs_tensor = functools.partial(torch.empty, 2, dtype=torch.float16)
+        example_inputs = (input_tensor(), input_tensor(), kwargs_tensor())
         pattern_pass_manager.register_pattern(
             search_fn=search_fn,
             replace_fn=replace_fn,
-            example_inputs=(input_tensor(), input_tensor(), kwargs_tensor()),
+            example_inputs=example_inputs,
             extra_check=_check_view_shape,
             search_fn_pattern=_build_search_pattern()
+        )
+        pattern_pass_manager.register_pattern(
+            search_fn=search_fn_with_epsilon,
+            replace_fn=replace_fn_with_epsilon,
+            example_inputs=example_inputs,
+            extra_check=_check_view_shape,
+            search_fn_pattern=_build_search_pattern(with_epsilon=True),
+            scalar_workaround={"epsilon": 2e-6}
         )
