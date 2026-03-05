@@ -10,6 +10,52 @@ if not hasattr(getattr(torch.ops, "npu_define"), "all_to_all_single_npu"):
         "all_to_all_single_npu(Tensor input, SymInt[] send_counts, SymInt[] send_displacements, \
          SymInt[] recv_counts, SymInt[] recv_displacements, str tag, int[] ranks, int group_size) -> Tensor")
 
+    def npu_all_to_all_single_npu(
+            input_tensor: torch.Tensor,
+            send_counts: List[int],
+            send_displacements: List[int],
+            recv_counts: List[int],
+            recv_displacements: List[int],
+            tag: str,
+            ranklist: List,
+            group_size: int,
+    ):
+        pg = c10d._find_or_create_pg_by_ranks_and_tag(tag, ranklist, group_size)
+
+        if recv_counts is not None:
+            if input_tensor.dim() == 0:
+                raise AssertionError(input_tensor.dim())
+            out_size = list(input_tensor.size())
+            out_size[0] = sum(recv_counts)
+            out_tensor = input_tensor.new_empty(out_size)
+        else:
+            out_tensor = input_tensor.new_empty(input_tensor.size())
+
+        work = c10d.all_to_all_single(out_tensor, input_tensor, output_split_sizes=recv_counts,
+                                      input_split_sizes=send_counts, group=pg, async_op=False)
+        return out_tensor
+
+    def npu_all_to_all_single_npu_meta(
+            input_tensor: torch.Tensor,
+            send_counts: List[int],
+            send_displacements: List[int],
+            recv_counts: List[int],
+            recv_displacements: List[int],
+            tag: str,
+            ranklist: List,
+            group_size: int,
+    ):
+        out_size = list(input_tensor.size())
+        input_non_0_dim_size = (input_tensor.numel() // out_size[0])
+        if len(recv_counts) == 0:
+            recv_counts = [out_size[0] * input_non_0_dim_size // group_size] * group_size
+
+        out_size[0] = sum(recv_counts) // input_non_0_dim_size
+        return input_tensor.new_empty(out_size)
+
+    npu_define_lib.impl(op_all_to_all_single_npu, npu_all_to_all_single_npu_meta, 'Meta')
+    npu_define_lib.impl(op_all_to_all_single_npu, npu_all_to_all_single_npu, 'PrivateUse1')
+
 
 def _all_to_all_single(
     input_tensor: torch.Tensor,
@@ -40,55 +86,6 @@ def _all_to_all_single(
     recv_displacements = [sum(recv_counts[:i]) for i in range(len(recv_counts))]
     return torch.ops.npu_define.all_to_all_single_npu(input_tensor,
         send_counts, send_displacements, recv_counts, recv_displacements, tag, ranks, group_size)
-
-
-def npu_all_to_all_single_npu(
-    input_tensor: torch.Tensor,
-    send_counts: List[int],
-    send_displacements: List[int],
-    recv_counts: List[int],
-    recv_displacements: List[int],
-    tag: str,
-    ranklist: List,
-    group_size: int,
-):
-    pg = c10d._find_or_create_pg_by_ranks_and_tag(tag, ranklist, group_size)
-
-    if recv_counts is not None:
-        if input_tensor.dim() == 0:
-            raise AssertionError(input_tensor.dim())
-        out_size = list(input_tensor.size())
-        out_size[0] = sum(recv_counts)
-        out_tensor = input_tensor.new_empty(out_size)
-    else:
-        out_tensor = input_tensor.new_empty(input_tensor.size())
-
-    work = c10d.all_to_all_single(out_tensor, input_tensor, output_split_sizes=recv_counts,
-                                  input_split_sizes=send_counts, group=pg, async_op=False)
-    return out_tensor
-
-
-def npu_all_to_all_single_npu_meta(
-    input_tensor: torch.Tensor,
-    send_counts: List[int],
-    send_displacements: List[int],
-    recv_counts: List[int],
-    recv_displacements: List[int],
-    tag: str,
-    ranklist: List,
-    group_size: int,
-):
-    out_size = list(input_tensor.size())
-    input_non_0_dim_size = (input_tensor.numel() // out_size[0])
-    if len(recv_counts) == 0:
-        recv_counts = [out_size[0] * input_non_0_dim_size // group_size] * group_size
-
-    out_size[0] = sum(recv_counts) // input_non_0_dim_size
-    return input_tensor.new_empty(out_size)
-
-if not hasattr(getattr(torch.ops, "npu_define"), "all_to_all_single_npu"):
-    npu_define_lib.impl(op_all_to_all_single_npu, npu_all_to_all_single_npu_meta, 'Meta')
-    npu_define_lib.impl(op_all_to_all_single_npu, npu_all_to_all_single_npu, 'PrivateUse1')
 
 
 def npu_all_to_all_single_patch_dist(

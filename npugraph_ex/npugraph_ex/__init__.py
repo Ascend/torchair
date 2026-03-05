@@ -1,8 +1,8 @@
-__all__ = ['compile_fx', 'get_npu_backend', 'CompilerConfig', 'logger', 'register_replacement']
+__all__ = ['get_npu_backend', 'get_compiler', 'compile_fx', 'CompilerConfig', 'logger', 'register_replacement']
 
 import atexit
 
-from .npu_fx_compiler import compile_fx, get_npu_backend
+from .npu_fx_compiler import compile_fx, get_npu_backend, get_compiler
 from .configs.compiler_config import CompilerConfig
 from .core.utils import logger
 from .patterns.pattern_pass_manager import register_replacement
@@ -23,12 +23,12 @@ except (ImportError, AttributeError) as e:
 adjust_traceable_collective_remaps()
 
 
-def finalize_graph_engine():
+def _finalize_graph_engine():
     import torch
-    import npugraph_ex
+    from npugraph_ex._acl_concrete_graph import static_kernel
 
     torch._dynamo.reset()
-    npugraph_ex._acl_concrete_graph.static_kernel.uninstall_static_kernel()
+    static_kernel.uninstall_static_kernel()
 
 
-atexit.register(finalize_graph_engine)
+atexit.register(_finalize_graph_engine)

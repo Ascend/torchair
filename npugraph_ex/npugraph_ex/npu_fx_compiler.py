@@ -1,4 +1,4 @@
-__all__ = ["get_npu_backend", "compile_fx"]
+__all__ = ["get_npu_backend", "get_compiler", "compile_fx"]
 
 import functools
 import operator

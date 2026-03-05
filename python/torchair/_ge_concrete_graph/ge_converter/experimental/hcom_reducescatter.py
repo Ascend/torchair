@@ -11,12 +11,6 @@ from torchair.ge._ge_graph import Tensor, DataType, dont_prune_me
 from .hcom_allreduce import npu_define_lib, convert_reduce_op
 
 
-if not hasattr(getattr(torch.ops, "npu_define"), "reduce_scatter_tensor_uneven"):
-    op_reduce_scatter_tensor_uneven = npu_define_lib.define(
-        "reduce_scatter_tensor_uneven(Tensor input_tensor, SymInt[] send_counts, SymInt recv_count, \
-        str reduce_type, str tag, int[] rank_list, int group_size, SymInt[] send_displacements) -> Tensor")
-
-
 def convert_reduce_type(op):
     if isinstance(op, torch.distributed.ReduceOp):
         return op
@@ -41,43 +35,45 @@ def convert_reduce_type(op):
         raise ValueError(f"Unsupported reduce op: {op}")
 
 
-def reduce_scatter_tensor_uneven_npu(
-        input_tensor: torch.Tensor,
-        send_counts: List[int],
-        recv_count: int,
-        reduce_type: str,
-        tag: str,
-        rank_list: List,
-        group_size: int,
-        send_displacements: List[int]
-):
-    from torchair import REDUCE_SCATTER_TENSOR_UNEVEN
-    pg = c10d._find_or_create_pg_by_ranks_and_tag(tag, rank_list, group_size)
-    out_size = list(input_tensor.size())
-    out_size[0] = recv_count
-    out_tensor = input_tensor.new_empty(out_size)
-    if REDUCE_SCATTER_TENSOR_UNEVEN is None:
-        raise AttributeError(f'torch_npu.distributed has no attribute: reduce_scatter_tensor_uneven')
-    REDUCE_SCATTER_TENSOR_UNEVEN(out_tensor, input_tensor, send_counts, convert_reduce_type(reduce_type), pg, False)
-    return out_tensor
-
-
-def reduce_scatter_tensor_uneven_meta(
-        input_tensor: torch.Tensor,
-        send_counts: List[int],
-        recv_count: int,
-        reduce_type: str,
-        tag: str,
-        rank_list: List,
-        group_size: int,
-        send_displacements: List[int]
-):
-    out_size = list(input_tensor.size())
-    out_size[0] = recv_count
-    return input_tensor.new_empty(out_size)
-
-
 if not hasattr(getattr(torch.ops, "npu_define"), "reduce_scatter_tensor_uneven"):
+    op_reduce_scatter_tensor_uneven = npu_define_lib.define(
+        "reduce_scatter_tensor_uneven(Tensor input_tensor, SymInt[] send_counts, SymInt recv_count, \
+        str reduce_type, str tag, int[] rank_list, int group_size, SymInt[] send_displacements) -> Tensor")
+
+    def reduce_scatter_tensor_uneven_npu(
+            input_tensor: torch.Tensor,
+            send_counts: List[int],
+            recv_count: int,
+            reduce_type: str,
+            tag: str,
+            rank_list: List,
+            group_size: int,
+            send_displacements: List[int]
+    ):
+        from torchair import REDUCE_SCATTER_TENSOR_UNEVEN
+        pg = c10d._find_or_create_pg_by_ranks_and_tag(tag, rank_list, group_size)
+        out_size = list(input_tensor.size())
+        out_size[0] = recv_count
+        out_tensor = input_tensor.new_empty(out_size)
+        if REDUCE_SCATTER_TENSOR_UNEVEN is None:
+            raise AttributeError(f'torch_npu.distributed has no attribute: reduce_scatter_tensor_uneven')
+        REDUCE_SCATTER_TENSOR_UNEVEN(out_tensor, input_tensor, send_counts, convert_reduce_type(reduce_type), pg, False)
+        return out_tensor
+
+    def reduce_scatter_tensor_uneven_meta(
+            input_tensor: torch.Tensor,
+            send_counts: List[int],
+            recv_count: int,
+            reduce_type: str,
+            tag: str,
+            rank_list: List,
+            group_size: int,
+            send_displacements: List[int]
+    ):
+        out_size = list(input_tensor.size())
+        out_size[0] = recv_count
+        return input_tensor.new_empty(out_size)
+
     npu_define_lib.impl(op_reduce_scatter_tensor_uneven, reduce_scatter_tensor_uneven_meta, 'Meta')
     npu_define_lib.impl(op_reduce_scatter_tensor_uneven, reduce_scatter_tensor_uneven_npu, 'PrivateUse1')
 

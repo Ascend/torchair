@@ -11,25 +11,27 @@ if not hasattr(getattr(torch.ops, "npu_define"), "broadcast"):
     op_broadcast = npu_define_lib.define(
         "broadcast(Tensor self, int src, str tag, int[] ranks, int group_size) -> Tensor")
 
+    def broadcast_npu(
+            input_tensor: torch.Tensor,
+            src: int,
+            tag: str,
+            ranks: List[int],
+            group_size: int, ):
+        pg = c10d._find_or_create_pg_by_ranks_and_tag(tag, ranks, group_size)
+        c10d.broadcast(input_tensor, src, group=pg, async_op=False)
+        return input_tensor
 
-def broadcast_npu(
-        input_tensor: torch.Tensor,
-        src: int,
-        tag: str,
-        ranks: List[int],
-        group_size: int, ):
-    pg = c10d._find_or_create_pg_by_ranks_and_tag(tag, ranks, group_size)
-    c10d.broadcast(input_tensor, src, group=pg, async_op=False)
-    return input_tensor
 
+    def broadcast_meta(
+            input_tensor: torch.Tensor,
+            src: int,
+            tag: str,
+            ranks: List[int],
+            group_size: int, ):
+        return torch.empty_like(input_tensor)
 
-def broadcast_meta(
-        input_tensor: torch.Tensor,
-        src: int,
-        tag: str,
-        ranks: List[int],
-        group_size: int, ):
-    return torch.empty_like(input_tensor)
+    npu_define_lib.impl(op_broadcast, broadcast_meta, 'Meta')
+    npu_define_lib.impl(op_broadcast, broadcast_npu, 'PrivateUse1')
 
 
 @register_fx_node_ge_converter(torch.ops.npu_define.broadcast.default)
@@ -65,8 +67,3 @@ def npu_broadcast_patch_dist(tensor, src, group=None, async_op=False):
     out = torch.ops.npu_define.broadcast(tensor, src, tag, ranks, len(ranks))
     tensor.copy_(out)
     return
-
-
-if not hasattr(getattr(torch.ops, "npu_define"), "broadcast"):
-    npu_define_lib.impl(op_broadcast, broadcast_meta, 'Meta')
-    npu_define_lib.impl(op_broadcast, broadcast_npu, 'PrivateUse1')

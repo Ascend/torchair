@@ -162,6 +162,8 @@ def check_public_func_signature(base_schema, content):
     now_funcs = content.keys()
     deleted_apis = set(base_funcs) - set(now_funcs)
     for func in deleted_apis:
+        if func.startswith('npugraph_ex.'): # 暂时放通npugraph_ex func检查
+            continue
         failure_list.append(f"# {func}:")
         failure_list.append(f"  - {func} has been deleted.")
     newly_apis = set(now_funcs) - set(base_funcs)

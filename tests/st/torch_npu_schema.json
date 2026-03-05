@@ -148,5 +148,47 @@
     },
     "torch_npu.dynamo.torchair.scope.data_dump": {
         "signature": "()"
+    },
+    "torch_npu.dynamo.npugraph_ex.get_npu_backend": {
+        "signature": "(*, compiler_config: torch_npu.dynamo.npugraph_ex.configs.compiler_config.CompilerConfig = None, custom_decompositions: Dict = {})"
+    },
+    "torch_npu.dynamo.npugraph_ex.npu_fx_compiler.get_npu_backend": {
+        "signature": "(*, compiler_config: torch_npu.dynamo.npugraph_ex.configs.compiler_config.CompilerConfig = None, custom_decompositions: Dict = {})"
+    },
+    "torch_npu.dynamo.npugraph_ex.get_compiler": {
+        "signature": "(compiler_config: torch_npu.dynamo.npugraph_ex.configs.compiler_config.CompilerConfig = None)"
+    },
+    "torch_npu.dynamo.npugraph_ex.npu_fx_compiler.get_compiler": {
+        "signature": "(compiler_config: torch_npu.dynamo.npugraph_ex.configs.compiler_config.CompilerConfig = None)"
+    },
+    "torch_npu.dynamo.npugraph_ex.compile_fx": {
+        "signature": "(options: dict = None)"
+    },
+    "torch_npu.dynamo.npugraph_ex.npu_fx_compiler.compile_fx": {
+        "signature": "(options: dict = None)"
+    },
+    "torch_npu.dynamo.npugraph_ex.CompilerConfig": {
+        "signature": "()"
+    },
+    "torch_npu.dynamo.npugraph_ex.configs.compiler_config.CompilerConfig": {
+        "signature": "()"
+    },
+    "torch_npu.dynamo.npugraph_ex.CompilerConfig.as_dict": {
+        "signature": "(self)"
+    },
+    "torch_npu.dynamo.npugraph_ex.configs.compiler_config.CompilerConfig.as_dict": {
+        "signature": "(self)"
+    },
+    "torch_npu.dynamo.npugraph_ex.inference.cache_compile": {
+        "signature": "(func, *, config: Optional[npugraph_ex.configs.compiler_config.CompilerConfig] = None, dynamic: bool = True, cache_dir: Optional[str] = None, global_rank: Optional[int] = None, tp_rank: Optional[int] = None, pp_rank: Optional[int] = None, **kwargs) -> Callable"
+    },
+    "torch_npu.dynamo.npugraph_ex.inference.readable_cache": {
+        "signature": "(cache_bin, print_output=True, file=None)"
+    },
+    "torch_npu.dynamo.npugraph_ex.register_replacement": {
+        "signature": "(search_fn, replace_fn, example_inputs, trace_fn=<function fwd_only>, extra_check=<function _return_true>, search_fn_pattern=None, scalar_workaround=None, skip_duplicates=False)"
+    },
+    "torch_npu.dynamo.npugraph_ex.patterns.pattern_pass_manager.register_replacement": {
+        "signature": "(search_fn, replace_fn, example_inputs, trace_fn=<function fwd_only>, extra_check=<function _return_true>, search_fn_pattern=None, scalar_workaround=None, skip_duplicates=False)"
     }
 }

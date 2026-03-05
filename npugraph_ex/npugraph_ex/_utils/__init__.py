@@ -461,7 +461,7 @@ def get_npu_default_decompositions():
         register_decomposition(torch.ops.npu_define.allgather)
         default_decompositions.update({torch.ops.npu_define.allgather.default: allgather_decomposition})
     if torch.__version__ >= "2.3.1":
-        from npugraph_ex.ops.c10d_functional import decomp_c10d_functional_all_to_all_single
+        from npugraph_ex._acl_concrete_graph.c10d_functional import decomp_c10d_functional_all_to_all_single
         default_decompositions.update(
             {torch.ops._c10d_functional.all_to_all_single.default: decomp_c10d_functional_all_to_all_single})
     return default_decompositions
