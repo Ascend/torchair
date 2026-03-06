@@ -1329,6 +1329,193 @@ class AclgraphTest(unittest.TestCase):
                         "as the begin of your code", str(context.exception))                           
 
 
+    def create_cat_optimization_pass_wrapper(self, assert_func):
+        """
+        Create a wrapper for optimize_cat_with_out_tensor to capture FX graphs before and after.
+
+        Args:
+            assert_func: Function that takes (graph_before, graph_after) and performs assertions.
+                        graph_before and graph_after are torch.fx.GraphModule instances.
+
+        Returns:
+            A wrapper function that can be used to replace optimize_cat_with_out_tensor.
+        """
+        # Import and save reference to original function at wrapper creation time
+        from npugraph_ex._acl_concrete_graph.cat_optimization import optimize_cat_with_out_tensor
+        original_func = optimize_cat_with_out_tensor
+
+        def wrapper(gm, config=None):
+            # Save graph before optimization
+            graph_before = copy.deepcopy(gm)
+
+            # Call original function
+            ret = original_func(gm, config)
+
+            # Save graph after optimization
+            graph_after = copy.deepcopy(gm)
+
+            # Call assertion function
+            assert_func(graph_before, graph_after)
+
+            return ret
+
+        return wrapper
+
+    def assert_cat_optimization_success(self, graph_before, graph_after):
+        """Verify that cat was replaced with empty + slice + out operations."""
+        cat_found_after = False
+        empty_found_after = False
+        slice_found_after = False
+        out_ops_found_after = False
+
+        # Check graph after optimization
+        for node in graph_after.graph.nodes:
+            if node.op == "call_function":
+                if node.target == torch.ops.aten.cat.default:
+                    cat_found_after = True
+                if node.target == torch.ops.aten.empty.memory_format:
+                    empty_found_after = True
+                if node.target == torch.ops.aten.slice.Tensor:
+                    slice_found_after = True
+                # Check for operations with 'out' in kwargs
+                if node.kwargs and 'out' in node.kwargs:
+                    out_ops_found_after = True
+
+        # Cat optimization should succeed: cat removed, empty+slice+out ops added
+        self.assertFalse(
+            cat_found_after,
+            "cat node should be removed after optimization"
+        )
+        self.assertTrue(
+            empty_found_after,
+            "empty.memory_format node should be created after optimization"
+        )
+        self.assertTrue(
+            slice_found_after,
+            "slice.Tensor node should be created after optimization"
+        )
+        self.assertTrue(
+            out_ops_found_after,
+            "operations with .out parameter should be created after optimization"
+        )
+
+    def assert_cat_stream_consistency(self, graph_before, graph_after):
+        """
+        Verify stream label consistency after cat optimization:
+        1. Pre-allocated empty tensor is on the same stream as original cat
+        2. Each slice is on the same stream as its corresponding original input op
+        3. Each .out op is on the same stream as its corresponding original input op
+        """
+        from npugraph_ex._utils.graph_utils import add_stream_label_to_node_meta
+
+        # --- Derive original stream labels from graph_before ---
+        add_stream_label_to_node_meta(graph_before)
+
+        cat_node_before = None
+        for node in graph_before.graph.nodes:
+            if node.op == 'call_function' and node.target == torch.ops.aten.cat.default:
+                cat_node_before = node
+                break
+        self.assertIsNotNone(cat_node_before, "Cat node not found in graph_before")
+
+        cat_stream = cat_node_before.meta.get('stream_label')
+        original_input_streams = [
+            t.meta.get('stream_label') for t in cat_node_before.args[0]
+        ]
+
+        # --- Re-derive positional stream labels on graph_after ---
+        add_stream_label_to_node_meta(graph_after)
+
+        # 1) empty's stream should equal cat's stream
+        empty_nodes = []
+        for n in graph_after.graph.nodes:
+            if (n.op == 'call_function'
+                    and n.target == torch.ops.aten.empty.memory_format):
+                empty_nodes.append(n)
+        self.assertGreater(len(empty_nodes), 0, "empty node not found after optimization")
+        for empty_node in empty_nodes:
+            self.assertEqual(
+                empty_node.meta.get('stream_label'), cat_stream,
+                f"Pre-allocated empty should be on cat's stream ({cat_stream}), "
+                f"got {empty_node.meta.get('stream_label')}"
+            )
+
+        # Collect optimization-created slices (first arg is the empty tensor)
+        empty_set = set(empty_nodes)
+        opt_slices = []
+        for n in graph_after.graph.nodes:
+            if (n.op == 'call_function'
+                    and n.target == torch.ops.aten.slice.Tensor
+                    and isinstance(n.args[0], torch.fx.Node)
+                    and n.args[0] in empty_set):
+                opt_slices.append(n)
+
+        # Collect .out ops (in graph order, matching original input order)
+        out_ops = [n for n in graph_after.graph.nodes
+                   if n.op == 'call_function' and n.kwargs and 'out' in n.kwargs]
+
+        self.assertEqual(
+            len(out_ops), len(original_input_streams),
+            f"Expected {len(original_input_streams)} out ops, got {len(out_ops)}"
+        )
+        self.assertEqual(
+            len(opt_slices), len(original_input_streams),
+            f"Expected {len(original_input_streams)} slices, got {len(opt_slices)}"
+        )
+
+        # 2) Each slice's positional stream should match original input's stream
+        for i, (sl, expected) in enumerate(zip(opt_slices, original_input_streams)):
+            self.assertEqual(
+                sl.meta.get('stream_label'), expected,
+                f"slice[{i}] should be on stream {expected}, "
+                f"got {sl.meta.get('stream_label')}"
+            )
+
+        # 3) Each .out op's positional stream should match original input's stream
+        for i, (op, expected) in enumerate(zip(out_ops, original_input_streams)):
+            self.assertEqual(
+                op.meta.get('stream_label'), expected,
+                f"out_op[{i}] should be on stream {expected}, "
+                f"got {op.meta.get('stream_label')}"
+            )
+
+    def test_cat_optimization_cross_stream_multiple_streams_success(self):
+        """Test cat optimization with multiple streams and event synchronization.
+        Also verifies stream consistency:
+        - empty should be on stream2 (same as cat)
+        - out_op/slice for output1 should be on default stream
+        - out_op/slice for output2 should be on stream1
+        - out_op/slice for output3 should be on stream2
+        """
+        stream1 = torch.npu.Stream()
+        stream2 = torch.npu.Stream()
+
+        def f(x, stream1, stream2):
+            output1 = x.exp()
+            with torch.npu.stream(stream1):
+                output2 = x.exp()
+            with torch.npu.stream(stream2):
+                output3 = x.exp()
+                result = torch.cat([output1, output2, output3], dim=0)
+            return result
+
+        x = torch.randn(8, dtype=torch.float32)
+
+        def assert_success_and_stream(graph_before, graph_after):
+            self.assert_cat_optimization_success(graph_before, graph_after)
+            self.assert_cat_stream_consistency(graph_before, graph_after)
+
+        from npugraph_ex._acl_concrete_graph import cat_optimization
+        cat_optimization.optimize_cat_with_out_tensor = \
+            self.create_cat_optimization_pass_wrapper(assert_success_and_stream)
+
+        model = torch.compile(f, backend="npugraph_ex", dynamic=True)
+        result = model(x, stream1, stream2)
+
+        expected = torch.cat([x.exp(), x.exp(), x.exp()], dim=0)
+        self.assertTrue(torch.allclose(result, expected, atol=1e-5))
+
+
 def patch_dynamo():
     from torch._dynamo.variables.user_defined import UserDefinedClassVariable
 

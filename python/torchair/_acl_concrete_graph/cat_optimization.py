@@ -38,7 +38,8 @@ def _has_out_variant(op_target) -> bool:
     return _get_out_variant(op_target) is not None
 
 
-def _validate_cat_node(cat_node: torch.fx.Node) -> Tuple[bool, Optional[str]]:
+def _validate_cat_node(cat_node: torch.fx.Node,
+                       cat_node_set: set) -> Tuple[bool, Optional[str]]:
     if len(cat_node.args) < 1:
         return False, "Missing arguments"
 
@@ -47,7 +48,7 @@ def _validate_cat_node(cat_node: torch.fx.Node) -> Tuple[bool, Optional[str]]:
         return False, "Need at least 2 tensors"
 
     dim = cat_node.args[1] if len(cat_node.args) >= 2 else cat_node.kwargs.get('dim', 0)
-    if dim != 0:
+    if not isinstance(dim, int) or dim != 0:
         return False, f"Only supports dim=0, got dim={dim}"
 
     if 'val' not in cat_node.meta:
@@ -60,6 +61,9 @@ def _validate_cat_node(cat_node: torch.fx.Node) -> Tuple[bool, Optional[str]]:
             return False, f"Input {i} missing metadata"
         if not _has_out_variant(tensor.target):
             return False, f"Input {i} op {tensor.target} has no .out variant"
+        for user in tensor.users:
+            if user is not cat_node and user in cat_node_set:
+                return False, f"Input {i} is shared with another cat node"
         if i > 0:
             prev_shape = tensors[i - 1].meta['val'].shape
             curr_shape = tensor.meta['val'].shape
@@ -72,30 +76,15 @@ def _validate_cat_node(cat_node: torch.fx.Node) -> Tuple[bool, Optional[str]]:
 
 
 def _create_slice_node(gm: GraphModule, output_tensor: torch.fx.Node,
-                       offset: Union[int, torch.fx.Node], size: Union[int, torch.fx.Node],
-                       insert_after: Optional[torch.fx.Node] = None) -> torch.fx.Node:
-    """Create slice node at dim=0. offset and size can be int or fx.Node for symbolic."""
+                       offset: Union[int, torch.fx.Node],
+                       size: Union[int, torch.fx.Node]) -> torch.fx.Node:
+    """Create slice node at dim=0. Caller must set the insertion context."""
     if is_constant(offset) and is_constant(size):
         end = int(offset) + int(size)
-        if insert_after is not None:
-            with gm.graph.inserting_after(insert_after):
-                return gm.graph.call_function(
-                    torch.ops.aten.slice.Tensor,
-                    args=(output_tensor, 0, offset, end)
-                )
         return gm.graph.call_function(
             torch.ops.aten.slice.Tensor,
             args=(output_tensor, 0, offset, end)
         )
-    
-    if insert_after is not None:
-        with gm.graph.inserting_after(insert_after):
-            add_node = gm.graph.call_function(op_mod.add, args=(offset, size))
-        with gm.graph.inserting_after(add_node):
-            return gm.graph.call_function(
-                torch.ops.aten.slice.Tensor,
-                args=(output_tensor, 0, offset, add_node)
-            )
     add_node = gm.graph.call_function(op_mod.add, args=(offset, size))
     return gm.graph.call_function(
         torch.ops.aten.slice.Tensor,
@@ -105,12 +94,14 @@ def _create_slice_node(gm: GraphModule, output_tensor: torch.fx.Node,
 
 def _create_out_op_node(gm: GraphModule, input_node: torch.fx.Node,
                         slice_node: torch.fx.Node) -> torch.fx.Node:
-    """Create op node with .out parameter, preserving original kwargs."""
+    """Create op node with .out parameter, preserving original kwargs and meta."""
     out_op = _get_out_variant(input_node.target)
     kwargs = dict(input_node.kwargs) if input_node.kwargs else {}
     kwargs['out'] = slice_node
     target = out_op if out_op is not None else input_node.target
-    return gm.graph.call_function(target, args=input_node.args, kwargs=kwargs)
+    new_node = gm.graph.call_function(target, args=input_node.args, kwargs=kwargs)
+    new_node.meta.update(input_node.meta)
+    return new_node
 
 
 @debug_compare_fx_graphs(pass_name="remove_cat_ops")
@@ -126,10 +117,11 @@ def optimize_cat_with_out_tensor(gm: GraphModule, config=None) -> GraphModule:
 
     logger.debug(f"[remove_cat_ops] Found {len(cat_nodes)} cat node(s)")
 
+    cat_node_set = set(cat_nodes)
     optimized_count = 0
 
     for cat_node in cat_nodes:
-        can_opt, reason = _validate_cat_node(cat_node)
+        can_opt, reason = _validate_cat_node(cat_node, cat_node_set)
         if not can_opt:
             logger.debug(f"Skip {cat_node.name}: {reason}")
             continue
@@ -139,7 +131,8 @@ def optimize_cat_with_out_tensor(gm: GraphModule, config=None) -> GraphModule:
         logger.debug(f"Optimizing {cat_node.name} ({len(tensors)} inputs)")
 
         sym_inputs = _build_sym_inputs_from_placeholders(gm) if have_sym_in_meta(output_meta) else {}
-        first_input = tensors[0]
+        node_order = {n: idx for idx, n in enumerate(gm.graph.nodes)}
+        first_input = min(tensors, key=lambda t: node_order[t])
         if have_sym_in_meta(output_meta):
             with gm.graph.inserting_before(first_input):
                 output_shape = tuple(construct_fx_node_shape(
@@ -150,12 +143,7 @@ def optimize_cat_with_out_tensor(gm: GraphModule, config=None) -> GraphModule:
 
         sizes_resolved = []
         for input_node in tensors:
-            if len(input_node.args) == 0:
-                break
-            input_tensor = input_node.args[0]
-            if not isinstance(input_tensor, torch.fx.Node):
-                break
-            input_meta = input_tensor.meta.get('val')
+            input_meta = input_node.meta.get('val')
             if input_meta is None:
                 break
             size = input_meta.shape[0]
@@ -190,6 +178,7 @@ def optimize_cat_with_out_tensor(gm: GraphModule, config=None) -> GraphModule:
             if cat_stream is not None:
                 gm.graph.call_function(torch.ops.air.scope_exit.default, args=())
 
+        output_tensor.meta['val'] = output_meta
         output_tensor.meta['stream_label'] = cat_stream
 
         offsets = [0]
@@ -206,15 +195,13 @@ def optimize_cat_with_out_tensor(gm: GraphModule, config=None) -> GraphModule:
                 last_offset_node = offset_node
 
         replacement_map = {}
-        last_inserted_node = last_offset_node
         for i, input_node in enumerate(tensors):
             size = sizes_resolved[i]
             offset = offsets[i]
-            slice_node = _create_slice_node(gm, output_tensor, offset, size, last_inserted_node)
-            with gm.graph.inserting_after(slice_node):
+            with gm.graph.inserting_before(input_node):
+                slice_node = _create_slice_node(gm, output_tensor, offset, size)
                 out_op_node = _create_out_op_node(gm, input_node, slice_node)
             replacement_map[input_node] = out_op_node
-            last_inserted_node = out_op_node
 
         for old_node, new_node in replacement_map.items():
             old_node.replace_all_uses_with(new_node)
@@ -225,6 +212,7 @@ def optimize_cat_with_out_tensor(gm: GraphModule, config=None) -> GraphModule:
                 node.meta.clear()
                 gm.graph.erase_node(node)
 
+        cat_node_set.discard(cat_node)
         optimized_count += 1
 
     if optimized_count > 0:
