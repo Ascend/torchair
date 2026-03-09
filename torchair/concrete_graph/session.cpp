@@ -334,7 +334,7 @@ Status Session::GeGetRegisteredIrDef(const char *op_type,
   TNG_LOG(DEBUG) << "Start to get registeref ir " << op_type;
   ge::Status status = get_registered_ir_def_(op_type, inputs, outputs, attrs);
   if (status != ge::SUCCESS) {
-    return Status::Error("Can not get %c ir def", op_type);
+    return Status::Error("Can not get %s ir def", op_type);
   }
   return Status::Success();
 }

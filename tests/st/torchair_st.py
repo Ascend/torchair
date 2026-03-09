@@ -2803,6 +2803,76 @@ class TorchairSt(unittest.TestCase):
         """
         self.assertTrue(all("Stream Allocation Summary" not in log for log in cm.output))
 
+    def test_run_input_none(self):
+        initialize_graph_engine()
+        with GeGraph() as graph:
+            x = ge.Data(index=0, shape=[2, 2], dtype=DataType.DT_FLOAT, placement='NPU')
+            y = ge.Add(x, x)
+            ge.NetOutput([y])
+            executor = TorchNpuGraph()
+            executor.load(graph)
+            executor.compile()
+        with self.assertRaises(RuntimeError) as cm:
+            executor.run([None])
+        self.assertTrue("element 0 is None" in str(cm.exception))
+
+    def test_run_input_not_tensor(self):
+        initialize_graph_engine()
+        with GeGraph() as graph:
+            x = ge.Data(index=0, shape=[2, 2], dtype=DataType.DT_FLOAT, placement='NPU')
+            y = ge.Add(x, x)
+            ge.NetOutput([y])
+            executor = TorchNpuGraph()
+            executor.load(graph)
+            executor.compile()
+        with self.assertRaises(RuntimeError) as cm:
+            executor.run([123])
+        self.assertTrue("element 0 is not a Tensor" in str(cm.exception))
+
+    def test_autotune_input_none(self):
+        initialize_graph_engine()
+        with GeGraph() as graph:
+            x = ge.Data(index=0, shape=[2, 2], dtype=DataType.DT_FLOAT, placement='NPU')
+            y = ge.Add(x, x)
+            ge.NetOutput([y])
+            executor = TorchNpuGraph()
+            executor.load(graph)
+            executor.compile()
+        with self.assertRaises(RuntimeError) as cm:
+            executor.auto_tune([None])
+        self.assertTrue("element 0 is None" in str(cm.exception))
+
+    def test_autotune_input_not_tensor(self):
+        initialize_graph_engine()
+        with GeGraph() as graph:
+            x = ge.Data(index=0, shape=[2, 2], dtype=DataType.DT_FLOAT, placement='NPU')
+            y = ge.Add(x, x)
+            ge.NetOutput([y])
+            executor = TorchNpuGraph()
+            executor.load(graph)
+            executor.compile()
+        with self.assertRaises(RuntimeError) as cm:
+            executor.auto_tune([123])
+        self.assertTrue("element 0 is not a Tensor" in str(cm.exception))
+
+    def test_run_optional_output_not_tensor(self):
+        initialize_graph_engine()
+        with GeGraph() as graph:
+            x = ge.Data(index=0, shape=[2, 2], dtype=DataType.DT_FLOAT, placement='NPU')
+            y = ge.Add(x, x)
+            ge.NetOutput([y])
+            executor = TorchNpuGraph()
+            executor.load(graph)
+            executor.compile()
+        with self.assertRaises(RuntimeError) as cm:
+            executor.run([torch.randn(2, 2)], [123])
+        self.assertTrue("element 0 is not a Tensor" in str(cm.exception))
+
+    def test_get_ir_def_invalid_op(self):
+        from torchair.core import _torchair
+        (status, _, _, _) = _torchair.get_registered_ir_def("MyOpTestv5")
+        self.assertTrue(status == "ERROR", f"Actual status: {status}")
+
 
 if __name__ == '__main__':
     unittest.main()
