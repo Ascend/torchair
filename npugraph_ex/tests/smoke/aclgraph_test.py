@@ -1,4 +1,5 @@
 import dataclasses
+import copy
 import logging
 import os
 import unittest
@@ -46,6 +47,8 @@ class AclgraphTest(unittest.TestCase):
 
     def setUp(self) -> None:
         self.optimize_fx_bak = npugraph_ex.npu_fx_compiler._optimize_fx
+        from npugraph_ex._acl_concrete_graph import cat_optimization
+        self.optimize_cat_bak = cat_optimization.optimize_cat_with_out_tensor
         if not hasattr(torch.npu, "fake_record_stream"):
             patch_dynamo()
         replace_stream_event.GraphCounter.set_graph_id(-1)
@@ -54,6 +57,9 @@ class AclgraphTest(unittest.TestCase):
     def tearDown(self) -> None:
         if self.optimize_fx_bak is not None:
             npugraph_ex.npu_fx_compiler._optimize_fx = self.optimize_fx_bak
+        if self.optimize_cat_bak is not None:
+            from npugraph_ex._acl_concrete_graph import cat_optimization
+            cat_optimization.optimize_cat_with_out_tensor = self.optimize_cat_bak
         return super().tearDown()
 
     def test_a_aclgraph_memory_state_setting(self):
@@ -1499,7 +1505,7 @@ class AclgraphTest(unittest.TestCase):
                 result = torch.cat([output1, output2, output3], dim=0)
             return result
 
-        x = torch.randn(8, dtype=torch.float32)
+        x = torch.randn(8, dtype=torch.float32).npu()
 
         def assert_success_and_stream(graph_before, graph_after):
             self.assert_cat_optimization_success(graph_before, graph_after)
