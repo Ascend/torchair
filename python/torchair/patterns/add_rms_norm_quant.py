@@ -8,22 +8,25 @@ from torch._inductor.pattern_matcher import Match
 from torch._subclasses.fake_tensor import FakeTensorMode
 
 from torchair.core.utils import logger
-from torchair.patterns.pattern_pass_manager import _PatternPassManager, _check_pattern_stream
+from torchair.patterns.pattern_pass_manager import _PatternPassManager
 
 
 def _pattern_extra_check(match: Match) -> bool:
 
     gamma_val = None
     zero_points_val = None
+    scales_val = None
 
     for node in match.nodes:
         if node.target == torch.ops.npu.npu_quantize.default:
+            scales_val = node.args[1].meta['val']
             # zero_points dtype only supports INT32 BFLOAT16
-            zero_points_val = node.args[2].meta['val']
-            if zero_points_val.dtype in [torch.uint8, torch.int8]:
-                logger.debug("Zero_points dtype mismatch in pattern match for npu_add_rms_norm_quant fusion pass.")
-                return False
-                
+            if node.args[2] is not None:
+                zero_points_val = node.args[2].meta['val']
+                if zero_points_val.dtype in [torch.uint8, torch.int8]:
+                    logger.debug("Zero_points dtype mismatch in pattern match for npu_add_rms_norm_quant fusion pass.")
+                    return False
+
             # output dtype only supports INT8, QINT8
             if node.args[3] not in [1, 12]:  # 1: INT8, 12: QINT8
                 logger.debug("Output dtype mismatch in pattern match for npu_add_rms_norm_quant fusion pass.")
@@ -52,10 +55,10 @@ def _pattern_extra_check(match: Match) -> bool:
                 )
                 return False
 
-    if gamma_val.shape != zero_points_val.shape:
+    if gamma_val.shape != scales_val.shape:
         logger.debug(f"Gamma, zero_points or scales shape mismatch in pattern match for npu_add_rms_norm_quant fusion pass.")
         return False
-    
+
     return True
 
 

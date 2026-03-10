@@ -1961,7 +1961,10 @@ class AclgraphTest(unittest.TestCase):
             return yOut, xOut
 
         torchair.npu_fx_compiler._optimize_fx = create_optimize_wrapper(lambda gm: self.assert_addrmsnorm_quant(gm, True))
-        compile_model = torch.compile(f, backend="npugraph_ex", fullgraph=True, dynamic=True)
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "reduce-overhead"
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        compile_model = torch.compile(f, backend=npu_backend, fullgraph=True, dynamic=True)
 
         # test divmode=True
         x1, x2, gamma, scales, zero_points = self.get_quant_input(16, torch.float16, torch.float, torch.int32)
@@ -1977,7 +1980,7 @@ class AclgraphTest(unittest.TestCase):
         self.assertTrue(torch.equal(y2, y4))
 
         # test static
-        compile_model = torch.compile(f_static, backend="npugraph_ex", fullgraph=True, dynamic=False)
+        compile_model = torch.compile(f_static, backend=npu_backend, fullgraph=True, dynamic=False)
         y1, y2 = f_static(x1, x2, gamma, scales, zero_points)
         y3, y4 = compile_model(x1, x2, gamma, scales, zero_points)
         self.assertTrue(torch.equal(y1, y3))
@@ -2008,7 +2011,10 @@ class AclgraphTest(unittest.TestCase):
             return yOut, xOut
 
         torchair.npu_fx_compiler._optimize_fx = create_optimize_wrapper(lambda gm: self.assert_addrmsnorm_quant(gm, False))
-        compile_model = torch.compile(f, backend="npugraph_ex", fullgraph=True, dynamic=True)
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "reduce-overhead"
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        compile_model = torch.compile(f, backend=npu_backend, fullgraph=True, dynamic=True)
 
         # test uint8 zero_poin
         x1, x2, gamma, scales, zero_points = self.get_quant_input(16, torch.float16, torch.float16, torch.uint8)
@@ -2026,12 +2032,12 @@ class AclgraphTest(unittest.TestCase):
         compile_model(x1, x2, gamma, scales, zero_points, torch.int32)
 
         # test use value npu_add_rms_norm output
-        compile_model = torch.compile(f_use, backend="npugraph_ex", fullgraph=True, dynamic=True)
+        compile_model = torch.compile(f_use, backend=npu_backend, fullgraph=True, dynamic=True)
         f_use(x1, x2, gamma, scales, zero_points)
         compile_model(x1, x2, gamma, scales, zero_points)
         
         # test div_mode=False
-        compile_model = torch.compile(f, backend="npugraph_ex", fullgraph=True, dynamic=True)
+        compile_model = torch.compile(f, backend=npu_backend, fullgraph=True, dynamic=True)
         f(x1, x2, gamma, scales, zero_points, div_mode=False)
         compile_model(x1, x2, gamma, scales, zero_points, div_mode=False)
 
@@ -2048,13 +2054,13 @@ class AclgraphTest(unittest.TestCase):
         compile_model(x1, x2, gamma, scales, zero_points)
         
         # test last axis not aligned 32byte
-        compile_model = torch.compile(f_noreshape, backend="npugraph_ex", fullgraph=True, dynamic=False)
+        compile_model = torch.compile(f_noreshape, backend=npu_backend, fullgraph=True, dynamic=False)
         x1, x2, gamma, scales, zero_points = self.get_quant_input(3, torch.bfloat16, torch.bfloat16, torch.bfloat16)
         f_noreshape(x1, x2, gamma, scales, zero_points)
         compile_model(x1, x2, gamma, scales, zero_points)
 
         # test symint
-        compile_model = torch.compile(f_noreshape, backend="npugraph_ex", fullgraph=True, dynamic=True)
+        compile_model = torch.compile(f_noreshape, backend=npu_backend, fullgraph=True, dynamic=True)
         f_noreshape(x1, x2, gamma, scales, zero_points)
         compile_model(x1, x2, gamma, scales, zero_points)
 
@@ -2080,7 +2086,10 @@ class AclgraphTest(unittest.TestCase):
         torchair.npu_fx_compiler._optimize_fx = create_optimize_wrapper(lambda gm: self.assert_addrmsnorm_quant(gm, False))
 
         model = Model()
-        compile_model = torch.compile(model, backend="npugraph_ex", fullgraph=True, dynamic=True)
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "reduce-overhead"
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        compile_model = torch.compile(model, backend=npu_backend, fullgraph=True, dynamic=True)
 
         x1, x2, gamma, scales, zero_points = self.get_quant_input(16, torch.bfloat16, torch.bfloat16, torch.bfloat16)
         compile_model(x1, x2, gamma, scales, zero_points)
@@ -2109,7 +2118,10 @@ class AclgraphTest(unittest.TestCase):
                 scalar_workaround={"epsilon": 2e-6, "dtype": 1},
                 skip_duplicates=True
         )
-        torch.compile(f, backend="npugraph_ex", fullgraph=True, dynamic=True)
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "reduce-overhead"
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        torch.compile(f, backend=npu_backend, fullgraph=True, dynamic=True)
 
     @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
     def test_pattern_pass_transpose_batch_matmul_transpose_for_aclgraph(self):
