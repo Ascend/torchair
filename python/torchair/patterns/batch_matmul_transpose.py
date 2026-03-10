@@ -17,7 +17,7 @@ def _pattern_extra_check(match: Match) -> bool:
 
     This function validates:
     1. K*B or K constraint based on perm_x1 configuration
-    2. Input tensor dtype and K/N alignment
+    2. Input tensor dtype and K or N alignment
     3. View/Expand node input/output meta consistency (must be no-op)
     4. Transpose dimension arguments
 
@@ -53,9 +53,9 @@ def _pattern_extra_check(match: Match) -> bool:
             # Check K/N alignment
             if input_arg.shape[kn_dim] % kn_alignment != 0:
                 logger.debug(
-                    f"K/N alignment check failed for npu_transpose_batchmatmul. "
+                    f"K or N alignment check failed for npu_transpose_batchmatmul. "
                     f"input{i} size: {input_arg.shape}. "
-                    f"Fusion is not supported because K/N must be divisible by {kn_alignment}."
+                    f"Fusion is not supported because K or N must be divisible by {kn_alignment}."
                 )
                 return False
 
@@ -145,7 +145,7 @@ def _pattern_extra_check(match: Match) -> bool:
             return False
         if dim1 > 1 or dim2 > 1:
             logger.debug(
-                f"Transpose args only support 0/1 for npu_transpose_batchmatmul. "
+                f"Transpose args only support 0 or 1 for npu_transpose_batchmatmul. "
                 f"Got dim1={dim1}, dim2={dim2}."
             )
             return False

@@ -3853,6 +3853,26 @@ class AclGraphSt(unittest.TestCase):
         expected = torch.cat([x.exp(), x.sin(), x + y], dim=0)
         self.assertTrue(torch.allclose(result, expected, atol=1e-5))
    
+    def test_pattern_pass_transpose_batchmatmul_logger(self):
+        """Test npu_transpose_batchmatmul pattern pass logger."""
+        def f(input1, input2):
+            output = torch.matmul(input1.transpose(1, 0), input2).transpose(1, 0)
+            return output
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(f, backend=aclgraph_backend, dynamic=False, fullgraph=True)
+        x = torch.randn(128, 64, 511, dtype=torch.float32, device='npu')
+        y = torch.randn(64, 511, 256, dtype=torch.float32, device='npu')
+        with capture_logger() as stdout:
+            try:
+                result = model(x, y)
+            except Exception:
+                pass
+        self.assertTrue("K or N alignment check failed for npu_transpose_batchmatmul" in stdout.getvalue())
+
 
 if __name__ == '__main__':
     unittest.main()
