@@ -27,6 +27,7 @@ def replace_stream_event_pass(gm: torch.fx.GraphModule):
                                                _npu_tagged_event_wait, _npu_record_tagged_stream)
 
     logger.debug(f'after dynamo out, graph is: {gm.graph}')
+    event_index_to_node_name = {}
     stream_stack = []
     new_stream_list = []
     current_stream_map = {}
@@ -35,27 +36,38 @@ def replace_stream_event_pass(gm: torch.fx.GraphModule):
     graph_id = GraphCounter.graph_id()
     logger.debug(f"replace_stream_event: graph_id is: {graph_id}")
     graph = gm.graph
-    for node in graph.nodes:
-        if node.op == "call_function" and (node.target == torch.npu.Event
-                                           or node.target == torch._dynamo.utils.get_user_object_from_id):
-            _create_event_by_name(graph_id + node.name)
-        if node.op == "call_method" and node.target == "record":
-            node.target = torch.ops.air.tagged_event_record
-            node.op = "call_function"
-            node.args = (graph_id + node.args[0].name, True)
-        if node.op == "call_method" and node.target == "wait":
-            node.target = torch.ops.air.tagged_event_wait
-            node.op = "call_function"
-            node.args = (graph_id + node.args[0].name, True)
-        if node.op == "call_function" and node.target == torch.npu.fake_record_stream:
-            node.target = torch.ops.air.record_tagged_stream_
-            node.args = (node.args[0], node.args[1].name,)
+    is_high_version = _torch_high_version()
 
-        if node.op == "call_function" and node.target == torch.npu.Stream:
-            new_stream_list.append(node)
-        if node.op == "call_function" and node.target == torch.npu.current_stream:
-            # 将current_stream对应的实际的流记录到字典里
-            current_stream_map[node] = current_stream
+    for node in graph.nodes:
+        if node.op == "call_function":
+            if _is_event(node):
+                _create_event_by_name(graph_id + node.name)
+                if is_high_version:
+                    event_index_to_node_name[node.args[0]] = node.name
+            elif is_high_version and node.target == torch.ops.streams.record_event:
+                node.target = torch.ops.air.tagged_event_record
+                node.args = (graph_id + event_index_to_node_name[node.args[0]], True)
+            elif is_high_version and node.target == torch.ops.streams.wait_event:
+                node.target = torch.ops.air.tagged_event_wait
+                node.args = (graph_id + event_index_to_node_name[node.args[0]], True)
+            elif node.target == torch.npu.fake_record_stream:
+                node.target = torch.ops.air.record_tagged_stream_
+                node.args = (node.args[0], node.args[1].name,)
+            elif _is_stream(node):
+                new_stream_list.append(node)
+            elif node.target == torch.npu.current_stream:
+                # 将current_stream对应的实际的流记录到字典里
+                current_stream_map[node] = current_stream
+
+        elif node.op == "call_method":
+            if node.target == "record":
+                node.target = torch.ops.air.tagged_event_record
+                node.op = "call_function"
+                node.args = (graph_id + node.args[0].name, True)
+            elif node.target == "wait":
+                node.target = torch.ops.air.tagged_event_wait
+                node.op = "call_function"
+                node.args = (graph_id + node.args[0].name, True)
 
         # 将set_stream和current_stream转换为入栈和出栈逻辑来创建对应的scope_enter、scope_exit节点
         # 因为current_stream获取的流对象实际上可能和set_stream的对象相同，但是在fx图上是不同的节点
@@ -79,14 +91,14 @@ def replace_stream_event_pass(gm: torch.fx.GraphModule):
                 node.args = (["_user_stream_label", "_user_stream_priority"], [graph_id + _to_set_stream.name, "0"])
             elif _to_set_stream in stream_stack:
                 # 如果是已经栈里，则出栈，并创建scope_exit节点
-                while(_to_set_stream != stream_stack[-1]):
+                while _to_set_stream != stream_stack[-1]:
                     pop_node = stream_stack.pop()
                     logger.debug(f"replace_stream_event: pop stream: {graph_id + pop_node.name} of stack")
                     with graph.inserting_after(node):
                         graph.call_function(torch.ops.air.scope_exit, args=())
             elif _to_set_stream == "default_stream":
                 # 如果是切到初始流，则把栈里元素全部出栈
-                while(stream_stack):
+                while stream_stack:
                     pop_node = stream_stack.pop()
                     logger.debug(f"replace_stream_event: pop stream: {graph_id + pop_node.name} of stack")
                     with graph.inserting_after(node):
@@ -107,3 +119,32 @@ def replace_stream_event_pass(gm: torch.fx.GraphModule):
     gm.recompile()
     logger.debug(f'after replace_stream_event, graph is: {gm.graph}')
     return gm
+
+
+def _is_event(node):
+    if node.target == torch.npu.Event:
+        return True
+    if hasattr(torch._dynamo.utils, "get_user_object_from_id") and node.target == torch._dynamo.utils.get_user_object_from_id:
+        return True
+    if (_torch_high_version()
+        and node.target == torch._dynamo.graph_bytecode_inputs.get_external_object_by_index):
+        if isinstance(torch._dynamo.graph_bytecode_inputs.get_external_object_by_index(node.args[0]), torch.npu.Event):
+            return True
+    return False
+
+
+def _is_stream(node):
+    if node.target == torch.npu.Stream:
+        return True
+    if (_torch_high_version() 
+        and node.target == torch._dynamo.graph_bytecode_inputs.get_external_object_by_index):
+        if isinstance(torch._dynamo.graph_bytecode_inputs.get_external_object_by_index(node.args[0]), torch.npu.Stream):
+            return True
+    return False        
+            
+
+def _torch_high_version():
+    if (hasattr(torch._dynamo, "graph_bytecode_inputs") 
+        and hasattr(torch._dynamo.graph_bytecode_inputs, "get_external_object_by_index")):
+        return True
+    return False
