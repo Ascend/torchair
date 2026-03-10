@@ -5,7 +5,7 @@ import os
 
 import torch.distributed as dist
 
-from ._option_base import OptionValue, NpuBaseConfig, IntRangeValue
+from npugraph_ex.configs._option_base import OptionValue, NpuBaseConfig, IntRangeValue
 
 INT64_MAX = 2 ** 63 - 1
 

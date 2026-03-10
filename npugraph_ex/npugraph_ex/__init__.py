@@ -2,14 +2,14 @@ __all__ = ['get_npu_backend', 'get_compiler', 'compile_fx', 'CompilerConfig', 'l
 
 import atexit
 
-from .npu_fx_compiler import compile_fx, get_npu_backend, get_compiler
-from .configs.compiler_config import CompilerConfig
-from .core.utils import logger
-from .patterns.pattern_pass_manager import register_replacement
-from ._utils.adjust_traceable_collective_remaps import adjust_traceable_collective_remaps
-from . import inference
-from . import ops
-from . import scope
+from npugraph_ex.npu_fx_compiler import compile_fx, get_npu_backend, get_compiler
+from npugraph_ex.configs.compiler_config import CompilerConfig
+from npugraph_ex.core.utils import logger
+from npugraph_ex.patterns.pattern_pass_manager import register_replacement
+from npugraph_ex._utils.adjust_traceable_collective_remaps import adjust_traceable_collective_remaps
+import npugraph_ex.inference
+import npugraph_ex.ops
+import npugraph_ex.scope
 
 # before patch, backup function call for torch_npu.distributed.xxx
 try:

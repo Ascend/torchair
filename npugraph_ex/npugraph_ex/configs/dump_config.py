@@ -3,8 +3,8 @@ __all__ = []
 import os
 
 import torch.distributed as dist
-from ._option_base import OptionValue, MustExistedPathValue, RegexValue
-from ._option_base import NpuBaseConfig, MustExistedFileAddr
+from npugraph_ex.configs._option_base import OptionValue, MustExistedPathValue, RegexValue
+from npugraph_ex.configs._option_base import NpuBaseConfig, MustExistedFileAddr
 
 
 class _DataDumpConfig(NpuBaseConfig):

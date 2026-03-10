@@ -87,7 +87,7 @@ if not hasattr(getattr(torch.ops, "npu_define"), "allgather_in_tensor_uneven"):
             group_size: int,
             recv_displacements: List[int]
     ):
-        from torchair import ALL_GATHER_INTO_TENSOR_UNEVEN
+        from npugraph_ex import ALL_GATHER_INTO_TENSOR_UNEVEN
         pg = c10d._find_or_create_pg_by_ranks_and_tag(tag, rank_list, group_size)
         out_size = list(input_tensor.size())
         out_size[0] = sum(recv_counts)
@@ -212,7 +212,7 @@ def npu_all_gather_patch_dist(output_tensor_list, tensor, group=None, async_op=F
 def npu_allgather_into_tensor_uneven_patch_dist(output, input, output_split_sizes=None, group=None,
                                                 async_op=False):
     if not torch.distributed._functional_collectives._are_we_tracing():
-        from torchair import ALL_GATHER_INTO_TENSOR_UNEVEN
+        from npugraph_ex import ALL_GATHER_INTO_TENSOR_UNEVEN
         if ALL_GATHER_INTO_TENSOR_UNEVEN is None:
             raise AttributeError(f'torch_npu.distributed has no attribute: all_gather_into_tensor_uneven')
         ALL_GATHER_INTO_TENSOR_UNEVEN(output, input, output_split_sizes, group, async_op)

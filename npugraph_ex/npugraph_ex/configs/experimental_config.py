@@ -1,8 +1,8 @@
 __all__ = []
 
 
-from ._option_base import OptionValue, IntRangeValue, StrOptionValue, IntListValue
-from ._option_base import NpuBaseConfig
+from npugraph_ex.configs._option_base import OptionValue, IntRangeValue, StrOptionValue, IntListValue
+from npugraph_ex.configs._option_base import NpuBaseConfig
 
 INT64_MAX = 2 ** 63 - 1
 

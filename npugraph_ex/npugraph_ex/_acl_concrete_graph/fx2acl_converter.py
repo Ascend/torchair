@@ -20,10 +20,11 @@ from npugraph_ex.core._concrete_graph import ConcreteGraphBase, ValuePack
 from npugraph_ex.core.utils import logger
 from npugraph_ex._utils.path_manager import PathManager
 from npugraph_ex._utils.graph_utils import debug_compare_fx_graphs
-from .acl_graph import AclGraph, AclGraphCacheInfo, is_sym
-from .acl_graph_cache_utils import SerializableGraphModule
-from .graph_pass import apply_event_closure_with_multi_stream, apply_event_record, replace_core_limit_nodes
-from .utils import insert_save_npugraph_tensor
+from npugraph_ex._acl_concrete_graph.acl_graph import AclGraph, AclGraphCacheInfo, is_sym
+from npugraph_ex._acl_concrete_graph.acl_graph_cache_utils import SerializableGraphModule
+from npugraph_ex._acl_concrete_graph.graph_pass import (apply_event_closure_with_multi_stream, apply_event_record,
+                                                        replace_core_limit_nodes)
+from npugraph_ex._acl_concrete_graph.utils import insert_save_npugraph_tensor
 
 try:
     from torch._inductor.fx_passes.post_grad import decompose_auto_functionalized

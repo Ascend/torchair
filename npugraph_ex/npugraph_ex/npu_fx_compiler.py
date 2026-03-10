@@ -37,19 +37,19 @@ from torch.profiler import record_function
 from torch.utils._mode_utils import no_dispatch
 from torch._dynamo.utils import detect_fake_mode
 
-from .core._concrete_graph import ConcreteGraphBase, ValuePack, _is_sym, _is_symlist
-from .core.utils import logger
-from .configs.compiler_config import CompilerConfig
-from .configs.npugraphex_config import _process_kwargs_options
-from .fx_dumper import _NpuFxDumper
-from ._utils.custom_aot_functions import aot_module_simplified_joint
-from ._utils import add_npu_patch, get_npu_default_decompositions
-from ._utils.error_code import pretty_error_msg
-from ._utils.graph_transform_observer import (GraphTransformObserver, dump_fx_safety, wrap_compiler_phase, DebugContext,
-                                              get_phase_path)
-from ._utils.graph_utils import debug_compare_fx_graphs
-from .patterns.pattern_util import _apply_pattern_passes
-from ._acl_concrete_graph.replace_stream_event import replace_stream_event_pass
+from npugraph_ex.core._concrete_graph import ConcreteGraphBase, ValuePack, _is_sym, _is_symlist
+from npugraph_ex.core.utils import logger
+from npugraph_ex.configs.compiler_config import CompilerConfig
+from npugraph_ex.configs.npugraphex_config import _process_kwargs_options
+from npugraph_ex.fx_dumper import _NpuFxDumper
+from npugraph_ex._utils.custom_aot_functions import aot_module_simplified_joint
+from npugraph_ex._utils import add_npu_patch, get_npu_default_decompositions
+from npugraph_ex._utils.error_code import pretty_error_msg
+from npugraph_ex._utils.graph_transform_observer import (GraphTransformObserver, dump_fx_safety, wrap_compiler_phase,
+                                                         DebugContext, get_phase_path)
+from npugraph_ex._utils.graph_utils import debug_compare_fx_graphs
+from npugraph_ex.patterns.pattern_util import _apply_pattern_passes
+from npugraph_ex._acl_concrete_graph.replace_stream_event import replace_stream_event_pass
 
 aten = torch.ops.aten
 
@@ -313,7 +313,7 @@ def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, obs
     if config.experimental_config.remove_noop_ops:
         observer.apply_gm_pass(_optimize_noop_ops, "optimize_noop_ops")
 
-    from .patterns._recover_view_inplace_pattern import recover_view_inplace_pattern
+    from npugraph_ex.patterns._recover_view_inplace_pattern import recover_view_inplace_pattern
     observer.apply_gm_pass(debug_compare_fx_graphs(recover_view_inplace_pattern, pass_name="recover_view_inplace_pattern"),
                  "recover_view_inplace_pattern")
 
@@ -578,18 +578,18 @@ class _NpuFxCompiler:
         if (self.config.dump_config.enable_dump.value == '1'
                 and self.config.dump_config.data_dump_stage.value == "original"):
             _, dump_options = self.config.dump_config.as_dict(self.config.mode.value)
-            from ._acl_concrete_graph.utils import insert_save_npugraph_tensor
+            from npugraph_ex._acl_concrete_graph.utils import insert_save_npugraph_tensor
             return insert_save_npugraph_tensor(gm, dump_options)
 
         # generate different concrete graph based on config
         with no_dispatch():
             mutable_gm = copy.deepcopy(gm)
 
-        from ._utils.graph_utils import _find_mutated_user_inputs
+        from npugraph_ex._utils.graph_utils import _find_mutated_user_inputs
         mutated_user_inputs = _find_mutated_user_inputs(mutable_gm)
         logger.debug('find mutated user inputs: %s', mutated_user_inputs)
 
-        from ._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
+        from npugraph_ex._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
         graph = AclConcreteGraph(self.config,
                                  name="graph_" + str(_next_unique_graph_id()),
                                  pool=self.config.aclgraph_config.use_custom_pool,
@@ -917,7 +917,7 @@ def _dump_run_codegen(py_code: str):
         output_code_path = os.path.realpath(file_name)
         os.makedirs(os.path.dirname(output_code_path), exist_ok=True)
         with open(output_code_path, "w") as f:
-            from .inference._cache_compiler import file_lock
+            from npugraph_ex.inference._cache_compiler import file_lock
             with file_lock(f, fcntl.LOCK_EX):
                 f.write(py_codegen_dump)
                 os.chmod(f.fileno(), 0o600)

@@ -14,7 +14,7 @@ from torch.fx import Interpreter
 from torch.fx.graph_module import GraphModule
 from torch.fx.node import Argument, Target
 
-from .core.utils import logger
+from npugraph_ex.core.utils import logger
 
 
 def _timestamp():

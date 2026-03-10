@@ -4,12 +4,12 @@ __all__ = ["CompilerConfig"]
 
 from typing import Any, Optional
 
-from ._option_base import OptionValue, CallableValue, NpuBaseConfig
-from .aclgraph_config import _AclGraphConfig
-from .debug_config import _DebugConfig
-from .dump_config import _DataDumpConfig
-from .experimental_config import _ExperimentalConfig
-from .npugraphex_config import _NpuGraphExConfig
+from npugraph_ex.configs._option_base import OptionValue, CallableValue, NpuBaseConfig
+from npugraph_ex.configs.aclgraph_config import _AclGraphConfig
+from npugraph_ex.configs.debug_config import _DebugConfig
+from npugraph_ex.configs.dump_config import _DataDumpConfig
+from npugraph_ex.configs.experimental_config import _ExperimentalConfig
+from npugraph_ex.configs.npugraphex_config import _NpuGraphExConfig
 
 
 class CompilerConfig(NpuBaseConfig):

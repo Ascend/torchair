@@ -5,12 +5,12 @@ import torch
 from npugraph_ex._utils.graph_utils import debug_compare_fx_graphs, add_stream_label_to_node_meta
 from npugraph_ex.core.utils import logger
 
-from .pattern_pass_manager import _pattern_manager
-from .add_rms_norm_cast import _register_addrmsnormcast_pattern
-from .add_rms_norm_dynamic_quant import (_register_addrmsnormdynamicquant_pattern,
-                                         _register_addrmsnormdynamicquant_pattern2)
-from .add_rms_norm_quant import _register_addrmsnormquant_patterns
-from .batch_matmul_transpose import _register_batchmatmultranspose_patterns
+from npugraph_ex.patterns.pattern_pass_manager import _pattern_manager
+from npugraph_ex.patterns.add_rms_norm_cast import _register_addrmsnormcast_pattern
+from npugraph_ex.patterns.add_rms_norm_dynamic_quant import (_register_addrmsnormdynamicquant_pattern,
+                                                             _register_addrmsnormdynamicquant_pattern2)
+from npugraph_ex.patterns.add_rms_norm_quant import _register_addrmsnormquant_patterns
+from npugraph_ex.patterns.batch_matmul_transpose import _register_batchmatmultranspose_patterns
 
 pattern_pass_manager = _pattern_manager()
 
