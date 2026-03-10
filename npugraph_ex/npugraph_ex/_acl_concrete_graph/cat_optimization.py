@@ -28,9 +28,40 @@ def _build_sym_inputs_from_placeholders(gm: GraphModule) -> dict:
     return sym_inputs
 
 
+def _get_schema_arg_signature(op) -> Optional[List[Tuple[str, str]]]:
+    """Extract (name, type) pairs for non-out arguments from an op's schema."""
+    schema = getattr(op, '_schema', None)
+    if schema is None:
+        return None
+    return [(arg.name, str(arg.type)) for arg in schema.arguments if arg.name != 'out']
+
+
 def _get_out_variant(op_target) -> Optional[Any]:
-    if hasattr(op_target, '_overloadpacket'):
+    """
+    Find the out variant whose schema matches the original op's arguments
+    by both name and type. Comparing types is also necessary to distinguish overloads like
+    sum.IntList_out (int[1]? dim) vs sum.DimnameList_out (Dimname[1] dim).
+    """
+    if not hasattr(op_target, '_overloadpacket'):
+        return None
+
+    orig_sig = _get_schema_arg_signature(op_target)
+    if orig_sig is None:
         return getattr(op_target._overloadpacket, 'out', None)
+
+    packet = op_target._overloadpacket
+    for overload_name in packet.overloads():
+        overload = getattr(packet, overload_name)
+        schema = getattr(overload, '_schema', None)
+        if schema is None:
+            continue
+        has_out = any(arg.name == 'out' for arg in schema.arguments)
+        if not has_out:
+            continue
+        candidate_sig = [(arg.name, str(arg.type)) for arg in schema.arguments if arg.name != 'out']
+        if candidate_sig == orig_sig:
+            return overload
+
     return None
 
 

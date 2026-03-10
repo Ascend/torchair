@@ -3852,6 +3852,30 @@ class AclGraphSt(unittest.TestCase):
 
         expected = torch.cat([x.exp(), x.sin(), x + y], dim=0)
         self.assertTrue(torch.allclose(result, expected, atol=1e-5))
+
+    def test_cat_optimization_with_node_has_diff_out(self):
+
+        def f(x, y):
+            sum1 = torch.sum(x, dim=0, keepdim=True)
+            mean1 = torch.mean(y, dim=0, keepdim=True)
+            cat1 = torch.cat([sum1, mean1], dim=0)
+            return cat1
+
+        x = torch.randn(8, 3, dtype=torch.float32)
+        y = torch.randn(8, 3, dtype=torch.float32)
+
+        from torchair._acl_concrete_graph import cat_optimization
+        cat_optimization.optimize_cat_with_out_tensor = create_cat_optimization_pass_wrapper(self.assert_cat_optimization_success)
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        model = torch.compile(f, backend=aclgraph_backend, dynamic=True)
+        result = model(x, y)
+
+        expected = f(x, y)
+        self.assertTrue(torch.allclose(result, expected, atol=1e-5))
    
     def test_pattern_pass_transpose_batchmatmul_logger(self):
         """Test npu_transpose_batchmatmul pattern pass logger."""
