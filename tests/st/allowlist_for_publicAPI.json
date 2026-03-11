@@ -59,5 +59,12 @@
         "limit_core_num",
         "op_never_timeout",
         "data_dump"
+    ],
+    "npugraph_ex": [
+        "CompilerConfig",
+        "compile_fx",
+        "get_compiler",
+        "get_npu_backend",
+        "register_replacement"
     ]
 }

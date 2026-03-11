@@ -577,7 +577,7 @@ class _NpuFxCompiler:
 
         if (self.config.dump_config.enable_dump.value == '1'
                 and self.config.dump_config.data_dump_stage.value == "original"):
-            _, dump_options = self.config.dump_config.as_dict(self.config.mode.value)
+            _, dump_options = self.config.dump_config.as_dict()
             from npugraph_ex._acl_concrete_graph.utils import insert_save_npugraph_tensor
             return insert_save_npugraph_tensor(gm, dump_options)
 
