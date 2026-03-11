@@ -85,7 +85,7 @@ def _install_or_compile_for_multi(fx_func, *args, cached_cann_version=None, comp
 
     # 2.广播local rank 0的执行结果
     run_package_status_list = [run_package_status]
-    dist.broadcast_object_list(run_package_status_list, src=0, group=gloo_group)
+    dist.broadcast_object_list(run_package_status_list, src=_get_group_root_rank(rank), group=gloo_group)
     received_run_package_status = run_package_status_list[0]
     logger.debug(f"Rank {rank}: the received_run_package_status is {received_run_package_status}")
 
@@ -160,7 +160,7 @@ def _compile_static_kernel_for_multi_card(fx_func, *args, gloo_group=None, is_ca
         gathered_json_dirs = [None] * local_world_size
     else:
         gathered_json_dirs = None
-    dist.gather_object(obj=chosen_dir, object_gather_list=gathered_json_dirs, dst=0, group=gloo_group)
+    dist.gather_object(obj=chosen_dir, object_gather_list=gathered_json_dirs, dst=_get_group_root_rank(rank), group=gloo_group)
 
     # 3.local rank 0进行静态编译并install
     if local_rank == 0:
@@ -208,6 +208,8 @@ def _merge_dump_json(gathered_json_dirs: list[Path], result_root: Path) -> Union
         return None
 
     _selected_json = set()
+    _copied_json_filenames = set()
+    filename_counter = {}
     for json_dir in gathered_json_dirs:
         if json_dir is None:
             continue
@@ -219,7 +221,20 @@ def _merge_dump_json(gathered_json_dirs: list[Path], result_root: Path) -> Union
             if json_hash not in _selected_json:
                 _selected_json.add(json_hash)
                 try:
-                    shutil.copy2(json_file.resolve(), gathered_opcompile_dir)
+                    stem = json_file.stem
+                    suffix = json_file.suffix
+                    counter = filename_counter.get(stem, 0)
+                    if counter == 0:
+                        dest_filename = json_file.name
+                    else:
+                        dest_filename = f"{stem}_{counter}{suffix}"
+                    while dest_filename in _copied_json_filenames:
+                        counter += 1
+                        dest_filename = f"{stem}_{counter}{suffix}"
+                    _copied_json_filenames.add(dest_filename)
+                    filename_counter[stem] = counter + 1
+                    dest_path = gathered_opcompile_dir / dest_filename
+                    shutil.copy2(json_file.resolve(), dest_path)
                 except Exception as e:
                     warnings.warn(f"failed to copy {json_dir} to {gathered_opcompile_dir}: {e}")
                     return None
@@ -449,6 +464,11 @@ def _get_local_gloo_group():
         _local_gloo_groups[node_idx] = dist.new_group(ranks=ranks, backend="gloo")
 
     return _local_gloo_groups[global_rank // local_world_size]
+
+
+def _get_group_root_rank(rank: int):
+    local_world_size = int(os.environ['LOCAL_WORLD_SIZE'])
+    return (rank // local_world_size) * local_world_size
 
 
 def destroy_local_gloo_groups():
