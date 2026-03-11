@@ -150,16 +150,16 @@
         "signature": "()"
     },
     "torch_npu.dynamo.npugraph_ex.get_npu_backend": {
-        "signature": "(*, compiler_config: torch_npu.dynamo.npugraph_ex.configs.compiler_config.CompilerConfig = None, custom_decompositions: Dict = {})"
+        "signature": "(*, compiler_config: npugraph_ex.configs.compiler_config.CompilerConfig = None, custom_decompositions: Dict = {})"
     },
     "torch_npu.dynamo.npugraph_ex.npu_fx_compiler.get_npu_backend": {
-        "signature": "(*, compiler_config: torch_npu.dynamo.npugraph_ex.configs.compiler_config.CompilerConfig = None, custom_decompositions: Dict = {})"
+        "signature": "(*, compiler_config: npugraph_ex.configs.compiler_config.CompilerConfig = None, custom_decompositions: Dict = {})"
     },
     "torch_npu.dynamo.npugraph_ex.get_compiler": {
-        "signature": "(compiler_config: torch_npu.dynamo.npugraph_ex.configs.compiler_config.CompilerConfig = None)"
+        "signature": "(compiler_config: npugraph_ex.configs.compiler_config.CompilerConfig = None)"
     },
     "torch_npu.dynamo.npugraph_ex.npu_fx_compiler.get_compiler": {
-        "signature": "(compiler_config: torch_npu.dynamo.npugraph_ex.configs.compiler_config.CompilerConfig = None)"
+        "signature": "(compiler_config: npugraph_ex.configs.compiler_config.CompilerConfig = None)"
     },
     "torch_npu.dynamo.npugraph_ex.compile_fx": {
         "signature": "(options: dict = None)"
