@@ -105,7 +105,7 @@ def async_compile(executor: Optional[AsyncCompile], artifacts: Dict[str, str]):
     soc_version = 'cpu' if config._debugging_host_only else torch.npu.get_device_properties().name
     # Prevent force single-threaded compile by other stubs such as triton
     inductor_config.compile_threads = max(32, inductor_config.compile_threads)
-    if inductor_config.compile_threads > 1 and executor is not None:
+    if inductor_config.compile_threads > 1 and executor is not None and not config._debugging_host_only:
         logger.debug("Async compile for %s", launcher)
         future = executor.process_pool().submit(_compiler.compile_ascendc, artifacts,
                                                 lib_dir, asserts_base, soc_version=soc_version)

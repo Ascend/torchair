@@ -285,8 +285,11 @@ def _fallback_node_due_to_unsupported_type(node: torch.fx.Node, allow_cpu_inputs
 
 
 def _stub_debugging_host_only():
+    import logging
+    logger.setLevel(logging.DEBUG)
     from inductor_npu_ext import config
     config._debugging_host_only = True
     from torch._inductor import config as inductor_config
     inductor_config.compile_threads = 1
+    inductor_config.force_disable_caches = True
     register_backend_for_device("cpu", NPUScheduling, NpuWrapperCodeGen)

@@ -16,3 +16,4 @@ __pycache__
 *.egg-info/
 **/.npu_kernels*
 **/torch_compile_debug*
+.github

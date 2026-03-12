@@ -93,6 +93,9 @@ run_test() {
 
   mkdir -pv "${TORCHAIR_ROOT}/coverage"
   make torchair_${TYPE} -j${THREAD_NUM}
+  if [[ "$TYPE" == "ut" ]]; then
+    ${PYTHON_BIN_PATH} -m unittest discover -s ${TORCHAIR_ROOT}/experimental/_inductor_npu_ext/tests -p "*.py"
+  fi
   lcov -o ${TORCHAIR_ROOT}/coverage/coverage.info -e ${CMAKE_PATH}/${TYPE}/${TYPE}.coverage "*torchair/torchair*"
 }
 

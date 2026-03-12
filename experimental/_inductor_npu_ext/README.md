@@ -1,8 +1,8 @@
 ## 介绍
 
-inductor-npu-ext 正在为 NPU 设备添加一个新的 Inductor 后端，该后端定位于使用 NPU 上的 SOTA DSL 生成 Inductor 融合 Kernel。
+inductor-npu-ext 正在为 Inductor 添加一个亲和 NPU 的 Codegen 后端，该后端定位于使用 NPU 上的 SOTA DSL 生成 Inductor 融合 Kernel。
 
-inductor-npu-ext 当前基于 AscendC 生成融合Kernel。
+inductor-npu-ext 当前基于 AscendC 生成融合Kernel，同时关注并持续集成 NPU 上的新兴 DSL PyPTO，以保证融合 Kernel 生成的先进性。
 
 <img src="image/README/framework.png" width="30%" />
 
@@ -13,10 +13,12 @@ inductor-npu-ext 当前基于 AscendC 生成融合Kernel。
 * [X] 支持动态 Shape
 * [ ] 支持MM尾声&序幕融合
 * [ ] SuperKernel融合(一种降低 Device 上 Kernel 调度间隙的技术)
+* [ ] 静态化编译支持（一种静态shape场景下降低算子头开销的技术）
 * [X] 支持需要 Workspace 内存的 Kernel
 * [ ] PGO（Profiling Guide Optimize）性能寻优
 * [X] 基于硬件性能建模的模板&Tiling寻优
-
+* [ ] 稳健地扩充支持融合的算子白名单
+* [ ] 支持离散访存类融合
 ---
 
 ## 软件安装
