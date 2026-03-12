@@ -65,6 +65,8 @@ sudo apt-get install cmake gcc
 
 ## 功能验证
 
+> 详细的使用说明参见 [使用手册](./docs/manuals.md)。
+
 执行前，需要执行 CANN 安装目录下的 set_env.sh 设置 CANN 相关环境变量
 
 > 例如CANN安装路径为 `/usr/local/Ascend/cann`，则执行：
@@ -77,6 +79,7 @@ source /usr/local/Ascend/cann/set_env.sh
 
 ```python
 import torch
+import torch_npu
 import inductor_npu_ext
 
 @torch.compile

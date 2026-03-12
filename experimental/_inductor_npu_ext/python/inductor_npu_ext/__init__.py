@@ -265,7 +265,7 @@ def _fallback_node_due_to_unsupported_type(node: torch.fx.Node, allow_cpu_inputs
                 _summary.fallback(node, f"unsupported shape/stride expr {expr} with ['ModularIndex', 'Max', 'Min']")
                 return True
 
-        if all([str(v) != "1" for v in meta.stride()]):
+        if meta.stride() and all([str(v) != "1" for v in meta.stride()]):
             _summary.fallback(node, f"performance of non-contiguous stride {meta.stride()} maybe worse than eager")
             return True
 
