@@ -549,11 +549,11 @@ class AclConcreteGraph(ConcreteGraphBase):
                 for i, tag in enumerate(aclgraph_cache_info.user_stream_label):
                     if tag in aclgraph_cache_info.user_stream_info:
                            stream_info = aclgraph_cache_info.user_stream_info[tag]
-                           stream = torch_npu.npu.streams.Stream(stream_id=stream_info["stream_id"], 
+                           stream = torch.npu.Stream(stream_id=stream_info["stream_id"], 
                                                                  device_index=stream_info["device_index"], 
                                                                  device_type=stream_info["device_type"])
                     else:
-                        stream = torch_npu.npu.Stream()
+                        stream = torch.npu.Stream()
                     _GLOBAL_USER_TAG_TO_STREAM[tag] = stream 
         ''')
         return update_code.getvalue()
