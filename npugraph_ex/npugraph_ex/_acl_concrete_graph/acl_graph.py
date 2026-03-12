@@ -733,6 +733,8 @@ class AclGraphCacheInfo:
     tagged_event_names: List[str] = field(default_factory=list)
     # To ensure that npu_stream_switch obtains the correct stream in a cache_compile scenario
     user_stream_label: Set[str] = field(default_factory=set)
+    # Stream info dict: stream_label -> {"stream_id": int, "device_index": int, "priority": int}
+    user_stream_info: Dict[str, Dict] = field(default_factory=dict)
     # dict for inputs and outputs which are same tensor.
     userinput_ref_with_output: Dict[int, List] = field(default_factory=dict)
 
@@ -792,6 +794,7 @@ class AclGraph(object):
         self._tagged_event_names = None
         self._parameter_user_inputs = []
         self._user_stream_label = None
+        self._user_stream_info = None
         self._input_base_format = None
         self._userinput_ref_with_output: Dict[int, List] = {}
 
@@ -908,6 +911,7 @@ class AclGraph(object):
         self._fx_graph_name = aclgraph_cache_info.fx_graph_name
         self._tagged_event_names = aclgraph_cache_info.tagged_event_names
         self._user_stream_label = aclgraph_cache_info.user_stream_label
+        self._user_stream_info = aclgraph_cache_info.user_stream_info
         self._userinput_ref_with_output = aclgraph_cache_info.userinput_ref_with_output
 
     def compile(self, *args: Any, **kwargs: Any):

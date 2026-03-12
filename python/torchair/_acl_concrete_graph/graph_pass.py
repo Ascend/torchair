@@ -589,9 +589,29 @@ def _create_event_by_name(name: str):
             logger.debug(f"[Multi-stream] Created new event {new_event} with key '{name}'.")
 
 
+def _extract_user_stream_info(keys, values, user_stream_info, stream_label) -> Dict[str, int]:
+    """Extract stream info from scope_enter args.
+
+    keys: ["_user_stream_label", "_user_stream_priority", "_user_stream_id", "_user_stream_device_index"]
+    values: [label, priority, stream_id, device_index, device_type]
+    """
+    info = {}
+    for i, key in enumerate(keys):
+        if i < len(values):
+            if key == "_user_stream_id":
+                info["stream_id"] = int(values[i])
+            elif key == "_user_stream_device_index":
+                info["device_index"] = int(values[i])
+            elif key == "_user_stream_device_type":
+                info["device_type"] = int(values[i])
+    if info:
+        user_stream_info[stream_label] = info
+        logger.debug(f"Collected stream info for label {stream_label}: {info}")
+
+
 @debug_compare_fx_graphs(pass_name="apply_event_closure_with_multi_stream")
 def apply_event_closure_with_multi_stream(graph_module: fx.GraphModule, graph_name: str, tagged_event_names: List[str],
-                                          user_stream_label: Set[str]):
+                                          user_stream_label: Set[str], user_stream_info: Dict[str, Dict]):
     stream_scope_enter_nodes = []
     stream_scope_exit_nodes = []
     stream_scope_enter_nodes_dict = {}
@@ -606,8 +626,14 @@ def apply_event_closure_with_multi_stream(graph_module: fx.GraphModule, graph_na
                 # there must be an 'args[1]' to store value associated with that key.
                 # We store that value for later stream switch.
                 # Use a set for storage to eliminate duplicate values.
-                user_stream_label.add(node.args[1][0])
-                stream_scope_enter_nodes_dict[node.name] = node.args[1][0]
+                stream_label = node.args[1][0]
+                user_stream_label.add(stream_label)
+                stream_scope_enter_nodes_dict[node.name] = stream_label
+
+                # Extract stream info from scope_enter args
+                if len(node.args) >= 2:
+                    _extract_user_stream_info(node.args[0], node.args[1], user_stream_info, stream_label)
+                    
             scope_enter_nodes_stack.append(node)
         elif str(node.target) == "air.scope_exit.default":
             node.kwargs = {**node.kwargs, 'need_execute': True}

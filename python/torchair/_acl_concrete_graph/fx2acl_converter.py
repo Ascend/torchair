@@ -246,7 +246,8 @@ class AclConcreteGraph(ConcreteGraphBase):
         multi_stream_enabled, _stream_scope_enter_nodes_dict, _stream_scope_exit_nodes_list = \
         apply_event_closure_with_multi_stream(self.fx_graph, self.fx_graph_name,
                                               self._aclgraph_cache_info.tagged_event_names,
-                                              self._aclgraph_cache_info.user_stream_label)
+                                              self._aclgraph_cache_info.user_stream_label,
+                                              self._aclgraph_cache_info.user_stream_info)
         observer.dump_gm(self.fx_graph, "graph_after_apply_event_closure_with_multi_stream")
 
         logger.debug('after apply_stream_event_closure optimization, '
@@ -529,6 +530,7 @@ class AclConcreteGraph(ConcreteGraphBase):
                 tagged_event_names={self._aclgraph_cache_info.tagged_event_names},
                 parameter_user_inputs={self._aclgraph_cache_info.parameter_user_inputs},
                 user_stream_label={self._aclgraph_cache_info.user_stream_label},
+                user_stream_info={self._aclgraph_cache_info.user_stream_info},
                 userinput_ref_with_output={self._aclgraph_cache_info.userinput_ref_with_output}
             )
             acl_graph.load(aclgraph_cache_info)
@@ -545,8 +547,14 @@ class AclConcreteGraph(ConcreteGraphBase):
         def _update_user_stream_label_dict():
             with _GLOBAL_USER_TAGGED_STREAM_LOCK:
                 for i, tag in enumerate(aclgraph_cache_info.user_stream_label):
-                    stream = torch_npu.npu.Stream()
-                    _GLOBAL_USER_TAG_TO_STREAM[tag] = stream
+                    if tag in aclgraph_cache_info.user_stream_info:
+                           stream_info = aclgraph_cache_info.user_stream_info[tag]
+                           stream = torch_npu.npu.streams.Stream(stream_id=stream_info["stream_id"], 
+                                                                 device_index=stream_info["device_index"], 
+                                                                 device_type=stream_info["device_type"])
+                    else:
+                        stream = torch_npu.npu.Stream()
+                    _GLOBAL_USER_TAG_TO_STREAM[tag] = stream 
         ''')
         return update_code.getvalue()
 

@@ -30,6 +30,7 @@ def replace_stream_event_pass(gm: torch.fx.GraphModule):
     event_index_to_node_name = {}
     stream_stack = []
     new_stream_list = []
+    stream_info_map = {}  # stream_node -> stream_info dict
     current_stream_map = {}
     current_stream = "default_stream"
 
@@ -55,6 +56,8 @@ def replace_stream_event_pass(gm: torch.fx.GraphModule):
                 node.args = (node.args[0], node.args[1].name,)
             elif _is_stream(node):
                 new_stream_list.append(node)
+                # Get stream info and save to map
+                stream_info_map[node] = _get_stream_info(node)
             elif node.target == torch.npu.current_stream:
                 # 将current_stream对应的实际的流记录到字典里
                 current_stream_map[node] = current_stream
@@ -88,7 +91,7 @@ def replace_stream_event_pass(gm: torch.fx.GraphModule):
                 logger.debug(f"replace_stream_event: push stream: {graph_id + node.name} to stack")
                 stream_stack.append(_to_set_stream)
                 node.target = torch.ops.air.scope_enter
-                node.args = (["_user_stream_label", "_user_stream_priority"], [graph_id + _to_set_stream.name, "0"])
+                node.args = _build_scope_enter_args(stream_info_map, _to_set_stream, graph_id)
             elif _to_set_stream in stream_stack:
                 # 如果是已经栈里，则出栈，并创建scope_exit节点
                 while _to_set_stream != stream_stack[-1]:
@@ -136,15 +139,80 @@ def _is_event(node):
 def _is_stream(node):
     if node.target == torch.npu.Stream:
         return True
-    if (_torch_high_version() 
+    if (_torch_high_version()
         and node.target == torch._dynamo.graph_bytecode_inputs.get_external_object_by_index):
         if isinstance(torch._dynamo.graph_bytecode_inputs.get_external_object_by_index(node.args[0]), torch.npu.Stream):
             return True
-    return False  
-            
+    return False
+
+
+def _get_stream_info(stream_node):
+    """
+    Get stream information (stream_id, device_index, device_type) from a stream node.
+
+    For both internally created and externally passed streams, extract info from
+    stream_node.meta.get('example_value').
+
+    Returns:
+        dict: {"stream_id": int or None, "device_index": int or None,
+               "device_type": int or None, "priority": int}
+    """
+    stream_info = {"stream_id": None, "device_index": None, "device_type": None, "priority": 0}
+
+    # Get stream info from stream_node.meta['example_value']
+    example_value = stream_node.meta.get('example_value', None)
+    if example_value is not None:
+        if hasattr(example_value, "stream_id"):
+            stream_info["stream_id"] = example_value.stream_id
+        if hasattr(example_value, "device_index"):
+            stream_info["device_index"] = example_value.device_index
+        if hasattr(example_value, "device_type"):
+            stream_info["device_type"] = example_value.device_type
+
+    logger.debug(f"_get_stream_info: stream_node={stream_node.name}, info={stream_info}")
+    return stream_info
+
+
+def _build_scope_enter_args(stream_info_map: dict, stream_node, graph_id: str):
+    """
+    Build scope_enter args with stream info.
+
+    Args:
+        stream_info_map: Dict mapping stream_node to stream info
+        stream_node: The stream node to build args for
+        graph_id: The graph ID prefix for the stream label
+
+    Returns:
+        tuple: (keys, values) where keys and values are lists for scope_enter args
+    """
+    # Get stream info from stream_info_map
+    stream_info = stream_info_map.get(stream_node, {})
+    stream_id = stream_info.get("stream_id", None)
+    device_index = stream_info.get("device_index", None)
+    device_type = stream_info.get("device_type", None)
+    priority = 0  # Fixed priority
+
+    # Build scope_enter args with stream info
+    # Format: (keys, values) where keys and values are lists
+    keys = ["_user_stream_label", "_user_stream_priority"]
+    values = [graph_id + stream_node.name, str(priority)]
+
+    # Add stream_id, device_index, device_type if available
+    if stream_id is not None:
+        keys.append("_user_stream_id")
+        values.append(str(stream_id))
+    if device_index is not None:
+        keys.append("_user_stream_device_index")
+        values.append(str(device_index))
+    if device_type is not None:
+        keys.append("_user_stream_device_type")
+        values.append(str(device_type))
+
+    return keys, values
+
 
 def _torch_high_version():
-    if (hasattr(torch._dynamo, "graph_bytecode_inputs") 
+    if (hasattr(torch._dynamo, "graph_bytecode_inputs")
         and hasattr(torch._dynamo.graph_bytecode_inputs, "get_external_object_by_index")):
         return True
     return False
