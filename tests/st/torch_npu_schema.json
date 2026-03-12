@@ -185,6 +185,9 @@
     "torch_npu.dynamo.npugraph_ex.inference.readable_cache": {
         "signature": "(cache_bin, print_output=True, file=None)"
     },
+    "torch_npu.dynamo.npugraph_ex.scope.limit_core_num": {
+        "signature": "(op_aicore_num: int, op_vectorcore_num: int)"
+    },
     "torch_npu.dynamo.npugraph_ex.register_replacement": {
         "signature": "(search_fn, replace_fn, example_inputs, trace_fn=<function fwd_only>, extra_check=<function _return_true>, search_fn_pattern=None, scalar_workaround=None, skip_duplicates=False)"
     },

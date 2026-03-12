@@ -603,7 +603,7 @@ class _NpuFxCompiler:
         concrete_graph: ConcreteGraphBase = _NpuGraphConverter(
             optimized_gm, graph=graph, garbage_collect_values=False).run(*example_inputs)
 
-        if self.config.debug.graph_dump.enabled and not self.config.export.export_mode:
+        if self.config.debug.graph_dump.enabled:
             concrete_graph.dump(self.config.debug.graph_dump.full_path(f"dynamo_original_graph_{_GLOBAL_GRAPH_ID}"))
 
         # optimize different concrete graph for ge or acl.
