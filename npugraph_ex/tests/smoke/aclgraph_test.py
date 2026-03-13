@@ -1044,6 +1044,16 @@ class AclgraphTest(unittest.TestCase):
             yOut = torch_npu.npu_quantize(y, scales, zero_points=zero_points, dtype=torch.int8, axis=-1)
             return yOut, xOut
 
+        def f_no_xout(x1, x2, gamma, scales, zero_points):
+            y, _, xOut = torch_npu.npu_add_rms_norm(x1, x2, gamma)
+            yOut = torch_npu.npu_quantize(y, scales, zero_points=zero_points, dtype=torch.qint8, axis=-1)
+            return yOut
+
+        def f_no_xout_with_epsilon(x1, x2, gamma, scales, zero_points):
+            y, _, xOut = torch_npu.npu_add_rms_norm(x1, x2, gamma, 4e-6)
+            yOut = torch_npu.npu_quantize(y, scales, zero_points=zero_points, dtype=torch.int8, axis=-1)
+            return yOut
+
         npugraph_ex.npu_fx_compiler._optimize_fx = create_optimize_wrapper(lambda gm: self.assert_addrmsnorm_quant(gm, True))
         compile_model = torch.compile(f, backend="npugraph_ex", fullgraph=True, dynamic=True)
 
@@ -1067,6 +1077,18 @@ class AclgraphTest(unittest.TestCase):
         self.assertTrue(torch.equal(y1, y3))
         self.assertTrue(torch.equal(y2, y4))
 
+        # test no xout
+        compile_model = torch.compile(f_no_xout, backend="npugraph_ex", fullgraph=True, dynamic=False)
+        x1, x2, gamma, scales, zero_points = self.get_quant_input(16, torch.bfloat16, torch.bfloat16, torch.bfloat16)
+        y1 = f_no_xout(x1, x2, gamma, scales, zero_points)
+        y3 = compile_model(x1, x2, gamma, scales, zero_points)
+        self.assertTrue(torch.equal(y1, y3))
+
+        compile_model = torch.compile(f_no_xout_with_epsilon, backend="npugraph_ex", fullgraph=True, dynamic=False)
+        x1, x2, gamma, scales, zero_points = self.get_quant_input(16, torch.bfloat16, torch.bfloat16, torch.bfloat16)
+        y1 = f_no_xout_with_epsilon(x1, x2, gamma, scales, zero_points)
+        y3 = compile_model(x1, x2, gamma, scales, zero_points)
+        self.assertTrue(torch.equal(y1, y3))
 
     @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
     def test_pattern_pass_addrmsnorm_quant_mismatched(self):
@@ -1090,6 +1112,11 @@ class AclgraphTest(unittest.TestCase):
             y, _, xOut = torch_npu.npu_add_rms_norm(x1, x2, gamma)
             yOut = torch_npu.npu_quantize(y, scales, zero_points=zero_points, dtype=torch.qint8, axis=-1, div_mode=True)
             return yOut, xOut
+
+        def f_no_xout(x1, x2, gamma, scales, zero_points):
+            y, _, xOut = torch_npu.npu_add_rms_norm(x1, x2, gamma, 4e-6)
+            yOut = torch_npu.npu_quantize(y, scales, zero_points=zero_points, dtype=torch.int8, axis=-1, div_mode=False)
+            return yOut
 
         npugraph_ex.npu_fx_compiler._optimize_fx = create_optimize_wrapper(lambda gm: self.assert_addrmsnorm_quant(gm, False))
         compile_model = torch.compile(f, backend="npugraph_ex", fullgraph=True, dynamic=True)
@@ -1118,6 +1145,10 @@ class AclgraphTest(unittest.TestCase):
         compile_model = torch.compile(f, backend="npugraph_ex", fullgraph=True, dynamic=True)
         f(x1, x2, gamma, scales, zero_points, div_mode=False)
         compile_model(x1, x2, gamma, scales, zero_points, div_mode=False)
+
+        compile_model = torch.compile(f_no_xout, backend="npugraph_ex", fullgraph=True, dynamic=False)
+        f_no_xout(x1, x2, gamma, scales, zero_points)
+        compile_model(x1, x2, gamma, scales, zero_points)
 
         # test mismatch shape
         gamma = torch.ones(1, 2, 16, dtype=torch.bfloat16, device='npu')

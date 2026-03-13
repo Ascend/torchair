@@ -1,10 +1,11 @@
 __all__ = []
 
 import functools
+import operator
 import sys
 import torch
 
-from torch._inductor.pattern_matcher import Match
+from torch._inductor.pattern_matcher import Match, CallFunction, KeywordArg
 from torch._subclasses.fake_tensor import FakeTensorMode
 
 from npugraph_ex.core.utils import logger
@@ -146,6 +147,85 @@ def _register_addrmsnormquant_pattern_default(pattern_pass_manager, div_mode):
 
 
 @functools.lru_cache(None)
+def _register_addrmsnormquant_pattern_no_xout(pattern_pass_manager, div_mode):
+    if 'torch_npu' not in sys.modules:
+        logger.info(f'The addrmsnormquant fusion will only be enabled in a torch npu env.'
+                    'When there is no torch_npu in the env, skip fusion.')
+        return
+
+    def search_fn_no_xout_with_epsilon(x1, x2, gamma, scales, zero_points, epsilon, dtype):
+        pass
+
+    def replace_fn_no_xout_with_epsilon(x1, x2, gamma, scales, zero_points, epsilon, dtype):
+        # output dtype only supports INT8, axis currently only supports -1, passing other values will not take effect
+        y1, _, _ = torch.ops.npu.npu_add_rms_norm_quant.default(x1, x2, gamma, scales, zero_points, axis=-1, epsilon=epsilon)
+        return y1
+    
+    def search_fn_no_xout(x1, x2, gamma, scales, zero_points, dtype):
+        pass
+
+    def replace_fn_no_xout(x1, x2, gamma, scales, zero_points, dtype):
+        # output dtype only supports INT8, axis currently only supports -1, passing other values will not take effect
+        y1, _, _ = torch.ops.npu.npu_add_rms_norm_quant.default(x1, x2, gamma, scales, zero_points, axis=-1)
+        return y1
+
+    def _build_search_pattern(with_epsilon=False):
+        norm_args = [
+            torch.ops.npu.npu_add_rms_norm.default,
+            KeywordArg('x1'),
+            KeywordArg('x2'),
+            KeywordArg('gamma'),
+        ]
+        if with_epsilon:
+            norm_args.append(KeywordArg('epsilon'))
+
+        npu_add_rms_norm_func = CallFunction(
+            *norm_args,
+            _users=1
+        )
+
+        add_rms_norm_output0 = CallFunction(
+            operator.getitem,
+            npu_add_rms_norm_func,
+            0
+        )
+
+        return CallFunction(
+            torch.ops.npu.npu_quantize.default, 
+            add_rms_norm_output0,
+            KeywordArg('scales'),
+            KeywordArg('zero_points'),
+            KeywordArg('dtype'),
+            -1
+        )
+
+    fake_mode = FakeTensorMode()
+    with fake_mode:
+        # sizes/values don't actually matter for initial trace
+        # once we get a possible match we re-trace with the actual values and verify the match still holds
+        pattern_pass_manager.register_pattern(
+            search_fn=search_fn_no_xout,
+            replace_fn=replace_fn_no_xout,
+            example_inputs=_get_inputs(),
+            extra_check=_pattern_extra_check,
+            search_fn_pattern=_build_search_pattern(),
+            scalar_workaround={"dtype": 1},
+            skip_duplicates=True
+        )
+
+        pattern_pass_manager.register_pattern(
+            search_fn=search_fn_no_xout_with_epsilon,
+            replace_fn=replace_fn_no_xout_with_epsilon,
+            example_inputs=_get_inputs(),
+            extra_check=_pattern_extra_check,
+            search_fn_pattern=_build_search_pattern(with_epsilon=True),
+            scalar_workaround={"epsilon": 2e-6, "dtype": 1},
+            skip_duplicates=True
+        )
+
+
+@functools.lru_cache(None)
 def _register_addrmsnormquant_patterns(pattern_pass_manager: _PatternPassManager):
     _register_addrmsnormquant_pattern_default(pattern_pass_manager, div_mode=True)
     _register_addrmsnormquant_pattern(pattern_pass_manager, div_mode=True)
+    _register_addrmsnormquant_pattern_no_xout(pattern_pass_manager, div_mode=True)
