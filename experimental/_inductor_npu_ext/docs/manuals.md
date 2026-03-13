@@ -7,6 +7,7 @@
 - [脚本使能方式](#1-脚本使能方式)
 - [调测相关环境变量](#2-调测相关环境变量)
 - [调测输出说明](#3-调测输出说明)
+- [持久化编译缓存](#4-持久化编译缓存)
 
 ## 1. 脚本使能方式
 
@@ -24,7 +25,7 @@ import inductor_npu_ext
 
 ### TORCH_COMPILE_DEBUG
 
-**作用：** 启用详细调试日志，以及编译中间产物保存等，参见 [调测输出说明](#3-调测输出说明)。
+**作用：** torch原生环境变量，启用详细调试日志，以及编译中间产物保存等，参见 [调测输出说明](#3-调测输出说明)。
 
 **使用方法：**
 
@@ -39,7 +40,7 @@ export TORCH_COMPILE_DEBUG=1
 
 ### TORCHINDUCTOR_FORCE_DISABLE_CACHES
 
-**作用：** 禁用 Inductor 缓存，每次执行都会重新编译。
+**作用：** torch原生环境变量，禁用 Inductor 缓存，每次执行都会重新编译。
 
 **使用方法：**
 
@@ -54,7 +55,7 @@ export TORCHINDUCTOR_FORCE_DISABLE_CACHES=1
 
 ### ASCEND_LAUNCH_BLOCKING
 
-**作用：** 启用 Ascend 内核同步执行，每次kernel下发都会等待完成，便于确定首个报错的 kernel。
+**作用：** torch_npu原生环境变量，启用 Ascend 内核同步执行，每次kernel下发都会等待完成，便于确定首个报错的 kernel。
 
 **使用方法：**
 
@@ -196,6 +197,8 @@ W0312 19:26:40.470000 797352 site-packages/torch/_inductor/debug.py:507] [0/0] m
 
 调试信息输出位于执行目录下的torch_compile_debug子目录，**带有 `autofused_` 前缀的目录**为 inductor-npu-ext 相关产物，其余均为 inductor 原生产物。
 
+> 融合Kernel的命名格式为autofused_{原始节点类型}_{拓扑结构hash}
+
 ```
 ├── torch_compile_debug
 │   └── run_2026_03_12_19_26_39_343839-pid_797352 # 本地执行的时间戳和进程ID
@@ -203,26 +206,26 @@ W0312 19:26:40.470000 797352 site-packages/torch/_inductor/debug.py:507] [0/0] m
 │       │   └── debug.log
 │       └── torchinductor
 │           ├── aot_model___0_debug.log
-│           └── model__0_inference_0.0 # FX图的编译产物目录，与@torch.compile装饰的函数对应。
-│               ├── autofused_add_sum_31aba041b5d992c026cdfc574b77ec24 # inductor-npu-ext 相关产物目录，目录名与融合kernel同名，如果FX图中有多个融合kernel，则会有多个以autofused_开头的目录。
-│               │   ├── asc_graph.py # 融合kernel对应的AscIR图结构代码
-│               │   ├── asc_kernel.py # 融合kernel对应的Ascendc Kernel实现及Tiling实现
-│               │   ├── benchmark.py # 融合kernel的基准测试代码，用于评估融合kernel的性能
-│               │   ├── graph.svg # 融合kernel对应的AscIR图的可视化文件，需要安装Graphviz工具与pydot库才能生成
-│               │   └── inductor_wrapper.cpp # 融合kernel对应的Inductor Wrapper代码，负责将Inductor传入的参数转换为Ascendc Kernel所需的参数，并调用Ascendc Kernel执行
-│               ├── fx_graph_readable.py # 可读的 FX 图
-│               ├── fx_graph_runnable.py # 可执行的 FX 图
-│               ├── fx_graph_transformed.py # Pass 优化后的 FX 图
+│           └── model__0_inference_0.0 # 与FX图对应，torch原生规则命名。
+│               ├── autofused_add_sum_31aba041b5d992c026cdfc574b77ec24 # 每个融合kernel独立子目录
+│               │   ├── asc_graph.py # 融合kernel的AscIR表达
+│               │   ├── asc_kernel.py # Codegen生成的Ascendc Kernel及Tiling实现
+│               │   ├── benchmark.py # 融合kernel性能测试文件，用于性能评估
+│               │   ├── graph.svg # 可视化AscIR表达，需要安装Graphviz与pydot库
+│               │   └── inductor_wrapper.cpp # Wrapper代码，负责Kernel下发
+│               ├── fx_graph_readable.py # 可读的FX图
+│               ├── fx_graph_runnable.py # 可执行的FX图
+│               ├── fx_graph_transformed.py # Pass优化后的FX图
 │               ├── inductor_provenance_tracking_node_mappings.json # Inductor 节点映射的追踪信息
-│               ├── ir_post_fusion.txt # FX 图Lowering后，Schedule融合前的中间表示
-│               ├── ir_pre_fusion.txt # FX 图Lowering后的中间表示
-│               └── output_code.py # 编译生成的最终可执行代码
+│               ├── ir_post_fusion.txt # Schedule融合（水平/垂直/...）后的中间表示
+│               ├── ir_pre_fusion.txt # FX图Lowering后的中间表示
+│               └── output_code.py # 与原始函数等价的最终可执行代码
 ```
 
 #### 3.2.1 asc_graph.py
-该文件包含融合kernel对应的AscIR图的定义与Codegen调用。直接执行该文件，可以触发Ascendc Codegen的完整过程。
+该文件包含融合kernel对应的AscIR的定义与Codegen调用。直接执行该文件，可以触发Ascendc Codegen的完整过程。
 
-**建议的使用方式：** 如果在codegen过程中发生错误，执行该文件，复现Codegen过程的问题。
+**建议的使用方式：** 如果对应的融合Kernel在codegen过程中发生错误，可执行该文件，复现Codegen过程的问题。
 ```bash
 python3 asc_graph.py
 ```
@@ -232,7 +235,9 @@ python3 asc_graph.py
 
 > 注意，缓存命中时，该文件不会生成。
 
-**建议的使用方式：** 通常不直接使用该文件，如果Kernel执行出现了错误，优先通过benchmark.py尝试复现问题，如果只在整网执行下才可触发，可以直接修改该文件中的AscendC源码，添加AscendC print或者dump，观察UB中的数据以定位问题原因。执行该文件后会直接模型编译缓存，下次模型执行即可生效。
+**建议的使用方式：** 通常不直接使用该文件，如果Kernel执行出现了错误，优先通过benchmark.py尝试复现问题。
+
+> 如果只在整网执行下才可触发，可以修改该文件中的AscendC源码，添加AscendC print或者dump，观察UB中的数据以定位问题原因。执行该文件**会直接修改本地缓存**，下次模型执行生效。
 ```bash
 python3 asc_kernel.py
 ```
@@ -242,10 +247,12 @@ python3 asc_kernel.py
 
 > 注意，缓存命中时，该文件不会生成。
 
-**建议的使用方式：** 如果你需要调测Host下发逻辑，可以直接修改文件中的C++代码，文件开头包含完整的gcc编译命令，执行该命令编译生成.so文件，会直接模型编译缓存，重新执行测试脚本，可验证修改。
+**建议的使用方式：** 通常不直接使用该文件，如果怀疑Host下发存在问题，优先通过benchmark.py尝试复现问题并修改其中的`cpp_wrapper`实现进行验证。
+
+> 如果问题只在模型执行时才可触发，则可以修改该文件中的C++代码，文件开头包含完整的gcc编译命令，执行该命令进行编译，**会直接修改本地缓存**，下次模型执行生效。
 
 #### 3.2.4 graph.svg
-该文件为融合kernel对应的AscIR图的可视化文件，便于开发者理解融合kernel的结构。
+该文件为融合kernel对应的AscIR表达的可视化文件，便于开发者理解融合kernel的结构。
 > 需要在模型执行前安装Graphviz工具与pydot库生成，否则不会生成该文件。
 
 **建议的使用方式：** 使用浏览器打开该文件，便于直观地查看融合kernel的结构。
@@ -262,10 +269,32 @@ python3 asc_kernel.py
 ```
 python3 benchmark.py
 ```
-不传入e2e时，执行该文件会执行AscendC代码编译到Profiling采集的完整流程。如果您了解AscendC，可以尝试手工优化其中的AscendC Kernel实现，并观察性能变化。通常用于指导AscIR的Codegen策略优化。
+不传入e2e时，执行该文件会执行AscendC代码编译到Profiling采集的完整流程。如果您了解AscendC，可以尝试手工优化其中的AscendC Kernel实现，并观察性能变化。通常用于指导AscIR的Codegen策略优化或快速验证修改方案。
 
 ```
 python3 benchmark.py e2e
 ```
 
-传入e2e参数时，执行该文件会执行AscIR构图到Profiling采集的完整流程。如果您优化了AscIR的Codegen策略，可以通过该流程验证优化效果。
+传入e2e参数时，执行该文件会执行AscIR表达到Profiling采集的完整流程。如果您优化了AscIR的Codegen实现或修复了Codegen的bug，可以通过该流程验证效果。
+
+## 4. 持久化编译缓存
+inductor-npu-ext 会将融合Kernel编译结果进行缓存落盘。缓存在多进程、多线程、进程内的多个子进程以及同一进程内的相同pattern间共享，通过文件锁保证安全性。
+
+缓存保存在**执行目录下**以`.npu_kernels_{用户名}`开头的目录中，每个融合kernel一个子目录，融合kernel子目录下，为以Codegen结果hash命名的二级子目录，用于处理不同软件版本间的Codegen实现差异。缓存匹配包含两部分：
+- 融合结构的明文拓扑（不受节点名、符号名等冗余信息影响）
+- Codegen结果的hash值
+
+只有两者都匹配时才会命中缓存。
+
+```
+├── .npu_kernels_root
+│   └── autofused_add_sum_31aba041b5d992c026cdfc574b77ec24
+│       └── 0b9cb30a2e017a8ba74972338f6e37fa # Codegen结果的hash值
+│           ├── asc_kernel.py
+│           ├── compile.lock
+│           ├── inductor_wrapper.cpp
+│           ├── kernel.so
+│           └── wrapper.so
+```
+
+假如您在调试某个编译问题，不希望缓存生效，可以在每次执行前手动删除该目录或其中的某个子目录。
