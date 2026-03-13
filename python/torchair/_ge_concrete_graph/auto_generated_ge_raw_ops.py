@@ -83331,8 +83331,8 @@ def MatmulAlltoAll(x1: Tensor,
                    dependencies=[],
                    node_name=None):
     """REG_OP(MatmulAlltoAll)\n
-    .INPUT(x1, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2}))\n
-    .INPUT(x2, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2}))\n
+    .INPUT(x1, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1}))\n
+    .INPUT(x2, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1}))\n
     .OPTIONAL_INPUT(bias, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))\n
     .OPTIONAL_INPUT(x1_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))\n
     .OPTIONAL_INPUT(x2_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))\n
@@ -83392,8 +83392,8 @@ def MatmulAlltoAll(x1: Tensor,
         outputs=outputs,
         dependencies=dependencies,
         ir=IrDef("MatmulAlltoAll") \
-        .input("x1", "DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2") \
-        .input("x2", "DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2") \
+        .input("x1", "DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1") \
+        .input("x2", "DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1") \
         .optional_input("bias", "DT_BF16, DT_FLOAT16, DT_FLOAT") \
         .optional_input("x1_scale", "DT_FLOAT, DT_FLOAT8_E8M0") \
         .optional_input("x2_scale", "DT_FLOAT, DT_FLOAT8_E8M0") \
@@ -83442,8 +83442,8 @@ def AlltoAllMatmul(x1: Tensor,
                    dependencies=[],
                    node_name=None):
     """REG_OP(AlltoAllMatmul)\n
-    .INPUT(x1, TensorType({DT_BF16, DT_FLOAT16}))\n
-    .INPUT(x2, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2}))\n
+    .INPUT(x1, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1}))\n
+    .INPUT(x2, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1}))\n
     .OPTIONAL_INPUT(bias, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))\n
     .OPTIONAL_INPUT(x1_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))\n
     .OPTIONAL_INPUT(x2_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))\n
@@ -83451,7 +83451,7 @@ def AlltoAllMatmul(x1: Tensor,
     .OPTIONAL_INPUT(x1_offset, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(x2_offset, TensorType({DT_FLOAT}))\n
     .OUTPUT(y, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))\n
-    .OUTPUT(all2all_out, TensorType({DT_BF16, DT_FLOAT16}))\n
+    .OUTPUT(all2all_out, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1}))\n
     .REQUIRED_ATTR(group, String)\n
     .REQUIRED_ATTR(world_size, Int)\n
     .ATTR(all2all_axes, ListInt, {-2, -1})\n
@@ -83509,8 +83509,8 @@ def AlltoAllMatmul(x1: Tensor,
         outputs=outputs,
         dependencies=dependencies,
         ir=IrDef("AlltoAllMatmul") \
-        .input("x1", "DT_BF16, DT_FLOAT16") \
-        .input("x2", "DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2") \
+        .input("x1", "DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1") \
+        .input("x2", "DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1") \
         .optional_input("bias", "DT_BF16, DT_FLOAT16, DT_FLOAT") \
         .optional_input("x1_scale", "DT_FLOAT, DT_FLOAT8_E8M0") \
         .optional_input("x2_scale", "DT_FLOAT, DT_FLOAT8_E8M0") \
@@ -83531,5 +83531,5 @@ def AlltoAllMatmul(x1: Tensor,
         .attr("group_size", attr.Int(0)) \
         .attr("alltoall_out_flag", attr.Bool(True)) \
         .output("y", "DT_BF16, DT_FLOAT16, DT_FLOAT") \
-        .output("all2all_out", "DT_BF16, DT_FLOAT16") \
+        .output("all2all_out", "DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1") \
     )
