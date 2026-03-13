@@ -83334,8 +83334,8 @@ def MatmulAlltoAll(x1: Tensor,
     .INPUT(x1, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2}))\n
     .INPUT(x2, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2}))\n
     .OPTIONAL_INPUT(bias, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))\n
-    .OPTIONAL_INPUT(x1_scale, TensorType({DT_FLOAT}))\n
-    .OPTIONAL_INPUT(x2_scale, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(x1_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))\n
+    .OPTIONAL_INPUT(x2_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))\n
     .OPTIONAL_INPUT(comm_scale, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(x1_offset, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(x2_offset, TensorType({DT_FLOAT}))\n
@@ -83395,8 +83395,8 @@ def MatmulAlltoAll(x1: Tensor,
         .input("x1", "DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2") \
         .input("x2", "DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2") \
         .optional_input("bias", "DT_BF16, DT_FLOAT16, DT_FLOAT") \
-        .optional_input("x1_scale", "DT_FLOAT") \
-        .optional_input("x2_scale", "DT_FLOAT") \
+        .optional_input("x1_scale", "DT_FLOAT, DT_FLOAT8_E8M0") \
+        .optional_input("x2_scale", "DT_FLOAT, DT_FLOAT8_E8M0") \
         .optional_input("comm_scale", "DT_FLOAT") \
         .optional_input("x1_offset", "DT_FLOAT") \
         .optional_input("x2_offset", "DT_FLOAT") \
@@ -83445,8 +83445,8 @@ def AlltoAllMatmul(x1: Tensor,
     .INPUT(x1, TensorType({DT_BF16, DT_FLOAT16}))\n
     .INPUT(x2, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2}))\n
     .OPTIONAL_INPUT(bias, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))\n
-    .OPTIONAL_INPUT(x1_scale, TensorType({DT_FLOAT, DT_BF16, DT_FLOAT16}))\n
-    .OPTIONAL_INPUT(x2_scale, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(x1_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))\n
+    .OPTIONAL_INPUT(x2_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))\n
     .OPTIONAL_INPUT(comm_scale, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(x1_offset, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(x2_offset, TensorType({DT_FLOAT}))\n
@@ -83512,8 +83512,8 @@ def AlltoAllMatmul(x1: Tensor,
         .input("x1", "DT_BF16, DT_FLOAT16") \
         .input("x2", "DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2") \
         .optional_input("bias", "DT_BF16, DT_FLOAT16, DT_FLOAT") \
-        .optional_input("x1_scale", "DT_FLOAT, DT_BF16, DT_FLOAT16") \
-        .optional_input("x2_scale", "DT_FLOAT") \
+        .optional_input("x1_scale", "DT_FLOAT, DT_FLOAT8_E8M0") \
+        .optional_input("x2_scale", "DT_FLOAT, DT_FLOAT8_E8M0") \
         .optional_input("comm_scale", "DT_FLOAT") \
         .optional_input("x1_offset", "DT_FLOAT") \
         .optional_input("x2_offset", "DT_FLOAT") \
