@@ -82022,17 +82022,9 @@ def AttentionWorkerCombine(
     return y, next_layer_id
 
 
-# This api is auto-generated from IR AlltoAllvGroupedMatMul
-@auto_convert_to_tensor(
-    [False] * 14,
-    [False, False, True, True, True, True, True, True, True, True, True, True, True, True],
-    inputs_tensor_type=[
-        TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_INDEX_NUMBER,
-        TensorType.TT_INDEX_NUMBER, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN,
-        TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN,
-        TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN
-    ]
-)
+@auto_convert_to_tensor([False, False, False, False, False, False], [False, False, True, True, True, True],
+                        inputs_tensor_type=[TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_INDEX_NUMBER,
+                        TensorType.TT_INDEX_NUMBER, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN])
 def AlltoAllvGroupedMatMul(
     gmm_x: Tensor,
     gmm_weight: Tensor,
@@ -82040,14 +82032,6 @@ def AlltoAllvGroupedMatMul(
     recv_counts_tensor: Optional[Tensor],
     mm_x: Optional[Tensor],
     mm_weight: Optional[Tensor],
-    gmm_x_scale: Optional[Tensor] = None,
-    gmm_weight_scale: Optional[Tensor] = None,
-    gmm_x_offset: Optional[Tensor] = None,
-    gmm_weight_offset: Optional[Tensor] = None,
-    mm_x_scale: Optional[Tensor] = None,
-    mm_weight_scale: Optional[Tensor] = None,
-    mm_x_offset: Optional[Tensor] = None,
-    mm_weight_offset: Optional[Tensor] = None,
     *,
     group: str,
     ep_world_size: int,
@@ -82056,54 +82040,34 @@ def AlltoAllvGroupedMatMul(
     trans_gmm_weight: bool = False,
     trans_mm_weight: bool = False,
     permute_out_flag: bool = False,
-    gmm_x_quant_mode: int = 0,
-    gmm_weight_quant_mode: int = 0,
-    mm_x_quant_mode: int = 0,
-    mm_weight_quant_mode: int = 0,
-    group_size: int = 0,
-    y_dtype: int = 28,
-    mm_dtype: int = 28,
-    dependencies=[],
+    dependencies=None,
     node_name=None
 ):
     """REG_OP(AlltoAllvGroupedMatMul)\n
-      .INPUT(gmm_x, TensorType({DT_FLOAT16, DT_BF16, DT_HIFLOAT8}))\n
-      .INPUT(gmm_weight, TensorType({DT_FLOAT16, DT_BF16, DT_HIFLOAT8}))\n
-      .OPTIONAL_INPUT(send_counts_tensor, TensorType({DT_INT32, DT_INT64}))\n
-      .OPTIONAL_INPUT(recv_counts_tensor, TensorType({DT_INT32, DT_INT64}))\n
-      .OPTIONAL_INPUT(mm_x, TensorType({DT_FLOAT16, DT_BF16, DT_HIFLOAT8}))\n
-      .OPTIONAL_INPUT(mm_weight, TensorType({DT_FLOAT16, DT_BF16, DT_HIFLOAT8}))\n
-      .OPTIONAL_INPUT(gmm_x_scale, TensorType({DT_FLOAT}))\n
-      .OPTIONAL_INPUT(gmm_weight_scale, TensorType({DT_FLOAT}))\n
-      .OPTIONAL_INPUT(gmm_x_offset, TensorType({DT_FLOAT}))\n
-      .OPTIONAL_INPUT(gmm_weight_offset, TensorType({DT_FLOAT}))\n
-      .OPTIONAL_INPUT(mm_x_scale, TensorType({DT_FLOAT}))\n
-      .OPTIONAL_INPUT(mm_weight_scale, TensorType({DT_FLOAT}))\n
-      .OPTIONAL_INPUT(mm_x_offset, TensorType({DT_FLOAT}))\n
-      .OPTIONAL_INPUT(mm_weight_offset, TensorType({DT_FLOAT}))\n
-      .OUTPUT(gmm_y, TensorType({DT_FLOAT16, DT_BF16}))\n
-      .OUTPUT(mm_y, TensorType({DT_FLOAT16, DT_BF16}))\n
-      .OUTPUT(permute_out, TensorType({DT_FLOAT16, DT_BF16, DT_HIFLOAT8}))\n
-      .REQUIRED_ATTR(group, String)\n
-      .REQUIRED_ATTR(ep_world_size, Int)\n
-      .REQUIRED_ATTR(send_counts, ListInt)\n
-      .REQUIRED_ATTR(recv_counts, ListInt)\n
-      .ATTR(trans_gmm_weight, Bool, false)\n
-      .ATTR(trans_mm_weight, Bool, false)\n
-      .ATTR(permute_out_flag, Bool, false)\n
-      .ATTR(gmm_x_quant_mode, Int, 0)\n
-      .ATTR(gmm_weight_quant_mode, Int, 0)\n
-      .ATTR(mm_x_quant_mode, Int, 0)\n
-      .ATTR(mm_weight_quant_mode, Int, 0)\n
-      .ATTR(group_size, Int, 0)\n
-      .ATTR(y_dtype, Int, 28)\n
-      .ATTR(mm_dtype, Int, 28)\n
-    """
+.INPUT(gmm_x, TensorType({DT_FLOAT16, DT_BF16}))\n
+.INPUT(gmm_weight, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OPTIONAL_INPUT(send_counts_tensor, TensorType({DT_INT32, DT_INT64}))\n
+.OPTIONAL_INPUT(recv_counts_tensor, TensorType({DT_INT32, DT_INT64}))\n
+.OPTIONAL_INPUT(mm_x, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OPTIONAL_INPUT(mm_weight, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OUTPUT(gmm_y, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OUTPUT(mm_y, TensorType({DT_FLOAT16, DT_BF16}))\n
+.OUTPUT(permute_out, TensorType({DT_FLOAT16, DT_BF16}))\n
+.REQUIRED_ATTR(group, String)\n
+.REQUIRED_ATTR(ep_world_size, Int)\n
+.REQUIRED_ATTR(send_counts, ListInt)\n
+.REQUIRED_ATTR(recv_counts, ListInt)\n
+.ATTR(trans_gmm_weight, Bool, false)\n
+.ATTR(trans_mm_weight, Bool, false)\n
+.ATTR(permute_out_flag, Bool, false)\n
+"""
+    if dependencies is None:
+        dependencies = []
     op = get_default_ge_graph().op.add()
     op.type = "AlltoAllvGroupedMatMul"
     op.name = next_unique_name(node_name, "AlltoAllvGroupedMatMul")
 
-    # process dependencies
+    # process dependices
     for dependency in dependencies:
         op.input.append(dependency.controller)
 
@@ -82146,70 +82110,6 @@ def AlltoAllvGroupedMatMul(
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "mm_weight"
-    if gmm_x_scale is not None:
-        op.input.append(gmm_x_scale.tensor)
-        op.input_desc.add().CopyFrom(gmm_x_scale.desc)
-        op.input_desc[-1].name = "gmm_x_scale"
-    else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "gmm_x_scale"
-    if gmm_weight_scale is not None:
-        op.input.append(gmm_weight_scale.tensor)
-        op.input_desc.add().CopyFrom(gmm_weight_scale.desc)
-        op.input_desc[-1].name = "gmm_weight_scale"
-    else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "gmm_weight_scale"
-    if gmm_x_offset is not None:
-        op.input.append(gmm_x_offset.tensor)
-        op.input_desc.add().CopyFrom(gmm_x_offset.desc)
-        op.input_desc[-1].name = "gmm_x_offset"
-    else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "gmm_x_offset"
-    if gmm_weight_offset is not None:
-        op.input.append(gmm_weight_offset.tensor)
-        op.input_desc.add().CopyFrom(gmm_weight_offset.desc)
-        op.input_desc[-1].name = "gmm_weight_offset"
-    else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "gmm_weight_offset"
-    if mm_x_scale is not None:
-        op.input.append(mm_x_scale.tensor)
-        op.input_desc.add().CopyFrom(mm_x_scale.desc)
-        op.input_desc[-1].name = "mm_x_scale"
-    else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "mm_x_scale"
-    if mm_weight_scale is not None:
-        op.input.append(mm_weight_scale.tensor)
-        op.input_desc.add().CopyFrom(mm_weight_scale.desc)
-        op.input_desc[-1].name = "mm_weight_scale"
-    else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "mm_weight_scale"
-    if mm_x_offset is not None:
-        op.input.append(mm_x_offset.tensor)
-        op.input_desc.add().CopyFrom(mm_x_offset.desc)
-        op.input_desc[-1].name = "mm_x_offset"
-    else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "mm_x_offset"
-    if mm_weight_offset is not None:
-        op.input.append(mm_weight_offset.tensor)
-        op.input_desc.add().CopyFrom(mm_weight_offset.desc)
-        op.input_desc[-1].name = "mm_weight_offset"
-    else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "mm_weight_offset"
 
     # process attrs
     op.attr["group"].s = compat_as_bytes(group)
@@ -82221,13 +82121,6 @@ def AlltoAllvGroupedMatMul(
     op.attr["trans_gmm_weight"].b = trans_gmm_weight
     op.attr["trans_mm_weight"].b = trans_mm_weight
     op.attr["permute_out_flag"].b = permute_out_flag
-    op.attr["gmm_x_quant_mode"].i = gmm_x_quant_mode
-    op.attr["gmm_weight_quant_mode"].i = gmm_weight_quant_mode
-    op.attr["mm_x_quant_mode"].i = mm_x_quant_mode
-    op.attr["mm_weight_quant_mode"].i = mm_weight_quant_mode
-    op.attr["group_size"].i = group_size
-    op.attr["y_dtype"].i = y_dtype
-    op.attr["mm_dtype"].i = mm_dtype
 
     # process outputs
     output_index = 0
