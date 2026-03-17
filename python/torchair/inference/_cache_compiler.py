@@ -124,7 +124,7 @@ def _depatch_user_const(code: types.CodeType):
 
 
 class CompiledModel:
-    VERSION = "1.0.4"
+    VERSION = "1.0.5"
     FILE = "compiled_module"
 
     def __init__(self, meta: Union[ModelCacheMeta, types.FunctionType, types.MethodType]):

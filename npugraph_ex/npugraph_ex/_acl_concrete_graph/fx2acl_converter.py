@@ -167,6 +167,7 @@ class AclConcreteGraph(ConcreteGraphBase):
             import torch_npu
             from npugraph_ex._acl_concrete_graph.acl_graph import AclGraph, AclGraphCacheInfo
             from npugraph_ex._acl_concrete_graph.acl_graph_cache_utils import SerializableGraphModule
+            from npugraph_ex.ops._tagged_event import _npu_create_tagged_event
 
             assert_size_stride = torch._C._dynamo.guards.assert_size_stride
             ''')
