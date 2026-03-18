@@ -29,8 +29,8 @@ class _NpuGraphExConfig:
     Config for NpuGraphEx option
     """
     OPTIONS_TO_CONFIG_MAP = {
-        "_vllm_aclnn_static_kernel_sym_index": "experimental_config.aclgraph._aclnn_static_shape_kernel_sym_value_range",
-        "_vllm_aclnn_static_kernel_sym_range": "experimental_config.aclgraph._aclnn_static_shape_kernel_sym_index",
+        "_vllm_aclnn_static_kernel_sym_index": "experimental_config.aclgraph._aclnn_static_shape_kernel_sym_index",
+        "_vllm_aclnn_static_kernel_sym_range": "experimental_config.aclgraph._aclnn_static_shape_kernel_sym_value_range",
         "static_kernel_compile": "experimental_config.aclgraph._aclnn_static_shape_kernel",
         "inplace_pass": "debug.aclgraph.disable_reinplace_inplaceable_ops_pass",
         "input_inplace_pass": "debug.aclgraph.disable_reinplace_input_mutated_ops_pass",
