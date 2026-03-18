@@ -6,7 +6,7 @@ def conveter_aten_log_sigmoid_backward_default(
     grad_output: Tensor, self: Tensor, buffer: Tensor, meta_outputs: TensorSpec = None
 ):
     """NB: aten::log_sigmoid_backward(Tensor grad_output, Tensor self, Tensor buffer) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.log_sigmoid_backward.default ge_converter is not implemented!")
+    return ge.LogSigmoidGrad(grad_output, self)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.log_sigmoid_backward.grad_input)
@@ -19,4 +19,5 @@ def conveter_aten_log_sigmoid_backward_grad_input(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::log_sigmoid_backward.grad_input(Tensor grad_output, Tensor self, Tensor buffer, *, Tensor(a!) grad_input) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.log_sigmoid_backward.grad_input ge_converter is not implemented!")
+    grad_input = ge.LogSigmoidGrad(grad_output, self)
+    return grad_input
