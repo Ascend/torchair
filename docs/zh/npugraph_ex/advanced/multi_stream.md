@@ -47,26 +47,51 @@
 import torch
 import torch_npu
 
+
 class Model(torch.nn.Module):
     def __init__(self):
         super().__init__()
 
-    def forward(self, t):
-        stream = torch.npu.Stream()
-        event = torch.npu.Event()
-        mul_res = torch.mul(t, 5)
-        add_res = torch.add(mul_res, 2)
-        event.record()
-        with torch.npu.stream(stream):
-            event.wait(stream)
-            relu_res = torch.relu(add_res)
-            add_res.record_stream(stream)
-        return relu_res
+    def forward(self, in1, in2, in3, in4):
+        stream1 = torch.npu.Stream()
+        stream2 = torch.npu.Stream()
+        event1 = torch.npu.Event()
+        event2 = torch.npu.Event()
 
-model = Model().npu()
-opt_model = torch.compile(model, backend="npugraph_ex", fullgraph=True, dynamic=False)
-x = torch.randn([3, 3]).npu()
-res = opt_model(x)
-print(f"res = {res}")
+        add_result = torch.add(in1, in2)
+        # B在默认流上创建
+        B = in3 + in4
+        # 插入一个record用于同步，对于event1.wait(stream1)后的任务需要等record执行完毕才能执行
+        event1.record()
+        with torch.npu.stream(stream1):
+            # torch.mm算子(mm_result)等待torch.add算子(add_result)以及B计算执行完再执行
+            event1.wait(stream1)
+            # B在stream1上使用
+            mm_result = torch.mm(B, in4)
+            # 插入一个record用于同步，对于event2.wait(stream2)后的任务需要等record执行完毕才能执行
+            event2.record()
+            # record_stream B在stream'1'上使用，延长Tensor B对应内存的生命周期
+            B.record_stream(stream1)
+        mm1 = torch.mm(in3, in4)
+        with torch.npu.stream(stream2):
+            # torch.add算子(add2)等待torch.mm算子(mm_result)执行完再执行
+            event2.wait(stream2)
+            add2 = torch.add(in3, in4)
+        return add_result, mm_result, mm1, add2
+
+model = Model().to("npu")
+model = torch.compile(model, backend="npugraph_ex", fullgraph=False, dynamic=False)
+
+in1 = torch.randn(1000, 1000, dtype = torch.float16).npu()
+in2 = torch.randn(1000, 1000, dtype = torch.float16).npu()
+in3 = torch.randn(1000, 1000, dtype = torch.float16).npu()
+in4 = torch.randn(1000, 1000, dtype = torch.float16).npu()
+result = model(in1, in2, in3, in4)
+
 ```
 
+
+**图 1**  多流表达示意图  
+![](../../figures/npugraph_ex_multi_stream.png "多流示意图")
+
+图中展示了流间的时序控制关系，其中npugraph_ex会在编图时插入record3、wait3、record4和wait4，用于默认流等待其他流任务完成。

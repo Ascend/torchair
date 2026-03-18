@@ -87,3 +87,7 @@ result = model(in1, in2, in3, in4)
 print(f"Result:\n{result}\n")
 ```
 
+**图 1**  pbtxt文件样例  
+![](../../../figures/ge_multi_stream.png "多流示意图")
+
+图中展示了流间的控制关系，虚线控制边表示显式的跨流数据依赖同步关系。
