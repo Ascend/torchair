@@ -7,7 +7,7 @@
 ## 函数原型
 
 ```python
-register_replacement(search_fn, replace_fn, example_inputs, trace_fn=fwd_only, extra_check=_return_true, search_fn_pattern=None, scalar_workaround=None, skip_duplicates=False)
+register_replacement(search_fn: SearchFn, replace_fn: ReplaceFn, example_inputs: Iterable[Any], trace_fn: TraceFn = fwd_only, extra_check: Callable[[Match], bool] = _return_true, search_fn_pattern: Union[PatternExpr, None] = None, scalar_workaround: Union[dict[str, Union[float, int]], None] = None, skip_duplicates: bool = False)
 ```
 
 ## 参数说明
@@ -16,7 +16,7 @@ register_replacement(search_fn, replace_fn, example_inputs, trace_fn=fwd_only, e
 |--|--|--|
 |search_fn|输入|该函数是希望在FX图中识别的算子组合或计算逻辑，如需要融合的算子组合|
 |replace_fn|输入|在目标图中找到search_fn对应的组合时，会用这个函数的计算逻辑替换原有子图，实现算子融合或优化|
-|example_inputs|输入|用于追踪search_fn和replace_fn的示例输入张量。输入的形状和dtype需与实际场景匹配。|
+|example_inputs|输入|用于追踪search_fn和replace_fn的示例输入张量。|
 |trace_fn|输入|默认仅追踪前向计算图，适用于推理阶段的优化；若需支持训练场景，可传入支持反向追踪的函数。|
 |extra_check|输入|找到算子组合后的额外校验函数，函数的入参必须为torch._inductor.pattern_matcher中的Match对象，用于对匹配结果进行更多自定义的判断，如判断算子组合是否在同一条流上/判断设备类型/判断入参形状等|
 |search_fn_pattern|输入|自定义的pattern对象，一般无需传入。定义参考PyTorch原生MultiOutputPattern对象的定义规则。传入该参数后，将不再使用search_fn来匹配算子组合，而是直接使用该参数作为匹配规则。|
@@ -79,7 +79,7 @@ with fake_mode:
     input_tensor = functools.partial(torch.empty, (1, 1, 2), device="npu", dtype=torch.float16)
     kwargs_tensor = functools.partial(torch.empty, 2, device="npu", dtype=torch.float16)
 
-    # 调用torchair.register_replacement接口，search_fn, replace_fn, example_inputs, 如果有额外的校验，可传入extra_check
+    # 调用torchair.register_replacement接口，search_fn, replace_fn, example_inputs,其中example_inputs为一个可迭代对象用来接受search_fn入参， 如果有额外的校验，可传入extra_check
     torchair.register_replacement(
         search_fn=search_fn,
         replace_fn=replace_fn,

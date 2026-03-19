@@ -56,7 +56,7 @@
 假设产物路径为“/path/test”，目录结构如下，其中$\{timestamp\}为时间戳、$\{pid\}表示运行的进程号。
 
 ```txt
-aclnn_static_shape_kernel_outputs                  // 固定的产物文件名
+static_kernel_compile_outputs                  // 固定的产物文件名
 |—— ts${timestamp_1}_pid${pid_1}_outputs 
 |    |—— ${pid_1}                                // 模型中目标算子信息文件夹
 |        |—— MatMulV2_float_ND_1_2048_0.json     // js文件表示网络中的算子统计信息，包括shape和format等
