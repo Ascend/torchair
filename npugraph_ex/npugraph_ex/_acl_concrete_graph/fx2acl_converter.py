@@ -546,6 +546,8 @@ class AclConcreteGraph(ConcreteGraphBase):
         update_code.writeline("")
         update_code.splice('''
         def _update_user_stream_label_dict():
+            if aclgraph_cache_info.user_stream_label:
+                torch.npu.Stream() # init stream pool
             with _GLOBAL_USER_TAGGED_STREAM_LOCK:
                 for i, tag in enumerate(aclgraph_cache_info.user_stream_label):
                     if tag in aclgraph_cache_info.user_stream_info:
