@@ -243,7 +243,12 @@ def _merge_dump_json(gathered_json_dirs: list[Path], result_root: Path) -> Union
                 except Exception as e:
                     warnings.warn(f"failed to copy {json_dir} to {gathered_opcompile_dir}: {e}")
                     return None
-    return gathered_opcompile_dir
+    g_json_files = list(gathered_opcompile_dir.rglob("*.json"))
+    if not g_json_files:
+        logger.debug(f"No JSON files in {gathered_opcompile_dir}, skip op_compiler")
+        return None
+    else:
+        return gathered_opcompile_dir
 
 
 def _get_dumpjson_dir_for_opcompile(result_root: Path, compile_cache_dir=False, rank: int = None) -> Union[None, Path]:
