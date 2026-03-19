@@ -30,7 +30,7 @@ def convert_npu_lightning_indexer(
     sparse_mode: int = 3,
     pre_tokens: int = 9223372036854775807,
     next_tokens: int = 9223372036854775807,
-    return_value: bool = False,
+    return_values: bool = False,
     meta_outputs: TensorSpec = None,
 ):
     return torchair.ge.custom_op(
@@ -48,7 +48,7 @@ def convert_npu_lightning_indexer(
                "sparse_mode": attr.Int(sparse_mode),
                "pre_tokens": attr.Int(pre_tokens),
                "next_tokens": attr.Int(next_tokens),
-               "return_value": attr.Bool(return_value),
+               "return_values": attr.Bool(return_values),
                },
         outputs=["sparse_indices",
                  "sparse_values",
