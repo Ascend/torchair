@@ -80,7 +80,7 @@ class HcomStaticKernelTest(unittest.TestCase):
         npu_output = npu_model(input0)
 
     def test_static_kernel_without_cache(self):
-        kernel_build_dir = "./aclnn_static_shape_kernel_outputs"
+        kernel_build_dir = "./static_kernel_compile_outputs"
         if os.path.exists(kernel_build_dir):
             shutil.rmtree(kernel_build_dir)
         os.makedirs(kernel_build_dir, exist_ok = True)

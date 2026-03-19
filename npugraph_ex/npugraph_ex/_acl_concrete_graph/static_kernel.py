@@ -338,7 +338,7 @@ def _find_and_install_run_pkgs(compile_cache_dir, rank: int = None) -> RunPackag
     prefix = _get_log_prefix(rank)
     compile_cache_dir_path = Path(compile_cache_dir)
     run_pkgs_dir = [d for d in compile_cache_dir_path.iterdir() if
-                    d.is_dir() and d.name == "aclnn_static_shape_kernel_outputs"]
+                    d.is_dir() and d.name == "static_kernel_compile_outputs"]
     if len(run_pkgs_dir) == 0:
         return RunPackageStatus.NEED_COMPILE
     ts_outputs_dirs = [d for d in run_pkgs_dir[0].iterdir() if
@@ -553,7 +553,7 @@ def safe_resolve_output_dir(build_dir: str):
     else:
         script_dir = base_dir  # 在同目录生成临时dump的文件夹，用于保存生成的算子信息json
 
-    base_output_dir = script_dir / "aclnn_static_shape_kernel_outputs"
+    base_output_dir = script_dir / "static_kernel_compile_outputs"
     try:
         base_output_dir.mkdir(exist_ok=True)
     except OSError as e:

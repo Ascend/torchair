@@ -186,7 +186,7 @@ class AclgraphTest(unittest.TestCase):
         graph_res1 = mmc(query_prefill, query, key, value, scale, lengthq, length, length2, narrow_start)
         self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
         prompt_cache_dir_path = Path(prompt_cache_dir)
-        outputs_dirs = [d for d in prompt_cache_dir_path.iterdir() if d.is_dir() and d.name == "aclnn_static_shape_kernel_outputs"]
+        outputs_dirs = [d for d in prompt_cache_dir_path.iterdir() if d.is_dir() and d.name == "static_kernel_compile_outputs"]
         self.assertEqual(len(outputs_dirs), 1)
         ts_outputs_dirs = [d for d in outputs_dirs[0].iterdir() if
                         d.is_dir() and d.name.endswith("_outputs") and d.name.startswith("ts")]
