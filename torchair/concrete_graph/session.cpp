@@ -95,6 +95,7 @@ Status Session::EnsureInitialized() {
   if (initialized_) {
     return status_;
   }
+  TNG_LOG(ERROR) << "Session is not initialized.";
   return Status::Error("Session is not initialized");
 }
 

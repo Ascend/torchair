@@ -14,11 +14,28 @@ from torchair._ge_concrete_graph import ge_apis as raw_ops
 from torchair.ge._ge_graph import GeGraph, compat_as_bytes
 from torchair._ge_concrete_graph.ge_ir_pb2 import OpDef
 from torchair._ge_concrete_graph.compat_ir import is_cann_compat, ge_op, IrDef, IrElement
+from torchair.core._backend import initialize_graph_engine, finalize_graph_engine
 
 torchair.logger.setLevel(logging.DEBUG)
 
 
 class CustomOpSt(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        initialize_graph_engine({
+            "ge.exec.enableEngineParallel": "0",
+            "ge.tiling_schedule_optimize": "0",
+            "ge.enableSingleStream": "false",
+            "ge.oo.level": "O3",
+            "ge.exportCompileStat": "2",
+            "ge.exec.staticMemoryPolicy": "2",
+            "ge.opSelectImplmode": "high_precision"
+        })
+
+    @classmethod
+    def tearDownClass(cls):
+        finalize_graph_engine()
+
     def test_custom_basic(self):
         with GeGraph():
             data1 = raw_ops.Data(index=0, dtype=ge.DataType.DT_FLOAT, placement='CPU', node_name='data1')
@@ -36,6 +53,16 @@ class CustomOpSt(unittest.TestCase):
             self.assertEqual(op_def.input_desc[1].name, 'x2')
             self.assertEqual(len(op_def.output_desc), 1)
             self.assertEqual(op_def.output_desc[0].name, 'y')
+
+    def test_custom_with_unregistered(self):
+        with self.assertRaises(RuntimeError) as cm, GeGraph():
+            ge.custom_op('MyOpTestv5', inputs=None, outputs=None)
+
+        self.assertEqual("No AscendIR MyOpTestv5 was found to be registered. "
+                         "Please make sure the custom op is successfully registered, "
+                         "If you need to view logs to assist in positioning, "
+                         "you can set the environment variable ASCEND_GLOBAL_LOG_LEVEL and ASCEND_PROCESS_LOG_PATH view op registration related logs.",
+                         str(cm.exception))
 
     def test_custom_not_change_input(self):
         with GeGraph():
