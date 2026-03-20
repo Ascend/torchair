@@ -9,7 +9,7 @@ from torch._inductor.pattern_matcher import Match, MultiOutputPattern, CallFunct
 from torch._subclasses.fake_tensor import FakeTensorMode
 
 from npugraph_ex.core.utils import logger
-from npugraph_ex.patterns.pattern_pass_manager import _PatternPassManager
+from npugraph_ex.patterns.pattern_pass_manager import _PatternPassManager, DEFAULT_EPSILON
 
 
 def _check_view_shape(match: Match) -> bool:
@@ -141,24 +141,28 @@ def _register_addrmsnormdynamicquant_pattern(pattern_pass_manager: _PatternPassM
         pattern_pass_manager.register_pattern(
             search_fn=search_fn,
             replace_fn=replace_fn,
-            example_inputs=example_inputs
+            example_inputs=example_inputs,
+            skip_duplicates=True
         )
         pattern_pass_manager.register_pattern(
             search_fn=search_fn_with_epsilon,
             replace_fn=replace_fn_with_epsilon,
             example_inputs=example_inputs,
-            scalar_workaround={"epsilon": 2e-6}
+            scalar_workaround={"epsilon": DEFAULT_EPSILON},
+            skip_duplicates=True
         )
         pattern_pass_manager.register_pattern(
             search_fn=search_fn_no_xout,
             replace_fn=replace_fn_no_xout,
-            example_inputs=example_inputs
+            example_inputs=example_inputs,
+            skip_duplicates=True
         )
         pattern_pass_manager.register_pattern(
             search_fn=search_fn_no_xout_with_epsilon,
             replace_fn=replace_fn_no_xout_with_epsilon,
             example_inputs=example_inputs,
-            scalar_workaround={"epsilon": 2e-6}
+            scalar_workaround={"epsilon": DEFAULT_EPSILON},
+            skip_duplicates=True
         )
 
 
@@ -280,7 +284,8 @@ def _register_addrmsnormdynamicquant_pattern2(pattern_pass_manager: _PatternPass
             replace_fn=replace_fn,
             example_inputs=example_inputs,
             extra_check=_check_view_shape,
-            search_fn_pattern=_build_search_pattern()
+            search_fn_pattern=_build_search_pattern(),
+            skip_duplicates=True
         )
         pattern_pass_manager.register_pattern(
             search_fn=search_fn_with_epsilon,
@@ -288,5 +293,6 @@ def _register_addrmsnormdynamicquant_pattern2(pattern_pass_manager: _PatternPass
             example_inputs=example_inputs,
             extra_check=_check_view_shape,
             search_fn_pattern=_build_search_pattern(with_epsilon=True),
-            scalar_workaround={"epsilon": 2e-6}
+            scalar_workaround={"epsilon": DEFAULT_EPSILON},
+            skip_duplicates=True
         )

@@ -320,6 +320,14 @@ class Stub_C:
         return torch.empty_strided(metadata['size'], metadata['stride'],
                                    dtype=metadata['dtype'],
                                    device=metadata['device'])
+    
+    @staticmethod
+    def _aclop_start_dump(path, flags=0):
+        return
+    
+    @staticmethod
+    def _aclop_stop_dump():
+        return
 
 
 class StubUtils:

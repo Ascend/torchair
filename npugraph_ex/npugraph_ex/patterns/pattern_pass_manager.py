@@ -12,6 +12,8 @@ from npugraph_ex.core.utils import logger
 
 _global_pattern_pass_manager = None
 
+DEFAULT_EPSILON = 2e-6
+
 
 def _return_true(match: Match):
     return True
@@ -64,7 +66,7 @@ def _check_pattern_stream(match: Match) -> bool:
 class _PatternPassManager:
     def __init__(self):
         if 'pass_name' in PatternMatcherPass.__init__.__code__.co_varnames:
-            self.pass_dict = PatternMatcherPass(pass_name="torchair_generic_pattern_pass")
+            self.pass_dict = PatternMatcherPass(pass_name="npugraph_ex_generic_pattern_pass")
         else:
             self.pass_dict = PatternMatcherPass()
 

@@ -9,7 +9,7 @@ from torch._inductor.pattern_matcher import Match, MultiOutputPattern, CallFunct
 from torch._subclasses.fake_tensor import FakeTensorMode
 
 from npugraph_ex.core.utils import logger
-from npugraph_ex.patterns.pattern_pass_manager import _PatternPassManager
+from npugraph_ex.patterns.pattern_pass_manager import _PatternPassManager, DEFAULT_EPSILON
 
 
 def _pattern_extra_check(match: Match) -> bool:
@@ -200,7 +200,8 @@ def _register_addrmsnormcast_pattern(pattern_pass_manager: _PatternPassManager):
                 replace_fn=replace_fn_with_view,
                 example_inputs=example_inputs,
                 extra_check=_pattern_extra_check,
-                search_fn_pattern=_build_search_pattern(is_use_aten_copy, True)
+                search_fn_pattern=_build_search_pattern(is_use_aten_copy, True),
+                skip_duplicates=True
             )
             pattern_pass_manager.register_pattern(
                 search_fn=search_fn_with_epsilon_and_view,
@@ -208,18 +209,21 @@ def _register_addrmsnormcast_pattern(pattern_pass_manager: _PatternPassManager):
                 example_inputs=example_inputs,
                 extra_check=_pattern_extra_check,
                 search_fn_pattern=_build_search_pattern(is_use_aten_copy, True, with_epsilon=True),
-                scalar_workaround={"epsilon": 2e-6}
+                scalar_workaround={"epsilon": DEFAULT_EPSILON},
+                skip_duplicates=True
             )
             pattern_pass_manager.register_pattern(
                 search_fn=search_fn,
                 replace_fn=replace_fn,
                 example_inputs=example_inputs,
                 search_fn_pattern=_build_search_pattern(is_use_aten_copy, False),
+                skip_duplicates=True
             )
             pattern_pass_manager.register_pattern(
                 search_fn=search_fn_with_epsilon,
                 replace_fn=replace_fn_with_epsilon,
                 example_inputs=example_inputs,
                 search_fn_pattern=_build_search_pattern(is_use_aten_copy, False, with_epsilon=True),
-                scalar_workaround={"epsilon": 2e-6}
+                scalar_workaround={"epsilon": DEFAULT_EPSILON},
+                skip_duplicates=True
             )

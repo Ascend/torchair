@@ -9,7 +9,7 @@ from torch._inductor.pattern_matcher import Match, CallFunction, KeywordArg
 from torch._subclasses.fake_tensor import FakeTensorMode
 
 from npugraph_ex.core.utils import logger
-from npugraph_ex.patterns.pattern_pass_manager import _PatternPassManager
+from npugraph_ex.patterns.pattern_pass_manager import _PatternPassManager, DEFAULT_EPSILON
 
 
 def _pattern_extra_check(match: Match) -> bool:
@@ -108,7 +108,7 @@ def _register_addrmsnormquant_pattern(pattern_pass_manager, div_mode):
             replace_fn=replace_fn,
             example_inputs=_get_inputs(),
             extra_check=_pattern_extra_check,
-            scalar_workaround={"epsilon": 2e-6, "dtype": 1},
+            scalar_workaround={"epsilon": DEFAULT_EPSILON, "dtype": 1},
             skip_duplicates=True
         )
 
@@ -219,7 +219,7 @@ def _register_addrmsnormquant_pattern_no_xout(pattern_pass_manager, div_mode):
             example_inputs=_get_inputs(),
             extra_check=_pattern_extra_check,
             search_fn_pattern=_build_search_pattern(with_epsilon=True),
-            scalar_workaround={"epsilon": 2e-6, "dtype": 1},
+            scalar_workaround={"epsilon": DEFAULT_EPSILON, "dtype": 1},
             skip_duplicates=True
         )
 
