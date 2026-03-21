@@ -27,7 +27,7 @@ class RunPackageStatus(Enum):
 
 
 def compile_static_kernel(fx_func, *args, use_cache_compile=None, cached_cann_version=None, compile_cache_dir=None,
-                          cached_deterministic=None, build_dir=None, **kwargs):
+                          cached_deterministic=None, super_kernel_optimize=None, build_dir=None, **kwargs):
     if not _is_multicard_env_valid():
         return
 
@@ -35,30 +35,30 @@ def compile_static_kernel(fx_func, *args, use_cache_compile=None, cached_cann_ve
         _install_or_compile_static_kernel(fx_func, *args, cached_cann_version=cached_cann_version,
                                           compile_cache_dir=compile_cache_dir,
                                           cached_deterministic=cached_deterministic,
-                                          **kwargs)
+                                          super_kernel_optimize=super_kernel_optimize, **kwargs)
     else:
         warn_msg = ("The current version now supports caching run packages from static kernel compilation, "
                     "it is recommended to delete the compilation cache and recompile "
                     "when you use `torch.npu.npugraph_ex.inference.cache_compile` and do not use debug.run_eagerly=True.")
         warnings.warn(warn_msg)
         warnings.filterwarnings("ignore", message=warn_msg)
-        _compile_static_kernel(fx_func, *args, build_dir=build_dir, **kwargs)
+        _compile_static_kernel(fx_func, *args, build_dir=build_dir, super_kernel_optimize=super_kernel_optimize, **kwargs)
 
 
 def _install_or_compile_static_kernel(fx_func, *args, cached_cann_version=None, compile_cache_dir=None,
-                                      cached_deterministic=None, **kwargs):
+                                      cached_deterministic=None, super_kernel_optimize=None, **kwargs):
     if _is_single_card():
         _install_or_compile_for_single(fx_func, *args, cached_cann_version=cached_cann_version,
                                        compile_cache_dir=compile_cache_dir,
-                                       cached_deterministic=cached_deterministic, **kwargs)
+                                       cached_deterministic=cached_deterministic, super_kernel_optimize=super_kernel_optimize, **kwargs)
     else:
         _install_or_compile_for_multi(fx_func, *args, cached_cann_version=cached_cann_version,
                                       compile_cache_dir=compile_cache_dir,
-                                      cached_deterministic=cached_deterministic, **kwargs)
+                                      cached_deterministic=cached_deterministic, super_kernel_optimize=super_kernel_optimize, **kwargs)
 
 
 def _install_or_compile_for_single(fx_func, *args, cached_cann_version=None, compile_cache_dir=None,
-                                   cached_deterministic=None, **kwargs):
+                                   cached_deterministic=None, super_kernel_optimize=None, **kwargs):
     if not _check_for_load_run_pkg(cached_cann_version, compile_cache_dir, cached_deterministic):
         return
     run_package_status = _find_and_install_run_pkgs(compile_cache_dir)
@@ -66,11 +66,11 @@ def _install_or_compile_for_single(fx_func, *args, cached_cann_version=None, com
         _reselect_static_kernel()
     elif run_package_status == RunPackageStatus.NEED_COMPILE:
         _compile_static_kernel_for_single_card(fx_func, *args, is_cache_compile=True, build_dir=compile_cache_dir,
-                                               **kwargs)
+                                               super_kernel_optimize=super_kernel_optimize, **kwargs)
 
 
 def _install_or_compile_for_multi(fx_func, *args, cached_cann_version=None, compile_cache_dir=None,
-                                  cached_deterministic=None, **kwargs):
+                                  cached_deterministic=None, super_kernel_optimize=None, **kwargs):
     # 多卡流程
     gloo_group = _get_local_gloo_group()
     rank = dist.get_rank()
@@ -104,19 +104,19 @@ def _install_or_compile_for_multi(fx_func, *args, cached_cann_version=None, comp
             logger.warning(f"failed to destroy local gloo groups after install_and_sync_run_pkgs: {e}")
     else:
         _compile_static_kernel_for_multi_card(fx_func, *args, gloo_group=gloo_group, is_cache_compile=True,
-                                              build_dir=compile_cache_dir, **kwargs)
+                                              build_dir=compile_cache_dir, super_kernel_optimize=super_kernel_optimize, **kwargs)
 
 
-def _compile_static_kernel(fx_func, *args, is_cache_compile=False, build_dir=None, **kwargs):
+def _compile_static_kernel(fx_func, *args, is_cache_compile=False, build_dir=None, super_kernel_optimize=None, **kwargs):
     if _is_single_card():
         _compile_static_kernel_for_single_card(fx_func, *args, is_cache_compile=is_cache_compile,
-                                               build_dir=build_dir, **kwargs)
+                                               build_dir=build_dir, super_kernel_optimize=super_kernel_optimize, **kwargs)
     else:
         _compile_static_kernel_for_multi_card(fx_func, *args, is_cache_compile=is_cache_compile,
-                                              build_dir=build_dir, **kwargs)
+                                              build_dir=build_dir, super_kernel_optimize=super_kernel_optimize, **kwargs)
 
 
-def _compile_static_kernel_for_single_card(fx_func, *args, is_cache_compile=False, build_dir=None, **kwargs):
+def _compile_static_kernel_for_single_card(fx_func, *args, is_cache_compile=False, build_dir=None, super_kernel_optimize=None, **kwargs):
     result_root = safe_resolve_output_dir(build_dir)
     warnings.warn(f"Starting static kernel compilation, the build directory is {result_root}")
 
@@ -128,7 +128,7 @@ def _compile_static_kernel_for_single_card(fx_func, *args, is_cache_compile=Fals
         return
 
     # 2.开始静态编译
-    compile_result = static_compile(result_root, chosen_dir)
+    compile_result = static_compile(result_root, chosen_dir, super_kernel_optimize=super_kernel_optimize)
     if not compile_result:
         return
 
@@ -140,7 +140,7 @@ def _compile_static_kernel_for_single_card(fx_func, *args, is_cache_compile=Fals
 
 
 def _compile_static_kernel_for_multi_card(fx_func, *args, gloo_group=None, is_cache_compile=False, build_dir=None,
-                                          **kwargs):
+                                          super_kernel_optimize=None, **kwargs):
     rank = dist.get_rank()
     result_root = safe_resolve_output_dir(build_dir)
     warnings.warn(
@@ -169,7 +169,7 @@ def _compile_static_kernel_for_multi_card(fx_func, *args, gloo_group=None, is_ca
 
     # 3.local rank 0进行静态编译并install
     if local_rank == 0:
-        _merge_and_compile_install(gathered_json_dirs, result_root, rank)
+        _merge_and_compile_install(gathered_json_dirs, result_root, rank, super_kernel_optimize=super_kernel_optimize)
 
     # 4.等待local rank 0执行完
     logger.debug(f"Rank {rank}: barrier after install (Gloo)")
@@ -187,7 +187,7 @@ def _compile_static_kernel_for_multi_card(fx_func, *args, gloo_group=None, is_ca
         logger.warning(f"failed to destroy local gloo groups after install_and_sync_run_pkgs: {e}")
 
 
-def _merge_and_compile_install(gathered_json_dirs: list[Path], result_root: Path, rank):
+def _merge_and_compile_install(gathered_json_dirs: list[Path], result_root: Path, rank, super_kernel_optimize=None):
     logger.debug(f"Rank {rank}: start to execute static compile, json dirs:{gathered_json_dirs}")
     # 创建目录并合并json
     gathered_opcompile_dir = _merge_dump_json(gathered_json_dirs, result_root)
@@ -195,7 +195,7 @@ def _merge_and_compile_install(gathered_json_dirs: list[Path], result_root: Path
         return
 
     # 静态编译
-    compile_result = static_compile(result_root, gathered_opcompile_dir, rank)
+    compile_result = static_compile(result_root, gathered_opcompile_dir, rank, super_kernel_optimize=super_kernel_optimize)
     if not compile_result:
         return
 
@@ -281,7 +281,7 @@ def _get_dumpjson_dir_for_opcompile(result_root: Path, compile_cache_dir=False, 
 
 
 @debug_time(phase_name="[static kernel] static compile")
-def static_compile(result_root: Path, chosen_dir, rank: int = None) -> bool:
+def static_compile(result_root: Path, chosen_dir, rank: int = None, super_kernel_optimize=None) -> bool:
     # 开始静态编译
     prefix = _get_log_prefix(rank)
     try:
@@ -293,6 +293,8 @@ def static_compile(result_root: Path, chosen_dir, rank: int = None) -> bool:
             "-j", _compute_opc_compile_jobs(),
             "-o", str(result_root),
         ]
+        if super_kernel_optimize:
+            cmd.extend(["--enable_super_kernel"])
         log_level = _get_compiler_log_level()
         if log_level is not None:
             cmd.extend(["-l", log_level])

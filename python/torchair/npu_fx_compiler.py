@@ -416,6 +416,7 @@ def _valid_graph(graph_module):
 
     def _check_scope_enter_exit(graph_module):
         scope_enter_stack = []
+        super_kernel_scope_nodes = []
         for node in graph_module.graph.nodes:
             if str(node.target) == "air.scope_enter.default":
                 scope_enter_stack.append(node)
@@ -426,7 +427,36 @@ def _valid_graph(graph_module):
                                        f"Please check your code or your post_grad_custom_pre_pass post_grad_custom_post_pass!"
                                        f"This error may also occur in a Dynamo graph break scenario.")
                 scope_enter_stack.pop()
-
+            elif str(node.target) == "npu.super_kernel_scope_begin.default":
+                super_kernel_scope_nodes.append(node)
+            elif str(node.target) == "npu.super_kernel_scope_end.default":
+                if not super_kernel_scope_nodes:
+                    raise RuntimeError(f"When you call the torch.npu.super_kernel_scope_end operator: {node.name}, "
+                                       f"you must first call the torch.npu.super_kernel_scope_begin, as they must be called in pairs. "
+                                       f"Please check your code or your post_grad_custom_pre_pass post_grad_custom_post_pass!"
+                                       f"This error may also occur in a Dynamo graph break scenario.")         
+                # Find matching begin node by scope_name (allow any order pairing)
+                end_scope_name = node.args[0] if len(node.args) > 0 else None
+                matched_begin_node = None
+                matched_index = -1
+                for i, begin_node in enumerate(super_kernel_scope_nodes):
+                    begin_scope_name = begin_node.args[0] if len(begin_node.args) > 0 else None
+                    if begin_scope_name == end_scope_name:
+                        matched_begin_node = begin_node
+                        matched_index = i
+                        break
+                
+                if matched_begin_node is None:
+                    raise RuntimeError(
+                        f"No matching torch.npu.super_kernel_scope_begin found for torch.npu.super_kernel_scope_end "
+                        f"operator '{node.name}' with scope_name='{end_scope_name}'. "
+                        f"Available unmatched scope_names are: {[n.args[0] if len(n.args) > 0 else None for n in super_kernel_scope_nodes]}. "
+                        f"Please ensure that each super_kernel_scope_end has a corresponding super_kernel_scope_begin "
+                        f"with the same scope_name parameter."
+                    )
+                
+                # Remove the matched begin node from the list
+                super_kernel_scope_nodes.pop(matched_index)
         if scope_enter_stack:
             args_list = [node.args for node in scope_enter_stack]
             raise RuntimeError(f"After you call the torch.ops.air.scope_enter operator, "
@@ -434,6 +464,14 @@ def _valid_graph(graph_module):
                                f"The parameters for these torch.ops.air.scope_enter calls are:{args_list}. "
                                f"Please check your code or your post_grad_custom_pre_pass post_grad_custom_post_pass!"
                                f"This error may also occur in a Dynamo graph break scenario.")
+
+        if super_kernel_scope_nodes:
+            args_list = [node.args for node in super_kernel_scope_nodes]
+            raise RuntimeError(f"After you call the torch.npu.super_kernel_scope_begin operator, "
+                               f"there is no paired call to the torch.npu.super_kernel_scope_end operator. "
+                               f"The parameters for these torch.npu.super_kernel_scope_begin calls are:{args_list}. "
+                               f"Please check your code or your post_grad_custom_pre_pass post_grad_custom_post_pass!"
+                               f"This error may also occur in a Dynamo graph break scenario.")    
 
     _check_scope_enter_exit(graph_module)
 

@@ -11,6 +11,9 @@ class _NpuGraphExConfig:
     clone_input: bool = True
     clone_output: bool = False
     static_kernel_compile: bool = False
+    super_kernel_optimize: bool = False
+    super_kernel_optimize_options: dict = None
+    super_kernel_debug_options: dict = None
     frozen_parameter: bool = False
     remove_noop_ops: bool = True
     remove_cat_ops: bool = True
@@ -32,6 +35,9 @@ class _NpuGraphExConfig:
         "_vllm_aclnn_static_kernel_sym_index": "experimental_config.aclgraph._aclnn_static_shape_kernel_sym_index",
         "_vllm_aclnn_static_kernel_sym_range": "experimental_config.aclgraph._aclnn_static_shape_kernel_sym_value_range",
         "static_kernel_compile": "experimental_config.aclgraph._aclnn_static_shape_kernel",
+        "super_kernel_optimize": "experimental_config.aclgraph._super_kernel_optimize",
+        "super_kernel_optimize_options": "experimental_config.aclgraph._super_kernel_optimize_options",
+        "super_kernel_debug_options": "experimental_config.aclgraph._super_kernel_debug_options",
         "inplace_pass": "debug.aclgraph.disable_reinplace_inplaceable_ops_pass",
         "input_inplace_pass": "debug.aclgraph.disable_reinplace_input_mutated_ops_pass",
         "remove_noop_ops": "experimental_config.remove_noop_ops",

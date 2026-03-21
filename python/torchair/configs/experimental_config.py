@@ -2,7 +2,7 @@ __all__ = []
 
 from typing import Optional
 
-from torchair.configs._option_base import OptionValue, IntRangeValue, StrOptionValue, IntListValue
+from torchair.configs._option_base import OptionValue, IntRangeValue, StrOptionValue, IntListValue, DictOptionValue
 from torchair.configs._option_base import NpuBaseConfig
 
 INT64_MAX = 2 ** 63 - 1
@@ -61,6 +61,9 @@ class _AclGraphExperimentalConfig(NpuBaseConfig):
         self._aclnn_static_shape_kernel_build_dir = StrOptionValue()
         self._aclnn_static_shape_kernel_sym_value_range = IntListValue(None)
         self._aclnn_static_shape_kernel_sym_index = IntRangeValue(0, 0, INT64_MAX)
+        self._super_kernel_optimize = OptionValue(False, [True, False])
+        self._super_kernel_optimize_options = DictOptionValue(None)
+        self._super_kernel_debug_options = DictOptionValue(None)
 
         super(_AclGraphExperimentalConfig, self).__init__()
 
@@ -96,5 +99,13 @@ class _AclGraphExperimentalConfig(NpuBaseConfig):
             local_aclgraph_experimental_options["_aclnn_static_shape_kernel_sym_index"] = \
                 self._aclnn_static_shape_kernel_sym_index.value
 
+        if self._super_kernel_optimize.value == "1":
+            local_aclgraph_experimental_options["_super_kernel_optimize"] = self._super_kernel_optimize.value
+            if self._super_kernel_optimize_options.value is not None:
+                local_aclgraph_experimental_options[
+                    "_super_kernel_optimize_options"] = self._super_kernel_optimize_options.value
+            if self._super_kernel_debug_options.value is not None:
+                local_aclgraph_experimental_options[
+                    "_super_kernel_debug_options"] = self._super_kernel_debug_options.value
         return local_aclgraph_experimental_options, global_aclgraph_experimental_options
 

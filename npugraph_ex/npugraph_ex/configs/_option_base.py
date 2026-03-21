@@ -108,6 +108,23 @@ class StrOptionValue(OptionValue):
         self._value = v
 
 
+class DictOptionValue(OptionValue):
+    def __init__(self, default=None):
+        if default is not None and not isinstance(default, dict):
+            raise TypeError(f"default must be dict or None, got {type(default)}")
+        super().__init__(default, optional=None)
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, v):
+        if v is not None and not isinstance(v, dict):
+            raise TypeError(f"value must be dict or None, got {type(v)}")
+        self._value = v
+
+
 class FileValue(OptionValue):
     @property
     def value(self):

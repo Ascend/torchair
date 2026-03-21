@@ -1678,6 +1678,28 @@ class AclgraphTest(unittest.TestCase):
         expected = torch.cat([x.exp(), x.exp(), x.exp()], dim=0)
         self.assertTrue(torch.allclose(result, expected, atol=1e-5))
 
+    @unittest.skipIf(True, "unsupported until cann support")
+    def test_aclgraph_with_superkernel(self):
+        class Module(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                torch.npu.super_kernel_scope_begin("sk1")
+                z = torch.add(x, y)
+                torch.npu.super_kernel_scope_end("sk1")
+                return z
+
+        model = Module()
+        model_compile = torch.compile(model, backend="npugraph_ex", options={"static_kernel_compile": True, "super_kernel_optimize": True})
+
+        x1 = torch.randn(64, 4, 512, dtype=torch.float16, device='npu')
+        x2 = torch.randn(64, 512, 128, dtype=torch.float16, device='npu')
+
+        z = model_compile(x1, x2)
+        expected = torch.add(x1, x2)
+        self.assertTrue(torch.allclose(z, expected, rtol=1e-3, atol=1e-3))
+
 
 def patch_dynamo():
     from torch._dynamo.variables.user_defined import UserDefinedClassVariable

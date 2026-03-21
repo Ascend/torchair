@@ -929,10 +929,11 @@ class AclGraph(object):
                 cann_version = self.config.get('_aclnn_static_shape_kernel.cann_version', None)
                 compile_cache_dir = self.config.get('_aclnn_static_shape_kernel.compile_cache_dir', None)
                 deterministic = self.config.get('_aclnn_static_shape_kernel.deterministic', "0")
+                super_kernel_optimize = self.config.get('_super_kernel_optimize', False)
                 compile_static_kernel(self.fx_forward, *args, use_cache_compile=use_cache_compile,
                                       cached_cann_version=cann_version,
                                       compile_cache_dir=compile_cache_dir, cached_deterministic=deterministic,
-                                      build_dir=path, **kwargs)
+                                      super_kernel_optimize=super_kernel_optimize, build_dir=path, **kwargs)
 
             self._unupdated_input_func = debug_time(get_unupdated_input_fn(self._unupdated_sym_input_index, self._parameter_user_inputs, self.config),
                                                     phase_name="[npugraph_ex overhead] generate graph_key")
@@ -1193,6 +1194,20 @@ class AclGraph(object):
                     'Start to run AclGraph{id: %s} with the updated node num {%s}.',
                     self.name, graph_key, id(self.graph[graph_key]), len(self._updated_node_infos))
 
+        if self.config.get('_super_kernel_optimize', False):
+
+            def parse_config(config_str):
+                return ast.literal_eval(config_str) if config_str is not None else None
+
+            super_kernel_optimize_options = parse_config(
+                self.config.get('_super_kernel_optimize_options')
+            )
+            super_kernel_debug_options = parse_config(
+                self.config.get('_super_kernel_debug_options')
+            )
+            self.graph[graph_key].super_kernel_optimize(optimize_options=super_kernel_optimize_options, debug_options=super_kernel_debug_options)
+            logger.info('Success to optimize AclGraph{id: %s} with super kernel.', id(self.graph[graph_key]))
+            
         if os.getenv("TORCH_COMPILE_DEBUG", "0") == "1":
             try:
                 dir_path = DebugContext.current_path()

@@ -313,7 +313,12 @@ class AclConcreteGraph(ConcreteGraphBase):
 
         if self.config.dump_config.enable_dump.value == '1' and \
             self.config.dump_config.data_dump_stage.value == "optimized":
-            insert_save_npugraph_tensor(self.fx_graph, configs)
+            if self.config.experimental_config.aclgraph._super_kernel_optimize.value == "1":
+                msg = f"When super_kernel_optimize is enabled," \
+                      f"the dump_tensor_data configuration becomes invalid."
+                warnings.warn(msg)
+            else:
+                insert_save_npugraph_tensor(self.fx_graph, configs)
 
         self._fx_forward = self._codegen_fx_forward(self.fx_graph, self.fx_graph.code,
                                                     self._aclgraph_cache_info.updated_ops_param,

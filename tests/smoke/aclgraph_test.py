@@ -2493,7 +2493,34 @@ class AclgraphTest(unittest.TestCase):
         with self.assertRaises(RuntimeError) as context:
             r = opt_m(i)   
         self.assertIn("When use npugraph_ex, you must make sure at the end of your code set stream to the same stream "
-                        "as the begin of your code", str(context.exception))                           
+                        "as the begin of your code", str(context.exception))
+
+    @unittest.skipIf(True, "unsupported until cann support")
+    def test_aclgraph_with_superkernel(self):
+        class Module(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                torch.npu.super_kernel_scope_begin("sk1")
+                z = torch.add(x, y)
+                torch.npu.super_kernel_scope_end("sk1")
+                return z
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "reduce-overhead"
+        npu_config.experimental_config.aclgraph._aclnn_static_shape_kernel = True
+        npu_config.experimental_config.aclgraph._super_kernel_optimize = True
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = Module()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x1 = torch.randn(64, 4, 512, dtype=torch.float16, device='npu')
+        x2 = torch.randn(64, 512, 128, dtype=torch.float16, device='npu')
+
+        z = model_compile(x1, x2)
+        expected = torch.add(x1, x2)
+        self.assertTrue(torch.allclose(z, expected, rtol=1e-3, atol=1e-3))
 
 
 def patch_dynamo():
