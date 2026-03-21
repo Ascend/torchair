@@ -1,7 +1,5 @@
 import os
-import re
 import sys
-from typing import List
 import unittest
 from unittest.mock import Mock
 import logging
@@ -13,7 +11,6 @@ import sympy
 
 from npugraph_ex.configs.compiler_config import CompilerConfig
 from npugraph_ex.core.utils import logger
-from npugraph_ex.inference._cache_compiler import CompiledModel, ModelCacheSaver
 from npugraph_ex._acl_concrete_graph.utils import reconstruct_args_kwargs, WeakRef, LazyMessage
 from npugraph_ex.configs.npugraphex_config import _process_kwargs_options
 from npugraph_ex.configs._option_base import CallableValue
@@ -26,17 +23,12 @@ from torchair_st_stub_aclgraph_utils import (
     patch_ops_npu_module,
     patch_torch_point_npu_module,
     patch_torch_npu_module,
-    forbidden_attr,
     register_custom_ops,
 )
-from torchair_st_utils import capture_logger, capture_warnings, generate_faked_module, register_is_npu, create_cat_optimization_pass_wrapper
+from torchair_st_utils import capture_logger, generate_faked_module, register_is_npu, create_cat_optimization_pass_wrapper
 
 torch.utils.rename_privateuse1_backend("npu")
 torch._register_device_module('npu', generate_faked_module())
-
-# import torch._dynamo
-# torch._dynamo.config.suppress_errors = True
-
 
 def get_npugraph_ex_backend():
     def _exec(*args, **kwargs):
@@ -2018,6 +2010,111 @@ class NpugraphExSt(unittest.TestCase):
 
         expected = torch.cat([x.exp(), x.sin(), x + y], dim=0)
         self.assertTrue(torch.allclose(result, expected, atol=1e-5))    
+    def test_npugraph_ex_process_kwargs_options(self):
+        from npugraph_ex.configs.npugraphex_config import _NpuGraphExConfig
+        config = CompilerConfig()
+        graph_pool = torch.npu.graph_pool_handle()
+
+        def _custom_pre_fn(gm, example_inputs, compile_config: CompilerConfig):
+            return None
+
+        def _custom_post_fn(gm, example_inputs, compile_config: CompilerConfig):
+            return None
+
+        test_kwargs = {
+            "options": {
+                "static_kernel_compile": False,
+                "inplace_pass": False,
+                "input_inplace_pass": False,
+                "remove_noop_ops": False,
+                "remove_cat_ops": False,
+                "force_eager": False,
+                "pattern_fusion_pass": False,
+                "clone_input": False,
+                "frozen_parameter": False,
+                "post_grad_custom_pre_pass": _custom_pre_fn,
+                "post_grad_custom_post_pass": _custom_post_fn,
+                "use_graph_pool": graph_pool,
+                "reuse_graph_pool_in_same_fx": False,
+                "capture_limit": 64,
+                "clone_output": False,
+                "dump_tensor_data": False,
+                "data_dump_stage": "optimized",
+                "data_dump_dir": "./"
+            }
+        }
+
+        _process_kwargs_options(config, test_kwargs)
+
+        assert config.experimental_config.aclgraph._aclnn_static_shape_kernel.value == '0'
+        assert config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass.value == '1'
+        assert config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass.value == '1'
+        assert config.experimental_config.remove_noop_ops.value == '0'
+        assert config.debug.aclgraph.remove_cat_ops.value == '0'
+        assert config.debug.run_eagerly.value == '0'
+        assert config.experimental_config.pattern_fusion_pass.value == '0'
+        assert config.experimental_config.frozen_parameter.value == '0'
+        assert isinstance(config.post_grad_custom_pre_pass, CallableValue)
+        assert isinstance(config.post_grad_custom_post_pass, CallableValue)
+        assert config.aclgraph_config.use_custom_pool is not None
+        assert config.debug.aclgraph.disable_mempool_reuse_in_same_fx.value == '1'
+        assert config.debug.aclgraph.static_capture_size_limit.value == '64'
+        assert config.debug.aclgraph.enable_output_clone.value == '0'
+
+        assert _NpuGraphExConfig.static_kernel_compile is False
+        assert _NpuGraphExConfig.inplace_pass is False
+        assert _NpuGraphExConfig.input_inplace_pass is False
+        assert _NpuGraphExConfig.remove_noop_ops is False
+        assert _NpuGraphExConfig.remove_cat_ops is False
+        assert _NpuGraphExConfig.force_eager is False
+        assert _NpuGraphExConfig.pattern_fusion_pass is False
+        assert _NpuGraphExConfig.clone_input is False
+        assert _NpuGraphExConfig.frozen_parameter is False
+        assert _NpuGraphExConfig.post_grad_custom_pre_pass is _custom_pre_fn
+        assert _NpuGraphExConfig.post_grad_custom_post_pass is _custom_post_fn
+        assert _NpuGraphExConfig.use_graph_pool is graph_pool
+        assert _NpuGraphExConfig.reuse_graph_pool_in_same_fx is False
+        assert _NpuGraphExConfig.capture_limit == 64
+        assert _NpuGraphExConfig.clone_output is False
+        assert _NpuGraphExConfig.dump_tensor_data is False
+        assert _NpuGraphExConfig.data_dump_stage == 'optimized'
+        assert _NpuGraphExConfig.data_dump_dir == './'
+
+        options_dict = _NpuGraphExConfig.as_dict()
+        assert options_dict["static_kernel_compile"] is False
+        assert options_dict["inplace_pass"] is False
+        assert options_dict["input_inplace_pass"] is False
+        assert options_dict["remove_noop_ops"] is False
+        assert options_dict["remove_cat_ops"] is False
+        assert options_dict["force_eager"] is False
+        assert options_dict["clone_input"] is False
+        assert options_dict["frozen_parameter"] is False
+        assert options_dict["post_grad_custom_pre_pass"] is _custom_pre_fn
+        assert options_dict["post_grad_custom_post_pass"] is _custom_post_fn
+        assert options_dict["use_graph_pool"] is graph_pool
+        assert options_dict["reuse_graph_pool_in_same_fx"] is False
+        assert options_dict["capture_limit"] == 64
+        assert options_dict["clone_output"] is False
+        assert options_dict["dump_tensor_data"] is False
+        assert options_dict["data_dump_stage"] == 'optimized'
+        assert options_dict["data_dump_dir"] == './'
+
+    def test_npugraph_ex_process_kwargs_options_invalid_option(self):
+        config = CompilerConfig()
+
+        test_kwargs = {
+            "options": {
+                "inplace_pass": 'test',
+                "input_inplace_pass": 'test',
+                "reuse_graph_pool_in_same_fx": 'test'
+            }
+        }
+
+        try:
+            _process_kwargs_options(config, test_kwargs)
+        except Exception as e:
+            assert str(e).__contains__(
+                "(type: <class 'str'>) not in optional list [True, False] (type: <class 'bool'>)")
 
 if __name__ == '__main__':
     unittest.main()
