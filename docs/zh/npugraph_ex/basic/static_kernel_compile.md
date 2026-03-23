@@ -54,6 +54,8 @@
 ## 产物说明
 
 假设产物路径为“/path/test”，目录结构如下，其中$\{timestamp\}为时间戳、$\{pid\}表示运行的进程号。
+> [!NOTE]说明
+>-   当静态kernel编译进程异常退出时，请根据终端界面提示信息中的uninstall.sh脚本路径执行uninstall.sh脚本对静态kernel包进行卸载。
 
 ```txt
 static_kernel_compile_outputs                  // 固定的产物文件名

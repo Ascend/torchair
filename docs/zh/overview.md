@@ -21,7 +21,9 @@ TorchAir在Ascend Extension for PyTorch（torch\_npu）中的位置如[图1](#fi
 ## 使用说明
 
 -   **使用场景**：当前版本的TorchAir作为**beta特性**，主要专注于**推理场景**下的模型优化。
--   **前提条件**：在使用TorchAir图模式功能之前，建议先熟悉Ascend Extension for PyTorch基础知识，详细请参见xx
+-   **前提条件**：在使用TorchAir图模式功能之前，建议先熟悉Ascend Extension for PyTorch基础知识。
+    -   参考《[Ascend Extension for PyTorch 快速入门](https://www.hiascend.com/document/detail/zh/Pytorch/730/fastexperience/docs/zh/quick_start/quick_start.md)》，了解Ascend Extension for PyTorch的概念和作用。
+    -   参考《PyTorch 训练模型迁移调优指南》的“[模型迁移](https://www.hiascend.com/document/detail/zh/Pytorch/730/ptmoddevg/trainingmigrguide/PT_LMTMOG_0013.html)”章节，了解如何将模型迁移至昇腾NPU上等。
 -   **产品支持情况**：
 
     大部分功能默认支持所有产品，如有特殊情况，将在功能章节的“使用约束”中说明。
