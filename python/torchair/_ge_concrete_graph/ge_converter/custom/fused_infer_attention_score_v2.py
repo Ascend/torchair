@@ -32,6 +32,7 @@ def convert_npu_npu_fused_infer_attention_score_v2(
     dequant_scale_key_rope: Optional[Tensor] = None,
     quant_scale_out: Optional[Tensor] = None,
     quant_offset_out: Optional[Tensor] = None,
+    quant_scale_p: Optional[Tensor] = None,
     learnable_sink: Optional[Tensor] = None,
     num_query_heads: int = 1,
     num_key_value_heads: int = 0,
@@ -116,7 +117,6 @@ def convert_npu_npu_fused_infer_attention_score_v2(
     if actual_seq_kvlen is not None:
         actual_seq_kvlen = dtype_promote(actual_seq_kvlen, target_dtype=DataType.DT_INT64)
     # dropped params
-    quant_scale1 = None
     dequant_scale2 = None
     dequant_scale1 = None
     antiquant_scale = None
@@ -130,7 +130,7 @@ def convert_npu_npu_fused_infer_attention_score_v2(
 
     out, lse = ge.FusedInferAttentionScore(query, key_list, value_list, pse_shift=pse_shift, atten_mask=atten_mask,
         actual_seq_lengths=actual_seq_qlen, actual_seq_lengths_kv=actual_seq_kvlen,
-        dequant_scale1=dequant_scale1, quant_scale1=quant_scale1, dequant_scale2=dequant_scale2,
+        dequant_scale1=dequant_scale1, quant_scale1=quant_scale_p, dequant_scale2=dequant_scale2,
         quant_scale2=quant_scale_out, quant_offset2=quant_offset_out, antiquant_scale=antiquant_scale,
         antiquant_offset=antiquant_offset, block_table=block_table, query_padding_size=query_padding_size,
         kv_padding_size=kv_padding_size, key_antiquant_scale=dequant_scale_key,

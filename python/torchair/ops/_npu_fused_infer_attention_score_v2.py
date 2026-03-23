@@ -20,7 +20,7 @@ lib.define(
     Tensor? actual_seq_kvlen=None, Tensor? block_table=None, Tensor? dequant_scale_query=None, \
     Tensor? dequant_scale_key=None, Tensor? dequant_offset_key=None, Tensor? dequant_scale_value=None,  \
     Tensor? dequant_offset_value=None, Tensor? dequant_scale_key_rope=None,  \
-    Tensor? quant_scale_out=None, Tensor? quant_offset_out=None, Tensor? learnable_sink=None, int num_query_heads=1, \
+    Tensor? quant_scale_out=None, Tensor? quant_offset_out=None, Tensor? quant_scale_p=None, Tensor? learnable_sink=None, int num_query_heads=1, \
     int num_key_value_heads=0,  float softmax_scale=1.0, int pre_tokens=2147483647, int next_tokens=2147483647, \
     str input_layout="BSH", int sparse_mode=0, int block_size=0, int query_quant_mode=0, int key_quant_mode=0, \
     int value_quant_mode=0, int inner_precise=0, bool return_softmax_lse=False, int? query_dtype=None, \
@@ -80,6 +80,7 @@ def convert_npu_npu_fused_infer_attention_score_v2_tensor(
     dequant_scale_key_rope: Optional[Tensor] = None,
     quant_scale_out: Optional[Tensor] = None,
     quant_offset_out: Optional[Tensor] = None,
+    quant_scale_p: Optional[Tensor] = None,
     learnable_sink: Optional[Tensor] = None,
     num_query_heads: int = 1,
     num_key_value_heads: int = 0,
@@ -159,7 +160,6 @@ def convert_npu_npu_fused_infer_attention_score_v2_tensor(
     key_list = [key]
     value_list = [value]
     # dropped params
-    quant_scale1 = None
     dequant_scale2 = None
     dequant_scale1 = None
     antiquant_scale = None
@@ -172,7 +172,7 @@ def convert_npu_npu_fused_infer_attention_score_v2_tensor(
     antiquant_mode = 0
     out, lse = ge.FusedInferAttentionScore(query, key_list, value_list, pse_shift=pse_shift, atten_mask=atten_mask,
         actual_seq_lengths=actual_seq_qlen, actual_seq_lengths_kv=actual_seq_kvlen,
-        dequant_scale1=dequant_scale1, quant_scale1=quant_scale1, dequant_scale2=dequant_scale2,
+        dequant_scale1=dequant_scale1, quant_scale1=quant_scale_p, dequant_scale2=dequant_scale2,
         quant_scale2=quant_scale_out, quant_offset2=quant_offset_out, antiquant_scale=antiquant_scale,
         antiquant_offset=antiquant_offset, block_table=block_table, query_padding_size=query_padding_size,
         kv_padding_size=kv_padding_size, key_antiquant_scale=dequant_scale_key,
@@ -375,7 +375,7 @@ def infer_lse_out_shape(query, input_layout, query_layout, num_heads):
 def npu_fused_infer_attention_score_v2_meta_impl(query, key, value, *, query_rope=None, key_rope=None, pse_shift=None,
     atten_mask=None, actual_seq_qlen=None, actual_seq_kvlen=None, block_table=None, dequant_scale_query=None,
     dequant_scale_key=None, dequant_offset_key=None, dequant_scale_value=None, dequant_offset_value=None,
-    dequant_scale_key_rope=None, quant_scale_out=None, quant_offset_out=None, learnable_sink=None, num_query_heads=1, 
+    dequant_scale_key_rope=None, quant_scale_out=None, quant_offset_out=None, quant_scale_p=None, learnable_sink=None, num_query_heads=1, 
     num_key_value_heads=0, softmax_scale=1.0, pre_tokens=2147483647, next_tokens=2147483647, input_layout="BSH", 
     sparse_mode=0, block_size=0, query_quant_mode=0, key_quant_mode=0, value_quant_mode=0, inner_precise=0, 
     return_softmax_lse=False, query_dtype=None, key_dtype=None, value_dtype=None, query_rope_dtype=None, 
