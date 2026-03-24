@@ -6,7 +6,7 @@
 
 接口名|接口说明|
 |--|--|
-|[compile_fx](./npugraph_ex/compile_fx.md)|获取能在NPU上运行的图编译器，可将获取的图编译器传入自定义的后端中，以实现用户自定义的特性。|
+|[compile_fx](./npugraph_ex/compile_fx.md)|获取编译后的可执行FX图对象，可通过该接口自定义后端，以实现用户自定义的特性。|
 |[register_replacement](./npugraph_ex/register_replacement.md)|将自定义算子融合规则注册到TorchAir框架中，在FX图编译后对图进行算子融合优化。|
 
 ## torch.npu.npugraph_ex.inference接口列表

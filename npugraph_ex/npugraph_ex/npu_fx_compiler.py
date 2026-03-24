@@ -659,19 +659,23 @@ class _NpuFxCompiler:
         self.config = compiler_config
 
 
-def compile_fx(options: dict = None):
+def compile_fx(gm: torch.fx.GraphModule, example_inputs: List = None, options: dict = None):
     """
-    Retrieves the NPU compiler instance.
+    This function creates a compiler configuration, processes the options, and invokes
+    the NPU compiler to transform the FX graph into an executable NPU computation graph.
 
     Args:
+        gm (torch.fx.GraphModule): The FX graph module to compile.
+        example_inputs (List[torch.Tensor]): Example inputs for compilation.
         options (dict, optional): torch.compile options. Defaults to None.
 
     Returns:
-        _NpuFxCompiler: NPU compiler instance.
-    """
+        _CompiledFxGraph: The compiled graph.
+    """       
     compiler_config = CompilerConfig()
-    _process_kwargs_options(compiler_config, options)
-    return _NpuFxCompiler(compiler_config)
+    _process_kwargs_options(compiler_config, {"options": {} if options is None else options})
+    compiler = get_compiler(compiler_config)
+    return compiler(gm, example_inputs)
 
 
 def get_compiler(compiler_config: CompilerConfig = None):
@@ -827,7 +831,7 @@ def _npu_backend(gm: torch.fx.GraphModule, example_inputs: List[torch.Tensor],
         compiler_config = CompilerConfig()
     _process_kwargs_options(compiler_config, kwargs)
     _process_send_recv(gm, compiler_config)
-    compiler = compile_fx(kwargs)
+    compiler = get_compiler(compiler_config)
 
     # 调用公共方法
     return _compile_graph_with_aot(gm, compiler, example_inputs, compiler_config, decompositions, is_cache=False)

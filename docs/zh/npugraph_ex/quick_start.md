@@ -115,32 +115,35 @@ aclgraph图模式下的torch.compile参数配置说明参见[表1](#fig1)。
 
 ## 功能拓展
 
-若您希望额外增加一些自定义的FX图优化功能，可通过[torch.npu.npugraph\_ex.compile\_fx](./api/npugraph_ex/compile_fx.md)接口自定义backend，然后传入torch.compile进行编译，示例如下：
+若您希望额外增加一些自定义的FX图优化功能，可通过[torch.npu.npugraph\_ex.compile\_fx](./api/npugraph_ex/compile_fx.md)接口自定义compiler和backend，然后传入torch.compile进行编译，示例如下：
 
 ```python
 import torch
 from torch._functorch.aot_autograd import aot_module_simplified
 import torch_npu
 
-# 自定义Model
 class Model(torch.nn.Module):
     def __init__(self):
         super().__init__()
     def forward(self, x, y):
-        return torch.add(x, y)
+        x = x + y
+        return x
+
+# 构建自定义的compiler
+def custom_compiler(gm: torch.fx.GraphModule, example_inputs):
+    test_options = {
+        "clone_input": False
+    }
+    compiled_graph = torch.npu.npugraph_ex.compile_fx(gm, example_inputs, test_options)
+    return compiled_graph
 
 # 构建自定义的backend
-def my_backend(gm: torch.fx.GraphModule, example_inputs):
-    compiler = torch.npu.npugraph_ex.compile_fx()
-    return aot_module_simplified(gm, example_inputs, fw_compiler=compiler)
-
-model = Model().npu()
-# 基于自定义的backend进行compile
-opt_model = torch.compile(model, backend=my_backend, fullgraph=True, dynamic=False)
-
-# 执行编译后的Model
-x = torch.randn(2, 2).npu()
-y = torch.randn(2, 2).npu()
-opt_model(x, y)
+def custom_backend(gm: torch.fx.GraphModule, example_inputs):
+    return aot_module_simplified(gm, example_inputs, fw_compiler=custom_compiler)
+                        
+x = torch.ones([2, 2], dtype=torch.int32).npu()
+y = torch.ones([2, 2], dtype=torch.int32).npu()
+model = torch.compile(Model().npu(), backend=custom_backend, fullgraph=True, dynamic=False)
+ret = model(x, y)
 ```
 

@@ -162,10 +162,10 @@
         "signature": "(compiler_config: npugraph_ex.configs.compiler_config.CompilerConfig = None)"
     },
     "torch_npu.dynamo.npugraph_ex.compile_fx": {
-        "signature": "(options: dict = None)"
+        "signature": "(gm: torch.fx.GraphModule, example_inputs: List = None, options: dict = None)"
     },
     "torch_npu.dynamo.npugraph_ex.npu_fx_compiler.compile_fx": {
-        "signature": "(options: dict = None)"
+        "signature": "(gm: torch.fx.GraphModule, example_inputs: List = None, options: dict = None)"
     },
     "torch_npu.dynamo.npugraph_ex.CompilerConfig": {
         "signature": "()"

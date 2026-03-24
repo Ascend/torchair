@@ -12,7 +12,7 @@ import sympy
 from npugraph_ex.configs.compiler_config import CompilerConfig
 from npugraph_ex.core.utils import logger
 from npugraph_ex._acl_concrete_graph.utils import reconstruct_args_kwargs, WeakRef, LazyMessage
-from npugraph_ex.configs.npugraphex_config import _process_kwargs_options
+from npugraph_ex.configs.npugraphex_config import _process_kwargs_options, _NpuGraphExConfig
 from npugraph_ex.configs._option_base import CallableValue
 
 torch._logging.set_logs(dynamo=logging.INFO)
@@ -2009,7 +2009,8 @@ class NpugraphExSt(unittest.TestCase):
         result = model(x, y)
 
         expected = torch.cat([x.exp(), x.sin(), x + y], dim=0)
-        self.assertTrue(torch.allclose(result, expected, atol=1e-5))    
+        self.assertTrue(torch.allclose(result, expected, atol=1e-5))
+        
     def test_npugraph_ex_process_kwargs_options(self):
         from npugraph_ex.configs.npugraphex_config import _NpuGraphExConfig
         config = CompilerConfig()
@@ -2115,6 +2116,118 @@ class NpugraphExSt(unittest.TestCase):
         except Exception as e:
             assert str(e).__contains__(
                 "(type: <class 'str'>) not in optional list [True, False] (type: <class 'bool'>)")
+
+
+    def test_compile_fx(self):
+        """Test compile_fx with torch.compile and custom_backend."""
+        from torch._functorch.aot_autograd import aot_module_simplified
+        from npugraph_ex import compile_fx
+        from npugraph_ex import npu_fx_compiler
+
+        class DsModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x1, x2):
+                output = torch.matmul(x1.transpose(0, 1), x2).transpose(0, 1)
+                return output
+        
+        captured_config = None
+        original_get_compiler = npu_fx_compiler.get_compiler
+
+        def wrapped_get_compiler(config):
+            nonlocal captured_config
+            captured_config = config
+            return original_get_compiler(config)
+
+        # 使用 compile_fx 编译图
+        test_options = {
+                "static_kernel_compile": False,
+                "inplace_pass": False,
+                "input_inplace_pass": False,
+                "remove_noop_ops": False,
+                "remove_cat_ops": False,
+                "force_eager": False,
+                "pattern_fusion_pass": False,
+                "clone_input": False,
+                "frozen_parameter": False,
+                "reuse_graph_pool_in_same_fx": False,
+                "capture_limit": 64,
+                "clone_output": False,
+                "dump_tensor_data": False,
+                "data_dump_stage": "optimized",
+                "data_dump_dir": "./"
+            }
+
+        def custom_compiler(gm: torch.fx.GraphModule, example_inputs):
+            npu_fx_compiler.get_compiler = wrapped_get_compiler
+            try:
+                compiled_graph = compile_fx(
+                    gm,
+                    example_inputs,
+                    test_options
+                )
+            finally:
+                npu_fx_compiler.get_compiler = original_get_compiler
+            return compiled_graph
+
+        def custom_backend(gm: torch.fx.GraphModule, example_inputs):
+            return aot_module_simplified(gm, example_inputs, fw_compiler=custom_compiler)
+        
+        # 准备数据
+        x1 = torch.randn(4, 64, 512, dtype=torch.float16)
+        x2 = torch.randn(64, 512, 128, dtype=torch.float16)
+        model = DsModel()
+        # 编译并执行
+        model = torch.compile(model, backend=custom_backend, dynamic=False, fullgraph=True)
+        result = model(x1, x2)
+        eager_output = model(x1, x2)
+        self.assertTrue(torch.allclose(result, eager_output))
+
+        assert captured_config.experimental_config.aclgraph._aclnn_static_shape_kernel.value == '0'
+        assert captured_config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass.value == '1'
+        assert captured_config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass.value == '1'
+        assert captured_config.experimental_config.remove_noop_ops.value == '0'
+        assert captured_config.debug.aclgraph.remove_cat_ops.value == '0'
+        assert captured_config.debug.run_eagerly.value == '0'
+        assert captured_config.experimental_config.pattern_fusion_pass.value == '0'
+        assert captured_config.experimental_config.frozen_parameter.value == '0'
+        assert captured_config.debug.aclgraph.disable_mempool_reuse_in_same_fx.value == '1'
+        assert captured_config.debug.aclgraph.static_capture_size_limit.value == '64'
+        assert captured_config.debug.aclgraph.enable_output_clone.value == '0'
+
+        assert _NpuGraphExConfig.static_kernel_compile is False
+        assert _NpuGraphExConfig.inplace_pass is False
+        assert _NpuGraphExConfig.input_inplace_pass is False
+        assert _NpuGraphExConfig.remove_noop_ops is False
+        assert _NpuGraphExConfig.remove_cat_ops is False
+        assert _NpuGraphExConfig.force_eager is False
+        assert _NpuGraphExConfig.pattern_fusion_pass is False
+        assert _NpuGraphExConfig.clone_input is False
+        assert _NpuGraphExConfig.frozen_parameter is False
+        assert _NpuGraphExConfig.reuse_graph_pool_in_same_fx is False
+        assert _NpuGraphExConfig.capture_limit == 64
+        assert _NpuGraphExConfig.clone_output is False
+        assert _NpuGraphExConfig.dump_tensor_data is False
+        assert _NpuGraphExConfig.data_dump_stage == 'optimized'
+        assert _NpuGraphExConfig.data_dump_dir == './'
+
+        options_dict = _NpuGraphExConfig.as_dict()
+        assert options_dict["static_kernel_compile"] is False
+        assert options_dict["inplace_pass"] is False
+        assert options_dict["input_inplace_pass"] is False
+        assert options_dict["remove_noop_ops"] is False
+        assert options_dict["remove_cat_ops"] is False
+        assert options_dict["force_eager"] is False
+        assert options_dict["clone_input"] is False
+        assert options_dict["frozen_parameter"] is False
+        assert options_dict["reuse_graph_pool_in_same_fx"] is False
+        assert options_dict["capture_limit"] == 64
+        assert options_dict["clone_output"] is False
+        assert options_dict["dump_tensor_data"] is False
+        assert options_dict["data_dump_stage"] == 'optimized'
+        assert options_dict["data_dump_dir"] == './'
+
 
 if __name__ == '__main__':
     unittest.main()
