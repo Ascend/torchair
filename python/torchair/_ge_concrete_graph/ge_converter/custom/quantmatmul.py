@@ -40,7 +40,7 @@ def conveter_npu_npu_quant_matmul(
                           (x2_dtype == torch_npu.float4_e2m1fn_x2 or x2.dtype == DataType.DT_FLOAT)
     need_reshape = (x1.dtype == DataType.DT_INT32 and x2.dtype == DataType.DT_INT32) or \
                    (x1_dtype is not None and x2_dtype is not None and x1_dtype == torch_npu.float4_e2m1fn_x2) or \
-                   (is_a8w4 and x2.dtype != DataType.DT_FLOAT)
+                   (is_a8w4 and x2.dtype != DataType.DT_FLOAT and y_scale is not None)
     if need_reshape:
         shape_multiples = 2
         x1_ge_dtype = 0
@@ -128,6 +128,11 @@ def conveter_npu_npu_quant_matmul(
         scale.desc.dtype = torch_dtype_value_to_ge_proto_type(scale_dtype)
         if trans_x2_scale:
             scale = ge.Transpose(scale, perm)
+
+    if is_a8w4 and y_scale is None and x2.dtype in [DataType.DT_INT8, DataType.DT_UINT8]:
+        if x2.symsize[-2] == 32: # u8打包fp4，k=64对应weight[0].symsize[-2]=32
+            raise RuntimeError("Current QMM-MxA8W4 does not support k=64 in graph mode. Please use eager mode if needed.")
+        x2 = ge.Bitcast(x2, type=torch_dtype_value_to_ge_type(x2_dtype), keep_dim=True)
 
     if is_arch35():
         out = ge.QuantBatchMatmulV4(x1,

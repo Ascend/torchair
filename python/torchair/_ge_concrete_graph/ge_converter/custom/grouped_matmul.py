@@ -299,6 +299,10 @@ def conveter_npu_npu_grouped_matmul(
                                                    x[0].symsize[-1] == weight[0].symsize[-2] * INT4_NUMS_IN_INT32)
     elif arch35_mxa8w4_weight_zip_mode(input_x_dtype, w_dtype, weight_dtype):
         x_list = x
+        if(weight[0].symsize[0] == 1):
+            raise ValueError("Current GMM-MxA8W4 does not support the expert count is 1 in graph mode. Please use eager mode if needed.")
+        if(weight[0].symsize[1] == 32): # u8打包fp4，k=64对应weight[0].symsize[1]=32
+            raise ValueError("Current GMM-MxA8W4 does not support k=64 in graph mode. Please use eager mode if needed.")
         for w_item in weight:
             w_list.append(ge.Bitcast(w_item, type=torch_dtype_value_to_ge_type(weight_dtype), keep_dim=True))
     elif x_dtype is not None and weight_dtype is not None and \

@@ -548,3 +548,13 @@ def move_transpose_into_mm(graph: GeGraph):
             remove_transpose_node(*weight_relate_nodes)
             remove_transpose_node(*antiquant_scale_relate_nodes)
             logger.debug('set attr transpose_weight to True in %s.', gmm_node.name)
+
+    qmm_nodes = [node for node in graph.op if node.type == "QuantBatchMatmulV4"]
+    for qmm_node in qmm_nodes:
+        weight_relate_nodes = find_nodes(qmm_node, (('Bitcast', 1), ('Transpose', 0), ('Const', 1)))
+        scale_relate_nodes = find_nodes(qmm_node, (('Bitcast', 4), ('Transpose', 0), ('Const', 1)))
+        if weight_relate_nodes and scale_relate_nodes:
+            qmm_node.attr['transpose_x2'].b = True
+            remove_transpose_node(*weight_relate_nodes)
+            remove_transpose_node(*scale_relate_nodes)
+            logger.debug('set attr transpose_x2 to True in %s.', qmm_node.name)
