@@ -50,6 +50,11 @@ def convert_npu_quant_lightning_indexer(
     meta_outputs: TensorSpec = None,
 ):
     import torch_npu
+    if query is not None and query_dtype is not None and query_dtype != torch_npu.hifloat8:
+        raise RuntimeError("The query_dtype is only used to support hifloat8, and should be default when the dtype of query tensor is not hifloat8")
+    if key is not None and key_dtype is not None and key_dtype != torch_npu.hifloat8:
+        raise RuntimeError("The key_dtype is only used to support hifloat8, and should be default when the dtype of key tensor is not hifloat8")
+
     if query is not None and query_dtype == torch_npu.hifloat8:
         query = ge.Bitcast(query, type=DataType.DT_HIFLOAT8)
     if key is not None and key_dtype == torch_npu.hifloat8:

@@ -45,6 +45,11 @@ def convert_npu_kv_quant_sparse_flash_attention(
     meta_outputs: TensorSpec = None,
 ):
     import torch_npu
+    if key is not None and key_dtype is not None and key_dtype != torch_npu.hifloat8:
+        raise RuntimeError("The key_dtype is only used to support hifloat8, and should be default when the dtype of key tensor is not hifloat8")
+    if value is not None and value_dtype is not None and value_dtype != torch_npu.hifloat8:
+        raise RuntimeError("The value_dtype is only used to support hifloat8, and should be default when the dtype of value tensor is not hifloat8")
+
     if key is not None and key_dtype == torch_npu.hifloat8:
         key = ge.Bitcast(key, type=DataType.DT_HIFLOAT8)
     if value is not None and value_dtype == torch_npu.hifloat8:
