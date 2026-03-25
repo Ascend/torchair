@@ -58657,7 +58657,7 @@ def AscendAntiQuant(x: Tensor, *, scale: float, offset: float, dtype: int=0, sqr
 @auto_convert_to_tensor([False, False, False], [False, False, True])
 def AscendAntiQuantV2(x: Tensor, scale: Tensor, offset: Optional[Tensor], *, dst_type: int=1, sqrt_mode: bool=False, dependencies=[], node_name=None):
     """REG_OP(AscendAntiQuantV2)\n
-.INPUT(x, TensorType({DT_INT8, DT_INT4}))\n
+.INPUT(x, TensorType({DT_INT8, DT_INT4, DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN}))\n
 .INPUT(scale, TensorType({DT_FLOAT, DT_BFLOAT16}))\n
 .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT, DT_BFLOAT16}))\n
 .OUTPUT(y, TensorType({DT_FLOAT16, DT_BFLOAT16}))\n
