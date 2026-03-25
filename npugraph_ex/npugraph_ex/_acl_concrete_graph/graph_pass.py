@@ -729,7 +729,7 @@ def replace_core_limit_nodes(gm: torch.fx.GraphModule, config: CompilerConfig):
 def _core_limit_handle_scope_enter(node: torch.fx.Node, gm: torch.fx.GraphModule, core_limit_stack: List, scope_enter_stack: List):
     core_limit_label = ["_op_aicore_num", "_op_vectorcore_num"]
     stream_switch_label = ["_user_stream_label", "_user_stream_priority"]
-    if node.args[0] == core_limit_label:
+    if set(core_limit_label).issubset(set(node.args[0])):
         # get current user configuration for core limit
         aicore_num, vectorcore_num = node.args[1]
         with gm.graph.inserting_before(node):
@@ -745,7 +745,7 @@ def _core_limit_handle_scope_enter(node: torch.fx.Node, gm: torch.fx.GraphModule
         # record current stream, original core states for rolling back
         core_limit_stack.append([stream_node, aicore_num_node, vectorcore_num_node, aicore_num, vectorcore_num])
         scope_enter_stack.append("core_limit")
-    elif node.args[0] == stream_switch_label:
+    elif set(stream_switch_label).issubset(set(node.args[0])):
         # do nothing if current stream switch is not within a core limit scope
         if not core_limit_stack:
             scope_enter_stack.append("other")
