@@ -205,6 +205,42 @@ class GeTest(unittest.TestCase):
             f"not found in logs: {cm.output}"
         )
 
+    def test_inplace_input_output_option_for_remove_tensormove_cpu(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x1, x2, x3, x4, x5):
+                add = torch.add(x1, 10, out=x1)
+                mul = torch.mul(x2, 10, out=x2)
+                res1 = torch.add(add, mul)
+                res2 = x3 * 100
+                res3 = x4 + 10
+                res4 = x5 + 100
+                return res1, res2, res3, res4
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "max-autotune"
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+        model = Model()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x1 = torch.randn(10, 21, dtype=torch.float16, device='cpu')
+        x2 = torch.randn(10, 21, dtype=torch.float16, device='cpu')
+        x3 = torch.randn(10, 23, dtype=torch.float16, device='cpu')
+        x4 = torch.randn(10, 24, dtype=torch.float16, device='cpu')
+        x5 = torch.randn(10, 25, dtype=torch.float16, device='cpu')
+
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            compile_output1, compile_output2, compile_output3, compile_output4 = model_compile(x1, x2, x3, x4, x5)
+
+        self.assertTrue(
+            any("ge.exec.outputReuseInputMemIndexes:" not in log and
+                "Skip outputReuseInputMemIndexes" in log
+                for log in cm.output),
+            f"not found in logs: {cm.output}"
+        )
+
     def test_inplace_input_output_option_for_remove_tensormove1(self):
         bs = 16
         num_head = 4
@@ -297,6 +333,69 @@ class GeTest(unittest.TestCase):
             res_decode = model(x, kv)
         self.assertFalse(
             any("ge.exec.outputReuseInputMemIndexes:" in log for log in cm.output),
+            f"not found in logs: {cm.output}"
+        )
+
+    def test_inplace_input_output_option_for_cache_compile_cpu(self):
+        config = CompilerConfig()
+
+        @dataclasses.dataclass
+        class InputMeta:
+            x1: torch.Tensor
+            x2: torch.Tensor
+            x3: torch.Tensor
+            x4: torch.Tensor
+            x5: torch.Tensor
+            is_prompt: bool
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                for param in self.parameters():
+                    torch.nn.init.ones_(param)
+
+                self.cached_prompt = torchair.inference.cache_compile(self.prompt, config=config)
+                self.cached_decode = torchair.inference.cache_compile(self.decode, config=config)
+
+            def forward(self, x: InputMeta, kv: List[torch.Tensor]):
+                if x.is_prompt:
+                    return self.cached_prompt(x, kv)
+                return self.cached_decode(x, kv)
+
+            def _forward(self, x, kv):
+                add = torch.add(x.x1, 10, out=x.x1)
+                mul = torch.mul(x.x2, 10, out=x.x2)
+                res1 = torch.add(add, mul)
+                res2 = x.x3 * 100
+                res3 = x.x4 + 10
+                res4 = x.x5 + 100
+                return res1, res2, res3, res4
+
+            def prompt(self, x, y):
+                return self._forward(x, y)
+
+            def decode(self, x, y):
+                return self._forward(x, y)
+
+        x = InputMeta(x1=torch.randn(2, 2),
+                      x2=torch.randn(2, 2),
+                      x3=torch.randn(2, 2),
+                      x4=torch.randn(2, 2),
+                      x5=torch.randn(2, 2),
+                      is_prompt=True)
+        kv = [torch.randn(2, 2)]
+        model = Model().npu()
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            res_prompt = model(x, kv)
+        self.assertTrue(
+            any("Skip outputReuseInputMemIndexes:" in log for log in cm.output),
+            f"not found in logs: {cm.output}"
+        )
+        x.is_prompt = False
+        with self.assertLogs(logger, level="DEBUG") as cm, torch.no_grad():
+            res_decode = model(x, kv)
+        self.assertTrue(
+            any("Skip outputReuseInputMemIndexes:" in log for log in cm.output),
             f"not found in logs: {cm.output}"
         )
 

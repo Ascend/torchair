@@ -1561,6 +1561,26 @@ class GeConcreteGraph(ConcreteGraphBase):
         self._auto_tune_times += 1
         logger.info(f"End auto tune for round {self._auto_tune_times - 1}")
 
+    def _graph_output_ref_input_has_cpu_memory(self) -> bool:
+        """
+        True if any input-output reuse pair in ``_graph_output_ref_input`` uses CPU (host) memory,
+        or if placement cannot be verified (conservative). GE must not receive ``outputReuseInputMemIndexes``
+        in those cases. Logs only when CPU memory is explicitly detected on an input or output.
+        """
+        placements_attr = self.graph.attr.get("_input_placements")
+        input_placements = list(placements_attr.list.i) if placements_attr is not None else []
+        for output_idx, input_idx in self._graph_output_ref_input.items():
+            if input_idx >= len(input_placements):
+                return True
+            if input_placements[input_idx] == Placement.HOST:
+                logger.info(
+                    "Skip outputReuseInputMemIndexes: reuse pair (output=%s, input=%s) uses host input.",
+                    output_idx,
+                    input_idx,
+                )
+                return True
+        return False
+
     def _normalize_ge_option(self):
         # Initialize based on global options
         local_compile_options, global_compile_options = self.config.as_dict()
@@ -1575,10 +1595,10 @@ class GeConcreteGraph(ConcreteGraphBase):
         if len(output_reuse_indexes) != 0:
             # support output memory reuse while output is not ref to input
             local_compile_options["ge.exec.outputReuseMemIndexes"] = ",".join(str(x) for x in output_reuse_indexes)
-        if self._graph_output_ref_input:
-            # supports memory reuse options between input and output of the muted inplace operator
-            local_compile_options["ge.exec.outputReuseInputMemIndexes"] = (
-                "|".join(f"{input_},{output_}" for output_, input_ in self._graph_output_ref_input.items())
+        if self._graph_output_ref_input and not self._graph_output_ref_input_has_cpu_memory():
+            local_compile_options["ge.exec.outputReuseInputMemIndexes"] = "|".join(
+                f"{input_idx},{output_idx}"
+                for output_idx, input_idx in self._graph_output_ref_input.items()
             )
         local_compile_options["ge.deterministic"] = "1" if torch.are_deterministic_algorithms_enabled() else "0"
         if 'torch_npu' not in sys.modules:
