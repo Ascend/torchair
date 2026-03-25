@@ -346,11 +346,20 @@ class StubUtils:
 
 
 def _stub_npu_add_rms_norm_default(self, *args, **kwargs):
-    return torch.randn([3, 2]), None, torch.randn([3, 2])
-
+    x1 = args[0]
+    if len(args) > 2:
+        y = torch.zeros_like(x1)
+        x_out = torch.zeros_like(x1)
+    else:
+        y = torch.empty_like(x1)
+        x_out = torch.empty_like(x1)
+    return y, None, x_out
 
 def _stub_npu_dynamic_quant_default(self, *args, **kwargs):
-    return torch.randn([3, 2]), torch.randn([3, 2])
+    y_out = self
+    smooth = kwargs.get("smooth_scales", None)
+    scale_out = torch.empty_like(smooth)
+    return y_out, scale_out
 
 def _stub_npu_quantize_default(self, *args, **kwargs):
     return torch.randn([3, 2])
