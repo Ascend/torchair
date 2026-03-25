@@ -658,13 +658,13 @@ class _NpuFxCompiler:
         self.config = compiler_config
 
 
-def compile_fx(gm: torch.fx.GraphModule, example_inputs: List = None, options: dict = None):
+def compile_fx(gm, example_inputs=None, options=None):
     """
     This function creates a compiler configuration, processes the options, and invokes
     the NPU compiler to transform the FX graph into an executable NPU computation graph.
 
     Args:
-        gm (torch.fx.GraphModule): The FX graph module to compile.
+        gm (torch.fx.graph_module.GraphModule): The FX graph module to compile.
         example_inputs (List[torch.Tensor]): Example inputs for compilation.
         options (dict, optional): torch.compile options. Defaults to None.
 
