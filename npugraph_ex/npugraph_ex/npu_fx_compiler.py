@@ -42,7 +42,6 @@ from npugraph_ex.core.utils import logger
 from npugraph_ex.configs.compiler_config import CompilerConfig
 from npugraph_ex.configs.npugraphex_config import _process_kwargs_options
 from npugraph_ex.fx_dumper import _NpuFxDumper
-from npugraph_ex._utils.custom_aot_functions import aot_module_simplified_joint
 from npugraph_ex._utils import add_npu_patch, get_npu_default_decompositions
 from npugraph_ex._utils.error_code import pretty_error_msg
 from npugraph_ex._utils.graph_transform_observer import (GraphTransformObserver, dump_fx_safety, wrap_compiler_phase,
