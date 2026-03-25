@@ -117,9 +117,9 @@ def convert_npu_all_to_all_quant_matmul(
 
     if x1_quant_mode == X1_KC_QUANT_MODE and x2_quant_mode == X2_KC_QUANT_MODE:
         if x1.dtype not in X1_DTYPE_WITH_KC_SUPPORT_LIST:
-            raise AssertionError(f"Type of x1:{ge_type_to_torch_type(x1.dtype)} is error, x1 should be {[ge_type_to_torch_type(d) for d in X1_DTYPE_SUPPORT_LIST]}.")
+            raise AssertionError(f"Type of x1:{ge_type_to_torch_type(x1.dtype)} is error, x1 should be {[ge_type_to_torch_type(d) for d in X1_DTYPE_WITH_KC_SUPPORT_LIST]}.")
         if x2.dtype not in X2_DTYPE_WITH_KC_SUPPORT_LIST:
-            raise AssertionError(f"Type of x2:{ge_type_to_torch_type(x2.dtype)} is error, x2 should be {[ge_type_to_torch_type(d) for d in X2_DTYPE_SUPPORT_LIST]}.")
+            raise AssertionError(f"Type of x2:{ge_type_to_torch_type(x2.dtype)} is error, x2 should be {[ge_type_to_torch_type(d) for d in X2_DTYPE_WITH_KC_SUPPORT_LIST]}.")
 
         if x1_scale_dtype is None:
             x1_scale_dtype = TORCH_NPU_FLOAT_VALUE  # default torch type of "float" is 6
@@ -144,9 +144,9 @@ def convert_npu_all_to_all_quant_matmul(
             raise RuntimeError(f"x1_quant_dtype should be {[ge_type_to_torch_type(d) for d in X1_QUANT_DTYPE_WITH_KC_SUPPORT_LIST]}, but got {ge_type_to_torch_type(x1_quant_dtype_ge)}.")
     elif x1_quant_mode == X1_MX_QUANT_MODE and x2_quant_mode == X2_MX_QUANT_MODE:
         if x1.dtype not in X1_DTYPE_WITH_MX_SUPPORT_LIST:
-            raise AssertionError(f"Type of x1:{ge_type_to_torch_type(x1.dtype)} is error, x1 should be {[ge_type_to_torch_type(d) for d in X1_DTYPE_SUPPORT_LIST]}.")
+            raise AssertionError(f"Type of x1:{ge_type_to_torch_type(x1.dtype)} is error, x1 should be {[ge_type_to_torch_type(d) for d in X1_DTYPE_WITH_MX_SUPPORT_LIST]}.")
         if x2.dtype not in X2_DTYPE_WITH_MX_SUPPORT_LIST:
-            raise AssertionError(f"Type of x2:{ge_type_to_torch_type(x2.dtype)} is error, x2 should be {[ge_type_to_torch_type(d) for d in X2_DTYPE_SUPPORT_LIST]}.")
+            raise AssertionError(f"Type of x2:{ge_type_to_torch_type(x2.dtype)} is error, x2 should be {[ge_type_to_torch_type(d) for d in X2_DTYPE_WITH_MX_SUPPORT_LIST]}.")
 
         if x1_scale_dtype is None:
             x1_scale_dtype = torch_npu.float8_e8m0fnu  # default torch type of "float8_e8m0" is 44, to ge type 37
