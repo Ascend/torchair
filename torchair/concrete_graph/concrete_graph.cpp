@@ -146,6 +146,13 @@ tng::Status CheckNetOutDtypes(const std::vector<ge::DataType> &output_dtypes, co
   }
   for (size_t i = 0u; i < output_dtypes.size(); ++i) {
     if (output_dtypes[i] != output_ge_dtypes[i]) {
+      if ((output_ge_dtypes[i] == ge::DataType::DT_HIFLOAT8 || output_ge_dtypes[i] == ge::DataType::DT_FLOAT4_E1M2) &&
+          output_dtypes[i] == ge::DataType::DT_UINT8) {
+        TNG_LOG(WARNING) << "The dtype in num[" << i << "] net output of Ascend output: ["
+                       << tng::DebugString(output_ge_dtypes[i]).c_str() << "] is not equal to FX graph NetOutput: ["
+                       << tng::DebugString(output_dtypes[i]).c_str() << "]";
+        continue ;
+      }
       return tng::Status::Error("The dtype in num[%d] net output of Ascend output: [%s] is not equal to FX graph NetOutput: [%s]. "
           "FX graph NetOutput dtypes is : %s, Ascend GE graph NetOutput dtypes is : %s", i, tng::DebugString(output_ge_dtypes[i]).c_str(),
           tng::DebugString(output_dtypes[i]).c_str(), tng::DebugString(output_dtypes).c_str(), tng::DebugString(output_ge_dtypes).c_str());

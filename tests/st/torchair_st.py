@@ -2067,6 +2067,48 @@ class TorchairSt(unittest.TestCase):
         a = torch.ones([2, 2], dtype=torch.int32).to(npu_device)
         b = executor.run([a])
 
+    def test_ge_output_hif8_dtype_check(self):
+        key = "ST_MXFPX_DTYPE_STUB"
+        os.environ[key] = "DT_HIFLOAT8"
+        initialize_graph_engine()
+        from torchair.core import _npu_graph_executor
+
+        torch.utils.rename_privateuse1_backend("npu")
+
+        with GeGraph() as graph:
+            x = ge.Data(index=0, shape=[2, 2], dtype=DataType.DT_INT32, placement='NPU')
+            y = ge.Cast(x, dst_type=torch_dtype_value_to_ge_type(290))
+            output = ge.NetOutput([y])
+
+            set_graph_output_dtypes(graph, [DataType.DT_UINT8])
+
+            executor = TorchNpuGraph()
+            executor.load(graph)
+            executor.compile()
+        a = torch.ones([2, 2], dtype=torch.int32).to(npu_device)
+        b = executor.run([a])
+
+    def test_ge_output_fp4_e1m2_dtype_check(self):
+        key = "ST_MXFPX_DTYPE_STUB"
+        os.environ[key] = "DT_FLOAT4_E1M2"
+        initialize_graph_engine()
+        from torchair.core import _npu_graph_executor
+
+        torch.utils.rename_privateuse1_backend("npu")
+
+        with GeGraph() as graph:
+            x = ge.Data(index=0, shape=[2, 2], dtype=DataType.DT_INT32, placement='NPU')
+            y = ge.Cast(x, dst_type=torch_dtype_value_to_ge_type(290))
+            output = ge.NetOutput([y])
+
+            set_graph_output_dtypes(graph, [DataType.DT_UINT8])
+
+            executor = TorchNpuGraph()
+            executor.load(graph)
+            executor.compile()
+        a = torch.ones([2, 2], dtype=torch.int32).to(npu_device)
+        b = executor.run([a])
+
     def test_sym_sum(self):
         class Model(torch.nn.Module):
             def forward(self, xs):
