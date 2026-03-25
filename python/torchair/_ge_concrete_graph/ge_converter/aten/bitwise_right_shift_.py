@@ -14,4 +14,4 @@ def conveter_aten_bitwise_right_shift__Tensor(
     self: Tensor, other: Tensor, meta_outputs: TensorSpec = None
 ):
     """NB: aten::bitwise_right_shift_.Tensor(Tensor(a!) self, Tensor other) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.bitwise_right_shift_.Tensor ge_converter is not implemented!")
+    return ge.RightShift(self, other)

@@ -10,7 +10,7 @@ def conveter_aten_nan_to_num_default(
     meta_outputs: TensorSpec = None,
 ):
     """NB: aten::nan_to_num(Tensor self, float? nan=None, float? posinf=None, float? neginf=None) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.nan_to_num.default ge_converter is not implemented!")
+    return ge.NanToNum(self, nan=nan, posinf=posinf, neginf=neginf)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.nan_to_num.out)
@@ -24,4 +24,5 @@ def conveter_aten_nan_to_num_out(
     meta_outputs: TensorSpec = None
 ):
     """NB: aten::nan_to_num.out(Tensor self, float? nan=None, float? posinf=None, float? neginf=None, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.nan_to_num.out ge_converter is not implemented!")
+    out = ge.NanToNum(self, nan=nan, posinf=posinf, neginf=neginf)
+    return out

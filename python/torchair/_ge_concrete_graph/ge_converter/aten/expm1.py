@@ -4,7 +4,7 @@ from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 @register_fx_node_ge_converter(torch.ops.aten.expm1.default)
 def conveter_aten_expm1_default(self: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::expm1(Tensor self) -> Tensor"""
-    raise NotImplementedError("torch.ops.aten.expm1.default ge_converter is not implemented!")
+    return ge.Expm1(self)
 
 
 @register_fx_node_ge_converter(torch.ops.aten.expm1.out)
@@ -12,7 +12,8 @@ def conveter_aten_expm1_out(
     self: Tensor, *, out: Tensor = None, meta_outputs: TensorSpec = None
 ):
     """NB: aten::expm1.out(Tensor self, *, Tensor(a!) out) -> Tensor(a!)"""
-    raise NotImplementedError("torch.ops.aten.expm1.out ge_converter is not implemented!")
+    out = ge.Expm1(self)
+    return out
 
 
 @register_fx_node_ge_converter(torch.ops.aten.expm1.int)
