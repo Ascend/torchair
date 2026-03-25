@@ -36,29 +36,29 @@ opt_model(x, y)
 ```
 
 ## 功能列表
+npugraph\_ex提供多项功能，包括： [基础功能](#fig2)、[进阶功能](#fig3)和[DFX功能](#fig4)。
 
-torch.compile为PyTorch原生接口，接口详细介绍请参见官网[Link](https://pytorch.org/docs/stable/generated/torch.compile.html#torch-compile)，接口原型如下：
+其中基础功能通过torch.compile的options参数进行配置，torch.compile为PyTorch原生接口，接口详细介绍请参见官网[Link](https://pytorch.org/docs/stable/generated/torch.compile.html#torch-compile)，接口原型如下：
 
 ```python
 torch.compile(model=None, *, fullgraph=False, dynamic=None, backend='inductor', mode=None, options=None, disable=False)
 ```
 
-aclgraph图模式下的torch.compile参数配置说明参见[表1](#fig1)。
+torch.compile参数配置说明参见[表1](#fig1)。
 
 **表 1**  torch.compile参数说明（aclgraph模式）<a id="fig1"></a>
 
 |参数名|PyTorch原生参数说明|aclgraph模式下参数说明|
 |--|--|--|
-|model|**必选参数**。入图部分的模型或者函数。|与原生含义一致。|
-|fullgraph|可选参数，bool类型。是否捕获整图进行优化。<br>False（缺省值）：非整图优化。<br>True：捕获整图优化。|建议设置为True，要求将整个函数或模型捕获到一个单一的计算图中。如果编译器遇到无法追踪到该单一图中的代码时（即“图中断”），则会引发错误。|
-|dynamic|可选参数，bool类型或None。是否启用动态Shape追踪。<br>None（缺省值）：自动检测是否启用动态Shape追踪。<br>False：不启用动态Shape追踪。<br>True：启用动态Shape追踪。|与原生含义一致。|
-|backend|**必选参数**，后端选择，缺省值为"inductor"。|需显式传入backend="npugraph_ex"。|
-|mode|开销模式，内存开销模式选择，缺省值为None。|昇腾NPU**暂不支持**。|
-|options|优化选项，缺省值为None。|提供多种图模式功能配置功能，具体参见下表。<br>**基础功能**：通过配置torch.compile的backend="npugraph_ex"以及options即可使用。<br>**进阶功能**：通过调用接口或修改脚本来使用。<br>**DFX功能**：通过环境变量、options配置项、接口等方式，一般用于辅助问题排查定位。|
-|disable|可选参数，bool类型。是否关闭torch.compile能力。<br>False（缺省值）：开启torch.compile能力。<br>True：关闭torch.compile能力，采用单算子模式。|与原生含义一致。|
+|model|**必选参数**。入图部分的模型或者函数。| 与原生含义一致。|
+|fullgraph|可选参数，bool类型。是否捕获整图进行优化。<br>False（缺省值）：非整图优化。<br>True：捕获整图优化。| 建议设置为True，要求将整个函数或模型捕获到一个单一的计算图中。如果编译器遇到无法追踪到该单一图中的代码时（即“图中断”），则会引发错误。|
+|dynamic|可选参数，bool类型或None。是否启用动态Shape追踪。<br>None（缺省值）：自动检测是否启用动态Shape追踪。<br>False：不启用动态Shape追踪。<br>True：启用动态Shape追踪。| 与原生含义一致。|
+|backend|**必选参数**，后端选择，缺省值为"inductor"。| 需显式传入backend="npugraph_ex"。|
+|mode|开销模式，内存开销模式选择，缺省值为None。| 昇腾NPU**暂不支持**。|
+|options|优化选项，缺省值为None。| 提供多种基础功能配置，具体参见[基础功能](#fig2)。|
+|disable|可选参数，bool类型。是否关闭torch.compile能力。<br>False（缺省值）：开启torch.compile能力。<br>True：关闭torch.compile能力，采用单算子模式。| 与原生含义一致。|
 
-
-**表 2**  options基础功能 <a id="fig2"></a>
+**表 2**  npugraph\_ex基础功能 <a id="fig2"></a>
 
 |功能|功能说明|
 |--|--|
@@ -73,7 +73,7 @@ aclgraph图模式下的torch.compile参数配置说明参见[表1](#fig1)。
 |[集合通信入图](./basic/communication_graph.md)|实现集合通信算子Ascend Converter，调用torch.compile时默认已支持集合通信算子入图。|
 |[Cat算子消除功能](./basic/remove_cat_ops.md)|是否开启Cat算子消除优化以减少内存拷贝和临时张量分配，提升执行性能。|
 
-**表 3**  options进阶功能 <a id="fig3"></a>
+**表 3**  npugraph\_ex进阶功能 <a id="fig3"></a>
 
 |功能|功能说明|
 |--|--|
@@ -82,7 +82,7 @@ aclgraph图模式下的torch.compile参数配置说明参见[表1](#fig1)。
 |[AI-Core和Vector-Core限核功能](./advanced/limit_cores.md)|提供Stream级核数配置，可调整最大AI Core数和Vector Core数，避免算子执行并行度降低。|
 |[自定义FX图优化Pass功能](./advanced/post_grad_custom_pass.md)|传入自定义FX Pass函数，该配置可控制自定义Pass在框架内置Pass执行前/后生效。|
 
-**表 3**  options DFX功能 <a id="fig4"></a>
+**表 4**  npugraph\_ex DFX功能 <a id="fig4"></a>
 
 |功能|功能说明|
 |--|--|

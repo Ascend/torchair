@@ -14,13 +14,14 @@ cache_compile(func, *, dynamic: bool = True, cache_dir: Optional[str] = None, gl
 
 |**参数**|**输入/输出**|**说明**|
 |--|--|--|
-|func|输入|模型编译缓存的函数。|
-|dynamic|输入|是否按照输入动态trace，bool类型。该参数继承了PyTorch原有特性，详细介绍请参考LINK。默认True，进行动态trace。|
-|cache_dir|输入|缓存文件的保存路径，支持绝对/相对路径。若cache_dir指定路径，且为绝对路径，则缓存文件路径为`${cache_dir}/${model_info}/${func}`。若cache_dir指定路径，且为相对路径，则缓存文件路径为`${work_dir}/${cache_dir}/${model_info}/${func}`。`${cache_dir}`默认为`.torchair_cache`（若无会新建），`${work_dir}`为当前工作目录，`${model_info}`为模型信息，`${func}`为封装的func函数。|
-|global_rank|输入|分布式训练时的rank，int类型。取值范围为[0, world_size-1]，world_size表示参与分布式训练的总进程数。一般情况下npugraph_ex会自动通过torch.distributed.get_rank()获取默认值。|
-|tp_rank|输入|指张量模型并行rank，int类型，取值是global_rank中划分为TP域的rank id。|
-|pp_rank|输入|指流水线并行rank，int类型，取值是global_rank中划分为PP域的rank id。|
-|**kwargs|输入|预留参数项，用于后续功能扩展。当前版本支持指定模型运行时使用的decomposition（将较大算子操作分解为小算子实现），通过custom_decompositions配置项实现。您可以参考调用示例的Add算子分解样例。|
+|func|输入| 模型编译缓存的函数。|
+|dynamic|输入| 是否按照输入动态trace，bool类型。该参数继承了PyTorch原有特性，详细介绍请参考LINK。默认True，进行动态trace。|
+|cache_dir|输入| 缓存文件的保存路径，支持绝对/相对路径。若cache_dir指定路径，且为绝对路径，则缓存文件路径为`${cache_dir}/${model_info}/${func}`。若cache_dir指定路径，且为相对路径，则缓存文件路径为`${work_dir}/${cache_dir}/${model_info}/${func}`。`${cache_dir}`默认为`.torchair_cache`（若无会新建），`${work_dir}`为当前工作目录，`${model_info}`为模型信息，`${func}`为封装的func函数。|
+|global_rank|输入| 分布式训练时的rank，int类型。取值范围为[0, world_size-1]，world_size表示参与分布式训练的总进程数。一般情况下npugraph_ex会自动通过torch.distributed.get_rank()获取默认值。|
+|tp_rank|输入| 指张量模型并行rank，int类型，取值是global_rank中划分为TP域的rank id。|
+|pp_rank|输入| 指流水线并行rank，int类型，取值是global_rank中划分为PP域的rank id。|
+|options|输入| 优化选项，缺省值为None。支持的选项可参考[基础功能](../../quick_start.md#fig2)中所列举的各功能对应的配置选项。|
+|**kwargs|输入| 预留参数项，用于后续功能扩展。当前版本支持指定模型运行时使用的decomposition（将较大算子操作分解为小算子实现），通过custom_decompositions配置项实现。您可以参考调用示例的Add算子分解样例。|
 
 
 ## 返回值说明
