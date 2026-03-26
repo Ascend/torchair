@@ -83426,3 +83426,59 @@ def AlltoAllMatmul(x1: Tensor,
         .output("y", "DT_BF16, DT_FLOAT16, DT_FLOAT") \
         .output("all2all_out", "DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1") \
     )
+
+
+# This api is auto-generated from IR DynamicBlockMxQuant
+@auto_convert_to_tensor([False], [False])
+def DynamicBlockMxQuant(x: Tensor,
+                        *,
+                        round_mode: str = "rint",
+                        dst_type: int = 40,
+                        scale_alg: int = 0,
+                        dst_type_max: float = 0.0,
+                        dependencies=[],
+                        node_name=None):
+    """REG_OP(DynamicBlockMxQuant)\n
+    .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT4_E2M1, DT_FLOAT4_E1M2, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2}))\n
+    .OUTPUT(scale1, TensorType({DT_FLOAT8_E8M0}))\n
+    .OUTPUT(scale2, TensorType({DT_FLOAT8_E8M0}))\n
+    .ATTR(round_mode, String, "rint")\n
+    .ATTR(dst_type, Int, DT_FLOAT4_E2M1)\n
+    .ATTR(scale_alg, Int, 0)\n
+    .ATTR(dst_type_max, Float, 0.0)\n
+    """
+    op = get_default_ge_graph().op.add()
+    op.type = "DynamicBlockMxQuant"
+    op.name = next_unique_name(node_name, "DynamicBlockMxQuant")
+
+    # process dependencies
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+    
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+
+    # process attrs
+    op.attr["round_mode"].s = compat_as_bytes(round_mode)
+    op.attr["dst_type"].i = dst_type
+    op.attr["scale_alg"].i = scale_alg
+    op.attr["dst_type_max"].f = dst_type_max
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+
+    op.output_desc.add().name = "scale1"
+    scale1 = Tensor(op, output_index)
+    output_index += 1
+
+    op.output_desc.add().name = "scale2"
+    scale2 = Tensor(op, output_index)
+    output_index += 1
+
+    return y, scale1, scale2
