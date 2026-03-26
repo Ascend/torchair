@@ -45113,6 +45113,79 @@ def RmsNormGrad(
     return dx, dgamma
 
 
+# This api is auto-generated from IR RmsNormDynamicMxQuant
+@auto_convert_to_tensor([False, False, False],
+                        [False, False, True])
+def RmsNormDynamicMxQuant(
+    x: Tensor,
+    gamma: Tensor,
+    beta: Optional[Tensor],
+    *,
+    epsilon: float = 0.000001,
+    scale_alg: int = 0,
+    round_mode: str = "rint",
+    dst_type: int = 40,
+    output_rstd: bool = False,
+    dependencies=[],
+    node_name=None):
+    """REG_OP(RmsNormDynamicMxQuant)\n
+        .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))\n
+        .INPUT(gamma, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+        .OPTIONAL_INPUT(beta, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+        .OUTPUT(y, TensorType({DT_FLOAT4_E2M1, DT_FLOAT4_E1M2, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2}))\n
+        .OUTPUT(mxscale, TensorType({DT_FLOAT8_E8M0}))\n
+        .OUTPUT(rstd, TensorType({DT_FLOAT}))\n
+        .ATTR(epsilon, Float, 1e-6)\n
+        .ATTR(scale_alg, Int, 0)\n
+        .ATTR(round_mode, String, "rint")\n
+        .ATTR(dst_type, Int, 40)\n
+        .ATTR(output_rstd, Bool, false)\n
+    """
+
+    # process inputs
+    inputs = {
+        "x": x,
+        "gamma": gamma,
+        "beta": beta,
+    }
+
+    # process attrs
+    attrs = {
+        "epsilon": attr.Float(epsilon),
+        "scale_alg": attr.Int(scale_alg),
+        "round_mode": attr.Str(round_mode),
+        "dst_type": attr.Int(dst_type),
+        "output_rstd": attr.Bool(output_rstd),
+    }
+
+    # process outputs
+    outputs = [
+        "y",
+        "mxscale",
+        "rstd",
+    ]
+
+    return ge_op(
+        op_type="RmsNormDynamicMxQuant",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("RmsNormDynamicMxQuant")\
+        .input("x", "DT_FLOAT16, DT_BF16")\
+        .input("gamma", "DT_FLOAT, DT_FLOAT16, DT_BF16")\
+        .optional_input("beta", "DT_FLOAT, DT_FLOAT16, DT_BF16")\
+        .attr("epsilon", attr.Float(0.000001))\
+        .attr("scale_alg", attr.Int(0))\
+        .attr("round_mode", attr.Str("rint"))\
+        .attr("dst_type", attr.Int(40))\
+        .attr("output_rstd", attr.Bool(False))\
+        .output("y", "DT_FLOAT4_E2M1, DT_FLOAT4_E1M2, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2")\
+        .output("mxscale", "DT_FLOAT8_E8M0")\
+        .output("rstd", "DT_FLOAT")
+    )
+
+
 # This api is auto-generated from IR Renorm
 @auto_convert_to_tensor([False], [False], inputs_tensor_type=[TensorType.TT_BASIC])
 def Renorm(x: Tensor, *, p: float, dim: int, maxnorm: float, dependencies=[], node_name=None):
@@ -82377,6 +82450,85 @@ def GroupedMatmulSwigluQuantV2(x: Tensor,
         .attr("tuning_config", attr.ListInt([0]))\
         .output("y", "DT_INT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_FLOAT4_E2M1, DT_HIFLOAT8")\
         .output("y_scale", "DT_FLOAT, DT_FLOAT8_E8M0")
+    )
+
+
+# This api is auto-generated from IR AddRmsNormDynamicMxQuant
+@auto_convert_to_tensor([False, False, False, False],
+                        [False, False, False, True])
+def AddRmsNormDynamicMxQuant(x1: Tensor,
+                             x2: Tensor,
+                             gamma: Tensor,
+                             beta: Optional[Tensor],
+                             *,
+                             epsilon: float = 0.000001,
+                             scale_alg: int = 0,
+                             round_mode: str = "rint",
+                             dst_type: int = 40,
+                             output_rstd: bool = False,
+                             dependencies=[],
+                             node_name=None):
+    """REG_OP(AddRmsNormDynamicMxQuant)\n
+        .INPUT(x1, TensorType({DT_FLOAT16, DT_BF16}))\n
+        .INPUT(x2, TensorType({DT_FLOAT16, DT_BF16}))\n
+        .INPUT(gamma, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+        .OPTIONAL_INPUT(beta, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+        .OUTPUT(y, TensorType({DT_FLOAT4_E2M1, DT_FLOAT4_E1M2, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2}))\n
+        .OUTPUT(x, TensorType({DT_FLOAT16, DT_BF16}))\n
+        .OUTPUT(mxscale, TensorType({DT_FLOAT8_E8M0}))\n
+        .OUTPUT(rstd, TensorType({DT_FLOAT}))\n
+        .ATTR(epsilon, Float, 1e-6)\n
+        .ATTR(scale_alg, Int, 0)\n
+        .ATTR(round_mode, String, "rint")\n
+        .ATTR(dst_type, Int, 40)\n
+        .ATTR(output_rstd, Bool, false)\n
+    """
+
+    # process inputs
+    inputs = {
+        "x1": x1,
+        "x2": x2,
+        "gamma": gamma,
+        "beta": beta,
+    }
+
+    # process attrs
+    attrs = {
+        "epsilon": attr.Float(epsilon),
+        "scale_alg": attr.Int(scale_alg),
+        "round_mode": attr.Str(round_mode),
+        "dst_type": attr.Int(dst_type),
+        "output_rstd": attr.Bool(output_rstd),
+    }
+
+    # process outputs
+    outputs = [
+        "y",
+        "x",
+        "mxscale",
+        "rstd",
+    ]
+
+    return ge_op(
+        op_type="AddRmsNormDynamicMxQuant",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("AddRmsNormDynamicMxQuant")\
+        .input("x1", "DT_FLOAT16, DT_BF16")\
+        .input("x2", "DT_FLOAT16, DT_BF16")\
+        .input("gamma", "DT_FLOAT, DT_FLOAT16, DT_BF16")\
+        .optional_input("beta", "DT_FLOAT, DT_FLOAT16, DT_BF16")\
+        .attr("epsilon", attr.Float(0.000001))\
+        .attr("scale_alg", attr.Int(0))\
+        .attr("round_mode", attr.Str("rint"))\
+        .attr("dst_type", attr.Int(40))\
+        .attr("output_rstd", attr.Bool(False))\
+        .output("y", "DT_FLOAT4_E2M1, DT_FLOAT4_E1M2, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2")\
+        .output("x", "DT_FLOAT16, DT_BF16")\
+        .output("mxscale", "DT_FLOAT8_E8M0")\
+        .output("rstd", "DT_FLOAT")
     )
 
 
