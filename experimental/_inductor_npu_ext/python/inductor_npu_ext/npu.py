@@ -387,13 +387,13 @@ class NPUKernel(Kernel):
             logger.debug("Road for %s from %s to %s is dense", index, loop, self.contiguous_loop)
             load = ir.load(data, offset=offset, loop=loop)
             if dtype in {torch.bfloat16, torch.float16}:
-                load = ir.cast(load, dst=torch.float32, loop=loop)
+                load = ir.cast(load, dst=torch.float32, loop=loop.copy().contiguous_())
             return load
 
         loop = road[0].src
         load = ir.load(data, offset=offset, loop=loop)
         if dtype in {torch.bfloat16, torch.float16}:
-            load = ir.cast(load, dst=torch.float32, loop=loop)
+            load = ir.cast(load, dst=torch.float32, loop=loop.copy().contiguous_())
 
         logger.debug("Road for %s from %s to %s", index, loop, self.contiguous_loop)
         for op in road:

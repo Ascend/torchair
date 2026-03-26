@@ -223,9 +223,8 @@ _LoweringGuard.support(aten.mean, float_dtypes())
 _LoweringGuard.support(aten.max, float_dtypes())
 _LoweringGuard.support(aten.min, float_dtypes())
 
-# view/shape ops
+# view ops
 _LoweringGuard.support(aten.unsqueeze, float_dtypes())
-_LoweringGuard.support(aten.reshape, float_dtypes())
 _LoweringGuard.support(aten.squeeze, float_dtypes())
 _LoweringGuard.support(aten.permute, float_dtypes())
 _LoweringGuard.support(aten.select, float_dtypes())
@@ -235,7 +234,6 @@ _LoweringGuard.support(aten.t, float_dtypes())
 _LoweringGuard.support(aten.transpose, float_dtypes())
 _LoweringGuard.support(aten.expand, float_dtypes())
 _LoweringGuard.support(aten.alias, float_dtypes())
-_LoweringGuard.support(aten.repeat, float_dtypes())
 _LoweringGuard.support(aten.sym_size, float_dtypes())
 
 
