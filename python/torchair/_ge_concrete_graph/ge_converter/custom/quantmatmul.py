@@ -3,6 +3,38 @@ from torchair._utils.check_platform import is_arch35
 from torchair.ge._ge_graph import DataType, torch_dtype_value_to_ge_proto_type, torch_dtype_value_to_ge_type
 
 
+def is_transpose_last_two_dims(tensor):
+    # GE Tensor本体没有stride/size接口；这里从其 meta（PyTorch meta tensor）取stride信息。
+    meta = getattr(tensor, "meta", None)
+    if meta is None or not hasattr(meta, "stride") or not hasattr(meta, "size") or not hasattr(meta, "dim"):
+        return False
+
+    rank = meta.dim()
+    # 仅支持 2D~6D 的张量布局判断。
+    if rank < 2 or rank > 6:
+        return False
+
+    # 只检查最后两个维度（矩阵维）。
+    dim1 = rank - 1
+    dim2 = rank - 2
+
+    stride = list(meta.stride())
+    size = list(meta.size())
+
+    if stride[dim2] == 1 and stride[dim1] == size[dim2]:
+        tmpNxD = size[dim1] * size[dim2]
+        # 从倒数第 3 维开始，逐维检查 batch 维 stride 是否连续扩展。
+        for batchDim in range(rank - 3, -1, -1):
+            if stride[batchDim] != tmpNxD:
+                return False
+            tmpNxD = tmpNxD * size[batchDim]
+        if size[dim1] == 1 and size[dim2] == 1:
+            return False
+        return True
+
+    return False
+
+
 @register_fx_node_ge_converter(torch.ops.npu.npu_quant_matmul.default)
 def conveter_npu_npu_quant_matmul(
     x1: Tensor,
@@ -35,7 +67,7 @@ def conveter_npu_npu_quant_matmul(
     if output_dtype is None:
         output_dtype = 1
     dtype = torch_dtype_value_to_ge_type(output_dtype)
-
+    is_mxfp4_valid = x1_dtype == torch_npu.float4_e2m1fn_x2 and x2_dtype == torch_npu.float4_e2m1fn_x2
     is_a8w4 = x1.dtype == DataType.DT_FLOAT8_E4M3FN and \
                           (x2_dtype == torch_npu.float4_e2m1fn_x2 or x2.dtype == DataType.DT_FLOAT)
     need_reshape = (x1.dtype == DataType.DT_INT32 and x2.dtype == DataType.DT_INT32) or \
@@ -61,17 +93,24 @@ def conveter_npu_npu_quant_matmul(
         const_x1 = ge.Const([1] * (x1.rank - 1) + [shape_multiples])
         const_x2 = ge.Const([1] * (x2.rank - 1) + [shape_multiples])
         trans_x2 = x1.symsize[-1] == x2.symsize[-2]
-
+        trans_x1 = False
+        if is_mxfp4_valid:
+            trans_x1 = is_transpose_last_two_dims(x1)
+            trans_x2 = is_transpose_last_two_dims(x2)
         # A8W4 per-group场景把int64的y_scale转成uint64。 同时，A8W4不需要修改x1的数据类型
         if is_a8w4:
             if pertoken_scale is None and y_scale is not None and y_scale.dtype == DataType.DT_INT64:
                 y_scale = ge.Bitcast(y_scale, type=DataType.DT_UINT64)
                 trans_x2 = x1.symsize[-1] == (x2.symsize[-2] * 2)
         else:
+            if trans_x1:
+                x1 = ge.Transpose(x1, perm)
             shape_x1 = ge.Shape(x1)
             shape_x1 = ge.Mul(shape_x1, const_x1)
             x1 = ge.Bitcast(x1, type=x1_ge_dtype)
             x1 = ge.Reshape(x1, shape_x1)
+            if trans_x1:
+                x1 = ge.Transpose(x1, perm)
 
         if trans_x2:
             x2 = ge.Transpose(x2, perm)
