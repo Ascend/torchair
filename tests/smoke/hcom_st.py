@@ -401,6 +401,27 @@ class HcomTest(unittest.TestCase):
         dist.destroy_process_group()
 
     @classmethod
+    def _test_all_to_all_with_zero_size(cls, rank, world_size, init_pg, dynamic, results):
+        torch.npu.set_device(rank)
+        init_pg(rank, world_size)
+
+        if rank == 0:
+            input_list = [torch.randn(0, 2).npu() for i in range(world_size)]
+        else:
+            input_list = [torch.randn(1, 2).npu() for i in range(world_size)]
+        
+        output_list = [torch.zeros(0,2).npu()] + [torch.zeros(1,2).npu() for i in range(world_size -1)]
+        output_list_single = [output_list[i].clone() for i in range(len(output_list))]
+        model = AllToAll().npu()
+        output_list_single = model(input_list, output_list_single)
+        model = torch.compile(model, backend=npu_backend, dynamic=False, fullgraph=True)
+        with torch.no_grad():
+            output_list = model(input_list, output_list)
+        for i, output_tensor in enumerate(output_list):
+            results.append(output_tensor.equal(output_list_single[i]))
+        dist.destroy_process_group()
+
+    @classmethod
     def _test_all_gather(cls, rank, world_size, init_pg, dynamic, results):
         torch.npu.set_device(rank)
         init_pg(rank, world_size)
@@ -876,6 +897,10 @@ class HcomTest(unittest.TestCase):
                                                 HcomTest._init_dist_hccl_with_patch, world_size, True))
         self.assertTrue(self._test_multiprocess(HcomTest._test_all_to_all_different_size,
                                                 HcomTest._init_dist_hccl_with_patch, world_size, False))
+        self.assertTrue(self._test_multiprocess(HcomTest._test_all_to_all_with_zero_size,
+                                                HcomTest._init_dist_hccl_with_patch, world_size, True))
+        self.assertTrue(self._test_multiprocess(HcomTest._test_all_to_all_with_zero_size,
+                                                HcomTest._init_dist_hccl_with_patch, world_size, False))
 
     @unittest.skipIf(torch.__version__ < '2.3.1', "patch needed for torch version < 2.3.1")
     def test_all_to_all_without_patch(self):
@@ -888,6 +913,10 @@ class HcomTest(unittest.TestCase):
                                                 HcomTest._init_dist_hccl_without_patch, world_size, True))
         self.assertTrue(self._test_multiprocess(HcomTest._test_all_to_all_different_size,
                                                 HcomTest._init_dist_hccl_without_patch, world_size, False))
+        self.assertTrue(self._test_multiprocess(HcomTest._test_all_to_all_with_zero_size,
+                                                HcomTest._init_dist_hccl_without_patch, world_size, True))
+        self.assertTrue(self._test_multiprocess(HcomTest._test_all_to_all_with_zero_size,
+                                                HcomTest._init_dist_hccl_without_patch, world_size, False))        
 
     def test_allreduce(self):
         world_size = 4

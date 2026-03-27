@@ -1,3 +1,4 @@
+import math
 from typing import List, Optional
 
 import torch
@@ -46,7 +47,10 @@ if not hasattr(getattr(torch.ops, "npu_define"), "all_to_all_single_npu"):
             group_size: int,
     ):
         out_size = list(input_tensor.size())
-        input_non_0_dim_size = (input_tensor.numel() // out_size[0])
+        if input_tensor.dim() == 1:
+            input_non_0_dim_size = 1
+        else:
+            input_non_0_dim_size = math.prod(out_size[1:])
         if len(recv_counts) == 0:
             recv_counts = [out_size[0] * input_non_0_dim_size // group_size] * group_size
 
@@ -142,10 +146,23 @@ def all_to_all_decomposition(
     output_tensor = torch.ops.npu_define.all_to_all_single_npu(input_tensor,
         send_counts, send_displacements, recv_counts, recv_displacements, tag, ranks, group_size)
 
-    npu_output_tensor_list = [
-        torch.reshape(tensor, output_shape_size[i])
-        for i, tensor in enumerate(torch.split(output_tensor, recv_counts, dim=0))
-    ]
+    if 0 in recv_counts:
+        non_zero_indices = [i for i, count in enumerate(recv_counts) if count != 0]
+        non_zero_recv_counts = [recv_counts[i] for i in non_zero_indices]
+        split_tensors = torch.split(output_tensor, non_zero_recv_counts, dim=0)
+        non_zero_dict = dict(zip(non_zero_indices, split_tensors))
+        
+        npu_output_tensor_list = [None] * len(recv_counts)
+        for i, count in enumerate(recv_counts):
+            if count == 0:
+                npu_output_tensor_list[i] = torch.empty(output_shape_size[i], dtype=output_tensor.dtype, device=output_tensor.device)
+            else:
+                npu_output_tensor_list[i] = torch.reshape(non_zero_dict[i], output_shape_size[i])
+    else:
+        npu_output_tensor_list = [
+            torch.reshape(tensor, output_shape_size[i])
+            for i, tensor in enumerate(torch.split(output_tensor, recv_counts, dim=0))
+        ]
     return npu_output_tensor_list
 
 
