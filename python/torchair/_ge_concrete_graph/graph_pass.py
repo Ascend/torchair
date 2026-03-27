@@ -138,6 +138,8 @@ def _get_output_to_input_ref_idx(op: OpDef) -> Dict[int, int]:
         ref_idx_mapping[0] = 6
         ref_idx_mapping[1] = 7
         ref_idx_mapping[2] = 8
+    elif op.type == "FusedCausalConv1d":
+        ref_idx_mapping[1] = 2
         
     return ref_idx_mapping
 

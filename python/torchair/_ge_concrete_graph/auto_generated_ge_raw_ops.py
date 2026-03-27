@@ -148,6 +148,76 @@ def GeluGradV2(dy: Tensor, x: Tensor, *, approximate: str="none", dependencies=[
     )
 
 
+# This api is auto-generated from IR FusedCausalConv1d
+@auto_convert_to_tensor([False, False, False, False, False, False, False, False], [False, False, False, True, True, True, True, True])
+def FusedCausalConv1d(x: Tensor, weight: Tensor, conv_states: Tensor, query_start_loc: Optional[Tensor], cache_indices: Optional[Tensor], initial_state_mode: Optional[Tensor], bias: Optional[Tensor], num_accepted_tokens: Optional[Tensor], *, activation_mode: int=0, pad_slot_id: int=-1, run_mode: int=0, residual_connection: int=0, dependencies=[], node_name=None):
+    """REG_OP(FusedCausalConv1d)\n
+.INPUT(x, TensorType({DT_BF16, DT_FLOAT16}))\n
+.INPUT(weight, TensorType({DT_BF16, DT_FLOAT16}))\n
+.INPUT(conv_states, TensorType({DT_BF16, DT_FLOAT16}))\n
+.OPTIONAL_INPUT(query_start_loc, TensorType({DT_INT32}))\n
+.OPTIONAL_INPUT(cache_indices, TensorType({DT_INT32}))\n
+.OPTIONAL_INPUT(initial_state_mode, TensorType({DT_INT32}))\n
+.OPTIONAL_INPUT(bias, TensorType({DT_BF16, DT_FLOAT16}))\n
+.OPTIONAL_INPUT(num_accepted_tokens, TensorType({DT_INT32}))\n
+.ATTR(activation_mode, Int, 0)\n
+.ATTR(pad_slot_id, Int, -1)\n
+.ATTR(run_mode, Int, 0)\n
+.ATTR(residual_connection, Int, 0)\n
+.OUTPUT(y, TensorType({DT_BF16, DT_FLOAT16}))\n
+.OUTPUT(conv_states, TensorType({DT_BF16, DT_FLOAT16}))\n
+"""
+
+    # process inputs
+    inputs = {
+        "x": x,
+        "weight": weight,
+        "conv_states": conv_states,
+        "query_start_loc": query_start_loc,
+        "cache_indices": cache_indices,
+        "initial_state_mode": initial_state_mode,
+        "bias": bias,
+        "num_accepted_tokens": num_accepted_tokens,
+    }
+
+    # process attrs
+    attrs = {
+        "activation_mode": attr.Int(activation_mode),
+        "pad_slot_id": attr.Int(pad_slot_id),
+        "run_mode": attr.Int(run_mode),
+        "residual_connection": attr.Int(residual_connection),
+    }
+
+    # process outputs
+    outputs = [
+    "y",
+    "conv_states",
+    ]
+
+    return ge_op(
+        op_type="FusedCausalConv1d",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("FusedCausalConv1d") \
+        .input("x", "DT_BF16, DT_FLOAT16") \
+        .input("weight", "DT_BF16, DT_FLOAT16") \
+        .input("conv_states", "DT_BF16, DT_FLOAT16") \
+        .optional_input("query_start_loc", "DT_INT32") \
+        .optional_input("cache_indices", "DT_INT32") \
+        .optional_input("initial_state_mode", "DT_INT32") \
+        .optional_input("bias", "DT_BF16, DT_FLOAT16") \
+        .optional_input("num_accepted_tokens", "DT_INT32") \
+        .attr("activation_mode", attr.Int(0)) \
+        .attr("pad_slot_id", attr.Int(-1)) \
+        .attr("run_mode", attr.Int(0)) \
+        .attr("residual_connection", attr.Int(0)) \
+        .output("y" , "DT_BF16, DT_FLOAT16") \
+        .output("conv_states" , "DT_BF16, DT_FLOAT16")
+    )
+
+
 # This api is auto-generated from IR AippData
 @auto_convert_to_tensor([False], [False], inputs_tensor_type=[TensorType.TT_ALL])
 def AippData(data: Tensor, *, index: int=0, dependencies=[], node_name=None):
