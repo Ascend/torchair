@@ -13,6 +13,8 @@ from torch.types import Device, Number
 from torch.fx import Graph, Node
 
 from npugraph_ex.core.utils import logger
+from npugraph_ex.tools.aclgraph_check.deadlock_check import deadlock_check
+from npugraph_ex.tools.aclgraph_check.filter_operators import filter_comm_ops
 
 
 class Format(Enum):
@@ -495,3 +497,10 @@ def insert_save_npugraph_tensor(gm: torch.fx.GraphModule, configs):
 
     gm.recompile()
     return gm
+
+
+def run_deadlock_check(input_json_path):
+    logger.debug("start run deadlock check")
+    vector_core_num = torch.npu.get_device_limit(torch.npu.current_device())['vector_core_num']
+    filtered_output = filter_comm_ops(input_json_path, None)
+    deadlock_check(filtered_output, None, aivec_total=vector_core_num)

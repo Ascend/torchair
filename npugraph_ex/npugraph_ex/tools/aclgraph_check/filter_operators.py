@@ -258,9 +258,25 @@ def filter_operators(input_path: str, output_path: str, merge_gap: float = 0.0):
         json.dump(filtered, f, ensure_ascii=False, indent=2)
 
     print(f"\n已保存过滤结果到: {output_path}")
+    return output_path
 
 
-def main():
+def filter_comm_ops(input_path, output_path, merge_gap=0.0):
+    if not os.path.exists(input_path):
+        print(f"错误: 输入文件不存在: {input_path}")
+        sys.exit(1)
+
+    # 输出文件名: 在原文件名基础上加 _filtered 后缀
+    if output_path:
+        filtered_output_path = output_path
+    else:
+        base, ext = os.path.splitext(input_path)
+        filtered_output_path = f"{base}_filtered{ext}"
+
+    return filter_operators(input_path, filtered_output_path, merge_gap=merge_gap)
+
+
+if __name__ == "__main__":
     # 默认输入路径（不传参数时使用）
     default_input = os.path.join(os.path.dirname(os.path.abspath(__file__)), "graph_1.json")
 
@@ -285,20 +301,4 @@ def main():
         help="合并虚拟 stream 时的时间间隙（默认: 0.0）",
     )
     args = parser.parse_args()
-
-    if not os.path.exists(args.input):
-        print(f"错误: 输入文件不存在: {args.input}")
-        sys.exit(1)
-
-    # 输出文件名: 在原文件名基础上加 _filtered 后缀
-    if args.output:
-        output_path = args.output
-    else:
-        base, ext = os.path.splitext(args.input)
-        output_path = f"{base}_filtered{ext}"
-
-    filter_operators(args.input, output_path, merge_gap=args.merge_gap)
-
-
-if __name__ == "__main__":
-    main()
+    filter_comm_ops(args.input, args.output, args.merge_gap)

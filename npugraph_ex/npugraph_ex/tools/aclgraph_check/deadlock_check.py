@@ -153,6 +153,7 @@ graph_2_filtered.aligned.json（预期：有死锁）
     + MoeDistributeCombineV2（16 AIVEC，stream313）= 64 > 48 → 死锁
 """
 
+import os
 import json
 import argparse
 import re
@@ -528,36 +529,14 @@ def mark_deadlock_tasks(data: list, deadlock_tasks: set) -> list:
 # Main entry point
 # ---------------------------------------------------------------------------
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Detect AIVEC deadlock risks in NPU Chrome Tracing JSON files."
-    )
-    parser.add_argument("input", help="Input aligned Chrome Tracing JSON file")
-    parser.add_argument(
-        "-o", "--output",
-        help="Output JSON file (required when deadlocks are found)",
-    )
-    parser.add_argument(
-        "--aivec-total",
-        type=int,
-        default=48,
-        help="Total number of AIVEC cores on the NPU (default: 48)",
-    )
-    parser.add_argument(
-        "--merge-gap",
-        type=float,
-        default=0.0,
-        help="Time gap inserted when merging virtual streams (default: 0.0)",
-    )
-    args = parser.parse_args()
-
+def deadlock_check(input_path, output_path, aivec_total, merge_gap=0.0):
     # Load input
-    print(f"[INFO] Loading {args.input} ...", file=sys.stderr)
-    with open(args.input, encoding="utf-8") as f:
+    print(f"[INFO] Loading {input_path} ...", file=sys.stderr)
+    with open(input_path, encoding="utf-8") as f:
         data = json.load(f)
 
     # Merge virtual streams (prerequisite for correct deadlock detection)
-    data, moved = merge_stream_active(data, gap=args.merge_gap)
+    data, moved = merge_stream_active(data, gap=merge_gap)
     if moved:
         for src, dst in moved:
             print(f"[INFO] Merged stream: {src} -> {dst}", file=sys.stderr)
@@ -579,11 +558,11 @@ def main():
 
     # Find deadlock pairs
     print(
-        f"[INFO] Checking for AIVEC deadlocks (total={args.aivec_total}) ...",
+        f"[INFO] Checking for AIVEC deadlocks (total={aivec_total}) ...",
         file=sys.stderr,
     )
     deadlock_pairs = find_deadlock_tasks(
-        stream_tasks, vc, stream_index, args.aivec_total
+        stream_tasks, vc, stream_index, aivec_total
     )
 
     if not deadlock_pairs:
@@ -607,7 +586,7 @@ def main():
             f"({aivec_a} AIVEC)"
             f"  <->  [{tid_b} TaskId={task_id_b}] {task_b['name']} "
             f"({aivec_b} AIVEC)"
-            f"  sum={aivec_a + aivec_b} > {args.aivec_total}"
+            f"  sum={aivec_a + aivec_b} > {aivec_total}"
         )
         for task in (task_a, task_b):
             key = (task["tid"], task["args"].get("Task Id"))
@@ -624,18 +603,37 @@ def main():
         print(f"  - [{tid} TaskId={task_id}] {name}")
 
     # Write output JSON
-    if args.output:
-        out_data = mark_deadlock_tasks(data, deadlock_task_keys)
-        with open(args.output, "w", encoding="utf-8") as f:
-            json.dump(out_data, f, indent=2, ensure_ascii=False)
-        print(f"\n[INFO] Output written to {args.output}", file=sys.stderr)
-    else:
-        print(
-            "\n[WARNING] No output file specified (-o). "
-            "Use -o <file> to save the annotated JSON.",
-            file=sys.stderr,
-        )
+    if not output_path:
+        base, ext = os.path.splitext(input_path)
+        output_path = f"{base}_deadlock_check{ext}"
+    
+    out_data = mark_deadlock_tasks(data, deadlock_task_keys)
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(out_data, f, indent=2, ensure_ascii=False)
+    print(f"\n[INFO] Output written to {output_path}", file=sys.stderr)
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(
+        description="Detect AIVEC deadlock risks in NPU Chrome Tracing JSON files."
+    )
+    parser.add_argument("input", help="Input aligned Chrome Tracing JSON file")
+    parser.add_argument(
+        "-o", "--output",
+        help="Output JSON file (required when deadlocks are found)",
+    )
+    parser.add_argument(
+        "--aivec-total",
+        type=int,
+        default=48,
+        help="Total number of AIVEC cores on the NPU (default: 48)",
+    )
+    parser.add_argument(
+        "--merge-gap",
+        type=float,
+        default=0.0,
+        help="Time gap inserted when merging virtual streams (default: 0.0)",
+    )
+    args = parser.parse_args()
+
+    deadlock_check(args.input, output_path=args.output, aivec_total=args.aivec_total, merge_gap=args.merge_gap)

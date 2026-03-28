@@ -20,7 +20,7 @@ from torch._dynamo.utils import counters
 from npugraph_ex.core.utils import logger
 from npugraph_ex._utils.graph_transform_observer import DebugContext
 from npugraph_ex._utils.graph_utils import debug_time, debug_compare_fx_graphs
-from npugraph_ex._acl_concrete_graph.utils import timer, is_inputs_base_format
+from npugraph_ex._acl_concrete_graph.utils import timer, is_inputs_base_format, run_deadlock_check
 from npugraph_ex._acl_concrete_graph.utils import (debug_mem_state, LazyMessage, WeakRef, GraphMeta, get_tensor_metadata,
                                                 reconstruct_from_tensor_metadata)
 from npugraph_ex._acl_concrete_graph.static_kernel import compile_static_kernel
@@ -1207,16 +1207,27 @@ class AclGraph(object):
             )
             self.graph[graph_key].super_kernel_optimize(optimize_options=super_kernel_optimize_options, debug_options=super_kernel_debug_options)
             logger.info('Success to optimize AclGraph{id: %s} with super kernel.', id(self.graph[graph_key]))
-            
-        if os.getenv("TORCH_COMPILE_DEBUG", "0") == "1":
+
+        def debug_dump():
             try:
                 dir_path = DebugContext.current_path()
                 os.makedirs(dir_path, exist_ok=True)
                 timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d%H%M%S%f")
                 file_name = f"{self.name}_id_{id(self.graph[graph_key])}_rank_{self._device}_pid_{os.getpid()}_ts_{timestamp}.json"
-                self.graph[graph_key].debug_dump(os.path.join(dir_path, file_name))
+                result_path = os.path.join(dir_path, file_name)
+                self.graph[graph_key].debug_dump(result_path)
             except Exception:
                 logger.exception("Aclgraph for fx_graph %s json debug dump failed", self.name)
+            return str(result_path)
+
+        enable_torch_compile_debug = os.getenv("TORCH_COMPILE_DEBUG", "0") == "1"
+        enable_deadlock_check = self.config.get('deadlock_check', '0') == '1'
+
+        if enable_torch_compile_debug or enable_deadlock_check:
+            res = debug_dump() 
+
+            if enable_deadlock_check:
+                run_deadlock_check(res)
 
         # save outputs meta info and weakref
         for output_iter in captured_outputs:

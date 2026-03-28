@@ -27,6 +27,7 @@ class _NpuGraphExConfig:
     data_dump_dir: str = "./"
     _vllm_aclnn_static_kernel_sym_index: int = 0
     _vllm_aclnn_static_kernel_sym_range: list = None
+    deadlock_check: bool = False
 
     """
     Config for NpuGraphEx option
@@ -55,6 +56,7 @@ class _NpuGraphExConfig:
         "dump_tensor_data": "dump_config.enable_dump",
         "data_dump_stage": "dump_config.data_dump_stage",
         "data_dump_dir": "dump_config.dump_path",
+        "deadlock_check": "debug.aclgraph.deadlock_check",
         
         # More mapping relationships can be extended here
     }

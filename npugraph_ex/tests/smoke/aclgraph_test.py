@@ -5,6 +5,9 @@ import os
 import unittest
 from typing import List
 from pathlib import Path
+import io
+import sys
+from unittest.mock import patch
 
 import torch
 import torch_npu
@@ -1700,6 +1703,32 @@ class AclgraphTest(unittest.TestCase):
         z = model_compile(x1, x2)
         expected = torch.add(x1, x2)
         self.assertTrue(torch.allclose(z, expected, rtol=1e-3, atol=1e-3))
+
+    def test_aclgraph_deadlock_check(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, t):
+                stream = torch.npu.Stream()
+                event = torch.npu.Event()
+                mul_res = torch.mul(t, 5)
+                add_res = torch.add(mul_res, 2)
+                event.record()
+                with torch.npu.stream(stream):
+                    event.wait(stream)
+                    relu_res = torch.relu(add_res)
+                    add_res.record_stream(stream)
+                return relu_res
+
+        model = torch.compile(Model(), backend="npugraph_ex", options={"deadlock_check": True}, dynamic=False)
+        x = torch.randn([3, 3]).npu()
+
+        captured_output = io.StringIO()
+        with patch('sys.stdout', new=captured_output):
+            result = model(x)
+        output = captured_output.getvalue()
+        self.assertTrue("No deadlock risks detected." in output)
 
 
     def test_compile_fx(self):

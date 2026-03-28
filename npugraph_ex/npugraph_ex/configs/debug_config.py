@@ -87,6 +87,7 @@ class _AclGraphDebugConfig(NpuBaseConfig):
         self.static_capture_size_limit = IntRangeValue(64, 1, INT64_MAX)
         self.clone_input = OptionValue(True, [True, False])
         self.remove_cat_ops = OptionValue(True, [True, False])
+        self.deadlock_check = OptionValue(False, [True, False])
 
         super(_AclGraphDebugConfig, self).__init__()
 
@@ -97,6 +98,7 @@ class _AclGraphDebugConfig(NpuBaseConfig):
         # static_capture_size_limit must be str(int), so int(static_capture_size_limit) is always safe.
         local_option["static_capture_size_limit"] = self.static_capture_size_limit.value
         local_option["clone_input"] = self.clone_input.value
+        local_option["deadlock_check"] = self.deadlock_check.value
 
         return local_option
 
