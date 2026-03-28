@@ -1579,7 +1579,9 @@ class AclGraph(object):
                             'all symbol input indices and values are %s.',
                             id(self.fx_forward), dict(zip(self.sym_input_name, cur_sym_value)))
                 path = self.config.get('_aclnn_static_shape_kernel_build_dir', None)
-                compile_static_kernel(self.fx_forward, *args, build_dir=path, **kwargs)
+                super_kernel_optimize = self.config.get('_super_kernel_optimize', False)
+                compile_static_kernel(self.fx_forward, *args, build_dir=path,
+                                      super_kernel_optimize=super_kernel_optimize, **kwargs)
             else:
                 logger.info('Skip compile static shape kernel for fx graph %s, '
                             'all symbol input indices and values are %s. '

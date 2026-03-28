@@ -466,7 +466,7 @@ def _valid_graph(graph_module):
                                f"This error may also occur in a Dynamo graph break scenario.")
 
         if super_kernel_scope_nodes:
-            args_list = [node.args for node in super_kernel_scope_nodes]
+            args_list = [node.args[0] if len(node.args) > 0 else None for node in super_kernel_scope_nodes]
             raise RuntimeError(f"After you call the torch.npu.super_kernel_scope_begin operator, "
                                f"there is no paired call to the torch.npu.super_kernel_scope_end operator. "
                                f"The parameters for these torch.npu.super_kernel_scope_begin calls are:{args_list}. "
