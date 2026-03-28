@@ -81762,6 +81762,99 @@ def DequantSwigluQuant(x: Tensor,
     )
 
 
+# This api is auto-generated from IR SwigluMxQuant
+@auto_convert_to_tensor([False, False], [False, True], inputs_tensor_type=[TensorType.TT_UNKNOWN, TensorType.TT_INDEX_NUMBER])
+def SwigluMxQuant(x: Tensor,
+                  group_index: Optional[Tensor],
+                  *, 
+                  activate_dim: int = -1,
+                  activate_left: bool = False,
+                  swiglu_mode: int = 0,
+                  clamp_limit: float = 7.000000,
+                  glu_alpha: float = 1.702000,
+                  glu_bias: float = 1.000000,
+                  group_mode: int = 0,
+                  axis: int = -1,
+                  dst_type: int = 40,
+                  round_mode: str = "rint",
+                  scale_alg: int = 0,
+                  max_dtype_value: float = 0.000000,
+                  dependencies=[],
+                  node_name=None):
+    """REG_OP(SwigluMxQuant)\n
+    .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OPTIONAL_INPUT(group_index, TensorType({DT_INT32, DT_INT64}))\n
+    .OUTPUT(y, TensorType({DT_FLOAT4_E2M1, DT_FLOAT4_E1M2, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2}))\n
+    .OUTPUT(mxscale, TensorType({DT_FLOAT8_E8M0}))\n
+    .ATTR(activate_dim, Int, -1)\n
+    .ATTR(activate_left, Bool, false)\n
+    .ATTR(swiglu_mode, Int, 0)\n
+    .ATTR(clamp_limit, Float, 7.0f)\n
+    .ATTR(glu_alpha, Float, 1.702f)\n
+    .ATTR(glu_bias, Float, 1.0f)\n
+    .ATTR(group_mode, Int, 0)\n
+    .ATTR(axis, Int, -1)\n
+    .ATTR(dst_type, Int, 40)\n
+    .ATTR(round_mode, String, "rint")\n
+    .ATTR(scale_alg, Int, 0)\n
+    .ATTR(max_dtype_value, Float, 0.0f)\n
+    """
+    
+    # process inputs
+    inputs = {
+        "x": x,
+        "group_index": group_index,
+    }
+    
+    # process attrs
+    attrs = {
+        "activate_dim": attr.Int(activate_dim),
+        "activate_left": attr.Bool(activate_left),
+        "swiglu_mode": attr.Int(swiglu_mode),
+        "clamp_limit": attr.Float(clamp_limit),
+        "glu_alpha": attr.Float(glu_alpha),
+        "glu_bias": attr.Float(glu_bias),
+        "group_mode": attr.Int(group_mode),
+        "axis": attr.Int(axis),
+        "dst_type": attr.Int(dst_type),
+        "round_mode": attr.Str(round_mode),
+        "scale_alg": attr.Int(scale_alg),
+        "max_dtype_value": attr.Float(max_dtype_value),
+    }
+    
+    # process outputs
+    outputs = [
+    "y",
+    "mxscale",
+    ]
+    
+    return ge_op(
+        op_type="SwigluMxQuant",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("SwigluMxQuant") \
+        .input("x", "DT_FLOAT16, DT_BF16") \
+        .optional_input("group_index", "DT_INT32, DT_INT64") \
+        .attr("activate_dim", attr.Int(-1)) \
+        .attr("activate_left", attr.Bool(False)) \
+        .attr("swiglu_mode", attr.Int(0)) \
+        .attr("clamp_limit", attr.Float(7.000000)) \
+        .attr("glu_alpha", attr.Float(1.702000)) \
+        .attr("glu_bias", attr.Float(1.000000)) \
+        .attr("group_mode", attr.Int(0)) \
+        .attr("axis", attr.Int(-1)) \
+        .attr("dst_type", attr.Int(40)) \
+        .attr("round_mode", attr.Str("rint")) \
+        .attr("scale_alg", attr.Int(0)) \
+        .attr("max_dtype_value", attr.Float(0.000000)) \
+        .output("y", "DT_FLOAT4_E2M1, DT_FLOAT4_E1M2, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2") \
+        .output("mxscale", "DT_FLOAT8_E8M0")
+    
+    )
+
+
 @auto_convert_to_tensor([False, False], [False, True])
 def ClippedSwiglu(x: Tensor,
                 group_index: Optional[Tensor],
