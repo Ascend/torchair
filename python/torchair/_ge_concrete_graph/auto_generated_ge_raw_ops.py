@@ -44357,7 +44357,7 @@ def DynamicQuant(x: Tensor, smooth_scales: Optional[Tensor], group_index: Option
 # This api is auto-generated from IR DynamicQuantV2
 @auto_convert_to_tensor([False, False, False], [False, True, True])
 def DynamicQuantV2(x: Tensor, smooth_scales: Optional[Tensor], group_index: Optional[Tensor], *, dst_type: int = 2,
-    is_symmetrical: bool = False, quant_mode: str = "pertoken", dependencies=[], node_name=None):
+    is_symmetrical: bool = False, quant_mode: str = "pertoken", dst_type_max: float = 0.0, dependencies=[], node_name=None):
     """REG_OP(DynamicQuantV2)\n
 .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))\n
 .OPTIONAL_INPUT(smooth_scales, TensorType({DT_FLOAT16, DT_BF16}))\n
@@ -44401,6 +44401,7 @@ def DynamicQuantV2(x: Tensor, smooth_scales: Optional[Tensor], group_index: Opti
     op.attr["dst_type"].i = dst_type
     op.attr["is_symmetrical"].b = is_symmetrical
     op.attr["quant_mode"].s = compat_as_bytes(quant_mode)
+    op.attr["dst_type_max"].f = dst_type_max
 
     # process outputs
     output_index = 0
@@ -58614,6 +58615,7 @@ def DynamicMxQuant(x: Tensor,
                       dst_type: int = 40,
                       block_size: int = 32,
                       scale_alg: int = 0,
+                      dst_type_max: float = 0.0,
                       dependencies=[],
                       node_name=None):
     """REG_OP(DynamicMxQuant)\n
@@ -58645,6 +58647,7 @@ def DynamicMxQuant(x: Tensor,
     op.attr["dst_type"].i = dst_type
     op.attr["blocksize"].i = block_size
     op.attr["scale_alg"].i = scale_alg
+    op.attr["dst_type_max"].f = dst_type_max
 
     # process outputs
     output_index = 0

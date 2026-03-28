@@ -12,16 +12,17 @@ def conveter_npu_dynamic_quant_default(
     group_index: Optional[Tensor] = None,
     dst_type: int = 1,
     quant_mode: str = "pertoken",
+    dst_type_max: float = 0.0,
     meta_outputs: List[TensorSpec] = None
 ):
     acl_dst_type = torch_dtype_value_to_ge_type(dst_type)
 
-    if quant_mode == "pertoken":
+    if quant_mode == "pertoken" and math.isclose(dst_type_max, 0.0, rel_tol=1e-9):
         y, scale = ge.DynamicQuant(input_data, smooth_scales=smooth_scales, group_index=group_index, dst_type=acl_dst_type)
     else:
         y, scale, offset = ge.DynamicQuantV2(input_data, smooth_scales,
                                              group_index, dst_type=acl_dst_type,
-                                             is_symmetrical=True, quant_mode=quant_mode)
+                                             is_symmetrical=True, quant_mode=quant_mode, dst_type_max=dst_type_max)
     y.desc.dtype = torch_dtype_value_to_ge_proto_type(dst_type)
     if dst_type == 16: # torch.quint4x2
         dim_num = input_data.rank
@@ -50,12 +51,13 @@ def conveter_npu_dynamic_quant_asymmetric_default(
     group_index: Optional[Tensor] = None,
     dst_type: int = 1,
     quant_mode: str = "pertoken",
+    dst_type_max: float = 0.0,
     meta_outputs: List[TensorSpec] = None
 ):
     acl_dst_type = torch_dtype_value_to_ge_type(dst_type)
     y, scale, offset = ge.DynamicQuantV2(input_data, smooth_scales,
                                          group_index, dst_type=acl_dst_type,
-                                         is_symmetrical=False, quant_mode=quant_mode)
+                                         is_symmetrical=False, quant_mode=quant_mode, dst_type_max=dst_type_max)
     y.desc.dtype = torch_dtype_value_to_ge_proto_type(dst_type)
     if dst_type == 16:
         dim_num = input_data.rank
