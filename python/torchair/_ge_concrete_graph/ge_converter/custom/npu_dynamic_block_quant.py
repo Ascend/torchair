@@ -23,19 +23,20 @@ def conveter_npu_dynamic_block_quant_default(
     dst_type: int = 1,
     row_block_size: int = 1,
     col_block_size: int = 128,
+    dst_type_max: float = 0.0,
     meta_outputs: TensorSpec = None
 ):
     """
     NB: aten::npu_dynamic_block_quant(Tensor x, *,
                                       float min_scale=0.0, str round_mode="rint",
                                       int dst_type=1, int row_block_size=1,
-                                      int col_block_size=128) -> (Tensor y, Tensor scale)
+                                      int col_block_size=128, float dst_type_max=0.0) -> (Tensor y, Tensor scale)
     """
     if dst_type >= 256:
         acl_dst_type = dst_type - 256
     else:
         acl_dst_type = torch_dtype_value_to_ge_type(dst_type)
     y, scale = ge.DynamicBlockQuant(x, min_scale=min_scale, round_mode=round_mode, dst_type=acl_dst_type,
-                                row_block_size=row_block_size, col_block_size=col_block_size)
+                                row_block_size=row_block_size, col_block_size=col_block_size, dst_type_max=dst_type_max)
     y.desc.dtype = torch_dtype_value_to_ge_proto_type(dst_type)
     return y, scale

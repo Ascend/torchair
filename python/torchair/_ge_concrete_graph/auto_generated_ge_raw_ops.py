@@ -58561,6 +58561,7 @@ def DynamicBlockQuant(x: Tensor,
                       dst_type: int = 34,
                       row_block_size: int = 1,
                       col_block_size: int = 128,
+                      dst_type_max: float = 0.0,
                       dependencies=[],
                       node_name=None):
     """REG_OP(DynamicBlockQuant)\n
@@ -58572,6 +58573,7 @@ def DynamicBlockQuant(x: Tensor,
     .ATTR(dst_type, Int, DT_FLOAT8_E5M2)\n
     .ATTR(row_block_size, Int, 1)\n
     .ATTR(col_block_size, Int, 128)\n
+    .ATTR(dst_type_max, Float, 0.0)\n
     """
 
     op = get_default_ge_graph().op.add()
@@ -58593,6 +58595,7 @@ def DynamicBlockQuant(x: Tensor,
     op.attr["dst_type"].i = dst_type
     op.attr["row_block_size"].i = row_block_size
     op.attr["col_block_size"].i = col_block_size
+    op.attr["dst_type_max"].f = dst_type_max
 
     # process outputs
     output_index = 0
