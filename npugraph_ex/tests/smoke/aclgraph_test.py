@@ -56,6 +56,8 @@ class AclgraphTest(unittest.TestCase):
         if not hasattr(torch.npu, "fake_record_stream"):
             patch_dynamo()
         replace_stream_event.GraphCounter.set_graph_id(-1)
+        from npugraph_ex._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
+        self.aclconcretegraph_call_bak = AclConcreteGraph.__call__
         return super().setUp()
 
     def tearDown(self) -> None:
@@ -64,6 +66,9 @@ class AclgraphTest(unittest.TestCase):
         if self.optimize_cat_bak is not None:
             from npugraph_ex._acl_concrete_graph import cat_optimization
             cat_optimization.optimize_cat_with_out_tensor = self.optimize_cat_bak
+        if self.aclconcretegraph_call_bak is not None:
+            from npugraph_ex._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
+            AclConcreteGraph.__call__ = self.aclconcretegraph_call_bak
         return super().tearDown()
 
     def test_a_aclgraph_memory_state_setting(self):
@@ -1742,7 +1747,7 @@ class AclgraphTest(unittest.TestCase):
             def forward(self, x1, x2):
                 output = torch.matmul(x1.transpose(0, 1), x2).transpose(0, 1)
                 return output
-        
+
         captured_config = None
         original_get_compiler = npugraph_ex.npu_fx_compiler.get_compiler
 
@@ -1784,7 +1789,7 @@ class AclgraphTest(unittest.TestCase):
 
         def custom_backend(gm: torch.fx.GraphModule, example_inputs):
             return aot_module_simplified(gm, example_inputs, fw_compiler=custom_compiler)
-        
+
         # 准备数据
         x1 = torch.randn(4, 64, 512, dtype=torch.float16, device='npu')
         x2 = torch.randn(64, 512, 128, dtype=torch.float16, device='npu')
@@ -1838,6 +1843,177 @@ class AclgraphTest(unittest.TestCase):
         assert options_dict["dump_tensor_data"] is False
         assert options_dict["data_dump_stage"] == 'optimized'
         assert options_dict["data_dump_dir"] == './'
+
+    def test_inherited_global_limit_core(self):
+        from npugraph_ex._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
+
+        class Model1(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, in1, in2, in3, in4):
+                add_result = torch.add(in1, in2)
+                mm_result = torch.mm(in3, in4)
+                return mm_result, add_result
+
+        x = torch.randn([3, 3], device='npu')
+        y = torch.randn([3, 3], device='npu')
+        z = torch.randn([3, 3], device='npu')
+        w = torch.randn([3, 3], device='npu')
+        model1 = Model1()
+        model1 = torch.compile(model1, backend="npugraph_ex", fullgraph=True, dynamic=False)
+        # 继承全局控核；1、对单算子current_stream控核后，aclgraph capture_stream继承stream控核；
+        # 2、对单算子多流控核后，aclgraph capture_stream继承stream控核；
+        # 3、对单算子device设置控核，aclgraph控核生效（已满足用例不做补充）；
+        # 4、对单算子多流控核后，将图外stream作为参数传递到图内，stream上控核生效（已满足用例不做补充）；
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            current_stream = torch.npu.current_stream()
+            torch.npu.set_stream_limit(current_stream, 2, 3)
+            result = model1(x, y, z, w)
+            torch.npu.set_stream_limit(current_stream, 4, 5)
+            result = model1(x, y, z, w)
+        self.assertTrue(
+            any("The current AclGraph needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph needs to be recaptured'"
+            f"not found in logs: {cm.output}"
+        )
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            stream = torch.npu.Stream()
+            with torch.npu.stream(stream):
+                torch.npu.set_stream_limit(stream, 2, 3)
+                result = model1(x, y, z, w)
+                torch.npu.set_stream_limit(stream, 4, 5)
+                result = model1(x, y, z, w)
+        self.assertTrue(
+            any("The current AclGraph needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph needs to be recaptured'"
+            f"not found in logs: {cm.output}"
+        )
+
+    def test_npugraph_ex_core_limit_with_static_kernel(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x):
+                with torch.npu.npugraph_ex.scope.limit_core_num(12, 24):
+                    output = torch.square(x)
+                return output
+
+        model = torch.compile(Model(), backend="npugraph_ex", fullgraph=True, dynamic=False,
+                              options={"static_kernel_compile": True})
+        x = torch.randn([5, 5])
+
+        import warnings
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            try:
+                model(x)
+            except Exception:
+                pass
+            target_warning = "When both static shape kernel and core limit are enabled"
+            messages = [str(w.message) for w in caught]
+            self.assertFalse(
+                any(target_warning in m for m in messages),
+                f"Expected warning '{target_warning}' found in {messages}"
+            )
+
+    def test_limit_core_num_in_npugraph_ex(self):
+        from npugraph_ex._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
+
+        class Model1(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, in1, in2, in3, in4):
+                add_result = torch.add(in1, in2)
+                with torch.npu.npugraph_ex.scope.limit_core_num(2, 4):
+                    mm_result1 = torch.mm(in3, in4)
+                    with torch.npu.npugraph_ex.scope.limit_core_num(12, 24):
+                        mm_result2 = torch.mm(in3, in4)
+                return add_result, mm_result1, mm_result2
+
+        class Model2(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, in1, in2, in3, in4):
+                add_result = torch.add(in1, in2)
+                stream = torch.npu.Stream()
+                with torch.npu.stream(stream):
+                    mm_result1 = torch.mm(in3, in4)
+                    with torch.npu.npugraph_ex.scope.limit_core_num(2, 4):
+                        mm_result2 = torch.mm(in3, in4)
+                return add_result, mm_result1, mm_result2
+
+        def check_graph(concrete_graph):
+            scope_enter_count = 0
+            set_stream_count = 0
+            get_stream_count = 0
+            for node in concrete_graph.fx_graph.graph.nodes:
+                if str(node.target) == "air.scope_enter.default":
+                    scope_enter_count += 1
+
+                if str(node.target) == "air.scope_exit.default":
+                    scope_enter_count -= 1
+                if "function get_stream_limit" in str(node.target):
+                    assert "function current_stream" in str(node.prev.target)
+                    assert str(node.next.target) == str(node.next.next.target)
+                    assert "function set_stream_limit" in str(node.next.next.next.target)
+                    get_stream_count += 1
+                if "function set_stream_limit" in str(node.target):
+                    set_stream_count += 1
+
+            assert scope_enter_count == 0, f"expect scope enter should match with scope exit, but got unmatched"
+            assert set_stream_count == 2 * get_stream_count
+
+        def wrapper_call(call):
+            def wrapper(*args, **kwargs):
+                assert len(args) >= 3
+                ret = call(*args, **kwargs)
+                check_graph(args[0])
+                return ret
+
+            return wrapper
+
+        AclConcreteGraph.__call__ = wrapper_call(AclConcreteGraph.__call__)
+
+        x = torch.randn([3, 3], device='npu')
+        y = torch.randn([3, 3], device='npu')
+        z = torch.randn([3, 3], device='npu')
+        w = torch.randn([3, 3], device='npu')
+
+        model1 = Model1()
+        model1 = torch.compile(model1, backend="npugraph_ex", fullgraph=True, dynamic=False,
+                               options={"clone_input": True, "inplace_pass": False})
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            model1(x, y, z, w)
+        self.assertTrue(
+            any("current_stream = torch.npu.current_stream()" in log for log in cm.output),
+            f"Expected DEBUG 'current_stream = torch.npu.current_stream()'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("Codegen for graph" in log for log in cm.output),
+            f"Expected DEBUG 'Codegen for graph'"
+            f"not found in logs: {cm.output}"
+        )
+
+        model2 = Model2()
+        model2 = torch.compile(model2, backend="npugraph_ex", fullgraph=True, dynamic=False,
+                               options={"clone_input": True, "inplace_pass": False})
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            model2(x, y, z, w)
+        self.assertTrue(
+            any("current_stream = torch.npu.current_stream()" in log for log in cm.output),
+            f"Expected DEBUG 'current_stream = torch.npu.current_stream()'"
+            f"not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("Codegen for graph" in log for log in cm.output),
+            f"Expected DEBUG 'Codegen for graph'"
+            f"not found in logs: {cm.output}"
+        )
 
 
 def patch_dynamo():

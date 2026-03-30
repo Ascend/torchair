@@ -2522,6 +2522,54 @@ class AclgraphTest(unittest.TestCase):
         expected = torch.add(x1, x2)
         self.assertTrue(torch.allclose(z, expected, rtol=1e-3, atol=1e-3))
 
+    def test_inherited_global_limit_core(self):
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+
+        class Model1(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, in1, in2, in3, in4):
+                add_result = torch.add(in1, in2)
+                mm_result = torch.mm(in3, in4)
+                return mm_result, add_result
+
+        x = torch.randn([3, 3], device='npu')
+        y = torch.randn([3, 3], device='npu')
+        z = torch.randn([3, 3], device='npu')
+        w = torch.randn([3, 3], device='npu')
+        model1 = Model1()
+        model1 = torch.compile(model1, backend=aclgraph_backend, fullgraph=True, dynamic=False)
+        # 继承全局控核；1、对单算子current_stream控核后，aclgraph capture_stream继承stream控核；
+        # 2、对单算子多流控核后，aclgraph capture_stream继承stream控核；
+        # 3、对单算子device设置控核，aclgraph控核生效（已满足用例不做补充）；
+        # 4、对单算子多流控核后，将图外stream作为参数传递到图内，stream上控核生效（已满足用例不做补充）；
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            current_stream = torch.npu.current_stream()
+            torch.npu.set_stream_limit(current_stream, 2, 3)
+            result = model1(x, y, z, w)
+            torch.npu.set_stream_limit(current_stream, 4, 5)
+            result = model1(x, y, z, w)
+        self.assertTrue(
+            any("The current AclGraph needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph needs to be recaptured'"
+            f"not found in logs: {cm.output}"
+        )
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            stream = torch.npu.Stream()
+            with torch.npu.stream(stream):
+                torch.npu.set_stream_limit(stream, 2, 3)
+                result = model1(x, y, z, w)
+                torch.npu.set_stream_limit(stream, 4, 5)
+                result = model1(x, y, z, w)
+        self.assertTrue(
+            any("The current AclGraph needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph needs to be recaptured'"
+            f"not found in logs: {cm.output}"
+        )
+
 
 def patch_dynamo():
     from torch._dynamo.variables.user_defined import UserDefinedClassVariable

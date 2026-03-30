@@ -739,6 +739,9 @@ class AclGraphCacheInfo:
     userinput_ref_with_output: Dict[int, List] = field(default_factory=dict)
 
     def __post_init__(self):
+        # Create a new stream for aclgraph to inherit the global control core.
+        if self.stream is None:
+            self.stream = "torch.npu.Stream()"
         if self.pool is not None:
             if not (isinstance(self.pool, tuple) and len(self.pool) == 2 and
                     isinstance(self.pool[0], int) and isinstance(self.pool[1], int) and
@@ -961,7 +964,6 @@ class AclGraph(object):
             logger.info('Find captured AclGraph{id: %s} of fx_graph %s with graph key {%s}.',
                         id(self.graph[graph_key]), self.name, graph_key)
             if self.is_need_to_recapture(graph_key, *args):
-                counters["npugraph_ex"]["recapture_due_to_mutated_input_change_" + self.name] += 1
                 logger.debug('The current AclGraph needs to be recaptured for fx_graph %s with graph key {%s}.',
                              self.name, graph_key)
                 # save graph_meta, release resources after recapture
@@ -1004,7 +1006,8 @@ class AclGraph(object):
         # Start capture aclgraph instance when the graph key have not been compiled.
         self.compile_for_graph_key(graph_key, *args, **kwargs)
         logger.debug(f'For graph {self.name} : the count of captures is {counters["npugraph_ex"]["captured_" + self.name]}, '
-                     f'and count of recaptures caused by mutated inputs changed is {counters["npugraph_ex"]["recapture_due_to_mutated_input_change_" + self.name]}')
+                     f'and count of recaptures caused by mutated inputs changed is {counters["npugraph_ex"]["recapture_due_to_mutated_input_change_" + self.name]}, '
+                     f'and count of recaptures caused by global limit changed is {counters["npugraph_ex"]["recapture_due_to_global_limit_core_change_" + self.name]}')
         if saved_acl_graph is not None:
             saved_acl_graph.reset()
 
@@ -1032,6 +1035,7 @@ class AclGraph(object):
 
         counters["npugraph_ex"].pop("captured_" + self.name, None)
         counters["npugraph_ex"].pop("recapture_due_to_mutated_input_change_" + self.name, None)
+        counters["npugraph_ex"].pop("recapture_due_to_global_limit_core_change_" + self.name, None)
         for _, graph_meta in self._graphs_meta.items():
             graph_meta.acl_graph.reset()
         self._graphs_meta = {}
@@ -1040,6 +1044,18 @@ class AclGraph(object):
 
         logger.info('Current fx_graph %s memory pool is %s. After reset, the current memory state is {%s}.',
                     self.name, self.pool, LazyMessage(debug_mem_state))
+
+    def _save_stream_core_limits(self, graph_key: str):
+        try:
+            import torch_npu
+            current_stream = torch_npu.npu.current_stream()
+            stream_limit = torch_npu.npu.get_stream_limit(current_stream)
+            self._graphs_meta[graph_key].captured_cube_core_num = stream_limit['cube_core_num']
+            self._graphs_meta[graph_key].captured_vector_core_num = stream_limit['vector_core_num']
+        except Exception as e:
+            logger.warning(f"Failed to get stream core info for graph {self.name} with key {graph_key}: {e}")
+            self._graphs_meta[graph_key].captured_cube_core_num = None
+            self._graphs_meta[graph_key].captured_vector_core_num = None
 
     def compile_for_graph_key(self, graph_key, *args: Any, **kwargs: Any):
         """
@@ -1103,6 +1119,9 @@ class AclGraph(object):
             for ptr in stale_storages:
                 self.stale_storages_ptr.discard(ptr)
 
+        # save stream limit core before capture
+        self._save_stream_core_limits(graph_key)
+
         # start capture aclgraph
         with record_function("acl_graph_capture"):
             captured_outputs = self.capture(graph_key, *args, **kwargs)
@@ -1124,6 +1143,24 @@ class AclGraph(object):
             # retain graph output when only one graph key or mempool reuse disabled
             self._graphs_meta[graph_key].retained_outputs = captured_outputs
 
+    def _set_stream_limit(self, graph_key: str):
+        """
+        Ensures an NPU stream exists and sets its core limits if specified in graph metadata.
+
+        Args:
+            graph_key (str): Key identifying the graph in self._graphs_meta.
+        """
+        if self.stream is None:
+            logger.warning("NPU stream is None, skipping stream limit configuration.")
+            return
+        cube_num = getattr(self._graphs_meta[graph_key], 'captured_cube_core_num', None)
+        vector_num = getattr(self._graphs_meta[graph_key], 'captured_vector_core_num', None)
+        if cube_num is not None and vector_num is not None:
+            try:
+                torch.npu.set_stream_limit(self._stream, cube_num, vector_num)
+            except Exception as e:
+                logger.warning(f"Failed to set stream core limits: {e}")
+
     def capture(self, graph_key, *args: Any, **kwargs: Any):
         """
         Captures the execution of the FX graph into an ACL graph instance.
@@ -1134,6 +1171,9 @@ class AclGraph(object):
             **kwargs: Keyword arguments for graph capture.
         """
         args_list = list(args)
+
+        self._set_stream_limit(graph_key)
+
         import torch_npu
         # Clear _updated_node_infos(list of UpdatedNodeInfo objects) before capture.
         # Each object stores graph task group handles/events for the current capture,
@@ -1330,7 +1370,19 @@ class AclGraph(object):
         # recapture the aclgraph to reduce copy time and improve performance
         for idx, mutated_ptr in self._graphs_meta[graph_key].captured_mutated_inputs.items():
             if mutated_ptr != args[idx].data_ptr():
+                counters["npugraph_ex"]["recapture_due_to_mutated_input_change_" + self.name] += 1
                 return True
+        # 检查 NPU 流的核数是否变化
+        current_stream = torch.npu.current_stream()
+        stream_limit = torch.npu.get_stream_limit(current_stream)
+        cube_num = stream_limit['cube_core_num']
+        vector_num = stream_limit['vector_core_num']
+
+        # 与上次捕获时保存的核数比较
+        if (cube_num != getattr(self._graphs_meta[graph_key], 'captured_cube_core_num', None) or
+                vector_num != getattr(self._graphs_meta[graph_key], 'captured_vector_core_num', None)):
+            counters["npugraph_ex"]["recapture_due_to_global_limit_core_change_" + self.name] += 1
+            return True
         return False
 
     def set_stale_storages_ptr_exclude_ref_userinputs(self, retained_outputs: List, graph_key: str):
