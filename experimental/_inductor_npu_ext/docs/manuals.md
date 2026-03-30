@@ -8,6 +8,7 @@
 - [调测相关环境变量](#2-调测相关环境变量)
 - [调测输出说明](#3-调测输出说明)
 - [持久化编译缓存](#4-持久化编译缓存)
+- [运行时异常说明](#5-运行时异常说明)
 
 ## 1. 脚本使能方式
 
@@ -237,7 +238,7 @@ python3 asc_graph.py
 
 **建议的使用方式：** 通常不直接使用该文件，如果Kernel执行出现了错误，优先通过benchmark.py尝试复现问题。
 
-> 如果只在整网执行下才可触发，可以修改该文件中的AscendC源码，添加AscendC print或者dump，观察UB中的数据以定位问题原因。执行该文件**会直接修改本地缓存**，下次模型执行生效。
+> 如果只在整网执行下才可触发，可以修改该文件中的Ascend C源码，添加Ascend C print或者dump，观察UB中的数据以定位问题原因。执行该文件**会直接修改本地缓存**，下次模型执行生效。
 ```bash
 python3 asc_kernel.py
 ```
@@ -269,7 +270,7 @@ python3 asc_kernel.py
 ```
 python3 benchmark.py
 ```
-不传入e2e时，执行该文件会执行AscendC代码编译到Profiling采集的完整流程。如果您了解AscendC，可以尝试手工优化其中的AscendC Kernel实现，并观察性能变化。通常用于指导AscIR的Codegen策略优化或快速验证修改方案。
+不传入e2e时，执行该文件会执行Ascend C代码编译到Profiling采集的完整流程。如果您了解Ascend C，可以尝试手工优化其中的Ascend C Kernel实现，并观察性能变化。通常用于指导AscIR的Codegen策略优化或快速验证修改方案。
 
 ```
 python3 benchmark.py e2e
@@ -298,3 +299,169 @@ inductor-npu-ext 会将融合Kernel编译结果进行缓存落盘。缓存在多
 ```
 
 假如您在调试某个编译问题，不希望缓存生效，可以在每次执行前手动删除该目录或其中的某个子目录。
+
+## 5. 运行时异常说明
+
+inductor-npu-ext 在运行过程中遇到错误时会抛出 `RuntimeError` 异常，异常信息中包含关键的诊断上下文。本节按异常类型分别说明含义、关注要点和后续处理方法。
+
+### 5.1 RuntimeError: Failed to execute graph code
+
+**异常堆栈示例：**
+
+```
+Traceback (most recent call last):
+  File "test.py", line 11, in <module>
+    out = test_add_sum(x, y)
+  File ".../torch/_dynamo/eval_frame.py", line ..., in _fn
+    ...
+  File ".../torch/_inductor/graph.py", line ..., in compile_to_module
+    ...
+  File ".../inductor_npu_ext/codegen/_asc_codegen.py", line 58, in codegen_kernel_def
+    raise RuntimeError(f"Failed to execute graph code:{graph_py_code.getvalue()} {e}") from e
+torch._dynamo.exc.BackendCompilerFailed: backend='inductor' raised:
+RuntimeError: Failed to execute graph code:
+from autofuse.pyautofuse import ascir
+from autofuse.pyautofuse import Autofuser, AutofuserOptions
+...
+<原始错误信息，例如：TypeError: xxx() got an unexpected keyword argument 'yyy'>
+```
+
+**含义：** inductor-npu-ext 根据融合图结构生成了一段调用 CANN autofuse 接口的 Python 代码，该代码在执行时发生错误。
+
+**关注要点：**
+- 异常信息的**末尾部分**是原始 Python 错误（如 `TypeError`、`ValueError`、`KeyError` 等），这是定位问题的关键。
+- 异常中间包含的大段代码是 inductor-npu-ext中 Codegen 生成的 AscIR 图代码。
+
+**后续处理：**
+1. 确认 CANN 和 inductor-npu-ext 版本是否匹配，参见 [软件安装](../README.md)。
+2. 如果版本匹配仍然报错，请参考 [进一步帮助](#56-进一步帮助) 进行处理。
+
+### 5.2 RuntimeError: Failed to build ascend kernel, trigger bug by following command
+
+**异常堆栈示例：**
+
+```
+Traceback (most recent call last):
+  File "test.py", line 11, in <module>
+    out = test_add_sum(x, y)
+  File ".../torch/_dynamo/eval_frame.py", line ..., in _fn
+    ...
+  File ".../inductor_npu_ext/compiler/_compiler.py", line 92, in build_ascend_lib
+    raise RuntimeError(f"Failed to build ascend kernel, trigger bug by following command: ...")
+RuntimeError: Failed to build ascend kernel, trigger bug by following command: 'python3 .../autofused_add_sum_31aba041b5d992c026cdfc574b77ec24/0b9cb30a2e017a8ba74972338f6e37fa/asc_kernel.py'
+```
+
+**含义：** inductor-npu-ext 生成的 Ascend C Kernel 代码编译失败。
+
+**关注要点：** 
+- 异常信息中的 `trigger bug by following command` 部分给出了**完整的复现命令**，直接执行即可看到具体的编译错误输出。
+- 执行后，关注编译器输出中的`error:`行，例如，`error: no matching function for call to 'AutofuseTiling'`，表明Tiling函数签名与CANN头文件不匹配。
+
+**后续处理：**
+1. 执行异常信息中的命令，查看编译器给出的具体错误。
+2. 确认 CANN 版本是否满足 [软件安装](../README.md) 中的要求。
+3. 如果版本匹配仍然报错，请参考 [进一步帮助](#56-进一步帮助) 进行处理。
+
+### 5.3 RuntimeError: Failed to build wrapper, trigger bug by following command
+
+**异常堆栈示例：**
+
+```
+Traceback (most recent call last):
+  File "test.py", line 11, in <module>
+    out = test_add_sum(x, y)
+  File ".../torch/_dynamo/eval_frame.py", line ..., in _fn
+    ...
+  File ".../inductor_npu_ext/compiler/_compiler.py", line 101, in _build_cpp
+    raise RuntimeError(f"Failed to build wrapper, trigger bug by following command: ...")
+RuntimeError: Failed to build wrapper, trigger bug by following command: 'g++ -shared -std=c++17 -fPIC -Wall -O2 -o .../wrapper.so .../inductor_wrapper.cpp -I.../ascend/include -I.../torch/include -I.../torch_npu/include -L.../ascend/lib64 -lascendcl -lnnopbase -L.../torch_npu/lib -ltorch_npu'
+```
+
+**含义：** inductor-npu-ext 生成的 Host 端 C++ 代码（Wrapper）编译失败，通常与编译环境有关（缺少头文件、链接库或 GCC 版本不兼容）。
+
+**关注要点：** 
+- 异常信息中的 `trigger bug by following command` 部分给出了**完整的 g++ 编译命令**，直接执行即可看到编译错误。
+- 执行后，关注编译器输出中的`error:`行，例如，`error: 'xxx' was not declared in this scope`。
+
+**后续处理：**
+1. 执行异常信息中的 g++ 命令，查看具体的编译/链接错误。
+2. 确认 CANN 环境变量已正确设置（`source /usr/local/Ascend/cann/set_env.sh`）、GCC 版本 >= 7.3.0、torch_npu 已正确安装。
+3. 如果上述版本/环境变量确认完仍然报错，请参考 [进一步帮助](#56-进一步帮助) 进行处理。
+
+### 5.4 RuntimeError: NPU kernel .npu_kernels_xxx init failed
+
+**异常堆栈示例：**
+
+```
+Kernel load failed for autofused_add_sum_31aba041b5d992c026cdfc574b77ec24
+Traceback (most recent call last):
+  File "test.py", line 11, in <module>
+    out = test_add_sum(x, y)
+  File ".../torch/_dynamo/eval_frame.py", line ..., in _fn
+    ...
+  File ".../inductor_npu_ext/compiler/__init__.py", line 26, in __init__
+    raise RuntimeError(f"NPU kernel {self.name} init failed")
+torch._dynamo.exc.BackendCompilerFailed: backend='inductor' raised:
+RuntimeError: NPU kernel .npu_kernels_xxx init failed
+```
+
+**含义：** 编译产物（`wrapper.so` 和 `kernel.so`）已生成，但在加载或初始化阶段失败。
+
+**关注要点：** 异常中的 kernel 名称为缓存目录名（如 `.npu_kernels_xxx`），要定位具体是哪个融合 Kernel 出错，需要查看 **Trackback上方紧邻的输出**，其中包含 `autofused_xxx` 形式的 Kernel 名称。常见提示及含义如下：
+
+| Trackback上方的提示信息 | 含义 |
+|---|---|
+| `Kernel load failed for autofused_xxx` | `kernel.so` 加载失败，通常为动态库损坏或依赖缺失 |
+| `autofused_xxx kernel tiling func not found` | `kernel.so` 中未找到 `AutofuseTiling` 符号，通常为 `kernel.so` 与 `wrapper.so` 版本不一致 |
+| `autofused_xxx kernel launch func not found` | `kernel.so` 中未找到 `AutofuseLaunch` 符号，原因同上 |
+| `autofused_xxx kernel tiling failed` | 静态 Tiling 默认初始化执行失败，通常为 Tiling 逻辑错误 |
+
+**后续处理：**
+1. 根据提示信息中的 `autofused_xxx` 名称，找到执行目录下 `.npu_kernels_{用户名}/autofused_xxx` 子目录，删除后重新执行以排除缓存损坏问题。
+2. 如果仍然报错，请参考 [进一步帮助](#56-进一步帮助) 进行处理。
+
+### 5.5 RuntimeError: NPU kernel .npu_kernels_xxx execution failed(-1)
+
+**异常堆栈示例：**
+
+```
+autofused_add_sum_31aba041b5d992c026cdfc574b77ec24 kernel tiling failed
+Traceback (most recent call last):
+  File "test.py", line 11, in <module>
+    out = test_add_sum(x, y)
+  File ".../torch/_dynamo/eval_frame.py", line ..., in _fn
+    ...
+  File ".../inductor_npu_ext/compiler/__init__.py", line 38, in __call__
+    raise RuntimeError(f"NPU kernel {self.name} execution failed({result})")
+RuntimeError: NPU kernel .npu_kernels_xxx execution failed(-1)
+```
+
+**含义：** Kernel 初始化已成功，但在执行下发过程中失败。
+
+**关注要点：** 与 init failed 类似，需要查看 **Trackback上方紧邻的输出** 来定位具体出错的 Kernel。常见的提示及含义如下：
+
+| Trackback上方的提示信息 | 含义 |
+|---|---|
+| `autofused_xxx kernel tiling failed` | 动态 Tiling 计算失败，通常为输入的动态 shape 值触发了 Tiling 逻辑中的异常路径 |
+| `autofused_xxx kernel get stream failed` | 获取 NPU Stream 失败，通常为设备上下文异常 |
+| `autofused_xxx kernel malloc workspace failed` | Workspace 内存申请失败，通常为设备内存不足 |
+| `autofused_xxx kernel launch failed` | Kernel Launch 调用返回非零值，通常为 Ascend C Kernel 内部执行错误 |
+
+**后续处理：**
+1. 如果异常是异步上报的（报错位置与实际出错 Kernel 不一致），设置 `ASCEND_LAUNCH_BLOCKING=1` 重新执行，确保同步下发以定位首个报错的 Kernel。
+2. 优先确认CANN和torch_npu版本是否满足 [软件安装](../README.md) 中的要求。
+3. 其他可采取的措施：
+   - 如果遇到 `tiling failed`：确认输入 shape 是否合法，动态 shape 场景下关注是否存在极端值（如 0 或超大值）。
+   - 如果遇到 `malloc workspace failed`：检查设备内存是否充足，尝试减小 batch size 或释放其他显存占用。
+4. 如无法自行解决，请参考 [进一步帮助](#56-进一步帮助) 进行处理。
+
+### 5.6 进一步帮助
+
+如果上述步骤仍无法解决问题，可到以下仓库提交issue：
+- [AutoFusion 仓库](https://gitcode.com/cann/graph-autofusion/issues)：如遇到 5.2（Kernel 编译错误）以及 5.5（kernel执行报错）优先在该仓库提交 
+- [torchair 仓库](https://gitcode.com/Ascend/torchair/issues)
+
+提交 issue 时请附上以下信息以便开发者快速定位：
+- 完整的异常堆栈
+- CANN、torch_npu、inductor-npu-ext 的版本信息
+- 触发异常的模型或最小复现脚本（如有）
