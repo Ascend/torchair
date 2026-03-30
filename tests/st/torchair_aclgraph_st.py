@@ -2574,6 +2574,7 @@ class AclGraphSt(unittest.TestCase):
             "aot_forward_graph_after_decompose_auto_functionalized.txt",
             "aot_forward_graph_after_replace_dynamic_workspace_ops.txt",
             "aot_forward_graph_after_replace_core_limit_nodes.txt",
+            "aot_forward_graph_after_resolve_default_stream_markers.txt",
         ]
 
         ACL_BACKWARD_STEP_TEMPLATES = [
@@ -2593,6 +2594,7 @@ class AclGraphSt(unittest.TestCase):
             "aot_backward_graph_after_decompose_auto_functionalized.txt",
             "aot_backward_graph_after_replace_dynamic_workspace_ops.txt",
             "aot_backward_graph_after_replace_core_limit_nodes.txt",
+            "aot_backward_graph_after_resolve_default_stream_markers.txt",
         ]
 
         # Generate patterns with auto-incremented indics
@@ -2704,6 +2706,7 @@ class AclGraphSt(unittest.TestCase):
             "aot_forward_graph_after_reinplace_input_mutated_ops.txt",
             "aot_forward_graph_after_replace_dynamic_workspace_ops.txt",
             "aot_forward_graph_after_replace_core_limit_nodes.txt",
+            "aot_forward_graph_after_resolve_default_stream_markers.txt",
         ]
 
         ACL_BACKWARD_STEP_TEMPLATES = [
@@ -2721,6 +2724,7 @@ class AclGraphSt(unittest.TestCase):
             "aot_backward_graph_after_reinplace_input_mutated_ops.txt",
             "aot_backward_graph_after_replace_dynamic_workspace_ops.txt",
             "aot_backward_graph_after_replace_core_limit_nodes.txt",
+            "aot_backward_graph_after_resolve_default_stream_markers.txt",
         ]
 
         # Generate patterns with auto-incremented indics

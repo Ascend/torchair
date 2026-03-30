@@ -154,3 +154,104 @@ def _npu_tagged_event_wait(event: torch.npu.Event):
 
 def _npu_record_tagged_stream(input: torch.Tensor, tagged_stream: str):
     return torch.ops.air.record_tagged_stream_(input, tagged_stream)
+
+
+# ============================================================================
+# New operators for stream/event operations with specified stream
+# ============================================================================
+
+def _resolve_stream_markers(stream_id, device_index, device_type):
+    """
+    将 stream 参数转换为 int。如果参数是 int 或 torch.fx.Node，直接转为 int。
+
+    Default stream 标记字符串的处理由 resolve_default_stream_markers pass 完成。
+
+    Args:
+        stream_id: int 或其他可转换为 int 的值
+        device_index: int 或其他转换为 int 的值
+        device_type: int 或其他可转换为 int 的值
+
+    Returns:
+        tuple: (stream_id: int, device_index: int, device_type: int)
+    """
+    return int(stream_id), int(device_index), int(device_type)
+
+
+def record_on_stream_impl(event_tag: str, stream_id, device_index, device_type, created_inside: bool = False):
+    # 解析 stream 标记（如果是标记字符串则动态获取当前流信息）
+    stream_id, device_index, device_type = _resolve_stream_markers(stream_id, device_index, device_type)
+
+    event = _get_event_by_tag(event_tag, created_inside)
+    if event is None:
+        custom_warning = 'please report an issue to Torchair!'
+        inside_warning = f'please make sure you have created tag {event_tag} with npu_create_tagged_event API.'
+        raise AssertionError(f"tagged event is None while tag is {event_tag}, "
+                             f"tagged event record on stream failed, "
+                             f"{inside_warning if created_inside else custom_warning}")
+    stream = torch.npu.Stream(stream_id=stream_id, device_index=device_index, device_type=device_type)
+    logger.debug("tagged event record on stream with tag = [%s], stream_id = [%d]", event_tag, stream_id)
+    return event.record(stream)
+
+
+def wait_on_stream_impl(event_tag: str, stream_id, device_index, device_type, created_inside: bool = False):
+    # 解析 stream 标记（如果是标记字符串则动态获取当前流信息）
+    stream_id, device_index, device_type = _resolve_stream_markers(stream_id, device_index, device_type)
+
+    event = _get_event_by_tag(event_tag, created_inside)
+    if event is None:
+        custom_warning = 'please report an issue to Torchair!'
+        inside_warning = f'please make sure you have created tag {event_tag} with npu_create_tagged_event API.'
+        raise AssertionError(f"tagged event is None while tag is {event_tag}, "
+                             f"tagged event wait on stream failed, "
+                             f"{inside_warning if created_inside else custom_warning}")
+    stream = torch.npu.Stream(stream_id=stream_id, device_index=device_index, device_type=device_type)
+    logger.debug("tagged event wait on stream with tag = [%s], stream_id = [%d]", event_tag, stream_id)
+    return event.wait(stream)
+
+
+def stream_wait_stream_impl(stream_id, device_index, device_type,
+                            other_stream_id, other_device_index, other_device_type):
+    # 解析 stream 标记（如果是标记字符串则动态获取当前流信息）
+    stream_id, device_index, device_type = _resolve_stream_markers(stream_id, device_index, device_type)
+    other_stream_id, other_device_index, other_device_type = _resolve_stream_markers(
+        other_stream_id, other_device_index, other_device_type)
+
+    stream = torch.npu.Stream(stream_id=stream_id, device_index=device_index, device_type=device_type)
+    other_stream = torch.npu.Stream(stream_id=other_stream_id, device_index=other_device_index, device_type=other_device_type)
+    logger.debug("stream wait stream with stream_id = [%d], other_stream_id = [%d]", stream_id, other_stream_id)
+    return stream.wait_stream(other_stream)
+
+
+# Register tagged_event_record_on_stream operator
+if not hasattr(getattr(torch.ops, "air"), "tagged_event_record_on_stream"):
+    lib.define("tagged_event_record_on_stream(str event_tag, str stream_id, str device_index, str device_type, bool created_inside=False) -> ()")
+    has_side_effect(torch.ops.air.tagged_event_record_on_stream.default)
+
+    @torch.library.impl(lib, "tagged_event_record_on_stream", "Meta")
+    def record_on_stream_meta(event_tag: str, stream_id, device_index, device_type, created_inside: bool = False):
+        return None
+
+    torch.library.impl(lib, "tagged_event_record_on_stream", "CompositeExplicitAutograd")(record_on_stream_impl)
+
+# Register tagged_event_wait_on_stream operator
+if not hasattr(getattr(torch.ops, "air"), "tagged_event_wait_on_stream"):
+    lib.define("tagged_event_wait_on_stream(str event_tag, str stream_id, str device_index, str device_type, bool created_inside=False) -> ()")
+    has_side_effect(torch.ops.air.tagged_event_wait_on_stream.default)
+
+    @torch.library.impl(lib, "tagged_event_wait_on_stream", "Meta")
+    def wait_on_stream_meta(event_tag: str, stream_id, device_index, device_type, created_inside: bool = False):
+        return None
+
+    torch.library.impl(lib, "tagged_event_wait_on_stream", "CompositeExplicitAutograd")(wait_on_stream_impl)
+
+# Register tagged_stream_wait_stream operator
+if not hasattr(getattr(torch.ops, "air"), "tagged_stream_wait_stream"):
+    lib.define("tagged_stream_wait_stream(str stream_id, str device_index, str device_type, str other_stream_id, str other_device_index, str other_device_type) -> ()")
+    has_side_effect(torch.ops.air.tagged_stream_wait_stream.default)
+
+    @torch.library.impl(lib, "tagged_stream_wait_stream", "Meta")
+    def stream_wait_stream_meta(stream_id, device_index, device_type,
+                                other_stream_id, other_device_index, other_device_type):
+        return None
+
+    torch.library.impl(lib, "tagged_stream_wait_stream", "CompositeExplicitAutograd")(stream_wait_stream_impl)

@@ -1347,3 +1347,95 @@ def reinplace_with_multi_stream_check(gm, *sample_args):
 
     gm.recompile()
     return gm
+
+
+@debug_compare_fx_graphs(pass_name="resolve_default_stream_markers")
+def resolve_default_stream_markers(gm: torch.fx.GraphModule) -> torch.fx.GraphModule:
+    """
+    解析 fx 图中的 default stream 标记字符串。
+
+    在图最前面插入 torch.npu.current_stream() 调用，
+    并使用 operator.getitem 获取 stream_id、device_index、device_type，
+    然后将标记字符串替换为对应的节点。
+
+    只处理白名单中的算子，避免误替换其他节点的参数。
+    """
+    if not hasattr(torch, "npu") or not hasattr(torch.npu, "current_stream"):
+        logger.warning("torch has no attr npu or npu.current_stream, skip resolve_default_stream_markers pass")
+        return gm
+
+    from npugraph_ex.ops._tagged_event import (_npu_create_tagged_event, _npu_tagged_event_record, 
+                            _npu_tagged_event_wait, _npu_record_tagged_stream)
+    from npugraph_ex._acl_concrete_graph.replace_stream_event import (
+        DEFAULT_STREAM_ID_MARKER,
+        DEFAULT_DEVICE_INDEX_MARKER,
+        DEFAULT_DEVICE_TYPE_MARKER,
+    )
+
+    # 白名单：只有在 replace_stream_event_pass 中涉及的算子才需要做参数替换
+    WHITELIST_OPS = {
+        torch.ops.air.tagged_event_record_on_stream.default,
+        torch.ops.air.tagged_event_wait_on_stream.default,
+        torch.ops.air.tagged_stream_wait_stream.default,
+        torch.ops.air.scope_enter.default,
+    }
+
+    # 检查图中是否有需要替换的标记（只检查白名单算子）
+    has_markers = False
+    for node in gm.graph.nodes:
+        if node.target not in WHITELIST_OPS:
+            continue
+        for arg in node.args:
+            if isinstance(arg, str) and arg in (DEFAULT_STREAM_ID_MARKER, DEFAULT_DEVICE_INDEX_MARKER, DEFAULT_DEVICE_TYPE_MARKER):
+                has_markers = True
+                break
+        if has_markers:
+            break
+
+    if not has_markers:
+        logger.debug("No default stream markers found in graph, skip resolve_default_stream_markers pass")
+        return gm
+
+    logger.debug("Found default stream markers in graph, inserting current_stream nodes...")
+
+    # 获取图的第一个节点
+    first_node = next(iter(gm.graph.nodes))
+
+    # 在图最开始插入 current_stream 节点和 getitem 节点
+    # 使用 operator.getitem 从 Stream 对象中获取 stream_id、device_index、device_type
+    with gm.graph.inserting_before(first_node):
+        current_stream_node = gm.graph.call_function(torch.npu.current_stream, args=())
+        stream_id_node = gm.graph.call_function(getattr, args=(current_stream_node, "stream_id"))
+        str_stream_id_node = gm.graph.call_function(str, args=(stream_id_node,))
+        device_index_node = gm.graph.call_function(getattr, args=(current_stream_node, "device_index"))
+        str_device_index_node = gm.graph.call_function(str, args=(device_index_node,))
+        device_type_node = gm.graph.call_function(getattr, args=(current_stream_node, "device_type"))
+        str_device_type_node = gm.graph.call_function(str, args=(device_type_node,))
+
+    # 标记到节点的映射
+    marker_to_node = {
+        DEFAULT_STREAM_ID_MARKER: str_stream_id_node,
+        DEFAULT_DEVICE_INDEX_MARKER: str_device_index_node,
+        DEFAULT_DEVICE_TYPE_MARKER: str_device_type_node,
+    }
+
+    # 只替换白名单算子节点参数中的标记字符串
+    for node in gm.graph.nodes:
+        if node.target not in WHITELIST_OPS:
+            continue
+
+        new_args = list(node.args)
+        needs_update = False
+
+        for i, arg in enumerate(new_args):
+            if isinstance(arg, str) and arg in marker_to_node:
+                new_args[i] = marker_to_node[arg]
+                needs_update = True
+
+        if needs_update:
+            node.args = tuple(new_args)
+            logger.debug(f"Replaced default stream markers in node: {node.name}")
+
+    gm.recompile()
+    logger.debug("After resolve_default_stream_markers, graph is: %s", gm.graph)
+    return gm

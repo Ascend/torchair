@@ -2491,9 +2491,287 @@ class AclgraphTest(unittest.TestCase):
         opt_m = torch.compile(cus_func, backend=my_backend, fullgraph=True, dynamic=False)
         i = torch.randn([3, 3]).to('npu')
         with self.assertRaises(RuntimeError) as context:
-            r = opt_m(i)   
+            r = opt_m(i)
         self.assertIn("When use npugraph_ex, you must make sure at the end of your code set stream to the same stream "
                         "as the begin of your code", str(context.exception))
+
+    @unittest.skipIf(torch.__version__ < "2.6", "torch_npu stream api is unsupported when torch < 2.6")
+    def test_event_wait_with_stream(self):
+        """Test event.wait(stream) is replaced with tagged_event_wait_on_stream"""
+        def cus_func(t):
+            default_stream = torch.npu.current_stream()
+            s1 = torch.npu.Stream()
+            e1 = torch.npu.Event()
+            torch.npu.set_stream(s1)
+            e1.record()
+            tmp = torch.add(t, 1)
+            torch.npu.set_stream(default_stream)
+            e1.wait(s1)  # Wait on specified stream
+            r = torch.add(tmp, 2)
+            return r
+
+        def my_backend(gm: torch.fx.GraphModule, example_inputs):
+            from torchair._acl_concrete_graph.replace_stream_event import replace_stream_event_pass
+            gm = replace_stream_event_pass(gm)
+            print(f'after replace graph is : {gm.graph}')
+
+            # Collect node info: (name, target, args)
+            node_info = []
+            for node in gm.graph.nodes:
+                if hasattr(node.target, "__name__"):
+                    target_name = node.target.__name__
+                else:
+                    target_name = str(node.target)
+                node_info.append((node.name, target_name, node.args))
+
+            # Find tagged_event_wait_on_stream nodes
+            wait_on_stream_nodes = [n for n in node_info if n[1] == 'tagged_event_wait_on_stream']
+            self.assertEqual(len(wait_on_stream_nodes), 1, "Should have exactly one tagged_event_wait_on_stream node")
+
+            # Verify args format: (event_tag, stream_id, device_index, device_type, created_inside)
+            args = wait_on_stream_nodes[0][2]
+            self.assertTrue(args[0].startswith('graph_'), f"event_tag should start with 'graph_', got {args[0]}")
+            self.assertIsInstance(args[1], int, "stream_id should be int")
+            self.assertIsInstance(args[2], int, "device_index should be int")
+            self.assertIsInstance(args[3], int, "device_type should be int")
+            self.assertEqual(args[4], True, "created_inside should be True")
+
+            return gm
+
+        opt_m = torch.compile(cus_func, backend=my_backend, fullgraph=True, dynamic=False)
+        i = torch.randn([3, 3]).to('npu')
+        r = opt_m(i)
+
+    @unittest.skipIf(torch.__version__ < "2.6", "torch_npu stream api is unsupported when torch < 2.6")
+    def test_event_record_with_stream(self):
+        """Test event.record(stream) is replaced with tagged_event_record_on_stream"""
+        def cus_func(t):
+            default_stream = torch.npu.current_stream()
+            s1 = torch.npu.Stream()
+            e1 = torch.npu.Event()
+            torch.npu.set_stream(s1)
+            tmp = torch.add(t, 1)
+            torch.npu.set_stream(default_stream)
+            e1.record(s1)  # Record on specified stream
+            r = torch.add(tmp, 2)
+            return r
+
+        def my_backend(gm: torch.fx.GraphModule, example_inputs):
+            from torchair._acl_concrete_graph.replace_stream_event import replace_stream_event_pass
+            gm = replace_stream_event_pass(gm)
+            print(f'after replace graph is : {gm.graph}')
+
+            node_info = []
+            for node in gm.graph.nodes:
+                if hasattr(node.target, "__name__"):
+                    target_name = node.target.__name__
+                else:
+                    target_name = str(node.target)
+                node_info.append((node.name, target_name, node.args))
+
+            # Find tagged_event_record_on_stream nodes
+            record_on_stream_nodes = [n for n in node_info if n[1] == 'tagged_event_record_on_stream']
+            self.assertEqual(len(record_on_stream_nodes), 1, "Should have exactly one tagged_event_record_on_stream node")
+
+            # Verify args format: (event_tag, stream_id, device_index, device_type, created_inside)
+            args = record_on_stream_nodes[0][2]
+            self.assertTrue(args[0].startswith('graph_'), f"event_tag should start with 'graph_', got {args[0]}")
+            self.assertIsInstance(args[1], int, "stream_id should be int")
+            self.assertIsInstance(args[2], int, "device_index should be int")
+            self.assertIsInstance(args[3], int, "device_type should be int")
+            self.assertEqual(args[4], True, "created_inside should be True")
+
+            return gm
+
+        opt_m = torch.compile(cus_func, backend=my_backend, fullgraph=True, dynamic=False)
+        i = torch.randn([3, 3]).to('npu')
+        r = opt_m(i)
+
+    @unittest.skipIf(torch.__version__ < "2.6", "torch_npu stream api is unsupported when torch < 2.6")
+    def test_stream_wait_event(self):
+        """Test stream.wait_event(event) is replaced with tagged_event_wait_on_stream"""
+        def cus_func(t):
+            default_stream = torch.npu.current_stream()
+            s1 = torch.npu.Stream()
+            s2 = torch.npu.Stream()
+            e1 = torch.npu.Event()
+            torch.npu.set_stream(s1)
+            e1.record()
+            tmp = torch.add(t, 1)
+            torch.npu.set_stream(s2)
+            s2.wait_event(e1)  # Stream wait for event
+            r = torch.add(tmp, 2)
+            torch.npu.set_stream(default_stream)
+            return r
+
+        def my_backend(gm: torch.fx.GraphModule, example_inputs):
+            from torchair._acl_concrete_graph.replace_stream_event import replace_stream_event_pass
+            gm = replace_stream_event_pass(gm)
+            print(f'after replace graph is : {gm.graph}')
+
+            node_info = []
+            for node in gm.graph.nodes:
+                if hasattr(node.target, "__name__"):
+                    target_name = node.target.__name__
+                else:
+                    target_name = str(node.target)
+                node_info.append((node.name, target_name, node.args))
+
+            # stream.wait_event(event) reuses tagged_event_wait_on_stream
+            wait_on_stream_nodes = [n for n in node_info if n[1] == 'tagged_event_wait_on_stream']
+            self.assertEqual(len(wait_on_stream_nodes), 1, "Should have exactly one tagged_event_wait_on_stream node")
+
+            # Verify args format: (event_tag, stream_id, device_index, device_type, created_inside)
+            args = wait_on_stream_nodes[0][2]
+            self.assertTrue(args[0].startswith('graph_'), f"event_tag should start with 'graph_', got {args[0]}")
+            self.assertIsInstance(args[1], int, "stream_id should be int")
+            self.assertIsInstance(args[2], int, "device_index should be int")
+            self.assertIsInstance(args[3], int, "device_type should be int")
+            self.assertEqual(args[4], True, "created_inside should be True")
+
+            return gm
+
+        opt_m = torch.compile(cus_func, backend=my_backend, fullgraph=True, dynamic=False)
+        i = torch.randn([3, 3]).to('npu')
+        r = opt_m(i)
+
+    @unittest.skipIf(torch.__version__ < "2.6", "torch_npu stream api is unsupported when torch < 2.6")
+    def test_stream_wait_stream(self):
+        """Test stream.wait_stream(other_stream) is replaced with tagged_stream_wait_stream"""
+        def cus_func(t):
+            default_stream = torch.npu.current_stream()
+            s1 = torch.npu.Stream()
+            s2 = torch.npu.Stream()
+            torch.npu.set_stream(s1)
+            tmp = torch.add(t, 1)
+            torch.npu.set_stream(s2)
+            s2.wait_stream(s1)  # Stream wait for another stream
+            r = torch.add(tmp, 2)
+            torch.npu.set_stream(default_stream)
+            return r
+
+        def my_backend(gm: torch.fx.GraphModule, example_inputs):
+            from torchair._acl_concrete_graph.replace_stream_event import replace_stream_event_pass
+            gm = replace_stream_event_pass(gm)
+            print(f'after replace graph is : {gm.graph}')
+
+            node_info = []
+            for node in gm.graph.nodes:
+                if hasattr(node.target, "__name__"):
+                    target_name = node.target.__name__
+                else:
+                    target_name = str(node.target)
+                node_info.append((node.name, target_name, node.args))
+
+            # Find tagged_stream_wait_stream nodes
+            wait_stream_nodes = [n for n in node_info if n[1] == 'tagged_stream_wait_stream']
+            self.assertEqual(len(wait_stream_nodes), 1, "Should have exactly one tagged_stream_wait_stream node")
+
+            # Verify args format: (stream_id, device_index, device_type, other_stream_id, other_device_index, other_device_type)
+            args = wait_stream_nodes[0][2]
+            self.assertIsInstance(args[0], int, "stream_id should be int")
+            self.assertIsInstance(args[1], int, "device_index should be int")
+            self.assertIsInstance(args[2], int, "device_type should be int")
+            self.assertIsInstance(args[3], int, "other_stream_id should be int")
+            self.assertIsInstance(args[4], int, "other_device_index should be int")
+            self.assertIsInstance(args[5], int, "other_device_type should be int")
+
+            return gm
+
+        opt_m = torch.compile(cus_func, backend=my_backend, fullgraph=True, dynamic=False)
+        i = torch.randn([3, 3]).to('npu')
+        r = opt_m(i)
+
+    @unittest.skipIf(torch.__version__ < "2.6", "torch_npu stream api is unsupported when torch < 2.6")
+    def test_stream_record_event_with_event(self):
+        """Test stream.record_event(event) is replaced with tagged_event_record_on_stream"""
+        def cus_func(t):
+            default_stream = torch.npu.current_stream()
+            s1 = torch.npu.Stream()
+            e1 = torch.npu.Event()
+            torch.npu.set_stream(s1)
+            s1.record_event(e1)  # Record event on stream
+            tmp = torch.add(t, 1)
+            torch.npu.set_stream(default_stream)
+            r = torch.add(tmp, 2)
+            return r
+
+        def my_backend(gm: torch.fx.GraphModule, example_inputs):
+            from torchair._acl_concrete_graph.replace_stream_event import replace_stream_event_pass
+            gm = replace_stream_event_pass(gm)
+            print(f'after replace graph is : {gm.graph}')
+
+            node_info = []
+            for node in gm.graph.nodes:
+                if hasattr(node.target, "__name__"):
+                    target_name = node.target.__name__
+                else:
+                    target_name = str(node.target)
+                node_info.append((node.name, target_name, node.args))
+
+            # stream.record_event(event) reuses tagged_event_record_on_stream
+            record_on_stream_nodes = [n for n in node_info if n[1] == 'tagged_event_record_on_stream']
+            self.assertEqual(len(record_on_stream_nodes), 1, "Should have exactly one tagged_event_record_on_stream node")
+
+            # Verify args format: (event_tag, stream_id, device_index, device_type, created_inside)
+            args = record_on_stream_nodes[0][2]
+            self.assertTrue(args[0].startswith('graph_'), f"event_tag should start with 'graph_', got {args[0]}")
+            self.assertIsInstance(args[1], int, "stream_id should be int")
+            self.assertIsInstance(args[2], int, "device_index should be int")
+            self.assertIsInstance(args[3], int, "device_type should be int")
+            self.assertEqual(args[4], True, "created_inside should be True")
+
+            return gm
+
+        opt_m = torch.compile(cus_func, backend=my_backend, fullgraph=True, dynamic=False)
+        i = torch.randn([3, 3]).to('npu')
+        r = opt_m(i)
+
+    @unittest.skipIf(torch.__version__ < "2.6", "torch_npu stream api is unsupported when torch < 2.6")
+    def test_stream_record_event_without_event(self):
+        """Test stream.record_event() (event=None) creates new event and uses tagged_event_record_on_stream"""
+        def cus_func(t):
+            default_stream = torch.npu.current_stream()
+            s1 = torch.npu.Stream()
+            torch.npu.set_stream(s1)
+            event = s1.record_event()  # No event passed, creates new one
+            tmp = torch.add(t, 1)
+            torch.npu.set_stream(default_stream)
+            r = torch.add(tmp, 2)
+            return r
+
+        def my_backend(gm: torch.fx.GraphModule, example_inputs):
+            from torchair._acl_concrete_graph.replace_stream_event import replace_stream_event_pass
+            gm = replace_stream_event_pass(gm)
+            print(f'after replace graph is : {gm.graph}')
+
+            node_info = []
+            for node in gm.graph.nodes:
+                if hasattr(node.target, "__name__"):
+                    target_name = node.target.__name__
+                else:
+                    target_name = str(node.target)
+                node_info.append((node.name, target_name, node.args))
+
+            # stream.record_event() reuses tagged_event_record_on_stream
+            record_on_stream_nodes = [n for n in node_info if n[1] == 'tagged_event_record_on_stream']
+            self.assertEqual(len(record_on_stream_nodes), 1, "Should have exactly one tagged_event_record_on_stream node")
+
+            # Verify args format: (event_tag, stream_id, device_index, device_type, created_inside)
+            args = record_on_stream_nodes[0][2]
+            # event_tag should contain "_record_event" suffix
+            self.assertTrue(args[0].startswith('graph_'), f"event_tag should start with 'graph_', got {args[0]}")
+            self.assertIn('_record_event', args[0], f"event_tag should contain '_record_event', got {args[0]}")
+            self.assertIsInstance(args[1], int, "stream_id should be int")
+            self.assertIsInstance(args[2], int, "device_index should be int")
+            self.assertIsInstance(args[3], int, "device_type should be int")
+            self.assertEqual(args[4], True, "created_inside should be True")
+
+            return gm
+
+        opt_m = torch.compile(cus_func, backend=my_backend, fullgraph=True, dynamic=False)
+        i = torch.randn([3, 3]).to('npu')
+        r = opt_m(i)
 
     @unittest.skipIf(True, "unsupported until cann support")
     def test_aclgraph_with_superkernel(self):
