@@ -78,7 +78,7 @@ import argparse
 import json
 import os
 import sys
-from collections import defaultdict
+from collections import defaultdict as _defaultdict
 
 
 # ---------------------------------------------------------------------------
@@ -208,8 +208,8 @@ def _filter_operators(input_path: str, output_path: str, merge_gap: float = 0.0)
     print(f"原始算子总数: {len(tasks)}")
 
     # 统计信息
-    stats = defaultdict(int)
-    stream_stats = defaultdict(lambda: defaultdict(int))
+    stats = _defaultdict(int)
+    stream_stats = _defaultdict(lambda: _defaultdict(int))
     filtered = []
 
     for task in tasks:

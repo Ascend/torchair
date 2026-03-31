@@ -114,7 +114,7 @@ json.dump(aligned, open("out.aligned.json", "w"), indent=2)
 
 import json
 import re
-from pathlib import Path
+from pathlib import Path as _Path
 
 
 # ---------------------------------------------------------------------------
@@ -531,8 +531,8 @@ def main():
     )
     args = parser.parse_args()
 
-    in_path = Path(args.input)
-    out_path = Path(args.output) if args.output else in_path.with_suffix(
+    in_path = _Path(args.input)
+    out_path = _Path(args.output) if args.output else in_path.with_suffix(
         in_path.suffix.replace(".json", "") + ".aligned.json"
     )
 
