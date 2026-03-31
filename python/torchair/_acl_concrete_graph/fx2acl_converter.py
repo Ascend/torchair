@@ -288,6 +288,11 @@ class AclConcreteGraph(ConcreteGraphBase):
         replace_core_limit_nodes(self.fx_graph, self.config)
         observer.dump_gm(self.fx_graph, "graph_after_replace_core_limit_nodes")
 
+        # resolve default stream markers to dynamic current_stream nodes
+        from torchair._acl_concrete_graph.graph_pass import resolve_default_stream_markers
+        resolve_default_stream_markers(self.fx_graph)
+        observer.dump_gm(self.fx_graph, "graph_after_resolve_default_stream_markers")
+
         logger.debug('after graph optimization, graph is %s', self.fx_graph.graph)
         if logger.isEnabledFor(logging.DEBUG):
             from torchair._utils.graph_utils import _get_node_info
