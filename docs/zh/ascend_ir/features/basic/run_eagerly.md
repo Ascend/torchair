@@ -25,5 +25,3 @@ opt_model = torch.compile(model, backend=npu_backend)
 |参数名|参数说明|
 |--|--|
 |run_eagerly|图执行前是否使用Eager模式运行，布尔类型。<br>False（默认值）：不启动Eager模式，以图模式运行。<br>True：启动Eager模式运行。|
-
-

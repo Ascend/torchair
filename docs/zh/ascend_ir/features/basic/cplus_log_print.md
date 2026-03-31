@@ -6,23 +6,23 @@ TorchAir的C++层日志（图执行过程中的日志信息）主要通过环境
 
 支持的日志级别如下：
 
--   TNG\_LOG\_LEVEL：0，日志级别DEBUG，开启后输出DEBUG、INFO、WARNING、ERROR日志。
--   TNG\_LOG\_LEVEL：1，日志级别INFO，开启后输出INFO、WARNING、ERROR日志。
--   TNG\_LOG\_LEVEL：2，日志级别WARNING，开启后输出WARNING、ERROR日志。
--   TNG\_LOG\_LEVEL：3，日志级别ERROR，开启后输出ERROR日志。
--   TNG\_LOG\_LEVEL：4，日志级别EVENT，开启后输出ERROR、EVENT日志。
+- TNG\_LOG\_LEVEL：0，日志级别DEBUG，开启后输出DEBUG、INFO、WARNING、ERROR日志。
+- TNG\_LOG\_LEVEL：1，日志级别INFO，开启后输出INFO、WARNING、ERROR日志。
+- TNG\_LOG\_LEVEL：2，日志级别WARNING，开启后输出WARNING、ERROR日志。
+- TNG\_LOG\_LEVEL：3，日志级别ERROR，开启后输出ERROR日志。
+- TNG\_LOG\_LEVEL：4，日志级别EVENT，开启后输出ERROR、EVENT日志。
 
 环境变量TNG\_LOG\_LEVEL的默认值为“3“。
 
 ## 使用方法
 
--   方式1：在安装完软件包后，以运行用户身份登录环境，并设置环境变量TNG\_LOG\_LEVEL，以DEBUG级别为例。
+- 方式1：在安装完软件包后，以运行用户身份登录环境，并设置环境变量TNG\_LOG\_LEVEL，以DEBUG级别为例。
 
     ```bash
     export TNG_LOG_LEVEL=0
     ```
 
--   方式2：通过python脚本设置环境变量，以DEBUG级别为例。
+- 方式2：通过python脚本设置环境变量，以DEBUG级别为例。
 
     > [!NOTE]说明
     >该方式设置环境变量时，需早于import torchair，否则影响日志打印。
@@ -44,4 +44,3 @@ C++侧Debug日志样例如下：
 [DEBUG] TORCHAIR(2250956,python):2025-02-06-15:44:53.090.305 [concrete_graph/session.cpp:250]2250956 Start to session execute graph 0
 [INFO] TORCHAIR(2250956,python):2025-02-06-15:44:53.090.459 [static_npu_graph_executor.cpp:256]2250956 Static npu graph executor run graph 0 on stream 0x3345cca0 successfully.
 ```
-

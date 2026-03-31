@@ -18,7 +18,6 @@ readable_cache(cache_bin, print_output=True, file=None)
 |print_output|输入|是否打印func函数缓存文件解析后的内容。True：默认开启打印。False：不开启打印。|
 |file|输出|解析生成的文件路径。默认为None，即不生成可读文件。绝对路径：如/home/workspace/prompt.py。相对路径：如prompt.py，默认在调用该接口的脚本所在工作目录下。请确保该参数指定的路径确实存在，并且运行用户具有读、写操作权限。|
 
-
 ## 返回值说明
 
 返回文件内容，String类型。
@@ -33,4 +32,3 @@ readable_cache(cache_bin, print_output=True, file=None)
 import torch_npu, torchair
 torchair.inference.readable_cache("/home/workspace/.torchair_cache/Model_dynamic_f2df0818d06118d4a83a6cacf8dc6d28/prompt/compiled_module", file="prompt.py")
 ```
-

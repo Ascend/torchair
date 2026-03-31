@@ -24,4 +24,3 @@ class Format(Enum):
 ```
 
 数据格式一般形式为“FORMAT\__XXXX_”，数据格式中维度含义：N（Batch）表示批量大小、H（Height）表示特征图高度、W（Width）表示特征图宽度、C（Channels）表示特征图通道、D（Depth）表示特征图深度。
-

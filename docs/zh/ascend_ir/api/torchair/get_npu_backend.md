@@ -18,7 +18,6 @@ get_npu_backend(*, compiler_config: CompilerConfig = None, custom_decompositions
 |custom_decompositions|输入|指定模型运行时用到的decompositions（将较大算子操作分解为较简单或核心算子），字典类型。|
 |*|输入|预留参数，用于后续功能扩展。|
 
-
 ## 返回值说明
 
 返回编译后端npu\_backend。
@@ -51,4 +50,3 @@ config = torchair.CompilerConfig()
 npu_backend = torchair.get_npu_backend(compiler_config=config)
 opt_model = torch.compile(model, backend=npu_backend)
 ```
-

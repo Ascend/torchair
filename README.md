@@ -1,12 +1,15 @@
 # 简介
+
 本项目开发了名为TorchAir(Torch Ascend Intermediate Representation)的扩展库，支持用户基于PyTorch框架和torch_npu插件在昇腾NPU上使用图模式进行推理。
 TorchAir继承自PyTorch框架[Dynamo模式](https://pytorch.org/docs/stable/torch.compiler_dynamo_deepdive.html)，将PyTorch的[FX图](https://pytorch.org/docs/stable/fx.html)转换为GE计算图，并提供了GE计算图在昇腾NPU的编译与执行的能力。
+>
 > - **如果您想了解如何使用TorchAir，可以优先通过访问[TorchAir图模式使用指南](https://www.hiascend.com/document/detail/zh/Pytorch/720/modthirdparty/torchairuseguide/torchair_00003.html)，了解关于TorchAir的更多信息。**
 > - **如果您计划为TorchAir贡献代码，请参考REAMDE内容。**
 
-
 # 安装与卸载
-1. 安装
+
+## 1.安装
+
 - 安装依赖
 
 在安装TorchAir之前，请参考[版本配套表](#version_match)和[支持型号](#hardware_support)说明，确保您的硬件能够使用TorchAir，并安装最新昇腾软件栈。
@@ -14,11 +17,13 @@ TorchAir继承自PyTorch框架[Dynamo模式](https://pytorch.org/docs/stable/tor
 - 编译准备
 
 克隆TorchAir代码仓
+
 ```shell
 git clone https://gitcode.com/ascend/torchair.git
 ```
 
 下载依赖三方库
+
 ```shell
 cd torchair
 git submodule update --init --recursive
@@ -26,10 +31,12 @@ git submodule update --init --recursive
 
 配置编译环境，执行配置命令
 > 配置只需要进行一次，用于获取pytorch的编译选项（如当前的torch是否开启ABI）及Ascend sdk的安装路径（如果需要在本地CPU上进行调试）。
+
 ```shell
 cd ./torchair
 bash ./configure
 ```
+
 默认情况下，执行上述命会弹出如下的交互式会话窗口
 > 您的会话可能有所不同。
 
@@ -57,6 +64,7 @@ Specify the location of ascend sdk for debug on localhost or leave empty.
 - 编译
 
 执行以下命令，编译生成TorchAir安装包：
+
 ```shell
 mkdir build
 cd build
@@ -69,18 +77,19 @@ make torchair -j8
 编译完成后，会在`build/dist/dist/`目录下生成名为torchair-{version}-py3-none-any.whl的安装包文件。
 
 您可以直接使用pip安装该安装包，或者使用make命令安装至您configure时指定的python环境中。
+
 ```shell
 make install_torchair
 ```
 
-2. 卸载
+## 2.卸载
    
-
 torchair的卸载只需要执行命令：
 
-```
+```shell
 pip3 uninstall torchair
 ```
+
 如需要保存卸载日志，可在pip3 uninstall命令后面加上参数`--log <PATH>`，并对您指定的目录`<PATH>`做好权限管控。
 
 # 快速上手
@@ -90,10 +99,13 @@ pip3 uninstall torchair
 CPU调试时，需要设置LD_LIBRARY_PATH到生成的fake so文件目录以及sdk目录
 
 > tools/env.sh会根据配置生成对应的LD_LIBRARY_PATH（如果您在配置时指定了Ascend sdk安装路径）
+
 ```shell
 source tools/env.sh
 ```
+
 执行以下python脚本快速验证TorchAir基本功能
+
 ```python
 import torch
 import torchair
@@ -115,9 +127,9 @@ y = torch.randn(2, 2)
 model(x, y)
 ```
 
-
 # 特性介绍
-TorchAir常用特性如下，全量特性介绍请访问[docs](docs/zh/README.md)获取详细教程。
+
+TorchAir常用特性如下，全量特性介绍请访问[docs](docs/zh/_menu_torchair.md)获取详细教程。
 
 | 特性功能               | 功能介绍       |
 | -----------           | ---------------------------------   |
@@ -131,7 +143,9 @@ TorchAir常用特性如下，全量特性介绍请访问[docs](docs/zh/README.md
 | 支持的aten API清单      |  支持的aten API清单               |
 
 <a id="version_match"></a>
+
 # 版本配套表
+
 本项目与PyTorch、[torch_npu](https://gitcode.com/Ascend/pytorch/blob/master/README.zh.md)、CANN以及Python的版本匹配详情如下：
 
 | TorchAir版本 |  PyTorch版本      | torch_npu版本 | CANN版本  | Python版本             |
@@ -147,24 +161,28 @@ TorchAir常用特性如下，全量特性介绍请访问[docs](docs/zh/README.md
 | 7.0.0      | 2.5.1                   | 7.0.0 | 8.1.RC1 | Python3.9.x / Python3.10.x / Python3.11.x                |
 
 <a id="hardware_support"></a>
+
 # 支持的型号
+
 - Atlas A2/A3 训练系列产品
 - Atlas A3 推理系列产品 / Atlas 800I A2 推理产品 
 - A200I A2 Box 异构组件
 
 # 贡献
+
 如果您计划为TorchAir做出贡献，请参考[CONTRIBUTING](https://gitcode.com/Ascend/torchair/blob/master/CONTRIBUTING.md)。
 
 # 联系我们
+
 <img src="docs/TorchAir_contact.jpg" style="zoom:20%">
 
 # 安全声明
+
 TorchAir安全声明参考[SECURITY_README](https://gitcode.com/Ascend/torchair/blob/master/SECURITY_README.md)文件。
 
-
 # 许可证
-TorchAir插件使用BSD许可证。详见[LICENSE](https://gitcode.com/Ascend/torchair/blob/master/LICENSE)文件。
 
+TorchAir插件使用BSD许可证。详见[LICENSE](https://gitcode.com/Ascend/torchair/blob/master/LICENSE)文件。
 
 ---
 

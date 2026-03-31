@@ -23,7 +23,6 @@ register_replacement(search_fn: SearchFn, replace_fn: ReplaceFn, example_inputs:
 |scalar_workaround|输入|用于显示绑定search_fn中标量参数值，用于匹配Fx图追踪时固化的标量。|
 |skip_duplicates|输入|用于控制注册阶段的重复检测行为，<br>设为 True 时，若检测到重复的匹配模式，会跳过该重复模式的注册；<br>设为 False 时，若检测到重复模式则直接抛出错误，禁止该重复模式完成注册。<br>该参数仅在PyTorch版本 ≥2.7.0 时生效|
 
-
 ## 返回值说明
 
 无
@@ -112,4 +111,3 @@ gamma = torch.ones(7168, dtype=torch.float16, device='npu')
 model_compile = torch.compile(model, backend=npu_backend)
 res = model_compile(x1, x2, gamma)
 ```
-

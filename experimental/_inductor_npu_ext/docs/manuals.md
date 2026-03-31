@@ -102,7 +102,7 @@ python3 test.py
 **Generating kernel for ...**
 > 该日志表示 inductor-npu-ext 正在为某个融合结构生成 kernel，日志中会包含融合结构的Loop表达。
 
-```
+```text
 [2026-03-12 19:26:39] [RANK0] [DEBUG] Generating kernel for fused:
 # Topologically Sorted Source Nodes: [add, sum_1], Original ATen: [aten.add, aten.sum]
 # Source node to ATen node mapping:
@@ -150,7 +150,8 @@ class op0_loop_body:
 
 **Road for ...**
 > 该日志表示 inductor-npu-ext 正在对某个融合结构进行索引变换优化，尽可能减少循环遍历时的内存连续性。
-```
+
+```text
 [2026-03-12 19:26:39] [RANK0] [DEBUG] Totally transposed indexings score 0 under (p0, p1)
 [2026-03-12 19:26:39] [RANK0] [DEBUG] Finally transposed order is (p0, p1) with score 0
 [2026-03-12 19:26:39] [RANK0] [DEBUG] Road for 1024*p0 + p1 from [p0, p1]|[32, 1024]|[1024, 1]|0 to [p0, p1]|[32, 1024]|[1024, 1]|0 is dense
@@ -161,7 +162,8 @@ class op0_loop_body:
 
 **Sync compile ...** / **Async compile ...** / **g++ -shared ...**
 > 该日志表示 inductor-npu-ext 正在对某个融合结构生成的 kernel 与 wrapper 代码进行编译。
-```
+
+```text
 [2026-03-12 19:26:40] [RANK0] [DEBUG] Sync compile for torchair/experimental/_inductor_npu_ext/tests/.npu_kernels_medivh/autofused_add_sum_31aba041b5d992c026cdfc574b77ec24/0b9cb30a2e017a8ba74972338f6e37fa/wrapper.so
 [2026-03-12 19:26:40] [RANK0] [DEBUG] g++ -shared -std=c++17 -fPIC -Wall -O2 -o torchair/experimental/_inductor_npu_ext/tests/.npu_kernels_medivh/autofused_add_sum_31aba041b5d992c026cdfc574b77ec24/0b9cb30a2e017a8ba74972338f6e37fa/kernel.so /tmp/tmpe2sjcypu.cpp
 W0312 19:26:40.470000 797352 site-packages/torch/_inductor/debug.py:507] [0/0] model__0_inference_0 debug trace: torchair/experimental/_inductor_npu_ext/tests/torch_compile_debug/run_2026_03_12_19_26_39_343839-pid_797352/torchinductor/model__0_inference_0.0
@@ -172,7 +174,8 @@ W0312 19:26:40.470000 797352 site-packages/torch/_inductor/debug.py:507] [0/0] m
 
 **Launch args for  ...**
 > 该日志表示 inductor-npu-ext 生成的 kernel 正在执行下发。
-```
+
+```text
 [WRAPPER] Launch args for autofused_add_sum_31aba041b5d992c026cdfc574b77ec24:
 [WRAPPER] block_dim: 24
 [WRAPPER] stream: 0x123
@@ -184,15 +187,13 @@ W0312 19:26:40.470000 797352 site-packages/torch/_inductor/debug.py:507] [0/0] m
 ```
 
 **Lowered ...** / **Fallback ... as ...**
-> 该日志为进程退出时打印的统计信息，Lowered 表示出现并且 inductor-npu-ext 允许 Lowering 的 aten 算子，Fallback 则表示出现但是不允许被 Lowering 的算子。
-
+> 该日志为进程退出时打印的统计信息，Lowered 表示出现并且 inductor-npu-ext 允许 Lowering 的 aten 算子，Fallback 则表示出现但是不允许被Lowering 的算子。
 > 需要注意的是，Lowered 日志并不代表一定参与融合，需要结合该算子是否实现了 Lowering。Fallback 日志则会解释放弃 Lowering 的原因。
 
-```
+```text
 [2026-03-12 19:26:40] [RANK0] [INFO] Lowered 1x aten.add.Tensor(Tensor(torch.float32, torch.Size([32, 1024]), npu),Tensor(torch.float32, torch.Size([1, 1024]), npu)) -> (Tensor(torch.float32, torch.Size([32, 1024]), npu))
 [2026-03-12 19:26:40] [RANK0] [INFO] Lowered 1x aten.sum.default(Tensor(torch.float32, torch.Size([32, 1024]), npu)) -> (Tensor(torch.float32, torch.Size([]), npu))
 ```
-
 
 ### 3.2 落盘文件说明
 
@@ -200,7 +201,7 @@ W0312 19:26:40.470000 797352 site-packages/torch/_inductor/debug.py:507] [0/0] m
 
 > 融合Kernel的命名格式为autofused_{原始节点类型}_{拓扑结构hash}
 
-```
+```text
 ├── torch_compile_debug
 │   └── run_2026_03_12_19_26_39_343839-pid_797352 # 本地执行的时间戳和进程ID
 │       ├── torchdynamo
@@ -224,14 +225,17 @@ W0312 19:26:40.470000 797352 site-packages/torch/_inductor/debug.py:507] [0/0] m
 ```
 
 #### 3.2.1 asc_graph.py
+
 该文件包含融合kernel对应的AscIR的定义与Codegen调用。直接执行该文件，可以触发Ascendc Codegen的完整过程。
 
 **建议的使用方式：** 如果对应的融合Kernel在codegen过程中发生错误，可执行该文件，复现Codegen过程的问题。
+
 ```bash
 python3 asc_graph.py
 ```
 
 #### 3.2.2 asc_kernel.py
+
 该文件包含融合kernel对应的Ascendc Kernel实现、Tiling实现，以及Jit编译调用逻辑。直接执行该文件，可以触发包含Tiling代码编译的Ascendc完整编译过程，并将结果保存模型执行时的编译缓存。
 
 > 注意，缓存命中时，该文件不会生成。
@@ -239,11 +243,13 @@ python3 asc_graph.py
 **建议的使用方式：** 通常不直接使用该文件，如果Kernel执行出现了错误，优先通过benchmark.py尝试复现问题。
 
 > 如果只在整网执行下才可触发，可以修改该文件中的Ascend C源码，添加Ascend C print或者dump，观察UB中的数据以定位问题原因。执行该文件**会直接修改本地缓存**，下次模型执行生效。
+
 ```bash
 python3 asc_kernel.py
 ```
 
 #### 3.2.3 inductor_wrapper.cpp
+
 该文件包含融合kernel对应的Inductor Wrapper代码，负责将Inductor传入的参数转换为Ascendc Kernel所需的参数，并负责内存申请、Tiling计算及Kernel下发。
 
 > 注意，缓存命中时，该文件不会生成。
@@ -253,41 +259,45 @@ python3 asc_kernel.py
 > 如果问题只在模型执行时才可触发，则可以修改该文件中的C++代码，文件开头包含完整的gcc编译命令，执行该命令进行编译，**会直接修改本地缓存**，下次模型执行生效。
 
 #### 3.2.4 graph.svg
+
 该文件为融合kernel对应的AscIR表达的可视化文件，便于开发者理解融合kernel的结构。
 > 需要在模型执行前安装Graphviz工具与pydot库生成，否则不会生成该文件。
 
 **建议的使用方式：** 使用浏览器打开该文件，便于直观地查看融合kernel的结构。
 
 #### 3.2.5 benchmark.py
+
 该文件包含融合kernel的基准测试代码，用于评估融合kernel性能，包含融合Kernel在模型中的输入Tensor构造、Kernel编译与调用、Profiling采集等。
 
 > 对于动态shape的融合kernel，benchmark.py中的输入Tensor为其中一个具体的shape配置，无法覆盖所有输入配置的性能表现，仅供参考。
-
 > 性能测试时，采用相同输入多次执行的方式，L2缓存命中逐步提高，性能数据会呈现从慢（L2命中率低）到快（L2命中率高）的趋势。
 
 **建议的使用方式：** 通常用于观察融合Kernel的性能数据，指导Codegen逻辑的优化或者验证优化效果。该文件接受一个参数输入，参数可以不传或者传入`e2e`。
 
-```
+```shell
 python3 benchmark.py
 ```
-不传入e2e时，执行该文件会执行Ascend C代码编译到Profiling采集的完整流程。如果您了解Ascend C，可以尝试手工优化其中的Ascend C Kernel实现，并观察性能变化。通常用于指导AscIR的Codegen策略优化或快速验证修改方案。
 
-```
+不传入e2e时，执行该文件会执行AscendC代码编译到Profiling采集的完整流程。如果您了解AscendC，可以尝试手工优化其中的AscendC Kernel实现，并观察性能变化。通常用于指导AscIR的Codegen策略优化或快速验证修改方案。
+
+```shell
 python3 benchmark.py e2e
 ```
 
 传入e2e参数时，执行该文件会执行AscIR表达到Profiling采集的完整流程。如果您优化了AscIR的Codegen实现或修复了Codegen的bug，可以通过该流程验证效果。
 
 ## 4. 持久化编译缓存
+
 inductor-npu-ext 会将融合Kernel编译结果进行缓存落盘。缓存在多进程、多线程、进程内的多个子进程以及同一进程内的相同pattern间共享，通过文件锁保证安全性。
 
 缓存保存在**执行目录下**以`.npu_kernels_{用户名}`开头的目录中，每个融合kernel一个子目录，融合kernel子目录下，为以Codegen结果hash命名的二级子目录，用于处理不同软件版本间的Codegen实现差异。缓存匹配包含两部分：
+
 - 融合结构的明文拓扑（不受节点名、符号名等冗余信息影响）
 - Codegen结果的hash值
 
 只有两者都匹配时才会命中缓存。
 
-```
+```text
 ├── .npu_kernels_root
 │   └── autofused_add_sum_31aba041b5d992c026cdfc574b77ec24
 │       └── 0b9cb30a2e017a8ba74972338f6e37fa # Codegen结果的hash值

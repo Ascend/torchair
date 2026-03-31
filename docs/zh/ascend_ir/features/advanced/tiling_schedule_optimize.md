@@ -9,12 +9,12 @@
 
 ## 使用约束
 
--   本功能仅适用于GE图模式场景，模型为静态Shape。
--   当前仅融合算子（矢量计算和矩阵计算融合）支持Tiling下沉，例如FusedInferAttentionScore、IncreFlashAttention。
--   基于新版本CANN包（支持Tiling下沉特性）编译生成的Tiling下沉算子，不兼容旧版CANN（不支持Tiling下沉特性）运行环境。
--   本功能支持如下产品：
-    -   Atlas A3 训练系列产品/Atlas A3 推理系列产品
-    -   Atlas A2 训练系列产品/Atlas A2 推理系列产品
+- 本功能仅适用于GE图模式场景，模型为静态Shape。
+- 当前仅融合算子（矢量计算和矩阵计算融合）支持Tiling下沉，例如FusedInferAttentionScore、IncreFlashAttention。
+- 基于新版本CANN包（支持Tiling下沉特性）编译生成的Tiling下沉算子，不兼容旧版CANN（不支持Tiling下沉特性）运行环境。
+- 本功能支持如下产品：
+    - Atlas A3 训练系列产品/Atlas A3 推理系列产品
+    - Atlas A2 训练系列产品/Atlas A2 推理系列产品
 
 ## 使用方法
 
@@ -36,8 +36,6 @@ opt_model = torch.compile(model, backend=npu_backend)
 |--|--|
 |tiling_schedule_optimize|是否开启Tiling计算调度优化。False（默认值）：不开启。True：开启。|
 
-
 ## 使用示例
 
 本文档仅提供Tiling下沉开关配置介绍，端到端算子Tiling下沉过程可以访问Ascend samples仓，获取图模式下自定义算子[AddCustomTilingSink下沉样例](https://gitee.com/ascend/samples/tree/master/operator/ascendc/2_features/17_tiling_sink/AddCustomTilingSink)，请仔细阅读README.md。
-

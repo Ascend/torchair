@@ -15,7 +15,6 @@
 |[patch_for_hcom](./torchair/patch_for_hcom.md)|针对PyTorch 2.1版本中不支持入图的集合通信算子提供的补丁函数，实现部分集合通信算子入图。|
 |[register_replacement](./torchair/register_replacement-0.md)|将自定义算子融合规则注册到TorchAir中，在FX图编译后对图进行算子融合优化。|
 
-
 ## torchair.ge接口列表
 
 |接口名|接口说明|
@@ -63,5 +62,3 @@
 |接口名|接口说明|
 |--|--|
 |[create_npu_tensors](./llm_datadist/create_npu_tensors.md)|通过一串Device地址创建PyTorch在NPU上的Tensors。主要用于创建大模型中的KV Cache Tensors，所有KV Cache的shape和dtype都一致。|
-
-

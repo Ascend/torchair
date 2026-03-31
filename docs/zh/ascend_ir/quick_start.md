@@ -40,7 +40,7 @@ opt_model(x, y)
 
 ## torch.compile
 
-torch.compile为PyTorch原生接口，接口详细介绍请参见官网[Link](https://pytorch.org/docs/stable/generated/torch.compile.html#torch-compile)，接口原型如下：
+torch.compile为PyTorch原生接口，接口详细介绍请参见[官网](https://pytorch.org/docs/stable/generated/torch.compile.html#torch-compile)，接口原型如下：
 
 ```python
 torch.compile(model=None, *, fullgraph=False, dynamic=None, backend='inductor', mode=None, options=None, disable=False)
@@ -60,7 +60,6 @@ GE图模式下的torch.compile参数配置说明参见[表1](#fig1)。
 |options|优化选项，缺省值为None。|昇腾NPU**暂不支持**。|
 |disable|可选参数，bool类型。是否关闭torch.compile能力。<br>False（缺省值）：开启torch.compile能力。<br>True：关闭torch.compile能力，采用单算子模式。|与原生含义一致。|
 
-
 **表 2**  CompilerConfig功能项<a id="fig2"></a>
 
 |分类|说明|功能项|
@@ -72,5 +71,3 @@ GE图模式下的torch.compile参数配置说明参见[表1](#fig1)。
 |experimental_config|配置各种试验功能，配置形式为config.experimental_config.xxx。|[冗余算子消除功能（Ascend-IR）](./features/basic/remove_noop_ops.md)<br>[FX图算子融合Pass配置功能Ascend-IR](./features/basic/pattern_fusion_pass.md)<br>[固定权重类输入地址功能（Ascend-IR）](./features/advanced/frozen_parameter.md)<br>[图模式编译节点遍历选项](./features/advanced/topology_sorting_strategy.md)<br>[计算与通信并行功能](./features/advanced/cc_parallel.md)<br>[算子在线编译选项](./features/advanced/jit_compile.md)<br>[RefData类型转换功能](./features/advanced/ref_data.md)<br>[Tiling调度优化功能](./features/advanced/tiling_schedule_optimize.md)<br>[View类算子优化功能](./features/advanced/view_optimize.md)<br>[动静子图拆分场景性能优化](./features/advanced/static_model_ops_lower_limit.md)|
 |inference_config|配置推理相关功能，配置形式为config.inference_config.xxx。|[动态shape图分档执行功能](./features/advanced/dynamic_gears_merge_policy.md)|
 |ge_config|配置GE图引擎提供的功能，配置形式为config.ge_config.xxx。|[图编译统计信息导出功能](./features/advanced/export_compile_stat.md)<br>[单流执行功能](./features/advanced/single_stream.md)<br>[图编译多级优化选项](./features/advanced/oo_level.md)<br>[算子融合规则配置功能（optimization_switch）](./features/advanced/optimization_switch.md)<br>[AI-Core和Vector-Core限核功能（Ascend-IR）](./features/advanced/limit_cores.md)|
-
-

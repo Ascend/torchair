@@ -6,8 +6,8 @@
 
 典型冗余操作示例如下：
 
--   无实际意义的张量视图操作（如b=tensor\_a\[:\]）
--   参数无效的特殊算子（如重复次数为1的repeat操作）
+- 无实际意义的张量视图操作（如b=tensor\_a\[:\]）
+- 参数无效的特殊算子（如重复次数为1的repeat操作）
 
 本功能**依赖PyTorch 2.2.0或更高版本**，不同版本支持的优化场景可能存在差异。以PyTorch 2.5.1为例，支持优化的算子包括但不限于下表，算子的介绍请参见PyTorch源码。
 
@@ -26,7 +26,6 @@
 |aten.copy、aten.alias、aten.clone|-|
 
 非冗余操作场景下，当算子的输入/输出Shape不一致，或优化后在输入/输出间引入了新的别名关系时，不会进行冗余消除操作。
-
 
 ## 使用方法
 
@@ -48,7 +47,6 @@ opt_model = torch.compile(model, backend=npu_backend)
 |--|--|
 |remove_noop_ops|图模式中是否开启冗余算子消除，布尔类型。False：关闭。True（默认值）：开启。|
 
-
 设置成功后，参考[TorchAir Python层日志打印](python_log_print.md)开启Debug日志，可以看到类似的提示信息：
 
 ```txt
@@ -59,4 +57,3 @@ opt_model = torch.compile(model, backend=npu_backend)
     %add_3 : [num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%arg1_1, %arg2_1), kwargs = {})
     return (add_3,)
 ```
-

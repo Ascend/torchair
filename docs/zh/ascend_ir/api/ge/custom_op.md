@@ -25,14 +25,13 @@ custom_op(op_type: str, *args, inputs: Optional[Dict[str, Optional[Union['Tensor
 |node_name|输入|常量节点名，支持字符串类型，如“a_1”；若不设置，框架会自动生成节点名。同一张图中节点名不允许重复。|
 |*|输入|预留参数项，用于后续功能扩展。|
 
-
 ## 返回值说明
 
 正常情况下，返回输出Tensor，否则失败报错。
 
 ## 约束说明
 
--   参数attrs一般通过ge.attr.Xxx显式确定类型，当前支持如下类型：
+- 参数attrs一般通过ge.attr.Xxx显式确定类型，当前支持如下类型：
 
     ```txt
     "torchair.ge.attr": [
@@ -50,7 +49,7 @@ custom_op(op_type: str, *args, inputs: Optional[Dict[str, Optional[Union['Tensor
     "Str"]
     ```
 
--   关于算子原型介绍，请参考《CANN 图模式开发指南》。
+- 关于算子原型介绍，请参考《CANN 图模式开发指南》。
 
 ## 调用示例
 
@@ -75,7 +74,7 @@ REG_OP(MyOp)
 
 假设构图包含动态输出，即y传入、z不传、rattr值为\[1,2,3\]、oattr值为1（与默认值相同），**动态输出n的数量为3**，接口返回的输出数量与outputs列表长度相同，接口调用**仅支持传参方式2**。
 
--   传参方式1：使用args传入所有参数
+- 传参方式1：使用args传入所有参数
 
     ```python
     import torch, torch_npu, torchair
@@ -85,7 +84,7 @@ REG_OP(MyOp)
     m = my_op(t1, t2, None, [t3, t4], rattr=[1,2,3])
     ```
 
--   传参方式2：使用单独的输入/属性/输出参数传入
+- 传参方式2：使用单独的输入/属性/输出参数传入
 
     ```python
     import torch, torch_npu, torchair
@@ -111,4 +110,3 @@ REG_OP(MyOp)
     t1, t2, t3, t4 = ......                                           # t1、t2、t3、t4为converter接收到的入参信息
     m, n = my_op(t1, t2, None, [t3, t4], rattr=[1,2,3])
     ```
-

@@ -28,5 +28,3 @@ class Tensor():
 |index|描述Tensor属于算子的第几个输入或者输出。|
 |dtype|Tensor的数据类型。|
 |rank|Tensor的dimension数。|
-
-

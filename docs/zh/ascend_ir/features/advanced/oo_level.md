@@ -7,8 +7,8 @@
 
 图编译阶段支持设置不同的图编译优化选项，包括子图优化、整图优化、静态shape模型下沉等，同时提供了两个次级编译优化选项，分别为常量折叠优化、死边消除优化。
 
--   常量折叠：其核心是在编译阶段直接计算并替换常量表达式的值，从而减少运行时的计算负担。
--   死边消除：当图中存在条件控制算子（如If、Case等）时，会根据输入条件（cond）判断执行哪个分支。若cond在编译时已确定，即可明确执行的分支，此时可删除不执行的分支，从而减少算子编译、图编译耗时。
+- 常量折叠：其核心是在编译阶段直接计算并替换常量表达式的值，从而减少运行时的计算负担。
+- 死边消除：当图中存在条件控制算子（如If、Case等）时，会根据输入条件（cond）判断执行哪个分支。若cond在编译时已确定，即可明确执行的分支，此时可删除不执行的分支，从而减少算子编译、图编译耗时。
 
 更多关于图优化技术的详细原理介绍请参考昇腾社区“[计算图优化技术](https://www.hiascend.com/zh/developer/techArticles/20240621-1)”文章。
 
@@ -42,10 +42,9 @@ opt_model = torch.compile(model, backend=npu_backend)
 |oo_constant_folding|是否开启常量折叠优化。<br>None（默认值）：依赖oo_level取值，当优化级别为O1或O3时，默认开启。<br>True：开启。<br>False：不开启。|
 |oo_dead_code_elimination|是否开启死边消除优化。<br>None（默认值）：依赖oo_level取值，当优化级别为O1或O3时，默认开启。<br>True：开启。<br>False：不开启。|
 
-
 > [!NOTE]说明
->-   支持用户手动将oo\_constant\_folding或oo\_dead\_code\_elimination置为True/False实现优化项的独立开启/关闭。
->-   oo\_level取值为O1时，会关闭所有图融合和UB融合Pass，只开启静态下沉的相关Pass。需要注意的是，如下路径文件中的图融合Pass系统仍会开启，因为一旦关闭可能会影响功能使用：
->    “$\{INSTALL\_DIR\}/x86\_64-linux/lib64/plugin/opskernel/fusion\_pass/config/fusion\_config.json”文件中"ExceptionalPassOfO1Level"字段下的所有图融合Pass。$\{INSTALL\_DIR\}请替换为CANN软件安装后文件存储路径，以root安装举例，安装后文件存储路径为/usr/local/Ascend/cann。
->-   更多融合规则相关介绍请参见《CANN 图融合和UB融合规则参考》。
-
+>
+>- 支持用户手动将oo\_constant\_folding或oo\_dead\_code\_elimination置为True/False实现优化项的独立开启/关闭。
+>- oo\_level取值为O1时，会关闭所有图融合和UB融合Pass，只开启静态下沉的相关Pass。需要注意的是，如下路径文件中的图融合Pass系统仍会开启，因为一旦关闭可能会影响功能使用：
+> “$\{INSTALL\_DIR\}/x86\_64-linux/lib64/plugin/opskernel/fusion\_pass/config/fusion\_config.json”文件中"ExceptionalPassOfO1Level"字段下的所有图融合Pass。$\{INSTALL\_DIR\}请替换为CANN软件安装后文件存储路径，以root安装举例，安装后文件存储路径为/usr/local/Ascend/cann。
+>- 更多融合规则相关介绍请参见《CANN 图融合和UB融合规则参考》。

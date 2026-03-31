@@ -7,8 +7,9 @@
 ## 使用约束
 
 本功能支持如下产品：
--   Atlas A3 训练系列产品/Atlas A3 推理系列产品
--   Atlas A2 训练系列产品/Atlas A2 推理系列产品
+
+- Atlas A3 训练系列产品/Atlas A3 推理系列产品
+- Atlas A2 训练系列产品/Atlas A2 推理系列产品
 
 ## 使用说明
 
@@ -18,10 +19,10 @@ TorchAir约定FX Pass的函数签名如下：
 def _(gm, example_inputs, config) -> None
 ```
 
--   def \(gm, exampleinputs, config\) -\> None
--   gm：表示AOT（Ahead-of-Time）编译后的GraphModule类对象，gm.graph为其FX图。
--   example\_inputs：表示AOT（Ahead-of-Time）编译后的GraphModule对象的FakeTensor类型输入，通常不需要使用。
--   config：表示TorchAir编译后端创建的编译配置类对象，用于Pass感知完整编译选项。
+- def \(gm, exampleinputs, config\) -\> None
+- gm：表示AOT（Ahead-of-Time）编译后的GraphModule类对象，gm.graph为其FX图。
+- example\_inputs：表示AOT（Ahead-of-Time）编译后的GraphModule对象的FakeTensor类型输入，通常不需要使用。
+- config：表示TorchAir编译后端创建的编译配置类对象，用于Pass感知完整编译选项。
 
 FX Pass原地修改gm对象，任何返回值都会被忽略。对于无法处理的异常情况，应当抛出异常。需要确保不抛出异常时，处理后的FX图是正确的：即其执行结果与修改前的FX图完全一致。
 
@@ -44,7 +45,7 @@ class Model(torch.nn.Module):
         return add, sub
 ```
 
-1.  编写自定义Pass，样例如下：
+1. 编写自定义Pass，样例如下：
 
     ```python
     def _custom_pre_pass(gm, example_inputs, config):
@@ -73,7 +74,7 @@ class Model(torch.nn.Module):
 
     该Pass的功能是在torch.ops.aten.mm.default和torch.ops.aten.abs.default节点前后分别插入torch.ops.air.scope\_enter.default和torch.ops.air.scope\_exit.default节点，使得指定范围内的节点在流“stream\_1”上执行。并在torch.ops.aten.abs.default节点后插入torch.ops.air.record.default节点，在torch.ops.aten.sub.Tensor节点前插入torch.ops.air.wait.default节点，使得控制时序让sub算子在abs算子之后执行。
 
-2.  将自定义Pass注册到TorchAir使其生效。
+2. 将自定义Pass注册到TorchAir使其生效。
 
     开启post\_grad\_custom\_pre\_pass和post\_grad\_custom\_post\_pass两个阶段的自定义Pass注册，开启示例如下：
 
@@ -83,7 +84,6 @@ class Model(torch.nn.Module):
     |--|--|
     |post_grad_custom_pre_pass|TorchAir本身内置了部分FX图优化Pass，该配置控制自定义FX Pass在内置Pass执行前生效。传入自定义Pass函数。|
     |post_grad_custom_post_pass|TorchAir本身内置了部分FX图优化Pass，该配置控制自定义FX Pass在内置Pass执行后生效。传入自定义Pass函数。|
-
 
     ```python
     import torch
@@ -146,9 +146,8 @@ class Model(torch.nn.Module):
     prof.step()
     ```
 
-3.  检查Pass是否生效。
+3. 检查Pass是否生效。
 
     参考[图编译Debug信息保存功能](../dfx/debug_save.md)，设置环境变量TORCH\_COMPILE\_DEBUG=1，自动开启所有必要的日志打印与文件dump。
 
     查看Debug日志中修改后的FX图是否有插入torch.ops.air.scope\_enter.default和torch.ops.air.scope\_exit.default、torch.ops.air.record.default、torch.ops.air.wait.default新节点，以及插入的位置是否正确。
-

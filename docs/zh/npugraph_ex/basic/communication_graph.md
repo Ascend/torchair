@@ -24,10 +24,10 @@
 |torch.distributed.send|√|
 |torch.distributed.recv|√|
 
-
 > [!NOTE]说明
->-   torch.distributed.send和torch.distributed.recv需要配套使用，且dynamic=True的场景，不同的shape会对应不同的FX graph。
->-   max-autotune模式下，torch.distributed.send和torch.distributed.recv不传入group参数时需要有默认通信组（所有节点都有send/recv或者提前建好全局默认通信域），传入group参数时应当只包含参与通信的节点；当图中存在多个torch.distributed.send、torch.distributed.recv时，需要设置图遍历顺序为StableRDFS（稳定拓扑序策略）。
+>
+>- torch.distributed.send和torch.distributed.recv需要配套使用，且dynamic=True的场景，不同的shape会对应不同的FX graph。
+>- max-autotune模式下，torch.distributed.send和torch.distributed.recv不传入group参数时需要有默认通信组（所有节点都有send/recv或者提前建好全局默认通信域），传入group参数时应当只包含参与通信的节点；当图中存在多个torch.distributed.send、torch.distributed.recv时，需要设置图遍历顺序为StableRDFS（稳定拓扑序策略）。
 
 ## 使用约束
 
@@ -44,4 +44,3 @@ import torch_npu
 # 多卡模型调用compile，后端提供集合通信入图能力
 model = torch.compile(model, backend="npugraph_ex", fullgraph=True, dynamic=False)
 ```
-

@@ -21,5 +21,3 @@
 接口名|接口说明|
 |--|--|
 |[limit_core_num](./scope/limit_core_num.md)|图执行过程中，指定图范围内的算子执行时最大的AI Core数和Vector Core数。|
-
-

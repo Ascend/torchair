@@ -8,8 +8,8 @@
 
 ## 使用约束
 
--   当前仅npugraph\_ex提供的[FX图优化Pass配置功能](inplace_pass.md)、[静态Kernel编译功能](static_kernel_compile.md)、[模型编译缓存功能](../advanced/compile_cache.md)、[多流表达功能](../advanced/multi_stream.md)可以与本功能同时开启。
--   本功能支持的产品型号参见[使用说明](../../overview.md#使用说明)。
+- 当前仅npugraph\_ex提供的[FX图优化Pass配置功能](inplace_pass.md)、[静态Kernel编译功能](static_kernel_compile.md)、[模型编译缓存功能](../advanced/compile_cache.md)、[多流表达功能](../advanced/multi_stream.md)可以与本功能同时开启。
+- 本功能支持的产品型号参见[使用说明](../../overview.md#使用说明)。
 
 ## 使用方法
 
@@ -26,5 +26,3 @@ opt_model = torch.compile(model, backend="npugraph_ex", options={"force_eager": 
 |**参数名**|**参数说明**|
 |--|--|
 |force_eager|图执行前是否使用Eager模式运行，布尔类型。<br>False（默认值）：不启动Eager模式，以aclgraph图模式运行。<br>True：启动Eager模式运行。<br>支持npugraph_ex对aclgraph图增强优化功能，但是不进行aclgraph的Capture&Replay，便于进行aclgraph Runtime层问题定位。|
-
-

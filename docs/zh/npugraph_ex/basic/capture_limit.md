@@ -28,5 +28,3 @@ opt_model = torch.compile(model, backend="npugraph_ex", options={"capture_limit"
 |参数名|说明|
 |--|--|
 |capture_limit|int类型，最小值1，最大值为9223372036854775807。<br>64（默认值）：默认允许的重捕获次数为64。<br>注意：当重捕获时，NPU设备上stream、event、memory等资源超限时，会因为资源不足退出流程，可能无法触发到最大值。|
-
-

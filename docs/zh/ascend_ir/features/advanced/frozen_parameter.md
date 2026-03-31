@@ -31,7 +31,6 @@ opt_model = torch.compile(model, backend=npu_backend)
 |--|--|
 |frozen_parameter|图执行时是否固定权重类输入地址。False（默认值）：不固定权重类输入地址。True：固定权重类输入地址。|
 
-
 ## 特殊场景
 
 > [!NOTE]说明
@@ -64,4 +63,3 @@ in3 = torch.randn(4, 4).int().npu()
 model = torch.compile(model, backend=npu_backend, dynamic=True)
 graph_result = model(in1, in2, in3)
 ```
-

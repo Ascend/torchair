@@ -18,7 +18,6 @@ readable_cache(cache_bin, print_output=True, file=None)
 |print_output|输入|是否打印func函数缓存文件解析后的内容。True：默认开启打印显示。False：不开启打印显示。|
 |file|输入|解析生成的文件路径。默认为None，即不生成可读文件。绝对路径，如：/home/workspace/prompt.py。相对路径，如：prompt.py，默认在调用该接口的脚本所在工作目录下。|
 
-
 ## 返回值说明
 
 返回文件内容，String类型。
@@ -30,4 +29,3 @@ readable_cache(cache_bin, print_output=True, file=None)
 ## 调用示例
 
 参考[模型编译缓存功能\>使用方法](../../advanced/compile_cache.md#使用方法)。
-

@@ -6,47 +6,47 @@
 
 目前，在图模式下进行模型性能分析的大致流程如下，请根据实际情况按需分析。
 
-1.  在模型脚本中增加关键模块的耗时信息打印，先确认问题的大致阶段（如编译、执行等）和范围（如Device侧、Host侧等）。
-2.  在Eager和图模式下分别执行模型，并采集对应Profiling数据，用于后续性能分析。
+1. 在模型脚本中增加关键模块的耗时信息打印，先确认问题的大致阶段（如编译、执行等）和范围（如Device侧、Host侧等）。
+2. 在Eager和图模式下分别执行模型，并采集对应Profiling数据，用于后续性能分析。
 
     Profiling数据的采集和分析详细指导请参考《CANN 性能调优工具用户指南》中的“Ascend PyTorch调优工具”章节。
 
-3.  基于Profiling数据分析Host侧耗时。
+3. 基于Profiling数据分析Host侧耗时。
 
     主要分析图编译前的头开销耗时、图编译耗时、算子下发耗时等，请根据实际情况分析对应模块耗时，可参考[性能分析案例](#性能分析案例)。
 
     以图模式下编译耗时异常为例，可按如下流程分析：
 
-    1.  先判断是否存在图重复编译现象。
+    1. 先判断是否存在图重复编译现象。
 
         参考[TorchAir Python层日志打印](../../ascend_ir/features/basic/python_log_print.md)开启Python侧日志，获取model的FX图，对比多次编译的FX图差异，定位PyTorch脚本哪段代码变化导致了重复编译。
 
-    2.  再分析第一次成图时整体编译的耗时分布，确定具体的原因。
-        -   在脚本中打印Profiling分析主要的耗时阶段。
-        -   导出info级别plog日志，分析图编译每个阶段的耗时。
-        -   算子编译阶段耗时过长或其它CANN过程卡住，请单击[Link](https://www.hiascend.com/support)联系技术支持协助分析。
+    2. 再分析第一次成图时整体编译的耗时分布，确定具体的原因。
+        - 在脚本中打印Profiling分析主要的耗时阶段。
+        - 导出info级别plog日志，分析图编译每个阶段的耗时。
+        - 算子编译阶段耗时过长或其它CANN过程卡住，请[单击](https://www.hiascend.com/support)联系技术支持协助分析。
 
-4.  基于Profiling数据分析Device侧执行性能。
+4. 基于Profiling数据分析Device侧执行性能。
 
     目前常见的问题集中在如下几类：
 
-    -   第一类：图模式和Eager模式实际参与计算的算子不同导致性能问题。
-        -   映射算子不一致：例如PyTorch的select算子，NPU场景下Eager模式实际映射的是CANN StridedSlice算子，图模式实际映射的是CANN GatherV2算子。因此需要比对和分析GatherV2与StridedSlice算子性能。
-        -   映射算子数不一致：例如动态图场景，图模式可能比单算子的算子多，需要将图模式下n个算子执行效果与单算子单个op执行效果比对。
+    - 第一类：图模式和Eager模式实际参与计算的算子不同导致性能问题。
+        - 映射算子不一致：例如PyTorch的select算子，NPU场景下Eager模式实际映射的是CANN StridedSlice算子，图模式实际映射的是CANN GatherV2算子。因此需要比对和分析GatherV2与StridedSlice算子性能。
+        - 映射算子数不一致：例如动态图场景，图模式可能比单算子的算子多，需要将图模式下n个算子执行效果与单算子单个op执行效果比对。
 
-    -   第二类：图模式和Eager模式算子Kernel实现不同带来的性能差异。
+    - 第二类：图模式和Eager模式算子Kernel实现不同带来的性能差异。
 
         PyTorch的ATen算子在图模式和Eager模式下可能使用了不同的算子去实现等价的功能，主要有以下三种情况：
 
-        -   当算子输入shape、输出shape、属性完全相同时，图模式和Eager模式使用相同的算子，但存在性能差异，需要具体分析算子底层实现。
-        -   当算子输入shape、输出shape、属性完全相同时，图模式和Eager模式可能使用不同的算子引发性能差异，需要审视使用的算子是否合理。
-        -   当算子输入shape、输出shape、属性存在差异时，需要先分析图模式和Eager模式下shape、data type等信息差异的来源。
+        - 当算子输入shape、输出shape、属性完全相同时，图模式和Eager模式使用相同的算子，但存在性能差异，需要具体分析算子底层实现。
+        - 当算子输入shape、输出shape、属性完全相同时，图模式和Eager模式可能使用不同的算子引发性能差异，需要审视使用的算子是否合理。
+        - 当算子输入shape、输出shape、属性存在差异时，需要先分析图模式和Eager模式下shape、data type等信息差异的来源。
 
 ## 性能分析案例
 
 假设有一个PyTorch模型，其执行性能未达预期，前期已在脚本中插入了关键阶段的打印信息，发现模型执行前的初始头开销异常。此时，需要使用CANN提供的性能调优（Profiling）工具采集性能数据，以便进一步分析原因，分析步骤大致如下：
 
-1.  获取图模式下模型Profiling数据。
+1. 获取图模式下模型Profiling数据。
 
     使用**Ascend PyTorch Profiler接口**采集性能数据，主要包括PyTorch层算子信息、CANN层算子信息、底层NPU算子信息以及算子内存占用信息等。
 
@@ -150,7 +150,7 @@
       ......
     ```
 
-2.  查看采集结果文件（json、csv等格式）。
+2. 查看采集结果文件（json、csv等格式）。
 
     本案例聚焦模型执行时间，所以仅分析**trace\_view.json**。请用户根据实际情况，选择对应的采集结果文件分析。
 
@@ -160,19 +160,19 @@
     
     ![](../../figures/zh-cn_image_0000002342017010.png)
 
-    -   区域1：上层应用数据，包含上层应用算子的耗时信息。**（本案例只需关注区域1）**
-    -   区域2：CANN层数据，主要包含GE和Runtime等组件的耗时数据。
-    -   区域3：底层Ascend NPU数据，主要包含Task Scheduler组件耗时数据和迭代轨迹数据以及其他昇腾AI处理器系统数据。
-    -   区域4：展示trace中各算子、接口的详细信息。单击各个trace事件时展示。
+    - 区域1：上层应用数据，包含上层应用算子的耗时信息。**（本案例只需关注区域1）**
+    - 区域2：CANN层数据，主要包含GE和Runtime等组件的耗时数据。
+    - 区域3：底层Ascend NPU数据，主要包含Task Scheduler组件耗时数据和迭代轨迹数据以及其他昇腾AI处理器系统数据。
+    - 区域4：展示trace中各算子、接口的详细信息。单击各个trace事件时展示。
 
-3.  基于区域1，分析应用层算子耗时。
+3. 基于区域1，分析应用层算子耗时。
 
     图模式场景下，图编译前的头开销耗时主要包括三部分：前端框架/平台耗时（例如vLLM、MindIE等）、TorchAir耗时、GE耗时。
 
     > [!NOTE]须知 
     >需要注意的是，此处json文件效果图均为示意图，与[步骤1](#step1)示例代码不完全匹配，主要用于辅助用户理解耗时模块分布。
 
-    1.  **前端框架/平台耗时。**<a id="step1"></a>
+    1. **前端框架/平台耗时。**<a id="step1"></a>
 
         从进入compiled module开始，直到调用TorchAir的接口结束，耗时判断关键点在于“**npu\_fx\_compiler\_inference**”函数。
 
@@ -180,47 +180,43 @@
 
         ![](.././../figures/zh-cn_image_0000002343135706.png)
 
-        -   （可选）前端框架或平台的流程耗时，例如vLLM、MindIE等数据处理。
-        -   PyTorch原生框架耗时，主要是Dynamo查询compiled graph的cache、Dynamo check guard耗时。
+        - （可选）前端框架或平台的流程耗时，例如vLLM、MindIE等数据处理。
+        - PyTorch原生框架耗时，主要是Dynamo查询compiled graph的cache、Dynamo check guard耗时。
 
         > [!NOTE]说明
         >本案例图只有PyTorch原生框架耗时，不涉及前端框架或平台耗时，分析时请根据实际情况。
 
-    2.  **TorchAir耗时。**
+    2. **TorchAir耗时。**
 
         从进入TorchAir的Python层接口开始，直到C++层调用GE的run graph接口（TorchNpuGraphBase::Run）结束，耗时判断关键点在于“**npu\_fx\_compiler\_inference**”和“**ExecuteGraph**”函数。**npu\_fx\_compiler\_inference**开始执行到**ExecuteGraph**开始执行前的部分为TorchAir耗时，包括Python侧耗时和C++侧耗时。
 
         ![](../../figures/zh-cn_image_0000002376892429.png)
 
-        -   Python侧耗时：在进入C++层调用run接口前，对应图中区域1，即“TorchNpuGraphBase::Run”之前部分。
+        - Python侧耗时：在进入C++层调用run接口前，对应图中区域1，即“TorchNpuGraphBase::Run”之前部分。
 
             这部分耗时一方面与模型输入、输出个数相关，模型规模变大后输入可能存在成千上万参数；另一方面与输入转换操作相关，FX的部分输入可能需要做二次转换，例如非Tensor类型输入构造成Tensor、非连续Tensor输入转为连续Tensor等操作。
 
-            -   非Tensor类型输入构造成Tensor：
+            - 非Tensor类型输入构造成Tensor：
 
                 对于Scalar、List等类型输入需要先转为Tensor，才能作为输入参与计算，过程中调用的aten接口会给Python层带来耗时。
 
                 ![](../../figures/zh-cn_image_0000002377227789.png)
 
-            -   非连续Tensor输入转为连续Tensor：
+            - 非连续Tensor输入转为连续Tensor：
 
                 若输入为非连续Tensor，其无法直接传给GE作为输入，必选先contiguous转连续，过程中还附带其它操作，例如clone，这些都会给Python层带来耗时。
 
                 ![](../../figures/zh-cn_image_0000002343331078.png)
 
-        -   C++侧耗时：开始调用GE run graph接口之后，对应图中区域2，该部分包括stream获取、构造GE图输入/输出TensorList等操作。
+        - C++侧耗时：开始调用GE run graph接口之后，对应图中区域2，该部分包括stream获取、构造GE图输入/输出TensorList等操作。
 
-    3.  **GE耗时。**
+    3. **GE耗时。**
 
         从进入GE的run graph接口开始，直到第一个算子开始执行的耗时，耗时判断关键点在于“**ExecuteGraph**”和“**npu\_fx\_compiler\_inference**”函数。ExecuteGraph开始执行到npu\_fx\_compiler\_inference执行结束的部分为GE耗时。
 
         ![](../../figures/zh-cn_image_0000002343361296.png)
 
-4.  基于上述采集结果的初步分析，定位问题所属范围和阶段，请先检视PyTorch脚本根据实际情况处理问题。
-    -   若前端框架/平台耗时异常：请联系提供对应服务的框架、平台、社区。
-    -   若TorchAir耗时异常：请单击[Link](https://www.hiascend.com/support)联系昇腾技术支持。
-    -   若GE耗时异常：请单击[Link](https://www.hiascend.com/support)联系昇腾技术支持。
-
-
-
-
+4. 基于上述采集结果的初步分析，定位问题所属范围和阶段，请先检视PyTorch脚本根据实际情况处理问题。
+    - 若前端框架/平台耗时异常：请联系提供对应服务的框架、平台、社区。
+    - 若TorchAir耗时异常：请[单击](https://www.hiascend.com/support)联系昇腾技术支持。
+    - 若GE耗时异常：请[单击](https://www.hiascend.com/support)联系昇腾技术支持。

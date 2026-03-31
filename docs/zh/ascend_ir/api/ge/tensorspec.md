@@ -28,5 +28,3 @@ class TensorSpec():
 |size|描述Tensor的维度长度。|
 |dtype|Tensor的数据类型。|
 |rank|Tensor的dimension数。|
-
-

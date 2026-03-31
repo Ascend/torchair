@@ -26,5 +26,3 @@ opt_model = torch.compile(model, backend=npu_backend)
 |参数名|说明|
 |--|--|
 |jit_compile|算子编译方式，默认值为“auto”。当前仅支持“auto”，系统自行判断编译方式。<br>针对静态shape网络，选择在线编译算子。<br>针对动态shape网络，优先查找系统中已编译好的算子二进制，如果查找不到对应的二进制，再在线编译算子。|
-
-

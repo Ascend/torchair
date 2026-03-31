@@ -6,8 +6,8 @@
 
 ## 使用约束
 
--   本功能仅适用于GE图模式场景。
--   只有网络中存在通信算子才能切分，切分时，仅对AllReduce通信算子进行切分。
+- 本功能仅适用于GE图模式场景。
+- 只有网络中存在通信算子才能切分，切分时，仅对AllReduce通信算子进行切分。
 
 ## 使用方法
 
@@ -27,5 +27,3 @@ opt_model = torch.compile(model, backend=npu_backend)
 |参数名|说明|
 |--|--|
 |cc_parallel_enable|图执行时是否开启计算与通信并行。False（默认值）：不开启并行模式。True：开启并行模式。|
-
-

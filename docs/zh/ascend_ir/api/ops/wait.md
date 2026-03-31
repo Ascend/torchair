@@ -16,7 +16,6 @@ wait(tensors: List[torch.Tensor])
 |--|--|--|
 |tensors|输入|List[torch.Tensor]类型，表当前流需要等待的tensor，可以传入多个tensor。|
 
-
 ## 返回值说明
 
 无
@@ -28,4 +27,3 @@ wait(tensors: List[torch.Tensor])
 ## 调用示例
 
 调用示例与[record](record.md)一样。
-

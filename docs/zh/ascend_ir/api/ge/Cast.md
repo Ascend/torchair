@@ -20,7 +20,6 @@ Cast(x: Tensor, *, dst_type: int, dependencies=[], node_name=None) -> Tensor
 |node_name|输入|节点名，默认为None，例如'const_1'，同一张图中节点名不允许重复。|
 |*|输入|预留参数项，用于后续功能扩展。|
 
-
 ## 返回值说明
 
 正常情况下，返回新类型的Tensor，否则失败报错。
@@ -36,4 +35,3 @@ import torch_npu, torchair
 from torchair.ge import DataType
 Cast(1., dst_type=DataType.DT_INT64)
 ```
-

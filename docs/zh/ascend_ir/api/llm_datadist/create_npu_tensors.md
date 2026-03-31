@@ -7,7 +7,8 @@
 主要使用场景是用于创建大模型中的KV Cache Tensors，所有KV Cache的shape和dtype都一致。
 
 > [!NOTE]说明
->-   LLM-DataDist是大模型分布式集群和数据加速组件，提供了集群KV数据管理能力，以支持全量图和增量图分离部署。
+>
+>- LLM-DataDist是大模型分布式集群和数据加速组件，提供了集群KV数据管理能力，以支持全量图和增量图分离部署。
 
 ## 函数原型
 
@@ -23,7 +24,6 @@ create_npu_tensors(shape: List[int], dtype: torch.dtype, addresses: List[int]) -
 |dtype|输入|创建Tensor需要的dtype信息，格式是torch.dtype。|
 |addresses|输入|创建Tensor需要的device地址信息，格式是整型的List。|
 
-
 ## 返回值说明
 
 正常情况下，返回torch.Tensor的List。异常情况会抛出异常，创建Tensor会失败。
@@ -33,6 +33,7 @@ create_npu_tensors(shape: List[int], dtype: torch.dtype, addresses: List[int]) -
 当前该接口仅限大模型分离部署场景下使用。
 
 该接口目前适用如下产品：
+
 - Atlas A2 训练系列产品/Atlas A2 推理系列产品
 - Atlas A3 训练系列产品/Atlas A3 推理系列产品
 
@@ -45,4 +46,3 @@ shape = [4, 1024, 128]
 dtype = torch.float16
 kv_tensors = torchair.llm_datadist.create_npu_tensors(shape, dtype, kv_tensor_addrs)
 ```
-

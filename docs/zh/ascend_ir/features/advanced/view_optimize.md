@@ -6,16 +6,17 @@
 
 > [!NOTE]说明
 >本功能当前仅针对如下ATen IR进行优化：
->-   [torch.permute](https://pytorch.org/docs/2.1/generated/torch.permute.html#torch-permute)
->-   [torch.t](https://pytorch.org/docs/2.1/generated/torch.t.html#torch-t)
->-   [torch.transpose](https://pytorch.org/docs/2.1/generated/torch.transpose.html#torch.transpose)
->-   [torch.Tensor.view](https://pytorch.org/docs/2.1/generated/torch.Tensor.view.html#torch.Tensor.view)
->-   [torch.reshape](https://pytorch.org/docs/2.1/generated/torch.reshape.html#torch-reshape)
+>
+>- [torch.permute](https://pytorch.org/docs/2.1/generated/torch.permute.html#torch-permute)
+>- [torch.t](https://pytorch.org/docs/2.1/generated/torch.t.html#torch-t)
+>- [torch.transpose](https://pytorch.org/docs/2.1/generated/torch.transpose.html#torch.transpose)
+>- [torch.Tensor.view](https://pytorch.org/docs/2.1/generated/torch.Tensor.view.html#torch.Tensor.view)
+>- [torch.reshape](https://pytorch.org/docs/2.1/generated/torch.reshape.html#torch-reshape)
 
 ## 使用约束
 
--   本功能仅适用于GE图模式场景。 
--   在[图内多流表达](multi_stream.md)、[图内设置AI Core和Vector Core核数](limit_cores.md)、[图内算子不超时配置功能](op_never_timeout.md)以及[指定算子dump范围](data_dump.md)时，本特性不生效。
+- 本功能仅适用于GE图模式场景。 
+- 在[图内多流表达](multi_stream.md)、[图内设置AI Core和Vector Core核数](limit_cores.md)、[图内算子不超时配置功能](op_never_timeout.md)以及[指定算子dump范围](data_dump.md)时，本特性不生效。
 
 ## 使用方法
 
@@ -36,5 +37,3 @@ opt_model = torch.compile(model, backend=npu_backend)
 |参数名|说明|
 |--|--|
 |enable_view_optimize|图模式调用View算子时是否开启计算优化。<br>False：关闭优化。<br>True（默认值）：开启优化。|
-
-

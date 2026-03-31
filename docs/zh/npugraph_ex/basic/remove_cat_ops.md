@@ -2,7 +2,7 @@
 
 ## 功能简介
 
-图模式场景下，当计算图中存在 \[torch.cat\]\(https://pytorch.org/docs/stable/generated/torch.cat.html\)（对应 \`torch.ops.aten.cat.default\`）时，TorchAir 内部会通过 Cat 算子消除 Pass 将其替换为「预分配输出张量 + slice + 原地写入」的模式，以减少内存拷贝和临时张量分配，提升执行性能。默认情况下，本功能处于开启状态。
+图模式场景下，当计算图中存在 \[torch.cat\]\(<https://pytorch.org/docs/stable/generated/torch.cat.html>)（对应 \`torch.ops.aten.cat.default\`）时，TorchAir 内部会通过 Cat 算子消除 Pass 将其替换为「预分配输出张量 + slice + 原地写入」的模式，以减少内存拷贝和临时张量分配，提升执行性能。默认情况下，本功能处于开启状态。
 
 ## 使用约束
 
@@ -35,7 +35,6 @@ torch.compile(model, backend="npugraph_ex", options={"remove_cat_ops": True}, dy
 |--|--|
 |remove_cat_ops|是否开启Cat算子消除优化。<br>True（默认值）：开启优化。<br>False：关闭优化。|
 
-
 开启Debug日志后，如果存在可优化的Cat节点，可以看到类似的信息：
 
 ```txt
@@ -43,4 +42,3 @@ torch.compile(model, backend="npugraph_ex", options={"remove_cat_ops": True}, dy
 [DEBUG] Optimizing cat_1 (3 inputs)
 [DEBUG] remove_cat_ops: Optimized 1 cat node(s)
 ```
-

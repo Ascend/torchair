@@ -78,4 +78,3 @@ test2_device_0_0.pt   // 算子pow的输出产物
 ```
 
 上述结果文件中，device后的第一个0表示设备序号，第二个0表示计数标识。可以通过torch.load查看或者使用Netron软件查看，产物命名与脚本中传入的save\_path参数对应。
-

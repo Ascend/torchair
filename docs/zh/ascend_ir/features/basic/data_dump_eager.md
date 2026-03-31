@@ -32,7 +32,6 @@ opt_model = torch.compile(model, backend=npu_backend)
 |data_dump.filter|用户自定义过滤函数，保留满足函数条件的内容。<br>输入：PyTorch中的Node类的实例n。<br>输出：PyTorch中的Node类的实例n或者None。<br>默认值为None，表示不过滤任何内容。<br>说明：Node类实例化的各属性（如name、target等）获取方法主要通过图结构dump功能获取。<br>以常见的name属性为例，获取方法如下：<br>1. 先以py格式dump图信息。config.debug.graph_dump.type = "py"<br>2. 在当前执行路径下生成dynamo_*.py，示例如下，搜索关键词“FX Code”，其后面字段对应n.name属性信息。<br># File "/home/a.py", line 32, in forward    x=x+y<br>## FX Code: **add_1**: torch.float32[s0, s0]npu:0 = torch.ops.aten.add.Tensor(add: torch.float32[s0, s0]npu:0, arg2_1: torch.float32[s0, s0]npu:0)<br>Add_1_0 = ge.Add(Add_0, arg2_1_0, node_name="Add_1")<br># File "/home/a.py", line 36, in forward    x=x-1<br>## FX Code: **sub**: torch.float32[s0, s0]npu:0 = torch.ops.aten.sub.Tensor(mul_1: torch.float32[s0, s0]npu:0, 1)<br>Sub_0 = ge.Sub(Cast_1_0, ge.Const(1, dtype=0), node_name="Sub")|
 |data_dump.path|设置dump文件生成的路径，字符串型。可选配置，如果不设置，默认为当前执行路径。<br>请确保参数中指定的路径真实存在，并且运行用户具有读取和写入权限。|
 
-
 ## 产物说明
 
 开启数据dump功能后，得到$\{op\_type\}-$\{aten\_ir\}.$\{param\_type\}$\{param\_idx\}$\{timestamp\}.npy文件。其中$\{op\_type\}为算子类型，$\{aten\_ir\}为ATen算子名，$\{param\_type\}为参数输入/输出类型，$\{param\_idx\}为输入/输出参数的索引（默认从0开始），$\{timestamp\}为时间戳，$\{world\_size\}和$\{global\_rank\}指集合通信中的world\_size以及global\_rank信息。
@@ -59,4 +58,3 @@ opt_model = torch.compile(model, backend=npu_backend)
 │           ├── 0
 │               ├── xxx.npy
 ```
-

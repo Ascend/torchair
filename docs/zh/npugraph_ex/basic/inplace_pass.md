@@ -26,5 +26,3 @@ opt_model = torch.compile(model, backend="npugraph_ex", options={"inplace_pass":
 |--|--|
 |inplace_pass|布尔类型，是否开启Pass。<br>该Pass针对模型的中间节点，将节点中包含的Out-of-place算子（非原地算子）替换为In-place算子（原地算子），以减少计算过程中的内存搬运，从而提升性能。<br>True（默认值）：默认开启此Pass。<br>False：关闭此Pass。<br>多原地算子（修改了多个输入的算子）中，当前仅支持torch_npu.npu_kv_rmsnorm_rope_cache_v2（试验接口，后续版本可能存在变更，暂不支持应用于商用产品中），torch_npu.npu_mla_prolog_v3，torch_npu.npu_add_rms_norm_v2三个算子开启本pass。|
 |input_inplace_pass|布尔类型，是否开启Pass。<br>该Pass针对模型的原始输入参数，若包含原地操作算子（如KV Cache），Dynamo的Functionalize流程会将原地算子替换为“Out-of-place算子+copy_算子”，本Pass是该操作的逆向过程，将“Out-of-place算子+copy_算子”替换为In-place算子，以减少计算过程中的内存搬运，从而提升性能。<br>True（默认值）：默认开启此Pass。<br>False：关闭此Pass。<br>多原地算子中，当前仅支持torch_npu.npu_kv_rmsnorm_rope_cache_v2（试验接口，后续版本可能存在变更，暂不支持应用于商用产品中），torch_npu.npu_mla_prolog_v3，torch_npu.npu_add_rms_norm_v2三个算子开启本pass。|
-
-
