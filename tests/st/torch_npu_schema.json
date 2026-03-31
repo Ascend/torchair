@@ -199,5 +199,8 @@
     },
     "torch_npu.dynamo.npugraph_ex.tools.aclgraph_check.filter_operators.filter_comm_ops": {
         "signature": "(input_path, output_path, merge_gap=0.0)"
+    },
+    "torch_npu.dynamo.npugraph_ex.tools.aclgraph_check.align_trace.align_trace_json": {
+        "signature": "(input, output, merge_gap=0.0)"
     }
 }
