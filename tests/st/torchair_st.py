@@ -2937,6 +2937,94 @@ class TorchairSt(unittest.TestCase):
         (status, _, _, _) = _torchair.get_registered_ir_def("MyOpTestv5")
         self.assertTrue(status == "ERROR", f"Actual status: {status}")
 
+    def test_ge_tiling_optimize_failed(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, q, k, v, length, data2):
+                div_01 = torch.div(k, v)
+                for i in range(5):
+                    matmul_01 = torch.bmm(q, data2)
+                    # query = torch.ops.npu.npu_incre_flash_attention(matmul_01, k, div_01, num_heads=16, actual_seq_lengths=length)
+                # return query
+                return matmul_01
+            
+        B = 3
+        S = 256
+        H = 1024
+        q = (1 + torch.rand(B, 1, H)).to(torch.float16)
+        k = (1 + 4 * torch.rand(B, S, H)).to(torch.float16)
+        v = (1 + 4 * torch.rand(B, S, H)).to(torch.float16)
+        length = [99, 199, 180]
+        data2 = torch.full((B, H, H), 0.002).to(torch.float16)
+
+        torch._dynamo.mark_static(q)
+        torch._dynamo.mark_static(k)
+        torch._dynamo.mark_static(v)
+        torch._dynamo.mark_static(data2)
+
+        config = CompilerConfig()
+        config.experimental_config.tiling_schedule_optimize = True
+        npu_backend = torchair.get_npu_backend(compiler_config=config)
+        model = Model()
+        model_1 = torch.compile(model, backend=npu_backend, dynamic=True, fullgraph=True)
+        res_1 = model_1(q, k, v, length, data2)
+
+        with self.assertRaises(torch._dynamo.exc.BackendCompilerFailed) as context:
+            config = CompilerConfig()
+            config.experimental_config.tiling_schedule_optimize = False
+            npu_backend = torchair.get_npu_backend(compiler_config=config)
+            model = Model()
+            model_2 = torch.compile(model, backend=npu_backend, dynamic=True, fullgraph=True)
+            res_2 = model_2(q, k, v, length, data2)
+
+        finalize_graph_engine()
+        self.assertTrue("Unsupport twice initialtion with different options" in str(context.exception))
+        
+    def test_ge_tiling_optimize(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, q, k, v, length, data2):
+                div_01 = torch.div(k, v)
+                for i in range(5):
+                    matmul_01 = torch.bmm(q, data2)
+                    # query = torch.ops.npu.npu_incre_flash_attention(matmul_01, k, div_01, num_heads=16, actual_seq_lengths=length)
+                # return query
+                return matmul_01
+            
+        B = 3
+        S = 256
+        H = 1024
+        q = (1 + torch.rand(B, 1, H)).to(torch.float16)
+        k = (1 + 4 * torch.rand(B, S, H)).to(torch.float16)
+        v = (1 + 4 * torch.rand(B, S, H)).to(torch.float16)
+        length = [99, 199, 180]
+        data2 = torch.full((B, H, H), 0.002).to(torch.float16)
+
+        torch._dynamo.mark_static(q)
+        torch._dynamo.mark_static(k)
+        torch._dynamo.mark_static(v)
+        torch._dynamo.mark_static(data2)
+
+        config = CompilerConfig()
+        config.experimental_config.tiling_schedule_optimize_graph = True
+        npu_backend = torchair.get_npu_backend(compiler_config=config)
+        model = Model()
+        model_1 = torch.compile(model, backend=npu_backend, dynamic=True, fullgraph=True)
+        res_1 = model_1(q, k, v, length, data2)
+
+        config = CompilerConfig()
+        config.experimental_config.tiling_schedule_optimize_graph = False
+        npu_backend = torchair.get_npu_backend(compiler_config=config)
+        model = Model()
+        model_2 = torch.compile(model, backend=npu_backend, dynamic=True, fullgraph=True)
+        res_2 = model_2(q, k, v, length, data2)
+
+        finalize_graph_engine()
+        self.assertTrue(res_1.shape == res_2.shape)
 
 if __name__ == '__main__':
     unittest.main()

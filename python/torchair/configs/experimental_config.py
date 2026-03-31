@@ -26,6 +26,7 @@ class _ExperimentalConfig(NpuBaseConfig):
         self.enable_view_optimize = OptionValue(True, [True, False])
         self.remove_noop_ops = OptionValue(True, [True, False])
         self.tiling_schedule_optimize = OptionValue(False, [True, False])
+        self.tiling_schedule_optimize_graph = OptionValue(None, [False, True])
         self.pattern_fusion_pass = OptionValue(True, [True, False])
         self.aclgraph = _AclGraphExperimentalConfig()
 
@@ -40,6 +41,9 @@ class _ExperimentalConfig(NpuBaseConfig):
         if mode == "max-autotune":
             sorting_strategy_dict = {"BFS": "0", "DFS": "1", "RDFS": "2", "StableRDFS": "3"}
             global_experiment_option["ge.exec.enableEngineParallel"] = "1" if self.cc_parallel_enable else "0"
+            if self.tiling_schedule_optimize_graph.value is not None:
+                local_experiment_option["ge.tiling_schedule_optimize"] = "1" if self.tiling_schedule_optimize_graph else "0"
+            
             global_experiment_option["ge.tiling_schedule_optimize"] = "1" if self.tiling_schedule_optimize else "0"
             local_experiment_option["ge.featureBaseRefreshable"] = "1" if self.memory_efficiency else "0"
             local_experiment_option["ge.topoSortingMode"] = sorting_strategy_dict[self.topology_sorting_strategy.value]

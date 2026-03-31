@@ -24,8 +24,10 @@
 import torch_npu
 import torchair 
 config = torchair.CompilerConfig()
-# Tiling调度优化配置
+# Tiling调度优化配置（Session级别，全局生效）
 config.experimental_config.tiling_schedule_optimize = True
+# Tiling调度优化配置（Graph级别，优先级高于Session级别）
+# config.experimental_config.tiling_schedule_optimize_graph = True
 npu_backend = torchair.get_npu_backend(compiler_config=config)
 opt_model = torch.compile(model, backend=npu_backend)
 ```
@@ -34,7 +36,8 @@ opt_model = torch.compile(model, backend=npu_backend)
 
 |参数名|说明|
 |--|--|
-|tiling_schedule_optimize|是否开启Tiling计算调度优化。False（默认值）：不开启。True：开启。|
+|tiling_schedule_optimize|是否开启Tiling计算调度优化（Session级别，全局生效）。False（默认值）：不开启。True：开启。|
+|tiling_schedule_optimize_graph|是否开启Tiling计算调度优化（Graph级别，仅对当前图生效）。None（默认值）：使用全局配置，即tiling_schedule_optimize。True：开启。False：关闭。Graph级别优先级高于Session级别。|
 
 ## 使用示例
 

@@ -76,6 +76,7 @@ unsupport_aclgraphconfig_list = [("inference_config.dynamic_gears_merge_policy",
     ("experimental_config.cc_parallel_enable", [True]),
     ("experimental_config.enable_ref_data", [True]),
     ("experimental_config.tiling_schedule_optimize", [True]),
+    ("experimental_config.tiling_schedule_optimize_graph", [None]),
     ("experimental_config.enable_view_optimize", [False, True]), ("fusion_config.fusion_switch_file", []),
     ("experimental_config.static_model_ops_lower_limit", []), ("ge_config.aicore_num", []),
     ("ge_config.optimization_switch", [])]
