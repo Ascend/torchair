@@ -1717,26 +1717,27 @@ REG_OP(Dilation2DBackpropInput)
 
 /**
 * @brief Applies a 2D adaptive average pooling over
-*       an input signal composed of several input planes.  \n
+* an input signal composed of several input planes.
 
 * @par Inputs:
 * One input, including:
 * @li x: A Tensor. Must be one of the following data types:
-*     float16, float32. \n
+*     float16, float32, bfloat16. \n
+* For Ascend 950PR/Ascend 950DT: Support Format: [NCHW].
 
 * @par Attributes:
 * @li output_size: A required list of 2 ints
 *    specifying the size (H,W) of the output tensor. \n
 
 * @par Outputs:
-* @li y: A Tensor. Has the same data type as "x" \n
+* @li y: A Tensor. Has the same data type and the same format as "x" \n
 
 * @par Third-party framework compatibility
 * Compatible with the Pytorch operator AdaptiveAvgPool2d.
 */
 REG_OP(AdaptiveAvgPool2d)
-    .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16}))
-    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))
+    .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
+    .OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))
     .REQUIRED_ATTR(output_size, ListInt)
     .OP_END_FACTORY_REG(AdaptiveAvgPool2d)
 

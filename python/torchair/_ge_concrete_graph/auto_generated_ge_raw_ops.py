@@ -49714,8 +49714,8 @@ def Dilation2DBackpropInput(x: Tensor, filter: Tensor, out_backprop: Tensor, *, 
 @auto_convert_to_tensor([False], [False])
 def AdaptiveAvgPool2d(x: Tensor, *, output_size: List[int], dependencies=[], node_name=None):
     """REG_OP(AdaptiveAvgPool2d)\n
-.INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16}))\n
-.OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16}))\n
+.INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+.OUTPUT(y, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
 .REQUIRED_ATTR(output_size, ListInt)\n
 """
 
