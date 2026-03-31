@@ -745,6 +745,28 @@ class TorchairSt(unittest.TestCase):
         y = torch.ones([10, 2], dtype=torch.float)
         for i in range(2):
             result = executor2.run((x, y))
+    
+    def test_npu_static_executor_fp8_e8m0(self):
+        key = "ST_MXFPX_DTYPE_STUB"
+        os.environ[key] = "DT_FLOAT8_E8M0"
+        initialize_graph_engine()
+        from torchair.core import _npu_graph_executor
+
+        with GeGraph() as graph:
+            x = ge.Data(index=0, shape=[1, 2], dtype=DataType.DT_FLOAT8_E8M0, placement='CPU')
+            y = ge.Data(index=1, shape=[100, 2], dtype=DataType.DT_FLOAT8_E8M0, placement='CPU')
+            z = ge.Add(x, y)
+            output = ge.NetOutput([z])
+
+        set_graph_output_dtypes(graph, [DataType.DT_FLOAT8_E8M0])
+
+        executor = TorchNpuGraph()
+        executor.load(graph)
+        executor.compile()
+
+        x = torch.ones([1, 2], dtype=torch.float8_e8m0fnu)
+        y = torch.ones([100, 2], dtype=torch.float8_e8m0fnu)
+        result = executor.run((x, y))
 
     def test_npu_static_executor_with_memory_efficient(self):
         initialize_graph_engine()

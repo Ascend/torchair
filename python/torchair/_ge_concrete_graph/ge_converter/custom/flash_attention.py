@@ -1,5 +1,5 @@
 from torchair._ge_concrete_graph.ge_converter.converter_utils import *
-from torchair.ge._ge_graph import torch_dtype_value_to_ge_type
+from torchair.ge._ge_graph import torch_dtype_value_to_ge_type, torch_dtype_value_to_ge_proto_type
 
 
 @declare_supported(
@@ -240,19 +240,27 @@ def convert_npu_npu_mla_prolog_v3(
     tile_size: int = 128,
     qc_qr_scale: float = 1.0,
     kc_scale: float = 1.0,
+    token_x_dtype: Optional[int] = None,
+    weight_dq_dtype: Optional[int] = None,
+    weight_uq_qr_dtype: Optional[int] = None,
+    weight_dkv_kr_dtype: Optional[int] = None,
+    kv_cache_dtype: Optional[int] = None,
     meta_outputs: TensorSpec = None,
 ):
-    """NB: npu_mla_prolog_v3(Tensor token_x, Tensor weight_dq, Tensor weight_uq_qr, Tensor weight_uk, Tensor weight_dkv_kr, Tensor rmsnorm_gamma_cq, Tensor rmsnorm_gamma_ckv, Tensor rope_sin, Tensor rope_cos, Tensor(a!) kv_cache, Tensor(b!) kr_cache, *, Tensor cache_index, Tensor? dequant_scale_x=None, Tensor? dequant_scale_w_dq=None, Tensor? dequant_scale_w_uq_qr=None, Tensor? dequant_scale_w_dkv_kr=None, Tensor? quant_scale_ckv=None, Tensor? quant_scale_ckr=None, Tensor? smooth_scales_cq=None, Tensor? actual_seq_len=None, Tensor? k_nope_clip_alpha=None, float rmsnorm_epsilon_cq=1e-05, float rmsnorm_epsilon_ckv=1e-05, str cache_mode="PA_BSND", bool query_norm_flag=false, int weight_quant_mode=0, int kv_quant_mode=0, int query_quant_mode=0, int ckvkr_repo_mode=0, int quant_scale_repo_mode=0, int tile_size=128, float qc_qr_scale=1.0, float kc_scale=1.0) -> (Tensor, Tensor, Tensor, Tensor, Tensor)"""
-    # mxfp8全量化场景 输入int8数据类型伪装成float8_e8m0
-    if dequant_scale_x is not None and weight_quant_mode == 3:
-        dequant_scale_x = ge.Bitcast(dequant_scale_x, type=DataType.DT_FLOAT8_E8M0)
-    if dequant_scale_w_dq is not None and weight_quant_mode == 3:
-        dequant_scale_w_dq = ge.Bitcast(dequant_scale_w_dq, type=DataType.DT_FLOAT8_E8M0)
-    if dequant_scale_w_uq_qr is not None and weight_quant_mode == 3:
-        dequant_scale_w_uq_qr = ge.Bitcast(dequant_scale_w_uq_qr, type=DataType.DT_FLOAT8_E8M0)
-    if dequant_scale_w_dkv_kr is not None and weight_quant_mode == 3:
-        dequant_scale_w_dkv_kr = ge.Bitcast(dequant_scale_w_dkv_kr, type=DataType.DT_FLOAT8_E8M0)
-    return ge.MlaPrologV3(
+    """NB: npu_mla_prolog_v3(Tensor token_x, Tensor weight_dq, Tensor weight_uq_qr, Tensor weight_uk, Tensor weight_dkv_kr, Tensor rmsnorm_gamma_cq, Tensor rmsnorm_gamma_ckv, Tensor rope_sin, Tensor rope_cos, Tensor(a!) kv_cache, Tensor(b!) kr_cache, *, Tensor cache_index, Tensor? dequant_scale_x=None, Tensor? dequant_scale_w_dq=None, Tensor? dequant_scale_w_uq_qr=None, Tensor? dequant_scale_w_dkv_kr=None, Tensor? quant_scale_ckv=None, Tensor? quant_scale_ckr=None, Tensor? smooth_scales_cq=None, Tensor? actual_seq_len=None, Tensor? k_nope_clip_alpha=None, float rmsnorm_epsilon_cq=1e-05, float rmsnorm_epsilon_ckv=1e-05, str cache_mode="PA_BSND", bool query_norm_flag=false, int weight_quant_mode=0, int kv_quant_mode=0, int query_quant_mode=0, int ckvkr_repo_mode=0, int quant_scale_repo_mode=0, int tile_size=128, float qc_qr_scale=1.0, float kc_scale=1.0, int? token_x_dtype=None, int? weight_dq_dtype=None, int? weight_uq_qr_dtype=None, int? weight_dkv_kr_dtype=None, int? kv_cache_dtype=None) -> (Tensor, Tensor, Tensor, Tensor, Tensor)"""
+    # 输入uint8数据类型伪装成hifloat8
+    import torch_npu
+    if weight_quant_mode == 5 and token_x_dtype == torch_npu.hifloat8:
+        token_x = ge.Bitcast(token_x, type=DataType.DT_HIFLOAT8)
+    if weight_quant_mode == 5 and weight_dq_dtype == torch_npu.hifloat8:
+        weight_dq = ge.Bitcast(weight_dq, type=DataType.DT_HIFLOAT8)
+    if weight_quant_mode == 5 and weight_uq_qr_dtype == torch_npu.hifloat8:
+        weight_uq_qr = ge.Bitcast(weight_uq_qr, type=DataType.DT_HIFLOAT8)
+    if weight_quant_mode == 5 and weight_dkv_kr_dtype == torch_npu.hifloat8:
+        weight_dkv_kr = ge.Bitcast(weight_dkv_kr, type=DataType.DT_HIFLOAT8)
+    if weight_quant_mode == 5 and kv_cache_dtype == torch_npu.hifloat8:
+        kv_cache = ge.Bitcast(kv_cache, type=DataType.DT_HIFLOAT8)
+    (query, query_rope, kv_cache_out, kr_cache_out, dequant_scale_q_nope, query_norm, dequant_scale_q_norm) = ge.MlaPrologV3(
         token_x,
         weight_dq,
         weight_uq_qr,
@@ -286,7 +294,15 @@ def convert_npu_npu_mla_prolog_v3(
         tile_size=tile_size,
         qc_qr_scale=qc_qr_scale,
         kc_scale=kc_scale
-    ) 
+    )
+    if weight_quant_mode == 5 and kv_cache_quant_mode == 1 and token_x_dtype == torch_npu.hifloat8:
+        query.desc.dtype = torch_dtype_value_to_ge_proto_type(torch_npu.hifloat8)
+        kv_cache_out.desc.dtype = torch_dtype_value_to_ge_proto_type(torch_npu.hifloat8)
+    elif weight_quant_mode == 5 and kv_cache_quant_mode == 3 and token_x_dtype == torch_npu.hifloat8:
+        kv_cache_out.desc.dtype = torch_dtype_value_to_ge_proto_type(torch_npu.hifloat8)
+    if weight_quant_mode == 5 and token_x_dtype == torch_npu.hifloat8 and query_norm_flag:
+        query_norm.desc.dtype = torch_dtype_value_to_ge_proto_type(torch_npu.hifloat8)
+    return (query, query_rope, kv_cache_out, kr_cache_out, dequant_scale_q_nope, query_norm, dequant_scale_q_norm)
 
 
 @register_fx_node_ge_converter(torch.ops.npu.npu_mla_prolog_v3_functional.default)
@@ -325,18 +341,25 @@ def conveter_npu_mla_prolog_v3_functional(
     tile_size: int = 128,
     qc_qr_scale: float = 1.0,
     kc_scale: float = 1.0,
+    token_x_dtype: Optional[int] = None,
+    weight_dq_dtype: Optional[int] = None,
+    weight_uq_qr_dtype: Optional[int] = None,
+    weight_dkv_kr_dtype: Optional[int] = None,
+    kv_cache_dtype: Optional[int] = None,
     meta_outputs: List[TensorSpec] = None,
 ):
-    # mxfp8全量化场景 输入int8数据类型伪装成float8_e8m0
-    if dequant_scale_x is not None and weight_quant_mode == 3:
-        dequant_scale_x = ge.Bitcast(dequant_scale_x, type=DataType.DT_FLOAT8_E8M0)
-    if dequant_scale_w_dq is not None and weight_quant_mode == 3:
-        dequant_scale_w_dq = ge.Bitcast(dequant_scale_w_dq, type=DataType.DT_FLOAT8_E8M0)
-    if dequant_scale_w_uq_qr is not None and weight_quant_mode == 3:
-        dequant_scale_w_uq_qr = ge.Bitcast(dequant_scale_w_uq_qr, type=DataType.DT_FLOAT8_E8M0)
-    if dequant_scale_w_dkv_kr is not None and weight_quant_mode == 3:
-        dequant_scale_w_dkv_kr = ge.Bitcast(dequant_scale_w_dkv_kr, type=DataType.DT_FLOAT8_E8M0)
-    # 保证非原地算子的输入不会被修改
+    import torch_npu
+    if weight_quant_mode == 5 and token_x_dtype == torch_npu.hifloat8:
+        token_x = ge.Bitcast(token_x, type=DataType.DT_HIFLOAT8)
+    if weight_quant_mode == 5 and weight_dq_dtype == torch_npu.hifloat8:
+        weight_dq = ge.Bitcast(weight_dq, type=DataType.DT_HIFLOAT8)
+    if weight_quant_mode == 5 and weight_uq_qr_dtype == torch_npu.hifloat8:
+        weight_uq_qr = ge.Bitcast(weight_uq_qr, type=DataType.DT_HIFLOAT8)
+    if weight_quant_mode == 5 and weight_dkv_kr_dtype == torch_npu.hifloat8:
+        weight_dkv_kr = ge.Bitcast(weight_dkv_kr, type=DataType.DT_HIFLOAT8)
+    if weight_quant_mode == 5 and kv_cache_dtype == torch_npu.hifloat8:
+        kv_cache = ge.Bitcast(kv_cache, type=DataType.DT_HIFLOAT8)
+
     kv_cache_copy = ge.TensorMove(kv_cache)
     kr_cache_copy = ge.TensorMove(kr_cache)
     (
@@ -382,6 +405,13 @@ def conveter_npu_mla_prolog_v3_functional(
         qc_qr_scale=qc_qr_scale,
         kc_scale=kc_scale
     )
+    if weight_quant_mode == 5 and kv_cache_quant_mode == 1 and token_x_dtype == torch_npu.hifloat8:
+        query.desc.dtype = torch_dtype_value_to_ge_proto_type(torch_npu.hifloat8)
+        kv_cache_out.desc.dtype = torch_dtype_value_to_ge_proto_type(torch_npu.hifloat8)
+    elif weight_quant_mode == 5 and kv_cache_quant_mode == 3 and token_x_dtype == torch_npu.hifloat8:
+        kv_cache_out.desc.dtype = torch_dtype_value_to_ge_proto_type(torch_npu.hifloat8)
+    if token_x_dtype == torch_npu.hifloat8 and query_norm_flag:
+        query_norm.desc.dtype = torch_dtype_value_to_ge_proto_type(torch_npu.hifloat8)
     return (
         query,
         query_rope,

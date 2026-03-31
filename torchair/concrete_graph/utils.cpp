@@ -260,6 +260,7 @@ Status AtDtypeToGeDtype(const c10::ScalarType &dtype, ge::DataType &ge_dtype) {
     ATEN2GE_MAP_TYPE(c10::ScalarType::ComplexDouble, ge::DataType::DT_COMPLEX128);
     ATEN2GE_MAP_TYPE(c10::ScalarType::Float8_e5m2, ge::DataType::DT_FLOAT8_E5M2);
     ATEN2GE_MAP_TYPE(c10::ScalarType::Float8_e4m3fn, ge::DataType::DT_FLOAT8_E4M3FN);
+    ATEN2GE_MAP_TYPE(c10::ScalarType::Float8_e8m0fnu, ge::DataType::DT_FLOAT8_E8M0);
     default:
       return Status::Error("Unsupported torch type %d by ge", dtype);
   }
