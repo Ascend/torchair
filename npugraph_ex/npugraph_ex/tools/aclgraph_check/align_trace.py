@@ -21,7 +21,7 @@ align_trace.py - 对 NPU Chrome Tracing JSON 进行时间对齐，生成可在 C
   - 同列重叠 = 并发执行（但由于 stream 内串行，实际上同 stream 不重叠）
 
 ================================================================================
-主要处理步骤（align_trace 函数）
+主要处理步骤（_align_trace 函数）
 ================================================================================
 
 Step 1  修正 EVENT_RESET 的 dur 为 0.2（标准化控制事件长度）
@@ -55,7 +55,7 @@ Step 6  清洗算子名称：
         控制类算子（EVENT_RECORD_ 等）不做清洗，保留完整 handle 数字。
 
 ================================================================================
-validate_alignment 函数
+_validate_alignment 函数
 ================================================================================
 
 对齐完成后校验：
@@ -67,7 +67,7 @@ validate_alignment 函数
 虚拟 stream 合并（内置前处理）
 ================================================================================
 
-本脚本在 align 之前自动调用 merge_stream_active()，将所有虚拟 stream（通过
+本脚本在 align 之前自动调用 _merge_stream_active()，将所有虚拟 stream（通过
 STREAM_ACTIVE 激活的 stream）合并到宿主 stream，可通过 --merge-gap 控制合并时的时间间隙（默认 0.0）。
 
 ================================================================================
@@ -84,13 +84,13 @@ python align_trace.py graph_2.json -o graph_2.aligned.json
 python align_trace.py graph_2.json --merge-gap 5.0
 
 # 在代码中调用（需手动先做 merge）
-from align_trace import align_trace, validate_alignment, merge_stream_active
+from align_trace import _align_trace, _validate_alignment, _merge_stream_active
 import json
 
 events = json.load(open("graph_2.json"))
-events, moved = merge_stream_active(events, gap=0.0)
-aligned, same_tid_pairs, skipped_pairs = align_trace(events)
-validate_alignment(aligned, same_tid_pairs, skipped_pairs)
+events, moved = _merge_stream_active(events, gap=0.0)
+aligned, same_tid_pairs, skipped_pairs = _align_trace(events)
+_validate_alignment(aligned, same_tid_pairs, skipped_pairs)
 json.dump(aligned, open("out.aligned.json", "w"), indent=2)
 
 ================================================================================
@@ -121,12 +121,12 @@ from pathlib import Path
 # 虚拟 stream 合并（内置前处理，align 前自动执行）
 # ---------------------------------------------------------------------------
 
-def stream_id_to_tid(stream_id):
+def _stream_id_to_tid(stream_id):
     """将数字 stream id 转换为 tid 字符串，如 315 -> 'stream315'"""
     return f"stream{stream_id}"
 
 
-def tid_to_stream_id(tid):
+def _tid_to_stream_id(tid):
     """将 tid 字符串转换为数字 stream id，如 'stream315' -> 315；无法解析返回 None"""
     if tid.startswith("stream"):
         try:
@@ -136,7 +136,7 @@ def tid_to_stream_id(tid):
     return None
 
 
-def merge_stream_active(events, gap=0.0):
+def _merge_stream_active(events, gap=0.0):
     """
     合并被 STREAM_ACTIVE 标记的虚拟 stream 到宿主 stream（in-place 修改）。
 
@@ -175,7 +175,7 @@ def merge_stream_active(events, gap=0.0):
         active_id = args.get("Active Stream Id")
         if active_id is None:
             continue
-        source_tid = stream_id_to_tid(active_id)
+        source_tid = _stream_id_to_tid(active_id)
         target_tid = ev.get("tid")
         if not target_tid or source_tid == target_tid:
             continue
@@ -188,7 +188,7 @@ def merge_stream_active(events, gap=0.0):
         target_end = max(e.get("ts", 0) + e.get("dur", 0) for e in target_evs) if target_evs else 0
         source_min = min(e.get("ts", 0) for e in source_evs)
         offset = (target_end + gap) - source_min
-        target_stream_id = tid_to_stream_id(target_tid)
+        target_stream_id = _tid_to_stream_id(target_tid)
         for e in source_evs:
             e["ts"] = e.get("ts", 0) + offset
             e["tid"] = target_tid
@@ -246,7 +246,7 @@ def _clean_name(name: str) -> str:
     return "_".join(new_parts) if new_parts else name
 
 
-def align_trace(events):
+def _align_trace(events):
     """
     对 events 列表进行时间对齐，返回 (aligned_events, same_tid_pairs, skipped_pairs)。
 
@@ -333,7 +333,7 @@ def align_trace(events):
                 tid = wait["tid"]
                 start_pos = tid_pos[tid][w_idx]
                 indices = tid_indices[tid]
-                for idx in indices[start_pos + 1 :]:
+                for idx in indices[start_pos + 1:]:
                     events[idx]["ts"] += delta
                 changed = True
         if not changed:
@@ -422,7 +422,7 @@ def align_trace(events):
     return events, same_tid_pairs, skipped_pairs
 
 
-def validate_alignment(events, same_tid_pairs=None, skipped_pairs=None):
+def _validate_alignment(events, same_tid_pairs=None, skipped_pairs=None):
     import math
     if same_tid_pairs is None:
         same_tid_pairs = []
@@ -540,14 +540,14 @@ def main():
         events = json.load(f)
 
     # Merge virtual streams before alignment
-    events, moved = merge_stream_active(events, gap=args.merge_gap)
+    events, moved = _merge_stream_active(events, gap=args.merge_gap)
     if moved:
         print("Merged streams:")
         for src, dst in moved:
             print(f"  {src} -> {dst}")
 
-    aligned, same_tid_pairs, skipped_pairs = align_trace(events)
-    mismatches = validate_alignment(aligned, same_tid_pairs, skipped_pairs)
+    aligned, same_tid_pairs, skipped_pairs = _align_trace(events)
+    mismatches = _validate_alignment(aligned, same_tid_pairs, skipped_pairs)
     if mismatches:
         preview = "\n".join(
             f"{cid} record_end={r_end} wait_end={w_end}"

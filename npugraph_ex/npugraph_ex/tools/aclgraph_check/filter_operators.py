@@ -33,7 +33,7 @@ schemMode≠1 的通信算子无需纳入死锁检测，通常不应出现，值
 虚拟 stream 合并（内置前处理）
 ================================================================================
 
-本脚本在过滤之前自动调用 merge_stream_active()，将所有虚拟 stream（通过
+本脚本在过滤之前自动调用 _merge_stream_active()，将所有虚拟 stream（通过
 STREAM_ACTIVE 激活的 stream）合并到宿主 stream，可通过 --merge-gap 控制合并时的时间间隙（默认 0.0）。
 
 ================================================================================
@@ -85,12 +85,12 @@ from collections import defaultdict
 # 虚拟 stream 合并（内置前处理，过滤前自动执行）
 # ---------------------------------------------------------------------------
 
-def stream_id_to_tid(stream_id):
+def _stream_id_to_tid(stream_id):
     """将数字 stream id 转换为 tid 字符串，如 315 -> 'stream315'"""
     return f"stream{stream_id}"
 
 
-def tid_to_stream_id(tid):
+def _tid_to_stream_id(tid):
     """将 tid 字符串转换为数字 stream id，如 'stream315' -> 315；无法解析返回 None"""
     if tid.startswith("stream"):
         try:
@@ -100,7 +100,7 @@ def tid_to_stream_id(tid):
     return None
 
 
-def merge_stream_active(events, gap=0.0):
+def _merge_stream_active(events, gap=0.0):
     """
     合并被 STREAM_ACTIVE 标记的虚拟 stream 到宿主 stream（in-place 修改）。
 
@@ -138,7 +138,7 @@ def merge_stream_active(events, gap=0.0):
         active_id = args.get("Active Stream Id")
         if active_id is None:
             continue
-        source_tid = stream_id_to_tid(active_id)
+        source_tid = _stream_id_to_tid(active_id)
         target_tid = ev.get("tid")
         if not target_tid or source_tid == target_tid:
             continue
@@ -151,7 +151,7 @@ def merge_stream_active(events, gap=0.0):
         target_end = max(e.get("ts", 0) + e.get("dur", 0) for e in target_evs) if target_evs else 0
         source_min = min(e.get("ts", 0) for e in source_evs)
         offset = (target_end + gap) - source_min
-        target_stream_id = tid_to_stream_id(target_tid)
+        target_stream_id = _tid_to_stream_id(target_tid)
         for e in source_evs:
             e["ts"] = e.get("ts", 0) + offset
             e["tid"] = target_tid
@@ -166,7 +166,7 @@ def merge_stream_active(events, gap=0.0):
     return events, moved
 
 
-def classify_operator(name: str) -> str | None:
+def _classify_operator(name: str) -> str | None:
     """
     根据算子 name 判断类型。
     返回 "control_record" / "control_wait" / "communication" / None(不保留)
@@ -193,13 +193,13 @@ def classify_operator(name: str) -> str | None:
     return None
 
 
-def filter_operators(input_path: str, output_path: str, merge_gap: float = 0.0):
+def _filter_operators(input_path: str, output_path: str, merge_gap: float = 0.0):
     """读取原始 JSON，合并虚拟 stream，过滤后输出到新文件。"""
     with open(input_path, "r", encoding="utf-8") as f:
         tasks = json.load(f)
 
     # 合并虚拟 stream（过滤前执行）
-    tasks, moved = merge_stream_active(tasks, gap=merge_gap)
+    tasks, moved = _merge_stream_active(tasks, gap=merge_gap)
     if moved:
         print("合并虚拟 stream:")
         for src, dst in moved:
@@ -215,7 +215,7 @@ def filter_operators(input_path: str, output_path: str, merge_gap: float = 0.0):
     for task in tasks:
         name = task.get("name", "")
         stream = task.get("tid", "unknown")
-        op_type = classify_operator(name)
+        op_type = _classify_operator(name)
 
         if op_type is not None:
             filtered.append(task)
@@ -273,7 +273,7 @@ def filter_comm_ops(input_path, output_path, merge_gap=0.0):
         base, ext = os.path.splitext(input_path)
         filtered_output_path = f"{base}_filtered{ext}"
 
-    return filter_operators(input_path, filtered_output_path, merge_gap=merge_gap)
+    return _filter_operators(input_path, filtered_output_path, merge_gap=merge_gap)
 
 
 if __name__ == "__main__":

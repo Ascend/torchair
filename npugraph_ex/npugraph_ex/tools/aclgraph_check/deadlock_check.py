@@ -126,7 +126,7 @@ NPU 中某些 stream 通过 STREAM_ACTIVE 机制被"激活"到宿主 stream 上�
 JSON 中这些 task 仍以独立 tid 记录。若不合并，死锁检测会因 stream 归属错误而产生
 漏报或误报。
 
-本脚本在检测前自动调用 merge_stream_active()，将所有虚拟 stream 合并到宿主 stream，
+本脚本在检测前自动调用 _merge_stream_active()，将所有虚拟 stream 合并到宿主 stream，
 无需用户手动执行额外步骤。可通过 --merge-gap 控制合并时的时间间隙（默认 0.0）。
 
 ================================================================================
@@ -165,12 +165,12 @@ from collections import defaultdict
 # 虚拟 stream 合并（内置前处理，检测前自动执行）
 # ---------------------------------------------------------------------------
 
-def stream_id_to_tid(stream_id):
+def _stream_id_to_tid(stream_id):
     """将数字 stream id 转换为 tid 字符串，如 315 -> 'stream315'"""
     return f"stream{stream_id}"
 
 
-def tid_to_stream_id(tid):
+def _tid_to_stream_id(tid):
     """将 tid 字符串转换为数字 stream id，如 'stream315' -> 315；无法解析返回 None"""
     if tid.startswith("stream"):
         try:
@@ -180,7 +180,7 @@ def tid_to_stream_id(tid):
     return None
 
 
-def merge_stream_active(events, gap=0.0):
+def _merge_stream_active(events, gap=0.0):
     """
     合并被 STREAM_ACTIVE 标记的虚拟 stream 到宿主 stream（in-place 修改）。
 
@@ -221,7 +221,7 @@ def merge_stream_active(events, gap=0.0):
         active_id = args.get("Active Stream Id")
         if active_id is None:
             continue
-        source_tid = stream_id_to_tid(active_id)
+        source_tid = _stream_id_to_tid(active_id)
         target_tid = ev.get("tid")
         if not target_tid or source_tid == target_tid:
             continue
@@ -236,7 +236,7 @@ def merge_stream_active(events, gap=0.0):
         source_min = min(e.get("ts", 0) for e in source_evs)
         offset = (target_end + gap) - source_min
         # 修改 source 所有 event 的 ts、tid、Stream Id
-        target_stream_id = tid_to_stream_id(target_tid)
+        target_stream_id = _tid_to_stream_id(target_tid)
         for e in source_evs:
             e["ts"] = e.get("ts", 0) + offset
             e["tid"] = target_tid
@@ -255,13 +255,13 @@ def merge_stream_active(events, gap=0.0):
 # Task classification helpers
 # ---------------------------------------------------------------------------
 
-def is_comm_task(name: str) -> bool:
+def _is_comm_task(name: str) -> bool:
     """Return True if the task name indicates a communication operator."""
     lower = name.lower()
     return "aiv_" in lower or "dispatch" in lower or "combine" in lower
 
 
-def calc_aivec(task: dict) -> int:
+def _calc_aivec(task: dict) -> int:
     """
     Calculate the number of AIVEC cores occupied by a task.
 
@@ -287,7 +287,7 @@ def calc_aivec(task: dict) -> int:
     return 0
 
 
-def get_sync_handle(name: str):
+def _get_sync_handle(name: str):
     """
     Extract the numeric handle from a sync task name.
     E.g. 'EVENT_RECORD_20622287575192' -> 20622287575192
@@ -308,11 +308,11 @@ def get_sync_handle(name: str):
     return None
 
 
-def is_record_event(name: str) -> bool:
+def _is_record_event(name: str) -> bool:
     return name.startswith("EVENT_RECORD_") or name.startswith("MEM_WRITE_VALUE_")
 
 
-def is_wait_event(name: str) -> bool:
+def _is_wait_event(name: str) -> bool:
     return name.startswith("EVENT_WAIT_") or name.startswith("MEM_WAIT_VALUE_")
 
 
@@ -320,7 +320,7 @@ def is_wait_event(name: str) -> bool:
 # Core algorithm
 # ---------------------------------------------------------------------------
 
-def build_stream_tasks(data: list) -> dict:
+def _build_stream_tasks(data: list) -> dict:
     """
     Return {tid: [task, ...]} where tasks are ph='X' events sorted by Task Id.
     """
@@ -333,7 +333,7 @@ def build_stream_tasks(data: list) -> dict:
     return dict(stream_tasks)
 
 
-def build_sync_pairs(stream_tasks: dict) -> dict:
+def _build_sync_pairs(stream_tasks: dict) -> dict:
     """
     Build a mapping from event handle to (record_stream, record_idx, wait_stream, wait_idx).
 
@@ -350,12 +350,12 @@ def build_sync_pairs(stream_tasks: dict) -> dict:
     for tid, tasks in stream_tasks.items():
         for idx, task in enumerate(tasks):
             name = task["name"]
-            handle = get_sync_handle(name)
+            handle = _get_sync_handle(name)
             if handle is None:
                 continue
-            if is_record_event(name):
+            if _is_record_event(name):
                 record_map[handle] = (tid, idx)
-            elif is_wait_event(name):
+            elif _is_wait_event(name):
                 wait_map[handle] = (tid, idx)
 
     pairs = {}
@@ -367,7 +367,7 @@ def build_sync_pairs(stream_tasks: dict) -> dict:
     return pairs
 
 
-def compute_vector_clocks(stream_tasks: dict, sync_pairs: dict) -> dict:
+def _compute_vector_clocks(stream_tasks: dict, sync_pairs: dict) -> dict:
     """
     Compute a vector clock for every task position on every stream.
 
@@ -427,7 +427,7 @@ def compute_vector_clocks(stream_tasks: dict, sync_pairs: dict) -> dict:
 
                 # 2. At WAIT events, merge from the matching RECORD task's clock
                 task_name = tasks[pos]["name"]
-                if is_wait_event(task_name):
+                if _is_wait_event(task_name):
                     key = (s, pos)
                     if key in wait_to_record:
                         rec_s, rec_i = wait_to_record[key]
@@ -440,7 +440,7 @@ def compute_vector_clocks(stream_tasks: dict, sync_pairs: dict) -> dict:
     return vc, stream_index
 
 
-def are_concurrent(vc, stream_index, stream_a, pos_a, stream_b, pos_b) -> bool:
+def _are_concurrent(vc, stream_index, stream_a, pos_a, stream_b, pos_b) -> bool:
     """
     Return True if task (stream_a, pos_a) and (stream_b, pos_b) are concurrent,
     i.e. neither happens-before the other.
@@ -457,7 +457,7 @@ def are_concurrent(vc, stream_index, stream_a, pos_a, stream_b, pos_b) -> bool:
     return not a_after_b and not b_after_a
 
 
-def find_deadlock_tasks(stream_tasks: dict, vc: dict, stream_index: dict,
+def _find_deadlock_tasks(stream_tasks: dict, vc: dict, stream_index: dict,
                         aivec_total: int) -> list:
     """
     Find all pairs of concurrent communication tasks (schemMode=1) from different
@@ -475,9 +475,9 @@ def find_deadlock_tasks(stream_tasks: dict, vc: dict, stream_index: dict,
             args = task.get("args", {})
             if args.get("schemMode") != 1:
                 continue
-            if not is_comm_task(task["name"]):
+            if not _is_comm_task(task["name"]):
                 continue
-            aivec = calc_aivec(task)
+            aivec = _calc_aivec(task)
             if aivec <= 0:
                 continue
             cands.append((pos, task, aivec))
@@ -491,7 +491,7 @@ def find_deadlock_tasks(stream_tasks: dict, vc: dict, stream_index: dict,
                 for pos_b, task_b, aivec_b in candidates[s_b]:
                     if aivec_a + aivec_b <= aivec_total:
                         continue
-                    if are_concurrent(vc, stream_index, s_a, pos_a, s_b, pos_b):
+                    if _are_concurrent(vc, stream_index, s_a, pos_a, s_b, pos_b):
                         deadlock_pairs.append((task_a, task_b))
 
     return deadlock_pairs
@@ -501,7 +501,7 @@ def find_deadlock_tasks(stream_tasks: dict, vc: dict, stream_index: dict,
 # Output helpers
 # ---------------------------------------------------------------------------
 
-def mark_deadlock_tasks(data: list, deadlock_tasks: set) -> list:
+def _mark_deadlock_tasks(data: list, deadlock_tasks: set) -> list:
     """
     Return a new list where tasks in deadlock_tasks have:
       - dur set to 49.5
@@ -536,32 +536,32 @@ def deadlock_check(input_path, output_path, aivec_total, merge_gap=0.0):
         data = json.load(f)
 
     # Merge virtual streams (prerequisite for correct deadlock detection)
-    data, moved = merge_stream_active(data, gap=merge_gap)
+    data, moved = _merge_stream_active(data, gap=merge_gap)
     if moved:
         for src, dst in moved:
             print(f"[INFO] Merged stream: {src} -> {dst}", file=sys.stderr)
 
     # Build per-stream task lists
-    stream_tasks = build_stream_tasks(data)
+    stream_tasks = _build_stream_tasks(data)
     print(
         f"[INFO] Streams found: {sorted(stream_tasks.keys())}",
         file=sys.stderr,
     )
 
     # Build sync pairs
-    sync_pairs = build_sync_pairs(stream_tasks)
+    sync_pairs = _build_sync_pairs(stream_tasks)
     print(f"[INFO] Sync pairs found: {len(sync_pairs)}", file=sys.stderr)
 
     # Compute vector clocks
     print("[INFO] Computing vector clocks ...", file=sys.stderr)
-    vc, stream_index = compute_vector_clocks(stream_tasks, sync_pairs)
+    vc, stream_index = _compute_vector_clocks(stream_tasks, sync_pairs)
 
     # Find deadlock pairs
     print(
         f"[INFO] Checking for AIVEC deadlocks (total={aivec_total}) ...",
         file=sys.stderr,
     )
-    deadlock_pairs = find_deadlock_tasks(
+    deadlock_pairs = _find_deadlock_tasks(
         stream_tasks, vc, stream_index, aivec_total
     )
 
@@ -575,8 +575,8 @@ def deadlock_check(input_path, output_path, aivec_total, merge_gap=0.0):
 
     print(f"\n[RESULT] Deadlock risk detected! {len(deadlock_pairs)} conflicting pair(s):\n")
     for task_a, task_b in deadlock_pairs:
-        aivec_a = calc_aivec(task_a)
-        aivec_b = calc_aivec(task_b)
+        aivec_a = _calc_aivec(task_a)
+        aivec_b = _calc_aivec(task_b)
         tid_a = task_a["tid"]
         tid_b = task_b["tid"]
         task_id_a = task_a["args"].get("Task Id")
@@ -607,7 +607,7 @@ def deadlock_check(input_path, output_path, aivec_total, merge_gap=0.0):
         base, ext = os.path.splitext(input_path)
         output_path = f"{base}_deadlock_check{ext}"
     
-    out_data = mark_deadlock_tasks(data, deadlock_task_keys)
+    out_data = _mark_deadlock_tasks(data, deadlock_task_keys)
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(out_data, f, indent=2, ensure_ascii=False)
     print(f"\n[INFO] Output written to {output_path}", file=sys.stderr)
