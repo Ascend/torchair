@@ -64,6 +64,7 @@ class UpdatedNodeInfo:
         kwargs (Any): Keyword arguments passed to the update function.
         handle (Any): Handle to the graph task group.
         event (Any): Event signaling completion of the update.
+        core (Any): Stream core configuration information.
         updated_param_index (Optional[List[str]]): Indices of parameters being updated.
     """
     node_name: str
@@ -73,6 +74,7 @@ class UpdatedNodeInfo:
     kwargs: Any
     handle: Any
     event: Any
+    core: Any
     updated_param_index: Optional[List[str]] = None
 
 
@@ -554,6 +556,11 @@ class CapturedGraphUpdateAndReplay(nn.Module):
         with torch.npu.stream(self.__class__._update_stream):
             self.__class__._update_stream.wait_event(self._event_for_update_replay)
             for node_info in self._updated_node_infos:
+                torch.npu.set_stream_limit(
+                    self.__class__._update_stream,
+                    node_info.core['cube_core_num'],
+                    node_info.core['vector_core_num']
+                )
                 torch.npu.graph_task_update_begin(self.__class__._update_stream, node_info.handle)
                 node_kwargs = dict(node_info.kwargs)
                 for key in node_info.updated_param_name:

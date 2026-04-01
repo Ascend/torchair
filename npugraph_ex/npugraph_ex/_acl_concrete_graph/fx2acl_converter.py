@@ -754,7 +754,8 @@ class AclConcreteGraph(ConcreteGraphBase):
                         args=node_args,
                         kwargs=node_kwargs,
                         handle=handle_{node.name},
-                        event=external_event_{node.name})
+                        event=external_event_{node.name},
+                        core=torch.npu.get_stream_limit(torch.npu.current_stream()))
                     )
 
                 ''')
