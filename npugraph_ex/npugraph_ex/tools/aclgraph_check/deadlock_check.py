@@ -158,7 +158,7 @@ import json
 import argparse
 import re
 import sys
-from collections import defaultdict
+from collections import defaultdict as _defaultdict
 
 
 # ---------------------------------------------------------------------------
@@ -324,7 +324,7 @@ def _build_stream_tasks(data: list) -> dict:
     """
     Return {tid: [task, ...]} where tasks are ph='X' events sorted by Task Id.
     """
-    stream_tasks = defaultdict(list)
+    stream_tasks = _defaultdict(list)
     for item in data:
         if item.get("ph") == "X" and "tid" in item and "args" in item:
             stream_tasks[item["tid"]].append(item)
