@@ -2,7 +2,7 @@
 
 ## 功能简介
 
-用户可通过自定义图优化Pass，将其注册到TorchAir中，达到修改PyTorch FX图的目的。
+用户可通过自定义图优化Pass，将其注册到npugraph\_ex中，达到修改PyTorch FX图的目的。
 
 ## 使用约束
 
@@ -13,7 +13,7 @@
 
 ## 使用说明
 
-TorchAir约定FX Pass的函数签名如下：
+npugraph\_ex约定FX Pass的函数签名如下：
 
 ```python
 def _(gm, example_inputs, config) -> None
@@ -22,7 +22,7 @@ def _(gm, example_inputs, config) -> None
 - def \(gm, exampleinputs, config\) -\> None
 - gm：表示AOT（Ahead-of-Time）编译后的GraphModule类对象，gm.graph为其FX图。
 - example\_inputs：表示AOT（Ahead-of-Time）编译后的GraphModule对象的FakeTensor类型输入，通常不需要使用。
-- config：表示TorchAir编译后端创建的编译配置类对象，用于Pass感知完整编译选项。
+- config：表示npugraph\_ex创建的编译配置类对象，用于Pass感知完整编译选项。
 
 FX Pass原地修改gm对象，任何返回值都会被忽略。对于无法处理的异常情况，应当抛出异常。需要确保不抛出异常时，处理后的FX图是正确的：即其执行结果与修改前的FX图完全一致。
 
@@ -74,7 +74,7 @@ class Model(torch.nn.Module):
 
     该Pass的功能是在torch.ops.aten.mm.default和torch.ops.aten.abs.default节点前后分别插入torch.ops.air.scope\_enter.default和torch.ops.air.scope\_exit.default节点，使得指定范围内的节点在流“stream\_1”上执行。并在torch.ops.aten.abs.default节点后插入torch.ops.air.record.default节点，在torch.ops.aten.sub.Tensor节点前插入torch.ops.air.wait.default节点，使得控制时序让sub算子在abs算子之后执行。
 
-2. 将自定义Pass注册到TorchAir使其生效。
+2. 将自定义Pass注册到npugraph\_ex使其生效。
 
     开启post\_grad\_custom\_pre\_pass和post\_grad\_custom\_post\_pass两个阶段的自定义Pass注册，开启示例如下：
 
@@ -82,8 +82,8 @@ class Model(torch.nn.Module):
 
     |参数名|说明|
     |--|--|
-    |post_grad_custom_pre_pass|TorchAir本身内置了部分FX图优化Pass，该配置控制自定义FX Pass在内置Pass执行前生效。传入自定义Pass函数。|
-    |post_grad_custom_post_pass|TorchAir本身内置了部分FX图优化Pass，该配置控制自定义FX Pass在内置Pass执行后生效。传入自定义Pass函数。|
+    |post_grad_custom_pre_pass|npugraph\_ex本身内置了部分FX图优化Pass，该配置控制自定义FX Pass在内置Pass执行前生效。传入自定义Pass函数。|
+    |post_grad_custom_post_pass|npugraph\_ex本身内置了部分FX图优化Pass，该配置控制自定义FX Pass在内置Pass执行后生效。传入自定义Pass函数。|
 
     ```python
     import torch

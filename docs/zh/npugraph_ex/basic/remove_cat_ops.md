@@ -2,7 +2,7 @@
 
 ## 功能简介
 
-图模式场景下，当计算图中存在 \[torch.cat\]\(<https://pytorch.org/docs/stable/generated/torch.cat.html>)（对应 \`torch.ops.aten.cat.default\`）时，TorchAir 内部会通过 Cat 算子消除 Pass 将其替换为「预分配输出张量 + slice + 原地写入」的模式，以减少内存拷贝和临时张量分配，提升执行性能。默认情况下，本功能处于开启状态。
+图模式场景下，当计算图中存在 \[torch.cat\]\(<https://pytorch.org/docs/stable/generated/torch.cat.html>)（对应 \`torch.ops.aten.cat.default\`）时，npugraph\_ex 内部会通过 Cat 算子消除 Pass 将其替换为「预分配输出张量 + slice + 原地写入」的模式，以减少内存拷贝和临时张量分配，提升执行性能。默认情况下，本功能处于开启状态。
 
 ## 使用约束
 

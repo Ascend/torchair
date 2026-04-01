@@ -35,7 +35,6 @@ TorchAir在Ascend Extension for PyTorch（torch\_npu）中的位置如[图1](#fi
 
 - **整体约束**：PyTorch图模式支持单进程和多进程，每个进程**只支持使用1张NPU卡**，不支持使用多张NPU卡。
 - **npugraph\_ex后端功能约束**：
-    - 当前npugraph\_ex后端提供的功能均为**试验特性**，后续版本可能存在变更，**暂不支持应用于商用产品中。**
     - 主要面向在线推理场景，暂不支持反向流程Capture成图、随机数算子Capture。
     - npugraph\_ex与torch.cuda.CUDAGraph原生接口（参见《PyTorch 原生API支持度》中的“torch.cuda”）功能类似，约束与其保持一致（如不支持stream sync、动态控制流等），此处不再赘述。
 

@@ -13,7 +13,7 @@
 
 |信息类型|说明|
 |--|--|
-|日志信息|PyTorch原生Dynamo日志<br>TorchAir Python层日志|
+|日志信息|PyTorch原生Dynamo日志<br>npugraph\_ex 日志|
 |Debug信息|AOT前的GraphModule<br>AOT后的GraphModule<br>每个公共Pass处理后的FX图（txt文件）<br>aclgraph优化中不同Pass处理后的FX图（txt文件）<br>aclgraph编译后的FX图结构信息（output_code.py文件）<br>aclgraph在Capture阶段捕获的算子执行图信息（*.json文件）<br>注意：仅当配套的CANN版本是8.5.0及之后的版本，才会有该文件生成，否则不会生成。|
 
 ## 使用约束
@@ -58,7 +58,7 @@ python main.py
     ```txt
     torch_compile_debug/run_<时间>-pid_<进程号>
     ├── torchair
-    │   ├── debug.log                                                 # TorchAir Python层日志
+    │   ├── debug.log                                                 # npugraph\_ex日志
     │   ├── model__0                                                  # model__0为模型ID
     │   │   ├── forward                                               # 前向推理
     │   │   │   ├── output_code.py                                    # 编译后的图结构文件
