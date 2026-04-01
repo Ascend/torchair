@@ -511,28 +511,9 @@ def _validate_alignment(events, same_tid_pairs=None, skipped_pairs=None):
     return mismatches
 
 
-def main():
-    import argparse
-
-    parser = argparse.ArgumentParser(
-        description="Align trace control tasks and clean task names."
-    )
-    parser.add_argument("input", help="input trace json path")
-    parser.add_argument(
-        "-o",
-        "--output",
-        help="output json path (default: input with .aligned suffix)",
-    )
-    parser.add_argument(
-        "--merge-gap",
-        type=float,
-        default=0.0,
-        help="time gap inserted when merging virtual streams (default: 0.0)",
-    )
-    args = parser.parse_args()
-
-    in_path = _Path(args.input)
-    out_path = _Path(args.output) if args.output else in_path.with_suffix(
+def align_trace_json(input, output, merge_gap=0.0):
+    in_path = _Path(input)
+    out_path = _Path(output) if output else in_path.with_suffix(
         in_path.suffix.replace(".json", "") + ".aligned.json"
     )
 
@@ -540,7 +521,7 @@ def main():
         events = json.load(f)
 
     # Merge virtual streams before alignment
-    events, moved = _merge_stream_active(events, gap=args.merge_gap)
+    events, moved = _merge_stream_active(events, gap=merge_gap)
     if moved:
         print("Merged streams:")
         for src, dst in moved:
@@ -572,4 +553,22 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Align trace control tasks and clean task names."
+    )
+    parser.add_argument("input", help="input trace json path")
+    parser.add_argument(
+        "-o",
+        "--output",
+        help="output json path (default: input with .aligned suffix)",
+    )
+    parser.add_argument(
+        "--merge-gap",
+        type=float,
+        default=0.0,
+        help="time gap inserted when merging virtual streams (default: 0.0)",
+    )
+    args = parser.parse_args()
+    align_trace_json(args.input, args.output, args.merge_gap)
