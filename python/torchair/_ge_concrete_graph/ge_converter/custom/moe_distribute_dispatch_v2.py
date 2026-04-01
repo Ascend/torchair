@@ -44,8 +44,16 @@ def convert_npu_moe_distribute_dispatch_v2(
         expand_scales: Tensor
 
     if x_dtype is not None:
-        x = ge.Bitcast(x, type=torch_dtype_value_to_ge_type(x_dtype))
+        if x_dtype == 296 or x_dtype == 297:
+            const_x = ge.Const([1] * (x.rank - 1) + [2])
+            shape_x = ge.Shape(x)
+            shape_x = ge.Mul(shape_x, const_x)
+            x = ge.Bitcast(x, type=torch_dtype_value_to_ge_type(x_dtype))
+            x = ge.Reshape(x, shape_x)
+        else:
+            x = ge.Bitcast(x, type=torch_dtype_value_to_ge_type(x_dtype))
         x.desc.dtype = torch_dtype_value_to_ge_proto_type(x_dtype)
+
     if scales_dtype is not None:
         scales = ge.Bitcast(scales, type=torch_dtype_value_to_ge_type(scales_dtype))
         scales.desc.dtype = torch_dtype_value_to_ge_proto_type(scales_dtype)
@@ -53,7 +61,7 @@ def convert_npu_moe_distribute_dispatch_v2(
     expand_x_dtype = DataType.DT_INT8
     if quant_mode == 0:
         expand_x_dtype = x.dtype
-    elif y_dtype is not None:
+    if y_dtype is not None:
         expand_x_dtype = torch_dtype_value_to_ge_type(y_dtype)
 
     (expand_x, dynamic_scales, expand_idx, expert_token_nums, ep_recv_count, tp_recv_count, expand_scales) = \
@@ -83,14 +91,25 @@ def convert_npu_moe_distribute_dispatch_v2(
                                    const_expert_num=const_expert_num,
                                    y_dtype=expand_x_dtype)
 
-    expand_x.desc.dtype = ge_dtype_to_ge_proto_dtype(expand_x_dtype)
+    if y_dtype == 296 or y_dtype == 297:
+        div_x2 = ge.Cast(ge.Const([1] + [2]), dst_type=DataType.DT_INT32)
+        y_shape_int4 = ge.Shape(expand_x)
+        y_shape_uint8 = ge.Div(y_shape_int4, div_x2)
+        y_shape_int4_2bit = ge.ConcatV2([y_shape_uint8, ge.Cast(ge.Const([2]), dst_type=DataType.DT_INT32)],
+                                        concat_dim=0, N=2)
+        expand_x = ge.Bitcast(ge.Reshape(expand_x, y_shape_int4_2bit), type=DataType.DT_UINT8)
+        expand_x = ge.Reshape(expand_x, y_shape_uint8)
+    else:
+        expand_x.desc.dtype = ge_dtype_to_ge_proto_dtype(expand_x_dtype)
 
-    dynamic_scales_dtype = DataType.DT_FLOAT
-    if quant_mode == 0:
-        if x.dtype not in (DataType.DT_FLOAT16, DataType.DT_BF16) and scales is not None:
-            dynamic_scales_dtype = scales.dtype
+    if (quant_mode == 0) and (x.dtype not in (DataType.DT_FLOAT16, DataType.DT_BF16) and scales is not None):
+        dynamic_scales.desc.dtype = scales.desc.dtype
     elif quant_mode == 4:
         dynamic_scales_dtype = DataType.DT_FLOAT8_E8M0
-    dynamic_scales.desc.dtype = ge_dtype_to_ge_proto_dtype(dynamic_scales_dtype)
+        dynamic_scales.desc.dtype = ge_dtype_to_ge_proto_dtype(dynamic_scales_dtype)
+    else:
+        dynamic_scales_dtype = DataType.DT_FLOAT
+        dynamic_scales.desc.dtype = ge_dtype_to_ge_proto_dtype(dynamic_scales_dtype)
+        
     dispatch_results = DispatchResults(expand_x, dynamic_scales, expand_idx, expert_token_nums, ep_recv_count, tp_recv_count, expand_scales)
     return dispatch_results
