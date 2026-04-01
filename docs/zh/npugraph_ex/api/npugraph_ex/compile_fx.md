@@ -18,7 +18,6 @@ compile_fx(gm, example_inputs=None, options=None)
 |example_inputs|输入|模型的示例输入。|
 |options|输入|模型编译的功能配置项。|
 
-
 ## 返回值说明
 
 返回编译后的可执行FX图对象。
@@ -31,7 +30,6 @@ compile_fx(gm, example_inputs=None, options=None)
 - [多流表达功能](../../advanced/multi_stream.md)
 - [AI-Core和Vector-Core限核功能](../../advanced/limit_cores.md)
 - [FX图优化Pass配置功能](../../basic/inplace_pass.md)的input_inplace_pass配置
-
 
 ## 调用示例
 

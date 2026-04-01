@@ -47,4 +47,3 @@ input1 = torch.ones(2, 2).npu()
 input2 = torch.ones(2, 2).npu()
 func(input1, input2)
 ```
-

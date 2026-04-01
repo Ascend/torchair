@@ -17,7 +17,6 @@ npu_wait_tensor(self: torch.Tensor, dependency: torch.Tensor)
 |self|输入|Tensor类型，表示等待算子的入参，即算子a（后执行）的任意一个输入Tensor。|
 |dependency|输入|Tensor类型，表示被等待算子的出参，即算子b（先执行）的任意一个输出Tensor。|
 
-
 ## 返回值说明
 
 返回self本身。
@@ -29,4 +28,3 @@ npu_wait_tensor(self: torch.Tensor, dependency: torch.Tensor)
 ## 调用示例
 
 参考[使用示例](../../features/advanced/multi_stream.md#使用示例)。
-

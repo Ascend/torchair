@@ -18,4 +18,3 @@ class CompilerConfig(NpuBaseConfig):
       
         super(CompilerConfig, self).__init__()
 ```
-

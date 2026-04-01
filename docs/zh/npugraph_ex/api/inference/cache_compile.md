@@ -23,28 +23,27 @@ cache_compile(func, *, dynamic: bool = True, cache_dir: Optional[str] = None, gl
 |options|输入| 优化选项，缺省值为None。支持的选项可参考[基础功能](../../quick_start.md#fig2)中所列举的各功能对应的配置选项。|
 |**kwargs|输入| 预留参数项，用于后续功能扩展。当前版本支持指定模型运行时使用的decomposition（将较大算子操作分解为小算子实现），通过custom_decompositions配置项实现。您可以参考调用示例的Add算子分解样例。|
 
-
 ## 返回值说明
 
 返回一个Callable对象。
 
 ## 约束说明
 
--   如果图中包含依赖随机数生成器（RNG）的算子（例如randn、bernoulli、dropout等），不支持使用本功能。
--   本功能与torch.compile原始方案相比多了如下限制：
-    -   缓存要与执行计算图一一对应，若重编译则缓存失效。
-    -   Guards阶段被跳过且不会触发JIT编译，要求生成模型的脚本和加载缓存的脚本一致。
-    -   CANN包跨版本缓存无法保证兼容性，如果版本升级，需要清理缓存目录并重新进行Ascend IR计算图编译生成缓存。
+- 如果图中包含依赖随机数生成器（RNG）的算子（例如randn、bernoulli、dropout等），不支持使用本功能。
+- 本功能与torch.compile原始方案相比多了如下限制：
+    - 缓存要与执行计算图一一对应，若重编译则缓存失效。
+    - Guards阶段被跳过且不会触发JIT编译，要求生成模型的脚本和加载缓存的脚本一致。
+    - CANN包跨版本缓存无法保证兼容性，如果版本升级，需要清理缓存目录并重新进行Ascend IR计算图编译生成缓存。
 
--   cache\_dir参数使用约束：
-    -   请确保该参数指定的路径真实存在，并且运行用户具有读取和写入权限。
-    -   若编译缓存的模型涉及多机多卡，缓存路径包含集合通信相关的world\_size以及global\_rank信息，缓存文件路径为`$\{work\_dir\}/$\{cache\_dir\}/$\{model\_info\}/world$\{world\_size\}global\_rank$\{global\_rank\}/$\{func\}/`。
-    -   $\{model\_info\}里会自动增加"aclgraphcache"关键词。
+- cache\_dir参数使用约束：
+    - 请确保该参数指定的路径真实存在，并且运行用户具有读取和写入权限。
+    - 若编译缓存的模型涉及多机多卡，缓存路径包含集合通信相关的world\_size以及global\_rank信息，缓存文件路径为`$\{work\_dir\}/$\{cache\_dir\}/$\{model\_info\}/world$\{world\_size\}global\_rank$\{global\_rank\}/$\{func\}/`。
+    - $\{model\_info\}里会自动增加"aclgraphcache"关键词。
 
 ## 调用示例
 
--   参考[模型编译缓存功能\>使用方法](../../advanced/compile_cache.md#使用方法)。
--   Add算子custom\_decompositions简单示例：
+- 参考[模型编译缓存功能\>使用方法](../../advanced/compile_cache.md#使用方法)。
+- Add算子custom\_decompositions简单示例：
 
     ```python
     # 注册算子分解函数
@@ -69,4 +68,3 @@ cache_compile(func, *, dynamic: bool = True, cache_dir: Optional[str] = None, gl
         def forward(self, tensor):
             return self.cached(tensor)
     ```
-

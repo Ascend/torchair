@@ -46,4 +46,3 @@ class DataType:
 from torchair.ge import DataType
 Cast(Tensor, dst_type=DataType.DT_BF16)
 ```
-

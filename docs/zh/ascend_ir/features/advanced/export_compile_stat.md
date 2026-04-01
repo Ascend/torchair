@@ -30,8 +30,6 @@ opt_model = torch.compile(model, backend=npu_backend)
 |--|--|
 |export_compile_stat|图编译过程中是否生成统计信息（当前包括图融合/UB融合结果信息），字符串类型。<br>0：关闭，不生成统计信息。<br>1：程序运行正常退出时生成统计信息。<br>2（默认值）：图编译完成时生成统计信息。|
 
-
 ## 产物说明
 
 开启本功能后，如果图编译执行中断，依然会有文件保存，默认在当前执行路径下生成fusion\_result.json，内容示例参见[产物说明](fusion_switch_file.md#产物说明)。
-

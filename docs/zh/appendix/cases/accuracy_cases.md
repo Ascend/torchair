@@ -33,7 +33,7 @@ MindStudio（msit工具包）推理工具链为开发者提供了一站式推理
 
 关键命令如下，此处仅为示例，请以开源仓的说明为准，全量参数介绍参见[精度比对命令完整参数](https://gitcode.com/Ascend/msit/blob/master/msit/docs/llm/%E5%B7%A5%E5%85%B7-%E5%A4%A7%E6%A8%A1%E5%9E%8B%E7%B2%BE%E5%BA%A6%E6%AF%94%E5%AF%B9.md#21-%E5%91%BD%E4%BB%A4%E8%A1%8C%E6%96%B9%E5%BC%8F)。
 
-```
+```bash
 msit llm compare -gp ${golden_data} -mp ${target_data} -o ${compare_result_dir}
 ```
 
@@ -44,7 +44,6 @@ msit llm compare -gp ${golden_data} -mp ${target_data} -o ${compare_result_dir}
 |-gp，--golden-path|指定标杆数据所在路径，支持单个数据文件路径或文件夹。|
 |-mp，--my-path|指定待比对的数据所在路径，即有精度问题的数据。支持单个数据文件路径或文件夹。|
 |-o，--output|指定比对结果保存路径。|
-
 
 借助msit工具进行图模式与Eager模式下模型精度差异比对的原理如下图所示，具体过程可参考[精度比对案例](#精度比对案例)。
 
@@ -57,47 +56,47 @@ msit llm compare -gp ${golden_data} -mp ${target_data} -o ${compare_result_dir}
 >**说明：** 
 >关于TorchAir图模式下FX图和GE图数据dump、compare等详细介绍，请参考[msit大模型推理精度工具](https://gitcode.com/Ascend/msit/tree/master/msit/docs/llm)，在“简介\>场景列表”中获取TorchAir场景-整网算子精度比对介绍。
 
-1.  环境准备，参考[安装](../../overview.md#安装)完成torch\_npu安装和依赖的软件安装。
-2.  安装msit工具包里llm组件（大模型推理精度工具）。
-    1.  首先安装msit工具。
+1. 环境准备，参考[安装](../../overview.md#安装)完成torch\_npu安装和依赖的软件安装。
+2. 安装msit工具包里llm组件（大模型推理精度工具）。
+    1. 首先安装msit工具。
 
         这里以源码安装为例，详细安装过程和命令介绍请参考[msit工具安装](https://gitcode.com/Ascend/msit/tree/master/msit/docs/install)。
 
-        ```
+        ```bash
         git clone https://gitcode.com/ascend/msit.git
         cd msit/msit
         pip install .
         ```
 
-    2.  下载llm组件包。
+    2. 下载llm组件包。
 
         使用msit download下载命令，--dest表示存放的指定目录。
 
-        ```
+        ```bash
         msit download llm --dest ${llm_dir}
         ```
 
-    3.  安装llm组件包。
+    3. 安装llm组件包。
 
         使用msit install安装命令，--find-links表示待安装的文件目录。
 
-        ```
+        ```bash
         msit install llm --find-links ${llm_dir}
         ```
 
-    4.  检查是否安装成功。
+    4. 检查是否安装成功。
 
         使用msit check命令检查安装结果，日志会提示“msit-llm”安装成功。
 
-        ```
+        ```bash
         msit check all
         ```
 
-3.  获取图模式下Ascend IR图dump数据。
+3. 获取图模式下Ascend IR图dump数据。
 
     以如下脚本为例，在torch.compile入图处使用msit提供的[get\_ge\_dump\_config接口](https://gitcode.com/Ascend/msit/blob/master/msit/docs/llm/TorchAir%E5%9C%BA%E6%99%AF-%E6%95%B4%E7%BD%91%E7%AE%97%E5%AD%90%E7%B2%BE%E5%BA%A6%E6%AF%94%E5%AF%B9.md#11-ge-%E8%9E%8D%E5%90%88%E6%A8%A1%E5%BC%8F-dump-%E6%95%B0%E6%8D%AE)获取Ascend IR图数据。
 
-    ```
+    ```python
     # 导包
     import torch, torch_npu, torchair 
     from msit_llm.dump import torchair_dump  
@@ -120,7 +119,7 @@ msit llm compare -gp ${golden_data} -mp ${target_data} -o ${compare_result_dir}
 
     配置后执行推理脚本，会在dump\_path指定目录下生成dump数据，目录样式如下：
 
-    ```
+    ```text
     |--${ge_dump_path}
        |--dump_${timestamp}
          |--${op_dump_timestamp}   // 图模式下dump的算子输入/输出信息文件夹，以时间戳命名
@@ -130,11 +129,11 @@ msit llm compare -gp ${golden_data} -mp ${target_data} -o ${compare_result_dir}
 
     dump的数据包括两部分，一部分是“图模式下dump的算子输入/输出信息”，文件介绍可参考[算子data dump功能](../../ascend_ir/features/advanced/data_dump.md)中“产物说明”；另一部分是“图模式下dump的图结构信息”，文件介绍可参考[图结构dump功能](../../ascend_ir/features/basic/graph_dump.md)中的产物说明”。
 
-4.  获取Eager模式下FX图dump数据。
+4. 获取Eager模式下FX图dump数据。
 
     以如下脚本为例，在torch.compile入图处使用msit提供的[get\_fx\_dump\_config接口](https://gitcode.com/Ascend/msit/blob/master/msit/docs/llm/TorchAir%E5%9C%BA%E6%99%AF-%E6%95%B4%E7%BD%91%E7%AE%97%E5%AD%90%E7%B2%BE%E5%BA%A6%E6%AF%94%E5%AF%B9.md#12-fx-%E6%A8%A1%E5%BC%8F-dump-%E6%95%B0%E6%8D%AE)获取FX图数据。
 
-    ```
+    ```python
     import torch, torch_npu, torchair 
     from msit_llm.dump import torchair_dump  
     
@@ -156,21 +155,21 @@ msit llm compare -gp ${golden_data} -mp ${target_data} -o ${compare_result_dir}
 
     配置后执行推理脚本，一般会在当前路径下data\_dump/$\{token\_id\}/gm\_$\{time stamp\}\_dump（老版本中路径可能为gm\_$\{timestamp\}\_dump）目录生成dump数据，其中$\{token\_id\}从1开始，相对于GE模式是从0开始的，比对时会将FX模式的$\{token\_id\}减1。产物是npy格式，文件名和内容介绍可参考[算子data dump功能（Eager模式）](../../ascend_ir/features/basic/data_dump_eager.md)中“产物说明”。
 
-5.  通过llm组件提供的精度比对能力，比对两种模式下的模型精度。
+5. 通过llm组件提供的精度比对能力，比对两种模式下的模型精度。
 
     使用如下命令，请确保当前用户已拥有目标文件的读、写权限。
 
-    ```
+    ```bash
     msit llm compare --my-path ${ge_dump_path}/dump_${timestamp} --golden-path ${fx_dump_path}
     ```
 
-    -   $\{ge\_dump\_path\}：图模式下Ascend IR图dump数据路径，即get\_ge\_dump\_config接口dump\_path参数指定路径下$\{ge\_dump\_path\}/dump\_$\{timestamp\}目录。
-    -   $\{timestamp\}：图模式下dump对应的时间戳。
-    -   $\{fx\_dump\_path\}：Eager模式下FX dump数据路径，即get\_fx\_dump\_config接口默认路径下data\_dump目录。
+    - $\{ge\_dump\_path\}：图模式下Ascend IR图dump数据路径，即get\_ge\_dump\_config接口dump\_path参数指定路径下$\{ge\_dump\_path\}/dump\_$\{timestamp\}目录。
+    - $\{timestamp\}：图模式下dump对应的时间戳。
+    - $\{fx\_dump\_path\}：Eager模式下FX dump数据路径，即get\_fx\_dump\_config接口默认路径下data\_dump目录。
 
     执行命令后，会出现类似的回显信息，精度比对结果文件中的参数说明请参见[精度比对结果参数说明](https://gitcode.com/Ascend/msit/blob/master/msit/docs/llm/%E7%B2%BE%E5%BA%A6%E6%AF%94%E5%AF%B9%E7%BB%93%E6%9E%9C%E5%8F%82%E6%95%B0%E8%AF%B4%E6%98%8E.md)，以便做进一步分析。
 
-    ```
+    ```bash
     msit_llm_logger - INFO - Comparing GE with FX
     msit_llm_logger - INFO - All token ids in my_dump_data: dict_keys([0])
     ......

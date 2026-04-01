@@ -16,7 +16,6 @@ get_compiler(compiler_config: CompilerConfig = None)
 |--|--|--|
 |compiler_config|输入|图编译配置，CompilerConfig类的实例化，默认情况下采用TorchAir自动生成的配置。|
 
-
 ## 返回值说明
 
 返回NpuFxCompiler。
@@ -56,4 +55,3 @@ model = torch.compile(MM().npu(), backend=custom_backend, dynamic=False)
 ret = model(x, y)
 print(ret)
 ```
-

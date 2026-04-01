@@ -17,19 +17,17 @@ super_kernel(scope: str, options: str = '')
 |scope|输入|字符串类型，表示上下文算子被融合的SuperKernel名，相同的scope代表相同的范围，由用户控制。若传入None，表示该范围内的算子不进行SuperKernel融合。|
 |options|输入|字符串类型，表示融合的SuperKernel编译选项。系统编译模式默认采用所有编译选项的默认值，编译选项详细介绍参考图内标定SuperKernel范围。同时支持用户自定义组合编译选项，配置格式形如`<option1>=<value1>:<option2>=<value2>:<option3>=......`，多个选项时用英文冒号分割。|
 
-
 ## 返回值说明
 
 无
 
 ## 约束说明
 
--   本接口仅适用于GE图模式场景，并且需要为静态图场景。
--   需要注意的是，SuperKernel融合会按网络中算子顺序依次识别能否被融合，**若识别到不可融合的算子**，生成第一段SuperKernel，同时自动跳过该算子进行第二段SuperKernel融合。
--   目前支持SuperKernel融合的通信类算子包括AllReduce、ReduceScatter、AllGather、AlltoAll。
--   with语句块内不支持断图。
+- 本接口仅适用于GE图模式场景，并且需要为静态图场景。
+- 需要注意的是，SuperKernel融合会按网络中算子顺序依次识别能否被融合，**若识别到不可融合的算子**，生成第一段SuperKernel，同时自动跳过该算子进行第二段SuperKernel融合。
+- 目前支持SuperKernel融合的通信类算子包括AllReduce、ReduceScatter、AllGather、AlltoAll。
+- with语句块内不支持断图。
 
 ## 调用示例
 
 参考[使用示例](../../features/advanced/super_kernel_scope.md#使用示例)。
-

@@ -10,11 +10,11 @@
 
 ## 使用方法
 
--   **对于离线推理场景**
+- **对于离线推理场景**
 
     先使用[Dynamo导图功能](dynamo_export.md)导出离线图再进行后续AI应用开发，该场景下默认已开启RefData数据类型转换功能。
 
--   **对于在线推理场景**
+- **对于在线推理场景**
 
     先使用torch.compile进行图编译，再进行图执行。此场景下需通过[torchair.get\_npu\_backend](../../api/torchair/get_npu_backend.md)中compiler\_config配置，示例如下，仅供参考不支持直接拷贝运行，参数说明参见下表。
 
@@ -33,7 +33,6 @@
     |参数名|说明|
     |--|--|
     |enable_ref_data|构图过程中是否将输入数据类型转换为RefData类型。<br>False（默认值）：不转换为RefData类型。<br>True：转换为RefData类型。|
-
 
 ## 使用示例
 
@@ -67,4 +66,3 @@ model = torch.compile(model, fullgraph=True, backend=npu_backend, dynamic=True)
 ```txt
 [DEBUG] TORCHAIR 20240607 02:06:15 Replace RefData_5_3_20_20_1200_400_20_1_0_140251860631280:RefData with arg0_1:Data in graph graph_1
 ```
-

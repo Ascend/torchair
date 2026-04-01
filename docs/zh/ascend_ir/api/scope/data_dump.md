@@ -20,11 +20,11 @@ data_dump()
 
 ## 约束说明
 
--   with语句块内不支持断图。
+- with语句块内不支持断图。
 
--   使用本接口时必须以with语句块形式调用，语句块内的算子信息均能被dump，具体参见下方调用示例。
--   本接口与dump layer配置项指定的算子范围均能生效，dump算子范围为两者并集，产物目录与dump layer一致。
--   本接口支持与上述所有dump配置项配合使用，产物目录基本一致。
+- 使用本接口时必须以with语句块形式调用，语句块内的算子信息均能被dump，具体参见下方调用示例。
+- 本接口与dump layer配置项指定的算子范围均能生效，dump算子范围为两者并集，产物目录与dump layer一致。
+- 本接口支持与上述所有dump配置项配合使用，产物目录基本一致。
 
 ## 调用示例
 
@@ -56,4 +56,3 @@ npu_mode = Network().npu()
 npu_mode = torch.compile(npu_mode, fullgraph=True, backend=npu_backend, dynamic=False)
 npu_out = npu_mode(input0, input1)
 ```
-

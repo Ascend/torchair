@@ -159,5 +159,3 @@
 |torch._foreach_trunc|支持bf16，fp16，fp32|
 |torch.searchsorted|支持fp16，fp32，uint8，int8，int16，int32，int64|
 |torch.sym_sum|支持bf16，fp16，fp32，fp64，uint8，int8，int16，int32，int64，bool，complex64，complex128|
-
-

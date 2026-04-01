@@ -16,7 +16,6 @@ register_fx_node_ge_converter(aten_op)
 |--|--|--|
 |aten_op|输入|待注册的算子名，例如torch.ops.aten.xxx。|
 
-
 ## 返回值说明
 
 返回值用作装饰器，无法独立使用。
@@ -41,4 +40,3 @@ def converter_aten_sin_default(self: Tensor, meta_outputs: TensorSpec = None):
     """NB: aten::sin(Tensor self) -> Tensor"""
     raise NotImplementedError("torch.ops.aten.sin.default ge_converter is not implemented!")
 ```
-

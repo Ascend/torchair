@@ -3,34 +3,43 @@
 工程目录下的build.sh用于对接CI编译，但是您也可以通过其在本地执行编译和UT/ST测试。
 
 - 查看帮助
+
     ```shell
     ./build.sh -h
     ```
 
 - 编译安装包
+
     ```shell
     ./build.sh -c
     ```
+
     编译完成后，会在`output/`目录下生成名为torchair-{version}-py3-none-any.whl的安装包文件。用户需要使用pip3手动安装。
-    ```
+
+    ```shell
     pip3 install output/torchair-{version}-py3-none-any.whl
     ```
+
     如需要保存安装日志，可在pip3 install命令后面加上参数`--log <PATH>`，并对您指定的目录`<PATH>`做好权限管控。
 
 - 编译并安装
+
     ```shell
     ./build.sh -i
     ```
+
     编译完成后，会在`output/`目录下生成名为torchair-{version}-py3-none-any.whl的安装包文件，并且自动调用pip3进行安装。
 
 - 执行UT测试
     > 本地执行UT测试需要设置环境变量`ASCEND_CUSTOM_PATH`,将其指定至Ascend sdk的安装路径（指定至ai_cann_x86目录）
+
     ```shell
     ./build.sh -u
     ```
 
 - 执行ST测试
     > 本地执行ST测试需要设置环境变量`ASCEND_CUSTOM_PATH`,将其指定至Ascend sdk的安装路径（指定至ai_cann_x86目录）
+
     ```shell
     ./build.sh -s
     ```
@@ -47,13 +56,15 @@
 
     torchair的卸载只需要执行命令：
 
-    ```
+    ```shell
     pip3 uninstall torchair
     ```
+
     如需要保存卸载日志，可在pip3 uninstall命令后面加上参数`--log <PATH>`，并对您指定的目录`<PATH>`做好权限管控。
 
 - 查看覆盖率报告
     UT或ST执行通过后，会在coverage目录下生成覆盖率文件coverage.info，如果您想要查看覆盖率报告，可以执行如下命令
+
     ```shell
     genhtml coverage.info -o coverage_report
     ```
@@ -97,13 +108,15 @@ graph_result = model(in1, in2, in3)
 # 打印执行结果
 print(graph_result)
 ```
+
 > TorchAir在更多不同场景下的应用，请参考[示例代码](https://gitcode.com/ascend/torchair/tree/master/examples).
 
-
 # converter补齐
+
 1. **确定需要补齐的converter**
     
     torchair提供配置项config.debug.fx_summary开关来确定FX图中涉及需要补齐的converter，您可以通过如下方式来配置
+
     ```python
     config = torchair.CompilerConfig()
     config.debug.fx_summary.type = "csv"
@@ -111,6 +124,7 @@ print(graph_result)
 
     torch.compile(model, backend=npu_backend)
     ```
+
     执行后，会生成summary_{timestamp}.csv文件，您可以通过excel等工具来查看。
     通过导出的csv文件，您可以看到当前模型fx图中涉及的所有converter
     - 对于`支持状态`为`未支持`的converter，您需要在`_ge_concrete_graph/ge_converter`目录下对应文件中补齐实现
@@ -124,6 +138,7 @@ print(graph_result)
     
     您可以参考`_ge_concrete_graph/ge_converter`目录下的实现，实现对应的converter。
     我们以torch.ops.aten.add.Tensor的converter实现为例说明converter实现时的一些细节：
+
     ```python
     @declare_supported([
         Support(F32(2, 2), F32(2, 2)),
@@ -150,10 +165,12 @@ print(graph_result)
             self, other, alpha = dtype_promote(self, other, alpha, target_dtype = meta_outputs.dtype)
             return ge.AxpyV2(self, other, alpha)
     ```
+
     1. **声明converter支持的场景**
         
         您应该在开头声明converter需要支持的全部场景，支持场景应该穷举aten.add.Tensor所支持的全部传参方式，
         需要注意，`不应当有不支持的场景`，如果您发现有无法支持的传参方式，需要在converter实现中抛出异常。
+
         ```python
         @declare_supported([
             Support(F32(2, 2), F32(2, 2)), # 支持基础的torch.add()
@@ -165,13 +182,16 @@ print(graph_result)
             Support(F32(2, 2), 2, alpha=2.0), # 支持带alpha入参场景
         ])
         ```
+
         当您实现了您的converter后，我们会根据您声明支持的场景，生成对应的测试用例，您可以通过如下方式来测试您的converter是否正确：
         > 需要在真实NPU环境测试，并确保已经实现了对应的converter及正确安装了torchair
+
         ```shell
         python3 smoke/converter_test.py
         ```
 
         可以通过入参控制只测试满足某个prefix的converter，如下所示：
+
         ```shell
         python3 smoke/converter_test.py aten.add.Tensor
         ```
@@ -190,45 +210,55 @@ print(graph_result)
                 meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
             """ NB: aten::add.Tensor(Tensor self, Tensor other, *, Scalar alpha=1) -> Tensor """
         ```
+
         我们逐行解释下上述代码片段：
+
         ```python
         from torchair.ge._ge_graph import Tensor, TensorSpec
         ```
+
         文件的开头从GE graph的文件中导入了Tensor和TensorSpec，这两个类分别表示GE图上的Tensor和TensorSpec。
         需要特别注意的是，Tensor和TensorSpec绝不是运行时的真实数据，你只能从Tensor上获得dtype和rank信息，而不能从Tensor上获得shape和数据。
 
         ```python
         @register_fx_node_ge_converter(torch.ops.aten.add.Tensor)
         ```
+
         表示要为torch.ops.aten.add.Tensor注册converter函数，实现将fx图上的aten.add.Tensor节点，转换为GE图上的节点。对应的实现函数则是conveter_aten_add_Tensor。
+
         ```python
         self: Tensor,
         other: Tensor,
         ```
+
         表示fx图上的aten.add.Tensor节点的两个输入self和other`对应的GE图输入`，这两个输入都是GE图上的Tensor类型。
+
         ```python
         *,
         ```
+
         这是python3的语法，表示后面的参数都是关键字参数，即必须使用参数名来传参。
 
         ```python
         alpha: Union[Number, Tensor] = 1,
         ```
+
         表示fx图上的aten.add.Tensor节点的alpha入参，其类型为Number(字面值)或者GE图上的Tensor，其默认值为1。
 
         ```python
         meta_outputs: Union[TensorSpec, List[TensorSpec]] = None):
         ```
+
         可以发现conveter_aten_add_Tensor函数的入参与torch.ops.aten.add.Tensor几乎完全一致，但是多一个名为meta_outputs的入参外完全一致。
         meta_outputs是GE graph下定义的`TensorSpec`或`List[TensorSpec]`(aten节点有动态输出时)类型，TensorSpec是对一个节点输出的描述信息。meta_outputs是在指示converter，最终你应该输入一个什么样的Tensor。meta_outputs由原始fx节点输出的aten.Tensor转换而来，包含dtype和rank信息。
         什么时候应该使用meta_outputs呢，典型的场景包括：
         - 通过meta_outputs可以确定输出数量，有些aten的节点的输出数量是不确定的，比如aten.split，会根据输入shape的不同得到不同的输出数量。
         - 确定输出的dtype，用于类型提升，比如aten.add，会根据输入的dtype的不同得到不同的输出dtype，这时候通过meta_outputs上的dtype可以精确地确定应该把输入提升成何种类型。
 
-
     3. **实现converter**
         
         alpha的输入可能是Tensor或者Number，我们需要对其进行判断，如果是Number且为1，则可以直接使用ge.Add来实现，否则需要使用ge.AxpyV2来实现，下面的代码片段展示了aten.add.Tensor的converter实现：
+
         ```python
         @register_fx_node_ge_converter(torch.ops.aten.add.Tensor)
         def conveter_aten_add_Tensor(
@@ -246,6 +276,7 @@ print(graph_result)
                 self, other, alpha = dtype_promote(self, other, alpha, target_dtype = meta_outputs.dtype)
                 return ge.AxpyV2(self, other, alpha)
         ```
+
         主要关注其中的dtype_promote（类型提升）函数，这个函数接收任意个输入，并返回等量的输出。其作用是将传入的多个输出，提升为target_dtype指定的类型。
         例如测试用例TestInput(F32(2, 2), 2)，将一个f32类型与一个int类型的常量相加，如果不执行dtype_promote，最终生成的图上，会出现一个ge::Add节点，
         其两个输入分别为F32和INT64类型，当前这种图无法编译通过（图编译不支持类型提升）。
@@ -260,10 +291,11 @@ print(graph_result)
         
         此功能可以让用户注册新增自定义算子，增加自定义算子的入图能力。
         > 注意：在开发自定义算子入图前，需要确保自定义算子已经在torch框架中完成注册。自定义算子指：区别与原生torch算子，为了实现用户自定义计算逻辑而开发注册的算子。
-        > 在C++中注册自定义算子参考：https://pytorch.org/tutorials/advanced/dispatcher.html
+        > 在C++中注册自定义算子参考：<https://pytorch.org/tutorials/advanced/dispatcher.html>
 
         新增算子入图步骤
         > 1 自定义算子在torch框架中注册（假如：您已完成自定义算子注册，请忽略此步骤，下面代码是为了完成示例）。
+
         ```python
         import torch
         from torch.library import Library, impl
@@ -280,7 +312,9 @@ print(graph_result)
         ):
             return x + y
         ```
+
         > 2 向torch注册自定义算子meta后端实现，用来完成图模式下的shape推导。
+
         ```python
 
         # '@impl(m, "custom_op", "Meta")'表示: 通过Library实例m，为"custom_op"这个自定义算子注册Meta实现。
@@ -297,6 +331,7 @@ print(graph_result)
         假设`npu.custom_op`转换为`ge.Add`这个GE IR，生成`ge.Add`接口步骤如下(注：ge.Add为演示使用，一般新增自定义算子会有对于新增的GE IR)：
 
         （1）将REG_OP算子原型放置到codegen/custom_op/custom_reg_op.h文件中，替换原来示例的REG_OP；
+
         ```c++
         #include "graph/operator_reg.h"
 
@@ -314,15 +349,19 @@ print(graph_result)
             .OP_END_FACTORY_REG(Add)
         }
         ```
+
         （2）执行编译命令
+
         ```make
         mkdir build
         cd build
         cmake ..
         make generate_ge_raw_custom_ops
         ```
+
         生成的ge.api函数在codegen/custom_op/auto_generated_ge_raw_custom_ops.py文件中, 内容如下所示
-        ```
+
+        ```shell
         from typing import Any, Dict, List, Tuple, Union, Callable, Optional
         from torchair.ge._ge_graph import auto_convert_to_tensor, TensorType
         from torchair.ge import Tensor, DataType, attr
@@ -364,6 +403,7 @@ print(graph_result)
                 .output("y" , "DT_FLOAT, DT_INT32, DT_INT64, DT_FLOAT16, DT_BF16, DT_INT16, DT_INT8, DT_UINT8, DT_DOUBLE, DT_COMPLEX128, DT_COMPLEX64, DT_STRING")
             )
         ```
+
         （3）将您生成的文件内容拷贝至工程目录python/torchair/_ge_concrete_graph/ge_converter/custom中合适的文件中。
 
         > 4 向torchair注册自定义算子的converter，完成自定义算子的torch IR到CANN软件图中的GE IR的转化(此步骤为npu入图独有的操作)。
@@ -371,6 +411,7 @@ print(graph_result)
         converter如何开发参考本文章的前序章节。
         需要保证converter调用装饰器`@register_fx_node_ge_converter(torch.ops.npu_define.custom_op.default)`，完成converter注册。其中
         `torch.ops.npu_define.custom_op.default`为自定义算子生成的python函数的函数签名。
+
         ```python
         @register_fx_node_ge_converter(torch.ops.npu_define.custom_op.default)
         def conveter_custom_op(
@@ -409,6 +450,7 @@ print(graph_result)
     > 请在接口的功能完成之后及时关闭相关选项。
 
 # lite导出场景下覆盖主线的converter
+
 **背景：**
 在lite导出的场景下，想使用不同于当前主线版本的算子，可以通过后注册相同的aten_op的converter来覆盖当前主线上已注册的converter。
 
@@ -446,6 +488,7 @@ config.export.experimental.enable_lite_export = True
 ```
 
 # 调整interpolate下的默认decomposition
+
   **动机：**
     pytorch中存在一些默认的decomposition旨在将算子decompose为更小的[算子集合](https://pytorch.org/docs/stable/torch.compiler_ir.html)，例如aten.upsample_nearest2d算子会在torch.compile的模式下被拆解为一系列小算子。
     该行为有时不符合预期：

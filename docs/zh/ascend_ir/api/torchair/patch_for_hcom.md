@@ -48,4 +48,3 @@ x = torch.randn(2, 2).npu()
 y = torch.randn(2, 2).npu()
 opt_model(x, y)
 ```
-

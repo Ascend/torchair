@@ -19,7 +19,6 @@ Clone(x: Tensor, *, dependencies=[], node_name=None) -> Tensor
 |node_name|输入|自定义Clone节点的名字，默认为None，例如'const_1'，同一张图中节点名不允许重复。|
 |*|输入|预留参数项，用于后续功能扩展。|
 
-
 ## 返回值说明
 
 正常情况下，返回一个Tensor，表示图上新增的一个TensorMove节点，否则失败报错。
@@ -46,4 +45,3 @@ def converter_npu_scatter_nd_update_default(
     copy = torchair.ge.Clone(x, dependencies=[indices, updates], node_name='Const0')
     return scatterNdUpdateFunc(copy, indices, updates)
 ```
-

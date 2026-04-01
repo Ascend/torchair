@@ -1,4 +1,4 @@
-## 介绍
+# 介绍
 
 inductor-npu-ext 正在为 Inductor 添加一个亲和 NPU 的 Codegen 后端，该后端定位于使用 NPU 上的 SOTA DSL 生成 Inductor 融合 Kernel。
 
@@ -19,6 +19,7 @@ inductor-npu-ext 当前基于 AscendC 生成融合Kernel，同时关注并持续
 * [X] 基于硬件性能建模的模板&Tiling寻优
 * [ ] 稳健地扩充支持融合的算子白名单
 * [ ] 支持离散访存类融合
+
 ---
 
 ## 软件安装
@@ -52,12 +53,14 @@ pip3 install -e ./python/
 - GCC >= 7.3.0
 
 在 openEuler 系统上，您可以通过以下命令安装：
-```
+
+```shell
 sudo yum install cmake gcc
 ```
 
 在 Ubuntu 系统上，您可以通过以下命令安装：
-```
+
+```shell
 sudo apt-get install cmake gcc
 ```
 

@@ -7,7 +7,7 @@
 接口名|接口说明|
 |--|--|
 |[compile_fx](./npugraph_ex/compile_fx.md)|获取编译后的可执行FX图对象，可通过该接口自定义后端，以实现用户自定义的特性。|
-|[register_replacement](./npugraph_ex/register_replacement.md)|将自定义算子融合规则注册到TorchAir框架中，在FX图编译后对图进行算子融合优化。|
+|[register_replacement](./npugraph_ex/register_replacement.md)|将自定义算子融合规则注册到npugraph\_ex中，在FX图编译后对图进行算子融合优化。|
 
 ## torch.npu.npugraph_ex.inference接口列表
 
@@ -21,5 +21,3 @@
 接口名|接口说明|
 |--|--|
 |[limit_core_num](./scope/limit_core_num.md)|图执行过程中，指定图范围内的算子执行时最大的AI Core数和Vector Core数。|
-
-

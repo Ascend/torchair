@@ -6,20 +6,20 @@
 
 对于并行来说，包含如下两种：
 
--   计算与计算并行：一般是基于数据依赖关系，分析出可以并行的多条计算分支，指定stream并行。
--   计算与通信并行：一般是针对没有数据依赖的通信操作，提前使用通信资源执行通信任务。
+- 计算与计算并行：一般是基于数据依赖关系，分析出可以并行的多条计算分支，指定stream并行。
+- 计算与通信并行：一般是针对没有数据依赖的通信操作，提前使用通信资源执行通信任务。
 
 本功能主要处理**Ascend IR图内资源并发（max-autotune模式）**，尤其针对Cube计算资源未完全使用的场景。若Cube计算资源已完全使用，不建议开启本功能，可能会导致额外的调度，从而导致原计算性能劣化。
 
 ## 使用约束
 
--   本功能仅适用于GE图模式场景。
--   对于纯Vector场景，其计算耗时一般在可接受范围内；对于含Cube计算的场景，开启本功能后的效益往往优于纯Vector计算场景。
--   静态Shape场景下：
-    -   本功能与[单流执行功能](single_stream.md)（enable\_single\_stream）冲突，不支持同时开启。
-    -   本功能不推荐在SuperKernel内设置算子多stream并行，如有需要请使用[图内标定SuperKernel范围](super_kernel_scope.md)中stream-fusion编译选项配置。
+- 本功能仅适用于GE图模式场景。
+- 对于纯Vector场景，其计算耗时一般在可接受范围内；对于含Cube计算的场景，开启本功能后的效益往往优于纯Vector计算场景。
+- 静态Shape场景下：
+    - 本功能与[单流执行功能](single_stream.md)（enable\_single\_stream）冲突，不支持同时开启。
+    - 本功能不推荐在SuperKernel内设置算子多stream并行，如有需要请使用[图内标定SuperKernel范围](super_kernel_scope.md)中stream-fusion编译选项配置。
 
--   动态Shape场景下，默认单流模式，用户通过如下CANN环境变量开启多流。一旦开启了多流，其功能**优先级低于**本功能。
+- 动态Shape场景下，默认单流模式，用户通过如下CANN环境变量开启多流。一旦开启了多流，其功能**优先级低于**本功能。
 
     ```bash
     export ENABLE_DYNAMIC_SHAPE_MULTI_STREAM=1
@@ -27,8 +27,8 @@
 
 ## 使用方法
 
-1.  用户自行分析模型中可进行并行计算的算子。
-2.  开启多流表达。
+1. 用户自行分析模型中可进行并行计算的算子。
+2. 开启多流表达。
 
     使用如下with语句块（[npu\_stream\_switch](../../api/scope/npu_stream_switch.md)），语句块内下发的算子切换至stream\_tag流，语句块外的算子使用默认stream计算。
 
@@ -36,10 +36,10 @@
     with torchair.scope.npu_stream_switch(stream_tag: str, stream_priority: int = 0)
     ```
 
-    -   stream\_tag：表示需要切换到的流的标签，相同的标签代表相同的流，由用户控制。
-    -   stream\_priority：表示切换到stream\_tag流的优先级，即Runtime运行时在并发时优先给高优先级的流分配核资源，当前版本使用默认值0即可。
+    - stream\_tag：表示需要切换到的流的标签，相同的标签代表相同的流，由用户控制。
+    - stream\_priority：表示切换到stream\_tag流的优先级，即Runtime运行时在并发时优先给高优先级的流分配核资源，当前版本使用默认值0即可。
 
-3.  （可选）控制并行计算的时序。
+3. （可选）控制并行计算的时序。
 
     通过[npu\_wait\_tensor](../../api/scope/npu_wait_tensor.md)接口实现时序控制，指定算子a等待算子b执行完后执行。
 

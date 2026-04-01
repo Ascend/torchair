@@ -16,7 +16,6 @@ use_internal_format_weight(model: torch.nn.Module) -> None
 |--|--|--|
 |model|输入|用户自定义的模型，继承原生的torch.nn.Module类。|
 
-
 ## 返回值说明
 
 无
@@ -46,4 +45,3 @@ class Model(torch.nn.Module):
 model = Model()
 torchair.use_internal_format_weight(model)
 ```
-

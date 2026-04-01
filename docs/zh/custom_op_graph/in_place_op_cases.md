@@ -8,19 +8,20 @@
 
 > [!NOTE]说明
 >定义In-place类算子时，需要遵循PyTorch原型定义约定：
->-   **必须显式标记被In-place修改的Tensor输入**，标记方式例如Tensor\(a!\)，a为别名，!表示该输入被修改。
->-   Tensor类型输入在前，基本类型输入在后。
->-   不返回任何被In-place修改的输入。
+>
+>- **必须显式标记被In-place修改的Tensor输入**，标记方式例如Tensor\(a!\)，a为别名，!表示该输入被修改。
+>- Tensor类型输入在前，基本类型输入在后。
+>- 不返回任何被In-place修改的输入。
 >为什么遵循这个规则，因为PyTorch 2.6+版本支持函数化自动转换，该特性要求不返回被修改的输入。
 
 ```python
 - func: my_inplace(Tensor(a!) x, Tensor y) -> Tensor z
 ```
 
--   my\_inplace：算子名，对应调用方式为torch.ops.npu.my\_inplace。
--   Tensor\(a!\) x：表示x为Tensor类型输入，\(a!\)表示该输入具有别名a且会被修改。
--   Tensor y：表示y为Tensor类型输入，y不会被修改。
--   -\> Tensor z：表示算子返回一个新的输出z（我们假设z的shape、dtype与y相同，这是后面实现Meta推导函数以及InferShape、InferDataType函数的依据）。
+- my\_inplace：算子名，对应调用方式为torch.ops.npu.my\_inplace。
+- Tensor\(a!\) x：表示x为Tensor类型输入，\(a!\)表示该输入具有别名a且会被修改。
+- Tensor y：表示y为Tensor类型输入，y不会被修改。
+- -\> Tensor z：表示算子返回一个新的输出z（我们假设z的shape、dtype与y相同，这是后面实现Meta推导函数以及InferShape、InferDataType函数的依据）。
 
 请先完成<u>[环境准备](./overview.md#环境准备)</u>，确定好算子原型后，实现目标算子入图的步骤如下：
 
@@ -40,11 +41,11 @@
 
 ### 创建自定义算子工程与原型
 
-1.  编写算子的原型定义json文件，用于生成算子开发工程。
+1. 编写算子的原型定义json文件，用于生成算子开发工程。
 
     > [!NOTE]说明
-    >-   算子定义时，注意名称为Torch算子名的**大驼峰格式**，同时入参顺序与类型应当与[PyTorch算子原型](#确定算子原型)完全一致。
-    >-   特别注意的是，Ascend C算子定义时，**被修改的输入必须定义一个同名输出**，表达算子执行时对该输入的修改。
+    >- 算子定义时，注意名称为Torch算子名的**大驼峰格式**，同时入参顺序与类型应当与[PyTorch算子原型](#确定算子原型)完全一致。
+    >- 特别注意的是，Ascend C算子定义时，**被修改的输入必须定义一个同名输出**，表达算子执行时对该输入的修改。
 
     例如MyInplace算子的原型json文件名为my\_inplace.json，文件内容如下：
 
@@ -84,19 +85,19 @@
     ]
     ```
 
-2.  使用msOpGen工具生成算子的开发工程。
+2. 使用msOpGen工具生成算子的开发工程。
 
     ```bash
     ${INSTALL_DIR}/python/site-packages/bin/msopgen gen -i my_inplace.json -c ai_core-<soc_version> -f pytorch -lan cpp -out ./MyInplace
     ```
 
-    -   $\{INSTALL\_DIR\}为CANN软件安装后文件存储路径，请根据实际环境进行替换。
-    -   -i：指定算子原型定义的json文件所在路径，请根据实际情况修改。
-    -   -c：ai\_core-_<soc\_version\>_代表算子在AI Core上执行，_<soc\_version\>_为昇腾AI处理器的型号，请与实际环境保持一致。
-    -   -lan：参数cpp代表算子基于Ascend C编程框架，使用C/C++编程语言开发。
-    -   -out：生成文件所在路径，可配置为绝对路径或者相对路径，并且工具执行用户对路径具有可读写权限。若不配置，则默认生成在执行命令的当前路径。
+    - $\{INSTALL\_DIR\}为CANN软件安装后文件存储路径，请根据实际环境进行替换。
+    - -i：指定算子原型定义的json文件所在路径，请根据实际情况修改。
+    - -c：ai\_core-_<soc\_version\>_代表算子在AI Core上执行，_<soc\_version\>_为昇腾AI处理器的型号，请与实际环境保持一致。
+    - -lan：参数cpp代表算子基于Ascend C编程框架，使用C/C++编程语言开发。
+    - -out：生成文件所在路径，可配置为绝对路径或者相对路径，并且工具执行用户对路径具有可读写权限。若不配置，则默认生成在执行命令的当前路径。
 
-3.  生成的算子核心工程目录结构如下：
+3. 生成的算子核心工程目录结构如下：
 
     ```txt
     MyInplace
@@ -121,17 +122,17 @@
 
 前文msOpGen生成的自定义算子工程会在“op\_host/my\_inplace.cpp”中生成一份简单但通常合适的默认实现。
 
--   **方式1**：如果自定义算子满足如下条件，TorchAir会自动生成InferShape与InferDataType函数。
+- **方式1**：如果自定义算子满足如下条件，TorchAir会自动生成InferShape与InferDataType函数。
 
     当Ascend C算子输入输出与PyTorch算子可以一一对应时，可以删除算子工程生成的默认实现，TorchAir会在算子执行过程中自动生成InferShape与InferDataType函数。
 
--   **方式2**：如果不满足方式1，支持手动实现推导函数，请参考《CANN Ascend C算子开发指南》中“算子入图（GE图）开发”章节下“开发流程”完成DataType推导与Shape推导。
+- **方式2**：如果不满足方式1，支持手动实现推导函数，请参考《CANN Ascend C算子开发指南》中“算子入图（GE图）开发”章节下“开发流程”完成DataType推导与Shape推导。
 
 本样例中Ascend C算子MyInplace与PyTorch算子my\_inplace符合方式1，可以删除默认实现，使用TorchAir自动生成能力。
 
 ### 自定义算子包编译部署
 
-1.  在自定义算子工程目录下执行如下命令，进行算子工程编译。
+1. 在自定义算子工程目录下执行如下命令，进行算子工程编译。
 
     ```bash
     cd ./MyInplace
@@ -142,7 +143,7 @@
 
     注意，自定义算子包的默认vendor名为customize，相同vendor名称的算子包会互相覆盖。
 
-2.  自定义算子包安装。
+2. 自定义算子包安装。
 
     ```bash
     bash build_out/custom_opp_<target os>_<target architecture>.run
@@ -185,16 +186,17 @@ custom:
     exec: aclnnMyInplace      # 等价于调用aclnnMyInplace接口,入参为x、y
 ```
 
--   out：表示函数的输出，此字段下面包含size和dtype字段，如果输出的shape和dtype某个入参相同，可以这两个字段配置成该入参的名字。
--   exec：配置对应的EXEC\_NPU\_CMD接口，一般指aclnnXxx前缀接口。本样例配置为aclnnMyInplace，aclnn为固定前缀，MyInplace为Ascend C算子名，表示调用Ascend C算子MyInplace实现PyTorch算子my\_inplace。
+- out：表示函数的输出，此字段下面包含size和dtype字段，如果输出的shape和dtype某个入参相同，可以这两个字段配置成该入参的名字。
+- exec：配置对应的EXEC\_NPU\_CMD接口，一般指aclnnXxx前缀接口。本样例配置为aclnnMyInplace，aclnn为固定前缀，MyInplace为Ascend C算子名，表示调用Ascend C算子MyInplace实现PyTorch算子my\_inplace。
 
 ## 实现Meta推导函数
 
 PyTorch原生要求所有能与torch.compile配合工作的算子需要实现Meta推导函数，又称为“符号化推导”。Meta函数表示了PyTorch算子输出与输入shape、dtype以及内存的关系，它是PyTorch入图的前提条件，借助符号化和符号guard可静态化控制流和形状信息，从而确定图结构。关于Meta函数的详细介绍请参考PyTorch官网<u>[符号化手册](https://docs.google.com/document/d/1GgvOe7C8_NVOMLOCwDaYV1mXXyHMXY7ExoewHqooxrs/edit#heading=h.fh8zzonyw8ng)</u>。
 
 > [!NOTE]说明
->-   Meta推导函数**必须在torch.compile执行前**完成注册。
->-   torch.library.Library接口介绍请参考[PyTorch官网](https://docs.pytorch.org/docs/stable/library.html#torch.library.Library)。
+>
+>- Meta推导函数**必须在torch.compile执行前**完成注册。
+>- torch.library.Library接口介绍请参考[PyTorch官网](https://docs.pytorch.org/docs/stable/library.html#torch.library.Library)。
 
 进入third\_party/op-plugin/op\_plugin/python/meta/\_meta\_registrations.py实现Meta推导函数：
 
@@ -209,8 +211,8 @@ def my_inplace_meta(x, y):
     return torch.empty_like(y)            # 输出的shape、dtype与输入y相同
 ```
 
--   my\_inplace\_meta：Meta函数名，通常以PyTorch算子名+"\_meta"后缀命名。
--   m：表示NPU算子的Meta实现库，通常定义在文件开头“m=Library\("npu", "IMPL", "Meta"\)”。
+- my\_inplace\_meta：Meta函数名，通常以PyTorch算子名+"\_meta"后缀命名。
+- m：表示NPU算子的Meta实现库，通常定义在文件开头“m=Library\("npu", "IMPL", "Meta"\)”。
 
 ## 实现函数化转换
 
@@ -225,16 +227,17 @@ TorchAir已经支持了社区在PyTorch 2.6+版本提供的自动函数化能力
 在Eager模式下，my\_inplace会调用Ascend C算子MyInplace；而对应到Converter实现，调用Ascend IR MyInplace。
 
 > [!NOTE]说明
->-   在Ascend C算子工程编译时，除了生成aclnnXxx接口外，还会同步生成同名Ascend IR的注册代码。
->-   接口介绍参见[register\_fx\_node\_ge\_converter](../ascend_ir/api/torchair/register_fx_node_ge_converter.md)和[custom\_op](../ascend_ir/api/ge/custom_op.md)。
+>
+>- 在Ascend C算子工程编译时，除了生成aclnnXxx接口外，还会同步生成同名Ascend IR的注册代码。
+>- 接口介绍参见[register\_fx\_node\_ge\_converter](../ascend_ir/api/torchair/register_fx_node_ge_converter.md)和[custom\_op](../ascend_ir/api/ge/custom_op.md)。
 
 通常不需要手动实现Converter，TorchAir会自动完成PyTorch算子到同名（大驼峰）Ascend IR的转换。例如本样例中的my\_inplace算子，会自动转换为Ascend IR MyInplace。
 
 如果自动转换无法完成，TorchAir的编译报错信息会给出原因，原因一般如下：
 
--   PyTorch算子的名字无法与Ascend IR名字通过大驼峰格式对应，例如my\_inplace实际对应的Ascend IR名字为MyInplace等。
--   PyTorch算子与Ascend IR的输入输出顺序或数量不一致。
--   PyTorch算子原型定义中存在Scalar类型入参。
+- PyTorch算子的名字无法与Ascend IR名字通过大驼峰格式对应，例如my\_inplace实际对应的Ascend IR名字为MyInplace等。
+- PyTorch算子与Ascend IR的输入输出顺序或数量不一致。
+- PyTorch算子原型定义中存在Scalar类型入参。
 
 您可以修改PyTorch算子原型使其满足条件，让TorchAir自动完成转换，或者手动实现Converter：
 
@@ -253,7 +256,7 @@ def converter_my_inplace(x, y):   # 函数入参与Torch算子保持一致
 
 ## 功能验证
 
-1.  编译自定义算子包。
+1. 编译自定义算子包。
 
     参考<u>[环境准备](overview.md#环境准备)</u>准备好环境，执行如下命令重新编译、安装自定义算子torch.ops.npu.my\_inplace的torch\_npu包。请注意与当前运行环境的Python版本匹配，以Python3.9版本为例：
 
@@ -262,7 +265,7 @@ def converter_my_inplace(x, y):   # 函数入参与Torch算子保持一致
     pip3 install dist/torch*.whl --force-reinstall --no-deps
     ```
 
-2.  验证自定义算子在Eager模式、TorchAir npugraph\_ex后端使能（aclgraph）模式、TorchAir max-autotune模式下功能是否正常。
+2. 验证自定义算子在Eager模式、TorchAir npugraph\_ex后端使能（aclgraph）模式、TorchAir max-autotune模式下功能是否正常。
 
     ```python
     import torch
@@ -301,8 +304,5 @@ def converter_my_inplace(x, y):   # 函数入参与Torch算子保持一致
 
 In-place算子在入图过程中存在一些注意事项，在实际操作时请注意：
 
--   Tensor类型输入在前，基本类型输入在后，不要返回任何被修改的输入。
--   以算子工程方式开发PyTorch算子的Ascend C实现，Ascend C算子名保证为PyTorch算子的大驼峰格式，同时入参顺序、类型与PyTorch算子一致。Ascend C算子原型定义时，所有被修改的输入需要添加与其同名的输出。
-
-
-
+- Tensor类型输入在前，基本类型输入在后，不要返回任何被修改的输入。
+- 以算子工程方式开发PyTorch算子的Ascend C实现，Ascend C算子名保证为PyTorch算子的大驼峰格式，同时入参顺序、类型与PyTorch算子一致。Ascend C算子原型定义时，所有被修改的输入需要添加与其同名的输出。

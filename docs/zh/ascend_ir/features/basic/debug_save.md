@@ -18,21 +18,20 @@ GE图模式下提供了多种调试定位方法，例如日志打印和文件dum
 |日志信息|PyTorch原生Dynamo日志<br>TorchAir Python层日志<br>打印TorchAir C++层日志打印|
 |Debug信息|AOT前的GraphModule<br>AOT后的GraphModule<br>公共Pass图优化过程中每个Pass的输出FX图（txt文件）<br>GE图优化前后及不同Pass处理后的图结构信息：该图结构信息可通过config.debug.graph_dump.type设置txt、pbtxt、py文件类型，可参考[图结构dump功能](./graph_dump.md)。|
 
-
 ## 使用约束
 
 使用该功能时，需使用编译后端[npu\_backend](../../api/torchair/get_npu_backend.md)  ，不支持自定义后端。
 
 ## 使用方法
 
--   方法一：在终端设置环境变量
+- 方法一：在终端设置环境变量
 
     ```bash
     export TORCH_COMPILE_DEBUG=1
     python main.py
     ```
 
--   方法二：在Python脚本开头设置环境变量
+- 方法二：在Python脚本开头设置环境变量
 
     > [!NOTE]说明
     >若在import torchair及from torchair import logger之后设置环境变量，会因环境变量未在日志模块导入前生效，导致目录下缺失torchair/debug.log文件。
@@ -51,11 +50,11 @@ GE图模式下提供了多种调试定位方法，例如日志打印和文件dum
 
 以如下模型脚本为例，实现简单的乘法功能，代码流程如下：
 
-1.  设置环境变量TORCH\_COMPILE\_DEBUG为1。
-2.  开启Dynamo日志。
-3.  设置图编译模式，设置device="npu:0"。
-4.  构造一个随机输入，设置dynamic=False及requires\_grad=True，执行了一次前向和反向。
-5.  构造一个不同shape的随机输入，设置requires\_grad=False，执行了一次前向推理。
+1. 设置环境变量TORCH\_COMPILE\_DEBUG为1。
+2. 开启Dynamo日志。
+3. 设置图编译模式，设置device="npu:0"。
+4. 构造一个随机输入，设置dynamic=False及requires\_grad=True，执行了一次前向和反向。
+5. 构造一个不同shape的随机输入，设置requires\_grad=False，执行了一次前向推理。
 
 ```python
 import os
@@ -129,4 +128,3 @@ torch_compile_debug/run_<时间>-pid_<进程号>
 └── torchdynamo
     └── debug.log     # Torch原生dynamo日志
 ```
-

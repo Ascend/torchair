@@ -9,7 +9,7 @@
 
 ## 使用方法
 
-1.  图执行过程中，开启Python层日志，可以打印原生FX图结构信息。
+1. 图执行过程中，开启Python层日志，可以打印原生FX图结构信息。
 
     ```python
     import logging
@@ -28,7 +28,7 @@
         return (mul,)
     ```
 
-2.  图执行完成后，支持dump TorchAir构图信息。
+2. 图执行完成后，支持dump TorchAir构图信息。
 
     该功能通过[torchair.get\_npu\_backend](../../api/torchair/get_npu_backend.md)中compiler\_config配置，示例如下，仅供参考不支持直接拷贝运行，参数说明参见下表。
 
@@ -49,24 +49,23 @@
     |graph_dump.type|设置导出图结构文件的格式，字符串型，支持如下选项：<br>py：dump ATen IR转换为Ascend IR后的构图信息，即[图1](#fig1)中**阶段2构图信息**，可通过VSCode等工具查看。<br>txt：dump最终接收到的TorchAir构图结果，可通过VSCode等工具查看。<br>pbtxt：dump最终接收到的TorchAir构图结果，为Protobuf格式，可通过TensorBoard、Netron等工具查看。<br>graph_dump.type默认值为None，表示不导出图结构信息。|
     |graph_dump.path|设置图结构文件生成的路径，字符串型。可选配置，如果不设置，默认路径为当前执行路径。|
 
-
     > [!NOTE]说明
-    >-   多次定义导出格式时，以最后一次定义的格式为准。
-    >-   不支持txt、pbtxt、py三种格式同时导出。
-    >-   请确保参数中指定的路径真实存在，并且运行用户具有读取和写入权限。
+    >- 多次定义导出格式时，以最后一次定义的格式为准。
+    >- 不支持txt、pbtxt、py三种格式同时导出。
+    >- 请确保参数中指定的路径真实存在，并且运行用户具有读取和写入权限。
 
-3.  （可选）如需查看GE图编译和执行后的图结构信息，请参考《CANN 环境变量参考》中的“DUMP\_GE\_GRAPH”章节开启GE的dump图信息。
+3. （可选）如需查看GE图编译和执行后的图结构信息，请参考《CANN 环境变量参考》中的“DUMP\_GE\_GRAPH”章节开启GE的dump图信息。
 
 ## 产物说明
 
 图结构dump的结果文件如下
 
--   dynamo\_original\_graph\_$\{graph\_id\}\_rank\_$\{rank\_id\}\_pid\_$\{pid\}\_ts\_$\{timestamp\}.$\{graph\_dump\_type\}：模型原始图结构文件，例如dynamo\_original\_graph\_1\_rank\_15\_pid\_421214\_ts\_20251010083825327878.py。
--   dynamo\_optimized\_graph\_$\{graph\_id\}\_rank\_$\{rank\_id\}\_pid\_$\{pid\}\_ts\_$\{timestamp\}.$\{graph\_dump\_type\}：优化后的模型图结构文件，例如dynamo\_optimized\_graph\_1\_rank\_15\_pid\_421214\_ts\_20251010083827311204.py。
+- dynamo\_original\_graph\_$\{graph\_id\}\_rank\_$\{rank\_id\}\_pid\_$\{pid\}\_ts\_$\{timestamp\}.$\{graph\_dump\_type\}：模型原始图结构文件，例如dynamo\_original\_graph\_1\_rank\_15\_pid\_421214\_ts\_20251010083825327878.py。
+- dynamo\_optimized\_graph\_$\{graph\_id\}\_rank\_$\{rank\_id\}\_pid\_$\{pid\}\_ts\_$\{timestamp\}.$\{graph\_dump\_type\}：优化后的模型图结构文件，例如dynamo\_optimized\_graph\_1\_rank\_15\_pid\_421214\_ts\_20251010083827311204.py。
 
 其中$\{graph\_id\}表示第几张图，$\{rank\_id\}表示图执行的通信卡id，$\{pid\}表示图执行的进程号，$\{timestamp\}表示时间戳，$\{graph\_dump\_type\}表示导图文件格式，不同格式的样例如下：
 
--   **py文件样例**
+- **py文件样例**
 
     ```python
     from torch import tensor
@@ -92,11 +91,11 @@
     _ = ge.NetOutput([Cast_0], dependencies=[])
     ```
 
--   **pbtxt文件样例**
+- **pbtxt文件样例**
 
     ![](../../../figures/zh-cn_image_0000002237738428.png)
 
--   **txt文件样例**
+- **txt文件样例**
 
     ```txt
     name: "graph_1"
@@ -161,4 +160,3 @@
       ......
     }
     ```
-

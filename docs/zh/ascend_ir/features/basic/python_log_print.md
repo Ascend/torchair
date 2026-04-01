@@ -6,11 +6,11 @@ TorchAir的Python层日志（图编译过程中的日志信息）主要通过log
 
 支持的日志级别如下：
 
--   logging.DEBUG：日志级别DEBUG。
--   logging.INFO：日志级别INFO。
--   logging.WARNING：日志级别WARNING。
--   logging.ERROR：日志级别ERROR。
--   TorchAir的EVENT\_LEVEL：日志级别EVENT，用于统计TorchAir关键流程耗时。开启后输出ERROR、EVENT日志。
+- logging.DEBUG：日志级别DEBUG。
+- logging.INFO：日志级别INFO。
+- logging.WARNING：日志级别WARNING。
+- logging.ERROR：日志级别ERROR。
+- TorchAir的EVENT\_LEVEL：日志级别EVENT，用于统计TorchAir关键流程耗时。开启后输出ERROR、EVENT日志。
 
 除了EVENT级别是TorchAir自定义的，其他日志级别与Python原生使用方法类似，可参考Python官网[logging模块](https://docs.python.org/3.8/library/logging.html)，logger.setLevel的默认值为“logging.ERROR“。
 
@@ -111,4 +111,3 @@ Dynamo侧原生日志：
 [2025-02-06 16:46:56,302] [0/0] torch._dynamo.output_graph.__graph_sizes: [DEBUG] scatter_update: (1, 1, 2, 8)
 [2025-02-06 16:46:56,302] [0/0] torch._dynamo.output_graph.__graph_sizes: [DEBUG]
 ```
-

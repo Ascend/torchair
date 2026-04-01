@@ -12,9 +12,9 @@ TorchAir约定FX Pass的函数签名如下：
 def _(gm, example_inputs, config: torchair.CompilerConfig) -> None
 ```
 
--   gm：表示AOT（Ahead-of-Time）编译后的GraphModule类对象，gm.graph为其FX图。
--   example\_inputs：表示AOT（Ahead-of-Time）编译后的GraphModule对象的FakeTensor类型输入，通常不需要使用。
--   config：表示TorchAir编译后端创建的[CompilerConfig类](../../api/torchair/compiler_config.md)对象，用于Pass感知完整编译选项。
+- gm：表示AOT（Ahead-of-Time）编译后的GraphModule类对象，gm.graph为其FX图。
+- example\_inputs：表示AOT（Ahead-of-Time）编译后的GraphModule对象的FakeTensor类型输入，通常不需要使用。
+- config：表示TorchAir编译后端创建的[CompilerConfig类](../../api/torchair/compiler_config.md)对象，用于Pass感知完整编译选项。
 
 FX Pass原地修改gm对象，任何返回值都会被忽略。对于无法处理的异常情况，应当抛出异常。需要确保不抛出异常时，处理后的FX图是正确的：即其执行结果与修改前的FX图完全一致。
 
@@ -37,7 +37,7 @@ class Model(torch.nn.Module):
         return add, sub
 ```
 
-1.  编写自定义Pass，样例如下：
+1. 编写自定义Pass，样例如下：
 
     ```python
     def _custom_pre_pass(gm, example_inputs, config: torchair.CompilerConfig):
@@ -66,7 +66,7 @@ class Model(torch.nn.Module):
 
     该Pass的功能是在torch.ops.aten.mm.default和torch.ops.aten.abs.default节点前后分别插入torch.ops.air.scope\_enter.default和torch.ops.air.scope\_exit.default节点，使得指定范围内的节点在流“stream\_1”上执行。并在torch.ops.aten.abs.default节点后插入torch.ops.air.record.default节点，在torch.ops.aten.sub.Tensor节点前插入torch.ops.air.wait.default节点，使得控制时序让sub算子在abs算子之后执行。
 
-2.  将自定义Pass注册到TorchAir使其生效。
+2. 将自定义Pass注册到TorchAir使其生效。
 
     当前TorchAir的编译选项通过torchair.CompilerConfig类传递，需要开启post\_grad\_custom\_pre\_pass和post\_grad\_custom\_post\_pass两个阶段的自定义Pass注册。开关开启方式如下：
 
@@ -158,10 +158,8 @@ class Model(torch.nn.Module):
     |post_grad_custom_pre_pass|TorchAir本身内置了部分FX图优化Pass，该配置控制自定义Pass在内置Pass执行前生效。传入自定义Pass函数。|
     |post_grad_custom_post_pass|TorchAir本身内置了部分FX图优化Pass，该配置控制自定义Pass在内置Pass执行后生效。传入自定义Pass函数。|
 
+3. 检查Pass是否生效。
+    - 打开Debug日志（参考[TorchAir Python层日志打印](python_log_print.md)），查看修改后的FX图是否有插入torch.ops.air.scope\_enter.default和torch.ops.air.scope\_exit.default、torch.ops.air.record.default、torch.ops.air.wait.default新节点，以及插入的位置是否正确。
 
-3.  检查Pass是否生效。
-    -   打开Debug日志（参考[TorchAir Python层日志打印](python_log_print.md)），查看修改后的FX图是否有插入torch.ops.air.scope\_enter.default和torch.ops.air.scope\_exit.default、torch.ops.air.record.default、torch.ops.air.wait.default新节点，以及插入的位置是否正确。
-
-    -   可以通过dump出的图结构（参考[算子data dump功能](../advanced/data_dump.md)）来查看图上对应的算子时序是否符合预期。
-    -   可以通过Profiling文件（参考[性能分析案例](../../../appendix/cases/perfermance_cases.md#性能分析案例)）来查看算子的分流以及时序是否符合预期。
-
+    - 可以通过dump出的图结构（参考[算子data dump功能](../advanced/data_dump.md)）来查看图上对应的算子时序是否符合预期。
+    - 可以通过Profiling文件（参考[性能分析案例](../../../appendix/cases/perfermance_cases.md#性能分析案例)）来查看算子的分流以及时序是否符合预期。

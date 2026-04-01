@@ -6,17 +6,17 @@
 
 整体定位流程大致如下，请根据实际情况逐一排查。
 
-1.  判断PyTorch模型在单算子模式下是否运行成功。
+1. 判断PyTorch模型在单算子模式下是否运行成功。
 
     若失败可能存在部分算子在NPU上不支持，优先打通单算子模式，具体可参考[torch\_npu](https://www.hiascend.com/document/detail/zh/Pytorch/700/index/index.html)资料；若成功进入[步骤2](#step2)。
 
-2.  判断图模式backend采用Eager后端是否运行成功。若失败可能FX图本身执行存在问题，若成功进入[步骤3](#step3)。<a id="step2"></a>
+2. 判断图模式backend采用Eager后端是否运行成功。若失败可能FX图本身执行存在问题，若成功进入[步骤3](#step3)。<a id="step2"></a>
 
-3.  判断图模式backend采用NPU后端是否运行成功。若失败可能是FX成图存在断图问题，需要检视PyTorch脚本分析断图原因；若成功进入[步骤4](#step4)。<a id="step3"></a>
+3. 判断图模式backend采用NPU后端是否运行成功。若失败可能是FX成图存在断图问题，需要检视PyTorch脚本分析断图原因；若成功进入[步骤4](#step4)。<a id="step3"></a>
 
-4.  如果FX成图没问题，需要判断问题出现在TorchAir的converter转换阶段还是底层算子编译、执行阶段。<a id="step4"></a>
+4. 如果FX成图没问题，需要判断问题出现在TorchAir的converter转换阶段还是底层算子编译、执行阶段。<a id="step4"></a>
 
-    请打开TorchAir的C++和Python侧debug日志，根据报错提示和具体的失败堆栈信息，自行分析和解决问题。若无法解决，获取日志后您可以单击[Link](https://www.hiascend.com/support)联系技术支持。
+    请打开TorchAir的C++和Python侧debug日志，根据报错提示和具体的失败堆栈信息，自行分析和解决问题。若无法解决，获取日志后您可以[单击](https://www.hiascend.com/support)联系技术支持。
 
 **图 1**  入图问题分析流程  
 ![](../../figures/graph_cases_flowchart.png "入图问题分析流程")<a id="fig1"></a>
@@ -51,19 +51,19 @@ E89999:[PID:260559] 2024-11-06-15:44:43.218.474 op[FloorDiv_1] op dtype is not s
 
 ### 可能原因
 
--   Meta推导的输出dtype不符合预期。
--   Meta推导符合预期，但GE算子不支持Meta推导的dtype类型。
--   GE算子的dtype推导不符合预期。
+- Meta推导的输出dtype不符合预期。
+- Meta推导符合预期，但GE算子不支持Meta推导的dtype类型。
+- GE算子的dtype推导不符合预期。
 
 ### 处理步骤
 
-1.  此类报错通常在CANN侧，一般在图编译阶段，可获取GE的dump图与TorchAir的dump图进行比较，dump操作参见[关键数据获取](#关键数据获取)。
-2.  经过比较，发现TorchAir的dump图dtype类型正确，但GE的dump图在InferShape阶段，FloorDiv输入的dtype类型已经不一致。
+1. 此类报错通常在CANN侧，一般在图编译阶段，可获取GE的dump图与TorchAir的dump图进行比较，dump操作参见[关键数据获取](#关键数据获取)。
+2. 经过比较，发现TorchAir的dump图dtype类型正确，但GE的dump图在InferShape阶段，FloorDiv输入的dtype类型已经不一致。
 
     ![](../../figures/Snap1.png)
 
-3.  根据此图出问题的节点，依次往上面的节点排查，确认dtype不一致的原因。发现在GE侧，float类型是由floor算子推导而来。
-4.  此时回到TorchAir的dump图，查看期望的输入/输出dtype，发现floor算子的期望输出类型是int类型。此时确认原因：用户期望的输入dtype和GE侧InferShape推导的dtype并不一致，此时需要用户在算子converter转换阶段处理这种差异，对输入插入cast保证dtype类型一致，脚本修改样例如下：
+3. 根据此图出问题的节点，依次往上面的节点排查，确认dtype不一致的原因。发现在GE侧，float类型是由floor算子推导而来。
+4. 此时回到TorchAir的dump图，查看期望的输入/输出dtype，发现floor算子的期望输出类型是int类型。此时确认原因：用户期望的输入dtype和GE侧InferShape推导的dtype并不一致，此时需要用户在算子converter转换阶段处理这种差异，对输入插入cast保证dtype类型一致，脚本修改样例如下：
 
     ```python
     @register_fx_node_ge_converter(math.floor)
@@ -95,15 +95,15 @@ RuntimeError: E19025: [PID: 44349] 2024-12-05-16:19:12.399.912 Input tensor is i
 
 ### 可能原因
 
--   PyTorch侧的数据大小和实际申请的目标数据大小不一致。
--   PyTorch侧申请的内存大小不满足算子实际的输出大小。
+- PyTorch侧的数据大小和实际申请的目标数据大小不一致。
+- PyTorch侧申请的内存大小不满足算子实际的输出大小。
 
 ### 处理步骤
 
-1.  此类报错通常在CANN算子中，原因是数据的存储size不足，因此优先查看GE的dump图，dump操作参见[关键数据获取](#关键数据获取)。
-2.  通过分析图信息，发现报错算子申请的实际size和报错日志中的输出Tensor的size不一致，实际输出的是4096的bfloat16类型数据，GE输出的是4096的float32类型数据，因此申请的size不够导致报错。
-3.  由于数据类型不一致，需要查看该算子的Meta推导和GE推导过程，发现两种推导类型不一致。查看算子定义，发现Meta推导应该是float32类型，而不是bfloat16类型。
-4.  确认Meta推导有问题后，需对此特殊类型做处理。
+1. 此类报错通常在CANN算子中，原因是数据的存储size不足，因此优先查看GE的dump图，dump操作参见[关键数据获取](#关键数据获取)。
+2. 通过分析图信息，发现报错算子申请的实际size和报错日志中的输出Tensor的size不一致，实际输出的是4096的bfloat16类型数据，GE输出的是4096的float32类型数据，因此申请的size不够导致报错。
+3. 由于数据类型不一致，需要查看该算子的Meta推导和GE推导过程，发现两种推导类型不一致。查看算子定义，发现Meta推导应该是float32类型，而不是bfloat16类型。
+4. 确认Meta推导有问题后，需对此特殊类型做处理。
 
     在脚本中使用如下代码，仅供参考，请以实际需求为准。目的是保证Meta推导类型正确，内存大小申请正确。
 
@@ -129,8 +129,8 @@ Meta注册时构造的Tensor类型不符合要求。
 
 ### 处理步骤
 
-1.  此类报错通常问题出现在Dynamo编译阶段，该阶段自定义算子主要的代码实现就是Meta注册。
-2.  根据报错提示，先检查Meta注册代码，代码形如下方，可以发现确实返回了CPU Tensor。
+1. 此类报错通常问题出现在Dynamo编译阶段，该阶段自定义算子主要的代码实现就是Meta注册。
+2. 根据报错提示，先检查Meta注册代码，代码形如下方，可以发现确实返回了CPU Tensor。
 
     ```python
     @impl(m, "npu_custom_batch_matmul_cce", "Meta") 
@@ -138,7 +138,7 @@ Meta注册时构造的Tensor类型不符合要求。
         return torch.zeros(a.shape[0], b.shape[1])
     ```
 
-3.  将返回的Tensor指定device为"meta"，问题即可解决。
+3. 将返回的Tensor指定device为"meta"，问题即可解决。
 
     ```python
     @impl(m, "npu_custom_batch_matmul_cce", "Meta") 
@@ -154,17 +154,17 @@ Meta注册时构造的Tensor类型不符合要求。
 
 ### 可能的原因
 
--   parameter对象的输入不符合预期，原始数据有误。
--   模型中存在非连续的parameter对象，导致计算的结果错误。
+- parameter对象的输入不符合预期，原始数据有误。
+- 模型中存在非连续的parameter对象，导致计算的结果错误。
 
 ### 处理步骤
 
-1.  出现精度问题后，首先排查是否是Dynamo框架导致FX图有误。
+1. 出现精度问题后，首先排查是否是Dynamo框架导致FX图有误。
 
     先验证Eager模式执行效果，若执行后的模型精度正确，那么原因就是NPU后端图模式导致。
 
-2.  确认问题来源于图模式后，分别对比图模式下data dump数据（[算子data dump功能](../../ascend_ir/features/advanced/data_dump.md)）和Eager模式下data dump数据（[算子data dump功能（Eager模式）](../../ascend_ir/features/basic/data_dump_eager.md)）。对比后发现原始输入存在差异，说明图模式处理输入参数时已经存在问题。
-3.  为进一步确认问题原因，开启TorchAir的Python侧日志，观察其处理输入的日志，发现该模型的输入input 0连续性不符合预期，是非连续的，如下所示
+2. 确认问题来源于图模式后，分别对比图模式下data dump数据（[算子data dump功能](../../ascend_ir/features/advanced/data_dump.md)）和Eager模式下data dump数据（[算子data dump功能（Eager模式）](../../ascend_ir/features/basic/data_dump_eager.md)）。对比后发现原始输入存在差异，说明图模式处理输入参数时已经存在问题。
+3. 为进一步确认问题原因，开启TorchAir的Python侧日志，观察其处理输入的日志，发现该模型的输入input 0连续性不符合预期，是非连续的，如下所示
 
     ```txt
     [DEBUG] TORCHAIR(2250956,python):2025-02-06 15:44:44 runtime inputs
@@ -175,7 +175,7 @@ Meta注册时构造的Tensor类型不符合要求。
     [INFO] TORCHAIR(2250956,python):2025-02-06 15:44:44 input process func is:
     ```
 
-4.  修改推理脚本，将非连续输入parameter对象转为连续输入。
+4. 修改推理脚本，将非连续输入parameter对象转为连续输入。
 
     非连续输入无法直接传入GE进行计算，因此先确认该输入在模型中的位置，在脚本中使用“contiguous\(\)”完成转换。
 
@@ -196,15 +196,15 @@ E89999: [PID: 8383] 2025-06-28-17:38:17.580.416 op[Transpose], attr[perm], has w
 
 ### 可能的原因
 
--   脚本中用户实际transpose的Tensor不符合预期，需要修改脚本
--   Meta推导和GE的InferShape推导类型不一致，导致GE算子侧transpose操作不符合预期
+- 脚本中用户实际transpose的Tensor不符合预期，需要修改脚本
+- Meta推导和GE的InferShape推导类型不一致，导致GE算子侧transpose操作不符合预期
 
 ### 处理步骤
 
-1.  此类报错通常出现在CANN算子的InferShape阶段，可获取GE的dump图与TorchAir的dump图进行比较，dump操作参见[关键数据获取](#关键数据获取)。
-2.  经过比较，发现allgather推导的输出shape不同，TorchAir推导的输出shape为\[4, 256, 5120\]，而GE算子推导的输出shape为\[1024, 5120\]。
-3.  单击[Link](https://www.hiascend.com/support)联系技术支持，了解GE算子底层实现，发现两者的shape推导实现确实存在差异，需要在converter侧做适配。
-4.  在推理脚本中实现converter时，插入Reshape操作，代码如下，仅供参考，以保证GE算子推导的shape与PyTorch推导的shape一致。
+1. 此类报错通常出现在CANN算子的InferShape阶段，可获取GE的dump图与TorchAir的dump图进行比较，dump操作参见[关键数据获取](#关键数据获取)。
+2. 经过比较，发现allgather推导的输出shape不同，TorchAir推导的输出shape为\[4, 256, 5120\]，而GE算子推导的输出shape为\[1024, 5120\]。
+3. [单击](https://www.hiascend.com/support)联系技术支持，了解GE算子底层实现，发现两者的shape推导实现确实存在差异，需要在converter侧做适配。
+4. 在推理脚本中实现converter时，插入Reshape操作，代码如下，仅供参考，以保证GE算子推导的shape与PyTorch推导的shape一致。
 
     ```python
     @register_fx_node_ge_converter(torch.ops.npu_define.allgather_in_tensor.default)
@@ -285,13 +285,3 @@ assert not torch._C._dispatch_tls_local_exclude_set().has(AssertionError:xx)
 ### 处理步骤
 
 参考[自定义算子入图](../../custom_op_graph/custom_op_graph.md)章节完成Meta推导函数实现。
-
-
-
-
-
-
-
-
-
-

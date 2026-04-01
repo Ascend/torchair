@@ -17,8 +17,9 @@ npu_fused_infer_attention_score(Tensor query, Tensor key, Tensor value, *, Tenso
 ## 参数说明
 
 > [!NOTE]说明
->-   actual\_seq\_length类参数：本接口是指actual\_seq\_lengths、actual\_seq\_lengths\_kv、actual\_shared\_prefix\_len参数。
->-   与torch\_npu.npu\_fused\_infer\_attention\_score接口相比，参数区别在actual\_seq\_length类参数类型支持Tensor，而非int型数组。
+>
+>- actual\_seq\_length类参数：本接口是指actual\_seq\_lengths、actual\_seq\_lengths\_kv、actual\_shared\_prefix\_len参数。
+>- 与torch\_npu.npu\_fused\_infer\_attention\_score接口相比，参数区别在actual\_seq\_length类参数类型支持Tensor，而非int型数组。
 
 |参数|输入/输出|说明|
 |--|--|--|
@@ -27,16 +28,15 @@ npu_fused_infer_attention_score(Tensor query, Tensor key, Tensor value, *, Tenso
 |actual_seq_lengths_kv|输入|Tensor类型，代表不同Batch中key/value的有效Sequence Length，数据类型支持int64。|
 |actual_shared_prefix_len|输入|Tensor类型，代表key_shared_prefix/value_shared_prefix的有效Sequence Length。数据类型支持int64。|
 
-
 ## 返回值说明
 
 与torch\_npu.npu\_fused\_infer\_attention\_score接口返回值说明一致。
 
 ## 约束说明
 
--   本接口只支持图模式，**不支持Eager模式**下调用。
--   其他约束与torch\_npu.npu\_fused\_infer\_attention\_score接口保持一致。
--   该接口仅支持如下产品：
+- 本接口只支持图模式，**不支持Eager模式**下调用。
+- 其他约束与torch\_npu.npu\_fused\_infer\_attention\_score接口保持一致。
+- 该接口仅支持如下产品：
     - Atlas A2 训练系列产品/Atlas A2 推理系列产品
     - Atlas A3 训练系列产品/Atlas A3 推理系列产品
 
@@ -100,4 +100,3 @@ graph output with mask: tensor([[[[ 0.0219,  0.0201,  0.0049,  ...,  0.0118, -0.
         [ 0.0176,  0.0288, -0.0091,  ...,  0.0304,  0.0033, -0.0173]]]],
         device='npu:0', dtype=torch.float16) torch.Size([1, 8, 164, 128])
 ```
-

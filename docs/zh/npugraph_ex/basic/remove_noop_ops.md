@@ -6,8 +6,8 @@ aclgraph图模式场景下，npugraph\_ex集成了冗余算子消除优化功能
 
 典型冗余操作示例如下：
 
--   无实际意义的张量视图操作（如b=tensor\_a\[:\]）
--   参数无效的特殊算子（如重复次数为1的repeat操作）
+- 无实际意义的张量视图操作（如b=tensor\_a\[:\]）
+- 参数无效的特殊算子（如重复次数为1的repeat操作）
 
 本功能**依赖PyTorch 2.2.0或更高版本**，不同版本支持的优化场景可能存在差异。以PyTorch 2.5.1为例，支持优化的算子包括但不限于下表，算子的介绍请参见PyTorch源码。
 
@@ -49,7 +49,9 @@ torch.compile(model, backend="npugraph_ex", options={"remove_noop_ops": True}, d
 |remove_noop_ops|是否对冗余Kernel进行优化处理。True（默认值）：对冗余Kernel进行优化处理。False：不对冗余Kernel进行优化处理。|
 
 ## 使用说明
+
 以“对整个张量进行完整切片操作”为例，当不对冗余Kernel进行优化时，计算图如下：
+
 ```txt
 graph():
     %arg0_1 : [num_users=1] = placeholder[target=arg0_1]
@@ -58,6 +60,7 @@ graph():
     %add : [num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%slice_1, %arg1_1), kwargs = {})
     return (add,)
 ```
+
 在本功能设置成功后，参考[图编译Debug信息保存功能](../dfx/debug_save.md)，在Debug信息的torchair目录中的debug.log文件中可以看到优化后的计算图，如下：
 
 ```txt
@@ -67,4 +70,5 @@ after fx graph optimization, graph is graph():
     %add : [num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%arg0_1, %arg1_1), kwargs = {})
     return (add_3,)
 ```
+
 可见冗余aten.slice操作被消除。

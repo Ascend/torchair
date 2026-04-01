@@ -2,7 +2,7 @@
 
 ## 功能说明
 
-将自定义算子融合规则注册到TorchAir框架中，在FX图编译后对图进行算子融合优化。
+将自定义算子融合规则注册到npugraph\_ex中，在FX图编译后对图进行算子融合优化。
 
 ## 函数原型
 
@@ -22,7 +22,6 @@ register_replacement(search_fn: SearchFn, replace_fn: ReplaceFn, example_inputs:
 |search_fn_pattern|输入|自定义的pattern对象，一般无需传入。定义参考PyTorch原生MultiOutputPattern对象的定义规则。传入该参数后，将不再使用search_fn来匹配算子组合，而是直接使用该参数作为匹配规则。|
 |scalar_workaround|输入|用于显示绑定search_fn中标量参数值，用于匹配FX图追踪时固化的标量。|
 |skip_duplicates|输入|用于控制注册阶段的重复检测行为。设为True时，若检测到重复的匹配模式，会跳过该重复模式的注册；设为False时，若检测到重复模式则直接报错，禁止该重复模式完成注册，该参数仅在PyTorch版本≥2.7.0时生效。|
-
 
 ## 返回值说明
 
@@ -101,4 +100,3 @@ gamma = torch.ones(7168, dtype=torch.float16, device='npu')
 model_compile = torch.compile(model, backend="npugraph_ex", fullgraph=True, dynamic=False)
 res = model_compile(x1, x2, gamma)
 ```
-

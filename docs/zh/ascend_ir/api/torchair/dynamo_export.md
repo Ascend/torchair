@@ -21,18 +21,17 @@ dynamo_export(*args, model: torch.nn.Module, export_path: str = "export_file", e
 |config|输入|图编译配置，CompilerConfig类的实例化，默认情况下采用TorchAir自动生成的配置。导图时支持配置auto_atc_config_generated和enable_record_nn_module_stack功能，配置样例参见使用方法。|
 |*args、**kwargs|输入|导出模型时的样例输入，不同的输入可能导致模型执行不同的分支，进而导致trace的图不同。应当选取执行推理时的典型值。|
 
-
 ## 返回值说明
 
 无
 
 ## 约束说明
 
--   本功能仅适用于GE图模式场景，暂不支持同时配置[固定权重类输入地址功能](../../features/advanced/frozen_parameter.md)。
--   导出时需要保证被导出部分能构成一张图。
--   支持单卡和多卡场景下导出图，且支持导出后带AllReduce等通信类算子。
--   导出的air文件大小不允许超过2G（依赖的第三方库Protobuf存在限制导致）。
--   受Dynamo功能约束，不支持动态控制流if/else。
+- 本功能仅适用于GE图模式场景，暂不支持同时配置[固定权重类输入地址功能](../../features/advanced/frozen_parameter.md)。
+- 导出时需要保证被导出部分能构成一张图。
+- 支持单卡和多卡场景下导出图，且支持导出后带AllReduce等通信类算子。
+- 导出的air文件大小不允许超过2G（依赖的第三方库Protobuf存在限制导致）。
+- 受Dynamo功能约束，不支持动态控制流if/else。
 
 ## 调用示例
 
@@ -59,4 +58,3 @@ x = torch.randn(2, 4)
 y = torch.randn(2, 4)
 torchair.dynamo_export(x, y, model=model, export_path="./test_export_file_False", dynamic=False)
 ```
-

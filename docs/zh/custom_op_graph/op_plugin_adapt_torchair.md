@@ -66,6 +66,3 @@ def converter_my_inplace(x, y):
     )
     return out[1] # my_inplace算子只有一个输出z，所以这里是返回Ascend IR的第二个输出z
 ```
-
-
-

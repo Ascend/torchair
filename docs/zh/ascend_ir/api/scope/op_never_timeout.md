@@ -16,17 +16,15 @@ op_never_timeout(enable: bool = True)
 |--|--|--|
 |enable|输入|bool类型，表示是否添加_op_exec_never_timeout属性，默认为True，表示添加不超时属性。|
 
-
 ## 返回值说明
 
 无
 
 ## 约束说明
 
--   算子融合场景下，若子算子配置了本功能，其无法继承到新的融合算子节点上。
--   with语句块内不支持断图。
+- 算子融合场景下，若子算子配置了本功能，其无法继承到新的融合算子节点上。
+- with语句块内不支持断图。
 
 ## 调用示例
 
 参考[使用示例](../../features/advanced/op_never_timeout.md#使用示例)。
-

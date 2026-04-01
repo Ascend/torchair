@@ -19,7 +19,6 @@ Const(v: Any, dtype: int = None, node_name=None, readable=True) -> Tensor
 |node_name|输入|常量节点名，默认为None，例如'const_1'，同一张图中节点名不允许重复。|
 |readable|输入|是否在图上增加属性以可读的方式记录const值，默认为True。<br>True：开启可读方式记录常量值。<br>False：不开启可读方式记录常量值。|
 
-
 ## 返回值说明
 
 正常情况下，返回常量Tensor，否则失败报错。
@@ -35,4 +34,3 @@ import torch_npu, torchair
 from torchair.ge import DataType
 Const(0, dtype=DataType.DT_INT64, node_name='Const0')
 ```
-
