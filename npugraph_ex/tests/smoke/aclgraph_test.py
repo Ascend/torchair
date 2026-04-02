@@ -1839,6 +1839,29 @@ class AclgraphTest(unittest.TestCase):
         assert options_dict["data_dump_stage"] == 'optimized'
         assert options_dict["data_dump_dir"] == './'
 
+    def test_empty_like_contiguous_format(self):
+
+        class Model1(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, data1, data2):
+                transpose_01 = torch.transpose(data1, 0, 1)
+                transpose_02 = torch.transpose(data2, 0, 1)
+                print("===Image broken===")
+                matmul_01 = torch.mm(transpose_01, transpose_02)
+                return matmul_01
+
+        input0 = torch.randn(10240, 10240, dtype=torch.float32)
+        input1 = torch.randn(10240, 10240, dtype=torch.float32)
+        model_ori = Model1()
+        model = torch.compile(model_ori, backend="npugraph_ex", fullgraph=False)
+        output = model(input0, input1)
+        ori_out = model_ori(input0, input1)
+
+        max_diff = torch.max(torch.abs(output - ori_out))
+        self.assertTrue(max_diff < 1e-5, max_diff)
+
 
 def patch_dynamo():
     from torch._dynamo.variables.user_defined import UserDefinedClassVariable

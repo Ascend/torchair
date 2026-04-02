@@ -1166,7 +1166,7 @@ class AclGraph(object):
                     # as the inputs will be reconstructed during processing.
                     # If clone_input is set to False, records the original data_ptr in args_list[input_idx].
                     if self.config.get('clone_input', "1") == "1" and args_list[input_idx].is_npu:
-                        args_list[input_idx] = torch.empty_like(args_list[input_idx])
+                        args_list[input_idx] = torch.empty_like(args_list[input_idx], memory_format=torch.contiguous_format)
                     # Uses retained_userinputs to ensure capture of the args_list.
                     self._graphs_meta[graph_key].retained_userinputs.setdefault(input_idx, args_list[input_idx])
                 else:
