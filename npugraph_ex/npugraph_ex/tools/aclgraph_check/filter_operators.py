@@ -166,7 +166,7 @@ def _merge_stream_active(events, gap=0.0):
     return events, moved
 
 
-def _classify_operator(name: str) -> str | None:
+def _classify_operator(name: str):
     """
     根据算子 name 判断类型。
     返回 "control_record" / "control_wait" / "communication" / None(不保留)
