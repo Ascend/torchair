@@ -63011,6 +63011,54 @@ def ReduceStdWithMean(x: Tensor, mean: Tensor, *, dim: List[int]=[], unbiased: b
     return y
 
 
+# This api is auto-generated from IR ReduceStdV2
+@auto_convert_to_tensor([False], [False])
+def ReduceStdV2(x: Tensor, *, dim: List[int] = None, correction: int = 1, keepdim: bool = False, is_mean_out: bool = True, dependencies=None, node_name=None):
+    """REG_OP(ReduceStdV2)\n
+    .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(std, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(mean, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .ATTR(dim, ListInt, {})\n
+    .ATTR(correction, Int, 1)\n
+    .ATTR(keepdim, Bool, false)\n
+    .ATTR(is_mean_out, Bool, true)\n
+    .OP_END_FACTORY_REG(ReduceStdV2)\n
+    """
+
+    op = get_default_ge_graph().op.add()
+    op.type = "ReduceStdV2"
+    op.name = next_unique_name(node_name, "ReduceStdV2")
+
+    # process dependices
+    dependencies = dependencies or []
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+
+    # process attrs
+    dim = dim or []
+    op.attr["dim"].list.val_type = 2
+    op.attr["dim"].list.i.extend(dim)
+    op.attr["correction"].i = correction
+    op.attr["keepdim"].b = keepdim
+    op.attr["is_mean_out"].b = is_mean_out
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "std"
+    std = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "mean"
+    mean = Tensor(op, output_index)
+    output_index += 1
+
+    return std, mean
+
+
 # This api is auto-generated from IR ReduceMeanVariance
 @auto_convert_to_tensor([False], [False])
 def ReduceMeanVariance(x: Tensor, *, axes: List[int]=[], keep_dims: bool=True, dependencies=[], node_name=None):

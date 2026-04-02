@@ -1,3 +1,4 @@
+import functools
 from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 
 
@@ -93,9 +94,17 @@ def conveter_aten_std_correction(
 ):
     """NB: aten::std.correction(Tensor self, int[1]? dim=None, *, Scalar? correction=None, bool keepdim=False) -> Tensor"""
     correction = 1 if correction is None else correction
+    dim = dim or []
     std_or_none = process_special_shape(self, dim, correction, keepdim, meta_outputs.dtype)
     if std_or_none is not None:
         return std_or_none
+    if is_arch35():
+        std, mean = ge.ReduceStdV2(self,
+                                    dim=dim,
+                                    correction=correction,
+                                    keepdim=keepdim,
+                                    is_mean_out=False)
+        return std
     mean = ge.ReduceMean(self, axes=dim, keep_dims=keepdim)
     if len(dim) == 1 and dim[0] == -1:
         pass
