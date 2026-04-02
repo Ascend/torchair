@@ -796,6 +796,32 @@ class GeTest(unittest.TestCase):
 
         self.assertTrue(torch.allclose(eager_output, compile_output))
 
+    def test_discontiguous_tensor_transpose(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                output = torch.matmul(x, y)
+                return output
+
+        npu_config = torchair.CompilerConfig()
+        npu_config.mode = "max-autotune"
+        npu_backend = torchair.get_npu_backend(compiler_config=npu_config)
+
+        model = Model().npu()
+        model_compile = torch.compile(model, backend=npu_backend)
+
+        x = torch.randn(512, 256, dtype=torch.float16, device='npu')
+        x_transposed = x.transpose(0, 1).npu()
+
+        eager_output = model(x_transposed, x)
+
+        with torch.no_grad():
+            compile_output = model_compile(x_transposed, x)
+
+        self.assertTrue(torch.allclose(eager_output, compile_output, rtol=1e-3, atol=1e-3))
+
 
 if __name__ == '__main__':
     unittest.main()

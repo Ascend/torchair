@@ -887,7 +887,7 @@ def kernel(*args):
     del ge_inputs[3]
     del ge_inputs[0]
     ge_inputs[1] = torch.from_numpy(numpy.array([args[2]]))
-    ge_inputs[2] = args[5].clone()
+    ge_inputs[2] = args[5].contiguous()
     ge_inputs.insert(4, torch.from_numpy(numpy.array([args[7], args[8], ])))
 
     global _is_first_run
@@ -940,7 +940,7 @@ def kernel(*args):
 _is_first_run = True
 def kernel(*args):
     ge_inputs = list(args)
-    ge_inputs[1] = args[1].clone()
+    ge_inputs[1] = args[1].contiguous()
 
     global _is_first_run
     if _is_first_run:
