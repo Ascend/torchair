@@ -303,7 +303,7 @@ def static_compile(result_root: Path, chosen_dir, rank: int = None, super_kernel
         if is_gte:
             cmd.extend(["-f", "true"])
         logger.debug(f"{prefix}the cmd is {cmd}")
-        res = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        res = subprocess.run(cmd, check=True, capture_output=not is_gte, text=True)
         logger.debug(f"{prefix}execute op_compiler, msg: {res.stdout}")
         return True
     except subprocess.CalledProcessError as e:
