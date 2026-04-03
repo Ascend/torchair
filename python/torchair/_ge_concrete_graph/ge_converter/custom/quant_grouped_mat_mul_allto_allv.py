@@ -74,6 +74,10 @@ def convert_npu_quant_gmm_alltoallv(
     trans_mm_weight = False
     group_sizes = 0
     comm_quant_dtype = 0
+    gmm_x_quant_mode = 1 if gmm_x_quant_mode is None else gmm_x_quant_mode
+    gmm_weight_quant_mode = 1 if gmm_weight_quant_mode is None else gmm_weight_quant_mode
+    mm_x_quant_mode = 1 if mm_x_quant_mode is None else mm_x_quant_mode
+    mm_weight_quant_mode = 1 if mm_weight_quant_mode is None else mm_weight_quant_mode
 
     tensor_names = ["gmm_x", "gmm_weight", "gmm_x_scale", "gmm_weight_scale", "mm_x", "mm_weight", \
                     "mm_x_scale", "mm_weight_scale"]
