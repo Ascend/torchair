@@ -94,7 +94,7 @@ def convert_npu_quant_gmm_alltoallv(
     check_inputs(x_list, x_dtype_list, quant_mode_list, tensor_names, dtype_names, quant_mode_names)
     
     x_list = cast_to_real_type(x_list, x_dtype_list)
-    (gmm_x, gmm_weight, gmm_x_scale, gmm_weight_scale, mm_x, mm_weight, mm_x_scale, mm_weight_scale, comm_quant_scale) = x_list
+    (gmm_x, gmm_weight, gmm_x_scale, gmm_weight_scale, mm_x, mm_weight, mm_x_scale, mm_weight_scale) = x_list
     output_dtype = torch_dtype_value_to_ge_type(gmm_y_dtype)
     if output_dtype not in Y_DTYPE_SUPPORT_LIST:
         raise RuntimeError( \
