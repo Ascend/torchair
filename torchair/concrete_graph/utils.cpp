@@ -247,6 +247,9 @@ Status AtDtypeToGeDtype(const c10::ScalarType &dtype, ge::DataType &ge_dtype) {
   switch (dtype) {
     ATEN2GE_MAP_TYPE(c10::ScalarType::Bool, ge::DataType::DT_BOOL);
     ATEN2GE_MAP_TYPE(c10::ScalarType::Byte, ge::DataType::DT_UINT8);
+    ATEN2GE_MAP_TYPE(c10::ScalarType::UInt16, ge::DataType::DT_UINT16);
+    ATEN2GE_MAP_TYPE(c10::ScalarType::UInt32, ge::DataType::DT_UINT32);
+    ATEN2GE_MAP_TYPE(c10::ScalarType::UInt64, ge::DataType::DT_UINT64);
     ATEN2GE_MAP_TYPE(c10::ScalarType::Char, ge::DataType::DT_INT8);
     ATEN2GE_MAP_TYPE(c10::ScalarType::Short, ge::DataType::DT_INT16);
     ATEN2GE_MAP_TYPE(c10::ScalarType::Int, ge::DataType::DT_INT32);
@@ -286,6 +289,9 @@ Status GeDtypeToAtDtype(const ge::DataType &ge_dtype, c10::ScalarType &dtype) {
   switch (ge_dtype) {
     GE2ATEN_MAP_TYPE(ge::DataType::DT_BOOL, c10::ScalarType::Bool);
     GE2ATEN_MAP_TYPE(ge::DataType::DT_UINT8, c10::ScalarType::Byte);
+    GE2ATEN_MAP_TYPE(ge::DataType::DT_UINT16, c10::ScalarType::UInt16);
+    GE2ATEN_MAP_TYPE(ge::DataType::DT_UINT32, c10::ScalarType::UInt32);
+    GE2ATEN_MAP_TYPE(ge::DataType::DT_UINT64, c10::ScalarType::UInt64);
     GE2ATEN_MAP_TYPE(ge::DataType::DT_INT8, c10::ScalarType::Char);
     GE2ATEN_MAP_TYPE(ge::DataType::DT_INT16, c10::ScalarType::Short);
     GE2ATEN_MAP_TYPE(ge::DataType::DT_INT32, c10::ScalarType::Int);

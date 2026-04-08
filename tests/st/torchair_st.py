@@ -1812,6 +1812,29 @@ class TorchairSt(unittest.TestCase):
         self.assertEqual(torch.float8_e5m2, res2.dtype)
         self.assertEqual(torch.float, res3.dtype)
 
+    def test_torch_uint_16_32_64(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                return torch.add(x, y)
+
+        model = Model()
+        model = torch.compile(model, backend=npu_backend, dynamic=True, fullgraph=True)
+
+        uint_dtypes = [torch.uint16, torch.uint32, torch.uint64]
+
+        for dtype in uint_dtypes:
+            with self.subTest(dtype=dtype):
+                x = torch.randint(0, 255, (2, 2), dtype=dtype)
+                y = torch.randint(0, 255, (2, 2), dtype=dtype)
+
+                output = model(x, y)
+                self.assertEqual(dtype, x.dtype)
+                self.assertEqual(dtype, y.dtype)
+                self.assertEqual(dtype, output.dtype)
+
     def test_directory_generation(self):
         import re
 

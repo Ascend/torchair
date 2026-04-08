@@ -93,7 +93,7 @@ class DataType:
     DT_INT16 = 6            # int16 type
     DT_UINT16 = 7           # uint16 type
     DT_UINT8 = 4            # uint8 type
-    DT_INT32 = 3            #
+    DT_INT32 = 3            # int32 type
     DT_INT64 = 9            # int64 type
     DT_UINT32 = 8           # unsigned int32
     DT_UINT64 = 10          # unsigned int64
@@ -282,6 +282,12 @@ def ge_type_to_torch_type(dtype: DataType) -> torch.dtype:
         return torch.int8
     if dtype == DataType.DT_UINT8:
         return torch.uint8
+    if dtype == DataType.DT_UINT16:
+        return torch.uint16
+    if dtype == DataType.DT_UINT32:
+        return torch.uint32
+    if dtype == DataType.DT_UINT64:
+        return torch.uint64
     if dtype == DataType.DT_INT16:
         return torch.int16
     if dtype == DataType.DT_INT64:
@@ -375,10 +381,14 @@ def _ge_dtype_to_ge_proto_dtype(dtype: DataType) -> np.dtype:
         return ProtoDataType.DT_INT8
     if dtype == DataType.DT_UINT8:
         return ProtoDataType.DT_UINT8
+    if dtype == DataType.DT_UINT16:
+        return ProtoDataType.DT_UINT16
     if dtype == DataType.DT_INT32:
         return ProtoDataType.DT_INT32
     if dtype == DataType.DT_UINT32:
         return ProtoDataType.DT_UINT32
+    if dtype == DataType.DT_UINT64:
+        return ProtoDataType.DT_UINT64
     if dtype == DataType.DT_INT64:
         return ProtoDataType.DT_INT64
     if dtype == DataType.DT_BOOL:
@@ -426,10 +436,14 @@ def _ge_proto_dtype_to_ge_dtype(dtype: ProtoDataType):
         return DataType.DT_INT8
     if dtype == ProtoDataType.DT_UINT8:
         return DataType.DT_UINT8
+    if dtype == ProtoDataType.DT_UINT16:
+        return DataType.DT_UINT16
     if dtype == ProtoDataType.DT_INT32:
         return DataType.DT_INT32
     if dtype == ProtoDataType.DT_UINT32:
         return DataType.DT_UINT32
+    if dtype == ProtoDataType.DT_UINT64:
+        return DataType.DT_UINT64
     if dtype == ProtoDataType.DT_INT64:
         return DataType.DT_INT64
     if dtype == ProtoDataType.DT_BOOL:
@@ -477,6 +491,10 @@ def _ge_proto_dtype_str(dtype: ProtoDataType) -> str:
         return "DT_INT8"
     if dtype == ProtoDataType.DT_UINT8:
         return "DT_UINT8"
+    if dtype == ProtoDataType.DT_UINT16:
+        return ("DT_UINT16")
+    if dtype == ProtoDataType.DT_UINT64:
+        return "DT_UINT64"
     if dtype == ProtoDataType.DT_INT32:
         return "DT_INT32"
     if dtype == ProtoDataType.DT_UINT32:

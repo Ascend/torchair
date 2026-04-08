@@ -534,6 +534,41 @@ class TorchairSt(unittest.TestCase):
         self.assertEqual(src.count("dtype: DT_FLOAT8_E4M3FN"), 5)
         self.assertEqual(src.count("dtype: DT_FLOAT8_E5M2"), 2)
 
+    def test_torch_uint_16_32_64(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                return torch.add(x, y)
+
+        model = Model()
+
+        uint_dtypes = [torch.uint16, torch.uint32, torch.uint64]
+
+        for dtype in uint_dtypes:
+            with self.subTest(dtype=dtype):
+                export_path1 = "test_export_file_path_" + str(dtype).split(".")[-1]
+
+                x = torch.randint(0, 255, (2, 2), dtype=dtype)
+                y = torch.randint(0, 255, (2, 2), dtype=dtype)
+
+                torchair.dynamo_export(x, y, model=model, export_path=export_path1, dynamic=False)
+
+                dumped_file_list = get_dumped_file_list(export_path1)
+                dumped_file_list.sort(key=lambda file_name: os.path.getmtime(os.path.join(export_path1, file_name)))
+
+                assert dumped_file_list.__len__() > 0
+                file_name = os.path.join(export_path1, dumped_file_list[-1])
+
+                with open(file_name, 'r') as f:
+                    src = f.read()
+
+                dtype_name = str(dtype).split(".")[-1]
+                dtype_upper = dtype_name.upper()
+                print("2222"+ dtype_upper)
+                self.assertEqual(src.count("op: \"Data\""), 1)
+                self.assertEqual(src.count(f"dtype: DT_{dtype_upper}" ), 3)
 
     def test_lite_export(self):
         converter_called = [False]
