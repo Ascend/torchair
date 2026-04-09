@@ -6,17 +6,17 @@ from torchair.ge._ge_graph import Tensor
 from torchair._ge_concrete_graph.compat_ir import ge_op
 from torchair.core import _torchair
 from torchair.ge._ge_graph import torch_args_to_ge_args
+from torchair._utils.error_messages import ConverterErrorMsg
 
 
 def custom_op(op_type: str, *args, inputs: Optional[Dict[str, Optional[Union['Tensor', List['Tensor']]]]] = None,
               outputs: Optional[List[Union[str, Tuple[str, int]]]] = None, attrs: Optional[Dict[str, '_Attr']] = None,
               node_name: Optional[str] = None):
     (status, ge_inputs, ge_outputs, ge_attrs) = _torchair.get_registered_ir_def(op_type)
+    if status == "None":
+        raise RuntimeError(ConverterErrorMsg.SO_LOAD_FAILED)
     if status != "SUCCESS":
-        raise RuntimeError(f"No AscendIR {op_type} was found to be registered. "
-           f"Please make sure the custom op is successfully registered, "
-           f"If you need to view logs to assist in positioning, "
-           f"you can set the environment variable ASCEND_GLOBAL_LOG_LEVEL and ASCEND_PROCESS_LOG_PATH view op registration related logs.")
+        raise RuntimeError(ConverterErrorMsg.GE_IR_NOT_REGISTERED.format(name=op_type))
 
     if len(args) == 0:
         return ge_op(op_type=op_type, inputs=inputs, outputs=outputs, attrs=attrs, node_name=node_name)

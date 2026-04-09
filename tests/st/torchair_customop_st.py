@@ -54,16 +54,6 @@ class CustomOpSt(unittest.TestCase):
             self.assertEqual(len(op_def.output_desc), 1)
             self.assertEqual(op_def.output_desc[0].name, 'y')
 
-    def test_custom_with_unregistered(self):
-        with self.assertRaises(RuntimeError) as cm, GeGraph():
-            ge.custom_op('MyOpTestv5', inputs=None, outputs=None)
-
-        self.assertEqual("No AscendIR MyOpTestv5 was found to be registered. "
-                         "Please make sure the custom op is successfully registered, "
-                         "If you need to view logs to assist in positioning, "
-                         "you can set the environment variable ASCEND_GLOBAL_LOG_LEVEL and ASCEND_PROCESS_LOG_PATH view op registration related logs.",
-                         str(cm.exception))
-
     def test_custom_not_change_input(self):
         with GeGraph():
             data1 = raw_ops.Data(index=0, dtype=ge.DataType.DT_FLOAT, placement='CPU', node_name='data1')

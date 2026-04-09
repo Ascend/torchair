@@ -23,6 +23,7 @@ add_custom_command(OUTPUT ST_TESTCASES
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_print_detail_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_debug_log_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_auto_converter_functional_st.py ${CMAKE_BINARY_DIR}/st
+        COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_converter_error_message_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_npugraph_ex_compile_st.py ${CMAKE_BINARY_DIR}/st
         COMMAND cp ${CMAKE_CURRENT_LIST_DIR}/torchair_npugraph_ex_cache_st.py ${CMAKE_BINARY_DIR}/st
         DEPENDS _privateuse1_backend libaoe_tuning libopapi
@@ -47,6 +48,7 @@ add_custom_target(run_torchair_py_cases ALL
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_debug_log_st
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_aclgraph_reinplace_st
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_auto_converter_functional_st
+        COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_converter_error_message_st
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_npugraph_ex_compile_st
         COMMAND ${PYTHON_BIN_PATH} -m unittest torchair_npugraph_ex_cache_st
         DEPENDS install_torchair ST_TESTCASES

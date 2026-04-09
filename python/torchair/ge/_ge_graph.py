@@ -17,6 +17,7 @@ from torch.utils._mode_utils import no_dispatch
 from torchair.core.utils import logger
 from torchair._ge_concrete_graph.ge_ir_pb2 import ModelDef, GraphDef, OpDef, AttrDef, TensorDescriptor
 from torchair._ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
+from torchair._utils.error_messages import ConverterErrorMsg
 
 
 local_variable = threading.local()
@@ -204,7 +205,7 @@ def torch_type_to_ge_type(dtype, m=DataType):
         if hasattr(torch, type_name) and dtype == getattr(torch, type_name):
             return ge_type
 
-    raise RuntimeError(f"Unsupported convert torch type {dtype} to ge type")
+    raise RuntimeError(ConverterErrorMsg.TORCH_TYPE_TO_GE_TYPE_UN_SUPPORT.format(dtype=dtype))
 
 
 def torch_dtype_value_to_ge_proto_type(dtype_value):
@@ -1596,9 +1597,12 @@ def torch_args_to_ge_args(*args, ge_support_info, op_type):
     total_expected = len(ge_inputs) + len(ge_attrs)
     if len(args) != total_expected:
         raise IndexError(
-            f"Failed to parse AscendIR: The AscendIR {op_type} expected {total_expected} args but got {len(args)}, " 
-            f"please check converter input nums and AscendIR input nums, "
-            f"can set torchair.logger.setLevel(logging.info) to check the auto generate converter code.")
+            ConverterErrorMsg.ARGS_COUNT_MISMATCH.format(
+                op_type=op_type,
+                expected=total_expected,
+                actual=len(args)
+            )
+        )
 
     inputs = {}
     for idx, (name, expected_type) in enumerate(ge_inputs.items()):
@@ -1608,31 +1612,42 @@ def torch_args_to_ge_args(*args, ge_support_info, op_type):
                 inputs[name] = val
             else:
                 raise TypeError(
-                    f"Failed to parse AscendIR: The AscendIR {op_type} input '{name}' expected_type is {expected_type}, "
-                    f"the input must be Tensor please check converter input type, "
-                    f"can set torchair.logger.setLevel(logging.info) to check the auto generate converter code.")
+                    ConverterErrorMsg.INPUT_TYPE_REQUIRED.format(
+                        op_type=op_type,
+                        name=name,
+                        param_type=expected_type
+                    )
+                )
         elif expected_type == "dynamic":
             if isinstance(val, (list, tuple)):
                 inputs[name] = val
             else:
                 raise TypeError(
-                    f"Failed to parse AscendIR: The AscendIR {op_type} input '{name}' expected_type is {expected_type}, "
-                    f"the input must be list or tuple please check converter input type, "
-                    f"can set torchair.logger.setLevel(logging.info) to check the auto generate converter code.")
+                    ConverterErrorMsg.INPUT_TYPE_DYNAMIC.format(
+                        op_type=op_type,
+                        name=name,
+                        param_type=expected_type
+                    )
+                )
         elif expected_type == "optional":
             if isinstance(val, Tensor) or val is None:
                 inputs[name] = val
             else:
                 raise TypeError(
-                    f"Failed to parse AscendIR: The AscendIR {op_type} input '{name}' expected_type is {expected_type}, "
-                    f"the input must be Tensor or None please check converter input type, "
-                    f"can set torchair.logger.setLevel(logging.info) to check the auto generate converter code.")
+                    ConverterErrorMsg.INPUT_TYPE_OPTIONAL.format(
+                        op_type=op_type,
+                        name=name,
+                        param_type=expected_type
+                    )
+                )
         else:
             raise TypeError(
-                    f"Failed to parse AscendIR: The AscendIR {op_type} input '{name}' expected_type is {expected_type}, "
-                    f"this {expected_type} is not legal, "
-                    f"can set torchair.logger.setLevel(logging.info) to check the auto generate converter code.")
-
+                ConverterErrorMsg.INPUT_TYPE_ILLEGAL.format(
+                    op_type=op_type,
+                    name=name,
+                    param_type=expected_type
+                )
+            )
 
     attrs = {}
     for j, (name, vt_tag) in enumerate(ge_attrs.items(), start=len(ge_inputs)):
@@ -1641,11 +1656,14 @@ def torch_args_to_ge_args(*args, ge_support_info, op_type):
             continue
         constructor = _ATTR_TYPE_MAP.get(vt_tag)
         if constructor is None:
-            raise ValueError(f"Failed to parse AscendIR: The AscendIR {op_type} "
-                             f"has unsupported attr type '{vt_tag}' for '{name}', "
-                             f"please check converter attr type can match the AscendIR register, "
-                             f"can set torchair.logger.setLevel(logging.info) to "
-                             f"check the auto generate converter code.")
+            raise ValueError(
+                ConverterErrorMsg.ATTR_TYPE_ILLEGAL.format(
+                    op_type=op_type,
+                    attr_type=vt_tag,
+                    name=name,
+                    all_attr_types=_ATTR_TYPE_MAP.keys()
+                )
+            )
 
         if isinstance(val, torch.dtype):
             ge_type = torch_type_to_ge_type(val)

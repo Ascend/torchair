@@ -519,7 +519,7 @@ ge::Status GetRegisteredIrDef(const char *op_type, std::vector<std::pair<ge::Asc
   }
   if (std::string(op_type) == "MyOpTestv3"){
     inputs.emplace_back(ge::AscendString("var"), ge::AscendString("required"));
-    inputs.emplace_back(ge::AscendString("updates"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("updates"), ge::AscendString("dynamic"));
     inputs.emplace_back(ge::AscendString("indices"), ge::AscendString("required"));
     outputs.emplace_back(ge::AscendString("y"), ge::AscendString("required"));
   }
@@ -528,6 +528,22 @@ ge::Status GetRegisteredIrDef(const char *op_type, std::vector<std::pair<ge::Asc
     inputs.emplace_back(ge::AscendString("indices"), ge::AscendString("required"));
     inputs.emplace_back(ge::AscendString("updates"), ge::AscendString("required"));
     attrs.emplace_back(ge::AscendString("use_indices"), ge::AscendString("VT_NAMED_ATTRS"));
+    outputs.emplace_back(ge::AscendString("y"), ge::AscendString("required"));
+  }
+  if (std::string(op_type) == "MyOpTestv7"){
+    inputs.emplace_back(ge::AscendString("var"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("updates"), ge::AscendString("optional"));
+    inputs.emplace_back(ge::AscendString("indices"), ge::AscendString("required"));
+    outputs.emplace_back(ge::AscendString("y"), ge::AscendString("required"));
+  }
+  if (std::string(op_type) == "MyOpTestv8"){
+    inputs.emplace_back(ge::AscendString("x"), ge::AscendString("illegal"));
+    outputs.emplace_back(ge::AscendString("y"), ge::AscendString("required"));
+  }
+  if (std::string(op_type) == "MyOpInplace"){
+    inputs.emplace_back(ge::AscendString("x"), ge::AscendString("required"));
+    inputs.emplace_back(ge::AscendString("y"), ge::AscendString("required"));
+    outputs.emplace_back(ge::AscendString("x"), ge::AscendString("required"));
     outputs.emplace_back(ge::AscendString("y"), ge::AscendString("required"));
   }
   if (std::string(op_type) == "MyOpInplaceZ"){
