@@ -88,9 +88,10 @@ class _AclGraphDebugConfig(NpuBaseConfig):
         self.clone_input = OptionValue(True, [True, False])
         self.remove_cat_ops = OptionValue(True, [True, False])
         self.deadlock_check = OptionValue(False, [True, False])
+        self.capture_error_mode = OptionValue("global", ["global", "thread_local", "relaxed"])
 
         super(_AclGraphDebugConfig, self).__init__()
-
+        
     def as_dict(self):
         local_option = {}
         local_option["disable_mempool_reuse_in_same_fx"] = self.disable_mempool_reuse_in_same_fx.value
@@ -99,6 +100,7 @@ class _AclGraphDebugConfig(NpuBaseConfig):
         local_option["static_capture_size_limit"] = self.static_capture_size_limit.value
         local_option["clone_input"] = self.clone_input.value
         local_option["deadlock_check"] = self.deadlock_check.value
+        local_option["capture_error_mode"] = self.capture_error_mode.value
 
         return local_option
 

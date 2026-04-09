@@ -2187,7 +2187,38 @@ class NpugraphExSt(unittest.TestCase):
         assert options_dict["dump_tensor_data"] is False
         assert options_dict["data_dump_stage"] == 'optimized'
         assert options_dict["data_dump_dir"] == './'
+    
+    def test_capture_error_mode_option(self):
+        def f(x):
+            return x + 1
+        
+        input = torch.randn([2, 2])
 
+        def test_mode(mode = None):
+            options = {}
+            if mode is not None:
+                options = {"capture_error_mode": mode}
+            compile_f = torch.compile(f, backend="npugraph_ex", options=options)
+            with self.assertLogs(logger, level="DEBUG") as cm:
+                compile_f(input)
+            if mode is None:
+                mode = "global"
+            match_log = f"capture_error_mode=\"{mode}\""
+            return any(match_log in log for log in cm.output)
+        
+        # 测试capture_error_mode不配置和分别为global, thread_local, relaxed
+        self.assertTrue(test_mode())
+        self.assertTrue(test_mode("global"))
+        self.assertTrue(test_mode("thread_local"))
+        self.assertTrue(test_mode("relaxed"))
+
+        # capture_error_mode配置为global, thread_local, relaxed以外的选项报错
+        options = {"capture_error_mode": "xxxxx"}
+        compile_f = torch.compile(f, backend="npugraph_ex", options=options)
+        try:
+            compile_f(input)
+        except Exception as e:
+            assert str(e).__contains__("not in optional list ['global', 'thread_local', 'relaxed']")
 
 if __name__ == '__main__':
     unittest.main()

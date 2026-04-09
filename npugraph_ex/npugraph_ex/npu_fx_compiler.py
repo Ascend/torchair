@@ -629,6 +629,7 @@ class _NpuFxCompiler:
         graph = AclConcreteGraph(self.config,
                                  name="graph_" + str(_next_unique_graph_id()),
                                  pool=self.config.aclgraph_config.use_custom_pool,
+                                 capture_error_mode=self.config.debug.aclgraph.capture_error_mode.value,
                                  mutated_user_inputs=mutated_user_inputs)
 
         # do common optimization for fx graph based on config

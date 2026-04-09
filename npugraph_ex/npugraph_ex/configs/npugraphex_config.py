@@ -29,6 +29,7 @@ class _NpuGraphExConfig:
     _vllm_aclnn_static_kernel_sym_index: int = 0
     _vllm_aclnn_static_kernel_sym_range: list = None
     deadlock_check: bool = False
+    capture_error_mode: str = "global"
 
     """
     Config for NpuGraphEx option
@@ -59,7 +60,8 @@ class _NpuGraphExConfig:
         "data_dump_stage": "dump_config.data_dump_stage",
         "data_dump_dir": "dump_config.dump_path",
         "deadlock_check": "debug.aclgraph.deadlock_check",
-        
+        "capture_error_mode": "debug.aclgraph.capture_error_mode",
+
         # More mapping relationships can be extended here
     }
 
