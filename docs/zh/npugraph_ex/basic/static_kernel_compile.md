@@ -41,7 +41,9 @@
     import torch
     import torch_npu
     
-    opt_model = torch.compile(model, backend="npugraph_ex", options={"static_kernel_compile": True}, dynamic=False, fullgraph=True)
+    options = {"static_kernel_compile": True, "disable_static_kernel_compile_cache": False}
+    
+    opt_model = torch.compile(model, backend="npugraph_ex", options=options, dynamic=False, fullgraph=True)
     ```
 
 **表 1**  参数说明
@@ -49,16 +51,32 @@
 |**参数名**|**参数说明**|
 |--|--|
 |static_kernel_compile|布尔类型，是否开启静态Kernel编译 。False（默认值）：默认关闭。True：开启静态Kernel编译 。编译产物路径默认为当前执行脚本的同级目录，当同时启用了模型编译缓存功能但未启用force_eager功能时，编译产物路径为模型缓存文件所在目录。请确保该路径用户具有读、写操作权限。|
+|disable_static_kernel_compile_cache|布尔类型，是否禁用静态Kernel缓存功能。 <br>False（默认）：使用缓存功能。二次运行且缓存命中时，将直接复用编译好的kernel run包。 <br>True：禁用缓存功能。每次运行都会触发静态Kernel编译过程。 <br>仅在 `static_kernel_compile` 为 `True` 时生效。缓存映射关系记录于静态编译产物路径下的 `static_kernel_cache` 目录中。|
+
+> [!NOTE]说明
+> 在使用静态Kernel缓存功能时，系统会对比当前运行特征与缓存记录。只有当以下所有条件全部满足且缓存中对应的kernel run包存在时，才会判定为缓存命中，跳过静态Kernel编译过程：
+> 
+> 1. CANN版本不变、硬件型号不变；
+> 2. 模型中所有参与静态Kernel编译的算子属性（包括算子类型、输入输出Shape、Format、数据类型等）保持一致;
+> 3. 静态编译时的特定选项保持一致，包括：确定性计算配置、`super_kernel_optimize` 配置。
+> 
+> 若上述任一条件不匹配，则判定缓存未命中，将触发完整的静态Kernel编译流程，并更新 `static_kernel_cache` 目录下对应的缓存记录。
 
 ## 产物说明
 
 假设产物路径为“/path/test”，目录结构如下，其中$\{timestamp\}为时间戳、$\{pid\}表示运行的进程号。
 > [!NOTE]说明
 >
->- 当静态kernel编译进程异常退出时，请根据终端界面提示信息中的uninstall.sh脚本路径执行uninstall.sh脚本对静态kernel包进行卸载。
+>- 当静态Kernel编译进程异常退出时，请根据终端界面提示信息中的uninstall.sh脚本路径执行uninstall.sh脚本对静态Kernel包进行卸载。
 
 ```txt
 static_kernel_compile_outputs                  // 固定的产物文件名
+|—— ts${timestamp_1}_pid${pid_1}_outputs 
+|
+|—— static_kernel_cache                        // 静态Kernel缓存目录
+|    |—— CANN-${cann_version_1}_${device_name_1}.json   // 记录对应CANN版本和硬件型号上的缓存匹配关系
+|    |—— CANN-${cann_version_1}_${device_name_1}.lock   // 锁文件，用于避免多进程并发读写冲突
+|
 |—— ts${timestamp_1}_pid${pid_1}_outputs 
 |    |—— ${pid_1}                                // 模型中目标算子信息文件夹
 |        |—— MatMulV2_float_ND_1_2048_0.json     // js文件表示网络中的算子统计信息，包括shape和format等
