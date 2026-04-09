@@ -22,7 +22,7 @@ class HcomStaticKernelTest(unittest.TestCase):
         return dist
 
     @classmethod
-    def _test_static_kernel_with_cache(cls, rank, world_size, input, cache_dir):
+    def _test_static_kernel_with_cache_compile(cls, rank, world_size, input, cache_dir):
         class CacheHcomModel(torch.nn.Module):
             def __init__(self, options, cache_dir):
                 super(CacheHcomModel, self).__init__()
@@ -55,7 +55,7 @@ class HcomStaticKernelTest(unittest.TestCase):
 
 
     @classmethod
-    def _test_static_kernel_without_cache(cls, rank, world_size, input, kernel_build_dir):
+    def _test_static_kernel_without_cache_compile(cls, rank, world_size, input, kernel_build_dir):
         class HcomModel(torch.nn.Module):
             def __init__(self):
                 super(HcomModel, self).__init__()
@@ -79,7 +79,7 @@ class HcomStaticKernelTest(unittest.TestCase):
         npu_model = torch.compile(npu_model, fullgraph=True, options=options, backend="npugraph_ex", dynamic=False)
         npu_output = npu_model(input0)
 
-    def test_static_kernel_without_cache(self):
+    def test_static_kernel_without_cache_compile(self):
         kernel_build_dir = "./static_kernel_compile_outputs"
         if os.path.exists(kernel_build_dir):
             shutil.rmtree(kernel_build_dir)
@@ -95,11 +95,10 @@ class HcomStaticKernelTest(unittest.TestCase):
         world_size = device_size
         os.environ["LOCAL_WORLD_SIZE"] = str(world_size)
 
-        with torch.multiprocessing.Manager() as manager:
-            input = torch.randn(1, 4, 8, 128, dtype=torch.float16)
-            torch.multiprocessing.spawn(HcomStaticKernelTest._test_static_kernel_without_cache,
-                                        args=(world_size, input, kernel_build_dir),
-                                        nprocs=world_size, join=True)
+        input = torch.randn(1, 4, 8, 128, dtype=torch.float16)
+        torch.multiprocessing.spawn(HcomStaticKernelTest._test_static_kernel_without_cache_compile,
+                                    args=(world_size, input, kernel_build_dir),
+                                    nprocs=world_size, join=True)
 
         static_kernel_dir_path = Path(kernel_build_dir)
         self.assertTrue(static_kernel_dir_path.exists())
@@ -109,7 +108,7 @@ class HcomStaticKernelTest(unittest.TestCase):
         run_pkgs = list(static_kernel_dir_path.rglob("*.run"))
         self.assertEqual(len(run_pkgs), 1)
 
-    def test_static_kernel_with_cache(self):
+    def test_static_kernel_with_cache_compile(self):
         cache_dir = "./static_kernel_dir_with_cache"
         if os.path.exists(cache_dir):
             shutil.rmtree(cache_dir)
@@ -125,11 +124,10 @@ class HcomStaticKernelTest(unittest.TestCase):
         world_size = device_size
         os.environ["LOCAL_WORLD_SIZE"] = str(world_size)
 
-        with torch.multiprocessing.Manager() as manager:
-            input = torch.randn(1, 4, 8, 128, dtype=torch.float16)
-            torch.multiprocessing.spawn(HcomStaticKernelTest._test_static_kernel_with_cache,
-                                        args=(world_size, input, cache_dir),
-                                        nprocs=world_size, join=True)
+        input = torch.randn(1, 4, 8, 128, dtype=torch.float16)
+        torch.multiprocessing.spawn(HcomStaticKernelTest._test_static_kernel_with_cache_compile,
+                                    args=(world_size, input, cache_dir),
+                                    nprocs=world_size, join=True)
 
         cache_dir_path = Path(cache_dir)
         self.assertTrue(cache_dir_path.exists())
@@ -145,16 +143,304 @@ class HcomStaticKernelTest(unittest.TestCase):
         self.assertTrue(rank_0_dir in str(run_pkg_path))
 
         # load cache
-        with torch.multiprocessing.Manager() as manager:
-            input = torch.randn(1, 4, 8, 128, dtype=torch.float16)
-            torch.multiprocessing.spawn(HcomStaticKernelTest._test_static_kernel_with_cache,
-                                        args=(world_size, input, cache_dir),
-                                        nprocs=world_size, join=True)
+        input = torch.randn(1, 4, 8, 128, dtype=torch.float16)
+        torch.multiprocessing.spawn(HcomStaticKernelTest._test_static_kernel_with_cache_compile,
+                                    args=(world_size, input, cache_dir),
+                                    nprocs=world_size, join=True)
 
         self.assertTrue(cache_dir_path.exists())
         run_pkgs_02 = list(cache_dir_path.rglob("*.run"))
         self.assertEqual(len(run_pkgs), 1)
         self.assertEqual(str(run_pkg_path), str(run_pkgs_02[0].resolve()))
+    
+
+    @classmethod
+    def _test_static_kernel_cache_single_card(cls, rank, input, disable_static_kernel_compile_cache=False, force_eager=False):
+        torch_npu.npu.set_device(rank)
+
+        class SingleCardModel(torch.nn.Module):
+            def __init__(self):
+                super(SingleCardModel, self).__init__()
+                self.relu = torch.nn.ReLU()
+
+            def forward(self, x):
+                relu_01 = self.relu(x)
+                reshape_01 = torch.reshape(relu_01, (1, 32, 1, 128))
+                softmax_01 = torch.nn.functional.softmax(reshape_01)
+                sqrt_01 = torch.sqrt(softmax_01)
+                relu_02 = self.relu(sqrt_01)
+                square_01 = torch.square(relu_02)
+                add_01 = torch.add(square_01, square_01)
+                return add_01
+
+        model = SingleCardModel().npu()
+        input_data = input.npu()
+
+        options = {
+            "static_kernel_compile": True
+        }
+        if disable_static_kernel_compile_cache:
+            options["disable_static_kernel_compile_cache"] = True
+        if force_eager:
+            options["force_eager"] = True
+
+        compiled_model = torch.compile(model, backend="npugraph_ex", options=options)
+        _ = compiled_model(input_data)
+
+
+    def test_static_kernel_cache_single_card(self):
+        build_dir = os.path.join(os.getcwd(), "static_kernel_compile_outputs")
+        if os.path.exists(build_dir):
+            shutil.rmtree(build_dir)
+
+        world_size = 1
+        input = torch.randn(1, 4, 8, 128, dtype=torch.float16)
+        # Round 1: Generate cache
+        torch.multiprocessing.spawn(HcomStaticKernelTest._test_static_kernel_cache_single_card, 
+                                    args=(input, False, False), 
+                                    nprocs=world_size, 
+                                    join=True)
+        
+        # Verify physical file
+        cache_path = os.path.join(build_dir, "static_kernel_cache")
+        self.assertTrue(os.path.exists(cache_path))
+        
+        static_kernel_dir_path = Path(build_dir)
+        ts_outputs_dirs = [d for d in static_kernel_dir_path.iterdir() if
+                           d.is_dir() and d.name.endswith("_outputs") and d.name.startswith("ts")]
+        self.assertEqual(len(ts_outputs_dirs), 1)
+        run_pkgs = list(static_kernel_dir_path.rglob("*.run"))
+        self.assertEqual(len(run_pkgs), 1)
+
+        # Round 2: New process, hit static kernel cache
+        torch.multiprocessing.spawn(HcomStaticKernelTest._test_static_kernel_cache_single_card, 
+                                    args=(input, False, False),
+                                    nprocs=world_size,
+                                    join=True)
+        
+        ts_outputs_dirs_2 = [d for d in static_kernel_dir_path.iterdir() if
+                             d.is_dir() and d.name.endswith("_outputs") and d.name.startswith("ts")]
+        self.assertEqual(len(ts_outputs_dirs_2), 2)
+        run_pkgs_2 = list(static_kernel_dir_path.rglob("*.run"))
+        self.assertEqual(len(run_pkgs_2), 1)
+
+        # Round 3: New process, disable_static_kernel_compile_cache=True
+        torch.multiprocessing.spawn(HcomStaticKernelTest._test_static_kernel_cache_single_card, 
+                                    args=(input, True, False),
+                                    nprocs=world_size,
+                                    join=True)
+        
+        ts_outputs_dirs_3 = [d for d in static_kernel_dir_path.iterdir() if
+                             d.is_dir() and d.name.endswith("_outputs") and d.name.startswith("ts")]
+        self.assertEqual(len(ts_outputs_dirs_3), 3)
+        run_pkgs_3 = list(static_kernel_dir_path.rglob("*.run"))
+        self.assertEqual(len(run_pkgs_3), 2)
+
+
+    def test_static_kernel_cache_single_card_run_eagerly(self):
+        build_dir = os.path.join(os.getcwd(), "static_kernel_compile_outputs")
+        if os.path.exists(build_dir):
+            shutil.rmtree(build_dir)
+
+        world_size = 1
+        input = torch.randn(1, 4, 8, 128, dtype=torch.float16)
+        # Round 1: Generate cache
+        torch.multiprocessing.spawn(HcomStaticKernelTest._test_static_kernel_cache_single_card, 
+                                    args=(input, False,True),
+                                    nprocs=world_size,
+                                    join=True)
+        
+        # Verify physical file
+        cache_path = os.path.join(build_dir, "static_kernel_cache")
+        self.assertTrue(os.path.exists(cache_path))
+        
+        static_kernel_dir_path = Path(build_dir)
+        ts_outputs_dirs = [d for d in static_kernel_dir_path.iterdir() if
+                           d.is_dir() and d.name.endswith("_outputs") and d.name.startswith("ts")]
+        self.assertEqual(len(ts_outputs_dirs), 1)
+        run_pkgs = list(static_kernel_dir_path.rglob("*.run"))
+        self.assertEqual(len(run_pkgs), 1)
+
+        # Round 2: New process, hit persistent cache
+        torch.multiprocessing.spawn(HcomStaticKernelTest._test_static_kernel_cache_single_card, 
+                                    args=(input, False, True), 
+                                    nprocs=world_size, 
+                                    join=True)
+        
+        ts_outputs_dirs_2 = [d for d in static_kernel_dir_path.iterdir() if
+                             d.is_dir() and d.name.endswith("_outputs") and d.name.startswith("ts")]
+        self.assertEqual(len(ts_outputs_dirs_2), 2)
+        run_pkgs_2 = list(static_kernel_dir_path.rglob("*.run"))
+        self.assertEqual(len(run_pkgs_2), 1)
+
+        # Round 3: New process, disable_static_kernel_compile_cache=True
+        torch.multiprocessing.spawn(HcomStaticKernelTest._test_static_kernel_cache_single_card, 
+                                    args=(input, True, True),
+                                    nprocs=world_size,
+                                    join=True)
+        
+        ts_outputs_dirs_3 = [d for d in static_kernel_dir_path.iterdir() if
+                             d.is_dir() and d.name.endswith("_outputs") and d.name.startswith("ts")]
+        self.assertEqual(len(ts_outputs_dirs_3), 3)
+        run_pkgs_3 = list(static_kernel_dir_path.rglob("*.run"))
+        self.assertEqual(len(run_pkgs_3), 2)
+
+
+    @classmethod
+    def _test_static_kernel_cache_multi_card(cls, rank, world_size, input, disable_static_kernel_compile_cache=False, force_eager=False):
+        HcomStaticKernelTest._init_dist_hccl(rank, world_size)
+
+        class HcomModel(torch.nn.Module):
+            def __init__(self):
+                super(HcomModel, self).__init__()
+                self.relu = torch.nn.ReLU()
+
+            def forward(self, x):
+                relu_01 = self.relu(x)
+                reshape_01 = torch.reshape(relu_01, (1, 32, 1, 128))
+                softmax_01 = torch.nn.functional.softmax(reshape_01)
+                sqrt_01 = torch.sqrt(softmax_01)
+                relu_02 = self.relu(sqrt_01)
+                square_01 = torch.square(relu_02)
+                torch_npu.distributed.distributed_c10d.dist.all_reduce(square_01)
+                add_01 = torch.add(square_01, square_01)
+                return add_01
+
+        model = HcomModel().npu()
+        input_data = input.npu()
+
+        options = {
+            "static_kernel_compile": True
+        }
+        if disable_static_kernel_compile_cache:
+            options["disable_static_kernel_compile_cache"] = True
+        if force_eager:
+            options["force_eager"] = True
+
+        compiled_model = torch.compile(model, backend="npugraph_ex", options=options)
+        _ = compiled_model(input_data)
+
+        dist.barrier()
+        dist.destroy_process_group()
+
+
+    def test_static_kernel_cache_multi_card(self):
+        # Check NPU resources
+        result = os.popen("ls /dev | grep davinci | wc -l")
+        dev_num = result.read()
+        result.close()
+        device_size = int(dev_num) - 1
+        if device_size < 2:
+            return
+        world_size = device_size
+
+        build_dir = os.path.join(os.getcwd(), "static_kernel_compile_outputs")
+        if os.path.exists(build_dir):
+            shutil.rmtree(build_dir)
+
+        os.environ["LOCAL_WORLD_SIZE"] = str(world_size)
+        
+        input = torch.randn(1, 4, 8, 128, dtype=torch.float16)
+        # Round 1: Multi-card Cold start
+        torch.multiprocessing.spawn(HcomStaticKernelTest._test_static_kernel_cache_multi_card,
+                                    args=(world_size, input, False, False),
+                                    nprocs=world_size,
+                                    join=True)
+        
+        # Verify static kernel cache file
+        cache_path = os.path.join(build_dir, "static_kernel_cache")
+        self.assertTrue(os.path.exists(cache_path))
+        
+        static_kernel_dir_path = Path(build_dir)
+        ts_outputs_dirs = [d for d in static_kernel_dir_path.iterdir() if
+                           d.is_dir() and d.name.endswith("_outputs") and d.name.startswith("ts")]
+        self.assertEqual(len(ts_outputs_dirs), world_size)
+        run_pkgs = list(static_kernel_dir_path.rglob("*.run"))
+        self.assertEqual(len(run_pkgs), 1)
+
+        # Round 2: Multi-card Warm start
+        torch.multiprocessing.spawn(HcomStaticKernelTest._test_static_kernel_cache_multi_card,
+                                    args=(world_size, input, False, False),
+                                    nprocs=world_size,
+                                    join=True)
+
+        ts_outputs_dirs_2 = [d for d in static_kernel_dir_path.iterdir() if
+                             d.is_dir() and d.name.endswith("_outputs") and d.name.startswith("ts")]
+        self.assertEqual(len(ts_outputs_dirs_2), world_size*2)
+        run_pkgs_2 = list(static_kernel_dir_path.rglob("*.run"))
+        self.assertEqual(len(run_pkgs_2), 1)
+
+        # Round 3: Multi-card disable_static_kernel_compile_cache=True
+        torch.multiprocessing.spawn(HcomStaticKernelTest._test_static_kernel_cache_multi_card,
+                                    args=(world_size, input, True, False),
+                                    nprocs=world_size,
+                                    join=True)
+
+        ts_outputs_dirs_3 = [d for d in static_kernel_dir_path.iterdir() if
+                             d.is_dir() and d.name.endswith("_outputs") and d.name.startswith("ts")]
+        self.assertEqual(len(ts_outputs_dirs_3), world_size*3)
+        run_pkgs_3 = list(static_kernel_dir_path.rglob("*.run"))
+        self.assertEqual(len(run_pkgs_3), 2)
+
+
+    def test_static_kernel_cache_multi_card_run_eagerly(self):
+        # Check NPU resources
+        result = os.popen("ls /dev | grep davinci | wc -l")
+        dev_num = result.read()
+        result.close()
+        device_size = int(dev_num) - 1
+        if device_size < 2:
+            return
+        world_size = device_size
+
+        build_dir = os.path.join(os.getcwd(), "static_kernel_compile_outputs")
+        if os.path.exists(build_dir):
+            shutil.rmtree(build_dir)
+
+        os.environ["LOCAL_WORLD_SIZE"] = str(world_size)
+
+        input = torch.randn(1, 4, 8, 128, dtype=torch.float16)
+        # Round 1: Multi-card Cold start
+        torch.multiprocessing.spawn(HcomStaticKernelTest._test_static_kernel_cache_multi_card,
+                                    args=(world_size, input, False, True),
+                                    nprocs=world_size,
+                                    join=True)
+
+        # Verify physical file
+        cache_path = os.path.join(build_dir, "static_kernel_cache")
+        self.assertTrue(os.path.exists(cache_path))
+
+        static_kernel_dir_path = Path(build_dir)
+        ts_outputs_dirs = [d for d in static_kernel_dir_path.iterdir() if
+                           d.is_dir() and d.name.endswith("_outputs") and d.name.startswith("ts")]
+        self.assertEqual(len(ts_outputs_dirs), world_size)
+        run_pkgs = list(static_kernel_dir_path.rglob("*.run"))
+        self.assertEqual(len(run_pkgs), 1)
+
+        # Round 2: Multi-card Warm start
+        torch.multiprocessing.spawn(HcomStaticKernelTest._test_static_kernel_cache_multi_card,
+                                    args=(world_size, input, False, True),
+                                    nprocs=world_size,
+                                    join=True)
+
+        ts_outputs_dirs_2 = [d for d in static_kernel_dir_path.iterdir() if
+                             d.is_dir() and d.name.endswith("_outputs") and d.name.startswith("ts")]
+        self.assertEqual(len(ts_outputs_dirs_2), world_size*2)
+        run_pkgs_2 = list(static_kernel_dir_path.rglob("*.run"))
+        self.assertEqual(len(run_pkgs_2), 1)
+
+        # Round 3: Multi-card disable_static_kernel_compile_cache=True
+        torch.multiprocessing.spawn(HcomStaticKernelTest._test_static_kernel_cache_multi_card,
+                            args=(world_size, input, True, True),
+                            nprocs=world_size,
+                            join=True)
+
+        ts_outputs_dirs_3 = [d for d in static_kernel_dir_path.iterdir() if
+                             d.is_dir() and d.name.endswith("_outputs") and d.name.startswith("ts")]
+        self.assertEqual(len(ts_outputs_dirs_3), world_size*3)
+        run_pkgs_3 = list(static_kernel_dir_path.rglob("*.run"))
+        self.assertEqual(len(run_pkgs_3), 2)
+
 
 if __name__ == '__main__':
     unittest.main()

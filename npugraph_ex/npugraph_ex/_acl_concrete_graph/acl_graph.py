@@ -940,10 +940,12 @@ class AclGraph(object):
                 compile_cache_dir = self.config.get('_aclnn_static_shape_kernel.compile_cache_dir', None)
                 deterministic = self.config.get('_aclnn_static_shape_kernel.deterministic', "0")
                 super_kernel_optimize = self.config.get('_super_kernel_optimize', False)
+                disable_static_kernel_compile_cache = self.config.get('_disable_static_kernel_compile_cache', False)
                 compile_static_kernel(self.fx_forward, *args, use_cache_compile=use_cache_compile,
                                       cached_cann_version=cann_version,
                                       compile_cache_dir=compile_cache_dir, cached_deterministic=deterministic,
-                                      super_kernel_optimize=super_kernel_optimize, build_dir=path, **kwargs)
+                                      super_kernel_optimize=super_kernel_optimize, build_dir=path,
+                                      disable_static_kernel_compile_cache=disable_static_kernel_compile_cache, **kwargs)
 
             self._unupdated_input_func = debug_time(get_unupdated_input_fn(self._unupdated_sym_input_index, self._parameter_user_inputs, self.config),
                                                     phase_name="[npugraph_ex overhead] generate graph_key")
@@ -1639,8 +1641,10 @@ class AclGraph(object):
                             id(self.fx_forward), dict(zip(self.sym_input_name, cur_sym_value)))
                 path = self.config.get('_aclnn_static_shape_kernel_build_dir', None)
                 super_kernel_optimize = self.config.get('_super_kernel_optimize', False)
+                disable_static_kernel_compile_cache = self.config.get('_disable_static_kernel_compile_cache', False)
                 compile_static_kernel(self.fx_forward, *args, build_dir=path,
-                                      super_kernel_optimize=super_kernel_optimize, **kwargs)
+                                      super_kernel_optimize=super_kernel_optimize,
+                                      disable_static_kernel_compile_cache=disable_static_kernel_compile_cache, **kwargs)
             else:
                 logger.info('Skip compile static shape kernel for fx graph %s, '
                             'all symbol input indices and values are %s. '

@@ -11,6 +11,7 @@ class _NpuGraphExConfig:
     clone_input: bool = True
     clone_output: bool = False
     static_kernel_compile: bool = False
+    disable_static_kernel_compile_cache: bool = False
     super_kernel_optimize: bool = False
     super_kernel_optimize_options: dict = None
     super_kernel_debug_options: dict = None
@@ -36,6 +37,7 @@ class _NpuGraphExConfig:
         "_vllm_aclnn_static_kernel_sym_index": "experimental_config.aclgraph._aclnn_static_shape_kernel_sym_index",
         "_vllm_aclnn_static_kernel_sym_range": "experimental_config.aclgraph._aclnn_static_shape_kernel_sym_value_range",
         "static_kernel_compile": "experimental_config.aclgraph._aclnn_static_shape_kernel",
+        "disable_static_kernel_compile_cache": "experimental_config.aclgraph._disable_static_kernel_compile_cache",
         "super_kernel_optimize": "experimental_config.aclgraph._super_kernel_optimize",
         "super_kernel_optimize_options": "experimental_config.aclgraph._super_kernel_optimize_options",
         "super_kernel_debug_options": "experimental_config.aclgraph._super_kernel_debug_options",

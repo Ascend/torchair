@@ -37,6 +37,7 @@ class _AclGraphExperimentalConfig(NpuBaseConfig):
         self._aclnn_static_shape_kernel_build_dir = StrOptionValue()
         self._aclnn_static_shape_kernel_sym_value_range = IntListValue(None)
         self._aclnn_static_shape_kernel_sym_index = IntRangeValue(0, 0, INT64_MAX)
+        self._disable_static_kernel_compile_cache = OptionValue(False, [True, False])
         self._super_kernel_optimize = OptionValue(False, [True, False])
         self._super_kernel_optimize_options = DictOptionValue(None)
         self._super_kernel_debug_options = DictOptionValue(None)
@@ -72,6 +73,10 @@ class _AclGraphExperimentalConfig(NpuBaseConfig):
             # whether the value is within the specified range by "_aclnn_static_shape_kernel_sym_value_range".
             local_aclgraph_experimental_options["_aclnn_static_shape_kernel_sym_index"] = \
                 self._aclnn_static_shape_kernel_sym_index.value
+
+        if self._disable_static_kernel_compile_cache.value == "1":
+            local_aclgraph_experimental_options["_disable_static_kernel_compile_cache"] = \
+                self._disable_static_kernel_compile_cache.value
 
         if self._super_kernel_optimize.value == "1":
             local_aclgraph_experimental_options["_super_kernel_optimize"] = self._super_kernel_optimize.value
