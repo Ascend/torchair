@@ -768,6 +768,10 @@ class NPUOverrides(OpOverrides):
     def index_expr(expr: 'sympy.Expr', dtype: 'torch.dtype') -> T:
         return ir.index_expr(expr, dtype)
 
+    @staticmethod
+    def indirect_indexing(x: T, size: 'sympy.Expr', check: 'bool' = True, wrap_neg=True) -> 'sympy.Expr':
+        return ir.indirect_indexing(x, size, check, wrap_neg)
+
     # Kernel类操作，这些应该实现到Kernel上去
     # ----------------------------------------------------------------------------------------------------
     @staticmethod
@@ -777,10 +781,6 @@ class NPUOverrides(OpOverrides):
     @staticmethod
     def store(name: 'str', index: 'sympy.Expr', value: T, mode: 'StoreMode' = None) -> 'None':
         return ir.store(name, index, value, mode)
-
-    @staticmethod
-    def indirect_indexing(x: T, size: 'sympy.Expr', check: 'bool' = True, wrap_neg=True) -> 'sympy.Expr':
-        return ir.indirect_indexing(x, size, check, wrap_neg=True)
 
     @staticmethod
     def reduction(dtype: 'torch.dtype', src_dtype: 'torch.dtype', reduction_type: 'ReductionType', value: T) -> 'Union[T, tuple[T, ...]]':

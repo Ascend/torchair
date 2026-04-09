@@ -18,13 +18,16 @@ from torch._inductor.ir import (
     validate_ir,
     View,
 )
+from .common import _LoweringGuard, float_dtypes, byte_dtypes
 
 npu = torch.ops.npu
-aten = torch.ops.aten
-prims = torch.ops.prims
 
 
 @register_lowering(npu._npu_dtype_cast, type_promotion_kind=None)
 @register_lowering(npu.npu_dtype_cast, type_promotion_kind=None)
 def lowering_npu_dtype_cast(x: TensorBox, dtype: torch.dtype):
     return to_dtype(x, dtype, copy=True)
+
+
+_LoweringGuard.support(torch.ops.npu._npu_dtype_cast, float_dtypes())
+_LoweringGuard.support(torch.ops.npu.npu_dtype_cast, float_dtypes())

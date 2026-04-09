@@ -81,7 +81,7 @@ def never_change_dir(func):
 
 @never_change_dir
 def build_ascend_lib(kernel_py):
-    if config._debugging_host_only:
+    if config._debugging_on_cpu:  # subprocess has no stub for building, run the command in-process
         with open(kernel_py, 'r', encoding='utf-8') as f:
             exec(f.read())
         return
@@ -133,7 +133,7 @@ class NpuContext:
         self.tmp_resource = None
 
     def __enter__(self):
-        if not config._debugging_host_only:
+        if not config._debugging_on_cpu:
             import torch_npu
             torch_npu_dir = os.path.dirname(torch_npu.__file__)
             ascend_dir = os.path.dirname(os.getenv("ASCEND_OPP_PATH", "/usr/local/Ascend/latest/opp"))

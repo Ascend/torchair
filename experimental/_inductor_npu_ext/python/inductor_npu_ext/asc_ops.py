@@ -1,4 +1,5 @@
 from typing import List
+import functools
 
 import torch
 from torch._inductor.virtualized import V
@@ -309,3 +310,11 @@ def where(x1, x2, x3):
     op.x2 = x2
     op.x3 = x3
     return op.y
+
+
+def _unsupported(*args, _op=None, **kwargs):
+    raise NotImplementedError(f"Asc op '{_op}' is not implemented yet, args: {args}, kwargs: {kwargs}")
+
+
+def __getattr__(name):
+    return functools.partial(_unsupported, _op=name)

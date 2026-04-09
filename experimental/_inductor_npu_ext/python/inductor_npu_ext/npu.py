@@ -28,6 +28,7 @@ from inductor_npu_ext.common.symbols import AscExpr, Loop, DenseLoop
 from inductor_npu_ext.common.asc_graph import _Tensor, _Scalar
 from inductor_npu_ext import asc_ops as ir
 from inductor_npu_ext.asc_overrides import NPUOverrides
+from inductor_npu_ext.config import _debug_options
 
 
 class ASCBuffer:
@@ -565,9 +566,15 @@ class NPUScheduling(BaseScheduling):
         self._kernel_cache: Dict[str, NPUKernel] = dict()
 
     def can_fuse_vertical(self, node1: BaseSchedulerNode, node2: BaseSchedulerNode):
+        if "canfuse" in _debug_options:
+            return self._fuse_judge.can_fuse_vertical(node1, node2)
+
         return False  # disable until reliable evaluation algorithm is implemented.
 
     def can_fuse_horizontal(self, node1: BaseSchedulerNode, node2: BaseSchedulerNode):
+        if "canfuse" in _debug_options:
+            return self._fuse_judge.can_fuse_horizontal(node1, node2)
+
         return False  # disable until reliable evaluation algorithm is implemented.
 
     def group_fn(self, sizes):

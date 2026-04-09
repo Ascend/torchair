@@ -2,9 +2,9 @@
 
 inductor-npu-ext 正在为 Inductor 添加一个亲和 NPU 的 Codegen 后端，该后端定位于使用 NPU 上的 SOTA DSL 生成 Inductor 融合 Kernel。
 
-inductor-npu-ext 当前基于 AscendC 生成融合Kernel，同时关注并持续集成 NPU 上的新兴 DSL PyPTO，以保证融合 Kernel 生成的先进性。
+inductor-npu-ext 当前基于 AscendC 生成融合Kernel，同时持续集成 NPU 上的新兴 DSL PTO，以保证融合 Kernel 生成的先进性。
 
-<img src="image/README/framework.png" width="30%" />
+<img src="image/README/framework.png" width="40%" />
 
 当前的主要工作：
 

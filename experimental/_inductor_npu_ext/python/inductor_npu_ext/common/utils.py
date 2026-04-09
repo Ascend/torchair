@@ -3,9 +3,13 @@ import sys
 import os
 import types
 import fcntl
-
+import functools
 from pathlib import Path
+from typing import List
 from contextlib import contextmanager
+
+import torch
+import torch.utils._pytree as pytree
 from inductor_npu_ext import config
 
 
@@ -36,7 +40,7 @@ def camel_to_snake(name):
 
 
 def is_kernel_need_stub(_):
-    if config._debugging_host_only:
+    if config._debugging_on_cpu:
         return True
     return False
 
@@ -109,3 +113,27 @@ def file_lock(lock_path: Path):
             yield
         finally:
             fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+
+
+def patch_fn(model, fn):
+    orig_fn = getattr(model, fn)
+
+    def decorator(f):
+        @functools.wraps(orig_fn)
+        def inner(*args, **kwargs):
+            return f(*args, **kwargs, orig_fn=orig_fn)
+
+        setattr(model, fn, inner)
+        return inner
+
+    return decorator
+
+
+def get_node_meta(nodes: List[torch.fx.Node]):
+    nodes = [nodes] if isinstance(nodes, torch.fx.Node) else nodes
+    metas = []
+    for n in nodes:
+        if 'val' not in n.meta:
+            continue
+        metas.extend(pytree.tree_leaves(n.meta['val']))
+    return metas
