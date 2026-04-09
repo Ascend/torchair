@@ -4097,14 +4097,14 @@ REG_OP(QuantReduceScatter)
 
 
 /**
- * @brief Fusion op of matmul allto all.
+ * @brief Fusion op of alltoall and matmul.
  * @par Inputs:
  * two inputs, including:
- * @li x1: A matrix Tensor. The type support bfloat16, float16, float8_e4m3fn, float8_e5m2. The format supports ND.
- * @li x2: A matrix Tensor. The type support bfloat16, float16, float8_e4m3fn, float8_e5m2. The format supports ND.
+ * @li x1: A matrix Tensor. The type support bfloat16, float16, float8_e4m3fn, float8_e5m2, float4_e2m1. The format supports ND.
+ * @li x2: A matrix Tensor. The type support bfloat16, float16, float8_e4m3fn, float8_e5m2, float4_e2m1. The format supports ND.
  * @li bias: A matrix Tensor. The type support bfloat16, float16, float. The format supports ND.
- * @li x1_scale: A matrix Tensor. The type support float. The format supports ND.
- * @li x2_scale: A matrix Tensor. The type support float. The format supports ND.
+ * @li x1_scale: A matrix Tensor. The type support float, float8_e8m0. The format supports ND.
+ * @li x2_scale: A matrix Tensor. The type support float, float8_e8m0. The format supports ND.
  * @li comm_scale: A matrix Tensor. The type support float. The format supports ND.
  * @li x1_offset: A matrix Tensor. The type support float. The format supports ND.
  * @li x2_offset: A matrix Tensor. The type support float, float16. The format supports ND.
@@ -4115,8 +4115,8 @@ REG_OP(QuantReduceScatter)
  * @li world_size: An int. Default: -1.
  * @li all2all_axes: An ListInt. Indicate the data direction for All2All communication. Default: {-1, -2}.
  * @li y_dtype: An int. Declare the output dtype. Default: static_cast<int64_t>(ge::DT_UNDEFINED) 为28.
- * @li x1_quant_mode: An int. Quantization mode of x1. Default: 0.
- * @li x2_quant_mode: An int. Quantization mode of x2. Default: 0.
+ * @li x1_quant_mode: An int. Quantization mode of x1, which support 0(non-quant), 3(pertoken-quant), 6(mx-quant). Default: 0.
+ * @li x2_quant_mode: An int. Quantization mode of x2, which support 0(non-quant), 2(perchannel-quant), 6(mx-quant). Default: 0.
  * @li comm_quant_mode: An int. Quantitative types for communication. Default: 0.
  * @li comm_quant_dtype: An int. Communication accuracy. Default: static_cast<int64_t>(ge::DT_UNDEFINED) 为28.
  * @li transpose_x1: A bool. Whether x1 is transposed. Default: false.
@@ -4124,11 +4124,11 @@ REG_OP(QuantReduceScatter)
  * @li group_size: An int. Default: 0.
  */
 REG_OP(MatmulAlltoAll)
-    .INPUT(x1, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2}))
-    .INPUT(x2, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2}))
+    .INPUT(x1, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1}))
+    .INPUT(x2, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1}))
     .OPTIONAL_INPUT(bias, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))
-    .OPTIONAL_INPUT(x1_scale, TensorType({DT_FLOAT}))
-    .OPTIONAL_INPUT(x2_scale, TensorType({DT_FLOAT}))
+    .OPTIONAL_INPUT(x1_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))
+    .OPTIONAL_INPUT(x2_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))
     .OPTIONAL_INPUT(comm_scale, TensorType({DT_FLOAT}))
     .OPTIONAL_INPUT(x1_offset, TensorType({DT_FLOAT}))
     .OPTIONAL_INPUT(x2_offset, TensorType({DT_FLOAT}))
@@ -4148,29 +4148,29 @@ REG_OP(MatmulAlltoAll)
 
 
 /**
- * @brief Fusion op of allto all matmul.
+ * @brief Fusion op of alltoall and matmul.
  * @par Inputs:
  * two inputs, including:
- * @li x1: A matrix Tensor. The type support bfloat16, float16. The format supports ND.
- * @li x2: A matrix Tensor. The type support bfloat16, float16. The format supports ND.
+ * @li x1: A matrix Tensor. The type support bfloat16, float16, float8_e4m3fn, float8_e5m2, float4_e2m1. The format supports ND.
+ * @li x2: A matrix Tensor. The type support bfloat16, float16, float8_e4m3fn, float8_e5m2, float4_e2m1. The format supports ND.
  * @li bias: A matrix Tensor. The type support bfloat16, float16, float. The format supports ND.
- * @li x1_scale: A matrix Tensor. The type support float. The format supports ND.
- * @li x2_scale: A matrix Tensor. The type support float. The format supports ND.
+ * @li x1_scale: A matrix Tensor. The type support float, float8_e8m0. The format supports ND.
+ * @li x2_scale: A matrix Tensor. The type support float, float8_e8m0. The format supports ND.
  * @li comm_scale: A matrix Tensor. The type support float. The format supports ND.
  * @li x1_offset: A matrix Tensor. The type support float. The format supports ND.
  * @li x2_offset: A matrix Tensor. The type support float, float16. The format supports ND.
  *
  * @par Outputs:
- * @li y: A matrix Tensor. The type support bfloat16, float16. The format supports ND.
- * @li all2all_out: A matrix Tensor. The type support bfloat16, float16. The format supports ND.
+ * @li y: A matrix Tensor. The type support bfloat16, float16, float. The format supports ND.
+ * @li all2all_out: A matrix Tensor. The type support bfloat16, float16, float8_e4m3fn, float8_e5m2, float4_e2m1. The format supports ND.
  *
  * @par Attributes:
  * @li group: A string. Communication domain identifier.
  * @li world_size: An int. Default: -1.
  * @li all2all_axes: An ListInt. Indicate the data direction for All2All communication. Default: {-2, -1}.
  * @li y_dtype: An int. Declare the output dtype. Default: static_cast<int64_t>(ge::DT_UNDEFINED) 为28.
- * @li x1_quant_mode: An int. Quantization mode of x1. Default: 0.
- * @li x2_quant_mode: An int. Quantization mode of x2. Default: 0.
+ * @li x1_quant_mode: An int. Quantization mode of x1, which support 0(non-quant), 7(dynamic-pertoken-quant), 6(mx-quant). Default: 0.
+ * @li x2_quant_mode: An int. Quantization mode of x2, which support 0(non-quant), 2(perchannel-quant), 6(mx-quant). Default: 0.
  * @li comm_quant_mode: An int. Quantitative types for communication. Default: 0.
  * @li x1_quant_dtype: An int. Quantization type of the left matrix input to Matmul after communication. Default: static_cast<int64_t>(ge::DT_UNDEFINED) 为28.
  * @li comm_quant_dtype: An int. Quantization type of x1 input before communication. Default: static_cast<int64_t>(ge::DT_UNDEFINED) 为28.
@@ -4180,16 +4180,16 @@ REG_OP(MatmulAlltoAll)
  * @li alltoall_out_flag: A bool. Default: true.
  */
 REG_OP(AlltoAllMatmul)
-    .INPUT(x1, TensorType({DT_BF16, DT_FLOAT16}))
-    .INPUT(x2, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2}))
+    .INPUT(x1, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1}))
+    .INPUT(x2, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1}))
     .OPTIONAL_INPUT(bias, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))
-    .OPTIONAL_INPUT(x1_scale, TensorType({DT_FLOAT, DT_BF16, DT_FLOAT16}))
-    .OPTIONAL_INPUT(x2_scale, TensorType({DT_FLOAT}))
+    .OPTIONAL_INPUT(x1_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))
+    .OPTIONAL_INPUT(x2_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))
     .OPTIONAL_INPUT(comm_scale, TensorType({DT_FLOAT}))
     .OPTIONAL_INPUT(x1_offset, TensorType({DT_FLOAT}))
     .OPTIONAL_INPUT(x2_offset, TensorType({DT_FLOAT}))
     .OUTPUT(y, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT}))
-    .OUTPUT(all2all_out, TensorType({DT_BF16, DT_FLOAT16}))
+    .OUTPUT(all2all_out, TensorType({DT_BF16, DT_FLOAT16, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1}))
     .REQUIRED_ATTR(group, String)
     .REQUIRED_ATTR(world_size, Int)
     .ATTR(all2all_axes, ListInt, {-2, -1})
