@@ -295,7 +295,7 @@ class _NpuGraphConverter(Interpreter):
 
 def _summary(v):
     if isinstance(v, torch.Tensor):
-        return f'{type(v)}({v.size()}, {v.dtype}, contiguous={v.is_contiguous()})'
+        return f'{type(v)}({v.size()}, {v.dtype}, contiguous={v.is_contiguous()}, data_ptr={v.data_ptr()})'
     return f'{type(v)}({v})'
 
 
