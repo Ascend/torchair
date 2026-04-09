@@ -43,7 +43,7 @@ opt_model = torch.compile(model, backend="npugraph_ex", options={"pattern_fusion
 |--|--|
 |pattern_fusion_pass|布尔类型，是否开启算子融合Pass。该Pass基于已有Aten IR进行融合，可提升执行性能。True（默认值）：默认开启此Pass。False：关闭此Pass。|
 
-设置成功后，参考[图编译Debug信息保存功能](../dfx/debug_save.md)开启图编译Debug信息保存，假设原始FX图满足npu\_add\_rms\_norm\_dynamic\_quant的替换规则，可以从Debug信息torchair目录中模型前向推理forward子目录的FX图优化输出txt文件看到如下类似的信息，打印信息表明已经存在对应融合算子。
+设置成功后，参考[图编译Debug信息保存功能](../dfx/debug_save.md)开启图编译Debug信息保存，假设原始FX图满足npu\_add\_rms\_norm\_dynamic\_quant的替换规则，可以从Debug信息npugraph\_ex目录中模型前向推理forward子目录的FX图优化输出txt文件看到如下类似的信息，打印信息表明已经存在对应融合算子。
 
 ```txt
 # No stacktrace found for following nodes

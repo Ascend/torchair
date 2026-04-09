@@ -7,6 +7,7 @@ import logging
 import torch
 import torch.nn.functional as F
 from torch import fx
+from torch._functorch.aot_autograd import aot_module_simplified
 import sympy
 
 from npugraph_ex.configs.compiler_config import CompilerConfig
@@ -14,6 +15,8 @@ from npugraph_ex.core.utils import logger
 from npugraph_ex._acl_concrete_graph.utils import reconstruct_args_kwargs, WeakRef, LazyMessage
 from npugraph_ex.configs.npugraphex_config import _process_kwargs_options, _NpuGraphExConfig
 from npugraph_ex.configs._option_base import CallableValue
+from npugraph_ex._utils.graph_transform_observer import DebugContext
+from npugraph_ex import compile_fx
 
 torch._logging.set_logs(dynamo=logging.INFO)
 logger.setLevel(logging.DEBUG)
@@ -44,6 +47,11 @@ def register_npugraph_ex_backend():
         from torch._dynamo import register_backend as _register_npu_backend
         npugraph_ex_backend = get_npugraph_ex_backend()
         _register_npu_backend(npugraph_ex_backend, "npugraph_ex")
+
+def reset_debug_ctx():
+    os.environ['TORCH_COMPILE_DEBUG'] = '0'
+    DebugContext.model_cnt = -1
+    DebugContext.compile_fx_cnt = -1
 
 class NpugraphExSt(unittest.TestCase):
     def __init__(self, methodName='runTest'):
@@ -79,6 +87,7 @@ class NpugraphExSt(unittest.TestCase):
         CacheBackend.fw_compiler = self.cachebackend_fw_compiler
         from npugraph_ex._acl_concrete_graph import cat_optimization
         cat_optimization.optimize_cat_with_out_tensor = self.optimize_cat_with_out_tensor
+        reset_debug_ctx()
         return super().tearDown()
 
     def test_aclgraph_capture_and_replay(self):
@@ -1223,79 +1232,91 @@ class NpugraphExSt(unittest.TestCase):
         compiled_model = torch.compile(Model(), backend="npugraph_ex", options=options, dynamic=True)
         compiled_model(x=torch.randn([2, 2]))
 
-    @unittest.skipIf(torch.__version__ < "2.6", "")
-    def test_torch_compile_acl_debug_dump(self):
+
+    # Generate patterns with auto-incremented indics
+    def check_debug_dump_full_files(self, root_path, sub_dir="model", phases=["forward", "backward"], high_version=False):
 
         # Define templates for ACL mode (without hardcoded indices)
         ACL_COMMON_FILES = [
-            "dynamo_out_graph.txt",
+            *(["dynamo_out_graph.txt"] if phases!=["compile_fx"] else [])
         ]
 
-        ACL_FORWARD_STEP_TEMPLATS = [
-            "aot_forward_graph.txt",
-            "aot_forward_graph_after_post_grad_custom_pre_pass.txt",
-            "aot_forward_graph_after_optimize_noop_ops.txt",
-            "aot_forward_graph_after_recover_view_inplace_pattern.txt",
-            "aot_forward_graph_after_apply_pattern_passes.txt",
-            "aot_forward_graph_after_view_to_reshape.txt",
-            "aot_forward_graph_after_post_grad_custom_post_pass.txt",
-            "aot_forward_graph_after_remove_cat_ops.txt",
-            "aot_forward_graph_after_apply_event_closure_with_multi_stream.txt",
-            "aot_forward_graph_after_apply_event_record.txt",
-            "aot_forward_graph_after_eliminate_dead_code.txt",
-            "aot_forward_graph_after_reinplace_inplaceable_ops_pass.txt",
-            "aot_forward_graph_after_reinplace_input_mutated_ops.txt",
-            "aot_forward_graph_after_decompose_auto_functionalized.txt",
-            "aot_forward_graph_after_replace_dynamic_workspace_ops.txt",
-            "aot_forward_graph_after_replace_core_limit_nodes.txt",
-            "aot_forward_graph_after_resolve_default_stream_markers.txt",
+        ACL_STEP_TEMPLATS = [
+            "aot_{phase}_graph.txt",
+            "aot_{phase}_graph_after_post_grad_custom_pre_pass.txt",
+            "aot_{phase}_graph_after_optimize_noop_ops.txt",
+            "aot_{phase}_graph_after_recover_view_inplace_pattern.txt",
+            "aot_{phase}_graph_after_apply_pattern_passes.txt",
+            "aot_{phase}_graph_after_view_to_reshape.txt",
+            "aot_{phase}_graph_after_post_grad_custom_post_pass.txt",
+            "aot_{phase}_graph_after_remove_cat_ops.txt",
+            "aot_{phase}_graph_after_apply_event_closure_with_multi_stream.txt",
+            "aot_{phase}_graph_after_apply_event_record.txt",
+            "aot_{phase}_graph_after_eliminate_dead_code.txt",
+            *(["aot_{phase}_graph_after_reinplace_inplaceable_ops_pass.txt"] if high_version else []),
+            "aot_{phase}_graph_after_reinplace_input_mutated_ops.txt",
+            *(["aot_{phase}_graph_after_decompose_auto_functionalized.txt"] if high_version else []),
+            "aot_{phase}_graph_after_replace_dynamic_workspace_ops.txt",
+            "aot_{phase}_graph_after_replace_core_limit_nodes.txt",
+            "aot_{phase}_graph_after_resolve_default_stream_markers.txt",
         ]
 
-        ACL_BACKWARD_STEP_TEMPLATES = [
-            "aot_backward_graph.txt",
-            "aot_backward_graph_after_post_grad_custom_pre_pass.txt",
-            "aot_backward_graph_after_optimize_noop_ops.txt",
-            "aot_backward_graph_after_recover_view_inplace_pattern.txt",
-            "aot_backward_graph_after_apply_pattern_passes.txt",
-            "aot_backward_graph_after_view_to_reshape.txt",
-            "aot_backward_graph_after_post_grad_custom_post_pass.txt",
-            "aot_backward_graph_after_remove_cat_ops.txt",
-            "aot_backward_graph_after_apply_event_closure_with_multi_stream.txt",
-            "aot_backward_graph_after_apply_event_record.txt",
-            "aot_backward_graph_after_eliminate_dead_code.txt",
-            "aot_backward_graph_after_reinplace_inplaceable_ops_pass.txt",
-            "aot_backward_graph_after_reinplace_input_mutated_ops.txt",
-            "aot_backward_graph_after_decompose_auto_functionalized.txt",
-            "aot_backward_graph_after_replace_dynamic_workspace_ops.txt",
-            "aot_backward_graph_after_replace_core_limit_nodes.txt",
-            "aot_backward_graph_after_resolve_default_stream_markers.txt",
-        ]
+        patterns = []
+        # Add common files
+        for file in ACL_COMMON_FILES:
+            patterns.append(f"{sub_dir}__{{id}}/{file}")
+        for phase in phases:
+            for idx, template in enumerate(ACL_STEP_TEMPLATS):
+                formatted_name = template.format(phase=phase)
+                patterns.append(f"{sub_dir}__{{id}}/{phase}/{idx:03d}_{formatted_name}")
+            patterns.append(f"{sub_dir}__{{id}}/{phase}/output_code.py")
 
-        # Generate patterns with auto-incremented indics
-        def generate_acl_patterns():
-            patterns = []
-            # Add common files
-            for file in ACL_COMMON_FILES:
-                patterns.append(f"model__{{id}}/{file}")
-            # Add forward files with auto indices
-            for idx, template in enumerate(ACL_FORWARD_STEP_TEMPLATS):
-                patterns.append(f"model__{{id}}/forward/{idx:03d}_{template}")
-            patterns.append(f"model__{{id}}/forward/output_code.py")
-            for idx, template in enumerate(ACL_BACKWARD_STEP_TEMPLATES):
-                patterns.append(f"model__{{id}}/backward/{idx:03d}_{template}")
-            patterns.append(f"model__{{id}}/backward/output_code.py")
-            return patterns
+        EXPECTED_FILE_PATTERNS_ACL = patterns
+        # 2. Verify all expected files exist
+        expected_files = []
+        for template in EXPECTED_FILE_PATTERNS_ACL:
+            rel_path = template.format(id=0)
+            expected_files.append(rel_path)
 
-        EXPECTED_FILE_PATTERNS_ACL = generate_acl_patterns()
+        # Collect actual files first for error reporting
+        actual_files = []
+        for root, _, files in os.walk(root_path):
+            for f in files:
+                actual_files.append(os.path.join(root, f))
+        actual_msg = "Actual files:\n" + "\n".join(f"  - {f}" for f in actual_files) if actual_files else "Actual files: (empty)"
 
+        def check_torchair_directory_structure(base_dir: str, file_list: list) -> list:
+            missing_files = []
+            for rel_path in file_list:
+                abs_path = os.path.join(base_dir, rel_path)
+                if not os.path.exists(abs_path):
+                    missing_files.append(abs_path)
+            return missing_files
+        missing_files = check_torchair_directory_structure(root_path, expected_files)
+        if missing_files:
+            missing_msg = "Missing files:\n" + "\n".join(f"  - {f}" for f in missing_files) + "\n\n" + actual_msg
+            self.assertFalse(missing_files, msg=missing_msg)
+
+        # Check file count to ensure no extra files
+        expected_count = len(EXPECTED_FILE_PATTERNS_ACL)
+        actual_count = len(actual_files)
+        if actual_count != expected_count:
+            self.assertEqual(
+                actual_count,
+                expected_count,
+                msg=f"File count mismatch: expected {expected_count} files, got {actual_count} files\n{actual_msg}"
+            )
+        return patterns
+        
+    @unittest.skipIf(torch.__version__ < "2.6", "")
+    def test_torch_compile_acl_debug_dump(self):
 
         from torch._dynamo.utils import get_debug_dir
         import tempfile
 
-        with tempfile.TemporaryDirectory(prefix="torchair_debug_") as tmpdir:
-            DEBUG_DIR = tmpdir
-            torch._dynamo.config.patch(debug_dir_root=DEBUG_DIR)
-            self.assertIsNotNone(DEBUG_DIR)
+        with tempfile.TemporaryDirectory(prefix="torchair_debug_") as tmpdir, \
+            torch._dynamo.config.patch(debug_dir_root=tmpdir):
+            self.assertIsNotNone(tmpdir)
             os.environ['TORCH_COMPILE_DEBUG'] = '1'
 
             def _custom_pre_fn(gm, example_inputs, config: CompilerConfig):
@@ -1320,105 +1341,21 @@ class NpugraphExSt(unittest.TestCase):
 
             debug_dir_output = get_debug_dir()
             # 1. Verify the existence of the torchair directory
-            torchair_root = os.path.join(debug_dir_output, "torchair")
+            torchair_root = os.path.join(debug_dir_output, "npugraph_ex")
             self.assertTrue(os.path.exists(torchair_root), msg=f"torchair directory does not exist: {torchair_root}")
 
-            # 2. Verify all expected files exist
-            expected_files = []
-            for template in EXPECTED_FILE_PATTERNS_ACL:
-                rel_path = template.format(id=0)
-                expected_files.append(rel_path)
+            self.check_debug_dump_full_files(torchair_root, high_version=True)
 
-            def check_torchair_directory_structure(base_dir: str, file_list: list) -> list:
-                missing_files = []
-                for rel_path in file_list:
-                    abs_path = os.path.join(base_dir, rel_path)
-                    if not os.path.exists(abs_path):
-                        missing_files.append(abs_path)
-                return missing_files
-            missing_files = check_torchair_directory_structure(torchair_root, expected_files)
-            self.assertFalse(missing_files, msg=f"Missing files: {', '.join(missing_files)}")
-
-            # Check file count to ensure no extra files
-            expected_count = len(EXPECTED_FILE_PATTERNS_ACL)
-            actual_count = 0
-            for root, _, files in os.walk(torchair_root):
-                actual_count += len(files)
-            self.assertEqual(
-                actual_count,
-                expected_count,
-                msg=f"File count mismatch: expected {expected_count} files, got {actual_count} files"
-            )
 
     @unittest.skipIf(torch.__version__ > "2.2", "")
     def test_torch_compile_acl_debug_dump_low_version(self):
 
-        # Define templates for ACL mode (without hardcoded indices)
-        ACL_COMMON_FILES = [
-            "dynamo_out_graph.txt",
-        ]
-
-        ACL_FORWARD_STEP_TEMPLATS = [
-            "aot_forward_graph.txt",
-            "aot_forward_graph_after_post_grad_custom_pre_pass.txt",
-            "aot_forward_graph_after_optimize_noop_ops.txt",
-            "aot_forward_graph_after_recover_view_inplace_pattern.txt",
-            "aot_forward_graph_after_apply_pattern_passes.txt",
-            "aot_forward_graph_after_view_to_reshape.txt",
-            "aot_forward_graph_after_post_grad_custom_post_pass.txt",
-            "aot_forward_graph_after_remove_cat_ops.txt",
-            "aot_forward_graph_after_apply_event_closure_with_multi_stream.txt",
-            "aot_forward_graph_after_apply_event_record.txt",
-            "aot_forward_graph_after_eliminate_dead_code.txt",
-            "aot_forward_graph_after_reinplace_input_mutated_ops.txt",
-            "aot_forward_graph_after_replace_dynamic_workspace_ops.txt",
-            "aot_forward_graph_after_replace_core_limit_nodes.txt",
-            "aot_forward_graph_after_resolve_default_stream_markers.txt",
-        ]
-
-        ACL_BACKWARD_STEP_TEMPLATES = [
-            "aot_backward_graph.txt",
-            "aot_backward_graph_after_post_grad_custom_pre_pass.txt",
-            "aot_backward_graph_after_optimize_noop_ops.txt",
-            "aot_backward_graph_after_recover_view_inplace_pattern.txt",
-            "aot_backward_graph_after_apply_pattern_passes.txt",
-            "aot_backward_graph_after_view_to_reshape.txt",
-            "aot_backward_graph_after_post_grad_custom_post_pass.txt",
-            "aot_backward_graph_after_remove_cat_ops.txt",
-            "aot_backward_graph_after_apply_event_closure_with_multi_stream.txt",
-            "aot_backward_graph_after_apply_event_record.txt",
-            "aot_backward_graph_after_eliminate_dead_code.txt",
-            "aot_backward_graph_after_reinplace_input_mutated_ops.txt",
-            "aot_backward_graph_after_replace_dynamic_workspace_ops.txt",
-            "aot_backward_graph_after_replace_core_limit_nodes.txt",
-            "aot_backward_graph_after_resolve_default_stream_markers.txt",
-        ]
-
-        # Generate patterns with auto-incremented indics
-        def generate_acl_patterns():
-            patterns = []
-            # Add common files
-            for file in ACL_COMMON_FILES:
-                patterns.append(f"model__{{id}}/{file}")
-            # Add forward files with auto indices
-            for idx, template in enumerate(ACL_FORWARD_STEP_TEMPLATS):
-                patterns.append(f"model__{{id}}/forward/{idx:03d}_{template}")
-            patterns.append(f"model__{{id}}/forward/output_code.py")
-            for idx, template in enumerate(ACL_BACKWARD_STEP_TEMPLATES):
-                patterns.append(f"model__{{id}}/backward/{idx:03d}_{template}")
-            patterns.append(f"model__{{id}}/backward/output_code.py")
-            return patterns
-
-        EXPECTED_FILE_PATTERNS_ACL = generate_acl_patterns()
-
-
         from torch._dynamo.utils import get_debug_dir
         import tempfile
 
-        with tempfile.TemporaryDirectory(prefix="torchair_debug_") as tmpdir:
-            DEBUG_DIR = tmpdir
-            torch._dynamo.config.patch(debug_dir_root=DEBUG_DIR)
-            self.assertIsNotNone(DEBUG_DIR)
+        with tempfile.TemporaryDirectory(prefix="torchair_debug_") as tmpdir, \
+            torch._dynamo.config.patch(debug_dir_root=tmpdir):
+            self.assertIsNotNone(tmpdir)
             os.environ['TORCH_COMPILE_DEBUG'] = '1'
 
             def _custom_pre_fn(gm, example_inputs, config: CompilerConfig):
@@ -1450,35 +1387,55 @@ class NpugraphExSt(unittest.TestCase):
 
             debug_dir_output = get_debug_dir()
             # 1. Verify the existence of the torchair directory
-            torchair_root = os.path.join(debug_dir_output, "torchair")
+            torchair_root = os.path.join(debug_dir_output, "npugraph_ex")
+            self.assertTrue(os.path.exists(torchair_root), msg=f"torchair directory does not exist: {torchair_root}")
+            self.check_debug_dump_full_files(torchair_root, high_version=False)
+
+    @unittest.skipIf(torch.__version__ < "2.6", "")
+    def test_compile_fx_debug_dump(self):
+        
+        from torch._dynamo.utils import get_debug_dir
+        import tempfile
+
+        with tempfile.TemporaryDirectory(prefix="torchair_debug_") as tmpdir, \
+            torch._dynamo.config.patch(debug_dir_root=tmpdir):
+            self.assertIsNotNone(tmpdir)
+            os.environ['TORCH_COMPILE_DEBUG'] = '1'
+
+            def _custom_pre_fn(gm, example_inputs, config: CompilerConfig):
+                return None
+
+            def _custom_post_fn(gm, example_inputs, config: CompilerConfig):
+                return None
+            
+            options = {"remove_noop_ops":  True, "post_grad_custom_pre_pass": _custom_pre_fn, "post_grad_custom_post_pass": _custom_post_fn}
+            class Model(torch.nn.Module):
+                def forward(self, x):
+                    return 2 * x
+
+            def custom_compiler(gm: torch.fx.GraphModule, example_inputs):
+              
+                compiled_graph = compile_fx(
+                    gm,
+                    example_inputs,
+                    options
+                )
+                return compiled_graph
+
+            def custom_backend(gm: torch.fx.GraphModule, example_inputs):
+                return aot_module_simplified(gm, example_inputs, fw_compiler=custom_compiler)
+
+            model = Model()
+            compiled_model = torch.compile(model, backend=custom_backend, dynamic=True)
+            x = torch.randn(10, 10)
+            out = compiled_model(x)
+
+            debug_dir_output = get_debug_dir()
+            # 1. Verify the existence of the torchair directory
+            torchair_root = os.path.join(debug_dir_output, "npugraph_ex")
             self.assertTrue(os.path.exists(torchair_root), msg=f"torchair directory does not exist: {torchair_root}")
 
-            # 2. Verify all expected files exist
-            expected_files = []
-            for template in EXPECTED_FILE_PATTERNS_ACL:
-                rel_path = template.format(id=0)
-                expected_files.append(rel_path)
-
-            def check_torchair_directory_structure(base_dir: str, file_list: list) -> list:
-                missing_files = []
-                for rel_path in file_list:
-                    abs_path = os.path.join(base_dir, rel_path)
-                    if not os.path.exists(abs_path):
-                        missing_files.append(abs_path)
-                return missing_files
-            missing_files = check_torchair_directory_structure(torchair_root, expected_files)
-            self.assertFalse(missing_files, msg=f"Missing files: {', '.join(missing_files)}")
-
-            # Check file count to ensure no extra files
-            expected_count = len(EXPECTED_FILE_PATTERNS_ACL)
-            actual_count = 0
-            for root, _, files in os.walk(torchair_root):
-                actual_count += len(files)
-            self.assertEqual(
-                actual_count,
-                expected_count,
-                msg=f"File count mismatch: expected {expected_count} files, got {actual_count} files"
-            )
+            self.check_debug_dump_full_files(torchair_root, sub_dir="compile", phases=["compile_fx"], high_version=True)
 
     def test_aclgraph_userinput_construct_in_share_memory_with_parameter_and_mutated(self):
         class Model(torch.nn.Module):
@@ -2124,8 +2081,7 @@ class NpugraphExSt(unittest.TestCase):
 
     def test_compile_fx(self):
         """Test compile_fx with torch.compile and custom_backend."""
-        from torch._functorch.aot_autograd import aot_module_simplified
-        from npugraph_ex import compile_fx
+        
         from npugraph_ex import npu_fx_compiler
 
         class DsModel(torch.nn.Module):

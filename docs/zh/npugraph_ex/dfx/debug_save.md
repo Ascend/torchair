@@ -18,7 +18,7 @@
 
 ## 使用约束
 
-- 使用该功能时，需通过配置torch.compile的backend="npugraph\_ex"进行编译，不支持自定义后端。
+- 使用[compile_fx](../api/npugraph_ex//compile_fx.md)开启该功能时，仅收集编译流程中的部分调试产物。
 - 本功能支持的产品型号参见[使用说明](../../overview.md#使用说明)。
 
 ## 使用方法
@@ -57,7 +57,7 @@ python main.py
 
     ```txt
     torch_compile_debug/run_<时间>-pid_<进程号>
-    ├── torchair
+    ├── npugraph\_ex
     │   ├── debug.log                                                 # npugraph\_ex日志
     │   ├── model__0                                                  # model__0为模型ID
     │   │   ├── forward                                               # 前向推理

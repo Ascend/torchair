@@ -65,17 +65,21 @@ class DebugContext():
     """
     Debug context manager. Tracks debug phase and generates unique model debug paths.
     """
-    COUNT = -1
+    model_cnt = -1
+    compile_fx_cnt = -1
 
     def __init__(self, phase: str) -> None:
         debug_ctx.phase = phase
-    
+        self._dump_enabled = os.getenv("TORCH_COMPILE_DEBUG", "0") == "1"
+        if self._dump_enabled and phase == "compile_fx":
+            DebugContext.compile_fx_cnt += 1
+
     def __enter__(self):
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         GraphTransformObserver.reset_file_count()
-        if os.getenv("TORCH_COMPILE_DEBUG", "0") == "1":
+        if self._dump_enabled:
             logger.debug(
                 "[%s] Full debug info saved to: %s",
                 getattr(debug_ctx, 'phase', 'default'),
@@ -88,11 +92,17 @@ class DebugContext():
 
     @classmethod
     def current_path(cls) -> str:
-        return os.path.join(get_debug_dir(), "torchair", f"model__{cls.COUNT}")
+        phase = getattr(debug_ctx, 'phase', 'default')
+        if phase == "compile_fx":
+            return os.path.join(get_debug_dir(), "npugraph_ex", f"compile__{cls.compile_fx_cnt}")
+
+        return os.path.join(get_debug_dir(), "npugraph_ex", f"model__{cls.model_cnt}")
     
     @classmethod
     def next_path(cls) -> str:
-        cls.COUNT += 1
+        cls.model_cnt += 1
+        # Ensure phase is reset to None when entering the npu_backend
+        debug_ctx.phase = None
         return cls.current_path()
 
 
@@ -101,6 +111,9 @@ def get_phase_path():
     
 
 def wrap_compiler_phase(compiler: Callable, phase: str) -> Callable:
+    """
+    Wrap a compiler function with a debug context for the specified phase.
+    """
     if phase == "inference":
         phase = "forward"
 

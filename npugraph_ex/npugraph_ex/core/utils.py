@@ -13,7 +13,7 @@ def _create_debug_log_paths():
         return None
 
     from torch._dynamo.utils import get_debug_dir
-    base_dir = os.path.join(get_debug_dir(), "torchair")
+    base_dir = os.path.join(get_debug_dir(), "npugraph_ex")
     os.makedirs(base_dir, exist_ok=True)
     debug_log_path = os.path.join(base_dir, "debug.log")
 
@@ -69,6 +69,7 @@ def _get_logger(*, level=logging.ERROR, output=sys.stdout, file=None, name=None)
     _logger.warning_once = _warning_once
 
     return _logger
+
 
 logger = _get_logger(
     name="npugraph_ex",

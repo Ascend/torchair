@@ -61,7 +61,7 @@ graph():
     return (add,)
 ```
 
-在本功能设置成功后，参考[图编译Debug信息保存功能](../dfx/debug_save.md)，在Debug信息的torchair目录中的debug.log文件中可以看到优化后的计算图，如下：
+在本功能设置成功后，参考[图编译Debug信息保存功能](../dfx/debug_save.md)，在Debug信息的npugraph\_ex目录中的debug.log文件中可以看到优化后的计算图，如下：
 
 ```txt
 after fx graph optimization, graph is graph():

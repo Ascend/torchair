@@ -26,10 +26,10 @@ compile_fx(gm, example_inputs=None, options=None)
 
 使用compile_fx接口构建自定义后端时，不支持以下基于npugraph_ex后端实现的功能：
 
-- [图编译Debug信息保存功能](../../dfx/debug_save.md)
 - [多流表达功能](../../advanced/multi_stream.md)
 - [AI-Core和Vector-Core限核功能](../../advanced/limit_cores.md)
-- [FX图优化Pass配置功能](../../basic/inplace_pass.md)的input_inplace_pass配置
+- [FX图优化Pass配置功能](../../basic/inplace_pass.md)的input_inplace_pass配置需要配合`aot_module_simplified(keep_inference_input_mutations=True)`使用
+
 
 ## 调用示例
 

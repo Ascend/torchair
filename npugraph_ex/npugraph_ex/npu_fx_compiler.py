@@ -670,10 +670,12 @@ def compile_fx(gm, example_inputs=None, options=None):
 
     Returns:
         _CompiledFxGraph: The compiled graph.
-    """       
+    """
     compiler_config = CompilerConfig()
     _process_kwargs_options(compiler_config, {"options": {} if options is None else options})
+
     compiler = get_compiler(compiler_config)
+    compiler = wrap_compiler_phase(compiler, phase="compile_fx")
     return compiler(gm, example_inputs)
 
 
