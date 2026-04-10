@@ -375,6 +375,35 @@ class AclgraphTest(unittest.TestCase):
 
         compile_res = model_compile(x1, x2, gamma, smooth_scale1)
 
+    @unittest.skipIf(torch.__version__ < "2.6", "pattern_fusion_pass is unsupported when torch < 2.6")
+    def test_pattern_pass_with_multistream_and_corelimit(self):
+        class DsModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.event=torch.npu.Event()
+                self.stream=torch.npu.Stream()
+
+            def forward(self, x1, x2, weight):
+                y1, _, xOut1 = torch_npu.npu_add_rms_norm(x1, x2, weight, 1e-05)
+                self.event.record()
+                with torch.npu.stream(self.stream):
+                    self.event.wait(self.stream)
+                    with torch.npu.npugraph_ex.scope.limit_core_num(1, 2):
+                        _, _, h2 = y1.shape
+                        y1 = y1.view(-1, h2).to(torch.float32)
+
+                return y1, xOut1
+
+        npugraph_ex.npu_fx_compiler._optimize_fx = create_optimize_wrapper(lambda gm: self.assert_pattern_pass(gm, False))
+        model = DsModel()
+        model_compile = torch.compile(model, backend="npugraph_ex")
+
+        x1 = torch.randn(1, 1, 6144, dtype=torch.float16, device='npu')
+        x2 = torch.randn(1, 1, 6144, dtype=torch.float16, device='npu')
+        gamma = torch.ones(6144, dtype=torch.float16, device='npu')
+
+        compile_res = model_compile(x1, x2, gamma)
+
     def test_aclgraph_userinput_construct_in_share_memory_with_parameter_and_mutated(self):
         class RecaptureModel(torch.nn.Module):
             def __init__(self):

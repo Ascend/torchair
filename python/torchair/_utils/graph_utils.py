@@ -37,17 +37,16 @@ def add_stream_label_to_node_meta(graph_module: torch.fx.GraphModule) -> None:
             node.meta = {}
 
         if str(node.target) == "air.scope_enter.default":
+            scope_enter_nodes_stack.append(current_stream)
             is_user_stream = len(node.args) > 0 and '_user_stream_label' in node.args[0]
-            current_stream = node.args[1][0] if is_user_stream and len(node.args) > 1 else None
+            if is_user_stream:
+                current_stream = node.args[1][0] if len(node.args) > 1 else None
             node.meta["stream_label"] = current_stream
-            scope_enter_nodes_stack.append(node)
 
         elif str(node.target) == "air.scope_exit.default":
             node.meta["stream_label"] = current_stream
             if scope_enter_nodes_stack:
-                scope_enter_nodes_stack.pop()
-                current_stream = scope_enter_nodes_stack[-1].args[1][0] if scope_enter_nodes_stack and len(
-                    scope_enter_nodes_stack[-1].args) > 1 else None
+                current_stream = scope_enter_nodes_stack.pop()
 
         else:
             node.meta["stream_label"] = current_stream
