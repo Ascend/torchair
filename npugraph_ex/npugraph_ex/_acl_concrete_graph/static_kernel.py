@@ -20,6 +20,7 @@ _installed_run_pkgs = set()
 _uninstall_paths = []
 _local_gloo_groups = None
 _compiled_op_set = set()
+_static_kernel_blacklist = set()
 
 
 class RunPackageStatus(Enum):
@@ -244,6 +245,9 @@ def _merge_dump_json(gathered_json_dirs: list[Path], result_root: Path) -> Union
         warnings.warn(f"failed to create gathered opcompile directory {gathered_opcompile_dir}: {e}")
         return None
 
+    # Get blacklist directory for storing blacklisted JSON files
+    blacklist_dir = None
+
     _selected_json = set()
     _copied_json_filenames = set()
     filename_counter = {}
@@ -254,6 +258,13 @@ def _merge_dump_json(gathered_json_dirs: list[Path], result_root: Path) -> Union
         if not json_files:
             continue
         for json_file in json_files:
+            # Check if the operator is in blacklist
+            if _is_in_blacklist(json_file.name):
+                if not blacklist_dir:
+                    blacklist_dir = _get_blacklist_dir(result_root)
+                _copy_to_blacklist(json_file, blacklist_dir)
+                continue
+
             json_hash = get_op_hash(json_file.resolve())
             if json_hash not in _selected_json:
                 _selected_json.add(json_hash)
@@ -642,8 +653,18 @@ def get_compile_dir(opcompile_dir: Path) -> Path:
         logger.warning(f"Fallback to opcompile directory {opcompile_dir}")
         return opcompile_dir
 
+    # Get blacklist directory for storing blacklisted JSON files
+    blacklist_dir = None
+
     op_files = [f for f in opcompile_dir.iterdir() if f.is_file() and f.suffix == ".json"]
     for op_json in op_files:
+        # Check if the operator is in blacklist
+        if _is_in_blacklist(op_json.name):
+            if not blacklist_dir:
+                blacklist_dir = _get_blacklist_dir(result_root)
+            _copy_to_blacklist(op_json, blacklist_dir)
+            continue
+
         op_hash = get_op_hash(op_json)
         if op_hash not in _compiled_op_set:
             try:
@@ -804,3 +825,83 @@ def _update_static_kernel_cache(cache_file: Path, key: str, result_root: Path, r
                 fcntl.flock(lf, fcntl.LOCK_UN)
     except Exception as e:
         logger.warning(f"{prefix}Failed to update static kernel cache: {e}")
+
+
+def _set_static_kernel_blacklist(blacklist: list) -> None:
+    """
+    Set the blacklist for static kernel compilation.
+
+    Operators with JSON filenames containing any of the blacklist strings
+    will be excluded from static kernel compilation.
+
+    Args:
+        blacklist: List of strings to match against JSON filenames.
+                   Example: ["MatMul", "Softmax"]
+
+    Example:
+        from npugraph_ex._acl_concrete_graph.static_kernel import set_static_kernel_blacklist
+        set_static_kernel_blacklist(["MatMul", "Softmax"])
+    """
+    global _static_kernel_blacklist
+    _static_kernel_blacklist = set(blacklist) if blacklist else set()
+
+
+def _is_in_blacklist(json_filename: str) -> bool:
+    """
+    Check if a JSON filename matches any blacklist pattern.
+
+    Args:
+        json_filename: Name of the JSON file (not full path)
+
+    Returns:
+        True if the filename contains any blacklist string, False otherwise
+    """
+    if not _static_kernel_blacklist:
+        return False
+
+    for pattern in _static_kernel_blacklist:
+        if pattern and pattern in json_filename:
+            logger.debug(f"Skipping {json_filename} - matches blacklist pattern '{pattern}'")
+            return True
+    return False
+
+
+def _get_blacklist_dir(result_root: Path) -> Path:
+    """
+    Get the directory for storing blacklisted JSON files.
+
+    Args:
+        result_root: The root directory for compilation outputs
+
+    Returns:
+        Path to the blacklist directory
+    """
+    blacklist_dir = result_root / f"{os.getpid()}_opcompile_blacklist"
+    try:
+        blacklist_dir.mkdir(exist_ok=True)
+        return blacklist_dir
+    except Exception as e:
+        logger.error(f"Failed to create blacklist directory {blacklist_dir}: {e}")
+        raise e
+
+
+def _copy_to_blacklist(json_file: Path, blacklist_dir: Path) -> bool:
+    """
+    Move a JSON file to the blacklist directory.
+
+    Args:
+        json_file: Path to the JSON file to move
+        blacklist_dir: Destination directory for blacklisted files
+
+    Returns:
+        True if moved successfully, False otherwise
+    """
+    try:
+        dest_path = blacklist_dir / json_file.name
+        shutil.copy2(json_file, dest_path)
+        logger.info(f"Operator {json_file.name} is in blacklist, moved to {blacklist_dir}")
+        return True
+    except Exception as e:
+        logger.warning(f"Failed to move {json_file.name} to blacklist dir: {e}")
+        return False
+
