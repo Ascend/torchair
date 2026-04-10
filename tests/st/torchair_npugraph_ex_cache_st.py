@@ -12,11 +12,10 @@ from torch import fx
 import sympy
 
 import npugraph_ex
-from npugraph_ex.configs.compiler_config import CompilerConfig
+from npugraph_ex.configs.compiler_config import CompilerConfig, _process_kwargs_options
 from npugraph_ex.core.utils import logger
 from npugraph_ex.inference._cache_compiler import CompiledModel, ModelCacheSaver
 from npugraph_ex._acl_concrete_graph.utils import reconstruct_args_kwargs, WeakRef, LazyMessage
-from npugraph_ex.configs.npugraphex_config import _process_kwargs_options
 from npugraph_ex.configs._option_base import CallableValue
 
 torch._logging.set_logs(dynamo=logging.INFO)
@@ -335,7 +334,7 @@ class NpugraphExCacheSt(unittest.TestCase):
 
         with capture_logger() as stdout:
             model1(torch.randn([4, 2]))
-        self.assertTrue("static_capture_size_limit reached" in stdout.getvalue())
+        self.assertTrue("capture_limit reached" in stdout.getvalue())
 
         with capture_logger() as stdout:
             model1(torch.randn([3, 2]))
@@ -564,8 +563,8 @@ class NpugraphExCacheSt(unittest.TestCase):
             result = model(x)
 
         self.assertTrue(os.path.exists(prompt_cache_dir))  # cache compiled
-        self.assertTrue("compile_configs[\"run_eagerly\"] = \"1\"" in stdout.getvalue())
-        self.assertTrue("compile_configs[\"_aclnn_static_shape_kernel\"] = \"1\"" in stdout.getvalue())
+        self.assertTrue("compile_configs[\"force_eager\"] = True" in stdout.getvalue())
+        self.assertTrue("compile_configs[\"static_kernel_compile\"] = True" in stdout.getvalue())
 
 if __name__ == '__main__':
     unittest.main()

@@ -449,8 +449,6 @@ def add_npu_patch(decompositions, compiler_config):
     npu_patch_meta()
     npu_patch_break_graph()
     npu_patch_register_fast_op_impl()
-    if compiler_config.experimental_config.npu_fx_pass:
-        npu_patch_fx_pass(decompositions)
 
 
 def get_npu_default_decompositions():

@@ -116,7 +116,7 @@ def _depatch_user_const(code: types.CodeType):
 
 
 class CompiledModel:
-    VERSION = "1.0.5"
+    VERSION = "1.0.6"
     FILE = "compiled_module"
 
     def __init__(self, meta: Union[ModelCacheMeta, types.FunctionType, types.MethodType]):
@@ -416,12 +416,12 @@ class ModelCacheSaver:
         self.name = self.compiled_model.name
         extend_config = {}
 
-        if config.experimental_config.aclgraph._aclnn_static_shape_kernel:
+        if config.static_kernel_compile:
             import torch_npu
-            extend_config["_aclnn_static_shape_kernel.use_cache_compile"] = "1"
-            extend_config["_aclnn_static_shape_kernel.cann_version"] = torch_npu.npu.utils.get_cann_version()
-            extend_config["_aclnn_static_shape_kernel.compile_cache_dir"] = self.cache_dir
-            extend_config["_aclnn_static_shape_kernel.deterministic"] = "1" if torch.are_deterministic_algorithms_enabled() else "0"
+            extend_config["static_kernel_compile.use_cache_compile"] = True
+            extend_config["static_kernel_compile.cann_version"] = torch_npu.npu.utils.get_cann_version()
+            extend_config["static_kernel_compile.compile_cache_dir"] = self.cache_dir
+            extend_config["static_kernel_compile.deterministic"] = torch.are_deterministic_algorithms_enabled()
 
         cache_backend = CacheBackend(config, self, decompositions=decompositions, extend_config=extend_config)
         self.compiled_func = torch.compile(func, backend=cache_backend, fullgraph=True, dynamic=dynamic)

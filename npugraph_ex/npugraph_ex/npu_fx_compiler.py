@@ -39,8 +39,7 @@ from torch._dynamo.utils import detect_fake_mode
 
 from npugraph_ex.core._concrete_graph import ConcreteGraphBase, ValuePack, _is_sym, _is_symlist
 from npugraph_ex.core.utils import logger
-from npugraph_ex.configs.compiler_config import CompilerConfig
-from npugraph_ex.configs.npugraphex_config import _process_kwargs_options
+from npugraph_ex.configs.compiler_config import CompilerConfig, _process_kwargs_options
 from npugraph_ex.fx_dumper import _NpuFxDumper
 from npugraph_ex._utils import add_npu_patch, get_npu_default_decompositions
 from npugraph_ex._utils.error_code import pretty_error_msg
@@ -309,14 +308,14 @@ def _optimize_fx(graph_module: torch.fx.GraphModule, config: CompilerConfig, obs
                      "post_grad_custom_pre_pass",
                                enable_log=True)
 
-    if config.experimental_config.remove_noop_ops:
+    if config.remove_noop_ops:
         observer.apply_gm_pass(_optimize_noop_ops, "optimize_noop_ops")
 
     from npugraph_ex.patterns._recover_view_inplace_pattern import recover_view_inplace_pattern
     observer.apply_gm_pass(debug_compare_fx_graphs(recover_view_inplace_pattern, pass_name="recover_view_inplace_pattern"),
                  "recover_view_inplace_pattern")
 
-    if config.experimental_config.pattern_fusion_pass:
+    if config.pattern_fusion_pass:
         observer.apply_gm_pass(_apply_pattern_passes, "apply_pattern_passes")
 
     observer.apply_gm_pass(_view_to_reshape, "view_to_reshape")
@@ -587,11 +586,11 @@ class _NpuFxCompiler:
         observer = GraphTransformObserver(gm, example_inputs, self.config)
         observer.dump_gm(gm, "graph")
 
-        if self.config.debug.data_dump.enabled:
+        if self.config.force_eager and self.config.dump_tensor_data:
             logger.warning(f'When dumping data of FX Graph, npu run will be skipped, '
                            'and FALLBACK to EAGER execution, once dump finished, please make sure to disable '
                            'the data dump config to ensure that the graph is compiled and executed.')
-            data_dumper = _NpuFxDumper(gm, config=self.config.debug.data_dump,
+            data_dumper = _NpuFxDumper(gm, config=self.config,
                                        name="graph_" + str(_next_unique_graph_id()))
             return _CompiledFxGraph(data_dumper, self.config)
 
@@ -611,11 +610,9 @@ class _NpuFxCompiler:
                     logger.warning(f'To temporarily fix weight_quant_batchmatmul bug, close enable_view_optimize.')
                     break
 
-        if (self.config.dump_config.enable_dump.value == '1'
-                and self.config.dump_config.data_dump_stage.value == "original"):
-            _, dump_options = self.config.dump_config.as_dict()
+        if (self.config.dump_tensor_data and self.config.data_dump_stage.value == "original"):
             from npugraph_ex._acl_concrete_graph.utils import insert_save_npugraph_tensor
-            return insert_save_npugraph_tensor(gm, dump_options)
+            return insert_save_npugraph_tensor(gm, self.config.data_dump_full_path())
 
         # generate different concrete graph based on config
         with no_dispatch():
@@ -628,8 +625,8 @@ class _NpuFxCompiler:
         from npugraph_ex._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
         graph = AclConcreteGraph(self.config,
                                  name="graph_" + str(_next_unique_graph_id()),
-                                 pool=self.config.aclgraph_config.use_custom_pool,
-                                 capture_error_mode=self.config.debug.aclgraph.capture_error_mode.value,
+                                 pool=self.config.use_graph_pool,
+                                 capture_error_mode=self.config.capture_error_mode.value,
                                  mutated_user_inputs=mutated_user_inputs)
 
         # do common optimization for fx graph based on config
@@ -640,18 +637,15 @@ class _NpuFxCompiler:
         concrete_graph: ConcreteGraphBase = _NpuGraphConverter(
             optimized_gm, graph=graph, garbage_collect_values=False).run(*example_inputs)
 
-        if self.config.debug.graph_dump.enabled:
-            concrete_graph.dump(self.config.debug.graph_dump.full_path(f"dynamo_original_graph_{_GLOBAL_GRAPH_ID}"))
-
         # optimize different concrete graph for ge or acl.
         concrete_graph.optimize_graph_without_runtime(*example_inputs, observer=observer, aot_gm=gm)
 
-        if self.config.debug.run_eagerly:
-            logger.warning(f'When debug.run_eagerly=True is enabled, '
+        if self.config.force_eager:
+            logger.warning(f'When force_eager=True is enabled, '
                            'the graph FALLS BACK to EAGER execution. Once running finished, please make sure to disable '
-                           'the debug.run_eagerly=True config to ensure that the graph is compiled and executed.')
+                           'the force_eager=True config to ensure that the graph is compiled and executed.')
             if not graph.fx_graph:
-                raise RuntimeError('When using debug.run_eagerly=True, the FX graph should not be None.')
+                raise RuntimeError('When using force_eager=True, the FX graph should not be None.')
 
         return concrete_graph
 
@@ -695,21 +689,6 @@ def get_compiler(compiler_config: CompilerConfig = None):
     return _NpuFxCompiler(compiler_config)
 
 
-def _npu_joint_graph_passes(graph):
-    from torch._inductor.fx_passes.joint_graph import joint_graph_passes
-    joint_graph_passes(graph)
-
-
-def _get_partition_fn(compiler_config: CompilerConfig):
-    def partition_fn(graph: torch.fx.GraphModule, joint_inputs, **kwargs):
-        _npu_joint_graph_passes(graph)
-        return default_partition(graph, joint_inputs, **kwargs)
-
-    if compiler_config.experimental_config.npu_fx_pass:
-        return partition_fn
-    return default_partition
-
-
 def _mark_static_inputs_attr(example_inputs, num_example_inputs, compiler_config):
     if torch.__version__ >= '2.4.0':
         # Length of example_inputs may differ between Dynamo and AOT compilation stages.
@@ -738,8 +717,6 @@ def _wrap_compiler(compiler: Callable, compiler_config: CompilerConfig, num_exam
             example_inputs: List[torch.Tensor],
             is_inference: bool
     ):
-        if is_inference and compiler_config.experimental_config.npu_fx_pass:
-            _npu_joint_graph_passes(gm)
         _mark_static_inputs_attr(example_inputs, num_example_inputs=num_example_inputs, compiler_config=compiler_config)
         return compiler(gm, example_inputs)
 
@@ -748,8 +725,6 @@ def _wrap_compiler(compiler: Callable, compiler_config: CompilerConfig, num_exam
             gm: torch.fx.GraphModule,
             example_inputs: List[torch.Tensor]
     ):
-        if compiler_config.experimental_config.npu_fx_pass:
-            _npu_joint_graph_passes(gm)
         _mark_static_inputs_attr(example_inputs, num_example_inputs=num_example_inputs, compiler_config=compiler_config)
         return compiler(gm, example_inputs)
 
@@ -934,12 +909,6 @@ def _compile_graph_with_aot(gm: torch.fx.GraphModule,
 
         # 5.3 Setup Inference Compiler
         aot_kwargs["inference_compiler"] = _create_stage_compiler(compiler, "inference")
-
-        # 5.4 Setup Partition Function & Mutations
-        aot_kwargs["partition_fn"] = _get_partition_fn(compiler_config)
-        aot_kwargs["keep_inference_input_mutations"] = bool(
-            compiler_config.experimental_config.keep_inference_input_mutations
-        )
 
     # 6. Unified AOT Call
     return aot_module_simplified(gm, example_inputs, **aot_kwargs)

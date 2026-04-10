@@ -89,7 +89,6 @@ class _NpuFxDumper(Interpreter):
 
     def __init__(self, gm: GraphModule, config=None, name=None):
         super().__init__(gm)
-        self._filter = config.filter if config else None
         self._config = config
         self._step = 0
         self._name = name if name else f'gm_{_timestamp()}_dump'
@@ -111,16 +110,11 @@ class _NpuFxDumper(Interpreter):
             global_rank = dist.get_rank()
             worldsize = dist.get_world_size()
             path = f'worldsize{worldsize}_global_rank{global_rank}/'
-            return os.path.join(os.path.dirname(self._config.full_path(path + f'{self._name}/')), f'{self._step}')
-        return os.path.join(os.path.dirname(self._config.full_path(f'worldsize1_global_rank0/{self._name}/')),
+            return os.path.join(os.path.dirname(self._config.eager_data_dump_full_path(path + f'{self._name}/')), f'{self._step}')
+        return os.path.join(os.path.dirname(self._config.eager_data_dump_full_path(f'worldsize1_global_rank0/{self._name}/')),
                             f'{self._step}')
 
     def run_node(self, n):
-        if self._filter and self._filter(n) is None:
-            return super().run_node(n)
-
-        n = self._filter(n) if self._filter else n
-
         with _dump_ctx(node=n):
             return super().run_node(n)
 

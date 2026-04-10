@@ -544,7 +544,7 @@ def _reinplace_inplaceable_ops_pass(gm: GraphModule, multi_stream_enabled: bool,
         if torch.__version__ < '2.5.0':
             raise RuntimeError("There is a bug in torch.fx.passes.reinplace module when torch < 2.5.0. Two possible"
                                " solutions: 1. upgrade torch version(>=2.5.0); 2. disable pass config by setting: "
-                               "config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass=True") from exception
+                               "config.inplace_pass=False") from exception
         else:
             logger.warning_once(f"Skipped fx_pass _reinplace_inplaceable_ops_pass for unsupported fx graph {id(gm)}.")
             return original_gm
@@ -715,12 +715,12 @@ def replace_core_limit_nodes(gm: torch.fx.GraphModule, config: CompilerConfig):
             _core_limit_handle_scope_exit(node, gm, core_limit_stack, scope_enter_stack)
         if not enable_core_limit and core_limit_stack:
             enable_core_limit = True
-    enable_static_shape_kernel = config.experimental_config.aclgraph._aclnn_static_shape_kernel
+    enable_static_shape_kernel = config.static_kernel_compile
     if enable_core_limit and enable_static_shape_kernel:
         from torch_npu.npu.utils import _is_gte_cann_version
         cann_supports_both = _is_gte_cann_version("9.0.0", module="CANN")
         if not cann_supports_both:
-            config.experimental_config.aclgraph._aclnn_static_shape_kernel = False
+            config.static_kernel_compile = False
             warnings.warn('When both static shape kernel and core limit are enabled, '
                           'only core limit will take effect, static shape kernel will be disabled. '
                           'CANN 9.0.0 or later supports enabling both features.')

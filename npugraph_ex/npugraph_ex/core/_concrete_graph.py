@@ -80,13 +80,6 @@ class ConcreteGraphBase(ABC):
         pass
 
     @abstractmethod
-    def dump(self, path: str):
-        """
-        dump图到文件
-        """
-        pass
-
-    @abstractmethod
     def compile(self) -> Any:
         """
         编译图，返回一个可调用的对象，用于执行fx图

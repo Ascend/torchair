@@ -16,11 +16,10 @@ from torch._subclasses.fake_tensor import FakeTensorMode
 
 import npugraph_ex
 from npugraph_ex._acl_concrete_graph import replace_stream_event
-from npugraph_ex.configs.compiler_config import CompilerConfig
-from npugraph_ex.configs.npugraphex_config import _process_kwargs_options
+from npugraph_ex.configs.compiler_config import CompilerConfig, _process_kwargs_options
 from npugraph_ex.core.utils import logger
 from npugraph_ex._acl_concrete_graph.static_kernel import static_compile
-from npugraph_ex.configs.npugraphex_config import _NpuGraphExConfig
+from npugraph_ex.configs.compiler_config import CompilerConfig
 
 torch._logging.set_logs(dynamo=logging.INFO)
 torch.manual_seed(7)
@@ -184,7 +183,7 @@ class AclgraphTest(unittest.TestCase):
         torch._dynamo.mark_static(value)
         mmc = mm.npu()
         from npugraph_ex.inference._cache_compiler import CompiledModel, ModelCacheSaver
-        from npugraph_ex.configs.npugraphex_config import _process_kwargs_options
+        from npugraph_ex.configs.compiler_config import _process_kwargs_options
         static_kernel_config = npugraph_ex.CompilerConfig()
         _process_kwargs_options(static_kernel_config, {"options":options})
         prompt_cache_bin = CompiledModel.get_cache_bin(mm.prompt, config=static_kernel_config)
@@ -257,7 +256,7 @@ class AclgraphTest(unittest.TestCase):
                 return self._forward(x, y)
 
         options = {"static_kernel_compile": True, "inplace_pass": False, "input_inplace_pass": False}
-        from npugraph_ex.configs.npugraphex_config import _process_kwargs_options
+        from npugraph_ex.configs.compiler_config import _process_kwargs_options
         static_kernel_config = npugraph_ex.CompilerConfig()
         _process_kwargs_options(static_kernel_config, {"options":options})
 
@@ -1758,7 +1757,7 @@ class AclgraphTest(unittest.TestCase):
 
         # 使用 compile_fx 编译图
         test_options = {
-                "static_kernel_compile": False,
+                "static_kernel_compile": True,
                 "inplace_pass": False,
                 "input_inplace_pass": False,
                 "remove_noop_ops": False,
@@ -1800,49 +1799,21 @@ class AclgraphTest(unittest.TestCase):
         eager_output = model(x1, x2)
         self.assertTrue(torch.allclose(result, eager_output))
 
-        assert captured_config.experimental_config.aclgraph._aclnn_static_shape_kernel.value == '0'
-        assert captured_config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass.value == '1'
-        assert captured_config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass.value == '1'
-        assert captured_config.experimental_config.remove_noop_ops.value == '0'
-        assert captured_config.debug.aclgraph.remove_cat_ops.value == '0'
-        assert captured_config.debug.run_eagerly.value == '0'
-        assert captured_config.experimental_config.pattern_fusion_pass.value == '0'
-        assert captured_config.experimental_config.frozen_parameter.value == '0'
-        assert captured_config.debug.aclgraph.disable_mempool_reuse_in_same_fx.value == '1'
-        assert captured_config.debug.aclgraph.static_capture_size_limit.value == '64'
-        assert captured_config.debug.aclgraph.enable_output_clone.value == '0'
-
-        assert _NpuGraphExConfig.static_kernel_compile is False
-        assert _NpuGraphExConfig.inplace_pass is False
-        assert _NpuGraphExConfig.input_inplace_pass is False
-        assert _NpuGraphExConfig.remove_noop_ops is False
-        assert _NpuGraphExConfig.remove_cat_ops is False
-        assert _NpuGraphExConfig.force_eager is False
-        assert _NpuGraphExConfig.pattern_fusion_pass is False
-        assert _NpuGraphExConfig.clone_input is False
-        assert _NpuGraphExConfig.frozen_parameter is False
-        assert _NpuGraphExConfig.reuse_graph_pool_in_same_fx is False
-        assert _NpuGraphExConfig.capture_limit == 64
-        assert _NpuGraphExConfig.clone_output is False
-        assert _NpuGraphExConfig.dump_tensor_data is False
-        assert _NpuGraphExConfig.data_dump_stage == 'optimized'
-        assert _NpuGraphExConfig.data_dump_dir == './'
-
-        options_dict = _NpuGraphExConfig.as_dict()
-        assert options_dict["static_kernel_compile"] is False
-        assert options_dict["inplace_pass"] is False
-        assert options_dict["input_inplace_pass"] is False
-        assert options_dict["remove_noop_ops"] is False
-        assert options_dict["remove_cat_ops"] is False
-        assert options_dict["force_eager"] is False
-        assert options_dict["clone_input"] is False
-        assert options_dict["frozen_parameter"] is False
-        assert options_dict["reuse_graph_pool_in_same_fx"] is False
-        assert options_dict["capture_limit"] == 64
-        assert options_dict["clone_output"] is False
-        assert options_dict["dump_tensor_data"] is False
-        assert options_dict["data_dump_stage"] == 'optimized'
-        assert options_dict["data_dump_dir"] == './'
+        assert captured_config.static_kernel_compile.value
+        assert captured_config.inplace_pass.value is False
+        assert captured_config.input_inplace_pass.value is False
+        assert captured_config.remove_noop_ops.value is False
+        assert captured_config.remove_cat_ops.value is False
+        assert captured_config.force_eager.value is False
+        assert captured_config.pattern_fusion_pass.value is False
+        assert captured_config.clone_input.value is False
+        assert captured_config.frozen_parameter.value is False
+        assert captured_config.reuse_graph_pool_in_same_fx.value is False
+        assert captured_config.capture_limit.value == "64"
+        assert captured_config.clone_output.value is False
+        assert captured_config.dump_tensor_data.value is False
+        assert captured_config.data_dump_stage.value == 'optimized'
+        assert captured_config.data_dump_dir.value == './'
 
     def test_inherited_global_limit_core(self):
         from npugraph_ex._acl_concrete_graph.fx2acl_converter import AclConcreteGraph

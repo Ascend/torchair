@@ -34,7 +34,7 @@ def compile_static_kernel(fx_func, *args, use_cache_compile=None, cached_cann_ve
     if not _is_multicard_env_valid():
         return
 
-    if use_cache_compile == "1":
+    if use_cache_compile:
         _install_or_compile_static_kernel(fx_func, *args, cached_cann_version=cached_cann_version,
                                           compile_cache_dir=compile_cache_dir,
                                           cached_deterministic=cached_deterministic,
@@ -42,7 +42,7 @@ def compile_static_kernel(fx_func, *args, use_cache_compile=None, cached_cann_ve
     else:
         warn_msg = ("The current version now supports caching run packages from static kernel compilation, "
                     "it is recommended to delete the compilation cache and recompile "
-                    "when you use `torch.npu.npugraph_ex.inference.cache_compile` and do not use debug.run_eagerly=True.")
+                    "when you use `torch.npu.npugraph_ex.inference.cache_compile` and do not use force_eager=True.")
         warnings.warn(warn_msg)
         warnings.filterwarnings("ignore", message=warn_msg)
         _compile_static_kernel(fx_func, *args, build_dir=build_dir, super_kernel_optimize=super_kernel_optimize, 
@@ -137,7 +137,7 @@ def _compile_static_kernel_for_single_card(fx_func, *args, is_cache_compile=Fals
 
     # 2.开始静态编译
     cache_file = None
-    if disable_static_kernel_compile_cache != "1":
+    if not disable_static_kernel_compile_cache:
         cache_file = _get_cache_path(result_root)
         key = _get_static_kernel_cache_key(chosen_dir, super_kernel_optimize)
         status = _match_and_install_run_pkg(cache_file, key)
@@ -149,7 +149,7 @@ def _compile_static_kernel_for_single_card(fx_func, *args, is_cache_compile=Fals
     if not compile_result:
         return
 
-    if disable_static_kernel_compile_cache != "1" and cache_file:
+    if not disable_static_kernel_compile_cache and cache_file:
         _update_static_kernel_cache(cache_file, key, result_root)
     # 3.安装静态kernel run包
     _install_run_packages(result_root)
@@ -217,7 +217,7 @@ def _merge_and_compile_install(gathered_json_dirs: list[Path], result_root: Path
 
     # 静态编译
     cache_file = None
-    if disable_static_kernel_compile_cache != "1":
+    if not disable_static_kernel_compile_cache:
         cache_file = _get_cache_path(result_root)
         key = _get_static_kernel_cache_key(gathered_opcompile_dir, super_kernel_optimize)
         status = _match_and_install_run_pkg(cache_file, key, rank)
@@ -228,7 +228,7 @@ def _merge_and_compile_install(gathered_json_dirs: list[Path], result_root: Path
     if not compile_result:
         return
 
-    if disable_static_kernel_compile_cache != "1" and cache_file:
+    if not disable_static_kernel_compile_cache and cache_file:
         _update_static_kernel_cache(cache_file, key, result_root, rank)
 
     # 安装run包
@@ -349,7 +349,7 @@ def _check_for_load_run_pkg(cached_cann_version, compile_cache_dir, cached_deter
             "The cann_version and compile_cache_dir must be set, it is recommended to delete the compilation cache and recompile.")
         return False
 
-    current_deterministic = "1" if torch.are_deterministic_algorithms_enabled() else "0"
+    current_deterministic = torch.are_deterministic_algorithms_enabled()
     if cached_deterministic != current_deterministic:
         warnings.warn(
             f"The deterministic configuration has changed (from {cached_deterministic} to {current_deterministic}), "

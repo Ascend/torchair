@@ -139,18 +139,6 @@ class AclConcreteGraph(ConcreteGraphBase):
         finally:
             pass
 
-    def dump(self, path: str):
-        if path is None:
-            raise RuntimeError("Path is none, please report a bug.")
-        if not path.endswith('.py'):
-            raise NotImplementedError(
-                f"Graph dump for aclGraph only support 'py' type, but got: {self.config.debug.graph_dump.type.value}."
-                f"Please check compile config setting: config.debug.graph_dump.type")
-        else:
-            PathManager.check_path_writeable_and_safety(path)
-            with open(path, "w+") as f:
-                f.write(self.fx_graph.print_readable(False))
-
     def codegen(self, extend_config, enable_cache=False):
         from torch._inductor.utils import IndentedBuffer
         head = IndentedBuffer()
@@ -228,16 +216,16 @@ class AclConcreteGraph(ConcreteGraphBase):
         """
         from npugraph_ex._utils.graph_utils import _compare_fx_graphs
         logger.debug('begin graph optimization for graph: %s', id(self.fx_graph.graph))
-        if self.config.aclgraph_config.use_custom_pool is not None:
+        if self.config.use_graph_pool is not None:
             # When a custom memory pool is provided by the user, avoid reusing it within the same FX graph
             # or across multiple FX graphs. Enabling reuse would lead to stale storage persisting across
             # different FX graphs, creating a maintenance nightmare. Specifically, outputs that remain alive
             # after a graph replay can be passed to a user via an aclgraph captured from another FX context,
             # which will cause unpredictable errors. Reusing inputs is safe because they are no longer alive
             # by the time a subsequent aclgraph executes.
-            self.config.debug.aclgraph.disable_mempool_reuse_in_same_fx = True
+            self.config.reuse_graph_pool_in_same_fx = False
 
-        if self.config.debug.aclgraph.remove_cat_ops:
+        if self.config.remove_cat_ops:
             from npugraph_ex._acl_concrete_graph.cat_optimization import optimize_cat_with_out_tensor
             optimize_cat_with_out_tensor(self.fx_graph)
             observer.dump_gm(self.fx_graph, "graph_after_remove_cat_ops")
@@ -264,14 +252,14 @@ class AclConcreteGraph(ConcreteGraphBase):
         _wrap_eliminate_dead_code()
         observer.dump_gm(self.fx_graph, "graph_after_eliminate_dead_code")
 
-        if not self.config.debug.aclgraph.disable_reinplace_inplaceable_ops_pass:
+        if self.config.inplace_pass:
             logger.debug("Start to process reinplace inplaceable ops fx pass for graph: %s", self.fx_graph_name)
             from npugraph_ex._acl_concrete_graph.graph_pass import _reinplace_inplaceable_ops_pass
             _reinplace_inplaceable_ops_pass(self.fx_graph, multi_stream_enabled, *sample_args)
             observer.dump_gm(self.fx_graph, "graph_after_reinplace_inplaceable_ops_pass")
 
         # Note: this will modify mutated input ops in fx graph, should be executed LAST.
-        if not self.config.debug.aclgraph.disable_reinplace_input_mutated_ops_pass:
+        if self.config.input_inplace_pass:
             logger.debug("Start to process reinplace input mutated ops fx pass for graph: %s", self.fx_graph_name)
             from npugraph_ex._acl_concrete_graph.graph_pass import _reinplace_input_mutated_ops
             _reinplace_input_mutated_ops(self.fx_graph)
@@ -300,8 +288,6 @@ class AclConcreteGraph(ConcreteGraphBase):
             after_node_info = _get_node_info(self.fx_graph.graph.nodes)
             _compare_fx_graphs(before_node_info, after_node_info, "all npugraph_ex pass")
 
-        if self.config.debug.graph_dump.enabled:
-            self.dump(self.config.debug.graph_dump.full_path(f"dynamo_optimized_{self.fx_graph_name}"))
         # get info for get_unupdated_input_fn and get_updated_ops_fn from fx_graph
         from npugraph_ex._acl_concrete_graph.acl_graph import get_unupdated_sym_input_index, get_updated_ops_rulers_param
         self._aclgraph_cache_info.unupdated_sym_input_index = \
@@ -316,14 +302,13 @@ class AclConcreteGraph(ConcreteGraphBase):
         sgm = SerializableGraphModule(self.fx_graph)
         self._serialized_gm = sgm.convert_to_bytes()
 
-        if self.config.dump_config.enable_dump.value == '1' and \
-            self.config.dump_config.data_dump_stage.value == "optimized":
-            if self.config.experimental_config.aclgraph._super_kernel_optimize.value == "1":
+        if self.config.dump_tensor_data and self.config.data_dump_stage.value == "optimized":
+            if self.config.super_kernel_optimize:
                 msg = f"When super_kernel_optimize is enabled," \
                       f"the dump_tensor_data configuration becomes invalid."
                 warnings.warn(msg)
             else:
-                insert_save_npugraph_tensor(self.fx_graph, configs)
+                insert_save_npugraph_tensor(self.fx_graph, configs.get('data_dump_path'))
 
         self._fx_forward = self._codegen_fx_forward(self.fx_graph, self.fx_graph.code,
                                                     self._aclgraph_cache_info.updated_ops_param,
@@ -334,18 +319,8 @@ class AclConcreteGraph(ConcreteGraphBase):
         self.graph.load(self._aclgraph_cache_info)
 
     def normalize_config(self):
-        aclgraph_config_options, debug_global_options = self.config.debug.as_dict()
-        dump_local_options, dump_global_options = self.config.dump_config.as_dict()
-        exp_local_options, exp_global_options = self.config.experimental_config.as_dict()
-        aclgraph_config_options.update(dump_global_options)
-        aclgraph_config_options.update(exp_local_options)
-        # Although the dump_local_options, debug_global_options and exp_global_options are currently empty ({}).
-        # We still merge them into aclgraph_config_options to ensure future compatibility.
-        aclgraph_config_options.update(dump_local_options)
-        aclgraph_config_options.update(debug_global_options)
-        aclgraph_config_options.update(exp_global_options)
-
-        if aclgraph_config_options.get('frozen_parameter', '0') == '1':
+        aclgraph_config_options, _ = self.config.as_dict()
+        if aclgraph_config_options.get('frozen_parameter', False):
             if version.parse(torch.__version__) < version.parse("2.5.1"):
                 warnings.warn('When enable frozen_parameter, Parameters will be considered static. '
                               'Please make sure that the Parameters data address remain the same '
@@ -356,12 +331,9 @@ class AclConcreteGraph(ConcreteGraphBase):
                               'Please make sure that the Parameters data address remain the same '
                               'throughout the program runtime.')
 
-        if aclgraph_config_options.get('run_eagerly', '0') == '1':
+        if aclgraph_config_options.get('force_eager', False):
             sym_input_index = [x[0] for x in self._aclgraph_cache_info.unupdated_sym_input_index if x[1]]
             aclgraph_config_options['sym_input_index'] = str(sym_input_index)
-
-        # All values within aclgraph_config_options must be strings.
-        aclgraph_config_options = {k: str(v) for k, v in aclgraph_config_options.items()}
 
         logger.debug("aclgraph compile options:")
         for k, v in aclgraph_config_options.items():
@@ -512,14 +484,20 @@ class AclConcreteGraph(ConcreteGraphBase):
                               f'compile_configs = {{}}'])
         configs = self.normalize_config()
         for k, v in configs.items():
-            init_code.writeline(f'compile_configs["{k}"] = "{v}"')
-
-        if self.config.experimental_config.aclgraph._aclnn_static_shape_kernel and extend_config:
-            for k, v in extend_config.items():
+            if isinstance(v, bool):
+                init_code.writeline(f'compile_configs["{k}"] = {v}')
+            else:
                 init_code.writeline(f'compile_configs["{k}"] = "{v}"')
+
+        if self.config.static_kernel_compile and extend_config:
+            for k, v in extend_config.items():
+                if isinstance(v, bool):
+                    init_code.writeline(f'compile_configs["{k}"] = {v}')
+                else:
+                    init_code.writeline(f'compile_configs["{k}"] = "{v}"')
             init_code.splice(f'''
                         def _update_static_kernel_cache_dir(path):
-                            compile_configs["_aclnn_static_shape_kernel.compile_cache_dir"] = path
+                            compile_configs["static_kernel_compile.compile_cache_dir"] = path
                         ''')
 
         init_code.writelines(['',

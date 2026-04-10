@@ -33,10 +33,8 @@ class OptionValue:
         """Return option value"""
         if self._value is None:
             return None
-        if str(self._value) == str(True):
-            return "1"
-        if str(self._value) == str(False):
-            return "0"
+        if isinstance(self._value, bool):
+            return self._value
         return str(self._value)
 
     @value.setter

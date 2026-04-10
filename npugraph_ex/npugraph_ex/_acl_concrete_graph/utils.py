@@ -451,13 +451,8 @@ class ReinplaceStreamChecker:
             return False
 
 
-def insert_save_npugraph_tensor(gm: torch.fx.GraphModule, configs):
-    if configs.get('aclgraph.enableDump', '0') != '1':
-        logger.debug('The data dump function is not enabled, skip insert save_npugraph_tensor')
-        return gm
-
-    dump_path = configs.get('aclgraph.dumpPath')
-    base_dir = dump_path if dump_path is not None else "./"
+def insert_save_npugraph_tensor(gm: torch.fx.GraphModule, data_dump_path):
+    base_dir = data_dump_path if data_dump_path is not None else "./"
 
     logger.debug('The FX graph before inserting save_npugraph_tensor is: %s', gm.code)
     g = gm.graph

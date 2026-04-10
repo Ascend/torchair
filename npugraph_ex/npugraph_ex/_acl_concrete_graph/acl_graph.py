@@ -257,7 +257,7 @@ def gen_unupdate_input_func(unupdated_input_index: List):
 
 
 def get_unupdated_input_fn(unupdated_sym_input_index, parameter_user_inputs, config):
-    enable_parameter_frozen = "frozen_parameter" in config.keys() and config["frozen_parameter"] == "1"
+    enable_parameter_frozen = "frozen_parameter" in config.keys() and config["frozen_parameter"]
     if enable_parameter_frozen or parameter_user_inputs is None or len(parameter_user_inputs) == 0:
         return gen_unupdate_input_func(unupdated_sym_input_index)
     else:
@@ -811,24 +811,24 @@ class AclGraph(object):
         self._userinput_ref_data_ptr = {}
 
         # members for run eagerly X static kernel
-        if self.config.get('run_eagerly', '0') == '1' and self.config.get('_aclnn_static_shape_kernel', '0') == '1':
+        if self.config.get('force_eager', False) and self.config.get('static_kernel_compile', False):
             self.compiled_shape = set()
-            self.checked_sym_index = ast.literal_eval(self.config.get('_aclnn_static_shape_kernel_sym_index', '0'))
-            self.checked_sym_value_range = ast.literal_eval(self.config.get('_aclnn_static_shape_kernel_sym_value_range', 'None'))
+            self.checked_sym_index = ast.literal_eval(self.config.get('_vllm_aclnn_static_kernel_sym_index', '0'))
+            self.checked_sym_value_range = ast.literal_eval(str(self.config.get('_vllm_aclnn_static_kernel_sym_range', 'None')))
             self.sym_input_index = ast.literal_eval(self.config.get('sym_input_index', '[]'))
             self.sym_input_name = [f"input_{idx}" for idx in self.sym_input_index]
 
     def __call__(self, *args, **kwargs):
         # run eagerly / force eager
-        if self.config.get('run_eagerly', '0') == '1':
-            if self.config.get('_aclnn_static_shape_kernel', '0') == '1':
+        if self.config.get('force_eager', False):
+            if self.config.get('static_kernel_compile', False):
                 self.run_eagerly_compile(*args, **kwargs)
             return self.fx_run_eagerly(*args, **kwargs)
 
         # get graph_key and capture
         fn_key = self.compile(*args, **kwargs)
 
-        # fall back to eager when static_capture_size_limit is exceeded
+        # fall back to eager when capture_limit is exceeded
         if self.fallback_to_eager:
             with record_function("fx_run_eagerly"):
                 return self.fx_run_eagerly(*args, **kwargs)
@@ -933,18 +933,17 @@ class AclGraph(object):
                     torch.npu.synchronize()
 
             # compile operator kernel based on static shape for better execution performance
-            if self.config.get('_aclnn_static_shape_kernel', False):
-                path = self.config.get('_aclnn_static_shape_kernel_build_dir', None)
-                use_cache_compile = self.config.get('_aclnn_static_shape_kernel.use_cache_compile', None)
-                cann_version = self.config.get('_aclnn_static_shape_kernel.cann_version', None)
-                compile_cache_dir = self.config.get('_aclnn_static_shape_kernel.compile_cache_dir', None)
-                deterministic = self.config.get('_aclnn_static_shape_kernel.deterministic', "0")
-                super_kernel_optimize = self.config.get('_super_kernel_optimize', False)
-                disable_static_kernel_compile_cache = self.config.get('_disable_static_kernel_compile_cache', False)
+            if self.config.get('static_kernel_compile', False):
+                use_cache_compile = self.config.get('static_kernel_compile.use_cache_compile', False)
+                cann_version = self.config.get('static_kernel_compile.cann_version', None)
+                compile_cache_dir = self.config.get('static_kernel_compile.compile_cache_dir', None)
+                deterministic = self.config.get('static_kernel_compile.deterministic', False)
+                super_kernel_optimize = self.config.get('super_kernel_optimize', False)
+                disable_static_kernel_compile_cache = self.config.get('disable_static_kernel_compile_cache', False)
                 compile_static_kernel(self.fx_forward, *args, use_cache_compile=use_cache_compile,
                                       cached_cann_version=cann_version,
                                       compile_cache_dir=compile_cache_dir, cached_deterministic=deterministic,
-                                      super_kernel_optimize=super_kernel_optimize, build_dir=path,
+                                      super_kernel_optimize=super_kernel_optimize,
                                       disable_static_kernel_compile_cache=disable_static_kernel_compile_cache, **kwargs)
 
             self._unupdated_input_func = debug_time(get_unupdated_input_fn(self._unupdated_sym_input_index, self._parameter_user_inputs, self.config),
@@ -983,8 +982,8 @@ class AclGraph(object):
                 return graph_key
 
         # handle retained outputs from last capture when only one graph key and mempool reuse enabled
-        enable_mempool_reuse = not ("disable_mempool_reuse_in_same_fx" in self.config.keys() and self.config[
-            "disable_mempool_reuse_in_same_fx"] == "1")
+        enable_mempool_reuse = ("reuse_graph_pool_in_same_fx" in self.config.keys() and self.config[
+            "reuse_graph_pool_in_same_fx"])
         if enable_mempool_reuse and len(self._graphs_meta) == 1:
             (last_graph_key,) = self._graphs_meta.keys()
             if graph_key != last_graph_key:
@@ -997,15 +996,15 @@ class AclGraph(object):
 
         # Before recapture a new aclgraph for another graph key, check static capture size limit.
         # If the number of captured aclgraphs exceeds the limit, we will fall back to eager execution.
-        if len(self._graphs_meta) == int(self.config.get("static_capture_size_limit", "-1")):
-            warn_msg = f"The static_capture_size_limit reached when capturing fx_graph {self.name} " \
+        if len(self._graphs_meta) == int(self.config.get("capture_limit", "-1")):
+            warn_msg = f"The capture_limit reached when capturing fx_graph {self.name} " \
                        f"with graph key {graph_key}, we will fall back to eager for all subsequent executions. " \
                        f"Excessive recapture can degrade performance due to the each recapture overhead, " \
                        f"and result in unexpected resources consumption, including stream, memory, etc. " \
                        f"This may lead to program error: The resources are insufficient. " \
-                       f"The current static_capture_size_limit " \
-                       f"is {self.config.get('static_capture_size_limit', '-1')}. If recapture are expected, " \
-                       f"consider increasing debug.aclgraph.static_capture_size_limit to an appropriate value."
+                       f"The current capture_limit " \
+                       f"is {self.config.get('capture_limit', '-1')}. If recapture are expected, " \
+                       f"consider increasing capture_limit to an appropriate value."
             warnings.warn(warn_msg)
             logger.warning(warn_msg)
             self._fallback_to_eager = True
@@ -1115,8 +1114,8 @@ class AclGraph(object):
 
         # set to common original memory state before capture
         # only enable mempool reuse when graph key exceeds 1
-        enable_mempool_reuse = not ("disable_mempool_reuse_in_same_fx" in self.config.keys() and self.config[
-            "disable_mempool_reuse_in_same_fx"] == "1")
+        enable_mempool_reuse = ("reuse_graph_pool_in_same_fx" in self.config.keys() and self.config[
+            "reuse_graph_pool_in_same_fx"])
         if enable_mempool_reuse and len(self._graphs_meta) > 1:
             logger.debug('Start setting to original memory state for fx_graph %s with graph key{%s}. '
                          'The stale storage is %s, and the current memory state is {%s}.',
@@ -1143,7 +1142,7 @@ class AclGraph(object):
                      'memory pool reuse is %s, the memory state is {%s}.',
                      self.name, graph_key, id(self.graph[graph_key]),
                      "enable" if enable_mempool_reuse else "disable", LazyMessage(debug_mem_state))
-        if self.config.get('clone_input', "1") == "1":
+        if self.config.get('clone_input', True):
             # Note that userinputs are not kept alive; they are reconstructed for process_input if clone_input is True.
             self._graphs_meta[graph_key].retained_userinputs.clear()
         if enable_mempool_reuse and len(self._graphs_meta) > 1:
@@ -1204,7 +1203,7 @@ class AclGraph(object):
                     # pointer for later reuse. Finally, the weak reference to each user input is set to None,
                     # as the inputs will be reconstructed during processing.
                     # If clone_input is set to False, records the original data_ptr in args_list[input_idx].
-                    if self.config.get('clone_input', "1") == "1" and args_list[input_idx].is_npu:
+                    if self.config.get('clone_input', True) and args_list[input_idx].is_npu:
                         args_list[input_idx] = torch.empty_like(args_list[input_idx], memory_format=torch.contiguous_format)
                     # Uses retained_userinputs to ensure capture of the args_list.
                     self._graphs_meta[graph_key].retained_userinputs.setdefault(input_idx, args_list[input_idx])
@@ -1243,16 +1242,16 @@ class AclGraph(object):
                     'Start to run AclGraph{id: %s} with the updated node num {%s}.',
                     self.name, graph_key, id(self.graph[graph_key]), len(self._updated_node_infos))
 
-        if self.config.get('_super_kernel_optimize', False):
+        if self.config.get('super_kernel_optimize', False):
 
             def parse_config(config_str):
                 return ast.literal_eval(config_str) if config_str is not None else None
 
             super_kernel_optimize_options = parse_config(
-                self.config.get('_super_kernel_optimize_options')
+                self.config.get('super_kernel_optimize_options')
             )
             super_kernel_debug_options = parse_config(
-                self.config.get('_super_kernel_debug_options')
+                self.config.get('super_kernel_debug_options')
             )
             self.graph[graph_key].super_kernel_optimize(optimize_options=super_kernel_optimize_options, debug_options=super_kernel_debug_options)
             logger.info('Success to optimize AclGraph{id: %s} with super kernel.', id(self.graph[graph_key]))
@@ -1270,7 +1269,7 @@ class AclGraph(object):
             return str(result_path)
 
         enable_torch_compile_debug = os.getenv("TORCH_COMPILE_DEBUG", "0") == "1"
-        enable_deadlock_check = self.config.get('deadlock_check', '0') == '1'
+        enable_deadlock_check = self.config.get('deadlock_check', False)
 
         if enable_torch_compile_debug or enable_deadlock_check:
             res = debug_dump() 
@@ -1315,7 +1314,7 @@ class AclGraph(object):
         src_tensors = []
         graph_meta = self._graphs_meta[graph_key]
 
-        if self.config.get('clone_input', "1") == "1":
+        if self.config.get('clone_input', True):
             # When a memory pool is shared among aclgraph instances (from the same or different FX graphs),
             # resetting the memory state before input reconstruction is unnecessary. Safety is guaranteed
             # by the runtime constraint that only one aclgraph executes at a time. Since inputs are
@@ -1408,11 +1407,11 @@ class AclGraph(object):
         Do not increase the reference count to the output tensors, and only weak reference is recorded.
         """
 
-        disable_reuse = "disable_mempool_reuse_in_same_fx" in self.config.keys() \
-                        and self.config["disable_mempool_reuse_in_same_fx"] == "1"
+        disable_reuse = "reuse_graph_pool_in_same_fx" in self.config.keys() \
+                        and self.config["reuse_graph_pool_in_same_fx"] is False
         if disable_reuse:
             # When no mempool reuse in same fx, the retained outputs no need to reconstruct.
-            logger.debug('When config.debug.aclgraph.disable_mempool_reuse_in_same_fx is True, '
+            logger.debug('When config.reuse_graph_pool_in_same_fx is False, '
                          'no mempool reuse in fx_graph %s for graph key{%s}, all the outputs are retained.',
                          self.name, graph_key)
             self.set_stale_storages_ptr_exclude_ref_userinputs(self._graphs_meta[graph_key].retained_outputs, graph_key)
@@ -1459,9 +1458,7 @@ class AclGraph(object):
                 outputs.append(output_ref)
 
         # reconstructing step 3: Associate output tensor and data_ptr by setting deleter or clone.
-        enable_output_clone = "enable_output_clone" in self.config.keys() and self.config[
-            "enable_output_clone"] == "1"
-        if enable_output_clone:
+        if "clone_output" in self.config.keys() and self.config["clone_output"]:
             outputs = [out.clone() if (isinstance(out, torch.Tensor) and \
                 out.untyped_storage()._cdata not in self.userinput_ref_with_output_storages_ptr)\
                     else out for out in outputs]
@@ -1474,7 +1471,7 @@ class AclGraph(object):
                        "See https://docs.pytorch.org/docs/main/torch.compiler_cudagraph_trees.html#limitations " \
                        "for more details. To resolve this, you can either: " \
                        "1. Remove the memory retention of all the output tensors in your script; " \
-                       "2. Enable debug option by setting debug.aclgraph.enable_output_clone=True."
+                       "2. Enable debug option by setting clone_output=True."
             warnings.warn(warn_msg)
             warnings.filterwarnings("ignore", message=warn_msg)
 
@@ -1582,7 +1579,7 @@ class AclGraph(object):
                 else:
                     all_reconstructed_storages_ptr[output_i.untyped_storage().data_ptr()].append(output_i)
         # add reconstruct inputs to deleter
-        if self.config.get('clone_input', "1") == "1":
+        if self.config.get('clone_input', True):
             reconstructed_inputs = self.reconstruct_inputs(graph_key)
             for idx, input_i in reconstructed_inputs.items():
                 if isinstance(input_i, torch.Tensor) and input_i.device.index == self.device:
@@ -1639,12 +1636,11 @@ class AclGraph(object):
                 logger.info('Start to compile static shape kernel for fx graph %s, '
                             'all symbol input indices and values are %s.',
                             id(self.fx_forward), dict(zip(self.sym_input_name, cur_sym_value)))
-                path = self.config.get('_aclnn_static_shape_kernel_build_dir', None)
-                super_kernel_optimize = self.config.get('_super_kernel_optimize', False)
-                disable_static_kernel_compile_cache = self.config.get('_disable_static_kernel_compile_cache', False)
-                compile_static_kernel(self.fx_forward, *args, build_dir=path,
-                                      super_kernel_optimize=super_kernel_optimize,
-                                      disable_static_kernel_compile_cache=disable_static_kernel_compile_cache, **kwargs)
+                super_kernel_optimize = self.config.get('super_kernel_optimize', False)
+                disable_static_kernel_compile_cache = self.config.get('disable_static_kernel_compile_cache', False)
+                compile_static_kernel(self.fx_forward, super_kernel_optimize=super_kernel_optimize,
+                                      disable_static_kernel_compile_cache=disable_static_kernel_compile_cache,
+                                      *args, **kwargs)
             else:
                 logger.info('Skip compile static shape kernel for fx graph %s, '
                             'all symbol input indices and values are %s. '
