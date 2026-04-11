@@ -3,7 +3,7 @@
 本项目开发了名为TorchAir(Torch Ascend Intermediate Representation)的扩展库，支持用户基于PyTorch框架和torch_npu插件在昇腾NPU上使用图模式进行推理。
 TorchAir继承自PyTorch框架[Dynamo模式](https://pytorch.org/docs/stable/torch.compiler_dynamo_deepdive.html)，将PyTorch的[FX图](https://pytorch.org/docs/stable/fx.html)转换为GE计算图，并提供了GE计算图在昇腾NPU的编译与执行的能力。
 >
-> - **如果您想了解如何使用TorchAir，可以优先通过访问[TorchAir图模式使用指南](https://www.hiascend.com/document/detail/zh/Pytorch/720/modthirdparty/torchairuseguide/torchair_00003.html)，了解关于TorchAir的更多信息。**
+> - **如果您想了解如何使用TorchAir，可以优先通过访问[TorchAir图模式使用指南](https://www.hiascend.com/document/detail/zh/Pytorch/730/modthirdparty/torchairuseguide/torchair_00004.html)，了解关于TorchAir的更多信息。**
 > - **如果您计划为TorchAir贡献代码，请参考REAMDE内容。**
 
 # 安装与卸载
