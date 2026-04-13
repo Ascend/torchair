@@ -238,8 +238,7 @@ class CacheCompileTest(unittest.TestCase):
         ModelCacheSaver.remove_cache(forward_cache_dir)
         self.assertFalse(os.path.exists(forward_cache_dir))
 
-        model.forward = torch.npu.npugraph_ex.inference.cache_compile(model.forward, config=config,
-                                                         cache_dir=_cache_dir, dynamic=False)
+        model.forward = torch.npu.npugraph_ex.inference.cache_compile(model.forward, dynamic=True)
         test_res = model(ins)
         self.assertTrue(os.path.exists(forward_cache_dir))
         self.assertEqual(target_res.item(), test_res.item())
@@ -251,8 +250,7 @@ class CacheCompileTest(unittest.TestCase):
         forward_cache_dir = CompiledModel.get_cache_bin(model.forward)
         self.assertTrue(os.path.exists(forward_cache_dir))
 
-        model.forward = torch.npu.npugraph_ex.inference.cache_compile(model.forward, config=config,
-                                                         cache_dir=_cache_dir, dynamic=False)
+        model.forward = torch.npu.npugraph_ex.inference.cache_compile(model.forward, dynamic=True)
         test_res = model(ins)
         self.assertTrue(os.path.exists(forward_cache_dir))
         self.assertEqual(target_res.item(), test_res.item())
