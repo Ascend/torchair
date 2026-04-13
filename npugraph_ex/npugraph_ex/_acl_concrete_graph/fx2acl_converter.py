@@ -245,6 +245,13 @@ class AclConcreteGraph(ConcreteGraphBase):
         apply_event_record(self.fx_graph)
         observer.dump_gm(self.fx_graph, "graph_after_apply_event_record")
 
+        # record all the tagged events info
+        from npugraph_ex._acl_concrete_graph.graph_pass import _GLOBAL_SCOPE_TAG_TO_EVENT
+        for k, _ in _GLOBAL_SCOPE_TAG_TO_EVENT.items():
+            if k not in self._aclgraph_cache_info.tagged_event_names:
+                self._aclgraph_cache_info.tagged_event_names.append(k)
+        logger.debug("ALL the recorded tagged event names are: [%s]", self._aclgraph_cache_info.tagged_event_names)
+
         # graph optimization passes here
         # Note: this pass need sample args to run in FakeTensor mode, any pass modifies ops without meta registration
         # should run after it.
