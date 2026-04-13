@@ -4,7 +4,7 @@ import json
 from enum import Enum
 import warnings
 import subprocess
-from typing import Union
+from typing import Optional, Union
 from pathlib import Path
 import datetime
 import hashlib
@@ -21,6 +21,10 @@ _uninstall_paths = []
 _local_gloo_groups = None
 _compiled_op_set = set()
 _static_kernel_blacklist = set()
+
+# Gloo process groups for static kernel: short probe then long-lived formal groups.
+_GLOO_PROBE_TIMEOUT = datetime.timedelta(minutes=3)
+_GLOO_FORMAL_TIMEOUT = datetime.timedelta(minutes=30)
 
 
 class RunPackageStatus(Enum):
@@ -78,6 +82,8 @@ def _install_or_compile_for_multi(fx_func, *args, cached_cann_version=None, comp
                                   cached_deterministic=None, super_kernel_optimize=None, **kwargs):
     # 多卡流程
     gloo_group = _get_local_gloo_group()
+    if gloo_group is None:
+        return
     rank = dist.get_rank()
 
     # 1. local rank 0查找run包并执行install
@@ -169,6 +175,11 @@ def _compile_static_kernel_for_multi_card(fx_func, *args, gloo_group=None, is_ca
     if not gloo_group:
         gloo_group = _get_local_gloo_group()
 
+    if gloo_group is None:
+        warnings.warn(
+            f"Rank {rank}: skipping static kernel compilation for multi card: local Gloo probe failed or timed out "
+            f"(probe timeout {int(_GLOO_PROBE_TIMEOUT.total_seconds())}s).")
+        return
     # 1.执行单算子，用于生成算子信息json
     logger.debug(f"Rank {rank}: start to execute dump json")
     try:
@@ -481,6 +492,27 @@ def _reselect_static_kernel(rank: int = None):
         logger.warning(f"{prefix}reselect_static_kernel failed: {e}")
 
 
+def _destroy_gloo_group_list(groups: Optional[list]) -> None:
+    if not groups:
+        return
+    for idx, pg in enumerate(groups):
+        if pg is None:
+            continue
+        try:
+            dist.destroy_process_group(pg)
+        except Exception as e:
+            logger.warning(f"destroy_process_group failed for local group idx {idx}: {e}")
+
+
+def _create_local_gloo_groups_for_nodes(node_count: int, local_world_size: int, timeout: datetime.timedelta) -> list:
+    groups = [None] * node_count
+    for node_idx in range(node_count):
+        start = node_idx * local_world_size
+        ranks = list(range(start, start + local_world_size))
+        groups[node_idx] = dist.new_group(ranks=ranks, backend="gloo", timeout=timeout)
+    return groups
+
+
 # Example calculations:
 # Nodes: 3 (Node A, Node B, Node C)
 # GPUs per node: 4
@@ -494,6 +526,14 @@ def _reselect_static_kernel(rank: int = None):
 # | Node C GPU 3        | 2           | 11          | 2 * 4 = 8         | [8, 9, 10, 11]      |
 # +---------------------+-------------+-------------+--------------------+---------------------+
 def _get_local_gloo_group():
+    """
+    Create per-node local Gloo groups in sequence (not concurrently).
+    1) Build probe groups (3 min timeout), barrier to verify sync, destroy probe groups.
+    2) Build formal groups (30 min timeout) for install/compile collectives.
+
+    Every rank calls ``new_group`` the same number of times per phase so the global
+    group-creation order stays symmetric across ranks.
+    """
     try:
         local_world_size = int(os.environ['LOCAL_WORLD_SIZE'])
     except KeyError as e:
@@ -512,15 +552,30 @@ def _get_local_gloo_group():
 
     global_rank = dist.get_rank()
     node_count = world_size // local_world_size
+    node_idx = global_rank // local_world_size
+
+    probe_groups = None
+    try:
+        probe_groups = _create_local_gloo_groups_for_nodes(node_count, local_world_size, _GLOO_PROBE_TIMEOUT)
+        probe_group = probe_groups[node_idx]
+        dist.barrier(group=probe_group)
+    except Exception as e:
+        reason = (
+            "[static kernel] Exiting static kernel install/compile path: local Gloo probe barrier failed or timed out "
+            f"(probe group timeout {_GLOO_PROBE_TIMEOUT}). Underlying error: {e}. "
+            "Verify that all ranks enter this phase together and that Gloo (TCP) connectivity works between local peers."
+        )
+        logger.warning(reason)
+        if probe_groups is not None:
+            _destroy_gloo_group_list(probe_groups)
+        return None
+
+    _destroy_gloo_group_list(probe_groups)
+
     global _local_gloo_groups
-    _local_gloo_groups = [None] * node_count
-
-    for node_idx in range(node_count):
-        start = node_idx * local_world_size
-        ranks = list(range(start, start + local_world_size))
-        _local_gloo_groups[node_idx] = dist.new_group(ranks=ranks, backend="gloo")
-
-    return _local_gloo_groups[global_rank // local_world_size]
+    _local_gloo_groups = _create_local_gloo_groups_for_nodes(
+        node_count, local_world_size, _GLOO_FORMAL_TIMEOUT)
+    return _local_gloo_groups[node_idx]
 
 
 def _get_group_root_rank(rank: int):
@@ -533,13 +588,7 @@ def destroy_local_gloo_groups():
     if not _local_gloo_groups:
         return
 
-    for idx, pg in enumerate(_local_gloo_groups):
-        if pg is None:
-            continue
-        try:
-            dist.destroy_process_group(pg)
-        except Exception as e:
-            logger.warning(f"destroy_process_group failed for local group idx {idx}: {e}")
+    _destroy_gloo_group_list(_local_gloo_groups)
     _local_gloo_groups = None
     logger.debug("cleared _local_gloo_groups")
 

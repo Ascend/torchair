@@ -168,5 +168,38 @@ class HcomStaticKernelTest(unittest.TestCase):
         self.assertEqual(len(run_pkgs), 1)
         self.assertEqual(str(run_pkg_path), str(run_pkgs_02[0].resolve()))
 
+    def test_static_kernel_with_gloo_fix(self):
+        kernel_build_dir = "./static_kernel_dir_with_gloo_fix"
+        if os.path.exists(kernel_build_dir):
+            shutil.rmtree(kernel_build_dir)
+        os.makedirs(kernel_build_dir, exist_ok = True)
+
+        result = os.popen("ls /dev | grep davinci | wc -l")
+        dev_num = result.read()
+        result.close()
+        device_size = int(dev_num) - 1
+        if device_size < 2:
+            return
+
+        world_size = device_size
+        os.environ["LOCAL_WORLD_SIZE"] = str(world_size)
+
+        with torch.multiprocessing.Manager() as manager:
+            input = torch.randn(1, 4, 8, 128, dtype=torch.float16)
+            torch.multiprocessing.spawn(HcomStaticKernelTest._test_static_kernel_without_cache,
+                                        args=(world_size, input, kernel_build_dir),
+                                        nprocs=world_size, join=True)
+
+        static_kernel_dir_path = Path(kernel_build_dir)
+        self.assertTrue(static_kernel_dir_path.exists())
+        outputs_dirs = [d for d in static_kernel_dir_path.iterdir() if
+                        d.is_dir() and d.name == "aclnn_static_shape_kernel_outputs"]
+        self.assertEqual(len(outputs_dirs), 1)
+        ts_outputs_dirs = [d for d in outputs_dirs[0].iterdir() if
+                           d.is_dir() and d.name.endswith("_outputs") and d.name.startswith("ts")]
+        self.assertEqual(len(ts_outputs_dirs), world_size)
+        run_pkgs = list(outputs_dirs[0].rglob("*.run"))
+        self.assertEqual(len(run_pkgs), 1)
+
 if __name__ == '__main__':
     unittest.main()
