@@ -612,7 +612,7 @@ class _NpuFxCompiler:
 
         if (self.config.dump_tensor_data and self.config.data_dump_stage.value == "original"):
             from npugraph_ex._acl_concrete_graph.utils import insert_save_npugraph_tensor
-            return insert_save_npugraph_tensor(gm, self.config.data_dump_full_path())
+            return insert_save_npugraph_tensor(gm, self.config._data_dump_full_path())
 
         # generate different concrete graph based on config
         with no_dispatch():

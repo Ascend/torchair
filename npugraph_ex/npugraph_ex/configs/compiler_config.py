@@ -56,7 +56,7 @@ class CompilerConfig(NpuBaseConfig):
         self._fixed_attrs.append("use_graph_pool")
 
 
-    def data_dump_full_path(self):
+    def _data_dump_full_path(self):
         path = self.data_dump_dir.value
         if dist.is_available() and dist.is_initialized() and dist.get_world_size() > 1:
             global_rank = dist.get_rank()
@@ -66,7 +66,7 @@ class CompilerConfig(NpuBaseConfig):
         os.makedirs(path, exist_ok=True)
         return path
 
-    def eager_data_dump_full_path(self, name: str, *, with_timestap=True):
+    def _eager_data_dump_full_path(self, name: str, *, with_timestap=True):
         if not (self.force_eager and self.data_dump_stage):
             return None
 
@@ -127,7 +127,7 @@ class CompilerConfig(NpuBaseConfig):
         # _DataDumpConfig
         if self.dump_tensor_data:
             local_option['dump_tensor_data'] = self.dump_tensor_data.value
-            local_option['data_dump_path'] = self.data_dump_full_path()
+            local_option['data_dump_path'] = self._data_dump_full_path()
             local_option['data_dump_stage'] = self.data_dump_stage.value
 
         return local_option, {}
@@ -186,4 +186,16 @@ def _process_kwargs_options(config, kwargs):
     if "options" in kwargs:
         options = kwargs["options"]
         for option in options:
+            # 检查option是否为config对象的有效属性
+            if not hasattr(config, option):
+                # 获取CompilerConfig的所有公共属性
+                supported_attrs = [attr for attr in dir(config) if
+                                   not attr.startswith('__') and not callable(getattr(config, attr))]
+                supported_attrs.remove("_fixed_attrs")
+                raise ValueError(
+                    f"Invalid option '{option}'. The '{config.__class__.__name__}' "
+                    f"object does not have attribute '{option}'. "
+                    f"Supported attributes are: {supported_attrs}"
+                )
+
             setattr(config, option, options[option])

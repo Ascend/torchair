@@ -110,8 +110,8 @@ class _NpuFxDumper(Interpreter):
             global_rank = dist.get_rank()
             worldsize = dist.get_world_size()
             path = f'worldsize{worldsize}_global_rank{global_rank}/'
-            return os.path.join(os.path.dirname(self._config.eager_data_dump_full_path(path + f'{self._name}/')), f'{self._step}')
-        return os.path.join(os.path.dirname(self._config.eager_data_dump_full_path(f'worldsize1_global_rank0/{self._name}/')),
+            return os.path.join(os.path.dirname(self._config._eager_data_dump_full_path(path + f'{self._name}/')), f'{self._step}')
+        return os.path.join(os.path.dirname(self._config._eager_data_dump_full_path(f'worldsize1_global_rank0/{self._name}/')),
                             f'{self._step}')
 
     def run_node(self, n):
