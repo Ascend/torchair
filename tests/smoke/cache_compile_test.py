@@ -233,6 +233,56 @@ class CacheCompileTest(unittest.TestCase):
 
         self.assertEqual(z.item(), another_z[0].item())
 
+    def test_cache_with_original_event(self):
+        class CacheModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.ln = torch.nn.Linear(2, 1)
+                self.e0 = torch.npu.Event()
+
+            def forward(self, x):
+                s0 = torch.npu.Stream()
+                self.e0.record()
+                x1 = x + 1.0
+
+                with torch.npu.stream(s0):
+                    self.e0.wait()
+                    x2 = x1 * 1.0
+                    e1 = torch.npu.Event()
+
+                e1.wait()
+                res = self.ln(x2)
+                return res.sum()
+
+        ins = torch.ones(3, 2).npu()
+        model = CacheModel().npu()
+        target_res = model(ins)
+
+        # test cache generate
+        from torchair.inference._cache_compiler import CompiledModel, ModelCacheSaver
+        forward_cache_dir = CompiledModel.get_cache_bin(model.forward)
+        ModelCacheSaver.remove_cache(forward_cache_dir)
+        self.assertFalse(os.path.exists(forward_cache_dir))
+
+        model.forward = torchair.inference.cache_compile(model.forward, config=config,
+                                                         cache_dir=_cache_dir, dynamic=False)
+        test_res = model(ins)
+        self.assertTrue(os.path.exists(forward_cache_dir))
+        self.assertEqual(target_res.item(), test_res.item())
+
+        # test cache load
+        model = CacheModel().npu()
+        target_res = model(ins)
+
+        forward_cache_dir = CompiledModel.get_cache_bin(model.forward)
+        self.assertTrue(os.path.exists(forward_cache_dir))
+
+        model.forward = torchair.inference.cache_compile(model.forward, config=config,
+                                                         cache_dir=_cache_dir, dynamic=False)
+        test_res = model(ins)
+        self.assertTrue(os.path.exists(forward_cache_dir))
+        self.assertEqual(target_res.item(), test_res.item())
+
 
 if __name__ == '__main__':
     unittest.main()
