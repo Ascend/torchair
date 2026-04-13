@@ -13,7 +13,7 @@ from inductor_npu_ext.common.asc_graph import ASCGraph, _Track
 
 class AscDtypes:
     def __getattr__(self, item):
-        return getattr(torch, item)
+        return getattr(torch, 'bfloat16' if item == "bf16" else item)
 
 
 class _TrackedSubgraph:

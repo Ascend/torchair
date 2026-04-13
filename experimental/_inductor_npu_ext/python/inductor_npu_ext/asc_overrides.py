@@ -6,6 +6,7 @@ import torch
 from torch._inductor.codegen.common import OpOverrides
 from torch._inductor.ir import ReductionType, StoreMode
 from inductor_npu_ext.common.asc_graph import _Tensor as T
+from inductor_npu_ext.common.asc_graph import ASCIndexing
 from inductor_npu_ext import asc_ops as ir
 
 
@@ -546,13 +547,8 @@ class NPUOverrides(OpOverrides):
     def trunc_to_int(x: T, dtype: 'torch.dtype') -> T:
         return ir.trunc_to_int(x, dtype)
 
-    # 边界检查类操作2个
+    # 边界检查类操作1个
     # ----------------------------------------------------------------------------------------------------
-    # 检查边界,
-
-    @staticmethod
-    def check_bounds(expr: 'sympy.Expr', size: 'sympy.Expr', lower: 'bool', upper: 'bool') -> 'None':
-        return ir.check_bounds(expr, size, lower, upper)
 
     # Halide边界钳制,
     @staticmethod
@@ -766,11 +762,12 @@ class NPUOverrides(OpOverrides):
     # ----------------------------------------------------------------------------------------------------
     @staticmethod
     def index_expr(expr: 'sympy.Expr', dtype: 'torch.dtype') -> T:
-        return ir.index_expr(expr, dtype)
+        return ir.index_expr(expr=expr, dtype=dtype)
 
     @staticmethod
     def indirect_indexing(x: T, size: 'sympy.Expr', check: 'bool' = True, wrap_neg=True) -> 'sympy.Expr':
-        return ir.indirect_indexing(x, size, check, wrap_neg)
+        # 将计算结果（通常是Load得到的值）转换为symbolic表达式
+        return ASCIndexing(ir.indirect_indexing(x, upper_bound=size, check_range=check, wrap_neg=wrap_neg))
 
     # Kernel类操作，这些应该实现到Kernel上去
     # ----------------------------------------------------------------------------------------------------

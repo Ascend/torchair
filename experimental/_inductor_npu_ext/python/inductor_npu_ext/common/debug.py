@@ -185,6 +185,8 @@ def _get_node_style(node: _Op):
         style["fillcolor"] = "Yellow"
     elif node.op_type in ["Load", "Store"] and node.get_private_attr("not_contiguous"):
         style["fillcolor"] = "Pink"
+    elif not node.supported:
+        style["fillcolor"] = "Red"
     return style
 
 

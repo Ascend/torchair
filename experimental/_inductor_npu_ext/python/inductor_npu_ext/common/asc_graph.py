@@ -39,6 +39,15 @@ class _Track:
         return self._root
 
 
+class ASCIndexing(sympy.Symbol):
+    __slots__ = ('asc_tensor',)
+
+    def __new__(cls, asc_tensor):
+        obj = super().__new__(cls, str(asc_tensor))
+        obj.asc_tensor = asc_tensor
+        return obj
+
+
 class _Tensor(CSEVariable):
     def __init__(self, v: _Track):
         super().__init__(v.name, ValueRanges.unknown())

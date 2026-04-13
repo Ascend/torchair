@@ -21,7 +21,7 @@ from torch._inductor.virtualized import V
 from torch._inductor.codegen.common import IndentedBuffer, Kernel
 
 from inductor_npu_ext.common import logger
-from inductor_npu_ext.common.asc_graph import ASCGraph, FusedASCGraph
+from inductor_npu_ext.common.asc_graph import ASCGraph, FusedASCGraph, ASCIndexing
 from inductor_npu_ext.common.symbols import Axis
 from inductor_npu_ext.common.debug import _left_align_lines, OP_SUMMARY
 from inductor_npu_ext.common.symbols import AscExpr, Loop, DenseLoop
@@ -223,6 +223,13 @@ class NPUKernel(Kernel):
         md5 = hashlib.md5(f"{self._fused_graph.asc_graph}_{self._fused_graph.cpp_wrapper}".encode()).hexdigest()
         self._fused_graph.name = f"auto{get_fused_kernel_name(self._nodes, 'original_aten')}_{md5}"
 
+        unsupported_ops = set()
+        for subgraph in self._subgraphs:
+            unsupported_ops |= subgraph.unsupported_ops
+
+        if unsupported_ops:
+            self._fused_graph.name = f"unsupported_{'_'.join(sorted(unsupported_ops))}_{self._fused_graph.name}"
+
         return self
 
     def get_asc_buffer(self, name):
@@ -376,6 +383,9 @@ class NPUKernel(Kernel):
             f.write(benchmark_code.getvalue())
 
     def load(self, name: str, index: sympy.Expr):
+        if any([isinstance(s, ASCIndexing) for s in index.free_symbols]):
+            return self.indirect_load(name, index)
+
         index = self.rename_indexing(index)
         sizes = self.contiguous_loop.size
 
@@ -435,12 +445,17 @@ class NPUKernel(Kernel):
     def rename_indexing(self, index) -> sympy.Expr:
         return super().rename_indexing(index)
 
-    def indirect_indexing(self, index_var, size, check=False) -> sympy.Symbol:
-        indirect_sym = sympy.Symbol(f"npu_scalar{len(self._indirect_to_scalar)}")
-        op_name, output_name = str(index_var).split('.')
-        src = self.graph.get_op(op_name)
-        self._indirect_to_scalar[str(indirect_sym)] = _Scalar(_Tensor(getattr(src, output_name)), size, check)
-        return indirect_sym
+    def indirect_load(self, name: str, index: sympy.Expr) -> _Tensor:
+        data, loop = self._load_buffer(name, self.contiguous_loop)
+        asc_tensors = [s.asc_tensor for s in index.free_symbols if isinstance(s, ASCIndexing)]
+        load = ir.indirect_load(data, *asc_tensors, indirect_expr=index, loop=loop)
+        return load
+
+    def check_bounds(
+        self, expr: sympy.Expr, size: sympy.Expr, lower: bool, upper: bool
+    ) -> None:
+        asc_tensors = [s.asc_tensor for s in expr.free_symbols if isinstance(s, ASCIndexing)]
+        ir.check_bounds(*asc_tensors, expr=expr, size=size, lower=lower, upper=upper)
 
     def index_to_str(self, index):
         return str(index)

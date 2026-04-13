@@ -312,7 +312,25 @@ def where(x1, x2, x3):
     return op.y
 
 
+@asc_ops
+def _unsupported_op(*args, _op=None, **kwargs):
+    op = V.kernel.graph.add_op(_op, is_unsupported=True)
+    for i, arg in enumerate(args):
+        if isinstance(arg, _Tensor):
+            setattr(op, f"x{i+1}", arg)
+        else:
+            op.ir_attr.__setattr__(f"input{i+1}", str(arg))
+    for k, v in kwargs.items():
+        op.ir_attr.__setattr__(k, str(v))
+    return op.y
+
+
 def _unsupported(*args, _op=None, **kwargs):
+    from inductor_npu_ext.config import _debug_options
+
+    if "nothrow" in _debug_options and "cpu" in _debug_options:
+        return _unsupported_op(*args, _op=_op, **kwargs)
+
     raise NotImplementedError(f"Asc op '{_op}' is not implemented yet, args: {args}, kwargs: {kwargs}")
 
 
