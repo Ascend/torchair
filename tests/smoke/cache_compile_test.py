@@ -265,7 +265,7 @@ class CacheCompileTest(unittest.TestCase):
         self.assertFalse(os.path.exists(forward_cache_dir))
 
         model.forward = torchair.inference.cache_compile(model.forward, config=config,
-                                                         cache_dir=_cache_dir, dynamic=False)
+                                                         dynamic=True)
         test_res = model(ins)
         self.assertTrue(os.path.exists(forward_cache_dir))
         self.assertEqual(target_res.item(), test_res.item())
@@ -278,7 +278,7 @@ class CacheCompileTest(unittest.TestCase):
         self.assertTrue(os.path.exists(forward_cache_dir))
 
         model.forward = torchair.inference.cache_compile(model.forward, config=config,
-                                                         cache_dir=_cache_dir, dynamic=False)
+                                                         dynamic=True)
         test_res = model(ins)
         self.assertTrue(os.path.exists(forward_cache_dir))
         self.assertEqual(target_res.item(), test_res.item())
