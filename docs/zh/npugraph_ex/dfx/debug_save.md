@@ -57,8 +57,8 @@ python main.py
 
     ```txt
     torch_compile_debug/run_<时间>-pid_<进程号>
-    ├── npugraph\_ex
-    │   ├── debug.log                                                 # npugraph\_ex日志
+    ├── npugraph_ex
+    │   ├── debug.log                                                 # npugraph_ex日志
     │   ├── model__0                                                  # model__0为模型ID
     │   │   ├── forward                                               # 前向推理
     │   │   │   ├── output_code.py                                    # 编译后的图结构文件
