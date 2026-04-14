@@ -604,7 +604,9 @@ class _NpuFxCompiler:
             _CompiledFxGraph: Runner wrapping the compiled graph.
         """
         if int(self.config.export.experimental.enable_lite_export.value):
-            from torchair._ge_concrete_graph.ge_converter import lite
+            from torchair._ge_concrete_graph.fx2ge_converter import lite_converter_mode
+            with lite_converter_mode():
+                from torchair._ge_concrete_graph.ge_converter import lite
 
         if self.config.debug.fx_summary.enabled and self.config.mode.value in ["reduce-overhead", "npugraph_ex"]:
             logger.warning(f"The fx_summary csv files will not be generated in reduce-overhead mode.")

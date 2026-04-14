@@ -11,7 +11,7 @@ from torch.types import Number
 import torchair
 from torchair._ge_concrete_graph.ge_ir_pb2 import ModelDef
 from torchair.core.utils import logger
-from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
+from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter, lite_converter_mode, _LITE_CONVERTER_OPS
 from torchair.ge._ge_graph import Tensor, TensorSpec
 from torchair.configs.compiler_config import CompilerConfig
 
@@ -601,6 +601,35 @@ class TorchairSt(unittest.TestCase):
         in2 = torch.randn(1000, 1000, dtype=torch.float16)
         torchair.dynamo_export(in1, in2, model=model, dynamic=False, export_path="lite_export", config=config)
         assert converter_called[0], "conveter_aten_add_Tensor was not called!"
+
+    def test_lite_converter_register(self):
+        self.assertEqual(torch.ops.aten.add_.Tensor._ge_converter.__name__, "conveter_aten_add__Tensor")
+        with lite_converter_mode():
+            @register_fx_node_ge_converter(torch.ops.aten.add_.Tensor)
+            def conveter_aten_add__Tensor2(
+                    self: Tensor,
+                    other: Tensor,
+                    *,
+                    alpha: Union[Number, Tensor] = 1,
+                    meta_outputs: TensorSpec = None
+            ):
+                """NB: aten::add_.Tensor(Tensor(a!) self, Tensor other, *, Scalar alpha=1) -> Tensor(a!)"""
+                raise NotImplementedError("torch.ops.aten.add_.Tensor ge_converter is not implemented!")
+
+        self.assertTrue(torch.ops.aten.add_.Tensor in _LITE_CONVERTER_OPS)
+        self.assertEqual(torch.ops.aten.add_.Tensor._ge_converter.__name__, "conveter_aten_add__Tensor2")
+
+        @register_fx_node_ge_converter(torch.ops.aten.add_.Tensor)
+        def conveter_aten_add__Tensor3(
+                self: Tensor,
+                other: Tensor,
+                *,
+                alpha: Union[Number, Tensor] = 1,
+                meta_outputs: TensorSpec = None
+        ):
+            """NB: aten::add_.Tensor(Tensor(a!) self, Tensor other, *, Scalar alpha=1) -> Tensor(a!)"""
+            raise NotImplementedError("torch.ops.aten.add_.Tensor ge_converter is not implemented!")
+        self.assertEqual(torch.ops.aten.add_.Tensor._ge_converter.__name__, "conveter_aten_add__Tensor2")
 
 
 class AllReduceSingeGroup(torch.nn.Module):

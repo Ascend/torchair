@@ -146,6 +146,7 @@ def _mapping_assign_op_to_graph_output(graph: GraphDef):
 _CONVERTERS = defaultdict(lambda: None)
 _DECLARED_SUPPORTED_CONVERTERS = defaultdict(lambda: None)
 _CHECKPOINT_MAP_FUNC = dict()
+_LITE_CONVERTER_OPS = set()
 _SUPPORT_FORMAT_SET = {
     Format.FORMAT_UNDEFINED.value,
     Format.FORMAT_NCHW.value,
@@ -299,6 +300,22 @@ def _wrap_converter(converter: Callable):
     return wrapped_converter
 
 
+_lite_converter_mode = threading.local()
+
+
+@contextmanager
+def lite_converter_mode():
+    _lite_converter_mode.active = True
+    try:
+        yield
+    finally:
+        _lite_converter_mode.active = False
+
+
+def _is_lite_converter_mode():
+    return getattr(_lite_converter_mode, 'active', False)
+
+
 class ExportSuccess(Exception):
     def __init__(self, message: str) -> None:
         self.message = message
@@ -314,10 +331,11 @@ class Converter:
     compile_backend = None
     result_checker = None
 
-    def __init__(self, aten_op) -> None:
+    def __init__(self, aten_op, is_lite: bool = False) -> None:
         self._aten_op = aten_op
         self._signature = inspect.signature(aten_op)
         self._supported_cases = None
+        self._is_lite_converter = is_lite
 
     def __call__(self, converter) -> Any:
         """
@@ -334,11 +352,19 @@ class Converter:
             wrapped_converter.require_meta = True
         else:
             wrapped_converter.require_meta = False
+        
+        if self._aten_op in _LITE_CONVERTER_OPS:
+            logger.debug(f"Skip register converter for {self._aten_op}, already registered in lite mode")
+            return self
+        if self._is_lite_converter:
+            _LITE_CONVERTER_OPS.add(self._aten_op)
+            logger.debug(f"Mark {self._aten_op} as lite converter")
         try:
             self._aten_op._ge_converter = wrapped_converter
         except Exception:
             global _CONVERTERS
             _CONVERTERS.update({self._aten_op: wrapped_converter})
+        logger.debug(f"Registered converter for {self._aten_op}")
         return self
 
     @property
@@ -384,7 +410,8 @@ def register_fx_node_ge_converter(aten_op):
     """    
     if aten_op is None:
         return empty_function
-    return Converter(aten_op)
+    is_lite = _is_lite_converter_mode()
+    return Converter(aten_op, is_lite=is_lite)
 
 
 def _normalize_ge_graph(graph: GraphDef):
