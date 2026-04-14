@@ -1,1 +1,1 @@
-# torch.npu.npugraph\_ex.scope
+# torch.npu.npugraph_ex.scope

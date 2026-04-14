@@ -1,4 +1,4 @@
-# super\_kernel
+# super_kernel
 
 ## 功能说明
 

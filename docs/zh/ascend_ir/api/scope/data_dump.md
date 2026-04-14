@@ -50,7 +50,7 @@ input0 = torch.randn(2, 2, dtype=torch.float16).npu()
 input1 = torch.randn(2, 2, dtype=torch.float16).npu()
 config = torchair.CompilerConfig()
 config.dump_config.enable_dump = True
-config.dump_config.dump_layer = " Add "
+config.dump_config.dump_layer = "Add"
 npu_backend = torchair.get_npu_backend(compiler_config=config)
 npu_mode = Network().npu()
 npu_mode = torch.compile(npu_mode, fullgraph=True, backend=npu_backend, dynamic=False)

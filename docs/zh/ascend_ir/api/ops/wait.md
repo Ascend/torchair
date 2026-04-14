@@ -14,7 +14,7 @@ wait(tensors: List[torch.Tensor])
 
 |参数|输入/输出|说明|
 |--|--|--|
-|tensors|输入|List[torch.Tensor]类型，表当前流需要等待的tensor，可以传入多个tensor。|
+|tensors|输入|List[torch.Tensor]类型，表示当前流需要等待的tensor，可以传入多个tensor。|
 
 ## 返回值说明
 

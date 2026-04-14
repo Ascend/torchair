@@ -25,7 +25,7 @@ TorchAir的C++层日志（图执行过程中的日志信息）主要通过环境
 - 方式2：通过python脚本设置环境变量，以DEBUG级别为例。
 
     > [!NOTE]说明
-    >该方式设置环境变量时，需早于import torchair，否则影响日志打印。
+    >该方式设置环境变量时，须早于import torchair，否则影响日志打印。
 
     ```python
     import os

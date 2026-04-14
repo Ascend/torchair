@@ -37,10 +37,10 @@ cache_compile(func, *, config: Optional[CompilerConfig] = None, backend: Optiona
     - Guards阶段被跳过且不会触发JIT编译，要求生成模型的脚本和加载缓存的脚本一致。
     - CANN包跨版本缓存无法保证兼容性，如果版本升级，需要清理缓存目录并重新进行Ascend IR计算图编译生成缓存。
 
-- cache\_dir参数使用约束：
+- cache_dir参数使用约束：
     - 请确保该参数指定的路径确实存在，并且运行用户具有读、写操作权限。
-    - 若编译缓存的模型涉及多机多卡，缓存路径包含集合通信相关的world\_size以及global\_rank信息，缓存文件路径为$\{work\_dir\}/$\{cache\_dir\}/$\{model\_info\}/world$\{world\_size\}global\_rank$\{global\_rank\}/$\{func\}/。
-    - $\{model\_info\}里会自动增加"aclgraphcache"关键词。
+    - 若编译缓存的模型涉及多机多卡，缓存路径包含集合通信相关的world\_size以及global\_rank信息，缓存文件路径为`{work_dir}/{cache_dir}/{model_info}/world{world_size}global_rank{global_rank}/{func}/`。
+    - `{model_info}`里会自动增加"aclgraphcache"关键词。
 
 - ge\_cache参数使用约束：
     - 仅GE图模式场景（max-autotune）支持ge\_cache参数。

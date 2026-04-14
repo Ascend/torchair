@@ -9,9 +9,9 @@
 ### 解决方案
 
 1. 优先考虑，配置好本地git环境的网络权限，保证编译时依赖库可以被成功下载。
-2. 如果本地环境没有网络权限，可以考虑其他环境下载好指定版本的libboundscheck库的whl包，将本地whl包软链接cmake指定的路径，即可完成编译。
+2. 如果本地环境没有网络权限，可以考虑其他环境下载好指定版本的libboundscheck库的whl包，将本地whl包软链接到cmake指定的路径，即可完成编译。
 
-## 运行时遇到报错“CHECK failed: GeneratedDatabase\(\)-\>Add\(encoded\_file\_descriptor, size\)”
+## 运行时遇到报错“CHECK failed: GeneratedDatabase()->Add(encoded_file_descriptor, size)”
 
 ### 问题描述
 

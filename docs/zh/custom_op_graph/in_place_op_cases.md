@@ -276,7 +276,7 @@ def converter_my_inplace(x, y):   # 函数入参与Torch算子保持一致
         return torch.ops.npu.my_inplace(x, y)
     
     # aclgraph模式
-    @torch.compile(backend="npugraph_ex"))
+    @torch.compile(backend="npugraph_ex")
     def test_torchair_npugraph_ex(x, y):
         return torch.ops.npu.my_inplace(x, y)
     

@@ -11,7 +11,7 @@ TorchAir在Ascend Extension for PyTorch（torch\_npu）中的位置如[图1](#fi
 - **基于npugraph\_ex后端的图模式（aclgraph）**：通过设置torch.compile的backend="npugraph\_ex"开启，其采用Capture&Replay方式实现任务一次捕获多次执行。Capture阶段捕获Stream任务到Device侧，暂不执行；Replay阶段从Host侧发出执行指令，Device侧再执行已捕获的任务，从而减少Host调度开销，提升性能。
 
     > [!NOTE]说明
-    >npugraph\_ex后端提供捕获模式（aclgraph），该模式一般通过Runtime提供的aclmdlRICaptureXxx系列接口实现，其原理和接口介绍请参考《CANN 应用开发指南 \(C&C++\)》中“运行时资源管理\>基于捕获方式构建模型运行实例”章节。
+    >npugraph\_ex后端提供捕获模式（aclgraph），该模式一般通过Runtime提供的aclmdlRICaptureXxx系列接口实现，其原理和接口介绍请参考《[CANN 应用开发指南 (C&C++)](https://hiascend.com/document/redirect/CannCommunityadevguide)》。
 
 - **基于GE的图模式（Ascend IR）**：通过设置TorchAir的CompilerConfig实例属性**mode="max-autotune"**开启，其将PyTorch的FX计算图转换为昇腾中间表示（IR，Intermediate Representation），即Ascend IR计算图，并通过GE（Graph Engine，图引擎）实现计算图的编译和执行。
 
@@ -21,9 +21,9 @@ TorchAir在Ascend Extension for PyTorch（torch\_npu）中的位置如[图1](#fi
 ## 使用说明
 
 - **使用场景**：当前版本的TorchAir作为**beta特性**，主要专注于**推理场景**下的模型优化。
-- **前提条件**：在使用TorchAir图模式功能之前，建议先熟悉Ascend Extension for PyTorch基础知识。
-    - 参考《[Ascend Extension for PyTorch 快速入门](https://www.hiascend.com/document/detail/zh/Pytorch/730/fastexperience/docs/zh/quick_start/quick_start.md)》，了解Ascend Extension for PyTorch的概念和作用。
-    - 参考《PyTorch 训练模型迁移调优指南》的“[模型迁移](https://www.hiascend.com/document/detail/zh/Pytorch/730/ptmoddevg/trainingmigrguide/PT_LMTMOG_0013.html)”章节，了解如何将模型迁移至昇腾NPU上等。
+- **前提条件**：在使用TorchAir图模式功能之前，建议先参考[Ascend Extension for PyTorch文档中心](https://hiascend.com/document/redirect/pytorchuserguide)熟悉Ascend Extension for PyTorch基础知识。
+    - 快速入门：了解Ascend Extension for PyTorch的概念和作用。
+    - PyTorch 训练模型迁移调优指南：了解如何将模型迁移至昇腾NPU。
 - **产品支持情况**：
 
     大部分功能默认支持所有产品，如有特殊情况，将在功能章节的“使用约束”中说明。
@@ -48,7 +48,7 @@ TorchAir在Ascend Extension for PyTorch（torch\_npu）中的位置如[图1](#fi
 
 目前TorchAir暂未提供独立软件包，而是作为Ascend Extension for PyTorch的三方库，随着torch\_npu包一起发布。请直接安装torch\_npu插件，即可使用TorchAir。
 
-torch\_npu的安装操作具体参考《[Ascend Extension for PyTorch 软件安装指南](https://www.hiascend.com/document/detail/zh/Pytorch/730/configandinstg/instg/docs/zh/installation_guide/installation_description.md)》，请保证与CANN相关包的版本匹配（参见《版本说明》），否则功能可能无法正常使用。
+torch_npu的安装操作具体参考[Ascend Extension for PyTorch文档中心](https://hiascend.com/document/redirect/pytorchuserguide)中的《软件安装》，请保证与CANN相关包的版本匹配（参见《版本说明》），否则功能可能无法正常使用。
 
 需要注意的是：
 

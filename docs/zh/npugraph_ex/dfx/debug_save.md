@@ -2,7 +2,7 @@
 
 ## 功能简介
 
-为方便问题定位过程中的信息收集，npugraph\_ex通过复用PyTorch**原生DEBUG环境变量TORCH\_COMPILE\_DEBUG**，当其设置为1时，将自动开启所有必要的日志打印与文件Dump。
+为方便问题定位过程中的信息收集，npugraph\_ex通过复用PyTorch**原生DEBUG环境变量TORCH_COMPILE_DEBUG**，当其设置为1时，将自动开启所有必要的日志打印与文件Dump。
 
 **图 1**  图编译示意图  
 ![](../../figures/graph_compile_1.png "图编译示意图")
@@ -18,7 +18,7 @@
 
 ## 使用约束
 
-- 使用该功能时，需通过配置torch.compile的backend="npugraph\_ex"进行编译，不支持自定义后端。
+- 使用该功能时，需通过配置torch.compile的backend="npugraph_ex"进行编译，不支持自定义后端。
 - 本功能支持的产品型号参见[使用说明](../../overview.md#使用说明)。
 
 ## 使用方法
@@ -53,7 +53,7 @@ python main.py
     out = model(x)
     ```
 
-    运行示例脚本，编译过程中必要的Debug信息产物目录结构如下，仅供参考，具体取决于实际开启的Pass数量。“torch\_compile\_debug”为PyTorch原生开启环境变量时创建的目录，默认在当前脚本路径下。
+    运行示例脚本，编译过程中必要的Debug信息产物目录结构如下，仅供参考，具体取决于实际开启的Pass数量。“torch_compile_debug”为PyTorch原生开启环境变量时创建的目录，默认在当前脚本路径下。
 
     ```txt
     torch_compile_debug/run_<时间>-pid_<进程号>
