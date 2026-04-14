@@ -6,7 +6,7 @@
 
 该接口在图模式场景下，如果开启[Tiling调度优化功能](../../features/advanced/tiling_schedule_optimize.md)（config.experimental\_config.tiling\_schedule\_optimize），模型中actual\_seq\_length类参数会存在从Host到Device的拷贝开销，模型执行性能会下降。为此，**TorchAir提供了相应的定制化接口**，保障该算子Tiling调度优化效果。
 
-本接口在Tiling下沉模式下，提供actual\_seq\_length类参数直接传Device Tensor的能力。原理是actual\_seq\_length类参数用于Tiling分核和Kernel计算，Tiling下沉时AI CPU中的Tiling分核和AI Core中的Kernel计算均在Device侧，直接传入Device可以减少Host到Device拷贝，从而降低开销。
+本接口在Tiling下沉模式下，提供actual\_seq\_length类参数直接传入Device Tensor的能力。原理是actual\_seq\_length类参数用于Tiling分核和Kernel计算，Tiling下沉时AI CPU中的Tiling分核和AI Core中的Kernel计算均在Device侧，直接传入Device可以减少Host到Device拷贝，从而降低开销。
 
 ## 函数原型
 

@@ -39,7 +39,7 @@ import torch_npu
 import torchair
 config = torchair.CompilerConfig()
 npu_backend = torchair.get_npu_backend(compiler_config=config)
-.........
+# ...
 # 多卡模型调用compile，后端提供集合通信入图能力
 model = torch.compile(model, backend=npu_backend)
 ```

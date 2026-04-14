@@ -109,7 +109,7 @@ RuntimeError: E19025: [PID: 44349] 2024-12-05-16:19:12.399.912 Input tensor is i
 
     ```python
     @impl(m, "npu_rms_norm_backward")
-    def npu_rms_norm_backward_meta():
+    def npu_rms_norm_backward_meta(dy, self, gamma, rstd):
         return (torch.empty_like(self, dtype=self.dtype), torch.empty_like(gamma, dtype=torch.float32))
     ```
 
