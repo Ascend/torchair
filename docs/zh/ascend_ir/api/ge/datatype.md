@@ -36,13 +36,20 @@ class DataType:
     DT_UINT1 = 30           # uint1 type
     DT_INT2 = 31            # int2 type
     DT_UINT2 = 32           # uint2 type
-    DT_COMPLEX32 = 33       # complex64 type
-    DT_MAX = 34             # Mark the boundaries of data types
+    DT_COMPLEX32 = 33       # complex32 type
+    DT_HIFLOAT8 = 34        # hifloat8 type
+    DT_FLOAT8_E5M2 = 35     # float8_e5m2 type
+    DT_FLOAT8_E4M3FN = 36   # float8_e4m3fn type
+    DT_FLOAT8_E8M0 = 37     # float8_e8m0 type
+    DT_FLOAT4_E2M1 = 40     # float4_e2m1 type
+    DT_FLOAT4_E1M2 = 41     # float4_e1m2 type
+    DT_MAX = 42             # Mark the boundaries of data types
 ```
 
 调用示例如下：
 
 ```python
-from torchair.ge import DataType
+import torch_npu, torchair
+from torchair.ge import DataType, Cast
 Cast(Tensor, dst_type=DataType.DT_BF16)
 ```

@@ -32,7 +32,7 @@ register_fx_node_ge_converter(aten_op)
 import torch
 import torch_npu
 from torchair import register_fx_node_ge_converter
-from torchair.ge import Tensor
+from torchair.ge import Tensor, TensorSpec
 
 # 装饰器，torch.ops.aten.sin.default为自定义算子的Python函数签名
 @register_fx_node_ge_converter(torch.ops.aten.sin.default)

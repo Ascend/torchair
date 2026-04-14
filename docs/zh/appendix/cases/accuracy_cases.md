@@ -106,15 +106,15 @@ msit llm compare -gp ${golden_data} -mp ${target_data} -o ${compare_result_dir}
         def __init__(self):
             super().__init__()
         def forward(self, x, y):
-            ......
+            # ...
     model = Model().npu()
     # 配置获取Ascend IR图dump的config
-    config = torchair_dump.get_ge_dump_config(dump_path=${ge_dump_path})  
-    ......
+    config = torchair_dump.get_ge_dump_config(dump_path="./") # 注意，此处dump_path实际值应和下文${ge_dump_path}保持一致
+    # ...
     # Graph模式下torch.compile 
     npu_backend = torchair.get_npu_backend(compiler_config=config) 
     model = torch.compile(model, backend=npu_backend, dynamic=True) 
-    ......
+    # ...
     ```
 
     配置后执行推理脚本，会在dump\_path指定目录下生成dump数据，目录样式如下：
@@ -142,18 +142,18 @@ msit llm compare -gp ${golden_data} -mp ${target_data} -o ${compare_result_dir}
         def __init__(self):
             super().__init__()
         def forward(self, x, y):
-            ......
+            # ...
     model = Model().npu()
     # 配置获取FX图dump的config
     config = torchair_dump.get_fx_dump_config()  
-    ......
+    # ...
     # Eager模式下torch.compile
     npu_backend = torchair.get_npu_backend(compiler_config=config) 
     model = torch.compile(model, backend=npu_backend, dynamic=True) 
-    ......
+    # ...
     ```
 
-    配置后执行推理脚本，一般会在当前路径下data\_dump/$\{token\_id\}/gm\_$\{time stamp\}\_dump（老版本中路径可能为gm\_$\{timestamp\}\_dump）目录生成dump数据，其中$\{token\_id\}从1开始，相对于GE模式是从0开始的，比对时会将FX模式的$\{token\_id\}减1。产物是npy格式，文件名和内容介绍可参考[算子data dump功能（Eager模式）](../../ascend_ir/features/basic/data_dump_eager.md)中“产物说明”。
+    配置后执行推理脚本，一般会在当前路径下data\_dump/\$\{token\_id\}/gm\_\$\{time stamp\}\_dump（老版本中路径可能为gm\_\$\{timestamp\}\_dump）目录生成dump数据，其中\$\{token\_id\}从1开始，相对于GE模式是从0开始的，比对时会将FX模式的$\{token\_id\}减1。产物是npy格式，文件名和内容介绍可参考[算子data dump功能（Eager模式）](../../ascend_ir/features/basic/data_dump_eager.md)中“产物说明”。
 
 5. 通过llm组件提供的精度比对能力，比对两种模式下的模型精度。
 
@@ -163,7 +163,7 @@ msit llm compare -gp ${golden_data} -mp ${target_data} -o ${compare_result_dir}
     msit llm compare --my-path ${ge_dump_path}/dump_${timestamp} --golden-path ${fx_dump_path}
     ```
 
-    - $\{ge\_dump\_path\}：图模式下Ascend IR图dump数据路径，即get\_ge\_dump\_config接口dump\_path参数指定路径下$\{ge\_dump\_path\}/dump\_$\{timestamp\}目录。
+    - \$\{ge\_dump\_path\}：图模式下Ascend IR图dump数据路径，即get\_ge\_dump\_config接口dump\_path参数指定路径下\$\{ge\_dump\_path\}/dump\_$\{timestamp\}目录。
     - $\{timestamp\}：图模式下dump对应的时间戳。
     - $\{fx\_dump\_path\}：Eager模式下FX dump数据路径，即get\_fx\_dump\_config接口默认路径下data\_dump目录。
 

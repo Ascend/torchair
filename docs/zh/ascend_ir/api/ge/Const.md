@@ -31,6 +31,6 @@ Const(v: Any, dtype: int = None, node_name=None, readable=True) -> Tensor
 
 ```python
 import torch_npu, torchair
-from torchair.ge import DataType
+from torchair.ge import DataType, Const
 Const(0, dtype=DataType.DT_INT64, node_name='Const0')
 ```

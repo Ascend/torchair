@@ -4,17 +4,16 @@
 
 ```python
 class Tensor():
-    @abstractmethod
     def __init__(self):
         ...
-    @abstractmethod
+
     def index(self):
         ...
-    @abstractmethod
-    def dtype():
+
+    def dtype(self):
         ...
-    @abstractmethod
-    def rank():
+
+    def rank(self):
         ...
 ```
 

@@ -22,7 +22,7 @@
 |[DataType类](./ge/datatype.md)|数据类型的枚举类，提供了GE的data type定义，方便实现converter函数时调用。|
 |[Format类](./ge/format.md)|数据格式的枚举类，提供了GE的data format定义，方便实现converter函数时调用。|
 |[Tensor类](./ge/tensor.md)|提供Tensor定义，用于算子入图的converter函数入参类型声明。|
-|[TensorSpec类](./ge/tensorspec.md)|提供TensorSpec定义，表示算子在Meta推导过程中得到的性能，当前用于算子入图的converter函数入参类型声明。|
+|[TensorSpec类](./ge/tensorspec.md)|提供TensorSpec定义，表示算子在Meta推导过程中得到的节点输出的描述信息，当前用于算子入图的converter函数入参类型声明。|
 |[Const](./ge/Const.md)|算子converter中的构图元素，表示一个Const节点，即图中的常量值。|
 |[Cast](./ge/Cast.md)|算子converter中的构图元素，表示一个Cast节点，即图中Tensor的类型转换方法。|
 |[Clone](./ge/Clone.md)|算子Converter中的构图元素，表示一个Clone节点，该节点可实现图上任意单个Tensor的拷贝。|

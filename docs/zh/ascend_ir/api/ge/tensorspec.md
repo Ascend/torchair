@@ -1,20 +1,19 @@
 # TensorSpec类
 
-提供了TensorSpec定义，TensorSpec表示算子在Meta推导过程中得到的性能，当前主要用于算子入图的converter函数入参的类型声明。TensorSpec类具体定义如下：
+提供了TensorSpec定义，TensorSpec表示算子在Meta推导过程中得到的节点输出的描述信息，当前主要用于算子入图的converter函数入参的类型声明。TensorSpec类具体定义如下：
 
 ```python
 class TensorSpec():
-    @abstractmethod
     def __init__(self):
         ...
-    @abstractmethod
-    def dtype():
+
+    def dtype(self):
         ...
-    @abstractmethod
-    def rank():
+
+    def rank(self):
         ...
-    @abstractmethod
-    def size():
+
+    def size(self):
         ...
 ```
 
