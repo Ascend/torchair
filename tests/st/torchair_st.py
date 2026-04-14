@@ -2878,5 +2878,33 @@ class TorchairSt(unittest.TestCase):
         finalize_graph_engine()
         self.assertTrue(res_1.shape == res_2.shape)
 
+
+    def test_deadlock_check(self):
+        initialize_graph_engine()
+        from torchair.core import _npu_graph_executor
+        from unittest.mock import patch, MagicMock
+        import torch
+        
+        if not hasattr(torch, 'npu'):
+            torch.npu = MagicMock()
+        
+        torch.npu.get_device_limit = MagicMock(return_value={'vector_core_num': 48})
+        torch.npu.current_device = MagicMock(return_value=0)
+        
+        with GeGraph() as graph1:
+            a = ge.Data(index=0, shape=[128, 128], dtype=DataType.DT_FLOAT, placement='CPU')
+            b = ge.Data(index=1, shape=[1, 2], dtype=DataType.DT_FLOAT, placement='CPU')
+            d = ge.Add(a, b)
+            output = ge.NetOutput([d])
+
+        set_graph_output_dtypes(graph1, [DataType.DT_FLOAT])
+        executor = TorchNpuGraph()
+        executor.load(graph1, options={"deadlock_check": "1"})
+        executor.compile()
+
+        x = torch.ones([128, 128], dtype=torch.float)
+        y = torch.ones([1, 2], dtype=torch.float)
+        executor.run((x, y))
+
 if __name__ == '__main__':
     unittest.main()

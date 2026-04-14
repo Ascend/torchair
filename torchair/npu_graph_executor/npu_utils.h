@@ -1,5 +1,6 @@
 #ifndef TORCH_AIR_TORCH_AIR_NPU_GRAPH_EXECUTOR_NPU_UTILS_H_
 #define TORCH_AIR_TORCH_AIR_NPU_GRAPH_EXECUTOR_NPU_UTILS_H_
+#include <Python.h>
 
 #include "exe_graph/runtime/shape.h"
 #include "exe_graph/runtime/tensor.h"
@@ -8,6 +9,7 @@
 #include "tng_status.h"
 #include "torch/torch.h"
 #include "ge/ge_allocator.h"
+#include "session.h"
 
 namespace tng {
 Status GetCurrentStream(void **stream);
@@ -62,6 +64,8 @@ Status UpdateTensorData(gert::Tensor &ge_tensor, void *addr, const size_t data_s
 bool CheckCANNVersion82RC1();
 
 bool IsSupportHostInput();
+
+void CallPythonDeadlockCheck(const std::map<ge::AscendString, ge::AscendString>& options, uint32_t id);
 }  // namespace tng
 
 #endif  // TORCH_AIR_TORCH_AIR_NPU_GRAPH_EXECUTOR_NPU_UTILS_H_

@@ -109,12 +109,15 @@ Status Session::GetGeFunc() {
   get_registered_ir_def_ = 
       reinterpret_cast<GeGetRegisteredIrDefFunc *>(dlsym(libge_runner_handle, "GetRegisteredIrDef"));
   get_string_infos_ = 
-      reinterpret_cast<GeGetStringInfosFunc *>(dlsym(libge_runner_handle, "GEStreamAllocationSummaryGetStringInfos"));   
+      reinterpret_cast<GeGetStringInfosFunc *>(dlsym(libge_runner_handle, "GEStreamAllocationSummaryGetStringInfos"));
+  dump_debug_json_print_ = 
+      reinterpret_cast<GeSessionDumpDebugJSONPrintFunc *>(dlsym(libge_runner_handle, "GeSessionDumpDebugJSONPrint"));      
   
   TNG_LOG(DEBUG) << "In current cann version"
                  << ", FastLoadGraph api is " << (IsFastLoadGraphSupported() ? "supported" : "unsupported")
                  << ", FastExecuteGraph api is " << (IsFastExecuteGraphSupported() ? "supported" : "unsupported")
                  << ", GetRegisteredIr api is " << (IsGetRegisteredIrDefSupported() ? "supported" : "unsupported")
+                 << ", DumpDebugJsonPrint api is " << (IsDumpDebugJSONPrintSupported() ? "supported" : "unsupported")
                  << ", GetStringInfos api is " << (IsGetStringInfosSupported() ? "supported" : "unsupported");
   get_ge_func_ = true;
   return Status::Success();
@@ -145,6 +148,7 @@ Status Session::Finalize() {
   fast_load_graph_ = nullptr;
   fast_execute_graph_async_ = nullptr;
   get_registered_ir_def_ = nullptr;
+  dump_debug_json_print_ = nullptr;
   if (libge_runner_handle) {
     dlclose(libge_runner_handle);
     libge_runner_handle = nullptr;
@@ -358,4 +362,16 @@ Status Session::AclDumpConfigFinalize() {
   TNG_LOG(DEBUG) << "Success to finalize aclmd dump";
   return Status::Success();
 }
+
+Status Session::DumpDebugJSONPrint(uint32_t graph_id, uint32_t flags, ge::AscendString *json_result) {
+  RECORD_FUNCTION("DumpDebugJSONPrint", {});
+  TNG_RETURN_IF_ERROR(EnsureInitialized());
+  TNG_ASSERT_NOTNULL(dump_debug_json_print_,
+    "DumpDebugJSONPrint is unsupported, please dont use it in current cann version.");
+  TNG_LOG(DEBUG) << "Start to session DumpDebugJSONPrint " << graph_id;
+  TNG_ASSERT_GE_OK(dump_debug_json_print_(*global_ge_session, graph_id, flags, json_result));
+  TNG_LOG(INFO) << "Success to DumpDebugJSONPrint, graph id :" << graph_id;
+  return Status::Success();
+}
+
 }  // namespace tng

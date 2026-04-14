@@ -60,6 +60,15 @@
         "op_never_timeout",
         "data_dump"
     ],
+    "torchair.tools.aclgraph_check.align_trace": [
+        "align_trace_json"
+    ],
+    "torchair.tools.aclgraph_check.deadlock_check": [
+        "deadlock_check"
+    ],
+    "torchair.tools.aclgraph_check.filter_operators": [
+        "filter_comm_ops"
+    ],
     "npugraph_ex": [
         "CompilerConfig",
         "compile_fx",

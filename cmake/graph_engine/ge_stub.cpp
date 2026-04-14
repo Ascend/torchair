@@ -406,6 +406,28 @@ ge::Status GeSessionLoadGraph(ge::Session &session, uint32_t graph_id,
   return ge::SUCCESS;
 }
 
+ge::Status GeSessionDumpDebugJSONPrint(ge::Session &session, uint32_t graph_id, uint32_t flags,
+                                       ge::AscendString *json_result) {
+  std::cerr << "[STUB] GeSessionDumpDebugJSONPrint, graph id = " << graph_id << std::endl;
+  *json_result = ge::AscendString(R"([
+  {
+    "name": "EVENT_RESET_20622287568912",
+    "pid": "1076774 aclGraph",
+    "tid": "stream354",
+    "ts": 478,
+    "dur": 9.5,
+    "ph": "X",
+    "args": {
+      "Model Id": 48,
+      "Stream Id": 354,
+      "Task Id": 55,
+      "Task Type": "EVENT_RESET"
+    }
+  }
+])");
+  return ge::SUCCESS;
+}
+
 ge::graphStatus manager(gert::TensorAddress addr, gert::TensorOperateType operate_type, void **out) {
   if (operate_type == gert::kGetTensorAddress) {
     *out = addr;

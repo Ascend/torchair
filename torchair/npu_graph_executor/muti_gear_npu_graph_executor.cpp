@@ -197,6 +197,8 @@ Status MutiGearNpuGraphExecutor::Run(const std::vector<c10::optional<at::Tensor>
     SetStageTime(ExecutorStage::kAssembleOutputs);
     if (is_first_run_) {
       TNG_RETURN_IF_ERROR(Session::GetInstance().FastLoadGraph(graph_data_->id, graph_data_->load_options, stream));
+
+      CallPythonDeadlockCheck(graph_data_->compile_options, graph_data_->id);
     }
     SetStageTime(ExecutorStage::kRunGraph);
     TNG_RETURN_IF_ERROR(

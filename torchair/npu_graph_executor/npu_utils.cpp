@@ -371,4 +371,74 @@ bool IsSupportHostInput() {
     return CheckCANNVersion82RC1();
 }
 
+void CallPythonDeadlockCheck(const std::map<ge::AscendString, ge::AscendString>& options, uint32_t id) {
+  auto it = options.find(ge::AscendString("deadlock_check"));
+  bool is_enabled = (it != options.end() && std::string(it->second.GetString()) == "1");
+
+  if (!is_enabled) {
+    TNG_LOG(INFO) << "deadlock check is disabled";
+    return;
+  }
+
+  if (!Py_IsInitialized()) {
+    TNG_LOG(ERROR) << "Deadlock check failed: Python interpreter is not initialized.";
+    return;
+  }
+
+  static bool enable_dump_debug_json_print = Session::GetInstance().IsDumpDebugJSONPrintSupported();
+  if (!enable_dump_debug_json_print) {
+    return;
+  }
+  ge::AscendString json_content;
+  Session::GetInstance().DumpDebugJSONPrint(id, 0, &json_content);
+
+  auto now = std::chrono::system_clock::now();
+  auto now_time_t = std::chrono::system_clock::to_time_t(now);
+  char buffer[80];
+  struct tm time_info;
+  localtime_r(&now_time_t, &time_info);
+  strftime(buffer, sizeof(buffer), "%Y%m%d%H%M%S", &time_info);
+  std::string timestamp(buffer);
+
+  pid_t pid = getpid();
+  std::string file_path = "./debug_output_graph_" + std::to_string(id) + "_" + "timestamp" + timestamp 
+                          + "_pid_" + std::to_string(pid) + ".json";
+
+  std::ofstream output_file(file_path);
+  if (output_file.is_open()) {
+    output_file << json_content.GetString();
+    output_file.close();
+    TNG_LOG(INFO) << "Debug JSON content saved to: " << file_path;
+  } else {
+    TNG_LOG(ERROR) << "Failed to open file for writing: " << file_path;
+    return;
+  }
+
+  PyGILState_STATE gstate = PyGILState_Ensure();
+
+  PyObject* pModule = PyImport_ImportModule("torchair._ge_concrete_graph.utils");
+  if (pModule) {
+    PyObject* pFunc = PyObject_GetAttrString(pModule, "run_deadlock_check");
+    if (pFunc && PyCallable_Check(pFunc)) {
+      PyObject* pArgs = PyTuple_Pack(1, PyUnicode_FromString(file_path.c_str()));
+      PyObject* pResult = PyObject_CallObject(pFunc, pArgs);
+
+      if (!pResult) {
+        PyErr_Print();
+      }
+
+      Py_XDECREF(pResult);
+      Py_XDECREF(pArgs);
+    } else {
+      PyErr_Print();
+    }
+    Py_XDECREF(pFunc);
+    Py_XDECREF(pModule);
+  } else {
+    PyErr_Print();
+  }
+
+  PyGILState_Release(gstate);
+}
+
 }  // namespace tng

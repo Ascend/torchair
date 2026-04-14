@@ -109,10 +109,12 @@ class _DebugConfig(NpuBaseConfig):
         self.fx_summary = _FxSummary()
         self.run_eagerly = OptionValue(False, [True, False])
         self.aclgraph = _AclGraphDebugConfig()
+        self.deadlock_check = OptionValue(False, [True, False])
 
         super(_DebugConfig, self).__init__()
 
     def as_dict(self, mode: Optional[str] = "max-autotune"):
         local_option = self.aclgraph.as_dict(mode)
         local_option["run_eagerly"] = self.run_eagerly.value
+        local_option["deadlock_check"] = self.deadlock_check.value
         return local_option, {}

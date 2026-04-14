@@ -12,6 +12,8 @@ from torchair.ge._ge_graph import compat_as_bytes, DataType, is_sym, Tensor, \
     torch_type_to_ge_type, ge_type_to_torch_type, _torch_tensor_to_ge_const
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._utils.path_manager import PathManager
+from torchair.tools.aclgraph_check.deadlock_check import deadlock_check
+from torchair.tools.aclgraph_check.filter_operators import filter_comm_ops
 
 
 class Placement:
@@ -469,3 +471,10 @@ def convert_tensor_to_list(attr_tensor, target_dtype):
 def convert_tensor_to_dtype(attr_tensor, target_dtype):
     attr_dtype = target_dtype(attr_tensor._meta)
     return attr_dtype
+
+
+def run_deadlock_check(input_json_path):
+    logger.debug("start run deadlock check")
+    vector_core_num = torch.npu.get_device_limit(torch.npu.current_device())['vector_core_num']
+    filtered_output = filter_comm_ops(input_json_path, None)
+    deadlock_check(filtered_output, None, aivec_total=vector_core_num)
