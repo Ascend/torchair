@@ -318,7 +318,25 @@ def _get_dumpjson_dir_for_opcompile(result_root: Path, compile_cache_dir=False, 
             logger.debug(f"{prefix}Using compile directory: {chosen_dir}")
         else:
             # 对于cache compile场景，每次都需要全量编译
-            chosen_dir = opcompile_dirs[0]
+            opcompile_dir = opcompile_dirs[0]
+            result_root = opcompile_dir.parent
+
+            # 遍历所有json文件，将黑名单中的json移动到_blacklist目录
+            op_files = list(opcompile_dir.glob("*.json"))
+            blacklist_dir = None
+            for op_json in op_files:
+                if _is_in_blacklist(op_json.name):
+                    if not blacklist_dir:
+                        blacklist_dir = _get_blacklist_dir(result_root)
+                    # 移动黑名单json到blacklist目录
+                    try:
+                        dest_path = blacklist_dir / op_json.name
+                        shutil.move(str(op_json), str(dest_path))
+                        logger.info(f"{prefix}Operator {op_json.name} is in blacklist, moved to {blacklist_dir}")
+                    except Exception as e:
+                        logger.warning(f"{prefix}Failed to move {op_json.name} to blacklist dir: {e}")
+
+            chosen_dir = opcompile_dir
             logger.debug(f"{prefix}Using opcompile directory: {chosen_dir}")
     else:
         debug_dirs = [d for d in result_root.iterdir() if d.is_dir() and d.name.endswith("_debug")]
