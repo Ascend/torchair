@@ -50,7 +50,7 @@
 
 |接口名|接口说明|
 |--|--|
-|[npu_stream_switch](./scope/npu_stream_switch.md)|图执行过程中，指定图内多个算子分发到不同stream做并行计算。|
+|[npu_stream_switch](./scope/npu_stream_switch.md)|图执行过程中，指定图内多个算子分发到不同stream进行并行计算。|
 |[npu_wait_tensor](./scope/npu_wait_tensor.md)|图执行过程中，控制图内多stream并行计算时序。|
 |[super_kernel](./scope/super_kernel.md)|图执行过程中，标记图内能融合为SuperKernel的上下文算子范围。|
 |[limit_core_num](./scope/limit_core_num.md)|图执行过程中，指定图范围内的算子执行时最大的AI Core数和Vector Core数。|

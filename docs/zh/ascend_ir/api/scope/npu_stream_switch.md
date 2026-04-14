@@ -2,7 +2,7 @@
 
 ## 功能说明
 
-通过本接口指定图内多个算子分发到不同stream做并行计算，提高资源利用率，实现[多流表达功能](../../features/advanced/multi_stream.md)。
+通过本接口指定图内多个算子分发到不同stream进行并行计算，提高资源利用率，实现[多流表达功能](../../features/advanced/multi_stream.md)。
 
 ## 函数原型
 

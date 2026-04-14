@@ -17,7 +17,7 @@
 - 单个算子运行正常但局部结构成图后导致的精度问题：
   - 整网dump进行图模式与Eager模式比对，可使用精度比对工具（msit）进行比对，详见下节[精度比对工具](#精度比对工具)说明；
   - 工程师按经验分析拆除常见问题；
-  - 对于GE图，可关闭算子融合规则（fusion_switch_file），排除算子融合问题，详见[算子融合配置功能（fusion_swtich_file）](../../ascend_ir/features/advanced/fusion_switch_file.md)。
+  - 对于GE图，可关闭算子融合规则（fusion_switch_file），排除算子融合问题，详见[算子融合配置功能（fusion_switch_file）](../../ascend_ir/features/advanced/fusion_switch_file.md)。
 
 **图 1**  精度问题分析流程<a name="fig1"></a>  
 ![](../../figures/accuracy_flowchart.png "精度问题分析流程")

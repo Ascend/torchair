@@ -19,7 +19,7 @@ npu_fused_infer_attention_score(Tensor query, Tensor key, Tensor value, *, Tenso
 > [!NOTE]说明
 >
 >- actual\_seq\_length类参数：本接口是指actual\_seq\_lengths、actual\_seq\_lengths\_kv、actual\_shared\_prefix\_len参数。
->- 与torch\_npu.npu\_fused\_infer\_attention\_score接口相比，参数区别在actual\_seq\_length类参数类型支持Tensor，而非int型数组。
+>- 与torch\_npu.npu\_fused\_infer\_attention\_score接口相比，参数区别在于actual\_seq\_length类参数类型支持Tensor，而非int型数组。
 
 |参数|输入/输出|说明|
 |--|--|--|

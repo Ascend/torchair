@@ -1,1 +1,1 @@
-# torch.npu.npugraph\_ex.inference
+# torch.npu.npugraph_ex.inference

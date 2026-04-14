@@ -50,7 +50,7 @@ opt_model = torch.compile(model, backend=npu_backend)
 |dump_mode|dump数据模式，用于指定dump算子的输入还是输出数据，字符串类型。<br>input：仅dump算子输入数据。<br>output：仅dump算子输出数据。<br>all（默认值）：同时dump算子输入和输出数据。|
 |dump_path|dump数据的存放路径，字符串类型，默认值为当前执行路径。支持配置绝对路径或相对路径（相对执行命令行时的当前路径）。<br>绝对路径配置以“/”开头，例如：/home/HwHiAiUser/output。<br>相对路径配置直接以目录名开始，例如：output。|
 |quant_dumpable|如果是量化后的网络，可通过此参数控制是否采集量化前的dump数据，bool类型。<br>False（默认值）：不采集量化前的dump数据。因为图编译过程中可能优化量化前的输入/输出，此时无法获取量化前的dump数据。<br>True：开启此配置后，可确保能够采集量化前的dump数据。|
-|dump_step|指定采集哪些迭代的dump数据。字符串类型，默认值None，表示所有迭代都会产生dump数据。<br>多个迭代用"\|"分割，例如："0\|5\|10"；也可以用"-"指定迭代范围，例如："0\|3-5\|10"。|
+|dump_step|指定采集哪些迭代的dump数据。字符串类型，默认值None，表示所有迭代都会产生dump数据。<br>多个迭代用"\|"分割，例如："0|5|10"；也可以用"-"指定迭代范围，例如："0|3-5|10"。|
 |dump_layer|指定需要dump的算子名，多个算子名之间使用空格分隔，形如"Add1_in_0 Add2 Mul2"。算子名获取方法参见dump_layer配置项说明。若指定的算子其输入涉及data算子，会同时将data算子信息dump出来。|
 |dump_data|指定算子dump内容类型，字符串类型。<br>tensor（默认值）：dump算子数据。<br>stats：dump算子统计数据，保存结果为csv格式，文件中包含算子名称、输入/输出的数据类型、最大值、最小值等。<br>通常dump数据量太大并且耗时长，可以先dump算子统计数据，根据统计数据识别可能异常的算子，再dump算子数据。|
 |dump_config_path**（推荐）**|指定dump配置文件（json格式）路径，字符串类型，无默认值。支持绝对/相对路径（即相对执行命令时的当前路径）。上述dump options（除了enable_dump）均能通过json文件配置，**推荐json方式dump，其余配置后续不再演进**。功能模式支持模型Dump/单算子Dump、溢出算子Dump、算子Dump Watch模式等，具体使用方法和约束参见dump_config_path配置项说明。|
@@ -85,7 +85,7 @@ input0 = torch.randn(2, 2, dtype=torch.float16).npu()
 input1 = torch.randn(2, 2, dtype=torch.float16).npu()
 config = torchair.CompilerConfig()
 config.dump_config.enable_dump = True
-config.dump_config.dump_layer = " Add "
+config.dump_config.dump_layer = "Add"
 npu_backend = torchair.get_npu_backend(compiler_config=config)
 npu_mode = Network().npu()
 npu_mode = torch.compile(npu_mode, fullgraph=True, backend=npu_backend, dynamic=False)

@@ -14,7 +14,7 @@ npu_print(*args, summarize_size=3, tensor_detail=False)
 
 |参数|输入/输出|说明|
 |--|--|--|
-|*args|输入|位置入参，其中每个入参支持的数据类型为torch.Tensor、str、bool、float、int等基本类型，且其中至少包含一个Tensor类型输入。|
+|*args|输入|位置参数，其中每个参数支持的数据类型为torch.Tensor、str、bool、float、int等基本类型，且其中至少包含一个Tensor类型输入。|
 |summarize_size|输入|Tensor每个维度打印的数据元素个数，默认值为3。<br>取值为-1：打印全部数据元素。<br>取值为正整数且大于等于（Tensor维度的最大dim/2）时：打印全部数据元素。<br>取值为正整数且小于（Tensor维度的最大dim/2）时：对于Tensor每个维度，起始位置打印summarize_size个数据元素，末端位置打印summarize_size个数据元素，中间元素以“...”表示。<br>打印结果示例参考约束说明。|
 |tensor_detail|输入|Tensor是否打印数据shape和dtype信息，默认值为False。取值为False：仅打印Tensor value。取值为True：输出包含shape以及dtype信息。打印结果示例如下：tensor([0 1 2 ... 7 8 9], shape=[10], dtype=torch.int64)|
 

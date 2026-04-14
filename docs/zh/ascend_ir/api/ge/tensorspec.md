@@ -18,7 +18,7 @@ class TensorSpec():
         ...
 ```
 
-关于TensorSpec类中成员方法的介绍请见下表。
+关于TensorSpec类中成员的介绍请见下表。
 
 **表 1**  TensorSpec类成员说明
 

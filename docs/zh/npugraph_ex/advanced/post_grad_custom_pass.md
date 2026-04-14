@@ -148,6 +148,6 @@ class Model(torch.nn.Module):
 
 3. 检查Pass是否生效。
 
-    参考[图编译Debug信息保存功能](../dfx/debug_save.md)，设置环境变量TORCH\_COMPILE\_DEBUG=1，自动开启所有必要的日志打印与文件dump。
+    参考[图编译Debug信息保存功能](../dfx/debug_save.md)，设置环境变量TORCH_COMPILE_DEBUG=1，自动开启所有必要的日志打印与文件dump。
 
     查看Debug日志中修改后的FX图是否有插入torch.ops.air.scope\_enter.default和torch.ops.air.scope\_exit.default、torch.ops.air.record.default、torch.ops.air.wait.default新节点，以及插入的位置是否正确。

@@ -177,7 +177,7 @@ Meta注册时构造的Tensor类型不符合要求。
 
 4. 修改推理脚本，将非连续输入parameter对象转为连续输入。
 
-    非连续输入无法直接传入GE进行计算，因此先确认该输入在模型中的位置，在脚本中使用“contiguous\(\)”完成转换。
+    非连续输入无法直接传入GE进行计算，因此先确认该输入在模型中的位置，在脚本中使用“contiguous()”完成转换。
 
 ## 图编译报错“it should be less than input shape size\[xxx\]”
 

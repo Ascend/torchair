@@ -36,14 +36,14 @@
 
 - 本功能仅适用于GE图模式场景，暂不支持同时配置[Dynamo导图功能](dynamo_export.md)、[RefData类型转换功能](ref_data.md)。
 - 本功能仅适用于整图优化场景。
-- [set\_dim\_gears](../../api/inference/set_dim_gears.md)需和torch.compile中的dynamic=True搭配使用。因为set\_dim\_gears只会符号化入参指定的Tensor及维度，其他scalar值的符号化会在dynamic=True时由Dynamo自动完成。
+- [set_dim_gears](../../api/inference/set_dim_gears.md)需和torch.compile中的dynamic=True搭配使用。因为set_dim_gears只会符号化入参指定的Tensor及维度，其他scalar值的符号化会在dynamic=True时由Dynamo自动完成。
 - 本功能要求网络中参与分档的Tensor不能传入私有格式，如FRACTAL\_NZ、NC1HWC0等。
 
 ## 使用方法
 
 以[图1](#fig1)为例，动态分档的关键操作如下：
 
-1. 在模型脚本中通过[set\_dim\_gears](../../api/inference/set_dim_gears.md)接口设置档位。 <a id="step1"></a>
+1. 在模型脚本中通过[set_dim_gears](../../api/inference/set_dim_gears.md)接口设置档位。 <a id="step1"></a>
 
     > [!NOTE]说明
     >- 支持对同一个Tensor设置一个或者多个维度的档位。

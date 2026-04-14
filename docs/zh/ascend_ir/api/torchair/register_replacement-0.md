@@ -20,7 +20,7 @@ register_replacement(search_fn: SearchFn, replace_fn: ReplaceFn, example_inputs:
 |trace_fn|输入|默认仅追踪前向计算图，适用于推理阶段的优化；若需支持训练场景，可传入支持反向追踪的函数。|
 |extra_check|输入|找到算子组合后的额外校验函数，函数的入参必须为torch._inductor.pattern_matcher中的Match对象，用于对匹配结果进行更多自定义的判断，如判断算子组合是否在同一条流上/判断设备类型/判断入参形状等|
 |search_fn_pattern|输入|自定义的pattern对象，一般无需传入。定义参考PyTorch原生MultiOutputPattern对象的定义规则。传入该参数后，将不再使用search_fn来匹配算子组合，而是直接使用该参数作为匹配规则。|
-|scalar_workaround|输入|用于显示绑定search_fn中标量参数值，用于匹配Fx图追踪时固化的标量。|
+|scalar_workaround|输入|用于显式绑定search_fn中标量参数值，用于匹配Fx图追踪时固化的标量。|
 |skip_duplicates|输入|用于控制注册阶段的重复检测行为，<br>设为 True 时，若检测到重复的匹配模式，会跳过该重复模式的注册；<br>设为 False 时，若检测到重复模式则直接抛出错误，禁止该重复模式完成注册。<br>该参数仅在PyTorch版本 ≥2.7.0 时生效|
 
 ## 返回值说明

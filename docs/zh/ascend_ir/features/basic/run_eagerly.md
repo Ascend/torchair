@@ -10,7 +10,7 @@
 
 ## 开启run-eagerly
 
-该功能通过[torchair.get\_npu\_backend](../../api/torchair/get_npu_backend.md)中compiler\_config配置，示例如下，仅供参考不支持直接拷贝运行，参数说明参见下表，完整示例可参考[性能分析案例](../../../appendix/cases/perfermance_cases.md#性能分析案例)。
+该功能通过[torchair.get\_npu\_backend](../../api/torchair/get_npu_backend.md)中compiler\_config配置，示例如下，仅供参考不支持直接拷贝运行，参数说明参见下表，完整示例可参考[性能分析案例](../../../appendix/cases/performance_cases.md#性能分析案例)。
 
 ```python
 import torch_npu, torchair

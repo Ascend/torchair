@@ -102,7 +102,7 @@
         -   [torchair.inference](./ascend_ir/api/inference/torchair-inference.md)
             -   [cache\_compile](./ascend_ir/api/inference/cache_compile.md)
             -   [readable\_cache](./ascend_ir/api/inference/readable_cache.md)
-            -   [set\_dim\_gears](./ascend_ir/api/inference/set_dim_gears.md)
+            -   [set_dim_gears](./ascend_ir/api/inference/set_dim_gears.md)
 
         -   [torchair.ops](./ascend_ir/api/ops/torchair-ops.md)
             -   [npu\_print](./ascend_ir/api/ops/npu_print.md)
@@ -147,7 +147,7 @@
 
     -   [图模式精度比对](./appendix/cases/accuracy_cases.md)
 
-    -   [图模式性能分析](./appendix/cases/perfermance_cases.md)
+    -   [图模式性能分析](./appendix/cases/performance_cases.md)
 
     -   [FAQ](./appendix/faq.md)
 

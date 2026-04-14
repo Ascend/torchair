@@ -4,7 +4,7 @@
 
 GE图模式下提供了多种调试定位方法，例如日志打印和文件dump等，需手动分别进行配置。该方式虽然具有一定灵活性，但也增加了操作的复杂性。
 
-为简化定位过程中的信息收集，可通过复用PyTorch**原生DEBUG环境变量TORCH\_COMPILE\_DEBUG**，当其设置为1时，将自动开启所有必要的日志打印与文件dump。
+为简化定位过程中的信息收集，可通过复用PyTorch**原生DEBUG环境变量TORCH_COMPILE_DEBUG**，当其设置为1时，将自动开启所有必要的日志打印与文件dump。
 
 **图 1**  图编译示意图  
 ![](../../../figures/graph_compile_6.png "图编译示意图-6")
@@ -15,7 +15,7 @@ GE图模式下提供了多种调试定位方法，例如日志打印和文件dum
 
 |信息类型|说明|
 |--|--|
-|日志信息|PyTorch原生Dynamo日志<br>TorchAir Python层日志<br>打印TorchAir C++层日志打印|
+|日志信息|PyTorch原生Dynamo日志<br>TorchAir Python层日志<br>TorchAir C++层日志|
 |Debug信息|AOT前的GraphModule<br>AOT后的GraphModule<br>公共Pass图优化过程中每个Pass的输出FX图（txt文件）<br>GE图优化前后及不同Pass处理后的图结构信息：该图结构信息可通过config.debug.graph_dump.type设置txt、pbtxt、py文件类型，可参考[图结构dump功能](./graph_dump.md)。|
 
 ## 使用约束
@@ -50,7 +50,7 @@ GE图模式下提供了多种调试定位方法，例如日志打印和文件dum
 
 以如下模型脚本为例，实现简单的乘法功能，代码流程如下：
 
-1. 设置环境变量TORCH\_COMPILE\_DEBUG为1。
+1. 设置环境变量TORCH_COMPILE_DEBUG为1。
 2. 开启Dynamo日志。
 3. 设置图编译模式，设置device="npu:0"。
 4. 构造一个随机输入，设置dynamic=False及requires\_grad=True，执行了一次前向和反向。
@@ -90,7 +90,7 @@ x = torch.randn(20, 20, requires_grad=False, device=device)
 out = model(x)
 ```
 
-运行示例脚本，编译过程中必要的Debug信息产物目录结构如下，仅供参考，具体取决于实际开启的Pass数量。“torch\_compile\_debug”为PyTorch原生开启环境变量时创建的目录，默认在当前脚本路径下。
+运行示例脚本，编译过程中必要的Debug信息产物目录结构如下，仅供参考，具体取决于实际开启的Pass数量。“torch_compile_debug”为PyTorch原生开启环境变量时创建的目录，默认在当前脚本路径下。
 
 ```txt
 torch_compile_debug/run_<时间>-pid_<进程号>

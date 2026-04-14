@@ -1,4 +1,4 @@
-# set\_dim\_gears
+# set_dim_gears
 
 ## 功能说明
 
@@ -24,8 +24,8 @@ set_dim_gears(t: torch.Tensor, dim_gears: Dict[int, Union[List[int], Tuple[int]]
 ## 约束说明
 
 - 本接口仅适用于GE图模式场景下的整图优化。
-- 本接口需和torch.compile中的dynamic=True搭配使用。因为set\_dim\_gears只会符号化入参指定的Tensor及维度，其他scalar值的符号化会在dynamic=True时由Dynamo自动完成。
-- 本接口要求网络中参与分档的Tensor不能传入私有格式，如FRACTAL\_NZ、NC1HWC0等。
+- 本接口需和torch.compile中的dynamic=True搭配使用。因为set_dim_gears只会符号化入参指定的Tensor及维度，其他scalar值的符号化会在dynamic=True时由Dynamo自动完成。
+- 本接口要求网络中参与分档的Tensor不能传入私有格式，如FRACTAL_NZ、NC1HWC0等。
 - dim\_gears参数约束：
     - 支持对同一个Tensor设置一个或者多个维度的档位。
     - 若图编译、执行时Tensor的shape不在设置的档位中，会导致编译或执行报错，请合理设置档位值。

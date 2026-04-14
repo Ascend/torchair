@@ -162,4 +162,4 @@ class Model(torch.nn.Module):
     - 打开Debug日志（参考[TorchAir Python层日志打印](python_log_print.md)），查看修改后的FX图是否有插入torch.ops.air.scope\_enter.default和torch.ops.air.scope\_exit.default、torch.ops.air.record.default、torch.ops.air.wait.default新节点，以及插入的位置是否正确。
 
     - 可以通过dump出的图结构（参考[算子data dump功能](../advanced/data_dump.md)）来查看图上对应的算子时序是否符合预期。
-    - 可以通过Profiling文件（参考[性能分析案例](../../../appendix/cases/perfermance_cases.md#性能分析案例)）来查看算子的分流以及时序是否符合预期。
+    - 可以通过Profiling文件（参考[性能分析案例](../../../appendix/cases/performance_cases.md#性能分析案例)）来查看算子的分流以及时序是否符合预期。

@@ -40,8 +40,8 @@ def converter_npu_scatter_nd_update_default(
     updates: Tensor,
     meta_outputs: TensorSpec = None,
 ):
-    // func: scatter_nd_update(Tensor x, Tensor indices, Tensor updates) -> Tensor
-    // copy是对x的clone，indices和updates是外部某算子的输出Tensor 
+    # func: scatter_nd_update(Tensor x, Tensor indices, Tensor updates) -> Tensor
+    # copy是对x的clone，indices和updates是外部某算子的输出Tensor 
     copy = torchair.ge.Clone(x, dependencies=[indices, updates], node_name='Const0')
     return scatterNdUpdateFunc(copy, indices, updates)
 ```

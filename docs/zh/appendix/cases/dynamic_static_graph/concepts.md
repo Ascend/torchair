@@ -39,7 +39,7 @@ GE动/静态shape图与调度模式：
 
     特殊情况下，静态shape图中存在值依赖算子，该算子默认使用Host调度。因此，在静态shape图中，部分算子采用下沉调度（能下沉的部分称为静态子图，在GE build图中以PartitionedCall节点形式存在），部分算子采用Host调度。
 
-**表 1**  GE动静图shape特征表
+**表 2**  GE动静图shape特征表
 
 |GE动/静态shape图|调度方式|
 |--|--|
