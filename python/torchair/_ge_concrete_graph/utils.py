@@ -12,8 +12,8 @@ from torchair.ge._ge_graph import compat_as_bytes, DataType, is_sym, Tensor, \
     torch_type_to_ge_type, ge_type_to_torch_type, _torch_tensor_to_ge_const
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._utils.path_manager import PathManager
-from torchair.tools.aclgraph_check.deadlock_check import deadlock_check
-from torchair.tools.aclgraph_check.filter_operators import filter_comm_ops
+from torchair.tools.gegraph_check.deadlock_check import deadlock_check
+from torchair.tools.gegraph_check.filter_operators import filter_comm_ops
 
 
 class Placement:

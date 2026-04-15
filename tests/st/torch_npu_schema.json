@@ -203,13 +203,13 @@
     "torch_npu.dynamo.npugraph_ex.tools.aclgraph_check.align_trace.align_trace_json": {
         "signature": "(input, output, merge_gap=0.0)"
     },
-    "torchair.tools.aclgraph_check.deadlock_check.deadlock_check": {
+    "torch_npu.dynamo.torchair.tools.gegraph_check.deadlock_check.deadlock_check": {
         "signature": "(input_path, output_path, aivec_total, merge_gap=0.0)"
     },
-    "torchair.tools.aclgraph_check.filter_operators.filter_comm_ops": {
+    "torch_npu.dynamo.torchair.tools.gegraph_check.filter_operators.filter_comm_ops": {
         "signature": "(input_path, output_path, merge_gap=0.0)"
     },
-    "torchair.tools.aclgraph_check.align_trace.align_trace_json": {
+    "torch_npu.dynamo.torchair.tools.gegraph_check.align_trace.align_trace_json": {
         "signature": "(input, output, merge_gap=0.0)"
     }
 }
