@@ -319,7 +319,7 @@ def _get_dumpjson_dir_for_opcompile(result_root: Path, compile_cache_dir=False, 
         else:
             # 对于cache compile场景，每次都需要全量编译
             opcompile_dir = opcompile_dirs[0]
-            result_root = opcompile_dir.parent
+            base_root = opcompile_dir.parent
 
             # 遍历所有json文件，将黑名单中的json移动到_blacklist目录
             op_files = list(opcompile_dir.glob("*.json"))
@@ -327,7 +327,7 @@ def _get_dumpjson_dir_for_opcompile(result_root: Path, compile_cache_dir=False, 
             for op_json in op_files:
                 if _is_in_blacklist(op_json.name):
                     if not blacklist_dir:
-                        blacklist_dir = _get_blacklist_dir(result_root)
+                        blacklist_dir = _get_blacklist_dir(base_root)
                     # 移动黑名单json到blacklist目录
                     try:
                         dest_path = blacklist_dir / op_json.name
