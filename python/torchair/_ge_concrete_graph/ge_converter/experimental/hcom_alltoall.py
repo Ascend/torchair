@@ -63,6 +63,7 @@ if not hasattr(getattr(torch.ops, "npu_define"), "all_to_all_single_npu"):
 
     npu_define_lib.impl(op_all_to_all_single_npu, npu_all_to_all_single_npu_meta, 'Meta')
     npu_define_lib.impl(op_all_to_all_single_npu, npu_all_to_all_single_npu, 'PrivateUse1')
+    torch.fx.node.has_side_effect(torch.ops.npu_define.all_to_all_single_npu.default)
 
 
 @register_fx_node_ge_converter(torch.ops.npu_define.all_to_all_single_npu.default)
