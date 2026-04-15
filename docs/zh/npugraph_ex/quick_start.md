@@ -88,6 +88,7 @@ torch.compile参数配置说明参见[表1](#fig1)。
 |--|--|
 [图编译Debug信息保存功能](./dfx/debug_save.md)|通过复用原生DEBUG环境变量TORCH_COMPILE_DEBUG开启日志打印和文件Dump。|
 |[算子Data-Dump功能](./dfx/data_dump.md)|是否开启数据dump功能。|
+|[多流并发死锁检测功能](./dfx/deadlock_check.md)|是否开启多流并发死锁检测功能。|
 
 ## 问题定界
 

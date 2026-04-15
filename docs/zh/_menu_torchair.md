@@ -24,6 +24,7 @@
     -   [npugraph\_ex DFX功能](./npugraph_ex/dfx/dfx.md)
         -   [图编译Debug信息保存功能](./npugraph_ex/dfx/debug_save.md)
         -   [算子Data Dump功能](./npugraph_ex/dfx/data_dump.md)
+        -   [多流并发死锁检测功能](./npugraph_ex/dfx/deadlock_check.md)
 
     -   [npugraph\_ex API参考](./npugraph_ex/api/api.md)
         -   [npugraph\_ex API列表](./npugraph_ex/api/api_list.md)
@@ -52,6 +53,7 @@
             -   [冗余算子消除功能](./ascend_ir/features/basic/remove_noop_ops.md)
             -   [FX图算子融合Pass配置功能](./ascend_ir/features/basic/pattern_fusion_pass.md)
             -   [自定义FX图Pass功能](./ascend_ir/features/basic/post_grad_custom_pass.md)
+            -   [多流并发死锁检测功能](./ascend_ir/features/basic/deadlock_check.md)
 
         -   [Dynamo导图功能](./ascend_ir/features/advanced/dynamo_export.md)
         -   [模型编译缓存功能](./ascend_ir/features/advanced/compile_cache.md)

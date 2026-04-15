@@ -64,7 +64,7 @@ GE图模式下的torch.compile参数配置说明参见[表1](#fig1)。
 
 |分类|说明|功能项|
 |--|--|--|
-|debug|配置debug调试类功能，配置形式为config.debug.xxx。|[图结构dump功能](./features/basic/graph_dump.md)<br>[算子data-dump功能（Eager模式）](./features/basic/data_dump_eager.md)<br>[run-eagerly功能](./features/basic/run_eagerly.md)<br>[算子Converter支持度导出功能](./features/advanced/converter_export.md)|
+|debug|配置debug调试类功能，配置形式为config.debug.xxx。|[图结构dump功能](./features/basic/graph_dump.md)<br>[算子data-dump功能（Eager模式）](./features/basic/data_dump_eager.md)<br>[run-eagerly功能](./features/basic/run_eagerly.md)<br>[算子Converter支持度导出功能](./features/advanced/converter_export.md)<br>[多流并发死锁检测功能](./features/basic/deadlock_check.md)|
 |export|配置离线导图相关功能，配置形式为config.export.xxx。|[Dynamo导图功能](./features/advanced/dynamo_export.md)|
 |dump_config|配置图模式下dump功能，配置形式为config.dump_config.xxx。|[算子data-dump功能（Ascend-IR）](./features/advanced/data_dump.md)|
 |fusion_config|配置图融合相关功能，配置形式为config.fusion_config.xxx。|[算子融合规则配置功能（fusion_switch_file）](./features/advanced/fusion_switch_file.md)|
