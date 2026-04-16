@@ -9,6 +9,12 @@ X_DTYPE_WITH_KC_SUPPORT_LIST = {
     DataType.DT_FLOAT8_E4M3FN,
     DataType.DT_FLOAT8_E5M2
 }
+
+# kc quant mode, x_scale tensor input type is float32
+X_SCALE_DTYPE_WITH_KC_SUPPORT_LIST = {
+    DataType.DT_FLOAT
+}
+
 # mxfp8 quant mode
 X_DTYPE_WITH_MXFP8_SUPPORT_LIST = {
     DataType.DT_FLOAT8_E4M3FN,
@@ -19,11 +25,19 @@ X_DTYPE_WITH_MXFP4_SUPPORT_LIST = {
     DataType.DT_UINT8
 }
 
+# mx quant mode, x_scale tensor input type is uint8, x_scale_dtype is float8_e8m0
+X_SCALE_DTYPE_WITH_MX_SUPPORT_LIST = {
+    DataType.DT_UINT8
+}
+
 Y_DTYPE_SUPPORT_LIST = {
     DataType.DT_FLOAT,
     DataType.DT_FLOAT16,
     DataType.DT_BF16
 }
+
+# torch_npu.float value
+TORCH_NPU_FLOAT_VALUE = 6
 
 # x1 & x2 kc quant mode value
 X1_KC_QUANT_MODE = 3
@@ -81,33 +95,37 @@ def convert_npu_quant_matmul_all_to_all(
         all2all_axes = [-1, -2]
 
     if world_size not in WORLD_SIZE_SUPPORT_LIST:
-        raise RuntimeError(f"world_size only supports value in {WORLD_SIZE_SUPPORT_LIST}, but got {world_size}.")
+        raise RuntimeError(f"The world_size only supports value in {WORLD_SIZE_SUPPORT_LIST}, but got {world_size}.")
 
     if bias is not None:
         if bias.dtype != DataType.DT_FLOAT:
-            raise AssertionError(f"if bias is not none, the data type of bias:{ge_type_to_torch_type(bias.dtype)} should be float32.")
+            raise AssertionError(f"If bias is not none, the data type of bias:{ge_type_to_torch_type(bias.dtype)} should be float32.")
 
     if x1_scale is None:
-        raise RuntimeError(f"per-token per-channel quantization need x1_scale, but got None.")
+        raise RuntimeError(f"The x1_scale cannot be none.")
     if x2_scale is None:
-        raise RuntimeError(f"per-token per-channel quantization need x2_scale, but got None.")
+        raise RuntimeError(f"The x2_scale cannot be none.")
 
     if x1_quant_mode == X1_KC_QUANT_MODE and x2_quant_mode == X2_KC_QUANT_MODE:
         if x1.dtype not in X_DTYPE_WITH_KC_SUPPORT_LIST:
-            raise AssertionError(f"Type of x1:{ge_type_to_torch_type(x1.dtype)} is error, x1 should be {[ge_type_to_torch_type(d) for d in X_DTYPE_WITH_KC_SUPPORT_LIST]}.")
+            raise AssertionError(f"In kc quant scene: x1_quant_mode=3 and x2_quant_mode=2, "
+                                 f"type of x1:{ge_type_to_torch_type(x1.dtype)} is error, "
+                                 f"x1 should be {[ge_type_to_torch_type(d) for d in X_DTYPE_WITH_KC_SUPPORT_LIST]}.")
         if x2.dtype not in X_DTYPE_WITH_KC_SUPPORT_LIST:
-            raise AssertionError(f"Type of x2:{ge_type_to_torch_type(x2.dtype)} is error, x2 should be {[ge_type_to_torch_type(d) for d in X_DTYPE_WITH_KC_SUPPORT_LIST]}.")
+            raise AssertionError(f"In kc quant scene: x1_quant_mode=3 and x2_quant_mode=2, "
+                                 f"type of x2:{ge_type_to_torch_type(x2.dtype)} is error, "
+                                 f"x2 should be {[ge_type_to_torch_type(d) for d in X_DTYPE_WITH_KC_SUPPORT_LIST]}.")
 
-        if x1_scale_dtype is not None:
-            x1_scale_ge_type = torch_dtype_value_to_ge_type(x1_scale_dtype)
-            if x1_scale_ge_type != DataType.DT_FLOAT:
-                raise AssertionError(f"if x1_scale is not none, the data type should be float32, "
-                                     f"but actual x1_scale dtype is:{ge_type_to_torch_type(x1_scale_ge_type)}.")
-        if x2_scale_dtype is not None:
-            x2_scale_ge_type = torch_dtype_value_to_ge_type(x2_scale_dtype)
-            if x2_scale_ge_type != DataType.DT_FLOAT:
-                raise AssertionError(f"if x2_scale is not none, the data type should be float32, "
-                                     f"but actual x2_scale dtype is:{ge_type_to_torch_type(x2_scale_ge_type)}.")
+        if x1_scale.dtype not in X_SCALE_DTYPE_WITH_KC_SUPPORT_LIST:
+            raise AssertionError(f"In kc quant scene: x1_quant_mode=3 and x2_quant_mode=2, "
+                                 f"tensor type of x1_scale: {ge_type_to_torch_type(x1_scale.dtype)} is error, "
+                                 f"x1_scale should be {[ge_type_to_torch_type(d) for d in X_SCALE_DTYPE_WITH_KC_SUPPORT_LIST]}")
+
+        if x2_scale.dtype not in X_SCALE_DTYPE_WITH_KC_SUPPORT_LIST:
+            raise AssertionError(f"In kc quant scene: x1_quant_mode=3 and x2_quant_mode=2, "
+                                 f"tensor type of x2_scale: {ge_type_to_torch_type(x2_scale.dtype)} is error, "
+                                 f"x2_scale should be {[ge_type_to_torch_type(d) for d in X_SCALE_DTYPE_WITH_KC_SUPPORT_LIST]}")
+
     elif x1_quant_mode == X1_MX_QUANT_MODE and x2_quant_mode == X2_MX_QUANT_MODE:
         if x1.dtype in X_DTYPE_WITH_MXFP8_SUPPORT_LIST and x2.dtype in X_DTYPE_WITH_MXFP8_SUPPORT_LIST:
             # float8_e4m3 and float8_e5m2
@@ -115,19 +133,29 @@ def convert_npu_quant_matmul_all_to_all(
         elif x1.dtype in X_DTYPE_WITH_MXFP4_SUPPORT_LIST and x2.dtype in X_DTYPE_WITH_MXFP4_SUPPORT_LIST:
             # float4_e2m1
             if x1_dtype is None:
-                x1_dtype = torch_npu.float4_e2m1fn_x2
+                # torch_npu.float4_e2m1fn_x2
+                raise AssertionError(f"In mx quant scene: x1_quant_mode=6 and x2_quant_mode=6, "
+                                     f"x1_dtype cannot be none.")
             if x2_dtype is None:
-                x2_dtype = torch_npu.float4_e2m1fn_x2
+                # torch_npu.float4_e2m1fn_x2
+                raise AssertionError(f"In mx quant scene: x1_quant_mode=6 and x2_quant_mode=6, "
+                                     f"x2_dtype cannot be none.")
             x1_ge_dtype = torch_dtype_value_to_ge_type(x1_dtype)
             x2_ge_dtype = torch_dtype_value_to_ge_type(x2_dtype)
             if not (x1_ge_dtype == DataType.DT_FLOAT4_E2M1 and x2_ge_dtype == DataType.DT_FLOAT4_E2M1):
-                raise AssertionError(f"x1_dtype and x2_dtype must be float4_e2m1, but actual x1_dtype is: {x1_dtype}, x2_dtype is: {x2_dtype}.")
+                raise AssertionError(f"In mx quant scene: x1_quant_mode=6 and x2_quant_mode=6, "
+                                     f"x1_dtype and x2_dtype must be float4_e2m1, "
+                                     f"but actual x1_dtype is: {x1_dtype}, x2_dtype is: {x2_dtype}.")
 
             # bitcast接口把uint8强转成float4_e2m1类型，会产生扩维。为了避免这种情况，我们需要将最后一维乘一个系数2
             if (x1.rank < 2):
-                raise RuntimeError("x1 dimension cannot be less than 2, actual x1 dimension is: " + str(x1.rank) + ".")
+                raise RuntimeError("In mx quant scene: x1_quant_mode=6 and x2_quant_mode=6, "
+                                   "x1 dimension cannot be less than 2, "
+                                   "actual x1 dimension is: " + str(x1.rank) + ".")
             if (x2.rank < 2):
-                raise RuntimeError("x2 dimension cannot be less than 2, actual x2 dimension is: " + str(x2.rank) + ".")
+                raise RuntimeError("In mx quant scene: x1_quant_mode=6 and x2_quant_mode=6, "
+                                   "x2 dimension cannot be less than 2, "
+                                   "actual x2 dimension is: " + str(x2.rank) + ".")
             factor = 2
             trans_x2 = x1.symsize[-1] == x2.symsize[-2]
 
@@ -152,26 +180,38 @@ def convert_npu_quant_matmul_all_to_all(
             if trans_x2:
                 x2 = ge.Transpose(x2, perm)
         else:
-            raise AssertionError(f"Type of x1:{ge_type_to_torch_type(x1.dtype)} and x2:{ge_type_to_torch_type(x2.dtype)} is error, "
+            raise AssertionError(f"In mx quant scene: x1_quant_mode=6 and x2_quant_mode=6, "
+                                 f"tensor type of x1:{ge_type_to_torch_type(x1.dtype)} and x2:{ge_type_to_torch_type(x2.dtype)} is error, "
                                  f"in mxfp8 quant mode, x1 and x2 should be {[ge_type_to_torch_type(d) for d in X_DTYPE_WITH_MXFP8_SUPPORT_LIST]}, "
                                  f"in mxfp4 quant mode, x1 and x2 should be {[ge_type_to_torch_type(d) for d in X_DTYPE_WITH_MXFP4_SUPPORT_LIST]}")
 
-        if x1_scale_dtype is None:
-            x1_scale_dtype = torch_npu.float8_e8m0fnu  # default torch type is 44, to ge type 37
-        if x2_scale_dtype is None:
-            x2_scale_dtype = torch_npu.float8_e8m0fnu  # default torch type is 44, to ge type 37
+        if x1_scale.dtype in X_SCALE_DTYPE_WITH_MX_SUPPORT_LIST and x2_scale.dtype in X_SCALE_DTYPE_WITH_MX_SUPPORT_LIST:
+            if x1_scale_dtype is None:
+                # default torch type is 44, to ge type 37
+                raise AssertionError(f"In mx quant scene: x1_quant_mode=6 and x2_quant_mode=6, "
+                                     f"x1_scale_dtype cannot be none.")
+            if x2_scale_dtype is None:
+                # default torch type is 44, to ge type 37
+                raise AssertionError(f"In mx quant scene: x1_quant_mode=6 and x2_quant_mode=6, "
+                                     f"x2_scale_dtype cannot be none.")
 
-        x1_scale_ge_type = torch_dtype_value_to_ge_type(x1_scale_dtype)
-        x2_scale_ge_type = torch_dtype_value_to_ge_type(x2_scale_dtype)
-        if x1_scale_ge_type != DataType.DT_FLOAT8_E8M0 or x2_scale_ge_type != DataType.DT_FLOAT8_E8M0:
-            raise AssertionError(f"if x1_scale or x2_scale is not none, the data type should be float8_e8m0, "
-                                 f"but actual x1_scale dtype is:{ge_type_to_torch_type(x1_scale_ge_type)}, "
-                                 f"x2_scale dtype is:{ge_type_to_torch_type(x2_scale_ge_type)}.")
+            x1_scale_ge_type = torch_dtype_value_to_ge_type(x1_scale_dtype)
+            x2_scale_ge_type = torch_dtype_value_to_ge_type(x2_scale_dtype)
+            if x1_scale_ge_type != DataType.DT_FLOAT8_E8M0 or x2_scale_ge_type != DataType.DT_FLOAT8_E8M0:
+                raise AssertionError(f"In mx quant scene: x1_quant_mode=6 and x2_quant_mode=6, "
+                                    f"the x1_scale and x2_scale data type should be float8_e8m0, "
+                                    f"but actual x1_scale_dtype is:{ge_type_to_torch_type(x1_scale_ge_type)}, "
+                                    f"x2_scale_dtype is:{ge_type_to_torch_type(x2_scale_ge_type)}.")
 
-        x1_scale = ge.Bitcast(x1_scale, type=x1_scale_ge_type)
-        x1_scale.desc.dtype = torch_dtype_value_to_ge_proto_type(x1_scale_dtype)
-        x2_scale = ge.Bitcast(x2_scale, type=x2_scale_ge_type)
-        x2_scale.desc.dtype = torch_dtype_value_to_ge_proto_type(x2_scale_dtype)
+            x1_scale = ge.Bitcast(x1_scale, type=x1_scale_ge_type)
+            x1_scale.desc.dtype = torch_dtype_value_to_ge_proto_type(x1_scale_dtype)
+            x2_scale = ge.Bitcast(x2_scale, type=x2_scale_ge_type)
+            x2_scale.desc.dtype = torch_dtype_value_to_ge_proto_type(x2_scale_dtype)
+        else:
+            raise AssertionError(f"In mx quant scene: x1_quant_mode=6 and x2_quant_mode=6, "
+                                 f"tensor type of x1_scale: {ge_type_to_torch_type(x1_scale.dtype)} and "
+                                 f"tensor type of x2_scale: {ge_type_to_torch_type(x2_scale.dtype)} is error, "
+                                 f"x1_scale and x2_scale should be {[ge_type_to_torch_type(d) for d in X_SCALE_DTYPE_WITH_MX_SUPPORT_LIST]}")
     else:
         raise RuntimeError(f"x1 and x2 quant_mode only support 3(dynamic pertoken quant) and 2(perchannel quant) or 6(mx quant) and 6(mx quant), "
                            f"but got x1_quant_mode is:{x1_quant_mode} and x2_quant_mode is:{x2_quant_mode}.")
