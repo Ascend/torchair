@@ -1401,6 +1401,13 @@ class AclGraph(object):
                     isinstance(retained_output, torch.Tensor):
                 self.stale_storages_ptr.add(retained_output.untyped_storage()._cdata)
 
+    def _clone_outputs_if_enabled(self, outputs: List) -> List:
+        if "clone_output" in self.config.keys() and self.config["clone_output"]:
+            return [out.clone() if (isinstance(out, torch.Tensor) and
+                out.untyped_storage()._cdata not in self.userinput_ref_with_output_storages_ptr)
+                else out for out in outputs]
+        return outputs
+
     def reconstruct_outputs(self, graph_key: str) -> List:
         """
         Reconstruct output tensors according to their saved metadata.
@@ -1415,7 +1422,8 @@ class AclGraph(object):
                          'no mempool reuse in fx_graph %s for graph key{%s}, all the outputs are retained.',
                          self.name, graph_key)
             self.set_stale_storages_ptr_exclude_ref_userinputs(self._graphs_meta[graph_key].retained_outputs, graph_key)
-            return self._graphs_meta[graph_key].retained_outputs
+            outputs = self._graphs_meta[graph_key].retained_outputs
+            return self._clone_outputs_if_enabled(outputs)
 
         if len(self.graphs_meta) == 1:
             # no need to reconstruct output when only one graph key
@@ -1423,7 +1431,8 @@ class AclGraph(object):
                          'and there is only one graph meta captured, all the outputs are retained.',
                          self.name, graph_key)
             self.set_stale_storages_ptr_exclude_ref_userinputs(self._graphs_meta[graph_key].retained_outputs, graph_key)
-            return self._graphs_meta[graph_key].retained_outputs
+            outputs = self._graphs_meta[graph_key].retained_outputs
+            return self._clone_outputs_if_enabled(outputs)
 
         if len(self._graphs_meta[graph_key].outputs_meta) != len(self._graphs_meta[graph_key].outputs_weakref):
             raise RuntimeError(
@@ -1437,7 +1446,7 @@ class AclGraph(object):
                          'no need to reconstruct output tensors for fx_graph %s with graph key{%s}.',
                          self.name, graph_key)
             self.set_stale_storages_ptr_exclude_ref_userinputs(ret, graph_key)
-            return ret
+            return self._clone_outputs_if_enabled(ret)
 
         # reconstructing step 1: set alive output of last execution to stale storage.
         self.set_to_original_state_bofore_reconstruct(graph_key)
@@ -1458,11 +1467,8 @@ class AclGraph(object):
                 outputs.append(output_ref)
 
         # reconstructing step 3: Associate output tensor and data_ptr by setting deleter or clone.
-        if "clone_output" in self.config.keys() and self.config["clone_output"]:
-            outputs = [out.clone() if (isinstance(out, torch.Tensor) and \
-                out.untyped_storage()._cdata not in self.userinput_ref_with_output_storages_ptr)\
-                    else out for out in outputs]
-        else:
+        outputs = self._clone_outputs_if_enabled(outputs)
+        if "clone_output" not in self.config.keys() or not self.config["clone_output"]:
             self.set_reconstructed_outputs_deleter(graph_key, outputs)
             warn_msg = "Because acl graph fixes memory addresses, acl graphs do not have a great way of " \
                        "handling live tensors from a previous invocation. " \

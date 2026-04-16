@@ -2038,6 +2038,57 @@ class AclgraphTest(unittest.TestCase):
         max_diff = torch.max(torch.abs(output - ori_out))
         self.assertTrue(max_diff < 1e-5, max_diff)
 
+    def test_clone_output_disable_mem_reuse(self):
+        class Model(torch.nn.Module):
+            def forward(self, x):
+                return torch.add(x, x)
+
+        model = torch.compile(
+            Model(), backend="npugraph_ex", fullgraph=True, dynamic=False,
+            options={"reuse_graph_pool_in_same_fx": False, "clone_output": True}
+        )
+        x = torch.randn(4, 4, device="npu")
+        expected = torch.add(x, x)
+        output1 = model(x)
+        output2 = model(x)
+        self.assertNotEqual(output1.untyped_storage()._cdata, output2.untyped_storage()._cdata)
+        self.assertTrue(torch.allclose(output1, expected))
+        self.assertTrue(torch.allclose(output2, expected))
+
+    def test_clone_output_single_graph(self):
+        class Model(torch.nn.Module):
+            def forward(self, x):
+                return torch.add(x, x)
+
+        model = torch.compile(
+            Model(), backend="npugraph_ex", fullgraph=True, dynamic=False,
+            options={"clone_output": True}
+        )
+        x = torch.randn(4, 4, device="npu")
+        expected = torch.add(x, x)
+        output1 = model(x)
+        output2 = model(x)
+        self.assertNotEqual(output1.untyped_storage()._cdata, output2.untyped_storage()._cdata)
+        self.assertTrue(torch.allclose(output1, expected))
+        self.assertTrue(torch.allclose(output2, expected))
+
+    def test_clone_output_disabled(self):
+        class Model(torch.nn.Module):
+            def forward(self, x):
+                return torch.add(x, x)
+
+        model = torch.compile(
+            Model(), backend="npugraph_ex", fullgraph=True, dynamic=False,
+            options={"clone_output": False}
+        )
+        x = torch.randn(4, 4, device="npu")
+        expected = torch.add(x, x)
+        output1 = model(x)
+        output2 = model(x)
+        self.assertEqual(output1.untyped_storage()._cdata, output2.untyped_storage()._cdata)
+        self.assertTrue(torch.allclose(output1, expected))
+        self.assertTrue(torch.allclose(output2, expected))
+
 
 def patch_dynamo():
     from torch._dynamo.variables.user_defined import UserDefinedClassVariable

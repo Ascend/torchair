@@ -3127,6 +3127,64 @@ class AclgraphTest(unittest.TestCase):
             f"Expected DEBUG 'The current AclGraph needs to be recaptured'not found in logs: {cm.output}",
         )
 
+    def test_clone_output_disable_mem_reuse(self):
+        def f(x):
+            return torch.add(x, x)
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.aclgraph.disable_mempool_reuse_in_same_fx = True
+        config.debug.aclgraph.enable_output_clone = True
+
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+        model = torch.compile(f, backend=aclgraph_backend, dynamic=False, fullgraph=True)
+
+        x = torch.randn(4, 4, dtype=torch.float32, device='npu')
+        expected = torch.add(x, x)
+        output1 = model(x)
+        output2 = model(x)
+        self.assertNotEqual(output1.untyped_storage()._cdata, output2.untyped_storage()._cdata)
+        self.assertTrue(torch.allclose(output1, expected))
+        self.assertTrue(torch.allclose(output2, expected))
+
+    def test_clone_output_single_graph(self):
+        def f(x):
+            return torch.add(x, x)
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_output_clone = True
+
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+        model = torch.compile(f, backend=aclgraph_backend, dynamic=False, fullgraph=True)
+
+        x = torch.randn(4, 4, dtype=torch.float32, device='npu')
+        expected = torch.add(x, x)
+        output1 = model(x)
+        output2 = model(x)
+        self.assertNotEqual(output1.untyped_storage()._cdata, output2.untyped_storage()._cdata)
+        self.assertTrue(torch.allclose(output1, expected))
+        self.assertTrue(torch.allclose(output2, expected))
+
+    def test_clone_output_disabled(self):
+        def f(x):
+            return torch.add(x, x)
+
+        config = CompilerConfig()
+        config.mode = "reduce-overhead"
+        config.debug.aclgraph.enable_output_clone = False
+
+        aclgraph_backend = torchair.get_npu_backend(compiler_config=config)
+        model = torch.compile(f, backend=aclgraph_backend, dynamic=False, fullgraph=True)
+
+        x = torch.randn(4, 4, dtype=torch.float32, device='npu')
+        expected = torch.add(x, x)
+        output1 = model(x)
+        output2 = model(x)
+        self.assertEqual(output1.untyped_storage()._cdata, output2.untyped_storage()._cdata)
+        self.assertTrue(torch.allclose(output1, expected))
+        self.assertTrue(torch.allclose(output2, expected))
+
 
 def patch_dynamo():
     from torch._dynamo.variables.user_defined import UserDefinedClassVariable

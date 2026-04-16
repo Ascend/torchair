@@ -54,4 +54,4 @@ opt_model = torch.compile(model, backend="npugraph_ex", options={"use_graph_pool
 |use_graph_pool（模式一）|tuple类型，用于传入需要使用的内存池。一般通过torch.npu.graph_pool_handle主动创建一个pool。torch.npu.graph_pool_handle是PyTorch原生cuda接口torch.cuda.graph_pool_handle的NPU形式。<br>None（默认值）：默认不传入指定内存池。|
 |reuse_graph_pool_in_same_fx（模式二）|布尔类型，是否打开FX graph的内存池复用模式。该模式实现了同一张FX graph捕获出来的不同shape的aclgraph之间的内存复用 。<br>True（默认值）：默认打开模式。<br>False：关闭模式。|
 |clone_input（模式三）|布尔类型，是否对aclgraph输入做clone。对mutated_input做基于地址变化的自动Recapture处理，对真正的featuremap_input做clone处理以达成多aclgraph间复用input的效果。当用户需要ref处理省这块内存拷贝时可通过此开关控制。<br>True（默认值）：默认开启对输入的clone。<br>False：不对输入clone。<br>当设置为False时，若运行期间输入Tensor地址发生变化（例如传入新Tensor），框架会使用新数据覆盖到第一次运行时的旧Tensor内存中，以避免图重捕获。如果代码中其他地方引用了该旧Tensor，可能会导致数据不一致。|
-|clone_output|布尔类型，是否对aclgraph输出做clone。该功能主要在开启了内存池复用时使用，可以在脚本将输出长时间持有的场景下开启，对aclgraph的输出全部做clone之后再返回用户，可以解决长时间持有的输出被覆写而导致的精度问题。<br>False（默认值）：默认不对输出clone。<br>True：开启对输出的clone。|
+|clone_output|布尔类型，是否对aclgraph输出做clone。该功能可以在脚本将输出长时间持有的场景下开启，对aclgraph的输出全部做clone之后再返回用户，可以解决长时间持有的输出被覆写而导致的精度问题。<br>False（默认值）：默认不对输出clone。<br>True：开启对输出的clone。|
