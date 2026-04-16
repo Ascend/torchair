@@ -40,7 +40,7 @@ class Model(torch.nn.Module):
 1. 编写自定义Pass，样例如下：
 
     ```python
-    def _custom_pre_pass(gm, example_inputs, config: npugraph_ex.CompilerConfig):
+    def _custom_pre_pass(gm, example_inputs, config: CompilerConfig):
         fx_graph = gm.graph
         for node in fx_graph.nodes:        
             if node.op == "call_function" and node.target == torch.ops.aten.mm.default:
@@ -73,11 +73,7 @@ class Model(torch.nn.Module):
     ```python
     import torch
     import torch_npu
-    import torchair
-    import logging
-    from torchair import logger
-    # 设置Debug日志级别
-    logger.setLevel(logging.DEBUG)
+    from npugraph_ex.configs.conpiler_confg import CompilerConfig
     
     class Model(torch.nn.Module):
         def __init__(self):
@@ -91,7 +87,7 @@ class Model(torch.nn.Module):
             return add, sub
     
     # 自定义Pass修改FX图
-    def _custom_pre_pass(gm, example_inputs, config: npugraph_ex.CompilerConfig):
+    def _custom_pre_pass(gm, example_inputs, config: CompilerConfig):
         fx_graph = gm.graph
         for node in fx_graph.nodes:        
             if node.op == "call_function" and node.target == torch.ops.aten.mm.default:
@@ -118,7 +114,7 @@ class Model(torch.nn.Module):
       # 将自定义Pass注册到TorchAir中
       "post_grad_custom_pre_pass" : _custom_pre_pass
       # 可选，在TorchAir已有的FX图优化Pass执行后 再执行自定义Pass
-      #config.post_grad_custom_post_pass = _custom_pre_pass
+      # post_grad_custom_post_pass : _custom_pre_pass
     }
 
     
