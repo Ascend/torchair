@@ -406,10 +406,10 @@ ge::Status GeSessionLoadGraph(ge::Session &session, uint32_t graph_id,
   return ge::SUCCESS;
 }
 
-ge::Status GeSessionDumpDebugJSONPrint(ge::Session &session, uint32_t graph_id, uint32_t flags,
-                                       ge::AscendString *json_result) {
-  std::cerr << "[STUB] GeSessionDumpDebugJSONPrint, graph id = " << graph_id << std::endl;
-  *json_result = ge::AscendString(R"([
+ge::Status GeSessionGraphDebugJSONPrint(ge::Session &session, uint32_t graph_id, uint32_t flags,
+                                        ge::AscendString &json_result) {
+  std::cerr << "[STUB] GeSessionGraphDebugJSONPrint, graph id = " << graph_id << std::endl;
+  json_result = ge::AscendString(R"([
   {
     "name": "EVENT_RESET_20622287568912",
     "pid": "1076774 aclGraph",

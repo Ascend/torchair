@@ -16,7 +16,7 @@ using GeSessionLoadGraphFunc = decltype(GeSessionLoadGraph);
 using GeFastExecuteGraphFunc = decltype(GeSessionExecuteGraphWithStreamAsync);
 using GeGetRegisteredIrDefFunc = decltype(GetRegisteredIrDef);
 using GeGetStringInfosFunc = decltype(ge::GEStreamAllocationSummaryGetStringInfos);
-using GeSessionDumpDebugJSONPrintFunc = decltype(GeSessionDumpDebugJSONPrint);
+using GeSessionGraphDebugJSONPrintFunc = decltype(GeSessionGraphDebugJSONPrint);
 
 class Session {
  public:
@@ -68,11 +68,11 @@ class Session {
     return get_string_infos_ != nullptr;
   }
 
-  bool IsDumpDebugJSONPrintSupported() const {
-    return dump_debug_json_print_ != nullptr;
+  bool IsGraphDebugJSONPrintSupported() const {
+    return graph_debug_json_print_ != nullptr;
   }
 
-  Status DumpDebugJSONPrint(uint32_t graph_id, uint32_t flags, ge::AscendString *json_result);
+  Status GraphDebugJSONPrint(uint32_t graph_id, uint32_t flags, ge::AscendString &json_result);
 
   Status FastLoadGraph(uint32_t graph_id, const std::map<ge::AscendString, ge::AscendString> &option, void *stream);
 
@@ -109,7 +109,7 @@ class Session {
   GeFastExecuteGraphFunc *fast_execute_graph_async_ = nullptr;
   GeGetRegisteredIrDefFunc *get_registered_ir_def_ = nullptr;
   GeGetStringInfosFunc *get_string_infos_ = nullptr;
-  GeSessionDumpDebugJSONPrintFunc *dump_debug_json_print_ = nullptr;
+  GeSessionGraphDebugJSONPrintFunc *graph_debug_json_print_ = nullptr;
 };
 }  // namespace tng
 

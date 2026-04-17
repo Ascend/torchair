@@ -385,12 +385,12 @@ void CallPythonDeadlockCheck(const std::map<ge::AscendString, ge::AscendString>&
     return;
   }
 
-  static bool enable_dump_debug_json_print = Session::GetInstance().IsDumpDebugJSONPrintSupported();
-  if (!enable_dump_debug_json_print) {
+  static bool enable_graph_debug_json_print = Session::GetInstance().IsGraphDebugJSONPrintSupported();
+  if (!enable_graph_debug_json_print) {
     return;
   }
   ge::AscendString json_content;
-  Session::GetInstance().DumpDebugJSONPrint(id, 0, &json_content);
+  Session::GetInstance().GraphDebugJSONPrint(id, 0, json_content);
 
   auto now = std::chrono::system_clock::now();
   auto now_time_t = std::chrono::system_clock::to_time_t(now);

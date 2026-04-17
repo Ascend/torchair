@@ -255,10 +255,13 @@ def _merge_stream_active(events, gap=0.0):
 # Task classification helpers
 # ---------------------------------------------------------------------------
 
-def _is_comm_task(name: str) -> bool:
+def _is_comm_task(name: str, extend_info) -> bool:
     """Return True if the task name indicates a communication operator."""
     lower = name.lower()
-    return "aiv_" in lower or "dispatch" in lower or "combine" in lower
+    if extend_info:
+        extend_info_json = json.loads(extend_info)
+    return "aiv_" in lower or "dispatch" in lower or "combine" in lower \
+        or extend_info_json.get("taskType", "") == 'communication'
 
 
 def _calc_aivec(task: dict) -> int:
@@ -475,7 +478,7 @@ def _find_deadlock_tasks(stream_tasks: dict, vc: dict, stream_index: dict,
             args = task.get("args", {})
             if args.get("schemMode") != 1:
                 continue
-            if not _is_comm_task(task["name"]):
+            if not _is_comm_task(task["name"], task.get("args", "").get("ExtendInfo", "")):
                 continue
             aivec = _calc_aivec(task)
             if aivec <= 0:

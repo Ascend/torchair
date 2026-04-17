@@ -166,7 +166,7 @@ def _merge_stream_active(events, gap=0.0):
     return events, moved
 
 
-def _classify_operator(name: str):
+def _classify_operator(name: str, extend_info):
     """
     根据算子 name 判断类型。
     返回 "control_record" / "control_wait" / "communication" / None(不保留)
@@ -188,6 +188,10 @@ def _classify_operator(name: str):
         return "communication"
     if "dispatch" in lower_name or "combine" in lower_name:
         return "communication"
+    if extend_info:
+        extend_info_json = json.loads(extend_info)
+        if extend_info_json.get("taskType") == "communication":
+            return "communication"
 
     # 其他 -> 过滤掉
     return None
@@ -215,7 +219,8 @@ def _filter_operators(input_path: str, output_path: str, merge_gap: float = 0.0)
     for task in tasks:
         name = task.get("name", "")
         stream = task.get("tid", "unknown")
-        op_type = _classify_operator(name)
+        extend_info = task.get("args", "").get("ExtendInfo", "")
+        op_type = _classify_operator(name, extend_info)
 
         if op_type is not None:
             filtered.append(task)

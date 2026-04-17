@@ -438,8 +438,8 @@ ge::Status GeSessionExecuteGraphWithStreamAsync(ge::Session &session, uint32_t g
                                                 const std::vector<gert::Tensor> &inputs,
                                                 std::vector<gert::Tensor> &outputs);
 
-ge::Status GeSessionDumpDebugJSONPrint(ge::Session &session, uint32_t graph_id, uint32_t flags,
-                                       ge::AscendString *json_result);
+ge::Status GeSessionGraphDebugJSONPrint(ge::Session &session, uint32_t graph_id, uint32_t flags,
+                                        ge::AscendString &json_result);
 
 ge::Status GetRegisteredIrDef(const char *op_type, std::vector<std::pair<ge::AscendString, ge::AscendString>> &inputs,
                               std::vector<std::pair<ge::AscendString, ge::AscendString>> &outputs,
