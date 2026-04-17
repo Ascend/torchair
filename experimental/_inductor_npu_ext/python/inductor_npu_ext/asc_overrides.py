@@ -532,7 +532,7 @@ class NPUOverrides(OpOverrides):
     def to_dtype(x: T, dtype: 'torch.dtype', src_dtype: 'Optional[torch.dtype]' = None, use_compute_types: 'bool' = True) -> T:
         if dtype == src_dtype:
             return x
-        if dtype == torch.bfloat16:
+        if dtype in (torch.float16, torch.bfloat16):
             dtype = torch.float32
         return ir.cast(x, dst=dtype, src=src_dtype, use_compute_types=use_compute_types)
 

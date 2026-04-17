@@ -328,7 +328,7 @@ def _unsupported_op(*args, _op=None, **kwargs):
 def _unsupported(*args, _op=None, **kwargs):
     from inductor_npu_ext.config import _debug_options
 
-    if "nothrow" in _debug_options and "cpu" in _debug_options:
+    if "nothrow" in _debug_options:
         return _unsupported_op(*args, _op=_op, **kwargs)
 
     raise NotImplementedError(f"Asc op '{_op}' is not implemented yet, args: {args}, kwargs: {kwargs}")

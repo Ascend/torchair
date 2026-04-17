@@ -16,15 +16,33 @@ class LowerSummary:
         self.enabled = os.getenv("TORCH_COMPILE_DEBUG", "0") == "1"
         self.lowered_ops = dict()
         self.fallback_ops = dict()
+        # 在 _finetune_decompose() 清空之前快照原始 decompositions key 集合
+        from torch._inductor.decomposition import decompositions as inductor_decomps
+        self._original_decomp_ops = set(inductor_decomps.keys())
 
     def _node_key(self, node: torch.fx.Node):
-        in_nodes = [n for n in pytree.arg_tree_leaves(*node.args, **node.kwargs) if isinstance(n, torch.fx.Node)]
-        input_metas = ','.join([f'Tensor({m.dtype}, {m.shape}, {m.device})' if isinstance(
-            m, torch.Tensor) else str(m) for m in get_node_meta(in_nodes)])
-        out_metas = ','.join([f'Tensor({m.dtype}, {m.shape}, {m.device})' if isinstance(
-            m, torch.Tensor) else str(m) for m in get_node_meta([node])])
-        key = f"{node.target}({input_metas}) -> ({out_metas})"
+        def arg_str(v):
+            if isinstance(v, torch.Tensor):
+                return f'Tensor({v.dtype}, shape={tuple(v.size())}, stride={v.stride()}, {v.device})'
+            else:
+                return str(v)
+
+        key = f"{node.target}("
+        for v in node.args:
+            key += f"{arg_str(v.meta.get('val', None) if isinstance(v, torch.fx.Node) else v)}, "
+        for k, v in node.kwargs.items():
+            key += f"{k}={arg_str(v.meta.get('val', None) if isinstance(v, torch.fx.Node) else v)}, "
+        key = key.rstrip(", ") + ") -> "
+        key += arg_str(node.meta.get('val', None))
         return key
+
+    def _op_support_flags(self, target) -> str:
+        if not isinstance(target, torch._ops.OpOverload):
+            return ""
+        from torch._inductor.lowering import lowerings
+        has_lowering = target in lowerings
+        has_decomp = target in self._original_decomp_ops
+        return f", has_lowering={has_lowering}, has_decompose={has_decomp}"
 
     def lowered(self, node: torch.fx.Node):
         if not self.enabled:
@@ -35,7 +53,8 @@ class LowerSummary:
     def fallback(self, node: torch.fx.Node, reason):
         if not self.enabled:
             return
-        key = self._node_key(node) + f"  # reason: {reason}"
+        support_flags = self._op_support_flags(node.target)
+        key = self._node_key(node) + f"  # reason: {reason}{support_flags}"
         self.fallback_ops[key] = self.fallback_ops.get(key, 0) + 1
 
     def save(self):
