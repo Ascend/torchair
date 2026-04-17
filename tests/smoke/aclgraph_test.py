@@ -880,7 +880,6 @@ class AclgraphTest(unittest.TestCase):
             any("'activate_num': 7" in log for log in cm.output),
             f"Expected DEBUG ''activate_num': 7'not found in logs: {cm.output}",
         )
-        del graph_res1
         del graph_res2
         del graph_res3
         with self.assertLogs(logger, level="DEBUG") as cm:
@@ -993,7 +992,7 @@ class AclgraphTest(unittest.TestCase):
 
         with self.assertLogs(logger, level="DEBUG") as cm:
             compiled_model1.linear.weight.data = a
-            compiled_model1(
+            graph_res1 = compiled_model1(
                 query_prefill_, query_, key_, value_, scale, length_new, length2_new, lengthq_new, narrow_start, x
             )
         self.assertTrue(
@@ -1010,7 +1009,7 @@ class AclgraphTest(unittest.TestCase):
         )
 
         with self.assertLogs(logger, level="DEBUG") as cm:
-            compiled_model1(
+            graph_res2 = compiled_model1(
                 query_prefill_, query_, key_, value_, scale, length_new, length2_new, lengthq_new, narrow_start, x
             )
         self.assertTrue(
@@ -1020,7 +1019,7 @@ class AclgraphTest(unittest.TestCase):
 
         with self.assertLogs(logger, level="DEBUG") as cm:
             # recapture
-            compiled_model1(
+            graph_res3 = compiled_model1(
                 query_prefill_, query_, key, value_, scale, length_new, length2_new, lengthq_new, narrow_start, x
             )
         self.assertTrue(
@@ -1147,7 +1146,7 @@ class AclgraphTest(unittest.TestCase):
 
         with self.assertLogs(logger, level="DEBUG") as cm:
             compiled_model1.linear.weight.data = a
-            compiled_model1(
+            graph_res1 = compiled_model1(
                 query_prefill_, query_, key_, value_, scale, length_new, length2_new, lengthq_new, narrow_start, x
             )
         self.assertTrue(
@@ -1164,7 +1163,7 @@ class AclgraphTest(unittest.TestCase):
         )
 
         with self.assertLogs(logger, level="DEBUG") as cm:
-            compiled_model1(
+            graph_res2 =compiled_model1(
                 query_prefill_, query_, key_, value_, scale, length_new, length2_new, lengthq_new, narrow_start, x
             )
         self.assertTrue(
@@ -1174,7 +1173,7 @@ class AclgraphTest(unittest.TestCase):
 
         with self.assertLogs(logger, level="DEBUG") as cm:
             # recapture
-            compiled_model1(
+            graph_res3 =compiled_model1(
                 query_prefill_, query_, key, value_, scale, length_new, length2_new, lengthq_new, narrow_start, x
             )
         self.assertTrue(
@@ -1302,7 +1301,7 @@ class AclgraphTest(unittest.TestCase):
 
         with self.assertLogs(logger, level="DEBUG") as cm:
             compiled_model1.linear.weight.data = a
-            compiled_model1(
+            graph_res1 = compiled_model1(
                 query_prefill_, query_, key_, value_, scale, length_new, length2_new, lengthq_new, narrow_start, x
             )
         self.assertTrue(
@@ -1319,7 +1318,7 @@ class AclgraphTest(unittest.TestCase):
         )
 
         with self.assertLogs(logger, level="DEBUG") as cm:
-            compiled_model1(
+            graph_res2 = compiled_model1(
                 query_prefill_, query_, key_, value_, scale, length_new, length2_new, lengthq_new, narrow_start, x
             )
         self.assertTrue(
@@ -1329,7 +1328,7 @@ class AclgraphTest(unittest.TestCase):
 
         with self.assertLogs(logger, level="DEBUG") as cm:
             # recapture
-            compiled_model1(
+            graph_res3 = compiled_model1(
                 query_prefill_, query_, key, value_, scale, length_new, length2_new, lengthq_new, narrow_start, x
             )
         self.assertTrue(
@@ -2668,7 +2667,7 @@ class AclgraphTest(unittest.TestCase):
             print(f"fx_target_list is :{fx_target_list}")
             torchair_ir_list = (
                 'tagged_event_record',
-                'tagged_event_wait',
+                'tagged_event_wait_on_stream',
                 'record_tagged_stream_',
                 'scope_enter',
                 'scope_exit',
@@ -2993,9 +2992,9 @@ class AclgraphTest(unittest.TestCase):
             # Verify args format: (event_tag, stream_id, device_index, device_type, created_inside)
             args = record_on_stream_nodes[0][2]
             self.assertTrue(args[0].startswith('graph_'), f"event_tag should start with 'graph_', got {args[0]}")
-            self.assertIsInstance(args[1], int, "stream_id should be int")
-            self.assertIsInstance(args[2], int, "device_index should be int")
-            self.assertIsInstance(args[3], int, "device_type should be int")
+            self.assertIsInstance(args[1], str, "stream_id should be str")
+            self.assertIsInstance(args[2], str, "device_index should be str")
+            self.assertIsInstance(args[3], str, "device_type should be str")
             self.assertEqual(args[4], True, "created_inside should be True")
 
             return gm
@@ -3043,9 +3042,9 @@ class AclgraphTest(unittest.TestCase):
             # event_tag should contain "_record_event" suffix
             self.assertTrue(args[0].startswith('graph_'), f"event_tag should start with 'graph_', got {args[0]}")
             self.assertIn('_record_event', args[0], f"event_tag should contain '_record_event', got {args[0]}")
-            self.assertIsInstance(args[1], int, "stream_id should be int")
-            self.assertIsInstance(args[2], int, "device_index should be int")
-            self.assertIsInstance(args[3], int, "device_type should be int")
+            self.assertIsInstance(args[1], str, "stream_id should be str")
+            self.assertIsInstance(args[2], str, "device_index should be str")
+            self.assertIsInstance(args[3], str, "device_type should be str")
             self.assertEqual(args[4], True, "created_inside should be True")
 
             return gm
