@@ -25,4 +25,3 @@
 #include "molecular_dynamics.h"
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_HPC_H_
-

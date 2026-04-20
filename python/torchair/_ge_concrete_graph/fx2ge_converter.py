@@ -1907,4 +1907,3 @@ def _get_ge_dump_options(global_compile_options):
         if k in global_compile_options
     }
     return ge_data_dump_options
-

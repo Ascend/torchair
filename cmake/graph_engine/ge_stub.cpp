@@ -635,4 +635,3 @@ ge::Status GetRegisteredIrDef(const char *op_type, std::vector<std::pair<ge::Asc
   return ge::SUCCESS;
 }
 } // extern "C"
-

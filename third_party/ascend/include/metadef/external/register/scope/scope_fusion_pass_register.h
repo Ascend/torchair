@@ -398,4 +398,3 @@ class GE_FUNC_HOST_VISIBILITY GE_FUNC_DEV_VISIBILITY ScopeFusionPassRegistrar {
       ::ge::ScopeFusionPassRegistrar(                                                             \
           (pass_name), []() -> ::ge::ScopeBasePass * { return new (std::nothrow) scope_pass(); }, (is_general))
 #endif  // EXTERNAL_REGISTER_SCOPE_SCOPE_FUSION_PASS_REGISTER_H_
-

@@ -24,4 +24,3 @@
 #include "data_flow_ops.h"
 
 #endif  // OPS_BUILT_IN_OP_PROTO_INC_OUTFEED_OPS_H_
-

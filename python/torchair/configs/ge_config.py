@@ -41,4 +41,3 @@ class _GEConfig(NpuBaseConfig):
             global_option["ge.optimizationSwitch"] = self.optimization_switch.value
 
         return local_option, global_option
-

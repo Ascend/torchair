@@ -16,4 +16,3 @@ class _InferenceConfig(NpuBaseConfig):
 
     def as_dict(self, mode: Optional[str] = "max-autotune"):
         return {}, {}
-

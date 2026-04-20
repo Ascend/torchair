@@ -76,4 +76,3 @@ def patch_for_hcom():
             npu_reduce_scatter_tensor_uneven_patch_dist
         torch_npu.distributed.all_gather_into_tensor_uneven = npu_allgather_into_tensor_uneven_patch_dist
         torch_npu.distributed.reduce_scatter_tensor_uneven = npu_reduce_scatter_tensor_uneven_patch_dist
-

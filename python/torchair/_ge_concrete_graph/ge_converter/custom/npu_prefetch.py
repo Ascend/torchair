@@ -41,4 +41,3 @@ def conveter_npu_prefetch_default(
         outputs = [
         ]
         ge_op(op_type="Cmo", inputs=inputs, outputs=outputs, attrs=attrs, dependencies=[dependency])
-

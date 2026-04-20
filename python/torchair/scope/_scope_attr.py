@@ -125,4 +125,3 @@ def _safe_remove_attr(op, key):
     if key in op.attr:
         del op.attr[key]
         logger.debug(f"Removed attribute {key} on op: {op.name}")
-

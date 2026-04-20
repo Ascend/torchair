@@ -112,4 +112,3 @@ class _AclGraphExperimentalConfig(NpuBaseConfig):
                 local_aclgraph_experimental_options[
                     "_super_kernel_debug_options"] = self._super_kernel_debug_options.value
         return local_aclgraph_experimental_options, global_aclgraph_experimental_options
-

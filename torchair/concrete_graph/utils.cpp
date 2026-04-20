@@ -565,4 +565,3 @@ std::vector<bool> Split(const std::string &str, char pattern) {
   return res_vec;
 }
 }  // namespace tng
-

@@ -1777,4 +1777,3 @@ ACL_FUNC_VISIBILITY aclError aclrtMemUceRepair(int32_t deviceId, aclrtMemUceInfo
 #endif
 
 #endif // INC_EXTERNAL_ACL_ACL_RT_H_
-

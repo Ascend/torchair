@@ -25,5 +25,3 @@ def custom_op(op_type: str, *args, inputs: Optional[Dict[str, Optional[Union['Te
         args_dict = torch_args_to_ge_args(*args, ge_support_info=ge_support_info, op_type=op_type)
         return ge_op(op_type=op_type, inputs=args_dict["inputs"], outputs=args_dict["outputs"], \
             attrs=args_dict["attrs"], node_name=node_name)
-
-

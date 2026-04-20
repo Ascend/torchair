@@ -15,4 +15,3 @@ def conveter_aten__foreach_norm_scalar(
     meta_outputs: List[TensorSpec] = None):
     """NB: aten::_foreach_norm.Scalar(Tensor[] self, Union[Number, Tensor] scalar) -> Tensor[]"""
     return ge.ForeachNorm(self, scalar)
-

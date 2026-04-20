@@ -27,4 +27,3 @@ def conveter_aten_expand_default(
         if str(self._symsize) == str(meta_outputs._symsize):
             return self
     return ge.BroadcastTo(self, size)
-

@@ -11,7 +11,7 @@
 
 ## 目录结构介绍
 
-```
+```txt
 ├── README.md                   // 示例介绍
 ├── setup.py                    // setup文件
 ├── csrc
@@ -26,57 +26,52 @@
 ```
 
 ## 算子描述
+
 ### Add算子
+
 - 算子功能：
   Add算子实现了两个数据相加，返回相加结果的功能。对应的算子原型为：
   
-  ```
+  ```python
   ascendc_add(Tensor x, Tensor y) -> Tensor
   ```
+  
 - 算子规格：
   
   <table>
    <tr><td rowspan="1" align="center">核函数名</td><td colspan="4" align="center">add_custom</td></tr>
-  </tr>
   <tr><td rowspan="3" align="center">算子输入</td><td align="center">name</td><td align="center">shape</td><td align="center">data type</td><td align="center">format</td></tr>
   <tr><td align="center">x</td><td align="center">8 * 2048</td><td align="center">int</td><td align="center">ND</td></tr>
   <tr><td align="center">y</td><td align="center">8 * 2048</td><td align="center">int</td><td align="center">ND</td></tr>
-  </tr>
-  </tr>
   <tr><td rowspan="1" align="center">算子输出</td><td align="center">z</td><td align="center">8 * 2048</td><td align="center">int</td><td align="center">ND</td></tr>
-  </tr>
- 
   </table>
 
 ### 原地三角函数算子
+
 - 算子功能：
   该算子入参为x, out_sin ,out_cos, 算子调用后，out_sin会被原地修改为sin(x)计算结果，out_cos会被原地修改为cos(x)计算结果，返回值tan(x)计算结果。对应的算子原型为：
   
-  ```
+  ```python
   ascendc_trig(Tensor x, Tensor(a!) out_sin, Tensor(b!) out_cos) -> Tensor
   ```
+  
 - 算子规格：
 
   <table>
   <tr><td rowspan="1" align="center">核函数名</td><td colspan="4" align="center">trig_inplace_custom</td></tr>
-  </tr>
   <tr><td rowspan="4" align="center">算子输入</td><td align="center">name</td><td align="center">shape</td><td align="center">data type</td><td align="center">format</td></tr>
   <tr><td align="center">x</td><td align="center">8 * 2048</td><td align="center">float</td><td align="center">ND</td></tr>
   <tr><td align="center">out_sin</td><td align="center">8 * 2048</td><td align="center">float</td><td align="center">ND</td></tr>
   <tr><td align="center">out_cos</td><td align="center">8 * 2048</td><td align="center">float</td><td align="center">ND</td></tr>
-  
-  </tr>
-  </tr>
   <tr><td rowspan="3" align="center">算子输出</td><td align="center">out_sin</td><td align="center">8 * 2048</td><td align="center">float</td><td align="center">ND</td></tr>
   <tr><td align="center">out_cos</td><td align="center">8 * 2048</td><td align="center">float</td><td align="center">ND</td></tr>
   <tr><td align="center">out_tan</td><td align="center">8 * 2048</td><td align="center">float</td><td align="center">ND</td></tr>
-  </tr>
- 
   </table>
 
 ## 代码实现介绍
 
   - 以Add算子为例，样例在*.asc文件中定义了一个名为ascendc_ops的命名空间，并在其中注册了ascendc_add函数。在ascendc_add函数中通过`c10_npu::getCurrentNPUStream()`函数获取当前NPU上的流，并通过内核调用符<<<>>>调用自定义的Kernel函数add_custom，在NPU上执行算子。
+    
     ```c++
       add_custom<<<blockDim, nullptr, aclStream>>>(xGm, yGm, zGm, totalLength);
     ```
@@ -99,19 +94,19 @@
     }
     ```
 
-- 注册Meta函数：
+  - 注册Meta函数：
   
-  注册Meta函数使faketensor流程正常工作，在使用fx, compile等功能涉及，注册代码如下：
+    注册Meta函数使faketensor流程正常工作，在使用fx, compile等功能涉及，注册代码如下：
+    
+    ```c++
+    TORCH_LIBRARY_IMPL(ascendc_ops, Meta, m)
+    {
+      m.impl("ascendc_add", &add_impl_meta);
+    }
+    ```
 
-  ```c++
-  TORCH_LIBRARY_IMPL(ascendc_ops, Meta, m)
-  {
-    m.impl("ascendc_add", &add_impl_meta);
-  }
-  ```
-
-- aclgraph的调用：
-  [示例代码](./test/add_aclgraph_test.py)中，通过`torch.ops.load_library`加载生成的自定义算子库，并展示了3种aclgraph的使能方式，通过对比NPU输出与CPU标准加法结果来验证自定义算子的数值正确性。
+  - aclgraph的调用：
+   [示例代码](./test/add_aclgraph_test.py)中，通过`torch.ops.load_library`加载生成的自定义算子库，并展示了3种aclgraph的使能方式，通过对比NPU输出与CPU标准加法结果来验证自定义算子的数值正确性。
 
 1. torch.npu.NPUGraph()
 2. torch.npu.make_graphed_callables
@@ -148,11 +143,10 @@
     source ${install_path}/ascend-toolkit/set_env.sh
     ```
 
-
-
 - 样例执行
 
   参考[表格](https://www.hiascend.com/document/detail/zh/canncommercial/850/opdevg/BishengCompiler/atlas_bisheng_10_0010.html)，根据实际昇腾AI处理器架构修改[setup.py](./setup.py)中的--npu-arch参数，并执行如下命令：
+  
   ```bash
   python setup.py bdist_wheel
   pip install dist/*.whl --force-reinstall
@@ -172,6 +166,7 @@ OK
 NPU的taskqueue是设备端的任务队列，用于管理和调度NPU上的算子执行顺序。"清queue"指等待队列中已有任务完成后再执行当前任务；"入queue"指将当前任务放入队列中按顺序执行。自定义算子的内核启动方式如果采用[add_custom.asc](./csrc/add_custom.asc) 中的**方式4**（stream(false)直接启动，不清queue不入queue），可能导致乱序执行。
 
 例如以下Model：
+
 ```python
 class Model(torch.nn.Module):
     def forward(self, x, y):
@@ -180,9 +175,9 @@ class Model(torch.nn.Module):
         x *= 2 # mul_2
         return x
 ```
+
 通过profiler工具采集部分结果如下图：
 ![乱序问题示意](../figures/disorder.png)
 可见图中add_custom和第一个mul运算发生乱序。
 
 **建议**：具体其他实现方式请参考 [add_custom.asc](./csrc/add_custom.asc) 中的注释说明。
-

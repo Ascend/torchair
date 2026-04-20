@@ -28,4 +28,3 @@ def conveter_aten_matmul_backward_default(
     grad_self = ge.BatchMatMul(grad, ge.Transpose(other, other_perm_list))
     grad_other = ge.BatchMatMul(ge.Transpose(self, self_perm_list), grad)
     return grad_self, grad_other
-

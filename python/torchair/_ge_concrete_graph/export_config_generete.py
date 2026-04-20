@@ -82,4 +82,3 @@ def generate_config(export_name, file_path, used_process_group):
     _generate_model_relation_config(file_path, export_name,
                                     default_pg_rank_list, used_process_group)
     _generate_numa_config(file_path, default_pg_rank_list)
-

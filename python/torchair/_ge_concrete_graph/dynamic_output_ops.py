@@ -1267,4 +1267,3 @@ def ForeachSubScalarList(x: List[Tensor], scalar: Tensor, *, dependencies=[], no
 
     size_of_y = len(x)
     return raw_ops._ForeachSubScalarList(x, scalar, size_of_y=size_of_y, dependencies=dependencies, node_name=node_name)
-

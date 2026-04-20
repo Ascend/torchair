@@ -971,4 +971,3 @@ def _copy_to_blacklist(json_file: Path, blacklist_dir: Path) -> bool:
     except Exception as e:
         logger.warning(f"Failed to move {json_file.name} to blacklist dir: {e}")
         return False
-
