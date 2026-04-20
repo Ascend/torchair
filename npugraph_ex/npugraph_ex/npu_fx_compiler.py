@@ -476,6 +476,7 @@ class _CompiledFxGraph:
         self.config = config
         self.runner = runner
         self.run_kernel = None
+        self._debug_path = get_phase_path()
 
     def __call__(self, *args, **kwargs):
 
@@ -536,7 +537,7 @@ class _CompiledFxGraph:
             logger.warning(f'There are some configurations that cannot be supported by codegen, skipping codegen.')
             return self.runner
         logger.debug('Codegen for %s successfully, code:\n%s.', self.runner.graph.name, py_code)
-        _dump_run_codegen(py_code)
+        _dump_run_codegen(py_code, self._debug_path)
         return py_code
 
 
@@ -914,7 +915,7 @@ def _compile_graph_with_aot(gm: torch.fx.GraphModule,
     return aot_module_simplified(gm, example_inputs, **aot_kwargs)
 
 
-def _dump_run_codegen(py_code: str):
+def _dump_run_codegen(py_code: str, debug_path: str = None):
     if os.getenv("TORCH_COMPILE_DEBUG", "0") == "1":
 
         from torch._inductor.utils import IndentedBuffer
@@ -925,7 +926,8 @@ def _dump_run_codegen(py_code: str):
             py_codegen_dump = py_code + input_code.getvalue()
 
         # 进行生成dump文件，保存codegen内容
-        file_name = os.path.join(get_phase_path(), "output_code.py")
+        target_path = debug_path if debug_path is not None else get_phase_path()
+        file_name = os.path.join(target_path, "output_code.py")
         output_code_path = os.path.realpath(file_name)
         os.makedirs(os.path.dirname(output_code_path), exist_ok=True)
         with open(output_code_path, "w") as f:

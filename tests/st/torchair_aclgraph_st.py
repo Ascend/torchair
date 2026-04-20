@@ -2643,7 +2643,7 @@ class AclGraphSt(unittest.TestCase):
                     return 2 * x
 
             model = Model()
-            compiled_model = torch.compile(model, backend=npu_backend, dynamic=False)
+            compiled_model = torch.compile(model, backend=npu_backend, dynamic=True)
             x = torch.randn(10, 10, requires_grad=True)
             out = compiled_model(x)
             loss_fn = torch.nn.MSELoss()

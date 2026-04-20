@@ -1335,7 +1335,7 @@ class NpugraphExSt(unittest.TestCase):
                     return 2 * x
 
             model = Model()
-            compiled_model = torch.compile(model, backend="npugraph_ex", options=options, dynamic=False)
+            compiled_model = torch.compile(model, backend="npugraph_ex", options=options, dynamic=True)
             x = torch.randn(10, 10, requires_grad=True)
             out = compiled_model(x)
             loss_fn = torch.nn.MSELoss()
@@ -1381,7 +1381,7 @@ class NpugraphExSt(unittest.TestCase):
                     return 2 * x
 
             model = Model()
-            compiled_model = torch.compile(model, backend="npugraph_ex", options=options, dynamic=False)
+            compiled_model = torch.compile(model, backend="npugraph_ex", options=options, dynamic=True)
             x = torch.randn(10, 10, requires_grad=True)
             out = compiled_model(x)
             loss_fn = torch.nn.MSELoss()
