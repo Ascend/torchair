@@ -769,6 +769,27 @@ class AclGraphSt(unittest.TestCase):
         x = torch.randn([3])
         model(x)
 
+    @unittest.skipIf(torch.__version__ < "2.6", "torch._dynamo.utils.ReinplaceCounters is unsupported when torch < 2.6")
+    def test_self_copy_no_crash(self):
+        """copy_(x, x) where source and dest are the same placeholder should not crash."""
+        def f(x):
+            x.copy_(x)
+            return x
+
+        x = torch.randn(3)
+        gm = make_fx(f, tracing_mode="fake")(x)
+        add_stream_label_to_node_meta(gm)
+        # Should not raise IndexError from _mutated_input_reinplace
+        _mutated_input_reinplace(gm)
+
+        # The self-copy should still exist (not be processed as reinplace target)
+        copy_found = False
+        for node in gm.graph.nodes:
+            if node.target is torch.ops.aten.copy_.default:
+                copy_found = True
+                break
+        self.assertTrue(copy_found, "self-copy node should still exist in the graph")
+
 
 if __name__ == '__main__':
     unittest.main()

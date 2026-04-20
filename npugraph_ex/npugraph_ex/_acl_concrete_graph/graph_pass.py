@@ -456,7 +456,7 @@ def _mutated_input_reinplace(gm: GraphModule) -> GraphModule:
                 node.target = inplaceable_op.inplace_op
             else:
                 logger.debug(f"can_inplace return False, will skip reinplacing for node: {node.target}")
-        elif node in to_replace_targets:
+        elif node in to_replace_targets and (node.op not in ("placeholder", "get_attr")):
             mutated_arg = node.args[0]
             inplace_op = _maybe_get_inplace_op(node.target)
             if inplace_op is None:

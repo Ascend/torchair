@@ -1590,6 +1590,23 @@ class NpugraphExSt(unittest.TestCase):
             f"not found in logs: {cm.output}"
         )
 
+    def test_self_copy_no_crash(self):
+        """copy_(x, x) where source and dest are the same placeholder should not crash."""
+        class Model(torch.nn.Module):
+            def forward(self, x):
+                x.copy_(x)
+                return x
+
+        model = Model()
+        options = {
+            "clone_input": False,
+            "input_inplace_pass": True
+        }
+
+        model = torch.compile(model, backend="npugraph_ex", options=options)
+        x = torch.randn([3])
+        result = model(x)
+        self.assertTrue(torch.equal(x, result))
 
     # def test_aclgraph_core_limit_with_static_kernel(self):
     #     class Model(torch.nn.Module):
