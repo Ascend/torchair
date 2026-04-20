@@ -71,15 +71,13 @@
 
 ```txt
 static_kernel_compile_outputs                  // 固定的产物文件名
-|—— ts${timestamp_1}_pid${pid_1}_outputs 
-|
 |—— static_kernel_cache                        // 静态Kernel缓存目录
 |    |—— CANN-${cann_version_1}_${device_name_1}.json   // 记录对应CANN版本和硬件型号上的缓存匹配关系
 |    |—— CANN-${cann_version_1}_${device_name_1}.lock   // 锁文件，用于避免多进程并发读写冲突
 |
 |—— ts${timestamp_1}_pid${pid_1}_outputs 
 |    |—— ${pid_1}                                // 模型中目标算子信息文件夹
-|        |—— MatMulV2_float_ND_1_2048_0.json     // js文件表示网络中的算子统计信息，包括shape和format等
+|        |—— MatMulV2_float_ND_1_2048_0.json     // json文件表示网络中的算子统计信息，包括shape和format等
 |        |—— ......json
 |    |—— ${pid_1}_debug                          // 模型中全量算子信息文件夹
 |        |—— MatMulV2_float_ND_1_2048_0.json
