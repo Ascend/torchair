@@ -83854,19 +83854,19 @@ def DynamicBlockMxQuant(x: Tensor,
 
 
 # This api is auto-generated from IR AlltoAllvQuantGroupedMatMul
-@auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False], [False, False, True, True, True, True, True, True, True, True],
-                         inputs_tensor_type=[TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_INDEX_NUMBER,
-                         TensorType.TT_INDEX_NUMBER, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN,
+@auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False], [False, False, False, False, True, True, True, True, True, True],
+                         inputs_tensor_type=[TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN,
+                         TensorType.TT_UNKNOWN, TensorType.TT_INDEX_NUMBER, TensorType.TT_INDEX_NUMBER,
                          TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN,
                          TensorType.TT_UNKNOWN])
 def AlltoAllvQuantGroupedMatMul(gmm_x: Tensor, 
                                 gmm_weight: Tensor, 
+                                gmm_x_scale: Tensor, 
+                                gmm_weight_scale: Tensor, 
                                 send_counts_tensor: Optional[Tensor], 
                                 recv_counts_tensor: Optional[Tensor], 
                                 mm_x: Optional[Tensor], 
                                 mm_weight: Optional[Tensor], 
-                                gmm_x_scale: Optional[Tensor], 
-                                gmm_weight_scale: Optional[Tensor], 
                                 mm_x_scale: Optional[Tensor], 
                                 mm_weight_scale: Optional[Tensor], 
                                 *, 
@@ -83874,11 +83874,11 @@ def AlltoAllvQuantGroupedMatMul(gmm_x: Tensor,
                                 ep_world_size: int, 
                                 send_counts: List[int], 
                                 recv_counts: List[int], 
+                                gmm_x_quant_mode: int, 
+                                gmm_weight_quant_mode: int, 
                                 trans_gmm_weight: bool = False, 
                                 trans_mm_weight: bool = False, 
                                 permute_out_flag: bool = False, 
-                                gmm_x_quant_mode: int = 0, 
-                                gmm_weight_quant_mode: int = 0, 
                                 mm_x_quant_mode: int = 0, 
                                 mm_weight_quant_mode: int = 0, 
                                 group_size: int = 0, 
@@ -83889,12 +83889,12 @@ def AlltoAllvQuantGroupedMatMul(gmm_x: Tensor,
     """REG_OP(AlltoAllvQuantGroupedMatMul)\n
     .INPUT(gmm_x, TensorType({DT_FLOAT16, DT_BF16, DT_HIFLOAT8}))\n
     .INPUT(gmm_weight, TensorType({DT_FLOAT16, DT_BF16, DT_HIFLOAT8}))\n
+    .INPUT(gmm_x_scale, TensorType({DT_FLOAT}))\n
+    .INPUT(gmm_weight_scale, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(send_counts_tensor, TensorType({DT_INT32, DT_INT64}))\n
     .OPTIONAL_INPUT(recv_counts_tensor, TensorType({DT_INT32, DT_INT64}))\n
     .OPTIONAL_INPUT(mm_x, TensorType({DT_FLOAT16, DT_BF16, DT_HIFLOAT8}))\n
     .OPTIONAL_INPUT(mm_weight, TensorType({DT_FLOAT16, DT_BF16, DT_HIFLOAT8}))\n
-    .OPTIONAL_INPUT(gmm_x_scale, TensorType({DT_FLOAT}))\n
-    .OPTIONAL_INPUT(gmm_weight_scale, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(mm_x_scale, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(mm_weight_scale, TensorType({DT_FLOAT}))\n
     .OUTPUT(gmm_y, TensorType({DT_FLOAT16, DT_BF16}))\n
@@ -83904,11 +83904,11 @@ def AlltoAllvQuantGroupedMatMul(gmm_x: Tensor,
     .REQUIRED_ATTR(ep_world_size, Int)\n
     .REQUIRED_ATTR(send_counts, ListInt)\n
     .REQUIRED_ATTR(recv_counts, ListInt)\n
+    .REQUIRED_ATTR(gmm_x_quant_mode, Int, 0)\n
+    .REQUIRED_ATTR(gmm_weight_quant_mode, Int, 0)\n
     .ATTR(trans_gmm_weight, Bool, false)\n
     .ATTR(trans_mm_weight, Bool, false)\n
     .ATTR(permute_out_flag, Bool, false)\n
-    .ATTR(gmm_x_quant_mode, Int, 0)\n
-    .ATTR(gmm_weight_quant_mode, Int, 0)\n
     .ATTR(mm_x_quant_mode, Int, 0)\n
     .ATTR(mm_weight_quant_mode, Int, 0)\n
     .ATTR(group_size, Int, 0)\n
@@ -83930,6 +83930,12 @@ def AlltoAllvQuantGroupedMatMul(gmm_x: Tensor,
     op.input.append(gmm_weight.tensor)
     op.input_desc.add().CopyFrom(gmm_weight.desc)
     op.input_desc[-1].name = "gmm_weight"
+    op.input.append(gmm_x_scale.tensor)
+    op.input_desc.add().CopyFrom(gmm_x_scale.desc)
+    op.input_desc[-1].name = "gmm_x_scale"
+    op.input.append(gmm_weight_scale.tensor)
+    op.input_desc.add().CopyFrom(gmm_weight_scale.desc)
+    op.input_desc[-1].name = "gmm_weight_scale"
     if send_counts_tensor is not None:
         op.input.append(send_counts_tensor.tensor)
         op.input_desc.add().CopyFrom(send_counts_tensor.desc)
@@ -83962,22 +83968,6 @@ def AlltoAllvQuantGroupedMatMul(gmm_x: Tensor,
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "mm_weight"
-    if gmm_x_scale is not None:
-        op.input.append(gmm_x_scale.tensor)
-        op.input_desc.add().CopyFrom(gmm_x_scale.desc)
-        op.input_desc[-1].name = "gmm_x_scale"
-    else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "gmm_x_scale"
-    if gmm_weight_scale is not None:
-        op.input.append(gmm_weight_scale.tensor)
-        op.input_desc.add().CopyFrom(gmm_weight_scale.desc)
-        op.input_desc[-1].name = "gmm_weight_scale"
-    else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "gmm_weight_scale"
     if mm_x_scale is not None:
         op.input.append(mm_x_scale.tensor)
         op.input_desc.add().CopyFrom(mm_x_scale.desc)
@@ -84002,11 +83992,11 @@ def AlltoAllvQuantGroupedMatMul(gmm_x: Tensor,
     op.attr["send_counts"].list.i.extend(send_counts)
     op.attr["recv_counts"].list.val_type = 2
     op.attr["recv_counts"].list.i.extend(recv_counts)
+    op.attr["gmm_x_quant_mode"].i = gmm_x_quant_mode
+    op.attr["gmm_weight_quant_mode"].i = gmm_weight_quant_mode
     op.attr["trans_gmm_weight"].b = trans_gmm_weight
     op.attr["trans_mm_weight"].b = trans_mm_weight
     op.attr["permute_out_flag"].b = permute_out_flag
-    op.attr["gmm_x_quant_mode"].i = gmm_x_quant_mode
-    op.attr["gmm_weight_quant_mode"].i = gmm_weight_quant_mode
     op.attr["mm_x_quant_mode"].i = mm_x_quant_mode
     op.attr["mm_weight_quant_mode"].i = mm_weight_quant_mode
     op.attr["group_size"].i = group_size
@@ -84028,19 +84018,19 @@ def AlltoAllvQuantGroupedMatMul(gmm_x: Tensor,
 
 
 # This api is auto-generated from IR QuantGroupedMatMulAlltoAllv
-@auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False, False], [False, False, True, True, True, True, True, True, True, True, True],
-                         inputs_tensor_type=[TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_INDEX_NUMBER,
-                         TensorType.TT_INDEX_NUMBER, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN,
+@auto_convert_to_tensor([False, False, False, False, False, False, False, False, False, False, False], [False, False, False, False, True, True, True, True, True, True, True],
+                         inputs_tensor_type=[TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN,
+                         TensorType.TT_UNKNOWN, TensorType.TT_INDEX_NUMBER, TensorType.TT_INDEX_NUMBER,
                          TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN,
                          TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN])
 def QuantGroupedMatMulAlltoAllv(gmm_x: Tensor, 
                                 gmm_weight: Tensor, 
+                                gmm_x_scale: Tensor, 
+                                gmm_weight_scale: Tensor, 
                                 send_counts_tensor: Optional[Tensor], 
                                 recv_counts_tensor: Optional[Tensor], 
                                 mm_x: Optional[Tensor], 
                                 mm_weight: Optional[Tensor], 
-                                gmm_x_scale: Optional[Tensor], 
-                                gmm_weight_scale: Optional[Tensor], 
                                 mm_x_scale: Optional[Tensor], 
                                 mm_weight_scale: Optional[Tensor], 
                                 comm_quant_scale: Optional[Tensor], 
@@ -84049,28 +84039,28 @@ def QuantGroupedMatMulAlltoAllv(gmm_x: Tensor,
                                 ep_world_size: int, 
                                 send_counts: List[int], 
                                 recv_counts: List[int], 
+                                gmm_x_quant_mode: int, 
+                                gmm_weight_quant_mode: int, 
                                 trans_gmm_weight: bool = False, 
                                 trans_mm_weight: bool = False, 
-                                gmm_x_quant_mode: int = 0, 
-                                gmm_weight_quant_mode: int = 0, 
                                 mm_x_quant_mode: int = 0, 
                                 mm_weight_quant_mode: int = 0, 
                                 comm_quant_mode: int = 0, 
-                                group_size: int = 0, 
-                                comm_quant_dtype: int = 0, 
+                                group_size: int = 0,  
                                 y_dtype: int = 28, 
                                 mm_dtype: int = 28, 
+                                comm_quant_dtype: int = 0,
                                 dependencies=[], 
                                 node_name=None):
     """REG_OP(QuantGroupedMatMulAlltoAllv)\n
     .INPUT(gmm_x, TensorType({DT_FLOAT16, DT_BF16, DT_HIFLOAT8}))\n
     .INPUT(gmm_weight, TensorType({DT_FLOAT16, DT_BF16, DT_HIFLOAT8}))\n
+    .INPUT(gmm_x_scale, TensorType({DT_FLOAT}))\n
+    .INPUT(gmm_weight_scale, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(send_counts_tensor, TensorType({DT_INT32, DT_INT64}))\n
     .OPTIONAL_INPUT(recv_counts_tensor, TensorType({DT_INT32, DT_INT64}))\n
     .OPTIONAL_INPUT(mm_x, TensorType({DT_FLOAT16, DT_BF16, DT_HIFLOAT8}))\n
     .OPTIONAL_INPUT(mm_weight, TensorType({DT_FLOAT16, DT_BF16, DT_HIFLOAT8}))\n
-    .OPTIONAL_INPUT(gmm_x_scale, TensorType({DT_FLOAT}))\n
-    .OPTIONAL_INPUT(gmm_weight_scale, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(mm_x_scale, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(mm_weight_scale, TensorType({DT_FLOAT}))\n
     .OPTIONAL_INPUT(comm_quant_scale, TensorType({DT_FLOAT}))\n
@@ -84080,17 +84070,17 @@ def QuantGroupedMatMulAlltoAllv(gmm_x: Tensor,
     .REQUIRED_ATTR(ep_world_size, Int)\n
     .REQUIRED_ATTR(send_counts, ListInt)\n
     .REQUIRED_ATTR(recv_counts, ListInt)\n
+    .REQUIRED_ATTR(gmm_x_quant_mode, Int, 0)\n
+    .REQUIRED_ATTR(gmm_weight_quant_mode, Int, 0)\n
     .ATTR(trans_gmm_weight, Bool, false)\n
     .ATTR(trans_mm_weight, Bool, false)\n
-    .ATTR(gmm_x_quant_mode, Int, 0)\n
-    .ATTR(gmm_weight_quant_mode, Int, 0)\n
     .ATTR(mm_x_quant_mode, Int, 0)\n
     .ATTR(mm_weight_quant_mode, Int, 0)\n
     .ATTR(comm_quant_mode, Int, 0)\n
     .ATTR(group_size, Int, 0)\n
-    .ATTR(comm_quant_dtype, Int, 0)\n
     .ATTR(y_dtype, Int, 28)\n
     .ATTR(mm_dtype, Int, 28)\n
+    .ATTR(comm_quant_dtype, Int, 0)\n
     """
     op = get_default_ge_graph().op.add()
     op.type = "QuantGroupedMatMulAlltoAllv"
@@ -84107,6 +84097,12 @@ def QuantGroupedMatMulAlltoAllv(gmm_x: Tensor,
     op.input.append(gmm_weight.tensor)
     op.input_desc.add().CopyFrom(gmm_weight.desc)
     op.input_desc[-1].name = "gmm_weight"
+    op.input.append(gmm_x_scale.tensor)
+    op.input_desc.add().CopyFrom(gmm_x_scale.desc)
+    op.input_desc[-1].name = "gmm_x_scale"
+    op.input.append(gmm_weight_scale.tensor)
+    op.input_desc.add().CopyFrom(gmm_weight_scale.desc)
+    op.input_desc[-1].name = "gmm_weight_scale"
     if send_counts_tensor is not None:
         op.input.append(send_counts_tensor.tensor)
         op.input_desc.add().CopyFrom(send_counts_tensor.desc)
@@ -84139,22 +84135,6 @@ def QuantGroupedMatMulAlltoAllv(gmm_x: Tensor,
         op.input.append('')
         op.input_desc.add().CopyFrom(get_invalid_desc())
         op.input_desc[-1].name = "mm_weight"
-    if gmm_x_scale is not None:
-        op.input.append(gmm_x_scale.tensor)
-        op.input_desc.add().CopyFrom(gmm_x_scale.desc)
-        op.input_desc[-1].name = "gmm_x_scale"
-    else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "gmm_x_scale"
-    if gmm_weight_scale is not None:
-        op.input.append(gmm_weight_scale.tensor)
-        op.input_desc.add().CopyFrom(gmm_weight_scale.desc)
-        op.input_desc[-1].name = "gmm_weight_scale"
-    else:
-        op.input.append('')
-        op.input_desc.add().CopyFrom(get_invalid_desc())
-        op.input_desc[-1].name = "gmm_weight_scale"
     if mm_x_scale is not None:
         op.input.append(mm_x_scale.tensor)
         op.input_desc.add().CopyFrom(mm_x_scale.desc)
@@ -84187,17 +84167,17 @@ def QuantGroupedMatMulAlltoAllv(gmm_x: Tensor,
     op.attr["send_counts"].list.i.extend(send_counts)
     op.attr["recv_counts"].list.val_type = 2
     op.attr["recv_counts"].list.i.extend(recv_counts)
-    op.attr["trans_gmm_weight"].b = trans_gmm_weight
-    op.attr["trans_mm_weight"].b = trans_mm_weight
     op.attr["gmm_x_quant_mode"].i = gmm_x_quant_mode
     op.attr["gmm_weight_quant_mode"].i = gmm_weight_quant_mode
+    op.attr["trans_gmm_weight"].b = trans_gmm_weight
+    op.attr["trans_mm_weight"].b = trans_mm_weight
     op.attr["mm_x_quant_mode"].i = mm_x_quant_mode
     op.attr["mm_weight_quant_mode"].i = mm_weight_quant_mode
     op.attr["comm_quant_mode"].i = comm_quant_mode
     op.attr["group_size"].i = group_size
-    op.attr["comm_quant_dtype"].i = comm_quant_dtype
     op.attr["y_dtype"].i = y_dtype
     op.attr["mm_dtype"].i = mm_dtype
+    op.attr["comm_quant_dtype"].i = comm_quant_dtype
 
     # process outputs
     output_index = 0
