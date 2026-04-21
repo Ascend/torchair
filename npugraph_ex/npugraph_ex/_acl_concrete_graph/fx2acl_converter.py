@@ -401,8 +401,14 @@ class AclConcreteGraph(ConcreteGraphBase):
         self._fx_input_names.append(target)
         if is_sym(meta_outputs):
             self._all_sym_input_idx[meta_outputs.node.expr] = len(self._meta_inputs) - 1
-        else:
+        elif isinstance(meta_outputs, torch.Tensor):
             self._all_meta_tensor_input[len(self._meta_inputs) - 1] = meta_outputs
+        else:
+            logger.debug(
+                "Skip non-tensor and non-symint placeholder input %s with meta type %s",
+                target,
+                type(meta_outputs).__name__
+            )
         return meta_outputs
 
     def parse_node(self, target: 'Target', args: Tuple[Argument, ...], kwargs: Dict[str, Any], meta_outputs: Any):
