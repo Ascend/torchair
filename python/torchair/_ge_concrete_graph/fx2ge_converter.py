@@ -669,11 +669,11 @@ def get_or_auto_gen_converter(target):
     else:
         converter = _get_converter(target)
     if converter is not None:
-        logger.debug("Ascend op converter always exists, no need auto-generated")
+        logger.debug(f"The converter for the Ascend operator {target} already exists and does not need to be automatically generated")
         return converter
 
     converter_code = _generate_converter_code(target)
-    logger.info(f"Ascend op converter has auto generated: {converter_code}")
+    logger.info(f"The converter for the Ascend operator {target} has been automatically converted: {converter_code}")
     exec(converter_code)
     converter = target._ge_converter
     return converter

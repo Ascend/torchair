@@ -15,7 +15,7 @@ class ConverterErrorMsg:
         "If your converter is auto-generated, please check if the params of the torch match the AscendIR definition."
     )
 
-    # 不支持OpOverload实例
+    # 不是OpOverload实例
     NOT_OP_OVERLOAD = (
         _AUTO_GENERATED_CONVERTER_HEADER +
         "{target} is not an instance of OpOverload and does not support auto-generate converter."
