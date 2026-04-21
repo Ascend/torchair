@@ -1,5 +1,5 @@
 minimum_pre_commit_version: 4.0.0
-exclude: ^LICENSES/|\.(html|csv|svg)$
+exclude: ^LICENSES/|\.(html|csv|svg)$|^\.gitee/|third_party|proto|codegen
 
 default_stages: [pre-commit]
 ci:
@@ -22,6 +22,7 @@ repos:
       - id: check-merge-conflict
       - id: detect-private-key
       - id: check-json
+
 
   # -------------------------- Python 核心检查 --------------------------
   # Ruff：指定读取 pre-commit/pyproject.toml
