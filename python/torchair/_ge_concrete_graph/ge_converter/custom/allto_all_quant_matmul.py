@@ -198,7 +198,7 @@ def convert_npu_all_to_all_quant_matmul(
                                  f"in mxfp4 quant scene: x1_quant_mode=6 and x2_quant_mode=6, x1 and x2 should be {[ge_type_to_torch_type(d) for d in X_DTYPE_WITH_MXFP4_SUPPORT_LIST]}")
 
         if x1_scale is None:
-            raise RuntimeError(f"In mx quant scene: x1_quant_mode=6 and x2_quant_mode=6, x1_scale cannot be one.")
+            raise RuntimeError(f"In mx quant scene: x1_quant_mode=6 and x2_quant_mode=6, x1_scale cannot be none.")
 
         if x1_scale.dtype in X_SCALE_DTYPE_WITH_MX_SUPPORT_LIST and x2_scale.dtype in X_SCALE_DTYPE_WITH_MX_SUPPORT_LIST:
             if x1_scale_dtype is None:
