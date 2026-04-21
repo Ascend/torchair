@@ -26,7 +26,7 @@ class _ExperimentalConfig(NpuBaseConfig):
         self.enable_view_optimize = OptionValue(True, [True, False])
         self.remove_noop_ops = OptionValue(True, [True, False])
         self.tiling_schedule_optimize = OptionValue(False, [True, False])
-        self.tiling_schedule_optimize_graph = OptionValue(None, [False, True])
+        self.tiling_schedule_optimize_graph = OptionValue(None, [False, True, None])
         self.pattern_fusion_pass = OptionValue(True, [True, False])
         self.aclgraph = _AclGraphExperimentalConfig()
 
