@@ -10,4 +10,4 @@
 
 | 样例名称                     | 样例获取                                                                           |样例介绍|
 |--------------------------|--------------------------------------------------------------------------------|--|
-| 图模式下DeepSeek-R1模型分布式推理样例 | 访问cann-recipes-infer仓中[models/deepseek-r1](https://gitcode.com/cann/cann-recipes-infer/tree/master/models/deepseek-r1)目录，阅读README.md了解详情。                    |该样例介绍了DeepSeek-R1模型迁移、优化、执行过程，详细阐述了各种模型优化方法，如固定KV Cache大小、小算子替换为融合算子等方法。优化后的模型，可供开发者直接进行应用开发，也可为自定义的大模型进行NPU迁移提供参考。|
+| 图模式下DeepSeek-R1模型分布式推理样例 | 访问cann-recipes-infer仓中[models/deepseek-r1](https://gitcode.com/cann/cann-recipes-infer/tree/master/models/deepseek_r1)目录，阅读README.md了解详情。                    |该样例介绍了DeepSeek-R1模型迁移、优化、执行过程，详细阐述了各种模型优化方法，如固定KV Cache大小、小算子替换为融合算子等方法。优化后的模型，可供开发者直接进行应用开发，也可为自定义的大模型进行NPU迁移提供参考。|
