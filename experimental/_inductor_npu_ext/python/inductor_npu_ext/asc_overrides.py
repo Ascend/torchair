@@ -561,8 +561,10 @@ class NPUOverrides(OpOverrides):
 
     @staticmethod
     def constant(value: 'Union[bool, float, int]', dtype: 'torch.dtype') -> T:
-        if dtype == torch.bfloat16:
+        if dtype in (torch.bfloat16, torch.float16):
             dtype = torch.float32
+        if dtype == torch.bool:
+            value = 1 if value else 0
         return ir.constant(repr(value), dtype)
 
     # 调试工具类操作1个
