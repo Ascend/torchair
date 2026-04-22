@@ -4041,6 +4041,25 @@ REG_OP(FusedCausalConv1d)
 
 
 /**
+* @brief Function MaskedCausalConv1d.
+
+* @par Inputs:
+* @li input: Input sequence tensor of shape [S, B, H]. Supports float16, bfloat16.
+* @li weight: Convolution kernel of shape [W, H], W fixed to 3. Same type as input.
+* @li mask: Optional. Boolean mask tensor of shape [B, S]. Positions where mask is False are zeroed in the output. DT_BOOL.
+
+* @par Outputs:
+* @li output: Output sequence tensor. Same shape and type as input.
+*/
+REG_OP(MaskedCausalConv1d)
+   .INPUT(input, TensorType({DT_BF16, DT_FLOAT16}))
+   .INPUT(weight, TensorType({DT_BF16, DT_FLOAT16}))
+   .OPTIONAL_INPUT(mask, TensorType({DT_BOOL}))
+   .OUTPUT(output, TensorType({DT_BF16, DT_FLOAT16}))
+   .OP_END_FACTORY_REG(MaskedCausalConv1d)
+
+
+/**
  * @brief Fusion op of quant all reduce.
  * @par Inputs:
  * two inputs, including:

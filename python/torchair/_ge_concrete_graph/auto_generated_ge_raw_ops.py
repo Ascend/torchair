@@ -148,6 +148,46 @@ def GeluGradV2(dy: Tensor, x: Tensor, *, approximate: str="none", dependencies=[
     )
 
 
+# This api is auto-generated from IR MaskedCausalConv1d
+@auto_convert_to_tensor([False, False, False], [False, False, True])
+def MaskedCausalConv1d(input: Tensor, weight: Tensor, mask: Optional[Tensor], *, dependencies=[], node_name=None):
+    """REG_OP(MaskedCausalConv1d)\n
+.INPUT(input, TensorType({DT_BF16, DT_FLOAT16}))\n
+.INPUT(weight, TensorType({DT_BF16, DT_FLOAT16}))\n
+.OPTIONAL_INPUT(mask, TensorType({DT_BOOL}))\n
+.OUTPUT(output, TensorType({DT_BF16, DT_FLOAT16}))\n
+"""
+
+    # process inputs
+    inputs = {
+        "input": input,
+        "weight": weight,
+        "mask": mask,
+    }
+
+    # process attrs
+    attrs = {
+    }
+
+    # process outputs
+    outputs = [
+    "output",
+    ]
+
+    return ge_op(
+        op_type="MaskedCausalConv1d",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("MaskedCausalConv1d") \
+        .input("input", "DT_BF16, DT_FLOAT16") \
+        .input("weight", "DT_BF16, DT_FLOAT16") \
+        .optional_input("mask", "DT_BOOL") \
+        .output("output" , "DT_BF16, DT_FLOAT16")
+    )
+
+
 # This api is auto-generated from IR FusedCausalConv1d
 @auto_convert_to_tensor([False, False, False, False, False, False, False, False], [False, False, False, True, True, True, True, True])
 def FusedCausalConv1d(x: Tensor, weight: Tensor, conv_states: Tensor, query_start_loc: Optional[Tensor], cache_indices: Optional[Tensor], initial_state_mode: Optional[Tensor], bias: Optional[Tensor], num_accepted_tokens: Optional[Tensor], *, activation_mode: int=0, pad_slot_id: int=-1, run_mode: int=0, residual_connection: int=0, dependencies=[], node_name=None):
