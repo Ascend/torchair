@@ -23,8 +23,8 @@ NPU 硬件资源：
   - 48 个 AIVEC（AI Vector Core，默认值，可通过 --aivec-total 修改）
 
 死锁场景：
-  若一个 task 的 schemMode=1，代表它必须等到 numBlocks 个对应的核全部空闲后才能
-  "一次性"获取所有核并启动。当多个 stream 上的通信算子（schemMode=1）同时处于
+  若一个 task 的 Schem Mode=1，代表它必须等到 Numblocks 个对应的核全部空闲后才能
+  "一次性"获取所有核并启动。当多个 stream 上的通信算子（Schem Mode=1）同时处于
   ready 状态，且它们所需的 AIVEC 核数之和超过硬件总数时，NPU 调度器无法同时满足
   所有任务的资源申请，导致死锁（每个任务都在等对方释放核，但谁都无法启动）。
 
@@ -34,9 +34,9 @@ NPU 硬件资源：
   - 名称含 "combine"
 
 AIVEC 占用计算：
-  - KERNEL_AIVEC   : numBlocks 个 AIVEC
-  - KERNEL_MIX_AIV : numBlocks 个 AIVEC（Task Ration 字段对此类型无效）
-  - KERNEL_MIX_AIC : Task Ration=0 → 0 AIVEC；Task Ration=1/2 → numBlocks×2 AIVEC
+  - KERNEL_AIVEC   : Numblocks 个 AIVEC
+  - KERNEL_MIX_AIV : Numblocks 个 AIVEC（Task Ration 字段对此类型无效）
+  - KERNEL_MIX_AIC : Task Ration=0 → 0 AIVEC；Task Ration=1/2 → Numblocks×2 AIVEC
   - KERNEL_AICORE  : 0 AIVEC
 
 死锁判定条件：两个并发通信算子的 AIVEC 之和 严格大于 aivec_total。
@@ -266,15 +266,15 @@ def _calc_aivec(task: dict) -> int:
     Calculate the number of AIVEC cores occupied by a task.
 
     Rules:
-      KERNEL_AIVEC   : numBlocks
-      KERNEL_MIX_AIV : numBlocks  (Task Ration has no effect for this type)
-      KERNEL_MIX_AIC : Task Ration == 0 -> 0; else numBlocks * 2
+      KERNEL_AIVEC   : Numblocks
+      KERNEL_MIX_AIV : Numblocks  (Task Ration has no effect for this type)
+      KERNEL_MIX_AIC : Task Ration == 0 -> 0; else Numblocks * 2
       KERNEL_AICORE  : 0
       others         : 0
     """
     args = task.get("args", {})
     task_type = args.get("Task Type", "")
-    num_blocks = args.get("numBlocks", 0)
+    num_blocks = args.get("Numblocks", 0)
     task_ration = args.get("Task Ration", -1)
 
     if task_type == "KERNEL_AIVEC":
@@ -460,7 +460,7 @@ def _are_concurrent(vc, stream_index, stream_a, pos_a, stream_b, pos_b) -> bool:
 def _find_deadlock_tasks(stream_tasks: dict, vc: dict, stream_index: dict,
                         aivec_total: int) -> list:
     """
-    Find all pairs of concurrent communication tasks (schemMode=1) from different
+    Find all pairs of concurrent communication tasks (Schem Mode=1) from different
     streams whose combined AIVEC usage strictly exceeds aivec_total.
 
     Returns a list of (task_a, task_b) dicts representing conflicting pairs.
@@ -473,7 +473,7 @@ def _find_deadlock_tasks(stream_tasks: dict, vc: dict, stream_index: dict,
         cands = []
         for pos, task in enumerate(stream_tasks[s]):
             args = task.get("args", {})
-            if args.get("schemMode") != 1:
+            if args.get("Schem Mode") != 1:
                 continue
             if not _is_comm_task(task["name"]):
                 continue
