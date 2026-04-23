@@ -3,8 +3,8 @@
 set -e
 set -o pipefail
 
-rm -rf build
-mkdir build
+if [!-d build ]; then
+   mkdir build
 cd build
 
 git submodule update --init --recursive
