@@ -256,7 +256,7 @@ Status StaticNpuGraphExecutor::Run(const std::vector<c10::optional<at::Tensor>> 
     TNG_RETURN_IF_ERROR(AllocAndSetConstMemory(stream));
     first_stream_ = stream;
   } else {
-    TNG_ASSERT(first_stream_ == stream, "Unsupport run graph with different stream.");
+    TNG_ASSERT(first_stream_ == stream, "Unsupported run graph with different stream.");
   }
   TNG_RETURN_IF_ERROR(AllocAndUpdateFeatureMemory(stream));
 

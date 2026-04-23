@@ -25,7 +25,7 @@ tng::Status GetAclCompileopt(aclCompileOpt opt, std::string& val, std::string op
     char value[opt_size];
     auto acl_ret = aclGetCompileopt(opt, value, opt_size);
     if (acl_ret == ACL_ERROR_API_NOT_SUPPORT) {
-      TNG_LOG(WARNING) << "ACL get compile opt, " << optName << " unsupport, opt size " << opt_size;
+      TNG_LOG(WARNING) << "ACL get compile opt, " << optName << " unsupported, opt size " << opt_size;
       return tng::Status::Success();
     }
     TNG_ASSERT(acl_ret == ACL_SUCCESS, "ACL get compile opt failed, return %d", acl_ret);
@@ -106,7 +106,7 @@ tng::Status CheckNetOutputShape(const std::vector<std::vector<int64_t>> &output_
   TNG_LOG(DEBUG) << "--------";
   TNG_LOG(DEBUG) << "Ascend GE graph NetOutput shapes is : " << tng::DebugString(output_ge_shapes);
   if (output_shapes.size() != output_ge_shapes.size()) {
-    return tng::Status::Error("The number of Ascend GE graph NetOutput: %d is not equal to FX graph NetOutput: %d. "
+    return tng::Status::Error("The number of Ascend GE graph NetOutput: %zu is not equal to FX graph NetOutput: %zu. "
         "FX graph NetOutput shapes is : [%s], Ascend GE graph NetOutput shapes is : [%s]", output_ge_shapes.size(), output_shapes.size(),
         tng::DebugString(output_shapes).c_str(), tng::DebugString(output_ge_shapes).c_str());
   }
@@ -140,7 +140,7 @@ tng::Status CheckNetOutDtypes(const std::vector<ge::DataType> &output_dtypes, co
   TNG_LOG(DEBUG) << "FX graph NetOutput dtypes is : " << tng::DebugString(output_dtypes);
   TNG_LOG(DEBUG) << "Ascend GE graph NetOutput dtypes is : " << tng::DebugString(output_ge_dtypes);
   if (output_dtypes.size() != output_ge_dtypes.size()) {
-    return tng::Status::Error("The size of Ascend GE graph NetOutput dtypes: %d is not equal to FX graph NetOutput dtypes: %d. "
+    return tng::Status::Error("The size of Ascend GE graph NetOutput dtypes: %zu is not equal to FX graph NetOutput dtypes: %zu. "
         "FX graph NetOutput dtypes is : %s, Ascend GE graph NetOutput dtypes is : %s", output_ge_dtypes.size(), output_dtypes.size(),
         tng::DebugString(output_dtypes).c_str(), tng::DebugString(output_ge_dtypes).c_str());
   }
@@ -153,7 +153,7 @@ tng::Status CheckNetOutDtypes(const std::vector<ge::DataType> &output_dtypes, co
                        << tng::DebugString(output_dtypes[i]).c_str() << "]";
         continue ;
       }
-      return tng::Status::Error("The dtype in num[%d] net output of Ascend output: [%s] is not equal to FX graph NetOutput: [%s]. "
+      return tng::Status::Error("The dtype in num[%zu] net output of Ascend output: [%s] is not equal to FX graph NetOutput: [%s]. "
           "FX graph NetOutput dtypes is : %s, Ascend GE graph NetOutput dtypes is : %s", i, tng::DebugString(output_ge_dtypes[i]).c_str(),
           tng::DebugString(output_dtypes[i]).c_str(), tng::DebugString(output_dtypes).c_str(), tng::DebugString(output_ge_dtypes).c_str());
     }

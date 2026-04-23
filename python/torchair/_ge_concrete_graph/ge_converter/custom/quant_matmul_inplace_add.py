@@ -7,6 +7,7 @@ import torch
 from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
 from torchair.ge._ge_graph import Tensor, TensorSpec
+from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
 from torchair.ge._ge_graph import DataType, torch_dtype_value_to_ge_proto_type, torch_dtype_value_to_ge_type
@@ -15,7 +16,7 @@ from torchair.ge._ge_graph import dont_prune_me
 
 
 def check_and_set_group_size(group_sizes):
-    group_max = 65535 # group_m, group_n, group_k各占16位，组成64位group_siz, 因此每个值不能超过65535(16位的最大值)
+    group_max = GROUP_SIZE_MAX_VALUE # group_m, group_n, group_k各占16位，组成64位group_siz, 因此每个值不能超过65535(16位的最大值)
     if(len(group_sizes) != 3):
         raise RuntimeError("group_size must be a list with 3 elements, actual group_sizes is " + str(group_sizes))
     group_m = group_sizes[0]

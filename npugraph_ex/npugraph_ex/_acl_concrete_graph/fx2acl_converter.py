@@ -445,7 +445,7 @@ class AclConcreteGraph(ConcreteGraphBase):
         """
         if not (isinstance(args, (list, tuple)) and len(args) == 1):
             raise RuntimeError(f"Unsupported case in AclGraph: for output node with args: [{args}]. "
-                               f"Args must be list or a tuple, and the length of args must be euqal to 1.")
+                               f"Args must be list or a tuple, and the length of args must be equal to 1.")
         args = args[0]
         # args is tuple or list
         output_idx = 0

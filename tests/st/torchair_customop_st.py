@@ -339,7 +339,7 @@ class CustomOpSt(unittest.TestCase):
                                    runtime_optional_attrs=("attr2",))
 
         self.assertEqual(error_msg,
-                         f"optype TestV1 unsupport optional input [x4], optional attr [], "
+                         f"optype TestV1 unsupported optional input [x4], optional attr [], "
                          f"please upgrade cann version.")
 
         # 新PTA + 老cann， 可选attr不是默认值
@@ -348,7 +348,7 @@ class CustomOpSt(unittest.TestCase):
                                    runtime_optional_attrs=("attr2", "attr3"))
 
         self.assertEqual(error_msg,
-                         f"optype TestV1 unsupport optional input [], optional attr [attr3], "
+                         f"optype TestV1 unsupported optional input [], optional attr [attr3], "
                          f"please upgrade cann version.")
 
     def test_ir_def(self):
@@ -472,7 +472,7 @@ class CustomOpSt(unittest.TestCase):
         error_msg = _torchair.check_cann_compat(
             "TestV1", ["inputname"], ["attr2"])
         self.assertEqual(error_msg,
-                         f"optype TestV1 unsupport optional input [inputname], optional attr [], "
+                         f"optype TestV1 unsupported optional input [inputname], optional attr [], "
                          f"please upgrade cann version.")
 
     def test_upsample_nearest2d_decomposition_adjust_dynamic(self):

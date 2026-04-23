@@ -187,7 +187,7 @@ def normalize_reduceop_type(op):
         elif norm_op == 'PRODUCT':
             ge_reduceop_type = 'prod'
         else:
-            raise ValueError(f'ge unsupport reduce type {norm_op}')
+            raise ValueError(f'ge unsupported reduce type {norm_op}')
     else:
         raise ValueError(f'Invalid reduce operation {norm_op}')
     return ge_reduceop_type

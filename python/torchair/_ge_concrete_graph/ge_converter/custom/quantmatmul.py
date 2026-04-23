@@ -121,7 +121,7 @@ def conveter_npu_npu_quant_matmul(
         if trans_x2:
             x2 = ge.Transpose(x2, perm)
 
-    group_max = 65535 # 65535是指group_size中的值最大不能超过16位可表示的范围
+    group_max = GROUP_SIZE_MAX_VALUE # 65535是指group_size中的值最大不能超过16位可表示的范围
     group_size = 0
     if group_sizes is not None and isinstance(group_sizes, List):
         if(len(group_sizes) != 3):
@@ -130,9 +130,9 @@ def conveter_npu_npu_quant_matmul(
         group_n = group_sizes[1]
         group_k = group_sizes[2]
         if (group_m > group_max or group_n > group_max or group_k > group_max):
-            raise RuntimeError("group_size can't large than 65535, actual group_sizes is " + str(group_sizes))
+            raise RuntimeError("group_size can't larger than 65535, actual group_sizes is " + str(group_sizes))
         if (group_m < 0 or group_n < 0 or group_k < 0):
-            raise RuntimeError("group_size can't small than 0, actual group_sizes is " + str(group_sizes))
+            raise RuntimeError("group_size can't smaller than 0, actual group_sizes is " + str(group_sizes))
         group_size = (group_m << 32) + (group_n << 16) + group_k
         if is_a8w4:
             group_size = group_k

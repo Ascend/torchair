@@ -119,7 +119,7 @@ Status MutiGearNpuGraphExecutor::AssembleInputsInner(const std::vector<const at:
                  ge::GetFormatName(ge::Format(at_npu::native::get_npu_format(*inputs[i]))));
       TNG_RETURN_IF_ERROR(AtNpuTensorToGeTensor(*inputs[i], input_holders[i]));
     } else {
-      TNG_ASSERT(input_gears_[i].empty(), "CPU tensor unsupport set gears");
+      TNG_ASSERT(input_gears_[i].empty(), "CPU tensor unsupported set gears");
       auto host_input_holder = at::empty((*inputs[i]).sizes(), (*inputs[i]).options().device(at::kPrivateUse1));
       size_t dst_size = static_cast<size_t>(host_input_holder.numel() * host_input_holder.element_size());
       size_t src_size = static_cast<size_t>((*inputs[i]).numel() * (*inputs[i]).element_size());
@@ -159,7 +159,7 @@ Status MutiGearNpuGraphExecutor::UpdateInputsInner(const std::vector<const at::T
       }
       TNG_RETURN_IF_ERROR(AssembleDataToGe(*inputs[i], input_holders[i]));
     } else {
-      TNG_ASSERT(input_gears_[i].empty(), "CPU tensor unsupport set gears");
+      TNG_ASSERT(input_gears_[i].empty(), "CPU tensor unsupported set gears");
       if (host_input_holders_[i].second.first > 0) {
         TNG_RETURN_IF_ERROR(H2DMemcpy(host_input_holders_[i].first.data_ptr(), host_input_holders_[i].second.second,
                                       (*inputs[i]).data_ptr(), host_input_holders_[i].second.first, first_stream_));
@@ -184,7 +184,7 @@ Status MutiGearNpuGraphExecutor::Run(const std::vector<c10::optional<at::Tensor>
     TNG_RETURN_IF_ERROR(AllocAndSetConstMemory(stream));
     first_stream_ = stream;
   } else {
-    TNG_ASSERT(first_stream_ == stream, "Unsupport run graph with different stream.");
+    TNG_ASSERT(first_stream_ == stream, "Unsupported run graph with different stream.");
   }
   TNG_RETURN_IF_ERROR(AllocAndUpdateFeatureMemory(stream));
 

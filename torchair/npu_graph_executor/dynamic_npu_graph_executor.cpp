@@ -221,7 +221,7 @@ Status DynamicNpuGraphExecutor::Run(const std::vector<c10::optional<at::Tensor>>
     }
     first_stream_ = stream;
   } else {
-    TNG_ASSERT(first_stream_ == stream, "Unsupport run graph with different stream.");
+    TNG_ASSERT(first_stream_ == stream, "Unsupported run graph with different stream.");
   }
 
   static bool enable_load_execute_graph =

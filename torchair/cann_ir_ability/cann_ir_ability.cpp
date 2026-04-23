@@ -42,7 +42,7 @@ std::string CheckCannCompat(const std::string &optype, const std::vector<std::st
   }
 
   std::ostringstream error_stream;
-  error_stream << "optype " << optype << " unsupport optional input [";
+  error_stream << "optype " << optype << " unsupported optional input [";
   if (!unsupport_optional_input.str().empty()) {
     error_stream << unsupport_optional_input.str();
   }

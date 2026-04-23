@@ -34,7 +34,7 @@ tng::Status ParseListOptionalTensors(PyObject *obj, std::vector<c10::optional<at
       continue;
     }
     if (!THPVariable_CheckExact(iobj)) {
-      return tng::Status::Error("element %ld is not a Tensor", idx);
+      return tng::Status::Error("element %zd is not a Tensor", idx);
     }
     tensors.emplace_back(THPVariable_Unpack(iobj));
   }
@@ -64,10 +64,10 @@ tng::Status ParseListTensors(PyObject *obj, std::vector<at::Tensor> &tensors) {
   for (long idx = 0; idx < size; idx++) {
     PyObject *iobj = tuple ? PyTuple_GET_ITEM(obj, idx) : PyList_GET_ITEM(obj, idx);
     if (iobj == Py_None) {
-      return tng::Status::Error("element %ld is None", idx);
+      return tng::Status::Error("element %zd is None", idx);
     }
     if (!THPVariable_CheckExact(iobj)) {
-      return tng::Status::Error("element %ld is not a Tensor", idx);
+      return tng::Status::Error("element %zd is not a Tensor", idx);
     }
     tensors.emplace_back(THPVariable_Unpack(iobj));
   }
@@ -84,10 +84,10 @@ tng::Status ParseListTensors(PyObject *obj, std::vector<const at::Tensor*> &tens
   for (long idx = 0; idx < size; idx++) {
     PyObject *iobj = tuple ? PyTuple_GET_ITEM(obj, idx) : PyList_GET_ITEM(obj, idx);
     if (iobj == Py_None) {
-      return tng::Status::Error("element %ld is None", idx);
+      return tng::Status::Error("element %zd is None", idx);
     }
     if (!THPVariable_CheckExact(iobj)) {
-      return tng::Status::Error("element %ld is not a Tensor", idx);
+      return tng::Status::Error("element %zd is not a Tensor", idx);
     }
     tensors.emplace_back(&(THPVariable_Unpack(iobj)));
   }

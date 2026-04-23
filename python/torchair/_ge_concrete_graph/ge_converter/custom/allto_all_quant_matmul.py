@@ -250,9 +250,9 @@ def convert_npu_all_to_all_quant_matmul(
         group_n = group_sizes[1]
         group_k = group_sizes[2]
         if (group_m > GROUP_SIZE_MAX_VALUE or group_n > GROUP_SIZE_MAX_VALUE or group_k > GROUP_SIZE_MAX_VALUE):
-            raise RuntimeError("The group_size can't large than {GROUP_SIZE_MAX_VALUE}, actual group_sizes is " + str(group_sizes))
+            raise RuntimeError("The group_size can't larger than {GROUP_SIZE_MAX_VALUE}, actual group_sizes is " + str(group_sizes))
         if (group_m < 0 or group_n < 0 or group_k < 0):
-            raise RuntimeError("The group_size can't small than 0, actual group_sizes is " + str(group_sizes))
+            raise RuntimeError("The group_size can't smaller than 0, actual group_sizes is " + str(group_sizes))
         group_size = (group_m << 32) + (group_n << 16) + group_k
 
     (out, all2all_out) = ge.AlltoAllMatmul(x1=x1,

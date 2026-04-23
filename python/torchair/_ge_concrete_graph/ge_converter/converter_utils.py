@@ -29,3 +29,4 @@ from torchair._ge_concrete_graph.ge_ir_pb2 import DataType as ProtoDataType
 from torchair._utils.check_platform import is_arch35
 from torchair.core.utils import logger
 from torchair.ge.ge_custom import custom_op
+GROUP_SIZE_MAX_VALUE = 65535

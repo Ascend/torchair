@@ -1370,7 +1370,7 @@ class GeConcreteGraph(ConcreteGraphBase):
             Any: Processed output data for the graph.
         """        
         if not (isinstance(args, (list, tuple)) and len(args) == 1):
-            raise AssertionError("The input args must be list or a tuple, and the length of args must be euqal to 1")
+            raise AssertionError("The input args must be list or a tuple, and the length of args must be equal to 1")
         args = args[0]
         for arg in args:
             arg = arg.npu if isinstance(arg, ValuePack) else arg
@@ -1717,7 +1717,7 @@ class GeConcreteGraph(ConcreteGraphBase):
             if isinstance(func, _TensorInput):
                 continue
             if enable_cache and isinstance(func, _RngStatusInput):
-                raise AssertionError(f"Cache compile dose not support operator that depend on RNG, input index: {idx}.")
+                raise AssertionError(f"Cache compile does not support operator that depend on RNG, input index: {idx}.")
             input_code.writeline(func.codegen(idx, 'ge_inputs'))
         return input_code.getvalue()
 

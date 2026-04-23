@@ -306,7 +306,7 @@ Status Session::FastLoadGraph(uint32_t graph_id, const std::map<ge::AscendString
                               void *stream) {
   RECORD_FUNCTION("LoadGraph", {});
   TNG_RETURN_IF_ERROR(EnsureInitialized());
-  TNG_ASSERT_NOTNULL(fast_load_graph_, "FastLoadGraph is unsupported, please dont use it in current cann version.");
+  TNG_ASSERT_NOTNULL(fast_load_graph_, "FastLoadGraph is unsupported, please don't use it in current cann version.");
   TNG_LOG(DEBUG) << "Start to session load graph " << graph_id <<", load options:";
   for (const auto &opt : option) {
     TNG_LOG(DEBUG) << "  " << opt.first.GetString() << ": " << opt.second.GetString();
@@ -322,7 +322,7 @@ Status Session::FastExecuteGraph(uint32_t graph_id, const std::vector<gert::Tens
   RECORD_FUNCTION("ExecuteGraph", {});
   TNG_RETURN_IF_ERROR(EnsureInitialized());
   TNG_ASSERT_NOTNULL(fast_execute_graph_async_,
-                     "FastExecuteGraph is unsupported, please dont use it in current cann version.");
+                     "FastExecuteGraph is unsupported, please don't use it in current cann version.");
   TNG_LOG(DEBUG) << "Start to session execute graph " << graph_id;
 
   TNG_ASSERT_GE_OK(fast_execute_graph_async_(*global_ge_session, graph_id, stream, inputs, outputs));
@@ -335,8 +335,8 @@ Status Session::GeGetRegisteredIrDef(const char *op_type,
                               std::vector<std::pair<ge::AscendString, ge::AscendString>> &attrs) {
   TNG_RETURN_IF_ERROR(EnsureInitialized());
   TNG_ASSERT_NOTNULL(get_registered_ir_def_,
-                     "GetRegisteredIrDef is unsupported, please dont use it in current cann version.");
-  TNG_LOG(DEBUG) << "Start to get registeref ir " << op_type;
+                     "GetRegisteredIrDef is unsupported, please don't use it in current cann version.");
+  TNG_LOG(DEBUG) << "Start to get registered ir " << op_type;
   ge::Status status = get_registered_ir_def_(op_type, inputs, outputs, attrs);
   if (status != ge::SUCCESS) {
     return Status::Error("Can not get %s ir def", op_type);
@@ -367,7 +367,7 @@ Status Session::GraphDebugJSONPrint(uint32_t graph_id, uint32_t flags, ge::Ascen
   RECORD_FUNCTION("GraphDebugJSONPrint", {});
   TNG_RETURN_IF_ERROR(EnsureInitialized());
   TNG_ASSERT_NOTNULL(graph_debug_json_print_,
-    "GraphDebugJSONPrint is unsupported, please dont use it in current cann version.");
+    "GraphDebugJSONPrint is unsupported, please don't use it in current cann version.");
   TNG_LOG(DEBUG) << "Start to session GraphDebugJSONPrint " << graph_id;
   TNG_ASSERT_GE_OK(graph_debug_json_print_(*global_ge_session, graph_id, flags, json_result));
   TNG_LOG(INFO) << "Success to GraphDebugJSONPrint, graph id :" << graph_id;

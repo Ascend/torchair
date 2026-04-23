@@ -21,7 +21,7 @@ def conveter_aten_threshold_backward_default(
     if isinstance(threshold, Tensor):
         raise RuntimeError("torch.ops.aten.threshold_backward is not implemented while threshold is Tensor!")
 
-    # Suggest a high-performance implementation when threshold is euqal to zero.
+    # Suggest a high-performance implementation when threshold is equal to zero.
     if threshold == 0.:
         return ge.ReluGrad(grad_output, self)
     

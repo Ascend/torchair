@@ -13,7 +13,7 @@ def conveter_aten__scaled_dot_product_flash_attention_default(
     scale: Optional[float] = None,
     meta_outputs: TensorSpec = None
 ):
-    """NB: aten::_scaled_dot_product_flash_attention(Tensor query, Tensor key, Tensor value, float dropout_p=0., bool is_causal=False, bool return_debug_mask=False, *, float? scale=None) -> (Tensor ouput, Tensor logsumexp, Tensor cum_seq_q, Tensor cum_seq_k, int max_q, int max_k, Tensor philox_seed, Tensor philox_offset, Tensor debug_attn_mask)"""
+    """NB: aten::_scaled_dot_product_flash_attention(Tensor query, Tensor key, Tensor value, float dropout_p=0., bool is_causal=False, bool return_debug_mask=False, *, float? scale=None) -> (Tensor output, Tensor logsumexp, Tensor cum_seq_q, Tensor cum_seq_k, int max_q, int max_k, Tensor philox_seed, Tensor philox_offset, Tensor debug_attn_mask)"""
     raise NotImplementedError(
         "torch.ops.aten._scaled_dot_product_flash_attention.default ge_converter is not implemented!"
     )

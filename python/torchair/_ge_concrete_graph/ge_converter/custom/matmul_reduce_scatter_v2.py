@@ -21,6 +21,7 @@ from torchair._ge_concrete_graph import ge_apis as ge
 from torchair._ge_concrete_graph.fx2ge_converter import declare_supported, register_fx_node_ge_converter
 from torchair.ge._ge_graph import Tensor, TensorSpec, DataType, torch_dtype_value_to_ge_proto_type, \
     torch_dtype_value_to_ge_type, ge_type_to_torch_type, _ge_dtype_to_ge_proto_dtype
+from torchair._ge_concrete_graph.ge_converter.converter_utils import *
 from torchair._ge_concrete_graph.supported_declaration import _TypedTensor, F32, F16, F64, I32, I16, I64, I8, U8, BOOL, \
     Support
 
@@ -90,7 +91,7 @@ def convert_npu_quant_mm_reduce_scatter(
                                             int? x1_dtype=None, int? x2_dtype=None, int? x1_scale_dtype=None,
                                             int? x2_scale_dtype=None) -> (Tensor, Tensor)'''
     check_dtype(self, x2, y_dtype=y_dtype)
-    group_max = 65535 # 65535是指group_size中的值最大不能超过16位可表示的范围
+    group_max = GROUP_SIZE_MAX_VALUE # 65535是指group_size中的值最大不能超过16位可表示的范围
     group_size = 0
     if group_sizes is not None and isinstance(group_sizes, List):
         if(len(group_sizes) != 3):
@@ -99,9 +100,9 @@ def convert_npu_quant_mm_reduce_scatter(
         group_n = group_sizes[1]
         group_k = group_sizes[2]
         if (group_m > group_max or group_n > group_max or group_k > group_max):
-            raise RuntimeError("group_size can't large than 65535, actual group_sizes is " + str(group_sizes))
+            raise RuntimeError("group_size can't larger than 65535, actual group_sizes is " + str(group_sizes))
         if (group_m < 0 or group_n < 0 or group_k < 0):
-            raise RuntimeError("group_size can't small than 0, actual group_sizes is " + str(group_sizes))
+            raise RuntimeError("group_size can't smaller than 0, actual group_sizes is " + str(group_sizes))
         group_size = (group_m << 32) + (group_n << 16) + group_k
     output_dtype = self.dtype if y_dtype is None else torch_dtype_value_to_ge_type(y_dtype)
     if(self.dtype == DataType.DT_FLOAT16 or self.dtype == DataType.DT_BF16):

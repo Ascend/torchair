@@ -81,7 +81,7 @@ Status AssembleStorageShapeToGe(const at::Tensor &tensor, ge::Tensor &ge_tensor)
   if (tensor.device().is_privateuseone()) {
     const bool is_base_format = IsBaseFormat(ge_tensor.GetFormat());
     TNG_ASSERT(is_base_format || (tensor.storage_offset() == 0),
-               "Invalid at::tensor with internal format and offset is %lld.", tensor.storage_offset());
+               "Invalid at::tensor with internal format and offset is %PRId64.", tensor.storage_offset());
 
     if (is_base_format) {
       TNG_RETURN_IF_ERROR(AssembleDimsToShape(tensor.sizes(), ge_tensor));
@@ -100,7 +100,7 @@ Status AssembleStorageShapeToGe(const at::Tensor &tensor, gert::Tensor &ge_tenso
   if (tensor.device().is_privateuseone()) {
     const bool is_base_format = IsBaseFormat(ge_tensor.GetStorageFormat());
     TNG_ASSERT(is_base_format || (tensor.storage_offset() == 0),
-               "Invalid at::tensor with internal format and offset is %lld.", tensor.storage_offset());
+               "Invalid at::tensor with internal format and offset is %PRId64.", tensor.storage_offset());
 
     if (!is_base_format) {
       const std::vector<int64_t> &storage_sizes = at_npu::native::get_npu_storage_sizes(tensor);
