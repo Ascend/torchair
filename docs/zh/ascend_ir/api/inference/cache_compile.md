@@ -40,7 +40,7 @@ cache_compile(func, *, config: Optional[CompilerConfig] = None, backend: Optiona
 - cache_dir参数使用约束：
     - 请确保该参数指定的路径确实存在，并且运行用户具有读、写操作权限。
     - 若编译缓存的模型涉及多机多卡，缓存路径包含集合通信相关的world\_size以及global\_rank信息，缓存文件路径为`{work_dir}/{cache_dir}/{model_info}/world{world_size}global_rank{global_rank}/{func}/`。
-    - `{model_info}`里会自动增加"aclgraphcache"关键词。
+    - `{model_info}`里会自动增加aclgraphcache关键词。
 
 - ge_cache参数使用约束：
     - 仅GE图模式场景（max-autotune）支持ge_cache参数。

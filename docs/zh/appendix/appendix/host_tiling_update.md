@@ -1,4 +1,4 @@
-# npugraph_ex场景下Host Tilling参数刷新功能介绍
+# npugraph_ex场景下Host Tiling参数刷新功能介绍
 
 ## 功能简介
 
