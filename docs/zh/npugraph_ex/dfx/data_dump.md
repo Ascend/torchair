@@ -64,8 +64,7 @@ class Model(torch.nn.Module):
 x0 = torch.randn([10, 10]).npu()
 x1 = torch.randn([10, 10]).npu()
 model = Model()
-model = torch.compile(model, backend="npugraph_ex"
-)
+model = torch.compile(model, backend="npugraph_ex")
 output = model(x0, x1)
 
 ```
