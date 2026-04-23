@@ -83323,7 +83323,6 @@ def DynamicMxQuantWithDualAxis(x: Tensor,
                                round_mode: str = "rint",
                                dst_type: int = 40,
                                scale_alg: int = 0,
-                               dst_type_max: float = 0.0,
                                dependencies=[],
                                node_name=None):
     """REG_OP(DynamicMxQuantWithDualAxis)\n
@@ -83335,7 +83334,6 @@ def DynamicMxQuantWithDualAxis(x: Tensor,
     .ATTR(round_mode, String, "rint")\n
     .ATTR(dst_type, Int, DT_FLOAT4_E2M1)\n
     .ATTR(scale_alg, Int, 0)\n
-    .ATTR(dst_type_max, Float, 0.0)\n
     """
     op = get_default_ge_graph().op.add()
     op.type = "DynamicMxQuantWithDualAxis"
@@ -83354,7 +83352,6 @@ def DynamicMxQuantWithDualAxis(x: Tensor,
     op.attr["round_mode"].s = compat_as_bytes(round_mode)
     op.attr["dst_type"].i = dst_type
     op.attr["scale_alg"].i = scale_alg
-    op.attr["dst_type_max"].f = dst_type_max
 
     # process outputs
     output_index = 0
