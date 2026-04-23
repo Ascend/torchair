@@ -38,7 +38,7 @@ cache_compile(func, *, dynamic: bool = True, cache_dir: Optional[str] = None, gl
 - cache\_dir参数使用约束：
     - 请确保该参数指定的路径真实存在，并且运行用户具有读取和写入权限。
     - 若编译缓存的模型涉及多机多卡，缓存路径包含集合通信相关的world\_size以及global\_rank信息，缓存文件路径为`$\{work\_dir\}/$\{cache\_dir\}/$\{model\_info\}/world$\{world\_size\}global\_rank$\{global\_rank\}/$\{func\}/`。
-    - $\{model\_info\}里会自动增加"aclgraphcache"关键词。
+    - $\{model\_info\}里会自动增加aclgraphcache关键词。
 
 ## 调用示例
 

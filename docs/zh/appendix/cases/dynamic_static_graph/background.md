@@ -7,7 +7,7 @@
 模型的编译流程如下图所示，脚本执行经过Dynamo编译、TorchAir图优化和GE图编译，最终编译生成GE build图。Dynamo编译后的图称为FX原图，TorchAir优化后的图称为GE原图，GE图编译之后的图称为GE build图。
 
 **图 1**  模型编译流程  
-![](../../../figures/model_complie.png "模型编译流程")
+![](../../../figures/model_compile.png "模型编译流程")
 
 无论是FX图还是GE图，均区分动态图和静态图。本文将深入介绍**Dynamo和GE中的动/静态图概念**，并介绍TorchAir和GE组件的衔接。
 
@@ -24,6 +24,6 @@
 3. Converter后FX图优化：如死节点消除、符号输入转换为ge.Data等。
 4. 优化后的图，经过反序列化加载得到GE Model对象。
 5. 首次执行，触发向GE Session添加graph的动作。
-6. 首次执行，触发向GE Session的graph的编译动作。
+6. 首次执行，触发对GE Session中的graph编译动作。
 7. TorchAir根据编译结果，生成对应的Executor执行器。
 8. 调用GE图执行接口，如ExecuteGraphWithStreamAsync。

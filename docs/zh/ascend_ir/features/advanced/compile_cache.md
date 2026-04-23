@@ -288,7 +288,7 @@ x.is_prompt = False
 res_decode = model(x, kv)
 ```
 
-配置ge\_cache=True后，缓存编译结果路径与封装的func函数缓存文件路径一致，即$\{work\_dir\}/$\{cache\_dir\}/$\{model\_info\}/$\{func\}，注意此时缓存路径中的模型信息$\{model\_info\}里会自动增加“**ge\_cache**”关键词。  
+配置ge\_cache=True后，缓存编译结果路径与封装的func函数缓存文件路径一致，即$\{work\_dir\}/$\{cache\_dir\}/$\{model\_info\}/$\{func\}，注意此时缓存路径中的模型信息$\{model\_info\}里会自动增加ge\_cache关键词。  
  
 缓存的编译结果文件包括：
 
