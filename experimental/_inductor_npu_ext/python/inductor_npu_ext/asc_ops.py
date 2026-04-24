@@ -304,6 +304,14 @@ def bitwise_and(x1, x2):
 
 
 @asc_ops
+def pow(x1, x2):
+    op = Op("Pow")
+    op.x1 = x1
+    op.x2 = x2
+    return op.y
+
+
+@asc_ops
 def where(x1, x2, x3):
     op = Op("Where")
     op.x1 = x1

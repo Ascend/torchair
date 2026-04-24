@@ -19,7 +19,7 @@ class _NpuInductorKernel:
 
     def __init__(self, wrapper, kernel=None):
         kernel = kernel if kernel is not None else wrapper.replace("wrapper.so", "kernel.so")
-        self.name = self.get_kernel_name(os.path.dirname(wrapper))
+        self.name = os.path.dirname(wrapper)
         self.dl = cdll.LoadLibrary(wrapper)
         self.kernel = self.dl.wrapper
         if self.dl.init(kernel.encode('utf-8')) != 0:
@@ -63,7 +63,7 @@ class _NpuInductorKernel:
     def get_kernel_name(path):
         normalized = os.path.normpath(path)
         folders = normalized.split(os.sep)
-        return folders[-3] if len(folders) >= 3 else path
+        return folders[-2] if len(folders) >= 2 else path
 
 
 def get_lib_dir(artifacts: Dict) -> str:

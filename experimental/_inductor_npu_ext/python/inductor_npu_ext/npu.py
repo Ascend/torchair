@@ -514,7 +514,7 @@ class NPUKernel(Kernel):
         ordered_axis = [axis for _, axis in sorted(hint_to_axis, reverse=True)]
         non1_order = [axis.order for axis in ordered_axis]
         iter_non1_order = iter(non1_order)
-        order = [i if i not in non1_order else next(iter_non1_order) for i in range(num_axis)]
+        expect_dims = [i if i not in non1_order else next(iter_non1_order) for i in range(num_axis)]
 
         class MoveOp:
             def __init__(self, *, kind, src, dst):
@@ -523,14 +523,17 @@ class NPUKernel(Kernel):
                 self.dst = dst
 
         road = []
+
+        current_dims = list(range(num_axis))
         src_loop = src.copy()
-        for i, j in zip(range(len(order)), order):
-            if i != j:
-                road_dst = road[0].src if road else dst
-                road_src = road_dst.copy().transpose_(i, j).contiguous_()
+        for i in reversed(range(num_axis)):
+            if current_dims[i] != expect_dims[i]:
+                j = current_dims.index(expect_dims[i])
                 src_loop.transpose_(i, j)
-                road.insert(0, MoveOp(kind="transpose", src=road_src, dst=road_dst))
-                order[i], order[j] = order[j], order[i]
+                current_dims[i], current_dims[j] = current_dims[j], current_dims[i]
+
+        if src_loop != src:
+            road.insert(0, MoveOp(kind="transpose", src=src_loop, dst=dst))
 
         road_dst = road[0].src if road else dst
         broadcast_dims = [i for i, (src_size, dst_size) in enumerate(zip(src_loop.size, road_dst.size))
