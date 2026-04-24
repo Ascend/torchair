@@ -84228,3 +84228,57 @@ def QuantGroupedMatMulAlltoAllv(gmm_x: Tensor,
     mm_y = Tensor(op, output_index)
     output_index += 1
     return y, mm_y
+
+
+# This api is auto-generated from IR RotateQuant
+@auto_convert_to_tensor([False, False], [False, False])
+def RotateQuant(x: Tensor,
+                rotation: Tensor,
+                *,
+                y_dtype: int = 0,
+                alpha: float = 0.000000,
+                dependencies=None,
+                node_name=None):
+    """REG_OP(RotateQuant)\n
+    .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .INPUT(rotation, TensorType({DT_FLOAT16, DT_BF16}))\n
+    .OUTPUT(y, TensorType({DT_INT8, DT_INT4}))\n
+    .OUTPUT(scale, TensorType({DT_FLOAT32}))\n
+    .ATTR(y_dtype, Int, 0)\n
+    .ATTR(alpha, Float, 0.0)\n
+    """
+
+    if dependencies is None:
+        dependencies = []
+    # process inputs
+    inputs = {
+        "x": x,
+        "rotation": rotation,
+    }
+
+    # process attrs
+    attrs = {
+        "y_dtype": attr.Int(y_dtype),
+        "alpha": attr.Float(alpha),
+    }
+
+    # process outputs
+    outputs = [
+        "y",
+        "scale",
+    ]
+
+    return ge_op(
+        op_type="RotateQuant",
+        inputs=inputs,
+        attrs=attrs,
+        outputs=outputs,
+        dependencies=dependencies,
+        ir=IrDef("RotateQuant") \
+        .input("x", "DT_FLOAT16, DT_BF16") \
+        .input("rotation", "DT_FLOAT16, DT_BF16") \
+        .attr("y_dtype", attr.Int(0)) \
+        .attr("alpha", attr.Float(0.000000)) \
+        .output("y", "DT_INT8, DT_INT4") \
+        .output("scale", "DT_FLOAT32")
+    )
