@@ -60,19 +60,6 @@ def convert_npu_quant_lightning_indexer(
     if key is not None and key_dtype == torch_npu.hifloat8:
         key = ge.Bitcast(key, type=DataType.DT_HIFLOAT8)
 
-    # GE Tensor本体没有stride/size接口；这里从其 meta（PyTorch meta tensor）取stride信息。
-    key_meta = getattr(key, "meta", None)
-    key_stride0 = -1
-    if key_meta is not None and hasattr(key_meta, "stride"):
-        key_stride = list(key_meta.stride())
-        key_stride0 = key_stride[0]
-
-    key_dequant_scale_meta = getattr(key_dequant_scale, "meta", None)
-    key_dequant_scale_stride0 = -1
-    if key_dequant_scale_meta is not None and hasattr(key_dequant_scale_meta, "stride"):
-        key_dequant_scale_stride = list(key_dequant_scale_meta.stride())
-        key_dequant_scale_stride0 = key_dequant_scale_stride[0]
-
     return torchair.ge.custom_op(
         "QuantLightningIndexer",
         inputs={"query": query,
@@ -92,8 +79,6 @@ def convert_npu_quant_lightning_indexer(
                 "sparse_mode": attr.Int(sparse_mode),
                 "pre_tokens": attr.Int(pre_tokens),
                 "next_tokens": attr.Int(next_tokens),
-                "key_stride0": attr.Int(key_stride0),
-                "key_dequant_scale_stride0": attr.Int(key_dequant_scale_stride0),
         },
         outputs=['sparse_indices']
     )
