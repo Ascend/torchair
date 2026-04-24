@@ -79660,9 +79660,9 @@ def MoeInitRoutingV3(x: Tensor,
                     node_name=None
                     ):
     """ REG_OP(MoeInitRoutingV3)\n
-    .INPUT(x, TensorType({DT_INT8, DT_FLOAT16, DT_FLOAT, DT_BF16, DT_HIFLOAT8}))\n
+    .INPUT(x, TensorType({DT_INT8, DT_FLOAT16, DT_FLOAT, DT_BF16, DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN}))\n
     .INPUT(expert_idx, TensorType({DT_INT32}))\n
-    .OPTIONAL_INPUT(scale, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))\n
     .OPTIONAL_INPUT(offset, TensorType({DT_FLOAT}))\n
     .OUTPUT(expanded_x, TensorType({DT_INT8, DT_FLOAT16, DT_FLOAT, DT_BF16, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN, DT_HIFLOAT8}))\n
     .OUTPUT(expanded_row_idx, TensorType({DT_INT32}))\n

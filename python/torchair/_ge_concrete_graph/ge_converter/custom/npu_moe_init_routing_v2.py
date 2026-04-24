@@ -25,6 +25,9 @@ def conveter_npu_moe_init_routing_v2_default(
     if x_dtype is not None:
         x = ge.Bitcast(x, type=torch_dtype_value_to_ge_type(x_dtype))
         x.desc.dtype = torch_dtype_value_to_ge_proto_type(x_dtype)
+    if scale is not None and quant_mode == -1:
+        if x.dtype == DataType.DT_FLOAT8_E4M3FN or x.dtype == DataType.DT_FLOAT8_E5M2:
+            scale = ge.Bitcast(scale, type=DataType.DT_FLOAT8_E8M0)
     expanded_x, expanded_row_idx, expert_tokens_count_or_cumsum, expanded_scale = ge.MoeInitRoutingV3(x, expert_idx, scale, offset,
                                active_num=active_num, expert_capacity=expert_capacity,
                                expert_num=expert_num, drop_pad_mode=drop_pad_mode,
