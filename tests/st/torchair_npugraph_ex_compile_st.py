@@ -74,6 +74,7 @@ class NpugraphExSt(unittest.TestCase):
 
         from npugraph_ex._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
         self.call_bak = AclConcreteGraph.__call__
+        self.optimize_bak = AclConcreteGraph.optimize_graph_without_runtime
         from npugraph_ex.inference._cache_compiler import CacheBackend
         self.cachebackend_fw_compiler = CacheBackend.fw_compiler
         from npugraph_ex._acl_concrete_graph import cat_optimization
@@ -87,6 +88,7 @@ class NpugraphExSt(unittest.TestCase):
         sys.modules['torch_npu'] = self.original_torch_npu_module
         from npugraph_ex._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
         AclConcreteGraph.__call__ = self.call_bak
+        AclConcreteGraph.optimize_graph_without_runtime = self.optimize_bak
         from npugraph_ex.inference._cache_compiler import CacheBackend
         CacheBackend.fw_compiler = self.cachebackend_fw_compiler
         from npugraph_ex._acl_concrete_graph import cat_optimization
@@ -1260,6 +1262,7 @@ class NpugraphExSt(unittest.TestCase):
             *(["aot_{phase}_graph_after_reinplace_inplaceable_ops_pass.txt"] if high_version else []),
             "aot_{phase}_graph_after_reinplace_input_mutated_ops.txt",
             *(["aot_{phase}_graph_after_decompose_auto_functionalized.txt"] if high_version else []),
+            "aot_{phase}_graph_after_eliminate_self_copy.txt",
             "aot_{phase}_graph_after_replace_dynamic_workspace_ops.txt",
             "aot_{phase}_graph_after_replace_core_limit_nodes.txt",
             "aot_{phase}_graph_after_resolve_default_stream_markers.txt",
@@ -1590,23 +1593,148 @@ class NpugraphExSt(unittest.TestCase):
             f"not found in logs: {cm.output}"
         )
 
+    def _make_optimize_wrapper(self):
+        """Returns a wrapped optimize_graph_without_runtime that captures the optimized fx_graph."""
+        from npugraph_ex._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
+        original_func = AclConcreteGraph.optimize_graph_without_runtime
+        captured = []
+
+        def wrapper(self_graph, *sample_args, observer=None, aot_gm=None):
+            ret = original_func(self_graph, *sample_args, observer=observer, aot_gm=aot_gm)
+            captured.append(self_graph.fx_graph)
+            return ret
+
+        AclConcreteGraph.optimize_graph_without_runtime = wrapper
+        return original_func, captured
+
+    def _assert_no_self_copy_and_check_precision(self, model_class, options, *inputs):
+        """Compile model with graph inspection, assert no copy_(x,x), compare with eager."""
+        from npugraph_ex._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
+        original_func, captured_fx_graphs = self._make_optimize_wrapper()
+        compiled = torch.compile(model_class(), backend="npugraph_ex", options=options)
+        result = compiled(*inputs)
+        for fx_gm in captured_fx_graphs:
+            for node in fx_gm.graph.nodes:
+                num_users = len(node.users)
+                if node.target is torch.ops.aten.copy_.default and len(node.args) >= 2 and num_users == 0:
+                    self.assertNotEqual(
+                        id(node.args[0]), id(node.args[1]),
+                        f"self-copy copy_({node.args[0].name}, {node.args[1].name}) "
+                        f"should have been eliminated by eliminate_self_copy pass"
+                    )
+        return result
+
     def test_self_copy_no_crash(self):
-        """copy_(x, x) where source and dest are the same placeholder should not crash."""
-        class Model(torch.nn.Module):
+        """copy_(x, x) should be eliminated, result precision matches eager."""
+        class Model1(torch.nn.Module):
+            def forward(self, x):
+                x.copy_(x)
+                return
+
+        x1 = torch.randn([3])
+        x2 = x1.clone()
+        Model1()(x1)
+        self._assert_no_self_copy_and_check_precision(
+            Model1, {"clone_input": False, "input_inplace_pass": True}, x2)
+        self.assertTrue(torch.equal(x1, x2))
+
+        class Model2(torch.nn.Module):
             def forward(self, x):
                 x.copy_(x)
                 return x
 
-        model = Model()
-        options = {
-            "clone_input": False,
-            "input_inplace_pass": True
-        }
-
-        model = torch.compile(model, backend="npugraph_ex", options=options)
         x = torch.randn([3])
-        result = model(x)
-        self.assertTrue(torch.equal(x, result))
+        eager = Model2()(x.clone())
+        result = self._assert_no_self_copy_and_check_precision(
+            Model2, {"clone_input": False, "input_inplace_pass": True}, x)
+        self.assertTrue(torch.equal(eager, result))
+
+    def test_self_copy_user_write_chain(self):
+        """Chained copy_(x,x) -> copy_(y,y) should all be eliminated."""
+        class Model(torch.nn.Module):
+            def forward(self, x):
+                y = x.copy_(x)
+                z = y.copy_(y)
+                return
+
+        x1 = torch.randn([3])
+        x2 = x1.clone()
+        Model()(x1)
+        result = self._assert_no_self_copy_and_check_precision(
+            Model, {"clone_input": False, "input_inplace_pass": True}, x2)
+        self.assertTrue(torch.equal(x1, x2))
+
+    def test_self_copy_preserves_normal_copy(self):
+        """copy_(y, x) where x != y must NOT be eliminated."""
+        class Model(torch.nn.Module):
+            def forward(self, x):
+                y = torch.zeros_like(x)
+                y.copy_(x)
+                # copy = torch.ops.aten.copy_.default(zeros_like, arg0_1)
+                # return zeros_like
+                return
+
+        x1 = torch.randn([3])
+        x2 = x1.clone()
+        Model()(x1)
+        self._assert_no_self_copy_and_check_precision(
+            Model, {"clone_input": False, "input_inplace_pass": True}, x2)
+        self.assertTrue(torch.equal(x1, x2))
+
+    def test_self_copy_with_arithmetic(self):
+        """Self-copy followed by arithmetic — precision must match eager."""
+        class Model(torch.nn.Module):
+            def forward(self, x):
+                x.copy_(x)
+                y = x + 1
+                return y
+
+        x = torch.randn([3])
+        eager = Model()(x.clone())
+        result = self._assert_no_self_copy_and_check_precision(
+            Model, {"clone_input": False, "input_inplace_pass": True}, x)
+        self.assertTrue(torch.equal(eager, result))
+
+    def test_self_copy_return_different_alias(self):
+        """Self-copy on input, then x - 1 returned — precision must match eager."""
+        class Model(torch.nn.Module):
+            def forward(self, x):
+                x.copy_(x)
+                y = x - 1
+                return y
+
+        x = torch.randn([3])
+        eager = Model()(x.clone())
+        result = self._assert_no_self_copy_and_check_precision(
+            Model, {"clone_input": False, "input_inplace_pass": True}, x)
+        self.assertTrue(torch.equal(eager, result))
+
+    def test_self_copy_with_decompose(self):
+        """Custom mutable op triggers auto_functionalized -> decompose -> eliminate_self_copy."""
+
+        lib = torch.library.Library("test_decompose", "FRAGMENT")
+        lib.define("sin_inplace(Tensor x, Tensor(a!) result) -> None")
+
+        @torch.library.impl(lib, "sin_inplace", "Meta")
+        def sin_inplace_meta(x, result):
+            pass
+
+        @torch.library.impl(lib, "sin_inplace", "CPU")
+        def sin_inplace(x, result):
+            result.copy_(x.sin())
+
+        class Model(torch.nn.Module):
+            def forward(self, x):
+                y = x
+                torch.ops.test_decompose.sin_inplace(torch.zeros_like(x), y)
+                return
+
+        x1 = torch.randn([3])
+        x2 = x1.clone()
+        Model()(x1)
+        self._assert_no_self_copy_and_check_precision(
+            Model, {"clone_input": False, "input_inplace_pass": True}, x2)
+        self.assertTrue(torch.equal(x1, x2))
 
     # def test_aclgraph_core_limit_with_static_kernel(self):
     #     class Model(torch.nn.Module):

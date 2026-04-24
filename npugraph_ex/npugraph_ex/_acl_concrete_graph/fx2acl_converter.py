@@ -275,6 +275,10 @@ class AclConcreteGraph(ConcreteGraphBase):
                 _optimize_decompose_auto_functionalized(self.fx_graph)
                 observer.dump_gm(self.fx_graph, "graph_after_decompose_auto_functionalized")
 
+        from npugraph_ex._acl_concrete_graph.graph_pass import eliminate_self_copy
+        eliminate_self_copy(self.fx_graph)
+        observer.dump_gm(self.fx_graph, "graph_after_eliminate_self_copy")
+
         from npugraph_ex._acl_concrete_graph.acl_graph import replace_dynamic_workspace_ops
         replace_dynamic_workspace_ops(self.fx_graph, self._meta_inputs)
         observer.dump_gm(self.fx_graph, "graph_after_replace_dynamic_workspace_ops")
