@@ -607,8 +607,6 @@ def _extract_user_stream_info(keys, values, user_stream_info, stream_label) -> D
 @debug_compare_fx_graphs(pass_name="apply_event_closure_with_multi_stream")
 def apply_event_closure_with_multi_stream(graph_module: fx.GraphModule, graph_name: str, tagged_event_names: List[str],
                                           user_stream_label: Set[str], user_stream_info: Dict[str, Dict]):
-    stream_scope_enter_nodes = []
-    stream_scope_exit_nodes = []
     stream_scope_enter_nodes_dict = {}
     stream_scope_exit_nodes_list = []
     scope_enter_nodes_stack: List[fx.Node] = []
@@ -616,7 +614,6 @@ def apply_event_closure_with_multi_stream(graph_module: fx.GraphModule, graph_na
         if str(node.target) == "air.scope_enter.default":
             node.kwargs = {**node.kwargs, 'need_execute': True}
             if len(node.args) > 0 and '_user_stream_label' in node.args[0]:
-                stream_scope_enter_nodes.append(node)
                 # When 'args[0]' of air.scope_enter.default includes the string '_user_stream_label',
                 # there must be an 'args[1]' to store value associated with that key.
                 # We store that value for later stream switch.
@@ -633,37 +630,40 @@ def apply_event_closure_with_multi_stream(graph_module: fx.GraphModule, graph_na
             node.kwargs = {**node.kwargs, 'need_execute': True}
             if (len(scope_enter_nodes_stack) > 0 and len(scope_enter_nodes_stack[-1].args) > 0 and
                     '_user_stream_label' in scope_enter_nodes_stack[-1].args[0]):
-                stream_scope_exit_nodes.append(node)
                 stream_scope_exit_nodes_list.append(node.name)
             scope_enter_nodes_stack.pop()
-    if len(stream_scope_enter_nodes) == 0:
+    if not user_stream_info:
         logger.debug("No scope_enter node found in graph[%s], no need to insert event.", id(graph_module))
         return False, stream_scope_enter_nodes_dict, stream_scope_exit_nodes_list
 
     # These imports are needed for torch.ops.air.tagged_event_record/wait.default to work.
     import npugraph_ex
     from npugraph_ex.ops._tagged_event import _npu_create_tagged_event
+    output_node = list(graph_module.graph.nodes)[-1]
+    if output_node is None or output_node.op != "output":
+        raise RuntimeError(f"Graph must have output node as last node, but got {output_node}")
     first_node = next(iter(graph_module.graph.nodes))
     enter_tag = graph_name + '_' + first_node.name
     _create_event_by_name(enter_tag)
     tagged_event_names.append(enter_tag)
+
+    no_duplicate_stream_list = list({(d["stream_id"], d["device_index"], d["device_type"]): d for d in user_stream_info.values()}.values())
+
     # Insert event record before graph input, insert event wait after scope_enter node
     with graph_module.graph.inserting_before(first_node):
-        graph_module.graph.call_function(torch.ops.air.tagged_event_record.default, args=(enter_tag, True))
-    for node in stream_scope_enter_nodes:
-        with graph_module.graph.inserting_after(node):
-            graph_module.graph.call_function(torch.ops.air.tagged_event_wait.default, args=(enter_tag, True))
+        graph_first_record_node = graph_module.graph.call_function(torch.ops.air.tagged_event_record.default, args=(enter_tag, True))
+    for stream_info in no_duplicate_stream_list:
+        with graph_module.graph.inserting_after(graph_first_record_node):
+            graph_module.graph.call_function(torch.ops.air.tagged_event_wait_on_stream.default,
+                                             args=(enter_tag, str(stream_info["stream_id"]), str(stream_info["device_index"]), str(stream_info["device_type"]), True))
 
-    output_node = list(graph_module.graph.nodes)[-1]
-    if output_node is None or output_node.op != "output":
-        raise RuntimeError(f"Graph must have output node as last node, but got {output_node}")
-    for node in stream_scope_exit_nodes:
         # insert event record after scope_exit node, insert event wait before graph output
-        exit_tag = graph_name + '_' + node.name
+        exit_tag = graph_name + '_stream_id_' + str(stream_info["stream_id"]) + '_device_index_' + str(stream_info["device_index"]) + '_device_type_' + str(stream_info["device_type"])
         _create_event_by_name(exit_tag)
         tagged_event_names.append(exit_tag)
-        with graph_module.graph.inserting_before(node):
-            graph_module.graph.call_function(torch.ops.air.tagged_event_record.default, args=(exit_tag, True))
+        with graph_module.graph.inserting_before(output_node):
+            graph_module.graph.call_function(torch.ops.air.tagged_event_record_on_stream.default,
+                                             args=(exit_tag, str(stream_info["stream_id"]), str(stream_info["device_index"]), str(stream_info["device_type"]), True))
         with graph_module.graph.inserting_before(output_node):
             graph_module.graph.call_function(torch.ops.air.tagged_event_wait.default, args=(exit_tag, True))
 
@@ -671,7 +671,7 @@ def apply_event_closure_with_multi_stream(graph_module: fx.GraphModule, graph_na
     logger.debug("End to insert event in graph[%s].", id(graph_module))
     logger.debug("Tagged event names are: [%s]", tagged_event_names)
     logger.debug("user_stream_label names are: [%s]", user_stream_label)
-    return len(stream_scope_enter_nodes) > 0, stream_scope_enter_nodes_dict, stream_scope_exit_nodes_list
+    return len(user_stream_info.values()) > 0, stream_scope_enter_nodes_dict, stream_scope_exit_nodes_list
 
 
 @debug_compare_fx_graphs(pass_name="apply_event_record")

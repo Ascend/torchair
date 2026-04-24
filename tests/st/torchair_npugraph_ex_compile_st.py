@@ -1904,7 +1904,8 @@ class NpugraphExSt(unittest.TestCase):
                 if node.op == "call_function" and node.target == torch.ops.aten.sqrt.default:
                     with fx_graph.inserting_before(node):
                         fx_graph.call_function(torch.ops.air.scope_enter.default, args=(
-                            ["_user_stream_label"], ["stream0"]))
+                            ['_user_stream_label', '_user_stream_priority', '_user_stream_id', '_user_stream_device_index', '_user_stream_device_type'], 
+                            ["stream0", '0', '96', '1', '20']))
 
                 if node.op == "call_function" and node.target == torch.ops.aten.add.Tensor:
                     with fx_graph.inserting_after(node):
@@ -1917,7 +1918,8 @@ class NpugraphExSt(unittest.TestCase):
                 if node.op == "call_function" and node.target == torch.ops.aten._softmax.default:
                     with fx_graph.inserting_before(node):
                         fx_graph.call_function(torch.ops.air.scope_enter.default, args=(
-                            ["_user_stream_label"], ["stream1"]))
+                            ['_user_stream_label', '_user_stream_priority', '_user_stream_id', '_user_stream_device_index', '_user_stream_device_type'], 
+                            ["stream1", '0', '97', '1', '20']))
 
                 if node.op == "call_function" and node.target == torch.ops.aten.split_with_sizes.default:
                     with fx_graph.inserting_after(node):
