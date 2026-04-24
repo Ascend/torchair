@@ -19,10 +19,11 @@ class _Scope:
         return _npu_scope_exit()
 
 
-def npu_stream_switch(stream_tag: str, stream_priority: int = 0):
+def npu_stream_switch(stream_tag: str, stream_priority: int = 0, enable_inner_parallel: bool = True):
     return _Scope([
         ("_user_stream_label", stream_tag),
-        ("_user_stream_priority", str(stream_priority))
+        ("_user_stream_priority", str(stream_priority)),
+        ("_enable_inner_parallel", str(enable_inner_parallel))
     ])
 
 

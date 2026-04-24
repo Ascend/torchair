@@ -37,7 +37,7 @@ class ScopeAttrs:
                     _safe_remove_attr(op, "_super_kernel_options")
                     break
 
-                if key == "_op_exec_never_timeout":
+                if key == "_op_exec_never_timeout" or key == "_enable_inner_parallel":
                     op.attr[key].b = (value == "True")
                 else:
                     op.attr[key].s = compat_as_bytes(str(value))

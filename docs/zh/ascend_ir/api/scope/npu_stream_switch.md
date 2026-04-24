@@ -12,10 +12,11 @@ npu_stream_switch(stream_tag: str, stream_priority: int = 0)
 
 ## 参数说明
 
-|参数|输入/输出|说明|
-|--|--|--|
-|stream_tag|输入|字符串类型，指定算子执行的目标stream标签。相同的标签代表相同的流，由用户控制。|
-|stream_priority|输入|int类型，表示切换到stream_tag流的优先级，即Runtime运行时在并发时优先给高优先级的流分配核资源。当前版本为预留参数，建议取默认值0。|
+|参数|输入/输出| 说明                                                                          |
+|--|--|-----------------------------------------------------------------------------|
+|stream_tag|输入| 字符串类型，指定算子执行的目标stream标签。相同的标签代表相同的流，由用户控制。                                  |
+|stream_priority|输入| int类型，表示切换到stream_tag流的优先级，即Runtime运行时在并发时优先给高优先级的流分配核资源。当前版本为预留参数，建议取默认值0。 |
+|enable_inner_parallel|输入| bool类型，表示是否使能stream_tag流内的算子按照GE原有的并发策略分流，默认开启。                             |
 
 ## 返回值说明
 
@@ -23,7 +24,8 @@ npu_stream_switch(stream_tag: str, stream_priority: int = 0)
 
 ## 约束说明
 
-with语句块内不支持断图。
++ with语句块内不支持断图。
++ 参数enable_inner_parallel仅支持max-autotune模式。
 
 ## 调用示例
 

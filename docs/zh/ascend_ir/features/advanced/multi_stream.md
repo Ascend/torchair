@@ -33,11 +33,12 @@
     使用如下with语句块（[npu\_stream\_switch](../../api/scope/npu_stream_switch.md)），语句块内下发的算子切换至stream\_tag流，语句块外的算子使用默认stream计算。
 
     ```python
-    with torchair.scope.npu_stream_switch(stream_tag: str, stream_priority: int = 0)
+    with torchair.scope.npu_stream_switch(stream_tag: str, stream_priority: int = 0, enable_inner_parallel: bool = True):
     ```
 
     - stream\_tag：表示需要切换到的流的标签，相同的标签代表相同的流，由用户控制。
     - stream\_priority：表示切换到stream\_tag流的优先级，即Runtime运行时在并发时优先给高优先级的流分配核资源，当前版本使用默认值0即可。
+    - enable\_inner\_parallel：表示是否使能stream\_tag流内的算子按照GE原有的并发策略分流，默认开启。
 
 3. （可选）控制并行计算的时序。
 

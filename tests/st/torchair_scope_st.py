@@ -79,6 +79,66 @@ class TorchairSt(unittest.TestCase):
         model(in1, in2, in3, in4)
         GeConcreteGraph.optimize_graph_without_runtime = bak_optimization
 
+    def test_npu_stream_switch_parallel(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, in1, in2, in3, in4):
+                add_result = torch.add(in1, in2)
+                with torchair.scope.npu_stream_switch('1', 2): 
+                    torchair.scope.npu_wait_tensor(in4, add_result)
+                    mm_result = torch.mm(in3, in4)
+                mm1 = torch.mm(in3, in4)
+                with torchair.scope.npu_stream_switch('2', 3, False): 
+                    torchair.scope.npu_wait_tensor(in4, mm_result)
+                    add2 = torch.add(in3, in4)
+                return add_result, mm_result, mm1, add2
+
+        def wrapper_call(func):
+            def wrapper(*args, **kwargs):
+                assert len(args) > 0
+                graph = args[0].graph
+                add_list = []
+                mm_list = []
+                for op in graph.op:
+                    if 'MatMul' in op.name:
+                        mm_list.append(op)
+                    if 'Add' in op.name:
+                        add_list.append(op)
+                
+                add_01 = add_list[0]
+                self.assertFalse(add_01.attr.__contains__("_user_stream_label"))
+                self.assertFalse(add_01.attr.__contains__("_user_stream_priority"))
+                self.assertFalse(add_01.attr.__contains__("_enable_inner_parallel"))
+                add_02 = add_list[1]
+                self.assertTrue(add_02.attr["_user_stream_label"].s == b'2')
+                self.assertTrue(add_02.attr["_user_stream_priority"].s == b'3')
+                self.assertTrue(add_02.attr["_enable_inner_parallel"].b == False)
+
+                mm_01 = mm_list[0]
+                self.assertTrue(mm_01.attr["_user_stream_label"].s == b'1')
+                self.assertTrue(mm_01.attr["_user_stream_priority"].s == b'2')
+                self.assertTrue(mm_01.attr["_enable_inner_parallel"].b == True)
+                mm_02 = mm_list[1]
+                self.assertFalse(mm_02.attr.__contains__("_user_stream_label"))
+                self.assertFalse(mm_02.attr.__contains__("_user_stream_priority"))
+                self.assertFalse(mm_02.attr.__contains__("_enable_inner_parallel"))
+                ret = func(*args, **kwargs)
+                return ret
+            return wrapper
+        bak_optimization = GeConcreteGraph.optimize_graph_without_runtime
+        GeConcreteGraph.optimize_graph_without_runtime = wrapper_call(GeConcreteGraph.optimize_graph_without_runtime)
+        model = Model()
+        config_view = CompilerConfig()
+        npu_backend_view = torchair.get_npu_backend(compiler_config=config_view)
+        model = torch.compile(model, backend=npu_backend_view, dynamic=False)
+        in1 = torch.randn(2, 2)
+        in2 = torch.randn(2, 2)
+        in3 = torch.randn(2, 2)
+        in4 = torch.randn(2, 2)
+        model(in1, in2, in3, in4)
+        GeConcreteGraph.optimize_graph_without_runtime = bak_optimization
 
     def test_super_kernel_scope(self):
         class Model(torch.nn.Module):
