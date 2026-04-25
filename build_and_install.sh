@@ -5,6 +5,7 @@ set -o pipefail
 
 if [!-d build ]; then
    mkdir build
+fi
 cd build
 
 git submodule update --init --recursive
