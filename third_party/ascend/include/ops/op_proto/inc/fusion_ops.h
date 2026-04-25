@@ -695,6 +695,7 @@ REG_OP(QuantMatmulReduceSum)
 *  | ------------------------- | ------------------------- | ------------- | ------------ | ------- | ------------- | --------- | ------------- | ------- | -------- | ------- | \n
 *  | FLOAT8_E4M3FN/FLOAT8_E5M2 | FLOAT8_E4M3FN/FLOAT8_E5M2 | FLOAT8_E8M0   | FLOAT32/NULL | NULL    | FLOAT8_E8M0   | INT64     | BFLOAT16/NULL | FLOAT32 | INT64    | FLOAT32 | \n
 *  | FLOAT4_E2M1               | FLOAT4_E2M1               | FLOAT8_E8M0   | FLOAT32/NULL | NULL    | FLOAT8_E8M0   | INT64     | BFLOAT16/NULL | FLOAT32 | INT64    | FLOAT32 | \n
+*  | FLOAT8_E4M3FN             | FLOAT4_E2M1               | FLOAT8_E8M0   | BFLOAT16/NULL| NULL    | FLOAT8_E8M0   | INT64     | BFLOAT16/NULL | FLOAT32 | INT64    | FLOAT32 | \n
 * PertokenScale dimension is represented as: (m, ceil(k/64), 2). The data type supports FLOAT8_E8M0, and the shape supports 3 dimensions.
 * Scale dimension is represented as: (e, ceil(k/64), n, 2) or (e, n, ceil(k/64), 2). The data type supports FLOAT8_E8M0, and the shape supports 4 dimensions.
 * In the MXFP4 scenario, the constraint that k must be even. Under non-transposed x2, n must also be even.

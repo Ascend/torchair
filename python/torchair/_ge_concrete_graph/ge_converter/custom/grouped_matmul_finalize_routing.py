@@ -73,6 +73,7 @@ def conveter_npu_grouped_matmul_finalize_routing(
     else:
         raise RuntimeError("Not supported output dtype is " + str(dtype))
     if_mxfp4 = x_dtype == torch_npu.float4_e2m1fn_x2 and w_dtype == torch_npu.float4_e2m1fn_x2
+    is_a8w4 = x.dtype == DataType.DT_FLOAT8_E4M3FN and w_dtype == torch_npu.float4_e2m1fn_x2
     if w.dtype == DataType.DT_INT32:
         from torch_npu.npu.utils import _is_gte_cann_version
         if _is_gte_cann_version("8.5.0"):
@@ -86,6 +87,12 @@ def conveter_npu_grouped_matmul_finalize_routing(
     elif x_dtype is not None and w_dtype is not None and if_mxfp4:
         x = convert_tensorlist_to_mxfp4_item(x, x_dtype)
         new_w = convert_tensorlist_to_mxfp4_item(w, w_dtype)
+    elif is_a8w4:
+        if(w.symsize[0] == 1):
+            raise ValueError("Current GMMFR-MxA8W4 does not support the expert count is 1 in graph mode.")
+        if(w.symsize[1] == 32): # u8打包fp4，k=64对应weight[0].symsize[1]=32
+            raise ValueError("Current GMMFR-MxA8W4 does not support k=64 in graph mode.")
+        new_w = ge.Bitcast(w, type=torch_dtype_value_to_ge_type(w_dtype), keep_dim=True)
     else:
         new_w = w
 

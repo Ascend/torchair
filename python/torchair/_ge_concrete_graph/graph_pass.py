@@ -560,3 +560,13 @@ def move_transpose_into_mm(graph: GeGraph):
             remove_transpose_node(*weight_relate_nodes)
             remove_transpose_node(*scale_relate_nodes)
             logger.debug('set attr transpose_x2 to True in %s.', qmm_node.name)
+
+    gmmfr_nodes = [node for node in graph.op if node.type == "GroupedMatmulFinalizeRouting"]
+    for gmmfr_node in gmmfr_nodes:
+        w_relate_nodes = find_nodes(gmmfr_node, (('Bitcast', 1), ('Transpose', 0), ('Const', 1)))
+        scale_relate_nodes = find_nodes(gmmfr_node, (('Bitcast', 2), ('Transpose', 0), ('Const', 1)))
+        if w_relate_nodes and scale_relate_nodes:
+            gmmfr_node.attr['transpose_w'].b = True
+            remove_transpose_node(*w_relate_nodes)
+            remove_transpose_node(*scale_relate_nodes)
+            logger.debug('set attr transpose_w to True in %s.', gmmfr_node.name)
