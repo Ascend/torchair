@@ -77,7 +77,7 @@ class Model(torch.nn.Module):
    **表 1**  参数说明
 
    |参数名|说明|
-       |--|--|
+   |--|--|
    |post_grad_custom_pre_pass|npugraph_ex本身内置了部分FX图优化Pass，该配置控制自定义FX Pass在内置Pass执行前生效。传入自定义Pass函数。|
    |post_grad_custom_post_pass|npugraph_ex本身内置了部分FX图优化Pass，该配置控制自定义FX Pass在内置Pass执行后生效。传入自定义Pass函数。|
 
