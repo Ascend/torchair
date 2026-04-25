@@ -1,6 +1,7 @@
 __all__ = ['get_npu_backend', 'get_compiler', 'compile_fx', 'CompilerConfig', 'logger', 'register_replacement']
 
 import atexit
+import signal
 
 from npugraph_ex.npu_fx_compiler import compile_fx, get_npu_backend, get_compiler
 from npugraph_ex.configs.compiler_config import CompilerConfig
@@ -23,7 +24,15 @@ except (ImportError, AttributeError) as e:
 adjust_traceable_collective_remaps()
 
 
-def _finalize_graph_engine():
+def _initialize():
+    from npugraph_ex._acl_concrete_graph import static_kernel
+    static_kernel.cleanup_old_run_packages()
+
+
+_initialize()
+
+
+def _finalize():
     import torch
     from npugraph_ex._acl_concrete_graph import static_kernel
 
@@ -31,4 +40,13 @@ def _finalize_graph_engine():
     static_kernel.uninstall_static_kernel()
 
 
-atexit.register(_finalize_graph_engine)
+def _signal_handler(signum, frame):
+    _finalize()
+    signal.signal(signum, signal.SIG_IGN)
+    import os
+    os.kill(os.getpid(), signum)
+
+
+atexit.register(_finalize)
+signal.signal(signal.SIGTERM, _signal_handler)
+signal.signal(signal.SIGINT, _signal_handler)

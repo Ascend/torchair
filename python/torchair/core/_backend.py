@@ -4,12 +4,13 @@ import os
 import threading
 import logging
 import atexit
+import signal
 import sys
 from collections import defaultdict
 
 from typing import Dict, List
 import torch
-from torchair._acl_concrete_graph.static_kernel import uninstall_static_kernel
+from torchair._acl_concrete_graph.static_kernel import uninstall_static_kernel, cleanup_old_run_packages
 from torchair._utils.error_code import pretty_error_msg
 from torchair.core.utils import logger
 from torchair._ge_concrete_graph.utils import _get_input_shape
@@ -103,7 +104,16 @@ def finalize_graph_engine():
     uninstall_static_kernel()
 
 
+def _signal_handler(signum, frame):
+    finalize_graph_engine()
+    signal.signal(signum, signal.SIG_IGN)
+    os.kill(os.getpid(), signum)
+
+
+cleanup_old_run_packages()
 atexit.register(finalize_graph_engine)
+signal.signal(signal.SIGTERM, _signal_handler)
+signal.signal(signal.SIGINT, _signal_handler)
 
 
 class TorchNpuGraph(_torchair.TorchNpuGraphBase):

@@ -1,3 +1,6 @@
+import errno
+import fcntl
+import json
 import os
 from enum import Enum
 import warnings
@@ -5,6 +8,7 @@ import subprocess
 from typing import Optional, Union
 from pathlib import Path
 import datetime
+from datetime import timezone
 import hashlib 
 import shutil 
 
@@ -559,6 +563,88 @@ def destroy_local_gloo_groups():
     logger.debug("cleared _local_gloo_groups")
 
 
+def _is_process_alive(pid):
+    if not isinstance(pid, int):
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError as e:
+        if e.errno == errno.ESRCH:
+            return False
+        return True
+    except Exception:
+        return False
+
+
+def _get_process_start_time(pid):
+    try:
+        with open(f"/proc/{pid}/stat", "r") as f:
+            data = f.read()
+        right_pattern = data.rfind(")")
+        fields_after_comm = data[right_pattern + 2:].split()
+        return int(fields_after_comm[19])
+    except Exception:
+        return None
+
+
+def _is_pid_recycled(record_pid, record_start_time):
+    if record_start_time is None:
+        return False
+    current_start_time = _get_process_start_time(record_pid)
+    if current_start_time is None:
+        return False
+    return current_start_time != record_start_time
+
+
+def _update_static_kernel_records(update_func):
+    _static_kernel_record_file = os.path.join(Path.cwd().resolve(), '.static_kernel_records.json')
+    try:
+        with open(_static_kernel_record_file, "a+") as f:
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+            try:
+                f.seek(0)
+                if f.read(1):
+                    f.seek(0)
+                    records = json.load(f)
+                else:
+                    records = {}
+                records = update_func(records)
+                f.seek(0)
+                f.truncate()
+                json.dump(records, f, indent=4)
+            finally:
+                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+    except Exception as e:
+        logger.warning(f"Failed to update static kernel records: {e}")
+
+
+def _add_static_kernel_record(uninstall_path, filename):
+    def update_func(records):
+        record_key = os.path.basename(os.path.dirname(uninstall_path))
+        current_pid = os.getpid()
+        records[record_key] = {
+            "uninstall_path": uninstall_path,
+            "filename": filename,
+            "pid": current_pid,
+            "process_start_time": _get_process_start_time(current_pid),
+            "record_create_time": datetime.datetime.now(tz=timezone.utc).isoformat()
+        }
+        return records
+
+    _update_static_kernel_records(update_func)
+
+
+def _remove_record_by_uninstall_path(uninstall_path):
+    def update_func(records):
+        for key, record in list(records.items()):
+            if record.get("uninstall_path") == uninstall_path:
+                del records[key]
+                break
+
+    _update_static_kernel_records(update_func)
+
+
 def save_uninstall_info(filename: str):
     global _uninstall_paths
     latest = Path(os.environ["ASCEND_HOME_PATH"])
@@ -568,7 +654,9 @@ def save_uninstall_info(filename: str):
     if match is None:
         logger.debug(f"can not find uninstall path, pattern: {pattern}")
     else:
-        _uninstall_paths.append(str(match))
+        _uninstall_path = str(match)
+        _uninstall_paths.append(_uninstall_path)
+        _add_static_kernel_record(_uninstall_path, filename)
         warnings.warn(
             "Warning: If the process exits abnormally, "
             f"you must manually uninstall the static kernel package by executing: {match}"
@@ -587,6 +675,7 @@ def uninstall_static_kernel():
                 [script_path], check=True, capture_output=True, text=True
             )
             logger.debug(f"{script_path} uninstall success")
+            _remove_record_by_uninstall_path(script_path)
         except subprocess.CalledProcessError as e:
             logger.error(f"{script_path} uninstall failed, msg:\n{e.stderr}")
 
@@ -807,3 +896,38 @@ def _copy_to_blacklist(json_file: Path, blacklist_dir: Path) -> bool:
     except Exception as e:
         logger.warning(f"Failed to move {json_file.name} to blacklist dir: {e}")
         return False
+
+
+def cleanup_old_run_packages():
+    def update_func(records):
+        current_pid = os.getpid()
+
+        for key, record in list(records.items()):
+            record_pid = record.get("pid")
+            uninstall_path = record.get("uninstall_path")
+            process_start_time = record.get("process_start_time")
+
+            if record_pid != current_pid and uninstall_path:
+                if _is_process_alive(record_pid) and not _is_pid_recycled(record_pid, record.get("process_start_time")):
+                    logger.debug(
+                        f"Skipping run package from PID {record_pid} (timestamp: {process_start_time}): process is still running.")
+                    continue
+                try:
+                    if os.path.exists(uninstall_path):
+                        logger.info(
+                            f"Found old run package from PID {record_pid} timestamp: {process_start_time} uninstalling: {uninstall_path}")
+                        result = subprocess.run(
+                            [uninstall_path], check=True, capture_output=True, text=True
+                        )
+                        logger.info(f"Successfully uninstalled old run package: {uninstall_path}")
+                    else:
+                        logger.info(f"Uninstall script not found for old run package: {uninstall_path}")
+                    del records[key]
+                except subprocess.CalledProcessError as e:
+                    logger.warning(f"Failed to uninstall old run package {uninstall_path}: {e.stderr}")
+                except Exception as e:
+                    logger.warning(f"Error while cleanup old run package {uninstall_path}: {e}")
+
+        return records
+
+    _update_static_kernel_records(update_func)
