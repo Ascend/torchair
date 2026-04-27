@@ -4,6 +4,7 @@ import os
 import types
 import fcntl
 import functools
+import stat
 from pathlib import Path
 from typing import List
 from contextlib import contextmanager
@@ -71,36 +72,36 @@ def load_autofuser(graph_name):
     yield from _load_stub_modules(graph_name)
 
 
-def _validate_permissions(filepath: str, perms: int, *, change_permissions=False) -> None:
+def validate_lib(filepath: str, *, change_permissions=False) -> None:
     if os.path.islink(filepath):
         raise PermissionError(f"{filepath} must not be a symbolic link")
 
     st = os.stat(filepath)
 
+    # 必须是普通文件
+    if not stat.S_ISREG(st.st_mode):
+        raise PermissionError(f"{filepath} must be a regular file")
+
+    # owner 必须是当前用户或 root
     current_uid = os.getuid()
-    if st.st_uid != current_uid:
+    if st.st_uid not in (current_uid, 0):
         raise PermissionError(
-            f"{filepath} must be owned by the current user. "
+            f"{filepath} must be owned by the current user or root. "
             f"Owned by UID {st.st_uid}, current UID {current_uid}"
         )
 
     actual_perms = st.st_mode & 0o777
-    if actual_perms != perms:
+
+    # group / other 不能有 w 位
+    unsafe_bits = actual_perms & (stat.S_IWGRP | stat.S_IWOTH)
+    if unsafe_bits:
         if change_permissions:
-            os.chmod(filepath, perms)
+            os.chmod(filepath, actual_perms & ~(stat.S_IWGRP | stat.S_IWOTH))
         else:
             raise PermissionError(
-                f"{filepath} permissions must be {oct(perms)}, "
+                f"{filepath} must not be writable by group or others, "
                 f"but got {oct(actual_perms)}"
             )
-
-
-def validate_file(filepath: str, *, change_permissions=False) -> None:
-    _validate_permissions(filepath, 0o644, change_permissions=change_permissions)
-
-
-def validate_lib(filepath: str, *, change_permissions=False) -> None:
-    _validate_permissions(filepath, 0o755, change_permissions=change_permissions)
 
 
 @contextmanager

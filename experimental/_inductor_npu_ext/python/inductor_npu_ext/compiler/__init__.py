@@ -69,8 +69,7 @@ class _NpuInductorKernel:
 def get_lib_dir(artifacts: Dict) -> str:
     name = artifacts.get('name', 'default')
     hash_str = ''.join([v for k, v in artifacts.items() if k != 'name'])
-    lib_dir = os.path.join(os.getcwd(), f".npu_kernels_{getpass.getuser()}",
-                           name, hashlib.md5(hash_str.encode()).hexdigest())
+    lib_dir = os.path.join(config._asc_cache_dir, name, hashlib.md5(hash_str.encode()).hexdigest())
     return lib_dir
 
 
