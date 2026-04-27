@@ -83927,19 +83927,19 @@ def AlltoAllvQuantGroupedMatMul(gmm_x: Tensor,
                                 dependencies=[], 
                                 node_name=None):
     """REG_OP(AlltoAllvQuantGroupedMatMul)\n
-    .INPUT(gmm_x, TensorType({DT_FLOAT16, DT_BF16, DT_HIFLOAT8}))\n
-    .INPUT(gmm_weight, TensorType({DT_FLOAT16, DT_BF16, DT_HIFLOAT8}))\n
-    .INPUT(gmm_x_scale, TensorType({DT_FLOAT}))\n
-    .INPUT(gmm_weight_scale, TensorType({DT_FLOAT}))\n
+    .INPUT(gmm_x, TensorType({DT_FLOAT16, DT_BF16, DT_HIFLOAT8, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1}))\n
+    .INPUT(gmm_weight, TensorType({DT_FLOAT16, DT_BF16, DT_HIFLOAT8, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1}))\n
+    .INPUT(gmm_x_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))\n
+    .INPUT(gmm_weight_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))\n
     .OPTIONAL_INPUT(send_counts_tensor, TensorType({DT_INT32, DT_INT64}))\n
     .OPTIONAL_INPUT(recv_counts_tensor, TensorType({DT_INT32, DT_INT64}))\n
-    .OPTIONAL_INPUT(mm_x, TensorType({DT_FLOAT16, DT_BF16, DT_HIFLOAT8}))\n
-    .OPTIONAL_INPUT(mm_weight, TensorType({DT_FLOAT16, DT_BF16, DT_HIFLOAT8}))\n
-    .OPTIONAL_INPUT(mm_x_scale, TensorType({DT_FLOAT}))\n
-    .OPTIONAL_INPUT(mm_weight_scale, TensorType({DT_FLOAT}))\n
+    .OPTIONAL_INPUT(mm_x, TensorType({DT_FLOAT16, DT_BF16, DT_HIFLOAT8, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1}))\n
+    .OPTIONAL_INPUT(mm_weight, TensorType({DT_FLOAT16, DT_BF16, DT_HIFLOAT8, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1}))\n
+    .OPTIONAL_INPUT(mm_x_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))\n
+    .OPTIONAL_INPUT(mm_weight_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))\n
     .OUTPUT(gmm_y, TensorType({DT_FLOAT16, DT_BF16}))\n
     .OUTPUT(mm_y, TensorType({DT_FLOAT16, DT_BF16}))\n
-    .OUTPUT(permute_out, TensorType({DT_FLOAT16, DT_BF16, DT_HIFLOAT8}))\n
+    .OUTPUT(permute_out, TensorType({DT_FLOAT16, DT_BF16, DT_HIFLOAT8, DT_FLOAT8_E4M3FN, DT_FLOAT8_E5M2, DT_FLOAT4_E2M1}))\n
     .REQUIRED_ATTR(group, String)\n
     .REQUIRED_ATTR(ep_world_size, Int)\n
     .REQUIRED_ATTR(send_counts, ListInt)\n
