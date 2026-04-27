@@ -934,17 +934,7 @@ class AclGraph(object):
 
             # compile operator kernel based on static shape for better execution performance
             if self.config.get('static_kernel_compile', False):
-                use_cache_compile = self.config.get('static_kernel_compile.use_cache_compile', False)
-                cann_version = self.config.get('static_kernel_compile.cann_version', None)
-                compile_cache_dir = self.config.get('static_kernel_compile.compile_cache_dir', None)
-                deterministic = self.config.get('static_kernel_compile.deterministic', False)
-                super_kernel_optimize = self.config.get('super_kernel_optimize', False)
-                disable_static_kernel_compile_cache = self.config.get('disable_static_kernel_compile_cache', False)
-                compile_static_kernel(self.fx_forward, *args, use_cache_compile=use_cache_compile,
-                                      cached_cann_version=cann_version,
-                                      compile_cache_dir=compile_cache_dir, cached_deterministic=deterministic,
-                                      super_kernel_optimize=super_kernel_optimize,
-                                      disable_static_kernel_compile_cache=disable_static_kernel_compile_cache, **kwargs)
+                compile_static_kernel(self.fx_forward, *args, config=self.config, **kwargs)
 
             self._unupdated_input_func = debug_time(get_unupdated_input_fn(self._unupdated_sym_input_index, self._parameter_user_inputs, self.config),
                                                     phase_name="[npugraph_ex overhead] generate graph_key")
@@ -1243,17 +1233,11 @@ class AclGraph(object):
                     self.name, graph_key, id(self.graph[graph_key]), len(self._updated_node_infos))
 
         if self.config.get('super_kernel_optimize', False):
-
-            def parse_config(config_str):
-                return ast.literal_eval(config_str) if config_str is not None else None
-
-            super_kernel_optimize_options = parse_config(
-                self.config.get('super_kernel_optimize_options')
+            from npugraph_ex._acl_concrete_graph.utils import parse_config
+            self.graph[graph_key].super_kernel_optimize(
+                optimize_options=parse_config(self.config.get('super_kernel_optimize_options')),
+                debug_options=parse_config(self.config.get('super_kernel_debug_options'))
             )
-            super_kernel_debug_options = parse_config(
-                self.config.get('super_kernel_debug_options')
-            )
-            self.graph[graph_key].super_kernel_optimize(optimize_options=super_kernel_optimize_options, debug_options=super_kernel_debug_options)
             logger.info('Success to optimize AclGraph{id: %s} with super kernel.', id(self.graph[graph_key]))
 
         def debug_dump():
@@ -1642,11 +1626,7 @@ class AclGraph(object):
                 logger.info('Start to compile static shape kernel for fx graph %s, '
                             'all symbol input indices and values are %s.',
                             id(self.fx_forward), dict(zip(self.sym_input_name, cur_sym_value)))
-                super_kernel_optimize = self.config.get('super_kernel_optimize', False)
-                disable_static_kernel_compile_cache = self.config.get('disable_static_kernel_compile_cache', False)
-                compile_static_kernel(self.fx_forward, super_kernel_optimize=super_kernel_optimize,
-                                      disable_static_kernel_compile_cache=disable_static_kernel_compile_cache,
-                                      *args, **kwargs)
+                compile_static_kernel(self.fx_forward, *args, config=self.config, **kwargs)
             else:
                 logger.info('Skip compile static shape kernel for fx graph %s, '
                             'all symbol input indices and values are %s. '

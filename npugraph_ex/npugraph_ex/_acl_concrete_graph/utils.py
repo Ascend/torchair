@@ -7,6 +7,7 @@ import weakref
 import sys
 import operator
 import os
+import ast
 
 import torch
 from torch.types import Device, Number
@@ -499,3 +500,11 @@ def run_deadlock_check(input_json_path):
     vector_core_num = torch.npu.get_device_limit(torch.npu.current_device())['vector_core_num']
     filtered_output = filter_comm_ops(input_json_path, None)
     deadlock_check(filtered_output, None, aivec_total=vector_core_num)
+
+
+def parse_config(config_str):
+    if config_str is None:
+        return None
+    if isinstance(config_str, dict):
+        return config_str
+    return ast.literal_eval(config_str)
