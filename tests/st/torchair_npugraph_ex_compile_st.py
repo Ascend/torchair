@@ -1240,9 +1240,13 @@ class NpugraphExSt(unittest.TestCase):
 
 
     # Generate patterns with auto-incremented indics
-    def check_debug_dump_full_files(self, root_path, sub_dir="model", phases=["forward", "backward"], high_version=False):
+    def check_debug_dump_full_files(self, root_path, sub_dir="model", phases=["forward", "backward"], high_version=False, is_custom_backend=False):
 
         # Define templates for ACL mode (without hardcoded indices)
+        ACL_DEBUG_FILES = [
+            "debug.log",
+        ]
+
         ACL_COMMON_FILES = [
             *(["dynamo_out_graph.txt"] if phases!=["compile_fx"] else [])
         ]
@@ -1269,6 +1273,9 @@ class NpugraphExSt(unittest.TestCase):
         ]
 
         patterns = []
+        if not is_custom_backend:
+            for file in ACL_DEBUG_FILES:
+                patterns.append(file)
         # Add common files
         for file in ACL_COMMON_FILES:
             patterns.append(f"{sub_dir}__{{id}}/{file}")
@@ -1442,7 +1449,7 @@ class NpugraphExSt(unittest.TestCase):
             torchair_root = os.path.join(debug_dir_output, "npugraph_ex")
             self.assertTrue(os.path.exists(torchair_root), msg=f"torchair directory does not exist: {torchair_root}")
 
-            self.check_debug_dump_full_files(torchair_root, sub_dir="compile", phases=["compile_fx"], high_version=True)
+            self.check_debug_dump_full_files(torchair_root, sub_dir="compile", phases=["compile_fx"], high_version=True, is_custom_backend=True)
 
     def test_aclgraph_userinput_construct_in_share_memory_with_parameter_and_mutated(self):
         class Model(torch.nn.Module):

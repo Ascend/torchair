@@ -38,7 +38,7 @@ from torch.utils._mode_utils import no_dispatch
 from torch._dynamo.utils import detect_fake_mode
 
 from npugraph_ex.core._concrete_graph import ConcreteGraphBase, ValuePack, _is_sym, _is_symlist
-from npugraph_ex.core.utils import logger
+from npugraph_ex.core.utils import logger, _init_debug_logging
 from npugraph_ex.configs.compiler_config import CompilerConfig, _process_kwargs_options
 from npugraph_ex.fx_dumper import _NpuFxDumper
 from npugraph_ex._utils import add_npu_patch, get_npu_default_decompositions
@@ -826,6 +826,7 @@ def get_npu_backend(*, compiler_config: CompilerConfig = None, custom_decomposit
     Returns:
         Callable: Backend compiler function.
     """
+    _init_debug_logging()
     if compiler_config is None:
         compiler_config = CompilerConfig()
 

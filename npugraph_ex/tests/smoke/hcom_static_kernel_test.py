@@ -442,5 +442,66 @@ class HcomStaticKernelTest(unittest.TestCase):
         self.assertEqual(len(run_pkgs_3), 2)
 
 
+    @classmethod
+    def _test_debug_dir_whit_rank(cls, rank, world_size, input, debug_dir_root):
+        import npugraph_ex
+        HcomStaticKernelTest._init_dist_hccl(rank, world_size)
+        from torch._dynamo import config as dconfig
+        class HcomModel(torch.nn.Module):
+            def __init__(self):
+                super(HcomModel, self).__init__()
+                self.relu = torch.nn.ReLU()
+
+            def forward(self, x):
+                relu_01 = self.relu(x)
+                reshape_01 = torch.reshape(relu_01, (1, 32, 1, 128))
+                softmax_01 = torch.nn.functional.softmax(reshape_01)
+                sqrt_01 = torch.sqrt(softmax_01)
+                relu_02 = self.relu(sqrt_01)
+                square_01 = torch.square(relu_02)
+                torch_npu.distributed.distributed_c10d.dist.all_reduce(square_01)
+                add_01 = torch.add(square_01, square_01)
+                return add_01
+
+        model = HcomModel().npu()
+        input_data = input.npu()
+
+        with dconfig.patch(debug_dir_root=debug_dir_root):
+            print(f"guanam debug_dir_root:{debug_dir_root}")
+            compiled_model = torch.compile(model, backend="npugraph_ex")
+            _ = compiled_model(input_data)
+
+        entries = [
+            os.path.join(debug_dir_root, d) for d in os.listdir(debug_dir_root)
+            if os.path.isdir(os.path.join(debug_dir_root, d))
+        ]
+        suffix = f"-rank_{rank}"
+        rank_dirs = [d for d in entries if d.endswith(suffix)]
+        assert rank_dirs, f"no run dir with suffix {suffix} in {entries}"
+        debug_log = os.path.join(rank_dirs[0], "npugraph_ex", "debug.log")
+        assert os.path.exists(debug_log), f"missing {debug_log}"
+        dist.destroy_process_group()
+
+
+    def test_debug_dir_whit_rank(self):
+        # Check NPU resources
+        result = os.popen("ls /dev | grep davinci | wc -l")
+        dev_num = result.read()
+        result.close()
+        device_size = int(dev_num) - 1
+        if device_size < 2:
+            return
+        world_size = 2
+        import tempfile
+        with tempfile.TemporaryDirectory(prefix="torchair_debug_") as tmpdir:
+            os.environ['TORCH_COMPILE_DEBUG'] = '1'
+            os.environ["LOCAL_WORLD_SIZE"] = str(world_size)
+            input = torch.randn(1, 4, 8, 128, dtype=torch.float16)
+            torch.multiprocessing.spawn(HcomStaticKernelTest._test_debug_dir_whit_rank,
+                                        args=(world_size, input, tmpdir),
+                                        nprocs=world_size,
+                                        join=True)
+
+
 if __name__ == '__main__':
     unittest.main()

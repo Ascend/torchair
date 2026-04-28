@@ -1,7 +1,7 @@
 import os
 import threading
 from typing import Callable
-from torch._dynamo.utils import get_debug_dir
+from torch._dynamo import utils as dutils
 from torch.fx.graph_module import GraphModule
 from torchair._ge_concrete_graph.utils import dump_graph
 from torchair.ge._ge_graph import GeGraph
@@ -115,7 +115,7 @@ class DebugContext():
 
     @classmethod
     def current_path(cls) -> str:
-        return os.path.join(get_debug_dir(), "torchair", f"model__{cls.COUNT}")
+        return os.path.join(dutils.get_debug_dir(), "torchair", f"model__{cls.COUNT}")
     
     @classmethod
     def next_path(cls) -> str:

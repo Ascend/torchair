@@ -20,7 +20,7 @@ import torch.distributed as dist
 import torch.fx
 
 from npugraph_ex.configs.compiler_config import CompilerConfig
-from npugraph_ex.core.utils import logger
+from npugraph_ex.core.utils import logger, _init_debug_logging
 
 
 @dataclass
@@ -593,7 +593,7 @@ def cache_compile(func, *, config: Optional[CompilerConfig] = None, backend: Opt
 
     if not isinstance(func.__self__, torch.nn.Module):
         raise ValueError(f"Only torch.nn.Module method can be cached now, got {func}")
-
+    _init_debug_logging()
     if cache_dir is not None and os.path.exists(cache_dir):
         try:
             _validate_owner(cache_dir)

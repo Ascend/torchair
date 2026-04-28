@@ -17,6 +17,7 @@ from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_conv
 from torchair.experimental.inference import use_internal_format_weight
 from torchair.experimental.inference import npu_format_cast_via_cpu
 from torchair.core.utils import logger
+from torchair.core import utils as _core_utils
 from torchair.patterns.pattern_pass_manager import register_replacement
 from torchair._utils.adjust_traceable_collective_remaps import adjust_traceable_collective_remaps
 
@@ -41,7 +42,7 @@ try:
 except (ImportError, AttributeError) as e:
     ALL_GATHER_INTO_TENSOR_UNEVEN = None
     REDUCE_SCATTER_TENSOR_UNEVEN = None
-
+_core_utils._set_dynamo_run_dir_name()
 adjust_traceable_collective_remaps()
 
 

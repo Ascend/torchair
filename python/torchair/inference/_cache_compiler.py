@@ -25,7 +25,7 @@ import torch.fx
 import torch.distributed as dist
 
 from torchair.configs.compiler_config import CompilerConfig, _check_config_support
-from torchair.core.utils import logger
+from torchair.core.utils import logger, _init_debug_logging
 from torchair.inference._gear_utils import get_dim_gears, set_dim_gears, guard_gears_shape
 from torchair._utils import add_npu_patch, get_npu_default_decompositions
 from torchair._utils.graph_transform_observer import wrap_compiler_phase, DebugContext, dump_fx_safety
@@ -614,7 +614,7 @@ def cache_compile(func, *, config: Optional[CompilerConfig] = None, backend: Opt
 
     if not isinstance(func.__self__, torch.nn.Module):
         raise ValueError(f"Only torch.nn.Module method can be cached now, got {func}")
-
+    _init_debug_logging()
     if cache_dir is not None and os.path.exists(cache_dir):
         try:
             _validate_owner(cache_dir)

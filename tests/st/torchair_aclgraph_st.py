@@ -2551,7 +2551,9 @@ class AclGraphSt(unittest.TestCase):
 
     @unittest.skipIf(torch.__version__ < "2.6", "")
     def test_torch_compile_acl_debug_dump(self):
-
+        ACL_DEBUG_FILES = [
+            "debug.log",
+        ]
         # Define templates for ACL mode (without hardcoded indices)
         ACL_COMMON_FILES = [
             "dynamo_out_graph.txt",
@@ -2600,6 +2602,8 @@ class AclGraphSt(unittest.TestCase):
         # Generate patterns with auto-incremented indics
         def generate_acl_patterns():
             patterns = []
+            for file in ACL_DEBUG_FILES:
+                patterns.append(file)
             # Add common files
             for file in ACL_COMMON_FILES:
                 patterns.append(f"model__{{id}}/{file}")
@@ -2687,6 +2691,10 @@ class AclGraphSt(unittest.TestCase):
     def test_torch_compile_acl_debug_dump_low_version(self):
 
         # Define templates for ACL mode (without hardcoded indices)
+        ACL_DEBUG_FILES = [
+            "debug.log",
+        ]
+
         ACL_COMMON_FILES = [
             "dynamo_out_graph.txt",
         ]
@@ -2730,6 +2738,8 @@ class AclGraphSt(unittest.TestCase):
         # Generate patterns with auto-incremented indics
         def generate_acl_patterns():
             patterns = []
+            for file in ACL_DEBUG_FILES:
+                patterns.append(file)
             # Add common files
             for file in ACL_COMMON_FILES:
                 patterns.append(f"model__{{id}}/{file}")

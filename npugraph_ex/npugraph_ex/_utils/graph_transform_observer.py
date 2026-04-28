@@ -2,7 +2,7 @@ import os
 import threading
 from typing import Callable
 
-from torch._dynamo.utils import get_debug_dir
+from torch._dynamo import utils as dutils
 from torch.fx.graph_module import GraphModule
 
 from npugraph_ex._utils.path_manager import PathManager
@@ -94,9 +94,9 @@ class DebugContext():
     def current_path(cls) -> str:
         phase = getattr(debug_ctx, 'phase', 'default')
         if phase == "compile_fx":
-            return os.path.join(get_debug_dir(), "npugraph_ex", f"compile__{cls.compile_fx_cnt}")
+            return os.path.join(dutils.get_debug_dir(), "npugraph_ex", f"compile__{cls.compile_fx_cnt}")
 
-        return os.path.join(get_debug_dir(), "npugraph_ex", f"model__{cls.model_cnt}")
+        return os.path.join(dutils.get_debug_dir(), "npugraph_ex", f"model__{cls.model_cnt}")
     
     @classmethod
     def next_path(cls) -> str:

@@ -22,7 +22,58 @@ def _create_debug_log_paths():
 
     return debug_log_path
 
-_torchair_debug_log_path = _create_debug_log_paths()
+_torchair_debug_log_path = None
+_TORCHAIR_RUN_NAME_PATCHED = False
+
+
+def _init_debug_logging():
+    global _torchair_debug_log_path
+    if _torchair_debug_log_path:
+        return _torchair_debug_log_path
+    path = _create_debug_log_paths()
+    if not path:
+        return None
+    formatter = _MillisecAndMicrosecFormatter(
+        f'[%(levelname)s] TORCHAIR({os.getpid()},{os.path.basename(sys.executable)})'
+        f':%(asctime)s [%(filename)s:%(lineno)d]{threading.get_native_id()} %(message)s')
+    fh = logging.FileHandler(path, encoding='utf-8', delay=False)
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
+    _torchair_debug_log_path = path
+    return path
+
+
+def _set_dynamo_run_dir_name():
+    if os.getenv("TORCH_COMPILE_DEBUG") != "1":
+        return
+    global _TORCHAIR_RUN_NAME_PATCHED
+    try:
+        from torch._dynamo import utils as dutils
+    except ImportError as e:
+        warnings.warn(f"set_dynamo_run_dir_name skipped: cannot import torch._dynamo.utils: {e}")
+        return
+    if _TORCHAIR_RUN_NAME_PATCHED:
+        return
+    orig = dutils.get_debug_dir
+
+    def ranked_get_debug_dir():
+        base = orig()
+        try:
+            import torch.distributed as dist
+            if not dist.is_initialized():
+                return base
+            rank_id = dist.get_rank()
+        except (ImportError, AttributeError):
+            return base
+
+        parent, name = os.path.dirname(base), os.path.basename(base)
+        suffix = f"rank_{rank_id}"
+        if not name.endswith(suffix):
+            name = f"{name}-{suffix}"
+        return os.path.join(parent, name)
+
+    dutils.get_debug_dir = ranked_get_debug_dir
+    _TORCHAIR_RUN_NAME_PATCHED = True
 
 EVENT_LEVEL = 35
 logging.addLevelName(EVENT_LEVEL, 'EVENT')
@@ -74,6 +125,6 @@ def _get_logger(*, level=logging.ERROR, output=sys.stdout, file=None, name=None)
 
 logger = _get_logger(
     name="torchair",
-    file=_torchair_debug_log_path,
+    file=None,
     level=logging.DEBUG if os.getenv("TORCH_COMPILE_DEBUG") == "1" else logging.ERROR
 )

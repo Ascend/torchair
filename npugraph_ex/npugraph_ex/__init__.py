@@ -7,6 +7,7 @@ import threading
 from npugraph_ex.npu_fx_compiler import compile_fx, get_npu_backend, get_compiler
 from npugraph_ex.configs.compiler_config import CompilerConfig
 from npugraph_ex.core.utils import logger
+from npugraph_ex.core import utils as _core_utils
 from npugraph_ex.patterns.pattern_pass_manager import register_replacement
 from npugraph_ex._utils.adjust_traceable_collective_remaps import adjust_traceable_collective_remaps
 import npugraph_ex.inference
@@ -21,7 +22,7 @@ try:
 except (ImportError, AttributeError) as e:
     ALL_GATHER_INTO_TENSOR_UNEVEN = None
     REDUCE_SCATTER_TENSOR_UNEVEN = None
-
+_core_utils._set_dynamo_run_dir_name()
 adjust_traceable_collective_remaps()
 
 
