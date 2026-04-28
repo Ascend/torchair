@@ -58712,6 +58712,7 @@ def GroupedDynamicMxQuant(x: Tensor,
                         round_mode: str = "rint",
                         dst_type: int = 35,
                         blocksize: int = 32,
+                        scale_alg: int = 0,
                         dependencies=[],
                         node_name=None):
     """REG_OP(GroupedDynamicMxQuant)\n
@@ -58722,6 +58723,7 @@ def GroupedDynamicMxQuant(x: Tensor,
     .ATTR(round_mode, String, "rint")\n
     .ATTR(dst_type, Int, DT_FLOAT8_E5M2)\n
     .ATTR(blocksize, Int, 32)\n
+    .ATTR(scale_alg, Int, 0)\n
     """
     # process inputs
     inputs = {
@@ -58734,6 +58736,7 @@ def GroupedDynamicMxQuant(x: Tensor,
         "round_mode": attr.Str(round_mode),
         "dst_type": attr.Int(dst_type),
         "blocksize": attr.Int(blocksize),
+        "scale_alg": attr.Int(scale_alg),
     }
 
     #process outputs
@@ -58753,6 +58756,7 @@ def GroupedDynamicMxQuant(x: Tensor,
             .attr("round_mode", attr.Str("rint")) \
             .attr("dst_type", attr.Int(35)) \
             .attr("blocksize", attr.Int(32)) \
+            .attr("scale_alg", attr.Int(0)) \
             .output("y", "DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN") \
             .output("mxscale", "DT_FLOAT8_E8M0")
     )

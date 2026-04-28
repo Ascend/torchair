@@ -8,12 +8,13 @@ def conveter_npu_grouped_dynamic_mx_quant_default(
     round_mode: str = "rint",
     dst_type: int = 23, # torch.float8_e5m2 enum value is 23
     blocksize: int = 32,
+    scale_alg: int = 0,
     meta_outputs: List[TensorSpec] = None
 ):
     """
     NB: aten::npu_grouped_dynamic_mx_quant(Tensor x, Tensor group_index, *, 
                                    str round_mode="rint", int dst_type=torch.float8_e5m2,
-                                   int blocksize=32) -> (Tensor y, Tensor mxscale)
+                                   int blocksize=32, int scale_alg=0) -> (Tensor y, Tensor mxscale)
     """
     ge_dst_type = torch_dtype_value_to_ge_type(dst_type)
     if ge_dst_type not in [DataType.DT_FLOAT8_E4M3FN, DataType.DT_FLOAT8_E5M2]:
@@ -27,7 +28,9 @@ def conveter_npu_grouped_dynamic_mx_quant_default(
         raise ValueError("Parameter round_mode must be 'rint', got " + round_mode)
     if blocksize != 32:
         raise ValueError(f"Parameter blocksize must be 32, got {blocksize}")
+    if scale_alg != 0 and scale_alg != 1:
+        raise ValueError(f"Parameter scale_alg must be 0 or 1, got {scale_alg}")
     y, mxscale = ge.GroupedDynamicMxQuant(
-        x, group_index, round_mode=round_mode, dst_type=ge_dst_type, blocksize=blocksize)
+        x, group_index, round_mode=round_mode, dst_type=ge_dst_type, blocksize=blocksize, scale_alg=scale_alg)
     mxscale.desc.dtype = ProtoDataType.DT_FLOAT8_E8M0
     return y, mxscale
