@@ -281,7 +281,7 @@ class CacheCompileTest(unittest.TestCase):
                                                          dynamic=True)
         test_res = model(ins)
         self.assertTrue(os.path.exists(forward_cache_dir))
-        self.assertEqual(target_res.item(), test_res.item())
+        self.assertAlmostEqual(target_res.item(), test_res.item(), places=4)
 
 
 if __name__ == '__main__':

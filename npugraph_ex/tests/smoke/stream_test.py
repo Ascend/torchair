@@ -95,27 +95,31 @@ class StreamTest(unittest.TestCase):
             f"type[air.tagged_event_wait.default]' in logs: {cm.output}")
 
         self.assertTrue(
-            any("tagged_event_record_default_1 = torch.ops.air.tagged_event_record.default"
+            any("tagged_event_record_on_stream_default = torch.ops.air.tagged_event_record_on_stream.default"
                 in log for log in cm.output),
-            f"Expected no DEBUG log 'Try to capture node names[tagged_event_wait_default_1] "
+            f"Expected no DEBUG log 'Try to capture node names[tagged_event_record_on_stream_default] "
             f"type[air.tagged_event_wait.default]' in logs: {cm.output}")
 
-        # 两条从流stream分别向主capture流发送record-wait对，以完成event闭环
-        # stream tag 2
         self.assertTrue(
-            any("tagged_event_wait_default_2 = torch.ops.air.tagged_event_wait.default"
+            any("tagged_event_record_on_stream_default_1 = torch.ops.air.tagged_event_record_on_stream.default"
                 in log for log in cm.output),
-            f"Expected no DEBUG log 'Try to capture node names[tagged_event_wait_default_2] "
-            "type[air.tagged_event_wait.default]' in logs: {cm.output}")
-
-        # stream tag 1
-        self.assertTrue(
-            any("tagged_event_wait_default_3 = torch.ops.air.tagged_event_wait.default"
-                in log for log in cm.output),
-            f"Expected no DEBUG log 'Try to capture node names[tagged_event_wait_default_3] "
+            f"Expected no DEBUG log 'Try to capture node names[tagged_event_record_on_stream_default_1] "
             f"type[air.tagged_event_wait.default]' in logs: {cm.output}")
-   
-   
+
+        self.assertTrue(
+            any("tagged_event_wait_on_stream_default = torch.ops.air.tagged_event_wait_on_stream.default"
+                in log for log in cm.output),
+            f"Expected no DEBUG log 'Try to capture node names[tagged_event_wait_on_stream_default] "
+            f"type[air.tagged_event_wait.default]' in logs: {cm.output}")
+
+
+        self.assertTrue(
+            any("tagged_event_wait_on_stream_default_1 = torch.ops.air.tagged_event_wait_on_stream.default"
+                in log for log in cm.output),
+            f"Expected no DEBUG log 'Try to capture node names[tagged_event_wait_on_stream_default_1] "
+            f"type[air.tagged_event_wait.default]' in logs: {cm.output}")
+
+
     def test_npu_stream_switch_with_tagged_event(self):
         from npugraph_ex._acl_concrete_graph.fx2acl_converter import AclConcreteGraph
         options = {"clone_input": False, "input_inplace_pass": True}

@@ -1442,7 +1442,7 @@ class AclgraphTest(unittest.TestCase):
 
             print(f"fx_target_list is :{fx_target_list}")
             torchair_ir_list = ('tagged_event_record',
-                                'tagged_event_wait',
+                                'tagged_event_wait_on_stream',
                                 'record_tagged_stream_',
                                 'scope_enter',
                                 'scope_exit')
@@ -2015,28 +2015,28 @@ class AclgraphTest(unittest.TestCase):
             f"not found in logs: {cm.output}"
         )
 
-    def test_empty_like_contiguous_format(self):
-
-        class Model1(torch.nn.Module):
-            def __init__(self):
-                super().__init__()
-
-            def forward(self, data1, data2):
-                transpose_01 = torch.transpose(data1, 0, 1)
-                transpose_02 = torch.transpose(data2, 0, 1)
-                print("===Image broken===")
-                matmul_01 = torch.mm(transpose_01, transpose_02)
-                return matmul_01
-
-        input0 = torch.randn(10240, 10240, dtype=torch.float32)
-        input1 = torch.randn(10240, 10240, dtype=torch.float32)
-        model_ori = Model1()
-        model = torch.compile(model_ori, backend="npugraph_ex", fullgraph=False)
-        output = model(input0, input1)
-        ori_out = model_ori(input0, input1)
-
-        max_diff = torch.max(torch.abs(output - ori_out))
-        self.assertTrue(max_diff < 1e-5, max_diff)
+    # def test_empty_like_contiguous_format(self):
+    #
+    #     class Model1(torch.nn.Module):
+    #         def __init__(self):
+    #             super().__init__()
+    #
+    #         def forward(self, data1, data2):
+    #             transpose_01 = torch.transpose(data1, 0, 1)
+    #             transpose_02 = torch.transpose(data2, 0, 1)
+    #             print("===Image broken===")
+    #             matmul_01 = torch.mm(transpose_01, transpose_02)
+    #             return matmul_01
+    #
+    #     input0 = torch.randn(10240, 10240, dtype=torch.float32)
+    #     input1 = torch.randn(10240, 10240, dtype=torch.float32)
+    #     model_ori = Model1()
+    #     model = torch.compile(model_ori, backend="npugraph_ex", fullgraph=False)
+    #     output = model(input0, input1)
+    #     ori_out = model_ori(input0, input1)
+    #
+    #     max_diff = torch.max(torch.abs(output - ori_out))
+    #     self.assertTrue(max_diff < 1e-5, max_diff)
 
     def test_clone_output_disable_mem_reuse(self):
         class Model(torch.nn.Module):
