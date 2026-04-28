@@ -10,16 +10,19 @@ def conveter_npu_dynamic_mx_quant_with_dual_axis_default(
     round_mode: str = "rint",
     dst_type: int = 296,
     scale_alg: int = 0,
+    dst_type_max: float = 0.0,
     meta_outputs: List[TensorSpec] = None
 ):
     """
     NB: aten::npu_dynamic_mx_quant_with_dual_axis(Tensor x, *, 
                                                     str round_mode="rint",
                                                     int dst_type=torch_npu.float4_e2m1,
-                                                    int scale_alg=0) -> (Tensor y1, Tensor mxscale1, Tensor y2, Tensor mxscale2))
+                                                    int scale_alg=0,
+                                                    dst_type_max: float = 0.0) -> (Tensor y1, Tensor mxscale1, Tensor y2, Tensor mxscale2))
     """
     acl_dst_type = torch_dtype_value_to_ge_type(dst_type)
-    y1, mxscale1, y2, mxscale2 = ge.DynamicMxQuantWithDualAxis(x, round_mode=round_mode, dst_type=acl_dst_type, scale_alg=scale_alg)
+    y1, mxscale1, y2, mxscale2 = ge.DynamicMxQuantWithDualAxis(x, round_mode=round_mode, dst_type=acl_dst_type, 
+                                                                scale_alg=scale_alg, dst_type_max=dst_type_max)
     y1.desc.dtype = torch_dtype_value_to_ge_proto_type(dst_type)
     mxscale1.desc.dtype = ProtoDataType.DT_FLOAT8_E8M0
     y2.desc.dtype = torch_dtype_value_to_ge_proto_type(dst_type)
