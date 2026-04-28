@@ -12,6 +12,7 @@ def convert_npu_kronecker_quant(
     kronecker_p2: Tensor,
     clip_ratio: Optional[float] = 1.000000,
     dst_dtype: Optional[int] = torch.int32,
+    dst_type_max: Optional[float] = 0.0,
     meta_outputs: Any = None
 ):
     import torch_npu
@@ -21,9 +22,12 @@ def convert_npu_kronecker_quant(
                          f"otherwise it should be None, but got {dst_dtype}")
     if clip_ratio is None:
         clip_ratio = 1.0
+    if dst_type_max is None:
+        dst_type_max = 0.0
     if dst_dtype == torch_npu.float4_e2m1fn_x2:
         dst_ge_dtype = torch_dtype_value_to_ge_type(dst_dtype)
-        y, quant_scale = ge.FlatQuant(x, kronecker_p1, kronecker_p2, clip_ratio=clip_ratio, dst_dtype=dst_ge_dtype)
+        y, quant_scale = ge.FlatQuant(x, kronecker_p1, kronecker_p2, clip_ratio=clip_ratio,
+                                      dst_dtype=dst_ge_dtype, dst_type_max=dst_type_max)
         y.desc.dtype = torch_dtype_value_to_ge_proto_type(torch_npu.float4_e2m1fn_x2)
         quant_scale.desc.dtype = torch_dtype_value_to_ge_proto_type(torch_npu.float8_e8m0fnu)
         return y, quant_scale

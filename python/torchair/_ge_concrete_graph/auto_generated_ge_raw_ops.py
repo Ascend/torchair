@@ -79298,6 +79298,7 @@ def FlatQuant(
     kronecker_p2: Tensor, *,
     clip_ratio: float = 1.000000,
     dst_dtype: int = 3,
+    dst_type_max: float = 0.0,
     dependencies=[],
     node_name=None):
     """REG_OP(FlatQuant)\n
@@ -79306,6 +79307,7 @@ def FlatQuant(
     .INPUT(kronecker_p2, TensorType({DT_FLOAT16, DT_BF16}))\n
     .ATTR(clip_ratio, Float, 1.000000)\n
     .ATTR(dst_type, int, DT_INT32)\n
+    .ATTR(dst_type_max, Float, 0.0)\n
     .OUTPUT(out, TensorType({DT_INT4}))\n
     .OUTPUT(quant_scale, TensorType({DT_FLOAT32}))\n
     """
@@ -79332,6 +79334,7 @@ def FlatQuant(
     # process attrs
     op.attr["clip_ratio"].f = clip_ratio
     op.attr["dst_dtype"].i = dst_dtype
+    op.attr["dst_type_max"].f = dst_type_max
     # process outputs
     output_index = 0
     op.output_desc.add().name = "out"

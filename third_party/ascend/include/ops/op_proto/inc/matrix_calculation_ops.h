@@ -291,6 +291,7 @@ REG_OP(FusedMatMul)
  * @par Attributes:
  * clip_ratio: An optional float. Used to control the quantization cropping ratio. Defaults to 1. \n
  * dst_dtype: An optional int. Used to control the quantization dst_type. Defaults to DT_INT32, which is 3. \n
+ * dst_type_max: An optional float. Used to control the quantization dst_type max value. Defaults to 0.0. \n
  */
 REG_OP(FlatQuant)
     .INPUT(x, TensorType({DT_FLOAT16, DT_BF16}))
@@ -300,6 +301,7 @@ REG_OP(FlatQuant)
     .OUTPUT(quant_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))
     .ATTR(clip_ratio, Float, 1)
     .ATTR(dst_dtype, Int, DT_INT32)
+    .ATTR(dst_type_max, Float, 0.0)
     .OP_END_FACTORY_REG(FlatQuant)
 } // namespace ge
 
