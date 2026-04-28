@@ -26,7 +26,7 @@ model = torch.compile(npu_mode, backend="npugraph_ex", options={"deadlock_check"
 
 ## 产物说明
 
-若存在死锁风险，则在脚本执行同级目录/torch_compile_debug/run_时间戳-pid_进程号/torchair/model__0/，输出如下结果：
+若存在死锁风险，则在脚本执行同级目录/torch_compile_debug/run_时间戳-pid_进程号/npugraph_ex/model__xx/，输出如下结果：
 
 ```txt
 graph_1_id_281464657589552_rank_2_pid_9096_ts_20260408072201427037.json                           // 原始dump json
