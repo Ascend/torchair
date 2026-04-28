@@ -22,7 +22,7 @@ namespace py = pybind11;
 
 namespace {
 tng::Status ParseListOptionalTensors(PyObject *obj, std::vector<c10::optional<at::Tensor>> &tensors) {
-  auto tuple = six::isTuple(obj);
+  auto tuple = PyTuple_Check(obj);
   if (!(tuple || PyList_Check(obj))) {
     return tng::Status::Error("not a list or tuple");
   }
@@ -56,7 +56,7 @@ tng::Status ParseStream(PyObject *obj, void *&stream) {
 }
 
 tng::Status ParseListTensors(PyObject *obj, std::vector<at::Tensor> &tensors) {
-  auto tuple = six::isTuple(obj);
+  auto tuple = PyTuple_Check(obj);
   if (!(tuple || PyList_Check(obj))) {
     return tng::Status::Error("not a list or tuple");
   }
@@ -75,7 +75,7 @@ tng::Status ParseListTensors(PyObject *obj, std::vector<at::Tensor> &tensors) {
 }
 
 tng::Status ParseListTensors(PyObject *obj, std::vector<const at::Tensor*> &tensors) {
-  auto tuple = six::isTuple(obj);
+  auto tuple = PyTuple_Check(obj);
   if (!(tuple || PyList_Check(obj))) {
     return tng::Status::Error("not a list or tuple");
   }
