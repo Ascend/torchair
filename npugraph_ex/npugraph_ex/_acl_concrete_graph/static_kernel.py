@@ -707,7 +707,7 @@ def _update_static_kernel_records(update_func):
                 f.seek(0)
                 if f.read(1):
                     f.seek(0)
-                    records = json.load(f)
+                    records = json.load(f) or {}
                 else:
                     records = {}
                 records = update_func(records)
@@ -1137,9 +1137,9 @@ def cleanup_old_run_packages():
                         logger.info(f"Uninstall script not found for old run package: {uninstall_path}")
                     del records[key]
                 except subprocess.CalledProcessError as e:
-                    logger.warning(f"Failed to uninstall old run package {uninstall_path}: {e.stderr}")
+                    logger.info(f"Unable to uninstall old run package {uninstall_path}: {e.stderr}")
                 except Exception as e:
-                    logger.warning(f"Error while cleanup old run package {uninstall_path}: {e}")
+                    logger.info(f"Unable to cleanup old run package {uninstall_path}: {e}")
 
         return records
 

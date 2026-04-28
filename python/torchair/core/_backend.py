@@ -112,8 +112,9 @@ def _signal_handler(signum, frame):
 
 cleanup_old_run_packages()
 atexit.register(finalize_graph_engine)
-signal.signal(signal.SIGTERM, _signal_handler)
-signal.signal(signal.SIGINT, _signal_handler)
+if threading.current_thread() is threading.main_thread():
+    signal.signal(signal.SIGTERM, _signal_handler)
+    signal.signal(signal.SIGINT, _signal_handler)
 
 
 class TorchNpuGraph(_torchair.TorchNpuGraphBase):

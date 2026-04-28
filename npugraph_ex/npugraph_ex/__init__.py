@@ -2,6 +2,7 @@ __all__ = ['get_npu_backend', 'get_compiler', 'compile_fx', 'CompilerConfig', 'l
 
 import atexit
 import signal
+import threading
 
 from npugraph_ex.npu_fx_compiler import compile_fx, get_npu_backend, get_compiler
 from npugraph_ex.configs.compiler_config import CompilerConfig
@@ -48,5 +49,6 @@ def _signal_handler(signum, frame):
 
 
 atexit.register(_finalize)
-signal.signal(signal.SIGTERM, _signal_handler)
-signal.signal(signal.SIGINT, _signal_handler)
+if threading.current_thread() is threading.main_thread():
+    signal.signal(signal.SIGTERM, _signal_handler)
+    signal.signal(signal.SIGINT, _signal_handler)
