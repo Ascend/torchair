@@ -7,7 +7,8 @@
         "use_internal_format_weight",
         "register_fx_node_ge_converter",
         "patch_for_hcom",
-        "register_replacement"
+        "register_replacement",
+        "npu_format_cast_via_cpu"
       ],
     "torchair.ge": [
         "custom_op",

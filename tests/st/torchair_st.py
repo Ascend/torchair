@@ -2906,5 +2906,11 @@ class TorchairSt(unittest.TestCase):
         y = torch.ones([1, 2], dtype=torch.float)
         executor.run((x, y))
 
+    def test_npu_format_cast_via_cpu(self):
+        from torchair.experimental.inference import npu_format_cast_via_cpu
+
+        x = torch.ones([128, 128], dtype=torch.int8)
+        y = npu_format_cast_via_cpu(x, 29)
+
 if __name__ == '__main__':
     unittest.main()

@@ -57,6 +57,10 @@ aclError aclrtSynchronizeStream(aclrtStream stream) {
     return ACL_SUCCESS;
 }
 
+aclError aclrtSynchronizeStreamWithTimeout(aclrtStream stream, int32_t timeout) {
+    return ACL_SUCCESS;
+}
+
 size_t aclGetCompileoptSize(aclCompileOpt opt) {
   return COMPILE_OPT_SIZE;
 }

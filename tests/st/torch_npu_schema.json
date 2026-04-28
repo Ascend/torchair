@@ -38,11 +38,17 @@
     "torch_npu.dynamo.torchair.use_internal_format_weight": {
         "signature": "(model: torch.nn.modules.module.Module)"
     },
+    "torch_npu.dynamo.torchair.npu_format_cast_via_cpu": {
+        "signature": "(self: torch.Tensor, acl_format: int, customize_dtype: Optional[int] = None, input_dtype: Optional[int] = None)"
+    },
     "torch_npu.dynamo.torchair.configs.compiler_config.CompilerConfig": {
         "signature": "()"
     },
     "torch_npu.dynamo.torchair.experimental.inference.use_internal_format_weight": {
         "signature": "(model: torch.nn.modules.module.Module)"
+    },
+    "torch_npu.dynamo.torchair.experimental.inference.npu_format_cast_via_cpu": {
+        "signature": "(self: torch.Tensor, acl_format: int, customize_dtype: Optional[int] = None, input_dtype: Optional[int] = None)"
     },
     "torch_npu.dynamo.torchair.ge.Cast": {
         "signature": "(x: torchair.ge.TensorBase, *, dst_type: int, dependencies=[], node_name=None)"

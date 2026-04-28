@@ -46,7 +46,7 @@ from torchair.ge._ge_graph import _ValueInput, _TensorInput, _DiscontiguousTenso
 from torchair.ge._ge_graph import torch_type_to_ge_type, torch_type_to_ge_proto_type, default_ge_graph, \
     GeGraph, attr_scope, compat_as_bytes, DataType, Format, TensorSpec, is_sym, sym_to_ge_dtype, assert_args_checkout
 from torchair._ge_concrete_graph.graph_pass import optimize_sym_pack, optimize_reference_op_redundant_copy, \
-    replace_data_to_refdata, get_frozen_flag, frozen_data_by_constplaceholder, move_transpose_into_mm
+    replace_data_to_refdata, get_frozen_flag, frozen_data_by_constplaceholder, move_transpose_into_mm, move_mm_weight_transpose_after_bitcast
 from torchair._ge_concrete_graph.utils import convert_to_tensorboard, dump_graph, force_op_unknown_shape, \
     is_host_data_tensor, get_used_sym_value_mapping, Placement, compute_value_of_sym, \
     generate_sym_exper, get_sym_int_value, generate_shape_from_tensor, generate_real_shape_from_tensor,  \
@@ -1113,7 +1113,9 @@ class GeConcreteGraph(ConcreteGraphBase):
             explicit_order_for_cmo, self.graph, "explicit_order_for_cmo")
         observer.apply_gegraph_pass(
             move_transpose_into_mm, self.graph, "move_transpose_into_mm")
-
+        observer.apply_gegraph_pass(
+            move_mm_weight_transpose_after_bitcast, self.graph, "move_mm_weight_transpose_after_bitcast")
+        
         _normalize_ge_graph(self.graph)
         observer.dump_gegraph(self.graph, "optimized_ge_graph")
 
