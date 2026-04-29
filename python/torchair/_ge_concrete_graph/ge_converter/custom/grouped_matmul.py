@@ -35,13 +35,21 @@ def fp8_quant_mode(intput_x_dtype, x_dtype, weight_dtype, scale):
     return False
 
 
+def any_dim_is_one(tensor: Tensor) -> bool:
+    return any(d == 1 for d in tensor.symsize)
+
+
 def fp4_quant_mode(x_dtype, weight_dtype, scale):
     if scale is None:
         return False
-    if ((x_dtype is not None and torch_dtype_value_to_ge_type(x_dtype) == DataType.DT_FLOAT4_E2M1) and \
-       (weight_dtype is not None and torch_dtype_value_to_ge_type(weight_dtype) == DataType.DT_FLOAT4_E2M1)):
-        return True
-    return False
+
+    x_ge_type = torch_dtype_value_to_ge_type(x_dtype) if x_dtype is not None else None
+    w_ge_type = torch_dtype_value_to_ge_type(weight_dtype) if weight_dtype is not None else None
+    is_x_e2m1 = x_ge_type == DataType.DT_FLOAT4_E2M1
+    is_x_e1m2 = x_ge_type == DataType.DT_FLOAT4_E1M2
+    is_w_e2m1 = w_ge_type == DataType.DT_FLOAT4_E2M1
+    is_w_e1m2 = w_ge_type == DataType.DT_FLOAT4_E1M2
+    return (is_x_e2m1 or is_x_e1m2) and (is_w_e2m1 or is_w_e1m2)
 
 
 def a16_weight_quant_mode(x_dtype, weight_dtype):
@@ -109,36 +117,48 @@ def convert_tensorlist_to_int4_arch35(input_data: List[Tensor], trans: bool):
     return w_list
 
 
-def convert_tensorlist_to_mxfp4_item(input_data: Tensor, x_dtype, trans):
-    shape_multiples = 2
-    x_ge_dtype = 0
+def convert_tensorlist_to_mxfp4_item(input_data: Tensor, x_dtype, trans):	 
+     shape_multiples = 2 
+     x_ge_dtype = 0	 
+ 
+ 
+     if x_dtype is not None:	 
+         x_ge_dtype = torch_dtype_value_to_ge_type(x_dtype)	 
+     const_x = ge.Const([1] * (input_data.rank - 1) + [shape_multiples])	 
+     perm = [i for i in range(input_data.rank)] 
+     perm[-1], perm[-2] = perm[-2], perm[-1] 
+     if trans: 
+         input_data = ge.Transpose(input_data, perm) 
+     shape_x = ge.Shape(input_data) 
+     shape_x = ge.Mul(shape_x, const_x) 
+     input_data = ge.Bitcast(input_data, type=x_ge_dtype) 
+     input_data = ge.Reshape(input_data, shape_x) 
+     if trans: 
+         input_data = ge.Transpose(input_data, perm) 
+     return input_data
 
+
+def convert_tensorlist_to_mxfp4_item_simple(input_data: Tensor, x_dtype):
+    x_ge_dtype = 0
     if x_dtype is not None:
         x_ge_dtype = torch_dtype_value_to_ge_type(x_dtype)
-    const_x = ge.Const([1] * (input_data.rank - 1) + [shape_multiples])
-    perm = [i for i in range(input_data.rank)]
-    perm[-1], perm[-2] = perm[-2], perm[-1]
-    if trans:
-        input_data = ge.Transpose(input_data, perm)
-    shape_x = ge.Shape(input_data)
-    shape_x = ge.Mul(shape_x, const_x)
-    input_data = ge.Bitcast(input_data, type=x_ge_dtype)
-    input_data = ge.Reshape(input_data, shape_x)
-    if trans:
-        input_data = ge.Transpose(input_data, perm)
+    input_data = ge.Bitcast(input_data, type=x_ge_dtype, keep_dim=True)
     return input_data
 
 
-def convert_tensorlist_to_mxfp4(x: List[Tensor], weight: List[Tensor], x_dtype, weight_dtype):
+def convert_tensorlist_to_mxfp4(x: List[Tensor], weight: List[Tensor], x_dtype, weight_dtype, is_simple):
     x_list = []
     w_list = []
     for x_item in x:
-        new_x = convert_tensorlist_to_mxfp4_item(x_item, x_dtype, False)
+        new_x = convert_tensorlist_to_mxfp4_item_simple(x_item, x_dtype)
         x_list.append(new_x)
     for w_item in weight:
         # x只有一个x_item
         trans_weight = x_item.symsize[-1] == w_item.symsize[-2]
-        new_w = convert_tensorlist_to_mxfp4_item(w_item, weight_dtype, trans_weight)
+        if is_simple:
+            new_w = convert_tensorlist_to_mxfp4_item_simple(w_item, weight_dtype)
+        else:
+            new_w = convert_tensorlist_to_mxfp4_item(w_item, weight_dtype, trans_weight)
         w_list.append(new_w)
     return x_list, w_list
 
@@ -306,19 +326,26 @@ def conveter_npu_npu_grouped_matmul(
         for w_item in weight:
             w_list.append(ge.Bitcast(w_item, type=torch_dtype_value_to_ge_type(weight_dtype), keep_dim=True))
     elif x_dtype is not None and weight_dtype is not None and \
-         x_dtype == torch_npu.float4_e2m1fn_x2 and weight_dtype == torch_npu.float4_e2m1fn_x2:
-        x_list, w_list = convert_tensorlist_to_mxfp4(x, weight, x_dtype, weight_dtype)
+         (x_dtype == torch_npu.float4_e2m1fn_x2 or x_dtype == torch_npu.float4_e1m2fn_x2) \
+          and (weight_dtype == torch_npu.float4_e2m1fn_x2 or weight_dtype == torch_npu.float4_e1m2fn_x2):
+        is_simple = True
+        for scale_item in scale:
+            if scale_item is not None and any_dim_is_one(scale_item):
+                is_simple = False
+        if per_token_scale is not None and any_dim_is_one(per_token_scale):
+            is_simple = False
+        x_list, w_list = convert_tensorlist_to_mxfp4(x, weight, x_dtype, weight_dtype, is_simple)
     else:
         x_list = x
         w_list = weight
 
     if x_dtype is not None:
-        if x_dtype != torch_npu.float4_e2m1fn_x2:
+        if (x_dtype != torch_npu.float4_e2m1fn_x2 and x_dtype != torch_npu.float4_e1m2fn_x2):
             x_list[0] = ge.Bitcast(x_list[0], type=torch_dtype_value_to_ge_type(x_dtype))
         x_list[0].desc.dtype = torch_dtype_value_to_ge_proto_type(x_dtype)
 
     if weight_dtype is not None:
-        if weight_dtype != torch_npu.float4_e2m1fn_x2:
+        if (weight_dtype != torch_npu.float4_e2m1fn_x2 and weight_dtype != torch_npu.float4_e1m2fn_x2):
             w_list[0] = ge.Bitcast(w_list[0], type=torch_dtype_value_to_ge_type(weight_dtype))
         w_list[0].desc.dtype = torch_dtype_value_to_ge_proto_type(weight_dtype)
 
