@@ -83055,11 +83055,11 @@ def QuantBatchMatmulV4(x1: Tensor, x2: Tensor, bias: Optional[Tensor], x1_scale:
 @auto_convert_to_tensor([False, False, False, False, False], [False, False, False, False, True])
 def QuantBatchMatmulInplaceAdd(x1: Tensor, x2: Tensor, x2_scale: Tensor, y: Tensor, x1_scale: Optional[Tensor], *, transpose_x1: bool=False, transpose_x2: bool=False, group_size: int=0, dependencies=[], node_name=None):
     """REG_OP(QuantBatchMatmulInplaceAdd)\n
-    .INPUT(x1, TensorType({DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN}))\n
-    .INPUT(x2, TensorType({DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN}))\n
-    .INPUT(x2_scale, TensorType({DT_FLOAT8_E8M0}))\n
+    .INPUT(x1, TensorType({DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN}))\n
+    .INPUT(x2, TensorType({DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN}))\n
+    .INPUT(x2_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))\n
     .INPUT(y, TensorType({DT_FLOAT}))\n
-    .OPTIONAL_INPUT(x1_scale, TensorType({DT_FLOAT8_E8M0}))\n
+    .OPTIONAL_INPUT(x1_scale, TensorType({DT_FLOAT, DT_FLOAT8_E8M0}))\n
     .OUTPUT(y, TensorType({DT_FLOAT}))\n
     .ATTR(transpose_x1, Bool, false)\n
     .ATTR(transpose_x2, Bool, false)\n
@@ -83094,11 +83094,11 @@ def QuantBatchMatmulInplaceAdd(x1: Tensor, x2: Tensor, x2_scale: Tensor, y: Tens
         outputs=outputs,
         dependencies=dependencies,
         ir=IrDef("QuantBatchMatmulInplaceAdd") \
-        .input("x1", "DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN") \
-        .input("x2", "DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN") \
-        .input("x2_scale", "DT_FLOAT8_E8M0") \
+        .input("x1", "DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN") \
+        .input("x2", "DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN") \
+        .input("x2_scale", "DT_FLOAT, DT_FLOAT8_E8M0") \
         .input("y", "DT_FLOAT") \
-        .optional_input("x1_scale", "DT_FLOAT8_E8M0") \
+        .optional_input("x1_scale", "DT_FLOAT, DT_FLOAT8_E8M0") \
         .attr("transpose_x1", attr.Bool(False)) \
         .attr("transpose_x2", attr.Bool(False)) \
         .attr("group_size", attr.Int(0)) \

@@ -75,7 +75,7 @@ def conveter_npu_npu_add_quant_matmul(
     out = ge.QuantBatchMatmulInplaceAdd(x1,
                                         x2,
                                         x2_scale=x2_scale,
-                                        y=y,
+                                        y=y_copy,
                                         x1_scale=x1_scale,
                                         transpose_x1=False,
                                         transpose_x2=False,
