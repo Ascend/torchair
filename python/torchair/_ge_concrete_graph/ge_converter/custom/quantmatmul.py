@@ -35,16 +35,6 @@ def is_transpose_last_two_dims(tensor):
     return False
 
 
-def batch_axis_has_one(tensor: Tensor) -> bool:
-    # 仅检查 batch 维：末尾 2 维为矩阵维 (M/K/N 等)；rank < 3 时只有矩阵维、无独立 batch 轴。
-    if tensor.rank < 3:
-        return False
-    for i in range(tensor.rank - 2):
-        if tensor.symsize[i] == 1:
-            return True
-    return False
-
-
 def any_dim_is_one(tensor: Tensor) -> bool:
     return any(d == 1 for d in tensor.symsize)
 
@@ -84,22 +74,6 @@ def conveter_npu_npu_quant_matmul(
     is_mxfp4_valid = x1_dtype == torch_npu.float4_e2m1fn_x2 and x2_dtype == torch_npu.float4_e2m1fn_x2
     is_a8w4 = x1.dtype == DataType.DT_FLOAT8_E4M3FN and \
                           (x2_dtype == torch_npu.float4_e2m1fn_x2 or x2.dtype == DataType.DT_FLOAT)
-    if is_mxfp4_valid:
-        _mxfp4_scale_shape_msg = (
-            "Current MxFP4 in graph mode requires every axis of scale and of pertoken_scale "
-            "to have size at least 2; a dimension of size 1 is not supported "
-            "(this matches the restriction that the dimension K must be greater than 64). "
-            "Please use eager mode if needed."
-        )
-        if scale is not None and any_dim_is_one(scale):
-            raise ValueError(_mxfp4_scale_shape_msg)
-        if pertoken_scale is not None and any_dim_is_one(pertoken_scale):
-            raise ValueError(_mxfp4_scale_shape_msg)
-        if batch_axis_has_one(x1) or batch_axis_has_one(x2):
-            raise ValueError(
-                "Current MxFP4 does not support the batch axis containing 1 in graph mode. "
-                "Please use eager mode if needed."
-            )
     need_reshape = (x1.dtype == DataType.DT_INT32 and x2.dtype == DataType.DT_INT32) or \
                    (x1_dtype is not None and x2_dtype is not None and x1_dtype == torch_npu.float4_e2m1fn_x2) or \
                    (is_a8w4 and x2.dtype != DataType.DT_FLOAT and y_scale is not None)
@@ -142,7 +116,14 @@ def conveter_npu_npu_quant_matmul(
             if trans_x1:
                 x1 = ge.Transpose(x1, perm)
 
+        is_simple = True
         if is_mxfp4_valid:
+            if scale is not None and any_dim_is_one(scale):
+                is_simple = False
+            if pertoken_scale is not None and any_dim_is_one(pertoken_scale):
+                is_simple = False
+
+        if is_mxfp4_valid and is_simple:
             x2 = ge.Bitcast(x2, type=x2_ge_dtype, keep_dim=True)
         else:
             if trans_x2:
