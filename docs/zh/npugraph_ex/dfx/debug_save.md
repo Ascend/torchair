@@ -53,7 +53,7 @@ python main.py
     out = model(x)
     ```
 
-    运行示例脚本，编译过程中必要的Debug信息产物目录结构如下，仅供参考，具体取决于实际开启的Pass数量。“torch_compile_debug”为PyTorch原生开启环境变量时创建的目录，默认在当前脚本路径下。
+    运行示例脚本，编译过程中必要的Debug信息产物目录结构如下，仅供参考，具体取决于实际开启的Pass数量。“torch_compile_debug”为PyTorch原生开启环境变量时创建的目录，默认在当前脚本路径下。分布式场景下，运行目录名会在末尾追加`-rank_<rank_id>`（例如`torch_compile_debug/run_<时间>-pid_<进程号>-rank_<rank_id>`）。
 
     ```txt
     torch_compile_debug/run_<时间>-pid_<进程号>
