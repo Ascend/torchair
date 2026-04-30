@@ -39,6 +39,16 @@ def any_dim_is_one(tensor: Tensor) -> bool:
     return any(d == 1 for d in tensor.symsize)
 
 
+def batch_axis_has_one(tensor: Tensor) -> bool:
+    # 仅检查 batch 维：末尾 2 维为矩阵维 (M/K/N 等)；rank < 3 时只有矩阵维、无独立 batch 轴。
+    if tensor.rank < 3:
+        return False
+    for i in range(tensor.rank - 2):
+        if tensor.symsize[i] == 1:
+            return True
+    return False
+
+
 @register_fx_node_ge_converter(torch.ops.npu.npu_quant_matmul.default)
 def conveter_npu_npu_quant_matmul(
     x1: Tensor,
@@ -77,6 +87,9 @@ def conveter_npu_npu_quant_matmul(
     need_reshape = (x1.dtype == DataType.DT_INT32 and x2.dtype == DataType.DT_INT32) or \
                    (x1_dtype is not None and x2_dtype is not None and x1_dtype == torch_npu.float4_e2m1fn_x2) or \
                    (is_a8w4 and x2.dtype != DataType.DT_FLOAT and y_scale is not None)
+    mxfp4_batch_axis_has_one = False
+    if need_reshape and is_mxfp4_valid:
+        mxfp4_batch_axis_has_one = batch_axis_has_one(x1) or batch_axis_has_one(x2)
     if need_reshape:
         shape_multiples = 2
         x1_ge_dtype = 0
@@ -121,6 +134,8 @@ def conveter_npu_npu_quant_matmul(
             if scale is not None and any_dim_is_one(scale):
                 is_simple = False
             if pertoken_scale is not None and any_dim_is_one(pertoken_scale):
+                is_simple = False
+            if mxfp4_batch_axis_has_one:
                 is_simple = False
 
         if is_mxfp4_valid and is_simple:
