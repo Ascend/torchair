@@ -84292,3 +84292,52 @@ def RotateQuant(x: Tensor,
         .output("y", "DT_INT8, DT_INT4") \
         .output("scale", "DT_FLOAT32")
     )
+
+
+# This api is auto-generated from IR QuantMax
+@auto_convert_to_tensor([False, False], [False, False])
+def QuantMax(x: Tensor,
+             scale: Tensor,
+             *,
+             round_mode: str = "rint",
+             dst_type: int = 35,
+             dependencies=[],
+             node_name=None):
+    """REG_OP(QuantMax)\n
+    .INPUT(x, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .INPUT(scale, TensorType({DT_FLOAT}))\n
+    .OUTPUT(y, TensorType({DT_HIFLOAT8, DT_FLOAT8_E5M2, DT_FLOAT8_E4M3FN}))\n
+    .OUTPUT(amax, TensorType({DT_FLOAT, DT_FLOAT16, DT_BF16}))\n
+    .ATTR(round_mode, String, "rint")\n
+    .ATTR(dst_type, Int, DT_FLOAT8_E5M2)\n
+    """
+    op = get_default_ge_graph().op.add()
+    op.type = "QuantMax"
+    op.name = next_unique_name(node_name, "QuantMax")
+
+    # process dependices
+    for dependency in dependencies:
+        op.input.append(dependency.controller)
+
+    # process inputs
+    op.input.append(x.tensor)
+    op.input_desc.add().CopyFrom(x.desc)
+    op.input_desc[-1].name = "x"
+    op.input.append(scale.tensor)
+    op.input_desc.add().CopyFrom(scale.desc)
+    op.input_desc[-1].name = "scale"
+
+    # process attrs
+    op.attr["round_mode"].s = compat_as_bytes(round_mode)
+    op.attr["dst_type"].i = dst_type
+
+    # process outputs
+    output_index = 0
+    op.output_desc.add().name = "y"
+    y = Tensor(op, output_index)
+    output_index += 1
+    op.output_desc.add().name = "amax"
+    amax = Tensor(op, output_index)
+    output_index += 1
+
+    return y, amax
