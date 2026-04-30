@@ -278,5 +278,8 @@ def convert_npu_all_to_all_quant_matmul(
                                            alltoall_out_flag=all2all_out_flag)
 
     out.desc.dtype = _ge_dtype_to_ge_proto_dtype(output_dtype)
+    if all2all_out_flag:
+        all2all_out_dtype = torch_dtype_value_to_ge_type(x1_dtype) if x1_dtype is not None else x1.dtype
+        all2all_out.desc.dtype = _ge_dtype_to_ge_proto_dtype(all2all_out_dtype)
 
     return (out, all2all_out)
