@@ -133,8 +133,6 @@ def conveter_npu_npu_quant_matmul(
         if is_mxfp4_valid:
             if scale is not None and any_dim_is_one(scale):
                 is_simple = False
-            if pertoken_scale is not None and any_dim_is_one(pertoken_scale):
-                is_simple = False
             if mxfp4_batch_axis_has_one:
                 is_simple = False
 
