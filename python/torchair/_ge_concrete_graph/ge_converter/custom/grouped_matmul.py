@@ -332,8 +332,6 @@ def conveter_npu_npu_grouped_matmul(
         for scale_item in scale:
             if scale_item is not None and any_dim_is_one(scale_item):
                 is_simple = False
-        if per_token_scale is not None and any_dim_is_one(per_token_scale):
-            is_simple = False
         x_list, w_list = convert_tensorlist_to_mxfp4(x, weight, x_dtype, weight_dtype, is_simple)
     else:
         x_list = x
