@@ -1,6 +1,6 @@
 [submodule "third_party/secure_c"]
 	path = third_party/secure_c
-	url = https://gitee.com/openeuler/libboundscheck.git
+	url = https://atomgit.com/openeuler/libboundscheck
 [submodule "third_party/googletest"]
 	path = third_party/googletest
 	url = https://gitee.com/mirrors/googletest.git
