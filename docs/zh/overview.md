@@ -13,7 +13,7 @@ TorchAir在Ascend Extension for PyTorch（torch\_npu）中的位置如[图1](#fi
     > [!NOTE]说明
     >npugraph\_ex后端提供捕获模式（aclgraph），该模式一般通过Runtime提供的aclmdlRICaptureXxx系列接口实现，其原理和接口介绍请参考《[CANN 应用开发指南 (C&C++)](https://hiascend.com/document/redirect/CannCommunityadevguide)》。
 
-- **基于GE的图模式（Ascend IR）**：通过设置TorchAir的CompilerConfig实例属性**mode="max-autotune"**开启，其将PyTorch的FX计算图转换为昇腾中间表示（IR，Intermediate Representation），即Ascend IR计算图，并通过GE（Graph Engine，图引擎）实现计算图的编译和执行。
+- **基于GE的图模式（Ascend IR）**：通过设置TorchAir的CompilerConfig实例属性 <b>mode="max-autotune"</b> 开启，其将PyTorch的FX计算图转换为昇腾中间表示（IR，Intermediate Representation），即Ascend IR计算图，并通过GE（Graph Engine，图引擎）实现计算图的编译和执行。
 
 **图 1**  TorchAir架构图  
 ![](figures/torchair_architecture.png "TorchAir架构图")<a id="fig1"></a>
