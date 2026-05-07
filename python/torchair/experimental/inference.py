@@ -1,13 +1,9 @@
-__all__ = ["use_internal_format_weight", "npu_format_cast_via_cpu"]
+__all__ = ["use_internal_format_weight"]
 
 import sys
-from typing import Optional
-
 import torch
-from torch import Tensor
-
-from torchair.core import _npu_utils
 from torchair.core.utils import logger
+
 
 _TORCH_NPU_MODULE = None
 _DEEPSPEED_MODULE = None
@@ -109,8 +105,3 @@ def use_internal_format_weight(model: torch.nn.Module):
         _DEEPSPEED_MODULE = sys.modules['deepspeed']
 
     _weight_format_cast(model)
-
-
-def npu_format_cast_via_cpu(self: Tensor, acl_format: int, customize_dtype: Optional[int] = None,
-                            input_dtype: Optional[int] = None):
-    return _npu_utils.NpuFormatCastViaCpu(self, acl_format, customize_dtype, input_dtype)

@@ -32,4 +32,3 @@ target_link_libraries(_torchair PRIVATE
         hccl_libs)
 
 add_subdirectory(npu_graph_executor)
-add_subdirectory(npu_utils)
