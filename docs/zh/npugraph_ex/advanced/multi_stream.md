@@ -90,4 +90,4 @@ result = model(in1, in2, in3, in4)
 **图 1**  多流表达示意图  
 ![](../../figures/npugraph_ex_multi_stream.png "多流示意图")
 
-图中展示了流间的时序控制关系，其中npugraph_ex会在编图时插入record3、wait3、record4和wait4，用于默认流等待其他流任务完成。
+图中实线框展示了多流并行执行的时序控制关系，用户在脚本中通过event1和event2控制流间数据依赖，确保具有依赖关系的计算任务按正确顺序执行。虚线框标注了npugraph_ex在编图时自动插入的record、wait等同步点，形成执行闭环，目的是让从流的算子能够被捕获到。(CUDA Graph相同逻辑，切换到从流需要用开头和结尾的两对record、wait以实现流捕获)。
