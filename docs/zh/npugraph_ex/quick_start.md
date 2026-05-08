@@ -80,7 +80,7 @@ torch.compile参数配置说明参见[表1](#fig1)。
 |[模型编译缓存功能](./advanced/compile_cache.md)|在推理服务和弹性扩容等业务场景中，使用编译缓存可有效缩短服务启动后的首次推理时延。|
 |[多流表达功能](./advanced/multi_stream.md)|大模型推理场景下，对于一些可并行的场景，可划分多个stream提升执行效率。|
 |[AI-Core和Vector-Core限核功能](./advanced/limit_cores.md)|提供Stream级核数配置，可调整最大AI Core数和Vector Core数，避免算子执行并行度降低。|
-|[自定义FX图优化Pass功能](./advanced/post_grad_custom_pass.md)|传入自定义FX Pass函数，该配置可控制自定义Pass在框架内置Pass执行前/后生效。|
+|[自定义FX图优化Pass功能](./basic/post_grad_custom_pass.md)|传入自定义FX Pass函数，该配置可控制自定义Pass在框架内置Pass执行前/后生效。|
 
 **表 4**  npugraph\_ex DFX功能 <a id="fig4"></a>
 
