@@ -82148,10 +82148,10 @@ def MoeReRouting(tokens: Tensor,
                 dependencies=[],
                 node_name=None):
     """REG_OP(MoeReRouting)\n
-    .INPUT(tokens, TensorType({DT_FLOAT16, DT_INT8}))\n
+    .INPUT(tokens, TensorType({DT_FLOAT16, DT_INT8, DT_HIFLOAT8, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2}))\n
     .INPUT(expert_token_num_per_rank, TensorType({DT_INT32, DT_INT64}))\n
     .OPTIONAL_INPUT(per_token_scales, TensorType({DT_FLOAT}))\n
-    .OUTPUT(permute_tokens, TensorType({DT_FLOAT16, DT_INT8}))\n
+    .OUTPUT(permute_tokens, TensorType({DT_FLOAT16, DT_INT8, DT_HIFLOAT8, DT_FLOAT4_E2M1, DT_FLOAT4_E1M2}))\n
     .OUTPUT(permute_per_token_scales, TensorType({DT_FLOAT}))\n
     .OUTPUT(permute_token_idx, TensorType({DT_INT32}))\n
     .OUTPUT(expert_token_num, TensorType({DT_INT32, DT_INT64}))\n
