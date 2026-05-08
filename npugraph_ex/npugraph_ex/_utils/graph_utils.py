@@ -356,3 +356,125 @@ def _merge_diff_list(before_dict, after_dict):
         diff_item = [key, before_value, after_value, after_value - before_value]
         merged_diff.append(diff_item)
     return merged_diff
+
+
+def verify_cross_stream_event_protected(inplace_node: Node, users: List[Node]) -> bool:
+    """
+    Check if cross-stream users of an inplace node are protected by event synchronization.
+
+    Supports two directions:
+    - Forward: inplace happens-before user (record after inplace → wait before user)
+    - Backward: user happens-before inplace (record after user → wait before inplace)
+
+    Supports chained events via BFS propagation.
+
+    Args:
+        inplace_node: The node performing the inplace operation
+        users: All downstream user nodes of the mutated input
+    """
+    graph = inplace_node.graph
+
+    inplace_meta = getattr(inplace_node, 'meta', {})
+    if 'stream_label' not in inplace_meta:
+        return False
+    inplace_stream = inplace_meta["stream_label"]
+
+    # Identify cross-stream users
+    cross_stream_users = []
+    for user in users:
+        user_meta = getattr(user, 'meta', {})
+        user_stream = user_meta.get("stream_label")
+        if user_stream != inplace_stream:
+            cross_stream_users.append(user)
+
+    if not cross_stream_users:
+        logger.debug("[event_protected] No cross-stream users of %s, event protection is not required.",
+                     inplace_node.name)
+        return True
+
+    # Build position map and collect event nodes in a single pass
+    node_position = {}
+    event_records = {}  # tag -> [(stream_label, position)]
+    event_waits = {}    # tag -> [(stream_label, position)]
+
+    event_record_targets = {
+        "air.tagged_event_record.default",
+        "air.tagged_event_record_on_stream.default",
+    }
+
+    event_wait_targets = {
+        "air.tagged_event_wait.default",
+        "air.tagged_event_wait_on_stream.default",
+    }
+
+    for pos, node in enumerate(graph.nodes):
+        node_position[node] = pos
+
+        target_str = str(node.target)
+        if target_str in event_record_targets and node.args:
+            tag = node.args[0]
+            stream = node.meta.get("stream_label") if hasattr(node, 'meta') else None
+            event_records.setdefault(tag, []).append((stream, pos))
+        elif target_str in event_wait_targets and node.args:
+            tag = node.args[0]
+            stream = node.meta.get("stream_label") if hasattr(node, 'meta') else None
+            event_waits.setdefault(tag, []).append((stream, pos))
+
+    if not event_records or not event_waits:
+        logger.debug("[event_protected] No event record/wait pairs found in graph, cannot verify protection.")
+        return False
+
+    inplace_pos = node_position.get(inplace_node, -1)
+
+    # Forward BFS: find all (stream, position) that happen-after the inplace node.
+    # happens_after[stream] = P means nodes on that stream at position > P happen-after inplace.
+    happens_after = {inplace_stream: inplace_pos}
+    changed = True
+    while changed:
+        changed = False
+        for tag, records in event_records.items():
+            waits = event_waits.get(tag)
+            if not waits:
+                continue
+            for rec_stream, rec_pos in records:
+                if rec_stream not in happens_after or rec_pos <= happens_after[rec_stream]:
+                    continue
+                for wait_stream, wait_pos in waits:
+                    if wait_stream not in happens_after or wait_pos < happens_after[wait_stream]:
+                        happens_after[wait_stream] = wait_pos
+                        changed = True
+
+    # Backward BFS: find all (stream, position) that happen-before the inplace node.
+    # happens_before[stream] = P means nodes on that stream at position < P happen-before inplace.
+    happens_before = {inplace_stream: inplace_pos}
+    changed = True
+    while changed:
+        changed = False
+        for tag, waits in event_waits.items():
+            records = event_records.get(tag)
+            if not records:
+                continue
+            for wait_stream, wait_pos in waits:
+                if wait_stream not in happens_before or wait_pos >= happens_before[wait_stream]:
+                    continue
+                for rec_stream, rec_pos in records:
+                    if rec_stream not in happens_before or rec_pos + 1 > happens_before[rec_stream]:
+                        happens_before[rec_stream] = rec_pos + 1
+                        changed = True
+
+    # Verify every cross-stream user is covered by either direction
+    for user in cross_stream_users:
+        user_stream = getattr(user, 'meta', {}).get("stream_label")
+        user_pos = node_position.get(user, -1)
+
+        forward_ok = user_stream in happens_after and user_pos > happens_after[user_stream]
+        backward_ok = user_stream in happens_before and user_pos < happens_before[user_stream]
+
+        if not forward_ok and not backward_ok:
+            logger.debug("[event_protected] Cross-stream user %s (stream=%s, pos=%d) is NOT protected "
+                         "by events for inplace node %s.", user.name, user_stream, user_pos, inplace_node.name)
+            return False
+
+    logger.debug("[event_protected] All cross-stream users of %s are protected by event synchronization.",
+                 inplace_node.name)
+    return True

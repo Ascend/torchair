@@ -438,16 +438,16 @@ class ReinplaceStreamChecker:
     
     def _verify_and_log(self, node: Node, users: List[Node], check_name: str) -> bool:
         """Verify if user nodes are on the same stream and log the result."""
-        from npugraph_ex._utils.graph_utils import verify_nodes_on_same_stream
+        from npugraph_ex._utils.graph_utils import verify_cross_stream_event_protected
         
-        if verify_nodes_on_same_stream(users):
-            logger.debug("[%s]Current node: %s, type: %s check no multi stream users success for reinplace. "
-                 "The users of the mutated input node did not have multiple streams.", check_name,
-                 node.name, node.target)
+        if verify_cross_stream_event_protected(node, users):
+            logger.debug("[%s]Current node: %s, type: %s check stream safety success for reinplace. "
+                     "The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events. All the users are %s.", check_name,
+                     node.name, node.target, users)
             return True
         else:
             logger.debug("[%s]Current node: %s, type: %s check no multi stream users failed for reinplace. "
-                     "The users of the mutated input node have multiple streams. All the users are %s.", check_name,
+                     "The users of the mutated input node have multiple streams without event protection. All the users are %s.", check_name,
                      node.name, node.target, users)
             return False
 

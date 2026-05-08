@@ -42,6 +42,19 @@ def capture_logger():
         print("Captured logger message:\n", captured_output)
 
 
+lib = torch.library.Library("custom", "FRAGMENT")
+lib.define("custom_scatter_update(Tensor(a!) x, Tensor y) -> Tensor")
+
+@torch.library.impl(lib, "custom_scatter_update", "CompositeExplicitAutograd")
+def custom_scatter_update(x, y):
+    x.add_(y)
+    return x
+
+@torch.library.impl(lib, "custom_scatter_update", "Meta")
+def custom_scatter_update_meta(x, y):
+    return torch.empty_like(x)
+
+
 class StreamTest(unittest.TestCase):
     def setUp(self) -> None:
         self.optimize_fx_bak = npugraph_ex.npu_fx_compiler._optimize_fx
@@ -389,6 +402,328 @@ class StreamTest(unittest.TestCase):
         x = torch.randn([3, 3])
         for _ in range(2):
             model(x)
+
+    def test_custom_mutated_arg_used_by_multi_stream_with_event_wait(self):
+        
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                stream = torch.npu.Stream()
+                event = torch.npu.Event()
+                with torch.npu.stream(stream):
+                    ori_x = torch.ops.custom.custom_scatter_update(x, y)
+                    event.record()
+                event.wait()
+                res = x + 1
+                return res
+        
+        model = Model()
+        opt_model = torch.compile(model, backend="npugraph_ex", fullgraph=True, dynamic=False)
+        x = torch.randn(3, 3)
+        y = torch.randn(3, 3)
+        with capture_logger() as stdout:
+            res = opt_model(x, y)
+        
+        self.assertTrue(
+            any("The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events." in log for log in stdout.getvalue().splitlines()),
+            f"Expected DEBUG log 'The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events.' in logs: {stdout.getvalue()}"
+        )
+    
+    def test_custom_mutated_arg_used_by_multi_stream_with_event_wait_on_stream(self):
+        
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                stream = torch.npu.Stream()
+                event = torch.npu.Event()
+                current_stream = torch.npu.current_stream()
+                with torch.npu.stream(stream):
+                    ori_x = torch.ops.custom.custom_scatter_update(x, y)
+                    event.record()
+                event.wait(current_stream)
+                res = x + 1
+                return res
+        
+        model = Model()
+        opt_model = torch.compile(model, backend="npugraph_ex", fullgraph=True, dynamic=False)
+        x = torch.randn(3, 3)
+        y = torch.randn(3, 3)
+        with capture_logger() as stdout:
+            res = opt_model(x, y)
+        
+        self.assertTrue(
+            any("The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events." in log for log in stdout.getvalue().splitlines()),
+            f"Expected DEBUG log 'The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events.' in logs: {stdout.getvalue()}"
+        )
+
+    def test_custom_mutated_arg_used_by_multi_stream_with_event_record_on_stream(self):
+        
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                stream = torch.npu.Stream()
+                event = torch.npu.Event()
+                current_stream = torch.npu.current_stream()
+                with torch.npu.stream(stream):
+                    ori_x = torch.ops.custom.custom_scatter_update(x, y)
+                    event.record(stream)
+                event.wait(current_stream)
+                res = x + 1
+                return res
+        
+        model = Model()
+        opt_model = torch.compile(model, backend="npugraph_ex", fullgraph=True, dynamic=False)
+        x = torch.randn(3, 3)
+        y = torch.randn(3, 3)
+        with capture_logger() as stdout:
+            res = opt_model(x, y)
+        
+        self.assertTrue(
+            any("The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events." in log for log in stdout.getvalue().splitlines()),
+            f"Expected DEBUG log 'The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events.' in logs: {stdout.getvalue()}"
+        )
+
+    def test_custom_mutated_arg_used_by_chained_multi_stream_events(self):
+        
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                stream1 = torch.npu.Stream()
+                stream2 = torch.npu.Stream()
+                current_stream = torch.npu.current_stream()
+                event1 = torch.npu.Event()
+                event2 = torch.npu.Event()
+                with torch.npu.stream(stream1):
+                    ori_x = torch.ops.custom.custom_scatter_update(x, y)
+                    event1.record()
+                with torch.npu.stream(stream2):
+                    event1.wait(stream2)
+                    mid = y + 1
+                    event2.record()
+                event2.wait(current_stream)
+                res = x + mid
+                return res
+        
+        model = Model()
+        opt_model = torch.compile(model, backend="npugraph_ex", fullgraph=True, dynamic=False)
+        x = torch.randn(3, 3)
+        y = torch.randn(3, 3)
+        with capture_logger() as stdout:
+            res = opt_model(x, y)
+        
+        self.assertTrue(
+            any("The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events." in log for log in stdout.getvalue().splitlines()),
+            f"Expected DEBUG log 'The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events.' in logs: {stdout.getvalue()}"
+        )
+
+    def test_custom_mutated_arg_used_by_multi_stream_user_before_inplace(self):
+        
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                stream = torch.npu.Stream()
+                event = torch.npu.Event()
+                res = x + 1
+                event.record()
+                with torch.npu.stream(stream):
+                    event.wait(stream)
+                    ori_x = torch.ops.custom.custom_scatter_update(x, y)
+                return res
+        
+        model = Model()
+        opt_model = torch.compile(model, backend="npugraph_ex", fullgraph=True, dynamic=False)
+        x = torch.randn(3, 3)
+        y = torch.randn(3, 3)
+        with capture_logger() as stdout:
+            res = opt_model(x, y)
+        
+        self.assertTrue(
+            any("The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events." in log for log in stdout.getvalue().splitlines()),
+            f"Expected DEBUG log 'The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events.' in logs: {stdout.getvalue()}"
+        )
+
+    def test_custom_mutated_arg_used_by_multi_stream_without_event_protection(self):
+        
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                stream = torch.npu.Stream()
+                with torch.npu.stream(stream):
+                    ori_x = torch.ops.custom.custom_scatter_update(x, y)
+                res = x + 1
+                return res
+        
+        model = Model()
+        opt_model = torch.compile(model, backend="npugraph_ex", fullgraph=True, dynamic=False)
+        x = torch.randn(3, 3)
+        y = torch.randn(3, 3)
+        with capture_logger() as stdout:
+            res = opt_model(x, y)
+        
+        self.assertTrue(
+            any("The users of the mutated input node have multiple streams without event protection." in log for log in stdout.getvalue().splitlines()),
+            f"Expected DEBUG log 'The users of the mutated input node have multiple streams without event protection.' in logs: {stdout.getvalue()}"
+        )
+
+    def test_builtin_inplace_arg_used_by_multi_stream_with_event_wait_on_stream(self):
+        
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                stream = torch.npu.Stream()
+                event = torch.npu.Event()
+                current_stream = torch.npu.current_stream()
+                with torch.npu.stream(stream):
+                    y.mul_(2)
+                    event.record()
+                event.wait(current_stream)
+                res = y + x
+                return res
+        
+        model = Model()
+        opt_model = torch.compile(model, backend="npugraph_ex", fullgraph=True, dynamic=False)
+        x = torch.randn(3, 3)
+        y = torch.randn(3, 3)
+        with capture_logger() as stdout:
+            res = opt_model(x, y)
+        
+        self.assertTrue(
+            any("The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events." in log for log in stdout.getvalue().splitlines()),
+            f"Expected DEBUG log 'The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events.' in logs: {stdout.getvalue()}"
+        )
+
+    def test_builtin_inplace_arg_used_by_chained_multi_stream_events(self):
+        
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                stream1 = torch.npu.Stream()
+                stream2 = torch.npu.Stream()
+                current_stream = torch.npu.current_stream()
+                event1 = torch.npu.Event()
+                event2 = torch.npu.Event()
+                with torch.npu.stream(stream1):
+                    y.mul_(2)
+                    event1.record()
+                with torch.npu.stream(stream2):
+                    event1.wait(stream2)
+                    mid = y + 1
+                    event2.record()
+                event2.wait(current_stream)
+                res = y + mid + x
+                return res
+        
+        model = Model()
+        opt_model = torch.compile(model, backend="npugraph_ex", fullgraph=True, dynamic=False)
+        x = torch.randn(3, 3)
+        y = torch.randn(3, 3)
+        with capture_logger() as stdout:
+            res = opt_model(x, y)
+        
+        self.assertTrue(
+            any("The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events." in log for log in stdout.getvalue().splitlines()),
+            f"Expected DEBUG log 'The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events.' in logs: {stdout.getvalue()}"
+        )
+
+    def test_custom_and_builtin_inplace_ops_with_multi_stream_events(self):
+
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y, delta, z, w):
+                custom_stream = torch.npu.Stream()
+                builtin_stream = torch.npu.Stream()
+                current_stream = torch.npu.current_stream()
+                start_event = torch.npu.Event()
+                custom_done = torch.npu.Event()
+                builtin_done = torch.npu.Event()
+
+                default_result = torch.mm(z, w)
+                start_event.record()
+
+                with torch.npu.stream(custom_stream):
+                    start_event.wait(custom_stream)
+                    torch.ops.custom.custom_scatter_update(x, delta)
+                    custom_done.record()
+
+                with torch.npu.stream(builtin_stream):
+                    start_event.wait(builtin_stream)
+                    y.mul_(2)
+                    builtin_done.record()
+
+                custom_done.wait(current_stream)
+                builtin_done.wait(current_stream)
+                res = x + y + default_result
+                return res
+
+        model = Model()
+        opt_model = torch.compile(model, backend="npugraph_ex", fullgraph=True, dynamic=False, options={"clone_input": False})
+        x = torch.randn(3, 3)
+        y = torch.randn(3, 3)
+        delta = torch.randn(3, 3)
+        z = torch.randn(3, 3)
+        w = torch.randn(3, 3)
+
+        with capture_logger() as stdout:
+            res = opt_model(x, y, delta, z, w)
+
+        log_lines = stdout.getvalue().splitlines()
+        success_log = (
+            "check stream safety success for reinplace. "
+            "The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events."
+        )
+
+        self.assertTrue(
+            any("[multi_stream_auto_functionalize]" in log and success_log in log for log in log_lines),
+            f"Expected custom op stream safety success log in logs: {stdout.getvalue()}"
+        )
+        self.assertTrue(
+            any("[multi_stream_single_reinplace]" in log and success_log in log for log in log_lines),
+            f"Expected builtin op stream safety success log in logs: {stdout.getvalue()}"
+        )
+
+    def test_builtin_inplace_arg_used_by_multi_stream_without_explicit_event(self):
+        
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+
+            def forward(self, x, y):
+                stream = torch.npu.Stream()
+                with torch.npu.stream(stream):
+                    y.mul_(2)
+                res = y + x
+                return res
+        
+        model = Model()
+        opt_model = torch.compile(model, backend="npugraph_ex", fullgraph=True, dynamic=False)
+        x = torch.randn(3, 3)
+        y = torch.randn(3, 3)
+        with capture_logger() as stdout:
+            res = opt_model(x, y)
+        
+        self.assertTrue(
+            any("The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events." in log for log in stdout.getvalue().splitlines()),
+            f"Expected DEBUG log 'The users of the mutated input node did not have multiple streams or have multiple streams but are protected by events.' in logs: {stdout.getvalue()}"
+        )
+
 
 if __name__ == '__main__':
     unittest.main()
