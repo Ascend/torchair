@@ -72,6 +72,7 @@ torch.compile参数配置说明参见[表1](#fig1)。
 |[重捕获次数限制功能](./basic/capture_limit.md)|设置重捕获次数。|
 |[集合通信入图](./basic/communication_graph.md)|实现集合通信算子Ascend Converter，调用torch.compile时默认已支持集合通信算子入图。|
 |[Cat算子消除功能](./basic/remove_cat_ops.md)|是否开启Cat算子消除优化以减少内存拷贝和临时张量分配，提升执行性能。|
+|[图捕获安全策略配置](./basic/capture_error_mode.md)|控制图捕获过程中，对某些可能不安全操作（如分配device内存）的处理策略。|
 
 **表 3**  npugraph\_ex进阶功能 <a id="fig3"></a>
 

@@ -14,6 +14,7 @@
         -   [重捕获次数限制功能](./npugraph_ex/basic/capture_limit.md)
         -   [集合通信入图](./npugraph_ex/basic/communication_graph.md)
         -   [Cat算子消除功能](./npugraph_ex/basic/remove_cat_ops.md)
+        -   [图捕获安全策略配置](./npugraph_ex/basic/capture_error_mode.md)
 
     -   [npugraph\_ex进阶功能](./npugraph_ex/advanced/advanced.md)
         -   [模型编译缓存功能](./npugraph_ex/advanced/compile_cache.md)
