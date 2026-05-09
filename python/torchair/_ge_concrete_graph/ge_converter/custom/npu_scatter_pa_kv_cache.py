@@ -50,8 +50,9 @@ def conveter_npu_scatter_pa_kv_cache_functional(
     slot_mapping: Tensor,
     *,
     compress_lens: Optional[Tensor] = None,
-    compress_seq_offset: Optional[Tensor] = None,
+    compress_seq_offsets: Optional[Tensor] = None,
     seq_lens: Optional[Tensor] = None,
+    cache_mode: str = 'PA_NZ',
     meta_outputs: TensorSpec = None
 ):
 
@@ -64,11 +65,10 @@ def conveter_npu_scatter_pa_kv_cache_functional(
     """
     key_cache_copy = ge.TensorMove(key_cache)
     value_cache_copy = ge.TensorMove(value_cache)
-    cache_mode = "PA_NZ"
     scatter_mode = "None"
     strides = [1, 1]
     offsets = [0, 0]
     return ge.ScatterPaKvCache(key, key_cache_copy, slot_mapping, value, value_cache_copy,
-                               compress_lens=compress_lens, compress_seq_offset=compress_seq_offset,
+                               compress_lens=compress_lens, compress_seq_offsets=compress_seq_offsets,
                                seq_lens=seq_lens, cache_mode=cache_mode, scatter_mode=scatter_mode,
                                strides=strides, offsets=offsets)

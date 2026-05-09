@@ -24299,7 +24299,23 @@ def HcomReduce(x: Tensor, *, root_rank: int, reduction: str, group: str, fusion:
 
 # This api is auto-generated from IR ScatterPaKvCache
 @auto_convert_to_tensor([False, False, False, False, False, False, False, False], [False, False, False, False, False, True, True, True], inputs_tensor_type=[TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_INDEX_NUMBER, TensorType.TT_UNKNOWN, TensorType.TT_UNKNOWN, TensorType.TT_INDEX_NUMBER, TensorType.TT_INDEX_NUMBER, TensorType.TT_INDEX_NUMBER])
-def ScatterPaKvCache(key: Tensor, key_cache: Tensor, slot_mapping: Tensor, value: Tensor, value_cache: Tensor, compress_lens: Optional[Tensor], compress_seq_offset: Optional[Tensor], seq_lens: Optional[Tensor], *, cache_mode: str="Norm", scatter_mode: str="None", strides: List[int]=[1, 1], offsets: List[int]=[0, 0], dependencies=[], node_name=None):
+def ScatterPaKvCache(
+    key: Tensor,
+    key_cache: Tensor,
+    slot_mapping: Tensor,
+    value: Tensor,
+    value_cache: Tensor,
+    compress_lens: Optional[Tensor],
+    compress_seq_offsets: Optional[Tensor],
+    seq_lens: Optional[Tensor],
+    *,
+    cache_mode: str = "Norm",
+    scatter_mode: str = "None",
+    strides: List[int] = None,
+    offsets: List[int] = None,
+    dependencies=[],
+    node_name=None
+):
     """REG_OP(ScatterPaKvCache)\n
 .INPUT(key, "T")\n
 .INPUT(key_cache, "T")\n
@@ -24325,13 +24341,13 @@ def ScatterPaKvCache(key: Tensor, key_cache: Tensor, slot_mapping: Tensor, value
         "value": value,
         "value_cache": value_cache,
         "compress_lens": compress_lens,
-        "compress_seq_offset": compress_seq_offset,
+        "compress_seq_offset": compress_seq_offsets,
         "seq_lens": seq_lens,
     }
 
     # process attrs
     attrs = {
-        "cache_mode": attr.Str("PA_NZ"),
+        "cache_mode": attr.Str(cache_mode),
         "scatter_mode": attr.Str(scatter_mode),
         "strides": attr.ListInt(strides),
         "offsets": attr.ListInt(offsets),
