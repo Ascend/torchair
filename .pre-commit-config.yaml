@@ -20,7 +20,6 @@ repos:
       - id: detect-private-key
       - id: check-json
 
-
   # -------------------------- Python 核心检查 --------------------------
   # Ruff：指定读取 pre-commit/pyproject.toml
   - repo: https://gitcode.com/gh_mirrors/ru/ruff-pre-commit
@@ -39,11 +38,11 @@ repos:
     hooks:
       - id: codespell
         args: [
-          "-L",
-          "CANN,cann,NNAL,nnal,ASCEND,ascend,EnQue,CopyIn,ArchType,AND,ND,tbe,copyin,alog",
-          "--skip",
-          "*.py,*.cpp,*.hpp,*.c,*.h",
-        ]
+            "-L",
+            "CANN,cann,NNAL,nnal,ASCEND,ascend,EnQue,CopyIn,ArchType,AND,ND,tbe,copyin,alog",
+            "--skip",
+            "*.toml,*.py,*.cpp,*.hpp,*.c,*.h",
+          ]
 
   # pylint：指定 pre-commit/pyproject.toml
   - repo: https://gitcode.com/gh_mirrors/pyl/pylint
