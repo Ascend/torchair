@@ -30,7 +30,10 @@
 1. 用户自行分析模型中可进行并行计算的算子。
 2. 开启多流表达。
 
-    使用如下with语句块（[npu\_stream\_switch](../../api/scope/npu_stream_switch.md)），语句块内下发的算子切换至stream\_tag流，语句块外的算子使用默认stream计算。
+    使用如下with语句块（[npu\_stream\_switch](../../api/scope/npu_stream_switch.md)），语句块内下发的算子切换至stream\_tag流，同时将自动添加\_enable\_inner\_parallel属性，属性值与enable\_inner\_parallel参数值一致，语句块外的算子使用默认stream计算。
+
+    > [!NOTE]说明
+    >关于 \_enable\_inner\_parallel属性的详细介绍和约束请参见[CANN GE图引擎 API](https://hiascend.com/document/redirect/CannCommunityAscendGraphApi)中的“属性名列表”章节。
 
     ```python
     with torchair.scope.npu_stream_switch(stream_tag: str, stream_priority: int = 0, enable_inner_parallel: bool = True):
