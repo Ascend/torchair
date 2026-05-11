@@ -1,3 +1,5 @@
+# pylint: disable=too-many-lines, no-name-in-module, no-member, reimported,
+# pylint: disable=global-variable-not-assigned, unspecified-encoding
 import errno
 import os
 import fcntl
@@ -17,15 +19,13 @@ import torch.distributed as dist
 
 from npugraph_ex.core.utils import logger
 from npugraph_ex._utils.graph_utils import debug_time
+from npugraph_ex._acl_concrete_graph.utils import parse_config
 
 _installed_run_pkgs = set()
 _uninstall_paths = []
 _local_gloo_groups = None
 _compiled_op_set = set()
 _static_kernel_blacklist = set()
-
-
-from npugraph_ex._acl_concrete_graph.utils import parse_config
 
 
 def _format_value(value) -> str:
@@ -41,21 +41,22 @@ def _format_value(value) -> str:
 def format_super_kernel_options(optimize_options=None, debug_options=None) -> str:
     optimize_options = parse_config(optimize_options)
     debug_options = parse_config(debug_options)
-    
+
     if optimize_options is None and debug_options is None:
         return None
-    
+
     parts = []
-    
+
     if optimize_options:
         for key, value in optimize_options.items():
             parts.append(f'{key}={_format_value(value)}')
-    
+
     if debug_options:
         for key, value in debug_options.items():
             parts.append(f'{key}={_format_value(value)}')
-    
+
     return ':'.join(parts) if parts else None
+
 
 # Gloo process groups for static kernel: short probe then long-lived formal groups.
 _GLOO_PROBE_TIMEOUT = datetime.timedelta(minutes=3)
@@ -72,55 +73,88 @@ def compile_static_kernel(fx_func, *args, config=None, build_dir=None, **kwargs)
     if not _is_multicard_env_valid():
         return
 
-    use_cache_compile = config.get('static_kernel_compile.use_cache_compile', False)
-    cached_cann_version = config.get('static_kernel_compile.cann_version', None)
-    compile_cache_dir = config.get('static_kernel_compile.compile_cache_dir', None)
-    cached_deterministic = config.get('static_kernel_compile.deterministic', False)
+    use_cache_compile = None
+    cached_cann_version = None
+    compile_cache_dir = None
+    cached_deterministic = None
     disable_static_kernel_compile_cache = config.get('disable_static_kernel_compile_cache', False)
 
+    if not (config.get('force_eager', False) and config.get('static_kernel_compile', False)):
+        use_cache_compile = config.get('static_kernel_compile.use_cache_compile', False)
+        cached_cann_version = config.get('static_kernel_compile.cann_version', None)
+        compile_cache_dir = config.get('static_kernel_compile.compile_cache_dir', None)
+        cached_deterministic = config.get('static_kernel_compile.deterministic', False)
+
     if use_cache_compile:
-        _install_or_compile_static_kernel(fx_func, *args, cached_cann_version=cached_cann_version,
-                                          compile_cache_dir=compile_cache_dir,
-                                          cached_deterministic=cached_deterministic,
-                                          config=config, **kwargs)
+        _install_or_compile_static_kernel(
+            fx_func,
+            *args,
+            cached_cann_version=cached_cann_version,
+            compile_cache_dir=compile_cache_dir,
+            cached_deterministic=cached_deterministic,
+            config=config,
+            **kwargs,
+        )
     else:
-        warn_msg = ("The current version now supports caching run packages from static kernel compilation, "
-                    "it is recommended to delete the compilation cache and recompile "
-                    "when you use `torch.npu.npugraph_ex.inference.cache_compile` and do not use force_eager=True.")
+        warn_msg = (
+            "The current version now supports caching run packages from static kernel compilation, "
+            "it is recommended to delete the compilation cache and recompile "
+            "when you use `torch.npu.npugraph_ex.inference.cache_compile` and do not use force_eager=True."
+        )
         warnings.warn(warn_msg)
         warnings.filterwarnings("ignore", message=warn_msg)
-        _compile_static_kernel(fx_func, *args, build_dir=build_dir, config=config,
-                               disable_static_kernel_compile_cache=disable_static_kernel_compile_cache, **kwargs)
+        _compile_static_kernel(
+            fx_func,
+            *args,
+            build_dir=build_dir,
+            config=config,
+            disable_static_kernel_compile_cache=disable_static_kernel_compile_cache,
+            **kwargs,
+        )
 
 
-def _install_or_compile_static_kernel(fx_func, *args, cached_cann_version=None, compile_cache_dir=None,
-                                      cached_deterministic=None, config=None, **kwargs):
+def _install_or_compile_static_kernel(
+    fx_func, *args, cached_cann_version=None, compile_cache_dir=None, cached_deterministic=None, config=None, **kwargs
+):
     if _is_single_card():
-        _install_or_compile_for_single(fx_func, *args, cached_cann_version=cached_cann_version,
-                                       compile_cache_dir=compile_cache_dir,
-                                       cached_deterministic=cached_deterministic, 
-                                       config=config, **kwargs)
+        _install_or_compile_for_single(
+            fx_func,
+            *args,
+            cached_cann_version=cached_cann_version,
+            compile_cache_dir=compile_cache_dir,
+            cached_deterministic=cached_deterministic,
+            config=config,
+            **kwargs,
+        )
     else:
-        _install_or_compile_for_multi(fx_func, *args, cached_cann_version=cached_cann_version,
-                                      compile_cache_dir=compile_cache_dir,
-                                      cached_deterministic=cached_deterministic, 
-                                      config=config, **kwargs)
+        _install_or_compile_for_multi(
+            fx_func,
+            *args,
+            cached_cann_version=cached_cann_version,
+            compile_cache_dir=compile_cache_dir,
+            cached_deterministic=cached_deterministic,
+            config=config,
+            **kwargs,
+        )
 
 
-def _install_or_compile_for_single(fx_func, *args, cached_cann_version=None, compile_cache_dir=None,
-                                   cached_deterministic=None, config=None, **kwargs):
+def _install_or_compile_for_single(
+    fx_func, *args, cached_cann_version=None, compile_cache_dir=None, cached_deterministic=None, config=None, **kwargs
+):
     if not _check_for_load_run_pkg(cached_cann_version, compile_cache_dir, cached_deterministic):
         return
     run_package_status = _find_and_install_run_pkgs(compile_cache_dir)
     if run_package_status == RunPackageStatus.INSTALLED:
         _reselect_static_kernel()
     elif run_package_status == RunPackageStatus.NEED_COMPILE:
-        _compile_static_kernel_for_single_card(fx_func, *args, is_cache_compile=True, build_dir=compile_cache_dir,
-                                               config=config, **kwargs)
+        _compile_static_kernel_for_single_card(
+            fx_func, *args, is_cache_compile=True, build_dir=compile_cache_dir, config=config, **kwargs
+        )
 
 
-def _install_or_compile_for_multi(fx_func, *args, cached_cann_version=None, compile_cache_dir=None,
-                                  cached_deterministic=None, config=None, **kwargs):
+def _install_or_compile_for_multi(
+    fx_func, *args, cached_cann_version=None, compile_cache_dir=None, cached_deterministic=None, config=None, **kwargs
+):
     # 多卡流程
     gloo_group = _get_local_gloo_group()
     if gloo_group is None:
@@ -155,25 +189,57 @@ def _install_or_compile_for_multi(fx_func, *args, cached_cann_version=None, comp
         except Exception as e:
             logger.warning(f"failed to destroy local gloo groups after install_and_sync_run_pkgs: {e}")
     else:
-        _compile_static_kernel_for_multi_card(fx_func, *args, gloo_group=gloo_group, is_cache_compile=True,
-                                              build_dir=compile_cache_dir, config=config, **kwargs)
+        _compile_static_kernel_for_multi_card(
+            fx_func,
+            *args,
+            gloo_group=gloo_group,
+            is_cache_compile=True,
+            build_dir=compile_cache_dir,
+            config=config,
+            **kwargs,
+        )
 
 
-def _compile_static_kernel(fx_func, *args, is_cache_compile=False, build_dir=None, config=None,
-                           disable_static_kernel_compile_cache=None, **kwargs):
+def _compile_static_kernel(
+    fx_func,
+    *args,
+    is_cache_compile=False,
+    build_dir=None,
+    config=None,
+    disable_static_kernel_compile_cache=None,
+    **kwargs,
+):
     if _is_single_card():
-        _compile_static_kernel_for_single_card(fx_func, *args, is_cache_compile=is_cache_compile,
-                                               build_dir=build_dir, config=config,
-                                               disable_static_kernel_compile_cache=disable_static_kernel_compile_cache, **kwargs)
+        _compile_static_kernel_for_single_card(
+            fx_func,
+            *args,
+            is_cache_compile=is_cache_compile,
+            build_dir=build_dir,
+            config=config,
+            disable_static_kernel_compile_cache=disable_static_kernel_compile_cache,
+            **kwargs,
+        )
     else:
-        _compile_static_kernel_for_multi_card(fx_func, *args, is_cache_compile=is_cache_compile,
-                                              build_dir=build_dir, config=config,
-                                              disable_static_kernel_compile_cache=disable_static_kernel_compile_cache, **kwargs)
+        _compile_static_kernel_for_multi_card(
+            fx_func,
+            *args,
+            is_cache_compile=is_cache_compile,
+            build_dir=build_dir,
+            config=config,
+            disable_static_kernel_compile_cache=disable_static_kernel_compile_cache,
+            **kwargs,
+        )
 
 
-def _compile_static_kernel_for_single_card(fx_func, *args, is_cache_compile=False, build_dir=None,
-                                           config=None,
-                                           disable_static_kernel_compile_cache=None, **kwargs):
+def _compile_static_kernel_for_single_card(
+    fx_func,
+    *args,
+    is_cache_compile=False,
+    build_dir=None,
+    config=None,
+    disable_static_kernel_compile_cache=None,
+    **kwargs,
+):
     result_root = safe_resolve_output_dir(build_dir)
     warnings.warn(f"Starting static kernel compilation, the build directory is {result_root}")
 
@@ -208,13 +274,21 @@ def _compile_static_kernel_for_single_card(fx_func, *args, is_cache_compile=Fals
     _reselect_static_kernel()
 
 
-def _compile_static_kernel_for_multi_card(fx_func, *args, gloo_group=None, is_cache_compile=False, build_dir=None,
-                                          config=None,
-                                          disable_static_kernel_compile_cache=None, **kwargs):
+def _compile_static_kernel_for_multi_card(
+    fx_func,
+    *args,
+    gloo_group=None,
+    is_cache_compile=False,
+    build_dir=None,
+    config=None,
+    disable_static_kernel_compile_cache=None,
+    **kwargs,
+):
     rank = dist.get_rank()
     result_root = safe_resolve_output_dir(build_dir)
     warnings.warn(
-        f"Rank {rank}: starting static kernel compilation for multi card, the build directory is {result_root}")
+        f"Rank {rank}: starting static kernel compilation for multi card, the build directory is {result_root}"
+    )
 
     if not gloo_group:
         gloo_group = _get_local_gloo_group()
@@ -222,7 +296,8 @@ def _compile_static_kernel_for_multi_card(fx_func, *args, gloo_group=None, is_ca
     if gloo_group is None:
         warnings.warn(
             f"Rank {rank}: skipping static kernel compilation for multi card: local Gloo probe failed or timed out "
-            f"(probe timeout {int(_GLOO_PROBE_TIMEOUT.total_seconds())}s).")
+            f"(probe timeout {int(_GLOO_PROBE_TIMEOUT.total_seconds())}s)."
+        )
         return
     # 1.执行单算子，用于生成算子信息json
     logger.debug(f"Rank {rank}: start to execute dump json")
@@ -240,13 +315,20 @@ def _compile_static_kernel_for_multi_card(fx_func, *args, gloo_group=None, is_ca
         gathered_json_dirs = [None] * local_world_size
     else:
         gathered_json_dirs = None
-    dist.gather_object(obj=chosen_dir, object_gather_list=gathered_json_dirs, dst=_get_group_root_rank(rank), group=gloo_group)
+    dist.gather_object(
+        obj=chosen_dir, object_gather_list=gathered_json_dirs, dst=_get_group_root_rank(rank), group=gloo_group
+    )
 
     # 3.local rank 0进行静态编译并install
     if local_rank == 0:
-        _merge_and_compile_install(gathered_json_dirs, result_root, rank, 
-                                   config=config,
-                                   disable_static_kernel_compile_cache=disable_static_kernel_compile_cache, **kwargs)
+        _merge_and_compile_install(
+            gathered_json_dirs,
+            result_root,
+            rank,
+            config=config,
+            disable_static_kernel_compile_cache=disable_static_kernel_compile_cache,
+            **kwargs,
+        )
 
     # 4.等待local rank 0执行完
     logger.debug(f"Rank {rank}: barrier after install (Gloo)")
@@ -264,8 +346,14 @@ def _compile_static_kernel_for_multi_card(fx_func, *args, gloo_group=None, is_ca
         logger.warning(f"failed to destroy local gloo groups after install_and_sync_run_pkgs: {e}")
 
 
-def _merge_and_compile_install(gathered_json_dirs: list[Path], result_root: Path, rank, 
-                               config=None, disable_static_kernel_compile_cache=None, **kwargs):
+def _merge_and_compile_install(
+    gathered_json_dirs: list[Path],
+    result_root: Path,
+    rank,
+    config=None,
+    disable_static_kernel_compile_cache=None,
+    **kwargs,
+):
     logger.debug(f"Rank {rank}: start to execute static compile, json dirs:{gathered_json_dirs}")
     # 创建目录并合并json
     gathered_opcompile_dir = _merge_dump_json(gathered_json_dirs, result_root)
@@ -404,19 +492,28 @@ def static_compile(result_root: Path, chosen_dir, rank: int = None, config=None)
     prefix = _get_log_prefix(rank)
     try:
         import torch_npu
+
         cmd = [
             "op_compiler",
-            "-p", str(chosen_dir),
-            "-v", torch_npu.npu.get_device_name(),
-            "-j", _compute_opc_compile_jobs(),
-            "-o", str(result_root),
+            "-p",
+            str(chosen_dir),
+            "-v",
+            torch_npu.npu.get_device_name(),
+            "-j",
+            _compute_opc_compile_jobs(),
+            "-o",
+            str(result_root),
         ]
         if config is not None:
             super_kernel_optimize = config.get('super_kernel_optimize', config.get('_super_kernel_optimize', False))
             if super_kernel_optimize:
                 cmd.extend(["--enable_super_kernel"])
-                optimize_options = config.get('super_kernel_optimize_options', config.get('_super_kernel_optimize_options', None))
-                debug_options = config.get('super_kernel_debug_options', config.get('_super_kernel_debug_options', None))
+                optimize_options = config.get(
+                    'super_kernel_optimize_options', config.get('_super_kernel_optimize_options', None)
+                )
+                debug_options = config.get(
+                    'super_kernel_debug_options', config.get('_super_kernel_debug_options', None)
+                )
                 sk_options_str = format_super_kernel_options(optimize_options, debug_options)
                 if sk_options_str:
                     cmd.extend(["--super_kernel_options", sk_options_str])
@@ -424,6 +521,7 @@ def static_compile(result_root: Path, chosen_dir, rank: int = None, config=None)
         if log_level is not None:
             cmd.extend(["-l", log_level])
         import torch_npu
+
         is_gte = torch_npu.npu.utils._is_gte_cann_version("9.0.0", module="CANN")
         if is_gte:
             cmd.extend(["-f", "true"])
@@ -439,22 +537,26 @@ def static_compile(result_root: Path, chosen_dir, rank: int = None, config=None)
 def _check_for_load_run_pkg(cached_cann_version, compile_cache_dir, cached_deterministic) -> bool:
     if cached_cann_version is None or compile_cache_dir is None:
         warnings.warn(
-            "The cann_version and compile_cache_dir must be set, it is recommended to delete the compilation cache and recompile.")
+            "The cann_version and compile_cache_dir must be set, it is recommended to delete the compilation cache and recompile."
+        )
         return False
 
     current_deterministic = torch.are_deterministic_algorithms_enabled()
     if cached_deterministic != current_deterministic:
         warnings.warn(
             f"The deterministic configuration has changed (from {cached_deterministic} to {current_deterministic}), "
-            f"it is recommended to delete the compilation cache and recompile.")
+            f"it is recommended to delete the compilation cache and recompile."
+        )
         return False
 
     import torch_npu
+
     current_version = torch_npu.npu.utils.get_cann_version()
     if current_version != cached_cann_version:
         warnings.warn(
             f"There is a mismatch between the cached CANN version {cached_cann_version} and the current CANN version {current_version}, "
-            f"it is recommended to delete the compilation cache and recompile.")
+            f"it is recommended to delete the compilation cache and recompile."
+        )
         return False
 
     if not os.path.exists(compile_cache_dir):
@@ -469,12 +571,14 @@ def _check_for_load_run_pkg(cached_cann_version, compile_cache_dir, cached_deter
 def _find_and_install_run_pkgs(compile_cache_dir, rank: int = None) -> RunPackageStatus:
     prefix = _get_log_prefix(rank)
     compile_cache_dir_path = Path(compile_cache_dir)
-    run_pkgs_dir = [d for d in compile_cache_dir_path.iterdir() if
-                    d.is_dir() and d.name == "static_kernel_compile_outputs"]
+    run_pkgs_dir = [
+        d for d in compile_cache_dir_path.iterdir() if d.is_dir() and d.name == "static_kernel_compile_outputs"
+    ]
     if len(run_pkgs_dir) == 0:
         return RunPackageStatus.NEED_COMPILE
-    ts_outputs_dirs = [d for d in run_pkgs_dir[0].iterdir() if
-                       d.is_dir() and d.name.endswith("_outputs") and d.name.startswith("ts")]
+    ts_outputs_dirs = [
+        d for d in run_pkgs_dir[0].iterdir() if d.is_dir() and d.name.endswith("_outputs") and d.name.startswith("ts")
+    ]
     if len(ts_outputs_dirs) == 0:
         return RunPackageStatus.NEED_COMPILE
     for ts_outputs_dir in ts_outputs_dirs:
@@ -485,13 +589,15 @@ def _find_and_install_run_pkgs(compile_cache_dir, rank: int = None) -> RunPackag
             return RunPackageStatus.INSTALLED
     # has outputs dir, but does not have run, means static compile failed
     warnings.warn(
-        f"{prefix}no run files were found, the static compilation might have failed, it is recommended to delete the compilation cache and recompile.")
+        f"{prefix}no run files were found, the static compilation might have failed, it is recommended to delete the compilation cache and recompile."
+    )
     return RunPackageStatus.NEED_SKIP
 
 
 @debug_time(phase_name="[static kernel] execute dump json")
 def _fx_func_run(args, fx_func, kwargs, result_root, rank: int = None):
     import torch_npu
+
     torch_npu._C._aclop_start_dump(str(result_root))
     try:
         if isinstance(fx_func, torch.fx.GraphModule):
@@ -499,6 +605,7 @@ def _fx_func_run(args, fx_func, kwargs, result_root, rank: int = None):
         else:
             fx_func(*args, **kwargs)
         import torch_npu
+
         torch_npu.npu.current_stream().synchronize()
     finally:
         torch_npu._C._aclop_stop_dump()
@@ -557,6 +664,7 @@ def _reselect_static_kernel(rank: int = None):
     prefix = _get_log_prefix(rank)
     try:
         import torch_npu
+
         torch_npu.npu._aclnn_reselect_static_kernel()
         logger.debug(f"{prefix}reselect_static_kernel executed successfully")
     except Exception as e:
@@ -644,8 +752,7 @@ def _get_local_gloo_group():
     _destroy_gloo_group_list(probe_groups)
 
     global _local_gloo_groups
-    _local_gloo_groups = _create_local_gloo_groups_for_nodes(
-        node_count, local_world_size, _GLOO_FORMAL_TIMEOUT)
+    _local_gloo_groups = _create_local_gloo_groups_for_nodes(node_count, local_world_size, _GLOO_FORMAL_TIMEOUT)
     return _local_gloo_groups[node_idx]
 
 
@@ -683,7 +790,7 @@ def _get_process_start_time(pid):
         with open(f"/proc/{pid}/stat", "r") as f:
             data = f.read()
         right_pattern = data.rfind(")")
-        fields_after_comm = data[right_pattern + 2:].split()
+        fields_after_comm = data[right_pattern + 2 :].split()
         return int(fields_after_comm[19])
     except Exception:
         return None
@@ -729,7 +836,7 @@ def _add_static_kernel_record(uninstall_path, filename):
             "filename": filename,
             "pid": current_pid,
             "process_start_time": _get_process_start_time(current_pid),
-            "record_create_time": datetime.datetime.now(tz=timezone.utc).isoformat()
+            "record_create_time": datetime.datetime.now(tz=timezone.utc).isoformat(),
         }
         return records
 
@@ -767,14 +874,12 @@ def save_uninstall_info(filename: str):
 def uninstall_static_kernel():
     global _uninstall_paths
     if not _uninstall_paths:
-        logger.debug(f"no static kernel uninstall paths recorded, skip uninstall static kernels")
+        logger.debug("no static kernel uninstall paths recorded, skip uninstall static kernels")
         return
 
     for script_path in _uninstall_paths:
         try:
-            result = subprocess.run(
-                [script_path], check=True, capture_output=True, text=True
-            )
+            subprocess.run([script_path], check=True, capture_output=True, text=True)
             logger.debug(f"{script_path} uninstall success")
             _remove_record_by_uninstall_path(script_path)
         except subprocess.CalledProcessError as e:
@@ -903,13 +1008,7 @@ def get_op_hash(op_json: Path, algo: str = "sha256") -> str:
 
 
 def _get_compiler_log_level():
-    log_level_map = {
-        "0": "debug",
-        "1": "info",
-        "2": "warning",
-        "3": "error",
-        "4": None
-    }
+    log_level_map = {"0": "debug", "1": "info", "2": "warning", "3": "error", "4": None}
 
     env_level = os.getenv("ASCEND_GLOBAL_LOG_LEVEL", "3")
     return log_level_map.get(env_level, "error")
@@ -922,18 +1021,19 @@ def _get_log_prefix(rank):
 
 def _get_cache_path(result_root: Path) -> Union[Path, None]:
     base_output_dir = result_root.parent
-    cache_dir = base_output_dir / "static_kernel_cache"    
+    cache_dir = base_output_dir / "static_kernel_cache"
     try:
         cache_dir.mkdir(exist_ok=True)
     except Exception as e:
         logger.warning(f"Failed to create directory {cache_dir}: {e}")
         return None
-    
+
     import torch_npu
+
     cann_version = torch_npu.npu.utils.get_cann_version().replace(" ", "-")
     device_name = torch_npu.npu.get_device_name().replace(" ", "-")
     cache_file = cache_dir / f"CANN-{cann_version}_{device_name}.json"
-    
+
     return cache_file
 
 
@@ -973,7 +1073,7 @@ def _load_json(file_path: Path, prefix: str = "") -> dict:
     try:
         if not file_path.exists() or file_path.stat().st_size == 0:
             return {}
-        
+
         with open(file_path, "r") as f:
             data = json.load(f)
             return data if isinstance(data, dict) else {}
@@ -985,7 +1085,7 @@ def _load_json(file_path: Path, prefix: str = "") -> dict:
 def _query_static_kernel_cache(cache_file: Path, key: str, rank=None) -> Union[Path, None]:
     if cache_file is None or not cache_file.exists():
         return None
-    
+
     prefix = _get_log_prefix(rank)
     lock_file = cache_file.with_suffix(".lock")
     try:
@@ -1019,12 +1119,12 @@ def _update_static_kernel_cache(cache_file: Path, key: str, result_root: Path, r
             try:
                 cache_data = _load_json(cache_file, prefix)
                 cache_data[key] = run_pkg_path
-                
+
                 tmp_file = cache_file.with_suffix(".tmp")
                 with open(tmp_file, "w") as f:
                     json.dump(cache_data, f, indent=4)
                 tmp_file.replace(cache_file)
-                
+
                 logger.info(f"{prefix}Static kernel cache updated, key: {key}, value: {run_pkg_path}")
             finally:
                 fcntl.flock(lf, fcntl.LOCK_UN)
@@ -1123,15 +1223,15 @@ def cleanup_old_run_packages():
             if record_pid != current_pid and uninstall_path:
                 if _is_process_alive(record_pid) and not _is_pid_recycled(record_pid, record.get("process_start_time")):
                     logger.debug(
-                        f"Skipping run package from PID {record_pid} (timestamp: {process_start_time}): process is still running.")
+                        f"Skipping run package from PID {record_pid} (timestamp: {process_start_time}): process is still running."
+                    )
                     continue
                 try:
                     if os.path.exists(uninstall_path):
                         logger.info(
-                            f"Found old run package from PID {record_pid} timestamp: {process_start_time} uninstalling: {uninstall_path}")
-                        result = subprocess.run(
-                            [uninstall_path], check=True, capture_output=True, text=True
+                            f"Found old run package from PID {record_pid} timestamp: {process_start_time} uninstalling: {uninstall_path}"
                         )
+                        subprocess.run([uninstall_path], check=True, capture_output=True, text=True)
                         logger.info(f"Successfully uninstalled old run package: {uninstall_path}")
                     else:
                         logger.info(f"Uninstall script not found for old run package: {uninstall_path}")
