@@ -5,6 +5,7 @@
     -   [npugraph\_ex快速上手](./npugraph_ex/quick_start.md)
     -   [npugraph\_ex基础功能](./npugraph_ex/basic/basic.md)
         -   [force\_eager功能](./npugraph_ex/basic/force_eager.md)
+        -   [force\_recapture功能](./npugraph_ex/basic/force_recapture.md)
         -   [FX图优化Pass配置功能](./npugraph_ex/basic/inplace_pass.md)
         -   [FX图算子融合Pass配置功能](./npugraph_ex/basic/pattern_fusion_pass.md)
         -   [aclgraph间内存复用功能](./npugraph_ex/basic/memory_reuse.md)

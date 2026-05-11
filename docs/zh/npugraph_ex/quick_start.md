@@ -63,6 +63,7 @@ torch.compile参数配置说明参见[表1](#fig1)。
 |功能|功能说明|
 |--|--|
 |[force_eager功能](./basic/force_eager.md)|图执行前是否使用Eager模式运行。|
+|[force_recapture功能](./basic/force_recapture.md)|是否强制每次执行时重新捕获aclgraph。|
 |[FX图优化Pass配置功能](./basic/inplace_pass.md)|是否开启FX图优化优化能力。以减少计算过程中的内存搬运，从而提升性能。|
 |[FX图算子融合Pass配置功能](./basic/pattern_fusion_pass.md)|是否开启FX图算子融合Pass。该Pass基于已有Aten IR进行融合，从而提升性能。|
 |[aclgraph间内存复用功能](./basic/memory_reuse.md)|aclgraph间内存复用功能，支持多种模式。|
@@ -114,6 +115,16 @@ torch.compile参数配置说明参见[表1](#fig1)。
     ```
 
     如果用户脚本使用force\_eager运行正常，则可能是npugraph\_ex存在问题，否则可能是aclgraph的Runtime底层问题。
+
+3. 定界是否是图捕获问题。
+
+    当确认问题与aclgraph相关时，可使用[force\_recapture功能](./basic/force_recapture.md)辅助定界是图捕获执行问题还是对输入输出内存处理问题。
+
+    ```python
+    torch.compile(backend="npugraph_ex", fullgraph=True, options={"force_recapture": True})
+    ```
+
+    启用force\_recapture后，每次执行都会重新捕获aclgraph。通过对比重捕获前后执行效果，如果force\_recapture后存在问题，说明问题是出在图捕获执行阶段。如果force\_recapture后功能正常，说明问题是出在对输入输出内存处理阶段。
 
 ## 功能拓展
 

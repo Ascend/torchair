@@ -1005,7 +1005,8 @@ class AclGraph(object):
         self.compile_for_graph_key(graph_key, *args, **kwargs)
         logger.debug(f'For graph {self.name} : the count of captures is {counters["npugraph_ex"]["captured_" + self.name]}, '
                      f'and count of recaptures caused by mutated inputs changed is {counters["npugraph_ex"]["recapture_due_to_mutated_input_change_" + self.name]}, '
-                     f'and count of recaptures caused by global limit changed is {counters["npugraph_ex"]["recapture_due_to_global_limit_core_change_" + self.name]}')
+                     f'and count of recaptures caused by global limit changed is {counters["npugraph_ex"]["recapture_due_to_global_limit_core_change_" + self.name]}, '
+                     f'and count of recaptures caused by force_recapture is {counters["npugraph_ex"]["recapture_due_to_force_recapture_" + self.name]}')
         if saved_acl_graph is not None:
             saved_acl_graph.reset()
 
@@ -1034,6 +1035,7 @@ class AclGraph(object):
         counters["npugraph_ex"].pop("captured_" + self.name, None)
         counters["npugraph_ex"].pop("recapture_due_to_mutated_input_change_" + self.name, None)
         counters["npugraph_ex"].pop("recapture_due_to_global_limit_core_change_" + self.name, None)
+        counters["npugraph_ex"].pop("recapture_due_to_force_recapture_" + self.name, None)
         for _, graph_meta in self._graphs_meta.items():
             graph_meta.acl_graph.reset()
         self._graphs_meta = {}
@@ -1356,6 +1358,9 @@ class AclGraph(object):
         self._graphs_meta[graph_key].replay_func(*args, **kwargs)
 
     def is_need_to_recapture(self, graph_key, *args: Any):
+        if "force_recapture" in self.config.keys() and self.config["force_recapture"]:
+            counters["npugraph_ex"]["recapture_due_to_force_recapture_" + self.name] += 1
+            return True
         # There is no need to recapture the ACLGraph when the data addresses of user inputs
         # (which are aliases to outputs) change.
         # When the memory addresses of mutated_inputs and parameter type inputs change

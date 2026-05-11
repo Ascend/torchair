@@ -49,6 +49,7 @@ class CompilerConfig(NpuBaseConfig):
         self.deadlock_check = OptionValue(False, [True, False])
         self.capture_error_mode = OptionValue("global", ["global", "thread_local", "relaxed"])
         self.mode = OptionValue("npugraph_ex", ["npugraph_ex"])
+        self.force_recapture = OptionValue(False, [True, False])
 
         super(CompilerConfig, self).__init__()
         self._fixed_attrs.append("post_grad_custom_pre_pass")
@@ -92,6 +93,7 @@ class CompilerConfig(NpuBaseConfig):
         local_option["clone_input"] = self.clone_input.value
         local_option["deadlock_check"] = self.deadlock_check.value
         local_option["capture_error_mode"] = self.capture_error_mode.value
+        local_option["force_recapture"] = self.force_recapture.value
 
         # _AclGraphExperimentalConfig
         # The parameters "static_kernel_compile"and "_aclnn_static_shape_kernel_build_dir" will be ignored

@@ -2089,6 +2089,92 @@ class AclgraphTest(unittest.TestCase):
         self.assertTrue(torch.allclose(output1, expected))
         self.assertTrue(torch.allclose(output2, expected))
 
+    def test_force_recapture(self):
+        class SimpleModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(16, 16)
+
+            def forward(self, x):
+                return self.linear(x)
+
+        model = SimpleModel().npu()
+        compiled_model = torch.compile(
+            model, backend="npugraph_ex", fullgraph=True, dynamic=False,
+            options={"force_recapture": True}
+        )
+
+        x = torch.randn(4, 16, device="npu")
+
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            result1 = compiled_model(x)
+        self.assertTrue(
+            any("No find captured AclGraph" in log for log in cm.output),
+            f"Expected DEBUG 'No find captured AclGraph' not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("After capturing fx_graph" in log for log in cm.output),
+            f"Expected DEBUG 'After capturing fx_graph' not found in logs: {cm.output}"
+        )
+
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            result2 = compiled_model(x)
+        self.assertTrue(
+            any("The current AclGraph needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph needs to be recaptured' not found in logs: {cm.output}"
+        )
+        self.assertTrue(
+            any("count of recaptures caused by force_recapture is 1" in log for log in cm.output),
+            f"Expected DEBUG 'count of recaptures caused by force_recapture is 1' not found in logs: {cm.output}"
+        )
+
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            result3 = compiled_model(x)
+        self.assertTrue(
+            any("count of recaptures caused by force_recapture is 2" in log for log in cm.output),
+            f"Expected DEBUG 'count of recaptures caused by force_recapture is 2' not found in logs: {cm.output}"
+        )
+
+        expected = model(x)
+        self.assertTrue(torch.allclose(result1, expected, atol=1e-5))
+        self.assertTrue(torch.allclose(result2, expected, atol=1e-5))
+        self.assertTrue(torch.allclose(result3, expected, atol=1e-5))
+
+    def test_force_recapture_disabled(self):
+        class SimpleModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.linear = torch.nn.Linear(16, 16)
+
+            def forward(self, x):
+                return self.linear(x)
+
+        model = SimpleModel().npu()
+        compiled_model = torch.compile(
+            model, backend="npugraph_ex", fullgraph=True, dynamic=False,
+            options={"force_recapture": False}
+        )
+
+        x = torch.randn(4, 16, device="npu")
+
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            result1 = compiled_model(x)
+        self.assertTrue(
+            any("No find captured AclGraph" in log for log in cm.output),
+            f"Expected DEBUG 'No find captured AclGraph' not found in logs: {cm.output}"
+        )
+
+        with self.assertLogs(logger, level="DEBUG") as cm:
+            result2 = compiled_model(x)
+        self.assertTrue(
+            any("The current AclGraph no needs to be recaptured" in log for log in cm.output),
+            f"Expected DEBUG 'The current AclGraph no needs to be recaptured' not found in logs: {cm.output}"
+        )
+
+        expected = model(x)
+        self.assertTrue(torch.allclose(result1, expected, atol=1e-5))
+        self.assertTrue(torch.allclose(result2, expected, atol=1e-5))
+
 
 def patch_dynamo():
     from torch._dynamo.variables.user_defined import UserDefinedClassVariable
