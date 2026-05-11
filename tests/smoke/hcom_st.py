@@ -151,12 +151,13 @@ class ReduceScatterTensorUneven(torch.nn.Module):
 
 
 class Broadcast(torch.nn.Module):
-    def __init__(self, group=None):
+    def __init__(self, group=None, group_src=None):
         super().__init__()
         self.group = group
+        self.group_src = group_src
 
     def forward(self, x, src):
-        dist.broadcast(x, src, group=self.group)
+        dist.broadcast(x, src, group=self.group, group_src=self.group_src)
         return x
 
 
@@ -568,6 +569,23 @@ class HcomTest(unittest.TestCase):
     @classmethod
     def _test_with_group(cls, rank, world_size, init_pg, dynamic, results):
         HcomTest._test_broadcast(rank, world_size, init_pg, dynamic, results, use_group=True)
+
+    @classmethod
+    def _test_broadcast_with_group_src(cls, rank, world_size, init_pg, dynamic, results):
+        torch.npu.set_device(rank)
+        init_pg(rank, world_size)
+        group = torch.distributed.new_group(ranks=[0, 1])
+        if rank == 0:
+            x = torch.ones(2, 2, dtype=torch.int64).to("npu:" + str(rank)) + 1 + 2 * rank
+        else:
+            x = torch.ones(2, 2, dtype=torch.int64).to("npu:" + str(rank))
+        mod = Broadcast(group=group, group_src=0)
+        mod = mod.to("npu:" + str(rank))
+        ori_result = mod(x, None)
+        opt_mod = torch.compile(mod, backend=npu_backend, dynamic=dynamic, fullgraph=True)
+        compile_result = opt_mod(x, None)
+        results.append(ori_result.equal(compile_result))
+        dist.destroy_process_group()
 
     @classmethod
     def _test_allgather_in_tensor_uneven_same_size(cls, rank, world_size, init_pg, dynamic, results):
@@ -1028,6 +1046,21 @@ class HcomTest(unittest.TestCase):
                                                 HcomTest._init_dist_hccl_with_patch, world_size, True))
         self.assertTrue(self._test_multiprocess(HcomTest._test_with_group,
                                                 HcomTest._init_dist_hccl_with_patch, world_size, False))
+
+    def test_broadcast_with_group_src(self):
+        world_size = 2
+        self.assertTrue(self._test_multiprocess(HcomTest._test_broadcast_with_group_src,
+                                                HcomTest._init_dist_hccl_with_patch, world_size, True))
+        self.assertTrue(self._test_multiprocess(HcomTest._test_broadcast_with_group_src,
+                                                HcomTest._init_dist_hccl_with_patch, world_size, False))
+
+    @unittest.skipIf(torch.__version__ < '2.3.1', "patch needed for torch version < 2.3.1")
+    def test_broadcast_with_group_src_without_patch(self):
+        world_size = 2
+        self.assertTrue(self._test_multiprocess(HcomTest._test_broadcast_with_group_src,
+                                                HcomTest._init_dist_hccl_without_patch, world_size, True))
+        self.assertTrue(self._test_multiprocess(HcomTest._test_broadcast_with_group_src,
+                                                HcomTest._init_dist_hccl_without_patch, world_size, False))
 
     def test_allgather_in_tensor_uneven(self):
         world_size = 2
