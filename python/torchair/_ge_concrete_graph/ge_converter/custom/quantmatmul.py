@@ -1,6 +1,17 @@
-from torchair._ge_concrete_graph.ge_converter.converter_utils import *
+from typing import List, Optional
+
+import torch
+from torchair._ge_concrete_graph import ge_apis as ge
+from torchair._ge_concrete_graph.fx2ge_converter import register_fx_node_ge_converter
+from torchair._ge_concrete_graph.ge_converter.converter_utils import GROUP_SIZE_MAX_VALUE
 from torchair._utils.check_platform import is_arch35
-from torchair.ge._ge_graph import DataType, torch_dtype_value_to_ge_proto_type, torch_dtype_value_to_ge_type
+from torchair.ge._ge_graph import (
+    DataType,
+    Tensor,
+    TensorSpec,
+    torch_dtype_value_to_ge_proto_type,
+    torch_dtype_value_to_ge_type,
+)
 
 
 def is_transpose_last_two_dims(tensor):
@@ -67,26 +78,32 @@ def conveter_npu_npu_quant_matmul(
     y_scale: Optional[Tensor] = None,
     transpose_x1: bool = False,
     transpose_x2: bool = False,
-    meta_outputs: TensorSpec = None
+    meta_outputs: TensorSpec = None,
 ):
     """NB: npu::npu_quant_matmul(Tensor x1, Tensor x2, Tensor scale, *, Tensor? offset=None,
-                                 Tensor? pertoken_scale=None, Tensor? bias=None,
-                                 ScalarType? output_dtype=None) -> Tensor
+    Tensor? pertoken_scale=None, Tensor? bias=None,
+    ScalarType? output_dtype=None) -> Tensor
     """
     import torch_npu
 
-    if (not is_arch35() and x1.dtype not in [DataType.DT_INT8, DataType.DT_INT32]
-        and x2.dtype not in [DataType.DT_INT8, DataType.DT_INT32]):
+    if (
+        not is_arch35()
+        and x1.dtype not in [DataType.DT_INT8, DataType.DT_INT32]
+        and x2.dtype not in [DataType.DT_INT8, DataType.DT_INT32]
+    ):
         raise RuntimeError("In soc versions prior to A5, x1 and x2 only supports int8 or int32.")
     if output_dtype is None:
         output_dtype = 1
     dtype = torch_dtype_value_to_ge_type(output_dtype)
     is_mxfp4_valid = x1_dtype == torch_npu.float4_e2m1fn_x2 and x2_dtype == torch_npu.float4_e2m1fn_x2
-    is_a8w4 = x1.dtype == DataType.DT_FLOAT8_E4M3FN and \
-                          (x2_dtype == torch_npu.float4_e2m1fn_x2 or x2.dtype == DataType.DT_FLOAT)
-    need_reshape = (x1.dtype == DataType.DT_INT32 and x2.dtype == DataType.DT_INT32) or \
-                   (x1_dtype is not None and x2_dtype is not None and x1_dtype == torch_npu.float4_e2m1fn_x2) or \
-                   (is_a8w4 and x2.dtype != DataType.DT_FLOAT and y_scale is not None)
+    is_a8w4 = x1.dtype == DataType.DT_FLOAT8_E4M3FN and (
+        x2_dtype == torch_npu.float4_e2m1fn_x2 or x2.dtype == DataType.DT_FLOAT
+    )
+    need_reshape = (
+        (x1.dtype == DataType.DT_INT32 and x2.dtype == DataType.DT_INT32)
+        or (x1_dtype is not None and x2_dtype is not None and x1_dtype == torch_npu.float4_e2m1fn_x2)
+        or (is_a8w4 and x2.dtype != DataType.DT_FLOAT and y_scale is not None)
+    )
     mxfp4_batch_axis_has_one = False
     if need_reshape and is_mxfp4_valid:
         mxfp4_batch_axis_has_one = batch_axis_has_one(x1) or batch_axis_has_one(x2)
@@ -103,8 +120,8 @@ def conveter_npu_npu_quant_matmul(
                 x1_ge_dtype = torch_dtype_value_to_ge_type(x1_dtype)
             if x2_dtype is not None:
                 x2_ge_dtype = torch_dtype_value_to_ge_type(x2_dtype)
-        perm = [i for i in range(x2.rank)]
-        if(x2.rank < 2):
+        perm = list(range(x2.rank))
+        if x2.rank < 2:
             raise RuntimeError("Input x2 dimension can't be less than 2, actual x2 dimension is " + str(x2.rank) + ".")
         perm[-1], perm[-2] = perm[-2], perm[-1]
         const_x1 = ge.Const([1] * (x1.rank - 1) + [shape_multiples])
@@ -136,7 +153,8 @@ def conveter_npu_npu_quant_matmul(
             if mxfp4_batch_axis_has_one:
                 is_simple = False
 
-        if is_mxfp4_valid and is_simple:
+        should_keep_dim = is_mxfp4_valid and (is_simple or not trans_x2)
+        if should_keep_dim:
             x2 = ge.Bitcast(x2, type=x2_ge_dtype, keep_dim=True)
         else:
             if trans_x2:
@@ -148,17 +166,17 @@ def conveter_npu_npu_quant_matmul(
             if trans_x2:
                 x2 = ge.Transpose(x2, perm)
 
-    group_max = GROUP_SIZE_MAX_VALUE # 65535是指group_size中的值最大不能超过16位可表示的范围
+    group_max = GROUP_SIZE_MAX_VALUE  # 65535是指group_size中的值最大不能超过16位可表示的范围
     group_size = 0
     if group_sizes is not None and isinstance(group_sizes, List):
-        if(len(group_sizes) != 3):
+        if len(group_sizes) != 3:
             raise RuntimeError("group_size must be a list with 3 elements, actual group_sizes is " + str(group_sizes))
         group_m = group_sizes[0]
         group_n = group_sizes[1]
         group_k = group_sizes[2]
-        if (group_m > group_max or group_n > group_max or group_k > group_max):
+        if group_m > group_max or group_n > group_max or group_k > group_max:
             raise RuntimeError("group_size can't larger than 65535, actual group_sizes is " + str(group_sizes))
-        if (group_m < 0 or group_n < 0 or group_k < 0):
+        if group_m < 0 or group_n < 0 or group_k < 0:
             raise RuntimeError("group_size can't smaller than 0, actual group_sizes is " + str(group_sizes))
         group_size = (group_m << 32) + (group_n << 16) + group_k
         if is_a8w4:
@@ -181,11 +199,13 @@ def conveter_npu_npu_quant_matmul(
             trans_x2_scale = x1.symsize[-1] == (x2.symsize[-2] * 8)
             if trans_x2_scale:
                 if scale.rank < 2:
-                    raise RuntimeError("Input scale dimension should be 2 or 3, actual scale dimension is " + str(scale.rank) + ".")
+                    raise RuntimeError(
+                        "Input scale dimension should be 2 or 3, actual scale dimension is " + str(scale.rank) + "."
+                    )
                 elif scale.rank == 3:
                     perm = [1, 0, 2]
                 else:
-                    perm = [i for i in range(scale.rank)]   
+                    perm = list(range(scale.rank))
                     perm[-1], perm[-2] = perm[-2], perm[-1]
 
         if trans_x2_scale:
@@ -196,34 +216,40 @@ def conveter_npu_npu_quant_matmul(
             scale = ge.Transpose(scale, perm)
 
     if is_a8w4 and y_scale is None and x2.dtype in [DataType.DT_INT8, DataType.DT_UINT8]:
-        if x2.symsize[-2] == 32: # u8打包fp4，k=64对应weight[0].symsize[-2]=32
-            raise RuntimeError("Current QMM-MxA8W4 does not support k=64 in graph mode. Please use eager mode if needed.")
+        if x2.symsize[-2] == 32:  # u8打包fp4，k=64对应weight[0].symsize[-2]=32
+            raise RuntimeError(
+                "Current QMM-MxA8W4 does not support k=64 in graph mode. Please use eager mode if needed."
+            )
         x2 = ge.Bitcast(x2, type=torch_dtype_value_to_ge_type(x2_dtype), keep_dim=True)
 
     if is_arch35():
-        out = ge.QuantBatchMatmulV4(x1,
-                                    x2,
-                                    bias=bias,
-                                    x1_scale=pertoken_scale,
-                                    x2_scale=scale,
-                                    y_scale=y_scale,
-                                    x1_offset=None,
-                                    x2_offset=offset,
-                                    y_offset=None,
-                                    x2_table=None,
-                                    dtype=dtype,
-                                    transpose_x1=False,
-                                    transpose_x2=False,
-                                    group_size=group_size)
+        out = ge.QuantBatchMatmulV4(
+            x1,
+            x2,
+            bias=bias,
+            x1_scale=pertoken_scale,
+            x2_scale=scale,
+            y_scale=y_scale,
+            x1_offset=None,
+            x2_offset=offset,
+            y_offset=None,
+            x2_table=None,
+            dtype=dtype,
+            transpose_x1=False,
+            transpose_x2=False,
+            group_size=group_size,
+        )
         out.desc.dtype = torch_dtype_value_to_ge_proto_type(output_dtype)
     else:
-        out = ge.QuantBatchMatmulV3(x1,
-                                    x2,
-                                    scale,
-                                    offset=offset,
-                                    bias=bias,
-                                    pertoken_scale=pertoken_scale,
-                                    dtype=dtype,
-                                    transpose_x1=False,
-                                    transpose_x2=False)
+        out = ge.QuantBatchMatmulV3(
+            x1,
+            x2,
+            scale,
+            offset=offset,
+            bias=bias,
+            pertoken_scale=pertoken_scale,
+            dtype=dtype,
+            transpose_x1=False,
+            transpose_x2=False,
+        )
     return out
