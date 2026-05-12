@@ -33,7 +33,7 @@
     使用如下with语句块（[npu\_stream\_switch](../../api/scope/npu_stream_switch.md)），语句块内下发的算子切换至stream\_tag流，同时将自动添加\_enable\_inner\_parallel属性，属性值与enable\_inner\_parallel参数值一致，语句块外的算子使用默认stream计算。
 
     > [!NOTE]说明
-    >关于 \_enable\_inner\_parallel属性的详细介绍和约束请参见[CANN GE图引擎 API](https://hiascend.com/document/redirect/CannCommunityAscendGraphApi)中的“属性名列表”章节。
+    >关于 \_enable\_inner\_parallel属性的详细介绍和约束请参见[CANN GE图引擎 API](https://hiascend.com/document/redirect/CannCommunityAscendGraphApi)中的“属性名列表”章节，并且配套CANN版本大于9.0.0时才生效。
 
     ```python
     with torchair.scope.npu_stream_switch(stream_tag: str, stream_priority: int = 0, enable_inner_parallel: bool = True):
@@ -66,7 +66,7 @@ class Model(torch.nn.Module):
         super().__init__()
     def forward(self, in1, in2, in3, in4):
         add_result = torch.add(in1, in2)
-        with tng.scope.npu_stream_switch('1'): 
+        with tng.scope.npu_stream_switch('1'):
             # torch.mm算子(mm_result)等待torch.add算子(add_result)执行完再执行
             tng.scope.npu_wait_tensor(in4, add_result)
             mm_result = torch.mm(in3, in4)
@@ -91,7 +91,7 @@ result = model(in1, in2, in3, in4)
 print(f"Result:\n{result}\n")
 ```
 
-**图 1**  pbtxt文件样例  
+**图 1**  pbtxt文件样例
 ![](../../../figures/ge_multi_stream.png "多流示意图")
 
 图中展示了流间的控制关系，虚线控制边表示显式的跨流数据依赖同步关系。
